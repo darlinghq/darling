@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2025 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,21 +17,16 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CoreBluetooth/CBCentralManager.h>
-#import <CoreBluetooth/CBCentralManagerConstants.h>
+#import <CoreFoundation/CoreFoundation.h>
 
-NSString *const CBCentralManagerScanOptionAllowDuplicatesKey = @"kCBScanOptionAllowDuplicates";
+extern CFStringRef const kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration;
 
-@implementation CBCentralManager
+extern CFStringRef const kVTCompressionPropertyKey_DataRateLimits;
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
-}
+extern CFStringRef const kVTProfileLevel_H264_High_AutoLevel;
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
-}
+extern CFStringRef const kVTCompressionPropertyKey_MaxFrameDelayCount;
 
-@end
+extern CFStringRef const kVTCompressionPropertyKey_ExpectedFrameRate;
+
+extern CFStringRef const kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder;

@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2025 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,21 +17,18 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CoreBluetooth/CBCentralManager.h>
-#import <CoreBluetooth/CBCentralManagerConstants.h>
+#ifndef __LSQUARANTINE__
+#define __LSQUARANTINE__
 
-NSString *const CBCentralManagerScanOptionAllowDuplicatesKey = @"kCBScanOptionAllowDuplicates";
+#include <CoreFoundation/CoreFoundation.h>
 
-@implementation CBCentralManager
+extern CFStringRef const kLSQuarantineAgentBundleIdentifierKey;
+extern CFStringRef const kLSQuarantineAgentNameKey;
+extern CFStringRef const kLSQuarantineDataURLKey;
+extern CFStringRef const kLSQuarantineOriginURLKey;
+extern CFStringRef const kLSQuarantineTimeStampKey;
+extern CFStringRef const kLSQuarantineTypeKey;
+extern CFStringRef const kLSQuarantineTypeOtherDownload;
+extern CFStringRef const kLSQuarantineTypeWebDownload;
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
-}
-
-- (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
-}
-
-@end
+#endif // __LSQUARANTINE__

@@ -10,3 +10,6 @@ extern NSString *const AVVideoCodecKey;
 extern NSString *const AVVideoCompressionPropertiesKey;
 extern NSString *const AVVideoHeightKey;
 extern NSString *const AVVideoWidthKey;
+
+extern NSString *const AVVideoScalingModeKey;
+extern NSString *const AVVideoScalingModeResizeAspectFill;

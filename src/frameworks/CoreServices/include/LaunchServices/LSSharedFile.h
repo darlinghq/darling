@@ -7,7 +7,6 @@ extern const CFStringRef kLSSharedFileListFavoriteVolumes;
 extern const CFStringRef kLSSharedFileListGlobalLoginItems;
 // extern const LSSharedFileListRef kLSSharedFileListItemBeforeFirst;
 extern const CFStringRef kLSSharedFileListItemHidden;
-// extern const LSSharedFileListItemRef kLSSharedFileListItemLast;
 extern const CFStringRef kLSSharedFileListLoginItemHidden;
 extern const CFStringRef kLSSharedFileListRecentApplicationItems;
 extern const CFStringRef kLSSharedFileListRecentDocumentItems;

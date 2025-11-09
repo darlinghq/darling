@@ -22,6 +22,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+NSString *const CBAdvertisementDataLocalNameKey = @"kCBAdvDataLocalName";
+NSString *const CBAdvertisementDataManufacturerDataKey = @"kCBAdvDataManufacturerData";
+NSString *const CBAdvertisementDataServiceDataKey = @"kCBAdvDataServiceData";
+NSString *const CBAdvertisementDataServiceUUIDsKey = @"kCBAdvDataServiceUUIDs";
+NSString *const CBAdvertisementDataOverflowServiceUUIDsKey = @"kCBAdvDataHashedServiceUUIDs";
+NSString *const CBAdvertisementDataTxPowerLevelKey = @"kCBAdvDataTxPowerLevel";
+
 static int verbose = 0;
 
 __attribute__((constructor))
