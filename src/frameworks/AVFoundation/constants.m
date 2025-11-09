@@ -83,4 +83,5 @@ const AVLayerVideoGravity AVLayerVideoGravityResizeAspect = @"AVLayerVideoGravit
 const AVLayerVideoGravity AVLayerVideoGravityResizeAspectFill = @"AVLayerVideoGravityResizeAspectFill";
 
 const AVMediaType AVMediaTypeAudio = @"soun";
+const AVMediaType AVMediaTypeMuxed = @"muxx";
 const AVMediaType AVMediaTypeVideo = @"vide";
