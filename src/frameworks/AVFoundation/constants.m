@@ -84,3 +84,11 @@ const AVLayerVideoGravity AVLayerVideoGravityResizeAspectFill = @"AVLayerVideoGr
 
 const AVMediaType AVMediaTypeAudio = @"soun";
 const AVMediaType AVMediaTypeVideo = @"vide";
+
+const AVMetadataKey AVMetadataCommonKeyAlbumName = @"albumName";
+const AVMetadataKey AVMetadataCommonKeyArtist = @"artist";
+const AVMetadataKey AVMetadataCommonKeyArtwork = @"artwork";
+const AVMetadataKey AVMetadataCommonKeyDescription = @"description";
+const AVMetadataKey AVMetadataCommonKeyTitle = @"title";
+
+const AVMetadataKey AVMetadataID3MetadataKeyUserURL = @"WXXX";
