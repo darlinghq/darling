@@ -14,6 +14,7 @@ add_framework(SearchKit
 
 	SOURCES
 		Analysis.m
+		SKIndex.m
 
 	DEPENDENCIES
 		CoreFoundation
