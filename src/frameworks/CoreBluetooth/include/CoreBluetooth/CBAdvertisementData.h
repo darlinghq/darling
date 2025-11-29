@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2025 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,9 +17,11 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
-#import <CoreBluetooth/CBCentralManagerConstants.h>
+#import <Foundation/Foundation.h>
 
-@interface CBCentralManager : NSObject
-
-@end
+extern NSString *const CBAdvertisementDataLocalNameKey;
+extern NSString *const CBAdvertisementDataManufacturerDataKey;
+extern NSString *const CBAdvertisementDataServiceDataKey;
+extern NSString *const CBAdvertisementDataServiceUUIDsKey;
+extern NSString *const CBAdvertisementDataOverflowServiceUUIDsKey;
+extern NSString *const CBAdvertisementDataTxPowerLevelKey;

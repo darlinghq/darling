@@ -1,6 +1,8 @@
 #include <SystemConfiguration/SCSchemaDefinitions.h>
 #include <CoreFoundation/CFString.h>
 
+const CFStringRef kSCEntNetInterface = CFSTR("Interface");
+
 const CFStringRef kSCPropNetIPv4Addresses = CFSTR("Addresses");
 const CFStringRef kSCPropNetIPv4SubnetMasks = CFSTR("SubnetMasks");
 const CFStringRef kSCPropNetProxiesExceptionsList = CFSTR("ExceptionsList");

@@ -30,12 +30,15 @@ const CFStringRef _kLSASNKey = CFSTR("LSASN");
 
 const CFStringRef kLSItemContentType = CFSTR("LSItemContentType");
 
+struct OpaqueLSSharedFileListItemRef {};
+static const struct OpaqueLSSharedFileListItemRef _insertItemLast = { };
+
 const CFStringRef kLSSharedFileListFavoriteItems = CFSTR("com.apple.LSSharedFileList.FavoriteItems");
 const CFStringRef kLSSharedFileListFavoriteVolumes = CFSTR("com.apple.LSSharedFileList.FavoriteVolumes");
 const CFStringRef kLSSharedFileListGlobalLoginItems = CFSTR("com.apple.LSSharedFileList.GlobalLoginItems");
 // const LSSharedFileListRef kLSSharedFileListItemBeforeFirst;
 const CFStringRef kLSSharedFileListItemHidden = CFSTR("com.apple.LSSharedFileList.ItemIsHidden");
-// const LSSharedFileListItemRef kLSSharedFileListItemLast;
+const LSSharedFileListItemRef kLSSharedFileListItemLast = &_insertItemLast;
 const CFStringRef kLSSharedFileListLoginItemHidden = CFSTR("com.apple.loginitem.HideOnLaunch");
 const CFStringRef kLSSharedFileListRecentApplicationItems = CFSTR("com.apple.LSSharedFileList.RecentApplications");
 const CFStringRef kLSSharedFileListRecentDocumentItems = CFSTR("com.apple.LSSharedFileList.RecentDocuments");
@@ -53,6 +56,7 @@ const CFStringRef kLSQuarantineOriginURLKey = CFSTR("LSQuarantineOriginURL");
 const CFStringRef kLSQuarantineTimeStampKey = CFSTR("LSQuarantineTimeStamp");
 const CFStringRef kLSQuarantineTypeKey = CFSTR("LSQuarantineType");
 const CFStringRef kLSQuarantineTypeOtherDownload = CFSTR("LSQuarantineTypeOtherDownload");
+const CFStringRef kLSQuarantineTypeWebDownload = CFSTR("LSQuarantineTypeWebDownload");
 
 const CFStringRef kUTExportedTypeDeclarationsKey = CFSTR("UTExportedTypeDeclarations");
 const CFStringRef kUTImportedTypeDeclarationsKey = CFSTR("UTImportedTypeDeclarations");

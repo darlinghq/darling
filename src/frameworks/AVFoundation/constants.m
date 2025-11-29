@@ -60,6 +60,9 @@ NSString *const AVVideoHeightKey = @"AVVideoHeightKey";
 NSString *const AVVideoMaxKeyFrameIntervalKey = @"MaxKeyFrameInterval";
 NSString *const AVVideoWidthKey = @"AVVideoWidthKey";
 
+NSString *const AVVideoScalingModeKey = @"AVVideoScalingModeKey";
+NSString *const AVVideoScalingModeResizeAspectFill = @"AVVideoScalingModeResizeAspectFill";
+
 const AVCaptureSessionPreset AVCaptureSessionPreset3840x2160 = @"AVCaptureSessionPreset3840x2160";
 const AVCaptureSessionPreset AVCaptureSessionPreset1920x1080 = @"AVCaptureSessionPreset1920x1080";
 const AVCaptureSessionPreset AVCaptureSessionPreset1280x720 = @"AVCaptureSessionPreset1280x720";
@@ -83,6 +86,7 @@ const AVLayerVideoGravity AVLayerVideoGravityResizeAspect = @"AVLayerVideoGravit
 const AVLayerVideoGravity AVLayerVideoGravityResizeAspectFill = @"AVLayerVideoGravityResizeAspectFill";
 
 const AVMediaType AVMediaTypeAudio = @"soun";
+const AVMediaType AVMediaTypeMuxed = @"muxx";
 const AVMediaType AVMediaTypeVideo = @"vide";
 
 const AVMetadataKey AVMetadataCommonKeyAlbumName = @"albumName";

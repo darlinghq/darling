@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2025 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,8 +18,5 @@
 */
 
 #include <Foundation/Foundation.h>
-#import <CoreBluetooth/CBCentralManagerConstants.h>
 
-@interface CBCentralManager : NSObject
-
-@end
+extern NSString *const CBCentralManagerScanOptionAllowDuplicatesKey;

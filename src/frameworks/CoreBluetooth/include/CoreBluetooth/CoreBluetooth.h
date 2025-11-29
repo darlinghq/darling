@@ -39,7 +39,9 @@
 #import <CoreBluetooth/CBPeripheral.h>
 #import <CoreBluetooth/CBService.h>
 #import <CoreBluetooth/CBMutableService.h>
+#import <CoreBluetooth/CBError.h>
 #import <CoreBluetooth/CBUUID.h>
+#import <CoreBluetooth/CBAdvertisementData.h>
 #import <CoreBluetooth/CBL2CAPChannel.h>
 #import <CoreBluetooth/CBPeer.h>
 #import <CoreBluetooth/CBClassicManager.h>
