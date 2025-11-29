@@ -28,6 +28,8 @@ const CFStringRef _kLSExecutableFormatCFMKey = CFSTR("LSExecutableCFMFormat");
 
 const CFStringRef _kLSASNKey = CFSTR("LSASN");
 
+const CFStringRef kLSItemContentType = CFSTR("LSItemContentType");
+
 const CFStringRef kLSSharedFileListFavoriteItems = CFSTR("com.apple.LSSharedFileList.FavoriteItems");
 const CFStringRef kLSSharedFileListFavoriteVolumes = CFSTR("com.apple.LSSharedFileList.FavoriteVolumes");
 const CFStringRef kLSSharedFileListGlobalLoginItems = CFSTR("com.apple.LSSharedFileList.GlobalLoginItems");
