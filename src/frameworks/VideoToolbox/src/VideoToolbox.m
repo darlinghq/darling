@@ -26,16 +26,23 @@
 
 const CFStringRef kVTCompressionPropertyKey_AllowFrameReordering = CFSTR("AllowFrameReordering");
 const CFStringRef kVTCompressionPropertyKey_AverageBitRate = CFSTR("AverageBitRate");
+const CFStringRef kVTCompressionPropertyKey_DataRateLimits = CFSTR("DataRateLimits");
+const CFStringRef kVTCompressionPropertyKey_ExpectedFrameRate = CFSTR("ExpectedFrameRate");
+const CFStringRef kVTCompressionPropertyKey_MaxFrameDelayCount = CFSTR("MaxFrameDelayCount");
 const CFStringRef kVTCompressionPropertyKey_MaxKeyFrameInterval = CFSTR("MaxKeyFrameInterval");
+const CFStringRef kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration = CFSTR("MaxKeyFrameIntervalDuration");
 const CFStringRef kVTCompressionPropertyKey_ProfileLevel = CFSTR("ProfileLevel");
 const CFStringRef kVTCompressionPropertyKey_RealTime = CFSTR("RealTime");
 const CFStringRef kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder = CFSTR("UsingHardwareAcceleratedVideoEncoder");
 const CFStringRef kVTDecompressionPropertyKey_UsingHardwareAcceleratedVideoDecoder = CFSTR("UsingHardwareAcceleratedVideoDecoder");
 const CFStringRef kVTEncodeFrameOptionKey_ForceKeyFrame = CFSTR("ForceKeyFrame");
 const CFStringRef kVTProfileLevel_H264_Baseline_AutoLevel = CFSTR("AutoLevel");
+const CFStringRef kVTProfileLevel_H264_High_AutoLevel = CFSTR("AutoLevel");
 const CFStringRef kVTProfileLevel_H264_Main_AutoLevel = CFSTR("AutoLevel");
 const CFStringRef kVTVideoDecoderSpecification_EnableHardwareAcceleratedVideoDecoder = CFSTR("EnableHardwareAcceleratedVideoDecoder");
+const CFStringRef kVTVideoDecoderSpecification_RequireHardwareAcceleratedVideoDecoder = CFSTR("RequireHardwareAcceleratedVideoDecoder");
 const CFStringRef kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder = CFSTR("EnableHardwareAcceleratedVideoEncoder");
+const CFStringRef kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder = CFSTR("RequireHardwareAcceleratedVideoEncoder");
 const CFStringRef kVTPixelTransferPropertyKey_RealTime = CFSTR("RealTime");
 
 static int verbose = 0;
