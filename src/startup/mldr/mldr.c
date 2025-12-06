@@ -215,13 +215,13 @@ int main(int argc, char** argv, char** envp)
 
 		size_t len = strlen(mldr_load_results.envp[i]) + 1;
 
-		// Don't pass these special env vars down to userland
-		#define SKIP_VAR(_name) \
+		#define ENV_VAR_MATCHES(_name) \
 			(len > sizeof(_name) - 1 && strncmp(mldr_load_results.envp[i], _name, sizeof(_name) - 1) == 0)
 
+		// Don't pass these special env vars down to userland
 		if (
-			SKIP_VAR("__mldr_bprefs=")   ||
-			SKIP_VAR("__mldr_sockpath=")
+			ENV_VAR_MATCHES("__mldr_bprefs=")   ||
+			ENV_VAR_MATCHES("__mldr_sockpath=")
 		) {
 			size_t len_after = 0;
 			const char* orig_envp_i_plus_one = mldr_load_results.envp[i + 1];
@@ -240,6 +240,14 @@ int main(int argc, char** argv, char** envp)
 			// we have to check this index again because it now points to a different string
 			--i;
 			continue;
+		}
+		// If we were passed __mldr_DYLD_ROOT_PATH, it is a special case of DYLD_ROOT_PATH needing to be set,
+		// so we remove the prefix, so dyld reads it as DYLD_ROOT_PATH
+		else if (ENV_VAR_MATCHES("__mldr_DYLD_ROOT_PATH=")) {
+			const char* env_p = mldr_load_results.envp[i];
+			env_p += (sizeof("__mldr_") - 1);
+			size_t len_remaining = strlen(env_p) + 1;
+			memmove(mldr_load_results.envp[i], env_p, len_remaining);
 		}
 	}
 
@@ -519,7 +527,7 @@ static void process_special_env(struct load_results* lr) {
 		sscanf(str, "%i", &lr->lifetime_pipe);
 	}
 
-	str = getenv("DYLD_ROOT_PATH");
+	str = getenv("__mldr_DYLD_ROOT_PATH");
 
 	if (str != NULL && lr->root_path == NULL) {
 		strncpy(root_path, str, sizeof(root_path) - 1);
