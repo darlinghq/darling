@@ -17,4 +17,11 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <SharedFileList/LSSharedFileList.h>
+#import <Foundation/Foundation.h>
+
+extern NSString *const CBAdvertisementDataLocalNameKey;
+extern NSString *const CBAdvertisementDataManufacturerDataKey;
+extern NSString *const CBAdvertisementDataServiceDataKey;
+extern NSString *const CBAdvertisementDataServiceUUIDsKey;
+extern NSString *const CBAdvertisementDataOverflowServiceUUIDsKey;
+extern NSString *const CBAdvertisementDataTxPowerLevelKey;

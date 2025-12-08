@@ -20,12 +20,20 @@
 #ifndef _CMTIME_H_
 #define _CMTIME_H_
 
+#include <CoreFoundation/CFBase.h>
 #include <stdint.h>
 
 typedef int64_t CMTimeValue;
 typedef int32_t CMTimeScale;
 typedef int64_t CMTimeEpoch;
-typedef uint32_t CMTimeFlags;
+typedef CF_OPTIONS(uint32_t, CMTimeFlags) {
+	kCMTimeFlags_Valid = (1UL << 0),
+	kCMTimeFlags_HasBeenRounded = (1UL << 1),
+	kCMTimeFlags_PositiveInfinity = (1UL << 2),
+	kCMTimeFlags_NegativeInfinity = (1UL << 3),
+	kCMTimeFlags_Indefinite = (1UL << 4),
+	kCMTimeFlags_ImpliedValueFlagsMask = kCMTimeFlags_PositiveInfinity | kCMTimeFlags_NegativeInfinity | kCMTimeFlags_Indefinite
+};
 
 typedef struct
 {

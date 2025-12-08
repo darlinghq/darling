@@ -17,4 +17,18 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <SharedFileList/LSSharedFileList.h>
+#ifndef __LSQUARANTINE__
+#define __LSQUARANTINE__
+
+#include <CoreFoundation/CoreFoundation.h>
+
+extern CFStringRef const kLSQuarantineAgentBundleIdentifierKey;
+extern CFStringRef const kLSQuarantineAgentNameKey;
+extern CFStringRef const kLSQuarantineDataURLKey;
+extern CFStringRef const kLSQuarantineOriginURLKey;
+extern CFStringRef const kLSQuarantineTimeStampKey;
+extern CFStringRef const kLSQuarantineTypeKey;
+extern CFStringRef const kLSQuarantineTypeOtherDownload;
+extern CFStringRef const kLSQuarantineTypeWebDownload;
+
+#endif // __LSQUARANTINE__

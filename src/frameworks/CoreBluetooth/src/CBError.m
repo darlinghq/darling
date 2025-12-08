@@ -17,4 +17,7 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <SharedFileList/LSSharedFileList.h>
+#import <CoreBluetooth/CBError.h>
+
+NSString *const CBErrorDomain = @"CBErrorDomain";
+NSString *const CBATTErrorDomain = @"CBATTErrorDomain";

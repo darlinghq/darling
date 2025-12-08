@@ -18,6 +18,7 @@
 */
 
 #include <Foundation/Foundation.h>
+#import <CoreBluetooth/CBCentralManagerConstants.h>
 
 @interface CBCentralManager : NSObject
 

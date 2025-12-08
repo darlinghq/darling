@@ -17,4 +17,9 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <SharedFileList/LSSharedFileList.h>
+#include <SharedFileList/SharedFileList.h>
+
+struct OpaqueLSSharedFileListItemRef {};
+static struct OpaqueLSSharedFileListItemRef _insertItemLast = { };
+
+LSSharedFileListItemRef kLSSharedFileListItemLast = &_insertItemLast;

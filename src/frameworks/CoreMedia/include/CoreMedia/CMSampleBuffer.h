@@ -17,4 +17,11 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <SharedFileList/LSSharedFileList.h>
+#ifndef _CMSAMPLEBUFFER_H_
+#define _CMSAMPLEBUFFER_H_
+
+#include <CoreFoundation/CoreFoundation.h>
+
+extern const CFStringRef kCMSampleAttachmentKey_DisplayImmediately;
+
+#endif
