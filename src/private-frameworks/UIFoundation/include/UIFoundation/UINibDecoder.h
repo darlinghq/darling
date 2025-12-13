@@ -19,6 +19,8 @@
 
 #include <Foundation/Foundation.h>
 
-@interface UINibDecoder : NSObject
+@interface UINibDecoder : NSCoder
+
+- (instancetype) initForReadingWithData: (NSData *) data;
 
 @end

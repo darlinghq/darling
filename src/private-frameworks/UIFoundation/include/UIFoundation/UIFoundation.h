@@ -139,6 +139,10 @@
 #import <UIFoundation/NSWordMLReader.h>
 #import <UIFoundation/NSWordMLWriter.h>
 
+extern const char *UIArchiveHeaderIdentifier;
+extern const uint32_t UIMaximumCompatibleFormatVersion;
+extern const uint32_t UICurrentCoderVersion;
+
 void* CFArrayCreateWithNonRetainedObjectsFromNSArray(void);
 void* CFDictionaryCreateWithNonRetainedValuesFromNSDictionary(void);
 void* NSConvertGlyphsToPackedGlyphs(void);
@@ -150,7 +154,7 @@ void* UIAppendBytesForValueToData(void);
 void* UIAppendVInt32ToData(void);
 void* UIArrayByKeepingObjectsInSet(void);
 void* UICreateOrderedAndStrippedCoderValues(void);
-void* UIDataLooksLikeNibArchive(void);
+BOOL UIDataLooksLikeNibArchive(NSData *data);
 void* UIDistanceBetweenPointAndRect(void);
 void* UIFixedByteLengthForType(void);
 void* UINibArchiveIndexFromNumber(void);
