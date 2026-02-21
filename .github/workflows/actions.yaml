@@ -6,12 +6,10 @@ jobs:
   build-deb:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-
-    - name: Checkout submodules
-      shell: bash
-      run: |
-        git submodule update --init --recursive --depth=1
+    - name: Checkout Darling
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Install dependencies
       run: |
@@ -40,12 +38,10 @@ jobs:
   build-dsc:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-
-    - name: Checkout submodules
-      shell: bash
-      run: |
-        git submodule update --init --recursive --depth=1
+    - name: Checkout Darling
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Install dependencies
       run: |
