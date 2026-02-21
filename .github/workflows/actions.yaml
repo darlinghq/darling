@@ -60,3 +60,27 @@ jobs:
       with:
         name: 'deb-source'
         path: source/
+
+  create-source-artifact:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Darling
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        path: source/darling
+
+    - name: Compress source
+      run: |
+        mkdir -v archive
+        tar --create --gzip --verbose \
+            --file archive/darling-source.tar.gz \
+            --exclude=.git --exclude=.gitmodules --exclude=.gitignore \
+            --directory=source \
+            darling
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4.1.0
+      with:
+        name: 'source'
+        path: archive/
