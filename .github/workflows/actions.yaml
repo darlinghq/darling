@@ -73,8 +73,8 @@ jobs:
     - name: Compress source
       run: |
         mkdir -v archive
-        tar --create --gzip --verbose \
-            --file archive/darling-source.tar.gz \
+        tar --create --use-compress-program="xz -9e" --verbose \
+            --file archive/darling-source.tar.xz \
             --exclude=.git --exclude=.gitmodules --exclude=.gitignore \
             --directory=source \
             darling
