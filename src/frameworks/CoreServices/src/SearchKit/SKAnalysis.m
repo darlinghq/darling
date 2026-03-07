@@ -17,7 +17,7 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <SearchKit/Analysis.h>
+#import <SearchKit/SKAnalysis.h>
 
 const CFStringRef kSKMinTermLength = CFSTR("kSKMinTermLength");
 const CFStringRef kSKMaximumTerms = CFSTR("kSKMaximumTerms");

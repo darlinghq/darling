@@ -13,7 +13,7 @@ add_framework(SearchKit
 	PARENT "CoreServices"
 
 	SOURCES
-		Analysis.m
+		SKAnalysis.m
 		SKIndex.c
 
 	DEPENDENCIES
