@@ -17,8 +17,13 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CoreFoundation/CFString.h>
+#ifndef _SKANALYSIS_H_
+#define _SKANALYSIS_H_
+
+#include <CoreFoundation/CFString.h>
 
 extern const CFStringRef kSKMinTermLength;
 extern const CFStringRef kSKMaximumTerms;
 extern const CFStringRef kSKProximityIndexing;
+
+#endif
