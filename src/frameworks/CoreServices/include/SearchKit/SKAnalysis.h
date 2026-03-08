@@ -25,5 +25,9 @@
 extern const CFStringRef kSKMinTermLength;
 extern const CFStringRef kSKMaximumTerms;
 extern const CFStringRef kSKProximityIndexing;
+extern const CFStringRef kSKStopWords;
+extern const CFStringRef kSKTermChars;
+extern const CFStringRef kSKStartTermChars;
+extern const CFStringRef kSKEndTermChars;
 
 #endif

@@ -22,3 +22,7 @@
 const CFStringRef kSKMinTermLength = CFSTR("kSKMinTermLength");
 const CFStringRef kSKMaximumTerms = CFSTR("kSKMaximumTerms");
 const CFStringRef kSKProximityIndexing = CFSTR("kSKProximityIndexing");
+const CFStringRef kSKStopWords = CFSTR("kSKStopWords");
+const CFStringRef kSKTermChars = CFSTR("kSKTermChars");
+const CFStringRef kSKStartTermChars = CFSTR("kSKStartTermChars");
+const CFStringRef kSKEndTermChars = CFSTR("kSKEndTermChars");
