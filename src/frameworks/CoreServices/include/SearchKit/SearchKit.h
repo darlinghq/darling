@@ -20,6 +20,6 @@
 #ifndef _CORESERVICES_SEARCHKIT_H_
 #define _CORESERVICES_SEARCHKIT_H_
 
-#include <SearchKit/Analysis.h>
+#include <SearchKit/SKAnalysis.h>
 
 #endif
