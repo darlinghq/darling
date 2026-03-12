@@ -47,6 +47,7 @@ add_framework(WebKit
         src/_WKWebsiteDataStore.m
         src/_WKWebsiteDataStoreConfiguration.m
         src/_WKWebsitePolicies.m
+        src/DOMElement.m
         src/DOMNode.m
         src/DOMObject.m
         src/WebView.m
