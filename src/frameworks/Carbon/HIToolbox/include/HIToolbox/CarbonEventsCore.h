@@ -59,6 +59,9 @@ OSStatus RemoveEventHandler(EventHandlerRef a);
 
 OSStatus SendEventToEventTarget(EventRef a, EventTargetRef b);
 
+UInt32 GetCurrentKeyModifiers(void);
+EventTime GetEventTime(EventRef inEvent);
+
 #ifdef __cplusplus
 }
 #endif

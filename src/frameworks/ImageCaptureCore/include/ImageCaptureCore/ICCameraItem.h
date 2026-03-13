@@ -19,6 +19,10 @@
 
 #include <Foundation/Foundation.h>
 
+typedef NSString* ICDownloadOption;
+
+extern const ICDownloadOption ICDownloadsDirectoryURL;
+
 @interface ICCameraItem : NSObject
 
 @end

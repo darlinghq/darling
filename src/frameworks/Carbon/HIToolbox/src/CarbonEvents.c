@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2025 Darling Developers
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,11 +17,27 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _CORESERVICES_SEARCHKIT_H_
-#define _CORESERVICES_SEARCHKIT_H_
+#include <HIToolbox/CarbonEvents.h>
+#include <stdlib.h>
+#include <stdio.h>
 
-#include <SearchKit/SKAnalysis.h>
-#include <SearchKit/SKIndex.h>
-#include <SearchKit/SKSearch.h>
+static int verbose = 0;
 
-#endif
+__attribute__((constructor))
+static void initme(void) {
+    verbose = getenv("STUB_VERBOSE") != NULL;
+}
+
+OSStatus RegisterEventHotKey(UInt32 inHotKeyCode, UInt32 inHotKeyModifiers, EventHotKeyID inHotKeyID, EventTargetRef inTarget, OptionBits inOptions, EventHotKeyRef *outRef)
+{
+    if (verbose) puts("STUB: RegisterEventHotKey called");
+
+    return 0;
+}
+
+OSStatus UnregisterEventHotKey(EventHotKeyRef inHotKey)
+{
+    if (verbose) puts("STUB: UnregisterEventHotKey called");
+
+    return 0;
+}

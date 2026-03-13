@@ -40,7 +40,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <errno.h>
 #include <darling/emulation/linux_premigration/ext/file_handle.h>
 
-#define STUB() // TODO
+#define STUB() printf("STUB %s\n", __PRETTY_FUNCTION__);
 
 // Is the current user member of the specified group?
 static bool hasgid(gid_t gid);
@@ -455,4 +455,3 @@ OSErr PBCloseForkSync(FSForkIOParam *paramBlock)
 	STUB();
 	return unimpErr;
 }
-

@@ -21,9 +21,11 @@ add_framework(HIToolbox
 		src/Keyboards.cpp
 		src/Events.cpp
 		src/CarbonEventsCore.c
+		src/MacApplication.cpp
 		src/MacWindows.cpp
 		src/TextInputSources.mm
 		src/IBCarbonRuntime.c
+		src/HITheme.c
 		src/constants.c
 
 	DEPENDENCIES

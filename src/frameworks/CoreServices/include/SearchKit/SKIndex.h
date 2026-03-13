@@ -20,9 +20,21 @@
 #ifndef SKINDEX_H_
 #define SKINDEX_H_
 
+#include <CoreFoundation/CFString.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef struct __SKIndex *SKIndexRef;
+typedef enum SKIndexType : unsigned int {
+    kSKIndexUnknown = 0,
+    kSKIndexInverted = 1,
+    kSKIndexVector = 2,
+    kSKIndexInvertedVector = 3,
+} SKIndexType;
+
+SKIndexRef SKIndexCreateWithMutableData(CFMutableDataRef inData, CFStringRef inIndexName, SKIndexType inIndexType, CFDictionaryRef inAnalysisProperties);
 
 extern void SKLoadDefaultExtractorPlugIns(void);
 

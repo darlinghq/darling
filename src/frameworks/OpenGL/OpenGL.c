@@ -212,6 +212,12 @@ CGLError CGLSetCurrentContext(CGLContextObj context) {
     return kCGLNoError; // FIXME
 }
 
+CGLError CGLSetFullScreen(CGLContextObj ctx) {
+    printf("STUB: CGLSetFullScreen\n");
+
+    return kCGLNoError;
+}
+
 CGLError CGLChoosePixelFormat(
     const CGLPixelFormatAttribute *attrs,
     CGLPixelFormatObj *result,
@@ -228,6 +234,13 @@ CGLError CGLChoosePixelFormat(
 
     *result = format;
     *number_of_screens = 1;
+
+    return kCGLNoError;
+}
+
+CGLError CGLClearDrawable(CGLContextObj ctx)
+{
+    printf("STUB: CGLClearDrawable\n");
 
     return kCGLNoError;
 }

@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2025 Darling Developers
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,11 +17,30 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _CORESERVICES_SEARCHKIT_H_
-#define _CORESERVICES_SEARCHKIT_H_
+#ifndef UTCUTILS_H
+#define UTCUTILS_H
 
-#include <SearchKit/SKAnalysis.h>
-#include <SearchKit/SKIndex.h>
-#include <SearchKit/SKSearch.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#pragma pack(2)
+typedef struct UTCDateTime
+{
+	uint16_t highSeconds;
+	uint32_t lowSeconds;
+	uint16_t fraction;
+} UTCDateTime;
+#pragma pack()
+
+typedef UTCDateTime* UTCDateTimePtr;
+typedef UTCDateTime** UTCDateTimeHandle;
+typedef UTCDateTime LocalDateTime;
+typedef LocalDateTime* LocalDateTimePtr;
+typedef LocalDateTime** LocalDateTimeHandle;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

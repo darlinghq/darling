@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2025 Darling Developers
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,11 +17,14 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _CORESERVICES_SEARCHKIT_H_
-#define _CORESERVICES_SEARCHKIT_H_
+#include <CarbonCore/Aliases.h>
+#include <cstdio>
 
-#include <SearchKit/SKAnalysis.h>
-#include <SearchKit/SKIndex.h>
-#include <SearchKit/SKSearch.h>
+#define STUB() std::printf("STUB %s\n", __PRETTY_FUNCTION__);
 
-#endif
+OSErr FSResolveAliasFile(FSRef *theRef, Boolean resolveAliasChains, Boolean *targetIsFolder, Boolean *wasAliased)
+{
+	STUB();
+
+	return unimpErr;
+}

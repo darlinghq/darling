@@ -13,6 +13,7 @@ add_framework(LaunchServices
 	PARENT "CoreServices"
 
 	SOURCES
+		IconsCore.c
 		LaunchServices.c
 		LaunchServices.cpp
 		LSApplicationProxy.m
