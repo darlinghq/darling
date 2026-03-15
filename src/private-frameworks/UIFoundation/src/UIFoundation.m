@@ -17,10 +17,13 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #include <UIFoundation/UIFoundation.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+const char *UIArchiveHeaderIdentifier = "NIBArchive";
+const uint32_t UIMaximumCompatibleFormatVersion = 1;
+const uint32_t UICurrentCoderVersion = 10;
 
 static int verbose = 0;
 
@@ -95,10 +98,29 @@ void* UICreateOrderedAndStrippedCoderValues(void)
     return NULL;
 }
 
-void* UIDataLooksLikeNibArchive(void)
+BOOL UIDataLooksLikeNibArchive(NSData *data)
 {
-    if (verbose) puts("STUB: UIDataLooksLikeNibArchive called");
-    return NULL;
+    char headerIdentifier[11];
+    [data getBytes: headerIdentifier length: 10];
+    headerIdentifier[10] = '\0';
+
+    if (strcmp(headerIdentifier, UIArchiveHeaderIdentifier) != 0) {
+        return FALSE;
+    }
+
+    const uint32_t formatVersion = *((uint32_t *)[[data subdataWithRange: NSMakeRange(10, sizeof(uint32_t))] bytes]);
+
+    if (formatVersion > UIMaximumCompatibleFormatVersion) {
+        return FALSE;
+    }
+
+    const uint32_t coderVersion = *((uint32_t *)[[data subdataWithRange: NSMakeRange(14, sizeof(uint32_t))] bytes]);
+
+    if (coderVersion != UICurrentCoderVersion) {
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
 void* UIDistanceBetweenPointAndRect(void)
