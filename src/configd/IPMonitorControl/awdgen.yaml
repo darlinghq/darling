@@ -1,4 +1,0 @@
-component: IPMonitor
-output_directory: IPMonitorControl/AWD
-package: AWD
-language: objc-no-arc
