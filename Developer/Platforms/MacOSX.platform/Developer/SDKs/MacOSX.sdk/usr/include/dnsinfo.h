@@ -1,1 +1,1 @@
-../../../../../../../../src/configd/dnsinfo/dnsinfo.h
+../../../../../../../../src/external/configd/dnsinfo/dnsinfo.h
