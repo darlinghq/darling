@@ -19,6 +19,10 @@
 
 #import <InstantMessage/IMService.h>
 
+NSString *const IMPersonStatusChangedNotification = @"__kIMPersonStatusChangedNotification";
+
+NSString *IMPersonScreenNameKey = @"__kIMPersonScreenNameKey";
+
 @implementation IMService
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

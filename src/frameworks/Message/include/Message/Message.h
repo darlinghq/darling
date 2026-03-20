@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2025 Darling Developers
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,9 +17,12 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _CORESERVICES_SEARCHKIT_H_
-#define _CORESERVICES_SEARCHKIT_H_
 
-#include <SearchKit/SKAnalysis.h>
+#ifndef _Message_H_
+#define _Message_H_
+
+#import <Foundation/Foundation.h>
+
+
 
 #endif

@@ -17,9 +17,20 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _CORESERVICES_SEARCHKIT_H_
-#define _CORESERVICES_SEARCHKIT_H_
+#import <WebKit/DOMElement.h>
+#import <Foundation/NSMethodSignature.h>
+#import <Foundation/NSInvocation.h>
 
-#include <SearchKit/SKAnalysis.h>
+@implementation DOMElement
 
-#endif
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+}
+
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+}
+
+@end

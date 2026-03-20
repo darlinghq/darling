@@ -17,9 +17,12 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _CORESERVICES_SEARCHKIT_H_
-#define _CORESERVICES_SEARCHKIT_H_
-
 #include <SearchKit/SKAnalysis.h>
 
-#endif
+const CFStringRef kSKMinTermLength = CFSTR("kSKMinTermLength");
+const CFStringRef kSKMaximumTerms = CFSTR("kSKMaximumTerms");
+const CFStringRef kSKProximityIndexing = CFSTR("kSKProximityIndexing");
+const CFStringRef kSKStopWords = CFSTR("kSKStopWords");
+const CFStringRef kSKTermChars = CFSTR("kSKTermChars");
+const CFStringRef kSKStartTermChars = CFSTR("kSKStartTermChars");
+const CFStringRef kSKEndTermChars = CFSTR("kSKEndTermChars");

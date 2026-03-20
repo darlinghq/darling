@@ -22,6 +22,7 @@
 NSString *const kABDatabaseChangedNotification=@"ABDatabaseChangedNotification";
 NSString *const kABDatabaseChangedExternallyNotification=@"ABDatabaseChangedExternallyNotification";
 
+NSString *const kABUIDProperty=@"UID";
 NSString *const kABAddressProperty=@"ABAddressProperty";
 NSString *const kABBirthdayProperty=@"ABBirthdayProperty";
 NSString *const kABDepartmentProperty=@"ABDepartmentProperty";

@@ -22,6 +22,7 @@
 extern NSString *const kABDatabaseChangedNotification;
 extern NSString *const kABDatabaseChangedExternallyNotification;
 
+extern NSString *const kABUIDProperty;
 extern NSString *const kABEmailProperty;
 extern NSString *const kABFirstNameProperty;
 extern NSString *const kABLastNameProperty;
