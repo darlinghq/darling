@@ -31,4 +31,5 @@ What system are you running?
 | Software | Version |
 | --- | --- |
 | Linux Kernel | X.Y.Z |
+| Distro | Distro X.Y |
 | Darling | Git Commit Hash |

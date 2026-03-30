@@ -18,4 +18,5 @@ What system are you building with?
 | Clang | X.Y.Z |
 | CMake | X.Y.Z |
 | Linux Kernel | X.Y.Z |
+| Distro | Distro X.Y |
 | Darling | Git Commit Hash |
