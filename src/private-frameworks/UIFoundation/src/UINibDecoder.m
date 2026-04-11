@@ -21,14 +21,81 @@
 
 @implementation UINibDecoder
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (instancetype) initForReadingWithData: (NSData *) data
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+    return self;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (BOOL) containsValueForKey: (NSString *) key
 {
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+    return NO;
+}
+
+- (void) decodeValueOfObjCType: (const char *) type at: (void *) data
+{
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+}
+
+- (NSData *) decodeDataObject
+{
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+    return nil;
+}
+
+- (id) decodeObjectForKey: (NSString *) key
+{
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+    return nil;
+}
+
+- (BOOL) decodeBoolForKey: (NSString *) key
+{
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+    return NO;
+}
+
+- (int) decodeIntForKey:(NSString *) key
+{
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+    return 0;
+}
+
+- (int32_t) decodeInt32ForKey:(NSString *) key
+{
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+    return 0;
+}
+
+- (int64_t) decodeInt64ForKey:(NSString *) key
+{
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+    return 0;
+}
+
+- (float) decodeFloatForKey:(NSString *) key
+{
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+    return 0.0f;
+}
+
+- (double) decodeDoubleForKey:(NSString *) key
+{
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+    return 0.0;
+}
+
+- (const uint8_t *) decodeBytesForKey: (NSString *) key returnedLength: (NSUInteger *) len
+{
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+    return NULL;
+}
+
+- (NSInteger) versionForClassName: (NSString *) className
+{
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+    return 0;
 }
 
 @end
