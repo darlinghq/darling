@@ -63,7 +63,6 @@ RUN apt-get update && apt-get install -y \
     python3 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Copy source (expects build context to be repo root, with submodules already checked out)
 WORKDIR /src/darling
 COPY . .
 
@@ -74,13 +73,9 @@ RUN git submodule update --init --recursive --no-fetch 2>/dev/null || \
 # Build and install
 #
 # Key cmake flags:
-#   CMAKE_C_FLAGS_INIT / CMAKE_CXX_FLAGS_INIT  – appended to CMake's internal flags,
-#     unlike CMAKE_C_FLAGS which *replaces* them and strips required warning suppressions
-#     (e.g. -Wno-nullability-completeness) needed for the Apple dylib cross-compilation.
-#   TARGET_i386=OFF  – skip 32-bit slice generation; eliminates the harmless-but-noisy
-#     "has no symbols" ranlib warnings and avoids the linker failure they contribute to.
-#   RelWithDebInfo   – optimized build with debug info; avoids symbol-resolution issues
-#     in the -bind_at_load circular dylib chain that appear with the unoptimized Debug build.
+# - CMAKE_C_FLAGS_INIT: Appended to internal flags. Using CMAKE_C_FLAGS would 
+#   overwrite required warning suppressions like -Wno-nullability-completeness.
+# - TARGET_i386=OFF: Skip 32-bit slices to avoid noisy linker failures and ranlib warnings.
 RUN mkdir -p build && cd build && \
     cmake .. \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -93,7 +88,7 @@ RUN mkdir -p build && cd build && \
         -GNinja && \
     ninja -j$(nproc) && \
     ninja install && \
-    # Cleanup build artifacts to reduce image size
+
     cd / && rm -rf /src/darling/build
 
 WORKDIR /root
