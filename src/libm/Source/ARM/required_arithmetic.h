@@ -10,12 +10,12 @@
  *	interfaces that cause arithmetic to *always* happen. This header is needed
  *	in various places in Libm, because we use arithmetic to set floating point
  *	state flags. Frequently the product of that arithmetic is not used for the
- *	numerical result of the function, so the compiler erroneously optimizes 
- *	it away. The intent of this header is to provide basic operators that 
- *	utilize compiler and/or platform specific devices (such as volatile asms) 
+ *	numerical result of the function, so the compiler erroneously optimizes
+ *	it away. The intent of this header is to provide basic operators that
+ *	utilize compiler and/or platform specific devices (such as volatile asms)
  *	to prevent the compiler from optimizing away the arithmetic.  If no such
  *	device is available, you can encapsulate these operations as non-inlined
- *	functions with the implementation in a separate compilation unit or static 
+ *	functions with the implementation in a separate compilation unit or static
  *	library as required to prevent the compiler from removing them.
  *
  *	Sample implementations are provided for __i386__, both as sample code and
@@ -23,14 +23,14 @@
  *	their own implementation.
  *
  */
- 
+
 #if defined( __GNUC__ )
 	#define ALWAYS_INLINE_NO_DEBUG	__attribute__ (( __always_inline__, __nodebug__ ))
 #else
 	#define ALWAYS_INLINE_NO_DEBUG
 #endif
 
-#ifndef __arm__
+#if !defined(__arm__) && !defined(__aarch64__) && !defined(__arm64__)
 	#error  This file is for ARM with VFP only
 #endif
 
@@ -50,6 +50,72 @@ static inline int required_convert_double_to_int( double a ) ALWAYS_INLINE_NO_DE
 
 #pragma mark -
 #pragma mark Implementation
+
+#if defined(__aarch64__) || defined(__arm64__)
+
+// --------------------- single precision -------------------------
+
+static inline float required_add_float( float a, float b )
+{
+	float r;
+	__asm__ __volatile__ ( "fadd	%s0, %s1, %s2" : "=w" (r) : "w" (a), "w" (b) );
+	return r;
+}
+
+static inline float required_multiply_float( float a, float b )
+{
+	float r;
+	__asm__ __volatile__ ( "fmul	%s0, %s1, %s2" : "=w" (r) : "w" (a), "w" (b) );
+	return r;
+}
+
+static inline float required_divide_float( float a, float b )
+{
+	float r;
+	__asm__ __volatile__ ( "fdiv	%s0, %s1, %s2" : "=w" (r) : "w" (a), "w" (b) );
+	return r;
+}
+
+//rounds toward zero
+static inline int required_convert_float_to_int( float a )
+{
+	int result;
+	__asm__ __volatile__ ( "fcvtzs	%w0, %s1" : "=r" (result) : "w" (a) );
+	return result;
+}
+
+// ---------------- double precision --------------------------
+
+static inline double required_add_double( double a, double b )
+{
+	double r;
+	__asm__ __volatile__ ( "fadd	%d0, %d1, %d2" : "=w" (r) : "w" (a), "w" (b) );
+	return r;
+}
+
+static inline double required_multiply_double( double a, double b )
+{
+	double r;
+	__asm__ __volatile__ ( "fmul	%d0, %d1, %d2" : "=w" (r) : "w" (a), "w" (b) );
+	return r;
+}
+
+static inline double required_divide_double( double a, double b )
+{
+	double r;
+	__asm__ __volatile__ ( "fdiv	%d0, %d1, %d2" : "=w" (r) : "w" (a), "w" (b) );
+	return r;
+}
+
+//rounds toward zero
+static inline int required_convert_double_to_int( double a )
+{
+	int result;
+	__asm__ __volatile__ ( "fcvtzs	%w0, %d1" : "=r" (result) : "w" (a) );
+	return result;
+}
+
+#else /* ARM32 */
 
 // --------------------- single precision -------------------------
 
@@ -79,7 +145,7 @@ static inline int required_convert_float_to_int( float a )
 {
 	register float temp;
 	register int result;
-	
+
 	__asm__ __volatile__ ( "ftosizs %0, %1" : "=w" (temp) : "w" (a) );
 	__asm__ __volatile__ ( "fmrs %0, %1" : "=r" (result) : "w" (temp) );
 
@@ -114,10 +180,12 @@ static inline int required_convert_double_to_int( double a )
 {
 	register float temp;
 	register int result;
-	
+
 	__asm__ __volatile__ ( "ftosizd %0, %P1" : "=w" (temp) : "w" (a) );
 	__asm__ __volatile__ ( "fmrs %0, %1" : "=r" (result) : "w" (temp) );
 
 	return result;
 }
+
+#endif /* ARM32 vs ARM64 */
 

@@ -6450,6 +6450,8 @@ job_setup_exception_port(job_t j, task_t target_task)
 	f = x86_THREAD_STATE;
 #elif defined(__arm__)
 	f = ARM_THREAD_STATE;
+#elif defined(__arm64__) || defined(__aarch64__)
+	f = ARM_THREAD_STATE64;
 #else
 #error "unknown architecture"
 #endif

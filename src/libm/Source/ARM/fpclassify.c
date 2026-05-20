@@ -1,4 +1,3 @@
-
 /*
  *	fpclassify.c
  *
@@ -6,13 +5,13 @@
  *
  *	Copyright (c) 2007, Apple Inc. All Rights Reserved.
  *
- *	C99 implementation for __fpclassify function (called by FPCLASSIFY macro.)
+ *	C99 implementation for __fpclassifyd function (called by fpclassify macro.)
  */
  
 #include "math.h"
 #include <stdint.h>
 
-int __fpclassify( double x )
+int __fpclassifyd( double x )
 {
 	union{ double d; uint64_t u;}u = {x};
 
@@ -35,4 +34,10 @@ int __fpclassify( double x )
 	}
 
 	return FP_NORMAL;
+}
+
+/* On ARM64, long double is the same as double */
+int __fpclassify( long double x )
+{
+	return __fpclassifyd( (double)x );
 }

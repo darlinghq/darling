@@ -266,6 +266,13 @@ static void* darling_thread_entry(void* p)
 	register uintptr_t arg4 asm("rcx") = args.arg1;
 	register uintptr_t arg5 asm("r8")  = args.arg2;
 	register uintptr_t arg6 asm("r9")  = args.arg3;
+#elif __aarch64__
+	register void*     arg1 asm("x0") = args.pth;
+	register int       arg2 asm("w1") = args.port;
+	register uintptr_t arg3 asm("x2") = args.real_entry_point;
+	register uintptr_t arg4 asm("x3") = args.arg1;
+	register uintptr_t arg5 asm("x4") = args.arg2;
+	register uintptr_t arg6 asm("x5") = args.arg3;
 #elif __i386__
 	uintptr_t arg3 = args.real_entry_point;
 #endif
@@ -284,10 +291,25 @@ static void* darling_thread_entry(void* p)
 		"pushq $0\n"
 		// Jump to the entry point.
 		"jmp *%[entry_point]" ::
-		
+
 		// Function arguments
 		"r"(arg1),"r"(arg2),"r"(arg3),"r"(arg4),"r"(arg5),"r"(arg6),
-		
+
+		[entry_point] "r"(args.entry_point),
+		[stack_ptr] "r"(stack_ptr)
+	);
+#elif defined(__aarch64__)
+	asm volatile(
+		// Zero out the frame pointer.
+		"mov x29, #0\n"
+		// Switch to the new stack.
+		"mov sp, %[stack_ptr]\n"
+		// Jump to the entry point.
+		"br %[entry_point]" ::
+
+		// Function arguments in x0-x5
+		"r"(arg1),"r"(arg2),"r"(arg3),"r"(arg4),"r"(arg5),"r"(arg6),
+
 		[entry_point] "r"(args.entry_point),
 		[stack_ptr] "r"(stack_ptr)
 	);
@@ -310,7 +332,7 @@ static void* darling_thread_entry(void* p)
 		"pushl $0\n"
 		// Jump to the entry point.
 		"jmp *%[entry_point]" ::
-		
+
 		// Function arguments to push to the stack.
 		[args] "r"(&args), [arg3]"r"(arg3),
 
