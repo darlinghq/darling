@@ -32,7 +32,8 @@
 #define __FENV__
 
 /*  We require VFP for this set of interfaces to work  */
-#if !defined(__VFP_FP__) || defined(__SOFTFP__)
+/*  ARM64 always has hardware floating-point  */
+#if !defined(__aarch64__) && !defined(__arm64__) && (!defined(__VFP_FP__) || defined(__SOFTFP__))
 	#warning The <fenv.h> functions are not supported on platforms that do not have hardware floating-point.
 #else
 

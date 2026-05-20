@@ -24,13 +24,34 @@
 	#define ALWAYS_INLINE
 #endif
 
-#ifndef __arm__
-	#error	This file is for use on ARM + VFP and later
+#if !defined(__arm__) && !defined(__aarch64__) && !defined(__arm64__)
+	#error	This file is for use on ARM / ARM64 targets
 #endif
 
-
+#if defined(__aarch64__) || defined(__arm64__)
+/* ARM64: FPSCR is split into FPCR (control) and FPSR (status).
+ * We combine them into a single uint32_t for compatibility with the
+ * ARM32 fenv implementation. FPSR holds exception flags (bits 0-4),
+ * FPCR holds rounding mode (bits 22-23) and exception enables (bits 8-12). */
+static inline uint32_t _get_fpscr_combined(void) {
+    uint64_t fpcr, fpsr;
+    __asm__ __volatile__("mrs %0, fpcr" : "=r" (fpcr));
+    __asm__ __volatile__("mrs %0, fpsr" : "=r" (fpsr));
+    return (uint32_t)(fpcr | fpsr);
+}
+static inline void _set_fpscr_combined(uint32_t val) {
+    uint64_t fpcr = val & ~((uint32_t)FE_ALL_EXCEPT);  /* control bits only */
+    uint64_t fpsr = val & (uint32_t)FE_ALL_EXCEPT;       /* status flags only */
+    __asm__ __volatile__("msr fpcr, %0" : : "r" (fpcr));
+    __asm__ __volatile__("msr fpsr, %0" : : "r" (fpsr));
+}
+#define GET_FPSCR()         _get_fpscr_combined()
+#define SET_FPSCR(_fpscr)   _set_fpscr_combined(_fpscr)
+#else
+/* ARM32: single FPSCR register */
 #define GET_FPSCR()			({ uint32_t _fpscr; __asm__ __volatile__( "fmrx	%0, fpscr" : "=r" (_fpscr) ); /* return */ _fpscr; })
 #define SET_FPSCR(_fpscr)	__asm__ __volatile__( "fmxr	fpscr, %0" : : "r" (_fpscr)  )
+#endif
 
 
 const fenv_t _FE_DFL_ENV = {{{ 0, 0, 0, 0 }}};

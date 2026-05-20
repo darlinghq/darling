@@ -15,6 +15,9 @@ if (TARGET_i386 OR TARGET_x86_64)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -msse3")
 	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/Intel)
 	add_definitions(-Dmovsxw=movsw)
+elseif (TARGET_ARM64)
+	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/ARM)
+	add_definitions(-DARMLIBM_FENV_SUPPORT)
 endif ()
 
 set(libm_sources
@@ -151,6 +154,78 @@ if (TARGET_i386 OR TARGET_x86_64)
 		Source/Intel/truncl.S
 		Source/Intel/trunc.S
 	)
+elseif (TARGET_ARM64)
+	set(libm_sources ${libm_sources}
+		Source/ARM/acos_freeBSD.c
+		Source/ARM/acosh_freeBSD.c
+		Source/ARM/asin_freeBSD.c
+		Source/ARM/asinh_freeBSD.c
+		Source/ARM/atanh_freeBSD.c
+		#Source/ARM/cbrt.c
+		Source/ARM/complex.c
+		Source/ARM/containsNothing.c
+		#Source/ARM/copysignf.c
+		Source/ARM/cosh_freeBSD.c
+		Source/ARM/e_rem_pio2_freeBSD.c
+		Source/ARM/erf.c
+		Source/ARM/erfc.c
+		Source/ARM/erfcf.c
+		Source/ARM/erff.c
+		Source/ARM/exp_freeBSD.c
+		Source/ARM/exp2_freeBSD.c
+		#Source/ARM/exp2.c
+		Source/ARM/expm1_freeBSD.c
+		Source/ARM/fdim.c
+		Source/ARM/fdimf.c
+		Source/ARM/fegetfltrounds.c
+		Source/ARM/fenv.c
+		Source/ARM/fma_freeBSD.c
+		Source/ARM/fmaf.c
+		Source/ARM/fmod.c
+		Source/ARM/fmodf.c
+		Source/ARM/fpclassify.c
+		Source/ARM/fpclassifyf.c
+		Source/ARM/ilogb.c
+		Source/ARM/ilogbf.c
+		Source/ARM/j0y0_freeBSD.c
+		Source/ARM/j1y1_freeBSD.c
+		Source/ARM/jnyn_freeBSD.c
+		Source/ARM/k_rem_pio2_freeBSD.c
+		Source/ARM/k_tan_freeBSD.c
+		Source/ARM/lgamma.c
+		Source/ARM/lgammaf.c
+		#Source/ARM/llrint.c
+		#Source/ARM/llround.c
+		Source/ARM/log.c
+		Source/ARM/logb.c
+		Source/ARM/logbf.c
+		#Source/ARM/lrint.c
+		Source/ARM/math_errhandling.c
+		Source/ARM/modf_IncrediblySkanky.c
+		Source/ARM/nan.c
+		#Source/ARM/nearbyint.c
+		#Source/ARM/nextafter.c
+		#Source/ARM/nextafterf.c
+		Source/ARM/nexttoward.c
+		Source/ARM/nexttowardf.c
+		Source/ARM/remainder.c
+		Source/ARM/remainderf.c
+		Source/ARM/remquo.c
+		Source/ARM/remquof.c
+		#Source/ARM/rint.c
+		Source/ARM/scalb.c
+		Source/ARM/scalbln.c
+		Source/ARM/scalblnf.c
+		Source/ARM/signgam.c
+		Source/ARM/sinh_freeBSD.c
+		#Source/ARM/sqrt.c
+		#Source/ARM/sqrtf.c
+		Source/ARM/tanh_freeBSD.c
+		Source/ARM/tgamma.c
+		Source/ARM/tgammaf.c
+		#Source/ARM/version_info.c
+		Source/ARM/arm64_builtins.c
+	)
 endif ()
 
 # Gross hack to rename symbols in $fenv_access_off variants
@@ -165,6 +240,11 @@ endif ()
 make_fat(system_m_extra)
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_m.dylib")
+if (TARGET_ARM64)
+	set(LIBM_ALIAS_FLAGS "-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_arm_vfp.a.alias")
+else ()
+	set(LIBM_ALIAS_FLAGS "-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_Intel.a.alias -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libmathCommonIntel.alias")
+endif ()
 add_circular(system_m FAT
 	SOURCES
 		${libm_sources}
@@ -174,7 +254,7 @@ add_circular(system_m FAT
 		system_c
 		system_dyld
 	LINK_FLAGS
-		"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_Intel.a.alias -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libmathCommonIntel.alias"
+		"${LIBM_ALIAS_FLAGS}"
 )
 #set_property(TARGET system_m APPEND_STRING PROPERTY LINK_FLAGS
 #	"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_Intel.a.alias -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libmathCommonIntel.alias")
