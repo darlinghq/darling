@@ -213,4 +213,60 @@ do {								\
 #define	__ieee754_remainderf remainderf
 #define	__ieee754_scalbf scalbf
 
+/*
+ * The openlibm-ported sources (Source/ARM/*_freeBSD.c) use STRICT_ASSIGN to
+ * force C99 evaluation semantics for intermediate floating-point assignments
+ * on platforms where FLT_EVAL_METHOD > 0. On ARM/ARM64 FLT_EVAL_METHOD is 0
+ * (no excess precision), so a plain assignment is sufficient.
+ */
+#ifndef STRICT_ASSIGN
+#define	STRICT_ASSIGN(type, lval, rval)	((lval) = (rval))
+#endif
+
+/* Helper used by the openlibm e_pow / e_powf to propagate quiet NaN payloads
+ * while making the float-flavour exception path agree with double. */
+#ifndef nan_mix
+#define	nan_mix(x, y)	(((x) + 0.0L) + ((y) + 0))
+#endif
+
+/*
+ * Efficient round-to-int-nearest, for use inside argument-reduction kernels
+ * (e_rem_pio2 / e_rem_pio2f). openlibm provides amd64 (`cvtsd2si`) and
+ * i386 (`fistl`) versions in src/math_private.h but nothing for aarch64.
+ *
+ * On ARM64 the single-instruction equivalent is FCVTNS — "convert FP to
+ * signed integer, rounding to nearest, ties to even" — which matches the
+ * semantics x86 needs (round-to-nearest), so we get the same fast path.
+ */
+#if defined(__aarch64__) || defined(__arm64__)
+static __inline int
+irint(double x)
+{
+	int n;
+	__asm__ ("fcvtns %w0, %d1" : "=r"(n) : "w"(x));
+	return n;
+}
+#define HAVE_EFFICIENT_IRINT
+#endif
+
+/* fdlibm / openlibm kernel-function prototypes. These are referenced from
+ * the ported Source/ARM/*_freeBSD.c implementations of sin/cos/tan and the
+ * argument-reduction kernels. Declarations live here rather than as private
+ * extern at each call site so clang doesn't trip its implicit-function-decl
+ * hard-error on -O2 builds. Function names match what the Darling-side
+ * freeBSD sources actually emit (the openlibm `__ieee754_rem_pio2`
+ * gets renamed to the prefix-less `rem_pio2` during our port). */
+#include <stdint.h>
+extern int	  __kernel_rem_pio2(double*, double*, int, int, int, const int32_t*);
+extern int32_t	rem_pio2(double, double*);
+extern int32_t	rem_pio2f(float, double*);
+extern double	__kernel_sin(double, double, int);
+extern double	__kernel_cos(double, double);
+extern double	__kernel_tan(double, double, int);
+extern float	__kernel_sindf(double);
+extern float	__kernel_cosdf(double);
+extern float	__kernel_tandf(double, int);
+extern double	__ldexp_exp(double, int);
+extern float	__ldexp_expf(float, int);
+
 #endif /* !_MATH_PRIVATE_H_ */

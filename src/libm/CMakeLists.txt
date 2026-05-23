@@ -155,76 +155,151 @@ if (TARGET_i386 OR TARGET_x86_64)
 		Source/Intel/trunc.S
 	)
 elseif (TARGET_ARM64)
+	# ARM64 / arm64e libm sources.
+	#
+	# Most transcendentals come from FreeBSD msun (also the basis of openlibm).
+	# Two filename conventions coexist, by design:
+	#   * `*_freeBSD.c`  — files that were already present under this name in
+	#                      the baseline ARM port; kept verbatim to preserve
+	#                      git history and avoid churn.
+	#   * `e_*.c / s_*.c / k_*.c` — newly-ported openlibm sources, named with
+	#                      their canonical fdlibm/openlibm filename (the same
+	#                      convention Source/Intel uses for its C files), so a
+	#                      future openlibm bump is a mechanical diff.
+	#
+	# Hardware-accelerated wrappers (FSQRT, FRINT*, FCVT*, FABS, FMIN/MAX,
+	# FMADD, copysign via BSL/BIT) live in `arm64_builtins.c` — and only the
+	# wrappers whose __builtin_ actually lowers to an instruction. Builtins
+	# like __builtin_sin/__builtin_pow that reduce back to a libm call are
+	# NOT used here (they would self-recurse).
 	set(libm_sources ${libm_sources}
+		# transcendentals — double and float
 		Source/ARM/acos_freeBSD.c
+		Source/ARM/acosf_freeBSD.c
 		Source/ARM/acosh_freeBSD.c
+		Source/ARM/acoshf_freeBSD.c
 		Source/ARM/asin_freeBSD.c
+		Source/ARM/asinf_freeBSD.c
 		Source/ARM/asinh_freeBSD.c
+		Source/ARM/asinhf_freeBSD.c
+		Source/ARM/s_atan.c
+		Source/ARM/e_atan2.c
+		Source/ARM/e_atan2f.c
+		Source/ARM/s_atanf.c
 		Source/ARM/atanh_freeBSD.c
-		#Source/ARM/cbrt.c
-		Source/ARM/complex.c
-		Source/ARM/containsNothing.c
-		#Source/ARM/copysignf.c
+		Source/ARM/atanhf_freeBSD.c
+		Source/ARM/cbrt.c
+		Source/ARM/s_cbrtf.c
 		Source/ARM/cosh_freeBSD.c
-		Source/ARM/e_rem_pio2_freeBSD.c
+		Source/ARM/coshf_freeBSD.c
+		Source/ARM/exp_freeBSD.c
+		Source/ARM/expf_freeBSD.c
+		Source/ARM/exp2_freeBSD.c
+		Source/ARM/exp2f_freeBSD.c
+		Source/ARM/expm1_freeBSD.c
+		Source/ARM/expm1f_freeBSD.c
+		# fma / fmaf now come from arm64_builtins.c (__builtin_fma → FMADD).
+		# Source/ARM/fma_freeBSD.c was a software Dekker fallback for targets
+		# without hardware FMA; ARM64 always has FMADD so we drop it.
+		Source/ARM/fmod_freeBSD.c
+		Source/ARM/fmodf.c
+		Source/ARM/e_hypot.c
+		Source/ARM/e_hypotf.c
+		Source/ARM/log.c		# Apple: log10 + log1p (table-based)
+		Source/ARM/log_freeBSD.c
+		Source/ARM/logf_freeBSD.c
+		Source/ARM/log2_freeBSD.c
+		Source/ARM/log10f_freeBSD.c
+		Source/ARM/log2f_freeBSD.c
+		Source/ARM/log1pf_freeBSD.c
+		Source/ARM/e_pow.c
+		Source/ARM/e_powf.c
+		Source/ARM/sinh_freeBSD.c
+		Source/ARM/sinhf_freeBSD.c
+		Source/ARM/s_sin.c
+		Source/ARM/s_cos.c
+		Source/ARM/s_tan.c
+		Source/ARM/s_sinf.c
+		Source/ARM/s_cosf.c
+		Source/ARM/s_tanf.c
+		Source/ARM/tanh_freeBSD.c
+		Source/ARM/tanhf_freeBSD.c
+		# bessel / gamma / error
 		Source/ARM/erf.c
 		Source/ARM/erfc.c
 		Source/ARM/erfcf.c
 		Source/ARM/erff.c
-		Source/ARM/exp_freeBSD.c
-		Source/ARM/exp2_freeBSD.c
-		#Source/ARM/exp2.c
-		Source/ARM/expm1_freeBSD.c
-		Source/ARM/fdim.c
-		Source/ARM/fdimf.c
-		Source/ARM/fegetfltrounds.c
-		Source/ARM/fenv.c
-		Source/ARM/fma_freeBSD.c
-		Source/ARM/fmaf.c
-		Source/ARM/fmod.c
-		Source/ARM/fmodf.c
-		Source/ARM/fpclassify.c
-		Source/ARM/fpclassifyf.c
-		Source/ARM/ilogb.c
-		Source/ARM/ilogbf.c
 		Source/ARM/j0y0_freeBSD.c
 		Source/ARM/j1y1_freeBSD.c
 		Source/ARM/jnyn_freeBSD.c
-		Source/ARM/k_rem_pio2_freeBSD.c
-		Source/ARM/k_tan_freeBSD.c
 		Source/ARM/lgamma.c
 		Source/ARM/lgammaf.c
-		#Source/ARM/llrint.c
-		#Source/ARM/llround.c
-		Source/ARM/log.c
+		Source/ARM/tgamma.c
+		Source/ARM/tgammaf.c
+		Source/ARM/signgam.c
+		# remquo / fdim / nextafter / ilogb / scalb / modf / frexp / round / ldexp
+		Source/ARM/fdim.c
+		Source/ARM/fdimf.c
+		Source/ARM/s_frexp.c
+		Source/ARM/s_frexpf.c
+		Source/ARM/ilogb.c
+		Source/ARM/ilogbf.c
+		Source/ARM/s_ldexp.c
+		Source/ARM/s_ldexpf.c
 		Source/ARM/logb.c
 		Source/ARM/logbf.c
-		#Source/ARM/lrint.c
-		Source/ARM/math_errhandling.c
-		Source/ARM/modf_IncrediblySkanky.c
-		Source/ARM/nan.c
-		#Source/ARM/nearbyint.c
-		#Source/ARM/nextafter.c
-		#Source/ARM/nextafterf.c
+		Source/ARM/s_modf.c
+		Source/ARM/s_modff.c
+		Source/ARM/nextafter.c
+		Source/ARM/nextafterf.c
 		Source/ARM/nexttoward.c
 		Source/ARM/nexttowardf.c
 		Source/ARM/remainder.c
 		Source/ARM/remainderf.c
 		Source/ARM/remquo.c
 		Source/ARM/remquof.c
-		#Source/ARM/rint.c
+		# round / roundf now come from arm64_builtins.c (__builtin_round →
+		# FRINTA, verified at clang -O2 to be a single hardware instruction).
 		Source/ARM/scalb.c
 		Source/ARM/scalbln.c
 		Source/ARM/scalblnf.c
-		Source/ARM/signgam.c
-		Source/ARM/sinh_freeBSD.c
-		#Source/ARM/sqrt.c
-		#Source/ARM/sqrtf.c
-		Source/ARM/tanh_freeBSD.c
-		Source/ARM/tgamma.c
-		Source/ARM/tgammaf.c
-		#Source/ARM/version_info.c
+		# argument-reduction kernels
+		Source/ARM/e_rem_pio2_freeBSD.c
+		Source/ARM/e_rem_pio2f_freeBSD.c
+		Source/ARM/k_rem_pio2_freeBSD.c
+		Source/ARM/k_cos.c
+		Source/ARM/k_cosf.c
+		Source/ARM/k_sin.c
+		Source/ARM/k_sinf.c
+		Source/ARM/k_tan_freeBSD.c
+		Source/ARM/k_tanf_freeBSD.c
+		Source/ARM/k_exp.c
+		Source/ARM/k_expf.c
+		# misc / classification / fenv
+		# fpclassify[f].c superseded by arm64_classify.c (__builtin_fpclassify).
+		# fegetfltrounds.c superseded by the __fegetfltrounds entry in fenv.c.
+		# fmaf.c superseded by arm64_builtins.c (__builtin_fmaf → FMADD).
+		Source/ARM/math_errhandling.c
+		Source/ARM/nan.c
+		Source/ARM/fenv.c
+		Source/ARM/complex.c
+		Source/ARM/containsNothing.c
+		# private libm-internal compiler-rt shim for complex multiply.
+		# Hidden visibility so it doesn't pollute the public symbol table
+		# (see comment in arm64_complex_helpers.c for the rationale).
+		Source/ARM/arm64_complex_helpers.c
+		# ARM64 hardware-accelerated wrappers (FSQRT, FRINT*, FCVT*, FMADD,
+		# copysign SIMD) — each __builtin_* verified at -O2 to lower to
+		# hardware. Self-recursing builtins (sin, exp, log, ...) are NOT here.
 		Source/ARM/arm64_builtins.c
+		# math.h classification family backings (___isnan, ___isinf, ...,
+		# ___fpclassify variants) implemented via clang predicate builtins.
+		Source/ARM/arm64_classify.c
+		# Legacy BSD / SVID / Apple Classic <fp.h> wrappers (finite, matherr,
+		# rinttol, roundtol, significand, __inf, __inff, __nan).
+		Source/ARM/arm64_misc.c
+		# ___Libm_version stamp.
+		Source/ARM/version_info.c
 	)
 endif ()
 

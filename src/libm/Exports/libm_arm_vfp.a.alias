@@ -1,4 +1,5 @@
 ___fpclassify	___fpclassifyl
+___signbitd	___signbitl
 _acos		_acosl
 _acosh		_acoshl
 _asin		_asinl
@@ -53,6 +54,7 @@ _ldexp		_scalbn
 _ldexp		_scalbnl
 _ldexpf		_scalbnf
 _lgamma		_lgammal
+_lgamma		_gamma
 _lgamma_r	_lgammal_r
 _log		_logl
 _logb		_logbl
@@ -66,13 +68,16 @@ _lround		_lroundl
 _modf		_modfl
 _nan		_nanl
 _nextafter	_nextafterl
+_nextafter	_nextafterd
 _nexttoward	_nexttowardl
 _pow		_powl
 _remainder	_remainderl
+_remainder	_drem
 _remquo		_remquol
 _rint		_rintl
 _rint		_nearbyint
 _rint		_nearbyintl
+_rintf		_nearbyintf
 _round		_roundl
 _scalbln	_scalblnl
 _sin		_sinl

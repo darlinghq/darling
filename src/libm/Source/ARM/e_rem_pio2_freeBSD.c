@@ -26,9 +26,11 @@ static char rcsid[] = "$FreeBSD: src/lib/msun/src/e_rem_pio2.c,v 1.8 2005/02/04 
 #include "math_private.h"
 
 /*
- * Table of constants for 2/pi, 396 Hex digits (476 decimal) of 2/pi 
+ * Table of constants for 2/pi, 396 Hex digits (476 decimal) of 2/pi.
+ * Shared with e_rem_pio2f_freeBSD.c — both call the 6-arg fdlibm
+ * __kernel_rem_pio2 form, which takes the 2/pi table as its last arg.
  */
-static const int32_t two_over_pi[] = {
+const int32_t two_over_pi[] = {
 0xA2F983, 0x6E4E44, 0x1529FC, 0x2757D1, 0xF534DD, 0xC0DB62, 
 0x95993C, 0x439041, 0xFE5163, 0xABDEBB, 0xC561B7, 0x246E3A, 
 0x424DD2, 0xE00649, 0x2EEA09, 0xD1921C, 0xFE1DEB, 0x1CB129, 
