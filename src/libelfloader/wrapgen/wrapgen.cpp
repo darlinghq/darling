@@ -140,10 +140,10 @@ void parse_elf(const char* elf, std::string& soname, std::set<std::string>& symb
 		throw std::runtime_error(ss.str());
 	}
 
-	if (ehdr->e_machine != EM_X86_64)
+	if (ehdr->e_machine != EM_X86_64 && ehdr->e_machine != EM_AARCH64)
 	{
 		std::stringstream ss;
-		ss << elf << " is not an ELF for x86-64";
+		ss << elf << " is not a supported 64-bit ELF (expected x86-64 or aarch64)";
 		throw std::runtime_error(ss.str());
 	}
 

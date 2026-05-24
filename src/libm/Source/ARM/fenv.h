@@ -1,14 +1,14 @@
 /*
- * Copyright (c) 2002 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 2002-2024 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * The contents of this file constitute Original Code as defined in and
  * are subject to the Apple Public Source License Version 1.1 (the
  * "License").  You may not use this file except in compliance with the
  * License.  Please obtain a copy of the License at
  * http://www.apple.com/publicsource and read it before using this file.
- * 
+ *
  * This Original Code and all software distributed under the License are
  * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -16,253 +16,187 @@
  * FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
  * License for the specific language governing rights and limitations
  * under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
- 
+
 /*******************************************************************************
 *                                                                              *
-*     File:  fenv.h                                                            *
+*     File:  fenv.h  (Source/ARM private copy)                                 *
 *                                                                              *
-*     Contains: typedefs and prototypes for C99 floating point environment.    *
+*     Contains:  typedefs and prototypes for the C99 floating-point            *
+*                environment, ARM/ARM64 flavor.                                 *
+*                                                                              *
+*     This header is the *implementation-private* counterpart of the           *
+*     public `<fenv.h>` shipped at src/libm/include/fenv.h. It MUST keep the   *
+*     `fenv_t` layout in sync with the public header — every member name and  *
+*     order has to match exactly, otherwise C99 user code reading an `fenv_t` *
+*     filled in by fegetenv() will see the wrong bits.                         *
 *                                                                              *
 *******************************************************************************/
 
 #ifndef __FENV__
 #define __FENV__
 
-/*  We require VFP for this set of interfaces to work  */
-#if !defined(__VFP_FP__) || defined(__SOFTFP__)
-	#warning The <fenv.h> functions are not supported on platforms that do not have hardware floating-point.
-#else
+#if defined(__arm__) && !defined(__SOFTFP__)
+/* ============================ 32-bit ARM (VFP) =========================== */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/*
-    A collection of functions designed to provide access to the floating
-    point environment for numerical programming. It is compliant with
-    the floating-point requirements in C99.
-            
-    The file <fenv.h> declares many functions in support of numerical
-    programming. Programs that test flags or run under
-    non-default modes must do so under the effect of an enabling
-    "fenv_access" pragma:
-
-    #pragma STDC FENV_ACCESS on
- 
-    Note that prior to iPhone OS 2.0, these interfaces did nothing.
-*/
-
-/********************************************************************************
-*                                                                               *
-*    fenv_t         is a type for representing the entire floating-point        *
-*                   environment in a single object.                             *
-*                                                                               *
-*    fexcept_t      is a type for representing the floating-point               *
-*                   exception flag state collectively.                          *
-*                                                                               *
-********************************************************************************/
-
-
-
+/*  fenv_t mirrors the public 32-bit ARM layout: a single FPSCR word plus     */
+/*  three reserved words to keep the struct 16 bytes wide on all targets.    */
 typedef struct {
-    union
-    {
-        struct
-        {
-            unsigned int            __fpscr;    
-            unsigned int            __reserved0;
-            unsigned int            __reserved1;
-            unsigned int            __reserved2;
+    union {
+        struct {
+            unsigned int __fpscr;
+            unsigned int __reserved0;
+            unsigned int __reserved1;
+            unsigned int __reserved2;
         };
-#if defined( __GNUC__ )
-        struct
-        {
-            unsigned int        __fpscr_cmp_n : 1;
-            unsigned int        __fpscr_cmp_z : 1;
-            unsigned int        __fpscr_cmp_c : 1;
-            unsigned int        __fpscr_cmp_v : 1;
-            unsigned int        __fpscr_do_not_modify_1 : 2;            /* Should be zero */
-            unsigned int        __fpscr_default_nan_mode : 1;
-            unsigned int        __fpscr_flush_to_zero : 1;
-            unsigned int        __fpscr_rounding_mode : 2;
-            unsigned int        __fpscr_stride : 2;
-            unsigned int        __fpscr_do_not_modify_2 : 1;            /* Should be zero */
-            unsigned int        __fpscr_len : 3 ;
-            unsigned int        __fpscr_trap_enable_subnormal : 1 ;     /* Note: we run under "Run Fast Mode". Setting this bit has undefined results. */
-            unsigned int        __fpscr_do_not_modfify_3 : 2;           /* Should be zero */
-            unsigned int        __fpscr_trap_enable_inexact : 1;        /* Note: we run under "Run Fast Mode". Setting this bit has undefined results. */
-            unsigned int        __fpscr_trap_enable_underflow : 1;      /* Note: we run under "Run Fast Mode". Setting this bit has undefined results. */
-            unsigned int        __fpscr_trap_enable_overflow : 1;       /* Note: we run under "Run Fast Mode". Setting this bit has undefined results. */
-            unsigned int        __fpscr_trap_enable_div_by_zero : 1;    /* Note: we run under "Run Fast Mode". Setting this bit has undefined results. */
-            unsigned int        __fpscr_trap_enable_invalid : 1;        /* Note: we run under "Run Fast Mode". Setting this bit has undefined results. */
-            unsigned int        __fpscr_fp_state_flag_subnormal : 1;
-            unsigned int        __fpscr_do_not_modify_4 : 2;            /* Should be zero */
-            unsigned int        __fpscr_fp_state_flag_inexact : 1;
-            unsigned int        __fpscr_fp_state_flag_underflow : 1;
-            unsigned int        __fpscr_fp_state_flag_overflow : 1;
-            unsigned int        __fpscr_fp_state_flag_div_by_zero : 1;
-            unsigned int        __fpscr_fp_state_flag_invalid : 1;
-        } __attribute((packed));
+#if defined(__GNUC__)
+        struct {
+            unsigned int __fpscr_cmp_n : 1;
+            unsigned int __fpscr_cmp_z : 1;
+            unsigned int __fpscr_cmp_c : 1;
+            unsigned int __fpscr_cmp_v : 1;
+            unsigned int __fpscr_do_not_modify_1 : 2;          /* zero */
+            unsigned int __fpscr_default_nan_mode : 1;
+            unsigned int __fpscr_flush_to_zero : 1;
+            unsigned int __fpscr_rounding_mode : 2;
+            unsigned int __fpscr_stride : 2;
+            unsigned int __fpscr_do_not_modify_2 : 1;          /* zero */
+            unsigned int __fpscr_len : 3;
+            unsigned int __fpscr_trap_enable_subnormal : 1;
+            unsigned int __fpscr_do_not_modify_3 : 2;          /* zero */
+            unsigned int __fpscr_trap_enable_inexact : 1;
+            unsigned int __fpscr_trap_enable_underflow : 1;
+            unsigned int __fpscr_trap_enable_overflow : 1;
+            unsigned int __fpscr_trap_enable_div_by_zero : 1;
+            unsigned int __fpscr_trap_enable_invalid : 1;
+            unsigned int __fpscr_fp_state_flag_subnormal : 1;
+            unsigned int __fpscr_do_not_modify_4 : 2;          /* zero */
+            unsigned int __fpscr_fp_state_flag_inexact : 1;
+            unsigned int __fpscr_fp_state_flag_underflow : 1;
+            unsigned int __fpscr_fp_state_flag_overflow : 1;
+            unsigned int __fpscr_fp_state_flag_div_by_zero : 1;
+            unsigned int __fpscr_fp_state_flag_invalid : 1;
+        } __attribute__((packed));
 #endif
     };
 } fenv_t;
 
 typedef unsigned short fexcept_t;
 
-/*    Definitions of floating-point exception macros                          */
-#define FE_INEXACT          0x0010
-#define FE_UNDERFLOW        0x0008
-#define FE_OVERFLOW         0x0004
-#define FE_DIVBYZERO        0x0002
-#define FE_INVALID          0x0001
-#define FE_ALL_EXCEPT       0x001F
+/* Exception flags (FPSCR bits 0..4 / +0x80 for FZ).                          */
+#define FE_INEXACT           0x0010
+#define FE_UNDERFLOW         0x0008
+#define FE_OVERFLOW          0x0004
+#define FE_DIVBYZERO         0x0002
+#define FE_INVALID           0x0001
+#define FE_ALL_EXCEPT        0x001F
 
-/*    Definitions of rounding direction macros                                */
-#define FE_TONEAREST        0x00000000
-#define FE_UPWARD           0x00400000
-#define FE_DOWNWARD         0x00800000
-#define FE_TOWARDZERO       0x00C00000
+/* Rounding direction bits live at FPSCR bits 22..23.                         */
+#define FE_TONEAREST         0x00000000
+#define FE_UPWARD            0x00400000
+#define FE_DOWNWARD          0x00800000
+#define FE_TOWARDZERO        0x00C00000
 
-/* default environment object        */
 extern const fenv_t _FE_DFL_ENV;
-#define FE_DFL_ENV &_FE_DFL_ENV          /* pointer to default environment    */
-
-
-/*******************************************************************************
-*     The following functions provide high level access to the exception flags.*  
-*     The "int" input argument can be constructed by bitwise ORs of the        *
-*     exception macros: for example: FE_OVERFLOW | FE_INEXACT.                 *
-*******************************************************************************/
-
-/*******************************************************************************
-*     The function "feclearexcept" clears the supported floating point         *
-*     exceptions represented by its argument.                                  *
-*******************************************************************************/
-
-extern int  feclearexcept(int /*excepts*/);
-
-
-/*******************************************************************************
-*    The function "fegetexceptflag" stores a implementation-defined            *
-*    representation of the states of the floating-point status flags indicated *
-*    by its integer argument excepts in the object pointed to by the argument, * 
-*    flagp.                                                                    *
-*******************************************************************************/
-
-extern int  fegetexceptflag(fexcept_t * /*flagp*/, int /*excepts*/);
-
-
-/*******************************************************************************
-*     The function "feraiseexcept" raises the supported floating-point         *
-*     exceptions represented by its argument. The order in which these         *
-*     floating-point exceptions are raised is unspecified.                     *
-*******************************************************************************/
-
-extern int  feraiseexcept(int /*excepts*/);
-
-
-/*******************************************************************************
-*     The function "fesetexceptflag" sets or clears the floating point status  *
-*     flags indicated by the argument excepts to the states stored in the      *
-*     object pointed to by flagp. The value of the *flagp shall have been set  *
-*     by a previous call to fegetexceptflag whose second argument represented  *
-*     at least those floating-point exceptions represented by the argument     *
-*     excepts. This function does not raise floating-point exceptions; it just *
-*     sets the state of the flags.                                             *
-*******************************************************************************/
-
-extern int  fesetexceptflag(const fexcept_t * /*flagp*/, int /*excepts*/);
-
-
-/*******************************************************************************
-*     The function "fetestexcept" determines which of the specified subset of  *
-*     the floating-point exception flags are currently set.  The excepts       *
-*     argument specifies the floating-point status flags to be queried. This   *
-*     function returns the value of the bitwise OR of the floating-point       *
-*     exception macros corresponding to the currently set floating-point       *
-*     exceptions included in excepts.                                          *
-*                                                                              *
-*******************************************************************************/
-
-extern int  fetestexcept(int /*excepts*/);
-
-
-/*******************************************************************************
-*     The following functions provide control of rounding direction modes.     *
-*******************************************************************************/
-
-/*******************************************************************************
-*     The function "fegetround" returns the value of the rounding direction    *
-*     macro which represents the current rounding direction, or a negative     *
-*     if there is no such rounding direction macro or the current rounding     *
-*     direction is not determinable.                                           *
-*******************************************************************************/
-
-extern int  fegetround(void);
-
-
-/*******************************************************************************
-*     The function "fesetround" establishes the rounding direction represented *
-*     by its argument "round". If the argument is not equal to the value of a  *
-*     rounding direction macro, the rounding direction is not changed.  It     *
-*     returns zero if and only if the argument is equal to a rounding          *
-*     direction macro.                                                         *
-*******************************************************************************/
-
-extern int  fesetround(int /*round*/);
-
-
-/*******************************************************************************
-*    The following functions manage the floating-point environment, exception  *
-*    flags and dynamic modes, as one entity.                                   *
-*******************************************************************************/
-
-/*******************************************************************************
-*    The fegetenv function stores the current floating-point enviornment in    *
-*    the object pointed to by envp.                                            *
-*******************************************************************************/
-extern int  fegetenv(fenv_t * /*envp*/);
-
-/*******************************************************************************
-*    The feholdexcept function saves the current floating-point environment in *
-*    the object pointed to by envp, clears the floating-point status flags,    *
-*    and then installs a non-stop (continue on floating-point exceptions)      *
-*    mode, if available, for all floating-point exceptions. The feholdexcept   *
-*    function returns zero if and only if non-stop floating-point exceptions   *
-*    handling was successfully installed.                                      *
-*******************************************************************************/
-extern int   feholdexcept(fenv_t * /*envp*/);
-
-/*******************************************************************************
-*    The fesetnv function establishes the floating-point environment           *
-*    represented by the object pointed to by envp. The argument envp shall     *
-*    point to an object set by a call to fegetenv or feholdexcept, or equal to *
-*    a floating-point environment macro -- we define only *FE_DFL_ENV and      *
-*    FE_DISABLE_SSE_DENORMS_ENV -- to be C99 standard compliant and portable   *
-*    to other architectures. Note that fesetnv merely installs the state of    *
-*    the floating-point status flags represented through its argument, and     *
-*    does not raise these floating-point exceptions.                           *
-*******************************************************************************/
-extern int  fesetenv(const fenv_t * /*envp*/);
-
-/*******************************************************************************
-*    The feupdateenv function saves the currently raised floating-point        *
-*    exceptions in its automatic storage, installs the floating-point          *
-*    environment represented by the object pointed to by envp, and then raises *
-*    the saved floating-point exceptions. The argument envp shall point to an  *
-*    object set by a call to feholdexcept or fegetenv or equal a               *
-*    floating-point environment macro.                                         *
-*******************************************************************************/
-extern int  feupdateenv(const fenv_t * /*envp*/);
+#define FE_DFL_ENV (&_FE_DFL_ENV)
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HARDWARE FP
+#elif defined(__aarch64__) || defined(__arm64__)
+/* =============================== ARM64 =================================== *
+ * Self-contained ARM64 floating-point-environment declarations, mirroring the
+ * role of Source/Intel/fenv.h for x86: this is the implementation-private
+ * header that Source/ARM/*.c sources include directly. Its `fenv_t` layout
+ * and FE_* values MUST stay byte-for-byte identical to the public ABI in
+ * include/architecture/arm/fenv.h. */
+
+typedef struct {
+    unsigned long long __fpsr;
+    unsigned long long __fpcr;
+} fenv_t;
+
+typedef unsigned short fexcept_t;
+
+/* Exception flag bits (FPSR.IOC=0, DZC=1, OFC=2, UFC=3, IXC=4, IDC=7).       */
+#define FE_INVALID           0x0001
+#define FE_DIVBYZERO         0x0002
+#define FE_OVERFLOW          0x0004
+#define FE_UNDERFLOW         0x0008
+#define FE_INEXACT           0x0010
+#define FE_FLUSHTOZERO       0x0080
+#define FE_ALL_EXCEPT        0x009F
+
+/* Rounding direction bits (FPCR bits 22..23).                                */
+#define FE_TONEAREST         0x00000000
+#define FE_UPWARD            0x00400000
+#define FE_DOWNWARD          0x00800000
+#define FE_TOWARDZERO        0x00C00000
+
+/* FPCR trap-enable bits (bits 8..12, 15).                                    */
+enum {
+    __fpcr_trap_invalid    = 0x00000100,
+    __fpcr_trap_divbyzero  = 0x00000200,
+    __fpcr_trap_overflow   = 0x00000400,
+    __fpcr_trap_underflow  = 0x00000800,
+    __fpcr_trap_inexact    = 0x00001000,
+    __fpcr_trap_denormal   = 0x00008000,
+    __fpcr_flush_to_zero   = 0x01000000,
+};
+
+enum { __fpsr_saturation   = 0x08000000 };
+
+/*
+ * Implementation-private FPCR / FPSR register accessors — not part of the
+ * public ABI. Layout mirrors openlibm's include/openlibm_fenv_aarch64.h so
+ * any later feenableexcept / fedisableexcept work stays aligned with upstream.
+ */
+#define __mrs_fpcr(__r)  __asm__ __volatile__("mrs %0, fpcr" : "=r"(__r))
+#define __msr_fpcr(__r)  __asm__ __volatile__("msr fpcr, %0" : : "r"(__r))
+#define __mrs_fpsr(__r)  __asm__ __volatile__("mrs %0, fpsr" : "=r"(__r))
+#define __msr_fpsr(__r)  __asm__ __volatile__("msr fpsr, %0" : : "r"(__r))
+
+/* Default environment object: rounding=to-nearest, no traps, no flush.       */
+extern const fenv_t _FE_DFL_ENV;
+#define FE_DFL_ENV (&_FE_DFL_ENV)
+
+/* Default environment with subnormals flushed to zero (Apple extension).     */
+extern const fenv_t _FE_DFL_DISABLE_DENORMS_ENV;
+#define FE_DFL_DISABLE_DENORMS_ENV (&_FE_DFL_DISABLE_DENORMS_ENV)
+
+#else
+#error "Source/ARM/fenv.h is for ARM / ARM64 targets only"
+#endif
+
+/* ===================== Function prototypes (both ABIs) ===================== */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern int feclearexcept(int /*excepts*/);
+extern int fegetexceptflag(fexcept_t * /*flagp*/, int /*excepts*/);
+extern int feraiseexcept(int /*excepts*/);
+extern int fesetexceptflag(const fexcept_t * /*flagp*/, int /*excepts*/);
+extern int fetestexcept(int /*excepts*/);
+
+extern int fegetround(void);
+extern int fesetround(int /*round*/);
+
+extern int fegetenv(fenv_t * /*envp*/);
+extern int feholdexcept(fenv_t * /*envp*/);
+extern int fesetenv(const fenv_t * /*envp*/);
+extern int feupdateenv(const fenv_t * /*envp*/);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __FENV__ */
-

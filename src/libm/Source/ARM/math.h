@@ -126,12 +126,12 @@ extern int __math_errhandling ( void );
 
 #define fpclassify(x)    \
     (    sizeof (x) == sizeof(float )    ?    __fpclassifyf((float)(x))    \
-    :    sizeof (x) == sizeof(double)    ?    __fpclassify((double)(x))    \
-                                         :    __fpclassifyl ((long double)(x)))
+    :    sizeof (x) == sizeof(double)    ?    __fpclassifyd((double)(x))    \
+                                         :    __fpclassify ((long double)(x)))
 
 extern int __fpclassifyf(float      );
-extern int __fpclassify(double     );
-extern int __fpclassifyl(long double);
+extern int __fpclassifyd(double     );
+extern int __fpclassify (long double);
 
 
 /* 

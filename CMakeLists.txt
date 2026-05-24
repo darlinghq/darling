@@ -1,7 +1,15 @@
 cmake_minimum_required(VERSION 3.13)
 
 SET(CMAKE_SYSTEM_NAME Linux)
-SET(CMAKE_SYSTEM_PROCESSOR "x86-64")
+
+# Detect host architecture before project() since CMAKE_HOST_SYSTEM_PROCESSOR
+# may not be available yet
+execute_process(COMMAND uname -m OUTPUT_VARIABLE _HOST_ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
+if (_HOST_ARCH MATCHES "aarch64|arm64")
+	SET(CMAKE_SYSTEM_PROCESSOR "aarch64")
+else()
+	SET(CMAKE_SYSTEM_PROCESSOR "x86-64")
+endif()
 
 # This allows setting the compiler with -DCMAKE_C_COMPILER when configuring.
 if (NOT DEFINED CMAKE_C_COMPILER)
@@ -92,7 +100,7 @@ set(CMAKE_C_IMPLICIT_LINK_LIBRARIES "")
 set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
 
 if (${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "i686|i386")
-	message(FATAL_ERROR "This software can only be built on x86-64 systems")
+	message(FATAL_ERROR "This software can only be built on x86-64 or aarch64 systems")
 endif (${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "i686|i386")
 
 SET(IGNORED_WARNINGS "-Wno-nullability-completeness -Wno-deprecated-declarations -Wno-availability")
@@ -131,8 +139,15 @@ endif(CMAKE_POSITION_INDEPENDENT_CODE)
 
 enable_language(ASM-ATT)
 
-option(TARGET_i386 "Enable i386 slices" ON)
-option(TARGET_x86_64 "Enable x86_64 slices" ON)
+if (_HOST_ARCH MATCHES "aarch64|arm64")
+	option(TARGET_i386 "Enable i386 slices" OFF)
+	option(TARGET_x86_64 "Enable x86_64 slices" OFF)
+	option(TARGET_ARM64 "Enable arm64 slices" ON)
+else()
+	option(TARGET_i386 "Enable i386 slices" ON)
+	option(TARGET_x86_64 "Enable x86_64 slices" ON)
+	option(TARGET_ARM64 "Enable arm64 slices" OFF)
+endif()
 option(DEBIAN_PACKAGING "Packaging for Debian" OFF)
 option(ENABLE_TESTS "Install in-prefix unit tests" OFF)
 option(REGENERATE_SDK "Regenerate Header Files For Open Source SDK" OFF)

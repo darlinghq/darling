@@ -42,7 +42,11 @@ static void* compatible_mmap(void *addr, size_t length, int prot, int flags, int
 #   define SEGMENT_COMMAND LC_SEGMENT
 #   define MACH_HEADER_STRUCT mach_header
 #   define SECTION_STRUCT section
-#	define MAP_EXTRA MAP_32BIT
+#	ifdef MAP_32BIT
+#		define MAP_EXTRA MAP_32BIT
+#	else
+#		define MAP_EXTRA 0
+#	endif
 #else
 #   error See above
 #endif
@@ -117,12 +121,42 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 			p += seg->cmdsize;
 		}
 
-		slide = (uintptr_t) mmap((void*) base, mmapSize, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA, -1, 0);
+		void* mmap_hint = (void*) base;
+#if defined(__aarch64__) || defined(__arm64__)
+		/* macOS ObjC FAST_DATA_MASK is 0x00007ffffffffff8 — only 47 bits of
+		 * data pointer. On Linux ARM64 the kernel happily returns 48-bit VAs
+		 * (e.g. 0xfe..) which then get truncated by the mask to a bogus
+		 * address, crashing readClass() with SIGSEGV. Force the mapping into
+		 * a low-VA window we control. We hand out distinct slots so dyld and
+		 * subsequently-loaded dylibs don't collide with the main executable
+		 * (which typically wants 0x100000000). */
+		static uintptr_t next_low_addr = 0x200000000ULL; /* 8 GiB; leave 4GiB+ for main exe */
+		if (base == 0)
+			mmap_hint = (void*)next_low_addr;
+#endif
+		slide = (uintptr_t) mmap(mmap_hint, mmapSize, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA, -1, 0);
 		if (slide == (uintptr_t)MAP_FAILED)
 		{
 			fprintf(stderr, "Cannot mmap anonymous memory range: %s\n", strerror(errno));
 			exit(1);
 		}
+#if defined(__aarch64__) || defined(__arm64__)
+		/* If we ended up above 2^47 anyway, retry with MAP_FIXED in the low
+		 * range so the slid address stays reachable through FAST_DATA_MASK. */
+		if (slide >= 0x800000000000ULL) {
+			munmap((void*)slide, mmapSize);
+			slide = (uintptr_t)mmap((void*)next_low_addr, mmapSize, PROT_NONE,
+			                         MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA | MAP_FIXED,
+			                         -1, 0);
+			if (slide == (uintptr_t)MAP_FAILED) {
+				fprintf(stderr, "Cannot mmap low-VA range: %s\n", strerror(errno));
+				exit(1);
+			}
+		}
+		/* Bump the slot for the next allocation, leaving headroom. */
+		if (base == 0 && slide >= next_low_addr)
+			next_low_addr = (slide + mmapSize + 0xffffff) & ~0xffffffULL;
+#endif
 
 		// unmap it so we can map the actual segments later using MAP_FIXED_NOREPLACE;
 		// we're the only thread running, so there's no chance this memory range will become occupied from now until then
@@ -249,7 +283,16 @@ no_slide:
 			case LC_UNIXTHREAD:
 			{
 #ifdef GEN_64BIT
+#if defined(__x86_64__)
+				// x86_64: RIP at offset 18 uint64_t's from LC start
 				entryPoint = ((uint64_t*) lc)[18];
+#elif defined(__aarch64__)
+				// ARM64: pc at offset 34 uint64_t's from LC start
+				// LC header (16 bytes) + x[29] + fp + lr + sp + pc = index 2 + 32 = 34
+				entryPoint = ((uint64_t*) lc)[34];
+#else
+#error Unsupported 64-bit architecture
+#endif
 #endif
 #ifdef GEN_32BIT
 				entryPoint = ((uint32_t*) lc)[14];

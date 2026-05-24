@@ -35,6 +35,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #	define CURRENT_PLATFORM platformIA32NativeEntryPoint
 #elif defined(__x86_64__)
 #	define CURRENT_PLATFORM platformX86_64NativeEntryPoint
+#elif defined(__aarch64__) || defined(__arm64__)
+#	define CURRENT_PLATFORM platformARM64NativeEntryPoint
 #elif defined(__ppc__)
 #	define CURRENT_PLATFORM platformPowerPCNativeEntryPoint
 #elif defined(__ppc64__)
