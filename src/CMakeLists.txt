@@ -47,6 +47,7 @@ add_subdirectory(bsdln)
 
 add_definitions(
 	-DDARLING
+	-DCORECRYPTO_USE_TRANSPARENT_UNION=1
 )
 
 set(DARLING TRUE)
