@@ -12,6 +12,25 @@ extern const CFStringRef kCVImageBufferYCbCrMatrixKey;
 extern const CFStringRef kCVImageBufferColorPrimariesKey;
 extern const CFStringRef kCVImageBufferTransferFunctionKey;
 
+extern const CFStringRef kCVImageBufferCGColorSpaceKey;
+
+extern const CFStringRef kCVImageBufferChromaLocation_Bottom;
+extern const CFStringRef kCVImageBufferChromaLocation_BottomLeft;
+extern const CFStringRef kCVImageBufferChromaLocation_Center;
+extern const CFStringRef kCVImageBufferChromaLocation_DV420;
+extern const CFStringRef kCVImageBufferChromaLocation_Top;
+extern const CFStringRef kCVImageBufferChromaLocation_TopLeft;
+
+extern const CFStringRef kCVImageBufferColorPrimaries_ITU_R_2020;
+extern const CFStringRef kCVImageBufferYCbCrMatrix_ITU_R_2020;
+
+extern const CFStringRef kCVImageBufferTransferFunction_ITU_R_2020;
+extern const CFStringRef kCVImageBufferTransferFunction_ITU_R_2100_HLG;
+extern const CFStringRef kCVImageBufferTransferFunction_Linear;
+extern const CFStringRef kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ;
+extern const CFStringRef kCVImageBufferTransferFunction_SMPTE_ST_428_1;
+extern const CFStringRef kCVImageBufferTransferFunction_SMPTE_C;
+
 extern CFStringRef const kCVImageBufferPixelAspectRatioHorizontalSpacingKey;
 extern CFStringRef const kCVImageBufferPixelAspectRatioVerticalSpacingKey;
 
