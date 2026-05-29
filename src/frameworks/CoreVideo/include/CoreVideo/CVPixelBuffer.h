@@ -92,4 +92,6 @@ CVReturn CVPixelBufferCreateWithBytes(CFAllocatorRef allocator, size_t width, si
 
 __END_DECLS
 
+#include <CoreVideo/CVPixelBufferIOSurface.h>
+
 #endif
