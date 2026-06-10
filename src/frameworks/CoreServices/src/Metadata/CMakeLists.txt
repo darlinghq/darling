@@ -16,6 +16,8 @@ add_framework(Metadata
 	SOURCES
 		MDQuery.c
 		MDItem.c
+	RESOURCES
+		Info.plist Info.plist
 
 	DEPENDENCIES
 		CoreFoundation

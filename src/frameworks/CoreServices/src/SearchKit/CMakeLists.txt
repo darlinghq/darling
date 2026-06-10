@@ -15,6 +15,8 @@ add_framework(SearchKit
 	SOURCES
 		SKAnalysis.c
 		SKIndex.c
+	RESOURCES
+		Info.plist Info.plist
 
 	DEPENDENCIES
 		CoreFoundation
