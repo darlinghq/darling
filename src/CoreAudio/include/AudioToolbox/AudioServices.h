@@ -17,31 +17,22 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _Carbon_Carbon_Events_H_
-#define _Carbon_Carbon_Events_H_
+#ifndef AT_AUDIO_SERVICES_H
+#define AT_AUDIO_SERVICES_H
 
-#include <CoreFoundation/CFBase.h>
-#include <CoreServices/MacTypes.h>
+#include <CoreFoundation/CoreFoundation.h>
+
+typedef UInt32 SystemSoundID;
+typedef void (*AudioServicesSystemSoundCompletionProc)(SystemSoundID ssID, void *__nullable clientData);
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct EventHotKeyID {
-    OSType signature;
-    UInt32 id;
-} EventHotKeyID;
-typedef struct OpaqueEventHotKeyRef *EventHotKeyRef;
-
-EventTargetRef GetApplicationEventTarget(void);
-OSStatus GetEventDispatcherTarget();
-
-OSStatus ProcessHICommand(const HICommand * a);
-
-void RunApplicationEventLoop(void);
-
-OSStatus RegisterEventHotKey(UInt32 inHotKeyCode, UInt32 inHotKeyModifiers, EventHotKeyID inHotKeyID, EventTargetRef inTarget, OptionBits inOptions, EventHotKeyRef *outRef);
-OSStatus UnregisterEventHotKey(EventHotKeyRef inHotKey);
+extern OSStatus AudioServicesAddSystemSoundCompletion(SystemSoundID inSystemSoundID, CFRunLoopRef inRunLoop, CFStringRef inRunLoopMode, AudioServicesSystemSoundCompletionProc inCompletionRoutine, void *inClientData);
+extern OSStatus AudioServicesCreateSystemSoundID(CFURLRef inFileURL, SystemSoundID *outSystemSoundID);
+extern OSStatus AudioServicesDisposeSystemSoundID(SystemSoundID inSystemSoundID);
+extern void AudioServicesPlaySystemSound(SystemSoundID inSystemSoundID);
 
 #ifdef __cplusplus
 }

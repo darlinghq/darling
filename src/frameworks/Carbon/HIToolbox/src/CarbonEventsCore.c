@@ -105,3 +105,15 @@ OSStatus SendEventToEventTarget(EventRef a, EventTargetRef b)
     if (verbose) puts("STUB: SendEventToEventTarget called");
 	return 0;
 }
+
+UInt32 GetCurrentKeyModifiers()
+{
+    if (verbose) puts("STUB: GetCurrentKeyModifiers called");
+    return (UInt32) 0;
+}
+
+EventTime GetEventTime(EventRef inEvent)
+{
+    if (verbose) puts("STUB: GetEventTime called");
+    return (double) 0;
+}

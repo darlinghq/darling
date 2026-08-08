@@ -16,8 +16,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
+
 #include <CarbonCore/Files.h>
 #include <CarbonCore/MacErrors.h>
+#include <cstdio>
+
+#define STUB() std::printf("STUB %s\n", __PRETTY_FUNCTION__)
 
 OSErr FSGetDataForkName(HFSUniStr255* dataForkName)
 {
@@ -34,4 +38,11 @@ OSErr FSGetResourceForkName(HFSUniStr255* rsrcForkName)
 		rsrcForkName->unicode[i] = name[i];
 
 	return noErr;
+}
+
+OSErr FSGetVolumeInfo(FSVolumeRefNum volume, ItemCount volumeIndex, FSVolumeRefNum *actualVolume, FSVolumeInfoBitmap whichInfo, FSVolumeInfo *info, HFSUniStr255 *volumeName, FSRef *rootDirectory)
+{
+	STUB();
+
+	return unimpErr;
 }

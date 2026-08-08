@@ -17,31 +17,23 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _Carbon_Carbon_Events_H_
-#define _Carbon_Carbon_Events_H_
+#ifndef _LS_ICONSCORE_H
+#define _LS_ICONSCORE_H
 
-#include <CoreFoundation/CFBase.h>
-#include <CoreServices/MacTypes.h>
+#include <CoreServices/CoreServices.h>
+#include <OSServices/OSServices.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct EventHotKeyID {
-    OSType signature;
-    UInt32 id;
-} EventHotKeyID;
-typedef struct OpaqueEventHotKeyRef *EventHotKeyRef;
+typedef struct OpaqueIconRef *IconRef;
 
-EventTargetRef GetApplicationEventTarget(void);
-OSStatus GetEventDispatcherTarget();
-
-OSStatus ProcessHICommand(const HICommand * a);
-
-void RunApplicationEventLoop(void);
-
-OSStatus RegisterEventHotKey(UInt32 inHotKeyCode, UInt32 inHotKeyModifiers, EventHotKeyID inHotKeyID, EventTargetRef inTarget, OptionBits inOptions, EventHotKeyRef *outRef);
-OSStatus UnregisterEventHotKey(EventHotKeyRef inHotKey);
+extern OSErr AcquireIconRef(IconRef theIconRef);
+extern OSErr GetIconRef(SInt16 vRefNum, OSType creator, OSType iconType, IconRef *theIconRef);
+extern OSStatus GetIconRefFromIconFamilyPtr(const IconFamilyResource *inIconFamilyPtr, Size inSize, IconRef *outIconRef);
+extern OSStatus ReadIconFromFSRef(const FSRef *ref, IconFamilyHandle *iconFamily);
+extern OSErr ReleaseIconRef(IconRef theIconRef);
 
 #ifdef __cplusplus
 }

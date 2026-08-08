@@ -41,8 +41,37 @@ enum {
 	dsRdWrShPerm = 4,
 };
 
+typedef SInt16 FSVolumeRefNum;
+typedef UInt32 FSVolumeInfoBitmap;
+
+typedef struct FSVolumeInfo {
+	UTCDateTime createDate;
+	UTCDateTime modifyDate;
+	UTCDateTime backupDate;
+	UTCDateTime checkedDate;
+	UInt32 fileCount;
+	UInt32 folderCount;
+	UInt64 totalBytes;
+	UInt64 freeBytes;
+	UInt32 blockSize;
+	UInt32 totalBlocks;
+	UInt32 freeBlocks;
+	UInt32 nextAllocation;
+	UInt32 rsrcClumpSize;
+	UInt32 dataClumpSize;
+	UInt32 nextCatalogID;
+	UInt8 finderInfo[32];
+	UInt16 flags;
+	UInt16 filesystemID;
+	UInt16 signature;
+	UInt16 driveNumber;
+	FSIORefNum driverRefNum;
+} FSVolumeInfo;
+
 OSErr FSGetDataForkName(HFSUniStr255* dataForkName);
 OSErr FSGetResourceForkName(HFSUniStr255* rsrcForkName);
+
+OSErr FSGetVolumeInfo(FSVolumeRefNum volume, ItemCount volumeIndex, FSVolumeRefNum *actualVolume, FSVolumeInfoBitmap whichInfo, FSVolumeInfo *info, HFSUniStr255 *volumeName, FSRef *rootDirectory);
 
 #ifdef __cplusplus
 }

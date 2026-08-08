@@ -1,4 +1,5 @@
 set(CarbonCore_SRCS
+	Aliases.cpp
 	CoreEndian.cpp
 	Multiprocessing.cpp
 	TextUtils.cpp

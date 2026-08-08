@@ -17,31 +17,17 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef DATETIMEUTILS_H
+#define DATETIMEUTILS_H
 
-#ifndef UTCUTILS_H
-#define UTCUTILS_H
 #include <stdint.h>
 #include <time.h>
 #include <CarbonCore/MacErrors.h>
+#include <CarbonCore/UTCUtils.h>
 #include <CoreFoundation/CFDate.h>
 
 #define UNIX_OFFSET 2082844800ll // 1970 - 1904
 #define CF_OFFSET 3061152000ll // 2001 - 1904: "Seconds" is since 2001+
-
-#pragma pack(2)
-struct UTCDateTime
-{
-	uint16_t highSeconds;
-	uint32_t lowSeconds;
-	uint16_t fraction;
-};
-#pragma pack()
-
-typedef struct UTCDateTime LocalDateTime;
-typedef struct UTCDateTime* UTCDateTimePtr;
-typedef struct UTCDateTime** UTCDateTimeHandle;
-typedef LocalDateTime* LocalDateTimePtr;
-typedef LocalDateTime** LocalDateTimeHandle;
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,4 +54,3 @@ namespace Darling
 #endif
 
 #endif
-

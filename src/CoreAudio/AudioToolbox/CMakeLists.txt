@@ -15,6 +15,7 @@ set(audiotoolbox_sources
 	AudioFile.cpp
 	AudioQueueBase.cpp
 	AudioQueue.cpp
+	AudioServices.cpp
 	AudioQueueOutput.cpp
 	AUGraph.cpp
 	AudioComponent.mm

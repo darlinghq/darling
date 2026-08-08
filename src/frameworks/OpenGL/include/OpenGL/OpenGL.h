@@ -25,6 +25,7 @@ CGL_EXPORT CGLError CGLLockContext(CGLContextObj context);
 CGL_EXPORT CGLError CGLUnlockContext(CGLContextObj context);
 
 CGL_EXPORT CGLError CGLSetCurrentContext(CGLContextObj ctx);
+CGL_EXPORT CGLError CGLSetFullScreen(CGLContextObj ctx);
 CGL_EXPORT CGLContextObj CGLGetCurrentContext(void);
 
 CGL_EXPORT CGLError CGLSetParameter(CGLContextObj context, CGLContextParameter parameter, const GLint *value);
@@ -32,6 +33,7 @@ CGL_EXPORT CGLError CGLGetParameter(CGLContextObj context, CGLContextParameter p
 CGL_EXPORT CGLError CGLFlushDrawable(CGLContextObj context);
 
 CGL_EXPORT CGLError CGLChoosePixelFormat(const CGLPixelFormatAttribute *attributes, CGLPixelFormatObj *pixelFormatp, GLint *numberOfScreensp);
+CGL_EXPORT CGLError CGLClearDrawable(CGLContextObj ctx);
 CGL_EXPORT CGLPixelFormatObj CGLRetainPixelFormat(CGLPixelFormatObj pixelFormat);
 CGL_EXPORT void CGLReleasePixelFormat(CGLPixelFormatObj pixelFormat);
 CGL_EXPORT CGLError CGLDestroyPixelFormat(CGLPixelFormatObj pixelFormat);

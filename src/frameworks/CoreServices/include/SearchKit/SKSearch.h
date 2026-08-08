@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2025 Darling Developers
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,11 +17,31 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _CORESERVICES_SEARCHKIT_H_
-#define _CORESERVICES_SEARCHKIT_H_
+#ifndef SKSEARCH_H_
+#define SKSEARCH_H_
 
-#include <SearchKit/SKAnalysis.h>
-#include <SearchKit/SKIndex.h>
-#include <SearchKit/SKSearch.h>
+#include <CoreFoundation/CoreFoundation.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef enum SKSearchType : unsigned int {
+    kSKSearchRanked = 0,
+    kSKSearchBooleanRanked = 1,
+    kSKSearchRequiredRanked = 2,
+    kSKSearchPrefixRanked = 3,
+} SKSearchType;
+
+typedef enum SKSearchOptions : UInt32 {
+    kSKSearchOptionDefault = 0,
+    kSKSearchOptionNoRelevanceScores = 1L << 0,
+    kSKSearchOptionSpaceMeansOR = 1L << 1,
+    kSKSearchOptionFindSimilar = 1L << 2,
+} SKSearchOptions;
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif
