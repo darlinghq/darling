@@ -36,7 +36,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "shellspawn.h"
 #include "duct_signals.h"
 
-#define DBG 1
+#define DBG 0
 
 int g_serverSocket = -1;
 struct sigaction sigchld_oldaction;
