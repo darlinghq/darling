@@ -310,7 +310,7 @@ no_slide:
 				}
 
 				struct dylinker_command* dy = (struct dylinker_command*) lc;
-				char* path;
+				char* path = NULL;
 				size_t length;
 				static char path_buffer[4096];
 

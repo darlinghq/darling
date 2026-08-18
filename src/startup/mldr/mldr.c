@@ -48,7 +48,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 #define PAGE_ALIGN(x) (x & ~(PAGE_SIZE-1))
 
-static const char* dyld_path = INSTALL_PREFIX "/libexec/usr/lib/dyld";
+static const char* dyld_path = INSTALL_PREFIX "/libexec/darling/usr/lib/dyld";
 
 struct sockaddr_un __dserver_socket_address_data = {
 	.sun_family = AF_UNIX,
