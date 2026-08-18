@@ -397,7 +397,7 @@ void spawnShell(int fd)
 	for (int i = 0; i < 3; i++)
 	{
 		if (shellfd[i] != -1)
-			close(shellfd[0]);
+			close(shellfd[i]);
 	}
 
 	// Reap the child
@@ -420,7 +420,7 @@ err:
 	for (int i = 0; i < 3; i++)
 	{
 		if (shellfd[i] != -1)
-			close(shellfd[0]);
+			close(shellfd[i]);
 	}
 
 	if (shell_pid != -1)
