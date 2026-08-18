@@ -178,11 +178,17 @@ int main(int argc, char ** argv)
 		putInitPid(pidInit);
 		
 		// Wait until shellspawn starts
-		for (int i = 0; i < 15; i++)
+		for (int i = 0; i < 60; i++)
 		{
 			if (access(socketPath, F_OK) == 0)
 				break;
 			sleep(1);
+		}
+
+		if (access(socketPath, F_OK) != 0)
+		{
+			fprintf(stderr, "Timed out waiting for shellspawn in container\n");
+			return 1;
 		}
 	}
 
