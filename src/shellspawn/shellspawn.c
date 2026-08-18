@@ -307,9 +307,12 @@ void spawnShell(int fd)
 	if (read(pipefd[0], &rv, sizeof(rv)) == sizeof(rv))
 	{
 		errno = rv;
+		fprintf(stderr, "shellspawn: execv failed: %s (errno=%d)\n", strerror(errno), errno);
 		goto err;
 	}
 	close(pipefd[0]);
+
+	if (DBG) { puts("shellspawn: execv succeeded, entering kevent loop"); fflush(stdout); }
 
 	// Now we start passing signals
 	// and check for child process exit
@@ -322,26 +325,31 @@ void spawnShell(int fd)
 		EV_SET(&changes[1], shell_pid, EVFILT_PROC, EV_ADD | EV_ENABLE, NOTE_EXIT, 0, NULL);
 
 		if (kevent(kq, changes, 2, NULL, 0, NULL) == -1)
+		{
+			fprintf(stderr, "shellspawn: initial kevent failed: %s\n", strerror(errno));
+			fflush(stderr);
 			goto err;
+		}
 	}
 
 	while (true)
 	{
 		struct kevent ev;
 
-		if (kevent(kq, NULL, 0, &ev, 1, NULL) <= 0)
+		int kev_res = kevent(kq, NULL, 0, &ev, 1, NULL);
+		if (kev_res <= 0)
 		{
 			if (errno == EINTR) {
-				if (DBG) puts("kevent call interrupted; continuing...");
+				if (DBG) { puts("kevent call interrupted; continuing..."); fflush(stdout); }
 				continue;
 			}
-			if (DBG) puts("kevent fail");
+			if (DBG) { fprintf(stderr, "shellspawn: kevent fail: %s (res=%d)\n", strerror(errno), kev_res); fflush(stderr); }
 			goto err;
 		}
 
 		if (ev.filter == EVFILT_PROC && (ev.fflags & NOTE_EXIT))
 		{
-			if (DBG) puts("subprocess exit");
+			if (DBG) { printf("subprocess exit, fflags=0x%x, data=0x%lx\n", ev.fflags, (unsigned long)ev.data); fflush(stdout); }
 			break;
 		}
 		else if (ev.filter == EVFILT_READ)
@@ -350,7 +358,7 @@ void spawnShell(int fd)
 
 			if (read(fd, &cmd, sizeof(cmd)) != sizeof(cmd))
 			{
-				if (DBG) puts("Cannot read cmd");
+				if (DBG) { puts("Cannot read cmd"); fflush(stdout); }
 				break;
 			}
 

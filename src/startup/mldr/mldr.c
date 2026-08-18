@@ -1010,12 +1010,15 @@ static void vchroot_unexpand_interpreter(struct load_results* lr) {
 
 		if (strncmp(lr->argv[0], lr->root_path, lr->root_path_length) == 0) {
 			memmove(unexpanded, lr->argv[0] + lr->root_path_length, length - lr->root_path_length + 1);
+			lr->argv[0] = unexpanded;
+		} else if (strncmp(lr->argv[0], SYSTEM_ROOT, sizeof(SYSTEM_ROOT) - 1) == 0 ||
+		           strncmp(lr->argv[0], "/Volumes/", 9) == 0 ||
+		           strncmp(lr->argv[0], "/proc/", 6) == 0 ||
+		           strncmp(lr->argv[0], "/sys/", 5) == 0 ||
+		           strncmp(lr->argv[0], "/dev/", 5) == 0) {
+			// already a host or special path
 		} else {
-			// FIXME: potential buffer overflow
-			memmove(unexpanded + sizeof(SYSTEM_ROOT) - 1, lr->argv[0], length + 1);
-			memcpy(unexpanded, SYSTEM_ROOT, sizeof(SYSTEM_ROOT) - 1);
+			// container path (e.g. /bin/bash, /bin/ls) - keep as-is!
 		}
-
-		lr->argv[0] = unexpanded;
 	}
 };
