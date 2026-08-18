@@ -390,9 +390,6 @@ void spawnShell(int fd)
 		}
 	}
 
-	// Kill the child process in case it's still running
-	kill(shell_pid, SIGKILL);
-
 	// Close shell fds
 	for (int i = 0; i < 3; i++)
 	{
@@ -401,10 +398,20 @@ void spawnShell(int fd)
 	}
 
 	// Reap the child
-	int wstatus;
-	if (waitpid(shell_pid, &wstatus, 0) != shell_pid)
-		perror("waitpid");
-	wstatus = WEXITSTATUS(wstatus);
+	int wstatus = 0;
+	if (waitpid(shell_pid, &wstatus, 0) == shell_pid)
+	{
+		if (WIFEXITED(wstatus))
+			wstatus = WEXITSTATUS(wstatus);
+		else if (WIFSIGNALED(wstatus))
+			wstatus = 128 + WTERMSIG(wstatus);
+		else
+			wstatus = 0;
+	}
+	else
+	{
+		wstatus = 0;
+	}
 	
 	// Report exit code back to the client
 	write(fd, &wstatus, sizeof(int));
