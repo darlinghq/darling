@@ -50,6 +50,8 @@ add_framework(CarbonCore
 
 	SOURCES 
 		${CarbonCore_SRCS}
+	RESOURCES
+		Info.plist Info.plist
 	
 	DEPENDENCIES
 		CoreFoundation

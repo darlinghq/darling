@@ -15,6 +15,8 @@ add_framework(DictionaryServices
 
 	SOURCES
 		empty.c
+	RESOURCES
+		Info.plist Info.plist
 
 	DEPENDENCIES
 		CoreFoundation
