@@ -21,7 +21,7 @@
 ## Quick links
 
 [Website](https://darlinghq.org/) &bull;
-[Community Discord](https://discord.gg/7knjvhT) &bull;
+[Community Discord](https://discord.gg/XRD3mQA) &bull;
 [Bug Tracker](https://github.com/darlinghq/darling/issues)
 
 ## Introduction
