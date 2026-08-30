@@ -76,7 +76,13 @@ enum
 	kCVPixelFormatType_420YpCbCr8VideoRange_8A_TriPlanar   = 'v0a8',
 };
 
+extern const CFStringRef kCVPixelBufferIOSurfacePropertiesKey;
+extern const CFStringRef kCVPixelBufferOpenGLCompatibilityKey;
+extern const CFStringRef kCVPixelBufferPixelFormatTypeKey;
 extern const CFStringRef kCVPixelBufferMetalCompatibilityKey;
+extern const CFStringRef kCVPixelBufferBytesPerRowAlignmentKey;
+extern const CFStringRef kCVPixelBufferHeightKey;
+extern const CFStringRef kCVPixelBufferWidthKey;
 
 typedef CVImageBufferRef CVPixelBufferRef;
 typedef void (*CVPixelBufferReleaseBytesCallback)(void *releaseRefCon, const void *baseAddress);
@@ -85,5 +91,7 @@ typedef void (*CVPixelBufferReleaseBytesCallback)(void *releaseRefCon, const voi
 CVReturn CVPixelBufferCreateWithBytes(CFAllocatorRef allocator, size_t width, size_t height, OSType pixelFormatType, void *baseAddress, size_t bytesPerRow, CVPixelBufferReleaseBytesCallback releaseCallback, void *releaseRefCon, CFDictionaryRef pixelBufferAttributes, CVPixelBufferRef  _Nullable *pixelBufferOut);
 
 __END_DECLS
+
+#include <CoreVideo/CVPixelBufferIOSurface.h>
 
 #endif

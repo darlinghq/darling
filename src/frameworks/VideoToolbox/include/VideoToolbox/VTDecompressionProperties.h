@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,18 +17,11 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _CoreVideo_H_
-#define _CoreVideo_H_
+#ifndef _VTDECOMPRESSIONPROPERTIES_H_
+#define _VTDECOMPRESSIONPROPERTIES_H_
 
-#include <TargetConditionals.h>
-#include <Availability.h>
-#include <AvailabilityMacros.h>
+#include <CoreFoundation/CoreFoundation.h>
 
-#include <CoreVideo/CVReturn.h>
-#include <CoreVideo/CVBase.h>
-
-#include <CoreVideo/CVDisplayLink.h>
-#include <CoreVideo/CVPixelBuffer.h>
-#include <CoreVideo/CVPixelBufferPool.h>
+extern CFStringRef const kVTVideoDecoderSpecification_RequireHardwareAcceleratedVideoDecoder;
 
 #endif
