@@ -112,6 +112,14 @@ if(${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_C_COMPILER_VERSION} VERSI
 	set(ASM_IGNORED_WARNINGS "${ASM_IGNORED_WARNINGS} -Wno-undef-prefix")
 endif()
 
+# DARLING: clang 16+ promoted several long-standing warnings to errors by default
+# (implicit-function-declaration, implicit-int, etc.). Lots of Darling's vendored
+# C code predates C99 strictness; reverting these to warnings keeps the build
+# moving without auditing every legacy source file.
+if(${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_C_COMPILER_VERSION} VERSION_GREATER_EQUAL "16")
+	set(IGNORED_WARNINGS "${IGNORED_WARNINGS} -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types")
+endif()
+
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${IGNORED_WARNINGS}")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${IGNORED_WARNINGS}")
 set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${ASM_IGNORED_WARNINGS}")
