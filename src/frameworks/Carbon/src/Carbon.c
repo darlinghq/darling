@@ -128,12 +128,6 @@ OSStatus PutScrapFlavor(ScrapRef a, ScrapFlavorType b, ScrapFlavorFlags c, Size 
 	return 0;
 }
 
-void RunApplicationEventLoop(void)
-{
-    if (verbose) puts("STUB: RunApplicationEventLoop called");
-	
-}
-
 OSStatus RunStandardAlert(DialogRef a, ModalFilterUPP b, DialogItemIndex * c)
 {
     if (verbose) puts("STUB: RunStandardAlert called");
