@@ -21,6 +21,7 @@
 #define _Carbon_Carbon_Events_H_
 
 #include <CoreFoundation/CFBase.h>
+#include <HIToolbox/CarbonEventsCore.h>
 #include <CoreServices/MacTypes.h>
 
 #ifdef __cplusplus
