@@ -121,9 +121,15 @@ set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APP
 #set(CMAKE_ASM_COMPILER "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/as/${APPLE_TARGET_TRIPLET_PRIMARY}-as")
 
 # set macOS deployment version
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+string(REGEX REPLACE "-?-target[ =][^ ]+" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+string(REGEX REPLACE "-?-target[ =][^ ]+" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+string(REGEX REPLACE "-?-target[ =][^ ]+" "" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
+string(REGEX REPLACE "-?-target[ =][^ ]+" "" CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS}")
+
+SET(CMAKE_C_FLAGS "-target ${APPLE_TARGET_TRIPLET_PRIMARY} ${CMAKE_C_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+SET(CMAKE_CXX_FLAGS "-target ${APPLE_TARGET_TRIPLET_PRIMARY} ${CMAKE_CXX_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+set(CMAKE_ASM_FLAGS "-target ${APPLE_TARGET_TRIPLET_PRIMARY} ${CMAKE_ASM_FLAGS}")
+set(CMAKE_OBJC_FLAGS "-target ${APPLE_TARGET_TRIPLET_PRIMARY} ${CMAKE_OBJC_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
 
 add_definitions(-target ${APPLE_TARGET_TRIPLET_PRIMARY})
 include(darling_lib)
