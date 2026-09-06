@@ -32,9 +32,14 @@ add_executable(darpath_host ${CMAKE_SOURCE_DIR}/src/tools/darpath.c)
 set_target_properties(darpath_host PROPERTIES OUTPUT_NAME darpath)
 install(TARGETS darpath_host DESTINATION bin)
 
-add_executable(rtsig rtsig.c)
-add_custom_command(OUTPUT rtsig.h DEPENDS rtsig COMMAND ${CMAKE_CURRENT_BINARY_DIR}/rtsig rtsig.h COMMENT "Determining available RT signals")
-add_custom_target(rtsig_h DEPENDS rtsig.h)
+if (CMAKE_CROSSCOMPILING)
+	file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/rtsig.h" "#define LINUX_SIGRTMIN 43\n#define LINUX_SIGRTMAX 64\n")
+	add_custom_target(rtsig_h)
+else()
+	add_executable(rtsig rtsig.c)
+	add_custom_command(OUTPUT rtsig.h DEPENDS rtsig COMMAND ${CMAKE_CURRENT_BINARY_DIR}/rtsig rtsig.h COMMENT "Determining available RT signals")
+	add_custom_target(rtsig_h DEPENDS rtsig.h)
+endif()
 
 # shellspawn runs inside the prefix (src/shellspawn); its descriptor helpers
 # are plain POSIX and are tested on the host

@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.13)
 
 SET(CMAKE_SYSTEM_NAME Linux)
 
+if (NOT DEFINED CMAKE_SYSTEM_PROCESSOR)
 # Detect host architecture before project() since CMAKE_HOST_SYSTEM_PROCESSOR
 # may not be available yet
 execute_process(COMMAND uname -m OUTPUT_VARIABLE _HOST_ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -9,6 +10,7 @@ if (_HOST_ARCH MATCHES "aarch64|arm64")
 	SET(CMAKE_SYSTEM_PROCESSOR "aarch64")
 else()
 	SET(CMAKE_SYSTEM_PROCESSOR "x86-64")
+endif()
 endif()
 
 # This allows setting the compiler with -DCMAKE_C_COMPILER when configuring.
