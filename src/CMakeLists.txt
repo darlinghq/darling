@@ -79,17 +79,134 @@ find_package(FLEX)
 set(DARLING_SDK_RELATIVE_PATH "Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
 set(DARLING_ROOT_RELATIVE_TO_SDK "../../../../../..")
 
-add_subdirectory(external/cctools-port/cctools/ld64/src)
-add_subdirectory(external/cctools-port/cctools/ar)
-#add_subdirectory(external/cctools-port/cctools/as)
-add_subdirectory(external/cctools-port/cctools/misc)
+if (NOT CMAKE_CROSSCOMPILING)
+	add_subdirectory(external/cctools-port/cctools/ld64/src)
+	add_subdirectory(external/cctools-port/cctools/ar)
+	#add_subdirectory(external/cctools-port/cctools/as)
+	add_subdirectory(external/cctools-port/cctools/misc)
 
-#add_subdirectory(util)
-#add_subdirectory(libmach-o)
-#add_subdirectory(libdyld)
-add_subdirectory(buildtools)
-add_subdirectory(hosttools)
-add_subdirectory(libelfloader/wrapgen)
+	#add_subdirectory(util)
+	#add_subdirectory(libmach-o)
+	#add_subdirectory(libdyld)
+	add_subdirectory(buildtools)
+	add_subdirectory(hosttools)
+	add_subdirectory(libelfloader/wrapgen)
+else()
+	add_subdirectory(hosttools)
+
+	set(HOST_TOOLS_BUILD_DIR "${CMAKE_BINARY_DIR}/host-tools-build")
+	set(HOST_TOOLS_SRC_DIR "${CMAKE_BINARY_DIR}/host-tools-src")
+	file(MAKE_DIRECTORY "${HOST_TOOLS_SRC_DIR}")
+
+	file(WRITE "${HOST_TOOLS_SRC_DIR}/CMakeLists.txt" "
+cmake_minimum_required(VERSION 3.13)
+project(host_tools C CXX)
+add_subdirectory(\"${CMAKE_CURRENT_SOURCE_DIR}/external/cctools-port/cctools/ld64/src\" ld64)
+add_subdirectory(\"${CMAKE_CURRENT_SOURCE_DIR}/external/cctools-port/cctools/ar\" ar)
+add_subdirectory(\"${CMAKE_CURRENT_SOURCE_DIR}/external/cctools-port/cctools/misc\" misc)
+add_subdirectory(\"${CMAKE_CURRENT_SOURCE_DIR}/buildtools\" buildtools)
+add_subdirectory(\"${CMAKE_CURRENT_SOURCE_DIR}/libelfloader/wrapgen\" wrapgen)
+")
+
+	if (DEFINED ENV{CC_FOR_BUILD} AND NOT "$ENV{CC_FOR_BUILD}" STREQUAL "")
+		set(HOST_CC "$ENV{CC_FOR_BUILD}")
+	else()
+		find_program(HOST_CC NAMES clang gcc cc PATHS /usr/bin NO_DEFAULT_PATH)
+		if (NOT HOST_CC)
+			find_program(HOST_CC NAMES clang gcc cc)
+		endif()
+	endif()
+
+	if (DEFINED ENV{CXX_FOR_BUILD} AND NOT "$ENV{CXX_FOR_BUILD}" STREQUAL "")
+		set(HOST_CXX "$ENV{CXX_FOR_BUILD}")
+	else()
+		find_program(HOST_CXX NAMES clang++ g++ c++ PATHS /usr/bin NO_DEFAULT_PATH)
+		if (NOT HOST_CXX)
+			find_program(HOST_CXX NAMES clang++ g++ c++)
+		endif()
+	endif()
+
+	execute_process(
+		COMMAND ${CMAKE_COMMAND} -E env
+			--unset=CFLAGS --unset=CXXFLAGS --unset=LDFLAGS --unset=CPPFLAGS
+			CC=${HOST_CC} CXX=${HOST_CXX}
+			${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}"
+			-S "${HOST_TOOLS_SRC_DIR}"
+			-B "${HOST_TOOLS_BUILD_DIR}"
+			-DCMAKE_C_COMPILER=${HOST_CC}
+			-DCMAKE_CXX_COMPILER=${HOST_CXX}
+			-DCMAKE_BUILD_TYPE=Release
+			-DAPPLE_TARGET_TRIPLET_PRIMARY=${APPLE_TARGET_TRIPLET_PRIMARY}
+			-DTARGET_ARM64=${TARGET_ARM64}
+			-DTARGET_x86_64=${TARGET_x86_64}
+			-DDARLING_TOP_DIRECTORY=${CMAKE_SOURCE_DIR}
+		RESULT_VARIABLE host_tools_cfg_res
+	)
+	if (NOT host_tools_cfg_res EQUAL 0)
+		message(FATAL_ERROR "Failed to configure host tools for cross-compilation")
+	endif()
+
+	execute_process(
+		COMMAND ${CMAKE_COMMAND} -E env
+			--unset=CFLAGS --unset=CXXFLAGS --unset=LDFLAGS --unset=CPPFLAGS
+			${CMAKE_COMMAND} --build "${HOST_TOOLS_BUILD_DIR}"
+		RESULT_VARIABLE host_tools_build_res
+	)
+	if (NOT host_tools_build_res EQUAL 0)
+		message(FATAL_ERROR "Failed to build host tools for cross-compilation")
+	endif()
+
+	file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src")
+	file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar")
+	file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc")
+	file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/src/buildtools")
+	file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/src/libelfloader/wrapgen")
+
+	execute_process(COMMAND ${CMAKE_COMMAND} -E copy
+		"${HOST_TOOLS_BUILD_DIR}/ld64/${APPLE_TARGET_TRIPLET_PRIMARY}-ld"
+		"${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/${APPLE_TARGET_TRIPLET_PRIMARY}-ld")
+	execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+		"${APPLE_TARGET_TRIPLET_PRIMARY}-ld"
+		"${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/ld")
+
+	execute_process(COMMAND ${CMAKE_COMMAND} -E copy
+		"${HOST_TOOLS_BUILD_DIR}/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ar"
+		"${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ar")
+	execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+		"${APPLE_TARGET_TRIPLET_PRIMARY}-ar"
+		"${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/ar")
+
+	execute_process(COMMAND ${CMAKE_COMMAND} -E copy
+		"${HOST_TOOLS_BUILD_DIR}/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ranlib"
+		"${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ranlib")
+	execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+		"${APPLE_TARGET_TRIPLET_PRIMARY}-ranlib"
+		"${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/ranlib")
+
+	execute_process(COMMAND ${CMAKE_COMMAND} -E copy
+		"${HOST_TOOLS_BUILD_DIR}/misc/lipo"
+		"${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo")
+
+	execute_process(COMMAND ${CMAKE_COMMAND} -E copy
+		"${HOST_TOOLS_BUILD_DIR}/buildtools/elfdep"
+		"${CMAKE_BINARY_DIR}/src/buildtools/elfdep")
+	execute_process(COMMAND ${CMAKE_COMMAND} -E copy
+		"${HOST_TOOLS_BUILD_DIR}/buildtools/getuuid"
+		"${CMAKE_BINARY_DIR}/src/buildtools/getuuid")
+
+	execute_process(COMMAND ${CMAKE_COMMAND} -E copy
+		"${HOST_TOOLS_BUILD_DIR}/wrapgen/wrapgen"
+		"${CMAKE_BINARY_DIR}/src/libelfloader/wrapgen/wrapgen")
+
+	add_custom_target(${APPLE_TARGET_TRIPLET_PRIMARY}-ld)
+	add_custom_target(${APPLE_TARGET_TRIPLET_PRIMARY}-ar)
+	add_custom_target(ranlib)
+	add_custom_target(lipo)
+	add_custom_target(elfdep)
+	add_custom_target(getuuid)
+	add_custom_target(wrapgen)
+	add_custom_target(stuff)
+endif()
 # add the Linux build of libsimple now
 add_subdirectory(libsimple "${CMAKE_CURRENT_BINARY_DIR}/libsimple-linux")
 add_subdirectory(external/darlingserver)
