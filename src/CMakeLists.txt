@@ -110,19 +110,27 @@ add_subdirectory(\"${CMAKE_CURRENT_SOURCE_DIR}/libelfloader/wrapgen\" wrapgen)
 
 	if (DEFINED ENV{CC_FOR_BUILD} AND NOT "$ENV{CC_FOR_BUILD}" STREQUAL "")
 		set(HOST_CC "$ENV{CC_FOR_BUILD}")
-	else()
-		find_program(HOST_CC NAMES clang-18 clang-19 clang-17 clang-16 clang gcc cc PATHS /usr/bin NO_DEFAULT_PATH)
+	elseif (NOT DEFINED HOST_CC)
+		find_program(HOST_CC NAMES
+			clang-23 clang-22 clang-21 clang-20 clang-19 clang-18 clang-17 clang-16 clang-15 clang-14
+			clang gcc cc PATHS /usr/bin NO_DEFAULT_PATH)
 		if (NOT HOST_CC)
-			find_program(HOST_CC NAMES clang-18 clang-19 clang-17 clang-16 clang gcc cc)
+			find_program(HOST_CC NAMES
+				clang-23 clang-22 clang-21 clang-20 clang-19 clang-18 clang-17 clang-16 clang-15 clang-14
+				clang gcc cc)
 		endif()
 	endif()
 
 	if (DEFINED ENV{CXX_FOR_BUILD} AND NOT "$ENV{CXX_FOR_BUILD}" STREQUAL "")
 		set(HOST_CXX "$ENV{CXX_FOR_BUILD}")
-	else()
-		find_program(HOST_CXX NAMES clang++-18 clang++-19 clang++-17 clang++-16 clang++ PATHS /usr/bin NO_DEFAULT_PATH)
+	elseif (NOT DEFINED HOST_CXX)
+		find_program(HOST_CXX NAMES
+			clang++-23 clang++-22 clang++-21 clang++-20 clang++-19 clang++-18 clang++-17 clang++-16 clang++-15 clang++-14
+			clang++ PATHS /usr/bin NO_DEFAULT_PATH)
 		if (NOT HOST_CXX)
-			find_program(HOST_CXX NAMES clang++-18 clang++-19 clang++-17 clang++-16 clang++)
+			find_program(HOST_CXX NAMES
+				clang++-23 clang++-22 clang++-21 clang++-20 clang++-19 clang++-18 clang++-17 clang++-16 clang++-15 clang++-14
+				clang++)
 		endif()
 	endif()
 
