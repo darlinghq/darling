@@ -248,8 +248,15 @@ void spawnShell(int fd)
 			{
 				if (param != NULL)
 				{
-					if (DBG) printf("set env: %s\n", param);
-					putenv(param);
+					if (param[0] != '\0' && strchr(param, '=') != NULL)
+					{
+						if (DBG) printf("set env: %s\n", param);
+						putenv(param);
+					}
+					else
+					{
+						free(param);
+					}
 				}
 				break;
 			}
