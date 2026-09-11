@@ -16,11 +16,9 @@ static void load(const char* path, cpu_type_t cpu, bool expect_dylinker, char** 
 static void setup_space(struct load_results* lr, bool is_64_bit);
 static void* compatible_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
 
-#ifndef PAGE_SIZE
-#	define PAGE_SIZE	4096
+#ifndef PAGE_ROUNDUP
+#	define PAGE_ROUNDUP(x) (((x) + (PAGE_SIZE - 1)) & ~(PAGE_SIZE - 1))
 #endif
-#define PAGE_ALIGN(x) (x & ~(PAGE_SIZE-1))
-#define PAGE_ROUNDUP(x) (((((x)-1) / PAGE_SIZE)+1) * PAGE_SIZE)
 
 // Definitions:
 // FUNCTION_NAME (load32/load64)
@@ -247,10 +245,11 @@ no_slide:
 				}
 
 				// 2. Map the remaining BSS/anonymous pages (if any) beyond the file-backed pages
-				if (PAGE_ROUNDUP(seg->vmsize) > PAGE_ROUNDUP(seg->filesize))
+				size_t file_pages = seg->filesize > 0 ? PAGE_ROUNDUP(seg->filesize) : 0;
+				if (PAGE_ROUNDUP(seg->vmsize) > file_pages)
 				{
-					uintptr_t bss_addr = seg_addr + PAGE_ROUNDUP(seg->filesize);
-					size_t bss_size = PAGE_ROUNDUP(seg->vmsize) - PAGE_ROUNDUP(seg->filesize);
+					uintptr_t bss_addr = seg_addr + file_pages;
+					size_t bss_size = PAGE_ROUNDUP(seg->vmsize) - file_pages;
 
 					rv = compatible_mmap((void*)bss_addr, bss_size, useprot,
 							MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
