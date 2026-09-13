@@ -4,6 +4,10 @@ macro(InstallSymlink _filepath _sympath)
     get_filename_component(_symname ${_sympath} NAME)
     get_filename_component(_installdir ${_sympath} PATH)
 
+    if (NOT IS_ABSOLUTE "${_installdir}")
+        set(_installdir "${CMAKE_INSTALL_PREFIX}/${_installdir}")
+    endif()
+
     if (INSTALL_SYMLINK_EXCLUDE_FROM_ALL)
         set(EXCLUDE_FROM_ALL_ARG "EXCLUDE_FROM_ALL")
     else()
