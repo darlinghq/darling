@@ -109,7 +109,7 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 			struct SEGMENT_STRUCT* seg = (struct SEGMENT_STRUCT*) &cmds[p];
 
 			// Load commands are always sorted, so this will get us the maximum address.
-			if (seg->cmd == SEGMENT_COMMAND && strcmp(seg->segname, "__PAGEZERO") != 0)
+			if (seg->cmd == SEGMENT_COMMAND && strcmp(seg->segname, "__PAGEZERO") != 0 && seg->vmsize != 0)
 			{
 				if (base == -1)
 				{
@@ -192,8 +192,8 @@ no_slide:
 				int initprot = native_prot(seg->initprot);
 				int useprot = (initprot & PROT_EXEC) ? maxprot : initprot;
 
-				// Skip __PAGEZERO or any unmapped zero-address segment
-				if (strcmp(seg->segname, "__PAGEZERO") == 0 || (seg->vmaddr == 0 && useprot == 0))
+				// Skip zero-vmsize segments (e.g. __DWARF), __PAGEZERO or any unmapped zero-address segment
+				if (seg->vmsize == 0 || strcmp(seg->segname, "__PAGEZERO") == 0 || (seg->vmaddr == 0 && useprot == 0))
 				{
 					if (seg->vmaddr + slide + seg->vmsize > lr->vm_addr_max)
 						lr->vm_addr_max = seg->vmaddr + slide + seg->vmsize;
