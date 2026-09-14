@@ -180,10 +180,18 @@ OSStatus FSGetCatalogInfo(const FSRef* ref, uint32_t infoBits, FSCatalogInfo* in
 
 	if (nameOut)
 	{
-		CFStringRef cfstr = CFStringCreateWithCString(NULL, path.c_str(), kCFStringEncodingUTF8);
-		nameOut->length = std::min<size_t>(path.length(), 255);
-		CFStringGetCharacters(cfstr, CFRangeMake(0, nameOut->length), nameOut->unicode);
-		CFRelease(cfstr);
+		// The name is the item's own name (the last path component), counted in UTF-16 units.
+		size_t slash = path.find_last_of('/');
+		std::string leaf = (slash == std::string::npos || slash + 1 == path.length()) ? path : path.substr(slash + 1);
+		CFStringRef cfstr = CFStringCreateWithCString(NULL, leaf.c_str(), kCFStringEncodingUTF8);
+
+		nameOut->length = 0;
+		if (cfstr)
+		{
+			nameOut->length = std::min<CFIndex>(CFStringGetLength(cfstr), 255);
+			CFStringGetCharacters(cfstr, CFRangeMake(0, nameOut->length), nameOut->unicode);
+			CFRelease(cfstr);
+		}
 	}
 
 	if (parentDir)
