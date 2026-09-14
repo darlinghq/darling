@@ -97,7 +97,8 @@ static BOOL failWithError(NSError **error)
 
 @implementation SCContentFilter
 
-@synthesize contentRect = _contentRect, pointPixelScale = _pointPixelScale;
+@synthesize contentRect = _contentRect, pointPixelScale = _pointPixelScale, style = _style, streamType = _streamType,
+	includeMenuBar = _includeMenuBar;
 
 - (instancetype)initWithDesktopIndependentWindow:(SCWindow *)window
 {
@@ -125,7 +126,21 @@ static BOOL failWithError(NSError **error)
 @synthesize width = _width, height = _height, minimumFrameInterval = _minimumFrameInterval, pixelFormat = _pixelFormat,
 	scalesToFit = _scalesToFit, sourceRect = _sourceRect, destinationRect = _destinationRect, queueDepth = _queueDepth,
 	showsCursor = _showsCursor, capturesAudio = _capturesAudio, sampleRate = _sampleRate, channelCount = _channelCount,
-	excludesCurrentProcessAudio = _excludesCurrentProcessAudio;
+	excludesCurrentProcessAudio = _excludesCurrentProcessAudio, streamName = _streamName, backgroundColor = _backgroundColor,
+	colorSpaceName = _colorSpaceName, colorMatrix = _colorMatrix, captureResolution = _captureResolution,
+	captureDynamicRange = _captureDynamicRange, preservesAspectRatio = _preservesAspectRatio, shouldBeOpaque = _shouldBeOpaque,
+	ignoreShadowsDisplay = _ignoreShadowsDisplay, ignoreShadowsSingleWindow = _ignoreShadowsSingleWindow,
+	ignoreGlobalClipDisplay = _ignoreGlobalClipDisplay, ignoreGlobalClipSingleWindow = _ignoreGlobalClipSingleWindow,
+	includeChildWindows = _includeChildWindows, captureMicrophone = _captureMicrophone,
+	microphoneCaptureDeviceID = _microphoneCaptureDeviceID, showMouseClicks = _showMouseClicks;
+
+- (void)dealloc
+{
+	[_streamName release];
+	[_microphoneCaptureDeviceID release];
+	[super dealloc];
+}
+
 @end
 
 @implementation SCRecordingOutputConfiguration
@@ -203,7 +218,21 @@ static BOOL failWithError(NSError **error)
 @implementation SCScreenshotConfiguration
 @synthesize width = _width, height = _height, showsCursor = _showsCursor, sourceRect = _sourceRect,
 	destinationRect = _destinationRect, ignoreShadows = _ignoreShadows, ignoreClipping = _ignoreClipping,
-	includeChildWindows = _includeChildWindows;
+	includeChildWindows = _includeChildWindows, displayIntent = _displayIntent, dynamicRange = _dynamicRange,
+	contentType = _contentType, fileURL = _fileURL;
+
+- (void)dealloc
+{
+	[_contentType release];
+	[_fileURL release];
+	[super dealloc];
+}
+
+@end
+
+// Never created by the stub (screenshots always fail), but apps reference its accessors.
+@implementation SCScreenshotOutput
+@synthesize sdrImage = _sdrImage, hdrImage = _hdrImage, fileURL = _fileURL;
 @end
 
 @implementation SCScreenshotManager

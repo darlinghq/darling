@@ -43,6 +43,30 @@ typedef NS_ENUM(NSInteger, SCStreamOutputType) {
 	SCStreamOutputTypeMicrophone,
 };
 
+typedef NS_ENUM(NSInteger, SCShareableContentStyle) {
+	SCShareableContentStyleNone,
+	SCShareableContentStyleWindow,
+	SCShareableContentStyleDisplay,
+	SCShareableContentStyleApplication,
+};
+
+typedef NS_ENUM(NSInteger, SCStreamType) {
+	SCStreamTypeWindow,
+	SCStreamTypeDisplay,
+};
+
+typedef NS_ENUM(NSInteger, SCCaptureResolutionType) {
+	SCCaptureResolutionAutomatic,
+	SCCaptureResolutionBest,
+	SCCaptureResolutionNominal,
+};
+
+typedef NS_ENUM(NSInteger, SCCaptureDynamicRange) {
+	SCCaptureDynamicRangeSDR,
+	SCCaptureDynamicRangeHDRLocalDisplay,
+	SCCaptureDynamicRangeHDRCanonicalDisplay,
+};
+
 @interface SCRunningApplication : NSObject
 @property (readonly) NSString *bundleIdentifier;
 @property (readonly) NSString *applicationName;
@@ -77,6 +101,9 @@ typedef NS_ENUM(NSInteger, SCStreamOutputType) {
 @interface SCContentFilter : NSObject
 @property (readonly) CGRect contentRect;
 @property (readonly) CGFloat pointPixelScale;
+@property (readonly) SCShareableContentStyle style;
+@property (readonly) SCStreamType streamType;
+@property BOOL includeMenuBar;
 - (instancetype)initWithDesktopIndependentWindow:(SCWindow *)window;
 - (instancetype)initWithDisplay:(SCDisplay *)display excludingWindows:(NSArray<SCWindow *> *)excluded;
 - (instancetype)initWithDisplay:(SCDisplay *)display includingWindows:(NSArray<SCWindow *> *)included;
@@ -97,6 +124,22 @@ typedef NS_ENUM(NSInteger, SCStreamOutputType) {
 @property NSInteger sampleRate;
 @property NSInteger channelCount;
 @property BOOL excludesCurrentProcessAudio;
+@property (copy) NSString *streamName;
+@property CGColorRef backgroundColor; // not retained: the stub never draws with it
+@property CFStringRef colorSpaceName;
+@property CFStringRef colorMatrix;
+@property SCCaptureResolutionType captureResolution;
+@property SCCaptureDynamicRange captureDynamicRange;
+@property BOOL preservesAspectRatio;
+@property BOOL shouldBeOpaque;
+@property BOOL ignoreShadowsDisplay;
+@property BOOL ignoreShadowsSingleWindow;
+@property BOOL ignoreGlobalClipDisplay;
+@property BOOL ignoreGlobalClipSingleWindow;
+@property BOOL includeChildWindows;
+@property BOOL captureMicrophone;
+@property (copy) NSString *microphoneCaptureDeviceID;
+@property BOOL showMouseClicks;
 @end
 
 @class SCStream;
@@ -140,6 +183,17 @@ typedef NS_ENUM(NSInteger, SCStreamOutputType) {
 - (void)stopCaptureWithCompletionHandler:(void (^)(NSError *error))completionHandler;
 @end
 
+typedef NS_ENUM(NSInteger, SCScreenshotDisplayIntent) {
+	SCScreenshotDisplayIntentCanonical,
+	SCScreenshotDisplayIntentLocal,
+};
+
+typedef NS_ENUM(NSInteger, SCScreenshotDynamicRange) {
+	SCScreenshotDynamicRangeSDR,
+	SCScreenshotDynamicRangeHDR,
+	SCScreenshotDynamicRangeBothSDRAndHDR,
+};
+
 @interface SCScreenshotConfiguration : NSObject
 @property NSInteger width;
 @property NSInteger height;
@@ -149,6 +203,16 @@ typedef NS_ENUM(NSInteger, SCStreamOutputType) {
 @property BOOL ignoreShadows;
 @property BOOL ignoreClipping;
 @property BOOL includeChildWindows;
+@property SCScreenshotDisplayIntent displayIntent;
+@property SCScreenshotDynamicRange dynamicRange;
+@property (retain) id contentType; // UTType
+@property (retain) NSURL *fileURL;
+@end
+
+@interface SCScreenshotOutput : NSObject
+@property (readonly) CGImageRef sdrImage;
+@property (readonly) CGImageRef hdrImage;
+@property (readonly) NSURL *fileURL;
 @end
 
 @interface SCScreenshotManager : NSObject
