@@ -18,6 +18,10 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 	add_subdirectory(ProtocolBuffer)
 	add_subdirectory(TrustedPeers)
 
+	add_subdirectory(DisplayServices)
+	add_subdirectory(MonitorPanel)
+	add_subdirectory(OSD)
+
 	# required for dtrace and IOKitTools
 	add_subdirectory(CoreSymbolication)
 endif()
