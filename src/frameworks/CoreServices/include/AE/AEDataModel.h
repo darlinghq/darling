@@ -47,6 +47,48 @@ typedef FourCharCode                    AEEventClass;
 typedef FourCharCode                    AEEventID;
 typedef SInt8                           AEArrayType;
 
+enum : DescType {
+	typeBoolean = 'bool',
+	typeChar = 'TEXT',
+	typeSInt16 = 'shor',
+	typeSInt32 = 'long',
+	typeUInt32 = 'magn',
+	typeSInt64 = 'comp',
+	typeIEEE32BitFloatingPoint = 'sing',
+	typeIEEE64BitFloatingPoint = 'doub',
+	typeUTF8Text = 'utf8',
+	typeUnicodeText = 'utxt',
+	typeType = 'type',
+	typeEnumerated = 'enum',
+	typeFileURL = 'furl',
+	typeApplicationBundleID = 'bund',
+	typeKernelProcessID = 'kpid',
+	typeAEList = 'list',
+	typeAERecord = 'reco',
+	typeAppleEvent = 'aevt',
+	typeTrue = 'true',
+	typeFalse = 'fals',
+	typeNull = 'null',
+	typeWildCard = '****',
+};
+
+enum : AEKeyword {
+	keyTransactionIDAttr = 'tran',
+	keyReturnIDAttr = 'rtid',
+	keyEventClassAttr = 'evcl',
+	keyEventIDAttr = 'evid',
+	keyAddressAttr = 'addr',
+	keyOptionalKeywordAttr = 'optk',
+	keyTimeoutAttr = 'timo',
+	keyInteractLevelAttr = 'inte',
+	keyEventSourceAttr = 'esrc',
+	keyMissedKeywordAttr = 'miss',
+	keyOriginalAddressAttr = 'from',
+	keyDirectObject = '----',
+	keyErrorNumber = 'errn',
+	keyErrorString = 'errs',
+};
+
 typedef OSErr (*AEEventHandlerProcPtr)(
 	const AppleEvent* theAppleEvent,
 	AppleEvent* reply,
