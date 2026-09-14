@@ -26,7 +26,9 @@ FOUNDATION_EXPORT NSString * const kFTSListingSizeKey;
 FOUNDATION_EXPORT NSString * const kFTSProgressBytesTransferredKey;
 FOUNDATION_EXPORT NSString * const kFTSProgressBytesTotalKey;
 FOUNDATION_EXPORT NSString * const kFTSProgressPercentageKey;
+FOUNDATION_EXPORT NSString * const kFTSProgressPrecentageKey; // sic, as in Apple's SDK
 FOUNDATION_EXPORT NSString * const kFTSProgressEstimatedTimeKey;
+FOUNDATION_EXPORT NSString * const kFTSProgressTimeElapsedKey;
 FOUNDATION_EXPORT NSString * const kFTSProgressTransferRateKey;
 
 @interface OBEXFileTransferServices : NSObject
