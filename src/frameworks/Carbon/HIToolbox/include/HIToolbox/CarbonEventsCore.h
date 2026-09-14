@@ -62,6 +62,9 @@ OSStatus SendEventToEventTarget(EventRef a, EventTargetRef b);
 UInt32 GetCurrentKeyModifiers(void);
 EventTime GetEventTime(EventRef inEvent);
 
+// SPI used by Dictionary to check whether a key event is a system symbolic hot key.
+Boolean _IsSymbolicHotKeyEvent(EventRef inEvent, UInt32* outHotKeyCode, Boolean* outEnabled);
+
 #ifdef __cplusplus
 }
 #endif
