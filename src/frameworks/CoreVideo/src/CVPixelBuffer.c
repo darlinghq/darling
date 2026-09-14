@@ -8,10 +8,12 @@
 */
 
 // Minimal CPU-memory CVPixelBuffer: a single-plane, packed buffer with 16-byte row alignment.
-// There is no IOSurface or pool backing.
+// There is no IOSurface or pool backing. Pixel buffers are CF objects, so CFRetain, CFRelease
+// and CFGetTypeID work on them (Swift and many Objective-C callers rely on that).
 
 #include <CoreFoundation/CoreFoundation.h>
-#include <stdatomic.h>
+#include <CoreFoundation/CFRuntime.h>
+#include <dispatch/dispatch.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +21,9 @@
 typedef int32_t CVReturn;
 typedef uint32_t OSType;
 typedef uint64_t CVPixelBufferLockFlags;
+typedef void (*CVPixelBufferReleaseBytesCallback)(void* releaseRefCon, const void* baseAddress);
+typedef void (*CVPixelBufferReleasePlanarBytesCallback)(void* releaseRefCon, const void* dataPtr, size_t dataSize,
+	size_t numberOfPlanes, const void* planeAddresses[]);
 
 enum {
 	kCVReturnSuccess = 0,
@@ -28,15 +33,63 @@ enum {
 };
 
 struct __CVPixelBuffer {
-	atomic_long refcount;
+	CFRuntimeBase runtimeBase;
 	size_t width;
 	size_t height;
 	size_t bytesPerRow;
 	OSType pixelFormat;
 	uint8_t* base;
+	Boolean ownsBase;
+	CVPixelBufferReleaseBytesCallback releaseCallback;
+	void* releaseRefCon;
 };
 typedef struct __CVPixelBuffer* CVPixelBufferRef;
-typedef CVPixelBufferRef CVBufferRef;
+typedef CFTypeRef CVBufferRef;
+
+static void pixelBufferFinalize(CFTypeRef cf)
+{
+	CVPixelBufferRef buffer = (CVPixelBufferRef) cf;
+	if (buffer->ownsBase)
+		free(buffer->base);
+	else if (buffer->releaseCallback)
+		buffer->releaseCallback(buffer->releaseRefCon, buffer->base);
+	buffer->base = NULL;
+}
+
+static const CFRuntimeClass pixelBufferClass = {
+	.version = 0,
+	.className = "CVPixelBuffer",
+	.finalize = pixelBufferFinalize,
+};
+
+static CFTypeID pixelBufferTypeID = _kCFRuntimeNotATypeID;
+
+CFTypeID CVPixelBufferGetTypeID(void)
+{
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{
+		pixelBufferTypeID = _CFRuntimeRegisterClass(&pixelBufferClass);
+	});
+	return pixelBufferTypeID;
+}
+
+static CVPixelBufferRef pixelBufferAllocate(CFAllocatorRef allocator, size_t width, size_t height, size_t bytesPerRow,
+	OSType pixelFormatType)
+{
+	CVPixelBufferRef buffer = (CVPixelBufferRef) _CFRuntimeCreateInstance(allocator, CVPixelBufferGetTypeID(),
+		sizeof(struct __CVPixelBuffer) - sizeof(CFRuntimeBase), NULL);
+	if (buffer == NULL)
+		return NULL;
+	buffer->width = width;
+	buffer->height = height;
+	buffer->bytesPerRow = bytesPerRow;
+	buffer->pixelFormat = pixelFormatType;
+	buffer->base = NULL;
+	buffer->ownsBase = false;
+	buffer->releaseCallback = NULL;
+	buffer->releaseRefCon = NULL;
+	return buffer;
+}
 
 // Bytes per pixel for packed formats commonly used for CPU drawing; 0 means unsupported.
 static size_t bytesPerPixelForFormat(OSType format)
@@ -70,54 +123,92 @@ CVReturn CVPixelBufferCreate(CFAllocatorRef allocator, size_t width, size_t heig
 	size_t bpp = bytesPerPixelForFormat(pixelFormatType);
 	if (bpp == 0)
 		return kCVReturnInvalidPixelFormat;
-	if (width > SIZE_MAX / bpp)
+	// Both the multiplication and the round-up to 16 bytes must not wrap.
+	if (width > (SIZE_MAX - 15) / bpp)
 		return kCVReturnAllocationFailed;
 
 	size_t bytesPerRow = (width * bpp + 15) & ~(size_t)15;
 	if (height > SIZE_MAX / bytesPerRow)
 		return kCVReturnAllocationFailed;
 
-	CVPixelBufferRef buffer = calloc(1, sizeof(*buffer));
+	CVPixelBufferRef buffer = pixelBufferAllocate(allocator, width, height, bytesPerRow, pixelFormatType);
 	if (buffer == NULL)
 		return kCVReturnAllocationFailed;
 	buffer->base = calloc(height, bytesPerRow);
 	if (buffer->base == NULL) {
-		free(buffer);
+		CFRelease(buffer);
 		return kCVReturnAllocationFailed;
 	}
+	buffer->ownsBase = true;
 
-	atomic_init(&buffer->refcount, 1);
-	buffer->width = width;
-	buffer->height = height;
-	buffer->bytesPerRow = bytesPerRow;
-	buffer->pixelFormat = pixelFormatType;
 	*pixelBufferOut = buffer;
 	return kCVReturnSuccess;
+}
+
+CVReturn CVPixelBufferCreateWithBytes(CFAllocatorRef allocator, size_t width, size_t height, OSType pixelFormatType,
+	void* baseAddress, size_t bytesPerRow, CVPixelBufferReleaseBytesCallback releaseCallback, void* releaseRefCon,
+	CFDictionaryRef pixelBufferAttributes, CVPixelBufferRef* pixelBufferOut)
+{
+	if (pixelBufferOut == NULL || baseAddress == NULL || width == 0 || height == 0 || bytesPerRow == 0)
+		return kCVReturnInvalidArgument;
+	*pixelBufferOut = NULL;
+	if (height > SIZE_MAX / bytesPerRow)
+		return kCVReturnInvalidArgument;
+
+	size_t bpp = bytesPerPixelForFormat(pixelFormatType);
+	if (bpp == 0)
+		return kCVReturnInvalidPixelFormat;
+	if (width > bytesPerRow / bpp)
+		return kCVReturnInvalidArgument; // a row of pixels does not fit in bytesPerRow
+
+	CVPixelBufferRef buffer = pixelBufferAllocate(allocator, width, height, bytesPerRow, pixelFormatType);
+	if (buffer == NULL)
+		return kCVReturnAllocationFailed;
+	// The caller's memory is released through releaseCallback when the last reference goes away.
+	buffer->base = baseAddress;
+	buffer->releaseCallback = releaseCallback;
+	buffer->releaseRefCon = releaseRefCon;
+
+	*pixelBufferOut = buffer;
+	return kCVReturnSuccess;
+}
+
+CVReturn CVPixelBufferCreateWithPlanarBytes(CFAllocatorRef allocator, size_t width, size_t height,
+	OSType pixelFormatType, void* dataPtr, size_t dataSize, size_t numberOfPlanes, void* planeBaseAddress[],
+	size_t planeWidth[], size_t planeHeight[], size_t planeBytesPerRow[],
+	CVPixelBufferReleasePlanarBytesCallback releaseCallback, void* releaseRefCon,
+	CFDictionaryRef pixelBufferAttributes, CVPixelBufferRef* pixelBufferOut)
+{
+	// Planar buffers are not supported; fail cleanly rather than report success with no buffer.
+	if (pixelBufferOut != NULL)
+		*pixelBufferOut = NULL;
+	return kCVReturnInvalidPixelFormat;
 }
 
 CVPixelBufferRef CVPixelBufferRetain(CVPixelBufferRef buffer)
 {
 	if (buffer)
-		atomic_fetch_add(&buffer->refcount, 1);
+		CFRetain(buffer);
 	return buffer;
 }
 
 void CVPixelBufferRelease(CVPixelBufferRef buffer)
 {
-	if (buffer && atomic_fetch_sub(&buffer->refcount, 1) == 1) {
-		free(buffer->base);
-		free(buffer);
-	}
+	if (buffer)
+		CFRelease(buffer);
 }
 
 CVBufferRef CVBufferRetain(CVBufferRef buffer)
 {
-	return CVPixelBufferRetain(buffer);
+	if (buffer)
+		CFRetain(buffer);
+	return buffer;
 }
 
 void CVBufferRelease(CVBufferRef buffer)
 {
-	CVPixelBufferRelease(buffer);
+	if (buffer)
+		CFRelease(buffer);
 }
 
 size_t CVPixelBufferGetWidth(CVPixelBufferRef buffer)
@@ -148,11 +239,6 @@ size_t CVPixelBufferGetDataSize(CVPixelBufferRef buffer)
 void* CVPixelBufferGetBaseAddress(CVPixelBufferRef buffer)
 {
 	return buffer ? buffer->base : NULL;
-}
-
-CFTypeID CVPixelBufferGetTypeID(void)
-{
-	return 0;
 }
 
 size_t CVPixelBufferGetPlaneCount(CVPixelBufferRef buffer)

@@ -1,11 +1,5 @@
 #include <stdio.h>
 
-void* CVPixelBufferCreateWithPlanarBytes(void)
-{
-	printf("STUB: %s\n", __PRETTY_FUNCTION__);
-	return NULL;
-}
-
 void* CVPixelBufferGetBaseAddressOfPlane(void)
 {
 	printf("STUB: %s\n", __PRETTY_FUNCTION__);
