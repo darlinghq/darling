@@ -12,9 +12,9 @@ NSString *WebElementDOMNodeKey = @"WebElementDOMNode";
 NSString *WebElementFrameKey = @"WebElementFrame";
 NSString *WebElementIsSelectedKey = @"WebElementIsSelected";
 
-NSString *WebActionElementKey = @"WebActionElement";
-NSString *WebActionModifierFlagsKey = @"WebActionModifierFlags";
-NSString *WebActionOriginalURLKey = @"WebActionOriginalURL";
+NSString *WebActionElementKey = @"WebActionElementKey";
+NSString *WebActionModifierFlagsKey = @"WebActionModifierFlagsKey";
+NSString *WebActionOriginalURLKey = @"WebActionOriginalURLKey";
 
 // Class stub: Darling's WebKit has no legacy HTML view, so -isKindOfClass: checks against it fail.
 @implementation WebHTMLView
