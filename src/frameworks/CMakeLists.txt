@@ -23,6 +23,7 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 	add_subdirectory(Network)
 	add_subdirectory(OpenDirectory)
 	add_subdirectory(SecurityFoundation)
+	add_subdirectory(CoreDisplay)
 
 	# this is for Java (obviously)
 	add_subdirectory(JavaVM)
