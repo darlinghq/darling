@@ -39,6 +39,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "interpreter_path.h"
 #include <sys/resource.h>
 #include <sys/prctl.h>
+#include <sys/auxv.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <darlingserver/rpc.h>
@@ -101,6 +102,11 @@ static void maybe_disable_ptrauth(char** envp)
 		}
 	}
 	if (!enabled)
+		return;
+
+	// Ignore it in a process that gained privileges at exec (setuid, setgid or file capabilities):
+	// its caller controls the environment.
+	if (getauxval(AT_SECURE))
 		return;
 
 	// enabled_keys = 0 -> all four keys disabled for this process and its future threads.
