@@ -271,18 +271,73 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 		"#endif\n\n";
 
 	output << "static void* lib_handle;\n"
+		"static void open_library(void) {\n"
+		"\tif (!lib_handle)\n"
+		"\t\tlib_handle = _elfcalls->dlopen_fatal(__elfname);\n"
+		"}\n\n"
 		"__attribute__((constructor)) static void initializer() {\n"
-		"\tlib_handle = _elfcalls->dlopen_fatal(__elfname);\n"
+		"\topen_library();\n"
 		"}\n\n";
 
 	output << "__attribute__((destructor)) static void destructor() {\n"
-		"\t_elfcalls->dlclose_fatal(lib_handle);\n"
+		"\tif (lib_handle)\n"
+		"\t\t_elfcalls->dlclose_fatal(lib_handle);\n"
 		"}\n\n";
-	
+
+	// dyld runs symbol resolvers while binding, and for non-lazy binds (chained fixups, bind_at_load)
+	// that happens before libSystem's initializer sets _elfcalls. Such resolvers return a trampoline
+	// that looks the symbol up on its first call.
+	output << "#if defined(__arm64__)\n"
+		"struct lazy_symbol { void* address; const char* name; };\n\n"
+		"__attribute__((visibility(\"hidden\"), used))\n"
+		"void* __elf_lazy_resolve(struct lazy_symbol* symbol) {\n"
+		"\tif (!symbol->address) {\n"
+		"\t\topen_library();\n"
+		"\t\tsymbol->address = _elfcalls->dlsym_fatal(lib_handle, symbol->name);\n"
+		"\t}\n"
+		"\treturn symbol->address;\n"
+		"}\n\n"
+		"__asm__(\".text\\n.p2align 2\\n.private_extern ___elf_lazy_common\\n"
+		"___elf_lazy_common:\\n"
+		"\\tldr x17, [x16]\\n"
+		"\\tcbz x17, 1f\\n"
+		"\\tbr x17\\n"
+		"1:\\tstp x29, x30, [sp, #-16]!\\n"
+		"\\tmov x29, sp\\n"
+		"\\tsub sp, sp, #144\\n"
+		"\\tstp x0, x1, [sp]\\n\\tstp x2, x3, [sp, #16]\\n\\tstp x4, x5, [sp, #32]\\n\\tstp x6, x7, [sp, #48]\\n"
+		"\\tstp x8, xzr, [sp, #64]\\n"
+		"\\tstp d0, d1, [sp, #80]\\n\\tstp d2, d3, [sp, #96]\\n\\tstp d4, d5, [sp, #112]\\n\\tstp d6, d7, [sp, #128]\\n"
+		"\\tmov x0, x16\\n"
+		"\\tbl ___elf_lazy_resolve\\n"
+		"\\tmov x17, x0\\n"
+		"\\tldp x0, x1, [sp]\\n\\tldp x2, x3, [sp, #16]\\n\\tldp x4, x5, [sp, #32]\\n\\tldp x6, x7, [sp, #48]\\n"
+		"\\tldr x8, [sp, #64]\\n"
+		"\\tldp d0, d1, [sp, #80]\\n\\tldp d2, d3, [sp, #96]\\n\\tldp d4, d5, [sp, #112]\\n\\tldp d6, d7, [sp, #128]\\n"
+		"\\tmov sp, x29\\n"
+		"\\tldp x29, x30, [sp], #16\\n"
+		"\\tbr x17\\n\");\n"
+		"#endif\n\n";
+
 	for (const std::string& sym : symbols)
 	{
-		output << "WRAPGEN_RESOLVER void* " << sym << "() {\n"
+		output << "#if defined(__arm64__)\n"
+			"__attribute__((visibility(\"hidden\"), used))\n"
+			"struct lazy_symbol __elf_lazy_symbol_" << sym << " = { 0, \"" << sym << "\" };\n"
+			"extern void __elf_lazy_" << sym << "(void);\n"
+			"__asm__(\".text\\n.p2align 2\\n.private_extern ___elf_lazy_" << sym << "\\n"
+			"___elf_lazy_" << sym << ":\\n"
+			"\\tadrp x16, ___elf_lazy_symbol_" << sym << "@PAGE\\n"
+			"\\tadd x16, x16, ___elf_lazy_symbol_" << sym << "@PAGEOFF\\n"
+			"\\tb ___elf_lazy_common\\n\");\n"
+			"#endif\n"
+			"WRAPGEN_RESOLVER void* " << sym << "() {\n"
 			"\t__asm__(\".symbol_resolver _" << sym << "\");\n"
+			"#if defined(__arm64__)\n"
+			"\tif (!_elfcalls)\n"
+			"\t\treturn __elf_lazy_" << sym << ";\n"
+			"#endif\n"
+			"\topen_library();\n"
 			"\treturn _elfcalls->dlsym_fatal(lib_handle, \"" << sym << "\");\n"
 			"}\n\n";
 	}
