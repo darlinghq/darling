@@ -62,6 +62,20 @@ extern int __esp_check_ns(const char *a, void *b);
 extern int __esp_notify_ns(const char *a, void *b);
 
 typedef struct _qtn_proc_t* qtn_proc_t;
+
+// Process quarantine state. Darling doesn't quarantine processes: a new state has no flags,
+// and applying one to the current process reports QTN_NOT_QUARANTINED.
+extern qtn_proc_t _qtn_proc_alloc(void);
+extern void _qtn_proc_free(qtn_proc_t proc);
+extern int _qtn_proc_init_with_self(qtn_proc_t proc);
+extern int _qtn_proc_init_with_data(qtn_proc_t proc, void* data, size_t data_len);
+extern int _qtn_proc_set_identifier(qtn_proc_t proc, const char* ident);
+extern int _qtn_proc_set_flags(qtn_proc_t proc, uint32_t flags);
+extern uint32_t _qtn_proc_get_flags(qtn_proc_t proc);
+extern int _qtn_proc_set_tracking_data(qtn_proc_t proc, const void* data, size_t data_len);
+extern int _qtn_proc_apply_to_self(qtn_proc_t proc);
+
+// Older Darling spellings, kept for existing callers.
 qtn_proc_t qtn_proc_alloc(void);
 void qtn_proc_set_identifier(qtn_proc_t proc, const char* ident);
 void qtn_proc_set_flags(qtn_proc_t proc, unsigned int flags);

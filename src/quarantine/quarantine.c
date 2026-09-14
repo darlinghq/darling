@@ -118,29 +118,81 @@ int __esp_notify_ns(const char *a, void *b)
 
 struct _qtn_proc_t
 {
-	int dummy;
+	uint32_t flags;
 };
+
+qtn_proc_t _qtn_proc_alloc(void)
+{
+	return (qtn_proc_t) calloc(1, sizeof(struct _qtn_proc_t));
+}
+
+void _qtn_proc_free(qtn_proc_t proc)
+{
+	free(proc);
+}
+
+int _qtn_proc_init_with_self(qtn_proc_t proc)
+{
+	// The current process carries no quarantine state.
+	if (proc)
+		proc->flags = 0;
+	return QTN_NOT_QUARANTINED;
+}
+
+int _qtn_proc_init_with_data(qtn_proc_t proc, void* data, size_t data_len)
+{
+	return 0;
+}
+
+int _qtn_proc_set_identifier(qtn_proc_t proc, const char* ident)
+{
+	return 0;
+}
+
+int _qtn_proc_set_flags(qtn_proc_t proc, uint32_t flags)
+{
+	if (proc)
+		proc->flags = flags;
+	return 0;
+}
+
+uint32_t _qtn_proc_get_flags(qtn_proc_t proc)
+{
+	return proc ? proc->flags : 0;
+}
+
+int _qtn_proc_set_tracking_data(qtn_proc_t proc, const void* data, size_t data_len)
+{
+	return 0;
+}
+
+int _qtn_proc_apply_to_self(qtn_proc_t proc)
+{
+	return QTN_NOT_QUARANTINED;
+}
 
 qtn_proc_t qtn_proc_alloc(void)
 {
-	return (qtn_proc_t) malloc(sizeof(qtn_proc_t));
+	return _qtn_proc_alloc();
 }
 
 void qtn_proc_set_identifier(qtn_proc_t proc, const char* ident)
 {
+	_qtn_proc_set_identifier(proc, ident);
 }
 
 void qtn_proc_set_flags(qtn_proc_t proc, unsigned int flags)
 {
+	_qtn_proc_set_flags(proc, flags);
 }
 
 int qtn_proc_apply_to_self(qtn_proc_t proc) {
-	return QTN_NOT_QUARANTINED;
+	return _qtn_proc_apply_to_self(proc);
 };
 
 void qtn_proc_free(qtn_proc_t proc)
 {
-	free(proc);
+	_qtn_proc_free(proc);
 }
 
 int qtn_file_apply_to_mount_point(qtn_file_t a, const char *b)
