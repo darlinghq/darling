@@ -30,6 +30,7 @@
 
 @property (readonly) OSALanguage *language;
 @property (readonly) ComponentInstance componentInstance;
+@property (retain) NSAppleEventDescriptor *defaultTarget;
 
 - (NSAttributedString *)richTextFromDescriptor:(NSAppleEventDescriptor *)descriptor;
 

@@ -31,12 +31,6 @@ extern NSString *const OSAScriptErrorAppAddressKey;
 extern NSString *const OSAScriptErrorAppNameKey;
 extern NSString *const OSAScriptErrorRangeKey;
 
-extern NSString *const OSAScriptErrorMessage;
-extern NSString *const OSAScriptErrorBriefMessage;
-extern NSString *const OSAScriptErrorNumber;
-extern NSString *const OSAScriptErrorAppName;
-extern NSString *const OSAScriptErrorRange;
-
 extern NSString *const OSAStorageScriptType;
 extern NSString *const OSAStorageScriptBundleType;
 extern NSString *const OSAStorageApplicationType;
@@ -52,7 +46,7 @@ typedef NS_OPTIONS(NSUInteger, OSAStorageOptions) {
     OSAShowStartupScreen     = 0x20000000,
 };
 
-@interface OSAScript : NSObject
+@interface OSAScript : NSObject <NSCopying>
 
 + (instancetype)scriptWithSource:(NSString *)source language:(OSALanguage *)language;
 + (instancetype)scriptWithSource:(NSString *)source fromURL:(NSURL *)url languageInstance:(OSALanguageInstance *)instance usingStorageOptions:(OSAStorageOptions)storageOptions;
@@ -67,8 +61,8 @@ typedef NS_OPTIONS(NSUInteger, OSAStorageOptions) {
 
 @property (readonly, copy) NSString *source;
 @property (readonly, copy) NSURL *url;
-@property (retain) OSALanguage *language;
-@property (retain) OSALanguageInstance *languageInstance;
+@property (copy) OSALanguage *language;
+@property (copy) OSALanguageInstance *languageInstance;
 @property (readonly, getter=isCompiled) BOOL compiled;
 @property (readonly, copy) NSAttributedString *richTextSource;
 @property (readonly) BOOL hasOpenHandler;
@@ -79,6 +73,7 @@ typedef NS_OPTIONS(NSUInteger, OSAStorageOptions) {
 - (NSAppleEventDescriptor *)executeAppleEvent:(NSAppleEventDescriptor *)event error:(NSDictionary **)errorInfo;
 - (NSAppleEventDescriptor *)executeAndReturnDisplayValue:(NSAttributedString **)displayValue error:(NSDictionary **)errorInfo;
 - (NSAttributedString *)richTextFromDescriptor:(NSAppleEventDescriptor *)descriptor;
+- (NSAttributedString *)richTextFromDescriptorForLog:(NSAppleEventDescriptor *)descriptor;
 - (NSData *)compiledDataForType:(NSString *)type usingStorageOptions:(OSAStorageOptions)storageOptions error:(NSDictionary **)errorInfo;
 - (BOOL)writeToURL:(NSURL *)url ofType:(NSString *)type error:(NSDictionary **)errorInfo;
 - (BOOL)writeToURL:(NSURL *)url ofType:(NSString *)type usingStorageOptions:(OSAStorageOptions)storageOptions error:(NSDictionary **)errorInfo;
