@@ -679,3 +679,56 @@ CFStringRef kColorSyncFactoryProfiles        = CFSTR("ColorSyncFactoryProfiles")
 CFStringRef kColorSyncDeviceUserScope        = CFSTR("ColorSyncDeviceUserScope");
 CFStringRef kColorSyncDeviceHostScope        = CFSTR("ColorSyncDeviceHostScope");
 CFStringRef kColorSyncPrinterDeviceClass     = CFSTR("ColorSyncPrinterDeviceClass");
+
+void* ColorSyncProfileCreateWithURLAndOptions(void)
+{
+    if (verbose) puts("STUB: ColorSyncProfileCreateWithURLAndOptions called");
+    return NULL;
+}
+
+void* ColorSyncProfileCopyFlexGTCInfo(void)
+{
+    if (verbose) puts("STUB: ColorSyncProfileCopyFlexGTCInfo called");
+    return NULL;
+}
+
+void* ColorSyncProfileCreateFlexGTCLookupData(void)
+{
+    if (verbose) puts("STUB: ColorSyncProfileCreateFlexGTCLookupData called");
+    return NULL;
+}
+
+CFStringRef kColorSyncGenericGrayGamma22Profile = CFSTR("ColorSyncGenericGrayGamma22Profile");
+CFStringRef kColorSyncGenericLabProfile         = CFSTR("ColorSyncGenericLabProfile");
+CFStringRef kColorSyncGenericXYZProfile         = CFSTR("ColorSyncGenericXYZProfile");
+CFStringRef kColorSyncGenericCMYKProfile        = CFSTR("ColorSyncGenericCMYKProfile");
+CFStringRef kColorSyncSRGBProfile               = CFSTR("ColorSyncSRGBProfile");
+CFStringRef kColorSyncAdobeRGB1998Profile       = CFSTR("ColorSyncAdobeRGB1998Profile");
+CFStringRef kColorSyncITUR2020Profile           = CFSTR("ColorSyncITUR2020Profile");
+
+CFStringRef kColorSyncProfileHeader      = CFSTR("ColorSyncProfileHeader");
+CFStringRef kColorSyncProfileDescription = CFSTR("ColorSyncProfileDescription");
+CFStringRef kColorSyncProfileURL         = CFSTR("ColorSyncProfileURL");
+CFStringRef kColorSyncProfileMD5Digest   = CFSTR("ColorSyncProfileMD5Digest");
+
+CFStringRef kColorSyncProfile                           = CFSTR("ColorSyncProfile");
+CFStringRef kColorSyncRenderingIntent                   = CFSTR("ColorSyncRenderingIntent");
+CFStringRef kColorSyncRenderingIntentUseProfileHeader   = CFSTR("ColorSyncRenderingIntentUseProfileHeader");
+CFStringRef kColorSyncRenderingIntentPerceptual         = CFSTR("ColorSyncRenderingIntentPerceptual");
+CFStringRef kColorSyncRenderingIntentRelative           = CFSTR("ColorSyncRenderingIntentRelative");
+CFStringRef kColorSyncRenderingIntentSaturation         = CFSTR("ColorSyncRenderingIntentSaturation");
+CFStringRef kColorSyncRenderingIntentAbsolute           = CFSTR("ColorSyncRenderingIntentAbsolute");
+CFStringRef kColorSyncTransformTag                      = CFSTR("ColorSyncTransformTag");
+CFStringRef kColorSyncTransformDeviceToPCS              = CFSTR("ColorSyncTransformDeviceToPCS");
+CFStringRef kColorSyncTransformPCSToPCS                 = CFSTR("ColorSyncTransformPCSToPCS");
+CFStringRef kColorSyncTransformPCSToDevice              = CFSTR("ColorSyncTransformPCSToDevice");
+CFStringRef kColorSyncTransformGamutCheck               = CFSTR("ColorSyncTransformGamutCheck");
+CFStringRef kColorSyncTransformSimplifiedConversionData = CFSTR("ColorSyncTransformSimplifiedConversionData");
+CFStringRef kColorSyncConversion3DLut                   = CFSTR("ColorSyncConversion3DLut");
+CFStringRef kColorSyncConversionGridPoints              = CFSTR("ColorSyncConversionGridPoints");
+CFStringRef kColorSyncBlackPointCompensation            = CFSTR("ColorSyncBlackPointCompensation");
+CFStringRef kColorSyncExtendedRange                     = CFSTR("ColorSyncExtendedRange");
+CFStringRef kColorSyncDoNotSubstituteProfiles           = CFSTR("ColorSyncDoNotSubstituteProfiles");
+CFStringRef kColorSyncWaitForCacheReply                 = CFSTR("ColorSyncWaitForCacheReply");
+CFStringRef kColorSyncGainMapBaselineHeadroom           = CFSTR("ColorSyncGainMapBaselineHeadroom");
+CFStringRef kColorSyncMonoGainMapParams                 = CFSTR("ColorSyncMonoGainMapParams");
