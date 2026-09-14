@@ -382,3 +382,33 @@ void* workflow_service_runner_xpc_main(void)
     if (verbose) puts("STUB: workflow_service_runner_xpc_main called");
     return NULL;
 }
+
+// Workflow type identifiers as stored in document.wflow (workflowMetaData.workflowTypeIdentifier).
+NSString* const AMWorkflowTypeIdentifierWorkflow = @"com.apple.Automator.workflow";
+NSString* const AMWorkflowTypeIdentifierApplication = @"com.apple.Automator.application";
+NSString* const AMWorkflowTypeIdentifierServicesMenu = @"com.apple.Automator.servicesMenu";
+
+// Document type names and extensions, matching Automator.app's CFBundleDocumentTypes.
+NSString* const AMDocumentTypeWorkflow = @"Workflow";
+NSString* const AMDocumentTypeApplication = @"Application";
+NSString* const AMDocumentExtensionWorkflow = @"workflow";
+NSString* const AMDocumentExtensionApp = @"app";
+
+// A .workflow bundle keeps document.wflow under Contents/.
+NSString* const AMWorkflowContentsDirectory = @"Contents";
+
+// Data type identifiers used by actions' AMAccepts/AMProvides.
+NSString* const AMTypeIdentifierFilesAndFolders = @"com.apple.cocoa.path";
+NSString* const AMTypeIdentifierText = @"com.apple.cocoa.string";
+NSString* const AMTypeUTICocoaPath = @"com.apple.cocoa.path";
+
+// Variable identifiers follow the com.apple.Automator.Variable.<Name> scheme used in workflows.
+NSString* const AMVariableIdentifierPath = @"com.apple.Automator.Variable.Path";
+NSString* const AMVariableIdentifierStorage = @"com.apple.Automator.Variable.Storage";
+NSString* const AMVariableIdentifierText = @"com.apple.Automator.Variable.Text";
+
+BOOL _AMSkipOpenUntitledFile(void)
+{
+    // Keep the default document behaviour (show the untitled/open panel).
+    return NO;
+}
