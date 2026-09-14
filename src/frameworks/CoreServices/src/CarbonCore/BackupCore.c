@@ -17,3 +17,17 @@ OSStatus CSBackupSetItemExcluded(CFURLRef item, Boolean exclude, Boolean exclude
 	// stub
 	return noErr;
 };
+
+// Private SPI used by the Time Machine app to talk to backupd. Darling has no backup server,
+// so report that there is none.
+void* _CSBackupGetSharedServerProxy(void) {
+	return NULL;
+};
+
+Boolean _CSBackupServerIsActive(void) {
+	return false;
+};
+
+void _CSBackupServerProxyCancelBackup(void* proxy) {
+	// no backup can be running
+};
