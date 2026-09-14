@@ -15,6 +15,9 @@ OSErr AEDuplicateDesc(const AEDesc *theAEDesc, AEDesc *result);
 Size AEGetDescDataSize(const AEDesc *theAEDesc);
 OSErr AEGetDescData(const AEDesc *theAEDesc, void *dataPtr, Size maximumSize);
 OSErr AEReplaceDescData(DescType typeCode, const void *dataPtr, Size dataSize, AEDesc *theAEDesc);
+OSErr AECoercePtr(DescType typeCode, const void *dataPtr, Size dataSize, DescType toType, AEDesc *result);
+OSErr AECoerceDesc(const AEDesc *theAEDesc, DescType toType, AEDesc *result);
+Boolean AECheckIsRecord(const AEDesc *theDesc);
 
 OSErr AECreateList(const void *factoringPtr, Size factoredSize, Boolean isRecord, AEDescList *resultList);
 OSErr AECountItems(const AEDescList *theAEDescList, long *theCount);
@@ -24,6 +27,7 @@ OSErr AEGetNthDesc(const AEDescList *theAEDescList, long index, DescType desired
 OSErr AEGetNthPtr(const AEDescList *theAEDescList, long index, DescType desiredType, AEKeyword *theAEKeyword,
 	DescType *typeCode, void *dataPtr, Size maximumSize, Size *actualSize);
 OSErr AEDeleteItem(AEDescList *theAEDescList, long index);
+OSErr AESizeOfNthItem(const AEDescList *theAEDescList, long index, DescType *typeCode, Size *dataSize);
 
 OSErr AEPutParamDesc(AERecord *theAERecord, AEKeyword theAEKeyword, const AEDesc *theAEDesc);
 OSErr AEPutParamPtr(AERecord *theAERecord, AEKeyword theAEKeyword, DescType typeCode, const void *dataPtr, Size dataSize);
@@ -40,6 +44,7 @@ OSErr AEPutAttributePtr(AppleEvent *theAppleEvent, AEKeyword theAEKeyword, DescT
 OSErr AEGetAttributeDesc(const AppleEvent *theAppleEvent, AEKeyword theAEKeyword, DescType desiredType, AEDesc *result);
 OSErr AEGetAttributePtr(const AppleEvent *theAppleEvent, AEKeyword theAEKeyword, DescType desiredType, DescType *typeCode,
 	void *dataPtr, Size maximumSize, Size *actualSize);
+OSErr AESizeOfAttribute(const AppleEvent *theAppleEvent, AEKeyword theAEKeyword, DescType *typeCode, Size *dataSize);
 OSStatus AESendMessage(const AppleEvent *event, AppleEvent *reply, AESendMode sendMode, long timeOutInTicks);
 
 OSErr AEInstallSpecialHandler(AEKeyword functionClass, AEEventHandlerUPP handler, Boolean isSysHandler);

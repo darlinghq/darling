@@ -12,11 +12,28 @@
 // the target process could not be found.
 
 #include <AE/AE.h>
+#include <CoreFoundation/CoreFoundation.h>
+#include <float.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
 #define AE_STORAGE_MAGIC 0x41454453 // 'AEDS'
+
+// Built-in descriptor types that AEDataModel.h does not declare.
+#define kAETypeUInt16 'ushr'
+#define kAETypeUInt64 'ucom'
+#define kAETypeKeyword 'keyw'
+
+// How a descriptor's contents are stored. This is tracked separately from the descriptor type,
+// because a record keeps its structure when it is coerced to another type (e.g. 'obj ').
+typedef enum AEKind {
+	kAEKindData,
+	kAEKindList,
+	kAEKindRecord,
+	kAEKindEvent,
+} AEKind;
 
 typedef struct AEItem {
 	AEKeyword key;
@@ -25,6 +42,7 @@ typedef struct AEItem {
 
 typedef struct AEStorage {
 	uint32_t magic;
+	AEKind kind;
 	Size size;
 	uint8_t* bytes;          // data for plain descriptors
 	AEItem* items;           // elements (lists) or parameters (records, events)
@@ -43,22 +61,38 @@ static AEStorage* storageOf(const AEDesc* desc)
 	return storage->magic == AE_STORAGE_MAGIC ? storage : NULL;
 }
 
-static Boolean isList(DescType type)
+static AEKind kindForType(DescType type)
 {
-	return type == typeAEList || type == typeAERecord || type == typeAppleEvent;
+	switch (type) {
+		case typeAEList: return kAEKindList;
+		case typeAERecord: return kAEKindRecord;
+		case typeAppleEvent: return kAEKindEvent;
+		default: return kAEKindData;
+	}
 }
 
-static Boolean isRecordLike(DescType type)
+static Boolean isList(const AEStorage* storage)
 {
-	return type == typeAERecord || type == typeAppleEvent;
+	return storage != NULL && storage->kind != kAEKindData;
 }
 
-static OSErr newStorage(DescType type, const void* dataPtr, Size dataSize, AEDesc* result)
+static Boolean isRecordLike(const AEStorage* storage)
+{
+	return storage != NULL && (storage->kind == kAEKindRecord || storage->kind == kAEKindEvent);
+}
+
+static Boolean isEvent(const AEStorage* storage)
+{
+	return storage != NULL && storage->kind == kAEKindEvent;
+}
+
+static OSErr newStorage(DescType type, AEKind kind, const void* dataPtr, Size dataSize, AEDesc* result)
 {
 	AEStorage* storage = calloc(1, sizeof(*storage));
 	if (storage == NULL)
 		return memFullErr;
 	storage->magic = AE_STORAGE_MAGIC;
+	storage->kind = kind;
 	if (dataSize > 0) {
 		storage->bytes = malloc(dataSize);
 		if (storage->bytes == NULL) {
@@ -109,11 +143,275 @@ static AEItem* findItem(AEItem* items, long count, AEKeyword key)
 	return NULL;
 }
 
+// --- Built-in coercions ---
+
+typedef struct AENumber {
+	enum { kAENumberSigned, kAENumberUnsigned, kAENumberFloat } kind;
+	int64_t s;
+	uint64_t u;
+	double d;
+} AENumber;
+
+#define READ_NUMBER(ctype, field, numberKind) \
+	do { \
+		ctype value; \
+		if (size != sizeof(value)) \
+			return false; \
+		memcpy(&value, data, sizeof(value)); \
+		number->kind = numberKind; \
+		number->field = value; \
+		return true; \
+	} while (0)
+
+// Reads a numeric or boolean descriptor's data in host byte order.
+static Boolean readNumber(DescType type, const void* data, Size size, AENumber* number)
+{
+	switch (type) {
+		case typeSInt16: READ_NUMBER(SInt16, s, kAENumberSigned);
+		case kAETypeUInt16: READ_NUMBER(UInt16, s, kAENumberSigned);
+		case typeSInt32: READ_NUMBER(SInt32, s, kAENumberSigned);
+		case typeUInt32: READ_NUMBER(UInt32, s, kAENumberSigned);
+		case typeSInt64: READ_NUMBER(SInt64, s, kAENumberSigned);
+		case kAETypeUInt64: READ_NUMBER(UInt64, u, kAENumberUnsigned);
+		case typeIEEE32BitFloatingPoint: READ_NUMBER(Float32, d, kAENumberFloat);
+		case typeIEEE64BitFloatingPoint: READ_NUMBER(Float64, d, kAENumberFloat);
+		case typeBoolean: READ_NUMBER(Boolean, s, kAENumberSigned);
+		case typeTrue:
+			number->kind = kAENumberSigned;
+			number->s = 1;
+			return true;
+		case typeFalse:
+			number->kind = kAENumberSigned;
+			number->s = 0;
+			return true;
+		default:
+			return false;
+	}
+}
+
+#undef READ_NUMBER
+
+// Converts a number to a signed integer in [min, max]; fails for fractions and out-of-range values.
+static Boolean numberToInteger(const AENumber* number, int64_t min, int64_t max, int64_t* out)
+{
+	int64_t value;
+	switch (number->kind) {
+		case kAENumberSigned:
+			value = number->s;
+			break;
+		case kAENumberUnsigned:
+			if (number->u > (uint64_t) INT64_MAX)
+				return false;
+			value = (int64_t) number->u;
+			break;
+		default:
+			if (!isfinite(number->d) || number->d != trunc(number->d) ||
+				number->d < -9223372036854775808.0 || number->d >= 9223372036854775808.0)
+				return false;
+			value = (int64_t) number->d;
+			break;
+	}
+	if (value < min || value > max)
+		return false;
+	*out = value;
+	return true;
+}
+
+static Boolean numberToUInt64(const AENumber* number, uint64_t* out)
+{
+	switch (number->kind) {
+		case kAENumberSigned:
+			if (number->s < 0)
+				return false;
+			*out = (uint64_t) number->s;
+			return true;
+		case kAENumberUnsigned:
+			*out = number->u;
+			return true;
+		default:
+			if (!isfinite(number->d) || number->d != trunc(number->d) || number->d < 0 || number->d >= 18446744073709551616.0)
+				return false;
+			*out = (uint64_t) number->d;
+			return true;
+	}
+}
+
+static double numberToDouble(const AENumber* number)
+{
+	switch (number->kind) {
+		case kAENumberSigned: return (double) number->s;
+		case kAENumberUnsigned: return (double) number->u;
+		default: return number->d;
+	}
+}
+
+static OSErr writeNumber(const AENumber* number, DescType toType, AEDesc* result)
+{
+	int64_t integer;
+	switch (toType) {
+		case typeSInt16: {
+			if (!numberToInteger(number, INT16_MIN, INT16_MAX, &integer))
+				return errAECoercionFail;
+			SInt16 value = (SInt16) integer;
+			return AECreateDesc(toType, &value, sizeof(value), result);
+		}
+		case kAETypeUInt16: {
+			if (!numberToInteger(number, 0, UINT16_MAX, &integer))
+				return errAECoercionFail;
+			UInt16 value = (UInt16) integer;
+			return AECreateDesc(toType, &value, sizeof(value), result);
+		}
+		case typeSInt32: {
+			if (!numberToInteger(number, INT32_MIN, INT32_MAX, &integer))
+				return errAECoercionFail;
+			SInt32 value = (SInt32) integer;
+			return AECreateDesc(toType, &value, sizeof(value), result);
+		}
+		case typeUInt32: {
+			if (!numberToInteger(number, 0, UINT32_MAX, &integer))
+				return errAECoercionFail;
+			UInt32 value = (UInt32) integer;
+			return AECreateDesc(toType, &value, sizeof(value), result);
+		}
+		case typeSInt64: {
+			if (!numberToInteger(number, INT64_MIN, INT64_MAX, &integer))
+				return errAECoercionFail;
+			SInt64 value = integer;
+			return AECreateDesc(toType, &value, sizeof(value), result);
+		}
+		case kAETypeUInt64: {
+			UInt64 value;
+			if (!numberToUInt64(number, &value))
+				return errAECoercionFail;
+			return AECreateDesc(toType, &value, sizeof(value), result);
+		}
+		case typeIEEE32BitFloatingPoint: {
+			double d = numberToDouble(number);
+			if (isfinite(d) && fabs(d) > FLT_MAX)
+				return errAECoercionFail;
+			Float32 value = (Float32) d;
+			return AECreateDesc(toType, &value, sizeof(value), result);
+		}
+		case typeIEEE64BitFloatingPoint: {
+			Float64 value = numberToDouble(number);
+			return AECreateDesc(toType, &value, sizeof(value), result);
+		}
+		case typeBoolean: {
+			if (!numberToInteger(number, 0, 1, &integer))
+				return errAECoercionFail;
+			Boolean value = (Boolean) integer;
+			return AECreateDesc(toType, &value, sizeof(value), result);
+		}
+		default:
+			return errAECoercionFail;
+	}
+}
+
+static Boolean textEncodingForType(DescType type, CFStringEncoding* encoding)
+{
+	switch (type) {
+		case typeUTF8Text:
+			*encoding = kCFStringEncodingUTF8;
+			return true;
+		case typeUnicodeText: // UTF-16 in host byte order, without a byte order mark
+#ifdef __BIG_ENDIAN__
+			*encoding = kCFStringEncodingUTF16BE;
+#else
+			*encoding = kCFStringEncodingUTF16LE;
+#endif
+			return true;
+		case typeChar:
+			*encoding = CFStringGetSystemEncoding();
+			return true;
+		default:
+			return false;
+	}
+}
+
+static OSErr coerceText(CFStringEncoding fromEncoding, const void* data, Size size, DescType toType,
+	CFStringEncoding toEncoding, AEDesc* result)
+{
+	CFStringRef string = CFStringCreateWithBytes(kCFAllocatorDefault, size > 0 ? data : (const UInt8*) "", size,
+		fromEncoding, false);
+	if (string == NULL)
+		return errAECoercionFail;
+
+	CFRange range = CFRangeMake(0, CFStringGetLength(string));
+	CFIndex needed = 0;
+	OSErr err = errAECoercionFail;
+	// A loss byte of 0 makes characters that the target encoding lacks fail the coercion.
+	if (CFStringGetBytes(string, range, toEncoding, 0, false, NULL, 0, &needed) == range.length) {
+		UInt8* bytes = malloc(needed > 0 ? needed : 1);
+		if (bytes == NULL) {
+			err = memFullErr;
+		} else {
+			CFStringGetBytes(string, range, toEncoding, 0, false, bytes, needed, &needed);
+			err = AECreateDesc(toType, bytes, needed, result);
+			free(bytes);
+		}
+	}
+	CFRelease(string);
+	return err;
+}
+
+static Boolean isTypeCode(DescType type)
+{
+	return type == typeType || type == typeEnumerated || type == kAETypeKeyword;
+}
+
+static OSErr coerceData(DescType fromType, const void* data, Size size, DescType toType, AEDesc* result)
+{
+	AENumber number;
+	if (readNumber(fromType, data, size, &number))
+		return writeNumber(&number, toType, result);
+
+	CFStringEncoding fromEncoding, toEncoding;
+	if (textEncodingForType(fromType, &fromEncoding) && textEncodingForType(toType, &toEncoding))
+		return coerceText(fromEncoding, data, size, toType, toEncoding, result);
+
+	if (isTypeCode(fromType) && isTypeCode(toType) && size == sizeof(FourCharCode))
+		return AECreateDesc(toType, data, size, result);
+
+	return errAECoercionFail;
+}
+
 static OSErr coerceDesc(const AEDesc* desc, DescType desiredType, AEDesc* result)
 {
+	AEInitializeDesc(result);
 	if (desiredType == typeWildCard || desiredType == desc->descriptorType)
 		return AEDuplicateDesc(desc, result);
-	return errAECoercionFail;
+
+	AEStorage* storage = storageOf(desc);
+	if (storage != NULL && storage->kind == kAEKindRecord) {
+		// A record can be coerced to any type other than a list or an Apple Event, and stays a record.
+		if (desiredType == typeAEList || desiredType == typeAppleEvent)
+			return errAECoercionFail;
+		OSErr err = AEDuplicateDesc(desc, result);
+		if (err == noErr)
+			result->descriptorType = desiredType;
+		return err;
+	}
+	if (storage == NULL || storage->kind != kAEKindData)
+		return errAECoercionFail;
+	return coerceData(desc->descriptorType, storage->bytes, storage->size, desiredType, result);
+}
+
+// Shared tail of the Get*Ptr functions: coerce, then copy at most maximumSize bytes.
+static OSErr copyCoercedData(const AEDesc* item, DescType desiredType, DescType* typeCode, void* dataPtr,
+	Size maximumSize, Size* actualSize)
+{
+	AEDesc desc;
+	OSErr err = coerceDesc(item, desiredType, &desc);
+	if (err != noErr)
+		return err;
+	if (typeCode)
+		*typeCode = desc.descriptorType;
+	if (actualSize)
+		*actualSize = AEGetDescDataSize(&desc);
+	if (dataPtr)
+		err = AEGetDescData(&desc, dataPtr, maximumSize);
+	AEDisposeDesc(&desc);
+	return err;
 }
 
 // --- Descriptors ---
@@ -133,7 +431,7 @@ OSErr AECreateDesc(DescType typeCode, const void* dataPtr, Size dataSize, AEDesc
 	AEInitializeDesc(result);
 	if (typeCode == typeNull && dataSize == 0)
 		return noErr;
-	return newStorage(typeCode, dataPtr, dataSize, result);
+	return newStorage(typeCode, kindForType(typeCode), dataPtr, dataSize, result);
 }
 
 OSErr AEDisposeDesc(AEDesc* desc)
@@ -165,7 +463,7 @@ OSErr AEDuplicateDesc(const AEDesc* desc, AEDesc* result)
 		return noErr;
 	}
 
-	OSErr err = newStorage(desc->descriptorType, source->bytes, source->size, &copy);
+	OSErr err = newStorage(desc->descriptorType, source->kind, source->bytes, source->size, &copy);
 	if (err != noErr)
 		return err;
 	AEStorage* target = storageOf(&copy);
@@ -184,7 +482,7 @@ OSErr AEDuplicateDesc(const AEDesc* desc, AEDesc* result)
 Size AEGetDescDataSize(const AEDesc* desc)
 {
 	AEStorage* storage = storageOf(desc);
-	return (storage && !isList(desc->descriptorType)) ? storage->size : 0;
+	return (storage && !isList(storage)) ? storage->size : 0;
 }
 
 OSErr AEGetDescData(const AEDesc* desc, void* dataPtr, Size maximumSize)
@@ -194,7 +492,7 @@ OSErr AEGetDescData(const AEDesc* desc, void* dataPtr, Size maximumSize)
 	AEStorage* storage = storageOf(desc);
 	if (storage == NULL)
 		return desc->descriptorType == typeNull ? noErr : errAENotAEDesc;
-	if (isList(desc->descriptorType))
+	if (isList(storage))
 		return errAEWrongDataType;
 	memcpy(dataPtr, storage->bytes, storage->size < maximumSize ? storage->size : maximumSize);
 	return noErr;
@@ -208,6 +506,43 @@ OSErr AEReplaceDescData(DescType typeCode, const void* dataPtr, Size dataSize, A
 	return AECreateDesc(typeCode, dataPtr, dataSize, desc);
 }
 
+OSErr AECoercePtr(DescType typeCode, const void* dataPtr, Size dataSize, DescType toType, AEDesc* result)
+{
+	if (result == NULL)
+		return paramErr;
+	AEDesc desc;
+	OSErr err = AECreateDesc(typeCode, dataPtr, dataSize, &desc);
+	if (err != noErr) {
+		AEInitializeDesc(result);
+		return err;
+	}
+	err = coerceDesc(&desc, toType, result);
+	AEDisposeDesc(&desc);
+	return err;
+}
+
+OSErr AECoerceDesc(const AEDesc* desc, DescType toType, AEDesc* result)
+{
+	if (desc == NULL || result == NULL)
+		return paramErr;
+	if (desc == result) {
+		// Coercing in place: build the result first, then replace the original.
+		AEDesc coerced;
+		OSErr err = coerceDesc(desc, toType, &coerced);
+		if (err != noErr)
+			return err;
+		AEDisposeDesc(result);
+		*result = coerced;
+		return noErr;
+	}
+	return coerceDesc(desc, toType, result);
+}
+
+Boolean AECheckIsRecord(const AEDesc* desc)
+{
+	return isRecordLike(storageOf(desc));
+}
+
 // --- Lists and records ---
 
 OSErr AECreateList(const void* factoringPtr, Size factoredSize, Boolean isRecord, AEDescList* result)
@@ -215,7 +550,7 @@ OSErr AECreateList(const void* factoringPtr, Size factoredSize, Boolean isRecord
 	if (result == NULL)
 		return paramErr;
 	AEInitializeDesc(result);
-	return newStorage(isRecord ? typeAERecord : typeAEList, NULL, 0, result);
+	return newStorage(isRecord ? typeAERecord : typeAEList, isRecord ? kAEKindRecord : kAEKindList, NULL, 0, result);
 }
 
 OSErr AECountItems(const AEDescList* list, long* count)
@@ -223,7 +558,7 @@ OSErr AECountItems(const AEDescList* list, long* count)
 	if (list == NULL || count == NULL)
 		return paramErr;
 	AEStorage* storage = storageOf(list);
-	if (storage == NULL || !isList(list->descriptorType))
+	if (!isList(storage))
 		return errAEWrongDataType;
 	*count = storage->itemCount;
 	return noErr;
@@ -234,10 +569,13 @@ OSErr AEPutDesc(AEDescList* list, long index, const AEDesc* desc)
 	if (list == NULL || desc == NULL)
 		return paramErr;
 	AEStorage* storage = storageOf(list);
-	if (storage == NULL || !isList(list->descriptorType))
+	if (!isList(storage))
 		return errAEWrongDataType;
-	if (index <= 0 || index > storage->itemCount)
+	// 0 or count + 1 appends; 1...count replaces; anything else is out of range.
+	if (index == 0 || index == storage->itemCount + 1)
 		return appendItem(&storage->items, &storage->itemCount, &storage->itemCapacity, 0, desc);
+	if (index < 0 || index > storage->itemCount)
+		return errAEIllegalIndex;
 
 	AEDesc copy;
 	OSErr err = AEDuplicateDesc(desc, &copy);
@@ -259,17 +597,26 @@ OSErr AEPutPtr(AEDescList* list, long index, DescType typeCode, const void* data
 	return err;
 }
 
+static OSErr nthItem(const AEDescList* list, long index, AEItem** item)
+{
+	AEStorage* storage = storageOf(list);
+	if (!isList(storage))
+		return errAEWrongDataType;
+	if (index < 1 || index > storage->itemCount)
+		return errAEBadListItem;
+	*item = &storage->items[index - 1];
+	return noErr;
+}
+
 OSErr AEGetNthDesc(const AEDescList* list, long index, DescType desiredType, AEKeyword* keyword, AEDesc* result)
 {
 	if (list == NULL || result == NULL)
 		return paramErr;
 	AEInitializeDesc(result);
-	AEStorage* storage = storageOf(list);
-	if (storage == NULL || !isList(list->descriptorType))
-		return errAEWrongDataType;
-	if (index < 1 || index > storage->itemCount)
-		return errAEBadListItem;
-	AEItem* item = &storage->items[index - 1];
+	AEItem* item;
+	OSErr err = nthItem(list, index, &item);
+	if (err != noErr)
+		return err;
 	if (keyword)
 		*keyword = item->key;
 	return coerceDesc(&item->desc, desiredType, result);
@@ -278,24 +625,38 @@ OSErr AEGetNthDesc(const AEDescList* list, long index, DescType desiredType, AEK
 OSErr AEGetNthPtr(const AEDescList* list, long index, DescType desiredType, AEKeyword* keyword,
 	DescType* typeCode, void* dataPtr, Size maximumSize, Size* actualSize)
 {
-	AEDesc desc;
-	OSErr err = AEGetNthDesc(list, index, desiredType, keyword, &desc);
+	if (list == NULL)
+		return paramErr;
+	AEItem* item;
+	OSErr err = nthItem(list, index, &item);
+	if (err != noErr)
+		return err;
+	if (keyword)
+		*keyword = item->key;
+	return copyCoercedData(&item->desc, desiredType, typeCode, dataPtr, maximumSize, actualSize);
+}
+
+OSErr AESizeOfNthItem(const AEDescList* list, long index, DescType* typeCode, Size* dataSize)
+{
+	if (list == NULL)
+		return paramErr;
+	AEItem* item;
+	OSErr err = nthItem(list, index, &item);
 	if (err != noErr)
 		return err;
 	if (typeCode)
-		*typeCode = desc.descriptorType;
-	if (actualSize)
-		*actualSize = AEGetDescDataSize(&desc);
-	if (dataPtr)
-		err = AEGetDescData(&desc, dataPtr, maximumSize);
-	AEDisposeDesc(&desc);
-	return err;
+		*typeCode = item->desc.descriptorType;
+	if (dataSize)
+		*dataSize = AEGetDescDataSize(&item->desc);
+	return noErr;
 }
 
 OSErr AEDeleteItem(AEDescList* list, long index)
 {
+	if (list == NULL)
+		return paramErr;
 	AEStorage* storage = storageOf(list);
-	if (storage == NULL || !isList(list->descriptorType))
+	if (!isList(storage))
 		return errAEWrongDataType;
 	if (index < 1 || index > storage->itemCount)
 		return errAEBadListItem;
@@ -307,16 +668,11 @@ OSErr AEDeleteItem(AEDescList* list, long index)
 
 // --- Parameters (records and Apple Events) ---
 
-OSErr AEPutParamDesc(AERecord* record, AEKeyword keyword, const AEDesc* desc)
+static OSErr putKeyed(AEItem** items, long* count, long* capacity, AEKeyword keyword, const AEDesc* desc)
 {
-	if (record == NULL || desc == NULL)
-		return paramErr;
-	AEStorage* storage = storageOf(record);
-	if (storage == NULL || !isRecordLike(record->descriptorType))
-		return errAEWrongDataType;
-	AEItem* existing = findItem(storage->items, storage->itemCount, keyword);
+	AEItem* existing = findItem(*items, *count, keyword);
 	if (existing == NULL)
-		return appendItem(&storage->items, &storage->itemCount, &storage->itemCapacity, keyword, desc);
+		return appendItem(items, count, capacity, keyword, desc);
 
 	AEDesc copy;
 	OSErr err = AEDuplicateDesc(desc, &copy);
@@ -325,6 +681,16 @@ OSErr AEPutParamDesc(AERecord* record, AEKeyword keyword, const AEDesc* desc)
 	AEDisposeDesc(&existing->desc);
 	existing->desc = copy;
 	return noErr;
+}
+
+OSErr AEPutParamDesc(AERecord* record, AEKeyword keyword, const AEDesc* desc)
+{
+	if (record == NULL || desc == NULL)
+		return paramErr;
+	AEStorage* storage = storageOf(record);
+	if (!isRecordLike(storage))
+		return errAEWrongDataType;
+	return putKeyed(&storage->items, &storage->itemCount, &storage->itemCapacity, keyword, desc);
 }
 
 OSErr AEPutParamPtr(AERecord* record, AEKeyword keyword, DescType typeCode, const void* dataPtr, Size dataSize)
@@ -338,45 +704,47 @@ OSErr AEPutParamPtr(AERecord* record, AEKeyword keyword, DescType typeCode, cons
 	return err;
 }
 
+static OSErr findParam(const AERecord* record, AEKeyword keyword, AEItem** item)
+{
+	AEStorage* storage = storageOf(record);
+	if (!isRecordLike(storage))
+		return errAEWrongDataType;
+	*item = findItem(storage->items, storage->itemCount, keyword);
+	return *item ? noErr : errAEDescNotFound;
+}
+
 OSErr AEGetParamDesc(const AERecord* record, AEKeyword keyword, DescType desiredType, AEDesc* result)
 {
 	if (record == NULL || result == NULL)
 		return paramErr;
 	AEInitializeDesc(result);
-	AEStorage* storage = storageOf(record);
-	if (storage == NULL || !isRecordLike(record->descriptorType))
-		return errAEWrongDataType;
-	AEItem* item = findItem(storage->items, storage->itemCount, keyword);
-	if (item == NULL)
-		return errAEDescNotFound;
+	AEItem* item;
+	OSErr err = findParam(record, keyword, &item);
+	if (err != noErr)
+		return err;
 	return coerceDesc(&item->desc, desiredType, result);
 }
 
 OSErr AEGetParamPtr(const AERecord* record, AEKeyword keyword, DescType desiredType, DescType* typeCode,
 	void* dataPtr, Size maximumSize, Size* actualSize)
 {
-	AEDesc desc;
-	OSErr err = AEGetParamDesc(record, keyword, desiredType, &desc);
+	if (record == NULL)
+		return paramErr;
+	AEItem* item;
+	OSErr err = findParam(record, keyword, &item);
 	if (err != noErr)
 		return err;
-	if (typeCode)
-		*typeCode = desc.descriptorType;
-	if (actualSize)
-		*actualSize = AEGetDescDataSize(&desc);
-	if (dataPtr)
-		err = AEGetDescData(&desc, dataPtr, maximumSize);
-	AEDisposeDesc(&desc);
-	return err;
+	return copyCoercedData(&item->desc, desiredType, typeCode, dataPtr, maximumSize, actualSize);
 }
 
 OSErr AESizeOfParam(const AERecord* record, AEKeyword keyword, DescType* typeCode, Size* dataSize)
 {
-	AEStorage* storage = storageOf(record);
-	if (storage == NULL || !isRecordLike(record->descriptorType))
-		return errAEWrongDataType;
-	AEItem* item = findItem(storage->items, storage->itemCount, keyword);
-	if (item == NULL)
-		return errAEDescNotFound;
+	if (record == NULL)
+		return paramErr;
+	AEItem* item;
+	OSErr err = findParam(record, keyword, &item);
+	if (err != noErr)
+		return err;
 	if (typeCode)
 		*typeCode = item->desc.descriptorType;
 	if (dataSize)
@@ -386,12 +754,13 @@ OSErr AESizeOfParam(const AERecord* record, AEKeyword keyword, DescType* typeCod
 
 OSErr AEDeleteParam(AERecord* record, AEKeyword keyword)
 {
+	if (record == NULL)
+		return paramErr;
+	AEItem* item;
+	OSErr err = findParam(record, keyword, &item);
+	if (err != noErr)
+		return err;
 	AEStorage* storage = storageOf(record);
-	if (storage == NULL || !isRecordLike(record->descriptorType))
-		return errAEWrongDataType;
-	AEItem* item = findItem(storage->items, storage->itemCount, keyword);
-	if (item == NULL)
-		return errAEDescNotFound;
 	long index = item - storage->items;
 	AEDisposeDesc(&item->desc);
 	memmove(item, item + 1, (storage->itemCount - index - 1) * sizeof(AEItem));
@@ -407,7 +776,7 @@ OSErr AECreateAppleEvent(AEEventClass theAEEventClass, AEEventID theAEEventID, c
 	if (result == NULL)
 		return paramErr;
 	AEInitializeDesc(result);
-	OSErr err = newStorage(typeAppleEvent, NULL, 0, result);
+	OSErr err = newStorage(typeAppleEvent, kAEKindEvent, NULL, 0, result);
 	if (err != noErr)
 		return err;
 
@@ -431,19 +800,9 @@ OSErr AEPutAttributeDesc(AppleEvent* theAppleEvent, AEKeyword keyword, const AED
 	if (theAppleEvent == NULL || desc == NULL)
 		return paramErr;
 	AEStorage* storage = storageOf(theAppleEvent);
-	if (storage == NULL || theAppleEvent->descriptorType != typeAppleEvent)
+	if (!isEvent(storage))
 		return errAEWrongDataType;
-	AEItem* existing = findItem(storage->attributes, storage->attributeCount, keyword);
-	if (existing == NULL)
-		return appendItem(&storage->attributes, &storage->attributeCount, &storage->attributeCapacity, keyword, desc);
-
-	AEDesc copy;
-	OSErr err = AEDuplicateDesc(desc, &copy);
-	if (err != noErr)
-		return err;
-	AEDisposeDesc(&existing->desc);
-	existing->desc = copy;
-	return noErr;
+	return putKeyed(&storage->attributes, &storage->attributeCount, &storage->attributeCapacity, keyword, desc);
 }
 
 OSErr AEPutAttributePtr(AppleEvent* theAppleEvent, AEKeyword keyword, DescType typeCode, const void* dataPtr, Size dataSize)
@@ -457,35 +816,52 @@ OSErr AEPutAttributePtr(AppleEvent* theAppleEvent, AEKeyword keyword, DescType t
 	return err;
 }
 
+static OSErr findAttribute(const AppleEvent* theAppleEvent, AEKeyword keyword, AEItem** item)
+{
+	AEStorage* storage = storageOf(theAppleEvent);
+	if (!isEvent(storage))
+		return errAEWrongDataType;
+	*item = findItem(storage->attributes, storage->attributeCount, keyword);
+	return *item ? noErr : errAEDescNotFound;
+}
+
 OSErr AEGetAttributeDesc(const AppleEvent* theAppleEvent, AEKeyword keyword, DescType desiredType, AEDesc* result)
 {
 	if (theAppleEvent == NULL || result == NULL)
 		return paramErr;
 	AEInitializeDesc(result);
-	AEStorage* storage = storageOf(theAppleEvent);
-	if (storage == NULL || theAppleEvent->descriptorType != typeAppleEvent)
-		return errAEWrongDataType;
-	AEItem* item = findItem(storage->attributes, storage->attributeCount, keyword);
-	if (item == NULL)
-		return errAEDescNotFound;
+	AEItem* item;
+	OSErr err = findAttribute(theAppleEvent, keyword, &item);
+	if (err != noErr)
+		return err;
 	return coerceDesc(&item->desc, desiredType, result);
 }
 
 OSErr AEGetAttributePtr(const AppleEvent* theAppleEvent, AEKeyword keyword, DescType desiredType, DescType* typeCode,
 	void* dataPtr, Size maximumSize, Size* actualSize)
 {
-	AEDesc desc;
-	OSErr err = AEGetAttributeDesc(theAppleEvent, keyword, desiredType, &desc);
+	if (theAppleEvent == NULL)
+		return paramErr;
+	AEItem* item;
+	OSErr err = findAttribute(theAppleEvent, keyword, &item);
+	if (err != noErr)
+		return err;
+	return copyCoercedData(&item->desc, desiredType, typeCode, dataPtr, maximumSize, actualSize);
+}
+
+OSErr AESizeOfAttribute(const AppleEvent* theAppleEvent, AEKeyword keyword, DescType* typeCode, Size* dataSize)
+{
+	if (theAppleEvent == NULL)
+		return paramErr;
+	AEItem* item;
+	OSErr err = findAttribute(theAppleEvent, keyword, &item);
 	if (err != noErr)
 		return err;
 	if (typeCode)
-		*typeCode = desc.descriptorType;
-	if (actualSize)
-		*actualSize = AEGetDescDataSize(&desc);
-	if (dataPtr)
-		err = AEGetDescData(&desc, dataPtr, maximumSize);
-	AEDisposeDesc(&desc);
-	return err;
+		*typeCode = item->desc.descriptorType;
+	if (dataSize)
+		*dataSize = AEGetDescDataSize(&item->desc);
+	return noErr;
 }
 
 OSStatus AESendMessage(const AppleEvent* event, AppleEvent* reply, AESendMode sendMode, long timeOutInTicks)
@@ -545,7 +921,7 @@ static void describe(const AEDesc* desc, char** buffer, size_t* length, size_t* 
 	char type[5], key[5], text[64];
 	fourCC(type, desc->descriptorType);
 	AEStorage* storage = storageOf(desc);
-	if (!isList(desc->descriptorType) || storage == NULL) {
+	if (!isList(storage)) {
 		snprintf(text, sizeof(text), "'%s'(%ld bytes)", type, (long) AEGetDescDataSize(desc));
 		appendText(buffer, length, capacity, text);
 		return;
@@ -555,7 +931,7 @@ static void describe(const AEDesc* desc, char** buffer, size_t* length, size_t* 
 	for (long i = 0; i < storage->itemCount; i++) {
 		if (i)
 			appendText(buffer, length, capacity, ", ");
-		if (desc->descriptorType != typeAEList) {
+		if (storage->kind != kAEKindList) {
 			fourCC(key, storage->items[i].key);
 			snprintf(text, sizeof(text), "'%s':", key);
 			appendText(buffer, length, capacity, text);
