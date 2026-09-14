@@ -22,7 +22,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CoreFoundation/CFString.h>
 #include <climits>
 #include <cerrno>
+#include <cstring>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <string>
 #include <unordered_map>
@@ -118,11 +120,11 @@ OSErr ResError(void)
 // Creates an empty file named `name` in `parentDir` (its resource fork starts out empty);
 // the result is reported through ResError().
 void FSCreateResFile(const FSRef* parentDir, UniCharCount nameLength, const UniChar* name,
-	FSCatalogInfoBitmap whichInfo, const FSCatalogInfo* catalogInfo, FSRef* newRef, FSSpecPtr* newSpec)
+	FSCatalogInfoBitmap whichInfo, const FSCatalogInfo* catalogInfo, FSRef* newRef, FSSpecPtr newSpec)
 {
 	uint8_t parentPath[PATH_MAX];
 
-	if (!parentDir || !name || nameLength == 0)
+	if (!parentDir || !name || nameLength == 0 || nameLength > 255)
 	{
 		g_lastError = paramErr;
 		return;
@@ -135,27 +137,55 @@ void FSCreateResFile(const FSRef* parentDir, UniCharCount nameLength, const UniC
 
 	CFStringRef nameString = CFStringCreateWithCharacters(nullptr, name, nameLength);
 	char nameUTF8[PATH_MAX];
-	Boolean converted = CFStringGetFileSystemRepresentation(nameString, nameUTF8, sizeof(nameUTF8));
-	CFRelease(nameString);
+	Boolean converted = nameString && CFStringGetFileSystemRepresentation(nameString, nameUTF8, sizeof(nameUTF8));
+	if (nameString)
+		CFRelease(nameString);
 	if (!converted)
 	{
 		g_lastError = bdNamErr;
 		return;
 	}
 
-	std::string path = std::string((const char*) parentPath) + "/" + nameUTF8;
-	int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0644);
-	if (fd < 0)
+	// The name is a single path component: a '/' in a File Manager name is stored as ':'.
+	for (char* p = nameUTF8; *p; p++)
 	{
-		g_lastError = (errno == EEXIST) ? dupFNErr : ioErr;
+		if (*p == '/')
+			*p = ':';
+	}
+	if (strcmp(nameUTF8, ".") == 0 || strcmp(nameUTF8, "..") == 0)
+	{
+		g_lastError = bdNamErr;
 		return;
 	}
+
+	std::string path = std::string((const char*) parentPath) + "/" + nameUTF8;
+	mode_t mode = 0644;
+	if (catalogInfo && (whichInfo & kFSCatInfoPermissions))
+		mode = catalogInfo->fsPermissionInfo.mode & 07777;
+
+	int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
+	if (fd < 0)
+	{
+		switch (errno)
+		{
+			case EEXIST: g_lastError = dupFNErr; break;
+			case ENOENT:
+			case ENOTDIR: g_lastError = dirNFErr; break;
+			case EACCES:
+			case EPERM: g_lastError = permErr; break;
+			case ENAMETOOLONG: g_lastError = bdNamErr; break;
+			default: g_lastError = ioErr; break;
+		}
+		return;
+	}
+	if (catalogInfo && (whichInfo & kFSCatInfoPermissions))
+		::fchmod(fd, mode); // not reduced by the umask, like FSSetCatalogInfo
 	::close(fd);
 
 	if (newRef)
 		FSPathMakeRef((const uint8_t*) path.c_str(), newRef, nullptr);
 	if (newSpec)
-		*newSpec = nullptr;
+		memset(newSpec, 0, sizeof(*newSpec)); // FSSpecs aren't supported; don't leave it uninitialized
 	g_lastError = noErr;
 }
 
