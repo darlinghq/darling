@@ -19,6 +19,16 @@
 
 #include <Foundation/Foundation.h>
 
+// Keys of the dictionaries describing folder listing entries and transfer progress.
+FOUNDATION_EXPORT NSString * const kFTSListingNameKey;
+FOUNDATION_EXPORT NSString * const kFTSListingTypeKey;
+FOUNDATION_EXPORT NSString * const kFTSListingSizeKey;
+FOUNDATION_EXPORT NSString * const kFTSProgressBytesTransferredKey;
+FOUNDATION_EXPORT NSString * const kFTSProgressBytesTotalKey;
+FOUNDATION_EXPORT NSString * const kFTSProgressPercentageKey;
+FOUNDATION_EXPORT NSString * const kFTSProgressEstimatedTimeKey;
+FOUNDATION_EXPORT NSString * const kFTSProgressTransferRateKey;
+
 @interface OBEXFileTransferServices : NSObject
 
 @end

@@ -19,6 +19,15 @@
 
 #import <IOBluetooth/OBEXFileTransferServices.h>
 
+NSString * const kFTSListingNameKey = @"kFTSListingNameKey";
+NSString * const kFTSListingTypeKey = @"kFTSListingTypeKey";
+NSString * const kFTSListingSizeKey = @"kFTSListingSizeKey";
+NSString * const kFTSProgressBytesTransferredKey = @"kFTSProgressBytesTransferredKey";
+NSString * const kFTSProgressBytesTotalKey = @"kFTSProgressBytesTotalKey";
+NSString * const kFTSProgressPercentageKey = @"kFTSProgressPercentageKey";
+NSString * const kFTSProgressEstimatedTimeKey = @"kFTSProgressEstimatedTimeKey";
+NSString * const kFTSProgressTransferRateKey = @"kFTSProgressTransferRateKey";
+
 @implementation OBEXFileTransferServices
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
