@@ -1,0 +1,8 @@
+---
+# Swift API notes for Darling's Darwin Clang module.
+Name: Darwin
+Typedefs:
+# MacTypes.h `Duration` (SInt32) would shadow Swift.Duration for every `import Darwin` client.
+- Name: Duration
+  Availability: nonswift
+  AvailabilityMsg: 'Use Swift.Duration'

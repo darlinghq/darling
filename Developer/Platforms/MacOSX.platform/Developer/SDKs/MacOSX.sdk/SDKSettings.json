@@ -1,0 +1,8 @@
+{
+  "CanonicalName": "macosx11.0",
+  "DisplayName": "macOS 11.0 (Darling)",
+  "MinimalDisplayName": "11.0",
+  "Version": "11.0",
+  "MaximumDeploymentTarget": "26.99",
+  "DefaultProperties": {"PLATFORM_NAME": "macosx"}
+}

@@ -1,0 +1,6 @@
+module os [system] [extern_c] {
+  header "log.h"
+  header "activity.h"
+  header "signpost.h"
+  export *
+}

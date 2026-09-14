@@ -1,0 +1,79 @@
+---
+# Swift API notes for the ObjectiveC Clang module (Darling's objc/NSObject.h has no nullability annotations).
+Name: ObjectiveC
+Classes:
+- Name: NSObject
+  Methods:
+  - Selector: init
+    MethodKind: Instance
+    NullabilityOfRet: N
+    DesignatedInit: true
+  - Selector: new
+    MethodKind: Class
+    NullabilityOfRet: N
+  - Selector: copy
+    MethodKind: Instance
+    NullabilityOfRet: N
+  - Selector: mutableCopy
+    MethodKind: Instance
+    NullabilityOfRet: N
+  - Selector: 'methodForSelector:'
+    MethodKind: Instance
+    NullabilityOfRet: N
+    Nullability: [ N ]
+  - Selector: 'instanceMethodForSelector:'
+    MethodKind: Class
+    NullabilityOfRet: N
+    Nullability: [ N ]
+  - Selector: 'respondsToSelector:'
+    MethodKind: Instance
+    Nullability: [ N ]
+Protocols:
+- Name: NSObject
+  Methods:
+  - Selector: class
+    MethodKind: Instance
+    NullabilityOfRet: N
+  - Selector: self
+    MethodKind: Instance
+    NullabilityOfRet: N
+  - Selector: 'isEqual:'
+    MethodKind: Instance
+    Nullability: [ U ]
+  - Selector: 'isKindOfClass:'
+    MethodKind: Instance
+    Nullability: [ N ]
+  - Selector: 'isMemberOfClass:'
+    MethodKind: Instance
+    Nullability: [ N ]
+  - Selector: 'respondsToSelector:'
+    MethodKind: Instance
+    Nullability: [ N ]
+  - Selector: 'conformsToProtocol:'
+    MethodKind: Instance
+    Nullability: [ N ]
+  - Selector: 'performSelector:'
+    MethodKind: Instance
+    Nullability: [ N ]
+  - Selector: 'performSelector:withObject:'
+    MethodKind: Instance
+    Nullability: [ N, U ]
+  - Selector: 'performSelector:withObject:withObject:'
+    MethodKind: Instance
+    Nullability: [ N, U, U ]
+  - Selector: description
+    MethodKind: Instance
+    NullabilityOfRet: N
+  - Selector: debugDescription
+    MethodKind: Instance
+    NullabilityOfRet: N
+  Properties:
+  - Name: superclass
+    PropertyKind: Instance
+    Nullability: O
+  - Name: description
+    PropertyKind: Instance
+    Nullability: N
+  - Name: debugDescription
+    PropertyKind: Instance
+    Nullability: N
