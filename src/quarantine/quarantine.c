@@ -17,6 +17,7 @@
  */
 
 #include "quarantine.h"
+#include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -168,7 +169,11 @@ int _qtn_proc_set_tracking_data(qtn_proc_t proc, const void* data, size_t data_l
 
 int _qtn_proc_apply_to_self(qtn_proc_t proc)
 {
-	return QTN_NOT_QUARANTINED;
+	// Nothing is enforced, so applying always succeeds. Callers (Terminal, launchd) treat any
+	// non-zero result as a failure and log it.
+	if (!proc)
+		return EINVAL;
+	return 0;
 }
 
 qtn_proc_t qtn_proc_alloc(void)
