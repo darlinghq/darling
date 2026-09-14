@@ -93,6 +93,11 @@ LSASNRef _LSASNCreateWithPid(CFAllocatorRef allocator, pid_t pid);
 
 OSStatus _LSLaunchApplication(CFURLRef appPath);
 
+// Signatures inferred from callers (Script Editor).
+Boolean _LSASNExtractHighAndLowParts(LSASNRef asn, UInt32* outHigh, UInt32* outLow);
+CFArrayRef _LSCopyApplicationArray(LSSessionID sessionID);
+OSStatus _LSSetWeakBindingURLForType(LSSessionID sessionID, int unknown, CFStringRef contentType, LSRolesMask roles, CFURLRef appURL);
+
 // Assumed
 #define kLSDownloadRiskCategoryKey CFSTR("LSDownloadRiskCategory")
 

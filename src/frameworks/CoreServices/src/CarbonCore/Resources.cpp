@@ -18,6 +18,13 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <CarbonCore/Resources.h>
+#include <CoreServices/FileManager.h>
+#include <CoreFoundation/CFString.h>
+#include <climits>
+#include <cerrno>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string>
 #include <unordered_map>
 #include <mutex>
 #include <limits>
@@ -106,6 +113,50 @@ OSErr FSOpenResourceFile(const FSRef* ref, UniCharCount forkNameLength, const Un
 OSErr ResError(void)
 {
 	return g_lastError;
+}
+
+// Creates an empty file named `name` in `parentDir` (its resource fork starts out empty);
+// the result is reported through ResError().
+void FSCreateResFile(const FSRef* parentDir, UniCharCount nameLength, const UniChar* name,
+	FSCatalogInfoBitmap whichInfo, const FSCatalogInfo* catalogInfo, FSRef* newRef, FSSpecPtr* newSpec)
+{
+	uint8_t parentPath[PATH_MAX];
+
+	if (!parentDir || !name || nameLength == 0)
+	{
+		g_lastError = paramErr;
+		return;
+	}
+	if (FSRefMakePath(parentDir, parentPath, sizeof(parentPath)) != noErr)
+	{
+		g_lastError = dirNFErr;
+		return;
+	}
+
+	CFStringRef nameString = CFStringCreateWithCharacters(nullptr, name, nameLength);
+	char nameUTF8[PATH_MAX];
+	Boolean converted = CFStringGetFileSystemRepresentation(nameString, nameUTF8, sizeof(nameUTF8));
+	CFRelease(nameString);
+	if (!converted)
+	{
+		g_lastError = bdNamErr;
+		return;
+	}
+
+	std::string path = std::string((const char*) parentPath) + "/" + nameUTF8;
+	int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0644);
+	if (fd < 0)
+	{
+		g_lastError = (errno == EEXIST) ? dupFNErr : ioErr;
+		return;
+	}
+	::close(fd);
+
+	if (newRef)
+		FSPathMakeRef((const uint8_t*) path.c_str(), newRef, nullptr);
+	if (newSpec)
+		*newSpec = nullptr;
+	g_lastError = noErr;
 }
 
 ResFileRefNum CurResFile(void)

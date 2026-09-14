@@ -148,3 +148,20 @@ void* scriptAssistantCaseCompareItems(void)
     if (verbose) puts("STUB: scriptAssistantCaseCompareItems called");
     return NULL;
 }
+
+NSString* const OSAScriptErrorMessageKey = @"OSAScriptErrorMessageKey";
+NSString* const OSAScriptErrorBriefMessageKey = @"OSAScriptErrorBriefMessageKey";
+NSString* const OSAScriptErrorNumberKey = @"OSAScriptErrorNumberKey";
+NSString* const OSAScriptErrorNumber = @"OSAScriptErrorNumber";
+NSString* const OSAScriptErrorPartialResultKey = @"OSAScriptErrorPartialResultKey";
+NSString* const OSAScriptErrorOffendingObjectKey = @"OSAScriptErrorOffendingObjectKey";
+NSString* const OSAScriptErrorExpectedTypeKey = @"OSAScriptErrorExpectedTypeKey";
+NSString* const OSAScriptErrorAppAddressKey = @"OSAScriptErrorAppAddressKey";
+NSString* const OSAScriptErrorRangeKey = @"OSAScriptErrorRangeKey";
+
+// These match the UTIs that CoreTypes declares for the corresponding file formats.
+NSString* const OSAStorageScriptType = @"com.apple.applescript.script";
+NSString* const OSAStorageScriptBundleType = @"com.apple.applescript.script-bundle";
+NSString* const OSAStorageApplicationType = @"com.apple.application-file";
+NSString* const OSAStorageApplicationBundleType = @"com.apple.application-bundle";
+NSString* const OSAStorageTextType = @"com.apple.applescript.text";

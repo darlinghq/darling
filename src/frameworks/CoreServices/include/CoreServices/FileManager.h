@@ -225,6 +225,7 @@ OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, str
 OSStatus FSDeleteObject(const FSRef* fsref);
 
 OSStatus FSGetCatalogInfo(const struct FSRef* ref, uint32_t infoBits, struct FSCatalogInfo* infoOut, struct HFSUniStr255* nameOut, FSSpecPtr fsspec, FSRefPtr parentDir);
+OSErr FSSetCatalogInfo(const struct FSRef* ref, FSCatalogInfoBitmap whichInfo, const struct FSCatalogInfo* catalogInfo);
 
 OSErr PBCreateDirectoryUnicodeSync(struct FSRefParam* paramBlock);
 OSErr PBCreateFileUnicodeSync(struct FSRefParam* paramBlock);

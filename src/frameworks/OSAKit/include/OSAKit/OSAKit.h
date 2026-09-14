@@ -147,4 +147,22 @@ void* _osa_fileRefFromPath(void);
 void* _osa_pathFromFSRef(void);
 void* scriptAssistantCaseCompareItems(void);
 
+// OSAScript error dictionary keys
+extern NSString* const OSAScriptErrorMessageKey;
+extern NSString* const OSAScriptErrorBriefMessageKey;
+extern NSString* const OSAScriptErrorNumberKey;
+extern NSString* const OSAScriptErrorNumber;
+extern NSString* const OSAScriptErrorPartialResultKey;
+extern NSString* const OSAScriptErrorOffendingObjectKey;
+extern NSString* const OSAScriptErrorExpectedTypeKey;
+extern NSString* const OSAScriptErrorAppAddressKey;
+extern NSString* const OSAScriptErrorRangeKey;
+
+// OSAScript storage types (uniform type identifiers)
+extern NSString* const OSAStorageScriptType;
+extern NSString* const OSAStorageScriptBundleType;
+extern NSString* const OSAStorageApplicationType;
+extern NSString* const OSAStorageApplicationBundleType;
+extern NSString* const OSAStorageTextType;
+
 #endif

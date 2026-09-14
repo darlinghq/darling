@@ -150,6 +150,29 @@ typedef struct EventRecord {
   EventModifiers modifiers;
 } EventRecord;
 
+#ifndef keyDown
+enum {
+  keyDown = 3,
+  autoKey = 5,
+};
+#endif
+
+#ifndef cmdKey
+enum {
+  cmdKey = 1 << 8,
+};
+#endif
+
+enum {
+  charCodeMask = 0x000000FF,
+};
+
+// Returns true if `event` is a key-down or auto-key event with the Command key held and
+// character `test` (e.g. '.' for Command-period).
+Boolean IsCmdChar(const EventRecord* event, short test);
+// Returns true if a Command-period or Escape is pending in the event queue.
+Boolean CheckEventQueueForUserCancel(void);
+
 #ifdef __cplusplus
 }
 #endif

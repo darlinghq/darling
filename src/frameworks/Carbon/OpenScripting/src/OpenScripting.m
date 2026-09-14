@@ -778,3 +778,6 @@ void* _OSAStoreURL(void)
     if (verbose) puts("STUB: _OSAStoreURL called");
     return NULL;
 }
+
+NSString* const OSAAppletShowStartupScreenKey = @"OSAAppletShowStartupScreen";
+NSString* const OSAAppletStayOpenKey = @"OSAAppletStayOpen";

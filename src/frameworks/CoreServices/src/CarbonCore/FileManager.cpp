@@ -275,6 +275,25 @@ OSStatus FSGetCatalogInfo(const FSRef* ref, uint32_t infoBits, FSCatalogInfo* in
 	return noErr;
 }
 
+OSErr FSSetCatalogInfo(const FSRef* ref, FSCatalogInfoBitmap whichInfo, const FSCatalogInfo* catalogInfo)
+{
+	std::string path;
+
+	if (!catalogInfo)
+		return paramErr;
+	if (!FSRefMakePath(ref, path))
+		return fnfErr;
+
+	// Only the POSIX permissions are applied; other catalog fields have no Linux equivalent here.
+	if (whichInfo & kFSCatInfoPermissions)
+	{
+		if (::chmod(path.c_str(), catalogInfo->fsPermissionInfo.mode & 07777) != 0)
+			return makeOSStatus(errno);
+	}
+
+	return noErr;
+}
+
 bool hasgid(gid_t gid)
 {
 	gid_t* gids;
