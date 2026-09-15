@@ -19,6 +19,16 @@
 
 #include <Foundation/Foundation.h>
 
-@interface OSAScriptParser : NSObject
+@class OSAScript, OSAScriptElement;
+
+@interface OSAScriptParser : NSObject {
+    OSAScript *_script;
+    OSAScriptElement *_element;
+}
+
++ (instancetype)parserWithScript:(OSAScript *)script;
+
+- (BOOL)parse;
+@property (readonly) OSAScriptElement *element;
 
 @end

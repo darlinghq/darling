@@ -19,8 +19,34 @@
 
 #import <OSAKit/OSAScriptParser.h>
 #import <darling-stub-forwarding.h>
+#import <OSAKit/OSAScript.h>
+#import <OSAKit/OSAScriptElement.h>
 
 @implementation OSAScriptParser
+
+@synthesize element = _element;
+
++ (instancetype)parserWithScript:(OSAScript *)script
+{
+    OSAScriptParser *parser = [[[self alloc] init] autorelease];
+    parser->_script = [script retain];
+    return parser;
+}
+
+- (void)dealloc
+{
+    [_script release];
+    [_element release];
+    [super dealloc];
+}
+
+// There is no AppleScript parser: the result is one untitled root element spanning the source.
+- (BOOL)parse
+{
+    [_element release];
+    _element = [[OSAScriptElement alloc] initWithRange:NSMakeRange(0, [[_script source] length])];
+    return YES;
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
