@@ -329,3 +329,44 @@ CFStringRef LSCopyDefaultHandlerForURLScheme(CFStringRef inURLScheme)
 	puts("LSCopyDefaultHandlerForURLScheme STUB");
 	return NULL; // (could also return "" I guess)
 }
+
+OSStatus LSCopyApplicationForMIMEType(CFStringRef inMIMEType, LSRolesMask inRoleMask, CFURLRef *outAppURL)
+{
+	if (!outAppURL)
+		return paramErr;
+	*outAppURL = NULL;
+
+	if (!inMIMEType)
+		return paramErr;
+
+	CFStringRef uti = UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, inMIMEType, NULL);
+	if (!uti)
+		return kLSApplicationNotFoundErr;
+
+	CFURLRef appURL = LSCopyDefaultApplicationURLForContentType(uti, inRoleMask, NULL);
+	CFRelease(uti);
+
+	if (appURL)
+	{
+		*outAppURL = appURL;
+		return noErr;
+	}
+	return kLSApplicationNotFoundErr;
+}
+
+OSStatus LSCopyDisplayNameForURL(CFURLRef inURL, CFStringRef *outDisplayName)
+{
+	if (!inURL || !outDisplayName)
+		return paramErr;
+
+	NSString* path = [(NSURL*)inURL path];
+	if (!path)
+		return paramErr;
+
+	NSString* lastComp = [path lastPathComponent];
+	if (!lastComp)
+		lastComp = path;
+
+	*outDisplayName = (CFStringRef)[lastComp copy];
+	return noErr;
+}

@@ -88,7 +88,7 @@ LSOpenItemsWithRole(
 		OSStatus status = FSRefMakePath(&inItems[i], (UInt8*) path, sizeof(path)-1);
 		if (status != noErr)
 		{
-			for (CFIndex j; j < i; j++)
+			for (CFIndex j = 0; j < i; j++)
 				CFRelease(urls[j]);
 			free(urls);
 			return status;
@@ -100,7 +100,7 @@ LSOpenItemsWithRole(
 	}
 
 	CFArrayRef urlArray = CFArrayCreate(NULL, (const void**) urls, inItemCount, &kCFTypeArrayCallBacks);
-	for (CFIndex i; i < inItemCount; i++)
+	for (CFIndex i = 0; i < inItemCount; i++)
 		CFRelease(urls[i]);
 	free(urls);
 
@@ -171,3 +171,94 @@ LSOpenFromURLSpec(
 {
 }
 */
+
+OSStatus LSOpenFromRefSpec(const LSLaunchFSRefSpec *inLaunchSpec, FSRef *outLaunchedRef)
+{
+	if (!inLaunchSpec)
+		return paramErr;
+
+	CFURLRef appURL = NULL;
+	if (inLaunchSpec->appRef != NULL)
+	{
+		char path[4096];
+		OSStatus status = FSRefMakePath(inLaunchSpec->appRef, (UInt8*) path, sizeof(path) - 1);
+		if (status != noErr)
+			return status;
+
+		CFStringRef urlStr = CFStringCreateWithCString(NULL, path, kCFStringEncodingUTF8);
+		if (!urlStr)
+			return coreFoundationUnknownErr;
+		appURL = CFURLCreateWithFileSystemPath(NULL, urlStr, kCFURLPOSIXPathStyle, FALSE);
+		CFRelease(urlStr);
+	}
+
+	CFMutableArrayRef itemURLs = NULL;
+	if (inLaunchSpec->itemRefs != NULL && inLaunchSpec->numDocs > 0)
+	{
+		itemURLs = CFArrayCreateMutable(NULL, inLaunchSpec->numDocs, &kCFTypeArrayCallBacks);
+		for (ItemCount i = 0; i < inLaunchSpec->numDocs; ++i)
+		{
+			char path[4096];
+			OSStatus status = FSRefMakePath(&inLaunchSpec->itemRefs[i], (UInt8*) path, sizeof(path) - 1);
+			if (status == noErr)
+			{
+				CFStringRef urlStr = CFStringCreateWithCString(NULL, path, kCFStringEncodingUTF8);
+				if (urlStr)
+				{
+					CFURLRef docURL = CFURLCreateWithFileSystemPath(NULL, urlStr, kCFURLPOSIXPathStyle, FALSE);
+					CFRelease(urlStr);
+					if (docURL)
+					{
+						CFArrayAppendValue(itemURLs, docURL);
+						CFRelease(docURL);
+					}
+				}
+			}
+		}
+	}
+
+	if (!appURL && (!itemURLs || CFArrayGetCount(itemURLs) == 0))
+	{
+		if (itemURLs)
+			CFRelease(itemURLs);
+		return paramErr;
+	}
+
+	LSLaunchURLSpec urlSpec;
+	memset(&urlSpec, 0, sizeof(urlSpec));
+	urlSpec.appURL = appURL;
+	urlSpec.itemURLs = itemURLs;
+	urlSpec.passThruParams = inLaunchSpec->passThruParams;
+	urlSpec.launchFlags = inLaunchSpec->launchFlags;
+	urlSpec.asyncRefCon = inLaunchSpec->asyncRefCon;
+
+	CFURLRef launchedURL = NULL;
+	OSStatus status = LSOpenFromURLSpec(&urlSpec, &launchedURL);
+
+	if (appURL)
+		CFRelease(appURL);
+	if (itemURLs)
+		CFRelease(itemURLs);
+
+	if (status != noErr)
+		return status;
+
+	if (outLaunchedRef && launchedURL)
+	{
+		char path[4096];
+		CFStringRef pathStr = CFURLCopyFileSystemPath(launchedURL, kCFURLPOSIXPathStyle);
+		if (pathStr)
+		{
+			if (CFStringGetCString(pathStr, path, sizeof(path), kCFStringEncodingUTF8))
+			{
+				FSPathMakeRef((const UInt8*) path, outLaunchedRef, NULL);
+			}
+			CFRelease(pathStr);
+		}
+	}
+
+	if (launchedURL)
+		CFRelease(launchedURL);
+
+	return status;
+}
