@@ -28,6 +28,15 @@ typedef NS_ENUM(NSInteger, OSAScriptState) {
 };
 
 @interface OSAScriptController : NSController
+{
+    OSAScriptView *_scriptView;
+    NSTextView *_resultView;
+    OSAScript *_script;
+    OSALanguage *_language;
+    OSAScriptState _scriptState;
+    BOOL _compiling;
+    NSUndoManager *_undoManager;
+}
 
 @property (assign) OSAScriptView *scriptView;
 @property (assign) NSTextView *resultView;

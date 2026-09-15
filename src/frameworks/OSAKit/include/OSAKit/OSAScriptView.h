@@ -20,6 +20,14 @@
 #import <AppKit/AppKit.h>
 
 @interface OSAScriptView : NSTextView
+{
+    BOOL _usesScriptAssistant;
+    BOOL _usesTabs;
+    NSUInteger _tabWidth;
+    BOOL _wrapsLines;
+    BOOL _indentsWrappedLines;
+    NSUInteger _indentWidth;
+}
 
 @property (copy) NSString *source;
 @property BOOL usesScriptAssistant;
