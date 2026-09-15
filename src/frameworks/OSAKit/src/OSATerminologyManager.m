@@ -19,8 +19,23 @@
 
 #import <OSAKit/OSATerminologyManager.h>
 #import <darling-stub-forwarding.h>
+#include <dispatch/dispatch.h>
 
 @implementation OSATerminologyManager
+
++ (instancetype)sharedTerminologyManager
+{
+    static OSATerminologyManager *shared;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        shared = [[OSATerminologyManager alloc] init];
+    });
+    return shared;
+}
+
+- (void)readTerms
+{
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {

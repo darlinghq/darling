@@ -21,4 +21,9 @@
 
 @interface OSATerminologyManager : NSObject
 
++ (instancetype)sharedTerminologyManager;
+
+// Loads application terminology for code completion; there is no completion engine, so nothing is read.
+- (void)readTerms;
+
 @end
