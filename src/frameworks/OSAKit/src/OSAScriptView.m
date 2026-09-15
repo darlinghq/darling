@@ -29,6 +29,11 @@
 @synthesize indentsWrappedLines = _indentsWrappedLines;
 @synthesize indentWidth = _indentWidth;
 
+- (OSAScriptAssistant *)scriptAssistant
+{
+    return nil;
+}
+
 - (NSString *)source
 {
     return [[[self string] copy] autorelease];

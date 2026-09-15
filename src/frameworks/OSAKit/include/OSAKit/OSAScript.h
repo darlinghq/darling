@@ -66,6 +66,7 @@ typedef NS_OPTIONS(NSUInteger, OSAStorageOptions) {
 @property (readonly, getter=isCompiled) BOOL compiled;
 @property (readonly, copy) NSAttributedString *richTextSource;
 @property (readonly) BOOL hasOpenHandler;
+@property (retain) NSDate *date;
 
 - (NSString *)sourceAndReturnError:(NSDictionary **)errorInfo;
 - (BOOL)compileAndReturnError:(NSDictionary **)errorInfo;

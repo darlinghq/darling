@@ -22,6 +22,10 @@
 
 @implementation OSATextStorage
 
+@synthesize wrapsLines = _wrapsLines;
+@synthesize indentsWrappedLines = _indentsWrappedLines;
+@synthesize date = _date;
+
 - (instancetype)init
 {
     return [self initWithString:@""];
@@ -51,6 +55,7 @@
 - (void)dealloc
 {
     [_contents release];
+    [_date release];
     [super dealloc];
 }
 
@@ -73,6 +78,7 @@
 - (void)replaceCharactersInRange:(NSRange)range withString:(NSString *)string
 {
     [_contents replaceCharactersInRange:range withString:string];
+    [self setDate:[NSDate date]];
     [self edited:NSTextStorageEditedCharacters | NSTextStorageEditedAttributes
            range:range
   changeInLength:(NSInteger)[string length] - (NSInteger)range.length];
@@ -81,6 +87,7 @@
 - (void)replaceCharactersInRange:(NSRange)range withAttributedString:(NSAttributedString *)string
 {
     [_contents replaceCharactersInRange:range withAttributedString:string];
+    [self setDate:[NSDate date]];
     [self edited:NSTextStorageEditedCharacters | NSTextStorageEditedAttributes
            range:range
   changeInLength:(NSInteger)[string length] - (NSInteger)range.length];
