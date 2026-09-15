@@ -17,8 +17,30 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <AppKit/AppKit.h>
+#import <OSAKit/OSAScript.h>
+#import <OSAKit/OSAScriptView.h>
 
-@interface OSAScriptController : NSObject
+typedef NS_ENUM(NSInteger, OSAScriptState) {
+    OSAScriptStopped,
+    OSAScriptRunning,
+    OSAScriptRecording,
+};
+
+@interface OSAScriptController : NSController
+
+@property (assign) OSAScriptView *scriptView;
+@property (assign) NSTextView *resultView;
+@property (retain) OSAScript *script;
+@property (retain) OSALanguage *language;
+@property (readonly) OSAScriptState scriptState;
+@property (readonly, getter=isCompiling) BOOL compiling;
+// Not in the public header; Script Editor sets its document's undo manager here.
+@property (retain) NSUndoManager *undoManager;
+
+- (IBAction)compileScript:(id)sender;
+- (IBAction)recordScript:(id)sender;
+- (IBAction)runScript:(id)sender;
+- (IBAction)stopScript:(id)sender;
 
 @end

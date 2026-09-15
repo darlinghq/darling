@@ -116,4 +116,5 @@ add_framework(OSAKit
         system
         objc
         Foundation
+        AppKit
 )

@@ -22,6 +22,23 @@
 
 @implementation OSAScriptView
 
+@synthesize usesScriptAssistant = _usesScriptAssistant;
+@synthesize usesTabs = _usesTabs;
+@synthesize tabWidth = _tabWidth;
+@synthesize wrapsLines = _wrapsLines;
+@synthesize indentsWrappedLines = _indentsWrappedLines;
+@synthesize indentWidth = _indentWidth;
+
+- (NSString *)source
+{
+    return [[[self string] copy] autorelease];
+}
+
+- (void)setSource:(NSString *)source
+{
+    [self setString:source ?: @""];
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);

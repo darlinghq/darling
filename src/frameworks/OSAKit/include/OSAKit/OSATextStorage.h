@@ -17,8 +17,13 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <AppKit/AppKit.h>
 
-@interface OSATextStorage : NSObject
+@interface OSATextStorage : NSTextStorage {
+    NSMutableAttributedString *_contents;
+}
+
+- (void)replaceCharactersInRange:(NSRange)range withString:(NSString *)string withUndoManager:(NSUndoManager *)undoManager;
+- (void)replaceCharactersInRange:(NSRange)range withAttributedString:(NSAttributedString *)string withUndoManager:(NSUndoManager *)undoManager;
 
 @end

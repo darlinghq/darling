@@ -17,8 +17,8 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <OSAKit/OSATextStorage.h>
 
-@interface OSAScriptTextStorage : NSObject
+@interface OSAScriptTextStorage : OSATextStorage
 
 @end
