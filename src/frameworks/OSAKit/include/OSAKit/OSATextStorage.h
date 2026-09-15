@@ -19,17 +19,22 @@
 
 #import <AppKit/AppKit.h>
 
+@class OSAScriptController;
+
 @interface OSATextStorage : NSTextStorage {
     NSMutableAttributedString *_contents;
     BOOL _wrapsLines;
     BOOL _indentsWrappedLines;
     NSDate *_date;
+    OSAScriptController *_controller;
 }
 
 @property BOOL wrapsLines;
 @property BOOL indentsWrappedLines;
 // When the characters last changed; Script Editor compares it with -[OSAScript date] to skip recompiling.
 @property (retain) NSDate *date;
+// Not retained: the document owns both the controller and this storage.
+@property (assign) OSAScriptController *controller;
 
 - (void)replaceCharactersInRange:(NSRange)range withString:(NSString *)string withUndoManager:(NSUndoManager *)undoManager;
 - (void)replaceCharactersInRange:(NSRange)range withAttributedString:(NSAttributedString *)string withUndoManager:(NSUndoManager *)undoManager;

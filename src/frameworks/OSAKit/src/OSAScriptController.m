@@ -29,6 +29,7 @@
 @synthesize scriptState = _scriptState;
 @synthesize compiling = _compiling;
 @synthesize undoManager = _undoManager;
+@synthesize defaultTarget = _defaultTarget;
 
 // Nib outlets arrive through connectors; NSController's own coder support is unimplemented.
 - (instancetype)initWithCoder:(NSCoder *)coder
@@ -41,6 +42,7 @@
     [_script release];
     [_language release];
     [_undoManager release];
+    [_defaultTarget release];
     [super dealloc];
 }
 
@@ -67,9 +69,9 @@
 {
     OSAScript *script = [[[OSAScript alloc] initWithSource:[_scriptView source] ?: @"" language:[self language]] autorelease];
     NSDictionary *errorInfo = nil;
-    _compiling = YES;
+    [self setIsCompiling:YES];
     BOOL compiled = [script compileAndReturnError:&errorInfo];
-    _compiling = NO;
+    [self setIsCompiling:NO];
     [self setScript:script];
     if (!compiled)
         [self showError:errorInfo];

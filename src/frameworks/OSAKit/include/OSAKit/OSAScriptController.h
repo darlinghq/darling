@@ -43,9 +43,10 @@ typedef NS_ENUM(NSInteger, OSAScriptState) {
 @property (retain) OSAScript *script;
 @property (retain) OSALanguage *language;
 @property (readonly) OSAScriptState scriptState;
-@property (readonly, getter=isCompiling) BOOL compiling;
-// Not in the public header; Script Editor sets its document's undo manager here.
+// Script Editor sets these; the public header declares only isCompiling, and read-only.
+@property (getter=isCompiling, setter=setIsCompiling:) BOOL compiling;
 @property (retain) NSUndoManager *undoManager;
+@property (retain) NSAppleEventDescriptor *defaultTarget;
 
 - (IBAction)compileScript:(id)sender;
 - (IBAction)recordScript:(id)sender;
