@@ -305,6 +305,10 @@ GLuint CGLGetPixelFormatRetainCount(CGLPixelFormatObj pixelFormat) {
 
 CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CGLContextObj *resultp) {
 
+    if (resultp == NULL)
+        return kCGLBadAddress;
+    *resultp = NULL;
+
     EGLContext egl_share = EGL_NO_CONTEXT;
     if (share != NULL) {
         egl_share = share->egl_context;
@@ -316,6 +320,11 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
     }
 
     CGLContextObj context = malloc(sizeof(struct _CGLContextObj));
+
+    if (context == NULL) {
+        eglDestroyContext(display, egl_context);
+        return kCGLBadAlloc;
+    }
 
     context->retain_count = 1;
     pthread_mutex_init(&(context->lock), NULL);
@@ -384,8 +393,11 @@ CGLError CGLUnlockContext(CGLContextObj context) {
 }
 
 CGLError CGLFlushDrawable(CGLContextObj context) {
-    eglSwapBuffers(display,context->egl_surface);
-    return kCGLNoError;
+    if (context == NULL)
+        return kCGLBadContext;
+    if (context->egl_surface == EGL_NO_SURFACE)
+        return kCGLBadDrawable;
+    return eglSwapBuffers(display, context->egl_surface) ? kCGLNoError : kCGLBadDrawable;
 }
 
 CGLError CGLSetParameter(CGLContextObj context, CGLContextParameter parameter, const GLint *value) {
