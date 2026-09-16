@@ -229,8 +229,12 @@ CGL_EXPORT CGLError CGLContextMakeCurrentAndAttachToWindow(CGLContextObj context
         return kCGLBadContext;
     if (!window)
         return kCGLBadDrawable;
+    EGLSurface previous_surface = context->egl_surface;
     context->egl_surface = (EGLSurface) window;
-    return CGLSetCurrentContext(context);
+    CGLError error = CGLSetCurrentContext(context);
+    if (error != kCGLNoError)
+        context->egl_surface = previous_surface;
+    return error;
 }
 
 static pthread_key_t current_context_key;
@@ -405,14 +409,17 @@ void CGLReleaseContext(CGLContextObj context) {
         return;
     }
 
+    if (CGLGetCurrentContext() == context) {
+        // Do not free a context while EGL/TLS still identify it as current.
+        // A failed unbind leaves ownership with the caller for a later retry.
+        if (CGLSetCurrentContext(NULL) != kCGLNoError)
+            return;
+    }
+
     context->retain_count--;
 
     if (context->retain_count != 0) {
         return;
-    }
-
-    if (CGLGetCurrentContext() == context) {
-        CGLSetCurrentContext(NULL);
     }
 
     pthread_mutex_destroy(&(context->lock));
