@@ -12,6 +12,8 @@ extern "C" {
 typedef void *CGLWindowRef;
 
 CGL_EXPORT CGLError CGLRegisterNativeDisplay(void *native_display);
+// platform is an EGL platform enum; native_display must match that platform.
+CGL_EXPORT CGLError CGLRegisterNativeDisplayForPlatform(void *native_display, unsigned int platform);
 
 CGL_EXPORT CGLWindowRef CGLGetWindow(void *native_window);
 CGL_EXPORT void CGLDestroyWindow(CGLWindowRef window);

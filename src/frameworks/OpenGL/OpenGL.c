@@ -26,6 +26,7 @@ static EGLDisplay display;
 
 static EGLConfig config;
 static int num_config;
+static int default_swap_interval = 1;
 
 static EGLint const attribute_list[] = {
     EGL_RED_SIZE, 1,
@@ -93,6 +94,7 @@ static int attributes_count(const CGLPixelFormatAttribute *attrs) {
 
 CGLError CGLRegisterNativeDisplay(void *native_display) {
 
+    default_swap_interval = 1;
     display = eglGetDisplay(native_display);
 
     if (display == EGL_NO_DISPLAY) {
@@ -104,6 +106,54 @@ CGLError CGLRegisterNativeDisplay(void *native_display) {
 
     eglBindAPI(EGL_OPENGL_API);
 
+    return kCGLNoError;
+}
+
+// Explicit-platform counterpart for backends whose native handles must not be
+// interpreted using EGL's process default platform. Keep the X11 entry unchanged.
+CGLError CGLRegisterNativeDisplayForPlatform(void *native_display, unsigned int platform) {
+    if (!native_display)
+        return kCGLBadConnection;
+    EGLDisplay candidate = eglGetPlatformDisplay(platform, native_display, NULL);
+    if (candidate == EGL_NO_DISPLAY || !eglInitialize(candidate, NULL, NULL))
+        return kCGLBadConnection;
+    const EGLint attributes[] = {
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+        EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8,
+        EGL_ALPHA_SIZE, 8,
+        EGL_NONE
+    };
+    EGLint count = 0;
+    if (!eglChooseConfig(candidate, attributes, NULL, 0, &count) || count <= 0)
+        return kCGLBadPixelFormat;
+    EGLConfig *configs = calloc((size_t)count, sizeof(*configs));
+    if (!configs)
+        return kCGLBadAlloc;
+    EGLConfig candidate_config = NULL;
+    if (eglChooseConfig(candidate, attributes, configs, count, &count)) {
+        for (EGLint i = 0; i < count; ++i) {
+            EGLint minimum_interval;
+            if (eglGetConfigAttrib(candidate, configs[i], EGL_MIN_SWAP_INTERVAL, &minimum_interval) &&
+                minimum_interval == 0) {
+                candidate_config = configs[i];
+                break;
+            }
+        }
+    }
+    free(configs);
+    if (!candidate_config)
+        return kCGLBadPixelFormat;
+    if (!eglBindAPI(EGL_OPENGL_API))
+        return kCGLBadState;
+    // Publish only a fully initialized display/config pair. A rejected platform
+    // must not corrupt an already working backend.
+    display = candidate;
+    config = candidate_config;
+    num_config = count;
+    // Layer animations may keep drawing while their parent is hidden. Waiting
+    // for a Wayland frame callback on an unmapped surface can block forever.
+    default_swap_interval = 0;
     return kCGLNoError;
 }
 
@@ -177,6 +227,8 @@ CGL_EXPORT void CGLDestroyWindow(CGLWindowRef window) {
 CGL_EXPORT CGLError CGLContextMakeCurrentAndAttachToWindow(CGLContextObj context, CGLWindowRef window) {
     if (!context)
         return kCGLBadContext;
+    if (!window)
+        return kCGLBadDrawable;
     context->egl_surface = (EGLSurface) window;
     return CGLSetCurrentContext(context);
 }
@@ -199,17 +251,19 @@ CGLContextObj CGLGetCurrentContext(void) {
 }
 
 CGLError CGLSetCurrentContext(CGLContextObj context) {
-    pthread_key_t key = get_current_context_key();
-    pthread_setspecific(key, context);
-
     if (context != NULL) {
         EGLSurface surface = context->egl_surface;
-        eglMakeCurrent(display, surface, surface, context->egl_context);
+        if (!eglMakeCurrent(display, surface, surface, context->egl_context))
+            return kCGLBadContext;
+        pthread_setspecific(get_current_context_key(), context);
+        if (surface != EGL_NO_SURFACE && !eglSwapInterval(display, context->swap_interval))
+            return kCGLBadValue;
     } else {
-        eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+        if (!eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT))
+            return kCGLBadContext;
+        pthread_setspecific(get_current_context_key(), NULL);
     }
-
-    return kCGLNoError; // FIXME
+    return kCGLNoError;
 }
 
 CGLError CGLSetFullScreen(CGLContextObj ctx) {
@@ -330,7 +384,7 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
     pthread_mutex_init(&(context->lock), NULL);
     context->egl_context = egl_context;
     context->egl_surface = NULL;
-    context->swap_interval = 1;
+    context->swap_interval = default_swap_interval;
 
     *resultp = context;
 
