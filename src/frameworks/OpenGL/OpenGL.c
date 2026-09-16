@@ -115,8 +115,12 @@ CGLError CGLRegisterNativeDisplayForPlatform(void *native_display, unsigned int 
     if (!native_display)
         return kCGLBadConnection;
     EGLDisplay candidate = eglGetPlatformDisplay(platform, native_display, NULL);
-    if (candidate == EGL_NO_DISPLAY || !eglInitialize(candidate, NULL, NULL))
+    if (candidate == EGL_NO_DISPLAY)
         return kCGLBadConnection;
+    EGLBoolean initialized = eglInitialize(candidate, NULL, NULL);
+    if (!initialized)
+        return kCGLBadConnection;
+    CGLError error = kCGLBadConnection;
     const EGLint attributes[] = {
         EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
@@ -125,11 +129,15 @@ CGLError CGLRegisterNativeDisplayForPlatform(void *native_display, unsigned int 
         EGL_NONE
     };
     EGLint count = 0;
-    if (!eglChooseConfig(candidate, attributes, NULL, 0, &count) || count <= 0)
-        return kCGLBadPixelFormat;
+    if (!eglChooseConfig(candidate, attributes, NULL, 0, &count) || count <= 0) {
+        error = kCGLBadPixelFormat;
+        goto reject;
+    }
     EGLConfig *configs = calloc((size_t)count, sizeof(*configs));
-    if (!configs)
-        return kCGLBadAlloc;
+    if (!configs) {
+        error = kCGLBadAlloc;
+        goto reject;
+    }
     EGLConfig candidate_config = NULL;
     if (eglChooseConfig(candidate, attributes, configs, count, &count)) {
         for (EGLint i = 0; i < count; ++i) {
@@ -142,10 +150,14 @@ CGLError CGLRegisterNativeDisplayForPlatform(void *native_display, unsigned int 
         }
     }
     free(configs);
-    if (!candidate_config)
-        return kCGLBadPixelFormat;
-    if (!eglBindAPI(EGL_OPENGL_API))
-        return kCGLBadState;
+    if (!candidate_config) {
+        error = kCGLBadPixelFormat;
+        goto reject;
+    }
+    if (!eglBindAPI(EGL_OPENGL_API)) {
+        error = kCGLBadState;
+        goto reject;
+    }
     // Publish only a fully initialized display/config pair. A rejected platform
     // must not corrupt an already working backend.
     display = candidate;
@@ -155,6 +167,13 @@ CGLError CGLRegisterNativeDisplayForPlatform(void *native_display, unsigned int 
     // for a Wayland frame callback on an unmapped surface can block forever.
     default_swap_interval = 0;
     return kCGLNoError;
+
+reject:
+    // A failed probe must not leak a newly initialized display. Never terminate
+    // the already-published display when a repeated registration probes it.
+    if (initialized && candidate != display)
+        eglTerminate(candidate);
+    return error;
 }
 
 static struct _CGLDisplay* getCGLDisplay(CGSConnectionID cid)
