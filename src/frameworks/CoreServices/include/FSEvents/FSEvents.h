@@ -128,4 +128,12 @@ extern Boolean FSEventStreamStart(FSEventStreamRef streamRef);
 
 extern void FSEventStreamStop(FSEventStreamRef streamRef);
 
+extern FSEventStreamEventId FSEventsGetCurrentEventId(void);
+
+extern CFUUIDRef FSEventsCopyUUIDForDevice(dev_t dev);
+
+extern FSEventStreamEventId FSEventsGetLastEventIdForDeviceBeforeTime(dev_t dev, CFAbsoluteTime time);
+
+extern Boolean FSEventsPurgeEventsForDeviceUpToEventId(dev_t dev, FSEventStreamEventId eventId);
+
 #endif
