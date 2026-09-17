@@ -1,16 +1,28 @@
 #include <CoreVideo/CVDisplayLink.h>
 #include <memory>
+#include <cstring>
+#include <mach/mach_time.h>
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSWindow.h>
 #import <AppKit/NSScreen.h>
 #import <Foundation/NSDictionary.h>
+#import <Foundation/NSArray.h>
+#import <Foundation/NSValue.h>
 #include <CoreGraphics/CGWindow.h>
 #include <CoreGraphics/CGDirectDisplay.h>
 
 static const NSString* kDirectDisplayArray = @"CGDirectDisplay";
 
+CFTypeID CVDisplayLinkGetTypeID(void)
+{
+	return CFDictionaryGetTypeID();
+}
+
 CVReturn CVDisplayLinkCreateWithActiveCGDisplays(CVDisplayLinkRef* displayLinkOut)
 {
+	if (!displayLinkOut)
+		return kCVReturnInvalidArgument;
+
 	uint32_t displayCount;
 	std::unique_ptr<CGDirectDisplayID[]> displays;
 
@@ -23,18 +35,115 @@ CVReturn CVDisplayLinkCreateWithActiveCGDisplays(CVDisplayLinkRef* displayLinkOu
 	err = CGGetActiveDisplayList(displayCount, displays.get(), &displayCount);
 	if (err != kCGErrorSuccess)
 		return err;
-	
+
 	NSMutableDictionary* self = [[NSMutableDictionary alloc] init];
 	NSMutableArray* array = [NSMutableArray arrayWithCapacity: displayCount];
 
-	for (int i = 0; i < displayCount; i++)
+	for (uint32_t i = 0; i < displayCount; i++)
 		[array addObject: [NSNumber numberWithInt: displays[i]]];
 
 	[self setObject: array
-			forKey: kDirectDisplayArray];
+			forKey: (NSString *)kDirectDisplayArray];
 
 	*displayLinkOut = (CVDisplayLinkRef) self;
 	return kCVReturnSuccess;
+}
+
+CVReturn CVDisplayLinkCreateWithCGDisplays(
+    CGDirectDisplayID * CV_NONNULL displayArray,
+    CFIndex count,
+    CV_RETURNS_RETAINED_PARAMETER CVDisplayLinkRef CV_NULLABLE * CV_NONNULL displayLinkOut )
+{
+	if (!displayLinkOut || !displayArray || count <= 0)
+		return kCVReturnInvalidArgument;
+
+	NSMutableDictionary* self = [[NSMutableDictionary alloc] init];
+	NSMutableArray* array = [NSMutableArray arrayWithCapacity: count];
+
+	for (CFIndex i = 0; i < count; i++)
+		[array addObject: [NSNumber numberWithInt: displayArray[i]]];
+
+	[self setObject: array
+			forKey: (NSString *)kDirectDisplayArray];
+
+	*displayLinkOut = (CVDisplayLinkRef) self;
+	return kCVReturnSuccess;
+}
+
+CVReturn CVDisplayLinkCreateWithOpenGLDisplayMask(
+    CGOpenGLDisplayMask mask,
+    CV_RETURNS_RETAINED_PARAMETER CVDisplayLinkRef CV_NULLABLE * CV_NONNULL displayLinkOut )
+{
+	if (!displayLinkOut)
+		return kCVReturnInvalidArgument;
+
+	return CVDisplayLinkCreateWithActiveCGDisplays(displayLinkOut);
+}
+
+CVReturn CVDisplayLinkCreateWithCGDisplay(
+    CGDirectDisplayID displayID,
+    CV_RETURNS_RETAINED_PARAMETER CVDisplayLinkRef CV_NULLABLE * CV_NONNULL displayLinkOut )
+{
+	if (!displayLinkOut || displayID == kCGNullDirectDisplay)
+		return kCVReturnInvalidArgument;
+
+	NSMutableDictionary* self = [[NSMutableDictionary alloc] init];
+	[self setObject: @[ [NSNumber numberWithInt: displayID] ]
+			forKey: (NSString *)kDirectDisplayArray];
+
+	*displayLinkOut = (CVDisplayLinkRef) self;
+	return kCVReturnSuccess;
+}
+
+CVReturn CVDisplayLinkSetCurrentCGDisplay( CVDisplayLinkRef CV_NONNULL displayLink, CGDirectDisplayID displayID )
+{
+	if (!displayLink)
+		return kCVReturnInvalidArgument;
+
+	NSMutableDictionary* self = (NSMutableDictionary*) displayLink;
+	[self setObject: @[ [NSNumber numberWithInt: displayID] ]
+			forKey: (NSString *)kDirectDisplayArray];
+	return kCVReturnSuccess;
+}
+
+CVReturn CVDisplayLinkSetCurrentCGDisplayFromOpenGLContext(CVDisplayLinkRef displayLink, CGLContextObj cglContext, CGLPixelFormatObj cglPixelFormat)
+{
+	if (!displayLink)
+		return kCVReturnInvalidArgument;
+
+	NSArray *windowArray = [[NSClassFromString(@"NSApplication") sharedApplication] windows];
+	if (!windowArray)
+		return kCVReturnError;
+
+	for (NSWindow* window in windowArray)
+	{
+		CGWindow* cgw = [window platformWindow];
+		CGLContextObj ctxt = [cgw cglContext];
+		if (ctxt == cglContext)
+		{
+			CGDirectDisplayID displayID = [window.screen cgDirectDisplayID];
+			NSMutableDictionary* self = (NSMutableDictionary*) displayLink;
+
+			[self setObject: @[[NSNumber numberWithInt: displayID]]
+					forKey: (NSString *)kDirectDisplayArray];
+			return kCVReturnSuccess;
+		}
+	}
+
+	return kCVReturnError;
+}
+
+CGDirectDisplayID CVDisplayLinkGetCurrentCGDisplay( CVDisplayLinkRef CV_NONNULL displayLink )
+{
+	if (!displayLink)
+		return kCVReturnInvalidArgument;
+
+	NSMutableDictionary* self = (NSMutableDictionary*) displayLink;
+	NSArray* ids = self[(NSString *)kDirectDisplayArray];
+
+	if ([ids count] > 0)
+		return (CGDirectDisplayID) [[ids firstObject] intValue];
+	return kCGNullDirectDisplay;
 }
 
 CVReturn CVDisplayLinkStart(CVDisplayLinkRef displayLink)
@@ -61,70 +170,35 @@ Boolean CVDisplayLinkIsRunning(CVDisplayLinkRef displayLink)
 	return true;
 }
 
+CVDisplayLinkRef CVDisplayLinkRetain( CVDisplayLinkRef displayLink )
+{
+	if (!displayLink)
+		return NULL;
+	NSMutableDictionary* self = (NSMutableDictionary*) displayLink;
+	return (CVDisplayLinkRef)[self retain];
+}
+
 void CVDisplayLinkRelease(CVDisplayLinkRef displayLink)
 {
+	if (!displayLink)
+		return;
 	NSMutableDictionary* self = (NSMutableDictionary*) displayLink;
 	[self release];
 }
 
 CVReturn CVDisplayLinkSetOutputCallback(CVDisplayLinkRef displayLink, CVDisplayLinkOutputCallback callback, void *userInfo)
 {
+	if (!displayLink)
+		return kCVReturnInvalidArgument;
 	// TODO
 	return kCVReturnSuccess;
 }
 
-CVReturn CVDisplayLinkSetCurrentCGDisplayFromOpenGLContext(CVDisplayLinkRef displayLink, CGLContextObj cglContext, CGLPixelFormatObj cglPixelFormat)
+CVReturn CVDisplayLinkSetOutputHandler( CVDisplayLinkRef displayLink, CVDisplayLinkOutputHandler handler )
 {
-	if (!displayLink)
+	if (!displayLink || !handler)
 		return kCVReturnInvalidArgument;
-
-	NSArray *windowArray = [[NSClassFromString(@"NSApplication") sharedApplication] windows];
-	if (!windowArray)
-		return kCVReturnError;
-
-	for (NSWindow* window in windowArray)
-	{
-		CGWindow* cgw = [window platformWindow];
-		CGLContextObj ctxt = [cgw cglContext];
-		if (ctxt == cglContext)
-		{
-			CGDirectDisplayID displayID = [window.screen cgDirectDisplayID];
-			NSMutableDictionary* self = (NSMutableDictionary*) displayLink;
-
-			[self setObject: @[[NSNumber numberWithInt: displayID]]
-					forKey: kDirectDisplayArray];
-			return kCVReturnSuccess;
-		}
-	}
-	
-	return kCVReturnError;
-}
-
-CGDirectDisplayID CVDisplayLinkGetCurrentCGDisplay( CVDisplayLinkRef CV_NONNULL displayLink )
-{
-	if (!displayLink)
-		return kCVReturnInvalidArgument;
-
-	NSMutableDictionary* self = (NSMutableDictionary*) displayLink;
-	NSArray* ids = self[kDirectDisplayArray];
-
-	if ([ids count] > 0)
-		return (CGDirectDisplayID) [[ids firstObject] intValue];
-	return kCGNullDirectDisplay;
-}
-
-CVReturn CVDisplayLinkCreateWithCGDisplay(
-    CGDirectDisplayID displayID,
-    CV_RETURNS_RETAINED_PARAMETER CVDisplayLinkRef CV_NULLABLE * CV_NONNULL displayLinkOut )
-{
-	if (displayID == kCGNullDirectDisplay)
-		return kCVReturnInvalidArgument;
-
-	NSMutableDictionary* self = [[NSMutableDictionary alloc] init];
-	[self setObject: @[ [NSNumber numberWithInt: displayID] ]
-			forKey: @"CGDirectDisplay"];
-
-	*displayLinkOut = (CVDisplayLinkRef) self;
+	// TODO
 	return kCVReturnSuccess;
 }
 
@@ -149,4 +223,50 @@ CVTime CVDisplayLinkGetNominalOutputVideoRefreshPeriod( CVDisplayLinkRef CV_NONN
 
 	CGDisplayModeRelease(mode);
 	return time;
+}
+
+CVTime CVDisplayLinkGetOutputVideoLatency( CVDisplayLinkRef displayLink )
+{
+	CVTime time = { 0, 1, 0 };
+	return time;
+}
+
+double CVDisplayLinkGetActualOutputVideoRefreshPeriod( CVDisplayLinkRef displayLink )
+{
+	if (!displayLink)
+		return 0.0;
+	CVTime nominal = CVDisplayLinkGetNominalOutputVideoRefreshPeriod(displayLink);
+	if (nominal.timeScale > 0 && nominal.timeValue > 0)
+		return (double)nominal.timeValue / (double)nominal.timeScale;
+	return 1.0 / 60.0;
+}
+
+CVReturn CVDisplayLinkGetCurrentTime( CVDisplayLinkRef displayLink, CVTimeStamp * CV_NONNULL outTime )
+{
+	if (!displayLink || !outTime)
+		return kCVReturnInvalidArgument;
+
+	static mach_timebase_info_data_t s_timebase = { 0, 0 };
+	if (s_timebase.denom == 0)
+		mach_timebase_info(&s_timebase);
+
+	uint64_t machTime = mach_absolute_time();
+	uint64_t nanos = (s_timebase.denom > 0) ? (machTime * s_timebase.numer / s_timebase.denom) : machTime;
+
+	memset(outTime, 0, sizeof(CVTimeStamp));
+	outTime->version = 0;
+	outTime->videoTime = (int64_t)nanos;
+	outTime->videoTimeScale = 1000000000; // nanoseconds
+	outTime->videoRefreshPeriod = (int64_t)(1000000000.0 * CVDisplayLinkGetActualOutputVideoRefreshPeriod(displayLink));
+	outTime->flags = kCVTimeStampVideoTimeValid | kCVTimeStampHostTimeValid;
+	outTime->hostTime = machTime;
+	return kCVReturnSuccess;
+}
+
+CVReturn CVDisplayLinkTranslateTime( CVDisplayLinkRef displayLink, const CVTimeStamp * CV_NONNULL inTime, CVTimeStamp * CV_NONNULL outTime )
+{
+	if (!displayLink || !inTime || !outTime)
+		return kCVReturnInvalidArgument;
+	*outTime = *inTime;
+	return kCVReturnSuccess;
 }
