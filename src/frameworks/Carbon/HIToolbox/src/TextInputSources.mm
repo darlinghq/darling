@@ -8,9 +8,6 @@ static os_unfair_lock g_keyboardLock = OS_UNFAIR_LOCK_INIT;
 static int g_lastKeyboardLayoutId = -1;
 static TISInputSourceRef g_lastKeyboardLayout = NULL;
 
-const CFStringRef kTISPropertyInputSourceLanguages = CFSTR("TISPropertyInputSourceLanguages");
-const CFStringRef kTISPropertyLocalizedName = CFSTR("TISPropertyLocalizedName");
-
 static int verbose = 0;
 
 __attribute__((constructor))
@@ -53,9 +50,24 @@ TISInputSourceRef TISCopyCurrentKeyboardLayoutInputSource(void)
 	NSString *name, *fullName;
 	[display keyboardLayoutName: &name fullName:&fullName];
 
-	const void* keys[] = { kTISPropertyUnicodeKeyLayoutData, kTISPropertyLocalizedName, kTISPropertyInputSourceLanguages };
-	const void* values[] = { data, fullName, @[name] };
-	CFDictionaryRef dict = CFDictionaryCreate(NULL, keys, values, 3, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	NSString *sourceID = name ? [NSString stringWithFormat:@"com.apple.keylayout.%@", name] : @"com.apple.keylayout.US";
+	NSArray *languages = @[ @"en" ];
+
+	NSDictionary *dictObj = @{
+		(id)kTISPropertyInputSourceID: sourceID,
+		(id)kTISPropertyLocalizedName: fullName ?: (name ?: @"U.S."),
+		(id)kTISPropertyInputSourceLanguages: languages,
+		(id)kTISPropertyUnicodeKeyLayoutData: (id)data,
+		(id)kTISPropertyInputSourceCategory: (id)kTISCategoryKeyboardInputSource,
+		(id)kTISPropertyInputSourceType: (id)kTISTypeKeyboardLayout,
+		(id)kTISPropertyInputSourceIsASCIICapable: (id)kCFBooleanTrue,
+		(id)kTISPropertyInputSourceIsSelectable: (id)kCFBooleanTrue,
+		(id)kTISPropertyInputSourceIsSelectCapable: (id)kCFBooleanTrue,
+		(id)kTISPropertyInputSourceIsEnabled: (id)kCFBooleanTrue,
+		(id)kTISPropertyInputSourceIsSelected: (id)kCFBooleanTrue,
+		(id)kTISPropertyInputSourceIsEnableCapable: (id)kCFBooleanTrue,
+	};
+	CFDictionaryRef dict = (CFDictionaryRef)[dictObj retain];
 
 	CFRelease(data);
 
@@ -77,11 +89,74 @@ void* TISGetInputSourceProperty(TISInputSourceRef inputSourceRef, CFStringRef ke
 	return (void*) CFDictionaryGetValue((CFDictionaryRef)inputSourceRef, key);
 }
 
+CFTypeID TISInputSourceGetTypeID(void)
+{
+	return CFDictionaryGetTypeID();
+}
+
+CFArrayRef TISCreateInputSourceList(CFDictionaryRef properties, Boolean includeAllInstalled)
+{
+	TISInputSourceRef current = TISCopyCurrentKeyboardLayoutInputSource();
+	if (!current)
+		return (CFArrayRef)[[NSArray array] retain];
+
+	if (properties)
+	{
+		NSDictionary *filter = (NSDictionary *)properties;
+		NSDictionary *source = (NSDictionary *)current;
+		for (id key in filter)
+		{
+			id filterVal = filter[key];
+			id sourceVal = source[key];
+			if (sourceVal && ![filterVal isEqual:sourceVal])
+			{
+				CFRelease(current);
+				return (CFArrayRef)[[NSArray array] retain];
+			}
+		}
+	}
+
+	NSArray *list = [NSArray arrayWithObject:(id)current];
+	CFRelease(current);
+	return (CFArrayRef)[list retain];
+}
+
+TISInputSourceRef TISCopyCurrentASCIICapableKeyboardInputSource(void)
+{
+	return TISCopyCurrentKeyboardLayoutInputSource();
+}
+
 TISInputSourceRef TISCopyCurrentASCIICapableKeyboardLayoutInputSource(void)
 {
-    if (verbose) {
-        puts("STUB: TISCopyCurrentASCIICapableKeyboardLayoutInputSource");
-    }
+	return TISCopyCurrentKeyboardLayoutInputSource();
+}
 
-    return NULL;
+TISInputSourceRef TISCopyInputSourceForLanguage(CFStringRef language)
+{
+	return TISCopyCurrentKeyboardLayoutInputSource();
+}
+
+OSStatus TISSelectInputSource(TISInputSourceRef inputSource)
+{
+	return noErr;
+}
+
+OSStatus TISEnableInputSource(TISInputSourceRef inputSource)
+{
+	return noErr;
+}
+
+OSStatus TISDisableInputSource(TISInputSourceRef inputSource)
+{
+	return noErr;
+}
+
+OSStatus TISRegisterInputSource(CFURLRef location)
+{
+	return noErr;
+}
+
+OSStatus TISDeregisterInputSource(TISInputSourceRef inputSource)
+{
+	return noErr;
 }
