@@ -1238,11 +1238,17 @@ int checkPrefixDir()
 			fprintf(stderr, "%s is a file. Remove the file.\n", prefix);
 			exit(1);
 		}
-		// The classification reads paths controlled by the invoking user.
+		// Inspect the user-controlled tree with the invoking user's credentials.
 		useInvokingIds();
 		enum darling_prefix_state state = darlingClassifyPrefix(prefix);
+		int classifyError = errno;
 		restoreRootIds();
-		if (state == DARLING_PREFIX_UNINITIALIZED)
+		if (state == DARLING_PREFIX_STATE_INSPECTION_ERROR)
+		{
+			fprintf(stderr, "Cannot inspect prefix %s: %s.\n", prefix, strerror(classifyError));
+			exit(1);
+		}
+		if (state == DARLING_PREFIX_STATE_UNINITIALIZED)
 		{
 			fprintf(stderr,
 				"Prefix %s is non-empty but is not an initialized Darling prefix; refusing to overwrite it.\n"
@@ -1250,7 +1256,7 @@ int checkPrefixDir()
 				prefix);
 			exit(1);
 		}
-		return state == DARLING_PREFIX_INITIALIZED;
+		return state == DARLING_PREFIX_STATE_INITIALIZED;
 	}
 	if (error == ENOENT)
 		return 0; // not found
