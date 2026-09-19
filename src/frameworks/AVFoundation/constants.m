@@ -113,7 +113,9 @@ NSString *const AVCaptureDeviceTypeBuiltInTripleCamera = @"AVCaptureDeviceTypeBu
 NSString *const AVCaptureDeviceTypeBuiltInTrueDepthCamera = @"AVCaptureDeviceTypeBuiltInTrueDepthCamera";
 NSString *const AVCaptureDeviceTypeBuiltInLiDARDepthCamera = @"AVCaptureDeviceTypeBuiltInLiDARDepthCamera";
 NSString *const AVCaptureDeviceTypeBuiltInMicrophone = @"AVCaptureDeviceTypeBuiltInMicrophone";
+NSString *const AVCaptureDeviceTypeMicrophone = @"AVCaptureDeviceTypeMicrophone";
 NSString *const AVCaptureDeviceTypeExternalUnknown = @"AVCaptureDeviceTypeExternalUnknown";
+NSString *const AVCaptureDeviceTypeExternal = @"AVCaptureDeviceTypeExternal";
 NSString *const AVCaptureDeviceTypeContinuityCamera = @"AVCaptureDeviceTypeContinuityCamera";
 NSString *const AVCaptureDeviceTypeDeskViewCamera = @"AVCaptureDeviceTypeDeskViewCamera";
 
