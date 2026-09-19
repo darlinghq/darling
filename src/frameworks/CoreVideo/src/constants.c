@@ -63,3 +63,9 @@ const CFStringRef kCVPixelBufferWidthKey = CFSTR("Width");
 const CFStringRef kCVPixelBufferIOSurfaceOpenGLTextureCompatibilityKey = CFSTR("IOSurfaceOpenGLTextureCompatibility");
 const CFStringRef kCVPixelBufferPoolMaximumBufferAgeKey = CFSTR("MaximumBufferAge");
 const CFStringRef kCVPixelBufferPoolMinimumBufferCountKey = CFSTR("MinimumBufferCount");
+
+const CFStringRef kCVImageBufferCleanApertureKey = CFSTR("CleanAperture");
+const CFStringRef kCVImageBufferCleanApertureWidthKey = CFSTR("CleanApertureWidth");
+const CFStringRef kCVImageBufferCleanApertureHeightKey = CFSTR("CleanApertureHeight");
+const CFStringRef kCVImageBufferCleanApertureHorizontalOffsetKey = CFSTR("CleanApertureHorizontalOffset");
+const CFStringRef kCVImageBufferCleanApertureVerticalOffsetKey = CFSTR("CleanApertureVerticalOffset");

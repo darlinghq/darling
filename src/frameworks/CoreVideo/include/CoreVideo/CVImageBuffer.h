@@ -3,8 +3,22 @@
 
 #include <sys/cdefs.h>
 #include <CoreVideo/CVBuffer.h>
+#include <CoreGraphics/CGColorSpace.h>
+
+__BEGIN_DECLS
 
 typedef CVBufferRef CVImageBufferRef;
+
+CV_EXPORT CGColorSpaceRef CVImageBufferCreateColorSpaceFromAttachments(CFDictionaryRef attachments);
+
+CV_EXPORT CFStringRef CVColorPrimariesGetStringForIntegerCodePoint(int32_t colorPrimariesCodePoint);
+CV_EXPORT int32_t CVColorPrimariesGetIntegerCodePointForString(CFStringRef colorPrimariesString);
+
+CV_EXPORT CFStringRef CVTransferFunctionGetStringForIntegerCodePoint(int32_t transferFunctionCodePoint);
+CV_EXPORT int32_t CVTransferFunctionGetIntegerCodePointForString(CFStringRef transferFunctionString);
+
+CV_EXPORT CFStringRef CVYCbCrMatrixGetStringForIntegerCodePoint(int32_t yCbCrMatrixCodePoint);
+CV_EXPORT int32_t CVYCbCrMatrixGetIntegerCodePointForString(CFStringRef yCbCrMatrixString);
 
 extern const CFStringRef kCVImageBufferPixelAspectRatioKey;
 extern const CFStringRef kCVImageBufferGammaLevelKey;
@@ -48,5 +62,15 @@ extern CFStringRef const kCVImageBufferColorPrimaries_SMPTE_C;
 extern CFStringRef const kCVImageBufferTransferFunction_ITU_R_709_2;
 extern CFStringRef const kCVImageBufferTransferFunction_SMPTE_240M_1995;
 extern CFStringRef const kCVImageBufferTransferFunction_UseGamma;
+
+extern CFStringRef const kCVImageBufferCleanApertureKey;
+extern CFStringRef const kCVImageBufferCleanApertureWidthKey;
+extern CFStringRef const kCVImageBufferCleanApertureHeightKey;
+extern CFStringRef const kCVImageBufferCleanApertureHorizontalOffsetKey;
+extern CFStringRef const kCVImageBufferCleanApertureVerticalOffsetKey;
+
+CV_EXPORT CGSize CVImageBufferGetEncodedSize(CVImageBufferRef imageBuffer);
+
+__END_DECLS
 
 #endif // _COREVIDEO_CVIMAGEBUFFER_H_

@@ -1,19 +1,7 @@
 #include <stdio.h>
+#include <CoreVideo/CoreVideo.h>
 
-void* CVPixelBufferGetBaseAddressOfPlane(void)
+void* CVPixelBufferGetIOSurface(CVPixelBufferRef pixelBuffer)
 {
-	printf("STUB: %s\n", __PRETTY_FUNCTION__);
-	return NULL;
-}
-
-void* CVPixelBufferGetBytesPerRowOfPlane(void)
-{
-	printf("STUB: %s\n", __PRETTY_FUNCTION__);
-	return NULL;
-}
-
-void* CVPixelBufferGetIOSurface(void)
-{
-	printf("STUB: %s\n", __PRETTY_FUNCTION__);
 	return NULL;
 }
