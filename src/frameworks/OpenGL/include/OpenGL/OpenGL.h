@@ -28,12 +28,18 @@ CGL_EXPORT CGLError CGLSetCurrentContext(CGLContextObj ctx);
 CGL_EXPORT CGLError CGLSetFullScreen(CGLContextObj ctx);
 CGL_EXPORT CGLContextObj CGLGetCurrentContext(void);
 
+CGL_EXPORT CGLError CGLEnable(CGLContextObj ctx, CGLContextEnable pname);
+CGL_EXPORT CGLError CGLDisable(CGLContextObj ctx, CGLContextEnable pname);
+CGL_EXPORT CGLError CGLIsEnabled(CGLContextObj ctx, CGLContextEnable pname, GLint *enable);
+CGL_EXPORT const char *CGLErrorString(CGLError error);
+
 CGL_EXPORT CGLError CGLSetParameter(CGLContextObj context, CGLContextParameter parameter, const GLint *value);
 CGL_EXPORT CGLError CGLGetParameter(CGLContextObj context, CGLContextParameter parameter, GLint *value);
 CGL_EXPORT CGLError CGLFlushDrawable(CGLContextObj context);
 
 CGL_EXPORT CGLError CGLChoosePixelFormat(const CGLPixelFormatAttribute *attributes, CGLPixelFormatObj *pixelFormatp, GLint *numberOfScreensp);
 CGL_EXPORT CGLError CGLClearDrawable(CGLContextObj ctx);
+CGL_EXPORT CGLError CGLUpdateContext(CGLContextObj ctx);
 CGL_EXPORT CGLPixelFormatObj CGLRetainPixelFormat(CGLPixelFormatObj pixelFormat);
 CGL_EXPORT void CGLReleasePixelFormat(CGLPixelFormatObj pixelFormat);
 CGL_EXPORT CGLError CGLDestroyPixelFormat(CGLPixelFormatObj pixelFormat);

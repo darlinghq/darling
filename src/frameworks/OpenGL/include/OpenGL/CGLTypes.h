@@ -27,6 +27,16 @@ typedef enum {
     kCGLBadConnection = 10017,
 } CGLError;
 
+typedef enum {
+    kCGLCESwapRectangle = 201,
+    kCGLCESwapLimit = 203,
+    kCGLCERasterization = 221,
+    kCGLCEStateValidation = 301,
+    kCGLCESurfaceBackingSize = 305,
+    kCGLCEDisplayListOptimization = 311,
+    kCGLCEMPEngine = 313,
+} CGLContextEnable;
+
 enum {
     kCGLPFAAllRenderers = 1,
     kCGLPFADoubleBuffer = 5,

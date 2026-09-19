@@ -289,6 +289,44 @@ CGLError CGLSetCurrentContext(CGLContextObj context) {
     return kCGLNoError;
 }
 
+CGLError CGLEnable(CGLContextObj ctx, CGLContextEnable pname) {
+    return kCGLNoError;
+}
+
+CGLError CGLDisable(CGLContextObj ctx, CGLContextEnable pname) {
+    return kCGLNoError;
+}
+
+CGLError CGLIsEnabled(CGLContextObj ctx, CGLContextEnable pname, GLint *enable) {
+    if (enable) *enable = 0;
+    return kCGLNoError;
+}
+
+const char *CGLErrorString(CGLError error) {
+    switch (error) {
+    case kCGLNoError: return "no error";
+    case kCGLBadAttribute: return "invalid pixel format attribute";
+    case kCGLBadProperty: return "invalid renderer property";
+    case kCGLBadPixelFormat: return "invalid pixel format";
+    case kCGLBadRendererInfo: return "invalid renderer info";
+    case kCGLBadContext: return "invalid context";
+    case kCGLBadDrawable: return "invalid drawable";
+    case kCGLBadDisplay: return "invalid display";
+    case kCGLBadState: return "invalid context state";
+    case kCGLBadValue: return "invalid numerical value";
+    case kCGLBadMatch: return "invalid share context";
+    case kCGLBadEnumeration: return "invalid enumerant";
+    case kCGLBadOffScreen: return "invalid offscreen drawable";
+    case kCGLBadFullScreen: return "invalid fullscreen drawable";
+    case kCGLBadWindow: return "invalid window";
+    case kCGLBadAddress: return "invalid pointer";
+    case kCGLBadCodeModule: return "invalid code module";
+    case kCGLBadAlloc: return "memory allocation failure";
+    case kCGLBadConnection: return "invalid CoreGraphics connection";
+    default: return "unknown error";
+    }
+}
+
 CGLError CGLSetFullScreen(CGLContextObj ctx) {
     printf("STUB: CGLSetFullScreen\n");
 
@@ -319,6 +357,11 @@ CGLError CGLClearDrawable(CGLContextObj ctx)
 {
     printf("STUB: CGLClearDrawable\n");
 
+    return kCGLNoError;
+}
+
+CGLError CGLUpdateContext(CGLContextObj ctx)
+{
     return kCGLNoError;
 }
 
