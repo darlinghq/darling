@@ -19,7 +19,44 @@
 
 #include <Foundation/Foundation.h>
 
+extern NSString *const kCIInputAngleKey;
+extern NSString *const kCIInputBackgroundImageKey;
+extern NSString *const kCIInputBrightnessKey;
+extern NSString *const kCIInputColorKey;
+extern NSString *const kCIInputContrastKey;
+extern NSString *const kCIInputExtentKey;
+extern NSString *const kCIInputImageKey;
+extern NSString *const kCIInputSaturationKey;
 extern NSString *const kCIInputRadiusKey;
+extern NSString *const kCIOutputImageKey;
+extern NSString *const kCIApplyOptionDefinition;
+
+extern NSString *const kCIAttributeClass;
+extern NSString *const kCIAttributeDefault;
+extern NSString *const kCIAttributeDisplayName;
+extern NSString *const kCIAttributeFilterDisplayName;
+extern NSString *const kCIAttributeFilterName;
+extern NSString *const kCIAttributeMax;
+extern NSString *const kCIAttributeMin;
+extern NSString *const kCIAttributeSliderMin;
+extern NSString *const kCIAttributeSliderMax;
+extern NSString *const kCIAttributeType;
+
+extern NSString *const kCIAttributeTypeAngle;
+extern NSString *const kCIAttributeTypeBoolean;
+extern NSString *const kCIAttributeTypeDistance;
+extern NSString *const kCIAttributeTypeOffset;
+extern NSString *const kCIAttributeTypePosition;
+extern NSString *const kCIAttributeTypePosition3;
+extern NSString *const kCIAttributeTypeRectangle;
+extern NSString *const kCIAttributeTypeScalar;
+extern NSString *const kCIAttributeTypeTime;
+
+extern NSString *const kCICategoryCompositeOperation;
+extern NSString *const kCICategoryGenerator;
+extern NSString *const kCICategoryGradient;
+extern NSString *const kCICategoryReduction;
+extern NSString *const kCICategoryTransition;
 
 @interface CIFilter : NSObject
 

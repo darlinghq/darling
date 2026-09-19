@@ -18,6 +18,7 @@
 */
 
 #import <CoreImage/CIFilter.h>
+#import <CoreImage/CIImage.h>
 
 #import <Foundation/NSString.h>
 
@@ -34,12 +35,23 @@ NSString * const kCIOutputImageKey = @"outputImage";
 NSString * const kCIApplyOptionDefinition = @"definition";
 
 NSString * const kCIAttributeClass = @"class";
+NSString * const kCIAttributeDefault = @"default";
 NSString * const kCIAttributeDisplayName = @"displayName";
 NSString * const kCIAttributeFilterDisplayName = @"filterDisplayName";
 NSString * const kCIAttributeFilterName = @"filterName";
 NSString * const kCIAttributeMax = @"max";
 NSString * const kCIAttributeMin = @"min";
+NSString * const kCIAttributeSliderMin = @"sliderMin";
+NSString * const kCIAttributeSliderMax = @"sliderMax";
 NSString * const kCIAttributeType = @"type";
+
+const CIFormat kCIFormatARGB8 = 26;
+const CIFormat kCIFormatRGBA8 = 24;
+const CIFormat kCIFormatBGRA8 = 27;
+const CIFormat kCIFormatABGR8 = 28;
+const CIFormat kCIFormatRGBAh = 31;
+const CIFormat kCIFormatRGBA16 = 33;
+const CIFormat kCIFormatRGBAf = 34;
 
 NSString * const kCIAttributeTypeAngle = @"angle";
 NSString * const kCIAttributeTypeBoolean = @"boolean";

@@ -19,6 +19,16 @@
 
 #include <Foundation/Foundation.h>
 
+typedef int CIFormat;
+
+extern const CIFormat kCIFormatARGB8;
+extern const CIFormat kCIFormatRGBA8;
+extern const CIFormat kCIFormatBGRA8;
+extern const CIFormat kCIFormatABGR8;
+extern const CIFormat kCIFormatRGBAh;
+extern const CIFormat kCIFormatRGBA16;
+extern const CIFormat kCIFormatRGBAf;
+
 @interface CIImage : NSObject
 
 @end
