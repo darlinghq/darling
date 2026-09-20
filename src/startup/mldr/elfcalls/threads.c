@@ -32,6 +32,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/socket.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #include "dthreads.h"
 
@@ -76,7 +77,9 @@ static void* darling_thread_entry(void* p);
 #	define PTHREAD_STACK_MIN 16384
 #endif
 
-#define DEFAULT_DTHREAD_GUARD_SIZE 0x1000
+// The guard must be a whole page: mprotect rounds its length up to one, so a
+// smaller reserve protects into the stack instead of sitting below it.
+#define DEFAULT_DTHREAD_GUARD_SIZE ((size_t) sysconf(_SC_PAGESIZE))
 
 static inline void *align_16(uintptr_t ptr) {
 	return (void *) ((uintptr_t) ptr & ~(uintptr_t) 15);
@@ -120,8 +123,14 @@ static dthread_t dthread_structure_allocate(size_t stack_size, size_t guard_size
 	// allocate our stack, guard page, and dthread structure
 	void* base_addr = mmap(NULL, total_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
+	if (base_addr == MAP_FAILED) {
+		fprintf(stderr, "Failed to allocate a thread stack: %s\n", strerror(errno));
+		return NULL;
+	}
+
 	// protect our guard page
-	mprotect(base_addr, guard_size, PROT_NONE);
+	if (mprotect(base_addr, guard_size, PROT_NONE) != 0)
+		fprintf(stderr, "Failed to protect the thread stack guard page: %s\n", strerror(errno));
 
 	/**
 	 * memory layout of newly allocated block:
