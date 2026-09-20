@@ -1,0 +1,379 @@
+#!/usr/bin/env python3
+"""Generate stub frameworks for dependencies that apps link but bind no symbols from.
+
+dyld aborts when a dependency named in LC_LOAD_DYLIB is absent, even when the app never
+binds a symbol from it. Such a dependency is satisfied by a framework that exports nothing,
+so these stubs need no symbol enumeration and no class-dump (unlike darling-stub-gen).
+
+Membership is a property of the scanned binaries at the time of the scan, not of the
+framework: an OS update can make an app bind symbols from one of these. The generated
+sources record which binaries and which date justified the stub.
+
+usage: darling-tier1-stub-gen --prefix <darling prefix> --out <darling source root> [--dry-run]
+"""
+
+import argparse, datetime, os, re, shutil, subprocess, sys
+from collections import defaultdict
+
+SYSTEM_PREFIXES = ("/System/", "/usr/lib/")
+IOSSUPPORT = "/System/iOSSupport"
+FRAMEWORK_RE = re.compile(r"^(?P<root>/System/Library/(?P<kind>Frameworks|PrivateFrameworks))/"
+                          r"(?P<name>[A-Za-z0-9_+]+)\.framework/Versions/(?P<ver>[A-Z])/(?P=name)$")
+
+
+def run(cmd):
+    """Run a tool, or die. Never return empty output for a failed command: callers read
+    emptiness as "binds no symbols", which would generate a stub for a library that is
+    actually bound."""
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0 or r.stderr.strip():
+        sys.exit("%s failed (exit %d): %s" % (" ".join(cmd), r.returncode, r.stderr.strip()))
+    return r.stdout
+
+
+def binary_slices(binary):
+    """Every slice to analyse. Scanning one slice only would miss a symbol bound in another,
+    and emit a stub that then aborts dyld on a prefix using that architecture."""
+    out = run(["llvm-objdump", "--macho", "--universal-headers", binary])
+    return re.findall(r"^architecture (\S+)", out, re.M) or [None]
+
+
+def binary_arch(binary):
+    """Which slice to pass as --arch, or None for a thin file (where the flag is unnecessary
+    and, for arm64e, actively wrong: llvm-objdump -f reports a thin arm64e binary as arm64).
+
+    Picking a slice the file does not contain makes llvm-otool silently ignore -arch while
+    llvm-objdump errors out, so the two tools disagree and the bound set comes back empty.
+    """
+    out = run(["llvm-objdump", "--macho", "--universal-headers", binary])
+    slices = re.findall(r"^architecture (\S+)", out, re.M)
+    if not slices:
+        return None                     # thin: operate on the only slice
+    for preferred in ("arm64e", "arm64", "x86_64"):
+        if preferred in slices:
+            return preferred
+    return slices[0]
+
+
+def arch_flags(arch, style):
+    if arch is None:
+        return []
+    return ["-arch", arch] if style == "otool" else ["--arch=" + arch]
+
+
+def load_commands(binary, arch):
+    """Yield (kind, install_name, compat, current) per LC_LOAD*_DYLIB, kind strong/weak.
+
+    dyld refuses a dylib whose LC_ID_DYLIB compatibility version is lower than the one the
+    app recorded, so a stub must advertise at least what the scanned app bundles ask for.
+    Consumers outside /Applications (daemons, other frameworks) are not scanned.
+    """
+    out = run(["llvm-otool"] + arch_flags(arch, "otool") + ["-l", binary])
+    kind = name = current = None
+    for line in out.splitlines():
+        t = line.strip()
+        if t.startswith("cmd LC_LOAD_WEAK_DYLIB"):
+            kind, name, current = "weak", None, None
+        elif t.startswith("cmd LC_LOAD_DYLIB"):
+            kind, name, current = "strong", None, None
+        elif t.startswith("cmd LC_"):
+            kind = name = current = None
+        elif kind and t.startswith("name "):
+            name = t.split()[1]
+        elif kind and t.startswith("current version "):
+            current = t.split()[-1]
+        elif kind and name and t.startswith("compatibility version "):
+            yield kind, name, t.split()[-1], current or "0.0.0"
+            kind = name = current = None
+
+
+def bound_libraries(binary, arch):
+    """Set of library leaf names the binary binds at least one non-weak symbol from.
+
+    LC_DYLD_CHAINED_FIXUPS records an exact lib_ordinal per import, which is the only
+    reliable attribution: llvm-nm -u gives undefined symbols with no owning library, and
+    matching on a module-name token misattributes C and Objective-C symbols.
+    """
+    out = run(["llvm-objdump", "--macho"] + arch_flags(arch, "objdump")
+              + ["--chained-fixups", binary])
+    if "LC_DYLD_CHAINED_FIXUPS" not in out:
+        return None            # classic LC_DYLD_INFO binds; caller must not read this as empty
+    bound, lib, weak = set(), None, None
+    for line in out.splitlines():
+        s = line.strip()
+        if s.startswith("lib_ordinal = "):
+            # "lib_ordinal = 2 (Calculate)" - llvm prints the library's SHORT name here.
+            # Without the parenthesised name there is nothing to attribute the symbol to,
+            # and treating that as "no library" would silently empty the bound set.
+            m = re.search(r"lib_ordinal = (-?\d+)(?: \((.+)\))?$", s)
+            if not m:
+                sys.exit("unparseable lib_ordinal line in %s: %r" % (binary, s))
+            if int(m.group(1)) <= 0:
+                lib = None          # self / main-executable / flat-lookup, not a dependency
+            elif m.group(2) is None:
+                sys.exit("lib_ordinal %s has no name in %s" % (m.group(1), binary))
+            else:
+                lib = m.group(2)
+        elif s.startswith("weak_import = "):
+            weak = s.split()[-1]
+        elif s.startswith("name_offset = "):
+            if lib and weak == "0":
+                bound.add(lib)
+            lib = weak = None
+    return bound
+
+
+def is_macho(path):
+    try:
+        with open(path, "rb") as f:
+            magic = f.read(4)
+    except OSError as e:
+        # os.walk already told us it exists, so this is permissions or worse. Skipping it
+        # silently would under-count bound symbols, which is the direction that emits a
+        # stub for a library something actually binds.
+        sys.exit("cannot read %s: %s" % (path, e))
+    # MH_MAGIC_64 / MH_CIGAM_64 / FAT_MAGIC / FAT_CIGAM
+    return magic in (b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xcf",
+                     b"\xca\xfe\xba\xbe", b"\xbe\xba\xfe\xca")
+
+
+def short_name(install_name):
+    """The name llvm-objdump prints for a lib_ordinal: the leaf with any .dylib suffix and
+    version infix removed (libgnsdk_dsp.3.06.1.dylib -> libgnsdk_dsp). Comparing raw
+    basenames instead leaves the bound-symbol filter inert for every plain dylib."""
+    leaf = os.path.basename(install_name)
+    if leaf.endswith(".dylib"):
+        leaf = leaf[:-len(".dylib")]
+    return re.sub(r"\.[0-9][0-9.]*$", "", leaf)
+
+
+def version_tuple(v):
+    parts = (v.split(".") + ["0", "0"])[:3]
+    return tuple(int(x) if x.isdigit() else 0 for x in parts)
+
+
+def app_binaries(prefix):
+    """Every Mach-O in each bundle, not just the main executable. A helper tool or XPC
+    service binding a library would make a stub for it wrong, so their symbols have to
+    count too."""
+    root = os.path.join(prefix, "Applications")
+    bundles = []
+    for dirpath, dirnames, _ in os.walk(root):
+        for d in sorted(dirnames):
+            if d.endswith(".app"):
+                bundles.append(os.path.join(dirpath, d))
+        # do not descend into a bundle looking for more bundles; walk it below
+        dirnames[:] = [d for d in dirnames if not d.endswith(".app")]
+    for bundle in bundles:                      # includes Applications/Utilities/*.app
+        app = os.path.basename(bundle)[:-4]
+        for dirpath, _, files in os.walk(bundle):
+            for fn in sorted(files):
+                path = os.path.join(dirpath, fn)
+                if not os.path.islink(path) and is_macho(path):
+                    yield app, path
+
+
+def scan(prefix, arch):
+    """-> {install_name: set(app names)} for strong deps absent from the prefix and never bound."""
+    missing = defaultdict(set)
+    compat, current = {}, {}
+    bound_anywhere = set()
+    unreadable = []
+    for app, binary in app_binaries(prefix):
+        slices = [arch] if arch else binary_slices(binary)
+        strong, bound, unbindable = {}, set(), False
+        for slice_ in slices:      # set-valued: a slice repeating a dep is idempotent
+            strong.update({n: (c, cur) for kind, n, c, cur in load_commands(binary, slice_)
+                           if kind == "strong" and n.startswith(SYSTEM_PREFIXES)})
+            b = bound_libraries(binary, slice_)
+            if b is None:
+                unbindable = True
+            else:
+                bound |= b
+        if not strong:
+            continue
+        if unbindable:
+            # cannot prove it binds nothing, so its deps must not become tier-1 candidates
+            unreadable.append((binary, "no LC_DYLD_CHAINED_FIXUPS"))
+            bound_anywhere |= {short_name(n) for n in strong}
+            continue
+        bound_anywhere |= bound
+        for name in strong:
+            c, cur = strong[name]
+            compat[name] = max(compat.get(name, (0,)), version_tuple(c))
+            current[name] = max(current.get(name, (0,)), version_tuple(cur))
+            if os.path.exists(prefix + name):
+                continue
+            # already built, just not under the Mac Catalyst path: a path problem, not a stub
+            if name.startswith(IOSSUPPORT) and os.path.exists(prefix + name[len(IOSSUPPORT):]):
+                continue
+            missing[name].add(app)
+    if not bound_anywhere:
+        sys.exit("no bound symbols found in any binary - the scan matched nothing, refusing "
+                 "to report every dependency as unbound")
+    for binary, why in unreadable:
+        print("  note: %s (%s); its dependencies excluded from tier 1" % (binary, why))
+    return {n: (apps, compat[n], current[n]) for n, apps in missing.items()
+            if short_name(n) not in bound_anywhere}
+
+
+LICENSE = """/*
+ This file is part of Darling.
+
+ Copyright (C) {year} Darling Developers
+
+ Darling is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ Darling is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+"""
+
+HEADER = """{license}
+#ifndef _{name}_H_
+#define _{name}_H_
+
+/* Intentionally empty: see src/{name}.c. */
+
+#endif
+"""
+
+SOURCE = """{license}
+#include <stdio.h>
+#include <stdlib.h>
+
+/* Stub. As of {date}, these binaries link {name} but bind no symbol from it, so an
+   exporting stub is unnecessary:
+{evidence}
+   A strong bind to a symbol this framework does not export still aborts in dyld, which is
+   the intended loud failure. Re-run tools/darling-tier1-stub-gen after an OS update to
+   check that this still holds. */
+
+__attribute__((constructor))
+static void {name}_stub_loaded(void)
+{{
+	if (getenv("STUB_VERBOSE"))
+		fprintf(stderr, "STUB: {name} loaded (no symbols implemented)\\n");
+}}
+"""
+
+CMAKELISTS = """project({name})
+
+{remove_call}
+
+set(DYLIB_COMPAT_VERSION "{compat}")
+set(DYLIB_CURRENT_VERSION "{current}")
+
+set(FRAMEWORK_VERSION "{version}")
+
+generate_sdk_framework({name}
+    VERSION ${{FRAMEWORK_VERSION}}
+    HEADER "include/{name}"{private_arg}
+)
+
+add_framework({name}
+    FAT
+    CURRENT_VERSION{private_arg}
+    VERSION ${{FRAMEWORK_VERSION}}
+
+    SOURCES
+        src/{name}.c
+
+    DEPENDENCIES
+        system
+)
+"""
+
+
+def emit(root, name, kind, version, apps, compat, current, date, dry_run):
+    subdir = "frameworks" if kind == "Frameworks" else "private-frameworks"
+    base = os.path.join(root, "src", subdir, name)
+    if os.path.exists(base):
+        return "exists"
+    private = kind == "PrivateFrameworks"
+    private_arg = "\n    PRIVATE" if private else ""
+    remove_call = ("remove_sdk_framework(%s\n    PRIVATE\n)" % name if private
+                   else "remove_sdk_framework(%s)" % name)
+    license = LICENSE.format(year=date[:4])
+    evidence = "\n".join("     %s.app" % a for a in sorted(apps))
+    files = {
+        "CMakeLists.txt": CMAKELISTS.format(name=name, version=version, compat=compat, current=current,
+                                            private_arg=private_arg, remove_call=remove_call),
+        os.path.join("include", name, name + ".h"): HEADER.format(license=license, name=name),
+        os.path.join("src", name + ".c"): SOURCE.format(license=license, name=name,
+                                                        date=date, evidence=evidence),
+    }
+    if not dry_run:
+        for rel, content in files.items():
+            path = os.path.join(base, rel)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w") as f:
+                f.write(content)
+    return "created"
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--prefix", required=True, help="Darling prefix holding /Applications")
+    ap.add_argument("--out", required=True, help="Darling source root")
+    ap.add_argument("--arch", default=None, help="override the per-binary slice")
+    ap.add_argument("--dry-run", action="store_true")
+    args = ap.parse_args()
+
+    for tool in ("llvm-otool", "llvm-objdump"):
+        if not shutil.which(tool):
+            sys.exit("%s not found on PATH" % tool)
+
+    date = datetime.date.today().isoformat()
+    candidates = scan(args.prefix, args.arch)
+    if not candidates:
+        print("no tier-1 candidates under %s" % args.prefix)
+        return
+
+    created, skipped, unhandled = [], [], []
+    for install_name in sorted(candidates):
+        m = None if install_name.startswith(IOSSUPPORT) else FRAMEWORK_RE.match(install_name)
+        if not m:
+            # iOSSupport needs add_framework's IOSSUPPORT flag, which no framework uses yet;
+            # anything else here is a plain dylib, which needs add_darling_library instead.
+            unhandled.append(install_name)
+            continue
+        name, kind, version = m.group("name"), m.group("kind"), m.group("ver")
+        apps, compat, current = candidates[install_name]
+        vstr = lambda t: ".".join(str(x) for x in t)
+        result = emit(args.out, name, kind, version, apps,
+                      vstr(compat), vstr(current), date, args.dry_run)
+        (created if result == "created" else skipped).append((name, kind))
+
+    print("scanned %s (%s), %s" % (args.prefix, args.arch or "all slices", date))
+    print("tier-1 candidates: %d" % len(candidates))
+    print("%s: %d framework(s)" % ("would create" if args.dry_run else "created", len(created)))
+    if skipped:
+        print("already present, left alone: %d" % len(skipped))
+    if unhandled:
+        print("\nnot generated (%d) - not a plain framework install name:" % len(unhandled))
+        for n in unhandled:
+            print("    %s" % n)
+
+    if created:
+        print("\nadd these to the matching CMakeLists.txt:")
+        for subdir, label in (("Frameworks", "src/frameworks/CMakeLists.txt"),
+                              ("PrivateFrameworks", "src/private-frameworks/CMakeLists.txt")):
+            names = sorted(n for n, k in created if k == subdir)
+            if names:
+                print("  %s" % label)
+                for n in names:
+                    print("    add_subdirectory(%s)" % n)
+        print("\nthen reconfigure once with -DREGENERATE_SDK=ON and commit the SDK symlinks.")
+
+
+if __name__ == "__main__":
+    main()
