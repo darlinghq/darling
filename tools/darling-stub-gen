@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import sys, os, subprocess, re, getpass, datetime
+import sys, os, subprocess, re, shutil, datetime
 
 # Data
 library = False
@@ -14,11 +14,12 @@ iossupport_system_prefix = "/System/iOSSupport"
 framework_prefix = "/System/Library/Frameworks/"
 private_framework_prefix = "/System/Library/PrivateFrameworks/"
 
-#######################################################
-##### SET THIS TO WHERE YOUR class-dump BINARY IS #####
-#######################################################
-username = getpass.getuser()
-class_dump = "/Users/" + username + "/bin/class-dump"
+# class-dump is not packaged for Linux; set CLASS_DUMP to a build of it, or put it on PATH.
+class_dump = os.environ.get("CLASS_DUMP") or shutil.which("class-dump")
+if not class_dump:
+    sys.exit("class-dump not found: set CLASS_DUMP to its path, or add it to PATH")
+if not os.access(class_dump, os.X_OK):
+    sys.exit("class-dump at %s is not executable" % class_dump)
 
 copyright_template = """/*
  This file is part of Darling.
