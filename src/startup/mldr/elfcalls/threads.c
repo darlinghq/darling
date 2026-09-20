@@ -33,6 +33,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <limits.h>
 
 #include "dthreads.h"
 
@@ -198,7 +199,12 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 
 	// std::cout << "Allocated stack at " << pth << ", size " << stack_size << std::endl;
 
-	pthread_attr_setstacksize(&attr, 4096);
+	// requesting less than PTHREAD_STACK_MIN fails and leaves the attribute at the libc
+	// default (8 MB on glibc), so ask for exactly the minimum the host libc accepts
+	size_t host_stack_size = PTHREAD_STACK_MIN;
+	int stacksize_err = pthread_attr_setstacksize(&attr, host_stack_size);
+	if (stacksize_err != 0)
+		fprintf(stderr, "mldr: pthread_attr_setstacksize(%zu) failed: %s\n", host_stack_size, strerror(stacksize_err));
 
 	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
