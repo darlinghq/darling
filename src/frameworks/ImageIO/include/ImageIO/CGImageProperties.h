@@ -23,3 +23,9 @@ IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFYResolution;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFOrientation;
 
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyHasAlpha;
+
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyPNGAuthor;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyPNGDescription;
+
+IMAGEIO_EXTERN const CFStringRef kCGImageMetadataNamespaceExif;
+IMAGEIO_EXTERN const CFStringRef kCGImageMetadataPrefixExif;

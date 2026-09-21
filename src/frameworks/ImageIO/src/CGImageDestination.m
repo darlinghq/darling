@@ -44,3 +44,23 @@ void CGImageDestinationAddImageFromSource(CGImageDestinationRef self,CGImageSour
 bool CGImageDestinationFinalize(CGImageDestinationRef self) {
    return O2ImageDestinationFinalize((O2ImageDestinationRef)self);
 }
+
+void CGImageDestinationAddImageAndMetadata(CGImageDestinationRef self, CGImageRef image, CGImageMetadataRef metadata, CFDictionaryRef properties) {
+   CGImageDestinationAddImage(self, image, properties);
+}
+
+CGMutableImageMetadataRef CGImageMetadataCreateMutable(void) {
+   return (CGMutableImageMetadataRef)CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+}
+
+CGImageMetadataTagRef CGImageMetadataTagCreate(CFStringRef xmlns, CFStringRef prefix, CFStringRef name, int type, CFTypeRef value) {
+   return (CGImageMetadataTagRef)CFRetain(value ? value : (CFTypeRef)kCFNull);
+}
+
+bool CGImageMetadataSetTagWithPath(CGMutableImageMetadataRef metadata, CGImageMetadataTagRef parent, CFStringRef path, CGImageMetadataTagRef tag) {
+   if (metadata && path && tag) {
+      CFDictionarySetValue((CFMutableDictionaryRef)metadata, path, (const void*)tag);
+      return true;
+   }
+   return false;
+}
