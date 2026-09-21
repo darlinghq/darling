@@ -19,6 +19,7 @@ generate_sdk_framework(RecapPerformanceTesting
 set(DARLING_LIB_64BIT_ONLY TRUE)
 
 add_framework(RecapPerformanceTesting
+	IOSSUPPORT_ALIAS
 	CURRENT_VERSION
 	PRIVATE
 	VERSION ${FRAMEWORK_VERSION}

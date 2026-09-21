@@ -16,6 +16,7 @@ generate_sdk_framework(AuthKitUI
 )
 
 add_framework(AuthKitUI
+	IOSSUPPORT_ALIAS
 	FAT
 	CURRENT_VERSION
 	PRIVATE

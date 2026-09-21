@@ -8,7 +8,7 @@ define_property(TARGET PROPERTY DYLIB_INSTALL_NAME BRIEF_DOCS "Stores the DYLIB_
 	FULL_DOCS "Used to make reexporting child frameworks less painful.")
 
 function(add_framework name)
-	cmake_parse_arguments(FRAMEWORK "CURRENT_VERSION;FAT;PRIVATE;IOSSUPPORT;CIRCULAR;NO_INSTALL" "VERSION;LINK_FLAGS;PARENT;PARENT_VERSION;TARGET_NAME;PARENT_COMPONENT;PARENT_DIR"
+	cmake_parse_arguments(FRAMEWORK "CURRENT_VERSION;FAT;PRIVATE;IOSSUPPORT;IOSSUPPORT_ALIAS;CIRCULAR;NO_INSTALL" "VERSION;LINK_FLAGS;PARENT;PARENT_VERSION;TARGET_NAME;PARENT_COMPONENT;PARENT_DIR"
 		"SOURCES;DEPENDENCIES;CIRCULAR_DEPENDENCIES;RESOURCES;UPWARD_DEPENDENCIES;OBJECTS;STRONG_DEPENDENCIES" ${ARGN})
 
 	if (FRAMEWORK_NO_INSTALL)
@@ -132,6 +132,20 @@ function(add_framework name)
 	if (FRAMEWORK_CURRENT_VERSION)
 		InstallSymlink(${FRAMEWORK_VERSION} "${CMAKE_INSTALL_PREFIX}/libexec/darling${root_dir}/${name}.framework/Versions/Current" ${EXCLUDE_FROM_ALL_ARG})
 		InstallSymlink("Versions/Current/${name}" "${CMAKE_INSTALL_PREFIX}/libexec/darling${root_dir}/${name}.framework/${name}" ${EXCLUDE_FROM_ALL_ARG})
+	endif()
+
+	# Catalyst binaries hardcode /System/iOSSupport/... in their load commands, so
+	# a framework shared with AppKit apps must be reachable at both paths.
+	# IOSSUPPORT above *moves* the install; this aliases it, leaving it in place.
+	if (FRAMEWORK_IOSSUPPORT_ALIAS)
+		if (FRAMEWORK_IOSSUPPORT)
+			message(FATAL_ERROR "${name}: IOSSUPPORT_ALIAS aliases the default install root into /System/iOSSupport, so it is meaningless with IOSSUPPORT, which moves the install there instead")
+		endif()
+		set(alias_dir "${CMAKE_INSTALL_PREFIX}/libexec/darling/System/iOSSupport/System/Library/${dir_name}")
+		file(RELATIVE_PATH alias_target
+			"${alias_dir}"
+			"${CMAKE_INSTALL_PREFIX}/libexec/darling${root_dir}/${name}.framework")
+		InstallSymlink("${alias_target}" "${alias_dir}/${name}.framework" ${EXCLUDE_FROM_ALL_ARG})
 	endif()
 endfunction(add_framework)
 

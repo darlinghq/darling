@@ -13,6 +13,7 @@ generate_sdk_framework(MapKit
 )
 
 add_framework(MapKit
+    IOSSUPPORT_ALIAS
     FAT
     CURRENT_VERSION
     VERSION ${FRAMEWORK_VERSION}

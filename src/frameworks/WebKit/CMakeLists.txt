@@ -13,6 +13,7 @@ generate_sdk_framework(WebKit
 )
 
 add_framework(WebKit
+    IOSSUPPORT_ALIAS
     FAT
     CURRENT_VERSION
     VERSION ${FRAMEWORK_VERSION}
