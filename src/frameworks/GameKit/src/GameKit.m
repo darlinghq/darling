@@ -72,9 +72,6 @@ static void completeErrorLater(void (^handler)(NSError *))
 @end
 
 @implementation GKLocalPlayer
-{
-	void (^_authenticateHandler)(NSViewController *, NSError *);
-}
 
 + (GKLocalPlayer *)localPlayer
 {

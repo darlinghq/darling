@@ -60,14 +60,23 @@ typedef NS_ENUM(NSInteger, GKGameCenterViewControllerState) {
 
 @class GKTurnBasedParticipant;
 
-@interface GKPlayer : NSObject
+@interface GKPlayer : NSObject {
+@package
+	NSString *_playerID;
+	NSString *_displayName;
+	NSString *_alias;
+}
 @property (readonly, retain) NSString *playerID;
 @property (readonly, retain) NSString *displayName;
 @property (readonly, retain) NSString *alias;
 + (void)loadPlayersForIdentifiers:(NSArray<NSString *> *)identifiers withCompletionHandler:(void (^)(NSArray<GKPlayer *> *players, NSError *error))completionHandler;
 @end
 
-@interface GKLocalPlayer : GKPlayer
+@interface GKLocalPlayer : GKPlayer {
+@package
+	BOOL _authenticated;
+	void (^_authenticateHandler)(NSViewController *viewController, NSError *error);
+}
 @property (readonly, getter=isAuthenticated) BOOL authenticated;
 @property (copy) void (^authenticateHandler)(NSViewController *viewController, NSError *error);
 + (GKLocalPlayer *)localPlayer;
@@ -75,7 +84,13 @@ typedef NS_ENUM(NSInteger, GKGameCenterViewControllerState) {
 - (void)registerListener:(id)listener;
 @end
 
-@interface GKAchievement : NSObject
+@interface GKAchievement : NSObject {
+@package
+	NSString *_identifier;
+	double _percentComplete;
+	BOOL _showsCompletionBanner;
+	GKPlayer *_player;
+}
 @property (readonly, copy) NSString *identifier;
 @property (assign) double percentComplete;
 @property (assign) BOOL showsCompletionBanner;
@@ -87,7 +102,14 @@ typedef NS_ENUM(NSInteger, GKGameCenterViewControllerState) {
 + (void)reportAchievements:(NSArray<GKAchievement *> *)achievements withCompletionHandler:(void (^)(NSError *error))completionHandler;
 @end
 
-@interface GKMatchRequest : NSObject
+@interface GKMatchRequest : NSObject {
+@package
+	NSUInteger _minPlayers;
+	NSUInteger _maxPlayers;
+	NSUInteger _playerGroup;
+	uint32_t _playerAttributes;
+	NSArray<GKPlayer *> *_recipients;
+}
 @property (assign) NSUInteger minPlayers;
 @property (assign) NSUInteger maxPlayers;
 @property (assign) NSUInteger playerGroup;
@@ -95,7 +117,14 @@ typedef NS_ENUM(NSInteger, GKGameCenterViewControllerState) {
 @property (retain) NSArray<GKPlayer *> *recipients;
 @end
 
-@interface GKTurnBasedMatch : NSObject
+@interface GKTurnBasedMatch : NSObject {
+@package
+	NSString *_matchID;
+	NSArray<GKTurnBasedParticipant *> *_participants;
+	GKTurnBasedMatchStatus _status;
+	GKTurnBasedParticipant *_currentParticipant;
+	NSData *_matchData;
+}
 @property (readonly, retain) NSString *matchID;
 @property (readonly, retain) NSArray<GKTurnBasedParticipant *> *participants;
 @property (readonly) GKTurnBasedMatchStatus status;
@@ -107,12 +136,20 @@ typedef NS_ENUM(NSInteger, GKGameCenterViewControllerState) {
 - (void)endMatchInTurnWithMatchData:(NSData *)matchData completionHandler:(void (^)(NSError *error))completionHandler;
 @end
 
-@interface GKGameCenterViewController : NSViewController
+@interface GKGameCenterViewController : NSViewController {
+@package
+	id _gameCenterDelegate;
+	GKGameCenterViewControllerState _viewState;
+}
 @property (assign) id gameCenterDelegate;
 @property (assign) GKGameCenterViewControllerState viewState;
 @end
 
-@interface GKTurnBasedMatchmakerViewController : NSViewController
+@interface GKTurnBasedMatchmakerViewController : NSViewController {
+@package
+	id _turnBasedMatchmakerDelegate;
+	BOOL _showExistingMatches;
+}
 @property (assign) id turnBasedMatchmakerDelegate;
 @property (assign) BOOL showExistingMatches;
 - (instancetype)initWithMatchRequest:(GKMatchRequest *)request;
@@ -120,7 +157,10 @@ typedef NS_ENUM(NSInteger, GKGameCenterViewControllerState) {
 
 // On macOS Game Center panels are hosted by GKDialogController rather than
 // presented by the app itself.
-@interface GKDialogController : NSObject
+@interface GKDialogController : NSObject {
+@package
+	NSWindow *_parentWindow;
+}
 + (GKDialogController *)sharedDialogController;
 - (BOOL)presentViewController:(NSViewController *)viewController;
 - (void)dismiss:(id)sender;
