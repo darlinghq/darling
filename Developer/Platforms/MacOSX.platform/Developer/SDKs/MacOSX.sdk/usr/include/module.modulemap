@@ -3274,3 +3274,8 @@ module Darwin [system] [extern_c] {
   exclude header "zlib.h"
   export *
 }
+
+module CommonCrypto [system] [extern_c] {
+  umbrella header "CommonCrypto/CommonCrypto.h"
+  export *
+}

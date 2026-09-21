@@ -1,4 +1,19 @@
 framework module Foundation [extern_c] [system] {
-  umbrella header "Foundation.h"
+  // A directory umbrella, not `umbrella header "Foundation.h"`: only 151 of the 201 headers are
+  // reachable from Foundation.h, and with a header umbrella the other 50 sit in the framework but
+  // in no module at all. `#import <Foundation/NSLayoutConstraint.h>` from AppKit then imports a
+  // Foundation that does not declare the class, which reads as `cannot find interface declaration
+  // for 'NSLayoutConstraint'` and has made a modular Foundation look impossible before.
+  umbrella "Headers"
+
+  // These two cannot be in any module; excluded so including them stays textual, as it is today.
+  // Both are unreachable from Foundation.h, so nothing had ever compiled them:
+  //   NSMutableCharacterSet.h:1  #import <Foundation/NSCharactrSet.h>  (misspelt, no such file)
+  //   NSSerializer.h:4           duplicate interface definition for class 'NSDeserializer'
+  // darling-foundation#42 fixes both. Drop these two lines when this checkout's foundation
+  // submodule pin includes it.
+  exclude header "NSMutableCharacterSet.h"
+  exclude header "NSSerializer.h"
+
   export *
 }

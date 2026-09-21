@@ -69,6 +69,17 @@ grep -E "$owned" "$W/closure.txt" | sed 's/^/closure reaches module-owned header
   comm -23 "$W/all.txt" "$W/closure.txt" | grep -vx MacTypes.h | sed 's/.*/  exclude header "&"/'
   echo '  export *'
   echo '}'
+  # CommonCrypto lives in usr/include rather than a framework, and none of its headers is in the
+  # Darwin umbrella's closure, so every one of them is excluded above. Without a module of its own
+  # `canImport(CommonCrypto)` is false and CC_SHA1_Update is unreachable, though CommonDigest.h
+  # declares it. Exclusion is per-module, so this module may claim the same headers.
+  if [ -f "$I/CommonCrypto/CommonCrypto.h" ]; then
+	echo
+	echo 'module CommonCrypto [system] [extern_c] {'
+	echo '  umbrella header "CommonCrypto/CommonCrypto.h"'
+	echo '  export *'
+	echo '}'
+  fi
 } > "$I/module.modulemap"
 echo "excluded headers: $(grep -c 'exclude header' "$I/module.modulemap")" >> "$log"
 echo "log: $log"
