@@ -1,6 +1,18 @@
+// Apple's SDK declares these as submodules, so `import os.log` and `import os.signpost` resolve.
+// A flat `module os` claiming all three headers makes the submodule spellings fail with
+// "no such module 'os.log'".
 module os [system] [extern_c] {
-  header "log.h"
-  header "activity.h"
-  header "signpost.h"
+  module log {
+    header "log.h"
+    export *
+  }
+  module activity {
+    header "activity.h"
+    export *
+  }
+  module signpost {
+    header "signpost.h"
+    export *
+  }
   export *
 }
