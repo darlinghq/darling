@@ -67,6 +67,7 @@ endif()
 if (COMPONENT_gui_stubs)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "gui_stubs")
 
+	add_subdirectory(AOSKit)
 	add_subdirectory(AssertionServices)
 	add_subdirectory(AssetCacheServicesExtensions)
 	add_subdirectory(Bom)
