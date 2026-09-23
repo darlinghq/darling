@@ -40,7 +40,10 @@ NSString * const SMAppServiceErrorDomain;
 
 XPC_EXPORT
 API_AVAILABLE(macos(13.0))
-@interface SMAppService : NSObject
+@interface SMAppService : NSObject {
+	int _kind;
+	NSString *_name;
+}
 
 + (instancetype)loginItemServiceWithIdentifier:(NSString *)identifier NS_SWIFT_NAME(loginItem(identifier:));
 

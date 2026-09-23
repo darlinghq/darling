@@ -146,10 +146,7 @@ static SMAppServiceStatus SMStatusForJobState(SMJobState state)
 	}
 }
 
-@implementation SMAppService {
-	SMAppServiceKind _kind;
-	NSString *_name;
-}
+@implementation SMAppService
 
 - (instancetype)_initWithKind:(SMAppServiceKind)kind name:(NSString *)name
 {
