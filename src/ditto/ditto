@@ -1,18 +1,72 @@
 #!/usr/bin/env bash
 
-#
-# FIXME: implement an actual version of ditto
-#
-# This is just a stub that works well enough for xcodebuild.
-#
+# Copy the paths selected by a bill of materials, as used by Homebrew Cask.
+# The existing -rsrc mode remains available for xcodebuild.
 
 if [ "$#" -lt 3 ]; then
 	>&2 cat <<- 'EOF'
-		ditto command stub
+		Usage: ditto -rsrc source dest
+		       ditto --bom file.bom -- source dest
 
-		Only supports "ditto -rsrc <source> <dest>"
 	EOF
 	exit 1
+fi
+
+if [ "$1" = "--bom" ]; then
+	if [ "$#" -ne 5 ] || [ "$3" != "--" ]; then
+		>&2 echo "Usage: ditto --bom file.bom -- source dest"
+		exit 1
+	fi
+	bom=$2
+	source=$4
+	dest=$5
+	if [ ! -d "$source" ] || [ ! -d "$dest" ]; then
+		>&2 echo "ditto: source and destination must be directories"
+		exit 1
+	fi
+	listing=$(mktemp) || exit 1
+	trap 'rm -f "$listing"' EXIT
+	if ! lsbom -s "$bom" > "$listing"; then
+		>&2 echo "ditto: cannot read BOM: $bom"
+		exit 1
+	fi
+	while IFS= read -r rel || [ -n "$rel" ]; do
+		[ "$rel" = "." ] && continue
+		rel=${rel#./}
+		case "$rel" in
+			""|/*|..|../*|*/..|*/../*|*/./*|*//* )
+				>&2 echo "ditto: invalid BOM path: $rel"
+				exit 1
+				;;
+		esac
+		[ -e "$source/$rel" ] || [ -L "$source/$rel" ] || {
+			>&2 echo "ditto: missing BOM source: $rel"
+			exit 1
+		}
+		# Never traverse a symlinked parent in either tree. A symlink may
+		# still be copied as a leaf without following its target.
+		parent=${rel%/*}
+		if [ "$parent" != "$rel" ]; then
+			part=
+			remaining=$parent
+			while [ -n "$remaining" ]; do
+				component=${remaining%%/*}
+				if [ "$remaining" = "$component" ]; then remaining=; else remaining=${remaining#*/}; fi
+				part=${part:+$part/}$component
+				if [ -L "$source/$part" ] || [ -L "$dest/$part" ]; then
+					>&2 echo "ditto: symlinked BOM parent: $part"
+					exit 1
+				fi
+			done
+			mkdir -p "$dest/$parent" || exit 1
+		fi
+		if [ -d "$source/$rel" ] && [ ! -L "$source/$rel" ]; then
+			mkdir -p "$dest/$rel" || exit 1
+		else
+			cp -a "$source/$rel" "$dest/$rel" || exit 1
+		fi
+	done < "$listing"
+	exit 0
 fi
 
 if [ "$1" != "--rsrc" ] && [ "$1" != "-rsrc" ]; then

@@ -52,6 +52,9 @@
 [submodule "src/external/darling-dmg"]
 	path = src/external/darling-dmg
 	url = ../darling-dmg.git
+[submodule "src/external/bomutils"]
+	path = src/external/bomutils
+	url = https://github.com/cristim/bomutils.git
 [submodule "src/external/installer"]
 	path = src/external/installer
 	url = ../darling-installer.git
