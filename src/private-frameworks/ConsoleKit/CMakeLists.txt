@@ -18,6 +18,8 @@ add_framework(ConsoleKit
 		src/CSKMessage.m
 		src/CSKStreamArchiveSource.m
 		src/CSKStreamASLSource.m
+		src/CSKStreamViewController.m
+		src/CSKTableColumnLayout.m
 
 	DEPENDENCIES
 		system
