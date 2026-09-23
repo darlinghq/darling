@@ -66,6 +66,16 @@ grep -E "$owned" "$W/closure.txt" | sed 's/^/closure reaches module-owned header
   echo '    header "MacTypes.h"'
   echo '    export *'
   echo '  }'
+  # Apple's Observation module imports Darwin.os.lock explicitly. The header
+  # is already in the Darwin umbrella, but needs its own named submodule.
+  if [ -f "$I/os/lock.h" ]; then
+	echo '  module os {'
+	echo '    module lock {'
+	echo '      header "os/lock.h"'
+	echo '      export *'
+	echo '    }'
+	echo '  }'
+  fi
   comm -23 "$W/all.txt" "$W/closure.txt" | grep -vx MacTypes.h | sed 's/.*/  exclude header "&"/'
   echo '  export *'
   echo '}'
