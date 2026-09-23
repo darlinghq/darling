@@ -85,3 +85,9 @@ if (COMPONENT_gui_stubs)
 	add_subdirectory(SpotlightServices)
 	add_subdirectory(UIFoundation)
 endif()
+
+if (COMPONENT_gui)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "gui")
+
+	add_subdirectory(ConsoleKit)
+endif()
