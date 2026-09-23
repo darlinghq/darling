@@ -28,6 +28,8 @@ enum {
 	kSMErrorJobPlistNotFound,
 	kSMErrorJobMustBeEnabled,
 	kSMErrorInvalidPlist,
+	kSMErrorLaunchDeniedByUser,
+	kSMErrorAlreadyRegistered,
 };
 
 __END_DECLS

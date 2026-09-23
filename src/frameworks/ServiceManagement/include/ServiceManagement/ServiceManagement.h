@@ -7,6 +7,7 @@
 #include <xpc/xpc.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <ServiceManagement/SMErrors.h>
+#include <ServiceManagement/SMAppService.h>
 
 #if !(TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
 #include <Security/Authorization.h>

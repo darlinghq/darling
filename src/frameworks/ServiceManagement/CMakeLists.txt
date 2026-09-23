@@ -19,10 +19,13 @@ add_framework(ServiceManagement
 
 	SOURCES
 	  ServiceManagement.c
+	  SMAppService.m
 
 	DEPENDENCIES
 		system
 		CoreFoundation
 		Security
 		CoreServices
+		objc
+		Foundation
 )
