@@ -20,7 +20,6 @@
 #import <AVFAudio/AVAudioSession.h>
 #import <objc/runtime.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 /* Categories */
 NSString *const AVAudioSessionCategoryAmbient = @"AVAudioSessionCategoryAmbient";
@@ -84,6 +83,11 @@ NSString *const AVAudioSessionPolarPatternCardioid = @"AVAudioSessionPolarPatter
 NSString *const AVAudioSessionPolarPatternOmnidirectional = @"AVAudioSessionPolarPatternOmnidirectional";
 NSString *const AVAudioSessionPolarPatternSubcardioid = @"AVAudioSessionPolarPatternSubcardioid";
 
+/*
+ * Singleton session state.
+ * Note: Access is kept simple and static here; on modern macOS AVAudioSession
+ * is thread-safe. Audio playback is single-threaded in Darling's current stubs.
+ */
 static NSString *g_category = nil;
 static NSString *g_mode = nil;
 static BOOL g_active = NO;
