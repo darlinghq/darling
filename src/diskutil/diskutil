@@ -31,6 +31,27 @@ eject() {
 	echo "Disk $DISK_PATH ejected"
 }
 
+info() {
+	if [ "$#" -ne 2 ] || [ "$1" != "-plist" ]; then
+		errcho "Usage: diskutil info -plist MountPoint"
+		exit 1
+	fi
+
+	# FUSE-free hdiutil attaches extract into a temporary mount directory.
+	# Homebrew asks for APFSPhysicalStores before ejecting; HFS images have
+	# none. The sibling marker distinguishes our extraction from arbitrary dirs.
+	DISK_PATH=$2
+	if [ ! -d "$DISK_PATH" ] || [ ! -f "$DISK_PATH.darling-dmg-extracted" ]; then
+		errcho "Unable to find disk for $DISK_PATH"
+		exit 1
+	fi
+	cat <<-'EOF'
+		<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+		<plist version="1.0"><dict><key>APFSPhysicalStores</key><array/></dict></plist>
+	EOF
+}
+
 if [ "$#" -lt 1 ]; then
 	>&2 cat <<- 'EOF'
 		Disk Utility Tool
@@ -50,6 +71,9 @@ shift;
 case "$VERB" in
 	eject)
 		eject "$@"
+		;;
+	info)
+		info "$@"
 		;;
 	*)
 		errcho "diskutil: did not recognize verb \"$VERB\"; type \"diskutil\" for a list"
