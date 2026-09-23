@@ -26,25 +26,27 @@
 extern "C" {
 #endif
 
-// Stubs: Darling ships no dictionaries, so lookups find nothing. Private calls take and
-// return untyped values; only the term range result needs its real CFRange type.
+typedef const struct __DCSDictionary* DCSDictionaryRef;
+
+// Dictionary discovery and the active set are implemented; record lookup is still stubbed,
+// so lookups find nothing. Remaining stubs take and return untyped values.
 
 CFRange DCSGetTermRangeInStringWithOptions(void *dictionary, CFStringRef string, CFIndex offset, void *options);
 
-void* DCSCopyAvailableDictionaries(void);
+CFSetRef DCSCopyAvailableDictionaries(void);
 void* DCSCopyRecordForReference(void);
 void* DCSCopyRecordsForSearchString(void);
 void* DCSCopyRecordsWithHeadword(void);
 void* DCSCreateHeadwordList(void);
 void* DCSCreateUserDictionariesDirectory(void);
 void* DCSDictionaryAssetCopyDiagnosticLog(void);
-void* DCSDictionaryCreate(void);
+DCSDictionaryRef DCSDictionaryCreate(CFURLRef url);
 void* DCSDictionaryDownloadFinished(void);
 void* DCSDictionaryGetAssetObj(void);
 void* DCSDictionaryGetBaseURL(void);
-void* DCSDictionaryGetIdentifier(void);
-void* DCSDictionaryGetLanguages(void);
-void* DCSDictionaryGetName(void);
+CFStringRef DCSDictionaryGetIdentifier(DCSDictionaryRef dictionary);
+CFArrayRef DCSDictionaryGetLanguages(DCSDictionaryRef dictionary);
+CFStringRef DCSDictionaryGetName(DCSDictionaryRef dictionary);
 void* DCSDictionaryGetParentDictionary(void);
 void* DCSDictionaryGetPreference(void);
 void* DCSDictionaryGetPreferenceHTML(void);
@@ -52,12 +54,12 @@ void* DCSDictionaryGetPrimaryLanguage(void);
 void* DCSDictionaryGetShortName(void);
 void* DCSDictionaryGetStyleSheetURL(void);
 void* DCSDictionaryGetSubDictionaries(void);
-void* DCSDictionaryGetURL(void);
+CFURLRef DCSDictionaryGetURL(DCSDictionaryRef dictionary);
 void* DCSDictionaryIsLanguageDictionary(void);
 void* DCSDictionaryIsNetworkService(void);
 void* DCSDictionarySetDataHeader(void);
 void* DCSDictionarySetPreference(void);
-void* DCSGetActiveDictionaries(void);
+CFArrayRef DCSGetActiveDictionaries(void);
 void* DCSInvalidateDictionaryCache(void);
 void* DCSNormalizeSearchString(void);
 void* DCSPrepareMobileAssetQuery(void);
@@ -76,7 +78,7 @@ void* DCSRecordSetHeadword(void);
 void* DCSSearchSessionCreate(void);
 void* DCSSearchSessionScheduleWithRunLoop(void);
 void* DCSSearchSessionUnscheduleFromRunLoop(void);
-void* DCSSetActiveDictionaries(void);
+void DCSSetActiveDictionaries(CFArrayRef dictionaries);
 void* DCSSetServicePresentationType(void);
 void* DCSSortRecordsWithHeadword(void);
 

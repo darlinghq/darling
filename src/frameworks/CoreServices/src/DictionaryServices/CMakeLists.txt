@@ -14,6 +14,7 @@ add_framework(DictionaryServices
 	PARENT "CoreServices"
 
 	SOURCES
+		Dictionaries.c
 		DictionaryServices.c
 	RESOURCES
 		Info.plist Info.plist
