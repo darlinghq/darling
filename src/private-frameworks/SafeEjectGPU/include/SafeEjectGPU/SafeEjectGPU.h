@@ -23,6 +23,7 @@
 #import <Foundation/Foundation.h>
 
 @interface SafeEjectGPU : NSObject
+- (NSArray *)gpus;
 @end
 
 #endif

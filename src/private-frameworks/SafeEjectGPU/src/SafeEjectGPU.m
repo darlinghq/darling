@@ -19,7 +19,12 @@
 
 #import <SafeEjectGPU/SafeEjectGPU.h>
 
-/* Darling exposes no removable GPUs. The methods Activity Monitor sends are not known yet, so none
-   are guessed: an unimplemented selector raises instead of reporting a GPU state. */
 @implementation SafeEjectGPU
+
+// Darling's IOKit registry (iokitd) publishes no GPU services, so there is no GPU to list or eject.
+- (NSArray *)gpus
+{
+	return [NSArray array];
+}
+
 @end
