@@ -29,6 +29,8 @@ extern NSString *const kACMetricsDatabaseName;
 @end
 
 @interface AssetCacheServicesManager : NSObject
+- (instancetype)initWithDelegate:(id)delegate delegateQueue:(dispatch_queue_t)queue;
+- (BOOL)isActivated;
 @end
 
 #endif

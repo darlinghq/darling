@@ -24,10 +24,22 @@
 NSString *const kACMetricsDatabaseDirectory = @"/Library/Application Support/Apple/AssetCache/Metrics";
 NSString *const kACMetricsDatabaseName = @"Metrics.db";
 
-/* Darling runs no content caching service, so that database never exists. The methods Activity
-   Monitor calls are not known yet (it stops in AppKit nib loading first), so none are guessed. */
+// Darling runs no content caching service, so that database never exists. Both classes implement
+// only the selectors Activity Monitor was observed to send; anything else raises.
 @implementation AssetCacheMetricsReader
 @end
 
 @implementation AssetCacheServicesManager
+
+// The service is never activated here, so there is no state change to report to the delegate.
+- (instancetype)initWithDelegate:(id)delegate delegateQueue:(dispatch_queue_t)queue
+{
+	return [super init];
+}
+
+- (BOOL)isActivated
+{
+	return NO;
+}
+
 @end
