@@ -26,6 +26,7 @@
 #import <UniformTypeIdentifiers/NSString+UTAdditions.h>
 #import <UniformTypeIdentifiers/NSURL+UTAdditions.h>
 #import <UniformTypeIdentifiers/UTType.h>
+#import <UniformTypeIdentifiers/UTCoreTypes.h>
 #import <UniformTypeIdentifiers/_UTConstantType.h>
 #import <UniformTypeIdentifiers/_UTCoreType+UTRefCounting.h>
 #import <UniformTypeIdentifiers/_UTCoreType.h>
