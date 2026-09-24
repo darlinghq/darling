@@ -20,6 +20,7 @@
 
 @interface CSKDevice : NSObject
 + (instancetype)hostDevice;
+- (BOOL)isEqualToDevice:(CSKDevice *)device;
 @end
 
 @interface CSKDeviceManager : NSObject
@@ -67,6 +68,8 @@ int main(void)
 		devices.delegate = delegate;
 		CHECK(devices.delegate == delegate, "device manager delegate");
 		CHECK([devices.allDevices isEqual:@[[CSKDevice hostDevice]]], "the host is the only device");
+		CHECK([[devices.allDevices firstObject] isEqualToDevice:[CSKDevice hostDevice]] && ![[CSKDevice hostDevice] isEqualToDevice:nil],
+			"device equality");
 
 		NSString *dir = [NSHomeDirectory() stringByAppendingPathComponent:
 			[NSString stringWithFormat:@"Library/Logs/consolekit-sources-%d", getpid()]];
