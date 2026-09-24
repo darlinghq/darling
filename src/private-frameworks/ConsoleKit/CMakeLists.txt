@@ -13,7 +13,9 @@ add_framework(ConsoleKit
 		src/ConsoleKit.m
 		src/CSKAppKitAdditions.m
 		src/CSKDevice.m
+		src/CSKDirectoryObserver.m
 		src/CSKFileSystem.m
+		src/CSKFilter.m
 		src/CSKHelpers.m
 		src/CSKMessage.m
 		src/CSKStreamArchiveSource.m
@@ -27,6 +29,7 @@ add_framework(ConsoleKit
 		objc
 		Foundation
 		AppKit
+		CoreServices
 )
 target_compile_options(ConsoleKit PRIVATE -fobjc-arc)
 target_include_directories(ConsoleKit PRIVATE include)

@@ -2,6 +2,7 @@
 #include <asl.h>
 
 @interface CSKFileSystem : NSObject
++ (instancetype)sharedInstance;
 + (BOOL)doesURLPointToValidFile:(NSURL *)url;
 + (BOOL)isFileAtPathValidASLFile:(NSString *)path;
 + (BOOL)isFileAtPathValidLogArchive:(NSString *)path;
@@ -9,6 +10,16 @@
 @end
 
 @implementation CSKFileSystem
+
++ (instancetype)sharedInstance
+{
+	static CSKFileSystem *shared;
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{
+		shared = [[CSKFileSystem alloc] init];
+	});
+	return shared;
+}
 
 + (BOOL)doesURLPointToValidFile:(NSURL *)url
 {

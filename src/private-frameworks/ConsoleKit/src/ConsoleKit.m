@@ -8,24 +8,9 @@
 @implementation CSKEntity
 @end
 
-@interface CSKFilter : NSObject
-@end
-@implementation CSKFilter
-@end
-
 @interface CSKLoadRange : NSObject
 @end
 @implementation CSKLoadRange
-@end
-
-@interface CSKDeviceManager : NSObject
-@end
-@implementation CSKDeviceManager
-@end
-
-@interface CSKDirectoryObserver : NSObject
-@end
-@implementation CSKDirectoryObserver
 @end
 
 @interface CSKFileTailObserver : NSObject
