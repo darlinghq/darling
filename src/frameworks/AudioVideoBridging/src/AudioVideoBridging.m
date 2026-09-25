@@ -22,6 +22,18 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+// Audio MIDI Setup links these AVB model classes before opening any AVB pane.
+// The AVB backend remains unavailable, but the classes can be instantiated.
+@interface AVBConfigurationURL : NSObject
+@end
+@implementation AVBConfigurationURL
+@end
+
+@interface AVBVirtualAudioConfiguration : NSObject
+@end
+@implementation AVBVirtualAudioConfiguration
+@end
+
 static int verbose = 0;
 
 __attribute__((constructor))
