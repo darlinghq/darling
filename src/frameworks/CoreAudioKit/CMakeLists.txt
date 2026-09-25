@@ -85,4 +85,5 @@ add_framework(CoreAudioKit
         system
         objc
         Foundation
+        AppKit
 )

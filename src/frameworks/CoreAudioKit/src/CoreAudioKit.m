@@ -19,10 +19,20 @@
 
 
 #include <CoreAudioKit/CoreAudioKit.h>
+#import <AppKit/NSViewController.h>
 #include <stdlib.h>
 #include <stdio.h>
 
 static int verbose = 0;
+
+// Audio MIDI Setup links this private CoreAudioKit controller even when the
+// Network MIDI pane is never opened.  Keep its view-controller behavior so
+// storyboard loading can instantiate it when that pane is selected.
+@interface CANetworkMIDIViewController : NSViewController
+@end
+
+@implementation CANetworkMIDIViewController
+@end
 
 __attribute__((constructor))
 static void initme(void) {
