@@ -10,12 +10,15 @@
 	state every caller already handles: a flow with nothing to show completes. The
 	privacy presenter reports no services, because there is no App Store here to
 	link to.
+
+	Every class is declared over NSObject rather than over its real AppKit base,
+	because AppKit does not exist on this system.
 */
 
 #ifndef ONBOARDINGKIT_H
 #define ONBOARDINGKIT_H
 
-#import <Cocoa/Cocoa.h>
+#import <Foundation/Foundation.h>
 
 extern NSString* const OBPrivacyAppStoreIdentifier;
 extern NSString* const OBPrivacyAppleMusicIdentifier;
@@ -27,47 +30,48 @@ extern NSString* const OBPrivacyiTunesStoreIdentifier;
 + (NSArray*)privacyServiceIdentifiers;
 @end
 
-@interface OBTemplateView : NSView
+@interface OBTemplateView : NSObject
 @property (nonatomic) NSUInteger templateIdentifier;
 @end
 
-@interface OBTemplatePartBulletList : NSView
+@interface OBTemplatePartBulletList : NSObject
 - (void)addBullet:(NSString*)text;
 - (void)removeAllBullets;
 @property (readonly) NSUInteger bulletCount;
 @end
 
-@interface OBBoldTrayButton : NSButton
+@interface OBBoldTrayButton : NSObject
+- (void)setTitle:(NSString*)title;
 @end
 
-@interface OBLinkTrayButton : NSButton
+@interface OBLinkTrayButton : OBBoldTrayButton
 @end
 
-@interface OBBulletedListItemLinkButton : NSButton
+@interface OBBulletedListItemLinkButton : OBBoldTrayButton
 - (void)setDestinationURL:(NSURL*)url;
 @end
 
-@interface OBTemplateContainerViewController : NSViewController
+@interface OBTemplateContainerViewController : NSObject
 - (void)setBullets:(NSArray*)bullets;
 @end
 
-@interface OBTableWelcomeController : NSViewController
+@interface OBTableWelcomeController : NSObject
 @property (nonatomic, copy) NSString* title;
 @property (nonatomic, copy) NSString* body;
 @end
 
-@interface OBWelcomeController : NSViewController
+@interface OBWelcomeController : NSObject
 - (void)advance;
 - (void)finish;
 @end
 
-@interface OBNavigationController : NSViewController
-- (void)pushViewController:(NSViewController*)controller;
+@interface OBNavigationController : NSObject
+- (void)pushViewController:(id)controller;
 - (void)popViewController;
 @property (readonly) NSUInteger viewControllerCount;
 @end
 
-@interface OBPrivacyLinkController : NSViewController
+@interface OBPrivacyLinkController : NSObject
 - (void)openServiceWithIdentifier:(NSString*)identifier;
 @end
 
@@ -80,6 +84,10 @@ extern NSString* const OBPrivacyiTunesStoreIdentifier;
 @interface OBPrivacyFlow : NSObject
 + (instancetype)flowWithBundleIdentifier:(NSString*)bundleIdentifier;
 - (BOOL)run:(NSError**)error;
+@end
+
+@interface OBPrivacySplashController : NSViewController
+- (void)showPrivacySplash;
 @end
 
 #endif

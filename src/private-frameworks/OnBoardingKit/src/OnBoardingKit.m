@@ -7,13 +7,24 @@
 	makes it the widest-reaching gap in the private-framework tier, binding fourteen
 	classes and five identifier constants.
 
-	The controllers here are real NSViewControllers with no view content. That is a
-	state every caller already handles: an onboarding flow that has nothing to show
-	completes, and the caller moves on to the app. The privacy presenter reports no
-	services, which is the honest answer: there is no App Store to link to here.
+	The controllers are real NSViewControllers with no view content. That is a state
+	every caller already handles: a flow with nothing to show completes instead of
+	spinning. The privacy presenter reports no services, because there is no App
+	Store here to link to.
+
+	Every class here is declared over NSObject rather than over its real AppKit base,
+	because AppKit does not exist on this system: NSViewController is not defined, and
+	NSView.h, NSButton.h, NSPanel.h and NSFont.h all pull in ApplicationServices, which
+	has no headers here. Naming a superclass that cannot be linked would fail the build
+	instead of producing something that works.
+
+	The class and metaclass symbols are emitted either way, so the linker is satisfied,
+	and every caller of this framework is itself blocked on AppKit, so the base class
+	only becomes observable once AppKit exists. At that point the four controllers
+	should move to NSViewController and the buttons and views to NSButton and NSView.
 */
 
-#import <Cocoa/Cocoa.h>
+#import <Foundation/Foundation.h>
 
 /* ---- Privacy service identifiers --------------------------------------------- */
 
@@ -34,7 +45,7 @@ NSString* const OBPrivacyiTunesStoreIdentifier     = @"com.apple.iTunesStore";
 @implementation OBBundle
 + (NSArray*)privacyServiceIdentifiers
 {
-	return @[];
+	return [NSArray array];
 }
 @end
 
@@ -43,7 +54,7 @@ NSString* const OBPrivacyiTunesStoreIdentifier     = @"com.apple.iTunesStore";
 /* The parts an onboarding screen is built from. Present and empty: a template with
    no items renders as nothing, which is the same as not adding it. */
 
-@interface OBTemplateView : NSView
+@interface OBTemplateView : NSObject
 @property (nonatomic) NSUInteger templateIdentifier;
 @end
 
@@ -51,7 +62,7 @@ NSString* const OBPrivacyiTunesStoreIdentifier     = @"com.apple.iTunesStore";
 @synthesize templateIdentifier;
 @end
 
-@interface OBTemplatePartBulletList : NSView
+@interface OBTemplatePartBulletList : NSObject
 - (void)addBullet:(NSString*)text;
 - (void)removeAllBullets;
 @property (readonly) NSUInteger bulletCount;
@@ -88,19 +99,27 @@ NSString* const OBPrivacyiTunesStoreIdentifier     = @"com.apple.iTunesStore";
 
 /* ---- Buttons ----------------------------------------------------------------- */
 
-@interface OBBoldTrayButton : NSButton
+@interface OBBoldTrayButton : NSObject
+- (void)setTitle:(NSString*)title;
 @end
 
 @implementation OBBoldTrayButton
+{
+	NSString* _title;
+}
+- (void)setTitle:(NSString*)title
+{
+	_title = [title copy];
+}
 @end
 
-@interface OBLinkTrayButton : NSButton
+@interface OBLinkTrayButton : OBBoldTrayButton
 @end
 
 @implementation OBLinkTrayButton
 @end
 
-@interface OBBulletedListItemLinkButton : NSButton
+@interface OBBulletedListItemLinkButton : OBBoldTrayButton
 - (void)setDestinationURL:(NSURL*)url;
 @end
 
@@ -116,7 +135,7 @@ NSString* const OBPrivacyiTunesStoreIdentifier     = @"com.apple.iTunesStore";
 
 /* ---- Controllers -------------------------------------------------------------- */
 
-@interface OBTemplateContainerViewController : NSViewController
+@interface OBTemplateContainerViewController : NSObject
 - (void)setBullets:(NSArray*)bullets;
 @end
 
@@ -127,7 +146,7 @@ NSString* const OBPrivacyiTunesStoreIdentifier     = @"com.apple.iTunesStore";
 }
 @end
 
-@interface OBTableWelcomeController : NSViewController
+@interface OBTableWelcomeController : NSObject
 @property (nonatomic, copy) NSString* title;
 @property (nonatomic, copy) NSString* body;
 @end
@@ -137,7 +156,7 @@ NSString* const OBPrivacyiTunesStoreIdentifier     = @"com.apple.iTunesStore";
 @synthesize body;
 @end
 
-@interface OBWelcomeController : NSViewController
+@interface OBWelcomeController : NSObject
 - (void)advance;
 - (void)finish;
 @end
@@ -153,8 +172,8 @@ NSString* const OBPrivacyiTunesStoreIdentifier     = @"com.apple.iTunesStore";
 }
 @end
 
-@interface OBNavigationController : NSViewController
-- (void)pushViewController:(NSViewController*)controller;
+@interface OBNavigationController : NSObject
+- (void)pushViewController:(id)controller;
 - (void)popViewController;
 @property (readonly) NSUInteger viewControllerCount;
 @end
@@ -171,7 +190,7 @@ NSString* const OBPrivacyiTunesStoreIdentifier     = @"com.apple.iTunesStore";
 	}
 	return self;
 }
-- (void)pushViewController:(NSViewController*)controller
+- (void)pushViewController:(id)controller
 {
 	if (controller)
 	{
@@ -193,7 +212,20 @@ NSString* const OBPrivacyiTunesStoreIdentifier     = @"com.apple.iTunesStore";
 
 /* ---- Privacy flow ------------------------------------------------------------- */
 
-@interface OBPrivacyLinkController : NSViewController
+@interface OBPrivacySplashController : NSObject
+- (void)showPrivacySplash;
+@end
+
+@implementation OBPrivacySplashController
+/* Nothing to show and nothing to defer: the services list is empty, so there is no
+   splash to wait on. Showing it is a no-op rather than a deferral, so a caller that
+   waits for the splash to clear is not left waiting. */
+- (void)showPrivacySplash
+{
+}
+@end
+
+@interface OBPrivacyLinkController : NSObject
 - (void)openServiceWithIdentifier:(NSString*)identifier;
 @end
 
@@ -224,7 +256,7 @@ NSString* const OBPrivacyiTunesStoreIdentifier     = @"com.apple.iTunesStore";
 }
 - (NSArray*)servicesRequiringConsent
 {
-	return @[];
+	return [NSArray array];
 }
 - (BOOL)presentConsentForService:(NSString*)identifier error:(NSError**)error
 {
