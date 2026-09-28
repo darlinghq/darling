@@ -2,6 +2,7 @@
 #include <LaunchServices/LaunchServicesPriv.h>
 #include <CarbonCore/MacErrors.h>
 #include <unistd.h>
+#include <cstring>
 #include <string>
 #include <memory>
 #include <vector>
@@ -103,6 +104,9 @@ OSStatus LSTerm(void)
 static
 int execvpe(const char* name, char** argv, char** envp)
 {
+	if (!envp)
+		return execvp(name, argv);
+
 	char** orig_env;
 	int ret;
 
@@ -158,19 +162,30 @@ OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSeri
 		CFDictionaryApplyFunction(appParams->environment, [](const void* key, const void* value, void* context) {
 					CFStringRef skey = (CFStringRef) key;
 					CFStringRef svalue = (CFStringRef) value;
-					std::vector<const char*>* envp = (std::vector<const char*>*) context;
+					std::vector<char*>* envp = (std::vector<char*>*) context;
 
 					if (CFGetTypeID(skey) == CFStringGetTypeID() && CFGetTypeID(svalue) == CFStringGetTypeID())
 					{
-						char* str = new char[CFStringGetLength(skey) + CFStringGetLength(svalue) + 1];
-
-						strcpy(str, CFStringGetCStringPtr(skey, kCFStringEncodingUTF8));
-						strcat(str, "=");
-						strcat(str, CFStringGetCStringPtr(svalue, kCFStringEncodingUTF8));
-
-						envp->push_back(str);
+						CFIndex keyCapacity = CFStringGetMaximumSizeForEncoding(
+							CFStringGetLength(skey), kCFStringEncodingUTF8) + 1;
+						CFIndex valueCapacity = CFStringGetMaximumSizeForEncoding(
+							CFStringGetLength(svalue), kCFStringEncodingUTF8) + 1;
+						char* str = new char[keyCapacity + valueCapacity + 1];
+						if (CFStringGetCString(skey, str, keyCapacity, kCFStringEncodingUTF8))
+						{
+							size_t keyLength = strlen(str);
+							str[keyLength] = '=';
+							if (CFStringGetCString(svalue, str + keyLength + 1,
+								valueCapacity, kCFStringEncodingUTF8))
+								envp->push_back(str);
+							else
+								delete [] str;
+						}
+						else
+							delete [] str;
 					}
 				}, envp.get());
+		envp->push_back(nullptr);
 	}
 
 	// https://stackoverflow.com/questions/1584956/how-to-handle-execvp-errors-after-fork
@@ -283,5 +298,3 @@ CFStringRef LSSystemApplicationType = CFSTR("System");
 CFStringRef LSInternalApplicationType = CFSTR("Internal");
 CFStringRef LSPlugInKitType = CFSTR("PluginKitPlugin");
 CFStringRef LSVPNPluginType = CFSTR("VPNPlugin");
-
-
