@@ -21,6 +21,7 @@
 #define _RecapPerformanceTesting_H_
 
 #import <Foundation/Foundation.h>
+#import <CoreGraphics/CoreGraphics.h>
 
 // Apple's private performance-test harness. Apps link it for their
 // -application:runTest:options: self-test hooks; those tests are never run on Darling.
@@ -48,5 +49,48 @@
 @property (nonatomic, readonly) id scrollView;
 - (instancetype)initWithTestName:(NSString *)testName scrollView:(id)scrollView completionHandler:(void (^)(void))completionHandler;
 @end
+
+/* ---- Interaction tests ------------------------------------------------------- */
+
+@interface RPTInteractionTestParameters : NSObject <RPTTestParameters>
+@property (nonatomic, copy) NSString *testName;
+- (instancetype)initWithTestName:(NSString *)testName;
+- (instancetype)initWithTestName:(NSString *)testName completionHandler:(void (^)(void))completionHandler;
+- (BOOL)run;
+@end
+
+@interface RPTGroupScrollTestParameters : RPTInteractionTestParameters
+@property (nonatomic, readonly) id scrollView;
+- (instancetype)initWithTestName:(NSString *)testName scrollView:(id)scrollView completionHandler:(void (^)(void))completionHandler;
+@end
+
+@interface RPTPagingScrollViewTestParameters : RPTInteractionTestParameters
+@property (nonatomic, readonly) id scrollView;
+- (instancetype)initWithTestName:(NSString *)testName scrollView:(id)scrollView completionHandler:(void (^)(void))completionHandler;
+@end
+
+@interface RPTDirectionalSwipeTestParameters : RPTInteractionTestParameters
+@property (nonatomic) NSUInteger direction;
+@property (nonatomic) double distance;
+- (instancetype)initWithTestName:(NSString *)testName direction:(NSUInteger)direction distance:(double)distance completionHandler:(void (^)(void))completionHandler;
+@end
+
+@interface RPTBlockInteraction : RPTInteractionTestParameters
+@end
+
+@interface RPTDragInteraction : RPTInteractionTestParameters
+@end
+
+@interface RPTActivationTestParameters : RPTInteractionTestParameters
+@end
+
+@interface RPTCoordinateSpaceConverter : NSObject
++ (CGPoint)convertPoint:(CGPoint)point fromSpace:(id)fromSpace toSpace:(id)toSpace;
+@end
+
+/* ---- Measuring --------------------------------------------------------------- */
+
+CGRect RPTGetBoundsForView(id view);
+CGRect RPTContentSizeInDirection(id view, NSUInteger direction);
 
 #endif
