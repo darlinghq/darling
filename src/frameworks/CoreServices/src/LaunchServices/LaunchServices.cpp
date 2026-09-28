@@ -268,8 +268,19 @@ OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSeri
 					break;
 			}
 
-			if (count > 0)
+			if (count == sizeof(err))
 				rv = makeOSStatus(err);
+			else if (count < 0)
+				rv = makeOSStatus(errno);
+			else if (count != 0)
+				rv = makeOSStatus(EIO);
+			else if (outPSN)
+			{
+				// Match HIServices GetProcessForPID, but do not publish a
+				// process identifier when the launch error pipe reports failure.
+				outPSN->highLongOfPSN = 0;
+				outPSN->lowLongOfPSN = pid;
+			}
 			close(pipefds[0]);
 		}
 	}
