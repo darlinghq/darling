@@ -23,7 +23,7 @@
 
 typedef void* (*sl_dlopen_function)(const char* path, int mode);
 
-void* sl_dlopen(const char* path, int mode)
+void* _sl_dlopen(const char* path, int mode)
 {
 	/* Already loaded: hand back the existing handle rather than loading it twice,
 	   which is the whole point of the interposition. */

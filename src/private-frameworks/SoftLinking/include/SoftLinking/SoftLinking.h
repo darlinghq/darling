@@ -19,7 +19,7 @@
 extern "C" {
 #endif
 
-void* sl_dlopen(const char* path, int mode);
+void* _sl_dlopen(const char* path, int mode);
 void* TSUSoftLinkingGetFrameworkFunction(const char* framework, const char* function);
 
 #ifdef __cplusplus
