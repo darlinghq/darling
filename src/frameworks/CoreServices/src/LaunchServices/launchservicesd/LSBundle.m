@@ -437,7 +437,12 @@ static FSEventStreamRef g_eventStream;
 		{
 			// CFBundle is not exactly clever and gives us CFBundles of empty directories
 			if (CFBundleGetIdentifier((CFBundleRef) bundle) == NULL)
+			{
+				// CFBundleCreateBundlesFromDirectory transfers ownership of
+				// each bundle as well as the array, including skipped entries.
+				CFRelease((CFBundleRef) bundle);
 				continue;
+			}
 
 			@autoreleasepool
 			{
