@@ -22,8 +22,8 @@ extern "C" {
 #endif
 
 void CPLoggingFlush(void);
-CFArrayRef _CPBitmapCreateImagesFromPath(CFStringRef path, CFDictionaryRef options);
-Boolean _CPBitmapWriteImagesToPath(CFArrayRef images, CFStringRef path, CFDictionaryRef options);
+CFArrayRef CPBitmapCreateImagesFromPath(CFStringRef path, CFDictionaryRef options);
+Boolean CPBitmapWriteImagesToPath(CFArrayRef images, CFStringRef path, CFDictionaryRef options);
 
 #ifdef __cplusplus
 }

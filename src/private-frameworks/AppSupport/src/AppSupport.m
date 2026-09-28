@@ -103,7 +103,7 @@ void CPLoggingFlush(void)
 	   because every caller flushes unconditionally on a path that must not fail. */
 }
 
-CFArrayRef _CPBitmapCreateImagesFromPath(CFStringRef path, CFDictionaryRef options)
+CFArrayRef CPBitmapCreateImagesFromPath(CFStringRef path, CFDictionaryRef options)
 {
 	/* No bitmap reader behind this. NULL says the path could not be decoded, which
 	   is a real answer; returning fabricated images would be worse. */
@@ -112,7 +112,7 @@ CFArrayRef _CPBitmapCreateImagesFromPath(CFStringRef path, CFDictionaryRef optio
 	return NULL;
 }
 
-Boolean _CPBitmapWriteImagesToPath(CFArrayRef images, CFStringRef path, CFDictionaryRef options)
+Boolean CPBitmapWriteImagesToPath(CFArrayRef images, CFStringRef path, CFDictionaryRef options)
 {
 	(void)images;
 	(void)path;
