@@ -11,6 +11,19 @@
 
 #include "loader.h"
 
+#if defined(__aarch64__)
+#define MLDR_ARM_THREAD_STATE64 6
+struct mldr_arm_thread_state64 {
+	uint64_t x[29];
+	uint64_t fp;
+	uint64_t lr;
+	uint64_t sp;
+	uint64_t pc;
+	uint32_t cpsr;
+};
+#define MLDR_ARM_THREAD_STATE64_COUNT (sizeof(struct mldr_arm_thread_state64) / sizeof(uint32_t))
+#endif
+
 static int native_prot(int prot);
 static void load(const char* path, cpu_type_t cpu, bool expect_dylinker, char** argv, struct load_results* lr);
 static void setup_space(struct load_results* lr, bool is_64_bit);
@@ -344,12 +357,22 @@ no_slide:
 			{
 #ifdef GEN_64BIT
 #if defined(__x86_64__)
-				// x86_64: RIP at offset 18 uint64_t's from LC start
 				entryPoint = ((uint64_t*) lc)[18];
 #elif defined(__aarch64__)
-				// ARM64: pc at offset 34 uint64_t's from LC start
-				// LC header (16 bytes) + x[29] + fp + lr + sp + pc = index 2 + 32 = 34
-				entryPoint = ((uint64_t*) lc)[34];
+				if (lc->cmdsize < sizeof(*lc) + 2 * sizeof(uint32_t) + sizeof(struct mldr_arm_thread_state64)) {
+					fprintf(stderr, "Truncated ARM64 LC_UNIXTHREAD command\n");
+					exit(1);
+				}
+				uint32_t* thread_command_data = (uint32_t*)(lc + 1);
+				if (thread_command_data[0] != MLDR_ARM_THREAD_STATE64 ||
+						thread_command_data[1] < MLDR_ARM_THREAD_STATE64_COUNT ||
+						thread_command_data[1] > (lc->cmdsize - sizeof(*lc) - 2 * sizeof(uint32_t)) / sizeof(uint32_t)) {
+					fprintf(stderr, "Invalid ARM64 LC_UNIXTHREAD state\n");
+					exit(1);
+				}
+				struct mldr_arm_thread_state64 state;
+				memcpy(&state, &thread_command_data[2], sizeof(state));
+				entryPoint = state.pc;
 #else
 #error Unsupported 64-bit architecture
 #endif
