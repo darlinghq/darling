@@ -202,9 +202,8 @@ no_slide:
 					break;
 				}
 
-				uintptr_t seg_addr = seg->vmaddr;
-				if (seg_addr != 0)
-					seg_addr += slide;
+				/* Zero-based dylinker __TEXT also needs its slide; PAGEZERO was skipped above. */
+				uintptr_t seg_addr = seg->vmaddr + slide;
 
 				// 1. Map the file-backed portion of the segment
 				if (seg->filesize > 0)
@@ -400,4 +399,3 @@ no_slide:
 #undef MACH_HEADER_STRUCT
 #undef SECTION_STRUCT
 #undef MAP_EXTRA
-
