@@ -18,5 +18,5 @@ add_framework(OnBoardingKit
     DEPENDENCIES
         system
         objc
-        Cocoa
+        Foundation
 )
