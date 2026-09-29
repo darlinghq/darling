@@ -86,7 +86,7 @@ extern NSString* const OBPrivacyiTunesStoreIdentifier;
 - (BOOL)run:(NSError**)error;
 @end
 
-@interface OBPrivacySplashController : NSViewController
+@interface OBPrivacySplashController : NSObject
 - (void)showPrivacySplash;
 @end
 

@@ -15,7 +15,6 @@
 #define APPSUPPORT_H
 
 #include <CoreFoundation/CoreFoundation.h>
-#include <CoreGraphics/CoreTypes.h>
 
 #ifdef __cplusplus
 extern "C" {
