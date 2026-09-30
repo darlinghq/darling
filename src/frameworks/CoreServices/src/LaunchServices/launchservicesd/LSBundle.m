@@ -28,6 +28,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define DATABASE_VERSION 1
 
 static FMDatabase* g_database;
+// Every registration write must participate in the caller's transaction.
+#define LS_UPDATE(...) do { if (![g_database executeUpdate:__VA_ARGS__]) return NO; } while (0)
 extern dispatch_queue_t g_serverQueue;
 
 static void setupDBSchema(void);
@@ -62,7 +64,7 @@ static FSEventStreamRef g_eventStream;
 	[super dealloc];
 }
 
--(void)processUTIs:(NSArray<NSDictionary<NSString*,id>*>*)utis
+-(BOOL)processUTIs:(NSArray<NSDictionary<NSString*,id>*>*)utis
 {
 	NSNumber* ourBundleId = [NSNumber numberWithInt: _bundleId];
 	// Maintain a set of previously existing UTIs so that we know which ones need to be deleted
@@ -71,9 +73,12 @@ static FSEventStreamRef g_eventStream;
 	FMResultSet* rs = [g_database executeQuery:@"select type_identifier from uti where bundle = ?",
 		ourBundleId];
 
-	while ([rs next])
+	if (!rs) return NO;
+	NSError* queryError = nil;
+	while ([rs nextWithError:&queryError])
 		[previousUtis addObject: [rs stringForColumn: @"type_identifier"]];
 	[rs close];
+	if (queryError) return NO;
 
 	for (NSDictionary<NSString*,id>* uti in utis)
 	{
@@ -89,23 +94,29 @@ static FSEventStreamRef g_eventStream;
 
 		FMResultSet* rs = [g_database executeQuery:@"select id, description from uti where type_identifier = ? and bundle = ?",
 			typeId, ourBundleId];
-		if ([rs next])
+		if (!rs) return NO;
+		queryError = nil;
+		BOOL found = [rs nextWithError:&queryError];
+		if (queryError) { [rs close]; return NO; }
+		if (found)
 		{
 			// We already have this UTI record
 			utiId = [NSNumber numberWithInt: [rs intForColumn:@"id"]];
-			NSString* oldDesc = [rs stringForColumn:@"description"];
+			NSString* oldDesc = [[[rs stringForColumn:@"description"] retain] autorelease];
+			[rs close];
 
 			// Update the description text if it changed
 			if (![oldDesc isEqualToString: description])
 			{
-				[g_database executeUpdate:@"update uti set description = ? where id = ?", oldDesc, utiId];
+				LS_UPDATE(@"update uti set description = ? where id = ?", description, utiId);
 			}
 		}
 		else
 		{
+			[rs close];
 			// Insert a new UTI record
-			[g_database executeUpdate:@"insert into uti (type_identifier, description, bundle) values (?,?,?)",
-				typeId, description, ourBundleId];
+			LS_UPDATE(@"insert into uti (type_identifier, description, bundle) values (?,?,?)",
+				typeId, description, ourBundleId);
 			utiId = [NSNumber numberWithInt: [g_database lastInsertRowId]];
 		}
 		[rs close];
@@ -113,13 +124,12 @@ static FSEventStreamRef g_eventStream;
 		[previousUtis removeObject: typeId];
 
 		// Process UTTypeConformsTo
-		[g_database executeUpdate: @"delete from uti_conforms where uti = ?", utiId];
+		LS_UPDATE(@"delete from uti_conforms where uti = ?", utiId);
 
 		id conformsTo = uti[(NSString*) kUTTypeConformsToKey];
 		if ([conformsTo isKindOfClass: [NSString class]])
 		{
-			[g_database executeUpdate:@"insert into uti_conforms (uti, conforms_to) values (?,?)",
-				utiId, conformsTo];
+			LS_UPDATE(@"insert into uti_conforms (uti, conforms_to) values (?,?)", utiId, conformsTo);
 		}
 		else if ([conformsTo isKindOfClass: [NSArray class]])
 		{
@@ -127,18 +137,16 @@ static FSEventStreamRef g_eventStream;
 			{
 				if (![ct isKindOfClass: [NSString class]])
 					continue;
-				[g_database executeUpdate:@"insert into uti_conforms (uti, conforms_to) values (?,?)",
-					utiId, ct];
+				LS_UPDATE(@"insert into uti_conforms (uti, conforms_to) values (?,?)", utiId, ct);
 			}
 		}
 
 		// Process UTTypeIconFile / UTTypeIconFiles
-		[g_database executeUpdate:@"delete from uti_icon where uti = ?", utiId];
+		LS_UPDATE(@"delete from uti_icon where uti = ?", utiId);
 		NSString* icon = uti[(NSString*) kUTTypeIconFileKey];
 		if (icon != nil)
 		{
-			[g_database executeUpdate:@"insert into uti_icon (uti, file) values (?,?)",
-				utiId, icon];
+			LS_UPDATE(@"insert into uti_icon (uti, file) values (?,?)", utiId, icon);
 		}
 		NSArray<NSString*>* icons = uti[@"UTTypeIconFiles"];
 		if (icons != nil)
@@ -147,13 +155,12 @@ static FSEventStreamRef g_eventStream;
 			{
 				if (![icon isKindOfClass: [NSString class]])
 					continue;
-				[g_database executeUpdate:@"insert into uti_icon (uti, file) values (?,?)",
-					utiId, icon];
+				LS_UPDATE(@"insert into uti_icon (uti, file) values (?,?)", utiId, icon);
 			}
 		}
 
 		// Process UTTypeTagSpecification
-		[g_database executeUpdate:@"delete from uti_tag where uti = ?", utiId];
+		LS_UPDATE(@"delete from uti_tag where uti = ?", utiId);
 		NSDictionary<NSString*, id>* tags = uti[(NSString*) kUTTypeTagSpecificationKey];
 		if (tags != nil)
 		{
@@ -162,8 +169,7 @@ static FSEventStreamRef g_eventStream;
 				id tagValue = tags[tag];
 				if ([tagValue isKindOfClass: [NSString class]])
 				{
-					[g_database executeUpdate:@"insert into uti_tag (uti, tag, value) values (?,?,?)",
-						utiId, tag, tagValue];
+					LS_UPDATE(@"insert into uti_tag (uti, tag, value) values (?,?,?)", utiId, tag, tagValue);
 				}
 				else if ([tagValue isKindOfClass: [NSArray class]])
 				{
@@ -171,8 +177,7 @@ static FSEventStreamRef g_eventStream;
 					{
 						if (![value isKindOfClass: [NSString class]])
 							continue;
-						[g_database executeUpdate:@"insert into uti_tag (uti, tag, value) values (?,?,?)",
-							utiId, tag, value];
+						LS_UPDATE(@"insert into uti_tag (uti, tag, value) values (?,?,?)", utiId, tag, value);
 					}
 				}
 			}
@@ -181,13 +186,13 @@ static FSEventStreamRef g_eventStream;
 
 	for (NSString* deletedId in previousUtis)
 	{
-		[g_database executeUpdate:@"delete from uti where type_identifier = ? and bundle = ?",
-			deletedId, ourBundleId];
+		LS_UPDATE(@"delete from uti where type_identifier = ? and bundle = ?", deletedId, ourBundleId);
 	}
+	return YES;
 }
 
 // https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundledocumenttypes?language=objc
--(void)processFileAssociation:(NSDictionary*)dict
+-(BOOL)processFileAssociation:(NSDictionary*)dict
 {
 	NSNumber* myId = [NSNumber numberWithInt: _bundleId];
 	NSNumber* appDocId;
@@ -205,8 +210,8 @@ static FSEventStreamRef g_eventStream;
 	if (!rank)
 		rank = @"Default";
 
-	[g_database executeUpdate:@"insert into app_doc (icon,name,role,rank,class,bundle) values (?,?,?,?,?,?)",
-		iconFile, displayName, role, rank, documentClass, myId];
+	LS_UPDATE(@"insert into app_doc (icon,name,role,rank,class,bundle) values (?,?,?,?,?,?)",
+		iconFile, displayName, role, rank, documentClass, myId);
 	appDocId = [NSNumber numberWithInt: [g_database lastInsertRowId]];
 
 	NSArray<NSString*>* contentTypes = dict[@"LSItemContentTypes"];
@@ -217,7 +222,7 @@ static FSEventStreamRef g_eventStream;
 			if (![uti isKindOfClass: [NSString class]])
 				continue;
 
-			[g_database executeUpdate:@"insert into app_doc_uti (doc, uti) values (?,?)", appDocId, uti];
+			LS_UPDATE(@"insert into app_doc_uti (doc, uti) values (?,?)", appDocId, uti);
 		}
 	}
 	else
@@ -232,7 +237,7 @@ static FSEventStreamRef g_eventStream;
 				if (![extension isKindOfClass: [NSString class]])
 					continue;
 
-				[g_database executeUpdate:@"insert into app_doc_extension (doc, extension) values (?,?)", appDocId, extension];
+				LS_UPDATE(@"insert into app_doc_extension (doc, extension) values (?,?)", appDocId, extension);
 			}
 		}
 
@@ -244,38 +249,40 @@ static FSEventStreamRef g_eventStream;
 				if (![mime isKindOfClass: [NSString class]])
 					continue;
 				
-				[g_database executeUpdate:@"insert into app_doc_mime (doc, mime) values (?,?)", appDocId, mime];
+				LS_UPDATE(@"insert into app_doc_mime (doc, mime) values (?,?)", appDocId, mime);
 			}
 		}
 	}
+	return YES;
 }
 
--(void)processFileAssociations
+-(BOOL)processFileAssociations
 {
 	NSDictionary<NSString*,id>* infoDict = (NSDictionary*) CFBundleGetInfoDictionary(_bundle);
 	NSNumber* myId = [NSNumber numberWithInt: _bundleId];
 
-	[g_database executeUpdate:@"delete from app_doc where bundle = ?", [NSNumber numberWithInt: _bundleId]];
+	LS_UPDATE(@"delete from app_doc where bundle = ?", [NSNumber numberWithInt: _bundleId]);
 
 	NSArray<NSDictionary*>* types = (NSArray*) infoDict[@"CFBundleDocumentTypes"];
 	if (types)
 	{
 		for (NSDictionary* type in types)
-			[self processFileAssociation: type];
+			if (![self processFileAssociation: type]) return NO;
 	}
 	if (infoDict[@"CFBundleTypeRole"] != nil)
 	{
-		[self processFileAssociation: infoDict];
+		if (![self processFileAssociation: infoDict]) return NO;
 	}
+	return YES;
 }
 
--(void)processURLTypes
+-(BOOL)processURLTypes
 {
 	NSDictionary* infoDict = (NSDictionary*) CFBundleGetInfoDictionary(_bundle);
 	NSArray<NSDictionary*>* urlTypes = (NSArray*) infoDict[@"CFBundleURLTypes"];
 	NSNumber* myId = [NSNumber numberWithInt: _bundleId];
 
-	[g_database executeUpdate:@"delete from bundle_url_type where bundle = ?", myId];
+	LS_UPDATE(@"delete from bundle_url_type where bundle = ?", myId);
 	if (urlTypes != nil)
 	{
 		for (NSDictionary<NSString*, id>* type in urlTypes)
@@ -289,31 +296,37 @@ static FSEventStreamRef g_eventStream;
 
 			NSArray<NSString*>* schemes = type[@"CFBundleURLSchemes"];
 
-			[g_database executeUpdate:@"insert into bundle_url_type (bundle, role, name, icon) values (?,?,?,?)",
-				myId, role, name, iconFile];
+			LS_UPDATE(@"insert into bundle_url_type (bundle, role, name, icon) values (?,?,?,?)",
+				myId, role, name, iconFile);
 
 			if (schemes)
 			{
 				NSNumber* typeId = [NSNumber numberWithInt:[g_database lastInsertRowId]];
 				
 				for (NSString* scheme in schemes)
-					[g_database executeUpdate:@"insert into bundle_url_type_scheme (type, scheme) values (?,?)", typeId, scheme];
+					LS_UPDATE(@"insert into bundle_url_type_scheme (type, scheme) values (?,?)", typeId, scheme);
 			}
 		}
 	}
+	return YES;
 }
 
--(BOOL)setupBundleID
+-(BOOL)setupBundleID:(BOOL*)needsProcessing
 {
 	NSURL* url = (NSURL*) CFBundleCopyBundleURL(_bundle);
-	NSString* path = [url path];
+	NSString* path = [[[url path] retain] autorelease];
 	NSDictionary* infoDict = (NSDictionary*) CFBundleGetInfoDictionary(_bundle);
 	const uint32_t newChecksum = [[infoDict description] crc32];
 
 	[url release];
 	FMResultSet* rs = [g_database executeQuery:@"select id, checksum from bundle where path = ?", path];
-
-	if ([rs next])
+	if (!rs) return NO;
+	NSError* queryError = nil;
+	BOOL found = [rs nextWithError:&queryError];
+	if (queryError) { [rs close]; return NO; }
+	_bundleId = 0;
+	*needsProcessing = YES;
+	if (found)
 	{
 		_bundleId = [rs intForColumn:@"id"];
 
@@ -323,7 +336,8 @@ static FSEventStreamRef g_eventStream;
 		{
 			NSLog(@"Bundle at '%@' hasn't changed\n", path);
 			[rs close];
-			return FALSE;
+			*needsProcessing = NO;
+			return YES;
 		}
 	}
 
@@ -347,8 +361,8 @@ static FSEventStreamRef g_eventStream;
 
 		NSLog(@"Registering new bundle at '%@', identifier '%@'\n", path, identifier);
 
-		[g_database executeUpdate:@"insert into bundle (path, bundle_id, checksum, package_type, creator, signature) values (?,?,?,?,?,?)",
-			path, identifier, [NSNumber numberWithInt:newChecksum], packageTypeStr, packageCreatorStr, bundleSignature];
+		LS_UPDATE(@"insert into bundle (path, bundle_id, checksum, package_type, creator, signature) values (?,?,?,?,?,?)",
+			path, identifier, [NSNumber numberWithInt:newChecksum], packageTypeStr, packageCreatorStr, bundleSignature);
 			
 		_bundleId = [g_database lastInsertRowId];
 	}
@@ -357,38 +371,53 @@ static FSEventStreamRef g_eventStream;
 		NSLog(@"Updating bundle at '%@'\n", path);
 
 		// We're in a transaction, so it's OK to set the new checksum now
-		[g_database executeUpdate:@"update bundle set checksum = ?, package_type = ?, creator = ?, signature = ? where id = ?",
+		LS_UPDATE(@"update bundle set checksum = ?, package_type = ?, creator = ?, signature = ? where id = ?",
 			[NSNumber numberWithInt:newChecksum], packageTypeStr, packageCreatorStr,
-			bundleSignature, [NSNumber numberWithInt: _bundleId]];
+			bundleSignature, [NSNumber numberWithInt: _bundleId]);
 	}
 
 	return TRUE;
 }
 
--(void)process
+-(BOOL)process
 {
-	BOOL needsProcessing;
-
-	[g_database beginTransaction];
-	needsProcessing = [self setupBundleID];
-
-	if (!needsProcessing)
-	{
-		[g_database rollback];
-		return;
+	if (!g_database || ![g_database beginTransaction]) return NO;
+	BOOL committed = NO;
+	@try {
+		BOOL needsProcessing = NO;
+		if (![self setupBundleID:&needsProcessing]) return NO;
+		if (needsProcessing) {
+			NSDictionary* infoDict = (NSDictionary*) CFBundleGetInfoDictionary(_bundle);
+			NSArray* utis = [infoDict objectForKey:(NSString*) kUTExportedTypeDeclarationsKey];
+			if (![self processUTIs:utis] || ![self processFileAssociations] || ![self processURLTypes])
+				return NO;
+		}
+		committed = [g_database commit];
+		return committed;
+	} @finally {
+		if (!committed) {
+			[g_database rollback];
+			_bundleId = 0;
+		}
 	}
+}
 
-	NSDictionary<NSString*,id>* infoDict = (NSDictionary*) CFBundleGetInfoDictionary(_bundle);
-
-	NSArray<NSDictionary*>* utis = infoDict[(NSString*) kUTExportedTypeDeclarationsKey];
-	if (utis != nil)
-	{
-		[self processUTIs:utis];
++(BOOL)registerBundleAtPath:(NSString*)path
+{
+	if (![path length]) return NO;
+	NSURL* url = [NSURL fileURLWithPath:[path stringByStandardizingPath] isDirectory:YES];
+	CFBundleRef bundle = CFBundleCreate(NULL, (CFURLRef)url);
+	if (!bundle) return NO;
+	BOOL success = NO;
+	@try {
+		if (CFBundleGetIdentifier(bundle)) {
+			LSBundle* entry = [[[self alloc] initWithBundle:bundle] autorelease];
+			success = [entry process];
+		}
+	} @finally {
+		CFRelease(bundle);
 	}
-
-	[self processFileAssociations];
-	[self processURLTypes];
-	[g_database commit];
+	return success;
 }
 
 +(void)initialize
