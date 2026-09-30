@@ -25,6 +25,7 @@ add_framework(CFOpenDirectory
 
 	SOURCES
 		src/CFOpenDirectory.c
+		src/CFOpenDirectoryLocal.c
 		src/constants.c
 
 	DEPENDENCIES

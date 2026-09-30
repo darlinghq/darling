@@ -23,7 +23,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static int verbose = 0;
+// Shared with CFOpenDirectoryLocal.c so STUB_VERBOSE traces both halves of the
+// framework. Not static: a static here would leave the trace flag invisible to
+// the local-node implementation.
+int verbose = 0;
 
 __attribute__((constructor))
 static void initme(void) {
@@ -72,12 +75,6 @@ CFDictionaryRef ODNodeCopyPolicies(ODNodeRef node, CFErrorRef *error)
     return NULL;
 }
 
-ODRecordRef ODNodeCopyRecord(ODNodeRef node, ODRecordType recordType, CFStringRef recordName, CFTypeRef attributes, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODNodeCopyRecord called");
-    return NULL;
-}
-
 ODRecordRef ODNodeCopyRecordAuthenticationData(ODNodeRef node, ODRecordRef record, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCopyRecordAuthenticationData called");
@@ -114,12 +111,6 @@ CFArrayRef ODNodeCopySupportedRecordTypes(ODNodeRef node, CFErrorRef *error)
     return NULL;
 }
 
-CFArrayRef ODNodeCopyUnreachableSubnodeNames(ODNodeRef node, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODNodeCopyUnreachableSubnodeNames called");
-    return NULL;
-}
-
 ODNodeRef ODNodeCreateCopy(CFAllocatorRef allocator, ODNodeRef node, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCreateCopy called");
@@ -147,12 +138,6 @@ ODNodeRef ODNodeCreateWithName(CFAllocatorRef allocator, ODSessionRef session, C
 void* ODNodeCreateWithNameAndOptions(void)
 {
     if (verbose) puts("STUB: ODNodeCreateWithNameAndOptions called");
-    return NULL;
-}
-
-ODNodeRef ODNodeCreateWithNodeType(CFAllocatorRef allocator, ODSessionRef session, ODNodeType nodeType, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODNodeCreateWithNodeType called");
     return NULL;
 }
 
@@ -361,12 +346,6 @@ bool ODRecordAddValue(ODRecordRef record, ODAttributeType attribute, CFTypeRef v
     return false;
 }
 
-bool ODRecordAuthenticationAllowed(ODRecordRef record, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODRecordAuthenticationAllowed called");
-    return false;
-}
-
 bool ODRecordChangePassword(ODRecordRef record, CFStringRef oldPassword, CFStringRef newPassword, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordChangePassword called");
@@ -564,12 +543,6 @@ bool ODRecordSynchronize(ODRecordRef record, CFErrorRef *error)
     return false;
 }
 
-bool ODRecordVerifyPassword(ODRecordRef record, CFStringRef password, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODRecordVerifyPassword called");
-    return false;
-}
-
 bool ODRecordVerifyPasswordExtended(ODRecordRef record, ODAuthenticationType authType, CFArrayRef authItems, CFArrayRef *outAuthItems, ODContextRef *outContext, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordVerifyPasswordExtended called");
@@ -597,12 +570,6 @@ CFArrayRef ODSessionCopyNodeNames(CFAllocatorRef allocator, ODSessionRef session
 void* ODSessionCopySessionKeySupport(void)
 {
     if (verbose) puts("STUB: ODSessionCopySessionKeySupport called");
-    return NULL;
-}
-
-ODSessionRef ODSessionCreate(CFAllocatorRef allocator, CFDictionaryRef options, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODSessionCreate called");
     return NULL;
 }
 
