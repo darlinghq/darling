@@ -57,13 +57,13 @@ override_dh_auto_build:
 	cd debbuild && $(MAKE) -j$(shell nproc)
 
 override_dh_auto_install:
-	cd debbuild; $(foreach INDEX,$(INDICES), \
+	set -e; cd debbuild; $(foreach INDEX,$(INDICES), \
 		DESTDIR=../debian/tmp/$(word $(INDEX),$(PACKAGE_SUFFIXES)) cmake -DCOMPONENT=$(word $(INDEX),$(DARLING_COMPONENTS)) -P cmake_install.cmake ; \
 	)
 
 override_dh_makeshlibs:
 	dh_makeshlibs
-	$(foreach INDEX,$(INDICES), \
+	set -e; $(foreach INDEX,$(INDICES), \
 		tools/debian/make-shlibdeps $(word $(INDEX),$(PACKAGE_SUFFIXES)) ; \
 	)
 
