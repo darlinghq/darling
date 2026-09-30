@@ -406,12 +406,6 @@ CFDictionaryRef ODRecordCopySupportedPolicies(ODRecordRef record, CFErrorRef *er
     return NULL;
 }
 
-CFArrayRef ODRecordCopyValues(ODRecordRef record, ODAttributeType attribute, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODRecordCopyValues called");
-    return NULL;
-}
-
 bool ODRecordDelete(ODRecordRef record, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordDelete called");

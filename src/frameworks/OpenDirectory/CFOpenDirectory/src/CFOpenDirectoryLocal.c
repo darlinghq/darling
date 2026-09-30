@@ -62,6 +62,10 @@ static const char * const passwdPaths[] = {
 struct __ODRecord {
     CFStringRef name;          // primary name, e.g. "cristi"
     CFStringRef authAuthority; // full hash string from the passwd file
+    CFStringRef uniqueId;      // uid
+    CFStringRef homeDirectory; // gecos field, which is the home path here
+    CFStringRef nfsHomeDirectory;
+    CFStringRef userShell;     // login shell
 };
 
 struct __ODNode {
@@ -138,6 +142,14 @@ static int splitPasswdLine(char *line, char **fields, int maxFields)
 // by either tool: BSD master.passwd carries the hash in an eleventh field with
 // field 1 left as "*", while the passwd file shipped in a Darling prefix has ten
 // fields with the hash directly in field 1.
+// The remaining passwd fields for the record copyAuthAuthorityForRecord matched.
+// Set in the same pass that produces the hash, so the fields of a record always
+// come from one entry rather than from whichever line happened to match last.
+static CFStringRef g_uniqueId;
+static CFStringRef g_homeDirectory;
+static CFStringRef g_nfsHomeDirectory;
+static CFStringRef g_userShell;
+
 static CFStringRef copyAuthAuthorityForRecord(const char *recordName)
 {
     for (size_t i = 0; i < sizeof(passwdPaths) / sizeof(passwdPaths[0]); i++) {
@@ -147,6 +159,7 @@ static CFStringRef copyAuthAuthorityForRecord(const char *recordName)
 
         char line[4096];
         CFStringRef result = NULL;
+        CFStringRef uniqueId = NULL, home = NULL, nfsHome = NULL, shell = NULL;
 
         while (fgets(line, sizeof(line), f) != NULL) {
             char *newline = strchr(line, '\n');
@@ -162,6 +175,17 @@ static CFStringRef copyAuthAuthorityForRecord(const char *recordName)
 
             if (strcmp(fields[0], recordName) != 0)
                 continue;
+
+            // Fields 2 and 3 are uid and gid; 7 is the gecos comment, 8 the home
+            // directory and 9 the shell. Only collected once the name matches.
+            if (count > 3)
+                uniqueId = copyCFString(fields[2]);
+            if (count > 7)
+                home = copyCFString(fields[7]);
+            if (count > 8)
+                nfsHome = copyCFString(fields[8]);
+            if (count > 9)
+                shell = copyCFString(fields[9]);
 
             // Prefer the dedicated hash field when the line is long enough to
             // have one, otherwise fall back to the password field itself.
@@ -181,8 +205,13 @@ static CFStringRef copyAuthAuthorityForRecord(const char *recordName)
 
         fclose(f);
 
-        if (result != NULL)
+        if (result != NULL) {
+            g_uniqueId = uniqueId;
+            g_homeDirectory = home;
+            g_nfsHomeDirectory = nfsHome;
+            g_userShell = shell;
             return result;
+        }
     }
 
     return NULL;
@@ -207,6 +236,12 @@ static ODRecordRef createLocalRecord(const char *recordName)
 
     record->name = copyCFString(recordName);
     record->authAuthority = authority;
+    // Retain the extra fields; copyAuthAuthorityForRecord set them alongside the
+    // hash, so they belong to this same passwd entry.
+    record->uniqueId = (g_uniqueId != NULL) ? CFRetain(g_uniqueId) : NULL;
+    record->homeDirectory = (g_homeDirectory != NULL) ? CFRetain(g_homeDirectory) : NULL;
+    record->nfsHomeDirectory = (g_nfsHomeDirectory != NULL) ? CFRetain(g_nfsHomeDirectory) : NULL;
+    record->userShell = (g_userShell != NULL) ? CFRetain(g_userShell) : NULL;
 
     if (record->name == NULL) {
         CFRelease(authority);
@@ -392,5 +427,66 @@ CFArrayRef ODNodeCopyUnreachableSubnodeNames(ODNodeRef node, CFErrorRef *error)
     // A passwd-backed node has no subnodes. Returning an empty array rather than
     // NULL matters: the caller walks the result without checking, so NULL is a
     // crash, while "none" is the truthful answer.
+    return CFArrayCreate(kCFAllocatorDefault, NULL, 0, &kCFTypeArrayCallBacks);
+}
+
+#pragma mark - Attributes
+
+CFArrayRef ODRecordCopyValues(ODRecordRef record, ODAttributeType attribute, CFErrorRef *error)
+{
+    struct __ODRecord *self = recordOf(record);
+
+    if (self == NULL) {
+        setODError(error, "ODRecordCopyValues: invalid record");
+        return NULL;
+    }
+
+    if (error != NULL)
+        *error = NULL;
+
+    if (attribute == NULL) {
+        setODError(error, "ODRecordCopyValues: no attribute requested");
+        return NULL;
+    }
+
+    // Compare by value: the caller brings its own CFString for the attribute
+    // name, as it does for the record type.
+    struct {
+        const char *name;
+        CFStringRef *value;
+    } table[] = {
+        { "dsAttrTypeStandard:AuthenticationAuthority", &self->authAuthority },
+        { "dsAttrTypeStandard:UniqueID",                 &self->uniqueId },
+        { "dsAttrTypeStandard:HomeDirectory",            &self->homeDirectory },
+        { "dsAttrTypeStandard:NFSHomeDirectory",         &self->nfsHomeDirectory },
+        { "dsAttrTypeStandard:UserShell",                &self->userShell },
+    };
+
+    for (size_t i = 0; i < sizeof(table) / sizeof(table[0]); i++) {
+        CFStringRef wanted = CFStringCreateWithCString(kCFAllocatorDefault,
+                                                       table[i].name,
+                                                       kCFStringEncodingUTF8);
+        if (wanted == NULL)
+            continue;
+
+        bool matches = CFStringCompare((CFStringRef) attribute, wanted, 0) ==
+                       kCFCompareEqualTo;
+        CFRelease(wanted);
+
+        if (!matches)
+            continue;
+
+        // An attribute the passwd entry does not carry is an empty array, not
+        // NULL: callers iterate the result, so NULL is a crash while "absent"
+        // is the truthful answer.
+        if (*table[i].value == NULL)
+            return CFArrayCreate(kCFAllocatorDefault, NULL, 0, &kCFTypeArrayCallBacks);
+
+        const void *values[] = { *table[i].value };
+        return CFArrayCreate(kCFAllocatorDefault, values, 1, &kCFTypeArrayCallBacks);
+    }
+
+    // An attribute this node does not model at all: report none rather than
+    // inventing a value.
     return CFArrayCreate(kCFAllocatorDefault, NULL, 0, &kCFTypeArrayCallBacks);
 }
