@@ -199,7 +199,7 @@ LSGetApplicationForInfo(
 		if (inExtension != NULL)
 		{
 			NSString* escaped = escape((NSString*) inExtension);
-			query = [query stringByAppendingFormat:@" and (EXISTS (SELECT * FROM app_doc_extension AE WHERE AE.doc=AD.class AND AE.extension = '%@')"
+			query = [query stringByAppendingFormat:@" and (EXISTS (SELECT * FROM app_doc_extension AE WHERE AE.doc=AD.id AND AE.extension = '%@')"
 							@" OR "
 					@"EXISTS (SELECT * FROM app_doc_uti AU JOIN uti ON uti.type_identifier = AU.uti JOIN uti_tag UT ON UT.uti=uti.id WHERE AU.doc=AD.id AND UT.tag = 'public.filename-extension' AND UT.value='%@'))",
 					escaped, escaped];
