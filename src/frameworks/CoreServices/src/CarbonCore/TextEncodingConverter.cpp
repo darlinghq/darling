@@ -27,23 +27,28 @@ struct OpaqueTECObjectRef
 	UConverter* inputConverter;
 	UConverter* outputConverter;
 	const UNormalizer2* normalizer;
-	UChar buffer[64];
+	UChar buffer[4096];
 	size_t bufferUsed;
 };
 
 static UConverter* createConverter(TextEncodingBase base, TextEncodingFormat format)
 {
+	UErrorCode error = U_ZERO_ERROR;
+
 	switch (base)
 	{
 		case kTextEncodingUnicodeDefault:
 		{
 			const char* enc;
-			UErrorCode error = U_ZERO_ERROR;
 
 			switch (format)
 			{
 				case kUnicodeUTF16Format:
-					enc = "UTF-16";
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+					enc = "UTF-16LE";
+#else
+					enc = "UTF-16BE";
+#endif
 					break;
 				case kUnicodeUTF7Format:
 					enc = "UTF-7";
@@ -52,7 +57,11 @@ static UConverter* createConverter(TextEncodingBase base, TextEncodingFormat for
 					enc = "UTF-8";
 					break;
 			   	case kUnicodeUTF32Format:
-					enc = "UTF-32";
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+					enc = "UTF-32LE";
+#else
+					enc = "UTF-32BE";
+#endif
 					break;
 				case kUnicodeUTF16BEFormat:
 					enc = "UTF-16BE";
@@ -67,13 +76,35 @@ static UConverter* createConverter(TextEncodingBase base, TextEncodingFormat for
 					enc = "UTF-32LE";
 					break;
 				default:
-					return NULL;
+					enc = "UTF-8";
+					break;
 			}
 
 			return ucnv_open(enc, &error);
 		}
+		case kTextEncodingMacRoman:
+			return ucnv_open("macintosh", &error);
+		case kTextEncodingISOLatin1:
+			return ucnv_open("ISO-8859-1", &error);
+		case kTextEncodingUS_ASCII:
+			return ucnv_open("US-ASCII", &error);
 		default:
 			return NULL;
+	}
+}
+
+static void unpackEncoding(TextEncoding enc, TextEncodingBase* base, TextEncodingVariant* variant, TextEncodingFormat* format)
+{
+	*format = (enc >> 24) & 0xff;
+	*variant = (enc >> 16) & 0xff;
+	*base = enc & 0xffff;
+
+	// Support old Darling layout (format at >> 16, variant at >> 8)
+	if (*format == 0 && ((enc >> 16) & 0xff) != 0 && *base < 0x100)
+	{
+		*format = (enc >> 16) & 0xff;
+		*variant = (enc >> 8) & 0xff;
+		*base = enc & 0xff;
 	}
 }
 
@@ -88,9 +119,7 @@ OSStatus TECCreateConverter(TECObjectRef *newEncodingConverter, TextEncoding inp
 	obj->normalizer = NULL;
 	obj->bufferUsed = 0;
 
-	format = (inputEncoding >> 16) & 0xff;
-	base = (inputEncoding >> 0) & 0xff;
-	variant = (inputEncoding >> 8) & 0xff;
+	unpackEncoding(inputEncoding, &base, &variant, &format);
 
 	obj->inputConverter = createConverter(base, format);
 	if (!obj->inputConverter)
@@ -100,9 +129,7 @@ OSStatus TECCreateConverter(TECObjectRef *newEncodingConverter, TextEncoding inp
 		return unimpErr;
 	}
 
-	format = (outputEncoding >> 16) & 0xff;
-	base = (outputEncoding >> 0) & 0xff;
-	variant = (outputEncoding >> 8) & 0xff;
+	unpackEncoding(outputEncoding, &base, &variant, &format);
 
 	obj->outputConverter = createConverter(base, format);
 	if (!obj->outputConverter)
@@ -150,7 +177,8 @@ OSStatus TECConvertText(TECObjectRef encodingConverter, ConstTextPtr inputBuffer
 {
 	if (actualInputLength != NULL)
 		*actualInputLength = 0;
-	*actualOutputLength = 0;
+	if (actualOutputLength != NULL)
+		*actualOutputLength = 0;
 
 	while (outputBufferLength > 0)
 	{
@@ -162,7 +190,6 @@ OSStatus TECConvertText(TECObjectRef encodingConverter, ConstTextPtr inputBuffer
 			const UChar* source = encodingConverter->buffer;
 			ByteCount inputUsed;
 
-
 			ucnv_fromUnicode(encodingConverter->outputConverter,
 					&target, target + outputBufferLength,
 					&source, source + encodingConverter->bufferUsed,
@@ -171,18 +198,20 @@ OSStatus TECConvertText(TECObjectRef encodingConverter, ConstTextPtr inputBuffer
 			if (error != U_ZERO_ERROR && error != U_BUFFER_OVERFLOW_ERROR)
 				return paramErr;
 
-			*actualOutputLength = target - ((char*)outputBuffer);
+			ByteCount bytesWritten = target - ((char*)outputBuffer);
+			if (actualOutputLength != NULL)
+				*actualOutputLength += bytesWritten;
 
 			inputUsed = source - encodingConverter->buffer;
 			if (inputUsed < encodingConverter->bufferUsed)
 			{
 				memmove(encodingConverter->buffer,
 						encodingConverter->buffer + inputUsed,
-						encodingConverter->bufferUsed - inputUsed);
+						(encodingConverter->bufferUsed - inputUsed) * sizeof(UChar));
 			}
 			encodingConverter->bufferUsed -= inputUsed;
-			outputBuffer += *actualOutputLength;
-			outputBufferLength -= *actualOutputLength;
+			outputBuffer += bytesWritten;
+			outputBufferLength -= bytesWritten;
 
 			if (error == U_BUFFER_OVERFLOW_ERROR)
 				break;
@@ -206,8 +235,10 @@ OSStatus TECConvertText(TECObjectRef encodingConverter, ConstTextPtr inputBuffer
 				return paramErr;
 
 			encodingConverter->bufferUsed += target - (encodingConverter->buffer + encodingConverter->bufferUsed);
-			*actualInputLength += source - ((const char*)inputBuffer);
-			inputBufferLength -= source - ((const char*)inputBuffer);
+			ByteCount inConsumed = source - ((const char*)inputBuffer);
+			if (actualInputLength != NULL)
+				*actualInputLength += inConsumed;
+			inputBufferLength -= inConsumed;
 			inputBuffer = (ConstTextPtr) source;
 		}
 
@@ -221,6 +252,119 @@ OSStatus TECConvertText(TECObjectRef encodingConverter, ConstTextPtr inputBuffer
 OSStatus TECFlushText(TECObjectRef encodingConverter, TextPtr outputBuffer, ByteCount outputBufferLength, ByteCount *actualOutputLength)
 {
 	return TECConvertText(encodingConverter, NULL, 0, NULL, outputBuffer, outputBufferLength, actualOutputLength);
+}
+
+OSStatus TECClearConverterContextInfo(TECObjectRef conv)
+{
+	if (!conv)
+		return paramErr;
+	conv->bufferUsed = 0;
+	if (conv->inputConverter)
+		ucnv_reset(conv->inputConverter);
+	if (conv->outputConverter)
+		ucnv_reset(conv->outputConverter);
+	return noErr;
+}
+
+OSStatus TECGetTextEncodingFromInternetName(TextEncoding *encoding, ConstStr255Param internetName)
+{
+	if (!encoding || !internetName)
+		return paramErr;
+
+	char name[256] = {0};
+	size_t len = 0;
+
+	// Check if pascal string (internetName[0] is length, remaining are ASCII chars)
+	unsigned char pLen = internetName[0];
+	if (pLen > 0 && pLen < 128)
+	{
+		bool looksPascal = true;
+		for (size_t i = 1; i <= pLen; ++i)
+		{
+			if (internetName[i] == 0)
+			{
+				looksPascal = false;
+				break;
+			}
+		}
+		if (looksPascal)
+		{
+			len = pLen;
+			memcpy(name, &internetName[1], len);
+		}
+	}
+
+	if (len == 0)
+	{
+		// Fallback to C-string
+		len = strlen((const char*)internetName);
+		if (len >= sizeof(name))
+			len = sizeof(name) - 1;
+		memcpy(name, internetName, len);
+	}
+	name[len] = '\0';
+
+	// Case-insensitive check
+	for (size_t i = 0; i < len; ++i)
+		name[i] = (char)tolower((unsigned char)name[i]);
+
+	if (strcmp(name, "utf-8") == 0 || strcmp(name, "utf8") == 0)
+	{
+		*encoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF8Format);
+		return noErr;
+	}
+	if (strcmp(name, "utf-16") == 0 || strcmp(name, "utf16") == 0)
+	{
+		*encoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF16Format);
+		return noErr;
+	}
+	if (strcmp(name, "utf-16be") == 0)
+	{
+		*encoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF16BEFormat);
+		return noErr;
+	}
+	if (strcmp(name, "utf-16le") == 0)
+	{
+		*encoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF16LEFormat);
+		return noErr;
+	}
+	if (strcmp(name, "utf-32") == 0 || strcmp(name, "utf32") == 0)
+	{
+		*encoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF32Format);
+		return noErr;
+	}
+	if (strcmp(name, "utf-32be") == 0)
+	{
+		*encoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF32BEFormat);
+		return noErr;
+	}
+	if (strcmp(name, "utf-32le") == 0)
+	{
+		*encoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF32LEFormat);
+		return noErr;
+	}
+	if (strcmp(name, "utf-7") == 0)
+	{
+		*encoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF7Format);
+		return noErr;
+	}
+	if (strcmp(name, "us-ascii") == 0 || strcmp(name, "ascii") == 0)
+	{
+		*encoding = CreateTextEncoding(kTextEncodingUS_ASCII, kTextEncodingDefaultVariant, kTextEncodingDefaultFormat);
+		return noErr;
+	}
+	if (strcmp(name, "iso-8859-1") == 0 || strcmp(name, "latin1") == 0 || strcmp(name, "iso_8859-1") == 0)
+	{
+		*encoding = CreateTextEncoding(kTextEncodingISOLatin1, kTextEncodingDefaultVariant, kTextEncodingDefaultFormat);
+		return noErr;
+	}
+	if (strcmp(name, "macintosh") == 0 || strcmp(name, "macroman") == 0 || strcmp(name, "mac-roman") == 0)
+	{
+		*encoding = CreateTextEncoding(kTextEncodingMacRoman, kTextEncodingDefaultVariant, kTextEncodingDefaultFormat);
+		return noErr;
+	}
+
+	return kTECNoConversionPathErr;
 }
 
 OSStatus TECDisposeConverter(TECObjectRef conv)
