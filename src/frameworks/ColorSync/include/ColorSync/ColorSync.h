@@ -146,6 +146,8 @@ extern CFStringRef kColorSyncFactoryProfiles;
 extern CFStringRef kColorSyncDeviceUserScope;
 extern CFStringRef kColorSyncDeviceHostScope;
 extern CFStringRef kColorSyncPrinterDeviceClass;
+extern CFStringRef kColorSyncCustomProfiles;
+extern CFStringRef kColorSyncDisplayDeviceClass;
 
 void* ColorSyncProfileCreateWithURLAndOptions(void);
 void* ColorSyncProfileCopyFlexGTCInfo(void);

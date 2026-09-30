@@ -680,6 +680,15 @@ CFStringRef kColorSyncDeviceUserScope        = CFSTR("ColorSyncDeviceUserScope")
 CFStringRef kColorSyncDeviceHostScope        = CFSTR("ColorSyncDeviceHostScope");
 CFStringRef kColorSyncPrinterDeviceClass     = CFSTR("ColorSyncPrinterDeviceClass");
 
+// Key of the per-mode custom-profile override map inside a device-info
+// dictionary. Despite the name it is a key, not the map itself: the value it
+// selects is a CFDictionary mapping a profile ID to a CFURL.
+CFStringRef kColorSyncCustomProfiles         = CFSTR("CustomProfiles");
+
+// Value, not a key: the ColorSync device class of a display, the classic
+// four-character code.
+CFStringRef kColorSyncDisplayDeviceClass     = CFSTR("mntr");
+
 void* ColorSyncProfileCreateWithURLAndOptions(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileCreateWithURLAndOptions called");
