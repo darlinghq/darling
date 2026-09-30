@@ -4,6 +4,7 @@ if (COMPONENT_cli)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli")
 
 	add_darling_executable(sw_vers sw_vers.c)
+	add_darling_executable(system_profiler system_profiler.c)
 	add_darling_executable(sudo sudo.c)
 	add_darling_executable(codesign codesign.c)
 	add_darling_executable(dsmemberutil dsmemberutil.c)
@@ -12,9 +13,10 @@ if (COMPONENT_cli)
 	add_darling_executable(darpath darpath.c)
 
 	install(TARGETS sw_vers sudo codesign dsmemberutil darpath DESTINATION libexec/darling/usr/bin)
-	install(TARGETS softwareupdate spctl DESTINATION libexec/darling/usr/sbin)
+	install(TARGETS softwareupdate spctl system_profiler DESTINATION libexec/darling/usr/sbin)
 
 	target_link_libraries(sw_vers CoreFoundation)
+	target_link_libraries(system_profiler CoreFoundation)
 endif()
 
 if (COMPONENT_gui)
