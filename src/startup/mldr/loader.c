@@ -200,7 +200,10 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 		 * a low-VA window we control. We hand out distinct slots so dyld and
 		 * subsequently-loaded dylibs don't collide with the main executable
 		 * (which typically wants 0x100000000). */
-		static uintptr_t next_low_addr = 0x200000000ULL; /* 8 GiB; leave 4GiB+ for main exe */
+		/* Leave the modern ARM64 shared cache's preferred range (6 GiB and
+         * above) available. dyld reserves its actual cache span before mapping
+         * files, so an incompatible future layout fails without overwriting us. */
+		static uintptr_t next_low_addr = 0x1000000000ULL; /* 64 GiB; below the ObjC 47-bit ceiling */
 		if (base == 0)
 			mmap_hint = (void*)next_low_addr;
 #endif
@@ -211,12 +214,12 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 			exit(1);
 		}
 #if defined(__aarch64__) || defined(__arm64__)
-		/* If we ended up above 2^47 anyway, retry with MAP_FIXED in the low
+		/* If we ended up above 2^47 anyway, retry with MAP_FIXED_NOREPLACE in the low
 		 * range so the slid address stays reachable through FAST_DATA_MASK. */
 		if (slide >= 0x800000000000ULL) {
 			munmap((void*)slide, mmapSize);
 			slide = (uintptr_t)mmap((void*)next_low_addr, mmapSize, PROT_NONE,
-			                         MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA | MAP_FIXED,
+			                         MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA | MAP_FIXED_NOREPLACE,
 			                         -1, 0);
 			if (slide == (uintptr_t)MAP_FAILED) {
 				fprintf(stderr, "Cannot mmap low-VA range: %s\n", strerror(errno));
