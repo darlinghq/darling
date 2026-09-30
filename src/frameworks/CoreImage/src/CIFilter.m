@@ -34,16 +34,16 @@ NSString *const kCIInputRadiusKey = @"inputRadius";
 NSString * const kCIOutputImageKey = @"outputImage";
 NSString * const kCIApplyOptionDefinition = @"definition";
 
-NSString * const kCIAttributeClass = @"class";
+NSString * const kCIAttributeClass = @"CIAttributeClass";
 NSString * const kCIAttributeDefault = @"CIAttributeDefault";
-NSString * const kCIAttributeDisplayName = @"displayName";
-NSString * const kCIAttributeFilterDisplayName = @"filterDisplayName";
-NSString * const kCIAttributeFilterName = @"filterName";
-NSString * const kCIAttributeMax = @"max";
-NSString * const kCIAttributeMin = @"min";
+NSString * const kCIAttributeDisplayName = @"CIAttributeDisplayName";
+NSString * const kCIAttributeFilterDisplayName = @"CIAttributeFilterDisplayName";
+NSString * const kCIAttributeFilterName = @"CIAttributeFilterName";
+NSString * const kCIAttributeMax = @"CIAttributeMax";
+NSString * const kCIAttributeMin = @"CIAttributeMin";
 NSString * const kCIAttributeSliderMin = @"CIAttributeSliderMin";
 NSString * const kCIAttributeSliderMax = @"CIAttributeSliderMax";
-NSString * const kCIAttributeType = @"type";
+NSString * const kCIAttributeType = @"CIAttributeType";
 
 const CIFormat kCIFormatARGB8 = 0;
 const CIFormat kCIFormatRGBA8 = 24;
@@ -53,21 +53,21 @@ const CIFormat kCIFormatRGBAh = 31;
 const CIFormat kCIFormatRGBA16 = 33;
 const CIFormat kCIFormatRGBAf = 34;
 
-NSString * const kCIAttributeTypeAngle = @"angle";
-NSString * const kCIAttributeTypeBoolean = @"boolean";
-NSString * const kCIAttributeTypeDistance = @"distance";
-NSString * const kCIAttributeTypeOffset = @"offset";
-NSString * const kCIAttributeTypePosition = @"position";
-NSString * const kCIAttributeTypePosition3 = @"position3";
-NSString * const kCIAttributeTypeRectangle = @"rectangle";
-NSString * const kCIAttributeTypeScalar = @"scalar";
-NSString * const kCIAttributeTypeTime = @"time";
+NSString * const kCIAttributeTypeAngle = @"CIAttributeTypeAngle";
+NSString * const kCIAttributeTypeBoolean = @"CIAttributeTypeBoolean";
+NSString * const kCIAttributeTypeDistance = @"CIAttributeTypeDistance";
+NSString * const kCIAttributeTypeOffset = @"CIAttributeTypeOffset";
+NSString * const kCIAttributeTypePosition = @"CIAttributeTypePosition";
+NSString * const kCIAttributeTypePosition3 = @"CIAttributeTypePosition3";
+NSString * const kCIAttributeTypeRectangle = @"CIAttributeTypeRectangle";
+NSString * const kCIAttributeTypeScalar = @"CIAttributeTypeScalar";
+NSString * const kCIAttributeTypeTime = @"CIAttributeTypeTime";
 
-NSString * const kCICategoryCompositeOperation = @"kCICategoryCompositeOperation";
-NSString * const kCICategoryGenerator = @"kCICategoryGenerator";
-NSString * const kCICategoryGradient = @"kCICategoryGradient";
-NSString * const kCICategoryReduction = @"kCICategoryReduction";
-NSString * const kCICategoryTransition = @"kCICategoryTransition";
+NSString * const kCICategoryCompositeOperation = @"CICategoryCompositeOperation";
+NSString * const kCICategoryGenerator = @"CICategoryGenerator";
+NSString * const kCICategoryGradient = @"CICategoryGradient";
+NSString * const kCICategoryReduction = @"CICategoryReduction";
+NSString * const kCICategoryTransition = @"CICategoryTransition";
 
 @implementation CIFilter
 
