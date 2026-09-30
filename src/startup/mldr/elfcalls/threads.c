@@ -428,3 +428,15 @@ void __darling_thread_rpc_socket_refresh(void) {
 		__dserver_main_thread_socket_fd = t_server_socket;
 	}
 };
+
+/* Dedicated to cached Darwin TSD reads; native bridge compatibility state must
+ * use separate storage. Main-executable ELF TLS offsets are per-thread stable. */
+static __thread void* shared_cache_darling_tsd;
+
+uintptr_t __darling_arm64_tsd_slot_offset(void) {
+#if defined(__aarch64__)
+    return (uintptr_t)&shared_cache_darling_tsd - (uintptr_t)__builtin_thread_pointer();
+#else
+    return UINTPTR_MAX;
+#endif
+}
