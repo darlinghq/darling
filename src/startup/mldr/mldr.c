@@ -553,6 +553,10 @@ static socket_bitmap_t socket_bitmap = {
 	.highest = -1,
 };
 
+void __mldr_socket_bitmap_postfork_child(void) {
+	pthread_mutex_init(&socket_bitmap.mutex, NULL);
+}
+
 int __mldr_create_rpc_socket(void) {
 	int pre_fd = -1;
 	int fd = -1;

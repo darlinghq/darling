@@ -417,6 +417,25 @@ int __darling_thread_rpc_socket(void) {
 	return t_server_socket;
 };
 
+/* Compatibility callbacks retain native TLS and record guest TSD separately. */
+static __thread void* compatibility_darling_tsd;
+void* __darling_native_tsd_base(void) {
+#if defined(__aarch64__)
+	return __builtin_thread_pointer();
+#else
+	return NULL;
+#endif
+}
+void __darling_arm64_record_tsd_base(void* base) { compatibility_darling_tsd = base; }
+void* __darling_arm64_tsd_base(void) { return compatibility_darling_tsd; }
+
+void __mldr_thread_postfork_child(void) {
+	t_server_socket = -1;
+	t_callbacks = NULL;
+	t_freeaddr = NULL;
+	t_freesize = 0;
+}
+
 void __darling_thread_rpc_socket_refresh(void) {
 	int new_rpc_fd = __mldr_create_rpc_socket();
 	if (new_rpc_fd < 0) {

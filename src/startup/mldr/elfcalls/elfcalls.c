@@ -84,8 +84,34 @@ static int __dserver_process_lifetime_pipe_refresh() {
 	return pipe[0];
 }
 
+extern void __mldr_socket_bitmap_postfork_child(void);
+
+static int native_fork(void)
+{
+	int result = fork();
+	/* libsystem_kernel expects negative Linux errno, not libc's -1. */
+	if (result < 0)
+		return -errno;
+	if (result == 0) {
+		__mldr_thread_postfork_child();
+		__mldr_socket_bitmap_postfork_child();
+	}
+	return result;
+}
+
+static void arm64_thread_bridge_postfork_complete(void)
+{
+	/* Legacy ABI slot; no native thread broker remains to restart. */
+}
+
 void elfcalls_make(struct elf_calls* calls)
 {
+	calls->native_tsd_base = __darling_native_tsd_base;
+	calls->initial_native_tsd_base = __darling_native_tsd_base();
+	calls->native_fork = native_fork;
+	calls->arm64_thread_bridge_postfork_complete = arm64_thread_bridge_postfork_complete;
+	calls->arm64_record_darling_tsd_base = __darling_arm64_record_tsd_base;
+	calls->arm64_darling_tsd_base = __darling_arm64_tsd_base;
 	calls->dlopen = dlopen_simple;
 	calls->dlclose = dlclose;
 	calls->dlsym = dlsym;

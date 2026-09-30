@@ -35,10 +35,13 @@ int __darling_thread_terminate(void* stackaddr,
 void* __darling_thread_get_stack(void);
 int __darling_thread_rpc_socket(void);
 void __darling_thread_rpc_socket_refresh(void);
+void* __darling_native_tsd_base(void);
+void __darling_arm64_record_tsd_base(void* base);
+void* __darling_arm64_tsd_base(void);
+void __mldr_thread_postfork_child(void);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-
