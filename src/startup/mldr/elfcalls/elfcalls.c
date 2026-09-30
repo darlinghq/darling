@@ -85,18 +85,22 @@ static int __dserver_process_lifetime_pipe_refresh() {
 }
 
 extern void __mldr_socket_bitmap_postfork_child(void);
+extern void __mldr_socket_bitmap_prefork(void);
+extern void __mldr_socket_bitmap_postfork_parent(void);
 
 static int native_fork(void)
 {
+	__mldr_socket_bitmap_prefork();
 	int result = fork();
-	/* libsystem_kernel expects negative Linux errno, not libc's -1. */
-	if (result < 0)
-		return -errno;
+	int saved_errno = errno;
 	if (result == 0) {
 		__mldr_thread_postfork_child();
 		__mldr_socket_bitmap_postfork_child();
+	} else {
+		__mldr_socket_bitmap_postfork_parent();
 	}
-	return result;
+	/* Preserve fork's errno even if lock cleanup changes it. */
+	return result < 0 ? -saved_errno : result;
 }
 
 static void arm64_thread_bridge_postfork_complete(void)

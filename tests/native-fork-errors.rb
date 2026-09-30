@@ -9,9 +9,12 @@ Dir.mktmpdir('native-fork-errors-') do |dir|
     #include <assert.h>
     #include <stdio.h>
     static int result, error, threads, sockets;
+    static int locked;
+    static void __mldr_socket_bitmap_prefork(void) { assert(!locked); locked=1; }
+    static void __mldr_socket_bitmap_postfork_parent(void) { assert(locked); locked=0; errno=EBADF; }
     static int fixture_fork(void) { errno=error; return result; }
     static void __mldr_thread_postfork_child(void) { ++threads; errno=EIO; }
-    static void __mldr_socket_bitmap_postfork_child(void) { ++sockets; errno=EBADF; }
+    static void __mldr_socket_bitmap_postfork_child(void) { assert(locked); locked=0; ++sockets; errno=EBADF; }
     #define fork fixture_fork
     #{method}
     #undef fork
@@ -20,7 +23,7 @@ Dir.mktmpdir('native-fork-errors-') do |dir|
       for (unsigned i=0;i<sizeof(errors)/sizeof(errors[0]);++i) {
         result=-1; error=errors[i];
         assert(native_fork()==-errors[i]);
-        assert(threads==0 && sockets==0);
+        assert(threads==0 && sockets==0 && !locked);
       }
       result=42; error=ENOMEM;
       assert(native_fork()==42 && threads==0 && sockets==0);
@@ -50,6 +53,8 @@ Dir.mktmpdir('native-fork-errors-') do |dir|
     #include <linux/seccomp.h>
     #include <linux/filter.h>
     static int threads, sockets;
+    static void __mldr_socket_bitmap_prefork(void) {}
+    static void __mldr_socket_bitmap_postfork_parent(void) {}
     static void __mldr_thread_postfork_child(void) { ++threads; }
     static void __mldr_socket_bitmap_postfork_child(void) { ++sockets; }
     #{method}
