@@ -33,12 +33,13 @@ typedef enum SKSearchType : unsigned int {
     kSKSearchPrefixRanked = 3,
 } SKSearchType;
 
-typedef enum SKSearchOptions : UInt32 {
+typedef UInt32 SKSearchOptions;
+enum : UInt32 {
     kSKSearchOptionDefault = 0,
     kSKSearchOptionNoRelevanceScores = 1L << 0,
     kSKSearchOptionSpaceMeansOR = 1L << 1,
     kSKSearchOptionFindSimilar = 1L << 2,
-} SKSearchOptions;
+};
 
 #ifdef __cplusplus
 };
