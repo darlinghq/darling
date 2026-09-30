@@ -11,7 +11,10 @@
 
 #include "loader.h"
 
-#if defined(__aarch64__)
+// Keyed on GEN_64BIT, not __aarch64__. mldr.c includes this file twice, once per word
+// size, and __aarch64__ is true in both passes, so a definition guarded only by the
+// architecture is emitted twice and the second one is a redefinition error.
+#if defined(GEN_64BIT) && defined(__aarch64__)
 #define MLDR_ARM_THREAD_STATE64 6
 struct mldr_arm_thread_state64 {
 	uint64_t x[29];
