@@ -1,5 +1,6 @@
 include(CMakeParseArguments)
 include(darling_lib)
+include(swift_dylib_map)
 include(darling_open_source_sdk)
 include(InstallSymlink)
 
@@ -108,6 +109,8 @@ function(add_framework name)
 		set_property(TARGET ${my_name} APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
 	endif (FRAMEWORK_LINK_FLAGS)
 
+	add_swift_dylib_map(${my_name})
+
 	install(TARGETS ${my_name} DESTINATION "libexec/darling${root_dir}/${name}.framework/Versions/${FRAMEWORK_VERSION}/" ${EXCLUDE_FROM_ALL_ARG})
 
 	if (FRAMEWORK_RESOURCES)
@@ -192,6 +195,7 @@ function(add_separated_framework name)
 		if (FRAMEWORK_LINK_FLAGS)
 			set_property(TARGET ${my_name}_${APPLE_ARCH_32BIT} APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
 		endif (FRAMEWORK_LINK_FLAGS)
+		add_swift_dylib_map(${my_name}_${APPLE_ARCH_32BIT})
 	endif (BUILD_TARGET_32BIT)
 
 	if (BUILD_TARGET_64BIT)
@@ -228,6 +232,7 @@ function(add_separated_framework name)
 		if (FRAMEWORK_LINK_FLAGS)
 			set_property(TARGET ${my_name}_${APPLE_ARCH_64BIT} APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
 		endif (FRAMEWORK_LINK_FLAGS)
+		add_swift_dylib_map(${my_name}_${APPLE_ARCH_64BIT})
 	endif (BUILD_TARGET_64BIT)
 
 	if (BUILD_TARGET_32BIT AND BUILD_TARGET_64BIT)

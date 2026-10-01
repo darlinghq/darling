@@ -1,6 +1,10 @@
+include(swift_dylib_map)
+
 FUNCTION(use_ld64 target)
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
 		LINK_FLAGS " -fuse-ld=${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/${APPLE_TARGET_TRIPLET_PRIMARY}-ld ")
+
+	add_swift_dylib_map(${target})
 
 	if (COMPONENT_gui)
 		set(COCOTRON_FW_PATH "${CMAKE_BINARY_DIR}/src/external/cocotron")
