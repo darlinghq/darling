@@ -27,6 +27,7 @@ CGL_EXPORT CGLError CGLUnlockContext(CGLContextObj context);
 CGL_EXPORT CGLError CGLSetCurrentContext(CGLContextObj ctx);
 CGL_EXPORT CGLError CGLSetFullScreen(CGLContextObj ctx);
 CGL_EXPORT CGLContextObj CGLGetCurrentContext(void);
+CGL_EXPORT void CGLGetVersion(GLint *majorvers, GLint *minorvers);
 
 CGL_EXPORT CGLError CGLEnable(CGLContextObj ctx, CGLContextEnable pname);
 CGL_EXPORT CGLError CGLDisable(CGLContextObj ctx, CGLContextEnable pname);

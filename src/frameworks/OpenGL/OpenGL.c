@@ -563,3 +563,10 @@ CGLError CGLQueryRendererInfo(unsigned long display_mask, CGLRendererInfoObj *re
 CGLError CGLDestroyRendererInfo(CGLRendererInfoObj rend) {
     return kCGLNoError;
 }
+
+void CGLGetVersion(GLint *majorvers, GLint *minorvers) {
+    if (majorvers)
+        *majorvers = 1;
+    if (minorvers)
+        *minorvers = 0;
+}
