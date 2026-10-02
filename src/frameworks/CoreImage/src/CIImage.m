@@ -21,6 +21,33 @@
 
 @implementation CIImage
 
++ (CIImage *) emptyImage {
+    return [[[self alloc] initWithCGImage: NULL] autorelease];
+}
+
+- initWithCGImage: (CGImageRef) cgImage {
+    _cgImage = CGImageRetain(cgImage);
+    return self;
+}
+
+- (void) dealloc {
+    CGImageRelease(_cgImage);
+    [super dealloc];
+}
+
+/* An image with no CGImage behind it has no bounding box. CGRectZero is
+   indistinguishable from a genuinely 0x0 image, so the infinite rect is used for "no
+   bounds", which is Core Image's own idiom: its working space is "in theory infinite"
+   in the Core Image Programming Guide. Apple never states the empty image's extent
+   outright, so this one value is an inference. See the commit body. */
+- (CGRect) extent {
+    if (_cgImage == NULL) {
+        return CGRectInfinite;
+    }
+
+    return CGRectMake(0, 0, CGImageGetWidth(_cgImage), CGImageGetHeight(_cgImage));
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];
 }
