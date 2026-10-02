@@ -15,7 +15,7 @@ FUNCTION(add_swift_dylib_map target)
 	set(SWIFT_DYLIB_MAP "")
 	foreach(swift_dylib ${DARLING_SWIFT_DYLIBS})
 		get_filename_component(swift_name "${swift_dylib}" NAME)
-		set(SWIFT_DYLIB_MAP "${SWIFT_DYLIB_MAP} -Wl,-dylib_file,/usr/lib/swift/${swift_name}:${swift_dylib}")
+		set(SWIFT_DYLIB_MAP "${SWIFT_DYLIB_MAP} -Wl,-dylib_file,/usr/lib/swift/${swift_name}:${swift_dylib} -Wl,-dylib_file,@rpath/${swift_name}:${swift_dylib}")
 	endforeach()
 
 	if (SWIFT_DYLIB_MAP)
