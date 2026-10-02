@@ -71,6 +71,12 @@ NSString * const kCICategoryTransition = @"CICategoryTransition";
 
 @implementation CIFilter
 
+/* No attributes and no input parameters, so there are no defaults to restore. Apple
+   documents this as setting the default value of every input parameter, which with no
+   parameters already holds. */
+- (void) setDefaults {
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];
 }

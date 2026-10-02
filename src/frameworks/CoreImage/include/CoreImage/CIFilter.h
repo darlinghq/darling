@@ -60,4 +60,6 @@ extern NSString *const kCICategoryTransition;
 
 @interface CIFilter : NSObject
 
+- (void) setDefaults;
+
 @end
