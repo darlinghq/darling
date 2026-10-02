@@ -33,6 +33,7 @@ const CFStringRef kCGImagePropertyProfileName = CFSTR("ProfileName"); // guessed
 
 const CFStringRef kCGImagePropertyAPNGDelayTime = CFSTR("APNGDelayTime"); // ditto
 const CFStringRef kCGImagePropertyAPNGLoopCount = CFSTR("APNGLoopCount"); // ditto
+const CFStringRef kCGImagePropertyAPNGUnclampedDelayTime = CFSTR("UnclampedDelayTime");
 
 const CFStringRef kCGImageMetadataNamespaceExif = CFSTR("http://ns.adobe.com/exif/1.0/");
 const CFStringRef kCGImageMetadataPrefixExif = CFSTR("exif");

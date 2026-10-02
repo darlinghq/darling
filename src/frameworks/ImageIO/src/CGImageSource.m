@@ -31,6 +31,14 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef self, size_t
    return (CFDictionaryRef)[self copyPropertiesAtIndex:index options:options];
 }
 
+CFDictionaryRef CGImageSourceCopyProperties(CGImageSourceRef self, CFDictionaryRef options) {
+   if (!self) return NULL;
+   if ([self count] > 0) {
+      return CGImageSourceCopyPropertiesAtIndex(self, 0, options);
+   }
+   return NULL;
+}
+
 CFStringRef CGImageSourceGetType(CGImageSourceRef self)
 {
     return [(O2ImageSource*)self type];
