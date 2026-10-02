@@ -21,5 +21,60 @@
 #ifndef _Accelerate_H_
 #define _Accelerate_H_
 
+#include <stdint.h>
+#include <stddef.h>
+#include <sys/types.h>
+
+typedef unsigned long vImagePixelCount;
+
+typedef struct vImage_Buffer {
+    void *data;
+    vImagePixelCount height;
+    vImagePixelCount width;
+    size_t rowBytes;
+} vImage_Buffer;
+
+typedef uint32_t vImage_Flags;
+typedef ssize_t vImage_Error;
+typedef struct vImage_CGImageFormat vImage_CGImageFormat;
+
+enum {
+    kvImageNoError = 0,
+    kvImageRoiLargerThanInputFile = -21766,
+    kvImageInvalidRowBytes = -21767,
+    kvImageInvalidImageFormat = -21768,
+    kvImageMemoryAllocationError = -21769,
+    kvImageNullPointerErr = -21770,
+    kvImageUnknownFlagsBit = -21771,
+    kvImageInvalidParameter = -21772
+};
+
+vImage_Error vImageBuffer_InitWithCGImage(
+    vImage_Buffer *buf,
+    const vImage_CGImageFormat *format,
+    const void *backgroundColor,
+    void *image,
+    vImage_Flags flags
+);
+
+vImage_Error vImagePermuteChannels_ARGB8888(
+    const vImage_Buffer *src,
+    const vImage_Buffer *dest,
+    const uint8_t permuteMap[4],
+    vImage_Flags flags
+);
+
+vImage_Error vImageScale_ARGB8888(
+    const vImage_Buffer *src,
+    const vImage_Buffer *dest,
+    void *tempBuffer,
+    vImage_Flags flags
+);
+
+vImage_Error vImageUnpremultiplyData_ARGB8888(
+    const vImage_Buffer *src,
+    const vImage_Buffer *dest,
+    vImage_Flags flags
+);
 
 #endif

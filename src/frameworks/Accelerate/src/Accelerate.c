@@ -28,3 +28,58 @@ __attribute__((constructor))
 static void initme(void) {
     verbose = getenv("STUB_VERBOSE") != NULL;
 }
+
+vImage_Error vImageBuffer_InitWithCGImage(
+    vImage_Buffer *buf,
+    const vImage_CGImageFormat *format,
+    const void *backgroundColor,
+    void *image,
+    vImage_Flags flags
+) {
+    if (verbose) {
+        fprintf(stderr, "stub: vImageBuffer_InitWithCGImage called\n");
+    }
+    if (!buf) {
+        return kvImageNullPointerErr;
+    }
+    buf->data = NULL;
+    buf->height = 0;
+    buf->width = 0;
+    buf->rowBytes = 0;
+    return kvImageInvalidImageFormat;
+}
+
+vImage_Error vImagePermuteChannels_ARGB8888(
+    const vImage_Buffer *src,
+    const vImage_Buffer *dest,
+    const uint8_t permuteMap[4],
+    vImage_Flags flags
+) {
+    if (verbose) {
+        fprintf(stderr, "stub: vImagePermuteChannels_ARGB8888 called\n");
+    }
+    return kvImageNoError;
+}
+
+vImage_Error vImageScale_ARGB8888(
+    const vImage_Buffer *src,
+    const vImage_Buffer *dest,
+    void *tempBuffer,
+    vImage_Flags flags
+) {
+    if (verbose) {
+        fprintf(stderr, "stub: vImageScale_ARGB8888 called\n");
+    }
+    return kvImageNoError;
+}
+
+vImage_Error vImageUnpremultiplyData_ARGB8888(
+    const vImage_Buffer *src,
+    const vImage_Buffer *dest,
+    vImage_Flags flags
+) {
+    if (verbose) {
+        fprintf(stderr, "stub: vImageUnpremultiplyData_ARGB8888 called\n");
+    }
+    return kvImageNoError;
+}
