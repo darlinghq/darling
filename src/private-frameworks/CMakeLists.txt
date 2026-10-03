@@ -130,6 +130,7 @@ if (COMPONENT_gui_stubs)
 	add_subdirectory(RTTUtilities)
 
 	add_subdirectory(PhoneNumbers)
+	add_subdirectory(PrintingPrivate)
 	add_subdirectory(QueryParser)
 	add_subdirectory(GeoKit)
 	add_subdirectory(OnBoardingKit)
