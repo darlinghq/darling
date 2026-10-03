@@ -19,6 +19,12 @@
 
 #include <Foundation/Foundation.h>
 
+/* Games observe controllers appearing and disappearing through these. Darling has no
+ * controller hardware, so nothing posts them, but the symbols must exist: dyld refuses
+ * to launch a binary that imports an undefined symbol, and games reference both. */
+extern NSString *const GCControllerDidConnectNotification;
+extern NSString *const GCControllerDidDisconnectNotification;
+
 @interface GCController : NSObject
 
 @end

@@ -27,6 +27,7 @@ add_framework(GameController
         src/GCControllerAxisInput.m
         src/_GCControllerAxisInput.m
         src/_GCControllerAxisButtonInput.m
+        src/GCControllerNotifications.m
         src/GCControllerDirectionPad.m
         src/_GCControllerDirectionPad.m
         src/GCGamepad.m
