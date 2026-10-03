@@ -45,8 +45,10 @@
     return result;
 }
 
-- initWithCGColor: (CGColorRef) cgColor {
-    _cgColor = CGColorRetain(cgColor);
+- (instancetype) initWithCGColor: (CGColorRef) cgColor {
+    if ((self = [super init])) {
+        _cgColor = CGColorRetain(cgColor);
+    }
     return self;
 }
 
@@ -56,31 +58,51 @@
 }
 
 - (size_t) numberOfComponents {
-    return CGColorGetNumberOfComponents(_cgColor);
+    return _cgColor ? CGColorGetNumberOfComponents(_cgColor) : 0;
 }
 
 - (CGColorSpaceRef) colorSpace {
-    return CGColorGetColorSpace(_cgColor);
+    return _cgColor ? CGColorGetColorSpace(_cgColor) : NULL;
 }
 
 - (const CGFloat *) components {
-    return CGColorGetComponents(_cgColor);
+    return _cgColor ? CGColorGetComponents(_cgColor) : NULL;
 }
 
 - (CGFloat) red {
-    return CGColorGetComponents(_cgColor)[0];
+    if (!_cgColor) return 0.0;
+    const CGFloat *c = CGColorGetComponents(_cgColor);
+    return c ? c[0] : 0.0;
 }
 
 - (CGFloat) green {
-    return CGColorGetComponents(_cgColor)[1];
+    if (!_cgColor) return 0.0;
+    size_t count = CGColorGetNumberOfComponents(_cgColor);
+    const CGFloat *c = CGColorGetComponents(_cgColor);
+    if (!c) return 0.0;
+    if (count >= 3) return c[1];
+    if (count == 2) return c[0]; // grayscale: r = g = b = gray
+    return c[0];
 }
 
 - (CGFloat) blue {
-    return CGColorGetComponents(_cgColor)[2];
+    if (!_cgColor) return 0.0;
+    size_t count = CGColorGetNumberOfComponents(_cgColor);
+    const CGFloat *c = CGColorGetComponents(_cgColor);
+    if (!c) return 0.0;
+    if (count >= 3) return c[2];
+    if (count == 2) return c[0]; // grayscale: r = g = b = gray
+    return c[0];
 }
 
 - (CGFloat) alpha {
-    return CGColorGetComponents(_cgColor)[3];
+    if (!_cgColor) return 0.0;
+    size_t count = CGColorGetNumberOfComponents(_cgColor);
+    const CGFloat *c = CGColorGetComponents(_cgColor);
+    if (!c) return 0.0;
+    if (count >= 4) return c[3];
+    if (count == 2) return c[1]; // grayscale: gray, alpha
+    return 1.0;
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {

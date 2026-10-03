@@ -25,8 +25,10 @@
     return [[[self alloc] initWithCGImage: NULL] autorelease];
 }
 
-- initWithCGImage: (CGImageRef) cgImage {
-    _cgImage = CGImageRetain(cgImage);
+- (instancetype) initWithCGImage: (CGImageRef) cgImage {
+    if ((self = [super init])) {
+        _cgImage = CGImageRetain(cgImage);
+    }
     return self;
 }
 
