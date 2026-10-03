@@ -71,17 +71,29 @@
 
 - (CGFloat) red {
     if (!_cgColor) return 0.0;
+    size_t count = CGColorGetNumberOfComponents(_cgColor);
     const CGFloat *c = CGColorGetComponents(_cgColor);
-    return c ? c[0] : 0.0;
+    if (!c || count == 0) return 0.0;
+    if (count >= 5) {
+        // CMYK: c[0] = Cyan, c[3] = Black
+        return (1.0 - c[0]) * (1.0 - c[3]);
+    }
+    return c[0];
 }
 
 - (CGFloat) green {
     if (!_cgColor) return 0.0;
     size_t count = CGColorGetNumberOfComponents(_cgColor);
     const CGFloat *c = CGColorGetComponents(_cgColor);
-    if (!c) return 0.0;
-    if (count >= 3) return c[1];
-    if (count == 2) return c[0]; // grayscale: r = g = b = gray
+    if (!c || count == 0) return 0.0;
+    if (count >= 5) {
+        // CMYK: c[1] = Magenta, c[3] = Black
+        return (1.0 - c[1]) * (1.0 - c[3]);
+    }
+    if (count >= 3) {
+        return c[1];
+    }
+    // Grayscale: r = g = b = gray
     return c[0];
 }
 
@@ -89,9 +101,15 @@
     if (!_cgColor) return 0.0;
     size_t count = CGColorGetNumberOfComponents(_cgColor);
     const CGFloat *c = CGColorGetComponents(_cgColor);
-    if (!c) return 0.0;
-    if (count >= 3) return c[2];
-    if (count == 2) return c[0]; // grayscale: r = g = b = gray
+    if (!c || count == 0) return 0.0;
+    if (count >= 5) {
+        // CMYK: c[2] = Yellow, c[3] = Black
+        return (1.0 - c[2]) * (1.0 - c[3]);
+    }
+    if (count >= 3) {
+        return c[2];
+    }
+    // Grayscale: r = g = b = gray
     return c[0];
 }
 
@@ -99,9 +117,10 @@
     if (!_cgColor) return 0.0;
     size_t count = CGColorGetNumberOfComponents(_cgColor);
     const CGFloat *c = CGColorGetComponents(_cgColor);
-    if (!c) return 0.0;
-    if (count >= 4) return c[3];
-    if (count == 2) return c[1]; // grayscale: gray, alpha
+    if (!c || count == 0) return 0.0;
+    if (count == 2 || count == 4 || count >= 5) {
+        return c[count - 1];
+    }
     return 1.0;
 }
 
