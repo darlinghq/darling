@@ -47,7 +47,49 @@
 
 - (instancetype) initWithCGColor: (CGColorRef) cgColor {
     if ((self = [super init])) {
-        _cgColor = CGColorRetain(cgColor);
+        if (!cgColor) {
+            _cgColor = NULL;
+            return self;
+        }
+
+        CGColorSpaceRef srcSpace = CGColorGetColorSpace(cgColor);
+        if (srcSpace && CGColorSpaceGetModel(srcSpace) == kCGColorSpaceModelRGB && CGColorGetNumberOfComponents(cgColor) == 4) {
+            _cgColor = CGColorRetain(cgColor);
+        } else {
+            CGColorSpaceRef rgbSpace = CGColorSpaceCreateDeviceRGB();
+            CGColorRef converted = CGColorCreateCopyByMatchingToColorSpace(rgbSpace, kCGRenderingIntentDefault, cgColor, NULL);
+            CGColorSpaceRelease(rgbSpace);
+            if (converted) {
+                _cgColor = converted;
+            } else {
+                size_t count = CGColorGetNumberOfComponents(cgColor);
+                const CGFloat *c = CGColorGetComponents(cgColor);
+                CGFloat r = 0.0, g = 0.0, b = 0.0, a = 1.0;
+                if (c && count > 0) {
+                    if (count >= 5) {
+                        // CMYK (+ Alpha)
+                        r = (1.0 - c[0]) * (1.0 - c[3]);
+                        g = (1.0 - c[1]) * (1.0 - c[3]);
+                        b = (1.0 - c[2]) * (1.0 - c[3]);
+                        a = c[count - 1];
+                    } else if (count == 2) {
+                        // Grayscale + Alpha
+                        r = g = b = c[0];
+                        a = c[1];
+                    } else if (count == 1) {
+                        // Grayscale
+                        r = g = b = c[0];
+                        a = 1.0;
+                    } else {
+                        r = c[0];
+                        g = (count >= 2) ? c[1] : c[0];
+                        b = (count >= 3) ? c[2] : c[0];
+                        a = (count >= 4) ? c[count - 1] : 1.0;
+                    }
+                }
+                _cgColor = CGColorCreateGenericRGB(r, g, b, a);
+            }
+        }
     }
     return self;
 }
@@ -71,57 +113,26 @@
 
 - (CGFloat) red {
     if (!_cgColor) return 0.0;
-    size_t count = CGColorGetNumberOfComponents(_cgColor);
     const CGFloat *c = CGColorGetComponents(_cgColor);
-    if (!c || count == 0) return 0.0;
-    if (count >= 5) {
-        // CMYK: c[0] = Cyan, c[3] = Black
-        return (1.0 - c[0]) * (1.0 - c[3]);
-    }
-    return c[0];
+    return c ? c[0] : 0.0;
 }
 
 - (CGFloat) green {
     if (!_cgColor) return 0.0;
-    size_t count = CGColorGetNumberOfComponents(_cgColor);
     const CGFloat *c = CGColorGetComponents(_cgColor);
-    if (!c || count == 0) return 0.0;
-    if (count >= 5) {
-        // CMYK: c[1] = Magenta, c[3] = Black
-        return (1.0 - c[1]) * (1.0 - c[3]);
-    }
-    if (count >= 3) {
-        return c[1];
-    }
-    // Grayscale: r = g = b = gray
-    return c[0];
+    return c ? c[1] : 0.0;
 }
 
 - (CGFloat) blue {
     if (!_cgColor) return 0.0;
-    size_t count = CGColorGetNumberOfComponents(_cgColor);
     const CGFloat *c = CGColorGetComponents(_cgColor);
-    if (!c || count == 0) return 0.0;
-    if (count >= 5) {
-        // CMYK: c[2] = Yellow, c[3] = Black
-        return (1.0 - c[2]) * (1.0 - c[3]);
-    }
-    if (count >= 3) {
-        return c[2];
-    }
-    // Grayscale: r = g = b = gray
-    return c[0];
+    return c ? c[2] : 0.0;
 }
 
 - (CGFloat) alpha {
     if (!_cgColor) return 0.0;
-    size_t count = CGColorGetNumberOfComponents(_cgColor);
     const CGFloat *c = CGColorGetComponents(_cgColor);
-    if (!c || count == 0) return 0.0;
-    if (count == 2 || count == 4 || count >= 5) {
-        return c[count - 1];
-    }
-    return 1.0;
+    return c ? c[3] : 0.0;
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
