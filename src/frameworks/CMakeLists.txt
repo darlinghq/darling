@@ -175,3 +175,14 @@ if ((COMPONENT_cli_dev AND NOT COMPONENT_gui) OR COMPONENT_cli_dev_gui_stubs)
 	add_subdirectory(dev-stubs/OpenGL)
 	add_subdirectory(dev-stubs/QuartzCore)
 endif()
+
+# secd (src/external/security, built with `cli`) links CoreData. CoreData normally comes from Cocotron (`gui`) or
+# from the dev stubs above (`cli_dev`/`cli_dev_gui_stubs`); with `-DCOMPONENTS=cli` alone neither is built and the
+# link fails with "library not found for -lCoreData" (#1603). Build and install the CoreData stub for that case.
+if (COMPONENT_cli AND NOT COMPONENT_gui AND NOT COMPONENT_cli_dev AND NOT COMPONENT_cli_dev_gui_stubs)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli")
+	set(NO_INSTALL_ARG "")
+	set(STUB_SUFFIX "")
+
+	add_subdirectory(dev-stubs/CoreData)
+endif()
