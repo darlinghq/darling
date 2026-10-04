@@ -21,6 +21,22 @@
 
 @implementation GCController
 
++ (NSArray *)controllers {
+	return @[];
+}
+
++ (NSArray *)extendedGamepads {
+	return @[];
+}
+
+- (GCExtendedGamepad *)extendedGamepad {
+	return nil;
+}
+
+- (id)physicalInputProfile {
+	return nil;
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];

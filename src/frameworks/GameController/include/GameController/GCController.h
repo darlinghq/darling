@@ -25,6 +25,18 @@
 extern NSString *const GCControllerDidConnectNotification;
 extern NSString *const GCControllerDidDisconnectNotification;
 
+@class GCExtendedGamepad;
+
 @interface GCController : NSObject
+
+/* Games enumerate controllers at startup and then read the attached gamepad. No
+ * controller hardware exists here, so these answer honestly: an empty array and nil.
+ * What matters is that they exist - a selector miss on GCController is an uncaught
+ * NSException, which kills the app before any of its own code runs. */
++ (NSArray *)controllers;
++ (NSArray *)extendedGamepads;
+
+- (GCExtendedGamepad *)extendedGamepad;
+- (id)physicalInputProfile;
 
 @end
