@@ -21,5 +21,7 @@
 
 struct OpaqueLSSharedFileListItemRef {};
 static struct OpaqueLSSharedFileListItemRef _insertItemLast = { };
+static struct OpaqueLSSharedFileListItemRef _insertItemBeforeFirst = { };
 
 LSSharedFileListItemRef kLSSharedFileListItemLast = &_insertItemLast;
+LSSharedFileListItemRef kLSSharedFileListItemBeforeFirst = &_insertItemBeforeFirst;
