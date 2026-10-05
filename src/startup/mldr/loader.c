@@ -192,6 +192,9 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 		}
 
 		void* mmap_hint = (void*) base;
+		/* Set when we allocate the slot ourselves rather than honouring a
+		 * preferred address the binary asked for. */
+		int managed_slot = 0;
 #if defined(__aarch64__) || defined(__arm64__)
 		/* macOS ObjC FAST_DATA_MASK is 0x00007ffffffffff8 — only 47 bits of
 		 * data pointer. On Linux ARM64 the kernel happily returns 48-bit VAs
@@ -204,10 +207,15 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
          * above) available. dyld reserves its actual cache span before mapping
          * files, so an incompatible future layout fails without overwriting us. */
 		static uintptr_t next_low_addr = 0x1000000000ULL; /* 64 GiB; below the ObjC 47-bit ceiling */
-		if (base == 0)
+		if (base == 0) {
 			mmap_hint = (void*)next_low_addr;
+			managed_slot = 1;
+		}
 #endif
-		slide = (uintptr_t) mmap(mmap_hint, mmapSize, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA, -1, 0);
+		/* When the slot is ours, reserve exactly where we asked. A bare hint lets
+		 * the kernel return a different address, which leaves the slot allocator
+		 * bookkeeping describing a range it no longer holds. */
+		slide = (uintptr_t) mmap(mmap_hint, mmapSize, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA | (managed_slot ? MAP_FIXED_NOREPLACE : 0),-1, 0);
 		if (slide == (uintptr_t)MAP_FAILED)
 		{
 			fprintf(stderr, "Cannot mmap anonymous memory range: %s\n", strerror(errno));
@@ -226,9 +234,13 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 				exit(1);
 			}
 		}
-		/* Bump the slot for the next allocation, leaving headroom. */
-		if (base == 0 && slide >= next_low_addr)
-			next_low_addr = (slide + mmapSize + 0xffffff) & ~0xffffffULL;
+		/* Bump the slot for the next allocation, leaving headroom.
+		 * Derive it from the slot we requested, not from wherever the kernel
+		 * placed the mapping: had that landed below the current slot, comparing
+		 * against it made this whole update a no-op and handed the next load the
+		 * same range, with the reservation unmapped immediately below. */
+		if (base == 0)
+			next_low_addr = ((uintptr_t)mmap_hint + mmapSize + 0xffffff) & ~0xffffffULL;
 #endif
 
 		// unmap it so we can map the actual segments later using MAP_FIXED_NOREPLACE;
