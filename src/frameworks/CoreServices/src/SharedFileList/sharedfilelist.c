@@ -47,7 +47,6 @@ static CFTypeID __kLSSharedFileListItemTypeID = _kCFRuntimeNotATypeID;
 
 static void __LSSharedFileListDeallocate(CFTypeRef cf) {
 	struct __LSSharedFileList *list = (struct __LSSharedFileList *)cf;
-	pthread_mutex_lock(&list->lock);
 	if (list->items) {
 		CFRelease(list->items);
 		list->items = NULL;
@@ -60,7 +59,6 @@ static void __LSSharedFileListDeallocate(CFTypeRef cf) {
 		CFRelease(list->properties);
 		list->properties = NULL;
 	}
-	pthread_mutex_unlock(&list->lock);
 	pthread_mutex_destroy(&list->lock);
 }
 
@@ -139,6 +137,11 @@ LSSharedFileListRef LSSharedFileListCreate(
 	list->listType = inListType ? CFStringCreateCopy(inAllocator, inListType) : NULL;
 	list->properties = CFDictionaryCreateMutable(inAllocator, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 	list->seed = 1;
+
+	if (!list->items || !list->properties) {
+		CFRelease((CFTypeRef)list);
+		return NULL;
+	}
 
 	return (LSSharedFileListRef)list;
 }

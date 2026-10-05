@@ -19,7 +19,7 @@
 
 #include <SharedFileList/SharedFileList.h>
 
-struct OpaqueLSSharedFileListItemRef {};
+struct OpaqueLSSharedFileListItemRef { char _dummy; };
 static struct OpaqueLSSharedFileListItemRef _insertItemLast = { };
 static struct OpaqueLSSharedFileListItemRef _insertItemBeforeFirst = { };
 
