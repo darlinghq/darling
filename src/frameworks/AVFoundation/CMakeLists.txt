@@ -527,3 +527,13 @@ add_framework(AVFoundation
         objc
         Foundation
 )
+
+# AVFAudio is a subframework of AVFoundation on Darwin, so a client that links only
+# AVFoundation still resolves the AVAudio classes. Games rely on this: Sky-Checkers
+# imports _OBJC_CLASS_$_AVAudioEngine and four siblings, names dyld expects in
+# AVFoundation, and aborts on the first one without them. They are all already
+# implemented in AVFAudio, so this only has to re-export them.
+#
+# No cycle: AVFAudio depends on system, objc and Foundation, and imports no
+# AVFoundation headers.
+reexport(AVFoundation AVFAudio ${CMAKE_CURRENT_BINARY_DIR}/../AVFAudio/AVFAudio)
