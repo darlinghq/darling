@@ -454,9 +454,12 @@ static void pushShellspawnCommandFDs(int sockfd, shellspawn_cmd_type_t type, con
 	}
 }
 
+static void restoreTermios(void);
 static int _shSockfd = -1;
 static struct termios orig_termios;
 static int pty_master;
+static volatile int sigint_count = 0;
+
 static void signalHandler(int signo)
 {
 	// printf("Received signal %d\n", signo);
@@ -468,8 +471,25 @@ static void signalHandler(int signo)
 
 		ioctl(0, TIOCGWINSZ, &win);
 		ioctl(pty_master, TIOCSWINSZ, &win);
+		return;
 	}
-	
+
+	if (signo == SIGTERM || signo == SIGHUP || signo == SIGQUIT)
+	{
+		restoreTermios();
+		exit(128 + signo);
+	}
+
+	if (signo == SIGINT)
+	{
+		sigint_count++;
+		if (sigint_count > 1)
+		{
+			restoreTermios();
+			exit(130);
+		}
+	}
+
 	// Foreground process loopkup in shellspawn doesn't work
 	// if we're not running in TTY mode, so shellspawn falls back
 	// to forwarding signals to the Bash subprocess.
