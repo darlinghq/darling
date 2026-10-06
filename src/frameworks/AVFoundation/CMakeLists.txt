@@ -536,4 +536,6 @@ add_framework(AVFoundation
 #
 # No cycle: AVFAudio depends on system, objc and Foundation, and imports no
 # AVFoundation headers.
-reexport(AVFoundation AVFAudio ${CMAKE_CURRENT_BINARY_DIR}/../AVFAudio/AVFAudio)
+if (TARGET AVFAudio)
+    reexport(AVFoundation AVFAudio ${CMAKE_CURRENT_BINARY_DIR}/../AVFAudio/AVFAudio)
+endif()
