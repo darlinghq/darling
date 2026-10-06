@@ -19,6 +19,7 @@
 
 #import <AVFAudio/AVAudioSession.h>
 #import <objc/runtime.h>
+#import "AVFAudioStub.h"
 #include <stdio.h>
 
 /* Categories */
@@ -167,7 +168,7 @@ static BOOL g_active = NO;
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return AVAudioStubSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation

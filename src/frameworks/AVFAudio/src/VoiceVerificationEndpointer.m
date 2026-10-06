@@ -18,12 +18,13 @@
 */
 
 #import <AVFAudio/VoiceVerificationEndpointer.h>
+#import "AVFAudioStub.h"
 
 @implementation VoiceVerificationEndpointer
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return AVAudioStubSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation

@@ -18,12 +18,13 @@
 */
 
 #import <AVFAudio/AVAudioChannelLayout.h>
+#import "AVFAudioStub.h"
 
 @implementation AVAudioChannelLayout
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return AVAudioStubSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation

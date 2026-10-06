@@ -18,6 +18,7 @@
 */
 
 #import <AVFAudio/AVAudioEngine.h>
+#import "AVFAudioStub.h"
 
 NSString *const AVAudioEngineConfigurationChangeNotification = @"AVAudioEngineConfigurationChangeNotification";
 
@@ -25,7 +26,7 @@ NSString *const AVAudioEngineConfigurationChangeNotification = @"AVAudioEngineCo
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return AVAudioStubSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation
