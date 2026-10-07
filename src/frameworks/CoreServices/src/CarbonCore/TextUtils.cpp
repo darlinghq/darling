@@ -111,3 +111,12 @@ Ptr P2CStr(StringPtr str)
 	return p2cstr(str);
 }
 
+void OSTypeToCString(OSType theType, char* theString)
+{
+	theString[0] = (theType >> 24) & 0xFF;
+	theString[1] = (theType >> 16) & 0xFF;
+	theString[2] = (theType >> 8) & 0xFF;
+	theString[3] = theType & 0xFF;
+	theString[4] = '\0';
+}
+
