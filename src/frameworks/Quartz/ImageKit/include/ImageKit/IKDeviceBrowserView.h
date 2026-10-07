@@ -17,8 +17,14 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#include <AppKit/NSView.h>
 
-@interface IKDeviceBrowserView : NSObject
+@protocol IKDeviceBrowserViewDelegate;
+
+@interface IKDeviceBrowserView : NSView {
+    id<IKDeviceBrowserViewDelegate> _delegate;
+}
+
+@property (assign) id<IKDeviceBrowserViewDelegate> delegate;
 
 @end

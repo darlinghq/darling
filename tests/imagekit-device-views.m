@@ -2,6 +2,7 @@
 #import <Foundation/NSKeyedArchiver.h>
 #import <ImageKit/IKCameraDeviceView.h>
 #import <ImageKit/IKScannerDeviceView.h>
+#import <ImageKit/IKDeviceBrowserView.h>
 #include <stdio.h>
 #include <objc/runtime.h>
 
@@ -43,6 +44,6 @@ static int checkView(Class cls)
 int main(void)
 {
     @autoreleasepool {
-        return checkView([IKCameraDeviceView class]) | checkView([IKScannerDeviceView class]);
+        return checkView([IKCameraDeviceView class]) | checkView([IKScannerDeviceView class]) | checkView([IKDeviceBrowserView class]);
     }
 }
