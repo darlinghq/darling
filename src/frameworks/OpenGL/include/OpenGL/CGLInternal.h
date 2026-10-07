@@ -16,6 +16,7 @@ CGL_EXPORT CGLError CGLRegisterNativeDisplay(void *native_display);
 CGL_EXPORT CGLError CGLRegisterNativeDisplayForPlatform(void *native_display, unsigned int platform);
 
 CGL_EXPORT CGLWindowRef CGLGetWindow(void *native_window);
+CGL_EXPORT CGLWindowRef CGLGetWindowForContext(CGLContextObj context, void *native_window);
 CGL_EXPORT void CGLDestroyWindow(CGLWindowRef window);
 
 CGL_EXPORT CGLError CGLContextMakeCurrentAndAttachToWindow(CGLContextObj context, CGLWindowRef window);
