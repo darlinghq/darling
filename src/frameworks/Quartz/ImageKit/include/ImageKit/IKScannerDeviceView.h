@@ -17,7 +17,7 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <AppKit/NSView.h>
+#import <AppKit/NSView.h>
 
 @protocol IKScannerDeviceViewDelegate;
 

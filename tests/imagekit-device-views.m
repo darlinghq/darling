@@ -1,8 +1,5 @@
-#import <AppKit/NSView.h>
+#import <ImageKit/ImageKit.h>
 #import <Foundation/NSKeyedArchiver.h>
-#import <ImageKit/IKCameraDeviceView.h>
-#import <ImageKit/IKScannerDeviceView.h>
-#import <ImageKit/IKDeviceBrowserView.h>
 #include <stdio.h>
 #include <objc/runtime.h>
 
