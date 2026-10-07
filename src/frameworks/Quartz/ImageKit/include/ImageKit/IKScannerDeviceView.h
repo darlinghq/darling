@@ -17,8 +17,14 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#include <AppKit/NSView.h>
 
-@interface IKScannerDeviceView : NSObject
+@protocol IKScannerDeviceViewDelegate;
+
+@interface IKScannerDeviceView : NSView {
+    id<IKScannerDeviceViewDelegate> _delegate;
+}
+
+@property (assign) id<IKScannerDeviceViewDelegate> delegate;
 
 @end
