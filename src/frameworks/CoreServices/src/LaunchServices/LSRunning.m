@@ -140,6 +140,14 @@ CFTypeRef _LSGetCurrentApplicationASN(void)
 	return g_ourASN;
 }
 
+void* _LSCopyFrontApplication(LSSessionID sessionID)
+{
+	// Darling has no notion of application focus yet, so there is no
+	// frontmost application to report. NULL is the documented "no front
+	// application" answer for this API; callers must already tolerate it.
+	return NULL;
+}
+
 OSStatus _LSSetApplicationInformationItem(int sessionID, LSASNRef asn, CFStringRef key, CFStringRef value, CFDictionaryRef *info)
 {
 	// TODO: This talks to lsd to change the property of *any* app
