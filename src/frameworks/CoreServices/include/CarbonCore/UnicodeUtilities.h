@@ -108,6 +108,21 @@ struct UCKeyToCharTableIndex {
 };
 typedef struct UCKeyToCharTableIndex    UCKeyToCharTableIndex;
 
+enum {
+  kUCKeyActionDown    = 0,
+  kUCKeyActionUp      = 1,
+  kUCKeyActionAutoKey = 2,
+  kUCKeyActionDisplay = 3
+};
+
+enum {
+  kUCKeyTranslateNoDeadKeysBit  = 0
+};
+
+enum {
+  kUCKeyTranslateNoDeadKeysMask = 1L << kUCKeyTranslateNoDeadKeysBit
+};
+
 extern OSStatus  UCKeyTranslate(
   const UCKeyboardLayout *  keyLayoutPtr,
   UInt16                    virtualKeyCode,
