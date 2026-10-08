@@ -328,7 +328,7 @@ UTCreateStringForOSType(OSType inOSType)
 		buf[pos++] = (inOSType >> shift) & 0xff;
 		shift -= 8;
 	}
-	while (shift != 0);
+	while (shift >= 0);
 	buf[pos] = '\0';
 
 	return CFStringCreateWithCString(NULL, buf, kCFStringEncodingASCII);
@@ -342,14 +342,16 @@ UTGetOSTypeFromString(CFStringRef inString)
 	if (CFStringGetLength(inString) > 4)
 		return 0;
 
+	CFIndex length = CFStringGetLength(inString);
+	UniChar str[4];
+	CFStringGetCharacters(inString, CFRangeMake(0, length), str);
 	OSType retval = 0;
-	const char* str = CFStringGetCStringPtr(inString, kCFStringEncodingASCII);
 
 	for (int i = 0; i < 4; i++)
 	{
-		if (i < CFStringGetLength(inString))
-			retval |= ((UInt32) str[i]) & 0xff;
 		retval <<= 8;
+		if (i < length)
+			retval |= ((UInt32) str[i]) & 0xff;
 	}
 
 	return retval;
