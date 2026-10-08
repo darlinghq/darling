@@ -19,6 +19,23 @@
 
 #include <Foundation/Foundation.h>
 
+#import <GameController/GCControllerButtonInput.h>
+#import <GameController/GCControllerDirectionPad.h>
+
 @interface GCExtendedGamepad : NSObject
+
+@property(readonly) GCControllerButtonInput *buttonA;
+@property(readonly) GCControllerButtonInput *buttonB;
+@property(readonly) GCControllerButtonInput *buttonX;
+@property(readonly) GCControllerButtonInput *buttonY;
+@property(readonly) GCControllerButtonInput *buttonMenu;
+@property(readonly, nullable) GCControllerButtonInput *buttonOptions;
+@property(readonly) GCControllerDirectionPad *dpad;
+@property(readonly) GCControllerDirectionPad *leftThumbstick;
+@property(readonly) GCControllerDirectionPad *rightThumbstick;
+@property(readonly) GCControllerButtonInput *leftShoulder;
+@property(readonly) GCControllerButtonInput *rightShoulder;
+@property(readonly) GCControllerButtonInput *leftTrigger;
+@property(readonly) GCControllerButtonInput *rightTrigger;
 
 @end

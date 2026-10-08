@@ -19,6 +19,16 @@
 
 #include <Foundation/Foundation.h>
 
+#import <GameController/GCControllerButtonInput.h>
+#import <GameController/GCControllerDirectionPad.h>
+
 @interface GCMicroGamepad : NSObject
+
+@property(readonly) GCControllerDirectionPad *dpad;
+@property(readonly) GCControllerButtonInput *buttonA;
+@property(readonly) GCControllerButtonInput *buttonX;
+@property(readonly) GCControllerButtonInput *buttonMenu;
+@property(nonatomic) BOOL allowsRotation;
+@property(nonatomic) BOOL reportsAbsoluteDpadValues;
 
 @end

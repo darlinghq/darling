@@ -26,6 +26,16 @@ extern NSString *const GCControllerDidConnectNotification;
 extern NSString *const GCControllerDidDisconnectNotification;
 
 @class GCExtendedGamepad;
+@class GCMicroGamepad;
+@class GCPhysicalInputProfile;
+
+typedef NS_ENUM(NSInteger, GCControllerPlayerIndex) {
+	GCControllerPlayerIndexUnset = -1,
+	GCControllerPlayerIndex1 = 0,
+	GCControllerPlayerIndex2 = 1,
+	GCControllerPlayerIndex3 = 2,
+	GCControllerPlayerIndex4 = 3,
+};
 
 @interface GCController : NSObject
 
@@ -37,6 +47,11 @@ extern NSString *const GCControllerDidDisconnectNotification;
 + (NSArray *)extendedGamepads;
 
 - (GCExtendedGamepad *)extendedGamepad;
-- (id)physicalInputProfile;
+- (GCMicroGamepad *)microGamepad;
+- (GCPhysicalInputProfile *)physicalInputProfile;
+
+@property(readonly, copy, nullable) NSString *vendorName;
+@property(readonly, copy) NSString *productCategory;
+@property(nonatomic) GCControllerPlayerIndex playerIndex;
 
 @end

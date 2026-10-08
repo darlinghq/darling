@@ -18,6 +18,8 @@
 */
 
 #import <GameController/GCController.h>
+#import <GameController/GCMicroGamepad.h>
+#import <GameController/GCPhysicalInputProfile.h>
 
 @implementation GCController
 
@@ -33,8 +35,27 @@
 	return nil;
 }
 
-- (id)physicalInputProfile {
+- (GCMicroGamepad *)microGamepad {
 	return nil;
+}
+
+- (GCPhysicalInputProfile *)physicalInputProfile {
+	return nil;
+}
+
+- (NSString *)vendorName {
+	return nil;
+}
+
+- (NSString *)productCategory {
+	return @"";
+}
+
+- (GCControllerPlayerIndex)playerIndex {
+	return GCControllerPlayerIndexUnset;
+}
+
+- (void)setPlayerIndex:(GCControllerPlayerIndex)playerIndex {
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
