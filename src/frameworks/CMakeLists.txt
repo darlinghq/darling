@@ -82,6 +82,7 @@ if (COMPONENT_gui)
 
 	add_subdirectory(OpenGL)
 	add_subdirectory(ImageIO)
+	add_subdirectory(UIKit)
 endif()
 
 # this is for all the other stubbed frameworks
