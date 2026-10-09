@@ -1,5 +1,5 @@
 #import <UIKit/UIKit.h>
-#import <Foundation/NSException.h>
+#import <Foundation/Foundation.h>
 #include <dlfcn.h>
 #include <math.h>
 #include <stdio.h>
@@ -72,10 +72,10 @@ int main(int argc, char **argv)
         CHECK(RAISES([dimension fractionalHeightDimension:NAN]));
         CHECK(RAISES([dimension absoluteDimension:-1]));
         CHECK(RAISES([dimension fractionalWidthDimension:-0.5]));
-        CHECK([dimension absoluteDimension:0].dimension == 0);
+        CHECK(((NSCollectionLayoutDimension *)[dimension absoluteDimension:0]).dimension == 0);
         CHECK(RAISES([spacing fixedSpacing:NAN]));
         CHECK(RAISES([spacing flexibleSpacing:INFINITY]));
-        CHECK([spacing fixedSpacing:-4].spacing == -4);
+        CHECK(((NSCollectionLayoutSpacing *)[spacing fixedSpacing:-4]).spacing == -4);
         CHECK(RAISES([edges spacingForLeading:(id)@"x" top:nil trailing:nil bottom:nil]));
         CHECK(RAISES([edges spacingForLeading:nil top:nil trailing:nil bottom:(id)width]));
         for (Class cls in @[dimension, size, spacing, edges]) {

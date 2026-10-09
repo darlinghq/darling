@@ -47,9 +47,9 @@ failure), then with the UIKit path (expected success). `--arch` (default `arm64`
 runtime image. With the path given, the test also asserts each class lives in the image at
 that path (via dladdr), so it works for `<build>/UIKit` and the CMake framework alike.
 
-To check the CMake-built product exports the classes (not covered by the focused
+To check the CMake-built product exports the classes (use `llvm-nm`; GNU nm cannot read Mach-O here) (not covered by the focused
 build above), after a normal build:
 
 ```sh
-nm -gU <build>/src/frameworks/UIKit/UIKit | rg 'OBJC_CLASS_\$_NSCollectionLayout(Dimension|Size|Spacing|EdgeSpacing)$'
+llvm-nm -gU <build>/src/frameworks/UIKit/UIKit | rg 'OBJC_CLASS_\$_NSCollectionLayout(Dimension|Size|Spacing|EdgeSpacing)$'
 ```
