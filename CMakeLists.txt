@@ -114,6 +114,15 @@ endif()
 
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${IGNORED_WARNINGS}")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${IGNORED_WARNINGS}")
+
+# newer Clang emits ObjC literals as constant objects (NSConstantArray, etc.) that our Foundation does not provide
+include(CheckCCompilerFlag)
+check_c_compiler_flag(-fno-objc-constant-literals HAS_NO_OBJC_CONSTANT_LITERALS)
+if(HAS_NO_OBJC_CONSTANT_LITERALS)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-objc-constant-literals")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-objc-constant-literals")
+endif()
+
 set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${ASM_IGNORED_WARNINGS}")
 SET(CMAKE_C_FLAGS_DEBUG "-O0 -ggdb")
 SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb")
