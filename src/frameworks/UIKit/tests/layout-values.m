@@ -4,14 +4,18 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
-#import <objc/runtime.h>
+#include <limits.h>
+#include <stdlib.h>
 
 #define CHECK(condition) do { if (!(condition)) { fprintf(stderr, "FAIL line %d: %s\n", __LINE__, #condition); return 1; } } while (0)
 
-#define RAISES(expr) ({ BOOL raised_ = NO; \
-    @try { (void)(expr); } \
-    @catch (NSException *e_) { raised_ = [e_.name isEqual:NSInvalidArgumentException]; } \
-    raised_; })
+static BOOL Raises(void (^block)(void))
+{
+    @try { block(); }
+    @catch (NSException *e) { return [e.name isEqual:NSInvalidArgumentException]; }
+    return NO;
+}
+#define RAISES(expr) Raises(^{ (void)(expr); })
 
 int main(int argc, char **argv)
 {
@@ -26,10 +30,14 @@ int main(int argc, char **argv)
         Class edges = NSClassFromString(@"NSCollectionLayoutEdgeSpacing");
         CHECK(dimension && size && spacing && edges);
         if (argc == 2) {
-            // The classes must come from the framework binary under test, not a stand-in.
+            // The classes must live in the image that was dlopen'd, wherever it was built.
+            char expected[PATH_MAX];
+            CHECK(realpath(argv[1], expected));
             for (Class cls in @[dimension, size, spacing, edges]) {
-                const char *image = class_getImageName(cls);
-                CHECK(image && strstr(image, "UIKit.framework/Versions/A/UIKit"));
+                Dl_info info;
+                char actual[PATH_MAX];
+                CHECK(dladdr((__bridge void *)cls, &info) && info.dli_fname);
+                CHECK(realpath(info.dli_fname, actual) && strcmp(actual, expected) == 0);
             }
         }
         NSCollectionLayoutDimension *width = [dimension fractionalWidthDimension:0.25];

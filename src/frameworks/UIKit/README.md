@@ -44,8 +44,8 @@ compiles one test and one framework serially, saves exact commands, and neither
 installs artifacts nor configures the shared build. Run the resulting harness
 through Darling in a fresh sanitized prefix, first with no argument (expected
 failure), then with the UIKit path (expected success). `--arch` (default `arm64`) must match the
-runtime image. With the path given, the test also asserts each class's image name
-is `UIKit.framework/Versions/A/UIKit`.
+runtime image. With the path given, the test also asserts each class lives in the image at
+that path (via dladdr), so it works for `<build>/UIKit` and the CMake framework alike.
 
 To check the CMake-built product exports the classes (not covered by the focused
 build above), after a normal build:

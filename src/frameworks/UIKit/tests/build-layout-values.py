@@ -10,7 +10,7 @@ parser.add_argument('--runtime-root', required=True, type=Path)
 parser.add_argument('--build-dir', required=True, type=Path)
 parser.add_argument('--linker', required=True, type=Path)
 parser.add_argument('--arch', default='arm64', choices=('arm64', 'x86_64'),
-                    help='guest architecture; must match the runtime image (FAT builds contain both)')
+                    help='guest architecture to build for; must be one the runtime image provides (the CMake FAT product carries several, this script builds only one)')
 args = parser.parse_args()
 target = ('aarch64' if args.arch == 'arm64' else args.arch) + '-apple-darwin20'
 source = args.source_root.resolve()
