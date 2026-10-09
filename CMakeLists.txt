@@ -69,6 +69,15 @@ project(darling)
 
 enable_language(ASM)
 
+# CMake's default ASM rule appends to an existing archive (unlike C/C++), which fails once ranlib has made it fat.
+# Use the same steps as the C/C++ rules instead: delete the archive, then create it anew with `ar qc`
+set(CMAKE_ASM_CREATE_STATIC_LIBRARY
+  "${CMAKE_COMMAND} -E rm -f <TARGET>"
+  # q - Append the object (faster alternative to '-r'. Doesn't check if object already exist).
+  # c - Don't print warning message if archive does not already exist
+  "<CMAKE_AR> qc <TARGET> <LINK_FLAGS> <OBJECTS>"
+  "<CMAKE_RANLIB> <TARGET>")
+
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
