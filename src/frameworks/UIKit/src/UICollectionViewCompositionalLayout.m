@@ -119,8 +119,8 @@ static void UIRequireFinite(CGFloat value)
     return [[self alloc] initWithSpacing:value fixed:NO];
 }
 - (CGFloat)spacing { return _spacing; }
-- (BOOL)isFixed { return _fixed; }
-- (BOOL)isFlexible { return !_fixed; }
+- (BOOL)isFixedSpacing { return _fixed; }
+- (BOOL)isFlexibleSpacing { return !_fixed; }
 - (id)copyWithZone:(NSZone *)zone { return self; }
 @end
 

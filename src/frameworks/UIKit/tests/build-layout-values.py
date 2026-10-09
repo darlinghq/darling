@@ -9,14 +9,17 @@ parser.add_argument('--source-root', required=True, type=Path)
 parser.add_argument('--runtime-root', required=True, type=Path)
 parser.add_argument('--build-dir', required=True, type=Path)
 parser.add_argument('--linker', required=True, type=Path)
+parser.add_argument('--arch', default='arm64', choices=('arm64', 'x86_64'),
+                    help='guest architecture; must match the runtime image (FAT builds contain both)')
 args = parser.parse_args()
+target = ('aarch64' if args.arch == 'arm64' else args.arch) + '-apple-darwin20'
 source = args.source_root.resolve()
 runtime = args.runtime_root.resolve()
 output = args.build_dir.resolve()
 output.mkdir(parents=True, exist_ok=True)
 component = source / 'src/frameworks/UIKit'
 resource = subprocess.check_output(['clang', '-print-resource-dir'], text=True).strip()
-compile_flags = ['clang', '-target', 'aarch64-apple-darwin20', '-nostdinc',
+compile_flags = ['clang', '-target', target, '-nostdinc',
                  '-isystem', resource + '/include', '-D__APPLE__', '-D__MACH__',
                  '-D_DARWIN_C_SOURCE', '-DTARGET_OS_MAC=1', '-DDARWIN', '-DDARLING',
                  '-D_LIBC_NO_FEATURE_VERIFICATION', '-fblocks', '-fobjc-arc',
@@ -30,7 +33,7 @@ for directory in ('basic-headers',
 linker = args.linker.resolve()
 if not linker.is_file():
     raise SystemExit('a Darwin linker supporting -dylib_file is required')
-link_flags = ['clang', '-target', 'aarch64-apple-darwin20', '-nostdlib',
+link_flags = ['clang', '-target', target, '-nostdlib',
               '-fuse-ld=' + str(linker), '-Wl,-platform_version,macos,11.0,11.0']
 for path in sorted(runtime.rglob('*')):
     if path.is_file() and (path.suffix == '.dylib' or path.name + '.framework' in path.parts):

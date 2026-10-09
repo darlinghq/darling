@@ -33,8 +33,8 @@ NS_ASSUME_NONNULL_BEGIN
 + (instancetype)fixedSpacing:(CGFloat)value;
 + (instancetype)flexibleSpacing:(CGFloat)value;
 @property(nonatomic, readonly) CGFloat spacing;
-@property(nonatomic, readonly) BOOL isFixed;
-@property(nonatomic, readonly) BOOL isFlexible;
+@property(nonatomic, readonly) BOOL isFixedSpacing;
+@property(nonatomic, readonly) BOOL isFlexibleSpacing;
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;
 @end

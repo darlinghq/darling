@@ -26,6 +26,10 @@ The test uses synthetic values only and does not load Messages or user data.
 The framework is built by the gui component group in src/frameworks/CMakeLists.txt.
 No private UIKit contracts or guessed constant values are supplied.
 
+The Objective-C getters on `NSCollectionLayoutSpacing` are `isFixedSpacing` and
+`isFlexibleSpacing`, the names Apple documents for Objective-C (`isFixed` and
+`isFlexible` are the Swift spellings and must not be added as selectors).
+
 Focused build (use independently cloned dependencies at the superproject pins):
 
 ```sh
@@ -39,4 +43,13 @@ The runtime root is the read-only `libexec/darling` image directory. This comman
 compiles one test and one framework serially, saves exact commands, and neither
 installs artifacts nor configures the shared build. Run the resulting harness
 through Darling in a fresh sanitized prefix, first with no argument (expected
-failure), then with the UIKit path (expected success).
+failure), then with the UIKit path (expected success). `--arch` (default `arm64`) must match the
+runtime image. With the path given, the test also asserts each class's image name
+is `UIKit.framework/Versions/A/UIKit`.
+
+To check the CMake-built product exports the classes (not covered by the focused
+build above), after a normal build:
+
+```sh
+nm -gU <build>/src/frameworks/UIKit/UIKit | rg 'OBJC_CLASS_\$_NSCollectionLayout(Dimension|Size|Spacing|EdgeSpacing)$'
+```
