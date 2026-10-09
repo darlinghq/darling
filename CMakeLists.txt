@@ -69,6 +69,12 @@ project(darling)
 
 enable_language(ASM)
 
+# CMake's default ASM rule appends to an existing archive (unlike C/C++), which fails once ranlib has made it fat
+set(CMAKE_ASM_CREATE_STATIC_LIBRARY
+	"${CMAKE_COMMAND} -E rm -f <TARGET>"
+	"<CMAKE_AR> qc <TARGET> <LINK_FLAGS> <OBJECTS>"
+	"<CMAKE_RANLIB> <TARGET>")
+
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
