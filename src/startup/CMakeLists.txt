@@ -27,6 +27,11 @@ install(TARGETS darling DESTINATION bin
     WORLD_READ WORLD_EXECUTE
     SETUID)
 
+# host build of darpath; the Darling build is in src/tools
+add_executable(darpath_host ${CMAKE_SOURCE_DIR}/src/tools/darpath.c)
+set_target_properties(darpath_host PROPERTIES OUTPUT_NAME darpath)
+install(TARGETS darpath_host DESTINATION bin)
+
 add_executable(rtsig rtsig.c)
 add_custom_command(OUTPUT rtsig.h DEPENDS rtsig COMMAND ${CMAKE_CURRENT_BINARY_DIR}/rtsig rtsig.h COMMENT "Determining available RT signals")
 add_custom_target(rtsig_h DEPENDS rtsig.h)
