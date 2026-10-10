@@ -40,6 +40,10 @@ int checkPrefixDir(void);
 // Creates the given directory, exit()ing if not possible
 void createDir(const char* path);
 
+// Links host directories that macOS does not use (e.g. /home) into the prefix at the same paths,
+// so host paths passed on the command line resolve
+void linkHostDirectories(void);
+
 int connectToShellspawn(void);
 void setupShellspawnEnv(int shellspawnFD);
 void setupWorkingDir(int shellspawnFD);
