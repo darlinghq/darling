@@ -530,18 +530,18 @@ static void process_special_env(struct load_results* lr) {
 		sscanf(str, "%x,%x,%x,%x", &lr->bprefs[0], &lr->bprefs[1], &lr->bprefs[2], &lr->bprefs[3]);
 	}
 
+	// Without a path the static address would name an abstract socket, which is not where
+	// darlingserver listens.
 	str = getenv("__mldr_sockpath");
 
-	if (str != NULL) {
-		if (strlen(str) > sizeof(__dserver_socket_address_data.sun_path) - 1) {
-			fprintf(stderr, "darlingserver socket path is too long\n");
-			exit(1);
-		}
-		strncpy(__dserver_socket_address_data.sun_path, str, sizeof(__dserver_socket_address_data.sun_path) - 1);
-		__dserver_socket_address_data.sun_path[sizeof(__dserver_socket_address_data.sun_path) - 1] = '\0';
-
-		lr->socket_path = __dserver_socket_address_data.sun_path;
+	if (str == NULL || str[0] == '\0' || strlen(str) > sizeof(__dserver_socket_address_data.sun_path) - 1) {
+		fprintf(stderr, "mldr: __mldr_sockpath is missing, empty or too long; start programs through darling\n");
+		exit(1);
 	}
+	strncpy(__dserver_socket_address_data.sun_path, str, sizeof(__dserver_socket_address_data.sun_path) - 1);
+	__dserver_socket_address_data.sun_path[sizeof(__dserver_socket_address_data.sun_path) - 1] = '\0';
+
+	lr->socket_path = __dserver_socket_address_data.sun_path;
 
 	lr->lifetime_pipe = -1;
 	str = getenv("__mldr_lifetime_pipe");
