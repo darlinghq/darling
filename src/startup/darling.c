@@ -26,6 +26,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <sched.h>
@@ -191,6 +192,11 @@ int main(int argc, char ** argv)
 #endif
 
 	seteuid(g_originalUid);
+
+#if USE_LINUX_4_11_HACK
+	// in the container's mount namespace, the prefix path is the merged view of the prefix
+	linkHostDirectories();
+#endif
 
 	if (strcmp(argv[1], "shell") == 0)
 	{
@@ -1207,5 +1213,55 @@ void checkPrefixOwner()
 	{
 		fprintf(stderr, "You do not own the prefix directory.\n");
 		exit(1);
+	}
+}
+
+// Returns true if path is a directory with at least one entry
+static bool isNonEmptyDirectory(const char* path)
+{
+	DIR* dir = opendir(path);
+	struct dirent* entry;
+	bool nonEmpty = false;
+
+	if (dir == NULL)
+		return false;
+
+	while ((entry = readdir(dir)) != NULL)
+	{
+		if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
+		{
+			nonEmpty = true;
+			break;
+		}
+	}
+
+	closedir(dir);
+	return nonEmpty;
+}
+
+void linkHostDirectories(void)
+{
+	static const char* const dirs[] = { "/home", "/media", "/mnt", "/srv" };
+	char path[4096];
+	char target[4096];
+	struct stat st;
+
+	for (size_t i = 0; i < sizeof(dirs) / sizeof(dirs[0]); i++)
+	{
+		// an empty directory on the host is only a placeholder
+		if (!isNonEmptyDirectory(dirs[i]))
+			continue;
+
+		snprintf(path, sizeof(path), "%s%s", prefix, dirs[i]);
+		if (lstat(path, &st) == 0)
+		{
+			// keep whatever the prefix already has there, except an empty placeholder directory
+			if (!S_ISDIR(st.st_mode) || isNonEmptyDirectory(path) || rmdir(path) != 0)
+				continue;
+		}
+
+		snprintf(target, sizeof(target), "%s%s", SYSTEM_ROOT, dirs[i]);
+		if (symlink(target, path) != 0)
+			fprintf(stderr, "Cannot link %s to %s: %s\n", path, target, strerror(errno));
 	}
 }
