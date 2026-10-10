@@ -195,6 +195,32 @@ cmake_policy(SET CMP0014 NEW)
 
 generate_architecture()
 
+option(USE_SYSTEM_CCTOOLS "Use an installed Darling cctools (ld64, ar, ranlib, lipo) instead of building it" OFF)
+option(USE_SYSTEM_MIG "Use an installed Darling MIG instead of building it" OFF)
+
+if (USE_SYSTEM_CCTOOLS)
+	set(DARLING_CCTOOLS_PREFIX "/usr/libexec/darling-cctools" CACHE PATH "Where the installed Darling cctools live")
+	find_program(CCTOOLS_LD ${APPLE_TARGET_TRIPLET_PRIMARY}-ld HINTS "${DARLING_CCTOOLS_PREFIX}/bin" NO_DEFAULT_PATH REQUIRED)
+	find_program(CCTOOLS_AR ${APPLE_TARGET_TRIPLET_PRIMARY}-ar HINTS "${DARLING_CCTOOLS_PREFIX}/bin" NO_DEFAULT_PATH REQUIRED)
+	find_program(CCTOOLS_RANLIB ${APPLE_TARGET_TRIPLET_PRIMARY}-ranlib HINTS "${DARLING_CCTOOLS_PREFIX}/bin" NO_DEFAULT_PATH REQUIRED)
+	find_program(CCTOOLS_LIPO lipo HINTS "${DARLING_CCTOOLS_PREFIX}/bin" NO_DEFAULT_PATH REQUIRED)
+	find_path(CCTOOLS_INCLUDE_DIR mach-o/loader.h HINTS "${DARLING_CCTOOLS_PREFIX}/include" /usr/include/darling-cctools NO_DEFAULT_PATH REQUIRED)
+else()
+	set(CCTOOLS_LD "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/${APPLE_TARGET_TRIPLET_PRIMARY}-ld")
+	set(CCTOOLS_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ar")
+	set(CCTOOLS_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ranlib")
+	set(CCTOOLS_LIPO "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo")
+	set(CCTOOLS_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/src/external/cctools-port/cctools/include")
+endif()
+get_filename_component(CCTOOLS_LD_DIR "${CCTOOLS_LD}" DIRECTORY)
+get_filename_component(CCTOOLS_LIPO_DIR "${CCTOOLS_LIPO}" DIRECTORY)
+
+if (USE_SYSTEM_MIG)
+	find_program(MIG_EXECUTABLE darling-mig REQUIRED)
+else()
+	set(MIG_EXECUTABLE "${CMAKE_BINARY_DIR}/build-mig")
+endif()
+
 add_subdirectory(src)
 
 install(DIRECTORY DESTINATION libexec/darling/private)

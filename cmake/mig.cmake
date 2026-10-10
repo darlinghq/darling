@@ -1,6 +1,4 @@
 function(mig defFileName)
-        set(MIG_EXECUTABLE "${CMAKE_BINARY_DIR}/build-mig")
-
         if (NOT MIG_USER_SOURCE_SUFFIX)
                 set (MIG_USER_SOURCE_SUFFIX "User.c")
         endif (NOT MIG_USER_SOURCE_SUFFIX)
@@ -63,6 +61,7 @@ function(mig defFileName)
 			COMMAND
 				/bin/mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/${dirName} \;
 				${MIG_EXECUTABLE}
+				-cc ${CMAKE_C_COMPILER}
 				-arch ${MIG_ARCH}
 				-target ${MIG_TARGET_TRIPLET_PRIMARY}
 				-user ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_USER_SOURCE_SUFFIX}

@@ -41,7 +41,7 @@ FUNCTION(add_darling_library name)
 			LINK_FLAGS " -Wl,-current_version,${DYLIB_CURRENT_VERSION} ")
 	endif (DYLIB_CURRENT_VERSION)
 
-	set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS  " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/")
+	set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS  " -B ${CCTOOLS_LIPO_DIR}/")
 	add_dependencies(${name} lipo)
 
 	if (BUILD_TARGET_64BIT AND NOT DARLING_LIB_32BIT_ONLY)
@@ -63,7 +63,7 @@ ENDFUNCTION(add_darling_library)
 FUNCTION(make_fat)
 	if (BUILD_TARGET_32BIT AND BUILD_TARGET_64BIT)
 		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-			COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch ${APPLE_ARCH_32BIT} -arch ${APPLE_ARCH_64BIT}")
+			COMPILE_FLAGS " -B ${CCTOOLS_LIPO_DIR}/ -arch ${APPLE_ARCH_32BIT} -arch ${APPLE_ARCH_64BIT}")
 		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
 			LINK_FLAGS " -arch ${APPLE_ARCH_32BIT} -arch ${APPLE_ARCH_64BIT}")
 		foreach(tgt ${ARGV})
@@ -71,7 +71,7 @@ FUNCTION(make_fat)
 		endforeach(tgt)
 	elseif (BUILD_TARGET_32BIT)
 		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-			COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch ${APPLE_ARCH_32BIT}")
+			COMPILE_FLAGS " -B ${CCTOOLS_LIPO_DIR}/ -arch ${APPLE_ARCH_32BIT}")
 		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
 			LINK_FLAGS " -arch ${APPLE_ARCH_32BIT}")
 		foreach(tgt ${ARGV})
@@ -79,7 +79,7 @@ FUNCTION(make_fat)
 		endforeach(tgt)
 	elseif (BUILD_TARGET_64BIT)
 		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-			COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch ${APPLE_ARCH_64BIT}")
+			COMPILE_FLAGS " -B ${CCTOOLS_LIPO_DIR}/ -arch ${APPLE_ARCH_64BIT}")
 		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
 			LINK_FLAGS " -arch ${APPLE_ARCH_64BIT}")
 		foreach(tgt ${ARGV})
@@ -179,7 +179,7 @@ function(add_darling_object_library name)
 
 	add_library(${name} OBJECT ${files})
 	add_dependencies(${name} lipo)
-	set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/")
+	set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -B ${CCTOOLS_LIPO_DIR}/")
 
 	if (BUILD_TARGET_32BIT AND NOT OBJECT_LIB_64BIT_ONLY)
 		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -arch ${APPLE_ARCH_32BIT}")
