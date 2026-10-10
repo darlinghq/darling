@@ -18,8 +18,8 @@ if [ "$1" = "--bom" ]; then
 		exit 1
 	fi
 	bom=$2
-	source=$4
-	dest=$5
+	source=${4%/}
+	dest=${5%/}
 	if [ ! -d "$source" ] || [ ! -d "$dest" ]; then
 		>&2 echo "ditto: source and destination must be directories"
 		exit 1
