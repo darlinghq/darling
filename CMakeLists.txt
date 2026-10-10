@@ -67,6 +67,11 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0 CACHE STRING "The version of macOS we're si
 
 project(darling)
 
+# Most of Darling is built for Darwin. Without this, a toolchain file that sets it to FALSE (as
+# distributions' build tools do) makes custom commands such as `true` resolve to the Darwin
+# executable targets of the same name, which cannot run on the host.
+set(CMAKE_CROSSCOMPILING TRUE)
+
 enable_language(ASM)
 
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
