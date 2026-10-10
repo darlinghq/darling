@@ -61,6 +61,7 @@ if [ "$#" -lt 1 ]; then
 		WARNING: Most destructive operations are not prompted
 
 		     eject                (Eject a disk)
+		     info                 (Get disk or volume information)
 	EOF
 	exit 1
 fi

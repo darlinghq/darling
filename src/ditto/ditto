@@ -18,9 +18,9 @@ if [ "$1" = "--bom" ]; then
 		exit 1
 	fi
 	bom=$2
-	source=${4%/}
-	dest=${5%/}
-	if [ ! -d "$source" ] || [ ! -d "$dest" ]; then
+	src_dir=${4%/}
+	dst_dir=${5%/}
+	if [ ! -d "$src_dir" ] || [ ! -d "$dst_dir" ]; then
 		>&2 echo "ditto: source and destination must be directories"
 		exit 1
 	fi
@@ -32,14 +32,16 @@ if [ "$1" = "--bom" ]; then
 	fi
 	while IFS= read -r rel || [ -n "$rel" ]; do
 		[ "$rel" = "." ] && continue
-		rel=${rel#./}
+		while [ "${rel#./}" != "$rel" ]; do
+			rel=${rel#./}
+		done
 		case "$rel" in
-			""|/*|..|../*|*/..|*/../*|*/./*|*//* )
+			""|/*|..|../*|*/..|*/../*|*/./*|*//*|*/. )
 				>&2 echo "ditto: invalid BOM path: $rel"
 				exit 1
 				;;
 		esac
-		[ -e "$source/$rel" ] || [ -L "$source/$rel" ] || {
+		[ -e "$src_dir/$rel" ] || [ -L "$src_dir/$rel" ] || {
 			>&2 echo "ditto: missing BOM source: $rel"
 			exit 1
 		}
@@ -53,17 +55,17 @@ if [ "$1" = "--bom" ]; then
 				component=${remaining%%/*}
 				if [ "$remaining" = "$component" ]; then remaining=; else remaining=${remaining#*/}; fi
 				part=${part:+$part/}$component
-				if [ -L "$source/$part" ] || [ -L "$dest/$part" ]; then
+				if [ -L "$src_dir/$part" ] || [ -L "$dst_dir/$part" ]; then
 					>&2 echo "ditto: symlinked BOM parent: $part"
 					exit 1
 				fi
 			done
-			mkdir -p "$dest/$parent" || exit 1
+			mkdir -p "$dst_dir/$parent" || exit 1
 		fi
-		if [ -d "$source/$rel" ] && [ ! -L "$source/$rel" ]; then
-			mkdir -p "$dest/$rel" || exit 1
+		if [ -d "$src_dir/$rel" ] && [ ! -L "$src_dir/$rel" ]; then
+			mkdir -p "$dst_dir/$rel" || exit 1
 		else
-			cp -a "$source/$rel" "$dest/$rel" || exit 1
+			cp -a "$src_dir/$rel" "$dst_dir/$rel" || exit 1
 		fi
 	done < "$listing"
 	exit 0
