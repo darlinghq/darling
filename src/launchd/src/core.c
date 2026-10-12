@@ -1733,6 +1733,7 @@ job_new_anonymous(jobmgr_t jm, pid_t anonpid)
 		return NULL;
 	}
 
+#ifndef DARLING
 	if (anonpid >= 100000) {
 		/* The kernel current defines PID_MAX to be 99999, but that define isn't
 		 * exported.
@@ -1741,6 +1742,13 @@ job_new_anonymous(jobmgr_t jm, pid_t anonpid)
 		errno = EINVAL;
 		return NULL;
 	}
+#else
+	if (anonpid >= 4194304) {
+		launchd_syslog(LOG_WARNING, "Did PID_MAX change? Got request from PID: %d", anonpid);
+		errno = EINVAL;
+		return NULL;
+	}
+#endif
 
 	/* libproc returns the number of bytes written into the buffer upon success,
 	 * zero on failure. I'd much rather it return -1 on failure, like sysctl(3).
