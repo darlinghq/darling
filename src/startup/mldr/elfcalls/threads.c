@@ -146,9 +146,12 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 
 	// std::cout << "Allocated stack at " << pth << ", size " << stack_size << std::endl;
 
-	// requesting less than PTHREAD_STACK_MIN fails and leaves the attribute at the libc
-	// default (8 MB on glibc), so ask for exactly the minimum the host libc accepts
-	size_t host_stack_size = PTHREAD_STACK_MIN;
+	// Requesting less than PTHREAD_STACK_MIN fails and leaves the attribute at the libc
+	// default (8 MB on glibc). This stack bootstraps the thread and handles its exit,
+	// and glibc also runs the host libraries' TLS destructors on it at that point
+	// (graphics drivers, for one), so keep headroom beyond the minimum. It only
+	// reserves address space until it is touched.
+	size_t host_stack_size = PTHREAD_STACK_MIN > 512 * 1024 ? PTHREAD_STACK_MIN : 512 * 1024;
 	int stacksize_err = pthread_attr_setstacksize(&attr, host_stack_size);
 	if (stacksize_err != 0)
 		fprintf(stderr, "mldr: pthread_attr_setstacksize(%zu) failed: %s\n", host_stack_size, strerror(stacksize_err));
