@@ -18,6 +18,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -64,6 +65,11 @@ static dthread_t dthread_structure_init(dthread_t dthread, size_t guard_size, vo
 }
 
 dthread_t dthread_structure_allocate(size_t stack_size, size_t guard_size, void** stack_addr) {
+	if (stack_size > SIZE_MAX - guard_size ||
+		stack_size + guard_size > SIZE_MAX - sizeof(struct _dthread)) {
+		errno = ENOMEM;
+		return NULL;
+	}
 	size_t total_size = guard_size + stack_size + sizeof(struct _dthread);
 
 	// allocate our stack, guard page, and dthread structure
@@ -75,8 +81,13 @@ dthread_t dthread_structure_allocate(size_t stack_size, size_t guard_size, void*
 	}
 
 	// protect our guard page
-	if (mprotect(base_addr, guard_size, PROT_NONE) != 0)
-		fprintf(stderr, "Failed to protect the thread stack guard page: %s\n", strerror(errno));
+	if (mprotect(base_addr, guard_size, PROT_NONE) != 0) {
+		int saved = errno;
+		fprintf(stderr, "Failed to protect the thread stack guard page: %s\n", strerror(saved));
+		munmap(base_addr, total_size);
+		errno = saved;
+		return NULL;
+	}
 
 	/**
 	 * memory layout of newly allocated block:

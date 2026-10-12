@@ -104,7 +104,11 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	pthread_attr_t attr;
 	pthread_t nativeLibcThread;
 
-	pthread_attr_init(&attr);
+	int attr_error = pthread_attr_init(&attr);
+	if (attr_error != 0) {
+		errno = attr_error;
+		return NULL;
+	}
 	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 	// pthread_attr_setstacksize(&attr, stack_size);
 
@@ -112,10 +116,11 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	// in those cases, just use what we're given (it also contains more information)
 	//
 	// otherwise, allocate them ourselves
-	if (pth == NULL || args.is_workqueue) {
+	bool allocated_stack = pth == NULL || args.is_workqueue;
+	if (allocated_stack) {
 		pth = dthread_structure_allocate(stack_size, dthread_guard_size(), (void**)&args.stack_addr);
 		if (pth == NULL) {
-			// no stack to run the thread on
+			// no stack to run the thread on (errno is set by the allocation)
 			pthread_attr_destroy(&attr);
 			return NULL;
 		}
@@ -152,11 +157,23 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	sigset_t all;
 	sigfillset(&all);
 	pthread_sigmask(SIG_SETMASK, &all, &args.sigmask);
-	pthread_create(&nativeLibcThread, &attr, darling_thread_entry, &args);
+	int create_error = pthread_create(&nativeLibcThread, &attr, darling_thread_entry, &args);
 	pthread_sigmask(SIG_SETMASK, &args.sigmask, NULL);
 	pthread_attr_destroy(&attr);
 
-	while (args.pth != NULL)
+	if (create_error != 0) {
+		// The thread never started: release what was allocated for it, and
+		// do not wait for a check-in that will not happen.
+		if (allocated_stack) {
+			dthread_t dthread = pth;
+			munmap(dthread->freeaddr, dthread->freesize);
+		}
+		errno = create_error;
+		return NULL;
+	}
+
+	// the new thread clears args.pth (release) once it has copied the arguments
+	while (__atomic_load_n(&args.pth, __ATOMIC_ACQUIRE) != NULL)
 		sched_yield();
 
 	return pth;
@@ -206,7 +223,7 @@ static void* darling_thread_entry(void* p)
 
 	pthread_sigmask(SIG_SETMASK, &args.sigmask, NULL);
 
-	in_args->pth = NULL;
+	__atomic_store_n(&in_args->pth, NULL, __ATOMIC_RELEASE);
 
 	if (setjmp(t_jmpbuf))
 	{
