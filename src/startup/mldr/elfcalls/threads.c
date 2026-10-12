@@ -109,7 +109,14 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 		errno = attr_error;
 		return NULL;
 	}
-	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	// Guest threads are joined by the guest; the native bootstrap thread is
+	// never joined, so it must release its own resources when it exits.
+	attr_error = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	if (attr_error != 0) {
+		pthread_attr_destroy(&attr);
+		errno = attr_error;
+		return NULL;
+	}
 	// pthread_attr_setstacksize(&attr, stack_size);
 
 	// in some cases, we're already given a pthread object, stack, and guard page;
@@ -145,8 +152,6 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	int stacksize_err = pthread_attr_setstacksize(&attr, host_stack_size);
 	if (stacksize_err != 0)
 		fprintf(stderr, "mldr: pthread_attr_setstacksize(%zu) failed: %s\n", host_stack_size, strerror(stacksize_err));
-
-	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
 	args.pth = pth;
 
@@ -229,7 +234,7 @@ static void* darling_thread_entry(void* p)
 	{
 		// Terminate the Linux thread
 		munmap(t_freeaddr, t_freesize);
-		pthread_detach(pthread_self());
+		// the native thread was created detached
 		return NULL;
 	}
 
