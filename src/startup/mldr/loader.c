@@ -388,6 +388,42 @@ no_slide:
 					}
 				}
 
+#if defined(__aarch64__) || defined(__arm64__)
+				if ((useprot & PROT_EXEC) && seg->filesize > 0)
+				{
+					uintptr_t page_base = (uintptr_t)seg_addr & ~(host_ps - 1);
+					size_t patch_len = mldr_page_roundup(((uintptr_t)seg_addr - page_base) + seg->filesize, host_ps);
+					void* patch_ptr = (void*)page_base;
+					if (mprotect(patch_ptr, patch_len, PROT_READ | PROT_WRITE) == 0)
+					{
+						uint32_t* insns = (uint32_t*) seg_addr;
+						size_t count = seg->filesize / sizeof(uint32_t);
+						for (size_t k = 0; k < count; k++)
+						{
+							if ((insns[k] & 0xFFFFFFE0U) == 0xD53BD060U)
+							{
+								uint32_t rt = insns[k] & 0x1FU;
+								insns[k] = 0xD53BD040U | rt; // mrs Xt, TPIDR_EL0
+								if (k + 1 < count && ((insns[k+1] & 0xFFC00000U) == 0x92400000U) &&
+								    ((insns[k+1] & 0x1FU) == rt) && (((insns[k+1] >> 5) & 0x1FU) == rt))
+								{
+									insns[k+1] = 0xF9402000U | (rt << 5) | rt; // ldr Xt, [Xt, #64]
+									k++;
+								}
+							}
+						}
+						if (mprotect(patch_ptr, patch_len, useprot) != 0) {
+							fprintf(stderr, "mldr: cannot restore segment permissions at %p: %s\n", patch_ptr, strerror(errno));
+							abort();
+						}
+						__builtin___clear_cache((char*)patch_ptr, (char*)patch_ptr + patch_len);
+					}
+					else
+					{
+						fprintf(stderr, "mldr: warning: cannot make segment writable at %p: %s\n", patch_ptr, strerror(errno));
+					}
+				}
+#endif
 				// 2. Map the remaining BSS/anonymous pages (if any) beyond the file-backed pages.
 				// Round the total segment size up to the Mach-O target page size (page_sz)
 				// so that the gap between adjacent segments is completely covered by BSS mappings.
