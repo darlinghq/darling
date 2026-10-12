@@ -150,7 +150,15 @@ int main(int argc, char *argv[])
 		NSURL** urls = (NSURL**) malloc(count * sizeof(NSURL*));
 
 		for (int i = 0; i < count; i++)
-			urls[i] = [NSURL URLWithString:[NSString stringWithCString: argv[optind+i] encoding: NSUTF8StringEncoding]];
+		{
+			NSString* str = [NSString stringWithCString: argv[optind+i] encoding: NSUTF8StringEncoding];
+			// +URLWithString: needs a scheme (e.g. file:/// or https://) and
+			// returns nil for bare POSIX paths, which is how `open` is most
+			// often invoked. Fall back to a file URL in that case.
+			urls[i] = [NSURL URLWithString: str];
+			if (urls[i] == nil)
+				urls[i] = [NSURL fileURLWithPath: str];
+		}
 		
 		filenames = [NSArray arrayWithObjects: urls count: count];
 		free(urls);
