@@ -30,8 +30,10 @@ add_framework(CryptoTokenKit
 		src/ctkclient.c
 		src/ctkclient_test.c
 		src/ctkloginhelper.c
+		src/TKTokenWatcher.m
 
 	DEPENDENCIES
 		system
 		CoreFoundation
+		Foundation
 )

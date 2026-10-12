@@ -2,6 +2,10 @@
    Image: /System/Library/PrivateFrameworks/CryptoTokenKit.framework/CryptoTokenKit
  */
 
+#import <Foundation/Foundation.h>
+
+@protocol TKProtocolTokenWatcher;
+
 @interface TKTokenWatcher : NSObject <TKProtocolTokenWatcher> {
     NSXPCConnection * _connection;
     id /* block */  _insertionHandler;
@@ -12,7 +16,6 @@
 
 @property (readonly) NSArray *tokenIDs;
 
-- (void).cxx_destruct;
 - (void)addRemovalHandler:(id /* block */)arg1 forTokenID:(id)arg2;
 - (void)dealloc;
 - (id)init;
