@@ -25,6 +25,7 @@ add_framework(HIToolbox
 		src/MacApplication.cpp
 		src/MacWindows.cpp
 		src/TextInputSources.mm
+		src/TextServices.c
 		src/IBCarbonRuntime.c
 		src/HITheme.c
 		src/constants.c
