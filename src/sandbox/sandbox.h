@@ -161,6 +161,14 @@ int sandbox_note(const char *note);
 int sandbox_suspend(pid_t pid);
 int sandbox_unsuspend(void);
 
+/* Extension token family.
+ * No enforcement exists, so issue dummy nonzero tokens and accept
+ * consume/release as no-ops. */
+int64_t sandbox_extension_issue_file(const char *path, uint32_t flags);
+int64_t sandbox_extension_issue_mach(const char *name, uint32_t flags);
+int sandbox_extension_consume(int64_t token);
+int sandbox_extension_release(int64_t token);
+
 int sandbox_issue_extension(const char *path, char **ext_token);
 int sandbox_issue_fs_extension(const char *path, uint64_t flags, char **ext_token);
 int sandbox_issue_fs_rw_extension(const char *path, char **ext_token);
