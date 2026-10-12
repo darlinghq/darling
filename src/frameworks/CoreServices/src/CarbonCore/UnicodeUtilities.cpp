@@ -212,8 +212,10 @@ OSStatus UCKeyTranslate(const UCKeyboardLayout *keyLayoutPtr, UInt16 virtualKeyC
 	const UCKeyToCharTableIndex* tableIndex = (UCKeyToCharTableIndex*) (((char*) keyLayoutPtr) + keyLayoutPtr->keyboardTypeList[0].keyToCharTableIndexOffset);
 	uint8_t tableNumber = modMaps->defaultTableNum;
 
-	if ((modifierKeyState >> 8) < modMaps->modifiersCount)
-		tableNumber = modMaps->tableNum[(modifierKeyState >> 8)];
+	// UCKeyTranslate receives the modifier byte after the caller shifts the
+	// Carbon EventRecord flags. Shifting again loses Shift and Option state.
+	if (modifierKeyState < modMaps->modifiersCount)
+		tableNumber = modMaps->tableNum[modifierKeyState];
 
 	UniChar c;
 	if (virtualKeyCode >= tableIndex->keyToCharTableSize || tableNumber >= tableIndex->keyToCharTableCount)
