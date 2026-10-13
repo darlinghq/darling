@@ -672,7 +672,8 @@ int __mldr_create_process_lifetime_pipe(int* fds) {
 		return 0;
 	}
 
-	int pre_fds[2];
+	int pre_fds[2] = { -1, -1 };
+	fds[0] = fds[1] = -1;
 	if (pipe(pre_fds) == -1) {
 		goto err_out;
 	}
@@ -797,6 +798,10 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 	// to check that in.
 	if (lr->lifetime_pipe != -1) {
 		lifetime_pipe[1] = socket_bitmap_get(&socket_bitmap);
+		if (lifetime_pipe[1] < 0) {
+			fprintf(stderr, "Failed to allocate a descriptor for the process lifetime pipe\n");
+			exit(1);
+		}
 
 		if (lr->lifetime_pipe != lifetime_pipe[1]) {
 			// move the existing pipe to a higher fd number, and invalidate
