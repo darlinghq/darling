@@ -1,5 +1,8 @@
 set(SUBFRAMEWORK_VERSION "A")
 
+# LSHostOpen.c loads the host's libsystemd through the ELF loader.
+include_directories(${CMAKE_SOURCE_DIR}/src/startup/mldr/elfcalls)
+
 generate_sdk_subframework(LaunchServices
 	BASE_PATH ${coreservices_sdk_path}
 	VERSION ${SUBFRAMEWORK_VERSION}
@@ -20,6 +23,7 @@ add_framework(LaunchServices
 		LSApplicationWorkspace.m
 		LSRunning.m
 		constants.c
+		LSHostOpen.c
 		LSHostOpenURL.c
 		LSHostOpenBus.c
 		LSInfo.m
