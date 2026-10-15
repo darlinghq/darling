@@ -25,6 +25,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 OSStatus Gestalt(uint32_t type, int* value)
 {
+	if (!value)
+		return paramErr;
+	*value = 0;
 	switch (type)
 	{
 	case gestaltSystemVersion:
@@ -49,6 +52,8 @@ OSStatus Gestalt(uint32_t type, int* value)
 			*value = min;
 		else if (type == gestaltSystemVersionPatch)
 			*value = patch;
+		// Without this the version selectors fall into the architecture case below and are overwritten.
+		break;
 	}
 	case gestaltSysArchitecture:
 #ifdef __powerpc__
