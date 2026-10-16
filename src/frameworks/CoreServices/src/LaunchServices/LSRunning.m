@@ -140,10 +140,10 @@ CFTypeRef _LSGetCurrentApplicationASN(void)
 	return g_ourASN;
 }
 
-void* _LSCopyFrontApplication(LSSessionID sessionID)
+LSASNRef _LSCopyFrontApplication(LSSessionID sessionID)
 {
 	// Darling has no notion of application focus yet, so there is no
-	// frontmost application to report. NULL is the documented "no front
+	// frontmost application to report. NULL is the "no front
 	// application" answer for this API; callers must already tolerate it.
 	return NULL;
 }

@@ -84,7 +84,7 @@ OSStatus _LSSetApplicationInformationItem(LSSessionID sessionID, LSASNRef asn, C
 
 // Returns the ASN of the application that currently has focus, or NULL when
 // no such application exists (or has never been tracked).
-void* _LSCopyFrontApplication(LSSessionID sessionID);
+LSASNRef _LSCopyFrontApplication(LSSessionID sessionID);
 
 typedef bool (^LSServerConnectionAllowedBlock) ( CFDictionaryRef optionsRef );
 void _LSSetApplicationLaunchServicesServerConnectionStatus(uint64_t flags, LSServerConnectionAllowedBlock block);
