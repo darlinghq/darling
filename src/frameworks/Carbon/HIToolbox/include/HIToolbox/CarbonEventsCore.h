@@ -9,6 +9,10 @@
 extern "C" {
 #endif
 
+enum {
+	eventNotHandledErr = -9874,
+};
+
 typedef struct OpaqueEventRef* EventRef;
 typedef void* EventHandlerCallRef;
 typedef OSType EventParamType;
