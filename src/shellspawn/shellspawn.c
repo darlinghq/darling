@@ -117,7 +117,19 @@ void listenForConnections(void)
 	{
 		sock = accept(g_serverSocket, (struct sockaddr*) &addr, &len);
 		if (sock == -1)
+		{
+			if (errno == EINTR || errno == EAGAIN || errno == ECONNABORTED)
+				continue;
+			if (errno == EMFILE || errno == ENFILE || errno == ENOBUFS || errno == ENOMEM)
+			{
+				// Transient resource shortage: keep the service, retry shortly.
+				perror("shellspawn: accept");
+				usleep(100 * 1000);
+				continue;
+			}
+			perror("shellspawn: accept");
 			break;
+		}
 
 		if (fork() == 0)
 		{
