@@ -35,22 +35,29 @@ OSStatus Gestalt(uint32_t type, int* value)
 	case gestaltSystemVersionMinor:
 	case gestaltSystemVersionPatch:
 	{
-		// We may be mixing the Darwin and OS version, but this API is deprecated anyway
-		int name[2] = { CTL_KERN, KERN_OSRELEASE };
-		char version[32];
+		// The selectors report the macOS product version, the same string
+		// NSProcessInfo and SystemVersion.plist report, never the Darwin
+		// kernel release (KERN_OSRELEASE).
+		char version[64] = {};
 		size_t version_len = sizeof(version) - 1;
-		int maj, min, patch;
-		
-		sysctl(name, 2, version, &version_len, nullptr, 0);
-		sscanf(version, "%d.%d.%d", &maj, &min, &patch);
-		
+		int maj = 0, min = 0, patch = 0;
+
+		if (sysctlbyname("kern.osproductversion", version, &version_len, nullptr, 0) != 0)
+			return gestaltUnknownErr;
+		if (sscanf(version, "%d.%d.%d", &maj, &min, &patch) < 1 || maj < 0 || maj > 99 || min < 0 || patch < 0)
+			return gestaltUnknownErr;
+
 		if (type == gestaltSystemVersion)
-			*value = 0x100 * maj + 0x10 * min;
+		{
+			// Legacy packed BCD (10.9.5 is 0x1095); minor and bug-fix saturate at 9.
+			int packedMajor = ((maj / 10) << 4) | (maj % 10);
+			*value = (packedMajor << 8) | ((min > 9 ? 9 : min) << 4) | (patch > 9 ? 9 : patch);
+		}
 		else if (type == gestaltSystemVersionMajor)
 			*value = maj;
 		else if (type == gestaltSystemVersionMinor)
 			*value = min;
-		else if (type == gestaltSystemVersionPatch)
+		else
 			*value = patch;
 		// Without this the version selectors fall into the architecture case below and are overwritten.
 		break;
