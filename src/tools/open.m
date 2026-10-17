@@ -155,6 +155,7 @@ int main(int argc, char *argv[])
 			if (str == nil)
 			{
 				fprintf(stderr, "open: argument is not valid UTF-8: %s\n", argv[optind+i]);
+				free(urls);
 				return EXIT_FAILURE;
 			}
 
