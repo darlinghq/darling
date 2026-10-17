@@ -19,6 +19,12 @@
 
 #include <EGL/egl.h>
 
+#include "swap_pacing.h"
+
+#ifndef EGL_PLATFORM_WAYLAND_KHR
+#define EGL_PLATFORM_WAYLAND_KHR 0x31D8
+#endif
+
 #define APPLE
 #define __APPLE__
 
@@ -27,6 +33,9 @@ static EGLDisplay display;
 static EGLConfig config;
 static int num_config;
 static int default_swap_interval = 1;
+// Set while the registered display is Wayland, where the application's swap
+// interval is kept in software (swap_pacing.h) and EGL stays at interval 0.
+static int default_paced = 0;
 static pthread_mutex_t registration_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static EGLint const attribute_list[] = {
@@ -55,7 +64,10 @@ struct _CGLContextObj {
     EGLSurface egl_surface;
     // EGL has no function for getting the current swap interval,
     // so we need to save the last set value. The default is 1.
+    // This is the application's value; a paced context never gives it to EGL.
     int swap_interval;
+    int paced;
+    struct cgl_swap_pacer pacer;
 };
 
 struct _CGLPixelFormatObj {
@@ -64,6 +76,7 @@ struct _CGLPixelFormatObj {
     EGLDisplay egl_display;
     EGLConfig egl_config;
     int swap_interval;
+    int paced;
 };
 
 static inline int attribute_has_argument(CGLPixelFormatAttribute attr) {
@@ -113,6 +126,7 @@ CGLError CGLRegisterNativeDisplay(void *native_display) {
     config = candidate_config;
     num_config = count;
     default_swap_interval = 1;
+    default_paced = 0;
     pthread_mutex_unlock(&registration_lock);
     return kCGLNoError;
 }
@@ -175,6 +189,7 @@ CGLError CGLRegisterNativeDisplayForPlatform(void *native_display, unsigned int 
     // Layer animations may keep drawing while their parent is hidden. Waiting
     // for a Wayland frame callback on an unmapped surface can block forever.
     default_swap_interval = 0;
+    default_paced = platform == EGL_PLATFORM_WAYLAND_KHR;
     pthread_mutex_unlock(&registration_lock);
     return kCGLNoError;
 
@@ -302,6 +317,11 @@ static void make_key() {
     pthread_key_create(&current_context_key, NULL);
 }
 
+// What EGL gets: a paced context must never wait for a frame callback.
+static int egl_swap_interval(CGLContextObj context) {
+    return context->paced ? 0 : context->swap_interval;
+}
+
 static pthread_key_t get_current_context_key() {
     static pthread_once_t key_once = PTHREAD_ONCE_INIT;
     pthread_once(&key_once, make_key);
@@ -322,7 +342,7 @@ CGLError CGLSetCurrentContext(CGLContextObj context) {
             return kCGLBadContext;
         }
         pthread_setspecific(get_current_context_key(), context);
-        if (surface != EGL_NO_SURFACE && !eglSwapInterval(context->egl_display, context->swap_interval))
+        if (surface != EGL_NO_SURFACE && !eglSwapInterval(context->egl_display, egl_swap_interval(context)))
             return kCGLBadValue;
     } else {
         CGLContextObj current = CGLGetCurrentContext();
@@ -391,6 +411,7 @@ CGLError CGLChoosePixelFormat(
     format->egl_display = display;
     format->egl_config = config;
     format->swap_interval = default_swap_interval;
+    format->paced = default_paced;
     pthread_mutex_unlock(&registration_lock);
     format->retain_count = 1;
     format->attributes = malloc(sizeof(CGLPixelFormatAttribute) * count);
@@ -484,6 +505,7 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
     EGLDisplay owner = share ? share->egl_display : (pixelFormat ? pixelFormat->egl_display : display);
     EGLConfig owner_config = share ? share->egl_config : (pixelFormat ? pixelFormat->egl_config : config);
     int interval = share ? share->swap_interval : (pixelFormat ? pixelFormat->swap_interval : default_swap_interval);
+    int paced = share ? share->paced : (pixelFormat ? pixelFormat->paced : default_paced);
     pthread_mutex_unlock(&registration_lock);
     if (!eglBindAPI(EGL_OPENGL_API))
         return kCGLBadState;
@@ -511,6 +533,9 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
     context->egl_context = egl_context;
     context->egl_surface = NULL;
     context->swap_interval = interval;
+    context->paced = paced;
+    context->pacer.period_ns = cgl_period_ns_from_millihertz(0);
+    context->pacer.last_ns = 0;
 
     *resultp = context;
 
@@ -580,7 +605,16 @@ CGLError CGLFlushDrawable(CGLContextObj context) {
         return kCGLBadContext;
     if (context->egl_surface == EGL_NO_SURFACE)
         return kCGLBadDrawable;
+    if (context->paced)
+        cgl_swap_pace(&context->pacer, context->swap_interval);
     return eglSwapBuffers(context->egl_display, context->egl_surface) ? kCGLNoError : kCGLBadDrawable;
+}
+
+CGLError CGLSetDrawableRefreshRate(CGLContextObj context, uint32_t millihertz) {
+    if (context == NULL)
+        return kCGLBadContext;
+    context->pacer.period_ns = cgl_period_ns_from_millihertz(millihertz);
+    return kCGLNoError;
 }
 
 CGLError CGLSetParameter(CGLContextObj context, CGLContextParameter parameter, const GLint *value) {
@@ -594,7 +628,7 @@ CGLError CGLSetParameter(CGLContextObj context, CGLContextParameter parameter, c
             return kCGLBadContext;
         EGLBoolean success = EGL_TRUE;
         if (CGLGetCurrentContext() == context && context->egl_surface != EGL_NO_SURFACE)
-            success = eglSwapInterval(context->egl_display, v);
+            success = eglSwapInterval(context->egl_display, context->paced ? 0 : v);
         if (success)
             context->swap_interval = v;
         return success ? kCGLNoError : kCGLBadValue;
