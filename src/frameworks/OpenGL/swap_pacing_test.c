@@ -1,5 +1,6 @@
 // Host test of swap_pacing.h, which has no OpenGL, EGL or CoreFoundation dependency.
-//   cc -std=c11 -Wall -fsanitize=address,undefined -o swap_pacing_test swap_pacing_test.c && ./swap_pacing_test
+// gnu11, not c11: strict C11 hides clock_gettime, nanosleep and CLOCK_MONOTONIC in glibc.
+//   cc -std=gnu11 -Wall -fsanitize=address,undefined -o swap_pacing_test swap_pacing_test.c && ./swap_pacing_test
 #include "swap_pacing.h"
 #include <stdio.h>
 
@@ -31,6 +32,14 @@ int main(void) {
     // A swap that is already late does not wait.
     CHECK(cgl_pacing_wait_ns(&p, 1, 1000 * MS + period) == 0);
     CHECK(cgl_pacing_wait_ns(&p, 1, 1000 * MS + 10 * period) == 0);
+
+    // The cap is exact: at 60 Hz (period 16666666 ns) 60 periods are 999999960 ns,
+    // under the cap, so they are waited in full; 61 would be 1016666626 ns and
+    // are cut to the cap. An off-by-one threshold fails one of the two.
+    CHECK(CGL_MAX_SWAP_WAIT_NS / period == 60);
+    CHECK(cgl_pacing_wait_ns(&p, 60, 1000 * MS) == 60 * period);
+    CHECK(60 * period < CGL_MAX_SWAP_WAIT_NS);
+    CHECK(cgl_pacing_wait_ns(&p, 61, 1000 * MS) == CGL_MAX_SWAP_WAIT_NS);
 
     // A huge interval is bounded, and so is a missing period.
     CHECK(cgl_pacing_wait_ns(&p, 1000000, 1000 * MS) == CGL_MAX_SWAP_WAIT_NS);
