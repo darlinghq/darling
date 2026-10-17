@@ -22,6 +22,13 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
  * the Linux desktop. sd-bus is used from the host's libsystemd, loaded through
  * the ELF loader; the guest shares the host's user and network, so the
  * session bus is reachable directly.
+ *
+ * The host functions are called through _elfcalls with the guest compiler's
+ * calling convention, which matches the host's on x86_64 only. The variadic
+ * sd_bus_message_append in particular would break on an arm64 slice (Apple's
+ * stack-based varargs against registers on Linux), so do not build this for
+ * arm64 without a trampoline. On i386 libsystemd cannot be loaded and the open
+ * fails with kLSApplicationNotFoundErr.
  */
 
 #include "LSHostOpen.h"
@@ -81,6 +88,13 @@ static void load_host_api(void)
 	BIND(libc, getuid);
 	BIND(libc, access);
 #undef BIND
+	/*
+	 * The guest's environment, deliberately: DBUS_SESSION_BUS_ADDRESS, DISPLAY and
+	 * WAYLAND_DISPLAY normally arrive from the host unchanged. A guest process can
+	 * set them, which only points sd-bus at a socket the guest picked; it already
+	 * runs as the host user and can open the session bus itself, so this grants
+	 * nothing it did not have.
+	 */
 	api.getenv = getenv;
 	api.runtime_dir_root = "/run/user";
 
@@ -176,6 +190,12 @@ OSStatus _LSOpenURLOnHost(CFURLRef url)
 	return noErr;
 }
 
+/*
+ * The reported "application" is the host's xdg-open script under the host root,
+ * not an application bundle: callers that only ask whether a handler exists (as
+ * browser-based apps do before opening a link) get a yes that is true, while a
+ * caller that opens the result as a bundle gets an error, not a launch.
+ */
 OSStatus _LSGetHostHandlerForURL(CFURLRef url, FSRef* outAppRef, CFURLRef* outAppURL)
 {
 	const struct ls_host_api* api;
@@ -188,8 +208,11 @@ OSStatus _LSGetHostHandlerForURL(CFURLRef url, FSRef* outAppRef, CFURLRef* outAp
 	if (api == NULL)
 		return kLSApplicationNotFoundErr;
 
+	/* Without an xdg-open there is no handler to report; do not invent a path. */
 	opener = _LSHostOpenFindOpener(api);
-	snprintf(path, sizeof(path), HOST_ROOT "%s", opener ? opener : "/usr/bin/xdg-open");
+	if (opener == NULL)
+		return kLSApplicationNotFoundErr;
+	snprintf(path, sizeof(path), HOST_ROOT "%s", opener);
 
 	if (outAppRef != NULL)
 	{
