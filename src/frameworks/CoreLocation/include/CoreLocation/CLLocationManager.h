@@ -21,6 +21,15 @@
 
 @protocol CLLocationManagerDelegate;
 
+typedef NS_ENUM(int, CLAuthorizationStatus) {
+	kCLAuthorizationStatusNotDetermined = 0,
+	kCLAuthorizationStatusRestricted = 1,
+	kCLAuthorizationStatusDenied = 2,
+	kCLAuthorizationStatusAuthorizedAlways = 3,
+	kCLAuthorizationStatusAuthorizedWhenInUse = 4,
+	kCLAuthorizationStatusAuthorized = kCLAuthorizationStatusAuthorizedAlways,
+};
+
 @interface CLLocationManager : NSObject
 {
 	id<CLLocationManagerDelegate> _delegate;
@@ -28,5 +37,12 @@
 
 // Not retained, like other Cocoa delegates.
 @property (nonatomic, assign) id<CLLocationManagerDelegate> delegate;
+
+/* There is no location service and no consent store here: report Denied and
+ * services disabled so callers take their no-access path. */
++ (CLAuthorizationStatus)authorizationStatus;
++ (BOOL)locationServicesEnabled;
+- (CLAuthorizationStatus)authorizationStatus;
+
 
 @end

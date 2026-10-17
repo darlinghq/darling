@@ -23,6 +23,21 @@
 
 @synthesize delegate = _delegate;
 
++ (CLAuthorizationStatus)authorizationStatus
+{
+    return kCLAuthorizationStatusDenied;
+}
+
++ (BOOL)locationServicesEnabled
+{
+    return NO;
+}
+
+- (CLAuthorizationStatus)authorizationStatus
+{
+    return kCLAuthorizationStatusDenied;
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];
