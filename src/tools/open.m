@@ -152,11 +152,18 @@ int main(int argc, char *argv[])
 		for (int i = 0; i < count; i++)
 		{
 			NSString* str = [NSString stringWithCString: argv[optind+i] encoding: NSUTF8StringEncoding];
-			// +URLWithString: needs a scheme (e.g. file:/// or https://) and
-			// returns nil for bare POSIX paths, which is how `open` is most
-			// often invoked. Fall back to a file URL in that case.
+			if (str == nil)
+			{
+				fprintf(stderr, "open: argument is not valid UTF-8: %s\n", argv[optind+i]);
+				return EXIT_FAILURE;
+			}
+
+			// +URLWithString: also accepts a bare path ("/tmp/a.txt", "a.txt") and
+			// returns a URL without a scheme, so test for the scheme instead of for
+			// nil. Anything without one is a file path, resolved against the current
+			// directory; nil (illegal URL characters such as a space) is a path too.
 			urls[i] = [NSURL URLWithString: str];
-			if (urls[i] == nil)
+			if (urls[i] == nil || [urls[i] scheme] == nil)
 				urls[i] = [NSURL fileURLWithPath: str];
 		}
 		
