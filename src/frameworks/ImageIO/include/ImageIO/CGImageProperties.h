@@ -32,6 +32,11 @@ IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFDelayTime;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFDictionary;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFLoopCount;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFUnclampedDelayTime;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFHasGlobalColorMap;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFImageColorMap;
+
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyIPTCDictionary;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyIPTCKeywords;
 
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyAPNGDelayTime;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyAPNGLoopCount;
