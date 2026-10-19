@@ -21,6 +21,7 @@ add_framework(LaunchServices
 		LSRunning.m
 		constants.c
 		LSHostOpenURL.c
+		LSHostOpenBus.c
 		LSInfo.m
 		LSOpen.m
 		UTType.m
