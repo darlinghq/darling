@@ -146,7 +146,7 @@ Dir.mktmpdir('ls-bus-') do |dir|
       reset(); env_address = "tcp:host=127.0.0.1,port=1";
       assert(_LSHostOpenURL(&api, "https://example.org/", &method) == -LS_HOST_LINUX_EINVAL && bus_new == 0);
       /* an overlong address is refused, not copied */
-      { static char big[2048]; memset(big, 'a', sizeof big - 1); memcpy(big, "unix:", 5);
+      { static char big[2048]; memset(big, 'a', sizeof big - 1); memcpy(big, "unix:path=", 10);
         reset(); env_address = big;
         assert(_LSHostOpenURL(&api, "https://example.org/", &method) == -LS_HOST_LINUX_EINVAL && bus_new == 0); }
       puts("PASS: host open transport");
