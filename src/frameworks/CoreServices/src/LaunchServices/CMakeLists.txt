@@ -20,6 +20,7 @@ add_framework(LaunchServices
 		LSApplicationWorkspace.m
 		LSRunning.m
 		constants.c
+		LSHostOpenURL.c
 		LSInfo.m
 		LSOpen.m
 		UTType.m
