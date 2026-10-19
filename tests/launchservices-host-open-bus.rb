@@ -92,6 +92,15 @@ Dir.mktmpdir('ls-bus-') do |dir|
       reset(); portal_result = -6; portal_error_name = "org.freedesktop.DBus.Error.NameHasNoOwner";
       assert(_LSHostOpenURL(&api, "https://example.org/", &method) == 0 && systemd_calls == 1);
       balanced();
+      /* a portal that denies the request is not bypassed */
+      reset(); portal_result = -13; portal_error_name = "org.freedesktop.DBus.Error.AccessDenied";
+      r = _LSHostOpenURL(&api, "https://example.org/", &method);
+      assert(r == -13 && systemd_calls == 0);
+      balanced();
+      /* any other failure, including one without an error name, is not retried either */
+      reset(); portal_result = -12; portal_error_name = NULL;
+      assert(_LSHostOpenURL(&api, "https://example.org/", &method) == -12 && systemd_calls == 0);
+      balanced();
       /* a timeout may have opened the URL: no second attempt */
       reset(); portal_result = -LS_HOST_LINUX_ETIMEDOUT; portal_error_name = "org.freedesktop.DBus.Error.NoReply";
       assert(_LSHostOpenURL(&api, "https://example.org/", &method) == -LS_HOST_LINUX_ETIMEDOUT && systemd_calls == 0);

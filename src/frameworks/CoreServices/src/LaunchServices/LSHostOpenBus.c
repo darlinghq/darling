@@ -232,6 +232,13 @@ static int open_via_systemd(const struct ls_host_api* api, void* bus, const char
 	return r;
 }
 
+/* True when the portal is simply not there; a denial or any other failure must not be bypassed. */
+static int portal_unavailable(const char* error_name)
+{
+	return strcmp(error_name, "org.freedesktop.DBus.Error.ServiceUnknown") == 0
+		|| strcmp(error_name, "org.freedesktop.DBus.Error.NameHasNoOwner") == 0;
+}
+
 int _LSHostOpenURL(const struct ls_host_api* api, const char* url, int* method)
 {
 	void* bus = NULL;
@@ -254,8 +261,9 @@ int _LSHostOpenURL(const struct ls_host_api* api, const char* url, int* method)
 		if (method)
 			*method = LS_HOST_OPEN_VIA_PORTAL;
 	}
-	/* A portal that timed out may still open the URL; don't open it twice. */
-	else if (r != -LS_HOST_LINUX_ETIMEDOUT)
+	/* Only an absent portal is bypassed: a timed-out one may still open the URL and a denial is a
+	   decision, so neither is retried. */
+	else if (portal_unavailable(error_name))
 	{
 		r = open_via_systemd(api, bus, url);
 		if (r >= 0 && method)
