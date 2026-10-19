@@ -159,13 +159,20 @@ int main(int argc, char *argv[])
 				return EXIT_FAILURE;
 			}
 
-			// +URLWithString: also accepts a bare path ("/tmp/a.txt", "a.txt") and
-			// returns a URL without a scheme, so test for the scheme instead of for
-			// nil. Anything without one is a file path, resolved against the current
-			// directory; nil (illegal URL characters such as a space) is a path too.
-			urls[i] = [NSURL URLWithString: str];
-			if (urls[i] == nil || [urls[i] scheme] == nil)
+			// An argument that names an existing file is a path even if it looks like
+			// a URL ("a:b", "localhost:80"). Otherwise +URLWithString: also accepts a
+			// bare path ("/tmp/a.txt", "a.txt") and returns a URL without a scheme, so
+			// test for the scheme instead of for nil. Anything without one is a file
+			// path, resolved against the current directory; nil (illegal URL
+			// characters such as a space) is a path too.
+			if (access(argv[optind+i], F_OK) == 0)
 				urls[i] = [NSURL fileURLWithPath: str];
+			else
+			{
+				urls[i] = [NSURL URLWithString: str];
+				if (urls[i] == nil || [urls[i] scheme] == nil)
+					urls[i] = [NSURL fileURLWithPath: str];
+			}
 		}
 		
 		filenames = [NSArray arrayWithObjects: urls count: count];
