@@ -68,7 +68,7 @@ static void rlPerform(void* info)
 	for (NSString* path in _pathsToWatch)
 	{
 		int wd = inotify_add_watch(_fd, [path UTF8String], IN_ATTRIB | IN_CREATE | IN_DELETE | IN_DELETE_SELF | IN_MODIFY | IN_MOVE);
-		/* A path that cannot be watched (for example one that does not exist yet) is skipped, as FSEvents does. */
+		/* Skipped: events for a path that appears later are not reported. */
 		if (wd < 0)
 			continue;
 		[wdmap setObject: path
