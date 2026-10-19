@@ -83,9 +83,10 @@ Dir.mktmpdir('ls-handler-') do |dir|
       return (void *) fake_ok;
     }
     CFStringRef CFURLCopyScheme(CFURLRef u) { return u->scheme; }
-    CFComparisonResult CFStringCompare(CFStringRef a, CFStringRef b, int f) { return strcasecmp(a, b); }
+    CFComparisonResult CFStringCompare(CFStringRef a, CFStringRef b, int f) { return (f & kCFCompareCaseInsensitive) ? strcasecmp(a, b) : strcmp(a, b); }
     void CFRelease(const void *p) {}
-    OSStatus FSPathMakeRef(const UInt8 *p, FSRef *r, Boolean *d) { strncpy(r->path, (const char *) p, 255); return 0; }
+    static int fsref_fails;
+    OSStatus FSPathMakeRef(const UInt8 *p, FSRef *r, Boolean *d) { if (fsref_fails) return -43; strncpy(r->path, (const char *) p, 255); return 0; }
     typedef struct { const char *scheme; const char *string; } URLObj;
     static URLObj made;
     CFURLRef CFURLCreateFromFileSystemRepresentation(CFAllocatorRef a, const UInt8 *p, CFIndex n, Boolean d) {
@@ -102,7 +103,7 @@ Dir.mktmpdir('ls-handler-') do |dir|
       _elfcalls = &calls;
       setenv("DBUS_SESSION_BUS_ADDRESS", "unix:path=/x/bus", 1);
       URLObj https = { "https", "https://example.org/a" }, mail = { "mailto", "mailto:a@example.org" },
-        ftp = { "ftp", "ftp://example.org/" }, spaced = { "https", "https://e.org/a b --new-window" },
+        ftp = { "ftp", "ftp://example.org/" }, http = { "http", "http://example.org/" }, upper = { "HTTPS", "HTTPS://EXAMPLE.ORG/" }, spaced = { "https", "https://e.org/a b --new-window" },
         empty = { "https", "" };
       FSRef ref; CFURLRef app = NULL;
       if (!strcmp(mode, "handler")) {
@@ -116,6 +117,12 @@ Dir.mktmpdir('ls-handler-') do |dir|
         assert(!strcmp(ref.path, "/Volumes/SystemRoot/usr/bin/xdg-open"));
         assert(app && !strcmp(app->string, "/Volumes/SystemRoot/usr/bin/xdg-open"));
         assert(_LSGetHostHandlerForURL((CFURLRef) &mail, &ref, NULL) == noErr);
+        assert(_LSGetHostHandlerForURL((CFURLRef) &http, &ref, NULL) == noErr);
+        assert(_LSGetHostHandlerForURL((CFURLRef) &upper, &ref, NULL) == noErr);
+        /* a failing FSRef conversion is returned, not hidden */
+        fsref_fails = 1;
+        assert(_LSGetHostHandlerForURL((CFURLRef) &https, &ref, NULL) == -43);
+        fsref_fails = 0;
         /* other schemes are not handled here */
         assert(_LSGetHostHandlerForURL((CFURLRef) &ftp, &ref, &app) == kLSApplicationNotFoundErr);
         assert(_LSIsHostOpenURL((CFURLRef) &https) && _LSIsHostOpenURL((CFURLRef) &mail) && !_LSIsHostOpenURL((CFURLRef) &ftp));
@@ -128,12 +135,13 @@ Dir.mktmpdir('ls-handler-') do |dir|
         /* success: one portal call */
         assert(_LSOpenURLOnHost((CFURLRef) &https) == noErr && bus_calls == 1);
         assert(_LSOpenURLOnHost((CFURLRef) &mail) == noErr && bus_calls == 2);
+        assert(_LSOpenURLOnHost((CFURLRef) &http) == noErr && _LSOpenURLOnHost((CFURLRef) &upper) == noErr && bus_calls == 4);
         /* a URL the validator rejects, an empty one and NULL make no bus call */
         assert(_LSOpenURLOnHost((CFURLRef) &spaced) == paramErr);
         assert(_LSOpenURLOnHost((CFURLRef) &ftp) == paramErr);
         assert(_LSOpenURLOnHost((CFURLRef) &empty) == paramErr);
         assert(_LSOpenURLOnHost(NULL) == paramErr);
-        assert(bus_calls == 2);
+        assert(bus_calls == 4);
         /* a bus failure is reported, not turned into success */
         bus_result = -5;
         assert(_LSOpenURLOnHost((CFURLRef) &https) == kLSServerCommunicationErr);
