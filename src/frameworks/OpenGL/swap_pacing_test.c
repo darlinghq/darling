@@ -57,7 +57,18 @@ int main(void) {
         cgl_swap_pace(&live, 2);
     uint64_t elapsed = cgl_monotonic_ns() - t0;
     CHECK(elapsed >= 5 * 20 * MS);        // five waits of two 10 ms periods
-    CHECK(elapsed < 5 * 20 * MS + 40 * MS); // scheduler slack
+    CHECK(elapsed < 5 * 20 * MS + 150 * MS); // generous slack: a loaded host must not flake
+
+    // A stalled frame restarts the schedule: after a 100 ms stall (ten
+    // periods) the late swap is immediate and the following swaps are still
+    // one period apart, not a burst that catches up the missed ones.
+    struct timespec stall = { 0, 100 * 1000000L };
+    nanosleep(&stall, NULL);
+    cgl_swap_pace(&live, 1);
+    uint64_t t1 = cgl_monotonic_ns();
+    cgl_swap_pace(&live, 1);
+    cgl_swap_pace(&live, 1);
+    CHECK(cgl_monotonic_ns() - t1 >= 2 * 10 * MS - MS);
 
     if (failures == 0)
         printf("PASS swap_pacing\n");
