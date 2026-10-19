@@ -8,8 +8,23 @@ add_framework(UIKit
     CURRENT_VERSION
     FAT
     VERSION A
-    SOURCES src/UICollectionViewCompositionalLayout.m
-    DEPENDENCIES Foundation objc system
+    SOURCES
+        src/UICollectionViewCompositionalLayout.m
+        src/UIResponder.m
+        src/UIApplication.m
+        src/UIScreen.m
+        src/UIColor.m
+        src/UIFont.m
+        src/UIView.m
+        src/UIViewController.m
+        src/UIWindow.m
+        src/UILabel.m
+    DEPENDENCIES
+        Foundation
+        AppKit
+        CoreGraphics
+        objc
+        system
 )
-target_include_directories(UIKit PRIVATE include)
+target_include_directories(UIKit PRIVATE include src)
 target_compile_options(UIKit PRIVATE -fobjc-arc)
