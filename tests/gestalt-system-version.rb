@@ -67,6 +67,15 @@ Dir.mktmpdir('gestalt-') do |dir|
       assert(get(gestaltSystemVersionPatch, &v) == 0 && v == 0);
       product = "11.7.4";
       assert(get(gestaltSystemVersion, &v) == 0 && v == 0x1174);
+      product = "14.6.1";
+      assert(get(gestaltSystemVersionMajor, &v) == 0 && v == 14);
+      assert(get(gestaltSystemVersionMinor, &v) == 0 && v == 6);
+      assert(get(gestaltSystemVersionPatch, &v) == 0 && v == 1);
+      assert(get(gestaltSystemVersion, &v) == 0 && v == 0x1461);
+      product = "10.15.7";   /* minor saturates at 9 in the packed form */
+      assert(get(gestaltSystemVersion, &v) == 0 && v == 0x1097);
+      product = "10.9.15";  /* patch saturates at 9 too */
+      assert(get(gestaltSystemVersion, &v) == 0 && v == 0x1099);
       product = NULL;     /* sysctl failure: error, not a guessed version */
       v = 123; assert(get(gestaltSystemVersionMajor, &v) == gestaltUnknownErr && v == 0);
       product = "garbage";
@@ -76,7 +85,8 @@ Dir.mktmpdir('gestalt-') do |dir|
       return 0;
     }
   CPP
-  out, st = Open3.capture2e('clang++', '-fsanitize=address,undefined', '-w', "-I#{dir}",
+  # Without the target arch, a missing break before gestaltSysArchitecture is invisible on a non-x86 host.
+  out, st = Open3.capture2e('clang++', '-fsanitize=address,undefined', '-w', '-D__x86_64__', "-I#{dir}",
     "-I#{root}/src/frameworks/CoreServices/include", "#{dir}/probe.cpp",
     "#{root}/src/frameworks/CoreServices/src/CarbonCore/Gestalt.cpp", '-o', "#{dir}/probe")
   abort out unless st.success?
