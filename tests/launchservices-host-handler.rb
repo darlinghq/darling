@@ -1,6 +1,6 @@
 # Host test: the handler LaunchServices reports for a web or mail URL.
 # usage: ruby tests/launchservices-host-handler.rb [REPO_ROOT]
-# LSHostOpen.c and LSHostOpenBus.c are built unmodified against stand-in CoreFoundation, FSRef and
+# LSHostOpen.c, LSHostOpenBus.c and LSHostOpenURL.c are built unmodified against stand-in CoreFoundation, FSRef and
 # elfcalls pieces. The fake host libc answers access() for xdg-open, so the test
 # checks that a handler is reported only when the opener exists on the host.
 require 'tmpdir'
@@ -168,7 +168,7 @@ Dir.mktmpdir('ls-handler-') do |dir|
     }
   C
   out, st = Open3.capture2e('clang', '-fsanitize=address,undefined', '-fno-sanitize-recover=undefined', '-fno-sanitize=function', '-w', '-D_GNU_SOURCE',
-    "-I#{dir}", "-I#{ls}", "-I#{root}/src/startup/mldr/elfcalls", "#{dir}/probe.c", "#{ls}/LSHostOpen.c", "#{ls}/LSHostOpenBus.c", '-o', "#{dir}/probe")
+    "-I#{dir}", "-I#{ls}", "-I#{root}/src/startup/mldr/elfcalls", "#{dir}/probe.c", "#{ls}/LSHostOpen.c", "#{ls}/LSHostOpenBus.c", "#{ls}/LSHostOpenURL.c", '-o', "#{dir}/probe")
   abort out unless st.success?
   %w[handler open nosystemd nolibc nosymbol noelfcalls].each do |mode|
     out, st = Open3.capture2e("#{dir}/probe", mode, rlimit_core: 0)

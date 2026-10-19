@@ -91,7 +91,7 @@ static void load_host_api(void)
 	/*
 	 * The guest's environment, deliberately: DBUS_SESSION_BUS_ADDRESS, DISPLAY and
 	 * WAYLAND_DISPLAY normally arrive from the host unchanged. A guest process can
-	 * set them; the bus address is only used when it is a "unix:" address (see
+	 * set them; the bus address is only used when it is a single unix: path or abstract address (see
 	 * LSHostOpenBus.c), so a guest process can at most point sd-bus at a socket it
 	 * picked, which it could already open itself as the same host user.
 	 */
