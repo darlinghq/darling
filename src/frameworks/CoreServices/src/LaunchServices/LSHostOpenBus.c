@@ -60,6 +60,23 @@ static int api_complete(const struct ls_host_api* api)
 		&& api->getenv && api->getuid;
 }
 
+/*
+ * sd-bus separates alternative addresses with ';' and accepts "unixexec:path=...", which runs a
+ * host program, so "unix:path=/x;unixexec:path=/bin/sh,..." must not get through. Only one plain
+ * socket address (a path or an abstract name) is taken from the environment.
+ */
+static int session_address_allowed(const char* address)
+{
+	if (strncmp(address, "unix:path=", 10) != 0 && strncmp(address, "unix:abstract=", 14) != 0)
+		return 0;
+	for (const unsigned char* c = (const unsigned char*) address; *c != '\0'; c++)
+	{
+		if (*c <= ' ' || *c >= 0x7f || *c == ';')
+			return 0;
+	}
+	return strstr(address, "unixexec") == NULL;
+}
+
 static int open_session_bus(const struct ls_host_api* api, void** ret)
 {
 	char address[512];
@@ -69,7 +86,7 @@ static int open_session_bus(const struct ls_host_api* api, void** ret)
 
 	if (env != NULL && env[0] != '\0')
 	{
-		if (strlen(env) >= sizeof(address))
+		if (strlen(env) >= sizeof(address) || !session_address_allowed(env))
 			return -LS_HOST_LINUX_EINVAL;
 		strcpy(address, env);
 	}

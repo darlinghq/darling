@@ -109,6 +109,33 @@ Dir.mktmpdir('ls-bus-') do |dir|
       assert(_LSHostOpenURL(&api, "https://example.org/", &method) == 0);
       assert(strcmp(address_seen, env_address) == 0);
       balanced();
+      /* an abstract socket is a plain address too */
+      reset(); env_address = "unix:abstract=/tmp/dbus-x";
+      assert(_LSHostOpenURL(&api, "https://example.org/", &method) == 0 && strcmp(address_seen, env_address) == 0);
+      /* sd-bus takes ';' as an alternative address and "unixexec:" runs a host program */
+      reset(); env_address = "unix:path=/nonexistent;unixexec:path=/bin/sh,argv1=-c,argv2=id";
+      assert(_LSHostOpenURL(&api, "https://example.org/", &method) == -LS_HOST_LINUX_EINVAL && bus_new == 0);
+      reset(); env_address = "unix:path=/run/user/1000/bus;unix:path=/tmp/other";
+      assert(_LSHostOpenURL(&api, "https://example.org/", &method) == -LS_HOST_LINUX_EINVAL && bus_new == 0);
+      reset(); env_address = "unix:path=/x\nunixexec:path=/bin/sh";
+      assert(_LSHostOpenURL(&api, "https://example.org/", &method) == -LS_HOST_LINUX_EINVAL && bus_new == 0);
+      reset(); env_address = "unix:path=/x unixexec:path=/bin/sh";
+      assert(_LSHostOpenURL(&api, "https://example.org/", &method) == -LS_HOST_LINUX_EINVAL && bus_new == 0);
+      reset(); env_address = "unix:path=/x --new-window";
+      assert(_LSHostOpenURL(&api, "https://example.org/", &method) == -LS_HOST_LINUX_EINVAL && bus_new == 0);
+      reset(); env_address = "unix:path=/x,unixexec:path=/bin/sh";
+      assert(_LSHostOpenURL(&api, "https://example.org/", &method) == -LS_HOST_LINUX_EINVAL && bus_new == 0);
+      reset(); env_address = "unix:path=/x\x01y";
+      assert(_LSHostOpenURL(&api, "https://example.org/", &method) == -LS_HOST_LINUX_EINVAL && bus_new == 0);
+      reset(); env_address = "unix:path=/x\xc3\xa9";
+      assert(_LSHostOpenURL(&api, "https://example.org/", &method) == -LS_HOST_LINUX_EINVAL && bus_new == 0);
+      reset(); env_address = "unix:guid=abc,path=/x";
+      assert(_LSHostOpenURL(&api, "https://example.org/", &method) == -LS_HOST_LINUX_EINVAL && bus_new == 0);
+      /* anything else is refused before a bus is created ("unixexec:" would run a host program) */
+      reset(); env_address = "unixexec:path=/bin/sh,argv1=-c,argv2=id";
+      assert(_LSHostOpenURL(&api, "https://example.org/", &method) == -LS_HOST_LINUX_EINVAL && bus_new == 0);
+      reset(); env_address = "tcp:host=127.0.0.1,port=1";
+      assert(_LSHostOpenURL(&api, "https://example.org/", &method) == -LS_HOST_LINUX_EINVAL && bus_new == 0);
       /* an overlong address is refused, not copied */
       { static char big[2048]; memset(big, 'a', sizeof big - 1); memcpy(big, "unix:", 5);
         reset(); env_address = big;
