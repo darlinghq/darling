@@ -91,9 +91,9 @@ static void load_host_api(void)
 	/*
 	 * The guest's environment, deliberately: DBUS_SESSION_BUS_ADDRESS, DISPLAY and
 	 * WAYLAND_DISPLAY normally arrive from the host unchanged. A guest process can
-	 * set them, which only points sd-bus at a socket the guest picked; it already
-	 * runs as the host user and can open the session bus itself, so this grants
-	 * nothing it did not have.
+	 * set them; the bus address is only used when it is a "unix:" address (see
+	 * LSHostOpenBus.c), so a guest process can at most point sd-bus at a socket it
+	 * picked, which it could already open itself as the same host user.
 	 */
 	api.getenv = getenv;
 	api.runtime_dir_root = "/run/user";
@@ -200,9 +200,17 @@ OSStatus _LSGetHostHandlerForURL(CFURLRef url, FSRef* outAppRef, CFURLRef* outAp
 {
 	const struct ls_host_api* api;
 	const char* opener;
+	char* string;
 	char path[256];
+	Boolean valid;
 
 	if (!_LSIsHostOpenURL(url))
+		return kLSApplicationNotFoundErr;
+	/* Do not report a handler for a URL that _LSOpenURLOnHost would refuse. */
+	string = copy_url_string(url);
+	valid = string != NULL && _LSHostOpenValidateURL(string) == 0;
+	free(string);
+	if (!valid)
 		return kLSApplicationNotFoundErr;
 	api = get_host_api();
 	if (api == NULL)

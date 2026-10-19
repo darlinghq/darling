@@ -120,6 +120,9 @@ Dir.mktmpdir('ls-handler-') do |dir|
         assert(_LSGetHostHandlerForURL((CFURLRef) &ftp, &ref, &app) == kLSApplicationNotFoundErr);
         assert(_LSIsHostOpenURL((CFURLRef) &https) && _LSIsHostOpenURL((CFURLRef) &mail) && !_LSIsHostOpenURL((CFURLRef) &ftp));
         assert(!_LSIsHostOpenURL(NULL));
+        /* no handler for a URL that opening would reject */
+        assert(_LSGetHostHandlerForURL((CFURLRef) &spaced, &ref, &app) == kLSApplicationNotFoundErr);
+        assert(_LSGetHostHandlerForURL((CFURLRef) &empty, &ref, &app) == kLSApplicationNotFoundErr);
       } else if (!strcmp(mode, "open")) {
         present = "/usr/bin/xdg-open";
         /* success: one portal call */
