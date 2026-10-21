@@ -32,10 +32,20 @@
 	return self;
 }
 
+- (NSString *)text
+{
+	return _text;
+}
+
 - (void)setText:(NSString *)text
 {
 	_text = [text copy];
 	[self setNeedsDisplay:YES];
+}
+
+- (UIColor *)textColor
+{
+	return _textColor;
 }
 
 - (void)setTextColor:(UIColor *)color
@@ -44,9 +54,25 @@
 	[self setNeedsDisplay:YES];
 }
 
+- (UIFont *)font
+{
+	return _font;
+}
+
 - (void)setFont:(UIFont *)font
 {
 	_font = font;
+	[self setNeedsDisplay:YES];
+}
+
+- (NSTextAlignment)textAlignment
+{
+	return _textAlignment;
+}
+
+- (void)setTextAlignment:(NSTextAlignment)alignment
+{
+	_textAlignment = alignment;
 	[self setNeedsDisplay:YES];
 }
 

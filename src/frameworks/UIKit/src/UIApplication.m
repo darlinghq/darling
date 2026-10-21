@@ -22,9 +22,19 @@
 @end
 
 static UIApplication *sSharedApplication;
-static id sDelegateStorage;
+static id<UIApplicationDelegate> sDelegateStorage;
 
 @implementation UIApplication
+
+- (id<UIApplicationDelegate>)delegate
+{
+	return sDelegateStorage;
+}
+
+- (void)setDelegate:(id<UIApplicationDelegate>)delegate
+{
+	sDelegateStorage = delegate;
+}
 
 + (UIApplication *)sharedApplication
 {
@@ -47,14 +57,14 @@ static id sDelegateStorage;
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification
 {
-	id<UIApplicationDelegate> delegate = _delegate;
+	id<UIApplicationDelegate> delegate = [self delegate];
 	if ([delegate respondsToSelector:@selector(application:didFinishLaunchingWithOptions:)])
 		[delegate application:self didFinishLaunchingWithOptions:nil];
 }
 
 - (void)applicationWillTerminate:(NSNotification *)notification
 {
-	id<UIApplicationDelegate> delegate = _delegate;
+	id<UIApplicationDelegate> delegate = [self delegate];
 	if ([delegate respondsToSelector:@selector(applicationWillTerminate:)])
 		[delegate applicationWillTerminate:self];
 }

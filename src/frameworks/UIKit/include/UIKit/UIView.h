@@ -15,7 +15,7 @@
 #import <AppKit/NSView.h>
 #import <CoreGraphics/CGGeometry.h>
 
-@class UIColor;
+@class UIColor, UIWindow;
 
 /*
  * UIView is an AppKit view: Darling has no separate compositor, so the UIKit
@@ -26,7 +26,12 @@
  * ivars, so the UIKit hosting window is exposed internally as -uiWindow rather
  * than shadowing -window with an incompatible type.
  */
-@interface UIView : NSView
+@interface UIView : NSView {
+@package
+	UIColor *_uiBackgroundColor;
+	UIWindow *_uiWindow;
+	BOOL _uiNeedsLayout;
+}
 
 - (instancetype)initWithFrame:(CGRect)frame;
 

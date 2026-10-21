@@ -16,16 +16,6 @@
 
 #import "UIKitPrivate.h"
 
-/* Private state lives here, not in the header: NSView already owns -window and
- * a few similarly named ivars, and the UIKit hosting window is an internal
- * detail. */
-@interface UIView () {
-	UIColor *_uiBackgroundColor;
-	UIWindow *_uiWindow;
-	BOOL _uiNeedsLayout;
-}
-@end
-
 @implementation UIView
 
 - (instancetype)initWithFrame:(CGRect)frame

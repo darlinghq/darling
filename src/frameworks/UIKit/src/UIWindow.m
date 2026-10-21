@@ -48,6 +48,11 @@
 	[(NSWindow *)_hostWindow setContentView:nil];
 }
 
+- (UIViewController *)rootViewController
+{
+	return _rootViewController;
+}
+
 - (void)setRootViewController:(UIViewController *)controller
 {
 	if (_rootViewController == controller)
