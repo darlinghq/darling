@@ -114,6 +114,10 @@ extern CF_RETURNS_RETAINED CFArrayRef FSEventStreamCopyPathsBeingWatched(ConstFS
 
 extern FSEventStreamEventId FSEventStreamGetLatestEventId(ConstFSEventStreamRef streamRef);
 
+extern FSEventStreamEventId FSEventStreamFlushAsync(FSEventStreamRef streamRef);
+extern void FSEventStreamFlushSync(FSEventStreamRef streamRef);
+extern CF_RETURNS_RETAINED CFStringRef FSEventStreamCopyDescription(ConstFSEventStreamRef streamRef);
+
 extern void FSEventStreamInvalidate(FSEventStreamRef streamRef);
 
 extern void FSEventStreamRelease(FSEventStreamRef streamRef);

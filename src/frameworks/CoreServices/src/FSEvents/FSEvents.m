@@ -63,6 +63,28 @@ FSEventStreamEventId FSEventStreamGetLatestEventId(ConstFSEventStreamRef streamR
 	return [((FSEventsImpl*) streamRef) lastEventID];
 }
 
+FSEventStreamEventId FSEventStreamFlushAsync(FSEventStreamRef streamRef)
+{
+	if (!streamRef)
+		return 0;
+	return FSEventStreamGetLatestEventId(streamRef);
+}
+
+void FSEventStreamFlushSync(FSEventStreamRef streamRef)
+{
+}
+
+CFStringRef FSEventStreamCopyDescription(ConstFSEventStreamRef streamRef)
+{
+	if (!streamRef)
+		return NULL;
+	FSEventsImpl* impl = (FSEventsImpl*) streamRef;
+	NSArray* paths = [impl copyPathsToWatch];
+	NSString* desc = [[NSString stringWithFormat: @"<FSEventStream %p: paths=%@>", streamRef, paths] retain];
+	[paths release];
+	return (CFStringRef) desc;
+}
+
 void FSEventStreamInvalidate(FSEventStreamRef streamRef)
 {
 	[((FSEventsImpl*) streamRef) invalidate];
