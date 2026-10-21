@@ -22,6 +22,9 @@
 typedef NSString* ICDownloadOption;
 
 extern const ICDownloadOption ICDownloadsDirectoryURL;
+extern const ICDownloadOption ICOverwrite;
+extern const ICDownloadOption ICSaveAsFilename;
+extern const ICDownloadOption ICSavedFilename;
 
 @interface ICCameraItem : NSObject
 

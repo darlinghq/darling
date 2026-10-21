@@ -32,3 +32,10 @@
 }
 
 @end
+
+const CLLocationAccuracy kCLLocationAccuracyBestForNavigation = -2.0;
+const CLLocationAccuracy kCLLocationAccuracyBest = -1.0;
+const CLLocationAccuracy kCLLocationAccuracyNearestTenMeters = 10.0;
+const CLLocationAccuracy kCLLocationAccuracyHundredMeters = 100.0;
+const CLLocationAccuracy kCLLocationAccuracyKilometer = 1000.0;
+const CLLocationAccuracy kCLLocationAccuracyThreeKilometers = 3000.0;

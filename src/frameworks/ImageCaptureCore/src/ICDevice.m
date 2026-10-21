@@ -19,6 +19,9 @@
 
 #import <ImageCaptureCore/ICDevice.h>
 
+// Value observed on macOS 26 by printing the public constant (rung 4).
+ICDeviceTransport const ICTransportTypeMassStorage = @"ICTransportTypeMassStorage";
+
 @implementation ICDevice
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

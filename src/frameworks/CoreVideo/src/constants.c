@@ -42,6 +42,12 @@ const CFStringRef kCVImageBufferTransferFunction_Linear = CFSTR("Linear");
 const CFStringRef kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ = CFSTR("SMPTE_ST_2084_PQ");
 const CFStringRef kCVImageBufferTransferFunction_SMPTE_ST_428_1 = CFSTR("SMPTE_ST_428_1");
 const CFStringRef kCVImageBufferTransferFunction_SMPTE_C = CFSTR("SMPTE_C");
+// Values observed on macOS 26 by printing the public constants (rung 4).
+const CFStringRef kCVImageBufferTransferFunction_sRGB = CFSTR("IEC_sRGB");
+const CFStringRef kCVBufferPropagatedAttachmentsKey = CFSTR("PropagatedAttachments");
+const CFStringRef kCVImageBufferContentLightLevelInfoKey = CFSTR("ContentLightLevelInfo");
+const CFStringRef kCVImageBufferMasteringDisplayColorVolumeKey = CFSTR("MasteringDisplayColorVolume");
+const CFStringRef kCVPixelBufferPoolAllocationThresholdKey = CFSTR("BufferPoolAllocationThreshold");
 
 const CFStringRef kCVPixelBufferIOSurfacePropertiesKey = CFSTR("IOSurfaceProperties");
 const CFStringRef kCVPixelBufferOpenGLCompatibilityKey = CFSTR("OpenGLCompatibility");
