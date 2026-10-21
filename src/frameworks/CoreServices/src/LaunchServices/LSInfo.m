@@ -612,3 +612,47 @@ OSStatus LSCopyDisplayNameForURL(CFURLRef inURL, CFStringRef *outDisplayName)
 	*outDisplayName = (CFStringRef)[lastComp copy];
 	return noErr;
 }
+
+// Rung 6 (GUESS): attribute name constants for LaunchServices item queries
+const CFStringRef kLSItemIsInvisible = CFSTR("kLSItemIsInvisible");
+const CFStringRef kLSItemExtensionIsHidden = CFSTR("kLSItemExtensionIsHidden");
+const CFStringRef kLSItemQuarantineProperties = CFSTR("kLSItemQuarantineProperties");
+
+OSStatus LSCopyItemAttribute(const FSRef *inItem, LSRolesMask inRoles, CFStringRef inAttributeName, CFTypeRef *outValue)
+{
+	if (!inItem || !inAttributeName || !outValue)
+		return paramErr;
+
+	if (CFEqual(inAttributeName, kLSItemIsInvisible) || CFEqual(inAttributeName, kLSItemExtensionIsHidden))
+	{
+		*outValue = (CFTypeRef)CFRetain(kCFBooleanFalse);
+		return noErr;
+	}
+	if (CFEqual(inAttributeName, kLSItemQuarantineProperties))
+	{
+		*outValue = NULL;
+		return kLSAttributeNotFoundErr;
+	}
+	*outValue = NULL;
+	return kLSAttributeNotFoundErr;
+}
+
+OSStatus LSCopyItemAttributes(const FSRef *inItem, LSRolesMask inRoles, CFArrayRef inAttributeNames, CFDictionaryRef *outValues)
+{
+	if (!inItem || !inAttributeNames || !outValues)
+		return paramErr;
+
+	CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorDefault, CFArrayGetCount(inAttributeNames), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	for (CFIndex i = 0; i < CFArrayGetCount(inAttributeNames); i++)
+	{
+		CFStringRef name = (CFStringRef)CFArrayGetValueAtIndex(inAttributeNames, i);
+		CFTypeRef val = NULL;
+		if (LSCopyItemAttribute(inItem, inRoles, name, &val) == noErr && val != NULL)
+		{
+			CFDictionarySetValue(dict, name, val);
+			CFRelease(val);
+		}
+	}
+	*outValues = dict;
+	return noErr;
+}
