@@ -17,8 +17,48 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef _USERNOTIFICATIONS_UNUSERNOTIFICATIONCENTER_H_
+#define _USERNOTIFICATIONS_UNUSERNOTIFICATIONCENTER_H_
 
-@interface UNUserNotificationCenter : NSObject
+#import <Foundation/Foundation.h>
+
+@protocol UNUserNotificationCenterDelegate;
+@class UNNotificationSettings, UNNotificationRequest, UNNotificationCategory;
+
+typedef NS_OPTIONS(NSUInteger, UNAuthorizationOptions) {
+    UNAuthorizationOptionBadge = (1 << 0),
+    UNAuthorizationOptionSound = (1 << 1),
+    UNAuthorizationOptionAlert = (1 << 2),
+    UNAuthorizationOptionCarPlay = (1 << 3),
+    UNAuthorizationOptionCriticalAlert = (1 << 4),
+    UNAuthorizationOptionProvidesAppNotificationSettings = (1 << 5),
+    UNAuthorizationOptionProvisional = (1 << 6),
+    UNAuthorizationOptionAnnouncement = (1 << 7)
+};
+
+@interface UNUserNotificationCenter : NSObject {
+    id<UNUserNotificationCenterDelegate> _delegate;
+}
+
++ (UNUserNotificationCenter *) currentNotificationCenter;
+
+@property(assign) id<UNUserNotificationCenterDelegate> delegate;
+@property(readonly) BOOL supportsContentExtensions;
+
+- (void) requestAuthorizationWithOptions: (UNAuthorizationOptions) options
+                       completionHandler: (void (^)(BOOL granted, NSError *error)) completionHandler;
+
+- (void) getNotificationSettingsWithCompletionHandler: (void (^)(UNNotificationSettings *settings)) completionHandler;
+
+- (void) addNotificationRequest: (UNNotificationRequest *) request
+          withCompletionHandler: (void (^)(NSError *error)) completionHandler;
+
+- (void) removeAllPendingNotificationRequests;
+- (void) removeAllDeliveredNotifications;
+
+- (void) setNotificationCategories: (NSSet<UNNotificationCategory *> *) categories;
+- (void) getNotificationCategoriesWithCompletionHandler: (void (^)(NSSet<UNNotificationCategory *> *categories)) completionHandler;
 
 @end
+
+#endif

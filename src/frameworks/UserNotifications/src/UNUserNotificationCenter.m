@@ -18,17 +18,76 @@
 */
 
 #import <UserNotifications/UNUserNotificationCenter.h>
+#import <UserNotifications/UNNotificationSettings.h>
 
 @implementation UNUserNotificationCenter
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+@synthesize delegate = _delegate;
+
+static UNUserNotificationCenter *s_currentCenter = nil;
+
++ (UNUserNotificationCenter *) currentNotificationCenter
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        s_currentCenter = [[UNUserNotificationCenter alloc] init];
+    });
+    return s_currentCenter;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (BOOL) supportsContentExtensions
 {
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+    return NO;
+}
+
+- (void) requestAuthorizationWithOptions: (UNAuthorizationOptions) options
+                       completionHandler: (void (^)(BOOL granted, NSError *error)) completionHandler
+{
+    if (completionHandler) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completionHandler(YES, nil);
+        });
+    }
+}
+
+- (void) getNotificationSettingsWithCompletionHandler: (void (^)(UNNotificationSettings *settings)) completionHandler
+{
+    if (completionHandler) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completionHandler([[[UNNotificationSettings alloc] init] autorelease]);
+        });
+    }
+}
+
+- (void) addNotificationRequest: (UNNotificationRequest *) request
+          withCompletionHandler: (void (^)(NSError *error)) completionHandler
+{
+    if (completionHandler) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completionHandler(nil);
+        });
+    }
+}
+
+- (void) removeAllPendingNotificationRequests
+{
+}
+
+- (void) removeAllDeliveredNotifications
+{
+}
+
+- (void) setNotificationCategories: (NSSet<UNNotificationCategory *> *) categories
+{
+}
+
+- (void) getNotificationCategoriesWithCompletionHandler: (void (^)(NSSet<UNNotificationCategory *> *categories)) completionHandler
+{
+    if (completionHandler) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completionHandler([NSSet set]);
+        });
+    }
 }
 
 @end
