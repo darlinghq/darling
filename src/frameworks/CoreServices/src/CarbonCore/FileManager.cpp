@@ -488,14 +488,24 @@ static bool copyFileContents(const char* src, const char* dst, mode_t mode)
 	char buf[65536];
 	ssize_t bytes;
 	bool ok = true;
-	while ((bytes = read(inFd, buf, sizeof(buf))) > 0)
+	while (true)
 	{
+		bytes = read(inFd, buf, sizeof(buf));
+		if (bytes < 0)
+		{
+			if (errno == EINTR) continue;
+			ok = false;
+			break;
+		}
+		if (bytes == 0) break;
+
 		ssize_t written = 0;
 		while (written < bytes)
 		{
 			ssize_t w = write(outFd, buf + written, bytes - written);
 			if (w <= 0)
 			{
+				if (w < 0 && errno == EINTR) continue;
 				ok = false;
 				break;
 			}
@@ -504,8 +514,6 @@ static bool copyFileContents(const char* src, const char* dst, mode_t mode)
 		if (!ok)
 			break;
 	}
-	if (bytes < 0)
-		ok = false;
 
 	close(inFd);
 	close(outFd);
