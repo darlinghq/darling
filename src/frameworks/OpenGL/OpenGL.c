@@ -272,28 +272,6 @@ static CGLWindowRef createWindow(EGLDisplay owner, EGLConfig owner_config, void 
     window->surface = eglCreateWindowSurface(owner, owner_config,
                                              (EGLNativeWindowType) native_window, NULL);
     if (window->surface == EGL_NO_SURFACE) {
-        EGLint count = 0;
-        if (eglGetConfigs(owner, NULL, 0, &count) && count > 0) {
-            EGLConfig *configs = malloc(count * sizeof(EGLConfig));
-            if (configs) {
-                if (eglGetConfigs(owner, configs, count, &count)) {
-                    for (int i = 0; i < count; i++) {
-                        EGLint surfaceType = 0;
-                        eglGetConfigAttrib(owner, configs[i], EGL_SURFACE_TYPE, &surfaceType);
-                        if (surfaceType & EGL_WINDOW_BIT) {
-                            window->surface = eglCreateWindowSurface(owner, configs[i],
-                                                                     (EGLNativeWindowType) native_window, NULL);
-                            if (window->surface != EGL_NO_SURFACE) {
-                                break;
-                            }
-                        }
-                    }
-                }
-                free(configs);
-            }
-        }
-    }
-    if (window->surface == EGL_NO_SURFACE) {
         free(window);
         return NULL;
     }
@@ -619,12 +597,12 @@ void CGLReleaseContext(CGLContextObj context) {
         return;
     }
 
-    if (__sync_sub_and_fetch(&context->retain_count, 1) != 0) {
-        return;
-    }
-
     if (CGLGetCurrentContext() == context) {
         CGLSetCurrentContext(NULL);
+    }
+
+    if (__sync_sub_and_fetch(&context->retain_count, 1) != 0) {
+        return;
     }
 
     if (context->fallback_pbuffer != EGL_NO_SURFACE) {
