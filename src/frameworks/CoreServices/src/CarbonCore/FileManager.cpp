@@ -283,19 +283,13 @@ bool hasgid(gid_t gid)
 	if (getegid() == gid)
 		return true;
 
-	while (true)
-	{
-		count = getgroups(0, nullptr);
-		if (count == -1 && errno == EINVAL)
-			continue;
+	count = getgroups(0, nullptr);
+	if (count <= 0)
+		return false;
 
-		gids = (gid_t*) alloca(sizeof(gid_t)*count);
-		if (getgroups(count, gids) != count)
-		{
-			count = 0;
-			break;
-		}
-	}
+	gids = (gid_t*) alloca(sizeof(gid_t)*count);
+	if (getgroups(count, gids) != count)
+		return false;
 
 	return std::find(gids, gids+count, gid) != (gids+count);
 }
@@ -418,8 +412,10 @@ OSErr PBCreateFileUnicodeSync(FSRefParam* paramBlock)
 	
 	if (!FSRefParamMakePath(paramBlock, path))
 		return fnfErr;
-	if (open(path.c_str(), O_CREAT|O_EXCL, 0666) == -1)
+	int fd = open(path.c_str(), O_CREAT|O_EXCL, 0666);
+	if (fd == -1)
 		return makeOSStatus(errno);
+	close(fd);
 	
 	if (paramBlock->newRef)
 		FSPathMakeRef((uint8_t*) path.c_str(), paramBlock->newRef, nullptr);
@@ -475,3 +471,202 @@ OSErr PBCloseForkSync(FSForkIOParam *paramBlock)
 	STUB();
 	return unimpErr;
 }
+
+static bool copyFileContents(const char* src, const char* dst, mode_t mode)
+{
+	int inFd = open(src, O_RDONLY);
+	if (inFd < 0)
+		return false;
+
+	int outFd = open(dst, O_WRONLY | O_CREAT | O_TRUNC, mode);
+	if (outFd < 0)
+	{
+		close(inFd);
+		return false;
+	}
+
+	char buf[65536];
+	ssize_t bytes;
+	bool ok = true;
+	while ((bytes = read(inFd, buf, sizeof(buf))) > 0)
+	{
+		ssize_t written = 0;
+		while (written < bytes)
+		{
+			ssize_t w = write(outFd, buf + written, bytes - written);
+			if (w <= 0)
+			{
+				ok = false;
+				break;
+			}
+			written += w;
+		}
+		if (!ok)
+			break;
+	}
+	if (bytes < 0)
+		ok = false;
+
+	close(inFd);
+	close(outFd);
+	return ok;
+}
+
+static bool copyRecursive(const std::string& src, const std::string& dst)
+{
+	struct stat st;
+	if (lstat(src.c_str(), &st) != 0)
+		return false;
+
+	if (S_ISDIR(st.st_mode))
+	{
+		mode_t dirMode = (st.st_mode & 0777) | S_IWUSR;
+		if (mkdir(dst.c_str(), dirMode) != 0 && errno != EEXIST)
+			return false;
+
+		DIR* dir = opendir(src.c_str());
+		if (!dir)
+			return false;
+
+		struct dirent* entry;
+		bool ok = true;
+		while ((entry = readdir(dir)) != nullptr)
+		{
+			if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+				continue;
+
+			std::string subSrc = src + "/" + entry->d_name;
+			std::string subDst = dst + "/" + entry->d_name;
+			if (!copyRecursive(subSrc, subDst))
+			{
+				ok = false;
+				break;
+			}
+		}
+		closedir(dir);
+		chmod(dst.c_str(), st.st_mode & 0777);
+		return ok;
+	}
+	else if (S_ISLNK(st.st_mode))
+	{
+		char target[PATH_MAX];
+		ssize_t len = readlink(src.c_str(), target, sizeof(target) - 1);
+		if (len < 0)
+			return false;
+		target[len] = '\0';
+		unlink(dst.c_str());
+		return symlink(target, dst.c_str()) == 0;
+	}
+	else if (S_ISREG(st.st_mode))
+	{
+		return copyFileContents(src.c_str(), dst.c_str(), st.st_mode & 0777);
+	}
+	return false;
+}
+
+extern "C" OSStatus FSCopyObjectSync(const FSRef *source, const FSRef *destinationDir, CFStringRef copyName, FSRef *newRef, OptionBits whichInfo)
+{
+	std::string srcPath;
+	std::string dstDirPath;
+
+	if (!source || !destinationDir)
+		return paramErr;
+
+	if (!FSRefMakePath(source, srcPath))
+		return fnfErr;
+
+	if (!FSRefMakePath(destinationDir, dstDirPath))
+		return fnfErr;
+
+	std::string targetPath = dstDirPath;
+	if (targetPath.back() != '/')
+		targetPath += '/';
+
+	if (copyName)
+	{
+		char nameBuf[4096];
+		if (CFStringGetCString(copyName, nameBuf, sizeof(nameBuf), kCFStringEncodingUTF8))
+			targetPath += nameBuf;
+		else
+			return paramErr;
+	}
+	else
+	{
+		size_t slash = srcPath.rfind('/');
+		if (slash != std::string::npos)
+			targetPath += srcPath.substr(slash + 1);
+		else
+			targetPath += srcPath;
+	}
+
+	struct stat targetStat;
+	if (lstat(targetPath.c_str(), &targetStat) == 0)
+		return dupFNErr;
+
+	if (!copyRecursive(srcPath, targetPath))
+		return ioErr;
+
+	if (newRef)
+	{
+		Boolean isDir = false;
+		FSPathMakeRef((const uint8_t*)targetPath.c_str(), newRef, &isDir);
+	}
+
+	return noErr;
+}
+
+extern "C" OSStatus FSMoveObjectSync(const FSRef *source, const FSRef *destinationDir, CFStringRef moveName, FSRef *newRef, OptionBits whichInfo)
+{
+	std::string srcPath;
+	std::string dstDirPath;
+
+	if (!source || !destinationDir)
+		return paramErr;
+
+	if (!FSRefMakePath(source, srcPath))
+		return fnfErr;
+
+	if (!FSRefMakePath(destinationDir, dstDirPath))
+		return fnfErr;
+
+	std::string targetPath = dstDirPath;
+	if (targetPath.back() != '/')
+		targetPath += '/';
+
+	if (moveName)
+	{
+		char nameBuf[4096];
+		if (CFStringGetCString(moveName, nameBuf, sizeof(nameBuf), kCFStringEncodingUTF8))
+			targetPath += nameBuf;
+		else
+			return paramErr;
+	}
+	else
+	{
+		size_t slash = srcPath.rfind('/');
+		if (slash != std::string::npos)
+			targetPath += srcPath.substr(slash + 1);
+		else
+			targetPath += srcPath;
+	}
+
+	struct stat targetStat;
+	if (lstat(targetPath.c_str(), &targetStat) == 0)
+		return dupFNErr;
+
+	if (::rename(srcPath.c_str(), targetPath.c_str()) != 0)
+	{
+		if (errno == EXDEV)
+			return diffVolErr;
+		return makeOSStatus(errno);
+	}
+
+	if (newRef)
+	{
+		Boolean isDir = false;
+		FSPathMakeRef((const uint8_t*)targetPath.c_str(), newRef, &isDir);
+	}
+
+	return noErr;
+}
+
