@@ -77,12 +77,14 @@ static MPNowPlayingInfoCenter *s_defaultCenter = nil;
 }
 
 - (void) addTarget: (id) target action: (SEL) action {
-    _target = target;
+    [_target release];
+    _target = [target retain];
     _action = action;
 }
 
 - (void) removeTarget: (id) target action: (SEL) action {
     if (_target == target && _action == action) {
+        [_target release];
         _target = nil;
         _action = NULL;
     }
@@ -90,9 +92,15 @@ static MPNowPlayingInfoCenter *s_defaultCenter = nil;
 
 - (void) removeTarget: (id) target {
     if (_target == target) {
+        [_target release];
         _target = nil;
         _action = NULL;
     }
+}
+
+- (void) dealloc {
+    [_target release];
+    [super dealloc];
 }
 
 - (id) addTargetWithHandler: (id) handler {
@@ -103,6 +111,9 @@ static MPNowPlayingInfoCenter *s_defaultCenter = nil;
     NSMethodSignature *sig = [super methodSignatureForSelector: aSelector];
     if (sig) return sig;
     const char *selName = sel_getName(aSelector);
+    if (strcmp(selName, "setEnabled:") == 0) {
+        return [NSMethodSignature signatureWithObjCTypes: "v@:c"];
+    }
     if (strncmp(selName, "set", 3) == 0) {
         return [NSMethodSignature signatureWithObjCTypes: "v@:@"];
     }
@@ -140,6 +151,11 @@ static MPNowPlayingInfoCenter *s_defaultCenter = nil;
 
 @synthesize command = _command;
 @synthesize timestamp = _timestamp;
+
+- (void) dealloc {
+    [_command release];
+    [super dealloc];
+}
 
 @end
 
@@ -216,6 +232,7 @@ static MPRemoteCommandCenter *s_sharedCommandCenter = nil;
                 [_commands setObject: cmd forKey: selName];
                 [cmd release];
             }
+            cmd = [[cmd retain] autorelease];
         }
         [anInvocation setReturnValue: &cmd];
         return;
