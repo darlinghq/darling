@@ -42,6 +42,7 @@ static EGLint const attribute_list[] = {
     EGL_RED_SIZE, 1,
     EGL_GREEN_SIZE, 1,
     EGL_BLUE_SIZE, 1,
+    EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_PBUFFER_BIT,
     EGL_NONE
 };
 
@@ -62,12 +63,14 @@ struct _CGLContextObj {
     EGLConfig egl_config;
     EGLContext egl_context;
     EGLSurface egl_surface;
+    EGLSurface fallback_pbuffer;
     // EGL has no function for getting the current swap interval,
     // so we need to save the last set value. The default is 1.
     // This is the application's value; a paced context never gives it to EGL.
     int swap_interval;
     int paced;
     struct cgl_swap_pacer pacer;
+    CGLPixelFormatObj pixel_format;
 };
 
 struct _CGLPixelFormatObj {
@@ -260,12 +263,36 @@ struct _CGLWindow {
 };
 
 static CGLWindowRef createWindow(EGLDisplay owner, EGLConfig owner_config, void *native_window) {
+    if (!native_window)
+        return NULL;
     struct _CGLWindow *window = malloc(sizeof(*window));
     if (!window)
         return NULL;
     window->display = owner;
     window->surface = eglCreateWindowSurface(owner, owner_config,
                                              (EGLNativeWindowType) native_window, NULL);
+    if (window->surface == EGL_NO_SURFACE) {
+        EGLint count = 0;
+        if (eglGetConfigs(owner, NULL, 0, &count) && count > 0) {
+            EGLConfig *configs = malloc(count * sizeof(EGLConfig));
+            if (configs) {
+                if (eglGetConfigs(owner, configs, count, &count)) {
+                    for (int i = 0; i < count; i++) {
+                        EGLint surfaceType = 0;
+                        eglGetConfigAttrib(owner, configs[i], EGL_SURFACE_TYPE, &surfaceType);
+                        if (surfaceType & EGL_WINDOW_BIT) {
+                            window->surface = eglCreateWindowSurface(owner, configs[i],
+                                                                     (EGLNativeWindowType) native_window, NULL);
+                            if (window->surface != EGL_NO_SURFACE) {
+                                break;
+                            }
+                        }
+                    }
+                }
+                free(configs);
+            }
+        }
+    }
     if (window->surface == EGL_NO_SURFACE) {
         free(window);
         return NULL;
@@ -304,11 +331,18 @@ CGL_EXPORT CGLError CGLContextMakeCurrentAndAttachToWindow(CGLContextObj context
     if (drawable->display != context->egl_display)
         return kCGLBadMatch;
     EGLSurface previous_surface = context->egl_surface;
+    EGLSurface old_fallback = context->fallback_pbuffer;
     context->egl_surface = drawable->surface;
     CGLError error = CGLSetCurrentContext(context);
-    if (error != kCGLNoError)
+    if (error != kCGLNoError) {
         context->egl_surface = previous_surface;
-    return error;
+        return error;
+    }
+    if (old_fallback != EGL_NO_SURFACE) {
+        eglDestroySurface(context->egl_display, old_fallback);
+        context->fallback_pbuffer = EGL_NO_SURFACE;
+    }
+    return kCGLNoError;
 }
 
 static pthread_key_t current_context_key;
@@ -338,12 +372,41 @@ CGLError CGLSetCurrentContext(CGLContextObj context) {
         return kCGLBadState;
     if (context != NULL) {
         EGLSurface surface = context->egl_surface;
-        if (!eglMakeCurrent(context->egl_display, surface, surface, context->egl_context)) {
-            return kCGLBadContext;
+        if (surface == EGL_NO_SURFACE) {
+            if (!eglMakeCurrent(context->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, context->egl_context)) {
+                const EGLint pbufferAttribs[] = { EGL_WIDTH, 1, EGL_HEIGHT, 1, EGL_NONE };
+                EGLSurface pbuf = eglCreatePbufferSurface(context->egl_display, context->egl_config, pbufferAttribs);
+                if (pbuf != EGL_NO_SURFACE && eglMakeCurrent(context->egl_display, pbuf, pbuf, context->egl_context)) {
+                    context->fallback_pbuffer = context->egl_surface = surface = pbuf;
+                } else {
+                    if (pbuf != EGL_NO_SURFACE)
+                        eglDestroySurface(context->egl_display, pbuf);
+                    EGLint pbufConfAttrs[] = { EGL_SURFACE_TYPE, EGL_PBUFFER_BIT, EGL_RED_SIZE, 1, EGL_NONE };
+                    EGLConfig pbufConfig = NULL;
+                    EGLint numPbuf = 0;
+                    if (eglChooseConfig(context->egl_display, pbufConfAttrs, &pbufConfig, 1, &numPbuf) && numPbuf > 0) {
+                        pbuf = eglCreatePbufferSurface(context->egl_display, pbufConfig, pbufferAttribs);
+                        if (pbuf != EGL_NO_SURFACE && eglMakeCurrent(context->egl_display, pbuf, pbuf, context->egl_context)) {
+                            context->fallback_pbuffer = context->egl_surface = surface = pbuf;
+                        } else {
+                            if (pbuf != EGL_NO_SURFACE)
+                                eglDestroySurface(context->egl_display, pbuf);
+                            return kCGLBadContext;
+                        }
+                    } else {
+                        return kCGLBadContext;
+                    }
+                }
+            }
+        } else {
+            if (!eglMakeCurrent(context->egl_display, surface, surface, context->egl_context)) {
+                return kCGLBadContext;
+            }
         }
         pthread_setspecific(get_current_context_key(), context);
-        if (surface != EGL_NO_SURFACE && !eglSwapInterval(context->egl_display, egl_swap_interval(context)))
-            return kCGLBadValue;
+        if (surface != EGL_NO_SURFACE) {
+            eglSwapInterval(context->egl_display, egl_swap_interval(context));
+        }
     } else {
         CGLContextObj current = CGLGetCurrentContext();
         if (!current)
@@ -469,7 +532,7 @@ CGLPixelFormatObj CGLRetainPixelFormat(CGLPixelFormatObj format) {
         return NULL;
     }
 
-    format->retain_count++;
+    __sync_fetch_and_add(&format->retain_count, 1);
     return format;
 }
 
@@ -478,9 +541,7 @@ void CGLReleasePixelFormat(CGLPixelFormatObj format) {
         return;
     }
 
-    format->retain_count--;
-
-    if (format->retain_count == 0) {
+    if (__sync_sub_and_fetch(&format->retain_count, 1) == 0) {
         free(format->attributes);
         free(format);
     }
@@ -532,10 +593,12 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
     context->egl_config = owner_config;
     context->egl_context = egl_context;
     context->egl_surface = NULL;
+    context->fallback_pbuffer = EGL_NO_SURFACE;
     context->swap_interval = interval;
     context->paced = paced;
     context->pacer.period_ns = cgl_period_ns_from_millihertz(0);
     context->pacer.last_ns = 0;
+    context->pixel_format = pixelFormat ? CGLRetainPixelFormat(pixelFormat) : NULL;
 
     *resultp = context;
 
@@ -547,7 +610,7 @@ CGLContextObj CGLRetainContext(CGLContextObj context) {
         return NULL;
     }
 
-    context->retain_count++;
+    __sync_fetch_and_add(&context->retain_count, 1);
     return context;
 }
 
@@ -556,24 +619,33 @@ void CGLReleaseContext(CGLContextObj context) {
         return;
     }
 
-    if (CGLGetCurrentContext() == context) {
-        // Do not free a context while EGL/TLS still identify it as current.
-        // A failed unbind leaves ownership with the caller for a later retry.
-        if (CGLSetCurrentContext(NULL) != kCGLNoError)
-            return;
+    if (__sync_sub_and_fetch(&context->retain_count, 1) != 0) {
+        return;
     }
 
-    context->retain_count--;
+    if (CGLGetCurrentContext() == context) {
+        CGLSetCurrentContext(NULL);
+    }
 
-    if (context->retain_count != 0) {
-        return;
+    if (context->fallback_pbuffer != EGL_NO_SURFACE) {
+        eglDestroySurface(context->egl_display, context->fallback_pbuffer);
+        context->fallback_pbuffer = EGL_NO_SURFACE;
     }
 
     pthread_mutex_destroy(&(context->lock));
 
+    if (context->pixel_format != NULL)
+        CGLReleasePixelFormat(context->pixel_format);
+
     eglDestroyContext(context->egl_display, context->egl_context);
 
     free(context);
+}
+
+CGL_EXPORT CGLPixelFormatObj CGLGetPixelFormat(CGLContextObj context) {
+    if (context == NULL)
+        return NULL;
+    return context->pixel_format;
 }
 
 GLuint CGLGetContextRetainCount(CGLContextObj context) {
