@@ -321,6 +321,10 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 
 	for (const std::string& sym : symbols)
 	{
+		// These signatures have eight register arguments, then two 32-bit
+		// scalars and a pointer. Darwin packs the scalars; AAPCS64 does not.
+		bool packedGLUpload = sym == "glTexSubImage3D" || sym == "glTexSubImage3DEXT" ||
+			sym == "glCompressedTexSubImage3D" || sym == "glCompressedTexSubImage3DARB";
 		output << "#if defined(__arm64__)\n"
 			"__attribute__((visibility(\"hidden\"), used))\n"
 			"struct lazy_symbol __elf_lazy_symbol_" << sym << " = { 0, \"" << sym << "\" };\n"
@@ -330,12 +334,36 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 			"\\tadrp x16, ___elf_lazy_symbol_" << sym << "@PAGE\\n"
 			"\\tadd x16, x16, ___elf_lazy_symbol_" << sym << "@PAGEOFF\\n"
 			"\\tb ___elf_lazy_common\\n\");\n"
-			"#endif\n"
-			"WRAPGEN_RESOLVER void* " << sym << "() {\n"
+			"#endif\n";
+		if (packedGLUpload)
+		{
+			output << "#if defined(__arm64__)\n"
+				"extern void __elf_abi_" << sym << "(void);\n"
+				"__asm__(\".text\\n.p2align 2\\n.private_extern ___elf_abi_" << sym << "\\n"
+				"___elf_abi_" << sym << ":\\n"
+				"\\tstp x29, x30, [sp, #-16]!\\n"
+				"\\tmov x29, sp\\n"
+				"\\tsub sp, sp, #32\\n"
+				"\\tldr w9, [x29, #16]\\n"
+				"\\tldr w10, [x29, #20]\\n"
+				"\\tldr x11, [x29, #24]\\n"
+				"\\tstr x9, [sp]\\n"
+				"\\tstr x10, [sp, #8]\\n"
+				"\\tstr x11, [sp, #16]\\n"
+				"\\tbl ___elf_lazy_" << sym << "\\n"
+				"\\tmov sp, x29\\n"
+				"\\tldp x29, x30, [sp], #16\\n"
+				"\\tret\\n\");\n"
+				"#endif\n";
+		}
+		output << "WRAPGEN_RESOLVER void* " << sym << "() {\n"
 			"\t__asm__(\".symbol_resolver _" << sym << "\");\n"
-			"#if defined(__arm64__)\n"
-			"\tif (!_elfcalls)\n"
-			"\t\treturn __elf_lazy_" << sym << ";\n"
+			"#if defined(__arm64__)\n";
+		if (packedGLUpload)
+			output << "\treturn __elf_abi_" << sym << ";\n";
+		else
+			output << "\tif (!_elfcalls)\n\t\treturn __elf_lazy_" << sym << ";\n";
+		output <<
 			"#endif\n"
 			"\topen_library();\n"
 			"\treturn _elfcalls->dlsym_fatal(lib_handle, \"" << sym << "\");\n"
