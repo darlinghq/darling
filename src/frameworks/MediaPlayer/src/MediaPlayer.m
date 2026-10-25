@@ -136,6 +136,9 @@ static MPNowPlayingInfoCenter *s_defaultCenter = nil;
 
 @end
 
+@implementation MPChangePlaybackPositionCommand
+@end
+
 @implementation MPSkipIntervalCommand
 
 @synthesize preferredIntervals = _preferredIntervals;
@@ -199,7 +202,7 @@ static MPRemoteCommandCenter *s_sharedCommandCenter = nil;
         _togglePlayPauseCommand = [[MPRemoteCommand alloc] init];
         _nextTrackCommand = [[MPRemoteCommand alloc] init];
         _previousTrackCommand = [[MPRemoteCommand alloc] init];
-        _changePlaybackPositionCommand = [[MPRemoteCommand alloc] init];
+        _changePlaybackPositionCommand = [[MPChangePlaybackPositionCommand alloc] init];
         _skipForwardCommand = [[MPSkipIntervalCommand alloc] init];
         _skipBackwardCommand = [[MPSkipIntervalCommand alloc] init];
         _seekForwardCommand = [[MPRemoteCommand alloc] init];

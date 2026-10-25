@@ -61,6 +61,9 @@ MP_EXTERN NSString *const MPNowPlayingInfoPropertyIsLiveStream;
 - (id) addTargetWithHandler: (id) handler;
 @end
 
+@interface MPChangePlaybackPositionCommand : MPRemoteCommand
+@end
+
 @interface MPSkipIntervalCommand : MPRemoteCommand {
     NSArray *_preferredIntervals;
 }
@@ -89,7 +92,7 @@ MP_EXTERN NSString *const MPNowPlayingInfoPropertyIsLiveStream;
     MPRemoteCommand *_togglePlayPauseCommand;
     MPRemoteCommand *_nextTrackCommand;
     MPRemoteCommand *_previousTrackCommand;
-    MPRemoteCommand *_changePlaybackPositionCommand;
+    MPChangePlaybackPositionCommand *_changePlaybackPositionCommand;
     MPSkipIntervalCommand *_skipForwardCommand;
     MPSkipIntervalCommand *_skipBackwardCommand;
     MPRemoteCommand *_seekForwardCommand;
@@ -104,7 +107,7 @@ MP_EXTERN NSString *const MPNowPlayingInfoPropertyIsLiveStream;
 @property(readonly) MPRemoteCommand *togglePlayPauseCommand;
 @property(readonly) MPRemoteCommand *nextTrackCommand;
 @property(readonly) MPRemoteCommand *previousTrackCommand;
-@property(readonly) MPRemoteCommand *changePlaybackPositionCommand;
+@property(readonly) MPChangePlaybackPositionCommand *changePlaybackPositionCommand;
 @property(readonly) MPSkipIntervalCommand *skipForwardCommand;
 @property(readonly) MPSkipIntervalCommand *skipBackwardCommand;
 @property(readonly) MPRemoteCommand *seekForwardCommand;
