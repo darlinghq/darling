@@ -27,6 +27,7 @@ if (COMPONENT_dev_gui_common)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_dev_gui_common")
 
 	add_subdirectory(DebugSymbols)
+	add_subdirectory(iLifeMediaBrowser)
 endif()
 
 # same here, except this is for stubs that Xcode needs
