@@ -18,8 +18,70 @@
 */
 
 #import <AddressBook/ABAddressBook.h>
+#import <AddressBook/ABPerson.h>
 
 @implementation ABAddressBook
+
++ (ABAddressBook *) sharedAddressBook
+{
+    static ABAddressBook *shared = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        shared = [[ABAddressBook alloc] init];
+    });
+    return shared;
+}
+
+- (void) dealloc
+{
+    [_me release];
+    [super dealloc];
+}
+
+- (ABPerson *) me
+{
+    @synchronized(self) {
+        if (_me == nil) {
+            _me = [[ABPerson alloc] init];
+        }
+        return [[_me retain] autorelease];
+    }
+}
+
+- (void) setMe: (ABPerson *) person
+{
+    @synchronized(self) {
+        if (_me != person) {
+            [_me release];
+            _me = [person retain];
+        }
+    }
+}
+
+- (NSArray *) people
+{
+    return [NSArray array];
+}
+
+- (NSArray *) groups
+{
+    return [NSArray array];
+}
+
+- (ABRecord *) recordForUniqueId: (NSString *) uniqueId
+{
+    return nil;
+}
+
+- (BOOL) save
+{
+    return YES;
+}
+
+- (BOOL) hasUnsavedChanges
+{
+    return NO;
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {

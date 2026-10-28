@@ -18,10 +18,29 @@
 */
 
 #import <AddressBook/ABPerson.h>
+#import <AddressBook/ABGlobals.h>
 #import <Foundation/NSMethodSignature.h>
 #import <Foundation/NSInvocation.h>
 
 @implementation ABPerson
+
+- (id) valueForProperty: (NSString *) property
+{
+    if ([property isEqual: kABFirstNameProperty]) {
+        NSString *name = NSFullUserName();
+        NSArray *parts = [name componentsSeparatedByString: @" "];
+        return [parts count] > 0 ? parts[0] : (NSUserName() ?: @"Developer");
+    }
+    if ([property isEqual: kABLastNameProperty]) {
+        NSString *name = NSFullUserName();
+        NSArray *parts = [name componentsSeparatedByString: @" "];
+        return [parts count] > 1 ? parts[1] : @"";
+    }
+    if ([property isEqual: kABOrganizationProperty]) {
+        return @"Darling Developer";
+    }
+    return [super valueForProperty: property];
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
