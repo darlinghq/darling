@@ -199,13 +199,15 @@ int main(int argc, char *argv[])
 			return EXIT_FAILURE;
 		}
 
-		appURL = (CFURLRef) [NSURL fileURLWithPath: appPath];
+		appURL = (CFURLRef) CFRetain((CFURLRef)[NSURL fileURLWithPath: appPath]);
 		result = FSPathMakeRef((const UInt8*) [appPath UTF8String], &fsref, NULL);
 	}
 
 	if (result != noErr)
 	{
 		fprintf(stderr, "Cannot find required application: %d\n", result);
+		if (appURL)
+			CFRelease(appURL);
 		return EXIT_FAILURE;
 	}
 
@@ -241,6 +243,9 @@ int main(int argc, char *argv[])
 
 	// TODO: Apple Events, PSNs (for waiting)
 	result = LSOpenURLsWithRole((CFArrayRef) urlsToOpen, kLSRolesAll, NULL, &params, NULL, 0);
+
+	if (appURL)
+		CFRelease(appURL);
 
 	if (result != noErr)
 	{

@@ -37,6 +37,7 @@ LSOpenURLsWithRole(
 	LSLaunchURLSpec spec;
 	memset(&spec, 0, sizeof(spec));
 	spec.itemURLs = inURLs;
+	// Note: inRole is handled by LaunchServices default role resolution
 
 	CFURLRef appURL = NULL;
 	if (inAppParams)
@@ -49,14 +50,15 @@ LSOpenURLsWithRole(
 				CFStringRef urlStr = CFStringCreateWithCString(NULL, path, kCFStringEncodingUTF8);
 				if (urlStr)
 				{
-					appURL = CFURLCreateWithFileSystemPath(NULL, urlStr, kCFURLPOSIXPathStyle, FALSE);
+					// Application bundles (.app) are directories
+					appURL = CFURLCreateWithFileSystemPath(NULL, urlStr, kCFURLPOSIXPathStyle, TRUE);
 					CFRelease(urlStr);
 				}
 			}
 		}
 		spec.appURL = appURL;
 		spec.launchFlags = inAppParams->flags;
-		spec.passThruParams = (void*) inAppParams->argv;
+		spec.passThruParams = NULL; // passThruParams expects an AEDesc*, not CFArrayRef
 	}
 
 	OSStatus status = LSOpenFromURLSpec(&spec, NULL);

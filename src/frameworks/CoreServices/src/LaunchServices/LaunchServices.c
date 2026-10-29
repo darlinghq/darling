@@ -24,7 +24,6 @@
 #include <launch_priv.h>
 #include <spawn.h>
 #include <crt_externs.h>
-#define environ (*_NSGetEnviron())
 
 static void get_main_executable_info(CFURLRef appURL, CFStringRef *exec, CFStringRef *bundleName);
 
@@ -74,7 +73,7 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 			else
 			{
 				printf("TODO: forward to xdg-open\n");
-				ret = 1;
+				ret = kLSApplicationNotFoundErr;
 			}
 
 			if (extension != NULL)
@@ -92,60 +91,99 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 
 OSStatus _LSLaunchApplication(CFURLRef appPath)
 {
-	CFStringRef executable, bundleName;
-	CFIndex nameSize, execSize;
-	CFURLRef pre, url_plus_exec;
-	pid_t pid;
-	char *name, *exec, *argv[2];
+	CFStringRef executable = NULL, bundleName = NULL;
+	CFIndex nameSize = 0, execSize = 0;
+	CFURLRef pre = NULL, url_plus_exec = NULL;
+	pid_t pid = -1;
+	char *name = NULL, *exec = NULL, *argv[2];
+	OSStatus status = kLSApplicationNotFoundErr;
 
 	/* Read info.plist, find path to main executable */
 	get_main_executable_info(appPath, &executable, &bundleName);
 	if (executable == NULL)
 	{
-		return 1;
+		goto cleanup;
 	}
-	else
+
+	url_plus_exec = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, appPath, CFSTR("Contents"), TRUE);
+	if (!url_plus_exec)
+		goto cleanup;
+
+	pre = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, url_plus_exec, CFSTR("MacOS"), TRUE);
+	CFRelease(url_plus_exec);
+	url_plus_exec = NULL;
+	if (!pre)
+		goto cleanup;
+
+	url_plus_exec = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, pre, executable, FALSE);
+	CFRelease(pre);
+	pre = NULL;
+	if (!url_plus_exec)
+		goto cleanup;
+
+	/* Launch the executable */
+	CFStringRef execPath = CFURLCopyFileSystemPath(url_plus_exec, kCFURLPOSIXPathStyle);
+	CFRelease(url_plus_exec);
+	url_plus_exec = NULL;
+	if (!execPath)
+		goto cleanup;
+
+	/* Try to use CFBundleName first */
+	if (bundleName == NULL)
+		bundleName = CFStringCreateCopy(kCFAllocatorDefault, execPath);
+	if (!bundleName)
 	{
-		url_plus_exec = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, appPath, CFSTR("Contents"), TRUE);
-		pre = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, url_plus_exec, CFSTR("MacOS"), TRUE);
-		CFRelease(url_plus_exec);
-		url_plus_exec = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, pre, executable, FALSE);
-		CFRelease(pre);
-		/* Launch the executable */
-		CFStringRef execPath = CFURLCopyFileSystemPath(url_plus_exec, kCFURLPOSIXPathStyle);
-		CFRelease(url_plus_exec);
-
-		/* Try to use CFBundleName first */
-		if (bundleName == NULL)
-			bundleName = CFStringCreateCopy(kCFAllocatorDefault, execPath);
-		nameSize = CFStringGetMaximumSizeOfFileSystemRepresentation(bundleName);
-		name = malloc(nameSize);
-		CFStringGetFileSystemRepresentation(bundleName, name, nameSize);
-		execSize = CFStringGetMaximumSizeOfFileSystemRepresentation(execPath);
-		exec = malloc(execSize);
-		CFStringGetFileSystemRepresentation(execPath, exec, execSize);
 		CFRelease(execPath);
-		argv[0] = exec;
-		argv[1] = NULL;
-		pid = spawn_via_launchd(name, (const char *const *)argv, NULL);
-		if (pid < 0)
-		{
-			if (posix_spawn(&pid, exec, NULL, NULL, argv, environ) != 0)
-			{
-				printf("%s: Failed to spawn via launchd and posix_spawn\n", exec);
-				free(name);
-				free(exec);
-				return 1;
-			}
-		}
-		free(name);
-		free(exec);
-		CFRelease(executable);
-
+		goto cleanup;
 	}
-	if (bundleName != NULL)
+
+	nameSize = CFStringGetMaximumSizeOfFileSystemRepresentation(bundleName);
+	name = malloc(nameSize);
+	if (!name)
+	{
+		CFRelease(execPath);
+		goto cleanup;
+	}
+	CFStringGetFileSystemRepresentation(bundleName, name, nameSize);
+
+	execSize = CFStringGetMaximumSizeOfFileSystemRepresentation(execPath);
+	exec = malloc(execSize);
+	if (!exec)
+	{
+		CFRelease(execPath);
+		goto cleanup;
+	}
+	CFStringGetFileSystemRepresentation(execPath, exec, execSize);
+	CFRelease(execPath);
+
+	argv[0] = exec;
+	argv[1] = NULL;
+	pid = spawn_via_launchd(name, (const char *const *)argv, NULL);
+	if (pid < 0)
+	{
+		// Fallback: spawn directly via posix_spawn when launchd job submission fails
+		char **envp = *_NSGetEnviron();
+		if (posix_spawn(&pid, exec, NULL, NULL, argv, envp) != 0)
+		{
+			printf("%s: Failed to spawn via launchd and posix_spawn\n", exec);
+			status = kLSApplicationNotFoundErr;
+			goto cleanup;
+		}
+	}
+
+	status = noErr;
+
+cleanup:
+	if (name)
+		free(name);
+	if (exec)
+		free(exec);
+	if (executable)
+		CFRelease(executable);
+	if (bundleName)
 		CFRelease(bundleName);
-	return 0;
+
+	return status;
 }
 
 static void get_main_executable_info(CFURLRef appURL, CFStringRef *exec, CFStringRef *bundleName)
