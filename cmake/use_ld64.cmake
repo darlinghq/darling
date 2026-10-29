@@ -1,6 +1,6 @@
 FUNCTION(use_ld64 target)
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
-		LINK_FLAGS " -fuse-ld=${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/${APPLE_TARGET_TRIPLET_PRIMARY}-ld ")
+		LINK_FLAGS " -fuse-ld=${CCTOOLS_LD} ")
 
 	if (COMPONENT_gui)
 		set(COCOTRON_FW_PATH "${CMAKE_BINARY_DIR}/src/external/cocotron")
@@ -11,8 +11,8 @@ FUNCTION(use_ld64 target)
 	endif()
 
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
-		LINK_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/ \
--B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ \
+		LINK_FLAGS " -B ${CCTOOLS_LD_DIR}/ \
+-B ${CCTOOLS_LIPO_DIR}/ \
 -target ${APPLE_TARGET_TRIPLET_PRIMARY} -Wl,-Z \
 -Wl,-sdk_version,${CMAKE_OSX_DEPLOYMENT_TARGET} \
 -Wl,-dylib_file,/usr/lib/system/libsystem_c.dylib:${CMAKE_BINARY_DIR}/src/external/libc/libsystem_c_firstpass.dylib \

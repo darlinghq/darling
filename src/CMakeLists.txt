@@ -79,10 +79,23 @@ find_package(FLEX)
 set(DARLING_SDK_RELATIVE_PATH "Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
 set(DARLING_ROOT_RELATIVE_TO_SDK "../../../../../..")
 
-add_subdirectory(external/cctools-port/cctools/ld64/src)
-add_subdirectory(external/cctools-port/cctools/ar)
-#add_subdirectory(external/cctools-port/cctools/as)
-add_subdirectory(external/cctools-port/cctools/misc)
+if (USE_SYSTEM_CCTOOLS)
+	# the SDK's mach-o/arch.h links into the cctools-port submodule; provide the installed one instead
+	file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/mach-o")
+	file(CREATE_LINK "${CCTOOLS_INCLUDE_DIR}/mach-o/arch.h"
+		"${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/mach-o/arch.h" SYMBOLIC)
+
+	# targets throughout the tree depend on these by name
+	add_custom_target(${APPLE_TARGET_TRIPLET_PRIMARY}-ld)
+	add_custom_target(${APPLE_TARGET_TRIPLET_PRIMARY}-ar)
+	add_custom_target(ranlib)
+	add_custom_target(lipo)
+else()
+	add_subdirectory(external/cctools-port/cctools/ld64/src)
+	add_subdirectory(external/cctools-port/cctools/ar)
+	#add_subdirectory(external/cctools-port/cctools/as)
+	add_subdirectory(external/cctools-port/cctools/misc)
+endif()
 
 #add_subdirectory(util)
 #add_subdirectory(libmach-o)
@@ -97,7 +110,13 @@ add_subdirectory(startup)
 
 include_directories(${CMAKE_SOURCE_DIR}/basic-headers)
 
-add_subdirectory(external/bootstrap_cmds)
+if (USE_SYSTEM_MIG)
+	# targets throughout the tree depend on these by name
+	add_custom_target(migcom)
+	add_custom_target(migexe)
+else()
+	add_subdirectory(external/bootstrap_cmds)
+endif()
 
 add_definitions(
 	-D__APPLE__
@@ -110,8 +129,8 @@ add_definitions(
 	-DPLATFORM_MacOSX
 )
 
-set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ar")
-set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ranlib")
+set(CMAKE_AR "${CCTOOLS_AR}")
+set(CMAKE_RANLIB "${CCTOOLS_RANLIB}")
 #set(CMAKE_ASM_COMPILER "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/as/${APPLE_TARGET_TRIPLET_PRIMARY}-as")
 
 # set macOS deployment version

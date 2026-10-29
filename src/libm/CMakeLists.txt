@@ -183,7 +183,7 @@ add_circular(system_m FAT
 
 install(TARGETS system_m DESTINATION libexec/darling/usr/lib/system)
 
-set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ar")
-set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ranlib")
+set(CMAKE_AR "${CCTOOLS_AR}")
+set(CMAKE_RANLIB "${CCTOOLS_RANLIB}")
 add_darling_static_library(system_m_static SOURCES ${libm_sources} $<TARGET_OBJECTS:system_m_extra>)
 make_fat(system_m_static)

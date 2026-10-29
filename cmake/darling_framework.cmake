@@ -232,7 +232,7 @@ function(add_separated_framework name)
 		if (FRAMEWORK_CIRCULAR_DEPENDENCIES)
 			add_dependencies(${my_name}_${APPLE_ARCH_64BIT}_firstpass ${my_name}_${APPLE_ARCH_32BIT}_firstpass)
 			add_custom_command(TARGET ${my_name}_${APPLE_ARCH_64BIT}_firstpass POST_BUILD
-				COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
+				COMMAND ${CCTOOLS_LIPO}
 					-arch ${APPLE_ARCH_32BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_32BIT}_firstpass>
 					-arch ${APPLE_ARCH_64BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}_firstpass>
 					-create
@@ -252,7 +252,7 @@ function(add_separated_framework name)
 
 		add_dependencies(${my_name}_${APPLE_ARCH_64BIT} ${my_name}_${APPLE_ARCH_32BIT})
 		add_custom_command(TARGET ${my_name}_${APPLE_ARCH_64BIT} POST_BUILD
-			COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
+			COMMAND ${CCTOOLS_LIPO}
 				-arch ${APPLE_ARCH_32BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_32BIT}>
 				-arch ${APPLE_ARCH_64BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}>
 				-create
@@ -271,7 +271,7 @@ function(add_separated_framework name)
 	elseif (BUILD_TARGET_32BIT)
 		if (FRAMEWORK_CIRCULAR_DEPENDENCIES)
 			add_custom_command(TARGET ${my_name}_${APPLE_ARCH_32BIT}_firstpass POST_BUILD
-				COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
+				COMMAND ${CCTOOLS_LIPO}
 					-arch ${APPLE_ARCH_32BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_32BIT}_firstpass>
 					-create
 					-output
@@ -289,7 +289,7 @@ function(add_separated_framework name)
 		endif (FRAMEWORK_CIRCULAR_DEPENDENCIES)
 
 		add_custom_command(TARGET ${my_name}_${APPLE_ARCH_32BIT} POST_BUILD
-			COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
+			COMMAND ${CCTOOLS_LIPO}
 				-arch ${APPLE_ARCH_32BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_32BIT}>
 				-create
 				-output
@@ -307,7 +307,7 @@ function(add_separated_framework name)
 	elseif (BUILD_TARGET_64BIT)
 		if (FRAMEWORK_CIRCULAR_DEPENDENCIES)
 			add_custom_command(TARGET ${my_name}_${APPLE_ARCH_64BIT}_firstpass POST_BUILD
-				COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
+				COMMAND ${CCTOOLS_LIPO}
 					-arch ${APPLE_ARCH_64BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}_firstpass>
 					-create
 					-output
@@ -325,7 +325,7 @@ function(add_separated_framework name)
 		endif (FRAMEWORK_CIRCULAR_DEPENDENCIES)
 
 		add_custom_command(TARGET ${my_name}_${APPLE_ARCH_64BIT} POST_BUILD
-			COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
+			COMMAND ${CCTOOLS_LIPO}
 				-arch ${APPLE_ARCH_64BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}>
 				-create
 				-output
