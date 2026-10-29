@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
 			return EXIT_FAILURE;
 		}
 
-		appURL = (CFURLRef) [NSURL URLWithString: appPath];
+		appURL = (CFURLRef) [NSURL fileURLWithPath: appPath];
 		result = FSPathMakeRef((const UInt8*) [appPath UTF8String], &fsref, NULL);
 	}
 

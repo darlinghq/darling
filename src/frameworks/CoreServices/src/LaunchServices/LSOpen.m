@@ -31,8 +31,39 @@ LSOpenURLsWithRole(
   ProcessSerialNumber * outPSNs,
   CFIndex inMaxPSNCount)
 {
-	puts("LSOpenURLsWithRole STUB");
-	return unimpErr;
+	if (!inURLs || CFArrayGetCount(inURLs) == 0)
+		return paramErr;
+
+	LSLaunchURLSpec spec;
+	memset(&spec, 0, sizeof(spec));
+	spec.itemURLs = inURLs;
+
+	CFURLRef appURL = NULL;
+	if (inAppParams)
+	{
+		if (inAppParams->application)
+		{
+			char path[4096];
+			if (FSRefMakePath(inAppParams->application, (UInt8*) path, sizeof(path) - 1) == noErr)
+			{
+				CFStringRef urlStr = CFStringCreateWithCString(NULL, path, kCFStringEncodingUTF8);
+				if (urlStr)
+				{
+					appURL = CFURLCreateWithFileSystemPath(NULL, urlStr, kCFURLPOSIXPathStyle, FALSE);
+					CFRelease(urlStr);
+				}
+			}
+		}
+		spec.appURL = appURL;
+		spec.launchFlags = inAppParams->flags;
+		spec.passThruParams = (void*) inAppParams->argv;
+	}
+
+	OSStatus status = LSOpenFromURLSpec(&spec, NULL);
+	if (appURL)
+		CFRelease(appURL);
+
+	return status;
 }
 
 OSStatus

@@ -22,6 +22,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <launch_priv.h>
+#include <spawn.h>
+#include <crt_externs.h>
+#define environ (*_NSGetEnviron())
 
 static void get_main_executable_info(CFURLRef appURL, CFStringRef *exec, CFStringRef *bundleName);
 
@@ -109,28 +112,34 @@ OSStatus _LSLaunchApplication(CFURLRef appPath)
 		url_plus_exec = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, pre, executable, FALSE);
 		CFRelease(pre);
 		/* Launch the executable */
-		executable = CFURLGetString(url_plus_exec);
+		CFStringRef execPath = CFURLCopyFileSystemPath(url_plus_exec, kCFURLPOSIXPathStyle);
+		CFRelease(url_plus_exec);
 
 		/* Try to use CFBundleName first */
 		if (bundleName == NULL)
-			bundleName = CFStringCreateCopy(kCFAllocatorDefault, executable);
+			bundleName = CFStringCreateCopy(kCFAllocatorDefault, execPath);
 		nameSize = CFStringGetMaximumSizeOfFileSystemRepresentation(bundleName);
 		name = malloc(nameSize);
 		CFStringGetFileSystemRepresentation(bundleName, name, nameSize);
-		execSize = CFStringGetMaximumSizeOfFileSystemRepresentation(executable);
+		execSize = CFStringGetMaximumSizeOfFileSystemRepresentation(execPath);
 		exec = malloc(execSize);
-		CFStringGetFileSystemRepresentation(executable, exec, execSize);
+		CFStringGetFileSystemRepresentation(execPath, exec, execSize);
+		CFRelease(execPath);
 		argv[0] = exec;
 		argv[1] = NULL;
 		pid = spawn_via_launchd(name, (const char *const *)argv, NULL);
 		if (pid < 0)
 		{
-			printf("%s: Failed to spawn via launchd\n", exec);
-			return 1;
+			if (posix_spawn(&pid, exec, NULL, NULL, argv, environ) != 0)
+			{
+				printf("%s: Failed to spawn via launchd and posix_spawn\n", exec);
+				free(name);
+				free(exec);
+				return 1;
+			}
 		}
 		free(name);
 		free(exec);
-		CFRelease(url_plus_exec);
 		CFRelease(executable);
 
 	}
