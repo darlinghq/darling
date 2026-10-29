@@ -41,10 +41,6 @@
 #define EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT 0x00000001
 #endif
 
-#ifndef EGL_CONTEXT_OPENGL_FORWARD_COMPATIBLE_BIT_KHR
-#define EGL_CONTEXT_OPENGL_FORWARD_COMPATIBLE_BIT_KHR 0x00000002
-#endif
-
 #define APPLE
 #define __APPLE__
 
@@ -212,6 +208,7 @@ CGLError CGLRegisterNativeDisplayForPlatform(void *native_display, unsigned int 
         EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8,
         EGL_ALPHA_SIZE, 8,
         EGL_DEPTH_SIZE, 24,
+        EGL_STENCIL_SIZE, 8,
         EGL_NONE
     };
     EGLint count = 0;
@@ -507,7 +504,7 @@ CGLError CGLChoosePixelFormat(
     GLint *number_of_screens
 ) {
     if (!attrs) {
-        return kCGLBadPixelFormat;
+        return kCGLBadAttribute;
     }
     if (!result) {
         return kCGLBadAddress;
