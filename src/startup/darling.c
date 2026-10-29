@@ -585,6 +585,7 @@ void setupShellspawnEnv(int sockfd)
 		"PATH",
 		"TMPDIR",
 		"HOME",
+		"DARLING_PREFIX",
 	};
 
 	char buffer2[4096];
@@ -613,6 +614,10 @@ void setupShellspawnEnv(int sockfd)
 	}
 
 	snprintf(buffer2, sizeof(buffer2), "HOME=/Users/%s", login);
+	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, buffer2);
+
+	// the prefix's path on the host, for darpath
+	snprintf(buffer2, sizeof(buffer2), "DARLING_PREFIX=%s", prefix);
 	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, buffer2);
 
 	for (char** var_ptr = environ; *var_ptr != NULL; ++var_ptr) {
