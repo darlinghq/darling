@@ -25,6 +25,26 @@
 #define EGL_PLATFORM_WAYLAND_KHR 0x31D8
 #endif
 
+#ifndef EGL_CONTEXT_MAJOR_VERSION
+#define EGL_CONTEXT_MAJOR_VERSION 0x3098
+#endif
+
+#ifndef EGL_CONTEXT_MINOR_VERSION
+#define EGL_CONTEXT_MINOR_VERSION 0x30FB
+#endif
+
+#ifndef EGL_CONTEXT_OPENGL_PROFILE_MASK
+#define EGL_CONTEXT_OPENGL_PROFILE_MASK 0x30FD
+#endif
+
+#ifndef EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT
+#define EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT 0x00000001
+#endif
+
+#ifndef EGL_CONTEXT_OPENGL_FORWARD_COMPATIBLE_BIT_KHR
+#define EGL_CONTEXT_OPENGL_FORWARD_COMPATIBLE_BIT_KHR 0x00000002
+#endif
+
 #define APPLE
 #define __APPLE__
 
@@ -38,13 +58,52 @@ static int default_swap_interval = 1;
 static int default_paced = 0;
 static pthread_mutex_t registration_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static EGLint const attribute_list[] = {
-    EGL_RED_SIZE, 1,
-    EGL_GREEN_SIZE, 1,
-    EGL_BLUE_SIZE, 1,
-    EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_PBUFFER_BIT,
-    EGL_NONE
-};
+static EGLBoolean choose_registered_config(EGLDisplay dpy, EGLConfig *out_config, int *out_count) {
+    static EGLint const attrs_24[] = {
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_ALPHA_SIZE, 8,
+        EGL_DEPTH_SIZE, 24,
+        EGL_STENCIL_SIZE, 8,
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_PBUFFER_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+        EGL_NONE
+    };
+    static EGLint const attrs_16[] = {
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_ALPHA_SIZE, 8,
+        EGL_DEPTH_SIZE, 16,
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_PBUFFER_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+        EGL_NONE
+    };
+    static EGLint const attrs_fallback[] = {
+        EGL_RED_SIZE, 1,
+        EGL_GREEN_SIZE, 1,
+        EGL_BLUE_SIZE, 1,
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_PBUFFER_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+        EGL_NONE
+    };
+
+    EGLint count = 0;
+    if (eglChooseConfig(dpy, attrs_24, out_config, 1, &count) && count > 0) {
+        if (out_count) *out_count = count;
+        return EGL_TRUE;
+    }
+    if (eglChooseConfig(dpy, attrs_16, out_config, 1, &count) && count > 0) {
+        if (out_count) *out_count = count;
+        return EGL_TRUE;
+    }
+    if (eglChooseConfig(dpy, attrs_fallback, out_config, 1, &count) && count > 0) {
+        if (out_count) *out_count = count;
+        return EGL_TRUE;
+    }
+    return EGL_FALSE;
+}
 
 struct _CGLDisplay
 {
@@ -92,6 +151,7 @@ static inline int attribute_has_argument(CGLPixelFormatAttribute attr) {
     case kCGLPFAAccumSize:
     case kCGLPFARendererID:
     case kCGLPFADisplayMask:
+    case kCGLPFAOpenGLProfile:
         return 1;
     default:
         return 0;
@@ -120,7 +180,7 @@ CGLError CGLRegisterNativeDisplay(void *native_display) {
     EGLint count;
     if (candidate == EGL_NO_DISPLAY || !eglInitialize(candidate, NULL, NULL))
         return kCGLBadConnection;
-    if (!eglChooseConfig(candidate, attribute_list, &candidate_config, 1, &count) || count == 0)
+    if (!choose_registered_config(candidate, &candidate_config, &count))
         return kCGLBadPixelFormat;
     if (!eglBindAPI(EGL_OPENGL_API))
         return kCGLBadState;
@@ -222,7 +282,7 @@ static struct _CGLDisplay* getCGLDisplay(CGSConnectionID cid)
         rv->display = disp;
 
         eglInitialize(rv->display, NULL, NULL);
-        eglChooseConfig(rv->display, attribute_list, &rv->config, 1, &rv->num_config);
+        choose_registered_config(rv->display, &rv->config, &rv->num_config);
 
         eglBindAPI(EGL_OPENGL_API);
 
@@ -446,7 +506,18 @@ CGLError CGLChoosePixelFormat(
     CGLPixelFormatObj *result,
     GLint *number_of_screens
 ) {
+    if (!attrs) {
+        return kCGLBadPixelFormat;
+    }
+    if (!result) {
+        return kCGLBadAddress;
+    }
+
     CGLPixelFormatObj format = malloc(sizeof(struct _CGLPixelFormatObj));
+    if (!format) {
+        return kCGLBadAlloc;
+    }
+
     int count = attributes_count(attrs);
 
     pthread_mutex_lock(&registration_lock);
@@ -456,13 +527,19 @@ CGLError CGLChoosePixelFormat(
     format->paced = default_paced;
     pthread_mutex_unlock(&registration_lock);
     format->retain_count = 1;
-    format->attributes = malloc(sizeof(CGLPixelFormatAttribute) * count);
-    for (int i = 0; i < count; i++) {
+    format->attributes = malloc(sizeof(CGLPixelFormatAttribute) * (count + 1));
+    if (!format->attributes) {
+        free(format);
+        return kCGLBadAlloc;
+    }
+    for (int i = 0; i <= count; i++) {
         format->attributes[i] = attrs[i];
     }
 
     *result = format;
-    *number_of_screens = 1;
+    if (number_of_screens) {
+        *number_of_screens = 1;
+    }
 
     return kCGLNoError;
 }
@@ -485,6 +562,13 @@ CGLError CGLDescribePixelFormat(
     CGLPixelFormatAttribute attr,
     GLint *value
 ) {
+    if (!format || !format->attributes) {
+        return kCGLBadPixelFormat;
+    }
+    if (!value) {
+        return kCGLBadAddress;
+    }
+
     for (int i = 0; format->attributes[i] != 0; i++) {
         int has_arg = attribute_has_argument(format->attributes[i]);
 
@@ -553,7 +637,34 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
     if (share != NULL) {
         egl_share = share->egl_context;
     }
-    EGLContext egl_context = eglCreateContext(owner, owner_config, egl_share, NULL);
+    EGLint context_attribs[16] = { EGL_NONE };
+    int attr_idx = 0;
+    GLint profile = 0;
+    if (pixelFormat && CGLDescribePixelFormat(pixelFormat, 0, kCGLPFAOpenGLProfile, &profile) == kCGLNoError) {
+        if (profile == kCGLOGLPVersion_3_2_Core) {
+            context_attribs[attr_idx++] = EGL_CONTEXT_MAJOR_VERSION;
+            context_attribs[attr_idx++] = 3;
+            context_attribs[attr_idx++] = EGL_CONTEXT_MINOR_VERSION;
+            context_attribs[attr_idx++] = 2;
+            context_attribs[attr_idx++] = EGL_CONTEXT_OPENGL_PROFILE_MASK;
+            context_attribs[attr_idx++] = EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT;
+        } else if (profile == kCGLOGLPVersion_GL4_Core) {
+            context_attribs[attr_idx++] = EGL_CONTEXT_MAJOR_VERSION;
+            context_attribs[attr_idx++] = 4;
+            context_attribs[attr_idx++] = EGL_CONTEXT_MINOR_VERSION;
+            context_attribs[attr_idx++] = 1;
+            context_attribs[attr_idx++] = EGL_CONTEXT_OPENGL_PROFILE_MASK;
+            context_attribs[attr_idx++] = EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT;
+        }
+        /* Note: kCGLOGLPVersion_Legacy (0x1000) passes NULL attributes to request a compatibility context */
+    }
+    context_attribs[attr_idx] = EGL_NONE;
+    EGLContext egl_context = eglCreateContext(owner, owner_config, egl_share, attr_idx > 0 ? context_attribs : NULL);
+    if (egl_context == EGL_NO_CONTEXT && attr_idx > 0) {
+        /* Core Profile creation failed on host driver; log warning and attempt best-effort fallback to compatibility context */
+        fprintf(stderr, "CGLCreateContext: Core Profile request failed, falling back to compatibility context\n");
+        egl_context = eglCreateContext(owner, owner_config, egl_share, NULL);
+    }
 
     if (egl_context == EGL_NO_CONTEXT) {
         return kCGLBadContext;
@@ -571,7 +682,7 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
     context->egl_display = owner;
     context->egl_config = owner_config;
     context->egl_context = egl_context;
-    context->egl_surface = NULL;
+    context->egl_surface = EGL_NO_SURFACE;
     context->fallback_pbuffer = EGL_NO_SURFACE;
     context->swap_interval = interval;
     context->paced = paced;
