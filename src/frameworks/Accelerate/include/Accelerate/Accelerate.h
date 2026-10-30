@@ -49,6 +49,18 @@ enum {
     kvImageInvalidParameter = -21772
 };
 
+enum {
+    kvImageNoFlags = 0,
+    kvImageLeaveAlphaUnchanged = 1,
+    kvImageCopyRestriction = 2,
+    kvImageDoNotTile = 4,
+    kvImageGetTempBufferSize = 8,
+    kvImageHighQualityResampling = 16,
+    kvImageTruncateKernel = 32,
+    kvImageEdgeExtend = 64,
+    kvImageBackgroundColorFill = 128
+};
+
 vImage_Error vImageBuffer_InitWithCGImage(
     vImage_Buffer *buf,
     const vImage_CGImageFormat *format,
