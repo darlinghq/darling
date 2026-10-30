@@ -30,7 +30,8 @@ CMakeCache.txt
 Module.symvers
 
 # Directories where too much temp stuff may lay around
-tests
+/tests/*
+!/tests/src
 
 # The suggested build folder
 build
