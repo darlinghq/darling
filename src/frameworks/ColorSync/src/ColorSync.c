@@ -670,15 +670,16 @@ bool ColorSyncUnregisterDevice(CFStringRef class, CFUUIDRef uuid) {
     return 0;
 };
 
-// someone please check these and replace them with the correct values
-CFStringRef kColorSyncDeviceProfileURL       = CFSTR("ColorSyncDeviceProfileURL");
-CFStringRef kColorSyncDeviceModeDescriptions = CFSTR("ColorSyncDeviceModeDescriptions");
-CFStringRef kColorSyncDeviceDefaultProfileID = CFSTR("ColorSyncDeviceDefaultProfileID");
-CFStringRef kColorSyncDeviceDescriptions     = CFSTR("ColorSyncDeviceDescriptions");
-CFStringRef kColorSyncFactoryProfiles        = CFSTR("ColorSyncFactoryProfiles");
-CFStringRef kColorSyncDeviceUserScope        = CFSTR("ColorSyncDeviceUserScope");
-CFStringRef kColorSyncDeviceHostScope        = CFSTR("ColorSyncDeviceHostScope");
-CFStringRef kColorSyncPrinterDeviceClass     = CFSTR("ColorSyncPrinterDeviceClass");
+// Device-info dictionary keys and device classes.
+// Keys do not carry the "ColorSync" prefix; device classes are classic four-character OSType codes.
+CFStringRef kColorSyncDeviceProfileURL       = CFSTR("DeviceProfileURL");
+CFStringRef kColorSyncDeviceModeDescriptions = CFSTR("DeviceModeDescriptions");
+CFStringRef kColorSyncDeviceDefaultProfileID = CFSTR("DeviceDefaultProfileID");
+CFStringRef kColorSyncDeviceDescriptions     = CFSTR("DeviceDescriptions");
+CFStringRef kColorSyncFactoryProfiles        = CFSTR("FactoryProfiles");
+CFStringRef kColorSyncDeviceUserScope        = CFSTR("DeviceUserScope");
+CFStringRef kColorSyncDeviceHostScope        = CFSTR("DeviceHostScope");
+CFStringRef kColorSyncPrinterDeviceClass     = CFSTR("prnt");
 
 // Key of the per-mode custom-profile override map inside a device-info
 // dictionary. Despite the name it is a key, not the map itself: the value it
