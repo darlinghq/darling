@@ -53,6 +53,7 @@ static int default_swap_interval = 1;
 // interval is kept in software (swap_pacing.h) and EGL stays at interval 0.
 static int default_paced = 0;
 static pthread_mutex_t registration_lock = PTHREAD_MUTEX_INITIALIZER;
+static EGLContext default_share_context = EGL_NO_CONTEXT;
 
 static EGLBoolean choose_registered_config(EGLDisplay dpy, EGLConfig *out_config, int *out_count) {
     static EGLint const attrs_24[] = {
@@ -633,6 +634,10 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
     EGLContext egl_share = EGL_NO_CONTEXT;
     if (share != NULL) {
         egl_share = share->egl_context;
+    } else {
+        pthread_mutex_lock(&registration_lock);
+        egl_share = default_share_context;
+        pthread_mutex_unlock(&registration_lock);
     }
     EGLint context_attribs[16] = { EGL_NONE };
     int attr_idx = 0;
@@ -657,15 +662,24 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
     }
     context_attribs[attr_idx] = EGL_NONE;
     EGLContext egl_context = eglCreateContext(owner, owner_config, egl_share, attr_idx > 0 ? context_attribs : NULL);
+    if (egl_context == EGL_NO_CONTEXT && egl_share != EGL_NO_CONTEXT) {
+        egl_context = eglCreateContext(owner, owner_config, EGL_NO_CONTEXT, attr_idx > 0 ? context_attribs : NULL);
+    }
     if (egl_context == EGL_NO_CONTEXT && attr_idx > 0) {
         /* Core Profile creation failed on host driver; log warning and attempt best-effort fallback to compatibility context */
         fprintf(stderr, "CGLCreateContext: Core Profile request failed, falling back to compatibility context\n");
-        egl_context = eglCreateContext(owner, owner_config, egl_share, NULL);
+        egl_context = eglCreateContext(owner, owner_config, EGL_NO_CONTEXT, NULL);
     }
 
     if (egl_context == EGL_NO_CONTEXT) {
         return kCGLBadContext;
     }
+
+    pthread_mutex_lock(&registration_lock);
+    if (default_share_context == EGL_NO_CONTEXT && attr_idx == 0) {
+        default_share_context = egl_context;
+    }
+    pthread_mutex_unlock(&registration_lock);
 
     CGLContextObj context = malloc(sizeof(struct _CGLContextObj));
 
@@ -675,7 +689,11 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
     }
 
     context->retain_count = 1;
-    pthread_mutex_init(&(context->lock), NULL);
+    pthread_mutexattr_t lock_attr;
+    pthread_mutexattr_init(&lock_attr);
+    pthread_mutexattr_settype(&lock_attr, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(&(context->lock), &lock_attr);
+    pthread_mutexattr_destroy(&lock_attr);
     context->egl_display = owner;
     context->egl_config = owner_config;
     context->egl_context = egl_context;
@@ -714,6 +732,12 @@ void CGLReleaseContext(CGLContextObj context) {
         return;
     }
 
+    pthread_mutex_lock(&registration_lock);
+    if (default_share_context == context->egl_context) {
+        default_share_context = EGL_NO_CONTEXT;
+    }
+    pthread_mutex_unlock(&registration_lock);
+
     if (context->fallback_pbuffer != EGL_NO_SURFACE) {
         eglDestroySurface(context->egl_display, context->fallback_pbuffer);
         context->fallback_pbuffer = EGL_NO_SURFACE;
@@ -750,23 +774,34 @@ CGLError CGLDestroyContext(CGLContextObj context) {
 }
 
 CGLError CGLLockContext(CGLContextObj context) {
+    if (context == NULL) {
+        return kCGLBadContext;
+    }
     pthread_mutex_lock(&(context->lock));
     return kCGLNoError;
 }
 
 CGLError CGLUnlockContext(CGLContextObj context) {
+    if (context == NULL) {
+        return kCGLBadContext;
+    }
     pthread_mutex_unlock(&(context->lock));
     return kCGLNoError;
 }
 
 CGLError CGLFlushDrawable(CGLContextObj context) {
-    if (context == NULL)
+    if (context == NULL) {
         return kCGLBadContext;
-    if (context->egl_surface == EGL_NO_SURFACE)
-        return kCGLBadDrawable;
+    }
+    if (context->egl_surface == EGL_NO_SURFACE) {
+        glFlush();
+        return kCGLNoError;
+    }
+    glFinish();
     if (context->paced)
         cgl_swap_pace(&context->pacer, context->swap_interval);
-    return eglSwapBuffers(context->egl_display, context->egl_surface) ? kCGLNoError : kCGLBadDrawable;
+    EGLBoolean ok = eglSwapBuffers(context->egl_display, context->egl_surface);
+    return ok ? kCGLNoError : kCGLBadDrawable;
 }
 
 CGLError CGLSetDrawableRefreshRate(CGLContextObj context, uint32_t millihertz) {
