@@ -18,6 +18,11 @@
 #define EGL_NO_X11
 
 #include <EGL/egl.h>
+#include <EGL/eglext.h>
+
+#ifndef EGL_PLATFORM_X11_KHR
+#define EGL_PLATFORM_X11_KHR 0x31D5
+#endif
 
 #include "swap_pacing.h"
 
@@ -172,7 +177,9 @@ static int attributes_count(const CGLPixelFormatAttribute *attrs) {
 }
 
 CGLError CGLRegisterNativeDisplay(void *native_display) {
-    EGLDisplay candidate = eglGetDisplay(native_display);
+    if (!native_display)
+        return kCGLBadConnection;
+    EGLDisplay candidate = eglGetPlatformDisplay(EGL_PLATFORM_X11_KHR, native_display, NULL);
     EGLConfig candidate_config;
     EGLint count;
     if (candidate == EGL_NO_DISPLAY || !eglInitialize(candidate, NULL, NULL))
@@ -272,21 +279,42 @@ static struct _CGLDisplay* getCGLDisplay(CGSConnectionID cid)
 
     if (!rv)
     {
-        EGLDisplay disp = eglGetDisplay(_CGSNativeDisplay(cid));
+        void *native_display = _CGSNativeDisplay(cid);
+        if (!native_display)
+            return NULL;
+
+        EGLDisplay disp = eglGetPlatformDisplay(EGL_PLATFORM_X11_KHR, native_display, NULL);
         if (disp == EGL_NO_DISPLAY)
             return NULL;
 
-        rv = (struct _CGLDisplay*) malloc(sizeof(*rv));
-        rv->display = disp;
+        struct _CGLDisplay* new_disp = (struct _CGLDisplay*) malloc(sizeof(*new_disp));
+        if (!new_disp)
+            return NULL;
 
-        eglInitialize(rv->display, NULL, NULL);
-        choose_registered_config(rv->display, &rv->config, &rv->num_config);
-
-        eglBindAPI(EGL_OPENGL_API);
+        new_disp->display = disp;
+        if (!eglInitialize(new_disp->display, NULL, NULL))
+        {
+            free(new_disp);
+            return NULL;
+        }
+        if (!choose_registered_config(new_disp->display, &new_disp->config, &new_disp->num_config))
+        {
+            eglTerminate(new_disp->display);
+            free(new_disp);
+            return NULL;
+        }
 
         pthread_mutex_lock(&g_displaysMutex);
-        CFDictionaryAddValue(g_displays, (const void*)(unsigned long) cid, rv);
+        rv = (struct _CGLDisplay*) CFDictionaryGetValue(g_displays, (const void*)(unsigned long) cid);
+        if (rv)
+        {
+            pthread_mutex_unlock(&g_displaysMutex);
+            free(new_disp);
+            return rv;
+        }
+        CFDictionaryAddValue(g_displays, (const void*)(unsigned long) cid, new_disp);
         pthread_mutex_unlock(&g_displaysMutex);
+        rv = new_disp;
     }
 
     return rv;
