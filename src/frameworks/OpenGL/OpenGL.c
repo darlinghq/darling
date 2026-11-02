@@ -2,6 +2,7 @@
 #include <stdio.h>  // for fprintf(stderr, "unimplemented")
 
 #include <pthread.h>
+#include <stdatomic.h>
 
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/CGLInternal.h>
@@ -123,7 +124,7 @@ struct _CGLContextObj {
     EGLDisplay egl_display;
     EGLConfig egl_config;
     EGLContext egl_context;
-    EGLSurface egl_surface;
+    _Atomic EGLSurface egl_surface;
     EGLSurface fallback_pbuffer;
     // EGL has no function for getting the current swap interval,
     // so we need to save the last set value. The default is 1.
@@ -132,7 +133,12 @@ struct _CGLContextObj {
     int paced;
     struct cgl_swap_pacer pacer;
     CGLPixelFormatObj pixel_format;
+    struct _CGLContextObj *prev_active;
+    struct _CGLContextObj *next_active;
 };
+
+static struct _CGLContextObj *g_activeContexts = NULL;
+static pthread_mutex_t g_activeContextsMutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct _CGLPixelFormatObj {
     GLuint retain_count;
@@ -337,8 +343,9 @@ CGLError CGLSetSurface(CGLContextObj gl, CGSConnectionID cid, CGSWindowID wid, C
     if (!window)
         return kCGLBadWindow;
 
-    gl->egl_surface = eglCreateWindowSurface(gl->egl_display, gl->egl_config, window, NULL);
-    if (gl->egl_surface == EGL_NO_SURFACE)
+    EGLSurface surf = eglCreateWindowSurface(gl->egl_display, gl->egl_config, window, NULL);
+    atomic_store_explicit(&gl->egl_surface, surf, memory_order_release);
+    if (surf == EGL_NO_SURFACE)
         return kCGLBadState;
     return kCGLNoError;
 }
@@ -383,6 +390,29 @@ CGL_EXPORT void CGLDestroyWindow(CGLWindowRef ref) {
     struct _CGLWindow *window = ref;
     if (!window)
         return;
+
+    CGLContextObj current = CGLGetCurrentContext();
+    int current_cleared = 0;
+
+    if (window->surface != EGL_NO_SURFACE) {
+        pthread_mutex_lock(&g_activeContextsMutex);
+        for (struct _CGLContextObj *ctx = g_activeContexts; ctx != NULL; ctx = ctx->next_active) {
+            EGLSurface target = window->surface;
+            if (atomic_compare_exchange_strong_explicit(&ctx->egl_surface, &target, (EGLSurface)EGL_NO_SURFACE,
+                                                        memory_order_acq_rel, memory_order_acquire)) {
+                if (ctx == current) {
+                    current_cleared = 1;
+                }
+            }
+        }
+        pthread_mutex_unlock(&g_activeContextsMutex);
+    }
+
+    if (current_cleared && current && current->egl_display != EGL_NO_DISPLAY) {
+        // Disassociate the destroyed window surface from the current EGL thread
+        eglMakeCurrent(current->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, current->egl_context);
+    }
+
     eglDestroySurface(window->display, window->surface);
     free(window);
 }
@@ -395,12 +425,12 @@ CGL_EXPORT CGLError CGLContextMakeCurrentAndAttachToWindow(CGLContextObj context
     struct _CGLWindow *drawable = window;
     if (drawable->display != context->egl_display)
         return kCGLBadMatch;
-    EGLSurface previous_surface = context->egl_surface;
+    EGLSurface previous_surface = atomic_load_explicit(&context->egl_surface, memory_order_acquire);
     EGLSurface old_fallback = context->fallback_pbuffer;
-    context->egl_surface = drawable->surface;
+    atomic_store_explicit(&context->egl_surface, drawable->surface, memory_order_release);
     CGLError error = CGLSetCurrentContext(context);
     if (error != kCGLNoError) {
-        context->egl_surface = previous_surface;
+        atomic_store_explicit(&context->egl_surface, previous_surface, memory_order_release);
         return error;
     }
     if (old_fallback != EGL_NO_SURFACE) {
@@ -436,13 +466,15 @@ CGLError CGLSetCurrentContext(CGLContextObj context) {
     if (!eglBindAPI(EGL_OPENGL_API))
         return kCGLBadState;
     if (context != NULL) {
-        EGLSurface surface = context->egl_surface;
+        EGLSurface surface = atomic_load_explicit(&context->egl_surface, memory_order_acquire);
         if (surface == EGL_NO_SURFACE) {
             if (!eglMakeCurrent(context->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, context->egl_context)) {
                 const EGLint pbufferAttribs[] = { EGL_WIDTH, 1, EGL_HEIGHT, 1, EGL_NONE };
                 EGLSurface pbuf = eglCreatePbufferSurface(context->egl_display, context->egl_config, pbufferAttribs);
                 if (pbuf != EGL_NO_SURFACE && eglMakeCurrent(context->egl_display, pbuf, pbuf, context->egl_context)) {
-                    context->fallback_pbuffer = context->egl_surface = surface = pbuf;
+                    context->fallback_pbuffer = pbuf;
+                    atomic_store_explicit(&context->egl_surface, pbuf, memory_order_release);
+                    surface = pbuf;
                 } else {
                     if (pbuf != EGL_NO_SURFACE)
                         eglDestroySurface(context->egl_display, pbuf);
@@ -452,7 +484,9 @@ CGLError CGLSetCurrentContext(CGLContextObj context) {
                     if (eglChooseConfig(context->egl_display, pbufConfAttrs, &pbufConfig, 1, &numPbuf) && numPbuf > 0) {
                         pbuf = eglCreatePbufferSurface(context->egl_display, pbufConfig, pbufferAttribs);
                         if (pbuf != EGL_NO_SURFACE && eglMakeCurrent(context->egl_display, pbuf, pbuf, context->egl_context)) {
-                            context->fallback_pbuffer = context->egl_surface = surface = pbuf;
+                            context->fallback_pbuffer = pbuf;
+                            atomic_store_explicit(&context->egl_surface, pbuf, memory_order_release);
+                            surface = pbuf;
                         } else {
                             if (pbuf != EGL_NO_SURFACE)
                                 eglDestroySurface(context->egl_display, pbuf);
@@ -572,7 +606,26 @@ CGLError CGLChoosePixelFormat(
 
 CGLError CGLClearDrawable(CGLContextObj ctx)
 {
-    printf("STUB: CGLClearDrawable\n");
+    if (!ctx)
+        return kCGLBadContext;
+
+    pthread_mutex_lock(&ctx->lock);
+    EGLSurface old_fallback = ctx->fallback_pbuffer;
+    ctx->fallback_pbuffer = EGL_NO_SURFACE;
+    atomic_store_explicit(&ctx->egl_surface, (EGLSurface)EGL_NO_SURFACE, memory_order_release);
+    int is_current = (CGLGetCurrentContext() == ctx);
+    pthread_mutex_unlock(&ctx->lock);
+
+    /* egl_display and egl_context are immutable after CGLCreateContext */
+    if (ctx->egl_display != EGL_NO_DISPLAY) {
+        if (old_fallback != EGL_NO_SURFACE) {
+            eglDestroySurface(ctx->egl_display, old_fallback);
+        }
+        if (is_current) {
+            // Disassociate any surface from the current thread's EGL context
+            eglMakeCurrent(ctx->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, ctx->egl_context);
+        }
+    }
 
     return kCGLNoError;
 }
@@ -725,13 +778,22 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
     context->egl_display = owner;
     context->egl_config = owner_config;
     context->egl_context = egl_context;
-    context->egl_surface = EGL_NO_SURFACE;
+    atomic_init(&context->egl_surface, (EGLSurface)EGL_NO_SURFACE);
     context->fallback_pbuffer = EGL_NO_SURFACE;
     context->swap_interval = interval;
     context->paced = paced;
     context->pacer.period_ns = cgl_period_ns_from_millihertz(0);
     context->pacer.last_ns = 0;
     context->pixel_format = pixelFormat ? CGLRetainPixelFormat(pixelFormat) : NULL;
+
+    pthread_mutex_lock(&g_activeContextsMutex);
+    context->prev_active = NULL;
+    context->next_active = g_activeContexts;
+    if (g_activeContexts != NULL) {
+        g_activeContexts->prev_active = context;
+    }
+    g_activeContexts = context;
+    pthread_mutex_unlock(&g_activeContextsMutex);
 
     *resultp = context;
 
@@ -752,12 +814,25 @@ void CGLReleaseContext(CGLContextObj context) {
         return;
     }
 
-    if (CGLGetCurrentContext() == context) {
-        CGLSetCurrentContext(NULL);
-    }
-
     if (__sync_sub_and_fetch(&context->retain_count, 1) != 0) {
         return;
+    }
+
+    pthread_mutex_lock(&g_activeContextsMutex);
+    if (context->prev_active != NULL) {
+        context->prev_active->next_active = context->next_active;
+    } else if (g_activeContexts == context) {
+        g_activeContexts = context->next_active;
+    }
+    if (context->next_active != NULL) {
+        context->next_active->prev_active = context->prev_active;
+    }
+    context->prev_active = NULL;
+    context->next_active = NULL;
+    pthread_mutex_unlock(&g_activeContextsMutex);
+
+    if (CGLGetCurrentContext() == context) {
+        CGLSetCurrentContext(NULL);
     }
 
     pthread_mutex_lock(&registration_lock);
@@ -821,14 +896,20 @@ CGLError CGLFlushDrawable(CGLContextObj context) {
     if (context == NULL) {
         return kCGLBadContext;
     }
-    if (context->egl_surface == EGL_NO_SURFACE) {
+    EGLSurface surf = atomic_load_explicit(&context->egl_surface, memory_order_acquire);
+    if (surf == EGL_NO_SURFACE) {
         glFlush();
         return kCGLNoError;
     }
     glFinish();
+    // Re-check after glFinish() in case CGLDestroyWindow cleared the surface concurrently
+    EGLSurface surf_after = atomic_load_explicit(&context->egl_surface, memory_order_acquire);
+    if (surf_after == EGL_NO_SURFACE || surf_after != surf) {
+        return kCGLNoError;
+    }
     if (context->paced)
         cgl_swap_pace(&context->pacer, context->swap_interval);
-    EGLBoolean ok = eglSwapBuffers(context->egl_display, context->egl_surface);
+    EGLBoolean ok = eglSwapBuffers(context->egl_display, surf);
     return ok ? kCGLNoError : kCGLBadDrawable;
 }
 
@@ -849,7 +930,7 @@ CGLError CGLSetParameter(CGLContextObj context, CGLContextParameter parameter, c
         if (!context)
             return kCGLBadContext;
         EGLBoolean success = EGL_TRUE;
-        if (CGLGetCurrentContext() == context && context->egl_surface != EGL_NO_SURFACE)
+        if (CGLGetCurrentContext() == context && atomic_load_explicit(&context->egl_surface, memory_order_acquire) != EGL_NO_SURFACE)
             success = eglSwapInterval(context->egl_display, context->paced ? 0 : v);
         if (success)
             context->swap_interval = v;
