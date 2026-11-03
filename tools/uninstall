@@ -9,7 +9,7 @@ fi
 
 if command -v darling
 then
-	$(dirname "$0")/shutdown-user.sh
+	$(dirname "$0")/shutdown-user.sh || exit 1
 fi
 
 INSTALL_PREFIX="$(dirname "$(dirname "$(which darling)")")"
