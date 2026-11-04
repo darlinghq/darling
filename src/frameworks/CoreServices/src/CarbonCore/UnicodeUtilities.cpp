@@ -226,6 +226,12 @@ OSStatus UCKeyTranslate(const UCKeyboardLayout *keyLayoutPtr, UInt16 virtualKeyC
 		c = table[virtualKeyCode];
 	}
 
+	// A table entry with the top bits 01 is a dead-key state index and 10 is a sequence index,
+	// not a character. Resolving them needs the layout's state and sequence tables, which are
+	// not read here, so such a key produces no text instead of a marker passed off as one.
+	if ((c & 0xC000) == 0x4000 || (c & 0xC000) == 0x8000)
+		return noErr;
+
 	*actualStringLength = 1;
 	if (maxStringLength > 0)
 	{
