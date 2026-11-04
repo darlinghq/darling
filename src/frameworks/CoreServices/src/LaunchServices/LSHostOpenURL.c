@@ -60,48 +60,103 @@ static int hex_digit(unsigned char c)
 	return -1;
 }
 
+/* A decoded text that still changes after this many rounds is refused. */
+#define MAILTO_DECODE_ROUNDS 4
+
+/*
+ * Decode every %XX in place. Returns -1 for a decoded NUL, and for a malformed escape when
+ * strict. After the first round a stray '%' is plain text: "%2525" decodes to "%25", whose
+ * second round is "%", and a client leaves "100%" alone.
+ */
+static int decode_round(char* s, int strict, int* changed)
+{
+	char* w = s;
+
+	for (const char* r = s; *r != '\0'; )
+	{
+		if (*r == '%')
+		{
+			int hi = hex_digit((unsigned char) r[1]);
+			int lo = hi < 0 ? -1 : hex_digit((unsigned char) r[2]);
+
+			if (hi >= 0 && lo >= 0)
+			{
+				if (hi == 0 && lo == 0)
+					return -1;
+				*w++ = (char) (hi * 16 + lo);
+				r += 3;
+				*changed = 1;
+				continue;
+			}
+			if (strict)
+				return -1;
+		}
+		*w++ = *r++;
+	}
+	*w = '\0';
+	return 0;
+}
+
+static int is_name_padding(char c)
+{
+	return c == '+' || c == ' ' || (c >= '\t' && c <= '\r');
+}
+
+static int name_is_attach(const char* name, size_t len)
+{
+	while (len > 0 && is_name_padding(name[0]))
+	{
+		name++;
+		len--;
+	}
+	while (len > 0 && is_name_padding(name[len - 1]))
+		len--;
+	return (len == 6 && strncasecmp(name, "attach", 6) == 0) || (len == 10 && strncasecmp(name, "attachment", 10) == 0);
+}
+
 /*
  * Several mail clients attach the file named by a mailto: "attach" parameter to the draft.
- * A client may decode the URL before it splits the query, so the query is decoded once and
- * then split. A literal "%25" would let a second decoding round produce delimiters or letters
- * that this check never saw ("%2561ttach", "%2526attach"), so any mailto URL containing it
- * is refused; so is a decoded NUL.
+ * Read the URL the way a client does: decode what follows "mailto:" until it stops changing
+ * (a text that still changes after MAILTO_DECODE_ROUNDS rounds is refused), take the first
+ * '?' of the decoded text as the start of the query, split the query on '&', ';' and '?',
+ * and refuse a parameter whose name, without its '=' value and without whitespace or '+'
+ * padding, is "attach" or "attachment". Values are never matched as names.
  */
 static int mailto_attaches_file(const char* url)
 {
-	char decoded[LS_HOST_OPEN_MAX_URL_LENGTH + 1];
-	const char* query = strchr(url, '?');
-	size_t n = 0;
+	char text[LS_HOST_OPEN_MAX_URL_LENGTH + 1];
+	const char* query;
+	int round;
 
+	strncpy(text, url + strlen("mailto:"), sizeof text - 1);
+	text[sizeof text - 1] = '\0';
+
+	for (round = 0; round <= MAILTO_DECODE_ROUNDS; round++)
+	{
+		int changed = 0;
+
+		if (decode_round(text, round == 0, &changed) < 0)
+			return 1;
+		if (!changed)
+			break;
+		if (round == MAILTO_DECODE_ROUNDS)
+			return 1;
+	}
+
+	query = strchr(text, '?');
 	if (query == NULL)
 		return 0;
-	if (strstr(query, "%25") != NULL)
-		return 1;
-
-	for (query++; *query != '\0'; query++)
+	for (query++; ; )
 	{
-		int c = (unsigned char) *query;
+		size_t len = strcspn(query, "&;?");
+		size_t name_len = strcspn(query, "=");
 
-		if (c == '%')
-		{
-			c = hex_digit((unsigned char) query[1]) * 16 + hex_digit((unsigned char) query[2]);
-			query += 2;
-			if (c == 0)
-				return 1;
-		}
-		decoded[n++] = (char) c;
-	}
-	decoded[n] = '\0';
-
-	for (const char* name = decoded; name != NULL; )
-	{
-		size_t len = strcspn(name, "=&;");
-
-		if ((len == 6 && strncasecmp(name, "attach", 6) == 0) || (len == 10 && strncasecmp(name, "attachment", 10) == 0))
+		if (name_is_attach(query, name_len < len ? name_len : len))
 			return 1;
-		name = name[len] == '\0' ? NULL : name + len + 1;
+		if (query[len] == '\0')
+			return 0;
+		query += len + 1;
 	}
-	return 0;
 }
 
 int _LSHostOpenValidateURL(const char* url)
