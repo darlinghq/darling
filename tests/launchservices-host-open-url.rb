@@ -37,11 +37,16 @@ Dir.mktmpdir('ls-url-') do |dir|
       bad("mailto:x@e.org?attach=/home/u/.ssh/id_rsa"); bad("mailto:x@e.org?ATTACH=/etc/passwd");
       bad("mailto:x@e.org?subject=s&attach=/etc/passwd"); bad("mailto:x@e.org?subject=s;attachment=/etc/passwd");
       bad("mailto:x@e.org?%61ttach=/etc/passwd"); bad("mailto:x@e.org?attachment");
-      /* encoded once more, and encoded delimiters */
-      bad("mailto:x@e.org?%2561ttach=/etc/passwd"); bad("mailto:x@e.org?attach%3d/etc/passwd");
-      bad("mailto:x@e.org?attach%3D/etc/passwd"); bad("mailto:x@e.org?subject=s%26attach=/etc/passwd");
-      bad("mailto:x@e.org?subject=s%3Battachment=/etc/passwd");
-      ok("mailto:x@e.org?subject=s%26t&body=100%25");
+      /* encoded more than once, encoded delimiters, case */
+      bad("mailto:x@e.org?%2561ttach=/etc/passwd"); bad("mailto:x@e.org?%2526attach=/etc/passwd");
+      bad("mailto:x@e.org?attach%253d/etc/passwd"); bad("mailto:x@e.org?attach%3d/etc/passwd");
+      bad("mailto:x@e.org?attach%3D/etc/passwd"); bad("mailto:x@e.org?%3Battach=/etc/passwd");
+      bad("mailto:x@e.org?subject=s%26attach=/etc/passwd"); bad("mailto:x@e.org?subject=s%3Battachment=/etc/passwd");
+      bad("mailto:x@e.org?AtTaCh=/etc/passwd"); bad("mailto:x@e.org?Attachment=/etc/passwd");
+      bad("mailto:x@e.org?%2525252561ttach=/etc/passwd"); bad("mailto:x@e.org?subject=100%25");
+      bad("mailto:x@e.org?att%00ach=/etc/passwd");
+      ok("mailto:x@e.org?subject=Hi%20there&cc=y@e.org&body=a%26b%20c");
+      ok("mailto:x@e.org?subject=please%20attach%20it&body=attachment%20follows");
       /* length */
       char big[LS_HOST_OPEN_MAX_URL_LENGTH + 16];
       memset(big, 'a', sizeof big); memcpy(big, "https://e.org/", 14);
