@@ -36,6 +36,26 @@ int main()
 	std::vector<uint32_t> all = registry.allIds();
 	assert(all.size() == 2); // idB and idA2
 
+	// endRefresh() without a preceding beginRefresh() must be a no-op,
+	// not a silent wipe of the whole registry.
+	{
+		PADeviceRegistry guardRegistry(2000);
+		uint32_t guardId = guardRegistry.idForName("alsa_output.guard-device.analog-stereo");
+
+		guardRegistry.endRefresh(); // no matching beginRefresh() before this
+
+		assert(guardRegistry.nameForId(guardId) == "alsa_output.guard-device.analog-stereo");
+
+		// Calling it twice in a row (second call has nothing left "in refresh") is
+		// likewise a no-op and must not release anything either.
+		guardRegistry.beginRefresh();
+		guardRegistry.idForName("alsa_output.guard-device.analog-stereo");
+		guardRegistry.endRefresh();
+		guardRegistry.endRefresh();
+
+		assert(guardRegistry.nameForId(guardId) == "alsa_output.guard-device.analog-stereo");
+	}
+
 	printf("PADeviceRegistryTest: OK\n");
 	return 0;
 }

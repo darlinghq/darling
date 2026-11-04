@@ -1,4 +1,23 @@
 // src/CoreAudio/CoreAudio/pulse/PADeviceRegistry.cpp
+/*
+This file is part of Darling.
+
+Copyright (C) 2020 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "PADeviceRegistry.h"
 
 PADeviceRegistry::PADeviceRegistry(uint32_t firstId)
@@ -37,6 +56,13 @@ void PADeviceRegistry::beginRefresh()
 
 void PADeviceRegistry::endRefresh()
 {
+	// Guard against misuse: calling endRefresh() without a preceding
+	// beginRefresh() (or calling it twice in a row) would otherwise wipe
+	// the entire registry, since m_touchedThisRefresh would be empty and
+	// every entry would look untouched. Treat it as a no-op instead.
+	if (!m_inRefresh)
+		return;
+
 	m_inRefresh = false;
 
 	for (auto it = m_nameToId.begin(); it != m_nameToId.end(); )

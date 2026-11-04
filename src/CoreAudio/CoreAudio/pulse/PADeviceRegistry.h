@@ -1,4 +1,23 @@
 // src/CoreAudio/CoreAudio/pulse/PADeviceRegistry.h
+/*
+This file is part of Darling.
+
+Copyright (C) 2020 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #ifndef PADEVICEREGISTRY_H
 #define PADEVICEREGISTRY_H
 #include <cstdint>
@@ -18,6 +37,9 @@
 class PADeviceRegistry
 {
 public:
+	// `firstId` should be greater than 0 to avoid colliding with the
+	// AudioObjectID sentinel values (kAudioObjectUnknown / kAudioObjectSystemObject)
+	// once this registry is wired into the real HAL layer.
 	explicit PADeviceRegistry(uint32_t firstId);
 
 	// Returns the existing ID for `name`, or allocates a new one.
@@ -31,9 +53,14 @@ public:
 	void beginRefresh();
 	void endRefresh();
 
+	// Order of the returned IDs is unspecified; it reflects unordered_map
+	// iteration order, not allocation or discovery order.
 	std::vector<uint32_t> allIds() const;
 
 private:
+	// Monotonically increasing, never reused. Unbounded: after
+	// UINT32_MAX - firstId allocations this would overflow, but that is
+	// not reachable in practice.
 	uint32_t m_nextId;
 	std::unordered_map<std::string, uint32_t> m_nameToId;
 	std::unordered_map<uint32_t, std::string> m_idToName;
@@ -41,4 +68,4 @@ private:
 	bool m_inRefresh = false;
 };
 
-#endif
+#endif /* PADEVICEREGISTRY_H */
