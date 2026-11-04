@@ -474,6 +474,8 @@ CFStringRef CVTransferFunctionGetStringForIntegerCodePoint(int32_t codePoint)
 			return kCVImageBufferTransferFunction_SMPTE_240M_1995;
 		case 8:
 			return kCVImageBufferTransferFunction_Linear;
+		case 13:
+			return kCVImageBufferTransferFunction_sRGB;
 		case 14:
 			return kCVImageBufferTransferFunction_ITU_R_2020;
 		case 16:
@@ -493,6 +495,7 @@ int32_t CVTransferFunctionGetIntegerCodePointForString(CFStringRef transferFunct
 	if (CFEqual(transferFunctionString, kCVImageBufferTransferFunction_ITU_R_709_2)) return 1;
 	if (CFEqual(transferFunctionString, kCVImageBufferTransferFunction_SMPTE_240M_1995)) return 6;
 	if (CFEqual(transferFunctionString, kCVImageBufferTransferFunction_Linear)) return 8;
+	if (CFEqual(transferFunctionString, kCVImageBufferTransferFunction_sRGB)) return 13;
 	if (CFEqual(transferFunctionString, kCVImageBufferTransferFunction_ITU_R_2020)) return 14;
 	if (CFEqual(transferFunctionString, kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ)) return 16;
 	if (CFEqual(transferFunctionString, kCVImageBufferTransferFunction_SMPTE_ST_428_1)) return 17;
