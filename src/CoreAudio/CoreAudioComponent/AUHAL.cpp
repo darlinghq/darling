@@ -147,8 +147,15 @@ OSStatus AUHAL::Start()
 	}
 	if (m_enableInput)
 	{
-		AudioDeviceCreateIOProcID(m_inputDevice, recordCallback, this, &m_inputProcID);
 		const CAStreamBasicDescription& desc = GetStreamFormat(kAudioUnitScope_Output, kInputBus);
+
+		// Constructed here (only reachable while !m_running, i.e. before
+		// doRecord()/Render() can run concurrently on separate threads) so
+		// Render() never observes a partially-published pointer -- doRecord()
+		// only ever writes into an already-constructed buffer.
+		m_recordRingBuffer = std::make_unique<AURingBuffer>(/*capacityFrames=*/desc.mSampleRate / 10, desc.mChannelsPerFrame); // 100ms
+
+		AudioDeviceCreateIOProcID(m_inputDevice, recordCallback, this, &m_inputProcID);
 		AudioDeviceSetProperty(m_inputDevice, nullptr, 0, true, kAudioDevicePropertyStreamFormat, sizeof(AudioStreamBasicDescription), &desc);
 		AudioDeviceStart(m_inputDevice, m_inputProcID);
 	}
@@ -361,8 +368,10 @@ OSStatus AUHAL::doRecord(const AudioTimeStamp* inNow, const AudioBufferList* inI
 	// TODO: Prepare for non-interleaved audio
 	const CAStreamBasicDescription& desc = GetStreamFormat(kAudioUnitScope_Output, kInputBus);
 
+	// Start() constructs m_recordRingBuffer before the IOProc that calls this
+	// is ever installed; this should never be null here.
 	if (!m_recordRingBuffer)
-		m_recordRingBuffer = std::make_unique<AURingBuffer>(/*capacityFrames=*/desc.mSampleRate / 10, desc.mChannelsPerFrame); // 100ms
+		return noErr;
 
 	UInt32 frames = inInputData->mBuffers[0].mDataByteSize / desc.mBytesPerFrame;
 	size_t written = m_recordRingBuffer->write(static_cast<const float*>(inInputData->mBuffers[0].mData), frames);

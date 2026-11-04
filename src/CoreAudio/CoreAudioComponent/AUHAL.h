@@ -81,10 +81,12 @@ protected:
 	AudioDeviceIOProcID m_outputProcID = 0, m_inputProcID = 0;
 
 	// TODO: Prepare for non-interleaved audio
-	// Sized on doRecord()'s first call, once the input stream format (and
-	// thus its channel count) is known. Decouples the HAL's IOProc callback
-	// rate from Render()'s AU-render-pull rate; an underflowing Render() is
-	// silence-filled rather than blocking the render thread.
+	// Constructed in Start() (while !m_running, before the recording IOProc
+	// is installed) so doRecord() and Render() -- which run on separate
+	// threads once started -- never race over construction. Decouples the
+	// HAL's IOProc callback rate from Render()'s AU-render-pull rate; an
+	// underflowing Render() is silence-filled rather than blocking the
+	// render thread.
 	std::unique_ptr<AURingBuffer> m_recordRingBuffer;
 };
 
