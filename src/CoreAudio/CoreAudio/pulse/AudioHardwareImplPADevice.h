@@ -23,6 +23,9 @@ public:
 	OSStatus getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 		const void* inQualifierData, UInt32* ioDataSize, void* outData) override;
 
+	OSStatus setPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
+		const void* inQualifierData, UInt32 inDataSize, const void* inData) override;
+
 	const std::string& paName() const { return m_paName; }
 	bool isInput() const { return m_isInput; }
 
