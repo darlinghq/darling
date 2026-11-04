@@ -15,7 +15,12 @@ jobs:
 
     - name: Update submodules to their remote default branch
       run: |
-        git submodule update --remote --checkout
+        # libressl-* submodules are intentionally pinned to fixed historical
+        # tags (not moving branches), so they must not be auto-updated.
+        all=$(git config --file .gitmodules --get-regexp '\.path$' | awk '{print $2}')
+        pinned='src/external/libressl-2.2.9 src/external/libressl-2.5.5 src/external/libressl-2.6.5 src/external/libressl-2.8.3'
+        to_update=$(comm -23 <(echo "$all" | sort) <(echo "$pinned" | tr ' ' '\n' | sort))
+        git submodule update --remote --checkout $to_update
 
     - name: Create pull request
       uses: peter-evans/create-pull-request@v6
