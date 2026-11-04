@@ -187,13 +187,30 @@ not involve that application.
 - Do not reproduce Apple's documentation prose verbatim in comments or docs.
   Paraphrase and link to the public documentation instead.
 
-## 5. CoreCrypto: absolute prohibition (highest priority)
+## 5. CoreCrypto (and alike): absolute prohibition (highest priority)
 
 - Apple's open-source CoreCrypto (corecrypto) is under a license that is
   incompatible with this project. **No code from it may ever enter this
   codebase under any circumstances**: not copied, not translated to another
   language, not "lightly refactored", not reproduced from memory, not used as
   a line-by-line reference while writing.
+- **This extends to any future Apple-released source.** Apple occasionally
+  publishes source for a component under terms that make the *source
+  available to read* without making it *free/open-source software* usable
+  here (e.g. viewing/research-only terms, no-redistribution or no-derivative
+  clauses, patent carve-outs, or anything short of a license compatible with
+  this project's license). Whenever that is the case for some component,
+  every rule in this section that applies to corecrypto applies identically
+  to that component and its source, whether or not it is named here: no
+  copying, translating, "light refactoring", reproduction from memory, or use
+  as a line-by-line reference; no pasting it into prompts, tool calls,
+  scratch files, or PR text; implementation only from the public API
+  contract, published standards, and public test vectors; and the same
+  mandatory human review step below before any PR touching a reimplementation
+  of it can be merged. If you are unsure whether a given release is
+  "source-available but not free software" in this sense, treat it as if it
+  is and ask a maintainer (Section 10) before using it for anything beyond
+  understanding the public contract.
 - Do not open, quote, summarize, or paste corecrypto source into prompts, tool
   calls, scratch files, or PR text.
 - Implement CoreCrypto-compatible APIs from: the public API contract,
@@ -210,13 +227,15 @@ not involve that application.
   or reconstruct anything about corecrypto's internals.
 - Quirks in crypto code require explicit maintainer approval (Section 3).
 - **Mandatory human review step.** Any PR touching the CoreCrypto
-  reimplementation requires an explicit, separate check — stated by the
+  reimplementation, or the reimplementation of any other component covered by
+  the extension above, requires an explicit, separate check — stated by the
   author and verified by the reviewer, not merely assumed because
   "AGENTS.md was followed" — that the diff does not contain verbatim or
-  near-verbatim code from Apple's corecrypto source (including variable/field
-  names, comments, or distinctive structure copied from it). This check must
-  be performed by reading the actual diff side-by-side with knowledge of
-  corecrypto's public layout/API (never its source, per above), not by
+  near-verbatim code from Apple's corecrypto (or the other component's)
+  source (including variable/field names, comments, or distinctive structure
+  copied from it). This check must be performed by reading the actual diff
+  side-by-side with knowledge of corecrypto's public layout/API (never its
+  source, per above), not by
   asking an AI agent to self-certify its own output. If a reviewer cannot
   confirm this, the PR must not be merged until a maintainer with corecrypto
   familiarity confirms it.
@@ -355,10 +374,12 @@ Stop and ask a maintainer instead of proceeding when:
       hierarchy/ordering/context, and summarized neutrally in the PR
 - [ ] No verbatim third-party code; any reused code is licensed, attributed,
       and listed
-- [ ] No corecrypto-derived code or reference
-- [ ] If this PR touches the CoreCrypto reimplementation: a human reviewer
-      has explicitly checked the diff for verbatim/near-verbatim code from
-      Apple's corecrypto source (not merely assumed compliance)
+- [ ] No corecrypto-derived code or reference, nor from any other
+      source-available-but-not-free-software Apple release (Section 5)
+- [ ] If this PR touches the CoreCrypto reimplementation, or any other
+      component covered by Section 5's extension: a human reviewer has
+      explicitly checked the diff for verbatim/near-verbatim code from
+      Apple's source (not merely assumed compliance)
 - [ ] The PR author can explain, in their own words, what this change does
       and why it is correct, and will personally respond (and not AI) to
       maintainer questions on this PR
