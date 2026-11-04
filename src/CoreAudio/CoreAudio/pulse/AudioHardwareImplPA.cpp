@@ -20,12 +20,14 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "AudioHardwareImplPA.h"
 #include "../stub.h"
 #include "AudioHardwareStreamPA.h"
+#include "AudioHardwareImplPADevice.h"
 #include "PADispatchMainLoop.h"
 #include <CoreFoundation/CFBundle.h>
 #include <CoreFoundation/CFString.h>
 #include <iostream>
 #include <mutex>
 #include <thread>
+#include <unordered_set>
 
 AudioHardwareImplPA::AudioHardwareImplPA(AudioObjectID myId, const char* paRole)
 : AudioHardwareImpl(myId), m_paRole(paRole)
@@ -70,12 +72,25 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 			return kAudioHardwareNoError;
 		case kAudioHardwarePropertyDevices:
 		{
-			if (AudioDeviceID* devId = static_cast<AudioDeviceID*>(outData); devId && *ioDataSize >= 2*sizeof(AudioDeviceID))
+			// Only the system object exposes the full device list.
+			if (id() != kAudioObjectSystemObject)
+				break;
+
+			refreshDeviceList();
+
+			std::vector<AudioObjectID> ids = allDeviceIds();
+			ids.push_back(kAudioObjectSystemObject + 1); // default output
+			ids.push_back(kAudioObjectSystemObject + 2); // default input
+			ids.push_back(kAudioObjectSystemObject + 3); // event output
+
+			UInt32 neededSize = UInt32(ids.size() * sizeof(AudioDeviceID));
+
+			if (AudioDeviceID* devId = static_cast<AudioDeviceID*>(outData); devId && *ioDataSize >= neededSize)
 			{
-				devId[0] = kAudioObjectSystemObject + 1; // output
-				devId[1] = kAudioObjectSystemObject + 2; // input
+				for (size_t i = 0; i < ids.size(); i++)
+					devId[i] = ids[i];
 			}
-			*ioDataSize = sizeof(AudioDeviceID) * 2;
+			*ioDataSize = neededSize;
 			return kAudioHardwareNoError;
 		}
 		case kAudioDevicePropertyVolumeDecibelsToScalar:
@@ -283,4 +298,155 @@ bool AudioHardwareImplPA::validateFormat(const AudioStreamBasicDescription* asbd
 {
 	pa_sample_spec spec = paSampleSpecForASBD(*asbd);
 	return pa_sample_spec_valid(&spec);
+}
+
+PADeviceRegistry& AudioHardwareImplPA::registry()
+{
+	// +100 so dynamically discovered devices never collide with the 4 fixed
+	// IDs (0..3: system object, default-output, default-input, event-output).
+	static PADeviceRegistry reg(kAudioObjectSystemObject + 100);
+	return reg;
+}
+
+std::vector<AudioObjectID> AudioHardwareImplPA::allDeviceIds() const
+{
+	return registry().allIds();
+}
+
+// Trampolines: PulseAudio's info-list/subscribe callbacks are plain C function
+// pointers, not blocks, so (as with paContextStateCB above) we Block_copy() the
+// block into the opaque userdata pointer and have a small static function
+// forward the call.
+static void paSinkInfoListCB(pa_context* c, const pa_sink_info* i, int eol, void* userdata)
+{
+	void (^cb)(const pa_sink_info*, int) = (void (^)(const pa_sink_info*, int)) userdata;
+	cb(i, eol);
+	if (eol)
+		Block_release(cb);
+}
+
+static void paSourceInfoListCB(pa_context* c, const pa_source_info* i, int eol, void* userdata)
+{
+	void (^cb)(const pa_source_info*, int) = (void (^)(const pa_source_info*, int)) userdata;
+	cb(i, eol);
+	if (eol)
+		Block_release(cb);
+}
+
+static void paSubscribeCB(pa_context* c, pa_subscription_event_type_t t, uint32_t idx, void* userdata)
+{
+	AudioHardwareImplPA* self = static_cast<AudioHardwareImplPA*>(userdata);
+	unsigned facility = t & PA_SUBSCRIPTION_EVENT_FACILITY_MASK;
+
+	if (facility == PA_SUBSCRIPTION_EVENT_SINK || facility == PA_SUBSCRIPTION_EVENT_SOURCE)
+	{
+		// We're being called from within PADispatchMainLoop's GCD queue here
+		// (the same queue refreshDeviceList() needs to wait on), so calling
+		// refreshDeviceList() directly would deadlock. Hand it off to a
+		// different queue instead.
+		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+			self->refreshDeviceList();
+		});
+	}
+}
+
+void AudioHardwareImplPA::refreshDeviceList()
+{
+	dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+
+	registry().beginRefresh();
+
+	getPAContext(^(pa_context* context) {
+		if (!context)
+		{
+			dispatch_semaphore_signal(sem);
+			return;
+		}
+
+		// Subscribe to sink/source changes once so the device list stays
+		// current without requiring callers to re-query. Only ever meaningful
+		// (and only ever reached) on the long-lived system-object instance,
+		// since that's the only instance whose getPropertyData() calls
+		// refreshDeviceList().
+		static bool subscribed = false;
+		if (!subscribed)
+		{
+			subscribed = true;
+
+			pa_context_set_subscribe_callback(context, paSubscribeCB, this);
+
+			pa_operation* opSubscribe = pa_context_subscribe(context,
+				(pa_subscription_mask_t)(PA_SUBSCRIPTION_MASK_SINK | PA_SUBSCRIPTION_MASK_SOURCE), nullptr, nullptr);
+			if (opSubscribe)
+				pa_operation_unref(opSubscribe);
+		}
+
+		__block int pendingLists = 2;
+
+		void (^sinkCb)(const pa_sink_info*, int) = Block_copy(^(const pa_sink_info* info, int eol) {
+			if (info)
+			{
+				AudioObjectID devId = registry().idForName(info->name);
+				auto& objects = PAGetObjectMap();
+				if (objects.find(devId) == objects.end())
+					objects.insert(std::make_pair(devId, std::make_unique<AudioHardwareImplPADevice>(devId, info->name, false)));
+			}
+
+			if (eol && --pendingLists == 0)
+				dispatch_semaphore_signal(sem);
+		});
+
+		pa_operation* opSink = pa_context_get_sink_info_list(context, paSinkInfoListCB, sinkCb);
+		if (opSink)
+			pa_operation_unref(opSink);
+		else
+		{
+			Block_release(sinkCb);
+			if (--pendingLists == 0)
+				dispatch_semaphore_signal(sem);
+		}
+
+		void (^sourceCb)(const pa_source_info*, int) = Block_copy(^(const pa_source_info* info, int eol) {
+			// Real CoreAudio never exposes a monitor-of-sink as an input device.
+			if (info && info->monitor_of_sink == PA_INVALID_INDEX)
+			{
+				AudioObjectID devId = registry().idForName(info->name);
+				auto& objects = PAGetObjectMap();
+				if (objects.find(devId) == objects.end())
+					objects.insert(std::make_pair(devId, std::make_unique<AudioHardwareImplPADevice>(devId, info->name, true)));
+			}
+
+			if (eol && --pendingLists == 0)
+				dispatch_semaphore_signal(sem);
+		});
+
+		pa_operation* opSource = pa_context_get_source_info_list(context, paSourceInfoListCB, sourceCb);
+		if (opSource)
+			pa_operation_unref(opSource);
+		else
+		{
+			Block_release(sourceCb);
+			if (--pendingLists == 0)
+				dispatch_semaphore_signal(sem);
+		}
+	});
+
+	dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
+	dispatch_release(sem);
+
+	registry().endRefresh();
+
+	// Drop any dynamically-assigned object (id >= kAudioObjectSystemObject + 100)
+	// whose PulseAudio name was released by the refresh above.
+	std::vector<AudioObjectID> live = registry().allIds();
+	std::unordered_set<AudioObjectID> liveSet(live.begin(), live.end());
+
+	auto& objects = PAGetObjectMap();
+	for (auto it = objects.begin(); it != objects.end(); )
+	{
+		if (it->first >= kAudioObjectSystemObject + 100 && !liveSet.count(it->first))
+			it = objects.erase(it);
+		else
+			++it;
+	}
 }

@@ -28,12 +28,20 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unordered_map>
 #include "stub.h"
 
-static std::unordered_map<AudioObjectID, std::unique_ptr<AudioHardwareImpl>> g_objects;
+// Exposed (declared in AudioHardwareImplPA.h) so AudioHardwareImplPA can add/remove
+// dynamically-discovered PulseAudio devices from the same map used by this file.
+std::unordered_map<AudioObjectID, std::unique_ptr<AudioHardwareImpl>>& PAGetObjectMap()
+{
+	static std::unordered_map<AudioObjectID, std::unique_ptr<AudioHardwareImpl>> objects;
+	return objects;
+}
 
 static void initObjects()
 {
 	static dispatch_once_t once;
 	dispatch_once(&once, ^{
+		auto& g_objects = PAGetObjectMap();
+
 		// TODO: Or ALSA
 		g_objects.insert(std::make_pair(kAudioObjectSystemObject, std::make_unique<AudioHardwareImplPA>(kAudioObjectSystemObject)));
 		g_objects.insert(std::make_pair(kAudioObjectSystemObject + 1, std::make_unique<AudioHardwareImplPAOutput>(kAudioObjectSystemObject + 1)));
@@ -46,6 +54,7 @@ static AudioHardwareImpl* GetObject(AudioObjectID objID)
 {
 	initObjects();
 
+	auto& g_objects = PAGetObjectMap();
 	auto it = g_objects.find(objID);
 	if (it == g_objects.end())
 		return nullptr;

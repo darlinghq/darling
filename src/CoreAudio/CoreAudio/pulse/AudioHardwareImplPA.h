@@ -21,9 +21,17 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define AUDIOHARDWAREIMPLPA_H
 #include "../AudioHardwareImpl.h"
 #include "PADispatchMainLoop.h"
+#include "PADeviceRegistry.h"
 #include <memory>
+#include <unordered_map>
+#include <vector>
 
 class PADispatchMainLoop;
+
+// Defined in AudioHardware.cpp. Shared so AudioHardwareImplPA can add/remove
+// dynamically-discovered PulseAudio devices from the same object map used
+// to dispatch AudioObjectID-based CoreAudio calls.
+std::unordered_map<AudioObjectID, std::unique_ptr<AudioHardwareImpl>>& PAGetObjectMap();
 
 class AudioHardwareImplPA : public AudioHardwareImpl
 {
@@ -33,15 +41,29 @@ public:
 
 	OSStatus getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 		const void* inQualifierData, UInt32* ioDataSize, void* outData) override;
-	
+
 	OSStatus setPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 		const void* inQualifierData, UInt32 inDataSize, const void* inData) override;
-	
+
 	void getPAContext(void (^cb)(pa_context*));
 	static pa_sample_spec paSampleSpecForASBD(const AudioStreamBasicDescription& asbd, bool* convertSignedUnsigned = nullptr);
+
+	// Synchronously (re)enumerates PulseAudio sinks/sources, creating/removing
+	// AudioHardwareImplPADevice entries in PAGetObjectMap() as needed. Safe to
+	// call repeatedly (e.g. on every kAudioHardwarePropertyDevices query, or
+	// whenever PulseAudio reports a sink/source change).
+	void refreshDeviceList();
+
+	// All currently-known dynamically-discovered device AudioObjectIDs
+	// (does not include the 3 fixed role IDs +1/+2/+3).
+	std::vector<AudioObjectID> allDeviceIds() const;
 protected:
 	AudioHardwareStream* createStream(AudioDeviceIOProc callback, void* clientData) override;
 	bool validateFormat(const AudioStreamBasicDescription* asbd) const override;
+private:
+	// Seeded so dynamically discovered device IDs never collide with the 4
+	// fixed IDs (0..3: system object, default-output, default-input, event-output).
+	static PADeviceRegistry& registry();
 private:
 	pa_context* m_context = nullptr;
 	std::unique_ptr<PADispatchMainLoop> m_loop;
