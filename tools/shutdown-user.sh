@@ -8,19 +8,27 @@ fi
 
 echo "Seeing if Darling is currently running"
 
-# A container's launchd shows up as exactly "/sbin/launchd" (mldr drops its own
-# argv[0]). Match only that, so commands that merely mention launchd do not
-# count, and skip zombies, which cannot be shut down and are left to their
+# A container's launchd shows up with "/sbin/launchd" as the first word of its
+# args (mldr drops its own argv[0]). Match only that word, so commands that
+# merely mention launchd do not count, and skip zombies, which cannot be shut down and are left to their
 # parent to reap.
 running_launchd() {
 	ps -eo pid=,stat=,args= | awk '$2 !~ /^Z/ && $3 == "/sbin/launchd" { print $1 }'
 }
 
+# Attempts are counted per container: only the same PID surviving repeated
+# shutdowns counts as stuck, so many users can each be shut down in turn.
 attempts=0
+last_pid=
 PID=$(running_launchd | head -n1)
 
 while [ -n "$PID" ]
 do
+	if [ "$PID" != "$last_pid" ]
+	then
+		attempts=0
+		last_pid=$PID
+	fi
 	if [ "$attempts" -ge 5 ]
 	then
 		echo "Darling (launchd PID $PID) is still running after $attempts shutdown attempts, giving up." >&2

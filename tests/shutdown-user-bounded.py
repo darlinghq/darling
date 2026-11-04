@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+"""
+Host test: tools/shutdown-user.sh gives up instead of looping forever, and
+only counts a container's launchd.
+usage: python3 tests/shutdown-user-bounded.py [REPO_ROOT]
+The script runs under /bin/sh with whoami, ps, pgrep, su, timeout and sleep
+replaced by stubs that read a fake process table ("pid stat user args" per
+line). su records each `darling shutdown` and, in the "stops" case, removes
+the launchd from the table. Cases:
+  stuck      a launchd that `darling shutdown` does not stop (another prefix):
+             must exit non-zero after a bounded number of attempts
+  unrelated  only a host command mentioning launchd and a zombie launchd:
+             must exit 0 without calling `darling shutdown`
+  stops      a launchd that `darling shutdown` stops: must exit 0 after one
+             attempt
+  many       seven users, each with a container that `darling shutdown` stops:
+             must exit 0 after shutting down all seven (the attempt bound is
+             per container, not global)
+  uninstall  tools/uninstall with a shutdown-user.sh that fails: must exit
+             non-zero before removing anything
+"""
+
+import os
+import stat
+import subprocess
+import sys
+import tempfile
+
+root = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+script = os.path.join(root, "tools", "shutdown-user.sh")
+
+STUBS = {
+    "whoami": "echo root\n",
+    "sleep": ":\n",
+    "timeout": 'shift\nexec "$@"\n',
+    # ps -eo pid=,stat=,args=   |   ps -o uname= -p PID
+    "ps": r'''
+if [ "$1" = "-eo" ]; then
+	while read -r pid st user args; do echo "$pid $st $args"; done < "$TABLE"
+elif [ "$1" = "-o" ]; then
+	while read -r pid st user args; do [ "$pid" = "$4" ] && echo "$user"; done < "$TABLE"
+fi
+exit 0
+''',
+    # pgrep -f PATTERN: every entry whose command line contains PATTERN
+    "pgrep": r'''
+while read -r pid st user args; do
+	case "$args" in *"$2"*) echo "$pid";; esac
+done < "$TABLE"
+''',
+    "su": r'''
+echo "$*" >> "$CALLS"
+if [ "$MODE" = stops ]; then grep -v ' /sbin/launchd$' "$TABLE" > "$TABLE.new"; mv "$TABLE.new" "$TABLE"; fi
+if [ "$MODE" = many ]; then awk -v u="$2" '$3 != u' "$TABLE" > "$TABLE.new"; mv "$TABLE.new" "$TABLE"; fi
+exit 0
+''',
+}
+
+CASES = [
+    # name, table, expected exit is zero, expected number of shutdown calls (None: any, bounded)
+    ("stuck", ["4242 Ssl alice /sbin/launchd"], False, None),
+    ("unrelated", ["100 S+ bob less src/launchd/src/core.c", "4243 Z alice /sbin/launchd"], True, 0),
+    ("stops", ["4244 Ssl alice /sbin/launchd"], True, 1),
+    ("many", [f"{5000 + i} Ssl user{i} /sbin/launchd" for i in range(7)], True, 7),
+]
+
+failed = False
+with tempfile.TemporaryDirectory(prefix="shutdown-user-") as d:
+    bindir = os.path.join(d, "bin")
+    os.mkdir(bindir)
+    for name, body in STUBS.items():
+        path = os.path.join(bindir, name)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("#!/bin/sh\n" + body)
+        os.chmod(path, stat.S_IRWXU)
+
+    for name, table, want_ok, want_calls in CASES:
+        table_path = os.path.join(d, name + ".table")
+        calls_path = os.path.join(d, name + ".calls")
+        with open(table_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(table) + "\n")
+        open(calls_path, "w").close()
+        env = dict(os.environ, PATH=bindir + ":" + os.environ.get("PATH", "/usr/bin:/bin"),
+                   TABLE=table_path, CALLS=calls_path, MODE=name)
+        try:
+            res = subprocess.run(["/bin/sh", script], env=env, capture_output=True, text=True, timeout=20)
+        except subprocess.TimeoutExpired:
+            with open(calls_path, encoding="utf-8") as f:
+                n = sum(1 for _ in f)
+            print(f"FAIL [{name}]: still looping after 20 s ({n} shutdown attempts)")
+            failed = True
+            continue
+        with open(calls_path, encoding="utf-8") as f:
+            calls = f.read().splitlines()
+        problems = []
+        if (res.returncode == 0) != want_ok:
+            problems.append(f"exit status {res.returncode}")
+        if want_calls is not None and len(calls) != want_calls:
+            problems.append(f"{len(calls)} shutdown attempts, want {want_calls}")
+        if calls and any(not c.startswith("--login ") or not c.endswith(" -c darling shutdown") for c in calls):
+            problems.append(f"unexpected su call {calls[0]!r}")
+        if problems:
+            print(f"FAIL [{name}]: " + "; ".join(problems))
+            sys.stdout.write(res.stdout + res.stderr)
+            failed = True
+        else:
+            print(f"PASS [{name}]: exit {res.returncode}, {len(calls)} shutdown attempts")
+
+# tools/uninstall must not delete anything when shutdown-user.sh fails. It is
+# copied next to a stub shutdown-user.sh that exits 1; darling, rm, rmdir and
+# find are stubs that record what would have been removed.
+uninstall = os.path.join(root, "tools", "uninstall")
+with tempfile.TemporaryDirectory(prefix="uninstall-") as d:
+    tools = os.path.join(d, "tools")
+    bindir = os.path.join(d, "bin")
+    os.mkdir(tools)
+    os.mkdir(bindir)
+    log = os.path.join(d, "removed")
+    open(log, "w").close()
+    stubs = {
+        os.path.join(tools, "uninstall"): open(uninstall, encoding="utf-8").read(),
+        os.path.join(tools, "shutdown-user.sh"): "#!/bin/sh\nexit 1\n",
+        os.path.join(bindir, "whoami"): "#!/bin/sh\necho root\n",
+        os.path.join(bindir, "darling"): "#!/bin/sh\nexit 0\n",
+    }
+    for cmd in ("rm", "rmdir", "find"):
+        stubs[os.path.join(bindir, cmd)] = f'#!/bin/sh\necho "{cmd} $*" >> "{log}"\n'
+    for path, body in stubs.items():
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(body)
+        os.chmod(path, stat.S_IRWXU)
+    env = dict(os.environ, PATH=bindir + ":" + os.environ.get("PATH", "/usr/bin:/bin"))
+    res = subprocess.run(["/bin/sh", os.path.join(tools, "uninstall")], env=env,
+                         capture_output=True, text=True, timeout=20)
+    removed = open(log, encoding="utf-8").read().splitlines()
+    if res.returncode == 0 or removed:
+        print(f"FAIL [uninstall]: exit {res.returncode} after a failed shutdown, {len(removed)} removals"
+              + (f" ({removed[0]!r} ...)" if removed else ""))
+        failed = True
+    else:
+        print(f"PASS [uninstall]: exit {res.returncode}, nothing removed after a failed shutdown")
+
+if failed:
+    print("FAIL: shutdown-user.sh regression")
+    sys.exit(1)
+print("PASS: shutdown-user.sh stops after bounded attempts and only counts a container's launchd")
