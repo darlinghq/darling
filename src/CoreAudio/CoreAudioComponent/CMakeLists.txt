@@ -30,6 +30,8 @@ set(component_sources
 	AUHAL.cpp
 	AURingBuffer.cpp
 	AUConverterUnit.cpp
+	MixerSum.cpp
+	AUMixerUnit.cpp
 	SystemOutputAU.cpp
 	DefaultOutputAU.cpp
 )

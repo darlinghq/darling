@@ -92,6 +92,28 @@
 			<key>version</key>
 			<integer>1</integer>
 		</dict>
+		<dict>
+			<key>description</key>
+			<string>Multi-channel summing mixer</string>
+			<key>factoryFunction</key>
+			<string>AUMixerUnitFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: AUMixer</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>mcmx</string>
+			<key>tags</key>
+			<array>
+				<string>Mixer</string>
+			</array>
+			<key>type</key>
+			<string>aumx</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
 	<string>CoreAudio</string>
