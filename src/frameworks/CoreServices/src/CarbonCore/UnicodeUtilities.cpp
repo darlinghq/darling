@@ -226,11 +226,25 @@ OSStatus UCKeyTranslate(const UCKeyboardLayout *keyLayoutPtr, UInt16 virtualKeyC
 		c = table[virtualKeyCode];
 	}
 
-	// A table entry with the top bits 01 is a dead-key state index and 10 is a sequence index,
-	// not a character. Resolving them needs the layout's state and sequence tables, which are
-	// not read here, so such a key produces no text instead of a marker passed off as one.
-	if ((c & 0xC000) == 0x4000 || (c & 0xC000) == 0x8000)
+	// The top bits of a table entry follow the UCKeyOutput description in the public
+	// UnicodeUtilities.h: 01 is an index into the state records, 10 is an index into the
+	// sequence data or, "if UCKeySequenceDataIndex is not present or the index is beyond the
+	// end of the list", a single character; 0xFFFE and 0xFFFF are not characters. The state
+	// and sequence tables are not read here, so an entry that really indexes one of them
+	// produces no text instead of a marker passed off as a character. The layouts Darling
+	// builds hold plain UCS values and no tables. Reading 01 as a character when the layout
+	// has no state records is a guess made for those layouts: the header documents no fallback.
+	const UCKeyboardTypeHeader& type = keyLayoutPtr->keyboardTypeList[0];
+	if (c == 0xFFFE || c == 0xFFFF)
 		return noErr;
+	if ((c & kUCKeyOutputTestForIndexMask) == kUCKeyOutputStateIndexMask && type.keyStateRecordsIndexOffset != 0)
+		return noErr;
+	if ((c & kUCKeyOutputTestForIndexMask) == kUCKeyOutputSequenceIndexMask && type.keySequenceDataIndexOffset != 0)
+	{
+		const UCKeySequenceDataIndex* sequences = (const UCKeySequenceDataIndex*) (((const char*) keyLayoutPtr) + type.keySequenceDataIndexOffset);
+		if ((c & kUCKeyOutputGetIndexMask) < sequences->charSequenceCount)
+			return noErr;
+	}
 
 	*actualStringLength = 1;
 	if (maxStringLength > 0)
