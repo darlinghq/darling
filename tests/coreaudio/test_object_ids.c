@@ -35,6 +35,11 @@ int main(void)
 		return 1;
 	}
 
+	if (uidOut)
+		CFRelease(uidOut);
+	if (uidEvent)
+		CFRelease(uidEvent);
+
 	printf("test_object_ids: OK\n");
 	return 0;
 }
