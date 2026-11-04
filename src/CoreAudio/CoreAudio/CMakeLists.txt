@@ -10,6 +10,7 @@ set(coreaudio_sources
     HostTime.mm
     pulse/AudioHardwareImplPA.cpp
     pulse/AudioHardwareImplPADevice.cpp
+    pulse/PADeviceRegistry.cpp
     pulse/AudioHardwareImplPAInput.cpp
     pulse/AudioHardwareImplPAOutput.cpp
     AudioHardwareStream.cpp
