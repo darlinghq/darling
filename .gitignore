@@ -77,3 +77,4 @@ debian/*.substvars
 
 .idea
 cmake-build-*
+.worktrees/
