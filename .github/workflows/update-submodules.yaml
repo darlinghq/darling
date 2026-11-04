@@ -15,7 +15,7 @@ jobs:
 
     - name: Update submodules to their remote default branch
       run: |
-        git submodule update --remote --merge
+        git submodule update --remote --checkout
 
     - name: Create pull request
       uses: peter-evans/create-pull-request@v6
