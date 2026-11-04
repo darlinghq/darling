@@ -36,7 +36,7 @@ OSStatus AudioHardwareImplPADevice::getPropertyData(const AudioObjectPropertyAdd
 		{
 			if (Float32* v = static_cast<Float32*>(outData); v && *ioDataSize >= sizeof(Float32))
 			{
-				Float32 result = 1.0f;
+				__block Float32 result = 1.0f;
 				const std::string& name = m_paName;
 				bool isInput = m_isInput;
 

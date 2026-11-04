@@ -310,7 +310,11 @@ PADeviceRegistry& AudioHardwareImplPA::registry()
 
 std::vector<AudioObjectID> AudioHardwareImplPA::allDeviceIds() const
 {
-	return registry().allIds();
+	// PADeviceRegistry stays independent of CoreAudio headers and uses plain
+	// uint32_t; AudioObjectID is not necessarily the same type on this target
+	// (e.g. it can be `unsigned long`), so this can't be a bare return.
+	std::vector<uint32_t> ids = registry().allIds();
+	return std::vector<AudioObjectID>(ids.begin(), ids.end());
 }
 
 // Trampolines: PulseAudio's info-list/subscribe callbacks are plain C function
@@ -446,7 +450,7 @@ void AudioHardwareImplPA::refreshDeviceList()
 
 	// Drop any dynamically-assigned object (id >= kAudioObjectSystemObject + 100)
 	// whose PulseAudio name was released by the refresh above.
-	std::vector<AudioObjectID> live = registry().allIds();
+	std::vector<uint32_t> live = registry().allIds();
 	std::unordered_set<AudioObjectID> liveSet(live.begin(), live.end());
 
 	auto& objects = PAGetObjectMap();
