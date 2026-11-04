@@ -346,6 +346,14 @@ static void paSubscribeCB(pa_context* c, pa_subscription_event_type_t t, uint32_
 		// different queue instead.
 		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 			self->refreshDeviceList();
+			self->notifyPropertyChanged(kAudioHardwarePropertyDevices);
+		});
+	}
+	else if (facility == PA_SUBSCRIPTION_EVENT_SERVER)
+	{
+		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+			self->notifyPropertyChanged(kAudioHardwarePropertyDefaultOutputDevice);
+			self->notifyPropertyChanged(kAudioHardwarePropertyDefaultInputDevice);
 		});
 	}
 }
@@ -376,7 +384,7 @@ void AudioHardwareImplPA::refreshDeviceList()
 			pa_context_set_subscribe_callback(context, paSubscribeCB, this);
 
 			pa_operation* opSubscribe = pa_context_subscribe(context,
-				(pa_subscription_mask_t)(PA_SUBSCRIPTION_MASK_SINK | PA_SUBSCRIPTION_MASK_SOURCE), nullptr, nullptr);
+				(pa_subscription_mask_t)(PA_SUBSCRIPTION_MASK_SINK | PA_SUBSCRIPTION_MASK_SOURCE | PA_SUBSCRIPTION_MASK_SERVER), nullptr, nullptr);
 			if (opSubscribe)
 				pa_operation_unref(opSubscribe);
 		}

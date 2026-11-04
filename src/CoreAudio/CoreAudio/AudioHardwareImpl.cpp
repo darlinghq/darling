@@ -299,13 +299,23 @@ OSStatus AudioHardwareImpl::setPropertyData(const AudioObjectPropertyAddress* in
 OSStatus AudioHardwareImpl::addPropertyListener(const AudioObjectPropertyAddress* inAddress,
 	AudioObjectPropertyListenerProc inListener, void* inClientData)
 {
-	return kAudioHardwareUnknownPropertyError;
+	m_listeners.add(inAddress->mSelector, (void*)inListener, inClientData);
+	return kAudioHardwareNoError;
 }
 
 OSStatus AudioHardwareImpl::removePropertyListener(const AudioObjectPropertyAddress* inAddress,
 	AudioObjectPropertyListenerProc inListener, void* inClientData)
 {
-	return kAudioHardwareUnknownPropertyError;
+	m_listeners.remove(inAddress->mSelector, (void*)inListener, inClientData);
+	return kAudioHardwareNoError;
+}
+
+void AudioHardwareImpl::notifyPropertyChanged(AudioObjectPropertySelector selector)
+{
+	AudioObjectPropertyAddress addr = { selector, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
+	m_listeners.fire(selector, [&](void* proc, void* ctx) {
+		reinterpret_cast<AudioObjectPropertyListenerProc>(proc)(m_myId, 1, &addr, ctx);
+	});
 }
 
 OSStatus AudioHardwareImpl::setBufferSize(uint32_t bufferSize)
