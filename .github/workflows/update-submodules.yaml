@@ -1,0 +1,28 @@
+name: Update submodules
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  update-submodules:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Darling
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update submodules to their remote default branch
+      run: |
+        git submodule update --remote --merge
+
+    - name: Create pull request
+      uses: peter-evans/create-pull-request@v6
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "Update submodules to latest commits"
+        title: "Update submodules to latest commits"
+        body: "Automated update of all submodule references to the latest commit on each submodule's remote default branch."
+        branch: update-submodules
+        delete-branch: true
