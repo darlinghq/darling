@@ -18,7 +18,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "AUHAL.h"
+#include <algorithm>
 #include <iostream>
+#include <vector>
 
 #pragma GCC visibility push(default)
 AUDIOCOMPONENT_ENTRY(AUOutputBaseFactory, AUHAL);
@@ -94,6 +96,37 @@ OSStatus AUHAL::ChangeStreamFormat(AudioUnitScope inScope, AudioUnitElement inEl
 	}
 
 	return result;
+}
+
+bool AUHAL::ValidFormat(AudioUnitScope inScope, AudioUnitElement inElement, const CAStreamBasicDescription& inNewFormat)
+{
+	if (!AUBase::ValidFormat(inScope, inElement, inNewFormat))
+		return false;
+
+	// Mic data egresses on the input element's output scope (recording,
+	// against m_inputDevice); playback data ingresses on the output
+	// element's input scope (against m_outputDevice). Any other scope/element
+	// combination isn't one this class negotiates a device-backed rate for.
+	AudioDeviceID device;
+	if (inScope == kAudioUnitScope_Output && inElement == kInputBus)
+		device = m_inputDevice;
+	else if (inScope == kAudioUnitScope_Input && inElement == kOutputBus)
+		device = m_outputDevice;
+	else
+		return true;
+
+	AudioObjectPropertyAddress addr = { kAudioDevicePropertyAvailableNominalSampleRates, kAudioObjectPropertyScopeGlobal, 0 };
+	UInt32 size = 0;
+	if (AudioObjectGetPropertyDataSize(device, &addr, 0, nullptr, &size) != noErr || size == 0)
+		return true; // device doesn't report available rates; don't reject on missing data
+
+	std::vector<AudioValueRange> ranges(size / sizeof(AudioValueRange));
+	if (AudioObjectGetPropertyData(device, &addr, 0, nullptr, &size, ranges.data()) != noErr)
+		return true;
+
+	return std::any_of(ranges.begin(), ranges.end(), [&](const AudioValueRange& r) {
+		return inNewFormat.mSampleRate >= r.mMinimum - 0.5 && inNewFormat.mSampleRate <= r.mMaximum + 0.5;
+	});
 }
 
 OSStatus AUHAL::Start()

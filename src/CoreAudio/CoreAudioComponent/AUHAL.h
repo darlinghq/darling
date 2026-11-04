@@ -50,6 +50,12 @@ public:
 	OSStatus ChangeStreamFormat(AudioUnitScope inScope, AudioUnitElement inElement,
 		const CAStreamBasicDescription& inPrevFormat, const CAStreamBasicDescription& inNewFormat) override;
 
+	// Rejects a sample rate the underlying device doesn't actually support
+	// (on top of AUBase's canonical-format check), rather than silently
+	// accepting any rate and letting the mismatch surface as garbled audio.
+	bool ValidFormat(AudioUnitScope inScope, AudioUnitElement inElement,
+		const CAStreamBasicDescription& inNewFormat) override;
+
 	static OSStatus ComponentEntryDispatch(ComponentParameters *params, AUHAL *This);
 private:
 	static OSStatus playbackCallback(AudioObjectID inObjectID,
