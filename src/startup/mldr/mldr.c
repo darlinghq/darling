@@ -1089,6 +1089,10 @@ static void vchroot_unexpand_interpreter(struct load_results* lr) {
 		length = strlen(lr->argv[0]);
 
 		if (strncmp(lr->argv[0], lr->root_path, lr->root_path_length) == 0) {
+			if (length - lr->root_path_length >= sizeof(unexpanded)) {
+				fprintf(stderr, "Interpreter path is too long (%zu bytes, limit %zu)\n", length - lr->root_path_length, sizeof(unexpanded) - 1);
+				exit(1);
+			}
 			memmove(unexpanded, lr->argv[0] + lr->root_path_length, length - lr->root_path_length + 1);
 		} else {
 			if (length + sizeof(SYSTEM_ROOT) > sizeof(unexpanded)) {
