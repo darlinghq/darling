@@ -60,18 +60,40 @@ OSStatus AUHAL::Version()
 // Provide data from the microphone
 OSStatus AUHAL::Render(AudioUnitRenderActionFlags& ioActionFlags, const AudioTimeStamp& inTimeStamp, UInt32 inNumberFrames)
 {
-	std::unique_lock<std::mutex> lk(m_dataAvailableMutex);
-
-	m_dataAvailableCV.wait(lk, [=]{ return m_dataAvailable; });
-
 	AudioBufferList& abl = GetOutput(kInputBus)->GetBufferList();
-
 	// TODO: Prepare for non-interleaved audio
-	UInt32 howMuch = std::min<UInt32>(abl.mBuffers[0].mDataByteSize, m_bufferUsed);
-	memcpy(abl.mBuffers[0].mData, m_buffer.get(), howMuch);
-	abl.mBuffers[0].mDataByteSize = howMuch;
 
+	size_t channels = GetStreamFormat(kAudioUnitScope_Output, kInputBus).mChannelsPerFrame;
+	size_t frames = m_recordRingBuffer ? m_recordRingBuffer->read(static_cast<float*>(abl.mBuffers[0].mData), inNumberFrames) : 0;
+
+	if (frames < inNumberFrames)
+	{
+		// Underflow: silence-fill the remainder rather than blocking the
+		// render thread (blocking here is what the previous mutex/condvar
+		// implementation did, and it could stall an unrelated render call).
+		float* tail = static_cast<float*>(abl.mBuffers[0].mData) + frames * channels;
+		memset(tail, 0, (inNumberFrames - frames) * channels * sizeof(float));
+	}
+
+	abl.mBuffers[0].mDataByteSize = inNumberFrames * channels * sizeof(float);
 	return noErr;
+}
+
+OSStatus AUHAL::ChangeStreamFormat(AudioUnitScope inScope, AudioUnitElement inElement,
+	const CAStreamBasicDescription& inPrevFormat, const CAStreamBasicDescription& inNewFormat)
+{
+	OSStatus result = AUBase::ChangeStreamFormat(inScope, inElement, inPrevFormat, inNewFormat);
+
+	if (result == noErr && inScope == kAudioUnitScope_Output && inElement == kInputBus)
+	{
+		// The old ring buffer was sized/channeled for inPrevFormat; it must
+		// not be reused under a different channel count. Only reachable
+		// while stopped (StreamFormatWritable() requires !m_running), so
+		// there's no concurrent Render()/doRecord() to race against here.
+		m_recordRingBuffer.reset();
+	}
+
+	return result;
 }
 
 OSStatus AUHAL::Start()
@@ -304,29 +326,25 @@ OSStatus AUHAL::doPlayback(const AudioTimeStamp* inNow, AudioBufferList* outOutp
 OSStatus AUHAL::doRecord(const AudioTimeStamp* inNow, const AudioBufferList* inInputData, const AudioTimeStamp* inInputTime)
 {
 	// TODO: Prepare for non-interleaved audio
-	std::unique_lock<std::mutex> lk(m_dataAvailableMutex);
+	const CAStreamBasicDescription& desc = GetStreamFormat(kAudioUnitScope_Output, kInputBus);
 
-	if (m_bufferSize < inInputData->mBuffers[0].mDataByteSize)
+	if (!m_recordRingBuffer)
+		m_recordRingBuffer = std::make_unique<AURingBuffer>(/*capacityFrames=*/desc.mSampleRate / 10, desc.mChannelsPerFrame); // 100ms
+
+	UInt32 frames = inInputData->mBuffers[0].mDataByteSize / desc.mBytesPerFrame;
+	size_t written = m_recordRingBuffer->write(static_cast<const float*>(inInputData->mBuffers[0].mData), frames);
+	if (written < frames)
 	{
-		m_buffer.reset(new uint8_t[inInputData->mBuffers[0].mDataByteSize]);
-		m_bufferSize = inInputData->mBuffers[0].mDataByteSize;
+		// Overrun: Render() isn't pulling fast enough, so the oldest unread
+		// frames of this write are silently dropped rather than growing the
+		// buffer or blocking this (PulseAudio) thread.
+		std::cerr << "AUHAL: record ring buffer overrun, dropped " << (frames - written) << " frame(s)\n";
 	}
-
-	m_bufferUsed = inInputData->mBuffers[0].mDataByteSize;
-	memcpy(m_buffer.get(), inInputData->mBuffers[0].mData, m_bufferUsed);
-
-	m_dataAvailable = true;
-
-	lk.unlock();
-	m_dataAvailableCV.notify_one();
 
 	if (m_outputAvailableCb.inputProc)
 	{
 		AudioUnitRenderActionFlags flags = kAudioUnitRenderAction_PostRender;
-		const CAStreamBasicDescription& desc = GetStreamFormat(kAudioUnitScope_Output, kInputBus);
-		UInt32 numFrames = m_bufferUsed / desc.mBytesPerFrame;
-
-		m_outputAvailableCb.inputProc(m_outputAvailableCb.inputProcRefCon, &flags, inInputTime, kInputBus, numFrames, nullptr);
+		m_outputAvailableCb.inputProc(m_outputAvailableCb.inputProcRefCon, &flags, inInputTime, kInputBus, frames, nullptr);
 	}
 
 	return noErr;

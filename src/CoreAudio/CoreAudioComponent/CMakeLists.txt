@@ -28,6 +28,7 @@ set(component_sources
 	PublicUtility/CAHostTimeBase.cpp
 	PublicUtility/CAVectorUnit.cpp
 	AUHAL.cpp
+	AURingBuffer.cpp
 	SystemOutputAU.cpp
 	DefaultOutputAU.cpp
 )

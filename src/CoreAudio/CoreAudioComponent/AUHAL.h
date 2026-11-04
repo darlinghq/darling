@@ -20,9 +20,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef CAC_AUHAL_H
 #define CAC_AUHAL_H
 #include "AUBase.h"
+#include "AURingBuffer.h"
 #include <CoreAudio/AudioHardware.h>
-#include <condition_variable>
-#include <mutex>
 #include <memory>
 #include <stdint.h>
 
@@ -44,6 +43,12 @@ public:
 	OSStatus GetProperty(AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, void* outData) override;
 
 	OSStatus Render(AudioUnitRenderActionFlags& ioActionFlags, const AudioTimeStamp& inTimeStamp, UInt32 inNumberFrames) override;
+
+	// Only reachable while stopped (StreamFormatWritable() requires !m_running);
+	// invalidates m_recordRingBuffer so a changed channel count can't be read
+	// through a ring buffer still sized/channeled for the old format.
+	OSStatus ChangeStreamFormat(AudioUnitScope inScope, AudioUnitElement inElement,
+		const CAStreamBasicDescription& inPrevFormat, const CAStreamBasicDescription& inNewFormat) override;
 
 	static OSStatus ComponentEntryDispatch(ComponentParameters *params, AUHAL *This);
 private:
@@ -69,13 +74,12 @@ protected:
 	AudioDeviceID m_outputDevice, m_inputDevice;
 	AudioDeviceIOProcID m_outputProcID = 0, m_inputProcID = 0;
 
-	bool m_dataAvailable = false;
-	std::condition_variable m_dataAvailableCV;
-	std::mutex m_dataAvailableMutex;
-
 	// TODO: Prepare for non-interleaved audio
-	std::unique_ptr<uint8_t[]> m_buffer;
-	size_t m_bufferSize = 0, m_bufferUsed = 0;
+	// Sized on doRecord()'s first call, once the input stream format (and
+	// thus its channel count) is known. Decouples the HAL's IOProc callback
+	// rate from Render()'s AU-render-pull rate; an underflowing Render() is
+	// silence-filled rather than blocking the render thread.
+	std::unique_ptr<AURingBuffer> m_recordRingBuffer;
 };
 
 #endif
