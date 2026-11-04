@@ -1,5 +1,20 @@
 # AGENTS.md
 
+> **Note to human contributors and reviewers.** This document tells an AI
+> agent how to behave *if* you use one. It is not permission to submit code
+> you do not understand. You are responsible for every line in a PR you open,
+> AI-assisted or not: you must be able to explain what it does, why it is
+> correct, and why it follows the rules below, in your own words. "The agent
+> wrote it and followed AGENTS.md" is not an acceptable answer to a reviewer's
+> question, and a PR whose author cannot explain their own change may be
+> closed regardless of how it was produced.
+>
+> When a maintainer asks a question on a PR or issue, we expect a reply from
+> you, the human contributor, not from your AI assistant pasted verbatim, and
+> not from the AI replying on your behalf. Maintainers are volunteering their
+> time to review your contribution; having that time spent talking to a bot
+> instead of you is disrespectful and such comments may be disregarded.
+
 This project is a clean-room-style reimplementation of macOS/Apple platform
 functionality. The goal is **API compatibility with the publicly documented
 contracts**, while avoiding legal risk and low-quality, application-specific
@@ -194,6 +209,17 @@ not involve that application.
   public API calls into it and in what order. They must never be used to infer
   or reconstruct anything about corecrypto's internals.
 - Quirks in crypto code require explicit maintainer approval (Section 3).
+- **Mandatory human review step.** Any PR touching the CoreCrypto
+  reimplementation requires an explicit, separate check — stated by the
+  author and verified by the reviewer, not merely assumed because
+  "AGENTS.md was followed" — that the diff does not contain verbatim or
+  near-verbatim code from Apple's corecrypto source (including variable/field
+  names, comments, or distinctive structure copied from it). This check must
+  be performed by reading the actual diff side-by-side with knowledge of
+  corecrypto's public layout/API (never its source, per above), not by
+  asking an AI agent to self-certify its own output. If a reviewer cannot
+  confirm this, the PR must not be merged until a maintainer with corecrypto
+  familiarity confirms it.
 
 ## 6. No leftover runtime validation or debugging code
 
@@ -330,6 +356,12 @@ Stop and ask a maintainer instead of proceeding when:
 - [ ] No verbatim third-party code; any reused code is licensed, attributed,
       and listed
 - [ ] No corecrypto-derived code or reference
+- [ ] If this PR touches the CoreCrypto reimplementation: a human reviewer
+      has explicitly checked the diff for verbatim/near-verbatim code from
+      Apple's corecrypto source (not merely assumed compliance)
+- [ ] The PR author can explain, in their own words, what this change does
+      and why it is correct, and will personally respond (and not AI) to
+      maintainer questions on this PR
 - [ ] No debugging/probe code left in the diff
 - [ ] Tests added from contract/standards/observation; vectors cited
 - [ ] Provenance note included
