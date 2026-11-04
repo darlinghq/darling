@@ -194,23 +194,30 @@ not involve that application.
   codebase under any circumstances**: not copied, not translated to another
   language, not "lightly refactored", not reproduced from memory, not used as
   a line-by-line reference while writing.
-- **This extends to any future Apple-released source.** Apple occasionally
-  publishes source for a component under terms that make the *source
-  available to read* without making it *free/open-source software* usable
-  here (e.g. viewing/research-only terms, no-redistribution or no-derivative
-  clauses, patent carve-outs, or anything short of a license compatible with
-  this project's license). Whenever that is the case for some component,
-  every rule in this section that applies to corecrypto applies identically
-  to that component and its source, whether or not it is named here: no
-  copying, translating, "light refactoring", reproduction from memory, or use
-  as a line-by-line reference; no pasting it into prompts, tool calls,
-  scratch files, or PR text; implementation only from the public API
-  contract, published standards, and public test vectors; and the same
-  mandatory human review step below before any PR touching a reimplementation
-  of it can be merged. If you are unsure whether a given release is
-  "source-available but not free software" in this sense, treat it as if it
-  is and ask a maintainer (Section 10) before using it for anything beyond
-  understanding the public contract.
+- **This extends to any other Apple source we cannot freely use, however it
+  became available.** Apple occasionally publishes source for a component
+  under terms that make the *source available to read* without it being
+  *free/open-source software* we can actually use here (e.g.
+  viewing/research-only terms, no-redistribution or no-derivative clauses,
+  patent carve-outs, or anything short of a license compatible with this
+  project's license). The same is true, with even less ambiguity, of Apple
+  source that was *leaked* rather than intentionally released — i.e. it
+  became "available" through a breach, an unauthorized dump, or similar,
+  with no license from Apple at all. It makes no difference whether such
+  source arrived via an official-looking release or a leak, how it was found
+  (a public repo, a forum, a pastebin, a torrent, etc.), or whether it
+  carries Apple's name or copyright notice: if it is not under a license
+  compatible with this project's license, it is restricted material, full
+  stop, and every rule in this section that applies to corecrypto applies
+  identically to it, whether or not it is named here: no copying,
+  translating, "light refactoring", reproduction from memory, or use as a
+  line-by-line reference; no pasting it into prompts, tool calls, scratch
+  files, or PR text; implementation only from the public API contract,
+  published standards, and public test vectors; and the same mandatory human
+  review step below before any PR touching a reimplementation of it can be
+  merged. If you are unsure whether source you have encountered falls into
+  this category, treat it as if it does and ask a maintainer (Section 10)
+  before using it for anything beyond understanding the public contract.
 - Do not open, quote, summarize, or paste corecrypto source into prompts, tool
   calls, scratch files, or PR text.
 - Implement CoreCrypto-compatible APIs from: the public API contract,
