@@ -30,7 +30,11 @@ CMakeCache.txt
 Module.symvers
 
 # Directories where too much temp stuff may lay around
-tests
+# (anchored to the top level only -- this used to be unanchored and silently
+# ignored any "tests" directory anywhere in the tree, e.g. src/CoreAudio/**/tests/)
+/tests/*
+!/tests/coreaudio/
+!/tests/coreaudio/**
 
 # The suggested build folder
 build
