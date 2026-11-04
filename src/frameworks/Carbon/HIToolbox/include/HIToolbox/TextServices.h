@@ -15,7 +15,7 @@ OSErr NewTSMDocument(short a, InterfaceTypeList b, TSMDocumentID * c, long d);
 
 OSErr UseInputWindow(TSMDocumentID a, Boolean b);
 
-OSStatus TSMSetDocumentProperty(TSMDocumentID docID, OSType propertyTag, ByteCount propertySize, void *propertyData);
+OSStatus TSMSetDocumentProperty(TSMDocumentID docID, OSType propertyTag, UInt32 propertySize, const void *propertyData);
 OSStatus TSMRemoveDocumentProperty(TSMDocumentID docID, OSType propertyTag);
 
 #ifdef __cplusplus

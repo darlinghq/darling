@@ -5,7 +5,7 @@
 // There is no Text Services Manager under Darling, so a document carries no
 // properties. Report that instead of claiming the property was stored.
 
-OSStatus TSMSetDocumentProperty(TSMDocumentID docID, OSType propertyTag, ByteCount propertySize, void *propertyData)
+OSStatus TSMSetDocumentProperty(TSMDocumentID docID, OSType propertyTag, UInt32 propertySize, const void *propertyData)
 {
 	return unimpErr;
 }
