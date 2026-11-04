@@ -70,6 +70,28 @@
 			<key>version</key>
 			<integer>1</integer>
 		</dict>
+		<dict>
+			<key>description</key>
+			<string>Generic format converter</string>
+			<key>factoryFunction</key>
+			<string>AUConverterUnitFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: AUConverter</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>conv</string>
+			<key>tags</key>
+			<array>
+				<string>Format Converter</string>
+			</array>
+			<key>type</key>
+			<string>aufc</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
 	<string>CoreAudio</string>

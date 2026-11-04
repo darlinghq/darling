@@ -29,6 +29,7 @@ set(component_sources
 	PublicUtility/CAVectorUnit.cpp
 	AUHAL.cpp
 	AURingBuffer.cpp
+	AUConverterUnit.cpp
 	SystemOutputAU.cpp
 	DefaultOutputAU.cpp
 )
