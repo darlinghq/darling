@@ -61,14 +61,16 @@ static int hex_digit(unsigned char c)
 }
 
 /*
- * Compares the percent-decoded query parameter name starting at "name" (ending at
- * '=', '&', ';' or the end of the string) with a lowercase ASCII word.
+ * Compares the percent-decoded query parameter name starting at "name" with a lowercase
+ * ASCII word. The name ends at '=', '&' or ';', literal or percent-encoded, because a client
+ * may decode the URL before it splits it. A name that decodes to '%' is reported as a match
+ * for every word: a client that decodes twice would read "%2561ttach" as "attach".
  */
 static int query_name_is(const char* name, const char* word)
 {
 	size_t w = 0;
 
-	while (*name != '\0' && *name != '=' && *name != '&' && *name != ';')
+	for (; *name != '\0'; name++)
 	{
 		int c = (unsigned char) *name;
 
@@ -76,15 +78,33 @@ static int query_name_is(const char* name, const char* word)
 		{
 			c = hex_digit((unsigned char) name[1]) * 16 + hex_digit((unsigned char) name[2]);
 			name += 2;
+			if (c == '%')
+				return 1;
 		}
+		if (c == '=' || c == '&' || c == ';')
+			break;
 		if (c >= 'A' && c <= 'Z')
 			c += 'a' - 'A';
 		if (word[w] == '\0' || c != (unsigned char) word[w])
 			return 0;
 		w++;
-		name++;
 	}
 	return word[w] == '\0';
+}
+
+/* Next parameter separator after "p": '&', ';' or their percent-encoded forms. */
+static const char* next_separator(const char* p)
+{
+	for (; *p != '\0'; p++)
+	{
+		if (*p == '&' || *p == ';')
+			return p;
+		if (p[0] == '%' && p[1] == '2' && p[2] == '6')
+			return p + 2;
+		if (p[0] == '%' && p[1] == '3' && (p[2] == 'b' || p[2] == 'B'))
+			return p + 2;
+	}
+	return NULL;
 }
 
 /* Several mail clients attach the file named by a mailto: "attach" parameter to the draft. */
@@ -98,7 +118,7 @@ static int mailto_attaches_file(const char* url)
 
 		if (query_name_is(name, "attach") || query_name_is(name, "attachment"))
 			return 1;
-		query = strpbrk(name, "&;");
+		query = next_separator(name);
 	}
 	return 0;
 }
