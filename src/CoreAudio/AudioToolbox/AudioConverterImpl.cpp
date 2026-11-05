@@ -67,6 +67,11 @@ void AudioConverter::flush()
 OSStatus AudioConverter::create(const AudioStreamBasicDescription* inSourceFormat, const AudioStreamBasicDescription* inDestinationFormat, AudioConverter** out)
 {
 	TRACE2(inSourceFormat, inDestinationFormat);
+    if (!out)
+        return paramErr;
+    *out = nullptr;
+    if (!inSourceFormat || !inDestinationFormat)
+        return paramErr;
 	
 	// TODO: non-interleaved audio
 
@@ -118,6 +123,7 @@ OSStatus AudioConverter::create(const AudioStreamBasicDescription* inSourceForma
 	if (avcodec_open2((*out)->m_decoder, codecIn, nullptr) < 0)
 	{
 		delete *out;
+        *out = nullptr;
 		std::cerr << "AudioConverter::create(): avcodec_open() failed, format in = " << std::hex << inSourceFormat->mFormatID << ", out = " << inDestinationFormat->mFormatID << std::dec << std::endl;
 
 		return paramErr;
