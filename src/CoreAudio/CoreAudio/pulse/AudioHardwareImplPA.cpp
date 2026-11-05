@@ -66,6 +66,25 @@ void AudioHardwareImplPA::syncPA(void (^block)(void))
 		block();
 }
 
+OSStatus AudioHardwareImplPA::start(AudioDeviceIOProcID inProcID, AudioTimeStamp* ioRequestedStartTime, UInt32 inFlags)
+{
+	// Connect first, so that the queue exists: every change to m_streams happens on it.
+	// A mutex wouldn't do, as an IOProc calling stop() would wait for a start() in progress,
+	// which in turn needs the queue that the IOProc is blocking.
+	__block bool connected = false;
+	getPAContext(^(pa_context* context) {
+		connected = context != nullptr;
+	});
+	if (!connected)
+		return kAudioHardwareNotRunningError;
+
+	__block OSStatus result = noErr;
+	syncPA(^{
+		result = AudioHardwareImpl::start(inProcID, ioRequestedStartTime, inFlags);
+	});
+	return result;
+}
+
 OSStatus AudioHardwareImplPA::stop(AudioDeviceIOProcID inProcID)
 {
 	__block OSStatus result = noErr;

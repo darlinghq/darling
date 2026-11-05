@@ -80,6 +80,23 @@ void AudioHardwareStreamPA::start()
 	m_running = true;
 }
 
+static void disconnectWhenReadyCB(pa_stream* stream, void*)
+{
+	switch (pa_stream_get_state(stream))
+	{
+		case PA_STREAM_READY:
+			pa_stream_disconnect(stream);
+			break;
+		case PA_STREAM_FAILED:
+		case PA_STREAM_TERMINATED:
+			pa_stream_set_state_callback(stream, nullptr, nullptr);
+			pa_stream_unref(stream);
+			break;
+		default:
+			break;
+	}
+}
+
 void AudioHardwareStreamPA::stop()
 {
 	static_cast<AudioHardwareImplPA*>(m_hw)->syncPA(^{
@@ -93,7 +110,16 @@ void AudioHardwareStreamPA::stop()
 			pa_stream_set_write_callback(m_stream, nullptr, nullptr);
 			pa_stream_set_read_callback(m_stream, nullptr, nullptr);
 			pa_stream_set_state_callback(m_stream, nullptr, nullptr);
-			pa_stream_disconnect(m_stream);
+
+			if (pa_stream_get_state(m_stream) == PA_STREAM_CREATING)
+			{
+				// A stream can't be disconnected until the server has answered the connection
+				// request. It finishes on its own, holding a reference, after this object is gone.
+				pa_stream_ref(m_stream);
+				pa_stream_set_state_callback(m_stream, disconnectWhenReadyCB, nullptr);
+			}
+			else
+				pa_stream_disconnect(m_stream);
 		}
 	});
 }

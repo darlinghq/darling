@@ -56,6 +56,7 @@ public:
 	bool onPAQueue() const { return m_loop && m_loop->onQueue(); }
 	// The PulseAudio sink/source streams connect to; nullptr selects the server default.
 	virtual const char* paDeviceName() const { return nullptr; }
+	OSStatus start(AudioDeviceIOProcID inProcID, AudioTimeStamp* ioRequestedStartTime, UInt32 inFlags) override;
 	OSStatus stop(AudioDeviceIOProcID inProcID) override;
 	static pa_sample_spec paSampleSpecForASBD(const AudioStreamBasicDescription& asbd, bool* convertSignedUnsigned = nullptr);
 
