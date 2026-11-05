@@ -1993,7 +1993,7 @@ job_new_subjob(job_t j, uuid_t identifier)
 			nj->stdinpath = strdup(j->stdinpath);
 		}
 		if (j->stdoutpath) {
-			nj->stdoutpath = strdup(j->stdinpath);
+			nj->stdoutpath = strdup(j->stdoutpath);
 		}
 		if (j->stderrpath) {
 			nj->stderrpath = strdup(j->stderrpath);
