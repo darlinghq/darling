@@ -33,6 +33,7 @@ set(component_sources
 	MixerSum.cpp
 	AUMixerUnit.cpp
 	SystemOutputAU.cpp
+	MatrixMixerAU.cpp
 	DefaultOutputAU.cpp
 )
 
