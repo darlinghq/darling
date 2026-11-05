@@ -20,6 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef AUDIOHARDWARESTREAMPAOUTPUT_H
 #define AUDIOHARDWARESTREAMPAOUTPUT_H
 #include "AudioHardwareStreamPA.h"
+#include <cstdint>
 
 class AudioHardwareStreamPAOutput : public AudioHardwareStreamPA
 {
@@ -28,6 +29,15 @@ public:
 private:
 	void start() override;
 	static void paStreamWriteCB(pa_stream* s, size_t length, void* self);
+
+	// Renders and submits one block; false once no further block can be written.
+	bool renderBlock();
+	uint64_t outputLatencyNs(size_t writable);
+
+	// Only touched on the PA queue.
+	uint64_t m_frames = 0;
+	size_t m_blockBytes = 0;
+	uint32_t m_blockFrames = 0;
 };
 
 #endif /* AUDIOHARDWARESTREAMPA_H */

@@ -30,8 +30,11 @@ public:
 
 	void suspend();
 	void resume();
+	void sync(void (^block)(void));
+	void async(void (^block)(void));
 	
 	pa_mainloop_api* getAPI();
+	bool onQueue() const { return dispatch_get_specific(this) == this; }
 private:
 	static pa_io_event* io_new(pa_mainloop_api *a, int fd, pa_io_event_flags_t events, pa_io_event_cb_t cb, void *userdata);
 	static void io_enable(pa_io_event *e, pa_io_event_flags_t events);
@@ -50,6 +53,7 @@ private:
 	static void defer_event_fire(void* context);
 private:
 	dispatch_queue_t m_queue;
+	dispatch_group_t m_sources;
 	pa_mainloop_api m_api = {0};
 	bool m_suspended = true;
 };

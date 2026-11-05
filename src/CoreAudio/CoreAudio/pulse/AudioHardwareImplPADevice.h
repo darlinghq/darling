@@ -11,14 +11,14 @@
 // PulseAudio name. A later task wires real discovery (enumerating PulseAudio
 // sinks/sources and constructing one of these per device) on top of this
 // class; this task only introduces the class itself.
+//
+// Streams created on it connect to this sink or source rather than to the server default.
 class AudioHardwareImplPADevice : public AudioHardwareImplPA
 {
 public:
-	// isInput selects whether `paName` is looked up via get_sink_info or
-	// get_source_info when answering stream-format/sample-rate properties
-	// (wired up in a later task; for now this constructor just records the
-	// name and role).
-	AudioHardwareImplPADevice(AudioObjectID myId, std::string paName, bool isInput);
+	// isInput selects whether `paName` is a sink or a source.
+	AudioHardwareImplPADevice(AudioObjectID myId, std::string paName, const char* description, bool isInput);
+	~AudioHardwareImplPADevice();
 
 	OSStatus getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 		const void* inQualifierData, UInt32* ioDataSize, void* outData) override;
@@ -26,12 +26,15 @@ public:
 	OSStatus setPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 		const void* inQualifierData, UInt32 inDataSize, const void* inData) override;
 
-	const std::string& paName() const { return m_paName; }
-	bool isInput() const { return m_isInput; }
+	const char* paDeviceName() const override { return m_paName.c_str(); }
+	bool isInputDevice() const override { return m_isInput; }
 
+protected:
+	AudioHardwareStream* createStream(AudioDeviceIOProc callback, void* clientData) override;
 private:
 	std::string m_paName;
 	bool m_isInput;
+	Float32 m_lastVolume = 1.0f;
 };
 
 #endif /* AUDIOHARDWAREIMPLPADEVICE_H */

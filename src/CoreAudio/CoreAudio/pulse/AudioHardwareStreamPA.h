@@ -34,18 +34,17 @@ public:
 
 	void stop(/*void(^cbDone)()*/) override;
 protected:
+	void initialize();
 	virtual void start();
 	void transformSignedUnsigned(AudioBufferList* abl) const;
 protected:
 	AudioDeviceIOProc m_callback;
 	void* m_clientData;
-	pa_stream* m_stream;
-	void(^m_cbDone)();
+	pa_stream* m_stream = nullptr;
+	void(^m_cbDone)() = nullptr;
 	bool m_convertSignedUnsigned = false;
 
 	bool m_running = false;
-	std::mutex m_stopMutex;
 };
 
 #endif /* AUDIOHARDWARESTREAMPA_H */
-

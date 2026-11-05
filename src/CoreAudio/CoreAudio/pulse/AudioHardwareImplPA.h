@@ -28,10 +28,15 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 class PADispatchMainLoop;
 
+// A device's stream object has the ID kPAStreamObjectBase | <device ID>.
+static const AudioObjectID kPAStreamObjectBase = 0x44410000u;
+
 // Defined in AudioHardware.cpp. Shared so AudioHardwareImplPA can add/remove
 // dynamically-discovered PulseAudio devices from the same object map used
 // to dispatch AudioObjectID-based CoreAudio calls.
 std::unordered_map<AudioObjectID, std::unique_ptr<AudioHardwareImpl>>& PAGetObjectMap();
+// Guards PAGetObjectMap(): it changes on PulseAudio events while clients look objects up.
+std::mutex& PAGetObjectMapMutex();
 
 class AudioHardwareImplPA : public AudioHardwareImpl
 {
@@ -46,6 +51,12 @@ public:
 		const void* inQualifierData, UInt32 inDataSize, const void* inData) override;
 
 	void getPAContext(void (^cb)(pa_context*));
+	// Runs the block on the PulseAudio queue and waits for it (directly, if already on that queue).
+	void syncPA(void (^block)(void));
+	bool onPAQueue() const { return m_loop && m_loop->onQueue(); }
+	// The PulseAudio sink/source streams connect to; nullptr selects the server default.
+	virtual const char* paDeviceName() const { return nullptr; }
+	OSStatus stop(AudioDeviceIOProcID inProcID) override;
 	static pa_sample_spec paSampleSpecForASBD(const AudioStreamBasicDescription& asbd, bool* convertSignedUnsigned = nullptr);
 
 	// Synchronously (re)enumerates PulseAudio sinks/sources, creating/removing
@@ -68,7 +79,7 @@ private:
 	pa_context* m_context = nullptr;
 	std::unique_ptr<PADispatchMainLoop> m_loop;
 	const char* m_paRole;
+	std::mutex m_contextMutex;
 };
 
 #endif
-

@@ -28,6 +28,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>
 #include <thread>
 #include <unordered_set>
+#include <condition_variable>
+#include <cstring>
+#include <chrono>
+#include <string>
+#include <vector>
 
 AudioHardwareImplPA::AudioHardwareImplPA(AudioObjectID myId, const char* paRole)
 : AudioHardwareImpl(myId), m_paRole(paRole)
@@ -39,8 +44,52 @@ AudioHardwareImplPA::AudioHardwareImplPA(AudioObjectID myId, const char* paRole)
 
 AudioHardwareImplPA::~AudioHardwareImplPA()
 {
-	if (m_context)
-		pa_context_unref(m_context);
+	for (auto& stream : m_streams)
+		stream.second->stop();
+	m_streams.clear();
+
+	if (m_context && m_loop)
+	{
+		m_loop->sync(^{
+			pa_context_disconnect(m_context);
+			pa_context_unref(m_context);
+		});
+		m_context = nullptr;
+	}
+}
+
+void AudioHardwareImplPA::syncPA(void (^block)(void))
+{
+	if (m_loop)
+		m_loop->sync(block);
+	else
+		block();
+}
+
+OSStatus AudioHardwareImplPA::stop(AudioDeviceIOProcID inProcID)
+{
+	__block OSStatus result = noErr;
+
+	syncPA(^{
+		auto it = m_streams.find(inProcID);
+		if (it == m_streams.end())
+		{
+			result = kAudioHardwareNotRunningError;
+			return;
+		}
+
+		AudioHardwareStream* stream = it->second.release();
+		m_streams.erase(it);
+		stream->stop();
+
+		// An IOProc may stop itself. Keep its stream alive until the current
+		// PulseAudio callback has unwound on this serial queue.
+		if (m_loop)
+			m_loop->async(^{ delete stream; });
+		else
+			delete stream;
+	});
+	return result;
 }
 
 OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
@@ -48,6 +97,77 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 {
 	switch (inAddress->mSelector)
 	{
+		case kAudioDevicePropertyStreams:
+		{
+			if (id() == kAudioObjectSystemObject)
+				return kAudioHardwareUnknownPropertyError;
+
+			const bool matches = inAddress->mScope == kAudioObjectPropertyScopeGlobal
+				|| inAddress->mScope == (isInputDevice() ? kAudioObjectPropertyScopeInput : kAudioObjectPropertyScopeOutput);
+			UInt32 size = matches ? sizeof(AudioStreamID) : 0;
+
+			if (outData && *ioDataSize < size)
+				return kAudioHardwareBadPropertySizeError;
+			if (outData && size)
+				*static_cast<AudioStreamID*>(outData) = kPAStreamObjectBase | id();
+
+			*ioDataSize = size;
+			return kAudioHardwareNoError;
+		}
+		case kAudioHardwarePropertyDeviceForUID:
+		{
+			if (id() != kAudioObjectSystemObject)
+				break;
+			if (!outData)
+			{
+				*ioDataSize = sizeof(AudioValueTranslation);
+				return kAudioHardwareNoError;
+			}
+			if (*ioDataSize < sizeof(AudioValueTranslation))
+				return kAudioHardwareBadPropertySizeError;
+
+			AudioValueTranslation* translation = static_cast<AudioValueTranslation*>(outData);
+			if (!translation->mInputData || translation->mInputDataSize != sizeof(CFStringRef)
+				|| !translation->mOutputData || translation->mOutputDataSize < sizeof(AudioDeviceID))
+				return kAudioHardwareBadPropertySizeError;
+
+			refreshDeviceList();
+
+			std::vector<AudioHardwareImpl*> devices;
+			{
+				std::lock_guard<std::mutex> lock(PAGetObjectMapMutex());
+				for (auto& object : PAGetObjectMap())
+				{
+					if (object.first != kAudioObjectSystemObject)
+						devices.push_back(object.second.get());
+				}
+			}
+
+			CFStringRef wanted = *static_cast<CFStringRef*>(translation->mInputData);
+			AudioDeviceID found = kAudioObjectUnknown;
+			const AudioObjectPropertyAddress uidAddress = { kAudioDevicePropertyDeviceUID, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
+
+			for (AudioHardwareImpl* device : devices)
+			{
+				CFStringRef uid = nullptr;
+				UInt32 size = sizeof(uid);
+				if (device->getPropertyData(&uidAddress, 0, nullptr, &size, &uid) == kAudioHardwareNoError && uid)
+				{
+					const bool match = CFEqual(uid, wanted);
+					CFRelease(uid);
+					if (match)
+					{
+						found = device->id();
+						break;
+					}
+				}
+			}
+
+			*static_cast<AudioDeviceID*>(translation->mOutputData) = found;
+			translation->mOutputDataSize = sizeof(found);
+			*ioDataSize = sizeof(AudioValueTranslation);
+			return kAudioHardwareNoError;
+		}
 		// BEGIN kAudioObjectSystemObject properties
 		case kAudioHardwarePropertyDefaultInputDevice: // returns AudioDeviceID
 			if (AudioDeviceID* devId = static_cast<AudioDeviceID*>(outData); devId && *ioDataSize >= sizeof(AudioDeviceID))
@@ -130,32 +250,34 @@ AudioHardwareStream* AudioHardwareImplPA::createStream(AudioDeviceIOProc callbac
 
 extern "C" char ***_NSGetArgv(void);
 
+struct PAContextReady
+{
+	std::mutex mutex;
+	std::condition_variable condition;
+	bool finished = false;
+};
+
 static void paContextStateCB(pa_context* c, void* priv)
 {
-	void (^cb)(pa_context*) = (void (^)(pa_context*)) priv;
-
 	pa_context_state_t state = pa_context_get_state(c);
-	if (state == PA_CONTEXT_READY)
-	{
-		// std::cout << "PA_CONTEXT_READY\n";
+	if (state != PA_CONTEXT_READY && state != PA_CONTEXT_FAILED && state != PA_CONTEXT_TERMINATED)
+		return;
 
-		cb(c);
-		Block_release(cb);
-
-		// FIXME: We won't be notified about later disconnects...
-		pa_context_set_state_callback(c, nullptr, nullptr);
-	}
-	else if (state == PA_CONTEXT_FAILED)
-	{
-		std::cerr << "PulseAudio error: PA_CONTEXT_FAILED\n";
-
-		cb(nullptr);
-		Block_release(cb);
-		pa_context_set_state_callback(c, nullptr, nullptr);
-	}
+	PAContextReady* ready = static_cast<PAContextReady*>(priv);
+	std::lock_guard<std::mutex> lock(ready->mutex);
+	ready->finished = true;
+	ready->condition.notify_one();
 }
 
-static const char* appNameFromExecutable()
+static std::string cfStringToUTF8(CFStringRef str)
+{
+	char buffer[256];
+	if (str && CFStringGetCString(str, buffer, sizeof(buffer), kCFStringEncodingUTF8))
+		return buffer;
+	return std::string();
+}
+
+static std::string appNameFromExecutable()
 {
 	const char* name = (*_NSGetArgv())[0];
 	const char* p = std::strrchr(name, '/');
@@ -167,75 +289,101 @@ static const char* appNameFromExecutable()
 
 void AudioHardwareImplPA::getPAContext(void (^cb)(pa_context*))
 {
-	// TODO: destruction
-	static std::mutex mutex;
+	// Connects once, waiting for readiness, so that the callback always runs on the
+	// PulseAudio queue with a context that is ready for use (or nullptr).
+	std::unique_lock<std::mutex> creationLock(m_contextMutex);
 
 	if (m_context == nullptr)
 	{
-		std::unique_lock<std::mutex> l(mutex);
+		std::string appname = appNameFromExecutable();
+		std::string appid = "org.darlinghq.some-app";
 
-		if (m_context == nullptr)
+		pa_proplist* proplist = pa_proplist_new();
+
+		// Try to find a better application name & id from the bundle
+		CFBundleRef mainBundle = CFBundleGetMainBundle();
+		if (mainBundle)
 		{
-			const char* appname = appNameFromExecutable();
-			const char* appid = "org.darlinghq.some-app";
+			std::string ident = cfStringToUTF8(CFBundleGetIdentifier(mainBundle));
+			if (!ident.empty())
+				appid = ident;
 
-			pa_proplist* proplist = pa_proplist_new();
+			CFDictionaryRef infoDict = CFBundleGetLocalInfoDictionary(mainBundle);
+			if (!infoDict)
+				infoDict = CFBundleGetInfoDictionary(mainBundle);
 
-			// Try to find a better application name & id from the bundle
-			CFBundleRef mainBundle = CFBundleGetMainBundle();
-			if (mainBundle)
+			if (infoDict)
 			{
-				CFStringRef ident = CFBundleGetIdentifier(mainBundle);
-				if (ident)
-					appid = CFStringGetCStringPtr(ident, kCFStringEncodingUTF8);
+				CFStringRef name = (CFStringRef) CFDictionaryGetValue(infoDict, CFSTR("CFBundleDisplayName"));
+				if (!name)
+					name = (CFStringRef) CFDictionaryGetValue(infoDict, CFSTR("CFBundleName"));
 
-				CFDictionaryRef infoDict = CFBundleGetLocalInfoDictionary(mainBundle);
-				if (!infoDict)
-					infoDict = CFBundleGetInfoDictionary(mainBundle);
-				
-				if (infoDict)
-				{
-					CFStringRef name = (CFStringRef) CFDictionaryGetValue(infoDict, CFSTR("CFBundleDisplayName"));
-					if (!name)
-						name = (CFStringRef) CFDictionaryGetValue(infoDict, CFSTR("CFBundleName"));
-					if (name)
-						appname = CFStringGetCStringPtr(name, kCFStringEncodingUTF8);
-				}
+				std::string bundleName = cfStringToUTF8(name);
+				if (!bundleName.empty())
+					appname = bundleName;
 			}
+		}
 
-			pa_proplist_sets(proplist, PA_PROP_APPLICATION_NAME, appname);
-			pa_proplist_sets(proplist, PA_PROP_APPLICATION_ID, appid);
-			if (m_paRole)
-				pa_proplist_sets(proplist, PA_PROP_MEDIA_ROLE, m_paRole);
-			// pa_proplist_sets(proplist, PA_PROP_APPLICATION_ICON_NAME, "icon-name");
-			// pa_proplist_sets(proplist, PA_PROP_MEDIA_ROLE, "game");
+		pa_proplist_sets(proplist, PA_PROP_APPLICATION_NAME, appname.c_str());
+		pa_proplist_sets(proplist, PA_PROP_APPLICATION_ID, appid.c_str());
+		if (m_paRole)
+			pa_proplist_sets(proplist, PA_PROP_MEDIA_ROLE, m_paRole);
 
-			m_loop.reset(new PADispatchMainLoop);
+		m_loop.reset(new PADispatchMainLoop);
 
-			m_context = pa_context_new_with_proplist(m_loop->getAPI(), appname, proplist);
-			pa_proplist_free(proplist);
+		m_context = pa_context_new_with_proplist(m_loop->getAPI(), appname.c_str(), proplist);
+		pa_proplist_free(proplist);
 
-			if (!m_context)
+		if (!m_context)
+		{
+			m_loop.reset();
+			cb(nullptr);
+			return;
+		}
+
+		PAContextReady ready;
+		pa_context_set_state_callback(m_context, paContextStateCB, &ready);
+
+		int connected = pa_context_connect(m_context, nullptr, PA_CONTEXT_NOFLAGS, nullptr);
+		if (connected < 0)
+			std::cerr << "pa_context_connect() returned an error\n";
+
+		m_loop->resume();
+
+		if (connected >= 0)
+		{
+			std::unique_lock<std::mutex> lock(ready.mutex);
+			ready.condition.wait_for(lock, std::chrono::seconds(10), [&]{ return ready.finished; });
+		}
+
+		// `ready` is about to go out of scope.
+		__block bool isReady = false;
+		m_loop->sync(^{
+			pa_context_set_state_callback(m_context, nullptr, nullptr);
+			isReady = pa_context_get_state(m_context) == PA_CONTEXT_READY;
+			if (!isReady)
 			{
-				cb(nullptr);
-				return;
+				pa_context_disconnect(m_context);
+				pa_context_unref(m_context);
 			}
+		});
 
-			pa_context_set_state_callback(m_context, paContextStateCB, Block_copy(cb));
-
-			if (pa_context_connect(m_context, nullptr, PA_CONTEXT_NOFLAGS, nullptr) < 0)
-			{
-				std::cerr << "pa_context_connect() returned an error\n";
-				pa_context_set_state_callback(m_context, nullptr, nullptr);
-				cb(nullptr);
-				return;
-			}
-
-			m_loop->resume();
+		if (!isReady)
+		{
+			// Leave nothing behind so that the next call tries to connect again.
+			std::cerr << "PulseAudio error: could not connect to the server\n";
+			m_context = nullptr;
+			m_loop.reset();
+			cb(nullptr);
+			return;
 		}
 	}
-	else
-		cb(m_context);
+
+	creationLock.unlock();
+
+	m_loop->sync(^{
+		cb(pa_context_get_state(m_context) == PA_CONTEXT_READY ? m_context : nullptr);
+	});
 }
 
 pa_sample_spec AudioHardwareImplPA::paSampleSpecForASBD(const AudioStreamBasicDescription& asbd, bool* convertSignedUnsigned)
@@ -304,7 +452,7 @@ PADeviceRegistry& AudioHardwareImplPA::registry()
 {
 	// +100 so dynamically discovered devices never collide with the 4 fixed
 	// IDs (0..3: system object, default-output, default-input, event-output).
-	static PADeviceRegistry reg(kAudioObjectSystemObject + 100);
+	static PADeviceRegistry& reg = *new PADeviceRegistry(kAudioObjectSystemObject + 100);
 	return reg;
 }
 
@@ -364,6 +512,11 @@ static void paSubscribeCB(pa_context* c, pa_subscription_event_type_t t, uint32_
 
 void AudioHardwareImplPA::refreshDeviceList()
 {
+	// Clients and PulseAudio events can both trigger a refresh, and the registry
+	// tracks a single refresh at a time.
+	static std::mutex* refreshMutex = new std::mutex();
+	std::lock_guard<std::mutex> refreshLock(*refreshMutex);
+
 	dispatch_semaphore_t sem = dispatch_semaphore_create(0);
 
 	registry().beginRefresh();
@@ -399,9 +552,10 @@ void AudioHardwareImplPA::refreshDeviceList()
 			if (info)
 			{
 				AudioObjectID devId = registry().idForName(info->name);
+				std::lock_guard<std::mutex> lock(PAGetObjectMapMutex());
 				auto& objects = PAGetObjectMap();
 				if (objects.find(devId) == objects.end())
-					objects.insert(std::make_pair(devId, std::make_unique<AudioHardwareImplPADevice>(devId, info->name, false)));
+					objects.insert(std::make_pair(devId, std::make_unique<AudioHardwareImplPADevice>(devId, info->name, info->description, false)));
 			}
 
 			if (eol && --pendingLists == 0)
@@ -423,9 +577,10 @@ void AudioHardwareImplPA::refreshDeviceList()
 			if (info && info->monitor_of_sink == PA_INVALID_INDEX)
 			{
 				AudioObjectID devId = registry().idForName(info->name);
+				std::lock_guard<std::mutex> lock(PAGetObjectMapMutex());
 				auto& objects = PAGetObjectMap();
 				if (objects.find(devId) == objects.end())
-					objects.insert(std::make_pair(devId, std::make_unique<AudioHardwareImplPADevice>(devId, info->name, true)));
+					objects.insert(std::make_pair(devId, std::make_unique<AudioHardwareImplPADevice>(devId, info->name, info->description, true)));
 			}
 
 			if (eol && --pendingLists == 0)
@@ -443,21 +598,30 @@ void AudioHardwareImplPA::refreshDeviceList()
 		}
 	});
 
-	dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
-	dispatch_release(sem);
+	// PulseAudio drops pending operations without calling back when the connection is lost.
+	// The callbacks may still signal after a timeout, so the semaphore is only released on success.
+	if (dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC)) == 0)
+		dispatch_release(sem);
 
 	registry().endRefresh();
 
 	// Drop any dynamically-assigned object (id >= kAudioObjectSystemObject + 100)
-	// whose PulseAudio name was released by the refresh above.
+	// whose PulseAudio name was released by the refresh above. Clients can be in the
+	// middle of a call on one, so removed objects stay allocated.
+	static auto& removedObjects = *new std::vector<std::unique_ptr<AudioHardwareImpl>>();
+
 	std::vector<uint32_t> live = registry().allIds();
 	std::unordered_set<AudioObjectID> liveSet(live.begin(), live.end());
 
+	std::lock_guard<std::mutex> lock(PAGetObjectMapMutex());
 	auto& objects = PAGetObjectMap();
 	for (auto it = objects.begin(); it != objects.end(); )
 	{
 		if (it->first >= kAudioObjectSystemObject + 100 && !liveSet.count(it->first))
+		{
+			removedObjects.push_back(std::move(it->second));
 			it = objects.erase(it);
+		}
 		else
 			++it;
 	}
