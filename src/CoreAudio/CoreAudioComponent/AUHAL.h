@@ -24,6 +24,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CoreAudio/AudioHardware.h>
 #include <memory>
 #include <stdint.h>
+#include <vector>
 
 class AUHAL : public AUBase
 {
@@ -31,6 +32,9 @@ public:
 	AUHAL(AudioComponentInstance inInstance, bool supportRecording = true);
 	~AUHAL();
 
+	UInt32 GetChannelLayoutTags(AudioUnitScope scope, AudioUnitElement element, AudioChannelLayoutTag* tags) override;
+	UInt32 GetAudioChannelLayout(AudioUnitScope scope, AudioUnitElement element, AudioChannelLayout* layout, Boolean& writable) override;
+	OSStatus SetAudioChannelLayout(AudioUnitScope scope, AudioUnitElement element, const AudioChannelLayout* layout) override;
 	bool CanScheduleParameters() const override;
 	bool StreamFormatWritable(AudioUnitScope scope, AudioUnitElement element) override;
 	OSStatus Version() override;
@@ -42,7 +46,7 @@ public:
 	OSStatus GetPropertyInfo(AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, UInt32& outDataSize, Boolean& outWritable) override;
 	OSStatus GetProperty(AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, void* outData) override;
 
-	OSStatus Render(AudioUnitRenderActionFlags& ioActionFlags, const AudioTimeStamp& inTimeStamp, UInt32 inNumberFrames) override;
+	OSStatus RenderBus(AudioUnitRenderActionFlags& ioActionFlags, const AudioTimeStamp& inTimeStamp, UInt32 inBusNumber, UInt32 inNumberFrames) override;
 
 	// Only reachable while stopped (StreamFormatWritable() requires !m_running);
 	// invalidates m_recordRingBuffer so a changed channel count can't be read
@@ -50,9 +54,8 @@ public:
 	OSStatus ChangeStreamFormat(AudioUnitScope inScope, AudioUnitElement inElement,
 		const CAStreamBasicDescription& inPrevFormat, const CAStreamBasicDescription& inNewFormat) override;
 
-	// Rejects a sample rate the underlying device doesn't actually support
-	// (on top of AUBase's canonical-format check), rather than silently
-	// accepting any rate and letting the mismatch surface as garbled audio.
+	// The client sides accept any format PulseAudio converts and our copies handle,
+	// in either layout; the device sides keep AUBase's canonical rule.
 	bool ValidFormat(AudioUnitScope inScope, AudioUnitElement inElement,
 		const CAStreamBasicDescription& inNewFormat) override;
 
@@ -80,14 +83,18 @@ protected:
 	AudioDeviceID m_outputDevice, m_inputDevice;
 	AudioDeviceIOProcID m_outputProcID = 0, m_inputProcID = 0;
 
-	// TODO: Prepare for non-interleaved audio
-	// Constructed in Start() (while !m_running, before the recording IOProc
+	// Holds interleaved data in the bus 1 output format. Constructed in Start() (while !m_running, before the recording IOProc
 	// is installed) so doRecord() and Render() -- which run on separate
 	// threads once started -- never race over construction. Decouples the
 	// HAL's IOProc callback rate from Render()'s AU-render-pull rate; an
 	// underflowing Render() is silence-filled rather than blocking the
 	// render thread.
 	std::unique_ptr<AURingBuffer> m_recordRingBuffer;
+	std::vector<unsigned char> m_recordScratch;
+
+	// Conversion storage for planar client formats. Playback callbacks run serially.
+	std::vector<unsigned char> m_playbackSamples;
+	std::vector<unsigned char> m_playbackBufferList;
 };
 
 #endif

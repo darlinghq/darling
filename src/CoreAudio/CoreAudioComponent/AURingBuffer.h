@@ -21,33 +21,34 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define AURINGBUFFER_H
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
-// Single-producer/single-consumer ring buffer for interleaved float audio.
+// Single-producer/single-consumer ring buffer for interleaved audio.
 // Used by AUHAL to decouple the HAL's IOProc callback rate from the AU
 // render-pull rate, replacing the previous single-buffer mutex/condvar
 // handoff which could only hold exactly one buffer at a time.
 class AURingBuffer
 {
 public:
-	AURingBuffer(size_t capacityFrames, unsigned channels);
+	AURingBuffer(size_t capacityFrames, unsigned channels, unsigned bytesPerSample = sizeof(float));
 
 	// Returns the number of frames actually written (<= capacityFrames,
 	// caps silently rather than blocking or growing).
-	size_t write(const float* interleaved, size_t frames);
+	size_t write(const void* interleaved, size_t frames);
 
 	// Returns the number of frames actually read (<= frames requested,
 	// 0 if nothing is available). Does not zero-fill short reads --
 	// callers fill the remainder with silence themselves.
-	size_t read(float* interleaved, size_t frames);
+	size_t read(void* interleaved, size_t frames);
 
 	size_t framesAvailable() const;
 	size_t capacityFrames() const { return m_capacityFrames; }
 
 private:
 	size_t m_capacityFrames;
-	unsigned m_channels;
-	std::vector<float> m_data; // capacityFrames * channels
+	size_t m_frameBytes;
+	std::vector<uint8_t> m_data; // capacityFrames * m_frameBytes
 	std::atomic<size_t> m_writePos{0}; // in frames, monotonically increasing
 	std::atomic<size_t> m_readPos{0};
 };
