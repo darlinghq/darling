@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>AudioComponents</key>
+	<array>
+		<dict>
+			<key>description</key>
+			<string>WAVE audio files</string>
+			<key>factoryFunction</key>
+			<string>WAVEComponentFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: WAVE</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>WAVE</string>
+			<key>type</key>
+			<string>afil</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>description</key>
+			<string>AIFF audio files</string>
+			<key>factoryFunction</key>
+			<string>AIFFComponentFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: AIFF</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>AIFF</string>
+			<key>type</key>
+			<string>afil</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>description</key>
+			<string>AIFC audio files</string>
+			<key>factoryFunction</key>
+			<string>AIFCComponentFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: AIFC</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>AIFC</string>
+			<key>type</key>
+			<string>afil</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>description</key>
+			<string>CAF audio files</string>
+			<key>factoryFunction</key>
+			<string>CAFComponentFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: CAF</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>caff</string>
+			<key>type</key>
+			<string>afil</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>description</key>
+			<string>NeXT/Sun audio files</string>
+			<key>factoryFunction</key>
+			<string>NeXTComponentFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: NeXT/Sun</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>NeXT</string>
+			<key>type</key>
+			<string>afil</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>description</key>
+			<string>MPEG Layer 3 audio files</string>
+			<key>factoryFunction</key>
+			<string>MP3ComponentFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: MPEG Layer 3</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>MPG3</string>
+			<key>type</key>
+			<string>afil</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>description</key>
+			<string>AAC ADTS audio files</string>
+			<key>factoryFunction</key>
+			<string>ADTSComponentFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: AAC ADTS</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>adts</string>
+			<key>type</key>
+			<string>afil</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>description</key>
+			<string>Apple MPEG-4 Audio audio files</string>
+			<key>factoryFunction</key>
+			<string>M4AComponentFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: Apple MPEG-4 Audio</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>m4af</string>
+			<key>type</key>
+			<string>afil</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>description</key>
+			<string>MPEG-4 Audio audio files</string>
+			<key>factoryFunction</key>
+			<string>MP4ComponentFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: MPEG-4 Audio</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>mp4f</string>
+			<key>type</key>
+			<string>afil</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>description</key>
+			<string>FLAC audio files</string>
+			<key>factoryFunction</key>
+			<string>FLACComponentFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: FLAC</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>flac</string>
+			<key>type</key>
+			<string>afil</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>description</key>
+			<string>AC-3 audio files</string>
+			<key>factoryFunction</key>
+			<string>AC3ComponentFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: AC-3</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>ac-3</string>
+			<key>type</key>
+			<string>afil</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>CFBundleExecutable</key>
+	<string>AFAVFormat</string>
+	<key>CFBundleIdentifier</key>
+	<string>org.darlinghq.audio.AFAVFormat</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+</dict>
+</plist>

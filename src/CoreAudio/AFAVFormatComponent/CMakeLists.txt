@@ -17,9 +17,9 @@ set(component_sources
 	AFPublic/DataSource.cpp
 	AUPublic/AUBase/ComponentBase.cpp
 	PublicUtility/CACFDictionary.cpp
+	AudioFileAVFormat.cpp
 	AudioFileFormatGeneric.cpp
-	AudioFileMP3.cpp
-	AudioFileWAV.cpp
+	AudioFileFormats.cpp
 )
 
 add_darling_bundle(AFAVFormatComponent "" ${component_sources})
@@ -29,7 +29,9 @@ target_link_libraries(AFAVFormatComponent
 	system
 	CoreFoundation
 	avformat
+	avcodec
+	avutil
 )
 set_target_properties(AFAVFormatComponent PROPERTIES OUTPUT_NAME "AFAVFormat" PREFIX "" SUFFIX "")
 install(TARGETS AFAVFormatComponent DESTINATION libexec/darling/System/Library/Components/AFAVFormat.component/Contents/MacOS)
-#install(FILES Info.plist DESTINATION libexec/darling/System/Library/Components/AFAVFormat.component/Contents)
+install(FILES Info.plist DESTINATION libexec/darling/System/Library/Components/AFAVFormat.component/Contents)

@@ -20,6 +20,101 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <AudioToolbox/AudioFile.h>
 #include <CarbonCore/MacErrors.h>
 #include "AudioFileFormatManager.h"
+#include <AudioToolbox/AudioFileComponent.h>
+#include <CarbonCore/Files.h>
+#include <algorithm>
+#include <cerrno>
+#include <fcntl.h>
+#include <limits.h>
+#include <string>
+#include <unistd.h>
+#include <vector>
+
+// How much of a file is enough to tell what format it is
+static const UInt32 PROBE_SIZE = 64 * 1024;
+
+static OSStatus newFileComponent(AudioFileTypeID fileType, AudioFileComponent* outComponent)
+{
+	AudioComponentDescription description = {};
+	description.componentType = 'afil';
+	description.componentSubType = fileType;
+
+	AudioComponent component = AudioComponentFindNext(nullptr, &description);
+	if (!component)
+		return kAudioFileUnsupportedFileTypeError;
+
+	return AudioComponentInstanceNew(component, outComponent);
+}
+
+static OSStatus errnoToStatus(int err)
+{
+	switch (err)
+	{
+		case ENOENT:
+			return fnfErr;
+		case EACCES:
+		case EPERM:
+		case EROFS:
+			return kAudioFilePermissionsError;
+		default:
+			return kAudioFileUnspecifiedError;
+	}
+}
+
+static bool urlToPath(CFURLRef url, char* path)
+{
+	return url && CFURLGetFileSystemRepresentation(url, true, reinterpret_cast<UInt8*>(path), PATH_MAX);
+}
+
+// Types to try for a file: what the caller says it is, then what its extension says,
+// and then whatever recognizes its contents.
+static std::vector<AudioFileTypeID> candidateTypes(AudioFileTypeID hint, CFURLRef url, const void* data, UInt32 dataSize)
+{
+	AudioFileFormatManager* manager = AudioFileFormatManager::instance();
+	std::vector<AudioFileTypeID> types;
+
+	auto add = [&](AudioFileTypeID type) {
+		if (std::find(types.begin(), types.end(), type) == types.end())
+			types.push_back(type);
+	};
+
+	if (hint)
+		add(hint);
+
+	if (url)
+	{
+		CFStringRef extension = CFURLCopyPathExtension(url);
+		if (extension)
+		{
+			char ext[32];
+			if (CFStringGetCString(extension, ext, sizeof(ext), kCFStringEncodingUTF8))
+			{
+				std::transform(ext, ext + strlen(ext), ext, [](unsigned char c) { return tolower(c); });
+				for (AudioFileTypeID type : manager->typesForExtension(ext))
+					add(type);
+			}
+			CFRelease(extension);
+		}
+	}
+
+	if (dataSize > 0)
+	{
+		for (AudioFileTypeID type : manager->types(false))
+		{
+			AudioFileComponent component;
+			if (newFileComponent(type, &component) != noErr)
+				continue;
+
+			UInt32 result = 0;
+			if (AudioFileComponentFileDataIsThisFormat(component, dataSize, data, &result) == noErr && result == 1)
+				add(type);
+
+			AudioComponentInstanceDispose(component);
+		}
+	}
+
+	return types;
+}
 
 OSStatus AudioFileCreateWithURL (CFURLRef inFileRef,
 	AudioFileTypeID inFileType,
@@ -27,7 +122,33 @@ OSStatus AudioFileCreateWithURL (CFURLRef inFileRef,
 	AudioFileFlags inFlags,
 	AudioFileID _Nullable * _Nonnull outAudioFile)
 {
-	return unimpErr;
+	char path[PATH_MAX];
+
+	if (!outAudioFile || !inFormat || !urlToPath(inFileRef, path))
+		return kAudio_ParamError;
+
+	*outAudioFile = nullptr;
+
+	AudioFileComponent component;
+	OSStatus status = newFileComponent(inFileType, &component);
+	if (status != noErr)
+		return status;
+
+	if ((inFlags & kAudioFileFlags_EraseFile) && ::unlink(path) != 0 && errno != ENOENT)
+	{
+		AudioComponentInstanceDispose(component);
+		return errnoToStatus(errno);
+	}
+
+	status = AudioFileComponentCreateURL(component, inFileRef, inFormat, inFlags);
+	if (status != noErr)
+	{
+		AudioComponentInstanceDispose(component);
+		return status;
+	}
+
+	*outAudioFile = reinterpret_cast<AudioFileID>(component);
+	return noErr;
 }
 
 OSStatus AudioFileOpenURL ( CFURLRef inFileRef,
@@ -35,7 +156,54 @@ OSStatus AudioFileOpenURL ( CFURLRef inFileRef,
 	AudioFileTypeID inFileTypeHint,
 	AudioFileID _Nullable * _Nonnull outAudioFile)
 {
-	return unimpErr;
+	char path[PATH_MAX];
+
+	if (!outAudioFile || !urlToPath(inFileRef, path))
+		return kAudio_ParamError;
+
+	*outAudioFile = nullptr;
+
+	const int flags = (inPermissions == kAudioFileReadPermission) ? O_RDONLY
+		: (inPermissions == kAudioFileWritePermission) ? O_WRONLY : O_RDWR;
+
+	int fd = ::open(path, O_RDONLY);
+	if (fd < 0)
+		return errnoToStatus(errno);
+
+	std::vector<uint8_t> probe(PROBE_SIZE);
+	const ssize_t probed = ::read(fd, probe.data(), probe.size());
+	::close(fd);
+
+	if (probed < 0)
+		return errnoToStatus(errno);
+
+	OSStatus status = kAudioFileUnsupportedFileTypeError;
+
+	for (AudioFileTypeID type : candidateTypes(inFileTypeHint, inFileRef, probe.data(), UInt32(probed)))
+	{
+		AudioFileComponent component;
+		if (newFileComponent(type, &component) != noErr)
+			continue;
+
+		// The component owns the descriptor, and closes it even if it can't read the file
+		fd = ::open(path, flags);
+		if (fd < 0)
+		{
+			AudioComponentInstanceDispose(component);
+			return errnoToStatus(errno);
+		}
+
+		status = AudioFileComponentOpenURL(component, inFileRef, inPermissions, fd);
+		if (status == noErr)
+		{
+			*outAudioFile = reinterpret_cast<AudioFileID>(component);
+			return noErr;
+		}
+
+		AudioComponentInstanceDispose(component);
+	}
+
+	return status;
 }
 
 OSStatus AudioFileInitializeWithCallbacks (
@@ -49,7 +217,27 @@ OSStatus AudioFileInitializeWithCallbacks (
 	AudioFileFlags inFlags,
 	AudioFileID _Nullable * _Nonnull outAudioFile)
 {
-	return unimpErr;
+	if (!outAudioFile || !inFormat)
+		return kAudio_ParamError;
+
+	*outAudioFile = nullptr;
+
+	AudioFileComponent component;
+	OSStatus status = newFileComponent(inFileType, &component);
+	if (status != noErr)
+		return status;
+
+	status = AudioFileComponentInitializeWithCallbacks(component, inClientData, inReadFunc, inWriteFunc,
+		inGetSizeFunc, inSetSizeFunc, inFileType, inFormat, inFlags);
+
+	if (status != noErr)
+	{
+		AudioComponentInstanceDispose(component);
+		return status;
+	}
+
+	*outAudioFile = reinterpret_cast<AudioFileID>(component);
+	return noErr;
 }
 
 OSStatus AudioFileOpenWithCallbacks (
@@ -61,17 +249,54 @@ OSStatus AudioFileOpenWithCallbacks (
 	AudioFileTypeID inFileTypeHint,
 	AudioFileID _Nullable * _Nonnull outAudioFile)
 {
-	return unimpErr;
+	if (!outAudioFile || !inReadFunc || !inGetSizeFunc)
+		return kAudio_ParamError;
+
+	*outAudioFile = nullptr;
+
+	std::vector<uint8_t> probe(PROBE_SIZE);
+	UInt32 probed = 0;
+
+	if (inReadFunc(inClientData, 0, UInt32(probe.size()), probe.data(), &probed) != noErr)
+		probed = 0;
+
+	OSStatus status = kAudioFileUnsupportedFileTypeError;
+
+	for (AudioFileTypeID type : candidateTypes(inFileTypeHint, nullptr, probe.data(), probed))
+	{
+		AudioFileComponent component;
+		if (newFileComponent(type, &component) != noErr)
+			continue;
+
+		status = AudioFileComponentOpenWithCallbacks(component, inClientData, inReadFunc, inWriteFunc, inGetSizeFunc, inSetSizeFunc);
+		if (status == noErr)
+		{
+			*outAudioFile = reinterpret_cast<AudioFileID>(component);
+			return noErr;
+		}
+
+		AudioComponentInstanceDispose(component);
+	}
+
+	return status;
+}
+
+static AudioFileComponent toComponent(AudioFileID file)
+{
+	return reinterpret_cast<AudioFileComponent>(file);
 }
 
 OSStatus AudioFileClose (AudioFileID inAudioFile)
 {
-	return unimpErr;
+	OSStatus status = AudioFileComponentCloseFile(toComponent(inAudioFile));
+	OSStatus disposeStatus = AudioComponentInstanceDispose(toComponent(inAudioFile));
+
+	return (status != noErr) ? status : disposeStatus;
 }
 
 OSStatus AudioFileOptimize (AudioFileID inAudioFile)
 {
-	return unimpErr;
+	return AudioFileComponentOptimize(toComponent(inAudioFile));
 }
 
 OSStatus AudioFileReadBytes ( AudioFileID inAudioFile,
@@ -80,7 +305,7 @@ OSStatus AudioFileReadBytes ( AudioFileID inAudioFile,
 	UInt32 *ioNumBytes,
 	void *outBuffer)
 {
-	return unimpErr;
+	return AudioFileComponentReadBytes(toComponent(inAudioFile), inUseCache, inStartingByte, ioNumBytes, outBuffer);
 }
 
 OSStatus AudioFileWriteBytes ( AudioFileID inAudioFile,
@@ -89,7 +314,7 @@ OSStatus AudioFileWriteBytes ( AudioFileID inAudioFile,
 	UInt32 *ioNumBytes,
 	const void *inBuffer)
 {
-	return unimpErr;
+	return AudioFileComponentWriteBytes(toComponent(inAudioFile), inUseCache, inStartingByte, ioNumBytes, inBuffer);
 }
 
 OSStatus AudioFileReadPacketData ( AudioFileID inAudioFile,
@@ -100,7 +325,8 @@ OSStatus AudioFileReadPacketData ( AudioFileID inAudioFile,
 	UInt32 * ioNumPackets,
 	void * _Nullable outBuffer)
 {
-	return unimpErr;
+	return AudioFileComponentReadPacketData(toComponent(inAudioFile), inUseCache, ioNumBytes, outPacketDescriptions,
+		inStartingPacket, ioNumPackets, outBuffer);
 }
 
 OSStatus AudioFileReadPackets ( AudioFileID inAudioFile,
@@ -111,7 +337,8 @@ OSStatus AudioFileReadPackets ( AudioFileID inAudioFile,
 	UInt32 * ioNumPackets,
 	void * _Nullable outBuffer)
 {
-	return unimpErr;
+	return AudioFileComponentReadPackets(toComponent(inAudioFile), inUseCache, outNumBytes, outPacketDescriptions,
+		inStartingPacket, ioNumPackets, outBuffer);
 }
 
 OSStatus AudioFileWritePackets ( AudioFileID inAudioFile,
@@ -119,17 +346,18 @@ OSStatus AudioFileWritePackets ( AudioFileID inAudioFile,
 	UInt32 inNumBytes,
 	const AudioStreamPacketDescription * _Nullable inPacketDescriptions,
 	SInt64 inStartingPacket,
-	UInt32 *ioNumPackets,
-	const void *inBuffer)
+	UInt32 * ioNumPackets,
+	const void * inBuffer)
 {
-	return unimpErr;
+	return AudioFileComponentWritePackets(toComponent(inAudioFile), inUseCache, inNumBytes, inPacketDescriptions,
+		inStartingPacket, ioNumPackets, inBuffer);
 }
 
 OSStatus AudioFileCountUserData ( AudioFileID inAudioFile,
 	UInt32 inUserDataID,
 	UInt32 *outNumberItems)
 {
-	return unimpErr;
+	return AudioFileComponentCountUserData(toComponent(inAudioFile), inUserDataID, outNumberItems);
 }
 
 OSStatus AudioFileGetUserDataSize ( AudioFileID inAudioFile,
@@ -137,7 +365,7 @@ OSStatus AudioFileGetUserDataSize ( AudioFileID inAudioFile,
 	UInt32 inIndex,
 	UInt32 *outUserDataSize)
 {
-	return unimpErr;
+	return AudioFileComponentGetUserDataSize(toComponent(inAudioFile), inUserDataID, inIndex, outUserDataSize);
 }
 
 OSStatus AudioFileGetUserData ( AudioFileID inAudioFile,
@@ -146,7 +374,7 @@ OSStatus AudioFileGetUserData ( AudioFileID inAudioFile,
 	UInt32 *ioUserDataSize,
 	void *outUserData)
 {
-	return unimpErr;
+	return AudioFileComponentGetUserData(toComponent(inAudioFile), inUserDataID, inIndex, ioUserDataSize, outUserData);
 }
 
 OSStatus AudioFileSetUserData ( AudioFileID inAudioFile,
@@ -155,14 +383,14 @@ OSStatus AudioFileSetUserData ( AudioFileID inAudioFile,
 	UInt32 inUserDataSize,
 	const void *inUserData)
 {
-	return unimpErr;
+	return AudioFileComponentSetUserData(toComponent(inAudioFile), inUserDataID, inIndex, inUserDataSize, inUserData);
 }
 
 OSStatus AudioFileRemoveUserData ( AudioFileID inAudioFile,
 	UInt32 inUserDataID,
 	UInt32 inIndex)
 {
-	return unimpErr;
+	return AudioFileComponentRemoveUserData(toComponent(inAudioFile), inUserDataID, inIndex);
 }
 
 OSStatus AudioFileGetPropertyInfo( AudioFileID inAudioFile,
@@ -170,7 +398,7 @@ OSStatus AudioFileGetPropertyInfo( AudioFileID inAudioFile,
 	UInt32 * _Nullable outDataSize,
 	UInt32 * _Nullable isWritable)
 {
-	return unimpErr;
+	return AudioFileComponentGetPropertyInfo(toComponent(inAudioFile), inPropertyID, outDataSize, isWritable);
 }
 
 OSStatus AudioFileGetProperty( AudioFileID inAudioFile,
@@ -178,7 +406,7 @@ OSStatus AudioFileGetProperty( AudioFileID inAudioFile,
 	UInt32 *ioDataSize,
 	void *outPropertyData)
 {
-	return unimpErr;
+	return AudioFileComponentGetProperty(toComponent(inAudioFile), inPropertyID, ioDataSize, outPropertyData);
 }
 
 OSStatus AudioFileSetProperty( AudioFileID inAudioFile,
@@ -186,7 +414,7 @@ OSStatus AudioFileSetProperty( AudioFileID inAudioFile,
 	UInt32 inDataSize,
 	const void *inPropertyData)
 {
-	return unimpErr;
+	return AudioFileComponentSetProperty(toComponent(inAudioFile), inPropertyID, inDataSize, inPropertyData);
 }
 
 OSStatus AudioFileGetGlobalInfoSize( AudioFilePropertyID inPropertyID,
@@ -377,7 +605,23 @@ OSStatus AudioFileCreate ( const struct FSRef *inParentRef,
 	struct FSRef *outNewFileRef,
 	AudioFileID _Nullable * _Nonnull outAudioFile)
 {
-	return unimpErr;
+	if (!inParentRef || !inFileName)
+		return kAudio_ParamError;
+
+	CFURLRef parent = CFURLCreateFromFSRef(nullptr, const_cast<FSRef*>(inParentRef));
+	if (!parent)
+		return fnfErr;
+
+	CFURLRef url = CFURLCreateCopyAppendingPathComponent(nullptr, parent, inFileName, false);
+	CFRelease(parent);
+
+	OSStatus status = AudioFileCreateWithURL(url, inFileType, inFormat, inFlags, outAudioFile);
+
+	if (status == noErr && outNewFileRef)
+		CFURLGetFSRef(url, outNewFileRef);
+
+	CFRelease(url);
+	return status;
 }
 
 OSStatus AudioFileInitialize ( const struct FSRef *inFileRef,
@@ -386,7 +630,18 @@ OSStatus AudioFileInitialize ( const struct FSRef *inFileRef,
 	AudioFileFlags inFlags,
 	AudioFileID _Nullable * _Nonnull outAudioFile)
 {
-	return unimpErr;
+	if (!inFileRef)
+		return kAudio_ParamError;
+
+	CFURLRef url = CFURLCreateFromFSRef(nullptr, const_cast<FSRef*>(inFileRef));
+	if (!url)
+		return fnfErr;
+
+	// Initializing replaces all of the file's contents
+	OSStatus status = AudioFileCreateWithURL(url, inFileType, inFormat, inFlags | kAudioFileFlags_EraseFile, outAudioFile);
+
+	CFRelease(url);
+	return status;
 }
 
 OSStatus AudioFileOpen ( const struct FSRef *inFileRef,
@@ -394,8 +649,15 @@ OSStatus AudioFileOpen ( const struct FSRef *inFileRef,
 	AudioFileTypeID inFileTypeHint,
 	AudioFileID _Nullable * _Nonnull outAudioFile)
 {
-	return unimpErr;
+	if (!inFileRef)
+		return kAudio_ParamError;
+
+	CFURLRef url = CFURLCreateFromFSRef(nullptr, const_cast<FSRef*>(inFileRef));
+	if (!url)
+		return fnfErr;
+
+	OSStatus status = AudioFileOpenURL(url, inPermissions, inFileTypeHint, outAudioFile);
+
+	CFRelease(url);
+	return status;
 }
-
-
-

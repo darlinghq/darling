@@ -132,7 +132,8 @@ AudioFileComponentReadPacketData(
 	UInt32 *ioNumPackets,
 	void *outBuffer)
 {
-	return unimpErr;
+	return dispatchCall(inComponent, kAudioFileReadPacketDataSelect, inUseCache, ioNumBytes, outPacketDescriptions, inStartingPacket,
+                ioNumPackets, outBuffer);
 }
 
 OSStatus

@@ -59,7 +59,7 @@ public:
 private:
 	AudioFileFormatManager();
 	void buildDatabase();
-	void analyzeAudioFileComponent(AudioFileComponent component);
+	void analyzeAudioFileComponent(AudioComponent audioComponent, AudioFileComponent component);
 	void registerComponent(const ComponentInfo& ci);
 	static void addToMap(std::unordered_map<std::string, std::vector<ComponentInfo*>>& map, const std::string& key, ComponentInfo* ci);
 	static std::set<UInt32> findTypes(const std::unordered_map<std::string, std::vector<ComponentInfo*>>& map, const char* key);
