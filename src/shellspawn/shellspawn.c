@@ -133,11 +133,11 @@ static pid_t get_foreground_pgrp(int ctty_fd, pid_t shell_pid)
 	if (ctty_fd != -1)
 	{
 		fg = tcgetpgrp(ctty_fd);
-		if (fg > 0)
+		if (fg > 1)
 			return fg;
 	}
 
-	if (shell_pid > 0)
+	if (shell_pid > 1)
 	{
 		char stat_path[64];
 		snprintf(stat_path, sizeof(stat_path), "/proc/%d/stat", shell_pid);
@@ -152,9 +152,9 @@ static pid_t get_foreground_pgrp(int ctty_fd, pid_t shell_pid)
 				{
 					char state;
 					int ppid, pgrp, session, tty_nr, tpgid;
-					if (sscanf(rparen + 2, "%c %d %d %d %d %d", &state, &ppid, &pgrp, &session, &tty_nr, &tpgid) == 6)
+					if (sscanf(rparen + 1, " %c %d %d %d %d %d", &state, &ppid, &pgrp, &session, &tty_nr, &tpgid) == 6)
 					{
-						if (tpgid > 0)
+						if (tpgid > 1)
 							fg = tpgid;
 					}
 				}
@@ -444,14 +444,19 @@ void spawnShell(int fd)
 						if (darwin_signal != 0)
 						{
 							pid_t fg_pgrp = get_foreground_pgrp(ctty_fd, shell_pid);
-							if (fg_pgrp > 0)
+							if (fg_pgrp > 1)
 							{
 								if (DBG) printf("fg_pgrp = %d\n", fg_pgrp);
 								if (kill(-fg_pgrp, darwin_signal) == -1 && errno == ESRCH)
-									kill(-shell_pid, darwin_signal);
+								{
+									if (shell_pid > 1)
+										kill(-shell_pid, darwin_signal);
+								}
 							}
-							else
+							else if (shell_pid > 1)
+							{
 								kill(-shell_pid, darwin_signal);
+							}
 						}
 
 						break;

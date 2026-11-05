@@ -15,6 +15,7 @@ Verifies:
 
 import os
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -108,8 +109,9 @@ int main(void) {
 }
 """)
 
+    cc = shlex.split(os.environ.get("CC", "clang"))
     job_bin = os.path.join(td, "job_helper")
-    subprocess.check_call(["clang", "-O2", job_helper_src, "-o", job_bin])
+    subprocess.check_call(cc + ["-O2", job_helper_src, "-o", job_bin])
 
     # Harness wrapper that runs spawnShell against job_bin
     harness_c = os.path.join(td, "harness.c")
@@ -278,8 +280,8 @@ int main(int argc, char *argv[]) {
 """)
 
     harness_bin = os.path.join(td, "harness")
-    cmd = [
-        "clang", "-O2", "-D_GNU_SOURCE",
+    cmd = cc + [
+        "-O2", "-D_GNU_SOURCE",
         "-I" + stub_dir,
         "-I" + shellspawn_inc,
         harness_c, duct_src,
