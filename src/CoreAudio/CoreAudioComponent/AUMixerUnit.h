@@ -31,6 +31,8 @@ public:
 
 	bool CanScheduleParameters() const override { return false; }
 	bool StreamFormatWritable(AudioUnitScope scope, AudioUnitElement element) override { return !IsInitialized(); }
+	bool BusCountWritable(AudioUnitScope scope) override { return scope == kAudioUnitScope_Input; }
+	OSStatus SetBusCount(AudioUnitScope scope, UInt32 count) override;
 
 	OSStatus Render(AudioUnitRenderActionFlags& ioActionFlags, const AudioTimeStamp& inTimeStamp, UInt32 inNumberFrames) override;
 	OSStatus SetParameter(AudioUnitParameterID inID, AudioUnitScope inScope, AudioUnitElement inElement,
@@ -39,7 +41,12 @@ public:
 		AudioUnitParameterValue& outValue) override;
 
 private:
-	std::vector<float> m_gains; // one per input element, default 1.0
+	// Fixed size, as the render thread reads these while parameters change.
+	enum { kMaxInputs = 64 };
+	float m_gains[kMaxInputs];   // kMultiChannelMixerParam_Volume on input elements
+	bool m_enabled[kMaxInputs];  // kMultiChannelMixerParam_Enable on input elements
+	float m_pans[kMaxInputs];    // kMultiChannelMixerParam_Pan on input elements
+	float m_outputGain = 1.0f;   // kMultiChannelMixerParam_Volume on the output element
 };
 
 #endif /* AUMIXERUNIT_H */
