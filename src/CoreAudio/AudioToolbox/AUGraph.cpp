@@ -20,6 +20,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "AUGraphNode.h"
 #include <CarbonCore/MacErrors.h>
 #include <algorithm>
+#include <utility>
+#include <vector>
 
 OSStatus NewAUGraph(AUGraph* outGraph)
 {
@@ -33,9 +35,7 @@ OSStatus DisposeAUGraph(AUGraph inGraph)
 {
 	if (!inGraph)
 		return paramErr;
-	for (auto& kv : inGraph->nodes)
-		if (kv.second.unit)
-			AudioComponentInstanceDispose(kv.second.unit);
+	AUGraphClose(inGraph);
 	delete inGraph;
 	return noErr;
 }
@@ -45,10 +45,25 @@ OSStatus AUGraphAddNode(AUGraph inGraph, const AudioComponentDescription* inDesc
 	if (!inGraph || !inDescription || !outNode)
 		return paramErr;
 
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
+
 	AUNode id = inGraph->nextNodeId++;
 	AUGraphNodeEntry entry;
 	entry.id = id;
 	entry.description = *inDescription;
+
+	// A node added to an open graph gets its unit right away.
+	if (inGraph->isOpen)
+	{
+		entry.component = AudioComponentFindNext(nullptr, &entry.description);
+		if (!entry.component)
+			return kAUGraphErr_InvalidAudioUnit;
+
+		OSStatus s = AudioComponentInstanceNew(entry.component, &entry.unit);
+		if (s != noErr)
+			return s;
+	}
+
 	inGraph->nodes.emplace(id, entry);
 	*outNode = id;
 	return noErr;
@@ -58,6 +73,8 @@ OSStatus AUGraphRemoveNode(AUGraph inGraph, AUNode inNode)
 {
 	if (!inGraph)
 		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 	auto it = inGraph->nodes.find(inNode);
 	if (it == inGraph->nodes.end())
 		return kAUGraphErr_NodeNotFound;
@@ -68,6 +85,9 @@ OSStatus AUGraphRemoveNode(AUGraph inGraph, AUNode inNode)
 	inGraph->connections.erase(std::remove_if(inGraph->connections.begin(), inGraph->connections.end(),
 		[&](const AUNodeConnection& c) { return c.sourceNode == inNode || c.destNode == inNode; }),
 		inGraph->connections.end());
+	inGraph->callbacks.erase(std::remove_if(inGraph->callbacks.begin(), inGraph->callbacks.end(),
+		[&](const AUNodeRenderCallback& c) { return c.destNode == inNode; }),
+		inGraph->callbacks.end());
 	return noErr;
 }
 
@@ -75,6 +95,8 @@ OSStatus AUGraphGetNodeCount(AUGraph inGraph, UInt32* outNumberOfNodes)
 {
 	if (!inGraph || !outNumberOfNodes)
 		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 	*outNumberOfNodes = static_cast<UInt32>(inGraph->nodes.size());
 	return noErr;
 }
@@ -83,6 +105,8 @@ OSStatus AUGraphGetIndNode(AUGraph inGraph, UInt32 inIndex, AUNode* outNode)
 {
 	if (!inGraph || !outNode || inIndex >= inGraph->nodes.size())
 		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 	auto it = inGraph->nodes.begin();
 	std::advance(it, inIndex);
 	*outNode = it->first;
@@ -93,6 +117,8 @@ OSStatus AUGraphOpen(AUGraph inGraph)
 {
 	if (!inGraph)
 		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 	if (inGraph->isOpen)
 		return noErr;
 
@@ -100,12 +126,20 @@ OSStatus AUGraphOpen(AUGraph inGraph)
 	{
 		AUGraphNodeEntry& entry = kv.second;
 		entry.component = AudioComponentFindNext(nullptr, &entry.description);
-		if (!entry.component)
-			return kAUGraphErr_InvalidAudioUnit;
 
-		OSStatus s = AudioComponentInstanceNew(entry.component, &entry.unit);
+		OSStatus s = entry.component ? AudioComponentInstanceNew(entry.component, &entry.unit) : kAUGraphErr_InvalidAudioUnit;
 		if (s != noErr)
+		{
+			for (auto& created : inGraph->nodes)
+			{
+				if (created.second.unit)
+				{
+					AudioComponentInstanceDispose(created.second.unit);
+					created.second.unit = nullptr;
+				}
+			}
 			return s;
+		}
 	}
 
 	inGraph->isOpen = true;
@@ -116,6 +150,8 @@ OSStatus AUGraphClose(AUGraph inGraph)
 {
 	if (!inGraph)
 		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 	if (inGraph->isRunning)
 		AUGraphStop(inGraph);
 	if (inGraph->isInitialized)
@@ -137,6 +173,8 @@ OSStatus AUGraphNodeInfo(AUGraph inGraph, AUNode inNode, AudioComponentDescripti
 {
 	if (!inGraph)
 		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 	auto it = inGraph->nodes.find(inNode);
 	if (it == inGraph->nodes.end())
 		return kAUGraphErr_NodeNotFound;
@@ -152,19 +190,23 @@ OSStatus AUGraphIsOpen(AUGraph inGraph, Boolean* outIsOpen)
 {
 	if (!inGraph || !outIsOpen)
 		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 	*outIsOpen = inGraph->isOpen;
 	return noErr;
 }
 
-// Re-applies every connection as a kAudioUnitProperty_MakeConnection on the
-// destination node's AudioUnit -- this is what actually makes rendering pull
-// from the right place; "Update" must be callable while running (per the
+// Re-applies every connection as a kAudioUnitProperty_MakeConnection and every
+// input callback as a kAudioUnitProperty_SetRenderCallback on the destination
+// node's AudioUnit -- this is what actually makes rendering pull from the right place; "Update" must be callable while running (per the
 // public contract), so it only touches AudioUnit properties, never tears
 // down nodes.
 OSStatus AUGraphUpdate(AUGraph inGraph, Boolean* outIsUpdated)
 {
 	if (!inGraph)
 		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 
 	if (!inGraph->isOpen)
 	{
@@ -187,6 +229,18 @@ OSStatus AUGraphUpdate(AUGraph inGraph, Boolean* outIsUpdated)
 			return s;
 	}
 
+	for (const AUNodeRenderCallback& c : inGraph->callbacks)
+	{
+		auto dstIt = inGraph->nodes.find(c.destNode);
+		if (dstIt == inGraph->nodes.end())
+			continue;
+
+		OSStatus s = AudioUnitSetProperty(dstIt->second.unit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input,
+			c.destInputNumber, &c.cback, sizeof(c.cback));
+		if (s != noErr)
+			return s;
+	}
+
 	if (outIsUpdated)
 		*outIsUpdated = true;
 	return noErr;
@@ -196,6 +250,8 @@ OSStatus AUGraphConnectNodeInput(AUGraph inGraph, AUNode inSourceNode, UInt32 in
 {
 	if (!inGraph)
 		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 	if (inGraph->nodes.find(inSourceNode) == inGraph->nodes.end() || inGraph->nodes.find(inDestNode) == inGraph->nodes.end())
 		return kAUGraphErr_NodeNotFound;
 
@@ -215,10 +271,56 @@ OSStatus AUGraphDisconnectNodeInput(AUGraph inGraph, AUNode inDestNode, UInt32 i
 	if (!inGraph)
 		return paramErr;
 
-	auto it = std::remove_if(inGraph->connections.begin(), inGraph->connections.end(), [&](const AUNodeConnection& c) {
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
+
+	auto connection = std::remove_if(inGraph->connections.begin(), inGraph->connections.end(), [&](const AUNodeConnection& c) {
 		return c.destNode == inDestNode && c.destInputNumber == inDestInputNumber;
 	});
-	inGraph->connections.erase(it, inGraph->connections.end());
+	auto callback = std::remove_if(inGraph->callbacks.begin(), inGraph->callbacks.end(), [&](const AUNodeRenderCallback& c) {
+		return c.destNode == inDestNode && c.destInputNumber == inDestInputNumber;
+	});
+	const bool hadConnection = connection != inGraph->connections.end();
+	const bool hadCallback = callback != inGraph->callbacks.end();
+	inGraph->connections.erase(connection, inGraph->connections.end());
+	inGraph->callbacks.erase(callback, inGraph->callbacks.end());
+
+	if (!inGraph->isOpen)
+		return noErr;
+
+	// The unit keeps its input until told otherwise.
+	auto dstIt = inGraph->nodes.find(inDestNode);
+	if (dstIt != inGraph->nodes.end() && dstIt->second.unit)
+	{
+		if (hadConnection)
+		{
+			AudioUnitConnection none = { nullptr, 0, inDestInputNumber };
+			AudioUnitSetProperty(dstIt->second.unit, kAudioUnitProperty_MakeConnection, kAudioUnitScope_Input,
+				inDestInputNumber, &none, sizeof(none));
+		}
+		if (hadCallback)
+		{
+			AURenderCallbackStruct none = { nullptr, nullptr };
+			AudioUnitSetProperty(dstIt->second.unit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input,
+				inDestInputNumber, &none, sizeof(none));
+		}
+	}
+
+	return AUGraphUpdate(inGraph, nullptr);
+}
+
+OSStatus AUGraphSetNodeInputCallback(AUGraph inGraph, AUNode inDestNode, UInt32 inDestInputNumber, const AURenderCallbackStruct* inInputCallback)
+{
+	if (!inGraph || !inInputCallback)
+		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
+	if (inGraph->nodes.find(inDestNode) == inGraph->nodes.end())
+		return kAUGraphErr_NodeNotFound;
+
+	// An input is fed by one source: a callback replaces a previous connection or callback.
+	AUGraphDisconnectNodeInput(inGraph, inDestNode, inDestInputNumber);
+
+	inGraph->callbacks.push_back({ inDestNode, inDestInputNumber, *inInputCallback });
 
 	if (inGraph->isOpen)
 		return AUGraphUpdate(inGraph, nullptr);
@@ -229,16 +331,101 @@ OSStatus AUGraphClearConnections(AUGraph inGraph)
 {
 	if (!inGraph)
 		return paramErr;
-	inGraph->connections.clear();
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
+
+	std::vector<std::pair<AUNode, UInt32>> inputs;
+	for (const AUNodeConnection& c : inGraph->connections)
+		inputs.emplace_back(c.destNode, c.destInputNumber);
+	for (const AUNodeRenderCallback& c : inGraph->callbacks)
+		inputs.emplace_back(c.destNode, c.destInputNumber);
+
+	for (const auto& input : inputs)
+		AUGraphDisconnectNodeInput(inGraph, input.first, input.second);
 	return noErr;
+}
+
+static AUNodeInteraction connectionInteraction(const AUNodeConnection& connection)
+{
+	AUNodeInteraction interaction;
+	interaction.nodeInteractionType = kAUNodeInteraction_Connection;
+	interaction.nodeInteraction.connection = connection;
+	return interaction;
+}
+
+static AUNodeInteraction callbackInteraction(const AUNodeRenderCallback& callback)
+{
+	AUNodeInteraction interaction;
+	interaction.nodeInteractionType = kAUNodeInteraction_InputCallback;
+	interaction.nodeInteraction.inputCallback = callback;
+	return interaction;
+}
+
+OSStatus AUGraphGetNumberOfInteractions(AUGraph inGraph, UInt32* outNumInteractions)
+{
+	if (!inGraph || !outNumInteractions)
+		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
+	*outNumInteractions = static_cast<UInt32>(inGraph->connections.size() + inGraph->callbacks.size());
+	return noErr;
+}
+
+OSStatus AUGraphGetInteractionInfo(AUGraph inGraph, UInt32 inInteractionIndex, AUNodeInteraction* outInteraction)
+{
+	if (!inGraph || !outInteraction)
+		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
+
+	if (inInteractionIndex < inGraph->connections.size())
+	{
+		*outInteraction = connectionInteraction(inGraph->connections[inInteractionIndex]);
+		return noErr;
+	}
+
+	inInteractionIndex -= static_cast<UInt32>(inGraph->connections.size());
+	if (inInteractionIndex < inGraph->callbacks.size())
+	{
+		*outInteraction = callbackInteraction(inGraph->callbacks[inInteractionIndex]);
+		return noErr;
+	}
+	return paramErr;
 }
 
 OSStatus AUGraphCountNodeInteractions(AUGraph inGraph, AUNode inNode, UInt32* outNumInteractions)
 {
 	if (!inGraph || !outNumInteractions)
 		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 	*outNumInteractions = static_cast<UInt32>(std::count_if(inGraph->connections.begin(), inGraph->connections.end(),
-		[&](const AUNodeConnection& c) { return c.sourceNode == inNode || c.destNode == inNode; }));
+		[&](const AUNodeConnection& c) { return c.sourceNode == inNode || c.destNode == inNode; })
+		+ std::count_if(inGraph->callbacks.begin(), inGraph->callbacks.end(),
+		[&](const AUNodeRenderCallback& c) { return c.destNode == inNode; }));
+	return noErr;
+}
+
+OSStatus AUGraphGetNodeInteractions(AUGraph inGraph, AUNode inNode, UInt32* ioNumInteractions, AUNodeInteraction* outInteractions)
+{
+	if (!inGraph || !ioNumInteractions || !outInteractions)
+		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
+
+	UInt32 count = 0;
+	for (const AUNodeConnection& c : inGraph->connections)
+	{
+		if ((c.sourceNode == inNode || c.destNode == inNode) && count < *ioNumInteractions)
+			outInteractions[count++] = connectionInteraction(c);
+	}
+	for (const AUNodeRenderCallback& c : inGraph->callbacks)
+	{
+		if (c.destNode == inNode && count < *ioNumInteractions)
+			outInteractions[count++] = callbackInteraction(c);
+	}
+
+	*ioNumInteractions = count;
 	return noErr;
 }
 
@@ -246,16 +433,27 @@ OSStatus AUGraphInitialize(AUGraph inGraph)
 {
 	if (!inGraph)
 		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 	if (!inGraph->isOpen)
 		return kAUGraphErr_CannotDoInCurrentContext;
 	if (inGraph->isInitialized)
 		return noErr;
 
+	// Connections and callbacks made before the graph was opened haven't reached the units yet.
+	OSStatus status = AUGraphUpdate(inGraph, nullptr);
+	if (status != noErr)
+		return status;
+
 	for (auto& kv : inGraph->nodes)
 	{
 		OSStatus s = AudioUnitInitialize(kv.second.unit);
 		if (s != noErr)
+		{
+			for (auto& initialized : inGraph->nodes)
+				AudioUnitUninitialize(initialized.second.unit);
 			return s;
+		}
 	}
 	inGraph->isInitialized = true;
 	return noErr;
@@ -265,6 +463,8 @@ OSStatus AUGraphUninitialize(AUGraph inGraph)
 {
 	if (!inGraph)
 		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 	if (inGraph->isRunning)
 		AUGraphStop(inGraph);
 
@@ -279,6 +479,8 @@ OSStatus AUGraphIsInitialized(AUGraph inGraph, Boolean* outIsInitialized)
 {
 	if (!inGraph || !outIsInitialized)
 		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 	*outIsInitialized = inGraph->isInitialized;
 	return noErr;
 }
@@ -287,6 +489,8 @@ OSStatus AUGraphStart(AUGraph inGraph)
 {
 	if (!inGraph)
 		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 	if (!inGraph->isInitialized)
 		return kAUGraphErr_CannotDoInCurrentContext;
 	if (inGraph->isRunning)
@@ -311,6 +515,8 @@ OSStatus AUGraphStop(AUGraph inGraph)
 {
 	if (!inGraph)
 		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 	if (!inGraph->isRunning)
 		return noErr;
 
@@ -325,6 +531,8 @@ OSStatus AUGraphIsRunning(AUGraph inGraph, Boolean* outIsRunning)
 {
 	if (!inGraph || !outIsRunning)
 		return paramErr;
+
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 	*outIsRunning = inGraph->isRunning;
 	return noErr;
 }

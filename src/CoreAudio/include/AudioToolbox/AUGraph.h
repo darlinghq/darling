@@ -39,6 +39,12 @@ struct AUNodeRenderCallback
 };
 typedef struct AUNodeRenderCallback AUNodeRenderCallback;
 
+enum
+{
+	kAUNodeInteraction_Connection = 1,
+	kAUNodeInteraction_InputCallback = 2,
+};
+
 struct AUNodeInteraction
 {
 	UInt32 nodeInteractionType;

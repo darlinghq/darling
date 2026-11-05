@@ -22,6 +22,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <AudioToolbox/AUGraph.h>
 #include <vector>
 #include <map>
+#include <mutex>
 
 struct AUGraphNodeEntry
 {
@@ -34,7 +35,9 @@ struct AUGraphNodeEntry
 struct AUGraphData
 {
 	std::map<AUNode, AUGraphNodeEntry> nodes;
+	std::recursive_mutex mutex;
 	std::vector<AUNodeConnection> connections;
+	std::vector<AUNodeRenderCallback> callbacks;
 	AUNode nextNodeId = 1;
 	bool isOpen = false;
 	bool isInitialized = false;
