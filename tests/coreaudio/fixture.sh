@@ -11,7 +11,7 @@ SOURCE_NAME="darling-test-source"
 
 up() {
 	pactl load-module module-null-sink sink_name="$SINK_NAME" sink_properties=device.description="DarlingTestSink" >/tmp/darling-test-sink.module
-	pactl load-module module-null-source source_name="$SOURCE_NAME" source_properties=device.description="DarlingTestSource" >/tmp/darling-test-source.module
+	pactl load-module module-null-source source_name="$SOURCE_NAME" description="DarlingTestSource" >/tmp/darling-test-source.module
 	echo "sink=$SINK_NAME source=$SOURCE_NAME"
 }
 
