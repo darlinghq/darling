@@ -23,11 +23,13 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 void AudioHardwareListenerRegistry::add(uint32_t selector, void* proc, void* context)
 {
+	std::lock_guard<std::mutex> lock(m_mutex);
 	m_listeners[selector].push_back({proc, context});
 }
 
 void AudioHardwareListenerRegistry::remove(uint32_t selector, void* proc, void* context)
 {
+	std::lock_guard<std::mutex> lock(m_mutex);
 	auto it = m_listeners.find(selector);
 	if (it == m_listeners.end())
 		return;
@@ -40,10 +42,16 @@ void AudioHardwareListenerRegistry::remove(uint32_t selector, void* proc, void* 
 
 void AudioHardwareListenerRegistry::fire(uint32_t selector, const std::function<void(void*, void*)>& cb) const
 {
-	auto it = m_listeners.find(selector);
-	if (it == m_listeners.end())
-		return;
+	std::vector<Entry> entries;
+	{
+		// A listener may add or remove listeners, so it runs without the lock held.
+		std::lock_guard<std::mutex> lock(m_mutex);
+		auto it = m_listeners.find(selector);
+		if (it == m_listeners.end())
+			return;
+		entries = it->second;
+	}
 
-	for (const Entry& e : it->second)
+	for (const Entry& e : entries)
 		cb(e.proc, e.context);
 }

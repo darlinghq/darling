@@ -22,6 +22,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define AUDIOHARDWARELISTENERREGISTRY_H
 #include <cstdint>
 #include <functional>
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 
@@ -41,6 +42,7 @@ public:
 
 private:
 	struct Entry { void* proc; void* context; };
+	mutable std::mutex m_mutex;
 	std::unordered_map<uint32_t, std::vector<Entry>> m_listeners;
 };
 
