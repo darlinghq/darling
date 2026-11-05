@@ -358,7 +358,7 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 		if (variadic_symbols.count(sym))
 		{
 			output << "#warning \"wrapgen: '" << sym << "' from " << soname
-				<< "' is variadic. A guest caller passes arguments in a different layout than the host"
+				<< " is variadic. A guest caller passes arguments in a different layout than the host"
 				<< " expects and the call will crash. Call it through a hand-written shim that does not"
 				<< " forward the variadic tail, or avoid it.\"\n";
 		}
