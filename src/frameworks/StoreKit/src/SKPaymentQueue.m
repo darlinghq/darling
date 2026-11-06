@@ -19,7 +19,55 @@
 
 #import <StoreKit/SKPaymentQueue.h>
 
-@implementation SKPaymentQueue
+@implementation SKPaymentQueue {
+    NSMutableArray *_observers;
+}
+
+// There is no App Store to talk to: payments can never be made and the queue
+// never contains transactions. Observers are retained but never notified.
++ (SKPaymentQueue *)defaultQueue
+{
+    static SKPaymentQueue *queue;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        queue = [[SKPaymentQueue alloc] init];
+    });
+    return queue;
+}
+
++ (BOOL)canMakePayments
+{
+    return NO;
+}
+
+- (instancetype)init
+{
+    if ((self = [super init])) {
+        _observers = [[NSMutableArray alloc] init];
+    }
+    return self;
+}
+
+- (void)addTransactionObserver:(id<SKPaymentTransactionObserver>)observer
+{
+    if (observer != nil && ![_observers containsObject:observer]) {
+        [_observers addObject:observer];
+    }
+}
+
+- (void)removeTransactionObserver:(id<SKPaymentTransactionObserver>)observer
+{
+    [_observers removeObject:observer];
+}
+
+- (NSArray *)transactions
+{
+    return @[];
+}
+
+- (void)restoreCompletedTransactions
+{
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {

@@ -19,6 +19,17 @@
 
 #include <Foundation/Foundation.h>
 
+@protocol SKPaymentTransactionObserver <NSObject>
+@end
+
 @interface SKPaymentQueue : NSObject
+
++ (SKPaymentQueue *)defaultQueue;
++ (BOOL)canMakePayments;
+
+- (void)addTransactionObserver:(id<SKPaymentTransactionObserver>)observer;
+- (void)removeTransactionObserver:(id<SKPaymentTransactionObserver>)observer;
+- (NSArray *)transactions;
+- (void)restoreCompletedTransactions;
 
 @end
