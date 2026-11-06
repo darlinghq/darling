@@ -1,0 +1,44 @@
+/*
+This file is part of Darling.
+
+Copyright (C) 2026 Lubos Dolezel
+
+Darling is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Darling is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#ifndef _MLDR_SOCKET_BITMAP_H_
+#define _MLDR_SOCKET_BITMAP_H_
+
+#include <pthread.h>
+#include <stddef.h>
+#include <stdint.h>
+
+// Hands out file descriptor numbers counting down from the top of RLIMIT_NOFILE,
+// so that mldr's own sockets and pipes stay out of the way of the guest's descriptors.
+typedef struct socket_bitmap {
+	pthread_mutex_t mutex;
+	/**
+	 * This is always next lowest available index.
+	 * If this is equal to #bit_length, then the bitmap is full.
+	 */
+	size_t next_index;
+	uint8_t* bits;
+	size_t bit_length;
+	int highest;
+} socket_bitmap_t;
+
+int socket_bitmap_get(socket_bitmap_t* bitmap);
+void socket_bitmap_put(socket_bitmap_t* bitmap, int socket);
+
+#endif // _MLDR_SOCKET_BITMAP_H_
