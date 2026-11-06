@@ -155,8 +155,10 @@ int sandbox_container_path_for_pid(pid_t pid, char *buffer, size_t bufsize)
 
 int sandbox_wakeup_daemon(char **errorbuf)
 {
+	/* There is no sandbox daemon to wake, so this fails, and a failure
+	 * comes with a message for sandbox_free_error. */
 	if (errorbuf != NULL) {
-		*errorbuf = NULL;
+		*errorbuf = strdup("Not implemented");
 	}
 	return -1;
 }
