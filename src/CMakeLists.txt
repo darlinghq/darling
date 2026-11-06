@@ -289,6 +289,9 @@ if (COMPONENT_cli)
 	add_subdirectory(libsysmon)
 	add_subdirectory(PlistBuddy)
 	add_subdirectory(libquit)
+	# lzfse's round-trip tests run its command-line tool, which is built for
+	# the prefix and cannot run on the host
+	set(LZFSE_DISABLE_TESTS TRUE)
 	add_subdirectory(external/lzfse)
 	add_subdirectory(clt)
 	add_subdirectory(diskutil)
