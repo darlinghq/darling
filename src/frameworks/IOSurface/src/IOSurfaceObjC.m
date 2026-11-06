@@ -37,7 +37,24 @@ typedef struct
 	// Allocated in this process because IOSurfaceRoot could not create the
 	// surface. The planes live in an anonymous mapping of allocSize bytes.
 	bool userSpace;
+	// Incremented by every unlock that ends a lock for writing.
+	_Atomic uint32_t seed;
+	_Atomic uint32_t purgeability;
+	bool allowsPixelSizeCasting;
+	// Created with kIOSurfacePlaneInfo. A surface without it still has one
+	// plane internally, but reports a plane count of 0.
+	bool planar;
 } ImplData;
+
+static void initState(ImplData* idata)
+{
+	idata->localUseCount = 0;
+	idata->attachments = [[NSMutableDictionary alloc] init];
+	idata->seed = 0;
+	idata->purgeability = kIOSurfacePurgeableNonVolatile;
+	idata->allowsPixelSizeCasting = true;
+	idata->planar = true;
+}
 
 // Plane layouts are limited to this many planes.
 #define MAX_PLANES 16
@@ -175,9 +192,8 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 	idata->surface = malloc(length);
 	memcpy(idata->surface, bytes, length);
 
-	idata->localUseCount = 0;
+	initState(idata);
 	idata->allocSize = planesEnd(idata->surface);
-	idata->attachments = [[NSMutableDictionary alloc] init];
 	idata->userSpace = false;
 	self->_impl = idata;
 
@@ -276,10 +292,13 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 	memcpy(surface->planes, planes, planeCount * sizeof(struct _IOSurfacePlane));
 
 	idata->surface = surface;
-	idata->localUseCount = 0;
+	initState(idata);
 	idata->allocSize = allocSize;
-	idata->attachments = [[NSMutableDictionary alloc] init];
 	idata->userSpace = true;
+	idata->planar = planeInfo.count != 0;
+	id casting = properties[(NSString*) kIOSurfacePixelSizeCastingAllowed];
+	if ([casting respondsToSelector: @selector(boolValue)])
+		idata->allowsPixelSizeCasting = [casting boolValue];
 	self->_impl = idata;
 
 	return self;
@@ -305,6 +324,14 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 		return [self _initWithUserSpaceProperties: properties];
 
 	return [self initWithResponse: responseBuffer length: responseLength];
+}
+
+// Mach port lookup needs IOSurfaceRoot or another process to export the
+// surface; neither exists yet.
+- (nullable instancetype)initWithMachPort:(mach_port_t)port
+{
+	[self release];
+	return nil;
 }
 
 - (nullable instancetype)initWithSurfaceID:(IOSurfaceID)surfaceID
@@ -413,12 +440,19 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 
 - (NSUInteger) planeCount
 {
+	ImplData* data = (ImplData*) _impl;
+	return data->planar ? data->surface->planeCount : 0;
+}
+
+// The planes that exist, including the single plane of a non-planar surface.
+- (NSUInteger) _planeCount
+{
 	return ((ImplData*) _impl)->surface->planeCount;
 }
 
 - (NSInteger)widthOfPlaneAtIndex:(NSUInteger)planeIndex
 {
-	if (planeIndex >= [self planeCount])
+	if (planeIndex >= [self _planeCount])
 		return 0;
 
 	ImplData* data = (ImplData*) _impl;
@@ -427,7 +461,7 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 
 - (NSInteger)heightOfPlaneAtIndex:(NSUInteger)planeIndex
 {
-	if (planeIndex >= [self planeCount])
+	if (planeIndex >= [self _planeCount])
 		return 0;
 
 	ImplData* data = (ImplData*) _impl;
@@ -436,7 +470,7 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 
 - (NSInteger)bytesPerRowOfPlaneAtIndex:(NSUInteger)planeIndex
 {
-	if (planeIndex >= [self planeCount])
+	if (planeIndex >= [self _planeCount])
 		return 0;
 
 	ImplData* data = (ImplData*) _impl;
@@ -445,7 +479,7 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 
 - (NSInteger)bytesPerElementOfPlaneAtIndex:(NSUInteger)planeIndex
 {
-	if (planeIndex >= [self planeCount])
+	if (planeIndex >= [self _planeCount])
 		return 0;
 
 	ImplData* data = (ImplData*) _impl;
@@ -464,7 +498,7 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 
 - (void *)baseAddressOfPlaneAtIndex:(NSUInteger)planeIndex
 {
-	if (planeIndex >= [self planeCount])
+	if (planeIndex >= [self _planeCount])
 		return NULL;
 
 	ImplData* data = (ImplData*) _impl;
@@ -583,6 +617,37 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 	return data->localUseCount;
 }
 
+// Only uses counted in this process are known.
+- (BOOL) isInUse
+{
+	return [self localUseCount] > 0;
+}
+
+- (uint32_t) seed
+{
+	return ((ImplData*) _impl)->seed;
+}
+
+- (BOOL) allowsPixelSizeCasting
+{
+	return ((ImplData*) _impl)->allowsPixelSizeCasting;
+}
+
+// The state is recorded, but the contents of a volatile surface are never
+// discarded, which the purgeability contract allows.
+- (kern_return_t)setPurgeable:(IOSurfacePurgeabilityState)newState oldState:(IOSurfacePurgeabilityState * _Nullable)oldState
+{
+	ImplData* data = (ImplData*) _impl;
+	if (newState > kIOSurfacePurgeableKeepCurrent)
+		return kIOReturnBadArgument;
+	uint32_t previous = newState == kIOSurfacePurgeableKeepCurrent
+		? data->purgeability
+		: atomic_exchange(&data->purgeability, newState);
+	if (oldState)
+		*oldState = previous;
+	return kIOSurfaceSuccess;
+}
+
 - (kern_return_t)lockWithOptions:(IOSurfaceLockOptions)options seed:(nullable uint32_t *)seed
 {
 	ImplData* data = (ImplData*) _impl;
@@ -591,9 +656,12 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 		.options = options,
 	};
 	// A surface in this process's own memory needs no lock in IOSurfaceRoot.
-	if (data->userSpace)
-		return kIOSurfaceSuccess;
-	return IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodLock, NULL, 0, &args, sizeof(args), NULL, 0, NULL, 0);
+	kern_return_t ret = kIOSurfaceSuccess;
+	if (!data->userSpace)
+		ret = IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodLock, NULL, 0, &args, sizeof(args), NULL, 0, NULL, 0);
+	if (ret == kIOSurfaceSuccess && seed)
+		*seed = data->seed;
+	return ret;
 }
 
 - (kern_return_t)unlockWithOptions:(IOSurfaceLockOptions)options seed:(nullable uint32_t *)seed
@@ -603,9 +671,18 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 		.surfaceID = data->surface->surfaceID,
 		.options = options,
 	};
-	if (data->userSpace)
-		return kIOSurfaceSuccess;
-	return IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodUnlock, NULL, 0, &args, sizeof(args), NULL, 0, NULL, 0);
+	kern_return_t ret = kIOSurfaceSuccess;
+	if (!data->userSpace)
+		ret = IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodUnlock, NULL, 0, &args, sizeof(args), NULL, 0, NULL, 0);
+	if (ret != kIOSurfaceSuccess)
+		return ret;
+	// The end of a lock for writing marks the contents as modified.
+	uint32_t current = (options & kIOSurfaceLockReadOnly)
+		? data->seed
+		: atomic_fetch_add(&data->seed, 1) + 1;
+	if (seed)
+		*seed = current;
+	return ret;
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
@@ -617,3 +694,10 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 }
 
 @end
+
+IOSurfaceID IOSurfaceGetID(IOSurfaceRef buffer)
+{
+	if (!buffer)
+		return 0;
+	return ((ImplData*) ((IOSurface*) buffer)->_impl)->surface->surfaceID;
+}
