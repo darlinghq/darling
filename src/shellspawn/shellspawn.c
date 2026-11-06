@@ -50,6 +50,11 @@ void reapAll(void);
 
 int main(int argc, const char** argv)
 {
+	// Clients may disconnect at any time; writing to their socket must fail
+	// with EPIPE instead of killing shellspawn. The spawned program gets the
+	// default disposition back before exec.
+	signal(SIGPIPE, SIG_IGN);
+
 	// shellspawn (daemon) --fork()--> shellspawn (child) --fork()--> exec /bin/bash
 	// in order to read the exit status of the shell process,
 	// we have to allow it to become a zombie, therefore we need to
@@ -288,6 +293,7 @@ void spawnShell(int fd)
 		close(shellfd[2]);
 
 		fcntl(pipefd[1], F_SETFD, FD_CLOEXEC);
+		signal(SIGPIPE, SIG_DFL);
 
 		// In future, we may support spawning something else than Bash
 		// and check the provided shell against /etc/shells
