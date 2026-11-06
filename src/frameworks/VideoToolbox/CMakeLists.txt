@@ -18,6 +18,8 @@ add_framework(VideoToolbox
     VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
+        src/constants.m
+        src/stubs.c
         src/VideoToolbox.m
         src/VTCompressionProperties.c
         src/FigMetalTransferHelper.m
