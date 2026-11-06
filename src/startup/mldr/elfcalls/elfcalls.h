@@ -72,13 +72,9 @@ struct elf_calls
 	int (*dserver_process_lifetime_pipe_refresh)(void);
 	void (*dserver_close_process_lifetime_pipe)(int fd);
 
-	// Preserve the appended layout used by existing ARM64 integration builds.
-	void* (*native_tsd_base)(void);
-	void* initial_native_tsd_base;
+	// fork() through the host libc; returns the child's PID, 0 in the child,
+	// or a negative Linux errno
 	int (*native_fork)(void);
-	void (*arm64_thread_bridge_postfork_complete)(void);
-	void (*arm64_record_darling_tsd_base)(void* base);
-	void* (*arm64_darling_tsd_base)(void);
 };
 
 #endif

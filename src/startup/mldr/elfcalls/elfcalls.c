@@ -103,19 +103,8 @@ static int native_fork(void)
 	return result < 0 ? -saved_errno : result;
 }
 
-static void arm64_thread_bridge_postfork_complete(void)
-{
-	/* Legacy ABI slot; no native thread broker remains to restart. */
-}
-
 void elfcalls_make(struct elf_calls* calls)
 {
-	calls->native_tsd_base = __darling_native_tsd_base;
-	calls->initial_native_tsd_base = __darling_native_tsd_base();
-	calls->native_fork = native_fork;
-	calls->arm64_thread_bridge_postfork_complete = arm64_thread_bridge_postfork_complete;
-	calls->arm64_record_darling_tsd_base = __darling_arm64_record_tsd_base;
-	calls->arm64_darling_tsd_base = __darling_arm64_tsd_base;
 	calls->dlopen = dlopen_simple;
 	calls->dlclose = dlclose;
 	calls->dlsym = dlsym;
@@ -160,4 +149,6 @@ void elfcalls_make(struct elf_calls* calls)
 	calls->dserver_get_process_lifetime_pipe = __dserver_get_process_lifetime_pipe;
 	calls->dserver_process_lifetime_pipe_refresh = __dserver_process_lifetime_pipe_refresh;
 	calls->dserver_close_process_lifetime_pipe = __mldr_close_process_lifetime_pipe;
+
+	calls->native_fork = native_fork;
 }
