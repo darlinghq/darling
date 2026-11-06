@@ -18,6 +18,7 @@ target_include_directories(mldr_dserver_rpc PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/
 
 set(mldr_sources
 	mldr.c
+	socket_bitmap.c
 	commpage.c
 	elfcalls/elfcalls.c
 	elfcalls/threads.c
@@ -54,3 +55,9 @@ if (BUILD_TARGET_32BIT)
 
 	install(TARGETS mldr32 DESTINATION libexec/darling/usr/libexec/darling)
 endif()
+
+add_executable(mldr_socket_bitmap_test ${CMAKE_SOURCE_DIR}/tests/mldr/socket_bitmap.c socket_bitmap.c)
+target_include_directories(mldr_socket_bitmap_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(mldr_socket_bitmap_test PRIVATE -pthread)
+target_link_options(mldr_socket_bitmap_test PRIVATE -pthread)
+add_test(NAME mldr_socket_bitmap COMMAND mldr_socket_bitmap_test)

@@ -35,6 +35,8 @@ Module.symvers
 /tests/*
 !/tests/coreaudio/
 !/tests/coreaudio/**
+!/tests/mldr/
+!/tests/mldr/**
 
 # The suggested build folder
 build

@@ -100,7 +100,11 @@ void elfcalls_make(struct elf_calls* calls)
 	calls->darling_thread_get_stack = __darling_thread_get_stack;
 
 	calls->get_errno = get_errno;
-	calls->exit = exit;
+	// The guest has already run its own atexit handlers by the time it exits.
+	// Host atexit handlers, such as those of native libraries loaded into the
+	// process, must not run as well: in a forked child they can wait forever
+	// for threads that only existed in the parent.
+	calls->exit = _exit;
 
 	calls->malloc = malloc;
 	calls->free = free;
