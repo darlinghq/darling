@@ -18,6 +18,10 @@ add_framework(AVFoundation
     VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
+        src/constants.m
+        src/AVCaptureDeviceDiscoverySession.m
+        src/AVCapturePhotoOutput.m
+        src/AVCapturePhotoSettings.m
         src/AVFoundation.m
         src/AVPlayerLayerIntermediateLayer.m
         src/AVPlayerLayerInternal.m
