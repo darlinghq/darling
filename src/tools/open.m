@@ -201,6 +201,7 @@ int main(int argc, char *argv[])
 
 		appURL = (CFURLRef) CFRetain((CFURLRef)[NSURL fileURLWithPath: appPath]);
 		result = FSPathMakeRef((const UInt8*) [appPath UTF8String], &fsref, NULL);
+		hasFSRef = true;
 	}
 
 	if (result != noErr)
