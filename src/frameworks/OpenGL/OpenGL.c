@@ -32,6 +32,10 @@
 #define EGL_PLATFORM_WAYLAND_KHR 0x31D8
 #endif
 
+#ifndef EGL_PLATFORM_SURFACELESS_MESA
+#define EGL_PLATFORM_SURFACELESS_MESA 0x31DD
+#endif
+
 #ifndef EGL_CONTEXT_MAJOR_VERSION
 #define EGL_CONTEXT_MAJOR_VERSION 0x3098
 #endif
@@ -66,12 +70,12 @@
     X(eglDestroyContext) \
     X(eglDestroySurface) \
     X(eglGetConfigAttrib) \
+    X(eglGetDisplay) \
     X(eglGetPlatformDisplay) \
     X(eglInitialize) \
     X(eglMakeCurrent) \
     X(eglSwapBuffers) \
-    X(eglSwapInterval) \
-    X(eglTerminate)
+    X(eglSwapInterval)
 
 #define CGL_EGL_DECLARE(name) static __typeof__(name) *p_##name;
 CGL_EGL_FUNCTIONS(CGL_EGL_DECLARE)
@@ -109,36 +113,41 @@ static int default_swap_interval = 1;
 // Set while the registered display is Wayland, where the application's swap
 // interval is kept in software (swap_pacing.h) and EGL stays at interval 0.
 static int default_paced = 0;
+// The EGL platform of the registered window-system display. The CoreGraphics
+// connection belongs to the same window-system backend, so its native display
+// is of this platform too. Until a backend registers, assume X11, the
+// platform of the X11 backend's connection.
+static EGLenum registered_platform = EGL_PLATFORM_X11_KHR;
 static pthread_mutex_t registration_lock = PTHREAD_MUTEX_INITIALIZER;
 static EGLContext default_share_context = EGL_NO_CONTEXT;
 
-static EGLBoolean choose_registered_config(EGLDisplay dpy, EGLConfig *out_config, int *out_count) {
-    static EGLint const attrs_24[] = {
+static EGLBoolean choose_config(EGLDisplay dpy, EGLint surface_type, EGLConfig *out_config, int *out_count) {
+    EGLint const attrs_24[] = {
         EGL_RED_SIZE, 8,
         EGL_GREEN_SIZE, 8,
         EGL_BLUE_SIZE, 8,
         EGL_ALPHA_SIZE, 8,
         EGL_DEPTH_SIZE, 24,
         EGL_STENCIL_SIZE, 8,
-        EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_PBUFFER_BIT,
+        EGL_SURFACE_TYPE, surface_type,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
         EGL_NONE
     };
-    static EGLint const attrs_16[] = {
+    EGLint const attrs_16[] = {
         EGL_RED_SIZE, 8,
         EGL_GREEN_SIZE, 8,
         EGL_BLUE_SIZE, 8,
         EGL_ALPHA_SIZE, 8,
         EGL_DEPTH_SIZE, 16,
-        EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_PBUFFER_BIT,
+        EGL_SURFACE_TYPE, surface_type,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
         EGL_NONE
     };
-    static EGLint const attrs_fallback[] = {
+    EGLint const attrs_fallback[] = {
         EGL_RED_SIZE, 1,
         EGL_GREEN_SIZE, 1,
         EGL_BLUE_SIZE, 1,
-        EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_PBUFFER_BIT,
+        EGL_SURFACE_TYPE, surface_type,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
         EGL_NONE
     };
@@ -157,6 +166,41 @@ static EGLBoolean choose_registered_config(EGLDisplay dpy, EGLConfig *out_config
         return EGL_TRUE;
     }
     return EGL_FALSE;
+}
+
+static EGLBoolean choose_registered_config(EGLDisplay dpy, EGLConfig *out_config, int *out_count) {
+    return choose_config(dpy, EGL_WINDOW_BIT | EGL_PBUFFER_BIT, out_config, out_count);
+}
+
+// A process that creates a context without registering a window-system
+// display, such as an offscreen renderer, gets EGL's default display, whose
+// platform EGL picks, or a surfaceless display if that cannot be opened.
+// Its contexts render into pbuffers or framebuffer objects.
+static EGLDisplay default_display = EGL_NO_DISPLAY;
+static EGLConfig default_config;
+
+static void open_default_display(void) {
+    EGLDisplay candidates[] = {
+        p_eglGetDisplay(EGL_DEFAULT_DISPLAY),
+        p_eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA, EGL_DEFAULT_DISPLAY, NULL),
+    };
+    for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); i++) {
+        EGLConfig candidate_config;
+        if (candidates[i] == EGL_NO_DISPLAY || !p_eglInitialize(candidates[i], NULL, NULL))
+            continue;
+        if (!choose_config(candidates[i], EGL_PBUFFER_BIT, &candidate_config, NULL))
+            continue;
+        default_display = candidates[i];
+        default_config = candidate_config;
+        return;
+    }
+}
+
+static EGLDisplay get_default_display(EGLConfig *out_config) {
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    pthread_once(&once, open_default_display);
+    *out_config = default_config;
+    return default_display;
 }
 
 struct _CGLDisplay
@@ -249,6 +293,7 @@ CGLError CGLRegisterNativeDisplay(void *native_display) {
     display = candidate;
     config = candidate_config;
     num_config = count;
+    registered_platform = EGL_PLATFORM_X11_KHR;
     default_swap_interval = 1;
     default_paced = 0;
     pthread_mutex_unlock(&registration_lock);
@@ -314,6 +359,7 @@ CGLError CGLRegisterNativeDisplayForPlatform(void *native_display, unsigned int 
     num_config = count;
     // Layer animations may keep drawing while their parent is hidden. Waiting
     // for a Wayland frame callback on an unmapped surface can block forever.
+    registered_platform = platform;
     default_swap_interval = 0;
     default_paced = platform == EGL_PLATFORM_WAYLAND_KHR;
     pthread_mutex_unlock(&registration_lock);
@@ -343,7 +389,11 @@ static struct _CGLDisplay* getCGLDisplay(CGSConnectionID cid)
         if (!native_display)
             return NULL;
 
-        EGLDisplay disp = p_eglGetPlatformDisplay(EGL_PLATFORM_X11_KHR, native_display, NULL);
+        pthread_mutex_lock(&registration_lock);
+        EGLenum platform = registered_platform;
+        pthread_mutex_unlock(&registration_lock);
+
+        EGLDisplay disp = p_eglGetPlatformDisplay(platform, native_display, NULL);
         if (disp == EGL_NO_DISPLAY)
             return NULL;
 
@@ -359,7 +409,8 @@ static struct _CGLDisplay* getCGLDisplay(CGSConnectionID cid)
         }
         if (!choose_registered_config(new_disp->display, &new_disp->config, &new_disp->num_config))
         {
-            p_eglTerminate(new_disp->display);
+            // Not terminated: EGL returns the same handle for the same native
+            // display, so it may be the registered display that live contexts use.
             free(new_disp);
             return NULL;
         }
@@ -769,6 +820,11 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
     int interval = share ? share->swap_interval : (pixelFormat ? pixelFormat->swap_interval : default_swap_interval);
     int paced = share ? share->paced : (pixelFormat ? pixelFormat->paced : default_paced);
     pthread_mutex_unlock(&registration_lock);
+    if (owner == EGL_NO_DISPLAY) {
+        owner = get_default_display(&owner_config);
+        if (owner == EGL_NO_DISPLAY)
+            return kCGLBadConnection;
+    }
     if (!p_eglBindAPI(EGL_OPENGL_API))
         return kCGLBadState;
     EGLContext egl_share = EGL_NO_CONTEXT;

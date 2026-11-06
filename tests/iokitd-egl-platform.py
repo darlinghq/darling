@@ -40,8 +40,8 @@ def main():
         sys.exit("OpenGL.c must define or include EGL_PLATFORM_X11_KHR")
     if not re.search(r"CGLError\s+CGLRegisterNativeDisplay\s*\([^)]*\)\s*\{[^}]*eglGetPlatformDisplay\s*\(\s*EGL_PLATFORM_X11_KHR", opengl_content):
         sys.exit("CGLRegisterNativeDisplay in OpenGL.c must use eglGetPlatformDisplay with EGL_PLATFORM_X11_KHR")
-    if not re.search(r"struct\s+_CGLDisplay\s*\*\s*getCGLDisplay\s*\([^)]*\)\s*\{[^}]*eglGetPlatformDisplay\s*\(\s*EGL_PLATFORM_X11_KHR", opengl_content):
-        sys.exit("getCGLDisplay in OpenGL.c must use eglGetPlatformDisplay with EGL_PLATFORM_X11_KHR")
+    if not re.search(r"struct\s+_CGLDisplay\s*\*\s*getCGLDisplay\s*\([^)]*\)\s*\{[^}]*eglGetPlatformDisplay\s*\(\s*platform", opengl_content):
+        sys.exit("getCGLDisplay in OpenGL.c must use eglGetPlatformDisplay with the registered platform")
 
     # 3. Dynamic probe under EGL_PLATFORM=wayland
     with tempfile.TemporaryDirectory(prefix="iokitd-egl-") as tmpdir:
