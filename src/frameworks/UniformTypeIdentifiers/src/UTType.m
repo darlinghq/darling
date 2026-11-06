@@ -18,17 +18,206 @@
 */
 
 #import <UniformTypeIdentifiers/UTType.h>
+#import <CoreServices/CoreServices.h>
 
-@implementation UTType
+// Types are resolved through the CoreServices UTI database. A tag with no
+// declared type resolves to a dynamic type whose identifier is derived from
+// the tag, as the real framework does.
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+static NSString *const UTTagClassFilenameExtension = @"public.filename-extension";
+static NSString *const UTTagClassMIMEType = @"public.mime-type";
+static NSString *const UTDynamicPrefix = @"dyn.";
+
+@implementation UTType {
+    NSString *_identifier;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (instancetype)initWithIdentifier:(NSString *)identifier
 {
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+    if ((self = [super init])) {
+        _identifier = [identifier copy];
+    }
+    return self;
+}
+
+- (void)dealloc
+{
+    [_identifier release];
+    [super dealloc];
+}
+
++ (instancetype)typeWithIdentifier:(NSString *)identifier
+{
+    if (identifier == nil || [identifier length] == 0) {
+        return nil;
+    }
+    return [[[self alloc] initWithIdentifier:identifier] autorelease];
+}
+
++ (instancetype)_typeWithTag:(NSString *)tag tagClass:(NSString *)tagClass conformingToType:(UTType *)supertype
+{
+    if (tag == nil || [tag length] == 0) {
+        return nil;
+    }
+
+    CFStringRef found = UTTypeCreatePreferredIdentifierForTag((CFStringRef)tagClass, (CFStringRef)tag, supertype ? (CFStringRef)supertype->_identifier : NULL);
+    if (found != NULL) {
+        UTType *type = [self typeWithIdentifier:(NSString *)found];
+        CFRelease(found);
+        return type;
+    }
+
+    if (supertype != nil) {
+        return nil;
+    }
+    return [self typeWithIdentifier:[UTDynamicPrefix stringByAppendingString:[NSString stringWithFormat:@"%@.%@", tagClass, tag]]];
+}
+
++ (instancetype)typeWithFilenameExtension:(NSString *)filenameExtension
+{
+    return [self _typeWithTag:filenameExtension tagClass:UTTagClassFilenameExtension conformingToType:nil];
+}
+
++ (instancetype)typeWithFilenameExtension:(NSString *)filenameExtension conformingToType:(UTType *)supertype
+{
+    return [self _typeWithTag:filenameExtension tagClass:UTTagClassFilenameExtension conformingToType:supertype];
+}
+
++ (instancetype)typeWithMIMEType:(NSString *)mimeType
+{
+    return [self _typeWithTag:mimeType tagClass:UTTagClassMIMEType conformingToType:nil];
+}
+
++ (instancetype)typeWithMIMEType:(NSString *)mimeType conformingToType:(UTType *)supertype
+{
+    return [self _typeWithTag:mimeType tagClass:UTTagClassMIMEType conformingToType:supertype];
+}
+
++ (NSArray<UTType *> *)typesWithTag:(NSString *)tag tagClass:(NSString *)tagClass conformingToType:(UTType *)supertype
+{
+    NSMutableArray *types = [NSMutableArray array];
+    CFArrayRef identifiers = UTTypeCreateAllIdentifiersForTag((CFStringRef)tagClass, (CFStringRef)tag, supertype ? (CFStringRef)supertype->_identifier : NULL);
+
+    if (identifiers != NULL) {
+        for (NSString *identifier in (NSArray *)identifiers) {
+            [types addObject:[self typeWithIdentifier:identifier]];
+        }
+        CFRelease(identifiers);
+    }
+    return types;
+}
+
+- (NSString *)identifier
+{
+    return _identifier;
+}
+
+- (NSString *)_preferredTagOfClass:(NSString *)tagClass
+{
+    CFStringRef tag = UTTypeCopyPreferredTagWithClass((CFStringRef)_identifier, (CFStringRef)tagClass);
+    return tag ? [(NSString *)tag autorelease] : nil;
+}
+
+- (NSString *)preferredFilenameExtension
+{
+    return [self _preferredTagOfClass:UTTagClassFilenameExtension];
+}
+
+- (NSString *)preferredMIMEType
+{
+    return [self _preferredTagOfClass:UTTagClassMIMEType];
+}
+
+- (NSDictionary<NSString *, NSArray<NSString *> *> *)tags
+{
+    NSMutableDictionary *tags = [NSMutableDictionary dictionary];
+    NSString *extension = [self preferredFilenameExtension];
+    NSString *mimeType = [self preferredMIMEType];
+
+    if (extension) {
+        tags[UTTagClassFilenameExtension] = @[extension];
+    }
+    if (mimeType) {
+        tags[UTTagClassMIMEType] = @[mimeType];
+    }
+    return tags;
+}
+
+- (NSString *)localizedDescription
+{
+    CFStringRef description = UTTypeCopyDescription((CFStringRef)_identifier);
+    return description ? [(NSString *)description autorelease] : nil;
+}
+
+- (BOOL)isDynamic
+{
+    return [_identifier hasPrefix:UTDynamicPrefix];
+}
+
+- (BOOL)isDeclared
+{
+    return ![self isDynamic];
+}
+
+- (BOOL)isPublicType
+{
+    return [_identifier hasPrefix:@"public."];
+}
+
+- (BOOL)conformsToType:(UTType *)type
+{
+    return type != nil && UTTypeConformsTo((CFStringRef)_identifier, (CFStringRef)type->_identifier);
+}
+
+- (BOOL)isSubtypeOfType:(UTType *)type
+{
+    return ![self isEqual:type] && [self conformsToType:type];
+}
+
+- (BOOL)isSupertypeOfType:(UTType *)type
+{
+    return [type isSubtypeOfType:self];
+}
+
+// Only the types this type directly names as ancestors are known from the database.
+- (NSSet<UTType *> *)supertypes
+{
+    return [NSSet set];
+}
+
+- (BOOL)isEqual:(id)other
+{
+    return [other isKindOfClass:[UTType class]] && [_identifier isEqual:((UTType *)other)->_identifier];
+}
+
+- (NSUInteger)hash
+{
+    return [_identifier hash];
+}
+
+- (NSString *)description
+{
+    return [NSString stringWithFormat:@"<UTType 0x%lx> %@", (unsigned long)self, _identifier];
+}
+
+- (id)copyWithZone:(NSZone *)zone
+{
+    return [self retain];
+}
+
++ (BOOL)supportsSecureCoding
+{
+    return YES;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeObject:_identifier forKey:@"identifier"];
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    return [self initWithIdentifier:[coder decodeObjectOfClass:[NSString class] forKey:@"identifier"]];
 }
 
 @end

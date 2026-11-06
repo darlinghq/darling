@@ -19,6 +19,31 @@
 
 #include <Foundation/Foundation.h>
 
-@interface UTType : NSObject
+NS_ASSUME_NONNULL_BEGIN
+
+@interface UTType : NSObject <NSCopying, NSSecureCoding>
+
++ (nullable instancetype)typeWithIdentifier:(NSString *)identifier;
++ (nullable instancetype)typeWithFilenameExtension:(NSString *)filenameExtension;
++ (nullable instancetype)typeWithFilenameExtension:(NSString *)filenameExtension conformingToType:(UTType *)supertype;
++ (nullable instancetype)typeWithMIMEType:(NSString *)mimeType;
++ (nullable instancetype)typeWithMIMEType:(NSString *)mimeType conformingToType:(UTType *)supertype;
++ (NSArray<UTType *> *)typesWithTag:(NSString *)tag tagClass:(NSString *)tagClass conformingToType:(nullable UTType *)supertype;
+
+@property (nonatomic, readonly, copy) NSString *identifier;
+@property (nonatomic, readonly, nullable) NSString *preferredFilenameExtension;
+@property (nonatomic, readonly, nullable) NSString *preferredMIMEType;
+@property (nonatomic, readonly) NSDictionary<NSString *, NSArray<NSString *> *> *tags;
+@property (nonatomic, readonly, copy) NSString *localizedDescription;
+@property (nonatomic, readonly, getter=isDeclared) BOOL declared;
+@property (nonatomic, readonly, getter=isDynamic) BOOL dynamic;
+@property (nonatomic, readonly, getter=isPublicType) BOOL publicType;
+@property (nonatomic, readonly) NSSet<UTType *> *supertypes;
+
+- (BOOL)conformsToType:(UTType *)type;
+- (BOOL)isSupertypeOfType:(UTType *)type;
+- (BOOL)isSubtypeOfType:(UTType *)type;
 
 @end
+
+NS_ASSUME_NONNULL_END
