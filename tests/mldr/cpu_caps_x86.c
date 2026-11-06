@@ -1,4 +1,4 @@
-// Copyright (C) 2026 Lubos Dolezel
+// Copyright (C) 2026 Darling Developers
 //
 // Host-side test of the commpage CPU capability bits on x86. Each kHas* bit must
 // come from the CPUID register and bit the Intel SDM defines for that feature, and
