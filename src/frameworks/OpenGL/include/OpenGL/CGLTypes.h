@@ -33,7 +33,7 @@ typedef enum {
     kCGLCERasterization = 221,
     kCGLCEStateValidation = 301,
     kCGLCESurfaceBackingSize = 305,
-    kCGLCEDisplayListOptimization = 311,
+    kCGLCEDisplayListOptimization = 307,
     kCGLCEMPEngine = 313,
 } CGLContextEnable;
 
