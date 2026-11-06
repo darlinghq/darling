@@ -107,6 +107,11 @@ void socket_bitmap_put(socket_bitmap_t* bitmap, int socket) {
 
 	pthread_mutex_lock(&bitmap->mutex);
 
+	if (socket > bitmap->highest || bitmap->highest - socket >= bitmap->bit_length) {
+		// not a descriptor we handed out
+		goto out;
+	}
+
 	index = bitmap->highest - socket;
 
 	bitmap->bits[index / 8] &= ~(1 << (index % 8));
@@ -132,7 +137,7 @@ void socket_bitmap_put(socket_bitmap_t* bitmap, int socket) {
 				}
 			}
 
-			if ((bitmap->bits[index / 8] & (1 << (index % 8))) == 0) {
+			if ((bitmap->bits[index / 8] & (1 << (index % 8))) != 0) {
 				// this bit is in-use, so we can't shrink any further
 				break;
 			}
@@ -142,7 +147,10 @@ void socket_bitmap_put(socket_bitmap_t* bitmap, int socket) {
 
 		new_byte_size = (bitmap->bit_length + 7) / 8;
 
-		if (old_byte_size != new_byte_size) {
+		if (new_byte_size == 0) {
+			free(bitmap->bits);
+			bitmap->bits = NULL;
+		} else if (old_byte_size != new_byte_size) {
 			// we can free one or more bytes from the bitmap
 			void* ptr = realloc(bitmap->bits, new_byte_size);
 			if (!ptr) {
