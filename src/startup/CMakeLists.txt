@@ -42,4 +42,13 @@ add_executable(shellspawn_fds_test ${CMAKE_SOURCE_DIR}/tests/shellspawn/fds.c)
 target_include_directories(shellspawn_fds_test PRIVATE ${CMAKE_SOURCE_DIR}/src/shellspawn)
 add_test(NAME shellspawn_fds COMMAND shellspawn_fds_test)
 
+# Builds shellspawn.c on the host with a test harness and checks where
+# forwarded signals are delivered
+find_package(Python3 QUIET COMPONENTS Interpreter)
+if (Python3_Interpreter_FOUND)
+	add_test(NAME shellspawn_forwarded_signals
+		COMMAND ${CMAKE_COMMAND} -E env CC=${CMAKE_C_COMPILER}
+			${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/shellspawn/forwarded-signals.py ${CMAKE_SOURCE_DIR})
+endif()
+
 add_subdirectory(mldr)
