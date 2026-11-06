@@ -16,6 +16,16 @@ running_launchd() {
 	ps -eo pid=,stat=,args= | awk '$2 !~ /^Z/ && $3 == "/sbin/launchd" { print $1 }'
 }
 
+# The prefix a container's launchd belongs to: its parent is darlingserver,
+# started as "darlingserver PREFIX UID GID ...". `su --login` drops DPREFIX,
+# so without this a container in a non-default prefix could never be stopped.
+# Only plain absolute paths are passed on, since the value ends up in `su -c`.
+container_prefix() {
+	parent=$(ps -o ppid= -p "$1" | tr -d '[:space:]')
+	[ -n "$parent" ] || return
+	ps -o args= -p "$parent" | awk '$1 == "darlingserver" && $2 ~ /^\/[A-Za-z0-9._\/+-]*$/ { print $2 }'
+}
+
 # Each round shuts down every container still running. The bound is on rounds,
 # not on one PID, so one stuck container cannot starve the others and a
 # container that comes back under a new PID cannot loop forever.
@@ -27,7 +37,7 @@ do
 	if [ "$rounds" -ge 5 ]
 	then
 		echo "Darling (launchd PIDs $(echo $PIDS)) is still running after $rounds shutdown rounds, giving up." >&2
-		echo "It may belong to a prefix that \`darling shutdown\` does not select by default (DPREFIX)." >&2
+		echo "Try \`DPREFIX=<prefix> darling shutdown\` as the user that owns it." >&2
 		exit 1
 	fi
 	for PID in $PIDS
@@ -36,8 +46,15 @@ do
 		# The process may have exited between the two ps calls.
 		if [ -n "$RUNNING_USER" ]
 		then
-			echo "Darling currently running for $RUNNING_USER, shutting it down..."
-			timeout 15s su --login "$RUNNING_USER" -c "darling shutdown"
+			PREFIX=$(container_prefix "$PID")
+			if [ -n "$PREFIX" ]
+			then
+				echo "Darling currently running for $RUNNING_USER in $PREFIX, shutting it down..."
+				timeout 15s su --login "$RUNNING_USER" -c "DPREFIX='$PREFIX' darling shutdown"
+			else
+				echo "Darling currently running for $RUNNING_USER, shutting it down..."
+				timeout 15s su --login "$RUNNING_USER" -c "darling shutdown"
+			fi
 		fi
 	done
 	rounds=$((rounds + 1))
