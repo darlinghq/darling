@@ -83,18 +83,6 @@ void* CVBufferSetAttachment(void)
 	return NULL;
 }
 
-void* CVDisplayLinkGetCurrentTime(void)
-{
-	printf("STUB: %s\n", __PRETTY_FUNCTION__);
-	return NULL;
-}
-
-void* CVDisplayLinkRetain(void)
-{
-	printf("STUB: %s\n", __PRETTY_FUNCTION__);
-	return NULL;
-}
-
 void* CVPixelBufferCreateWithIOSurface(void)
 {
 	printf("STUB: %s\n", __PRETTY_FUNCTION__);
