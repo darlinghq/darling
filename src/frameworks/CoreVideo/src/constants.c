@@ -53,3 +53,11 @@ const CFStringRef kCVPixelBufferWidthKey = CFSTR("Width");
 const CFStringRef kCVPixelBufferIOSurfaceOpenGLTextureCompatibilityKey = CFSTR("IOSurfaceOpenGLTextureCompatibility");
 const CFStringRef kCVPixelBufferPoolMaximumBufferAgeKey = CFSTR("MaximumBufferAge");
 const CFStringRef kCVPixelBufferPoolMinimumBufferCountKey = CFSTR("MinimumBufferCount");
+
+const CFStringRef kCVImageBufferAmbientViewingEnvironmentKey = CFSTR("CVImageBufferAmbientViewingEnvironment");
+const CFStringRef kCVImageBufferColorPrimaries_DCI_P3 = CFSTR("DCI_P3");
+const CFStringRef kCVImageBufferColorPrimaries_P3_D65 = CFSTR("P3_D65");
+const CFStringRef kCVImageBufferContentLightLevelInfoKey = CFSTR("ContentLightLevelInfo");
+const CFStringRef kCVImageBufferMasteringDisplayColorVolumeKey = CFSTR("MasteringDisplayColorVolume");
+const CFStringRef kCVImageBufferTransferFunction_sRGB = CFSTR("IEC_sRGB");
+const CFStringRef kCVPixelBufferPoolAllocationThresholdKey = CFSTR("PixelBufferPoolAllocationThreshold");
