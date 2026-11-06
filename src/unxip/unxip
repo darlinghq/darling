@@ -6,5 +6,4 @@ if [ $# != 1 ]; then
 	exit 1
 fi
 
-/usr/libexec/xip_extract_cpio "$1" | cpio -i
-
+/usr/libexec/xip_extract_cpio "$1" | LC_ALL=C cpio -d -i
