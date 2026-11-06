@@ -156,7 +156,7 @@ int main(int argc, char** argv, char** envp)
 	// allow any process to ptrace us
 	// the only process we really care about being able to do this is the server,
 	// but we can't just use the server's PID, since it lies outside our PID namespace.
-	ptrace(PR_SET_PTRACER, PR_SET_PTRACER_ANY, 0, 0, 0);
+	prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY, 0, 0, 0);
 
 	process_special_env(&mldr_load_results);
 
