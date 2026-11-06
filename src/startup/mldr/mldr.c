@@ -562,22 +562,13 @@ int __mldr_create_rpc_socket(void) {
 		goto err_out;
 	}
 
-	fd = socket_bitmap_get(&socket_bitmap);
+	fd = socket_bitmap_place(&socket_bitmap, pre_fd);
 	if (fd < 0) {
-		goto err_out;
-	}
-
-	if (dup2(pre_fd, fd) < 0) {
-		// we have to put it away ourselves here because `fd` is not yet valid, so we can't close() it in the error handler
-		socket_bitmap_put(&socket_bitmap, fd);
-		fd = -1;
 		goto err_out;
 	}
 
 	close(pre_fd);
 	pre_fd = -1;
-
-	// `fd` now contains the socket with the desired FD number returned by `socket_bitmap_get`
 
 	int fd_flags = fcntl(fd, F_GETFD);
 	if (fd_flags < 0) {
@@ -627,14 +618,8 @@ int __mldr_create_process_lifetime_pipe(int* fds) {
 	}
 
 	for (int i = 0; i < 2; ++i) {
-		fds[i] = socket_bitmap_get(&socket_bitmap);
+		fds[i] = socket_bitmap_place(&socket_bitmap, pre_fds[i]);
 		if (fds[i] < 0) {
-			goto err_out;
-		}
-
-		if (dup2(pre_fds[i], fds[i]) < 0) {
-			socket_bitmap_put(&socket_bitmap, fds[i]);
-			fds[i] = -1;
 			goto err_out;
 		}
 

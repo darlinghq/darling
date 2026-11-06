@@ -19,7 +19,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #include <sys/resource.h>
+#include <unistd.h>
 #include "socket_bitmap.h"
 
 int socket_bitmap_get(socket_bitmap_t* bitmap) {
@@ -163,4 +165,29 @@ void socket_bitmap_put(socket_bitmap_t* bitmap, int socket) {
 
 out:
 	pthread_mutex_unlock(&bitmap->mutex);
+};
+
+int socket_bitmap_place(socket_bitmap_t* bitmap, int fd) {
+	while (true) {
+		int slot = socket_bitmap_get(bitmap);
+		if (slot < 0) {
+			return -1;
+		}
+
+		// unlike dup2(), F_DUPFD never closes a descriptor someone else holds;
+		// it picks the lowest free number at or above the slot instead
+		int placed = fcntl(fd, F_DUPFD, slot);
+		if (placed == slot) {
+			return slot;
+		}
+
+		if (placed < 0) {
+			socket_bitmap_put(bitmap, slot);
+			return -1;
+		}
+
+		// the slot is held by a descriptor we didn't create;
+		// leave it marked as used so it's never handed out, and try the next one
+		close(placed);
+	}
 };

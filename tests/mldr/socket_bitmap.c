@@ -1,7 +1,10 @@
 // Host-side test of mldr's socket bitmap: descriptors handed out must stay unique
-// while others come and go, and freeing everything must leave a usable bitmap.
+// while others come and go, freeing everything must leave a usable bitmap, and
+// placing a descriptor must never replace one that is already open.
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "socket_bitmap.h"
 
 #define HIGHEST 1023
@@ -38,6 +41,48 @@ static void put(int fd)
 {
 	in_use[fd] = 0;
 	socket_bitmap_put(&bitmap, fd);
+}
+
+// A descriptor some other code already holds at the top of the range, such as one a
+// native library opened, must survive mldr placing its own sockets there.
+static int test_place(void)
+{
+	socket_bitmap_t placing = {
+		.mutex = PTHREAD_MUTEX_INITIALIZER,
+		.highest = 200,
+	};
+	int foreign[2], ours[2];
+	struct stat before, after, placed_stat, ours_stat;
+
+	if (pipe(foreign) != 0 || pipe(ours) != 0 || dup2(foreign[0], 200) != 200)
+	{
+		printf("FAIL: cannot set up descriptors\n");
+		return 1;
+	}
+	fstat(200, &before);
+
+	int placed = socket_bitmap_place(&placing, ours[0]);
+	if (placed < 0 || placed == 200)
+	{
+		printf("FAIL: placed at %d\n", placed);
+		return 1;
+	}
+
+	fstat(200, &after);
+	fstat(placed, &placed_stat);
+	fstat(ours[0], &ours_stat);
+	if (before.st_ino != after.st_ino || placed_stat.st_ino != ours_stat.st_ino)
+	{
+		printf("FAIL: placing replaced a descriptor that was already open\n");
+		return 1;
+	}
+
+	if (socket_bitmap_place(&placing, ours[0]) == placed)
+	{
+		printf("FAIL: the same descriptor was placed twice\n");
+		return 1;
+	}
+	return 0;
 }
 
 int main(void)
@@ -77,6 +122,9 @@ int main(void)
 		printf("FAIL: the bitmap does not start over once empty\n");
 		return 1;
 	}
+
+	if (test_place() != 0)
+		return 1;
 
 	printf("socket_bitmap: OK\n");
 	return 0;
