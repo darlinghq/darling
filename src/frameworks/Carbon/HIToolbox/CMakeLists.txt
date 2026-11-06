@@ -28,6 +28,7 @@ add_framework(HIToolbox
 		src/IBCarbonRuntime.c
 		src/HITheme.c
 		src/constants.c
+		src/stubs.c
 
 	DEPENDENCIES
 		CoreFoundation
