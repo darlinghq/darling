@@ -40,9 +40,8 @@ typedef struct
 	{
 		CFMutableDictionaryRef matching = IOServiceNameMatching("IOSurfaceRoot");
 
+		// IOServiceGetMatchingService consumes the matching dictionary
 		g_surfaceService = IOServiceGetMatchingService(kIOMasterPortDefault, matching);
-
-		CFRelease(matching);
 
 		if (!g_surfaceService)
 			NSLog(@"Cannot obtain IOSurfaceRoot!\n");
