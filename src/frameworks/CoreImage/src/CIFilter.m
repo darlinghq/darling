@@ -28,6 +28,7 @@ NSString * const kCIInputBackgroundImageKey = @"inputBackgroundImage";
 NSString * const kCIInputBrightnessKey = @"inputBrightness";
 NSString * const kCIInputColorKey = @"inputColor";
 NSString * const kCIInputContrastKey = @"inputContrast";
+NSString * const kCIInputEVKey = @"inputEV";
 NSString * const kCIInputExtentKey = @"inputExtent";
 NSString * const kCIInputImageKey = @"inputImage";
 NSString * const kCIInputSaturationKey = @"inputSaturation";
