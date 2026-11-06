@@ -30,7 +30,23 @@ typedef struct
 {
 	struct _IOSurfaceObjectRetval* surface;
 	_Atomic int32_t localUseCount;
+	size_t allocSize;
+	NSMutableDictionary* attachments;
 } ImplData;
+
+// The size of the memory that holds all planes: the end of the last plane.
+static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
+{
+	size_t end = 0;
+	for (uint32_t i = 0; i < surface->planeCount; i++)
+	{
+		const struct _IOSurfacePlane* plane = &surface->planes[i];
+		size_t planeEnd = plane->memoryOffset + (size_t) plane->bytesPerRow * plane->height;
+		if (planeEnd > end)
+			end = planeEnd;
+	}
+	return end;
+}
 
 @implementation IOSurface
 
@@ -56,6 +72,8 @@ typedef struct
 	memcpy(idata->surface, bytes, length);
 
 	idata->localUseCount = 0;
+	idata->allocSize = planesEnd(idata->surface);
+	idata->attachments = [[NSMutableDictionary alloc] init];
 	self->_impl = idata;
 
 	return self;
@@ -111,6 +129,7 @@ typedef struct
 			free(data->surface);
 		}
 
+		[data->attachments release];
 		free(data);
 	}
 	[super dealloc];
@@ -234,6 +253,92 @@ typedef struct
 
 	ImplData* data = (ImplData*) _impl;
 	return (void*)(data->surface->address + data->surface->planes[planeIndex].memoryOffset);
+}
+
+- (NSInteger) allocationSize
+{
+	return ((ImplData*) _impl)->allocSize;
+}
+
+// Attachments are values that belong to the surface object; the surface
+// itself does not interpret them.
+- (void)setAttachment:(id)anObject forKey:(NSString *)key
+{
+	if (!key)
+		return;
+	ImplData* data = (ImplData*) _impl;
+	@synchronized(self)
+	{
+		if (anObject)
+			[data->attachments setObject: anObject forKey: key];
+		else
+			[data->attachments removeObjectForKey: key];
+	}
+}
+
+// Returns a retained value, for IOSurfaceCopyValue, which may be called
+// without an autorelease pool.
+- (nullable id)_copyAttachmentForKey:(NSString *)key
+{
+	if (!key)
+		return nil;
+	ImplData* data = (ImplData*) _impl;
+	id value;
+	@synchronized(self)
+	{
+		value = [[data->attachments objectForKey: key] retain];
+	}
+	return value;
+}
+
+- (nullable id)attachmentForKey:(NSString *)key
+{
+	return [[self _copyAttachmentForKey: key] autorelease];
+}
+
+- (void)removeAttachmentForKey:(NSString *)key
+{
+	if (!key)
+		return;
+	ImplData* data = (ImplData*) _impl;
+	@synchronized(self)
+	{
+		[data->attachments removeObjectForKey: key];
+	}
+}
+
+- (void)setAllAttachments:(NSDictionary<NSString *, id> *)dict
+{
+	ImplData* data = (ImplData*) _impl;
+	@synchronized(self)
+	{
+		[data->attachments addEntriesFromDictionary: dict];
+	}
+}
+
+- (NSDictionary<NSString *, id> *)_copyAllAttachments
+{
+	ImplData* data = (ImplData*) _impl;
+	NSDictionary* copy;
+	@synchronized(self)
+	{
+		copy = [data->attachments copy];
+	}
+	return copy;
+}
+
+- (nullable NSDictionary<NSString *, id> *)allAttachments
+{
+	return [[self _copyAllAttachments] autorelease];
+}
+
+- (void)removeAllAttachments
+{
+	ImplData* data = (ImplData*) _impl;
+	@synchronized(self)
+	{
+		[data->attachments removeAllObjects];
+	}
 }
 
 - (void)incrementUseCount
