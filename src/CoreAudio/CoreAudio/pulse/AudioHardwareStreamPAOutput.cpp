@@ -143,7 +143,9 @@ void AudioHardwareStreamPAOutput::start()
 	battr.fragsize = uint32_t(-1);
 	battr.maxlength = block * 2 * kTargetBlocks;
 	battr.minreq = block;
-	battr.prebuf = block * 2;
+	// Starting before the buffer is full makes the server play past the data that has arrived
+	// and drop the blocks written for that time, so playback waits for the whole target (the default).
+	battr.prebuf = uint32_t(-1);
 	battr.tlength = block * kTargetBlocks;
 
 	m_blockBytes = block;
