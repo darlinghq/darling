@@ -18,6 +18,7 @@ add_framework(CoreLocation
     VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
+        src/constants.m
         src/CoreLocation.m
         src/_CLLocationManagerRoutineProxy.m
         src/CLLocationManagerRoutine.m
