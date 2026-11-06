@@ -19,8 +19,11 @@
 
 
 #include <MediaAccessibility/MediaAccessibility.h>
+#include <CoreFoundation/CoreFoundation.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+const CFStringRef kMACaptionAppearanceSettingsChangedNotification = CFSTR("kMACaptionAppearanceSettingsChangedNotification");
 
 static int verbose = 0;
 

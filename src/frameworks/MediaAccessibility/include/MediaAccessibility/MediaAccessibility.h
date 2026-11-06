@@ -21,6 +21,11 @@
 #ifndef _MediaAccessibility_H_
 #define _MediaAccessibility_H_
 
+#include <CoreFoundation/CoreFoundation.h>
+
+// Posted when the user's caption appearance settings change.
+extern const CFStringRef kMACaptionAppearanceSettingsChangedNotification;
+
 void* MAAudibleMediaCopyPreferredCharacteristics(void);
 void* MAAudibleMediaPrefCopyPreferDescriptiveVideo(void);
 void* MAAudibleMediaPrefResetAll(void);
