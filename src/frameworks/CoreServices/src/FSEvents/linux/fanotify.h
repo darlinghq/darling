@@ -2,7 +2,13 @@
 #ifndef _LINUX_FANOTIFY_H
 #define _LINUX_FANOTIFY_H
 
-#include <linux/types.h>
+#include <stdint.h>
+typedef uint8_t __u8;
+typedef uint16_t __u16;
+typedef uint32_t __u32;
+typedef uint64_t __aligned_u64;
+typedef int32_t __s32;
+typedef struct { int val[2]; } __kernel_fsid_t;
 
 /* the following events that user-space can register for */
 #define FAN_ACCESS		0x00000001	/* File was accessed */
