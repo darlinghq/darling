@@ -36,4 +36,10 @@ add_executable(rtsig rtsig.c)
 add_custom_command(OUTPUT rtsig.h DEPENDS rtsig COMMAND ${CMAKE_CURRENT_BINARY_DIR}/rtsig rtsig.h COMMENT "Determining available RT signals")
 add_custom_target(rtsig_h DEPENDS rtsig.h)
 
+# shellspawn runs inside the prefix (src/shellspawn); its descriptor helpers
+# are plain POSIX and are tested on the host
+add_executable(shellspawn_fds_test ${CMAKE_SOURCE_DIR}/tests/shellspawn/fds.c)
+target_include_directories(shellspawn_fds_test PRIVATE ${CMAKE_SOURCE_DIR}/src/shellspawn)
+add_test(NAME shellspawn_fds COMMAND shellspawn_fds_test)
+
 add_subdirectory(mldr)
