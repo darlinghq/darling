@@ -21,6 +21,8 @@
 
 @implementation CLLocationManager
 
+@synthesize delegate = _delegate;
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];
