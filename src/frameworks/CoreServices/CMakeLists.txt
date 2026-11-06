@@ -54,6 +54,7 @@ add_framework(CoreServices
 		OSServices
 		system
 		CoreFoundation
+		Foundation
 		${EXTRA_LIBS}
 
 	RESOURCES
