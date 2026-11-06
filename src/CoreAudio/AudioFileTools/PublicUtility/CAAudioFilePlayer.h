@@ -63,6 +63,9 @@ public:
 	void			SetVolume(double volume);		// 0-1
 	
 	void			SetFile(const FSRef &inFile);
+	
+	// seconds between rendering a frame and hearing it; 0 if the device doesn't say
+	double			GetOutputLatency();
 
 protected:
 	// our virtual methods:
