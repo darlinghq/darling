@@ -324,10 +324,245 @@ CFArrayRef LSCopyAllRoleHandlersForContentType(CFStringRef inContentType, LSRole
 	return NULL;
 }
 
+// The user's choice of default handlers is kept in the LaunchServices
+// preferences as an "LSHandlers" array. Each entry names either a URL
+// scheme or a content type and maps role keys to a bundle identifier.
+// Handlers declared by the installed applications come from the database.
+static const CFStringRef kLSHandlersPrefsDomain = CFSTR("com.apple.LaunchServices");
+static const CFStringRef kLSHandlersKey = CFSTR("LSHandlers");
+static const CFStringRef kLSHandlerURLSchemeKey = CFSTR("LSHandlerURLScheme");
+static const CFStringRef kLSHandlerContentTypeKey = CFSTR("LSHandlerContentType");
+static const CFStringRef kLSHandlerRoleAllKey = CFSTR("LSHandlerRoleAll");
+
+static const struct
+{
+	LSRolesMask role;
+	CFStringRef key;
+} kLSHandlerRoleKeys[] = {
+	{ kLSRolesNone, CFSTR("LSHandlerRoleNone") },
+	{ kLSRolesViewer, CFSTR("LSHandlerRoleViewer") },
+	{ kLSRolesEditor, CFSTR("LSHandlerRoleEditor") },
+	{ kLSRolesShell, CFSTR("LSHandlerRoleShell") },
+};
+
+static Boolean handlerMatches(CFDictionaryRef entry, CFStringRef matchKey, CFStringRef value)
+{
+	CFStringRef entryValue;
+
+	if (CFGetTypeID(entry) != CFDictionaryGetTypeID())
+		return FALSE;
+
+	entryValue = CFDictionaryGetValue(entry, matchKey);
+	return entryValue != NULL && CFGetTypeID(entryValue) == CFStringGetTypeID()
+		&& CFStringCompare(entryValue, value, kCFCompareCaseInsensitive) == kCFCompareEqualTo;
+}
+
+static CFArrayRef copyHandlers(void)
+{
+	CFPropertyListRef handlers = CFPreferencesCopyValue(kLSHandlersKey, kLSHandlersPrefsDomain,
+		kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+
+	if (handlers != NULL && CFGetTypeID(handlers) != CFArrayGetTypeID())
+	{
+		CFRelease(handlers);
+		handlers = NULL;
+	}
+	return (CFArrayRef) handlers;
+}
+
+// Returns the bundle ID the user chose for the first role key in roleKeys
+// that has one.
+static CFStringRef copyUserHandler(CFStringRef matchKey, CFStringRef value, const CFStringRef* roleKeys, CFIndex roleKeyCount)
+{
+	CFArrayRef handlers = copyHandlers();
+	CFStringRef result = NULL;
+
+	if (handlers == NULL)
+		return NULL;
+
+	for (CFIndex i = 0; i < CFArrayGetCount(handlers) && result == NULL; i++)
+	{
+		CFDictionaryRef entry = CFArrayGetValueAtIndex(handlers, i);
+
+		if (!handlerMatches(entry, matchKey, value))
+			continue;
+
+		for (CFIndex j = 0; j < roleKeyCount; j++)
+		{
+			CFStringRef bundleID = CFDictionaryGetValue(entry, roleKeys[j]);
+			if (bundleID != NULL && CFGetTypeID(bundleID) == CFStringGetTypeID())
+			{
+				result = CFStringCreateCopy(NULL, bundleID);
+				break;
+			}
+		}
+	}
+
+	CFRelease(handlers);
+	return result;
+}
+
+static OSStatus setUserHandler(CFStringRef matchKey, CFStringRef value, const CFStringRef* roleKeys, CFIndex roleKeyCount, CFStringRef bundleID)
+{
+	CFArrayRef handlers = copyHandlers();
+	CFMutableArrayRef newHandlers;
+	CFMutableDictionaryRef entry = NULL;
+	CFIndex i, count;
+	Boolean synced;
+
+	newHandlers = handlers != NULL
+		? CFArrayCreateMutableCopy(NULL, 0, handlers)
+		: CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
+	if (handlers != NULL)
+		CFRelease(handlers);
+
+	count = CFArrayGetCount(newHandlers);
+	for (i = 0; i < count; i++)
+	{
+		CFDictionaryRef existing = CFArrayGetValueAtIndex(newHandlers, i);
+		if (handlerMatches(existing, matchKey, value))
+		{
+			entry = CFDictionaryCreateMutableCopy(NULL, 0, existing);
+			break;
+		}
+	}
+
+	if (entry == NULL)
+	{
+		entry = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+		CFDictionarySetValue(entry, matchKey, value);
+	}
+
+	for (CFIndex j = 0; j < roleKeyCount; j++)
+		CFDictionarySetValue(entry, roleKeys[j], bundleID);
+
+	if (i < count)
+		CFArraySetValueAtIndex(newHandlers, i, entry);
+	else
+		CFArrayAppendValue(newHandlers, entry);
+	CFRelease(entry);
+
+	CFPreferencesSetValue(kLSHandlersKey, newHandlers, kLSHandlersPrefsDomain,
+		kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+	CFRelease(newHandlers);
+
+	synced = CFPreferencesSynchronize(kLSHandlersPrefsDomain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+	return synced ? noErr : kLSUnknownErr;
+}
+
+// Role keys to look at for inRole, most specific first.
+static CFIndex roleKeysForMask(LSRolesMask inRole, CFStringRef* keys)
+{
+	CFIndex count = 0;
+
+	if (inRole != kLSRolesAll)
+	{
+		for (size_t i = 0; i < sizeof(kLSHandlerRoleKeys) / sizeof(kLSHandlerRoleKeys[0]); i++)
+		{
+			if (inRole & kLSHandlerRoleKeys[i].role)
+				keys[count++] = kLSHandlerRoleKeys[i].key;
+		}
+	}
+	return count;
+}
+
+static CFStringRef copyDeclaredHandler(NSString* query, CFStringRef value)
+{
+	__block CFStringRef retval = NULL;
+	FMDatabaseQueue* dq = getDatabaseQueue();
+
+	if (dq == nil)
+		return NULL;
+
+	[dq inDatabase:^(FMDatabase* db) {
+		FMResultSet* rs = [db executeQuery:query, value];
+		if ([rs next])
+			retval = (CFStringRef) [[rs stringForColumn:@"bundle_id"] copy];
+		[rs close];
+	}];
+
+	return retval;
+}
+
 CFStringRef LSCopyDefaultHandlerForURLScheme(CFStringRef inURLScheme)
 {
-	puts("LSCopyDefaultHandlerForURLScheme STUB");
-	return NULL; // (could also return "" I guess)
+	CFStringRef roleKeys[] = { kLSHandlerRoleAllKey };
+	CFStringRef handler;
+
+	if (inURLScheme == NULL)
+		return NULL;
+
+	handler = copyUserHandler(kLSHandlerURLSchemeKey, inURLScheme, roleKeys, 1);
+	if (handler != NULL)
+		return handler;
+
+	return copyDeclaredHandler(@"select bundle.bundle_id from bundle"
+		@" INNER JOIN bundle_url_type T on T.bundle=bundle.id"
+		@" INNER JOIN bundle_url_type_scheme S on S.type=T.id"
+		@" where bundle.package_type='APPL' and S.scheme=?", inURLScheme);
+}
+
+OSStatus LSSetDefaultHandlerForURLScheme(CFStringRef inURLScheme, CFStringRef inHandlerBundleID)
+{
+	CFStringRef roleKeys[] = { kLSHandlerRoleAllKey };
+
+	if (inURLScheme == NULL || inHandlerBundleID == NULL)
+		return paramErr;
+
+	return setUserHandler(kLSHandlerURLSchemeKey, inURLScheme, roleKeys, 1, inHandlerBundleID);
+}
+
+CFStringRef LSCopyDefaultRoleHandlerForContentType(CFStringRef inContentType, LSRolesMask inRole)
+{
+	CFStringRef roleKeys[5];
+	CFIndex count;
+	CFStringRef handler;
+	NSString* query;
+
+	if (inContentType == NULL)
+		return NULL;
+
+	count = roleKeysForMask(inRole, roleKeys);
+	roleKeys[count++] = kLSHandlerRoleAllKey;
+
+	handler = copyUserHandler(kLSHandlerContentTypeKey, inContentType, roleKeys, count);
+	if (handler != NULL)
+		return handler;
+
+	query = @"select bundle.bundle_id, AD.rank from bundle INNER JOIN app_doc AD on AD.bundle=bundle.id"
+		@" INNER JOIN app_doc_uti AU on AU.doc=AD.id WHERE bundle.package_type='APPL' AND AU.uti=?";
+	if (inRole != kLSRolesAll)
+		query = [query stringByAppendingFormat:@" and AD.role in (%@)", roleSQLArray(inRole)];
+	query = [query stringByAppendingString:@" order by case "
+		@"when AD.rank='Owner' then 1 "
+		@"when AD.rank='Default' then 2 "
+		@"when AD.rank='Alternate' then 3 "
+		@"else 5 "
+		@"end asc"];
+
+	return copyDeclaredHandler(query, inContentType);
+}
+
+OSStatus LSSetDefaultRoleHandlerForContentType(CFStringRef inContentType, LSRolesMask inRole, CFStringRef inHandlerBundleID)
+{
+	CFStringRef roleKeys[4];
+	CFIndex count;
+
+	if (inContentType == NULL || inHandlerBundleID == NULL)
+		return paramErr;
+
+	if (inRole == kLSRolesAll)
+	{
+		roleKeys[0] = kLSHandlerRoleAllKey;
+		count = 1;
+	}
+	else
+		count = roleKeysForMask(inRole, roleKeys);
+
+	if (count == 0)
+		return paramErr;
+
+	return setUserHandler(kLSHandlerContentTypeKey, inContentType, roleKeys, count, inHandlerBundleID);
 }
 
 OSStatus LSCopyApplicationForMIMEType(CFStringRef inMIMEType, LSRolesMask inRoleMask, CFURLRef *outAppURL)
