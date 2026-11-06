@@ -409,8 +409,9 @@ int __darling_thread_rpc_socket(void) {
 			// this is the main thread
 			t_server_socket = __dserver_main_thread_socket_fd;
 		} else {
-			// threads should already have a per-thread socket assigned when they're created
-			abort();
+			// threads created by native libraries have no darlingserver connection;
+			// RPC wrappers report a negative socket as a broken pipe
+			return -1;
 		}
 	}
 	return t_server_socket;
