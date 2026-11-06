@@ -108,7 +108,9 @@ CFArrayRef TISCreateInputSourceList(CFDictionaryRef properties, Boolean includeA
 		{
 			id filterVal = filter[key];
 			id sourceVal = source[key];
-			if (sourceVal && ![filterVal isEqual:sourceVal])
+			// Only sources that have every requested property, with an equal
+			// value, match. A source without the property does not.
+			if (!sourceVal || ![filterVal isEqual:sourceVal])
 			{
 				CFRelease(current);
 				return (CFArrayRef)[[NSArray array] retain];
