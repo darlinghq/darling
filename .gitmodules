@@ -21,13 +21,13 @@
 	url = https://github.com/darlinghq/darling-libxml2.git
 [submodule "src/external/compiler-rt"]
 	path = src/external/compiler-rt
-	url = https://github.com/darlinghq/darling-compiler-rt.git
+	url = https://github.com/othiagobruno/darling-compiler-rt.git
 [submodule "src/external/foundation"]
 	path = src/external/foundation
-	url = https://github.com/darlinghq/darling-foundation.git
+	url = https://github.com/othiagobruno/darling-foundation.git
 [submodule "src/external/corefoundation"]
 	path = src/external/corefoundation
-	url = https://github.com/darlinghq/darling-corefoundation.git
+	url = https://github.com/othiagobruno/darling-corefoundation.git
 [submodule "src/external/icu"]
 	path = src/external/icu
 	url = https://github.com/darlinghq/darling-icu.git
@@ -102,7 +102,7 @@
 	url = https://github.com/darlinghq/darling-coretls.git
 [submodule "src/external/security"]
 	path = src/external/security
-	url = https://github.com/darlinghq/darling-security.git
+	url = https://github.com/othiagobruno/darling-security.git
 [submodule "src/external/libxpc"]
 	path = src/external/libxpc
 	url = https://github.com/darlinghq/darling-libxpc.git
@@ -153,7 +153,7 @@
 	url = https://github.com/darlinghq/darling-openssl_certificates.git
 [submodule "src/external/IOKitUser"]
 	path = src/external/IOKitUser
-	url = https://github.com/darlinghq/darling-iokituser.git
+	url = https://github.com/othiagobruno/darling-iokituser.git
 [submodule "src/external/IOStorageFamily"]
 	path = src/external/IOStorageFamily
 	url = https://github.com/darlinghq/darling-iostoragefamily.git
@@ -171,7 +171,7 @@
 	url = https://github.com/darlinghq/cctools-port.git
 [submodule "src/external/objc4"]
 	path = src/external/objc4
-	url = https://github.com/darlinghq/darling-objc4.git
+	url = https://github.com/othiagobruno/darling-objc4.git
 [submodule "src/external/libplatform"]
 	path = src/external/libplatform
 	url = https://github.com/darlinghq/darling-libplatform.git
@@ -186,7 +186,7 @@
 	url = https://github.com/darlinghq/darling-libclosure.git
 [submodule "src/external/configd"]
 	path = src/external/configd
-	url = https://github.com/darlinghq/darling-configd.git
+	url = https://github.com/othiagobruno/darling-configd.git
 [submodule "src/external/IONetworkingFamily"]
 	path = src/external/IONetworkingFamily
 	url = https://github.com/darlinghq/darling-IONetworkingFamily.git
@@ -234,7 +234,7 @@
 	url = https://github.com/darlinghq/darling-Heimdal.git
 [submodule "src/external/cocotron"]
 	path = src/external/cocotron
-	url = https://github.com/darlinghq/darling-cocotron.git
+	url = https://github.com/othiagobruno/darling-cocotron.git
 [submodule "src/external/libtelnet"]
 	path = src/external/libtelnet
 	url = https://github.com/darlinghq/darling-libtelnet.git
@@ -296,7 +296,7 @@
 	url = https://github.com/darlinghq/darling-opendirectory.git
 [submodule "src/external/iokitd"]
 	path = src/external/iokitd
-	url = https://github.com/darlinghq/darling-iokitd.git
+	url = https://github.com/othiagobruno/darling-iokitd.git
 [submodule "src/external/OpenAL"]
 	path = src/external/OpenAL
 	url = https://github.com/darlinghq/darling-openal.git
@@ -378,7 +378,7 @@
 	url = https://github.com/darlinghq/darling-pyobjc.git
 [submodule "src/external/darlingserver"]
 	path = src/external/darlingserver
-	url = https://github.com/darlinghq/darlingserver.git
+	url = https://github.com/othiagobruno/darlingserver.git
 [submodule "src/external/libmalloc"]
 	path = src/external/libmalloc
 	url = https://github.com/darlinghq/darling-libmalloc.git
@@ -450,7 +450,7 @@
 	url = https://github.com/darlinghq/darling-xar.git
 [submodule "src/external/metal"]
 	path = src/external/metal
-	url = https://github.com/darlinghq/darling-metal.git
+	url = https://github.com/othiagobruno/darling-metal.git
 [submodule "src/external/xnu"]
 	path = src/external/xnu
-	url = https://github.com/darlinghq/darling-xnu.git
+	url = https://github.com/othiagobruno/darling-xnu.git
