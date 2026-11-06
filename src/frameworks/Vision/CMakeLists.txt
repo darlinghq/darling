@@ -18,6 +18,7 @@ add_framework(Vision
     VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
+        src/constants.m
         src/Vision.m
         src/VNANFDDetectorCompoundRequestConfiguration.m
         src/VNANFDDetectorCompoundRequestConfigurationGroups.m
