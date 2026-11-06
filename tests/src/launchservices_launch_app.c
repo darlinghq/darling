@@ -1,4 +1,4 @@
-// Copyright (C) 2026 Lubos Dolezel
+// Copyright (C) 2026 Darling Developers
 //
 // Opening an application bundle through LaunchServices runs the bundle's
 // CFBundleExecutable, also when the bundle path needs percent-encoding

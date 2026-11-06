@@ -1,4 +1,4 @@
-// Copyright (C) 2026 Lubos Dolezel
+// Copyright (C) 2026 Darling Developers
 //
 // The LSCopy* lookups take a nullable outError: with NULL they must not
 // crash, and with the address of a NULL CFErrorRef a failed lookup must
