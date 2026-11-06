@@ -553,6 +553,18 @@ static socket_bitmap_t socket_bitmap = {
 	.highest = -1,
 };
 
+void __mldr_socket_bitmap_prefork(void) {
+	socket_bitmap_fork_prepare(&socket_bitmap);
+}
+
+void __mldr_socket_bitmap_postfork_parent(void) {
+	socket_bitmap_fork_parent(&socket_bitmap);
+}
+
+void __mldr_socket_bitmap_postfork_child(void) {
+	socket_bitmap_fork_child(&socket_bitmap);
+}
+
 int __mldr_create_rpc_socket(void) {
 	int pre_fd = -1;
 	int fd = -1;

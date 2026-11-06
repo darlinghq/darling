@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include "elfcalls.h"
 #include "threads.h"
+#include "native_fork.h"
 #include <sys/un.h>
 #include <sys/socket.h>
 #include <fcntl.h>
@@ -130,4 +131,6 @@ void elfcalls_make(struct elf_calls* calls)
 	calls->dserver_get_process_lifetime_pipe = __dserver_get_process_lifetime_pipe;
 	calls->dserver_process_lifetime_pipe_refresh = __dserver_process_lifetime_pipe_refresh;
 	calls->dserver_close_process_lifetime_pipe = __mldr_close_process_lifetime_pipe;
+
+	calls->native_fork = __mldr_native_fork;
 }

@@ -417,6 +417,13 @@ int __darling_thread_rpc_socket(void) {
 	return t_server_socket;
 };
 
+void __mldr_thread_postfork_child(void) {
+	t_server_socket = -1;
+	t_callbacks = NULL;
+	t_freeaddr = NULL;
+	t_freesize = 0;
+}
+
 void __darling_thread_rpc_socket_refresh(void) {
 	int new_rpc_fd = __mldr_create_rpc_socket();
 	if (new_rpc_fd < 0) {
