@@ -22,7 +22,31 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 
+typedef struct OpaqueLSSharedFileListRef *LSSharedFileListRef;
 typedef struct OpaqueLSSharedFileListItemRef *LSSharedFileListItemRef;
+typedef struct OpaqueIconRef *IconRef;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern LSSharedFileListRef LSSharedFileListCreate(CFAllocatorRef inAllocator, CFStringRef inListType, CFTypeRef listOptions);
+extern CFArrayRef LSSharedFileListCopySnapshot(LSSharedFileListRef inList, UInt32 *outSnapshotSeed);
+extern LSSharedFileListItemRef LSSharedFileListInsertItemURL(
+	LSSharedFileListRef inList,
+	LSSharedFileListItemRef insertAfterThisItem,
+	CFStringRef inDisplayName,
+	IconRef inIconRef,
+	CFURLRef inURL,
+	CFDictionaryRef inPropertiesToSet,
+	CFArrayRef inPropertiesToClear);
+extern CFTypeRef LSSharedFileListItemCopyProperty(LSSharedFileListItemRef inItem, CFStringRef inCFStringKey);
+extern CFURLRef LSSharedFileListItemCopyResolvedURL(LSSharedFileListItemRef inItem, UInt32 inFlags, CFErrorRef *outError);
+extern OSStatus LSSharedFileListItemRemove(LSSharedFileListRef inList, LSSharedFileListItemRef inItem);
+
+#ifdef __cplusplus
+}
+#endif
 
 extern LSSharedFileListItemRef kLSSharedFileListItemLast;
 

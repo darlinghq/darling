@@ -104,3 +104,27 @@ void FSEventStreamUnscheduleFromRunLoop(FSEventStreamRef streamRef, CFRunLoopRef
 	[((FSEventsImpl*) streamRef) unscheduleWithRunLoop: runLoop
 												mode: runLoopMode];
 }
+
+dev_t FSEventStreamGetDeviceBeingWatched(ConstFSEventStreamRef streamRef)
+{
+	printf("STUB %s\n", __PRETTY_FUNCTION__);
+	return 0;
+}
+
+Boolean FSEventStreamSetExclusionPaths(FSEventStreamRef streamRef, CFArrayRef pathsToExclude)
+{
+	printf("STUB %s\n", __PRETTY_FUNCTION__);
+	return false;
+}
+
+FSEventStreamEventId FSEventsGetCurrentEventId(void)
+{
+	printf("STUB %s\n", __PRETTY_FUNCTION__);
+	return 0;
+}
+
+Boolean FSEventsPurgeEventsForDeviceUpToEventId(dev_t dev, FSEventStreamEventId eventId)
+{
+	printf("STUB %s\n", __PRETTY_FUNCTION__);
+	return false;
+}

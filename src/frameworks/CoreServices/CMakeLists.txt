@@ -40,6 +40,7 @@ add_framework(CoreServices
 
 	SOURCES
 		constants.m
+		src/CSCheckFix.c
 
 	DEPENDENCIES
 		FSEvents

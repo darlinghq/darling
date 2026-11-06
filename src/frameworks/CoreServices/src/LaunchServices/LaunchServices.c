@@ -184,3 +184,10 @@ err_pre_info:
 	CFRelease(rs);
 	CFRelease(info_plist_url);
 }
+
+OSStatus LSSetDefaultHandlerForURLScheme(CFStringRef inURLScheme, CFStringRef inHandlerBundleID)
+{
+	if (verbose)
+		printf("STUB: LSSetDefaultHandlerForURLScheme\n");
+	return kLSApplicationNotFoundErr;
+}
