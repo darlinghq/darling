@@ -21,8 +21,6 @@
 #include <sandbox/sandbox.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdint.h>
-#include <string.h>
 
 static int verbose = 0;
 
@@ -31,75 +29,48 @@ static void initme(void) {
     verbose = getenv("STUB_VERBOSE") != NULL;
 }
 
-/* Extension token family. Darling does not enforce sandbox profiles, so
- * clients that issue, consume and release extensions around child setup get
- * placeholder non-zero tokens and every call succeeds without effect.
- * (These live in libsandbox.dylib on macOS, hence here and not in
- * libsystem_sandbox.) */
-static int64_t sandbox_extension_next_token = 1;
-
-int64_t sandbox_extension_issue_file(const char *path, uint32_t flags)
-{
-    if (verbose) puts("STUB: sandbox_extension_issue_file called");
-    (void)path; (void)flags;
-    return sandbox_extension_next_token++;
-}
-
-int64_t sandbox_extension_issue_mach(const char *name, uint32_t flags)
-{
-    if (verbose) puts("STUB: sandbox_extension_issue_mach called");
-    (void)name; (void)flags;
-    return sandbox_extension_next_token++;
-}
-
-int sandbox_extension_consume(int64_t token)
-{
-    if (verbose) puts("STUB: sandbox_extension_consume called");
-    (void)token;
-    return 0;
-}
-
-int sandbox_extension_release(int64_t token)
-{
-    if (verbose) puts("STUB: sandbox_extension_release called");
-    (void)token;
-    return 0;
-}
-
 /* Compile/apply family. There is no seatbelt compiler here, so
- * "compiling" a profile yields a dummy handle and applying succeeds.
- * Signatures match Apple's (the old stubs had wrong shapes). */
+ * "compiling" a profile yields an empty profile and applying it succeeds.
+ * A profile has the documented layout (builtin name, compiled data and
+ * its size); here all of them are empty. */
+struct sandbox_profile {
+    char *builtin;
+    unsigned char *data;
+    size_t size;
+};
 
-void* sandbox_compile_string(const char *profile, char **errorbuf)
+static void* sandbox_empty_profile(char **errorbuf)
+{
+    if (errorbuf != NULL) *errorbuf = NULL;
+    return calloc(1, sizeof(struct sandbox_profile));
+}
+
+void* sandbox_compile_string(const char *data, void *params, char **errorbuf)
 {
     if (verbose) puts("STUB: sandbox_compile_string called");
-    if (errorbuf != NULL) *errorbuf = NULL;
-    (void)profile;
-    return strdup("darling-sandbox-stub");
+    (void)data; (void)params;
+    return sandbox_empty_profile(errorbuf);
 }
 
-void* sandbox_compile_file(const char *path, char **errorbuf)
+void* sandbox_compile_file(const char *path, void *params, char **errorbuf)
 {
     if (verbose) puts("STUB: sandbox_compile_file called");
-    if (errorbuf != NULL) *errorbuf = NULL;
-    (void)path;
-    return strdup("darling-sandbox-stub");
+    (void)path; (void)params;
+    return sandbox_empty_profile(errorbuf);
 }
 
 void* sandbox_compile_named(const char *name, char **errorbuf)
 {
     if (verbose) puts("STUB: sandbox_compile_named called");
-    if (errorbuf != NULL) *errorbuf = NULL;
     (void)name;
-    return strdup("darling-sandbox-stub");
+    return sandbox_empty_profile(errorbuf);
 }
 
 void* sandbox_compile_entitlements(void *entitlements, char **errorbuf)
 {
     if (verbose) puts("STUB: sandbox_compile_entitlements called");
-    if (errorbuf != NULL) *errorbuf = NULL;
     (void)entitlements;
-    return strdup("darling-sandbox-stub");
+    return sandbox_empty_profile(errorbuf);
 }
 
 int sandbox_apply(void *handle)
@@ -131,6 +102,12 @@ void* sandbox_create_params(void)
 {
     if (verbose) puts("STUB: sandbox_create_params called");
     return NULL;
+}
+
+void sandbox_free_params(void *params)
+{
+    if (verbose) puts("STUB: sandbox_free_params called");
+    (void)params;
 }
 
 void* sandbox_inspect_pid(void)

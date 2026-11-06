@@ -148,6 +148,47 @@ int sandbox_release_fs_extension(const char *ext_token)
 	return 0;
 }
 
+/* No enforcement: issued tokens are placeholders that can be consumed and
+ * released, and a consumed token yields a positive handle. */
+static int64_t sandbox_extension_next_handle = 1;
+
+static char *sandbox_extension_placeholder_token(const char *extension_class)
+{
+	if (extension_class == NULL) {
+		return NULL;
+	}
+	return strdup("darling-sandbox-stub");
+}
+
+char *sandbox_extension_issue_file(const char *extension_class, const char *path, uint32_t flags)
+{
+	if (path == NULL) {
+		return NULL;
+	}
+	return sandbox_extension_placeholder_token(extension_class);
+}
+
+char *sandbox_extension_issue_mach(const char *extension_class, const char *name, uint32_t flags)
+{
+	if (name == NULL) {
+		return NULL;
+	}
+	return sandbox_extension_placeholder_token(extension_class);
+}
+
+int64_t sandbox_extension_consume(const char *extension_token)
+{
+	if (extension_token == NULL) {
+		return -1;
+	}
+	return __atomic_fetch_add(&sandbox_extension_next_handle, 1, __ATOMIC_RELAXED);
+}
+
+int sandbox_extension_release(int64_t extension_handle)
+{
+	return 0;
+}
+
 int sandbox_container_path_for_pid(pid_t pid, char *buffer, size_t bufsize)
 {
 	return -1;
