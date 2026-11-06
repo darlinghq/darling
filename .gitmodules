@@ -1,456 +1,456 @@
 [submodule "src/external/libdispatch"]
 	path = src/external/libdispatch
-	url = ../darling-libdispatch.git
+	url = https://github.com/darlinghq/darling-libdispatch.git
 [submodule "src/external/libcxx"]
 	path = src/external/libcxx
-	url = ../darling-libcxx.git
+	url = https://github.com/darlinghq/darling-libcxx.git
 [submodule "src/external/libcxxabi"]
 	path = src/external/libcxxabi
-	url = ../darling-libcxxabi.git
+	url = https://github.com/darlinghq/darling-libcxxabi.git
 [submodule "src/external/libkqueue"]
 	path = src/external/libkqueue
-	url = ../darling-libkqueue.git
+	url = https://github.com/darlinghq/darling-libkqueue.git
 [submodule "src/external/zlib"]
 	path = src/external/zlib
-	url = ../darling-zlib.git
+	url = https://github.com/darlinghq/darling-zlib.git
 [submodule "src/external/bzip2"]
 	path = src/external/bzip2
-	url = ../darling-bzip2.git
+	url = https://github.com/darlinghq/darling-bzip2.git
 [submodule "src/external/libxml2"]
 	path = src/external/libxml2
-	url = ../darling-libxml2.git
+	url = https://github.com/darlinghq/darling-libxml2.git
 [submodule "src/external/compiler-rt"]
 	path = src/external/compiler-rt
-	url = ../darling-compiler-rt.git
+	url = https://github.com/darlinghq/darling-compiler-rt.git
 [submodule "src/external/foundation"]
 	path = src/external/foundation
-	url = ../darling-foundation.git
+	url = https://github.com/darlinghq/darling-foundation.git
 [submodule "src/external/corefoundation"]
 	path = src/external/corefoundation
-	url = ../darling-corefoundation.git
+	url = https://github.com/darlinghq/darling-corefoundation.git
 [submodule "src/external/icu"]
 	path = src/external/icu
-	url = ../darling-icu.git
+	url = https://github.com/darlinghq/darling-icu.git
 [submodule "src/external/libxslt"]
 	path = src/external/libxslt
-	url = ../darling-libxslt.git
+	url = https://github.com/darlinghq/darling-libxslt.git
 [submodule "src/external/openssl"]
 	path = src/external/openssl
-	url = ../darling-openssl.git
+	url = https://github.com/darlinghq/darling-openssl.git
 [submodule "src/external/curl"]
 	path = src/external/curl
-	url = ../darling-curl.git
+	url = https://github.com/darlinghq/darling-curl.git
 [submodule "src/external/shell_cmds"]
 	path = src/external/shell_cmds
-	url = ../darling-shell_cmds.git
+	url = https://github.com/darlinghq/darling-shell_cmds.git
 [submodule "src/external/file_cmds"]
 	path = src/external/file_cmds
-	url = ../darling-file_cmds.git
+	url = https://github.com/darlinghq/darling-file_cmds.git
 [submodule "src/external/bash"]
 	path = src/external/bash
-	url = ../darling-bash.git
+	url = https://github.com/darlinghq/darling-bash.git
 [submodule "src/external/darling-dmg"]
 	path = src/external/darling-dmg
-	url = ../darling-dmg.git
+	url = https://github.com/darlinghq/darling-dmg.git
 [submodule "src/external/installer"]
 	path = src/external/installer
-	url = ../darling-installer.git
+	url = https://github.com/darlinghq/darling-installer.git
 [submodule "src/external/liblzma"]
 	path = src/external/liblzma
-	url = ../darling-liblzma.git
+	url = https://github.com/darlinghq/darling-liblzma.git
 [submodule "src/external/cfnetwork"]
 	path = src/external/cfnetwork
-	url = ../darling-cfnetwork.git
+	url = https://github.com/darlinghq/darling-cfnetwork.git
 [submodule "src/external/text_cmds"]
 	path = src/external/text_cmds
-	url = ../darling-text_cmds.git
+	url = https://github.com/darlinghq/darling-text_cmds.git
 [submodule "src/external/less"]
 	path = src/external/less
-	url = ../darling-less.git
+	url = https://github.com/darlinghq/darling-less.git
 [submodule "src/external/grep"]
 	path = src/external/grep
-	url = ../darling-grep.git
+	url = https://github.com/darlinghq/darling-grep.git
 [submodule "src/external/pcre"]
 	path = src/external/pcre
-	url = ../darling-pcre.git
+	url = https://github.com/darlinghq/darling-pcre.git
 [submodule "src/external/awk"]
 	path = src/external/awk
-	url = ../darling-awk.git
+	url = https://github.com/darlinghq/darling-awk.git
 [submodule "src/external/adv_cmds"]
 	path = src/external/adv_cmds
-	url = ../darling-adv_cmds.git
+	url = https://github.com/darlinghq/darling-adv_cmds.git
 [submodule "src/external/nano"]
 	path = src/external/nano
-	url = ../darling-nano.git
+	url = https://github.com/darlinghq/darling-nano.git
 [submodule "src/external/zip"]
 	path = src/external/zip
-	url = ../darling-zip.git
+	url = https://github.com/darlinghq/darling-zip.git
 [submodule "src/external/python"]
 	path = src/external/python
-	url = ../darling-python.git
+	url = https://github.com/darlinghq/darling-python.git
 [submodule "src/external/expat"]
 	path = src/external/expat
-	url = ../darling-expat.git
+	url = https://github.com/darlinghq/darling-expat.git
 [submodule "src/external/sqlite"]
 	path = src/external/sqlite
-	url = ../darling-sqlite.git
+	url = https://github.com/darlinghq/darling-sqlite.git
 [submodule "src/external/libauto"]
 	path = src/external/libauto
-	url = ../darling-libauto.git
+	url = https://github.com/darlinghq/darling-libauto.git
 [submodule "src/external/coretls"]
 	path = src/external/coretls
-	url = ../darling-coretls.git
+	url = https://github.com/darlinghq/darling-coretls.git
 [submodule "src/external/security"]
 	path = src/external/security
-	url = ../darling-security.git
+	url = https://github.com/darlinghq/darling-security.git
 [submodule "src/external/libxpc"]
 	path = src/external/libxpc
-	url = ../darling-libxpc.git
+	url = https://github.com/darlinghq/darling-libxpc.git
 [submodule "src/external/gnutar"]
 	path = src/external/gnutar
-	url = ../darling-gnutar.git
+	url = https://github.com/darlinghq/darling-gnutar.git
 [submodule "src/external/gpatch"]
 	path = src/external/gpatch
-	url = ../darling-gpatch.git
+	url = https://github.com/darlinghq/darling-gpatch.git
 [submodule "src/external/gnudiff"]
 	path = src/external/gnudiff
-	url = ../darling-gnudiff.git
+	url = https://github.com/darlinghq/darling-gnudiff.git
 [submodule "src/external/apr"]
 	path = src/external/apr
-	url = ../darling-apr.git
+	url = https://github.com/darlinghq/darling-apr.git
 [submodule "src/external/libarchive"]
 	path = src/external/libarchive
-	url = ../darling-libarchive.git
+	url = https://github.com/darlinghq/darling-libarchive.git
 [submodule "src/external/file"]
 	path = src/external/file
-	url = ../darling-file.git
+	url = https://github.com/darlinghq/darling-file.git
 [submodule "src/external/corecrypto"]
 	path = src/external/corecrypto
-	url = ../darling-corecrypto.git
+	url = https://github.com/darlinghq/darling-corecrypto.git
 [submodule "src/external/ruby"]
 	path = src/external/ruby
-	url = ../darling-ruby.git
+	url = https://github.com/darlinghq/darling-ruby.git
 [submodule "src/external/commoncrypto"]
 	path = src/external/commoncrypto
-	url = ../darling-commoncrypto.git
+	url = https://github.com/darlinghq/darling-commoncrypto.git
 [submodule "src/external/man"]
 	path = src/external/man
-	url = ../darling-man.git
+	url = https://github.com/darlinghq/darling-man.git
 [submodule "src/external/groff"]
 	path = src/external/groff
-	url = ../darling-groff.git
+	url = https://github.com/darlinghq/darling-groff.git
 [submodule "src/external/openssh"]
 	path = src/external/openssh
-	url = ../darling-openssh.git
+	url = https://github.com/darlinghq/darling-openssh.git
 [submodule "src/external/network_cmds"]
 	path = src/external/network_cmds
-	url = ../darling-network_cmds.git
+	url = https://github.com/darlinghq/darling-network_cmds.git
 [submodule "src/external/bc"]
 	path = src/external/bc
-	url = ../darling-bc.git
+	url = https://github.com/darlinghq/darling-bc.git
 [submodule "src/external/openssl_certificates"]
 	path = src/external/openssl_certificates
-	url = ../darling-openssl_certificates.git
+	url = https://github.com/darlinghq/darling-openssl_certificates.git
 [submodule "src/external/IOKitUser"]
 	path = src/external/IOKitUser
-	url = ../darling-iokituser.git
+	url = https://github.com/darlinghq/darling-iokituser.git
 [submodule "src/external/IOStorageFamily"]
 	path = src/external/IOStorageFamily
-	url = ../darling-iostoragefamily.git
+	url = https://github.com/darlinghq/darling-iostoragefamily.git
 [submodule "src/external/openpam"]
 	path = src/external/openpam
-	url = ../darling-openpam.git
+	url = https://github.com/darlinghq/darling-openpam.git
 [submodule "src/external/top"]
 	path = src/external/top
-	url = ../darling-top.git
+	url = https://github.com/darlinghq/darling-top.git
 [submodule "src/external/perl"]
 	path = src/external/perl
-	url = ../darling-perl.git
+	url = https://github.com/darlinghq/darling-perl.git
 [submodule "src/external/cctools-port"]
 	path = src/external/cctools-port
-	url = ../cctools-port.git
+	url = https://github.com/darlinghq/cctools-port.git
 [submodule "src/external/objc4"]
 	path = src/external/objc4
-	url = ../darling-objc4.git
+	url = https://github.com/darlinghq/darling-objc4.git
 [submodule "src/external/libplatform"]
 	path = src/external/libplatform
-	url = ../darling-libplatform.git
+	url = https://github.com/darlinghq/darling-libplatform.git
 [submodule "src/external/libpthread"]
 	path = src/external/libpthread
-	url = ../darling-libpthread.git
+	url = https://github.com/darlinghq/darling-libpthread.git
 [submodule "src/external/syslog"]
 	path = src/external/syslog
-	url = ../darling-syslog.git
+	url = https://github.com/darlinghq/darling-syslog.git
 [submodule "src/external/libclosure"]
 	path = src/external/libclosure
-	url = ../darling-libclosure.git
+	url = https://github.com/darlinghq/darling-libclosure.git
 [submodule "src/external/configd"]
 	path = src/external/configd
-	url = ../darling-configd.git
+	url = https://github.com/darlinghq/darling-configd.git
 [submodule "src/external/IONetworkingFamily"]
 	path = src/external/IONetworkingFamily
-	url = ../darling-IONetworkingFamily.git
+	url = https://github.com/darlinghq/darling-IONetworkingFamily.git
 [submodule "src/external/tcsh"]
 	path = src/external/tcsh
-	url = ../darling-tcsh.git
+	url = https://github.com/darlinghq/darling-tcsh.git
 [submodule "src/external/system_cmds"]
 	path = src/external/system_cmds
-	url = ../darling-system_cmds.git
+	url = https://github.com/darlinghq/darling-system_cmds.git
 [submodule "src/external/zsh"]
 	path = src/external/zsh
-	url = ../darling-zsh.git
+	url = https://github.com/darlinghq/darling-zsh.git
 [submodule "src/external/mail_cmds"]
 	path = src/external/mail_cmds
-	url = ../darling-mail_cmds.git
+	url = https://github.com/darlinghq/darling-mail_cmds.git
 [submodule "src/external/screen"]
 	path = src/external/screen
-	url = ../darling-screen.git
+	url = https://github.com/darlinghq/darling-screen.git
 [submodule "src/external/doc_cmds"]
 	path = src/external/doc_cmds
-	url = ../darling-doc_cmds.git
+	url = https://github.com/darlinghq/darling-doc_cmds.git
 [submodule "src/external/basic_cmds"]
 	path = src/external/basic_cmds
-	url = ../darling-basic_cmds.git
+	url = https://github.com/darlinghq/darling-basic_cmds.git
 [submodule "src/external/misc_cmds"]
 	path = src/external/misc_cmds
-	url = ../darling-misc_cmds.git
+	url = https://github.com/darlinghq/darling-misc_cmds.git
 [submodule "src/external/patch_cmds"]
 	path = src/external/patch_cmds
-	url = ../darling-patch_cmds.git
+	url = https://github.com/darlinghq/darling-patch_cmds.git
 [submodule "src/external/DSTools"]
 	path = src/external/DSTools
-	url = ../darling-DSTools.git
+	url = https://github.com/darlinghq/darling-DSTools.git
 [submodule "src/external/DirectoryService"]
 	path = src/external/DirectoryService
-	url = ../darling-DirectoryService.git
+	url = https://github.com/darlinghq/darling-DirectoryService.git
 [submodule "src/external/TextEdit"]
 	path = src/external/TextEdit
-	url = ../darling-TextEdit.git
+	url = https://github.com/darlinghq/darling-TextEdit.git
 [submodule "src/external/bsm"]
 	path = src/external/bsm
-	url = ../darling-bsm.git
+	url = https://github.com/darlinghq/darling-bsm.git
 [submodule "src/external/Heimdal"]
 	path = src/external/Heimdal
-	url = ../darling-Heimdal.git
+	url = https://github.com/darlinghq/darling-Heimdal.git
 [submodule "src/external/cocotron"]
 	path = src/external/cocotron
-	url = ../darling-cocotron.git
+	url = https://github.com/darlinghq/darling-cocotron.git
 [submodule "src/external/libtelnet"]
 	path = src/external/libtelnet
-	url = ../darling-libtelnet.git
+	url = https://github.com/darlinghq/darling-libtelnet.git
 [submodule "src/external/remote_cmds"]
 	path = src/external/remote_cmds
-	url = ../darling-remote_cmds.git
+	url = https://github.com/darlinghq/darling-remote_cmds.git
 [submodule "src/external/SmartCardServices"]
 	path = src/external/SmartCardServices
-	url = ../darling-SmartCardServices.git
+	url = https://github.com/darlinghq/darling-SmartCardServices.git
 [submodule "src/external/vim"]
 	path = src/external/vim
-	url = ../darling-vim.git
+	url = https://github.com/darlinghq/darling-vim.git
 [submodule "src/external/cctools"]
 	path = src/external/cctools
-	url = ../darling-cctools.git
+	url = https://github.com/darlinghq/darling-cctools.git
 [submodule "src/external/python_modules"]
 	path = src/external/python_modules
-	url = ../darling-python_modules.git
+	url = https://github.com/darlinghq/darling-python_modules.git
 [submodule "src/external/files"]
 	path = src/external/files
-	url = ../darling-files.git
+	url = https://github.com/darlinghq/darling-files.git
 [submodule "src/external/crontabs"]
 	path = src/external/crontabs
-	url = ../darling-crontabs.git
+	url = https://github.com/darlinghq/darling-crontabs.git
 [submodule "src/external/WTF"]
 	path = src/external/WTF
-	url = ../darling-WTF.git
+	url = https://github.com/darlinghq/darling-WTF.git
 	branch = master
 [submodule "src/external/WebCore"]
 	path = src/external/WebCore
-	url = ../darling-WebCore.git
+	url = https://github.com/darlinghq/darling-WebCore.git
 	branch = master
 [submodule "src/external/JavaScriptCore"]
 	path = src/external/JavaScriptCore
-	url = ../darling-JavaScriptCore.git
+	url = https://github.com/darlinghq/darling-JavaScriptCore.git
 	branch = master
 [submodule "src/external/bmalloc"]
 	path = src/external/bmalloc
-	url = ../darling-bmalloc.git
+	url = https://github.com/darlinghq/darling-bmalloc.git
 	branch = master
 [submodule "src/external/dtrace"]
 	path = src/external/dtrace
-	url = ../darling-dtrace.git
+	url = https://github.com/darlinghq/darling-dtrace.git
 	branch = master
 [submodule "src/external/xcbuild"]
 	path = src/external/xcbuild
-	url = ../xcbuild.git
+	url = https://github.com/darlinghq/xcbuild.git
 [submodule "src/external/bind9"]
 	path = src/external/bind9
-	url = ../darling-bind9.git
+	url = https://github.com/darlinghq/darling-bind9.git
 [submodule "src/external/SecurityTokend"]
 	path = src/external/SecurityTokend
-	url = ../darling-SecurityTokend.git
+	url = https://github.com/darlinghq/darling-SecurityTokend.git
 [submodule "src/external/lzfse"]
 	path = src/external/lzfse
-	url = ../lzfse.git
+	url = https://github.com/darlinghq/lzfse.git
 [submodule "src/external/OpenDirectory"]
 	path = src/external/OpenDirectory
-	url = ../darling-opendirectory.git
+	url = https://github.com/darlinghq/darling-opendirectory.git
 [submodule "src/external/iokitd"]
 	path = src/external/iokitd
-	url = ../darling-iokitd.git
+	url = https://github.com/darlinghq/darling-iokitd.git
 [submodule "src/external/OpenAL"]
 	path = src/external/OpenAL
-	url = ../darling-openal.git
+	url = https://github.com/darlinghq/darling-openal.git
 [submodule "src/external/usertemplate"]
 	path = src/external/usertemplate
-	url = ../darling-usertemplate.git
+	url = https://github.com/darlinghq/darling-usertemplate.git
 [submodule "src/external/libtrace"]
 	path = src/external/libtrace
-	url = ../darling-libtrace.git
+	url = https://github.com/darlinghq/darling-libtrace.git
 [submodule "src/external/rsync"]
 	path = src/external/rsync
-	url = ../darling-rsync.git
+	url = https://github.com/darlinghq/darling-rsync.git
 [submodule "src/external/cups"]
 	path = src/external/cups
-	url = ../darling-cups.git
+	url = https://github.com/darlinghq/darling-cups.git
 [submodule "src/external/libffi"]
 	path = src/external/libffi
-	url = ../darling-libffi.git
+	url = https://github.com/darlinghq/darling-libffi.git
 [submodule "src/external/dbuskit"]
 	path = src/external/dbuskit
-	url = ../darling-dbuskit.git
+	url = https://github.com/darlinghq/darling-dbuskit.git
 [submodule "src/external/IOKitTools"]
 	path = src/external/IOKitTools
-	url = ../darling-IOKitTools.git
+	url = https://github.com/darlinghq/darling-IOKitTools.git
 [submodule "src/external/fmdb"]
 	path = src/external/fmdb
-	url = ../fmdb.git
+	url = https://github.com/darlinghq/fmdb.git
 [submodule "src/external/swift"]
 	path = src/external/swift
-	url = ../darling-swift.git
+	url = https://github.com/darlinghq/darling-swift.git
 [submodule "src/external/glut"]
 	path = src/external/glut
-	url = ../darling-glut.git
+	url = https://github.com/darlinghq/darling-glut.git
 [submodule "src/external/energytrace"]
 	path = src/external/energytrace
-	url = ../darling-energytrace.git
+	url = https://github.com/darlinghq/darling-energytrace.git
 [submodule "src/external/nghttp2"]
 	path = src/external/nghttp2
-	url = ../darling-nghttp2.git
+	url = https://github.com/darlinghq/darling-nghttp2.git
 [submodule "src/external/libressl-2.2.9"]
 	path = src/external/libressl-2.2.9
-	url = ../darling-libressl.git
+	url = https://github.com/darlinghq/darling-libressl.git
 	branch = v2.2.9
 [submodule "src/external/libressl-2.5.5"]
 	path = src/external/libressl-2.5.5
-	url = ../darling-libressl.git
+	url = https://github.com/darlinghq/darling-libressl.git
 	branch = v2.5.5
 [submodule "src/external/libressl-2.6.5"]
 	path = src/external/libressl-2.6.5
-	url = ../darling-libressl.git
+	url = https://github.com/darlinghq/darling-libressl.git
 	branch = v2.6.5
 [submodule "src/external/libressl-2.8.3"]
 	path = src/external/libressl-2.8.3
-	url = ../darling-libressl.git
+	url = https://github.com/darlinghq/darling-libressl.git
 	branch = v2.8.3
 [submodule "src/external/OpenLDAP"]
 	path = src/external/OpenLDAP
-	url = ../darling-openldap.git
+	url = https://github.com/darlinghq/darling-openldap.git
 [submodule "src/external/passwordserver_sasl"]
 	path = src/external/passwordserver_sasl
-	url = ../darling-passwordserver_sasl.git
+	url = https://github.com/darlinghq/darling-passwordserver_sasl.git
 [submodule "src/external/MITKerberosShim"]
 	path = src/external/MITKerberosShim
-	url = ../darling-MITKerberosShim.git
+	url = https://github.com/darlinghq/darling-MITKerberosShim.git
 [submodule "src/external/mDNSResponder"]
 	path = src/external/mDNSResponder
-	url = ../darling-mDNSResponder.git
+	url = https://github.com/darlinghq/darling-mDNSResponder.git
 [submodule "src/external/BerkeleyDB"]
 	path = src/external/BerkeleyDB
-	url = ../darling-BerkeleyDB.git
+	url = https://github.com/darlinghq/darling-BerkeleyDB.git
 [submodule "src/external/libnetwork"]
 	path = src/external/libnetwork
-	url = ../darling-libnetwork.git
+	url = https://github.com/darlinghq/darling-libnetwork.git
 [submodule "src/external/openjdk"]
 	path = src/external/openjdk
-	url = ../openjdk.git
+	url = https://github.com/darlinghq/openjdk.git
 [submodule "src/external/pyobjc"]
 	path = src/external/pyobjc
-	url = ../darling-pyobjc.git
+	url = https://github.com/darlinghq/darling-pyobjc.git
 [submodule "src/external/darlingserver"]
 	path = src/external/darlingserver
-	url = ../darlingserver.git
+	url = https://github.com/darlinghq/darlingserver.git
 [submodule "src/external/libmalloc"]
 	path = src/external/libmalloc
-	url = ../darling-libmalloc.git
+	url = https://github.com/darlinghq/darling-libmalloc.git
 [submodule "src/external/libc"]
 	path = src/external/libc
-	url = ../darling-Libc.git
+	url = https://github.com/darlinghq/darling-Libc.git
 [submodule "src/external/libsystem"]
 	path = src/external/libsystem
-	url = ../darling-Libsystem.git
+	url = https://github.com/darlinghq/darling-Libsystem.git
 [submodule "src/external/dyld"]
 	path = src/external/dyld
-	url = ../darling-dyld.git
+	url = https://github.com/darlinghq/darling-dyld.git
 [submodule "src/external/AvailabilityVersions"]
 	path = src/external/AvailabilityVersions
-	url = ../darling-AvailabilityVersions
+	url = https://github.com/darlinghq/darling-AvailabilityVersions.git
 [submodule "src/external/libnotify"]
 	path = src/external/libnotify
-	url = ../darling-Libnotify.git
+	url = https://github.com/darlinghq/darling-Libnotify.git
 [submodule "src/external/csu"]
 	path = src/external/csu
-	url = ../darling-Csu.git
+	url = https://github.com/darlinghq/darling-Csu.git
 [submodule "src/external/Libinfo"]
 	path = src/external/Libinfo
-	url = ../darling-Libinfo.git
+	url = https://github.com/darlinghq/darling-Libinfo.git
 [submodule "src/external/librpcsvc"]
 	path = src/external/librpcsvc
-	url = ../darling-librpcsvc.git
+	url = https://github.com/darlinghq/darling-librpcsvc.git
 [submodule "src/external/architecture"]
 	path = src/external/architecture
-	url = ../darling-architecture
+	url = https://github.com/darlinghq/darling-architecture.git
 [submodule "src/external/bootstrap_cmds"]
 	path = src/external/bootstrap_cmds
-	url = ../darling-bootstrap_cmds.git
+	url = https://github.com/darlinghq/darling-bootstrap_cmds.git
 [submodule "src/external/copyfile"]
 	path = src/external/copyfile
-	url = ../darling-copyfile.git
+	url = https://github.com/darlinghq/darling-copyfile.git
 [submodule "src/external/keymgr"]
 	path = src/external/keymgr
-	url = ../darling-keymgr.git
+	url = https://github.com/darlinghq/darling-keymgr.git
 [submodule "src/external/libedit"]
 	path = src/external/libedit
-	url = ../darling-libedit.git
+	url = https://github.com/darlinghq/darling-libedit.git
 [submodule "src/external/libiconv"]
 	path = src/external/libiconv
-	url = ../darling-libiconv.git
+	url = https://github.com/darlinghq/darling-libiconv.git
 [submodule "src/external/libresolv"]
 	path = src/external/libresolv
-	url = ../darling-libresolv.git
+	url = https://github.com/darlinghq/darling-libresolv.git
 [submodule "src/external/libstdcxx"]
 	path = src/external/libstdcxx
-	url = ../darling-libstdcxx.git
+	url = https://github.com/darlinghq/darling-libstdcxx.git
 [submodule "src/external/libunwind"]
 	path = src/external/libunwind
-	url = ../darling-libunwind.git
+	url = https://github.com/darlinghq/darling-libunwind.git
 [submodule "src/external/libutil"]
 	path = src/external/libutil
-	url = ../darling-libutil.git
+	url = https://github.com/darlinghq/darling-libutil.git
 [submodule "src/external/ncurses"]
 	path = src/external/ncurses
-	url = ../darling-ncurses.git
+	url = https://github.com/darlinghq/darling-ncurses.git
 [submodule "src/external/netcat"]
 	path = src/external/netcat
-	url = ../darling-netcat.git
+	url = https://github.com/darlinghq/darling-netcat.git
 [submodule "src/external/removefile"]
 	path = src/external/removefile
-	url = ../darling-removefile.git
+	url = https://github.com/darlinghq/darling-removefile.git
 [submodule "src/external/xar"]
 	path = src/external/xar
-	url = ../darling-xar.git
+	url = https://github.com/darlinghq/darling-xar.git
 [submodule "src/external/metal"]
 	path = src/external/metal
-	url = ../darling-metal.git
+	url = https://github.com/darlinghq/darling-metal.git
 [submodule "src/external/xnu"]
 	path = src/external/xnu
-	url = ../darling-xnu.git
+	url = https://github.com/darlinghq/darling-xnu.git
