@@ -18,6 +18,10 @@ add_framework(AVFAudio
 	VERSION ${FRAMEWORK_VERSION}
 
 	SOURCES
+        src/constants.m
+        src/AVSpeechSynthesisVoice.m
+        src/AVSpeechSynthesizer.m
+        src/AVSpeechUtterance.m
 		src/AVFAudio.m
         src/AVAudioIONode.m
         src/AVAudioOutputNode.m
