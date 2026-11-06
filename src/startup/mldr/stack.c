@@ -94,17 +94,15 @@ void FUNCTION_NAME(const char* filepath, struct load_results* lr)
 		{
 			memmove(executable_buf, executable_path + lr->root_path_length, exepath_len - lr->root_path_length + 1);
 		}
-		else if (strncmp(executable_path, SYSTEM_ROOT, sizeof(SYSTEM_ROOT) - 1) == 0 ||
-		         strncmp(executable_path, "/Volumes/", 9) == 0 ||
-		         strncmp(executable_path, "/proc/", 6) == 0 ||
-		         strncmp(executable_path, "/sys/", 5) == 0 ||
-		         strncmp(executable_path, "/dev/", 5) == 0)
-		{
-			// already a host or special path
-		}
 		else
 		{
-			// container path (e.g. /bin/bash, /bin/ls) - keep as-is!
+			if (exepath_len + sizeof(SYSTEM_ROOT) > sizeof(executable_buf))
+			{
+				fprintf(stderr, "File path was too big\n");
+				exit(1);
+			}
+			memmove(executable_buf + sizeof(SYSTEM_ROOT) - 1, executable_path, exepath_len + 1);
+			memcpy(executable_buf, SYSTEM_ROOT, sizeof(SYSTEM_ROOT) - 1);
 		}
 		executable_path = executable_buf;
 	}
