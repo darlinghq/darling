@@ -337,3 +337,97 @@ vImage_Error vImageUnpremultiplyData_ARGB8888(
     // Not implemented. Report that instead of claiming the pixels were converted.
     return kvImageUnsupportedConversion;
 }
+
+/* Flag and error values of the SDK's vImage_Types.h, which callers are compiled with. The enum in
+   this directory's header numbers its flags differently. */
+enum {
+    sdkLeaveAlphaUnchanged = 1,
+    sdkCopyInPlace = 2,
+    sdkBackgroundColorFill = 4,
+    sdkEdgeExtend = 8,
+    sdkTruncateKernel = 64,
+    sdkGetTempBufferSize = 128
+};
+enum {
+    sdkRoiLargerThanInputBuffer = -21766,
+    sdkInvalidKernelSize = -21767,
+    sdkInvalidEdgeStyle = -21768,
+    sdkMemoryAllocationError = -21771,
+    sdkNullPointerArgument = -21772
+};
+
+/* One line of one channel: the mean over a window of `size` around each sample. */
+static void boxLine(const uint8_t *in, size_t inStep, size_t count, uint8_t *out, size_t outStep,
+                    size_t first, size_t outCount, uint32_t size, uint8_t background, vImage_Flags edge,
+                    uint64_t *sums)
+{
+    sums[0] = 0;
+    for (size_t i = 0; i < count; i++)
+        sums[i + 1] = sums[i] + in[i * inStep];
+    int64_t reach = size / 2;
+    for (size_t i = 0; i < outCount; i++) {
+        int64_t center = (int64_t)(first + i);
+        int64_t low = center - reach, high = center + reach;
+        int64_t left = low < 0 ? -low : 0, right = high >= (int64_t)count ? high - (int64_t)count + 1 : 0;
+        low = low < 0 ? 0 : low;
+        high = high >= (int64_t)count ? (int64_t)count - 1 : high;
+        uint64_t sum = sums[high + 1] - sums[low], divisor = size;
+        if (edge & sdkEdgeExtend)
+            sum += (uint64_t)left * in[0] + (uint64_t)right * in[(count - 1) * inStep];
+        else if (edge & sdkBackgroundColorFill)
+            sum += (uint64_t)(left + right) * background;
+        else if (edge & sdkTruncateKernel)
+            divisor = (uint64_t)(high - low + 1);
+        else if ((left || right) && (edge & sdkCopyInPlace))
+            sum = (uint64_t)in[center * inStep] * size;
+        out[i * outStep] = (uint8_t)((sum + divisor / 2) / divisor);
+    }
+}
+
+/* From the SDK's Convolution.h: a box convolution of each channel, with exactly one edge style and
+   odd kernel sizes. It needs no caller-supplied scratch memory, so the size it reports is 0. */
+vImage_Error vImageBoxConvolve_ARGB8888(const vImage_Buffer *src, const vImage_Buffer *dest, void *tempBuffer,
+    vImagePixelCount srcOffsetToROI_X, vImagePixelCount srcOffsetToROI_Y, uint32_t kernel_height, uint32_t kernel_width,
+    const uint8_t *backgroundColor, vImage_Flags flags)
+{
+    if (flags & sdkGetTempBufferSize)
+        return 0;
+    if (src == NULL || dest == NULL || src->data == NULL || dest->data == NULL)
+        return sdkNullPointerArgument;
+    if (!(kernel_height & 1) || !(kernel_width & 1))
+        return sdkInvalidKernelSize;
+    vImage_Flags edge = flags & (sdkCopyInPlace | sdkBackgroundColorFill | sdkEdgeExtend | sdkTruncateKernel);
+    if (edge == 0 || (edge & (edge - 1)) != 0)
+        return sdkInvalidEdgeStyle;
+    if (edge == sdkBackgroundColorFill && backgroundColor == NULL)
+        return sdkNullPointerArgument;
+    if (srcOffsetToROI_X + dest->width > src->width || srcOffsetToROI_Y + dest->height > src->height)
+        return sdkRoiLargerThanInputBuffer;
+
+    /* Horizontal into a copy of the ROI's columns over every source row, then vertical into dest, so
+       that the source and destination may be the same buffer. */
+    size_t width = dest->width, height = src->height, longest = src->width > src->height ? src->width : src->height;
+    uint8_t *rows = malloc(width * height * 4);
+    uint64_t *sums = malloc((longest + 1) * sizeof(uint64_t));
+    if (rows == NULL || sums == NULL) {
+        free(rows);
+        free(sums);
+        return sdkMemoryAllocationError;
+    }
+    for (size_t channel = 0; channel < 4; channel++) {
+        uint8_t background = backgroundColor != NULL ? backgroundColor[channel] : 0;
+        for (size_t y = 0; y < height; y++)
+            boxLine((const uint8_t *)src->data + y * src->rowBytes + channel, 4, src->width,
+                    rows + y * width * 4 + channel, 4, srcOffsetToROI_X, width, kernel_width, background, edge, sums);
+        for (size_t x = 0; x < width; x++) {
+            size_t destRowBytes = dest->rowBytes;
+            boxLine(rows + x * 4 + channel, width * 4, height,
+                    (uint8_t *)dest->data + x * 4 + channel, destRowBytes, srcOffsetToROI_Y, dest->height,
+                    kernel_height, background, edge, sums);
+        }
+    }
+    free(rows);
+    free(sums);
+    (void)tempBuffer;
+    return kvImageNoError;
+}
