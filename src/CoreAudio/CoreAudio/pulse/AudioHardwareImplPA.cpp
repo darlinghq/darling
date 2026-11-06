@@ -20,6 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "AudioHardwareImplPA.h"
 #include "../stub.h"
 #include "AudioHardwareStreamPA.h"
+#include "AudioHardwareStreamPAOutput.h"
 #include "AudioHardwareImplPADevice.h"
 #include "PADispatchMainLoop.h"
 #include <CoreFoundation/CFBundle.h>
@@ -131,6 +132,24 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 				*static_cast<AudioStreamID*>(outData) = kPAStreamObjectBase | id();
 
 			*ioDataSize = size;
+			return kAudioHardwareNoError;
+		}
+		case kAudioDevicePropertyLatency:
+		{
+			// An IOProc block is heard after what PulseAudio already holds. Until a stream has measured
+			// that, report what the stream asks for.
+			if (id() == kAudioObjectSystemObject || isInputDevice() || inAddress->mScope == kAudioObjectPropertyScopeInput
+				|| !asbd().mBytesPerFrame)
+				break;
+			if (outData && *ioDataSize < sizeof(UInt32))
+				return kAudioHardwareBadPropertySizeError;
+			if (outData)
+			{
+				const UInt32 measured = m_measuredOutputLatency.load(std::memory_order_relaxed);
+				*static_cast<UInt32*>(outData) = measured ? measured
+					: AudioHardwareStreamPAOutput::queuedFrames(bufferSize() / asbd().mBytesPerFrame);
+			}
+			*ioDataSize = sizeof(UInt32);
 			return kAudioHardwareNoError;
 		}
 		case kAudioHardwarePropertyDeviceForUID:

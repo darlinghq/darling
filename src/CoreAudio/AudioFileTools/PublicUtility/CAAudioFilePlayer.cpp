@@ -158,6 +158,37 @@ void	CAAudioFilePlayer::SetVolume(double volume)
 		kAudioUnitScope_Global, 0, volume, 0);
 }
 
+double	CAAudioFilePlayer::GetOutputLatency()
+{
+	AudioDeviceID device;
+	UInt32 size = sizeof(device);
+	if (AudioUnitGetProperty(mOutputUnit, kAudioOutputUnitProperty_CurrentDevice,
+			kAudioUnitScope_Global, 0, &device, &size))
+		return 0.;
+	
+	Float64 sampleRate = 0.;
+	AudioObjectPropertyAddress addr = { kAudioDevicePropertyNominalSampleRate,
+		kAudioObjectPropertyScopeOutput, kAudioObjectPropertyElementMaster };
+	size = sizeof(sampleRate);
+	if (AudioObjectGetPropertyData(device, &addr, 0, NULL, &size, &sampleRate) || sampleRate <= 0.)
+		return 0.;
+	
+	// a rendered buffer is heard after the device's latency and safety offset,
+	// and its own frames take a buffer's duration to play
+	const AudioObjectPropertySelector frameCounts[] = {
+		kAudioDevicePropertyLatency, kAudioDevicePropertySafetyOffset, kAudioDevicePropertyBufferFrameSize
+	};
+	UInt32 frames = 0;
+	for (unsigned i = 0; i < sizeof(frameCounts) / sizeof(frameCounts[0]); ++i) {
+		UInt32 value = 0;
+		addr.mSelector = frameCounts[i];
+		size = sizeof(value);
+		if (AudioObjectGetPropertyData(device, &addr, 0, NULL, &size, &value) == noErr)
+			frames += value;
+	}
+	return frames / sampleRate;
+}
+
 OSStatus	CAAudioFilePlayer::GetPlayBuffer(
 						UInt32						inNumberFrames,
 						AudioBufferList *			ioData)

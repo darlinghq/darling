@@ -88,6 +88,8 @@ static void Play(CAChannelMappingPlayer &player, SInt64 startFrame, SInt64 endFr
 			break;
 		usleep(250000);	// 250 ms
 	}
+	// the last frames have been rendered but not played yet, and stopping discards them
+	usleep(useconds_t(player.GetOutputLatency() * 1e6));
 	player.Stop();
 }
 
