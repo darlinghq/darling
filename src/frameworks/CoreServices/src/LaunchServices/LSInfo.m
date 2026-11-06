@@ -211,7 +211,7 @@ LSGetApplicationForInfo(
 			query = [query stringByAppendingFormat:@" and creator='%@'", fourcc(inCreator)];
 		if (inRoleMask != kLSRolesAll)
 		{
-			query = [query stringByAppendingFormat:@" and id IN (SELECT A.bundle FROM app_doc WHERE role IN (%@))", roleSQLArray(inRoleMask)];
+			query = [query stringByAppendingFormat:@" and AD.role IN (%@)", roleSQLArray(inRoleMask)];
 		}
 
 		query = [query stringByAppendingString:@" order by case "

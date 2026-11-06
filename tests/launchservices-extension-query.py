@@ -15,6 +15,7 @@ def strings(text): return "".join(re.findall(r'@"([^"\n]*)"', text))
 base = strings(re.search(r'NSString\* query = (@"[^"\n]*");', function).group(1))
 extension = strings(re.search(r'query = \[query stringByAppendingFormat:(.*?),\s*escaped, escaped\];', function, re.S).group(1))
 ordering = strings(re.search(r'query = \[query stringByAppendingString:(.*?)\];', function, re.S).group(1))
+role = strings(re.search(r'query = \[query stringByAppendingFormat:(@"[^\n]*"), roleSQLArray\(inRoleMask\)\];', function).group(1))
 query = base + extension + ordering
 
 class ExtensionQuery(unittest.TestCase):
@@ -27,8 +28,11 @@ class ExtensionQuery(unittest.TestCase):
         self.db.execute("INSERT INTO app_doc(id,bundle,class,role,rank) VALUES(?,?,?,?,?)", (ident, ident, cls, "Editor", rank))
     def extension(self, ident, value):
         self.db.execute("INSERT INTO app_doc_extension(doc,extension) VALUES(?,?)", (ident, value))
-    def lookup(self, value):
-        sql = query.replace("%@", value.replace("'", "''"))
+    def lookup(self, value, roles=None):
+        sql = (base + extension).replace("%@", value.replace("'", "''"))
+        if roles is not None:
+            sql += role.replace("%@", ",".join(f"'{r}'" for r in roles))
+        sql += ordering
         return [row[0] for row in self.db.execute(sql)]
     def test_class_name_is_not_a_foreign_key(self):
         self.document(17, "FixtureDocument"); self.extension(17, "fixture")
@@ -51,5 +55,9 @@ class ExtensionQuery(unittest.TestCase):
         self.db.execute("INSERT INTO uti_tag(uti,tag,value) VALUES(1,'public.filename-extension','uti')")
         self.db.execute("INSERT INTO app_doc_uti(doc,uti) VALUES(25,'test.fixture')")
         self.assertEqual(self.lookup("uti"), ["/Apps/25.app"])
+    def test_role_filter_selects_the_document_role(self):
+        self.document(26, "Document"); self.extension(26, "role")
+        self.assertEqual(self.lookup("role", ["Editor"]), ["/Apps/26.app"])
+        self.assertEqual(self.lookup("role", ["Viewer"]), [])
 
 unittest.main()
