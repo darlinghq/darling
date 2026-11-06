@@ -45,6 +45,11 @@ Dir.mktmpdir('ls-process-') do |dir|
     static long CFStringGetTypeID() { abort(); }
     static const char* CFStringGetCStringPtr(CFStringRef, int) { abort(); }
     static long CFStringGetLength(CFStringRef) { abort(); }
+    static long CFStringGetMaximumSizeForEncoding(long, int) { abort(); }
+    static bool CFStringGetCString(CFStringRef, char*, long, int) { abort(); }
+    // Bundle resolution is not part of the fork/exec path; a plain
+    // executable path is left unchanged.
+    static OSStatus resolveApplicationExecutable(std::string&) { return noErr; }
     static long CFDictionaryGetCount(CFDictionaryRef) { abort(); }
     static void CFDictionaryApplyFunction(CFDictionaryRef, void (*)(const void*, const void*, void*), void*) { abort(); }
     static pid_t child;

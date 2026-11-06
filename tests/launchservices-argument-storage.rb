@@ -47,6 +47,9 @@ Dir.mktmpdir('ls-arguments-') do |dir|
       memcpy(output, s->bytes.c_str(), s->bytes.size() + 1);
       return true;
     }
+    // Bundle resolution is not part of argument building; a plain
+    // executable path is left unchanged.
+    static OSStatus resolveApplicationExecutable(std::string&) { return noErr; }
     static OSStatus build(const LSApplicationParameters* appParams, std::vector<std::string>& result) {
       std::string exePath;
   CPP
