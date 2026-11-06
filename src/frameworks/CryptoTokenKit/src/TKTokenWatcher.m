@@ -1,14 +1,11 @@
 #import <CryptoTokenKit/TKTokenWatcher.h>
 #import <Foundation/Foundation.h>
 
-@protocol TKProtocolTokenWatcher
-@end
-
 // There is no token daemon and no smartcard stack under Darling, so the
 // watcher never learns of a token: tokenIDs stays empty and no handler fires.
 @implementation TKTokenWatcher
 
-- (id)init
+- (instancetype)init
 {
 	if ((self = [super init]) != nil) {
 		_tokenIDs = [[NSMutableArray alloc] init];
@@ -17,10 +14,10 @@
 	return self;
 }
 
-- (id)initWithInsertionHandler:(id)arg1
+- (instancetype)initWithInsertionHandler:(void (^)(NSString *tokenID))insertionHandler
 {
 	if ((self = [self init]) != nil) {
-		_insertionHandler = [arg1 copy];
+		[self setInsertionHandler: insertionHandler];
 	}
 	return self;
 }
@@ -38,22 +35,17 @@
 	return [[_tokenIDs copy] autorelease];
 }
 
-- (void)addRemovalHandler:(id)arg1 forTokenID:(id)arg2
+- (void)setInsertionHandler:(void (^)(NSString *tokenID))insertionHandler
 {
-	if (arg1 && arg2)
-		[_removalHandlers setObject: [[arg1 copy] autorelease] forKey: arg2];
+	id handler = [insertionHandler copy];
+	[_insertionHandler release];
+	_insertionHandler = handler;
 }
 
-- (void)insertedToken:(id)arg1 reply:(id)arg2
+- (void)addRemovalHandler:(void (^)(NSString *tokenID))removalHandler forTokenID:(NSString *)tokenID
 {
-}
-
-- (void)removedToken:(id)arg1 reply:(id)arg2
-{
-}
-
-- (void)setup
-{
+	if (removalHandler && tokenID)
+		[_removalHandlers setObject: [[removalHandler copy] autorelease] forKey: tokenID];
 }
 
 @end
