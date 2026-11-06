@@ -109,7 +109,9 @@ static EGLDisplay display;
 
 static EGLConfig config;
 static int num_config;
-static int default_swap_interval = 1;
+// kCGLCPSwapInterval is documented to default to 0: CGLFlushDrawable does not
+// wait for the vertical refresh unless the application asks for it.
+static int default_swap_interval = 0;
 // Set while the registered display is Wayland, where the application's swap
 // interval is kept in software (swap_pacing.h) and EGL stays at interval 0.
 static int default_paced = 0;
@@ -119,7 +121,6 @@ static int default_paced = 0;
 // platform of the X11 backend's connection.
 static EGLenum registered_platform = EGL_PLATFORM_X11_KHR;
 static pthread_mutex_t registration_lock = PTHREAD_MUTEX_INITIALIZER;
-static EGLContext default_share_context = EGL_NO_CONTEXT;
 
 static EGLBoolean choose_config(EGLDisplay dpy, EGLint surface_type, EGLConfig *out_config, int *out_count) {
     EGLint const attrs_24[] = {
@@ -255,6 +256,8 @@ static inline int attribute_has_argument(CGLPixelFormatAttribute attr) {
     case kCGLPFARendererID:
     case kCGLPFADisplayMask:
     case kCGLPFAOpenGLProfile:
+    case kCGLPFASampleBuffers:
+    case kCGLPFASamples:
         return 1;
     default:
         return 0;
@@ -294,7 +297,7 @@ CGLError CGLRegisterNativeDisplay(void *native_display) {
     config = candidate_config;
     num_config = count;
     registered_platform = EGL_PLATFORM_X11_KHR;
-    default_swap_interval = 1;
+    default_swap_interval = 0;
     default_paced = 0;
     pthread_mutex_unlock(&registration_lock);
     return kCGLNoError;
@@ -458,6 +461,7 @@ CGLError CGLSetSurface(CGLContextObj gl, CGSConnectionID cid, CGSWindowID wid, C
 // CGLWindowRef is opaque: retain the display that owns its EGL surface.
 struct _CGLWindow {
     EGLDisplay display;
+    EGLConfig config;
     EGLSurface surface;
 };
 
@@ -468,6 +472,7 @@ static CGLWindowRef createWindow(EGLDisplay owner, EGLConfig owner_config, void 
     if (!window)
         return NULL;
     window->display = owner;
+    window->config = owner_config;
     window->surface = p_eglCreateWindowSurface(owner, owner_config,
                                              (EGLNativeWindowType) native_window, NULL);
     if (window->surface == EGL_NO_SURFACE) {
@@ -489,6 +494,44 @@ CGLWindowRef CGLGetWindowForContext(CGLContextObj context, void *native_window) 
     if (!context)
         return NULL;
     return createWindow(context->egl_display, context->egl_config, native_window);
+}
+
+CGLWindowRef CGLGetWindowWithAlpha(void *native_window, unsigned long visual_id) {
+    static EGLint const alpha_attributes[] = {
+        EGL_RED_SIZE, 1,
+        EGL_GREEN_SIZE, 1,
+        EGL_BLUE_SIZE, 1,
+        EGL_ALPHA_SIZE, 1,
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+        EGL_NONE
+    };
+
+    pthread_mutex_lock(&registration_lock);
+    EGLDisplay owner = display;
+    pthread_mutex_unlock(&registration_lock);
+
+    EGLint count = 0;
+    if (!native_window || owner == EGL_NO_DISPLAY ||
+        !p_eglChooseConfig(owner, alpha_attributes, NULL, 0, &count) || count <= 0)
+        return NULL;
+    EGLConfig *configs = calloc((size_t)count, sizeof(*configs));
+    if (!configs)
+        return NULL;
+
+    CGLWindowRef window = NULL;
+    if (p_eglChooseConfig(owner, alpha_attributes, configs, count, &count)) {
+        for (EGLint i = 0; i < count && !window; i++) {
+            EGLint visual = 0;
+            if (visual_id != 0 &&
+                (!p_eglGetConfigAttrib(owner, configs[i], EGL_NATIVE_VISUAL_ID, &visual) ||
+                 (unsigned long) visual != visual_id))
+                continue;
+            window = createWindow(owner, configs[i], native_window);
+        }
+    }
+    free(configs);
+    return window;
 }
 
 CGL_EXPORT void CGLDestroyWindow(CGLWindowRef ref) {
@@ -663,6 +706,22 @@ const char *CGLErrorString(CGLError error) {
     }
 }
 
+// A context always uses virtual screen 0, the only one there is.
+CGLError CGLGetVirtualScreen(CGLContextObj context, GLint *screen) {
+    if (!context)
+        return kCGLBadContext;
+    if (!screen)
+        return kCGLBadAddress;
+    *screen = 0;
+    return kCGLNoError;
+}
+
+CGLError CGLSetVirtualScreen(CGLContextObj context, GLint screen) {
+    if (!context)
+        return kCGLBadContext;
+    return screen == 0 ? kCGLNoError : kCGLBadValue;
+}
+
 CGLError CGLSetFullScreen(CGLContextObj ctx) {
     printf("STUB: CGLSetFullScreen\n");
 
@@ -755,6 +814,14 @@ CGLError CGLDescribePixelFormat(
     if (!value) {
         return kCGLBadAddress;
     }
+    // Every pixel format has a single virtual screen, number 0.
+    if (sreen_num != 0) {
+        return kCGLBadValue;
+    }
+    if (attr == kCGLPFAVirtualScreenCount) {
+        *value = 1;
+        return kCGLNoError;
+    }
 
     for (int i = 0; format->attributes[i] != 0; i++) {
         int has_arg = attribute_has_argument(format->attributes[i]);
@@ -806,7 +873,8 @@ GLuint CGLGetPixelFormatRetainCount(CGLPixelFormatObj pixelFormat) {
     return pixelFormat->retain_count;
 }
 
-CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CGLContextObj *resultp) {
+static CGLError createContext(CGLPixelFormatObj pixelFormat, CGLContextObj share,
+                              const struct _CGLWindow *window, CGLContextObj *resultp) {
 
     if (resultp == NULL)
         return kCGLBadAddress;
@@ -820,6 +888,10 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
     int interval = share ? share->swap_interval : (pixelFormat ? pixelFormat->swap_interval : default_swap_interval);
     int paced = share ? share->paced : (pixelFormat ? pixelFormat->paced : default_paced);
     pthread_mutex_unlock(&registration_lock);
+    if (window) {
+        owner = window->display;
+        owner_config = window->config;
+    }
     if (owner == EGL_NO_DISPLAY) {
         owner = get_default_display(&owner_config);
         if (owner == EGL_NO_DISPLAY)
@@ -827,14 +899,8 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
     }
     if (!p_eglBindAPI(EGL_OPENGL_API))
         return kCGLBadState;
-    EGLContext egl_share = EGL_NO_CONTEXT;
-    if (share != NULL) {
-        egl_share = share->egl_context;
-    } else {
-        pthread_mutex_lock(&registration_lock);
-        egl_share = default_share_context;
-        pthread_mutex_unlock(&registration_lock);
-    }
+    // A NULL share context means no sharing of object state.
+    EGLContext egl_share = share ? share->egl_context : EGL_NO_CONTEXT;
     EGLint context_attribs[16] = { EGL_NONE };
     int attr_idx = 0;
     GLint profile = 0;
@@ -853,29 +919,18 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
             context_attribs[attr_idx++] = 1;
             context_attribs[attr_idx++] = EGL_CONTEXT_OPENGL_PROFILE_MASK;
             context_attribs[attr_idx++] = EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT;
+        } else if (profile != 0 && profile != kCGLOGLPVersion_Legacy) {
+            return kCGLBadValue;
         }
         /* Note: kCGLOGLPVersion_Legacy (0x1000) passes NULL attributes to request a compatibility context */
     }
     context_attribs[attr_idx] = EGL_NONE;
+    // A core profile request is not downgraded to a compatibility context,
+    // and a share context the new one cannot share with is an error.
     EGLContext egl_context = p_eglCreateContext(owner, owner_config, egl_share, attr_idx > 0 ? context_attribs : NULL);
-    if (egl_context == EGL_NO_CONTEXT && egl_share != EGL_NO_CONTEXT) {
-        egl_context = p_eglCreateContext(owner, owner_config, EGL_NO_CONTEXT, attr_idx > 0 ? context_attribs : NULL);
-    }
-    if (egl_context == EGL_NO_CONTEXT && attr_idx > 0) {
-        /* Core Profile creation failed on host driver; log warning and attempt best-effort fallback to compatibility context */
-        fprintf(stderr, "CGLCreateContext: Core Profile request failed, falling back to compatibility context\n");
-        egl_context = p_eglCreateContext(owner, owner_config, EGL_NO_CONTEXT, NULL);
-    }
-
     if (egl_context == EGL_NO_CONTEXT) {
-        return kCGLBadContext;
+        return egl_share != EGL_NO_CONTEXT ? kCGLBadMatch : kCGLBadContext;
     }
-
-    pthread_mutex_lock(&registration_lock);
-    if (default_share_context == EGL_NO_CONTEXT && attr_idx == 0) {
-        default_share_context = egl_context;
-    }
-    pthread_mutex_unlock(&registration_lock);
 
     CGLContextObj context = malloc(sizeof(struct _CGLContextObj));
 
@@ -915,6 +970,18 @@ CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CG
     return kCGLNoError;
 }
 
+CGLError CGLCreateContext(CGLPixelFormatObj pixelFormat, CGLContextObj share, CGLContextObj *resultp) {
+    return createContext(pixelFormat, share, NULL, resultp);
+}
+
+CGLError CGLCreateContextForWindow(CGLWindowRef window, CGLContextObj *resultp) {
+    if (resultp)
+        *resultp = NULL;
+    if (!window)
+        return kCGLBadDrawable;
+    return createContext(NULL, NULL, window, resultp);
+}
+
 CGLContextObj CGLRetainContext(CGLContextObj context) {
     if (context == NULL) {
         return NULL;
@@ -949,12 +1016,6 @@ void CGLReleaseContext(CGLContextObj context) {
     if (CGLGetCurrentContext() == context) {
         CGLSetCurrentContext(NULL);
     }
-
-    pthread_mutex_lock(&registration_lock);
-    if (default_share_context == context->egl_context) {
-        default_share_context = EGL_NO_CONTEXT;
-    }
-    pthread_mutex_unlock(&registration_lock);
 
     if (context->fallback_pbuffer != EGL_NO_SURFACE) {
         p_eglDestroySurface(context->egl_display, context->fallback_pbuffer);
@@ -1039,11 +1100,12 @@ CGLError CGLSetParameter(CGLContextObj context, CGLContextParameter parameter, c
     if (!value)
         return kCGLBadAddress;
 
+    if (!context)
+        return kCGLBadContext;
+
     if (parameter == kCGLCPSwapInterval)
     {
         GLint v = *value;
-        if (!context)
-            return kCGLBadContext;
         EGLBoolean success = EGL_TRUE;
         if (CGLGetCurrentContext() == context && atomic_load_explicit(&context->egl_surface, memory_order_acquire) != EGL_NO_SURFACE)
             success = p_eglSwapInterval(context->egl_display, context->paced ? 0 : v);
@@ -1058,6 +1120,8 @@ CGLError CGLSetParameter(CGLContextObj context, CGLContextParameter parameter, c
 CGLError CGLGetParameter(CGLContextObj context, CGLContextParameter parameter, GLint *value) {
     if (!value)
         return kCGLBadAddress;
+    if (!context)
+        return kCGLBadContext;
 
     if (parameter == kCGLCPSwapInterval)
     {
@@ -1068,12 +1132,21 @@ CGLError CGLGetParameter(CGLContextObj context, CGLContextParameter parameter, G
     return kCGLNoError;
 }
 
-CGLError CGLDescribeRenderer(CGLRendererInfoObj rend, long rend_num, CGLRendererProperty prop, long *value) {
-    return kCGLNoError;
+// No renderer information is available: the query reports no renderers
+// instead of leaving the outputs unset and claiming success.
+CGLError CGLDescribeRenderer(CGLRendererInfoObj rend, GLint rend_num, CGLRendererProperty prop, GLint *value) {
+    if (!value)
+        return kCGLBadAddress;
+    *value = 0;
+    return kCGLBadRendererInfo;
 }
 
-CGLError CGLQueryRendererInfo(unsigned long display_mask, CGLRendererInfoObj *rend, long *nrend) {
-    return kCGLNoError;
+CGLError CGLQueryRendererInfo(GLuint display_mask, CGLRendererInfoObj *rend, GLint *nrend) {
+    if (!rend || !nrend)
+        return kCGLBadAddress;
+    *rend = NULL;
+    *nrend = 0;
+    return kCGLBadRendererInfo;
 }
 
 CGLError CGLDestroyRendererInfo(CGLRendererInfoObj rend) {

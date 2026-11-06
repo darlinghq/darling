@@ -18,6 +18,10 @@ CGL_EXPORT CGLError CGLRegisterNativeDisplayForPlatform(void *native_display, un
 
 CGL_EXPORT CGLWindowRef CGLGetWindow(void *native_window);
 CGL_EXPORT CGLWindowRef CGLGetWindowForContext(CGLContextObj context, void *native_window);
+// A window surface with an alpha channel on the registered display, for a
+// native window created with the given visual (an X11 visual ID). A visual_id
+// of 0 accepts any alpha-capable configuration.
+CGL_EXPORT CGLWindowRef CGLGetWindowWithAlpha(void *native_window, unsigned long visual_id);
 CGL_EXPORT void CGLDestroyWindow(CGLWindowRef window);
 
 // Refresh rate of the output the context presents on, in millihertz (the unit
@@ -26,6 +30,9 @@ CGL_EXPORT void CGLDestroyWindow(CGLWindowRef window);
 // contexts of other platforms.
 CGL_EXPORT CGLError CGLSetDrawableRefreshRate(CGLContextObj context, uint32_t millihertz);
 
+// A context that can be made current on the window: one created with the
+// display and configuration of the window's surface.
+CGL_EXPORT CGLError CGLCreateContextForWindow(CGLWindowRef window, CGLContextObj *result);
 CGL_EXPORT CGLError CGLContextMakeCurrentAndAttachToWindow(CGLContextObj context, CGLWindowRef window);
 CGLError CGLSetSurface(CGLContextObj gl, CGSConnectionID cid, CGSWindowID wid, CGSSurfaceID sid);
 CGLContextObj CGWindowContextCreate(CGSConnectionID cid, CGSWindowID wid, CFDictionaryRef options);
