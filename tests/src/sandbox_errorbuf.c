@@ -1,4 +1,4 @@
-// Copyright (C) 2026 Lubos Dolezel
+// Copyright (C) 2026 Darling Developers
 //
 // sandbox_init(3): the error buffer may be NULL, it is set to NULL on
 // success and to a message freed with sandbox_free_error() on failure.
