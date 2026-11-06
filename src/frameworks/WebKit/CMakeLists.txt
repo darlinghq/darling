@@ -18,6 +18,7 @@ add_framework(WebKit
     VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
+        src/constants.m
         src/WebKit.m
         src/_WKActivatedElementInfo.m
         src/_WKApplicationManifest.m
