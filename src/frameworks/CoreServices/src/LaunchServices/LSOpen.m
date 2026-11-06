@@ -31,7 +31,8 @@ LSOpenURLsWithRole(
   ProcessSerialNumber * outPSNs,
   CFIndex inMaxPSNCount)
 {
-	if (!inURLs || CFArrayGetCount(inURLs) == 0)
+	// Without items, the application in inAppParams is just launched.
+	if ((!inURLs || CFArrayGetCount(inURLs) == 0) && (!inAppParams || !inAppParams->application))
 		return paramErr;
 
 	LSLaunchURLSpec spec;
@@ -78,6 +79,8 @@ LSOpenItemsWithRole(
   ProcessSerialNumber * outPSNs,
   CFIndex inMaxPSNCount)
 {
+	if (inItemCount < 0 || (inItemCount > 0 && !inItems))
+		return paramErr;
 
 	CFURLRef* urls = (CFURLRef*) malloc(inItemCount * sizeof(CFURLRef));
 
@@ -123,7 +126,7 @@ OSStatus LSOpenFSRef(const FSRef *inRef, FSRef *outLaunchedRef)
 	CFURLRef url = CFURLCreateWithFileSystemPath(NULL, urlStr, kCFURLPOSIXPathStyle, FALSE);
 	CFRelease(urlStr);
 	
-	CFURLRef launchedUrl;
+	CFURLRef launchedUrl = NULL;
 	status = LSOpenCFURLRef(url, &launchedUrl);
 
 	CFRelease(url);
@@ -131,14 +134,18 @@ OSStatus LSOpenFSRef(const FSRef *inRef, FSRef *outLaunchedRef)
 	if (status != noErr)
 		return status;
 
-	if (outLaunchedRef)
+	if (outLaunchedRef && launchedUrl)
 	{
-		CFStringRef path = CFURLCopyFileSystemPath(launchedUrl, kCFURLPOSIXPathStyle);
-		status = FSPathMakeRef((const UInt8*) CFStringGetCStringPtr(path, kCFStringEncodingUTF8), outLaunchedRef, NULL);
-		CFRelease(path);
+		UInt8 launchedPath[4096];
+
+		if (CFURLGetFileSystemRepresentation(launchedUrl, TRUE, launchedPath, sizeof(launchedPath)))
+			status = FSPathMakeRef(launchedPath, outLaunchedRef, NULL);
+		else
+			status = fnfErr;
 	}
-	
-	CFRelease(launchedUrl);
+
+	if (launchedUrl)
+		CFRelease(launchedUrl);
 	return status;
 }
 
