@@ -31,10 +31,12 @@ add_framework(OpenGL
         system
         GL
         GLU
-        EGL
         CoreFoundation
         CoreGraphics
 )
+
+# OpenGL.c loads the native EGL at run time instead of linking it.
+add_dependencies(OpenGL EGL)
 
 set_property(TARGET OpenGL APPEND_STRING PROPERTY LINK_FLAGS
     " -Wl,-reexport_library,${CMAKE_BINARY_DIR}/src/native/libGL.dylib \
