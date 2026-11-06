@@ -172,6 +172,10 @@ int sandbox_consume_mach_extension(const char *ext_token, char **name);
 
 int sandbox_release_fs_extension(const char *ext_token);
 
+char *sandbox_extension_issue_file(const char *ext_class, const char *path, uint32_t flags);
+int64_t sandbox_extension_consume(const char *ext_token);
+int sandbox_extension_release(int64_t ext_handle);
+
 int sandbox_container_path_for_pid(pid_t pid, char *buffer, size_t bufsize);
 
 int sandbox_wakeup_daemon(char **errorbuf);

@@ -122,6 +122,22 @@ int sandbox_release_fs_extension(const char *ext_token)
 	return -1;
 }
 
+// No sandbox exists, so extensions can never be issued or consumed.
+char *sandbox_extension_issue_file(const char *ext_class, const char *path, uint32_t flags)
+{
+	return NULL;
+}
+
+int64_t sandbox_extension_consume(const char *ext_token)
+{
+	return -1;
+}
+
+int sandbox_extension_release(int64_t ext_handle)
+{
+	return -1;
+}
+
 int sandbox_container_path_for_pid(pid_t pid, char *buffer, size_t bufsize)
 {
 	return -1;
