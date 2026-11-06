@@ -28,7 +28,12 @@ set(component_sources
 	PublicUtility/CAHostTimeBase.cpp
 	PublicUtility/CAVectorUnit.cpp
 	AUHAL.cpp
+	AURingBuffer.cpp
+	AUConverterUnit.cpp
+	MixerSum.cpp
+	AUMixerUnit.cpp
 	SystemOutputAU.cpp
+	MatrixMixerAU.cpp
 	DefaultOutputAU.cpp
 )
 

@@ -43,7 +43,12 @@ OSStatus dispatchCall(AudioComponentInstance inUnit, SInt16 sel, Args... args)
         AudioComponentPlugInInterface* iface = AudioComponentManager::instance()->instanceInterface(inUnit);
         AudioComponentMethod method = iface->Lookup(sel);
         if (method != nullptr)
-            return method(iface, args...);
+            {
+            // The lookup type is variadic. Calling it directly promotes Float32
+            // parameters to double, while audio-unit entry points expect float.
+            using Method = OSStatus (*)(void*, Args...);
+            return reinterpret_cast<Method>(method)(iface, args...);
+            }
         else
             return badComponentSelector;
     }

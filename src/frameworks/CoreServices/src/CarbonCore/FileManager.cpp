@@ -92,6 +92,26 @@ bool FSRefMakePath(const FSRef* fsref, std::string& out)
 	return true;
 }
 
+OSStatus FSCompareFSRefs(const FSRef* ref1, const FSRef* ref2)
+{
+	if (!ref1 || !ref2)
+		return paramErr;
+
+	std::string path1, path2;
+	struct stat st1, st2;
+
+	if (!FSRefMakePath(ref1, path1) || !FSRefMakePath(ref2, path2))
+		return fnfErr;
+
+	if (lstat(path1.c_str(), &st1) != 0 || lstat(path2.c_str(), &st2) != 0)
+		return fnfErr;
+
+	if (st1.st_dev != st2.st_dev)
+		return diffVolErr;
+
+	return (st1.st_ino == st2.st_ino) ? noErr : errFSRefsDifferent;
+}
+
 bool FSRefParamMakePath(const FSRefParam* param, std::string& out)
 {
 	std::string dir;

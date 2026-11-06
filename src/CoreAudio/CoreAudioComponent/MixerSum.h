@@ -17,15 +17,12 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _AUDIO_FILE_MP3_H
-#define _AUDIO_FILE_MP3_H
-#include "AudioFileObject.h"
+#ifndef MIXERSUM_H
+#define MIXERSUM_H
+#include <cstddef>
 
-class AudioFileMP3 : public AudioFileObject
-{
-public:
-	AudioFileMP3();
-	Boolean IsDataFormatSupported(const AudioStreamBasicDescription	*inFormat) override;
-};
+// out[i] = sum(inputs[k][i] * gains[k]) for k in [0, numInputs).
+// Pure math, no AudioUnit types, so it can be unit tested standalone.
+void mixerSum(const float* const* inputs, const float* gains, size_t numInputs, float* out, size_t numFrames);
 
-#endif
+#endif /* MIXERSUM_H */

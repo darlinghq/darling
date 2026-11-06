@@ -3,6 +3,16 @@
 
 #include "MacTypes.h"
 
-extern "C" UInt64 AudioGetCurrentHostTime(void);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+UInt64 AudioGetCurrentHostTime(void);
+UInt64 AudioConvertHostTimeToNanos(UInt64 inHostTime);
+UInt64 AudioConvertNanosToHostTime(UInt64 inNanos);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // COREAUDIOHOSTTIME_H

@@ -21,7 +21,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 AudioFileFormatManager::AudioFileFormatManager()
 {
-
+	buildDatabase();
 }
 
 void AudioFileFormatManager::buildDatabase()
@@ -39,9 +39,19 @@ void AudioFileFormatManager::buildDatabase()
 		if (status != noErr)
 			continue;
 
-		analyzeAudioFileComponent(inst);
+		analyzeAudioFileComponent(component, inst);
 		::AudioComponentInstanceDispose(inst);
 	}
+}
+
+static std::string cfStringToString(CFStringRef str)
+{
+	char buffer[256];
+
+	if (!CFStringGetCString(str, buffer, sizeof(buffer), kCFStringEncodingUTF8))
+		return std::string();
+
+	return buffer;
 }
 
 static std::vector<std::string> cfArrayToVector(CFArrayRef array)
@@ -53,19 +63,18 @@ static std::vector<std::string> cfArrayToVector(CFArrayRef array)
 
 	for (CFIndex i = 0; i < count; i++)
 	{
-		CFStringRef str = (CFStringRef) CFArrayGetValueAtIndex(array, i);
-		rv.push_back(CFStringGetCStringPtr(str, kCFStringEncodingUTF8));
+		rv.push_back(cfStringToString((CFStringRef) CFArrayGetValueAtIndex(array, i)));
 	}
 
 	return rv;
 }
 
-void AudioFileFormatManager::analyzeAudioFileComponent(AudioFileComponent component)
+void AudioFileFormatManager::analyzeAudioFileComponent(AudioComponent audioComponent, AudioFileComponent component)
 {
 	ComponentInfo ci;
 	UInt32 propSize;
 
-	::AudioComponentGetDescription(AudioComponent(component), &ci.acd);
+	::AudioComponentGetDescription(audioComponent, &ci.acd);
 
 	ci.fileType = ci.acd.componentSubType; // TODO: Is this correct?
 
@@ -75,7 +84,7 @@ void AudioFileFormatManager::analyzeAudioFileComponent(AudioFileComponent compon
 
 		if (::AudioFileComponentGetGlobalInfo(component, kAudioFileComponent_FileTypeName, 0, nullptr, &propSize, &name) == noErr && name)
 		{
-			ci.name = CFStringGetCStringPtr(name, kCFStringEncodingUTF8);
+			ci.name = cfStringToString(name);
 			CFRelease(name);
 		}
 	}

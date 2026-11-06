@@ -24,21 +24,38 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "pulse/AudioHardwareImplPAInput.h"
 #include <CarbonCore/MacErrors.h>
 #include <dispatch/dispatch.h>
+#include <cstring>
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 #include "stub.h"
 
-static std::unordered_map<AudioObjectID, std::unique_ptr<AudioHardwareImpl>> g_objects;
+// Exposed (declared in AudioHardwareImplPA.h) so AudioHardwareImplPA can add/remove
+// dynamically-discovered PulseAudio devices from the same map used by this file.
+std::unordered_map<AudioObjectID, std::unique_ptr<AudioHardwareImpl>>& PAGetObjectMap()
+{
+	// Never destroyed: PulseAudio callbacks can still run while the process exits.
+	static auto* objects = new std::unordered_map<AudioObjectID, std::unique_ptr<AudioHardwareImpl>>();
+	return *objects;
+}
+
+std::mutex& PAGetObjectMapMutex()
+{
+	static std::mutex* mutex = new std::mutex();
+	return *mutex;
+}
 
 static void initObjects()
 {
 	static dispatch_once_t once;
 	dispatch_once(&once, ^{
+		auto& g_objects = PAGetObjectMap();
+
 		// TODO: Or ALSA
 		g_objects.insert(std::make_pair(kAudioObjectSystemObject, std::make_unique<AudioHardwareImplPA>(kAudioObjectSystemObject)));
 		g_objects.insert(std::make_pair(kAudioObjectSystemObject + 1, std::make_unique<AudioHardwareImplPAOutput>(kAudioObjectSystemObject + 1)));
 		g_objects.insert(std::make_pair(kAudioObjectSystemObject + 2, std::make_unique<AudioHardwareImplPAInput>(kAudioObjectSystemObject + 2)));
-		g_objects.insert(std::make_pair(kAudioObjectSystemObject + 1, std::make_unique<AudioHardwareImplPAOutput>(kAudioObjectSystemObject + 3, "event")));
+		g_objects.insert(std::make_pair(kAudioObjectSystemObject + 3, std::make_unique<AudioHardwareImplPAOutput>(kAudioObjectSystemObject + 3, "event")));
 	});
 }
 
@@ -46,6 +63,8 @@ static AudioHardwareImpl* GetObject(AudioObjectID objID)
 {
 	initObjects();
 
+	std::lock_guard<std::mutex> lock(PAGetObjectMapMutex());
+	auto& g_objects = PAGetObjectMap();
 	auto it = g_objects.find(objID);
 	if (it == g_objects.end())
 		return nullptr;
@@ -58,6 +77,49 @@ static AudioHardwareImpl* GetSystemObject()
 	return GetObject(kAudioObjectSystemObject);
 }
 
+static bool IsStreamObject(AudioObjectID objID)
+{
+	return (objID & 0xffff0000u) == kPAStreamObjectBase;
+}
+
+// Answers the properties of a device's stream object. The device owns the format and direction.
+static OSStatus GetStreamPropertyData(AudioObjectID objID, const AudioObjectPropertyAddress* inAddress,
+		UInt32* ioDataSize, void* outData)
+{
+	AudioHardwareImpl* device = GetObject(objID & 0xffffu);
+	if (!device)
+		return kAudioHardwareBadObjectError;
+
+	UInt32 value = 0;
+	const void* source = &value;
+	UInt32 required = sizeof(value);
+
+	switch (inAddress->mSelector)
+	{
+		case kAudioStreamPropertyDirection:
+			value = device->isInputDevice() ? 1 : 0;
+			break;
+		case kAudioStreamPropertyTerminalType:
+			break;
+		case kAudioStreamPropertyVirtualFormat:
+		case kAudioStreamPropertyPhysicalFormat:
+			source = &device->asbd();
+			required = sizeof(AudioStreamBasicDescription);
+			break;
+		default:
+			return kAudioHardwareUnknownPropertyError;
+	}
+
+	if (outData)
+	{
+		if (*ioDataSize < required)
+			return kAudioHardwareBadPropertySizeError;
+		memcpy(outData, source, required);
+	}
+	*ioDataSize = required;
+	return kAudioHardwareNoError;
+}
+
 void AudioObjectShow(AudioObjectID inObjectID)
 {
 	AudioHardwareImpl* obj = GetObject(inObjectID);
@@ -68,6 +130,12 @@ void AudioObjectShow(AudioObjectID inObjectID)
 Boolean AudioObjectHasProperty(AudioObjectID inObjectID,
 		const AudioObjectPropertyAddress* inAddress)
 {
+	if (IsStreamObject(inObjectID))
+	{
+		UInt32 size = 0;
+		return GetStreamPropertyData(inObjectID, inAddress, &size, nullptr) == kAudioHardwareNoError;
+	}
+
 	AudioHardwareImpl* obj = GetObject(inObjectID);
 	if (!obj)
 		return 0;
@@ -78,6 +146,13 @@ Boolean AudioObjectHasProperty(AudioObjectID inObjectID,
 OSStatus AudioObjectIsPropertySettable(AudioObjectID inObjectID,
 		const AudioObjectPropertyAddress* inAddress, Boolean* outIsSettable)
 {
+	if (IsStreamObject(inObjectID))
+	{
+		UInt32 size = 0;
+		*outIsSettable = false;
+		return GetStreamPropertyData(inObjectID, inAddress, &size, nullptr);
+	}
+
 	AudioHardwareImpl* obj = GetObject(inObjectID);
 	if (!obj)
 		return kAudioHardwareBadObjectError;
@@ -89,6 +164,9 @@ OSStatus AudioObjectGetPropertyDataSize(AudioObjectID inObjectID,
 		const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 		const void* inQualifierData, UInt32* outDataSize)
 {
+	if (IsStreamObject(inObjectID))
+		return GetStreamPropertyData(inObjectID, inAddress, outDataSize, nullptr);
+
 	AudioHardwareImpl* obj = GetObject(inObjectID);
 	if (!obj)
 		return kAudioHardwareBadObjectError;
@@ -101,6 +179,9 @@ OSStatus AudioObjectGetPropertyData(AudioObjectID inObjectID,
 		const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 		const void* inQualifierData, UInt32* ioDataSize, void* outData)
 {
+	if (IsStreamObject(inObjectID))
+		return GetStreamPropertyData(inObjectID, inAddress, ioDataSize, outData);
+
 	AudioHardwareImpl* obj = GetObject(inObjectID);
 	if (!obj)
 		return kAudioHardwareBadObjectError;

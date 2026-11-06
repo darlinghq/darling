@@ -31,15 +31,18 @@ OSStatus AudioHardwareImplPAInput::getPropertyData(const AudioObjectPropertyAddr
 {
 	if (inAddress->mSelector == kAudioDevicePropertyStreamConfiguration)
 	{
+		// A capture device has its channels on the input scope only. Reporting them on the
+		// output scope (copied from the output device) would make it look like a playback-only
+		// device with no input channels.
 		size_t size = sizeof(AudioBufferList);
 
-		if (inAddress->mScope == kAudioDevicePropertyScopeOutput)
+		if (inAddress->mScope == kAudioDevicePropertyScopeInput)
 			size += 1* sizeof(AudioBuffer);
 
 		// Number of returned buffers is the number of channels
 		if (AudioBufferList* abl = static_cast<AudioBufferList*>(outData); abl && *ioDataSize >= size)
 		{
-			if (inAddress->mScope == kAudioDevicePropertyScopeOutput)
+			if (inAddress->mScope == kAudioDevicePropertyScopeInput)
 			{
 				abl->mNumberBuffers = 1;
 				abl->mBuffers[0].mNumberChannels = 2;

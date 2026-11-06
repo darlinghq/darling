@@ -17,24 +17,31 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _AV_FORMAT_FILE_OBJECT_H
-#define _AV_FORMAT_FILE_OBJECT_H
-#include "AudioFileComponentBase.h"
+#ifndef AUGRAPHNODE_H
+#define AUGRAPHNODE_H
+#include <AudioToolbox/AUGraph.h>
+#include <vector>
+#include <map>
+#include <mutex>
 
-template <typename FormatClass, typename FileClass, UInt32 FileType>
-class AVFormatFileObject : public AudioFileObjectComponentBase
+struct AUGraphNodeEntry
 {
-public:
-	AVFormatFileObject(AudioComponentInstance inInstance)
-	: AudioFileObjectComponentBase(inInstance)
-	{
-		mAudioFileObject = new FileClass;
-	}
-	AudioFileFormat* GetAudioFormat() const override
-	{
-		static FormatClass inst;
-		return &inst;
-	}
+	AUNode id;
+	AudioComponentDescription description;
+	AudioComponent component = nullptr;   // resolved in AUGraphOpen
+	AudioUnit unit = nullptr;             // instantiated in AUGraphOpen
 };
 
-#endif
+struct AUGraphData
+{
+	std::map<AUNode, AUGraphNodeEntry> nodes;
+	std::recursive_mutex mutex;
+	std::vector<AUNodeConnection> connections;
+	std::vector<AUNodeRenderCallback> callbacks;
+	AUNode nextNodeId = 1;
+	bool isOpen = false;
+	bool isInitialized = false;
+	bool isRunning = false;
+};
+
+#endif /* AUGRAPHNODE_H */

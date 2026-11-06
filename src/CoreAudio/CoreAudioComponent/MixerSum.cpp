@@ -17,15 +17,17 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _AUDIO_FILE_WAV_H
-#define _AUDIO_FILE_WAV_H
-#include "AudioFileObject.h"
+#include "MixerSum.h"
+#include <cstring>
 
-class AudioFileWAV : public AudioFileObject
+void mixerSum(const float* const* inputs, const float* gains, size_t numInputs, float* out, size_t numFrames)
 {
-public:
-	AudioFileWAV();
-	Boolean IsDataFormatSupported(const AudioStreamBasicDescription	*inFormat) override;
-};
-
-#endif
+	std::memset(out, 0, numFrames * sizeof(float));
+	for (size_t k = 0; k < numInputs; k++)
+	{
+		float gain = gains[k];
+		const float* in = inputs[k];
+		for (size_t i = 0; i < numFrames; i++)
+			out[i] += in[i] * gain;
+	}
+}

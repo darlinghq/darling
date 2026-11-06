@@ -16,27 +16,33 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
+
 #include "AudioFileFormatGeneric.h"
 #include <cstring>
+#include <set>
+#include <sstream>
+#include <string>
 #include <CarbonCore/MacErrors.h>
 
 extern "C" {
 #include <libavformat/avformat.h>
 }
 
-AudioFileFormatGeneric::AudioFileFormatGeneric(UInt32 inFileType, const char* avformatShortName)
-: AudioFileFormat(inFileType), m_avformatShortName(avformatShortName)
+AudioFileFormatGeneric::AudioFileFormatGeneric(const Description& description)
+: AudioFileFormat(description.fileType), m_description(description)
 {
 }
 
 Boolean AudioFileFormatGeneric::ExtensionIsThisFormat(CFStringRef inExtension)
 {
-	const char* inStr = CFStringGetCStringPtr(inExtension, kCFStringEncodingUTF8);
-	const Description& desc = description();
+	char ext[32];
 
-	for (const char* ext : desc.extensions)
+	if (!CFStringGetCString(inExtension, ext, sizeof(ext), kCFStringEncodingUTF8))
+		return false;
+
+	for (const char* known : m_description.extensions)
 	{
-		if (::strcasecmp(ext, inStr) == 0)
+		if (::strcasecmp(known, ext) == 0)
 			return true;
 	}
 
@@ -45,7 +51,7 @@ Boolean AudioFileFormatGeneric::ExtensionIsThisFormat(CFStringRef inExtension)
 
 void AudioFileFormatGeneric::GetExtensions(CFArrayRef *outArray)
 {
-	*outArray = toCFArray(description().extensions);
+	*outArray = toCFArray(m_description.extensions);
 }
 
 CFArrayRef AudioFileFormatGeneric::toCFArray(const std::vector<const char*>& array)
@@ -66,33 +72,45 @@ CFArrayRef AudioFileFormatGeneric::toCFArray(const std::vector<const char*>& arr
 
 void AudioFileFormatGeneric::GetUTIs(CFArrayRef *outArray)
 {
-	*outArray = toCFArray(description().utis);
+	*outArray = toCFArray(m_description.utis);
 }
 
 void AudioFileFormatGeneric::GetMIMETypes(CFArrayRef *outArray)
 {
-	*outArray = toCFArray(description().mimeTypes);
+	*outArray = toCFArray(m_description.mimeTypes);
 }
 
 void AudioFileFormatGeneric::GetFileTypeName(CFStringRef *outName)
 {
-	*outName = CFStringCreateWithCString(nullptr, description().name, kCFStringEncodingUTF8);
+	*outName = CFStringCreateWithCString(nullptr, m_description.name, kCFStringEncodingUTF8);
 }
 
 UncertainResult AudioFileFormatGeneric::FileDataIsThisFormat(UInt32 inDataByteSize, const void* inData)
 {
-	std::vector<uint8_t> buf;
-	AVProbeData probeData;
+	std::vector<uint8_t> buf(inDataByteSize + AVPROBE_PADDING_SIZE);
+	AVProbeData probeData = {};
 
-	buf.reserve(inDataByteSize + AVPROBE_PADDING_SIZE);
-	buf.insert(buf.end(), static_cast<const uint8_t*>(inData), static_cast<const uint8_t*>(inData) + inDataByteSize);
-	buf.resize(inDataByteSize + AVPROBE_PADDING_SIZE);
+	memcpy(buf.data(), inData, inDataByteSize);
 
 	probeData.filename = "";
 	probeData.buf = buf.data();
 	probeData.buf_size = inDataByteSize;
 
-	return av_probe_input_format(&probeData, false) != nullptr ? kTrue : kFalse;
+	const AVInputFormat* detected = av_probe_input_format(&probeData, true);
+	if (!detected)
+		return kFalse;
+
+	// Some demuxers have a list of names, e.g. "mov,mp4,m4a"
+	std::istringstream names(detected->name);
+	std::string name;
+
+	while (std::getline(names, name, ','))
+	{
+		if (name == m_description.demuxer)
+			return kTrue;
+	}
+
+	return kFalse;
 }
 
 AudioFileObject* AudioFileFormatGeneric::New()
@@ -103,34 +121,49 @@ AudioFileObject* AudioFileFormatGeneric::New()
 
 OSStatus AudioFileFormatGeneric::GetAvailableFormatIDs(UInt32* ioDataSize, void* outPropertyData)
 {
-	const std::vector<Format>& formats = description().formats;
+	std::set<UInt32> ids;
 
-	*ioDataSize = formats.size() * sizeof(UInt32);
+	for (const Format& format : m_description.formats)
+		ids.insert(format.mFormatID);
+
 	if (outPropertyData)
 	{
+		const UInt32 capacity = *ioDataSize / sizeof(UInt32);
 		UInt32* dest = static_cast<UInt32*>(outPropertyData);
-		for (int i = 0; i < formats.size(); i++)
-			dest[i] = formats[i].mFormatID;
+		UInt32 count = 0;
+
+		for (UInt32 id : ids)
+		{
+			if (count == capacity)
+				break;
+			dest[count++] = id;
+		}
+
+		*ioDataSize = count * sizeof(UInt32);
 	}
+	else
+		*ioDataSize = ids.size() * sizeof(UInt32);
 
 	return noErr;
 }
 
 OSStatus AudioFileFormatGeneric::GetAvailableStreamDescriptions(UInt32 inFormatID, UInt32* ioDataSize, void* outPropertyData)
 {
-	int count = 0;
+	const UInt32 capacity = *ioDataSize / sizeof(AudioStreamBasicDescription);
+	UInt32 count = 0;
 
-	for (const Format& format : description().formats)
+	for (const Format& format : m_description.formats)
 	{
-		if (format.mFormatID == inFormatID)
+		if (format.mFormatID != inFormatID)
+			continue;
+
+		if (outPropertyData)
 		{
-			if (outPropertyData)
-			{
-				AudioStreamBasicDescription* ptr = static_cast<AudioStreamBasicDescription*>(outPropertyData);
-				ptr[count] = format;
-			}
-			count++;
+			if (count == capacity)
+				break;
+			static_cast<AudioStreamBasicDescription*>(outPropertyData)[count] = format;
 		}
+		count++;
 	}
 
 	*ioDataSize = count * sizeof(AudioStreamBasicDescription);

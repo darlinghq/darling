@@ -22,6 +22,15 @@ struct AudioUnitNodeConnection
 typedef struct AudioUnitNodeConnection AudioUnitNodeConnection;
 typedef struct AudioUnitNodeConnection AUNodeConnection;
 
+enum
+{
+	kAUGraphErr_NodeNotFound              = -10860,
+	kAUGraphErr_InvalidConnection         = -10861,
+	kAUGraphErr_OutputNodeErr             = -10862,
+	kAUGraphErr_CannotDoInCurrentContext  = -10863,
+	kAUGraphErr_InvalidAudioUnit          = -10871,
+};
+
 struct AUNodeRenderCallback
 {
 	AUNode destNode;
@@ -29,6 +38,12 @@ struct AUNodeRenderCallback
 	AURenderCallbackStruct cback;
 };
 typedef struct AUNodeRenderCallback AUNodeRenderCallback;
+
+enum
+{
+	kAUNodeInteraction_Connection = 1,
+	kAUNodeInteraction_InputCallback = 2,
+};
 
 struct AUNodeInteraction
 {

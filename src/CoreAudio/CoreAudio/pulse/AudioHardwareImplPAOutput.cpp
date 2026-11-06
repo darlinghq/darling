@@ -23,7 +23,10 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 AudioHardwareImplPAOutput::AudioHardwareImplPAOutput(AudioObjectID myId, const char* paRole)
 : AudioHardwareImplPA(myId, paRole)
 {
-	m_uid = CFSTR("PulseAudio:Output");
+	if (paRole)
+		m_uid = CFStringCreateWithFormat(nullptr, nullptr, CFSTR("PulseAudio:Output:%s"), paRole);
+	else
+		m_uid = CFSTR("PulseAudio:Output");
 }
 
 OSStatus AudioHardwareImplPAOutput::getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,

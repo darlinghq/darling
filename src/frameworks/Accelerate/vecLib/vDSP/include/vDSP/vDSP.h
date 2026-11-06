@@ -24,6 +24,51 @@
 typedef unsigned long vDSP_Length;
 typedef long vDSP_Stride;
 
+typedef struct DSPComplex {
+	float real;
+	float imag;
+} DSPComplex;
+
+typedef struct DSPSplitComplex {
+	float* realp;
+	float* imagp;
+} DSPSplitComplex;
+
+typedef int FFTDirection;
+typedef int FFTRadix;
+
+enum {
+	kFFTDirection_Forward = +1,
+	kFFTDirection_Inverse = -1,
+};
+
+enum {
+	kFFTRadix2 = 0,
+	kFFTRadix3 = 1,
+	kFFTRadix5 = 2,
+};
+
+typedef struct OpaqueFFTSetup* FFTSetup;
+
+void vDSP_vadd(const float* __A, vDSP_Stride __IA, const float* __B, vDSP_Stride __IB, float* __C, vDSP_Stride __IC, vDSP_Length __N);
+void vDSP_vsub(const float* __B, vDSP_Stride __IB, const float* __A, vDSP_Stride __IA, float* __C, vDSP_Stride __IC, vDSP_Length __N);
+void vDSP_vmul(const float* __A, vDSP_Stride __IA, const float* __B, vDSP_Stride __IB, float* __C, vDSP_Stride __IC, vDSP_Length __N);
+void vDSP_vsmul(const float* __A, vDSP_Stride __IA, const float* __B, float* __C, vDSP_Stride __IC, vDSP_Length __N);
+void vDSP_vsadd(const float* __A, vDSP_Stride __IA, const float* __B, float* __C, vDSP_Stride __IC, vDSP_Length __N);
+void vDSP_vsma(const float* __A, vDSP_Stride __IA, const float* __B, const float* __C, vDSP_Stride __IC, float* __D, vDSP_Stride __ID, vDSP_Length __N);
+void vDSP_svesq(const float* __A, vDSP_Stride __IA, float* __C, vDSP_Length __N);
+void vDSP_vclip(const float* __A, vDSP_Stride __IA, const float* __B, const float* __C, float* __D, vDSP_Stride __ID, vDSP_Length __N);
+void vDSP_maxmgv(const float* __A, vDSP_Stride __IA, float* __C, vDSP_Length __N);
+void vDSP_conv(const float* __A, vDSP_Stride __IA, const float* __F, vDSP_Stride __IF, float* __C, vDSP_Stride __IC, vDSP_Length __N, vDSP_Length __P);
+void vDSP_deq22(const float* __A, vDSP_Stride __IA, const float* __B, float* __C, vDSP_Stride __IC, vDSP_Length __N);
+void vDSP_deq22D(const double* __A, vDSP_Stride __IA, const double* __B, double* __C, vDSP_Stride __IC, vDSP_Length __N);
+void vDSP_ctoz(const DSPComplex* __C, vDSP_Stride __IC, const DSPSplitComplex* __Z, vDSP_Stride __IZ, vDSP_Length __N);
+void vDSP_ztoc(const DSPSplitComplex* __Z, vDSP_Stride __IZ, DSPComplex* __C, vDSP_Stride __IC, vDSP_Length __N);
+void vDSP_zvmul(const DSPSplitComplex* __A, vDSP_Stride __IA, const DSPSplitComplex* __B, vDSP_Stride __IB, const DSPSplitComplex* __C, vDSP_Stride __IC, vDSP_Length __N, int __Conjugate);
+FFTSetup vDSP_create_fftsetup(vDSP_Length __Log2n, FFTRadix __Radix);
+void vDSP_destroy_fftsetup(FFTSetup __setup);
+void vDSP_fft_zrip(FFTSetup __Setup, const DSPSplitComplex* __C, vDSP_Stride __IC, vDSP_Length __Log2N, FFTDirection __Direction);
+
 void* vDSP_DCT_CreateSetup(void);
 void* vDSP_DCT_Execute(void);
 void* vDSP_DFT_CreateSetup(void);
@@ -63,17 +108,11 @@ void* vDSP_biquadm_SetTargetsDouble(void);
 void* vDSP_biquadm_SetTargetsSingle(void);
 void* vDSP_blkman_window(void);
 void* vDSP_blkman_windowD(void);
-void* vDSP_conv(void);
 void* vDSP_convD(void);
-void* vDSP_create_fftsetup(void);
 void* vDSP_create_fftsetupD(void);
-void* vDSP_ctoz(void);
 void* vDSP_ctozD(void);
-void* vDSP_deq22(void);
-void* vDSP_deq22D(void);
 void* vDSP_desamp(void);
 void* vDSP_desampD(void);
-void* vDSP_destroy_fftsetup(void);
 void* vDSP_destroy_fftsetupD(void);
 void* vDSP_distancesq(void);
 void* vDSP_distancesqD(void);
@@ -117,7 +156,6 @@ void* vDSP_fft_zop(void);
 void* vDSP_fft_zopD(void);
 void* vDSP_fft_zopt(void);
 void* vDSP_fft_zoptD(void);
-void* vDSP_fft_zrip(void);
 void* vDSP_fft_zripD(void);
 void* vDSP_fft_zript(void);
 void* vDSP_fft_zriptD(void);
@@ -194,7 +232,6 @@ void* vDSP_sve_svesq(void);
 void* vDSP_sve_svesqD(void);
 void* vDSP_svemg(void);
 void* vDSP_svemgD(void);
-void* vDSP_svesq(void);
 void* vDSP_svesqD(void);
 void* vDSP_svs(void);
 void* vDSP_svsD(void);
@@ -203,7 +240,6 @@ void* vDSP_vaamD(void);
 void* vDSP_vabs(void);
 void* vDSP_vabsD(void);
 void* vDSP_vabsi(void);
-void* vDSP_vadd(void);
 void* vDSP_vaddD(void);
 void* vDSP_vaddi(void);
 void* vDSP_vaddsub(void);
@@ -216,7 +252,6 @@ void* vDSP_vasm(void);
 void* vDSP_vasmD(void);
 void* vDSP_vavlin(void);
 void* vDSP_vavlinD(void);
-void* vDSP_vclip(void);
 void* vDSP_vclipD(void);
 void* vDSP_vclipc(void);
 void* vDSP_vclipcD(void);
@@ -316,7 +351,6 @@ void* vDSP_vmsa(void);
 void* vDSP_vmsaD(void);
 void* vDSP_vmsb(void);
 void* vDSP_vmsbD(void);
-void* vDSP_vmul(void);
 void* vDSP_vmulD(void);
 void* vDSP_vnabs(void);
 void* vDSP_vnabsD(void);
@@ -350,7 +384,6 @@ void* vDSP_vrsum(void);
 void* vDSP_vrsumD(void);
 void* vDSP_vrvrs(void);
 void* vDSP_vrvrsD(void);
-void* vDSP_vsadd(void);
 void* vDSP_vsaddD(void);
 void* vDSP_vsaddi(void);
 void* vDSP_vsbm(void);
@@ -364,7 +397,6 @@ void* vDSP_vsdivD(void);
 void* vDSP_vsdivi(void);
 void* vDSP_vsimps(void);
 void* vDSP_vsimpsD(void);
-void* vDSP_vsma(void);
 void* vDSP_vsmaD(void);
 void* vDSP_vsmfix24(void);
 void* vDSP_vsmfixu24(void);
@@ -374,7 +406,6 @@ void* vDSP_vsmsb(void);
 void* vDSP_vsmsbD(void);
 void* vDSP_vsmsma(void);
 void* vDSP_vsmsmaD(void);
-void* vDSP_vsmul(void);
 void* vDSP_vsmulD(void);
 void* vDSP_vsort(void);
 void* vDSP_vsortD(void);
@@ -385,7 +416,6 @@ void* vDSP_vsq(void);
 void* vDSP_vsqD(void);
 void* vDSP_vssq(void);
 void* vDSP_vssqD(void);
-void* vDSP_vsub(void);
 void* vDSP_vsubD(void);
 void* vDSP_vswap(void);
 void* vDSP_vswapD(void);
@@ -439,7 +469,6 @@ void* vDSP_zrvmul(void);
 void* vDSP_zrvmulD(void);
 void* vDSP_zrvsub(void);
 void* vDSP_zrvsubD(void);
-void* vDSP_ztoc(void);
 void* vDSP_ztocD(void);
 void* vDSP_ztrans(void);
 void* vDSP_ztransD(void);
@@ -467,7 +496,6 @@ void* vDSP_zvmmaa(void);
 void* vDSP_zvmmaaD(void);
 void* vDSP_zvmov(void);
 void* vDSP_zvmovD(void);
-void* vDSP_zvmul(void);
 void* vDSP_zvmulD(void);
 void* vDSP_zvneg(void);
 void* vDSP_zvnegD(void);
