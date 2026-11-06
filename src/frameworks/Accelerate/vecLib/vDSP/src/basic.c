@@ -25,12 +25,12 @@ void vDSP_vsadd(const float *__A, vDSP_Stride __IA, const float *__B, float *__C
 	{
 		#pragma clang loop vectorize(enable)
 		for (vDSP_Length i = 0; i < __N; i++)
-			__C[i] = __A[i] + __B[i];
+			__C[i] = __A[i] + *__B;
 	}
 	else
 	{
 		#pragma clang loop vectorize(enable)
 		for (vDSP_Length i = 0; i < __N; i++)
-			__C[i * __IC] = __A[i * __IA] + __B[i * __IA];
+			__C[i * __IC] = __A[i * __IA] + *__B;
 	}
 }

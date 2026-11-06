@@ -350,7 +350,7 @@ void* vDSP_vrsum(void);
 void* vDSP_vrsumD(void);
 void* vDSP_vrvrs(void);
 void* vDSP_vrvrsD(void);
-void* vDSP_vsadd(void);
+void vDSP_vsadd(const float *__A, vDSP_Stride __IA, const float *__B, float *__C, vDSP_Stride __IC, vDSP_Length __N);
 void* vDSP_vsaddD(void);
 void* vDSP_vsaddi(void);
 void* vDSP_vsbm(void);

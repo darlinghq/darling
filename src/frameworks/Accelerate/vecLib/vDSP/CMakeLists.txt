@@ -6,6 +6,7 @@ set(DYLIB_CURRENT_VERSION "671.250.4")
 
 add_darling_library(vDSP SHARED
 	src/vDSP.c
+	src/basic.c
 	src/extrema.c
 )
 make_fat(vDSP)
