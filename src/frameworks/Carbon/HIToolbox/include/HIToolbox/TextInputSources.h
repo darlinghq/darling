@@ -47,6 +47,7 @@ typedef struct __TISInputSource* TISInputSourceRef;
 extern CFTypeID TISInputSourceGetTypeID(void);
 
 extern CFArrayRef TISCreateInputSourceList(CFDictionaryRef properties, Boolean includeAllInstalled);
+extern CFArrayRef TISCreateASCIICapableInputSourceList(void);
 
 extern TISInputSourceRef TISCopyCurrentKeyboardLayoutInputSource(void);
 extern TISInputSourceRef TISCopyCurrentKeyboardInputSource(void);

@@ -121,6 +121,18 @@ CFArrayRef TISCreateInputSourceList(CFDictionaryRef properties, Boolean includeA
 	return (CFArrayRef)[list retain];
 }
 
+CFArrayRef TISCreateASCIICapableInputSourceList(void)
+{
+	// The enabled keyboard input sources that can type ASCII.
+	const void* keys[] = { kTISPropertyInputSourceCategory, kTISPropertyInputSourceIsASCIICapable };
+	const void* values[] = { kTISCategoryKeyboardInputSource, kCFBooleanTrue };
+	CFDictionaryRef filter = CFDictionaryCreate(NULL, keys, values, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+
+	CFArrayRef list = TISCreateInputSourceList(filter, false);
+	CFRelease(filter);
+	return list;
+}
+
 TISInputSourceRef TISCopyCurrentASCIICapableKeyboardInputSource(void)
 {
 	return TISCopyCurrentKeyboardLayoutInputSource();
