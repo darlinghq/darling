@@ -257,6 +257,19 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 		"extern struct elf_calls* _elfcalls;\n\n"
 		"extern const char __elfname[];\n\n";
 
+	// The functions below are symbol resolvers: the first call to each one goes
+	// through ld64's resolver helper, which calls the resolver and then jumps to
+	// the function it returned with the caller's arguments still in place.
+	// On x86-64 the helper only saves the integer argument registers, while
+	// looking the symbol up in the ELF library can clobber the XMM registers
+	// carrying floating-point and vector arguments. preserve_all makes the
+	// resolver itself save them.
+	output << "#ifdef __x86_64__\n"
+		"#define WRAPGEN_RESOLVER __attribute__((preserve_all))\n"
+		"#else\n"
+		"#define WRAPGEN_RESOLVER\n"
+		"#endif\n\n";
+
 	output << "static void* lib_handle;\n"
 		"__attribute__((constructor)) static void initializer() {\n"
 		"\tlib_handle = _elfcalls->dlopen_fatal(__elfname);\n"
@@ -268,7 +281,7 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 	
 	for (const std::string& sym : symbols)
 	{
-		output << "void* " << sym << "() {\n"
+		output << "WRAPGEN_RESOLVER void* " << sym << "() {\n"
 			"\t__asm__(\".symbol_resolver _" << sym << "\");\n"
 			"\treturn _elfcalls->dlsym_fatal(lib_handle, \"" << sym << "\");\n"
 			"}\n\n";
