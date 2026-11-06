@@ -1,4 +1,4 @@
-// Copyright (C) 2026 Lubos Dolezel
+// Copyright (C) 2026 Darling Developers
 //
 // Calls into a host ELF library wrapped by wrapgen must pass floating-point
 // arguments through intact, including the first call, which resolves the symbol.
