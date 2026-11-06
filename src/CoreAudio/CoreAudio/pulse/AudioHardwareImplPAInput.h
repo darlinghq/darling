@@ -26,6 +26,8 @@ class AudioHardwareImplPAInput : public AudioHardwareImplPA
 public:
 	AudioHardwareImplPAInput(AudioObjectID myId);
 
+	bool isInputDevice() const override { return true; }
+
 	OSStatus getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 		const void* inQualifierData, UInt32* ioDataSize, void* outData) override;
 	

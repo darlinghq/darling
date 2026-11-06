@@ -18,7 +18,22 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <AVFoundation/AVMediaFormat.h>
+
+typedef NS_ENUM(NSInteger, AVAuthorizationStatus) {
+	AVAuthorizationStatusNotDetermined = 0,
+	AVAuthorizationStatusRestricted = 1,
+	AVAuthorizationStatusDenied = 2,
+	AVAuthorizationStatusAuthorized = 3,
+};
 
 @interface AVCaptureDevice : NSObject
+
++ (NSArray*)devices;
++ (NSArray*)devicesWithMediaType:(AVMediaType)mediaType;
++ (AVCaptureDevice*)defaultDeviceWithMediaType:(AVMediaType)mediaType;
+
++ (AVAuthorizationStatus)authorizationStatusForMediaType:(AVMediaType)mediaType;
++ (void)requestAccessForMediaType:(AVMediaType)mediaType completionHandler:(void (^)(BOOL granted))handler;
 
 @end

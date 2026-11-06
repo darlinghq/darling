@@ -21,6 +21,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define AUDIOHARDWARESTREAMPAINPUT_H
 #include "AudioHardwareStreamPA.h"
 #include <fstream>
+#include <cstdint>
+#include <vector>
 
 class AudioHardwareStreamPAInput : public AudioHardwareStreamPA
 {
@@ -29,6 +31,12 @@ public:
 private:
 	void start() override;
 	static void paStreamReadCB(pa_stream* s, size_t length, void* self);
+
+	// Only touched on the PA queue.
+	uint64_t m_frames = 0;
+	uint64_t m_lastInputHost = 0;
+	size_t m_blockBytes = 0;
+	std::vector<uint8_t> m_scratch;
 
 	// std::ofstream m_dump;
 };

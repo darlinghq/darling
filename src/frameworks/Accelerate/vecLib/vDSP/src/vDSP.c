@@ -263,11 +263,13 @@ void* vDSP_blkman_windowD(void)
     return NULL;
 }
 
+/*
 void* vDSP_conv(void)
 {
     if (verbose) puts("STUB: vDSP_conv called");
     return NULL;
 }
+*/
 
 void* vDSP_convD(void)
 {
@@ -275,11 +277,13 @@ void* vDSP_convD(void)
     return NULL;
 }
 
+/*
 void* vDSP_create_fftsetup(void)
 {
     if (verbose) puts("STUB: vDSP_create_fftsetup called");
     return NULL;
 }
+*/
 
 void* vDSP_create_fftsetupD(void)
 {
@@ -287,11 +291,13 @@ void* vDSP_create_fftsetupD(void)
     return NULL;
 }
 
+/*
 void* vDSP_ctoz(void)
 {
     if (verbose) puts("STUB: vDSP_ctoz called");
     return NULL;
 }
+*/
 
 void* vDSP_ctozD(void)
 {
@@ -299,17 +305,21 @@ void* vDSP_ctozD(void)
     return NULL;
 }
 
+/*
 void* vDSP_deq22(void)
 {
     if (verbose) puts("STUB: vDSP_deq22 called");
     return NULL;
 }
+*/
 
+/*
 void* vDSP_deq22D(void)
 {
     if (verbose) puts("STUB: vDSP_deq22D called");
     return NULL;
 }
+*/
 
 void* vDSP_desamp(void)
 {
@@ -323,11 +333,13 @@ void* vDSP_desampD(void)
     return NULL;
 }
 
+/*
 void* vDSP_destroy_fftsetup(void)
 {
     if (verbose) puts("STUB: vDSP_destroy_fftsetup called");
     return NULL;
 }
+*/
 
 void* vDSP_destroy_fftsetupD(void)
 {
@@ -587,11 +599,13 @@ void* vDSP_fft_zoptD(void)
     return NULL;
 }
 
+/*
 void* vDSP_fft_zrip(void)
 {
     if (verbose) puts("STUB: vDSP_fft_zrip called");
     return NULL;
 }
+*/
 
 void* vDSP_fft_zripD(void)
 {
@@ -1057,11 +1071,13 @@ void* vDSP_svemgD(void)
     return NULL;
 }
 
+/*
 void* vDSP_svesq(void)
 {
     if (verbose) puts("STUB: vDSP_svesq called");
     return NULL;
 }
+*/
 
 void* vDSP_svesqD(void)
 {
@@ -1111,11 +1127,13 @@ void* vDSP_vabsi(void)
     return NULL;
 }
 
+/*
 void* vDSP_vadd(void)
 {
     if (verbose) puts("STUB: vDSP_vadd called");
     return NULL;
 }
+*/
 
 void* vDSP_vaddD(void)
 {
@@ -1189,11 +1207,13 @@ void* vDSP_vavlinD(void)
     return NULL;
 }
 
+/*
 void* vDSP_vclip(void)
 {
     if (verbose) puts("STUB: vDSP_vclip called");
     return NULL;
 }
+*/
 
 void* vDSP_vclipD(void)
 {
@@ -1789,11 +1809,13 @@ void* vDSP_vmsbD(void)
     return NULL;
 }
 
+/*
 void* vDSP_vmul(void)
 {
     if (verbose) puts("STUB: vDSP_vmul called");
     return NULL;
 }
+*/
 
 void* vDSP_vmulD(void)
 {
@@ -2079,11 +2101,13 @@ void* vDSP_vsimpsD(void)
     return NULL;
 }
 
+/*
 void* vDSP_vsma(void)
 {
     if (verbose) puts("STUB: vDSP_vsma called");
     return NULL;
 }
+*/
 
 void* vDSP_vsmaD(void)
 {
@@ -2139,11 +2163,13 @@ void* vDSP_vsmsmaD(void)
     return NULL;
 }
 
+/*
 void* vDSP_vsmul(void)
 {
     if (verbose) puts("STUB: vDSP_vsmul called");
     return NULL;
 }
+*/
 
 void* vDSP_vsmulD(void)
 {
@@ -2205,11 +2231,13 @@ void* vDSP_vssqD(void)
     return NULL;
 }
 
+/*
 void* vDSP_vsub(void)
 {
     if (verbose) puts("STUB: vDSP_vsub called");
     return NULL;
 }
+*/
 
 void* vDSP_vsubD(void)
 {
@@ -2529,11 +2557,13 @@ void* vDSP_zrvsubD(void)
     return NULL;
 }
 
+/*
 void* vDSP_ztoc(void)
 {
     if (verbose) puts("STUB: vDSP_ztoc called");
     return NULL;
 }
+*/
 
 void* vDSP_ztocD(void)
 {
@@ -2697,11 +2727,13 @@ void* vDSP_zvmovD(void)
     return NULL;
 }
 
+/*
 void* vDSP_zvmul(void)
 {
     if (verbose) puts("STUB: vDSP_zvmul called");
     return NULL;
 }
+*/
 
 void* vDSP_zvmulD(void)
 {
