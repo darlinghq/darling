@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdlib.h>
 #if defined(__i386__) || defined(__x86_64__)
-#include <cpuid.h>
+#include "cpu_caps_x86.h"
 #endif
 #include <unistd.h>
 #include <sys/sysinfo.h>
@@ -131,68 +131,10 @@ uint64_t get_cpu_caps(void)
 
 #else /* x86 */
 	{
-		union cpu_flags1 eax;
-		union cpu_flags2 ecx;
-		union cpu_flags3 edx;
-		uint32_t ebx;
+		struct x86_cpu_features features;
 
-		eax.reg = ecx.reg = edx.reg = 0;
-		__cpuid(1, eax.reg, ebx, ecx.reg, edx.reg);
-
-		if (ecx.mmx)
-			caps |= kHasMMX;
-		if (ecx.sse)
-			caps |= kHasSSE;
-		if (ecx.sse2)
-			caps |= kHasSSE2;
-		if (edx.sse3)
-			caps |= kHasSSE3;
-		if (ecx.ia64)
-			caps |= k64Bit;
-		if (edx.ssse3)
-			caps |= kHasSupplementalSSE3;
-		if (edx.sse41)
-			caps |= kHasSSE4_1;
-		if (edx.sse42)
-			caps |= kHasSSE4_2;
-		if (edx.aes)
-			caps |= kHasAES;
-		if (edx.avx)
-			caps |= kHasAVX1_0;
-		if (edx.rdrnd)
-			caps |= kHasRDRAND;
-		if (edx.fma)
-			caps |= kHasFMA;
-		if (edx.f16c)
-			caps |= kHasF16C;
-	}
-	{
-		union cpu_flags4 ebx;
-		union cpu_flags5 ecx;
-		uint32_t edx = 0, eax = 7;
-
-		__cpuid(7, eax, ebx.reg, ecx.reg, edx);
-
-		if (ebx.erms)
-			caps |= kHasENFSTRG;
-		if (ebx.avx2)
-			caps |= kHasAVX2_0;
-		if (ebx.bmi1)
-			caps |= kHasBMI1;
-		if (ebx.bmi2)
-			caps |= kHasBMI2;
-		if (ebx.rtm)
-			caps |= kHasRTM;
-		if (ebx.hle)
-			caps |= kHasHLE;
-		if (ebx.rdseed)
-			caps |= kHasRDSEED;
-		if (ebx.adx)
-			caps |= kHasADX;
-		if (ebx.mpx)
-			caps |= kHasMPX;
-		if (ebx.sgx)
-			caps |= kHasSGX;
+		x86_cpu_features_read(&features);
+		caps = x86_cpu_caps_decode(&features);
 	}
 #endif /* __aarch64__ */
 
