@@ -34,6 +34,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/ioctl.h>
 #include <signal.h>
 #include "shellspawn.h"
+#include "shellspawn-fds.h"
 #include "duct_signals.h"
 
 #define DBG 0
@@ -50,6 +51,11 @@ void reapAll(void);
 
 int main(int argc, const char** argv)
 {
+	// Clients may disconnect at any time; writing to their socket must fail
+	// with EPIPE instead of killing shellspawn. The spawned program gets the
+	// default disposition back before exec.
+	signal(SIGPIPE, SIG_IGN);
+
 	// shellspawn (daemon) --fork()--> shellspawn (child) --fork()--> exec /bin/bash
 	// in order to read the exit status of the shell process,
 	// we have to allow it to become a zombie, therefore we need to
@@ -125,7 +131,7 @@ void spawnShell(int fd)
 {
 	pid_t shell_pid = -1;
 	int shellfd[3] = { -1, -1, -1 };
-	int pipefd[2];
+	int pipefd[2] = { -1, -1 };
 	int rv;
 	struct pollfd pfd[2];
 	char** argv = NULL;
@@ -143,6 +149,13 @@ void spawnShell(int fd)
 	argv[1] = "--login";
 
 	char* alloc_exec = NULL;
+
+	// Keep the control socket out of the way of the standard I/O descriptors
+	// set up for the shell.
+	int moved_fd = shellspawn_move_above_stdio(fd);
+	if (moved_fd == -1)
+		goto err;
+	fd = moved_fd;
 
 	// Read commands from client
 	while (read_cmds)
@@ -266,32 +279,39 @@ void spawnShell(int fd)
 	if (pipe(pipefd) == -1)
 		goto err;
 
+	for (int i = 0; i < 2; i++)
+	{
+		int moved = shellspawn_move_above_stdio(pipefd[i]);
+		if (moved == -1)
+			goto err;
+		pipefd[i] = moved;
+	}
+
 	shell_pid = fork();
+	if (shell_pid == -1)
+		goto err;
+
 	if (shell_pid == 0)
 	{
 		setsid();
 		setpgrp();
 
-		close(STDIN_FILENO);
-		close(STDOUT_FILENO);
-		close(STDERR_FILENO);
-
-		dup2(shellfd[0], STDIN_FILENO);
-		dup2(shellfd[1], STDOUT_FILENO);
-		dup2(shellfd[2], STDERR_FILENO);
-
-		ioctl(STDIN_FILENO, TIOCSCTTY, STDIN_FILENO);
-
-		close(fd);
-		close(shellfd[0]);
-		close(shellfd[1]);
-		close(shellfd[2]);
-
+		close(pipefd[0]);
 		fcntl(pipefd[1], F_SETFD, FD_CLOEXEC);
 
-		// In future, we may support spawning something else than Bash
-		// and check the provided shell against /etc/shells
-		execv(alloc_exec ? alloc_exec : "/bin/bash", argv);
+		if (shellspawn_remap_stdio(shellfd) == 0)
+		{
+			ioctl(STDIN_FILENO, TIOCSCTTY, STDIN_FILENO);
+
+			close(fd);
+			shellspawn_close_streams(shellfd, STDERR_FILENO + 1);
+
+			signal(SIGPIPE, SIG_DFL);
+
+			// In future, we may support spawning something else than Bash
+			// and check the provided shell against /etc/shells
+			execv(alloc_exec ? alloc_exec : "/bin/bash", argv);
+		}
 
 		rv = errno;
 		write(pipefd[1], &rv, sizeof(rv));
@@ -300,9 +320,7 @@ void spawnShell(int fd)
 		exit(EXIT_FAILURE);
 	}
 
-	close(shellfd[0]);
-	close(shellfd[1]);
-	close(shellfd[2]);
+	shellspawn_close_streams(shellfd, 0);
 
 	if (alloc_exec)
 	{
@@ -312,6 +330,7 @@ void spawnShell(int fd)
 
 	// Check that exec succeeded
 	close(pipefd[1]); // close the write end
+	pipefd[1] = -1;
 	if (read(pipefd[0], &rv, sizeof(rv)) == sizeof(rv))
 	{
 		errno = rv;
@@ -319,6 +338,7 @@ void spawnShell(int fd)
 		goto err;
 	}
 	close(pipefd[0]);
+	pipefd[0] = -1;
 
 	if (DBG) { puts("shellspawn: execv succeeded, entering poll loop"); fflush(stdout); }
 
@@ -429,11 +449,13 @@ done_reaped:
 err:
 	if (DBG) fprintf(stderr, "Error spawning shell: %s\n", strerror(errno));
 
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < 2; i++)
 	{
-		if (shellfd[i] != -1)
-			close(shellfd[i]);
+		if (pipefd[i] != -1)
+			close(pipefd[i]);
 	}
+
+	shellspawn_close_streams(shellfd, 0);
 
 	if (shell_pid != -1)
 		kill(shell_pid, SIGKILL);
