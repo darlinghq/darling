@@ -161,6 +161,15 @@ int sandbox_note(const char *note);
 int sandbox_suspend(pid_t pid);
 int sandbox_unsuspend(void);
 
+/* Extension token family.
+ * No enforcement exists, so issued tokens are placeholder strings (freed
+ * with free()), consuming one yields a positive handle, and releasing a
+ * handle succeeds without effect. */
+char *sandbox_extension_issue_file(const char *extension_class, const char *path, uint32_t flags);
+char *sandbox_extension_issue_mach(const char *extension_class, const char *name, uint32_t flags);
+int64_t sandbox_extension_consume(const char *extension_token);
+int sandbox_extension_release(int64_t extension_handle);
+
 int sandbox_issue_extension(const char *path, char **ext_token);
 int sandbox_issue_fs_extension(const char *path, uint64_t flags, char **ext_token);
 int sandbox_issue_fs_rw_extension(const char *path, char **ext_token);

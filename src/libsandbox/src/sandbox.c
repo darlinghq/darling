@@ -29,39 +29,66 @@ static void initme(void) {
     verbose = getenv("STUB_VERBOSE") != NULL;
 }
 
-void* sandbox_apply(void)
+/* Compile/apply family. There is no seatbelt compiler here, so
+ * "compiling" a profile yields an empty profile and applying it succeeds.
+ * A profile has the documented layout (builtin name, compiled data and
+ * its size); here all of them are empty. */
+struct sandbox_profile {
+    char *builtin;
+    unsigned char *data;
+    size_t size;
+};
+
+static void* sandbox_empty_profile(char **errorbuf)
+{
+    if (errorbuf != NULL) *errorbuf = NULL;
+    return calloc(1, sizeof(struct sandbox_profile));
+}
+
+void* sandbox_compile_string(const char *data, void *params, char **errorbuf)
+{
+    if (verbose) puts("STUB: sandbox_compile_string called");
+    (void)data; (void)params;
+    return sandbox_empty_profile(errorbuf);
+}
+
+void* sandbox_compile_file(const char *path, void *params, char **errorbuf)
+{
+    if (verbose) puts("STUB: sandbox_compile_file called");
+    (void)path; (void)params;
+    return sandbox_empty_profile(errorbuf);
+}
+
+void* sandbox_compile_named(const char *name, char **errorbuf)
+{
+    if (verbose) puts("STUB: sandbox_compile_named called");
+    (void)name;
+    return sandbox_empty_profile(errorbuf);
+}
+
+void* sandbox_compile_entitlements(void *entitlements, char **errorbuf)
+{
+    if (verbose) puts("STUB: sandbox_compile_entitlements called");
+    (void)entitlements;
+    return sandbox_empty_profile(errorbuf);
+}
+
+int sandbox_apply(void *handle)
 {
     if (verbose) puts("STUB: sandbox_apply called");
-    return NULL;
+    (void)handle;
+    return 0;
+}
+
+void sandbox_free_profile(void *handle)
+{
+    if (verbose) puts("STUB: sandbox_free_profile called");
+    free(handle);
 }
 
 void* sandbox_apply_container(void)
 {
     if (verbose) puts("STUB: sandbox_apply_container called");
-    return NULL;
-}
-
-void* sandbox_compile_entitlements(void)
-{
-    if (verbose) puts("STUB: sandbox_compile_entitlements called");
-    return NULL;
-}
-
-void* sandbox_compile_file(void)
-{
-    if (verbose) puts("STUB: sandbox_compile_file called");
-    return NULL;
-}
-
-void* sandbox_compile_named(void)
-{
-    if (verbose) puts("STUB: sandbox_compile_named called");
-    return NULL;
-}
-
-void* sandbox_compile_string(void)
-{
-    if (verbose) puts("STUB: sandbox_compile_string called");
     return NULL;
 }
 
@@ -77,16 +104,10 @@ void* sandbox_create_params(void)
     return NULL;
 }
 
-void* sandbox_free_params(void)
+void sandbox_free_params(void *params)
 {
     if (verbose) puts("STUB: sandbox_free_params called");
-    return NULL;
-}
-
-void* sandbox_free_profile(void)
-{
-    if (verbose) puts("STUB: sandbox_free_profile called");
-    return NULL;
+    (void)params;
 }
 
 void* sandbox_inspect_pid(void)
