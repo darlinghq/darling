@@ -41,3 +41,36 @@ OSStatus UnregisterEventHotKey(EventHotKeyRef inHotKey)
 
     return 0;
 }
+
+// Secure event input is a nesting count: every EnableSecureEventInput()
+// needs a matching DisableSecureEventInput(). On macOS the window server
+// combines the counts of all processes; Darling has no such server, so
+// IsSecureEventInputEnabled() only reflects the calling process, and
+// nothing restricts the delivery of keyboard events yet.
+static int g_secureEventInputCount;
+
+OSStatus EnableSecureEventInput(void)
+{
+	__atomic_add_fetch(&g_secureEventInputCount, 1, __ATOMIC_SEQ_CST);
+	return noErr;
+}
+
+OSStatus DisableSecureEventInput(void)
+{
+	int count = __atomic_load_n(&g_secureEventInputCount, __ATOMIC_SEQ_CST);
+
+	// An unbalanced call must not leave the count negative, which would
+	// swallow the next EnableSecureEventInput().
+	while (count > 0)
+	{
+		if (__atomic_compare_exchange_n(&g_secureEventInputCount, &count, count - 1,
+				false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
+			break;
+	}
+	return noErr;
+}
+
+Boolean IsSecureEventInputEnabled(void)
+{
+	return __atomic_load_n(&g_secureEventInputCount, __ATOMIC_SEQ_CST) > 0;
+}
