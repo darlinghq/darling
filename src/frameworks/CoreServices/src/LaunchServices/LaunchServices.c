@@ -243,18 +243,14 @@ static void get_main_executable_info(CFURLRef appURL, CFStringRef *exec, CFStrin
 	CFRelease(pre);
 
 	if (!CFReadStreamOpen(rs))
-	{
-		printf("Failed to read Info.plist\n");
 		goto err_pre_info;
-	}
 
 	info_plist = CFPropertyListCreateWithStream(kCFAllocatorDefault, rs, 0, 0, NULL, NULL);
+	if (info_plist == NULL)
+		goto err_close;
 
 	if (CFGetTypeID(info_plist) != CFDictionaryGetTypeID())
-	{
-		printf("Root object of Info.plist not CFDictionaryRef!\n");
 		goto err;
-	}
 
 	ret = CFDictionaryGetValue(info_plist, CFSTR("CFBundleExecutable"));
 	if (ret != NULL)
@@ -268,6 +264,8 @@ static void get_main_executable_info(CFURLRef appURL, CFStringRef *exec, CFStrin
 
 err:
 	CFRelease(info_plist);
+err_close:
+	CFReadStreamClose(rs);
 err_pre_info:
 	CFRelease(rs);
 	CFRelease(info_plist_url);
