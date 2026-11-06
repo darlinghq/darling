@@ -15,6 +15,7 @@ const CFStringRef kCGImageSourceShouldAllowFloat = CFSTR("kCGImageSourceShouldAl
 const CFStringRef kCGImageSourceShouldCache = CFSTR("kCGImageSourceShouldCache");
 // Option value: the image is decoded when it is created. Decoding is always lazy here, so the option is
 // accepted and has no effect. The string value is the name (WebCore ImageDecoderCG.cpp defines it so).
+const CFStringRef kCGImageSourceTypeIdentifierHint = CFSTR("kCGImageSourceTypeIdentifierHint");
 const CFStringRef kCGImageSourceShouldCacheImmediately = CFSTR("kCGImageSourceShouldCacheImmediately");
 const CFStringRef kCGImageSourceThumbnailMaxPixelSize = CFSTR("kCGImageSourceThumbnailMaxPixelSize");
 
