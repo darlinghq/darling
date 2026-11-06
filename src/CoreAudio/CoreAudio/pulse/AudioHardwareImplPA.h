@@ -22,6 +22,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "../AudioHardwareImpl.h"
 #include "PADispatchMainLoop.h"
 #include "PADeviceRegistry.h"
+#include <atomic>
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -59,6 +60,8 @@ public:
 	OSStatus start(AudioDeviceIOProcID inProcID, AudioTimeStamp* ioRequestedStartTime, UInt32 inFlags) override;
 	OSStatus stop(AudioDeviceIOProcID inProcID) override;
 	static pa_sample_spec paSampleSpecForASBD(const AudioStreamBasicDescription& asbd, bool* convertSignedUnsigned = nullptr);
+	// Set by output streams: frames queued ahead of the block being rendered, 0 if not measured yet.
+	void setMeasuredOutputLatency(uint32_t frames) { m_measuredOutputLatency.store(frames, std::memory_order_relaxed); }
 
 	// Synchronously (re)enumerates PulseAudio sinks/sources, creating/removing
 	// AudioHardwareImplPADevice entries in PAGetObjectMap() as needed. Safe to
@@ -81,6 +84,7 @@ private:
 	std::unique_ptr<PADispatchMainLoop> m_loop;
 	const char* m_paRole;
 	std::mutex m_contextMutex;
+	std::atomic<uint32_t> m_measuredOutputLatency{0};
 };
 
 #endif

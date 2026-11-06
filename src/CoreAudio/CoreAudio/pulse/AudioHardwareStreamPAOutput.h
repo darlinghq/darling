@@ -26,6 +26,10 @@ class AudioHardwareStreamPAOutput : public AudioHardwareStreamPA
 {
 public:
 	AudioHardwareStreamPAOutput(AudioHardwareImplPA* hw, AudioDeviceIOProc callback, void* clientData);
+
+	// Frames PulseAudio holds in addition to the block an IOProc is rendering,
+	// for an IOProc buffer of blockFrames.
+	static uint32_t queuedFrames(uint32_t blockFrames);
 private:
 	void start() override;
 	static void paStreamWriteCB(pa_stream* s, size_t length, void* self);

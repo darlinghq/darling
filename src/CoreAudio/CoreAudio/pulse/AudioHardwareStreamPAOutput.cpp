@@ -27,12 +27,19 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 // Real HALs call an output IOProc with the same frame count on every IO cycle
 // (kAudioDevicePropertyBufferFrameSize), so PulseAudio's write requests are served in whole blocks.
 
-static const unsigned kTargetBlocks = 8;
+// The total latency requested from PulseAudio, in blocks. Stopping a device discards what is
+// queued, so this is kept small. The server may grant more if its sink can't go this low.
+static const unsigned kTargetBlocks = 3;
 
 AudioHardwareStreamPAOutput::AudioHardwareStreamPAOutput(AudioHardwareImplPA* hw, AudioDeviceIOProc callback, void* clientData)
 : AudioHardwareStreamPA(hw, callback, clientData)
 {
 	initialize();
+}
+
+uint32_t AudioHardwareStreamPAOutput::queuedFrames(uint32_t blockFrames)
+{
+	return (kTargetBlocks - 1) * blockFrames;
 }
 
 uint64_t AudioHardwareStreamPAOutput::outputLatencyNs(size_t writable)
@@ -77,6 +84,7 @@ bool AudioHardwareStreamPAOutput::renderBlock()
 	const uint64_t latencyNs = outputLatencyNs(writable);
 	const double rate = m_hw->asbd().mSampleRate;
 	const double latencyFrames = rate > 0 ? double(latencyNs) * rate / 1e9 : 0;
+	static_cast<AudioHardwareImplPA*>(m_hw)->setMeasuredOutputLatency(uint32_t(latencyFrames));
 	const uint64_t nowHost = mach_absolute_time();
 
 	AudioTimeStamp now = {0};
@@ -150,6 +158,8 @@ void AudioHardwareStreamPAOutput::start()
 
 	m_blockBytes = block;
 	m_blockFrames = bpf ? block / bpf : 0;
+	// A measurement from an earlier stream may be for another format or buffer size.
+	static_cast<AudioHardwareImplPA*>(m_hw)->setMeasuredOutputLatency(0);
 
 	pa_stream_set_write_callback(m_stream, paStreamWriteCB, this);
 
