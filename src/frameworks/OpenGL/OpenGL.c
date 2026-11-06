@@ -223,12 +223,15 @@ struct _CGLContextObj {
     _Atomic EGLSurface egl_surface;
     EGLSurface fallback_pbuffer;
     // EGL has no function for getting the current swap interval,
-    // so we need to save the last set value. The default is 1.
+    // so we need to save the last set value. The default is 0.
     // This is the application's value; a paced context never gives it to EGL.
     int swap_interval;
     int paced;
     struct cgl_swap_pacer pacer;
     CGLPixelFormatObj pixel_format;
+    // CGLEnable state, one bit per enable_bit() index. Recorded only: none
+    // of the options changes how this implementation renders.
+    unsigned enables;
     struct _CGLContextObj *prev_active;
     struct _CGLContextObj *next_active;
 };
@@ -668,16 +671,54 @@ CGLError CGLSetCurrentContext(CGLContextObj context) {
     return kCGLNoError;
 }
 
-CGLError CGLEnable(CGLContextObj ctx, CGLContextEnable pname) {
+static int enable_bit(CGLContextEnable pname) {
+    switch (pname) {
+    case kCGLCESwapRectangle: return 0;
+    case kCGLCESwapLimit: return 1;
+    case kCGLCERasterization: return 2;
+    case kCGLCEStateValidation: return 3;
+    case kCGLCESurfaceBackingSize: return 4;
+    case kCGLCEDisplayListOptimization: return 5;
+    case kCGLCEMPEngine: return 6;
+    default: return -1;
+    }
+}
+
+static CGLError set_enabled(CGLContextObj ctx, CGLContextEnable pname, int on) {
+    if (ctx == NULL)
+        return kCGLBadContext;
+    int bit = enable_bit(pname);
+    if (bit < 0)
+        return kCGLBadEnumeration;
+    pthread_mutex_lock(&ctx->lock);
+    if (on)
+        ctx->enables |= 1u << bit;
+    else
+        ctx->enables &= ~(1u << bit);
+    pthread_mutex_unlock(&ctx->lock);
     return kCGLNoError;
+}
+
+CGLError CGLEnable(CGLContextObj ctx, CGLContextEnable pname) {
+    return set_enabled(ctx, pname, 1);
 }
 
 CGLError CGLDisable(CGLContextObj ctx, CGLContextEnable pname) {
-    return kCGLNoError;
+    return set_enabled(ctx, pname, 0);
 }
 
 CGLError CGLIsEnabled(CGLContextObj ctx, CGLContextEnable pname, GLint *enable) {
-    if (enable) *enable = 0;
+    if (enable == NULL)
+        return kCGLBadAddress;
+    *enable = 0;
+    if (ctx == NULL)
+        return kCGLBadContext;
+    int bit = enable_bit(pname);
+    if (bit < 0)
+        return kCGLBadEnumeration;
+    pthread_mutex_lock(&ctx->lock);
+    *enable = (ctx->enables >> bit) & 1;
+    pthread_mutex_unlock(&ctx->lock);
     return kCGLNoError;
 }
 
@@ -955,6 +996,7 @@ static CGLError createContext(CGLPixelFormatObj pixelFormat, CGLContextObj share
     context->pacer.period_ns = cgl_period_ns_from_millihertz(0);
     context->pacer.last_ns = 0;
     context->pixel_format = pixelFormat ? CGLRetainPixelFormat(pixelFormat) : NULL;
+    context->enables = 0;
 
     pthread_mutex_lock(&g_activeContextsMutex);
     context->prev_active = NULL;
