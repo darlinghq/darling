@@ -18,6 +18,10 @@ add_framework(GameController
     VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
+        src/constants.m
+        src/GCDualSenseGamepad.m
+        src/GCDualShockGamepad.m
+        src/GCXboxGamepad.m
         src/GameController.m
         src/_GCCControllerHIDServiceInfo.m
         src/_GCControllerManager.m
