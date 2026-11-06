@@ -212,8 +212,10 @@ OSStatus UCKeyTranslate(const UCKeyboardLayout *keyLayoutPtr, UInt16 virtualKeyC
 	const UCKeyToCharTableIndex* tableIndex = (UCKeyToCharTableIndex*) (((char*) keyLayoutPtr) + keyLayoutPtr->keyboardTypeList[0].keyToCharTableIndexOffset);
 	uint8_t tableNumber = modMaps->defaultTableNum;
 
-	if ((modifierKeyState >> 8) < modMaps->modifiersCount)
-		tableNumber = modMaps->tableNum[(modifierKeyState >> 8)];
+	// UCKeyTranslate receives the modifier byte after the caller shifts the
+	// Carbon EventRecord flags. Shifting again loses Shift and Option state.
+	if (modifierKeyState < modMaps->modifiersCount)
+		tableNumber = modMaps->tableNum[modifierKeyState];
 
 	UniChar c;
 	if (virtualKeyCode >= tableIndex->keyToCharTableSize || tableNumber >= tableIndex->keyToCharTableCount)
@@ -222,6 +224,26 @@ OSStatus UCKeyTranslate(const UCKeyboardLayout *keyLayoutPtr, UInt16 virtualKeyC
 	{
 		const UCKeyOutput* table = (UCKeyOutput*) (((char*) keyLayoutPtr) + tableIndex->keyToCharTableOffsets[tableNumber]);
 		c = table[virtualKeyCode];
+	}
+
+	// The top bits of a table entry follow the UCKeyOutput description in the public
+	// UnicodeUtilities.h: 01 is an index into the state records, 10 is an index into the
+	// sequence data or, "if UCKeySequenceDataIndex is not present or the index is beyond the
+	// end of the list", a single character; 0xFFFE and 0xFFFF are not characters. The state
+	// and sequence tables are not read here, so an entry that really indexes one of them
+	// produces no text instead of a marker passed off as a character. The layouts Darling
+	// builds hold plain UCS values and no tables. Reading 01 as a character when the layout
+	// has no state records is a guess made for those layouts: the header documents no fallback.
+	const UCKeyboardTypeHeader& type = keyLayoutPtr->keyboardTypeList[0];
+	if (c == 0xFFFE || c == 0xFFFF)
+		return noErr;
+	if ((c & kUCKeyOutputTestForIndexMask) == kUCKeyOutputStateIndexMask && type.keyStateRecordsIndexOffset != 0)
+		return noErr;
+	if ((c & kUCKeyOutputTestForIndexMask) == kUCKeyOutputSequenceIndexMask && type.keySequenceDataIndexOffset != 0)
+	{
+		const UCKeySequenceDataIndex* sequences = (const UCKeySequenceDataIndex*) (((const char*) keyLayoutPtr) + type.keySequenceDataIndexOffset);
+		if ((c & kUCKeyOutputGetIndexMask) < sequences->charSequenceCount)
+			return noErr;
 	}
 
 	*actualStringLength = 1;

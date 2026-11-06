@@ -19,6 +19,7 @@ OSStatus SetEventParameter(EventRef a, EventParamName b, EventParamType c, UInt3
 
 
 extern UInt8 LMGetKbdType(void);
+extern UInt8 LMGetKbdLast(void);
 
 enum {
   kVK_ANSI_A                    = 0x00,

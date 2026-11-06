@@ -108,6 +108,35 @@ struct UCKeyToCharTableIndex {
 };
 typedef struct UCKeyToCharTableIndex    UCKeyToCharTableIndex;
 
+struct UCKeySequenceDataIndex {
+  UInt16              keySequenceDataIndexFormat;
+  UInt16              charSequenceCount;
+  UInt16              charSequenceOffsets[1];
+};
+typedef struct UCKeySequenceDataIndex   UCKeySequenceDataIndex;
+
+enum {
+  kUCKeyOutputStateIndexMask    = 0x4000,
+  kUCKeyOutputSequenceIndexMask = 0x8000,
+  kUCKeyOutputTestForIndexMask  = 0xC000,
+  kUCKeyOutputGetIndexMask      = 0x3FFF
+};
+
+enum {
+  kUCKeyActionDown    = 0,
+  kUCKeyActionUp      = 1,
+  kUCKeyActionAutoKey = 2,
+  kUCKeyActionDisplay = 3
+};
+
+enum {
+  kUCKeyTranslateNoDeadKeysBit  = 0
+};
+
+enum {
+  kUCKeyTranslateNoDeadKeysMask = 1L << kUCKeyTranslateNoDeadKeysBit
+};
+
 extern OSStatus  UCKeyTranslate(
   const UCKeyboardLayout *  keyLayoutPtr,
   UInt16                    virtualKeyCode,

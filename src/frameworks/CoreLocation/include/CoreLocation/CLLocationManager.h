@@ -19,6 +19,14 @@
 
 #include <Foundation/Foundation.h>
 
+@protocol CLLocationManagerDelegate;
+
 @interface CLLocationManager : NSObject
+{
+	id<CLLocationManagerDelegate> _delegate;
+}
+
+// Not retained, like other Cocoa delegates.
+@property (nonatomic, assign) id<CLLocationManagerDelegate> delegate;
 
 @end
