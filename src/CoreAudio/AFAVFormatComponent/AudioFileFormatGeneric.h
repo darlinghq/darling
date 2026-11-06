@@ -20,47 +20,52 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef _AUDIO_FILE_FORMAT_GENERIC_H
 #define _AUDIO_FILE_FORMAT_GENERIC_H
 #include "AudioFileFormat.h"
+#include <vector>
 
 class AudioFileFormatGeneric : public AudioFileFormat
 {
 public:
-	AudioFileFormatGeneric(UInt32 inFileType, const char* avformatShortName);
-	Boolean ExtensionIsThisFormat(CFStringRef inExtension) override;
-	void GetExtensions(CFArrayRef *outArray) override;
-	void GetUTIs(CFArrayRef *outArray) override;
-	void GetMIMETypes(CFArrayRef *outArray) override;
-	void GetFileTypeName(CFStringRef *outName) override;
-	UncertainResult FileDataIsThisFormat(UInt32 inDataByteSize, const void* inData) override;
-
-	AudioFileObject* New() override;
-	AudioFileStreamObject* NewStream() override { return NULL; }
-
-	// File format -> data formats
-	// https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/CoreAudioOverview/SupportedAudioFormatsMacOSX/SupportedAudioFormatsMacOSX.html
-	OSStatus GetAvailableFormatIDs(UInt32* ioDataSize, void* outPropertyData) override;
-
-	OSStatus GetAvailableStreamDescriptions(UInt32 inFormatID, UInt32* ioDataSize, void* outPropertyData) override;
-private:
-	static CFArrayRef toCFArray(const std::vector<const char*>& array);
-protected:
 	struct Format : public AudioStreamBasicDescription
 	{
-		Format(UInt32 formatID) { mFormatID = formatID; }
-		Format(UInt32 formatID, UInt32 formatFlags, UInt32 bitsPerChannel) { mFormatID = formatID; mFormatFlags = formatFlags; mBitsPerChannel = bitsPerChannel; }
-		Format() {}
+		Format(UInt32 formatID, UInt32 formatFlags = 0, UInt32 bitsPerChannel = 0)
+		: AudioStreamBasicDescription{}
+		{
+			mFormatID = formatID;
+			mFormatFlags = formatFlags;
+			mBitsPerChannel = bitsPerChannel;
+		}
 	};
+
 	struct Description
 	{
+		UInt32 fileType;
 		const char* name;
+		const char* demuxer; // libavformat's name for reading this container
+		const char* muxer; // and for writing it, if we can
 		std::vector<const char*> extensions;
 		std::vector<const char*> utis;
 		std::vector<const char*> mimeTypes;
 		std::vector<Format> formats;
 	};
-	virtual const Description& description() const = 0;
+
+	AudioFileFormatGeneric(const Description& description);
+
+	Boolean ExtensionIsThisFormat(CFStringRef inExtension) override;
+	void GetExtensions(CFArrayRef *outArray) override;
+	void GetUTIs(CFArrayRef *outArray) override;
+	void GetMIMETypes(CFArrayRef *outArray) override;
+	void GetFileTypeName(CFStringRef *outName) override;
+	UInt32 CanWrite() const override { return m_description.muxer != nullptr; }
+	UncertainResult FileDataIsThisFormat(UInt32 inDataByteSize, const void* inData) override;
+	AudioFileObject* New() override;
+	AudioFileStreamObject* NewStream() override { return NULL; }
+
+	// File format -> data formats
+	OSStatus GetAvailableFormatIDs(UInt32* ioDataSize, void* outPropertyData) override;
+	OSStatus GetAvailableStreamDescriptions(UInt32 inFormatID, UInt32* ioDataSize, void* outPropertyData) override;
 private:
-	const char* m_avformatShortName;
+	static CFArrayRef toCFArray(const std::vector<const char*>& array);
+	const Description& m_description;
 };
 
 #endif
-

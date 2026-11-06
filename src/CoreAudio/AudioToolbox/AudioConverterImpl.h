@@ -41,6 +41,8 @@ private:
 	
 	bool feedDecoder(AudioConverterComplexInputDataProc dataProc, void* opaque, AVFrame* srcaudio);
 	bool feedEncoder();
+	void drainDecoder();
+	int resample(const uint8_t** input, int samples);
 private:
 	AudioStreamBasicDescription m_sourceFormat, m_destinationFormat;
 	UInt32 m_inputChannelLayout, m_outputChannelLayout;
@@ -56,6 +58,8 @@ private:
 	SwrContext* m_resampler = nullptr;
 	UInt32 m_outBitRate = 128000;
 	bool m_encoderInitialized = false;
+	bool m_inputEnded = false;
+	bool m_encoderDraining = false;
 	const AVCodec* m_codecIn = nullptr;
 	const AVCodec* m_codecOut = nullptr;
 

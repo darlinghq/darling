@@ -218,6 +218,7 @@ enum
 OSStatus FSPathMakeRef(const uint8_t* path, struct FSRef* fsref, Boolean* isDirectory);
 OSStatus FSPathMakeRefWithOptions(const uint8_t* path, long options, struct FSRef* fsref, Boolean* isDirectory);
 OSStatus FSRefMakePath(const struct FSRef* fsref, uint8_t* path, uint32_t maxSize);
+OSStatus FSCompareFSRefs(const struct FSRef* ref1, const struct FSRef* ref2);
 Boolean CFURLGetFSRef(CFURLRef urlref, struct FSRef* fsref); // in CF
 CFURLRef CFURLCreateFromFSRef(CFAllocatorRef alloc, struct FSRef* location); // --> in CF
 OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, struct FSRef* location);
