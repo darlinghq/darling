@@ -19,6 +19,7 @@ add_framework(AuthenticationServices
 	VERSION ${FRAMEWORK_VERSION}
 
 	SOURCES
+        src/constants.m
 		src/AKAuthorizationCredential+AuthenticationServicesExtras.m
 		src/ASAuthorization.m
 		src/ASAuthorizationAppleIDButton.m
