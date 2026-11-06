@@ -33,27 +33,9 @@ static void initme(void) {
 
 // These stubs should prob be moved elsewhere
 
-OSErr ActivateTSMDocument(TSMDocumentID a)
-{
-    if (verbose) puts("STUB: ActivateTSMDocument called");
-	return 0;
-}
-
-OSErr DeactivateTSMDocument(TSMDocumentID a)
-{
-    if (verbose) puts("STUB: DeactivateTSMDocument called");
-	return 0;
-}
-
 OSStatus CreateStandardAlert(AlertType a, CFStringRef b, CFStringRef c, const AlertStdCFStringAlertParamRec * d, DialogRef * e)
 {
     if (verbose) puts("STUB: CreateStandardAlert called");
-	return 0;
-}
-
-OSErr UseInputWindow(TSMDocumentID a, Boolean b)
-{
-    if (verbose) puts("STUB: UseInputWindow called");
 	return 0;
 }
 
@@ -107,12 +89,6 @@ void HideMenuBar(void)
 OSErr NMInstall(NMRecPtr a)
 {
     if (verbose) puts("STUB: NMInstall called");
-	return 0;
-}
-
-OSErr NewTSMDocument(short a, InterfaceTypeList b, TSMDocumentID * c, long d)
-{
-    if (verbose) puts("STUB: NewTSMDocument called");
 	return 0;
 }
 
