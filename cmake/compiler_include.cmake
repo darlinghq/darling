@@ -1,7 +1,14 @@
 # Detect the location of compiler-specific header files
 # such as stdbool.h or xmmintrin.h
 function(GetCompilerInclude OutputVar)
-	file(WRITE "${CMAKE_BINARY_DIR}/cinctest.c" "#include <cpuid.h>")
+	# Use a header that exists on all architectures to find the compiler include path
+	if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+		set(_probe_header "stddef.h")
+	else()
+		set(_probe_header "cpuid.h")
+	endif()
+
+	file(WRITE "${CMAKE_BINARY_DIR}/cinctest.c" "#include <${_probe_header}>")
 	execute_process(COMMAND "${CMAKE_C_COMPILER}" -M "${CMAKE_BINARY_DIR}/cinctest.c"
 		RESULT_VARIABLE BuildResult
 		OUTPUT_VARIABLE BuildOutput
@@ -15,12 +22,10 @@ function(GetCompilerInclude OutputVar)
 
 	foreach (str ${BuildOutput})
 		string(REGEX REPLACE "\n$" "" str "${str}")
-		# message(STATUS "Output: ${str}")
 
-		if (str MATCHES "cpuid.h$")
-			# message(STATUS "Str matched: ${str}")
-			string(REGEX REPLACE "cpuid\\.h" "" IncPath "${str}")
-		endif (str MATCHES "cpuid.h$")
+		if (str MATCHES "${_probe_header}$")
+			string(REGEX REPLACE "${_probe_header}" "" IncPath "${str}")
+		endif ()
 	endforeach (str)
 
 	if (NOT IncPath)

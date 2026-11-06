@@ -91,6 +91,7 @@ enum {
 	platformIA32NativeEntryPoint = 6,
 	platformPowerPC64NativeEntryPoint = 7,
 	platformX86_64NativeEntryPoint = 8,
+	platformARM64NativeEntryPoint = 9,
 };
 
 typedef struct ResourceSpec

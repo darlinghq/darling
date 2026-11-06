@@ -48,7 +48,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 #define PAGE_ALIGN(x) (x & ~(PAGE_SIZE-1))
 
-static const char* dyld_path = INSTALL_PREFIX "/libexec/usr/lib/dyld";
+static const char* dyld_path = INSTALL_PREFIX "/libexec/darling/usr/lib/dyld";
 
 struct sockaddr_un __dserver_socket_address_data = {
 	.sun_family = AF_UNIX,
@@ -64,8 +64,10 @@ int __dserver_process_lifetime_pipe_fd = -1;
 //
 // Additionally, mldr providers access to native platforms libdl.so APIs (ELF loader).
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 static void load64(int fd, bool expect_dylinker, struct load_results* lr);
+#endif
+#ifdef __x86_64__
 static void reexec32(char** argv);
 #endif
 static void load32(int fd, bool expect_dylinker, struct load_results* lr);
@@ -77,7 +79,7 @@ static void process_special_env(struct load_results* lr);
 static void start_thread(struct load_results* lr);
 static bool is_kernel_at_least(int major, int minor);
 static void* compatible_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 static void setup_stack64(const char* filepath, struct load_results* lr);
 #endif
 static void setup_stack32(const char* filepath, struct load_results* lr);
@@ -254,10 +256,8 @@ int main(int argc, char** argv, char** envp)
 	if (mldr_load_results._32on64)
 		setup_stack32(filename, &mldr_load_results);
 	else
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 		setup_stack64(filename, &mldr_load_results);
-#elif __aarch64__
-	#error TODO: aarch64
 #else
 		abort();
 #endif
@@ -306,7 +306,7 @@ void load(const char* path, cpu_type_t forced_arch, bool expect_dylinker, char**
 
 	if (magic == MH_MAGIC_64 || magic == MH_CIGAM_64)
 	{
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 		lseek(fd, 0, SEEK_SET);
 		load64(fd, expect_dylinker, lr);
 #else
@@ -403,8 +403,11 @@ static void load_fat(int fd, cpu_type_t forced_arch, bool expect_dylinker, char*
 #elif defined(__i386__)
 				if (arch.cputype == CPU_TYPE_X86)
 					best_arch = arch;
-#elif defined (__aarch64__)
-	#error TODO: arm
+#elif defined(__aarch64__)
+				if (arch.cputype == CPU_TYPE_ARM64)
+					best_arch = arch;
+				else if (best_arch.cputype == CPU_TYPE_ANY && arch.cputype == CPU_TYPE_ARM)
+					best_arch = arch;
 #else
 	#error Unsupported CPU architecture
 #endif
@@ -430,10 +433,8 @@ static void load_fat(int fd, cpu_type_t forced_arch, bool expect_dylinker, char*
 	}
 
 	if (best_arch.cputype & CPU_ARCH_ABI64) {
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 		load64(fd, expect_dylinker, lr);
-#elif __aarch64__
-	#error TODO: aarch64
 #else
 		abort();
 #endif
@@ -447,7 +448,7 @@ static void load_fat(int fd, cpu_type_t forced_arch, bool expect_dylinker, char*
 	}
 };
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define GEN_64BIT
 #include "loader.c"
 #include "stack.c"
@@ -817,7 +818,7 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 	// Using the default stack top would cause the stack to be placed just above the commpage
 	// and would collide with it eventually.
 	// Instead, we manually allocate a new stack below the commpage.
-#if __x86_64__
+#if __x86_64__ || __aarch64__
 	lr->stack_top = commpage_address(true);
 #elif __i386__
 	lr->stack_top = commpage_address(false);
@@ -928,6 +929,15 @@ static void start_thread(struct load_results* lr) {
 		"r"(lr->stack_top)
 		:
 	);
+#elif defined(__aarch64__)
+	__asm__ volatile(
+		"mov sp, %1\n"
+		"br %0"
+		::
+		"r"(lr->entry_point),
+		"r"(lr->stack_top)
+		:
+	);
 #elif defined(__arm__)
 	__asm__ volatile(
 		"mov sp, %1\n"
@@ -1001,7 +1011,10 @@ static void vchroot_unexpand_interpreter(struct load_results* lr) {
 		if (strncmp(lr->argv[0], lr->root_path, lr->root_path_length) == 0) {
 			memmove(unexpanded, lr->argv[0] + lr->root_path_length, length - lr->root_path_length + 1);
 		} else {
-			// FIXME: potential buffer overflow
+			if (length + sizeof(SYSTEM_ROOT) > sizeof(unexpanded)) {
+				fprintf(stderr, "Interpreter path was too big\n");
+				exit(1);
+			}
 			memmove(unexpanded + sizeof(SYSTEM_ROOT) - 1, lr->argv[0], length + 1);
 			memcpy(unexpanded, SYSTEM_ROOT, sizeof(SYSTEM_ROOT) - 1);
 		}

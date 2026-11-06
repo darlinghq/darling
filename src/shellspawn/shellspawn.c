@@ -134,6 +134,7 @@ void spawnShell(int fd)
 	struct iovec iov;
 	char cmsgbuf[CMSG_SPACE(sizeof(int)) * 3];
 	int kq;
+	int wstatus = 0;
 
 	bool read_cmds = true;
 
@@ -265,23 +266,26 @@ void spawnShell(int fd)
 	if (pipe(pipefd) == -1)
 		goto err;
 
-	setsid();
-	setpgrp();
-
-	close(STDIN_FILENO);
-	close(STDOUT_FILENO);
-	close(STDERR_FILENO);
-
-	dup2(shellfd[0], STDIN_FILENO);
-	dup2(shellfd[1], STDOUT_FILENO);
-	dup2(shellfd[2], STDERR_FILENO);
-
-	ioctl(STDIN_FILENO, TIOCSCTTY, STDIN_FILENO);
-
 	shell_pid = fork();
 	if (shell_pid == 0)
 	{
+		setsid();
+		setpgrp();
+
+		close(STDIN_FILENO);
+		close(STDOUT_FILENO);
+		close(STDERR_FILENO);
+
+		dup2(shellfd[0], STDIN_FILENO);
+		dup2(shellfd[1], STDOUT_FILENO);
+		dup2(shellfd[2], STDERR_FILENO);
+
+		ioctl(STDIN_FILENO, TIOCSCTTY, STDIN_FILENO);
+
 		close(fd);
+		close(shellfd[0]);
+		close(shellfd[1]);
+		close(shellfd[2]);
 
 		fcntl(pipefd[1], F_SETFD, FD_CLOEXEC);
 
@@ -296,6 +300,10 @@ void spawnShell(int fd)
 		exit(EXIT_FAILURE);
 	}
 
+	close(shellfd[0]);
+	close(shellfd[1]);
+	close(shellfd[2]);
+
 	if (alloc_exec)
 	{
 		free(alloc_exec);
@@ -307,104 +315,108 @@ void spawnShell(int fd)
 	if (read(pipefd[0], &rv, sizeof(rv)) == sizeof(rv))
 	{
 		errno = rv;
+		fprintf(stderr, "shellspawn: execv failed: %s (errno=%d)\n", strerror(errno), errno);
 		goto err;
 	}
 	close(pipefd[0]);
 
-	// Now we start passing signals
-	// and check for child process exit
+	if (DBG) { puts("shellspawn: execv succeeded, entering poll loop"); fflush(stdout); }
 
-	kq = kqueue();
-
-	{
-		struct kevent changes[2];
-		EV_SET(&changes[0], fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
-		EV_SET(&changes[1], shell_pid, EVFILT_PROC, EV_ADD | EV_ENABLE, NOTE_EXIT, 0, NULL);
-
-		if (kevent(kq, changes, 2, NULL, 0, NULL) == -1)
-			goto err;
-	}
+	struct pollfd pfd_in[1];
+	pfd_in[0].fd = fd;
+	pfd_in[0].events = POLLIN;
 
 	while (true)
 	{
-		struct kevent ev;
-
-		if (kevent(kq, NULL, 0, &ev, 1, NULL) <= 0)
+		int chk_wstatus = 0;
+		pid_t wpid = waitpid(shell_pid, &chk_wstatus, WNOHANG);
+		if (wpid == shell_pid)
 		{
-			if (errno == EINTR) {
-				if (DBG) puts("kevent call interrupted; continuing...");
-				continue;
-			}
-			if (DBG) puts("kevent fail");
-			goto err;
+			wstatus = chk_wstatus;
+			goto done_reaped;
+		}
+		else if (wpid < 0 && errno != EINTR)
+		{
+			wstatus = 0;
+			goto done_reaped;
 		}
 
-		if (ev.filter == EVFILT_PROC && (ev.fflags & NOTE_EXIT))
+		int pret = poll(pfd_in, 1, 50);
+		if (pret < 0)
 		{
-			if (DBG) puts("subprocess exit");
+			if (errno == EINTR)
+				continue;
 			break;
 		}
-		else if (ev.filter == EVFILT_READ)
+
+		if (pret > 0 && (pfd_in[0].revents & (POLLIN | POLLHUP | POLLERR)))
 		{
-			struct shellspawn_cmd cmd;
-
-			if (read(fd, &cmd, sizeof(cmd)) != sizeof(cmd))
+			if (pfd_in[0].revents & POLLIN)
 			{
-				if (DBG) puts("Cannot read cmd");
-				break;
-			}
+				struct shellspawn_cmd cmd;
 
-			switch (cmd.cmd)
-			{
-				case SHELLSPAWN_SIGNAL:
+				if (read(fd, &cmd, sizeof(cmd)) != sizeof(cmd))
 				{
-					int linux_signal, darwin_signal;
-
-					if (cmd.data_length != sizeof(int))
-						goto err;
-
-					if (read(fd, &linux_signal, sizeof(int)) != sizeof(int))
-						goto err;
-
-					// Convert Linux signal number to Darwin signal number
-					darwin_signal = signum_linux_to_bsd(linux_signal);
-					if (DBG) printf("rcvd signal %d -> %d\n", linux_signal, darwin_signal);
-
-					if (darwin_signal != 0)
-					{
-						int fg_pid = tcgetpgrp(shellfd[0]);
-						if (fg_pid != -1)
-						{
-							if (DBG) printf("fg_pid = %d\n", fg_pid);
-							kill(fg_pid, darwin_signal);
-						}
-						else
-							kill(-shell_pid, darwin_signal);
-					}
-
+					if (DBG) { puts("Cannot read cmd (EOF or error)"); fflush(stdout); }
 					break;
 				}
-				default:
-					goto err;
+
+				switch (cmd.cmd)
+				{
+					case SHELLSPAWN_SIGNAL:
+					{
+						int linux_signal, darwin_signal;
+
+						if (cmd.data_length != sizeof(int))
+							goto err;
+
+						if (read(fd, &linux_signal, sizeof(int)) != sizeof(int))
+							goto err;
+
+						// Convert Linux signal number to Darwin signal number
+						darwin_signal = signum_linux_to_bsd(linux_signal);
+						if (DBG) printf("rcvd signal %d -> %d\n", linux_signal, darwin_signal);
+
+						if (darwin_signal != 0)
+						{
+							int fg_pid = tcgetpgrp(shellfd[0]);
+							if (fg_pid != -1)
+							{
+								if (DBG) printf("fg_pid = %d\n", fg_pid);
+								kill(fg_pid, darwin_signal);
+							}
+							else
+								kill(-shell_pid, darwin_signal);
+						}
+
+						break;
+					}
+					default:
+						goto err;
+				}
+			}
+			else
+			{
+				// Client disconnected
+				break;
 			}
 		}
 	}
 
-	// Kill the child process in case it's still running
-	kill(shell_pid, SIGKILL);
-
-	// Close shell fds
-	for (int i = 0; i < 3; i++)
+done:
+	// Reap the child
+	if (waitpid(shell_pid, &wstatus, 0) != shell_pid)
 	{
-		if (shellfd[i] != -1)
-			close(shellfd[0]);
+		wstatus = 0;
 	}
 
-	// Reap the child
-	int wstatus;
-	if (waitpid(shell_pid, &wstatus, 0) != shell_pid)
-		perror("waitpid");
-	wstatus = WEXITSTATUS(wstatus);
+done_reaped:
+	if (WIFEXITED(wstatus))
+		wstatus = WEXITSTATUS(wstatus);
+	else if (WIFSIGNALED(wstatus))
+		wstatus = 128 + WTERMSIG(wstatus);
+	else
+		wstatus = 0;
 	
 	// Report exit code back to the client
 	write(fd, &wstatus, sizeof(int));
@@ -420,7 +432,7 @@ err:
 	for (int i = 0; i < 3; i++)
 	{
 		if (shellfd[i] != -1)
-			close(shellfd[0]);
+			close(shellfd[i]);
 	}
 
 	if (shell_pid != -1)

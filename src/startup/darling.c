@@ -178,11 +178,17 @@ int main(int argc, char ** argv)
 		putInitPid(pidInit);
 		
 		// Wait until shellspawn starts
-		for (int i = 0; i < 15; i++)
+		for (int i = 0; i < 60; i++)
 		{
 			if (access(socketPath, F_OK) == 0)
 				break;
 			sleep(1);
+		}
+
+		if (access(socketPath, F_OK) != 0)
+		{
+			fprintf(stderr, "Timed out waiting for shellspawn in container\n");
+			return 1;
 		}
 	}
 
@@ -1168,19 +1174,11 @@ pid_t getInitProcess()
 			int rid, eid, sid, fid;
 			if (sscanf(statusBuf, "Uid: %d %d %d %d", &rid, &eid, &sid, &fid) == 4)
 			{
-				uidMatch = 1;
-				uidMatch &= rid == g_originalUid;
-				uidMatch &= eid == g_originalUid;
-				uidMatch &= sid == g_originalUid;
-				uidMatch &= fid == g_originalUid;
+				uidMatch = (rid == g_originalUid && eid == g_originalUid && (sid == g_originalUid || sid == 0));
 			}
 			if (sscanf(statusBuf, "Gid: %d %d %d %d", &rid, &eid, &sid, &fid) == 4)
 			{
-				gidMatch = 1;
-				gidMatch &= rid == g_originalGid;
-				gidMatch &= eid == g_originalGid;
-				gidMatch &= sid == g_originalGid;
-				gidMatch &= fid == g_originalGid;
+				gidMatch = (rid == g_originalGid && eid == g_originalGid && (sid == g_originalGid || sid == 0));
 			}
 			free(statusBuf);
 		}

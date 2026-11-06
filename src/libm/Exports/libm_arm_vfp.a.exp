@@ -250,17 +250,52 @@ _yn
 
 ___fpclassifyf
 ___fpclassify
+___fpclassifyd
 ___fpclassifyl
 ___Libm_version
 
+# math.h classification family — Apple-private out-of-line backings.
+___inf
+___inff
+___nan
+___isfinite
+___isfinited
+___isfinitef
+___isinf
+___isinfd
+___isinff
+___isnan
+___isnand
+___isnanf
+___isnormal
+___isnormald
+___isnormalf
+___signbitd
+___signbitf
+___signbitl
+
+# Legacy BSD / SVID names kept for binary compat.
+_drem
+_finite
+_gamma
+_matherr
+_significand
+
+# Apple <fp.h> Mac OS Classic carry-overs.
+_rinttol
+_roundtol
+
+# Apple AMD64 ABI exposes a `_nextafterd` long name alongside _nextafter.
+_nextafterd
+
 _feclearexcept
 _fegetenv
-# _fegetexcept  not in C99
+_fegetexcept
 _fegetround
 _feholdexcept
 _feraiseexcept
 _fesetenv
-# _fesetexcept  not in C99
+_fesetexcept
 _fesetround
 _fetestexcept
 _feupdateenv
