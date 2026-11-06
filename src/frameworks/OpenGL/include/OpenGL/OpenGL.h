@@ -8,6 +8,7 @@
 #endif
 
 #include <OpenGL/CGLTypes.h>
+#include <OpenGL/CGLIOSurface.h>
 
 #ifdef __cplusplus
 extern "C" {

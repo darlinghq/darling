@@ -33,6 +33,7 @@ add_framework(OpenGL
         GLU
         CoreFoundation
         CoreGraphics
+        IOSurface
 )
 
 # OpenGL.c loads the native EGL at run time instead of linking it.

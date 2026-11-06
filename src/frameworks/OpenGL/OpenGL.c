@@ -5,9 +5,12 @@
 #include <stdatomic.h>
 #include <dlfcn.h>
 
+#define GL_GLEXT_PROTOTYPES 1
 #include <OpenGL/OpenGL.h>
+#include <OpenGL/glext.h>
 #include <OpenGL/CGLInternal.h>
 #include <CoreFoundation/CFDictionary.h>
+#include <IOSurface/IOSurface.h>
 #include <pthread.h>
 
 // Try to get the right (generic) type definitions.
@@ -1007,6 +1010,8 @@ CGLContextObj CGLRetainContext(CGLContextObj context) {
     return context;
 }
 
+static void forgetSurfaceBindings(CGLContextObj context);
+
 void CGLReleaseContext(CGLContextObj context) {
     if (context == NULL) {
         return;
@@ -1015,6 +1020,8 @@ void CGLReleaseContext(CGLContextObj context) {
     if (__sync_sub_and_fetch(&context->retain_count, 1) != 0) {
         return;
     }
+
+    forgetSurfaceBindings(context);
 
     pthread_mutex_lock(&g_activeContextsMutex);
     if (context->prev_active != NULL) {
@@ -1103,6 +1110,290 @@ CGLError CGLFlushDrawable(CGLContextObj context) {
         cgl_swap_pace(&context->pacer, context->swap_interval);
     EGLBoolean ok = p_eglSwapBuffers(context->egl_display, surf);
     return ok ? kCGLNoError : kCGLBadDrawable;
+}
+
+// IOSurface-backed textures.
+//
+// On macOS the IOSurface is the storage of a texture that
+// CGLTexImageIOSurface2D binds to it. EGL has no such binding here, so the
+// plane's pixels are copied into the texture by the call, and
+// CGLReadbackIOSurface copies the texture back into the surface. CPU writes
+// to the surface after the call reach the texture only through another
+// call, and GL rendering into the texture reaches the surface only through
+// CGLReadbackIOSurface.
+//
+// Each texture remembers the surface it was last specified from. The binding
+// retains the surface, as the texture would on macOS, and is dropped when
+// the same texture is specified from another surface or when the context is
+// destroyed.
+
+struct surface_binding {
+    CGLContextObj context;
+    GLuint texture;
+    GLenum target;
+    GLenum format;
+    GLenum type;
+    GLuint plane;
+    IOSurfaceRef surface;
+};
+
+static struct surface_binding *g_surfaceBindings;
+static size_t g_surfaceBindingCount, g_surfaceBindingCapacity;
+static pthread_mutex_t g_surfaceBindingsMutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void forgetSurfaceBindings(CGLContextObj context) {
+    pthread_mutex_lock(&g_surfaceBindingsMutex);
+    for (size_t i = 0; i < g_surfaceBindingCount; ) {
+        if (g_surfaceBindings[i].context == context) {
+            CFRelease(g_surfaceBindings[i].surface);
+            g_surfaceBindings[i] = g_surfaceBindings[--g_surfaceBindingCount];
+        } else {
+            i++;
+        }
+    }
+    pthread_mutex_unlock(&g_surfaceBindingsMutex);
+}
+
+static int rememberSurfaceBinding(const struct surface_binding *binding) {
+    int ok = 1;
+    pthread_mutex_lock(&g_surfaceBindingsMutex);
+    size_t i;
+    for (i = 0; i < g_surfaceBindingCount; i++) {
+        if (g_surfaceBindings[i].context == binding->context && g_surfaceBindings[i].texture == binding->texture)
+            break;
+    }
+    if (i == g_surfaceBindingCount && g_surfaceBindingCount == g_surfaceBindingCapacity) {
+        size_t capacity = g_surfaceBindingCapacity ? g_surfaceBindingCapacity * 2 : 16;
+        struct surface_binding *larger = realloc(g_surfaceBindings, capacity * sizeof(*larger));
+        if (larger) {
+            g_surfaceBindings = larger;
+            g_surfaceBindingCapacity = capacity;
+        } else {
+            ok = 0;
+        }
+    }
+    if (ok) {
+        CFRetain(binding->surface);
+        if (i < g_surfaceBindingCount)
+            CFRelease(g_surfaceBindings[i].surface);
+        else
+            g_surfaceBindingCount++;
+        g_surfaceBindings[i] = *binding;
+    }
+    pthread_mutex_unlock(&g_surfaceBindingsMutex);
+    return ok;
+}
+
+static GLenum textureBindingQuery(GLenum target) {
+    switch (target) {
+    case GL_TEXTURE_2D: return GL_TEXTURE_BINDING_2D;
+    case GL_TEXTURE_RECTANGLE: return GL_TEXTURE_BINDING_RECTANGLE;
+    default: return 0;
+    }
+}
+
+// The size of one pixel of client memory in format and type, or 0 if the
+// combination is not one this implementation knows.
+static size_t pixelSize(GLenum format, GLenum type) {
+    switch (type) {
+    case GL_UNSIGNED_INT_8_8_8_8:
+    case GL_UNSIGNED_INT_8_8_8_8_REV:
+    case GL_UNSIGNED_INT_2_10_10_10_REV:
+    case GL_UNSIGNED_INT_10_10_10_2:
+        return 4;
+    case GL_UNSIGNED_SHORT_5_6_5:
+    case GL_UNSIGNED_SHORT_5_6_5_REV:
+    case GL_UNSIGNED_SHORT_4_4_4_4:
+    case GL_UNSIGNED_SHORT_4_4_4_4_REV:
+    case GL_UNSIGNED_SHORT_5_5_5_1:
+    case GL_UNSIGNED_SHORT_1_5_5_5_REV:
+    case GL_UNSIGNED_SHORT_8_8_APPLE:
+    case GL_UNSIGNED_SHORT_8_8_REV_APPLE:
+        return 2;
+    }
+
+    size_t component;
+    switch (type) {
+    case GL_UNSIGNED_BYTE: case GL_BYTE: component = 1; break;
+    case GL_UNSIGNED_SHORT: case GL_SHORT: case GL_HALF_FLOAT: component = 2; break;
+    case GL_UNSIGNED_INT: case GL_INT: case GL_FLOAT: component = 4; break;
+    default: return 0;
+    }
+
+    switch (format) {
+    case GL_RED: case GL_RED_INTEGER: case GL_ALPHA: case GL_LUMINANCE:
+        return component;
+    case GL_RG: case GL_RG_INTEGER: case GL_LUMINANCE_ALPHA:
+        return 2 * component;
+    case GL_RGB: case GL_BGR: case GL_RGB_INTEGER:
+        return 3 * component;
+    case GL_RGBA: case GL_BGRA: case GL_RGBA_INTEGER: case GL_BGRA_INTEGER:
+        return 4 * component;
+    default:
+        return 0;
+    }
+}
+
+// Pixel store state that a transfer between a surface plane and a texture
+// sets for itself, restored afterwards so the application's state is kept.
+struct pixel_store {
+    GLint buffer, rowLength, skipRows, skipPixels, alignment;
+};
+
+static void savePixelStore(int pack, struct pixel_store *saved) {
+    glGetIntegerv(pack ? GL_PIXEL_PACK_BUFFER_BINDING : GL_PIXEL_UNPACK_BUFFER_BINDING, &saved->buffer);
+    glGetIntegerv(pack ? GL_PACK_ROW_LENGTH : GL_UNPACK_ROW_LENGTH, &saved->rowLength);
+    glGetIntegerv(pack ? GL_PACK_SKIP_ROWS : GL_UNPACK_SKIP_ROWS, &saved->skipRows);
+    glGetIntegerv(pack ? GL_PACK_SKIP_PIXELS : GL_UNPACK_SKIP_PIXELS, &saved->skipPixels);
+    glGetIntegerv(pack ? GL_PACK_ALIGNMENT : GL_UNPACK_ALIGNMENT, &saved->alignment);
+}
+
+static void setPixelStore(int pack, const struct pixel_store *store) {
+    glBindBuffer(pack ? GL_PIXEL_PACK_BUFFER : GL_PIXEL_UNPACK_BUFFER, (GLuint) store->buffer);
+    glPixelStorei(pack ? GL_PACK_ROW_LENGTH : GL_UNPACK_ROW_LENGTH, store->rowLength);
+    glPixelStorei(pack ? GL_PACK_SKIP_ROWS : GL_UNPACK_SKIP_ROWS, store->skipRows);
+    glPixelStorei(pack ? GL_PACK_SKIP_PIXELS : GL_UNPACK_SKIP_PIXELS, store->skipPixels);
+    glPixelStorei(pack ? GL_PACK_ALIGNMENT : GL_UNPACK_ALIGNMENT, store->alignment);
+}
+
+// Checks that width x height pixels of format and type fit in the plane, and
+// returns the plane's address and its row stride in pixels.
+static CGLError planeForTransfer(IOSurfaceRef surface, GLuint plane, GLsizei width, GLsizei height,
+                                 GLenum format, GLenum type, void **pixels, GLint *rowLength) {
+    size_t bytesPerRow = IOSurfaceGetBytesPerRowOfPlane(surface, plane);
+    size_t planeHeight = IOSurfaceGetHeightOfPlane(surface, plane);
+    size_t size = pixelSize(format, type);
+    if (size == 0)
+        size = IOSurfaceGetBytesPerElementOfPlane(surface, plane);
+    *pixels = IOSurfaceGetBaseAddressOfPlane(surface, plane);
+    if (!*pixels || bytesPerRow == 0 || size == 0 || bytesPerRow % size != 0)
+        return kCGLBadValue;
+    if (width <= 0 || height <= 0 || (size_t) width > bytesPerRow / size || (size_t) height > planeHeight)
+        return kCGLBadValue;
+    if (bytesPerRow / size > INT32_MAX)
+        return kCGLBadValue;
+    *rowLength = (GLint) (bytesPerRow / size);
+    return kCGLNoError;
+}
+
+// Makes context current on this thread for the duration of a call.
+static CGLError enterContext(CGLContextObj context, CGLContextObj *previous) {
+    *previous = CGLGetCurrentContext();
+    if (*previous == context)
+        return kCGLNoError;
+    return CGLSetCurrentContext(context);
+}
+
+static void leaveContext(CGLContextObj context, CGLContextObj previous) {
+    if (previous != context)
+        CGLSetCurrentContext(previous);
+}
+
+CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum internal_format,
+                                GLsizei width, GLsizei height, GLenum format, GLenum type,
+                                IOSurfaceRef ioSurface, GLuint plane) {
+    if (!ctx)
+        return kCGLBadContext;
+    if (!ioSurface)
+        return kCGLBadAddress;
+    GLenum bindingQuery = textureBindingQuery(target);
+    if (!bindingQuery)
+        return kCGLBadEnumeration;
+
+    void *pixels;
+    GLint rowLength;
+    CGLError error = planeForTransfer(ioSurface, plane, width, height, format, type, &pixels, &rowLength);
+    if (error != kCGLNoError)
+        return error;
+
+    CGLContextObj previous;
+    error = enterContext(ctx, &previous);
+    if (error != kCGLNoError)
+        return error;
+
+    // GL errors from the upload are left for the application to query, as
+    // are errors that were pending before this call.
+    GLint texture = 0;
+    glGetIntegerv(bindingQuery, &texture);
+
+    struct pixel_store saved, transfer = { 0, rowLength, 0, 0, 1 };
+    savePixelStore(0, &saved);
+    setPixelStore(0, &transfer);
+
+    GLint allocatedWidth = 0, allocatedHeight = 0, allocatedFormat = 0;
+    glGetTexLevelParameteriv(target, 0, GL_TEXTURE_WIDTH, &allocatedWidth);
+    glGetTexLevelParameteriv(target, 0, GL_TEXTURE_HEIGHT, &allocatedHeight);
+    glGetTexLevelParameteriv(target, 0, GL_TEXTURE_INTERNAL_FORMAT, &allocatedFormat);
+    if (allocatedWidth == width && allocatedHeight == height && allocatedFormat == (GLint) internal_format)
+        glTexSubImage2D(target, 0, 0, 0, width, height, format, type, pixels);
+    else
+        glTexImage2D(target, 0, (GLint) internal_format, width, height, 0, format, type, pixels);
+
+    setPixelStore(0, &saved);
+
+    if (texture != 0) {
+        struct surface_binding binding = {
+            .context = ctx, .texture = (GLuint) texture, .target = target,
+            .format = format, .type = type, .plane = plane, .surface = ioSurface,
+        };
+        if (!rememberSurfaceBinding(&binding))
+            error = kCGLBadAlloc;
+    }
+
+    leaveContext(ctx, previous);
+    return error;
+}
+
+CGLError CGLReadbackIOSurface(IOSurfaceRef ioSurface) {
+    if (!ioSurface)
+        return kCGLBadAddress;
+
+    struct surface_binding binding = { 0 };
+    pthread_mutex_lock(&g_surfaceBindingsMutex);
+    for (size_t i = g_surfaceBindingCount; i-- > 0; ) {
+        if (g_surfaceBindings[i].surface == ioSurface) {
+            binding = g_surfaceBindings[i];
+            CGLRetainContext(binding.context);
+            break;
+        }
+    }
+    pthread_mutex_unlock(&g_surfaceBindingsMutex);
+    if (!binding.context)
+        return kCGLBadValue;
+
+    CGLContextObj previous;
+    CGLError error = enterContext(binding.context, &previous);
+    if (error != kCGLNoError) {
+        CGLReleaseContext(binding.context);
+        return error;
+    }
+
+    GLenum bindingQuery = textureBindingQuery(binding.target);
+    GLint oldTexture = 0, width = 0, height = 0;
+    glGetIntegerv(bindingQuery, &oldTexture);
+    glBindTexture(binding.target, binding.texture);
+    glGetTexLevelParameteriv(binding.target, 0, GL_TEXTURE_WIDTH, &width);
+    glGetTexLevelParameteriv(binding.target, 0, GL_TEXTURE_HEIGHT, &height);
+
+    // The texture may have been respecified since; it must still fit.
+    void *pixels;
+    GLint rowLength;
+    error = planeForTransfer(ioSurface, binding.plane, width, height, binding.format, binding.type,
+                             &pixels, &rowLength);
+    if (error == kCGLNoError) {
+        struct pixel_store saved, transfer = { 0, rowLength, 0, 0, 1 };
+        savePixelStore(1, &saved);
+        setPixelStore(1, &transfer);
+        IOSurfaceLock(ioSurface, 0, NULL);
+        glGetTexImage(binding.target, 0, binding.format, binding.type, pixels);
+        IOSurfaceUnlock(ioSurface, 0, NULL);
+        setPixelStore(1, &saved);
+    }
+
+    glBindTexture(binding.target, (GLuint) oldTexture);
+    leaveContext(binding.context, previous);
+    CGLReleaseContext(binding.context);
+    return error;
 }
 
 CGLError CGLSetDrawableRefreshRate(CGLContextObj context, uint32_t millihertz) {
