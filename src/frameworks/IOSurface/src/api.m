@@ -203,13 +203,13 @@ size_t IOSurfaceGetBytesPerElement(IOSurfaceRef buffer)
 
 size_t IOSurfaceGetElementWidth(IOSurfaceRef buffer)
 {
-	return [(IOSurface*)buffer widthOfPlaneAtIndex: 0];
+	return [(IOSurface*)buffer elementWidthOfPlaneAtIndex: 0];
 }
 
 
 size_t IOSurfaceGetElementHeight(IOSurfaceRef buffer)
 {
-	return [(IOSurface*)buffer heightOfPlaneAtIndex: 0];
+	return [(IOSurface*)buffer elementHeightOfPlaneAtIndex: 0];
 }
 
 size_t IOSurfaceGetAllocSize(IOSurfaceRef buffer)
@@ -249,4 +249,9 @@ Boolean IOSurfaceIsInUse(IOSurfaceRef buffer)
 kern_return_t IOSurfaceSetPurgeable(IOSurfaceRef buffer, uint32_t newState, uint32_t * _Nullable oldState)
 {
 	return [(IOSurface*)buffer setPurgeable:newState oldState:oldState];
+}
+
+Boolean IOSurfaceAllowsPixelSizeCasting(IOSurfaceRef buffer)
+{
+	return [(IOSurface*)buffer allowsPixelSizeCasting];
 }
