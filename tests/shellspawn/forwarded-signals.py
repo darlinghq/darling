@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
 Host test: shellspawn forwards signals to the foreground process group.
-usage: python3 tests/shellspawn-forwarded-signals.py [REPO_ROOT]
+usage: python3 tests/shellspawn/forwarded-signals.py [REPO_ROOT]
 
 Verifies:
 1. In TTY mode: when a shell process has placed a child job in the foreground
    process group (via tcsetpgrp on its controlling terminal), sending
    SHELLSPAWN_SIGNAL delivers the signal to that foreground process group,
    even though the shell itself ignores the signal.
-2. In non-TTY mode (fallback PTY): when stdin is not a tty, shellspawn's
-   fallback PTY acts as controlling terminal, and tcgetpgrp on the master
-   descriptor discovers the foreground process group.
+2. In non-TTY mode: when stdin is not a tty, the shell has no controlling
+   terminal and therefore no foreground process group, so the signal goes
+   to the shell's own process group, which includes the child job.
 """
 
 import os
@@ -20,7 +20,7 @@ import subprocess
 import sys
 import tempfile
 
-root = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+root = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 shellspawn_src = os.path.join(root, "src", "shellspawn", "shellspawn.c")
 duct_src = os.path.join(root, "src", "shellspawn", "duct_signals.c")
 shellspawn_inc = os.path.join(root, "src", "shellspawn")
@@ -71,9 +71,11 @@ int main(void) {
 
     pid_t child = fork();
     if (child == 0) {
-        // Child job: creates own process group and takes the foreground
-        setpgid(0, 0);
+        // Child job: with a controlling terminal, it gets its own process
+        // group and takes the foreground, as a job-control shell would do.
+        // Without one, it stays in the shell's process group.
         if (tty_fd >= 0) {
+            setpgid(0, 0);
             tcsetpgrp(tty_fd, getpgrp());
         }
 
@@ -302,7 +304,7 @@ int main(int argc, char *argv[]) {
         print("FAIL: TTY mode timed out waiting for signal delivery")
         sys.exit(1)
 
-    # Test 2: Non-TTY fallback PTY mode
+    # Test 2: Non-TTY mode, no controlling terminal
     try:
         res_notty = subprocess.run([harness_bin, "notty", job_bin], timeout=5, capture_output=True, text=True)
         if res_notty.returncode != 0:
