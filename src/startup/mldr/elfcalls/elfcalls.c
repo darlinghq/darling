@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include "elfcalls.h"
 #include "threads.h"
+#include "native_fork.h"
 #include <sys/un.h>
 #include <sys/socket.h>
 #include <fcntl.h>
@@ -84,25 +85,6 @@ static int __dserver_process_lifetime_pipe_refresh() {
 	return pipe[0];
 }
 
-extern void __mldr_socket_bitmap_postfork_child(void);
-extern void __mldr_socket_bitmap_prefork(void);
-extern void __mldr_socket_bitmap_postfork_parent(void);
-
-static int native_fork(void)
-{
-	__mldr_socket_bitmap_prefork();
-	int result = fork();
-	int saved_errno = errno;
-	if (result == 0) {
-		__mldr_thread_postfork_child();
-		__mldr_socket_bitmap_postfork_child();
-	} else {
-		__mldr_socket_bitmap_postfork_parent();
-	}
-	/* Preserve fork's errno even if lock cleanup changes it. */
-	return result < 0 ? -saved_errno : result;
-}
-
 void elfcalls_make(struct elf_calls* calls)
 {
 	calls->dlopen = dlopen_simple;
@@ -150,5 +132,5 @@ void elfcalls_make(struct elf_calls* calls)
 	calls->dserver_process_lifetime_pipe_refresh = __dserver_process_lifetime_pipe_refresh;
 	calls->dserver_close_process_lifetime_pipe = __mldr_close_process_lifetime_pipe;
 
-	calls->native_fork = native_fork;
+	calls->native_fork = __mldr_native_fork;
 }

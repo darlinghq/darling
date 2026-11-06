@@ -46,4 +46,10 @@ void socket_bitmap_put(socket_bitmap_t* bitmap, int socket);
 // a native library, is never replaced.
 int socket_bitmap_place(socket_bitmap_t* bitmap, int fd);
 
+// Called around fork() so that the child gets a consistent copy of the bitmap
+// and an unlocked mutex.
+void socket_bitmap_fork_prepare(socket_bitmap_t* bitmap);
+void socket_bitmap_fork_parent(socket_bitmap_t* bitmap);
+void socket_bitmap_fork_child(socket_bitmap_t* bitmap);
+
 #endif // _MLDR_SOCKET_BITMAP_H_

@@ -554,17 +554,15 @@ static socket_bitmap_t socket_bitmap = {
 };
 
 void __mldr_socket_bitmap_prefork(void) {
-	// Serialize with realloc and bitmap updates before taking the fork snapshot.
-	pthread_mutex_lock(&socket_bitmap.mutex);
+	socket_bitmap_fork_prepare(&socket_bitmap);
 }
 
 void __mldr_socket_bitmap_postfork_parent(void) {
-	pthread_mutex_unlock(&socket_bitmap.mutex);
+	socket_bitmap_fork_parent(&socket_bitmap);
 }
 
 void __mldr_socket_bitmap_postfork_child(void) {
-	// The forking thread owns the inherited lock; do not reinitialize live state.
-	pthread_mutex_unlock(&socket_bitmap.mutex);
+	socket_bitmap_fork_child(&socket_bitmap);
 }
 
 int __mldr_create_rpc_socket(void) {

@@ -21,6 +21,7 @@ set(mldr_sources
 	socket_bitmap.c
 	commpage.c
 	elfcalls/elfcalls.c
+	elfcalls/native_fork.c
 	elfcalls/threads.c
 )
 
@@ -65,6 +66,12 @@ target_include_directories(mldr_socket_bitmap_test PRIVATE ${CMAKE_CURRENT_SOURC
 target_compile_options(mldr_socket_bitmap_test PRIVATE -pthread)
 target_link_options(mldr_socket_bitmap_test PRIVATE -pthread)
 add_test(NAME mldr_socket_bitmap COMMAND mldr_socket_bitmap_test)
+
+add_executable(mldr_native_fork_test ${CMAKE_SOURCE_DIR}/tests/mldr/native_fork.c elfcalls/native_fork.c socket_bitmap.c)
+target_include_directories(mldr_native_fork_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(mldr_native_fork_test PRIVATE -pthread)
+target_link_options(mldr_native_fork_test PRIVATE -pthread)
+add_test(NAME mldr_native_fork COMMAND mldr_native_fork_test)
 
 if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
 	add_executable(mldr_cpu_caps_x86_test ${CMAKE_SOURCE_DIR}/tests/mldr/cpu_caps_x86.c cpu_caps_x86.c)

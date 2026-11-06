@@ -191,3 +191,17 @@ int socket_bitmap_place(socket_bitmap_t* bitmap, int fd) {
 		close(placed);
 	}
 };
+
+void socket_bitmap_fork_prepare(socket_bitmap_t* bitmap) {
+	// Serialize with realloc and bitmap updates before taking the fork snapshot.
+	pthread_mutex_lock(&bitmap->mutex);
+}
+
+void socket_bitmap_fork_parent(socket_bitmap_t* bitmap) {
+	pthread_mutex_unlock(&bitmap->mutex);
+}
+
+void socket_bitmap_fork_child(socket_bitmap_t* bitmap) {
+	// The forking thread owns the inherited lock; do not reinitialize live state.
+	pthread_mutex_unlock(&bitmap->mutex);
+}
