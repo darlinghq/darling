@@ -286,8 +286,13 @@ install(DIRECTORY DESTINATION libexec/darling/Library/Preferences)
 
 if(NOT DEBIAN_PACKAGING)
 	# only for direct installs; staged (DESTDIR) installs are packaging and must not touch running instances
+	# a container left running would keep using the files being replaced
 	install(CODE "if (\"\$ENV{DESTDIR}\" STREQUAL \"\")
-		execute_process(COMMAND bash ${DARLING_TOP_DIRECTORY}/tools/shutdown-user.sh)
+		execute_process(COMMAND bash \"${DARLING_TOP_DIRECTORY}/tools/shutdown-user.sh\"
+			RESULT_VARIABLE DARLING_SHUTDOWN_RESULT)
+		if (NOT DARLING_SHUTDOWN_RESULT STREQUAL \"0\")
+			message(FATAL_ERROR \"Running Darling containers could not be shut down; installation stopped\")
+		endif()
 	endif()")
 endif(NOT DEBIAN_PACKAGING)
 
