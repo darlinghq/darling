@@ -40,51 +40,92 @@ OSStatus LSRegisterURL(CFURLRef inURL, Boolean inUpdate)
 	return 0;
 }
 
+static Boolean is_application_url(CFURLRef url)
+{
+	CFStringRef extension = CFURLCopyPathExtension(url);
+	Boolean ret = FALSE;
+
+	if (extension != NULL)
+	{
+		ret = CFStringCompare(extension, CFSTR("app"), kCFCompareCaseInsensitive) == kCFCompareEqualTo;
+		CFRelease(extension);
+	}
+	return ret;
+}
+
+static Boolean is_file_url(CFURLRef url)
+{
+	CFStringRef scheme = CFURLCopyScheme(url);
+	Boolean ret = FALSE;
+
+	if (scheme != NULL)
+	{
+		ret = CFStringCompare(scheme, CFSTR("file"), kCFCompareCaseInsensitive) == kCFCompareEqualTo;
+		CFRelease(scheme);
+	}
+	return ret;
+}
+
+static OSStatus launch_application(CFURLRef appURL, CFURLRef *outLaunchedURL)
+{
+	OSStatus ret = _LSLaunchApplication(appURL);
+
+	if (ret == noErr && outLaunchedURL != NULL)
+	{
+		if (*outLaunchedURL != NULL)
+			CFRelease(*outLaunchedURL);
+		*outLaunchedURL = CFRetain(appURL);
+	}
+	return ret;
+}
+
+/*
+ * Not supported yet:
+ * - Apple Events: an application is started without 'oapp' and documents
+ *   opened with an explicit application are not sent to it as 'odoc', so
+ *   only the application is launched for them.
+ * - passThruParams and launchFlags: every call starts a new instance.
+ */
 OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLaunchedURL)
 {
-	CFStringRef scheme, extension;
 	CFIndex count, i;
 	CFURLRef url;
-	CFRange range;
-	OSStatus ret = 0, temp;
+	OSStatus ret = noErr, temp;
 
-	/* Inspect scheme of URL */
-	count = CFArrayGetCount(inLaunchSpec->itemURLs);
+	if (outLaunchedURL != NULL)
+		*outLaunchedURL = NULL;
+
+	if (inLaunchSpec == NULL)
+		return paramErr;
+
+	count = inLaunchSpec->itemURLs != NULL ? CFArrayGetCount(inLaunchSpec->itemURLs) : 0;
+
+	if (inLaunchSpec->appURL != NULL)
+	{
+		/* The application opens all items, so it is launched once */
+		return launch_application(inLaunchSpec->appURL, outLaunchedURL);
+	}
+
+	if (count == 0)
+		return paramErr;
+
 	for (i = 0; i < count; i++)
 	{
 		url = CFArrayGetValueAtIndex(inLaunchSpec->itemURLs, i);
-		scheme = CFURLCopyScheme(url);
-		range = CFRangeMake(0, CFStringGetLength(scheme));
 
-		if (CFStringCompareWithOptions(scheme, CFSTR("file"), range, kCFCompareCaseInsensitive) == kCFCompareEqualTo)
+		if (is_file_url(url))
 		{
 			/* First check if it's a "mac thing", if not forward to xdg-open */
-
-			/* Check for .app suffix */
-			extension = CFURLCopyPathExtension(url);
-			if (extension != NULL)
-				range = CFRangeMake(0, CFStringGetLength(extension));
-			if (extension != NULL && (CFStringCompareWithOptions(extension, CFSTR("app"), range, kCFCompareCaseInsensitive) == kCFCompareEqualTo))
-			{
-				temp = _LSLaunchApplication(url);
-				if (temp)
-					ret = temp;
-			}
+			if (is_application_url(url))
+				temp = launch_application(url, outLaunchedURL);
 			else
-			{
-				printf("TODO: forward to xdg-open\n");
-				ret = kLSApplicationNotFoundErr;
-			}
-
-			if (extension != NULL)
-				CFRelease(extension);
+				temp = kLSApplicationNotFoundErr;
 		}
 		else
-		{
-			printf("We can't handle this scheme yet\n");
-			ret = kLSApplicationNotFoundErr;
-		}
-		CFRelease(scheme);
+			temp = kLSApplicationNotFoundErr;
+
+		if (temp != noErr)
+			ret = temp;
 	}
 	return ret;
 }
@@ -202,18 +243,14 @@ static void get_main_executable_info(CFURLRef appURL, CFStringRef *exec, CFStrin
 	CFRelease(pre);
 
 	if (!CFReadStreamOpen(rs))
-	{
-		printf("Failed to read Info.plist\n");
 		goto err_pre_info;
-	}
 
 	info_plist = CFPropertyListCreateWithStream(kCFAllocatorDefault, rs, 0, 0, NULL, NULL);
+	if (info_plist == NULL)
+		goto err_close;
 
 	if (CFGetTypeID(info_plist) != CFDictionaryGetTypeID())
-	{
-		printf("Root object of Info.plist not CFDictionaryRef!\n");
 		goto err;
-	}
 
 	ret = CFDictionaryGetValue(info_plist, CFSTR("CFBundleExecutable"));
 	if (ret != NULL)
@@ -227,6 +264,8 @@ static void get_main_executable_info(CFURLRef appURL, CFStringRef *exec, CFStrin
 
 err:
 	CFRelease(info_plist);
+err_close:
+	CFReadStreamClose(rs);
 err_pre_info:
 	CFRelease(rs);
 	CFRelease(info_plist_url);

@@ -2,12 +2,15 @@
 #include <LaunchServices/LaunchServicesPriv.h>
 #include <CarbonCore/MacErrors.h>
 #include <unistd.h>
+#include <cstring>
 #include <string>
 #include <memory>
 #include <vector>
 #include <algorithm>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <unicode/unistr.h>
 #include <CoreServices/UniChar.h>
@@ -103,6 +106,9 @@ OSStatus LSTerm(void)
 static
 int execvpe(const char* name, char** argv, char** envp)
 {
+	if (!envp)
+		return execvp(name, argv);
+
 	char** orig_env;
 	int ret;
 
@@ -115,12 +121,43 @@ int execvpe(const char* name, char** argv, char** envp)
 	return ret;
 }
 
+static OSStatus resolveApplicationExecutable(std::string& exePath)
+{
+	struct stat info;
+	if (stat(exePath.c_str(), &info) != 0)
+		return makeOSStatus(errno);
+	if (!S_ISDIR(info.st_mode))
+		return noErr;
+
+	// Application FSRefs may identify bundle directories, not executable files.
+	// Let CoreFoundation handle executable names and supported bundle layouts.
+	CFURLRef bundleURL = CFURLCreateFromFileSystemRepresentation(
+		kCFAllocatorDefault, (const UInt8*) exePath.c_str(), exePath.size(), true);
+	CFBundleRef bundle = bundleURL ? CFBundleCreate(kCFAllocatorDefault, bundleURL) : nullptr;
+	CFURLRef executableURL = bundle ? CFBundleCopyExecutableURL(bundle) : nullptr;
+	UInt8 path[PATH_MAX];
+	Boolean gotPath = executableURL && CFURLGetFileSystemRepresentation(
+		executableURL, true, path, sizeof(path));
+	if (executableURL)
+		CFRelease(executableURL);
+	if (bundle)
+		CFRelease(bundle);
+	if (bundleURL)
+		CFRelease(bundleURL);
+	if (!gotPath)
+		return kLSNoExecutableErr;
+
+	exePath = (const char*) path;
+	return noErr;
+}
+
 OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSerialNumber *outPSN)
 {
 	if (!appParams)
 		return paramErr;
 
 	std::string exePath;
+	std::vector<std::string> argumentStorage;
 	std::vector<char*> argv;
 	std::unique_ptr<std::vector<char*>> envp;
 	int pipefds[2];
@@ -129,6 +166,9 @@ OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSeri
 
 	if (!FSRefMakePath(appParams->application, exePath))
 		return fnfErr;
+	rv = resolveApplicationExecutable(exePath);
+	if (rv != noErr)
+		return rv;
 
 	if (appParams->argv != nullptr)
 	{
@@ -140,8 +180,18 @@ OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSeri
 			if (CFGetTypeID(ref) != CFStringGetTypeID())
 				return paramErr;
 
-			argv.push_back((char*) CFStringGetCStringPtr((CFStringRef) CFArrayGetValueAtIndex(appParams->argv, i), kCFStringEncodingUTF8));
+			CFIndex capacity = CFStringGetMaximumSizeForEncoding(
+				CFStringGetLength(ref), kCFStringEncodingUTF8) + 1;
+			if (capacity <= 0)
+				return paramErr;
+			std::vector<char> buffer(capacity);
+			if (!CFStringGetCString(ref, buffer.data(), buffer.size(), kCFStringEncodingUTF8))
+				return paramErr;
+			argumentStorage.emplace_back(buffer.data());
 		}
+		// Take pointers only after storage growth can no longer invalidate them.
+		for (std::string& argument : argumentStorage)
+			argv.push_back((char*) argument.c_str());
 		argv.push_back(nullptr);
 	}
 	else
@@ -158,19 +208,30 @@ OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSeri
 		CFDictionaryApplyFunction(appParams->environment, [](const void* key, const void* value, void* context) {
 					CFStringRef skey = (CFStringRef) key;
 					CFStringRef svalue = (CFStringRef) value;
-					std::vector<const char*>* envp = (std::vector<const char*>*) context;
+					std::vector<char*>* envp = (std::vector<char*>*) context;
 
 					if (CFGetTypeID(skey) == CFStringGetTypeID() && CFGetTypeID(svalue) == CFStringGetTypeID())
 					{
-						char* str = new char[CFStringGetLength(skey) + CFStringGetLength(svalue) + 1];
-
-						strcpy(str, CFStringGetCStringPtr(skey, kCFStringEncodingUTF8));
-						strcat(str, "=");
-						strcat(str, CFStringGetCStringPtr(svalue, kCFStringEncodingUTF8));
-
-						envp->push_back(str);
+						CFIndex keyCapacity = CFStringGetMaximumSizeForEncoding(
+							CFStringGetLength(skey), kCFStringEncodingUTF8) + 1;
+						CFIndex valueCapacity = CFStringGetMaximumSizeForEncoding(
+							CFStringGetLength(svalue), kCFStringEncodingUTF8) + 1;
+						char* str = new char[keyCapacity + valueCapacity + 1];
+						if (CFStringGetCString(skey, str, keyCapacity, kCFStringEncodingUTF8))
+						{
+							size_t keyLength = strlen(str);
+							str[keyLength] = '=';
+							if (CFStringGetCString(svalue, str + keyLength + 1,
+								valueCapacity, kCFStringEncodingUTF8))
+								envp->push_back(str);
+							else
+								delete [] str;
+						}
+						else
+							delete [] str;
 					}
 				}, envp.get());
+		envp->push_back(nullptr);
 	}
 
 	// https://stackoverflow.com/questions/1584956/how-to-handle-execvp-errors-after-fork
@@ -207,8 +268,19 @@ OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSeri
 					break;
 			}
 
-			if (count > 0)
+			if (count == sizeof(err))
 				rv = makeOSStatus(err);
+			else if (count < 0)
+				rv = makeOSStatus(errno);
+			else if (count != 0)
+				rv = makeOSStatus(EIO);
+			else if (outPSN)
+			{
+				// Match HIServices GetProcessForPID, but do not publish a
+				// process identifier when the launch error pipe reports failure.
+				outPSN->highLongOfPSN = 0;
+				outPSN->lowLongOfPSN = pid;
+			}
 			close(pipefds[0]);
 		}
 	}
@@ -283,5 +355,3 @@ CFStringRef LSSystemApplicationType = CFSTR("System");
 CFStringRef LSInternalApplicationType = CFSTR("Internal");
 CFStringRef LSPlugInKitType = CFSTR("PluginKitPlugin");
 CFStringRef LSVPNPluginType = CFSTR("VPNPlugin");
-
-
