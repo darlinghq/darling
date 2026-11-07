@@ -1,16 +1,17 @@
 # Host test: Gestalt's system-version selectors report the macOS product
-# version (kern.osproductversion), the same one SystemVersion.plist carries,
-# and never the Darwin kernel release.
+# version (kern.osproductversion), which SystemVersion.plist is generated
+# from, and never the Darwin kernel release.
 # usage: ruby tests/gestalt-system-version.rb [REPO_ROOT]
 # Gestalt.cpp is compiled unmodified against stand-in sysctl/CoreFoundation
-# headers. The fake kernel answers kern.osproductversion with the plist's
-# ProductVersion and any KERN_OSRELEASE query with a different Darwin string,
-# so a selector that reads the wrong source fails.
+# headers. The fake kernel answers kern.osproductversion with a product
+# version and any KERN_OSRELEASE query with a different Darwin string, so a
+# selector that reads the wrong source fails.
 require 'tmpdir'
 require 'open3'
 root = ARGV.fetch(0, File.expand_path('..', __dir__))
-plist = File.read("#{root}/src/frameworks/CoreServices/SystemVersion.plist")
-product = plist[%r{<key>ProductVersion</key>\s*<string>([\d.]+)</string>}, 1] or abort 'ProductVersion missing'
+# SystemVersion.plist is generated at build time from the emulated kernel's
+# version, so the probe uses a fixed product version of its own.
+product = '26.4'
 Dir.mktmpdir('gestalt-') do |dir|
   Dir.mkdir("#{dir}/sys"); Dir.mkdir("#{dir}/CoreFoundation")
   File.write("#{dir}/sys/sysctl.h", <<~H)
@@ -76,6 +77,13 @@ Dir.mktmpdir('gestalt-') do |dir|
       assert(get(gestaltSystemVersion, &v) == 0 && v == 0x1097);
       product = "10.9.15";  /* patch saturates at 9 too */
       assert(get(gestaltSystemVersion, &v) == 0 && v == 0x1099);
+      /* Quirk: the BCD layout carries on past 10.x, as observed on macOS 27.0.1. */
+      product = "26.4";
+      assert(get(gestaltSystemVersion, &v) == 0 && v == 0x2640);
+      product = "27.0.1";
+      assert(get(gestaltSystemVersion, &v) == 0 && v == 0x2701);
+      assert(get(gestaltSystemVersionBugFix, &v) == 0 && v == 1);
+      v = 123; assert(get('zzzz', &v) == gestaltUndefSelectorErr && v == 0);
       product = NULL;     /* sysctl failure: error, not a guessed version */
       v = 123; assert(get(gestaltSystemVersionMajor, &v) == gestaltUnknownErr && v == 0);
       product = "garbage";
