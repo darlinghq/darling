@@ -27,6 +27,15 @@ CGL_EXPORT CGLError CGLUnlockContext(CGLContextObj context);
 CGL_EXPORT CGLError CGLSetCurrentContext(CGLContextObj ctx);
 CGL_EXPORT CGLError CGLSetFullScreen(CGLContextObj ctx);
 CGL_EXPORT CGLContextObj CGLGetCurrentContext(void);
+CGL_EXPORT CGLError CGLGetVirtualScreen(CGLContextObj ctx, GLint *screen);
+CGL_EXPORT CGLError CGLSetVirtualScreen(CGLContextObj ctx, GLint screen);
+CGL_EXPORT CGLPixelFormatObj CGLGetPixelFormat(CGLContextObj context);
+CGL_EXPORT void CGLGetVersion(GLint *majorvers, GLint *minorvers);
+
+CGL_EXPORT CGLError CGLEnable(CGLContextObj ctx, CGLContextEnable pname);
+CGL_EXPORT CGLError CGLDisable(CGLContextObj ctx, CGLContextEnable pname);
+CGL_EXPORT CGLError CGLIsEnabled(CGLContextObj ctx, CGLContextEnable pname, GLint *enable);
+CGL_EXPORT const char *CGLErrorString(CGLError error);
 
 CGL_EXPORT CGLError CGLSetParameter(CGLContextObj context, CGLContextParameter parameter, const GLint *value);
 CGL_EXPORT CGLError CGLGetParameter(CGLContextObj context, CGLContextParameter parameter, GLint *value);
@@ -34,15 +43,16 @@ CGL_EXPORT CGLError CGLFlushDrawable(CGLContextObj context);
 
 CGL_EXPORT CGLError CGLChoosePixelFormat(const CGLPixelFormatAttribute *attributes, CGLPixelFormatObj *pixelFormatp, GLint *numberOfScreensp);
 CGL_EXPORT CGLError CGLClearDrawable(CGLContextObj ctx);
+CGL_EXPORT CGLError CGLUpdateContext(CGLContextObj ctx);
 CGL_EXPORT CGLPixelFormatObj CGLRetainPixelFormat(CGLPixelFormatObj pixelFormat);
 CGL_EXPORT void CGLReleasePixelFormat(CGLPixelFormatObj pixelFormat);
 CGL_EXPORT CGLError CGLDestroyPixelFormat(CGLPixelFormatObj pixelFormat);
 CGL_EXPORT GLuint CGLGetPixelFormatRetainCount(CGLPixelFormatObj pixelFormat);
 CGL_EXPORT CGLError CGLDescribePixelFormat(CGLPixelFormatObj pixelFormat, GLint screenNumber, CGLPixelFormatAttribute attribute, GLint *valuep);
 
-CGL_EXPORT CGLError CGLQueryRendererInfo(unsigned long display_mask, CGLRendererInfoObj *rend, long *nrend);
+CGL_EXPORT CGLError CGLQueryRendererInfo(GLuint display_mask, CGLRendererInfoObj *rend, GLint *nrend);
 CGL_EXPORT CGLError CGLDestroyRendererInfo(CGLRendererInfoObj rend);
-CGL_EXPORT CGLError CGLDescribeRenderer(CGLRendererInfoObj rend, long rend_num, CGLRendererProperty prop, long *value);
+CGL_EXPORT CGLError CGLDescribeRenderer(CGLRendererInfoObj rend, GLint rend_num, CGLRendererProperty prop, GLint *value);
 
 CGL_EXPORT CGLError CGLCreatePBuffer(GLsizei width, GLsizei height, GLenum target, GLenum internalFormat, GLint maxDetail, CGLPBufferObj *pbuffer);
 CGL_EXPORT CGLError CGLDescribePBuffer(CGLPBufferObj pbuffer, GLsizei *width, GLsizei *height, GLenum *target, GLenum *internalFormat, GLint *mipmap);

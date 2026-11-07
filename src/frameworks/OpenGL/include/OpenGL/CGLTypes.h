@@ -27,6 +27,16 @@ typedef enum {
     kCGLBadConnection = 10017,
 } CGLError;
 
+typedef enum {
+    kCGLCESwapRectangle = 201,
+    kCGLCESwapLimit = 203,
+    kCGLCERasterization = 221,
+    kCGLCEStateValidation = 301,
+    kCGLCESurfaceBackingSize = 305,
+    kCGLCEDisplayListOptimization = 307,
+    kCGLCEMPEngine = 313,
+} CGLContextEnable;
+
 enum {
     kCGLPFAAllRenderers = 1,
     kCGLPFADoubleBuffer = 5,
@@ -64,8 +74,15 @@ enum {
     kCGLPFARemotePBuffer = 91,
     kCGLPFAAllowOfflineRenderers = 96,
     kCGLPFAAcceleratedCompute = 97,
+    kCGLPFAOpenGLProfile = 99,
     kCGLPFAVirtualScreenCount = 128,
 };
+
+typedef enum {
+    kCGLOGLPVersion_Legacy = 0x1000,
+    kCGLOGLPVersion_3_2_Core = 0x3200,
+    kCGLOGLPVersion_GL4_Core = 0x4100
+} CGLOpenGLProfile;
 
 typedef uint32_t CGLPixelFormatAttribute;
 
