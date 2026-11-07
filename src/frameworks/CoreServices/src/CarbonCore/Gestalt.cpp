@@ -89,7 +89,7 @@ OSStatus Gestalt(uint32_t type, int* value)
 		break;
 	default:
 		*value = 0;
-		return unimpErr;
+		return gestaltUndefSelectorErr;
 	}
 	return 0;
 }
