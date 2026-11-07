@@ -19,6 +19,7 @@
 
 #import <IOSurface/IOSurface.h>
 #import <IOSurface/IOSurfaceObjC.h>
+#include <xpc/private/mach_send.h>
 
 @interface IOSurface (CopyingAttachments)
 - (nullable id)_copyAttachmentForKey:(NSString *)key;
@@ -35,26 +36,39 @@ IOSurfaceRef _Nullable IOSurfaceCreate(CFDictionaryRef properties)
 	return (IOSurfaceRef) [[IOSurface alloc] initWithProperties: (NSDictionary*) properties];
 }
 
+IOSurfaceRef _Nullable IOSurfaceLookup(IOSurfaceID csid)
+{
+	return (IOSurfaceRef) [[IOSurface alloc] initWithSurfaceID: csid];
+}
+
+mach_port_t IOSurfaceCreateMachPort(IOSurfaceRef buffer)
+{
+	return [(IOSurface*)buffer createMachPort];
+}
+
 IOSurfaceRef _Nullable IOSurfaceLookupFromMachPort(mach_port_t port)
 {
 	return (IOSurfaceRef) [[IOSurface alloc] initWithMachPort: port];
 }
 
+// The XPC object carries the surface's Mach port.
 xpc_object_t IOSurfaceCreateXPCObject(IOSurfaceRef surface)
 {
-	return 0;
+	mach_port_t port = IOSurfaceCreateMachPort(surface);
+	if (!MACH_PORT_VALID(port))
+		return NULL;
+
+	xpc_object_t object = xpc_mach_send_create_with_disposition(port, MACH_MSG_TYPE_MOVE_SEND);
+	if (!object)
+		mach_port_deallocate(mach_task_self(), port);
+	return object;
 }
 
 IOSurfaceRef IOSurfaceLookupFromXPCObject(xpc_object_t obj)
 {
-#if NOTYET
-	if (xpc_get_type(obj) == _xpc_type_mach_send)
-	{
-		mach_port_t port = xpc_mach_send_get_right(obj);
-		return IOSurfaceLookupFromMachPort(port);
-	}
-#endif
-	return NULL;
+	if (!obj || xpc_get_type(obj) != XPC_TYPE_MACH_SEND)
+		return NULL;
+	return IOSurfaceLookupFromMachPort(xpc_mach_send_get_right(obj));
 }
 
 kern_return_t IOSurfaceLock(IOSurfaceRef buffer, IOSurfaceLockOptions options, uint32_t * _Nullable seed)
