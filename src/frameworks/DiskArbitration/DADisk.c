@@ -1,6 +1,7 @@
 #include <DiskArbitration/DiskArbitration.h>
 #include <stddef.h>
 #include <string.h>
+#include <pthread.h>
 #include <CoreFoundation/CFRuntime.h>
 #include <CoreFoundation/CFBase.h>
 #include <CoreFoundation/CFURL.h>
@@ -50,6 +51,53 @@ CONST_STRING_DECL(kDADiskDescriptionDeviceTDMLockedKey, "DADeviceTDMLocked");
 
 CONST_STRING_DECL(kDADiskDescriptionBusNameKey, "DABusName");                                                                                                                                                            
 CONST_STRING_DECL(kDADiskDescriptionBusPathKey, "DABusPath");                                                                                                                                                            
+
+CFArrayRef kDADiskDescriptionWatchVolumeName = NULL;
+CFArrayRef kDADiskDescriptionWatchVolumePath = NULL;
+CFDictionaryRef kDADiskDescriptionMatchMediaUnformatted = NULL;
+CFDictionaryRef kDADiskDescriptionMatchMediaWhole = NULL;
+CFDictionaryRef kDADiskDescriptionMatchVolumeMountable = NULL;
+CFDictionaryRef kDADiskDescriptionMatchVolumeUnrecognized = NULL;
+
+static CFDictionaryRef DADiskCreateMatch(CFStringRef key, CFTypeRef value)
+{
+	return CFDictionaryCreate(kCFAllocatorDefault, (const void**) &key,
+			(const void**) &value, 1, &kCFTypeDictionaryKeyCallBacks,
+			&kCFTypeDictionaryValueCallBacks);
+}
+
+static void DADiskInitializeMatchObjects(void)
+{
+	const void* name = kDADiskDescriptionVolumeNameKey;
+	const void* path = kDADiskDescriptionVolumePathKey;
+	int zero = 0;
+	CFNumberRef size = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &zero);
+
+	kDADiskDescriptionWatchVolumeName = CFArrayCreate(kCFAllocatorDefault, &name, 1, &kCFTypeArrayCallBacks);
+	kDADiskDescriptionWatchVolumePath = CFArrayCreate(kCFAllocatorDefault, &path, 1, &kCFTypeArrayCallBacks);
+
+	// Contents as observed on macOS 27.0.1: unformatted media match a
+	// zero media size, unrecognized volumes a false mountable flag.
+	kDADiskDescriptionMatchMediaUnformatted = DADiskCreateMatch(kDADiskDescriptionMediaSizeKey, size);
+	kDADiskDescriptionMatchMediaWhole = DADiskCreateMatch(kDADiskDescriptionMediaWholeKey, kCFBooleanTrue);
+	kDADiskDescriptionMatchVolumeMountable = DADiskCreateMatch(kDADiskDescriptionVolumeMountableKey, kCFBooleanTrue);
+	kDADiskDescriptionMatchVolumeUnrecognized = DADiskCreateMatch(kDADiskDescriptionVolumeMountableKey, kCFBooleanFalse);
+
+	CFRelease(size);
+}
+
+// QUIRK: the predefined match and watch objects stay NULL until the
+// process creates its first session, and are filled in then. Observed on
+// macOS 27.0.1 (tier 2, black-box: each object read before and after
+// DASessionCreate()); not documented, but every documented use passes them
+// to a DARegister*Callback() function, which needs a session.
+// Test: tests/src/diskarbitration_match.c
+__attribute__((visibility("hidden")))
+void _DADiskInitializeMatchObjects(void)
+{
+	static pthread_once_t once = PTHREAD_ONCE_INIT;
+	pthread_once(&once, DADiskInitializeMatchObjects);
+}
 
 struct __DADisk
 {
