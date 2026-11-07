@@ -87,9 +87,10 @@ struct _IOSurfaceLockUnlock
 	uint32_t options;
 };
 
-// Private interface between IOSurface.framework and a GPU API that keeps
-// its own copy of surface contents (OpenGL.framework, whose textures are
-// copies of the surface rather than views of its memory).
+// Private interface between IOSurface.framework and the GPU APIs that keep
+// their own copies of surface contents (OpenGL.framework and Metal.framework,
+// whose textures can be copies of the surface rather than views of its
+// memory).
 //
 // writeback copies GPU contents that the CPU has not seen yet into the
 // surface. IOSurface calls it before a lock is granted and before a Mach
@@ -101,8 +102,10 @@ struct _IOSurfaceLockUnlock
 // forget is called while a surface is being freed. The surface must not be
 // retained or locked from it.
 //
-// Either function may be NULL. Only the first registration in a process
-// takes effect; later ones, and ones with an unknown version, are ignored.
+// Either function may be NULL. Each GPU API registers once; IOSurface calls
+// the registered functions in registration order. Registering the same
+// functions again, more than a few registrations, and registrations with
+// an unknown version are ignored.
 #define _IOSURFACE_GPU_CALLBACKS_VERSION 1
 
 typedef struct

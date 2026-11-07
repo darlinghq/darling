@@ -396,13 +396,16 @@ static int copyGlobalSurface(IOSurfaceID surfaceID)
 	return fd;
 }
 
-// The GPU callbacks registered with _IOSurfaceSetGPUCallbacks. The state
-// becomes 1 when a registration claims them and 2 once they are filled in.
-static _IOSurfaceGPUCallbacks g_gpuCallbacks;
-static _Atomic int g_gpuCallbacksState;
+// The GPU callbacks registered with _IOSurfaceSetGPUCallbacks, one slot per
+// GPU API. A registration fills in the next slot, then publishes it by
+// raising g_gpuCallbacksCount; slots are never changed afterwards.
+#define MAX_GPU_CALLBACKS 4
+static _IOSurfaceGPUCallbacks g_gpuCallbacks[MAX_GPU_CALLBACKS];
+static _Atomic int g_gpuCallbacksCount;
+static pthread_mutex_t g_gpuCallbacksMutex = PTHREAD_MUTEX_INITIALIZER;
 
-// Set while this thread runs the writeback callback, so that the locks the
-// callback takes itself do not call it again.
+// Set while this thread runs a writeback callback, so that the locks the
+// callback takes itself do not call any writeback again.
 static __thread bool t_inGPUWriteback;
 
 void _IOSurfaceSetGPUCallbacks(const _IOSurfaceGPUCallbacks* callbacks)
@@ -413,34 +416,51 @@ void _IOSurfaceSetGPUCallbacks(const _IOSurfaceGPUCallbacks* callbacks)
 		return;
 	}
 
-	int expected = 0;
-	if (!atomic_compare_exchange_strong(&g_gpuCallbacksState, &expected, 1))
+	// Registrations are rare; the mutex only keeps two of them from taking
+	// the same callbacks twice. Readers do not take it.
+	pthread_mutex_lock(&g_gpuCallbacksMutex);
+	int count = atomic_load_explicit(&g_gpuCallbacksCount, memory_order_relaxed);
+	for (int i = 0; i < count; i++)
 	{
-		os_log_error(OS_LOG_DEFAULT, "IOSurface: GPU callbacks are already registered, ignoring another registration");
+		if (g_gpuCallbacks[i].writeback == callbacks->writeback && g_gpuCallbacks[i].forget == callbacks->forget)
+		{
+			pthread_mutex_unlock(&g_gpuCallbacksMutex);
+			return;
+		}
+	}
+	if (count == MAX_GPU_CALLBACKS)
+	{
+		pthread_mutex_unlock(&g_gpuCallbacksMutex);
+		os_log_error(OS_LOG_DEFAULT, "IOSurface: too many GPU callback registrations, ignoring another one");
 		return;
 	}
-
-	g_gpuCallbacks = *callbacks;
-	atomic_store_explicit(&g_gpuCallbacksState, 2, memory_order_release);
+	g_gpuCallbacks[count] = *callbacks;
+	atomic_store_explicit(&g_gpuCallbacksCount, count + 1, memory_order_release);
+	pthread_mutex_unlock(&g_gpuCallbacksMutex);
 }
 
-static const _IOSurfaceGPUCallbacks* gpuCallbacks(void)
+// The registered callbacks at index, or NULL past the last one.
+static const _IOSurfaceGPUCallbacks* gpuCallbacks(int index)
 {
-	if (atomic_load_explicit(&g_gpuCallbacksState, memory_order_acquire) != 2)
+	if (index >= atomic_load_explicit(&g_gpuCallbacksCount, memory_order_acquire))
 		return NULL;
-	return &g_gpuCallbacks;
+	return &g_gpuCallbacks[index];
 }
 
 // Brings GPU work on the surface into its memory before the CPU or another
-// process sees it.
+// process sees it, asking every registered GPU API in registration order.
 static void writeBackGPUContents(IOSurface* surface)
 {
-	const _IOSurfaceGPUCallbacks* callbacks = gpuCallbacks();
-	if (callbacks == NULL || callbacks->writeback == NULL || t_inGPUWriteback)
+	if (t_inGPUWriteback)
 		return;
 
 	t_inGPUWriteback = true;
-	callbacks->writeback((IOSurfaceRef) surface);
+	const _IOSurfaceGPUCallbacks* callbacks;
+	for (int i = 0; (callbacks = gpuCallbacks(i)) != NULL; i++)
+	{
+		if (callbacks->writeback != NULL)
+			callbacks->writeback((IOSurfaceRef) surface);
+	}
 	t_inGPUWriteback = false;
 }
 
@@ -816,9 +836,12 @@ static void recordIdentity(ImplData* idata)
 	ImplData* data = (ImplData*) _impl;
 	if (data != NULL)
 	{
-		const _IOSurfaceGPUCallbacks* callbacks = gpuCallbacks();
-		if (callbacks != NULL && callbacks->forget != NULL)
-			callbacks->forget((IOSurfaceRef) self);
+		const _IOSurfaceGPUCallbacks* callbacks;
+		for (int i = 0; (callbacks = gpuCallbacks(i)) != NULL; i++)
+		{
+			if (callbacks->forget != NULL)
+				callbacks->forget((IOSurfaceRef) self);
+		}
 
 		if (data->localUseCount > 0)
 			atomic_fetch_sub(&data->shared->useCount, 1);
