@@ -307,10 +307,11 @@ CFURLRef LSCopyDefaultApplicationURLForURL(CFURLRef inURL, LSRolesMask inRoleMas
 
 OSStatus LSGetApplicationForURL(CFURLRef inURL, LSRolesMask inRoleMask, FSRef *outAppRef, CFURLRef *outAppURL)
 {
-	/* A web or mail link has the host's handler or none: an extension lookup would map
+	/* Web and mail links are opened by the host desktop, not by an application
+	   in the prefix, so there is none to report. An extension lookup would map
 	   https://x/a.html to a Mac application. */
 	if (_LSIsHostOpenURL(inURL))
-		return _LSGetHostHandlerForURL(inURL, outAppRef, outAppURL);
+		return kLSApplicationNotFoundErr;
 
 	NSString* extension = [(NSURL*) inURL pathExtension];
 	return LSGetApplicationForInfo(kLSUnknownType, kLSUnknownCreator, (CFStringRef) extension, inRoleMask, outAppRef, outAppURL);

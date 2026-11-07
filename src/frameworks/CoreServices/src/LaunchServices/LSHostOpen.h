@@ -30,11 +30,12 @@ extern "C" {
 /* URLs with these schemes (http, https, mailto) are opened by the host desktop. */
 Boolean _LSIsHostOpenURL(CFURLRef url);
 
-/* Hands the URL to the host desktop. */
+/*
+ * Hands the URL to the host desktop. No application in the prefix handles
+ * these URLs, so LSGetApplicationForURL and LSCopyDefaultApplicationURLForURL
+ * report none for them, while opening them succeeds.
+ */
 OSStatus _LSOpenURLOnHost(CFURLRef url);
-
-/* Reports the host opener as the default application for a host-opened URL. */
-OSStatus _LSGetHostHandlerForURL(CFURLRef url, FSRef* outAppRef, CFURLRef* outAppURL);
 
 #ifdef __cplusplus
 }

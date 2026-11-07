@@ -19,98 +19,81 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 /*
  * Web and mail URLs have no handler inside the prefix, so they are handed to
- * the Linux desktop. sd-bus is used from the host's libsystemd, loaded through
- * the ELF loader; the guest shares the host's user and network, so the
- * session bus is reachable directly.
+ * the host desktop through the XDG desktop portal (see LSHostOpenBus.h). The
+ * guest shares the host's user, so the session bus is reachable directly.
  *
- * The host functions are called through _elfcalls with the guest compiler's
- * calling convention, which matches the host's on x86_64 only. The variadic
- * sd_bus_message_append in particular would break on an arm64 slice (Apple's
- * stack-based varargs against registers on Linux), so do not build this for
- * arm64 without a trampoline. On i386 libsystemd cannot be loaded and the open
- * fails with kLSApplicationNotFoundErr.
+ * libdbus-1 is the host's, used through Darling's wrapper library, which is
+ * loaded only when a URL is opened. The wrapper is part of the GUI
+ * component; without it, or on a slice where the host library is not used
+ * (only x86_64 is), no URL is opened and kLSApplicationNotFoundErr is
+ * returned.
  */
 
 #include "LSHostOpen.h"
 #include "LSHostOpenBus.h"
 #include <CarbonCore/MacErrors.h>
-#include <elfcalls.h>
+#include <dlfcn.h>
+#include <os/log.h>
 #include <pthread.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 
-extern struct elf_calls* _elfcalls;
+#define DBUS_WRAPPER_PATH "/usr/lib/native/libdbus.dylib"
 
-/* Where the host's root file system appears inside the prefix. */
-#define HOST_ROOT "/Volumes/SystemRoot"
+static struct ls_host_dbus host_dbus;
+static Boolean host_dbus_ready;
+static pthread_once_t host_dbus_once = PTHREAD_ONCE_INIT;
 
-static struct ls_host_api host_api;
-static Boolean host_api_ready;
-static pthread_once_t host_api_once = PTHREAD_ONCE_INIT;
-
-static void load_host_api(void)
+static void load_host_dbus(void)
 {
-	void *systemd, *libc;
-	struct ls_host_api api;
+#if defined(__x86_64__)
+	struct ls_host_dbus api;
+	void* lib = dlopen(DBUS_WRAPPER_PATH, RTLD_NOW | RTLD_LOCAL);
 
-	if (_elfcalls == NULL)
+	if (lib == NULL)
 		return;
-
-	systemd = _elfcalls->dlopen("libsystemd.so.0");
-	if (systemd == NULL)
-		return;
-	libc = _elfcalls->dlopen("libc.so.6");
-	if (libc == NULL)
-	{
-		_elfcalls->dlclose(systemd);
-		return;
-	}
 
 	memset(&api, 0, sizeof(api));
-#define BIND(lib, field) \
-	if ((*(void**) &api.field = _elfcalls->dlsym(lib, #field)) == NULL) \
+#define BIND(field, name) \
+	if ((*(void**) &api.field = dlsym(lib, name)) == NULL) \
 		goto fail;
-	BIND(systemd, sd_bus_new);
-	BIND(systemd, sd_bus_set_address);
-	BIND(systemd, sd_bus_set_bus_client);
-	BIND(systemd, sd_bus_start);
-	BIND(systemd, sd_bus_flush_close_unref);
-	BIND(systemd, sd_bus_message_new_method_call);
-	BIND(systemd, sd_bus_message_append);
-	BIND(systemd, sd_bus_message_append_strv);
-	BIND(systemd, sd_bus_message_open_container);
-	BIND(systemd, sd_bus_message_close_container);
-	BIND(systemd, sd_bus_call);
-	BIND(systemd, sd_bus_message_unref);
-	BIND(systemd, sd_bus_error_free);
-	/* Host IDs and paths, not the prefix's view of them. */
-	BIND(libc, getuid);
-	BIND(libc, access);
+	BIND(connection_open_private, "dbus_connection_open_private");
+	BIND(bus_register, "dbus_bus_register");
+	BIND(connection_close, "dbus_connection_close");
+	BIND(connection_unref, "dbus_connection_unref");
+	BIND(message_new_method_call, "dbus_message_new_method_call");
+	BIND(message_iter_init_append, "dbus_message_iter_init_append");
+	BIND(message_iter_append_basic, "dbus_message_iter_append_basic");
+	BIND(message_iter_open_container, "dbus_message_iter_open_container");
+	BIND(message_iter_close_container, "dbus_message_iter_close_container");
+	BIND(connection_send_with_reply_and_block, "dbus_connection_send_with_reply_and_block");
+	BIND(message_unref, "dbus_message_unref");
+	BIND(error_init, "dbus_error_init");
+	BIND(error_free, "dbus_error_free");
+	BIND(address_escape_value, "dbus_address_escape_value");
+	BIND(free, "dbus_free");
 #undef BIND
 	/*
-	 * The guest's environment, deliberately: DBUS_SESSION_BUS_ADDRESS, DISPLAY and
-	 * WAYLAND_DISPLAY normally arrive from the host unchanged. A guest process can
-	 * set them; the bus address is only used when it is a single unix: path or abstract address (see
-	 * LSHostOpenBus.c), so a guest process can at most point sd-bus at a socket it
-	 * picked, which it could already open itself as the same host user.
+	 * The guest's environment: DBUS_SESSION_BUS_ADDRESS and XDG_RUNTIME_DIR
+	 * arrive from the host unchanged. A guest process can set them, but only a
+	 * single unix socket address is used (see LSHostOpenBus.c), so it can at
+	 * most pick a socket that it could open itself as the same host user.
 	 */
 	api.getenv = getenv;
-	api.runtime_dir_root = "/run/user";
 
-	host_api = api;
-	host_api_ready = TRUE;
+	host_dbus = api;
+	host_dbus_ready = TRUE;
 	return;
 
 fail:
-	_elfcalls->dlclose(libc);
-	_elfcalls->dlclose(systemd);
+	dlclose(lib);
+#endif
 }
 
-static const struct ls_host_api* get_host_api(void)
+static const struct ls_host_dbus* get_host_dbus(void)
 {
-	pthread_once(&host_api_once, load_host_api);
-	return host_api_ready ? &host_api : NULL;
+	pthread_once(&host_dbus_once, load_host_dbus);
+	return host_dbus_ready ? &host_dbus : NULL;
 }
 
 /* Returns the absolute URL as a malloc'd UTF-8 string. */
@@ -162,7 +145,7 @@ Boolean _LSIsHostOpenURL(CFURLRef url)
 
 OSStatus _LSOpenURLOnHost(CFURLRef url)
 {
-	const struct ls_host_api* api;
+	const struct ls_host_dbus* api;
 	char* string = copy_url_string(url);
 	int r;
 
@@ -172,67 +155,27 @@ OSStatus _LSOpenURLOnHost(CFURLRef url)
 		return paramErr;
 	}
 
-	api = get_host_api();
+	api = get_host_dbus();
 	if (api == NULL)
 	{
-		fprintf(stderr, "LaunchServices: cannot open URL: host libsystemd is unavailable\n");
+		os_log_error(OS_LOG_DEFAULT, "LaunchServices: cannot open URL: the host D-Bus library is unavailable");
 		free(string);
 		return kLSApplicationNotFoundErr;
 	}
 
-	r = _LSHostOpenURL(api, string, NULL);
+	r = _LSHostOpenURL(api, string);
 	free(string);
-	if (r < 0)
+	switch (r)
 	{
-		fprintf(stderr, "LaunchServices: host desktop did not accept URL (error %d)\n", -r);
-		return kLSServerCommunicationErr;
-	}
-	return noErr;
-}
-
-/*
- * The reported "application" is the host's xdg-open script under the host root,
- * not an application bundle: callers that only ask whether a handler exists (as
- * browser-based apps do before opening a link) get a yes that is true, while a
- * caller that opens the result as a bundle gets an error, not a launch.
- */
-OSStatus _LSGetHostHandlerForURL(CFURLRef url, FSRef* outAppRef, CFURLRef* outAppURL)
-{
-	const struct ls_host_api* api;
-	const char* opener;
-	char* string;
-	char path[256];
-	Boolean valid;
-
-	if (!_LSIsHostOpenURL(url))
-		return kLSApplicationNotFoundErr;
-	/* Do not report a handler for a URL that _LSOpenURLOnHost would refuse. */
-	string = copy_url_string(url);
-	valid = string != NULL && _LSHostOpenValidateURL(string) == 0;
-	free(string);
-	if (!valid)
-		return kLSApplicationNotFoundErr;
-	api = get_host_api();
-	if (api == NULL)
-		return kLSApplicationNotFoundErr;
-
-	/* Without an xdg-open there is no handler to report; do not invent a path. */
-	opener = _LSHostOpenFindOpener(api);
-	if (opener == NULL)
-		return kLSApplicationNotFoundErr;
-	snprintf(path, sizeof(path), HOST_ROOT "%s", opener);
-
-	if (outAppRef != NULL)
-	{
-		OSStatus status = FSPathMakeRef((const UInt8*) path, outAppRef, NULL);
-		if (status != noErr)
-			return status;
-	}
-	if (outAppURL != NULL)
-	{
-		*outAppURL = CFURLCreateFromFileSystemRepresentation(NULL, (const UInt8*) path, strlen(path), FALSE);
-		if (*outAppURL == NULL)
+		case LS_HOST_OPEN_OK:
+			return noErr;
+		case LS_HOST_OPEN_INVALID_URL:
+			return paramErr;
+		case LS_HOST_OPEN_NO_PORTAL:
+			os_log_error(OS_LOG_DEFAULT, "LaunchServices: cannot open URL: no desktop portal on the session bus");
 			return kLSApplicationNotFoundErr;
+		default:
+			os_log_error(OS_LOG_DEFAULT, "LaunchServices: the desktop portal did not accept the URL");
+			return kLSServerCommunicationErr;
 	}
-	return noErr;
 }

@@ -1,7 +1,10 @@
 set(SUBFRAMEWORK_VERSION "A")
 
-# LSHostOpen.c loads the host's libsystemd through the ELF loader.
-include_directories(${CMAKE_SOURCE_DIR}/src/startup/mldr/elfcalls)
+# LSHostOpenBus.c talks to the host's libdbus-1 (through the wrapper in
+# src/native) and needs its headers.
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PC_DBUS REQUIRED dbus-1)
+include_directories(${PC_DBUS_INCLUDE_DIRS})
 
 generate_sdk_subframework(LaunchServices
 	BASE_PATH ${coreservices_sdk_path}
