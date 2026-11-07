@@ -34,6 +34,8 @@ const CFStringRef kCVImageBufferChromaLocation_TopLeft = CFSTR("TopLeft");
 const CFStringRef kCVImageBufferCGColorSpaceKey = CFSTR("CGColorSpace");
 
 const CFStringRef kCVImageBufferColorPrimaries_ITU_R_2020 = CFSTR("ITU_R_2020");
+const CFStringRef kCVImageBufferColorPrimaries_P3_D65 = CFSTR("P3_D65");
+const CFStringRef kCVImageBufferColorPrimaries_DCI_P3 = CFSTR("DCI_P3");
 const CFStringRef kCVImageBufferYCbCrMatrix_ITU_R_2020 = CFSTR("ITU_R_2020");
 
 const CFStringRef kCVImageBufferTransferFunction_ITU_R_2020 = CFSTR("ITU_R_2020");
