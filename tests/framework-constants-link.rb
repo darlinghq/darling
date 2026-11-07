@@ -8,7 +8,7 @@
 require 'tmpdir'
 require 'open3'
 root = ARGV.fetch(0, File.expand_path('..', __dir__))
-frameworks = %w[VideoToolbox CoreVideo MediaAccessibility]
+frameworks = %w[VideoToolbox CoreVideo MediaAccessibility CoreMedia]
 DEF = /^\s*(?:const\s+CFStringRef|CFStringRef\s+const)\s+(k\w+)\s*=\s*CFSTR\("[^"]*"\);/
 # Name, framework, defining text. Each added constant must be defined exactly
 # once in its framework's sources, with this type and value, and be declared in
@@ -33,6 +33,27 @@ EXPECTED = {
   'kCVImageBufferContentLightLevelInfoKey' => ['CoreVideo', 'CFStringRef', 'CFSTR("ContentLightLevelInfo")'],
   'kCVImageBufferMasteringDisplayColorVolumeKey' => ['CoreVideo', 'CFStringRef', 'CFSTR("MasteringDisplayColorVolume")'],
   'kCVPixelBufferPoolAllocationThresholdKey' => ['CoreVideo', 'CFStringRef', 'CFSTR("BufferPoolAllocationThreshold")'],
+  'kVTCompressionPropertyKey_ColorPrimaries' => ['VideoToolbox', 'CFStringRef', 'CFSTR("ColorPrimaries")'],
+  'kVTCompressionPropertyKey_TransferFunction' => ['VideoToolbox', 'CFStringRef', 'CFSTR("TransferFunction")'],
+  'kVTCompressionPropertyKey_YCbCrMatrix' => ['VideoToolbox', 'CFStringRef', 'CFSTR("YCbCrMatrix")'],
+  'kCVImageBufferPixelAspectRatioHorizontalSpacingKey' => ['CoreVideo', 'CFStringRef', 'CFSTR("HorizontalSpacing")'],
+  'kCVImageBufferPixelAspectRatioVerticalSpacingKey' => ['CoreVideo', 'CFStringRef', 'CFSTR("VerticalSpacing")'],
+  'kCVImageBufferColorPrimaries_P3_D65' => ['CoreVideo', 'CFStringRef', 'CFSTR("P3_D65")'],
+  'kCVImageBufferColorPrimaries_DCI_P3' => ['CoreVideo', 'CFStringRef', 'CFSTR("DCI_P3")'],
+  'kCMFormatDescriptionTransferFunction_ITU_R_709_2' => ['CoreMedia', 'CFStringRef', 'CFSTR("ITU_R_709_2")'],
+  'kCMFormatDescriptionTransferFunction_sRGB' => ['CoreMedia', 'CFStringRef', 'CFSTR("IEC_sRGB")'],
+  'kCMFormatDescriptionColorPrimaries_P3_D65' => ['CoreMedia', 'CFStringRef', 'CFSTR("P3_D65")'],
+  'kCMFormatDescriptionColorPrimaries_DCI_P3' => ['CoreMedia', 'CFStringRef', 'CFSTR("DCI_P3")'],
+  'kCMFormatDescriptionYCbCrMatrix_ITU_R_2020' => ['CoreMedia', 'CFStringRef', 'CFSTR("ITU_R_2020")'],
+  'kCMFormatDescriptionExtension_ContentLightLevelInfo' => ['CoreMedia', 'CFStringRef', 'CFSTR("ContentLightLevelInfo")'],
+  'kCMFormatDescriptionExtension_Depth' => ['CoreMedia', 'CFStringRef', 'CFSTR("Depth")'],
+  'kCMFormatDescriptionExtension_FormatName' => ['CoreMedia', 'CFStringRef', 'CFSTR("FormatName")'],
+  'kCMFormatDescriptionExtension_FullRangeVideo' => ['CoreMedia', 'CFStringRef', 'CFSTR("FullRangeVideo")'],
+  'kCMFormatDescriptionExtension_MasteringDisplayColorVolume' => ['CoreMedia', 'CFStringRef', 'CFSTR("MasteringDisplayColorVolume")'],
+  'kCMSampleAttachmentKey_IsDependedOnByOthers' => ['CoreMedia', 'CFStringRef', 'CFSTR("IsDependedOnByOthers")'],
+  'VNBarcodeSymbologyAztec' => ['Vision', 'VNBarcodeSymbology', '@"VNBarcodeSymbologyAztec"'],
+  'VNBarcodeSymbologyQR' => ['Vision', 'VNBarcodeSymbology', '@"VNBarcodeSymbologyQR"'],
+  'VNBarcodeSymbologyEAN13' => ['Vision', 'VNBarcodeSymbology', '@"VNBarcodeSymbologyEAN13"'],
 }
 failed = false
 EXPECTED.each do |name, (fw, type, value)|
