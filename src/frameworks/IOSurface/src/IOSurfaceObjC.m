@@ -24,6 +24,7 @@
 #import <IOKit/IOCFSerialize.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <os/log.h>
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stddef.h>
@@ -381,6 +382,54 @@ static int copyGlobalSurface(IOSurfaceID surfaceID)
 	return fd;
 }
 
+// The GPU callbacks registered with _IOSurfaceSetGPUCallbacks. The state
+// becomes 1 when a registration claims them and 2 once they are filled in.
+static _IOSurfaceGPUCallbacks g_gpuCallbacks;
+static _Atomic int g_gpuCallbacksState;
+
+// Set while this thread runs the writeback callback, so that the locks the
+// callback takes itself do not call it again.
+static __thread bool t_inGPUWriteback;
+
+void _IOSurfaceSetGPUCallbacks(const _IOSurfaceGPUCallbacks* callbacks)
+{
+	if (callbacks == NULL || callbacks->version != _IOSURFACE_GPU_CALLBACKS_VERSION)
+	{
+		os_log_error(OS_LOG_DEFAULT, "IOSurface: ignoring GPU callbacks with an unknown version");
+		return;
+	}
+
+	int expected = 0;
+	if (!atomic_compare_exchange_strong(&g_gpuCallbacksState, &expected, 1))
+	{
+		os_log_error(OS_LOG_DEFAULT, "IOSurface: GPU callbacks are already registered, ignoring another registration");
+		return;
+	}
+
+	g_gpuCallbacks = *callbacks;
+	atomic_store_explicit(&g_gpuCallbacksState, 2, memory_order_release);
+}
+
+static const _IOSurfaceGPUCallbacks* gpuCallbacks(void)
+{
+	if (atomic_load_explicit(&g_gpuCallbacksState, memory_order_acquire) != 2)
+		return NULL;
+	return &g_gpuCallbacks;
+}
+
+// Brings GPU work on the surface into its memory before the CPU or another
+// process sees it.
+static void writeBackGPUContents(IOSurface* surface)
+{
+	const _IOSurfaceGPUCallbacks* callbacks = gpuCallbacks();
+	if (callbacks == NULL || callbacks->writeback == NULL || t_inGPUWriteback)
+		return;
+
+	t_inGPUWriteback = true;
+	callbacks->writeback((IOSurfaceRef) surface);
+	t_inGPUWriteback = false;
+}
+
 @implementation IOSurface
 
 + (void)initialize
@@ -704,6 +753,8 @@ static void recordIdentity(ImplData* idata)
 {
 	ImplData* data = (ImplData*) _impl;
 	fileport_t port = MACH_PORT_NULL;
+	if (data->fd >= 0)
+		writeBackGPUContents(self);
 	if (data->fd < 0 || fileport_makeport(data->fd, &port) != 0)
 		return MACH_PORT_NULL;
 	return port;
@@ -749,6 +800,10 @@ static void recordIdentity(ImplData* idata)
 	ImplData* data = (ImplData*) _impl;
 	if (data != NULL)
 	{
+		const _IOSurfaceGPUCallbacks* callbacks = gpuCallbacks();
+		if (callbacks != NULL && callbacks->forget != NULL)
+			callbacks->forget((IOSurfaceRef) self);
+
 		if (data->localUseCount > 0)
 			atomic_fetch_sub(&data->shared->useCount, 1);
 		if (data->registered)
@@ -1065,6 +1120,9 @@ static void recordIdentity(ImplData* idata)
 - (kern_return_t)lockWithOptions:(IOSurfaceLockOptions)options seed:(nullable uint32_t *)seed
 {
 	ImplData* data = (ImplData*) _impl;
+	// CPU access sees the GPU work submitted before the lock.
+	writeBackGPUContents(self);
+
 	struct _IOSurfaceLockUnlock args = {
 		.surfaceID = data->surface->surfaceID,
 		.options = options,
