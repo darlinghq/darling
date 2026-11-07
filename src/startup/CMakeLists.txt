@@ -42,6 +42,12 @@ add_executable(shellspawn_fds_test ${CMAKE_SOURCE_DIR}/tests/shellspawn/fds.c)
 target_include_directories(shellspawn_fds_test PRIVATE ${CMAKE_SOURCE_DIR}/src/shellspawn)
 add_test(NAME shellspawn_fds COMMAND shellspawn_fds_test)
 
+# darling-prefsd runs inside the prefix (src/prefsd); its checks on the
+# preferences files and values are plain C and are tested on the host
+add_executable(prefsd_validate_test ${CMAKE_SOURCE_DIR}/tests/prefsd/validate.c ${CMAKE_SOURCE_DIR}/src/prefsd/prefsd-validate.c)
+target_include_directories(prefsd_validate_test PRIVATE ${CMAKE_SOURCE_DIR}/src/prefsd)
+add_test(NAME prefsd_validate COMMAND prefsd_validate_test)
+
 # Builds shellspawn.c on the host with a test harness and checks where
 # forwarded signals are delivered
 find_package(Python3 QUIET COMPONENTS Interpreter)

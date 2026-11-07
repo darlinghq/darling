@@ -207,6 +207,8 @@ add_subdirectory(external/zlib)
 # shellspawn can actually spawn any executable we want within the prefix,
 # so we include it in core to allow executables to be executed with the `darling` command.
 add_subdirectory(shellspawn)
+# hands the system preferences to darlingserver before shellspawn accepts commands
+add_subdirectory(prefsd)
 
 # typically considered CLI components, but required by launchctl (which is necessary for launchd to bootstrap)
 add_subdirectory(external/libedit)

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN"
+        "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>Label</key>
+        <string>org.darlinghq.prefsd</string>
+        <key>ProgramArguments</key>
+        <array>
+            <string>/usr/libexec/darling-prefsd</string>
+        </array>
+        <key>RunAtLoad</key>
+        <true/>
+        <key>WatchPaths</key>
+        <array>
+            <string>/Library/Preferences/org.darlinghq.platform.plist</string>
+            <string>/Library/Preferences/org.darlinghq.security.plist</string>
+        </array>
+        <key>ThrottleInterval</key>
+        <integer>1</integer>
+</dict>
+</plist>
