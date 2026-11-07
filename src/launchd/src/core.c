@@ -11429,10 +11429,14 @@ xpc_process_service_kill(job_t j, xpc_object_t request, xpc_object_t *reply)
 bool
 xpc_process_demux(mach_port_t p, xpc_object_t request, xpc_object_t *reply)
 {
-	uint64_t op = xpc_dictionary_get_uint64(request, XPC_PROCESS_ROUTINE_KEY_OP);
-	if (!op) {
+	/* XPC_PROCESS_JETSAM_SET_BAND is 0, so a process routine is recognized
+	 * by the presence of the opcode key, not by a nonzero opcode.
+	 */
+	xpc_object_t xop = xpc_dictionary_get_value(request, XPC_PROCESS_ROUTINE_KEY_OP);
+	if (!xop || xpc_get_type(xop) != XPC_TYPE_UINT64) {
 		return false;
 	}
+	uint64_t op = xpc_uint64_get_value(xop);
 
 	audit_token_t token;
 	xpc_dictionary_get_audit_token(request, &token);
