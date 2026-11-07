@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "AudioComponentManager.h"
+#include <algorithm>
 #include <cstdlib>
 #include <CoreFoundation/CoreFoundation.h>
 #include <CarbonCore/MacErrors.h>
@@ -186,9 +187,59 @@ AudioComponentInstance AudioComponentManager::audioUnitToInstance(AudioUnit unit
 }
 */
 
+static bool sameComponent(const AudioComponentDescription& a, const AudioComponentDescription& b)
+{
+	return a.componentType == b.componentType
+		&& a.componentSubType == b.componentSubType
+		&& a.componentManufacturer == b.componentManufacturer;
+}
+
+// Puts the matches in registration order, except that several versions of
+// the same component (identical type, subtype and manufacturer) come newest
+// first, as the Component Manager's version rule (componentDoAutoVersion)
+// describes. The versions take the places their component's entries had, so
+// other components keep their positions.
+void AudioComponentManager::orderMatches(std::vector<const RegisteredComponent*>& matches)
+{
+	// Component IDs are handed out in increasing order.
+	std::sort(matches.begin(), matches.end(), [](const RegisteredComponent* a, const RegisteredComponent* b) {
+		return uintptr_t(a->id) < uintptr_t(b->id);
+	});
+
+	std::vector<bool> placed(matches.size(), false);
+
+	for (size_t i = 0; i < matches.size(); i++)
+	{
+		if (placed[i])
+			continue;
+
+		std::vector<size_t> slots;
+		for (size_t j = i; j < matches.size(); j++)
+		{
+			if (!placed[j] && sameComponent(matches[i]->desc, matches[j]->desc))
+				slots.push_back(j);
+		}
+
+		std::vector<const RegisteredComponent*> versions;
+		for (size_t slot : slots)
+		{
+			versions.push_back(matches[slot]);
+			placed[slot] = true;
+		}
+
+		// Equal versions keep their registration order.
+		std::stable_sort(versions.begin(), versions.end(), [](const RegisteredComponent* a, const RegisteredComponent* b) {
+			return a->version > b->version;
+		});
+
+		for (size_t k = 0; k < slots.size(); k++)
+			matches[slots[k]] = versions[k];
+	}
+}
+
 std::vector<AudioComponent> AudioComponentManager::findMatching(const AudioComponentDescription* cd)
 {
-	std::vector<AudioComponent> rv;
+	std::vector<const RegisteredComponent*> matches;
 	std::unique_lock<std::recursive_mutex> l(m_componentsMutex);
 
 	for (auto const& [componentId, d] : m_components)
@@ -204,12 +255,18 @@ std::vector<AudioComponent> AudioComponentManager::findMatching(const AudioCompo
 						if (!cd->componentManufacturer || !cd->componentSubType || !cd->componentType)
 							continue;
 					}
-					rv.push_back(d.id);
+					matches.push_back(&d);
 				}
 			}
 		}
 	}
 
+	orderMatches(matches);
+
+	std::vector<AudioComponent> rv;
+	rv.reserve(matches.size());
+	for (const RegisteredComponent* d : matches)
+		rv.push_back(d->id);
 	return rv;
 }
 

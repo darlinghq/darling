@@ -54,6 +54,7 @@ private:
 	};
 	
 	RegisteredComponent* getById(AudioComponent component);
+	static void orderMatches(std::vector<const RegisteredComponent*>& matches);
 public:
 	static AudioComponentManager* instance();
 	// Returns true if it looks like an instance managed by this class.
