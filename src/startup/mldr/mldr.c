@@ -102,12 +102,16 @@ static const char* const skip_env_vars[] = {
 	"__mldr_bprefs=",
 	"__mldr_sockpath=",
 	"__mldr_lifetime_pipe",
+	"__mldr_nofile=",
 };
 
 void* __mldr_main_stack_top = NULL;
 
 static int kernel_major = -1;
 static int kernel_minor = -1;
+
+static unsigned int inherited_nofile[2];
+static bool have_inherited_nofile = false;
 
 int main(int argc, char** argv, char** envp)
 {
@@ -224,7 +228,8 @@ int main(int argc, char** argv, char** envp)
 		// Don't pass these special env vars down to userland
 		if (
 			ENV_VAR_MATCHES("__mldr_bprefs=")   ||
-			ENV_VAR_MATCHES("__mldr_sockpath=")
+			ENV_VAR_MATCHES("__mldr_sockpath=") ||
+			ENV_VAR_MATCHES("__mldr_nofile=")
 		) {
 			size_t len_after = 0;
 			const char* orig_envp_i_plus_one = mldr_load_results.envp[i + 1];
@@ -529,6 +534,19 @@ static void process_special_env(struct load_results* lr) {
 		sscanf(str, "%i", &lr->lifetime_pipe);
 	}
 
+	// the Darwin RLIMIT_NOFILE of the process that exec'd us; libsystem_kernel
+	// keeps it apart from the Linux limit, which must stay above our RPC sockets
+	str = getenv("__mldr_nofile");
+
+	if (str != NULL) {
+		unsigned int cur, max;
+		if (sscanf(str, "%u,%u", &cur, &max) == 2 && cur <= max) {
+			inherited_nofile[0] = cur;
+			inherited_nofile[1] = max;
+			have_inherited_nofile = true;
+		}
+	}
+
 	str = getenv("__mldr_DYLD_ROOT_PATH");
 
 	if (str != NULL && lr->root_path == NULL) {
@@ -543,6 +561,17 @@ static void unset_special_env() {
 	unsetenv("__mldr_bprefs");
 	unsetenv("__mldr_sockpath");
 	unsetenv("__mldr_lifetime_pipe");
+	unsetenv("__mldr_nofile");
+};
+
+int __mldr_inherited_nofile_limit(unsigned int limits[2]) {
+	if (!have_inherited_nofile) {
+		return -1;
+	}
+
+	limits[0] = inherited_nofile[0];
+	limits[1] = inherited_nofile[1];
+	return 0;
 };
 
 static socket_bitmap_t socket_bitmap = {

@@ -75,6 +75,11 @@ struct elf_calls
 	// fork() through the host libc; returns the child's PID, 0 in the child,
 	// or a negative Linux errno
 	int (*native_fork)(void);
+
+	// The Darwin RLIMIT_NOFILE soft and hard limits passed on by the Darling
+	// process that exec'd this one. Returns 0 and fills limits, or -1 if
+	// there are none (the Linux limit applies).
+	int (*inherited_nofile_limit)(unsigned int limits[2]);
 };
 
 #endif
