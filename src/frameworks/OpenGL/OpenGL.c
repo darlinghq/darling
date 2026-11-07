@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>  // for fprintf(stderr, "unimplemented")
 #include <string.h>
+#include <stdint.h>
 
 #include <pthread.h>
 #include <stdatomic.h>
@@ -271,6 +272,10 @@ struct _CGLContextObj {
     // Whether the display imports DMA-BUFs (enum dmabuf_import), found out
     // on first use.
     _Atomic int dmabuf_import;
+    // How GPU copies between textures are made (enum gpu_copy), found out on
+    // first use, and the framebuffers a blit copy uses.
+    int gpu_copy;
+    GLuint copy_framebuffers[2];
     struct _CGLContextObj *prev_active;
     struct _CGLContextObj *next_active;
 };
@@ -609,7 +614,9 @@ CGLContextObj CGLGetCurrentContext(void) {
     return pthread_getspecific(key);
 }
 
-CGLError CGLSetCurrentContext(CGLContextObj context) {
+// Makes context current without bringing IOSurface contents into its
+// rectangle textures; used inside this framework.
+static CGLError setCurrentContext(CGLContextObj context) {
     // A context exists only if EGL was loaded, and without EGL nothing can be current.
     if (!native_egl_available())
         return context ? kCGLBadContext : kCGLNoError;
@@ -665,6 +672,18 @@ CGLError CGLSetCurrentContext(CGLContextObj context) {
         pthread_setspecific(get_current_context_key(), NULL);
     }
     return kCGLNoError;
+}
+
+static void refreshRectangleTextures(CGLContextObj context);
+
+CGLError CGLSetCurrentContext(CGLContextObj context) {
+    CGLError error = setCurrentContext(context);
+    // A context that becomes current is about to be used, so rectangle
+    // textures specified from surfaces the CPU has written since get the
+    // new contents.
+    if (error == kCGLNoError && context != NULL)
+        refreshRectangleTextures(context);
+    return error;
 }
 
 static int enable_bit(CGLContextEnable pname) {
@@ -994,6 +1013,8 @@ static CGLError createContext(CGLPixelFormatObj pixelFormat, CGLContextObj share
     context->pixel_format = pixelFormat ? CGLRetainPixelFormat(pixelFormat) : NULL;
     context->enables = 0;
     atomic_init(&context->dmabuf_import, 0);
+    context->gpu_copy = 0;
+    context->copy_framebuffers[0] = context->copy_framebuffers[1] = 0;
 
     pthread_mutex_lock(&g_activeContextsMutex);
     context->prev_active = NULL;
@@ -1100,6 +1121,11 @@ CGLError CGLLockContext(CGLContextObj context) {
         return kCGLBadContext;
     }
     pthread_mutex_lock(&(context->lock));
+    // Locking the current context precedes drawing with it, so rectangle
+    // textures specified from surfaces the CPU has written since get the
+    // new contents.
+    if (CGLGetCurrentContext() == context)
+        refreshRectangleTextures(context);
     return kCGLNoError;
 }
 
@@ -1172,6 +1198,13 @@ struct surface_binding {
     int imported;
     GLenum internalFormat;
     GLsizei width, height;
+    // For a rectangle texture, which cannot use the surface's memory: a 2D
+    // texture of the same context that does (the shadow), with the DRM
+    // format it was imported as. The rectangle texture holds a copy that
+    // GPU copies keep in step with the shadow. Bindings of one context to
+    // the same plane in the same format and size share a shadow.
+    GLuint shadow;
+    uint32_t shadowFormat;
 };
 
 static struct surface_binding *g_surfaceBindings;
@@ -1206,8 +1239,29 @@ static int findSurfaceBinding(CGLContextObj context, GLuint texture, struct surf
     return found;
 }
 
+// Whether a binding of context other than the one at index skip uses shadow.
+// Called with the bindings locked.
+static int shadowInUse(CGLContextObj context, GLuint shadow, size_t skip) {
+    for (size_t i = 0; i < g_surfaceBindingCount; i++) {
+        if (i != skip && g_surfaceBindings[i].context == context && g_surfaceBindings[i].shadow == shadow)
+            return 1;
+    }
+    return 0;
+}
+
+static int shadowInUseByAny(CGLContextObj context, GLuint shadow) {
+    pthread_mutex_lock(&g_surfaceBindingsMutex);
+    int used = shadowInUse(context, shadow, SIZE_MAX);
+    pthread_mutex_unlock(&g_surfaceBindingsMutex);
+    return used;
+}
+
+// Records binding, replacing the texture's previous one. Called with the
+// binding's context current, so that a shadow no binding uses any more is
+// deleted.
 static int rememberSurfaceBinding(const struct surface_binding *binding) {
     int ok = 1;
+    GLuint unusedShadow = 0;
     pthread_mutex_lock(&g_surfaceBindingsMutex);
     size_t i;
     for (i = 0; i < g_surfaceBindingCount; i++) {
@@ -1226,13 +1280,19 @@ static int rememberSurfaceBinding(const struct surface_binding *binding) {
     }
     if (ok) {
         CFRetain(binding->surface);
-        if (i < g_surfaceBindingCount)
+        if (i < g_surfaceBindingCount) {
+            GLuint shadow = g_surfaceBindings[i].shadow;
+            if (shadow != 0 && shadow != binding->shadow && !shadowInUse(binding->context, shadow, i))
+                unusedShadow = shadow;
             CFRelease(g_surfaceBindings[i].surface);
-        else
+        } else {
             g_surfaceBindingCount++;
+        }
         g_surfaceBindings[i] = *binding;
     }
     pthread_mutex_unlock(&g_surfaceBindingsMutex);
+    if (unusedShadow != 0)
+        glDeleteTextures(1, &unusedShadow);
     return ok;
 }
 
@@ -1346,7 +1406,24 @@ static PFNEGLDESTROYIMAGEKHRPROC p_eglDestroyImageKHR;
 typedef void (*cgl_image_target_texture_proc)(GLenum target, void *image);
 static cgl_image_target_texture_proc p_glEGLImageTargetTexture2DOES;
 
+// GPU copies between textures. Looked up rather than linked, as the host GL
+// library need not export them.
+typedef void (*cgl_copy_image_proc)(GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX,
+                                    GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget,
+                                    GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ,
+                                    GLsizei width, GLsizei height, GLsizei depth);
+typedef void (*cgl_blit_framebuffer_proc)(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
+                                          GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1,
+                                          GLbitfield mask, GLenum filter);
+typedef const GLubyte *(*cgl_get_stringi_proc)(GLenum name, GLuint index);
+static cgl_copy_image_proc p_glCopyImageSubData;
+static cgl_blit_framebuffer_proc p_glBlitFramebuffer;
+static cgl_get_stringi_proc p_glGetStringi;
+
 static void load_image_functions(void) {
+    p_glCopyImageSubData = (cgl_copy_image_proc) p_eglGetProcAddress("glCopyImageSubData");
+    p_glBlitFramebuffer = (cgl_blit_framebuffer_proc) p_eglGetProcAddress("glBlitFramebuffer");
+    p_glGetStringi = (cgl_get_stringi_proc) p_eglGetProcAddress("glGetStringi");
     p_eglCreateImageKHR = (PFNEGLCREATEIMAGEKHRPROC) p_eglGetProcAddress("eglCreateImageKHR");
     p_eglDestroyImageKHR = (PFNEGLDESTROYIMAGEKHRPROC) p_eglGetProcAddress("eglDestroyImageKHR");
     p_glEGLImageTargetTexture2DOES =
@@ -1433,27 +1510,22 @@ static uint32_t drmFormat(GLenum internal_format, GLenum format, GLenum type) {
     }
 }
 
-// Makes the texture bound to target in the current context use the plane's
-// memory. Returns 0, leaving the texture as it was, if the context, the
-// surface, the target or the format do not allow that.
-static int importSurfacePlane(CGLContextObj context, GLenum target, GLenum internal_format,
-                              GLsizei width, GLsizei height, GLenum format, GLenum type,
-                              IOSurfaceRef surface, GLuint plane) {
-    // OES_EGL_image defines the import for 2D textures only.
-    if (target != GL_TEXTURE_2D)
-        return 0;
-    uint32_t fourcc = drmFormat(internal_format, format, type);
-    if (fourcc == 0)
-        return 0;
+// Makes an EGL image of width x height pixels of the plane's memory in DRM
+// format fourcc, or returns EGL_NO_IMAGE_KHR.
+static EGLImageKHR createPlaneImage(CGLContextObj context, uint32_t fourcc, GLsizei width, GLsizei height,
+                                   IOSurfaceRef surface, GLuint plane) {
     enum dmabuf_import support = dmabuf_import(context);
     if (support == DMABUF_IMPORT_UNSUPPORTED)
         return 0;
 
+    if (support == DMABUF_IMPORT_UNSUPPORTED)
+        return EGL_NO_IMAGE_KHR;
+
     _IOSurfaceDMABuf buffer = { .version = _IOSURFACE_DMABUF_VERSION };
     if (!_IOSurfaceGetDMABuf(surface, plane, &buffer))
-        return 0;
+        return EGL_NO_IMAGE_KHR;
     if (buffer.offset > INT32_MAX || buffer.bytesPerRow > INT32_MAX)
-        return 0;
+        return EGL_NO_IMAGE_KHR;
 
     EGLint attributes[] = {
         EGL_WIDTH, width,
@@ -1471,8 +1543,22 @@ static int importSurfacePlane(CGLContextObj context, GLenum target, GLenum inter
     if (support != DMABUF_IMPORT_WITH_MODIFIERS)
         attributes[12] = EGL_NONE;
 
-    EGLImageKHR image = p_eglCreateImageKHR(context->egl_display, EGL_NO_CONTEXT,
-                                            EGL_LINUX_DMA_BUF_EXT, NULL, attributes);
+    return p_eglCreateImageKHR(context->egl_display, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attributes);
+}
+
+// Makes the texture bound to target in the current context use the plane's
+// memory. Returns 0, leaving the texture as it was, if the context, the
+// surface, the target or the format do not allow that.
+static int importSurfacePlane(CGLContextObj context, GLenum target, GLenum internal_format,
+                              GLsizei width, GLsizei height, GLenum format, GLenum type,
+                              IOSurfaceRef surface, GLuint plane) {
+    // OES_EGL_image defines the import for 2D textures only.
+    if (target != GL_TEXTURE_2D)
+        return 0;
+    uint32_t fourcc = drmFormat(internal_format, format, type);
+    if (fourcc == 0)
+        return 0;
+    EGLImageKHR image = createPlaneImage(context, fourcc, width, height, surface, plane);
     if (image == EGL_NO_IMAGE_KHR)
         return 0;
     // The texture has the image's size afterwards only if the driver took
@@ -1494,12 +1580,228 @@ static CGLError enterContext(CGLContextObj context, CGLContextObj *previous) {
     *previous = CGLGetCurrentContext();
     if (*previous == context)
         return kCGLNoError;
-    return CGLSetCurrentContext(context);
+    return setCurrentContext(context);
 }
 
 static void leaveContext(CGLContextObj context, CGLContextObj previous) {
     if (previous != context)
-        CGLSetCurrentContext(previous);
+        setCurrentContext(previous);
+}
+
+// Rectangle textures kept in step with a surface through a shadow.
+
+enum gpu_copy {
+    GPU_COPY_UNKNOWN = 0,
+    GPU_COPY_NONE,
+    // glCopyImageSubData (OpenGL 4.3, ARB_copy_image).
+    GPU_COPY_IMAGE,
+    // glBlitFramebuffer (OpenGL 3.0, EXT_framebuffer_blit).
+    GPU_COPY_BLIT,
+};
+
+// Whether the current context has an extension, asked in the way its
+// version allows, so that no GL error is raised.
+static int has_gl_extension(int major, const char *name) {
+    if (major >= 3) {
+        if (!p_glGetStringi)
+            return 0;
+        GLint count = 0;
+        glGetIntegerv(GL_NUM_EXTENSIONS, &count);
+        for (GLint i = 0; i < count; i++) {
+            const GLubyte *extension = p_glGetStringi(GL_EXTENSIONS, (GLuint) i);
+            if (extension && strcmp((const char *) extension, name) == 0)
+                return 1;
+        }
+        return 0;
+    }
+    const GLubyte *extensions = glGetString(GL_EXTENSIONS);
+    return extensions && has_extension((const char *) extensions, name);
+}
+
+// How the current context copies between textures.
+static enum gpu_copy gpu_copy(CGLContextObj context) {
+    if (context->gpu_copy != GPU_COPY_UNKNOWN)
+        return (enum gpu_copy) context->gpu_copy;
+
+    int major = 0, minor = 0;
+    const GLubyte *version = glGetString(GL_VERSION);
+    if (version)
+        sscanf((const char *) version, "%d.%d", &major, &minor);
+
+    enum gpu_copy method = GPU_COPY_NONE;
+    if (p_glCopyImageSubData && (major > 4 || (major == 4 && minor >= 3) || has_gl_extension(major, "GL_ARB_copy_image")))
+        method = GPU_COPY_IMAGE;
+    else if (p_glBlitFramebuffer && (major >= 3 || has_gl_extension(major, "GL_EXT_framebuffer_blit")))
+        method = GPU_COPY_BLIT;
+    context->gpu_copy = method;
+    return method;
+}
+
+// Copies width x height texels of level 0 from one texture to another in
+// the current context, on the GPU. The textures have formats of the same
+// size. Returns 0 if the context has no way to do it.
+static int gpuCopy(CGLContextObj context, GLuint source, GLenum sourceTarget,
+                   GLuint destination, GLenum destinationTarget, GLsizei width, GLsizei height) {
+    switch (gpu_copy(context)) {
+    case GPU_COPY_IMAGE:
+        p_glCopyImageSubData(source, sourceTarget, 0, 0, 0, 0, destination, destinationTarget, 0, 0, 0, 0,
+                             width, height, 1);
+        return 1;
+    case GPU_COPY_BLIT:
+        break;
+    default:
+        return 0;
+    }
+
+    // A blit goes through framebuffers and is subject to the scissor test
+    // and sRGB conversion, so the application's state is put aside.
+    if (context->copy_framebuffers[0] == 0)
+        glGenFramebuffers(2, context->copy_framebuffers);
+    GLint readFramebuffer = 0, drawFramebuffer = 0;
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFramebuffer);
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFramebuffer);
+    GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
+    GLboolean srgb = glIsEnabled(GL_FRAMEBUFFER_SRGB);
+
+    glDisable(GL_SCISSOR_TEST);
+    if (srgb)
+        glDisable(GL_FRAMEBUFFER_SRGB);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, context->copy_framebuffers[0]);
+    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, sourceTarget, source, 0);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, context->copy_framebuffers[1]);
+    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, destinationTarget, destination, 0);
+    p_glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    // Detached again, so that the framebuffers keep no texture alive.
+    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, sourceTarget, 0, 0);
+    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, destinationTarget, 0, 0);
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint) readFramebuffer);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, (GLuint) drawFramebuffer);
+    if (scissor)
+        glEnable(GL_SCISSOR_TEST);
+    if (srgb)
+        glEnable(GL_FRAMEBUFFER_SRGB);
+    return 1;
+}
+
+// The shadow for a rectangle texture of the plane: a binding's shadow of
+// the same plane, format and size in the context, or a new 2D texture
+// imported from the plane. Returns 0 if there is none.
+static GLuint shadowTexture(CGLContextObj context, IOSurfaceRef surface, GLuint plane, uint32_t fourcc,
+                            GLsizei width, GLsizei height) {
+    GLuint shadow = 0;
+    pthread_mutex_lock(&g_surfaceBindingsMutex);
+    for (size_t i = 0; i < g_surfaceBindingCount && shadow == 0; i++) {
+        const struct surface_binding *binding = &g_surfaceBindings[i];
+        if (binding->context == context && binding->shadow != 0 && binding->surface == surface
+            && binding->plane == plane && binding->shadowFormat == fourcc
+            && binding->width == width && binding->height == height)
+            shadow = binding->shadow;
+    }
+    pthread_mutex_unlock(&g_surfaceBindingsMutex);
+    if (shadow != 0)
+        return shadow;
+
+    EGLImageKHR image = createPlaneImage(context, fourcc, width, height, surface, plane);
+    if (image == EGL_NO_IMAGE_KHR)
+        return 0;
+    GLint previous = 0;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous);
+    glGenTextures(1, &shadow);
+    glBindTexture(GL_TEXTURE_2D, shadow);
+    p_glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, image);
+    p_eglDestroyImageKHR(context->egl_display, image);
+    // Complete with one level, as copies need.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    GLint importedWidth = 0, importedHeight = 0;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &importedWidth);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &importedHeight);
+    glBindTexture(GL_TEXTURE_2D, (GLuint) previous);
+    if (importedWidth != width || importedHeight != height) {
+        glDeleteTextures(1, &shadow);
+        return 0;
+    }
+    return shadow;
+}
+
+// Gives the rectangle texture bound to target the plane's contents through
+// a shadow. Returns the shadow, or 0, leaving the texture to the CPU copy,
+// if the format, the driver or the context do not allow it.
+static GLuint copySurfacePlaneToRectangle(CGLContextObj context, GLenum target, GLint texture,
+                                          GLenum internal_format, GLsizei width, GLsizei height,
+                                          GLenum format, GLenum type, IOSurfaceRef surface,
+                                          GLuint plane, uint32_t *shadowFormat) {
+    if (target != GL_TEXTURE_RECTANGLE || texture == 0)
+        return 0;
+    // Formats without alpha are left out: the copy would carry the
+    // padding byte of the memory into the texture's alpha.
+    uint32_t fourcc = drmFormat(internal_format, format, type);
+    if (fourcc == 0 || fourcc == CGL_DRM_FORMAT_XRGB8888 || fourcc == CGL_DRM_FORMAT_XBGR8888
+        || fourcc == CGL_DRM_FORMAT_BGRX8888 || fourcc == CGL_DRM_FORMAT_RGBX8888
+        || fourcc == CGL_DRM_FORMAT_XBGR16161616F)
+        return 0;
+    if (dmabuf_import(context) == DMABUF_IMPORT_UNSUPPORTED || gpu_copy(context) == GPU_COPY_NONE)
+        return 0;
+    GLuint shadow = shadowTexture(context, surface, plane, fourcc, width, height);
+    if (shadow == 0)
+        return 0;
+
+    GLint allocatedWidth = 0, allocatedHeight = 0, allocatedFormat = 0;
+    glGetTexLevelParameteriv(target, 0, GL_TEXTURE_WIDTH, &allocatedWidth);
+    glGetTexLevelParameteriv(target, 0, GL_TEXTURE_HEIGHT, &allocatedHeight);
+    glGetTexLevelParameteriv(target, 0, GL_TEXTURE_INTERNAL_FORMAT, &allocatedFormat);
+    if (allocatedWidth != width || allocatedHeight != height || allocatedFormat != (GLint) internal_format) {
+        struct pixel_store saved, none = { 0, 0, 0, 0, 4 };
+        savePixelStore(0, &saved);
+        setPixelStore(0, &none);
+        glTexImage2D(target, 0, (GLint) internal_format, width, height, 0, format, type, NULL);
+        setPixelStore(0, &saved);
+    }
+    gpuCopy(context, shadow, GL_TEXTURE_2D, (GLuint) texture, target, width, height);
+    *shadowFormat = fourcc;
+    return shadow;
+}
+
+// Whether the rectangle texture of binding still has the size and format
+// it was specified with, so that a copy from or to its shadow fits. The
+// application may have respecified it since.
+static int rectangleMatchesShadow(const struct surface_binding *binding) {
+    GLint previous = 0, width = 0, height = 0, internalFormat = 0;
+    glGetIntegerv(textureBindingQuery(binding->target), &previous);
+    glBindTexture(binding->target, binding->texture);
+    glGetTexLevelParameteriv(binding->target, 0, GL_TEXTURE_WIDTH, &width);
+    glGetTexLevelParameteriv(binding->target, 0, GL_TEXTURE_HEIGHT, &height);
+    glGetTexLevelParameteriv(binding->target, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
+    glBindTexture(binding->target, (GLuint) previous);
+    return width == binding->width && height == binding->height
+        && internalFormat == (GLint) binding->internalFormat;
+}
+
+static void refreshRectangleTextures(CGLContextObj context) {
+    for (;;) {
+        // One binding at a time, as the copy runs without the lock.
+        struct surface_binding binding = { 0 };
+        uint32_t seed = 0;
+        pthread_mutex_lock(&g_surfaceBindingsMutex);
+        for (size_t i = 0; i < g_surfaceBindingCount; i++) {
+            struct surface_binding *candidate = &g_surfaceBindings[i];
+            if (candidate->context != context || candidate->shadow == 0)
+                continue;
+            seed = IOSurfaceGetSeed(candidate->surface);
+            if (seed != candidate->seed) {
+                candidate->seed = seed;
+                binding = *candidate;
+                break;
+            }
+        }
+        pthread_mutex_unlock(&g_surfaceBindingsMutex);
+        if (binding.context == NULL)
+            return;
+        if (glIsTexture(binding.texture) && rectangleMatchesShadow(&binding))
+            gpuCopy(context, binding.shadow, GL_TEXTURE_2D, binding.texture, binding.target,
+                binding.width, binding.height);
+    }
 }
 
 CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum internal_format,
@@ -1546,7 +1848,13 @@ CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum interna
     if (!imported && texture != 0)
         imported = importSurfacePlane(ctx, target, internal_format, width, height, format, type, ioSurface, plane);
 
-    if (!imported) {
+    uint32_t shadowFormat = 0;
+    GLuint shadow = 0;
+    if (!imported)
+        shadow = copySurfacePlaneToRectangle(ctx, target, texture, internal_format, width, height, format, type,
+                                             ioSurface, plane, &shadowFormat);
+
+    if (!imported && shadow == 0) {
         // A failed import may have emptied the texture.
         glGetTexLevelParameteriv(target, 0, GL_TEXTURE_WIDTH, &allocatedWidth);
         glGetTexLevelParameteriv(target, 0, GL_TEXTURE_HEIGHT, &allocatedHeight);
@@ -1571,9 +1879,13 @@ CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum interna
             .seed = IOSurfaceGetSeed(ioSurface),
             .imported = imported, .internalFormat = internal_format,
             .width = width, .height = height,
+            .shadow = shadow, .shadowFormat = shadowFormat,
         };
-        if (!rememberSurfaceBinding(&binding))
+        if (!rememberSurfaceBinding(&binding)) {
+            if (shadow != 0 && !shadowInUseByAny(ctx, shadow))
+                glDeleteTextures(1, &shadow);
             error = kCGLBadAlloc;
+        }
     }
 
     leaveContext(ctx, previous);
@@ -1582,6 +1894,18 @@ CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum interna
 
 // Set while this thread copies a texture into a surface.
 static __thread int t_readingBack;
+
+// Records that the texture of binding matches its surface at seed.
+static void setBindingSeed(const struct surface_binding *binding, uint32_t seed) {
+    pthread_mutex_lock(&g_surfaceBindingsMutex);
+    for (size_t i = 0; i < g_surfaceBindingCount; i++) {
+        if (g_surfaceBindings[i].context == binding->context
+            && g_surfaceBindings[i].texture == binding->texture
+            && g_surfaceBindings[i].surface == binding->surface)
+            g_surfaceBindings[i].seed = seed;
+    }
+    pthread_mutex_unlock(&g_surfaceBindingsMutex);
+}
 
 // The most contexts whose work finishImportedSurface waits for at once.
 #define MAX_FINISHED_CONTEXTS 16
@@ -1623,8 +1947,9 @@ static int finishImportedSurface(IOSurfaceRef ioSurface) {
 // Brings GL rendering on ioSurface into the surface's memory. Textures that
 // use the memory itself only need their contexts' work to finish. A texture
 // that holds a copy, the one last specified from the surface, is copied into
-// the surface; with onlyIfUnmodified, not if the CPU has written the surface
-// since the texture last matched it, as its contents are newer then.
+// the surface, on the GPU through its shadow if it has one; with
+// onlyIfUnmodified, not if the CPU has written the surface since the texture
+// last matched it, as its contents are newer then.
 static CGLError readBackSurface(IOSurfaceRef ioSurface, int onlyIfUnmodified) {
     int imported = finishImportedSurface(ioSurface);
 
@@ -1661,6 +1986,29 @@ static CGLError readBackSurface(IOSurfaceRef ioSurface, int onlyIfUnmodified) {
         return error;
     }
 
+    if (binding.shadow != 0) {
+        // The shadow is the surface's memory: the copy lands there once the
+        // GPU is done, and a lock marks the surface modified, as the CPU
+        // copy does. A texture respecified since is left alone.
+        if (!glIsTexture(binding.texture) || !rectangleMatchesShadow(&binding)) {
+            leaveContext(binding.context, previous);
+            CGLReleaseContext(binding.context);
+            return kCGLBadValue;
+        }
+        gpuCopy(binding.context, binding.texture, binding.target, binding.shadow, GL_TEXTURE_2D,
+                binding.width, binding.height);
+        glFinish();
+        uint32_t seed = 0;
+        t_readingBack = 1;
+        IOSurfaceLock(ioSurface, 0, NULL);
+        IOSurfaceUnlock(ioSurface, 0, &seed);
+        t_readingBack = 0;
+        setBindingSeed(&binding, seed);
+        leaveContext(binding.context, previous);
+        CGLReleaseContext(binding.context);
+        return kCGLNoError;
+    }
+
     GLenum bindingQuery = textureBindingQuery(binding.target);
     GLint oldTexture = 0, width = 0, height = 0;
     glGetIntegerv(bindingQuery, &oldTexture);
@@ -1684,15 +2032,7 @@ static CGLError readBackSurface(IOSurfaceRef ioSurface, int onlyIfUnmodified) {
         IOSurfaceUnlock(ioSurface, 0, &seed);
         t_readingBack = 0;
         setPixelStore(1, &saved);
-
-        pthread_mutex_lock(&g_surfaceBindingsMutex);
-        for (size_t i = 0; i < g_surfaceBindingCount; i++) {
-            if (g_surfaceBindings[i].context == binding.context
-                && g_surfaceBindings[i].texture == binding.texture
-                && g_surfaceBindings[i].surface == ioSurface)
-                g_surfaceBindings[i].seed = seed;
-        }
-        pthread_mutex_unlock(&g_surfaceBindingsMutex);
+        setBindingSeed(&binding, seed);
     }
 
     glBindTexture(binding.target, (GLuint) oldTexture);

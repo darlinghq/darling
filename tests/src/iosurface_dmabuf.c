@@ -16,7 +16,14 @@
 // the texture only when it uses the surface's memory; that is how the test
 // tells them apart.
 //
-// Covered: BGRA, RGBA and ARGB byte orders, and both planes of a bi-planar
+// GL_TEXTURE_RECTANGLE textures cannot use the memory directly; with
+// DMA-BUFs, GPU copies keep them in step with it instead: from it when the
+// context is made current or locked after a CPU write, into it before a
+// lock. Each case prints its path: dmabuf-2d, dmabuf-rect-gpucopy or
+// cpu-copy.
+//
+// Covered: BGRA, RGBA and ARGB byte orders, as 2D and rectangle textures,
+// and both planes of a bi-planar
 // 4:2:0 surface, read and written by the CPU and by GL, and a BGRA surface
 // sent to a forked child, which reads the parent's GL rendering, reads it
 // through its own GL texture, and renders into it.
@@ -150,12 +157,17 @@ static bool pixelsHavePattern(const uint8_t* pixels, int width, int height, int 
 }
 
 // Reads a texture level 0 with no row padding.
-static void readTexture(GLuint texture, int width, int height, GLenum format, GLenum type, void* pixels)
+static void readTargetTexture(GLenum target, GLuint texture, GLenum format, GLenum type, void* pixels)
 {
-	glBindTexture(GL_TEXTURE_2D, texture);
+	glBindTexture(target, texture);
 	glPixelStorei(GL_PACK_ALIGNMENT, 1);
 	glPixelStorei(GL_PACK_ROW_LENGTH, 0);
-	glGetTexImage(GL_TEXTURE_2D, 0, format, type, pixels);
+	glGetTexImage(target, 0, format, type, pixels);
+}
+
+static void readTexture(GLuint texture, int width, int height, GLenum format, GLenum type, void* pixels)
+{
+	readTargetTexture(GL_TEXTURE_2D, texture, format, type, pixels);
 	(void) width;
 	(void) height;
 }
@@ -178,10 +190,10 @@ static GLuint g_framebuffer;
 // Renders into a texture: clears it to one color, then a rectangle in the
 // middle to another, so that the CPU check sees GL's rendering and not a
 // stale fill.
-static void render(GLuint texture, int width, int height, const float outer[4], const float inner[4])
+static void renderTarget(GLenum target, GLuint texture, int width, int height, const float outer[4], const float inner[4])
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, g_framebuffer);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, texture, 0);
 	CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 	glViewport(0, 0, width, height);
 	glClearColor(outer[0], outer[1], outer[2], outer[3]);
@@ -194,6 +206,11 @@ static void render(GLuint texture, int width, int height, const float outer[4], 
 	// Submitted, not waited for: the lock waits.
 	glFlush();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+static void render(GLuint texture, int width, int height, const float outer[4], const float inner[4])
+{
+	renderTarget(GL_TEXTURE_2D, texture, width, height, outer, inner);
 }
 
 static const float RED[4] = { 1, 0, 0, 1 };
@@ -255,8 +272,10 @@ static uint32_t expectedWord(const struct format* format, const float color[4])
 	return word;
 }
 
-// Returns whether the texture uses the surface's memory.
-static bool checkFormat(CGLContextObj context, const struct format* format)
+// Returns whether the texture follows CPU writes without being specified
+// again: a 2D texture that uses the surface's memory, or a rectangle
+// texture that GPU copies keep in step with it.
+static bool checkFormat(CGLContextObj context, const struct format* format, GLenum target)
 {
 	IOSurfaceRef surface = createSurface(W, H, 4, format->pixelFormat);
 	CHECK(surface != NULL);
@@ -267,36 +286,61 @@ static bool checkFormat(CGLContextObj context, const struct format* format)
 	writePattern(surface, 0, 1);
 	GLuint texture;
 	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	CHECK(CGLTexImageIOSurface2D(context, GL_TEXTURE_2D, GL_RGBA8, W, H, format->format, format->type,
+	glBindTexture(target, texture);
+	CHECK(CGLTexImageIOSurface2D(context, target, GL_RGBA8, W, H, format->format, format->type,
 		surface, 0) == kCGLNoError);
 
 	// GL reads what the CPU wrote.
-	readTexture(texture, W, H, format->format, format->type, pixels);
+	readTargetTexture(target, texture, format->format, format->type, pixels);
 	CHECK(pixelsHavePattern(pixels, W, H, 4, 1));
 
-	// A CPU write after the call reaches the texture only if it uses the
-	// surface's memory; specifying the texture again brings it in anyway.
+	// A CPU write after the call reaches a 2D texture right away only if it
+	// uses the surface's memory, and a rectangle texture once the context
+	// is locked only if GPU copies keep it in step. Specifying the texture
+	// again brings it in anyway.
 	writePattern(surface, 0, 2);
-	readTexture(texture, W, H, format->format, format->type, pixels);
-	bool imported = pixelsHavePattern(pixels, W, H, 4, 2);
-	if (!imported)
+	readTargetTexture(target, texture, format->format, format->type, pixels);
+	bool direct = pixelsHavePattern(pixels, W, H, 4, 2);
+	if (!direct)
 		CHECK(pixelsHavePattern(pixels, W, H, 4, 1));
-	CHECK(CGLTexImageIOSurface2D(context, GL_TEXTURE_2D, GL_RGBA8, W, H, format->format, format->type,
+	CGLLockContext(context);
+	CGLUnlockContext(context);
+	readTargetTexture(target, texture, format->format, format->type, pixels);
+	bool follows = pixelsHavePattern(pixels, W, H, 4, 2);
+	if (target == GL_TEXTURE_RECTANGLE_ARB)
+		CHECK(!direct);
+	else
+		CHECK(follows == direct);
+	const char* path = !follows ? "cpu-copy" : target == GL_TEXTURE_2D ? "dmabuf-2d" : "dmabuf-rect-gpucopy";
+	CHECK(CGLTexImageIOSurface2D(context, target, GL_RGBA8, W, H, format->format, format->type,
 		surface, 0) == kCGLNoError);
-	readTexture(texture, W, H, format->format, format->type, pixels);
+	readTargetTexture(target, texture, format->format, format->type, pixels);
 	CHECK(pixelsHavePattern(pixels, W, H, 4, 2));
 
 	// The CPU reads what GL rendered.
-	render(texture, W, H, RED, GREEN);
+	renderTarget(target, texture, W, H, RED, GREEN);
 	uint32_t corner = surfaceWord(surface, 0, 0, 0), middle = surfaceWord(surface, 0, W / 2, H / 2);
-	printf("%s: GL texture %s, rendered %08x %08x\n", format->name, imported ? "imported" : "copied", corner, middle);
+	printf("%s %s: path %s, rendered %08x %08x\n", format->name,
+		target == GL_TEXTURE_2D ? "2D" : "RECT", path, corner, middle);
 	CHECK(corner == expectedWord(format, RED));
 	CHECK(middle == expectedWord(format, GREEN));
 
+	// Kept in step both ways: a CPU write, then rendering on top of it.
+	if (follows)
+	{
+		writePattern(surface, 0, 3);
+		CGLLockContext(context);
+		CGLUnlockContext(context);
+		readTargetTexture(target, texture, format->format, format->type, pixels);
+		CHECK(pixelsHavePattern(pixels, W, H, 4, 3));
+		renderTarget(target, texture, W, H, BLUE, WHITE);
+		CHECK(surfaceWord(surface, 0, 0, 0) == expectedWord(format, BLUE));
+		CHECK(surfaceWord(surface, 0, W / 2, H / 2) == expectedWord(format, WHITE));
+	}
+
 	glDeleteTextures(1, &texture);
 	CFRelease(surface);
-	return imported;
+	return follows;
 }
 
 static void checkBiPlanar(CGLContextObj context)
@@ -499,9 +543,10 @@ int main(void)
 	bool imported = false;
 	for (size_t i = 0; i < sizeof(FORMATS) / sizeof(FORMATS[0]); i++)
 	{
-		bool formatImported = checkFormat(context, &FORMATS[i]);
+		bool formatImported = checkFormat(context, &FORMATS[i], GL_TEXTURE_2D);
 		if (i == 0)
 			imported = formatImported;
+		checkFormat(context, &FORMATS[i], GL_TEXTURE_RECTANGLE_ARB);
 	}
 	checkBiPlanar(context);
 

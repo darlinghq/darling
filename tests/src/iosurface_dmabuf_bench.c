@@ -5,10 +5,13 @@
 // specified from it with CGLTexImageIOSurface2D and renders into that
 // texture, and the CPU reads the result under a read-only lock. With
 // DMA-BUF export and import the texture uses the surface's memory, so there
-// is no upload and no copy back; otherwise both happen every frame.
+// is no upload and no copy back; otherwise both happen every frame. A
+// rectangle texture cannot use the memory, so with DMA-BUFs the upload and
+// the copy back are GPU copies between it and a 2D texture that does.
 //
-// Usage: iosurface_dmabuf_bench [width height [frames]]
-// Prints the time per frame and per step, and which way the texture went.
+// Usage: iosurface_dmabuf_bench [width height [frames [2d|rect]]]
+// Prints the time per frame and per step, and the path the texture took:
+// dmabuf-2d, dmabuf-rect-gpucopy or cpu-copy.
 // Every frame's result is checked, so a fast but wrong path fails.
 //
 // Needs an offscreen OpenGL context (a host EGL driver).
@@ -64,9 +67,12 @@ int main(int argc, char** argv)
 	int width = argc > 2 ? atoi(argv[1]) : 1920;
 	int height = argc > 2 ? atoi(argv[2]) : 1080;
 	int frames = argc > 3 ? atoi(argv[3]) : 100;
-	if (width <= 0 || height <= 0 || frames <= 0)
+	const char* targetName = argc > 4 ? argv[4] : "2d";
+	GLenum target = strcmp(targetName, "rect") == 0 ? GL_TEXTURE_RECTANGLE_ARB
+		: strcmp(targetName, "2d") == 0 ? GL_TEXTURE_2D : 0;
+	if (width <= 0 || height <= 0 || frames <= 0 || target == 0)
 	{
-		printf("usage: %s [width height [frames]]\n", argv[0]);
+		printf("usage: %s [width height [frames [2d|rect]]]\n", argv[0]);
 		finish(2);
 	}
 
@@ -99,7 +105,7 @@ int main(int argc, char** argv)
 
 	GLuint texture, framebuffer;
 	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
+	glBindTexture(target, texture);
 	glGenFramebuffers(1, &framebuffer);
 	size_t bytesPerRow = IOSurfaceGetBytesPerRow(surface);
 
@@ -117,28 +123,31 @@ int main(int argc, char** argv)
 		uint64_t written = mach_absolute_time();
 
 		// GL takes the new contents.
-		CGLTexImageIOSurface2D(context, GL_TEXTURE_2D, GL_RGBA8, width, height, GL_BGRA,
+		CGLTexImageIOSurface2D(context, target, GL_RGBA8, width, height, GL_BGRA,
 			GL_UNSIGNED_INT_8_8_8_8_REV, surface, 0);
 		if (imported < 0)
 		{
 			// The first frame finds out whether a later CPU write shows in
-			// the texture, which only one that uses the surface's memory
-			// does.
+			// the texture once the context is locked, which it does only
+			// for one that uses the surface's memory or is kept in step
+			// with it by GPU copies.
 			IOSurfaceLock(surface, 0, NULL);
 			base[0] = (uint8_t) ~frame;
 			IOSurfaceUnlock(surface, 0, NULL);
+			CGLLockContext(context);
+			CGLUnlockContext(context);
 			uint8_t texel[4];
 			glPixelStorei(GL_PACK_ALIGNMENT, 1);
 			glPixelStorei(GL_PACK_ROW_LENGTH, 0);
 			GLint previous = 0;
 			glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &previous);
 			glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, texture, 0);
 			glReadPixels(0, 0, 1, 1, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, texel);
 			glBindFramebuffer(GL_FRAMEBUFFER, (GLuint) previous);
 			imported = texel[0] == (uint8_t) ~frame;
-			printf("GL texture: %s\n", imported ? "imported (DMA-BUF)" : "copied");
-			CGLTexImageIOSurface2D(context, GL_TEXTURE_2D, GL_RGBA8, width, height, GL_BGRA,
+			printf("path: %s\n", !imported ? "cpu-copy" : target == GL_TEXTURE_2D ? "dmabuf-2d" : "dmabuf-rect-gpucopy");
+			CGLTexImageIOSurface2D(context, target, GL_RGBA8, width, height, GL_BGRA,
 				GL_UNSIGNED_INT_8_8_8_8_REV, surface, 0);
 			written = mach_absolute_time();
 		}
@@ -147,7 +156,7 @@ int main(int argc, char** argv)
 		// GL renders into it: a color that depends on the CPU's fill shows
 		// that the texture had it.
 		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, texture, 0);
 		glViewport(0, 0, width, height);
 		uint8_t sample[4];
 		glReadPixels(0, 0, 1, 1, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, sample);
@@ -174,11 +183,10 @@ int main(int argc, char** argv)
 	}
 
 	double total = microseconds(write + upload + render + read) / frames;
-	printf("%dx%d BGRA, %d frames: %.1f us/frame (CPU write %.1f, CGLTexImageIOSurface2D %.1f, "
-		"GL read+render %.1f, lock and CPU read %.1f)\n", width, height, frames, total,
+	printf("%dx%d BGRA %s, %d frames: %.1f us/frame (CPU write %.1f, CGLTexImageIOSurface2D %.1f, "
+		"GL read+render %.1f, lock and CPU read %.1f)\n", width, height, targetName, frames, total,
 		microseconds(write) / frames, microseconds(upload) / frames, microseconds(render) / frames,
 		microseconds(read) / frames);
-	printf("backend: %s\n", imported ? "dmabuf" : "copy");
 
 	glDeleteFramebuffers(1, &framebuffer);
 	glDeleteTextures(1, &texture);
