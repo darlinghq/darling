@@ -9601,6 +9601,9 @@ jobmgr_t
 jobmgr_find_by_name(jobmgr_t jm, const char *where)
 {
 	jobmgr_t jmi, jmi2;
+#ifdef DARLING
+	bool for_launchservices = where == NULL;
+#endif
 
 	// NULL is only passed for our custom API for LaunchServices. If that is the case, we do magic.
 	if (where == NULL) {
@@ -9636,6 +9639,17 @@ jobmgr_find_by_name(jobmgr_t jm, const char *where)
 			}
 		}
 	}
+
+#ifdef DARLING
+	/* Darling has no loginwindow, so no Aqua (or LoginWindow) session is ever
+	 * created: the user's processes all run in the system session, which
+	 * stands in for the login session. Applications that LaunchServices
+	 * spawns through spawn_via_launchd() go there instead of failing.
+	 */
+	if (for_launchservices) {
+		jmi = root_jobmgr;
+	}
+#endif
 
 jm_found:
 	return jmi;
