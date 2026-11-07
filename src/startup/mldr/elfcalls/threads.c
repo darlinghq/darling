@@ -67,6 +67,7 @@ struct arg_struct
 	uintptr_t stack_bottom;
 	uintptr_t stack_addr;
 	bool is_workqueue;
+	sigset_t sigmask; // the mask the new thread takes once it can handle signals
 };
 
 static void* darling_thread_entry(void* p);
@@ -193,7 +194,16 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
 	args.pth = pth;
+
+	// A signal sent to the process can be delivered to any thread that does not
+	// block it, but a thread can only handle signals once it has checked in with
+	// darlingserver. Start the thread with all signals blocked, so that until then
+	// they go to other threads (or stay pending); it takes our mask afterwards.
+	sigset_t all;
+	sigfillset(&all);
+	pthread_sigmask(SIG_SETMASK, &all, &args.sigmask);
 	pthread_create(&nativeLibcThread, &attr, darling_thread_entry, &args);
+	pthread_sigmask(SIG_SETMASK, &args.sigmask, NULL);
 	pthread_attr_destroy(&attr);
 
 	while (args.pth != NULL)
@@ -243,6 +253,8 @@ static void* darling_thread_entry(void* p)
 	int thread_self_port = args.callbacks->thread_self_trap();
 	dthread->tsd[DTHREAD_TSD_SLOT_MACH_THREAD_SELF] = (void*)(intptr_t)thread_self_port;
 	args.port = thread_self_port;
+
+	pthread_sigmask(SIG_SETMASK, &args.sigmask, NULL);
 
 	in_args->pth = NULL;
 
@@ -351,6 +363,12 @@ int __darling_thread_terminate(void* stackaddr,
 {
 	int checkout_result = 0;
 
+	// Once checked out, this thread cannot handle signals any more. Block them
+	// all, so that signals sent to the process go to the remaining threads.
+	sigset_t all;
+	sigfillset(&all);
+	pthread_sigmask(SIG_SETMASK, &all, NULL);
+
 	if (t_server_socket != -1) {
 		checkout_result = dserver_rpc_explicit_checkout(t_server_socket, -1, false);
 	} else {
@@ -378,12 +396,10 @@ int __darling_thread_terminate(void* stackaddr,
 	{
 		// dispatch_main() calls pthread_exit(NULL) on the main thread,
 		// which turns our process into a zombie on Linux.
-		// Let's just hang around forever.
-		sigset_t mask;
-		memset(&mask, 0, sizeof(mask));
-
+		// Let's just hang around forever, with all signals still blocked:
+		// they are for the threads that remain.
 		while (1)
-			sigsuspend(&mask);
+			sigsuspend(&all);
 	}
 
 	t_freeaddr = stackaddr;
