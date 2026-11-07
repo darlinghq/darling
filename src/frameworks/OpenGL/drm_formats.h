@@ -24,8 +24,7 @@
 // Linux DRM pixel formats (<drm_fourcc.h>) of the DMA-BUFs that
 // CGLTexImageIOSurface2D imports. The kernel header cannot be included in a
 // Darwin build, so the codes are spelled out the way the header defines
-// them; tests/iosurface/dmabuf_host.c checks them against it. The comment
-// gives each format's bytes in memory, first to last.
+// them. The comment gives each format's bytes in memory, first to last.
 #define CGL_DRM_FOURCC(a, b, c, d) \
 	((uint32_t) (a) | ((uint32_t) (b) << 8) | ((uint32_t) (c) << 16) | ((uint32_t) (d) << 24))
 

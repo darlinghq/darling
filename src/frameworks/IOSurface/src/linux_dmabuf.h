@@ -24,9 +24,7 @@
 // The parts of the Linux user-space ABI that IOSurface uses to export
 // surface memory as a DMA-BUF. Darling code is built against the Darwin SDK,
 // where the Linux headers cannot be included, so the values are spelled out
-// here; they are stable kernel ABI. The host test
-// tests/iosurface/dmabuf_host.c checks every one of them against the
-// kernel's own headers.
+// here; they are stable kernel ABI.
 
 // <linux/memfd.h>
 #define LINUX_MFD_CLOEXEC 0x0001U
