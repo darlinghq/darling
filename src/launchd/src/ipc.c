@@ -410,8 +410,8 @@ ipc_readmsg2(launch_data_t data, const char *cmd, void *context)
 				resp = launch_data_new_errno(errno);
 			} else if (!strcmp(cmd, LAUNCH_KEY_STOPJOB)) {
 				if ((j = job_find(NULL, launch_data_get_string(data))) != NULL) {
-					errno = 0;
 					job_stop(j);
+					errno = 0;
 				}
 				resp = launch_data_new_errno(errno);
 			} else if (!strcmp(cmd, LAUNCH_KEY_REMOVEJOB)) {
