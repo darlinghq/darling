@@ -92,6 +92,7 @@ int main(int argc, char ** argv)
 		g_fixPermissions = true;
 	}
 	checkPrefixOwner();
+	ensureSystemAccounts();
 
 	int c;
 	while (1)
@@ -1095,6 +1096,126 @@ void setupPrefix()
 	);
 	fclose(file);
 	
+	seteuid(0);
+	setegid(0);
+}
+
+// macOS ships these service accounts in its local user database. Launchd jobs
+// we install name them in their UserName key, and launchd refuses to start a
+// job whose user it cannot look up.
+static const struct
+{
+	const char* name;
+	unsigned int id;
+	const char* gecos;
+} systemAccounts[] = {
+	{ "_trustd", 282, "trustd" },
+};
+
+enum accountFile
+{
+	ACCOUNT_FILE_PASSWD,
+	ACCOUNT_FILE_MASTER_PASSWD,
+	ACCOUNT_FILE_GROUP,
+};
+
+static void addMissingAccounts(enum accountFile type, const char* name)
+{
+	char path[4096];
+	struct stat st;
+	FILE* file;
+	char* line = NULL;
+	size_t lineCapacity = 0;
+	bool haveName[sizeof(systemAccounts) / sizeof(systemAccounts[0])] = { false };
+	bool haveId[sizeof(systemAccounts) / sizeof(systemAccounts[0])] = { false };
+	bool endsWithNewline = true;
+
+	snprintf(path, sizeof(path), "%s/private/etc/%s", prefix, name);
+
+	// Older prefixes may link these files to the host's own database, which
+	// must not be modified.
+	if (lstat(path, &st) != 0 || !S_ISREG(st.st_mode))
+		return;
+
+	file = fopen(path, "r+");
+	if (!file)
+		return;
+
+	while (getline(&line, &lineCapacity, file) != -1)
+	{
+		size_t len = strlen(line);
+		char* fields[3] = { line, NULL, NULL };
+		char* p = line;
+
+		endsWithNewline = len > 0 && line[len - 1] == '\n';
+
+		if (line[0] == '#')
+			continue;
+
+		for (int i = 1; i < 3 && p; i++)
+		{
+			p = strchr(p, ':');
+			if (p)
+			{
+				*p++ = '\0';
+				fields[i] = p;
+			}
+		}
+
+		for (size_t i = 0; i < sizeof(systemAccounts) / sizeof(systemAccounts[0]); i++)
+		{
+			if (strcmp(fields[0], systemAccounts[i].name) == 0)
+				haveName[i] = true;
+			else if (fields[2] && strtoul(fields[2], NULL, 10) == systemAccounts[i].id)
+				haveId[i] = true;
+		}
+	}
+	free(line);
+
+	fseek(file, 0, SEEK_END);
+	if (!endsWithNewline)
+		fputc('\n', file);
+
+	for (size_t i = 0; i < sizeof(systemAccounts) / sizeof(systemAccounts[0]); i++)
+	{
+		if (haveName[i])
+			continue;
+		if (haveId[i])
+		{
+			fprintf(stderr, "Cannot add account %s to the prefix's /etc/%s: ID %u is already in use\n",
+				systemAccounts[i].name, name, systemAccounts[i].id);
+			continue;
+		}
+
+		switch (type)
+		{
+			case ACCOUNT_FILE_PASSWD:
+				fprintf(file, "%s:*:%u:%u:%s:/var/empty:/usr/bin/false\n",
+					systemAccounts[i].name, systemAccounts[i].id, systemAccounts[i].id, systemAccounts[i].gecos);
+				break;
+			case ACCOUNT_FILE_MASTER_PASSWD:
+				fprintf(file, "%s:*:%u:%u::0:0:%s:/var/empty:/usr/bin/false\n",
+					systemAccounts[i].name, systemAccounts[i].id, systemAccounts[i].id, systemAccounts[i].gecos);
+				break;
+			case ACCOUNT_FILE_GROUP:
+				fprintf(file, "%s:*:%u:\n", systemAccounts[i].name, systemAccounts[i].id);
+				break;
+		}
+	}
+
+	fclose(file);
+}
+
+void ensureSystemAccounts()
+{
+	// The account files belong to the user who owns the prefix.
+	setegid(g_originalGid);
+	seteuid(g_originalUid);
+
+	addMissingAccounts(ACCOUNT_FILE_PASSWD, "passwd");
+	addMissingAccounts(ACCOUNT_FILE_MASTER_PASSWD, "master.passwd");
+	addMissingAccounts(ACCOUNT_FILE_GROUP, "group");
+
 	seteuid(0);
 	setegid(0);
 }
