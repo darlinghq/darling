@@ -12,6 +12,10 @@
 // not exist), and that code must not be EDOM, which launchd uses for an
 // unknown opcode. If the control gets no reply either, pipe routines to
 // launchd do not work at all, which is a libxpc problem, not this one.
+//
+// The process routines have the same numbering: XPC_PROCESS_JETSAM_SET_BAND
+// (xpc_jetsam_t) is 0. It is sent without a label, so launchd must answer
+// with an error under XPC_PROCESS_ROUTINE_KEY_ERROR (not EDOM).
 #include <xpc/xpc.h>
 #include <xpc/private.h>
 #include <xpc/launchd_defs.h>
@@ -41,17 +45,9 @@ static void on_alarm(int sig)
 	finish(1);
 }
 
-static void routine(xpc_pipe_t pipe, uint64_t op, const char* what, bool with_token)
+static void send_routine(xpc_pipe_t pipe, xpc_object_t msg, const char* what, const char* error_key)
 {
 	g_step = what;
-
-	xpc_object_t msg = xpc_dictionary_create(NULL, NULL, 0);
-	xpc_dictionary_set_uint64(msg, XPC_EVENT_ROUTINE_KEY_OP, op);
-	xpc_dictionary_set_string(msg, XPC_EVENT_ROUTINE_KEY_STREAM, STREAM);
-	if (with_token)
-		xpc_dictionary_set_uint64(msg, XPC_EVENT_ROUTINE_KEY_TOKEN, 1);
-	else
-		xpc_dictionary_set_string(msg, XPC_EVENT_ROUTINE_KEY_NAME, "none");
 
 	xpc_object_t reply = NULL;
 	int err = xpc_pipe_routine(pipe, msg, &reply);
@@ -65,10 +61,10 @@ static void routine(xpc_pipe_t pipe, uint64_t op, const char* what, bool with_to
 		return;
 	}
 
-	xpc_object_t xerr = xpc_dictionary_get_value(reply, XPC_EVENT_ROUTINE_KEY_ERROR);
+	xpc_object_t xerr = xpc_dictionary_get_value(reply, error_key);
 	if (xerr == NULL || xpc_get_type(xerr) != XPC_TYPE_UINT64)
 	{
-		printf("FAIL: %s: the reply has no error code for a stream without events\n", what);
+		printf("FAIL: %s: the reply has no error code\n", what);
 		g_failures++;
 	}
 	else
@@ -85,6 +81,25 @@ static void routine(xpc_pipe_t pipe, uint64_t op, const char* what, bool with_to
 	xpc_release(reply);
 }
 
+static void event_routine(xpc_pipe_t pipe, uint64_t op, const char* what, bool with_token)
+{
+	xpc_object_t msg = xpc_dictionary_create(NULL, NULL, 0);
+	xpc_dictionary_set_uint64(msg, XPC_EVENT_ROUTINE_KEY_OP, op);
+	xpc_dictionary_set_string(msg, XPC_EVENT_ROUTINE_KEY_STREAM, STREAM);
+	if (with_token)
+		xpc_dictionary_set_uint64(msg, XPC_EVENT_ROUTINE_KEY_TOKEN, 1);
+	else
+		xpc_dictionary_set_string(msg, XPC_EVENT_ROUTINE_KEY_NAME, "none");
+	send_routine(pipe, msg, what, XPC_EVENT_ROUTINE_KEY_ERROR);
+}
+
+static void process_routine(xpc_pipe_t pipe, uint64_t op, const char* what)
+{
+	xpc_object_t msg = xpc_dictionary_create(NULL, NULL, 0);
+	xpc_dictionary_set_uint64(msg, XPC_PROCESS_ROUTINE_KEY_OP, op);
+	send_routine(pipe, msg, what, XPC_PROCESS_ROUTINE_KEY_ERROR);
+}
+
 int main(void)
 {
 	signal(SIGALRM, on_alarm);
@@ -97,13 +112,14 @@ int main(void)
 		finish(1);
 	}
 
-	routine(pipe, XPC_EVENT_COPY, "XPC_EVENT_COPY", false);
+	event_routine(pipe, XPC_EVENT_COPY, "XPC_EVENT_COPY", false);
 	if (g_failures)
 	{
 		printf("FAIL: XPC pipe routines to launchd do not work (control)\n");
 		finish(1);
 	}
-	routine(pipe, XPC_EVENT_GET_NAME, "XPC_EVENT_GET_NAME", true);
+	event_routine(pipe, XPC_EVENT_GET_NAME, "XPC_EVENT_GET_NAME", true);
+	process_routine(pipe, XPC_PROCESS_JETSAM_SET_BAND, "XPC_PROCESS_JETSAM_SET_BAND");
 
 	xpc_release(pipe);
 
