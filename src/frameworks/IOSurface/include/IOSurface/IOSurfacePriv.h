@@ -20,6 +20,7 @@
 #ifndef IOSURFACE_PRIV_H
 #define IOSURFACE_PRIV_H
 #include <IOSurface/IOSurfaceTypes.h>
+#include <IOSurface/IOSurfaceRef.h>
 #include <stdint.h>
 
 // Private API definition between IOSurface.framework and iokitd
@@ -84,5 +85,34 @@ struct _IOSurfaceLockUnlock
 	IOSurfaceID surfaceID;
 	uint32_t options;
 };
+
+// Private interface between IOSurface.framework and a GPU API that keeps
+// its own copy of surface contents (OpenGL.framework, whose textures are
+// copies of the surface rather than views of its memory).
+//
+// writeback copies GPU contents that the CPU has not seen yet into the
+// surface. IOSurface calls it before a lock is granted and before a Mach
+// port for the surface is created, so that CPU access and other processes
+// see completed GPU work. It must return without doing anything for a
+// surface it has no pending contents for. Locks of the same surface made
+// on the calling thread from inside writeback do not call it again.
+//
+// forget is called while a surface is being freed. The surface must not be
+// retained or locked from it.
+//
+// Either function may be NULL. Only the first registration in a process
+// takes effect; later ones, and ones with an unknown version, are ignored.
+#define _IOSURFACE_GPU_CALLBACKS_VERSION 1
+
+typedef struct
+{
+	uint32_t version;
+	void (*writeback)(IOSurfaceRef surface);
+	void (*forget)(IOSurfaceRef surface);
+} _IOSurfaceGPUCallbacks;
+
+__BEGIN_DECLS
+void _IOSurfaceSetGPUCallbacks(const _IOSurfaceGPUCallbacks *callbacks);
+__END_DECLS
 
 #endif
