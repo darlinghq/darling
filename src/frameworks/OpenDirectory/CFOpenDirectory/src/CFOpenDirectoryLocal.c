@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2020 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,475 +18,885 @@
 */
 
 /*
- Local-node implementation of the OpenDirectory entry points that
- pam_opendirectory imports. The generated stubs in CFOpenDirectory.c return
- NULL/false for all of them, so ODNodeCreateWithNodeType fails, pam returns
- PAM_SERVICE_ERR, and login can never succeed whatever the password hash says.
+ The local directory node.
 
- ODRecordRef/ODNodeRef/ODSessionRef are opaque (struct __ODRecord and friends),
- so they are backed here by the structures below. The node reads the same local
- passwd database a login would consult, and verification delegates to the
- platform crypt(3) with the hash's own salt. Nothing here can succeed without a
- real password match: a missing record, a missing hash, or a crypt failure all
- return false.
+ Sessions, nodes, records and queries are CF types, so they can be retained,
+ released and wrapped by the OpenDirectory.framework classes. There is one
+ node, "/Local/Default", which serves the user and group accounts that
+ Libinfo knows about (getpwnam_r(), getgrnam_r() and their enumerators); its
+ UUIDs come from the membership API. "/Search" is the search node and, with
+ nothing else configured, finds exactly what the local node holds.
+
+ Records are snapshots of the account entry taken when the record is
+ copied. Password hashes are never stored in a record or returned as an
+ attribute; ODRecordVerifyPassword() asks Libinfo again.
 */
 
 #include "../include/generated-stubs.h"
 #include <CFOpenDirectory/CFOpenDirectoryPriv.h>
-#include <CoreFoundation/CoreFoundation.h>
 #include <CFOpenDirectory/CFOpenDirectoryConstants.h>
+#include <CoreFoundation/CoreFoundation.h>
+#include <CoreFoundation/CFRuntime.h>
 #include <errno.h>
-#include <stdio.h>
+#include <grp.h>
+#include <membership.h>
+#include <pthread.h>
+#include <pwd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <uuid/uuid.h>
 
-// The SDK shipped with this tree has no <crypt.h>, so the compiler would fall
-// through to the host's glibc one and fail on its own prototypes. libSystem
-// exports crypt(3) (verified: `T _crypt` in libsystem_c.dylib), so declare the
-// one function needed here rather than pulling in a foreign header.
-extern char *crypt(const char *key, const char *salt);
+const CFStringRef kODErrorDomainFramework = CFSTR("com.apple.OpenDirectory");
 
-// Set by the constructor in CFOpenDirectory.c, shared so STUB_VERBOSE traces both.
-extern int verbose;
+#define LOCAL_NODE_NAME CFSTR("/Local/Default")
+#define SEARCH_NODE_NAME CFSTR("/Search")
 
-// The passwd databases a local node reads, in priority order. The first that
-// parses wins, matching how a local node resolves its backing store.
-static const char * const passwdPaths[] = {
-    "/private/etc/master.passwd",
-    "/private/etc/passwd",
+// Bit that turns a match type into its case-insensitive variant
+// (kODMatchInsensitiveEqualTo is kODMatchEqualTo | 0x100).
+#define MATCH_INSENSITIVE_BIT 0x0100
+
+struct __ODSession
+{
+	CFRuntimeBase base;
 };
 
-// A record is one passwd entry. The AuthenticationAuthority value keeps the
-// full "scheme$salt$hash" string, because crypt(3) needs the scheme and salt
-// and a verifier has nothing else to go on.
-struct __ODRecord {
-    CFStringRef name;          // primary name, e.g. "cristi"
-    CFStringRef authAuthority; // full hash string from the passwd file
-    CFStringRef uniqueId;      // uid
-    CFStringRef homeDirectory; // gecos field, which is the home path here
-    CFStringRef nfsHomeDirectory;
-    CFStringRef userShell;     // login shell
+struct __ODNode
+{
+	CFRuntimeBase base;
+	CFStringRef name;
 };
 
-struct __ODNode {
-    CFStringRef name;
+struct __ODRecord
+{
+	CFRuntimeBase base;
+	CFStringRef recordType;
+	CFStringRef recordName;
+	// attribute name -> CFArray of CFString values
+	CFDictionaryRef attributes;
 };
 
-struct __ODSession {
-    int placeholder;
+struct __ODQuery
+{
+	CFRuntimeBase base;
+	ODNodeRef node;
+	CFArrayRef recordTypes;
+	CFStringRef attribute;
+	ODMatchType matchType;
+	CFArrayRef values;
+	CFIndex maxResults;
 };
 
-static CFStringRef copyCFString(const char *s)
+#pragma mark - CF classes
+
+static void nodeFinalize(CFTypeRef cf)
 {
-    return s ? CFStringCreateWithCString(kCFAllocatorDefault, s,
-                                         kCFStringEncodingUTF8) : NULL;
+	struct __ODNode* node = (struct __ODNode*) cf;
+	if (node->name)
+		CFRelease(node->name);
 }
 
-static char *cStringOf(CFStringRef s)
+static void recordFinalize(CFTypeRef cf)
 {
-    if (s == NULL)
-        return NULL;
-    const char *utf8 = CFStringGetCStringPtr(s, kCFStringEncodingUTF8);
-    if (utf8 != NULL)
-        return strdup(utf8);
-    CFIndex length = CFStringGetLength(s);
-    CFIndex max = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
-    char *buffer = malloc((size_t)max);
-    if (buffer == NULL)
-        return NULL;
-    if (!CFStringGetCString(s, buffer, max, kCFStringEncodingUTF8)) {
-        free(buffer);
-        return NULL;
-    }
-    return buffer;
+	struct __ODRecord* record = (struct __ODRecord*) cf;
+	if (record->recordType)
+		CFRelease(record->recordType);
+	if (record->recordName)
+		CFRelease(record->recordName);
+	if (record->attributes)
+		CFRelease(record->attributes);
 }
 
-// Reports a POSIX-domain error to the caller. The reason is only written to the
-// trace, because CFErrorCreate here takes a userInfo dictionary and building a
-// throwaway one per failure would only to be discarded unread.
-static void setODError(CFErrorRef *error, const char *reason)
+static void queryFinalize(CFTypeRef cf)
 {
-    if (verbose)
-        fprintf(stderr, "ODLocal: %s\n", reason);
-    if (error != NULL)
-        *error = CFErrorCreate(kCFAllocatorDefault, kCFErrorDomainPOSIX, EINVAL, NULL);
+	struct __ODQuery* query = (struct __ODQuery*) cf;
+	if (query->node)
+		CFRelease(query->node);
+	if (query->recordTypes)
+		CFRelease(query->recordTypes);
+	if (query->attribute)
+		CFRelease(query->attribute);
+	if (query->values)
+		CFRelease(query->values);
 }
 
-// Splits one colon-delimited passwd line into fields, returning how many were
-// found. A comment or malformed line yields 0.
-static int splitPasswdLine(char *line, char **fields, int maxFields)
+static const CFRuntimeClass sessionClass = { 0, "ODSession", NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+static const CFRuntimeClass nodeClass = { 0, "ODNode", NULL, NULL, nodeFinalize, NULL, NULL, NULL, NULL };
+static const CFRuntimeClass recordClass = { 0, "ODRecord", NULL, NULL, recordFinalize, NULL, NULL, NULL, NULL };
+static const CFRuntimeClass queryClass = { 0, "ODQuery", NULL, NULL, queryFinalize, NULL, NULL, NULL, NULL };
+
+static CFTypeID sessionTypeID, nodeTypeID, recordTypeID, queryTypeID;
+static pthread_once_t classesOnce = PTHREAD_ONCE_INIT;
+
+static void registerClasses(void)
 {
-    int index = 0;
-    char *cursor = line;
-
-    while (index < maxFields) {
-        fields[index++] = cursor;
-        char *separator = strchr(cursor, ':');
-        if (separator == NULL)
-            break;
-        *separator = '\0';
-        cursor = separator + 1;
-    }
-
-    // A real entry has at least name and password, and the name is never empty.
-    if (index < 2 || fields[0][0] == '\0')
-        return 0;
-
-    return index;
+	sessionTypeID = _CFRuntimeRegisterClass(&sessionClass);
+	nodeTypeID = _CFRuntimeRegisterClass(&nodeClass);
+	recordTypeID = _CFRuntimeRegisterClass(&recordClass);
+	queryTypeID = _CFRuntimeRegisterClass(&queryClass);
 }
 
-// Reads the AuthenticationAuthority for recordName, or NULL when there is no
-// such record or it carries no hash.
-//
-// Two layouts are in play and both are accepted, because a record can be written
-// by either tool: BSD master.passwd carries the hash in an eleventh field with
-// field 1 left as "*", while the passwd file shipped in a Darling prefix has ten
-// fields with the hash directly in field 1.
-// The remaining passwd fields for the record copyAuthAuthorityForRecord matched.
-// Set in the same pass that produces the hash, so the fields of a record always
-// come from one entry rather than from whichever line happened to match last.
-static CFStringRef g_uniqueId;
-static CFStringRef g_homeDirectory;
-static CFStringRef g_nfsHomeDirectory;
-static CFStringRef g_userShell;
-
-static CFStringRef copyAuthAuthorityForRecord(const char *recordName)
+static void* createInstance(CFAllocatorRef allocator, const CFTypeID* typeID, size_t size)
 {
-    for (size_t i = 0; i < sizeof(passwdPaths) / sizeof(passwdPaths[0]); i++) {
-        FILE *f = fopen(passwdPaths[i], "r");
-        if (f == NULL)
-            continue;
-
-        char line[4096];
-        CFStringRef result = NULL;
-        CFStringRef uniqueId = NULL, home = NULL, nfsHome = NULL, shell = NULL;
-
-        while (fgets(line, sizeof(line), f) != NULL) {
-            char *newline = strchr(line, '\n');
-            if (newline != NULL)
-                *newline = '\0';
-            if (line[0] == '#' || line[0] == '\0')
-                continue;
-
-            char *fields[11];
-            int count = splitPasswdLine(line, fields, 11);
-            if (count == 0)
-                continue;
-
-            if (strcmp(fields[0], recordName) != 0)
-                continue;
-
-            // Fields 2 and 3 are uid and gid; 7 is the gecos comment, 8 the home
-            // directory and 9 the shell. Only collected once the name matches.
-            if (count > 3)
-                uniqueId = copyCFString(fields[2]);
-            if (count > 7)
-                home = copyCFString(fields[7]);
-            if (count > 8)
-                nfsHome = copyCFString(fields[8]);
-            if (count > 9)
-                shell = copyCFString(fields[9]);
-
-            // Prefer the dedicated hash field when the line is long enough to
-            // have one, otherwise fall back to the password field itself.
-            const char *hash = NULL;
-            if (count >= 11)
-                hash = fields[10];
-            else
-                hash = fields[1];
-
-            if (hash == NULL || hash[0] == '\0' || hash[0] == '*' ||
-                hash[0] == '!')
-                break;   // account exists but cannot authenticate
-
-            result = copyCFString(hash);
-            break;
-        }
-
-        fclose(f);
-
-        if (result != NULL) {
-            g_uniqueId = uniqueId;
-            g_homeDirectory = home;
-            g_nfsHomeDirectory = nfsHome;
-            g_userShell = shell;
-            return result;
-        }
-    }
-
-    return NULL;
+	pthread_once(&classesOnce, registerClasses);
+	return (void*) _CFRuntimeCreateInstance(allocator, *typeID, size - sizeof(CFRuntimeBase), NULL);
 }
 
-// Builds a record for recordName, or NULL when the passwd database has no such
-// entry with a usable hash.
-static ODRecordRef createLocalRecord(const char *recordName)
+CFTypeID ODSessionGetTypeID(void)
 {
-    if (recordName == NULL || recordName[0] == '\0')
-        return NULL;
-
-    CFStringRef authority = copyAuthAuthorityForRecord(recordName);
-    if (authority == NULL)
-        return NULL;
-
-    struct __ODRecord *record = calloc(1, sizeof(*record));
-    if (record == NULL) {
-        CFRelease(authority);
-        return NULL;
-    }
-
-    record->name = copyCFString(recordName);
-    record->authAuthority = authority;
-    // Retain the extra fields; copyAuthAuthorityForRecord set them alongside the
-    // hash, so they belong to this same passwd entry.
-    record->uniqueId = (g_uniqueId != NULL) ? CFRetain(g_uniqueId) : NULL;
-    record->homeDirectory = (g_homeDirectory != NULL) ? CFRetain(g_homeDirectory) : NULL;
-    record->nfsHomeDirectory = (g_nfsHomeDirectory != NULL) ? CFRetain(g_nfsHomeDirectory) : NULL;
-    record->userShell = (g_userShell != NULL) ? CFRetain(g_userShell) : NULL;
-
-    if (record->name == NULL) {
-        CFRelease(authority);
-        free(record);
-        return NULL;
-    }
-
-    return record;
+	pthread_once(&classesOnce, registerClasses);
+	return sessionTypeID;
 }
 
-static struct __ODRecord *recordOf(ODRecordRef record)
+CFTypeID ODNodeGetTypeID(void)
 {
-    return (struct __ODRecord *) record;
+	pthread_once(&classesOnce, registerClasses);
+	return nodeTypeID;
 }
 
-static struct __ODNode *nodeOf(ODNodeRef node)
+CFTypeID ODRecordGetTypeID(void)
 {
-    return (struct __ODNode *) node;
+	pthread_once(&classesOnce, registerClasses);
+	return recordTypeID;
+}
+
+CFTypeID ODQueryGetTypeID(void)
+{
+	pthread_once(&classesOnce, registerClasses);
+	return queryTypeID;
+}
+
+static bool isA(CFTypeRef object, CFTypeID typeID)
+{
+	return object != NULL && CFGetTypeID(object) == typeID;
+}
+
+#pragma mark - Helpers
+
+static void setError(CFErrorRef* error, CFIndex code)
+{
+	if (error != NULL)
+		*error = CFErrorCreate(kCFAllocatorDefault, kODErrorDomainFramework, code, NULL);
+}
+
+static void clearError(CFErrorRef* error)
+{
+	if (error != NULL)
+		*error = NULL;
+}
+
+static CFStringRef createString(const char* s)
+{
+	return CFStringCreateWithCString(kCFAllocatorDefault, s, kCFStringEncodingUTF8);
+}
+
+// Returns a malloc'ed UTF-8 copy of the string
+static char* copyCString(CFStringRef s)
+{
+	if (!isA(s, CFStringGetTypeID()))
+		return NULL;
+
+	CFIndex max = CFStringGetMaximumSizeForEncoding(CFStringGetLength(s), kCFStringEncodingUTF8) + 1;
+	char* buffer = malloc(max);
+	if (buffer != NULL && !CFStringGetCString(s, buffer, max, kCFStringEncodingUTF8))
+	{
+		free(buffer);
+		buffer = NULL;
+	}
+	return buffer;
+}
+
+// Stores a single value for the attribute; consumes the value
+static void addValue(CFMutableDictionaryRef attributes, CFStringRef attribute, CFStringRef value)
+{
+	if (value == NULL)
+		return;
+
+	CFArrayRef array = CFArrayCreate(kCFAllocatorDefault, (const void**) &value, 1, &kCFTypeArrayCallBacks);
+	CFDictionarySetValue(attributes, attribute, array);
+	CFRelease(array);
+	CFRelease(value);
+}
+
+static void addCString(CFMutableDictionaryRef attributes, CFStringRef attribute, const char* value)
+{
+	if (value != NULL && value[0] != '\0')
+		addValue(attributes, attribute, createString(value));
+}
+
+static void addNumber(CFMutableDictionaryRef attributes, CFStringRef attribute, long long value)
+{
+	addValue(attributes, attribute, CFStringCreateWithFormat(kCFAllocatorDefault, NULL, CFSTR("%lld"), value));
+}
+
+static void addUUID(CFMutableDictionaryRef attributes, const uuid_t uuid)
+{
+	uuid_string_t text;
+	uuid_unparse_upper(uuid, text);
+	addCString(attributes, kODAttributeTypeGUID, text);
+}
+
+static bool isRecordType(CFTypeRef type, CFStringRef wanted)
+{
+	return isA(type, CFStringGetTypeID()) && CFEqual(type, wanted);
+}
+
+static bool isSupportedRecordType(CFTypeRef type)
+{
+	return isRecordType(type, kODRecordTypeUsers) || isRecordType(type, kODRecordTypeGroups);
+}
+
+static ODRecordRef createRecord(CFStringRef recordType, CFMutableDictionaryRef attributes, const char* name)
+{
+	struct __ODRecord* record = createInstance(kCFAllocatorDefault, &recordTypeID, sizeof(struct __ODRecord));
+	if (record == NULL)
+		return NULL;
+
+	addValue(attributes, kODAttributeTypeRecordType, CFStringCreateCopy(kCFAllocatorDefault, recordType));
+	// Records found through the search node also live in the local node.
+	addValue(attributes, kODAttributeTypeMetaNodeLocation, CFStringCreateCopy(kCFAllocatorDefault, LOCAL_NODE_NAME));
+
+	record->recordType = CFStringCreateCopy(kCFAllocatorDefault, recordType);
+	record->recordName = createString(name);
+	record->attributes = CFDictionaryCreateCopy(kCFAllocatorDefault, attributes);
+	return record;
+}
+
+static ODRecordRef createUserRecord(const struct passwd* pw)
+{
+	CFMutableDictionaryRef attributes = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
+			&kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	uuid_t uuid;
+
+	addCString(attributes, kODAttributeTypeRecordName, pw->pw_name);
+	addNumber(attributes, kODAttributeTypeUniqueID, (long long) pw->pw_uid);
+	addNumber(attributes, kODAttributeTypePrimaryGroupID, (long long) pw->pw_gid);
+	addCString(attributes, kODAttributeTypeFullName, pw->pw_gecos);
+	addCString(attributes, kODAttributeTypeNFSHomeDirectory, pw->pw_dir);
+	addCString(attributes, kODAttributeTypeUserShell, pw->pw_shell);
+	if (mbr_uid_to_uuid(pw->pw_uid, uuid) == 0)
+		addUUID(attributes, uuid);
+
+	ODRecordRef record = createRecord(kODRecordTypeUsers, attributes, pw->pw_name);
+	CFRelease(attributes);
+	return record;
+}
+
+static ODRecordRef createGroupRecord(const struct group* gr)
+{
+	CFMutableDictionaryRef attributes = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
+			&kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	uuid_t uuid;
+
+	addCString(attributes, kODAttributeTypeRecordName, gr->gr_name);
+	addNumber(attributes, kODAttributeTypePrimaryGroupID, (long long) gr->gr_gid);
+	if (mbr_gid_to_uuid(gr->gr_gid, uuid) == 0)
+		addUUID(attributes, uuid);
+
+	if (gr->gr_mem != NULL && gr->gr_mem[0] != NULL)
+	{
+		CFMutableArrayRef members = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+		for (char** member = gr->gr_mem; *member != NULL; member++)
+		{
+			CFStringRef value = createString(*member);
+			if (value != NULL)
+			{
+				CFArrayAppendValue(members, value);
+				CFRelease(value);
+			}
+		}
+		CFDictionarySetValue(attributes, kODAttributeTypeGroupMembership, members);
+		CFRelease(members);
+	}
+
+	ODRecordRef record = createRecord(kODRecordTypeGroups, attributes, gr->gr_name);
+	CFRelease(attributes);
+	return record;
+}
+
+// getpwent()/getgrent() keep process-wide iteration state
+static pthread_mutex_t enumerationLock = PTHREAD_MUTEX_INITIALIZER;
+
+static void appendRecord(CFMutableArrayRef records, ODRecordRef record)
+{
+	if (record != NULL)
+	{
+		CFArrayAppendValue(records, record);
+		CFRelease(record);
+	}
+}
+
+// All records of the type, in the order Libinfo enumerates them
+static CFArrayRef copyAllRecords(CFTypeRef recordType)
+{
+	CFMutableArrayRef records = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+
+	pthread_mutex_lock(&enumerationLock);
+	if (isRecordType(recordType, kODRecordTypeUsers))
+	{
+		struct passwd* pw;
+		setpwent();
+		while ((pw = getpwent()) != NULL)
+			appendRecord(records, createUserRecord(pw));
+		endpwent();
+	}
+	else if (isRecordType(recordType, kODRecordTypeGroups))
+	{
+		struct group* gr;
+		setgrent();
+		while ((gr = getgrent()) != NULL)
+			appendRecord(records, createGroupRecord(gr));
+		endgrent();
+	}
+	pthread_mutex_unlock(&enumerationLock);
+
+	return records;
+}
+
+// Record names are matched without regard to case, as the directory schema
+// defines for them; this finds "Admin" when the account is "admin".
+static ODRecordRef copyRecordIgnoringCase(CFTypeRef recordType, CFStringRef name)
+{
+	CFArrayRef all = copyAllRecords(recordType);
+	ODRecordRef found = NULL;
+
+	for (CFIndex i = 0; i < CFArrayGetCount(all) && found == NULL; i++)
+	{
+		ODRecordRef record = (ODRecordRef) CFArrayGetValueAtIndex(all, i);
+		if (record->recordName != NULL
+			&& CFStringCompare(record->recordName, name, kCFCompareCaseInsensitive) == kCFCompareEqualTo)
+			found = (ODRecordRef) CFRetain(record);
+	}
+
+	CFRelease(all);
+	return found;
+}
+
+static ODRecordRef copyRecordNamed(CFTypeRef recordType, CFStringRef name)
+{
+	char* cname = copyCString(name);
+	ODRecordRef record = NULL;
+	size_t size = 4096;
+
+	if (cname == NULL)
+		return NULL;
+
+	for (;;)
+	{
+		char* buffer = malloc(size);
+		int err;
+
+		if (buffer == NULL)
+			break;
+
+		if (isRecordType(recordType, kODRecordTypeUsers))
+		{
+			struct passwd pw, *result = NULL;
+			err = getpwnam_r(cname, &pw, buffer, size, &result);
+			if (err == 0 && result != NULL)
+				record = createUserRecord(result);
+		}
+		else
+		{
+			struct group gr, *result = NULL;
+			err = getgrnam_r(cname, &gr, buffer, size, &result);
+			if (err == 0 && result != NULL)
+				record = createGroupRecord(result);
+		}
+
+		free(buffer);
+		if (err != ERANGE || size >= 1024 * 1024)
+			break;
+		size *= 2;
+	}
+
+	free(cname);
+
+	if (record == NULL)
+		record = copyRecordIgnoringCase(recordType, name);
+	return record;
 }
 
 #pragma mark - Session
 
-ODSessionRef ODSessionCreate(CFAllocatorRef allocator, CFDictionaryRef options, CFErrorRef *error)
+ODSessionRef ODSessionCreate(CFAllocatorRef allocator, CFDictionaryRef options, CFErrorRef* error)
 {
-    (void) allocator;
-    (void) options;
+	(void) options;
 
-    struct __ODSession *session = calloc(1, sizeof(*session));
-    if (session == NULL) {
-        setODError(error, "ODSessionCreate: out of memory");
-        return NULL;
-    }
+	ODSessionRef session = createInstance(allocator, &sessionTypeID, sizeof(struct __ODSession));
+	if (session == NULL)
+		setError(error, kODErrorRecordParameterError);
+	else
+		clearError(error);
+	return session;
+}
 
-    if (error != NULL)
-        *error = NULL;
-    return session;
+CFArrayRef ODSessionCopyNodeNames(CFAllocatorRef allocator, ODSessionRef session, CFErrorRef* error)
+{
+	(void) session;
+	const void* names[] = { LOCAL_NODE_NAME, SEARCH_NODE_NAME };
+
+	clearError(error);
+	return CFArrayCreate(allocator, names, 2, &kCFTypeArrayCallBacks);
 }
 
 #pragma mark - Node
 
-ODNodeRef ODNodeCreateWithNodeType(CFAllocatorRef allocator, ODSessionRef session,
-                                   ODNodeType nodeType, CFErrorRef *error)
+static ODNodeRef createNode(CFAllocatorRef allocator, CFStringRef name)
 {
-    (void) allocator;
-    (void) session;
+	struct __ODNode* node = createInstance(allocator, &nodeTypeID, sizeof(struct __ODNode));
+	if (node != NULL)
+		node->name = CFRetain(name);
+	return node;
+}
 
-    // pam_opendirectory asks for kODNodeTypeAuthentication (0x2201) and passes a
-    // NULL session; both are legitimate. kODNodeTypeLocalNodes (0x2200) names the
-    // same local directory. Any other type names a service this node does not
-    // have, so refuse rather than answer from passwd.
-    if (nodeType != kODNodeTypeAuthentication && nodeType != kODNodeTypeLocalNodes) {
-        setODError(error, "ODNodeCreateWithNodeType: unsupported node type");
-        return NULL;
-    }
+ODNodeRef ODNodeCreateWithName(CFAllocatorRef allocator, ODSessionRef session, CFStringRef nodeName, CFErrorRef* error)
+{
+	(void) session;
 
-    struct __ODNode *node = calloc(1, sizeof(*node));
-    if (node == NULL) {
-        setODError(error, "ODNodeCreateWithNodeType: out of memory");
-        return NULL;
-    }
+	if (isA(nodeName, CFStringGetTypeID()))
+	{
+		if (CFEqual(nodeName, LOCAL_NODE_NAME))
+		{
+			clearError(error);
+			return createNode(allocator, LOCAL_NODE_NAME);
+		}
+		if (CFEqual(nodeName, SEARCH_NODE_NAME))
+		{
+			clearError(error);
+			return createNode(allocator, SEARCH_NODE_NAME);
+		}
+	}
 
-    node->name = copyCFString("local");
-    if (node->name == NULL) {
-        free(node);
-        setODError(error, "ODNodeCreateWithNodeType: out of memory");
-        return NULL;
-    }
+	setError(error, kODErrorNodeUnknownName);
+	return NULL;
+}
 
-    if (error != NULL)
-        *error = NULL;
-    return node;
+ODNodeRef ODNodeCreateWithNodeType(CFAllocatorRef allocator, ODSessionRef session, ODNodeType nodeType, CFErrorRef* error)
+{
+	(void) session;
+
+	switch (nodeType)
+	{
+		case kODNodeTypeLocalNodes:
+			clearError(error);
+			return createNode(allocator, LOCAL_NODE_NAME);
+		case kODNodeTypeAuthentication:
+		case kODNodeTypeNetwork:
+			clearError(error);
+			return createNode(allocator, SEARCH_NODE_NAME);
+		default:
+			setError(error, kODErrorNodeUnknownType);
+			return NULL;
+	}
+}
+
+CFStringRef ODNodeGetName(ODNodeRef node)
+{
+	return isA(node, ODNodeGetTypeID()) ? node->name : NULL;
+}
+
+static bool isSearchNode(ODNodeRef node)
+{
+	return CFEqual(node->name, SEARCH_NODE_NAME);
+}
+
+CFArrayRef ODNodeCopySubnodeNames(ODNodeRef node, CFErrorRef* error)
+{
+	if (!isA(node, ODNodeGetTypeID()))
+	{
+		setError(error, kODErrorRecordParameterError);
+		return NULL;
+	}
+
+	// The search node searches the local node; the local node has none.
+	if (isSearchNode(node))
+	{
+		const void* names[] = { LOCAL_NODE_NAME };
+		clearError(error);
+		return CFArrayCreate(kCFAllocatorDefault, names, 1, &kCFTypeArrayCallBacks);
+	}
+
+	setError(error, kODErrorPluginOperationNotSupported);
+	return NULL;
+}
+
+CFArrayRef ODNodeCopyUnreachableSubnodeNames(ODNodeRef node, CFErrorRef* error)
+{
+	if (!isA(node, ODNodeGetTypeID()))
+	{
+		setError(error, kODErrorRecordParameterError);
+		return NULL;
+	}
+
+	// NULL without an error means that every subnode is reachable.
+	if (isSearchNode(node))
+	{
+		clearError(error);
+		return NULL;
+	}
+
+	setError(error, kODErrorPluginOperationNotSupported);
+	return NULL;
+}
+
+CFArrayRef ODNodeCopySupportedRecordTypes(ODNodeRef node, CFErrorRef* error)
+{
+	const void* types[] = { kODRecordTypeUsers, kODRecordTypeGroups };
+
+	if (!isA(node, ODNodeGetTypeID()))
+	{
+		setError(error, kODErrorRecordParameterError);
+		return NULL;
+	}
+
+	clearError(error);
+	return CFArrayCreate(kCFAllocatorDefault, types, 2, &kCFTypeArrayCallBacks);
+}
+
+ODRecordRef ODNodeCopyRecord(ODNodeRef node, ODRecordType recordType, CFStringRef recordName, CFTypeRef attributes, CFErrorRef* error)
+{
+	// Records always carry every attribute this node has, so the requested
+	// set is only a hint.
+	(void) attributes;
+
+	if (!isA(node, ODNodeGetTypeID()) || !isA(recordName, CFStringGetTypeID()))
+	{
+		setError(error, kODErrorRecordParameterError);
+		return NULL;
+	}
+	if (!isSupportedRecordType(recordType))
+	{
+		setError(error, kODErrorRecordAttributeUnknownType);
+		return NULL;
+	}
+
+	// A record that does not exist is not an error.
+	clearError(error);
+	return copyRecordNamed(recordType, recordName);
 }
 
 #pragma mark - Record
 
-ODRecordRef ODNodeCopyRecord(ODNodeRef node, ODRecordType recordType, CFStringRef recordName,
-                             CFTypeRef attributes, CFErrorRef *error)
+CFStringRef ODRecordGetRecordType(ODRecordRef record)
 {
-    (void) attributes;
-
-    if (nodeOf(node) == NULL) {
-        setODError(error, "ODNodeCopyRecord: invalid node");
-        return NULL;
-    }
-
-    // Only user records are backed by the passwd database, so refusing other
-    // types here keeps the node from claiming to hold data it cannot serve.
-    // Compare by value, not by pointer: pam_opendirectory brings its own
-    // CFString for "dsRecTypeStandard:Users", so it is a different object from
-    // kODRecordTypeUsers even though the contents match.
-    // kODRecordTypeUsers is a `const ODRecordType`, and ODRecordType is
-    // CFStringRef, so the comparison is against the string it holds rather than
-    // the address of the variable. pam_opendirectory brings its own equal
-    // string, so identity would never match.
-    CFStringRef usersType = kODRecordTypeUsers;
-    if (recordType == NULL || usersType == NULL ||
-        CFGetTypeID((CFTypeRef) recordType) != CFStringGetTypeID() ||
-        CFStringCompare((CFStringRef) recordType, usersType, 0) !=
-            kCFCompareEqualTo) {
-        setODError(error, "ODNodeCopyRecord: unsupported record type");
-        return NULL;
-    }
-
-    char *name = cStringOf(recordName);
-    if (name == NULL) {
-        setODError(error, "ODNodeCopyRecord: invalid record name");
-        return NULL;
-    }
-
-    ODRecordRef record = createLocalRecord(name);
-    free(name);
-
-    if (record == NULL) {
-        setODError(error, "ODNodeCopyRecord: no such record");
-        return NULL;
-    }
-
-    if (error != NULL)
-        *error = NULL;
-    return record;
+	return isA(record, ODRecordGetTypeID()) ? record->recordType : NULL;
 }
 
-#pragma mark - Authentication
-
-bool ODRecordAuthenticationAllowed(ODRecordRef record, CFErrorRef *error)
+CFStringRef ODRecordGetRecordName(ODRecordRef record)
 {
-    if (error != NULL)
-        *error = NULL;
-    // The passwd database is readable by the guest's own users, so a record read
-    // from it is a record the caller was allowed to read.
-    return recordOf(record) != NULL;
+	return isA(record, ODRecordGetTypeID()) ? record->recordName : NULL;
 }
 
-bool ODRecordVerifyPassword(ODRecordRef record, CFStringRef password, CFErrorRef *error)
+CFArrayRef ODRecordCopyValues(ODRecordRef record, ODAttributeType attribute, CFErrorRef* error)
 {
-    struct __ODRecord *self = recordOf(record);
+	if (!isA(record, ODRecordGetTypeID()) || !isA(attribute, CFStringGetTypeID()))
+	{
+		setError(error, kODErrorRecordParameterError);
+		return NULL;
+	}
 
-    if (error != NULL)
-        *error = NULL;
-
-    if (self == NULL || self->authAuthority == NULL || password == NULL) {
-        setODError(error, "ODRecordVerifyPassword: no record or password");
-        return false;
-    }
-
-    char *stored = cStringOf(self->authAuthority);
-    char *given = cStringOf(password);
-
-    if (stored == NULL || given == NULL) {
-        free(stored);
-        free(given);
-        setODError(error, "ODRecordVerifyPassword: out of memory");
-        return false;
-    }
-
-    // crypt(3) takes the salt from the beginning of the stored hash, so the
-    // scheme and iterations travel with the comparison and no part of the
-    // configuration is assumed here.
-    char *computed = crypt(given, stored);
-
-    bool matches = false;
-    if (computed != NULL && stored[0] != '\0')
-        matches = strcmp(computed, stored) == 0;
-
-    free(stored);
-    free(given);
-
-    return matches;
+	// An attribute the record does not have yields NULL without an error.
+	clearError(error);
+	CFArrayRef values = CFDictionaryGetValue(record->attributes, attribute);
+	return values ? CFRetain(values) : NULL;
 }
 
-#pragma mark - Node queries
-
-CFArrayRef ODNodeCopyUnreachableSubnodeNames(ODNodeRef node, CFErrorRef *error)
+CFDictionaryRef ODRecordCopyDetails(ODRecordRef record, CFArrayRef attributes, CFErrorRef* error)
 {
-    if (nodeOf(node) == NULL) {
-        setODError(error, "ODNodeCopyUnreachableSubnodeNames: invalid node");
-        return NULL;
-    }
+	if (!isA(record, ODRecordGetTypeID()))
+	{
+		setError(error, kODErrorRecordParameterError);
+		return NULL;
+	}
 
-    if (error != NULL)
-        *error = NULL;
+	clearError(error);
+	if (attributes == NULL)
+		return CFDictionaryCreateCopy(kCFAllocatorDefault, record->attributes);
 
-    // A passwd-backed node has no subnodes. Returning an empty array rather than
-    // NULL matters: the caller walks the result without checking, so NULL is a
-    // crash, while "none" is the truthful answer.
-    return CFArrayCreate(kCFAllocatorDefault, NULL, 0, &kCFTypeArrayCallBacks);
+	CFMutableDictionaryRef details = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
+			&kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	for (CFIndex i = 0; i < CFArrayGetCount(attributes); i++)
+	{
+		CFTypeRef attribute = CFArrayGetValueAtIndex(attributes, i);
+		CFTypeRef values = CFDictionaryGetValue(record->attributes, attribute);
+		if (values != NULL)
+			CFDictionarySetValue(details, attribute, values);
+	}
+	return details;
 }
 
-#pragma mark - Attributes
-
-CFArrayRef ODRecordCopyValues(ODRecordRef record, ODAttributeType attribute, CFErrorRef *error)
+bool ODRecordAuthenticationAllowed(ODRecordRef record, CFErrorRef* error)
 {
-    struct __ODRecord *self = recordOf(record);
+	if (!isA(record, ODRecordGetTypeID()) || !isRecordType(record->recordType, kODRecordTypeUsers))
+	{
+		setError(error, kODErrorRecordParameterError);
+		return false;
+	}
 
-    if (self == NULL) {
-        setODError(error, "ODRecordCopyValues: invalid record");
-        return NULL;
-    }
+	// No account policies are kept, so any user may try to authenticate.
+	clearError(error);
+	return true;
+}
 
-    if (error != NULL)
-        *error = NULL;
+// crypt() returns a static buffer
+static pthread_mutex_t cryptLock = PTHREAD_MUTEX_INITIALIZER;
 
-    if (attribute == NULL) {
-        setODError(error, "ODRecordCopyValues: no attribute requested");
-        return NULL;
-    }
+static bool constantTimeEquals(const char* a, const char* b)
+{
+	size_t la = strlen(a), lb = strlen(b);
+	unsigned char diff = (la != lb);
 
-    // Compare by value: the caller brings its own CFString for the attribute
-    // name, as it does for the record type.
-    struct {
-        const char *name;
-        CFStringRef *value;
-    } table[] = {
-        { "dsAttrTypeStandard:AuthenticationAuthority", &self->authAuthority },
-        { "dsAttrTypeStandard:UniqueID",                 &self->uniqueId },
-        { "dsAttrTypeStandard:HomeDirectory",            &self->homeDirectory },
-        { "dsAttrTypeStandard:NFSHomeDirectory",         &self->nfsHomeDirectory },
-        { "dsAttrTypeStandard:UserShell",                &self->userShell },
-    };
+	for (size_t i = 0; i < la && i < lb; i++)
+		diff |= (unsigned char) (a[i] ^ b[i]);
+	return diff == 0;
+}
 
-    for (size_t i = 0; i < sizeof(table) / sizeof(table[0]); i++) {
-        CFStringRef wanted = CFStringCreateWithCString(kCFAllocatorDefault,
-                                                       table[i].name,
-                                                       kCFStringEncodingUTF8);
-        if (wanted == NULL)
-            continue;
+// Checks the password against the hash Libinfo returns for the account. An
+// account without a usable hash (empty, "*" or disabled with "!") never
+// verifies, and Libinfo hands out hashes only to callers allowed to see them.
+static bool verifyAgainstAccount(const char* name, const char* password)
+{
+	size_t size = 4096;
+	bool matches = false;
 
-        bool matches = CFStringCompare((CFStringRef) attribute, wanted, 0) ==
-                       kCFCompareEqualTo;
-        CFRelease(wanted);
+	for (;;)
+	{
+		char* buffer = malloc(size);
+		struct passwd pw, *result = NULL;
+		int err;
 
-        if (!matches)
-            continue;
+		if (buffer == NULL)
+			return false;
 
-        // An attribute the passwd entry does not carry is an empty array, not
-        // NULL: callers iterate the result, so NULL is a crash while "absent"
-        // is the truthful answer.
-        if (*table[i].value == NULL)
-            return CFArrayCreate(kCFAllocatorDefault, NULL, 0, &kCFTypeArrayCallBacks);
+		err = getpwnam_r(name, &pw, buffer, size, &result);
+		if (err == 0 && result != NULL)
+		{
+			const char* hash = result->pw_passwd;
+			if (hash != NULL && strlen(hash) > 2 && hash[0] != '*' && hash[0] != '!')
+			{
+				pthread_mutex_lock(&cryptLock);
+				const char* computed = crypt(password, hash);
+				matches = computed != NULL && constantTimeEquals(computed, hash);
+				pthread_mutex_unlock(&cryptLock);
+			}
+		}
 
-        const void *values[] = { *table[i].value };
-        return CFArrayCreate(kCFAllocatorDefault, values, 1, &kCFTypeArrayCallBacks);
-    }
+		memset(buffer, 0, size);
+		free(buffer);
+		if (err != ERANGE || size >= 1024 * 1024)
+			break;
+		size *= 2;
+	}
 
-    // An attribute this node does not model at all: report none rather than
-    // inventing a value.
-    return CFArrayCreate(kCFAllocatorDefault, NULL, 0, &kCFTypeArrayCallBacks);
+	return matches;
+}
+
+bool ODRecordVerifyPassword(ODRecordRef record, CFStringRef password, CFErrorRef* error)
+{
+	if (!isA(record, ODRecordGetTypeID()) || !isRecordType(record->recordType, kODRecordTypeUsers)
+		|| !isA(password, CFStringGetTypeID()))
+	{
+		setError(error, kODErrorRecordParameterError);
+		return false;
+	}
+
+	char* name = copyCString(record->recordName);
+	char* given = copyCString(password);
+	bool matches = name != NULL && given != NULL && verifyAgainstAccount(name, given);
+
+	if (given != NULL)
+	{
+		memset(given, 0, strlen(given));
+		free(given);
+	}
+	free(name);
+
+	if (matches)
+		clearError(error);
+	else
+		setError(error, kODErrorCredentialsInvalid);
+	return matches;
+}
+
+#pragma mark - Query
+
+// Wraps a single value in an array; arrays are copied
+static CFArrayRef copyAsArray(CFTypeRef valueOrList)
+{
+	if (valueOrList == NULL)
+		return CFArrayCreate(kCFAllocatorDefault, NULL, 0, &kCFTypeArrayCallBacks);
+	if (CFGetTypeID(valueOrList) == CFArrayGetTypeID())
+		return CFArrayCreateCopy(kCFAllocatorDefault, valueOrList);
+	return CFArrayCreate(kCFAllocatorDefault, &valueOrList, 1, &kCFTypeArrayCallBacks);
+}
+
+// Query values may be strings or UTF-8 data
+static CFStringRef copyQueryValue(CFTypeRef value)
+{
+	if (isA(value, CFStringGetTypeID()))
+		return CFRetain(value);
+	if (isA(value, CFDataGetTypeID()))
+		return CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, value, kCFStringEncodingUTF8);
+	return NULL;
+}
+
+ODQueryRef ODQueryCreateWithNode(CFAllocatorRef allocator, ODNodeRef node, CFTypeRef recordTypeOrList, ODAttributeType attribute,
+	ODMatchType matchType, CFTypeRef queryValueOrList, CFTypeRef returnAttributeOrList, CFIndex maxResults, CFErrorRef* error)
+{
+	// Records always carry every attribute, so the requested set is a hint.
+	(void) returnAttributeOrList;
+
+	if (!isA(node, ODNodeGetTypeID()) || recordTypeOrList == NULL)
+	{
+		setError(error, kODErrorRecordParameterError);
+		return NULL;
+	}
+
+	struct __ODQuery* query = createInstance(allocator, &queryTypeID, sizeof(struct __ODQuery));
+	if (query == NULL)
+	{
+		setError(error, kODErrorRecordParameterError);
+		return NULL;
+	}
+
+	CFArrayRef values = copyAsArray(queryValueOrList);
+	CFMutableArrayRef strings = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+	for (CFIndex i = 0; i < CFArrayGetCount(values); i++)
+	{
+		CFStringRef value = copyQueryValue(CFArrayGetValueAtIndex(values, i));
+		if (value != NULL)
+		{
+			CFArrayAppendValue(strings, value);
+			CFRelease(value);
+		}
+	}
+	CFRelease(values);
+
+	query->node = (ODNodeRef) CFRetain(node);
+	query->recordTypes = copyAsArray(recordTypeOrList);
+	query->attribute = isA(attribute, CFStringGetTypeID()) ? CFStringCreateCopy(kCFAllocatorDefault, attribute) : NULL;
+	query->matchType = matchType;
+	query->values = strings;
+	query->maxResults = maxResults;
+
+	clearError(error);
+	return query;
+}
+
+ODQueryRef ODQueryCreateWithNodeType(CFAllocatorRef allocator, ODNodeType nodeType, CFTypeRef recordTypeOrList, ODAttributeType attribute,
+	ODMatchType matchType, CFTypeRef queryValueOrList, CFTypeRef returnAttributeOrList, CFIndex maxResults, CFErrorRef* error)
+{
+	ODNodeRef node = ODNodeCreateWithNodeType(allocator, NULL, nodeType, error);
+	if (node == NULL)
+		return NULL;
+
+	ODQueryRef query = ODQueryCreateWithNode(allocator, node, recordTypeOrList, attribute, matchType,
+			queryValueOrList, returnAttributeOrList, maxResults, error);
+	CFRelease(node);
+	return query;
+}
+
+static bool valueMatches(CFStringRef value, CFStringRef wanted, ODMatchType matchType, bool caseInsensitive)
+{
+	CFStringCompareFlags flags = caseInsensitive ? kCFCompareCaseInsensitive : 0;
+	CFRange all = CFRangeMake(0, CFStringGetLength(value));
+
+	switch (matchType & ~MATCH_INSENSITIVE_BIT)
+	{
+		case kODMatchEqualTo:
+			return CFStringCompare(value, wanted, flags) == kCFCompareEqualTo;
+		case kODMatchBeginsWith:
+			return CFStringFindWithOptions(value, wanted, all, flags | kCFCompareAnchored, NULL);
+		case kODMatchEndsWith:
+			return CFStringFindWithOptions(value, wanted, all, flags | kCFCompareAnchored | kCFCompareBackwards, NULL);
+		case kODMatchContains:
+			return CFStringFindWithOptions(value, wanted, all, flags, NULL);
+		default:
+			return false;
+	}
+}
+
+static bool recordMatches(ODQueryRef query, ODRecordRef record)
+{
+	if (query->matchType == kODMatchAny)
+		return true;
+	if (query->attribute == NULL)
+		return false;
+
+	CFArrayRef values = CFDictionaryGetValue(record->attributes, query->attribute);
+	if (values == NULL)
+		return false;
+
+	// Record names compare without regard to case, as their schema says.
+	bool caseInsensitive = (query->matchType & MATCH_INSENSITIVE_BIT) != 0
+		|| CFEqual(query->attribute, kODAttributeTypeRecordName);
+
+	for (CFIndex i = 0; i < CFArrayGetCount(values); i++)
+	{
+		for (CFIndex j = 0; j < CFArrayGetCount(query->values); j++)
+		{
+			if (valueMatches(CFArrayGetValueAtIndex(values, i), CFArrayGetValueAtIndex(query->values, j),
+					query->matchType, caseInsensitive))
+				return true;
+		}
+	}
+	return false;
+}
+
+CFArrayRef ODQueryCopyResults(ODQueryRef query, bool allowPartialResults, CFErrorRef* error)
+{
+	// Results are computed synchronously, so they are always complete.
+	(void) allowPartialResults;
+
+	if (!isA(query, ODQueryGetTypeID()))
+	{
+		setError(error, kODErrorRecordParameterError);
+		return NULL;
+	}
+
+	bool anySupported = false;
+	CFMutableArrayRef results = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+
+	for (CFIndex t = 0; t < CFArrayGetCount(query->recordTypes); t++)
+	{
+		CFTypeRef recordType = CFArrayGetValueAtIndex(query->recordTypes, t);
+		if (!isSupportedRecordType(recordType))
+			continue;
+		anySupported = true;
+
+		CFArrayRef candidates;
+		if ((query->matchType & ~MATCH_INSENSITIVE_BIT) == kODMatchEqualTo && query->attribute != NULL
+			&& CFEqual(query->attribute, kODAttributeTypeRecordName))
+		{
+			// Direct lookups instead of enumerating every account
+			CFMutableArrayRef named = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+			for (CFIndex i = 0; i < CFArrayGetCount(query->values); i++)
+				appendRecord(named, copyRecordNamed(recordType, CFArrayGetValueAtIndex(query->values, i)));
+			candidates = named;
+		}
+		else
+			candidates = copyAllRecords(recordType);
+
+		for (CFIndex i = 0; i < CFArrayGetCount(candidates); i++)
+		{
+			if (query->maxResults > 0 && CFArrayGetCount(results) >= query->maxResults)
+				break;
+
+			ODRecordRef record = (ODRecordRef) CFArrayGetValueAtIndex(candidates, i);
+			if (recordMatches(query, record))
+				CFArrayAppendValue(results, record);
+		}
+		CFRelease(candidates);
+	}
+
+	if (!anySupported)
+	{
+		CFRelease(results);
+		setError(error, kODErrorRecordAttributeUnknownType);
+		return NULL;
+	}
+
+	clearError(error);
+	return results;
 }
