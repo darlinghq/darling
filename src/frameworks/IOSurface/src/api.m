@@ -20,6 +20,11 @@
 #import <IOSurface/IOSurface.h>
 #import <IOSurface/IOSurfaceObjC.h>
 
+@interface IOSurface (CopyingAttachments)
+- (nullable id)_copyAttachmentForKey:(NSString *)key;
+- (NSDictionary<NSString *, id> *)_copyAllAttachments;
+@end
+
 CFTypeID IOSurfaceGetTypeID(void)
 {
 	return (CFTypeID) [IOSurface self];
@@ -90,7 +95,7 @@ void IOSurfaceSetValue(IOSurfaceRef buffer, CFStringRef key, CFTypeRef value)
 
 CFTypeRef _Nullable IOSurfaceCopyValue(IOSurfaceRef buffer, CFStringRef key)
 {
-	return (CFTypeRef) [[(IOSurface*) buffer attachmentForKey: (NSString*) key] retain];
+	return (CFTypeRef) [(IOSurface*) buffer _copyAttachmentForKey: (NSString*) key];
 }
 
 
@@ -108,7 +113,7 @@ void IOSurfaceSetValues(IOSurfaceRef buffer, CFDictionaryRef keysAndValues)
 
 CFDictionaryRef _Nullable IOSurfaceCopyAllValues(IOSurfaceRef buffer)
 {
-	return (CFDictionaryRef) [[(IOSurface*)buffer allAttachments] retain];
+	return (CFDictionaryRef) [(IOSurface*)buffer _copyAllAttachments];
 }
 
 
@@ -198,13 +203,42 @@ size_t IOSurfaceGetBytesPerElement(IOSurfaceRef buffer)
 
 size_t IOSurfaceGetElementWidth(IOSurfaceRef buffer)
 {
-	return [(IOSurface*)buffer widthOfPlaneAtIndex: 0];
+	return [(IOSurface*)buffer elementWidthOfPlaneAtIndex: 0];
 }
 
 
 size_t IOSurfaceGetElementHeight(IOSurfaceRef buffer)
 {
-	return [(IOSurface*)buffer heightOfPlaneAtIndex: 0];
+	return [(IOSurface*)buffer elementHeightOfPlaneAtIndex: 0];
+}
+
+size_t IOSurfaceGetAllocSize(IOSurfaceRef buffer)
+{
+	return [(IOSurface*)buffer allocationSize];
+}
+
+// Darling's allocation constraints, not values taken from macOS: rows and
+// planes start on 64-byte boundaries and allocations are whole pages.
+size_t IOSurfaceGetPropertyAlignment(CFStringRef property)
+{
+	if (!property)
+		return 1;
+	if (CFEqual(property, kIOSurfaceAllocSize))
+		return 4096;
+	if (CFEqual(property, kIOSurfaceBytesPerRow) || CFEqual(property, kIOSurfacePlaneBytesPerRow)
+		|| CFEqual(property, kIOSurfacePlaneOffset) || CFEqual(property, kIOSurfacePlaneSize)
+		|| CFEqual(property, kIOSurfaceOffset))
+		return 64;
+	return 1;
+}
+
+// Rounds value up to the alignment of property. Returns 0 if that overflows.
+size_t IOSurfaceAlignProperty(CFStringRef property, size_t value)
+{
+	size_t alignment = IOSurfaceGetPropertyAlignment(property);
+	if (value > SIZE_MAX - (alignment - 1))
+		return 0;
+	return (value + alignment - 1) / alignment * alignment;
 }
 
 Boolean IOSurfaceIsInUse(IOSurfaceRef buffer)
@@ -215,4 +249,9 @@ Boolean IOSurfaceIsInUse(IOSurfaceRef buffer)
 kern_return_t IOSurfaceSetPurgeable(IOSurfaceRef buffer, uint32_t newState, uint32_t * _Nullable oldState)
 {
 	return [(IOSurface*)buffer setPurgeable:newState oldState:oldState];
+}
+
+Boolean IOSurfaceAllowsPixelSizeCasting(IOSurfaceRef buffer)
+{
+	return [(IOSurface*)buffer allowsPixelSizeCasting];
 }

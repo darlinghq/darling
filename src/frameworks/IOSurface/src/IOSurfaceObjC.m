@@ -23,6 +23,8 @@
 #import <Foundation/Foundation.h>
 #import <IOKit/IOCFSerialize.h>
 #include <stdatomic.h>
+#include <stddef.h>
+#include <sys/mman.h>
 
 static io_service_t g_surfaceService;
 
@@ -30,7 +32,143 @@ typedef struct
 {
 	struct _IOSurfaceObjectRetval* surface;
 	_Atomic int32_t localUseCount;
+	size_t allocSize;
+	NSMutableDictionary* attachments;
+	// Allocated in this process because IOSurfaceRoot could not create the
+	// surface. The planes live in an anonymous mapping of allocSize bytes.
+	bool userSpace;
+	// Incremented by every unlock that ends a lock for writing.
+	_Atomic uint32_t seed;
+	_Atomic uint32_t purgeability;
+	bool allowsPixelSizeCasting;
+	// Created with kIOSurfacePlaneInfo. A surface without it still has one
+	// plane internally, but reports a plane count of 0.
+	bool planar;
 } ImplData;
+
+static void initState(ImplData* idata)
+{
+	idata->localUseCount = 0;
+	idata->attachments = [[NSMutableDictionary alloc] init];
+	idata->seed = 0;
+	idata->purgeability = kIOSurfacePurgeableNonVolatile;
+	idata->allowsPixelSizeCasting = true;
+	idata->planar = true;
+}
+
+// Plane layouts are limited to this many planes.
+#define MAX_PLANES 16
+
+// When the caller gives no element size, assume 4 bytes, the size of the
+// common 32-bit pixel formats, so that the allocation is never too small for
+// them.
+#define DEFAULT_BYTES_PER_ELEMENT 4
+
+// IDs of surfaces allocated in user space. They are unique only within this
+// process: IOSurfaceRoot hands out global IDs, and it is not involved here.
+static _Atomic uint32_t g_lastUserSpaceID;
+
+static IOSurfaceID nextUserSpaceID(void)
+{
+	IOSurfaceID surfaceID;
+	do
+		surfaceID = atomic_fetch_add(&g_lastUserSpaceID, 1) + 1;
+	while (surfaceID == 0);
+	return surfaceID;
+}
+
+// Whether an IOSurfaceRoot reply describes a complete surface.
+static bool validResponse(const void* bytes, size_t length)
+{
+	const struct _IOSurfaceObjectRetval* surface = bytes;
+	size_t header = offsetof(struct _IOSurfaceObjectRetval, planes);
+	if (length < header + sizeof(struct _IOSurfacePlane))
+		return false;
+	if (surface->planeCount == 0 || surface->planeCount > MAX_PLANES || surface->address == 0)
+		return false;
+	return length >= header + surface->planeCount * sizeof(struct _IOSurfacePlane);
+}
+
+static bool numberValue(id object, uint64_t* value)
+{
+	if (![object isKindOfClass: [NSNumber class]])
+		return false;
+	*value = [object unsignedLongLongValue];
+	return true;
+}
+
+// Reads one plane's layout. defaults holds the values to use for missing
+// keys and the minimum offset; the result is checked for overflow.
+static bool readPlane(NSDictionary* info, CFStringRef widthKey, CFStringRef heightKey,
+	CFStringRef bytesPerElementKey, CFStringRef bytesPerRowKey, CFStringRef offsetKey, CFStringRef sizeKey,
+	uint64_t defaultWidth, uint64_t defaultHeight, uint64_t defaultBytesPerElement, uint64_t minimumOffset,
+	struct _IOSurfacePlane* plane, uint64_t* end)
+{
+	uint64_t width = defaultWidth, height = defaultHeight, bytesPerElement = defaultBytesPerElement;
+	uint64_t bytesPerRow = 0, offset = 0, size = 0;
+	numberValue(info[(NSString*) widthKey], &width);
+	numberValue(info[(NSString*) heightKey], &height);
+	numberValue(info[(NSString*) bytesPerElementKey], &bytesPerElement);
+
+	if (width == 0 || height == 0 || bytesPerElement == 0)
+		return false;
+	if (width > UINT32_MAX || height > UINT32_MAX || bytesPerElement > UINT32_MAX)
+		return false;
+	if (width > UINT64_MAX / bytesPerElement)
+		return false;
+
+	if (!numberValue(info[(NSString*) bytesPerRowKey], &bytesPerRow) || bytesPerRow == 0)
+	{
+		if (width * bytesPerElement > SIZE_MAX)
+			return false;
+		bytesPerRow = IOSurfaceAlignProperty(bytesPerRowKey, (size_t)(width * bytesPerElement));
+	}
+	if (bytesPerRow < width * bytesPerElement || bytesPerRow > UINT32_MAX)
+		return false;
+
+	if (!numberValue(info[(NSString*) offsetKey], &offset))
+	{
+		if (minimumOffset > SIZE_MAX)
+			return false;
+		offset = IOSurfaceAlignProperty(offsetKey, (size_t) minimumOffset);
+		if (offset == 0 && minimumOffset != 0)
+			return false;
+	}
+	if (offset < minimumOffset)
+		return false;
+
+	if (height > UINT64_MAX / bytesPerRow)
+		return false;
+	uint64_t bytes = bytesPerRow * height;
+	if (sizeKey && numberValue(info[(NSString*) sizeKey], &size) && size > bytes)
+		bytes = size;
+	if (offset > UINT64_MAX - bytes || offset + bytes > SIZE_MAX)
+		return false;
+
+	*plane = (struct _IOSurfacePlane) {
+		.memoryOffset = offset,
+		.bytesPerElement = (uint32_t) bytesPerElement,
+		.width = (uint32_t) width,
+		.height = (uint32_t) height,
+		.bytesPerRow = (uint32_t) bytesPerRow,
+	};
+	*end = offset + bytes;
+	return true;
+}
+
+// The size of the memory that holds all planes: the end of the last plane.
+static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
+{
+	size_t end = 0;
+	for (uint32_t i = 0; i < surface->planeCount; i++)
+	{
+		const struct _IOSurfacePlane* plane = &surface->planes[i];
+		size_t planeEnd = plane->memoryOffset + (size_t) plane->bytesPerRow * plane->height;
+		if (planeEnd > end)
+			end = planeEnd;
+	}
+	return end;
+}
 
 @implementation IOSurface
 
@@ -44,8 +182,7 @@ typedef struct
 
 		CFRelease(matching);
 
-		if (!g_surfaceService)
-			NSLog(@"Cannot obtain IOSurfaceRoot!\n");
+		// Without IOSurfaceRoot, surfaces are allocated in user space.
 	}
 }
 
@@ -55,7 +192,113 @@ typedef struct
 	idata->surface = malloc(length);
 	memcpy(idata->surface, bytes, length);
 
-	idata->localUseCount = 0;
+	initState(idata);
+	idata->allocSize = planesEnd(idata->surface);
+	idata->userSpace = false;
+	self->_impl = idata;
+
+	return self;
+}
+
+// Creates the surface in this process, with the layout the properties
+// describe: kIOSurfacePlaneInfo for a planar surface, or the top-level
+// width, height, element size and row stride for a single plane.
+- (nullable instancetype)_initWithUserSpaceProperties:(NSDictionary <IOSurfacePropertyKey, id> *)properties
+{
+	if (![properties isKindOfClass: [NSDictionary class]])
+	{
+		[self release];
+		return nil;
+	}
+
+	uint64_t width = 0, height = 0, bytesPerElement = DEFAULT_BYTES_PER_ELEMENT, pixelFormat = 0;
+	numberValue(properties[(NSString*) kIOSurfaceWidth], &width);
+	numberValue(properties[(NSString*) kIOSurfaceHeight], &height);
+	numberValue(properties[(NSString*) kIOSurfaceBytesPerElement], &bytesPerElement);
+	numberValue(properties[(NSString*) kIOSurfacePixelFormat], &pixelFormat);
+
+	NSArray* planeInfo = properties[(NSString*) kIOSurfacePlaneInfo];
+	if (planeInfo && (![planeInfo isKindOfClass: [NSArray class]] || planeInfo.count > MAX_PLANES))
+	{
+		[self release];
+		return nil;
+	}
+
+	struct _IOSurfacePlane planes[MAX_PLANES];
+	uint32_t planeCount = planeInfo.count ? (uint32_t) planeInfo.count : 1;
+	uint64_t end = 0;
+
+	if (!planeInfo.count)
+	{
+		if (!readPlane(properties, kIOSurfaceWidth, kIOSurfaceHeight, kIOSurfaceBytesPerElement,
+				kIOSurfaceBytesPerRow, kIOSurfaceOffset, NULL, width, height, bytesPerElement, 0,
+				&planes[0], &end))
+		{
+			[self release];
+			return nil;
+		}
+	}
+	else
+	{
+		for (uint32_t i = 0; i < planeCount; i++)
+		{
+			NSDictionary* info = planeInfo[i];
+			if (![info isKindOfClass: [NSDictionary class]]
+				|| !readPlane(info, kIOSurfacePlaneWidth, kIOSurfacePlaneHeight, kIOSurfacePlaneBytesPerElement,
+					kIOSurfacePlaneBytesPerRow, kIOSurfacePlaneOffset, kIOSurfacePlaneSize,
+					width, height, bytesPerElement, end, &planes[i], &end))
+			{
+				[self release];
+				return nil;
+			}
+		}
+	}
+
+	uint64_t requested = 0;
+	if (numberValue(properties[(NSString*) kIOSurfaceAllocSize], &requested) && requested > end)
+	{
+		if (requested > SIZE_MAX)
+		{
+			[self release];
+			return nil;
+		}
+		end = requested;
+	}
+	size_t allocSize = IOSurfaceAlignProperty(kIOSurfaceAllocSize, (size_t) end);
+	if (allocSize == 0)
+	{
+		[self release];
+		return nil;
+	}
+
+	size_t retvalSize = offsetof(struct _IOSurfaceObjectRetval, planes) + planeCount * sizeof(struct _IOSurfacePlane);
+	struct _IOSurfaceObjectRetval* surface = calloc(1, retvalSize);
+	ImplData* idata = malloc(sizeof(ImplData));
+	void* memory = mmap(NULL, allocSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+	if (!surface || !idata || memory == MAP_FAILED)
+	{
+		if (memory != MAP_FAILED)
+			munmap(memory, allocSize);
+		free(surface);
+		free(idata);
+		[self release];
+		return nil;
+	}
+
+	surface->surfaceID = nextUserSpaceID();
+	surface->pixelFormat = (uint32_t) pixelFormat;
+	surface->address = (uint64_t)(uintptr_t) memory;
+	surface->planeCount = planeCount;
+	memcpy(surface->planes, planes, planeCount * sizeof(struct _IOSurfacePlane));
+
+	idata->surface = surface;
+	initState(idata);
+	idata->allocSize = allocSize;
+	idata->userSpace = true;
+	idata->planar = planeInfo.count != 0;
+	id casting = properties[(NSString*) kIOSurfacePixelSizeCastingAllowed];
+	if ([casting respondsToSelector: @selector(boolValue)])
+		idata->allowsPixelSizeCasting = [casting boolValue];
 	self->_impl = idata;
 
 	return self;
@@ -63,6 +306,9 @@ typedef struct
 
 - (nullable instancetype)initWithProperties:(NSDictionary <IOSurfacePropertyKey, id> *)properties
 {
+	if (!g_surfaceService)
+		return [self _initWithUserSpaceProperties: properties];
+
 	CFDataRef data = IOCFSerialize((CFTypeRef) properties, kIOCFSerializeToBinary);
 	uint8_t responseBuffer[3500];
 
@@ -73,13 +319,19 @@ typedef struct
 	kern_return_t ret = IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodCreate, NULL, 0, bytes, length, NULL, 0, responseBuffer, &responseLength);
 	CFRelease(data);
 
-	if (ret != kIOSurfaceSuccess)
-	{
-		[self release];
-		return nil;
-	}
+	// Use IOSurfaceRoot's surface only if it described one completely.
+	if (ret != kIOSurfaceSuccess || !validResponse(responseBuffer, responseLength))
+		return [self _initWithUserSpaceProperties: properties];
 
 	return [self initWithResponse: responseBuffer length: responseLength];
+}
+
+// Mach port lookup needs IOSurfaceRoot or another process to export the
+// surface; neither exists yet.
+- (nullable instancetype)initWithMachPort:(mach_port_t)port
+{
+	[self release];
+	return nil;
 }
 
 - (nullable instancetype)initWithSurfaceID:(IOSurfaceID)surfaceID
@@ -87,10 +339,16 @@ typedef struct
 	uint8_t responseBuffer[3500];
 	size_t responseLength = sizeof(responseBuffer);
 
+	if (!g_surfaceService)
+	{
+		[self release];
+		return nil;
+	}
+
 	uint64_t scalar = surfaceID;
 	kern_return_t ret = IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodLookupByID, &scalar, 1, NULL, 0, NULL, 0, responseBuffer, &responseLength);
 
-	if (ret != kIOSurfaceSuccess)
+	if (ret != kIOSurfaceSuccess || !validResponse(responseBuffer, responseLength))
 	{
 		[self release];
 		return nil;
@@ -106,11 +364,15 @@ typedef struct
 	{
 		if (data->surface != NULL)
 		{
-			IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodRelease, NULL, 0, &data->surface->surfaceID, 1, NULL, 0, NULL, 0);
+			if (data->userSpace)
+				munmap((void*)(uintptr_t) data->surface->address, data->allocSize);
+			else
+				IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodRelease, NULL, 0, &data->surface->surfaceID, 1, NULL, 0, NULL, 0);
 
 			free(data->surface);
 		}
 
+		[data->attachments release];
 		free(data);
 	}
 	[super dealloc];
@@ -178,12 +440,19 @@ typedef struct
 
 - (NSUInteger) planeCount
 {
+	ImplData* data = (ImplData*) _impl;
+	return data->planar ? data->surface->planeCount : 0;
+}
+
+// The planes that exist, including the single plane of a non-planar surface.
+- (NSUInteger) _planeCount
+{
 	return ((ImplData*) _impl)->surface->planeCount;
 }
 
 - (NSInteger)widthOfPlaneAtIndex:(NSUInteger)planeIndex
 {
-	if (planeIndex >= [self planeCount])
+	if (planeIndex >= [self _planeCount])
 		return 0;
 
 	ImplData* data = (ImplData*) _impl;
@@ -192,7 +461,7 @@ typedef struct
 
 - (NSInteger)heightOfPlaneAtIndex:(NSUInteger)planeIndex
 {
-	if (planeIndex >= [self planeCount])
+	if (planeIndex >= [self _planeCount])
 		return 0;
 
 	ImplData* data = (ImplData*) _impl;
@@ -201,7 +470,7 @@ typedef struct
 
 - (NSInteger)bytesPerRowOfPlaneAtIndex:(NSUInteger)planeIndex
 {
-	if (planeIndex >= [self planeCount])
+	if (planeIndex >= [self _planeCount])
 		return 0;
 
 	ImplData* data = (ImplData*) _impl;
@@ -210,7 +479,7 @@ typedef struct
 
 - (NSInteger)bytesPerElementOfPlaneAtIndex:(NSUInteger)planeIndex
 {
-	if (planeIndex >= [self planeCount])
+	if (planeIndex >= [self _planeCount])
 		return 0;
 
 	ImplData* data = (ImplData*) _impl;
@@ -229,17 +498,103 @@ typedef struct
 
 - (void *)baseAddressOfPlaneAtIndex:(NSUInteger)planeIndex
 {
-	if (planeIndex >= [self planeCount])
+	if (planeIndex >= [self _planeCount])
 		return NULL;
 
 	ImplData* data = (ImplData*) _impl;
 	return (void*)(data->surface->address + data->surface->planes[planeIndex].memoryOffset);
 }
 
+- (NSInteger) allocationSize
+{
+	return ((ImplData*) _impl)->allocSize;
+}
+
+// Attachments are values that belong to the surface object; the surface
+// itself does not interpret them.
+- (void)setAttachment:(id)anObject forKey:(NSString *)key
+{
+	if (!key)
+		return;
+	ImplData* data = (ImplData*) _impl;
+	@synchronized(self)
+	{
+		if (anObject)
+			[data->attachments setObject: anObject forKey: key];
+		else
+			[data->attachments removeObjectForKey: key];
+	}
+}
+
+// Returns a retained value, for IOSurfaceCopyValue, which may be called
+// without an autorelease pool.
+- (nullable id)_copyAttachmentForKey:(NSString *)key
+{
+	if (!key)
+		return nil;
+	ImplData* data = (ImplData*) _impl;
+	id value;
+	@synchronized(self)
+	{
+		value = [[data->attachments objectForKey: key] retain];
+	}
+	return value;
+}
+
+- (nullable id)attachmentForKey:(NSString *)key
+{
+	return [[self _copyAttachmentForKey: key] autorelease];
+}
+
+- (void)removeAttachmentForKey:(NSString *)key
+{
+	if (!key)
+		return;
+	ImplData* data = (ImplData*) _impl;
+	@synchronized(self)
+	{
+		[data->attachments removeObjectForKey: key];
+	}
+}
+
+- (void)setAllAttachments:(NSDictionary<NSString *, id> *)dict
+{
+	ImplData* data = (ImplData*) _impl;
+	@synchronized(self)
+	{
+		[data->attachments addEntriesFromDictionary: dict];
+	}
+}
+
+- (NSDictionary<NSString *, id> *)_copyAllAttachments
+{
+	ImplData* data = (ImplData*) _impl;
+	NSDictionary* copy;
+	@synchronized(self)
+	{
+		copy = [data->attachments copy];
+	}
+	return copy;
+}
+
+- (nullable NSDictionary<NSString *, id> *)allAttachments
+{
+	return [[self _copyAllAttachments] autorelease];
+}
+
+- (void)removeAllAttachments
+{
+	ImplData* data = (ImplData*) _impl;
+	@synchronized(self)
+	{
+		[data->attachments removeAllObjects];
+	}
+}
+
 - (void)incrementUseCount
 {
 	ImplData* data = (ImplData*) _impl;
-	if ((data->localUseCount++) == 0)
+	if ((data->localUseCount++) == 0 && !data->userSpace)
 	{
 		uint64_t scalar = data->surface->surfaceID;
 		IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodIncrementUseCount, &scalar, 1, NULL, 0, NULL, 0, NULL, 0);
@@ -249,7 +604,7 @@ typedef struct
 - (void)decrementUseCount
 {
 	ImplData* data = (ImplData*) _impl;
-	if (--data->localUseCount == 0)
+	if (--data->localUseCount == 0 && !data->userSpace)
 	{
 		uint64_t scalar = data->surface->surfaceID;
 		IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodDecrementUseCount, &scalar, 1, NULL, 0, NULL, 0, NULL, 0);
@@ -262,6 +617,37 @@ typedef struct
 	return data->localUseCount;
 }
 
+// Only uses counted in this process are known.
+- (BOOL) isInUse
+{
+	return [self localUseCount] > 0;
+}
+
+- (uint32_t) seed
+{
+	return ((ImplData*) _impl)->seed;
+}
+
+- (BOOL) allowsPixelSizeCasting
+{
+	return ((ImplData*) _impl)->allowsPixelSizeCasting;
+}
+
+// The state is recorded, but the contents of a volatile surface are never
+// discarded, which the purgeability contract allows.
+- (kern_return_t)setPurgeable:(IOSurfacePurgeabilityState)newState oldState:(IOSurfacePurgeabilityState * _Nullable)oldState
+{
+	ImplData* data = (ImplData*) _impl;
+	if (newState > kIOSurfacePurgeableKeepCurrent)
+		return kIOReturnBadArgument;
+	uint32_t previous = newState == kIOSurfacePurgeableKeepCurrent
+		? data->purgeability
+		: atomic_exchange(&data->purgeability, newState);
+	if (oldState)
+		*oldState = previous;
+	return kIOSurfaceSuccess;
+}
+
 - (kern_return_t)lockWithOptions:(IOSurfaceLockOptions)options seed:(nullable uint32_t *)seed
 {
 	ImplData* data = (ImplData*) _impl;
@@ -269,7 +655,13 @@ typedef struct
 		.surfaceID = data->surface->surfaceID,
 		.options = options,
 	};
-	return IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodLock, NULL, 0, &args, sizeof(args), NULL, 0, NULL, 0);
+	// A surface in this process's own memory needs no lock in IOSurfaceRoot.
+	kern_return_t ret = kIOSurfaceSuccess;
+	if (!data->userSpace)
+		ret = IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodLock, NULL, 0, &args, sizeof(args), NULL, 0, NULL, 0);
+	if (ret == kIOSurfaceSuccess && seed)
+		*seed = data->seed;
+	return ret;
 }
 
 - (kern_return_t)unlockWithOptions:(IOSurfaceLockOptions)options seed:(nullable uint32_t *)seed
@@ -279,7 +671,18 @@ typedef struct
 		.surfaceID = data->surface->surfaceID,
 		.options = options,
 	};
-	return IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodUnlock, NULL, 0, &args, sizeof(args), NULL, 0, NULL, 0);
+	kern_return_t ret = kIOSurfaceSuccess;
+	if (!data->userSpace)
+		ret = IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodUnlock, NULL, 0, &args, sizeof(args), NULL, 0, NULL, 0);
+	if (ret != kIOSurfaceSuccess)
+		return ret;
+	// The end of a lock for writing marks the contents as modified.
+	uint32_t current = (options & kIOSurfaceLockReadOnly)
+		? data->seed
+		: atomic_fetch_add(&data->seed, 1) + 1;
+	if (seed)
+		*seed = current;
+	return ret;
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
@@ -291,3 +694,10 @@ typedef struct
 }
 
 @end
+
+IOSurfaceID IOSurfaceGetID(IOSurfaceRef buffer)
+{
+	if (!buffer)
+		return 0;
+	return ((ImplData*) ((IOSurface*) buffer)->_impl)->surface->surfaceID;
+}

@@ -37,19 +37,6 @@ IOSurfaceRef _Nullable IOSurfaceLookup(IOSurfaceID csid){
 }
 
 
-IOSurfaceID IOSurfaceGetID(IOSurfaceRef buffer){
-    if (verbose) printf("STUB: %s called\n", __FUNCTION__);
-    return 0;
-}
-
-
-size_t IOSurfaceGetAllocSize(IOSurfaceRef buffer){
-    if (verbose) printf("STUB: %s called\n", __FUNCTION__);
-    return 0;
-}
-
-
-
 size_t IOSurfaceGetNumberOfComponentsOfPlane(IOSurfaceRef buffer, size_t planeIndex){
     if (verbose) printf("STUB: %s called\n", __FUNCTION__);
     return 0;
@@ -103,24 +90,4 @@ size_t IOSurfaceGetPropertyMaximum(CFStringRef property){
     if (verbose) printf("STUB: %s called\n", __FUNCTION__);
     return 0;
 }
-
-size_t IOSurfaceGetPropertyAlignment(CFStringRef property){
-    if (verbose) printf("STUB: %s called\n", __FUNCTION__);
-    return 0;
-}
-
-
-
-size_t IOSurfaceAlignProperty(CFStringRef property, size_t value){
-    if (verbose) printf("STUB: %s called\n", __FUNCTION__);
-    return 0;
-}
-
-
-
-Boolean IOSurfaceAllowsPixelSizeCasting(IOSurfaceRef buffer){
-    if (verbose) printf("STUB: %s called\n", __FUNCTION__);
-    return 0;
-}
-
 
