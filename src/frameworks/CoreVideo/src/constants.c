@@ -8,8 +8,8 @@ const CFStringRef kCVImageBufferTransferFunctionKey = CFSTR("CVImageBufferTransf
 const CFStringRef kCVImageBufferChromaLocationBottomFieldKey = CFSTR("CVImageBufferChromaLocationBottomField");
 const CFStringRef kCVImageBufferChromaLocationTopFieldKey = CFSTR("CVImageBufferChromaLocationTopField");
 
-const CFStringRef kCVImageBufferPixelAspectRatioHorizontalSpacingKey = CFSTR("CVImageBufferPixelAspectRatioHorizontalSpacing");
-const CFStringRef kCVImageBufferPixelAspectRatioVerticalSpacingKey = CFSTR("CVImageBufferPixelAspectRatioVerticalSpacing");
+const CFStringRef kCVImageBufferPixelAspectRatioHorizontalSpacingKey = CFSTR("HorizontalSpacing");
+const CFStringRef kCVImageBufferPixelAspectRatioVerticalSpacingKey = CFSTR("VerticalSpacing");
 
 const CFStringRef kCVImageBufferYCbCrMatrix_ITU_R_709_2 = CFSTR("ITU_R_709_2");
 const CFStringRef kCVImageBufferYCbCrMatrix_ITU_R_601_4 = CFSTR("ITU_R_601_4");
