@@ -35,6 +35,11 @@ CGL_EXPORT CGLError CGLSetDrawableRefreshRate(CGLContextObj context, uint32_t mi
 CGL_EXPORT CGLError CGLCreateContextForWindow(CGLWindowRef window, CGLContextObj *result);
 CGL_EXPORT CGLError CGLContextMakeCurrentAndAttachToWindow(CGLContextObj context, CGLWindowRef window);
 CGLError CGLSetSurface(CGLContextObj gl, CGSConnectionID cid, CGSWindowID wid, CGSSurfaceID sid);
+
+// Copies level 0 of the texture last specified from ioSurface with
+// CGLTexImageIOSurface2D back into the surface plane, in that call's format
+// and type. The surface's seed changes, as after any write.
+CGL_EXPORT CGLError CGLReadbackIOSurface(IOSurfaceRef ioSurface);
 CGLContextObj CGWindowContextCreate(CGSConnectionID cid, CGSWindowID wid, CFDictionaryRef options);
 
 #ifdef __cplusplus
