@@ -94,6 +94,7 @@ add_subdirectory(libelfloader/wrapgen)
 add_subdirectory(libsimple "${CMAKE_CURRENT_BINARY_DIR}/libsimple-linux")
 add_subdirectory(external/darlingserver)
 add_subdirectory(startup)
+add_subdirectory(${CMAKE_SOURCE_DIR}/tests/iosurface ${CMAKE_BINARY_DIR}/tests/iosurface)
 
 include_directories(${CMAKE_SOURCE_DIR}/basic-headers)
 

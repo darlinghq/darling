@@ -12,6 +12,9 @@ generate_sdk_framework(IOSurface
     HEADER "include/IOSurface"
 )
 
+# dmabuf.c calls into the host C library through the ELF loader.
+include_directories(${CMAKE_SOURCE_DIR}/src/startup/mldr/elfcalls)
+
 add_framework(IOSurface
     FAT
     CURRENT_VERSION
@@ -22,6 +25,7 @@ add_framework(IOSurface
         src/api.m
         src/constants.m
         src/IOSurfaceObjC.m
+        src/dmabuf.c
 
     DEPENDENCIES
         system
