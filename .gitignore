@@ -39,8 +39,6 @@ Module.symvers
 !/tests/mldr/**
 !/tests/shellspawn/
 !/tests/shellspawn/**
-!/tests/iosurface/
-!/tests/iosurface/**
 
 # The suggested build folder
 build
