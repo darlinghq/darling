@@ -800,9 +800,13 @@ pid_t spawnInitProcess(void)
 		exit(1);
 	}
 
-	if (unshare(CLONE_NEWUTS | CLONE_NEWIPC) != 0)
+	// The SysV IPC namespace stays shared with the host: native X11 clients in
+	// the container (Mesa among them) pass SysV shared memory segment IDs to the
+	// X server through MIT-SHM, which the server can only attach in its own
+	// namespace.
+	if (unshare(CLONE_NEWUTS) != 0)
 	{
-		fprintf(stderr, "Cannot unshare UTS and IPC namespaces to create darling-init: %s\n", strerror(errno));
+		fprintf(stderr, "Cannot unshare the UTS namespace to create darling-init: %s\n", strerror(errno));
 		exit(1);
 	}
 
