@@ -2,10 +2,17 @@
 //
 // On macOS an IOSurface is the storage of the texture that
 // CGLTexImageIOSurface2D binds to it, so locking the surface shows the GPU's
-// rendering into that texture. Darling's texture is a copy, which
+// rendering into that texture. Darling's texture is the same when the host
+// imports the surface's memory as a DMA-BUF. Otherwise it is a copy, which
 // OpenGL.framework writes back into the surface when the surface is
 // locked. The writeback must not overwrite CPU writes made to the surface
 // since the texture was last specified from it.
+//
+// Rectangle textures cannot use the memory directly; with DMA-BUFs they are
+// kept in step with it by GPU copies, from it when the context is made
+// current or locked after a CPU write, and into it before a lock; on a
+// software renderer (llvmpipe and the like) they keep the CPU copy. Each case
+// prints the path it took: dmabuf-2d, dmabuf-rect-gpucopy or cpu-copy.
 //
 // Needs an offscreen OpenGL context (a host EGL driver).
 #define GL_GLEXT_PROTOTYPES 1
@@ -19,6 +26,7 @@
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 #define W 16
@@ -83,11 +91,17 @@ static void clearTexture(float r, float g, float b)
 #define BLUE 0xff0000ffu
 #define GREY 0xff808080u
 
-int main(void)
+// Rectangle textures are kept in step by GPU copies only on hardware
+// renderers; on a CPU renderer that copy costs more than the CPU copy.
+static int softwareRenderer(void)
 {
-	signal(SIGALRM, on_alarm);
-	alarm(60);
+	const char* renderer = (const char*) glGetString(GL_RENDERER);
+	return renderer && (strstr(renderer, "llvmpipe") || strstr(renderer, "lavapipe")
+		|| strstr(renderer, "softpipe") || strstr(renderer, "swrast") || strstr(renderer, "Software Rasterizer"));
+}
 
+static IOSurfaceRef createSurface(void)
+{
 	CFMutableDictionaryRef props = CFDictionaryCreateMutable(NULL, 0,
 		&kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 	setNumber(props, kIOSurfaceWidth, W);
@@ -96,31 +110,65 @@ int main(void)
 	setNumber(props, kIOSurfacePixelFormat, 'BGRA');
 	IOSurfaceRef surface = IOSurfaceCreate(props);
 	CFRelease(props);
+	return surface;
+}
+
+static CGLError specify(CGLContextObj context, GLenum target, IOSurfaceRef surface)
+{
+	return CGLTexImageIOSurface2D(context, target, GL_RGBA8, W, H, GL_BGRA,
+		GL_UNSIGNED_INT_8_8_8_8_REV, surface, 0);
+}
+
+static uint32_t firstTexel(GLenum target)
+{
+	static uint32_t texels[W * H];
+	glGetTexImage(target, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, texels);
+	return texels[0];
+}
+
+static void runCase(CGLContextObj context, GLenum target, const char* name)
+{
+	printf("== %s\n", name);
+	IOSurfaceRef surface = createSurface();
 	CHECK(surface != NULL);
 	if (surface == NULL)
-		finish(1);
+		return;
 	fill(surface, GREY);
-
-	CGLPixelFormatAttribute attrs[] = { 0 };
-	CGLPixelFormatObj pixelFormat = NULL;
-	GLint screens = 0;
-	CGLContextObj context = NULL;
-	if (CGLChoosePixelFormat(attrs, &pixelFormat, &screens) != kCGLNoError
-		|| CGLCreateContext(pixelFormat, NULL, &context) != kCGLNoError
-		|| CGLSetCurrentContext(context) != kCGLNoError)
-	{
-		printf("FAIL: no offscreen context\n");
-		finish(1);
-	}
 
 	GLuint texture = 0, framebuffer = 0;
 	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	CHECK(CGLTexImageIOSurface2D(context, GL_TEXTURE_2D, GL_RGBA8, W, H, GL_BGRA,
-		GL_UNSIGNED_INT_8_8_8_8_REV, surface, 0) == kCGLNoError);
+	glBindTexture(target, texture);
+	CHECK(specify(context, target, surface) == kCGLNoError);
+	CHECK(firstTexel(target) == GREY);
+
+	// A CPU write after the call shows in a 2D texture right away only if
+	// the texture uses the surface's memory, and in a rectangle texture
+	// once the context is locked only if GPU copies keep it in step.
+	// Specifying the texture again brings it in anyway.
+	fill(surface, GREEN);
+	int direct = firstTexel(target) == GREEN;
+	CGLLockContext(context);
+	CGLUnlockContext(context);
+	int refreshed = firstTexel(target) == GREEN;
+	const char* path = "cpu-copy";
+	if (target == GL_TEXTURE_2D && direct)
+		path = "dmabuf-2d";
+	else if (target == GL_TEXTURE_RECTANGLE_ARB && refreshed)
+		path = "dmabuf-rect-gpucopy";
+	printf("path: %s\n", path);
+	if (target == GL_TEXTURE_RECTANGLE_ARB && softwareRenderer())
+		CHECK(strcmp(path, "cpu-copy") == 0);
+	if (target == GL_TEXTURE_RECTANGLE_ARB)
+		CHECK(!direct);
+	else
+		CHECK(direct == refreshed);
+	CHECK(specify(context, target, surface) == kCGLNoError);
+	CHECK(firstTexel(target) == GREEN);
+	int gpu = strcmp(path, "cpu-copy") != 0;
+
 	glGenFramebuffers(1, &framebuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, texture, 0);
 	CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 	glViewport(0, 0, W, H);
 
@@ -137,35 +185,76 @@ int main(void)
 	printf("after rendering blue: %08x %08x\n", first, last);
 	CHECK(first == BLUE && last == BLUE);
 
-	// A CPU write is newer than the texture: rendering that the texture has
-	// not been specified from since does not replace it.
+	// A CPU write is newer than a texture that holds a copy: rendering
+	// that the texture has not been specified from since does not replace
+	// it. A 2D texture that uses the surface's memory renders into it, as
+	// on macOS.
 	fill(surface, GREEN);
 	clearTexture(1.0f, 0.0f, 0.0f);
 	corners(surface, &first, &last);
 	printf("after a CPU write: %08x %08x\n", first, last);
-	CHECK(first == GREEN && last == GREEN);
+	if (target == GL_TEXTURE_2D && gpu)
+		CHECK(first == RED && last == RED);
+	else
+		CHECK(first == GREEN && last == GREEN);
 
 	// Specifying the texture from the surface again resumes the writeback.
-	CHECK(CGLTexImageIOSurface2D(context, GL_TEXTURE_2D, GL_RGBA8, W, H, GL_BGRA,
-		GL_UNSIGNED_INT_8_8_8_8_REV, surface, 0) == kCGLNoError);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+	CHECK(specify(context, target, surface) == kCGLNoError);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, texture, 0);
 	clearTexture(0.0f, 0.0f, 1.0f);
 	corners(surface, &first, &last);
 	printf("after specifying again: %08x %08x\n", first, last);
 	CHECK(first == BLUE && last == BLUE);
+
+	// A rectangle texture kept in step gets CPU writes when the context
+	// is made current again, and GL rendering after that is written back.
+	if (target == GL_TEXTURE_RECTANGLE_ARB && gpu) {
+		fill(surface, GREEN);
+		CHECK(CGLSetCurrentContext(context) == kCGLNoError);
+		CHECK(firstTexel(target) == GREEN);
+		clearTexture(1.0f, 0.0f, 0.0f);
+		corners(surface, &first, &last);
+		printf("after a refresh and rendering red: %08x %08x\n", first, last);
+		CHECK(first == RED && last == RED);
+	}
 
 	// The explicit readback still works and marks the surface modified.
 	clearTexture(1.0f, 0.0f, 0.0f);
 	uint32_t seed = IOSurfaceGetSeed(surface);
 	CHECK(CGLReadbackIOSurface(surface) == kCGLNoError);
 	CHECK(IOSurfaceGetSeed(surface) != seed);
+	corners(surface, &first, &last);
+	CHECK(first == RED && last == RED);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glDeleteFramebuffers(1, &framebuffer);
+	glDeleteTextures(1, &texture);
+	CFRelease(surface);
+}
+
+int main(void)
+{
+	signal(SIGALRM, on_alarm);
+	alarm(60);
+
+	CGLPixelFormatAttribute attrs[] = { 0 };
+	CGLPixelFormatObj pixelFormat = NULL;
+	GLint screens = 0;
+	CGLContextObj context = NULL;
+	if (CGLChoosePixelFormat(attrs, &pixelFormat, &screens) != kCGLNoError
+		|| CGLCreateContext(pixelFormat, NULL, &context) != kCGLNoError
+		|| CGLSetCurrentContext(context) != kCGLNoError)
+	{
+		printf("FAIL: no offscreen context\n");
+		finish(1);
+	}
+
+	runCase(context, GL_TEXTURE_2D, "GL_TEXTURE_2D");
+	runCase(context, GL_TEXTURE_RECTANGLE_ARB, "GL_TEXTURE_RECTANGLE");
+
 	CGLSetCurrentContext(NULL);
 	CGLDestroyContext(context);
 	CGLReleasePixelFormat(pixelFormat);
-	CFRelease(surface);
 
 	if (g_failures == 0)
 		printf("PASS\n");

@@ -22,6 +22,7 @@
 #import <IOSurface/IOSurfacePriv.h>
 #import <Foundation/Foundation.h>
 #import <IOKit/IOCFSerialize.h>
+#include "dmabuf.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <os/log.h>
@@ -97,6 +98,11 @@ typedef struct
 	size_t mappingSize;
 	dev_t device;
 	ino_t inode;
+	// Where the planes start in the shared memory object.
+	uint64_t dataOffset;
+	// The planes exported as a DMA-BUF, or -1. Made on first request.
+	_Atomic int dmabuf;
+	bool dmabufTried;
 	// The seed and the use count. Points into the mapping, or to memory
 	// owned by this object when there is no shared memory object.
 	struct SharedHeader* shared;
@@ -118,6 +124,9 @@ static void initState(ImplData* idata)
 	idata->mappingSize = 0;
 	idata->device = 0;
 	idata->inode = 0;
+	idata->dataOffset = 0;
+	idata->dmabuf = -1;
+	idata->dmabufTried = false;
 	idata->shared = NULL;
 	idata->registered = false;
 	idata->purgeability = kIOSurfacePurgeableNonVolatile;
@@ -237,11 +246,16 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 }
 
 // Creates an anonymous shared memory object: the name only has to be unique
-// until it is unlinked, right after creation.
+// until it is unlinked, right after creation. Where the host can export
+// surface memory to GPU drivers, the object is a memory file that can be.
 static int createSharedObject(void)
 {
 	static _Atomic uint32_t counter;
 	char name[32];
+
+	int memory = _IOSurfaceDMABufCreateMemory();
+	if (memory >= 0)
+		return memory;
 
 	for (int attempt = 0; attempt < 16; attempt++)
 	{
@@ -639,6 +653,7 @@ static void recordIdentity(ImplData* idata)
 		idata->fd = fd;
 		idata->mapping = shared;
 		idata->mappingSize = mappingSize;
+		idata->dataOffset = shared->dataOffset;
 		recordIdentity(idata);
 	}
 	self->_impl = idata;
@@ -708,6 +723,7 @@ static void recordIdentity(ImplData* idata)
 	idata->mappingSize = mappingSize;
 	idata->device = st.st_dev;
 	idata->inode = st.st_ino;
+	idata->dataOffset = header.dataOffset;
 	idata->shared = mapping;
 	self->_impl = idata;
 
@@ -809,6 +825,8 @@ static void recordIdentity(ImplData* idata)
 		if (data->registered)
 			unregisterGlobalSurface(data->surface->surfaceID);
 
+		if (data->dmabuf >= 0)
+			close(data->dmabuf);
 		if (data->fd >= 0)
 		{
 			munmap(data->mapping, data->mappingSize);
@@ -1131,7 +1149,11 @@ static void recordIdentity(ImplData* idata)
 	kern_return_t ret = kIOSurfaceSuccess;
 	if (!data->userSpace)
 		ret = IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodLock, NULL, 0, &args, sizeof(args), NULL, 0, NULL, 0);
-	if (ret == kIOSurfaceSuccess && seed)
+	if (ret != kIOSurfaceSuccess)
+		return ret;
+	// Devices that share the memory finish with it before the CPU reads it.
+	_IOSurfaceDMABufBeginCPUAccess(data->dmabuf, !(options & kIOSurfaceLockReadOnly));
+	if (seed)
 		*seed = data->shared->seed;
 	return ret;
 }
@@ -1148,6 +1170,7 @@ static void recordIdentity(ImplData* idata)
 		ret = IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodUnlock, NULL, 0, &args, sizeof(args), NULL, 0, NULL, 0);
 	if (ret != kIOSurfaceSuccess)
 		return ret;
+	_IOSurfaceDMABufEndCPUAccess(data->dmabuf, !(options & kIOSurfaceLockReadOnly));
 	// The end of a lock for writing marks the contents as modified.
 	uint32_t current = (options & kIOSurfaceLockReadOnly)
 		? data->shared->seed
@@ -1166,6 +1189,50 @@ static void recordIdentity(ImplData* idata)
 }
 
 @end
+
+static pthread_mutex_t g_dmabufLock = PTHREAD_MUTEX_INITIALIZER;
+
+// Exports the planes of a surface in a shared memory object, once. Surfaces
+// that IOSurfaceRoot allocated, and those in a private mapping, have none.
+static int surfaceDMABuf(ImplData* data)
+{
+	int dmabuf = data->dmabuf;
+	if (dmabuf >= 0 || data->fd < 0)
+		return dmabuf;
+
+	pthread_mutex_lock(&g_dmabufLock);
+	if (!data->dmabufTried)
+	{
+		data->dmabufTried = true;
+		size_t pageSize = (size_t) getpagesize();
+		if (data->dataOffset % pageSize == 0 && data->allocSize % pageSize == 0)
+			data->dmabuf = _IOSurfaceDMABufExport(data->fd, data->dataOffset, data->allocSize);
+	}
+	dmabuf = data->dmabuf;
+	pthread_mutex_unlock(&g_dmabufLock);
+	return dmabuf;
+}
+
+bool _IOSurfaceGetDMABuf(IOSurfaceRef buffer, size_t planeIndex, _IOSurfaceDMABuf* out)
+{
+	if (!buffer || !out || out->version != _IOSURFACE_DMABUF_VERSION)
+		return false;
+
+	ImplData* data = (ImplData*) ((IOSurface*) buffer)->_impl;
+	if (planeIndex >= data->surface->planeCount)
+		return false;
+
+	int dmabuf = surfaceDMABuf(data);
+	if (dmabuf < 0)
+		return false;
+
+	const struct _IOSurfacePlane* plane = &data->surface->planes[planeIndex];
+	out->fd = dmabuf;
+	out->size = data->allocSize;
+	out->offset = plane->memoryOffset;
+	out->bytesPerRow = plane->bytesPerRow;
+	return true;
+}
 
 IOSurfaceID IOSurfaceGetID(IOSurfaceRef buffer)
 {
