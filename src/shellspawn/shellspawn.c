@@ -35,6 +35,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <signal.h>
 #include "shellspawn.h"
 #include "shellspawn-fds.h"
+#include "shellspawn-config.h"
 #include "duct_signals.h"
 
 #define DBG 0
@@ -61,6 +62,11 @@ int main(int argc, const char** argv)
 	// we have to allow it to become a zombie, therefore we need to
 	// restore the sigaction of SIGCHLD of the child shellspawn
 	setupSigchild();
+
+	// The darling launcher waits for the socket before it sends the first
+	// command, so binding it only after the system configuration has arrived
+	// makes every program started through shellspawn see the configuration.
+	waitForSystemConfig();
 	setupSocket();
 	listenForConnections();
 
