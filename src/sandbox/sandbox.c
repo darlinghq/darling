@@ -1,19 +1,48 @@
 #include "sandbox.h"
+#include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include <sys/types.h>
+#include <darling/emulation/linux_premigration/ext/for-sandbox.h>
 
-// DUMMY implementation
+// Darling enforces no sandbox profile. What it keeps is the state macOS
+// reports: whether a process applied a profile (held by darlingserver, so it
+// is inherited by fork and kept across exec), and the extensions a process
+// consumed.
 const enum sandbox_filter_type SANDBOX_CHECK_NO_REPORT = SANDBOX_FILTER_NONE;
+
+static void sandbox_record_applied(void)
+{
+	/* Only the reported state depends on this. If darlingserver cannot
+	 * record it, the process is reported as not sandboxed; applying the
+	 * profile still succeeds, as nothing is enforced either way. */
+	(void) __darling_sandbox_mark_applied();
+}
+
+/* Looks up whether the process applied a sandbox profile.
+ * Returns false if there is no such process. */
+static bool sandbox_lookup(pid_t pid, bool *applied)
+{
+	*applied = false;
+
+	// pid 0 is the kernel, which is never sandboxed
+	if (pid == 0) {
+		return true;
+	}
+
+	// Other failures (e.g. an older darlingserver) report "not sandboxed"
+	return __darling_sandbox_is_applied(pid, applied) != ESRCH;
+}
 
 int sandbox_init(const char *profile, uint64_t flags, char **errorbuf)
 {
-	/* Darling does not enforce seatbelt profiles, so this succeeds without
-	 * effect. errorbuf may be NULL, and a successful call reports no error
-	 * (the old code dereferenced NULL and left a "Not implemented" message
-	 * next to a success return). */
+	/* Darling does not enforce seatbelt profiles: this succeeds and only
+	 * records that the process is sandboxed (see sandbox_check). errorbuf
+	 * may be NULL, and a successful call reports no error. */
+	sandbox_record_applied();
 	if (errorbuf != NULL) {
 		*errorbuf = NULL;
 	}
@@ -58,6 +87,7 @@ void sandbox_free_error(char *errorbuf)
 int sandbox_init_with_parameters(const char *profile, uint64_t flags, const char *const parameters[], char **errorbuf)
 {
 	/* No enforcement; see sandbox_init. */
+	sandbox_record_applied();
 	if (errorbuf != NULL) {
 		*errorbuf = NULL;
 	}
@@ -67,6 +97,7 @@ int sandbox_init_with_parameters(const char *profile, uint64_t flags, const char
 int sandbox_init_with_extensions(const char *profile, uint64_t flags, const char *const extensions[], char **errorbuf)
 {
 	/* No enforcement; see sandbox_init. Extensions are accepted and ignored. */
+	sandbox_record_applied();
 	if (errorbuf != NULL) {
 		*errorbuf = NULL;
 	}
@@ -75,6 +106,23 @@ int sandbox_init_with_extensions(const char *profile, uint64_t flags, const char
 
 int sandbox_check(pid_t pid, const char *operation, enum sandbox_filter_type type, ...)
 {
+	bool applied;
+
+	if (!sandbox_lookup(pid, &applied)) {
+		// QUIRK: for a pid that names no process (none, an exited one, or
+		// a negative one), sandbox_check returns 1 and leaves errno alone,
+		// with or without an operation. Not documented. Evidence: black-box
+		// observation on macOS 27.0.1 arm64 (tier 2; lol-upstream/impl/P95.md).
+		// Test: quirk_unknown_pid_reports_1 in tests/src/sandbox_state.c.
+		return 1;
+	}
+
+	// The NULL operation asks whether the process is sandboxed
+	if (operation == NULL) {
+		return applied ? 1 : 0;
+	}
+
+	// Nothing is enforced, so every operation is allowed
 	return 0;
 }
 
@@ -219,9 +267,8 @@ int rootless_allows_task_for_pid(pid_t pid) {
 }
 
 int sandbox_check_by_audit_token(audit_token_t tok, const char* operation, enum sandbox_filter_type filt, ...) {
-	// technically unimplemented
-	// just return 0 as an indiciation that whatever operation the caller asked about is allowed
-	return 0;
+	// The process ID is the sixth word of an audit token (see audit_token_to_au32(3))
+	return sandbox_check((pid_t) tok.val[5], operation, filt);
 };
 
 int rootless_check_trusted(const char* path) {

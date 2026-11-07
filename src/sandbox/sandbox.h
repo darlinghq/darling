@@ -153,6 +153,12 @@ enum sandbox_extension_flags {
 	FS_EXT_PREFER_FILEID =  (1 << 4),
 };
 
+/* Darling: no profile is enforced. sandbox_check(pid, NULL, SANDBOX_FILTER_NONE)
+ * returns 1 if the process, or a process it was forked from, applied a
+ * profile (sandbox_init*, sandbox_apply); that means "a profile was applied",
+ * not "the process is confined". It is kept across exec. With an operation,
+ * sandbox_check returns 0 (allowed). For a pid that names no process, it
+ * returns 1, as macOS does. */
 int sandbox_check(pid_t pid, const char *operation, enum sandbox_filter_type type, ...);
 int sandbox_check_by_audit_token(audit_token_t tok, const char* operation, enum sandbox_filter_type filt, ...);
 
