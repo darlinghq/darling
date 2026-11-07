@@ -42,6 +42,9 @@
 	int _fd;
 	FSEventStreamEventId _lastEventID;
 	bool _running;
+	CFTimeInterval _latency;
+	bool _deliveryArmed;
+	CFAbsoluteTime _lastDelivery;
 
 	NSMutableArray* _pathArray;
 	FSEventStreamEventFlags* _flagArray;
@@ -49,6 +52,7 @@
 }
 
 -(instancetype)initWithPaths:(NSArray*)pathsToWatch
+					latency:(CFTimeInterval)latency
 						flags:(FSEventStreamCreateFlags)flags
 					context:(FSEventStreamContext*)context
 					callback:(FSEventStreamCallback)callback;

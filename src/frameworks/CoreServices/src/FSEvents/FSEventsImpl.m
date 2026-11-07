@@ -39,12 +39,14 @@ static void rlPerform(void* info)
 @implementation FSEventsImpl
 
 -(instancetype)initWithPaths:(NSArray*)pathsToWatch
+					latency:(CFTimeInterval)latency
 					flags:(FSEventStreamCreateFlags)flags
 					context:(FSEventStreamContext*)context
 					callback:(FSEventStreamCallback)callback
 {
 	_pathsToWatch = [[NSArray alloc] initWithArray:pathsToWatch];
 	_flags = flags;
+	_latency = latency;
 	_callback = callback;
 	_fd = inotify_init1(IN_NONBLOCK);
 
@@ -247,8 +249,34 @@ static void rlPerform(void* info)
 		}
 	}
 
-	if ([_pathArray count] > 0)
+	if ([_pathArray count] > 0 && !_deliveryArmed)
+		[self _scheduleDelivery];
+}
+
+// Events that arrive before the callback runs are delivered together with
+// the ones already queued, so the client sees at most one callback per
+// latency period.
+-(void)_scheduleDelivery
+{
+	CFTimeInterval delay = _latency;
+
+	// With NoDefer, the first event after a quiet period is delivered at
+	// once; later events wait for the latency to pass.
+	if ((_flags & kFSEventStreamCreateFlagNoDefer) && CFAbsoluteTimeGetCurrent() - _lastDelivery >= _latency)
+		delay = 0;
+
+	_deliveryArmed = true;
+
+	if (delay <= 0)
+	{
 		[self _dispatchEvents];
+	}
+	else
+	{
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t) (delay * NSEC_PER_SEC)), g_fsEventsQueue, ^{
+			[self _dispatchEvents];
+		});
+	}
 }
 
 -(void)_queueEventForPath:(NSString*)path
@@ -468,6 +496,9 @@ static void rlPerform(void* info)
 
 -(void)_dispatchEvents
 {
+	if (!_queue && !CFRunLoopSourceIsValid(_rlSource))
+		return; // invalidated, nobody to deliver to
+
 	if (_queue)
 	{
 		[self retain];
@@ -545,6 +576,8 @@ static void rlPerform(void* info)
 	_idArray = NULL;
 
 	[_pathArray removeAllObjects];
+	_deliveryArmed = false;
+	_lastDelivery = CFAbsoluteTimeGetCurrent();
 	dispatch_resume(_source);
 	[self release];
 }
