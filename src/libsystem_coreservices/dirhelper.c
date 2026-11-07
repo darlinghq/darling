@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <pwd.h>
+#include <unistd.h>
 #include "dirhelper_priv.h"
 
 static const char* dir_suffix = NULL;
@@ -36,20 +38,38 @@ void _libcoreservices_fork_child(void)
 	//dir_suffix = NULL;
 }
 
+// The per-user directories belong to the effective user as recorded in the
+// user database. HOME is only a fallback: a daemon that changed its uid may
+// have inherited it from another user.
+static const char* user_home(char* buf, size_t size)
+{
+	struct passwd pwd;
+	struct passwd* result = NULL;
+
+	if (getpwuid_r(geteuid(), &pwd, buf, size, &result) == 0 && result != NULL
+		&& result->pw_dir != NULL && result->pw_dir[0] != '\0')
+	{
+		return result->pw_dir;
+	}
+
+	return getenv("HOME");
+}
+
 char* _dirhelper(int which, char* p, size_t limit)
 {
+	char pwbuf[4096];
+	const char* home = NULL;
+
+	// Look the user up before taking the lock, the lookup may be remote
+	if (which == DIRHELPER_USER_LOCAL || which == DIRHELPER_USER_LOCAL_CACHE)
+		home = user_home(pwbuf, sizeof(pwbuf));
+
 	pthread_mutex_lock(&dir_suffix_lock);
 	switch (which)
 	{
 		case DIRHELPER_USER_LOCAL:
 		{
-			const char* home;
-
-			home = getenv("HOME");
-			if (home == NULL)
-				home = "";
-
-			snprintf(p, limit, "%s/%s%s", home, dir_suffix ? dir_suffix : "", dir_suffix ? "/" : "");
+			snprintf(p, limit, "%s/%s%s", home ? home : "", dir_suffix ? dir_suffix : "", dir_suffix ? "/" : "");
 		} break;
 		case DIRHELPER_USER_LOCAL_TEMP:
 		{
@@ -63,9 +83,6 @@ char* _dirhelper(int which, char* p, size_t limit)
 		} break;
 		case DIRHELPER_USER_LOCAL_CACHE:
 		{
-			const char* home;
-
-			home = getenv("HOME");
 			if (home != NULL)
 				snprintf(p, limit, "%s/.cache/%s%s", home, dir_suffix ? dir_suffix : "", dir_suffix ? "/" : "");
 			else
