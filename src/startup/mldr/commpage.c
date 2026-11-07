@@ -146,3 +146,8 @@ unsigned long commpage_address(bool _64bit)
 	return _64bit ? _COMM_PAGE64_BASE_ADDRESS : _COMM_PAGE32_BASE_ADDRESS;
 }
 
+unsigned long commpage_length(bool _64bit)
+{
+	return _64bit ? _COMM_PAGE64_AREA_LENGTH : _COMM_PAGE32_AREA_LENGTH;
+}
+
