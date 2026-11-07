@@ -2,11 +2,13 @@
 
 `CGLRegisterNativeDisplayForPlatform(nativeDisplay, platform)` is an additive
 internal backend API. The native pointer must match the supplied EGL platform.
-It selects an initialized window/OpenGL/RGBA8 configuration supporting interval
-zero and only publishes the pair after validation. New contexts on this path
+It selects the configuration with the same rules as the X11 entry point
+(window/OpenGL/RGBA8, preferring one that supports interval zero) and only
+publishes the pair after validation. New contexts on this path
 default to interval zero so hidden Wayland surfaces do not wait indefinitely for
 compositor frame callbacks. Explicit caller interval requests are retained.
-The original X11 registration entry and its interval-one default remain.
+Both entry points share the validation and publication; the X11 entry is the
+same registration with EGL_PLATFORM_X11_KHR. The default interval is zero.
 
 The companion Cocotron `AppKit/Wayland.backend/tests/egltest.m` provides live
 plain-arm64 coverage with real Wayland EGL drawables, layers and NSOpenGLView.

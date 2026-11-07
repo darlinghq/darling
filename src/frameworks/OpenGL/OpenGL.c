@@ -122,7 +122,39 @@ static int default_paced = 0;
 static EGLenum registered_platform = EGL_PLATFORM_X11_KHR;
 static pthread_mutex_t registration_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static EGLBoolean choose_config(EGLDisplay dpy, EGLint surface_type, EGLConfig *out_config, int *out_count) {
+// Picks a config from those matching attrs. With prefer_unthrottled, one
+// whose minimum swap interval is 0 is taken if there is any, so that a swap
+// interval of 0 can be honoured; otherwise EGL's first choice is.
+static EGLBoolean pick_config(EGLDisplay dpy, const EGLint *attrs, int prefer_unthrottled,
+                              EGLConfig *out_config, int *out_count) {
+    EGLint count = 0;
+    if (!p_eglChooseConfig(dpy, attrs, NULL, 0, &count) || count <= 0)
+        return EGL_FALSE;
+    EGLConfig *configs = calloc((size_t)count, sizeof(*configs));
+    if (!configs)
+        return EGL_FALSE;
+    EGLBoolean found = EGL_FALSE;
+    if (p_eglChooseConfig(dpy, attrs, configs, count, &count) && count > 0) {
+        found = EGL_TRUE;
+        *out_config = configs[0];
+        for (EGLint i = 0; prefer_unthrottled && i < count; i++) {
+            EGLint minimum_interval;
+            if (p_eglGetConfigAttrib(dpy, configs[i], EGL_MIN_SWAP_INTERVAL, &minimum_interval)
+                && minimum_interval == 0) {
+                *out_config = configs[i];
+                break;
+            }
+        }
+        if (out_count) *out_count = count;
+    }
+    free(configs);
+    return found;
+}
+
+// Tries RGBA8 with 24-bit depth and 8-bit stencil, then 16-bit depth, then
+// any RGB config with the given surface type.
+static EGLBoolean choose_config(EGLDisplay dpy, EGLint surface_type, int prefer_unthrottled,
+                                EGLConfig *out_config, int *out_count) {
     EGLint const attrs_24[] = {
         EGL_RED_SIZE, 8,
         EGL_GREEN_SIZE, 8,
@@ -152,25 +184,21 @@ static EGLBoolean choose_config(EGLDisplay dpy, EGLint surface_type, EGLConfig *
         EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
         EGL_NONE
     };
-
-    EGLint count = 0;
-    if (p_eglChooseConfig(dpy, attrs_24, out_config, 1, &count) && count > 0) {
-        if (out_count) *out_count = count;
-        return EGL_TRUE;
-    }
-    if (p_eglChooseConfig(dpy, attrs_16, out_config, 1, &count) && count > 0) {
-        if (out_count) *out_count = count;
-        return EGL_TRUE;
-    }
-    if (p_eglChooseConfig(dpy, attrs_fallback, out_config, 1, &count) && count > 0) {
-        if (out_count) *out_count = count;
-        return EGL_TRUE;
+    const EGLint *tiers[] = { attrs_24, attrs_16, attrs_fallback };
+    for (size_t i = 0; i < sizeof(tiers) / sizeof(tiers[0]); i++) {
+        if (pick_config(dpy, tiers[i], prefer_unthrottled, out_config, out_count))
+            return EGL_TRUE;
     }
     return EGL_FALSE;
 }
 
+// The config of a registered window-system display, the same for every
+// platform. Contexts on it may draw into windows and into the pbuffer used
+// before a drawable is attached; platforms without pbuffer configs (Wayland
+// on some drivers) get a window-only config.
 static EGLBoolean choose_registered_config(EGLDisplay dpy, EGLConfig *out_config, int *out_count) {
-    return choose_config(dpy, EGL_WINDOW_BIT | EGL_PBUFFER_BIT, out_config, out_count);
+    return choose_config(dpy, EGL_WINDOW_BIT | EGL_PBUFFER_BIT, 1, out_config, out_count)
+        || choose_config(dpy, EGL_WINDOW_BIT, 1, out_config, out_count);
 }
 
 // A process that creates a context without registering a window-system
@@ -189,7 +217,7 @@ static void open_default_display(void) {
         EGLConfig candidate_config;
         if (candidates[i] == EGL_NO_DISPLAY || !p_eglInitialize(candidates[i], NULL, NULL))
             continue;
-        if (!choose_config(candidates[i], EGL_PBUFFER_BIT, &candidate_config, NULL))
+        if (!choose_config(candidates[i], EGL_PBUFFER_BIT, 0, &candidate_config, NULL))
             continue;
         default_display = candidates[i];
         default_config = candidate_config;
@@ -283,99 +311,45 @@ static int attributes_count(const CGLPixelFormatAttribute *attrs) {
     return result;
 }
 
-CGLError CGLRegisterNativeDisplay(void *native_display) {
+// Opens and checks the native display on the given platform, then makes it
+// the registered display. A display that fails any step is not published,
+// so a rejected registration leaves a working one in place. Such a display
+// is not terminated either: EGL may have returned a handle that a live
+// context still uses.
+static CGLError register_native_display(void *native_display, EGLenum platform) {
     if (!native_display || !native_egl_available())
         return kCGLBadConnection;
-    EGLDisplay candidate = p_eglGetPlatformDisplay(EGL_PLATFORM_X11_KHR, native_display, NULL);
-    EGLConfig candidate_config;
-    EGLint count;
+    EGLDisplay candidate = p_eglGetPlatformDisplay(platform, native_display, NULL);
     if (candidate == EGL_NO_DISPLAY || !p_eglInitialize(candidate, NULL, NULL))
         return kCGLBadConnection;
+    EGLConfig candidate_config;
+    int count = 0;
     if (!choose_registered_config(candidate, &candidate_config, &count))
         return kCGLBadPixelFormat;
     if (!p_eglBindAPI(EGL_OPENGL_API))
         return kCGLBadState;
+
     pthread_mutex_lock(&registration_lock);
     display = candidate;
     config = candidate_config;
     num_config = count;
-    registered_platform = EGL_PLATFORM_X11_KHR;
+    registered_platform = platform;
     default_swap_interval = 0;
-    default_paced = 0;
+    // On Wayland the swap interval is kept in software: layer animations may
+    // keep drawing while their parent is hidden, and waiting for a frame
+    // callback on an unmapped surface can block forever.
+    default_paced = platform == EGL_PLATFORM_WAYLAND_KHR;
     pthread_mutex_unlock(&registration_lock);
     return kCGLNoError;
 }
 
-// Explicit-platform counterpart for backends whose native handles must not be
-// interpreted using EGL's process default platform. Keep the X11 entry unchanged.
-CGLError CGLRegisterNativeDisplayForPlatform(void *native_display, unsigned int platform) {
-    if (!native_display || !native_egl_available())
-        return kCGLBadConnection;
-    EGLDisplay candidate = p_eglGetPlatformDisplay(platform, native_display, NULL);
-    if (candidate == EGL_NO_DISPLAY)
-        return kCGLBadConnection;
-    EGLBoolean initialized = p_eglInitialize(candidate, NULL, NULL);
-    if (!initialized)
-        return kCGLBadConnection;
-    CGLError error = kCGLBadConnection;
-    const EGLint attributes[] = {
-        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-        EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8,
-        EGL_ALPHA_SIZE, 8,
-        EGL_DEPTH_SIZE, 24,
-        EGL_STENCIL_SIZE, 8,
-        EGL_NONE
-    };
-    EGLint count = 0;
-    if (!p_eglChooseConfig(candidate, attributes, NULL, 0, &count) || count <= 0) {
-        error = kCGLBadPixelFormat;
-        goto reject;
-    }
-    EGLConfig *configs = calloc((size_t)count, sizeof(*configs));
-    if (!configs) {
-        error = kCGLBadAlloc;
-        goto reject;
-    }
-    EGLConfig candidate_config = NULL;
-    if (p_eglChooseConfig(candidate, attributes, configs, count, &count)) {
-        for (EGLint i = 0; i < count; ++i) {
-            EGLint minimum_interval;
-            if (p_eglGetConfigAttrib(candidate, configs[i], EGL_MIN_SWAP_INTERVAL, &minimum_interval) &&
-                minimum_interval == 0) {
-                candidate_config = configs[i];
-                break;
-            }
-        }
-    }
-    free(configs);
-    if (!candidate_config) {
-        error = kCGLBadPixelFormat;
-        goto reject;
-    }
-    if (!p_eglBindAPI(EGL_OPENGL_API)) {
-        error = kCGLBadState;
-        goto reject;
-    }
-    // Publish only a fully initialized display/config pair. A rejected platform
-    // must not corrupt an already working backend.
-    pthread_mutex_lock(&registration_lock);
-    display = candidate;
-    config = candidate_config;
-    num_config = count;
-    // Layer animations may keep drawing while their parent is hidden. Waiting
-    // for a Wayland frame callback on an unmapped surface can block forever.
-    registered_platform = platform;
-    default_swap_interval = 0;
-    default_paced = platform == EGL_PLATFORM_WAYLAND_KHR;
-    pthread_mutex_unlock(&registration_lock);
-    return kCGLNoError;
+CGLError CGLRegisterNativeDisplay(void *native_display) {
+    return register_native_display(native_display, EGL_PLATFORM_X11_KHR);
+}
 
-reject:
-    // EGL may return an existing handle still owned by a live context, even
-    // after another backend registration changed the default display.
-    // A failed probe must not terminate that shared display.
-    return error;
+// For backends whose native display is not an X11 Display, such as Wayland.
+CGLError CGLRegisterNativeDisplayForPlatform(void *native_display, unsigned int platform) {
+    return register_native_display(native_display, (EGLenum) platform);
 }
 
 static struct _CGLDisplay* getCGLDisplay(CGSConnectionID cid)

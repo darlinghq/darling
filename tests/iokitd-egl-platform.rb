@@ -23,7 +23,7 @@ abort "IOSurfaceRoot.mm must not use unadorned eglGetDisplay for IODisplayConnec
 
 # 2. Source verification for OpenGL.framework (OpenGL.c)
 abort "OpenGL.c must define or include EGL_PLATFORM_X11_KHR" unless opengl_content.include?('EGL_PLATFORM_X11_KHR')
-abort "CGLRegisterNativeDisplay in OpenGL.c must use eglGetPlatformDisplay with EGL_PLATFORM_X11_KHR" unless opengl_content =~ /CGLError\s+CGLRegisterNativeDisplay\s*\([^)]*\)\s*\{[^}]*eglGetPlatformDisplay\s*\(\s*EGL_PLATFORM_X11_KHR/
+abort "CGLRegisterNativeDisplay in OpenGL.c must use eglGetPlatformDisplay with EGL_PLATFORM_X11_KHR" unless opengl_content =~ /CGLError\s+CGLRegisterNativeDisplay\s*\([^)]*\)\s*\{[^}]*(?:eglGetPlatformDisplay\s*\(\s*|register_native_display\s*\(\s*\w+\s*,\s*)EGL_PLATFORM_X11_KHR/
 abort "getCGLDisplay in OpenGL.c must use eglGetPlatformDisplay with the registered platform" unless opengl_content =~ /struct\s+_CGLDisplay\s*\*\s*getCGLDisplay\s*\([^)]*\)\s*\{[^}]*eglGetPlatformDisplay\s*\(\s*platform/
 
 # 3. Dynamic probe under EGL_PLATFORM=wayland

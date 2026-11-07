@@ -38,7 +38,7 @@ def main():
 
     if "EGL_PLATFORM_X11_KHR" not in opengl_content:
         sys.exit("OpenGL.c must define or include EGL_PLATFORM_X11_KHR")
-    if not re.search(r"CGLError\s+CGLRegisterNativeDisplay\s*\([^)]*\)\s*\{[^}]*eglGetPlatformDisplay\s*\(\s*EGL_PLATFORM_X11_KHR", opengl_content):
+    if not re.search(r"CGLError\s+CGLRegisterNativeDisplay\s*\([^)]*\)\s*\{[^}]*(?:eglGetPlatformDisplay\s*\(\s*|register_native_display\s*\(\s*\w+\s*,\s*)EGL_PLATFORM_X11_KHR", opengl_content):
         sys.exit("CGLRegisterNativeDisplay in OpenGL.c must use eglGetPlatformDisplay with EGL_PLATFORM_X11_KHR")
     if not re.search(r"struct\s+_CGLDisplay\s*\*\s*getCGLDisplay\s*\([^)]*\)\s*\{[^}]*eglGetPlatformDisplay\s*\(\s*platform", opengl_content):
         sys.exit("getCGLDisplay in OpenGL.c must use eglGetPlatformDisplay with the registered platform")
