@@ -168,11 +168,19 @@ int sandbox_suspend(pid_t pid);
 int sandbox_unsuspend(void);
 
 /* Extension token family.
- * No enforcement exists, so issued tokens are placeholder strings (freed
- * with free()), consuming one yields a positive handle, and releasing a
- * handle succeeds without effect. */
+ * Darling: issued tokens are strings freed with free(); a NULL class or
+ * target gives NULL and EINVAL. Consuming a token that was not issued gives
+ * -1 and EINVAL. In a sandboxed process, consuming yields a positive handle
+ * (the same one for the same token, counted), and releasing a handle that is
+ * not held fails with EINVAL; in a process that is not sandboxed, consuming
+ * yields 0 and releasing always succeeds, as on macOS. Nothing is enforced. */
 char *sandbox_extension_issue_file(const char *extension_class, const char *path, uint32_t flags);
+char *sandbox_extension_issue_file_to_process(const char *extension_class, const char *path, uint32_t flags, audit_token_t target);
 char *sandbox_extension_issue_mach(const char *extension_class, const char *name, uint32_t flags);
+char *sandbox_extension_issue_mach_to_process(const char *extension_class, const char *name, uint32_t flags, audit_token_t target);
+char *sandbox_extension_issue_generic(const char *extension_class, uint32_t flags);
+char *sandbox_extension_issue_iokit_registry_entry_class(const char *extension_class, const char *registry_entry_class, uint32_t flags);
+char *sandbox_extension_issue_iokit_registry_entry_class_to_process(const char *extension_class, const char *registry_entry_class, uint32_t flags, audit_token_t target);
 int64_t sandbox_extension_consume(const char *extension_token);
 int sandbox_extension_release(int64_t extension_handle);
 

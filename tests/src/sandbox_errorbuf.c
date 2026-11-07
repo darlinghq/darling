@@ -112,7 +112,8 @@ static void checkExtensions(void)
 	if (token)
 	{
 		int64_t handle = sandbox_extension_consume(token);
-		CHECK(handle > 0);
+		// a process that is not sandboxed gets handle 0 (see sandbox_state.c)
+		CHECK(handle >= 0);
 		CHECK(sandbox_extension_release(handle) == 0);
 		free(token);
 	}
