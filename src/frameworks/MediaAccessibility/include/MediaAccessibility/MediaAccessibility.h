@@ -21,6 +21,8 @@
 #ifndef _MediaAccessibility_H_
 #define _MediaAccessibility_H_
 
+#include <CoreFoundation/CFString.h>
+
 void* MAAudibleMediaCopyPreferredCharacteristics(void);
 void* MAAudibleMediaPrefCopyPreferDescriptiveVideo(void);
 void* MAAudibleMediaPrefResetAll(void);
@@ -265,5 +267,7 @@ void* MAXCaptionAppearancePrefSetWindowOpacity(void);
 void* MAXCaptionAppearancePrefSetWindowRoundedCornerRadius(void);
 void* MAXCaptionAppearanceSetPreferredLanguage(void);
 void* MAXCaptionAppearanceShowCaptionsWhenAvailable(void);
+
+extern const CFStringRef kMACaptionAppearanceSettingsChangedNotification;
 
 #endif

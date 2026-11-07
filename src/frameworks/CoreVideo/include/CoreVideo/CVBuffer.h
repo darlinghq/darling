@@ -8,6 +8,8 @@ __BEGIN_DECLS
 
 typedef struct CV_BRIDGED_TYPE(id) __CVBuffer* CVBufferRef;
 
+extern const CFStringRef kCVBufferPropagatedAttachmentsKey;
+
 __END_DECLS
 
 #endif // _COREVIDEO_CVBUFFER_H_

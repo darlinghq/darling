@@ -22,4 +22,5 @@ add_framework(MediaAccessibility
 
     DEPENDENCIES
         system
+        CoreFoundation
 )

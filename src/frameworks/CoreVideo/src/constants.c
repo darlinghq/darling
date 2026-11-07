@@ -8,8 +8,8 @@ const CFStringRef kCVImageBufferTransferFunctionKey = CFSTR("CVImageBufferTransf
 const CFStringRef kCVImageBufferChromaLocationBottomFieldKey = CFSTR("CVImageBufferChromaLocationBottomField");
 const CFStringRef kCVImageBufferChromaLocationTopFieldKey = CFSTR("CVImageBufferChromaLocationTopField");
 
-const CFStringRef kCVImageBufferPixelAspectRatioHorizontalSpacingKey = CFSTR("CVImageBufferPixelAspectRatioHorizontalSpacing");
-const CFStringRef kCVImageBufferPixelAspectRatioVerticalSpacingKey = CFSTR("CVImageBufferPixelAspectRatioVerticalSpacing");
+const CFStringRef kCVImageBufferPixelAspectRatioHorizontalSpacingKey = CFSTR("HorizontalSpacing");
+const CFStringRef kCVImageBufferPixelAspectRatioVerticalSpacingKey = CFSTR("VerticalSpacing");
 
 const CFStringRef kCVImageBufferYCbCrMatrix_ITU_R_709_2 = CFSTR("ITU_R_709_2");
 const CFStringRef kCVImageBufferYCbCrMatrix_ITU_R_601_4 = CFSTR("ITU_R_601_4");
@@ -34,6 +34,8 @@ const CFStringRef kCVImageBufferChromaLocation_TopLeft = CFSTR("TopLeft");
 const CFStringRef kCVImageBufferCGColorSpaceKey = CFSTR("CGColorSpace");
 
 const CFStringRef kCVImageBufferColorPrimaries_ITU_R_2020 = CFSTR("ITU_R_2020");
+const CFStringRef kCVImageBufferColorPrimaries_P3_D65 = CFSTR("P3_D65");
+const CFStringRef kCVImageBufferColorPrimaries_DCI_P3 = CFSTR("DCI_P3");
 const CFStringRef kCVImageBufferYCbCrMatrix_ITU_R_2020 = CFSTR("ITU_R_2020");
 
 const CFStringRef kCVImageBufferTransferFunction_ITU_R_2020 = CFSTR("ITU_R_2020");
@@ -42,6 +44,12 @@ const CFStringRef kCVImageBufferTransferFunction_Linear = CFSTR("Linear");
 const CFStringRef kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ = CFSTR("SMPTE_ST_2084_PQ");
 const CFStringRef kCVImageBufferTransferFunction_SMPTE_ST_428_1 = CFSTR("SMPTE_ST_428_1");
 const CFStringRef kCVImageBufferTransferFunction_SMPTE_C = CFSTR("SMPTE_C");
+// Values observed on macOS 26 by printing the public constants (rung 4).
+const CFStringRef kCVImageBufferTransferFunction_sRGB = CFSTR("IEC_sRGB");
+const CFStringRef kCVBufferPropagatedAttachmentsKey = CFSTR("PropagatedAttachments");
+const CFStringRef kCVImageBufferContentLightLevelInfoKey = CFSTR("ContentLightLevelInfo");
+const CFStringRef kCVImageBufferMasteringDisplayColorVolumeKey = CFSTR("MasteringDisplayColorVolume");
+const CFStringRef kCVPixelBufferPoolAllocationThresholdKey = CFSTR("BufferPoolAllocationThreshold");
 
 const CFStringRef kCVPixelBufferIOSurfacePropertiesKey = CFSTR("IOSurfaceProperties");
 const CFStringRef kCVPixelBufferOpenGLCompatibilityKey = CFSTR("OpenGLCompatibility");

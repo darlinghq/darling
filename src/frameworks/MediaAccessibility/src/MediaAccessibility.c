@@ -19,10 +19,14 @@
 
 
 #include <MediaAccessibility/MediaAccessibility.h>
+#include <CoreFoundation/CoreFoundation.h>
 #include <stdlib.h>
 #include <stdio.h>
 
 static int verbose = 0;
+
+// Value observed on macOS 26 by printing the public constant (rung 4).
+const CFStringRef kMACaptionAppearanceSettingsChangedNotification = CFSTR("com.apple.mediaaccessibility.captionAppearanceSettingsChanged");
 
 __attribute__((constructor))
 static void initme(void) {

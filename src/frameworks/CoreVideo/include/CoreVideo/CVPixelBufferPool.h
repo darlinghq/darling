@@ -27,6 +27,7 @@ __BEGIN_DECLS
 
 extern const CFStringRef kCVPixelBufferPoolMaximumBufferAgeKey;
 extern const CFStringRef kCVPixelBufferPoolMinimumBufferCountKey;
+extern const CFStringRef kCVPixelBufferPoolAllocationThresholdKey;
 
 __END_DECLS
 

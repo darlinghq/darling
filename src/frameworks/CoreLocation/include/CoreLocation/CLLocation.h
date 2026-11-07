@@ -19,6 +19,15 @@
 
 #include <Foundation/Foundation.h>
 
+typedef double CLLocationAccuracy;
+
+extern const CLLocationAccuracy kCLLocationAccuracyBestForNavigation;
+extern const CLLocationAccuracy kCLLocationAccuracyBest;
+extern const CLLocationAccuracy kCLLocationAccuracyNearestTenMeters;
+extern const CLLocationAccuracy kCLLocationAccuracyHundredMeters;
+extern const CLLocationAccuracy kCLLocationAccuracyKilometer;
+extern const CLLocationAccuracy kCLLocationAccuracyThreeKilometers;
+
 @interface CLLocation : NSObject
 
 @end

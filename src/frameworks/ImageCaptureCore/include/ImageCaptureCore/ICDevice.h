@@ -19,6 +19,10 @@
 
 #include <Foundation/Foundation.h>
 
+typedef NSString* ICDeviceTransport;
+
+extern const ICDeviceTransport ICTransportTypeMassStorage;
+
 @interface ICDevice : NSObject
 
 @end

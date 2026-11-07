@@ -26,6 +26,34 @@
 const CFStringRef kCMFormatDescriptionExtension_SampleDescriptionExtensionAtoms = CFSTR("SampleDescriptionExtensionAtoms");
 const CFStringRef kCMSampleAttachmentKey_NotSync = CFSTR("NotSync");
 
+// Values observed on macOS 27.0.1 by printing the public constants. Each
+// colour constant has the same value as its kCVImageBuffer* counterpart.
+const CFStringRef kCMFormatDescriptionTransferFunction_ITU_R_709_2 = CFSTR("ITU_R_709_2");
+const CFStringRef kCMFormatDescriptionTransferFunction_SMPTE_240M_1995 = CFSTR("SMPTE_240M_1995");
+const CFStringRef kCMFormatDescriptionTransferFunction_UseGamma = CFSTR("UseGamma");
+const CFStringRef kCMFormatDescriptionTransferFunction_ITU_R_2020 = CFSTR("ITU_R_2020");
+const CFStringRef kCMFormatDescriptionTransferFunction_ITU_R_2100_HLG = CFSTR("ITU_R_2100_HLG");
+const CFStringRef kCMFormatDescriptionTransferFunction_SMPTE_ST_2084_PQ = CFSTR("SMPTE_ST_2084_PQ");
+const CFStringRef kCMFormatDescriptionTransferFunction_SMPTE_ST_428_1 = CFSTR("SMPTE_ST_428_1");
+const CFStringRef kCMFormatDescriptionTransferFunction_Linear = CFSTR("Linear");
+const CFStringRef kCMFormatDescriptionTransferFunction_sRGB = CFSTR("IEC_sRGB");
+const CFStringRef kCMFormatDescriptionColorPrimaries_ITU_R_709_2 = CFSTR("ITU_R_709_2");
+const CFStringRef kCMFormatDescriptionColorPrimaries_EBU_3213 = CFSTR("EBU_3213");
+const CFStringRef kCMFormatDescriptionColorPrimaries_SMPTE_C = CFSTR("SMPTE_C");
+const CFStringRef kCMFormatDescriptionColorPrimaries_ITU_R_2020 = CFSTR("ITU_R_2020");
+const CFStringRef kCMFormatDescriptionColorPrimaries_P3_D65 = CFSTR("P3_D65");
+const CFStringRef kCMFormatDescriptionColorPrimaries_DCI_P3 = CFSTR("DCI_P3");
+const CFStringRef kCMFormatDescriptionYCbCrMatrix_ITU_R_709_2 = CFSTR("ITU_R_709_2");
+const CFStringRef kCMFormatDescriptionYCbCrMatrix_ITU_R_601_4 = CFSTR("ITU_R_601_4");
+const CFStringRef kCMFormatDescriptionYCbCrMatrix_SMPTE_240M_1995 = CFSTR("SMPTE_240M_1995");
+const CFStringRef kCMFormatDescriptionYCbCrMatrix_ITU_R_2020 = CFSTR("ITU_R_2020");
+const CFStringRef kCMFormatDescriptionExtension_ContentLightLevelInfo = CFSTR("ContentLightLevelInfo");
+const CFStringRef kCMFormatDescriptionExtension_Depth = CFSTR("Depth");
+const CFStringRef kCMFormatDescriptionExtension_FormatName = CFSTR("FormatName");
+const CFStringRef kCMFormatDescriptionExtension_FullRangeVideo = CFSTR("FullRangeVideo");
+const CFStringRef kCMFormatDescriptionExtension_MasteringDisplayColorVolume = CFSTR("MasteringDisplayColorVolume");
+const CFStringRef kCMSampleAttachmentKey_IsDependedOnByOthers = CFSTR("IsDependedOnByOthers");
+
 static int verbose = 0;
 
 __attribute__((constructor))
