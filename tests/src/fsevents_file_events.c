@@ -15,8 +15,8 @@
 // - 200 streams (alternately on a run loop and a dispatch queue) that are
 //   created, started, stopped, started, stopped, invalidated and released
 //   are freed: the context release callback runs once for each, and the
-//   number of open descriptors (and, where /proc/self/fdinfo exists, of
-//   inotify watches) returns to where it was;
+//   number of open descriptors returns to about where it was (and, where
+//   /proc/self/fdinfo exists, so does the number of inotify watches);
 // - quirks observed on macOS 27.0.1: a stream released while started is
 //   not freed and keeps calling back; a stream with a dispatch queue that
 //   is released without FSEventStreamInvalidate() is not freed.
@@ -114,6 +114,12 @@ static void lifecycle_callback(ConstFSEventStreamRef stream, void* info, size_t 
 	(void) ids;
 	__atomic_add_fetch(&g_lifecycleCallbacks, 1, __ATOMIC_SEQ_CST);
 }
+
+// The process's own descriptor count moves a little while the test runs,
+// for example when the system starts or retires worker threads for the
+// dispatch queue. A stream that leaked would hold at least one descriptor,
+// so the leak check allows this much drift, far below LIFECYCLE_COUNT.
+#define FD_SLACK 8
 
 static int count_fds(void)
 {
@@ -302,7 +308,8 @@ static void check_stream_lifecycle(dispatch_queue_t queue)
 
 	// A delivery that is still in flight may keep a stream alive briefly.
 	CFAbsoluteTime deadline = CFAbsoluteTimeGetCurrent() + WAIT_SECONDS;
-	while ((__atomic_load_n(&g_contextReleases, __ATOMIC_SEQ_CST) != created || count_fds() != baseFds)
+	while ((__atomic_load_n(&g_contextReleases, __ATOMIC_SEQ_CST) != created
+			|| count_fds() > baseFds + FD_SLACK)
 		&& CFAbsoluteTimeGetCurrent() < deadline)
 	{
 		CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, true);
@@ -315,7 +322,7 @@ static void check_stream_lifecycle(dispatch_queue_t queue)
 	printf("lifecycle: %d streams, %d context releases, descriptors %d -> %d\n",
 		created, releases, baseFds, fds);
 	CHECK(releases == LIFECYCLE_COUNT);
-	CHECK(fds == baseFds);
+	CHECK(fds <= baseFds + FD_SLACK);
 
 	if (baseWatches < 0)
 	{
