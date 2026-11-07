@@ -11,6 +11,7 @@
 #include <OpenGL/CGLInternal.h>
 #include <CoreFoundation/CFDictionary.h>
 #include <IOSurface/IOSurface.h>
+#include <IOSurface/IOSurfacePriv.h>
 #include <pthread.h>
 
 // Try to get the right (generic) type definitions.
@@ -298,10 +299,21 @@ static inline int attribute_has_argument(CGLPixelFormatAttribute attr) {
    }
 }
 
+static void writeBackSurface(IOSurfaceRef ioSurface);
+
 __attribute__((constructor))
 static void _CGLInitialize(void)
 {
     g_displays = CFDictionaryCreateMutable(NULL, 0, NULL, NULL);
+
+    // A binding retains its surface, so a surface is never freed while
+    // this framework has state for it and no forget callback is needed.
+    static const _IOSurfaceGPUCallbacks callbacks = {
+        .version = _IOSURFACE_GPU_CALLBACKS_VERSION,
+        .writeback = writeBackSurface,
+        .forget = NULL,
+    };
+    _IOSurfaceSetGPUCallbacks(&callbacks);
 }
 
 static int attributes_count(const CGLPixelFormatAttribute *attrs) {
@@ -1119,8 +1131,9 @@ CGLError CGLFlushDrawable(CGLContextObj context) {
 // plane's pixels are copied into the texture by the call, and
 // CGLReadbackIOSurface copies the texture back into the surface. CPU writes
 // to the surface after the call reach the texture only through another
-// call, and GL rendering into the texture reaches the surface only through
-// CGLReadbackIOSurface.
+// call. GL rendering into the texture reaches the surface through
+// CGLReadbackIOSurface, which IOSurface also calls before a lock of the
+// surface or the creation of a Mach port for it (see writeBackSurface).
 //
 // Each texture remembers the surface it was last specified from. The binding
 // retains the surface, as the texture would on macOS, and is dropped when
@@ -1135,6 +1148,9 @@ struct surface_binding {
     GLenum type;
     GLuint plane;
     IOSurfaceRef surface;
+    // The surface's seed when the texture and the surface last held the
+    // same contents.
+    uint32_t seed;
 };
 
 static struct surface_binding *g_surfaceBindings;
@@ -1335,6 +1351,7 @@ CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum interna
         struct surface_binding binding = {
             .context = ctx, .texture = (GLuint) texture, .target = target,
             .format = format, .type = type, .plane = plane, .surface = ioSurface,
+            .seed = IOSurfaceGetSeed(ioSurface),
         };
         if (!rememberSurfaceBinding(&binding))
             error = kCGLBadAlloc;
@@ -1344,19 +1361,25 @@ CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum interna
     return error;
 }
 
-CGLError CGLReadbackIOSurface(IOSurfaceRef ioSurface) {
-    if (!ioSurface)
-        return kCGLBadAddress;
+// Set while this thread copies a texture into a surface.
+static __thread int t_readingBack;
 
+// Copies the texture last specified from ioSurface into the surface. With
+// onlyIfUnmodified, a surface the CPU has written since the texture last
+// matched it is left alone: its contents are newer than the texture's.
+static CGLError readBackSurface(IOSurfaceRef ioSurface, int onlyIfUnmodified) {
     struct surface_binding binding = { 0 };
     pthread_mutex_lock(&g_surfaceBindingsMutex);
     for (size_t i = g_surfaceBindingCount; i-- > 0; ) {
         if (g_surfaceBindings[i].surface == ioSurface) {
             binding = g_surfaceBindings[i];
-            CGLRetainContext(binding.context);
             break;
         }
     }
+    if (binding.context && onlyIfUnmodified && IOSurfaceGetSeed(ioSurface) != binding.seed)
+        binding.context = NULL;
+    if (binding.context)
+        CGLRetainContext(binding.context);
     pthread_mutex_unlock(&g_surfaceBindingsMutex);
     if (!binding.context)
         return kCGLBadValue;
@@ -1384,16 +1407,43 @@ CGLError CGLReadbackIOSurface(IOSurfaceRef ioSurface) {
         struct pixel_store saved, transfer = { 0, rowLength, 0, 0, 1 };
         savePixelStore(1, &saved);
         setPixelStore(1, &transfer);
+        uint32_t seed = 0;
+        t_readingBack = 1;
         IOSurfaceLock(ioSurface, 0, NULL);
         glGetTexImage(binding.target, 0, binding.format, binding.type, pixels);
-        IOSurfaceUnlock(ioSurface, 0, NULL);
+        IOSurfaceUnlock(ioSurface, 0, &seed);
+        t_readingBack = 0;
         setPixelStore(1, &saved);
+
+        pthread_mutex_lock(&g_surfaceBindingsMutex);
+        for (size_t i = 0; i < g_surfaceBindingCount; i++) {
+            if (g_surfaceBindings[i].context == binding.context
+                && g_surfaceBindings[i].texture == binding.texture
+                && g_surfaceBindings[i].surface == ioSurface)
+                g_surfaceBindings[i].seed = seed;
+        }
+        pthread_mutex_unlock(&g_surfaceBindingsMutex);
     }
 
     glBindTexture(binding.target, (GLuint) oldTexture);
     leaveContext(binding.context, previous);
     CGLReleaseContext(binding.context);
     return error;
+}
+
+CGLError CGLReadbackIOSurface(IOSurfaceRef ioSurface) {
+    if (!ioSurface)
+        return kCGLBadAddress;
+    return readBackSurface(ioSurface, 0);
+}
+
+// IOSurface's writeback callback. The texture holds the GPU's rendering, so
+// it is copied into the surface unless the CPU has written the surface
+// since. A surface with no texture, or one this thread is already copying
+// into, is left alone.
+static void writeBackSurface(IOSurfaceRef ioSurface) {
+    if (!t_readingBack)
+        readBackSurface(ioSurface, 1);
 }
 
 CGLError CGLSetDrawableRefreshRate(CGLContextObj context, uint32_t millihertz) {
