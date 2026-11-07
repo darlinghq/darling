@@ -30,10 +30,27 @@
 
 static dispatch_queue_t g_fsEventsQueue = NULL;
 
+// Neither the run loop source nor the dispatch source holds a reference
+// to the stream; otherwise the stream would own a source that owns the
+// stream, and it could never be freed.
 static void rlPerform(void* info)
 {
 	FSEventsImpl* fse = (FSEventsImpl*) info;
-	[fse _doCallback];
+	[fse _performFromRunLoop];
+}
+
+static void readHandler(void* context)
+{
+	@autoreleasepool
+	{
+		FSEventsImpl* fse = (FSEventsImpl*) context;
+		[fse _readEvents];
+	}
+}
+
+static void closeFdHandler(void* context)
+{
+	close((int) (intptr_t) context);
 }
 
 @implementation FSEventsImpl
@@ -96,12 +113,8 @@ static void rlPerform(void* info)
 	});
 
 	_source = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, _fd, 0, g_fsEventsQueue);
-	dispatch_source_set_event_handler(_source, ^{
-		@autoreleasepool
-		{
-			[self _readEvents];
-		}
-	});
+	dispatch_set_context(_source, self);
+	dispatch_source_set_event_handler_f(_source, readHandler);
 
 	_pathArray = [[NSMutableArray alloc] init];
 	_runloops = CFBagCreateMutable(NULL, 0, &kCFTypeBagCallBacks);
@@ -111,25 +124,33 @@ static void rlPerform(void* info)
 
 -(void) dealloc
 {
-	if (_context.release)
-		_context.release(_context.info);
-
-	[self invalidate];
-
-	if (_source)
-	{
-		if (!_running)
-			dispatch_resume(_source);
-		dispatch_source_cancel(_source);
-		dispatch_release(_source);
-	}
+	// A started stream and a stream with a dispatch queue hold a reference
+	// to themselves, so here the stream is stopped (its dispatch source is
+	// suspended and no read handler is running) and has no dispatch queue.
+	// A pending run loop delivery also holds a reference.
 	if (_rlSource)
+	{
+		CFRunLoopSourceInvalidate(_rlSource);
 		CFRelease(_rlSource);
+	}
 	if (_runloops)
 		CFRelease(_runloops);
 
-	if (_fd != -1)
+	if (_source)
+	{
+		// The descriptor may only be closed once the source no longer
+		// monitors it, which the cancellation handler signals.
+		dispatch_set_context(_source, (void*) (intptr_t) _fd);
+		dispatch_source_set_cancel_handler_f(_source, closeFdHandler);
+		dispatch_source_cancel(_source);
+		if (!_running)
+			dispatch_resume(_source);
+		dispatch_release(_source);
+	}
+	else if (_fd != -1)
+	{
 		close(_fd);
+	}
 
 	[_pathsToWatch release];
 	[_pathArray release];
@@ -137,6 +158,10 @@ static void rlPerform(void* info)
 	[_rootWds release];
 	free(_flagArray);
 	free(_idArray);
+
+	if (_context.release)
+		_context.release(_context.info);
+
 	[super dealloc];
 }
 
@@ -147,16 +172,30 @@ static void rlPerform(void* info)
 
 -(void)setDispatchQueue:(dispatch_queue_t)queue
 {
-	if (_queue)
-	{
-		dispatch_release(_queue);
-		_queue = NULL;
-	}
+	__block dispatch_queue_t oldQueue;
+
 	if (queue)
-	{
+		dispatch_retain(queue);
+
+	// _dispatchEvents reads _queue on the FSEvents queue.
+	dispatch_sync(g_fsEventsQueue, ^{
+		oldQueue = _queue;
 		_queue = queue;
-		dispatch_retain(_queue);
-	}
+	});
+
+	if (oldQueue)
+		dispatch_release(oldQueue);
+
+	// QUIRK: a stream that has a dispatch queue is not freed by its last
+	// FSEventStreamRelease() until FSEventStreamInvalidate() (or a NULL
+	// queue) removes it from the queue. Not documented. Evidence: black-box
+	// observation on macOS 27.0.1 (tier 2): after SetDispatchQueue, Start,
+	// Stop and Release, the context release callback is not called.
+	// Test: tests/src/fsevents_file_events.c, check_quirk_queue_keeps_stream
+	if (queue && !oldQueue)
+		[self retain];
+	else if (!queue && oldQueue)
+		[self release];
 }
 
 -(void)scheduleWithRunLoop:(CFRunLoopRef)rl
@@ -181,16 +220,44 @@ static void rlPerform(void* info)
 
 -(void)invalidate
 {
-	[self setDispatchQueue: NULL];
+	// After this, no callback is made, including for events that were
+	// already read.
+	__atomic_store_n(&_invalidated, true, __ATOMIC_RELEASE);
+
 	CFRunLoopSourceInvalidate(_rlSource);
+	[self _dropRunLoopSignal];
+
+	[self retain];
+	[self setDispatchQueue: NULL];
+	[self release];
+}
+
+// Gives up the reference _dispatchEvents took for a run loop delivery.
+// Returns whether there was one.
+-(BOOL)_dropRunLoopSignal
+{
+	if (__atomic_exchange_n(&_runLoopSignalled, 0, __ATOMIC_ACQ_REL))
+	{
+		[self release];
+		return YES;
+	}
+	return NO;
 }
 
 -(void)start
 {
 	if (!_running)
 	{
-		dispatch_resume(_source);
+		// QUIRK: a started stream is not freed by its last
+		// FSEventStreamRelease(), even after FSEventStreamInvalidate(), and
+		// keeps delivering events until FSEventStreamStop(). Not documented.
+		// Evidence: black-box observation on macOS 27.0.1 (tier 2): a
+		// stream released while started keeps calling its callback and its
+		// context release callback is not called.
+		// Test: tests/src/fsevents_file_events.c, check_quirk_started_keeps_stream
+		[self retain];
 		_running = TRUE;
+		dispatch_resume(_source);
 	}
 }
 
@@ -199,7 +266,10 @@ static void rlPerform(void* info)
 	if (_running)
 	{
 		dispatch_suspend(_source);
+		// Wait for a read handler that is already running.
+		dispatch_sync(g_fsEventsQueue, ^{});
 		_running = FALSE;
+		[self release];
 	}
 }
 
@@ -226,7 +296,8 @@ static void rlPerform(void* info)
 				break;
 			else
 			{
-				[self stop];
+				// The descriptor is unusable; stop watching it for good.
+				dispatch_source_cancel(_source);
 				break;
 			}
 		}
@@ -496,19 +567,23 @@ static void rlPerform(void* info)
 
 -(void)_dispatchEvents
 {
-	if (!_queue && !CFRunLoopSourceIsValid(_rlSource))
-		return; // invalidated, nobody to deliver to
+	if (__atomic_load_n(&_invalidated, __ATOMIC_ACQUIRE))
+		return;
 
 	if (_queue)
 	{
-		[self retain];
+		// The block keeps the stream alive until the callback has run.
 		dispatch_async(_queue, ^{
 			[self _doCallback];
 		});
 	}
 	else
 	{
-		[self retain];
+		// Likewise, a reference for the run loop delivery. It is given up
+		// when the source performs, or when the stream is invalidated (an
+		// invalidated source never performs).
+		if (__atomic_exchange_n(&_runLoopSignalled, 1, __ATOMIC_ACQ_REL) == 0)
+			[self retain];
 		CFRunLoopSourceSignal(_rlSource);
 
 		@synchronized(self)
@@ -518,50 +593,77 @@ static void rlPerform(void* info)
 	}
 }
 
+-(void)_performFromRunLoop
+{
+	[self retain];
+	[self _dropRunLoopSignal];
+	[self _doCallback];
+	[self release];
+}
+
 -(void)_doCallback
 {
-	void* ptrToPass = _pathArray;
+	__block NSMutableArray* pathArray;
+	__block FSEventStreamEventFlags* flagArray;
+	__block FSEventStreamEventId* idArray;
 	char** cpathArray = NULL;
 	NSArray<NSDictionary*>* dicts = NULL;
 
-	dispatch_suspend(_source);
-	dispatch_sync(g_fsEventsQueue, ^{});
-	
-	if (!(_flags & kFSEventStreamCreateFlagUseCFTypes))
+	[self retain];
+
+	// Take the queued events; the read handler queues new ones meanwhile.
+	dispatch_sync(g_fsEventsQueue, ^{
+		pathArray = _pathArray;
+		flagArray = _flagArray;
+		idArray = _idArray;
+		_pathArray = [[NSMutableArray alloc] init];
+		_flagArray = NULL;
+		_idArray = NULL;
+		_deliveryArmed = false;
+		_lastDelivery = CFAbsoluteTimeGetCurrent();
+	});
+
+	const NSUInteger count = [pathArray count];
+	void* ptrToPass = pathArray;
+
+	if (count > 0 && !__atomic_load_n(&_invalidated, __ATOMIC_ACQUIRE))
 	{
-		@autoreleasepool
+		if (!(_flags & kFSEventStreamCreateFlagUseCFTypes))
 		{
-			cpathArray = (char**) malloc(sizeof(char*) * [_pathArray count]);
-			for (int i = 0; i < [_pathArray count]; i++)
-				cpathArray[i] = strdup([[_pathArray objectAtIndex: i] UTF8String]);
+			@autoreleasepool
+			{
+				cpathArray = (char**) malloc(sizeof(char*) * count);
+				for (NSUInteger i = 0; i < count; i++)
+					cpathArray[i] = strdup([[pathArray objectAtIndex: i] UTF8String]);
+			}
+			ptrToPass = cpathArray;
 		}
-		ptrToPass = cpathArray;
-	}
-	else if (_flags & kFSEventStreamCreateFlagUseExtendedData)
-	{
-		NSDictionary** dd = (NSDictionary**) malloc(sizeof(NSDictionary*) * [_pathArray count]);
-
-		for (int i = 0; i < [_pathArray count]; i++)
+		else if (_flags & kFSEventStreamCreateFlagUseExtendedData)
 		{
-			dd[i] = @{
-				((NSString*) kFSEventStreamEventExtendedDataPathKey) : [_pathArray objectAtIndex: i]
-			};
+			NSDictionary** dd = (NSDictionary**) malloc(sizeof(NSDictionary*) * count);
+
+			for (NSUInteger i = 0; i < count; i++)
+			{
+				dd[i] = @{
+					((NSString*) kFSEventStreamEventExtendedDataPathKey) : [pathArray objectAtIndex: i]
+				};
+			}
+
+			dicts = [[NSArray alloc] initWithObjects:dd
+											count: count];
+			free(dd);
+			ptrToPass = dicts;
 		}
 
-		dicts = [[NSArray alloc] initWithObjects:dd
-										count: [_pathArray count]];
-		free(dd);
-		ptrToPass = dicts;
+		_callback((ConstFSEventStreamRef) self, _context.info,
+			count,
+			ptrToPass,
+			flagArray, idArray);
 	}
-
-	_callback((ConstFSEventStreamRef) self, _context.info,
-		[_pathArray count],
-		ptrToPass,
-		_flagArray, _idArray);
 
 	if (cpathArray != NULL)
 	{
-		for (int i = 0; i < [_pathArray count]; i++)
+		for (NSUInteger i = 0; i < count; i++)
 			free(cpathArray[i]);
 		free(cpathArray);
 	}
@@ -569,16 +671,9 @@ static void rlPerform(void* info)
 	if (dicts)
 		[dicts release];
 
-	free(_flagArray);
-	_flagArray = NULL;
-
-	free(_idArray);
-	_idArray = NULL;
-
-	[_pathArray removeAllObjects];
-	_deliveryArmed = false;
-	_lastDelivery = CFAbsoluteTimeGetCurrent();
-	dispatch_resume(_source);
+	free(flagArray);
+	free(idArray);
+	[pathArray release];
 	[self release];
 }
 

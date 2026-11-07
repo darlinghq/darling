@@ -45,6 +45,8 @@
 	CFTimeInterval _latency;
 	bool _deliveryArmed;
 	CFAbsoluteTime _lastDelivery;
+	bool _invalidated;
+	int _runLoopSignalled;
 
 	NSMutableArray* _pathArray;
 	FSEventStreamEventFlags* _flagArray;
@@ -67,7 +69,8 @@
 -(void)start;
 -(void)stop;
 -(FSEventStreamEventId)lastEventID;
--(void)_doCallback;
+-(void)_readEvents;
+-(void)_performFromRunLoop;
 
 @end
 

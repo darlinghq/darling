@@ -10,8 +10,20 @@
 //   ItemCreated and ItemIsDir, and a file created in it right away with
 //   ItemCreated and ItemIsFile.
 // Event IDs increase and the callback never receives zero events.
+//
+// Stream lifetime:
+// - 200 streams (alternately on a run loop and a dispatch queue) that are
+//   created, started, stopped, started, stopped, invalidated and released
+//   are freed: the context release callback runs once for each, and the
+//   number of open descriptors (and, where /proc/self/fdinfo exists, of
+//   inotify watches) returns to where it was;
+// - quirks observed on macOS 27.0.1: a stream released while started is
+//   not freed and keeps calling back; a stream with a dispatch queue that
+//   is released without FSEventStreamInvalidate() is not freed.
 // The program passes unchanged on macOS 27.0.1.
 #include <CoreServices/CoreServices.h>
+#include <dirent.h>
+#include <dispatch/dispatch.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
@@ -24,6 +36,7 @@
 
 #define FILE_COUNT 50
 #define WAIT_SECONDS 10.0
+#define LIFECYCLE_COUNT 200
 
 struct event
 {
@@ -74,6 +87,84 @@ static void callback(ConstFSEventStreamRef stream, void* info, size_t count, voi
 			g_idsIncrease = false;
 		g_lastId = ids[i];
 	}
+}
+
+static int g_contextReleases;
+static int g_lifecycleCallbacks;
+
+static const void* context_retain(const void* info)
+{
+	return info;
+}
+
+static void context_release(const void* info)
+{
+	(void) info;
+	__atomic_add_fetch(&g_contextReleases, 1, __ATOMIC_SEQ_CST);
+}
+
+static void lifecycle_callback(ConstFSEventStreamRef stream, void* info, size_t count, void* paths,
+	const FSEventStreamEventFlags flags[], const FSEventStreamEventId ids[])
+{
+	(void) stream;
+	(void) info;
+	(void) count;
+	(void) paths;
+	(void) flags;
+	(void) ids;
+	__atomic_add_fetch(&g_lifecycleCallbacks, 1, __ATOMIC_SEQ_CST);
+}
+
+static int count_fds(void)
+{
+	int count = 0;
+	DIR* d = opendir("/dev/fd");
+	if (d == NULL)
+		return -1;
+	struct dirent* ent;
+	while ((ent = readdir(d)) != NULL)
+	{
+		if (strcmp(ent->d_name, ".") != 0 && strcmp(ent->d_name, "..") != 0)
+			count++;
+	}
+	closedir(d);
+	return count;
+}
+
+// Number of inotify watches the process holds, or -1 where the system
+// does not show them (macOS has no /proc).
+static int count_inotify_watches(void)
+{
+	DIR* d = opendir("/proc/self/fdinfo");
+	if (d == NULL)
+		return -1;
+
+	int count = 0;
+	struct dirent* ent;
+	while ((ent = readdir(d)) != NULL)
+	{
+		char path[PATH_MAX];
+		char line[512];
+		snprintf(path, sizeof(path), "/proc/self/fdinfo/%s", ent->d_name);
+		FILE* f = fopen(path, "r");
+		if (f == NULL)
+			continue;
+		while (fgets(line, sizeof(line), f) != NULL)
+		{
+			if (strncmp(line, "inotify wd:", 11) == 0)
+				count++;
+		}
+		fclose(f);
+	}
+	closedir(d);
+	return count;
+}
+
+static void run_for(double seconds)
+{
+	CFAbsoluteTime deadline = CFAbsoluteTimeGetCurrent() + seconds;
+	while (CFAbsoluteTimeGetCurrent() < deadline)
+		CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, true);
 }
 
 static void make_path(char* out, const char* name)
@@ -154,6 +245,140 @@ static void create_file(const char* name)
 	close(fd);
 }
 
+static void touch_file(const char* name)
+{
+	char path[PATH_MAX];
+	make_path(path, name);
+	int fd = open(path, O_WRONLY | O_CREAT, 0644);
+	if (fd >= 0)
+		close(fd);
+	unlink(path);
+}
+
+static FSEventStreamRef create_lifecycle_stream(void)
+{
+	FSEventStreamContext context = { 0, NULL, context_retain, context_release, NULL };
+	CFStringRef dir = CFStringCreateWithFileSystemRepresentation(NULL, g_dir);
+	CFArrayRef paths = CFArrayCreate(NULL, (const void**) &dir, 1, &kCFTypeArrayCallBacks);
+	FSEventStreamRef stream = FSEventStreamCreate(NULL, lifecycle_callback, &context, paths,
+		kFSEventStreamEventIdSinceNow, 0.05, kFSEventStreamCreateFlagFileEvents);
+	CFRelease(paths);
+	CFRelease(dir);
+	return stream;
+}
+
+static void check_stream_lifecycle(dispatch_queue_t queue)
+{
+	const int baseFds = count_fds();
+	const int baseWatches = count_inotify_watches();
+	int created = 0;
+
+	__atomic_store_n(&g_contextReleases, 0, __ATOMIC_SEQ_CST);
+
+	for (int i = 0; i < LIFECYCLE_COUNT; i++)
+	{
+		FSEventStreamRef stream = create_lifecycle_stream();
+		if (stream == NULL)
+		{
+			printf("FAIL: FSEventStreamCreate returned NULL for stream %d\n", i);
+			g_failures++;
+			break;
+		}
+		created++;
+
+		if (i % 2 == 0)
+			FSEventStreamScheduleWithRunLoop(stream, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+		else
+			FSEventStreamSetDispatchQueue(stream, queue);
+
+		FSEventStreamStart(stream);
+		touch_file("lifecycle");
+		FSEventStreamStop(stream);
+		FSEventStreamStart(stream);
+		FSEventStreamStop(stream);
+		FSEventStreamInvalidate(stream);
+		FSEventStreamRelease(stream);
+	}
+
+	// A delivery that is still in flight may keep a stream alive briefly.
+	CFAbsoluteTime deadline = CFAbsoluteTimeGetCurrent() + WAIT_SECONDS;
+	while ((__atomic_load_n(&g_contextReleases, __ATOMIC_SEQ_CST) != created || count_fds() != baseFds)
+		&& CFAbsoluteTimeGetCurrent() < deadline)
+	{
+		CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, true);
+	}
+
+	const int releases = __atomic_load_n(&g_contextReleases, __ATOMIC_SEQ_CST);
+	const int fds = count_fds();
+	const int watches = count_inotify_watches();
+
+	printf("lifecycle: %d streams, %d context releases, descriptors %d -> %d\n",
+		created, releases, baseFds, fds);
+	CHECK(releases == LIFECYCLE_COUNT);
+	CHECK(fds == baseFds);
+
+	if (baseWatches < 0)
+	{
+		printf("lifecycle: inotify watches not visible here, not checked\n");
+	}
+	else
+	{
+		printf("lifecycle: inotify watches %d -> %d\n", baseWatches, watches);
+		CHECK(watches == baseWatches);
+	}
+}
+
+// QUIRK (macOS 27.0.1): a stream released while it is started stays alive
+// and keeps calling back. This stream is never freed.
+static void check_quirk_started_keeps_stream(void)
+{
+	__atomic_store_n(&g_contextReleases, 0, __ATOMIC_SEQ_CST);
+	__atomic_store_n(&g_lifecycleCallbacks, 0, __ATOMIC_SEQ_CST);
+
+	FSEventStreamRef stream = create_lifecycle_stream();
+	CHECK(stream != NULL);
+	if (stream == NULL)
+		return;
+
+	FSEventStreamScheduleWithRunLoop(stream, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+	FSEventStreamStart(stream);
+	FSEventStreamRelease(stream);
+
+	touch_file("quirk-started");
+	CFAbsoluteTime deadline = CFAbsoluteTimeGetCurrent() + WAIT_SECONDS;
+	while (__atomic_load_n(&g_lifecycleCallbacks, __ATOMIC_SEQ_CST) == 0 && CFAbsoluteTimeGetCurrent() < deadline)
+		CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, true);
+
+	const int releases = __atomic_load_n(&g_contextReleases, __ATOMIC_SEQ_CST);
+	const int callbacks = __atomic_load_n(&g_lifecycleCallbacks, __ATOMIC_SEQ_CST);
+	printf("released while started: %d context releases, %d callbacks\n", releases, callbacks);
+	CHECK(releases == 0);
+	CHECK(callbacks > 0);
+}
+
+// QUIRK (macOS 27.0.1): a stream with a dispatch queue that is stopped and
+// released without FSEventStreamInvalidate() stays alive. This stream is
+// never freed.
+static void check_quirk_queue_keeps_stream(dispatch_queue_t queue)
+{
+	__atomic_store_n(&g_contextReleases, 0, __ATOMIC_SEQ_CST);
+
+	FSEventStreamRef stream = create_lifecycle_stream();
+	CHECK(stream != NULL);
+	if (stream == NULL)
+		return;
+
+	FSEventStreamSetDispatchQueue(stream, queue);
+	FSEventStreamStart(stream);
+	FSEventStreamStop(stream);
+	FSEventStreamRelease(stream);
+	run_for(0.5);
+
+	const int releases = __atomic_load_n(&g_contextReleases, __ATOMIC_SEQ_CST);
+	printf("released with a dispatch queue: %d context releases\n", releases);
+	CHECK(releases == 0);
+}
+
 static void remove_tree(void)
 {
 	char path[PATH_MAX];
@@ -176,7 +401,7 @@ static void remove_tree(void)
 int main(void)
 {
 	signal(SIGALRM, on_alarm);
-	alarm(60);
+	alarm(120);
 
 	char tmpl[] = "/tmp/fsevents_file_events.XXXXXX";
 	if (mkdtemp(tmpl) == NULL || realpath(tmpl, g_dir) == NULL)
@@ -252,6 +477,12 @@ int main(void)
 	FSEventStreamStop(stream);
 	FSEventStreamInvalidate(stream);
 	FSEventStreamRelease(stream);
+
+	dispatch_queue_t queue = dispatch_queue_create("fsevents test", DISPATCH_QUEUE_SERIAL);
+	check_stream_lifecycle(queue);
+	check_quirk_queue_keeps_stream(queue);
+	check_quirk_started_keeps_stream();
+
 	remove_tree();
 
 	printf("%s\n", g_failures == 0 ? "PASS" : "FAIL");
