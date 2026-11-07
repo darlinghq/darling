@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>  // for fprintf(stderr, "unimplemented")
+#include <string.h>
 
 #include <pthread.h>
 #include <stdatomic.h>
@@ -31,6 +32,7 @@
 #endif
 
 #include "swap_pacing.h"
+#include "drm_formats.h"
 
 #ifndef EGL_PLATFORM_WAYLAND_KHR
 #define EGL_PLATFORM_WAYLAND_KHR 0x31D8
@@ -76,8 +78,10 @@
     X(eglGetConfigAttrib) \
     X(eglGetDisplay) \
     X(eglGetPlatformDisplay) \
+    X(eglGetProcAddress) \
     X(eglInitialize) \
     X(eglMakeCurrent) \
+    X(eglQueryString) \
     X(eglSwapBuffers) \
     X(eglSwapInterval)
 
@@ -264,6 +268,9 @@ struct _CGLContextObj {
     // CGLEnable state, one bit per enable_bit() index. Recorded only: none
     // of the options changes how this implementation renders.
     unsigned enables;
+    // Whether the display imports DMA-BUFs (enum dmabuf_import), found out
+    // on first use.
+    _Atomic int dmabuf_import;
     struct _CGLContextObj *prev_active;
     struct _CGLContextObj *next_active;
 };
@@ -986,6 +993,7 @@ static CGLError createContext(CGLPixelFormatObj pixelFormat, CGLContextObj share
     context->pacer.last_ns = 0;
     context->pixel_format = pixelFormat ? CGLRetainPixelFormat(pixelFormat) : NULL;
     context->enables = 0;
+    atomic_init(&context->dmabuf_import, 0);
 
     pthread_mutex_lock(&g_activeContextsMutex);
     context->prev_active = NULL;
@@ -1127,7 +1135,15 @@ CGLError CGLFlushDrawable(CGLContextObj context) {
 // IOSurface-backed textures.
 //
 // On macOS the IOSurface is the storage of a texture that
-// CGLTexImageIOSurface2D binds to it. EGL has no such binding here, so the
+// CGLTexImageIOSurface2D binds to it. Here that holds when IOSurface can
+// export the surface's memory as a DMA-BUF and the host driver imports it
+// (EGL_EXT_image_dma_buf_import) into a GL_TEXTURE_2D texture: the texture
+// then uses the plane's memory itself, CPU writes reach it and GL rendering
+// reaches the surface without a copy. Before a lock of the surface, or the
+// creation of a Mach port for it, this framework waits for the context's
+// GL work to finish, so that the CPU and other processes see it.
+//
+// Otherwise, for other targets and formats or without driver support, the
 // plane's pixels are copied into the texture by the call, and
 // CGLReadbackIOSurface copies the texture back into the surface. CPU writes
 // to the surface after the call reach the texture only through another
@@ -1151,6 +1167,11 @@ struct surface_binding {
     // The surface's seed when the texture and the surface last held the
     // same contents.
     uint32_t seed;
+    // The texture uses the surface's memory (imported as a DMA-BUF) with
+    // this internal format and size, instead of holding a copy.
+    int imported;
+    GLenum internalFormat;
+    GLsizei width, height;
 };
 
 static struct surface_binding *g_surfaceBindings;
@@ -1168,6 +1189,21 @@ static void forgetSurfaceBindings(CGLContextObj context) {
         }
     }
     pthread_mutex_unlock(&g_surfaceBindingsMutex);
+}
+
+// Looks up the binding of a texture. Returns 0 if it has none.
+static int findSurfaceBinding(CGLContextObj context, GLuint texture, struct surface_binding *binding) {
+    int found = 0;
+    pthread_mutex_lock(&g_surfaceBindingsMutex);
+    for (size_t i = 0; i < g_surfaceBindingCount; i++) {
+        if (g_surfaceBindings[i].context == context && g_surfaceBindings[i].texture == texture) {
+            *binding = g_surfaceBindings[i];
+            found = 1;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&g_surfaceBindingsMutex);
+    return found;
 }
 
 static int rememberSurfaceBinding(const struct surface_binding *binding) {
@@ -1292,6 +1328,167 @@ static CGLError planeForTransfer(IOSurfaceRef surface, GLuint plane, GLsizei wid
     return kCGLNoError;
 }
 
+// Importing surface planes as DMA-BUFs.
+
+enum dmabuf_import {
+    DMABUF_IMPORT_UNKNOWN = 0,
+    DMABUF_IMPORT_UNSUPPORTED,
+    DMABUF_IMPORT_SUPPORTED,
+    // Also takes an explicit layout modifier
+    // (EGL_EXT_image_dma_buf_import_modifiers).
+    DMABUF_IMPORT_WITH_MODIFIERS,
+};
+
+static PFNEGLCREATEIMAGEKHRPROC p_eglCreateImageKHR;
+static PFNEGLDESTROYIMAGEKHRPROC p_eglDestroyImageKHR;
+// glEGLImageTargetTexture2DOES (OES_EGL_image), which Apple's GL headers
+// do not declare.
+typedef void (*cgl_image_target_texture_proc)(GLenum target, void *image);
+static cgl_image_target_texture_proc p_glEGLImageTargetTexture2DOES;
+
+static void load_image_functions(void) {
+    p_eglCreateImageKHR = (PFNEGLCREATEIMAGEKHRPROC) p_eglGetProcAddress("eglCreateImageKHR");
+    p_eglDestroyImageKHR = (PFNEGLDESTROYIMAGEKHRPROC) p_eglGetProcAddress("eglDestroyImageKHR");
+    p_glEGLImageTargetTexture2DOES =
+        (cgl_image_target_texture_proc) p_eglGetProcAddress("glEGLImageTargetTexture2DOES");
+}
+
+static int has_extension(const char *extensions, const char *name) {
+    size_t length = strlen(name);
+    for (const char *found = extensions; (found = strstr(found, name)) != NULL; found += length) {
+        if ((found == extensions || found[-1] == ' ') && (found[length] == ' ' || found[length] == '\0'))
+            return 1;
+    }
+    return 0;
+}
+
+static enum dmabuf_import dmabuf_import(CGLContextObj context) {
+    int support = atomic_load(&context->dmabuf_import);
+    if (support != DMABUF_IMPORT_UNKNOWN)
+        return (enum dmabuf_import) support;
+
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    pthread_once(&once, load_image_functions);
+
+    support = DMABUF_IMPORT_UNSUPPORTED;
+    const char *extensions = p_eglQueryString(context->egl_display, EGL_EXTENSIONS);
+    if (extensions && has_extension(extensions, "EGL_EXT_image_dma_buf_import")
+        && p_eglCreateImageKHR && p_eglDestroyImageKHR && p_glEGLImageTargetTexture2DOES) {
+        support = has_extension(extensions, "EGL_EXT_image_dma_buf_import_modifiers")
+            ? DMABUF_IMPORT_WITH_MODIFIERS : DMABUF_IMPORT_SUPPORTED;
+    }
+    atomic_store(&context->dmabuf_import, support);
+    return (enum dmabuf_import) support;
+}
+
+// The DRM format of a plane whose pixels are in format and type, as a
+// texture of internal_format, or 0 if a texture of that format cannot be
+// made from the plane's memory as it is. Only formats whose GL meaning does
+// not depend on how the texture is stored are taken: luminance, alpha and
+// sRGB textures, for instance, are copied.
+static uint32_t drmFormat(GLenum internal_format, GLenum format, GLenum type) {
+    int alpha;
+    switch (internal_format) {
+    case GL_RGBA: case GL_RGBA8: case GL_RGBA16F:
+        alpha = 1;
+        break;
+    case GL_RGB: case GL_RGB8: case GL_RGB16F:
+        alpha = 0;
+        break;
+    case GL_RED: case GL_R8:
+        return format == GL_RED && type == GL_UNSIGNED_BYTE ? CGL_DRM_FORMAT_R8 : 0;
+    case GL_RG: case GL_RG8:
+        return format == GL_RG && type == GL_UNSIGNED_BYTE ? CGL_DRM_FORMAT_GR88 : 0;
+    default:
+        return 0;
+    }
+
+    int halfFloat = internal_format == GL_RGBA16F || internal_format == GL_RGB16F;
+    if (halfFloat != (type == GL_HALF_FLOAT))
+        return 0;
+
+    switch (format) {
+    case GL_BGRA:
+        switch (type) {
+        case GL_UNSIGNED_BYTE:
+        case GL_UNSIGNED_INT_8_8_8_8_REV:
+            return alpha ? CGL_DRM_FORMAT_ARGB8888 : CGL_DRM_FORMAT_XRGB8888;
+        case GL_UNSIGNED_INT_8_8_8_8:
+            return alpha ? CGL_DRM_FORMAT_BGRA8888 : CGL_DRM_FORMAT_BGRX8888;
+        }
+        return 0;
+    case GL_RGBA:
+        switch (type) {
+        case GL_UNSIGNED_BYTE:
+        case GL_UNSIGNED_INT_8_8_8_8_REV:
+            return alpha ? CGL_DRM_FORMAT_ABGR8888 : CGL_DRM_FORMAT_XBGR8888;
+        case GL_UNSIGNED_INT_8_8_8_8:
+            return alpha ? CGL_DRM_FORMAT_RGBA8888 : CGL_DRM_FORMAT_RGBX8888;
+        case GL_HALF_FLOAT:
+            return alpha ? CGL_DRM_FORMAT_ABGR16161616F : CGL_DRM_FORMAT_XBGR16161616F;
+        }
+        return 0;
+    default:
+        return 0;
+    }
+}
+
+// Makes the texture bound to target in the current context use the plane's
+// memory. Returns 0, leaving the texture as it was, if the context, the
+// surface, the target or the format do not allow that.
+static int importSurfacePlane(CGLContextObj context, GLenum target, GLenum internal_format,
+                              GLsizei width, GLsizei height, GLenum format, GLenum type,
+                              IOSurfaceRef surface, GLuint plane) {
+    // OES_EGL_image defines the import for 2D textures only.
+    if (target != GL_TEXTURE_2D)
+        return 0;
+    uint32_t fourcc = drmFormat(internal_format, format, type);
+    if (fourcc == 0)
+        return 0;
+    enum dmabuf_import support = dmabuf_import(context);
+    if (support == DMABUF_IMPORT_UNSUPPORTED)
+        return 0;
+
+    _IOSurfaceDMABuf buffer = { .version = _IOSURFACE_DMABUF_VERSION };
+    if (!_IOSurfaceGetDMABuf(surface, plane, &buffer))
+        return 0;
+    if (buffer.offset > INT32_MAX || buffer.bytesPerRow > INT32_MAX)
+        return 0;
+
+    EGLint attributes[] = {
+        EGL_WIDTH, width,
+        EGL_HEIGHT, height,
+        EGL_LINUX_DRM_FOURCC_EXT, (EGLint) fourcc,
+        EGL_DMA_BUF_PLANE0_FD_EXT, buffer.fd,
+        EGL_DMA_BUF_PLANE0_OFFSET_EXT, (EGLint) buffer.offset,
+        EGL_DMA_BUF_PLANE0_PITCH_EXT, (EGLint) buffer.bytesPerRow,
+        // Without the modifier extension, the driver assumes a linear
+        // layout for memory that has no layout of its own.
+        EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, (EGLint) (CGL_DRM_FORMAT_MOD_LINEAR & 0xffffffff),
+        EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT, (EGLint) (CGL_DRM_FORMAT_MOD_LINEAR >> 32),
+        EGL_NONE,
+    };
+    if (support != DMABUF_IMPORT_WITH_MODIFIERS)
+        attributes[12] = EGL_NONE;
+
+    EGLImageKHR image = p_eglCreateImageKHR(context->egl_display, EGL_NO_CONTEXT,
+                                            EGL_LINUX_DMA_BUF_EXT, NULL, attributes);
+    if (image == EGL_NO_IMAGE_KHR)
+        return 0;
+    // The texture has the image's size afterwards only if the driver took
+    // the image; it is emptied first so that its old size does not count.
+    // Checking it so leaves the GL error state to the application.
+    glTexImage2D(target, 0, (GLint) internal_format, 0, 0, 0, format, type, NULL);
+    p_glEGLImageTargetTexture2DOES(target, image);
+    // The texture keeps the memory after the image is gone.
+    p_eglDestroyImageKHR(context->egl_display, image);
+
+    GLint importedWidth = 0, importedHeight = 0;
+    glGetTexLevelParameteriv(target, 0, GL_TEXTURE_WIDTH, &importedWidth);
+    glGetTexLevelParameteriv(target, 0, GL_TEXTURE_HEIGHT, &importedHeight);
+    return importedWidth == width && importedHeight == height;
+}
+
 // Makes context current on this thread for the duration of a call.
 static CGLError enterContext(CGLContextObj context, CGLContextObj *previous) {
     *previous = CGLGetCurrentContext();
@@ -1332,26 +1529,48 @@ CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum interna
     GLint texture = 0;
     glGetIntegerv(bindingQuery, &texture);
 
-    struct pixel_store saved, transfer = { 0, rowLength, 0, 0, 1 };
-    savePixelStore(0, &saved);
-    setPixelStore(0, &transfer);
-
+    // A texture that already uses this plane's memory in the same way is
+    // left alone; it has the surface's current contents.
+    struct surface_binding previousBinding;
     GLint allocatedWidth = 0, allocatedHeight = 0, allocatedFormat = 0;
     glGetTexLevelParameteriv(target, 0, GL_TEXTURE_WIDTH, &allocatedWidth);
     glGetTexLevelParameteriv(target, 0, GL_TEXTURE_HEIGHT, &allocatedHeight);
     glGetTexLevelParameteriv(target, 0, GL_TEXTURE_INTERNAL_FORMAT, &allocatedFormat);
-    if (allocatedWidth == width && allocatedHeight == height && allocatedFormat == (GLint) internal_format)
-        glTexSubImage2D(target, 0, 0, 0, width, height, format, type, pixels);
-    else
-        glTexImage2D(target, 0, (GLint) internal_format, width, height, 0, format, type, pixels);
+    int imported = texture != 0 && findSurfaceBinding(ctx, (GLuint) texture, &previousBinding)
+        && previousBinding.imported && previousBinding.surface == ioSurface && previousBinding.plane == plane
+        && previousBinding.target == target && previousBinding.internalFormat == internal_format
+        && previousBinding.format == format && previousBinding.type == type
+        && previousBinding.width == width && previousBinding.height == height
+        && allocatedWidth == width && allocatedHeight == height;
 
-    setPixelStore(0, &saved);
+    if (!imported && texture != 0)
+        imported = importSurfacePlane(ctx, target, internal_format, width, height, format, type, ioSurface, plane);
+
+    if (!imported) {
+        // A failed import may have emptied the texture.
+        glGetTexLevelParameteriv(target, 0, GL_TEXTURE_WIDTH, &allocatedWidth);
+        glGetTexLevelParameteriv(target, 0, GL_TEXTURE_HEIGHT, &allocatedHeight);
+        glGetTexLevelParameteriv(target, 0, GL_TEXTURE_INTERNAL_FORMAT, &allocatedFormat);
+
+        struct pixel_store saved, transfer = { 0, rowLength, 0, 0, 1 };
+        savePixelStore(0, &saved);
+        setPixelStore(0, &transfer);
+
+        if (allocatedWidth == width && allocatedHeight == height && allocatedFormat == (GLint) internal_format)
+            glTexSubImage2D(target, 0, 0, 0, width, height, format, type, pixels);
+        else
+            glTexImage2D(target, 0, (GLint) internal_format, width, height, 0, format, type, pixels);
+
+        setPixelStore(0, &saved);
+    }
 
     if (texture != 0) {
         struct surface_binding binding = {
             .context = ctx, .texture = (GLuint) texture, .target = target,
             .format = format, .type = type, .plane = plane, .surface = ioSurface,
             .seed = IOSurfaceGetSeed(ioSurface),
+            .imported = imported, .internalFormat = internal_format,
+            .width = width, .height = height,
         };
         if (!rememberSurfaceBinding(&binding))
             error = kCGLBadAlloc;
@@ -1364,14 +1583,55 @@ CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum interna
 // Set while this thread copies a texture into a surface.
 static __thread int t_readingBack;
 
-// Copies the texture last specified from ioSurface into the surface. With
-// onlyIfUnmodified, a surface the CPU has written since the texture last
-// matched it is left alone: its contents are newer than the texture's.
+// The most contexts whose work finishImportedSurface waits for at once.
+#define MAX_FINISHED_CONTEXTS 16
+
+// Waits for the GL work of the contexts that have textures using the
+// surface's memory, so that the memory holds their rendering. A context
+// current on another thread cannot be made current here and is skipped; its
+// application flushes it before handing the surface on, as on macOS.
+// Returns whether the surface has any such texture.
+static int finishImportedSurface(IOSurfaceRef ioSurface) {
+    CGLContextObj contexts[MAX_FINISHED_CONTEXTS];
+    size_t count = 0;
+    int found = 0;
+
+    pthread_mutex_lock(&g_surfaceBindingsMutex);
+    for (size_t i = 0; i < g_surfaceBindingCount; i++) {
+        if (g_surfaceBindings[i].surface != ioSurface || !g_surfaceBindings[i].imported)
+            continue;
+        found = 1;
+        size_t j;
+        for (j = 0; j < count && contexts[j] != g_surfaceBindings[i].context; j++)
+            ;
+        if (j == count && count < MAX_FINISHED_CONTEXTS)
+            contexts[count++] = CGLRetainContext(g_surfaceBindings[i].context);
+    }
+    pthread_mutex_unlock(&g_surfaceBindingsMutex);
+
+    for (size_t i = 0; i < count; i++) {
+        CGLContextObj previous;
+        if (enterContext(contexts[i], &previous) == kCGLNoError) {
+            glFinish();
+            leaveContext(contexts[i], previous);
+        }
+        CGLReleaseContext(contexts[i]);
+    }
+    return found;
+}
+
+// Brings GL rendering on ioSurface into the surface's memory. Textures that
+// use the memory itself only need their contexts' work to finish. A texture
+// that holds a copy, the one last specified from the surface, is copied into
+// the surface; with onlyIfUnmodified, not if the CPU has written the surface
+// since the texture last matched it, as its contents are newer then.
 static CGLError readBackSurface(IOSurfaceRef ioSurface, int onlyIfUnmodified) {
+    int imported = finishImportedSurface(ioSurface);
+
     struct surface_binding binding = { 0 };
     pthread_mutex_lock(&g_surfaceBindingsMutex);
     for (size_t i = g_surfaceBindingCount; i-- > 0; ) {
-        if (g_surfaceBindings[i].surface == ioSurface) {
+        if (g_surfaceBindings[i].surface == ioSurface && !g_surfaceBindings[i].imported) {
             binding = g_surfaceBindings[i];
             break;
         }
@@ -1381,8 +1641,18 @@ static CGLError readBackSurface(IOSurfaceRef ioSurface, int onlyIfUnmodified) {
     if (binding.context)
         CGLRetainContext(binding.context);
     pthread_mutex_unlock(&g_surfaceBindingsMutex);
-    if (!binding.context)
-        return kCGLBadValue;
+    if (!binding.context) {
+        if (!imported)
+            return kCGLBadValue;
+        // An explicit readback marks the surface modified, as a copy does.
+        if (!onlyIfUnmodified) {
+            t_readingBack = 1;
+            IOSurfaceLock(ioSurface, 0, NULL);
+            IOSurfaceUnlock(ioSurface, 0, NULL);
+            t_readingBack = 0;
+        }
+        return kCGLNoError;
+    }
 
     CGLContextObj previous;
     CGLError error = enterContext(binding.context, &previous);
@@ -1437,10 +1707,11 @@ CGLError CGLReadbackIOSurface(IOSurfaceRef ioSurface) {
     return readBackSurface(ioSurface, 0);
 }
 
-// IOSurface's writeback callback. The texture holds the GPU's rendering, so
-// it is copied into the surface unless the CPU has written the surface
-// since. A surface with no texture, or one this thread is already copying
-// into, is left alone.
+// IOSurface's writeback callback. Rendering into textures that use the
+// surface's memory is waited for. A texture that holds a copy has the GPU's
+// rendering, so it is copied into the surface unless the CPU has written
+// the surface since. A surface with no texture, or one this thread is
+// already copying into, is left alone.
 static void writeBackSurface(IOSurfaceRef ioSurface) {
     if (!t_readingBack)
         readBackSurface(ioSurface, 1);

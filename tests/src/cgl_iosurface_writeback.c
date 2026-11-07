@@ -2,7 +2,8 @@
 //
 // On macOS an IOSurface is the storage of the texture that
 // CGLTexImageIOSurface2D binds to it, so locking the surface shows the GPU's
-// rendering into that texture. Darling's texture is a copy, which
+// rendering into that texture. Darling's texture is the same when the host
+// imports the surface's memory as a DMA-BUF. Otherwise it is a copy, which
 // OpenGL.framework writes back into the surface when the surface is
 // locked. The writeback must not overwrite CPU writes made to the surface
 // since the texture was last specified from it.
@@ -118,6 +119,18 @@ int main(void)
 	glBindTexture(GL_TEXTURE_2D, texture);
 	CHECK(CGLTexImageIOSurface2D(context, GL_TEXTURE_2D, GL_RGBA8, W, H, GL_BGRA,
 		GL_UNSIGNED_INT_8_8_8_8_REV, surface, 0) == kCGLNoError);
+
+	// A CPU write after the call shows in the texture only if the texture
+	// uses the surface's memory; specifying it again brings it in anyway.
+	fill(surface, GREEN);
+	static uint32_t texels[W * H];
+	glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, texels);
+	int imported = texels[0] == GREEN;
+	printf("GL texture: %s\n", imported ? "imported" : "copied");
+	CHECK(imported || texels[0] == GREY);
+	CHECK(CGLTexImageIOSurface2D(context, GL_TEXTURE_2D, GL_RGBA8, W, H, GL_BGRA,
+		GL_UNSIGNED_INT_8_8_8_8_REV, surface, 0) == kCGLNoError);
+
 	glGenFramebuffers(1, &framebuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
@@ -137,13 +150,17 @@ int main(void)
 	printf("after rendering blue: %08x %08x\n", first, last);
 	CHECK(first == BLUE && last == BLUE);
 
-	// A CPU write is newer than the texture: rendering that the texture has
-	// not been specified from since does not replace it.
+	// A CPU write is newer than a copied texture: rendering that the
+	// texture has not been specified from since does not replace it. A
+	// texture that uses the surface's memory renders into it, as on macOS.
 	fill(surface, GREEN);
 	clearTexture(1.0f, 0.0f, 0.0f);
 	corners(surface, &first, &last);
 	printf("after a CPU write: %08x %08x\n", first, last);
-	CHECK(first == GREEN && last == GREEN);
+	if (imported)
+		CHECK(first == RED && last == RED);
+	else
+		CHECK(first == GREEN && last == GREEN);
 
 	// Specifying the texture from the surface again resumes the writeback.
 	CHECK(CGLTexImageIOSurface2D(context, GL_TEXTURE_2D, GL_RGBA8, W, H, GL_BGRA,

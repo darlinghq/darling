@@ -4,7 +4,8 @@
 // (src/frameworks/IOSurface/src/dmabuf.c).
 //
 // "abi": the Linux constants and structures that IOSurface spells out in
-// linux_dmabuf.h, because it is built against the Darwin SDK, equal the
+// linux_dmabuf.h, and the DRM formats that OpenGL.framework spells out in
+// drm_formats.h, because both are built against the Darwin SDK, equal the
 // kernel's own headers.
 //
 // "gl": the host can do what IOSurface and OpenGL.framework do with a
@@ -17,7 +18,9 @@
 // shared memory fallback.
 #define _GNU_SOURCE
 #include "linux_dmabuf.h"
+#include "drm_formats.h"
 
+#include <drm/drm_fourcc.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/dma-buf.h>
@@ -49,6 +52,20 @@ _Static_assert(LINUX_DMA_BUF_SYNC_END == DMA_BUF_SYNC_END, "DMA_BUF_SYNC_END");
 _Static_assert(LINUX_DMA_BUF_IOCTL_SYNC == DMA_BUF_IOCTL_SYNC, "DMA_BUF_IOCTL_SYNC");
 _Static_assert(sizeof(struct linux_dma_buf_sync) == sizeof(struct dma_buf_sync), "dma_buf_sync");
 
+_Static_assert(CGL_DRM_FORMAT_ARGB8888 == DRM_FORMAT_ARGB8888, "DRM_FORMAT_ARGB8888");
+_Static_assert(CGL_DRM_FORMAT_XRGB8888 == DRM_FORMAT_XRGB8888, "DRM_FORMAT_XRGB8888");
+_Static_assert(CGL_DRM_FORMAT_ABGR8888 == DRM_FORMAT_ABGR8888, "DRM_FORMAT_ABGR8888");
+_Static_assert(CGL_DRM_FORMAT_XBGR8888 == DRM_FORMAT_XBGR8888, "DRM_FORMAT_XBGR8888");
+_Static_assert(CGL_DRM_FORMAT_BGRA8888 == DRM_FORMAT_BGRA8888, "DRM_FORMAT_BGRA8888");
+_Static_assert(CGL_DRM_FORMAT_BGRX8888 == DRM_FORMAT_BGRX8888, "DRM_FORMAT_BGRX8888");
+_Static_assert(CGL_DRM_FORMAT_RGBA8888 == DRM_FORMAT_RGBA8888, "DRM_FORMAT_RGBA8888");
+_Static_assert(CGL_DRM_FORMAT_RGBX8888 == DRM_FORMAT_RGBX8888, "DRM_FORMAT_RGBX8888");
+_Static_assert(CGL_DRM_FORMAT_R8 == DRM_FORMAT_R8, "DRM_FORMAT_R8");
+_Static_assert(CGL_DRM_FORMAT_GR88 == DRM_FORMAT_GR88, "DRM_FORMAT_GR88");
+_Static_assert(CGL_DRM_FORMAT_ABGR16161616F == DRM_FORMAT_ABGR16161616F, "DRM_FORMAT_ABGR16161616F");
+_Static_assert(CGL_DRM_FORMAT_XBGR16161616F == DRM_FORMAT_XBGR16161616F, "DRM_FORMAT_XBGR16161616F");
+_Static_assert(CGL_DRM_FORMAT_MOD_LINEAR == DRM_FORMAT_MOD_LINEAR, "DRM_FORMAT_MOD_LINEAR");
+
 #define SKIPPED 77
 
 #ifdef HAVE_EGL
@@ -56,9 +73,6 @@ _Static_assert(sizeof(struct linux_dma_buf_sync) == sizeof(struct dma_buf_sync),
 #include <EGL/eglext.h>
 #include <GL/gl.h>
 #include <GL/glext.h>
-
-// DRM_FORMAT_ARGB8888 (<drm_fourcc.h>): B, G, R, A bytes in memory.
-#define FOURCC(a, b, c, d) ((uint32_t) (a) | ((uint32_t) (b) << 8) | ((uint32_t) (c) << 16) | ((uint32_t) (d) << 24))
 
 #define W 64
 #define H 32
@@ -142,7 +156,7 @@ static int gl(void)
 	CHECK(createImage && destroyImage && targetTexture);
 	EGLint attributes[] = {
 		EGL_WIDTH, W, EGL_HEIGHT, H,
-		EGL_LINUX_DRM_FOURCC_EXT, (EGLint) FOURCC('A', 'R', '2', '4'),
+		EGL_LINUX_DRM_FOURCC_EXT, (EGLint) CGL_DRM_FORMAT_ARGB8888,
 		EGL_DMA_BUF_PLANE0_FD_EXT, dmabuf,
 		EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
 		EGL_DMA_BUF_PLANE0_PITCH_EXT, ROW,

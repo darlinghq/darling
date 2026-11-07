@@ -3,7 +3,8 @@
 
 add_executable(iosurface_dmabuf_host_test dmabuf_host.c)
 target_include_directories(iosurface_dmabuf_host_test PRIVATE
-	${CMAKE_SOURCE_DIR}/src/frameworks/IOSurface/src)
+	${CMAKE_SOURCE_DIR}/src/frameworks/IOSurface/src
+	${CMAKE_SOURCE_DIR}/src/frameworks/OpenGL)
 target_compile_options(iosurface_dmabuf_host_test PRIVATE -std=gnu11)
 add_test(NAME iosurface_dmabuf_abi COMMAND iosurface_dmabuf_host_test)
 
