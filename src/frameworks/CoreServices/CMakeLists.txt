@@ -91,5 +91,15 @@ set_property(TARGET CoreServices APPEND_STRING PROPERTY
   LINK_FLAGS " -Wl,-reexported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/reexport.exp")
 endif ()
 
-install(FILES SystemVersion.plist DESTINATION "libexec/darling/System/Library/CoreServices")
-install(FILES SystemVersionCompat.plist DESTINATION "libexec/darling/System/Library/CoreServices")
+# The release comes from the emulated kernel (libsystem_kernel), so that
+# SystemVersion.plist, sw_vers and kern.osproductversion always agree.
+get_property(DARLING_OS_PRODUCT_VERSION GLOBAL PROPERTY DARLING_OS_PRODUCT_VERSION)
+get_property(DARLING_OS_BUILD_VERSION GLOBAL PROPERTY DARLING_OS_BUILD_VERSION)
+if (NOT DARLING_OS_PRODUCT_VERSION OR NOT DARLING_OS_BUILD_VERSION)
+	message(FATAL_ERROR "libsystem_kernel did not publish the emulated macOS version")
+endif ()
+configure_file(SystemVersion.plist.in SystemVersion.plist @ONLY)
+configure_file(SystemVersionCompat.plist.in SystemVersionCompat.plist @ONLY)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/SystemVersion.plist DESTINATION "libexec/darling/System/Library/CoreServices")
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/SystemVersionCompat.plist DESTINATION "libexec/darling/System/Library/CoreServices")
