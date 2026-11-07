@@ -31,7 +31,9 @@ const CFStringRef kVTCompressionPropertyKey_ExpectedFrameRate = CFSTR("ExpectedF
 
 const CFStringRef kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder = CFSTR("RequireHardwareAcceleratedVideoEncoder");
 
-// ColorPrimaries, TransferFunction and YCbCrMatrix are defined in VideoToolbox.m.
-// Both values observed on macOS 26 by printing the public constants (rung 4).
+// Values observed on macOS by printing the public constants.
+const CFStringRef kVTCompressionPropertyKey_ColorPrimaries = CFSTR("ColorPrimaries");
+const CFStringRef kVTCompressionPropertyKey_TransferFunction = CFSTR("TransferFunction");
+const CFStringRef kVTCompressionPropertyKey_YCbCrMatrix = CFSTR("YCbCrMatrix");
 const CFStringRef kVTCompressionPropertyKey_BaseLayerFrameRateFraction = CFSTR("BaseLayerFrameRateFraction");
 const CFStringRef kVTVideoEncoderSpecification_EnableLowLatencyRateControl = CFSTR("EnableLowLatencyRateControl");
