@@ -31,12 +31,6 @@ static void initme(void) {
 }
 
 
-IOSurfaceRef _Nullable IOSurfaceLookup(IOSurfaceID csid){
-    if (verbose) printf("STUB: %s called\n", __FUNCTION__);
-    return 0;
-}
-
-
 size_t IOSurfaceGetNumberOfComponentsOfPlane(IOSurfaceRef buffer, size_t planeIndex){
     if (verbose) printf("STUB: %s called\n", __FUNCTION__);
     return 0;
@@ -78,12 +72,6 @@ IOSurfaceSubsampling IOSurfaceGetSubsampling(IOSurfaceRef buffer){
     return 0;
 }
 
-
-
-mach_port_t IOSurfaceCreateMachPort(IOSurfaceRef buffer){
-    if (verbose) printf("STUB: %s called\n", __FUNCTION__);
-    return 0;
-}
 
 
 size_t IOSurfaceGetPropertyMaximum(CFStringRef property){

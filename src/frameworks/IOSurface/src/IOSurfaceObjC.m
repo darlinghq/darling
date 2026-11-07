@@ -22,11 +22,61 @@
 #import <IOSurface/IOSurfacePriv.h>
 #import <Foundation/Foundation.h>
 #import <IOKit/IOCFSerialize.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <pthread.h>
 #include <stdatomic.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <sys/fileport.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 static io_service_t g_surfaceService;
+
+// Plane layouts are limited to this many planes.
+#define MAX_PLANES 16
+
+// A surface allocated in user space lives in a shared memory object, so that
+// other processes can map it: IOSurfaceCreateMachPort wraps the object's
+// descriptor in a fileport. The object starts with this header, which
+// describes the surface to the process that receives it; the planes follow
+// at dataOffset. The layout is the same for i386 and x86_64 processes.
+#define SHARED_MAGIC 0x49535246 // 'ISRF'
+#define SHARED_VERSION 1
+
+enum
+{
+	kSharedPlanar = 1 << 0,
+	kSharedPixelSizeCastingAllowed = 1 << 1,
+	kSharedGlobal = 1 << 2,
+};
+
+struct SharedHeader
+{
+	uint32_t magic;
+	uint32_t version;
+	uint64_t dataOffset;
+	uint64_t allocSize;
+	IOSurfaceID surfaceID;
+	uint32_t pixelFormat;
+	uint32_t planeCount;
+	uint32_t flags;
+	struct _IOSurfacePlane planes[MAX_PLANES];
+
+	// The state below is updated in place by every process that maps the
+	// surface.
+
+	// Incremented by every unlock that ends a lock for writing.
+	_Atomic uint32_t seed;
+	// The number of IOSurface objects, in all processes, whose use count
+	// is not zero.
+	_Atomic int32_t useCount;
+};
+
+_Static_assert(offsetof(struct SharedHeader, planes) == 40, "shared header layout");
+_Static_assert(sizeof(struct SharedHeader) == 432, "shared header layout");
 
 typedef struct
 {
@@ -35,10 +85,22 @@ typedef struct
 	size_t allocSize;
 	NSMutableDictionary* attachments;
 	// Allocated in this process because IOSurfaceRoot could not create the
-	// surface. The planes live in an anonymous mapping of allocSize bytes.
+	// surface, or received from another process. The planes live in the
+	// shared memory object (fd >= 0) or, if that could not be created, in an
+	// anonymous mapping of allocSize bytes.
 	bool userSpace;
-	// Incremented by every unlock that ends a lock for writing.
-	_Atomic uint32_t seed;
+	// The shared memory object, its mapping (header and planes), and its
+	// identity, or -1 and NULL.
+	int fd;
+	void* mapping;
+	size_t mappingSize;
+	dev_t device;
+	ino_t inode;
+	// The seed and the use count. Points into the mapping, or to memory
+	// owned by this object when there is no shared memory object.
+	struct SharedHeader* shared;
+	// Counted in the registry that IOSurfaceLookup searches.
+	bool registered;
 	_Atomic uint32_t purgeability;
 	bool allowsPixelSizeCasting;
 	// Created with kIOSurfacePlaneInfo. A surface without it still has one
@@ -50,14 +112,17 @@ static void initState(ImplData* idata)
 {
 	idata->localUseCount = 0;
 	idata->attachments = [[NSMutableDictionary alloc] init];
-	idata->seed = 0;
+	idata->fd = -1;
+	idata->mapping = NULL;
+	idata->mappingSize = 0;
+	idata->device = 0;
+	idata->inode = 0;
+	idata->shared = NULL;
+	idata->registered = false;
 	idata->purgeability = kIOSurfacePurgeableNonVolatile;
 	idata->allowsPixelSizeCasting = true;
 	idata->planar = true;
 }
-
-// Plane layouts are limited to this many planes.
-#define MAX_PLANES 16
 
 // When the caller gives no element size, assume 4 bytes, the size of the
 // common 32-bit pixel formats, so that the allocation is never too small for
@@ -170,6 +235,152 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 	return end;
 }
 
+// Creates an anonymous shared memory object: the name only has to be unique
+// until it is unlinked, right after creation.
+static int createSharedObject(void)
+{
+	static _Atomic uint32_t counter;
+	char name[32];
+
+	for (int attempt = 0; attempt < 16; attempt++)
+	{
+		snprintf(name, sizeof(name), "/IOSurface.%d.%u", (int) getpid(), atomic_fetch_add(&counter, 1));
+		int fd = shm_open(name, O_RDWR | O_CREAT | O_EXCL, 0600);
+		if (fd >= 0)
+		{
+			shm_unlink(name);
+			return fd;
+		}
+		if (errno != EEXIST)
+			break;
+	}
+	return -1;
+}
+
+// Whether a header read from a shared memory object of objectSize bytes
+// describes a surface that fits in it. The header is checked on a private
+// copy, since any process holding the object can write to it.
+static bool validSharedHeader(const struct SharedHeader* header, uint64_t objectSize)
+{
+	if (header->magic != SHARED_MAGIC || header->version != SHARED_VERSION)
+		return false;
+	if (header->planeCount == 0 || header->planeCount > MAX_PLANES)
+		return false;
+	if (header->dataOffset < sizeof(struct SharedHeader) || header->dataOffset % getpagesize() != 0)
+		return false;
+	if (header->allocSize == 0 || header->allocSize > UINT64_MAX - header->dataOffset)
+		return false;
+	if (header->dataOffset + header->allocSize > objectSize || header->dataOffset + header->allocSize > SIZE_MAX)
+		return false;
+
+	for (uint32_t i = 0; i < header->planeCount; i++)
+	{
+		const struct _IOSurfacePlane* plane = &header->planes[i];
+		if (plane->width == 0 || plane->height == 0 || plane->bytesPerElement == 0)
+			return false;
+		if ((uint64_t) plane->width * plane->bytesPerElement > plane->bytesPerRow)
+			return false;
+		if (plane->memoryOffset > header->allocSize
+			|| (uint64_t) plane->bytesPerRow * plane->height > header->allocSize - plane->memoryOffset)
+			return false;
+	}
+	return true;
+}
+
+// Surfaces created with kIOSurfaceIsGlobal, which IOSurfaceLookup finds by
+// ID. Without IOSurfaceRoot, IDs are unique only within a process, so only
+// surfaces created in this process are found. Each entry holds its own
+// descriptor for the surface and counts the IOSurface objects that refer to
+// it from this process's ID space; it goes away with the last of them.
+struct GlobalSurface
+{
+	struct GlobalSurface* next;
+	IOSurfaceID surfaceID;
+	int fd;
+	unsigned int references;
+};
+
+static pthread_mutex_t g_globalSurfacesLock = PTHREAD_MUTEX_INITIALIZER;
+static struct GlobalSurface* g_globalSurfaces;
+
+static struct GlobalSurface** findGlobalSurface(IOSurfaceID surfaceID)
+{
+	struct GlobalSurface** entry = &g_globalSurfaces;
+	while (*entry && (*entry)->surfaceID != surfaceID)
+		entry = &(*entry)->next;
+	return entry;
+}
+
+static bool registerGlobalSurface(IOSurfaceID surfaceID, int fd)
+{
+	bool registered = false;
+
+	pthread_mutex_lock(&g_globalSurfacesLock);
+	struct GlobalSurface** entry = findGlobalSurface(surfaceID);
+	if (*entry)
+	{
+		(*entry)->references++;
+		registered = true;
+	}
+	else
+	{
+		struct GlobalSurface* surface = malloc(sizeof(*surface));
+		int copy = fcntl(fd, F_DUPFD_CLOEXEC, 0);
+		if (surface && copy >= 0)
+		{
+			*surface = (struct GlobalSurface) {
+				.next = NULL,
+				.surfaceID = surfaceID,
+				.fd = copy,
+				.references = 1,
+			};
+			*entry = surface;
+			registered = true;
+		}
+		else
+		{
+			free(surface);
+			if (copy >= 0)
+				close(copy);
+		}
+	}
+	pthread_mutex_unlock(&g_globalSurfacesLock);
+
+	return registered;
+}
+
+static void unregisterGlobalSurface(IOSurfaceID surfaceID)
+{
+	pthread_mutex_lock(&g_globalSurfacesLock);
+	struct GlobalSurface** entry = findGlobalSurface(surfaceID);
+	struct GlobalSurface* surface = *entry;
+	if (surface && --surface->references == 0)
+		*entry = surface->next;
+	else
+		surface = NULL;
+	pthread_mutex_unlock(&g_globalSurfacesLock);
+
+	if (surface)
+	{
+		close(surface->fd);
+		free(surface);
+	}
+}
+
+// Returns a new descriptor for a registered surface, or -1.
+static int copyGlobalSurface(IOSurfaceID surfaceID)
+{
+	int fd = -1;
+
+	pthread_mutex_lock(&g_globalSurfacesLock);
+	struct GlobalSurface* surface = *findGlobalSurface(surfaceID);
+	if (surface)
+		fd = fcntl(surface->fd, F_DUPFD_CLOEXEC, 0);
+	pthread_mutex_unlock(&g_globalSurfacesLock);
+
+	return fd;
+}
+
 @implementation IOSurface
 
 + (void)initialize
@@ -189,15 +400,66 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 - (nullable instancetype)initWithResponse:(const void*)bytes length:(size_t)length
 {
 	ImplData* idata = (ImplData*) malloc(sizeof(ImplData));
-	idata->surface = malloc(length);
-	memcpy(idata->surface, bytes, length);
+	struct _IOSurfaceObjectRetval* surface = malloc(length);
+	struct SharedHeader* shared = calloc(1, sizeof(struct SharedHeader));
+	if (!idata || !surface || !shared)
+	{
+		free(idata);
+		free(surface);
+		free(shared);
+		[self release];
+		return nil;
+	}
+	memcpy(surface, bytes, length);
 
+	idata->surface = surface;
 	initState(idata);
 	idata->allocSize = planesEnd(idata->surface);
 	idata->userSpace = false;
+	idata->shared = shared;
 	self->_impl = idata;
 
 	return self;
+}
+
+// Creates the shared memory object for a surface of allocSize bytes and maps
+// it. Returns the mapping, or NULL.
+static struct SharedHeader* mapNewSharedObject(size_t allocSize, int* fd, size_t* mappingSize)
+{
+	size_t dataOffset = getpagesize();
+	if (allocSize > SIZE_MAX - dataOffset)
+		return NULL;
+
+	int object = createSharedObject();
+	if (object < 0)
+		return NULL;
+
+	size_t size = dataOffset + allocSize;
+	void* mapping = MAP_FAILED;
+	if ((off_t) size >= 0 && ftruncate(object, (off_t) size) == 0)
+		mapping = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, object, 0);
+	if (mapping == MAP_FAILED)
+	{
+		close(object);
+		return NULL;
+	}
+
+	struct SharedHeader* header = mapping;
+	header->dataOffset = dataOffset;
+	header->allocSize = allocSize;
+	*fd = object;
+	*mappingSize = size;
+	return header;
+}
+
+static void recordIdentity(ImplData* idata)
+{
+	struct stat st;
+	if (fstat(idata->fd, &st) == 0)
+	{
+		idata->device = st.st_dev;
+		idata->inode = st.st_ino;
+	}
 }
 
 // Creates the surface in this process, with the layout the properties
@@ -274,15 +536,36 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 	size_t retvalSize = offsetof(struct _IOSurfaceObjectRetval, planes) + planeCount * sizeof(struct _IOSurfacePlane);
 	struct _IOSurfaceObjectRetval* surface = calloc(1, retvalSize);
 	ImplData* idata = malloc(sizeof(ImplData));
-	void* memory = mmap(NULL, allocSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-	if (!surface || !idata || memory == MAP_FAILED)
+	if (!surface || !idata)
 	{
-		if (memory != MAP_FAILED)
-			munmap(memory, allocSize);
 		free(surface);
 		free(idata);
 		[self release];
 		return nil;
+	}
+
+	// Without a shared memory object the surface still works in this
+	// process, but cannot be passed to another one.
+	int fd = -1;
+	size_t mappingSize = 0;
+	struct SharedHeader* shared = mapNewSharedObject(allocSize, &fd, &mappingSize);
+	void* memory;
+	if (shared)
+		memory = (char*) shared + shared->dataOffset;
+	else
+	{
+		shared = calloc(1, sizeof(struct SharedHeader));
+		memory = mmap(NULL, allocSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+		if (!shared || memory == MAP_FAILED)
+		{
+			if (memory != MAP_FAILED)
+				munmap(memory, allocSize);
+			free(shared);
+			free(surface);
+			free(idata);
+			[self release];
+			return nil;
+		}
 	}
 
 	surface->surfaceID = nextUserSpaceID();
@@ -299,6 +582,84 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 	id casting = properties[(NSString*) kIOSurfacePixelSizeCastingAllowed];
 	if ([casting respondsToSelector: @selector(boolValue)])
 		idata->allowsPixelSizeCasting = [casting boolValue];
+	id global = properties[(NSString*) kIOSurfaceIsGlobal];
+	bool isGlobal = [global respondsToSelector: @selector(boolValue)] && [global boolValue];
+	idata->shared = shared;
+	if (fd >= 0)
+	{
+		idata->fd = fd;
+		idata->mapping = shared;
+		idata->mappingSize = mappingSize;
+		recordIdentity(idata);
+	}
+	self->_impl = idata;
+
+	shared->surfaceID = surface->surfaceID;
+	shared->pixelFormat = surface->pixelFormat;
+	shared->planeCount = planeCount;
+	memcpy(shared->planes, planes, planeCount * sizeof(struct _IOSurfacePlane));
+	shared->flags = (idata->planar ? kSharedPlanar : 0)
+		| (idata->allowsPixelSizeCasting ? kSharedPixelSizeCastingAllowed : 0)
+		| (isGlobal ? kSharedGlobal : 0);
+	shared->magic = SHARED_MAGIC;
+	shared->version = SHARED_VERSION;
+
+	if (isGlobal && fd >= 0)
+		idata->registered = registerGlobalSurface(surface->surfaceID, fd);
+
+	return self;
+}
+
+// Maps a surface from a shared memory object made by another IOSurface
+// object, possibly in another process. Takes ownership of fd. The geometry
+// is copied from the header; only the seed and use count are used in place.
+- (nullable instancetype)_initWithSharedObject:(int)fd
+{
+	struct stat st;
+	struct SharedHeader header;
+	if (fstat(fd, &st) != 0
+		|| pread(fd, &header, sizeof(header), 0) != (ssize_t) sizeof(header)
+		|| !validSharedHeader(&header, (uint64_t) st.st_size))
+	{
+		close(fd);
+		[self release];
+		return nil;
+	}
+
+	size_t mappingSize = (size_t)(header.dataOffset + header.allocSize);
+	size_t retvalSize = offsetof(struct _IOSurfaceObjectRetval, planes) + header.planeCount * sizeof(struct _IOSurfacePlane);
+	struct _IOSurfaceObjectRetval* surface = calloc(1, retvalSize);
+	ImplData* idata = malloc(sizeof(ImplData));
+	void* mapping = mmap(NULL, mappingSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	if (!surface || !idata || mapping == MAP_FAILED)
+	{
+		if (mapping != MAP_FAILED)
+			munmap(mapping, mappingSize);
+		free(surface);
+		free(idata);
+		close(fd);
+		[self release];
+		return nil;
+	}
+
+	surface->surfaceID = header.surfaceID;
+	surface->pixelFormat = header.pixelFormat;
+	surface->address = (uint64_t)(uintptr_t)((char*) mapping + header.dataOffset);
+	surface->planeCount = header.planeCount;
+	memcpy(surface->planes, header.planes, header.planeCount * sizeof(struct _IOSurfacePlane));
+
+	idata->surface = surface;
+	initState(idata);
+	idata->allocSize = (size_t) header.allocSize;
+	idata->userSpace = true;
+	idata->planar = (header.flags & kSharedPlanar) != 0;
+	idata->allowsPixelSizeCasting = (header.flags & kSharedPixelSizeCastingAllowed) != 0;
+	idata->fd = fd;
+	idata->mapping = mapping;
+	idata->mappingSize = mappingSize;
+	idata->device = st.st_dev;
+	idata->inode = st.st_ino;
+	idata->shared = mapping;
 	self->_impl = idata;
 
 	return self;
@@ -326,18 +687,44 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 	return [self initWithResponse: responseBuffer length: responseLength];
 }
 
-// Mach port lookup needs IOSurfaceRoot or another process to export the
-// surface; neither exists yet.
+// The port is a fileport for the surface's shared memory object, made by
+// -createMachPort. The caller keeps its right.
 - (nullable instancetype)initWithMachPort:(mach_port_t)port
 {
-	[self release];
-	return nil;
+	int fd = MACH_PORT_VALID(port) ? fileport_makefd(port) : -1;
+	if (fd < 0)
+	{
+		[self release];
+		return nil;
+	}
+	return [self _initWithSharedObject: fd];
+}
+
+- (mach_port_t)createMachPort
+{
+	ImplData* data = (ImplData*) _impl;
+	fileport_t port = MACH_PORT_NULL;
+	if (data->fd < 0 || fileport_makeport(data->fd, &port) != 0)
+		return MACH_PORT_NULL;
+	return port;
 }
 
 - (nullable instancetype)initWithSurfaceID:(IOSurfaceID)surfaceID
 {
 	uint8_t responseBuffer[3500];
 	size_t responseLength = sizeof(responseBuffer);
+
+	int fd = copyGlobalSurface(surfaceID);
+	if (fd >= 0)
+	{
+		self = [self _initWithSharedObject: fd];
+		if (self)
+		{
+			ImplData* data = (ImplData*) _impl;
+			data->registered = registerGlobalSurface(surfaceID, data->fd);
+		}
+		return self;
+	}
 
 	if (!g_surfaceService)
 	{
@@ -362,15 +749,26 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 	ImplData* data = (ImplData*) _impl;
 	if (data != NULL)
 	{
-		if (data->surface != NULL)
+		if (data->localUseCount > 0)
+			atomic_fetch_sub(&data->shared->useCount, 1);
+		if (data->registered)
+			unregisterGlobalSurface(data->surface->surfaceID);
+
+		if (data->fd >= 0)
+		{
+			munmap(data->mapping, data->mappingSize);
+			close(data->fd);
+		}
+		else
 		{
 			if (data->userSpace)
 				munmap((void*)(uintptr_t) data->surface->address, data->allocSize);
 			else
 				IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodRelease, NULL, 0, &data->surface->surfaceID, 1, NULL, 0, NULL, 0);
-
-			free(data->surface);
+			free(data->shared);
 		}
+
+		free(data->surface);
 
 		[data->attachments release];
 		free(data);
@@ -389,8 +787,16 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 	if (![object isKindOfClass: [self class]])
 		return NO;
 
-	IOSurface* that = (IOSurface*) object;
-	return ((ImplData*) self->_impl)->surface->surfaceID == ((ImplData*) that->_impl)->surface->surfaceID;
+	ImplData* data = (ImplData*) self->_impl;
+	ImplData* other = (ImplData*) ((IOSurface*) object)->_impl;
+	if (data->surface->surfaceID != other->surface->surfaceID)
+		return NO;
+	// IDs are unique only within the process that created the surface; a
+	// surface received from another process can share an ID with one made
+	// here. Shared memory objects tell the two apart.
+	if (data->fd >= 0 && other->fd >= 0)
+		return data->device == other->device && data->inode == other->inode;
+	return data->fd < 0 && other->fd < 0;
 }
 
 - (CFTypeID) _cfTypeID
@@ -594,20 +1000,28 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 - (void)incrementUseCount
 {
 	ImplData* data = (ImplData*) _impl;
-	if ((data->localUseCount++) == 0 && !data->userSpace)
+	if ((data->localUseCount++) == 0)
 	{
-		uint64_t scalar = data->surface->surfaceID;
-		IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodIncrementUseCount, &scalar, 1, NULL, 0, NULL, 0, NULL, 0);
+		atomic_fetch_add(&data->shared->useCount, 1);
+		if (!data->userSpace)
+		{
+			uint64_t scalar = data->surface->surfaceID;
+			IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodIncrementUseCount, &scalar, 1, NULL, 0, NULL, 0, NULL, 0);
+		}
 	}
 }
 
 - (void)decrementUseCount
 {
 	ImplData* data = (ImplData*) _impl;
-	if (--data->localUseCount == 0 && !data->userSpace)
+	if (--data->localUseCount == 0)
 	{
-		uint64_t scalar = data->surface->surfaceID;
-		IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodDecrementUseCount, &scalar, 1, NULL, 0, NULL, 0, NULL, 0);
+		atomic_fetch_sub(&data->shared->useCount, 1);
+		if (!data->userSpace)
+		{
+			uint64_t scalar = data->surface->surfaceID;
+			IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodDecrementUseCount, &scalar, 1, NULL, 0, NULL, 0, NULL, 0);
+		}
 	}
 }
 
@@ -617,15 +1031,15 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 	return data->localUseCount;
 }
 
-// Only uses counted in this process are known.
+// Uses counted by any process that shares the surface.
 - (BOOL) isInUse
 {
-	return [self localUseCount] > 0;
+	return ((ImplData*) _impl)->shared->useCount > 0;
 }
 
 - (uint32_t) seed
 {
-	return ((ImplData*) _impl)->seed;
+	return ((ImplData*) _impl)->shared->seed;
 }
 
 - (BOOL) allowsPixelSizeCasting
@@ -660,7 +1074,7 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 	if (!data->userSpace)
 		ret = IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodLock, NULL, 0, &args, sizeof(args), NULL, 0, NULL, 0);
 	if (ret == kIOSurfaceSuccess && seed)
-		*seed = data->seed;
+		*seed = data->shared->seed;
 	return ret;
 }
 
@@ -678,8 +1092,8 @@ static size_t planesEnd(const struct _IOSurfaceObjectRetval* surface)
 		return ret;
 	// The end of a lock for writing marks the contents as modified.
 	uint32_t current = (options & kIOSurfaceLockReadOnly)
-		? data->seed
-		: atomic_fetch_add(&data->seed, 1) + 1;
+		? data->shared->seed
+		: atomic_fetch_add(&data->shared->seed, 1) + 1;
 	if (seed)
 		*seed = current;
 	return ret;

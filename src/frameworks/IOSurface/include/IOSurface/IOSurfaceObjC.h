@@ -44,6 +44,8 @@ extern IOSurfacePropertyKey IOSurfacePropertyKeyPixelSizeCastingAllowed;
 - (nullable instancetype)initWithProperties:(NSDictionary <IOSurfacePropertyKey, id> *)properties;
 - (nullable instancetype)initWithMachPort:(mach_port_t)port;
 - (nullable instancetype)initWithSurfaceID:(IOSurfaceID)surfaceID;
+- (mach_port_t)createMachPort;
+
 - (kern_return_t)lockWithOptions:(IOSurfaceLockOptions)options seed:(nullable uint32_t *)seed;
 - (kern_return_t)unlockWithOptions:(IOSurfaceLockOptions)options seed:(nullable uint32_t *)seed;
 
