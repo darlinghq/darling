@@ -17,7 +17,6 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #include "../include/generated-stubs.h"
 #include <CFOpenDirectory/CFOpenDirectoryPriv.h>
 #include <stdlib.h>
@@ -72,12 +71,6 @@ CFDictionaryRef ODNodeCopyPolicies(ODNodeRef node, CFErrorRef *error)
     return NULL;
 }
 
-ODRecordRef ODNodeCopyRecord(ODNodeRef node, ODRecordType recordType, CFStringRef recordName, CFTypeRef attributes, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODNodeCopyRecord called");
-    return NULL;
-}
-
 ODRecordRef ODNodeCopyRecordAuthenticationData(ODNodeRef node, ODRecordRef record, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCopyRecordAuthenticationData called");
@@ -90,12 +83,6 @@ void* ODNodeCopySession(void)
     return NULL;
 }
 
-CFArrayRef ODNodeCopySubnodeNames(ODNodeRef node, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODNodeCopySubnodeNames called");
-    return NULL;
-}
-
 CFArrayRef ODNodeCopySupportedAttributes(ODNodeRef node, ODRecordType recordType, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCopySupportedAttributes called");
@@ -105,18 +92,6 @@ CFArrayRef ODNodeCopySupportedAttributes(ODNodeRef node, ODRecordType recordType
 CFDictionaryRef ODNodeCopySupportedPolicies(ODNodeRef node, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeCopySupportedPolicies called");
-    return NULL;
-}
-
-CFArrayRef ODNodeCopySupportedRecordTypes(ODNodeRef node, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODNodeCopySupportedRecordTypes called");
-    return NULL;
-}
-
-CFArrayRef ODNodeCopyUnreachableSubnodeNames(ODNodeRef node, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODNodeCopyUnreachableSubnodeNames called");
     return NULL;
 }
 
@@ -138,21 +113,9 @@ ODNodeRef ODNodeCreateWithDSRef(CFAllocatorRef inAllocator, tDirReference inDirR
     return NULL;
 }
 
-ODNodeRef ODNodeCreateWithName(CFAllocatorRef allocator, ODSessionRef session, CFStringRef nodeName, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODNodeCreateWithName called");
-    return NULL;
-}
-
 void* ODNodeCreateWithNameAndOptions(void)
 {
     if (verbose) puts("STUB: ODNodeCreateWithNameAndOptions called");
-    return NULL;
-}
-
-ODNodeRef ODNodeCreateWithNodeType(CFAllocatorRef allocator, ODSessionRef session, ODNodeType nodeType, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODNodeCreateWithNodeType called");
     return NULL;
 }
 
@@ -174,22 +137,10 @@ tDirNodeReference ODNodeGetDSRef(ODNodeRef inNodeRef)
     return 0;
 }
 
-CFStringRef ODNodeGetName(ODNodeRef node)
-{
-    if (verbose) puts("STUB: ODNodeGetName called");
-    return NULL;
-}
-
 void* ODNodeGetSecureTokenRecoveryType(void)
 {
     if (verbose) puts("STUB: ODNodeGetSecureTokenRecoveryType called");
     return NULL;
-}
-
-CFTypeID ODNodeGetTypeID(void)
-{
-    if (verbose) puts("STUB: ODNodeGetTypeID called");
-    return 0;
 }
 
 bool ODNodePasswordContentCheck(ODNodeRef node, CFStringRef password, CFStringRef recordName, CFErrorRef *error)
@@ -294,30 +245,6 @@ bool ODNodeVerifyCredentialsExtended(ODNodeRef node, ODRecordType recordType, OD
     return false;
 }
 
-CFArrayRef ODQueryCopyResults(ODQueryRef query, bool allowPartialResults, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODQueryCopyResults called");
-    return NULL;
-}
-
-ODQueryRef ODQueryCreateWithNode(CFAllocatorRef allocator, ODNodeRef node, CFTypeRef recordTypeOrList, ODAttributeType attribute, ODMatchType matchType, CFTypeRef queryValueOrList, CFTypeRef returnAttributeOrList, CFIndex maxResults, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODQueryCreateWithNode called");
-    return NULL;
-}
-
-ODQueryRef ODQueryCreateWithNodeType(CFAllocatorRef allocator, ODNodeType nodeType, CFTypeRef recordTypeOrList, ODAttributeType attribute, ODMatchType matchType, CFTypeRef queryValueOrList, CFTypeRef returnAttributeOrList, CFIndex maxResults, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODQueryCreateWithNodeType called");
-    return NULL;
-}
-
-CFTypeID ODQueryGetTypeID(void)
-{
-    if (verbose) puts("STUB: ODQueryGetTypeID called");
-    return 0;
-}
-
 void ODQueryScheduleWithRunLoop(ODQueryRef query, CFRunLoopRef runLoop, CFStringRef runLoopMode)
 {
     if (verbose) puts("STUB: ODQueryScheduleWithRunLoop called");
@@ -361,12 +288,6 @@ bool ODRecordAddValue(ODRecordRef record, ODAttributeType attribute, CFTypeRef v
     return false;
 }
 
-bool ODRecordAuthenticationAllowed(ODRecordRef record, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODRecordAuthenticationAllowed called");
-    return false;
-}
-
 bool ODRecordChangePassword(ODRecordRef record, CFStringRef oldPassword, CFStringRef newPassword, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordChangePassword called");
@@ -388,12 +309,6 @@ bool ODRecordContainsMemberRefresh(ODRecordRef inGroupRef, ODRecordRef inMemberR
 CFDictionaryRef ODRecordCopyAccountPolicies(ODRecordRef record, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordCopyAccountPolicies called");
-    return NULL;
-}
-
-CFDictionaryRef ODRecordCopyDetails(ODRecordRef record, CFArrayRef attributes, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODRecordCopyDetails called");
     return NULL;
 }
 
@@ -427,12 +342,6 @@ CFDictionaryRef ODRecordCopySupportedPolicies(ODRecordRef record, CFErrorRef *er
     return NULL;
 }
 
-CFArrayRef ODRecordCopyValues(ODRecordRef record, ODAttributeType attribute, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODRecordCopyValues called");
-    return NULL;
-}
-
 bool ODRecordDelete(ODRecordRef record, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordDelete called");
@@ -449,24 +358,6 @@ void* ODRecordEnumerateMembership(void)
 {
     if (verbose) puts("STUB: ODRecordEnumerateMembership called");
     return NULL;
-}
-
-CFStringRef ODRecordGetRecordName(ODRecordRef record)
-{
-    if (verbose) puts("STUB: ODRecordGetRecordName called");
-    return NULL;
-}
-
-CFStringRef ODRecordGetRecordType(ODRecordRef record)
-{
-    if (verbose) puts("STUB: ODRecordGetRecordType called");
-    return NULL;
-}
-
-CFTypeID ODRecordGetTypeID(void)
-{
-    if (verbose) puts("STUB: ODRecordGetTypeID called");
-    return 0;
 }
 
 bool ODRecordPasswordChangeAllowed(ODRecordRef record, CFStringRef newPassword, CFErrorRef *error)
@@ -564,12 +455,6 @@ bool ODRecordSynchronize(ODRecordRef record, CFErrorRef *error)
     return false;
 }
 
-bool ODRecordVerifyPassword(ODRecordRef record, CFStringRef password, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODRecordVerifyPassword called");
-    return false;
-}
-
 bool ODRecordVerifyPasswordExtended(ODRecordRef record, ODAuthenticationType authType, CFArrayRef authItems, CFArrayRef *outAuthItems, ODContextRef *outContext, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordVerifyPasswordExtended called");
@@ -588,21 +473,9 @@ bool ODRecordWillPasswordExpire(ODRecordRef record, uint64_t willExpireIn)
     return false;
 }
 
-CFArrayRef ODSessionCopyNodeNames(CFAllocatorRef allocator, ODSessionRef session, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODSessionCopyNodeNames called");
-    return NULL;
-}
-
 void* ODSessionCopySessionKeySupport(void)
 {
     if (verbose) puts("STUB: ODSessionCopySessionKeySupport called");
-    return NULL;
-}
-
-ODSessionRef ODSessionCreate(CFAllocatorRef allocator, CFDictionaryRef options, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODSessionCreate called");
     return NULL;
 }
 
@@ -615,12 +488,6 @@ ODSessionRef ODSessionCreateWithDSRef(CFAllocatorRef inAllocator, tDirReference 
 tDirReference ODSessionGetDSRef(ODSessionRef inSessionRef) 
 {
     if (verbose) puts("STUB: ODSessionGetDSRef called");
-    return 0;
-}
-
-CFTypeID ODSessionGetTypeID(void)
-{
-    if (verbose) puts("STUB: ODSessionGetTypeID called");
     return 0;
 }
 
