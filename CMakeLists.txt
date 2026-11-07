@@ -157,6 +157,13 @@ set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${ASM_IGNORED_WARNINGS}")
 SET(CMAKE_C_FLAGS_DEBUG "-O0 -ggdb")
 SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb")
 
+# Without a build type, CMake adds no optimisation or debug info flags at all.
+# Build optimised with debug info unless a build type is chosen explicitly.
+if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+	set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
+		"Choose the type of build: Debug, Release, RelWithDebInfo or MinSizeRel." FORCE)
+endif()
+
 # prevent object filename conflicts for two source files that differ only in extension (e.g. `object.c` and `object.m`)
 set(CMAKE_C_OUTPUT_EXTENSION ".c.o")
 set(CMAKE_CXX_OUTPUT_EXTENSION ".cpp.o")
