@@ -3,11 +3,13 @@
 // The private GPU callbacks of IOSurface.framework (IOSurfacePriv.h): the
 // writeback callback runs before every lock and before a Mach port is made
 // for a surface, not again for locks taken from inside it, and the forget
-// callback runs when a surface is freed. Only the first registration with
-// the known version takes effect.
+// callback runs when a surface is freed. Each GPU API (OpenGL and Metal)
+// registers its own callbacks, and all of them run, in registration order;
+// registering the same functions twice, or with an unknown version, does
+// nothing.
 //
-// The program does not load OpenGL.framework, so its own registration is
-// the first one in the process.
+// The program loads no GPU framework, so its registrations are the only
+// ones in the process.
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOSurface/IOSurface.h>
 #include <IOSurface/IOSurfacePriv.h>
@@ -34,6 +36,9 @@ static void on_alarm(int sig)
 }
 
 static int g_writebacks, g_forgets, g_ignoredCalls;
+static int g_secondWritebacks, g_secondForgets;
+// 1 if the first registrant's writeback ran before the second's every time.
+static int g_inOrder = 1;
 static IOSurfaceRef g_lastWriteback, g_lastForget;
 static int g_lockInsideWriteback;
 
@@ -53,6 +58,20 @@ static void forget(IOSurfaceRef surface)
 {
 	g_forgets++;
 	g_lastForget = surface;
+}
+
+static void secondWriteback(IOSurfaceRef surface)
+{
+	(void) surface;
+	g_secondWritebacks++;
+	if (g_secondWritebacks != g_writebacks)
+		g_inOrder = 0;
+}
+
+static void secondForget(IOSurfaceRef surface)
+{
+	(void) surface;
+	g_secondForgets++;
 }
 
 static void ignored(IOSurfaceRef surface)
@@ -101,16 +120,21 @@ int main(void)
 	};
 	_IOSurfaceSetGPUCallbacks(&callbacks);
 
-	// A second registration is ignored, and the first one does not depend
-	// on the caller's structure staying alive.
+	// Registering the same functions again changes nothing.
+	_IOSurfaceSetGPUCallbacks(&callbacks);
+
+	// A second GPU API registers its own; neither registration depends on
+	// the caller's structure staying alive.
 	_IOSurfaceGPUCallbacks second = {
 		.version = _IOSURFACE_GPU_CALLBACKS_VERSION,
-		.writeback = ignored,
-		.forget = ignored,
+		.writeback = secondWriteback,
+		.forget = secondForget,
 	};
 	_IOSurfaceSetGPUCallbacks(&second);
 	callbacks.writeback = ignored;
 	callbacks.forget = ignored;
+	second.writeback = ignored;
+	second.forget = ignored;
 
 	IOSurfaceRef surface = createSurface();
 	CHECK(surface != NULL);
@@ -157,6 +181,12 @@ int main(void)
 	CFRelease(surface);
 	CHECK(g_forgets == 1 && g_lastForget == freed);
 
+	// The second registrant saw every writeback (none for the locks the
+	// first one took from inside its callback) and the forget, each after
+	// the first registrant.
+	CHECK(g_secondWritebacks == g_writebacks);
+	CHECK(g_inOrder);
+	CHECK(g_secondForgets == 1);
 	CHECK(g_ignoredCalls == 0);
 
 	if (g_failures == 0)
