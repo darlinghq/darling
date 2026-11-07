@@ -19,6 +19,26 @@
 
 #include <Foundation/Foundation.h>
 
+typedef NSString *VNBarcodeSymbology NS_TYPED_ENUM;
+
+extern VNBarcodeSymbology const VNBarcodeSymbologyAztec;
+extern VNBarcodeSymbology const VNBarcodeSymbologyCode128;
+extern VNBarcodeSymbology const VNBarcodeSymbologyCode39;
+extern VNBarcodeSymbology const VNBarcodeSymbologyCode39Checksum;
+extern VNBarcodeSymbology const VNBarcodeSymbologyCode39FullASCII;
+extern VNBarcodeSymbology const VNBarcodeSymbologyCode39FullASCIIChecksum;
+extern VNBarcodeSymbology const VNBarcodeSymbologyCode93;
+extern VNBarcodeSymbology const VNBarcodeSymbologyCode93i;
+extern VNBarcodeSymbology const VNBarcodeSymbologyDataMatrix;
+extern VNBarcodeSymbology const VNBarcodeSymbologyEAN13;
+extern VNBarcodeSymbology const VNBarcodeSymbologyEAN8;
+extern VNBarcodeSymbology const VNBarcodeSymbologyI2of5;
+extern VNBarcodeSymbology const VNBarcodeSymbologyI2of5Checksum;
+extern VNBarcodeSymbology const VNBarcodeSymbologyITF14;
+extern VNBarcodeSymbology const VNBarcodeSymbologyPDF417;
+extern VNBarcodeSymbology const VNBarcodeSymbologyQR;
+extern VNBarcodeSymbology const VNBarcodeSymbologyUPCE;
+
 @interface VNDetectBarcodesRequest : NSObject
 
 @end
