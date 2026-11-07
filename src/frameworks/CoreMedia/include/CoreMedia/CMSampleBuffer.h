@@ -23,5 +23,7 @@
 #include <CoreFoundation/CoreFoundation.h>
 
 extern const CFStringRef kCMSampleAttachmentKey_DisplayImmediately;
+extern const CFStringRef kCMSampleAttachmentKey_NotSync;
+extern const CFStringRef kCMSampleAttachmentKey_IsDependedOnByOthers;
 
 #endif
