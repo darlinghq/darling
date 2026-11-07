@@ -21,6 +21,7 @@
 #import <Foundation/NSArray.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSDictionary.h>
+#import <Foundation/NSSet.h>
 #include <CoreFoundation/CFBag.h>
 #include <FSEvents/FSEvents.h>
 #include <dispatch/dispatch.h>
@@ -29,6 +30,7 @@
 {
 	NSArray<NSString*>* _pathsToWatch;
 	NSMutableDictionary<NSNumber*, NSString*>* _wdMap;
+	NSSet<NSNumber*>* _rootWds;
 
 	FSEventStreamCreateFlags _flags;
 	FSEventStreamContext _context;

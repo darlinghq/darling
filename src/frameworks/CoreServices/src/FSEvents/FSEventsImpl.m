@@ -24,6 +24,8 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #include <darling/emulation/linux_premigration/ext/sys/inotify.h>
 
 static dispatch_queue_t g_fsEventsQueue = NULL;
@@ -76,6 +78,15 @@ static void rlPerform(void* info)
 				forKey: [NSNumber numberWithInt: wd]];
 	}
 	_wdMap = wdmap;
+	_rootWds = [[NSSet alloc] initWithArray: [_wdMap allKeys]];
+
+	// inotify watches are not recursive, but a stream covers the whole
+	// hierarchy below each path.
+	@autoreleasepool
+	{
+		for (NSString* path in [_wdMap allValues])
+			[self _watchSubdirectoriesOf: path reportContents: NO];
+	}
 
 	static dispatch_once_t once;
 	dispatch_once(&once, ^{
@@ -84,7 +95,10 @@ static void rlPerform(void* info)
 
 	_source = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, _fd, 0, g_fsEventsQueue);
 	dispatch_source_set_event_handler(_source, ^{
-		[self _readEvents];
+		@autoreleasepool
+		{
+			[self _readEvents];
+		}
 	});
 
 	_pathArray = [[NSMutableArray alloc] init];
@@ -118,6 +132,7 @@ static void rlPerform(void* info)
 	[_pathsToWatch release];
 	[_pathArray release];
 	[_wdMap release];
+	[_rootWds release];
 	free(_flagArray);
 	free(_idArray);
 	[super dealloc];
@@ -258,10 +273,14 @@ static void rlPerform(void* info)
 	{
 		// The kernel queue overflowed and events were lost (wd is -1 here).
 		// Tell the client to rescan everything it watches.
-		for (NSString* watchPath in [_wdMap allValues])
+		for (NSNumber* rootWd in _rootWds)
 		{
-			[self _queueEventForPath: watchPath
-							flags: kFSEventStreamEventFlagMustScanSubDirs | kFSEventStreamEventFlagKernelDropped];
+			NSString* rootPath = [_wdMap objectForKey: rootWd];
+			if (rootPath)
+			{
+				[self _queueEventForPath: rootPath
+								flags: kFSEventStreamEventFlagMustScanSubDirs | kFSEventStreamEventFlagKernelDropped];
+			}
 		}
 		return;
 	}
@@ -278,6 +297,13 @@ static void rlPerform(void* info)
 		[_wdMap removeObjectForKey: wdKey];
 		return;
 	}
+
+	// A change to a watched subdirectory itself (as opposed to its entries)
+	// is also reported, with a name, by the watch on its parent.
+	if (evt->len == 0 && ![_rootWds containsObject: wdKey])
+		return;
+
+	NSString* itemPath = (evt->len == 0) ? watchPath : [self _pathInDirectory: watchPath name: evt->name];
 
 	if (!(_flags & kFSEventStreamCreateFlagFileEvents))
 	{
@@ -303,14 +329,133 @@ static void rlPerform(void* info)
 		if (evt->mask & IN_ATTRIB)
 			flags |= kFSEventStreamEventFlagItemInodeMetaMod;
 
-		if (evt->len == 0)
-			fullPath = watchPath;
-		else
-			fullPath = [self _pathInDirectory: watchPath name: evt->name];
+		fullPath = itemPath;
 	}
 
 	[self _queueEventForPath: fullPath
 					flags: flags];
+
+	if (evt->len != 0 && (evt->mask & IN_ISDIR))
+	{
+		if (evt->mask & IN_CREATE)
+		{
+			// Entries may have been created before the watch was added.
+			if ([self _addSubdirectoryWatch: itemPath])
+				[self _watchSubdirectoriesOf: itemPath reportContents: YES];
+		}
+		else if (evt->mask & IN_MOVED_TO)
+		{
+			if ([self _addSubdirectoryWatch: itemPath])
+				[self _watchSubdirectoriesOf: itemPath reportContents: NO];
+		}
+		else if (evt->mask & IN_MOVED_FROM)
+		{
+			// The watches would otherwise keep reporting under the old path.
+			// If the directory was moved within the hierarchy, IN_MOVED_TO
+			// adds them again under the new one.
+			[self _removeWatchesUnder: itemPath];
+		}
+	}
+}
+
+-(BOOL)_addSubdirectoryWatch:(NSString*)path
+{
+	int wd = inotify_add_watch(_fd, [path UTF8String], IN_ATTRIB | IN_CREATE | IN_DELETE | IN_DELETE_SELF | IN_MODIFY | IN_MOVE | IN_ONLYDIR | IN_DONT_FOLLOW);
+	if (wd < 0)
+		return NO;
+	[_wdMap setObject: path
+			forKey: [NSNumber numberWithInt: wd]];
+	return YES;
+}
+
+// Adds watches for all directories below `top` that are on the same file
+// system. With reportContents, every entry found is also reported as
+// created: it appeared after the event that created `top`.
+-(void)_watchSubdirectoriesOf:(NSString*)top
+			reportContents:(BOOL)reportContents
+{
+	struct stat st;
+	if (lstat([top UTF8String], &st) != 0 || !S_ISDIR(st.st_mode))
+		return;
+
+	const dev_t dev = st.st_dev;
+	const BOOL fileEvents = (_flags & kFSEventStreamCreateFlagFileEvents) != 0;
+	NSMutableArray* pending = [[NSMutableArray alloc] initWithObjects: top, nil];
+
+	while ([pending count] > 0)
+	{
+		NSString* dir = [[pending lastObject] retain];
+		[pending removeLastObject];
+
+		DIR* d = opendir([dir UTF8String]);
+		if (d != NULL)
+		{
+			BOOL reportedDir = NO;
+			struct dirent* ent;
+
+			while ((ent = readdir(d)) != NULL)
+			{
+				if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+					continue;
+
+				NSString* path = [self _pathInDirectory: dir name: ent->d_name];
+				int type = ent->d_type;
+
+				if (type == DT_UNKNOWN && lstat([path UTF8String], &st) == 0)
+					type = S_ISDIR(st.st_mode) ? DT_DIR : (S_ISLNK(st.st_mode) ? DT_LNK : DT_REG);
+
+				if (reportContents)
+				{
+					if (fileEvents)
+					{
+						FSEventStreamEventFlags flags = kFSEventStreamEventFlagItemCreated;
+						if (type == DT_DIR)
+							flags |= kFSEventStreamEventFlagItemIsDir;
+						else if (type == DT_LNK)
+							flags |= kFSEventStreamEventFlagItemIsSymlink;
+						else
+							flags |= kFSEventStreamEventFlagItemIsFile;
+						[self _queueEventForPath: path
+										flags: flags];
+					}
+					else if (!reportedDir)
+					{
+						[self _queueEventForPath: dir
+										flags: 0];
+						reportedDir = YES;
+					}
+				}
+
+				if (type == DT_DIR && lstat([path UTF8String], &st) == 0 && st.st_dev == dev)
+				{
+					if ([self _addSubdirectoryWatch: path])
+						[pending addObject: path];
+				}
+			}
+			closedir(d);
+		}
+		[dir release];
+	}
+
+	[pending release];
+}
+
+-(void)_removeWatchesUnder:(NSString*)path
+{
+	NSString* prefix = [path stringByAppendingString: @"/"];
+
+	for (NSNumber* wd in [_wdMap allKeys])
+	{
+		if ([_rootWds containsObject: wd])
+			continue;
+
+		NSString* watchPath = [_wdMap objectForKey: wd];
+		if ([watchPath isEqualToString: path] || [watchPath hasPrefix: prefix])
+		{
+			inotify_rm_watch(_fd, [wd intValue]);
+			[_wdMap removeObjectForKey: wd];
+		}
+	}
 }
 
 -(NSString*)_pathInDirectory:(NSString*)dir
