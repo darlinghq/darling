@@ -9,46 +9,47 @@
 
 #define CONST_STRING_DECL(name, value) const CFStringRef name = CFSTR(value);
 
-CONST_STRING_DECL(kDADiskDescriptionVolumeKindKey, "kDADiskDescriptionVolumeKindKey");
-CONST_STRING_DECL(kDADiskDescriptionVolumeMountableKey, "kDADiskDescriptionVolumeMountableKey");
-CONST_STRING_DECL(kDADiskDescriptionVolumeNameKey, "kDADiskDescriptionVolumeNameKey");
-CONST_STRING_DECL(kDADiskDescriptionVolumeNetworkKey, "kDADiskDescriptionVolumeNetworkKey");
-CONST_STRING_DECL(kDADiskDescriptionVolumePathKey, "kDADiskDescriptionVolumePathKey");
-CONST_STRING_DECL(kDADiskDescriptionVolumeUUIDKey, "kDADiskDescriptionVolumeUUIDKey");
+CONST_STRING_DECL(kDADiskDescriptionVolumeKindKey, "DAVolumeKind");
+CONST_STRING_DECL(kDADiskDescriptionVolumeMountableKey, "DAVolumeMountable");
+CONST_STRING_DECL(kDADiskDescriptionVolumeNameKey, "DAVolumeName");
+CONST_STRING_DECL(kDADiskDescriptionVolumeNetworkKey, "DAVolumeNetwork");
+CONST_STRING_DECL(kDADiskDescriptionVolumePathKey, "DAVolumePath");
+CONST_STRING_DECL(kDADiskDescriptionVolumeTypeKey, "DAVolumeType");
+CONST_STRING_DECL(kDADiskDescriptionVolumeUUIDKey, "DAVolumeUUID");
 
-CONST_STRING_DECL(kDADiskDescriptionMediaBlockSizeKey, "kDADiskDescriptionMediaBlockSizeKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaBSDMajorKey, "kDADiskDescriptionMediaBSDMajorKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaBSDMinorKey, "kDADiskDescriptionMediaBSDMinorKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaBSDNameKey, "kDADiskDescriptionMediaBSDNameKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaBSDUnitKey, "kDADiskDescriptionMediaBSDUnitKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaContentKey, "kDADiskDescriptionMediaContentKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaEjectableKey, "kDADiskDescriptionMediaEjectableKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaIconKey, "kDADiskDescriptionMediaIconKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaKindKey, "kDADiskDescriptionMediaKindKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaLeafKey, "kDADiskDescriptionMediaLeafKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaNameKey, "kDADiskDescriptionMediaNameKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaPathKey, "kDADiskDescriptionMediaPathKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaRemovableKey, "kDADiskDescriptionMediaRemovableKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaSizeKey, "kDADiskDescriptionMediaSizeKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaTypeKey, "kDADiskDescriptionMediaTypeKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaUUIDKey, "kDADiskDescriptionMediaUUIDKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaWholeKey, "kDADiskDescriptionMediaWholeKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaWritableKey, "kDADiskDescriptionMediaWritableKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaEncryptedKey, "kDADiskDescriptionMediaEncryptedKey");
-CONST_STRING_DECL(kDADiskDescriptionMediaEncryptionDetailKey, "kDADiskDescriptionMediaEncryptionDetailKey");
+CONST_STRING_DECL(kDADiskDescriptionMediaBlockSizeKey, "DAMediaBlockSize");
+CONST_STRING_DECL(kDADiskDescriptionMediaBSDMajorKey, "DAMediaBSDMajor");
+CONST_STRING_DECL(kDADiskDescriptionMediaBSDMinorKey, "DAMediaBSDMinor");
+CONST_STRING_DECL(kDADiskDescriptionMediaBSDNameKey, "DAMediaBSDName");
+CONST_STRING_DECL(kDADiskDescriptionMediaBSDUnitKey, "DAMediaBSDUnit");
+CONST_STRING_DECL(kDADiskDescriptionMediaContentKey, "DAMediaContent");
+CONST_STRING_DECL(kDADiskDescriptionMediaEjectableKey, "DAMediaEjectable");
+CONST_STRING_DECL(kDADiskDescriptionMediaIconKey, "DAMediaIcon");
+CONST_STRING_DECL(kDADiskDescriptionMediaKindKey, "DAMediaKind");
+CONST_STRING_DECL(kDADiskDescriptionMediaLeafKey, "DAMediaLeaf");
+CONST_STRING_DECL(kDADiskDescriptionMediaNameKey, "DAMediaName");
+CONST_STRING_DECL(kDADiskDescriptionMediaPathKey, "DAMediaPath");
+CONST_STRING_DECL(kDADiskDescriptionMediaRemovableKey, "DAMediaRemovable");
+CONST_STRING_DECL(kDADiskDescriptionMediaSizeKey, "DAMediaSize");
+CONST_STRING_DECL(kDADiskDescriptionMediaTypeKey, "DAMediaType");
+CONST_STRING_DECL(kDADiskDescriptionMediaUUIDKey, "DAMediaUUID");
+CONST_STRING_DECL(kDADiskDescriptionMediaWholeKey, "DAMediaWhole");
+CONST_STRING_DECL(kDADiskDescriptionMediaWritableKey, "DAMediaWritable");
+CONST_STRING_DECL(kDADiskDescriptionMediaEncryptedKey, "DAMediaEncrypted");
+CONST_STRING_DECL(kDADiskDescriptionMediaEncryptionDetailKey, "DAMediaEncryptionDetail");
 
-CONST_STRING_DECL(kDADiskDescriptionDeviceGUIDKey, "kDADiskDescriptionDeviceGUIDKey");
-CONST_STRING_DECL(kDADiskDescriptionDeviceInternalKey, "kDADiskDescriptionDeviceInternalKey");
-CONST_STRING_DECL(kDADiskDescriptionDeviceModelKey, "kDADiskDescriptionDeviceModelKey");
-CONST_STRING_DECL(kDADiskDescriptionDevicePathKey, "kDADiskDescriptionDevicePathKey");
-CONST_STRING_DECL(kDADiskDescriptionDeviceProtocolKey, "kDADiskDescriptionDeviceProtocolKey");
-CONST_STRING_DECL(kDADiskDescriptionDeviceRevisionKey, "kDADiskDescriptionDeviceRevisionKey");                                                                                                                                              
-CONST_STRING_DECL(kDADiskDescriptionDeviceUnitKey, "kDADiskDescriptionDeviceUnitKey");                                                                                                                                                      
-CONST_STRING_DECL(kDADiskDescriptionDeviceVendorKey, "kDADiskDescriptionDeviceVendorKey");                                                                                                                                                  
-CONST_STRING_DECL(kDADiskDescriptionDeviceTDMLockedKey, "kDADiskDescriptionDeviceTDMLockedKey");
+CONST_STRING_DECL(kDADiskDescriptionDeviceGUIDKey, "DADeviceGUID");
+CONST_STRING_DECL(kDADiskDescriptionDeviceInternalKey, "DADeviceInternal");
+CONST_STRING_DECL(kDADiskDescriptionDeviceModelKey, "DADeviceModel");
+CONST_STRING_DECL(kDADiskDescriptionDevicePathKey, "DADevicePath");
+CONST_STRING_DECL(kDADiskDescriptionDeviceProtocolKey, "DADeviceProtocol");
+CONST_STRING_DECL(kDADiskDescriptionDeviceRevisionKey, "DADeviceRevision");                                                                                                                                              
+CONST_STRING_DECL(kDADiskDescriptionDeviceUnitKey, "DADeviceUnit");                                                                                                                                                      
+CONST_STRING_DECL(kDADiskDescriptionDeviceVendorKey, "DADeviceVendor");                                                                                                                                                  
+CONST_STRING_DECL(kDADiskDescriptionDeviceTDMLockedKey, "DADeviceTDMLocked");
 
-CONST_STRING_DECL(kDADiskDescriptionBusNameKey, "kDADiskDescriptionBusNameKey");                                                                                                                                                            
-CONST_STRING_DECL(kDADiskDescriptionBusPathKey, "kDADiskDescriptionBusPathKey");                                                                                                                                                            
+CONST_STRING_DECL(kDADiskDescriptionBusNameKey, "DABusName");                                                                                                                                                            
+CONST_STRING_DECL(kDADiskDescriptionBusPathKey, "DABusPath");                                                                                                                                                            
 
 struct __DADisk
 {
