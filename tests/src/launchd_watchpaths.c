@@ -236,6 +236,9 @@ static void write_plist(const char* file, const char* label, const char* script,
 		"%s"
 		"</dict>\n</plist>\n", label, script, keys);
 	fclose(f);
+	// launchctl refuses group- or world-writable plists, so the mode must
+	// not depend on the caller's umask.
+	chmod(path, 0644);
 }
 
 static void load(int index, const char* file)
