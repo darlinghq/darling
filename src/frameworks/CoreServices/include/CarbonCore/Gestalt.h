@@ -23,7 +23,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define gestaltSystemVersion 'sysv'
 #define gestaltSystemVersionMajor 'sys1'
 #define gestaltSystemVersionMinor 'sys2'
-#define gestaltSystemVersionPatch 'sys3'
+#define gestaltSystemVersionBugFix 'sys3'
+#define gestaltSystemVersionPatch gestaltSystemVersionBugFix
 
 #define gestaltSysArchitecture 'sysa'
 #define gestaltPowerPC 2
