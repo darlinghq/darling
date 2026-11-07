@@ -67,6 +67,7 @@ void spawnLaunchd(void);
 void darlingPreInit(void);
 
 void checkPrefixOwner(void);
+void ensureSystemAccounts(void);
 
 int isModuleLoaded(void);
 
