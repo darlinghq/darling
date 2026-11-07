@@ -11,6 +11,9 @@ struct _DASession
 };
 
 static CFTypeID _kDASessionTypeID = 0;
+
+// DADisk.c
+extern void _DADiskInitializeMatchObjects(void);
 static void DASessionFinalize(CFTypeRef cf);
 static Boolean DASessionEqual(CFTypeRef cf1, CFTypeRef cf2);
 static CFHashCode DASessionHash(CFTypeRef cf);
@@ -68,6 +71,8 @@ CFTypeID DASessionGetTypeID(void)
 DASessionRef DASessionCreate(CFAllocatorRef allocator)
 {
 	DASessionRef new;
+
+	_DADiskInitializeMatchObjects();
 	
 	new = (DASessionRef) _CFRuntimeCreateInstance (allocator, _kDASessionTypeID,
 												DASESSION_SIZE, 0);
@@ -156,6 +161,8 @@ CFTypeID DAApprovalSessionGetTypeID(void)
 DAApprovalSessionRef DAApprovalSessionCreate(CFAllocatorRef allocator)
 {
 	DAApprovalSessionRef new;
+
+	_DADiskInitializeMatchObjects();
 	
 	new = (DAApprovalSessionRef) _CFRuntimeCreateInstance (allocator,
 												_kDAApprovalSessionTypeID,
