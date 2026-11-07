@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <limits.h>
 #include <darling/emulation/linux_premigration/ext/sys/inotify.h>
 
 static dispatch_queue_t g_fsEventsQueue = NULL;
@@ -193,12 +194,14 @@ static void rlPerform(void* info)
 
 -(void)_readEvents
 {
-	const size_t bytes = sizeof(struct inotify_event) + 4096 + 1;
-	struct inotify_event* evt = (struct inotify_event*) malloc(bytes);
+	// One read() returns as many whole inotify_event records as fit in the
+	// buffer, each followed by its own variable-length name.
+	char buffer[16 * (sizeof(struct inotify_event) + NAME_MAX + 1)]
+		__attribute__((aligned(__alignof__(struct inotify_event))));
 
 	while (1)
 	{
-		int rd = read(_fd, evt, bytes);
+		ssize_t rd = read(_fd, buffer, sizeof(buffer));
 		if (rd < 0)
 		{
 			if (errno == EINTR)
@@ -211,14 +214,27 @@ static void rlPerform(void* info)
 				break;
 			}
 		}
-		else
+		else if (rd == 0)
 		{
+			break;
+		}
+
+		size_t offset = 0;
+		while (rd - offset >= sizeof(struct inotify_event))
+		{
+			struct inotify_event* evt = (struct inotify_event*) (buffer + offset);
+			const size_t recordSize = sizeof(struct inotify_event) + evt->len;
+
+			if (recordSize > rd - offset)
+				break;
+
 			[self _processSingleEvent: evt];
+			offset += recordSize;
 		}
 	}
 
-	free(evt);
-	[self _dispatchEvents];
+	if ([_pathArray count] > 0)
+		[self _dispatchEvents];
 }
 
 -(void)_processSingleEvent:(struct inotify_event*)evt
