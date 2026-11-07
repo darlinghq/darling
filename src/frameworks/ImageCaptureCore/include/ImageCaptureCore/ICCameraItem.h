@@ -25,6 +25,7 @@ extern const ICDownloadOption ICDownloadsDirectoryURL;
 extern const ICDownloadOption ICOverwrite;
 extern const ICDownloadOption ICSaveAsFilename;
 extern const ICDownloadOption ICSavedFilename;
+extern const ICDownloadOption ICDownloadSidecarFiles;
 
 @interface ICCameraItem : NSObject
 
