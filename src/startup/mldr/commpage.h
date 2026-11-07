@@ -9,6 +9,7 @@ extern "C" {
 
 void commpage_setup(bool _64bit);
 unsigned long commpage_address(bool _64bit);
+unsigned long commpage_length(bool _64bit);
 
 #ifdef __cplusplus
 }
