@@ -28,7 +28,7 @@
 @interface FSEventsImpl : NSObject
 {
 	NSArray<NSString*>* _pathsToWatch;
-	NSDictionary<NSNumber*, NSString*>* _wdMap;
+	NSMutableDictionary<NSNumber*, NSString*>* _wdMap;
 
 	FSEventStreamCreateFlags _flags;
 	FSEventStreamContext _context;

@@ -75,8 +75,7 @@ static void rlPerform(void* info)
 		[wdmap setObject: path
 				forKey: [NSNumber numberWithInt: wd]];
 	}
-	_wdMap = [[NSDictionary alloc] initWithDictionary: wdmap];
-	[wdmap release];
+	_wdMap = wdmap;
 
 	static dispatch_once_t once;
 	dispatch_once(&once, ^{
@@ -237,14 +236,48 @@ static void rlPerform(void* info)
 		[self _dispatchEvents];
 }
 
+-(void)_queueEventForPath:(NSString*)path
+					flags:(FSEventStreamEventFlags)flags
+{
+	[_pathArray addObject: path];
+	const int newCount = [_pathArray count];
+
+	_flagArray = (FSEventStreamEventFlags*) realloc(_flagArray, sizeof(*_flagArray) * newCount);
+	_flagArray[newCount-1] = flags;
+
+	_idArray = (FSEventStreamEventId*) realloc(_idArray, sizeof(*_idArray) * newCount);
+	_idArray[newCount-1] = ++_lastEventID;
+}
+
 -(void)_processSingleEvent:(struct inotify_event*)evt
 {
 	FSEventStreamEventFlags flags = 0;
 	NSString* fullPath;
 
-	NSString* watchPath = [_wdMap objectForKey: [NSNumber numberWithInt: evt->wd]];
+	if (evt->mask & IN_Q_OVERFLOW)
+	{
+		// The kernel queue overflowed and events were lost (wd is -1 here).
+		// Tell the client to rescan everything it watches.
+		for (NSString* watchPath in [_wdMap allValues])
+		{
+			[self _queueEventForPath: watchPath
+							flags: kFSEventStreamEventFlagMustScanSubDirs | kFSEventStreamEventFlagKernelDropped];
+		}
+		return;
+	}
+
+	NSNumber* wdKey = [NSNumber numberWithInt: evt->wd];
+	NSString* watchPath = [_wdMap objectForKey: wdKey];
 	if (!watchPath)
 		return;
+
+	if (evt->mask & IN_IGNORED)
+	{
+		// The watch is gone (the item was deleted or unmounted); the change
+		// itself was reported by an earlier event.
+		[_wdMap removeObjectForKey: wdKey];
+		return;
+	}
 
 	if (!(_flags & kFSEventStreamCreateFlagFileEvents))
 	{
@@ -265,23 +298,27 @@ static void rlPerform(void* info)
 			flags |= kFSEventStreamEventFlagItemModified;
 		if (evt->mask & (IN_CREATE))
 			flags |= kFSEventStreamEventFlagItemCreated;
+		// IN_ATTRIB covers permissions, ownership, timestamps, link count and
+		// extended attributes without saying which one changed.
 		if (evt->mask & IN_ATTRIB)
-			flags |= kFSEventStreamEventFlagItemChangeOwner | kFSEventStreamEventFlagItemXattrMod;
+			flags |= kFSEventStreamEventFlagItemInodeMetaMod;
 
 		if (evt->len == 0)
 			fullPath = watchPath;
 		else
-			fullPath = [NSString stringWithFormat: @"%s/%s", [watchPath UTF8String], evt->name];
+			fullPath = [self _pathInDirectory: watchPath name: evt->name];
 	}
 
-	[_pathArray addObject: fullPath];
-	const int newCount = [_pathArray count];
+	[self _queueEventForPath: fullPath
+					flags: flags];
+}
 
-	_flagArray = (FSEventStreamEventFlags*) realloc(_flagArray, sizeof(*_flagArray) * newCount);
-	_flagArray[newCount-1] = flags;
-
-	_idArray = (FSEventStreamEventId*) realloc(_idArray, sizeof(*_idArray) * newCount);
-	_idArray[newCount-1] = ++_lastEventID;
+-(NSString*)_pathInDirectory:(NSString*)dir
+						name:(const char*)name
+{
+	if ([dir hasSuffix: @"/"])
+		return [NSString stringWithFormat: @"%@%s", dir, name];
+	return [NSString stringWithFormat: @"%@/%s", dir, name];
 }
 
 -(void)_dispatchEvents
