@@ -36,6 +36,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <termios.h>
 #include <pty.h>
 #include <pwd.h>
+#include <sys/wait.h>
+#include <sysexits.h>
 #include "../shellspawn/shellspawn.h"
 #include "darling.h"
 #include "darling-config.h"
@@ -841,8 +843,16 @@ pid_t spawnInitProcess(void)
 
 	// Wait for the child to drop UID/GIDs and unshare stuff
 	close(pipefd[1]);
-	read(pipefd[0], buffer, 1);
+	ssize_t got = read(pipefd[0], buffer, 1);
 	close(pipefd[0]);
+
+	if (got != 1)
+	{
+		// The server exits with EX_UNAVAILABLE if it cannot assemble the prefix in the selected filesystem mode
+		int status;
+		if (waitpid(pid, &status, 0) == pid && WIFEXITED(status) && WEXITSTATUS(status) == EX_UNAVAILABLE && chooseFsMode())
+			return spawnInitProcess();
+	}
 
 	/*
 	snprintf(idmap, sizeof(idmap), "/proc/%d/uid_map", pid);
@@ -876,6 +886,95 @@ pid_t spawnInitProcess(void)
 	// if we enable user namespaces
 
 	return pid;
+}
+
+#define FSMODE_FILE "/.darling-fsmode"
+
+static bool commandInPath(const char* name)
+{
+	const char* path = getenv("PATH");
+	char* copy;
+	char* dir;
+	char* saveptr;
+	bool found = false;
+
+	if (!path)
+		return false;
+
+	copy = strdup(path);
+	for (dir = strtok_r(copy, ":", &saveptr); dir != NULL && !found; dir = strtok_r(NULL, ":", &saveptr))
+	{
+		char candidate[4096];
+		snprintf(candidate, sizeof(candidate), "%s/%s", dir, name);
+		found = access(candidate, X_OK) == 0;
+	}
+	free(copy);
+
+	return found;
+}
+
+// Records the filesystem mode in the prefix, where darlingserver looks for it
+static bool recordFsMode(const char* mode)
+{
+	char* path = (char*) alloca(strlen(prefix) + sizeof(FSMODE_FILE));
+	FILE* fp;
+
+	strcpy(path, prefix);
+	strcat(path, FSMODE_FILE);
+
+	seteuid(g_originalUid);
+	setegid(g_originalGid);
+
+	fp = fopen(path, "w");
+
+	seteuid(0);
+	setegid(0);
+
+	if (fp == NULL)
+	{
+		fprintf(stderr, "Cannot record the filesystem mode in %s: %s\n", path, strerror(errno));
+		return false;
+	}
+	fprintf(fp, "%s\n", mode);
+	fclose(fp);
+	return true;
+}
+
+int chooseFsMode(void)
+{
+	static const char* const modes[] = { "overlayfs", "fuse-overlayfs", "copy" };
+	char answer[16];
+	int choice;
+
+	fprintf(stderr, "\nDarling could not set up the prefix %s with the current filesystem mode.\n", prefix);
+	fprintf(stderr, "The kernel's overlayfs cannot be used if the prefix is on a network or similar filesystem, such as NFS.\n");
+
+	if (!isatty(STDIN_FILENO))
+	{
+		fprintf(stderr, "To select a different mode, write one of 'overlayfs', 'fuse-overlayfs' or 'copy' into %s%s\n", prefix, FSMODE_FILE);
+		exit(1);
+	}
+
+	fprintf(stderr, "\nChoose how the prefix should be set up (the choice is recorded in %s%s):\n", prefix, FSMODE_FILE);
+	fprintf(stderr, "  1) overlayfs       kernel overlay filesystem; the prefix has to be on a local filesystem\n");
+	fprintf(stderr, "  2) fuse-overlayfs  userspace overlay filesystem; works on more filesystems, but needs the fuse-overlayfs tool%s\n",
+		commandInPath("fuse-overlayfs") ? "" : " (NOT FOUND in PATH)");
+	fprintf(stderr, "  3) copy            copy the system into the prefix; works anywhere, but uses more disk space\n");
+	fprintf(stderr, "Choice [1-3]: ");
+
+	if (fgets(answer, sizeof(answer), stdin) == NULL)
+		exit(1);
+
+	choice = atoi(answer);
+	if (choice < 1 || choice > 3)
+	{
+		fprintf(stderr, "No valid choice made.\n");
+		exit(1);
+	}
+
+	if (!recordFsMode(modes[choice - 1]))
+		exit(1);
+	return 1;
 }
 
 void putInitPid(pid_t pidInit)

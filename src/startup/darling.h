@@ -60,6 +60,10 @@ pid_t getInitProcess(void);
 
 pid_t spawnInitProcess(void);
 
+// Asks the user how to set up the prefix after the current mode failed and records the answer
+// in the prefix. Returns nonzero if a mode was chosen; exits if none was.
+int chooseFsMode(void);
+
 void putInitPid(pid_t pidInit);
 void mapUids(pid_t pid);
 
