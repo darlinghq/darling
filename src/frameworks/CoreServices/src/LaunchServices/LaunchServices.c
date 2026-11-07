@@ -19,6 +19,7 @@
 
 #include <LaunchServices/LaunchServices.h>
 #include <LaunchServices/LaunchServicesPriv.h>
+#include "LSHostOpen.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <launch_priv.h>
@@ -120,6 +121,12 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 				temp = launch_application(url, outLaunchedURL);
 			else
 				temp = kLSApplicationNotFoundErr;
+		}
+		else if (_LSIsHostOpenURL(url))
+		{
+			temp = _LSOpenURLOnHost(url);
+			if (temp)
+				ret = temp;
 		}
 		else
 			temp = kLSApplicationNotFoundErr;
