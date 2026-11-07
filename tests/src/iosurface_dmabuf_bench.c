@@ -7,7 +7,8 @@
 // DMA-BUF export and import the texture uses the surface's memory, so there
 // is no upload and no copy back; otherwise both happen every frame. A
 // rectangle texture cannot use the memory, so with DMA-BUFs the upload and
-// the copy back are GPU copies between it and a 2D texture that does.
+// the copy back are GPU copies between it and a 2D texture that does, except
+// on a software renderer, where they stay CPU copies.
 //
 // Usage: iosurface_dmabuf_bench [width height [frames [2d|rect]]]
 // Prints the time per frame and per step, and the path the texture took:
@@ -147,6 +148,10 @@ int main(int argc, char** argv)
 			glBindFramebuffer(GL_FRAMEBUFFER, (GLuint) previous);
 			imported = texel[0] == (uint8_t) ~frame;
 			printf("path: %s\n", !imported ? "cpu-copy" : target == GL_TEXTURE_2D ? "dmabuf-2d" : "dmabuf-rect-gpucopy");
+			// Put back the frame's fill before GL takes it again.
+			IOSurfaceLock(surface, 0, NULL);
+			base[0] = (uint8_t) frame;
+			IOSurfaceUnlock(surface, 0, NULL);
 			CGLTexImageIOSurface2D(context, target, GL_RGBA8, width, height, GL_BGRA,
 				GL_UNSIGNED_INT_8_8_8_8_REV, surface, 0);
 			written = mach_absolute_time();

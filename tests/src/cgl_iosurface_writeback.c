@@ -10,7 +10,8 @@
 //
 // Rectangle textures cannot use the memory directly; with DMA-BUFs they are
 // kept in step with it by GPU copies, from it when the context is made
-// current or locked after a CPU write, and into it before a lock. Each case
+// current or locked after a CPU write, and into it before a lock; on a
+// software renderer (llvmpipe and the like) they keep the CPU copy. Each case
 // prints the path it took: dmabuf-2d, dmabuf-rect-gpucopy or cpu-copy.
 //
 // Needs an offscreen OpenGL context (a host EGL driver).
@@ -90,6 +91,15 @@ static void clearTexture(float r, float g, float b)
 #define BLUE 0xff0000ffu
 #define GREY 0xff808080u
 
+// Rectangle textures are kept in step by GPU copies only on hardware
+// renderers; on a CPU renderer that copy costs more than the CPU copy.
+static int softwareRenderer(void)
+{
+	const char* renderer = (const char*) glGetString(GL_RENDERER);
+	return renderer && (strstr(renderer, "llvmpipe") || strstr(renderer, "lavapipe")
+		|| strstr(renderer, "softpipe") || strstr(renderer, "swrast") || strstr(renderer, "Software Rasterizer"));
+}
+
 static IOSurfaceRef createSurface(void)
 {
 	CFMutableDictionaryRef props = CFDictionaryCreateMutable(NULL, 0,
@@ -146,6 +156,8 @@ static void runCase(CGLContextObj context, GLenum target, const char* name)
 	else if (target == GL_TEXTURE_RECTANGLE_ARB && refreshed)
 		path = "dmabuf-rect-gpucopy";
 	printf("path: %s\n", path);
+	if (target == GL_TEXTURE_RECTANGLE_ARB && softwareRenderer())
+		CHECK(strcmp(path, "cpu-copy") == 0);
 	if (target == GL_TEXTURE_RECTANGLE_ARB)
 		CHECK(!direct);
 	else

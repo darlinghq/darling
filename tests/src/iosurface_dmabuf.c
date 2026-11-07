@@ -19,7 +19,8 @@
 // GL_TEXTURE_RECTANGLE textures cannot use the memory directly; with
 // DMA-BUFs, GPU copies keep them in step with it instead: from it when the
 // context is made current or locked after a CPU write, into it before a
-// lock. Each case prints its path: dmabuf-2d, dmabuf-rect-gpucopy or
+// lock. On a software renderer (llvmpipe and the like) they keep the CPU
+// copy. Each case prints its path: dmabuf-2d, dmabuf-rect-gpucopy or
 // cpu-copy.
 //
 // Covered: BGRA, RGBA and ARGB byte orders, as 2D and rectangle textures,
@@ -272,6 +273,15 @@ static uint32_t expectedWord(const struct format* format, const float color[4])
 	return word;
 }
 
+// Rectangle textures are kept in step by GPU copies only on hardware
+// renderers; on a CPU renderer that copy costs more than the CPU copy.
+static int softwareRenderer(void)
+{
+	const char* renderer = (const char*) glGetString(GL_RENDERER);
+	return renderer && (strstr(renderer, "llvmpipe") || strstr(renderer, "lavapipe")
+		|| strstr(renderer, "softpipe") || strstr(renderer, "swrast") || strstr(renderer, "Software Rasterizer"));
+}
+
 // Returns whether the texture follows CPU writes without being specified
 // again: a 2D texture that uses the surface's memory, or a rectangle
 // texture that GPU copies keep in step with it.
@@ -312,6 +322,8 @@ static bool checkFormat(CGLContextObj context, const struct format* format, GLen
 	else
 		CHECK(follows == direct);
 	const char* path = !follows ? "cpu-copy" : target == GL_TEXTURE_2D ? "dmabuf-2d" : "dmabuf-rect-gpucopy";
+	if (target == GL_TEXTURE_RECTANGLE_ARB && softwareRenderer())
+		CHECK(strcmp(path, "cpu-copy") == 0);
 	CHECK(CGLTexImageIOSurface2D(context, target, GL_RGBA8, W, H, format->format, format->type,
 		surface, 0) == kCGLNoError);
 	readTargetTexture(target, texture, format->format, format->type, pixels);

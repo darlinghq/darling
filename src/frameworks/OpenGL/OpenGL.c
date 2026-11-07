@@ -1618,10 +1618,49 @@ static int has_gl_extension(int major, const char *name) {
     return extensions && has_extension((const char *) extensions, name);
 }
 
-// How the current context copies between textures.
+// Whether the EGL device behind the display is a software renderer
+// (EGL_EXT_device_query, EGL_MESA_device_software).
+static int softwareEGLDevice(EGLDisplay display) {
+    const char *client = p_eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
+    if (!client || !has_extension(client, "EGL_EXT_device_query"))
+        return 0;
+    typedef EGLBoolean (*query_display_attrib_proc)(EGLDisplay display, EGLint attribute, EGLAttrib *value);
+    typedef const char *(*query_device_string_proc)(void *device, EGLint name);
+    query_display_attrib_proc queryDisplayAttrib =
+        (query_display_attrib_proc) p_eglGetProcAddress("eglQueryDisplayAttribEXT");
+    query_device_string_proc queryDeviceString =
+        (query_device_string_proc) p_eglGetProcAddress("eglQueryDeviceStringEXT");
+    EGLAttrib device = 0;
+    // EGL_DEVICE_EXT
+    if (!queryDisplayAttrib || !queryDeviceString || !queryDisplayAttrib(display, 0x322C, &device) || !device)
+        return 0;
+    const char *extensions = queryDeviceString((void *) device, EGL_EXTENSIONS);
+    return extensions && has_extension(extensions, "EGL_MESA_device_software");
+}
+
+// Whether the current context renders on the CPU. There a "GPU" copy is a
+// CPU copy through the imported memory, which costs more than the plain
+// CPU copy (measured on llvmpipe), so rectangle textures keep the latter.
+static int softwareRenderer(CGLContextObj context) {
+    const GLubyte *renderer = glGetString(GL_RENDERER);
+    static const char *const names[] = { "llvmpipe", "lavapipe", "softpipe", "swrast", "Software Rasterizer" };
+    for (size_t i = 0; renderer && i < sizeof(names) / sizeof(names[0]); i++) {
+        if (strstr((const char *) renderer, names[i]))
+            return 1;
+    }
+    return softwareEGLDevice(context->egl_display);
+}
+
+// How the current context copies between textures for rectangle textures
+// kept in step with a surface; GPU_COPY_NONE on software renderers. Found
+// out once per context.
 static enum gpu_copy gpu_copy(CGLContextObj context) {
     if (context->gpu_copy != GPU_COPY_UNKNOWN)
         return (enum gpu_copy) context->gpu_copy;
+    if (softwareRenderer(context)) {
+        context->gpu_copy = GPU_COPY_NONE;
+        return GPU_COPY_NONE;
+    }
 
     int major = 0, minor = 0;
     const GLubyte *version = glGetString(GL_VERSION);
