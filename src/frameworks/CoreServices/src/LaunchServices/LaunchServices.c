@@ -22,8 +22,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <launch_priv.h>
-#include <spawn.h>
-#include <crt_externs.h>
+#include <errno.h>
+#include <os/log.h>
 
 static void get_main_executable_info(CFURLRef appURL, CFStringRef *exec, CFStringRef *bundleName);
 
@@ -199,17 +199,13 @@ OSStatus _LSLaunchApplication(CFURLRef appPath)
 
 	argv[0] = exec;
 	argv[1] = NULL;
+	/* Applications are launchd jobs, as on macOS. */
 	pid = spawn_via_launchd(name, (const char *const *)argv, NULL);
 	if (pid < 0)
 	{
-		// Fallback: spawn directly via posix_spawn when launchd job submission fails
-		char **envp = *_NSGetEnviron();
-		if (posix_spawn(&pid, exec, NULL, NULL, argv, envp) != 0)
-		{
-			printf("%s: Failed to spawn via launchd and posix_spawn\n", exec);
-			status = kLSApplicationNotFoundErr;
-			goto cleanup;
-		}
+		os_log_error(OS_LOG_DEFAULT, "LaunchServices: launchd could not spawn %{public}s: %{darwin.errno}d", exec, errno);
+		status = kLSApplicationNotFoundErr;
+		goto cleanup;
 	}
 
 	status = noErr;
