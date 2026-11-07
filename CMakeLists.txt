@@ -253,8 +253,10 @@ install(DIRECTORY DESTINATION libexec/darling/private/tmp)
 InstallSymlink(private/etc ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc)
 InstallSymlink(private/var ${CMAKE_INSTALL_PREFIX}/libexec/darling/var)
 
-install(FILES etc/resolv.conf
-	DESTINATION libexec/darling/private/etc)
+# Follow the host's resolver configuration, so that local DNS stubs and
+# network changes apply in the guest. A copy edited inside a prefix stays
+# in the prefix's own layer and takes precedence over this link.
+InstallSymlink(/Volumes/SystemRoot/etc/resolv.conf ${CMAKE_INSTALL_PREFIX}/libexec/darling/private/etc/resolv.conf)
 InstallSymlink(/Volumes/SystemRoot/etc/machine-id ${CMAKE_INSTALL_PREFIX}/libexec/darling/private/etc/machine-id)
 InstallSymlink(/Volumes/SystemRoot/etc/nsswitch.conf ${CMAKE_INSTALL_PREFIX}/libexec/darling/private/etc/nsswitch.conf)
 
