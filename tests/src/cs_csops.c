@@ -1,13 +1,15 @@
 // Copyright (C) 2026 Lubos Dolezel
 //
-// csops() and csops_audittoken() against the documented contract, with no
-// image registered for the process (until mldr registers images), so
-// darlingserver knows nothing about its signature. Exits by itself.
+// csops() and csops_audittoken() against the documented contract, for this
+// program, which is not signed. Before mldr registers images, darlingserver
+// knows nothing about its signature; after, it knows it has none. Under the
+// default policy (`off`) both report the same status. Exits by itself.
 //
-// - CS_OPS_STATUS reports the process as valid;
+// - CS_OPS_STATUS reports the process as valid (without enforcement, an
+//   unsigned image keeps the status an unregistered one has);
 // - an unknown process gives ESRCH, an unknown operation EINVAL;
-// - CDHASH needs a 20-byte buffer (EINVAL), and an unregistered image has no
-//   CDHash (EINVAL);
+// - CDHASH needs a 20-byte buffer (EINVAL), and the image has no CDHash
+//   (EINVAL while unregistered, EBADEXEC once registered as unsigned);
 // - IDENTITY and BLOB need room for the 8-byte header (ERANGE); without an
 //   identifier, IDENTITY and TEAMID give ENOENT; BLOB gives an empty header;
 // - QUIRK test_quirk_no_entitlements_leaves_buffer: without entitlements,
@@ -112,7 +114,7 @@ int main(void)
 
 	errno = 0;
 	rc = csops(0, CS_OPS_STATUS, &flags, sizeof(flags));
-	check(rc == 0 && (flags & CS_VALID), "STATUS of an unregistered process: CS_VALID");
+	check(rc == 0 && (flags & CS_VALID), "STATUS of an unsigned process: CS_VALID");
 	flags = 0;
 	rc = csops(getpid(), CS_OPS_STATUS, &flags, sizeof(flags));
 	check(rc == 0 && (flags & CS_VALID), "STATUS by PID");
@@ -126,7 +128,8 @@ int main(void)
 	errno = 0;
 	check(fails_with(csops(0, CS_OPS_CDHASH, buffer, 19), EINVAL), "CDHASH with 19 bytes: EINVAL");
 	errno = 0;
-	check(fails_with(csops(0, CS_OPS_CDHASH, buffer, 20), EINVAL), "CDHASH of an unregistered image: EINVAL");
+	rc = csops(0, CS_OPS_CDHASH, buffer, 20);
+	check(fails_with(rc, EINVAL) || fails_with(rc, EBADEXEC), "CDHASH of an unsigned image: EINVAL (unregistered) or EBADEXEC");
 
 	errno = 0;
 	check(fails_with(csops(0, CS_OPS_IDENTITY, buffer, 4), ERANGE), "IDENTITY with 4 bytes: ERANGE");
