@@ -178,6 +178,20 @@ FUNCTION(use_ld64 target)
 
 	add_dependencies(${target} ${APPLE_TARGET_TRIPLET_PRIMARY}-ld)
 
+	# Our ld64 cannot sign its output (-adhoc_codesign), so every image it links is signed
+	# right after the link, before anything (e.g. lipo) uses it. Universal outputs of the
+	# compiler driver get a signature in each slice. The identifier is the file name, unless
+	# the target's ADHOC_CODESIGN_IDENTIFIER property says otherwise.
+	if (ADHOC_CODESIGN)
+		add_custom_command(TARGET ${target} POST_BUILD
+			COMMAND $<TARGET_FILE:adhoc-sign>
+				"--identifier=$<TARGET_PROPERTY:${target},ADHOC_CODESIGN_IDENTIFIER>"
+				"$<TARGET_FILE:${target}>"
+			VERBATIM
+		)
+		add_dependencies(${target} adhoc-sign)
+	endif (ADHOC_CODESIGN)
+
 ENDFUNCTION(use_ld64)
 
 function(reexport reexporter reexportee reexportee_output)

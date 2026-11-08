@@ -175,7 +175,8 @@ function(add_separated_framework name)
 		set_target_properties(${my_name}_${APPLE_ARCH_32BIT} PROPERTIES
 					OUTPUT_NAME "${name}_${APPLE_ARCH_32BIT}"
 							SUFFIX ""
-					PREFIX "")
+					PREFIX ""
+					ADHOC_CODESIGN_IDENTIFIER "${name}")
 		set_property(TARGET ${my_name}_${APPLE_ARCH_32BIT} APPEND_STRING PROPERTY
 			COMPILE_FLAGS " -arch ${APPLE_ARCH_32BIT}")
 		 set_property(TARGET ${my_name}_${APPLE_ARCH_32BIT} APPEND_STRING PROPERTY
@@ -210,7 +211,8 @@ function(add_separated_framework name)
 		set_target_properties(${my_name}_${APPLE_ARCH_64BIT} PROPERTIES
 					OUTPUT_NAME "${name}_${APPLE_ARCH_64BIT}"
 							SUFFIX ""
-					PREFIX "")
+					PREFIX ""
+					ADHOC_CODESIGN_IDENTIFIER "${name}")
 		set_property(TARGET ${my_name}_${APPLE_ARCH_64BIT} APPEND_STRING PROPERTY
 			COMPILE_FLAGS " -arch ${APPLE_ARCH_64BIT}")
 		set_property(TARGET ${my_name}_${APPLE_ARCH_64BIT} APPEND_STRING PROPERTY
