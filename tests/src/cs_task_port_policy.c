@@ -5,10 +5,11 @@
 // libsystem_kernel's Darling-private __darling_{get,set}_system_config. Must run
 // as root (`darling shell sudo ...`); the policy is put back at the end.
 //
-// The targets are this program re-executed (so that they start under the
-// pushed policy), not code signed in a way darlingserver knows about until mldr
-// registers images (a later mldr change): they count as unsigned, so they do not allow
-// debugging (no CS_GET_TASK_ALLOW) and are not hardened.
+// The targets are an ad-hoc signed copy of this program (adhoc_sign.h; an
+// unsigned program is not started under enforce), executed again so that they
+// start under the pushed policy. The signature has no entitlements and no
+// hardened runtime, so the targets do not allow debugging (no
+// CS_GET_TASK_ALLOW) and are not hardened.
 //
 // - under the policy in effect before the test (off by default) a process of
 //   the same user gets every port of a target, as before;
@@ -20,6 +21,7 @@
 // - a target that started before enforce was pushed keeps its old policy.
 #include <dlfcn.h>
 #include <errno.h>
+#include <mach-o/dyld.h>
 #include <mach/mach.h>
 #include <pwd.h>
 #include <signal.h>
@@ -31,6 +33,8 @@
 #include <unistd.h>
 
 #include <darlingserver/rpc-supplement.h>
+
+#include "adhoc_sign.h"
 
 typedef int (*get_fn)(dserver_system_config_t*);
 typedef int (*set_fn)(const dserver_system_config_t*);
@@ -46,6 +50,8 @@ static dserver_system_config_t saved;
 static int pushed;
 static pid_t targets[3];
 static uid_t nobody_uid;
+static char target_dir[64];
+static char target_path[128];
 
 static void check(int ok, const char* what)
 {
@@ -93,6 +99,10 @@ static void finish(void)
 			waitpid(targets[i], NULL, 0);
 		}
 	}
+	if (target_path[0])
+		unlink(target_path);
+	if (target_dir[0])
+		rmdir(target_dir);
 	printf("%s\n", failures ? "FAILED" : "ALL PASSED");
 	fflush(stdout);
 	_exit(failures ? 1 : 0);
@@ -106,8 +116,8 @@ static void on_alarm(int sig)
 	finish();
 }
 
-// starts this program again as a target, as `uid`; returns once it runs the new image
-static pid_t start_target(const char* self, uid_t uid)
+// starts the signed copy of this program as a target, as `uid`; returns once it runs the new image
+static pid_t start_target(uid_t uid)
 {
 	int ready[2];
 	if (pipe(ready) != 0)
@@ -121,7 +131,7 @@ static pid_t start_target(const char* self, uid_t uid)
 		if (uid != 0 && (setuid(uid) != 0 || getuid() != uid))
 			_exit(1);
 		snprintf(fd, sizeof(fd), "%d", ready[1]);
-		execl(self, self, "target", fd, (char*) NULL);
+		execl(target_path, target_path, "target", fd, (char*) NULL);
 		_exit(1);
 	}
 	close(ready[1]);
@@ -236,10 +246,27 @@ int main(int argc, char** argv)
 		printf("  enforce is already in effect; the \"before\" checks are skipped\n");
 	}
 
+	// the signed target, readable and executable by the unprivileged user
+	char self[1024];
+	uint32_t self_size = sizeof(self);
+	strcpy(target_dir, "/tmp/cs-task-port.XXXXXX");
+	if (_NSGetExecutablePath(self, &self_size) != 0 || mkdtemp(target_dir) == NULL) {
+		target_dir[0] = '\0';
+		check(0, "own path and a temporary directory");
+		finish();
+	}
+	snprintf(target_path, sizeof(target_path), "%s/target", target_dir);
+	chmod(target_dir, 0755);
+	if (adhoc_sign(self, target_path, "org.darlinghq.test.cs-task-port-policy", 0, NULL) != 0) {
+		target_path[0] = '\0';
+		check(0, "ad-hoc signed copy of this program");
+		finish();
+	}
+
 	struct ports p;
 
 	// before: the old policy
-	targets[0] = start_target(argv[0], nobody_uid);
+	targets[0] = start_target(nobody_uid);
 	check(targets[0] > 0, "start a target as nobody under the old policy");
 	if (saved.code_signing_policy != dserver_code_signing_policy_enforce) {
 		check(ports_as(nobody_uid, targets[0], &p) == 0, "ask for its ports as nobody");
@@ -260,8 +287,8 @@ int main(int argc, char** argv)
 	}
 	pushed = 1;
 
-	targets[1] = start_target(argv[0], nobody_uid);
-	targets[2] = start_target(argv[0], 0);
+	targets[1] = start_target(nobody_uid);
+	targets[2] = start_target(0);
 	check(targets[1] > 0 && targets[2] > 0, "start targets as nobody and root under enforce");
 	if (targets[1] <= 0 || targets[2] <= 0)
 		finish();
