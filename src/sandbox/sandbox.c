@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <sched.h>
+#include <os/lock.h>
 #include <sys/types.h>
 #include <darling/emulation/linux_premigration/ext/for-sandbox.h>
 
@@ -316,20 +316,16 @@ static struct sandbox_consumed_extension *sandbox_consumed;
 static size_t sandbox_consumed_count;
 static int64_t sandbox_next_handle = 1;
 
-/* libsystem_sandbox sits below libpthread and libplatform, so the table is
- * guarded by a plain spin lock; it is only held for a short table walk. */
-static int sandbox_consumed_lock_word;
+static os_unfair_lock sandbox_consumed_lock_word = OS_UNFAIR_LOCK_INIT;
 
 static void sandbox_consumed_lock(void)
 {
-	while (__atomic_exchange_n(&sandbox_consumed_lock_word, 1, __ATOMIC_ACQUIRE) != 0) {
-		sched_yield();
-	}
+	os_unfair_lock_lock(&sandbox_consumed_lock_word);
 }
 
 static void sandbox_consumed_unlock(void)
 {
-	__atomic_store_n(&sandbox_consumed_lock_word, 0, __ATOMIC_RELEASE);
+	os_unfair_lock_unlock(&sandbox_consumed_lock_word);
 }
 
 static int64_t sandbox_consumed_add(const char *token)

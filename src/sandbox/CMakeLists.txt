@@ -11,6 +11,7 @@ add_circular(system_sandbox FAT
 		system_c
 		system_kernel
 		system_malloc
+		platform
 )
 
 install(TARGETS system_sandbox DESTINATION libexec/darling/usr/lib/system)
