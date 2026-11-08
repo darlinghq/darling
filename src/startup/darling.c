@@ -769,7 +769,7 @@ void setupShellspawnEnv(int sockfd)
 			}
 		}
 
-		if (skip_it) {
+		if (skip_it || !launcherGuestMayGet(var)) {
 			continue;
 		}
 
