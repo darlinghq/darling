@@ -14,7 +14,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Ttext-segment,0x400000 -Wl,-Tbss,0x410000 -Wl,-Tdata,0x420000")
 add_definitions(-DINSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}" -D_GNU_SOURCE -DMLDR_BUILD)
 
-add_executable(darling darling.c)
+add_executable(darling darling.c launcher-ids.c)
 
 target_link_libraries(darling -lutil)
 
@@ -41,6 +41,11 @@ add_custom_target(rtsig_h DEPENDS rtsig.h)
 add_executable(shellspawn_fds_test ${CMAKE_SOURCE_DIR}/tests/shellspawn/fds.c)
 target_include_directories(shellspawn_fds_test PRIVATE ${CMAKE_SOURCE_DIR}/src/shellspawn)
 add_test(NAME shellspawn_fds COMMAND shellspawn_fds_test)
+
+# the setuid launcher's id switching; the test supplies its own id system calls
+add_executable(launcher_ids_test ${CMAKE_SOURCE_DIR}/tests/launcher/ids.c launcher-ids.c)
+target_include_directories(launcher_ids_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME launcher_ids COMMAND launcher_ids_test)
 
 # darling-prefsd runs inside the prefix (src/prefsd); its checks on the
 # preferences files and values are plain C and are tested on the host

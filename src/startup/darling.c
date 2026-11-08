@@ -41,6 +41,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "../shellspawn/shellspawn.h"
 #include "darling.h"
 #include "darling-config.h"
+#include "launcher-ids.h"
 
 // Between Linux 4.9 and 4.11, a strange bug has been introduced
 // which prevents connecting to Unix sockets if the socket was
@@ -52,6 +53,28 @@ char *prefix;
 uid_t g_originalUid, g_originalGid;
 bool g_fixPermissions = false;
 char g_workingDirectory[4096];
+static struct launcher_ids g_invokingIds;
+
+// Everything the launcher does inside the user's prefix (which the user names
+// and controls) runs with the user's effective ids, so that it can only do what
+// the user could do without Darling. See launcher-ids.h for the states.
+static void useInvokingIds(void)
+{
+	if (!launcherUseInvokingIds(&g_invokingIds))
+	{
+		fprintf(stderr, "Cannot switch to your user and group ids: %s\n", strerror(errno));
+		exit(1);
+	}
+}
+
+static void restoreRootIds(void)
+{
+	if (!launcherRestoreRootIds())
+	{
+		fprintf(stderr, "Cannot switch back to root ids: %s\n", strerror(errno));
+		exit(1);
+	}
+}
 
 int main(int argc, char ** argv)
 {
@@ -69,11 +92,22 @@ int main(int argc, char ** argv)
 		return 1;
 	}
 
-	g_originalUid = getuid();
-	g_originalGid = getgid();
+	if (!launcherSaveInvokingIds(&g_invokingIds))
+	{
+		fprintf(stderr, "Cannot read your user and group ids: %s\n", strerror(errno));
+		return 1;
+	}
+	g_originalUid = g_invokingIds.uid;
+	g_originalGid = g_invokingIds.gid;
 
-	setuid(0);
-	setgid(0);
+	// darlingserver must start with real root ids, and creating namespaces needs
+	// them as well. From here on the launcher is fully root, so every step that
+	// acts on a path or file the user controls switches to the user's ids first.
+	if (!launcherBecomeRoot())
+	{
+		fprintf(stderr, "Cannot switch to root ids: %s\n", strerror(errno));
+		return 1;
+	}
 
 	prefix = getenv("DPREFIX");
 	if (!prefix)
@@ -174,21 +208,30 @@ int main(int argc, char ** argv)
 		
 		snprintf(socketPath, sizeof(socketPath), "%s"  SHELLSPAWN_SOCKPATH, prefix);
 		
+		// A stale socket in the user's prefix; remove it as the user, so that a
+		// prefix path changed under us cannot make root remove anything else.
+		useInvokingIds();
 		unlink(socketPath);
+		restoreRootIds();
 		
 		setupWorkdir();
 		pidInit = spawnInitProcess();
 		putInitPid(pidInit);
 		
-		// Wait until shellspawn starts
-		for (int i = 0; i < 60; i++)
+		// Wait until shellspawn starts. The socket is in the user's prefix, so
+		// look for it with the user's ids: access() would check with the real
+		// uid, which is 0.
+		useInvokingIds();
+		bool started = false;
+		for (int i = 0; i < 60 && !started; i++)
 		{
-			if (access(socketPath, F_OK) == 0)
-				break;
-			sleep(1);
+			started = faccessat(AT_FDCWD, socketPath, F_OK, AT_EACCESS) == 0;
+			if (!started)
+				sleep(1);
 		}
+		restoreRootIds();
 
-		if (access(socketPath, F_OK) != 0)
+		if (!started)
 		{
 			fprintf(stderr, "Timed out waiting for shellspawn in container\n");
 			return 1;
@@ -199,7 +242,7 @@ int main(int argc, char ** argv)
 	joinNamespace(pidInit, CLONE_NEWNS, "mnt");
 #endif
 
-	seteuid(g_originalUid);
+	useInvokingIds();
 
 	if (strcmp(argv[1], "shell") == 0)
 	{
@@ -902,12 +945,18 @@ static bool commandInPath(const char* name)
 		return false;
 
 	copy = strdup(path);
+	if (!copy)
+		return false;
+
+	// The directories come from the user's PATH; look into them as the user.
+	useInvokingIds();
 	for (dir = strtok_r(copy, ":", &saveptr); dir != NULL && !found; dir = strtok_r(NULL, ":", &saveptr))
 	{
 		char candidate[4096];
 		snprintf(candidate, sizeof(candidate), "%s/%s", dir, name);
-		found = access(candidate, X_OK) == 0;
+		found = faccessat(AT_FDCWD, candidate, X_OK, AT_EACCESS) == 0;
 	}
+	restoreRootIds();
 	free(copy);
 
 	return found;
@@ -922,13 +971,9 @@ static bool recordFsMode(const char* mode)
 	strcpy(path, prefix);
 	strcat(path, FSMODE_FILE);
 
-	seteuid(g_originalUid);
-	setegid(g_originalGid);
-
+	useInvokingIds();
 	fp = fopen(path, "w");
-
-	seteuid(0);
-	setegid(0);
+	restoreRootIds();
 
 	if (fp == NULL)
 	{
@@ -987,13 +1032,9 @@ void putInitPid(pid_t pidInit)
 	strcpy(pidPath, prefix);
 	strcat(pidPath, pidFile);
 
-	seteuid(g_originalUid);
-	setegid(g_originalGid);
-
+	useInvokingIds();
 	fp = fopen(pidPath, "w");
-
-	seteuid(0);
-	setegid(0);
+	restoreRootIds();
 
 	if (fp == NULL)
 	{
@@ -1070,14 +1111,28 @@ void setupWorkdir()
 
 	strcat(workdir, suffix);
 
+	// The work directory goes next to the prefix, into a directory the user
+	// names. Created as root, a prefix path changed under us could make root
+	// create a directory anywhere. darlingserver uses it as root, which works
+	// whoever owns it.
+	useInvokingIds();
 	createDir(workdir);
+	restoreRootIds();
 }
 
 int checkPrefixDir()
 {
 	struct stat st;
+	int result, error;
 
-	if (stat(prefix, &st) == 0)
+	// As the user: as root this would also tell the user about paths they
+	// cannot see.
+	useInvokingIds();
+	result = stat(prefix, &st);
+	error = errno;
+	restoreRootIds();
+
+	if (result == 0)
 	{
 		if (!S_ISDIR(st.st_mode))
 		{
@@ -1086,9 +1141,9 @@ int checkPrefixDir()
 		}
 		return 1; // OK
 	}
-	if (errno == ENOENT)
+	if (error == ENOENT)
 		return 0; // not found
-	fprintf(stderr, "Cannot access %s: %s\n", prefix, strerror(errno));
+	fprintf(stderr, "Cannot access %s: %s\n", prefix, strerror(error));
 	exit(1);
 }
 
@@ -1118,8 +1173,8 @@ void setupPrefix()
 
 	fprintf(stderr, "Setting up a new Darling prefix at %s\n", prefix);
 
-	seteuid(g_originalUid);
-	setegid(g_originalGid);
+	// The prefix and everything in it is created by and for the user.
+	useInvokingIds();
 
 	createDir(prefix);
 	strcpy(path, prefix);
@@ -1194,9 +1249,8 @@ void setupPrefix()
 		passwd_entry->pw_name
 	);
 	fclose(file);
-	
-	seteuid(0);
-	setegid(0);
+
+	restoreRootIds();
 }
 
 // macOS ships these service accounts in its local user database. Launchd jobs
@@ -1308,18 +1362,16 @@ static void addMissingAccounts(enum accountFile type, const char* name)
 void ensureSystemAccounts()
 {
 	// The account files belong to the user who owns the prefix.
-	setegid(g_originalGid);
-	seteuid(g_originalUid);
+	useInvokingIds();
 
 	addMissingAccounts(ACCOUNT_FILE_PASSWD, "passwd");
 	addMissingAccounts(ACCOUNT_FILE_MASTER_PASSWD, "master.passwd");
 	addMissingAccounts(ACCOUNT_FILE_GROUP, "group");
 
-	seteuid(0);
-	setegid(0);
+	restoreRootIds();
 }
 
-pid_t getInitProcess()
+static pid_t findInitProcess(void)
 {
 	const char pidFile[] = "/.init.pid";
 	char* pidPath;
@@ -1418,11 +1470,31 @@ pid_t getInitProcess()
 	return pid;
 }
 
+pid_t getInitProcess()
+{
+	pid_t pid;
+
+	// The pid file is in the user's prefix, and a stale one is removed; both
+	// as the user. The /proc files read to confirm the pid are readable by the
+	// user as well.
+	useInvokingIds();
+	pid = findInitProcess();
+	restoreRootIds();
+
+	return pid;
+}
+
 void checkPrefixOwner()
 {
 	struct stat st;
+	int result, error;
 
-	if (stat(prefix, &st) == 0)
+	useInvokingIds();
+	result = stat(prefix, &st);
+	error = errno;
+	restoreRootIds();
+
+	if (result == 0)
 	{
 		if (g_originalUid != 0 && st.st_uid != g_originalUid)
 		{
@@ -1430,7 +1502,7 @@ void checkPrefixOwner()
 			exit(1);
 		}
 	}
-	else if (errno == EACCES)
+	else if (error == EACCES)
 	{
 		fprintf(stderr, "You do not own the prefix directory.\n");
 		exit(1);
