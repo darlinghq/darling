@@ -43,11 +43,17 @@ enum launcher_prefix_check launcherCheckPrefix(const char* prefix);
 // A message for the user, or NULL for LAUNCHER_PREFIX_OK.
 const char* launcherPrefixCheckMessage(enum launcher_prefix_check check);
 
+// Whether a group is the user's private group: the user's primary group, named
+// like the user and with no other listed members. This is the scheme under
+// which a umask of 002 is the default.
+bool launcherGroupIsUserPrivate(gid_t groupGid, const char* groupName, char* const* groupMembers,
+	gid_t userGid, const char* userName);
+
 // Whether an existing prefix directory with this mode may be used. The prefix
 // root holds the darlingserver socket, and the container's files below it, so
-// other users must not be able to write it. Group write is accepted: with
-// user-private groups a umask of 002 is common.
-bool launcherPrefixModeAcceptable(mode_t mode);
+// no other user may be able to write it: not others, and not its group unless
+// that group is the user's private group (groupIsUserPrivate).
+bool launcherPrefixModeAcceptable(mode_t mode, bool groupIsUserPrivate);
 
 // Writes prefix followed by suffix into out (size bytes, normally sun_path).
 // Returns false, leaving an empty string, if it does not fit.

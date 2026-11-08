@@ -35,6 +35,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <getopt.h>
 #include <termios.h>
 #include <pty.h>
+#include <grp.h>
 #include <pwd.h>
 #include <sys/wait.h>
 #include <sysexits.h>
@@ -1546,6 +1547,29 @@ pid_t getInitProcess()
 	return pid;
 }
 
+// Whether the prefix's group holds nobody but the user (see launcher-prefix.h).
+static bool prefixGroupIsUserPrivate(gid_t gid)
+{
+	struct passwd* pw;
+	struct group* gr;
+	bool result = false;
+
+	// The account databases are the host's; look them up as the user.
+	useInvokingIds();
+	pw = getpwuid(g_originalUid);
+	if (pw != NULL)
+	{
+		char* name = strdup(pw->pw_name);
+		gr = getgrgid(gid);
+		if (name != NULL && gr != NULL)
+			result = launcherGroupIsUserPrivate(gr->gr_gid, gr->gr_name, gr->gr_mem, g_originalGid, name);
+		free(name);
+	}
+	restoreRootIds();
+
+	return result;
+}
+
 void checkPrefixOwner()
 {
 	struct stat st;
@@ -1563,9 +1587,9 @@ void checkPrefixOwner()
 			fprintf(stderr, "You do not own the prefix directory.\n");
 			exit(1);
 		}
-		if (!launcherPrefixModeAcceptable(st.st_mode))
+		if (!launcherPrefixModeAcceptable(st.st_mode, (st.st_mode & S_IWGRP) && prefixGroupIsUserPrivate(st.st_gid)))
 		{
-			fprintf(stderr, "The prefix directory %s is writable by other users. To use it, run: chmod o-w '%s'\n", prefix, prefix);
+			fprintf(stderr, "The prefix directory %s is writable by other users. To use it, run: chmod go-w '%s'\n", prefix, prefix);
 			exit(1);
 		}
 	}

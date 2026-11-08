@@ -58,9 +58,27 @@ const char* launcherPrefixCheckMessage(enum launcher_prefix_check check)
 	return "The prefix path is not valid";
 }
 
-bool launcherPrefixModeAcceptable(mode_t mode)
+bool launcherGroupIsUserPrivate(gid_t groupGid, const char* groupName, char* const* groupMembers,
+	gid_t userGid, const char* userName)
 {
-	return (mode & S_IWOTH) == 0;
+	if (groupGid != userGid || strcmp(groupName, userName) != 0)
+		return false;
+
+	for (size_t i = 0; groupMembers != NULL && groupMembers[i] != NULL; i++)
+	{
+		if (strcmp(groupMembers[i], userName) != 0)
+			return false;
+	}
+	return true;
+}
+
+bool launcherPrefixModeAcceptable(mode_t mode, bool groupIsUserPrivate)
+{
+	if (mode & S_IWOTH)
+		return false;
+	if ((mode & S_IWGRP) && !groupIsUserPrivate)
+		return false;
+	return true;
 }
 
 bool launcherSocketPath(char* out, size_t size, const char* prefix, const char* suffix)

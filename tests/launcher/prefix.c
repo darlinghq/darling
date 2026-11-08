@@ -60,14 +60,36 @@ static void test_check(void)
 
 static void test_mode(void)
 {
-	CHECK(launcherPrefixModeAcceptable(S_IFDIR | 0700));
-	CHECK(launcherPrefixModeAcceptable(S_IFDIR | 0755));
-	CHECK(launcherPrefixModeAcceptable(S_IFDIR | 0775));
-	CHECK(launcherPrefixModeAcceptable(S_IFDIR | 0750));
-	CHECK(!launcherPrefixModeAcceptable(S_IFDIR | 0777));
-	CHECK(!launcherPrefixModeAcceptable(S_IFDIR | 0757));
-	CHECK(!launcherPrefixModeAcceptable(S_IFDIR | 0702));
-	CHECK(!launcherPrefixModeAcceptable(S_IFDIR | S_ISVTX | 0777));
+	CHECK(launcherPrefixModeAcceptable(S_IFDIR | 0700, false));
+	CHECK(launcherPrefixModeAcceptable(S_IFDIR | 0755, false));
+	CHECK(launcherPrefixModeAcceptable(S_IFDIR | 0750, false));
+	CHECK(!launcherPrefixModeAcceptable(S_IFDIR | 0777, false));
+	CHECK(!launcherPrefixModeAcceptable(S_IFDIR | 0757, false));
+	CHECK(!launcherPrefixModeAcceptable(S_IFDIR | 0702, false));
+	CHECK(!launcherPrefixModeAcceptable(S_IFDIR | S_ISVTX | 0777, false));
+
+	// Group write: only with the user's private group.
+	CHECK(!launcherPrefixModeAcceptable(S_IFDIR | 0775, false));
+	CHECK(!launcherPrefixModeAcceptable(S_IFDIR | 0770, false));
+	CHECK(launcherPrefixModeAcceptable(S_IFDIR | 0775, true));
+	CHECK(launcherPrefixModeAcceptable(S_IFDIR | 0770, true));
+	CHECK(!launcherPrefixModeAcceptable(S_IFDIR | 0777, true));
+}
+
+static void test_private_group(void)
+{
+	char* none[] = { NULL };
+	char* self[] = { "alice", NULL };
+	char* others[] = { "alice", "bob", NULL };
+
+	CHECK(launcherGroupIsUserPrivate(1000, "alice", none, 1000, "alice"));
+	CHECK(launcherGroupIsUserPrivate(1000, "alice", self, 1000, "alice"));
+	CHECK(launcherGroupIsUserPrivate(1000, "alice", NULL, 1000, "alice"));
+	CHECK(!launcherGroupIsUserPrivate(1000, "alice", others, 1000, "alice"));
+	// A shared primary group, as with a "users" group.
+	CHECK(!launcherGroupIsUserPrivate(100, "users", none, 100, "alice"));
+	// Not the user's primary group.
+	CHECK(!launcherGroupIsUserPrivate(1001, "alice", none, 1000, "alice"));
 }
 
 static void test_socket_path(void)
@@ -161,6 +183,7 @@ int main(void)
 	test_max_length();
 	test_check();
 	test_mode();
+	test_private_group();
 	test_socket_path();
 	test_dir_socket_path();
 
