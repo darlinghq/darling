@@ -78,7 +78,7 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 	fat_offset = lseek(fd, 0, SEEK_CUR);
 
 	if (!expect_dylinker)
-		register_code_signature(fd, fat_offset);
+		fd = code_signing_gate(fd, fat_offset, lr);
 
 	if (read(fd, &header, sizeof(header)) != sizeof(header))
 	{
