@@ -24,23 +24,34 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
  * ad-hoc (no CMS blob), every code page matches its hash, and the image is within the sizes
  * darlingserver verifies.
  *
- * Usage: adhoc-sign-check [--images-only] [--expect-identifier=<id>] <file>...
+ * Usage: adhoc-sign-check [--images-only] [--any-signer] [--expect-identifier=<id>]
+ *                         [--files-from=<list>] [<file>...]
  *
  * With --images-only, files that are not Mach-O images (scripts, data, object files, archives)
- * are skipped instead of reported.
+ * are skipped instead of reported. With --any-signer, an image that a certificate signed (e.g. a
+ * prebuilt binary installed as shipped) is accepted too, as long as its code pages match.
+ * --files-from reads more file names from a file, one per line (e.g. CMake's
+ * install_manifest.txt); of those, only regular files are looked at (not symbolic links,
+ * directories or files that no longer exist); files this user may not read are reported and
+ * skipped.
  */
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include <mach-o/fat.h>
 #include <mach-o/loader.h>
 
 #include <darlingserver/dc_codesign.h>
 #include <kern/cs_blobs.h>
+
+/* accept signatures other than ad-hoc ones */
+static bool any_signer = false;
 
 /* the largest image whose code pages darlingserver verifies (see its code-signing.hpp) */
 #define MAX_VERIFIED_SIZE (256ull * 1024 * 1024)
@@ -94,11 +105,11 @@ static bool check_image(const char* path, uint64_t offset, const uint8_t* file, 
 		return false;
 	}
 
-	if (image.cms_length != 0 || !(image.cd_flags & CS_ADHOC)) {
+	if (!any_signer && (image.cms_length != 0 || !(image.cd_flags & CS_ADHOC))) {
 		fprintf(stderr, "%s @%llu: the signature is not ad-hoc\n", path, (unsigned long long)offset);
 		return false;
 	}
-	if (image.hash_type != CS_HASHTYPE_SHA256) {
+	if (!any_signer && image.hash_type != CS_HASHTYPE_SHA256) {
 		fprintf(stderr, "%s @%llu: hash type %u instead of SHA-256\n", path, (unsigned long long)offset, image.hash_type);
 		return false;
 	}
@@ -115,7 +126,7 @@ static bool check_image(const char* path, uint64_t offset, const uint8_t* file, 
 		return false;
 	}
 
-	printf("%s @%llu: ad-hoc, %u code pages of %u bytes, identifier %s\n", path, (unsigned long long)offset,
+	printf("%s @%llu: %s, %u code pages of %u bytes, identifier %s\n", path, (unsigned long long)offset, image.cms_length ? "certificate" : "ad-hoc",
 		image.code_slot_count, 1u << image.page_size_log2, image.identifier);
 	return true;
 }
@@ -178,8 +189,42 @@ static bool check_file(const char* path, bool images_only, const char* expected_
 	return ok;
 }
 
+/* checks the regular files named in @p list, one per line */
+static int check_list(const char* list, bool images_only, const char* expected_identifier) {
+	FILE* file = fopen(list, "r");
+	char path[4096];
+	int failures = 0;
+
+	if (!file) {
+		fprintf(stderr, "%s: cannot open the list\n", list);
+		return 1;
+	}
+	while (fgets(path, sizeof(path), file)) {
+		struct stat st;
+		path[strcspn(path, "\n")] = '\0';
+		if (path[0] == '\0' || lstat(path, &st) != 0 || !S_ISREG(st.st_mode)) {
+			continue;
+		}
+		/* e.g. a mode 0700 root-owned helper, when not run as root: said, but not a failure */
+		FILE* probe = fopen(path, "rb");
+		if (!probe && errno == EACCES) {
+			fprintf(stderr, "%s: skipped, not readable (run as root to check it)\n", path);
+			continue;
+		}
+		if (probe) {
+			fclose(probe);
+		}
+		if (!check_file(path, images_only, expected_identifier)) {
+			++failures;
+		}
+	}
+	fclose(file);
+	return failures;
+}
+
 int main(int argc, char** argv) {
 	const char* expected_identifier = NULL;
+	const char* list = NULL;
 	bool images_only = false;
 	int first = 1;
 	int failures = 0;
@@ -187,17 +232,25 @@ int main(int argc, char** argv) {
 	for (; first < argc && strncmp(argv[first], "--", 2) == 0; ++first) {
 		if (strncmp(argv[first], "--expect-identifier=", 20) == 0) {
 			expected_identifier = argv[first] + 20;
+		} else if (strncmp(argv[first], "--files-from=", 13) == 0) {
+			list = argv[first] + 13;
 		} else if (strcmp(argv[first], "--images-only") == 0) {
 			images_only = true;
+		} else if (strcmp(argv[first], "--any-signer") == 0) {
+			any_signer = true;
 		} else {
 			first = argc;
+			list = NULL;
 		}
 	}
-	if (first >= argc) {
-		fprintf(stderr, "usage: %s [--images-only] [--expect-identifier=<id>] <file>...\n", argv[0]);
+	if (first >= argc && !list) {
+		fprintf(stderr, "usage: %s [--images-only] [--any-signer] [--expect-identifier=<id>] [--files-from=<list>] [<file>...]\n", argv[0]);
 		return 2;
 	}
 
+	if (list) {
+		failures += check_list(list, images_only, expected_identifier);
+	}
 	for (int i = first; i < argc; ++i) {
 		if (!check_file(argv[i], images_only, expected_identifier)) {
 			++failures;

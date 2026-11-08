@@ -24,3 +24,13 @@ add_test(NAME adhoc_sign_outputs
 		$<TARGET_FILE:launchctl>)
 add_test(NAME adhoc_sign_framework
 	COMMAND $<TARGET_FILE:adhoc-sign-check> --expect-identifier=CoreFoundation $<TARGET_FILE:CoreFoundation>)
+
+# every image the last install wrote (install_manifest.txt; skipped until something was
+# installed from this build directory). Catches images that are built or installed without
+# going through use_ld64's signing step. Prebuilt images installed as shipped with a
+# certificate signature are accepted; files that are not in the manifest (e.g. leftovers of
+# older installations) are not looked at.
+add_test(NAME adhoc_sign_installed
+	COMMAND sh -c "test -f \"$1\" || exit 77; exec \"$2\" --images-only --any-signer \"--files-from=$1\""
+		sh ${CMAKE_BINARY_DIR}/install_manifest.txt $<TARGET_FILE:adhoc-sign-check>)
+set_tests_properties(adhoc_sign_installed PROPERTIES SKIP_RETURN_CODE 77)
