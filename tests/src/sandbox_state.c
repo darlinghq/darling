@@ -194,11 +194,14 @@ static void checkSandboxed(const char *parentToken)
 	int ready[2], done[2];
 	CHECK(pipe(ready) == 0 && pipe(done) == 0);
 
+	pid_t parent = getpid();
 	fflush(stdout);
 	pid_t child = fork();
 	if (child == 0) {
 		char byte = 'x';
 		g_failures = 0;
+		// the checks below name this process by getpid()
+		CHECK(getpid() != parent);
 		close(ready[0]);
 		close(done[1]);
 		if (enterSandbox() != 0)
