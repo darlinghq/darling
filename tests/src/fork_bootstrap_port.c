@@ -13,6 +13,9 @@
 //     half with execv(), and
 //   - while a helper process keeps signaling the parent.
 //
+// A fork() that cannot create a child (here because of RLIMIT_NPROC) must
+// fail with EAGAIN at once instead of waiting for a child.
+//
 // Each child sends a message with its index to its bootstrap_port; the parent
 // set its bootstrap port to a port it receives on before each fork(), so it
 // must receive one message per child.
@@ -26,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/resource.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -39,6 +43,8 @@
 #define CHILD_NULL_PORT 10
 #define CHILD_SEND_FAILED 11
 #define CHILD_EXEC_FAILED 12
+#define CHILD_FORK_SUCCEEDED 13
+#define CHILD_FORK_WRONG_ERROR 14
 
 static pid_t g_helper = -1, g_plain = -1;
 static pid_t g_senders[ROUNDS], g_execers[ROUNDS];
@@ -133,6 +139,68 @@ static int receive_all(mach_port_t port, int timeout_ms)
 		}
 	}
 	return received;
+}
+
+// A child limits itself to one process and forks; returns the number of failures (0 or 1).
+static int check_failing_fork(void)
+{
+	stage("forking with RLIMIT_NPROC at 1");
+	pid_t helper = fork();
+	if (helper == 0)
+	{
+		struct rlimit limit;
+		getrlimit(RLIMIT_NPROC, &limit);
+		limit.rlim_cur = 1;
+		if (setrlimit(RLIMIT_NPROC, &limit) != 0)
+			_exit(CHILD_FORK_SUCCEEDED);
+		pid_t pid = fork();
+		if (pid == 0)
+			_exit(0);
+		if (pid > 0)
+		{
+			wait_child(pid, NULL);
+			_exit(CHILD_FORK_SUCCEEDED);
+		}
+		_exit(errno == EAGAIN ? CHILD_OK : CHILD_FORK_WRONG_ERROR);
+	}
+	if (helper < 0)
+	{
+		printf("FAIL: fork: %s\n", strerror(errno));
+		return 1;
+	}
+	g_plain = helper;
+
+	int status = 0;
+	pid_t r = 0;
+	for (int i = 0; i < 100 && (r = waitpid(helper, &status, WNOHANG)) == 0; i++)
+		usleep(100000);
+	if (r == 0)
+	{
+		kill(helper, SIGKILL);
+		wait_child(helper, &status);
+		g_plain = -1;
+		printf("FAIL: a fork() that cannot create a child did not return within 10 s\n");
+		return 1;
+	}
+	g_plain = -1;
+
+	if (r != helper || !WIFEXITED(status))
+	{
+		printf("FAIL: the forking child ended with status 0x%x\n", status);
+		return 1;
+	}
+	switch (WEXITSTATUS(status))
+	{
+		case CHILD_OK:
+			printf("ok: a fork() that cannot create a child fails with EAGAIN\n");
+			return 0;
+		case CHILD_FORK_SUCCEEDED:
+			printf("SKIP: RLIMIT_NPROC is not enforced here, fork() succeeded\n");
+			return 0;
+		default:
+			printf("FAIL: a fork() that cannot create a child failed with an error other than EAGAIN\n");
+			return 1;
+	}
 }
 
 // Forks ROUNDS children that check their bootstrap port; returns the number of failures (0 or 1).
@@ -319,6 +387,7 @@ int main(int argc, char** argv)
 	sa.sa_flags = SA_RESTART;
 	sigaction(SIGUSR1, &sa, NULL);
 
+	failures += check_failing_fork();
 	failures += run_phase("forking children", port, original, false, false);
 	failures += run_phase("forking children while other children execute a program", port, original, true, false);
 	failures += run_phase("forking children while being signaled", port, original, false, true);
