@@ -21,6 +21,7 @@
 #include <sandbox/sandbox.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <darling/emulation/linux_premigration/ext/for-sandbox.h>
 
 static int verbose = 0;
 
@@ -77,6 +78,9 @@ int sandbox_apply(void *handle)
 {
     if (verbose) puts("STUB: sandbox_apply called");
     (void)handle;
+    // Nothing is enforced; only record that the process is sandboxed, as
+    // sandbox_init does (sandbox_check reports it)
+    (void)__darling_sandbox_mark_applied();
     return 0;
 }
 
