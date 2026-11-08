@@ -76,6 +76,7 @@ static void load_fat(int fd, cpu_type_t cpu, bool expect_dylinker, char** argv, 
 static void load(const char* path, cpu_type_t cpu, bool expect_dylinker, char** argv, struct load_results* lr);
 static int native_prot(int prot);
 static void setup_space(struct load_results* lr, bool is_64_bit);
+static void register_code_signature(int fd, uint64_t image_offset);
 static void process_special_env(struct load_results* lr);
 static void start_thread(struct load_results* lr);
 static bool is_kernel_at_least(int major, int minor);
@@ -841,6 +842,15 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 		}
 	}
 };
+
+// Hands the executable about to be mapped (the slice at `image_offset`) to
+// darlingserver, which reads its code signature and records it as the
+// process's signing state, the state csops() reports. This runs on every exec,
+// after the check-in. It only records: the result is not acted on here.
+static void register_code_signature(int fd, uint64_t image_offset) {
+	uint32_t flags = 0;
+	dserver_rpc_cs_register_image(fd, image_offset, &flags);
+}
 
 static void start_thread(struct load_results* lr) {
 #ifdef __x86_64__
