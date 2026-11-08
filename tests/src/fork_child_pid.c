@@ -6,6 +6,10 @@
 // posix_spawn(2), getpid(2)). The parent calls getpid() first, so a pid
 // the C library caches must be replaced in the child.
 //
+// A failing fork() or vfork() returns -1 and sets errno. The failure is
+// provoked with RLIMIT_NPROC = 1 (EAGAIN); if the limit is not enforced,
+// that check is skipped.
+//
 // Build for x86_64 or i386 and run without arguments. Prints PASS and
 // exits 0 on success.
 #include <errno.h>
@@ -15,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/resource.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -145,6 +150,63 @@ static void checkSpawn(const char *self, pid_t parent)
 	checkChild("posix_spawn", child, status, &r, parent);
 }
 
+// Runs in a child of its own, as it lowers the process limit
+static int failingForkChild(int useVfork)
+{
+	struct rlimit limit;
+	if (getrlimit(RLIMIT_NPROC, &limit) != 0)
+		return 10;
+	limit.rlim_cur = 1;
+	if (setrlimit(RLIMIT_NPROC, &limit) != 0)
+		return 11;
+
+	errno = 0;
+	pid_t pid = useVfork ? vfork() : fork();
+	if (pid == 0)
+		_exit(0);
+	if (pid > 0) {
+		waitpid(pid, NULL, 0);
+		return 12; // not enforced
+	}
+	if (pid != -1)
+		return 13;
+	return errno == EAGAIN ? 0 : 14;
+}
+
+static void checkFailure(int useVfork)
+{
+	const char *what = useVfork ? "vfork" : "fork";
+
+	fflush(stdout);
+	pid_t child = fork();
+	if (child == 0)
+		_exit(failingForkChild(useVfork));
+
+	int status = -1;
+	CHECK(child > 0 && waitpid(child, &status, 0) == child);
+	if (!WIFEXITED(status)) {
+		printf("FAIL: failing %s: helper died\n", what);
+		g_failures++;
+		return;
+	}
+
+	switch (WEXITSTATUS(status)) {
+		case 0:
+			break;
+		case 10: case 11: case 12:
+			printf("SKIP: failing %s: RLIMIT_NPROC cannot be used to make it fail (%d)\n", what, WEXITSTATUS(status));
+			break;
+		case 13:
+			printf("FAIL: failing %s did not return -1\n", what);
+			g_failures++;
+			break;
+		default:
+			printf("FAIL: failing %s: errno is not EAGAIN\n", what);
+			g_failures++;
+			break;
+	}
+}
+
 int main(int argc, char **argv)
 {
 	signal(SIGALRM, timeout);
@@ -161,6 +223,8 @@ int main(int argc, char **argv)
 	checkFork(parent);
 	checkVfork(parent);
 	checkSpawn(argv[0], parent);
+	checkFailure(0);
+	checkFailure(1);
 
 	if (g_failures == 0)
 		puts("PASS");
