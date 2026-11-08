@@ -102,3 +102,45 @@ OSStatus AudioQueueOfflineRender(AudioQueueRef inAQ, const AudioTimeStamp *inTim
 {
 	return inAQ->offlineRender(inTimestamp, ioBuffer, inNumberFrames);
 }
+
+OSStatus AudioQueueAllocateBuffer(AudioQueueRef inAQ, UInt32 inBufferByteSize, AudioQueueBufferRef *outBuffer)
+{
+	return inAQ->allocateBuffer(inBufferByteSize, 0, outBuffer);
+}
+
+OSStatus AudioQueueAllocateBufferWithPacketDescriptions(AudioQueueRef inAQ,
+		UInt32 inBufferByteSize, UInt32 inNumberPacketDescriptions,
+		AudioQueueBufferRef *outBuffer)
+{
+	return inAQ->allocateBuffer(inBufferByteSize, inNumberPacketDescriptions, outBuffer);
+}
+
+OSStatus AudioQueueFreeBuffer(AudioQueueRef inAQ, AudioQueueBufferRef inBuffer)
+{
+	return inAQ->freeBuffer(inBuffer);
+}
+
+OSStatus AudioQueueEnqueueBuffer(AudioQueueRef inAQ, AudioQueueBufferRef inBuffer,
+		UInt32 inNumPacketDescs, const AudioStreamPacketDescription *inPacketDescs)
+{
+	return inAQ->enqueueBuffer(inBuffer, inNumPacketDescs, inPacketDescs);
+}
+
+OSStatus AudioQueueEnqueueBufferWithParameters(AudioQueueRef inAQ,
+		AudioQueueBufferRef inBuffer, UInt32 inNumPacketDescs,
+		const AudioStreamPacketDescription *inPacketDescs,
+		UInt32 inTrimFramesAtStart, UInt32 inTrimFramesAtEnd,
+		UInt32 inNumParamValues, const AudioQueueParameterEvent *inParamValues,
+		const AudioTimeStamp *inStartTime, AudioTimeStamp *outActualStartTime)
+{
+	// Trimming, scheduled start times and per-buffer parameters are not supported:
+	// accept the plain case only, rather than play something else than asked.
+	if (inTrimFramesAtStart || inTrimFramesAtEnd || inNumParamValues || inStartTime || outActualStartTime)
+		return unimpErr;
+	return inAQ->enqueueBuffer(inBuffer, inNumPacketDescs, inPacketDescs);
+}
+
+OSStatus AudioQueueGetCurrentTime(AudioQueueRef inAQ, AudioQueueTimelineRef inTimeline, AudioTimeStamp *outTimeStamp, Boolean *outTimelineDiscontinuity)
+{
+	return inAQ->getCurrentTime(outTimeStamp, outTimelineDiscontinuity);
+}

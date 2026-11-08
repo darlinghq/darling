@@ -13,6 +13,41 @@ typedef UInt32 AudioQueuePropertyID;
 typedef UInt32 AudioQueueParameterID;
 typedef Float32 AudioQueueParameterValue;
 
+enum
+{
+	kAudioQueueErr_InvalidBuffer = -66687,
+	kAudioQueueErr_BufferEmpty = -66686,
+	kAudioQueueErr_DisposalPending = -66685,
+	kAudioQueueErr_InvalidProperty = -66684,
+	kAudioQueueErr_InvalidPropertySize = -66683,
+	kAudioQueueErr_InvalidParameter = -66682,
+	kAudioQueueErr_CannotStart = -66681,
+	kAudioQueueErr_InvalidDevice = -66680,
+	kAudioQueueErr_BufferInQueue = -66679,
+	kAudioQueueErr_InvalidRunState = -66678,
+	kAudioQueueErr_InvalidQueueType = -66677,
+	kAudioQueueErr_Permissions = -66676,
+	kAudioQueueErr_InvalidPropertyValue = -66675,
+	kAudioQueueErr_PrimeTimedOut = -66674,
+	kAudioQueueErr_CodecNotFound = -66673,
+	kAudioQueueErr_InvalidCodecAccess = -66672,
+	kAudioQueueErr_QueueInvalidated = -66671,
+	kAudioQueueErr_BufferEnqueuedTwice = -66666,
+	kAudioQueueErr_CannotStartYet = -66665,
+	kAudioQueueErr_EnqueueDuringReset = -66632,
+};
+
+enum
+{
+	kAudioQueueProperty_IsRunning = 'aqrn',
+	kAudioQueueProperty_StreamDescription = 'aqft',
+};
+
+enum
+{
+	kAudioQueueParam_Volume = 1,
+};
+
 struct AudioQueueParameterEvent
 {
 	AudioQueueParameterID mID;
