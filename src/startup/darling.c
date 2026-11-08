@@ -44,6 +44,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "darling-config.h"
 #include "launcher-env.h"
 #include "launcher-ids.h"
+#include "launcher-prefix.h"
 
 // Between Linux 4.9 and 4.11, a strange bug has been introduced
 // which prevents connecting to Unix sockets if the socket was
@@ -126,9 +127,12 @@ int main(int argc, char ** argv)
 		prefix = defaultPrefixPath();
 	if (!prefix)
 		return 1;
-	if (strlen(prefix) > 255)
+	enum launcher_prefix_check prefixCheck = launcherCheckPrefix(prefix);
+	if (prefixCheck != LAUNCHER_PREFIX_OK)
 	{
-		fprintf(stderr, "Prefix path too long\n");
+		fprintf(stderr, "%s: %s\n", launcherPrefixCheckMessage(prefixCheck), prefix);
+		if (prefixCheck == LAUNCHER_PREFIX_TOO_LONG)
+			fprintf(stderr, "Use a prefix path of at most %zu bytes.\n", launcherMaxPrefixLength());
 		return 1;
 	}
 	unsetenv("DPREFIX");
@@ -632,16 +636,15 @@ int connectToShellspawn(void)
 	struct sockaddr_un addr;
 	int sockfd;
 
-	// Connect to the shellspawn daemon in the container
+	// Connect to the shellspawn daemon in the container. main() has checked
+	// that the path fits; this check keeps the copy bounded regardless.
+	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
-#if USE_LINUX_4_11_HACK
-	addr.sun_path[0] = '\0';
-	
-	strcpy(addr.sun_path, prefix);
-	strcat(addr.sun_path, SHELLSPAWN_SOCKPATH);
-#else
-	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s"  SHELLSPAWN_SOCKPATH, prefix);
-#endif
+	if (!launcherSocketPath(addr.sun_path, sizeof(addr.sun_path), prefix, SHELLSPAWN_SOCKPATH))
+	{
+		fprintf(stderr, "The prefix path is too long for the shellspawn socket: %s\n", prefix);
+		exit(1);
+	}
 
 	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sockfd == -1)
@@ -839,7 +842,7 @@ void showHelp(const char* argv0)
 	fprintf(stderr, "\t%s shutdown\n", argv0);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Environment variables:\n"
-		"DPREFIX - specifies the location of Darling prefix, defaults to ~/.darling\n");
+		"DPREFIX - specifies the location of Darling prefix as an absolute path, defaults to ~/.darling\n");
 }
 
 void showVersion(const char* argv0) {
