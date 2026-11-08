@@ -38,9 +38,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <pwd.h>
 #include <sys/wait.h>
 #include <sysexits.h>
+#include <sys/auxv.h>
 #include "../shellspawn/shellspawn.h"
 #include "darling.h"
 #include "darling-config.h"
+#include "launcher-env.h"
 #include "launcher-ids.h"
 
 // Between Linux 4.9 and 4.11, a strange bug has been introduced
@@ -904,7 +906,21 @@ pid_t spawnInitProcess(void)
 
 		close(pipefd[0]);
 
-		execl(INSTALL_PREFIX "/bin/darlingserver", "darlingserver", prefix, uid_str, gid_str, pipefd_str, g_fixPermissions ? "1" : "0", NULL);
+		// This exec runs darlingserver as full root. When another user started
+		// us setuid, the kernel marked our own exec secure (AT_SECURE) and the C
+		// library ignored the dangerous loader variables, but darlingserver's
+		// exec is not marked secure. So it gets only the variables it needs, and
+		// a fixed PATH: with the user's PATH it would run fuse-overlayfs, and
+		// the shell it starts for xdg-user-dir, from the user's directories.
+		char* const serverArgv[] = { "darlingserver", prefix, uid_str, gid_str, pipefd_str, g_fixPermissions ? "1" : "0", NULL };
+		char** serverEnv = launcherServerEnvironment(environ, getauxval(AT_SECURE) != 0);
+		if (!serverEnv)
+		{
+			fprintf(stderr, "Cannot set up the environment for darlingserver\n");
+			exit(1);
+		}
+
+		execve(INSTALL_PREFIX "/bin/darlingserver", serverArgv, serverEnv);
 
 		fprintf(stderr, "Failed to start darlingserver\n");
 		exit(1);
