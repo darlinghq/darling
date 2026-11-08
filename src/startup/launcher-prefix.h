@@ -32,13 +32,12 @@ enum launcher_prefix_check
 	LAUNCHER_PREFIX_TOO_LONG,
 };
 
-// The longest prefix path for which every Unix socket path in the prefix (the
-// darlingserver and shellspawn sockets) fits into sockaddr_un.sun_path.
+// The longest prefix path the launcher accepts. The paths it builds from the
+// prefix (the prefix plus a name inside it) must fit into PATH_MAX-sized buffers.
 size_t launcherMaxPrefixLength(void);
 
 // Checks a prefix path before anything is done with it. It must be absolute,
-// so that it means the same to the launcher, darlingserver and the container,
-// and short enough for the socket paths.
+// so that it means the same to the launcher, darlingserver and the container.
 enum launcher_prefix_check launcherCheckPrefix(const char* prefix);
 
 // A message for the user, or NULL for LAUNCHER_PREFIX_OK.
@@ -53,5 +52,11 @@ bool launcherPrefixModeAcceptable(mode_t mode);
 // Writes prefix followed by suffix into out (size bytes, normally sun_path).
 // Returns false, leaving an empty string, if it does not fit.
 bool launcherSocketPath(char* out, size_t size, const char* prefix, const char* suffix);
+
+// Like launcherSocketPath(), but names the socket through an open descriptor of
+// the directory that suffix is relative to: "/proc/self/fd/<dirfd><suffix>".
+// The result is short whatever the directory's own path is, so a socket in a
+// prefix of any length can be reached through sun_path.
+bool launcherDirSocketPath(char* out, size_t size, int dirfd, const char* suffix);
 
 #endif

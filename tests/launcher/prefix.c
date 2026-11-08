@@ -1,6 +1,10 @@
 // Host-side test of the setuid launcher's prefix path checks
 // (src/startup/launcher-prefix.c).
+#include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/socket.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/un.h>
@@ -28,12 +32,9 @@ static const char* pathOfLength(size_t len)
 
 static void test_max_length(void)
 {
-	size_t max = launcherMaxPrefixLength();
-
-	// The shellspawn socket has the longer name; with the longest accepted
-	// prefix it exactly fills sun_path.
-	CHECK(max + strlen(SHELLSPAWN_SOCKPATH) + 1 == SUN_PATH_SIZE);
-	CHECK(max + strlen("/.darlingserver.sock") + 1 <= SUN_PATH_SIZE);
+	// Not tied to sun_path: sockets are reached through a descriptor.
+	CHECK(launcherMaxPrefixLength() == 255);
+	CHECK(launcherMaxPrefixLength() > SUN_PATH_SIZE);
 }
 
 static void test_check(void)
@@ -49,8 +50,8 @@ static void test_check(void)
 	CHECK(launcherCheckPrefix("~/prefix") == LAUNCHER_PREFIX_RELATIVE);
 	CHECK(launcherCheckPrefix(pathOfLength(max)) == LAUNCHER_PREFIX_OK);
 	CHECK(launcherCheckPrefix(pathOfLength(max + 1)) == LAUNCHER_PREFIX_TOO_LONG);
-	// The old limit, which let the socket path overflow sun_path.
-	CHECK(launcherCheckPrefix(pathOfLength(255)) == LAUNCHER_PREFIX_TOO_LONG);
+	// Longer than sun_path can hold together with the socket names.
+	CHECK(launcherCheckPrefix(pathOfLength(SUN_PATH_SIZE)) == LAUNCHER_PREFIX_OK);
 
 	CHECK(launcherPrefixCheckMessage(LAUNCHER_PREFIX_OK) == NULL);
 	CHECK(launcherPrefixCheckMessage(LAUNCHER_PREFIX_RELATIVE) != NULL);
@@ -76,7 +77,7 @@ static void test_socket_path(void)
 		struct sockaddr_un addr;
 		char canary[64];
 	} s;
-	size_t max = launcherMaxPrefixLength();
+	size_t max = SUN_PATH_SIZE - 1 - strlen(SHELLSPAWN_SOCKPATH);
 
 	memset(&s, 0x5a, sizeof(s));
 	CHECK(launcherSocketPath(s.addr.sun_path, sizeof(s.addr.sun_path), "/home/user/.darling", SHELLSPAWN_SOCKPATH));
@@ -100,12 +101,68 @@ static void test_socket_path(void)
 	CHECK(!launcherSocketPath(s.addr.sun_path, 0, "/x", "/y"));
 }
 
+// A socket inside a directory whose path is far too long for sun_path can be
+// bound and connected to through a descriptor of the directory.
+static void test_dir_socket_path(void)
+{
+	char base[] = "/tmp/launcher-prefix-XXXXXX";
+	char dir[1024];
+	char real[1100];
+	struct sockaddr_un addr;
+	int dirfd, server, client;
+	struct stat st;
+
+	CHECK(mkdtemp(base) != NULL);
+	snprintf(dir, sizeof(dir), "%s", base);
+	// Grow the path to over 250 bytes, one level at a time.
+	while (strlen(dir) < 250)
+	{
+		strcat(dir, "/abcdefghijklmnopqrstuvwxyz0123456789");
+		CHECK(mkdir(dir, 0700) == 0);
+	}
+	snprintf(real, sizeof(real), "%s/test.sock", dir);
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	CHECK(!launcherSocketPath(addr.sun_path, sizeof(addr.sun_path), dir, "/test.sock"));
+
+	dirfd = open(dir, O_PATH | O_DIRECTORY | O_CLOEXEC);
+	CHECK(dirfd >= 0);
+	CHECK(launcherDirSocketPath(addr.sun_path, sizeof(addr.sun_path), dirfd, "/test.sock"));
+	CHECK(strlen(addr.sun_path) < 40);
+
+	server = socket(AF_UNIX, SOCK_STREAM, 0);
+	client = socket(AF_UNIX, SOCK_STREAM, 0);
+	CHECK(server >= 0 && client >= 0);
+	CHECK(bind(server, (struct sockaddr*) &addr, sizeof(addr)) == 0);
+	CHECK(listen(server, 1) == 0);
+	// The socket is where the long path says.
+	CHECK(lstat(real, &st) == 0 && S_ISSOCK(st.st_mode));
+	CHECK(connect(client, (struct sockaddr*) &addr, sizeof(addr)) == 0);
+
+	close(client);
+	close(server);
+	close(dirfd);
+	unlink(real);
+	// Remove the directories, innermost first.
+	while (strlen(dir) > strlen(base))
+	{
+		rmdir(dir);
+		*strrchr(dir, '/') = '\0';
+	}
+	rmdir(base);
+
+	CHECK(!launcherDirSocketPath(addr.sun_path, sizeof(addr.sun_path), -1, "/test.sock"));
+	CHECK(addr.sun_path[0] == '\0');
+}
+
 int main(void)
 {
 	test_max_length();
 	test_check();
 	test_mode();
 	test_socket_path();
+	test_dir_socket_path();
 
 	if (g_failures)
 	{

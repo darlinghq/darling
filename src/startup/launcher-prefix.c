@@ -21,31 +21,14 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/un.h>
-#include "../shellspawn/shellspawn.h"
 #include "launcher-prefix.h"
 
-// darlingserver creates its socket here (src/external/darlingserver).
-#define DARLINGSERVER_SOCKPATH "/.darlingserver.sock"
-
-static const char* const socketSuffixes[] = {
-	SHELLSPAWN_SOCKPATH,
-	DARLINGSERVER_SOCKPATH,
-};
+// The launcher's limit since before the socket paths were bounded.
+#define LAUNCHER_PREFIX_MAX_LENGTH 255
 
 size_t launcherMaxPrefixLength(void)
 {
-	const size_t pathSize = sizeof(((struct sockaddr_un*) NULL)->sun_path);
-	size_t longest = 0;
-
-	for (size_t i = 0; i < sizeof(socketSuffixes) / sizeof(socketSuffixes[0]); i++)
-	{
-		size_t len = strlen(socketSuffixes[i]);
-		if (len > longest)
-			longest = len;
-	}
-
-	// Room for the terminating NUL.
-	return pathSize - 1 - longest;
+	return LAUNCHER_PREFIX_MAX_LENGTH;
 }
 
 enum launcher_prefix_check launcherCheckPrefix(const char* prefix)
@@ -70,7 +53,7 @@ const char* launcherPrefixCheckMessage(enum launcher_prefix_check check)
 		case LAUNCHER_PREFIX_RELATIVE:
 			return "The prefix path must be absolute";
 		case LAUNCHER_PREFIX_TOO_LONG:
-			return "The prefix path is too long for the sockets in the prefix";
+			return "The prefix path is too long";
 	}
 	return "The prefix path is not valid";
 }
@@ -94,4 +77,19 @@ bool launcherSocketPath(char* out, size_t size, const char* prefix, const char* 
 		return false;
 	}
 	return true;
+}
+
+bool launcherDirSocketPath(char* out, size_t size, int dirfd, const char* suffix)
+{
+	char dir[32];
+
+	if (dirfd < 0)
+	{
+		if (size > 0)
+			out[0] = '\0';
+		return false;
+	}
+
+	snprintf(dir, sizeof(dir), "/proc/self/fd/%d", dirfd);
+	return launcherSocketPath(out, size, dir, suffix);
 }

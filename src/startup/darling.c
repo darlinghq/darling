@@ -634,15 +634,24 @@ static size_t escapeQuotes(char *dest, const char *src)
 int connectToShellspawn(void)
 {
 	struct sockaddr_un addr;
-	int sockfd;
+	int sockfd, prefixfd;
 
-	// Connect to the shellspawn daemon in the container. main() has checked
-	// that the path fits; this check keeps the copy bounded regardless.
+	// Connect to the shellspawn daemon in the container. sun_path holds only
+	// 108 bytes, so the socket is named through a descriptor of the prefix
+	// directory, which keeps the path short for a prefix of any length. This
+	// runs after the permanent drop, so the prefix is opened as the user.
+	prefixfd = open(prefix, O_PATH | O_DIRECTORY | O_CLOEXEC);
+	if (prefixfd == -1)
+	{
+		fprintf(stderr, "Cannot open the prefix %s: %s\n", prefix, strerror(errno));
+		exit(1);
+	}
+
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
-	if (!launcherSocketPath(addr.sun_path, sizeof(addr.sun_path), prefix, SHELLSPAWN_SOCKPATH))
+	if (!launcherDirSocketPath(addr.sun_path, sizeof(addr.sun_path), prefixfd, SHELLSPAWN_SOCKPATH))
 	{
-		fprintf(stderr, "The prefix path is too long for the shellspawn socket: %s\n", prefix);
+		fprintf(stderr, "Cannot build the shellspawn socket path\n");
 		exit(1);
 	}
 
@@ -655,9 +664,10 @@ int connectToShellspawn(void)
 
 	if (connect(sockfd, (struct sockaddr*) &addr, sizeof(addr)) == -1)
 	{
-		fprintf(stderr, "Error connecting to shellspawn in the container (%s): %s\n", addr.sun_path, strerror(errno));
+		fprintf(stderr, "Error connecting to shellspawn in the container (%s" SHELLSPAWN_SOCKPATH "): %s\n", prefix, strerror(errno));
 		exit(1);
 	}
+	close(prefixfd);
 
 	return sockfd;
 }
