@@ -204,6 +204,17 @@ option(ADHOC_CODESIGN "Ad-hoc sign every Mach-O image Darling builds" ON)
 # Host-side unit tests, run with ctest from the build directory
 enable_testing()
 
+# Tests of the install and packaging scripts; they need no Darling build
+find_package(Python3 QUIET COMPONENTS Interpreter)
+if (Python3_Interpreter_FOUND)
+	add_test(NAME install_symlink
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/install-symlink.py)
+	add_test(NAME debian_packaging
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/debian-packaging.py)
+	# debian-packaging.py exits with 77 when debhelper is not installed
+	set_tests_properties(debian_packaging PROPERTIES SKIP_RETURN_CODE 77)
+endif()
+
 if (DEBIAN_PACKAGING)
 	set(COMPONENTS_DEFAULT "all")
 else()

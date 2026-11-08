@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -71,4 +72,8 @@ class Packaging(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    if not (shutil.which('dh_install') and shutil.which('dh_makeshlibs')):
+        # ctest reports this exit status as a skipped test
+        print('SKIP: needs debhelper')
+        sys.exit(77)
     unittest.main()
