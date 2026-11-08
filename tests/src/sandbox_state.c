@@ -7,7 +7,8 @@
 // were observed on macOS 27.0.1 (arm64); the same program runs there.
 // Darling enforces no profile, so with an operation every check is 0.
 //
-// Build for macOS or Darling (x86_64 or i386) and run without arguments.
+// Build for Darling (x86_64 or i386), or for macOS with
+// -DSANDBOX_STATE_DECLARE_SPI, and run without arguments.
 // Prints PASS and exits 0 on success.
 #define __APPLE_API_PRIVATE
 #include <sandbox.h>
@@ -21,8 +22,15 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-// The SDK's <sandbox.h> may lack the SPI; these are the prototypes clients use
-// (WebKit's SandboxSPI.h)
+// macOS's SDK <sandbox.h> lacks the SPI: build there with
+// -DSANDBOX_STATE_DECLARE_SPI. These are the declarations clients use
+// (WebKit's SandboxSPI.h); Darling's <sandbox.h> has them.
+#ifdef SANDBOX_STATE_DECLARE_SPI
+enum sandbox_filter_type {
+	SANDBOX_FILTER_NONE,
+	SANDBOX_FILTER_PATH,
+};
+#endif
 int sandbox_check(pid_t pid, const char *operation, enum sandbox_filter_type type, ...);
 char *sandbox_extension_issue_file(const char *extension_class, const char *path, uint32_t flags);
 char *sandbox_extension_issue_mach(const char *extension_class, const char *name, uint32_t flags);
@@ -159,6 +167,26 @@ static void checkSandboxedExtensions(const char *parentToken)
 	CHECK(sandbox_extension_release(handle) == -1 && errno == EINVAL);
 	errno = 0;
 	CHECK(sandbox_extension_release(123456) == -1 && errno == EINVAL);
+	errno = 0;
+	CHECK(sandbox_extension_release(-1) == -1 && errno == EINVAL);
+	// QUIRK test (see sandbox_extension_release): handle 0 always releases
+	CHECK(sandbox_extension_release(0) == 0);
+
+	// a fully released token gets a new handle when consumed again
+	int64_t again = sandbox_extension_consume(parentToken);
+	CHECK(again > 0 && again != handle);
+
+	// a forked child holds its parent's consumed extensions (on macOS the
+	// two then share them; Darling gives the child a copy, so what the
+	// parent may release afterwards is not checked)
+	fflush(stdout);
+	pid_t child = fork();
+	if (child == 0) {
+		g_failures = 0;
+		CHECK(sandbox_extension_release(again) == 0);
+		finishChild();
+	}
+	waitChild(child, "release in a forked child");
 }
 
 static void checkSandboxed(const char *parentToken)
@@ -170,6 +198,7 @@ static void checkSandboxed(const char *parentToken)
 	pid_t child = fork();
 	if (child == 0) {
 		char byte = 'x';
+		g_failures = 0;
 		close(ready[0]);
 		close(done[1]);
 		if (enterSandbox() != 0)
@@ -191,6 +220,7 @@ static void checkSandboxed(const char *parentToken)
 		fflush(stdout);
 		pid_t grandchild = fork();
 		if (grandchild == 0) {
+			g_failures = 0;
 			CHECK(sandbox_check(getpid(), NULL, SANDBOX_FILTER_NONE) == 1);
 			finishChild();
 		}
@@ -200,6 +230,7 @@ static void checkSandboxed(const char *parentToken)
 		fflush(stdout);
 		pid_t execed = fork();
 		if (execed == 0) {
+			g_failures = 0;
 			execl(g_self, g_self, "--report-sandboxed", (char *) NULL);
 			printf("FAIL: exec errno=%d\n", errno);
 			finishChild();
@@ -230,6 +261,7 @@ static void checkApply(void)
 	fflush(stdout);
 	pid_t child = fork();
 	if (child == 0) {
+		g_failures = 0;
 		void *lib = dlopen("/usr/lib/libsandbox.1.dylib", RTLD_NOW);
 		void *(*compileString)(const char *, void *, char **) = lib ? dlsym(lib, "sandbox_compile_string") : NULL;
 		int (*apply)(void *) = lib ? dlsym(lib, "sandbox_apply") : NULL;
