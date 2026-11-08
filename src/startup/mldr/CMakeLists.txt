@@ -19,6 +19,7 @@ target_include_directories(mldr_dserver_rpc PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/
 set(mldr_sources
 	mldr.c
 	socket_bitmap.c
+	image_protection.c
 	commpage.c
 	elfcalls/elfcalls.c
 	elfcalls/native_fork.c
@@ -72,6 +73,10 @@ target_include_directories(mldr_native_fork_test PRIVATE ${CMAKE_CURRENT_SOURCE_
 target_compile_options(mldr_native_fork_test PRIVATE -pthread)
 target_link_options(mldr_native_fork_test PRIVATE -pthread)
 add_test(NAME mldr_native_fork COMMAND mldr_native_fork_test)
+
+add_executable(mldr_image_protection_test ${CMAKE_SOURCE_DIR}/tests/mldr/image_protection.c image_protection.c)
+target_include_directories(mldr_image_protection_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME mldr_image_protection COMMAND mldr_image_protection_test)
 
 if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
 	add_executable(mldr_cpu_caps_x86_test ${CMAKE_SOURCE_DIR}/tests/mldr/cpu_caps_x86.c cpu_caps_x86.c)

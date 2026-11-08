@@ -35,6 +35,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "commpage.h"
 #include "loader.h"
 #include "socket_bitmap.h"
+#include "image_protection.h"
 #include <sys/resource.h>
 #include <sys/prctl.h>
 #include <sys/socket.h>
@@ -901,7 +902,16 @@ static void __attribute__((noreturn)) refuse_executable(const char* problem) {
 //     not started (refuse_executable()).
 // An unknown policy value is treated as `enforce`. If darlingserver cannot be
 // asked for the policy, it is taken to be `off`, as in dyld.
-// Returns the descriptor to map the image from.
+//
+// Under `enforce`, the whole file is first copied into a sealed snapshot
+// (mldr_snapshot_image()); darlingserver checks the snapshot and the image is
+// mapped from it, so the file changing between the check and the mapping
+// does not matter. This costs a copy of the file in memory, which is why it is
+// done only under `enforce`. Without it, the file is checked and mapped as it
+// is.
+//
+// Returns the descriptor to map the image from, positioned at `image_offset`:
+// `fd` itself, or the snapshot, which the caller closes after mapping.
 static int code_signing_gate(int fd, uint64_t image_offset, struct load_results* lr) {
 	dserver_cs_state_t state;
 	uint32_t policy = dserver_code_signing_policy_off;
@@ -914,6 +924,18 @@ static int code_signing_gate(int fd, uint64_t image_offset, struct load_results*
 		policy = state.code_signing_policy;
 	if (policy > dserver_code_signing_policy_enforce)
 		policy = dserver_code_signing_policy_enforce;
+
+	if (policy == dserver_code_signing_policy_enforce) {
+		int snapshot = mldr_snapshot_image(fd);
+		if (snapshot < 0) {
+			char problem[128];
+			snprintf(problem, sizeof(problem), "could not be checked (the file cannot be copied: %s)", strerror(-snapshot));
+			refuse_executable(problem);
+		}
+		if (lseek(snapshot, (off_t)image_offset, SEEK_SET) != (off_t)image_offset)
+			refuse_executable("could not be checked (the image is outside the file)");
+		fd = snapshot;
+	}
 
 	code = dserver_rpc_cs_register_image(fd, image_offset, &flags);
 
