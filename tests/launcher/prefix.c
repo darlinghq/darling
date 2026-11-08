@@ -2,6 +2,7 @@
 // (src/startup/launcher-prefix.c).
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include "../../src/shellspawn/shellspawn.h"
 #include "launcher-prefix.h"
@@ -56,6 +57,18 @@ static void test_check(void)
 	CHECK(launcherPrefixCheckMessage(LAUNCHER_PREFIX_TOO_LONG) != NULL);
 }
 
+static void test_mode(void)
+{
+	CHECK(launcherPrefixModeAcceptable(S_IFDIR | 0700));
+	CHECK(launcherPrefixModeAcceptable(S_IFDIR | 0755));
+	CHECK(launcherPrefixModeAcceptable(S_IFDIR | 0775));
+	CHECK(launcherPrefixModeAcceptable(S_IFDIR | 0750));
+	CHECK(!launcherPrefixModeAcceptable(S_IFDIR | 0777));
+	CHECK(!launcherPrefixModeAcceptable(S_IFDIR | 0757));
+	CHECK(!launcherPrefixModeAcceptable(S_IFDIR | 0702));
+	CHECK(!launcherPrefixModeAcceptable(S_IFDIR | S_ISVTX | 0777));
+}
+
 static void test_socket_path(void)
 {
 	struct
@@ -91,6 +104,7 @@ int main(void)
 {
 	test_max_length();
 	test_check();
+	test_mode();
 	test_socket_path();
 
 	if (g_failures)

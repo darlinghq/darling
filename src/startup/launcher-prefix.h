@@ -22,6 +22,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <sys/types.h>
 
 enum launcher_prefix_check
 {
@@ -42,6 +43,12 @@ enum launcher_prefix_check launcherCheckPrefix(const char* prefix);
 
 // A message for the user, or NULL for LAUNCHER_PREFIX_OK.
 const char* launcherPrefixCheckMessage(enum launcher_prefix_check check);
+
+// Whether an existing prefix directory with this mode may be used. The prefix
+// root holds the darlingserver socket, and the container's files below it, so
+// other users must not be able to write it. Group write is accepted: with
+// user-private groups a umask of 002 is common.
+bool launcherPrefixModeAcceptable(mode_t mode);
 
 // Writes prefix followed by suffix into out (size bytes, normally sun_path).
 // Returns false, leaving an empty string, if it does not fit.

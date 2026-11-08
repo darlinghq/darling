@@ -19,6 +19,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include "../shellspawn/shellspawn.h"
 #include "launcher-prefix.h"
@@ -72,6 +73,11 @@ const char* launcherPrefixCheckMessage(enum launcher_prefix_check check)
 			return "The prefix path is too long for the sockets in the prefix";
 	}
 	return "The prefix path is not valid";
+}
+
+bool launcherPrefixModeAcceptable(mode_t mode)
+{
+	return (mode & S_IWOTH) == 0;
 }
 
 bool launcherSocketPath(char* out, size_t size, const char* prefix, const char* suffix)

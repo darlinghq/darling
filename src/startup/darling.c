@@ -1221,7 +1221,14 @@ void setupPrefix()
 	// The prefix and everything in it is created by and for the user.
 	useInvokingIds();
 
+	// The new prefix is private to the user whatever the umask: it holds the
+	// darlingserver socket and the container's files.
 	createDir(prefix);
+	if (chmod(prefix, 0700) != 0)
+	{
+		fprintf(stderr, "Cannot set the permissions of %s: %s\n", prefix, strerror(errno));
+		exit(1);
+	}
 	strcpy(path, prefix);
 	strcat(path, "/");
 	plen = strlen(path);
@@ -1544,6 +1551,11 @@ void checkPrefixOwner()
 		if (g_originalUid != 0 && st.st_uid != g_originalUid)
 		{
 			fprintf(stderr, "You do not own the prefix directory.\n");
+			exit(1);
+		}
+		if (!launcherPrefixModeAcceptable(st.st_mode))
+		{
+			fprintf(stderr, "The prefix directory %s is writable by other users. To use it, run: chmod o-w '%s'\n", prefix, prefix);
 			exit(1);
 		}
 	}
