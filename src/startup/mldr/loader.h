@@ -24,6 +24,9 @@ struct load_results {
 	int kernfd;
 	int lifetime_pipe;
 
+	// seal the read-only segments of the images mldr maps (code_signing_gate())
+	bool seal_images;
+
 	size_t argc;
 	size_t envc;
 	char** argv;

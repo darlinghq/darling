@@ -17,8 +17,11 @@
 //   csr_check() succeeds exactly for the flags it contains (the kernel
 //   debugger counting as allowed when untrusted kexts are);
 // - libsystem_kernel exports no __darling_mseal_range.
+// The attach target is an ad-hoc signed copy of this program (adhoc_sign.h),
+// so that it may run under enforce.
 #include <dlfcn.h>
 #include <errno.h>
+#include <mach-o/dyld.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,6 +34,8 @@
 
 #include <darlingserver/rpc-supplement.h>
 
+#include "adhoc_sign.h"
+
 extern int __mac_syscall(const char* policy, int call, void* arg);
 
 typedef int (*get_fn)(dserver_system_config_t*);
@@ -42,6 +47,8 @@ static int failures;
 static dserver_system_config_t saved;
 static int pushed;
 static pid_t target;
+static char target_dir[64];
+static char target_path[128];
 
 static void check(int ok, const char* what)
 {
@@ -86,6 +93,10 @@ static void finish(void)
 		kill(target, SIGKILL);
 		waitpid(target, NULL, 0);
 	}
+	if (target_path[0])
+		unlink(target_path);
+	if (target_dir[0])
+		rmdir(target_dir);
 	printf("%s\n", failures ? "FAILED" : "ALL PASSED");
 	fflush(stdout);
 	_exit(failures ? 1 : 0);
@@ -149,9 +160,30 @@ static void test_csr(void)
 	check(csr_check(0) == 0, "csr_check(0) succeeds");
 }
 
-static void test_attach_refused(const char* self)
+static void test_attach_refused(void)
 {
 	int ready[2];
+	char self[1024];
+	uint32_t self_size = sizeof(self);
+
+	if (_NSGetExecutablePath(self, &self_size) != 0) {
+		check(0, "own path");
+		return;
+	}
+
+	// an unsigned program is not started under enforce
+	strcpy(target_dir, "/tmp/cs-ptrace.XXXXXX");
+	if (mkdtemp(target_dir) == NULL) {
+		target_dir[0] = '\0';
+		check(0, "temporary directory for the signed target");
+		return;
+	}
+	snprintf(target_path, sizeof(target_path), "%s/target", target_dir);
+	if (adhoc_sign(self, target_path, "org.darlinghq.test.cs-ptrace-mac-csr", 0, NULL) != 0) {
+		target_path[0] = '\0';
+		check(0, "ad-hoc signed copy of this program");
+		return;
+	}
 
 	dserver_system_config_t push = as_push(&saved);
 	push.code_signing_policy = dserver_code_signing_policy_enforce;
@@ -170,7 +202,7 @@ static void test_attach_refused(const char* self)
 		char fd[16];
 		close(ready[0]);
 		snprintf(fd, sizeof(fd), "%d", ready[1]);
-		execl(self, self, "target", fd, (char*) NULL);
+		execl(target_path, target_path, "target", fd, (char*) NULL);
 		_exit(1);
 	}
 	close(ready[1]);
@@ -221,7 +253,7 @@ int main(int argc, char** argv)
 		"libsystem_kernel exports no __darling_mseal_range");
 
 	if (getuid() == 0)
-		test_attach_refused(argv[0]);
+		test_attach_refused();
 	else
 		printf("SKIP: the attach check needs root\n");
 

@@ -35,14 +35,18 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "commpage.h"
 #include "loader.h"
 #include "socket_bitmap.h"
+#include "image_protection.h"
 #include <sys/resource.h>
 #include <sys/prctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <darlingserver/rpc.h>
+#include <darlingserver/rpc-supplement.h>
 #include <sys/ptrace.h>
 #include <pthread.h>
 #include <sys/utsname.h>
+#include <signal.h>
+#include <kern/cs_blobs.h>
 
 #ifndef PAGE_SIZE
 #	define PAGE_SIZE	4096
@@ -76,7 +80,8 @@ static void load_fat(int fd, cpu_type_t cpu, bool expect_dylinker, char** argv, 
 static void load(const char* path, cpu_type_t cpu, bool expect_dylinker, char** argv, struct load_results* lr);
 static int native_prot(int prot);
 static void setup_space(struct load_results* lr, bool is_64_bit);
-static void register_code_signature(int fd, uint64_t image_offset);
+static int code_signing_gate(int fd, uint64_t image_offset, struct load_results* lr);
+static void seal_segment(const char* name, uintptr_t address, uint64_t file_size, int prot);
 static void process_special_env(struct load_results* lr);
 static void start_thread(struct load_results* lr);
 static bool is_kernel_at_least(int major, int minor);
@@ -98,6 +103,9 @@ __attribute__((used))
 struct load_results mldr_load_results = {0};
 
 static uint32_t stack_size = 0;
+
+// the path of the executable being started, for messages
+static const char* exec_path = NULL;
 
 #ifdef __i386__
 // how many times mldr32 executed itself again to place the top of the address space
@@ -171,6 +179,8 @@ int main(int argc, char** argv, char** envp)
 	prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY, 0, 0, 0);
 
 	process_special_env(&mldr_load_results);
+
+	exec_path = filename;
 
 #ifdef __i386__
 	load(filename, CPU_TYPE_X86, false, argv, &mldr_load_results); // accept i386 only
@@ -843,13 +853,141 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 	}
 };
 
+// The code signing state darlingserver recorded for this process; false when
+// it cannot be read.
+static bool own_code_signing_state(dserver_cs_state_t* state) {
+	return dserver_rpc_cs_get_state(0, state, sizeof(*state)) == 0;
+}
+
+// What is wrong with the registered image's signature, or NULL if nothing is.
+static const char* code_signing_problem(void) {
+	dserver_cs_state_t state;
+
+	if (!own_code_signing_state(&state))
+		return "could not be checked";
+
+	switch (state.status) {
+		case dserver_cs_status_valid: return NULL;
+		case dserver_cs_status_unsigned: return "is missing";
+		case dserver_cs_status_invalid: return "is not valid";
+		default: return "could not be checked";
+	}
+}
+
+// Refuses to start the executable. On macOS, a program whose code signature
+// is rejected at launch does not make exec fail with an errno: the new process
+// is killed with SIGKILL (crash reports name the CODESIGNING termination
+// namespace, see Apple's "Understanding the exception types in a crash
+// report"). By the time mldr runs, the Linux exec has happened as well, so
+// mldr does the same, before anything of the image is mapped. The message is
+// Darling's addition; macOS logs the reason to the system log instead.
+static void __attribute__((noreturn)) refuse_executable(const char* problem) {
+	fprintf(stderr, "mldr: %s: refusing to run it: its code signature %s\n",
+		exec_path ? exec_path : "(unknown)", problem);
+	fflush(stderr);
+	kill(getpid(), SIGKILL);
+	_exit(1);
+}
+
 // Hands the executable about to be mapped (the slice at `image_offset`) to
 // darlingserver, which reads its code signature and records it as the
 // process's signing state, the state csops() reports. This runs on every exec,
-// after the check-in. It only records: the result is not acted on here.
-static void register_code_signature(int fd, uint64_t image_offset) {
+// after the check-in and before anything is mapped. What happens next depends
+// on the process's code signing policy (`CodeSigningPolicy` in the
+// org.darlinghq.security domain, as darlingserver recorded it when the
+// process started):
+//   - off (the default): nothing; the result is not looked at;
+//   - warn: an image that `enforce` would refuse is reported on stderr, and
+//     runs;
+//   - enforce: an image darlingserver does not report as validly signed is
+//     not started (refuse_executable()).
+// An unknown policy value is treated as `enforce`. If darlingserver cannot be
+// asked for the policy, it is taken to be `off`, as in dyld.
+//
+// Under `enforce`, the whole file is first copied into a sealed snapshot
+// (mldr_snapshot_image()); darlingserver checks the snapshot and the image is
+// mapped from it, so the file changing between the check and the mapping
+// does not matter. This costs a copy of the file in memory, which is why it is
+// done only under `enforce`. Without it, the file is checked and mapped as it
+// is.
+//
+// Whatever the policy, the read-only segments of the images mldr maps are
+// sealed (`lr->seal_images`, see seal_segment()) when `SealImages` is on and
+// the program uses the hardened runtime (CS_RUNTIME) without the
+// get-task-allow entitlement, i.e. when it is not meant to be debugged. dyld
+// applies the same rule to the images it loads. Not in 32-bit processes,
+// which Linux has no mseal() for.
+//
+// Returns the descriptor to map the image from, positioned at `image_offset`:
+// `fd` itself, or the snapshot, which the caller closes after mapping.
+static int code_signing_gate(int fd, uint64_t image_offset, struct load_results* lr) {
+	dserver_cs_state_t state;
+	uint32_t policy = dserver_code_signing_policy_off;
 	uint32_t flags = 0;
-	dserver_rpc_cs_register_image(fd, image_offset, &flags);
+	int code;
+
+	if (own_code_signing_state(&state))
+		policy = state.code_signing_policy;
+	if (policy > dserver_code_signing_policy_enforce)
+		policy = dserver_code_signing_policy_enforce;
+
+	if (policy == dserver_code_signing_policy_enforce) {
+		int snapshot = mldr_snapshot_image(fd);
+		if (snapshot < 0) {
+			char problem[128];
+			snprintf(problem, sizeof(problem), "could not be checked (the file cannot be copied: %s)", strerror(-snapshot));
+			refuse_executable(problem);
+		}
+		if (lseek(snapshot, (off_t)image_offset, SEEK_SET) != (off_t)image_offset)
+			refuse_executable("could not be checked (the image is outside the file)");
+		fd = snapshot;
+	}
+
+	code = dserver_rpc_cs_register_image(fd, image_offset, &flags);
+
+	if (policy == dserver_code_signing_policy_enforce) {
+		// under enforce, darlingserver reports CS_VALID only for a valid signature
+		if (code < 0)
+			refuse_executable("could not be checked");
+		if (!(flags & CS_VALID)) {
+			const char* problem = code_signing_problem();
+			refuse_executable(problem ? problem : "is not valid");
+		}
+	} else if (policy == dserver_code_signing_policy_warn) {
+		// without enforce, darlingserver reports CS_VALID for every image, so the status tells
+		const char* problem = (code < 0) ? "could not be checked" : code_signing_problem();
+		if (problem) {
+			fprintf(stderr, "mldr: warning: %s: its code signature %s; "
+				"code signing enforcement would refuse to run it\n",
+				exec_path ? exec_path : "(unknown)", problem);
+		}
+	}
+
+#ifndef __i386__
+	// the configuration is read only for a program the setting could apply to
+	if (code == 0 && (flags & (CS_VALID | CS_RUNTIME | CS_GET_TASK_ALLOW)) == (CS_VALID | CS_RUNTIME)) {
+		dserver_system_config_t config;
+		if (dserver_rpc_get_system_config(&config, sizeof(config)) == 0 && config.seal_images)
+			lr->seal_images = true;
+	}
+#else
+	(void) lr;
+#endif
+
+	return fd;
+}
+
+// Seals a read-only segment that was just mapped (see code_signing_gate()):
+// it can no longer be made writable, unmapped or replaced. Only the part that
+// is mapped from the file is sealed. A host kernel without mseal() (before
+// Linux 6.10) leaves the segment unsealed, without a message (dyld reports
+// that once per process); other failures are reported and the program runs.
+static void seal_segment(const char* name, uintptr_t address, uint64_t file_size, int prot) {
+	int ret = mldr_seal_range((void*)address, (size_t)file_size, prot);
+	if (ret < 0 && ret != -ENOSYS) {
+		fprintf(stderr, "mldr: warning: cannot seal %.16s of %s: %s\n", name,
+			exec_path ? exec_path : "(unknown)", strerror(-ret));
+	}
 }
 
 static void start_thread(struct load_results* lr) {

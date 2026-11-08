@@ -62,6 +62,7 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 	bool pie = false;
 	uint32_t fat_offset;
 	void* tmp_map_base = NULL;
+	const int source_fd = fd;
 
 	if (!expect_dylinker)
 	{
@@ -78,7 +79,7 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 	fat_offset = lseek(fd, 0, SEEK_CUR);
 
 	if (!expect_dylinker)
-		register_code_signature(fd, fat_offset);
+		fd = code_signing_gate(fd, fat_offset, lr);
 
 	if (read(fd, &header, sizeof(header)) != sizeof(header))
 	{
@@ -259,6 +260,13 @@ no_slide:
 
 					if (seg->fileoff == 0)
 						mappedHeader = (struct MACH_HEADER_STRUCT*) (seg->vmaddr + slide);
+
+					if (lr->seal_images && (useprot & PROT_READ) && !(useprot & PROT_WRITE) &&
+						(strncmp(seg->segname, SEG_TEXT, sizeof(seg->segname)) == 0 ||
+						 strncmp(seg->segname, SEG_LINKEDIT, sizeof(seg->segname)) == 0))
+					{
+						seal_segment(seg->segname, addr, seg->filesize, useprot);
+					}
 				}
 
 				if (seg->vmaddr + slide + seg->vmsize > lr->vm_addr_max)
@@ -386,6 +394,10 @@ no_slide:
 
 	if (tmp_map_base)
 		munmap(tmp_map_base, PAGE_ROUNDUP(sizeof(header) + header.sizeofcmds));
+
+	// the image was mapped from a snapshot (code_signing_gate()); the mappings keep it alive
+	if (fd != source_fd)
+		close(fd);
 }
 
 
