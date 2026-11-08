@@ -93,6 +93,12 @@ add_subdirectory(libelfloader/wrapgen)
 # add the Linux build of libsimple now
 add_subdirectory(libsimple "${CMAKE_CURRENT_BINARY_DIR}/libsimple-linux")
 add_subdirectory(external/darlingserver)
+
+# host tests of the build-time ad-hoc signing (buildtools/adhoc-sign)
+if (ADHOC_CODESIGN AND TARGET darlingserver_dc_codesign)
+	add_subdirectory(${CMAKE_SOURCE_DIR}/tests/adhoc-sign ${CMAKE_CURRENT_BINARY_DIR}/adhoc-sign-tests)
+endif()
+
 add_subdirectory(startup)
 
 include_directories(${CMAKE_SOURCE_DIR}/basic-headers)
