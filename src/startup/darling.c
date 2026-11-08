@@ -67,6 +67,16 @@ static void useInvokingIds(void)
 	}
 }
 
+// For the rest of its life the launcher only talks to processes of the user.
+static void dropPrivileges(void)
+{
+	if (!launcherDropPrivileges(&g_invokingIds))
+	{
+		fprintf(stderr, "Cannot drop root privileges: %s\n", strerror(errno));
+		exit(1);
+	}
+}
+
 static void restoreRootIds(void)
 {
 	if (!launcherRestoreRootIds())
@@ -179,6 +189,11 @@ int main(int argc, char ** argv)
 			return 1;
 		}
 
+		// The server and launchd run as the user once they are up. Killing them
+		// with the user's ids means that, should the pid be reused after the
+		// check, the signal reaches nothing the user could not signal anyway.
+		dropPrivileges();
+
 		// TODO: when we have a working launchd,
 		// this is where we ask it to shut down nicely
 
@@ -197,7 +212,11 @@ int main(int argc, char ** argv)
 		fclose(file);
 
 		kill(launchd_pid, SIGKILL);
-		kill(pidInit, SIGKILL);
+		if (kill(pidInit, SIGKILL) != 0 && errno != ESRCH)
+		{
+			fprintf(stderr, "Failed to shutdown Darling container: %s\n", strerror(errno));
+			return 1;
+		}
 		return 0;
 	}
 
@@ -242,7 +261,14 @@ int main(int argc, char ** argv)
 	joinNamespace(pidInit, CLONE_NEWNS, "mnt");
 #endif
 
-	useInvokingIds();
+	// Joining the mount namespace was the last step that needs root. Drop it
+	// for good: the rest only talks to shellspawn and resolves the program path
+	// given on the command line, both as the user. Switching only the effective
+	// ids, as before, left root in the saved uid, so any memory corruption in
+	// the code below could regain it. Nothing may run as root inside the joined
+	// namespace, whose files are not the host's: not even the C library loading
+	// a name service module.
+	dropPrivileges();
 
 	if (strcmp(argv[1], "shell") == 0)
 	{
