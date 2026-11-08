@@ -219,8 +219,13 @@ no_slide:
 					}
 					else
 					{
-						size_t size = seg->vmsize - seg->filesize;
-						rv = compatible_mmap((void*) PAGE_ALIGN(seg->vmaddr + seg->vmsize - size), PAGE_ROUNDUP(size), useprot,
+						// Zero-fill from the page holding the end of the file data up to the
+						// page holding the end of the segment. Rounding the start down and the
+						// size up separately left the last page unmapped whenever vmsize is not
+						// page-aligned (e.g. binaries linked by Zig).
+						uintptr_t zf_start = PAGE_ALIGN(seg->vmaddr + seg->filesize);
+						uintptr_t zf_end = PAGE_ROUNDUP(seg->vmaddr + seg->vmsize);
+						rv = compatible_mmap((void*) zf_start, zf_end - zf_start, useprot,
 								MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
 						if (rv == (void*)MAP_FAILED)
 						{
@@ -254,6 +259,25 @@ no_slide:
 						} else {
 							fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)(uintptr_t)seg->vmaddr, strerror(errno));
 							exit(1);
+						}
+					}
+
+					// The file mapping covers its whole last page: past filesize that page
+					// holds whatever follows in the file, where the segment must read as
+					// zeros (start of __bss/__thread_bss), as the XNU loader guarantees.
+					if (seg->filesize < seg->vmsize)
+					{
+						uintptr_t tail = addr + seg->filesize;
+						uintptr_t tail_end = PAGE_ROUNDUP(tail);
+						if (tail_end > addr + seg->vmsize)
+							tail_end = addr + seg->vmsize;
+						if (tail_end > tail)
+						{
+							if (!(useprot & PROT_WRITE))
+								mprotect((void*) PAGE_ALIGN(tail), PAGE_SIZE, useprot | PROT_WRITE);
+							memset((void*) tail, 0, tail_end - tail);
+							if (!(useprot & PROT_WRITE))
+								mprotect((void*) PAGE_ALIGN(tail), PAGE_SIZE, useprot);
 						}
 					}
 
