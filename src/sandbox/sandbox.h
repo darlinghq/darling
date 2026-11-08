@@ -171,8 +171,9 @@ int sandbox_unsuspend(void);
  * Darling: issued tokens are strings freed with free(); a NULL class or
  * target gives NULL and EINVAL. Consuming a token that was not issued gives
  * -1 and EINVAL. In a sandboxed process, consuming yields a positive handle
- * (the same one for the same token, counted), and releasing a handle that is
- * not held fails with EINVAL; in a process that is not sandboxed, consuming
+ * (the same one for the same token, counted, and a new one once fully
+ * released), and releasing a handle other than 0 that is not held fails
+ * with EINVAL; in a process that is not sandboxed, consuming
  * yields 0 and releasing always succeeds, as on macOS. Nothing is enforced. */
 char *sandbox_extension_issue_file(const char *extension_class, const char *path, uint32_t flags);
 char *sandbox_extension_issue_file_to_process(const char *extension_class, const char *path, uint32_t flags, audit_token_t target);

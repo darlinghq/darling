@@ -454,6 +454,15 @@ int sandbox_extension_release(int64_t extension_handle)
 		return 0;
 	}
 
+	// QUIRK: in a sandboxed process too, releasing handle 0 (what an
+	// unsandboxed consume returns) succeeds, while any other handle that is
+	// not held fails with EINVAL. Not documented. Evidence: black-box
+	// observation on macOS 27.0.1 arm64 (tier 2; lol-upstream/impl/P95.md).
+	// Test: checkSandboxedExtensions in tests/src/sandbox_state.c.
+	if (extension_handle == 0) {
+		return 0;
+	}
+
 	if (!sandbox_consumed_remove(extension_handle)) {
 		errno = EINVAL;
 		return -1;
