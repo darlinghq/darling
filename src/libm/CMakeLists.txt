@@ -342,3 +342,13 @@ set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_T
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ranlib")
 add_darling_static_library(system_m_static SOURCES ${libm_sources} $<TARGET_OBJECTS:system_m_extra>)
 make_fat(system_m_static)
+
+# Host-side check of the long double signbit helper in the SDK math.h
+add_test(NAME libm_signbit_header
+	COMMAND ${CMAKE_COMMAND}
+		-DCOMPILER=${CMAKE_C_COMPILER}
+		-DSDK=${CMAKE_SOURCE_DIR}/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
+		-DPROBE=${CMAKE_SOURCE_DIR}/tests/libm/signbit_probe.c
+		-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/signbit_header
+		-P ${CMAKE_SOURCE_DIR}/tests/libm/signbit_header.cmake
+)
