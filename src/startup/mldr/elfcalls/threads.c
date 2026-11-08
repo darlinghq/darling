@@ -184,6 +184,11 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	// otherwise, allocate them ourselves
 	if (pth == NULL || args.is_workqueue) {
 		pth = dthread_structure_allocate(stack_size, DEFAULT_DTHREAD_GUARD_SIZE, (void**)&args.stack_addr);
+		if (pth == NULL) {
+			// no stack to run the thread on
+			pthread_attr_destroy(&attr);
+			return NULL;
+		}
 	} else if (!args.is_workqueue) {
 		// `arg2` is `stack_addr` for normal threads
 		args.stack_addr = arg2;
