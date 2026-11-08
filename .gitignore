@@ -37,6 +37,8 @@ Module.symvers
 !/tests/coreaudio/**
 !/tests/mldr/
 !/tests/mldr/**
+!/tests/prefsd/
+!/tests/prefsd/**
 !/tests/shellspawn/
 !/tests/shellspawn/**
 

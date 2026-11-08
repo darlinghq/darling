@@ -2444,6 +2444,18 @@ system_specific_bootstrap(bool sflag)
 		(void)posix_assumes_zero(fwexec(dirhelper_tool, NULL));
 	}
 
+#ifdef DARLING
+	/* Hand the platform identity and the security configuration to
+	 * darlingserver before any job is loaded, so that every job, including
+	 * those in /Library/LaunchDaemons, starts with them. A failure is logged
+	 * by darling-prefsd and darlingserver keeps its defaults. The
+	 * org.darlinghq.prefsd job pushes later changes. */
+	if (path_check("/usr/libexec/darling-prefsd")) {
+		const char *prefsd_tool[] = { "/usr/libexec/darling-prefsd", "--push-once", NULL };
+		(void)posix_assumes_zero(fwexec(prefsd_tool, NULL));
+	}
+#endif
+
 	(void)posix_assumes_zero(touch_file(_PATH_UTMPX, DEFFILEMODE));
 #if !TARGET_OS_EMBEDDED
 	(void)posix_assumes_zero(touch_file(_PATH_VARRUN "/.systemStarterRunning", DEFFILEMODE));

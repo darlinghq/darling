@@ -13,5 +13,7 @@
         <true/>
         <key>KeepAlive</key>
         <true/>
+        <key>StandardErrorPath</key>
+        <string>/var/log/shellspawn.log</string>
 </dict>
 </plist>
