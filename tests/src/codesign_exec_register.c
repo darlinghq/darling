@@ -486,16 +486,28 @@ static void test_unsigned_child_enforce(const char* self)
 		return;
 	}
 
-	// the child starts with this process's state (CS_VALID); wait for its own
-	int rc = -1;
+	// the child starts with this process's state (CS_VALID); wait for its own.
+	// mldr may instead refuse to start it: as on macOS, the child is then
+	// killed with SIGKILL before it runs, so it never runs with CS_VALID.
+	int rc = -1, status = 0, refused = 0;
 	uint32_t flags = CS_VALID;
 	for (long waited = 0; waited < REGISTER_TIMEOUT_MS && (rc != 0 || (flags & CS_VALID)); waited += 10) {
+		if (waitpid(spawned, &status, WNOHANG) == spawned) {
+			spawned = -1;
+			refused = WIFSIGNALED(status) && WTERMSIG(status) == SIGKILL;
+			break;
+		}
 		flags = status_of(spawned, &rc);
 		if (rc != 0 || (flags & CS_VALID))
 			sleep_ms(10);
 	}
-	check(rc == 0 && !(flags & CS_VALID), "unsigned child, enforce: no CS_VALID");
-	check(cdhash_errno(spawned) == EBADEXEC, "unsigned child, enforce: no CDHash (EBADEXEC)");
+	if (refused) {
+		check(1, "unsigned child, enforce: no CS_VALID (refused: killed with SIGKILL before it ran)");
+		printf("SKIP: unsigned child, enforce: no CDHash (the child was refused before it could be asked)\n");
+	} else {
+		check(spawned > 0 && rc == 0 && !(flags & CS_VALID), "unsigned child, enforce: no CS_VALID");
+		check(spawned > 0 && cdhash_errno(spawned) == EBADEXEC, "unsigned child, enforce: no CDHash (EBADEXEC)");
+	}
 
 	kill_spawned();
 }
