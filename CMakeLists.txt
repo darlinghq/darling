@@ -164,6 +164,16 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 		"Choose the type of build: Debug, Release, RelWithDebInfo or MinSizeRel." FORCE)
 endif()
 
+# Darling has always been built with assertions enabled, and the pre-generated
+# JavaScriptCore LLInt headers (LLIntOffsets/*/debug) only match a build where
+# ASSERT_ENABLED is set. Keep the optimisation and debug info flags, but drop
+# the -DNDEBUG that CMake adds to the non-debug build types.
+foreach (lang C CXX ASM)
+	foreach (config RELEASE RELWITHDEBINFO MINSIZEREL)
+		string(REPLACE "-DNDEBUG" "" CMAKE_${lang}_FLAGS_${config} "${CMAKE_${lang}_FLAGS_${config}}")
+	endforeach()
+endforeach()
+
 # prevent object filename conflicts for two source files that differ only in extension (e.g. `object.c` and `object.m`)
 set(CMAKE_C_OUTPUT_EXTENSION ".c.o")
 set(CMAKE_CXX_OUTPUT_EXTENSION ".cpp.o")
