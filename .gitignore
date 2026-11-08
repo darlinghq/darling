@@ -33,6 +33,8 @@ Module.symvers
 # (anchored to the top level only -- this used to be unanchored and silently
 # ignored any "tests" directory anywhere in the tree, e.g. src/CoreAudio/**/tests/)
 /tests/*
+!/tests/adhoc-sign/
+!/tests/adhoc-sign/**
 !/tests/coreaudio/
 !/tests/coreaudio/**
 !/tests/mldr/

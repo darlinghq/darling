@@ -199,6 +199,7 @@ endif()
 option(DEBIAN_PACKAGING "Packaging for Debian" OFF)
 option(ENABLE_TESTS "Install in-prefix unit tests" OFF)
 option(REGENERATE_SDK "Regenerate Header Files For Open Source SDK" OFF)
+option(ADHOC_CODESIGN "Ad-hoc sign every Mach-O image Darling builds" ON)
 
 # Host-side unit tests, run with ctest from the build directory
 enable_testing()
