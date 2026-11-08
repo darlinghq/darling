@@ -1,3 +1,15 @@
+# InstallSymlink(<target> <link> [COMPONENT <component>] [EXCLUDE_FROM_ALL])
+#
+# Installs a symbolic link at <link> that points to <target>. The link is
+# created at install time, under $DESTDIR if it is set, together with its
+# parent directories; an existing link there is replaced. A relative <link> is
+# taken relative to CMAKE_INSTALL_PREFIX. <target> is stored as given, so a
+# relative target stays relative to the link's directory. Failing to create the
+# directory or the link fails the install.
+#
+#   target: what the link points to (absolute, or relative to the link)
+#   link: path of the installed link (absolute, or relative to the prefix)
+
 macro(InstallSymlink _filepath _sympath)
     cmake_parse_arguments(INSTALL_SYMLINK "EXCLUDE_FROM_ALL" "COMPONENT" "" ${ARGN})
 
