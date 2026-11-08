@@ -18,7 +18,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef _GNU_SOURCE
-#define _GNU_SOURCE // memfd_create(), F_ADD_SEALS
+#define _GNU_SOURCE // memfd_create(), F_ADD_SEALS, mremap()
 #endif
 #include <errno.h>
 #include <fcntl.h>
@@ -26,8 +26,18 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 
 #include "image_protection.h"
+
+// Linux implements mseal(2) for 64-bit processes only. Its number is the same
+// on x86_64 and aarch64; older headers lack it.
+#if defined(__x86_64__) || defined(__aarch64__)
+#	define MLDR_HAVE_MSEAL 1
+#	ifndef __NR_mseal
+#		define __NR_mseal 462
+#	endif
+#endif
 
 int mldr_snapshot_image(int fd) {
 	char buffer[16384];
@@ -88,4 +98,52 @@ int mldr_snapshot_image(int fd) {
 fail:
 	close(snapshot);
 	return ret;
+}
+
+int mldr_seal_range(void* addr, size_t len, int prot) {
+	long page_size = sysconf(_SC_PAGESIZE);
+	uintptr_t page_mask;
+
+	if (page_size <= 0)
+		return -EINVAL;
+	page_mask = (uintptr_t)page_size - 1;
+
+	if (len == 0 || ((uintptr_t)addr & page_mask) != 0 || len > SIZE_MAX - page_mask ||
+			!(prot & PROT_READ) || (prot & PROT_WRITE))
+		return -EINVAL;
+
+#ifndef MLDR_HAVE_MSEAL
+	// nothing is copied in a 32-bit process
+	return -ENOSYS;
+#else
+	void* copy;
+	int ret;
+
+	len = (len + page_mask) & ~page_mask;
+
+	copy = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (copy == MAP_FAILED)
+		return -errno;
+
+	memcpy(copy, addr, len);
+
+	if (mprotect(copy, len, prot) != 0) {
+		ret = -errno;
+		goto fail;
+	}
+
+	// move the copy over the original mapping
+	if (mremap(copy, len, len, MREMAP_MAYMOVE | MREMAP_FIXED, addr) == MAP_FAILED) {
+		ret = -errno;
+		goto fail;
+	}
+
+	if (syscall(__NR_mseal, addr, len, 0UL) != 0)
+		return -errno;
+	return 0;
+
+fail:
+	munmap(copy, len);
+	return ret;
+#endif
 }

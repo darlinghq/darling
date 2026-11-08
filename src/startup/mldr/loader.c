@@ -260,6 +260,13 @@ no_slide:
 
 					if (seg->fileoff == 0)
 						mappedHeader = (struct MACH_HEADER_STRUCT*) (seg->vmaddr + slide);
+
+					if (lr->seal_images && (useprot & PROT_READ) && !(useprot & PROT_WRITE) &&
+						(strncmp(seg->segname, SEG_TEXT, sizeof(seg->segname)) == 0 ||
+						 strncmp(seg->segname, SEG_LINKEDIT, sizeof(seg->segname)) == 0))
+					{
+						seal_segment(seg->segname, addr, seg->filesize, useprot);
+					}
 				}
 
 				if (seg->vmaddr + slide + seg->vmsize > lr->vm_addr_max)

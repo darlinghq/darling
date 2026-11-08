@@ -21,6 +21,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define _MLDR_IMAGE_PROTECTION_H_
 
 #include <stddef.h>
+#include <stdint.h>
 
 // the largest file mldr_snapshot_image() copies (2 GiB, as DC_F_SNAPSHOT_IMAGE)
 #define MLDR_SNAPSHOT_IMAGE_MAX (2ull * 1024 * 1024 * 1024)
@@ -40,5 +41,23 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
  * fcntl(F_ADD_SEALS) otherwise.
  */
 int mldr_snapshot_image(int fd);
+
+/**
+ * Makes a read-only mapping immutable: the pages in [addr, addr + len) are
+ * copied into anonymous memory that replaces the mapping at the same address
+ * with protection `prot`, and the range is then sealed with mseal(2), so it
+ * can no longer be unmapped, remapped or have its protection changed. Copying
+ * first matters for file mappings, because sealing does not stop the file
+ * itself from changing underneath.
+ *
+ * `addr` must be aligned to the runtime page size and `len` must not be zero;
+ * `len` is rounded up to whole pages. `prot` must include PROT_READ and not
+ * PROT_WRITE. Returns 0 or a negative errno value: EINVAL for bad arguments,
+ * ENOSYS when the kernel has no mseal() (Linux before 6.10, and 32-bit
+ * processes, for which Linux does not implement it), and the errors of
+ * mmap(), mprotect(), mremap() and mseal() otherwise. After ENOSYS from a
+ * 64-bit process the copy stays in place, unsealed.
+ */
+int mldr_seal_range(void* addr, size_t len, int prot);
 
 #endif // _MLDR_IMAGE_PROTECTION_H_

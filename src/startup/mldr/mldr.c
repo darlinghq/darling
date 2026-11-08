@@ -81,6 +81,7 @@ static void load(const char* path, cpu_type_t cpu, bool expect_dylinker, char** 
 static int native_prot(int prot);
 static void setup_space(struct load_results* lr, bool is_64_bit);
 static int code_signing_gate(int fd, uint64_t image_offset, struct load_results* lr);
+static void seal_segment(const char* name, uintptr_t address, uint64_t file_size, int prot);
 static void process_special_env(struct load_results* lr);
 static void start_thread(struct load_results* lr);
 static bool is_kernel_at_least(int major, int minor);
@@ -910,6 +911,13 @@ static void __attribute__((noreturn)) refuse_executable(const char* problem) {
 // done only under `enforce`. Without it, the file is checked and mapped as it
 // is.
 //
+// Whatever the policy, the read-only segments of the images mldr maps are
+// sealed (`lr->seal_images`, see seal_segment()) when `SealImages` is on and
+// the program uses the hardened runtime (CS_RUNTIME) without the
+// get-task-allow entitlement, i.e. when it is not meant to be debugged. dyld
+// applies the same rule to the images it loads. Not in 32-bit processes,
+// which Linux has no mseal() for.
+//
 // Returns the descriptor to map the image from, positioned at `image_offset`:
 // `fd` itself, or the snapshot, which the caller closes after mapping.
 static int code_signing_gate(int fd, uint64_t image_offset, struct load_results* lr) {
@@ -917,8 +925,6 @@ static int code_signing_gate(int fd, uint64_t image_offset, struct load_results*
 	uint32_t policy = dserver_code_signing_policy_off;
 	uint32_t flags = 0;
 	int code;
-
-	(void) lr;
 
 	if (own_code_signing_state(&state))
 		policy = state.code_signing_policy;
@@ -957,7 +963,31 @@ static int code_signing_gate(int fd, uint64_t image_offset, struct load_results*
 		}
 	}
 
+#ifndef __i386__
+	// the configuration is read only for a program the setting could apply to
+	if (code == 0 && (flags & (CS_VALID | CS_RUNTIME | CS_GET_TASK_ALLOW)) == (CS_VALID | CS_RUNTIME)) {
+		dserver_system_config_t config;
+		if (dserver_rpc_get_system_config(&config, sizeof(config)) == 0 && config.seal_images)
+			lr->seal_images = true;
+	}
+#else
+	(void) lr;
+#endif
+
 	return fd;
+}
+
+// Seals a read-only segment that was just mapped (see code_signing_gate()):
+// it can no longer be made writable, unmapped or replaced. Only the part that
+// is mapped from the file is sealed. A host kernel without mseal() (before
+// Linux 6.10) leaves the segment unsealed, without a message (dyld reports
+// that once per process); other failures are reported and the program runs.
+static void seal_segment(const char* name, uintptr_t address, uint64_t file_size, int prot) {
+	int ret = mldr_seal_range((void*)address, (size_t)file_size, prot);
+	if (ret < 0 && ret != -ENOSYS) {
+		fprintf(stderr, "mldr: warning: cannot seal %.16s of %s: %s\n", name,
+			exec_path ? exec_path : "(unknown)", strerror(-ret));
+	}
 }
 
 static void start_thread(struct load_results* lr) {

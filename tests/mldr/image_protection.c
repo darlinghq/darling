@@ -1,7 +1,12 @@
-// Host-side test of mldr's image snapshots: the copy has the file's contents,
-// is sealed against every change and does not follow later changes of the
-// file; the source descriptor's offset is untouched; files that cannot be
-// copied are refused with the documented errors.
+// Host-side test of mldr's image snapshots and segment sealing.
+// Snapshots: the copy has the file's contents, is sealed against every change
+// and does not follow later changes of the file; the source descriptor's
+// offset is untouched; files that cannot be copied are refused with the
+// documented errors.
+// Sealing: a sealed read-only file mapping keeps its contents and can no
+// longer be made writable, unmapped or replaced; bad arguments give EINVAL;
+// 32-bit processes and kernels without mseal() give ENOSYS (the sealed checks
+// are then skipped).
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -157,11 +162,70 @@ static void test_errors(void)
 	check(mldr_snapshot_image(-1) == -EBADF, "a bad descriptor: EBADF");
 }
 
+static void test_seal(void)
+{
+	long page = sysconf(_SC_PAGESIZE);
+	size_t length = (size_t)page * 3;
+	int fd = temp_file(length);
+
+	// a read-only, executable file mapping, as mldr maps __TEXT
+	unsigned char* text = mmap(NULL, length, PROT_READ | PROT_EXEC, MAP_PRIVATE, fd, 0);
+	check(text != MAP_FAILED, "file mapping");
+	if (text == MAP_FAILED)
+		return;
+
+	check(mldr_seal_range(text + 1, (size_t)page, PROT_READ) == -EINVAL, "an unaligned address: EINVAL");
+	check(mldr_seal_range(text, 0, PROT_READ) == -EINVAL, "an empty range: EINVAL");
+	check(mldr_seal_range(text, (size_t)page, PROT_READ | PROT_WRITE) == -EINVAL, "a writable protection: EINVAL");
+	check(mldr_seal_range(text, (size_t)page, PROT_EXEC) == -EINVAL, "a protection without PROT_READ: EINVAL");
+
+	// the length is rounded up to whole pages: two pages and one byte seal all three
+	int ret = mldr_seal_range(text, (size_t)page * 2 + 1, PROT_READ | PROT_EXEC);
+	if (ret == -ENOSYS) {
+#if defined(__x86_64__) || defined(__aarch64__)
+		printf("SKIP: the host kernel has no mseal()\n");
+#else
+		check(1, "a 32-bit process: ENOSYS");
+#endif
+		munmap(text, length);
+		close(fd);
+		return;
+	}
+	check(ret == 0, "sealing a read-only file mapping");
+	if (ret != 0) {
+		printf("  error %d (%s)\n", -ret, strerror(-ret));
+		return;
+	}
+
+	check(has_pattern(text, length), "the sealed range keeps its contents");
+
+	errno = 0;
+	check(mprotect(text, (size_t)page, PROT_READ | PROT_WRITE) != 0 && errno == EPERM,
+		"mprotect(PROT_WRITE) on the sealed range fails with EPERM");
+	errno = 0;
+	check(mprotect(text + page * 2, (size_t)page, PROT_READ | PROT_WRITE) != 0 && errno == EPERM,
+		"the last, rounded-up page is sealed too");
+	errno = 0;
+	check(munmap(text, (size_t)page) != 0 && errno == EPERM, "munmap of the sealed range fails with EPERM");
+	errno = 0;
+	check(mmap(text, (size_t)page, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0) == MAP_FAILED &&
+		errno == EPERM, "mmap(MAP_FIXED) over the sealed range fails with EPERM");
+
+	// the range is an anonymous copy now: changing the file does not show
+	unsigned char zeroes[64] = { 0 };
+	pwrite(fd, zeroes, sizeof(zeroes), 0);
+	check(has_pattern(text, length), "changing the file does not change the sealed range");
+
+	// the range stays mapped for the rest of this test process
+	close(fd);
+}
+
 int main(void)
 {
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	test_snapshot();
 	test_errors();
+	test_seal();
 	printf("%s\n", failures ? "FAILED" : "ALL PASSED");
 	return failures ? 1 : 0;
 }
