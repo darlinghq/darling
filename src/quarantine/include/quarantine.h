@@ -64,7 +64,12 @@ extern int __esp_notify_ns(const char *a, void *b);
 typedef struct _qtn_proc_t* qtn_proc_t;
 
 // Process quarantine state. Darling doesn't quarantine processes: a new state has no flags,
-// and applying one to the current process reports QTN_NOT_QUARANTINED.
+// the current process has no state to read (QTN_NOT_QUARANTINED), and applying a state to
+// the current process succeeds without doing anything.
+//
+// These functions are exported by macOS's libquarantine but not declared in any public
+// header. The names come from the SDK's libquarantine.tbd; the parameter and return
+// types are inferred from how callers use them, not from a published prototype.
 extern qtn_proc_t _qtn_proc_alloc(void);
 extern void _qtn_proc_free(qtn_proc_t proc);
 extern int _qtn_proc_init_with_self(qtn_proc_t proc);
