@@ -4,13 +4,15 @@ set -e
 DATE=$(date +%Y%m%d)
 rm -f debian/changelog
 DISTRO=${DEB_DISTRO:-"$(lsb_release -cs)"}
-VERSION=0.1.${DATE}~${DISTRO}
+UPSTREAM_VERSION=0.1.${DATE}~${DISTRO}
+# A "3.0 (quilt)" source package needs a Debian revision in its version
+VERSION=${UPSTREAM_VERSION}-1
 EDITOR=true NAME="Darling build server" EMAIL=${DEB_EMAIL:-noreply@darlinghq.org} dch -u low -v ${VERSION} --create --distribution ${DISTRO} --package darling "Daily build"
 
 ARG='-S'
-if [ -e "../darling_${VERSION}.orig.tar.xz" ]; then
-rm ../darling_${VERSION}.orig.tar.xz
+if [ -e "../darling_${UPSTREAM_VERSION}.orig.tar.xz" ]; then
+rm ../darling_${UPSTREAM_VERSION}.orig.tar.xz
 fi
-tar -cJf ../darling_${VERSION}.orig.tar.xz .
+tar -cJf ../darling_${UPSTREAM_VERSION}.orig.tar.xz .
 
 debuild --no-lintian -us -uc -S ${ARG}
