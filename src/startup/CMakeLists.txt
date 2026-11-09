@@ -71,6 +71,14 @@ add_test(NAME launcher_prefix_state COMMAND launcher_prefix_state_test)
 add_executable(launcher_profile_prefix_test ${CMAKE_SOURCE_DIR}/tests/launcher/profile-prefix.c)
 target_include_directories(launcher_profile_prefix_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME launcher_profile_prefix COMMAND launcher_profile_prefix_test)
+
+# Refusing a second init must precede all prefix mutation when a server is live.
+find_package(Python3 QUIET COMPONENTS Interpreter)
+if (Python3_Interpreter_FOUND)
+	add_test(NAME launcher_missing_init
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/launcher/test-missing-init.py
+			${CMAKE_SOURCE_DIR}/src/startup/darling.c --run)
+endif()
 # shellspawn's accept loop, with shellspawn.c built for the host as it is and
 # accept, usleep, perror and fork replaced through the linker. shellspawn.c
 # includes <sys/event.h> without using kqueue, so an empty one stands in.

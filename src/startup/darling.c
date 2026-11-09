@@ -144,7 +144,6 @@ int main(int argc, char ** argv)
 	}
 	unsetenv("DPREFIX");
 	unsetenv("DARLING_PROFILE");
-	unsetenv("DARLING_PROFILE");
 	getcwd(g_workingDirectory, sizeof(g_workingDirectory));
 
 	if (!checkPrefixDir())
@@ -238,6 +237,23 @@ int main(int argc, char ** argv)
 	// If prefix's init is not running, start it up
 	if (pidInit == 0)
 	{
+		pid_t liveServer = 0;
+		int scan = launcherFindPrefixServer("/proc", prefix, g_originalUid,
+			INSTALL_PREFIX "/bin/darlingserver", &liveServer);
+		if (scan < 0)
+		{
+			fprintf(stderr, "Cannot inspect existing Darling servers; refusing to reinitialize %s.\n", prefix);
+			return 1;
+		}
+		if (scan > 0)
+		{
+			fprintf(stderr,
+				"darlingserver %d is still running for %s but its .init.pid is missing or invalid; refusing to start a second server.\n"
+				"If another Darling is starting this prefix, retry shortly; otherwise stop darlingserver %d before retrying.\n",
+				(int)liveServer, prefix, (int)liveServer);
+			return 1;
+		}
+
 		char socketPath[4096];
 		
 		snprintf(socketPath, sizeof(socketPath), "%s"  SHELLSPAWN_SOCKPATH, prefix);

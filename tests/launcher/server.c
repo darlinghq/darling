@@ -194,15 +194,11 @@ static void test_prefix_server_scan(void)
 		(size_t)commandLength, prefix));
 	errno = 0;
 	int scanResult = launcherFindPrefixServer("/proc", prefix, getuid(), "/proc/self/exe", &found);
-	if (scanResult != 1)
-		printf("prefix server scan returned %d: %s\n", scanResult, strerror(errno));
 	CHECK(scanResult == 1);
 	CHECK(found == pid);
 	kill(pid, SIGKILL);
 	waitpid(pid, NULL, 0);
 	scanResult = launcherFindPrefixServer("/proc", prefix, getuid(), "/proc/self/exe", &found);
-	if (scanResult != 0)
-		printf("prefix server scan after exit returned %d: %s\n", scanResult, strerror(errno));
 	CHECK(scanResult == 0);
 }
 
