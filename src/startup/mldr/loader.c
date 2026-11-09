@@ -192,10 +192,10 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 		}
 
 		void* mmap_hint = (void*) base;
+#if (defined(__aarch64__) || defined(__arm64__)) && defined(GEN_64BIT)
 		/* Set when we allocate the slot ourselves rather than honouring a
 		 * preferred address the binary asked for. */
 		int managed_slot = 0;
-#if (defined(__aarch64__) || defined(__arm64__)) && defined(GEN_64BIT)
 		/* macOS ObjC FAST_DATA_MASK is 0x00007ffffffffff8 — only 47 bits of
 		 * data pointer. On Linux ARM64 the kernel happily returns 48-bit VAs
 		 * (e.g. 0xfe..) which then get truncated by the mask to a bogus
