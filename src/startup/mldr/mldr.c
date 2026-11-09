@@ -39,7 +39,6 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "interpreter_path.h"
 #include <sys/resource.h>
 #include <sys/prctl.h>
-#include <sys/auxv.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <darlingserver/rpc.h>
@@ -67,8 +66,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #		define PR_PAC_APDBKEY	(1UL << 3)
 #	endif
 
-// Opt-in: when the container is started with DARLING_DISABLE_PTRAUTH=1, turn off arm64
-// pointer authentication for every Darwin process.
+// Opt-in: with DisablePointerAuthentication set in the org.darlinghq.security
+// domain (darling-prefsd hands it to darlingserver), turn off arm64 pointer
+// authentication for every Darwin process started afterwards.
 //
 // Why: Darling runs arm64e macOS binaries, which sign and authenticate pointers (return
 // addresses, C++ vtable and Objective-C method-list pointers, block invoke pointers, Swift
@@ -84,29 +84,17 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 // Darling's Darwin processes; the host's Linux processes and any non-Darling process are
 // unaffected. That is why it is opt-in and off by default.
 //
-// This must run before any still-live function has signed its return address with a key we are
-// about to disable, otherwise its epilogue would authenticate a mismatched value. mldr's main()
-// has no PAC prologue, and this helper is compiled with branch protection off, so it is safe to
-// call as the first thing in main(). Keys reset on execve, so every exec'd mldr re-applies this;
-// threads inherit the setting.
+// Disabling a key while a still-live function has signed its return address with it would
+// make that function's return fail. This is called directly from main(), which never returns
+// (it ends in start_thread()), and the helper is compiled with branch protection off, so no
+// live frame holds a signed return address. Keys reset on execve, so every exec'd mldr
+// applies this again; threads inherit the setting.
 __attribute__((target("branch-protection=none")))
-static void maybe_disable_ptrauth(char** envp)
+static void maybe_disable_ptrauth(void)
 {
-	int enabled = 0;
-	for (size_t i = 0; envp && envp[i] != NULL; ++i)
-	{
-		if (strcmp(envp[i], "DARLING_DISABLE_PTRAUTH=1") == 0)
-		{
-			enabled = 1;
-			break;
-		}
-	}
-	if (!enabled)
-		return;
+	dserver_system_config_t config;
 
-	// Ignore it in a process that gained privileges at exec (setuid, setgid or file capabilities):
-	// its caller controls the environment.
-	if (getauxval(AT_SECURE))
+	if (dserver_rpc_get_system_config(&config, sizeof(config)) != 0 || !config.disable_pointer_authentication)
 		return;
 
 	// enabled_keys = 0 -> all four keys disabled for this process and its future threads.
@@ -115,7 +103,7 @@ static void maybe_disable_ptrauth(char** envp)
 	      0, 0, 0);
 }
 #else
-static void maybe_disable_ptrauth(char** envp) { (void) envp; }
+static void maybe_disable_ptrauth(void) {}
 #endif
 
 static const char* dyld_path = INSTALL_PREFIX "/libexec/darling/usr/lib/dyld";
@@ -192,10 +180,6 @@ static bool have_inherited_nofile = false;
 
 int main(int argc, char** argv, char** envp)
 {
-	// Must be first: turn off pointer authentication before any function that would
-	// authenticate a return address runs, if the container opted in. See the helper.
-	maybe_disable_ptrauth(envp);
-
 	void** sp;
 	int pushCount = 0;
 	char *filename, *p = NULL;
@@ -364,6 +348,10 @@ int main(int argc, char** argv, char** envp)
 	}
 
 	__mldr_main_stack_top = (void*)mldr_load_results.stack_top;
+
+	// Before any of the program's code runs; it needs the darlingserver connection,
+	// and it must be called from main() (see the helper).
+	maybe_disable_ptrauth();
 
 	start_thread(&mldr_load_results);
 
