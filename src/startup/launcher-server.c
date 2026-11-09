@@ -127,6 +127,35 @@ bool launcherServerCommandLineMatchesPrefix(const char* cmdline, size_t length,
 	return (size_t)(secondEnd - second) == prefixLength && memcmp(second, prefix, prefixLength) == 0;
 }
 
+bool launcherServerStatusRealUid(const char* status, size_t length, uid_t* uid)
+{
+	const char* line = status;
+	const char* limit = status + length;
+	while (line < limit)
+	{
+		const char* end = memchr(line, '\n', (size_t)(limit - line));
+		if (!end)
+			end = limit;
+		if ((size_t)(end - line) >= 4 && memcmp(line, "Uid:", 4) == 0)
+		{
+			const char* value = line + 4;
+			while (value < end && (*value == ' ' || *value == '\t'))
+				value++;
+			if (value == end || *value < '0' || *value > '9')
+				return false;
+			errno = 0;
+			char* parsedEnd;
+			unsigned long parsed = strtoul(value, &parsedEnd, 10);
+			if (errno != 0 || parsedEnd == value || parsedEnd > end || (uid_t)parsed != parsed)
+				return false;
+			*uid = (uid_t)parsed;
+			return true;
+		}
+		line = end < limit ? end + 1 : limit;
+	}
+	return false;
+}
+
 static bool parsePid(const char* name, pid_t* pid)
 {
 	char* end;
@@ -139,10 +168,11 @@ static bool parsePid(const char* name, pid_t* pid)
 	return true;
 }
 
-// Scan only processes owned by the invoking uid. Each candidate is pinned
-// through /proc/<pid> before its executable and arguments are examined. The
-// scan refuses to initialize a prefix if a matching server is still present;
-// it never signals or otherwise changes a process.
+// Scan only processes whose real uid is the invoking uid. A server can have
+// effective uid 0 while it prepares its prefix, so proc-directory ownership
+// is not a reliable identity check. Candidates are pinned through /proc/<pid>
+// before status, executable and arguments are examined. The scan never signals
+// or otherwise changes a process.
 int launcherFindPrefixServer(const char* procPath, const char* prefix, uid_t uid,
 	const char* serverPath, pid_t* serverPid)
 {
@@ -179,11 +209,13 @@ int launcherFindPrefixServer(const char* procPath, const char* prefix, uid_t uid
 			break;
 		}
 		pid_t candidate;
-		struct stat process, exe;
+		struct stat exe;
 		int processfd, cmdfd, commfd, nsfd = -1;
 		char cmdline[1024];
 		char comm[64];
+		char status[4096];
 		ssize_t length;
+		uid_t realUid;
 		enum launcher_server_check check;
 
 		if (!parsePid(entry->d_name, &candidate))
@@ -194,20 +226,6 @@ int launcherFindPrefixServer(const char* procPath, const char* prefix, uid_t uid
 			if (errno == ENOENT || errno == ESRCH || errno == EACCES)
 				continue;
 			goto error;
-		}
-		if (fstat(processfd, &process) != 0)
-		{
-			int saved = errno;
-			close(processfd);
-			errno = saved;
-			if (errno == ENOENT || errno == ESRCH)
-				continue;
-			goto error;
-		}
-		if (process.st_uid != uid)
-		{
-			close(processfd);
-			continue;
 		}
 		commfd = openat(processfd, "comm", O_RDONLY | O_CLOEXEC);
 		if (commfd < 0)
@@ -234,6 +252,38 @@ int launcherFindPrefixServer(const char* procPath, const char* prefix, uid_t uid
 		if (length > 0 && comm[length - 1] == '\n')
 			comm[length - 1] = '\0';
 		if (strcmp(comm, "darlingserver") != 0)
+		{
+			close(processfd);
+			continue;
+		}
+		cmdfd = openat(processfd, "status", O_RDONLY | O_CLOEXEC);
+		if (cmdfd < 0)
+		{
+			int saved = errno;
+			close(processfd);
+			errno = saved;
+			if (errno == ENOENT || errno == ESRCH)
+				continue;
+			goto error;
+		}
+		length = read(cmdfd, status, sizeof(status));
+		int statusError = errno;
+		close(cmdfd);
+		if (length < 0)
+		{
+			close(processfd);
+			errno = statusError;
+			goto error;
+		}
+		if ((size_t)length == sizeof(status))
+			length--;
+		status[length] = '\0';
+		if (!launcherServerStatusRealUid(status, (size_t)length, &realUid))
+		{
+			close(processfd);
+			goto error;
+		}
+		if (realUid != uid)
 		{
 			close(processfd);
 			continue;

@@ -65,4 +65,8 @@ int launcherFindPrefixServer(const char* procPath, const char* prefix, uid_t uid
 bool launcherServerCommandLineMatchesPrefix(const char* cmdline, size_t length,
 	const char* prefix);
 
+// Extract the real uid from the Linux Uid status line. The real uid remains
+// the invoking user even while darlingserver temporarily has effective uid 0.
+bool launcherServerStatusRealUid(const char* status, size_t length, uid_t* uid);
+
 #endif

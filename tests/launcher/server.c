@@ -172,6 +172,67 @@ static pid_t spawnPrefixServer(const char* prefix)
 	return pid;
 }
 
+static void writeFixture(const char* path, const void* contents, size_t length)
+{
+	int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0600);
+	CHECK(fd >= 0);
+	if (fd < 0)
+		return;
+	CHECK(write(fd, contents, length) == (ssize_t)length);
+	CHECK(close(fd) == 0);
+}
+
+static void test_root_effective_prefix_server(void)
+{
+	const char* prefix = "/synthetic-prefix";
+	char procRoot[] = "/tmp/darling-proc-status-XXXXXX";
+	char processPath[256], path[512], target[128], status[128];
+	char cmdline[] = "darlingserver\0/synthetic-prefix\0--hold\0";
+	uid_t invokingUid = geteuid() == 0 ? 1000 : getuid();
+	pid_t child = spawnPrefixServer(prefix), found = 0;
+	CHECK(child > 0);
+	if (child <= 0)
+		return;
+	CHECK(mkdtemp(procRoot) != NULL);
+	snprintf(processPath, sizeof(processPath), "%s/4242", procRoot);
+	CHECK(mkdir(processPath, 0755) == 0);
+	snprintf(path, sizeof(path), "%s/comm", processPath);
+	writeFixture(path, "darlingserver\n", sizeof("darlingserver\n") - 1);
+	snprintf(path, sizeof(path), "%s/status", processPath);
+	snprintf(status, sizeof(status), "Name:\tdarlingserver\nUid:\t%u\t0\t0\t0\n", (unsigned)invokingUid);
+	writeFixture(path, status, strlen(status));
+	snprintf(path, sizeof(path), "%s/cmdline", processPath);
+	writeFixture(path, cmdline, sizeof(cmdline) - 1);
+	snprintf(path, sizeof(path), "%s/exe", processPath);
+	snprintf(target, sizeof(target), "/proc/%d/exe", (int)child);
+	CHECK(symlink(target, path) == 0);
+	snprintf(path, sizeof(path), "%s/ns", processPath);
+	CHECK(mkdir(path, 0755) == 0);
+	snprintf(path, sizeof(path), "%s/ns/mnt", processPath);
+	snprintf(target, sizeof(target), "/proc/%d/ns/mnt", (int)child);
+	CHECK(symlink(target, path) == 0);
+	if (geteuid() == 0)
+	{
+		// Linux exposes a root-owned proc directory while the status real uid
+		// remains the invoking user and the effective uid is root.
+		CHECK(chown(processPath, 0, 0) == 0);
+	}
+
+	CHECK(launcherFindPrefixServer(procRoot, prefix, invokingUid, "/proc/self/exe", &found) == 1);
+	CHECK(found == 4242);
+
+	kill(child, SIGKILL);
+	waitpid(child, NULL, 0);
+	snprintf(path, sizeof(path), "%s/ns/mnt", processPath); unlink(path);
+	snprintf(path, sizeof(path), "%s/ns", processPath); rmdir(path);
+	snprintf(path, sizeof(path), "%s/exe", processPath); unlink(path);
+	snprintf(path, sizeof(path), "%s/cmdline", processPath); unlink(path);
+	snprintf(path, sizeof(path), "%s/status", processPath); unlink(path);
+	snprintf(path, sizeof(path), "%s/comm", processPath); unlink(path);
+	rmdir(processPath);
+	rmdir(procRoot);
+}
+
 static void test_prefix_server_scan(void)
 {
 	const char* prefix = "/synthetic-prefix";
@@ -218,6 +279,11 @@ int main(int argc, char** argv)
 	static const char matching[] = "darlingserver\0/home/tester/.darling\0uid\0";
 	static const char differentPrefix[] = "darlingserver\0/home/tester/.other\0uid\0";
 	static const char differentExecutable[] = "mldr\0/home/tester/.darling\0uid\0";
+	static const char rootEffectiveStatus[] = "Name:\tdarlingserver\nState:\tR\nUid:\t1000\t0\t0\t0\n";
+	uid_t parsedUid = (uid_t)-1;
+	CHECK(launcherServerStatusRealUid(rootEffectiveStatus, sizeof(rootEffectiveStatus) - 1, &parsedUid));
+	CHECK(parsedUid == 1000); // real uid remains the invoking user while effective uid is root
+	CHECK(!launcherServerStatusRealUid("Name:\tdarlingserver\n", 20, &parsedUid));
 	CHECK(launcherServerCommandLineMatchesPrefix(matching, sizeof(matching) - 1,
 		"/home/tester/.darling"));
 	CHECK(!launcherServerCommandLineMatchesPrefix(differentPrefix, sizeof(differentPrefix) - 1,
@@ -236,6 +302,7 @@ int main(int argc, char** argv)
 	test_same_namespace();
 	test_foreign_namespace();
 	test_prefix_server_scan();
+	test_root_effective_prefix_server();
 
 	if (g_failures)
 	{

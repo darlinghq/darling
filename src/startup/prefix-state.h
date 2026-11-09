@@ -21,7 +21,7 @@ static inline bool darlingPrefixPathIsDirectory(const char* prefix, const char* 
 	char path[4096];
 	int length = snprintf(path, sizeof(path), "%s/%s", prefix, suffix);
 	struct stat st;
-	return length > 0 && (size_t)length < sizeof(path) && stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+	return length > 0 && (size_t)length < sizeof(path) && lstat(path, &st) == 0 && S_ISDIR(st.st_mode);
 }
 
 static inline bool darlingPrefixPathIsRegularFile(const char* prefix, const char* suffix)
@@ -29,7 +29,7 @@ static inline bool darlingPrefixPathIsRegularFile(const char* prefix, const char
 	char path[4096];
 	int length = snprintf(path, sizeof(path), "%s/%s", prefix, suffix);
 	struct stat st;
-	return length > 0 && (size_t)length < sizeof(path) && stat(path, &st) == 0 && S_ISREG(st.st_mode);
+	return length > 0 && (size_t)length < sizeof(path) && lstat(path, &st) == 0 && S_ISREG(st.st_mode);
 }
 
 static inline enum darling_prefix_state darlingClassifyPrefix(const char* prefix)
@@ -58,7 +58,13 @@ static inline enum darling_prefix_state darlingClassifyPrefix(const char* prefix
 		return DARLING_PREFIX_STATE_EMPTY;
 
 	/* These files/directories are created by setupPrefix and survive shutdown.
-	 * Require all of them before accepting an existing non-empty prefix. */
+	 * Require each marker and its parent directories to be real filesystem
+	 * nodes before accepting an existing non-empty prefix. */
+	if (!darlingPrefixPathIsDirectory(prefix, "var") ||
+		!darlingPrefixPathIsDirectory(prefix, "private") ||
+		!darlingPrefixPathIsDirectory(prefix, "private/etc"))
+		return DARLING_PREFIX_STATE_UNINITIALIZED;
+
 	if (darlingPrefixPathIsDirectory(prefix, "Volumes") &&
 		darlingPrefixPathIsDirectory(prefix, "usr") &&
 		darlingPrefixPathIsDirectory(prefix, "var/run") &&
