@@ -44,7 +44,6 @@ void commpage_setup(bool _64bit)
 	struct sysinfo si;
 	void* base = (void*)(_64bit ? _COMM_PAGE64_BASE_ADDRESS : _COMM_PAGE32_BASE_ADDRESS);
 	size_t length = _64bit ? _COMM_PAGE64_AREA_LENGTH : _COMM_PAGE32_AREA_LENGTH;
-	size_t text_len = length > 0x1000 ? length - 0x1000 : 0;
 
 	commpage = (uint8_t*) mmap(base, length, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED_NOREPLACE, -1, 0);
 	// Kernels before 4.17 ignore MAP_FIXED_NOREPLACE and treat the address as a hint.
@@ -100,9 +99,10 @@ void commpage_setup(bool _64bit)
 		*memsize = si.totalram * si.mem_unit;
 	}
 
-	// The commpage is only written here; guest code reads it.
-	if (mprotect(commpage, length - text_len, PROT_READ) != 0
-		|| (text_len > 0 && mprotect(commpage + 0x1000, text_len, PROT_READ|PROT_EXEC) != 0))
+	// The commpage is only written here; guest code only reads it. Darling
+	// puts no routines in the text part of the area, so none of it is
+	// executable.
+	if (mprotect(commpage, length, PROT_READ) != 0)
 	{
 		fprintf(stderr, "Cannot protect commpage: %s\n", strerror(errno));
 		exit(1);
