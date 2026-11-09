@@ -168,7 +168,8 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 					//if (base != 0 && header.filetype == MH_DYLINKER)
 					//	goto no_slide;
 				}
-				mmapSize = seg->vmaddr + seg->vmsize - base;
+				// the anonymous part of the last segment extends to its Mach-O page
+				mmapSize = mldr_page_roundup(seg->vmaddr + seg->vmsize - base, mldr_get_macho_page_size(header.cputype));
 			}
 
 			p += seg->cmdsize;
