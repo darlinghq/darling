@@ -47,6 +47,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "launcher-ids.h"
 #include "launcher-prefix.h"
 #include "launcher-server.h"
+#include "prefix-state.h"
+#include "profile-prefix.h"
 
 // Between Linux 4.9 and 4.11, a strange bug has been introduced
 // which prevents connecting to Unix sockets if the socket was
@@ -124,11 +126,14 @@ int main(int argc, char ** argv)
 		return 1;
 	}
 
-	prefix = getenv("DPREFIX");
+	enum darling_prefix_error prefixError;
+	prefix = darlingSelectPrefix(getenv("DPREFIX"), getenv("DARLING_PROFILE"),
+		getenv("HOME"), &prefixError);
 	if (!prefix)
-		prefix = defaultPrefixPath();
-	if (!prefix)
+	{
+		fprintf(stderr, "%s.\n", darlingPrefixError(prefixError));
 		return 1;
+	}
 	enum launcher_prefix_check prefixCheck = launcherCheckPrefix(prefix);
 	if (prefixCheck != LAUNCHER_PREFIX_OK)
 	{
@@ -138,6 +143,7 @@ int main(int argc, char ** argv)
 		return 1;
 	}
 	unsetenv("DPREFIX");
+	unsetenv("DARLING_PROFILE");
 	getcwd(g_workingDirectory, sizeof(g_workingDirectory));
 
 	if (!checkPrefixDir())
@@ -231,6 +237,23 @@ int main(int argc, char ** argv)
 	// If prefix's init is not running, start it up
 	if (pidInit == 0)
 	{
+		pid_t liveServer = 0;
+		int scan = launcherFindPrefixServer("/proc", prefix, g_originalUid,
+			INSTALL_PREFIX "/bin/darlingserver", &liveServer);
+		if (scan < 0)
+		{
+			fprintf(stderr, "Cannot inspect existing Darling servers; refusing to reinitialize %s.\n", prefix);
+			return 1;
+		}
+		if (scan > 0)
+		{
+			fprintf(stderr,
+				"darlingserver %d is still running for %s but its .init.pid is missing or invalid; refusing to start a second server.\n"
+				"If another Darling is starting this prefix, retry shortly; otherwise stop darlingserver %d before retrying.\n",
+				(int)liveServer, prefix, (int)liveServer);
+			return 1;
+		}
+
 		char socketPath[4096];
 		
 		snprintf(socketPath, sizeof(socketPath), "%s"  SHELLSPAWN_SOCKPATH, prefix);
@@ -895,7 +918,8 @@ void showHelp(const char* argv0)
 	fprintf(stderr, "\t%s shutdown\n", argv0);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Environment variables:\n"
-		"DPREFIX - specifies the location of Darling prefix as an absolute path, defaults to ~/.darling\n");
+		"DPREFIX - specifies the location of Darling prefix as an absolute path, defaults to ~/.darling\n"
+		"DARLING_PROFILE - selects an isolated named prefix at ~/.darling.<name>\n");
 }
 
 void showVersion(const char* argv0) {
@@ -1237,7 +1261,25 @@ int checkPrefixDir()
 			fprintf(stderr, "%s is a file. Remove the file.\n", prefix);
 			exit(1);
 		}
-		return 1; // OK
+		// Inspect the user-controlled tree with the invoking user's credentials.
+		useInvokingIds();
+		enum darling_prefix_state state = darlingClassifyPrefix(prefix);
+		int classifyError = errno;
+		restoreRootIds();
+		if (state == DARLING_PREFIX_STATE_INSPECTION_ERROR)
+		{
+			fprintf(stderr, "Cannot inspect prefix %s: %s.\n", prefix, strerror(classifyError));
+			exit(1);
+		}
+		if (state == DARLING_PREFIX_STATE_UNINITIALIZED)
+		{
+			fprintf(stderr,
+				"Prefix %s is non-empty but is not an initialized Darling prefix; refusing to overwrite it.\n"
+				"Use an absent/empty directory for a new prefix, or point DPREFIX at an initialized prefix.\n",
+				prefix);
+			exit(1);
+		}
+		return state == DARLING_PREFIX_STATE_INITIALIZED;
 	}
 	if (error == ENOENT)
 		return 0; // not found

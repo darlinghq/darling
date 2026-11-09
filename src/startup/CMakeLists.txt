@@ -61,6 +61,24 @@ add_test(NAME launcher_prefix COMMAND launcher_prefix_test)
 add_executable(launcher_server_test ${CMAKE_SOURCE_DIR}/tests/launcher/server.c launcher-server.c)
 target_include_directories(launcher_server_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME launcher_server COMMAND launcher_server_test)
+
+# existing prefixes must be initialized Darling trees; empty directories are safe to initialize
+add_executable(launcher_prefix_state_test ${CMAKE_SOURCE_DIR}/tests/launcher/prefix-state.c)
+target_include_directories(launcher_prefix_state_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME launcher_prefix_state COMMAND launcher_prefix_state_test)
+
+# named profile selection is pure path construction and validation
+add_executable(launcher_profile_prefix_test ${CMAKE_SOURCE_DIR}/tests/launcher/profile-prefix.c)
+target_include_directories(launcher_profile_prefix_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME launcher_profile_prefix COMMAND launcher_profile_prefix_test)
+
+# Refusing a second init must precede all prefix mutation when a server is live.
+find_package(Python3 QUIET COMPONENTS Interpreter)
+if (Python3_Interpreter_FOUND)
+	add_test(NAME launcher_missing_init
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/launcher/test-missing-init.py
+			${CMAKE_SOURCE_DIR}/src/startup/darling.c --run)
+endif()
 # shellspawn's accept loop, with shellspawn.c built for the host as it is and
 # accept, usleep, perror and fork replaced through the linker. shellspawn.c
 # includes <sys/event.h> without using kqueue, so an empty one stands in.
