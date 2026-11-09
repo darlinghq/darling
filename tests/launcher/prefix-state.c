@@ -74,6 +74,26 @@ int main(void)
 		makeFile(path);
 	}
 
+	// Parent directories are independently required to be real directories.
+	char parentPath[4096], realPath[4096];
+	snprintf(parentPath, sizeof(parentPath), "%s/var", root);
+	snprintf(realPath, sizeof(realPath), "%s/var-real", root);
+	assert(rename(parentPath, realPath) == 0);
+	assert(symlink(realPath, parentPath) == 0);
+	assert(darlingClassifyPrefix(root) == DARLING_PREFIX_STATE_UNINITIALIZED);
+	assert(unlink(parentPath) == 0);
+	assert(rename(realPath, parentPath) == 0);
+	assert(darlingClassifyPrefix(root) == DARLING_PREFIX_STATE_INITIALIZED);
+
+	snprintf(parentPath, sizeof(parentPath), "%s/private/etc", root);
+	snprintf(realPath, sizeof(realPath), "%s/private/etc-real", root);
+	assert(rename(parentPath, realPath) == 0);
+	assert(symlink(realPath, parentPath) == 0);
+	assert(darlingClassifyPrefix(root) == DARLING_PREFIX_STATE_UNINITIALIZED);
+	assert(unlink(parentPath) == 0);
+	assert(rename(realPath, parentPath) == 0);
+	assert(darlingClassifyPrefix(root) == DARLING_PREFIX_STATE_INITIALIZED);
+
 	// lstat of the final marker also follows symlinked parents, so reject those too.
 	snprintf(path, sizeof(path), "%s/private-real", root);
 	char privatePath[4096];
