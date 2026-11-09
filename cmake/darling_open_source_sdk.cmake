@@ -208,3 +208,40 @@ function(generate_sdk_subframework name)
         )
     endif (REGENERATE_SDK)
 endfunction(generate_sdk_subframework)
+
+# The header surface is not copied: framework-include/<F> is a symlink to
+# <F>.framework/Headers, which is itself a symlink to the owning submodule's
+# include/<F> directory. A clone therefore only has a usable SDK once every
+# submodule working tree exists, and nothing used to say so. The build then
+# failed much later, per translation unit, as missing-declaration errors in
+# whichever component happened to include the absent header.
+#
+# This checks that each framework's header directory resolves, which covers an
+# uninitialised submodule. It deliberately does not walk the headers inside: the
+# submodules also carry symlinks of their own, and darling-corefoundation's
+# point into a nested submodule, so some headers can be absent while the
+# directory resolves. The diagnostic therefore names the recursive form.
+function(verify_sdk_header_include)
+    set(unresolved "")
+    foreach (include_dir IN ITEMS framework-include framework-private-include)
+        file(GLOB frameworks "${DARLING_TOP_DIRECTORY}/${include_dir}/*")
+        foreach (framework IN LISTS frameworks)
+            if (NOT IS_DIRECTORY "${framework}")
+                list(APPEND unresolved "${framework}")
+            endif()
+        endforeach()
+    endforeach()
+
+    if (unresolved)
+        list(LENGTH unresolved unresolved_count)
+        list(SORT unresolved)
+        list(JOIN unresolved "\n  " unresolved_list)
+        message(FATAL_ERROR
+            "${unresolved_count} of the SDK's header directories do not resolve, so the\n"
+            "headers they expose are missing and the build would fail later with\n"
+            "unrelated-looking errors. They are symlinks into the submodules' include\n"
+            "directories, so the submodule working trees must be populated:\n"
+            "    git submodule update --init --recursive\n"
+            "Unresolved:\n  ${unresolved_list}")
+    endif()
+endfunction(verify_sdk_header_include)
