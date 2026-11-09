@@ -530,18 +530,18 @@ static void process_special_env(struct load_results* lr) {
 		sscanf(str, "%x,%x,%x,%x", &lr->bprefs[0], &lr->bprefs[1], &lr->bprefs[2], &lr->bprefs[3]);
 	}
 
+	// Without a path the static address would name an abstract socket, which is not where
+	// darlingserver listens.
 	str = getenv("__mldr_sockpath");
 
-	if (str != NULL) {
-		if (strlen(str) > sizeof(__dserver_socket_address_data.sun_path) - 1) {
-			fprintf(stderr, "darlingserver socket path is too long\n");
-			exit(1);
-		}
-		strncpy(__dserver_socket_address_data.sun_path, str, sizeof(__dserver_socket_address_data.sun_path) - 1);
-		__dserver_socket_address_data.sun_path[sizeof(__dserver_socket_address_data.sun_path) - 1] = '\0';
-
-		lr->socket_path = __dserver_socket_address_data.sun_path;
+	if (str == NULL || str[0] == '\0' || strlen(str) > sizeof(__dserver_socket_address_data.sun_path) - 1) {
+		fprintf(stderr, "mldr: __mldr_sockpath is missing, empty or too long; start programs through darling\n");
+		exit(1);
 	}
+	strncpy(__dserver_socket_address_data.sun_path, str, sizeof(__dserver_socket_address_data.sun_path) - 1);
+	__dserver_socket_address_data.sun_path[sizeof(__dserver_socket_address_data.sun_path) - 1] = '\0';
+
+	lr->socket_path = __dserver_socket_address_data.sun_path;
 
 	lr->lifetime_pipe = -1;
 	str = getenv("__mldr_lifetime_pipe");
@@ -627,7 +627,9 @@ int __mldr_create_rpc_socket(void) {
 		goto err_out;
 	}
 
-	close(pre_fd);
+	if (fd != pre_fd) {
+		close(pre_fd);
+	}
 	pre_fd = -1;
 
 	int fd_flags = fcntl(fd, F_GETFD);
@@ -672,7 +674,8 @@ int __mldr_create_process_lifetime_pipe(int* fds) {
 		return 0;
 	}
 
-	int pre_fds[2];
+	int pre_fds[2] = { -1, -1 };
+	fds[0] = fds[1] = -1;
 	if (pipe(pre_fds) == -1) {
 		goto err_out;
 	}
@@ -683,7 +686,9 @@ int __mldr_create_process_lifetime_pipe(int* fds) {
 			goto err_out;
 		}
 
-		close(pre_fds[i]);
+		if (fds[i] != pre_fds[i]) {
+			close(pre_fds[i]);
+		}
 		pre_fds[i] = -1;
 	}
 
@@ -796,16 +801,14 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 	// darlingserver should already have the read pipe, so we don't need
 	// to check that in.
 	if (lr->lifetime_pipe != -1) {
-		lifetime_pipe[1] = socket_bitmap_get(&socket_bitmap);
-
-		if (lr->lifetime_pipe != lifetime_pipe[1]) {
-			// move the existing pipe to a higher fd number, and invalidate
-			// the old fd to prevent interfering with fds provided by
-			// socket_bitmap_get
-			if (dup2(lr->lifetime_pipe, lifetime_pipe[1]) == -1) {
-				fprintf(stderr, "Failed to dup process lifetime pipe: %d (%s)\n", errno, strerror(errno));
-				exit(1);
-			}
+		// move the existing pipe to a higher fd number, and invalidate
+		// the old fd to prevent interfering with fds provided by
+		// socket_bitmap_get
+		lifetime_pipe[1] = socket_bitmap_place(&socket_bitmap, lr->lifetime_pipe);
+		if (lifetime_pipe[1] < 0) {
+			// it could not be moved; keep it where it is
+			lifetime_pipe[1] = lr->lifetime_pipe;
+		} else if (lifetime_pipe[1] != lr->lifetime_pipe) {
 			close(lr->lifetime_pipe);
 		}
 

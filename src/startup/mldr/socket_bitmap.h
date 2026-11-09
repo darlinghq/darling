@@ -43,7 +43,8 @@ void socket_bitmap_put(socket_bitmap_t* bitmap, int socket);
 
 // Duplicates `fd` onto a descriptor number from the bitmap and returns it, or -1 on
 // failure. `fd` itself is left open. A number that is already in use, for example by
-// a native library, is never replaced.
+// a native library, is never replaced. If `fd` already is on the slot, `fd` itself is
+// returned, so callers close the original only when the result differs from it.
 int socket_bitmap_place(socket_bitmap_t* bitmap, int fd);
 
 // Called around fork() so that the child gets a consistent copy of the bitmap

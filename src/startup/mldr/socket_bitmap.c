@@ -174,6 +174,12 @@ int socket_bitmap_place(socket_bitmap_t* bitmap, int fd) {
 			return -1;
 		}
 
+		// an inherited descriptor may already sit on its slot; F_DUPFD would see the
+		// slot as taken and move it off
+		if (slot == fd) {
+			return slot;
+		}
+
 		// unlike dup2(), F_DUPFD never closes a descriptor someone else holds;
 		// it picks the lowest free number at or above the slot instead
 		int placed = fcntl(fd, F_DUPFD, slot);
