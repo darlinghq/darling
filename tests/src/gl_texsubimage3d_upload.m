@@ -6,9 +6,10 @@
 #include <stdio.h>
 #include <string.h>
 
-// OpenGL/include/OpenGL/glext.h; some configured SDKs omit this alias.
-extern void glTexSubImage3DEXT(GLenum, GLint, GLint, GLint, GLint, GLsizei,
-                              GLsizei, GLsizei, GLenum, GLenum, const void *);
+// macOS names the target only with its EXT suffix (same value).
+#ifndef GL_TEXTURE_2D_ARRAY
+#define GL_TEXTURE_2D_ARRAY GL_TEXTURE_2D_ARRAY_EXT
+#endif
 
 int main(void) {
   NSAutoreleasePool *pool = [NSAutoreleasePool new];
@@ -36,12 +37,8 @@ int main(void) {
     for (int i = 0; i < 32; i++)
       pixels[i] = (unsigned char)(i * 7 + round * 13 + 3);
     memset(output, 0, sizeof(output));
-    if (round & 1)
-      glTexSubImage3DEXT(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, 2, 2, 2, GL_RGBA,
-                        GL_UNSIGNED_BYTE, pixels);
-    else
-      glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, 2, 2, 2, GL_RGBA,
-                     GL_UNSIGNED_BYTE, pixels);
+    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, 2, 2, 2, GL_RGBA,
+                    GL_UNSIGNED_BYTE, pixels);
     GLenum error = glGetError();
     glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, GL_UNSIGNED_BYTE, output);
     GLenum read_error = glGetError();

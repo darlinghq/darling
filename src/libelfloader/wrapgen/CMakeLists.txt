@@ -15,3 +15,13 @@ target_link_libraries(wrapgen dl)
 if (DEFINED WITH_PRINT_WRAPPED_ELF)
 	add_executable(print_wrapped_elf print_wrapped_elf.cpp)
 endif (DEFINED WITH_PRINT_WRAPPED_ELF)
+
+# Checks the arm64 trampolines and GL stack-argument adapters wrapgen emits;
+# runs them on arm64 hosts
+find_package(Python3 QUIET COMPONENTS Interpreter)
+if (Python3_Interpreter_FOUND)
+	add_test(NAME wrapgen_arm64_wrappers
+		COMMAND ${CMAKE_COMMAND} -E env CC=${CMAKE_C_COMPILER}
+			${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/wrapgen/arm64-wrappers.py
+			--wrapgen $<TARGET_FILE:wrapgen> --source-dir ${CMAKE_SOURCE_DIR})
+endif()

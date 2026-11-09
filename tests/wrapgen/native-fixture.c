@@ -1,4 +1,5 @@
 #include <stdint.h>
+int fixture_value = 7;
 static const void *expected_pointer;
 static unsigned expected_kind, expected_second;
 static int failed, calls;
