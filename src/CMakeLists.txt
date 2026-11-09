@@ -106,36 +106,23 @@ add_subdirectory(\"${CMAKE_CURRENT_SOURCE_DIR}/external/cctools-port/cctools/ar\
 add_subdirectory(\"${CMAKE_CURRENT_SOURCE_DIR}/external/cctools-port/cctools/misc\" misc)
 add_subdirectory(\"${CMAKE_CURRENT_SOURCE_DIR}/buildtools\" buildtools)
 add_subdirectory(\"${CMAKE_CURRENT_SOURCE_DIR}/libelfloader/wrapgen\" wrapgen)
+add_executable(rtsig \"${CMAKE_CURRENT_SOURCE_DIR}/startup/rtsig.c\")
 ")
 
+	# Tools that run during the build are built for the build machine with
+	# CC_FOR_BUILD/CXX_FOR_BUILD or -DHOST_CC/-DHOST_CXX if given, otherwise
+	# with the Clang that builds Darling, which targets the build machine
+	# when no target is passed to it.
 	if (DEFINED ENV{CC_FOR_BUILD} AND NOT "$ENV{CC_FOR_BUILD}" STREQUAL "")
 		set(HOST_CC "$ENV{CC_FOR_BUILD}")
 	elseif (NOT DEFINED HOST_CC)
-		find_program(HOST_CC NAMES
-			clang-23 clang-22 clang-21 clang-20 clang-19 clang-18 clang-17 clang-16 clang-15 clang-14
-			clang gcc cc PATHS /usr/bin NO_DEFAULT_PATH)
-		if (NOT HOST_CC)
-			find_program(HOST_CC NAMES
-				clang-23 clang-22 clang-21 clang-20 clang-19 clang-18 clang-17 clang-16 clang-15 clang-14
-				clang gcc cc)
-		endif()
+		set(HOST_CC "${CMAKE_C_COMPILER}")
 	endif()
 
 	if (DEFINED ENV{CXX_FOR_BUILD} AND NOT "$ENV{CXX_FOR_BUILD}" STREQUAL "")
 		set(HOST_CXX "$ENV{CXX_FOR_BUILD}")
 	elseif (NOT DEFINED HOST_CXX)
-		find_program(HOST_CXX NAMES
-			clang++-23 clang++-22 clang++-21 clang++-20 clang++-19 clang++-18 clang++-17 clang++-16 clang++-15 clang++-14
-			clang++ PATHS /usr/bin NO_DEFAULT_PATH)
-		if (NOT HOST_CXX)
-			find_program(HOST_CXX NAMES
-				clang++-23 clang++-22 clang++-21 clang++-20 clang++-19 clang++-18 clang++-17 clang++-16 clang++-15 clang++-14
-				clang++)
-		endif()
-	endif()
-
-	if (NOT HOST_CXX)
-		message(FATAL_ERROR "Host Clang++ is required to build host tools for Darling")
+		set(HOST_CXX "${CMAKE_CXX_COMPILER}")
 	endif()
 
 	execute_process(
@@ -151,6 +138,8 @@ add_subdirectory(\"${CMAKE_CURRENT_SOURCE_DIR}/libelfloader/wrapgen\" wrapgen)
 			-DAPPLE_TARGET_TRIPLET_PRIMARY=${APPLE_TARGET_TRIPLET_PRIMARY}
 			-DTARGET_ARM64=${TARGET_ARM64}
 			-DTARGET_x86_64=${TARGET_x86_64}
+			-DTARGET_i386=${TARGET_i386}
+			-DADHOC_CODESIGN=${ADHOC_CODESIGN}
 			-DDARLING_TOP_DIRECTORY=${CMAKE_SOURCE_DIR}
 		RESULT_VARIABLE host_tools_cfg_res
 	)
@@ -209,6 +198,17 @@ add_subdirectory(\"${CMAKE_CURRENT_SOURCE_DIR}/libelfloader/wrapgen\" wrapgen)
 	execute_process(COMMAND ${CMAKE_COMMAND} -E copy
 		"${HOST_TOOLS_BUILD_DIR}/wrapgen/wrapgen"
 		"${CMAKE_BINARY_DIR}/src/libelfloader/wrapgen/wrapgen")
+
+	# use_ld64 runs adhoc-sign through $<TARGET_FILE:adhoc-sign>
+	if (ADHOC_CODESIGN)
+		add_executable(adhoc-sign IMPORTED GLOBAL)
+		set_target_properties(adhoc-sign PROPERTIES
+			IMPORTED_LOCATION "${HOST_TOOLS_BUILD_DIR}/buildtools/adhoc-sign")
+	endif()
+
+	# startup/rtsig.h is generated from the build machine's C library; see
+	# src/startup/CMakeLists.txt
+	set(DARLING_HOST_RTSIG "${HOST_TOOLS_BUILD_DIR}/rtsig")
 
 	add_custom_target(${APPLE_TARGET_TRIPLET_PRIMARY}-ld)
 	add_custom_target(${APPLE_TARGET_TRIPLET_PRIMARY}-ar)
