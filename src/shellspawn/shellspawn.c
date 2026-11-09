@@ -57,7 +57,7 @@ int main(int argc, const char** argv)
 	// default disposition back before exec.
 	signal(SIGPIPE, SIG_IGN);
 
-	// shellspawn (daemon) --fork()--> shellspawn (child) --fork()--> exec /bin/bash
+	// shellspawn (daemon) --fork()--> shellspawn (child) --fork()--> exec the shell
 	// in order to read the exit status of the shell process,
 	// we have to allow it to become a zombie, therefore we need to
 	// restore the sigaction of SIGCHLD of the child shellspawn

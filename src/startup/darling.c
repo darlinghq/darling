@@ -1335,7 +1335,7 @@ void setupPrefix()
 
 	fprintf(file,
 		"root:*:0:0:System Administrator:/var/root:/bin/sh\n"
-		"%s:*:%d:%d:Darling User:/Users/%s:/bin/bash\n",
+		"%s:*:%d:%d:Darling User:/Users/%s:/bin/zsh\n",
 		passwd_entry->pw_name,
 		passwd_entry->pw_uid,
 		passwd_entry->pw_gid,
@@ -1353,7 +1353,7 @@ void setupPrefix()
 
 	fprintf(file,
 		"root:*:0:0::0:0:System Administrator:/var/root:/bin/sh\n"
-		"%s:*:%d:%d::0:0:Darling User:/Users/%s:/bin/bash\n",
+		"%s:*:%d:%d::0:0:Darling User:/Users/%s:/bin/zsh\n",
 		passwd_entry->pw_name,
 		passwd_entry->pw_uid,
 		passwd_entry->pw_gid,
