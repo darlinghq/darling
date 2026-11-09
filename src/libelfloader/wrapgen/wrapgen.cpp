@@ -321,8 +321,14 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 
 	for (const std::string& sym : symbols)
 	{
-		// These signatures have eight register arguments, then two 32-bit
-		// scalars and a pointer. Darwin packs the scalars; AAPCS64 does not.
+		// ABI adapters for every caller of these four GL entry points, not for
+		// any particular application. Their prototypes (OpenGL/glext.h) have
+		// eight register arguments followed by two 32-bit scalars and a
+		// pointer, which go on the stack. The Darwin arm64 calling convention
+		// packs stack arguments to their natural size (offsets 0, 4 and 8),
+		// while AAPCS64 on Linux gives each its own 8-byte slot (0, 8 and 16).
+		// wrapgen has no prototypes, so it cannot convert stack arguments in
+		// general; the adapter below repacks them for these signatures only.
 		bool packedGLUpload = sym == "glTexSubImage3D" || sym == "glTexSubImage3DEXT" ||
 			sym == "glCompressedTexSubImage3D" || sym == "glCompressedTexSubImage3DARB";
 		output << "#if defined(__arm64__)\n"
