@@ -24,8 +24,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 // What darlingserver reads from its environment, and why each is safe to take
 // from the invoking user:
 static const char* const serverEnvAllowlist[] = {
-	// Where /Users/<name>/LinuxHome points and where xdg-user-dir finds the
-	// user's directories; both are used with the user's ids.
+	// Where /Users/<name>/LinuxHome points and where the user's
+	// user-dirs.dirs is found; both are used with the user's ids.
 	"HOME",
 	"XDG_CONFIG_HOME",
 	// Selects the copy mode, which the user can also select by writing the

@@ -966,8 +966,8 @@ pid_t spawnInitProcess(void)
 		// us setuid, the kernel marked our own exec secure (AT_SECURE) and the C
 		// library ignored the dangerous loader variables, but darlingserver's
 		// exec is not marked secure. So it gets only the variables it needs, and
-		// a fixed PATH: with the user's PATH it would run fuse-overlayfs, and
-		// the shell it starts for xdg-user-dir, from the user's directories.
+		// a fixed PATH, so that the helpers it runs as root, such as
+		// fuse-overlayfs, never come from the user's directories.
 		char* const serverArgv[] = { "darlingserver", prefix, uid_str, gid_str, pipefd_str, g_fixPermissions ? "1" : "0", NULL };
 		char** serverEnv = launcherServerEnvironment(environ, getauxval(AT_SECURE) != 0);
 		if (!serverEnv)
