@@ -19,6 +19,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <errno.h>
 #include <unistd.h>
+#include <sys/prctl.h>
 #include "native_fork.h"
 
 int __mldr_native_fork(void)
@@ -27,6 +28,12 @@ int __mldr_native_fork(void)
 	int result = fork();
 	int saved_errno = errno;
 	if (result == 0) {
+		// Yama's ptracer exception (see mldr.c) is not inherited across fork,
+		// and darlingserver needs it to read and write the child's memory
+		// from the child's first RPC on (with ptrace_scope 1, process_vm_*
+		// fails with EPERM otherwise). posix_spawn's child goes straight to
+		// execve, so this cannot wait until later.
+		prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY, 0, 0, 0);
 		__mldr_thread_postfork_child();
 		__mldr_socket_bitmap_postfork_child();
 	} else {
