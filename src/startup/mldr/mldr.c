@@ -36,6 +36,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "loader.h"
 #include "socket_bitmap.h"
 #include "image_protection.h"
+#include "interpreter_path.h"
 #include <sys/resource.h>
 #include <sys/prctl.h>
 #include <sys/socket.h>
@@ -90,9 +91,6 @@ static void* compatible_mmap(void *addr, size_t length, int prot, int flags, int
 static void setup_stack64(const char* filepath, struct load_results* lr);
 #endif
 static void setup_stack32(const char* filepath, struct load_results* lr);
-
-// this is called when argv[0] specifies an interpreter and we need to "unexpand" it (i.e. convert it from a Linux path to a vchrooted path)
-static void vchroot_unexpand_interpreter(struct load_results* lr);
 
 // UUID of the main executable
 uint8_t exe_uuid[16];
@@ -1080,25 +1078,3 @@ void* compatible_mmap(void *addr, size_t length, int prot, int flags, int fd, of
 	}
 	return result;
 }
-
-static void vchroot_unexpand_interpreter(struct load_results* lr) {
-	static char unexpanded[4096];
-	size_t length;
-
-	if (lr->root_path) {
-		length = strlen(lr->argv[0]);
-
-		if (strncmp(lr->argv[0], lr->root_path, lr->root_path_length) == 0) {
-			memmove(unexpanded, lr->argv[0] + lr->root_path_length, length - lr->root_path_length + 1);
-		} else {
-			if (length + sizeof(SYSTEM_ROOT) > sizeof(unexpanded)) {
-				fprintf(stderr, "Interpreter path was too big\n");
-				exit(1);
-			}
-			memmove(unexpanded + sizeof(SYSTEM_ROOT) - 1, lr->argv[0], length + 1);
-			memcpy(unexpanded, SYSTEM_ROOT, sizeof(SYSTEM_ROOT) - 1);
-		}
-
-		lr->argv[0] = unexpanded;
-	}
-};
