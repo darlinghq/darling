@@ -14,7 +14,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Ttext-segment,0x400000 -Wl,-Tbss,0x410000 -Wl,-Tdata,0x420000")
 add_definitions(-DINSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}" -D_GNU_SOURCE -DMLDR_BUILD)
 
-add_executable(darling darling.c launcher-env.c launcher-ids.c launcher-prefix.c)
+add_executable(darling darling.c launcher-env.c launcher-ids.c launcher-prefix.c launcher-server.c)
 
 target_link_libraries(darling -lutil)
 
@@ -56,6 +56,11 @@ add_test(NAME launcher_env COMMAND launcher_env_test)
 add_executable(launcher_prefix_test ${CMAKE_SOURCE_DIR}/tests/launcher/prefix.c launcher-prefix.c)
 target_include_directories(launcher_prefix_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME launcher_prefix COMMAND launcher_prefix_test)
+
+# the setuid launcher's checks before it joins the server's mount namespace
+add_executable(launcher_server_test ${CMAKE_SOURCE_DIR}/tests/launcher/server.c launcher-server.c)
+target_include_directories(launcher_server_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME launcher_server COMMAND launcher_server_test)
 
 # darling-prefsd runs inside the prefix (src/prefsd); its checks on the
 # preferences files and values are plain C and are tested on the host

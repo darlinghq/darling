@@ -46,6 +46,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "launcher-env.h"
 #include "launcher-ids.h"
 #include "launcher-prefix.h"
+#include "launcher-server.h"
 
 // Between Linux 4.9 and 4.11, a strange bug has been introduced
 // which prevents connecting to Unix sockets if the socket was
@@ -265,7 +266,7 @@ int main(int argc, char ** argv)
 	}
 
 #if USE_LINUX_4_11_HACK
-	joinNamespace(pidInit, CLONE_NEWNS, "mnt");
+	joinServerMountNamespace(pidInit);
 #endif
 
 	// Joining the mount namespace was the last step that needs root. Drop it
@@ -321,29 +322,70 @@ int main(int argc, char ** argv)
 	return 0;
 }
 
-void joinNamespace(pid_t pid, int type, const char* typeName)
+// Joins the mount namespace of the container's darlingserver. This runs as
+// root and the pid may come from the pid file in the user's prefix, so the
+// process is checked first, through a pinned /proc/<pid> descriptor: it must
+// run the installed darlingserver binary, and its mount namespace must be a
+// different one owned by our own user namespace. A user can create mount
+// namespaces only inside user namespaces of their own, so a namespace owned
+// by ours was created by root, as darlingserver does. setns() then uses the
+// namespace descriptor that was checked, not a path looked up again.
+void joinServerMountNamespace(pid_t pid)
 {
-	int fdNS;
-	char pathNS[4096];
-	
-	snprintf(pathNS, sizeof(pathNS), "/proc/%d/ns/%s", pid, typeName);
+	struct stat exe, userNs, mntNs;
+	char procPath[64];
+	int procfd, nsfd;
+	enum launcher_server_check check;
 
-	fdNS = open(pathNS, O_RDONLY);
-
-	if (fdNS < 0)
+	if (stat(INSTALL_PREFIX "/bin/darlingserver", &exe) != 0
+		|| stat("/proc/self/ns/user", &userNs) != 0
+		|| stat("/proc/self/ns/mnt", &mntNs) != 0)
 	{
-		fprintf(stderr, "Cannot open %s namespace file: %s\n", typeName, strerror(errno));
+		fprintf(stderr, "Cannot examine darlingserver or this process's namespaces: %s\n", strerror(errno));
 		exit(1);
 	}
 
-	// Calling setns() with a PID namespace doesn't move our process into it,
-	// but our child process will be spawned inside the namespace
-	if (setns(fdNS, type) != 0)
+	snprintf(procPath, sizeof(procPath), "/proc/%d", (int) pid);
+	procfd = open(procPath, O_PATH | O_DIRECTORY | O_CLOEXEC);
+	if (procfd < 0)
+		check = LAUNCHER_SERVER_GONE;
+	else
 	{
-		fprintf(stderr, "Cannot join %s namespace: %s\n", typeName, strerror(errno));
+		check = launcherOpenServerMountNs(procfd, &exe, &userNs, &mntNs, &nsfd);
+		int error = errno;
+		close(procfd);
+		errno = error;
+	}
+
+	switch (check)
+	{
+		case LAUNCHER_SERVER_OK:
+			break;
+		case LAUNCHER_SERVER_GONE:
+			fprintf(stderr, "The Darling container (process %d) exited. Try again.\n", (int) pid);
+			exit(1);
+		case LAUNCHER_SERVER_WRONG_EXE:
+			fprintf(stderr, "Process %d, named in %s/.init.pid, is not running %s.\n"
+				"If Darling was updated while the container was running, run 'darling shutdown' and try again.\n",
+				(int) pid, prefix, INSTALL_PREFIX "/bin/darlingserver");
+			exit(1);
+		case LAUNCHER_SERVER_FOREIGN_USERNS:
+		case LAUNCHER_SERVER_SAME_MNTNS:
+			fprintf(stderr, "Process %d, named in %s/.init.pid, does not have a Darling container's mount namespace; refusing to join it.\n"
+				"Run 'darling shutdown' and try again.\n", (int) pid, prefix);
+			exit(1);
+		case LAUNCHER_SERVER_ERROR:
+		default:
+			fprintf(stderr, "Cannot examine the Darling container (process %d): %s\n", (int) pid, strerror(errno));
+			exit(1);
+	}
+
+	if (setns(nsfd, CLONE_NEWNS) != 0)
+	{
+		fprintf(stderr, "Cannot join the container's mount namespace: %s\n", strerror(errno));
 		exit(1);
 	}
-	close(fdNS);
+	close(nsfd);
 }
 
 static void pushShellspawnCommandData(int sockfd, shellspawn_cmd_type_t type, const void* data, size_t data_length)

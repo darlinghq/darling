@@ -76,7 +76,8 @@ void ensureSystemAccounts(void);
 int isModuleLoaded(void);
 
 void loadKernelModule(void);
-void joinNamespace(pid_t pid, int type, const char* typeName);
+// Joins the checked mount namespace of the container's darlingserver
+void joinServerMountNamespace(pid_t pid);
 
 void setupCoredumpPattern(void);
 void setupUserHome(void);
