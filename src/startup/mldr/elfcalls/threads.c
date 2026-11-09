@@ -32,8 +32,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/socket.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <errno.h>
+#include <limits.h>
 
 #include "dthreads.h"
+#include "thread_stack.h"
 
 #include <darlingserver/rpc.h>
 
@@ -76,72 +79,9 @@ static void* darling_thread_entry(void* p);
 #	define PTHREAD_STACK_MIN 16384
 #endif
 
-#define DEFAULT_DTHREAD_GUARD_SIZE 0x1000
-
 static inline void *align_16(uintptr_t ptr) {
 	return (void *) ((uintptr_t) ptr & ~(uintptr_t) 15);
 }
-
-static dthread_t dthread_structure_init(dthread_t dthread, size_t guard_size, void* stack_addr, size_t stack_size, void* base_addr, size_t total_size) {
-	// the pthread signature is the address of the pthread XORed with the "pointer munge" token passed in by the kernel
-	// since the LKM doesn't pass in a token, it's always zero, so the signature is equal to just the address
-	dthread->sig = (uintptr_t)dthread;
-
-	dthread->tsd[DTHREAD_TSD_SLOT_PTHREAD_SELF] = dthread;
-	dthread->tsd[DTHREAD_TSD_SLOT_ERRNO] = &dthread->err_no;
-	dthread->tsd[DTHREAD_TSD_SLOT_PTHREAD_QOS_CLASS] = (void*)(uintptr_t)(DTHREAD_DEFAULT_PRIORITY);
-	dthread->tsd[DTHREAD_TSD_SLOT_PTR_MUNGE] = 0;
-	dthread->tl_has_custom_stack = 0;
-	dthread->lock = (darwin_os_unfair_lock){0};
-
-	dthread->stackaddr = stack_addr;
-	dthread->stackbottom = (char*)stack_addr - stack_size;
-	dthread->freeaddr = base_addr;
-	dthread->freesize = total_size;
-	dthread->guardsize = guard_size;
-
-	dthread->cancel_state = DTHREAD_CANCEL_ENABLE | DTHREAD_CANCEL_DEFERRED;
-
-	// technically, these next values are defaults; we don't have a way to get more info from the user
-	//
-	// it's not too important since the only cases where we initialize the dthread structure ourselves is when we're working with workqueues,
-	// and those initialize their own dthread structures when they get them
-
-	dthread->tl_joinable = 1;
-	dthread->inherit = DTHREAD_INHERIT_SCHED;
-	dthread->tl_policy = DARWIN_POLICY_TIMESHARE;
-
-	return dthread;
-};
-
-static dthread_t dthread_structure_allocate(size_t stack_size, size_t guard_size, void** stack_addr) {
-	size_t total_size = guard_size + stack_size + sizeof(struct _dthread);
-
-	// allocate our stack, guard page, and dthread structure
-	void* base_addr = mmap(NULL, total_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-	// protect our guard page
-	mprotect(base_addr, guard_size, PROT_NONE);
-
-	/**
-	 * memory layout of newly allocated block:
-	 *
-	 * [base_addr]         [base_addr + total_size]
-	 * --------------------------------------------
-	 * | guard page |       stack       | dthread |
-	 */
-
-	// stack_addr points to the top of the stack (i.e. the highest address)
-	*stack_addr = ((char*)base_addr) + stack_size + guard_size;
-
-	// the dthread sits above the stack
-	// (and by "above", i mean the lowest address of the dthread is the highest address of the stack)
-	dthread_t dthread = (dthread_t)*stack_addr;
-	// zero-out the entrire dthread structure
-	memset(dthread, 0, sizeof(struct _dthread));
-
-	return dthread_structure_init(dthread, guard_size, *stack_addr, stack_size, base_addr, total_size);
-};
 
 void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_size,
 				void* entry_point, uintptr_t real_entry_point,
@@ -173,7 +113,12 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	//
 	// otherwise, allocate them ourselves
 	if (pth == NULL || args.is_workqueue) {
-		pth = dthread_structure_allocate(stack_size, DEFAULT_DTHREAD_GUARD_SIZE, (void**)&args.stack_addr);
+		pth = dthread_structure_allocate(stack_size, dthread_guard_size(), (void**)&args.stack_addr);
+		if (pth == NULL) {
+			// no stack to run the thread on
+			pthread_attr_destroy(&attr);
+			return NULL;
+		}
 	} else if (!args.is_workqueue) {
 		// `arg2` is `stack_addr` for normal threads
 		args.stack_addr = arg2;
@@ -189,7 +134,12 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 
 	// std::cout << "Allocated stack at " << pth << ", size " << stack_size << std::endl;
 
-	pthread_attr_setstacksize(&attr, 4096);
+	// requesting less than PTHREAD_STACK_MIN fails and leaves the attribute at the libc
+	// default (8 MB on glibc), so ask for exactly the minimum the host libc accepts
+	size_t host_stack_size = PTHREAD_STACK_MIN;
+	int stacksize_err = pthread_attr_setstacksize(&attr, host_stack_size);
+	if (stacksize_err != 0)
+		fprintf(stderr, "mldr: pthread_attr_setstacksize(%zu) failed: %s\n", host_stack_size, strerror(stacksize_err));
 
 	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 

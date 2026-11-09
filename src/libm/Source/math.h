@@ -40,4 +40,7 @@ extern struct __double2 __sincos_stret(double v);
 extern struct __float2 __sincospif_stret(float v);
 extern struct __double2 __sincospi_stret(double v);
 
+extern float __exp10f(float);
+extern double __exp10(double);
+
 #endif /* __MATH_H__ */

@@ -61,6 +61,23 @@ add_test(NAME launcher_prefix COMMAND launcher_prefix_test)
 add_executable(launcher_server_test ${CMAKE_SOURCE_DIR}/tests/launcher/server.c launcher-server.c)
 target_include_directories(launcher_server_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME launcher_server COMMAND launcher_server_test)
+# shellspawn's accept loop, with shellspawn.c built for the host as it is and
+# accept, usleep, perror and fork replaced through the linker. shellspawn.c
+# includes <sys/event.h> without using kqueue, so an empty one stands in.
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/shellspawn-host-include/sys/event.h
+	"/* empty: shellspawn.c makes no kqueue calls */\n")
+add_executable(shellspawn_accept_test
+	${CMAKE_SOURCE_DIR}/tests/shellspawn/accept-loop.c
+	${CMAKE_SOURCE_DIR}/src/shellspawn/shellspawn.c
+	${CMAKE_SOURCE_DIR}/src/shellspawn/duct_signals.c)
+set_source_files_properties(${CMAKE_SOURCE_DIR}/src/shellspawn/shellspawn.c
+	PROPERTIES COMPILE_DEFINITIONS main=shellspawn_main)
+target_include_directories(shellspawn_accept_test PRIVATE
+	${CMAKE_SOURCE_DIR}/src/shellspawn
+	${CMAKE_CURRENT_BINARY_DIR}/shellspawn-host-include)
+target_link_options(shellspawn_accept_test PRIVATE
+	-Wl,--wrap=accept,--wrap=usleep,--wrap=perror,--wrap=fork)
+add_test(NAME shellspawn_accept COMMAND shellspawn_accept_test)
 
 # darling-prefsd runs inside the prefix (src/prefsd); its checks on the
 # preferences files and values are plain C and are tested on the host
