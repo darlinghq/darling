@@ -79,7 +79,7 @@ find_package(FLEX)
 set(DARLING_SDK_RELATIVE_PATH "Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
 set(DARLING_ROOT_RELATIVE_TO_SDK "../../../../../..")
 
-if (NOT CMAKE_CROSSCOMPILING)
+if (NOT DARLING_CROSS_BUILD)
 	add_subdirectory(external/cctools-port/cctools/ld64/src)
 	add_subdirectory(external/cctools-port/cctools/ar)
 	#add_subdirectory(external/cctools-port/cctools/as)

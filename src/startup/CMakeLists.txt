@@ -32,7 +32,7 @@ add_executable(darpath_host ${CMAKE_SOURCE_DIR}/src/tools/darpath.c)
 set_target_properties(darpath_host PROPERTIES OUTPUT_NAME darpath)
 install(TARGETS darpath_host DESTINATION bin)
 
-if (CMAKE_CROSSCOMPILING)
+if (DARLING_CROSS_BUILD)
 	file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/rtsig.h" "#define LINUX_SIGRTMIN 43\n#define LINUX_SIGRTMAX 64\n")
 	add_custom_target(rtsig_h)
 else()
