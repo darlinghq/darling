@@ -85,6 +85,47 @@ static int test_place(void)
 	return 0;
 }
 
+// A descriptor inherited across exec usually already sits on the slot the new process
+// hands out first. Placing it must keep it there instead of moving it off its own slot.
+static int test_place_on_own_slot(void)
+{
+	socket_bitmap_t placing = {
+		.mutex = PTHREAD_MUTEX_INITIALIZER,
+		.highest = 190,
+	};
+	int inherited[2];
+	struct stat before, after;
+
+	if (pipe(inherited) != 0 || dup2(inherited[1], 190) != 190)
+	{
+		printf("FAIL: cannot set up descriptors\n");
+		return 1;
+	}
+	fstat(190, &before);
+
+	int placed = socket_bitmap_place(&placing, 190);
+	if (placed != 190)
+	{
+		printf("FAIL: a descriptor already on its slot was moved to %d\n", placed);
+		return 1;
+	}
+
+	fstat(190, &after);
+	if (before.st_ino != after.st_ino)
+	{
+		printf("FAIL: the descriptor on its own slot was replaced\n");
+		return 1;
+	}
+
+	// the slot stays taken
+	if (socket_bitmap_get(&placing) != 189)
+	{
+		printf("FAIL: the slot of a descriptor placed in place was handed out again\n");
+		return 1;
+	}
+	return 0;
+}
+
 int main(void)
 {
 	int keepers[LONG_LIVED];
@@ -124,6 +165,8 @@ int main(void)
 	}
 
 	if (test_place() != 0)
+		return 1;
+	if (test_place_on_own_slot() != 0)
 		return 1;
 
 	printf("socket_bitmap: OK\n");

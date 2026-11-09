@@ -93,3 +93,13 @@ if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
 	target_include_directories(mldr_cpu_caps_x86_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 	add_test(NAME mldr_cpu_caps_x86 COMMAND mldr_cpu_caps_x86_test)
 endif()
+
+# mldr must refuse to start without a darlingserver socket path instead of falling back
+# to an address nothing listens on; with a path it goes on to load the program.
+add_test(NAME mldr_sockpath_missing COMMAND env -i $<TARGET_FILE:mldr> /nonexistent)
+add_test(NAME mldr_sockpath_empty COMMAND env -i __mldr_sockpath= $<TARGET_FILE:mldr> /nonexistent)
+set_tests_properties(mldr_sockpath_missing mldr_sockpath_empty PROPERTIES
+	PASS_REGULAR_EXPRESSION "__mldr_sockpath is missing")
+add_test(NAME mldr_sockpath_set COMMAND env -i __mldr_sockpath=/nonexistent.sock $<TARGET_FILE:mldr> /nonexistent)
+set_tests_properties(mldr_sockpath_set PROPERTIES
+	PASS_REGULAR_EXPRESSION "Cannot open /nonexistent")
