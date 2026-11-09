@@ -50,6 +50,28 @@ bool launcherEnvEntryIs(const char* entry, const char* name)
 	return strncmp(entry, name, len) == 0 && entry[len] == '=';
 }
 
+// Read by the host dynamic loader.
+static const char* const hostLoaderVariables[] = {
+	"LD_LIBRARY_PATH",
+	"LD_PRELOAD",
+};
+
+bool launcherGuestMayGet(const char* entry)
+{
+	const char* equals = strchr(entry, '=');
+
+	// NAME=value with a non-empty name.
+	if (equals == NULL || equals == entry)
+		return false;
+
+	for (size_t i = 0; i < sizeof(hostLoaderVariables) / sizeof(hostLoaderVariables[0]); i++)
+	{
+		if (launcherEnvEntryIs(entry, hostLoaderVariables[i]))
+			return false;
+	}
+	return true;
+}
+
 static bool serverMayGet(const char* entry)
 {
 	for (size_t i = 0; i < sizeof(serverEnvAllowlist) / sizeof(serverEnvAllowlist[0]); i++)
@@ -78,7 +100,7 @@ char** launcherServerEnvironment(char* const* envp, bool restricted)
 
 	for (size_t i = 0; i < count; i++)
 	{
-		if (!restricted || serverMayGet(envp[i]))
+		if (restricted ? serverMayGet(envp[i]) : launcherGuestMayGet(envp[i]))
 			result[n++] = envp[i];
 	}
 	result[n] = NULL;

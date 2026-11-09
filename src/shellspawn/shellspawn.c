@@ -267,8 +267,17 @@ void spawnShell(int fd)
 			{
 				if (param != NULL)
 				{
-					if (DBG) printf("set env: %s\n", param);
-					putenv(param);
+					// NAME=value with a non-empty name
+					char* equals = strchr(param, '=');
+					if (equals != NULL && equals != param)
+					{
+						if (DBG) printf("set env: %s\n", param);
+						putenv(param);
+					}
+					else
+					{
+						free(param);
+					}
 				}
 				break;
 			}

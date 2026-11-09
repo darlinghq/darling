@@ -29,6 +29,13 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 // Whether the environment entry `entry` ("NAME=value") sets the variable `name`.
 bool launcherEnvEntryIs(const char* entry, const char* name);
 
+// Whether the launcher passes the entry of its own environment on to programs
+// in the container. Entries that do not have the form NAME=value are dropped,
+// and so are the host dynamic loader's LD_LIBRARY_PATH and LD_PRELOAD: they name
+// host ELF libraries, the host loader would apply them to mldr, which starts
+// every guest process, and dyld reads LD_LIBRARY_PATH as a library search path.
+bool launcherGuestMayGet(const char* entry);
+
 // Builds the environment darlingserver is started with from `envp`.
 //
 // darlingserver starts with real root ids, so the kernel does not mark its exec
@@ -36,7 +43,8 @@ bool launcherEnvEntryIs(const char* entry, const char* name);
 // the environment. When `restricted` is set (the launcher was started setuid by
 // another user), only the variables darlingserver reads for its own purposes and
 // that are safe to take from that user are kept, and PATH is replaced by
-// LAUNCHER_SERVER_PATH. Otherwise the caller is root and `envp` is kept as is.
+// LAUNCHER_SERVER_PATH. Otherwise the caller is root and `envp` is kept, except
+// for what launcherGuestMayGet() refuses: launchd inherits this environment.
 //
 // Returns a NULL-terminated array that the caller frees; its strings are those
 // of `envp` (or static). Returns NULL if out of memory.

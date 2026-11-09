@@ -62,6 +62,10 @@ static char* g_userEnv[] = {
 	"HOME",
 	"=HOME",
 	"XDG_CONFIG_HOMEX=/x",
+	"LD_LIBRARY_PATH=/home/user/lib",
+	"LD_PRELOAD=/home/user/preload.so",
+	"",
+	"LD_LIBRARY_PATHS=/kept",
 	NULL
 };
 
@@ -110,6 +114,8 @@ static void test_restricted(void)
 	CHECK(!hasName(env, "XDG_CONFIG_HOMEX"));
 	CHECK(indexOf(env, "HOME") < 0);
 	CHECK(indexOf(env, "=HOME") < 0);
+	CHECK(!hasName(env, "LD_LIBRARY_PATH"));
+	CHECK(!hasName(env, "LD_PRELOAD"));
 
 	free(env);
 }
@@ -127,17 +133,50 @@ static void test_restricted_empty(void)
 	free(env);
 }
 
-// Started by root itself: the environment is root's own and is kept as is.
+static void test_guest(void)
+{
+	CHECK(launcherGuestMayGet("HOME=/home/user"));
+	CHECK(launcherGuestMayGet("EMPTY="));
+	CHECK(launcherGuestMayGet("DYLD_LIBRARY_PATH=/usr/local/lib"));
+	CHECK(launcherGuestMayGet("LD_LIBRARY_PATHS=/x"));
+	CHECK(launcherGuestMayGet("MY_LD_PRELOAD=/x"));
+
+	CHECK(!launcherGuestMayGet("LD_LIBRARY_PATH=/home/user/lib"));
+	CHECK(!launcherGuestMayGet("LD_LIBRARY_PATH="));
+	CHECK(!launcherGuestMayGet("LD_PRELOAD=/home/user/preload.so"));
+	CHECK(!launcherGuestMayGet(""));
+	CHECK(!launcherGuestMayGet("NOEQUALS"));
+	CHECK(!launcherGuestMayGet("=value"));
+	CHECK(!launcherGuestMayGet("="));
+}
+
+// Started by root itself: the environment is root's own and is kept, except
+// for malformed entries and the host loader's variables.
 static void test_unrestricted(void)
 {
 	char** env = launcherServerEnvironment(g_userEnv, false);
+	size_t n = 0;
 
 	CHECK(env != NULL);
 	if (!env)
 		return;
-	CHECK(countOf(env) == sizeof(g_userEnv) / sizeof(g_userEnv[0]) - 1);
 	for (size_t i = 0; g_userEnv[i] != NULL; i++)
-		CHECK(env[i] == g_userEnv[i]);
+	{
+		if (launcherGuestMayGet(g_userEnv[i]))
+		{
+			CHECK(env[n] == g_userEnv[i]);
+			n++;
+		}
+	}
+	CHECK(countOf(env) == n);
+	CHECK(n == sizeof(g_userEnv) / sizeof(g_userEnv[0]) - 1 - 5);
+	CHECK(indexOf(env, "PATH=/home/user/bin:/usr/bin") >= 0);
+	CHECK(indexOf(env, "LD_LIBRARY_PATHS=/kept") >= 0);
+	CHECK(!hasName(env, "LD_LIBRARY_PATH"));
+	CHECK(!hasName(env, "LD_PRELOAD"));
+	CHECK(indexOf(env, "") < 0);
+	CHECK(indexOf(env, "HOME") < 0);
+	CHECK(indexOf(env, "=HOME") < 0);
 	free(env);
 }
 
@@ -146,6 +185,7 @@ int main(void)
 	test_entry_names();
 	test_restricted();
 	test_restricted_empty();
+	test_guest();
 	test_unrestricted();
 
 	if (g_failures)
