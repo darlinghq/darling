@@ -35,12 +35,18 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <getopt.h>
 #include <termios.h>
 #include <pty.h>
+#include <grp.h>
 #include <pwd.h>
 #include <sys/wait.h>
 #include <sysexits.h>
+#include <sys/auxv.h>
 #include "../shellspawn/shellspawn.h"
 #include "darling.h"
 #include "darling-config.h"
+#include "launcher-env.h"
+#include "launcher-ids.h"
+#include "launcher-prefix.h"
+#include "launcher-server.h"
 
 // Between Linux 4.9 and 4.11, a strange bug has been introduced
 // which prevents connecting to Unix sockets if the socket was
@@ -52,6 +58,38 @@ char *prefix;
 uid_t g_originalUid, g_originalGid;
 bool g_fixPermissions = false;
 char g_workingDirectory[4096];
+static struct launcher_ids g_invokingIds;
+
+// Everything the launcher does inside the user's prefix (which the user names
+// and controls) runs with the user's effective ids, so that it can only do what
+// the user could do without Darling. See launcher-ids.h for the states.
+static void useInvokingIds(void)
+{
+	if (!launcherUseInvokingIds(&g_invokingIds))
+	{
+		fprintf(stderr, "Cannot switch to your user and group ids: %s\n", strerror(errno));
+		exit(1);
+	}
+}
+
+// For the rest of its life the launcher only talks to processes of the user.
+static void dropPrivileges(void)
+{
+	if (!launcherDropPrivileges(&g_invokingIds))
+	{
+		fprintf(stderr, "Cannot drop root privileges: %s\n", strerror(errno));
+		exit(1);
+	}
+}
+
+static void restoreRootIds(void)
+{
+	if (!launcherRestoreRootIds())
+	{
+		fprintf(stderr, "Cannot switch back to root ids: %s\n", strerror(errno));
+		exit(1);
+	}
+}
 
 int main(int argc, char ** argv)
 {
@@ -69,20 +107,34 @@ int main(int argc, char ** argv)
 		return 1;
 	}
 
-	g_originalUid = getuid();
-	g_originalGid = getgid();
+	if (!launcherSaveInvokingIds(&g_invokingIds))
+	{
+		fprintf(stderr, "Cannot read your user and group ids: %s\n", strerror(errno));
+		return 1;
+	}
+	g_originalUid = g_invokingIds.uid;
+	g_originalGid = g_invokingIds.gid;
 
-	setuid(0);
-	setgid(0);
+	// darlingserver must start with real root ids, and creating namespaces needs
+	// them as well. From here on the launcher is fully root, so every step that
+	// acts on a path or file the user controls switches to the user's ids first.
+	if (!launcherBecomeRoot())
+	{
+		fprintf(stderr, "Cannot switch to root ids: %s\n", strerror(errno));
+		return 1;
+	}
 
 	prefix = getenv("DPREFIX");
 	if (!prefix)
 		prefix = defaultPrefixPath();
 	if (!prefix)
 		return 1;
-	if (strlen(prefix) > 255)
+	enum launcher_prefix_check prefixCheck = launcherCheckPrefix(prefix);
+	if (prefixCheck != LAUNCHER_PREFIX_OK)
 	{
-		fprintf(stderr, "Prefix path too long\n");
+		fprintf(stderr, "%s: %s\n", launcherPrefixCheckMessage(prefixCheck), prefix);
+		if (prefixCheck == LAUNCHER_PREFIX_TOO_LONG)
+			fprintf(stderr, "Use a prefix path of at most %zu bytes.\n", launcherMaxPrefixLength());
 		return 1;
 	}
 	unsetenv("DPREFIX");
@@ -145,6 +197,11 @@ int main(int argc, char ** argv)
 			return 1;
 		}
 
+		// The server and launchd run as the user once they are up. Killing them
+		// with the user's ids means that, should the pid be reused after the
+		// check, the signal reaches nothing the user could not signal anyway.
+		dropPrivileges();
+
 		// TODO: when we have a working launchd,
 		// this is where we ask it to shut down nicely
 
@@ -163,7 +220,11 @@ int main(int argc, char ** argv)
 		fclose(file);
 
 		kill(launchd_pid, SIGKILL);
-		kill(pidInit, SIGKILL);
+		if (kill(pidInit, SIGKILL) != 0 && errno != ESRCH)
+		{
+			fprintf(stderr, "Failed to shutdown Darling container: %s\n", strerror(errno));
+			return 1;
+		}
 		return 0;
 	}
 
@@ -174,21 +235,30 @@ int main(int argc, char ** argv)
 		
 		snprintf(socketPath, sizeof(socketPath), "%s"  SHELLSPAWN_SOCKPATH, prefix);
 		
+		// A stale socket in the user's prefix; remove it as the user, so that a
+		// prefix path changed under us cannot make root remove anything else.
+		useInvokingIds();
 		unlink(socketPath);
+		restoreRootIds();
 		
 		setupWorkdir();
 		pidInit = spawnInitProcess();
 		putInitPid(pidInit);
 		
-		// Wait until shellspawn starts
-		for (int i = 0; i < 60; i++)
+		// Wait until shellspawn starts. The socket is in the user's prefix, so
+		// look for it with the user's ids: access() would check with the real
+		// uid, which is 0.
+		useInvokingIds();
+		bool started = false;
+		for (int i = 0; i < 60 && !started; i++)
 		{
-			if (access(socketPath, F_OK) == 0)
-				break;
-			sleep(1);
+			started = faccessat(AT_FDCWD, socketPath, F_OK, AT_EACCESS) == 0;
+			if (!started)
+				sleep(1);
 		}
+		restoreRootIds();
 
-		if (access(socketPath, F_OK) != 0)
+		if (!started)
 		{
 			fprintf(stderr, "Timed out waiting for shellspawn in container\n");
 			return 1;
@@ -196,10 +266,17 @@ int main(int argc, char ** argv)
 	}
 
 #if USE_LINUX_4_11_HACK
-	joinNamespace(pidInit, CLONE_NEWNS, "mnt");
+	joinServerMountNamespace(pidInit);
 #endif
 
-	seteuid(g_originalUid);
+	// Joining the mount namespace was the last step that needs root. Drop it
+	// for good: the rest only talks to shellspawn and resolves the program path
+	// given on the command line, both as the user. Switching only the effective
+	// ids, as before, left root in the saved uid, so any memory corruption in
+	// the code below could regain it. Nothing may run as root inside the joined
+	// namespace, whose files are not the host's: not even the C library loading
+	// a name service module.
+	dropPrivileges();
 
 	if (strcmp(argv[1], "shell") == 0)
 	{
@@ -245,29 +322,70 @@ int main(int argc, char ** argv)
 	return 0;
 }
 
-void joinNamespace(pid_t pid, int type, const char* typeName)
+// Joins the mount namespace of the container's darlingserver. This runs as
+// root and the pid may come from the pid file in the user's prefix, so the
+// process is checked first, through a pinned /proc/<pid> descriptor: it must
+// run the installed darlingserver binary, and its mount namespace must be a
+// different one owned by our own user namespace. A user can create mount
+// namespaces only inside user namespaces of their own, so a namespace owned
+// by ours was created by root, as darlingserver does. setns() then uses the
+// namespace descriptor that was checked, not a path looked up again.
+void joinServerMountNamespace(pid_t pid)
 {
-	int fdNS;
-	char pathNS[4096];
-	
-	snprintf(pathNS, sizeof(pathNS), "/proc/%d/ns/%s", pid, typeName);
+	struct stat exe, userNs, mntNs;
+	char procPath[64];
+	int procfd, nsfd;
+	enum launcher_server_check check;
 
-	fdNS = open(pathNS, O_RDONLY);
-
-	if (fdNS < 0)
+	if (stat(INSTALL_PREFIX "/bin/darlingserver", &exe) != 0
+		|| stat("/proc/self/ns/user", &userNs) != 0
+		|| stat("/proc/self/ns/mnt", &mntNs) != 0)
 	{
-		fprintf(stderr, "Cannot open %s namespace file: %s\n", typeName, strerror(errno));
+		fprintf(stderr, "Cannot examine darlingserver or this process's namespaces: %s\n", strerror(errno));
 		exit(1);
 	}
 
-	// Calling setns() with a PID namespace doesn't move our process into it,
-	// but our child process will be spawned inside the namespace
-	if (setns(fdNS, type) != 0)
+	snprintf(procPath, sizeof(procPath), "/proc/%d", (int) pid);
+	procfd = open(procPath, O_PATH | O_DIRECTORY | O_CLOEXEC);
+	if (procfd < 0)
+		check = LAUNCHER_SERVER_GONE;
+	else
 	{
-		fprintf(stderr, "Cannot join %s namespace: %s\n", typeName, strerror(errno));
+		check = launcherOpenServerMountNs(procfd, &exe, &userNs, &mntNs, &nsfd);
+		int error = errno;
+		close(procfd);
+		errno = error;
+	}
+
+	switch (check)
+	{
+		case LAUNCHER_SERVER_OK:
+			break;
+		case LAUNCHER_SERVER_GONE:
+			fprintf(stderr, "The Darling container (process %d) exited. Try again.\n", (int) pid);
+			exit(1);
+		case LAUNCHER_SERVER_WRONG_EXE:
+			fprintf(stderr, "Process %d, named in %s/.init.pid, is not running %s.\n"
+				"If Darling was updated while the container was running, run 'darling shutdown' and try again.\n",
+				(int) pid, prefix, INSTALL_PREFIX "/bin/darlingserver");
+			exit(1);
+		case LAUNCHER_SERVER_FOREIGN_USERNS:
+		case LAUNCHER_SERVER_SAME_MNTNS:
+			fprintf(stderr, "Process %d, named in %s/.init.pid, does not have a Darling container's mount namespace; refusing to join it.\n"
+				"Run 'darling shutdown' and try again.\n", (int) pid, prefix);
+			exit(1);
+		case LAUNCHER_SERVER_ERROR:
+		default:
+			fprintf(stderr, "Cannot examine the Darling container (process %d): %s\n", (int) pid, strerror(errno));
+			exit(1);
+	}
+
+	if (setns(nsfd, CLONE_NEWNS) != 0)
+	{
+		fprintf(stderr, "Cannot join the container's mount namespace: %s\n", strerror(errno));
 		exit(1);
 	}
-	close(fdNS);
+	close(nsfd);
 }
 
 static void pushShellspawnCommandData(int sockfd, shellspawn_cmd_type_t type, const void* data, size_t data_length)
@@ -559,18 +677,26 @@ static size_t escapeQuotes(char *dest, const char *src)
 int connectToShellspawn(void)
 {
 	struct sockaddr_un addr;
-	int sockfd;
+	int sockfd, prefixfd;
 
-	// Connect to the shellspawn daemon in the container
+	// Connect to the shellspawn daemon in the container. sun_path holds only
+	// 108 bytes, so the socket is named through a descriptor of the prefix
+	// directory, which keeps the path short for a prefix of any length. This
+	// runs after the permanent drop, so the prefix is opened as the user.
+	prefixfd = open(prefix, O_PATH | O_DIRECTORY | O_CLOEXEC);
+	if (prefixfd == -1)
+	{
+		fprintf(stderr, "Cannot open the prefix %s: %s\n", prefix, strerror(errno));
+		exit(1);
+	}
+
+	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
-#if USE_LINUX_4_11_HACK
-	addr.sun_path[0] = '\0';
-	
-	strcpy(addr.sun_path, prefix);
-	strcat(addr.sun_path, SHELLSPAWN_SOCKPATH);
-#else
-	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s"  SHELLSPAWN_SOCKPATH, prefix);
-#endif
+	if (!launcherDirSocketPath(addr.sun_path, sizeof(addr.sun_path), prefixfd, SHELLSPAWN_SOCKPATH))
+	{
+		fprintf(stderr, "Cannot build the shellspawn socket path\n");
+		exit(1);
+	}
 
 	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sockfd == -1)
@@ -581,9 +707,10 @@ int connectToShellspawn(void)
 
 	if (connect(sockfd, (struct sockaddr*) &addr, sizeof(addr)) == -1)
 	{
-		fprintf(stderr, "Error connecting to shellspawn in the container (%s): %s\n", addr.sun_path, strerror(errno));
+		fprintf(stderr, "Error connecting to shellspawn in the container (%s" SHELLSPAWN_SOCKPATH "): %s\n", prefix, strerror(errno));
 		exit(1);
 	}
+	close(prefixfd);
 
 	return sockfd;
 }
@@ -768,7 +895,7 @@ void showHelp(const char* argv0)
 	fprintf(stderr, "\t%s shutdown\n", argv0);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Environment variables:\n"
-		"DPREFIX - specifies the location of Darling prefix, defaults to ~/.darling\n");
+		"DPREFIX - specifies the location of Darling prefix as an absolute path, defaults to ~/.darling\n");
 }
 
 void showVersion(const char* argv0) {
@@ -835,7 +962,21 @@ pid_t spawnInitProcess(void)
 
 		close(pipefd[0]);
 
-		execl(INSTALL_PREFIX "/bin/darlingserver", "darlingserver", prefix, uid_str, gid_str, pipefd_str, g_fixPermissions ? "1" : "0", NULL);
+		// This exec runs darlingserver as full root. When another user started
+		// us setuid, the kernel marked our own exec secure (AT_SECURE) and the C
+		// library ignored the dangerous loader variables, but darlingserver's
+		// exec is not marked secure. So it gets only the variables it needs, and
+		// a fixed PATH, so that the helpers it runs as root, such as
+		// fuse-overlayfs, never come from the user's directories.
+		char* const serverArgv[] = { "darlingserver", prefix, uid_str, gid_str, pipefd_str, g_fixPermissions ? "1" : "0", NULL };
+		char** serverEnv = launcherServerEnvironment(environ, getauxval(AT_SECURE) != 0);
+		if (!serverEnv)
+		{
+			fprintf(stderr, "Cannot set up the environment for darlingserver\n");
+			exit(1);
+		}
+
+		execve(INSTALL_PREFIX "/bin/darlingserver", serverArgv, serverEnv);
 
 		fprintf(stderr, "Failed to start darlingserver\n");
 		exit(1);
@@ -902,12 +1043,18 @@ static bool commandInPath(const char* name)
 		return false;
 
 	copy = strdup(path);
+	if (!copy)
+		return false;
+
+	// The directories come from the user's PATH; look into them as the user.
+	useInvokingIds();
 	for (dir = strtok_r(copy, ":", &saveptr); dir != NULL && !found; dir = strtok_r(NULL, ":", &saveptr))
 	{
 		char candidate[4096];
 		snprintf(candidate, sizeof(candidate), "%s/%s", dir, name);
-		found = access(candidate, X_OK) == 0;
+		found = faccessat(AT_FDCWD, candidate, X_OK, AT_EACCESS) == 0;
 	}
+	restoreRootIds();
 	free(copy);
 
 	return found;
@@ -922,13 +1069,9 @@ static bool recordFsMode(const char* mode)
 	strcpy(path, prefix);
 	strcat(path, FSMODE_FILE);
 
-	seteuid(g_originalUid);
-	setegid(g_originalGid);
-
+	useInvokingIds();
 	fp = fopen(path, "w");
-
-	seteuid(0);
-	setegid(0);
+	restoreRootIds();
 
 	if (fp == NULL)
 	{
@@ -987,13 +1130,9 @@ void putInitPid(pid_t pidInit)
 	strcpy(pidPath, prefix);
 	strcat(pidPath, pidFile);
 
-	seteuid(g_originalUid);
-	setegid(g_originalGid);
-
+	useInvokingIds();
 	fp = fopen(pidPath, "w");
-
-	seteuid(0);
-	setegid(0);
+	restoreRootIds();
 
 	if (fp == NULL)
 	{
@@ -1070,14 +1209,28 @@ void setupWorkdir()
 
 	strcat(workdir, suffix);
 
+	// The work directory goes next to the prefix, into a directory the user
+	// names. Created as root, a prefix path changed under us could make root
+	// create a directory anywhere. darlingserver uses it as root, which works
+	// whoever owns it.
+	useInvokingIds();
 	createDir(workdir);
+	restoreRootIds();
 }
 
 int checkPrefixDir()
 {
 	struct stat st;
+	int result, error;
 
-	if (stat(prefix, &st) == 0)
+	// As the user: as root this would also tell the user about paths they
+	// cannot see.
+	useInvokingIds();
+	result = stat(prefix, &st);
+	error = errno;
+	restoreRootIds();
+
+	if (result == 0)
 	{
 		if (!S_ISDIR(st.st_mode))
 		{
@@ -1086,9 +1239,9 @@ int checkPrefixDir()
 		}
 		return 1; // OK
 	}
-	if (errno == ENOENT)
+	if (error == ENOENT)
 		return 0; // not found
-	fprintf(stderr, "Cannot access %s: %s\n", prefix, strerror(errno));
+	fprintf(stderr, "Cannot access %s: %s\n", prefix, strerror(error));
 	exit(1);
 }
 
@@ -1118,10 +1271,17 @@ void setupPrefix()
 
 	fprintf(stderr, "Setting up a new Darling prefix at %s\n", prefix);
 
-	seteuid(g_originalUid);
-	setegid(g_originalGid);
+	// The prefix and everything in it is created by and for the user.
+	useInvokingIds();
 
+	// The new prefix is private to the user whatever the umask: it holds the
+	// darlingserver socket and the container's files.
 	createDir(prefix);
+	if (chmod(prefix, 0700) != 0)
+	{
+		fprintf(stderr, "Cannot set the permissions of %s: %s\n", prefix, strerror(errno));
+		exit(1);
+	}
 	strcpy(path, prefix);
 	strcat(path, "/");
 	plen = strlen(path);
@@ -1194,9 +1354,8 @@ void setupPrefix()
 		passwd_entry->pw_name
 	);
 	fclose(file);
-	
-	seteuid(0);
-	setegid(0);
+
+	restoreRootIds();
 }
 
 // macOS ships these service accounts in its local user database. Launchd jobs
@@ -1308,18 +1467,16 @@ static void addMissingAccounts(enum accountFile type, const char* name)
 void ensureSystemAccounts()
 {
 	// The account files belong to the user who owns the prefix.
-	setegid(g_originalGid);
-	seteuid(g_originalUid);
+	useInvokingIds();
 
 	addMissingAccounts(ACCOUNT_FILE_PASSWD, "passwd");
 	addMissingAccounts(ACCOUNT_FILE_MASTER_PASSWD, "master.passwd");
 	addMissingAccounts(ACCOUNT_FILE_GROUP, "group");
 
-	seteuid(0);
-	setegid(0);
+	restoreRootIds();
 }
 
-pid_t getInitProcess()
+static pid_t findInitProcess(void)
 {
 	const char pidFile[] = "/.init.pid";
 	char* pidPath;
@@ -1418,19 +1575,67 @@ pid_t getInitProcess()
 	return pid;
 }
 
+pid_t getInitProcess()
+{
+	pid_t pid;
+
+	// The pid file is in the user's prefix, and a stale one is removed; both
+	// as the user. The /proc files read to confirm the pid are readable by the
+	// user as well.
+	useInvokingIds();
+	pid = findInitProcess();
+	restoreRootIds();
+
+	return pid;
+}
+
+// Whether the prefix's group holds nobody but the user (see launcher-prefix.h).
+static bool prefixGroupIsUserPrivate(gid_t gid)
+{
+	struct passwd* pw;
+	struct group* gr;
+	bool result = false;
+
+	// The account databases are the host's; look them up as the user.
+	useInvokingIds();
+	pw = getpwuid(g_originalUid);
+	if (pw != NULL)
+	{
+		char* name = strdup(pw->pw_name);
+		gr = getgrgid(gid);
+		if (name != NULL && gr != NULL)
+			result = launcherGroupIsUserPrivate(gr->gr_gid, gr->gr_name, gr->gr_mem, g_originalGid, name);
+		free(name);
+	}
+	restoreRootIds();
+
+	return result;
+}
+
 void checkPrefixOwner()
 {
 	struct stat st;
+	int result, error;
 
-	if (stat(prefix, &st) == 0)
+	useInvokingIds();
+	result = stat(prefix, &st);
+	error = errno;
+	restoreRootIds();
+
+	if (result == 0)
 	{
 		if (g_originalUid != 0 && st.st_uid != g_originalUid)
 		{
 			fprintf(stderr, "You do not own the prefix directory.\n");
 			exit(1);
 		}
+		if (!launcherPrefixModeAcceptable(st.st_mode, (st.st_mode & S_IWGRP) && prefixGroupIsUserPrivate(st.st_gid)))
+		{
+			fprintf(stderr, "The prefix directory %s is writable by other users. To use it, run: chmod go-w '%s'\n", prefix, prefix);
+			exit(1);
+		}
 	}
-	else if (errno == EACCES)
+	else if (error == EACCES)
 	{
 		fprintf(stderr, "You do not own the prefix directory.\n");
 		exit(1);

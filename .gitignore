@@ -37,6 +37,8 @@ Module.symvers
 !/tests/adhoc-sign/**
 !/tests/coreaudio/
 !/tests/coreaudio/**
+!/tests/launcher/
+!/tests/launcher/**
 !/tests/libm/
 !/tests/libm/**
 !/tests/mldr/
