@@ -6,14 +6,17 @@ AudioQueue::AudioQueue(const AudioStreamBasicDescription* format, void* userData
 			CFRunLoopRef runloop, CFStringRef runloopMode, UInt32 flags)
 : m_format(*format), m_userData(userData), m_flags(flags)
 {
-	m_runloop = (CFRunLoopRef) CFRetain(runloop);
-	m_runloopMode = (CFStringRef) CFRetain(runloopMode);
+	// Both are optional: NULL means callbacks on the queue's own thread.
+	m_runloop = runloop ? (CFRunLoopRef) CFRetain(runloop) : nullptr;
+	m_runloopMode = runloopMode ? (CFStringRef) CFRetain(runloopMode) : nullptr;
 }
 
 AudioQueue::~AudioQueue()
 {
-	CFRelease(m_runloop);
-	CFRelease(m_runloopMode);
+	if (m_runloop)
+		CFRelease(m_runloop);
+	if (m_runloopMode)
+		CFRelease(m_runloopMode);
 }
 
 OSStatus AudioQueue::getParameter(AudioQueueParameterID inParamID, AudioQueueParameterValue *outValue)
@@ -53,6 +56,30 @@ OSStatus AudioQueue::addPropertyListener(AudioQueuePropertyID inID, AudioQueuePr
 }
 
 OSStatus AudioQueue::removePropertyListener(AudioQueuePropertyID inID, AudioQueuePropertyListenerProc inProc, void *inUserData)
+{
+	STUB();
+	return unimpErr;
+}
+
+OSStatus AudioQueue::allocateBuffer(UInt32 inBufferByteSize, UInt32 inNumberPacketDescriptions, AudioQueueBufferRef *outBuffer)
+{
+	STUB();
+	return unimpErr;
+}
+
+OSStatus AudioQueue::freeBuffer(AudioQueueBufferRef inBuffer)
+{
+	STUB();
+	return unimpErr;
+}
+
+OSStatus AudioQueue::enqueueBuffer(AudioQueueBufferRef inBuffer, UInt32 inNumPacketDescs, const AudioStreamPacketDescription *inPacketDescs)
+{
+	STUB();
+	return unimpErr;
+}
+
+OSStatus AudioQueue::getCurrentTime(AudioTimeStamp *outTimeStamp, Boolean *outTimelineDiscontinuity)
 {
 	STUB();
 	return unimpErr;
