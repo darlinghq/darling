@@ -28,6 +28,9 @@ set(libm_sources
 	#Source/nanl.c
 	#Source/version_info.c
 )
+set_source_files_properties(Source/sincos.c PROPERTIES COMPILE_FLAGS "-fno-builtin")
+# pow(10, x) is otherwise folded into __exp10, the very function being defined
+set_source_files_properties(Source/exp10.c PROPERTIES COMPILE_FLAGS "-fno-builtin")
 
 if (TARGET_i386 OR TARGET_x86_64)
 	set(libm_sources ${libm_sources}
