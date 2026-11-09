@@ -33,7 +33,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
-OSErr UCConvertUTCDateTimeToCFAbsoluteTime(const UTCDateTimePtr in, CFAbsoluteTime* out);
+OSErr UCConvertUTCDateTimeToCFAbsoluteTime(const UTCDateTime* in, CFAbsoluteTime* out);
 OSErr UCConvertSecondsToCFAbsoluteTime(uint32_t seconds, CFAbsoluteTime* out);
 OSErr UCConvertLongDateTimeToCFAbsoluteTime(int64_t seconds, CFAbsoluteTime* out);
 OSErr UCConvertCFAbsoluteTimeToUTCDateTime(CFAbsoluteTime in, UTCDateTimePtr out);

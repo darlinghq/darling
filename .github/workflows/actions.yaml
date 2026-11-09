@@ -53,7 +53,7 @@ jobs:
 
     - name: Move DSCs
       run: |
-        mkdir source && mv ../*~$(lsb_release -cs).* source
+        mkdir source && mv ../*~$(lsb_release -cs)[-._]* source
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4.1.0

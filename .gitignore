@@ -39,6 +39,8 @@ Module.symvers
 !/tests/coreaudio/**
 !/tests/launcher/
 !/tests/launcher/**
+!/tests/libm/
+!/tests/libm/**
 !/tests/mldr/
 !/tests/mldr/**
 !/tests/prefsd/

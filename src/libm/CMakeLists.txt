@@ -28,6 +28,9 @@ set(libm_sources
 	#Source/nanl.c
 	#Source/version_info.c
 )
+set_source_files_properties(Source/sincos.c PROPERTIES COMPILE_FLAGS "-fno-builtin")
+# pow(10, x) is otherwise folded into __exp10, the very function being defined
+set_source_files_properties(Source/exp10.c PROPERTIES COMPILE_FLAGS "-fno-builtin")
 
 if (TARGET_i386 OR TARGET_x86_64)
 	set(libm_sources ${libm_sources}
@@ -342,3 +345,13 @@ set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_T
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ranlib")
 add_darling_static_library(system_m_static SOURCES ${libm_sources} $<TARGET_OBJECTS:system_m_extra>)
 make_fat(system_m_static)
+
+# Host-side check of the long double signbit helper in the SDK math.h
+add_test(NAME libm_signbit_header
+	COMMAND ${CMAKE_COMMAND}
+		-DCOMPILER=${CMAKE_C_COMPILER}
+		-DSDK=${CMAKE_SOURCE_DIR}/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
+		-DPROBE=${CMAKE_SOURCE_DIR}/tests/libm/signbit_probe.c
+		-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/signbit_header
+		-P ${CMAKE_SOURCE_DIR}/tests/libm/signbit_header.cmake
+)

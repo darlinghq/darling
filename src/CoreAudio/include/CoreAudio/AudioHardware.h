@@ -235,6 +235,7 @@ OSStatus AudioDeviceGetNearestStartTime(AudioObjectID inDevice,
 		AudioTimeStamp* ioRequestedStartTime, UInt32 inFlags);
 
 OSStatus AudioHardwareGetProperty(AudioHardwarePropertyID inPropId, UInt32* ioPropertyDataSize, void* outPropertyData);
+OSStatus AudioHardwareGetPropertyInfo(AudioHardwarePropertyID inPropertyID, UInt32* outSize, Boolean* outWritable);
 
 enum
 {

@@ -101,6 +101,7 @@ include(dsym)
 include(xcproj)
 include(architecture)
 include(create_symlink)
+include(darling_open_source_sdk)
 
 set(CLANG_RECOMMENDED_MINIMUM_VERSION 11)
 clang_version_check(${CMAKE_C_COMPILER} c ${CLANG_RECOMMENDED_MINIMUM_VERSION})
@@ -204,6 +205,17 @@ option(ADHOC_CODESIGN "Ad-hoc sign every Mach-O image Darling builds" ON)
 # Host-side unit tests, run with ctest from the build directory
 enable_testing()
 
+# Tests of the install and packaging scripts; they need no Darling build
+find_package(Python3 QUIET COMPONENTS Interpreter)
+if (Python3_Interpreter_FOUND)
+	add_test(NAME install_symlink
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/install-symlink.py)
+	add_test(NAME debian_packaging
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/debian-packaging.py)
+	# debian-packaging.py exits with 77 when debhelper is not installed
+	set_tests_properties(debian_packaging PROPERTIES SKIP_RETURN_CODE 77)
+endif()
+
 if (DEBIAN_PACKAGING)
 	set(COMPONENTS_DEFAULT "all")
 else()
@@ -263,6 +275,8 @@ cmake_policy(SET CMP0014 NEW)
 generate_architecture()
 
 add_subdirectory(src)
+
+verify_sdk_header_include()
 
 install(DIRECTORY DESTINATION libexec/darling/private)
 install(DIRECTORY DESTINATION libexec/darling/private/etc)
