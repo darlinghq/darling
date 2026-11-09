@@ -61,6 +61,10 @@ void AudioQueueOutput::post(std::function<void()> job)
 
 AudioQueueOutput::~AudioQueueOutput()
 {
+	{
+		std::lock_guard<std::recursive_mutex> lock(m_gate->mutex);
+		m_gate->open = false;
+	}
 	if (m_unit)
 	{
 		AudioOutputUnitStop(m_unit);
@@ -242,8 +246,12 @@ void AudioQueueOutput::returnBuffers(const std::vector<AudioQueueBufferRef>& buf
 		void* userData = m_userData;
 		if (m_runloop)
 		{
+			std::shared_ptr<CallbackGate> gate = m_gate;
+			AudioQueueRef queue = this;
 			CFRunLoopPerformBlock(m_runloop, m_runloopMode ? m_runloopMode : kCFRunLoopCommonModes, ^{
-				callback(userData, this, buffer);
+				std::lock_guard<std::recursive_mutex> lock(gate->mutex);
+				if (gate->open)
+					callback(userData, queue, buffer);
 			});
 			CFRunLoopWakeUp(m_runloop);
 		}
@@ -343,8 +351,8 @@ OSStatus AudioQueueOutput::stop(Boolean inImmediate)
 		return noErr;
 	}
 
-	// Immediate: the unit stops now, unplayed buffers go back to the client, and no
-	// callback runs after this returns. Stop returns once render() has unwound (it is
+	// Immediate: the unit stops now and unplayed buffers go back to the client. Without a
+	// run loop no callback runs after this returns; with one, they run on that run loop. Stop returns once render() has unwound (it is
 	// synchronous with the PulseAudio queue), so nothing is rendered after it.
 	bool wasRunning;
 	{

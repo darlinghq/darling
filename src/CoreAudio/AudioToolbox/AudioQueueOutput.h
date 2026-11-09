@@ -9,6 +9,7 @@
 #include <thread>
 #include <atomic>
 #include <deque>
+#include <memory>
 #include <mutex>
 #include <set>
 #include <vector>
@@ -80,6 +81,16 @@ private:
 	bool m_cbBusy = false;
 	bool m_cbQuit = false;
 	bool m_selfDelete = false; // set by a job: the thread deletes the queue after it
+
+	// Callbacks posted to a client run loop can run after the queue is gone: each one holds
+	// the gate and runs only while it is open. Destruction closes it, waiting for a callback
+	// in progress; recursive, so a dispose from inside a run-loop callback does not deadlock.
+	struct CallbackGate
+	{
+		std::recursive_mutex mutex;
+		bool open = true;
+	};
+	std::shared_ptr<CallbackGate> m_gate = std::make_shared<CallbackGate>();
 
 	// Serializes start/stop/dispose. The output unit's Start/Stop wait on the PulseAudio
 	// queue, which runs render() and takes m_mutex: calling them under m_mutex deadlocks,
