@@ -42,9 +42,17 @@ void commpage_setup(bool _64bit)
 	uint8_t *physcpus, *logcpus;
 	uint8_t *user_page_shift, *kernel_page_shift;
 	struct sysinfo si;
+	void* base = (void*)(_64bit ? _COMM_PAGE64_BASE_ADDRESS : _COMM_PAGE32_BASE_ADDRESS);
+	size_t length = _64bit ? _COMM_PAGE64_AREA_LENGTH : _COMM_PAGE32_AREA_LENGTH;
 
-	commpage = (uint8_t*) mmap((void*)(_64bit ? _COMM_PAGE64_BASE_ADDRESS : _COMM_PAGE32_BASE_ADDRESS),
-			_64bit ? _COMM_PAGE64_AREA_LENGTH : _COMM_PAGE32_AREA_LENGTH, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	commpage = (uint8_t*) mmap(base, length, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED_NOREPLACE, -1, 0);
+	// Kernels before 4.17 ignore MAP_FIXED_NOREPLACE and treat the address as a hint.
+	if (commpage != MAP_FAILED && commpage != base)
+	{
+		munmap(commpage, length);
+		commpage = MAP_FAILED;
+		errno = EEXIST;
+	}
 	if (commpage == MAP_FAILED)
 	{
 		fprintf(stderr, "Cannot mmap commpage: %s\n", strerror(errno));
@@ -89,6 +97,15 @@ void commpage_setup(bool _64bit)
 	{
 		uint64_t* memsize = (uint64_t*)CGET(_COMM_PAGE_MEMORY_SIZE);
 		*memsize = si.totalram * si.mem_unit;
+	}
+
+	// The commpage is only written here; guest code only reads it. Darling
+	// puts no routines in the text part of the area, so none of it is
+	// executable.
+	if (mprotect(commpage, length, PROT_READ) != 0)
+	{
+		fprintf(stderr, "Cannot protect commpage: %s\n", strerror(errno));
+		exit(1);
 	}
 }
 
