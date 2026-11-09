@@ -20,7 +20,10 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef _LAUNCHER_SERVER_H
 #define _LAUNCHER_SERVER_H
 
+#include <stddef.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <stdbool.h>
 
 // Whether the process named in the prefix's pid file is a darlingserver whose
 // mount namespace the launcher may join as root.
@@ -50,5 +53,16 @@ enum launcher_server_check
 // namespace, to be passed to setns(). Otherwise it is -1.
 enum launcher_server_check launcherOpenServerMountNs(int procfd, const struct stat* exe,
 	const struct stat* userNs, const struct stat* mntNs, int* nsfd);
+
+// Whether a live process from the installed darlingserver executable was
+// started for this exact prefix by the invoking uid. Returns 1 with *pid set
+// when found, 0 when absent, and -1 if the process list could not be checked.
+// procPath is normally /proc and is injectable for host-side tests.
+int launcherFindPrefixServer(const char* procPath, const char* prefix, uid_t uid,
+	const char* serverPath, pid_t* pid);
+
+// Parses the first two NUL-terminated arguments from Linux /proc/PID/cmdline.
+bool launcherServerCommandLineMatchesPrefix(const char* cmdline, size_t length,
+	const char* prefix);
 
 #endif
