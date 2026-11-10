@@ -331,6 +331,7 @@ add_circular(system_m FAT
 		$<TARGET_OBJECTS:system_m_extra>
 	SIBLINGS
 		system_c
+		compiler_rt
 		system_dyld
 	LINK_FLAGS
 		"${LIBM_ALIAS_FLAGS}"
