@@ -43,7 +43,7 @@ def wait_exit(proc, seconds):
 
 def run_case(name, signals, expected_status):
     master, slave = pty.openpty()
-    proc = subprocess.Popen([darling, "shell", GUEST],
+    proc = subprocess.Popen([darling, "shell", "/bin/sh", "-c", GUEST],
                             stdin=slave, stdout=slave, stderr=slave,
                             start_new_session=True)
     try:
