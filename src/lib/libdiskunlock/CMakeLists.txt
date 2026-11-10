@@ -1,6 +1,8 @@
 project(libdiskunlock)
 
 set(DYLIB_INSTALL_NAME "/usr/lib/libDiskUnlock.dylib")
+set(DYLIB_COMPAT_VERSION "0.0.0")
+set(DYLIB_CURRENT_VERSION "0.0.0")
 
 # Boot Camp Assistant carries an LC_LOAD_DYLIB for this library and resolves
 # DUUnlockVolume out of it, so it has to exist and be loadable: dyld fails a process

@@ -83,15 +83,7 @@ int IOReportHistogramGetBucketCount(CFDictionaryRef ch) {
 	return 0;
 }
 
-CFStringRef IOReportHistogramGetBucketName(CFDictionaryRef ch, int index) {
-	return CFSTR("");
-}
-
 int IOReportHistogramGetBucketBounds(CFDictionaryRef ch, int index, uint64_t* lower, uint64_t* upper) {
-	return 0;
-}
-
-uint64_t IOReportHistogramGetBucketValue(CFDictionaryRef ch, int index) {
 	return 0;
 }
 
@@ -100,9 +92,5 @@ uint64_t IOReportHistogramGetBucketHits(CFDictionaryRef ch, int index) {
 }
 
 long IOReportArrayGetValueAtIndex(CFDictionaryRef ch, int index) {
-	return 0;
-}
-
-int IOReportArrayGetCount(CFDictionaryRef ch) {
 	return 0;
 }
