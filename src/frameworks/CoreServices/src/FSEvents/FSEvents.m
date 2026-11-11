@@ -63,26 +63,26 @@ FSEventStreamEventId FSEventStreamGetLatestEventId(ConstFSEventStreamRef streamR
 	return [((FSEventsImpl*) streamRef) lastEventID];
 }
 
+// Delivers the events that are waiting for the latency to pass and returns the highest ID among
+// them, or 0 if there were none. The callback then runs as for any other delivery: on the
+// stream's dispatch queue, or from its run loop.
 FSEventStreamEventId FSEventStreamFlushAsync(FSEventStreamRef streamRef)
 {
 	if (!streamRef)
 		return 0;
-	return FSEventStreamGetLatestEventId(streamRef);
+	return [((FSEventsImpl*) streamRef) flushPendingEvents];
 }
 
 void FSEventStreamFlushSync(FSEventStreamRef streamRef)
 {
+	FSEventStreamFlushAsync(streamRef);
 }
 
 CFStringRef FSEventStreamCopyDescription(ConstFSEventStreamRef streamRef)
 {
 	if (!streamRef)
 		return NULL;
-	FSEventsImpl* impl = (FSEventsImpl*) streamRef;
-	NSArray* paths = [impl copyPathsToWatch];
-	NSString* desc = [[NSString stringWithFormat: @"<FSEventStream %p: paths=%@>", streamRef, paths] retain];
-	[paths release];
-	return (CFStringRef) desc;
+	return (CFStringRef) [((FSEventsImpl*) streamRef) copyStreamDescription];
 }
 
 void FSEventStreamInvalidate(FSEventStreamRef streamRef)
@@ -128,47 +128,35 @@ void FSEventStreamUnscheduleFromRunLoop(FSEventStreamRef streamRef, CFRunLoopRef
 												mode: runLoopMode];
 }
 
-uint64_t g_globalFSEventID = 1000;
+// Event IDs are drawn from one counter shared by every stream of the process, and increase
+// monotonically. The counter starts above zero. It holds the last ID handed out.
+static uint64_t g_lastEventID = 1;
+
+__attribute__((visibility("hidden"))) uint64_t _FSEventsAllocateEventID(void)
+{
+	return __atomic_add_fetch(&g_lastEventID, 1, __ATOMIC_RELAXED);
+}
 
 FSEventStreamEventId FSEventsGetCurrentEventId(void)
 {
-	return __atomic_load_n(&g_globalFSEventID, __ATOMIC_RELAXED);
+	return __atomic_load_n(&g_lastEventID, __ATOMIC_RELAXED);
 }
+
+// The remaining device-level entry points need the persistent, system-wide event log of
+// macOS. There is none here, so no volume has a UUID, nothing is remembered about the past,
+// and nothing can be purged.
 
 CFUUIDRef FSEventsCopyUUIDForDevice(dev_t dev)
 {
-	// TODO: Retrieve persistent filesystem UUID via getattrlist(ATTR_VOL_UUID) or statvfs.
-	// For now, generate a deterministic UUID derived from device number `dev` so that
-	// distinct devices produce distinct, stable UUIDs.
-	CFUUIDBytes bytes = { 0 };
-	bytes.byte0 = 0x44; // 'D'
-	bytes.byte1 = 0x41; // 'A'
-	bytes.byte2 = 0x52; // 'R'
-	bytes.byte3 = 0x4C; // 'L'
-	bytes.byte4 = (uint8_t)(dev & 0xFF);
-	bytes.byte5 = (uint8_t)((dev >> 8) & 0xFF);
-	bytes.byte6 = 0x40 | ((uint8_t)((dev >> 16) & 0x0F)); // UUID version 4
-	bytes.byte7 = (uint8_t)((dev >> 20) & 0xFF);
-	bytes.byte8 = 0x80 | ((uint8_t)((dev >> 28) & 0x3F)); // variant
-	bytes.byte9 = 0x64; // 'd'
-	bytes.byte10 = 0x65; // 'e'
-	bytes.byte11 = 0x76; // 'v'
-	return CFUUIDCreateWithBytes(kCFAllocatorDefault,
-		bytes.byte0, bytes.byte1, bytes.byte2, bytes.byte3,
-		bytes.byte4, bytes.byte5, bytes.byte6, bytes.byte7,
-		bytes.byte8, bytes.byte9, bytes.byte10, bytes.byte11,
-		bytes.byte12, bytes.byte13, bytes.byte14, bytes.byte15);
+	return NULL;
 }
 
 FSEventStreamEventId FSEventsGetLastEventIdForDeviceBeforeTime(dev_t dev, CFAbsoluteTime time)
 {
-	// TODO: If persistent fseventsd journal storage is implemented, look up historical
-	// event ID by device and timestamp.
-	// Returning the current event ID safely resumes stream listening from "now" without crashing.
-	return FSEventsGetCurrentEventId();
+	return 0;
 }
 
 Boolean FSEventsPurgeEventsForDeviceUpToEventId(dev_t dev, FSEventStreamEventId eventId)
 {
-	return TRUE;
+	return FALSE;
 }
