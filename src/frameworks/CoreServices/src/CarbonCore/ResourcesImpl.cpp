@@ -23,55 +23,37 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unistd.h>
 #include <sys/xattr.h>
 #include <memory>
+#include <limits>
 
-// File format documentation:
+// Resource fork format: a 16-byte big-endian file header, a data section,
+// and a resource map with type/reference/name lists. The type list starts
+// with a 16-bit count; reference offsets are relative to the type-list start.
 // https://developer.apple.com/library/archive/documentation/mac/MoreToolbox/MoreToolbox-99.html
-
-// All is big endian!
-struct ResourcesHeader
+namespace {
+bool inRange(size_t offset, size_t count, size_t length)
 {
-	uint32_t resourceDataOffset;
-	uint32_t resourceMapOffset;
-	uint32_t resourceDataLength;
-	uint32_t resourceMapLength;
-};
+	return offset <= length && count <= length - offset;
+}
 
-struct ResourceMapHeader
+uint16_t be16(const uint8_t* p)
 {
-	ResourcesHeader _copy;
-	uint32_t _handleNextMap;
-	uint16_t _fileRefNumber;
-	ResFileAttributes attributes;
-	uint16_t typeListOffset; // from this
-	uint16_t nameListOffset; // from this
-	uint16_t numOfTypesMinusOne;
-};
-
-struct ResourceType
+	return (uint16_t(p[0]) << 8) | p[1];
+}
+uint32_t be24(const uint8_t* p)
 {
-	uint32_t resourceType;
-	uint16_t numOfThisTypeMinusOne;
-	uint16_t referenceListOffset; // from this
-};
-
-struct ReferenceListItem
+	return (uint32_t(p[0]) << 16) | (uint32_t(p[1]) << 8) | p[2];
+}
+uint32_t be32(const uint8_t* p)
 {
-	ResID resourceID;
-	uint16_t resourceNameListOffset;
-	// Since this bitfield values have full byte sized values,
-	// order change for BE/LE is not needed.
-	uint32_t attributes : 8;
-	uint32_t resourceDataOffset : 24;
-	uint32_t _handle;
-};
-
-// Resource data is prefixed with a 4-byte length
-// Resource name is prefixed with a 1-byte length
+	return (uint32_t(p[0]) << 24) | (uint32_t(p[1]) << 16)
+		| (uint32_t(p[2]) << 8) | p[3];
+}
+}
 
 bool Resources::m_createHandles = true;
 
 Resources::Resources(const char* file, SInt8 openMode, bool resourceFork)
-: m_file(file), m_openMode(openMode), m_resourceFork(resourceFork)
+: m_file(file), m_resourceFork(resourceFork), m_openMode(openMode), m_attributes(0)
 {
 	if (openMode != fsWrPerm)
 	{
@@ -90,7 +72,7 @@ void Resources::loadResources()
 
 		off_t size = ::lseek(fd, 0, SEEK_END);
 
-		if (size == 0)
+		if (size <= 0 || static_cast<uintmax_t>(size) > std::numeric_limits<size_t>::max())
 		{
 			::close(fd);
 			throw OSErr(eofErr);
@@ -131,6 +113,7 @@ void Resources::loadResources()
 Resources::ResourceData::ResourceData(ResourceData&& that)
 {
 	id = that.id;
+	type = that.type;
 	name = std::move(that.name);
 	dataBacking = std::move(that.dataBacking);
 	attributes = that.attributes;
@@ -178,116 +161,89 @@ void Resources::ResourceData::dataChanged()
 		dataBacking.assign(*data, *data + GetHandleSize(data));
 }
 
-#ifdef __LITTLE_ENDIAN__
-#	define SWAP(x) x = _bswap(x)
-#	define SWAP3(x) x = _bswap24(x)
-
-static inline uint16_t _bswap(uint16_t v) { return __builtin_bswap16(v); }
-static inline int16_t _bswap(int16_t v) { return __builtin_bswap16(v); }
-static inline uint32_t _bswap(uint32_t v) { return __builtin_bswap32(v); }
-
-static inline uint32_t _bswap24(uint32_t v)
-{
-	uint32_t rv = (v >> 16) & 0xff;
-	rv |= v & 0xff00;
-	rv |= (v << 16) & 0xff0000;
-	return rv;
-}
-
-#else
-#	define SWAP(x)
-#	define SWAP3(x)
-#endif
-
 void Resources::loadResources(const uint8_t* mem, size_t length)
 {
 	m_resourceTypes.clear();
+	m_handleMap.clear();
 	m_attributes = 0;
-
-	if (length < sizeof(ResourcesHeader))
+	if (!mem || !inRange(0, 16, length))
 		throw OSErr(eofErr);
 
-	// TODO: Do more bounds checking
-
-	ResourcesHeader header = *reinterpret_cast<const ResourcesHeader*>(mem);
-
-	SWAP(header.resourceDataOffset);
-	SWAP(header.resourceMapOffset);
-	SWAP(header.resourceDataLength);
-	SWAP(header.resourceMapLength);
-
-	if (header.resourceDataOffset + header.resourceDataLength > length
-		|| header.resourceMapOffset + header.resourceMapLength > length)
-	{
+	const size_t dataOffset = be32(mem);
+	const size_t mapOffset = be32(mem + 4);
+	const size_t dataLength = be32(mem + 8);
+	const size_t mapLength = be32(mem + 12);
+	if (!inRange(dataOffset, dataLength, length) ||
+		!inRange(mapOffset, mapLength, length) || mapLength < 30)
 		throw OSErr(eofErr);
-	}
 
-	ResourceMapHeader resourceMapHeader = *reinterpret_cast<const ResourceMapHeader*>(mem + header.resourceMapOffset);
-	SWAP(resourceMapHeader.attributes);
-	SWAP(resourceMapHeader.typeListOffset);
-	SWAP(resourceMapHeader.nameListOffset);
-	SWAP(resourceMapHeader.numOfTypesMinusOne);
+	const uint8_t* map = mem + mapOffset;
+	m_attributes = static_cast<ResFileAttributes>(be16(map + 22));
+	const size_t typeOffset = be16(map + 24);
+	const size_t nameOffset = be16(map + 26);
+	if (!inRange(typeOffset, 2, mapLength) || nameOffset > mapLength)
+		throw OSErr(eofErr);
 
-	m_attributes = resourceMapHeader.attributes;
+	const size_t numTypesField = be16(map + typeOffset);
+	const size_t numTypes = numTypesField == 0xffff ? 0 : numTypesField + 1;
+	if (numTypes > (mapLength - typeOffset - 2) / 8)
+		throw OSErr(eofErr);
 
-	// NOTE: +2 here is not documented, but is needed!
-	const ResourceType* t = reinterpret_cast<const ResourceType*>(mem + header.resourceMapOffset + resourceMapHeader.typeListOffset + 2);
-	for (int i = 0; i <= resourceMapHeader.numOfTypesMinusOne; i++, t++)
+	for (size_t i = 0; i < numTypes; ++i)
 	{
-		ResourceType type = *t;
+		const size_t typePos = typeOffset + 2 + i * 8;
+		const uint32_t type = be32(map + typePos);
+		const size_t count = static_cast<size_t>(be16(map + typePos + 4)) + 1;
+		const size_t refOffset = be16(map + typePos + 6);
+		if (refOffset > mapLength - typeOffset ||
+			count > (mapLength - typeOffset - refOffset) / 12)
+			throw OSErr(eofErr);
 
-		SWAP(type.resourceType);
-		SWAP(type.numOfThisTypeMinusOne);
-		SWAP(type.referenceListOffset);
-
-		const ReferenceListItem* rli = reinterpret_cast<const ReferenceListItem*>(
-			mem + header.resourceMapOffset + resourceMapHeader.typeListOffset + type.referenceListOffset
-		);
-
-		ResourceTypeData resourceTypeData;
-		resourceTypeData.type = type.resourceType;
-
-		for (int j = 0; j <= type.numOfThisTypeMinusOne; j++, rli++)
+		ResourceTypeData typeData;
+		typeData.type = type;
+		for (size_t j = 0; j < count; ++j)
 		{
-			ReferenceListItem refListItem = *rli;
+			const uint8_t* reference = map + typeOffset + refOffset + j * 12;
 			ResourceData res;
+			res.id = static_cast<ResID>(be16(reference));
+			const size_t nameRel = be16(reference + 2);
+			res.attributes = static_cast<ResAttributes>(reference[4]);
+			const size_t resourceOffset = be24(reference + 5);
 
-			SWAP(refListItem.resourceID);
-			SWAP(refListItem.resourceNameListOffset);
-			SWAP3(refListItem.resourceDataOffset);
-			
-			if (refListItem.resourceNameListOffset != 0xffff)
+			if (nameRel != 0xffff)
 			{
-				const char* pascalStringName = reinterpret_cast<const char*>(mem + header.resourceMapOffset + resourceMapHeader.nameListOffset + refListItem.resourceNameListOffset);
-				res.name.assign(pascalStringName+1, *pascalStringName);
+				if (nameRel > mapLength - nameOffset ||
+					!inRange(nameOffset + nameRel, 1, mapLength))
+					throw OSErr(eofErr);
+				const size_t namePos = nameOffset + nameRel;
+				const size_t nameLength = map[namePos];
+				if (!inRange(namePos + 1, nameLength, mapLength))
+					throw OSErr(eofErr);
+				res.name.assign(reinterpret_cast<const char*>(map + namePos + 1), nameLength);
 			}
 
-			if (refListItem.resourceDataOffset != 0xffff)
-			{
-				const uint8_t* dataHeader = mem + header.resourceDataOffset + refListItem.resourceDataOffset;
-				uint32_t dataLength = *reinterpret_cast<const uint32_t*>(dataHeader);
-
-				SWAP(dataLength);
-
-				res.dataBacking.assign(dataHeader + 4, dataHeader + 4 + dataLength);
-			}
-
-			res.id = refListItem.resourceID;
-			res.attributes = refListItem.attributes;
-			res.type = resourceTypeData.type;
+			if (!inRange(resourceOffset, 4, dataLength))
+				throw OSErr(eofErr);
+			const size_t blockLength = be32(mem + dataOffset + resourceOffset);
+			if (!inRange(resourceOffset + 4, blockLength, dataLength))
+				throw OSErr(eofErr);
+			const uint8_t* block = mem + dataOffset + resourceOffset + 4;
+			res.dataBacking.assign(block, block + blockLength);
+			res.type = type;
 			res.parent = this;
-
-			resourceTypeData.resources.emplace_back(std::make_unique<ResourceData>(std::move(res)));
-
-			ResourceData* d = resourceTypeData.resources.back().get();
-			resourceTypeData.idMap.insert({ res.id, d });
-			resourceTypeData.nameMap.insert({ res.name, d });
-
-			if (m_createHandles)
-				d->getHandle();
+			typeData.resources.emplace_back(std::make_unique<ResourceData>(std::move(res)));
+			ResourceData* entry = typeData.resources.back().get();
+			typeData.idMap.emplace(entry->id, entry);
+			typeData.nameMap.emplace(entry->name, entry);
 		}
-
-		m_resourceTypes.insert({ type.resourceType, std::move(resourceTypeData) });
+		auto inserted = m_resourceTypes.emplace(type, std::move(typeData));
+		// Create handles only for entries retained in the resource map.
+		// A repeated type must not leave handles pointing to discarded entries.
+		if (inserted.second && m_createHandles)
+		{
+			for (auto& entry : inserted.first->second.resources)
+				entry->getHandle();
+		}
 	}
 }
 
