@@ -20,7 +20,7 @@
 #import <GameKit/GameKit.h>
 #include <dispatch/dispatch.h>
 
-NSString *const GKErrorDomain = @"com.apple.GameKit";
+NSString *const GKErrorDomain = @"GKErrorDomain";
 
 static NSError *gameCenterUnavailableError(void)
 {
