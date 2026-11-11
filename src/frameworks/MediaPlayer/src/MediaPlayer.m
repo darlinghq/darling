@@ -1,24 +1,53 @@
+/*
+ This file is part of Darling.
+
+ Copyright (C) 2026 Lubos Dolezel
+
+ Darling is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ Darling is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #import <MediaPlayer/MediaPlayer.h>
 
-NSString *const MPMediaItemPropertyAlbumTitle = @"MPMediaItemPropertyAlbumTitle";
-NSString *const MPMediaItemPropertyAlbumTrackNumber = @"MPMediaItemPropertyAlbumTrackNumber";
-NSString *const MPMediaItemPropertyArtist = @"MPMediaItemPropertyArtist";
-NSString *const MPMediaItemPropertyArtwork = @"MPMediaItemPropertyArtwork";
-NSString *const MPMediaItemPropertyPlaybackDuration = @"MPMediaItemPropertyPlaybackDuration";
-NSString *const MPMediaItemPropertyTitle = @"MPMediaItemPropertyTitle";
+// Values as macOS reports them.
+NSString *const MPMediaItemPropertyAlbumTitle = @"albumTitle";
+NSString *const MPMediaItemPropertyAlbumTrackNumber = @"albumTrackNumber";
+NSString *const MPMediaItemPropertyArtist = @"artist";
+NSString *const MPMediaItemPropertyArtwork = @"artwork";
+NSString *const MPMediaItemPropertyPlaybackDuration = @"playbackDuration";
+NSString *const MPMediaItemPropertyTitle = @"title";
 
 NSString *const MPNowPlayingInfoPropertyElapsedPlaybackTime = @"MPNowPlayingInfoPropertyElapsedPlaybackTime";
 NSString *const MPNowPlayingInfoPropertyMediaType = @"MPNowPlayingInfoPropertyMediaType";
 NSString *const MPNowPlayingInfoPropertyPlaybackProgress = @"MPNowPlayingInfoPropertyPlaybackProgress";
 NSString *const MPNowPlayingInfoPropertyPlaybackRate = @"MPNowPlayingInfoPropertyPlaybackRate";
+NSString *const MPNowPlayingInfoPropertyDefaultPlaybackRate = @"MPNowPlayingInfoPropertyDefaultPlaybackRate";
+NSString *const MPNowPlayingInfoPropertyPlaybackQueueIndex = @"MPNowPlayingInfoPropertyPlaybackQueueIndex";
+NSString *const MPNowPlayingInfoPropertyPlaybackQueueCount = @"MPNowPlayingInfoPropertyPlaybackQueueCount";
+NSString *const MPNowPlayingInfoPropertyChapterNumber = @"MPNowPlayingInfoPropertyChapterNumber";
+NSString *const MPNowPlayingInfoPropertyChapterCount = @"MPNowPlayingInfoPropertyChapterCount";
 NSString *const MPNowPlayingInfoPropertyIsLiveStream = @"MPNowPlayingInfoPropertyIsLiveStream";
+NSString *const MPNowPlayingInfoPropertyAssetURL = @"MPNowPlayingInfoPropertyAssetURL";
 
 @implementation MPMediaItemArtwork
 
+@synthesize bounds = _bounds;
+
 - (instancetype) initWithBoundsSize: (NSSize) boundsSize requestHandler: (NSImage * (^)(NSSize size)) requestHandler {
     self = [super init];
-    if (self && requestHandler) {
-        _image = [requestHandler(boundsSize) retain];
+    if (self) {
+        _bounds = NSMakeRect(0, 0, boundsSize.width, boundsSize.height);
+        _requestHandler = [requestHandler copy];
     }
     return self;
 }
@@ -27,16 +56,23 @@ NSString *const MPNowPlayingInfoPropertyIsLiveStream = @"MPNowPlayingInfoPropert
     self = [super init];
     if (self) {
         _image = [image retain];
+        _bounds = NSMakeRect(0, 0, [image size].width, [image size].height);
     }
     return self;
 }
 
 - (void) dealloc {
     [_image release];
+    [_requestHandler release];
     [super dealloc];
 }
 
+// The request handler is asked for an image each time one is wanted, for the
+// size the caller asks about.
 - (NSImage *) imageWithSize: (NSSize) size {
+    if (_requestHandler != nil) {
+        return _requestHandler(size);
+    }
     return _image;
 }
 
@@ -47,14 +83,13 @@ NSString *const MPNowPlayingInfoPropertyIsLiveStream = @"MPNowPlayingInfoPropert
 @synthesize nowPlayingInfo = _nowPlayingInfo;
 @synthesize playbackState = _playbackState;
 
-static MPNowPlayingInfoCenter *s_defaultCenter = nil;
-
 + (MPNowPlayingInfoCenter *) defaultCenter {
+    static MPNowPlayingInfoCenter *center = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        s_defaultCenter = [[MPNowPlayingInfoCenter alloc] init];
+        center = [[MPNowPlayingInfoCenter alloc] init];
     });
-    return s_defaultCenter;
+    return center;
 }
 
 - (void) dealloc {
@@ -62,6 +97,28 @@ static MPNowPlayingInfoCenter *s_defaultCenter = nil;
     [super dealloc];
 }
 
+@end
+
+// One registered target: either an object and action (not retained, as the
+// command does not own its targets) or a handler block. The entry itself is the
+// opaque token returned for a handler.
+@interface _MPRemoteCommandTarget : NSObject {
+@public
+    id target;
+    SEL action;
+    MPRemoteCommandHandlerStatus (^handler)(MPRemoteCommandEvent *);
+}
+@end
+
+@implementation _MPRemoteCommandTarget
+- (void) dealloc {
+    [handler release];
+    [super dealloc];
+}
+@end
+
+@interface MPRemoteCommand ()
+- (void) invokeWithEvent: (MPRemoteCommandEvent *) event;
 @end
 
 @implementation MPRemoteCommand
@@ -72,66 +129,116 @@ static MPNowPlayingInfoCenter *s_defaultCenter = nil;
     self = [super init];
     if (self) {
         _enabled = YES;
+        _targets = [[NSMutableArray alloc] init];
     }
     return self;
-}
-
-- (void) addTarget: (id) target action: (SEL) action {
-    [_target release];
-    _target = [target retain];
-    _action = action;
-}
-
-- (void) removeTarget: (id) target action: (SEL) action {
-    if (_target == target && _action == action) {
-        [_target release];
-        _target = nil;
-        _action = NULL;
-    }
-}
-
-- (void) removeTarget: (id) target {
-    if (_target == target) {
-        [_target release];
-        _target = nil;
-        _action = NULL;
-    }
 }
 
 - (void) dealloc {
-    [_target release];
+    [_targets release];
     [super dealloc];
 }
 
-- (id) addTargetWithHandler: (id) handler {
-    return self;
+- (void) addTarget: (id) target action: (SEL) action {
+    _MPRemoteCommandTarget *entry = [[_MPRemoteCommandTarget alloc] init];
+    entry->target = target;
+    entry->action = action;
+    @synchronized(self) {
+        [_targets addObject: entry];
+    }
+    [entry release];
 }
 
-- (NSMethodSignature *) methodSignatureForSelector: (SEL) aSelector {
-    NSMethodSignature *sig = [super methodSignatureForSelector: aSelector];
-    if (sig) return sig;
-    const char *selName = sel_getName(aSelector);
-    if (strcmp(selName, "setEnabled:") == 0) {
-        return [NSMethodSignature signatureWithObjCTypes: "v@:c"];
+- (id) addTargetWithHandler: (MPRemoteCommandHandlerStatus (^)(MPRemoteCommandEvent *event)) handler {
+    _MPRemoteCommandTarget *entry = [[_MPRemoteCommandTarget alloc] init];
+    entry->handler = [handler copy];
+    @synchronized(self) {
+        [_targets addObject: entry];
     }
-    if (strncmp(selName, "set", 3) == 0) {
-        return [NSMethodSignature signatureWithObjCTypes: "v@:@"];
-    }
-    return [NSMethodSignature signatureWithObjCTypes: "@@:"];
+    return [entry autorelease];
 }
 
-- (void) forwardInvocation: (NSInvocation *) anInvocation {
-    const char *selName = sel_getName([anInvocation selector]);
-    if (strncmp(selName, "set", 3) != 0) {
-        id nilRet = nil;
-        [anInvocation setReturnValue: &nilRet];
+- (void) removeTarget: (id) target action: (SEL) action {
+    @synchronized(self) {
+        NSMutableIndexSet *remove = [NSMutableIndexSet indexSet];
+        [_targets enumerateObjectsUsingBlock: ^(_MPRemoteCommandTarget *entry, NSUInteger idx, BOOL *stop) {
+            BOOL sameTarget = (target == nil) || entry == target || entry->target == target;
+            BOOL sameAction = (action == NULL) || entry->action == action;
+            if (sameTarget && sameAction) {
+                [remove addIndex: idx];
+            }
+        }];
+        [_targets removeObjectsAtIndexes: remove];
     }
+}
+
+// A nil target removes every registered target; a handler token removes its
+// handler.
+- (void) removeTarget: (id) target {
+    [self removeTarget: target action: NULL];
 }
 
 - (void) invokeWithEvent: (MPRemoteCommandEvent *) event {
-    if (_enabled && _target && _action && [_target respondsToSelector: _action]) {
-        [_target performSelector: _action withObject: event];
+    if (!_enabled) {
+        return;
     }
+    NSArray *targets;
+    @synchronized(self) {
+        targets = [[_targets copy] autorelease];
+    }
+    for (_MPRemoteCommandTarget *entry in targets) {
+        if (entry->handler != nil) {
+            entry->handler(event);
+        } else if ([entry->target respondsToSelector: entry->action]) {
+            [entry->target performSelector: entry->action withObject: event];
+        }
+    }
+}
+
+@end
+
+@implementation MPSkipIntervalCommand
+
+@synthesize preferredIntervals = _preferredIntervals;
+
+- (instancetype) init {
+    self = [super init];
+    if (self) {
+        _preferredIntervals = [@[ @10 ] retain];
+    }
+    return self;
+}
+
+- (void) dealloc {
+    [_preferredIntervals release];
+    [super dealloc];
+}
+
+@end
+
+@implementation MPFeedbackCommand
+
+@synthesize active = _active, localizedTitle = _localizedTitle, localizedShortTitle = _localizedShortTitle;
+
+- (void) dealloc {
+    [_localizedTitle release];
+    [_localizedShortTitle release];
+    [super dealloc];
+}
+
+@end
+
+@implementation MPRatingCommand
+@synthesize minimumRating = _minimumRating, maximumRating = _maximumRating;
+@end
+
+@implementation MPChangePlaybackRateCommand
+
+@synthesize supportedPlaybackRates = _supportedPlaybackRates;
+
+- (void) dealloc {
+    [_supportedPlaybackRates release];
+    [super dealloc];
 }
 
 @end
@@ -139,15 +246,12 @@ static MPNowPlayingInfoCenter *s_defaultCenter = nil;
 @implementation MPChangePlaybackPositionCommand
 @end
 
-@implementation MPSkipIntervalCommand
+@implementation MPChangeShuffleModeCommand
+@synthesize currentShuffleType = _currentShuffleType;
+@end
 
-@synthesize preferredIntervals = _preferredIntervals;
-
-- (void) dealloc {
-    [_preferredIntervals release];
-    [super dealloc];
-}
-
+@implementation MPChangeRepeatModeCommand
+@synthesize currentRepeatType = _currentRepeatType;
 @end
 
 @implementation MPRemoteCommandEvent
@@ -174,88 +278,80 @@ static MPNowPlayingInfoCenter *s_defaultCenter = nil;
 @synthesize playCommand = _playCommand;
 @synthesize stopCommand = _stopCommand;
 @synthesize togglePlayPauseCommand = _togglePlayPauseCommand;
+@synthesize enableLanguageOptionCommand = _enableLanguageOptionCommand;
+@synthesize disableLanguageOptionCommand = _disableLanguageOptionCommand;
+@synthesize changePlaybackRateCommand = _changePlaybackRateCommand;
+@synthesize changeRepeatModeCommand = _changeRepeatModeCommand;
+@synthesize changeShuffleModeCommand = _changeShuffleModeCommand;
 @synthesize nextTrackCommand = _nextTrackCommand;
 @synthesize previousTrackCommand = _previousTrackCommand;
-@synthesize changePlaybackPositionCommand = _changePlaybackPositionCommand;
 @synthesize skipForwardCommand = _skipForwardCommand;
 @synthesize skipBackwardCommand = _skipBackwardCommand;
 @synthesize seekForwardCommand = _seekForwardCommand;
 @synthesize seekBackwardCommand = _seekBackwardCommand;
-
-static MPRemoteCommandCenter *s_sharedCommandCenter = nil;
+@synthesize changePlaybackPositionCommand = _changePlaybackPositionCommand;
+@synthesize ratingCommand = _ratingCommand;
+@synthesize likeCommand = _likeCommand;
+@synthesize dislikeCommand = _dislikeCommand;
+@synthesize bookmarkCommand = _bookmarkCommand;
 
 + (MPRemoteCommandCenter *) sharedCommandCenter {
+    static MPRemoteCommandCenter *center = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        s_sharedCommandCenter = [[MPRemoteCommandCenter alloc] init];
+        center = [[MPRemoteCommandCenter alloc] init];
     });
-    return s_sharedCommandCenter;
+    return center;
 }
 
 - (instancetype) init {
     self = [super init];
     if (self) {
-        _commands = [NSMutableDictionary new];
         _pauseCommand = [[MPRemoteCommand alloc] init];
         _playCommand = [[MPRemoteCommand alloc] init];
         _stopCommand = [[MPRemoteCommand alloc] init];
         _togglePlayPauseCommand = [[MPRemoteCommand alloc] init];
+        _enableLanguageOptionCommand = [[MPRemoteCommand alloc] init];
+        _disableLanguageOptionCommand = [[MPRemoteCommand alloc] init];
+        _changePlaybackRateCommand = [[MPChangePlaybackRateCommand alloc] init];
+        _changeRepeatModeCommand = [[MPChangeRepeatModeCommand alloc] init];
+        _changeShuffleModeCommand = [[MPChangeShuffleModeCommand alloc] init];
         _nextTrackCommand = [[MPRemoteCommand alloc] init];
         _previousTrackCommand = [[MPRemoteCommand alloc] init];
-        _changePlaybackPositionCommand = [[MPChangePlaybackPositionCommand alloc] init];
         _skipForwardCommand = [[MPSkipIntervalCommand alloc] init];
         _skipBackwardCommand = [[MPSkipIntervalCommand alloc] init];
         _seekForwardCommand = [[MPRemoteCommand alloc] init];
         _seekBackwardCommand = [[MPRemoteCommand alloc] init];
+        _changePlaybackPositionCommand = [[MPChangePlaybackPositionCommand alloc] init];
+        _ratingCommand = [[MPRatingCommand alloc] init];
+        _likeCommand = [[MPFeedbackCommand alloc] init];
+        _dislikeCommand = [[MPFeedbackCommand alloc] init];
+        _bookmarkCommand = [[MPFeedbackCommand alloc] init];
     }
     return self;
 }
 
-- (NSMethodSignature *) methodSignatureForSelector: (SEL) aSelector {
-    NSString *selName = NSStringFromSelector(aSelector);
-    if ([selName hasSuffix: @"Command"]) {
-        return [NSMethodSignature signatureWithObjCTypes: "@@:"];
-    }
-    return [super methodSignatureForSelector: aSelector];
-}
-
-- (void) forwardInvocation: (NSInvocation *) anInvocation {
-    NSString *selName = NSStringFromSelector([anInvocation selector]);
-    if ([selName hasSuffix: @"Command"]) {
-        MPRemoteCommand *cmd = nil;
-        @synchronized(self) {
-            if (!_commands) _commands = [NSMutableDictionary new];
-            cmd = [_commands objectForKey: selName];
-            if (!cmd) {
-                if ([selName isEqualToString: @"skipForwardCommand"] || [selName isEqualToString: @"skipBackwardCommand"]) {
-                    cmd = [[MPSkipIntervalCommand alloc] init];
-                } else {
-                    cmd = [[MPRemoteCommand alloc] init];
-                }
-                [_commands setObject: cmd forKey: selName];
-                [cmd release];
-            }
-            cmd = [[cmd retain] autorelease];
-        }
-        [anInvocation setReturnValue: &cmd];
-        return;
-    }
-    [super forwardInvocation: anInvocation];
-}
-
 - (void) dealloc {
-    [_commands release];
     [_pauseCommand release];
     [_playCommand release];
     [_stopCommand release];
     [_togglePlayPauseCommand release];
+    [_enableLanguageOptionCommand release];
+    [_disableLanguageOptionCommand release];
+    [_changePlaybackRateCommand release];
+    [_changeRepeatModeCommand release];
+    [_changeShuffleModeCommand release];
     [_nextTrackCommand release];
     [_previousTrackCommand release];
-    [_changePlaybackPositionCommand release];
     [_skipForwardCommand release];
     [_skipBackwardCommand release];
     [_seekForwardCommand release];
     [_seekBackwardCommand release];
+    [_changePlaybackPositionCommand release];
+    [_ratingCommand release];
+    [_likeCommand release];
+    [_dislikeCommand release];
+    [_bookmarkCommand release];
     [super dealloc];
 }
 
