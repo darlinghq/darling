@@ -22,4 +22,10 @@
 @interface ABRecord : NSObject
 {
 }
+
+- (id) valueForProperty: (NSString *) property;
+- (BOOL) setValue: (id) value forProperty: (NSString *) property;
+- (BOOL) removeValueForProperty: (NSString *) property;
+- (NSString *) uniqueId;
+
 @end
