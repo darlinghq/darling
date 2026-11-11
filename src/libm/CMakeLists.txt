@@ -24,6 +24,7 @@ set(libm_sources
 	Source/abs.c
 	Source/sincos.c
 	Source/exp10.c
+	Source/simd_invert.c
 	#Source/nan.c
 	#Source/nanl.c
 	#Source/version_info.c
@@ -330,6 +331,7 @@ add_circular(system_m FAT
 		$<TARGET_OBJECTS:system_m_extra>
 	SIBLINGS
 		system_c
+		compiler_rt
 		system_dyld
 	LINK_FLAGS
 		"${LIBM_ALIAS_FLAGS}"
