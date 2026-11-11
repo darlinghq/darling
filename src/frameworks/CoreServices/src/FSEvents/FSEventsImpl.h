@@ -26,6 +26,9 @@
 #include <FSEvents/FSEvents.h>
 #include <dispatch/dispatch.h>
 
+// Returns the next event ID of the counter shared by all streams.
+extern uint64_t _FSEventsAllocateEventID(void) __attribute__((visibility("hidden")));
+
 @interface FSEventsImpl : NSObject
 {
 	NSArray<NSString*>* _pathsToWatch;
@@ -69,6 +72,8 @@
 -(void)start;
 -(void)stop;
 -(FSEventStreamEventId)lastEventID;
+-(FSEventStreamEventId)flushPendingEvents;
+-(NSString*)copyStreamDescription;
 -(void)_readEvents;
 -(void)_performFromRunLoop;
 

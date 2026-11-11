@@ -1,4 +1,5 @@
 #include "DASession.h"
+#include <DiskArbitration/DiskArbitration.h>
 #include <stddef.h>
 #include <string.h>
 #include <CoreFoundation/CFRuntime.h>
@@ -181,4 +182,41 @@ void DAApprovalSessionUnscheduleFromRunLoop(DAApprovalSessionRef session,
 		CFRunLoopRef runLoop, CFStringRef runLoopMode)
 {
 	
+}
+
+/* Callback registration is accepted and ignored: no disk events are delivered. */
+void DARegisterDiskAppearedCallback(DASessionRef session, CFDictionaryRef match, DADiskAppearedCallback callback, void *context)
+{
+}
+
+void DARegisterDiskDescriptionChangedCallback(DASessionRef session, CFDictionaryRef match, CFArrayRef watch, DADiskDescriptionChangedCallback callback, void *context)
+{
+}
+
+void DARegisterDiskDisappearedCallback(DASessionRef session, CFDictionaryRef match, DADiskDisappearedCallback callback, void *context)
+{
+}
+
+void DARegisterDiskMountApprovalCallback(DASessionRef session, CFDictionaryRef match, DADiskMountApprovalCallback callback, void *context)
+{
+}
+
+void DARegisterDiskUnmountApprovalCallback(DASessionRef session, CFDictionaryRef match, DADiskUnmountApprovalCallback callback, void *context)
+{
+}
+
+void DARegisterDiskEjectApprovalCallback(DASessionRef session, CFDictionaryRef match, DADiskEjectApprovalCallback callback, void *context)
+{
+}
+
+void DARegisterDiskPeekCallback(DASessionRef session, CFDictionaryRef match, CFIndex order, DADiskPeekCallback callback, void *context)
+{
+}
+
+void DAUnregisterCallback(DASessionRef session, void *callback, void *context)
+{
+}
+
+void DAUnregisterApprovalCallback(DASessionRef session, void *callback, void *context)
+{
 }

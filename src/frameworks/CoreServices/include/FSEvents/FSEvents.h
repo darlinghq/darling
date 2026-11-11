@@ -114,6 +114,10 @@ extern CF_RETURNS_RETAINED CFArrayRef FSEventStreamCopyPathsBeingWatched(ConstFS
 
 extern FSEventStreamEventId FSEventStreamGetLatestEventId(ConstFSEventStreamRef streamRef);
 
+extern FSEventStreamEventId FSEventStreamFlushAsync(FSEventStreamRef streamRef);
+extern void FSEventStreamFlushSync(FSEventStreamRef streamRef);
+extern CF_RETURNS_RETAINED CFStringRef FSEventStreamCopyDescription(ConstFSEventStreamRef streamRef);
+
 extern void FSEventStreamInvalidate(FSEventStreamRef streamRef);
 
 extern void FSEventStreamRelease(FSEventStreamRef streamRef);
@@ -127,5 +131,13 @@ extern void FSEventStreamSetDispatchQueue(FSEventStreamRef streamRef, dispatch_q
 extern Boolean FSEventStreamStart(FSEventStreamRef streamRef);
 
 extern void FSEventStreamStop(FSEventStreamRef streamRef);
+
+extern FSEventStreamEventId FSEventsGetCurrentEventId(void);
+
+extern CFUUIDRef FSEventsCopyUUIDForDevice(dev_t dev);
+
+extern FSEventStreamEventId FSEventsGetLastEventIdForDeviceBeforeTime(dev_t dev, CFAbsoluteTime time);
+
+extern Boolean FSEventsPurgeEventsForDeviceUpToEventId(dev_t dev, FSEventStreamEventId eventId);
 
 #endif

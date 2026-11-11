@@ -18,12 +18,13 @@
 */
 
 #import <AVFAudio/AVAudioMixerNode.h>
+#import "AVFAudioStub.h"
 
 @implementation AVAudioMixerNode
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return AVAudioStubSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation

@@ -30,7 +30,6 @@ NSString *const AVCaptureSessionDidStopRunningNotification = @"AVCaptureSessionD
 NSString *const AVCaptureSessionErrorKey = @"AVCaptureSessionErrorKey";
 NSString *const AVCaptureSessionRuntimeErrorNotification = @"AVCaptureSessionRuntimeErrorNotification";
 NSString *const AVChannelLayoutKey = @"AVChannelLayoutKey";
-NSString *const AVEncoderBitRateChannelKey = @"AVEncoderBitRatePerChannelKey";
 NSString *const AVErrorDeviceKey = @"AVErrorDeviceKey";
 NSString *const AVErrorFileSizeKey = @"AVErrorFileSizeKey";
 NSString *const AVErrorMediaSubTypeKey = @"AVErrorMediaSubTypeKey";
@@ -47,8 +46,9 @@ NSString *const AVLinearPCMIsBigEndianKey = @"AVLinearPCMIsBigEndianKey";
 NSString *const AVLinearPCMIsFloatKey = @"AVLinearPCMIsFloatKey";
 NSString *const AVLinearPCMIsNonInterleaved = @"AVLinearPCMIsNonInterleaved";
 NSString *const AVNumberOfChannelsKey = @"AVNumberOfChannelsKey";
-NSString *const AVPlayerItemDidPlayToEndTimeNotification = @"AVPlayerItemFailedToPlayToEndTimeNotification";
-NSString *const AVPlayerItemFailedToPlayToEndTimeNotification = @"AVPlayerItemPlaybackStalledNotification";
+NSString *const AVPlayerItemDidPlayToEndTimeNotification = @"AVPlayerItemDidPlayToEndTimeNotification";
+NSString *const AVPlayerItemFailedToPlayToEndTimeNotification = @"AVPlayerItemFailedToPlayToEndTimeNotification";
+NSString *const AVPlayerItemPlaybackStalledNotification = @"AVPlayerItemPlaybackStalledNotification";
 NSNotificationName const AVSampleBufferAudioRendererWasFlushedAutomaticallyNotification = @"AVSampleBufferAudioRendererWasFlushedAutomaticallyNotification";
 NSString *const AVSampleRateKey = @"AVSampleRateKey";
 NSString *const AVURLAssetPreferPreciseDurationAndTimingKey = @"AVURLAssetPreferPreciseDurationAndTimingKey";
@@ -100,3 +100,44 @@ const AVMetadataKey AVMetadataCommonKeyDescription = @"description";
 const AVMetadataKey AVMetadataCommonKeyTitle = @"title";
 
 const AVMetadataKey AVMetadataID3MetadataKeyUserURL = @"WXXX";
+
+const AVCaptureSessionPreset AVCaptureSessionPresetPhoto = @"AVCaptureSessionPresetPhoto";
+
+NSString *const AVCaptureDeviceTypeBuiltInWideAngleCamera = @"AVCaptureDeviceTypeBuiltInWideAngleCamera";
+NSString *const AVCaptureDeviceTypeBuiltInTelephotoCamera = @"AVCaptureDeviceTypeBuiltInTelephotoCamera";
+NSString *const AVCaptureDeviceTypeBuiltInUltraWideCamera = @"AVCaptureDeviceTypeBuiltInUltraWideCamera";
+NSString *const AVCaptureDeviceTypeBuiltInDualCamera = @"AVCaptureDeviceTypeBuiltInDualCamera";
+NSString *const AVCaptureDeviceTypeBuiltInDualWideCamera = @"AVCaptureDeviceTypeBuiltInDualWideCamera";
+NSString *const AVCaptureDeviceTypeBuiltInTripleCamera = @"AVCaptureDeviceTypeBuiltInTripleCamera";
+NSString *const AVCaptureDeviceTypeBuiltInTrueDepthCamera = @"AVCaptureDeviceTypeBuiltInTrueDepthCamera";
+NSString *const AVCaptureDeviceTypeBuiltInLiDARDepthCamera = @"AVCaptureDeviceTypeBuiltInLiDARDepthCamera";
+NSString *const AVCaptureDeviceTypeBuiltInMicrophone = @"AVCaptureDeviceTypeMicrophone";
+NSString *const AVCaptureDeviceTypeMicrophone = @"AVCaptureDeviceTypeMicrophone";
+NSString *const AVCaptureDeviceTypeExternalUnknown = @"AVCaptureDeviceTypeExternal";
+NSString *const AVCaptureDeviceTypeExternal = @"AVCaptureDeviceTypeExternal";
+NSString *const AVCaptureDeviceTypeContinuityCamera = @"AVCaptureDeviceTypeContinuityCamera";
+NSString *const AVCaptureDeviceTypeDeskViewCamera = @"AVCaptureDeviceTypeDeskViewCamera";
+
+@interface AVCaptureDeviceDiscoverySession : NSObject
+@end
+@implementation AVCaptureDeviceDiscoverySession
++ (id) discoverySessionWithDeviceTypes: (id) types mediaType: (id) mediaType position: (NSInteger) pos {
+    return [[[self alloc] init] autorelease];
+}
+- (NSArray *) devices {
+    return [NSArray array];
+}
+@end
+
+@interface AVCapturePhotoOutput : NSObject
+@end
+@implementation AVCapturePhotoOutput
+@end
+
+@interface AVCapturePhotoSettings : NSObject
+@end
+@implementation AVCapturePhotoSettings
++ (id) photoSettings {
+    return [[[self alloc] init] autorelease];
+}
+@end

@@ -36,6 +36,7 @@ const CFStringRef kCVImageBufferCGColorSpaceKey = CFSTR("CGColorSpace");
 const CFStringRef kCVImageBufferColorPrimaries_ITU_R_2020 = CFSTR("ITU_R_2020");
 const CFStringRef kCVImageBufferColorPrimaries_P3_D65 = CFSTR("P3_D65");
 const CFStringRef kCVImageBufferColorPrimaries_DCI_P3 = CFSTR("DCI_P3");
+const CFStringRef kCVImageBufferColorPrimaries_P22 = CFSTR("P22");
 const CFStringRef kCVImageBufferYCbCrMatrix_ITU_R_2020 = CFSTR("ITU_R_2020");
 
 const CFStringRef kCVImageBufferTransferFunction_ITU_R_2020 = CFSTR("ITU_R_2020");
@@ -54,6 +55,8 @@ const CFStringRef kCVPixelBufferPoolAllocationThresholdKey = CFSTR("BufferPoolAl
 const CFStringRef kCVPixelBufferIOSurfacePropertiesKey = CFSTR("IOSurfaceProperties");
 const CFStringRef kCVPixelBufferOpenGLCompatibilityKey = CFSTR("OpenGLCompatibility");
 const CFStringRef kCVPixelBufferPixelFormatTypeKey = CFSTR("PixelFormatType");
+const CFStringRef kCVPixelBufferCGBitmapContextCompatibilityKey = CFSTR("CGBitmapContextCompatibility");
+const CFStringRef kCVPixelBufferCGImageCompatibilityKey = CFSTR("CGImageCompatibility");
 const CFStringRef kCVPixelBufferMetalCompatibilityKey = CFSTR("MetalCompatibility");
 const CFStringRef kCVPixelBufferBytesPerRowAlignmentKey = CFSTR("BytesPerRowAlignment");
 const CFStringRef kCVPixelBufferHeightKey = CFSTR("Height");
@@ -61,3 +64,9 @@ const CFStringRef kCVPixelBufferWidthKey = CFSTR("Width");
 const CFStringRef kCVPixelBufferIOSurfaceOpenGLTextureCompatibilityKey = CFSTR("IOSurfaceOpenGLTextureCompatibility");
 const CFStringRef kCVPixelBufferPoolMaximumBufferAgeKey = CFSTR("MaximumBufferAge");
 const CFStringRef kCVPixelBufferPoolMinimumBufferCountKey = CFSTR("MinimumBufferCount");
+
+const CFStringRef kCVImageBufferCleanApertureKey = CFSTR("CVCleanAperture");
+const CFStringRef kCVImageBufferCleanApertureWidthKey = CFSTR("Width");
+const CFStringRef kCVImageBufferCleanApertureHeightKey = CFSTR("Height");
+const CFStringRef kCVImageBufferCleanApertureHorizontalOffsetKey = CFSTR("HorizontalOffset");
+const CFStringRef kCVImageBufferCleanApertureVerticalOffsetKey = CFSTR("VerticalOffset");
