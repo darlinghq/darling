@@ -31,6 +31,9 @@ typedef const struct __DCSDictionary* DCSDictionaryRef;
 // Dictionary discovery and the active set are implemented; record lookup is still stubbed,
 // so lookups find nothing. Remaining stubs take and return untyped values.
 
+CFRange DCSGetTermRangeInString(DCSDictionaryRef dictionary, CFStringRef textString, CFIndex offset);
+CFStringRef DCSCopyTextDefinition(DCSDictionaryRef dictionary, CFStringRef textString, CFRange range);
+
 CFRange DCSGetTermRangeInStringWithOptions(void *dictionary, CFStringRef string, CFIndex offset, void *options);
 
 CFSetRef DCSCopyAvailableDictionaries(void);

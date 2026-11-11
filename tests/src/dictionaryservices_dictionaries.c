@@ -124,6 +124,11 @@ int main(void)
 	assert(DCSDictionaryCreate(missing) == NULL);
 	assert(DCSDictionaryGetName(NULL) == NULL);
 
+	// The public text lookup entry points exist; with no records to look up, nothing is found.
+	CFRange term = DCSGetTermRangeInString(NULL, CFSTR("hello world"), 3);
+	assert(term.location == kCFNotFound && term.length == 0);
+	assert(DCSCopyTextDefinition(NULL, CFSTR("hello"), CFRangeMake(0, 5)) == NULL);
+
 	CFRelease(missing);
 	CFRelease(none);
 	CFRelease(one);

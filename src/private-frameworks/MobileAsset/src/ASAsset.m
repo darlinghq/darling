@@ -19,7 +19,7 @@
 
 #import <MobileAsset/ASAsset.h>
 
-NSString *const ASAttributeDownloadSize = @"ASAttributeDownloadSize";
+NSString *const ASAttributeDownloadSize = @"_DownloadSize";
 
 @implementation ASAsset
 
