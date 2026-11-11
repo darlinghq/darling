@@ -17,20 +17,9 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <stddef.h>
 
-/* Stub. As of 2026-09-20, these binaries link AccessibilitySupport but bind no symbol from it, so an
-   exporting stub is unnecessary:
-     TV.app
-     VoiceOver Utility.app
-   A strong bind to a symbol this framework does not export still aborts in dyld, which is
-   the intended loud failure. Re-run tools/darling-tier1-stub-gen after an OS update to
-   check that this still holds. */
-
-__attribute__((constructor))
-static void AccessibilitySupport_stub_loaded(void)
-{
-	if (getenv("STUB_VERBOSE"))
-		fprintf(stderr, "STUB: AccessibilitySupport loaded (no symbols implemented)\n");
-}
+/* Load-only stub: the binaries it was generated for bind no symbol from AccessibilitySupport, so it
+   exports nothing and only satisfies their load command. A strong bind to a symbol this
+   framework does not export still fails in dyld, which is the intended loud failure.
+   Re-run tools/darling-tier1-stub-gen after an OS update to check that this still holds. */
