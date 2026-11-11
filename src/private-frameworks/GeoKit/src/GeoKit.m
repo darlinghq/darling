@@ -17,18 +17,11 @@
 	like "there are zero places here", which is a different and wrong answer.
 */
 
-#import <Foundation/Foundation.h>
-#import <CoreFoundation/CoreFoundation.h>
+#import <GeoKit/GeoKit.h>
 
 /* No Core Data stack is present, so both contexts are absent. */
 id GEOManagedObjectContext = NULL;
 id GEODefaultManagedObjectContext = NULL;
-
-@interface GeoKitPlace : NSObject
-@property (readonly, copy) NSString* name;
-@property (readonly) double latitude;
-@property (readonly) double longitude;
-@end
 
 @implementation GeoKitPlace
 {
@@ -48,9 +41,6 @@ id GEODefaultManagedObjectContext = NULL;
 {
 	return 0.0;
 }
-@end
-
-@interface GEOCity : GeoKitPlace
 @end
 
 @implementation GEOCity

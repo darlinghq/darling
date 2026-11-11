@@ -16,7 +16,6 @@ generate_sdk_framework(GeoKit
 )
 
 add_framework(GeoKit
-	FAT
 	CURRENT_VERSION
 	PRIVATE
 	VERSION ${FRAMEWORK_VERSION}
