@@ -2,6 +2,7 @@
 #define _Carbon_TextServices_H_
 
 #include <CoreServices/MacTypes.h>
+#include <HIToolbox/CarbonEventsCore.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,6 +23,10 @@ OSErr UseInputWindow(TSMDocumentID idocID, Boolean useWindow);
 OSStatus TSMSetDocumentProperty(TSMDocumentID docID, TSMDocumentPropertyTag propertyTag, UInt32 propertySize, const void *propertyData);
 OSStatus TSMGetDocumentProperty(TSMDocumentID docID, TSMDocumentPropertyTag propertyTag, UInt32 bufferSize, UInt32 *actualSize, void *propertyBuffer);
 OSStatus TSMRemoveDocumentProperty(TSMDocumentID docID, TSMDocumentPropertyTag propertyTag);
+
+UInt32 TSMGetDeadKeyState(void);
+void TSMSetDeadKeyState(UInt32 state);
+OSStatus TSMProcessRawKeyCode(EventRef event);
 
 #ifdef __cplusplus
 }

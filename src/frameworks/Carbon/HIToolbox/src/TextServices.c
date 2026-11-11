@@ -287,3 +287,21 @@ OSStatus TSMRemoveDocumentProperty(TSMDocumentID docID, TSMDocumentPropertyTag p
 	free(prop);
 	return err;
 }
+
+// There are no input methods, so raw key codes never produce dead-key text.
+static UInt32 g_deadKeyState;
+
+UInt32 TSMGetDeadKeyState(void)
+{
+	return g_deadKeyState;
+}
+
+void TSMSetDeadKeyState(UInt32 state)
+{
+	g_deadKeyState = state;
+}
+
+OSStatus TSMProcessRawKeyCode(EventRef event)
+{
+	return eventNotHandledErr;
+}

@@ -10,6 +10,7 @@
 CF_EXTERN_C_BEGIN
 
 Boolean _CSCheckFix(CFStringRef str);
+int _CSGetProcessorArchitecture(void);
 
 // Also assumed
 #define QTN_FLAG_ASSESSMENT_OK 1
