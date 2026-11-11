@@ -32,7 +32,7 @@ void CPAnalyticsEventViewDidDisappear(id view, id payload);
 NSString *const CPAnalyticsPayloadClassNameKey = @"CPAnalyticsPayloadClassNameKey";
 NSString *const CPAnalyticsPayloadViewIDKey = @"CPAnalyticsPayloadViewIDKey";
 
-// The argument lists are the shape Photo Booth binds; nothing here dereferences them, so a
+// The argument lists follow the usual shape of these calls; nothing here dereferences them, so a
 // caller that passes a different arity cannot be hurt by the mismatch.
 void CPAnalyticsEventViewDidAppear(id view, id payload)
 {
@@ -54,9 +54,8 @@ void CPAnalyticsEventViewDidDisappear(id view, id payload)
     return sharedInstance;
 }
 
-// Photo Booth only needs the class to exist, but it may call anything on it. Answer with a
-// catch-all rather than letting an unimplemented class method abort the app during nib
-// loading, and log so the gap stays visible.
+// Callers may send any message to this class. Answer every selector with a no-op rather than
+// letting an unimplemented method raise an exception.
 + (NSMethodSignature *) methodSignatureForSelector: (SEL) aSelector
 {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];
@@ -64,8 +63,6 @@ void CPAnalyticsEventViewDidDisappear(id view, id payload)
 
 + (void) forwardInvocation: (NSInvocation *) anInvocation
 {
-    NSLog(@"Stub called: %@ in %@ (class method)",
-          NSStringFromSelector([anInvocation selector]), [self class]);
 }
 
 - (NSMethodSignature *) methodSignatureForSelector: (SEL) aSelector
@@ -75,7 +72,6 @@ void CPAnalyticsEventViewDidDisappear(id view, id payload)
 
 - (void) forwardInvocation: (NSInvocation *) anInvocation
 {
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
 }
 
 @end

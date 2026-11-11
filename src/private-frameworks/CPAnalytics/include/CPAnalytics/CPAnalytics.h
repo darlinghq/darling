@@ -18,8 +18,8 @@
 #import <Foundation/Foundation.h>
 
 /*
-   Apple's telemetry framework. Photo Booth links it and binds five symbols: this class,
-   two payload keys, and two functions.
+   Apple's telemetry framework. This declares its class, two payload keys and two
+   event functions.
 
    There is no analytics backend here and no telemetry should be sent anywhere, so every entry
    is the neutral answer. The keys exist so callers can build a payload dictionary without
