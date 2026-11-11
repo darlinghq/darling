@@ -33,8 +33,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/event.h>
 #include <sys/ioctl.h>
 #include <signal.h>
+#include <pwd.h>
+#include <limits.h>
 #include "shellspawn.h"
 #include "shellspawn-fds.h"
+#include "shellspawn-shell.h"
 #include "shellspawn-config.h"
 #include "duct_signals.h"
 
@@ -208,9 +211,11 @@ void spawnShell(int fd)
 
 	bool read_cmds = true;
 
-	argv = (char**) malloc(sizeof(char*) * 3);
-	argv[0] = "/bin/zsh";
-	argv[1] = "--login";
+	// argv[0] is replaced by the login shell's name once the client has
+	// chosen the user (see below); a client's SETEXEC discards it.
+	argv = (char**) malloc(sizeof(char*) * 2);
+	argv[0] = "-zsh";
+	argc = 1;
 
 	char* alloc_exec = NULL;
 
@@ -345,6 +350,18 @@ void spawnShell(int fd)
 		}
 	}
 
+	// Without a program of the client's choosing, run the login shell from the
+	// account entry of the user we run as.
+	char login_argv0[PATH_MAX];
+	const char* login_shell = SHELLSPAWN_DEFAULT_SHELL;
+	if (alloc_exec == NULL)
+	{
+		struct passwd* pw = getpwuid(getuid());
+		login_shell = shellspawn_choose_shell(pw != NULL ? pw->pw_shell : NULL);
+		if (argc > 0 && shellspawn_login_argv0(login_shell, login_argv0, sizeof(login_argv0)) == 0)
+			argv[0] = login_argv0;
+	}
+
 	// Add terminating NULL
 	argv = (char**) realloc(argv, sizeof(char*) * (argc + 1));
 	argv[argc] = NULL;
@@ -381,9 +398,7 @@ void spawnShell(int fd)
 
 			signal(SIGPIPE, SIG_DFL);
 
-			// In future, we may support spawning something else than Zsh
-			// and check the provided shell against /etc/shells
-			execv(alloc_exec ? alloc_exec : "/bin/zsh", argv);
+			execv(alloc_exec ? alloc_exec : login_shell, argv);
 		}
 
 		rv = errno;

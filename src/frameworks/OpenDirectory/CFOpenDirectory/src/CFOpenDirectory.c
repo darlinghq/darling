@@ -282,12 +282,6 @@ bool ODRecordAddMember(ODRecordRef group, ODRecordRef member, CFErrorRef *error)
     return false;
 }
 
-bool ODRecordAddValue(ODRecordRef record, ODAttributeType attribute, CFTypeRef value, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODRecordAddValue called");
-    return false;
-}
-
 bool ODRecordChangePassword(ODRecordRef record, CFStringRef oldPassword, CFStringRef newPassword, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordChangePassword called");
@@ -383,12 +377,6 @@ bool ODRecordRemovePolicy(ODRecordRef record, ODPolicyType policy, CFErrorRef *e
     return false;
 }
 
-bool ODRecordRemoveValue(ODRecordRef record, ODAttributeType attribute, CFTypeRef value, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODRecordRemoveValue called");
-    return false;
-}
-
 int64_t ODRecordSecondsUntilAuthenticationsExpire(ODRecordRef record)
 {
     if (verbose) puts("STUB: ODRecordSecondsUntilAuthenticationsExpire called");
@@ -404,12 +392,6 @@ int64_t ODRecordSecondsUntilPasswordExpires(ODRecordRef record)
 bool ODRecordSetAccountPolicies(ODRecordRef record, CFDictionaryRef policies, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordSetAccountPolicies called");
-    return false;
-}
-
-bool ODRecordSetNodeCredentials(ODRecordRef record, CFStringRef username, CFStringRef password, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODRecordSetNodeCredentials called");
     return false;
 }
 
@@ -440,18 +422,6 @@ bool ODRecordSetPolicies(ODRecordRef record, CFDictionaryRef policies, CFErrorRe
 bool ODRecordSetPolicy(ODRecordRef record, ODPolicyType policy, CFTypeRef value, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODRecordSetPolicy called");
-    return false;
-}
-
-bool ODRecordSetValue(ODRecordRef record, ODAttributeType attribute, CFTypeRef valueOrValues, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODRecordSetValue called");
-    return false;
-}
-
-bool ODRecordSynchronize(ODRecordRef record, CFErrorRef *error)
-{
-    if (verbose) puts("STUB: ODRecordSynchronize called");
     return false;
 }
 
