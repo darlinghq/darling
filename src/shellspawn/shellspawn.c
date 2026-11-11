@@ -57,7 +57,7 @@ int main(int argc, const char** argv)
 	// default disposition back before exec.
 	signal(SIGPIPE, SIG_IGN);
 
-	// shellspawn (daemon) --fork()--> shellspawn (child) --fork()--> exec /bin/bash
+	// shellspawn (daemon) --fork()--> shellspawn (child) --fork()--> exec the shell
 	// in order to read the exit status of the shell process,
 	// we have to allow it to become a zombie, therefore we need to
 	// restore the sigaction of SIGCHLD of the child shellspawn
@@ -209,7 +209,7 @@ void spawnShell(int fd)
 	bool read_cmds = true;
 
 	argv = (char**) malloc(sizeof(char*) * 3);
-	argv[0] = "/bin/bash";
+	argv[0] = "/bin/zsh";
 	argv[1] = "--login";
 
 	char* alloc_exec = NULL;
@@ -381,9 +381,9 @@ void spawnShell(int fd)
 
 			signal(SIGPIPE, SIG_DFL);
 
-			// In future, we may support spawning something else than Bash
+			// In future, we may support spawning something else than Zsh
 			// and check the provided shell against /etc/shells
-			execv(alloc_exec ? alloc_exec : "/bin/bash", argv);
+			execv(alloc_exec ? alloc_exec : "/bin/zsh", argv);
 		}
 
 		rv = errno;

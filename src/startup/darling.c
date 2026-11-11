@@ -477,12 +477,17 @@ static void pushShellspawnCommandFDs(int sockfd, shellspawn_cmd_type_t type, con
 	}
 }
 
+static void restoreTermios(void);
 static int _shSockfd = -1;
 static struct termios orig_termios;
 static int pty_master;
+static volatile sig_atomic_t sigint_count = 0;
+static volatile sig_atomic_t termios_saved = 0;
+
 static void signalHandler(int signo)
 {
-	// printf("Received signal %d\n", signo);
+	int forwarded = signo;
+	bool terminate = false;
 
 	// Forward window size changes
 	if (signo == SIGWINCH && pty_master != -1)
@@ -491,8 +496,16 @@ static void signalHandler(int signo)
 
 		ioctl(0, TIOCGWINSZ, &win);
 		ioctl(pty_master, TIOCSWINSZ, &win);
+		return;
 	}
-	
+
+	// These end the launcher. A second SIGINT does too, so that a guest
+	// that ignores the first one cannot leave the host terminal stuck.
+	if (signo == SIGTERM || signo == SIGHUP || signo == SIGQUIT)
+		terminate = true;
+	else if (signo == SIGINT && ++sigint_count > 1)
+		terminate = true;
+
 	// Foreground process loopkup in shellspawn doesn't work
 	// if we're not running in TTY mode, so shellspawn falls back
 	// to forwarding signals to the Bash subprocess.
@@ -500,9 +513,17 @@ static void signalHandler(int signo)
 	// Hence we translate SIGINT to SIGTERM for user convenience,
 	// because Bash will not terminate on SIGINT.
 	if (pty_master == -1 && signo == SIGINT)
-		signo = SIGTERM;
+		forwarded = SIGTERM;
 
-	pushShellspawnCommandData(_shSockfd, SHELLSPAWN_SIGNAL, &signo, sizeof(signo));
+	// The guest gets the signal even when the launcher goes away.
+	pushShellspawnCommandData(_shSockfd, SHELLSPAWN_SIGNAL, &forwarded, sizeof(forwarded));
+
+	if (terminate)
+	{
+		// Only async-signal-safe calls from here on.
+		restoreTermios();
+		_exit(128 + signo);
+	}
 }
 
 static void shellLoop(int sockfd, int master)
@@ -599,7 +620,9 @@ static void shellLoop(int sockfd, int master)
 
 static void restoreTermios(void)
 {
-	tcsetattr(STDIN_FILENO, TCSANOW, &orig_termios);
+	// Never apply the zeroed orig_termios to a terminal we did not change.
+	if (termios_saved)
+		tcsetattr(STDIN_FILENO, TCSANOW, &orig_termios);
 }
 
 // Glibc openpty() fails for me on Debian, because grantpty() fails to chown() the pty node with error code EPERM.
@@ -648,6 +671,7 @@ static void setupPtys(int fds[3], int* master)
 	if (tty)
 	{
 		orig_termios = termios;
+		termios_saved = 1;
 
 		ioctl(0, TIOCGWINSZ, &win);
 
@@ -1353,7 +1377,7 @@ void setupPrefix()
 
 	fprintf(file,
 		"root:*:0:0:System Administrator:/var/root:/bin/sh\n"
-		"%s:*:%d:%d:Darling User:/Users/%s:/bin/bash\n",
+		"%s:*:%d:%d:Darling User:/Users/%s:/bin/zsh\n",
 		passwd_entry->pw_name,
 		passwd_entry->pw_uid,
 		passwd_entry->pw_gid,
@@ -1371,7 +1395,7 @@ void setupPrefix()
 
 	fprintf(file,
 		"root:*:0:0::0:0:System Administrator:/var/root:/bin/sh\n"
-		"%s:*:%d:%d::0:0:Darling User:/Users/%s:/bin/bash\n",
+		"%s:*:%d:%d::0:0:Darling User:/Users/%s:/bin/zsh\n",
 		passwd_entry->pw_name,
 		passwd_entry->pw_uid,
 		passwd_entry->pw_gid,
