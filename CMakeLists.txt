@@ -320,6 +320,10 @@ InstallSymlink(/Volumes/SystemRoot/etc/resolv.conf ${CMAKE_INSTALL_PREFIX}/libex
 InstallSymlink(/Volumes/SystemRoot/etc/machine-id ${CMAKE_INSTALL_PREFIX}/libexec/darling/private/etc/machine-id)
 InstallSymlink(/Volumes/SystemRoot/etc/nsswitch.conf ${CMAKE_INSTALL_PREFIX}/libexec/darling/private/etc/nsswitch.conf)
 
+# The data volume of a macOS system holds the user's files. Here it is the same
+# tree as the root, so paths under /System/Volumes/Data resolve as expected.
+InstallSymlink(../.. ${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Volumes/Data)
+
 install(DIRECTORY DESTINATION libexec/darling/Volumes)
 install(DIRECTORY DESTINATION libexec/darling/Volumes/SystemRoot)
 InstallSymlink(/ ${CMAKE_INSTALL_PREFIX}/libexec/darling/Volumes/DarlingEmulatedDrive)
