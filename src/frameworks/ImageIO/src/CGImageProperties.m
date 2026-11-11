@@ -27,9 +27,20 @@ const CFStringRef kCGImagePropertyGIFDelayTime = CFSTR("DelayTime");
 const CFStringRef kCGImagePropertyGIFDictionary = CFSTR("{GIF}");
 const CFStringRef kCGImagePropertyGIFLoopCount = CFSTR("LoopCount");
 const CFStringRef kCGImagePropertyGIFUnclampedDelayTime = CFSTR("UnclampedDelayTime");
+const CFStringRef kCGImagePropertyGIFHasGlobalColorMap = CFSTR("HasGlobalColorMap");
+const CFStringRef kCGImagePropertyGIFImageColorMap = CFSTR("ImageColorMap");
+
+const CFStringRef kCGImagePropertyIPTCDictionary = CFSTR("{IPTC}");
+const CFStringRef kCGImagePropertyIPTCKeywords = CFSTR("Keywords");
 
 const CFStringRef kCGImagePropertyHasAlpha = CFSTR("HasAlpha");
 const CFStringRef kCGImagePropertyProfileName = CFSTR("ProfileName"); // guessed value
 
-const CFStringRef kCGImagePropertyAPNGDelayTime = CFSTR("APNGDelayTime"); // ditto
-const CFStringRef kCGImagePropertyAPNGLoopCount = CFSTR("APNGLoopCount"); // ditto
+const CFStringRef kCGImagePropertyAPNGDelayTime = CFSTR("DelayTime");
+const CFStringRef kCGImagePropertyAPNGLoopCount = CFSTR("LoopCount");
+const CFStringRef kCGImagePropertyAPNGUnclampedDelayTime = CFSTR("UnclampedDelayTime");
+
+const CFStringRef kCGImageMetadataNamespaceExif = CFSTR("http://ns.adobe.com/exif/1.0/");
+const CFStringRef kCGImageMetadataPrefixExif = CFSTR("exif");
+const CFStringRef kCGImagePropertyPNGAuthor = CFSTR("Author");
+const CFStringRef kCGImagePropertyPNGDescription = CFSTR("Description");

@@ -15,6 +15,8 @@ typedef struct CF_BRIDGED_TYPE(id) O2ImageSource *CGImageSourceRef;
 #import <CoreGraphics/CGImage.h>
 #import <CoreGraphics/CGDataProvider.h>
 
+CF_IMPLICIT_BRIDGING_ENABLED
+
 IMAGEIO_EXTERN const CFStringRef kCGImageSourceShouldAllowFloat;
 IMAGEIO_EXTERN const CFStringRef kCGImageSourceShouldCache;
 IMAGEIO_EXTERN const CFStringRef kCGImageSourceCreateThumbnailFromImageIfAbsent;
@@ -31,6 +33,9 @@ IMAGEIO_EXTERN size_t CGImageSourceGetCount(CGImageSourceRef self);
 
 IMAGEIO_EXTERN CGImageRef CGImageSourceCreateImageAtIndex(CGImageSourceRef self, size_t index, CFDictionaryRef options);
 IMAGEIO_EXTERN CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef self, size_t index, CFDictionaryRef options);
+IMAGEIO_EXTERN CFDictionaryRef CGImageSourceCopyProperties(CGImageSourceRef self, CFDictionaryRef options);
 IMAGEIO_EXTERN CGImageRef CGImageSourceCreateThumbnailAtIndex(CGImageSourceRef self, size_t index, CFDictionaryRef options);
 
 IMAGEIO_EXTERN CGImageSourceRef CGImageSourceCreateWithDataProvider(CGDataProviderRef provider, CFDictionaryRef options);
+
+CF_IMPLICIT_BRIDGING_DISABLED

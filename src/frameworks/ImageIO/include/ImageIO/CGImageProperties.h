@@ -23,3 +23,24 @@ IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFYResolution;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFOrientation;
 
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyHasAlpha;
+
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyPNGAuthor;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyPNGDescription;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyPNGDictionary;
+
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFDelayTime;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFDictionary;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFLoopCount;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFUnclampedDelayTime;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFHasGlobalColorMap;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFImageColorMap;
+
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyIPTCDictionary;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyIPTCKeywords;
+
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyAPNGDelayTime;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyAPNGLoopCount;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyAPNGUnclampedDelayTime;
+
+IMAGEIO_EXTERN const CFStringRef kCGImageMetadataNamespaceExif;
+IMAGEIO_EXTERN const CFStringRef kCGImageMetadataPrefixExif;

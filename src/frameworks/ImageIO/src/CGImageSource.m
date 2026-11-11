@@ -38,6 +38,15 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef self, size_t
    return (CFDictionaryRef)[self copyPropertiesAtIndex:index options:options];
 }
 
+// Limited: file-level properties are not tracked separately, so this
+// returns the properties of the first image, or NULL for an empty source.
+CFDictionaryRef CGImageSourceCopyProperties(CGImageSourceRef self, CFDictionaryRef options) {
+   if (!self) return NULL;
+   if ([self count] > 0) {
+      return CGImageSourceCopyPropertiesAtIndex(self, 0, options);
+   }
+   return NULL;
+}
 static bool thumbnailOptionIsTrue(CFDictionaryRef options, CFStringRef key) {
     if (options == NULL)
         return false;
