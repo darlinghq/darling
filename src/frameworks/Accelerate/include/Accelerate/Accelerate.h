@@ -40,25 +40,41 @@ typedef struct vImage_CGImageFormat vImage_CGImageFormat;
 
 enum {
     kvImageNoError = 0,
-    kvImageRoiLargerThanInputFile = -21766,
-    kvImageInvalidRowBytes = -21767,
-    kvImageInvalidImageFormat = -21768,
-    kvImageMemoryAllocationError = -21769,
-    kvImageNullPointerErr = -21770,
-    kvImageUnknownFlagsBit = -21771,
-    kvImageInvalidParameter = -21772
+    kvImageRoiLargerThanInputBuffer = -21766,
+    kvImageInvalidKernelSize = -21767,
+    kvImageInvalidEdgeStyle = -21768,
+    kvImageInvalidOffset_X = -21769,
+    kvImageInvalidOffset_Y = -21770,
+    kvImageMemoryAllocationError = -21771,
+    kvImageNullPointerArgument = -21772,
+    kvImageInvalidParameter = -21773,
+    kvImageBufferSizeMismatch = -21774,
+    kvImageUnknownFlagsBit = -21775,
+    kvImageInternalError = -21776,
+    kvImageInvalidRowBytes = -21777,
+    kvImageInvalidImageFormat = -21778,
+    kvImageColorSyncIsAbsent = -21779,
+    kvImageOutOfPlaceOperationRequired = -21780,
+    kvImageInvalidImageObject = -21781,
+    kvImageInvalidCVImageFormat = -21782,
+    kvImageUnsupportedConversion = -21783,
+    kvImageCoreVideoIsAbsent = -21784
 };
 
 enum {
     kvImageNoFlags = 0,
     kvImageLeaveAlphaUnchanged = 1,
-    kvImageCopyRestriction = 2,
-    kvImageDoNotTile = 4,
-    kvImageGetTempBufferSize = 8,
-    kvImageHighQualityResampling = 16,
-    kvImageTruncateKernel = 32,
-    kvImageEdgeExtend = 64,
-    kvImageBackgroundColorFill = 128
+    kvImageCopyInPlace = 2,
+    kvImageBackgroundColorFill = 4,
+    kvImageEdgeExtend = 8,
+    kvImageDoNotTile = 16,
+    kvImageHighQualityResampling = 32,
+    kvImageTruncateKernel = 64,
+    kvImageGetTempBufferSize = 128,
+    kvImagePrintDiagnosticsToConsole = 256,
+    kvImageNoAllocate = 512,
+    kvImageHDRContent = 1024,
+    kvImageDoNotClamp = 2048
 };
 
 vImage_Error vImageBuffer_InitWithCGImage(

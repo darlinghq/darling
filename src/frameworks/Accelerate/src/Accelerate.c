@@ -20,20 +20,23 @@
 
 #include <Accelerate/Accelerate.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <limits.h>
 
 #define KVIMAGE_ALL_VALID_FLAGS ( \
     kvImageLeaveAlphaUnchanged | \
-    kvImageCopyRestriction | \
+    kvImageCopyInPlace | \
+    kvImageBackgroundColorFill | \
+    kvImageEdgeExtend | \
     kvImageDoNotTile | \
-    kvImageGetTempBufferSize | \
     kvImageHighQualityResampling | \
     kvImageTruncateKernel | \
-    kvImageEdgeExtend | \
-    kvImageBackgroundColorFill \
+    kvImageGetTempBufferSize | \
+    kvImagePrintDiagnosticsToConsole | \
+    kvImageNoAllocate | \
+    kvImageHDRContent | \
+    kvImageDoNotClamp \
 )
 
 typedef struct {
@@ -49,13 +52,6 @@ static inline uint8_t clamp_u8(float val) {
     return (uint8_t)(val + 0.5f);
 }
 
-static int verbose = 0;
-
-__attribute__((constructor))
-static void initme(void) {
-    verbose = getenv("STUB_VERBOSE") != NULL;
-}
-
 vImage_Error vImageBuffer_InitWithCGImage(
     vImage_Buffer *buf,
     const vImage_CGImageFormat *format,
@@ -63,17 +59,14 @@ vImage_Error vImageBuffer_InitWithCGImage(
     void *image,
     vImage_Flags flags
 ) {
-    if (verbose) {
-        fprintf(stderr, "stub: vImageBuffer_InitWithCGImage called\n");
-    }
     if (!buf) {
-        return kvImageNullPointerErr;
+        return kvImageNullPointerArgument;
     }
     buf->data = NULL;
     buf->height = 0;
     buf->width = 0;
     buf->rowBytes = 0;
-    return kvImageInvalidImageFormat;
+    return kvImageUnsupportedConversion;
 }
 
 vImage_Error vImagePermuteChannels_ARGB8888(
@@ -82,10 +75,8 @@ vImage_Error vImagePermuteChannels_ARGB8888(
     const uint8_t permuteMap[4],
     vImage_Flags flags
 ) {
-    if (verbose) {
-        fprintf(stderr, "stub: vImagePermuteChannels_ARGB8888 called\n");
-    }
-    return kvImageNoError;
+    // Not implemented. Report that instead of claiming the pixels were permuted.
+    return kvImageUnsupportedConversion;
 }
 
 vImage_Error vImageScale_ARGB8888(
@@ -94,15 +85,8 @@ vImage_Error vImageScale_ARGB8888(
     void *tempBuffer,
     vImage_Flags flags
 ) {
-    if (verbose) {
-        fprintf(stderr, "vImageScale_ARGB8888 called: src=(%lu,%lu,rb=%zu) dest=(%lu,%lu,rb=%zu) flags=0x%x\n",
-                src ? src->width : 0, src ? src->height : 0, src ? src->rowBytes : 0,
-                dest ? dest->width : 0, dest ? dest->height : 0, dest ? dest->rowBytes : 0,
-                flags);
-    }
-
     if (!src || !dest) {
-        return kvImageNullPointerErr;
+        return kvImageNullPointerArgument;
     }
 
     if (src->width == 0 || src->height == 0 || dest->width == 0 || dest->height == 0 ||
@@ -127,7 +111,7 @@ vImage_Error vImageScale_ARGB8888(
     }
 
     if (!src->data || !dest->data) {
-        return kvImageNullPointerErr;
+        return kvImageNullPointerArgument;
     }
 
     /* Fast path: 1:1 scale */
@@ -350,8 +334,6 @@ vImage_Error vImageUnpremultiplyData_ARGB8888(
     const vImage_Buffer *dest,
     vImage_Flags flags
 ) {
-    if (verbose) {
-        fprintf(stderr, "stub: vImageUnpremultiplyData_ARGB8888 called\n");
-    }
-    return kvImageNoError;
+    // Not implemented. Report that instead of claiming the pixels were converted.
+    return kvImageUnsupportedConversion;
 }
