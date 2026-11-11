@@ -48,16 +48,15 @@ enum
 	kAudioQueueParam_Volume = 1,
 };
 
-struct AudioQueueParameterEvent
+typedef struct AudioQueueParameterEvent
 {
 	AudioQueueParameterID mID;
 	AudioQueueParameterValue mValue;
-};
+} AudioQueueParameterEvent;
 
-class AudioQueue;
-typedef AudioQueue* AudioQueueRef;
+typedef struct OpaqueAudioQueue* AudioQueueRef;
 
-struct AudioQueueBuffer
+typedef struct AudioQueueBuffer
 {
 	const UInt32 mAudioDataBytesCapacity;
 	void* mAudioData;
@@ -67,7 +66,7 @@ struct AudioQueueBuffer
 	UInt32 mPacketDescriptionCapacity;
 	AudioStreamPacketDescription* mPacketDescriptions;
 	UInt32 mPacketDescriptionCount;
-};
+} AudioQueueBuffer;
 typedef AudioQueueBuffer* AudioQueueBufferRef;
 	
 OSStatus AudioQueueStart(AudioQueueRef inAQ, const AudioTimeStamp *inStartTime);
@@ -125,8 +124,7 @@ OSStatus AudioQueueEnqueueBufferWithParameters(AudioQueueRef inAQ,
 		UInt32 inNumParamValues, const AudioQueueParameterEvent *inParamValues,
 		const AudioTimeStamp *inStartTime, AudioTimeStamp *outActualStartTime); 
 
-class AudioQueueTimeline;
-typedef AudioQueueTimeline* AudioQueueTimelineRef;
+typedef struct OpaqueAudioQueueTimeline* AudioQueueTimelineRef;
 
 OSStatus AudioQueueCreateTimeline(AudioQueueRef inAQ, AudioQueueTimelineRef *outTimeline);
 OSStatus AudioQueueDisposeTimeline(AudioQueueRef inAQ, AudioQueueTimelineRef inTimeline);
