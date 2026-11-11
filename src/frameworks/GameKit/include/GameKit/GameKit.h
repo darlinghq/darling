@@ -27,8 +27,8 @@
 // never authenticated and every request fails with GKErrorNotSupported, as on
 // macOS when Game Center is unavailable.
 //
-// Scoped to what a measured consumer binds against (2026-09-20: Chess.app, both
-// slices), not to Apple's full API -- every entry point here fails, so an
+// Scoped to the Game Center classes applications commonly bind against, not to
+// Apple's full API -- every entry point here fails, so an
 // unreferenced declaration adds no behaviour and only implies support that does
 // not exist. Protocols follow the same rule and none qualifies, since nothing is
 // presented and no event is delivered; delegates are plain `id`.
@@ -94,7 +94,6 @@ typedef NS_ENUM(NSInteger, GKGameCenterViewControllerState) {
 @property (readonly, copy) NSString *identifier;
 @property (assign) double percentComplete;
 @property (assign) BOOL showsCompletionBanner;
-// Chess sends a bare `player`; the receiver is undeterminable from the binary.
 // Always nil, but omitting it would raise doesNotRecognizeSelector:.
 @property (readonly, retain) GKPlayer *player;
 - (instancetype)initWithIdentifier:(NSString *)identifier;
