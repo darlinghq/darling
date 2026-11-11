@@ -279,13 +279,17 @@ OSErr FSSetCatalogInfo(const FSRef* ref, FSCatalogInfoBitmap whichInfo, const FS
 {
 	std::string path;
 
-	if (!catalogInfo)
-		return paramErr;
+	// QUIRK: a NULL catalogInfo with a non-empty whichInfo fails with errFSMissingCatInfo.
+	// Not documented. Evidence: black-box observation on macOS 27.0.1 (tier 2),
+	// vd-upstream/mac-probes/v122-rescreate-probe.c.
+	// Test: tests/src/file_manager_create_res_file.c
+	if (!catalogInfo && whichInfo != 0)
+		return errFSMissingCatInfo;
 	if (!FSRefMakePath(ref, path))
 		return fnfErr;
 
 	// Only the POSIX permissions are applied; other catalog fields have no Linux equivalent here.
-	if (whichInfo & kFSCatInfoPermissions)
+	if (catalogInfo && (whichInfo & kFSCatInfoPermissions))
 	{
 		if (::chmod(path.c_str(), catalogInfo->fsPermissionInfo.mode & 07777) != 0)
 			return makeOSStatus(errno);

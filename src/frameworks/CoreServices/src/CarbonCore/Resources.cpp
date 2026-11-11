@@ -152,7 +152,16 @@ void FSCreateResFile(const FSRef* parentDir, UniCharCount nameLength, const UniC
 		if (*p == '/')
 			*p = ':';
 	}
-	if (strcmp(nameUTF8, ".") == 0 || strcmp(nameUTF8, "..") == 0)
+	// QUIRK: "." is reported as errFSBadForkName and ".." as bdNamErr.
+	// Not documented. Evidence: black-box observation on macOS 27.0.1 (tier 2),
+	// vd-upstream/mac-probes/v122-rescreate-probe.c.
+	// Test: tests/src/file_manager_create_res_file.c
+	if (strcmp(nameUTF8, ".") == 0)
+	{
+		g_lastError = errFSBadForkName;
+		return;
+	}
+	if (strcmp(nameUTF8, "..") == 0)
 	{
 		g_lastError = bdNamErr;
 		return;

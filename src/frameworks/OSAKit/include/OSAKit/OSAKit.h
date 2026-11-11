@@ -151,7 +151,6 @@ void* scriptAssistantCaseCompareItems(void);
 extern NSString* const OSAScriptErrorMessageKey;
 extern NSString* const OSAScriptErrorBriefMessageKey;
 extern NSString* const OSAScriptErrorNumberKey;
-extern NSString* const OSAScriptErrorNumber;
 extern NSString* const OSAScriptErrorPartialResultKey;
 extern NSString* const OSAScriptErrorOffendingObjectKey;
 extern NSString* const OSAScriptErrorExpectedTypeKey;

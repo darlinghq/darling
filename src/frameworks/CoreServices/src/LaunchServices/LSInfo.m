@@ -675,7 +675,7 @@ OSStatus LSCopyItemInfoForURL(CFURLRef inURL, LSRequestedInfo inWhichInfo, LSIte
 	return noErr;
 }
 
-// Private SPI; signatures inferred from callers (see LaunchServicesPriv.h).
+// Private SPI.
 Boolean _LSASNExtractHighAndLowParts(CFTypeRef asn, UInt32 *outHigh, UInt32 *outLow)
 {
 	if (outHigh) *outHigh = 0;
