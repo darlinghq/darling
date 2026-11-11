@@ -26,7 +26,11 @@
 //   same address as __LINKEDIT) are not mapped and do not fail the load;
 // - a dynamic linker whose __TEXT starts at vmaddr 0 is mapped at its slide;
 // - on arm64 images, the anonymous part of a segment extends to the 16 KB
-//   Mach-O page, whatever the host page size.
+//   Mach-O page, whatever the host page size;
+// - on arm64 hosts, LC_UNIXTHREAD's entry point is read from a validated
+//   ARM_THREAD_STATE64 and malformed thread states are refused; images without
+//   a preferred address get distinct slots from 64 GB up, below 2^47, and an
+//   occupied slot is skipped without replacing what is mapped there.
 // Each case runs in a child process, as the loader exits on a failed mapping.
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
@@ -262,7 +266,101 @@ static void test_dylinker(void)
 	free(f.bytes);
 }
 
-static void run(void (*test)(void), const char* name)
+#if defined(__aarch64__)
+#define ENTRY_OFFSET 0x1000
+#define SENTINEL_ADDR 0x1000000000ULL
+
+enum thread_case { THREAD_VALID, THREAD_TRUNCATED, THREAD_BAD_FLAVOR, THREAD_SHORT_COUNT, THREAD_LONG_COUNT };
+static enum thread_case thread_case;
+
+struct arm_thread_command {
+	uint32_t cmd;
+	uint32_t cmdsize;
+	uint32_t flavor;
+	uint32_t count;
+	uint64_t x[29];
+	uint64_t fp, lr, sp, pc;
+	uint32_t cpsr;
+	uint32_t pad;
+};
+
+// An executable whose entry point comes from LC_UNIXTHREAD.
+static void test_unixthread(void)
+{
+	struct fixture f;
+	fixture_init(&f, MH_EXECUTE, MH_PIE, UNIT);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE, UNIT, 0, UNIT, VM_PROT_READ | VM_PROT_EXECUTE);
+
+	struct arm_thread_command* tc = (struct arm_thread_command*) (f.bytes + f.cmd_offset);
+	tc->cmd = LC_UNIXTHREAD;
+	tc->cmdsize = sizeof(*tc);
+	tc->flavor = 6; // ARM_THREAD_STATE64
+	tc->count = (sizeof(*tc) - 4 * sizeof(uint32_t)) / sizeof(uint32_t); // ARM_THREAD_STATE64_COUNT, 68
+	tc->pc = IMAGE_BASE + ENTRY_OFFSET;
+	tc->sp = 0x5555; // not the entry point
+	f.cmd_offset += sizeof(*tc);
+	f.header->ncmds++;
+	f.header->sizeofcmds += sizeof(*tc);
+
+	switch (thread_case) {
+		case THREAD_VALID: break;
+		case THREAD_TRUNCATED: tc->cmdsize = 16; f.header->sizeofcmds -= sizeof(*tc) - 16; break;
+		case THREAD_BAD_FLAVOR: tc->flavor = 1; break;
+		case THREAD_SHORT_COUNT: tc->count--; break;
+		case THREAD_LONG_COUNT: tc->count++; break;
+	}
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	load64(fd, false, &lr);
+
+	check(lr.mh != 0 && lr.entry_point == lr.mh + ENTRY_OFFSET, "unixthread: entry point is the slid pc");
+
+	close(fd);
+	free(f.bytes);
+}
+
+static int load_dylinker_slot(uintptr_t* start, uintptr_t* end)
+{
+	struct fixture f;
+	fixture_init(&f, MH_DYLINKER, 0, UNIT);
+	add_segment(&f, "__TEXT", 0, UNIT, 0, UNIT, VM_PROT_READ | VM_PROT_EXECUTE);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	load64(fd, true, &lr);
+	close(fd);
+	free(f.bytes);
+
+	*end = lr.base;
+	*start = lr.base - UNIT;
+	return ((const struct mach_header_64*) *start)->magic == MH_MAGIC_64;
+}
+
+// Images without a preferred address (base 0) on arm64.
+static void test_low_slots(void)
+{
+	const size_t page = sysconf(_SC_PAGESIZE);
+	volatile char* sentinel = mmap((void*) SENTINEL_ADDR, page, PROT_READ | PROT_WRITE,
+		MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
+	if (sentinel != (void*) SENTINEL_ADDR) {
+		perror("mmap sentinel");
+		exit(1);
+	}
+	sentinel[0] = 42;
+
+	uintptr_t start1, end1, start2, end2;
+	check(load_dylinker_slot(&start1, &end1), "low slots: first image mapped");
+	check(start1 > SENTINEL_ADDR && end1 <= 0x800000000000ULL, "low slots: first slot from 64 GB up, below 2^47, past an occupied slot");
+	check(sentinel[0] == 42, "low slots: the occupied slot keeps its mapping");
+	check(load_dylinker_slot(&start2, &end2), "low slots: second image mapped");
+	check(start2 >= end1 && end2 <= 0x800000000000ULL, "low slots: second image gets the next slot");
+}
+#endif
+
+static void run_expect(void (*test)(void), const char* name, int expected_status)
 {
 	fflush(stdout);
 	pid_t pid = fork();
@@ -282,15 +380,34 @@ static void run(void (*test)(void), const char* name)
 		;
 	char what[128];
 	if (WIFEXITED(status))
-		snprintf(what, sizeof(what), "%s: loaded and checked (exit status %d)", name, WEXITSTATUS(status));
+		snprintf(what, sizeof(what), "%s (exit status %d)", name, WEXITSTATUS(status));
 	else
-		snprintf(what, sizeof(what), "%s: loaded and checked (signal %d)", name, WTERMSIG(status));
-	check(WIFEXITED(status) && WEXITSTATUS(status) == 0, what);
+		snprintf(what, sizeof(what), "%s (signal %d)", name, WTERMSIG(status));
+	check(WIFEXITED(status) && WEXITSTATUS(status) == expected_status, what);
+}
+
+static void run(void (*test)(void), const char* name)
+{
+	run_expect(test, name, 0);
 }
 
 int main(void)
 {
 	run(test_executable, "executable");
 	run(test_dylinker, "dylinker");
+#if defined(__aarch64__)
+	thread_case = THREAD_VALID;
+	run(test_unixthread, "unixthread");
+	// a malformed thread state stops the load with exit status 1
+	thread_case = THREAD_TRUNCATED;
+	run_expect(test_unixthread, "unixthread truncated command refused", 1);
+	thread_case = THREAD_BAD_FLAVOR;
+	run_expect(test_unixthread, "unixthread other flavor refused", 1);
+	thread_case = THREAD_SHORT_COUNT;
+	run_expect(test_unixthread, "unixthread short count refused", 1);
+	thread_case = THREAD_LONG_COUNT;
+	run_expect(test_unixthread, "unixthread count past the command refused", 1);
+	run(test_low_slots, "low slots");
+#endif
 	return failures ? 1 : 0;
 }

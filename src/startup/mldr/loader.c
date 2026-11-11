@@ -11,6 +11,22 @@
 
 #include "loader.h"
 
+// Keyed on GEN_64BIT, not __aarch64__. mldr.c includes this file twice, once per word
+// size, and __aarch64__ is true in both passes, so a definition guarded only by the
+// architecture is emitted twice and the second one is a redefinition error.
+#if defined(GEN_64BIT) && defined(__aarch64__)
+#define MLDR_ARM_THREAD_STATE64 6
+struct mldr_arm_thread_state64 {
+	uint64_t x[29];
+	uint64_t fp;
+	uint64_t lr;
+	uint64_t sp;
+	uint64_t pc;
+	uint32_t cpsr;
+};
+#define MLDR_ARM_THREAD_STATE64_COUNT (sizeof(struct mldr_arm_thread_state64) / sizeof(uint32_t))
+#endif
+
 static int native_prot(int prot);
 static void load(const char* path, cpu_type_t cpu, bool expect_dylinker, char** argv, struct load_results* lr);
 static void setup_space(struct load_results* lr, bool is_64_bit);
@@ -176,7 +192,10 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 		}
 
 		void* mmap_hint = (void*) base;
-#if defined(__aarch64__) || defined(__arm64__)
+#if (defined(__aarch64__) || defined(__arm64__)) && defined(GEN_64BIT)
+		/* Set when we allocate the slot ourselves rather than honouring a
+		 * preferred address the binary asked for. */
+		int managed_slot = 0;
 		/* macOS ObjC FAST_DATA_MASK is 0x00007ffffffffff8 — only 47 bits of
 		 * data pointer. On Linux ARM64 the kernel happily returns 48-bit VAs
 		 * (e.g. 0xfe..) which then get truncated by the mask to a bogus
@@ -184,32 +203,63 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 		 * a low-VA window we control. We hand out distinct slots so dyld and
 		 * subsequently-loaded dylibs don't collide with the main executable
 		 * (which typically wants 0x100000000). */
-		static uintptr_t next_low_addr = 0x200000000ULL; /* 8 GiB; leave 4GiB+ for main exe */
-		if (base == 0)
+		/* Leave the modern ARM64 shared cache's preferred range (6 GiB and
+         * above) available. dyld reserves its actual cache span before mapping
+         * files, so an incompatible future layout fails without overwriting us. */
+		static uintptr_t next_low_addr = 0x1000000000ULL; /* 64 GiB; below the ObjC 47-bit ceiling */
+		if (base == 0) {
 			mmap_hint = (void*)next_low_addr;
+			managed_slot = 1;
+		}
 #endif
-		slide = (uintptr_t) mmap(mmap_hint, mmapSize, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA, -1, 0);
+		/* When the slot is ours, reserve exactly where we asked. A bare hint lets
+		 * the kernel return a different address, which leaves the slot allocator
+		 * bookkeeping describing a range it no longer holds. */
+#if (defined(__aarch64__) || defined(__arm64__)) && defined(GEN_64BIT)
+		if (managed_slot) {
+			while (1) {
+				slide = (uintptr_t) mmap(mmap_hint, mmapSize, PROT_NONE,
+					MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA | MAP_FIXED_NOREPLACE, -1, 0);
+				if (slide != (uintptr_t)MAP_FAILED || errno != EEXIST)
+					break;
+				/* Slot occupied; advance to next 16 MiB boundary and retry */
+				uintptr_t bump = ((uintptr_t)mmap_hint + mmapSize + 0xffffff) & ~0xffffffULL;
+				if (bump >= 0x800000000000ULL)
+					break;
+				next_low_addr = bump;
+				mmap_hint = (void*)bump;
+			}
+		} else
+#endif
+		{
+			slide = (uintptr_t) mmap(mmap_hint, mmapSize, PROT_NONE,
+				MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA, -1, 0);
+		}
 		if (slide == (uintptr_t)MAP_FAILED)
 		{
 			fprintf(stderr, "Cannot mmap anonymous memory range: %s\n", strerror(errno));
 			exit(1);
 		}
-#if defined(__aarch64__) || defined(__arm64__)
-		/* If we ended up above 2^47 anyway, retry with MAP_FIXED in the low
+#if (defined(__aarch64__) || defined(__arm64__)) && defined(GEN_64BIT)
+		/* If we ended up above 2^47 anyway, retry with MAP_FIXED_NOREPLACE in the low
 		 * range so the slid address stays reachable through FAST_DATA_MASK. */
 		if (slide >= 0x800000000000ULL) {
 			munmap((void*)slide, mmapSize);
 			slide = (uintptr_t)mmap((void*)next_low_addr, mmapSize, PROT_NONE,
-			                         MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA | MAP_FIXED,
+			                         MAP_ANONYMOUS | MAP_PRIVATE | MAP_EXTRA | MAP_FIXED_NOREPLACE,
 			                         -1, 0);
 			if (slide == (uintptr_t)MAP_FAILED) {
 				fprintf(stderr, "Cannot mmap low-VA range: %s\n", strerror(errno));
 				exit(1);
 			}
 		}
-		/* Bump the slot for the next allocation, leaving headroom. */
-		if (base == 0 && slide >= next_low_addr)
-			next_low_addr = (slide + mmapSize + 0xffffff) & ~0xffffffULL;
+		/* Bump the slot for the next allocation, leaving headroom.
+		 * Derive it from the slot we requested, not from wherever the kernel
+		 * placed the mapping: had that landed below the current slot, comparing
+		 * against it made this whole update a no-op and handed the next load the
+		 * same range, with the reservation unmapped immediately below. */
+		if (base == 0)
+			next_low_addr = ((uintptr_t)mmap_hint + mmapSize + 0xffffff) & ~0xffffffULL;
 #endif
 
 		// unmap it so we can map the actual segments later using MAP_FIXED_NOREPLACE;
@@ -344,12 +394,22 @@ no_slide:
 			{
 #ifdef GEN_64BIT
 #if defined(__x86_64__)
-				// x86_64: RIP at offset 18 uint64_t's from LC start
 				entryPoint = ((uint64_t*) lc)[18];
 #elif defined(__aarch64__)
-				// ARM64: pc at offset 34 uint64_t's from LC start
-				// LC header (16 bytes) + x[29] + fp + lr + sp + pc = index 2 + 32 = 34
-				entryPoint = ((uint64_t*) lc)[34];
+				if (lc->cmdsize < sizeof(*lc) + 2 * sizeof(uint32_t) + sizeof(struct mldr_arm_thread_state64)) {
+					fprintf(stderr, "Truncated ARM64 LC_UNIXTHREAD command\n");
+					exit(1);
+				}
+				uint32_t* thread_command_data = (uint32_t*)(lc + 1);
+				if (thread_command_data[0] != MLDR_ARM_THREAD_STATE64 ||
+						thread_command_data[1] < MLDR_ARM_THREAD_STATE64_COUNT ||
+						thread_command_data[1] > (lc->cmdsize - sizeof(*lc) - 2 * sizeof(uint32_t)) / sizeof(uint32_t)) {
+					fprintf(stderr, "Invalid ARM64 LC_UNIXTHREAD state\n");
+					exit(1);
+				}
+				struct mldr_arm_thread_state64 state;
+				memcpy(&state, &thread_command_data[2], sizeof(state));
+				entryPoint = state.pc;
 #else
 #error Unsupported 64-bit architecture
 #endif
