@@ -56,6 +56,58 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 #define PAGE_ALIGN(x) (x & ~(PAGE_SIZE-1))
 
+#if defined(__aarch64__)
+// Older libc <sys/prctl.h> may not define these; they are stable in the Linux uapi.
+#	ifndef PR_PAC_SET_ENABLED_KEYS
+#		define PR_PAC_SET_ENABLED_KEYS	60
+#	endif
+#	ifndef PR_PAC_APIAKEY
+#		define PR_PAC_APIAKEY	(1UL << 0)
+#		define PR_PAC_APIBKEY	(1UL << 1)
+#		define PR_PAC_APDAKEY	(1UL << 2)
+#		define PR_PAC_APDBKEY	(1UL << 3)
+#	endif
+
+// Opt-in: with DisablePointerAuthentication set in the org.darlinghq.security
+// domain (darling-prefsd hands it to darlingserver), turn off arm64 pointer
+// authentication for every Darwin process started afterwards.
+//
+// Why: Darling runs arm64e macOS binaries, which sign and authenticate pointers (return
+// addresses, C++ vtable and Objective-C method-list pointers, block invoke pointers, Swift
+// function pointers) against Apple's arm64e ABI. Darling's own libraries are plain arm64 and
+// do not participate, so a pointer signed by an arm64e binary reaches arm64 code still signed,
+// or an arm64e authenticate runs on a value the arm64 side never signed, and the process
+// crashes (e.g. _dispatch_client_callout jumping to a signed block invoke, swift_task_create).
+// Disabling the keys makes every PAC sign/authenticate instruction behave as a no-op for this
+// process and its threads, so arm64 and arm64e code agree on plain pointers.
+//
+// Security tradeoff: the Darwin processes in this container lose PAC hardening against
+// memory-corruption exploits (forged return addresses and code pointers). This affects only
+// Darling's Darwin processes; the host's Linux processes and any non-Darling process are
+// unaffected. That is why it is opt-in and off by default.
+//
+// Disabling a key while a still-live function has signed its return address with it would
+// make that function's return fail. This is called directly from main(), which never returns
+// (it ends in start_thread()), and the helper is compiled with branch protection off, so no
+// live frame holds a signed return address. Keys reset on execve, so every exec'd mldr
+// applies this again; threads inherit the setting.
+__attribute__((target("branch-protection=none")))
+static void maybe_disable_ptrauth(void)
+{
+	dserver_system_config_t config;
+
+	if (dserver_rpc_get_system_config(&config, sizeof(config)) != 0 || !config.disable_pointer_authentication)
+		return;
+
+	// enabled_keys = 0 -> all four keys disabled for this process and its future threads.
+	prctl(PR_PAC_SET_ENABLED_KEYS,
+	      PR_PAC_APIAKEY | PR_PAC_APIBKEY | PR_PAC_APDAKEY | PR_PAC_APDBKEY,
+	      0, 0, 0);
+}
+#else
+static void maybe_disable_ptrauth(void) {}
+#endif
+
 static const char* dyld_path = INSTALL_PREFIX "/libexec/darling/usr/lib/dyld";
 
 struct sockaddr_un __dserver_socket_address_data = {
@@ -298,6 +350,10 @@ int main(int argc, char** argv, char** envp)
 	}
 
 	__mldr_main_stack_top = (void*)mldr_load_results.stack_top;
+
+	// Before any of the program's code runs; it needs the darlingserver connection,
+	// and it must be called from main() (see the helper).
+	maybe_disable_ptrauth();
 
 	start_thread(&mldr_load_results);
 

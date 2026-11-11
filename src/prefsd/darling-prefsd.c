@@ -22,7 +22,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 // itself:
 //   - org.darlinghq.platform: the platform identity (hw.model, gethostuuid(),
 //     IOPlatformExpertDevice, ...);
-//   - org.darlinghq.security: the code signing and SIP configuration.
+//   - org.darlinghq.security: the code signing and SIP configuration, and
+//     whether arm64 pointer authentication is turned off.
 //
 // `darling-prefsd --push-once` is run by launchctl during the system bootstrap,
 // before any launchd job is loaded, and exits once both domains are pushed.
@@ -465,6 +466,18 @@ static bool config_from_domain(CFDictionaryRef domain, dserver_system_config_t* 
 		config->present |= DSERVER_SYSTEM_CONFIG_HAS_SEAL_IMAGES;
 	}
 
+	value = lookup(domain, "DisablePointerAuthentication");
+	if (value != NULL)
+	{
+		if (CFGetTypeID(value) != CFBooleanGetTypeID())
+		{
+			snprintf(why, whySize, "DisablePointerAuthentication must be a boolean");
+			return false;
+		}
+		config->disable_pointer_authentication = CFBooleanGetValue((CFBooleanRef) value) ? 1 : 0;
+		config->present |= DSERVER_SYSTEM_CONFIG_HAS_DISABLE_POINTER_AUTHENTICATION;
+	}
+
 	value = lookup(domain, "TrustStorePath");
 	if (value != NULL)
 	{
@@ -631,6 +644,8 @@ static void config_normalize(const dserver_system_config_t* in, dserver_system_c
 		out->csr_active_config = in->csr_active_config;
 	if (in->present & DSERVER_SYSTEM_CONFIG_HAS_SEAL_IMAGES)
 		out->seal_images = in->seal_images;
+	if (in->present & DSERVER_SYSTEM_CONFIG_HAS_DISABLE_POINTER_AUTHENTICATION)
+		out->disable_pointer_authentication = in->disable_pointer_authentication;
 	if (in->present & DSERVER_SYSTEM_CONFIG_HAS_TRUST_STORE_PATH)
 		memcpy(out->trust_store_path, in->trust_store_path, strnlen(in->trust_store_path, sizeof(in->trust_store_path) - 1));
 }
