@@ -20,6 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+#include <iterator>
 #include "UserBreak.h"
 
 static void defaultHandler(OSType componentSignature, UInt32 options, const char *assertionString,
@@ -66,4 +67,37 @@ void DebugStr(ConstStr255Param msg)
 	std::cerr.write((const char*) &msg[1], msg[0]);
 	std::cerr << std::endl;
 	doUserBreak();
+}
+
+namespace
+{
+	struct MacErrorName
+	{
+		int code;
+		const char* names;
+	};
+
+	// Sorted by code; constants sharing a code are joined by " / ".
+	const MacErrorName g_macErrorNames[] = {
+#include "MacErrorNames.inc"
+	};
+}
+
+const char* GetMacOSStatusErrorString(OSStatus err)
+{
+	const MacErrorName* begin = std::begin(g_macErrorNames);
+	const MacErrorName* end = std::end(g_macErrorNames);
+	const MacErrorName* it = std::lower_bound(begin, end, int(err),
+		[](const MacErrorName& e, int code) { return e.code < code; });
+
+	if (it != end && it->code == int(err))
+		return it->names;
+	return "";
+}
+
+// No descriptive texts are available; the documented contract is the empty string
+// when no text exists for a code.
+const char* GetMacOSStatusCommentString(OSStatus err)
+{
+	return "";
 }
