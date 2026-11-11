@@ -15,16 +15,13 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <float.h>
 #include <math.h>
+#include <stdatomic.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
 #define AE_STORAGE_MAGIC 0x41454453 // 'AEDS'
-
-// Built-in descriptor types that AEDataModel.h does not declare.
-#define kAETypeUInt16 'ushr'
-#define kAETypeUInt64 'ucom'
-#define kAETypeKeyword 'keyw'
 
 // How a descriptor's contents are stored. This is tracked separately from the descriptor type,
 // because a record keeps its structure when it is coerced to another type (e.g. 'obj ').
@@ -168,11 +165,11 @@ static Boolean readNumber(DescType type, const void* data, Size size, AENumber* 
 {
 	switch (type) {
 		case typeSInt16: READ_NUMBER(SInt16, s, kAENumberSigned);
-		case kAETypeUInt16: READ_NUMBER(UInt16, s, kAENumberSigned);
+		case typeUInt16: READ_NUMBER(UInt16, s, kAENumberSigned);
 		case typeSInt32: READ_NUMBER(SInt32, s, kAENumberSigned);
 		case typeUInt32: READ_NUMBER(UInt32, s, kAENumberSigned);
 		case typeSInt64: READ_NUMBER(SInt64, s, kAENumberSigned);
-		case kAETypeUInt64: READ_NUMBER(UInt64, u, kAENumberUnsigned);
+		case typeUInt64: READ_NUMBER(UInt64, u, kAENumberUnsigned);
 		case typeIEEE32BitFloatingPoint: READ_NUMBER(Float32, d, kAENumberFloat);
 		case typeIEEE64BitFloatingPoint: READ_NUMBER(Float64, d, kAENumberFloat);
 		case typeBoolean: READ_NUMBER(Boolean, s, kAENumberSigned);
@@ -191,7 +188,11 @@ static Boolean readNumber(DescType type, const void* data, Size size, AENumber* 
 
 #undef READ_NUMBER
 
-// Converts a number to a signed integer in [min, max]; fails for fractions and out-of-range values.
+// Converts a number to a signed integer in [min, max]; fails for out-of-range values.
+// QUIRK: a floating-point value with a fractional part is rounded to the nearest integer, with
+// ties to even (2.5 becomes 2, 3.5 becomes 4), instead of failing the coercion.
+// Evidence: black-box observation on macOS 27.0.1 (tier 2), vd-upstream/mac-probes/v121-ae-probe.c.
+// Test: test_coercions in tests/src/ae_descriptors.c
 static Boolean numberToInteger(const AENumber* number, int64_t min, int64_t max, int64_t* out)
 {
 	int64_t value;
@@ -205,10 +206,10 @@ static Boolean numberToInteger(const AENumber* number, int64_t min, int64_t max,
 			value = (int64_t) number->u;
 			break;
 		default:
-			if (!isfinite(number->d) || number->d != trunc(number->d) ||
-				number->d < -9223372036854775808.0 || number->d >= 9223372036854775808.0)
+			double rounded = nearbyint(number->d);
+			if (!isfinite(rounded) || rounded < -9223372036854775808.0 || rounded >= 9223372036854775808.0)
 				return false;
-			value = (int64_t) number->d;
+			value = (int64_t) rounded;
 			break;
 	}
 	if (value < min || value > max)
@@ -229,9 +230,10 @@ static Boolean numberToUInt64(const AENumber* number, uint64_t* out)
 			*out = number->u;
 			return true;
 		default:
-			if (!isfinite(number->d) || number->d != trunc(number->d) || number->d < 0 || number->d >= 18446744073709551616.0)
+			double rounded = nearbyint(number->d);
+			if (!isfinite(rounded) || rounded < 0 || rounded >= 18446744073709551616.0)
 				return false;
-			*out = (uint64_t) number->d;
+			*out = (uint64_t) rounded;
 			return true;
 	}
 }
@@ -255,7 +257,7 @@ static OSErr writeNumber(const AENumber* number, DescType toType, AEDesc* result
 			SInt16 value = (SInt16) integer;
 			return AECreateDesc(toType, &value, sizeof(value), result);
 		}
-		case kAETypeUInt16: {
+		case typeUInt16: {
 			if (!numberToInteger(number, 0, UINT16_MAX, &integer))
 				return errAECoercionFail;
 			UInt16 value = (UInt16) integer;
@@ -279,7 +281,7 @@ static OSErr writeNumber(const AENumber* number, DescType toType, AEDesc* result
 			SInt64 value = integer;
 			return AECreateDesc(toType, &value, sizeof(value), result);
 		}
-		case kAETypeUInt64: {
+		case typeUInt64: {
 			UInt64 value;
 			if (!numberToUInt64(number, &value))
 				return errAECoercionFail;
@@ -356,7 +358,7 @@ static OSErr coerceText(CFStringEncoding fromEncoding, const void* data, Size si
 
 static Boolean isTypeCode(DescType type)
 {
-	return type == typeType || type == typeEnumerated || type == kAETypeKeyword;
+	return type == typeType || type == typeEnumerated || type == typeKeyword;
 }
 
 static OSErr coerceData(DescType fromType, const void* data, Size size, DescType toType, AEDesc* result)
@@ -569,7 +571,10 @@ OSErr AEPutDesc(AEDescList* list, long index, const AEDesc* desc)
 	if (list == NULL || desc == NULL)
 		return paramErr;
 	AEStorage* storage = storageOf(list);
-	if (!isList(storage))
+	// QUIRK: putting by index into a record (rather than a list) fails with errAEWrongDataType.
+	// Evidence: black-box observation on macOS 27.0.1 (tier 2), vd-upstream/mac-probes/v121-ae-probe.c.
+	// Test: test_record_and_event in tests/src/ae_descriptors.c
+	if (storage == NULL || storage->kind != kAEKindList)
 		return errAEWrongDataType;
 	// 0 or count + 1 appends; 1...count replaces; anything else is out of range.
 	if (index == 0 || index == storage->itemCount + 1)
@@ -603,7 +608,7 @@ static OSErr nthItem(const AEDescList* list, long index, AEItem** item)
 	if (!isList(storage))
 		return errAEWrongDataType;
 	if (index < 1 || index > storage->itemCount)
-		return errAEBadListItem;
+		return errAEDescNotFound;
 	*item = &storage->items[index - 1];
 	return noErr;
 }
@@ -659,7 +664,7 @@ OSErr AEDeleteItem(AEDescList* list, long index)
 	if (!isList(storage))
 		return errAEWrongDataType;
 	if (index < 1 || index > storage->itemCount)
-		return errAEBadListItem;
+		return errAEDescNotFound;
 	AEDisposeDesc(&storage->items[index - 1].desc);
 	memmove(&storage->items[index - 1], &storage->items[index], (storage->itemCount - index) * sizeof(AEItem));
 	storage->itemCount--;
@@ -689,7 +694,7 @@ OSErr AEPutParamDesc(AERecord* record, AEKeyword keyword, const AEDesc* desc)
 		return paramErr;
 	AEStorage* storage = storageOf(record);
 	if (!isRecordLike(storage))
-		return errAEWrongDataType;
+		return errAENotAEDesc;
 	return putKeyed(&storage->items, &storage->itemCount, &storage->itemCapacity, keyword, desc);
 }
 
@@ -708,7 +713,7 @@ static OSErr findParam(const AERecord* record, AEKeyword keyword, AEItem** item)
 {
 	AEStorage* storage = storageOf(record);
 	if (!isRecordLike(storage))
-		return errAEWrongDataType;
+		return errAENotAEDesc;
 	*item = findItem(storage->items, storage->itemCount, keyword);
 	return *item ? noErr : errAEDescNotFound;
 }
@@ -782,6 +787,11 @@ OSErr AECreateAppleEvent(AEEventClass theAEEventClass, AEEventID theAEEventID, c
 
 	SInt32 transaction = transactionID;
 	SInt16 returnValue = returnID;
+	if (returnID == kAutoGenerateReturnID) {
+		// A positive value that differs from the previous event's.
+		static _Atomic uint32_t nextReturnID;
+		returnValue = (SInt16) (atomic_fetch_add(&nextReturnID, 1) % INT16_MAX + 1);
+	}
 	if ((err = AEPutAttributePtr(result, keyEventClassAttr, typeType, &theAEEventClass, sizeof(theAEEventClass))) == noErr &&
 		(err = AEPutAttributePtr(result, keyEventIDAttr, typeType, &theAEEventID, sizeof(theAEEventID))) == noErr &&
 		(err = AEPutAttributePtr(result, keyReturnIDAttr, typeSInt16, &returnValue, sizeof(returnValue))) == noErr &&

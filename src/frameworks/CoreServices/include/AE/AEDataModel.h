@@ -54,12 +54,15 @@ enum : DescType {
 	typeSInt32 = 'long',
 	typeUInt32 = 'magn',
 	typeSInt64 = 'comp',
+	typeUInt16 = 'ushr',
+	typeUInt64 = 'ucom',
 	typeIEEE32BitFloatingPoint = 'sing',
 	typeIEEE64BitFloatingPoint = 'doub',
 	typeUTF8Text = 'utf8',
 	typeUnicodeText = 'utxt',
 	typeType = 'type',
 	typeEnumerated = 'enum',
+	typeKeyword = 'keyw',
 	typeFileURL = 'furl',
 	typeApplicationBundleID = 'bund',
 	typeKernelProcessID = 'kpid',
@@ -87,6 +90,11 @@ enum : AEKeyword {
 	keyDirectObject = '----',
 	keyErrorNumber = 'errn',
 	keyErrorString = 'errs',
+};
+
+enum {
+	kAutoGenerateReturnID = -1,
+	kAnyTransactionID = 0,
 };
 
 typedef OSErr (*AEEventHandlerProcPtr)(
