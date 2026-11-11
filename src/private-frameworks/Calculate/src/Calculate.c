@@ -1,3 +1,22 @@
+/*
+ This file is part of Darling.
+
+ Copyright (C) 2026 Darling Developers
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "../include/Calculate/Calculate.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,6 +29,8 @@
 #ifdef __APPLE__
 #include <xlocale.h>
 #endif
+
+#define MAX_DEPTH 256
 
 typedef struct {
     const char *p;
@@ -48,7 +69,22 @@ static double factorial(double n) {
     return r;
 }
 
+static double parse_factor_inner(CalcParser *cp);
+
+// Every recursive production goes through here so that deeply nested or
+// long unary/power chains fail cleanly instead of exhausting the stack.
 static double parse_factor(CalcParser *cp) {
+    if (++cp->depth > MAX_DEPTH) {
+        cp->has_error = true;
+        cp->depth--;
+        return 0;
+    }
+    double v = parse_factor_inner(cp);
+    cp->depth--;
+    return v;
+}
+
+static double parse_factor_inner(CalcParser *cp) {
     skip_spaces(cp);
     if (!*cp->p) {
         cp->has_error = true;
@@ -139,9 +175,15 @@ static double parse_factor(CalcParser *cp) {
 static double parse_power(CalcParser *cp) {
     double base = parse_factor(cp);
     skip_spaces(cp);
-    if (*cp->p == '^') {
+    if (*cp->p == '^' && !cp->has_error) {
         cp->p++;
+        if (++cp->depth > MAX_DEPTH) {
+            cp->has_error = true;
+            cp->depth--;
+            return 0;
+        }
         double exp_val = parse_power(cp);
+        cp->depth--;
         base = pow(base, exp_val);
     }
     return base;
@@ -175,10 +217,6 @@ static double parse_term(CalcParser *cp) {
 }
 
 static double parse_expr(CalcParser *cp) {
-    if (++cp->depth > 256) {
-        cp->has_error = true;
-        return 0;
-    }
     double left = parse_term(cp);
     while (!cp->has_error) {
         skip_spaces(cp);
