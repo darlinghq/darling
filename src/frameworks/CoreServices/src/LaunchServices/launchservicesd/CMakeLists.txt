@@ -11,3 +11,4 @@ target_link_libraries(launchservicesd system Foundation CoreFoundation CoreServi
 install(TARGETS launchservicesd DESTINATION libexec/darling/System/Library/CoreServices)
 install(FILES schema.sql RENAME launchservicesd-schema.sql DESTINATION libexec/darling/System/Library/Frameworks/CoreServices.framework/Versions/A/Resources)
 install(FILES com.apple.coreservices.launchservicesd.plist DESTINATION libexec/darling/System/Library/LaunchDaemons)
+install(FILES ../../../CoreTypes/Info.plist DESTINATION libexec/darling/System/Library/CoreServices/CoreTypes.bundle/Contents)

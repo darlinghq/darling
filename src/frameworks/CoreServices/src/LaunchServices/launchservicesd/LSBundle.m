@@ -425,6 +425,10 @@ static FSEventStreamRef g_eventStream;
 	if (self == [LSBundle class])
 	{
 		MONITORED_DIRECTORIES = @[
+			// Declares the system's built-in types (CoreTypes.bundle). It comes first so that the system
+			// declarations are registered before, and preferred over, those of any application.
+			@"/System/Library/CoreServices",
+
 			// This path doesn't contain apps, but may still contain UTI definitions
 			@"/System/Library/Frameworks",
 
