@@ -21,14 +21,49 @@
 
 @implementation UNNotificationAction
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++ (BOOL) supportsSecureCoding {
+    return YES;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
++ (instancetype) actionWithIdentifier: (NSString *) identifier
+                                title: (NSString *) title
+                              options: (UNNotificationActionOptions) options
 {
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+    UNNotificationAction *action = [[self alloc] init];
+    action->_identifier = [identifier copy];
+    action->_title = [title copy];
+    action->_options = options;
+    return [action autorelease];
 }
+
+- (void) dealloc {
+    [_identifier release];
+    [_title release];
+    [super dealloc];
+}
+
+- (id) copyWithZone: (NSZone *) zone {
+    return [self retain];
+}
+
+- (void) encodeWithCoder: (NSCoder *) coder {
+    [coder encodeObject: _identifier forKey: @"identifier"];
+    [coder encodeObject: _title forKey: @"title"];
+    [coder encodeInteger: _options forKey: @"options"];
+}
+
+- (instancetype) initWithCoder: (NSCoder *) coder {
+    self = [super init];
+    if (self) {
+        _identifier = [[coder decodeObjectOfClass: [NSString class] forKey: @"identifier"] copy];
+        _title = [[coder decodeObjectOfClass: [NSString class] forKey: @"title"] copy];
+        _options = [coder decodeIntegerForKey: @"options"];
+    }
+    return self;
+}
+
+- (NSString *) identifier { return _identifier; }
+- (NSString *) title { return _title; }
+- (UNNotificationActionOptions) options { return _options; }
 
 @end

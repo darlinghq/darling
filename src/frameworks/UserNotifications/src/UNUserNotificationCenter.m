@@ -18,17 +18,93 @@
 */
 
 #import <UserNotifications/UNUserNotificationCenter.h>
+#import <UserNotifications/UNNotificationSettings.h>
+
+#import <objc/runtime.h>
+
+// The categories are kept as an associated object rather than an instance variable: the
+// public interface declares the instance variables of the 32-bit slice, and this one is not part
+// of it.
+static const char kCategoriesKey;
 
 @implementation UNUserNotificationCenter
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+@synthesize delegate = _delegate;
+
+static UNUserNotificationCenter *s_currentCenter = nil;
+
++ (UNUserNotificationCenter *) currentNotificationCenter
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        s_currentCenter = [[UNUserNotificationCenter alloc] init];
+    });
+    return s_currentCenter;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (BOOL) supportsContentExtensions
 {
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+    return NO;
+}
+
+- (void) requestAuthorizationWithOptions: (UNAuthorizationOptions) options
+                       completionHandler: (void (^)(BOOL granted, NSError *error)) completionHandler
+{
+    if (completionHandler) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completionHandler(YES, nil);
+        });
+    }
+}
+
+- (void) getNotificationSettingsWithCompletionHandler: (void (^)(UNNotificationSettings *settings)) completionHandler
+{
+    if (completionHandler) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completionHandler([[[UNNotificationSettings alloc] init] autorelease]);
+        });
+    }
+}
+
+- (void) addNotificationRequest: (UNNotificationRequest *) request
+          withCompletionHandler: (void (^)(NSError *error)) completionHandler
+{
+    if (completionHandler) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completionHandler(nil);
+        });
+    }
+}
+
+- (void) removeAllPendingNotificationRequests
+{
+}
+
+- (void) removeAllDeliveredNotifications
+{
+}
+
+- (void) setNotificationCategories: (NSSet<UNNotificationCategory *> *) categories
+{
+    @synchronized (self) {
+        NSSet *copy = [categories copy];
+        objc_setAssociatedObject(self, &kCategoriesKey, copy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [copy release];
+    }
+}
+
+- (void) getNotificationCategoriesWithCompletionHandler: (void (^)(NSSet<UNNotificationCategory *> *categories)) completionHandler
+{
+    if (completionHandler) {
+        NSSet *snapshot;
+        @synchronized (self) {
+            snapshot = [objc_getAssociatedObject(self, &kCategoriesKey) copy];
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completionHandler(snapshot ? snapshot : [NSSet set]);
+            [snapshot release];
+        });
+    }
 }
 
 @end

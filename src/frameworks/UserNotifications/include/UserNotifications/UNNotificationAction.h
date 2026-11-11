@@ -17,8 +17,32 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef _USERNOTIFICATIONS_UNNOTIFICATIONACTION_H_
+#define _USERNOTIFICATIONS_UNNOTIFICATIONACTION_H_
 
-@interface UNNotificationAction : NSObject
+#import <Foundation/Foundation.h>
+
+typedef NS_OPTIONS(NSUInteger, UNNotificationActionOptions) {
+    UNNotificationActionOptionNone = 0,
+    UNNotificationActionOptionAuthenticationRequired = (1 << 0),
+    UNNotificationActionOptionDestructive = (1 << 1),
+    UNNotificationActionOptionForeground = (1 << 2)
+};
+
+@interface UNNotificationAction : NSObject <NSCopying, NSSecureCoding> {
+    NSString *_identifier;
+    NSString *_title;
+    UNNotificationActionOptions _options;
+}
+
++ (instancetype) actionWithIdentifier: (NSString *) identifier
+                                title: (NSString *) title
+                              options: (UNNotificationActionOptions) options;
+
+@property(readonly, copy) NSString *identifier;
+@property(readonly, copy) NSString *title;
+@property(readonly) UNNotificationActionOptions options;
 
 @end
+
+#endif

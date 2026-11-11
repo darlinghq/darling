@@ -17,8 +17,37 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef _USERNOTIFICATIONS_UNNOTIFICATIONCATEGORY_H_
+#define _USERNOTIFICATIONS_UNNOTIFICATIONCATEGORY_H_
 
-@interface UNNotificationCategory : NSObject
+#import <Foundation/Foundation.h>
+#import <UserNotifications/UNNotificationAction.h>
+
+typedef NS_OPTIONS(NSUInteger, UNNotificationCategoryOptions) {
+    UNNotificationCategoryOptionNone = 0,
+    UNNotificationCategoryOptionCustomDismissAction = (1 << 0),
+    UNNotificationCategoryOptionAllowInCarPlay = (1 << 1),
+    UNNotificationCategoryOptionHiddenPreviewsShowTitle = (1 << 2),
+    UNNotificationCategoryOptionHiddenPreviewsShowSubtitle = (1 << 3)
+};
+
+@interface UNNotificationCategory : NSObject <NSCopying, NSSecureCoding> {
+    NSString *_identifier;
+    NSArray<UNNotificationAction *> *_actions;
+    NSArray<NSString *> *_intentIdentifiers;
+    UNNotificationCategoryOptions _options;
+}
+
++ (instancetype) categoryWithIdentifier: (NSString *) identifier
+                                actions: (NSArray<UNNotificationAction *> *) actions
+                      intentIdentifiers: (NSArray<NSString *> *) intentIdentifiers
+                                options: (UNNotificationCategoryOptions) options;
+
+@property(readonly, copy) NSString *identifier;
+@property(readonly, copy) NSArray<UNNotificationAction *> *actions;
+@property(readonly, copy) NSArray<NSString *> *intentIdentifiers;
+@property(readonly) UNNotificationCategoryOptions options;
 
 @end
+
+#endif
