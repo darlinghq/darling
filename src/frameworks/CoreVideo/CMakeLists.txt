@@ -23,6 +23,7 @@ add_framework(CoreVideo
 	    src/constants.c
 	    src/CVPixelBuffer.c
 	    src/stubs.c
+	    src/CVMetalTexture.c
         src/CVDisplayLink.mm
 
     DEPENDENCIES
