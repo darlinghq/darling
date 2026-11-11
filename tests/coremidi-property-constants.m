@@ -1,28 +1,59 @@
-// CoreMIDI property-name constants regression test. Build as an Objective-C executable linked against
+// CoreMIDI property-name constants regression test. The expected strings are the values macOS reports. Build as an Objective-C executable linked against
 // CoreFoundation and CoreMIDI and run it with `darling shell`. Exits non-zero on failure.
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreMIDI/MIDIServices.h>
 #include <stdio.h>
+#include <string.h>
 
-#define K(name) { #name, &name }
-static const struct { const char *name; const CFStringRef *value; } keys[] = {
-	K(kMIDIPropertyName), K(kMIDIPropertyModel), K(kMIDIPropertyManufacturer), K(kMIDIPropertyUniqueID),
-	K(kMIDIPropertyDeviceID), K(kMIDIPropertySupportsMMC), K(kMIDIPropertySupportsGeneralMIDI),
-	K(kMIDIPropertySupportsShowControl), K(kMIDIPropertyNameConfigurationDictionary),
-	K(kMIDIPropertyMaxSysExSpeed), K(kMIDIPropertyDriverDeviceEditorApp), K(kMIDIPropertyNameConfiguration),
-	K(kMIDIPropertyImage), K(kMIDIPropertyDisplayName), K(kMIDIPropertyPanDisruptsStereo),
-	K(kMIDIPropertyProtocolID), K(kMIDIPropertyUMPActiveGroupBitmap), K(kMIDIPropertyUMPCanTransmitGroupless),
-	K(kMIDIPropertyTransmitsMTC), K(kMIDIPropertyReceivesMTC), K(kMIDIPropertyTransmitsClock),
-	K(kMIDIPropertyReceivesClock), K(kMIDIPropertyAdvanceScheduleTimeMuSec), K(kMIDIPropertyIsMixer),
-	K(kMIDIPropertyIsSampler), K(kMIDIPropertyIsEffectUnit), K(kMIDIPropertyIsDrumMachine),
-	K(kMIDIPropertyOffline), K(kMIDIPropertyPrivate), K(kMIDIPropertyDriverOwner),
-	K(kMIDIPropertyDriverVersion), K(kMIDIPropertyCanRoute), K(kMIDIPropertyIsBroadcast),
-	K(kMIDIPropertyConnectionUniqueID), K(kMIDIPropertyIsEmbeddedEntity), K(kMIDIPropertySingleRealtimeEntity),
-	K(kMIDIPropertyReceiveChannels), K(kMIDIPropertyTransmitChannels), K(kMIDIPropertyMaxReceiveChannels),
-	K(kMIDIPropertyMaxTransmitChannels), K(kMIDIPropertyReceivesBankSelectLSB),
-	K(kMIDIPropertyReceivesBankSelectMSB), K(kMIDIPropertyTransmitsBankSelectLSB),
-	K(kMIDIPropertyTransmitsBankSelectMSB), K(kMIDIPropertyReceivesNotes), K(kMIDIPropertyTransmitsNotes),
-	K(kMIDIPropertyReceivesProgramChanges), K(kMIDIPropertyTransmitsProgramChanges),
+static const struct { const char *name; const CFStringRef *value; const char *expected; } keys[] = {
+	{ "kMIDIPropertyName", &kMIDIPropertyName, "name" },
+	{ "kMIDIPropertyModel", &kMIDIPropertyModel, "model" },
+	{ "kMIDIPropertyManufacturer", &kMIDIPropertyManufacturer, "manufacturer" },
+	{ "kMIDIPropertyUniqueID", &kMIDIPropertyUniqueID, "uniqueID" },
+	{ "kMIDIPropertyDeviceID", &kMIDIPropertyDeviceID, "deviceID" },
+	{ "kMIDIPropertyNameConfigurationDictionary", &kMIDIPropertyNameConfigurationDictionary, "nameConfigurationDictionary" },
+	{ "kMIDIPropertyMaxSysExSpeed", &kMIDIPropertyMaxSysExSpeed, "maxSysExSpeed" },
+	{ "kMIDIPropertyNameConfiguration", &kMIDIPropertyNameConfiguration, "nameConfiguration" },
+	{ "kMIDIPropertyImage", &kMIDIPropertyImage, "image" },
+	{ "kMIDIPropertyDisplayName", &kMIDIPropertyDisplayName, "displayName" },
+	{ "kMIDIPropertyOffline", &kMIDIPropertyOffline, "offline" },
+	{ "kMIDIPropertyPrivate", &kMIDIPropertyPrivate, "private" },
+	{ "kMIDIPropertyDriverVersion", &kMIDIPropertyDriverVersion, "driverVersion" },
+	{ "kMIDIPropertyReceiveChannels", &kMIDIPropertyReceiveChannels, "receiveChannels" },
+	{ "kMIDIPropertyTransmitChannels", &kMIDIPropertyTransmitChannels, "transmitChannels" },
+	{ "kMIDIPropertySupportsMMC", &kMIDIPropertySupportsMMC, "supports MMC" },
+	{ "kMIDIPropertySupportsGeneralMIDI", &kMIDIPropertySupportsGeneralMIDI, "supports General MIDI" },
+	{ "kMIDIPropertySupportsShowControl", &kMIDIPropertySupportsShowControl, "supports MSC" },
+	{ "kMIDIPropertyDriverDeviceEditorApp", &kMIDIPropertyDriverDeviceEditorApp, "editorApp" },
+	{ "kMIDIPropertyPanDisruptsStereo", &kMIDIPropertyPanDisruptsStereo, "pan disrupts stereo" },
+	{ "kMIDIPropertyProtocolID", &kMIDIPropertyProtocolID, "protocol" },
+	{ "kMIDIPropertyUMPActiveGroupBitmap", &kMIDIPropertyUMPActiveGroupBitmap, "active group bitmap" },
+	{ "kMIDIPropertyUMPCanTransmitGroupless", &kMIDIPropertyUMPCanTransmitGroupless, "ump endpoint" },
+	{ "kMIDIPropertyTransmitsMTC", &kMIDIPropertyTransmitsMTC, "transmits MTC" },
+	{ "kMIDIPropertyReceivesMTC", &kMIDIPropertyReceivesMTC, "receives MTC" },
+	{ "kMIDIPropertyTransmitsClock", &kMIDIPropertyTransmitsClock, "transmits clock" },
+	{ "kMIDIPropertyReceivesClock", &kMIDIPropertyReceivesClock, "receives clock" },
+	{ "kMIDIPropertyAdvanceScheduleTimeMuSec", &kMIDIPropertyAdvanceScheduleTimeMuSec, "scheduleAheadMuSec" },
+	{ "kMIDIPropertyIsMixer", &kMIDIPropertyIsMixer, "is mixer" },
+	{ "kMIDIPropertyIsSampler", &kMIDIPropertyIsSampler, "is sampler" },
+	{ "kMIDIPropertyIsEffectUnit", &kMIDIPropertyIsEffectUnit, "is effect unit" },
+	{ "kMIDIPropertyIsDrumMachine", &kMIDIPropertyIsDrumMachine, "is drum machine" },
+	{ "kMIDIPropertyDriverOwner", &kMIDIPropertyDriverOwner, "driver" },
+	{ "kMIDIPropertyCanRoute", &kMIDIPropertyCanRoute, "can route" },
+	{ "kMIDIPropertyIsBroadcast", &kMIDIPropertyIsBroadcast, "broadcast" },
+	{ "kMIDIPropertyConnectionUniqueID", &kMIDIPropertyConnectionUniqueID, "connUniqueID" },
+	{ "kMIDIPropertyIsEmbeddedEntity", &kMIDIPropertyIsEmbeddedEntity, "embedded" },
+	{ "kMIDIPropertySingleRealtimeEntity", &kMIDIPropertySingleRealtimeEntity, "single realtime entity" },
+	{ "kMIDIPropertyMaxReceiveChannels", &kMIDIPropertyMaxReceiveChannels, "max receive channels" },
+	{ "kMIDIPropertyMaxTransmitChannels", &kMIDIPropertyMaxTransmitChannels, "max transmit channels" },
+	{ "kMIDIPropertyReceivesBankSelectLSB", &kMIDIPropertyReceivesBankSelectLSB, "receives bank select LSB" },
+	{ "kMIDIPropertyReceivesBankSelectMSB", &kMIDIPropertyReceivesBankSelectMSB, "receives bank select MSB" },
+	{ "kMIDIPropertyTransmitsBankSelectLSB", &kMIDIPropertyTransmitsBankSelectLSB, "transmits bank select LSB" },
+	{ "kMIDIPropertyTransmitsBankSelectMSB", &kMIDIPropertyTransmitsBankSelectMSB, "transmits bank select MSB" },
+	{ "kMIDIPropertyReceivesNotes", &kMIDIPropertyReceivesNotes, "receives notes" },
+	{ "kMIDIPropertyTransmitsNotes", &kMIDIPropertyTransmitsNotes, "transmits notes" },
+	{ "kMIDIPropertyReceivesProgramChanges", &kMIDIPropertyReceivesProgramChanges, "receives program changes" },
+	{ "kMIDIPropertyTransmitsProgramChanges", &kMIDIPropertyTransmitsProgramChanges, "transmits program changes" },
 };
 
 int main(void)
@@ -31,10 +62,15 @@ int main(void)
 	CFMutableSetRef seen = CFSetCreateMutable(NULL, 0, &kCFTypeSetCallBacks);
 	for (int i = 0; i < n; i++) {
 		CFStringRef v = *keys[i].value;
+		char buf[128];
 		if (!v || CFGetTypeID(v) != CFStringGetTypeID() || CFStringGetLength(v) == 0 || CFSetContainsValue(seen, v)) {
 			printf("FAIL: %s is missing, not a string, empty or duplicated\n", keys[i].name);
 			failures++;
 			continue;
+		}
+		if (!CFStringGetCString(v, buf, sizeof(buf), kCFStringEncodingUTF8) || strcmp(buf, keys[i].expected) != 0) {
+			printf("FAIL: %s is '%s', expected '%s'\n", keys[i].name, buf, keys[i].expected);
+			failures++;
 		}
 		CFSetAddValue(seen, v);
 	}

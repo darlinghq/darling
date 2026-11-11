@@ -19,6 +19,12 @@
 
 #import <ModelIO/MDLVertexDescriptor.h>
 
+NSString * const MDLVertexAttributePosition = @"position";
+NSString * const MDLVertexAttributeNormal = @"normal";
+NSString * const MDLVertexAttributeTangent = @"tangent";
+NSString * const MDLVertexAttributeBitangent = @"bitangent";
+NSString * const MDLVertexAttributeTextureCoordinate = @"textureCoordinate";
+
 @implementation MDLVertexDescriptor
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
