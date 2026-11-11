@@ -18,17 +18,28 @@
 */
 
 #import <AudioVideoBridging/AVB17221AECPAEMMessage.h>
+#import <darling-stub-forwarding.h>
 
 @implementation AVB17221AECPAEMMessage
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+    DarlingStubForwardInvocation(self, anInvocation);
+}
+
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
++ (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    DarlingStubForwardInvocation(self, anInvocation);
 }
 
 @end

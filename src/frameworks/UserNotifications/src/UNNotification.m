@@ -18,6 +18,7 @@
 */
 
 #import <UserNotifications/UNNotification.h>
+#import <darling-stub-forwarding.h>
 
 NSString* const UNNotificationDefaultActionIdentifier = @"UNNotificationDefaultActionIdentifier";
 NSString* const UNNotificationDismissActionIdentifier = @"UNNotificationDismissActionIdentifier";
@@ -26,12 +27,22 @@ NSString* const UNNotificationDismissActionIdentifier = @"UNNotificationDismissA
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+    DarlingStubForwardInvocation(self, anInvocation);
+}
+
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
++ (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    DarlingStubForwardInvocation(self, anInvocation);
 }
 
 @end
