@@ -31,9 +31,9 @@ const CFStringRef kVTCompressionPropertyKey_ProfileLevel = CFSTR("ProfileLevel")
 const CFStringRef kVTCompressionPropertyKey_RealTime = CFSTR("RealTime");
 const CFStringRef kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder = CFSTR("UsingHardwareAcceleratedVideoEncoder");
 const CFStringRef kVTDecompressionPropertyKey_UsingHardwareAcceleratedVideoDecoder = CFSTR("UsingHardwareAcceleratedVideoDecoder");
-const CFStringRef kVTEncodeFrameOptionKey_ForceKeyFrame = CFSTR("ForceKeyFrame");
-const CFStringRef kVTProfileLevel_H264_Baseline_AutoLevel = CFSTR("AutoLevel");
-const CFStringRef kVTProfileLevel_H264_Main_AutoLevel = CFSTR("AutoLevel");
+const CFStringRef kVTEncodeFrameOptionKey_ForceKeyFrame = CFSTR("EncoderForceKeyframe");
+const CFStringRef kVTProfileLevel_H264_Baseline_AutoLevel = CFSTR("H264_Baseline_AutoLevel");
+const CFStringRef kVTProfileLevel_H264_Main_AutoLevel = CFSTR("H264_Main_AutoLevel");
 const CFStringRef kVTVideoDecoderSpecification_EnableHardwareAcceleratedVideoDecoder = CFSTR("EnableHardwareAcceleratedVideoDecoder");
 const CFStringRef kVTVideoDecoderSpecification_RequireHardwareAcceleratedVideoDecoder = CFSTR("RequireHardwareAcceleratedVideoDecoder");
 const CFStringRef kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder = CFSTR("EnableHardwareAcceleratedVideoEncoder");
@@ -1028,6 +1028,13 @@ void* VTPreprocessingSessionSetProperty(void)
 {
     if (verbose) puts("STUB: VTPreprocessingSessionSetProperty called");
     return NULL;
+}
+
+// No supplemental decoders exist in this implementation, so there is nothing
+// to register.
+void VTRegisterSupplementalVideoDecoderIfAvailable(uint32_t codecType)
+{
+    (void) codecType;
 }
 
 void* VTRegisterGVAPixelTransferCapability(void)
