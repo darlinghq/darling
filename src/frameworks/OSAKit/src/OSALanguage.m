@@ -21,7 +21,8 @@
 #include <dispatch/dispatch.h>
 
 // Darling has no OSA components. OSAKit reports a single AppleScript language so script editors can
-// describe documents; its language instance and component calls stay stubs.
+// describe documents; its language instance and component calls stay stubs. The features mask is
+// empty because nothing can compile, run or record scripts here.
 static const OSType kOSAScriptingComponentType = 'osa ';
 static const OSType kAppleScriptSubtype = 'ascr';
 
@@ -61,7 +62,7 @@ static const OSType kAppleScriptSubtype = 'ascr';
     return subType == kAppleScriptSubtype ? [self appleScriptLanguage] : nil;
 }
 
-+ (OSALanguage *)languageForScriptDataDescriptor:(id)descriptor
++ (OSALanguage *)languageForScriptDataDescriptor:(NSAppleEventDescriptor *)descriptor
 {
     return [self appleScriptLanguage];
 }
@@ -78,7 +79,7 @@ static const OSType kAppleScriptSubtype = 'ascr';
 
 - (NSString *)info
 {
-    return @"AppleScript";
+    return @"AppleScript.";
 }
 
 - (NSString *)version
@@ -98,7 +99,7 @@ static const OSType kAppleScriptSubtype = 'ascr';
 
 - (OSType)manufacturer
 {
-    return 'aapl';
+    return 'appl';
 }
 
 - (NSUInteger)features
@@ -108,7 +109,7 @@ static const OSType kAppleScriptSubtype = 'ascr';
 
 - (BOOL)isThreadSafe
 {
-    return NO;
+    return YES;
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

@@ -398,8 +398,8 @@ NSString* const AMDocumentExtensionApp = @"app";
 NSString* const AMWorkflowContentsDirectory = @"Contents";
 
 // Data type identifiers used by actions' AMAccepts/AMProvides.
-NSString* const AMTypeIdentifierFilesAndFolders = @"com.apple.cocoa.path";
-NSString* const AMTypeIdentifierText = @"com.apple.cocoa.string";
+NSString* const AMTypeIdentifierFilesAndFolders = @"com.apple.Automator.fileSystemObject";
+NSString* const AMTypeIdentifierText = @"com.apple.Automator.text";
 NSString* const AMTypeUTICocoaPath = @"com.apple.cocoa.path";
 
 // Variable identifiers follow the com.apple.Automator.Variable.<Name> scheme used in workflows.
