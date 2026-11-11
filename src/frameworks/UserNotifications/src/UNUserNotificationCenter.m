@@ -20,9 +20,14 @@
 #import <UserNotifications/UNUserNotificationCenter.h>
 #import <UserNotifications/UNNotificationSettings.h>
 
-@implementation UNUserNotificationCenter {
-    NSSet *_categories;
-}
+#import <objc/runtime.h>
+
+// The categories are kept as an associated object rather than an instance variable: the
+// public interface declares the instance variables of the 32-bit slice, and this one is not part
+// of it.
+static const char kCategoriesKey;
+
+@implementation UNUserNotificationCenter
 
 @synthesize delegate = _delegate;
 
@@ -83,8 +88,8 @@ static UNUserNotificationCenter *s_currentCenter = nil;
 {
     @synchronized (self) {
         NSSet *copy = [categories copy];
-        [_categories release];
-        _categories = copy;
+        objc_setAssociatedObject(self, &kCategoriesKey, copy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [copy release];
     }
 }
 
@@ -93,7 +98,7 @@ static UNUserNotificationCenter *s_currentCenter = nil;
     if (completionHandler) {
         NSSet *snapshot;
         @synchronized (self) {
-            snapshot = [_categories copy];
+            snapshot = [objc_getAssociatedObject(self, &kCategoriesKey) copy];
         }
         dispatch_async(dispatch_get_main_queue(), ^{
             completionHandler(snapshot ? snapshot : [NSSet set]);
