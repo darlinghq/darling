@@ -19,6 +19,13 @@
 
 #include <Foundation/Foundation.h>
 
+// Names of the default vertex attributes.
+FOUNDATION_EXPORT NSString * const MDLVertexAttributePosition;
+FOUNDATION_EXPORT NSString * const MDLVertexAttributeNormal;
+FOUNDATION_EXPORT NSString * const MDLVertexAttributeTangent;
+FOUNDATION_EXPORT NSString * const MDLVertexAttributeBitangent;
+FOUNDATION_EXPORT NSString * const MDLVertexAttributeTextureCoordinate;
+
 @interface MDLVertexDescriptor : NSObject
 
 @end

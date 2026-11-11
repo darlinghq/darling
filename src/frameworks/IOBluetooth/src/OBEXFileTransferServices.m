@@ -19,6 +19,18 @@
 
 #import <IOBluetooth/OBEXFileTransferServices.h>
 
+NSString * const kFTSListingNameKey = @"name";
+NSString * const kFTSListingTypeKey = @"file-type";
+NSString * const kFTSListingSizeKey = @"size";
+NSString * const kFTSProgressBytesTransferredKey = @"kFTSProgressBytesTransferredKey";
+NSString * const kFTSProgressBytesTotalKey = @"kFTSProgressBytesTotalKey";
+NSString * const kFTSProgressPercentageKey = @"kFTSProgressPercentageKey";
+// macOS exports this misspelled name as a separate key whose value is also misspelled.
+NSString * const kFTSProgressPrecentageKey = @"kFTSProgressPrecentageKey";
+NSString * const kFTSProgressEstimatedTimeKey = @"kFTSProgressEstimatedTimeKey";
+NSString * const kFTSProgressTimeElapsedKey = @"kFTSProgressTimeElapsedKey";
+NSString * const kFTSProgressTransferRateKey = @"kFTSProgressTransferRateKey";
+
 @implementation OBEXFileTransferServices
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
