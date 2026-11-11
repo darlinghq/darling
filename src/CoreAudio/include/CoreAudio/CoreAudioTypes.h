@@ -63,6 +63,12 @@ struct AudioStreamBasicDescription
     UInt32 mReserved;
 };
 typedef struct AudioStreamBasicDescription AudioStreamBasicDescription;
+struct AudioStreamRangedDescription
+{
+    AudioStreamBasicDescription mFormat;
+    AudioValueRange mSampleRateRange;
+};
+typedef struct AudioStreamRangedDescription AudioStreamRangedDescription;
 
 
 
