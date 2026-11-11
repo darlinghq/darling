@@ -63,6 +63,28 @@ FSEventStreamEventId FSEventStreamGetLatestEventId(ConstFSEventStreamRef streamR
 	return [((FSEventsImpl*) streamRef) lastEventID];
 }
 
+// Delivers the events that are waiting for the latency to pass and returns the highest ID among
+// them, or 0 if there were none. The callback then runs as for any other delivery: on the
+// stream's dispatch queue, or from its run loop.
+FSEventStreamEventId FSEventStreamFlushAsync(FSEventStreamRef streamRef)
+{
+	if (!streamRef)
+		return 0;
+	return [((FSEventsImpl*) streamRef) flushPendingEvents];
+}
+
+void FSEventStreamFlushSync(FSEventStreamRef streamRef)
+{
+	FSEventStreamFlushAsync(streamRef);
+}
+
+CFStringRef FSEventStreamCopyDescription(ConstFSEventStreamRef streamRef)
+{
+	if (!streamRef)
+		return NULL;
+	return (CFStringRef) [((FSEventsImpl*) streamRef) copyStreamDescription];
+}
+
 void FSEventStreamInvalidate(FSEventStreamRef streamRef)
 {
 	[((FSEventsImpl*) streamRef) invalidate];
@@ -104,4 +126,37 @@ void FSEventStreamUnscheduleFromRunLoop(FSEventStreamRef streamRef, CFRunLoopRef
 {
 	[((FSEventsImpl*) streamRef) unscheduleWithRunLoop: runLoop
 												mode: runLoopMode];
+}
+
+// Event IDs are drawn from one counter shared by every stream of the process, and increase
+// monotonically. The counter starts above zero. It holds the last ID handed out.
+static uint64_t g_lastEventID = 1;
+
+__attribute__((visibility("hidden"))) uint64_t _FSEventsAllocateEventID(void)
+{
+	return __atomic_add_fetch(&g_lastEventID, 1, __ATOMIC_RELAXED);
+}
+
+FSEventStreamEventId FSEventsGetCurrentEventId(void)
+{
+	return __atomic_load_n(&g_lastEventID, __ATOMIC_RELAXED);
+}
+
+// The remaining device-level entry points need the persistent, system-wide event log of
+// macOS. There is none here, so no volume has a UUID, nothing is remembered about the past,
+// and nothing can be purged.
+
+CFUUIDRef FSEventsCopyUUIDForDevice(dev_t dev)
+{
+	return NULL;
+}
+
+FSEventStreamEventId FSEventsGetLastEventIdForDeviceBeforeTime(dev_t dev, CFAbsoluteTime time)
+{
+	return 0;
+}
+
+Boolean FSEventsPurgeEventsForDeviceUpToEventId(dev_t dev, FSEventStreamEventId eventId)
+{
+	return FALSE;
 }

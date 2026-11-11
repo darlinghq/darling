@@ -19,6 +19,17 @@
 
 #include <Foundation/Foundation.h>
 
-@interface GCControllerDirectionPad : NSObject
+#import <GameController/GCControllerElement.h>
+#import <GameController/GCControllerAxisInput.h>
+#import <GameController/GCControllerButtonInput.h>
+
+@interface GCControllerDirectionPad : GCControllerElement
+
+@property(readonly) GCControllerAxisInput *xAxis;
+@property(readonly) GCControllerAxisInput *yAxis;
+@property(readonly) GCControllerButtonInput *up;
+@property(readonly) GCControllerButtonInput *down;
+@property(readonly) GCControllerButtonInput *left;
+@property(readonly) GCControllerButtonInput *right;
 
 @end

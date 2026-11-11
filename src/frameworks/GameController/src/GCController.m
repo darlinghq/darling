@@ -18,8 +18,41 @@
 */
 
 #import <GameController/GCController.h>
+#import <GameController/GCMicroGamepad.h>
+#import <GameController/GCPhysicalInputProfile.h>
 
 @implementation GCController
+
++ (NSArray *)controllers {
+	return @[];
+}
+
+- (GCExtendedGamepad *)extendedGamepad {
+	return nil;
+}
+
+- (GCMicroGamepad *)microGamepad {
+	return nil;
+}
+
+- (GCPhysicalInputProfile *)physicalInputProfile {
+	return nil;
+}
+
+- (NSString *)vendorName {
+	return nil;
+}
+
+- (NSString *)productCategory {
+	return @"";
+}
+
+- (GCControllerPlayerIndex)playerIndex {
+	return GCControllerPlayerIndexUnset;
+}
+
+- (void)setPlayerIndex:(GCControllerPlayerIndex)playerIndex {
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
@@ -29,6 +62,18 @@
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+}
+
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    NSMethodSignature *signature = [super methodSignatureForSelector:aSelector];
+
+    return signature != nil ? signature : [NSMethodSignature signatureWithObjCTypes: "v@:"];
+}
+
++ (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    // Class methods that are not implemented are accepted and ignored.
 }
 
 @end

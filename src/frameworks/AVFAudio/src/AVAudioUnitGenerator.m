@@ -18,12 +18,13 @@
 */
 
 #import <AVFAudio/AVAudioUnitGenerator.h>
+#import "AVFAudioStub.h"
 
 @implementation AVAudioUnitGenerator
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return AVAudioStubSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation

@@ -40,6 +40,12 @@ OSStatus AudioServicesDisposeSystemSoundID(SystemSoundID inSystemSoundID)
     return 0;
 }
 
+void AudioServicesPlayAlertSound(SystemSoundID inSystemSoundID)
+{
+    // Like AudioServicesPlaySystemSound, but may also vibrate on devices that can; no sound output yet.
+    AudioServicesPlaySystemSound(inSystemSoundID);
+}
+
 void AudioServicesPlaySystemSound(SystemSoundID inSystemSoundID)
 {
     printf("STUB %s\n", __PRETTY_FUNCTION__);

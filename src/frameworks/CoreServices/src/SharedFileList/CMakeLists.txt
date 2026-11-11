@@ -14,6 +14,7 @@ add_framework(SharedFileList
 
 	SOURCES
 		constants.c
+		sharedfilelist.c
 
 	DEPENDENCIES
 		CoreFoundation

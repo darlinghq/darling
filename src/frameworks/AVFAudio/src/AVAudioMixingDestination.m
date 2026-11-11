@@ -18,12 +18,13 @@
 */
 
 #import <AVFAudio/AVAudioMixingDestination.h>
+#import "AVFAudioStub.h"
 
 @implementation AVAudioMixingDestination
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return AVAudioStubSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation

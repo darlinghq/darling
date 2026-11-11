@@ -18,12 +18,13 @@
 */
 
 #import <AVFAudio/AVAudioUnitVarispeed.h>
+#import "AVFAudioStub.h"
 
 @implementation AVAudioUnitVarispeed
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return AVAudioStubSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation

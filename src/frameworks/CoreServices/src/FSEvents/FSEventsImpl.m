@@ -278,6 +278,31 @@ static void closeFdHandler(void* context)
 	return _lastEventID;
 }
 
+-(FSEventStreamEventId)flushPendingEvents
+{
+	__block FSEventStreamEventId highest = 0;
+
+	// Pick up events the kernel has queued but the read handler has not run for yet.
+	dispatch_sync(g_fsEventsQueue, ^{
+		[self _readEvents];
+		const NSUInteger count = [_pathArray count];
+		if (count > 0)
+		{
+			highest = _idArray[count - 1];
+			// _dispatchEvents reads _queue, which is only set on this queue.
+			[self _dispatchEvents];
+		}
+	});
+
+	return highest;
+}
+
+-(NSString*)copyStreamDescription
+{
+	return [[NSString alloc] initWithFormat: @"<FSEventStream %p: paths = %@, latency = %f s, flags = 0x%08x, latestEventId = %llu>",
+			self, _pathsToWatch, _latency, (unsigned) _flags, (unsigned long long) _lastEventID];
+}
+
 -(void)_readEvents
 {
 	// One read() returns as many whole inotify_event records as fit in the
@@ -360,7 +385,8 @@ static void closeFdHandler(void* context)
 	_flagArray[newCount-1] = flags;
 
 	_idArray = (FSEventStreamEventId*) realloc(_idArray, sizeof(*_idArray) * newCount);
-	_idArray[newCount-1] = ++_lastEventID;
+	_lastEventID = _FSEventsAllocateEventID();
+	_idArray[newCount-1] = _lastEventID;
 }
 
 -(void)_processSingleEvent:(struct inotify_event*)evt
