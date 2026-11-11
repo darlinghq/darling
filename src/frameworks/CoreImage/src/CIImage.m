@@ -37,14 +37,12 @@
     [super dealloc];
 }
 
-/* An image with no CGImage behind it has no bounding box. CGRectZero is
-   indistinguishable from a genuinely 0x0 image, so the infinite rect is used for "no
-   bounds", which is Core Image's own idiom: its working space is "in theory infinite"
-   in the Core Image Programming Guide. Apple never states the empty image's extent
-   outright, so this one value is an inference. See the commit body. */
+/* An image with no CGImage behind it has the null extent, which is what macOS reports for
+   +[CIImage emptyImage]. Evidence: black-box observation on macOS 27 (the rectangle is
+   CGRectNull, origin at infinity with zero size). Test: tests/src/coreimage_values.m. */
 - (CGRect) extent {
     if (_cgImage == NULL) {
-        return CGRectInfinite;
+        return CGRectNull;
     }
 
     return CGRectMake(0, 0, CGImageGetWidth(_cgImage), CGImageGetHeight(_cgImage));

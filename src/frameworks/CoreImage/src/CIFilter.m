@@ -45,13 +45,13 @@ NSString * const kCIAttributeSliderMin = @"CIAttributeSliderMin";
 NSString * const kCIAttributeSliderMax = @"CIAttributeSliderMax";
 NSString * const kCIAttributeType = @"CIAttributeType";
 
-const CIFormat kCIFormatARGB8 = 0;
-const CIFormat kCIFormatRGBA8 = 24;
-const CIFormat kCIFormatBGRA8 = 27;
-const CIFormat kCIFormatABGR8 = 28;
-const CIFormat kCIFormatRGBAh = 31;
-const CIFormat kCIFormatRGBA16 = 33;
-const CIFormat kCIFormatRGBAf = 34;
+const CIFormat kCIFormatARGB8 = 265;
+const CIFormat kCIFormatRGBA8 = 264;
+const CIFormat kCIFormatBGRA8 = 266;
+const CIFormat kCIFormatABGR8 = 267;
+const CIFormat kCIFormatRGBAh = 2056;
+const CIFormat kCIFormatRGBA16 = 1800;
+const CIFormat kCIFormatRGBAf = 2312;
 
 NSString * const kCIAttributeTypeAngle = @"CIAttributeTypeAngle";
 NSString * const kCIAttributeTypeBoolean = @"CIAttributeTypeBoolean";

@@ -53,7 +53,11 @@
         }
 
         CGColorSpaceRef srcSpace = CGColorGetColorSpace(cgColor);
-        if (srcSpace && CGColorSpaceGetModel(srcSpace) == kCGColorSpaceModelRGB && CGColorGetNumberOfComponents(cgColor) == 4) {
+        CGColorSpaceModel model = srcSpace ? CGColorSpaceGetModel(srcSpace) : kCGColorSpaceModelUnknown;
+        size_t sourceCount = CGColorGetNumberOfComponents(cgColor);
+        /* RGB and gray colors keep their own components (macOS reports a gray CIColor
+           with two components); other models are converted to RGB. */
+        if ((model == kCGColorSpaceModelRGB && sourceCount == 4) || (model == kCGColorSpaceModelMonochrome && sourceCount == 2)) {
             _cgColor = CGColorRetain(cgColor);
         } else {
             CGColorSpaceRef rgbSpace = CGColorSpaceCreateDeviceRGB();
@@ -114,25 +118,29 @@
 - (CGFloat) red {
     if (!_cgColor) return 0.0;
     const CGFloat *c = CGColorGetComponents(_cgColor);
-    return c ? c[0] : 0.0;
+    if (!c) return 0.0;
+    return CGColorGetNumberOfComponents(_cgColor) == 2 ? c[0] : c[0];
 }
 
 - (CGFloat) green {
     if (!_cgColor) return 0.0;
     const CGFloat *c = CGColorGetComponents(_cgColor);
-    return c ? c[1] : 0.0;
+    if (!c) return 0.0;
+    return CGColorGetNumberOfComponents(_cgColor) == 2 ? c[0] : c[1];
 }
 
 - (CGFloat) blue {
     if (!_cgColor) return 0.0;
     const CGFloat *c = CGColorGetComponents(_cgColor);
-    return c ? c[2] : 0.0;
+    if (!c) return 0.0;
+    return CGColorGetNumberOfComponents(_cgColor) == 2 ? c[0] : c[2];
 }
 
 - (CGFloat) alpha {
     if (!_cgColor) return 0.0;
     const CGFloat *c = CGColorGetComponents(_cgColor);
-    return c ? c[3] : 0.0;
+    if (!c) return 0.0;
+    return CGColorGetNumberOfComponents(_cgColor) == 2 ? c[1] : c[3];
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
