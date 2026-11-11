@@ -17,19 +17,6 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-
-/* Stub. As of 2026-09-20, these binaries link DeviceCheck but bind no symbol from it, so an
-   exporting stub is unnecessary:
-     Maps.app
-   A strong bind to a symbol this framework does not export still aborts in dyld, which is
-   the intended loud failure. Re-run tools/darling-tier1-stub-gen after an OS update to
-   check that this still holds. */
-
-__attribute__((constructor))
-static void DeviceCheck_stub_loaded(void)
-{
-	if (getenv("STUB_VERBOSE"))
-		fprintf(stderr, "STUB: DeviceCheck loaded (no symbols implemented)\n");
-}
+// This framework only needs to exist so that images that link it load. It does
+// not implement any DeviceCheck API and exports no symbols; a bind to a symbol
+// that is missing still fails at load time.
