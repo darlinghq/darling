@@ -45,7 +45,8 @@ int main(void)
 
 	out = run("/usr/sbin/softwareupdate -l", &code);
 	check(code == 0, "softwareupdate -l succeeds");
-	check(strncmp(out, "Software Update Tool\n\nFinding available software\n", 50) == 0, "softwareupdate -l prints its heading");
+	const char* heading = "Software Update Tool\n\nFinding available software\n";
+	check(strncmp(out, heading, strlen(heading)) == 0, "softwareupdate -l prints its heading");
 	if (access("/Library/Developer/CommandLineTools/usr/bin/git", F_OK) != 0)
 		check(strstr(out, "* Label: Command Line Tools") != NULL, "missing Command Line Tools are listed");
 	else
