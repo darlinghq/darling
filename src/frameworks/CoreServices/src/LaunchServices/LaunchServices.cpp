@@ -291,16 +291,6 @@ OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSeri
 	return rv;
 }
 
-OSStatus LSSetExtensionHiddenForRef(const FSRef *inRef, Boolean hide)
-{
-	return noErr; // dummy operation
-}
-
-OSStatus LSSetExtensionHiddenForURL(CFURLRef inURL, Boolean hide)
-{
-	return noErr; // dummy operation
-}
-
 /*OSStatus LSOpenCFURLRef(CFURLRef inURL, CFURLRef *outLaunchedURL)
 {
 	// TODO: use 'xdg-mime query' and 'xdg-mime default' to determine the app?

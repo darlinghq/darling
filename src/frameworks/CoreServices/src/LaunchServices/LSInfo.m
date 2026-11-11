@@ -21,6 +21,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <LaunchServices/LaunchServices.h>
 #include <CarbonCore/MacErrors.h>
 #include "LSHostOpen.h"
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
@@ -742,11 +743,55 @@ OSStatus LSCopyItemInfoForURL(CFURLRef inURL, LSRequestedInfo inWhichInfo, LSIte
 			outItemInfo->flags |= kLSItemInfoIsInvisible;
 	}
 
+	if (inWhichInfo & (kLSRequestBasicFlagsOnly | kLSRequestAppTypeFlags | kLSRequestAllFlags | kLSRequestExtensionFlagsOnly))
+	{
+		// Follows the Finder's extension-hidden flag of the item, as NSURLHasHiddenExtensionKey does.
+		CFTypeRef hidden = NULL;
+		CFErrorRef error = NULL;
+		if (CFURLCopyResourcePropertyForKey(inURL, kCFURLHasHiddenExtensionKey, &hidden, &error) && hidden && CFGetTypeID(hidden) == CFBooleanGetTypeID() && CFBooleanGetValue(hidden))
+			outItemInfo->flags |= kLSItemInfoExtensionIsHidden;
+		if (hidden)
+			CFRelease(hidden);
+		if (error)
+			CFRelease(error);
+	}
+
 	if ((inWhichInfo & kLSRequestExtension) && extension)
 		outItemInfo->extension = CFRetain(extension);
 	if (extension)
 		CFRelease(extension);
 	return noErr;
+}
+
+OSStatus LSSetExtensionHiddenForURL(CFURLRef inURL, Boolean hide)
+{
+	if (!inURL)
+		return paramErr;
+
+	CFErrorRef error = NULL;
+	if (CFURLSetResourcePropertyForKey(inURL, kCFURLHasHiddenExtensionKey, hide ? kCFBooleanTrue : kCFBooleanFalse, &error))
+		return noErr;
+
+	// A missing item is a file-not-found error; any other failure is reported as unknown.
+	OSStatus status = kLSUnknownErr;
+	if (error && CFErrorGetCode(error) == ENOENT)
+		status = fnfErr;
+	if (error)
+		CFRelease(error);
+	return status;
+}
+
+OSStatus LSSetExtensionHiddenForRef(const FSRef *inRef, Boolean hide)
+{
+	if (!inRef)
+		return paramErr;
+
+	CFURLRef url = CFURLCreateFromFSRef(kCFAllocatorDefault, (struct FSRef *) inRef);
+	if (!url)
+		return fnfErr;
+	OSStatus status = LSSetExtensionHiddenForURL(url, hide);
+	CFRelease(url);
+	return status;
 }
 
 // Private SPI.
