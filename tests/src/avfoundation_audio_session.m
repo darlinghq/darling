@@ -75,7 +75,7 @@ int main(void)
 		// A call with an argument must not raise NSForwardSignatureError
 		AVAudioPlayerNode *node = [[AVAudioPlayerNode alloc] init];
 		@try {
-			node.volume = 0.5f;
+			((void (*)(id, SEL, float)) objc_msgSend)(node, @selector(setVolume:), 0.5f);
 		} @catch (NSException *e) {
 			printf("FAIL: setVolume: raised %s\n", [[e name] UTF8String]);
 			g_failures++;
