@@ -18,7 +18,21 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <AVFAudio/AVAudio3DMixing.h>
+#include <AVFAudio/AVAudioStereoMixing.h>
+#include <AVFAudio/AVAudioTypes.h>
 
-@protocol AVAudioMixing
+@class AVAudioMixingDestination;
+@class AVAudioNode;
+
+@protocol AVAudioMixing <AVAudioStereoMixing, AVAudio3DMixing>
+
+// The destination that represents this source's connection to `mixer` on `bus`, or nil
+// when the source is not connected to that mixer.
+- (AVAudioMixingDestination *)destinationForMixer:(AVAudioNode *)mixer bus:(AVAudioNodeBus)bus;
+
+// Linear gain of the source. The default is 1.0; negative values are clamped to 0.0 and
+// values above 1.0 are accepted.
+@property (nonatomic) float volume;
 
 @end

@@ -26,6 +26,7 @@
 #import <AVFAudio/AVAudio3DMixing.h>
 #import <AVFAudio/AVAudioMixing.h>
 #import <AVFAudio/AVAudioStereoMixing.h>
+#import <AVFAudio/AVAudioTypes.h>
 #import <AVFAudio/AVEndpointVADEventHandler.h>
 #import <AVFAudio/Endpointer.h>
 #import <AVFAudio/AVAudioIONode.h>
