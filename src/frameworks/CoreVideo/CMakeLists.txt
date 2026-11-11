@@ -22,13 +22,13 @@ add_framework(CoreVideo
     SOURCES
 	    src/constants.c
 	    src/CVPixelBuffer.c
-	    src/stubs.c
         src/CVDisplayLink.mm
 
     DEPENDENCIES
         system
         Foundation
         CoreGraphics
+        IOSurface
         cxx
 )
 
