@@ -23,13 +23,22 @@
 #include <CoreFoundation/CoreFoundation.h>
 
 typedef UInt32 SystemSoundID;
+typedef UInt32 AudioServicesPropertyID;
 typedef void (*AudioServicesSystemSoundCompletionProc)(SystemSoundID ssID, void *__nullable clientData);
+
+enum {
+    kAudioServicesUnsupportedPropertyError = 'pty?',
+};
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 extern OSStatus AudioServicesAddSystemSoundCompletion(SystemSoundID inSystemSoundID, CFRunLoopRef inRunLoop, CFStringRef inRunLoopMode, AudioServicesSystemSoundCompletionProc inCompletionRoutine, void *inClientData);
+extern void AudioServicesRemoveSystemSoundCompletion(SystemSoundID inSystemSoundID);
+extern OSStatus AudioServicesGetPropertyInfo(AudioServicesPropertyID inPropertyID, UInt32 inSpecifierSize, const void *inSpecifier, UInt32 *outPropertyDataSize, Boolean *outWritable);
+extern OSStatus AudioServicesGetProperty(AudioServicesPropertyID inPropertyID, UInt32 inSpecifierSize, const void *inSpecifier, UInt32 *ioPropertyDataSize, void *outPropertyData);
+extern OSStatus AudioServicesSetProperty(AudioServicesPropertyID inPropertyID, UInt32 inSpecifierSize, const void *inSpecifier, UInt32 inPropertyDataSize, const void *inPropertyData);
 extern OSStatus AudioServicesCreateSystemSoundID(CFURLRef inFileURL, SystemSoundID *outSystemSoundID);
 extern OSStatus AudioServicesDisposeSystemSoundID(SystemSoundID inSystemSoundID);
 extern void AudioServicesPlaySystemSound(SystemSoundID inSystemSoundID);
