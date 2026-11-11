@@ -131,16 +131,24 @@ for classEntry in classes {
     
     var implementation = copyright
     
-    implementation += "#import <\(moduleName)/\(moduleName).h>\n\n"
+    implementation += "#import <\(moduleName)/\(moduleName).h>\n#import <darling-stub-forwarding.h>\n\n"
     
     implementation += "@implementation \(classEntry.class)\n\n"
     
     implementation += "- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {\n"
-    implementation += "    return [NSMethodSignature signatureWithObjCTypes: \"v@:\"];\n"
+    implementation += "    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);\n"
     implementation += "}\n\n"
     
     implementation += "- (void)forwardInvocation:(NSInvocation *)anInvocation {\n"
-    implementation += "    NSLog(@\"Stub called: %@ in %@\", NSStringFromSelector([anInvocation selector]), [self class]);\n"
+    implementation += "    DarlingStubForwardInvocation(self, anInvocation);\n"
+    implementation += "}\n\n"
+    
+    implementation += "+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {\n"
+    implementation += "    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);\n"
+    implementation += "}\n\n"
+    
+    implementation += "+ (void)forwardInvocation:(NSInvocation *)anInvocation {\n"
+    implementation += "    DarlingStubForwardInvocation(self, anInvocation);\n"
     implementation += "}\n\n"
     
     implementation += "@end\n"
