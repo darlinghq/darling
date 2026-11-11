@@ -30,5 +30,7 @@
 #include <CoreVideo/CVDisplayLink.h>
 #include <CoreVideo/CVPixelBuffer.h>
 #include <CoreVideo/CVPixelBufferPool.h>
+#include <CoreVideo/CVOpenGLTexture.h>
+#include <CoreVideo/CVOpenGLTextureCache.h>
 
 #endif
