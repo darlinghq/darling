@@ -37,6 +37,8 @@
 #include <CFOpenDirectory/CFOpenDirectoryConstants.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFRuntime.h>
+#include "od_passwd_file.h"
+
 #include <errno.h>
 #include <grp.h>
 #include <membership.h>
@@ -74,6 +76,10 @@ struct __ODRecord
 	CFStringRef recordName;
 	// attribute name -> CFArray of CFString values
 	CFDictionaryRef attributes;
+	// attributes changed by ODRecordSetValue() and not yet written back
+	CFMutableSetRef changed;
+	// UniqueID of a user record, -1 for other records
+	long long uid;
 };
 
 struct __ODQuery
@@ -105,6 +111,8 @@ static void recordFinalize(CFTypeRef cf)
 		CFRelease(record->recordName);
 	if (record->attributes)
 		CFRelease(record->attributes);
+	if (record->changed)
+		CFRelease(record->changed);
 }
 
 static void queryFinalize(CFTypeRef cf)
@@ -126,6 +134,9 @@ static const CFRuntimeClass recordClass = { 0, "ODRecord", NULL, NULL, recordFin
 static const CFRuntimeClass queryClass = { 0, "ODQuery", NULL, NULL, queryFinalize, NULL, NULL, NULL, NULL };
 
 static CFTypeID sessionTypeID, nodeTypeID, recordTypeID, queryTypeID;
+// Guards the attributes of records, which ODRecordSetValue() can replace
+static pthread_mutex_t recordLock = PTHREAD_MUTEX_INITIALIZER;
+
 static pthread_once_t classesOnce = PTHREAD_ONCE_INIT;
 
 static void registerClasses(void)
@@ -256,10 +267,43 @@ static ODRecordRef createRecord(CFStringRef recordType, CFMutableDictionaryRef a
 	// Records found through the search node also live in the local node.
 	addValue(attributes, kODAttributeTypeMetaNodeLocation, CFStringCreateCopy(kCFAllocatorDefault, LOCAL_NODE_NAME));
 
+	record->uid = -1;
 	record->recordType = CFStringCreateCopy(kCFAllocatorDefault, recordType);
 	record->recordName = createString(name);
 	record->attributes = CFDictionaryCreateCopy(kCFAllocatorDefault, attributes);
 	return record;
+}
+
+// The gecos field of an account holds comma separated parts: the full name,
+// the office (building), the office phone and the home phone.
+static CFStringRef const* gecosAttributes(void)
+{
+	static CFStringRef attributes[4];
+	attributes[0] = kODAttributeTypeFullName;
+	attributes[1] = kODAttributeTypeBuilding;
+	attributes[2] = kODAttributeTypePhoneNumber;
+	attributes[3] = kODAttributeTypeHomePhoneNumber;
+	return attributes;
+}
+
+static void addGecos(CFMutableDictionaryRef attributes, const char* gecos)
+{
+	CFStringRef const* names = gecosAttributes();
+
+	if (gecos == NULL)
+		return;
+	for (int i = 0; i < 4; i++)
+	{
+		const char* end = i < 3 ? strchr(gecos, ',') : NULL;
+		size_t length = end != NULL ? (size_t) (end - gecos) : strlen(gecos);
+
+		if (length > 0)
+			addValue(attributes, names[i], CFStringCreateWithBytes(kCFAllocatorDefault,
+					(const UInt8*) gecos, length, kCFStringEncodingUTF8, false));
+		if (end == NULL)
+			break;
+		gecos = end + 1;
+	}
 }
 
 static ODRecordRef createUserRecord(const struct passwd* pw)
@@ -271,13 +315,15 @@ static ODRecordRef createUserRecord(const struct passwd* pw)
 	addCString(attributes, kODAttributeTypeRecordName, pw->pw_name);
 	addNumber(attributes, kODAttributeTypeUniqueID, (long long) pw->pw_uid);
 	addNumber(attributes, kODAttributeTypePrimaryGroupID, (long long) pw->pw_gid);
-	addCString(attributes, kODAttributeTypeFullName, pw->pw_gecos);
+	addGecos(attributes, pw->pw_gecos);
 	addCString(attributes, kODAttributeTypeNFSHomeDirectory, pw->pw_dir);
 	addCString(attributes, kODAttributeTypeUserShell, pw->pw_shell);
 	if (mbr_uid_to_uuid(pw->pw_uid, uuid) == 0)
 		addUUID(attributes, uuid);
 
 	ODRecordRef record = createRecord(kODRecordTypeUsers, attributes, pw->pw_name);
+	if (record != NULL)
+		record->uid = (long long) pw->pw_uid;
 	CFRelease(attributes);
 	return record;
 }
@@ -598,8 +644,12 @@ CFArrayRef ODRecordCopyValues(ODRecordRef record, ODAttributeType attribute, CFE
 
 	// An attribute the record does not have yields NULL without an error.
 	clearError(error);
+	pthread_mutex_lock(&recordLock);
 	CFArrayRef values = CFDictionaryGetValue(record->attributes, attribute);
-	return values ? CFRetain(values) : NULL;
+	if (values != NULL)
+		CFRetain(values);
+	pthread_mutex_unlock(&recordLock);
+	return values;
 }
 
 CFDictionaryRef ODRecordCopyDetails(ODRecordRef record, CFArrayRef attributes, CFErrorRef* error)
@@ -611,8 +661,13 @@ CFDictionaryRef ODRecordCopyDetails(ODRecordRef record, CFArrayRef attributes, C
 	}
 
 	clearError(error);
+	pthread_mutex_lock(&recordLock);
 	if (attributes == NULL)
-		return CFDictionaryCreateCopy(kCFAllocatorDefault, record->attributes);
+	{
+		CFDictionaryRef all = CFDictionaryCreateCopy(kCFAllocatorDefault, record->attributes);
+		pthread_mutex_unlock(&recordLock);
+		return all;
+	}
 
 	CFMutableDictionaryRef details = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
 			&kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
@@ -623,6 +678,7 @@ CFDictionaryRef ODRecordCopyDetails(ODRecordRef record, CFArrayRef attributes, C
 		if (values != NULL)
 			CFDictionarySetValue(details, attribute, values);
 	}
+	pthread_mutex_unlock(&recordLock);
 	return details;
 }
 
@@ -655,10 +711,13 @@ static bool constantTimeEquals(const char* a, const char* b)
 // Checks the password against the hash Libinfo returns for the account. An
 // account without a usable hash (empty, "*" or disabled with "!") never
 // verifies, and Libinfo hands out hashes only to callers allowed to see them.
-static bool verifyAgainstAccount(const char* name, const char* password)
+static bool verifyAgainstAccountEx(const char* name, const char* password, bool* hasHash)
 {
 	size_t size = 4096;
 	bool matches = false;
+
+	if (hasHash != NULL)
+		*hasHash = false;
 
 	for (;;)
 	{
@@ -675,6 +734,8 @@ static bool verifyAgainstAccount(const char* name, const char* password)
 			const char* hash = result->pw_passwd;
 			if (hash != NULL && strlen(hash) > 2 && hash[0] != '*' && hash[0] != '!')
 			{
+				if (hasHash != NULL)
+					*hasHash = true;
 				pthread_mutex_lock(&cryptLock);
 				const char* computed = crypt(password, hash);
 				matches = computed != NULL && constantTimeEquals(computed, hash);
@@ -690,6 +751,11 @@ static bool verifyAgainstAccount(const char* name, const char* password)
 	}
 
 	return matches;
+}
+
+static bool verifyAgainstAccount(const char* name, const char* password)
+{
+	return verifyAgainstAccountEx(name, password, NULL);
 }
 
 bool ODRecordVerifyPassword(ODRecordRef record, CFStringRef password, CFErrorRef* error)
@@ -717,6 +783,346 @@ bool ODRecordVerifyPassword(ODRecordRef record, CFStringRef password, CFErrorRef
 	else
 		setError(error, kODErrorCredentialsInvalid);
 	return matches;
+}
+
+#pragma mark - Changing records
+
+// What the local node stores for a user: the shell and the parts of the
+// gecos field. Everything else of an account (ids, home directory, password,
+// groups) is not changed through the directory API here.
+static bool isGecosAttribute(CFStringRef attribute)
+{
+	CFStringRef const* gecos = gecosAttributes();
+
+	for (int i = 0; i < 4; i++)
+	{
+		if (CFEqual(attribute, gecos[i]))
+			return true;
+	}
+	return false;
+}
+
+static bool isStoredUserAttribute(CFStringRef attribute)
+{
+	return isGecosAttribute(attribute) || CFEqual(attribute, kODAttributeTypeUserShell);
+}
+
+// Account changes are made by the account's owner or by root; the files they
+// end up in are the ones the user database reads.
+static bool callerMayChange(ODRecordRef record)
+{
+	return geteuid() == 0 || record->uid == (long long) geteuid();
+}
+
+static bool valueIsStorable(CFStringRef value, bool forGecos)
+{
+	char* text = copyCString(value);
+	bool ok = text != NULL && strpbrk(text, ":\n\r") == NULL && !(forGecos && strchr(text, ',') != NULL);
+	free(text);
+	return ok;
+}
+
+// Replaces the values of an attribute in the record's own copy and remembers
+// that it has to be written back. values may be empty, which removes the
+// attribute.
+static bool changeValues(ODRecordRef record, CFStringRef attribute, CFArrayRef values, CFErrorRef* error)
+{
+	if (!isRecordType(record->recordType, kODRecordTypeUsers))
+	{
+		setError(error, kODErrorRecordReadOnlyNode);
+		return false;
+	}
+	if (!isStoredUserAttribute(attribute) || !callerMayChange(record))
+	{
+		setError(error, kODErrorRecordPermissionError);
+		return false;
+	}
+	if (CFArrayGetCount(values) > 1)
+	{
+		setError(error, kODErrorRecordAttributeValueSchemaError);
+		return false;
+	}
+	for (CFIndex i = 0; i < CFArrayGetCount(values); i++)
+	{
+		CFTypeRef value = CFArrayGetValueAtIndex(values, i);
+		if (!isA(value, CFStringGetTypeID()))
+		{
+			setError(error, kODErrorRecordParameterError);
+			return false;
+		}
+		if (!valueIsStorable(value, isGecosAttribute(attribute)))
+		{
+			setError(error, kODErrorRecordAttributeValueSchemaError);
+			return false;
+		}
+	}
+
+	pthread_mutex_lock(&recordLock);
+	CFMutableDictionaryRef attributes = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, record->attributes);
+	if (CFArrayGetCount(values) == 0)
+		CFDictionaryRemoveValue(attributes, attribute);
+	else
+		CFDictionarySetValue(attributes, attribute, values);
+	CFRelease(record->attributes);
+	record->attributes = attributes;
+	if (record->changed == NULL)
+		record->changed = CFSetCreateMutable(kCFAllocatorDefault, 0, &kCFTypeSetCallBacks);
+	CFSetAddValue(record->changed, attribute);
+	pthread_mutex_unlock(&recordLock);
+
+	clearError(error);
+	return true;
+}
+
+bool ODRecordSetValue(ODRecordRef record, ODAttributeType attribute, CFTypeRef valueOrValues, CFErrorRef* error)
+{
+	if (!isA(record, ODRecordGetTypeID()) || !isA(attribute, CFStringGetTypeID()) || valueOrValues == NULL)
+	{
+		setError(error, kODErrorRecordParameterError);
+		return false;
+	}
+
+	CFArrayRef values;
+	if (isA(valueOrValues, CFArrayGetTypeID()))
+		values = CFRetain(valueOrValues);
+	else
+		values = CFArrayCreate(kCFAllocatorDefault, &valueOrValues, 1, &kCFTypeArrayCallBacks);
+
+	bool ok = changeValues(record, attribute, values, error);
+	CFRelease(values);
+	return ok;
+}
+
+bool ODRecordAddValue(ODRecordRef record, ODAttributeType attribute, CFTypeRef value, CFErrorRef* error)
+{
+	if (!isA(record, ODRecordGetTypeID()) || !isA(attribute, CFStringGetTypeID()) || !isA(value, CFStringGetTypeID()))
+	{
+		setError(error, kODErrorRecordParameterError);
+		return false;
+	}
+
+	// The attributes that can be stored hold one value each.
+	CFArrayRef current = ODRecordCopyValues(record, attribute, NULL);
+	bool occupied = current != NULL && CFArrayGetCount(current) > 0;
+	if (current != NULL)
+		CFRelease(current);
+	if (occupied)
+	{
+		setError(error, kODErrorRecordAttributeValueSchemaError);
+		return false;
+	}
+	return ODRecordSetValue(record, attribute, value, error);
+}
+
+bool ODRecordRemoveValue(ODRecordRef record, ODAttributeType attribute, CFTypeRef value, CFErrorRef* error)
+{
+	if (!isA(record, ODRecordGetTypeID()) || !isA(attribute, CFStringGetTypeID()) || !isA(value, CFStringGetTypeID()))
+	{
+		setError(error, kODErrorRecordParameterError);
+		return false;
+	}
+
+	CFArrayRef current = ODRecordCopyValues(record, attribute, NULL);
+	bool present = current != NULL && CFArrayContainsValue(current, CFRangeMake(0, CFArrayGetCount(current)), value);
+	if (current != NULL)
+		CFRelease(current);
+	if (!present)
+	{
+		setError(error, kODErrorRecordAttributeValueNotFound);
+		return false;
+	}
+	CFArrayRef none = CFArrayCreate(kCFAllocatorDefault, NULL, 0, &kCFTypeArrayCallBacks);
+	bool ok = changeValues(record, attribute, none, error);
+	CFRelease(none);
+	return ok;
+}
+
+// First value of the attribute as a C string ("" when it has none)
+static char* copyFirstValue(CFDictionaryRef attributes, CFStringRef attribute)
+{
+	CFArrayRef values = CFDictionaryGetValue(attributes, attribute);
+	char* text = values != NULL && CFArrayGetCount(values) > 0 ? copyCString(CFArrayGetValueAtIndex(values, 0)) : NULL;
+	return text != NULL ? text : strdup("");
+}
+
+// The gecos field made of the record's parts; trailing empty parts are left
+// out as finger(1) writes them.
+static char* copyGecos(CFDictionaryRef attributes)
+{
+	CFStringRef const* names = gecosAttributes();
+	char* parts[4];
+	size_t total = 4;
+	int last = -1;
+
+	for (int i = 0; i < 4; i++)
+	{
+		parts[i] = copyFirstValue(attributes, names[i]);
+		total += strlen(parts[i]);
+		if (parts[i][0] != '\0')
+			last = i;
+	}
+
+	char* gecos = calloc(1, total);
+	for (int i = 0; gecos != NULL && i <= last; i++)
+	{
+		if (i > 0)
+			strcat(gecos, ",");
+		strcat(gecos, parts[i]);
+	}
+	for (int i = 0; i < 4; i++)
+		free(parts[i]);
+	return gecos;
+}
+
+static CFIndex errorForErrno(int err)
+{
+	switch (err)
+	{
+		case EACCES:
+		case EPERM:
+			return kODErrorRecordPermissionError;
+		case EROFS:
+			return kODErrorRecordReadOnlyNode;
+		case EINVAL:
+			return kODErrorRecordAttributeValueSchemaError;
+		default:
+			return kODErrorPluginError;
+	}
+}
+
+bool ODRecordSynchronize(ODRecordRef record, CFErrorRef* error)
+{
+	if (!isA(record, ODRecordGetTypeID()))
+	{
+		setError(error, kODErrorRecordParameterError);
+		return false;
+	}
+	if (!isRecordType(record->recordType, kODRecordTypeUsers))
+	{
+		setError(error, kODErrorRecordReadOnlyNode);
+		return false;
+	}
+
+	pthread_mutex_lock(&recordLock);
+	CFDictionaryRef attributes = CFDictionaryCreateCopy(kCFAllocatorDefault, record->attributes);
+	CFSetRef changed = record->changed != NULL ? CFSetCreateCopy(kCFAllocatorDefault, record->changed) : NULL;
+	pthread_mutex_unlock(&recordLock);
+
+	bool ok = false;
+	if (changed == NULL || CFSetGetCount(changed) == 0)
+	{
+		// Nothing to write
+		clearError(error);
+		ok = true;
+	}
+	else if (!callerMayChange(record))
+	{
+		setError(error, kODErrorRecordPermissionError);
+	}
+	else
+	{
+		struct odpw_changes changes = { NULL, NULL };
+		char* shell = NULL;
+		char* gecos = NULL;
+		char* name = copyCString(record->recordName);
+
+		bool gecosChanged = false;
+
+		if (CFSetContainsValue(changed, kODAttributeTypeUserShell))
+			changes.shell = shell = copyFirstValue(attributes, kODAttributeTypeUserShell);
+		for (int i = 0; i < 4; i++)
+			gecosChanged = gecosChanged || CFSetContainsValue(changed, gecosAttributes()[i]);
+		if (gecosChanged)
+			changes.gecos = gecos = copyGecos(attributes);
+
+		if (name == NULL || (gecosChanged && gecos == NULL))
+		{
+			setError(error, kODErrorPluginError);
+		}
+		else
+		{
+			// master.passwd first: it is what getpwnam() returns to root and
+			// what passwd is derived from. A prefix may lack either file.
+			static const struct { const char* path; enum odpw_format format; } files[] = {
+				{ "/etc/master.passwd", ODPW_MASTER },
+				{ "/etc/passwd", ODPW_PASSWD },
+			};
+			bool any = false;
+			int err = 0;
+
+			for (int i = 0; i < 2 && err == 0; i++)
+			{
+				bool found = false;
+				err = odpw_update_user(files[i].path, files[i].format, name, &changes, &found);
+				if (err == ENOENT)
+					err = 0;
+				any = any || found;
+			}
+
+			if (err != 0)
+				setError(error, errorForErrno(err));
+			else if (!any)
+				setError(error, kODErrorRecordParameterError);
+			else
+			{
+				pthread_mutex_lock(&recordLock);
+				CFSetRemoveAllValues(record->changed);
+				pthread_mutex_unlock(&recordLock);
+				clearError(error);
+				ok = true;
+			}
+		}
+
+		free(shell);
+		free(gecos);
+		free(name);
+	}
+
+	CFRelease(attributes);
+	if (changed != NULL)
+		CFRelease(changed);
+	return ok;
+}
+
+// The local node takes the account's own credentials. An account without a
+// usable password (as the accounts of a Darling prefix are) is accepted for the
+// user it belongs to and for root, since a process that runs as that user can
+// already change the account's files.
+bool ODRecordSetNodeCredentials(ODRecordRef record, CFStringRef username, CFStringRef password, CFErrorRef* error)
+{
+	if (!isA(record, ODRecordGetTypeID()) || !isA(username, CFStringGetTypeID()) || !isA(password, CFStringGetTypeID()))
+	{
+		setError(error, kODErrorCredentialsParameterError);
+		return false;
+	}
+
+	char* name = copyCString(username);
+	char* given = copyCString(password);
+	bool hasHash = false;
+	bool ok = false;
+
+	if (name != NULL && given != NULL)
+	{
+		struct passwd pw, *result = NULL;
+		char buffer[4096];
+
+		ok = verifyAgainstAccountEx(name, given, &hasHash);
+		if (!ok && !hasHash && getpwnam_r(name, &pw, buffer, sizeof(buffer), &result) == 0 && result != NULL)
+			ok = geteuid() == 0 || result->pw_uid == geteuid();
+	}
+
+	if (given != NULL)
+	{
+		memset(given, 0, strlen(given));
+		free(given);
+	}
+	free(name);
+
+	if (ok)
+		clearError(error);
+	else
+		setError(error, kODErrorCredentialsInvalid);
+	return ok;
 }
 
 #pragma mark - Query
@@ -824,7 +1230,11 @@ static bool recordMatches(ODQueryRef query, ODRecordRef record)
 	if (query->attribute == NULL)
 		return false;
 
+	pthread_mutex_lock(&recordLock);
 	CFArrayRef values = CFDictionaryGetValue(record->attributes, query->attribute);
+	if (values != NULL)
+		CFRetain(values);
+	pthread_mutex_unlock(&recordLock);
 	if (values == NULL)
 		return false;
 
@@ -832,16 +1242,17 @@ static bool recordMatches(ODQueryRef query, ODRecordRef record)
 	bool caseInsensitive = (query->matchType & MATCH_INSENSITIVE_BIT) != 0
 		|| CFEqual(query->attribute, kODAttributeTypeRecordName);
 
-	for (CFIndex i = 0; i < CFArrayGetCount(values); i++)
+	bool matched = false;
+	for (CFIndex i = 0; i < CFArrayGetCount(values) && !matched; i++)
 	{
-		for (CFIndex j = 0; j < CFArrayGetCount(query->values); j++)
+		for (CFIndex j = 0; j < CFArrayGetCount(query->values) && !matched; j++)
 		{
-			if (valueMatches(CFArrayGetValueAtIndex(values, i), CFArrayGetValueAtIndex(query->values, j),
-					query->matchType, caseInsensitive))
-				return true;
+			matched = valueMatches(CFArrayGetValueAtIndex(values, i), CFArrayGetValueAtIndex(query->values, j),
+					query->matchType, caseInsensitive);
 		}
 	}
-	return false;
+	CFRelease(values);
+	return matched;
 }
 
 CFArrayRef ODQueryCopyResults(ODQueryRef query, bool allowPartialResults, CFErrorRef* error)

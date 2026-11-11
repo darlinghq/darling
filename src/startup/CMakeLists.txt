@@ -42,6 +42,20 @@ add_executable(shellspawn_fds_test ${CMAKE_SOURCE_DIR}/tests/shellspawn/fds.c)
 target_include_directories(shellspawn_fds_test PRIVATE ${CMAKE_SOURCE_DIR}/src/shellspawn)
 add_test(NAME shellspawn_fds COMMAND shellspawn_fds_test)
 
+# the choice of the shell shellspawn starts for the user
+add_executable(shellspawn_shell_test ${CMAKE_SOURCE_DIR}/tests/shellspawn/shell.c)
+target_include_directories(shellspawn_shell_test PRIVATE ${CMAKE_SOURCE_DIR}/src/shellspawn)
+add_test(NAME shellspawn_shell COMMAND shellspawn_shell_test)
+
+# the local directory node (src/frameworks/OpenDirectory/CFOpenDirectory) stores
+# account changes with this plain C helper
+add_executable(od_passwd_file_test
+	${CMAKE_SOURCE_DIR}/tests/opendirectory/passwd-file.c
+	${CMAKE_SOURCE_DIR}/src/frameworks/OpenDirectory/CFOpenDirectory/src/od_passwd_file.c)
+target_include_directories(od_passwd_file_test PRIVATE
+	${CMAKE_SOURCE_DIR}/src/frameworks/OpenDirectory/CFOpenDirectory/src)
+add_test(NAME od_passwd_file COMMAND od_passwd_file_test)
+
 # the setuid launcher's id switching; the test supplies its own id system calls
 add_executable(launcher_ids_test ${CMAKE_SOURCE_DIR}/tests/launcher/ids.c launcher-ids.c)
 target_include_directories(launcher_ids_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

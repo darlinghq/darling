@@ -43,6 +43,8 @@ Module.symvers
 !/tests/libm/**
 !/tests/mldr/
 !/tests/mldr/**
+!/tests/opendirectory/
+!/tests/opendirectory/**
 !/tests/prefsd/
 !/tests/prefsd/**
 !/tests/shellspawn/
