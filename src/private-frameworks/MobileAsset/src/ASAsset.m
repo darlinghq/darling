@@ -19,6 +19,8 @@
 
 #import <MobileAsset/ASAsset.h>
 
+NSString *const ASAttributeDownloadSize = @"_DownloadSize";
+
 @implementation ASAsset
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

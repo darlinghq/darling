@@ -53,6 +53,7 @@ add_framework(WebKit
         src/WebView.m
         src/WebDownload.m
         src/WebHistory.m
+        src/WebHistoryItem.m
         src/WebPolicyDelegate.m
         src/WebScriptObject.m
         src/WKCustomProtocolLoader.m
