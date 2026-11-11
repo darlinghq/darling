@@ -3,7 +3,7 @@ project(GameKit)
 remove_sdk_framework(GameKit)
 
 set(DYLIB_COMPAT_VERSION "1.0.0")
-set(DYLIB_CURRENT_VERSION "1.0.0")
+set(DYLIB_CURRENT_VERSION "821.0.25")
 
 set(FRAMEWORK_VERSION "A")
 
