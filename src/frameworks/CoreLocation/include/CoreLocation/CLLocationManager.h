@@ -38,11 +38,11 @@ typedef NS_ENUM(int, CLAuthorizationStatus) {
 // Not retained, like other Cocoa delegates.
 @property (nonatomic, assign) id<CLLocationManagerDelegate> delegate;
 
-/* There is no location service and no consent store here: report Denied and
- * services disabled so callers take their no-access path. */
+/* There is no location service here: location services are reported as disabled
+ * and the authorization status as Restricted (as AVCaptureDevice does for
+ * capture that cannot work), so callers take their no-access path. */
 + (CLAuthorizationStatus)authorizationStatus;
 + (BOOL)locationServicesEnabled;
 - (CLAuthorizationStatus)authorizationStatus;
-
 
 @end

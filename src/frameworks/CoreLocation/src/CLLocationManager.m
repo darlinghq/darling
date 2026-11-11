@@ -25,7 +25,7 @@
 
 + (CLAuthorizationStatus)authorizationStatus
 {
-    return kCLAuthorizationStatusDenied;
+    return kCLAuthorizationStatusRestricted;
 }
 
 + (BOOL)locationServicesEnabled
@@ -35,7 +35,7 @@
 
 - (CLAuthorizationStatus)authorizationStatus
 {
-    return kCLAuthorizationStatusDenied;
+    return kCLAuthorizationStatusRestricted;
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
