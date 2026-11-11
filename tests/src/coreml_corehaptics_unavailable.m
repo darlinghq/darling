@@ -13,10 +13,14 @@
 #import <VideoToolbox/VideoToolbox.h>
 #include <dispatch/dispatch.h>
 #include <stdio.h>
+#include <unistd.h>
+
+// Some calls deliberately pass NULL for parameters that are declared nonnull.
+#pragma clang diagnostic ignored "-Wnonnull"
 
 static int failures;
 
-#define CHECK(cond) do { if (!(cond)) { printf("FAIL: %s (line %d)\n", #cond, __LINE__); failures++; } } while (0)
+#define CHECK(...) do { if (!(__VA_ARGS__)) { printf("FAIL: %s (line %d)\n", #__VA_ARGS__, __LINE__); failures++; } } while (0)
 #define CHECK_STRING(sym, value) CHECK([(NSString *) (sym) isEqualToString:@value])
 
 static void checkCoreHaptics(void)
@@ -172,8 +176,21 @@ static void checkCoreML(void)
 	[half release];
 
 	error = nil;
-	CHECK([[MLMultiArray alloc] initWithShape:@[@0] dataType:MLMultiArrayDataTypeDouble error:&error] == nil);
-	CHECK(error != nil);
+	CHECK([[MLMultiArray alloc] initWithShape:@[@-1] dataType:MLMultiArrayDataTypeDouble error:&error] == nil);
+	CHECK([[error domain] isEqualToString:MLModelErrorDomain]);
+	MLMultiArray *scalar = [[MLMultiArray alloc] initWithShape:@[] dataType:MLMultiArrayDataTypeDouble error:&error];
+	CHECK([scalar count] == 1);
+	[scalar release];
+	MLMultiArray *small = [[MLMultiArray alloc] initWithShape:@[@2, @2] dataType:MLMultiArrayDataTypeInt32 error:&error];
+	BOOL raised = NO;
+	@try {
+		(void) small[4];
+	} @catch (NSException *exception) {
+		raised = [[exception name] isEqualToString:NSInvalidArgumentException];
+	}
+	CHECK(raised);
+	CHECK(small[@[@0]] == nil);
+	[small release];
 
 	// Feature values and providers.
 	MLFeatureValue *fv = [MLFeatureValue featureValueWithInt64:7];
@@ -192,19 +209,32 @@ static void checkCoreML(void)
 	CHECK([[[provider featureValueForName:@"b"] stringValue] isEqualToString:@"s"]);
 	[provider release];
 
-	error = nil;
-	CHECK([[MLDictionaryFeatureProvider alloc] initWithDictionary:@{ @"a": [NSDate date] } error:&error] == nil);
-	CHECK([error code] == MLModelErrorFeatureType);
+	// Objects that are not convertible are kept as values of invalid type.
+	provider = [[MLDictionaryFeatureProvider alloc] initWithDictionary:@{ @"a": [NSDate date] } error:&error];
+	CHECK(provider != nil);
+	CHECK([[provider featureValueForName:@"a"] type] == MLFeatureTypeInvalid);
+	[provider release];
 
 	error = nil;
 	MLArrayBatchProvider *batch = [[MLArrayBatchProvider alloc] initWithDictionary:@{ @"a": @[@1, @2] } error:&error];
 	CHECK([batch count] == 2);
 	CHECK([[[batch featuresAtIndex:1] featureValueForName:@"a"] int64Value] == 2);
 	[batch release];
+	error = nil;
+	CHECK([[MLArrayBatchProvider alloc] initWithDictionary:@{ @"a": @[@1, @2], @"b": @[@1] } error:&error] == nil);
+	CHECK(error != nil);
+
+	CHECK([[MLFeatureValue featureValueWithDouble:1.5] dictionaryValue] == nil);
 
 	MLPredictionOptions *options = [[MLPredictionOptions alloc] init];
 	CHECK([[options outputBackings] count] == 0);
 	[options release];
+}
+
+// The Metal texture cache expectations below describe Darling's behaviour only.
+static BOOL runningOnDarling(void)
+{
+	return access("/Volumes/SystemRoot", F_OK) == 0;
 }
 
 static void checkCoreVideoAndVideoToolbox(void)
@@ -221,21 +251,25 @@ static void checkCoreVideoAndVideoToolbox(void)
 
 	CHECK(CVMetalTextureCacheGetTypeID() != CVMetalTextureGetTypeID());
 
-	// No Metal interop: creation fails, validates its arguments first, and
-	// leaves no object behind.
-	NSObject *device = [[NSObject alloc] init];
-	CVMetalTextureCacheRef cache = (CVMetalTextureCacheRef) 1;
-	CHECK(CVMetalTextureCacheCreate(NULL, NULL, (id) device, NULL, &cache) == kCVReturnUnsupported);
-	CHECK(cache == NULL);
-	CHECK(CVMetalTextureCacheCreate(NULL, NULL, (id) device, NULL, NULL) == kCVReturnInvalidArgument);
-	[device release];
+	// Darling has no Metal texture sharing: the cache calls report
+	// kCVReturnUnsupported after validating their arguments. On macOS the same
+	// calls with a placeholder device are not valid (they trap), so these
+	// expectations apply to Darling only.
+	if (runningOnDarling()) {
+		NSObject *device = [[NSObject alloc] init];
+		CVMetalTextureCacheRef cache = (CVMetalTextureCacheRef) 1;
+		CHECK(CVMetalTextureCacheCreate(NULL, NULL, (id) device, NULL, &cache) == kCVReturnUnsupported);
+		CHECK(cache == NULL);
+		CHECK(CVMetalTextureCacheCreate(NULL, NULL, (id) device, NULL, NULL) == kCVReturnInvalidArgument);
+		[device release];
 
-	CVMetalTextureRef texture = (CVMetalTextureRef) 1;
-	CHECK(CVMetalTextureCacheCreateTextureFromImage(NULL, (CVMetalTextureCacheRef) 1, (CVImageBufferRef) 1, NULL, 80, 16, 16, 0,
-	                                                &texture) == kCVReturnUnsupported);
-	CHECK(texture == NULL);
-	CHECK(CVMetalTextureCacheCreateTextureFromImage(NULL, NULL, (CVImageBufferRef) 1, NULL, 80, 16, 16, 0, &texture)
-	      == kCVReturnInvalidArgument);
+		CVMetalTextureRef texture = (CVMetalTextureRef) 1;
+		CHECK(CVMetalTextureCacheCreateTextureFromImage(NULL, (CVMetalTextureCacheRef) 1, (CVImageBufferRef) 1, NULL, 80, 16, 16, 0,
+		                                                &texture) == kCVReturnUnsupported);
+		CHECK(texture == NULL);
+		CHECK(CVMetalTextureCacheCreateTextureFromImage(NULL, NULL, (CVImageBufferRef) 1, NULL, 80, 16, 16, 0, &texture)
+		      == kCVReturnInvalidArgument);
+	}
 
 	VTRegisterSupplementalVideoDecoderIfAvailable('avc1');
 }
