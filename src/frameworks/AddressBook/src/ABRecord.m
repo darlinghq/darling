@@ -22,21 +22,47 @@
 #import <objc/runtime.h>
 
 static const char *kABRecordUniqueIdKey = "kABRecordUniqueIdKey";
+static const char *kABRecordPropertiesKey = "kABRecordPropertiesKey";
 
 @implementation ABRecord
 
+// Property values live only in memory: this record class has no backing store.
+- (NSMutableDictionary *) _propertyStorage:(BOOL) create
+{
+    NSMutableDictionary *props = objc_getAssociatedObject(self, kABRecordPropertiesKey);
+    if (props == nil && create) {
+        props = [NSMutableDictionary dictionary];
+        objc_setAssociatedObject(self, kABRecordPropertiesKey, props, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+    return props;
+}
+
 - (id) valueForProperty: (NSString *) property
 {
-    return nil;
+    @synchronized(self) {
+        return [[self _propertyStorage: NO] objectForKey: property];
+    }
 }
 
 - (BOOL) setValue: (id) value forProperty: (NSString *) property
 {
+    if (value == nil || property == nil) {
+        return NO;
+    }
+    @synchronized(self) {
+        [[self _propertyStorage: YES] setObject: value forKey: property];
+    }
     return YES;
 }
 
 - (BOOL) removeValueForProperty: (NSString *) property
 {
+    if (property == nil) {
+        return NO;
+    }
+    @synchronized(self) {
+        [[self _propertyStorage: NO] removeObjectForKey: property];
+    }
     return YES;
 }
 

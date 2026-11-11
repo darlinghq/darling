@@ -19,6 +19,7 @@
 
 #import <AddressBook/ABAddressBook.h>
 #import <AddressBook/ABPerson.h>
+#import <AddressBook/ABGlobals.h>
 
 @implementation ABAddressBook
 
@@ -43,6 +44,19 @@
     @synchronized(self) {
         if (_me == nil) {
             _me = [[ABPerson alloc] init];
+            // The "me" card starts out with the login user's name.
+            NSString *fullName = NSFullUserName();
+            NSArray *parts = [fullName componentsSeparatedByString: @" "];
+            NSString *first = [parts count] > 0 ? [parts objectAtIndex: 0] : nil;
+            if ([first length] == 0) {
+                first = NSUserName();
+            }
+            if ([first length] > 0) {
+                [_me setValue: first forProperty: kABFirstNameProperty];
+            }
+            if ([parts count] > 1 && [[parts objectAtIndex: 1] length] > 0) {
+                [_me setValue: [parts objectAtIndex: 1] forProperty: kABLastNameProperty];
+            }
         }
         return [[_me retain] autorelease];
     }
