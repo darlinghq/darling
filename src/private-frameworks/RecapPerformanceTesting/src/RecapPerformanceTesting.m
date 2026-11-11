@@ -19,14 +19,12 @@
 
 #import <RecapPerformanceTesting/RecapPerformanceTesting.h>
 #import <CoreGraphics/CoreGraphics.h>
-#include <stdio.h>
 
 @implementation RPTTestRunner
 
 + (BOOL)runTestWithParameters:(id<RPTTestParameters>)parameters
 {
-	fprintf(stderr, "RecapPerformanceTesting: performance test '%s' is not supported\n",
-		[[parameters testName] UTF8String]);
+	(void)parameters;
 	return NO;
 }
 
@@ -136,8 +134,6 @@
 
 - (BOOL)run
 {
-	fprintf(stderr, "RecapPerformanceTesting: interaction test '%s' is not supported\n",
-		[_testName UTF8String]);
 	return NO;
 }
 
@@ -224,13 +220,13 @@
 
 /* ---- Measuring ---------------------------------------------------------------
  *
- * Prototypes read off the call sites rather than guessed, since this framework has
- * no SDK headers: both take one object plus, for the second, a direction in w1,
- * and both return a four-float rectangle in v0-v3.
+ * Inference, not documented: the prototypes are guessed from the function names
+ * only (one object in, a CGRect out; the second also takes a direction). This is
+ * a private framework with no public header.
  *
- * CGRectZero is the honest answer for both. There is no view laid out here, so
- * there are no bounds to report, and a caller that gets a zero rect is reading
- * "nothing to measure" rather than a fabricated position.
+ * An empty rect is returned for both. There is no view laid out here, so there
+ * are no bounds to report; a caller reads "nothing to measure" rather than a
+ * fabricated position.
  */
 
 CGRect RPTGetBoundsForView(id view)

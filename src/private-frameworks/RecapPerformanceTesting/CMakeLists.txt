@@ -16,7 +16,6 @@ generate_sdk_framework(RecapPerformanceTesting
 )
 
 add_framework(RecapPerformanceTesting
-	FAT
 	CURRENT_VERSION
 	PRIVATE
 	VERSION ${FRAMEWORK_VERSION}
