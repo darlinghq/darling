@@ -20,11 +20,6 @@
 #import <ScreenCaptureKit/ScreenCaptureKit.h>
 #include <dispatch/dispatch.h>
 
-// ScreenCaptureKit exists only for 64-bit processes on macOS, and the classes
-// below keep their state in synthesized instance variables, which the legacy
-// 32-bit Objective-C ABI does not support. The 32-bit slice is therefore empty.
-#ifdef __LP64__
-
 NSString *const SCStreamErrorDomain = @"com.apple.ScreenCaptureKit.SCStreamErrorDomain";
 
 static NSError *captureUnavailableError(void)
@@ -268,5 +263,3 @@ static BOOL failWithError(NSError **error)
 }
 
 @end
-
-#endif /* __LP64__ */
