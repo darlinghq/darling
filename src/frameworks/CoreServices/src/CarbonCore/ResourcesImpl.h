@@ -24,6 +24,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <stdint.h>
 #include <vector>
+#include <memory>
 #include <list>
 #include <unordered_map>
 
