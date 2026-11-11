@@ -18,12 +18,13 @@
 */
 
 #import <AVFAudio/SpeexEndpointer.h>
+#import "AVFAudioStub.h"
 
 @implementation SpeexEndpointer
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return AVAudioStubSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation

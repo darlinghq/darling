@@ -37,6 +37,7 @@ extern const AVCaptureSessionPreset AVCaptureSessionPreset352x288;
 extern const AVCaptureSessionPreset AVCaptureSessionPreset320x240;
 extern const AVCaptureSessionPreset AVCaptureSessionPresetiFrame1280x720;
 extern const AVCaptureSessionPreset AVCaptureSessionPresetiFrame960x540;
+extern const AVCaptureSessionPreset AVCaptureSessionPresetPhoto;
 extern const AVCaptureSessionPreset AVCaptureSessionPresetHigh;
 extern const AVCaptureSessionPreset AVCaptureSessionPresetLow;
 extern const AVCaptureSessionPreset AVCaptureSessionPresetMedium;
