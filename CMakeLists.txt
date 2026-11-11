@@ -5,11 +5,39 @@ SET(CMAKE_SYSTEM_NAME Linux)
 # Detect host architecture before project() since CMAKE_HOST_SYSTEM_PROCESSOR
 # may not be available yet
 execute_process(COMMAND uname -m OUTPUT_VARIABLE _HOST_ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
-if (_HOST_ARCH MATCHES "aarch64|arm64")
-	SET(CMAKE_SYSTEM_PROCESSOR "aarch64")
-else()
-	SET(CMAKE_SYSTEM_PROCESSOR "x86-64")
+
+# The target defaults to the host. A toolchain file or -DCMAKE_SYSTEM_PROCESSOR
+# may choose another one, which makes this a cross build.
+if (NOT DEFINED CMAKE_SYSTEM_PROCESSOR)
+	if (_HOST_ARCH MATCHES "aarch64|arm64")
+		SET(CMAKE_SYSTEM_PROCESSOR "aarch64")
+	else()
+		SET(CMAKE_SYSTEM_PROCESSOR "x86-64")
+	endif()
 endif()
+
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+	set(_TARGET_ARCH_ARM64 TRUE)
+else()
+	set(_TARGET_ARCH_ARM64 FALSE)
+endif()
+if (_HOST_ARCH MATCHES "aarch64|arm64")
+	set(_HOST_ARCH_ARM64 TRUE)
+else()
+	set(_HOST_ARCH_ARM64 FALSE)
+endif()
+
+# CMAKE_CROSSCOMPILING is always true here (CMAKE_SYSTEM_NAME is set above and
+# forced again after project()), so it cannot tell a cross build apart.
+# DARLING_CROSS_BUILD is set when the Linux side of Darling (mldr,
+# darlingserver, the launcher) is built for another architecture than the
+# build machine's, so tools that run during the build must be built separately.
+if (NOT _TARGET_ARCH_ARM64 STREQUAL _HOST_ARCH_ARM64)
+	set(_DARLING_CROSS_DEFAULT ON)
+else()
+	set(_DARLING_CROSS_DEFAULT OFF)
+endif()
+option(DARLING_CROSS_BUILD "Build the build-time tools for the build machine separately" ${_DARLING_CROSS_DEFAULT})
 
 # This allows setting the compiler with -DCMAKE_C_COMPILER when configuring.
 if (NOT DEFINED CMAKE_C_COMPILER)
@@ -188,7 +216,7 @@ endif(CMAKE_POSITION_INDEPENDENT_CODE)
 
 enable_language(ASM-ATT)
 
-if (_HOST_ARCH MATCHES "aarch64|arm64")
+if (_TARGET_ARCH_ARM64)
 	option(TARGET_i386 "Enable i386 slices" OFF)
 	option(TARGET_x86_64 "Enable x86_64 slices" OFF)
 	option(TARGET_ARM64 "Enable arm64 slices" ON)

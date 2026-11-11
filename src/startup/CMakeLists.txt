@@ -32,9 +32,28 @@ add_executable(darpath_host ${CMAKE_SOURCE_DIR}/src/tools/darpath.c)
 set_target_properties(darpath_host PROPERTIES OUTPUT_NAME darpath)
 install(TARGETS darpath_host DESTINATION bin)
 
-add_executable(rtsig rtsig.c)
-add_custom_command(OUTPUT rtsig.h DEPENDS rtsig COMMAND ${CMAKE_CURRENT_BINARY_DIR}/rtsig rtsig.h COMMENT "Determining available RT signals")
-add_custom_target(rtsig_h DEPENDS rtsig.h)
+if (DARLING_CROSS_BUILD)
+	# rtsig cannot run when it is built for the target, so use the copy built
+	# for the build machine. The RT signal range is set by the C library
+	# (glibc reserves the first two for itself), which is assumed to be the
+	# same kind on both machines; set LINUX_SIGRTMIN/LINUX_SIGRTMAX to the
+	# target's values when it is not.
+	if (DEFINED LINUX_SIGRTMIN AND DEFINED LINUX_SIGRTMAX)
+		file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/rtsig.h"
+			"#define LINUX_SIGRTMIN ${LINUX_SIGRTMIN}\n#define LINUX_SIGRTMAX ${LINUX_SIGRTMAX}\n")
+	else()
+		execute_process(COMMAND "${DARLING_HOST_RTSIG}" "${CMAKE_CURRENT_BINARY_DIR}/rtsig.h"
+			RESULT_VARIABLE rtsig_res)
+		if (NOT rtsig_res EQUAL 0)
+			message(FATAL_ERROR "Cannot determine the RT signal range; set LINUX_SIGRTMIN and LINUX_SIGRTMAX")
+		endif()
+	endif()
+	add_custom_target(rtsig_h)
+else()
+	add_executable(rtsig rtsig.c)
+	add_custom_command(OUTPUT rtsig.h DEPENDS rtsig COMMAND ${CMAKE_CURRENT_BINARY_DIR}/rtsig rtsig.h COMMENT "Determining available RT signals")
+	add_custom_target(rtsig_h DEPENDS rtsig.h)
+endif()
 
 # shellspawn runs inside the prefix (src/shellspawn); its descriptor helpers
 # are plain POSIX and are tested on the host
