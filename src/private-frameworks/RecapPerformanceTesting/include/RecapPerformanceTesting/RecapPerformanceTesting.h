@@ -38,13 +38,23 @@
 - (BOOL)runTestWithParameters:(id<RPTTestParameters>)parameters;
 @end
 
-@interface RPTResizeTestParameters : NSObject <RPTTestParameters>
+@interface RPTResizeTestParameters : NSObject <RPTTestParameters> {
+@package
+	NSString *_testName;
+	id _window;
+	void (^_completionHandler)(void);
+}
 @property (nonatomic, copy) NSString *testName;
 @property (nonatomic, readonly) id window;
 - (instancetype)initWithTestName:(NSString *)testName window:(id)window completionHandler:(void (^)(void))completionHandler;
 @end
 
-@interface RPTScrollViewTestParameters : NSObject <RPTTestParameters>
+@interface RPTScrollViewTestParameters : NSObject <RPTTestParameters> {
+@package
+	NSString *_testName;
+	id _scrollView;
+	void (^_completionHandler)(void);
+}
 @property (nonatomic, copy) NSString *testName;
 @property (nonatomic, readonly) id scrollView;
 - (instancetype)initWithTestName:(NSString *)testName scrollView:(id)scrollView completionHandler:(void (^)(void))completionHandler;
@@ -52,24 +62,38 @@
 
 /* ---- Interaction tests ------------------------------------------------------- */
 
-@interface RPTInteractionTestParameters : NSObject <RPTTestParameters>
+@interface RPTInteractionTestParameters : NSObject <RPTTestParameters> {
+@package
+	NSString *_testName;
+	void (^_completionHandler)(void);
+}
 @property (nonatomic, copy) NSString *testName;
 - (instancetype)initWithTestName:(NSString *)testName;
 - (instancetype)initWithTestName:(NSString *)testName completionHandler:(void (^)(void))completionHandler;
 - (BOOL)run;
 @end
 
-@interface RPTGroupScrollTestParameters : RPTInteractionTestParameters
+@interface RPTGroupScrollTestParameters : RPTInteractionTestParameters {
+@package
+	id _scrollView;
+}
 @property (nonatomic, readonly) id scrollView;
 - (instancetype)initWithTestName:(NSString *)testName scrollView:(id)scrollView completionHandler:(void (^)(void))completionHandler;
 @end
 
-@interface RPTPagingScrollViewTestParameters : RPTInteractionTestParameters
+@interface RPTPagingScrollViewTestParameters : RPTInteractionTestParameters {
+@package
+	id _scrollView;
+}
 @property (nonatomic, readonly) id scrollView;
 - (instancetype)initWithTestName:(NSString *)testName scrollView:(id)scrollView completionHandler:(void (^)(void))completionHandler;
 @end
 
-@interface RPTDirectionalSwipeTestParameters : RPTInteractionTestParameters
+@interface RPTDirectionalSwipeTestParameters : RPTInteractionTestParameters {
+@package
+	NSUInteger _direction;
+	double _distance;
+}
 @property (nonatomic) NSUInteger direction;
 @property (nonatomic) double distance;
 - (instancetype)initWithTestName:(NSString *)testName direction:(NSUInteger)direction distance:(double)distance completionHandler:(void (^)(void))completionHandler;
