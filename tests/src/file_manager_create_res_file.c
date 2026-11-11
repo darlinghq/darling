@@ -84,6 +84,10 @@ static void test_event_record_layout(void)
 	CHECK(offsetof(EventRecord, when) == 10);
 	CHECK(offsetof(EventRecord, where) == 14);
 	CHECK(offsetof(EventRecord, modifiers) == 18);
+
+	// QUIRK test: IsCmdChar reports false, also for a key-down event with the Command key held.
+	EventRecord key = { keyDown, '.', 0, { 0, 0 }, cmdKey };
+	CHECK(!IsCmdChar(&key, '.'));
 }
 
 int main(void)
