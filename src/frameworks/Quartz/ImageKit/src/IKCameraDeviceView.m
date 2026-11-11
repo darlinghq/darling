@@ -20,15 +20,5 @@
 #import <ImageKit/IKCameraDeviceView.h>
 
 @implementation IKCameraDeviceView
-
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
-}
-
-- (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
-}
-
+@synthesize delegate = _delegate;
 @end
