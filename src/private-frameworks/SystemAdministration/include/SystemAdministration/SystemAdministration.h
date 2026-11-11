@@ -20,7 +20,7 @@
 #import <Foundation/Foundation.h>
 
 // Classes referenced by Migration Assistant (ADMUser) and VoiceOver Utility
-// (AdminAuthenticator, UserUtilities). Every message is logged and answered with nil/0.
+// (AdminAuthenticator, UserUtilities). Every message is answered with nil/0.
 
 @interface ADMUser : NSObject
 @end
