@@ -20,7 +20,9 @@
 #import <UserNotifications/UNUserNotificationCenter.h>
 #import <UserNotifications/UNNotificationSettings.h>
 
-@implementation UNUserNotificationCenter
+@implementation UNUserNotificationCenter {
+    NSSet *_categories;
+}
 
 @synthesize delegate = _delegate;
 
@@ -79,13 +81,23 @@ static UNUserNotificationCenter *s_currentCenter = nil;
 
 - (void) setNotificationCategories: (NSSet<UNNotificationCategory *> *) categories
 {
+    @synchronized (self) {
+        NSSet *copy = [categories copy];
+        [_categories release];
+        _categories = copy;
+    }
 }
 
 - (void) getNotificationCategoriesWithCompletionHandler: (void (^)(NSSet<UNNotificationCategory *> *categories)) completionHandler
 {
     if (completionHandler) {
+        NSSet *snapshot;
+        @synchronized (self) {
+            snapshot = [_categories copy];
+        }
         dispatch_async(dispatch_get_main_queue(), ^{
-            completionHandler([NSSet set]);
+            completionHandler(snapshot ? snapshot : [NSSet set]);
+            [snapshot release];
         });
     }
 }
