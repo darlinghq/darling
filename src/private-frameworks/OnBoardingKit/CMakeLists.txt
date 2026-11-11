@@ -7,7 +7,6 @@ generate_sdk_framework(OnBoardingKit
 )
 
 add_framework(OnBoardingKit
-    FAT
     CURRENT_VERSION
     PRIVATE
     VERSION ${FRAMEWORK_VERSION}
@@ -19,4 +18,5 @@ add_framework(OnBoardingKit
         system
         objc
         Foundation
+        AppKit
 )
