@@ -613,45 +613,75 @@ OSStatus LSCopyDisplayNameForURL(CFURLRef inURL, CFStringRef *outDisplayName)
 	return noErr;
 }
 
-// Rung 6 (GUESS): attribute name constants for LaunchServices item queries
-const CFStringRef kLSItemIsInvisible = CFSTR("kLSItemIsInvisible");
-const CFStringRef kLSItemExtensionIsHidden = CFSTR("kLSItemExtensionIsHidden");
-const CFStringRef kLSItemQuarantineProperties = CFSTR("kLSItemQuarantineProperties");
+// Attribute names of the item queries. The values are what macOS reports for these symbols.
+const CFStringRef kLSItemIsInvisible = CFSTR("LSItemIsInvisible");
+const CFStringRef kLSItemExtensionIsHidden = CFSTR("LSItemExtensionIsHidden");
+const CFStringRef kLSItemQuarantineProperties = CFSTR("LSItemQuarantineProperties");
+
+// Answers a boolean attribute from the URL resource property it is documented to map to.
+static OSStatus copyItemBooleanAttribute(const FSRef *inItem, CFStringRef resourceKey, CFTypeRef *outValue)
+{
+	CFURLRef url = CFURLCreateFromFSRef(kCFAllocatorDefault, (struct FSRef *) inItem);
+	if (!url)
+		return fnfErr;
+
+	CFTypeRef value = NULL;
+	CFErrorRef error = NULL;
+	if (!CFURLCopyResourcePropertyForKey(url, resourceKey, &value, &error) || !value || CFGetTypeID(value) != CFBooleanGetTypeID())
+	{
+		if (value)
+			CFRelease(value);
+		if (error)
+			CFRelease(error);
+		CFRelease(url);
+		return kLSDataUnavailableErr;
+	}
+	CFRelease(url);
+	*outValue = value;
+	return noErr;
+}
 
 OSStatus LSCopyItemAttribute(const FSRef *inItem, LSRolesMask inRoles, CFStringRef inAttributeName, CFTypeRef *outValue)
 {
 	if (!inItem || !inAttributeName || !outValue)
 		return paramErr;
+	*outValue = NULL;
 
-	if (CFEqual(inAttributeName, kLSItemIsInvisible) || CFEqual(inAttributeName, kLSItemExtensionIsHidden))
-	{
-		*outValue = (CFTypeRef)CFRetain(kCFBooleanFalse);
-		return noErr;
-	}
+	if (CFEqual(inAttributeName, kLSItemIsInvisible))
+		return copyItemBooleanAttribute(inItem, kCFURLIsHiddenKey, outValue);
+	if (CFEqual(inAttributeName, kLSItemExtensionIsHidden))
+		return copyItemBooleanAttribute(inItem, kCFURLHasHiddenExtensionKey, outValue);
 	if (CFEqual(inAttributeName, kLSItemQuarantineProperties))
 	{
-		*outValue = NULL;
-		return kLSAttributeNotFoundErr;
+		// Quarantine properties are not stored, so no item carries them. macOS reports
+		// kLSDataUnavailableErr for an item without them (black-box observation).
+		return kLSDataUnavailableErr;
 	}
-	*outValue = NULL;
-	return kLSAttributeNotFoundErr;
+	// An attribute name that is not one of the item attributes is a parameter error (black-box observation).
+	return paramErr;
 }
 
+// Like macOS, the call fails without a result when any requested attribute cannot be answered.
 OSStatus LSCopyItemAttributes(const FSRef *inItem, LSRolesMask inRoles, CFArrayRef inAttributeNames, CFDictionaryRef *outValues)
 {
 	if (!inItem || !inAttributeNames || !outValues)
 		return paramErr;
+	*outValues = NULL;
 
-	CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorDefault, CFArrayGetCount(inAttributeNames), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-	for (CFIndex i = 0; i < CFArrayGetCount(inAttributeNames); i++)
+	CFIndex count = CFArrayGetCount(inAttributeNames);
+	CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorDefault, count, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	for (CFIndex i = 0; i < count; i++)
 	{
-		CFStringRef name = (CFStringRef)CFArrayGetValueAtIndex(inAttributeNames, i);
-		CFTypeRef val = NULL;
-		if (LSCopyItemAttribute(inItem, inRoles, name, &val) == noErr && val != NULL)
+		CFStringRef name = (CFStringRef) CFArrayGetValueAtIndex(inAttributeNames, i);
+		CFTypeRef value = NULL;
+		OSStatus status = LSCopyItemAttribute(inItem, inRoles, name, &value);
+		if (status != noErr)
 		{
-			CFDictionarySetValue(dict, name, val);
-			CFRelease(val);
+			CFRelease(dict);
+			return status;
 		}
+		CFDictionarySetValue(dict, name, value);
+		CFRelease(value);
 	}
 	*outValues = dict;
 	return noErr;
