@@ -40,6 +40,11 @@ info() {
 	# FUSE-free hdiutil attaches extract into a temporary mount directory.
 	# Homebrew asks for APFSPhysicalStores before ejecting; HFS images have
 	# none. The sibling marker distinguishes our extraction from arbitrary dirs.
+	#
+	# Marker contract: when hdiutil attach extracts an image into <dir> instead
+	# of mounting it, it creates the empty file "<dir>.darling-dmg-extracted"
+	# next to the directory, and hdiutil detach removes it. This is a Darling
+	# convention with no macOS counterpart.
 	DISK_PATH=${2%/}
 	if [ ! -d "$DISK_PATH" ] || [ ! -f "$DISK_PATH.darling-dmg-extracted" ]; then
 		errcho "Unable to find disk for $DISK_PATH"
