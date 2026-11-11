@@ -121,7 +121,6 @@ EventTime GetEventTime(EventRef inEvent)
 // Darling has no system symbolic hot keys, so no event ever matches one.
 Boolean _IsSymbolicHotKeyEvent(EventRef inEvent, UInt32* outHotKeyCode, Boolean* outEnabled)
 {
-    if (verbose) puts("STUB: _IsSymbolicHotKeyEvent called");
     if (outHotKeyCode)
         *outHotKeyCode = 0;
     if (outEnabled)
