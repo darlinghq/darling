@@ -24,7 +24,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-// The built-in types, filled in when the framework loads (see UTTypeTable.h).
+// The built-in types, set when the framework loads. Their declarations come from the type database of LaunchServices.
 extern UTType *const UTType3DContent;
 extern UTType *const UTTypeAIFF;
 extern UTType *const UTTypeAliasFile;

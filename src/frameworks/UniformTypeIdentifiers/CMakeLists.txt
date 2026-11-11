@@ -34,4 +34,5 @@ add_framework(UniformTypeIdentifiers
 		system
 		objc
 		Foundation
+		CoreServices
 )
