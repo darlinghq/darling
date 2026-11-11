@@ -18,9 +18,7 @@
 */
 
 #import <AVFAudio/AVAudioSession.h>
-#import <objc/runtime.h>
 #import "AVFAudioStub.h"
-#include <stdio.h>
 
 /* Categories */
 NSString *const AVAudioSessionCategoryAmbient = @"AVAudioSessionCategoryAmbient";
@@ -58,31 +56,31 @@ NSString *const AVAudioSessionRouteChangePreviousRouteKey = @"AVAudioSessionRout
 NSString *const AVAudioSessionSilenceSecondaryAudioHintTypeKey = @"AVAudioSessionSilenceSecondaryAudioHintTypeKey";
 
 /* Port types */
-NSString *const AVAudioSessionPortBuiltInMic = @"AVAudioSessionPortBuiltInMic";
-NSString *const AVAudioSessionPortBuiltInSpeaker = @"AVAudioSessionPortBuiltInSpeaker";
-NSString *const AVAudioSessionPortBuiltInReceiver = @"AVAudioSessionPortBuiltInReceiver";
-NSString *const AVAudioSessionPortHeadphones = @"AVAudioSessionPortHeadphones";
-NSString *const AVAudioSessionPortBluetoothHFP = @"AVAudioSessionPortBluetoothHFP";
-NSString *const AVAudioSessionPortBluetoothA2DP = @"AVAudioSessionPortBluetoothA2DP";
-NSString *const AVAudioSessionPortBluetoothLE = @"AVAudioSessionPortBluetoothLE";
-NSString *const AVAudioSessionPortCarAudio = @"AVAudioSessionPortCarAudio";
-NSString *const AVAudioSessionPortAirPlay = @"AVAudioSessionPortAirPlay";
-NSString *const AVAudioSessionPortLineIn = @"AVAudioSessionPortLineIn";
-NSString *const AVAudioSessionPortLineOut = @"AVAudioSessionPortLineOut";
-NSString *const AVAudioSessionPortHDMI = @"AVAudioSessionPortHDMI";
-NSString *const AVAudioSessionPortDisplayPort = @"AVAudioSessionPortDisplayPort";
+NSString *const AVAudioSessionPortBuiltInMic = @"MicrophoneBuiltIn";
+NSString *const AVAudioSessionPortBuiltInSpeaker = @"Speaker";
+NSString *const AVAudioSessionPortBuiltInReceiver = @"Receiver";
+NSString *const AVAudioSessionPortHeadphones = @"Headphones";
+NSString *const AVAudioSessionPortBluetoothHFP = @"BluetoothHFP";
+NSString *const AVAudioSessionPortBluetoothA2DP = @"BluetoothA2DPOutput";
+NSString *const AVAudioSessionPortBluetoothLE = @"BluetoothLE";
+NSString *const AVAudioSessionPortCarAudio = @"CarAudio";
+NSString *const AVAudioSessionPortAirPlay = @"AirPlay";
+NSString *const AVAudioSessionPortLineIn = @"LineIn";
+NSString *const AVAudioSessionPortLineOut = @"LineOut";
+NSString *const AVAudioSessionPortHDMI = @"HDMIOutput";
+NSString *const AVAudioSessionPortDisplayPort = @"DisplayPort";
 
 /* Orientations */
-NSString *const AVAudioSessionOrientationBack = @"AVAudioSessionOrientationBack";
-NSString *const AVAudioSessionOrientationFront = @"AVAudioSessionOrientationFront";
-NSString *const AVAudioSessionOrientationTop = @"AVAudioSessionOrientationTop";
-NSString *const AVAudioSessionOrientationBottom = @"AVAudioSessionOrientationBottom";
+NSString *const AVAudioSessionOrientationBack = @"Back";
+NSString *const AVAudioSessionOrientationFront = @"Front";
+NSString *const AVAudioSessionOrientationTop = @"Top";
+NSString *const AVAudioSessionOrientationBottom = @"Bottom";
 
 /* Polar patterns */
-NSString *const AVAudioSessionPolarPatternStereo = @"AVAudioSessionPolarPatternStereo";
-NSString *const AVAudioSessionPolarPatternCardioid = @"AVAudioSessionPolarPatternCardioid";
-NSString *const AVAudioSessionPolarPatternOmnidirectional = @"AVAudioSessionPolarPatternOmnidirectional";
-NSString *const AVAudioSessionPolarPatternSubcardioid = @"AVAudioSessionPolarPatternSubcardioid";
+NSString *const AVAudioSessionPolarPatternStereo = @"Stereo";
+NSString *const AVAudioSessionPolarPatternCardioid = @"Cardioid";
+NSString *const AVAudioSessionPolarPatternOmnidirectional = @"Omnidirectional";
+NSString *const AVAudioSessionPolarPatternSubcardioid = @"Subcardioid";
 
 /*
  * Singleton session state.
@@ -101,7 +99,7 @@ static BOOL g_active = NO;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         instance = [[self alloc] init];
-        g_category = [AVAudioSessionCategoryPlayback copy];
+        g_category = [AVAudioSessionCategorySoloAmbient copy];
         g_mode = [AVAudioSessionModeDefault copy];
         g_active = NO;
     });
@@ -133,7 +131,7 @@ static BOOL g_active = NO;
 
 - (NSString *)category
 {
-    return g_category ?: AVAudioSessionCategoryPlayback;
+    return g_category ?: AVAudioSessionCategorySoloAmbient;
 }
 
 - (BOOL)setMode:(NSString *)mode error:(NSError **)outError
@@ -173,17 +171,7 @@ static BOOL g_active = NO;
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
-    static bool should_log = false;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        should_log = (getenv("DARLING_LOG_STUBS") != NULL);
-    });
-
-    if (should_log) {
-        fprintf(stderr, "[AVFAudio stub] %s called on %s\n",
-                sel_getName([anInvocation selector]),
-                class_getName([self class]));
-    }
+    // Methods that are not implemented are accepted and ignored.
 }
 
 @end

@@ -30,8 +30,8 @@ NSString *const AVLinearPCMIsNonInterleaved = @"AVLinearPCMIsNonInterleaved";
 NSString *const AVAudioFileTypeKey = @"AVAudioFileTypeKey";
 
 /* Encoder settings keys */
-NSString *const AVEncoderAudioQualityKey = @"AVEncoderAudioQualityKey";
-NSString *const AVEncoderAudioQualityForVBRKey = @"AVEncoderAudioQualityForVBRKey";
+NSString *const AVEncoderAudioQualityKey = @"AVEncoderQualityKey";
+NSString *const AVEncoderAudioQualityForVBRKey = @"AVEncoderQualityForVBRKey";
 NSString *const AVEncoderBitRateKey = @"AVEncoderBitRateKey";
 NSString *const AVEncoderBitRatePerChannelKey = @"AVEncoderBitRatePerChannelKey";
 NSString *const AVEncoderBitRateStrategyKey = @"AVEncoderBitRateStrategyKey";
@@ -39,7 +39,7 @@ NSString *const AVEncoderBitDepthHintKey = @"AVEncoderBitDepthHintKey";
 
 /* Sample rate converter keys */
 NSString *const AVSampleRateConverterAlgorithmKey = @"AVSampleRateConverterAlgorithmKey";
-NSString *const AVSampleRateConverterAudioQualityKey = @"AVSampleRateConverterAudioQualityKey";
+NSString *const AVSampleRateConverterAudioQualityKey = @"AVSampleRateConverterQualityKey";
 
 /* Channel layout key */
 NSString *const AVChannelLayoutKey = @"AVChannelLayoutKey";
