@@ -13,7 +13,6 @@ generate_sdk_framework(ScreenCaptureKit
 )
 
 add_framework(ScreenCaptureKit
-    FAT
     CURRENT_VERSION
     VERSION ${FRAMEWORK_VERSION}
 
