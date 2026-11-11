@@ -251,10 +251,10 @@ OSStatus FSGetCatalogInfo(const FSRef* ref, uint32_t infoBits, FSCatalogInfo* in
 		{
 			const uid_t uid = getuid();
 
-			infoOut->fsPermissionInfo.userID = st.st_uid;
-			infoOut->fsPermissionInfo.groupID = st.st_gid;
-			infoOut->fsPermissionInfo.mode = st.st_mode & 07777;
-			infoOut->fsPermissionInfo.userAccess = uaccess;
+			infoOut->permissions.userID = st.st_uid;
+			infoOut->permissions.groupID = st.st_gid;
+			infoOut->permissions.mode = st.st_mode & 07777;
+			infoOut->permissions.userAccess = uaccess;
 		}
 
 		if (infoBits & kFSCatInfoUserPrivs)
@@ -291,7 +291,7 @@ OSErr FSSetCatalogInfo(const FSRef* ref, FSCatalogInfoBitmap whichInfo, const FS
 	// Only the POSIX permissions are applied; other catalog fields have no Linux equivalent here.
 	if (catalogInfo && (whichInfo & kFSCatInfoPermissions))
 	{
-		if (::chmod(path.c_str(), catalogInfo->fsPermissionInfo.mode & 07777) != 0)
+		if (::chmod(path.c_str(), catalogInfo->permissions.mode & 07777) != 0)
 			return makeOSStatus(errno);
 	}
 

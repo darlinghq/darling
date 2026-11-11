@@ -80,11 +80,7 @@ struct FSCatalogInfo
 	struct UTCDateTime accessDate;
 	struct UTCDateTime backupDate;
 
-	union
-	{
-		uint32_t permissions[4];
-		struct FSPermissionInfo fsPermissionInfo;
-	};
+	struct FSPermissionInfo permissions;
 
 	uint8_t finderInfo[16];
 	uint8_t extFinderInfo[16];

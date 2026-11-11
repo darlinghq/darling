@@ -170,7 +170,7 @@ void FSCreateResFile(const FSRef* parentDir, UniCharCount nameLength, const UniC
 	std::string path = std::string((const char*) parentPath) + "/" + nameUTF8;
 	mode_t mode = 0644;
 	if (catalogInfo && (whichInfo & kFSCatInfoPermissions))
-		mode = catalogInfo->fsPermissionInfo.mode & 07777;
+		mode = catalogInfo->permissions.mode & 07777;
 
 	int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
 	if (fd < 0)
