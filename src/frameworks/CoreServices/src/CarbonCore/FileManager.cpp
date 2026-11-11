@@ -485,6 +485,12 @@ static std::map<FSIORefNum, OpenFork> g_openForks;
 static std::mutex g_openForksLock;
 static FSIORefNum g_nextForkRefNum = 0x4000;
 
+// QUIRK: opening the resource fork of a file that has none fails with eofErr, a fork name other than
+// the data and resource fork names with errFSBadForkName, and closing a reference number that is not
+// open with fnOpnErr (FSGetForkSize reports rfNumErr for it).
+// Not documented. Evidence: black-box observation on macOS 27.0.1, arm64 and x86_64 (tier 2),
+// vd-upstream/mac-probes/v123-fork-probe.c.
+// Test: tests/src/file_manager_forks.c
 OSErr FSOpenFork(const FSRef* ref, UniCharCount forkNameLength, const UniChar* forkName, SInt8 permissions, FSIORefNum* forkRefNum)
 {
 	std::string path;
@@ -513,11 +519,11 @@ OSErr FSOpenFork(const FSRef* ref, UniCharCount forkNameLength, const UniChar* f
 		HFSUniStr255 rsrcForkName;
 		FSGetResourceForkName(&rsrcForkName);
 		if (rsrcForkName.length != forkNameLength || memcmp(forkName, rsrcForkName.unicode, 2 * forkNameLength) != 0)
-			return errFSForkNotFound;
+			return errFSBadForkName;
 
 		ssize_t size = ::getxattr(path.c_str(), "com.apple.ResourceFork", nullptr, 0, 0, 0);
 		if (size < 0)
-			return (errno == ENOATTR) ? errFSForkNotFound : makeOSStatus(errno);
+			return (errno == ENOATTR) ? eofErr : makeOSStatus(errno);
 		fork.data.resize(size);
 		if (size > 0 && ::getxattr(path.c_str(), "com.apple.ResourceFork", fork.data.data(), size, 0, 0) != size)
 			return ioErr;
@@ -571,7 +577,7 @@ OSErr FSCloseFork(FSIORefNum forkRefNum)
 
 	// Resource files opened with FSOpenResourceFile(Mapped) are closed with FSCloseFork too.
 	CloseResFile(forkRefNum);
-	return (ResError() == noErr) ? noErr : rfNumErr;
+	return (ResError() == noErr) ? noErr : fnOpnErr;
 }
 
 OSErr PBOpenForkSync(FSForkIOParam *paramBlock)
