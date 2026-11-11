@@ -30,7 +30,6 @@ NSString *const AVCaptureSessionDidStopRunningNotification = @"AVCaptureSessionD
 NSString *const AVCaptureSessionErrorKey = @"AVCaptureSessionErrorKey";
 NSString *const AVCaptureSessionRuntimeErrorNotification = @"AVCaptureSessionRuntimeErrorNotification";
 NSString *const AVChannelLayoutKey = @"AVChannelLayoutKey";
-NSString *const AVEncoderBitRateChannelKey = @"AVEncoderBitRatePerChannelKey";
 NSString *const AVErrorDeviceKey = @"AVErrorDeviceKey";
 NSString *const AVErrorFileSizeKey = @"AVErrorFileSizeKey";
 NSString *const AVErrorMediaSubTypeKey = @"AVErrorMediaSubTypeKey";
@@ -112,9 +111,9 @@ NSString *const AVCaptureDeviceTypeBuiltInDualWideCamera = @"AVCaptureDeviceType
 NSString *const AVCaptureDeviceTypeBuiltInTripleCamera = @"AVCaptureDeviceTypeBuiltInTripleCamera";
 NSString *const AVCaptureDeviceTypeBuiltInTrueDepthCamera = @"AVCaptureDeviceTypeBuiltInTrueDepthCamera";
 NSString *const AVCaptureDeviceTypeBuiltInLiDARDepthCamera = @"AVCaptureDeviceTypeBuiltInLiDARDepthCamera";
-NSString *const AVCaptureDeviceTypeBuiltInMicrophone = @"AVCaptureDeviceTypeBuiltInMicrophone";
+NSString *const AVCaptureDeviceTypeBuiltInMicrophone = @"AVCaptureDeviceTypeMicrophone";
 NSString *const AVCaptureDeviceTypeMicrophone = @"AVCaptureDeviceTypeMicrophone";
-NSString *const AVCaptureDeviceTypeExternalUnknown = @"AVCaptureDeviceTypeExternalUnknown";
+NSString *const AVCaptureDeviceTypeExternalUnknown = @"AVCaptureDeviceTypeExternal";
 NSString *const AVCaptureDeviceTypeExternal = @"AVCaptureDeviceTypeExternal";
 NSString *const AVCaptureDeviceTypeContinuityCamera = @"AVCaptureDeviceTypeContinuityCamera";
 NSString *const AVCaptureDeviceTypeDeskViewCamera = @"AVCaptureDeviceTypeDeskViewCamera";
@@ -123,7 +122,7 @@ NSString *const AVCaptureDeviceTypeDeskViewCamera = @"AVCaptureDeviceTypeDeskVie
 @end
 @implementation AVCaptureDeviceDiscoverySession
 + (id) discoverySessionWithDeviceTypes: (id) types mediaType: (id) mediaType position: (NSInteger) pos {
-    return [[self alloc] init];
+    return [[[self alloc] init] autorelease];
 }
 - (NSArray *) devices {
     return [NSArray array];
@@ -139,6 +138,6 @@ NSString *const AVCaptureDeviceTypeDeskViewCamera = @"AVCaptureDeviceTypeDeskVie
 @end
 @implementation AVCapturePhotoSettings
 + (id) photoSettings {
-    return [[self alloc] init];
+    return [[[self alloc] init] autorelease];
 }
 @end

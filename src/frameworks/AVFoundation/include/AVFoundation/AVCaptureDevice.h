@@ -27,6 +27,21 @@ typedef NS_ENUM(NSInteger, AVAuthorizationStatus) {
 	AVAuthorizationStatusAuthorized = 3,
 };
 
+extern NSString *const AVCaptureDeviceTypeBuiltInWideAngleCamera;
+extern NSString *const AVCaptureDeviceTypeBuiltInTelephotoCamera;
+extern NSString *const AVCaptureDeviceTypeBuiltInUltraWideCamera;
+extern NSString *const AVCaptureDeviceTypeBuiltInDualCamera;
+extern NSString *const AVCaptureDeviceTypeBuiltInDualWideCamera;
+extern NSString *const AVCaptureDeviceTypeBuiltInTripleCamera;
+extern NSString *const AVCaptureDeviceTypeBuiltInTrueDepthCamera;
+extern NSString *const AVCaptureDeviceTypeBuiltInLiDARDepthCamera;
+extern NSString *const AVCaptureDeviceTypeBuiltInMicrophone;
+extern NSString *const AVCaptureDeviceTypeMicrophone;
+extern NSString *const AVCaptureDeviceTypeExternalUnknown;
+extern NSString *const AVCaptureDeviceTypeExternal;
+extern NSString *const AVCaptureDeviceTypeContinuityCamera;
+extern NSString *const AVCaptureDeviceTypeDeskViewCamera;
+
 @interface AVCaptureDevice : NSObject
 
 + (NSArray*)devices;
