@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Lubos Dolezel
 //
 // LSSharedFileList and LSSharedFileListItem as Core Foundation types: create, insert, snapshot,
-// resolve, remove and release. The lists are in-memory only.
+// resolve, remove and release (the persistence is tested by lssharedfilelist_persistence.c).
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>
 #include <stdio.h>
