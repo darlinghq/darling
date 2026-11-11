@@ -20,9 +20,10 @@ add_framework(OSD
 	VERSION ${FRAMEWORK_VERSION}
 
 	SOURCES
-		src/OSD.c
+		src/OSD.m
 
 	DEPENDENCIES
 		system
-		CoreFoundation
+		objc
+		Foundation
 )

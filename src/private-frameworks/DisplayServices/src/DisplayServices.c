@@ -1,6 +1,23 @@
-#include <CoreFoundation/CoreFoundation.h>
-#include <stdint.h>
-#include <stdbool.h>
+/*
+ This file is part of Darling.
+
+ Copyright (C) 2026 Lubos Dolezel
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#include <DisplayServices/DisplayServices.h>
 
 int DisplayServicesGetBrightness(uint32_t display, float *brightness) {
 	if (brightness) *brightness = 1.0f;
@@ -21,17 +38,5 @@ int DisplayServicesSetLinearBrightness(uint32_t display, float brightness) {
 }
 
 int DisplayServicesCanChangeBrightness(uint32_t display) {
-	return 1;
-}
-
-int DisplayServicesBrightnessChanged(uint32_t display, float brightness) {
-	return 0;
-}
-
-int DisplayServicesRegisterForAmbientLightEvents(void) {
-	return 0;
-}
-
-int DisplayServicesUnregisterForAmbientLightEvents(void) {
 	return 0;
 }
