@@ -44,7 +44,6 @@ typedef NS_ENUM(NSInteger, GCControllerPlayerIndex) {
  * What matters is that they exist - a selector miss on GCController is an uncaught
  * NSException, which kills the app before any of its own code runs. */
 + (NSArray *)controllers;
-+ (NSArray *)extendedGamepads;
 
 - (GCExtendedGamepad *)extendedGamepad;
 - (GCMicroGamepad *)microGamepad;

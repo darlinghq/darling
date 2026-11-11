@@ -27,15 +27,15 @@
 NSString *const GCControllerDidConnectNotification = @"GCControllerDidConnectNotification";
 NSString *const GCControllerDidDisconnectNotification = @"GCControllerDidDisconnectNotification";
 
-NSString *const GCInputButtonA = @"GCInputButtonA";
-NSString *const GCInputButtonB = @"GCInputButtonB";
-NSString *const GCInputButtonX = @"GCInputButtonX";
-NSString *const GCInputButtonY = @"GCInputButtonY";
-NSString *const GCInputButtonMenu = @"GCInputButtonMenu";
-NSString *const GCInputButtonOptions = @"GCInputButtonOptions";
-NSString *const GCInputLeftShoulder = @"GCInputLeftShoulder";
-NSString *const GCInputRightShoulder = @"GCInputRightShoulder";
-NSString *const GCInputLeftTrigger = @"GCInputLeftTrigger";
-NSString *const GCInputRightTrigger = @"GCInputRightTrigger";
-NSString *const GCInputLeftThumbstick = @"GCInputLeftThumbstick";
-NSString *const GCInputDirectionPad = @"GCInputDirectionPad";
+NSString *const GCInputButtonA = @"Button A";
+NSString *const GCInputButtonB = @"Button B";
+NSString *const GCInputButtonX = @"Button X";
+NSString *const GCInputButtonY = @"Button Y";
+NSString *const GCInputButtonMenu = @"Button Menu";
+NSString *const GCInputButtonOptions = @"Button Options";
+NSString *const GCInputLeftShoulder = @"Left Shoulder";
+NSString *const GCInputRightShoulder = @"Right Shoulder";
+NSString *const GCInputLeftTrigger = @"Left Trigger";
+NSString *const GCInputRightTrigger = @"Right Trigger";
+NSString *const GCInputLeftThumbstick = @"Left Thumbstick";
+NSString *const GCInputDirectionPad = @"Direction Pad";

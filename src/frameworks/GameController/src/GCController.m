@@ -27,10 +27,6 @@
 	return @[];
 }
 
-+ (NSArray *)extendedGamepads {
-	return @[];
-}
-
 - (GCExtendedGamepad *)extendedGamepad {
 	return nil;
 }
@@ -70,12 +66,14 @@
 
 + (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    NSMethodSignature *signature = [super methodSignatureForSelector:aSelector];
+
+    return signature != nil ? signature : [NSMethodSignature signatureWithObjCTypes: "v@:"];
 }
 
 + (void)forwardInvocation:(NSInvocation *)anInvocation
 {
-    NSLog(@"Stub called: %@ in %@ (class method)", NSStringFromSelector([anInvocation selector]), [self class]);
+    // Class methods that are not implemented are accepted and ignored.
 }
 
 @end
