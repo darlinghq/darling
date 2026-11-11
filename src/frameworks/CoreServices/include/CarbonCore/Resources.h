@@ -122,6 +122,17 @@ OSErr FSCreateResourceFile(const FSRef* parentDir, UniCharCount nameLength, cons
 OSErr FSCreateResourceFork(const FSRef* ref, UniCharCount forkNameLength, const UniChar* forkName, UInt32 flags);
 OSErr FSOpenResourceFile(const FSRef* ref, UniCharCount forkNameLength, const UniChar* forkName, SInt8 permissions, ResFileRefNum* refNum);
 
+// Private SPI (signatures inferred from callers such as Font Book).
+// Opens a resource file read-only and makes it current; *mappedData is set to NULL (no mapping).
+OSErr FSOpenResourceFileMapped(const FSRef* ref, UniCharCount forkNameLength, const UniChar* forkName, void** mappedData, ResFileRefNum* refNum);
+
+typedef struct __RMMappedFile* RMMappedFileRef;
+OSErr RMNewMappedRefFromMappedFork(const void* forkData, UInt64 forkSize, RMMappedFileRef* mappedRef);
+ResourceCount RMGetResourceCount(RMMappedFileRef mappedRef, ResType type);
+void* RMGetIndexedResource(RMMappedFileRef mappedRef, ResType type, ResourceIndex index, void** resourceData, ResID* resourceID, StringPtr resourceName);
+UInt64 RMGetResourceSize(void* resource);
+void RMDisposeMappedFileRef(RMMappedFileRef mappedRef);
+
 // TODO: More 32-bit only crap
 
 #ifdef __cplusplus

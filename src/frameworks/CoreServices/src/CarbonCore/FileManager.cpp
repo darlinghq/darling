@@ -37,6 +37,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <fcntl.h>
 #include <vector>
 #include <CarbonCore/DateTimeUtils.h>
+#include <CarbonCore/Resources.h>
+#include <sys/xattr.h>
+#include <mutex>
 #include <errno.h>
 #include <darling/emulation/linux_premigration/ext/file_handle.h>
 
@@ -475,6 +478,114 @@ OSErr PBMakeFSRefUnicodeSync(FSRefParam *paramBlock)
 	FSPathMakeRef((uint8_t*) path.c_str(), paramBlock->newRef, nullptr);
 	
 	return noErr;
+}
+
+// Forks opened with FSOpenFork. The data fork is the file itself; the resource fork is the
+// com.apple.ResourceFork extended attribute (as used by the Resource Manager), read into memory.
+// Refnums start high so they don't collide with Resource Manager refnums, which FSCloseFork also accepts.
+struct OpenFork
+{
+	int fd = -1;
+	std::vector<uint8_t> data;
+};
+
+static std::map<FSIORefNum, OpenFork> g_openForks;
+static std::mutex g_openForksLock;
+static FSIORefNum g_nextForkRefNum = 0x4000;
+
+// QUIRK: opening the resource fork of a file that has none fails with eofErr, a fork name other than
+// the data and resource fork names with errFSBadForkName, and closing a reference number that is not
+// open with fnOpnErr (FSGetForkSize reports rfNumErr for it).
+// Not documented. Evidence: black-box observation on macOS 27.0.1, arm64 and x86_64 (tier 2),
+// vd-upstream/mac-probes/v123-fork-probe.c.
+// Test: tests/src/file_manager_forks.c
+OSErr FSOpenFork(const FSRef* ref, UniCharCount forkNameLength, const UniChar* forkName, SInt8 permissions, FSIORefNum* forkRefNum)
+{
+	std::string path;
+	OpenFork fork;
+
+	if (!ref || !forkRefNum || (forkNameLength != 0 && !forkName))
+		return paramErr;
+	if (!FSRefMakePath(ref, path))
+		return fnfErr;
+
+	if (forkNameLength == 0)
+	{
+		int flags;
+		switch (permissions & 3)
+		{
+			case fsWrPerm: flags = O_WRONLY; break;
+			case fsRdWrPerm: flags = O_RDWR; break;
+			default: flags = O_RDONLY; break;
+		}
+		fork.fd = ::open(path.c_str(), flags);
+		if (fork.fd == -1)
+			return makeOSStatus(errno);
+	}
+	else
+	{
+		HFSUniStr255 rsrcForkName;
+		FSGetResourceForkName(&rsrcForkName);
+		if (rsrcForkName.length != forkNameLength || memcmp(forkName, rsrcForkName.unicode, 2 * forkNameLength) != 0)
+			return errFSBadForkName;
+
+		ssize_t size = ::getxattr(path.c_str(), "com.apple.ResourceFork", nullptr, 0, 0, 0);
+		if (size < 0)
+			return (errno == ENOATTR) ? eofErr : makeOSStatus(errno);
+		fork.data.resize(size);
+		if (size > 0 && ::getxattr(path.c_str(), "com.apple.ResourceFork", fork.data.data(), size, 0, 0) != size)
+			return ioErr;
+	}
+
+	std::lock_guard<std::mutex> lock(g_openForksLock);
+	while (g_openForks.count(g_nextForkRefNum))
+		g_nextForkRefNum = (g_nextForkRefNum == 0x7fff) ? 0x4000 : g_nextForkRefNum + 1;
+	*forkRefNum = g_nextForkRefNum;
+	g_openForks.emplace(g_nextForkRefNum, std::move(fork));
+	g_nextForkRefNum = (g_nextForkRefNum == 0x7fff) ? 0x4000 : g_nextForkRefNum + 1;
+	return noErr;
+}
+
+OSErr FSGetForkSize(FSIORefNum forkRefNum, SInt64* forkSize)
+{
+	if (!forkSize)
+		return paramErr;
+
+	std::lock_guard<std::mutex> lock(g_openForksLock);
+	auto it = g_openForks.find(forkRefNum);
+	if (it == g_openForks.end())
+		return rfNumErr;
+
+	if (it->second.fd == -1)
+	{
+		*forkSize = it->second.data.size();
+		return noErr;
+	}
+
+	struct stat st;
+	if (::fstat(it->second.fd, &st) != 0)
+		return makeOSStatus(errno);
+	*forkSize = st.st_size;
+	return noErr;
+}
+
+OSErr FSCloseFork(FSIORefNum forkRefNum)
+{
+	{
+		std::lock_guard<std::mutex> lock(g_openForksLock);
+		auto it = g_openForks.find(forkRefNum);
+		if (it != g_openForks.end())
+		{
+			if (it->second.fd != -1)
+				::close(it->second.fd);
+			g_openForks.erase(it);
+			return noErr;
+		}
+	}
+
+	// Resource files opened with FSOpenResourceFile(Mapped) are closed with FSCloseFork too.
+	CloseResFile(forkRefNum);
+	return (ResError() == noErr) ? noErr : fnOpnErr;
 }
 
 OSErr PBOpenForkSync(FSForkIOParam *paramBlock)

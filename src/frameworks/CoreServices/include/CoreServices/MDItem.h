@@ -91,6 +91,14 @@ extern const CFStringRef kMDItemURL;
 extern const CFStringRef kMDItemVersion;
 extern const CFStringRef kMDItemWhereFroms;
 
+// origin of downloaded or saved items
+extern const CFStringRef kMDItemOriginApplicationIdentifier;
+extern const CFStringRef kMDItemOriginMessageID;
+extern const CFStringRef kMDItemOriginSenderDisplayName;
+extern const CFStringRef kMDItemOriginSenderHandle;
+extern const CFStringRef kMDItemOriginSubject;
+extern const CFStringRef kMDItemDestinationRecipients;
+
 // image attributes
 extern const CFStringRef kMDItemAcquisitionMake;
 extern const CFStringRef kMDItemAcquisitionModel;
@@ -227,6 +235,11 @@ CFDictionaryRef MDItemCopyAttributeList(MDItemRef item, ...);
 CFArrayRef MDItemCopyAttributeNames(MDItemRef item);
 
 Boolean MDItemSetAttribute(MDItemRef item, CFStringRef name, CFTypeRef value);
+
+// Private SPI (signatures inferred from callers)
+void _MDRegisterMailClient(void);
+Boolean _MDItemMarkAsDownloaded(CFTypeRef item, CFTypeRef whereFrom, CFTypeRef attributes);
+Boolean _MDItemSetPrivateAttributes(CFTypeRef item, CFTypeRef attributes, CFTypeRef options);
 
 #ifdef __cplusplus
 };
