@@ -36,8 +36,8 @@ const CFStringRef kCGImagePropertyIPTCKeywords = CFSTR("Keywords");
 const CFStringRef kCGImagePropertyHasAlpha = CFSTR("HasAlpha");
 const CFStringRef kCGImagePropertyProfileName = CFSTR("ProfileName"); // guessed value
 
-const CFStringRef kCGImagePropertyAPNGDelayTime = CFSTR("APNGDelayTime"); // ditto
-const CFStringRef kCGImagePropertyAPNGLoopCount = CFSTR("APNGLoopCount"); // ditto
+const CFStringRef kCGImagePropertyAPNGDelayTime = CFSTR("DelayTime");
+const CFStringRef kCGImagePropertyAPNGLoopCount = CFSTR("LoopCount");
 const CFStringRef kCGImagePropertyAPNGUnclampedDelayTime = CFSTR("UnclampedDelayTime");
 
 const CFStringRef kCGImageMetadataNamespaceExif = CFSTR("http://ns.adobe.com/exif/1.0/");
