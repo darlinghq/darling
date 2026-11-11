@@ -102,6 +102,10 @@ static ODRecordRef copy_user(ODNodeRef node, const char* name)
 	return record;
 }
 
+// A shell other than the account's current one, so that a change is visible
+static const char* testShell;
+static CFStringRef testShellStr;
+
 int main(void)
 {
 	signal(SIGALRM, on_alarm);
@@ -119,6 +123,8 @@ int main(void)
 		return 1;
 	char name[256];
 	strlcpy(name, pw->pw_name, sizeof(name));
+	testShell = strcmp(pw->pw_shell, "/bin/bash") == 0 ? "/bin/zsh" : "/bin/bash";
+	testShellStr = str(testShell);
 
 	ODRecordRef record = copy_user(node, name);
 	CHECK(record != NULL);
@@ -134,16 +140,16 @@ int main(void)
 	original[4] = ODRecordCopyValues(record, kODAttributeTypeUserShell, NULL);
 
 	// Not changed until written: another record of the user still has the old shell
-	CHECK(ODRecordSetValue(record, kODAttributeTypeUserShell, CFSTR("/bin/bash"), &error) && error_is(error, 0));
-	CHECK(first_value_is(record, kODAttributeTypeUserShell, "/bin/bash"));
+	CHECK(ODRecordSetValue(record, kODAttributeTypeUserShell, testShellStr, &error) && error_is(error, 0));
+	CHECK(first_value_is(record, kODAttributeTypeUserShell, testShell));
 	pw = getpwnam(name);
-	CHECK(pw != NULL && strcmp(pw->pw_shell, "/bin/bash") != 0);
+	CHECK(pw != NULL && strcmp(pw->pw_shell, testShell) != 0);
 
 	CHECK(ODRecordSynchronize(record, &error) && error_is(error, 0));
 	pw = getpwnam(name);
-	CHECK(pw != NULL && strcmp(pw->pw_shell, "/bin/bash") == 0);
+	CHECK(pw != NULL && strcmp(pw->pw_shell, testShell) == 0);
 	ODRecordRef again = copy_user(node, name);
-	CHECK(again != NULL && first_value_is(again, kODAttributeTypeUserShell, "/bin/bash"));
+	CHECK(again != NULL && first_value_is(again, kODAttributeTypeUserShell, testShell));
 	if (again != NULL)
 		CFRelease(again);
 
@@ -189,7 +195,7 @@ int main(void)
 	CHECK(!ODRecordSetValue(record, NULL, CFSTR("x"), &error));
 	CHECK(error_is(error, kODErrorRecordParameterError));
 	pw = getpwnam(name);
-	CHECK(pw != NULL && strcmp(pw->pw_shell, "/bin/bash") == 0 && pw->pw_uid == getuid());
+	CHECK(pw != NULL && strcmp(pw->pw_shell, testShell) == 0 && pw->pw_uid == getuid());
 
 	// Group records are read-only
 	CFStringRef groupName = str("wheel");
@@ -208,10 +214,10 @@ int main(void)
 	CHECK(root != NULL);
 	if (root != NULL && geteuid() != 0)
 	{
-		CHECK(!ODRecordSetValue(root, kODAttributeTypeUserShell, CFSTR("/bin/bash"), &error));
+		CHECK(!ODRecordSetValue(root, kODAttributeTypeUserShell, testShellStr, &error));
 		CHECK(error_is(error, kODErrorRecordPermissionError));
 		pw = getpwnam("root");
-		CHECK(pw != NULL && strcmp(pw->pw_shell, "/bin/bash") != 0);
+		CHECK(pw != NULL && strcmp(pw->pw_shell, testShell) != 0);
 	}
 	if (root != NULL)
 		CFRelease(root);
