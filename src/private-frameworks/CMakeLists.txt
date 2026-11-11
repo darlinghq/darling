@@ -11,11 +11,16 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 	add_subdirectory(AppleSystemInfo)
 	add_subdirectory(AuthKit)
 	add_subdirectory(ConfigurationProfiles)
+	add_subdirectory(CPAnalytics)
 	add_subdirectory(CrashReporterSupport)
 	add_subdirectory(login)
 	add_subdirectory(MobileAsset)
 	add_subdirectory(ProtocolBuffer)
 	add_subdirectory(TrustedPeers)
+
+	add_subdirectory(DisplayServices)
+	add_subdirectory(MonitorPanel)
+	add_subdirectory(OSD)
 
 	# required for dtrace and IOKitTools
 	add_subdirectory(CoreSymbolication)
@@ -26,6 +31,7 @@ if (COMPONENT_dev_gui_common)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_dev_gui_common")
 
 	add_subdirectory(DebugSymbols)
+	add_subdirectory(iLifeMediaBrowser)
 endif()
 
 # same here, except this is for stubs that Xcode needs
@@ -97,6 +103,9 @@ if (COMPONENT_gui_stubs)
 	add_subdirectory(SpotlightServices)
 	add_subdirectory(Suggestions)
 	add_subdirectory(UIFoundation)
+	add_subdirectory(SpeechDictionary)
+	add_subdirectory(SpeechObjects)
+	add_subdirectory(Calculate)
 endif()
 
 if (COMPONENT_gui)
