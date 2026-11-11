@@ -55,10 +55,16 @@ int main(void)
 		// Console's filter bar asks for types 4 and 5, then makes type-7 filters from the names.
 		NSString *error = [CSKMessage localizedMessageTypeNameForType:4];
 		NSString *fault = [CSKMessage localizedMessageTypeNameForType:5];
-		CHECK([error isEqual:@"Error"] && [fault isEqual:@"Fault"], "message type names");
-		CHECK(raises(^{ [CSKMessage localizedMessageTypeNameForType:3]; }), "unknown message type raises");
+		CHECK([error isEqual:@"error"] && [fault isEqual:@"fault"], "message type names");
+		CHECK([[CSKMessage localizedMessageTypeNameForType:2] isEqual:@"info"] &&
+			[[CSKMessage localizedMessageTypeNameForType:3] isEqual:@"debug"], "info and debug type names");
+		for (NSInteger other = -1; other <= 9; other++) {
+			if (other >= 2 && other <= 5)
+				continue;
+			CHECK([[CSKMessage localizedMessageTypeNameForType:other] isEqual:@"default"], "other message types are named default");
+		}
 		CSKFilter *filter = [[CSKFilter alloc] initWithType:7 value:error];
-		CHECK(filter.type == 7 && [filter.value isEqual:@"Error"], "filter keeps its type and value");
+		CHECK(filter.type == 7 && [filter.value isEqual:@"error"], "filter keeps its type and value");
 
 		CSKFileSystem *fs = [CSKFileSystem sharedInstance];
 		CHECK(fs != nil && fs == [CSKFileSystem sharedInstance], "shared file system");

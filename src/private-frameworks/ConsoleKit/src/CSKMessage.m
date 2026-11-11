@@ -2,16 +2,23 @@
 
 @implementation CSKMessage
 
+// Names as observed from the original framework's class method on macOS 27 (black-box probe,
+// vd-upstream/mac-probes/v153-consolekit-messagetype.m): types 2 to 5 are info, debug, error and
+// fault, in lowercase; every other number, negative ones included, yields "default" and nothing
+// raises.
 + (NSString *)localizedMessageTypeNameForType:(CSKMessageType)type
 {
 	switch (type) {
+	case CSKMessageTypeInfo:
+		return @"info";
+	case CSKMessageTypeDebug:
+		return @"debug";
 	case CSKMessageTypeError:
-		return @"Error";
+		return @"error";
 	case CSKMessageTypeFault:
-		return @"Fault";
+		return @"fault";
 	}
-	[NSException raise:NSInvalidArgumentException format:@"Unknown ConsoleKit message type %ld", (long)type];
-	return nil;
+	return @"default";
 }
 
 - (instancetype)initWithDate:(NSDate *)date sender:(NSString *)sender processID:(pid_t)pid subsystem:(NSString *)subsystem category:(NSString *)category level:(int)level message:(NSString *)message
