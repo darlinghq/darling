@@ -21,13 +21,42 @@
 #define CVPIXELBUFFERPOOL_H
 
 #include <sys/cdefs.h>
+#include <CoreFoundation/CoreFoundation.h>
 #include <CoreVideo/CVBase.h>
+#include <CoreVideo/CVReturn.h>
+#include <CoreVideo/CVPixelBuffer.h>
 
 __BEGIN_DECLS
+
+typedef struct CV_BRIDGED_TYPE(id) __CVPixelBufferPool* CVPixelBufferPoolRef;
 
 extern const CFStringRef kCVPixelBufferPoolMaximumBufferAgeKey;
 extern const CFStringRef kCVPixelBufferPoolMinimumBufferCountKey;
 extern const CFStringRef kCVPixelBufferPoolAllocationThresholdKey;
+
+CV_EXPORT CFTypeID CVPixelBufferPoolGetTypeID(void);
+CV_EXPORT CVPixelBufferPoolRef CVPixelBufferPoolRetain(CVPixelBufferPoolRef pixelBufferPool);
+CV_EXPORT void CVPixelBufferPoolRelease(CVPixelBufferPoolRef pixelBufferPool);
+
+CV_EXPORT CVReturn CVPixelBufferPoolCreate(
+	CFAllocatorRef allocator,
+	CFDictionaryRef poolAttributes,
+	CFDictionaryRef pixelBufferAttributes,
+	CVPixelBufferPoolRef *poolOut
+);
+
+CV_EXPORT CVReturn CVPixelBufferPoolCreatePixelBuffer(
+	CFAllocatorRef allocator,
+	CVPixelBufferPoolRef pixelBufferPool,
+	CVPixelBufferRef *pixelBufferOut
+);
+
+CV_EXPORT CVReturn CVPixelBufferPoolCreatePixelBufferWithAuxAttributes(
+	CFAllocatorRef allocator,
+	CVPixelBufferPoolRef pixelBufferPool,
+	CFDictionaryRef auxAttributes,
+	CVPixelBufferRef *pixelBufferOut
+);
 
 __END_DECLS
 

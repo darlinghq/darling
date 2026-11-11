@@ -20,6 +20,8 @@
 #include <Foundation/Foundation.h>
 
 extern NSString *const AVPlayerItemDidPlayToEndTimeNotification;
+extern NSString *const AVPlayerItemFailedToPlayToEndTimeNotification;
+extern NSString *const AVPlayerItemPlaybackStalledNotification;
 
 @interface AVPlayerItem : NSObject
 

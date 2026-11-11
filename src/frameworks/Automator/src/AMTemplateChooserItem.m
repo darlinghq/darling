@@ -21,6 +21,21 @@
 
 @implementation AMTemplateChooserItem
 
++ (NSArray *)templateChooserItems
+{
+    return @[ [[[self alloc] init] autorelease] ];
+}
+
+- (NSString *)imageTitle
+{
+    return @"Workflow";
+}
+
+- (NSString *)templateDescription
+{
+    return @"Add actions to build a workflow that runs in Automator.";
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];

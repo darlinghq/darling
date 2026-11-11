@@ -19,6 +19,36 @@
 
 #include <Foundation/Foundation.h>
 
+typedef NS_OPTIONS(NSUInteger, OSALanguageFeatures) {
+    OSASupportsCompiling = 0x0002,
+    OSASupportsGetSource = 0x0004,
+    OSASupportsAECoercion = 0x0008,
+    OSASupportsAESending = 0x0010,
+    OSASupportsRecording = 0x0020,
+    OSASupportsConvenience = 0x0040,
+    OSASupportsDialects = 0x0080,
+    OSASupportsEventHandling = 0x0100,
+};
+
 @interface OSALanguage : NSObject
+
++ (NSArray *)availableLanguages;
++ (OSALanguage *)languageForName:(NSString *)name;
++ (OSALanguage *)languageForScriptDataDescriptor:(NSAppleEventDescriptor *)descriptor;
++ (OSALanguage *)defaultLanguage;
++ (void)setDefaultLanguage:(OSALanguage *)defaultLanguage;
+
+// Private class methods
++ (OSALanguage *)languageForSubType:(OSType)subType;
++ (OSALanguage *)languageForScript:(id)script;
+
+@property (readonly, copy) NSString *name;
+@property (readonly, copy) NSString *info;
+@property (readonly, copy) NSString *version;
+@property (readonly) OSType type;
+@property (readonly) OSType subType;
+@property (readonly) OSType manufacturer;
+@property (readonly) OSALanguageFeatures features;
+@property (getter=isThreadSafe, readonly) BOOL threadSafe;
 
 @end

@@ -52,6 +52,7 @@
 #import <GameController/GCControllerMBDelegate.h>
 #import <GameController/GCControllerCBDelegate.h>
 #import <GameController/GCController.h>
+#import <GameController/GCPhysicalInputProfile.h>
 #import <GameController/GCEventViewController.h>
 #import <GameController/_GCController.h>
 #import <GameController/GCGamepadSnapshot.h>

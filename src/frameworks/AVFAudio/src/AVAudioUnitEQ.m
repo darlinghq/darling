@@ -18,12 +18,13 @@
 */
 
 #import <AVFAudio/AVAudioUnitEQ.h>
+#import "AVFAudioStub.h"
 
 @implementation AVAudioUnitEQ
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return AVAudioStubSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation
