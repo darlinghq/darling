@@ -21,28 +21,11 @@
 #include <dlfcn.h>
 #include <stddef.h>
 
-typedef void* (*sl_dlopen_function)(const char* path, int mode);
-
 void* _sl_dlopen(const char* path, int mode)
 {
-	/* Already loaded: hand back the existing handle rather than loading it twice,
-	   which is the whole point of the interposition. */
-	void* handle = dlopen(path, mode);
-	if (handle == NULL)
-	{
-		return NULL;
-	}
-
-	/* A resolved symbol is the framework's way of saying the library is present but
-	   does not provide what was asked for. Non-fatal by design. */
-	sl_dlopen_function resolve = (sl_dlopen_function)dlsym(handle, "sl_dlopen");
-	if (resolve == NULL)
-	{
-		dlclose(handle);
-		return NULL;
-	}
-
-	return handle;
+	/* A soft link loads the library when it is present and reports NULL when it is
+	   not, so the caller takes its own fallback instead of failing to launch. */
+	return dlopen(path, mode);
 }
 
 void* TSUSoftLinkingGetFrameworkFunction(const char* framework, const char* function)
