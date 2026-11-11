@@ -34,6 +34,10 @@ OSStatus TECConvertText(TECObjectRef encodingConverter, ConstTextPtr inputBuffer
 
 OSStatus TECFlushText(TECObjectRef encodingConverter, TextPtr outputBuffer, ByteCount outputBufferLength, ByteCount *actualOutputLength);
 
+OSStatus TECClearConverterContextInfo(TECObjectRef encodingConverter);
+
+OSStatus TECGetTextEncodingFromInternetName(TextEncoding *encoding, ConstStr255Param internetName);
+
 OSStatus TECDisposeConverter(TECObjectRef newEncodingConverter);
 
 #ifdef __cplusplus
