@@ -18,7 +18,34 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <CoreGraphics/CoreGraphics.h>
 
-@interface CIColor : NSObject
+@interface CIColor : NSObject {
+    /* Named as <QuartzCore/CIColor.h> names it, so a subclass built against either
+       header finds the ivar. See the commit body. */
+    CGColorRef _cgColor;
+}
+
++ (CIColor *) colorWithCGColor: (CGColorRef) cgColor;
+
++ (CIColor *) colorWithRed: (CGFloat) red
+                     green: (CGFloat) green
+                      blue: (CGFloat) blue;
+
++ (CIColor *) colorWithRed: (CGFloat) red
+                     green: (CGFloat) green
+                      blue: (CGFloat) blue
+                     alpha: (CGFloat) alpha;
+
+- initWithCGColor: (CGColorRef) cgColor;
+
+- (size_t) numberOfComponents;
+- (CGColorSpaceRef) colorSpace;
+- (const CGFloat *) components;
+
+- (CGFloat) red;
+- (CGFloat) green;
+- (CGFloat) blue;
+- (CGFloat) alpha;
 
 @end

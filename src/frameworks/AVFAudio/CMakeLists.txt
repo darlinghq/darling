@@ -54,6 +54,7 @@ add_framework(AVFAudio
         src/AVAudioUnitEQ.m
         src/AVAudioUnitDSPGraph.m
         src/AVAudioFormat.m
+        src/AVAudioSettings.m
         src/AVVCAudioDeviceManager.m
         src/AVAudioSession.m
         src/AVVCAudioBuffer.m

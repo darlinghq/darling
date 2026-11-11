@@ -18,12 +18,13 @@
 */
 
 #import <AVFAudio/AVAudioEnvironmentDistanceAttenuationParameters.h>
+#import "AVFAudioStub.h"
 
 @implementation AVAudioEnvironmentDistanceAttenuationParameters
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return AVAudioStubSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation

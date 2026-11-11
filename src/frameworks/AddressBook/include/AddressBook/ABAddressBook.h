@@ -19,7 +19,23 @@
 
 #include <Foundation/Foundation.h>
 
+@class ABPerson, ABRecord;
+
 @interface ABAddressBook : NSObject
 {
+    ABPerson *_me;
 }
+
++ (ABAddressBook *) sharedAddressBook;
+
+- (ABPerson *) me;
+- (void) setMe: (ABPerson *) person;
+
+- (NSArray *) people;
+- (NSArray *) groups;
+- (ABRecord *) recordForUniqueId: (NSString *) uniqueId;
+
+- (BOOL) save;
+- (BOOL) hasUnsavedChanges;
+
 @end

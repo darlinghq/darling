@@ -22,3 +22,18 @@
 @interface _GCController : NSObject
 
 @end
+
+/* HID usage names for controller elements. Games index their button arrays with these, so
+ * the symbols must resolve even though no controller is ever attached. */
+extern NSString *const GCInputButtonA;
+extern NSString *const GCInputButtonB;
+extern NSString *const GCInputButtonX;
+extern NSString *const GCInputButtonY;
+extern NSString *const GCInputButtonMenu;
+extern NSString *const GCInputButtonOptions;
+extern NSString *const GCInputLeftShoulder;
+extern NSString *const GCInputRightShoulder;
+extern NSString *const GCInputLeftTrigger;
+extern NSString *const GCInputRightTrigger;
+extern NSString *const GCInputLeftThumbstick;
+extern NSString *const GCInputDirectionPad;

@@ -19,6 +19,10 @@
 
 #include <Foundation/Foundation.h>
 
-@interface GCControllerAxisInput : NSObject
+#import <GameController/GCControllerElement.h>
+
+@interface GCControllerAxisInput : GCControllerElement
+
+@property(readonly) float value;
 
 @end

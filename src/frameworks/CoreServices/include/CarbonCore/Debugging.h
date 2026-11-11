@@ -20,6 +20,9 @@ extern UInt32 TaskLevel(void);
 
 extern void DebugStr(ConstStr255Param msg);
 
+extern const char* GetMacOSStatusErrorString(OSStatus err);
+extern const char* GetMacOSStatusCommentString(OSStatus err);
+
 #ifdef __cplusplus
 }
 #endif

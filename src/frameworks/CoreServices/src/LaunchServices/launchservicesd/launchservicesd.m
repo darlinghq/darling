@@ -20,6 +20,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <xpc/xpc.h>
 #include <dispatch/dispatch.h>
 #include "LSBundle.h"
+#include <Foundation/Foundation.h>
+#include <stdio.h>
+#include <string.h>
 
 static void connectionCallback(xpc_connection_t connection);
 static void handleMessage(xpc_connection_t connection, xpc_object_t msg);
@@ -28,6 +31,17 @@ dispatch_queue_t g_serverQueue;
 
 int main(int argc, const char** argv)
 {
+	if (argc > 1) {
+		if (argc != 3 || strcmp(argv[1], "--register") != 0) {
+			fprintf(stderr, "usage: %s [--register BUNDLE]\n", argv[0]);
+			return 2;
+		}
+		@autoreleasepool {
+			BOOL success = [LSBundle registerBundleAtPath:[NSString stringWithUTF8String:argv[2]]];
+			if (!success) fprintf(stderr, "launchservicesd: registration failed: %s\n", argv[2]);
+			return success ? 0 : 1;
+		}
+	}
 	g_serverQueue = dispatch_queue_create("service queue", NULL);
 	
 	[LSBundle scanForBundles];

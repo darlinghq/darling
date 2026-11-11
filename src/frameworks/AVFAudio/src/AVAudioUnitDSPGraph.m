@@ -18,12 +18,13 @@
 */
 
 #import <AVFAudio/AVAudioUnitDSPGraph.h>
+#import "AVFAudioStub.h"
 
 @implementation AVAudioUnitDSPGraph
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return AVAudioStubSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation

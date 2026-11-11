@@ -18,8 +18,84 @@
 */
 
 #import <AddressBook/ABAddressBook.h>
+#import <AddressBook/ABPerson.h>
+#import <AddressBook/ABGlobals.h>
 
 @implementation ABAddressBook
+
++ (ABAddressBook *) sharedAddressBook
+{
+    static ABAddressBook *shared = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        shared = [[ABAddressBook alloc] init];
+    });
+    return shared;
+}
+
+- (void) dealloc
+{
+    [_me release];
+    [super dealloc];
+}
+
+- (ABPerson *) me
+{
+    @synchronized(self) {
+        if (_me == nil) {
+            _me = [[ABPerson alloc] init];
+            // The "me" card starts out with the login user's name.
+            NSString *fullName = NSFullUserName();
+            NSArray *parts = [fullName componentsSeparatedByString: @" "];
+            NSString *first = [parts count] > 0 ? [parts objectAtIndex: 0] : nil;
+            if ([first length] == 0) {
+                first = NSUserName();
+            }
+            if ([first length] > 0) {
+                [_me setValue: first forProperty: kABFirstNameProperty];
+            }
+            if ([parts count] > 1 && [[parts objectAtIndex: 1] length] > 0) {
+                [_me setValue: [parts objectAtIndex: 1] forProperty: kABLastNameProperty];
+            }
+        }
+        return [[_me retain] autorelease];
+    }
+}
+
+- (void) setMe: (ABPerson *) person
+{
+    @synchronized(self) {
+        if (_me != person) {
+            [_me release];
+            _me = [person retain];
+        }
+    }
+}
+
+- (NSArray *) people
+{
+    return [NSArray array];
+}
+
+- (NSArray *) groups
+{
+    return [NSArray array];
+}
+
+- (ABRecord *) recordForUniqueId: (NSString *) uniqueId
+{
+    return nil;
+}
+
+- (BOOL) save
+{
+    return YES;
+}
+
+- (BOOL) hasUnsavedChanges
+{
+    return NO;
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {

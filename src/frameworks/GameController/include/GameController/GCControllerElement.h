@@ -21,4 +21,6 @@
 
 @interface GCControllerElement : NSObject
 
+@property(readonly, getter=isAnalog) BOOL analog;
+
 @end

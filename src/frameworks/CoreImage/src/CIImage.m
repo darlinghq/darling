@@ -21,6 +21,33 @@
 
 @implementation CIImage
 
++ (CIImage *) emptyImage {
+    return [[[self alloc] initWithCGImage: NULL] autorelease];
+}
+
+- (instancetype) initWithCGImage: (CGImageRef) cgImage {
+    if ((self = [super init])) {
+        _cgImage = CGImageRetain(cgImage);
+    }
+    return self;
+}
+
+- (void) dealloc {
+    CGImageRelease(_cgImage);
+    [super dealloc];
+}
+
+/* An image with no CGImage behind it has the null extent, which is what macOS reports for
+   +[CIImage emptyImage]. Evidence: black-box observation on macOS 27 (the rectangle is
+   CGRectNull, origin at infinity with zero size). Test: tests/src/coreimage_values.m. */
+- (CGRect) extent {
+    if (_cgImage == NULL) {
+        return CGRectNull;
+    }
+
+    return CGRectMake(0, 0, CGImageGetWidth(_cgImage), CGImageGetHeight(_cgImage));
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];
 }
