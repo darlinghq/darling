@@ -77,14 +77,20 @@ UTTypeCreateAllIdentifiersForTag(
 	[dq inDatabase:^(FMDatabase* db) {
 		NSString* query = @"select type_identifier from uti inner join uti_tag UT on UT.uti=uti.id "
 			@"where UT.tag = ? and UT.value = ?";
+		NSArray* args = @[(NSString*) inTagClass, (NSString*) inTag];
 
 		if (inConformingToUTI != NULL)
 		{
-			query = [query stringByAppendingFormat:@" and uti.id in (select uti from uti_conforms where conforms_to='%@')",
-				escape((NSString*) inConformingToUTI)];
+			// A type conforms to the requested one directly or through the types it conforms to,
+			// and every type conforms to itself.
+			query = [@"with recursive descendants(name) as (select ? union select uti.type_identifier "
+				@"from descendants inner join uti_conforms UC on UC.conforms_to=descendants.name "
+				@"inner join uti on uti.id=UC.uti) " stringByAppendingString:
+				[query stringByAppendingString:@" and uti.type_identifier in (select name from descendants)"]];
+			args = @[(NSString*) inConformingToUTI, (NSString*) inTagClass, (NSString*) inTag];
 		}
 
-		FMResultSet* rs = [db executeQuery:query, inTagClass, inTag];
+		FMResultSet* rs = [db executeQuery:query withArgumentsInArray:args];
 
 		retval = arrayForStringColumn0(rs);
 
@@ -150,7 +156,10 @@ UTTypeConformsTo(
 
 	__block Boolean retval;
 	[dq inDatabase:^(FMDatabase* db) {
-		FMResultSet* rs = [db executeQuery:@"select UC.conforms_to from uti inner join uti_conforms UC on UC.uti=uti.id where type_identifier=? and UC.conforms_to=?",
+		// Conformance is transitive (through the declared parents) and reflexive.
+		FMResultSet* rs = [db executeQuery:@"with recursive ancestors(name) as (select ? union select UC.conforms_to "
+			@"from ancestors inner join uti on uti.type_identifier=ancestors.name "
+			@"inner join uti_conforms UC on UC.uti=uti.id) select 1 from ancestors where name=? limit 1",
 			inUTI, inConformsToUTI];
 
 		retval = [rs next];
