@@ -6,7 +6,7 @@
 // kAudioOutputUnitProperty_IsRunning of an output unit is a read-only 0 before the unit
 // starts, 1 while it runs and 0 again after it stops.
 // Needs a PulseAudio sink: run it inside Darling. The program also passes on macOS 27.
-#include <AudioToolbox/AudioToolbox.h>
+#include <AudioUnit/AudioUnit.h>
 #include <CoreAudio/CoreAudio.h>
 #include <stdio.h>
 #include <stdlib.h>
