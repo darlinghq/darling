@@ -1,4 +1,4 @@
-// Guest test: Suggestions.framework loads from its install name. Activity Monitor links it without
+// Guest test: Suggestions.framework loads from its install name. Some applications link it without
 // binding any symbol, so loading is the whole contract. Exits non-zero on failure.
 #include <dlfcn.h>
 #include <stdio.h>

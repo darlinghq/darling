@@ -1,4 +1,4 @@
-// Guest test: the call sequence Activity Monitor was observed to send (alloc/init, -gpus, release)
+// Guest test: the call sequence clients were observed to send (alloc/init, -gpus, release)
 // gets an empty array, and a selector Darling does not implement still raises. Exits non-zero on failure.
 #import <SafeEjectGPU/SafeEjectGPU.h>
 #include <stdio.h>

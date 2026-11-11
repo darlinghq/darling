@@ -17,5 +17,5 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* Activity Monitor links this framework but binds no symbol from it, so it only has to load.
-   Calendar and Mail bind SGT* classes and keys; those are not implemented here. */
+/* Some applications link this framework without binding any symbol from it, so it only has to load.
+   Others bind SGT* classes and keys; those are not implemented here. */

@@ -25,7 +25,7 @@ NSString *const kACMetricsDatabaseDirectory = @"/Library/Application Support/App
 NSString *const kACMetricsDatabaseName = @"Metrics.db";
 
 // Darling runs no content caching service, so that database never exists. Both classes implement
-// only the selectors Activity Monitor was observed to send; anything else raises.
+// only the selectors observed being sent to them by client applications; anything else raises.
 @implementation AssetCacheMetricsReader
 @end
 

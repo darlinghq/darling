@@ -1,5 +1,5 @@
 // Guest test: AssetCacheServicesExtensions exports the metrics database location Apple documents,
-// its classes instantiate, and the manager call sequence Activity Monitor was observed to send
+// its classes instantiate, and the manager call sequence clients were observed to send
 // (initWithDelegate:delegateQueue: on the main queue, then isActivated) reports no active cache.
 // Exits non-zero on failure.
 #import <AssetCacheServicesExtensions/AssetCacheServicesExtensions.h>
