@@ -246,6 +246,15 @@ static void test_record_and_event(void)
 	AEDisposeDesc(&addr);
 	CHECK_ERR(AEGetAttributeDesc(&event, 'zzzz', typeWildCard, &addr), errAEDescNotFound);
 
+	// kAutoGenerateReturnID produces a non-zero ID that differs between events.
+	AppleEvent second;
+	CHECK_ERR(AECreateAppleEvent('test', 'evnt', &target, kAutoGenerateReturnID, kAnyTransactionID, &second), noErr);
+	SInt16 firstID = 0, secondID = 0;
+	CHECK_ERR(AEGetAttributePtr(&event, keyReturnIDAttr, typeSInt16, &type, &firstID, sizeof(firstID), &size), noErr);
+	CHECK_ERR(AEGetAttributePtr(&second, keyReturnIDAttr, typeSInt16, &type, &secondID, sizeof(secondID), &size), noErr);
+	CHECK(firstID != 0 && secondID != 0 && firstID != secondID);
+	AEDisposeDesc(&second);
+
 	AEDisposeDesc(&event);
 	AEDisposeDesc(&target);
 }
