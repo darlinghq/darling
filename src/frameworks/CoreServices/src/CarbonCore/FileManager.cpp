@@ -611,6 +611,14 @@ extern "C" OSStatus FSCopyObjectSync(const FSRef *source, const FSRef *destinati
 	if (lstat(targetPath.c_str(), &targetStat) == 0)
 		return dupFNErr;
 
+	// A directory cannot be copied into itself or one of its descendants:
+	// the walk would keep finding the copy it is creating.
+	if (targetPath.compare(0, srcPath.size(), srcPath) == 0 && targetPath.size() > srcPath.size()
+			&& targetPath[srcPath.size()] == '/')
+	{
+		return paramErr;
+	}
+
 	if (!copyRecursive(srcPath, targetPath))
 		return ioErr;
 
