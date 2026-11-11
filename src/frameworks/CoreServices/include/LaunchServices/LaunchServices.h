@@ -6,6 +6,7 @@
 #include <LaunchServices/LSOpen.h>
 #include <LaunchServices/LSQuarantine.h>
 #include <LaunchServices/LSSharedFile.h>
+#include <SharedFileList/LSSharedFileList.h>
 #include <LaunchServices/UTCoreTypes.h>
 #include <LaunchServices/UTType.h>
 

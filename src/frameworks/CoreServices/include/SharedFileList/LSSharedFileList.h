@@ -23,6 +23,8 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/MacTypes.h>
 #include <CarbonCore/MacErrors.h>
+#include <CoreServices/FileManager.h>
+#include <LaunchServices/IconsCore.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,18 +40,6 @@ extern "C" {
 
 typedef struct CF_BRIDGED_MUTABLE_TYPE(id) OpaqueLSSharedFileListRef *LSSharedFileListRef;
 typedef struct CF_BRIDGED_MUTABLE_TYPE(id) OpaqueLSSharedFileListItemRef *LSSharedFileListItemRef;
-
-#ifndef __FSREF__
-#define __FSREF__
-typedef struct FSRef {
-	uint8_t hidden[80];
-} FSRef;
-#endif
-
-#ifndef __ICONREF__
-#define __ICONREF__
-typedef struct OpaqueIconRef* IconRef;
-#endif
 
 extern LSSharedFileListItemRef kLSSharedFileListItemLast;
 extern LSSharedFileListItemRef kLSSharedFileListItemBeforeFirst;
@@ -77,6 +67,10 @@ enum {
     kLSSharedFileListDoNotMountVolumes = 1 << 1
 };
 
+/*
+ * Lists and their items are Core Foundation objects that live in memory only: nothing is
+ * stored on disk, so items inserted by one process (or by a later run) are not seen by others.
+ */
 CFTypeID LSSharedFileListGetTypeID(void);
 CFTypeID LSSharedFileListItemGetTypeID(void);
 
