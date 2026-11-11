@@ -36,6 +36,7 @@ const CFStringRef kCVImageBufferCGColorSpaceKey = CFSTR("CGColorSpace");
 const CFStringRef kCVImageBufferColorPrimaries_ITU_R_2020 = CFSTR("ITU_R_2020");
 const CFStringRef kCVImageBufferColorPrimaries_P3_D65 = CFSTR("P3_D65");
 const CFStringRef kCVImageBufferColorPrimaries_DCI_P3 = CFSTR("DCI_P3");
+const CFStringRef kCVImageBufferColorPrimaries_P22 = CFSTR("P22");
 const CFStringRef kCVImageBufferYCbCrMatrix_ITU_R_2020 = CFSTR("ITU_R_2020");
 
 const CFStringRef kCVImageBufferTransferFunction_ITU_R_2020 = CFSTR("ITU_R_2020");
@@ -64,8 +65,8 @@ const CFStringRef kCVPixelBufferIOSurfaceOpenGLTextureCompatibilityKey = CFSTR("
 const CFStringRef kCVPixelBufferPoolMaximumBufferAgeKey = CFSTR("MaximumBufferAge");
 const CFStringRef kCVPixelBufferPoolMinimumBufferCountKey = CFSTR("MinimumBufferCount");
 
-const CFStringRef kCVImageBufferCleanApertureKey = CFSTR("CleanAperture");
-const CFStringRef kCVImageBufferCleanApertureWidthKey = CFSTR("CleanApertureWidth");
-const CFStringRef kCVImageBufferCleanApertureHeightKey = CFSTR("CleanApertureHeight");
-const CFStringRef kCVImageBufferCleanApertureHorizontalOffsetKey = CFSTR("CleanApertureHorizontalOffset");
-const CFStringRef kCVImageBufferCleanApertureVerticalOffsetKey = CFSTR("CleanApertureVerticalOffset");
+const CFStringRef kCVImageBufferCleanApertureKey = CFSTR("CVCleanAperture");
+const CFStringRef kCVImageBufferCleanApertureWidthKey = CFSTR("Width");
+const CFStringRef kCVImageBufferCleanApertureHeightKey = CFSTR("Height");
+const CFStringRef kCVImageBufferCleanApertureHorizontalOffsetKey = CFSTR("HorizontalOffset");
+const CFStringRef kCVImageBufferCleanApertureVerticalOffsetKey = CFSTR("VerticalOffset");

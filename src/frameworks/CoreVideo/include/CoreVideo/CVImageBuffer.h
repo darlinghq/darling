@@ -38,6 +38,7 @@ extern const CFStringRef kCVImageBufferChromaLocation_TopLeft;
 extern const CFStringRef kCVImageBufferColorPrimaries_ITU_R_2020;
 extern const CFStringRef kCVImageBufferColorPrimaries_P3_D65;
 extern const CFStringRef kCVImageBufferColorPrimaries_DCI_P3;
+extern const CFStringRef kCVImageBufferColorPrimaries_P22;
 extern const CFStringRef kCVImageBufferYCbCrMatrix_ITU_R_2020;
 
 extern const CFStringRef kCVImageBufferTransferFunction_ITU_R_2020;

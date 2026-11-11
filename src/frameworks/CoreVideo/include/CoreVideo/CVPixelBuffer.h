@@ -123,26 +123,6 @@ CV_EXPORT void* CV_NULLABLE CVPixelBufferGetIOSurface(CVPixelBufferRef pixelBuff
 CV_EXPORT CVReturn CVPixelBufferLockBaseAddress(CVPixelBufferRef pixelBuffer, CVPixelBufferLockFlags lockFlags);
 CV_EXPORT CVReturn CVPixelBufferUnlockBaseAddress(CVPixelBufferRef pixelBuffer, CVPixelBufferLockFlags unlockFlags);
 
-CV_EXPORT CVReturn CVMetalTextureCacheCreate(
-	CFAllocatorRef allocator,
-	CFDictionaryRef cacheAttributes,
-	/* id<MTLDevice> */ void *metalDevice,
-	CFDictionaryRef textureAttributes,
-	/* CVMetalTextureCacheRef* */ void *cacheOut);
-
-CV_EXPORT CVReturn CVMetalTextureCacheCreateTextureFromImage(
-	CFAllocatorRef allocator,
-	/* CVMetalTextureCacheRef */ void *textureCache,
-	CVImageBufferRef sourceImage,
-	CFDictionaryRef textureAttributes,
-	/* MTLPixelFormat */ int pixelFormat,
-	size_t width,
-	size_t height,
-	size_t planeIndex,
-	/* CVMetalTextureRef* */ void *textureOut);
-
-CV_EXPORT /* id<MTLTexture> */ void* CVMetalTextureGetTexture(/* CVMetalTextureRef */ void *image);
-
 __END_DECLS
 
 #include <CoreVideo/CVPixelBufferIOSurface.h>
