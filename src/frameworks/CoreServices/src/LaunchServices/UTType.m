@@ -31,10 +31,83 @@ extern NSString* escape(NSString* str);
 static const NSUInteger kMaxVisitedTypes = 1024;
 
 // Dynamic identifiers are generated for tags that no declared type carries. They are "dyn."
-// followed by the hex UTF-8 of "tagClass<US>tag<US>parent", so a dynamic type can be described
-// from its identifier alone and needs no database row. The encoding is Darling's own.
+// followed by a base-32 rendering of a bit string, so a dynamic type can be described from its
+// identifier alone and needs no database row. The bit string is, in order: seven zero bits; when
+// the identifier conforms to a type, a marker, that type's identifier and a terminator; a marker
+// and a code for the tag class; and the tag. A tag, like the type conformed to, is a header
+// followed by 7-bit characters separated by zero bits. The string is padded with zero bits to a
+// multiple of five. Extension and MIME type tags are lowercased, as is the type conformed to; OS
+// type tags keep their case. This is the form LaunchServices produces on macOS for these tag
+// classes, so identifiers created here and there agree.
+//
+// A few well-known types are written as a short token instead of their identifier; the table
+// below lists the ones that were observed. Anything that cannot be written in this form (another
+// tag class, a tag with non-ASCII characters) gets a form of Darling's own: "dyn." followed by
+// the hex UTF-8 of "tagClass<US>tag<US>parent". The two forms cannot be confused: the first
+// character of the base-32 form is always "a", which hex of ASCII text never starts with.
 static NSString* const kDynamicPrefix = @"dyn.";
 static NSString* const kDynamicSeparator = @"\x1f";
+static NSString* const kDynamicAlphabet = @"abcdefghkmnpqrstuvwxyz0123456789";
+static NSString* const kDynamicLead = @"0000000";
+static NSString* const kDynamicHeader = @"1111010";
+static NSString* const kDynamicConformsMarker = @"1111110011000000";
+static NSString* const kDynamicConformsEnd = @"11101000";
+static NSString* const kDynamicClassMarker = @"1100";
+
+static const struct { const char* identifier; const char* bits; } kDynamicTokens[] = {
+	{ "com.apple.device-model-code", "111101001100010011010000" },
+	{ "com.apple.nspboard-type", "1111010011010000" },
+	{ "com.apple.ostype", "1111010011001000" },
+	{ "com.apple.package", "111101001100010011000000" },
+	{ "com.apple.traditional-mac-plain-text", "1111010100000100" },
+	{ "public.audio", "1111010100010000" },
+	{ "public.bluetooth-vendor-product-id", "111101001100010011010100" },
+	{ "public.content", "111101001100010011001100" },
+	{ "public.data", "1111010011011000" },
+	{ "public.directory", "1111010100010100" },
+	{ "public.filename-extension", "1111010011000100" },
+	{ "public.folder", "1111010100011000" },
+	{ "public.image", "1111010100001000" },
+	{ "public.mime-type", "1111010011001100" },
+	{ "public.plain-text", "1111010011100000" },
+	{ "public.text", "1111010011011100" },
+	{ "public.url", "111101001100010011000100" },
+	{ "public.utf16-external-plain-text", "111101001100010011001000" },
+	{ "public.utf16-plain-text", "1111010011100100" },
+	{ "public.video", "1111010100001100" }
+};
+
+static NSString* dynamicClassCode(NSString* tagClass, BOOL* lowercase)
+{
+	// Codes and case handling of the tag classes observed on macOS.
+	if ([tagClass isEqualToString: (NSString*) kUTTagClassFilenameExtension])
+	{
+		*lowercase = YES;
+		return @"0100";
+	}
+	if ([tagClass isEqualToString: (NSString*) kUTTagClassMIMEType])
+	{
+		*lowercase = YES;
+		return @"1100";
+	}
+	if ([tagClass isEqualToString: (NSString*) kUTTagClassOSType])
+	{
+		*lowercase = NO;
+		return @"1000";
+	}
+	return nil;
+}
+
+static NSString* dynamicClassForCode(NSString* code)
+{
+	if ([code isEqualToString: @"0100"])
+		return (NSString*) kUTTagClassFilenameExtension;
+	if ([code isEqualToString: @"1100"])
+		return (NSString*) kUTTagClassMIMEType;
+	if ([code isEqualToString: @"1000"])
+		return (NSString*) kUTTagClassOSType;
+	return nil;
+}
 
 static BOOL isDynamicIdentifier(NSString* uti)
 {
@@ -42,7 +115,53 @@ static BOOL isDynamicIdentifier(NSString* uti)
 		[uti compare: kDynamicPrefix options: NSCaseInsensitiveSearch range: NSMakeRange(0, [kDynamicPrefix length])] == NSOrderedSame;
 }
 
-static NSString* dynamicIdentifier(NSString* tagClass, NSString* tag, NSString* parent)
+// Appends text as 7-bit characters, each followed by a zero bit. Returns NO for anything but ASCII.
+static BOOL appendDynamicCharacters(NSMutableString* bits, NSString* text)
+{
+	for (NSUInteger i = 0; i < [text length]; i++)
+	{
+		unichar c = [text characterAtIndex: i];
+		if (c == 0 || c > 127)
+			return NO;
+		for (int bit = 6; bit >= 0; bit--)
+			[bits appendString: ((c >> bit) & 1) ? @"1" : @"0"];
+		[bits appendString: @"0"];
+	}
+	return YES;
+}
+
+static NSString* dynamicBase32(NSString* bits)
+{
+	NSMutableString* text = [NSMutableString stringWithString: kDynamicPrefix];
+	NSMutableString* padded = [NSMutableString stringWithString: bits];
+
+	while ([padded length] % 5 != 0)
+		[padded appendString: @"0"];
+	for (NSUInteger i = 0; i < [padded length]; i += 5)
+	{
+		NSUInteger value = (NSUInteger) strtoul([[padded substringWithRange: NSMakeRange(i, 5)] UTF8String], NULL, 2);
+		[text appendString: [kDynamicAlphabet substringWithRange: NSMakeRange(value, 1)]];
+	}
+	return text;
+}
+
+// The bits of the base-32 body of a dynamic identifier, or nil when it is not in that form.
+static NSString* dynamicBitsFromBase32(NSString* body)
+{
+	NSMutableString* bits = [NSMutableString string];
+
+	for (NSUInteger i = 0; i < [body length]; i++)
+	{
+		NSRange r = [kDynamicAlphabet rangeOfString: [body substringWithRange: NSMakeRange(i, 1)]];
+		if (r.location == NSNotFound)
+			return nil;
+		for (int bit = 4; bit >= 0; bit--)
+			[bits appendString: ((r.location >> bit) & 1) ? @"1" : @"0"];
+	}
+	return bits;
+}
+
+static NSString* dynamicIdentifierHex(NSString* tagClass, NSString* tag, NSString* parent)
 {
 	NSString* payload = [@[tagClass, tag, parent ?: @""] componentsJoinedByString: kDynamicSeparator];
 	NSData* data = [payload dataUsingEncoding: NSUTF8StringEncoding];
@@ -54,13 +173,152 @@ static NSString* dynamicIdentifier(NSString* tagClass, NSString* tag, NSString* 
 	return hex;
 }
 
+// The bits that stand for the identifier of a type that a dynamic type conforms to.
+static NSString* dynamicParentRegion(NSString* parent)
+{
+	NSString* lowered = [parent lowercaseString];
+
+	for (size_t i = 0; i < sizeof(kDynamicTokens) / sizeof(kDynamicTokens[0]); i++)
+	{
+		if ([lowered isEqualToString: [NSString stringWithUTF8String: kDynamicTokens[i].identifier]])
+			return [NSString stringWithUTF8String: kDynamicTokens[i].bits];
+	}
+
+	NSMutableString* region = [NSMutableString stringWithString: kDynamicHeader];
+	if (!appendDynamicCharacters(region, lowered))
+		return nil;
+	[region appendString: @"0"];
+	return region;
+}
+
+static NSString* dynamicIdentifier(NSString* tagClass, NSString* tag, NSString* parent)
+{
+	BOOL lowercase = NO;
+	NSString* classCode = dynamicClassCode(tagClass, &lowercase);
+	NSMutableString* bits = [NSMutableString stringWithString: kDynamicLead];
+
+	if (classCode != nil && parent != nil)
+	{
+		NSString* region = dynamicParentRegion(parent);
+		if (region == nil)
+			classCode = nil;
+		else
+			[bits appendFormat: @"%@%@%@", kDynamicConformsMarker, region, kDynamicConformsEnd];
+	}
+	if (classCode != nil)
+	{
+		[bits appendFormat: @"%@%@%@", kDynamicClassMarker, classCode, kDynamicHeader];
+
+		NSMutableString* tagBits = [NSMutableString string];
+		if (appendDynamicCharacters(tagBits, lowercase ? [tag lowercaseString] : tag) && [tagBits length] > 0)
+		{
+			// No separator follows the last character.
+			[bits appendString: [tagBits substringToIndex: [tagBits length] - 1]];
+			return dynamicBase32(bits);
+		}
+	}
+	return dynamicIdentifierHex(tagClass, tag, parent);
+}
+
 // Returns the tag class, tag and parent of a dynamic identifier, or NO if it is not one of ours.
 static BOOL parseDynamicIdentifier(NSString* uti, NSString** tagClass, NSString** tag, NSString** parent)
 {
 	if (!isDynamicIdentifier(uti))
 		return NO;
 
-	NSString* hex = [uti substringFromIndex: [kDynamicPrefix length]];
+	NSString* body = [uti substringFromIndex: [kDynamicPrefix length]];
+	if ([body length] == 0)
+		return NO;
+
+	if ([body hasPrefix: @"a"] || [body hasPrefix: @"A"])
+	{
+		NSString* bits = dynamicBitsFromBase32([body lowercaseString]);
+		NSUInteger pos = [kDynamicLead length];
+		NSString* parentIdentifier = nil;
+
+		if (bits == nil || ![bits hasPrefix: kDynamicLead])
+			return NO;
+
+		if ([[bits substringFromIndex: pos] hasPrefix: kDynamicConformsMarker])
+		{
+			pos += [kDynamicConformsMarker length];
+
+			NSString* rest = [bits substringFromIndex: pos];
+			for (size_t i = 0; i < sizeof(kDynamicTokens) / sizeof(kDynamicTokens[0]) && parentIdentifier == nil; i++)
+			{
+				NSString* token = [NSString stringWithFormat: @"%s%@", kDynamicTokens[i].bits, kDynamicConformsEnd];
+				if ([rest hasPrefix: token])
+				{
+					parentIdentifier = [NSString stringWithUTF8String: kDynamicTokens[i].identifier];
+					pos += [token length];
+				}
+			}
+			if (parentIdentifier == nil)
+			{
+				if (![rest hasPrefix: kDynamicHeader])
+					return NO;
+				pos += [kDynamicHeader length];
+
+				NSMutableString* characters = [NSMutableString string];
+				NSString* end = [NSString stringWithFormat: @"0%@%@", kDynamicConformsEnd, kDynamicClassMarker];
+				while (YES)
+				{
+					if ([bits length] - pos < 8)
+						return NO;
+					unichar c = (unichar) strtoul([[bits substringWithRange: NSMakeRange(pos, 7)] UTF8String], NULL, 2);
+					if (c == 0)
+						return NO;
+					[characters appendFormat: @"%C", c];
+					pos += 7;
+					if ([bits characterAtIndex: pos] != '0')
+						return NO;
+					pos++;
+					if ([bits length] - pos >= [end length] &&
+						[[bits substringFromIndex: pos] hasPrefix: end])
+					{
+						pos += [kDynamicConformsEnd length] + 1;
+						break;
+					}
+				}
+				parentIdentifier = characters;
+			}
+		}
+
+		if ([bits length] - pos < [kDynamicClassMarker length] + 4 + [kDynamicHeader length] + 7)
+			return NO;
+		if (![[bits substringWithRange: NSMakeRange(pos, [kDynamicClassMarker length])] isEqualToString: kDynamicClassMarker])
+			return NO;
+		pos += [kDynamicClassMarker length];
+
+		NSString* classIdentifier = dynamicClassForCode([bits substringWithRange: NSMakeRange(pos, 4)]);
+		pos += 4;
+		if (classIdentifier == nil || ![[bits substringFromIndex: pos] hasPrefix: kDynamicHeader])
+			return NO;
+		pos += [kDynamicHeader length];
+
+		NSMutableString* characters = [NSMutableString string];
+		while ([bits length] - pos >= 7)
+		{
+			unichar c = (unichar) strtoul([[bits substringWithRange: NSMakeRange(pos, 7)] UTF8String], NULL, 2);
+			if (c == 0)
+				return NO;
+			[characters appendFormat: @"%C", c];
+			pos += 7;
+			// A separator and another character follow, or only padding.
+			if ([bits length] - pos < 8 || [bits characterAtIndex: pos] != '0')
+				break;
+			pos++;
+		}
+		if ([characters length] == 0 || [bits length] - pos > 4)
+			return NO;
+
+		*tagClass = classIdentifier;
+		*tag = characters;
+		*parent = parentIdentifier;
+		return YES;
+	}
+
+	NSString* hex = body;
 	if ([hex length] % 2 != 0)
 		return NO;
 

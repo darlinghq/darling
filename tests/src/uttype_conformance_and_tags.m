@@ -153,6 +153,54 @@ int main(void)
 		CHECK(dynText != nil && sendBool(dynText, @selector(conformsToType:), text));
 		CHECK(!sendBool(dyn, @selector(conformsToType:), text));
 
+		// The form of dynamic identifiers follows macOS: UTType's carries conformance to public.data,
+		// LaunchServices' carries only the conformance that was asked for. Extension and MIME tags are
+		// case-insensitive; OS type tags are not.
+		id dynData = typeWithExtension(@"zzqq");
+		CHECK([[dynData valueForKey: @"identifier"] isEqual: @"dyn.ah62d4rv4ge81y8xvse"]);
+		CHECK(sendBool(dynData, @selector(conformsToType:), data));
+		CHECK(sendBool(dynData, @selector(conformsToType:), item));
+		CHECK([[typeWithExtension(@"ZZQQ") valueForKey: @"identifier"] isEqual: @"dyn.ah62d4rv4ge81y8xvse"]);
+		CHECK([[typeWithMIME(@"text/x-zzqq") valueForKey: @"identifier"] isEqual: @"dyn.ah62d4rv4gq81k3p2su11upp4tm21c"]);
+		CHECK([[typeWithIdentifier(@"dyn.ah62d4rv4ge81y8xvse") valueForKey: @"dynamic"] boolValue]);
+		CHECK([[[typeWithIdentifier(@"dyn.ah62d4rv4ge81y8xvse") valueForKey: @"tags"] objectForKey: @"public.filename-extension"] containsObject: @"zzqq"]);
+		struct { CFStringRef tagClass, tag, conforming; const char *expected; } forms[] = {
+			{ kUTTagClassFilenameExtension, CFSTR("zzqq"), NULL, "dyn.age81y8xvse" },
+			{ kUTTagClassFilenameExtension, CFSTR("ZzQq"), NULL, "dyn.age81y8xvse" },
+			{ kUTTagClassFilenameExtension, CFSTR("zzqq"), CFSTR("public.data"), "dyn.ah62d4rv4ge81y8xvse" },
+			{ kUTTagClassFilenameExtension, CFSTR("zzqq"), CFSTR("public.image"), "dyn.ah62d4uv4ge81y8xvse" },
+			{ kUTTagClassFilenameExtension, CFSTR("zzqq"), CFSTR("public.content"), "dyn.ah62d4qmxhk2x48x4sf2u" },
+			{ kUTTagClassFilenameExtension, CFSTR("zzqq"), CFSTR("public.png"), "dyn.ah62d46dzqm0gw23ssb1gssvvhz7hy6pv" },
+			{ kUTTagClassFilenameExtension, CFSTR("zzqq"), CFSTR("com.Example.Undeclared"), "dyn.ah62d425try1gn8dbrz2g23mssz1gk3pdrvu1e3pehk2x48x4sf2u" },
+			{ kUTTagClassFilenameExtension, CFSTR("a"), NULL, "dyn.age80c" },
+			{ kUTTagClassFilenameExtension, CFSTR("zzzzzz"), NULL, "dyn.age81y8x4tm7hy" },
+			{ kUTTagClassMIMEType, CFSTR("a/b"), NULL, "dyn.agq80cp5c" },
+			{ kUTTagClassMIMEType, CFSTR("Text/X-ZZQQ"), NULL, "dyn.agq81k3p2su11upp4tm21c" },
+			{ kUTTagClassOSType, CFSTR("zzqq"), NULL, "dyn.agk81y8xvse" },
+			{ kUTTagClassOSType, CFSTR("ZZQQ"), NULL, "dyn.agk8zy0wvne" },
+		};
+		for (size_t i = 0; i < sizeof(forms) / sizeof(forms[0]); i++) {
+			CFStringRef made = UTTypeCreatePreferredIdentifierForTag(forms[i].tagClass, forms[i].tag, forms[i].conforming);
+			BOOL same = made != NULL && [(NSString *) made isEqual: [NSString stringWithUTF8String: forms[i].expected]];
+			if (!same)
+				printf("form %zu: got %s, expected %s\n", i, made ? [(NSString *) made UTF8String] : "(null)", forms[i].expected);
+			CHECK(same);
+			if (made)
+				CFRelease(made);
+		}
+		// What a dynamic identifier says about itself, from LaunchServices.
+		CFStringRef dynExt = UTTypeCopyPreferredTagWithClass(CFSTR("dyn.age81y8xvse"), kUTTagClassFilenameExtension);
+		CHECK(dynExt != NULL && [(NSString *) dynExt isEqual: @"zzqq"]);
+		if (dynExt)
+			CFRelease(dynExt);
+		CHECK(UTTypeIsDynamic(CFSTR("dyn.age81y8xvse")));
+		CHECK(!UTTypeConformsTo(CFSTR("dyn.age81y8xvse"), CFSTR("public.data")));
+		CHECK(UTTypeConformsTo(CFSTR("dyn.ah62d4rv4ge81y8xvse"), CFSTR("public.data")));
+		CHECK(UTTypeConformsTo(CFSTR("dyn.ah62d4rv4ge81y8xvse"), CFSTR("public.item")));
+		CHECK(UTTypeConformsTo(CFSTR("dyn.ah62d4qmxhk2x48x4sf2u"), CFSTR("public.content")));
+		CHECK(UTTypeConformsTo(CFSTR("dyn.ah62d425try1gn8dbrz2g23mssz1gk3pdrvu1e3pehk2x48x4sf2u"), CFSTR("com.example.undeclared")));
+		CHECK(UTTypeCopyDeclaration(CFSTR("dyn.age81y8xvse")) == NULL);
+
 		// quirk_exported_undeclared_type: a runtime-declared type that no bundle declares reports itself as
 		// declared, and conforms to nothing but itself even when a supertype is requested.
 		id undeclared = sendId2(NSClassFromString(@"UTType"), @selector(exportedTypeWithIdentifier:conformingToType:), @"org.darlinghq.test.surely-undeclared", plainText);

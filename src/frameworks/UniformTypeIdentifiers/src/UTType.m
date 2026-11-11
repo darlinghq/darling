@@ -132,6 +132,13 @@ static UTType *UTTypeLookup(NSString *identifier, BOOL allowUndeclared)
 
 	CFArrayRef identifiers = UTTypeCreateAllIdentifiersForTag((CFStringRef) tagClass, (CFStringRef) tag,
 	                                                          supertype ? (CFStringRef) supertype->_identifier : NULL);
+	// Without a supertype, a tag that no declared type carries gives a dynamic type that conforms
+	// to public.data; LaunchServices' own dynamic identifiers conform to nothing unless asked.
+	if (supertype == nil && identifiers != NULL && CFArrayGetCount(identifiers) == 1
+	    && UTTypeIsDynamic((CFStringRef) CFArrayGetValueAtIndex(identifiers, 0))) {
+		CFRelease(identifiers);
+		identifiers = UTTypeCreateAllIdentifiersForTag((CFStringRef) tagClass, (CFStringRef) tag, CFSTR("public.data"));
+	}
 	NSMutableArray *result = [NSMutableArray array];
 	for (NSString *identifier in UTCopyArray(identifiers)) {
 		UTType *type = UTTypeLookup(identifier, YES);
