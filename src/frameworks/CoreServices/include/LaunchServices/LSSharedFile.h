@@ -2,6 +2,10 @@
 #define LSSHAREDFILE_H
 #include <CoreFoundation/CFString.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern const CFStringRef kLSSharedFileListFavoriteItems;
 extern const CFStringRef kLSSharedFileListFavoriteVolumes;
 extern const CFStringRef kLSSharedFileListGlobalLoginItems;
@@ -16,5 +20,9 @@ extern const CFStringRef kLSSharedFileListSessionLoginItems;
 extern const CFStringRef kLSSharedFileListVolumesComputerVisible;
 extern const CFStringRef kLSSharedFileListVolumesIDiskVisible;
 extern const CFStringRef kLSSharedFileListVolumesNetworkVisible;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
