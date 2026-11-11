@@ -35,7 +35,9 @@
 
 @end
 
-@implementation RPTResizeTestParameters
+@implementation RPTResizeTestParameters {
+	void (^_completionHandler)(void);
+}
 
 @synthesize testName = _testName;
 
@@ -59,7 +61,9 @@
 
 @end
 
-@implementation RPTScrollViewTestParameters
+@implementation RPTScrollViewTestParameters {
+	void (^_completionHandler)(void);
+}
 
 @synthesize testName = _testName;
 
@@ -97,7 +101,9 @@
  * and a distance, because that is what distinguishes it from the others.
  */
 
-@implementation RPTInteractionTestParameters
+@implementation RPTInteractionTestParameters {
+	void (^_completionHandler)(void);
+}
 @synthesize testName = _testName;
 
 - (instancetype)initWithTestName:(NSString *)testName
