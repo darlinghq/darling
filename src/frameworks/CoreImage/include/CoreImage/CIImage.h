@@ -18,7 +18,28 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <CoreGraphics/CoreGraphics.h>
 
-@interface CIImage : NSObject
+typedef int CIFormat;
+
+extern const CIFormat kCIFormatARGB8;
+extern const CIFormat kCIFormatRGBA8;
+extern const CIFormat kCIFormatBGRA8;
+extern const CIFormat kCIFormatABGR8;
+extern const CIFormat kCIFormatRGBAh;
+extern const CIFormat kCIFormatRGBA16;
+extern const CIFormat kCIFormatRGBAf;
+
+@interface CIImage : NSObject {
+    /* Named as <QuartzCore/CIImage.h> names it, so a subclass built against either
+       header finds the ivar. See the commit body. */
+    CGImageRef _cgImage;
+}
+
++ (CIImage *) emptyImage;
+
+- initWithCGImage: (CGImageRef) cgImage;
+
+- (CGRect) extent;
 
 @end
