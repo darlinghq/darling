@@ -1,3 +1,4 @@
+// CFLAGS: -framework AppKit -framework ImageKit
 #import <ImageKit/ImageKit.h>
 #import <Foundation/NSKeyedArchiver.h>
 #include <stdio.h>
