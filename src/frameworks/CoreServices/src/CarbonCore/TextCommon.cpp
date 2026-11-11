@@ -20,55 +20,65 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CarbonCore/TextCommon.h>
 #include <CarbonCore/MacErrors.h>
 
+// TextEncoding layout (TextCommon.h): base in bits 0-15, variant in bits 16-25
+// (10 bits), format in bits 26-29 (4 bits).
+TextEncodingBase GetTextEncodingBase(TextEncoding encoding)
+{
+	return encoding & 0xffff;
+}
+
+TextEncodingVariant GetTextEncodingVariant(TextEncoding encoding)
+{
+	return (encoding >> 16) & 0x3ff;
+}
+
+TextEncodingFormat GetTextEncodingFormat(TextEncoding encoding)
+{
+	return (encoding >> 26) & 0xf;
+}
+
 TextEncoding CreateTextEncoding(TextEncodingBase encodingBase, TextEncodingVariant encodingVariant, TextEncodingFormat encodingFormat)
 {
 	TextEncoding rv = encodingBase & 0xffff;
-	rv |= (encodingVariant & 0xff) << 16;
-	rv |= (encodingFormat & 0xff) << 24;
+	rv |= (encodingVariant & 0x3ff) << 16;
+	rv |= (encodingFormat & 0xf) << 26;
 	return rv;
 }
 
 OSStatus UpgradeScriptInfoToTextEncoding(ScriptCode iTextScriptID, LangCode iTextLanguageID, RegionCode iTextRegionID, ConstStr255Param iTextFontname, TextEncoding *oTextEncoding)
 {
+	enum { smCurrentScript = -2, smSystemScript = -1 };
+
 	if (!oTextEncoding)
 		return paramErr;
 
 	switch (iTextScriptID)
 	{
-		case 0: // smRoman
-			*oTextEncoding = 0;
+		case 0: // smRoman, as MacRoman variant 2
+			*oTextEncoding = CreateTextEncoding(0, 2, 0);
 			break;
 		case 1: // smJapanese
-			*oTextEncoding = 1;
-			break;
 		case 2: // smTradChinese
-			*oTextEncoding = 2;
-			break;
 		case 3: // smKorean
-			*oTextEncoding = 3;
-			break;
 		case 4: // smArabic
-			*oTextEncoding = 4;
-			break;
 		case 5: // smHebrew
-			*oTextEncoding = 5;
+			*oTextEncoding = iTextScriptID;
 			break;
 		case 6: // smGreek
-			*oTextEncoding = 6;
+			*oTextEncoding = CreateTextEncoding(6, 2, 0);
 			break;
 		case 7: // smCyrillic
-			*oTextEncoding = 7;
+			*oTextEncoding = CreateTextEncoding(7, 3, 0);
 			break;
 		case 25: // smSimpChinese
 			*oTextEncoding = 25;
 			break;
-		case -1: // smCurrentScript
-		default:
-			*oTextEncoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF8Format);
+		case smCurrentScript:
+		case smSystemScript:
+			*oTextEncoding = CreateTextEncoding(0, 2, 0);
 			break;
+		default:
+			return paramErr;
 	}
 	return noErr;
 }
-
-
-

@@ -21,6 +21,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unicode/ucnv.h>
 #include <unicode/normalizer2.h>
 #include <CarbonCore/MacErrors.h>
+#include <ctype.h>
+#include <string.h>
 
 struct OpaqueTECObjectRef
 {
@@ -76,8 +78,7 @@ static UConverter* createConverter(TextEncodingBase base, TextEncodingFormat for
 					enc = "UTF-32LE";
 					break;
 				default:
-					enc = "UTF-8";
-					break;
+					return NULL;
 			}
 
 			return ucnv_open(enc, &error);
@@ -86,6 +87,8 @@ static UConverter* createConverter(TextEncodingBase base, TextEncodingFormat for
 			return ucnv_open("macintosh", &error);
 		case kTextEncodingISOLatin1:
 			return ucnv_open("ISO-8859-1", &error);
+		case kTextEncodingWindowsLatin1:
+			return ucnv_open("windows-1252", &error);
 		case kTextEncodingUS_ASCII:
 			return ucnv_open("US-ASCII", &error);
 		default:
@@ -95,17 +98,9 @@ static UConverter* createConverter(TextEncodingBase base, TextEncodingFormat for
 
 static void unpackEncoding(TextEncoding enc, TextEncodingBase* base, TextEncodingVariant* variant, TextEncodingFormat* format)
 {
-	*format = (enc >> 24) & 0xff;
-	*variant = (enc >> 16) & 0xff;
-	*base = enc & 0xffff;
-
-	// Support old Darling layout (format at >> 16, variant at >> 8)
-	if (*format == 0 && ((enc >> 16) & 0xff) != 0 && *base < 0x100)
-	{
-		*format = (enc >> 16) & 0xff;
-		*variant = (enc >> 8) & 0xff;
-		*base = enc & 0xff;
-	}
+	*base = GetTextEncodingBase(enc);
+	*variant = GetTextEncodingVariant(enc);
+	*format = GetTextEncodingFormat(enc);
 }
 
 OSStatus TECCreateConverter(TECObjectRef *newEncodingConverter, TextEncoding inputEncoding, TextEncoding outputEncoding)
@@ -268,103 +263,50 @@ OSStatus TECClearConverterContextInfo(TECObjectRef conv)
 
 OSStatus TECGetTextEncodingFromInternetName(TextEncoding *encoding, ConstStr255Param internetName)
 {
+	struct InternetName
+	{
+		const char* name;
+		TextEncoding encoding;
+	};
+
+	static const InternetName names[] = {
+		{ "utf-8", CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF8Format) },
+		{ "utf-16", CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF16Format) },
+		{ "utf-16be", CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF16BEFormat) },
+		{ "utf-16le", CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF16LEFormat) },
+		{ "utf-32", CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF32Format) },
+		{ "utf-32be", CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF32BEFormat) },
+		{ "utf-32le", CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF32LEFormat) },
+		{ "us-ascii", kTextEncodingUS_ASCII },
+		{ "ascii", kTextEncodingUS_ASCII },
+		// The ISO Latin 1 names map to the Windows Latin 1 base, as on macOS.
+		{ "iso-8859-1", kTextEncodingWindowsLatin1 },
+		{ "latin1", kTextEncodingWindowsLatin1 },
+		{ "macintosh", CreateTextEncoding(kTextEncodingMacRoman, 2, 0) },
+		{ "shift_jis", CreateTextEncoding(0xa01, 1, 0) },
+	};
+
 	if (!encoding || !internetName)
 		return paramErr;
 
-	char name[256] = {0};
-	size_t len = 0;
-
-	// Check if pascal string (internetName[0] is length, remaining are ASCII chars)
-	unsigned char pLen = internetName[0];
-	if (pLen > 0 && pLen < 128)
-	{
-		bool looksPascal = true;
-		for (size_t i = 1; i <= pLen; ++i)
-		{
-			if (internetName[i] == 0)
-			{
-				looksPascal = false;
-				break;
-			}
-		}
-		if (looksPascal)
-		{
-			len = pLen;
-			memcpy(name, &internetName[1], len);
-		}
-	}
-
-	if (len == 0)
-	{
-		// Fallback to C-string
-		len = strlen((const char*)internetName);
-		if (len >= sizeof(name))
-			len = sizeof(name) - 1;
-		memcpy(name, internetName, len);
-	}
+	// internetName is a Pascal string: a length byte followed by the characters
+	char name[256];
+	size_t len = internetName[0];
+	for (size_t i = 0; i < len; i++)
+		name[i] = (char) tolower((unsigned char) internetName[1 + i]);
 	name[len] = '\0';
 
-	// Case-insensitive check
-	for (size_t i = 0; i < len; ++i)
-		name[i] = (char)tolower((unsigned char)name[i]);
-
-	if (strcmp(name, "utf-8") == 0 || strcmp(name, "utf8") == 0)
+	for (const InternetName& entry : names)
 	{
-		*encoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF8Format);
-		return noErr;
-	}
-	if (strcmp(name, "utf-16") == 0 || strcmp(name, "utf16") == 0)
-	{
-		*encoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF16Format);
-		return noErr;
-	}
-	if (strcmp(name, "utf-16be") == 0)
-	{
-		*encoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF16BEFormat);
-		return noErr;
-	}
-	if (strcmp(name, "utf-16le") == 0)
-	{
-		*encoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF16LEFormat);
-		return noErr;
-	}
-	if (strcmp(name, "utf-32") == 0 || strcmp(name, "utf32") == 0)
-	{
-		*encoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF32Format);
-		return noErr;
-	}
-	if (strcmp(name, "utf-32be") == 0)
-	{
-		*encoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF32BEFormat);
-		return noErr;
-	}
-	if (strcmp(name, "utf-32le") == 0)
-	{
-		*encoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF32LEFormat);
-		return noErr;
-	}
-	if (strcmp(name, "utf-7") == 0)
-	{
-		*encoding = CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF7Format);
-		return noErr;
-	}
-	if (strcmp(name, "us-ascii") == 0 || strcmp(name, "ascii") == 0)
-	{
-		*encoding = CreateTextEncoding(kTextEncodingUS_ASCII, kTextEncodingDefaultVariant, kTextEncodingDefaultFormat);
-		return noErr;
-	}
-	if (strcmp(name, "iso-8859-1") == 0 || strcmp(name, "latin1") == 0 || strcmp(name, "iso_8859-1") == 0)
-	{
-		*encoding = CreateTextEncoding(kTextEncodingISOLatin1, kTextEncodingDefaultVariant, kTextEncodingDefaultFormat);
-		return noErr;
-	}
-	if (strcmp(name, "macintosh") == 0 || strcmp(name, "macroman") == 0 || strcmp(name, "mac-roman") == 0)
-	{
-		*encoding = CreateTextEncoding(kTextEncodingMacRoman, kTextEncodingDefaultVariant, kTextEncodingDefaultFormat);
-		return noErr;
+		if (strcmp(entry.name, name) == 0)
+		{
+			*encoding = entry.encoding;
+			return noErr;
+		}
 	}
 
-	return kTECNoConversionPathErr;
+	*encoding = 0xffff; // kTextEncodingUnknown
+	return kTextUnsupportedEncodingErr;
 }
 
 OSStatus TECDisposeConverter(TECObjectRef conv)
