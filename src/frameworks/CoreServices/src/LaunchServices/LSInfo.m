@@ -22,6 +22,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CarbonCore/MacErrors.h>
 #include "LSHostOpen.h"
 #include <stdio.h>
+#include <string.h>
+#include <limits.h>
+#include <sys/stat.h>
 #include <sqlite3.h>
 #import <Foundation/NSString.h>
 #import <fmdb/FMDatabaseQueue.h>
@@ -611,4 +614,81 @@ OSStatus LSCopyDisplayNameForURL(CFURLRef inURL, CFStringRef *outDisplayName)
 
 	*outDisplayName = (CFStringRef)[lastComp copy];
 	return noErr;
+}
+
+CFArrayRef LSCopyApplicationURLsForURL(CFURLRef inURL, LSRolesMask inRoleMask)
+{
+	// No handler database to consult yet; NULL means no applications were found.
+	return NULL;
+}
+
+OSStatus LSCanURLAcceptURL(CFURLRef inItemURL, CFURLRef inTargetURL, LSRolesMask inRoleMask, LSAcceptanceFlags inFlags, Boolean *outAcceptsItem)
+{
+	if (!inItemURL || !inTargetURL || !outAcceptsItem)
+		return paramErr;
+	*outAcceptsItem = false;
+	return noErr;
+}
+
+OSStatus LSCopyItemInfoForURL(CFURLRef inURL, LSRequestedInfo inWhichInfo, LSItemInfoRecord *outItemInfo)
+{
+	UInt8 path[PATH_MAX];
+	struct stat st;
+
+	if (!inURL || !outItemInfo)
+		return paramErr;
+	memset(outItemInfo, 0, sizeof(*outItemInfo));
+
+	if (!CFURLGetFileSystemRepresentation(inURL, true, path, sizeof(path)) || lstat((const char *) path, &st) != 0)
+		return fnfErr;
+
+	CFStringRef extension = CFURLCopyPathExtension(inURL);
+
+	if (inWhichInfo & (kLSRequestBasicFlagsOnly | kLSRequestAppTypeFlags | kLSRequestAllFlags))
+	{
+		if (S_ISLNK(st.st_mode))
+		{
+			outItemInfo->flags |= kLSItemInfoIsSymlink;
+			stat((const char *) path, &st);
+		}
+		if (S_ISDIR(st.st_mode))
+		{
+			outItemInfo->flags |= kLSItemInfoIsContainer;
+			if (extension && (CFEqual(extension, CFSTR("app")) || CFEqual(extension, CFSTR("bundle")) || CFEqual(extension, CFSTR("framework"))))
+				outItemInfo->flags |= kLSItemInfoIsPackage;
+			if (extension && CFEqual(extension, CFSTR("app")))
+				outItemInfo->flags |= kLSItemInfoIsApplication | kLSItemInfoIsNativeApp;
+		}
+		else
+		{
+			outItemInfo->flags |= kLSItemInfoIsPlainFile;
+		}
+		const char *slash = strrchr((const char *) path, '/');
+		if ((slash ? slash[1] : path[0]) == '.')
+			outItemInfo->flags |= kLSItemInfoIsInvisible;
+	}
+
+	if ((inWhichInfo & kLSRequestExtension) && extension)
+		outItemInfo->extension = CFRetain(extension);
+	if (extension)
+		CFRelease(extension);
+	return noErr;
+}
+
+// Private SPI.
+Boolean _LSASNExtractHighAndLowParts(CFTypeRef asn, UInt32 *outHigh, UInt32 *outLow)
+{
+	if (outHigh) *outHigh = 0;
+	if (outLow) *outLow = 0;
+	return false;
+}
+
+CFArrayRef _LSCopyApplicationArray(int sessionID)
+{
+	return NULL;
+}
+
+OSStatus _LSSetWeakBindingURLForType(int sessionID, int unknown, CFStringRef contentType, LSRolesMask roles, CFURLRef appURL)
+{
+	return kLSUnknownErr;
 }

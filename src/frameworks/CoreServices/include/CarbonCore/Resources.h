@@ -114,7 +114,7 @@ void SetResourceSize(Handle res, long size);
 
 ResFileRefNum FSOpenResFile(const FSRef* ref, SInt8 permission);
 void FSCreateResFile(const FSRef* parentDir, UniCharCount nameLength, const UniChar* name,
-	FSCatalogInfoBitmap whichInfo, const FSCatalogInfo* catalolgInfo, FSRef* newRef, FSSpecPtr* newSpec);
+	FSCatalogInfoBitmap whichInfo, const FSCatalogInfo* catalogInfo, FSRef* newRef, FSSpecPtr newSpec);
 OSErr FSCreateResourceFile(const FSRef* parentDir, UniCharCount nameLength, const UniChar* name,
 	FSCatalogInfoBitmap whichInfo, const FSCatalogInfo* catalolgInfo,
 	UniCharCount forkNameLength, const UniChar* forkName,

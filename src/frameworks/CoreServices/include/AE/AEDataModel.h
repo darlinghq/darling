@@ -104,4 +104,34 @@ typedef OSErr (*AEEventHandlerProcPtr)(
 );
 typedef AEEventHandlerProcPtr           AEEventHandlerUPP;
 
+// Object specifiers (AEObjects.h)
+enum : DescType {
+	typeObjectSpecifier = 'obj ',
+	formAbsolutePosition = 'indx',
+	formName = 'name',
+	formPropertyID = 'prop',
+	formUniqueID = 'ID  ',
+};
+
+enum : AEKeyword {
+	keyAEDesiredClass = 'want',
+	keyAEContainer = 'from',
+	keyAEKeyForm = 'form',
+	keyAEKeyData = 'seld',
+};
+
+// AESend (AEInteraction.h)
+typedef SInt16 AESendPriority;
+enum {
+	kAENormalPriority = 0x00000000,
+	kAEHighPriority = 0x00000001,
+};
+
+// EventRecord and RgnHandle belong to HIToolbox/QuickDraw, which CoreServices can't include.
+struct EventRecord;
+typedef Boolean (*AEIdleProcPtr)(struct EventRecord* theEvent, SInt32* sleepTime, void* mouseRgn);
+typedef Boolean (*AEFilterProcPtr)(struct EventRecord* theEvent, SInt32 returnID, AETransactionID transactionID, const AEAddressDesc* sender);
+typedef AEIdleProcPtr                   AEIdleUPP;
+typedef AEFilterProcPtr                 AEFilterUPP;
+
 #endif

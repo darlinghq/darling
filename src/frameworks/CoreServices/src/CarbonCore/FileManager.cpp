@@ -259,10 +259,10 @@ OSStatus FSGetCatalogInfo(const FSRef* ref, uint32_t infoBits, FSCatalogInfo* in
 		{
 			const uid_t uid = getuid();
 
-			infoOut->fsPermissionInfo.userID = st.st_uid;
-			infoOut->fsPermissionInfo.groupID = st.st_gid;
-			infoOut->fsPermissionInfo.mode = st.st_mode & 07777;
-			infoOut->fsPermissionInfo.userAccess = uaccess;
+			infoOut->permissions.userID = st.st_uid;
+			infoOut->permissions.groupID = st.st_gid;
+			infoOut->permissions.mode = st.st_mode & 07777;
+			infoOut->permissions.userAccess = uaccess;
 		}
 
 		if (infoBits & kFSCatInfoUserPrivs)
@@ -278,6 +278,29 @@ OSStatus FSGetCatalogInfo(const FSRef* ref, uint32_t infoBits, FSCatalogInfo* in
 			infoOut->attributeModDate = infoOut->contentModDate = Darling::time_tToUTC(st.st_mtime);
 		if (infoBits & kFSCatInfoAccessDate)
 			infoOut->accessDate = Darling::time_tToUTC(st.st_atime);
+	}
+
+	return noErr;
+}
+
+OSErr FSSetCatalogInfo(const FSRef* ref, FSCatalogInfoBitmap whichInfo, const FSCatalogInfo* catalogInfo)
+{
+	std::string path;
+
+	// QUIRK: a NULL catalogInfo with a non-empty whichInfo fails with errFSMissingCatInfo.
+	// Not documented. Evidence: black-box observation on macOS 27.0.1 (tier 2),
+	// vd-upstream/mac-probes/v122-rescreate-probe.c.
+	// Test: tests/src/file_manager_create_res_file.c
+	if (!catalogInfo && whichInfo != 0)
+		return errFSMissingCatInfo;
+	if (!FSRefMakePath(ref, path))
+		return fnfErr;
+
+	// Only the POSIX permissions are applied; other catalog fields have no Linux equivalent here.
+	if (catalogInfo && (whichInfo & kFSCatInfoPermissions))
+	{
+		if (::chmod(path.c_str(), catalogInfo->permissions.mode & 07777) != 0)
+			return makeOSStatus(errno);
 	}
 
 	return noErr;

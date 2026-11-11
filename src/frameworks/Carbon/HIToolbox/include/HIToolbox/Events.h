@@ -142,6 +142,9 @@ enum {
 
 typedef UInt16 EventModifiers;
 
+// Apple's Events.h lays this out with 2-byte packing (message at 2, modifiers at 18, size 20);
+// apps pass EventRecords built with that layout.
+#pragma pack(push, 2)
 typedef struct EventRecord {
   EventKind what;
   unsigned long message;
@@ -149,6 +152,30 @@ typedef struct EventRecord {
   Point where;
   EventModifiers modifiers;
 } EventRecord;
+#pragma pack(pop)
+
+#ifndef keyDown
+enum {
+  keyDown = 3,
+  autoKey = 5,
+};
+#endif
+
+#ifndef cmdKey
+enum {
+  cmdKey = 1 << 8,
+};
+#endif
+
+enum {
+  charCodeMask = 0x000000FF,
+};
+
+// Returns true if `event` is a key-down or auto-key event with the Command key held and
+// character `test` (e.g. '.' for Command-period).
+Boolean IsCmdChar(const EventRecord* event, short test);
+// Returns true if a Command-period or Escape is pending in the event queue.
+Boolean CheckEventQueueForUserCancel(void);
 
 #ifdef __cplusplus
 }
