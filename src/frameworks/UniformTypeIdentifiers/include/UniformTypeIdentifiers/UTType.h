@@ -32,7 +32,6 @@ extern NSString *const UTTagClassMIMEType;
 @private
 	// Declared here rather than in the implementation: the fragile 32-bit runtime needs the layout in the header.
 	NSString *_identifier;
-	UTType *_parent; // conformance a runtime-declared type was created with
 	int _kind;
 }
 

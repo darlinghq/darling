@@ -68,18 +68,17 @@ static NSArray *UTCopyArray(CFArrayRef array)
 }
 
 @interface UTType ()
-- (instancetype)_initWithIdentifier:(NSString *)identifier kind:(int)kind parent:(nullable UTType *)parent;
+- (instancetype)_initWithIdentifier:(NSString *)identifier kind:(int)kind;
 @end
 
 @implementation UTType
 
-- (instancetype)_initWithIdentifier:(NSString *)identifier kind:(int)kind parent:(UTType *)parent
+- (instancetype)_initWithIdentifier:(NSString *)identifier kind:(int)kind
 {
 	self = [super init];
 	if (self) {
 		_identifier = [identifier copy];
 		_kind = kind;
-		_parent = [parent retain];
 	}
 	return self;
 }
@@ -87,7 +86,6 @@ static NSArray *UTCopyArray(CFArrayRef array)
 - (void)dealloc
 {
 	[_identifier release];
-	[_parent release];
 	[super dealloc];
 }
 
@@ -96,14 +94,14 @@ static void UTTypeFrameworkInit(void)
 {
 	@autoreleasepool {
 #define UT_CONSTANT(constant, identifier) \
-		constant = [[UTType alloc] _initWithIdentifier: @identifier kind: UTTypeKindDeclared parent: nil];
+		constant = [[UTType alloc] _initWithIdentifier: @identifier kind: UTTypeKindDeclared];
 #include "UTTypeConstants.h"
 #undef UT_CONSTANT
 	}
 }
 
 // Returns the type for identifier: a declared type, a dynamic one, or (when allowUndeclared) an undeclared one.
-static UTType *UTTypeLookup(NSString *identifier, BOOL allowUndeclared, UTType *parent)
+static UTType *UTTypeLookup(NSString *identifier, BOOL allowUndeclared)
 {
 	if (!UTIdentifierIsValid(identifier))
 		return nil;
@@ -117,12 +115,12 @@ static UTType *UTTypeLookup(NSString *identifier, BOOL allowUndeclared, UTType *
 		kind = UTTypeKindUndeclared;
 	else
 		return nil;
-	return [[[UTType alloc] _initWithIdentifier: identifier kind: kind parent: kind == UTTypeKindUndeclared ? parent : nil] autorelease];
+	return [[[UTType alloc] _initWithIdentifier: identifier kind: kind] autorelease];
 }
 
 + (UTType *)typeWithIdentifier:(NSString *)identifier
 {
-	return UTTypeLookup(identifier, NO, nil);
+	return UTTypeLookup(identifier, NO);
 }
 
 + (NSArray<UTType *> *)typesWithTag:(NSString *)tag tagClass:(NSString *)tagClass conformingToType:(UTType *)supertype
@@ -136,7 +134,7 @@ static UTType *UTTypeLookup(NSString *identifier, BOOL allowUndeclared, UTType *
 	                                                          supertype ? (CFStringRef) supertype->_identifier : NULL);
 	NSMutableArray *result = [NSMutableArray array];
 	for (NSString *identifier in UTCopyArray(identifiers)) {
-		UTType *type = UTTypeLookup(identifier, YES, nil);
+		UTType *type = UTTypeLookup(identifier, YES);
 		if (type)
 			[result addObject: type];
 	}
@@ -169,25 +167,44 @@ static UTType *UTTypeLookup(NSString *identifier, BOOL allowUndeclared, UTType *
 	return [self typeWithTag: mimeType tagClass: UTTagClassMIMEType conformingToType: supertype];
 }
 
-// Without a declaration the type is undeclared, but it keeps the conformance the caller asked for.
+// The declaration of these types is looked up in the type database. When nothing declares the
+// identifier, the result is still a type that reports itself as declared, with no tags, no
+// description and no supertypes; the conformance a caller asks for is not applied to it.
+//
+// QUIRK: exportedTypeWithIdentifier: and importedTypeWithIdentifier: (with or without
+// conformingToType:) return a type with isDeclared == YES for an identifier that no bundle
+// declares, and that type conforms to nothing but itself, even when conformingToType: was given.
+// Not documented. Evidence: black-box observation on macOS 27.0.1 (arm64), tier 2, probe
+// vd-upstream/mac-probes/v157-exported-undeclared.m.
+// Test: tests/src/uttype_conformance_and_tags.m (quirk_exported_undeclared_type section).
+static UTType *UTRuntimeDeclaredType(NSString *identifier)
+{
+	UTType *type = UTTypeLookup(identifier, NO);
+	if (type)
+		return type;
+	if (!UTIdentifierIsValid(identifier))
+		return nil;
+	return [[[UTType alloc] _initWithIdentifier: identifier kind: UTTypeKindDeclared] autorelease];
+}
+
 + (UTType *)exportedTypeWithIdentifier:(NSString *)identifier
 {
-	return UTTypeLookup(identifier, YES, UTTypeData);
+	return UTRuntimeDeclaredType(identifier);
 }
 
 + (UTType *)exportedTypeWithIdentifier:(NSString *)identifier conformingToType:(UTType *)parentType
 {
-	return UTTypeLookup(identifier, YES, [parentType isKindOfClass: [UTType class]] ? parentType : nil);
+	return UTRuntimeDeclaredType(identifier);
 }
 
 + (UTType *)importedTypeWithIdentifier:(NSString *)identifier
 {
-	return UTTypeLookup(identifier, YES, UTTypeData);
+	return UTRuntimeDeclaredType(identifier);
 }
 
 + (UTType *)importedTypeWithIdentifier:(NSString *)identifier conformingToType:(UTType *)parentType
 {
-	return UTTypeLookup(identifier, YES, [parentType isKindOfClass: [UTType class]] ? parentType : nil);
+	return UTRuntimeDeclaredType(identifier);
 }
 
 - (NSString *)identifier
@@ -237,12 +254,12 @@ static UTType *UTTypeLookup(NSString *identifier, BOOL allowUndeclared, UTType *
 	if (description)
 		return [(NSString *) description autorelease];
 	for (NSString *parentIdentifier in UTCopyArray(UTTypeCopyParentIdentifiers((CFStringRef) _identifier))) {
-		UTType *parent = UTTypeLookup(parentIdentifier, NO, nil);
+		UTType *parent = UTTypeLookup(parentIdentifier, NO);
 		NSString *inherited = [parent localizedDescription];
 		if (inherited)
 			return inherited;
 	}
-	return [_parent localizedDescription];
+	return nil;
 }
 
 - (NSNumber *)version
@@ -274,9 +291,7 @@ static UTType *UTTypeLookup(NSString *identifier, BOOL allowUndeclared, UTType *
 {
 	if (![type isKindOfClass: [UTType class]])
 		return NO;
-	if (UTTypeConformsTo((CFStringRef) _identifier, (CFStringRef) type->_identifier))
-		return YES;
-	return _parent && [_parent conformsToType: type];
+	return UTTypeConformsTo((CFStringRef) _identifier, (CFStringRef) type->_identifier);
 }
 
 - (BOOL)isSubtypeOfType:(UTType *)type
@@ -301,12 +316,10 @@ static UTType *UTTypeLookup(NSString *identifier, BOOL allowUndeclared, UTType *
 
 		NSMutableArray *parents = [NSMutableArray array];
 		for (NSString *parentIdentifier in UTCopyArray(UTTypeCopyParentIdentifiers((CFStringRef) current->_identifier))) {
-			UTType *parent = UTTypeLookup(parentIdentifier, YES, nil);
+			UTType *parent = UTTypeLookup(parentIdentifier, YES);
 			if (parent)
 				[parents addObject: parent];
 		}
-		if (current->_parent)
-			[parents addObject: current->_parent];
 
 		for (UTType *parent in parents) {
 			if ([seen member: [parent->_identifier lowercaseString]])
@@ -354,7 +367,7 @@ static UTType *UTTypeLookup(NSString *identifier, BOOL allowUndeclared, UTType *
 	NSString *identifier = [coder allowsKeyedCoding]
 		? [coder decodeObjectOfClass: [NSString class] forKey: UTTypeCodingIdentifierKey]
 		: [coder decodeObject];
-	UTType *type = [UTTypeLookup(identifier, YES, nil) retain];
+	UTType *type = [UTTypeLookup(identifier, YES) retain];
 	[self release];
 	return type;
 }
