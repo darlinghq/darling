@@ -26,6 +26,10 @@
 #import <VideoToolbox/FigMetalTransferHelper.h>
 #import <VideoToolbox/VTCompressionProperties.h>
 #import <VideoToolbox/VTDecompressionProperties.h>
+#import <VideoToolbox/VTErrors.h>
+#import <VideoToolbox/VTPixelRotationProperties.h>
+#import <VideoToolbox/VTPixelRotationSession.h>
+#import <VideoToolbox/VTPixelTransferProperties.h>
 
 void* COLOR_Y2R24(void);
 void* COLOR_Y2R32(void);
@@ -195,6 +199,7 @@ void* VTRegisterGVAPixelTransferCapability(void);
 void* VTRegisterPixelTransferCapability(void);
 void* VTRegisterProfessionalVideoWorkflowVideoDecoders(void);
 void* VTRegisterProfessionalVideoWorkflowVideoEncoders(void);
+void VTRegisterSupplementalVideoDecoderIfAvailable(uint32_t codecType);
 void* VTRegisterVideoDecoder(void);
 void* VTRegisterVideoDecoderBundleDirectory(void);
 void* VTRegisterVideoDecoderWithInfo(void);
