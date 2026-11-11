@@ -16,11 +16,60 @@ static void load(const char* path, cpu_type_t cpu, bool expect_dylinker, char** 
 static void setup_space(struct load_results* lr, bool is_64_bit);
 static void* compatible_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
 
-#ifndef PAGE_SIZE
-#	define PAGE_SIZE	4096
+#ifndef PAGE_ROUNDUP
+#	define PAGE_ROUNDUP(x) (((x) + (PAGE_SIZE - 1)) & ~(PAGE_SIZE - 1))
 #endif
-#define PAGE_ALIGN(x) (x & ~(PAGE_SIZE-1))
-#define PAGE_ROUNDUP(x) (((((x)-1) / PAGE_SIZE)+1) * PAGE_SIZE)
+
+#ifndef MLDR_PAGE_SIZE_HELPERS_DEFINED
+#define MLDR_PAGE_SIZE_HELPERS_DEFINED
+
+/*
+ * Dynamic page size helper for Mach-O loading.
+ *
+ * On Apple Silicon (and any aarch64 macOS target) the standard ABI uses 16 KB
+ * segment alignment. When running under a Linux kernel with 4 KB pages, using a
+ * plain 4 KB host page size would leave gaps between adjacent Mach-O segments
+ * unmapped (the file-backed mmap of segment N ends at filesize rounded to 4 KB,
+ * but segment N+1 starts at vmaddr rounded to 16 KB — leaving 12 KB unmapped,
+ * triggering an immediate SIGSEGV on any access).
+ *
+ * Conversely, on host kernels configured with 64 KB pages (e.g. some RHEL or
+ * Asahi Linux kernels), the host page size is larger than 16 KB.
+ *
+ * We dynamically query the host kernel page size at runtime via
+ * sysconf(_SC_PAGESIZE) and use max(host_page_size, abi_page_size) so that
+ * the alignment is never smaller than either the kernel requires or the Mach-O
+ * ABI expects.
+ */
+static inline size_t mldr_get_host_page_size(void) {
+	static size_t hps = 0;
+	size_t cached = __atomic_load_n(&hps, __ATOMIC_RELAXED);
+	if (__builtin_expect(!cached, 0)) {
+		long ps = sysconf(_SC_PAGESIZE);
+		cached = (ps > 0) ? (size_t)ps : (size_t)PAGE_SIZE;
+		__atomic_store_n(&hps, cached, __ATOMIC_RELAXED);
+	}
+	return cached;
+}
+
+static inline size_t mldr_get_macho_page_size(uint32_t cputype) {
+	size_t host_ps = mldr_get_host_page_size();
+#if defined(__aarch64__) || defined(__arm64__)
+	/* On aarch64, standard macOS Mach-O segment alignment is 16 KB.
+	 * If the host kernel has larger pages (e.g. 64 KB), host_ps takes precedence. */
+	size_t abi_ps = (cputype == CPU_TYPE_ARM64) ? 0x4000UL : host_ps;
+	return (host_ps > abi_ps) ? host_ps : abi_ps;
+#else
+	(void)cputype;
+	return host_ps;
+#endif
+}
+
+static inline size_t mldr_page_roundup(size_t val, size_t ps) {
+	return (val + ps - 1) & ~(ps - 1);
+}
+
+#endif /* MLDR_PAGE_SIZE_HELPERS_DEFINED */
 
 // Definitions:
 // FUNCTION_NAME (load32/load64)
@@ -111,7 +160,7 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 			struct SEGMENT_STRUCT* seg = (struct SEGMENT_STRUCT*) &cmds[p];
 
 			// Load commands are always sorted, so this will get us the maximum address.
-			if (seg->cmd == SEGMENT_COMMAND && strcmp(seg->segname, "__PAGEZERO") != 0)
+			if (seg->cmd == SEGMENT_COMMAND && strcmp(seg->segname, "__PAGEZERO") != 0 && seg->vmsize != 0)
 			{
 				if (base == -1)
 				{
@@ -119,7 +168,8 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 					//if (base != 0 && header.filetype == MH_DYLINKER)
 					//	goto no_slide;
 				}
-				mmapSize = seg->vmaddr + seg->vmsize - base;
+				// the anonymous part of the last segment extends to its Mach-O page
+				mmapSize = mldr_page_roundup(seg->vmaddr + seg->vmsize - base, mldr_get_macho_page_size(header.cputype));
 			}
 
 			p += seg->cmdsize;
@@ -194,84 +244,43 @@ no_slide:
 				int initprot = native_prot(seg->initprot);
 				int useprot = (initprot & PROT_EXEC) ? maxprot : initprot;
 
-				if (seg->filesize < seg->vmsize)
+				// Skip zero-vmsize segments (e.g. __DWARF), __PAGEZERO or any unmapped zero-address segment
+				if (seg->vmsize == 0 || strcmp(seg->segname, "__PAGEZERO") == 0 || (seg->vmaddr == 0 && useprot == 0))
 				{
-					unsigned long map_addr;
-					if (slide != 0)
-					{
-						unsigned long addr = seg->vmaddr;
-
-						if (addr != 0)
-							addr += slide;
-
-						// Some segments' filesize != vmsize, thus this mprotect().
-						rv = compatible_mmap((void*)addr, seg->vmsize, useprot, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
-						if (rv == (void*)MAP_FAILED)
-						{
-							if (seg->vmaddr == 0 && useprot == 0) {
-								// this is the PAGEZERO segment;
-								// if we can't map it, assume everything is fine and the system has already made that area inaccessible
-								rv = 0;
-							} else {
-								fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)(uintptr_t)seg->vmaddr, strerror(errno));
-								exit(1);
-							}
-						}
-					}
-					else
-					{
-						// Zero-fill from the page holding the end of the file data up to the
-						// page holding the end of the segment. Rounding the start down and the
-						// size up separately left the last page unmapped whenever vmsize is not
-						// page-aligned (e.g. binaries linked by Zig).
-						uintptr_t zf_start = PAGE_ALIGN(seg->vmaddr + seg->filesize);
-						uintptr_t zf_end = PAGE_ROUNDUP(seg->vmaddr + seg->vmsize);
-						rv = compatible_mmap((void*) zf_start, zf_end - zf_start, useprot,
-								MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
-						if (rv == (void*)MAP_FAILED)
-						{
-							if (seg->vmaddr == 0 && useprot == 0) {
-								// this is the PAGEZERO segment;
-								// if we can't map it, assume everything is fine and the system has already made that area inaccessible
-								rv = 0;
-							} else {
-								fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)(uintptr_t)seg->vmaddr, strerror(errno));
-								exit(1);
-							}
-						}
-					}
+					if (seg->vmaddr + slide + seg->vmsize > lr->vm_addr_max)
+						lr->vm_addr_max = seg->vmaddr + slide + seg->vmsize;
+					break;
 				}
 
+				/* Zero-based dylinker __TEXT also needs its slide; PAGEZERO was skipped above. */
+				uintptr_t seg_addr = seg->vmaddr + slide;
+
+				const size_t host_ps = mldr_get_host_page_size();
+				const size_t page_sz = mldr_get_macho_page_size(header.cputype);
+
+				// 1. Map the file-backed portion of the segment
 				if (seg->filesize > 0)
 				{
-					unsigned long addr = seg->vmaddr + slide;
-					int flag = MAP_FIXED_NOREPLACE;
-					if (seg->filesize < seg->vmsize) {
-						flag = MAP_FIXED;
-					}
-					rv = compatible_mmap((void*)addr, seg->filesize, useprot,
-							flag | MAP_PRIVATE, fd, seg->fileoff + fat_offset);
+					rv = compatible_mmap((void*)seg_addr, seg->filesize, useprot,
+							MAP_FIXED_NOREPLACE | MAP_PRIVATE, fd, seg->fileoff + fat_offset);
 					if (rv == (void*)MAP_FAILED)
 					{
-						if (seg->vmaddr == 0 && useprot == 0) {
-							// this is the PAGEZERO segment;
-							// if we can't map it, assume everything is fine and the system has already made that area inaccessible
-							rv = 0;
-						} else {
-							fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)(uintptr_t)seg->vmaddr, strerror(errno));
-							exit(1);
-						}
+						fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)seg_addr, strerror(errno));
+						exit(1);
 					}
+
+					if (seg->fileoff == 0)
+						mappedHeader = (struct MACH_HEADER_STRUCT*) seg_addr;
 
 					// The file mapping covers its whole last page: past filesize that page
 					// holds whatever follows in the file, where the segment must read as
 					// zeros (start of __bss/__thread_bss), as the XNU loader guarantees.
 					if (seg->filesize < seg->vmsize)
 					{
-						uintptr_t tail = addr + seg->filesize;
+						uintptr_t tail = seg_addr + seg->filesize;
 						uintptr_t tail_end = PAGE_ROUNDUP(tail);
-						if (tail_end > addr + seg->vmsize)
-							tail_end = addr + seg->vmsize;
+						if (tail_end > seg_addr + seg->vmsize)
+							tail_end = seg_addr + seg->vmsize;
 						if (tail_end > tail)
 						{
 							if (!(useprot & PROT_WRITE))
@@ -282,14 +291,30 @@ no_slide:
 						}
 					}
 
-					if (seg->fileoff == 0)
-						mappedHeader = (struct MACH_HEADER_STRUCT*) (seg->vmaddr + slide);
-
 					if (lr->seal_images && (useprot & PROT_READ) && !(useprot & PROT_WRITE) &&
 						(strncmp(seg->segname, SEG_TEXT, sizeof(seg->segname)) == 0 ||
 						 strncmp(seg->segname, SEG_LINKEDIT, sizeof(seg->segname)) == 0))
 					{
-						seal_segment(seg->segname, addr, seg->filesize, useprot);
+						seal_segment(seg->segname, seg_addr, seg->filesize, useprot);
+					}
+				}
+
+				// 2. Map the remaining BSS/anonymous pages (if any) beyond the file-backed pages.
+				// Round the total segment size up to the Mach-O target page size (page_sz)
+				// so that the gap between adjacent segments is completely covered by BSS mappings.
+				size_t file_pages = seg->filesize > 0 ? mldr_page_roundup(seg->filesize, host_ps) : 0;
+				size_t total_segment_size = mldr_page_roundup(seg->vmsize, page_sz);
+				if (total_segment_size > file_pages)
+				{
+					uintptr_t bss_addr = seg_addr + file_pages;
+					size_t bss_size = total_segment_size - file_pages;
+
+					rv = compatible_mmap((void*)bss_addr, bss_size, useprot,
+							MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
+					if (rv == (void*)MAP_FAILED)
+					{
+						fprintf(stderr, "Cannot mmap bss for segment %s at %p: %s\n", seg->segname, (void*)bss_addr, strerror(errno));
+						exit(1);
 					}
 				}
 
@@ -431,4 +456,3 @@ no_slide:
 #undef MACH_HEADER_STRUCT
 #undef SECTION_STRUCT
 #undef MAP_EXTRA
-
