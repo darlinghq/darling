@@ -148,3 +148,18 @@ void* scriptAssistantCaseCompareItems(void)
     if (verbose) puts("STUB: scriptAssistantCaseCompareItems called");
     return NULL;
 }
+
+NSString* const OSAScriptErrorMessageKey = @"OSAScriptErrorMessageKey";
+NSString* const OSAScriptErrorBriefMessageKey = @"OSAScriptErrorBriefMessageKey";
+NSString* const OSAScriptErrorNumberKey = @"OSAScriptErrorNumberKey";
+NSString* const OSAScriptErrorPartialResultKey = @"OSAScriptErrorPartialResultKey";
+NSString* const OSAScriptErrorOffendingObjectKey = @"OSAScriptErrorOffendingObjectKey";
+NSString* const OSAScriptErrorExpectedTypeKey = @"OSAScriptErrorExpectedTypeKey";
+NSString* const OSAScriptErrorAppAddressKey = @"OSAScriptErrorAppAddressKey";
+NSString* const OSAScriptErrorRangeKey = @"OSAScriptErrorRangeKey";
+
+NSString* const OSAStorageScriptType = @"script";
+NSString* const OSAStorageScriptBundleType = @"script bundle";
+NSString* const OSAStorageApplicationType = @"application";
+NSString* const OSAStorageApplicationBundleType = @"application bundle";
+NSString* const OSAStorageTextType = @"text";

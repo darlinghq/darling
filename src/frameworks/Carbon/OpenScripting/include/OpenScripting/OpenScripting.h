@@ -150,4 +150,8 @@ void* _OSALoadURL(void);
 void* _OSAStoreScriptDataToURL(void);
 void* _OSAStoreURL(void);
 
+// Applet Info.plist keys
+extern NSString* const OSAAppletShowStartupScreenKey;
+extern NSString* const OSAAppletStayOpenKey;
+
 #endif

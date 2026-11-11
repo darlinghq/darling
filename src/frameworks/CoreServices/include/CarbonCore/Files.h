@@ -71,6 +71,10 @@ typedef struct FSVolumeInfo {
 OSErr FSGetDataForkName(HFSUniStr255* dataForkName);
 OSErr FSGetResourceForkName(HFSUniStr255* rsrcForkName);
 
+OSErr FSOpenFork(const FSRef* ref, UniCharCount forkNameLength, const UniChar* forkName, SInt8 permissions, FSIORefNum* forkRefNum);
+OSErr FSGetForkSize(FSIORefNum forkRefNum, SInt64* forkSize);
+OSErr FSCloseFork(FSIORefNum forkRefNum);
+
 OSErr FSGetVolumeInfo(FSVolumeRefNum volume, ItemCount volumeIndex, FSVolumeRefNum *actualVolume, FSVolumeInfoBitmap whichInfo, FSVolumeInfo *info, HFSUniStr255 *volumeName, FSRef *rootDirectory);
 
 #ifdef __cplusplus

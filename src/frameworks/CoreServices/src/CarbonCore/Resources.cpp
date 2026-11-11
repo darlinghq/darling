@@ -18,6 +18,15 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <CarbonCore/Resources.h>
+#include <CoreServices/FileManager.h>
+#include <CoreFoundation/CFString.h>
+#include <climits>
+#include <cerrno>
+#include <cstring>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <string>
 #include <unordered_map>
 #include <mutex>
 #include <limits>
@@ -103,9 +112,130 @@ OSErr FSOpenResourceFile(const FSRef* ref, UniCharCount forkNameLength, const Un
 	}
 }
 
+OSErr FSOpenResourceFileMapped(const FSRef* ref, UniCharCount forkNameLength, const UniChar* forkName, void** mappedData, ResFileRefNum* refNum)
+{
+	if (mappedData)
+		*mappedData = nullptr;
+
+	OSErr err = FSOpenResourceFile(ref, forkNameLength, forkName, fsRdPerm, refNum);
+	if (err == noErr)
+		UseResFile(*refNum);
+	return err;
+}
+
+// Mapped resource-fork SPI. Forks are not mapped here, so these report no resources.
+OSErr RMNewMappedRefFromMappedFork(const void* forkData, UInt64 forkSize, RMMappedFileRef* mappedRef)
+{
+	if (mappedRef)
+		*mappedRef = nullptr;
+	return unimpErr;
+}
+
+ResourceCount RMGetResourceCount(RMMappedFileRef mappedRef, ResType type)
+{
+	return 0;
+}
+
+void* RMGetIndexedResource(RMMappedFileRef mappedRef, ResType type, ResourceIndex index, void** resourceData, ResID* resourceID, StringPtr resourceName)
+{
+	if (resourceData)
+		*resourceData = nullptr;
+	return nullptr;
+}
+
+UInt64 RMGetResourceSize(void* resource)
+{
+	return 0;
+}
+
+void RMDisposeMappedFileRef(RMMappedFileRef mappedRef)
+{
+}
+
 OSErr ResError(void)
 {
 	return g_lastError;
+}
+
+// Creates an empty file named `name` in `parentDir` (its resource fork starts out empty);
+// the result is reported through ResError().
+void FSCreateResFile(const FSRef* parentDir, UniCharCount nameLength, const UniChar* name,
+	FSCatalogInfoBitmap whichInfo, const FSCatalogInfo* catalogInfo, FSRef* newRef, FSSpecPtr newSpec)
+{
+	uint8_t parentPath[PATH_MAX];
+
+	if (!parentDir || !name || nameLength == 0 || nameLength > 255)
+	{
+		g_lastError = paramErr;
+		return;
+	}
+	if (FSRefMakePath(parentDir, parentPath, sizeof(parentPath)) != noErr)
+	{
+		g_lastError = dirNFErr;
+		return;
+	}
+
+	CFStringRef nameString = CFStringCreateWithCharacters(nullptr, name, nameLength);
+	char nameUTF8[PATH_MAX];
+	Boolean converted = nameString && CFStringGetFileSystemRepresentation(nameString, nameUTF8, sizeof(nameUTF8));
+	if (nameString)
+		CFRelease(nameString);
+	if (!converted)
+	{
+		g_lastError = bdNamErr;
+		return;
+	}
+
+	// The name is a single path component: a '/' in a File Manager name is stored as ':'.
+	for (char* p = nameUTF8; *p; p++)
+	{
+		if (*p == '/')
+			*p = ':';
+	}
+	// QUIRK: "." is reported as errFSBadForkName and ".." as bdNamErr.
+	// Not documented. Evidence: black-box observation on macOS 27.0.1 (tier 2),
+	// vd-upstream/mac-probes/v122-rescreate-probe.c.
+	// Test: tests/src/file_manager_create_res_file.c
+	if (strcmp(nameUTF8, ".") == 0)
+	{
+		g_lastError = errFSBadForkName;
+		return;
+	}
+	if (strcmp(nameUTF8, "..") == 0)
+	{
+		g_lastError = bdNamErr;
+		return;
+	}
+
+	std::string path = std::string((const char*) parentPath) + "/" + nameUTF8;
+	mode_t mode = 0644;
+	if (catalogInfo && (whichInfo & kFSCatInfoPermissions))
+		mode = catalogInfo->permissions.mode & 07777;
+
+	int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
+	if (fd < 0)
+	{
+		switch (errno)
+		{
+			case EEXIST: g_lastError = dupFNErr; break;
+			case ENOENT:
+			case ENOTDIR: g_lastError = dirNFErr; break;
+			case EACCES:
+			case EPERM: g_lastError = permErr; break;
+			case ENAMETOOLONG: g_lastError = bdNamErr; break;
+			default: g_lastError = ioErr; break;
+		}
+		return;
+	}
+	if (catalogInfo && (whichInfo & kFSCatInfoPermissions))
+		::fchmod(fd, mode); // not reduced by the umask, like FSSetCatalogInfo
+	::close(fd);
+
+	if (newRef)
+		FSPathMakeRef((const uint8_t*) path.c_str(), newRef, nullptr);
+	if (newSpec)
+		memset(newSpec, 0, sizeof(*newSpec)); // FSSpecs aren't supported; don't leave it uninitialized
+	g_lastError = noErr;
 }
 
 ResFileRefNum CurResFile(void)

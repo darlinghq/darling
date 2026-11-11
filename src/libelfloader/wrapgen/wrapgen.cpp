@@ -271,18 +271,107 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 		"#endif\n\n";
 
 	output << "static void* lib_handle;\n"
+		"static void open_library(void) {\n"
+		"\tif (!lib_handle)\n"
+		"\t\tlib_handle = _elfcalls->dlopen_fatal(__elfname);\n"
+		"}\n\n"
 		"__attribute__((constructor)) static void initializer() {\n"
-		"\tlib_handle = _elfcalls->dlopen_fatal(__elfname);\n"
+		"\topen_library();\n"
 		"}\n\n";
 
 	output << "__attribute__((destructor)) static void destructor() {\n"
-		"\t_elfcalls->dlclose_fatal(lib_handle);\n"
+		"\tif (lib_handle)\n"
+		"\t\t_elfcalls->dlclose_fatal(lib_handle);\n"
 		"}\n\n";
-	
+
+	// dyld runs symbol resolvers while binding, and for non-lazy binds (chained fixups, bind_at_load)
+	// that happens before libSystem's initializer sets _elfcalls. Such resolvers return a trampoline
+	// that looks the symbol up on its first call.
+	output << "#if defined(__arm64__)\n"
+		"struct lazy_symbol { void* address; const char* name; };\n\n"
+		"__attribute__((visibility(\"hidden\"), used))\n"
+		"void* __elf_lazy_resolve(struct lazy_symbol* symbol) {\n"
+		"\tif (!symbol->address) {\n"
+		"\t\topen_library();\n"
+		"\t\tsymbol->address = _elfcalls->dlsym_fatal(lib_handle, symbol->name);\n"
+		"\t}\n"
+		"\treturn symbol->address;\n"
+		"}\n\n"
+		"__asm__(\".text\\n.p2align 2\\n.private_extern ___elf_lazy_common\\n"
+		"___elf_lazy_common:\\n"
+		"\\tldr x17, [x16]\\n"
+		"\\tcbz x17, 1f\\n"
+		"\\tbr x17\\n"
+		"1:\\tstp x29, x30, [sp, #-16]!\\n"
+		"\\tmov x29, sp\\n"
+		"\\tsub sp, sp, #208\\n"
+		"\\tstp x0, x1, [sp]\\n\\tstp x2, x3, [sp, #16]\\n\\tstp x4, x5, [sp, #32]\\n\\tstp x6, x7, [sp, #48]\\n"
+		"\\tstp x8, xzr, [sp, #64]\\n"
+		"\\tstp q0, q1, [sp, #80]\\n\\tstp q2, q3, [sp, #112]\\n\\tstp q4, q5, [sp, #144]\\n\\tstp q6, q7, [sp, #176]\\n"
+		"\\tmov x0, x16\\n"
+		"\\tbl ___elf_lazy_resolve\\n"
+		"\\tmov x17, x0\\n"
+		"\\tldp x0, x1, [sp]\\n\\tldp x2, x3, [sp, #16]\\n\\tldp x4, x5, [sp, #32]\\n\\tldp x6, x7, [sp, #48]\\n"
+		"\\tldr x8, [sp, #64]\\n"
+		"\\tldp q0, q1, [sp, #80]\\n\\tldp q2, q3, [sp, #112]\\n\\tldp q4, q5, [sp, #144]\\n\\tldp q6, q7, [sp, #176]\\n"
+		"\\tmov sp, x29\\n"
+		"\\tldp x29, x30, [sp], #16\\n"
+		"\\tbr x17\\n\");\n"
+		"#endif\n\n";
+
 	for (const std::string& sym : symbols)
 	{
+		// ABI adapters for every caller of these four GL entry points, not for
+		// any particular application. Their prototypes (OpenGL/glext.h) have
+		// eight register arguments followed by two 32-bit scalars and a
+		// pointer, which go on the stack. The Darwin arm64 calling convention
+		// packs stack arguments to their natural size (offsets 0, 4 and 8),
+		// while AAPCS64 on Linux gives each its own 8-byte slot (0, 8 and 16).
+		// wrapgen has no prototypes, so it cannot convert stack arguments in
+		// general; the adapter below repacks them for these signatures only.
+		bool packedGLUpload = sym == "glTexSubImage3D" || sym == "glTexSubImage3DEXT" ||
+			sym == "glCompressedTexSubImage3D" || sym == "glCompressedTexSubImage3DARB";
+		output << "#if defined(__arm64__)\n"
+			"__attribute__((visibility(\"hidden\"), used))\n"
+			"struct lazy_symbol __elf_lazy_symbol_" << sym << " = { 0, \"" << sym << "\" };\n"
+			"extern void __elf_lazy_" << sym << "(void);\n"
+			"__asm__(\".text\\n.p2align 2\\n.private_extern ___elf_lazy_" << sym << "\\n"
+			"___elf_lazy_" << sym << ":\\n"
+			"\\tadrp x16, ___elf_lazy_symbol_" << sym << "@PAGE\\n"
+			"\\tadd x16, x16, ___elf_lazy_symbol_" << sym << "@PAGEOFF\\n"
+			"\\tb ___elf_lazy_common\\n\");\n"
+			"#endif\n";
+		if (packedGLUpload)
+		{
+			output << "#if defined(__arm64__)\n"
+				"extern void __elf_abi_" << sym << "(void);\n"
+				"__asm__(\".text\\n.p2align 2\\n.private_extern ___elf_abi_" << sym << "\\n"
+				"___elf_abi_" << sym << ":\\n"
+				"\\tstp x29, x30, [sp, #-16]!\\n"
+				"\\tmov x29, sp\\n"
+				"\\tsub sp, sp, #32\\n"
+				"\\tldr w9, [x29, #16]\\n"
+				"\\tldr w10, [x29, #20]\\n"
+				"\\tldr x11, [x29, #24]\\n"
+				"\\tstr x9, [sp]\\n"
+				"\\tstr x10, [sp, #8]\\n"
+				"\\tstr x11, [sp, #16]\\n"
+				"\\tbl ___elf_lazy_" << sym << "\\n"
+				"\\tmov sp, x29\\n"
+				"\\tldp x29, x30, [sp], #16\\n"
+				"\\tret\\n\");\n"
+				"#endif\n";
+		}
 		output << "WRAPGEN_RESOLVER void* " << sym << "() {\n"
 			"\t__asm__(\".symbol_resolver _" << sym << "\");\n"
+			"#if defined(__arm64__)\n";
+		if (packedGLUpload)
+			output << "\treturn __elf_abi_" << sym << ";\n";
+		else
+			output << "\tif (!_elfcalls)\n\t\treturn __elf_lazy_" << sym << ";\n";
+		output <<
+			"#endif\n"
+			"\topen_library();\n"
 			"\treturn _elfcalls->dlsym_fatal(lib_handle, \"" << sym << "\");\n"
 			"}\n\n";
 	}

@@ -21,29 +21,36 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unicode/ucnv.h>
 #include <unicode/normalizer2.h>
 #include <CarbonCore/MacErrors.h>
+#include <ctype.h>
+#include <string.h>
 
 struct OpaqueTECObjectRef
 {
 	UConverter* inputConverter;
 	UConverter* outputConverter;
 	const UNormalizer2* normalizer;
-	UChar buffer[64];
+	UChar buffer[4096];
 	size_t bufferUsed;
 };
 
 static UConverter* createConverter(TextEncodingBase base, TextEncodingFormat format)
 {
+	UErrorCode error = U_ZERO_ERROR;
+
 	switch (base)
 	{
 		case kTextEncodingUnicodeDefault:
 		{
 			const char* enc;
-			UErrorCode error = U_ZERO_ERROR;
 
 			switch (format)
 			{
 				case kUnicodeUTF16Format:
-					enc = "UTF-16";
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+					enc = "UTF-16LE";
+#else
+					enc = "UTF-16BE";
+#endif
 					break;
 				case kUnicodeUTF7Format:
 					enc = "UTF-7";
@@ -52,7 +59,11 @@ static UConverter* createConverter(TextEncodingBase base, TextEncodingFormat for
 					enc = "UTF-8";
 					break;
 			   	case kUnicodeUTF32Format:
-					enc = "UTF-32";
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+					enc = "UTF-32LE";
+#else
+					enc = "UTF-32BE";
+#endif
 					break;
 				case kUnicodeUTF16BEFormat:
 					enc = "UTF-16BE";
@@ -72,9 +83,24 @@ static UConverter* createConverter(TextEncodingBase base, TextEncodingFormat for
 
 			return ucnv_open(enc, &error);
 		}
+		case kTextEncodingMacRoman:
+			return ucnv_open("macintosh", &error);
+		case kTextEncodingISOLatin1:
+			return ucnv_open("ISO-8859-1", &error);
+		case kTextEncodingWindowsLatin1:
+			return ucnv_open("windows-1252", &error);
+		case kTextEncodingUS_ASCII:
+			return ucnv_open("US-ASCII", &error);
 		default:
 			return NULL;
 	}
+}
+
+static void unpackEncoding(TextEncoding enc, TextEncodingBase* base, TextEncodingVariant* variant, TextEncodingFormat* format)
+{
+	*base = GetTextEncodingBase(enc);
+	*variant = GetTextEncodingVariant(enc);
+	*format = GetTextEncodingFormat(enc);
 }
 
 OSStatus TECCreateConverter(TECObjectRef *newEncodingConverter, TextEncoding inputEncoding, TextEncoding outputEncoding)
@@ -88,9 +114,7 @@ OSStatus TECCreateConverter(TECObjectRef *newEncodingConverter, TextEncoding inp
 	obj->normalizer = NULL;
 	obj->bufferUsed = 0;
 
-	format = (inputEncoding >> 16) & 0xff;
-	base = (inputEncoding >> 0) & 0xff;
-	variant = (inputEncoding >> 8) & 0xff;
+	unpackEncoding(inputEncoding, &base, &variant, &format);
 
 	obj->inputConverter = createConverter(base, format);
 	if (!obj->inputConverter)
@@ -100,9 +124,7 @@ OSStatus TECCreateConverter(TECObjectRef *newEncodingConverter, TextEncoding inp
 		return unimpErr;
 	}
 
-	format = (outputEncoding >> 16) & 0xff;
-	base = (outputEncoding >> 0) & 0xff;
-	variant = (outputEncoding >> 8) & 0xff;
+	unpackEncoding(outputEncoding, &base, &variant, &format);
 
 	obj->outputConverter = createConverter(base, format);
 	if (!obj->outputConverter)
@@ -150,7 +172,8 @@ OSStatus TECConvertText(TECObjectRef encodingConverter, ConstTextPtr inputBuffer
 {
 	if (actualInputLength != NULL)
 		*actualInputLength = 0;
-	*actualOutputLength = 0;
+	if (actualOutputLength != NULL)
+		*actualOutputLength = 0;
 
 	while (outputBufferLength > 0)
 	{
@@ -162,7 +185,6 @@ OSStatus TECConvertText(TECObjectRef encodingConverter, ConstTextPtr inputBuffer
 			const UChar* source = encodingConverter->buffer;
 			ByteCount inputUsed;
 
-
 			ucnv_fromUnicode(encodingConverter->outputConverter,
 					&target, target + outputBufferLength,
 					&source, source + encodingConverter->bufferUsed,
@@ -171,18 +193,20 @@ OSStatus TECConvertText(TECObjectRef encodingConverter, ConstTextPtr inputBuffer
 			if (error != U_ZERO_ERROR && error != U_BUFFER_OVERFLOW_ERROR)
 				return paramErr;
 
-			*actualOutputLength = target - ((char*)outputBuffer);
+			ByteCount bytesWritten = target - ((char*)outputBuffer);
+			if (actualOutputLength != NULL)
+				*actualOutputLength += bytesWritten;
 
 			inputUsed = source - encodingConverter->buffer;
 			if (inputUsed < encodingConverter->bufferUsed)
 			{
 				memmove(encodingConverter->buffer,
 						encodingConverter->buffer + inputUsed,
-						encodingConverter->bufferUsed - inputUsed);
+						(encodingConverter->bufferUsed - inputUsed) * sizeof(UChar));
 			}
 			encodingConverter->bufferUsed -= inputUsed;
-			outputBuffer += *actualOutputLength;
-			outputBufferLength -= *actualOutputLength;
+			outputBuffer += bytesWritten;
+			outputBufferLength -= bytesWritten;
 
 			if (error == U_BUFFER_OVERFLOW_ERROR)
 				break;
@@ -206,8 +230,10 @@ OSStatus TECConvertText(TECObjectRef encodingConverter, ConstTextPtr inputBuffer
 				return paramErr;
 
 			encodingConverter->bufferUsed += target - (encodingConverter->buffer + encodingConverter->bufferUsed);
-			*actualInputLength += source - ((const char*)inputBuffer);
-			inputBufferLength -= source - ((const char*)inputBuffer);
+			ByteCount inConsumed = source - ((const char*)inputBuffer);
+			if (actualInputLength != NULL)
+				*actualInputLength += inConsumed;
+			inputBufferLength -= inConsumed;
 			inputBuffer = (ConstTextPtr) source;
 		}
 
@@ -221,6 +247,66 @@ OSStatus TECConvertText(TECObjectRef encodingConverter, ConstTextPtr inputBuffer
 OSStatus TECFlushText(TECObjectRef encodingConverter, TextPtr outputBuffer, ByteCount outputBufferLength, ByteCount *actualOutputLength)
 {
 	return TECConvertText(encodingConverter, NULL, 0, NULL, outputBuffer, outputBufferLength, actualOutputLength);
+}
+
+OSStatus TECClearConverterContextInfo(TECObjectRef conv)
+{
+	if (!conv)
+		return paramErr;
+	conv->bufferUsed = 0;
+	if (conv->inputConverter)
+		ucnv_reset(conv->inputConverter);
+	if (conv->outputConverter)
+		ucnv_reset(conv->outputConverter);
+	return noErr;
+}
+
+OSStatus TECGetTextEncodingFromInternetName(TextEncoding *encoding, ConstStr255Param internetName)
+{
+	struct InternetName
+	{
+		const char* name;
+		TextEncoding encoding;
+	};
+
+	static const InternetName names[] = {
+		{ "utf-8", CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF8Format) },
+		{ "utf-16", CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF16Format) },
+		{ "utf-16be", CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF16BEFormat) },
+		{ "utf-16le", CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF16LEFormat) },
+		{ "utf-32", CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF32Format) },
+		{ "utf-32be", CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF32BEFormat) },
+		{ "utf-32le", CreateTextEncoding(kTextEncodingUnicodeDefault, kUnicodeNoSubset, kUnicodeUTF32LEFormat) },
+		{ "us-ascii", kTextEncodingUS_ASCII },
+		{ "ascii", kTextEncodingUS_ASCII },
+		// The ISO Latin 1 names map to the Windows Latin 1 base, as on macOS.
+		{ "iso-8859-1", kTextEncodingWindowsLatin1 },
+		{ "latin1", kTextEncodingWindowsLatin1 },
+		{ "macintosh", CreateTextEncoding(kTextEncodingMacRoman, 2, 0) },
+		{ "shift_jis", CreateTextEncoding(0xa01, 1, 0) },
+	};
+
+	if (!encoding || !internetName)
+		return paramErr;
+
+	// internetName is a Pascal string: a length byte followed by the characters
+	char name[256];
+	size_t len = internetName[0];
+	for (size_t i = 0; i < len; i++)
+		name[i] = (char) tolower((unsigned char) internetName[1 + i]);
+	name[len] = '\0';
+
+	for (const InternetName& entry : names)
+	{
+		if (strcmp(entry.name, name) == 0)
+		{
+			*encoding = entry.encoding;
+			return noErr;
+		}
+	}
+
+	*encoding = 0xffff; // kTextEncodingUnknown
+	return kTextUnsupportedEncodingErr;
 }
 
 OSStatus TECDisposeConverter(TECObjectRef conv)

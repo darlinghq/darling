@@ -68,6 +68,14 @@ const CFStringRef kMDItemURL                     = CFSTR("kMDItemURL");
 const CFStringRef kMDItemVersion                 = CFSTR("kMDItemVersion");
 const CFStringRef kMDItemWhereFroms              = CFSTR("kMDItemWhereFroms");
 
+// origin of downloaded or saved items (e.g. a mail attachment)
+const CFStringRef kMDItemOriginApplicationIdentifier = CFSTR("kMDItemOriginApplicationIdentifier");
+const CFStringRef kMDItemOriginMessageID             = CFSTR("kMDItemOriginMessageID");
+const CFStringRef kMDItemOriginSenderDisplayName     = CFSTR("kMDItemOriginSenderDisplayName");
+const CFStringRef kMDItemOriginSenderHandle          = CFSTR("kMDItemOriginSenderHandle");
+const CFStringRef kMDItemOriginSubject               = CFSTR("kMDItemOriginSubject");
+const CFStringRef kMDItemDestinationRecipients       = CFSTR("kMDItemDestinationRecipients");
+
 // image attributes
 const CFStringRef kMDItemAcquisitionMake     = CFSTR("kMDItemAcquisitionMake");
 const CFStringRef kMDItemAcquisitionModel    = CFSTR("kMDItemAcquisitionModel");
@@ -262,5 +270,18 @@ CFArrayRef MDItemCopyAttributeNames(MDItemRef item) {
 
 Boolean MDItemSetAttribute(MDItemRef item, CFStringRef name, CFTypeRef value) {
 	// i'm guessing falsy return indicates error? (this is a private function, and the code calling it does no error checking)
+	return false;
+};
+
+// Private SPI used by Mail. Signatures are inferred from callers; Darling has no Spotlight store,
+// so nothing is recorded and the functions report that nothing was done.
+void _MDRegisterMailClient(void) {
+};
+
+Boolean _MDItemMarkAsDownloaded(CFTypeRef item, CFTypeRef whereFrom, CFTypeRef attributes) {
+	return false;
+};
+
+Boolean _MDItemSetPrivateAttributes(CFTypeRef item, CFTypeRef attributes, CFTypeRef options) {
 	return false;
 };

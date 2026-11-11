@@ -82,6 +82,10 @@ CFDictionaryRef _LSApplicationCheckIn(LSSessionID sessionID, CFDictionaryRef app
 CFTypeRef _LSGetCurrentApplicationASN(void);
 OSStatus _LSSetApplicationInformationItem(LSSessionID sessionID, LSASNRef asn, CFStringRef key, CFStringRef value, CFDictionaryRef *info);
 
+// Returns the ASN of the application that currently has focus, or NULL when
+// no such application exists (or has never been tracked).
+LSASNRef _LSCopyFrontApplication(LSSessionID sessionID);
+
 typedef bool (^LSServerConnectionAllowedBlock) ( CFDictionaryRef optionsRef );
 void _LSSetApplicationLaunchServicesServerConnectionStatus(uint64_t flags, LSServerConnectionAllowedBlock block);
 
@@ -92,6 +96,10 @@ CFDictionaryRef _LSCopyApplicationInformation(LSSessionID sessionID, CFTypeRef a
 LSASNRef _LSASNCreateWithPid(CFAllocatorRef allocator, pid_t pid);
 
 OSStatus _LSLaunchApplication(CFURLRef appPath);
+
+Boolean _LSASNExtractHighAndLowParts(LSASNRef asn, UInt32* outHigh, UInt32* outLow);
+CFArrayRef _LSCopyApplicationArray(LSSessionID sessionID);
+OSStatus _LSSetWeakBindingURLForType(LSSessionID sessionID, int unknown, CFStringRef contentType, LSRolesMask roles, CFURLRef appURL);
 
 // Assumed
 #define kLSDownloadRiskCategoryKey CFSTR("LSDownloadRiskCategory")

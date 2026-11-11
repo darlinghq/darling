@@ -29,6 +29,10 @@ typedef UInt8* TextPtr;
 typedef const UInt8* ConstTextPtr;
 
 enum {
+	kTextEncodingMacRoman = 0,
+	kTextEncodingISOLatin1 = 0x201,
+	kTextEncodingWindowsLatin1 = 0x500,
+	kTextEncodingUS_ASCII = 0x600,
 	kTextEncodingUnicodeDefault = 0x100
 };
 
@@ -65,7 +69,18 @@ typedef UInt32 TextEncodingBase;
 typedef UInt32 TextEncodingFormat;
 typedef UInt32 TextEncodingVariant;
 
+typedef SInt16 ScriptCode;
+typedef SInt16 LangCode;
+typedef SInt16 RegionCode;
+typedef const unsigned char* ConstStr255Param;
+
+TextEncodingBase GetTextEncodingBase(TextEncoding encoding);
+TextEncodingVariant GetTextEncodingVariant(TextEncoding encoding);
+TextEncodingFormat GetTextEncodingFormat(TextEncoding encoding);
+
 TextEncoding CreateTextEncoding(TextEncodingBase encodingBase, TextEncodingVariant encodingVariant, TextEncodingFormat encodingFormat);
+
+OSStatus UpgradeScriptInfoToTextEncoding(ScriptCode iTextScriptID, LangCode iTextLanguageID, RegionCode iTextRegionID, ConstStr255Param iTextFontname, TextEncoding *oTextEncoding);
 
 #ifdef __cplusplus
 }

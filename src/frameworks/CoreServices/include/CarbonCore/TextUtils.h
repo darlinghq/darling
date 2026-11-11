@@ -24,6 +24,8 @@ StringPtr C2PStr(Ptr str);
 char* p2cstr(StringPtr str);
 Ptr P2CStr(StringPtr str);
 
+void OSTypeToCString(OSType theType, char* theString);
+
 #ifdef __cplusplus
 }
 #endif

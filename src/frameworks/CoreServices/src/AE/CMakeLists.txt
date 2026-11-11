@@ -16,9 +16,11 @@ add_framework(AE
 
 	SOURCES
 		empty.c
+		AEDescriptors.c
 		stub.c
 
 	DEPENDENCIES
 		CoreFoundation
+		CarbonCore
 		system
 )

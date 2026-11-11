@@ -13,6 +13,7 @@
 #include <linux/seccomp.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
+#include <sys/uio.h>
 #include <sys/wait.h>
 #include "socket_bitmap.h"
 #include "elfcalls/native_fork.h"
@@ -207,12 +208,78 @@ static void test_stress(void)
 		pthread_join(threads[i], NULL);
 }
 
+static int ptrace_scope(void)
+{
+	FILE* f = fopen("/proc/sys/kernel/yama/ptrace_scope", "r");
+	int scope = -1;
+
+	if (f == NULL)
+		return -1;
+	if (fscanf(f, "%d", &scope) != 1)
+		scope = -1;
+	fclose(f);
+	return scope;
+}
+
+// With Yama's ptrace_scope 1, only an ancestor or a process the target named
+// as its ptracer may read its memory. darlingserver is neither, so the child
+// of a native fork must name every process as its ptracer, as mldr does at
+// startup. A sibling (not an ancestor) checks that it can read the child.
+static void test_ptracer(void)
+{
+	static volatile int marker = 0x5a5aa5a5;
+	int ready[2], done[2];
+	char byte;
+
+	if (ptrace_scope() != 1)
+	{
+		printf("SKIP: Yama ptrace_scope is not 1, ptracer renewal not tested\n");
+		return;
+	}
+	if (pipe(ready) != 0 || pipe(done) != 0)
+		fail("pipe");
+
+	pid_t child = __mldr_native_fork();
+	if (child < 0)
+		fail("fork failed");
+	if (child == 0)
+	{
+		if (write(ready[1], "x", 1) != 1 || read(done[0], &byte, 1) != 1)
+			_exit(1);
+		_exit(0);
+	}
+	if (read(ready[0], &byte, 1) != 1)
+		fail("read");
+
+	pid_t sibling = fork();
+	if (sibling < 0)
+		fail("fork failed");
+	if (sibling == 0)
+	{
+		int value = 0;
+		struct iovec local = { &value, sizeof(value) };
+		struct iovec remote = { (void*) &marker, sizeof(marker) };
+
+		if (process_vm_readv(child, &local, 1, &remote, 1, 0) != sizeof(value))
+			_exit(1);
+		_exit(value == marker ? 0 : 2);
+	}
+
+	int status = wait_for(sibling);
+	if (write(done[1], "x", 1) != 1)
+		fail("write");
+	wait_for(child);
+	if (status != 0)
+		fail("a non-ancestor could not read the memory of a native fork child");
+}
+
 int main(void)
 {
 	test_success();
 	test_failure();
 	test_waits_for_update();
 	test_stress();
+	test_ptracer();
 
 	printf("PASS\n");
 	return 0;

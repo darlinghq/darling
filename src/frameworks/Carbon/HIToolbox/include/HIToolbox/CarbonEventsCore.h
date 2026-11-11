@@ -9,6 +9,10 @@
 extern "C" {
 #endif
 
+enum {
+	eventNotHandledErr = -9874,
+};
+
 typedef struct OpaqueEventRef* EventRef;
 typedef void* EventHandlerCallRef;
 typedef OSType EventParamType;
@@ -61,6 +65,9 @@ OSStatus SendEventToEventTarget(EventRef a, EventTargetRef b);
 
 UInt32 GetCurrentKeyModifiers(void);
 EventTime GetEventTime(EventRef inEvent);
+
+// SPI: checks whether a key event is a system symbolic hot key.
+Boolean _IsSymbolicHotKeyEvent(EventRef inEvent, UInt32* outHotKeyCode, Boolean* outEnabled);
 
 #ifdef __cplusplus
 }

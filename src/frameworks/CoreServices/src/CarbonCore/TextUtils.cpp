@@ -111,3 +111,17 @@ Ptr P2CStr(StringPtr str)
 	return p2cstr(str);
 }
 
+// QUIRK: each byte of the type that is not printable ASCII (0x20...0x7f) is stored as a space,
+// so the result is always four characters long.
+// Not documented. Evidence: black-box observation on macOS 27.0.1, arm64 and x86_64 (tier 2),
+// vd-upstream/mac-probes/v124-ostype-probe.c.
+// Test: test_ostype_to_cstring in tests/src/private_spi_stubs.c
+void OSTypeToCString(OSType theType, char* theString)
+{
+	for (int i = 0; i < 4; i++)
+	{
+		unsigned char byte = (theType >> (24 - 8 * i)) & 0xFF;
+		theString[i] = (byte >= 0x20 && byte < 0x80) ? byte : ' ';
+	}
+	theString[4] = '\0';
+}
