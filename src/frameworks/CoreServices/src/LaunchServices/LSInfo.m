@@ -596,23 +596,6 @@ OSStatus LSCopyApplicationForMIMEType(CFStringRef inMIMEType, LSRolesMask inRole
 	return kLSApplicationNotFoundErr;
 }
 
-OSStatus LSCopyDisplayNameForURL(CFURLRef inURL, CFStringRef *outDisplayName)
-{
-	if (!inURL || !outDisplayName)
-		return paramErr;
-
-	NSString* path = [(NSURL*)inURL path];
-	if (!path)
-		return paramErr;
-
-	NSString* lastComp = [path lastPathComponent];
-	if (!lastComp)
-		lastComp = path;
-
-	*outDisplayName = (CFStringRef)[lastComp copy];
-	return noErr;
-}
-
 // Attribute names of the item queries. The values are what macOS reports for these symbols.
 const CFStringRef kLSItemIsInvisible = CFSTR("LSItemIsInvisible");
 const CFStringRef kLSItemExtensionIsHidden = CFSTR("LSItemExtensionIsHidden");
@@ -684,5 +667,22 @@ OSStatus LSCopyItemAttributes(const FSRef *inItem, LSRolesMask inRoles, CFArrayR
 		CFRelease(value);
 	}
 	*outValues = dict;
+	return noErr;
+}
+
+OSStatus LSCopyDisplayNameForURL(CFURLRef inURL, CFStringRef *outDisplayName)
+{
+	if (!inURL || !outDisplayName)
+		return paramErr;
+
+	NSString* path = [(NSURL*)inURL path];
+	if (!path)
+		return paramErr;
+
+	NSString* lastComp = [path lastPathComponent];
+	if (!lastComp)
+		lastComp = path;
+
+	*outDisplayName = (CFStringRef)[lastComp copy];
 	return noErr;
 }
