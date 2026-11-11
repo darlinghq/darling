@@ -30,6 +30,7 @@
 #import <VideoToolbox/VTPixelRotationProperties.h>
 #import <VideoToolbox/VTPixelRotationSession.h>
 #import <VideoToolbox/VTPixelTransferProperties.h>
+#import <VideoToolbox/VTVideoEncoderList.h>
 
 void* COLOR_Y2R24(void);
 void* COLOR_Y2R32(void);

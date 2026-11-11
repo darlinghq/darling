@@ -23,5 +23,6 @@
 #include <CoreFoundation/CoreFoundation.h>
 
 extern CFStringRef const kVTVideoDecoderSpecification_RequireHardwareAcceleratedVideoDecoder;
+extern CFStringRef const kVTDecompressionPropertyKey_RealTime;
 
 #endif
