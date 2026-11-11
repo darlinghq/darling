@@ -1,4 +1,5 @@
-// ColorSync device dictionary keys and device class constants regression test.
+// ColorSync device dictionary keys, device classes, profile keys and transform option
+// keys regression test. Expected values are those observed on macOS (see the commit message).
 // Build as a C/Objective-C executable linked against CoreFoundation and ColorSync:
 //   clang -framework CoreFoundation -framework ColorSync tests/colorsync-device-constants.m -o /tmp/colorsync-test
 // Run it with `darling shell`. Exits non-zero on failure.
@@ -23,9 +24,32 @@ int main(void) {
         { "kColorSyncFactoryProfiles", &kColorSyncFactoryProfiles, "FactoryProfiles" },
         { "kColorSyncDeviceUserScope", &kColorSyncDeviceUserScope, "DeviceUserScope" },
         { "kColorSyncDeviceHostScope", &kColorSyncDeviceHostScope, "DeviceHostScope" },
-        { "kColorSyncPrinterDeviceClass", &kColorSyncPrinterDeviceClass, "prnt" },
+        { "kColorSyncPrinterDeviceClass", &kColorSyncPrinterDeviceClass, "prtr" },
         { "kColorSyncCustomProfiles", &kColorSyncCustomProfiles, "CustomProfiles" },
         { "kColorSyncDisplayDeviceClass", &kColorSyncDisplayDeviceClass, "mntr" },
+        { "kColorSyncGenericGrayGamma22Profile", &kColorSyncGenericGrayGamma22Profile, "com.apple.ColorSync.GenericGrayGamma2.2" },
+        { "kColorSyncGenericLabProfile", &kColorSyncGenericLabProfile, "com.apple.ColorSync.GenericLab" },
+        { "kColorSyncGenericXYZProfile", &kColorSyncGenericXYZProfile, "com.apple.ColorSync.GenericXYZ" },
+        { "kColorSyncGenericCMYKProfile", &kColorSyncGenericCMYKProfile, "com.apple.ColorSync.GenericCMYK" },
+        { "kColorSyncSRGBProfile", &kColorSyncSRGBProfile, "com.apple.ColorSync.sRGB" },
+        { "kColorSyncAdobeRGB1998Profile", &kColorSyncAdobeRGB1998Profile, "com.apple.ColorSync.AdobeRGB1998" },
+        { "kColorSyncITUR2020Profile", &kColorSyncITUR2020Profile, "com.apple.ColorSync.ITUR2020" },
+        { "kColorSyncProfileHeader", &kColorSyncProfileHeader, "com.apple.ColorSync.ProfileHeader" },
+        { "kColorSyncProfileDescription", &kColorSyncProfileDescription, "com.apple.ColorSync.ProfileDescription" },
+        { "kColorSyncProfileURL", &kColorSyncProfileURL, "com.apple.ColorSync.ProfileURL" },
+        { "kColorSyncProfileMD5Digest", &kColorSyncProfileMD5Digest, "com.apple.ColorSync.ProfileMD5Digest" },
+        { "kColorSyncProfile", &kColorSyncProfile, "ColorSyncProfile" },
+        { "kColorSyncRenderingIntent", &kColorSyncRenderingIntent, "ColorSyncRenderingIntent" },
+        { "kColorSyncTransformTag", &kColorSyncTransformTag, "ColorSyncTransformTag" },
+        { "kColorSyncTransformSimplifiedConversionData", &kColorSyncTransformSimplifiedConversionData, "com.apple.cmm.SimplifiedConversion" },
+        { "kColorSyncConversion3DLut", &kColorSyncConversion3DLut, "com.apple.cmm.3D-LUT" },
+        { "kColorSyncConversionGridPoints", &kColorSyncConversionGridPoints, "com.apple.cmm.GridPointCount" },
+        { "kColorSyncBlackPointCompensation", &kColorSyncBlackPointCompensation, "ColorSyncBlackPointCompensation" },
+        { "kColorSyncExtendedRange", &kColorSyncExtendedRange, "com.apple.cmm.ExtendedRange" },
+        { "kColorSyncDoNotSubstituteProfiles", &kColorSyncDoNotSubstituteProfiles, "com.apple.cmm.DoNotSubstituteProfiles" },
+        { "kColorSyncWaitForCacheReply", &kColorSyncWaitForCacheReply, "com.apple.ColorSync.WaitForCacheReply" },
+        { "kColorSyncGainMapBaselineHeadroom", &kColorSyncGainMapBaselineHeadroom, "com.apple.ColorSync.GainMapBaselineHeadroom" },
+        { "kColorSyncMonoGainMapParams", &kColorSyncMonoGainMapParams, "com.apple.ColorSync.MonoGainMapParams" },
     };
 
     int n = sizeof(checks) / sizeof(checks[0]);
