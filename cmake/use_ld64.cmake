@@ -31,6 +31,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/system/libremovefile.dylib:${CMAKE_BINARY_DIR}/src/external/removefile/libremovefile.dylib \
 -Wl,-dylib_file,/usr/lib/system/libcopyfile.dylib:${CMAKE_BINARY_DIR}/src/external/copyfile/libcopyfile.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_coreservices.dylib:${CMAKE_BINARY_DIR}/src/libsystem_coreservices/libsystem_coreservices.dylib \
+-Wl,-dylib_file,/usr/lib/system/libsystem_featureflags.dylib:${CMAKE_BINARY_DIR}/src/libsystem_featureflags/libsystem_featureflags.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_notify.dylib:${CMAKE_BINARY_DIR}/src/external/libnotify/libsystem_notify_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/system/libdispatch.dylib:${CMAKE_BINARY_DIR}/src/external/libdispatch/liblibdispatch_shared_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/system/libmacho.dylib:${CMAKE_BINARY_DIR}/src/external/cctools/libmacho/libmacho_firstpass.dylib \
