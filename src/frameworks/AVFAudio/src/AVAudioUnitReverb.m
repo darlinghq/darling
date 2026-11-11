@@ -18,12 +18,13 @@
 */
 
 #import <AVFAudio/AVAudioUnitReverb.h>
+#import "AVFAudioStub.h"
 
 @implementation AVAudioUnitReverb
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return AVAudioStubSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation

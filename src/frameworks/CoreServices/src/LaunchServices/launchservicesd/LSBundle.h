@@ -29,13 +29,13 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 }
 -(id) initWithBundle:(CFBundleRef) bundle;
 -(void)dealloc;
--(void)process;
+-(BOOL)process;
 
 @property (readonly) int bundleId;
 
 +(void)scanForBundles;
 +(void)watchForBundles;
++(BOOL)registerBundleAtPath:(NSString*)path;
 @end
 
 #endif
-

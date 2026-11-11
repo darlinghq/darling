@@ -78,6 +78,8 @@ if (COMPONENT_gui_stubs)
 
 	add_subdirectory(RemoteServiceDiscovery)
 	add_subdirectory(SafeEjectGPU)
+	add_subdirectory(SystemAdministration)
+	add_subdirectory(RecapPerformanceTesting)
 	add_subdirectory(ServerInformation)
 	add_subdirectory(ShazamCore)
 	add_subdirectory(ShazamEvents)

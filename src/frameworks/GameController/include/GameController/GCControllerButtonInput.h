@@ -19,6 +19,11 @@
 
 #include <Foundation/Foundation.h>
 
-@interface GCControllerButtonInput : NSObject
+#import <GameController/GCControllerElement.h>
+
+@interface GCControllerButtonInput : GCControllerElement
+
+@property(readonly) float value;
+@property(readonly, getter=isPressed) BOOL pressed;
 
 @end

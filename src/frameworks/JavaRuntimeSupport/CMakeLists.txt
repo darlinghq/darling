@@ -36,3 +36,7 @@ add_framework(JavaRuntimeSupport
 		objc
 		Foundation
 )
+
+# Newer JDKs load this framework from the top-level Frameworks directory.
+InstallSymlink(JavaVM.framework/Frameworks/JavaRuntimeSupport.framework
+    ${CMAKE_INSTALL_PREFIX}/libexec/darling/System/Library/Frameworks/JavaRuntimeSupport.framework)

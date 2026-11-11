@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2025 Darling Developers
+ Copyright (C) 2025-2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,12 +18,15 @@
 */
 
 #import <AVFAudio/AVAudioEngine.h>
+#import "AVFAudioStub.h"
+
+NSString *const AVAudioEngineConfigurationChangeNotification = @"AVAudioEngineConfigurationChangeNotification";
 
 @implementation AVAudioEngine
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return AVAudioStubSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation

@@ -18,6 +18,7 @@
 */
 
 #import <CoreImage/CIFilter.h>
+#import <CoreImage/CIImage.h>
 
 #import <Foundation/NSString.h>
 
@@ -33,31 +34,48 @@ NSString *const kCIInputRadiusKey = @"inputRadius";
 NSString * const kCIOutputImageKey = @"outputImage";
 NSString * const kCIApplyOptionDefinition = @"definition";
 
-NSString * const kCIAttributeClass = @"class";
-NSString * const kCIAttributeDisplayName = @"displayName";
-NSString * const kCIAttributeFilterDisplayName = @"filterDisplayName";
-NSString * const kCIAttributeFilterName = @"filterName";
-NSString * const kCIAttributeMax = @"max";
-NSString * const kCIAttributeMin = @"min";
-NSString * const kCIAttributeType = @"type";
+NSString * const kCIAttributeClass = @"CIAttributeClass";
+NSString * const kCIAttributeDefault = @"CIAttributeDefault";
+NSString * const kCIAttributeDisplayName = @"CIAttributeDisplayName";
+NSString * const kCIAttributeFilterDisplayName = @"CIAttributeFilterDisplayName";
+NSString * const kCIAttributeFilterName = @"CIAttributeFilterName";
+NSString * const kCIAttributeMax = @"CIAttributeMax";
+NSString * const kCIAttributeMin = @"CIAttributeMin";
+NSString * const kCIAttributeSliderMin = @"CIAttributeSliderMin";
+NSString * const kCIAttributeSliderMax = @"CIAttributeSliderMax";
+NSString * const kCIAttributeType = @"CIAttributeType";
 
-NSString * const kCIAttributeTypeAngle = @"angle";
-NSString * const kCIAttributeTypeBoolean = @"boolean";
-NSString * const kCIAttributeTypeDistance = @"distance";
-NSString * const kCIAttributeTypeOffset = @"offset";
-NSString * const kCIAttributeTypePosition = @"position";
-NSString * const kCIAttributeTypePosition3 = @"position3";
-NSString * const kCIAttributeTypeRectangle = @"rectangle";
-NSString * const kCIAttributeTypeScalar = @"scalar";
-NSString * const kCIAttributeTypeTime = @"time";
+const CIFormat kCIFormatARGB8 = 265;
+const CIFormat kCIFormatRGBA8 = 264;
+const CIFormat kCIFormatBGRA8 = 266;
+const CIFormat kCIFormatABGR8 = 267;
+const CIFormat kCIFormatRGBAh = 2056;
+const CIFormat kCIFormatRGBA16 = 1800;
+const CIFormat kCIFormatRGBAf = 2312;
 
-NSString * const kCICategoryCompositeOperation = @"kCICategoryCompositeOperation";
-NSString * const kCICategoryGenerator = @"kCICategoryGenerator";
-NSString * const kCICategoryGradient = @"kCICategoryGradient";
-NSString * const kCICategoryReduction = @"kCICategoryReduction";
-NSString * const kCICategoryTransition = @"kCICategoryTransition";
+NSString * const kCIAttributeTypeAngle = @"CIAttributeTypeAngle";
+NSString * const kCIAttributeTypeBoolean = @"CIAttributeTypeBoolean";
+NSString * const kCIAttributeTypeDistance = @"CIAttributeTypeDistance";
+NSString * const kCIAttributeTypeOffset = @"CIAttributeTypeOffset";
+NSString * const kCIAttributeTypePosition = @"CIAttributeTypePosition";
+NSString * const kCIAttributeTypePosition3 = @"CIAttributeTypePosition3";
+NSString * const kCIAttributeTypeRectangle = @"CIAttributeTypeRectangle";
+NSString * const kCIAttributeTypeScalar = @"CIAttributeTypeScalar";
+NSString * const kCIAttributeTypeTime = @"CIAttributeTypeTime";
+
+NSString * const kCICategoryCompositeOperation = @"CICategoryCompositeOperation";
+NSString * const kCICategoryGenerator = @"CICategoryGenerator";
+NSString * const kCICategoryGradient = @"CICategoryGradient";
+NSString * const kCICategoryReduction = @"CICategoryReduction";
+NSString * const kCICategoryTransition = @"CICategoryTransition";
 
 @implementation CIFilter
+
+/* No attributes and no input parameters, so there are no defaults to restore. Apple
+   documents this as setting the default value of every input parameter, which with no
+   parameters already holds. */
+- (void) setDefaults {
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];

@@ -21,6 +21,128 @@
 
 @implementation CIColor
 
++ (CIColor *) colorWithCGColor: (CGColorRef) cgColor {
+    return [[[self alloc] initWithCGColor: cgColor] autorelease];
+}
+
++ (CIColor *) colorWithRed: (CGFloat) red
+                     green: (CGFloat) green
+                      blue: (CGFloat) blue
+{
+    return [self colorWithRed: red green: green blue: blue alpha: 1.0];
+}
+
++ (CIColor *) colorWithRed: (CGFloat) red
+                     green: (CGFloat) green
+                      blue: (CGFloat) blue
+                     alpha: (CGFloat) alpha
+{
+    CGColorRef cgColor = CGColorCreateGenericRGB(red, green, blue, alpha);
+    CIColor *result = [self colorWithCGColor: cgColor];
+
+    CGColorRelease(cgColor);
+
+    return result;
+}
+
+- (instancetype) initWithCGColor: (CGColorRef) cgColor {
+    if ((self = [super init])) {
+        if (!cgColor) {
+            _cgColor = NULL;
+            return self;
+        }
+
+        CGColorSpaceRef srcSpace = CGColorGetColorSpace(cgColor);
+        CGColorSpaceModel model = srcSpace ? CGColorSpaceGetModel(srcSpace) : kCGColorSpaceModelUnknown;
+        size_t sourceCount = CGColorGetNumberOfComponents(cgColor);
+        /* RGB and gray colors keep their own components (macOS reports a gray CIColor
+           with two components); other models are converted to RGB. */
+        if ((model == kCGColorSpaceModelRGB && sourceCount == 4) || (model == kCGColorSpaceModelMonochrome && sourceCount == 2)) {
+            _cgColor = CGColorRetain(cgColor);
+        } else {
+            CGColorSpaceRef rgbSpace = CGColorSpaceCreateDeviceRGB();
+            CGColorRef converted = CGColorCreateCopyByMatchingToColorSpace(rgbSpace, kCGRenderingIntentDefault, cgColor, NULL);
+            CGColorSpaceRelease(rgbSpace);
+            if (converted) {
+                _cgColor = converted;
+            } else {
+                size_t count = CGColorGetNumberOfComponents(cgColor);
+                const CGFloat *c = CGColorGetComponents(cgColor);
+                CGFloat r = 0.0, g = 0.0, b = 0.0, a = 1.0;
+                if (c && count > 0) {
+                    if (count >= 5) {
+                        // CMYK (+ Alpha)
+                        r = (1.0 - c[0]) * (1.0 - c[3]);
+                        g = (1.0 - c[1]) * (1.0 - c[3]);
+                        b = (1.0 - c[2]) * (1.0 - c[3]);
+                        a = c[count - 1];
+                    } else if (count == 2) {
+                        // Grayscale + Alpha
+                        r = g = b = c[0];
+                        a = c[1];
+                    } else if (count == 1) {
+                        // Grayscale
+                        r = g = b = c[0];
+                        a = 1.0;
+                    } else {
+                        r = c[0];
+                        g = (count >= 2) ? c[1] : c[0];
+                        b = (count >= 3) ? c[2] : c[0];
+                        a = (count >= 4) ? c[count - 1] : 1.0;
+                    }
+                }
+                _cgColor = CGColorCreateGenericRGB(r, g, b, a);
+            }
+        }
+    }
+    return self;
+}
+
+- (void) dealloc {
+    CGColorRelease(_cgColor);
+    [super dealloc];
+}
+
+- (size_t) numberOfComponents {
+    return _cgColor ? CGColorGetNumberOfComponents(_cgColor) : 0;
+}
+
+- (CGColorSpaceRef) colorSpace {
+    return _cgColor ? CGColorGetColorSpace(_cgColor) : NULL;
+}
+
+- (const CGFloat *) components {
+    return _cgColor ? CGColorGetComponents(_cgColor) : NULL;
+}
+
+- (CGFloat) red {
+    if (!_cgColor) return 0.0;
+    const CGFloat *c = CGColorGetComponents(_cgColor);
+    if (!c) return 0.0;
+    return CGColorGetNumberOfComponents(_cgColor) == 2 ? c[0] : c[0];
+}
+
+- (CGFloat) green {
+    if (!_cgColor) return 0.0;
+    const CGFloat *c = CGColorGetComponents(_cgColor);
+    if (!c) return 0.0;
+    return CGColorGetNumberOfComponents(_cgColor) == 2 ? c[0] : c[1];
+}
+
+- (CGFloat) blue {
+    if (!_cgColor) return 0.0;
+    const CGFloat *c = CGColorGetComponents(_cgColor);
+    if (!c) return 0.0;
+    return CGColorGetNumberOfComponents(_cgColor) == 2 ? c[0] : c[2];
+}
+
+- (CGFloat) alpha {
+    if (!_cgColor) return 0.0;
+    const CGFloat *c = CGColorGetComponents(_cgColor);
+    if (!c) return 0.0;
+    return CGColorGetNumberOfComponents(_cgColor) == 2 ? c[1] : c[3];
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];
 }

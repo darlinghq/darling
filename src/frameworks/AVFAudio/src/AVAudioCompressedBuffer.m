@@ -18,12 +18,13 @@
 */
 
 #import <AVFAudio/AVAudioCompressedBuffer.h>
+#import "AVFAudioStub.h"
 
 @implementation AVAudioCompressedBuffer
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return AVAudioStubSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation

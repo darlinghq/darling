@@ -417,6 +417,12 @@ OSStatus AUHAL::GetPropertyInfo(AudioUnitPropertyID inID, AudioUnitScope inScope
 			outWritable = true;
 			return noErr;
 		}
+		case kAudioOutputUnitProperty_IsRunning:
+		{
+			outDataSize = sizeof(UInt32);
+			outWritable = false;
+			return noErr;
+		}
 	}
 	return AUBase::GetPropertyInfo(inID, inScope, inElement, outDataSize, outWritable);
 }
@@ -452,6 +458,12 @@ OSStatus AUHAL::GetProperty(AudioUnitPropertyID inID, AudioUnitScope inScope, Au
 			}
 			else
 				return kAudioUnitErr_InvalidElement;
+			return noErr;
+		}
+		case kAudioOutputUnitProperty_IsRunning:
+		{
+			UInt32 value = m_running;
+			memcpy(outData, &value, sizeof(value));
 			return noErr;
 		}
 		case kAudioOutputUnitProperty_CurrentDevice:

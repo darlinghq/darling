@@ -42,6 +42,7 @@ extern OSStatus AudioServicesSetProperty(AudioServicesPropertyID inPropertyID, U
 extern OSStatus AudioServicesCreateSystemSoundID(CFURLRef inFileURL, SystemSoundID *outSystemSoundID);
 extern OSStatus AudioServicesDisposeSystemSoundID(SystemSoundID inSystemSoundID);
 extern void AudioServicesPlaySystemSound(SystemSoundID inSystemSoundID);
+extern void AudioServicesPlayAlertSound(SystemSoundID inSystemSoundID);
 
 #ifdef __cplusplus
 }

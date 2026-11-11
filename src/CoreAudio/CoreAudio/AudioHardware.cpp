@@ -91,6 +91,7 @@ static OSStatus GetStreamPropertyData(AudioObjectID objID, const AudioObjectProp
 		return kAudioHardwareBadObjectError;
 
 	UInt32 value = 0;
+	AudioStreamRangedDescription ranged;
 	const void* source = &value;
 	UInt32 required = sizeof(value);
 
@@ -105,6 +106,15 @@ static OSStatus GetStreamPropertyData(AudioObjectID objID, const AudioObjectProp
 		case kAudioStreamPropertyPhysicalFormat:
 			source = &device->asbd();
 			required = sizeof(AudioStreamBasicDescription);
+			break;
+		case kAudioStreamPropertyAvailableVirtualFormats:
+		case kAudioStreamPropertyAvailablePhysicalFormats:
+			// The stream supports exactly the format of its device, at a single sample rate.
+			ranged.mFormat = device->asbd();
+			ranged.mSampleRateRange.mMinimum = ranged.mFormat.mSampleRate;
+			ranged.mSampleRateRange.mMaximum = ranged.mFormat.mSampleRate;
+			source = &ranged;
+			required = sizeof(ranged);
 			break;
 		default:
 			return kAudioHardwareUnknownPropertyError;
