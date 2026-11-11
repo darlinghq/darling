@@ -299,6 +299,10 @@ static OSErr writeNumber(const AENumber* number, DescType toType, AEDesc* result
 			return AECreateDesc(toType, &value, sizeof(value), result);
 		}
 		case typeBoolean: {
+			// A floating-point value with a fractional part does not coerce to Boolean, even
+			// when it would round to 0 or 1 (see numberToInteger).
+			if (number->kind == kAENumberFloat && number->d != nearbyint(number->d))
+				return errAECoercionFail;
 			if (!numberToInteger(number, 0, 1, &integer))
 				return errAECoercionFail;
 			Boolean value = (Boolean) integer;
