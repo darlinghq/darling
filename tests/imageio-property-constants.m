@@ -5,6 +5,7 @@
 // Exits non-zero on failure.
 #import <Foundation/Foundation.h>
 #import <ImageIO/ImageIO.h>
+#include <dlfcn.h>
 #include <stdio.h>
 
 static int failures;
@@ -64,6 +65,11 @@ int main(void) {
 		if (props)
 			CFRelease(props);
 		CFRelease(source);
+	}
+
+	if (dlsym(RTLD_DEFAULT, "kCGImageDestinationDPI") != NULL) {
+		printf("FAIL: kCGImageDestinationDPI is exported\n");
+		failures++;
 	}
 
 	if (failures == 0)
