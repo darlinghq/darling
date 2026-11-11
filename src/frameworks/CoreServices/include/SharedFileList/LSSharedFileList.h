@@ -24,7 +24,9 @@
 #include <CoreServices/MacTypes.h>
 #include <CarbonCore/MacErrors.h>
 #include <CoreServices/FileManager.h>
-#include <LaunchServices/IconsCore.h>
+
+// Also declared by LaunchServices/IconsCore.h; the headers include each other, so repeat it here.
+typedef struct OpaqueIconRef *IconRef;
 
 #ifdef __cplusplus
 extern "C" {
