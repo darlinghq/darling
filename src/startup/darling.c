@@ -30,6 +30,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdbool.h>
 #include <sched.h>
 #include <sys/poll.h>
+#include <sys/syscall.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <getopt.h>
@@ -91,6 +92,36 @@ static void restoreRootIds(void)
 		fprintf(stderr, "Cannot switch back to root ids: %s\n", strerror(errno));
 		exit(1);
 	}
+}
+
+// A handle that becomes readable when the process has exited, or -1 when the
+// kernel has none (it then falls back to polling the pid).
+static int openProcessHandle(pid_t pid)
+{
+#ifdef SYS_pidfd_open
+	return (int) syscall(SYS_pidfd_open, pid, 0);
+#else
+	(void) pid;
+	return -1;
+#endif
+}
+
+// Waits up to ten seconds for the process to exit, then gives up quietly: it
+// has been sent SIGKILL, and only a process stuck in the kernel can outlast that.
+static void waitForProcessExit(int handle, pid_t pid)
+{
+	if (handle >= 0)
+	{
+		struct pollfd pfd = { .fd = handle, .events = POLLIN };
+
+		while (poll(&pfd, 1, 10000) < 0 && errno == EINTR)
+			;
+		close(handle);
+		return;
+	}
+
+	for (int i = 0; i < 1000 && (kill(pid, 0) == 0 || errno != ESRCH); i++)
+		usleep(10000);
 }
 
 int main(int argc, char ** argv)
@@ -211,11 +242,14 @@ int main(int argc, char ** argv)
 				INSTALL_PREFIX "/libexec/darling/usr/libexec/darling/mldr", &orphan);
 			if (scan > 0)
 			{
+				int orphanFd = openProcessHandle(orphan);
+
 				if (kill(orphan, SIGKILL) != 0 && errno != ESRCH)
 				{
 					fprintf(stderr, "Failed to shutdown Darling container: %s\n", strerror(errno));
 					return 1;
 				}
+				waitForProcessExit(orphanFd, orphan);
 				fprintf(stderr, "Stopped a Darling container whose darlingserver had exited\n");
 				return 0;
 			}
@@ -250,12 +284,25 @@ int main(int argc, char ** argv)
 		}
 		fclose(file);
 
+		// Handles on both processes, taken before the signals so that a pid
+		// reused in between cannot be mistaken for them.
+		int launchdFd = openProcessHandle(launchd_pid);
+		int serverFd = openProcessHandle(pidInit);
+
 		kill(launchd_pid, SIGKILL);
 		if (kill(pidInit, SIGKILL) != 0 && errno != ESRCH)
 		{
 			fprintf(stderr, "Failed to shutdown Darling container: %s\n", strerror(errno));
 			return 1;
 		}
+
+		// The kill is asynchronous. Returning before the server is gone lets a
+		// container started right after this still find the dying server through
+		// the prefix's pid file and fail to join it. launchd is the first
+		// process of the container's pid namespace, so it is gone only once
+		// every process of the container is.
+		waitForProcessExit(launchdFd, launchd_pid);
+		waitForProcessExit(serverFd, pidInit);
 		return 0;
 	}
 

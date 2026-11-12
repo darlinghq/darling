@@ -5,6 +5,9 @@
 # ~/.darling, or the one named by DPREFIX). Starts the container, kills
 # darlingserver with SIGKILL and checks that no process of the container
 # survives and that `darling shutdown` then reports it as not running.
+# Then starts the container again right after each of several shutdowns: a
+# shutdown that returns before the old server is gone makes the next start
+# fail with "exited. Try again".
 import os
 import signal
 import subprocess
@@ -63,5 +66,13 @@ result = subprocess.run(["darling", "shutdown"], stderr=subprocess.PIPE, text=Tr
 if result.returncode != 1 or "not running" not in result.stderr:
     print("FAIL: shutdown after the server died: rc=%d %r" % (result.returncode, result.stderr))
     sys.exit(1)
+
+for i in range(20):
+    subprocess.run(["darling", "shutdown"], stderr=subprocess.DEVNULL)
+    result = subprocess.run(["darling", "shell", "/bin/echo", "up"], stdin=subprocess.DEVNULL,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    if result.returncode != 0:
+        print("FAIL: start right after shutdown %d: %s" % (i, result.stderr.strip()))
+        sys.exit(1)
 
 print("PASSED")
