@@ -53,6 +53,10 @@ static int64_t host_nanoseconds(void)
 }
 @end
 
+@interface NSObject (AVSampleBufferRenderSynchronizerRenderer)
+- (void)_setSynchronizer:(AVSampleBufferRenderSynchronizer *)synchronizer;
+@end
+
 // The synchronizer keeps its own clock: a media time that advances at the rate, from the host time
 // it was last anchored at.
 @implementation AVSampleBufferRenderSynchronizer {
@@ -156,6 +160,8 @@ static CMTime current_time(CMTime anchor, int64_t anchorHost, float rate)
     if (![_renderers containsObject:renderer])
         [_renderers addObject:renderer];
     [_lock unlock];
+    if ([(id)renderer respondsToSelector:@selector(_setSynchronizer:)])
+        [(id)renderer _setSynchronizer:self];
 }
 
 - (void)removeRenderer:(id<AVQueuedSampleBufferRendering>)renderer atTime:(CMTime)time
@@ -163,6 +169,8 @@ static CMTime current_time(CMTime anchor, int64_t anchorHost, float rate)
 {
     [_lock lock];
     BOOL had = [_renderers containsObject:renderer];
+    if (had && [(id)renderer respondsToSelector:@selector(_setSynchronizer:)])
+        [(id)renderer _setSynchronizer:nil];
     [_renderers removeObject:renderer];
     [_lock unlock];
 

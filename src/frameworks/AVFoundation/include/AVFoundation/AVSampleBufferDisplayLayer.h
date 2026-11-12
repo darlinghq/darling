@@ -17,8 +17,25 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <QuartzCore/CALayer.h>
+#import <QuartzCore/CATransaction.h>
+#import <AVFoundation/AVAnimation.h>
+#import <AVFoundation/AVQueuedSampleBufferRendering.h>
 
-@interface AVSampleBufferDisplayLayer : NSObject
+@interface AVSampleBufferDisplayLayer : CALayer <AVQueuedSampleBufferRendering>
+
+@property (retain) __attribute__((NSObject)) CMTimebaseRef controlTimebase;
+@property (copy) AVLayerVideoGravity videoGravity;
+@property (readonly) AVQueuedSampleBufferRenderingStatus status;
+@property (readonly) NSError *error;
+@property (readonly) BOOL requiresFlushToResumeDecoding;
+@property (nonatomic) BOOL preventsCapture;
+@property (nonatomic) BOOL preventsDisplaySleepDuringVideoPlayback;
+- (void)flushAndRemoveImage;
 
 @end
+
+extern NSNotificationName const AVSampleBufferDisplayLayerFailedToDecodeNotification;
+extern NSString *const AVSampleBufferDisplayLayerFailedToDecodeNotificationErrorKey;
+extern NSNotificationName const AVSampleBufferDisplayLayerRequiresFlushToResumeDecodingDidChangeNotification;

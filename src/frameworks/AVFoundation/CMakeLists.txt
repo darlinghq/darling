@@ -528,6 +528,9 @@ add_framework(AVFoundation
         Foundation
         QuartzCore
         CoreMedia
+        CoreVideo
+        CoreGraphics
+        AudioToolbox
 )
 
 # AVFAudio is a subframework of AVFoundation on Darwin, so a client that links only
