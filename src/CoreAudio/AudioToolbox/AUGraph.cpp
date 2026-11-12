@@ -550,3 +550,63 @@ OSStatus AUGraphIsRunning(AUGraph inGraph, Boolean* outIsRunning)
 	*outIsRunning = inGraph->isRunning;
 	return noErr;
 }
+
+// Additional legacy graph entry points share the canonical graph state.
+OSStatus AUGraphNewNode(AUGraph inGraph, const struct ComponentDescription* inDescription, UInt32 inClassDataSize,
+	const void* inClassData, AUNode* outNode)
+{
+	// A Carbon ComponentDescription is laid out as an AudioComponentDescription.
+	return AUGraphAddNode(inGraph, reinterpret_cast<const AudioComponentDescription*>(inDescription), outNode);
+}
+
+OSStatus AUGraphGetNodeInfo(AUGraph inGraph, AUNode inNode, struct ComponentDescription* outDescription,
+	UInt32* outClassDataSize, void** outClassData, AudioUnit* outAudioUnit)
+{
+	if (outClassDataSize != nullptr)
+		*outClassDataSize = 0;
+	if (outClassData != nullptr)
+		*outClassData = nullptr;
+	return AUGraphNodeInfo(inGraph, inNode, reinterpret_cast<AudioComponentDescription*>(outDescription), outAudioUnit);
+}
+
+OSStatus AUGraphAddRenderNotify(AUGraph inGraph, AURenderCallback inCallback, void* inRefCon)
+{
+	if (inGraph == nullptr || inCallback == nullptr)
+		return paramErr;
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
+	if (!inGraph->isOpen)
+		return kAUGraphErr_CannotDoInCurrentContext;
+	for (auto& item : inGraph->nodes)
+		if (auto& node = item.second; true)
+		if (node.description.componentType == kAudioUnitType_Output)
+			return AudioUnitAddRenderNotify(node.unit, inCallback, inRefCon);
+	return kAUGraphErr_OutputNodeErr;
+}
+
+OSStatus AUGraphRemoveRenderNotify(AUGraph inGraph, AURenderCallback inCallback, void* inRefCon)
+{
+	if (inGraph == nullptr || inCallback == nullptr)
+		return paramErr;
+	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
+	for (auto& item : inGraph->nodes)
+		if (auto& node = item.second; true)
+		if (node.description.componentType == kAudioUnitType_Output && node.unit != nullptr)
+			return AudioUnitRemoveRenderNotify(node.unit, inCallback, inRefCon);
+	return kAUGraphErr_OutputNodeErr;
+}
+
+OSStatus AUGraphGetCPULoad(AUGraph inGraph, Float32* outAverageCPULoad)
+{
+	if (inGraph == nullptr || outAverageCPULoad == nullptr)
+		return paramErr;
+	*outAverageCPULoad = 0;
+	return noErr;
+}
+
+OSStatus AUGraphGetMaxCPULoad(AUGraph inGraph, Float32* outMaxLoad)
+{
+	if (inGraph == nullptr || outMaxLoad == nullptr)
+		return paramErr;
+	*outMaxLoad = 0;
+	return noErr;
+}
