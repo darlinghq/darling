@@ -17,7 +17,7 @@ add_framework(AE
 	SOURCES
 		empty.c
 		AEDescriptors.c
-		stub.c
+		AEEvents.c
 
 	DEPENDENCIES
 		CoreFoundation

@@ -22,23 +22,79 @@
 #include "LSHostOpen.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <limits.h>
 #include <launch_priv.h>
 #include <errno.h>
 #include <os/log.h>
+#include <xpc/xpc.h>
+#include <dispatch/dispatch.h>
+#include <string.h>
+#include "LSDProtocol.h"
 
 static void get_main_executable_info(CFURLRef appURL, CFStringRef *exec, CFStringRef *bundleName);
+static Boolean is_file_url(CFURLRef url);
+static OSStatus launch_application_pid(CFURLRef appPath, pid_t *outPid);
 
-static int verbose = 0;
+// One request to launchservicesd and its reply, or NULL when it cannot be reached in time.
+static xpc_object_t lsd_request(xpc_object_t request, int64_t timeoutMs)
+{
+	static dispatch_once_t once;
+	static xpc_connection_t connection;
 
-__attribute__((constructor)) static void initme(void) {
-	verbose = getenv("STUB_VERBOSE") != NULL;
+	dispatch_once(&once, ^{
+		const char *name = getenv(LSD_SERVICE_NAME_OVERRIDE_ENV);
+
+		connection = xpc_connection_create_mach_service(name != NULL ? name : LSD_SERVICE_NAME,
+			dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), 0);
+		if (connection == NULL)
+			return;
+		xpc_connection_set_event_handler(connection, ^(xpc_object_t event) {
+			/* Errors need no action here: a request on a broken connection fails by itself. */
+		});
+		xpc_connection_resume(connection);
+	});
+	if (connection == NULL)
+		return NULL;
+
+	__block xpc_object_t answer = NULL;
+	dispatch_semaphore_t done = dispatch_semaphore_create(0);
+
+	xpc_connection_send_message_with_reply(connection, request, dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0),
+		^(xpc_object_t reply) {
+			if (xpc_get_type(reply) == XPC_TYPE_DICTIONARY)
+				answer = xpc_retain(reply);
+			dispatch_semaphore_signal(done);
+		});
+	if (dispatch_semaphore_wait(done, dispatch_time(DISPATCH_TIME_NOW, timeoutMs * NSEC_PER_MSEC)) != 0)
+		return NULL;
+	dispatch_release(done);
+	return answer;
 }
 
+/*
+ * Applications are registered in launchservicesd's database, which reads the bundle's Info.plist
+ * (document types, URL schemes, ...). Registering is also how an application outside the monitored
+ * directories becomes known to the lookups.
+ */
 OSStatus LSRegisterURL(CFURLRef inURL, Boolean inUpdate)
 {
-	if (verbose)
-		printf("STUB: LSRegisterURL\n");
-	return 0;
+	char path[PATH_MAX];
+
+	if (inURL == NULL || !is_file_url(inURL) || !CFURLGetFileSystemRepresentation(inURL, true, (UInt8 *) path, sizeof(path)))
+		return paramErr;
+
+	xpc_object_t request = xpc_dictionary_create(NULL, NULL, 0);
+	xpc_dictionary_set_string(request, LSD_KEY_OP, LSD_OP_REGISTER);
+	xpc_dictionary_set_string(request, LSD_KEY_PATH, path);
+	xpc_object_t reply = lsd_request(request, 30000);
+	xpc_release(request);
+	if (reply == NULL)
+		return kLSServerCommunicationErr;
+
+	OSStatus status = (OSStatus) xpc_dictionary_get_int64(reply, LSD_KEY_ERR);
+	xpc_release(reply);
+	return status;
 }
 
 static Boolean is_application_url(CFURLRef url)
@@ -80,18 +136,210 @@ static OSStatus launch_application(CFURLRef appURL, CFURLRef *outLaunchedURL)
 	return ret;
 }
 
+/* Largest wait for a launched application to be ready to receive Apple events (60 ticks per second). */
+#define APP_READY_TIMEOUT_TICKS (60 * 15)
+
+/* The running process of an application that can receive Apple events, or 0. */
+static pid_t find_running_instance(const char *bundleID)
+{
+	pid_t pid = 0;
+	xpc_object_t request = xpc_dictionary_create(NULL, NULL, 0);
+
+	xpc_dictionary_set_string(request, LSD_KEY_OP, LSD_OP_AE_LOOKUP);
+	xpc_dictionary_set_string(request, LSD_KEY_BUNDLE_ID, bundleID);
+	xpc_object_t reply = lsd_request(request, 5000);
+	xpc_release(request);
+
+	if (reply != NULL)
+	{
+		if (xpc_dictionary_get_int64(reply, LSD_KEY_ERR) == 0)
+			pid = (pid_t) xpc_dictionary_get_int64(reply, LSD_KEY_PID);
+		xpc_release(reply);
+	}
+	return pid;
+}
+
+/* Sends the URL to the process as a kAEGetURL event; the process is waited for until it can receive it. */
+static OSStatus send_get_url_event(pid_t pid, CFStringRef url)
+{
+	AppleEvent event;
+	AEDesc target;
+	SInt32 targetPid = pid;
+	char stack[1024];
+	char *utf8 = stack;
+	CFIndex length = CFStringGetMaximumSizeForEncoding(CFStringGetLength(url), kCFStringEncodingUTF8) + 1;
+	OSStatus status;
+
+	if (length > (CFIndex) sizeof(stack))
+		utf8 = malloc(length);
+	if (utf8 == NULL)
+		return memFullErr;
+	if (!CFStringGetCString(url, utf8, length, kCFStringEncodingUTF8))
+	{
+		status = paramErr;
+		goto out;
+	}
+
+	status = AECreateDesc(typeKernelProcessID, &targetPid, sizeof(targetPid), &target);
+	if (status != noErr)
+		goto out;
+	status = AECreateAppleEvent(kInternetEventClass, kAEGetURL, &target, kAutoGenerateReturnID, kAnyTransactionID, &event);
+	AEDisposeDesc(&target);
+	if (status != noErr)
+		goto out;
+	status = AEPutParamPtr(&event, keyDirectObject, typeUTF8Text, utf8, strlen(utf8));
+	if (status == noErr)
+		status = AESendMessage(&event, NULL, kAENoReply, APP_READY_TIMEOUT_TICKS);
+	AEDisposeDesc(&event);
+out:
+	if (utf8 != stack)
+		free(utf8);
+	return status;
+}
+
 /*
- * Not supported yet:
- * - Apple Events: an application is started without 'oapp' and documents
- *   opened with an explicit application are not sent to it as 'odoc', so
- *   only the application is launched for them.
- * - passThruParams and launchFlags: every call starts a new instance.
+ * Opens URLs with an application: each goes to it as a kAEGetURL event. A running instance
+ * receives them, otherwise the application is launched first (or always, with kLSLaunchNewInstance).
+ * Once the application has been started it is not an error if it never takes the events; an
+ * application that installs no handler is just launched.
+ */
+static OSStatus deliver_urls(CFURLRef appURL, CFArrayRef urls, Boolean newInstance, CFURLRef *outLaunchedURL)
+{
+	CFBundleRef bundle = CFBundleCreate(kCFAllocatorDefault, appURL);
+	CFStringRef identifier = bundle != NULL ? CFBundleGetIdentifier(bundle) : NULL;
+	char bundleID[512] = "";
+	pid_t pid = 0;
+	OSStatus status;
+
+	if (identifier != NULL)
+		CFStringGetCString(identifier, bundleID, sizeof(bundleID), kCFStringEncodingUTF8);
+	if (bundle != NULL)
+		CFRelease(bundle);
+
+	if (!newInstance && bundleID[0] != 0)
+		pid = find_running_instance(bundleID);
+	if (pid == 0)
+	{
+		status = launch_application_pid(appURL, &pid);
+		if (status != noErr)
+			return status;
+	}
+
+	for (CFIndex i = 0; i < CFArrayGetCount(urls); i++)
+	{
+		CFStringRef string = CFURLGetString(CFArrayGetValueAtIndex(urls, i));
+
+		status = string != NULL ? send_get_url_event(pid, string) : paramErr;
+		if (status != noErr)
+			os_log_error(OS_LOG_DEFAULT, "LaunchServices: could not deliver a URL to process %d: %d", (int) pid, (int) status);
+	}
+
+	if (outLaunchedURL != NULL)
+	{
+		if (*outLaunchedURL != NULL)
+			CFRelease(*outLaunchedURL);
+		*outLaunchedURL = CFRetain(appURL);
+	}
+	return noErr;
+}
+
+/* The application for the URL's scheme, or NULL. */
+static CFURLRef copy_scheme_handler_app(CFURLRef url)
+{
+	CFStringRef scheme = CFURLCopyScheme(url);
+	CFStringRef handler = scheme != NULL ? LSCopyDefaultHandlerForURLScheme(scheme) : NULL;
+	CFURLRef app = NULL;
+
+	if (handler != NULL)
+	{
+		CFArrayRef apps = LSCopyApplicationURLsForBundleIdentifier(handler, NULL);
+
+		if (apps != NULL)
+		{
+			/* Registrations of bundles that were removed stay in the database; skip them. */
+			for (CFIndex i = 0; i < CFArrayGetCount(apps) && app == NULL; i++)
+			{
+				CFURLRef candidate = CFArrayGetValueAtIndex(apps, i);
+				char path[PATH_MAX];
+
+				if (CFURLGetFileSystemRepresentation(candidate, true, (UInt8 *) path, sizeof(path)) && access(path, F_OK) == 0)
+					app = CFRetain(candidate);
+			}
+			CFRelease(apps);
+		}
+		CFRelease(handler);
+	}
+	if (scheme != NULL)
+		CFRelease(scheme);
+	return app;
+}
+
+/* Items that are URLs for a scheme (not files, not links the host desktop opens), grouped by handling application. */
+static OSStatus open_scheme_urls(CFArrayRef urls, Boolean newInstance, CFURLRef *outLaunchedURL)
+{
+	CFMutableDictionaryRef groups = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	OSStatus ret = noErr;
+
+	for (CFIndex i = 0; i < CFArrayGetCount(urls); i++)
+	{
+		CFURLRef url = CFArrayGetValueAtIndex(urls, i);
+		CFURLRef app = copy_scheme_handler_app(url);
+		CFMutableArrayRef group;
+
+		if (app == NULL)
+		{
+			ret = kLSApplicationNotFoundErr;
+			continue;
+		}
+		group = (CFMutableArrayRef) CFDictionaryGetValue(groups, app);
+		if (group == NULL)
+		{
+			group = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+			CFDictionarySetValue(groups, app, group);
+			CFRelease(group);
+		}
+		CFArrayAppendValue(group, url);
+		CFRelease(app);
+	}
+
+	CFIndex n = CFDictionaryGetCount(groups);
+	if (n > 0)
+	{
+		const void **apps = malloc(n * sizeof(void *)), **lists = malloc(n * sizeof(void *));
+
+		if (apps != NULL && lists != NULL)
+		{
+			CFDictionaryGetKeysAndValues(groups, apps, lists);
+			for (CFIndex i = 0; i < n; i++)
+			{
+				OSStatus temp = deliver_urls(apps[i], lists[i], newInstance, outLaunchedURL);
+				if (temp != noErr)
+					ret = temp;
+			}
+		}
+		else
+			ret = memFullErr;
+		free(apps);
+		free(lists);
+	}
+	CFRelease(groups);
+	return ret;
+}
+
+/*
+ * Apple Events: URLs for a URL scheme are delivered as kAEGetURL events. Not supported yet:
+ * - an application is started without 'oapp' and documents opened with an explicit application
+ *   are not sent to it as 'odoc', so only the application is launched for them.
+ * - passThruParams: it is ignored. Without kLSLaunchNewInstance a URL goes to a running instance of
+ *   its handler; every other call starts a new instance.
  */
 OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLaunchedURL)
 {
 	CFIndex count, i;
 	CFURLRef url;
 	OSStatus ret = noErr, temp;
+	CFMutableArrayRef schemeURLs;
+	Boolean newInstance;
 
 	if (outLaunchedURL != NULL)
 		*outLaunchedURL = NULL;
@@ -100,16 +348,31 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 		return paramErr;
 
 	count = inLaunchSpec->itemURLs != NULL ? CFArrayGetCount(inLaunchSpec->itemURLs) : 0;
+	newInstance = (inLaunchSpec->launchFlags & kLSLaunchNewInstance) != 0;
 
 	if (inLaunchSpec->appURL != NULL)
 	{
-		/* The application opens all items, so it is launched once */
-		return launch_application(inLaunchSpec->appURL, outLaunchedURL);
+		/* The application opens all items, so it is launched once; URLs that are not files are
+		   handed to it as events. */
+		schemeURLs = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+		for (i = 0; i < count; i++)
+		{
+			url = CFArrayGetValueAtIndex(inLaunchSpec->itemURLs, i);
+			if (!is_file_url(url))
+				CFArrayAppendValue(schemeURLs, url);
+		}
+		if (CFArrayGetCount(schemeURLs) > 0)
+			ret = deliver_urls(inLaunchSpec->appURL, schemeURLs, newInstance, outLaunchedURL);
+		else
+			ret = launch_application(inLaunchSpec->appURL, outLaunchedURL);
+		CFRelease(schemeURLs);
+		return ret;
 	}
 
 	if (count == 0)
 		return paramErr;
 
+	schemeURLs = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
 	for (i = 0; i < count; i++)
 	{
 		url = CFArrayGetValueAtIndex(inLaunchSpec->itemURLs, i);
@@ -125,19 +388,33 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 		else if (_LSIsHostOpenURL(url))
 		{
 			temp = _LSOpenURLOnHost(url);
-			if (temp)
-				ret = temp;
 		}
 		else
-			temp = kLSApplicationNotFoundErr;
+		{
+			CFArrayAppendValue(schemeURLs, url);
+			continue;
+		}
 
 		if (temp != noErr)
 			ret = temp;
 	}
+
+	if (CFArrayGetCount(schemeURLs) > 0)
+	{
+		temp = open_scheme_urls(schemeURLs, newInstance, outLaunchedURL);
+		if (temp != noErr)
+			ret = temp;
+	}
+	CFRelease(schemeURLs);
 	return ret;
 }
 
 OSStatus _LSLaunchApplication(CFURLRef appPath)
+{
+	return launch_application_pid(appPath, NULL);
+}
+
+static OSStatus launch_application_pid(CFURLRef appPath, pid_t *outPid)
 {
 	CFStringRef executable = NULL, bundleName = NULL;
 	CFIndex nameSize = 0, execSize = 0;
@@ -215,6 +492,8 @@ OSStatus _LSLaunchApplication(CFURLRef appPath)
 		goto cleanup;
 	}
 
+	if (outPid != NULL)
+		*outPid = pid;
 	status = noErr;
 
 cleanup:

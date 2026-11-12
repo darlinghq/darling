@@ -8,8 +8,7 @@
 */
 
 // In-process Apple Event Descriptor Manager: descriptors, lists, records and Apple Events
-// (parameters and attributes). Darling has no Apple Event transport, so sending reports that
-// the target process could not be found.
+// (parameters and attributes). Sending and handler dispatch are in AEEvents.c.
 
 #include <AE/AE.h>
 #include <CoreFoundation/CoreFoundation.h>
@@ -878,17 +877,203 @@ OSErr AESizeOfAttribute(const AppleEvent* theAppleEvent, AEKeyword keyword, Desc
 	return noErr;
 }
 
-OSStatus AESendMessage(const AppleEvent* event, AppleEvent* reply, AESendMode sendMode, long timeOutInTicks)
+// --- Flattening ---
+
+// A flattened descriptor is a private, self-describing byte stream (host byte order), used to carry
+// descriptors between processes. It starts with a magic value, a format version and the total length,
+// followed by the descriptor tree.
+#define AE_FLAT_MAGIC 0x41454C46 // 'AELF'
+#define AE_FLAT_VERSION 1
+#define AE_FLAT_MAX_DEPTH 64
+
+typedef struct AEFlatBuffer {
+	uint8_t* bytes;
+	size_t length;
+	size_t capacity;
+	Boolean failed;
+} AEFlatBuffer;
+
+static void flatPut(AEFlatBuffer* buffer, const void* data, size_t size)
 {
-	if (reply)
-		AEInitializeDesc(reply);
-	return procNotFound; // no Apple Event transport to other processes
+	if (buffer->failed)
+		return;
+	if (buffer->length + size > buffer->capacity) {
+		size_t newCapacity = (buffer->length + size) * 2 + 64;
+		uint8_t* grown = realloc(buffer->bytes, newCapacity);
+		if (grown == NULL) {
+			buffer->failed = true;
+			return;
+		}
+		buffer->bytes = grown;
+		buffer->capacity = newCapacity;
+	}
+	if (size)
+		memcpy(buffer->bytes + buffer->length, data, size);
+	buffer->length += size;
 }
 
-OSErr AESend(const AppleEvent* theAppleEvent, AppleEvent* reply, AESendMode sendMode, AESendPriority sendPriority,
-	SInt32 timeOutInTicks, AEIdleUPP idleProc, AEFilterUPP filterProc)
+static void flatPut32(AEFlatBuffer* buffer, uint32_t value)
 {
-	return (OSErr) AESendMessage(theAppleEvent, reply, sendMode, timeOutInTicks);
+	flatPut(buffer, &value, sizeof(value));
+}
+
+static OSErr flattenNode(const AEDesc* desc, AEFlatBuffer* buffer, int depth);
+
+static OSErr flattenItems(const AEItem* items, long count, AEFlatBuffer* buffer, int depth)
+{
+	for (long i = 0; i < count; i++) {
+		flatPut32(buffer, items[i].key);
+		OSErr err = flattenNode(&items[i].desc, buffer, depth + 1);
+		if (err != noErr)
+			return err;
+	}
+	return noErr;
+}
+
+static OSErr flattenNode(const AEDesc* desc, AEFlatBuffer* buffer, int depth)
+{
+	if (depth > AE_FLAT_MAX_DEPTH)
+		return errAECorruptData;
+	AEStorage* storage = storageOf(desc);
+	flatPut32(buffer, desc->descriptorType);
+	if (storage == NULL) {
+		flatPut32(buffer, kAEKindData);
+		uint64_t zero = 0;
+		flatPut(buffer, &zero, sizeof(zero));
+		return buffer->failed ? memFullErr : noErr;
+	}
+	flatPut32(buffer, storage->kind);
+	if (storage->kind == kAEKindData) {
+		uint64_t size = (uint64_t) storage->size;
+		flatPut(buffer, &size, sizeof(size));
+		flatPut(buffer, storage->bytes, storage->size);
+	} else {
+		flatPut32(buffer, (uint32_t) storage->itemCount);
+		flatPut32(buffer, (uint32_t) storage->attributeCount);
+		OSErr err = flattenItems(storage->items, storage->itemCount, buffer, depth);
+		if (err == noErr)
+			err = flattenItems(storage->attributes, storage->attributeCount, buffer, depth);
+		if (err != noErr)
+			return err;
+	}
+	return buffer->failed ? memFullErr : noErr;
+}
+
+OSStatus AEFlattenDesc(const AEDesc* theAEDesc, Ptr buffer, Size bufferSize, Size* actualSize)
+{
+	if (theAEDesc == NULL)
+		return paramErr;
+	AEFlatBuffer flat = { 0 };
+	flatPut32(&flat, AE_FLAT_MAGIC);
+	flatPut32(&flat, AE_FLAT_VERSION);
+	flatPut32(&flat, 0); // total length, patched below
+	OSErr err = flattenNode(theAEDesc, &flat, 0);
+	if (err != noErr) {
+		free(flat.bytes);
+		return err;
+	}
+	uint32_t total = (uint32_t) flat.length;
+	memcpy(flat.bytes + 8, &total, sizeof(total));
+	if (actualSize)
+		*actualSize = (Size) flat.length;
+	if (buffer == NULL || bufferSize < (Size) flat.length) {
+		free(flat.bytes);
+		return errAEBufferTooSmall;
+	}
+	memcpy(buffer, flat.bytes, flat.length);
+	free(flat.bytes);
+	return noErr;
+}
+
+typedef struct AEFlatReader {
+	const uint8_t* bytes;
+	size_t length;
+	size_t position;
+} AEFlatReader;
+
+static Boolean flatGet(AEFlatReader* reader, void* out, size_t size)
+{
+	if (size > reader->length - reader->position)
+		return false;
+	memcpy(out, reader->bytes + reader->position, size);
+	reader->position += size;
+	return true;
+}
+
+static OSErr unflattenNode(AEFlatReader* reader, AEDesc* result, int depth);
+
+static OSErr unflattenItems(AEFlatReader* reader, AEItem** items, long* count, long* capacity, uint32_t number, int depth)
+{
+	for (uint32_t i = 0; i < number; i++) {
+		uint32_t key;
+		AEDesc child;
+		if (!flatGet(reader, &key, sizeof(key)))
+			return errAECorruptData;
+		OSErr err = unflattenNode(reader, &child, depth + 1);
+		if (err != noErr)
+			return err;
+		err = appendItem(items, count, capacity, key, &child);
+		AEDisposeDesc(&child);
+		if (err != noErr)
+			return err;
+	}
+	return noErr;
+}
+
+static OSErr unflattenNode(AEFlatReader* reader, AEDesc* result, int depth)
+{
+	uint32_t type, kind;
+	AEInitializeDesc(result);
+	if (depth > AE_FLAT_MAX_DEPTH || !flatGet(reader, &type, sizeof(type)) || !flatGet(reader, &kind, sizeof(kind)))
+		return errAECorruptData;
+
+	if (kind == kAEKindData) {
+		uint64_t size;
+		if (!flatGet(reader, &size, sizeof(size)) || size > reader->length - reader->position)
+			return errAECorruptData;
+		const uint8_t* data = reader->bytes + reader->position;
+		reader->position += (size_t) size;
+		if (type == typeNull && size == 0)
+			return noErr;
+		return newStorage(type, kAEKindData, data, (Size) size, result);
+	}
+
+	uint32_t itemCount, attributeCount;
+	if ((kind != kAEKindList && kind != kAEKindRecord && kind != kAEKindEvent) ||
+		!flatGet(reader, &itemCount, sizeof(itemCount)) || !flatGet(reader, &attributeCount, sizeof(attributeCount)))
+		return errAECorruptData;
+	// Every element takes at least 12 bytes, which bounds the counts by the remaining input.
+	size_t remaining = reader->length - reader->position;
+	if ((uint64_t) itemCount * 12 > remaining || (uint64_t) attributeCount * 12 > remaining)
+		return errAECorruptData;
+
+	OSErr err = newStorage(type, (AEKind) kind, NULL, 0, result);
+	if (err != noErr)
+		return err;
+	AEStorage* storage = storageOf(result);
+	err = unflattenItems(reader, &storage->items, &storage->itemCount, &storage->itemCapacity, itemCount, depth);
+	if (err == noErr)
+		err = unflattenItems(reader, &storage->attributes, &storage->attributeCount, &storage->attributeCapacity, attributeCount, depth);
+	if (err != noErr)
+		AEDisposeDesc(result);
+	return err;
+}
+
+OSStatus AEUnflattenDesc(const void* buffer, AEDesc* result)
+{
+	if (buffer == NULL || result == NULL)
+		return paramErr;
+	AEInitializeDesc(result);
+	uint32_t header[3];
+	memcpy(header, buffer, sizeof(header));
+	if (header[0] != AE_FLAT_MAGIC)
+		return errAECorruptData;
+	if (header[1] != AE_FLAT_VERSION)
+		return errAENewerVersion;
+	if (header[2] < sizeof(header))
+		return errAECorruptData;
+	AEFlatReader reader = { buffer, header[2], sizeof(header) };
+	return unflattenNode(&reader, result, 0);
 }
 
 // --- Object specifiers ---
