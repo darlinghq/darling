@@ -52,6 +52,9 @@ OSErr AESend(const AppleEvent *theAppleEvent, AppleEvent *reply, AESendMode send
 OSErr CreateObjSpecifier(DescType desiredClass, AEDesc *theContainer, DescType keyForm, AEDesc *keyData,
 	Boolean disposeInputs, AEDesc *objSpecifier);
 
+OSStatus AEFlattenDesc(const AEDesc *theAEDesc, Ptr buffer, Size bufferSize, Size *actualSize);
+OSStatus AEUnflattenDesc(const void *buffer, AEDesc *result);
+
 OSErr AEInstallSpecialHandler(AEKeyword functionClass, AEEventHandlerUPP handler, Boolean isSysHandler);
 OSErr AERemoveSpecialHandler(AEKeyword functionClass, AEEventHandlerUPP handler, Boolean isSysHandler);
 OSErr AEGetSpecialHandler(AEKeyword functionClass, AEEventHandlerUPP *handler, Boolean isSysHandler);
