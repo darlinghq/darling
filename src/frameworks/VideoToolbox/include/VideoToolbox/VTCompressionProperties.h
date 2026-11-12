@@ -23,6 +23,17 @@
 #include <CoreFoundation/CoreFoundation.h>
 
 extern CFStringRef const kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration;
+extern CFStringRef const kVTCompressionPropertyKey_AllowFrameReordering;
+extern CFStringRef const kVTCompressionPropertyKey_AverageBitRate;
+extern CFStringRef const kVTCompressionPropertyKey_MaxKeyFrameInterval;
+extern CFStringRef const kVTCompressionPropertyKey_ProfileLevel;
+extern CFStringRef const kVTCompressionPropertyKey_RealTime;
+extern CFStringRef const kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder;
+extern CFStringRef const kVTEncodeFrameOptionKey_ForceKeyFrame;
+extern CFStringRef const kVTProfileLevel_H264_Baseline_AutoLevel;
+extern CFStringRef const kVTProfileLevel_H264_Main_AutoLevel;
+extern CFStringRef const kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder;
+extern CFStringRef const kVTPixelTransferPropertyKey_RealTime;
 
 extern CFStringRef const kVTCompressionPropertyKey_DataRateLimits;
 
