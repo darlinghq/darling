@@ -163,6 +163,26 @@
 #define __MAC_10_14_4       101404
 #define __MAC_10_15         101500
 #define __MAC_10_15_1       101501
+#define __MAC_10_15_4        101504
+#define __MAC_11_0           110000
+#define __MAC_11_1           110100
+#define __MAC_11_3           110300
+#define __MAC_11_4           110400
+#define __MAC_11_5           110500
+#define __MAC_11_6           110600
+#define __MAC_12_0           120000
+#define __MAC_12_1           120100
+#define __MAC_12_2           120200
+#define __MAC_12_3           120300
+#define __MAC_12_4           120400
+#define __MAC_12_5           120500
+#define __MAC_12_6           120600
+#define __MAC_13_0           130000
+#define __MAC_13_1           130100
+#define __MAC_13_2           130200
+#define __MAC_13_3           130300
+#define __MAC_13_4           130400
+#define __MAC_13_5           130500
 /* __MAC_NA is not defined to a value but is uses as a token by macros to indicate that the API is unavailable */
 
 #define __IPHONE_2_0      20000
@@ -206,6 +226,34 @@
 #define __IPHONE_13_0    130000
 #define __IPHONE_13_1    130100
 #define __IPHONE_13_2    130200
+#define __IPHONE_13_3    130300
+#define __IPHONE_13_4    130400
+#define __IPHONE_13_5    130500
+#define __IPHONE_13_6    130600
+#define __IPHONE_13_7    130700
+#define __IPHONE_14_0    140000
+#define __IPHONE_14_1    140100
+#define __IPHONE_14_2    140200
+#define __IPHONE_14_3    140300
+#define __IPHONE_14_4    140400
+#define __IPHONE_14_5    140500
+#define __IPHONE_14_6    140600
+#define __IPHONE_14_7    140700
+#define __IPHONE_14_8    140800
+#define __IPHONE_15_0    150000
+#define __IPHONE_15_1    150100
+#define __IPHONE_15_2    150200
+#define __IPHONE_15_3    150300
+#define __IPHONE_15_4    150400
+#define __IPHONE_15_5    150500
+#define __IPHONE_15_6    150600
+#define __IPHONE_16_0    160000
+#define __IPHONE_16_1    160100
+#define __IPHONE_16_2    160200
+#define __IPHONE_16_3    160300
+#define __IPHONE_16_4    160400
+#define __IPHONE_16_5    160500
+#define __IPHONE_16_6    160600
 /* __IPHONE_NA is not defined to a value but is uses as a token by macros to indicate that the API is unavailable */
 
 #define __TVOS_9_0        90000
@@ -226,6 +274,30 @@
 #define __TVOS_12_3      120300
 #define __TVOS_13_0      130000
 #define __TVOS_13_1      130100
+#define __TVOS_13_2      130200
+#define __TVOS_13_3      130300
+#define __TVOS_13_4      130400
+#define __TVOS_14_0      140000
+#define __TVOS_14_1      140100
+#define __TVOS_14_2      140200
+#define __TVOS_14_3      140300
+#define __TVOS_14_5      140500
+#define __TVOS_14_6      140600
+#define __TVOS_14_7      140700
+#define __TVOS_15_0      150000
+#define __TVOS_15_1      150100
+#define __TVOS_15_2      150200
+#define __TVOS_15_3      150300
+#define __TVOS_15_4      150400
+#define __TVOS_15_5      150500
+#define __TVOS_15_6      150600
+#define __TVOS_16_0      160000
+#define __TVOS_16_1      160100
+#define __TVOS_16_2      160200
+#define __TVOS_16_3      160300
+#define __TVOS_16_4      160400
+#define __TVOS_16_5      160500
+#define __TVOS_16_6      160600
 
 #define __WATCHOS_1_0     10000
 #define __WATCHOS_2_0     20000
@@ -244,8 +316,35 @@
 #define __WATCHOS_5_2     50200
 #define __WATCHOS_6_0     60000
 #define __WATCHOS_6_0_1   60001
+#define __WATCHOS_6_1     60100
+#define __WATCHOS_6_1_1   60101
+#define __WATCHOS_6_2     60200
+#define __WATCHOS_7_0     70000
+#define __WATCHOS_7_1     70100
+#define __WATCHOS_7_2     70200
+#define __WATCHOS_7_3     70300
+#define __WATCHOS_7_4     70400
+#define __WATCHOS_7_5     70500
+#define __WATCHOS_7_6     70600
+#define __WATCHOS_8_0     80000
+#define __WATCHOS_8_1     80100
+#define __WATCHOS_8_3     80300
+#define __WATCHOS_8_4     80400
+#define __WATCHOS_8_5     80500
+#define __WATCHOS_8_6     80600
+#define __WATCHOS_8_7     80700
+#define __WATCHOS_9_0     90000
+#define __WATCHOS_9_1     90100
+#define __WATCHOS_9_2     90200
+#define __WATCHOS_9_3     90300
+#define __WATCHOS_9_4     90400
+#define __WATCHOS_9_5     90500
+#define __WATCHOS_9_6     90600
 
 #define __DRIVERKIT_19_0 190000
+#define __DRIVERKIT_20_0 200000
+#define __DRIVERKIT_21_0 210000
+#define __DRIVERKIT_22_0 220000
 #endif /* __MAC_10_0 */
 
 #include <AvailabilityInternal.h>
