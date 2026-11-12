@@ -17,10 +17,21 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <AVFoundation/AVQueuedSampleBufferRendering.h>
 
-extern NSNotificationName const AVSampleBufferAudioRendererWasFlushedAutomaticallyNotification;
+@interface AVSampleBufferAudioRenderer : NSObject <AVQueuedSampleBufferRendering>
 
-@interface AVSampleBufferAudioRenderer : NSObject
+@property (nonatomic, readonly) AVQueuedSampleBufferRenderingStatus status;
+@property (nonatomic, readonly) NSError *error;
+@property (nonatomic, copy) NSString *audioOutputDeviceUniqueID;
+@property (nonatomic, copy) NSString *audioTimePitchAlgorithm;
+@property (nonatomic) float volume;
+@property (nonatomic, getter=isMuted) BOOL muted;
+- (void)flushFromSourceTime:(CMTime)time completionHandler:(void (^)(BOOL flushSucceeded))completionHandler;
 
 @end
+
+extern NSNotificationName const AVSampleBufferAudioRendererWasFlushedAutomaticallyNotification;
+extern NSString *const AVSampleBufferAudioRendererFlushTimeKey;
+extern NSNotificationName const AVSampleBufferAudioRendererOutputConfigurationDidChangeNotification;

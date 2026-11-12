@@ -18,6 +18,7 @@
 */
 
 #import <Foundation/Foundation.h>
+#import <AVFAudio/AVAudioSessionTypes.h>
 
 #ifndef NS_TYPED_ENUM
 #define NS_TYPED_ENUM
@@ -94,10 +95,15 @@ extern NSString *const AVAudioSessionPolarPatternSubcardioid;
 + (AVAudioSession *)sharedInstance;
 
 - (BOOL)setActive:(BOOL)active error:(NSError **)outError;
-- (BOOL)setActive:(BOOL)active withOptions:(NSUInteger)options error:(NSError **)outError;
+- (BOOL)setActive:(BOOL)active withOptions:(AVAudioSessionSetActiveOptions)options error:(NSError **)outError;
 
 - (BOOL)setCategory:(NSString *)category error:(NSError **)outError;
+- (BOOL)setCategory:(NSString *)category withOptions:(AVAudioSessionCategoryOptions)options error:(NSError **)outError;
+- (BOOL)setCategory:(NSString *)category mode:(NSString *)mode options:(AVAudioSessionCategoryOptions)options error:(NSError **)outError;
+- (BOOL)setCategory:(NSString *)category mode:(NSString *)mode routeSharingPolicy:(AVAudioSessionRouteSharingPolicy)policy options:(AVAudioSessionCategoryOptions)options error:(NSError **)outError;
 - (NSString *)category;
+@property (readonly) AVAudioSessionCategoryOptions categoryOptions;
+@property (readonly) AVAudioSessionRouteSharingPolicy routeSharingPolicy;
 
 - (BOOL)setMode:(NSString *)mode error:(NSError **)outError;
 - (NSString *)mode;
@@ -106,4 +112,13 @@ extern NSString *const AVAudioSessionPolarPatternSubcardioid;
 - (NSInteger)inputNumberOfChannels;
 - (NSInteger)outputNumberOfChannels;
 
+- (BOOL)setPreferredInputNumberOfChannels:(NSInteger)count error:(NSError **)outError;
+@property (readonly) NSInteger preferredInputNumberOfChannels;
+- (BOOL)setPreferredOutputNumberOfChannels:(NSInteger)count error:(NSError **)outError;
+@property (readonly) NSInteger preferredOutputNumberOfChannels;
+@property (readonly) NSInteger maximumInputNumberOfChannels;
+@property (readonly) NSInteger maximumOutputNumberOfChannels;
+
+- (BOOL)setSupportsMultichannelContent:(BOOL)inValue error:(NSError **)outError;
+@property (readonly) BOOL supportsMultichannelContent;
 @end
