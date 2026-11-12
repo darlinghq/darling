@@ -1,5 +1,42 @@
+// This module lists the C headers explicitly instead of using the CoreGraphics.h umbrella.
+// CGWindow.h, CGSubWindow.h and the CGS* headers declare Objective-C classes over Foundation,
+// CGEvent.h reaches them through CoreGraphicsPrivate.h, and Foundation's NSGeometry.h imports
+// CoreGraphics, so putting any of them in this module makes CoreGraphics and Foundation import
+// each other (a cyclic module dependency). They are left out and stay available by including the
+// header textually, as before; the CGWindowList/CGWindow and CGEvent C functions are therefore not
+// part of the modular CoreGraphics. Fixing that needs those headers split into C and Foundation
+// parts in the CoreGraphics sources.
 framework module CoreGraphics [extern_c] [system] {
-  umbrella header "CoreGraphics.h"
+  header "CGBase.h"
+  header "CGError.h"
+  header "CGAffineTransform.h"
+  header "CGBitmapContext.h"
+  header "CGColor.h"
+  header "CGColorSpace.h"
+  header "CGContext.h"
+  header "CGDataConsumer.h"
+  header "CGDataProvider.h"
+  header "CGDirectDisplay.h"
+  header "CGDisplayConfiguration.h"
+  header "CGDisplayFade.h"
+  header "CGDisplayStream.h"
+  header "CGEventTypes.h"
+  header "CGFont.h"
+  header "CGFunction.h"
+  header "CGGeometry.h"
+  header "CGGradient.h"
+  header "CGImage.h"
+  header "CGLayer.h"
+  header "CGPath.h"
+  header "CGPattern.h"
+  header "CGPDFContext.h"
+  header "CGPDFDictionary.h"
+  header "CGPDFDocument.h"
+  header "CGPDFObject.h"
+  header "CGPDFPage.h"
+  header "CGPSConverter.h"
+  header "CGRemoteOperation.h"
+  header "CGShading.h"
+  header "CGWindowLevel.h"
   export *
-  module * { export * }
 }
