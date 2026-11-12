@@ -49,6 +49,9 @@ enum {
  kAudioUnitSubType_VoiceProcessingIO = 'vpio'
 };
 enum {
+ kAudioUnitSubType_RemoteIO = 'rioc'
+};
+enum {
  kAudioUnitSubType_HALOutput = 'ahal',
  kAudioUnitSubType_DefaultOutput = 'def ',
  kAudioUnitSubType_SystemOutput = 'sys ',
