@@ -1369,22 +1369,29 @@ static void setPixelStore(int pack, const struct pixel_store *store) {
 }
 
 // Checks that width x height pixels of format and type fit in the plane, and
-// returns the plane's address and its row stride in pixels.
+// returns the plane's address, its row stride in pixels, and the stride and
+// pixel size in bytes. The row stride in pixels is 0 when the row stride in
+// bytes is not a multiple of the pixel size (24-bit pixels in rows aligned to a
+// power of two): GL's row length cannot express that, so such planes are
+// transferred one row at a time.
 static CGLError planeForTransfer(IOSurfaceRef surface, GLuint plane, GLsizei width, GLsizei height,
-                                 GLenum format, GLenum type, void **pixels, GLint *rowLength) {
+                                 GLenum format, GLenum type, void **pixels, GLint *rowLength,
+                                 size_t *rowBytes, size_t *pixelBytes) {
     size_t bytesPerRow = IOSurfaceGetBytesPerRowOfPlane(surface, plane);
     size_t planeHeight = IOSurfaceGetHeightOfPlane(surface, plane);
     size_t size = pixelSize(format, type);
     if (size == 0)
         size = IOSurfaceGetBytesPerElementOfPlane(surface, plane);
     *pixels = IOSurfaceGetBaseAddressOfPlane(surface, plane);
-    if (!*pixels || bytesPerRow == 0 || size == 0 || bytesPerRow % size != 0)
+    if (!*pixels || bytesPerRow == 0 || size == 0)
         return kCGLBadValue;
     if (width <= 0 || height <= 0 || (size_t) width > bytesPerRow / size || (size_t) height > planeHeight)
         return kCGLBadValue;
     if (bytesPerRow / size > INT32_MAX)
         return kCGLBadValue;
-    *rowLength = (GLint) (bytesPerRow / size);
+    *rowLength = bytesPerRow % size == 0 ? (GLint) (bytesPerRow / size) : 0;
+    *rowBytes = bytesPerRow;
+    *pixelBytes = size;
     return kCGLNoError;
 }
 
@@ -1856,7 +1863,9 @@ CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum interna
 
     void *pixels;
     GLint rowLength;
-    CGLError error = planeForTransfer(ioSurface, plane, width, height, format, type, &pixels, &rowLength);
+    size_t rowBytes, pixelBytes;
+    CGLError error = planeForTransfer(ioSurface, plane, width, height, format, type, &pixels, &rowLength,
+                                      &rowBytes, &pixelBytes);
     if (error != kCGLNoError)
         return error;
 
@@ -1903,7 +1912,13 @@ CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum interna
         savePixelStore(0, &saved);
         setPixelStore(0, &transfer);
 
-        if (allocatedWidth == width && allocatedHeight == height && allocatedFormat == (GLint) internal_format)
+        if (rowLength == 0) {
+            // Rows that are not a whole number of pixels apart go up one by one.
+            if (allocatedWidth != width || allocatedHeight != height || allocatedFormat != (GLint) internal_format)
+                glTexImage2D(target, 0, (GLint) internal_format, width, height, 0, format, type, NULL);
+            for (GLsizei row = 0; row < height; row++)
+                glTexSubImage2D(target, 0, 0, row, width, 1, format, type, (const char *) pixels + row * rowBytes);
+        } else if (allocatedWidth == width && allocatedHeight == height && allocatedFormat == (GLint) internal_format)
             glTexSubImage2D(target, 0, 0, 0, width, height, format, type, pixels);
         else
             glTexImage2D(target, 0, (GLint) internal_format, width, height, 0, format, type, pixels);
@@ -2058,8 +2073,9 @@ static CGLError readBackSurface(IOSurfaceRef ioSurface, int onlyIfUnmodified) {
     // The texture may have been respecified since; it must still fit.
     void *pixels;
     GLint rowLength;
+    size_t rowBytes, pixelBytes;
     error = planeForTransfer(ioSurface, binding.plane, width, height, binding.format, binding.type,
-                             &pixels, &rowLength);
+                             &pixels, &rowLength, &rowBytes, &pixelBytes);
     if (error == kCGLNoError) {
         struct pixel_store saved, transfer = { 0, rowLength, 0, 0, 1 };
         savePixelStore(1, &saved);
@@ -2067,7 +2083,20 @@ static CGLError readBackSurface(IOSurfaceRef ioSurface, int onlyIfUnmodified) {
         uint32_t seed = 0;
         t_readingBack = 1;
         IOSurfaceLock(ioSurface, 0, NULL);
-        glGetTexImage(binding.target, 0, binding.format, binding.type, pixels);
+        if (rowLength == 0) {
+            // Rows that are not a whole number of pixels apart: read the
+            // texture packed and copy the rows to where they belong.
+            size_t packedRow = (size_t) width * pixelBytes;
+            uint8_t *packed = malloc(packedRow * (size_t) height);
+            if (packed != NULL) {
+                glGetTexImage(binding.target, 0, binding.format, binding.type, packed);
+                for (GLint row = 0; row < height; row++)
+                    memcpy((uint8_t *) pixels + row * rowBytes, packed + row * packedRow, packedRow);
+                free(packed);
+            }
+        } else {
+            glGetTexImage(binding.target, 0, binding.format, binding.type, pixels);
+        }
         IOSurfaceUnlock(ioSurface, 0, &seed);
         t_readingBack = 0;
         setPixelStore(1, &saved);

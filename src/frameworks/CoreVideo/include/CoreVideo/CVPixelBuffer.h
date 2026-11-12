@@ -86,6 +86,10 @@ extern const CFStringRef kCVPixelBufferWidthKey;
 
 typedef CVImageBufferRef CVPixelBufferRef;
 typedef CVOptionFlags CVPixelBufferLockFlags;
+
+enum {
+	kCVPixelBufferLock_ReadOnly = 0x00000001,
+};
 typedef void (*CVPixelBufferReleaseBytesCallback)(void *releaseRefCon, const void *baseAddress);
 typedef void (*CVPixelBufferReleasePlanarBytesCallback)(void *releaseRefCon, const void *dataPtr, size_t dataSize,
 	size_t numberOfPlanes, const void *planeAddresses[]);
@@ -119,7 +123,6 @@ CV_EXPORT void* CV_NULLABLE CVPixelBufferGetBaseAddressOfPlane(CVPixelBufferRef 
 CV_EXPORT size_t CVPixelBufferGetBytesPerRowOfPlane(CVPixelBufferRef pixelBuffer, size_t planeIndex);
 CV_EXPORT size_t CVPixelBufferGetWidthOfPlane(CVPixelBufferRef pixelBuffer, size_t planeIndex);
 CV_EXPORT size_t CVPixelBufferGetHeightOfPlane(CVPixelBufferRef pixelBuffer, size_t planeIndex);
-CV_EXPORT void* CV_NULLABLE CVPixelBufferGetIOSurface(CVPixelBufferRef pixelBuffer);
 CV_EXPORT CVReturn CVPixelBufferLockBaseAddress(CVPixelBufferRef pixelBuffer, CVPixelBufferLockFlags lockFlags);
 CV_EXPORT CVReturn CVPixelBufferUnlockBaseAddress(CVPixelBufferRef pixelBuffer, CVPixelBufferLockFlags unlockFlags);
 
