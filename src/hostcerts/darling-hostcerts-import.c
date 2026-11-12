@@ -14,8 +14,9 @@
 //      certificates of that bundle into the bundle's Resources directory (in the
 //      guest's overlay of /System, beside the shipped files), so a root that the
 //      host does not trust is not trusted by the guest, and one the host adds is;
-//   3. without a usable host bundle, restores the shipped anchors (the PEM files
-//      that Darling installs in /System/Library/OpenSSL/certs), but only if an
+//   3. without a usable host bundle, restores the shipped anchors (copies of the
+//      files that Darling's build generated, kept in /usr/libexec/darling-hostcerts
+//      so that they cannot be confused with older installed files), but only if an
 //      earlier run replaced them; otherwise it leaves the shipped files alone;
 //   4. stops trustd when the files changed, because trustd reads the anchors once
 //      at start; the next request starts it again with the new anchors;
@@ -45,7 +46,8 @@
 //   --bundle FILE    use this PEM file instead of searching for the host's (no
 //                    ownership check); a file that cannot be read counts as "no
 //                    host bundle"
-//   --shipped DIR    directory of the shipped PEM files (*.crt)
+//   --shipped DIR    directory holding the shipped certsIndex.data and
+//                    certsTable.data
 //   --output DIR     write the index and table here instead of the bundle's
 //                    Resources directory (trustd is not stopped then)
 //   --keychain FILE  create this keychain instead of the System keychain
@@ -76,7 +78,7 @@ extern char** environ;
 
 #define HOST_ROOT "/Volumes/SystemRoot"
 #define ANCHOR_DIRECTORY "/System/Library/Security/Certificates.bundle/Contents/Resources"
-#define SHIPPED_DIRECTORY "/System/Library/OpenSSL/certs"
+#define SHIPPED_DIRECTORY "/usr/libexec/darling-hostcerts"
 #define SYSTEM_KEYCHAIN_PATH "/Library/Keychains/System.keychain"
 #define STATE_PATH "/var/db/org.darlinghq.hostcerts.plist"
 #define LOG_PATH "/var/log/darling-hostcerts.log"
@@ -88,6 +90,7 @@ extern char** environ;
 #define INDEX_NAME "certsIndex.data"
 #define TABLE_NAME "certsTable.data"
 
+#define INDEX_RECORD_SIZE 24 // SHA-1 of the subject content and a 4-byte table offset
 #define MAX_FILE_SIZE (16 * 1024 * 1024)
 #define MAX_CERTIFICATES 4096
 #define STATE_VERSION 2
@@ -470,38 +473,6 @@ static bool load_host_anchors(const char* explicitPath, anchors_t* anchors, CFDa
 	return true;
 }
 
-// The PEM files that Darling ships (the lower layer of /System, which this tool
-// never changes).
-static void load_shipped_anchors(const char* directory, anchors_t* anchors)
-{
-	DIR* dir = opendir(directory);
-	struct dirent* entry;
-
-	if (dir == NULL)
-		return;
-	while ((entry = readdir(dir)) != NULL)
-	{
-		size_t length = strlen(entry->d_name);
-		char path[1024];
-		struct stat st;
-		CFDataRef data;
-
-		if (length < 5 || strcmp(entry->d_name + length - 4, ".crt") != 0)
-			continue;
-		snprintf(path, sizeof(path), "%s/%s", directory, entry->d_name);
-		if (lstat(path, &st) != 0 || !S_ISREG(st.st_mode))
-			continue;
-		data = read_file(path, false);
-		if (data != NULL)
-		{
-			anchors_add_pem(anchors, data);
-			CFRelease(data);
-		}
-	}
-	closedir(dir);
-	anchors_finish(anchors);
-}
-
 //
 // the anchor files
 //
@@ -731,21 +702,19 @@ static bool import_enabled(void)
 // main
 //
 
-// Writes the anchor files for the certificates, unless the directory already
-// has exactly this content. Returns true when files were written.
-static bool update_anchor_files(const char* directory, const anchors_t* anchors, bool force, size_t* used, bool* failed)
+// Writes the two files into the directory, unless it already has exactly this
+// content (or the content is empty). Returns true when files were written;
+// *failed is set when the content is unusable or a write failed.
+static bool write_anchor_pair(const char* directory, CFDataRef index, CFDataRef table, bool force, bool* failed)
 {
-	CFMutableDataRef index = CFDataCreateMutable(NULL, 0);
-	CFMutableDataRef table = CFDataCreateMutable(NULL, 0);
 	char indexPath[1024], tablePath[1024];
 	bool written = false;
 
 	*failed = false;
-	build_anchor_files(anchors, index, table, used);
 	snprintf(indexPath, sizeof(indexPath), "%s/%s", directory, INDEX_NAME);
 	snprintf(tablePath, sizeof(tablePath), "%s/%s", directory, TABLE_NAME);
 
-	if (*used == 0)
+	if (CFDataGetLength(index) == 0 || CFDataGetLength(table) == 0)
 	{
 		hc_log(OS_LOG_TYPE_ERROR, "no usable certificate; the anchors are left as they are");
 		*failed = true;
@@ -765,8 +734,50 @@ static bool update_anchor_files(const char* directory, const anchors_t* anchors,
 			*failed = true;
 		}
 	}
+	return written;
+}
+
+// Writes the anchor files for the certificates (see write_anchor_pair).
+static bool update_anchor_files(const char* directory, const anchors_t* anchors, bool force, size_t* used, bool* failed)
+{
+	CFMutableDataRef index = CFDataCreateMutable(NULL, 0);
+	CFMutableDataRef table = CFDataCreateMutable(NULL, 0);
+	bool written;
+
+	build_anchor_files(anchors, index, table, used);
+	written = write_anchor_pair(directory, index, table, force, failed);
 	CFRelease(index);
 	CFRelease(table);
+	return written;
+}
+
+// Puts back the anchor files that Darling's build generated from its shipped
+// certificates. They are installed as a pair in a directory only this tool uses
+// (nothing else is ever written there, so no stale file can be picked up), as the
+// guest's copy of the bundle's own files is masked by the files written here.
+static bool restore_shipped_files(const char* shippedDirectory, const char* directory, bool force, size_t* used, bool* failed)
+{
+	char indexPath[1024], tablePath[1024];
+	CFDataRef index, table;
+	bool written = false;
+
+	snprintf(indexPath, sizeof(indexPath), "%s/%s", shippedDirectory, INDEX_NAME);
+	snprintf(tablePath, sizeof(tablePath), "%s/%s", shippedDirectory, TABLE_NAME);
+	index = read_file(indexPath, false);
+	table = read_file(tablePath, false);
+	*used = 0;
+	*failed = true;
+	if (index == NULL || table == NULL)
+		hc_log(OS_LOG_TYPE_ERROR, "no host bundle and no shipped anchor files in %s; the anchors are left as they are", shippedDirectory);
+	else
+	{
+		*used = CFDataGetLength(index) / INDEX_RECORD_SIZE;
+		written = write_anchor_pair(directory, index, table, force, failed);
+	}
+	if (index != NULL)
+		CFRelease(index);
+	if (table != NULL)
+		CFRelease(table);
 	return written;
 }
 
@@ -817,14 +828,7 @@ int main(int argc, char** argv)
 	if (host)
 		source = "host";
 	else if (state_source(oldState) != NULL)
-	{
-		// the host bundle is gone: back to what Darling ships
-		load_shipped_anchors(shippedDirectory, &anchors);
-		if (anchors.count == 0)
-			hc_log(OS_LOG_TYPE_ERROR, "no host bundle and no shipped certificates in %s; the anchors are left as they are", shippedDirectory);
-		else
-			source = "shipped";
-	}
+		source = "shipped"; // the host bundle is gone: back to what Darling ships
 	else
 		hc_log(OS_LOG_TYPE_DEFAULT, "no usable host certificate bundle; the shipped anchors stay");
 
@@ -832,7 +836,9 @@ int main(int argc, char** argv)
 	{
 		size_t used = 0;
 		bool failed;
-		bool written = update_anchor_files(outputDirectory, &anchors, force, &used, &failed);
+		bool written = host
+			? update_anchor_files(outputDirectory, &anchors, force, &used, &failed)
+			: restore_shipped_files(shippedDirectory, outputDirectory, force, &used, &failed);
 
 		if (!failed)
 		{

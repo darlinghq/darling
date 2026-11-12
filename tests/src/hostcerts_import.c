@@ -7,7 +7,7 @@
 // content and a table offset; table records with length, DER certificate and 0xff
 // padding to 8 bytes), that exactly the host bundle's certificates are in them
 // and none of the shipped ones, that an unchanged bundle writes nothing, that a
-// changed one is picked up, that without a host bundle the shipped certificates
+// changed one is picked up, that without a host bundle the shipped anchor files
 // come back (only after an earlier replacement), and that duplicates and
 // unparseable blocks are handled. The certificates are throw-away self-signed test
 // CAs (EC P-256, valid until 2126, generated with OpenSSL; no private key is
@@ -102,7 +102,7 @@ static void write_file(const char* path, const char* a, const char* b, const cha
 	fclose(f);
 }
 
-static int run_tool(bool force, const char* bundle)
+static int run_tool_to(bool force, const char* bundle, const char* output, const char* keychain, const char* state)
 {
 	char* argv[20];
 	int n = 0, status = -1;
@@ -116,11 +116,11 @@ static int run_tool(bool force, const char* bundle)
 	argv[n++] = "--shipped";
 	argv[n++] = g_shipped;
 	argv[n++] = "--output";
-	argv[n++] = g_output;
+	argv[n++] = (char*) output;
 	argv[n++] = "--keychain";
-	argv[n++] = g_keychain;
+	argv[n++] = (char*) keychain;
 	argv[n++] = "--state";
-	argv[n++] = g_state;
+	argv[n++] = (char*) state;
 	argv[n] = NULL;
 
 	if (posix_spawn(&pid, g_tool, NULL, NULL, argv, environ) != 0)
@@ -128,6 +128,11 @@ static int run_tool(bool force, const char* bundle)
 	if (waitpid(pid, &status, 0) != pid)
 		return -1;
 	return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+}
+
+static int run_tool(bool force, const char* bundle)
+{
+	return run_tool_to(force, bundle, g_output, g_keychain, g_state);
 }
 
 static unsigned char* read_all(const char* path, size_t* length)
@@ -262,13 +267,21 @@ int main(int argc, char** argv)
 	mkdir(g_shipped, 0755);
 	mkdir(g_output, 0755);
 
-	// the shipped list holds CA 3 (a file with another suffix is not read)
+	// the shipped anchor files hold CA 3 only: they are generated with the tool
+	// itself, from a bundle, into the shipped directory (as Darling's build
+	// generates its own). A stale PEM file with another certificate in the
+	// directory must not matter.
 	{
-		char path[400];
+		char path[400], keychain2[400], state2[400];
 
-		snprintf(path, sizeof(path), "%s/ca3.crt", g_shipped);
-		write_file(path, kCA3, "", "");
-		snprintf(path, sizeof(path), "%s/ca1.pem", g_shipped);
+		snprintf(keychain2, sizeof(keychain2), "%s/shipped.keychain", g_dir);
+		snprintf(state2, sizeof(state2), "%s/shipped-state.plist", g_dir);
+		write_file(g_bundle, kCA3, "", "");
+		CHECK(run_tool_to(false, g_bundle, g_shipped, keychain2, state2) == 0);
+		unlink(g_bundle);
+		unlink(keychain2);
+		unlink(state2);
+		snprintf(path, sizeof(path), "%s/ca1.crt", g_shipped);
 		write_file(path, kCA1, "", "");
 	}
 
@@ -351,9 +364,11 @@ int main(int argc, char** argv)
 	{
 		char path[400];
 
-		snprintf(path, sizeof(path), "%s/ca3.crt", g_shipped);
+		snprintf(path, sizeof(path), "%s/ca1.crt", g_shipped);
 		unlink(path);
-		snprintf(path, sizeof(path), "%s/ca1.pem", g_shipped);
+		snprintf(path, sizeof(path), "%s/certsIndex.data", g_shipped);
+		unlink(path);
+		snprintf(path, sizeof(path), "%s/certsTable.data", g_shipped);
 		unlink(path);
 	}
 	unlink(g_index);
