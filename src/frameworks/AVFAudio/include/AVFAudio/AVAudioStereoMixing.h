@@ -21,4 +21,8 @@
 
 @protocol AVAudioStereoMixing
 
+// Stereo balance of the source: -1.0 is left, 0.0 is center, 1.0 is right. Values outside
+// that range are clamped. The default is 0.0.
+@property (nonatomic) float pan;
+
 @end
