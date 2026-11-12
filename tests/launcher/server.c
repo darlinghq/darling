@@ -263,6 +263,83 @@ static void test_prefix_server_scan(void)
 	CHECK(scanResult == 0);
 }
 
+static void test_orphaned_init_parsers(void)
+{
+	static const char init[] = "Name:\tmldr\nNSpid:\t4321\t1\nUid:\t1000\t1000\t1000\t1000\n";
+	static const char notInit[] = "NSpid:\t4321\t7\n";
+	static const char hostInit[] = "NSpid:\t1\n";
+	static const char nested[] = "NSpid:\t4321\t55\t1\n";
+	static const char env[] = "A=1\0__mldr_sockpath=/home/u/.darling/.darlingserver.sock\0B=2\0";
+
+	CHECK(launcherStatusIsNamespaceInit(init, sizeof(init) - 1));
+	CHECK(launcherStatusIsNamespaceInit(nested, sizeof(nested) - 1));
+	CHECK(!launcherStatusIsNamespaceInit(notInit, sizeof(notInit) - 1));
+	// pid 1 of the host's own namespace is not a container's init
+	CHECK(!launcherStatusIsNamespaceInit(hostInit, sizeof(hostInit) - 1));
+	CHECK(!launcherStatusIsNamespaceInit("Name:\tmldr\n", 11));
+	CHECK(!launcherStatusIsNamespaceInit("NSpid:\tx\t1\n", 12));
+
+	CHECK(launcherEnvironmentHas(env, sizeof(env) - 1, "__mldr_sockpath", "/home/u/.darling/.darlingserver.sock"));
+	CHECK(!launcherEnvironmentHas(env, sizeof(env) - 1, "__mldr_sockpath", "/home/u/.darling"));
+	CHECK(!launcherEnvironmentHas(env, sizeof(env) - 1, "__mldr_sockpath", "/home/u/.darling/.darlingserver.sock2"));
+	CHECK(!launcherEnvironmentHas(env, sizeof(env) - 1, "mldr_sockpath", "/home/u/.darling/.darlingserver.sock"));
+	CHECK(!launcherEnvironmentHas(env, sizeof(env) - 1, "A", ""));
+	CHECK(launcherEnvironmentHas(env, sizeof(env) - 1, "B", "2"));
+	CHECK(!launcherEnvironmentHas("", 0, "A", "1"));
+}
+
+static void makeFixtureFile(const char* dir, const char* name, const char* contents)
+{
+	char path[512];
+
+	snprintf(path, sizeof(path), "%s/%s", dir, name);
+	writeFixture(path, contents, strlen(contents));
+}
+
+// A synthetic /proc with one process shaped like a container's init.
+static void test_orphaned_init_scan(void)
+{
+	const char* prefix = "/synthetic-prefix";
+	char procRoot[] = "/tmp/darling-proc-orphan-XXXXXX";
+	char processPath[256], path[512], status[160], environ[160];
+	uid_t uid = geteuid() == 0 ? 1000 : getuid();
+	pid_t found = 0;
+
+	CHECK(mkdtemp(procRoot) != NULL);
+	snprintf(processPath, sizeof(processPath), "%s/4242", procRoot);
+	CHECK(mkdir(processPath, 0755) == 0);
+	snprintf(path, sizeof(path), "%s/exe", processPath);
+	CHECK(symlink("/proc/self/exe", path) == 0);
+	snprintf(status, sizeof(status), "Name:\tmldr\nNSpid:\t4242\t1\nUid:\t%u\t%u\t%u\t%u\n", (unsigned)uid, (unsigned)uid, (unsigned)uid, (unsigned)uid);
+	makeFixtureFile(processPath, "status", status);
+	// strlen() stops at the first NUL, so write the block with explicit lengths
+	snprintf(path, sizeof(path), "%s/environ", processPath);
+	snprintf(environ, sizeof(environ), "X=1%c__mldr_sockpath=%s/.darlingserver.sock%c", 0, prefix, 0);
+	writeFixture(path, environ, 3 + 1 + strlen("__mldr_sockpath=") + strlen(prefix) + strlen("/.darlingserver.sock") + 1);
+
+	CHECK(launcherFindOrphanedInit(procRoot, prefix, uid, "/proc/self/exe", &found) == 1);
+	CHECK(found == 4242);
+	// another prefix, another user, another executable
+	CHECK(launcherFindOrphanedInit(procRoot, "/other-prefix", uid, "/proc/self/exe", &found) == 0);
+	CHECK(launcherFindOrphanedInit(procRoot, prefix, uid + 1, "/proc/self/exe", &found) == 0);
+	CHECK(launcherFindOrphanedInit(procRoot, prefix, uid, "/bin/sh", &found) == 0);
+	CHECK(launcherFindOrphanedInit(procRoot, prefix, uid, "/nonexistent/mldr", &found) == -1);
+	CHECK(launcherFindOrphanedInit("/nonexistent/proc", prefix, uid, "/proc/self/exe", &found) == -1);
+
+	// not the first process of its namespace
+	snprintf(status, sizeof(status), "Name:\tmldr\nNSpid:\t4242\t9\nUid:\t%u\t%u\t%u\t%u\n", (unsigned)uid, (unsigned)uid, (unsigned)uid, (unsigned)uid);
+	snprintf(path, sizeof(path), "%s/status", processPath);
+	unlink(path);
+	makeFixtureFile(processPath, "status", status);
+	CHECK(launcherFindOrphanedInit(procRoot, prefix, uid, "/proc/self/exe", &found) == 0);
+
+	snprintf(path, sizeof(path), "%s/environ", processPath); unlink(path);
+	snprintf(path, sizeof(path), "%s/status", processPath); unlink(path);
+	snprintf(path, sizeof(path), "%s/exe", processPath); unlink(path);
+	rmdir(processPath);
+	rmdir(procRoot);
+}
+
 int main(int argc, char** argv)
 {
 	if (argc == 4 && !strcmp(argv[2], "--hold"))
@@ -303,6 +380,8 @@ int main(int argc, char** argv)
 	test_foreign_namespace();
 	test_prefix_server_scan();
 	test_root_effective_prefix_server();
+	test_orphaned_init_parsers();
+	test_orphaned_init_scan();
 
 	if (g_failures)
 	{
