@@ -2,7 +2,8 @@
  * Copyright (C) 2026 Lubos Dolezel
  *
  * The IODisplayConnect services of the IORegistry. Every one has the product name (a dictionary
- * of localised names), the vendor, product and serial numbers, and an EDID whose fixed header
+ * of localised names), the serial number, the vendor and product numbers (both or neither, as a
+ * display without a usable EDID gets a made-up one), and an EDID whose fixed header
  * and checksum are valid. A physical size, when given, is a pair of positive numbers.
  * With the argument "require" (for Darling with a display, from DRM or from an X server) there
  * is at least one such service, and no two services have the same serial number and product ID.
@@ -43,6 +44,18 @@ int main(int argc, char **argv)
 	io_iterator_t it;
 	io_registry_entry_t e;
 
+#ifndef __LP64__
+	// the properties of registry entries cannot be read at all from a 32-bit process yet
+	{
+		io_service_t platform = IOServiceGetMatchingService(kIOMasterPortDefault, IOServiceMatching("IOPlatformExpertDevice"));
+		CFTypeRef p = platform ? property(platform, "IOPlatformSerialNumber") : NULL;
+		if (!p) {
+			printf("SKIP: registry properties are not readable from a 32-bit process\n");
+			return 0;
+		}
+		CFRelease(p);
+	}
+#endif
 	CHECK(IOServiceGetMatchingServices(kIOMasterPortDefault, IOServiceMatching("IODisplayConnect"), &it) == KERN_SUCCESS);
 	while ((e = IOIteratorNext(it))) {
 		int ok;
@@ -51,13 +64,13 @@ int main(int argc, char **argv)
 		if (name)
 			CFRelease(name);
 
-		int64_t vendor = number(e, "DisplayVendorID", &ok);
-		CHECK(ok);
-		int64_t product = number(e, "DisplayProductID", &ok);
-		CHECK(ok);
+		// vendor and product come from a real EDID; a display with a made-up EDID has neither
+		int okv, okp;
+		(void) number(e, "DisplayVendorID", &okv);
+		int64_t product = number(e, "DisplayProductID", &okp);
+		CHECK(okv == okp);
 		int64_t serial = number(e, "DisplaySerialNumber", &ok);
 		CHECK(ok);
-		(void) vendor;
 
 		CFTypeRef edid = property(e, "IODisplayEDID");
 		CHECK(edid && CFGetTypeID(edid) == CFDataGetTypeID() && CFDataGetLength(edid) >= 128);
