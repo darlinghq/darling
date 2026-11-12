@@ -7,27 +7,177 @@ jobs:
   update-submodules:
     runs-on: ubuntu-latest
     steps:
+    # Scoped to the darlinghq installation of the Darling bot app, and expires
+    # on its own about an hour after the job starts.
+    - name: Mint an org-wide token
+      id: app-token
+      uses: actions/create-github-app-token@v1
+      with:
+        app-id: ${{ secrets.DARLING_BOT_APP_ID }}
+        private-key: ${{ secrets.DARLING_BOT_PRIVATE_KEY }}
+        owner: darlinghq
+
     - name: Checkout Darling
       uses: actions/checkout@v4
       with:
         submodules: recursive
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ steps.app-token.outputs.token }}
 
     - name: Update submodules to their remote default branch
+      env:
+        # A nested submodule bump has to be committed in the repo of the
+        # submodule that contains it -- it cannot ride along in the PR against
+        # darling itself -- so recursing past the first level needs write
+        # access to the other darlinghq repos, which GITHUB_TOKEN does not
+        # have. Any repo the app is not installed on is left at its default
+        # branch head and listed in the PR body instead of silently dropped.
+        GH_TOKEN: ${{ steps.app-token.outputs.token }}
       run: |
+        set -euo pipefail
+
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
         # libressl-* submodules are intentionally pinned to fixed historical
         # tags (not moving branches), so they must not be auto-updated.
-        all=$(git config --file .gitmodules --get-regexp '\.path$' | awk '{print $2}')
+        # Paths are relative to the top of the darling checkout.
         pinned='src/external/libressl-2.2.9 src/external/libressl-2.5.5 src/external/libressl-2.6.5 src/external/libressl-2.8.3'
-        to_update=$(comm -23 <(echo "$all" | sort) <(echo "$pinned" | tr ' ' '\n' | sort))
-        git submodule update --remote --checkout $to_update
+
+        branch=update-submodules
+        nested_prs=""
+        unpushed_nested=""
+
+        is_pinned() {
+          printf '%s\n' $pinned | grep -qxF "$1"
+        }
+
+        # Resolve a relative submodule URL against the URL of the repo that
+        # declares it, the same way git does: each leading '../' drops one
+        # trailing component of the base URL.
+        resolve_url() {
+          local base="${1%/}" rel="$2"
+          while :; do
+            case "$rel" in
+              ../*) base="${base%/*}"; rel="${rel#../}" ;;
+              ./*)  rel="${rel#./}" ;;
+              *)    break ;;
+            esac
+          done
+          printf '%s/%s' "$base" "$rel"
+        }
+
+        # github.com URL -> owner/repo
+        slug_of() {
+          printf '%s' "${1%.git}" |
+            sed -E 's#^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)##'
+        }
+
+        # update_repo <dir> <repo-url>
+        #
+        # Bumps every *local* (relative-URL) submodule of <dir> to the head of
+        # its remote default branch, recursing into each one first so that the
+        # deepest repos are handled before their parents. Returns with <dir>'s
+        # index holding the new gitlinks; committing them is the caller's job.
+        update_repo() {
+          local dir="$1" url="$2"
+          [ -f "$dir/.gitmodules" ] || return 0
+
+          local name path full rel_url child_url child_slug sha pr_url
+          while read -r name; do
+            path=$(git config --file "$dir/.gitmodules" --get "submodule.$name.path") || continue
+            rel_url=$(git config --file "$dir/.gitmodules" --get "submodule.$name.url") || continue
+
+            # path as seen from the top of the darling checkout
+            full="${dir#.}"; full="${full#/}"; full="${full:+$full/}$path"
+
+            # Only follow submodules hosted next to their parent; anything
+            # pointing at an external project is left exactly where it is.
+            case "$rel_url" in
+              ../*) ;;
+              *) echo "skipping $full (external remote $rel_url)"; continue ;;
+            esac
+
+            if is_pinned "$full"; then
+              echo "skipping $full (pinned)"
+              continue
+            fi
+
+            child_url=$(resolve_url "$url" "$rel_url")
+            echo "updating $full from $child_url"
+            git -C "$dir" submodule update --init --remote --checkout -- "$path"
+
+            # The commit the parent should end up pointing at: the head of the
+            # child's default branch, as just checked out.
+            sha=$(git -C "$dir/$path" rev-parse HEAD)
+
+            update_repo "$dir/$path" "$child_url"
+
+            if ! git -C "$dir/$path" diff --quiet; then
+              # The child's own (local) submodules moved. That has to be a
+              # commit in the child's repo, so open a PR there.
+              child_slug=$(slug_of "$child_url")
+              echo "nested changes in $full -> PR against $child_slug"
+              git -C "$dir/$path" commit -a -m "Update submodules to latest commits"
+              if git -C "$dir/$path" push --force \
+                   "https://x-access-token:${GH_TOKEN}@github.com/${child_slug}.git" \
+                   "HEAD:refs/heads/$branch"; then
+                pr_url=$(gh pr view "$branch" --repo "$child_slug" --json url --jq .url 2>/dev/null || true)
+                if [ -z "$pr_url" ]; then
+                  pr_url=$(gh pr create --repo "$child_slug" --head "$branch" \
+                    --title "Update submodules to latest commits" \
+                    --body "Automated update of this repository's submodule references to the latest commit on each submodule's remote default branch." \
+                    || true)
+                fi
+                [ -n "$pr_url" ] || pr_url="https://github.com/${child_slug}/tree/${branch}"
+                # Leave the gitlink pointing at the commit just pushed, so this
+                # PR and the nested one describe the same tree. The commit is
+                # only on $branch in the child until that PR lands, so the
+                # nested PRs have to merge first and their branches must not be
+                # deleted before this PR has merged.
+                nested_prs="${nested_prs}- ${pr_url} (\`$full\`)"$'\n'
+              else
+                # No write access to the child's repo -- the app is not
+                # installed on it, or lacks Contents: write. Pointing at a
+                # commit that was never pushed would make this PR unusable, so
+                # drop back to the child's default branch head and report it.
+                echo "::warning title=Nested submodule not updated::cannot push to $child_slug; $full left at its default branch head"
+                git -C "$dir/$path" reset --hard "$sha"
+                git -C "$dir/$path" submodule update --init --checkout --recursive
+                unpushed_nested="${unpushed_nested}- \`$full\` (no write access to ${child_slug})"$'\n'
+              fi
+            fi
+          done < <(git config --file "$dir/.gitmodules" --name-only --get-regexp '\.path$' |
+                     sed -E 's/^submodule\.(.*)\.path$/\1/')
+        }
+
+        update_repo . "$(git remote get-url origin)"
+
+        {
+          echo "Automated update of all submodule references to the latest commit on each submodule's remote default branch, recursively, for submodules hosted alongside their parent (relative \`../\` remotes). Submodules pointing at external projects are left untouched."
+          if [ -n "$nested_prs" ]; then
+            echo
+            echo "Nested submodules changed too. Those bumps had to be committed in their own repositories:"
+            echo
+            printf '%s' "$nested_prs"
+            echo
+            echo "The gitlinks here point at those commits, which so far exist only on the \`$branch\` branch of each repository above. **Merge those pull requests before this one, and do not delete their branches until this one has merged**, or the submodule references here will dangle."
+          fi
+          if [ -n "$unpushed_nested" ]; then
+            echo
+            echo "The following nested submodules could **not** be updated and are still pointing at their recorded commits:"
+            echo
+            printf '%s' "$unpushed_nested"
+            echo
+            echo "Updating them needs the Darling bot app installed on those repositories with \`Contents\` and \`Pull requests\` write access."
+          fi
+        } > /tmp/pr-body.md
 
     - name: Create pull request
       uses: peter-evans/create-pull-request@v6
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ steps.app-token.outputs.token }}
         commit-message: "Update submodules to latest commits"
         title: "Update submodules to latest commits"
-        body: "Automated update of all submodule references to the latest commit on each submodule's remote default branch."
+        body-path: /tmp/pr-body.md
         branch: update-submodules
         delete-branch: true
