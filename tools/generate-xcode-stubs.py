@@ -205,6 +205,13 @@ TEMPLATE_IMPL = """
 
 """
 
+# A category on an existing class (for example NSObject) must not define the
+# forwarding methods: they would replace the class's own for every instance in
+# the process. Categories only carry the methods that are listed for them.
+TEMPLATE_IMPL_CATEGORY = """
+@implementation {}
+"""
+
 TEMPLATE_METHOD = """
 {0} (id){1}
 {{
@@ -649,7 +656,10 @@ def main():
 				classes_source.write('#import <Foundation/Foundation.h>\n\n')
 
 				for klass in classes:
-					classes_source.write((TEMPLATE_CATEGORY if klass.find('(') >= 0 else TEMPLATE_INTERFACE).format(klass).strip() + '\n\n' + TEMPLATE_IMPL.format(klass).strip())
+					if klass.find('(') >= 0:
+						classes_source.write(TEMPLATE_CATEGORY.format(klass).strip() + '\n\n' + TEMPLATE_IMPL_CATEGORY.format(klass).strip())
+					else:
+						classes_source.write(TEMPLATE_INTERFACE.format(klass).strip() + '\n\n' + TEMPLATE_IMPL.format(klass).strip())
 					if important_bin in ENSURE_METHODS and klass in ENSURE_METHODS[important_bin]:
 						for method in ENSURE_METHODS[important_bin][klass]:
 							classes_source.write(generate_method(method))
