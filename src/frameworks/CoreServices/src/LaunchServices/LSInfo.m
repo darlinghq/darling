@@ -25,6 +25,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <sqlite3.h>
 #import <Foundation/NSString.h>
@@ -317,15 +318,48 @@ OSStatus LSGetApplicationForURL(CFURLRef inURL, LSRolesMask inRoleMask, FSRef *o
 	if (_LSIsHostOpenURL(inURL))
 		return kLSApplicationNotFoundErr;
 
+	// A URL with a scheme other than file is opened by the application registered for the scheme.
+	CFStringRef scheme = inURL != NULL ? CFURLCopyScheme(inURL) : NULL;
+
+	if (scheme != NULL)
+	{
+		Boolean isFile = CFStringCompare(scheme, CFSTR("file"), kCFCompareCaseInsensitive) == kCFCompareEqualTo;
+		CFStringRef bundleID = isFile ? NULL : LSCopyDefaultHandlerForURLScheme(scheme);
+		CFArrayRef apps = bundleID != NULL ? LSCopyApplicationURLsForBundleIdentifier(bundleID, NULL) : NULL;
+		OSStatus status = kLSApplicationNotFoundErr;
+
+		CFRelease(scheme);
+		if (!isFile)
+		{
+			CFURLRef app = NULL;
+
+			/* Registrations of bundles that were removed stay in the database; skip them. */
+			for (CFIndex i = 0; apps != NULL && i < CFArrayGetCount(apps) && app == NULL; i++)
+			{
+				CFURLRef candidate = CFArrayGetValueAtIndex(apps, i);
+				char path[PATH_MAX];
+
+				if (CFURLGetFileSystemRepresentation(candidate, true, (UInt8 *) path, sizeof(path)) && access(path, F_OK) == 0)
+					app = candidate;
+			}
+			if (app != NULL)
+			{
+				if (outAppRef)
+					CFURLGetFSRef(app, (struct FSRef*) outAppRef);
+				if (outAppURL)
+					*outAppURL = (CFURLRef) CFRetain(app);
+				status = noErr;
+			}
+			if (apps != NULL)
+				CFRelease(apps);
+			if (bundleID != NULL)
+				CFRelease(bundleID);
+			return status;
+		}
+	}
+
 	NSString* extension = [(NSURL*) inURL pathExtension];
 	return LSGetApplicationForInfo(kLSUnknownType, kLSUnknownCreator, (CFStringRef) extension, inRoleMask, outAppRef, outAppURL);
-}
-
-CFArrayRef LSCopyAllHandlersForURLScheme(CFStringRef inURLScheme)
-{
-	puts("LSCopyAllHandlersForURLScheme STUB");
-	// NULL is a safe assumption to fall back on in the stub, since it means none were found.
-	return NULL;
 }
 
 CFArrayRef LSCopyAllRoleHandlersForContentType(CFStringRef inContentType, LSRolesMask inRole)
@@ -513,6 +547,60 @@ CFStringRef LSCopyDefaultHandlerForURLScheme(CFStringRef inURLScheme)
 		@" where bundle.package_type='APPL' and S.scheme=?", inURLScheme);
 }
 
+// Bundle identifiers of the applications that declare the scheme in CFBundleURLTypes.
+static NSArray<NSString*>* copyDeclaredHandlersForScheme(CFStringRef inURLScheme)
+{
+	NSMutableArray<NSString*>* result = [NSMutableArray array];
+	FMDatabaseQueue* dq = getDatabaseQueue();
+
+	if (dq == nil)
+		return result;
+
+	[dq inDatabase:^(FMDatabase* db) {
+		FMResultSet* rs = [db executeQuery:@"select distinct bundle.bundle_id from bundle"
+			@" INNER JOIN bundle_url_type T on T.bundle=bundle.id"
+			@" INNER JOIN bundle_url_type_scheme S on S.type=T.id"
+			@" where bundle.package_type='APPL' and S.scheme=?", (NSString*) inURLScheme];
+		while ([rs next])
+			[result addObject:[rs stringForColumn:@"bundle_id"]];
+		[rs close];
+	}];
+	return result;
+}
+
+// The handlers of a scheme, the user's choice (if any) first, as bundle identifiers.
+static NSArray<NSString*>* copyHandlersForScheme(CFStringRef inURLScheme)
+{
+	NSMutableArray<NSString*>* result = [NSMutableArray array];
+	CFStringRef roleKeys[] = { kLSHandlerRoleAllKey };
+	CFStringRef preferred = copyUserHandler(kLSHandlerURLSchemeKey, inURLScheme, roleKeys, 1);
+
+	if (preferred != NULL)
+	{
+		[result addObject:(NSString*) preferred];
+		CFRelease(preferred);
+	}
+	for (NSString* bundleID in copyDeclaredHandlersForScheme(inURLScheme))
+	{
+		BOOL known = NO;
+		for (NSString* existing in result)
+			known |= [existing caseInsensitiveCompare:bundleID] == NSOrderedSame;
+		if (!known)
+			[result addObject:bundleID];
+	}
+	return result;
+}
+
+CFArrayRef LSCopyAllHandlersForURLScheme(CFStringRef inURLScheme)
+{
+	if (inURLScheme == NULL)
+		return NULL;
+
+	NSArray<NSString*>* handlers = copyHandlersForScheme(inURLScheme);
+
+	return [handlers count] > 0 ? (CFArrayRef) [handlers retain] : NULL;
+}
+
 OSStatus LSSetDefaultHandlerForURLScheme(CFStringRef inURLScheme, CFStringRef inHandlerBundleID)
 {
 	CFStringRef roleKeys[] = { kLSHandlerRoleAllKey };
@@ -693,8 +781,37 @@ OSStatus LSCopyDisplayNameForURL(CFURLRef inURL, CFStringRef *outDisplayName)
 
 CFArrayRef LSCopyApplicationURLsForURL(CFURLRef inURL, LSRolesMask inRoleMask)
 {
-	// No handler database to consult yet; NULL means no applications were found.
-	return NULL;
+	CFStringRef scheme;
+	NSMutableArray* urls;
+
+	if (inURL == NULL)
+		return NULL;
+
+	// Only URLs for a URL scheme are answered; the applications for a document come from its content type.
+	scheme = CFURLCopyScheme(inURL);
+	if (scheme == NULL)
+		return NULL;
+	if (CFStringCompare(scheme, CFSTR("file"), kCFCompareCaseInsensitive) == kCFCompareEqualTo)
+	{
+		CFRelease(scheme);
+		return NULL;
+	}
+
+	urls = [NSMutableArray array];
+	for (NSString* bundleID in copyHandlersForScheme(scheme))
+	{
+		CFArrayRef apps = LSCopyApplicationURLsForBundleIdentifier((CFStringRef) bundleID, NULL);
+
+		if (apps == NULL)
+			continue;
+		for (id app in (NSArray*) apps)
+			if (![urls containsObject:app])
+				[urls addObject:app];
+		CFRelease(apps);
+	}
+	CFRelease(scheme);
+
+	return [urls count] > 0 ? (CFArrayRef) [urls retain] : NULL;
 }
 
 OSStatus LSCanURLAcceptURL(CFURLRef inItemURL, CFURLRef inTargetURL, LSRolesMask inRoleMask, LSAcceptanceFlags inFlags, Boolean *outAcceptsItem)

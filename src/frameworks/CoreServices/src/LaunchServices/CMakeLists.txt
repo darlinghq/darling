@@ -40,6 +40,7 @@ add_framework(LaunchServices
 		icucore
 		system
 		CarbonCore
+		AE
 		FMDB
 )
 
