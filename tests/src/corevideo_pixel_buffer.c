@@ -1,7 +1,7 @@
 // Copyright (C) 2026 Lubos Dolezel
 //
 // CVPixelBuffer is a Core Foundation type: CFRetain, CFRelease and CFGetTypeID work on it.
-// Buffers created by CVPixelBufferCreate have 16-byte aligned rows, can be locked and
+// Buffers created by CVPixelBufferCreate have 64-byte aligned rows, can be locked and
 // written, and carry attachments that propagate or not as their mode says. A buffer
 // pool hands out buffers of the configured size and format.
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -39,7 +39,7 @@ int main(void)
 	CHECK(CVPixelBufferGetWidth(buffer) == 10);
 	CHECK(CVPixelBufferGetHeight(buffer) == 4);
 	CHECK(CVPixelBufferGetPixelFormatType(buffer) == kCVPixelFormatType_32BGRA);
-	// A row of 10 pixels is 40 bytes; rows are padded to a multiple of 16
+	// A row of 10 pixels is 40 bytes; rows are padded to a multiple of 16 (64 on Apple silicon)
 	CHECK(CVPixelBufferGetBytesPerRow(buffer) >= 40 && CVPixelBufferGetBytesPerRow(buffer) % 16 == 0);
 	CHECK(CVPixelBufferGetDataSize(buffer) >= CVPixelBufferGetBytesPerRow(buffer) * 4);
 	CHECK(!CVPixelBufferIsPlanar(buffer));

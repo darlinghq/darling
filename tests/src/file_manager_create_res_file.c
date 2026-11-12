@@ -85,9 +85,12 @@ static void test_event_record_layout(void)
 	CHECK(offsetof(EventRecord, where) == 14);
 	CHECK(offsetof(EventRecord, modifiers) == 18);
 
-	// QUIRK test: IsCmdChar reports false, also for a key-down event with the Command key held.
+	// IsCmdChar compares key codes: the period key is 0x2F, so a message holding only the
+	// character '.' (key code 0, the A key) does not match, while key code 0x2F does.
 	EventRecord key = { keyDown, '.', 0, { 0, 0 }, cmdKey };
 	CHECK(!IsCmdChar(&key, '.'));
+	key.message = 0x2F00 | '.';
+	CHECK(IsCmdChar(&key, '.'));
 }
 
 int main(void)

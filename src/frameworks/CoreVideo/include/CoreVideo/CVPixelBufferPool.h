@@ -38,6 +38,10 @@ CV_EXPORT CFTypeID CVPixelBufferPoolGetTypeID(void);
 CV_EXPORT CVPixelBufferPoolRef CVPixelBufferPoolRetain(CVPixelBufferPoolRef pixelBufferPool);
 CV_EXPORT void CVPixelBufferPoolRelease(CVPixelBufferPoolRef pixelBufferPool);
 
+// The attributes the pool was created with: the pool's own and those of its pixel buffers.
+CV_EXPORT CFDictionaryRef CV_NULLABLE CVPixelBufferPoolGetAttributes(CVPixelBufferPoolRef pool);
+CV_EXPORT CFDictionaryRef CV_NULLABLE CVPixelBufferPoolGetPixelBufferAttributes(CVPixelBufferPoolRef pool);
+
 CV_EXPORT CVReturn CVPixelBufferPoolCreate(
 	CFAllocatorRef allocator,
 	CFDictionaryRef poolAttributes,

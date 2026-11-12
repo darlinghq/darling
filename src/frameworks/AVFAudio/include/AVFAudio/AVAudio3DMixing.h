@@ -18,7 +18,42 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <AVFAudio/AVAudioTypes.h>
+
+typedef NS_ENUM(NSInteger, AVAudio3DMixingRenderingAlgorithm) {
+	AVAudio3DMixingRenderingAlgorithmEqualPowerPanning = 0,
+	AVAudio3DMixingRenderingAlgorithmSphericalHead = 1,
+	AVAudio3DMixingRenderingAlgorithmHRTF = 2,
+	AVAudio3DMixingRenderingAlgorithmSoundField = 3,
+	AVAudio3DMixingRenderingAlgorithmStereoPassThrough = 5,
+	AVAudio3DMixingRenderingAlgorithmHRTFHQ = 6,
+	AVAudio3DMixingRenderingAlgorithmAuto = 7,
+};
+
+typedef NS_ENUM(NSInteger, AVAudio3DMixingSourceMode) {
+	AVAudio3DMixingSourceModeSpatializeIfMono = 0,
+	AVAudio3DMixingSourceModeBypass = 1,
+	AVAudio3DMixingSourceModePointSource = 2,
+	AVAudio3DMixingSourceModeAmbienceBed = 3,
+};
+
+typedef NS_ENUM(NSInteger, AVAudio3DMixingPointSourceInHeadMode) {
+	AVAudio3DMixingPointSourceInHeadModeMono = 0,
+	AVAudio3DMixingPointSourceInHeadModeBypass = 1,
+};
 
 @protocol AVAudio3DMixing
+
+// Playback rate multiplier, 0.5 to 2.0 (clamped). The default is 1.0.
+@property (nonatomic) float rate;
+@property (nonatomic) AVAudio3DMixingRenderingAlgorithm renderingAlgorithm;
+@property (nonatomic) AVAudio3DMixingSourceMode sourceMode;
+@property (nonatomic) AVAudio3DMixingPointSourceInHeadMode pointSourceInHeadMode;
+// Amount of the signal sent to the reverb, 0.0 to 1.0 (clamped). The default is 0.0.
+@property (nonatomic) float reverbBlend;
+// Attenuation in decibels, -100.0 to 0.0 (clamped). The default is 0.0.
+@property (nonatomic) float obstruction;
+@property (nonatomic) float occlusion;
+@property (nonatomic) AVAudio3DPoint position;
 
 @end

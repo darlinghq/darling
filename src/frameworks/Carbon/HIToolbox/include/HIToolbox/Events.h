@@ -154,25 +154,42 @@ typedef struct EventRecord {
 } EventRecord;
 #pragma pack(pop)
 
-#ifndef keyDown
 enum {
+  nullEvent = 0,
+  mouseDown = 1,
+  mouseUp = 2,
   keyDown = 3,
+  keyUp = 4,
   autoKey = 5,
+  updateEvt = 6,
+  diskEvt = 7,
+  activateEvt = 8,
+  osEvt = 15,
+  kHighLevelEvent = 23,
 };
-#endif
 
-#ifndef cmdKey
 enum {
+  activeFlag = 1 << 0,
+  btnState = 1 << 7,
   cmdKey = 1 << 8,
+  shiftKey = 1 << 9,
+  alphaLock = 1 << 10,
+  optionKey = 1 << 11,
+  controlKey = 1 << 12,
+  rightShiftKey = 1 << 13,
+  rightOptionKey = 1 << 14,
+  rightControlKey = 1 << 15,
 };
-#endif
 
 enum {
   charCodeMask = 0x000000FF,
+  keyCodeMask = 0x0000FF00,
 };
 
-// Returns true if `event` is a key-down or auto-key event with the Command key held and
-// character `test` (e.g. '.' for Command-period).
+// Deprecated. Returns true if the key code of `event` (bits 8-15 of the message) belongs to a
+// key that produces the character in the low byte of `test`, as the current layout (US here)
+// maps it with the event's Option/Control state. The event kind, Command, Shift and Caps Lock
+// do not matter, and neither does the character in the message. Not a Carbon event-queue call.
 Boolean IsCmdChar(const EventRecord* event, short test);
 // Returns true if a Command-period or Escape is pending in the event queue.
 Boolean CheckEventQueueForUserCancel(void);

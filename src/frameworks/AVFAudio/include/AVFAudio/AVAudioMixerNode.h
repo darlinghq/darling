@@ -18,7 +18,8 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <AVFAudio/AVAudioNode.h>
 
-@interface AVAudioMixerNode : NSObject
+@interface AVAudioMixerNode : AVAudioNode
 
 @end

@@ -70,8 +70,11 @@ enum {
 };
 
 /*
- * Lists and their items are Core Foundation objects that live in memory only: nothing is
- * stored on disk, so items inserted by one process (or by a later run) are not seen by others.
+ * Lists and their items are Core Foundation objects. A list is kept in a property list of
+ * its own, ~/Library/Application Support/com.apple.sharedfilelist/<list type>.plist, so its
+ * items, their properties and the list's properties survive the process and are seen by other
+ * processes; the seed value changes with every change to the list made by any process.
+ * Property values that are not property-list types are not stored.
  */
 CFTypeID LSSharedFileListGetTypeID(void);
 CFTypeID LSSharedFileListItemGetTypeID(void);

@@ -104,18 +104,30 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	pthread_attr_t attr;
 	pthread_t nativeLibcThread;
 
-	pthread_attr_init(&attr);
-	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	int attr_error = pthread_attr_init(&attr);
+	if (attr_error != 0) {
+		errno = attr_error;
+		return NULL;
+	}
+	// Guest threads are joined by the guest; the native bootstrap thread is
+	// never joined, so it must release its own resources when it exits.
+	attr_error = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	if (attr_error != 0) {
+		pthread_attr_destroy(&attr);
+		errno = attr_error;
+		return NULL;
+	}
 	// pthread_attr_setstacksize(&attr, stack_size);
 
 	// in some cases, we're already given a pthread object, stack, and guard page;
 	// in those cases, just use what we're given (it also contains more information)
 	//
 	// otherwise, allocate them ourselves
-	if (pth == NULL || args.is_workqueue) {
+	bool allocated_stack = pth == NULL || args.is_workqueue;
+	if (allocated_stack) {
 		pth = dthread_structure_allocate(stack_size, dthread_guard_size(), (void**)&args.stack_addr);
 		if (pth == NULL) {
-			// no stack to run the thread on
+			// no stack to run the thread on (errno is set by the allocation)
 			pthread_attr_destroy(&attr);
 			return NULL;
 		}
@@ -134,14 +146,15 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 
 	// std::cout << "Allocated stack at " << pth << ", size " << stack_size << std::endl;
 
-	// requesting less than PTHREAD_STACK_MIN fails and leaves the attribute at the libc
-	// default (8 MB on glibc), so ask for exactly the minimum the host libc accepts
-	size_t host_stack_size = PTHREAD_STACK_MIN;
+	// Requesting less than PTHREAD_STACK_MIN fails and leaves the attribute at the libc
+	// default (8 MB on glibc). This stack bootstraps the thread and handles its exit,
+	// and glibc also runs the host libraries' TLS destructors on it at that point
+	// (graphics drivers, for one), so keep headroom beyond the minimum. It only
+	// reserves address space until it is touched.
+	size_t host_stack_size = PTHREAD_STACK_MIN > 512 * 1024 ? PTHREAD_STACK_MIN : 512 * 1024;
 	int stacksize_err = pthread_attr_setstacksize(&attr, host_stack_size);
 	if (stacksize_err != 0)
 		fprintf(stderr, "mldr: pthread_attr_setstacksize(%zu) failed: %s\n", host_stack_size, strerror(stacksize_err));
-
-	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
 	args.pth = pth;
 
@@ -152,11 +165,23 @@ void* __darling_thread_create(unsigned long stack_size, unsigned long pth_obj_si
 	sigset_t all;
 	sigfillset(&all);
 	pthread_sigmask(SIG_SETMASK, &all, &args.sigmask);
-	pthread_create(&nativeLibcThread, &attr, darling_thread_entry, &args);
+	int create_error = pthread_create(&nativeLibcThread, &attr, darling_thread_entry, &args);
 	pthread_sigmask(SIG_SETMASK, &args.sigmask, NULL);
 	pthread_attr_destroy(&attr);
 
-	while (args.pth != NULL)
+	if (create_error != 0) {
+		// The thread never started: release what was allocated for it, and
+		// do not wait for a check-in that will not happen.
+		if (allocated_stack) {
+			dthread_t dthread = pth;
+			munmap(dthread->freeaddr, dthread->freesize);
+		}
+		errno = create_error;
+		return NULL;
+	}
+
+	// the new thread clears args.pth (release) once it has copied the arguments
+	while (__atomic_load_n(&args.pth, __ATOMIC_ACQUIRE) != NULL)
 		sched_yield();
 
 	return pth;
@@ -206,13 +231,13 @@ static void* darling_thread_entry(void* p)
 
 	pthread_sigmask(SIG_SETMASK, &args.sigmask, NULL);
 
-	in_args->pth = NULL;
+	__atomic_store_n(&in_args->pth, NULL, __ATOMIC_RELEASE);
 
 	if (setjmp(t_jmpbuf))
 	{
 		// Terminate the Linux thread
 		munmap(t_freeaddr, t_freesize);
-		pthread_detach(pthread_self());
+		// the native thread was created detached
 		return NULL;
 	}
 

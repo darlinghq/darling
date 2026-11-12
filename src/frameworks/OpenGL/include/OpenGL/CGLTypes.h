@@ -112,9 +112,18 @@ typedef enum _CGLRendererProperty {
    kCGLRPMaxAuxBuffers       = 107,
    kCGLRPMaxSampleBuffers    = 108,
    kCGLRPMaxSamples          = 109,
+   kCGLRPSampleModes         = 110,
+   kCGLRPSampleAlpha         = 111,
    kCGLRPVideoMemory         = 120,
    kCGLRPTextureMemory       = 121,
+   kCGLRPGPUVertProcCapable  = 122,
+   kCGLRPGPUFragProcCapable  = 123,
    kCGLRPRendererCount       = 128,
+   kCGLRPOnline              = 129,
+   kCGLRPAcceleratedCompute  = 130,
+   kCGLRPVideoMemoryMegabytes = 131,
+   kCGLRPTextureMemoryMegabytes = 132,
+   kCGLRPMajorGLVersion      = 133,
 } CGLRendererProperty;
 
 typedef struct _CGLContextObj *CGLContextObj;

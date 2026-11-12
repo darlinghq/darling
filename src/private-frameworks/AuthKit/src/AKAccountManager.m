@@ -18,6 +18,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #import <AuthKit/AuthKit.h>
+#import <darling-stub-forwarding.h>
 
 // all of these key values are guessed
 NSString* AKAuthenticationAlternateDSIDKey = @"AKAuthenticationAlternateDSIDKey";
@@ -27,11 +28,19 @@ NSString* AKAuthenticationUsernameKey = @"AKAuthenticationUsernameKey";
 @implementation AKAccountManager
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation {
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+    DarlingStubForwardInvocation(self, anInvocation);
+}
+
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
++ (void)forwardInvocation:(NSInvocation *)anInvocation {
+    DarlingStubForwardInvocation(self, anInvocation);
 }
 
 @end

@@ -6,9 +6,12 @@
 #include <pthread.h>
 #include <stdatomic.h>
 #include <dlfcn.h>
+#include <limits.h>
+#include <IOKit/IOKitLib.h>
 
 #define GL_GLEXT_PROTOTYPES 1
 #include <OpenGL/OpenGL.h>
+#include <OpenGL/CGLRenderers.h>
 #include <OpenGL/glext.h>
 #include <OpenGL/CGLInternal.h>
 #include <CoreFoundation/CFDictionary.h>
@@ -1369,22 +1372,29 @@ static void setPixelStore(int pack, const struct pixel_store *store) {
 }
 
 // Checks that width x height pixels of format and type fit in the plane, and
-// returns the plane's address and its row stride in pixels.
+// returns the plane's address, its row stride in pixels, and the stride and
+// pixel size in bytes. The row stride in pixels is 0 when the row stride in
+// bytes is not a multiple of the pixel size (24-bit pixels in rows aligned to a
+// power of two): GL's row length cannot express that, so such planes are
+// transferred one row at a time.
 static CGLError planeForTransfer(IOSurfaceRef surface, GLuint plane, GLsizei width, GLsizei height,
-                                 GLenum format, GLenum type, void **pixels, GLint *rowLength) {
+                                 GLenum format, GLenum type, void **pixels, GLint *rowLength,
+                                 size_t *rowBytes, size_t *pixelBytes) {
     size_t bytesPerRow = IOSurfaceGetBytesPerRowOfPlane(surface, plane);
     size_t planeHeight = IOSurfaceGetHeightOfPlane(surface, plane);
     size_t size = pixelSize(format, type);
     if (size == 0)
         size = IOSurfaceGetBytesPerElementOfPlane(surface, plane);
     *pixels = IOSurfaceGetBaseAddressOfPlane(surface, plane);
-    if (!*pixels || bytesPerRow == 0 || size == 0 || bytesPerRow % size != 0)
+    if (!*pixels || bytesPerRow == 0 || size == 0)
         return kCGLBadValue;
     if (width <= 0 || height <= 0 || (size_t) width > bytesPerRow / size || (size_t) height > planeHeight)
         return kCGLBadValue;
     if (bytesPerRow / size > INT32_MAX)
         return kCGLBadValue;
-    *rowLength = (GLint) (bytesPerRow / size);
+    *rowLength = bytesPerRow % size == 0 ? (GLint) (bytesPerRow / size) : 0;
+    *rowBytes = bytesPerRow;
+    *pixelBytes = size;
     return kCGLNoError;
 }
 
@@ -1856,7 +1866,9 @@ CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum interna
 
     void *pixels;
     GLint rowLength;
-    CGLError error = planeForTransfer(ioSurface, plane, width, height, format, type, &pixels, &rowLength);
+    size_t rowBytes, pixelBytes;
+    CGLError error = planeForTransfer(ioSurface, plane, width, height, format, type, &pixels, &rowLength,
+                                      &rowBytes, &pixelBytes);
     if (error != kCGLNoError)
         return error;
 
@@ -1903,7 +1915,13 @@ CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum interna
         savePixelStore(0, &saved);
         setPixelStore(0, &transfer);
 
-        if (allocatedWidth == width && allocatedHeight == height && allocatedFormat == (GLint) internal_format)
+        if (rowLength == 0) {
+            // Rows that are not a whole number of pixels apart go up one by one.
+            if (allocatedWidth != width || allocatedHeight != height || allocatedFormat != (GLint) internal_format)
+                glTexImage2D(target, 0, (GLint) internal_format, width, height, 0, format, type, NULL);
+            for (GLsizei row = 0; row < height; row++)
+                glTexSubImage2D(target, 0, 0, row, width, 1, format, type, (const char *) pixels + row * rowBytes);
+        } else if (allocatedWidth == width && allocatedHeight == height && allocatedFormat == (GLint) internal_format)
             glTexSubImage2D(target, 0, 0, 0, width, height, format, type, pixels);
         else
             glTexImage2D(target, 0, (GLint) internal_format, width, height, 0, format, type, pixels);
@@ -2058,8 +2076,9 @@ static CGLError readBackSurface(IOSurfaceRef ioSurface, int onlyIfUnmodified) {
     // The texture may have been respecified since; it must still fit.
     void *pixels;
     GLint rowLength;
+    size_t rowBytes, pixelBytes;
     error = planeForTransfer(ioSurface, binding.plane, width, height, binding.format, binding.type,
-                             &pixels, &rowLength);
+                             &pixels, &rowLength, &rowBytes, &pixelBytes);
     if (error == kCGLNoError) {
         struct pixel_store saved, transfer = { 0, rowLength, 0, 0, 1 };
         savePixelStore(1, &saved);
@@ -2067,7 +2086,20 @@ static CGLError readBackSurface(IOSurfaceRef ioSurface, int onlyIfUnmodified) {
         uint32_t seed = 0;
         t_readingBack = 1;
         IOSurfaceLock(ioSurface, 0, NULL);
-        glGetTexImage(binding.target, 0, binding.format, binding.type, pixels);
+        if (rowLength == 0) {
+            // Rows that are not a whole number of pixels apart: read the
+            // texture packed and copy the rows to where they belong.
+            size_t packedRow = (size_t) width * pixelBytes;
+            uint8_t *packed = malloc(packedRow * (size_t) height);
+            if (packed != NULL) {
+                glGetTexImage(binding.target, 0, binding.format, binding.type, packed);
+                for (GLint row = 0; row < height; row++)
+                    memcpy((uint8_t *) pixels + row * rowBytes, packed + row * packedRow, packedRow);
+                free(packed);
+            }
+        } else {
+            glGetTexImage(binding.target, 0, binding.format, binding.type, pixels);
+        }
         IOSurfaceUnlock(ioSurface, 0, &seed);
         t_readingBack = 0;
         setPixelStore(1, &saved);
@@ -2139,13 +2171,159 @@ CGLError CGLGetParameter(CGLContextObj context, CGLContextParameter parameter, G
     return kCGLNoError;
 }
 
-// No renderer information is available: the query reports no renderers
-// instead of leaving the outputs unset and claiming success.
-CGLError CGLDescribeRenderer(CGLRendererInfoObj rend, GLint rend_num, CGLRendererProperty prop, GLint *value) {
-    if (!value)
-        return kCGLBadAddress;
-    *value = 0;
-    return kCGLBadRendererInfo;
+// Renderer information.
+//
+// As on macOS there are two renderers: the host's GL implementation, described from what the host
+// reports about the GL context an application would get (the GL strings and the EGL device behind the
+// display, with the video memory from the IORegistry), and a software renderer that is never accelerated.
+
+struct cgl_renderer {
+    GLint renderer_id;
+    GLint accelerated;
+    // video memory in bytes (0 if it could not be found out)
+    uint64_t video_memory;
+    GLint max_samples;
+    GLint gl_major;
+};
+
+struct _CGLRendererInfoObj {
+    GLint count;
+    GLuint display_mask;
+    struct cgl_renderer renderers[2];
+};
+
+// GL_NVX_gpu_memory_info
+#define CGL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX 0x9047
+
+// The renderer ID that describes a renderer in the vocabulary of CGLRenderers.h: the family of the
+// GPU vendor, or the software renderer.
+static GLint rendererIDFor(const char *vendor, const char *renderer, int accelerated) {
+    if (!accelerated)
+        return kCGLRendererGenericFloatID;
+    if (vendor && (strstr(vendor, "NVIDIA") || strstr(vendor, "Nouveau")))
+        return kCGLRendererGeForceID;
+    if (vendor && (strstr(vendor, "AMD") || strstr(vendor, "ATI")))
+        return kCGLRendererATIRadeonX4000ID;
+    if (vendor && strstr(vendor, "Intel"))
+        return kCGLRendererIntelHD5000ID;
+    if (renderer && strstr(renderer, "NVIDIA"))
+        return kCGLRendererGeForceID;
+    if (renderer && (strstr(renderer, "AMD") || strstr(renderer, "Radeon")))
+        return kCGLRendererATIRadeonX4000ID;
+    if (renderer && strstr(renderer, "Intel"))
+        return kCGLRendererIntelHD5000ID;
+    // a GPU from another vendor: the closest family that stands for "a recent GPU"
+    return kCGLRendererGeForceID;
+}
+
+// The video memory of the GPU in megabytes, from the IORegistry: the IOAccelerator service's
+// "VRAM,totalMB", which is where macOS publishes it. The registry (iokitd) also decides what is
+// reported for a GPU that has no memory of its own. With several GPUs the first one that has a
+// figure is taken; the registry does not say which of them the host's GL context is on.
+// 0 if the registry has none.
+static uint64_t registryVideoMegabytes(void) {
+    io_iterator_t iterator = IO_OBJECT_NULL;
+    if (IOServiceGetMatchingServices(kIOMasterPortDefault, IOServiceMatching("IOAccelerator"), &iterator) != KERN_SUCCESS)
+        return 0;
+    uint64_t megabytes = 0;
+    CFStringRef key = CFStringCreateWithCString(NULL, "VRAM,totalMB", kCFStringEncodingUTF8);
+    io_registry_entry_t service;
+    while (megabytes == 0 && (service = IOIteratorNext(iterator)) != IO_OBJECT_NULL) {
+        CFTypeRef value = IORegistryEntryCreateCFProperty(service, key, NULL, 0);
+        if (value) {
+            int64_t number = 0;
+            if (CFGetTypeID(value) == CFNumberGetTypeID() && CFNumberGetValue(value, kCFNumberSInt64Type, &number) && number > 0)
+                megabytes = (uint64_t) number;
+            CFRelease(value);
+        }
+        IOObjectRelease(service);
+    }
+    CFRelease(key);
+    IOObjectRelease(iterator);
+    return megabytes;
+}
+
+// Describes the renderer of the context that is current, which has the given display.
+static void describeCurrentRenderer(EGLDisplay egl_display, struct cgl_renderer *out) {
+    const char *vendor = (const char *) glGetString(GL_VENDOR);
+    const char *renderer = (const char *) glGetString(GL_RENDERER);
+    const char *version = (const char *) glGetString(GL_VERSION);
+    int major = 0, minor = 0;
+    if (version)
+        sscanf(version, "%d.%d", &major, &minor);
+
+    static const char *const software_names[] = { "llvmpipe", "lavapipe", "softpipe", "swrast", "Software Rasterizer" };
+    int accelerated = 1;
+    for (size_t i = 0; renderer && i < sizeof(software_names) / sizeof(software_names[0]); i++) {
+        if (strstr(renderer, software_names[i]))
+            accelerated = 0;
+    }
+    if (accelerated && softwareEGLDevice(egl_display))
+        accelerated = 0;
+
+    // the registry's figure, else what the GL driver says about its dedicated memory
+    uint64_t video_memory = registryVideoMegabytes() * 1024 * 1024;
+    if (video_memory == 0 && accelerated) {
+        load_image_functions();
+        if (has_gl_extension(major, "GL_NVX_gpu_memory_info")) {
+            GLint kilobytes = 0;
+            glGetIntegerv(CGL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, &kilobytes);
+            if (kilobytes > 0)
+                video_memory = (uint64_t) kilobytes * 1024;
+        }
+    }
+
+    GLint max_samples = 0;
+    if (major >= 3)
+        glGetIntegerv(GL_MAX_SAMPLES, &max_samples);
+    glGetError();
+
+    out->renderer_id = rendererIDFor(vendor, renderer, accelerated);
+    out->accelerated = accelerated;
+    out->video_memory = video_memory;
+    out->max_samples = max_samples > 0 ? max_samples : 0;
+    out->gl_major = major;
+}
+
+// Makes a context just to ask it, and puts back whatever was current. The answer for a display is kept:
+// it cannot change while the display stays.
+static int describeHostRenderer(struct cgl_renderer *out) {
+    static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+    static struct cgl_renderer cached;
+    static EGLDisplay cached_display = EGL_NO_DISPLAY;
+    static int cached_valid;
+
+    pthread_mutex_lock(&registration_lock);
+    EGLDisplay wanted = display;
+    pthread_mutex_unlock(&registration_lock);
+
+    pthread_mutex_lock(&lock);
+    if (cached_valid && cached_display == wanted) {
+        *out = cached;
+        pthread_mutex_unlock(&lock);
+        return 1;
+    }
+
+    int ok = 0;
+    CGLContextObj context = NULL;
+    CGLContextObj previous = CGLGetCurrentContext();
+    if (createContext(NULL, NULL, NULL, &context) == kCGLNoError) {
+        CGLRetainContext(previous);
+        if (CGLSetCurrentContext(context) == kCGLNoError) {
+            describeCurrentRenderer(context->egl_display, out);
+            ok = 1;
+            CGLSetCurrentContext(previous);
+        }
+        CGLReleaseContext(previous);
+        CGLReleaseContext(context);
+    }
+    if (ok) {
+        cached = *out;
+        cached_display = wanted;
+        cached_valid = 1;
+    }
+    pthread_mutex_unlock(&lock);
+    return ok;
 }
 
 CGLError CGLQueryRendererInfo(GLuint display_mask, CGLRendererInfoObj *rend, GLint *nrend) {
@@ -2153,10 +2331,86 @@ CGLError CGLQueryRendererInfo(GLuint display_mask, CGLRendererInfoObj *rend, GLi
         return kCGLBadAddress;
     *rend = NULL;
     *nrend = 0;
-    return kCGLBadRendererInfo;
+    // a mask without a display selects no renderer
+    if (display_mask == 0)
+        return kCGLBadDisplay;
+    if (!native_egl_available())
+        return kCGLBadRendererInfo;
+
+    struct _CGLRendererInfoObj *info = calloc(1, sizeof(*info));
+    if (!info)
+        return kCGLBadAlloc;
+    if (!describeHostRenderer(&info->renderers[0])) {
+        free(info);
+        return kCGLBadRendererInfo;
+    }
+    // the software renderer: no video memory, the GL version of the host
+    info->renderers[1].renderer_id = kCGLRendererGenericFloatID;
+    info->renderers[1].accelerated = 0;
+    info->renderers[1].video_memory = 0;
+    info->renderers[1].max_samples = 0;
+    info->renderers[1].gl_major = info->renderers[0].gl_major;
+    info->count = 2;
+    // the renderer draws to whichever of the requested displays there are
+    info->display_mask = display_mask;
+    *rend = info;
+    *nrend = 2;
+    return kCGLNoError;
+}
+
+CGLError CGLDescribeRenderer(CGLRendererInfoObj rend, GLint rend_num, CGLRendererProperty prop, GLint *value) {
+    if (!value)
+        return kCGLBadAddress;
+    if (!rend)
+        return kCGLBadRendererInfo;
+    if (prop == kCGLRPRendererCount) {
+        *value = rend->count;
+        return kCGLNoError;
+    }
+    if (rend_num < 0 || rend_num >= rend->count)
+        return kCGLBadValue;
+
+    const struct cgl_renderer *renderer = &rend->renderers[rend_num];
+    uint64_t megabytes = renderer->video_memory / (1024 * 1024);
+    switch ((int) prop) {
+    case kCGLRPRendererID: *value = renderer->renderer_id; break;
+    case kCGLRPAccelerated: *value = renderer->accelerated; break;
+    case kCGLRPDisplayMask: *value = (GLint) rend->display_mask; break;
+    case kCGLRPWindow: *value = 1; break;
+    case kCGLRPOffScreen: *value = 0; break;
+    case kCGLRPFullScreen: *value = renderer->accelerated; break;
+    case kCGLRPRobust: *value = 0; break;
+    case kCGLRPMPSafe: *value = 1; break;
+    case kCGLRPMultiScreen: *value = 1; break;
+    case kCGLRPBackingStore: *value = 1; break;
+    case kCGLRPCompliant: *value = 1; break;
+    case kCGLRPOnline: *value = 1; break;
+    case kCGLRPGPUVertProcCapable:
+    case kCGLRPGPUFragProcCapable:
+    case kCGLRPAcceleratedCompute:
+        *value = renderer->accelerated;
+        break;
+    case kCGLRPVideoMemoryMegabytes:
+    case kCGLRPTextureMemoryMegabytes:
+        *value = megabytes > (uint64_t) INT_MAX ? INT_MAX : (GLint) megabytes;
+        break;
+    case kCGLRPVideoMemory:
+    case kCGLRPTextureMemory:
+        // the figure in bytes, as far as an int can say it
+        *value = renderer->video_memory > (uint64_t) INT_MAX ? INT_MAX : (GLint) renderer->video_memory;
+        break;
+    case kCGLRPMaxSampleBuffers: *value = renderer->max_samples > 0; break;
+    case kCGLRPMaxSamples: *value = renderer->max_samples; break;
+    case kCGLRPMajorGLVersion: *value = renderer->gl_major; break;
+    default:
+        *value = 0;
+        return kCGLBadProperty;
+    }
+    return kCGLNoError;
 }
 
 CGLError CGLDestroyRendererInfo(CGLRendererInfoObj rend) {
+    free(rend);
     return kCGLNoError;
 }
 

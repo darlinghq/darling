@@ -18,7 +18,25 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <AVFAudio/AVAudioMixing.h>
+#include <AVFAudio/AVAudioNode.h>
 
-@interface AVAudioPlayerNode : NSObject
+// The mixing properties (volume, pan and the 3D mixing properties) are stored on the node
+// and clamped to their documented ranges; there is no engine graph that uses them yet.
+@interface AVAudioPlayerNode : AVAudioNode <AVAudioMixing>
+{
+@private
+	// Declared here because the 32-bit runtime has no ivars in the implementation block.
+	float _volume;
+	float _pan;
+	float _rate;
+	float _reverbBlend;
+	float _obstruction;
+	float _occlusion;
+	AVAudio3DMixingRenderingAlgorithm _renderingAlgorithm;
+	AVAudio3DMixingSourceMode _sourceMode;
+	AVAudio3DMixingPointSourceInHeadMode _pointSourceInHeadMode;
+	AVAudio3DPoint _position;
+}
 
 @end

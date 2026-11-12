@@ -15,7 +15,7 @@ AudioQueueOutput::AudioQueueOutput(const AudioStreamBasicDescription *inFormat,
 		AudioQueueOutputCallback inCallbackProc,
 	void *inUserData, CFRunLoopRef inCallbackRunLoop,
 	CFStringRef inCallbackRunLoopMode, UInt32 inFlags)
-: AudioQueue(inFormat, inUserData, inCallbackRunLoop, inCallbackRunLoopMode, inFlags),
+: OpaqueAudioQueue(inFormat, inUserData, inCallbackRunLoop, inCallbackRunLoopMode, inFlags),
 		m_callback(inCallbackProc)
 {
 	m_cbThread = std::thread(&AudioQueueOutput::callbackThread, this);

@@ -18,15 +18,24 @@
 */
 
 #import <CoreImage/CUIOuterBevelEmbossFilter.h>
+#import <darling-stub-forwarding.h>
 
 @implementation CUIOuterBevelEmbossFilter
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation {
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+    DarlingStubForwardInvocation(self, anInvocation);
+}
+
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
++ (void)forwardInvocation:(NSInvocation *)anInvocation {
+    DarlingStubForwardInvocation(self, anInvocation);
 }
 
 @end

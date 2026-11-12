@@ -19,7 +19,7 @@
 // has been fully handed to the output unit, the output callback returns it to the
 // client — on the run loop given to AudioQueueNewOutput, or on the queue's own
 // callback thread when that is NULL.
-class AudioQueueOutput : public AudioQueue
+class AudioQueueOutput : public OpaqueAudioQueue
 {
 public:
 	AudioQueueOutput(const AudioStreamBasicDescription *inFormat,
