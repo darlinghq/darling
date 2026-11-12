@@ -51,6 +51,11 @@ static char* g_userEnv[] = {
 	"DTAPE_LOG_SAFE_STUBS=1",
 	"WSLENV=",
 	"WSL_INTEROP=/run/WSL/1_interop",
+	"DISPLAY=:99",
+	"WAYLAND_DISPLAY=wayland-0",
+	"XAUTHORITY=/home/user/.Xauthority",
+	"XDG_RUNTIME_DIR=/run/user/1000",
+	"DISPLAYS=:1",
 	"DSERVER_WAIT4DEBUGGER=1",
 	"SHELL=/bin/bash",
 	"IFS= ",
@@ -99,7 +104,12 @@ static void test_restricted(void)
 	CHECK(indexOf(env, "DTAPE_LOG_SAFE_STUBS=1") == 7);
 	CHECK(indexOf(env, "WSLENV=") == 8);
 	CHECK(indexOf(env, "WSL_INTEROP=/run/WSL/1_interop") == 9);
-	CHECK(countOf(env) == 10);
+	CHECK(indexOf(env, "DISPLAY=:99") == 10);
+	CHECK(indexOf(env, "WAYLAND_DISPLAY=wayland-0") == 11);
+	CHECK(indexOf(env, "XAUTHORITY=/home/user/.Xauthority") == 12);
+	CHECK(indexOf(env, "XDG_RUNTIME_DIR=/run/user/1000") == 13);
+	CHECK(countOf(env) == 14);
+	CHECK(!hasName(env, "DISPLAYS"));
 
 	// In particular, none of these.
 	CHECK(indexOf(env, "PATH=/home/user/bin:/usr/bin") < 0);

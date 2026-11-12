@@ -41,6 +41,16 @@ static const char* const serverEnvAllowlist[] = {
 	// WSL 1 detection, which selects workarounds for its kernel.
 	"WSLENV",
 	"WSL_INTEROP",
+	// The host session's display server, for the container's launchd and
+	// every job it starts (daemons such as iokitd, and applications started
+	// through launchd). They are only names and paths that are opened later
+	// with the user's ids, in the container, which the user owns; darlingserver
+	// itself never reads them.
+	"DISPLAY",
+	"WAYLAND_DISPLAY",
+	"XAUTHORITY",
+	// Where a Wayland socket named by a relative WAYLAND_DISPLAY lives.
+	"XDG_RUNTIME_DIR",
 };
 
 bool launcherEnvEntryIs(const char* entry, const char* name)
