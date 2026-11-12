@@ -124,10 +124,38 @@ static void test_handlers(void)
 	CHECK(AERemoveEventHandler('GURL', 'tst1', handlerB, false) == errAEHandlerNotFound);
 }
 
+// test_quirk_unhandled_event_returns_errAEEventNotHandled: sending an event to the own process
+// when no handler matches fails with errAEEventNotHandled, with a reply wanted or not, and the
+// reply carries no error number parameter. Black-box observation on macOS 26.7.3 (tier 2),
+// MC26.14.
+static void test_unhandled(void)
+{
+	pid_t pid = getpid();
+	AEDesc target;
+	CHECK(AECreateDesc(typeKernelProcessID, &pid, sizeof(pid), &target) == noErr);
+	AppleEvent event;
+	CHECK(AECreateAppleEvent('vdmc', 'none', &target, kAutoGenerateReturnID, kAnyTransactionID, &event) == noErr);
+	AEDisposeDesc(&target);
+
+	AppleEvent reply = { typeNull, NULL };
+	CHECK(AESendMessage(&event, &reply, kAEWaitReply | kAENeverInteract, 2 * 60) == errAEEventNotHandled);
+	CHECK(errAEEventNotHandled == -1708);
+	if (reply.descriptorType != typeNull) {
+		SInt32 number = 0;
+		Size size;
+		DescType type;
+		CHECK(AEGetParamPtr(&reply, keyErrorNumber, typeSInt32, &type, &number, sizeof(number), &size) == errAEDescNotFound);
+		AEDisposeDesc(&reply);
+	}
+	CHECK(AESendMessage(&event, NULL, kAENoReply | kAENeverInteract, kAEDefaultTimeout) == errAEEventNotHandled);
+	AEDisposeDesc(&event);
+}
+
 int main(void)
 {
 	test_flatten();
 	test_handlers();
+	test_unhandled();
 	printf(g_failures ? "FAILED (%d)\n" : "PASSED\n", g_failures);
 	return g_failures != 0;
 }
