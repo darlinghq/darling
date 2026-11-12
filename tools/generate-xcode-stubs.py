@@ -195,12 +195,22 @@ TEMPLATE_IMPL = """
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {{
-	return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+	return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
 }}
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {{
-	NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+	DarlingStubForwardInvocation(self, anInvocation);
+}}
+
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{{
+	return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+}}
+
++ (void)forwardInvocation:(NSInvocation *)anInvocation
+{{
+	DarlingStubForwardInvocation(self, anInvocation);
 }}
 
 """
@@ -653,7 +663,7 @@ def main():
 
 			with open(os.path.join(THIS_DIR, 'src', 'classes.m'), 'w') as classes_source:
 				classes_source.write(COPYRIGHT_HEADER.format(datetime.datetime.now(datetime.timezone.utc).year).strip() + '\n\n')
-				classes_source.write('#import <Foundation/Foundation.h>\n\n')
+				classes_source.write('#import <Foundation/Foundation.h>\n#import <darling-stub-forwarding.h>\n\n')
 
 				for klass in classes:
 					if klass.find('(') >= 0:

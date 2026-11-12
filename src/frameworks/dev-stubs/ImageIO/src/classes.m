@@ -18,4 +18,5 @@
  */
 
 #import <Foundation/Foundation.h>
+#import <darling-stub-forwarding.h>
 
