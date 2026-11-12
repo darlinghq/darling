@@ -2,18 +2,27 @@ name: Darling CI
 
 on: [push, pull_request]
 
+# Supersede in-flight runs for the same branch/PR, but never cancel a build of
+# the default branch -- those runs publish the daily packages.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+
 jobs:
   build-deb:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Darling
       uses: actions/checkout@v4
-      with:
-        submodules: recursive
+
+    # actions/checkout fetches submodules one at a time, which is slow with the
+    # number of submodules this repo has. Fetch them ourselves in parallel.
+    - name: Checkout submodules
+      run: git submodule update --init --recursive --depth 1 --jobs 8
 
     - name: Install dependencies
       run: |
-        sudo apt-get update && sudo apt-get install devscripts equivs debhelper
+        sudo apt-get update && sudo apt-get install devscripts equivs debhelper ccache
         sudo mk-build-deps -i -r -t "apt-get --no-install-recommends -y" debian/control
 
     # see https://github.com/actions/virtual-environments/issues/2606#issuecomment-772683150
@@ -21,9 +30,47 @@ jobs:
       run: |
         sudo rm -rf /usr/share/dotnet
 
+    # debuild runs the build with a scrubbed environment, so configure ccache
+    # system-wide rather than relying on CCACHE_* reaching the compiler.
+    # The mtime sloppiness settings matter in CI: a fresh checkout gives every
+    # file a current timestamp, which would otherwise make ccache refuse to
+    # cache the results.
+    - name: Configure ccache
+      run: |
+        sudo tee /etc/ccache.conf > /dev/null <<EOF
+        cache_dir = ${HOME}/.ccache
+        max_size = 2G
+        compiler_check = content
+        sloppiness = time_macros,include_file_mtime,include_file_ctime
+        EOF
+
+    - name: Restore ccache
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.ccache
+        key: ccache-deb-${{ github.ref_name }}-${{ github.run_id }}
+        restore-keys: |
+          ccache-deb-${{ github.ref_name }}-
+          ccache-deb-${{ github.event.repository.default_branch }}-
+          ccache-deb-
+
     - name: Build DEBs
       run: |
+        ccache --zero-stats
         ./tools/debian/make-deb
+
+    - name: ccache statistics
+      if: always()
+      run: ccache --show-stats --verbose
+
+    # Saved even when the build fails, so that a long build that dies near the
+    # end still leaves its object files behind for the next run.
+    - name: Save ccache
+      if: always()
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.ccache
+        key: ccache-deb-${{ github.ref_name }}-${{ github.run_id }}
 
     - name: Move DEBs
       run: |
@@ -40,8 +87,11 @@ jobs:
     steps:
     - name: Checkout Darling
       uses: actions/checkout@v4
-      with:
-        submodules: recursive
+
+    # actions/checkout fetches submodules one at a time, which is slow with the
+    # number of submodules this repo has. Fetch them ourselves in parallel.
+    - name: Checkout submodules
+      run: git submodule update --init --recursive --depth 1 --jobs 8
 
     - name: Install dependencies
       run: |
@@ -67,8 +117,11 @@ jobs:
     - name: Checkout Darling
       uses: actions/checkout@v4
       with:
-        submodules: recursive
         path: source/darling
+
+    - name: Checkout submodules
+      working-directory: source/darling
+      run: git submodule update --init --recursive --depth 1 --jobs 8
 
     - name: Compress source
       run: |
