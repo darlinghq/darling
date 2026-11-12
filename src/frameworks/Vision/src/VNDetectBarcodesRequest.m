@@ -18,6 +18,7 @@
 */
 
 #import <Vision/VNDetectBarcodesRequest.h>
+#import <darling-stub-forwarding.h>
 
 // Values observed on macOS 27.0.1 by printing the public constants: each
 // symbology string is the constant's own name.
@@ -43,12 +44,22 @@ VNBarcodeSymbology const VNBarcodeSymbologyUPCE = @"VNBarcodeSymbologyUPCE";
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+    DarlingStubForwardInvocation(self, anInvocation);
+}
+
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
++ (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    DarlingStubForwardInvocation(self, anInvocation);
 }
 
 @end

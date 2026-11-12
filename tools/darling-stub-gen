@@ -54,14 +54,26 @@ void* %s(void)
 }
 """
 
+# Unknown selectors get a signature with one object argument per colon (see
+# src/include/darling-stub-forwarding.h), and are answered with a zero result.
 msg_handling = """- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: \"v@:\"];
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
-    NSLog(@\"Stub called: %@ in %@\", NSStringFromSelector([anInvocation selector]), [self class]);
+    DarlingStubForwardInvocation(self, anInvocation);
+}
+
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
++ (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    DarlingStubForwardInvocation(self, anInvocation);
 }
 
 """
@@ -251,7 +263,7 @@ if uses_objc:
 
         class_impl = open(source_dir + class_name + ".m", "w")
         class_impl.write(copyright)
-        class_impl.write("#import <%s/%s.h>\n\n" % (target_name, class_name))
+        class_impl.write("#import <%s/%s.h>\n#import <darling-stub-forwarding.h>\n\n" % (target_name, class_name))
         class_impl.write("@implementation " + class_name + "\n\n")
         class_impl.write(msg_handling)
         class_impl.write("@end\n")

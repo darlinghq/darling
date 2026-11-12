@@ -18,6 +18,7 @@
 */
 
 #import "ODInternal.h"
+#import <darling-stub-forwarding.h>
 
 // ODRecord declares no instance variables, so the records this framework
 // hands out are of a private subclass that holds the CF record.
@@ -96,12 +97,22 @@
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-	return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
-	NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+    DarlingStubForwardInvocation(self, anInvocation);
+}
+
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
++ (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    DarlingStubForwardInvocation(self, anInvocation);
 }
 
 @end
