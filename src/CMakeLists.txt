@@ -351,6 +351,8 @@ add_subdirectory(external/zlib)
 add_subdirectory(shellspawn)
 # hands the system preferences to darlingserver before shellspawn accepts commands
 add_subdirectory(prefsd)
+# imports the host's CA certificates into the guest's System keychain
+add_subdirectory(hostcerts)
 
 # typically considered CLI components, but required by launchctl (which is necessary for launchd to bootstrap)
 add_subdirectory(external/libedit)
