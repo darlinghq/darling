@@ -3,8 +3,11 @@
 // FSCreateResFile reports its result through ResError(): creation, existing
 // names, names that are not a single path component, and permissions given in
 // the catalog information. FSSetCatalogInfo applies the permissions. EventRecord
-// is packed to two bytes (what 0, message 2, when 10, where 14, modifiers 18).
-// The program passes unchanged on macOS 27.0.1 (arm64 and x86_64).
+// is packed to two bytes and its message field is an unsigned long, so the layout
+// follows the pointer width: LP64 has what 0, message 2, when 10, where 14,
+// modifiers 18 (size 20); 32-bit has what 0, message 2, when 6, where 10,
+// modifiers 14 (size 16). The program passes unchanged on macOS 27.0.1 (arm64
+// and x86_64).
 #include <CoreServices/CoreServices.h>
 #include <Carbon/Carbon.h>
 #include <stddef.h>
@@ -78,12 +81,21 @@ static void test_create_res_file(void)
 
 static void test_event_record_layout(void)
 {
+#ifdef __LP64__
 	CHECK(sizeof(EventRecord) == 20);
 	CHECK(offsetof(EventRecord, what) == 0);
 	CHECK(offsetof(EventRecord, message) == 2);
 	CHECK(offsetof(EventRecord, when) == 10);
 	CHECK(offsetof(EventRecord, where) == 14);
 	CHECK(offsetof(EventRecord, modifiers) == 18);
+#else
+	CHECK(sizeof(EventRecord) == 16);
+	CHECK(offsetof(EventRecord, what) == 0);
+	CHECK(offsetof(EventRecord, message) == 2);
+	CHECK(offsetof(EventRecord, when) == 6);
+	CHECK(offsetof(EventRecord, where) == 10);
+	CHECK(offsetof(EventRecord, modifiers) == 14);
+#endif
 
 	// IsCmdChar compares key codes: the period key is 0x2F, so a message holding only the
 	// character '.' (key code 0, the A key) does not match, while key code 0x2F does.
