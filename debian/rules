@@ -74,4 +74,10 @@ override_dh_clean:
 override_dh_fixperms:
 	dh_fixperms -Xusr/bin/darling -Xusr/bin/darlingserver -Xusr/libexec/darling/usr/libexec/darling/mldr -Xusr/libexec/darling/usr/libexec/darling/mldr32
 
+# The guest's share directory holds no ELF objects. file(1) describes the
+# file(1) magic source for ELF ("magic for ELF executables"), which dh_strip
+# in compat 10 takes for an ELF executable when the file has an execute bit.
+override_dh_strip:
+	dh_strip -Xusr/libexec/darling/usr/share/
+
 override_dh_update_autotools_config:
