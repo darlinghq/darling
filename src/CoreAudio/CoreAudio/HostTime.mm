@@ -33,3 +33,15 @@ UInt64 AudioConvertNanosToHostTime(UInt64 inNanos)
 {
 	return scale(inNanos, timebase().denom, timebase().numer);
 }
+
+Float64 AudioGetHostClockFrequency(void)
+{
+	// mach_absolute_time() ticks are numer/denom nanoseconds long.
+	return 1.0e9 * (Float64) timebase().denom / (Float64) timebase().numer;
+}
+
+UInt32 AudioGetHostClockMinimumTimeDelta(void)
+{
+	// The host clock advances in whole ticks of mach_absolute_time().
+	return 1;
+}
