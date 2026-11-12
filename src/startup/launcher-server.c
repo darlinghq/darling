@@ -354,3 +354,195 @@ error:
 		close(procfd);
 	return -1;
 }
+
+bool launcherStatusIsNamespaceInit(const char* status, size_t length)
+{
+	const char* line = status;
+	const char* limit = status + length;
+
+	while (line < limit)
+	{
+		const char* end = memchr(line, '\n', (size_t)(limit - line));
+		if (!end)
+			end = limit;
+		if ((size_t)(end - line) >= 6 && memcmp(line, "NSpid:", 6) == 0)
+		{
+			unsigned long last = 0;
+			size_t entries = 0;
+			const char* value = line + 6;
+
+			while (value < end)
+			{
+				char* parsedEnd;
+
+				while (value < end && (*value == ' ' || *value == '\t'))
+					value++;
+				if (value == end)
+					break;
+				if (*value < '0' || *value > '9')
+					return false;
+				errno = 0;
+				last = strtoul(value, &parsedEnd, 10);
+				if (errno != 0 || parsedEnd == value || parsedEnd > end)
+					return false;
+				entries++;
+				value = parsedEnd;
+			}
+			return entries > 1 && last == 1;
+		}
+		line = end < limit ? end + 1 : limit;
+	}
+	return false;
+}
+
+bool launcherEnvironmentHas(const char* environ, size_t length, const char* name, const char* value)
+{
+	size_t nameLength = strlen(name), valueLength = strlen(value);
+	const char* entry = environ;
+	const char* limit = environ + length;
+
+	while (entry < limit)
+	{
+		const char* end = memchr(entry, '\0', (size_t)(limit - entry));
+		size_t entryLength = (size_t)((end ? end : limit) - entry);
+
+		if (entryLength == nameLength + 1 + valueLength && memcmp(entry, name, nameLength) == 0
+			&& entry[nameLength] == '=' && memcmp(entry + nameLength + 1, value, valueLength) == 0)
+			return true;
+		if (!end)
+			break;
+		entry = end + 1;
+	}
+	return false;
+}
+
+// Reads a whole small file of a pinned /proc/<pid> directory into a buffer
+// that the caller frees. Returns false with errno set on failure.
+static bool readProcFile(int processfd, const char* name, size_t maxLength, char** data, size_t* length)
+{
+	int fd = openat(processfd, name, O_RDONLY | O_CLOEXEC);
+	char* buffer;
+	size_t used = 0;
+
+	if (fd < 0)
+		return false;
+	buffer = malloc(maxLength + 1);
+	if (!buffer)
+	{
+		close(fd);
+		errno = ENOMEM;
+		return false;
+	}
+	for (;;)
+	{
+		ssize_t got = read(fd, buffer + used, maxLength - used);
+
+		if (got < 0)
+		{
+			int saved = errno;
+			free(buffer);
+			close(fd);
+			errno = saved;
+			return false;
+		}
+		if (got == 0)
+			break;
+		used += (size_t)got;
+		if (used == maxLength)
+			break;
+	}
+	close(fd);
+	buffer[used] = '\0';
+	*data = buffer;
+	*length = used;
+	return true;
+}
+
+int launcherFindOrphanedInit(const char* procPath, const char* prefix, uid_t uid,
+	const char* mldrPath, pid_t* pid)
+{
+	struct stat mldrExe;
+	int procfd, scanfd, result = 0;
+	DIR* procDir;
+	struct dirent* entry;
+	char socketPath[PATH_MAX + 32];
+
+	*pid = 0;
+	if (snprintf(socketPath, sizeof(socketPath), "%s/.darlingserver.sock", prefix) >= (int)sizeof(socketPath)
+		|| stat(mldrPath, &mldrExe) != 0)
+		return -1;
+
+	procfd = open(procPath, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+	if (procfd < 0)
+		return -1;
+	scanfd = dup(procfd);
+	procDir = scanfd >= 0 ? fdopendir(scanfd) : NULL;
+	if (!procDir)
+	{
+		if (scanfd >= 0)
+			close(scanfd);
+		close(procfd);
+		return -1;
+	}
+
+	for (;;)
+	{
+		pid_t candidate;
+		struct stat exe;
+		int processfd;
+		char* data;
+		size_t length;
+		uid_t realUid;
+		bool matches;
+
+		errno = 0;
+		entry = readdir(procDir);
+		if (!entry)
+		{
+			if (errno != 0)
+				result = -1;
+			break;
+		}
+		if (!parsePid(entry->d_name, &candidate))
+			continue;
+		processfd = openat(procfd, entry->d_name, O_PATH | O_DIRECTORY | O_CLOEXEC);
+		if (processfd < 0)
+		{
+			if (errno == ENOENT || errno == ESRCH || errno == EACCES)
+				continue;
+			result = -1;
+			break;
+		}
+
+		// A process that disappears or cannot be read is not our candidate;
+		// the cheap, discriminating checks come first.
+		if (fstatat(processfd, "exe", &exe, 0) != 0 || !sameFile(&exe, &mldrExe)
+			|| !readProcFile(processfd, "status", 8192, &data, &length))
+		{
+			close(processfd);
+			continue;
+		}
+		matches = launcherServerStatusRealUid(data, length, &realUid) && realUid == uid
+			&& launcherStatusIsNamespaceInit(data, length);
+		free(data);
+		if (!matches || !readProcFile(processfd, "environ", 1024 * 1024, &data, &length))
+		{
+			close(processfd);
+			continue;
+		}
+		matches = launcherEnvironmentHas(data, length, "__mldr_sockpath", socketPath);
+		free(data);
+		// The pinned directory still names the same live process.
+		matches = matches && fstatat(processfd, "exe", &exe, 0) == 0 && sameFile(&exe, &mldrExe);
+		close(processfd);
+		if (matches)
+		{
+			*pid = candidate;
+			result = 1;
+			break;
+		}
+	}
+	closedir(procDir);
+	close(procfd);
+	return result;
+}

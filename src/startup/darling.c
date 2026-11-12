@@ -199,6 +199,31 @@ int main(int argc, char ** argv)
 	{
 		if (pidInit == 0)
 		{
+			// No darlingserver, but launchd may have outlived it (a server
+			// that crashed, or one from before launchd was tied to it).
+			// launchd is the first process of its pid namespace: ending it
+			// ends every process of the container.
+			pid_t orphan = 0;
+			int scan;
+
+			dropPrivileges();
+			scan = launcherFindOrphanedInit("/proc", prefix, g_originalUid,
+				INSTALL_PREFIX "/libexec/darling/usr/libexec/darling/mldr", &orphan);
+			if (scan > 0)
+			{
+				if (kill(orphan, SIGKILL) != 0 && errno != ESRCH)
+				{
+					fprintf(stderr, "Failed to shutdown Darling container: %s\n", strerror(errno));
+					return 1;
+				}
+				fprintf(stderr, "Stopped a Darling container whose darlingserver had exited\n");
+				return 0;
+			}
+			if (scan < 0)
+			{
+				fprintf(stderr, "Cannot inspect running processes: %s\n", strerror(errno));
+				return 1;
+			}
 			fprintf(stderr, "Darling container is not running\n");
 			return 1;
 		}
@@ -251,6 +276,22 @@ int main(int argc, char ** argv)
 				"darlingserver %d is still running for %s but its .init.pid is missing or invalid; refusing to start a second server.\n"
 				"If another Darling is starting this prefix, retry shortly; otherwise stop darlingserver %d before retrying.\n",
 				(int)liveServer, prefix, (int)liveServer);
+			return 1;
+		}
+
+		// A container left behind by a darlingserver that exited owns the
+		// prefix's sockets; starting another one would take them over.
+		pid_t orphanedInit = 0;
+		useInvokingIds();
+		scan = launcherFindOrphanedInit("/proc", prefix, g_originalUid,
+			INSTALL_PREFIX "/libexec/darling/usr/libexec/darling/mldr", &orphanedInit);
+		restoreRootIds();
+		if (scan > 0)
+		{
+			fprintf(stderr,
+				"launchd %d is still running for %s but its darlingserver has exited.\n"
+				"Run 'darling shutdown' to stop it before starting the container again.\n",
+				(int)orphanedInit, prefix);
 			return 1;
 		}
 

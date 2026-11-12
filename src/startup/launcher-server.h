@@ -61,6 +61,23 @@ enum launcher_server_check launcherOpenServerMountNs(int procfd, const struct st
 int launcherFindPrefixServer(const char* procPath, const char* prefix, uid_t uid,
 	const char* serverPath, pid_t* pid);
 
+// Whether a Linux status file describes a process that is the first process
+// (pid 1) of a pid namespace below the one the status was read in, that is,
+// its NSpid line has more than one entry and the last is 1.
+bool launcherStatusIsNamespaceInit(const char* status, size_t length);
+
+// Whether the NUL-separated environment block of /proc/PID/environ holds the
+// variable `name` with exactly the value `value`.
+bool launcherEnvironmentHas(const char* environ, size_t length, const char* name, const char* value);
+
+// Looks for a container whose darlingserver is gone: the first process of a pid
+// namespace, run from the installed mldr by the invoking uid, whose
+// environment names the prefix's server socket. Returns 1 with *pid set when
+// found, 0 when absent, and -1 if the process list could not be checked.
+// procPath is normally /proc and is injectable for host-side tests.
+int launcherFindOrphanedInit(const char* procPath, const char* prefix, uid_t uid,
+	const char* mldrPath, pid_t* pid);
+
 // Parses the first two NUL-terminated arguments from Linux /proc/PID/cmdline.
 bool launcherServerCommandLineMatchesPrefix(const char* cmdline, size_t length,
 	const char* prefix);
