@@ -22,6 +22,7 @@
 
 #include <CoreMedia/CMBase.h>
 #include <CoreAudio/CoreAudioTypes.h>
+#include <CoreVideo/CVImageBuffer.h>
 
 CF_IMPLICIT_BRIDGING_ENABLED
 
@@ -124,6 +125,9 @@ CM_EXPORT CFPropertyListRef CMFormatDescriptionGetExtension(CMFormatDescriptionR
 CM_EXPORT OSStatus CMVideoFormatDescriptionCreate(CFAllocatorRef allocator, CMVideoCodecType codecType,
 	int32_t width, int32_t height, CFDictionaryRef extensions,
 	CF_RETURNS_RETAINED CMVideoFormatDescriptionRef *formatDescriptionOut);
+CM_EXPORT OSStatus CMVideoFormatDescriptionCreateForImageBuffer(CFAllocatorRef allocator, CVImageBufferRef imageBuffer,
+	CF_RETURNS_RETAINED CMVideoFormatDescriptionRef *formatDescriptionOut);
+CM_EXPORT Boolean CMVideoFormatDescriptionMatchesImageBuffer(CMVideoFormatDescriptionRef desc, CVImageBufferRef imageBuffer);
 CM_EXPORT CMVideoDimensions CMVideoFormatDescriptionGetDimensions(CMVideoFormatDescriptionRef videoDesc);
 CM_EXPORT OSStatus CMVideoFormatDescriptionGetH264ParameterSetAtIndex(CMFormatDescriptionRef videoDesc,
 	size_t parameterSetIndex, const uint8_t **parameterSetPointerOut, size_t *parameterSetSizeOut,

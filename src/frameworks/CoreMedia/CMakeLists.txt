@@ -27,4 +27,5 @@ add_framework(CoreMedia
     DEPENDENCIES
         system
         Foundation
+        CoreVideo
 )

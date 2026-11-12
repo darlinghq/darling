@@ -76,6 +76,14 @@ CM_EXPORT OSStatus CMSampleBufferCreateReady(CFAllocatorRef allocator, CMBlockBu
 	CMFormatDescriptionRef formatDescription, CMItemCount numSamples, CMItemCount numSampleTimingEntries,
 	const CMSampleTimingInfo *sampleTimingArray, CMItemCount numSampleSizeEntries, const size_t *sampleSizeArray,
 	CF_RETURNS_RETAINED CMSampleBufferRef *sampleBufferOut);
+CM_EXPORT OSStatus CMSampleBufferCreateForImageBuffer(CFAllocatorRef allocator, CVImageBufferRef imageBuffer,
+	Boolean dataReady, CMSampleBufferMakeDataReadyCallback makeDataReadyCallback, void *makeDataReadyRefcon,
+	CMVideoFormatDescriptionRef formatDescription, const CMSampleTimingInfo *sampleTiming,
+	CF_RETURNS_RETAINED CMSampleBufferRef *sampleBufferOut);
+CM_EXPORT OSStatus CMSampleBufferCreateReadyWithImageBuffer(CFAllocatorRef allocator, CVImageBufferRef imageBuffer,
+	CMVideoFormatDescriptionRef formatDescription, const CMSampleTimingInfo *sampleTiming,
+	CF_RETURNS_RETAINED CMSampleBufferRef *sampleBufferOut);
+CM_EXPORT CVImageBufferRef CMSampleBufferGetImageBuffer(CMSampleBufferRef sbuf);
 CM_EXPORT CMBlockBufferRef CMSampleBufferGetDataBuffer(CMSampleBufferRef sbuf);
 CM_EXPORT CMTime CMSampleBufferGetDecodeTimeStamp(CMSampleBufferRef sbuf);
 CM_EXPORT CMTime CMSampleBufferGetPresentationTimeStamp(CMSampleBufferRef sbuf);

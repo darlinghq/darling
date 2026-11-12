@@ -871,16 +871,6 @@ void* CMSampleBufferCreateCopyWithNewTiming(void) {
     return NULL;
 }
 
-void* CMSampleBufferCreateForImageBuffer(void) {
-    if (verbose) puts("STUB: CMSampleBufferCreateForImageBuffer called");
-    return NULL;
-}
-
-void* CMSampleBufferCreateReadyWithImageBuffer(void) {
-    if (verbose) puts("STUB: CMSampleBufferCreateReadyWithImageBuffer called");
-    return NULL;
-}
-
 void* CMSampleBufferDataIsReady(void) {
     if (verbose) puts("STUB: CMSampleBufferDataIsReady called");
     return NULL;
@@ -898,11 +888,6 @@ void* CMSampleBufferGetAudioStreamPacketDescriptions(void) {
 
 void* CMSampleBufferGetAudioStreamPacketDescriptionsPtr(void) {
     if (verbose) puts("STUB: CMSampleBufferGetAudioStreamPacketDescriptionsPtr called");
-    return NULL;
-}
-
-void* CMSampleBufferGetImageBuffer(void) {
-    if (verbose) puts("STUB: CMSampleBufferGetImageBuffer called");
     return NULL;
 }
 
@@ -1511,11 +1496,6 @@ void* CMVideoFormatDescriptionCopyAsBigEndianImageDescriptionBlockBuffer(void) {
     return NULL;
 }
 
-void* CMVideoFormatDescriptionCreateForImageBuffer(void) {
-    if (verbose) puts("STUB: CMVideoFormatDescriptionCreateForImageBuffer called");
-    return NULL;
-}
-
 void* CMVideoFormatDescriptionCreateFromBigEndianImageDescriptionBlockBuffer(void) {
     if (verbose) puts("STUB: CMVideoFormatDescriptionCreateFromBigEndianImageDescriptionBlockBuffer called");
     return NULL;
@@ -1558,11 +1538,6 @@ void* CMVideoFormatDescriptionGetPresentationDimensions(void) {
 
 void* CMVideoFormatDescriptionGetVideoDynamicRange(void) {
     if (verbose) puts("STUB: CMVideoFormatDescriptionGetVideoDynamicRange called");
-    return NULL;
-}
-
-void* CMVideoFormatDescriptionMatchesImageBuffer(void) {
-    if (verbose) puts("STUB: CMVideoFormatDescriptionMatchesImageBuffer called");
     return NULL;
 }
 
