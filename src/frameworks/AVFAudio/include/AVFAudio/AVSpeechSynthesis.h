@@ -60,7 +60,14 @@ extern NSNotificationName AVSpeechSynthesisAvailableVoicesDidChangeNotification;
 
 // A voice. Darling has no speech engine, so the list of voices is empty and no voice object is
 // ever handed out.
-@interface AVSpeechSynthesisVoice : NSObject <NSSecureCoding>
+@interface AVSpeechSynthesisVoice : NSObject <NSSecureCoding> {
+@private
+	NSString *_language;
+	NSString *_identifier;
+	NSString *_name;
+	AVSpeechSynthesisVoiceQuality _quality;
+	AVSpeechSynthesisVoiceGender _gender;
+}
 + (NSArray<AVSpeechSynthesisVoice *> *)speechVoices;
 + (NSString *)currentLanguageCode;
 + (nullable AVSpeechSynthesisVoice *)voiceWithLanguage:(nullable NSString *)languageCode;
@@ -73,7 +80,17 @@ extern NSNotificationName AVSpeechSynthesisAvailableVoicesDidChangeNotification;
 @end
 
 // One piece of text to speak, with the way to speak it.
-@interface AVSpeechUtterance : NSObject <NSCopying, NSSecureCoding>
+@interface AVSpeechUtterance : NSObject <NSCopying, NSSecureCoding> {
+@private
+	NSAttributedString *_attributedString;
+	AVSpeechSynthesisVoice *_voice;
+	float _rate;
+	float _pitchMultiplier;
+	float _volume;
+	BOOL _prefersAssistiveTechnologySettings;
+	NSTimeInterval _preUtteranceDelay;
+	NSTimeInterval _postUtteranceDelay;
+}
 + (instancetype)speechUtteranceWithString:(NSString *)string;
 + (instancetype)speechUtteranceWithAttributedString:(NSAttributedString *)string;
 - (instancetype)initWithString:(NSString *)string;
@@ -91,7 +108,13 @@ extern NSNotificationName AVSpeechSynthesisAvailableVoicesDidChangeNotification;
 
 // Speaks utterances one after the other. Darling has no speech engine: an utterance completes as
 // soon as its turn comes, without producing sound.
-@interface AVSpeechSynthesizer : NSObject
+@interface AVSpeechSynthesizer : NSObject {
+@private
+	id<AVSpeechSynthesizerDelegate> _delegate;
+	NSMutableArray *_queue;  // utterances that have not finished; the first one is current
+	BOOL _paused;
+	BOOL _drainScheduled;
+}
 @property (nonatomic, assign, nullable) id<AVSpeechSynthesizerDelegate> delegate;
 @property (nonatomic, readonly, getter=isSpeaking) BOOL speaking;
 @property (nonatomic, readonly, getter=isPaused) BOOL paused;

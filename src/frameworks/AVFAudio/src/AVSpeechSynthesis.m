@@ -89,9 +89,7 @@ NSNotificationName AVSpeechSynthesisAvailableVoicesDidChangeNotification = @"AVS
 
 @end
 
-@implementation AVSpeechUtterance {
-	NSAttributedString *_attributedString;
-}
+@implementation AVSpeechUtterance
 
 @synthesize voice = _voice;
 @synthesize rate = _rate;
@@ -201,11 +199,7 @@ NSNotificationName AVSpeechSynthesisAvailableVoicesDidChangeNotification = @"AVS
 
 @end
 
-@implementation AVSpeechSynthesizer {
-	NSMutableArray *_queue;  // utterances that have not finished; the first one is current
-	BOOL _paused;
-	BOOL _drainScheduled;
-}
+@implementation AVSpeechSynthesizer
 
 @synthesize delegate = _delegate;
 

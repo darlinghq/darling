@@ -34,7 +34,21 @@ typedef NS_ENUM(NSInteger, CATapMuteBehavior) {
 };
 
 // Describes a tap: a stream that mixes the output audio of a set of processes.
-@interface CATapDescription : NSObject
+@interface CATapDescription : NSObject {
+@private
+	NSString *_name;
+	NSUUID *_UUID;
+	NSArray *_processes;
+	NSArray *_bundleIDs;
+	BOOL _mono;
+	BOOL _exclusive;
+	BOOL _mixdown;
+	BOOL _privateTap;
+	BOOL _processRestoreEnabled;
+	CATapMuteBehavior _muteBehavior;
+	NSString *_deviceUID;
+	NSNumber *_stream;
+}
 
 - (instancetype)init;
 - (instancetype)initStereoMixdownOfProcesses:(NSArray<NSNumber*>*)processesObjectIDsToIncludeInTap;
