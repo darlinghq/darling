@@ -162,7 +162,7 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 	uintptr_t slide = 0;
 	uintptr_t mmapSize = 0;
 	bool pie = false;
-	uint32_t fat_offset;
+	off_t fat_offset;
 	void* tmp_map_base = NULL;
 	const int source_fd = fd;
 
