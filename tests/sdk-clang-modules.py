@@ -88,6 +88,21 @@ class SdkModules(unittest.TestCase):
         off = self.clang(code, '-fno-apinotes-modules', '-Wnullable-to-nonnull-conversion')
         self.assertNotIn('nullable pointer', off.stderr)
 
+    def test_dispatch_and_os_apinotes_apply(self):
+        # The Dispatch and os API notes give the types and functions the Swift names
+        # that the Swift overlays are written against; -D__swift__ makes the headers
+        # declare the classes as they are when Swift imports them.
+        code = '@import Dispatch;\n@import os.log;\n'
+        expected = {'OS_dispatch_queue': 'DispatchQueue', 'OS_os_log': 'OSLog',
+                    'os_log_create': 'OSLog.init(__subsystem:category:)'}
+        for decl, swift_name in expected.items():
+            with self.subTest(decl=decl):
+                dump = self.clang(code, '-D__swift__=60000', '-fapinotes-modules', '-Xclang', '-ast-dump',
+                                  '-Xclang', '-ast-dump-filter', '-Xclang', decl)
+                self.assertEqual(dump.returncode, 0, dump.stderr)
+                self.assertIn('SwiftNameAttr', dump.stdout)
+                self.assertIn('"%s"' % swift_name, dump.stdout)
+
     def test_darwin_umbrella_is_current(self):
         # Every header the generated Darwin umbrella includes must exist; a
         # stale umbrella (headers moved or removed) breaks `import Darwin`.

@@ -1,0 +1,15 @@
+---
+Name: os
+Classes:
+- Name: OS_os_log
+  SwiftName: OSLog
+Typedefs:
+- Name: os_log_type_t
+  SwiftName: OSLogType
+- Name: os_signpost_type_t
+  SwiftName: OSSignpostType
+Functions:
+- Name: os_log_create
+  SwiftName: 'OSLog.init(__subsystem:category:)'
+- Name: os_log_type_enabled
+  SwiftName: 'OSLog.isEnabled(self:type:)'
