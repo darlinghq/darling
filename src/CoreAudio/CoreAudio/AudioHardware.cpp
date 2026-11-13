@@ -130,6 +130,14 @@ static OSStatus GetStreamPropertyData(AudioObjectID objID, const AudioObjectProp
 	return kAudioHardwareNoError;
 }
 
+// Listeners on a stream object are accepted for as long as its device exists. A stream has the
+// format of its device and the device's format never changes, so no stream property ever
+// changes and there is nothing to notify; keeping the listener would only hold on to it.
+static OSStatus CheckStreamListenerTarget(AudioObjectID streamID)
+{
+	return GetObject(streamID & 0xffffu) != nullptr ? kAudioHardwareNoError : kAudioHardwareBadObjectError;
+}
+
 void AudioObjectShow(AudioObjectID inObjectID)
 {
 	AudioHardwareImpl* obj = GetObject(inObjectID);
@@ -216,6 +224,9 @@ OSStatus AudioObjectAddPropertyListener(AudioObjectID inObjectID,
 		const AudioObjectPropertyAddress* inAddress,
 		AudioObjectPropertyListenerProc inListener, void* inClientData)
 {
+	if (IsStreamObject(inObjectID))
+		return CheckStreamListenerTarget(inObjectID);
+
 	AudioHardwareImpl* obj = GetObject(inObjectID);
 	if (!obj)
 		return kAudioHardwareBadObjectError;
@@ -227,6 +238,9 @@ OSStatus AudioObjectRemovePropertyListener(AudioObjectID inObjectID,
 		const AudioObjectPropertyAddress* inAddress,
 		AudioObjectPropertyListenerProc inListener, void* inClientData)
 {
+	if (IsStreamObject(inObjectID))
+		return CheckStreamListenerTarget(inObjectID);
+
 	AudioHardwareImpl* obj = GetObject(inObjectID);
 	if (!obj)
 		return kAudioHardwareBadObjectError;
