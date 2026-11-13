@@ -21,6 +21,7 @@
 #include <sandbox/sandbox.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include <darling/emulation/linux_premigration/ext/for-sandbox.h>
 
 static int verbose = 0;
@@ -60,17 +61,17 @@ void* sandbox_compile_file(const char *path, void *params, char **errorbuf)
     return sandbox_empty_profile(errorbuf);
 }
 
-void* sandbox_compile_named(const char *name, char **errorbuf)
+void* sandbox_compile_named(const char *name, void *params, char **errorbuf)
 {
     if (verbose) puts("STUB: sandbox_compile_named called");
-    (void)name;
+    (void)name; (void)params;
     return sandbox_empty_profile(errorbuf);
 }
 
-void* sandbox_compile_entitlements(void *entitlements, char **errorbuf)
+void* sandbox_compile_entitlements(void *entitlements, void *params, char **errorbuf)
 {
     if (verbose) puts("STUB: sandbox_compile_entitlements called");
-    (void)entitlements;
+    (void)entitlements; (void)params;
     return sandbox_empty_profile(errorbuf);
 }
 
@@ -102,16 +103,22 @@ void* sandbox_container_paths_iterate_items(void)
     return NULL;
 }
 
+/* A parameter set is an opaque object. Callers treat NULL as failure, so hand out a
+ * real one; parameters only matter to profile compilation, which does not happen here. */
+struct sandbox_params {
+    unsigned int count;
+};
+
 void* sandbox_create_params(void)
 {
     if (verbose) puts("STUB: sandbox_create_params called");
-    return NULL;
+    return calloc(1, sizeof(struct sandbox_params));
 }
 
 void sandbox_free_params(void *params)
 {
     if (verbose) puts("STUB: sandbox_free_params called");
-    (void)params;
+    free(params);
 }
 
 void* sandbox_inspect_pid(void)
@@ -126,10 +133,15 @@ void* sandbox_inspect_smemory(void)
     return NULL;
 }
 
-void* sandbox_set_param(void)
+int sandbox_set_param(void *params, const char *key, const char *value)
 {
     if (verbose) puts("STUB: sandbox_set_param called");
-    return NULL;
+    if (params == NULL || key == NULL || value == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+    ((struct sandbox_params *)params)->count++;
+    return 0;
 }
 
 void* sandbox_set_user_state_item(void)
