@@ -29,52 +29,10 @@ static void initme(void) {
     verbose = getenv("STUB_VERBOSE") != NULL;
 }
 
-OSStatus CallNextEventHandler(EventHandlerCallRef a, EventRef b)
-{
-    if (verbose) puts("STUB: CallNextEventHandler called");
-	return 0;
-}
-
-OSStatus CreateEvent(CFAllocatorRef a, OSType b, UInt32 c, EventTime d, EventAttributes e, EventRef* f)
-{
-    if (verbose) puts("STUB: CreateEvent called");
-	return 0;
-}
-
-OSType GetEventClass(EventRef a)
-{
-    if (verbose) puts("STUB: GetEventClass called");
-	return 0;
-}
-
-UInt32 GetEventKind(EventRef a)
-{
-    if (verbose) puts("STUB: GetEventKind called");
-	return 0;
-}
-
-OSStatus GetEventParameter(EventRef a, EventParamName b, EventParamType c, EventParamType* d, ByteCount e, ByteCount* f, void* g)
-{
-    if (verbose) puts("STUB: GetEventParameter called");
-	return 0;
-}
-
 EventQueueRef GetMainEventQueue()
 {
     if (verbose) puts("STUB: GetMainEventQueue called");
 	return 0;
-}
-
-OSStatus InstallEventHandler(EventTargetRef a, EventHandlerUPP b, ItemCount c, const EventTypeSpec* d, void* e, EventHandlerRef* f)
-{
-    if (verbose) puts("STUB: InstallEventHandler called");
-	return 0;
-}
-
-EventHandlerUPP NewEventHandlerUPP(EventHandlerProcPtr a)
-{
-    if (verbose) puts("STUB: NewEventHandlerUPP called");
-	return (EventHandlerUPP)0;
 }
 
 OSStatus PostEventToQueue(EventQueueRef a, EventRef b, EventPriority c)
@@ -89,33 +47,10 @@ OSStatus ReceiveNextEvent(ItemCount a, const EventTypeSpec* b, EventTimeout c, B
 	return 0;
 }
 
-void ReleaseEvent(EventRef a)
-{
-    if (verbose) puts("STUB: ReleaseEvent called");
-}
-
-OSStatus RemoveEventHandler(EventHandlerRef a)
-{
-    if (verbose) puts("STUB: RemoveEventHandler called");
-	return 0;
-}
-
-OSStatus SendEventToEventTarget(EventRef a, EventTargetRef b)
-{
-    if (verbose) puts("STUB: SendEventToEventTarget called");
-	return 0;
-}
-
 UInt32 GetCurrentKeyModifiers()
 {
     if (verbose) puts("STUB: GetCurrentKeyModifiers called");
     return (UInt32) 0;
-}
-
-EventTime GetEventTime(EventRef inEvent)
-{
-    if (verbose) puts("STUB: GetEventTime called");
-    return (double) 0;
 }
 
 // Darling has no system symbolic hot keys, so no event ever matches one.
