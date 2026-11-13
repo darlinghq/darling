@@ -153,7 +153,8 @@ int main(void)
 	for (int i = 0; i < LONG_LIVED; i++)
 		put(keepers[i]);
 
-	if (bitmap.bit_length != 0 || bitmap.bits != NULL)
+	// the allocation stays once made (no realloc / free after the first get: fork-safe)
+	if (bitmap.bit_length != 0)
 	{
 		printf("FAIL: %zu entries left after freeing everything\n", bitmap.bit_length);
 		return 1;

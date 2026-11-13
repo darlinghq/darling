@@ -43,27 +43,25 @@ int socket_bitmap_get(socket_bitmap_t* bitmap) {
 			limit.rlim_cur = 1024;
 		}
 
+		// the whole bitmap at once (one bit per descriptor; calloc'd pages stay untouched
+		// until used) and never reallocated or freed after: a fork's child closes the parent's descriptors through
+		// socket_bitmap_put (guard_table_postfork_child) and the realloc that shrank the bitmap waited forever for a
+		// glibc malloc arena lock another thread of the parent held at the fork (launchd's spawn children hung:
+		// a boot stuck black, every process idle; the raw fork syscall runs none of glibc's fork handling).
 		bitmap->highest = limit.rlim_cur - 1;
+	}
+	if (!bitmap->bits) {
+		bitmap->bits = calloc(((size_t)bitmap->highest + 1 + 7) / 8, 1);
+		if (!bitmap->bits) {
+			goto out;
+		}
 	}
 
 	if (bitmap->next_index >= bitmap->bit_length) {
-		// we need to grow the bitmap
-
-		if ((bitmap->bit_length % 8) == 0) {
-			// we need to allocate an additional byte
-
-			void* ptr = realloc(bitmap->bits, (bitmap->bit_length / 8) + 1);
-			if (!ptr) {
-				goto out;
-			}
-
-			bitmap->bits = ptr;
-
-			bitmap->bits[bitmap->bit_length / 8] = 0;
-		} else {
-			// we just need to increment the bit length
+		// grow the bitmap (within its allocation)
+		if (bitmap->bit_length > (size_t)bitmap->highest) {
+			goto out; // every descriptor number is in use
 		}
-
 		++bitmap->bit_length;
 	}
 
@@ -147,20 +145,9 @@ void socket_bitmap_put(socket_bitmap_t* bitmap, int socket) {
 			--bitmap->bit_length;
 		}
 
-		new_byte_size = (bitmap->bit_length + 7) / 8;
-
-		if (new_byte_size == 0) {
-			free(bitmap->bits);
-			bitmap->bits = NULL;
-		} else if (old_byte_size != new_byte_size) {
-			// we can free one or more bytes from the bitmap
-			void* ptr = realloc(bitmap->bits, new_byte_size);
-			if (!ptr) {
-				goto out;
-			}
-
-			bitmap->bits = ptr;
-		}
+		// the allocation stays (see socket_bitmap_get)
+		(void)old_byte_size;
+		(void)new_byte_size;
 	}
 
 out:
