@@ -460,3 +460,6 @@
 [submodule "src/external/libpcap"]
 	path = src/external/libpcap
 	url = ../darling-libpcap.git
+[submodule "src/external/stanford-srp"]
+	path = src/external/stanford-srp
+	url = ../stanford-srp.git
