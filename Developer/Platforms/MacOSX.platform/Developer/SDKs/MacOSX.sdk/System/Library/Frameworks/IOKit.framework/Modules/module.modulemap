@@ -1,0 +1,7 @@
+framework module IOKit [extern_c] [system] {
+  header "IOTypes.h"
+  header "IOReturn.h"
+  header "IOMessage.h"
+  header "IOKitLib.h"
+  export *
+}
