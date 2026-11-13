@@ -89,7 +89,7 @@ static void checkPixelBufferPool(void)
 
 static void checkAudioListenerBlocks(void)
 {
-	AudioObjectPropertyAddress address = { kAudioHardwarePropertyDevices, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain };
+	AudioObjectPropertyAddress address = { kAudioHardwarePropertyDevices, kAudioObjectPropertyScopeGlobal, 0 /* kAudioObjectPropertyElementMain */ };
 	AudioObjectPropertyListenerBlock block = ^(UInt32 count, const AudioObjectPropertyAddress *addresses) { (void)count; (void)addresses; };
 	dispatch_queue_t queue = dispatch_queue_create("listener-test", DISPATCH_QUEUE_SERIAL);
 

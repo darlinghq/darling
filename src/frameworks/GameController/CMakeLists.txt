@@ -19,6 +19,7 @@ add_framework(GameController
 
     SOURCES
         src/GameController.m
+        src/GCHaptics.m
         src/_GCCControllerHIDServiceInfo.m
         src/_GCControllerManager.m
         src/GCControllerElement.m

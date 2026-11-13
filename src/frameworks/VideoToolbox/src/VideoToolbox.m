@@ -33,6 +33,9 @@ const CFStringRef kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder
 const CFStringRef kVTDecompressionPropertyKey_RealTime = CFSTR("RealTime");
 const CFStringRef kVTDecompressionPropertyKey_UsingHardwareAcceleratedVideoDecoder = CFSTR("UsingHardwareAcceleratedVideoDecoder");
 const CFStringRef kVTEncodeFrameOptionKey_ForceKeyFrame = CFSTR("EncoderForceKeyframe");
+const CFStringRef kVTEncodeFrameOptionKey_BaseFrameQP = CFSTR("BaseFrameQP");
+const CFStringRef kVTCompressionPropertyKey_EncoderID = CFSTR("EncoderID");
+const CFStringRef kVTProfileLevel_HEVC_Main_AutoLevel = CFSTR("HEVC_Main_AutoLevel");
 const CFStringRef kVTProfileLevel_H264_Baseline_AutoLevel = CFSTR("H264_Baseline_AutoLevel");
 const CFStringRef kVTProfileLevel_H264_Main_AutoLevel = CFSTR("H264_Main_AutoLevel");
 const CFStringRef kVTVideoEncoderList_CodecType = CFSTR("CodecType");

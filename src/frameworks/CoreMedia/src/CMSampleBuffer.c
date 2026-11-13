@@ -20,3 +20,4 @@
 #include <CoreMedia/CMSampleBuffer.h>
 
 const CFStringRef kCMSampleAttachmentKey_DisplayImmediately = CFSTR("DisplayImmediately");
+const CFStringRef kCMSampleBufferAttachmentKey_ResetDecoderBeforeDecoding = CFSTR("ResetDecoderBeforeDecoding");

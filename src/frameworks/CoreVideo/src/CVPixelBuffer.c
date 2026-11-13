@@ -931,6 +931,14 @@ CFDictionaryRef CVPixelBufferPoolGetPixelBufferAttributes(CVPixelBufferPoolRef p
 	return pool ? pool->pixelBufferAttributes : NULL;
 }
 
+// The pool does not keep released buffers: a buffer is freed when its last reference goes, so there
+// is never an unused buffer to give back.
+void CVPixelBufferPoolFlush(CVPixelBufferPoolRef pool, CVPixelBufferPoolFlushFlags options)
+{
+	(void) pool;
+	(void) options;
+}
+
 CVReturn CVPixelBufferPoolCreate(
 	CFAllocatorRef allocator,
 	CFDictionaryRef poolAttributes,

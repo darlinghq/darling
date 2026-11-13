@@ -55,6 +55,14 @@ CV_EXPORT CVReturn CVPixelBufferPoolCreatePixelBuffer(
 	CVPixelBufferRef *pixelBufferOut
 );
 
+typedef CF_OPTIONS(CVOptionFlags, CVPixelBufferPoolFlushFlags) {
+	// Free every unused buffer, not only those that have aged out.
+	kCVPixelBufferPoolFlushExcessBuffers = 1,
+};
+
+// Frees as many unused buffers of the pool as possible.
+CV_EXPORT void CVPixelBufferPoolFlush(CVPixelBufferPoolRef pool, CVPixelBufferPoolFlushFlags options);
+
 CV_EXPORT CVReturn CVPixelBufferPoolCreatePixelBufferWithAuxAttributes(
 	CFAllocatorRef allocator,
 	CVPixelBufferPoolRef pixelBufferPool,

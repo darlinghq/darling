@@ -5,6 +5,7 @@ const CFStringRef kCVImageBufferGammaLevelKey = CFSTR("CVImageBufferGammaLevel")
 const CFStringRef kCVImageBufferYCbCrMatrixKey = CFSTR("CVImageBufferYCbCrMatrix");
 const CFStringRef kCVImageBufferColorPrimariesKey = CFSTR("CVImageBufferColorPrimaries");
 const CFStringRef kCVImageBufferTransferFunctionKey = CFSTR("CVImageBufferTransferFunction");
+const CFStringRef kCVImageBufferAmbientViewingEnvironmentKey = CFSTR("AmbientViewingEnvironment");
 const CFStringRef kCVImageBufferChromaLocationBottomFieldKey = CFSTR("CVImageBufferChromaLocationBottomField");
 const CFStringRef kCVImageBufferChromaLocationTopFieldKey = CFSTR("CVImageBufferChromaLocationTopField");
 

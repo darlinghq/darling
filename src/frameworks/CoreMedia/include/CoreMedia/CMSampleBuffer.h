@@ -26,4 +26,7 @@ extern const CFStringRef kCMSampleAttachmentKey_DisplayImmediately;
 extern const CFStringRef kCMSampleAttachmentKey_NotSync;
 extern const CFStringRef kCMSampleAttachmentKey_IsDependedOnByOthers;
 
+// Sample buffer attachment: the decoder is reset before this buffer is decoded.
+extern const CFStringRef kCMSampleBufferAttachmentKey_ResetDecoderBeforeDecoding;
+
 #endif
