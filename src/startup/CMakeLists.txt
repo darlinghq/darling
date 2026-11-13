@@ -14,7 +14,13 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Ttext-segment,0x400000 -Wl,-Tbss,0x410000 -Wl,-Tdata,0x420000")
 add_definitions(-DINSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}" -D_GNU_SOURCE -DMLDR_BUILD)
 
-add_executable(darling darling.c launcher-env.c launcher-ids.c launcher-prefix.c launcher-server.c)
+# Android builds link the guest's /private/tmp to the host's temporary directory when the launcher
+# starts (TMPDIR, or DARLING_ANDROID_TMPDIR given at build time)
+if (DARLING_ANDROID_HOST)
+	add_definitions(-DDARLING_ANDROID_HOST=1 -DDARLING_ANDROID_TMPDIR="${DARLING_ANDROID_TMPDIR}")
+endif()
+
+add_executable(darling darling.c launcher-env.c launcher-ids.c launcher-prefix.c launcher-server.c launcher-tmp.c)
 
 target_link_libraries(darling -lutil)
 
@@ -84,6 +90,11 @@ add_test(NAME launcher_ids COMMAND launcher_ids_test)
 add_executable(launcher_env_test ${CMAKE_SOURCE_DIR}/tests/launcher/env.c launcher-env.c)
 target_include_directories(launcher_env_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME launcher_env COMMAND launcher_env_test)
+
+# the temporary directory choice and the link in the prefix
+add_executable(launcher_tmp_test ${CMAKE_SOURCE_DIR}/tests/launcher/tmp.c launcher-tmp.c)
+target_include_directories(launcher_tmp_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME launcher_tmp COMMAND launcher_tmp_test)
 
 # the setuid launcher's prefix path and socket path checks
 add_executable(launcher_prefix_test ${CMAKE_SOURCE_DIR}/tests/launcher/prefix.c launcher-prefix.c)
