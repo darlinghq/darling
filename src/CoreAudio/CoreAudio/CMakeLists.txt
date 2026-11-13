@@ -8,6 +8,8 @@ set(coreaudio_sources
 	AudioHardware.cpp
     AudioHardwareImpl.cpp
     AudioHardwareListenerRegistry.cpp
+    AudioObjectListenerBlocks.cpp
+    CATapDescription.m
     HostTime.mm
     pulse/AudioHardwareImplPA.cpp
     pulse/AudioHardwareImplPADevice.cpp
@@ -33,5 +35,6 @@ add_framework(CoreAudio
         system
         cxx
         CoreFoundation
+        Foundation
         pulse
 )
