@@ -45,6 +45,17 @@
 // Reply: "err" (procNotFound when there is none), "pid" (int64), "endpoint".
 #define LSD_OP_AE_LOOKUP "ae-lookup"
 
+// Queue an Apple event for a process that was just started and has not checked in yet (or deliver
+// it at once to one that did). When the process checks in, launchservicesd delivers its first event:
+// the queued events in order, preceded by an open-application event unless the first queued event
+// opens or prints documents. A process that checks in with nothing queued gets open-application
+// (after a short grace period in which a launch may still queue its events).
+// Request: "pid" (int64), "event" (data, a flattened Apple event), "event_id" (int64, the event's
+// AEEventID, so that the event need not be parsed). Reply: "err".
+#define LSD_OP_AE_QUEUE "ae-queue"
+
+#define LSD_KEY_EVENT_ID "event_id"
+
 #define LSD_KEY_PATH "path"
 #define LSD_KEY_PID "pid"
 #define LSD_KEY_BUNDLE_ID "bundle_id"

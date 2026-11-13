@@ -26,6 +26,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <errno.h>
 #include <signal.h>
 #include <sys/stat.h>
+#include <AE/AE.h>
 #include "../LSDProtocol.h"
 
 static void connectionCallback(xpc_connection_t connection);
@@ -37,6 +38,8 @@ dispatch_queue_t g_serverQueue;
 // Both are only touched on g_serverQueue. Newest check-ins are last.
 static NSMutableArray<AEReceiver*>* g_receivers;
 static NSMutableArray<AEPendingLookup*>* g_pendingLookups;
+// Events queued for processes that have not checked in yet (pid -> array of QueuedEvent).
+static NSMutableDictionary* g_queuedEvents;
 
 int main(int argc, const char** argv)
 {
@@ -54,6 +57,7 @@ int main(int argc, const char** argv)
 	g_serverQueue = dispatch_queue_create("service queue", NULL);
 	g_receivers = [[NSMutableArray alloc] init];
 	g_pendingLookups = [[NSMutableArray alloc] init];
+	g_queuedEvents = [[NSMutableDictionary alloc] init];
 	
 	[LSBundle scanForBundles];
 	[LSBundle watchForBundles];
@@ -105,6 +109,7 @@ enum {
 	NSString* bundleID;
 	xpc_connection_t owner; // the connection the check-in came over
 	xpc_object_t endpoint;
+	int initialEvents; // 0: none yet, 1: waiting out the grace period, 2: the first events went out
 }
 @end
 
@@ -191,6 +196,130 @@ static void sendLookupReply(xpc_object_t request, xpc_connection_t connection, A
 }
 @end
 
+// An event queued for a process that is starting.
+@interface QueuedEvent : NSObject
+{
+@public
+	NSData* data;
+	AEEventID eventID;
+}
+@end
+
+@implementation QueuedEvent
+- (void)dealloc
+{
+	[data release];
+	[super dealloc];
+}
+@end
+
+// How long a process that checked in with nothing queued is held back in case the launch that
+// started it is about to queue its events.
+#define INITIAL_EVENT_GRACE_MS 300
+
+// Sends the events to the receiver one after the other, each once the previous was answered.
+static void sendEventChain(xpc_connection_t connection, NSArray* events, NSUInteger index)
+{
+	if (index >= [events count])
+	{
+		xpc_connection_cancel(connection);
+		xpc_release(connection);
+		return;
+	}
+
+	QueuedEvent* event = [events objectAtIndex:index];
+	xpc_object_t message = xpc_dictionary_create(NULL, NULL, 0);
+
+	xpc_dictionary_set_data(message, LSD_KEY_EVENT, [event->data bytes], [event->data length]);
+	[events retain];
+	xpc_connection_send_message_with_reply(connection, message, g_serverQueue, ^(xpc_object_t reply) {
+		sendEventChain(connection, events, index + 1);
+		[events release];
+	});
+	xpc_release(message);
+}
+
+static void deliverEvents(AEReceiver* receiver, NSArray* events)
+{
+	if ([events count] == 0)
+		return;
+
+	xpc_connection_t connection = xpc_connection_create_from_endpoint((xpc_endpoint_t) receiver->endpoint);
+
+	if (connection == NULL)
+		return;
+	xpc_connection_set_event_handler(connection, ^(xpc_object_t e) {});
+	xpc_connection_resume(connection);
+	sendEventChain(connection, events, 0);
+}
+
+static QueuedEvent* openApplicationEvent(void)
+{
+	AppleEvent event;
+	QueuedEvent* queued = nil;
+
+	if (AECreateAppleEvent(kCoreEventClass, kAEOpenApplication, NULL, kAutoGenerateReturnID, kAnyTransactionID, &event) != noErr)
+		return nil;
+
+	Size size = 0;
+	AEFlattenDesc(&event, NULL, 0, &size);
+	if (size > 0)
+	{
+		void* flat = malloc(size);
+
+		if (flat != NULL && AEFlattenDesc(&event, flat, size, &size) == noErr)
+		{
+			queued = [[[QueuedEvent alloc] init] autorelease];
+			queued->data = [[NSData alloc] initWithBytes:flat length:size];
+			queued->eventID = kAEOpenApplication;
+		}
+		free(flat);
+	}
+	AEDisposeDesc(&event);
+	return queued;
+}
+
+// Delivers the first event(s) of a process: what its launch queued, with open-application first
+// unless the launch is about to open or print documents.
+static void sendInitialEvents(AEReceiver* receiver)
+{
+	receiver->initialEvents = 2;
+	NSNumber* key = [NSNumber numberWithInt:receiver->pid];
+	NSMutableArray* events = [[[g_queuedEvents objectForKey:key] retain] autorelease];
+
+	[g_queuedEvents removeObjectForKey:key];
+	if (events == nil)
+		events = [NSMutableArray array];
+
+	QueuedEvent* first = [events firstObject];
+	if (first == nil || (first->eventID != kAEOpenDocuments && first->eventID != kAEPrintDocuments))
+	{
+		QueuedEvent* open = openApplicationEvent();
+
+		if (open != nil)
+			[events insertObject:open atIndex:0];
+	}
+	deliverEvents(receiver, events);
+}
+
+static void scheduleInitialEvents(AEReceiver* receiver)
+{
+	pid_t pid = receiver->pid;
+
+	if ([g_queuedEvents objectForKey:[NSNumber numberWithInt:pid]] != nil)
+	{
+		sendInitialEvents(receiver);
+		return;
+	}
+	receiver->initialEvents = 1;
+	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, INITIAL_EVENT_GRACE_MS * NSEC_PER_MSEC), g_serverQueue, ^{
+		AEReceiver* current = findReceiver(pid, NULL);
+
+		if (current != nil && current->initialEvents == 1)
+			sendInitialEvents(current);
+	});
+}
+
 static void dropReceiversOf(xpc_connection_t connection)
 {
 	for (AEReceiver* r in [[g_receivers copy] autorelease])
@@ -250,6 +379,54 @@ static void handleAECheckIn(xpc_connection_t connection, xpc_object_t msg)
 		for (AEPendingLookup* p in [[g_pendingLookups copy] autorelease])
 			if (p->pid == r->pid)
 				[p poll];
+		scheduleInitialEvents(r);
+	}
+
+	xpc_object_t reply = xpc_dictionary_create_reply(msg);
+	xpc_dictionary_set_int64(reply, LSD_KEY_ERR, err);
+	xpc_connection_send_message(connection, reply);
+	xpc_release(reply);
+}
+
+static void handleAEQueue(xpc_connection_t connection, xpc_object_t msg)
+{
+	int64_t pid = xpc_dictionary_get_int64(msg, LSD_KEY_PID);
+	size_t length = 0;
+	const void* data = xpc_dictionary_get_data(msg, LSD_KEY_EVENT, &length);
+	int err = 0;
+
+	if (pid <= 0 || data == NULL || length == 0)
+		err = kErrParameter;
+	else
+	{
+		QueuedEvent* event = [[[QueuedEvent alloc] init] autorelease];
+		AEReceiver* receiver = findReceiver((pid_t) pid, NULL);
+
+		event->data = [[NSData alloc] initWithBytes:data length:length];
+		event->eventID = (AEEventID) xpc_dictionary_get_int64(msg, LSD_KEY_EVENT_ID);
+
+		NSNumber* key = [NSNumber numberWithInt:(int) pid];
+		NSMutableArray* list = [g_queuedEvents objectForKey:key];
+
+		if (list == nil)
+		{
+			list = [NSMutableArray array];
+			[g_queuedEvents setObject:list forKey:key];
+		}
+		[list addObject:event];
+
+		// A process still waiting out the grace period gets its first events now; one that has had
+		// them gets this event on its own.
+		if (receiver != nil)
+		{
+			if (receiver->initialEvents == 1)
+				sendInitialEvents(receiver);
+			else if (receiver->initialEvents == 2)
+			{
+				[g_queuedEvents removeObjectForKey:key];
+				deliverEvents(receiver, list);
+			}
+		}
 	}
 
 	xpc_object_t reply = xpc_dictionary_create_reply(msg);
@@ -305,6 +482,8 @@ static void handleMessage(xpc_connection_t connection, xpc_object_t msg)
 			handleRegister(connection, msg);
 		else if (op != NULL && strcmp(op, LSD_OP_AE_CHECKIN) == 0)
 			handleAECheckIn(connection, msg);
+		else if (op != NULL && strcmp(op, LSD_OP_AE_QUEUE) == 0)
+			handleAEQueue(connection, msg);
 		else if (op != NULL && strcmp(op, LSD_OP_AE_LOOKUP) == 0)
 			handleAELookup(connection, msg);
 		else

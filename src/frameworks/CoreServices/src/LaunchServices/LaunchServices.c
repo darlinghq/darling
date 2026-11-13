@@ -136,7 +136,7 @@ static OSStatus launch_application(CFURLRef appURL, CFURLRef *outLaunchedURL)
 	return ret;
 }
 
-/* Largest wait for a launched application to be ready to receive Apple events (60 ticks per second). */
+/* Largest wait for a running application to take an Apple event (60 ticks per second). */
 #define APP_READY_TIMEOUT_TICKS (60 * 15)
 
 /* The running process of an application that can receive Apple events, or 0. */
@@ -159,8 +159,51 @@ static pid_t find_running_instance(const char *bundleID)
 	return pid;
 }
 
-/* Sends the URL to the process as a kAEGetURL event; the process is waited for until it can receive it. */
-static OSStatus send_get_url_event(pid_t pid, CFStringRef url)
+/*
+ * Gives the event to the process. A process that was just started (queue) is not waited for:
+ * launchservicesd keeps the event and delivers it when the process checks in, as its first event.
+ * A running process gets it at once.
+ */
+static OSStatus send_event(AppleEvent *event, pid_t pid, AEEventID eventID, Boolean queue)
+{
+	Size size = 0;
+	void *flat;
+	OSStatus status;
+
+	if (!queue)
+		return AESendMessage(event, NULL, kAENoReply, APP_READY_TIMEOUT_TICKS);
+
+	AEFlattenDesc(event, NULL, 0, &size);
+	flat = size > 0 ? malloc(size) : NULL;
+	if (flat == NULL)
+		return memFullErr;
+	status = AEFlattenDesc(event, flat, size, &size);
+	if (status == noErr)
+	{
+		xpc_object_t request = xpc_dictionary_create(NULL, NULL, 0);
+
+		xpc_dictionary_set_string(request, LSD_KEY_OP, LSD_OP_AE_QUEUE);
+		xpc_dictionary_set_int64(request, LSD_KEY_PID, pid);
+		xpc_dictionary_set_int64(request, LSD_KEY_EVENT_ID, eventID);
+		xpc_dictionary_set_data(request, LSD_KEY_EVENT, flat, size);
+
+		xpc_object_t reply = lsd_request(request, 10000);
+
+		xpc_release(request);
+		if (reply == NULL)
+			status = kLSServerCommunicationErr;
+		else
+		{
+			status = (OSStatus) xpc_dictionary_get_int64(reply, LSD_KEY_ERR);
+			xpc_release(reply);
+		}
+	}
+	free(flat);
+	return status;
+}
+
+/* Sends the URL to the process as a kAEGetURL event. */
+static OSStatus send_get_url_event(pid_t pid, CFStringRef url, Boolean queue)
 {
 	AppleEvent event;
 	AEDesc target;
@@ -189,7 +232,7 @@ static OSStatus send_get_url_event(pid_t pid, CFStringRef url)
 		goto out;
 	status = AEPutParamPtr(&event, keyDirectObject, typeUTF8Text, utf8, strlen(utf8));
 	if (status == noErr)
-		status = AESendMessage(&event, NULL, kAENoReply, APP_READY_TIMEOUT_TICKS);
+		status = send_event(&event, pid, kAEGetURL, queue);
 	AEDisposeDesc(&event);
 out:
 	if (utf8 != stack)
@@ -199,9 +242,9 @@ out:
 
 /*
  * Sends the documents to the process as one kAEOpenDocuments event (kAEPrintDocuments to print
- * them), whose direct object is a list of file URLs; the process is waited for until it can receive it.
+ * them), whose direct object is a list of file URLs.
  */
-static OSStatus send_documents_event(pid_t pid, CFArrayRef urls, Boolean print)
+static OSStatus send_documents_event(pid_t pid, CFArrayRef urls, Boolean print, Boolean queue)
 {
 	AppleEvent event;
 	AEDescList list;
@@ -244,7 +287,7 @@ static OSStatus send_documents_event(pid_t pid, CFArrayRef urls, Boolean print)
 		status = AEPutParamDesc(&event, keyDirectObject, &list);
 	AEDisposeDesc(&list);
 	if (status == noErr)
-		status = AESendMessage(&event, NULL, kAENoReply, APP_READY_TIMEOUT_TICKS);
+		status = send_event(&event, pid, print ? kAEPrintDocuments : kAEOpenDocuments, queue);
 	AEDisposeDesc(&event);
 	return status;
 }
@@ -252,9 +295,9 @@ static OSStatus send_documents_event(pid_t pid, CFArrayRef urls, Boolean print)
 /*
  * Opens items with an application: file URLs go to it together as a kAEOpenDocuments event (or
  * kAEPrintDocuments, with print), every other URL as its own kAEGetURL event. A running instance
- * receives them, otherwise the application is launched first (or always, with kLSLaunchNewInstance).
- * Once the application has been started it is not an error if it never takes the events; an
- * application that installs no handler is just launched.
+ * receives them. Otherwise the application is launched (always, with kLSLaunchNewInstance) and the
+ * events are queued in launchservicesd without waiting: the new process gets them as its first events
+ * when it checks in, and a process that never does is simply launched.
  */
 static OSStatus deliver_urls(CFURLRef appURL, CFArrayRef urls, Boolean newInstance, Boolean print, CFURLRef *outLaunchedURL)
 {
@@ -262,6 +305,7 @@ static OSStatus deliver_urls(CFURLRef appURL, CFArrayRef urls, Boolean newInstan
 	CFStringRef identifier = bundle != NULL ? CFBundleGetIdentifier(bundle) : NULL;
 	char bundleID[512] = "";
 	pid_t pid = 0;
+	Boolean started = false;
 	OSStatus status;
 
 	if (identifier != NULL)
@@ -276,6 +320,7 @@ static OSStatus deliver_urls(CFURLRef appURL, CFArrayRef urls, Boolean newInstan
 		status = launch_application_pid(appURL, &pid);
 		if (status != noErr)
 			return status;
+		started = true;
 	}
 
 	CFMutableArrayRef files = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
@@ -290,13 +335,13 @@ static OSStatus deliver_urls(CFURLRef appURL, CFArrayRef urls, Boolean newInstan
 			CFArrayAppendValue(files, item);
 			continue;
 		}
-		status = string != NULL ? send_get_url_event(pid, string) : paramErr;
+		status = string != NULL ? send_get_url_event(pid, string, started) : paramErr;
 		if (status != noErr)
 			os_log_error(OS_LOG_DEFAULT, "LaunchServices: could not deliver a URL to process %d: %d", (int) pid, (int) status);
 	}
 	if (CFArrayGetCount(files) > 0)
 	{
-		status = send_documents_event(pid, files, print);
+		status = send_documents_event(pid, files, print, started);
 		if (status != noErr)
 			os_log_error(OS_LOG_DEFAULT, "LaunchServices: could not deliver documents to process %d: %d", (int) pid, (int) status);
 	}
