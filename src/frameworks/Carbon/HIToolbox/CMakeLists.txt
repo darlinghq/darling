@@ -34,5 +34,6 @@ add_framework(HIToolbox
 	DEPENDENCIES
 		CoreFoundation
 		Foundation
+		CoreGraphics
 		system
 )

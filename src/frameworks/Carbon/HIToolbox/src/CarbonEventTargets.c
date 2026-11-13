@@ -28,8 +28,10 @@
 // targets of their own here.
 
 #include <HIToolbox/CarbonEventsCore.h>
+#include "HIToolboxInternal.h"
 #include <HIToolbox/CarbonEvents.h>
 #include <CarbonCore/MacErrors.h>
+#include <CoreGraphics/CGEvent.h>
 
 #include <mach/mach_time.h>
 #include <pthread.h>
@@ -54,6 +56,7 @@ struct OpaqueEventRef
 	EventTime time;
 	EventAttributes attributes;
 	struct EventParameter* parameters;
+	CGEventRef cgEvent;   // for the events made from a CGEvent
 };
 
 struct EventHandlerEntry
@@ -81,9 +84,17 @@ struct HandlerCall
 	EventRef event;
 };
 
+// The standard handlers of the event dispatcher target. They are the oldest handlers, so every
+// handler an application installs sees an event before them. They cannot be removed.
+extern OSStatus _HIStandardRawEventHandler(EventHandlerCallRef call, EventRef event, void* userData);
+static EventTypeSpec g_standardRawEventTypes[1] = { { kHIEventClassRaw, kHIEventRawSystemDefined } };
+static struct EventHandlerEntry g_standardRawEventHandler = {
+	NULL, NULL, _HIStandardRawEventHandler, NULL, g_standardRawEventTypes, 1, false
+};
+
 static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 static struct EventTarget g_applicationTarget = { NULL, NULL };
-static struct EventTarget g_dispatcherTarget = { NULL, &g_applicationTarget };
+static struct EventTarget g_dispatcherTarget = { &g_standardRawEventHandler, &g_applicationTarget };
 
 // Handlers removed while an event is being dispatched stay allocated (a dispatch may still
 // hold a pointer to them) and are freed when no dispatch is running.
@@ -128,6 +139,29 @@ OSStatus CreateEvent(CFAllocatorRef inAllocator, OSType inClassID, UInt32 inKind
 	return noErr;
 }
 
+OSStatus CreateEventWithCGEvent(CFAllocatorRef inAllocator, CGEventRef inEvent, EventAttributes inAttributes, EventRef* outEvent)
+{
+	if (!inEvent || !outEvent)
+		return paramErr;
+
+	// Events made from a CGEvent are of the raw event class; the kind is the CGEvent's type (as
+	// observed on macOS 26.7.3: a system-defined event gives class 'cgs ' and kind 14, tier 2,
+	// mac-probes/v443-systemdefined-carbon-event.m).
+	EventTime time = (double) CGEventGetTimestamp(inEvent) / 1e9;
+	OSStatus status = CreateEvent(inAllocator, kHIEventClassRaw, (UInt32) CGEventGetType(inEvent), time, inAttributes, outEvent);
+
+	if (status == noErr)
+		(*outEvent)->cgEvent = (CGEventRef) CFRetain(inEvent);
+	return status;
+}
+
+CGEventRef CopyEventCGEvent(EventRef inEvent)
+{
+	if (!inEvent || !inEvent->cgEvent)
+		return NULL;
+	return (CGEventRef) CFRetain(inEvent->cgEvent);
+}
+
 EventRef RetainEvent(EventRef inEvent)
 {
 	if (inEvent)
@@ -152,6 +186,8 @@ void ReleaseEvent(EventRef inEvent)
 		free(parameter);
 		parameter = next;
 	}
+	if (inEvent->cgEvent)
+		CFRelease(inEvent->cgEvent);
 	free(inEvent);
 }
 

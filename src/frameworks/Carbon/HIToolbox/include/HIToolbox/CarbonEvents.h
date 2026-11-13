@@ -22,6 +22,7 @@
 
 #include <CoreFoundation/CFBase.h>
 #include <CoreServices/MacTypes.h>
+#include <stdbool.h>
 #include <HIToolbox/CarbonEventsCore.h>
 
 #ifdef __cplusplus

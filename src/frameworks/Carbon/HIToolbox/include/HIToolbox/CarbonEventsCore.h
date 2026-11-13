@@ -4,6 +4,7 @@
 #include <CoreFoundation/CFBase.h>
 #include <CoreServices/MacTypes.h>
 #include <HIToolbox/Menus.h>
+#include <CoreGraphics/CGEventTypes.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -73,6 +74,8 @@ typedef UInt32 KeyMap[4];
 
 OSStatus CallNextEventHandler(EventHandlerCallRef inCallRef, EventRef inEvent);
 OSStatus CreateEvent(CFAllocatorRef inAllocator, OSType inClassID, UInt32 inKind, EventTime inEventTime, EventAttributes inAttributes, EventRef* outEvent);
+OSStatus CreateEventWithCGEvent(CFAllocatorRef inAllocator, CGEventRef inEvent, EventAttributes inAttributes, EventRef* outEvent);
+CGEventRef CopyEventCGEvent(EventRef inEvent);
 EventRef RetainEvent(EventRef inEvent);
 UInt32 GetEventRetainCount(EventRef inEvent);
 void ReleaseEvent(EventRef inEvent);
