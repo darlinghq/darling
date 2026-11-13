@@ -12,7 +12,7 @@ parser.add_argument("--run", action="store_true", help="compile and run the gene
 args = parser.parse_args()
 source = args.source.read_text()
 start = source.index("\t// If prefix's init is not running, start it up")
-end = source.index("\n#if USE_LINUX_4_11_HACK", start)
+end = source.index("\n\t// A container belongs to the mode that started it", start)
 branch = source[start:end]
 for required in (
     "if (pidInit == 0)",

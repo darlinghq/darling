@@ -24,6 +24,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <stdbool.h>
+#include "launcher-mode.h"
 
 // Whether the process named in the prefix's pid file is a darlingserver whose
 // mount namespace the launcher may join as root.
@@ -53,6 +54,21 @@ enum launcher_server_check
 // namespace, to be passed to setns(). Otherwise it is -1.
 enum launcher_server_check launcherOpenServerMountNs(int procfd, const struct stat* exe,
 	const struct stat* userNs, const struct stat* mntNs, int* nsfd);
+
+// Whether the container server examined through procfd (a descriptor of its
+// /proc/<pid> directory) was started in the given unprivileged mode, judged
+// from its namespaces compared with the launcher's own (userNs and mntNs, the
+// stat() results of /proc/self/ns/user and /proc/self/ns/mnt):
+//  - LAUNCHER_MODE_ROOTLESS: the server lives in a user namespace of its own;
+//  - LAUNCHER_MODE_NONROOT: it shares the launcher's user and mount namespaces
+//    (it makes none).
+// A server started in the root mode (it makes a mount namespace in the
+// launcher's user namespace) or in the other unprivileged mode matches
+// neither. Any other mode is not examined and always matches. Returns 1 for a
+// match, 0 for a mismatch, -1 with errno set when the process cannot be
+// examined (errno ENOENT or ESRCH when it is gone).
+int launcherServerRunsInMode(int procfd, enum launcher_mode mode,
+	const struct stat* userNs, const struct stat* mntNs);
 
 // The rootless counterpart of launcherOpenServerMountNs(): the container's namespaces are the user
 // namespace the rootless launcher made (a child of the launcher's own, owned by the launcher's

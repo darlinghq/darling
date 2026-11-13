@@ -2,6 +2,11 @@
 //
 // Host-side test of the launcher's mode selection, install prefix and user name rules
 // (src/startup/launcher-mode.c) and of the process tree walk (src/startup/launcher-server.c).
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <fcntl.h>
+#include <sched.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -120,12 +125,80 @@ static void testDescendants(void)
 	waitpid(other, NULL, 0);
 }
 
+static int openProc(pid_t pid)
+{
+	char path[32];
+
+	snprintf(path, sizeof(path), "/proc/%d", (int) pid);
+	return open(path, O_PATH | O_DIRECTORY | O_CLOEXEC);
+}
+
+// The mode of a running container is judged from its namespaces: here the "server" is this process (same
+// namespaces as the launcher: the non-root layout) and, where the host allows it, a child in a user
+// namespace of its own (the rootless layout).
+static void testServerMode(void)
+{
+	struct stat userNs, mntNs;
+	int self = openProc(getpid());
+	int ready[2], done[2];
+	pid_t child;
+	char c;
+
+	CHECK(self >= 0);
+	CHECK(stat("/proc/self/ns/user", &userNs) == 0 && stat("/proc/self/ns/mnt", &mntNs) == 0);
+
+	CHECK(launcherServerRunsInMode(self, LAUNCHER_MODE_NONROOT, &userNs, &mntNs) == 1);
+	CHECK(launcherServerRunsInMode(self, LAUNCHER_MODE_ROOTLESS, &userNs, &mntNs) == 0);
+	// the root mode is not examined
+	CHECK(launcherServerRunsInMode(self, LAUNCHER_MODE_ROOT, &userNs, &mntNs) == 1);
+	// a process that is gone cannot be examined
+	{
+		pid_t gone = fork();
+
+		if (gone == 0)
+			_exit(0);
+		int fd = openProc(gone);
+		waitpid(gone, NULL, 0);
+		if (fd >= 0)
+		{
+			CHECK(launcherServerRunsInMode(fd, LAUNCHER_MODE_NONROOT, &userNs, &mntNs) == -1);
+			close(fd);
+		}
+	}
+	close(self);
+
+	CHECK(pipe(ready) == 0 && pipe(done) == 0);
+	child = fork();
+	if (child == 0)
+	{
+		c = unshare(CLONE_NEWUSER | CLONE_NEWNS) == 0 ? 'y' : 'n';
+		write(ready[1], &c, 1);
+		read(done[0], &c, 1);
+		_exit(0);
+	}
+	CHECK(read(ready[0], &c, 1) == 1);
+	if (c == 'y')
+	{
+		int fd = openProc(child);
+
+		CHECK(fd >= 0);
+		CHECK(launcherServerRunsInMode(fd, LAUNCHER_MODE_ROOTLESS, &userNs, &mntNs) == 1);
+		CHECK(launcherServerRunsInMode(fd, LAUNCHER_MODE_NONROOT, &userNs, &mntNs) == 0);
+		close(fd);
+	}
+	else
+		printf("skipped the user namespace checks: unshare(CLONE_NEWUSER) is not allowed here\n");
+	write(done[1], "x", 1);
+	waitpid(child, NULL, 0);
+}
+
 int main(void)
 {
 	testSelect();
 	testPrefix();
 	testLoginName();
 	testDescendants();
+	testServerMode();
 	if (g_failures == 0)
 		printf("all passed\n");
 	return g_failures != 0;
