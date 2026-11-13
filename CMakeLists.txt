@@ -304,6 +304,7 @@ generate_architecture()
 
 # Optional: builds the Swift SDK overlays in src/external/swift when a Swift toolchain is available
 include(swift_toolchain)
+include(darling_swift)
 
 add_subdirectory(src)
 
