@@ -83,6 +83,14 @@ grep -E "$owned" "$W/closure.txt" | sed 's/^/closure reaches module-owned header
   # Darwin umbrella's closure, so every one of them is excluded above. Without a module of its own
   # `canImport(CommonCrypto)` is false and CC_SHA1_Update is unreachable, though CommonDigest.h
   # declares it. Exclusion is per-module, so this module may claim the same headers.
+  # compression.h likewise gets its own module, for the Compression Swift overlay.
+  if [ -f "$I/compression.h" ]; then
+	echo
+	echo 'module Compression [system] [extern_c] {'
+	echo '  header "compression.h"'
+	echo '  export *'
+	echo '}'
+  fi
   if [ -f "$I/CommonCrypto/CommonCrypto.h" ]; then
 	echo
 	echo 'module CommonCrypto [system] [extern_c] {'
