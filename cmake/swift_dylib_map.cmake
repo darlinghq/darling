@@ -11,8 +11,11 @@
 #    A symlink such as libswiftCompatibilitySpan.dylib -> libswiftCore.dylib is
 #    mapped like any other entry.
 # 2. Dylibs the submodule's CMakeLists.txt builds into the binary directory
-#    (the re-export dylibs for the split Darwin overlay and the WebKit stub).
-#    Their output names are fixed by that CMakeLists.txt, so they are listed.
+#    (the overlays compiled from source, the re-export dylibs for the split
+#    Darwin overlay and the WebKit stub). Their output names are fixed by that
+#    CMakeLists.txt, so they are listed. The overlays exist only when the build
+#    found a Swift toolchain; an entry for a dylib that is not built is harmless,
+#    since ld64 only opens the file when a link refers to it.
 # 3. Framework bundles (Combine.framework, CryptoKit.framework).
 
 set(DARLING_SWIFT_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/external/swift")
@@ -20,6 +23,12 @@ set(DARLING_SWIFT_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/external/swift")
 # Dylibs generated in ${CMAKE_BINARY_DIR}/src/external/swift (see the swift
 # submodule's CMakeLists.txt).
 set(DARLING_SWIFT_GENERATED_DYLIBS
+	libswiftDarwin.dylib
+	libswiftObjectiveC.dylib
+	libswiftCoreFoundation.dylib
+	libswiftDispatch.dylib
+	libswiftos.dylib
+	libswiftXPC.dylib
 	libswift_errno.dylib
 	libswift_DarwinFoundation1.dylib
 	libswift_DarwinFoundation2.dylib
