@@ -1,15 +1,21 @@
 // Copyright (C) 2026 Lubos Dolezel
 //
-// LaunchServices/AppKit: opening a document launches the application registered for its
-// type (CFBundleDocumentTypes) and hands it the document as a kAEOpenDocuments Apple Event, which
-// NSApplication delivers to the delegate (application:openFiles: when implemented, otherwise
-// application:openFile:) after applicationWillFinishLaunching:. A document opened while the
-// application is running goes to the running instance; several documents arrive in one request;
-// "open -a" sends the documents to the named application.
+// LaunchServices/AppKit: launching an application and opening documents. Every launch gives the
+// application exactly one initial Apple Event, handled inside -[NSApplication run] after
+// applicationWillFinishLaunching: and before applicationDidFinishLaunching::
+//   - open-application ('oapp'): applicationShouldOpenUntitledFile:, applicationOpenUntitledFile:, then
+//     applicationDidFinishLaunching: with NSApplicationLaunchIsDefaultLaunchKey = 1, handled while the
+//     event is current. Also when the executable is started directly, not by LaunchServices.
+//   - open-documents ('odoc'): application:openFiles: with all documents in one call (no untitled
+//     document), then applicationDidFinishLaunching: with the key = 0 and no current event.
+//   - documents named in argv are opened first, and the later 'oapp' then opens no untitled document.
+// Opening an application that is running sends it 'rapp' (applicationShouldHandleReopen:...), and a
+// document sent to it arrives as 'odoc' in the same process.
+// The sequences are the ones observed on macOS (10.14.4 and 26.7.3).
 //
-// The program builds two throw-away app bundles from its own executable, one per delegate
-// method, registers them with LSRegisterURL, drives "open", and the bundles record what they
-// received in a log file. Run with no arguments.
+// The program builds two throw-away app bundles from its own executable, registers them with
+// LSRegisterURL, drives "open" and direct launches, and the bundles record their callbacks in a
+// log file. Run with no arguments.
 #import <Cocoa/Cocoa.h>
 #import <CoreServices/CoreServices.h>
 #include <mach-o/dyld.h>
@@ -47,28 +53,54 @@ static void AppendLog(NSString *bundleID, NSString *line)
 
 // ---- app side ----
 
+static NSString *CurrentEvent(void)
+{
+	NSAppleEventDescriptor *e = [[NSAppleEventManager sharedAppleEventManager] currentAppleEvent];
+	if (e == nil)
+		return @"nil";
+	OSType c = CFSwapInt32HostToBig([e eventClass]), i = CFSwapInt32HostToBig([e eventID]);
+	return [NSString stringWithFormat:@"%.4s/%.4s", (char *) &c, (char *) &i];
+}
+
 @interface DocApp : NSObject <NSApplicationDelegate>
 @property (copy) NSString *bundleID;
+- (void)log:(NSString *)what;
 @end
 
 @implementation DocApp
+- (void)log:(NSString *)what
+{
+	AppendLog(self.bundleID, [NSString stringWithFormat:@"%@ [current event %@]", what, CurrentEvent()]);
+}
 - (void)applicationWillFinishLaunching:(NSNotification *)n
 {
-	AppendLog(self.bundleID, @"willFinishLaunching");
+	[self log:@"willFinishLaunching"];
 }
 - (void)applicationDidFinishLaunching:(NSNotification *)n
 {
-	AppendLog(self.bundleID, @"didFinishLaunching");
+	[self log:[NSString stringWithFormat:@"didFinishLaunching default=%@",
+		[[n userInfo] objectForKey:NSApplicationLaunchIsDefaultLaunchKey]]];
 }
 - (BOOL)applicationShouldOpenUntitledFile:(NSApplication *)app
 {
+	[self log:@"shouldOpenUntitledFile"];
+	return YES;
+}
+- (BOOL)applicationOpenUntitledFile:(NSApplication *)app
+{
+	[self log:@"openUntitledFile"];
+	return YES;
+}
+- (BOOL)applicationShouldHandleReopen:(NSApplication *)app hasVisibleWindows:(BOOL)flag
+{
+	[self log:@"shouldHandleReopen"];
 	return NO;
 }
 - (void)application:(NSApplication *)app openFiles:(NSArray<NSString *> *)files
 {
-	AppendLog(self.bundleID, [NSString stringWithFormat:@"openFiles %lu", (unsigned long) [files count]]);
+	[self log:[NSString stringWithFormat:@"openFiles %lu", (unsigned long) [files count]]];
 	for (NSString *f in files)
-		AppendLog(self.bundleID, [NSString stringWithFormat:@"file %@", f]);
+		AppendLog(self.bundleID, [NSString stringWithFormat:@"file %@", [f lastPathComponent]]);
 	[app replyToOpenOrPrint:NSApplicationDelegateReplySuccess];
 }
 @end
@@ -86,8 +118,8 @@ static void AppendLog(NSString *bundleID, NSString *line)
 }
 - (BOOL)application:(NSApplication *)app openFile:(NSString *)file
 {
-	AppendLog(self.bundleID, @"openFile");
-	AppendLog(self.bundleID, [NSString stringWithFormat:@"file %@", file]);
+	[self log:@"openFile"];
+	AppendLog(self.bundleID, [NSString stringWithFormat:@"file %@", [file lastPathComponent]]);
 	return YES;
 }
 @end
@@ -182,6 +214,40 @@ static NSString *MakeDoc(NSString *root, NSString *name)
 	return path;
 }
 
+// The callback lines of the log, without the process ids and with the callbacks' current event.
+static NSArray *Sequence(NSString *bundleID)
+{
+	NSMutableArray *lines = [NSMutableArray array];
+	for (NSString *l in [ReadLog(bundleID) componentsSeparatedByString:@"\n"])
+		if ([l length] > 0 && ![l hasPrefix:@"pid "])
+			[lines addObject:l];
+	return lines;
+}
+
+static void Expect(NSString *what, NSString *bundleID, NSArray *expected)
+{
+	NSArray *got = Sequence(bundleID);
+	printf("%s: %s\n", [what UTF8String], [[got componentsJoinedByString:@" | "] UTF8String]);
+	CHECK([got isEqualToArray:expected]);
+	if (![got isEqualToArray:expected])
+		printf("  expected: %s\n", [[expected componentsJoinedByString:@" | "] UTF8String]);
+}
+
+static void Reset(NSString *bundleID, int pid)
+{
+	if (pid > 0)
+		kill(pid, SIGTERM);
+	usleep(500000);
+	unlink([LogPath(bundleID) fileSystemRepresentation]);
+}
+
+static int Spawn(NSString *exe, NSString *arg)
+{
+	char *argv[] = { (char *) [exe fileSystemRepresentation], arg ? (char *) [arg fileSystemRepresentation] : NULL, NULL };
+	pid_t pid;
+	return posix_spawn(&pid, argv[0], NULL, NULL, argv, environ) == 0 ? (int) pid : -1;
+}
+
 static void Scenario(NSString *root, NSString *exe, NSString *bundleID, NSString *extension, NSString *how, BOOL batch)
 {
 	unlink([LogPath(bundleID) fileSystemRepresentation]);
@@ -193,55 +259,87 @@ static void Scenario(NSString *root, NSString *exe, NSString *bundleID, NSString
 	NSString *doc1 = MakeDoc(root, [@"one." stringByAppendingString:extension]);
 	NSString *doc2 = MakeDoc(root, [@"two." stringByAppendingString:extension]);
 	NSString *doc3 = MakeDoc(root, [@"three." stringByAppendingString:extension]);
+	NSString *open1 = batch ? @"openFiles 1" : @"openFile";
+	NSString *openN = batch ? @"openFiles 2" : @"openFile";
+	NSString *no = @" [current event nil]";
+	NSString *sOpenFiles1 = [open1 stringByAppendingString:@" [current event aevt/odoc]"];
+	NSString *willFinish = [@"willFinishLaunching" stringByAppendingString:no];
 
 	// The type resolves to the bundle.
 	CFURLRef handler = LSCopyDefaultApplicationURLForURL((__bridge CFURLRef) [NSURL fileURLWithPath:doc1], kLSRolesAll, NULL);
 	NSString *handlerPath = handler ? [(__bridge NSURL *) handler path] : nil;
-	printf("%s: handler: %s\n", [how UTF8String], handlerPath ? [handlerPath UTF8String] : "(none)");
 	CHECK(handlerPath != nil && [handlerPath hasSuffix:[bundleID stringByAppendingString:@".app"]]);
 	if (handler)
 		CFRelease(handler);
 
-	// App not running: launched by open, the document delivered after willFinishLaunching.
+	// Launch with one document: odoc replaces oapp; no untitled document; did-finish is not the default launch.
 	int rc = Open(@[ doc1 ]);
-	printf("%s: open #1 rc=%d\n", [how UTF8String], rc);
 	CHECK(rc == 0);
-	BOOL got = WaitForLog(bundleID, [@"file " stringByAppendingString:doc1], 20);
-	NSString *log = ReadLog(bundleID);
-	printf("%s: log after first open:\n%s", [how UTF8String], [log UTF8String]);
-	CHECK(got);
-	NSRange will = [log rangeOfString:@"willFinishLaunching"];
-	NSRange file = [log rangeOfString:@"file "];
-	CHECK(will.location != NSNotFound && file.location != NSNotFound && will.location < file.location);
-	CHECK([log rangeOfString:batch ? @"openFiles 1" : @"openFile\n"].location != NSNotFound);
-
-	// App already running: delivered to the same instance.
+	CHECK(WaitForLog(bundleID, @"didFinishLaunching", 20));
 	int pid = pid_of(bundleID);
+	NSMutableArray *expected = [NSMutableArray arrayWithObjects:willFinish, sOpenFiles1, @"file one." , nil];
+	expected[2] = [@"file one." stringByAppendingString:extension];
+	[expected addObject:[@"didFinishLaunching default=0" stringByAppendingString:no]];
+	Expect(how, bundleID, expected);
+
+	// A document for the running instance arrives in the same process.
 	rc = Open(@[ doc2 ]);
-	printf("%s: open #2 rc=%d\n", [how UTF8String], rc);
 	CHECK(rc == 0);
-	CHECK(WaitForLog(bundleID, [@"file " stringByAppendingString:doc2], 20));
+	CHECK(WaitForLog(bundleID, [@"file two." stringByAppendingString:extension], 20));
+	CHECK(pid_of(bundleID) == pid);
+	NSString *log = ReadLog(bundleID);
+	CHECK([log rangeOfString:[@"file two." stringByAppendingString:extension]].location != NSNotFound);
 
-	// Several documents in one request, named application given explicitly.
+	// Opening the running application again is a reopen; no new process.
+	rc = Open(@[ @"-a", app ]);
+	CHECK(rc == 0);
+	CHECK(WaitForLog(bundleID, @"shouldHandleReopen", 20));
+	CHECK([[ReadLog(bundleID) componentsSeparatedByString:@"pid "] count] == 2);
+	Reset(bundleID, pid);
+
+	// Plain launch: oapp, untitled-document callbacks, did-finish as the default launch inside oapp.
+	rc = Open(@[ @"-a", app ]);
+	CHECK(rc == 0);
+	CHECK(WaitForLog(bundleID, @"didFinishLaunching", 20));
+	pid = pid_of(bundleID);
+	Expect(@"plain launch", bundleID, @[ willFinish,
+		@"shouldOpenUntitledFile [current event aevt/oapp]",
+		@"openUntitledFile [current event aevt/oapp]",
+		@"didFinishLaunching default=1 [current event aevt/oapp]" ]);
+	Reset(bundleID, pid);
+
+	// Two documents at launch arrive together (one call with both when openFiles: is implemented).
 	rc = Open(@[ @"-a", app, doc2, doc3 ]);
-	printf("%s: open -a rc=%d\n", [how UTF8String], rc);
 	CHECK(rc == 0);
-	CHECK(WaitForLog(bundleID, [@"file " stringByAppendingString:doc3], 20));
+	CHECK(WaitForLog(bundleID, @"didFinishLaunching", 20));
+	pid = pid_of(bundleID);
 	log = ReadLog(bundleID);
-	printf("%s: log after third open:\n%s", [how UTF8String], [log UTF8String]);
-	if (batch)
-		CHECK([log rangeOfString:@"openFiles 2"].location != NSNotFound);
+	CHECK([log rangeOfString:[openN stringByAppendingString:@" [current event aevt/odoc]"]].location != NSNotFound);
+	CHECK([log rangeOfString:@"shouldOpenUntitledFile"].location == NSNotFound);
+	CHECK([log rangeOfString:[@"file three." stringByAppendingString:extension]].location != NSNotFound);
+	Reset(bundleID, pid);
 
-	int pids = 0;
-	for (NSString *l in [log componentsSeparatedByString:@"\n"])
-		if ([l hasPrefix:@"pid "])
-			pids++;
-	CHECK(pids == 1);
+	// Started directly with a document argument: the document is opened from argv (no current event),
+	// then oapp arrives and creates no untitled document.
+	NSString *direct = [app stringByAppendingPathComponent:@"Contents/MacOS/docapp"];
+	pid = Spawn(direct, doc1);
+	CHECK(pid > 0);
+	CHECK(WaitForLog(bundleID, @"didFinishLaunching", 20));
+	log = ReadLog(bundleID);
+	printf("%s direct launch with argv document:\n%s", [how UTF8String], [log UTF8String]);
+	NSRange opened = [log rangeOfString:[open1 stringByAppendingString:no]];
+	NSRange finished = [log rangeOfString:@"didFinishLaunching default=1 [current event aevt/oapp]"];
+	CHECK(opened.location != NSNotFound && finished.location != NSNotFound && opened.location < finished.location);
+	CHECK([log rangeOfString:@"shouldOpenUntitledFile"].location == NSNotFound);
+	Reset(bundleID, pid);
 
-	if (pid > 0)
-		kill(pid, SIGTERM);
-	usleep(300000);
-	unlink([LogPath(bundleID) fileSystemRepresentation]);
+	// Started directly without arguments: also gets oapp.
+	pid = Spawn(direct, nil);
+	CHECK(pid > 0);
+	CHECK(WaitForLog(bundleID, @"didFinishLaunching", 20));
+	CHECK([ReadLog(bundleID) rangeOfString:@"didFinishLaunching default=1 [current event aevt/oapp]"].location != NSNotFound);
+	Reset(bundleID, pid);
+
 	[[NSFileManager defaultManager] removeItemAtPath:app error:NULL];
 	unlink([doc1 fileSystemRepresentation]);
 	unlink([doc2 fileSystemRepresentation]);

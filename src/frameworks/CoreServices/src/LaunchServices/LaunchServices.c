@@ -202,6 +202,25 @@ static OSStatus send_event(AppleEvent *event, pid_t pid, AEEventID eventID, Bool
 	return status;
 }
 
+/* Tells a running application it was opened again, with a kAEReopenApplication event. */
+static OSStatus send_reopen_event(pid_t pid)
+{
+	AppleEvent event;
+	AEDesc target;
+	SInt32 targetPid = pid;
+	OSStatus status = AECreateDesc(typeKernelProcessID, &targetPid, sizeof(targetPid), &target);
+
+	if (status != noErr)
+		return status;
+	status = AECreateAppleEvent(kCoreEventClass, kAEReopenApplication, &target, kAutoGenerateReturnID, kAnyTransactionID, &event);
+	AEDisposeDesc(&target);
+	if (status != noErr)
+		return status;
+	status = send_event(&event, pid, kAEReopenApplication, false);
+	AEDisposeDesc(&event);
+	return status;
+}
+
 /* Sends the URL to the process as a kAEGetURL event. */
 static OSStatus send_get_url_event(pid_t pid, CFStringRef url, Boolean queue)
 {
@@ -293,7 +312,7 @@ static OSStatus send_documents_event(pid_t pid, CFArrayRef urls, Boolean print, 
 }
 
 /*
- * Opens items with an application: file URLs go to it together as a kAEOpenDocuments event (or
+ * Opens items with an application (none: just opens it, which reopens a running instance): file URLs go to it together as a kAEOpenDocuments event (or
  * kAEPrintDocuments, with print), every other URL as its own kAEGetURL event. A running instance
  * receives them. Otherwise the application is launched (always, with kLSLaunchNewInstance) and the
  * events are queued in launchservicesd without waiting: the new process gets them as its first events
@@ -325,7 +344,11 @@ static OSStatus deliver_urls(CFURLRef appURL, CFArrayRef urls, Boolean newInstan
 
 	CFMutableArrayRef files = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
 
-	for (CFIndex i = 0; i < CFArrayGetCount(urls); i++)
+	/* Opening a running application without items is a reopen. */
+	if (!started && (urls == NULL || CFArrayGetCount(urls) == 0))
+		send_reopen_event(pid);
+
+	for (CFIndex i = 0; urls != NULL && i < CFArrayGetCount(urls); i++)
 	{
 		CFURLRef item = CFArrayGetValueAtIndex(urls, i);
 		CFStringRef string = CFURLGetString(item);
@@ -449,8 +472,9 @@ static OSStatus open_items_with_handlers(CFArrayRef urls, Boolean newInstance, B
 
 /*
  * Apple Events: documents are delivered as one kAEOpenDocuments event per application (kAEPrintDocuments
- * with kLSLaunchAndPrint), URLs for a URL scheme as kAEGetURL events. Not supported yet:
- * - an application is started without 'oapp'.
+ * with kLSLaunchAndPrint), URLs for a URL scheme as kAEGetURL events, a running application opened
+ * without items as kAEReopenApplication. A new process gets them as its first events, through
+ * launchservicesd. Not supported yet:
  * - passThruParams: it is ignored. Without kLSLaunchNewInstance items go to a running instance of
  *   their handler; every other call starts a new instance.
  */
@@ -475,8 +499,6 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 	if (inLaunchSpec->appURL != NULL)
 	{
 		/* The application opens all items, so it is launched once and handed the items as events. */
-		if (count == 0)
-			return launch_application(inLaunchSpec->appURL, outLaunchedURL);
 		return deliver_urls(inLaunchSpec->appURL, inLaunchSpec->itemURLs, newInstance, print, outLaunchedURL);
 	}
 
