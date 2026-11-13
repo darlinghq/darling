@@ -546,3 +546,114 @@ int launcherFindOrphanedInit(const char* procPath, const char* prefix, uid_t uid
 	close(procfd);
 	return result;
 }
+
+// The parent of the process whose /proc/PID/stat contents are given. The name field is in
+// parentheses and may hold spaces and parentheses, so the fields after it start after the last one.
+static bool parentFromStat(const char* stat, pid_t* parent)
+{
+	const char* end = strrchr(stat, ')');
+	char state;
+	int ppid;
+
+	if (end == NULL || sscanf(end + 1, " %c %d", &state, &ppid) != 2 || ppid < 0)
+		return false;
+	*parent = (pid_t) ppid;
+	return true;
+}
+
+int launcherCollectDescendants(const char* procPath, pid_t root, pid_t* out, size_t max)
+{
+	enum { MAX_PROCESSES = 1 << 18 };
+	DIR* dir = opendir(procPath);
+	struct dirent* ent;
+	pid_t* pids = NULL;
+	pid_t* parents = NULL;
+	size_t count = 0, capacity = 0;
+	int dirFd;
+
+	if (dir == NULL)
+		return -1;
+	dirFd = dirfd(dir);
+
+	while ((ent = readdir(dir)) != NULL)
+	{
+		char* endptr;
+		long pid = strtol(ent->d_name, &endptr, 10);
+		char path[64], buffer[1024];
+		pid_t parent;
+		int fd;
+		ssize_t got;
+
+		if (*endptr != '\0' || endptr == ent->d_name || pid <= 0)
+			continue;
+		snprintf(path, sizeof(path), "%ld/stat", pid);
+		fd = openat(dirFd, path, O_RDONLY | O_CLOEXEC);
+		if (fd < 0)
+			continue;
+		got = read(fd, buffer, sizeof(buffer) - 1);
+		close(fd);
+		if (got <= 0)
+			continue;
+		buffer[got] = '\0';
+		if (!parentFromStat(buffer, &parent))
+			continue;
+
+		if (count == capacity)
+		{
+			size_t newCapacity = capacity ? capacity * 2 : 256;
+			pid_t* newPids = realloc(pids, newCapacity * sizeof(pid_t));
+			pid_t* newParents;
+
+			if (newPids == NULL)
+				goto fail;
+			pids = newPids;
+			newParents = realloc(parents, newCapacity * sizeof(pid_t));
+			if (newParents == NULL)
+				goto fail;
+			parents = newParents;
+			capacity = newCapacity;
+		}
+		if (count == MAX_PROCESSES)
+			goto fail;
+		pids[count] = (pid_t) pid;
+		parents[count] = parent;
+		count++;
+	}
+	closedir(dir);
+	dir = NULL;
+
+	// Breadth first, through a queue that starts with root itself.
+	pid_t* queue = malloc((max + 1) * sizeof(pid_t));
+	size_t tail = 1;
+
+	if (queue == NULL)
+		goto fail;
+	queue[0] = root;
+	for (size_t head = 0; head < tail; head++)
+	{
+		for (size_t i = 0; i < count && tail <= max; i++)
+		{
+			bool known = false;
+
+			if (parents[i] != queue[head])
+				continue;
+			for (size_t seen = 0; seen < tail && !known; seen++)
+				known = queue[seen] == pids[i];
+			if (!known)
+				queue[tail++] = pids[i];
+		}
+	}
+	if (tail > 1)
+		memcpy(out, queue + 1, (tail - 1) * sizeof(pid_t));
+	free(queue);
+	free(pids);
+	free(parents);
+	return (int) (tail - 1);
+
+fail:
+	if (dir != NULL)
+		closedir(dir);
+	free(pids);
+	free(parents);
+	return -1;
+}

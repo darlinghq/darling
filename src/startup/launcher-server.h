@@ -86,4 +86,11 @@ bool launcherServerCommandLineMatchesPrefix(const char* cmdline, size_t length,
 // the invoking user even while darlingserver temporarily has effective uid 0.
 bool launcherServerStatusRealUid(const char* status, size_t length, uid_t* uid);
 
+// Collects the pids of the processes below root in the process tree (children, their children and so
+// on, not root itself) of procPath, as /proc is, into out, which holds up to max entries. Returns the
+// number found, or -1 if the process list cannot be read. Used by the unprivileged non-root mode, where
+// the container has no PID namespace of its own to end all its processes at once.
+// procPath is normally /proc and is injectable for host-side tests.
+int launcherCollectDescendants(const char* procPath, pid_t root, pid_t* out, size_t max);
+
 #endif
