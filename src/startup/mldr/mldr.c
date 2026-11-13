@@ -635,8 +635,12 @@ void __mldr_socket_bitmap_postfork_parent(void) {
 	socket_bitmap_fork_parent(&socket_bitmap);
 }
 
+// In a fork's child there is only one thread, but the bitmap's mutex may have
+// been held by another thread of the parent at the fork. Reinitialize it, both
+// for the libc fork path and for forks that bypass the host libc (where the
+// postfork_child elf call runs this first).
 void __mldr_socket_bitmap_postfork_child(void) {
-	socket_bitmap_fork_child(&socket_bitmap);
+	pthread_mutex_init(&socket_bitmap.mutex, NULL);
 }
 
 int __mldr_create_rpc_socket(void) {
