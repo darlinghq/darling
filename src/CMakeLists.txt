@@ -206,6 +206,10 @@ add_executable(rtsig \"${CMAKE_CURRENT_SOURCE_DIR}/startup/rtsig.c\")
 			IMPORTED_LOCATION "${HOST_TOOLS_BUILD_DIR}/buildtools/adhoc-sign")
 	endif()
 
+	add_executable(iconset2icns IMPORTED GLOBAL)
+	set_target_properties(iconset2icns PROPERTIES
+		IMPORTED_LOCATION "${HOST_TOOLS_BUILD_DIR}/buildtools/iconset2icns")
+
 	# startup/rtsig.h is generated from the build machine's C library; see
 	# src/startup/CMakeLists.txt
 	set(DARLING_HOST_RTSIG "${HOST_TOOLS_BUILD_DIR}/rtsig")
@@ -523,6 +527,9 @@ if (COMPONENT_gui)
 	add_subdirectory(external/cups)
 	add_subdirectory(pboard)
 
+	# /Applications
+	add_subdirectory(external/TextEdit)
+
 	# not currently used by anything we build
 	add_subdirectory(external/dbuskit)
 endif()
@@ -579,9 +586,6 @@ add_subdirectory(tools)
 # these have their own component checks on a per-framework basis
 add_subdirectory(frameworks)
 add_subdirectory(private-frameworks)
-
-# /Applications
-#add_subdirectory(external/TextEdit)
 
 # Subprojects after this line need C++ headers
 
