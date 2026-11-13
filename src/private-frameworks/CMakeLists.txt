@@ -69,6 +69,13 @@ if (COMPONENT_dev_gui_stubs_common)
 	add_subdirectory(ViewBridge)
 endif()
 
+# private frameworks with actual implementations
+if (COMPONENT_system)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "system")
+
+	add_subdirectory(AppleSRP)
+endif()
+
 # this is for all the other stubbed frameworks
 if (COMPONENT_gui_stubs)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "gui_stubs")
