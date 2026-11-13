@@ -36,6 +36,7 @@ typedef NS_ENUM(NSInteger, OSAScriptState) {
     OSAScriptState _scriptState;
     BOOL _compiling;
     NSUndoManager *_undoManager;
+    NSAppleEventDescriptor *_defaultTarget;
 }
 
 @property (assign) OSAScriptView *scriptView;
@@ -43,7 +44,7 @@ typedef NS_ENUM(NSInteger, OSAScriptState) {
 @property (retain) OSAScript *script;
 @property (retain) OSALanguage *language;
 @property (readonly) OSAScriptState scriptState;
-// Script Editor sets these; the public header declares only isCompiling, and read-only.
+// Settable here; the public header declares only isCompiling, and read-only.
 @property (getter=isCompiling, setter=setIsCompiling:) BOOL compiling;
 @property (retain) NSUndoManager *undoManager;
 @property (retain) NSAppleEventDescriptor *defaultTarget;

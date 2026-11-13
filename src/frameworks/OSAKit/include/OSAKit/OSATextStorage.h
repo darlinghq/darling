@@ -31,7 +31,7 @@
 
 @property BOOL wrapsLines;
 @property BOOL indentsWrappedLines;
-// When the characters last changed; Script Editor compares it with -[OSAScript date] to skip recompiling.
+// When the characters last changed; clients compare it with -[OSAScript date] to skip recompiling.
 @property (retain) NSDate *date;
 // Not retained: the document owns both the controller and this storage.
 @property (assign) OSAScriptController *controller;

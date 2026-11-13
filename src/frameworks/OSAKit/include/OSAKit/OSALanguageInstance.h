@@ -22,6 +22,10 @@
 #import <OSAKit/OSALanguage.h>
 
 @interface OSALanguageInstance : NSObject
+{
+    OSALanguage *_language;
+    NSAppleEventDescriptor *_defaultTarget;
+}
 
 + (instancetype)languageInstanceWithLanguage:(OSALanguage *)language;
 + (ComponentInstance)defaultAppleScriptComponentInstance;

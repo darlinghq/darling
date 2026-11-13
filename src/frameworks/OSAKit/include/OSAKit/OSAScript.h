@@ -47,6 +47,12 @@ typedef NS_OPTIONS(NSUInteger, OSAStorageOptions) {
 };
 
 @interface OSAScript : NSObject <NSCopying>
+{
+    NSString *_source;
+    NSURL *_url;
+    OSALanguageInstance *_languageInstance;
+    NSDate *_date;
+}
 
 + (instancetype)scriptWithSource:(NSString *)source language:(OSALanguage *)language;
 + (instancetype)scriptWithSource:(NSString *)source fromURL:(NSURL *)url languageInstance:(OSALanguageInstance *)instance usingStorageOptions:(OSAStorageOptions)storageOptions;
