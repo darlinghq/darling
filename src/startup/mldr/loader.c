@@ -87,6 +87,43 @@ static inline size_t mldr_page_roundup(size_t val, size_t ps) {
 
 #endif /* MLDR_PAGE_SIZE_HELPERS_DEFINED */
 
+#ifndef MLDR_MMAP_MIN_ADDR_HINT_DEFINED
+#define MLDR_MMAP_MIN_ADDR_HINT_DEFINED
+
+/*
+ * A mapping at a fixed address fails with EPERM when the address is below the
+ * kernel's vm.mmap_min_addr. Executables that are not position independent,
+ * common among old i386 applications, are linked to load at 0x1000. Say what
+ * is wrong and how to allow it, instead of only reporting EPERM.
+ */
+static void mldr_explain_mmap_failure(int err, uintptr_t addr)
+{
+	unsigned long min_addr;
+	FILE* f;
+
+	if (err != EPERM)
+		return;
+
+	f = fopen("/proc/sys/vm/mmap_min_addr", "r");
+	if (f == NULL)
+		return;
+	if (fscanf(f, "%lu", &min_addr) != 1)
+		min_addr = 0;
+	fclose(f);
+
+	if (addr >= min_addr)
+		return;
+
+	fprintf(stderr,
+		"This executable is not position independent and must be loaded at %#lx,\n"
+		"below the lowest address Linux allows to be mapped (vm.mmap_min_addr = %lu).\n"
+		"To allow it, run: sudo sysctl -w vm.mmap_min_addr=%lu\n"
+		"See https://docs.darlinghq.org/common-issues.html#cannot-mmap-segment-__text-at-0x1000-operation-not-permitted\n",
+		(unsigned long) addr, min_addr, (unsigned long) addr);
+}
+
+#endif /* MLDR_MMAP_MIN_ADDR_HINT_DEFINED */
+
 // Definitions:
 // FUNCTION_NAME (load32/load64)
 // SEGMENT_STRUCT (segment_command/SEGMENT_STRUCT)
@@ -315,7 +352,9 @@ no_slide:
 							MAP_FIXED_NOREPLACE | MAP_PRIVATE, fd, seg->fileoff + fat_offset);
 					if (rv == (void*)MAP_FAILED)
 					{
-						fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)seg_addr, strerror(errno));
+						int err = errno;
+						fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)seg_addr, strerror(err));
+						mldr_explain_mmap_failure(err, seg_addr);
 						exit(1);
 					}
 
@@ -363,7 +402,9 @@ no_slide:
 							MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
 					if (rv == (void*)MAP_FAILED)
 					{
-						fprintf(stderr, "Cannot mmap bss for segment %s at %p: %s\n", seg->segname, (void*)bss_addr, strerror(errno));
+						int err = errno;
+						fprintf(stderr, "Cannot mmap bss for segment %s at %p: %s\n", seg->segname, (void*)bss_addr, strerror(err));
+						mldr_explain_mmap_failure(err, bss_addr);
 						exit(1);
 					}
 				}
