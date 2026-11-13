@@ -38,7 +38,5 @@
 @property BOOL wrapsLines;
 @property BOOL indentsWrappedLines;
 @property NSUInteger indentWidth;
-// Always nil: there is no code completion engine.
-@property (readonly) OSAScriptAssistant *scriptAssistant;
 
 @end

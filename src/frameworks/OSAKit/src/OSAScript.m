@@ -18,6 +18,7 @@
 */
 
 #import <OSAKit/OSAScript.h>
+#import "OSAKitPrivate.h"
 #import <darling-stub-forwarding.h>
 
 // Darling has no AppleScript component: scripts hold their source text, and anything that would need

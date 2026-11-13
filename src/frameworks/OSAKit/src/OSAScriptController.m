@@ -18,6 +18,7 @@
 */
 
 #import <OSAKit/OSAScriptController.h>
+#import "OSAKitPrivate.h"
 #import <darling-stub-forwarding.h>
 
 @implementation OSAScriptController

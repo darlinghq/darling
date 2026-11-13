@@ -44,10 +44,7 @@ typedef NS_ENUM(NSInteger, OSAScriptState) {
 @property (retain) OSAScript *script;
 @property (retain) OSALanguage *language;
 @property (readonly) OSAScriptState scriptState;
-// Settable here; the public header declares only isCompiling, and read-only.
-@property (getter=isCompiling, setter=setIsCompiling:) BOOL compiling;
-@property (retain) NSUndoManager *undoManager;
-@property (retain) NSAppleEventDescriptor *defaultTarget;
+@property (readonly, getter=isCompiling) BOOL compiling;
 
 - (IBAction)compileScript:(id)sender;
 - (IBAction)recordScript:(id)sender;
