@@ -47,6 +47,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "launcher-env.h"
 #include "launcher-ids.h"
 #include "launcher-prefix.h"
+#include "launcher-pulse.h"
 #include "launcher-server.h"
 #include "prefix-state.h"
 #include "profile-prefix.h"
@@ -184,6 +185,21 @@ int main(int argc, char ** argv)
 	}
 	checkPrefixOwner();
 	ensureSystemAccounts();
+
+	// The container's programs have the guest's HOME, so the PulseAudio client library cannot find the
+	// host user's server by itself on a host without XDG_RUNTIME_DIR. Name the host's locations for it.
+	{
+		struct launcher_pulse_env pulse;
+
+		useInvokingIds();
+		launcherFindPulse(getenv("HOME"), getenv("XDG_RUNTIME_DIR"), getenv("PULSE_SERVER"),
+			getenv("PULSE_RUNTIME_PATH"), getenv("PULSE_COOKIE"), &pulse);
+		restoreRootIds();
+		if (pulse.runtimePath[0] != '\0')
+			putenv(strdup(pulse.runtimePath));
+		if (pulse.cookie[0] != '\0')
+			putenv(strdup(pulse.cookie));
+	}
 
 	int c;
 	while (1)
