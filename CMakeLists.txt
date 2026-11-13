@@ -302,6 +302,9 @@ cmake_policy(SET CMP0014 NEW)
 
 generate_architecture()
 
+# Optional: builds the Swift SDK overlays in src/external/swift when a Swift toolchain is available
+include(swift_toolchain)
+
 add_subdirectory(src)
 
 verify_sdk_header_include()
