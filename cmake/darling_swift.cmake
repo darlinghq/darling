@@ -30,6 +30,8 @@ include(CMakeParseArguments)
 
 set(DARLING_SWIFT_DEPLOYMENT_TARGET "26.0" CACHE INTERNAL "macOS version the Swift overlays are built for")
 set(DARLING_SWIFT_SDK "${DARLING_TOP_DIRECTORY}/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
+# Foundation's headers include <AE/AE.h>, which the SDK ships as a subframework of CoreServices.
+set(DARLING_SWIFT_SDK_SUBFRAMEWORKS -Xcc -iframework -Xcc "${DARLING_SWIFT_SDK}/System/Library/Frameworks/CoreServices.framework/Frameworks")
 set(DARLING_SWIFT_MODULE_DIR "${CMAKE_BINARY_DIR}/swift-overlay-modules")
 set(DARLING_SWIFT_MODULE_CACHE "${CMAKE_BINARY_DIR}/swift-module-cache")
 
@@ -78,6 +80,7 @@ function(add_darling_swift_object module)
 			-I "${DARLING_SWIFT_STDLIB_MODULES}" -I "${DARLING_SWIFT_MODULE_DIR}"
 			-module-cache-path "${DARLING_SWIFT_MODULE_CACHE}"
 			-swift-version 5 -module-name "${module}" -parse-as-library -O
+			${DARLING_SWIFT_SDK_SUBFRAMEWORKS}
 			${SWIFTOBJ_FLAGS}
 			-emit-module-path "${swiftmodule}" -o "${obj}"
 		DEPENDS ${sources} ${module_deps}
@@ -139,6 +142,7 @@ function(add_darling_swift_library module)
 			-swift-version 5 -module-name "${module}" -module-link-name "swift${module}" -autolink-force-load
 			-enable-library-evolution -parse-as-library -O
 			-define-availability "SwiftStdlib 5.7:macOS 13.0"
+			${DARLING_SWIFT_SDK_SUBFRAMEWORKS}
 			${SWIFTLIB_FLAGS}
 			-emit-module-path "${swiftmodule}" -o "${obj}"
 		DEPENDS ${sources} ${module_deps}
