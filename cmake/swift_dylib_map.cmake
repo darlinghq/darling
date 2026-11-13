@@ -29,6 +29,7 @@ set(DARLING_SWIFT_GENERATED_DYLIBS
 	libswiftDispatch.dylib
 	libswiftos.dylib
 	libswiftXPC.dylib
+	libswiftCoreGraphics.dylib
 	libswift_errno.dylib
 	libswift_DarwinFoundation1.dylib
 	libswift_DarwinFoundation2.dylib
@@ -72,6 +73,13 @@ function(_darling_swift_dylib_map_compute out)
 		set(gen_path "${CMAKE_BINARY_DIR}/src/external/swift/${gen_name}")
 		string(APPEND map " -Wl,-dylib_file,/usr/lib/swift/${gen_name}:${gen_path} -Wl,-dylib_file,@rpath/${gen_name}:${gen_path}")
 	endforeach()
+
+	# Foundation re-exports the Foundation overlay, which itself links Foundation. Foundation therefore re-exports
+	# an empty placeholder dylib that carries the overlay's install name (see the Foundation CMakeLists.txt), and
+	# links inside the build, which reach the overlay through that re-export, resolve the install name to the
+	# placeholder: the overlay cannot be a dependency of the targets it is built from.
+	set(placeholder "${CMAKE_BINARY_DIR}/src/external/foundation/libswiftFoundation_placeholder.dylib")
+	string(APPEND map " -Wl,-dylib_file,/usr/lib/swift/libswiftFoundation.dylib:${placeholder} -Wl,-dylib_file,@rpath/libswiftFoundation.dylib:${placeholder}")
 
 	foreach(fw_name ${DARLING_SWIFT_FRAMEWORKS})
 		set(fw_binary "${DARLING_SWIFT_SOURCE_DIR}/${fw_name}.framework/Versions/A/${fw_name}")
