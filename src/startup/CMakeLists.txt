@@ -22,7 +22,10 @@ endif()
 
 add_executable(darling darling.c launcher-env.c launcher-ids.c launcher-prefix.c launcher-server.c launcher-tmp.c)
 
-target_link_libraries(darling -lutil)
+# Bionic has forkpty() and openpty() in libc and no libutil
+if (NOT DARLING_ANDROID_HOST)
+	target_link_libraries(darling -lutil)
+endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/src/external/darlingserver/include ${CMAKE_SOURCE_DIR}/src/external/darlingserver/include)
 

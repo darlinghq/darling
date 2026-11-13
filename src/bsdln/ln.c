@@ -41,7 +41,9 @@ static char sccsid[] = "@(#)ln.c	8.2 (Berkeley) 3/31/94";
 #include <sys/cdefs.h>
 //__FBSDID("$FreeBSD: src/bin/ln/ln.c,v 1.34 2006/02/14 11:08:05 glebius Exp $");
 
+#ifndef __ANDROID__
 #include <bsd/string.h>
+#endif
 
 #include <sys/param.h>
 #include <sys/stat.h>
