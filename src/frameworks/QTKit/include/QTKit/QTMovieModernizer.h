@@ -18,7 +18,12 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <QTKit/QTKitDefines.h>
 
 @interface QTMovieModernizer : NSObject
 
 @end
+
+QTKIT_EXTERN NSString * const QTMovieModernizerOutputFormat_AppleProRes422;
+QTKIT_EXTERN NSString * const QTMovieModernizerOutputFormat_AppleProRes4444;
+QTKIT_EXTERN NSString * const QTMovieModernizerOutputFormat_H264;

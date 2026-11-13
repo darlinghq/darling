@@ -18,7 +18,13 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <QTKit/QTKitDefines.h>
 
 @interface QTHUDTimeFormatter : NSObject
 
 @end
+
+QTKIT_EXTERN NSString * const QTHUDTimeFormatterComponentDays;
+QTKIT_EXTERN NSString * const QTHUDTimeFormatterComponentHours;
+QTKIT_EXTERN NSString * const QTHUDTimeFormatterComponentMinutes;
+QTKIT_EXTERN NSString * const QTHUDTimeFormatterComponentSeconds;

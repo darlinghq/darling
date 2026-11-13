@@ -18,7 +18,15 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <QTKit/QTKitDefines.h>
 
 @interface QTFormatDescription : NSObject
 
 @end
+
+QTKIT_EXTERN NSString * const QTFormatDescriptionAudioChannelLayoutAttribute;
+QTKIT_EXTERN NSString * const QTFormatDescriptionAudioMagicCookieAttribute;
+QTKIT_EXTERN NSString * const QTFormatDescriptionAudioStreamBasicDescriptionAttribute;
+QTKIT_EXTERN NSString * const QTFormatDescriptionVideoCleanApertureDisplaySizeAttribute;
+QTKIT_EXTERN NSString * const QTFormatDescriptionVideoEncodedPixelsSizeAttribute;
+QTKIT_EXTERN NSString * const QTFormatDescriptionVideoProductionApertureDisplaySizeAttribute;

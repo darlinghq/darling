@@ -18,7 +18,14 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <QTKit/QTKitDefines.h>
 
 @interface QTDataReference : NSObject
 
 @end
+
+QTKIT_EXTERN NSString * const QTDataReferenceTypeFile;
+QTKIT_EXTERN NSString * const QTDataReferenceTypeHandle;
+QTKIT_EXTERN NSString * const QTDataReferenceTypePointer;
+QTKIT_EXTERN NSString * const QTDataReferenceTypeResource;
+QTKIT_EXTERN NSString * const QTDataReferenceTypeURL;

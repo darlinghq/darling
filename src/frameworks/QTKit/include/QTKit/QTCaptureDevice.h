@@ -18,7 +18,29 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <QTKit/QTKitDefines.h>
 
 @interface QTCaptureDevice : NSObject
 
 @end
+
+QTKIT_EXTERN NSString * const QTCaptureAnyMediaType;
+QTKIT_EXTERN NSString * const QTCaptureDeviceAVCTransportControlsAttribute;
+QTKIT_EXTERN NSString * const QTCaptureDeviceAVCTransportControlsPlaybackModeKey;
+QTKIT_EXTERN NSString * const QTCaptureDeviceAVCTransportControlsSpeedKey;
+QTKIT_EXTERN NSString * const QTCaptureDeviceAttributeDidChangeNotification;
+QTKIT_EXTERN NSString * const QTCaptureDeviceAttributeWillChangeNotification;
+QTKIT_EXTERN NSString * const QTCaptureDeviceAvailableInputSourcesAttribute;
+QTKIT_EXTERN NSString * const QTCaptureDeviceChangedAttributeKey;
+QTKIT_EXTERN NSString * const QTCaptureDeviceFormatDescriptionsDidChangeNotification;
+QTKIT_EXTERN NSString * const QTCaptureDeviceFormatDescriptionsWillChangeNotification;
+QTKIT_EXTERN NSString * const QTCaptureDeviceInputSourceIdentifierAttribute;
+QTKIT_EXTERN NSString * const QTCaptureDeviceInputSourceIdentifierKey;
+QTKIT_EXTERN NSString * const QTCaptureDeviceInputSourceLocalizedDisplayNameKey;
+#if defined(__i386__)
+QTKIT_EXTERN NSString * const QTCaptureDeviceLegacySequenceGrabberAttribute;
+#endif
+QTKIT_EXTERN NSString * const QTCaptureDeviceLinkedDevicesAttribute;
+QTKIT_EXTERN NSString * const QTCaptureDeviceSuspendedAttribute;
+QTKIT_EXTERN NSString * const QTCaptureDeviceWasConnectedNotification;
+QTKIT_EXTERN NSString * const QTCaptureDeviceWasDisconnectedNotification;

@@ -18,7 +18,22 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <QTKit/QTKitDefines.h>
 
 @interface QTExportOptions : NSObject
 
 @end
+
+QTKIT_EXTERN NSString * const QTExportOptionsAppleM4A;
+QTKIT_EXTERN NSString * const QTExportOptionsAppleM4V1080pHD;
+QTKIT_EXTERN NSString * const QTExportOptionsAppleM4V480pSD;
+QTKIT_EXTERN NSString * const QTExportOptionsAppleM4V720pHD;
+QTKIT_EXTERN NSString * const QTExportOptionsAppleM4VAppleTV;
+QTKIT_EXTERN NSString * const QTExportOptionsAppleM4VCellular;
+QTKIT_EXTERN NSString * const QTExportOptionsAppleM4VWiFi;
+QTKIT_EXTERN NSString * const QTExportOptionsAppleM4ViPod;
+QTKIT_EXTERN NSString * const QTExportOptionsPodCastProducerMasterEncoding;
+QTKIT_EXTERN NSString * const QTExportOptionsQuickTimeMovie1080p;
+QTKIT_EXTERN NSString * const QTExportOptionsQuickTimeMovie480p;
+QTKIT_EXTERN NSString * const QTExportOptionsQuickTimeMovie720p;
+QTKIT_EXTERN NSString * const QTExportSourceOptionSourceTimeRange;
