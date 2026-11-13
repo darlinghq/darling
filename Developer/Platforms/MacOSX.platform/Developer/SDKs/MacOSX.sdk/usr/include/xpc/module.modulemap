@@ -1,0 +1,4 @@
+module XPC [system] [extern_c] {
+  header "xpc.h"
+  export *
+}

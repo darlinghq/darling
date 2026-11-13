@@ -1,0 +1,4 @@
+framework module CoreFoundation [extern_c] [system] {
+  umbrella header "CoreFoundation.h"
+  export *
+}

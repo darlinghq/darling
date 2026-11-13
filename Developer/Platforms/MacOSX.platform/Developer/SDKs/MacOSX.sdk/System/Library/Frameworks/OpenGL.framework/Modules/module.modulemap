@@ -1,0 +1,5 @@
+framework module OpenGL [extern_c] [system] {
+  umbrella header "OpenGL.h"
+  export *
+  module * { export * }
+}

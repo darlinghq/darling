@@ -1,0 +1,8 @@
+{
+  "CanonicalName": "macosx10.13",
+  "DisplayName": "Darling 10.13",
+  "MinimalDisplayName": "10.13",
+  "Version": "10.13",
+  "MaximumDeploymentTarget": "10.13.99",
+  "DefaultProperties": {"PLATFORM_NAME": "macosx"}
+}

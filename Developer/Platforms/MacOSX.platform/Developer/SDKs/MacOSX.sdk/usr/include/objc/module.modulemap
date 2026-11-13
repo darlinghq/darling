@@ -1,0 +1,15 @@
+module ObjectiveC [system] [extern_c] {
+  header "objc.h"
+  header "objc-api.h"
+  header "runtime.h"
+  header "message.h"
+  header "NSObjCRuntime.h"
+  header "objc-exception.h"
+  header "objc-sync.h"
+  module NSObject {
+    requires objc
+    header "NSObject.h"
+    export *
+  }
+  export *
+}
