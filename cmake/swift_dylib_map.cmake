@@ -30,6 +30,9 @@ set(DARLING_SWIFT_GENERATED_DYLIBS
 	libswiftos.dylib
 	libswiftXPC.dylib
 	libswiftCoreGraphics.dylib
+	libswiftIOKit.dylib
+	libswiftCoreAudio.dylib
+	libswiftCompression.dylib
 	libswift_errno.dylib
 	libswift_DarwinFoundation1.dylib
 	libswift_DarwinFoundation2.dylib
