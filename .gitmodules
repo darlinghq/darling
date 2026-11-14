@@ -463,3 +463,9 @@
 [submodule "src/external/stanford-srp"]
 	path = src/external/stanford-srp
 	url = ../stanford-srp.git
+[submodule "src/external/swift-foundation"]
+	path = src/external/swift-foundation
+	url = ../swift-foundation.git
+[submodule "src/external/swift-cmark"]
+	path = src/external/swift-cmark
+	url = ../swift-cmark.git
