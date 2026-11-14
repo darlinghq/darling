@@ -18,24 +18,47 @@
 */
 
 #import <WebKit/WKPreferences.h>
-#import <darling-stub-forwarding.h>
+#import "WKStubForwarding.h"
+
+// The new implementation is 64-bit only, like WebKit2 on macOS; the 32-bit slice keeps the stub.
+#if __LP64__
 
 @implementation WKPreferences
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+@synthesize minimumFontSize = _minimumFontSize;
+@synthesize javaScriptCanOpenWindowsAutomatically = _javaScriptCanOpenWindowsAutomatically;
+@synthesize javaScriptEnabled = _javaScriptEnabled;
+@synthesize tabFocusesLinks = _tabFocusesLinks;
+@synthesize fraudulentWebsiteWarningEnabled = _fraudulentWebsiteWarningEnabled;
+@synthesize siteSpecificQuirksModeEnabled = _siteSpecificQuirksModeEnabled;
+@synthesize textInteractionEnabled = _textInteractionEnabled;
+@synthesize elementFullscreenEnabled = _elementFullscreenEnabled;
+
+- (instancetype)init {
+    if ((self = [super init])) {
+        _javaScriptEnabled = YES;
+        _javaScriptCanOpenWindowsAutomatically = YES;
+        _fraudulentWebsiteWarningEnabled = YES;
+        _siteSpecificQuirksModeEnabled = YES;
+        _textInteractionEnabled = YES;
+    }
+    return self;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation {
-    DarlingStubForwardInvocation(self, anInvocation);
-}
-
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
-}
-
-+ (void)forwardInvocation:(NSInvocation *)anInvocation {
-    DarlingStubForwardInvocation(self, anInvocation);
-}
+WK_FORWARD_UNIMPLEMENTED_SELECTORS
 
 @end
+
+#else
+
+// The properties and methods of the public headers have no implementation in the 32-bit stub.
+#pragma clang diagnostic ignored "-Wobjc-property-implementation"
+#pragma clang diagnostic ignored "-Wincomplete-implementation"
+
+@implementation WKPreferences
+
+WK_FORWARD_UNIMPLEMENTED_SELECTORS
+
+@end
+
+#endif

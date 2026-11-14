@@ -46,7 +46,10 @@
 #import <WebKit/WKInspectorWKWebViewDelegate.h>
 #import <WebKit/WKNavigationDelegate.h>
 #import <WebKit/WKObject.h>
+#import <WebKit/WKError.h>
+#import <WebKit/WKScriptMessageHandler.h>
 #import <WebKit/WKUIDelegate.h>
+#import <WebKit/WKURLSchemeHandler.h>
 #import <WebKit/WKURLSchemeTask.h>
 #import <WebKit/WKURLSchemeTaskPrivate.h>
 #import <WebKit/WKWebProcessPlugIn.h>

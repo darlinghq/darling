@@ -18,24 +18,48 @@
 */
 
 #import <WebKit/WKScriptMessage.h>
-#import <darling-stub-forwarding.h>
+#import <WebKit/WKFrameInfo.h>
+#import "WKWebViewBackend.h"
+#import "WKStubForwarding.h"
+
+// The new implementation is 64-bit only, like WebKit2 on macOS; the 32-bit slice keeps the stub.
+#if __LP64__
+
+@implementation WKScriptMessage {
+    id _body;
+    NSString *_name;
+    __weak WKWebView *_webView;
+    WKFrameInfo *_frameInfo;
+}
+
+@synthesize body = _body;
+@synthesize name = _name;
+@synthesize webView = _webView;
+@synthesize frameInfo = _frameInfo;
+
+- (instancetype)initWithBody:(id)body name:(NSString *)name webView:(WKWebView *)webView {
+    if ((self = [super init])) {
+        _body = body;
+        _name = [name copy];
+        _webView = webView;
+    }
+    return self;
+}
+
+WK_FORWARD_UNIMPLEMENTED_SELECTORS
+
+@end
+
+#else
+
+// The properties and methods of the public headers have no implementation in the 32-bit stub.
+#pragma clang diagnostic ignored "-Wobjc-property-implementation"
+#pragma clang diagnostic ignored "-Wincomplete-implementation"
 
 @implementation WKScriptMessage
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
-}
-
-- (void)forwardInvocation:(NSInvocation *)anInvocation {
-    DarlingStubForwardInvocation(self, anInvocation);
-}
-
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
-}
-
-+ (void)forwardInvocation:(NSInvocation *)anInvocation {
-    DarlingStubForwardInvocation(self, anInvocation);
-}
+WK_FORWARD_UNIMPLEMENTED_SELECTORS
 
 @end
+
+#endif
