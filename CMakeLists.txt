@@ -124,6 +124,7 @@ set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(clang_version_check)
 include(InstallSymlink)
+include(darling_android)
 include(MacroEnsureOutOfSourceBuild)
 include(dsym)
 include(xcproj)
@@ -238,6 +239,8 @@ find_package(Python3 QUIET COMPONENTS Interpreter)
 if (Python3_Interpreter_FOUND)
 	add_test(NAME install_symlink
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/install-symlink.py)
+	add_test(NAME android_layout
+		COMMAND ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/tests/android-layout.cmake)
 	add_test(NAME debian_packaging
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/debian-packaging.py)
 	# debian-packaging.py exits with 77 when debhelper is not installed
@@ -306,6 +309,9 @@ generate_architecture()
 include(swift_toolchain)
 include(darling_swift)
 
+# Whether this is an Android build; the subdirectories use the result
+darling_host_is_android(DARLING_ANDROID_HOST)
+
 add_subdirectory(src)
 
 verify_sdk_header_include()
@@ -344,6 +350,20 @@ install(DIRECTORY DESTINATION libexec/darling/usr/local/share)
 
 InstallSymlink(/Volumes/SystemRoot/dev ${CMAKE_INSTALL_PREFIX}/libexec/darling/dev)
 InstallSymlink(private/tmp ${CMAKE_INSTALL_PREFIX}/libexec/darling/tmp)
+
+# An Android host has no /tmp and an application's temporary directory differs per application (its
+# cache directory; $PREFIX/tmp under Termux). The guest's /private/tmp therefore stays a directory in the
+# image, and the launcher links it to the host's temporary directory when it starts (see
+# src/startup/launcher-tmp.c): TMPDIR as the launcher was started with it, or DARLING_ANDROID_TMPDIR.
+set(DARLING_ANDROID_TMPDIR "" CACHE PATH "Android builds: host directory to use as the guest's /private/tmp when TMPDIR is not usable")
+if (DARLING_ANDROID_HOST)
+	# Host paths of the installation (/data/... on Android) resolve in the guest through a link named
+	# like the host's first path component.
+	darling_host_root_segment("${CMAKE_INSTALL_PREFIX}" DARLING_ANDROID_HOST_ROOT_SEGMENT)
+	if (NOT DARLING_ANDROID_HOST_ROOT_SEGMENT STREQUAL "")
+		InstallSymlink(/Volumes/SystemRoot/${DARLING_ANDROID_HOST_ROOT_SEGMENT} ${CMAKE_INSTALL_PREFIX}/libexec/darling/${DARLING_ANDROID_HOST_ROOT_SEGMENT})
+	endif()
+endif()
 
 InstallSymlink(/proc/self/mounts ${CMAKE_INSTALL_PREFIX}/libexec/darling/private/etc/mtab)
 #InstallSymlink(/Volumes/SystemRoot/etc/passwd ${CMAKE_INSTALL_PREFIX}/libexec/darling/private/etc/passwd)

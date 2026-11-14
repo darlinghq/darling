@@ -50,6 +50,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "launcher-mode.h"
 #include "launcher-prefix.h"
 #include "launcher-server.h"
+#include "launcher-tmp.h"
 #include "prefix-state.h"
 #include "profile-prefix.h"
 
@@ -258,6 +259,20 @@ int main(int argc, char ** argv)
 	}
 	checkPrefixOwner();
 	ensureSystemAccounts();
+
+#ifdef DARLING_ANDROID_HOST
+	// Android: the guest's /private/tmp is the host's temporary directory (TMPDIR, or the one named at
+	// build time), linked as the user. Without a usable one the prefix keeps its own directory.
+	{
+		const char* tmpDir;
+
+		useInvokingIds();
+		tmpDir = launcherChooseTmpDir(getenv("TMPDIR"), DARLING_ANDROID_TMPDIR, g_originalUid);
+		if (tmpDir != NULL)
+			launcherLinkPrefixTmp(prefix, tmpDir);
+		restoreRootIds();
+	}
+#endif
 
 	int c;
 	while (1)
