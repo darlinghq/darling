@@ -82,6 +82,7 @@ struct HandlerCall
 	struct EventTarget* target;
 	struct EventHandlerEntry* handler;
 	EventRef event;
+	int nextCalled;	// the handler passed the event on itself with CallNextEventHandler
 };
 
 // The standard handlers of the event dispatcher target. They are the oldest handlers, so every
@@ -410,10 +411,12 @@ static OSStatus dispatchFrom(struct EventTarget* target, struct EventHandlerEntr
 		if (!handler)
 			return eventNotHandledErr;
 
-		struct HandlerCall call = { target, handler, event };
+		struct HandlerCall call = { target, handler, event, 0 };
 		OSStatus result = proc(&call, event, userData);
 
-		if (result != eventNotHandledErr)
+		// A handler that has already passed the event on has had the rest of the handlers
+		// try it; its own "not handled" is the answer of the whole list.
+		if (result != eventNotHandledErr || call.nextCalled)
 			return result;
 
 		pthread_mutex_lock(&g_lock);
@@ -489,6 +492,7 @@ OSStatus CallNextEventHandler(EventHandlerCallRef inCallRef, EventRef inEvent)
 	next = call->handler->next;
 	pthread_mutex_unlock(&g_lock);
 
+	call->nextCalled = 1;
 	OSStatus result = dispatchFrom(call->target, next, inEvent);
 
 	// Leaving the target is up to the handler that called this: it returns the status
