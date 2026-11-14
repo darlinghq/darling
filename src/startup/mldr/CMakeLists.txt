@@ -119,6 +119,10 @@ if (BUILD_TARGET_32BIT)
 	set_tests_properties(mldr32_commpage PROPERTIES SKIP_RETURN_CODE 77)
 endif()
 
+add_executable(mldr_tsd_rewrite_test ${CMAKE_SOURCE_DIR}/tests/mldr/tsd_rewrite.c)
+target_include_directories(mldr_tsd_rewrite_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME mldr_tsd_rewrite COMMAND mldr_tsd_rewrite_test)
+
 add_executable(mldr_segment_mapping_test ${CMAKE_SOURCE_DIR}/tests/mldr/segment_mapping.c)
 target_include_directories(mldr_segment_mapping_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME mldr_segment_mapping COMMAND mldr_segment_mapping_test)
