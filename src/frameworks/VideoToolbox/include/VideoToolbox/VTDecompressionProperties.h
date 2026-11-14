@@ -24,5 +24,9 @@
 
 extern CFStringRef const kVTVideoDecoderSpecification_RequireHardwareAcceleratedVideoDecoder;
 extern CFStringRef const kVTDecompressionPropertyKey_RealTime;
+extern CFStringRef const kVTDecompressionPropertyKey_DeinterlaceMode;
+extern CFStringRef const kVTDecompressionPropertyKey_FieldMode;
+extern CFStringRef const kVTDecompressionProperty_DeinterlaceMode_Temporal;
+extern CFStringRef const kVTDecompressionProperty_FieldMode_DeinterlaceFields;
 
 #endif
