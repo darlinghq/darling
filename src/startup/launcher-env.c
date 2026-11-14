@@ -51,6 +51,12 @@ static const char* const serverEnvAllowlist[] = {
 	"XAUTHORITY",
 	// Where a Wayland socket named by a relative WAYLAND_DISPLAY lives.
 	"XDG_RUNTIME_DIR",
+	// The host's PulseAudio server and cookie, as the user chose them or as the launcher found them for
+	// a host without XDG_RUNTIME_DIR. Like the display variables they are paths and addresses that the
+	// container's own processes use with the user's ids; darlingserver never reads them.
+	"PULSE_SERVER",
+	"PULSE_RUNTIME_PATH",
+	"PULSE_COOKIE",
 };
 
 bool launcherEnvEntryIs(const char* entry, const char* name)
