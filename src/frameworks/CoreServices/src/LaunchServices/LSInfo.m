@@ -228,18 +228,22 @@ LSGetApplicationForInfo(
 			@"end asc"];
 
 		FMResultSet* rs = [db executeQuery:query];
-		if ([rs next])
+		retval = kLSApplicationNotFoundErr;
+		// Registrations of bundles that were removed stay in the database; the first
+		// handler that is still on disk wins.
+		while ([rs next])
 		{
 			NSString* path = [rs stringForColumn:@"path"];
+			if (access([path fileSystemRepresentation], F_OK) != 0)
+				continue;
 			if (outAppURL)
 				*outAppURL = (CFURLRef) [[NSURL alloc] initFileURLWithPath:path isDirectory:YES];
 			if (outAppRef)
 				FSPathMakeRef((const UInt8*) [path fileSystemRepresentation], outAppRef, NULL);
 
 			retval = noErr;
+			break;
 		}
-		else
-			retval = kLSApplicationNotFoundErr;
 		[rs close];
 	}];
 
