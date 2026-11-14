@@ -469,6 +469,8 @@
 [submodule "src/external/swift-foundation"]
 	path = src/external/swift-foundation
 	url = ../swift-foundation.git
+	branch = release/6.3
 [submodule "src/external/swift-cmark"]
 	path = src/external/swift-cmark
 	url = ../swift-cmark.git
+	branch = release/6.3
