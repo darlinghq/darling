@@ -136,7 +136,7 @@ static OSStatus launch_application(CFURLRef appURL, CFURLRef *outLaunchedURL)
 	return ret;
 }
 
-/* Largest wait for a launched application to be ready to receive Apple events (60 ticks per second). */
+/* Largest wait for a running application to take an Apple event (60 ticks per second). */
 #define APP_READY_TIMEOUT_TICKS (60 * 15)
 
 /* The running process of an application that can receive Apple events, or 0. */
@@ -159,8 +159,70 @@ static pid_t find_running_instance(const char *bundleID)
 	return pid;
 }
 
-/* Sends the URL to the process as a kAEGetURL event; the process is waited for until it can receive it. */
-static OSStatus send_get_url_event(pid_t pid, CFStringRef url)
+/*
+ * Gives the event to the process. A process that was just started (queue) is not waited for:
+ * launchservicesd keeps the event and delivers it when the process checks in, as its first event.
+ * A running process gets it at once.
+ */
+static OSStatus send_event(AppleEvent *event, pid_t pid, AEEventID eventID, Boolean queue)
+{
+	Size size = 0;
+	void *flat;
+	OSStatus status;
+
+	if (!queue)
+		return AESendMessage(event, NULL, kAENoReply, APP_READY_TIMEOUT_TICKS);
+
+	AEFlattenDesc(event, NULL, 0, &size);
+	flat = size > 0 ? malloc(size) : NULL;
+	if (flat == NULL)
+		return memFullErr;
+	status = AEFlattenDesc(event, flat, size, &size);
+	if (status == noErr)
+	{
+		xpc_object_t request = xpc_dictionary_create(NULL, NULL, 0);
+
+		xpc_dictionary_set_string(request, LSD_KEY_OP, LSD_OP_AE_QUEUE);
+		xpc_dictionary_set_int64(request, LSD_KEY_PID, pid);
+		xpc_dictionary_set_int64(request, LSD_KEY_EVENT_ID, eventID);
+		xpc_dictionary_set_data(request, LSD_KEY_EVENT, flat, size);
+
+		xpc_object_t reply = lsd_request(request, 10000);
+
+		xpc_release(request);
+		if (reply == NULL)
+			status = kLSServerCommunicationErr;
+		else
+		{
+			status = (OSStatus) xpc_dictionary_get_int64(reply, LSD_KEY_ERR);
+			xpc_release(reply);
+		}
+	}
+	free(flat);
+	return status;
+}
+
+/* Tells a running application it was opened again, with a kAEReopenApplication event. */
+static OSStatus send_reopen_event(pid_t pid)
+{
+	AppleEvent event;
+	AEDesc target;
+	SInt32 targetPid = pid;
+	OSStatus status = AECreateDesc(typeKernelProcessID, &targetPid, sizeof(targetPid), &target);
+
+	if (status != noErr)
+		return status;
+	status = AECreateAppleEvent(kCoreEventClass, kAEReopenApplication, &target, kAutoGenerateReturnID, kAnyTransactionID, &event);
+	AEDisposeDesc(&target);
+	if (status != noErr)
+		return status;
+	status = send_event(&event, pid, kAEReopenApplication, false);
+	AEDisposeDesc(&event);
+	return status;
+}
+
+/* Sends the URL to the process as a kAEGetURL event. */
+static OSStatus send_get_url_event(pid_t pid, CFStringRef url, Boolean queue)
 {
 	AppleEvent event;
 	AEDesc target;
@@ -189,7 +251,7 @@ static OSStatus send_get_url_event(pid_t pid, CFStringRef url)
 		goto out;
 	status = AEPutParamPtr(&event, keyDirectObject, typeUTF8Text, utf8, strlen(utf8));
 	if (status == noErr)
-		status = AESendMessage(&event, NULL, kAENoReply, APP_READY_TIMEOUT_TICKS);
+		status = send_event(&event, pid, kAEGetURL, queue);
 	AEDisposeDesc(&event);
 out:
 	if (utf8 != stack)
@@ -198,17 +260,109 @@ out:
 }
 
 /*
- * Opens URLs with an application: each goes to it as a kAEGetURL event. A running instance
- * receives them, otherwise the application is launched first (or always, with kLSLaunchNewInstance).
- * Once the application has been started it is not an error if it never takes the events; an
- * application that installs no handler is just launched.
+ * Sends the documents to the process as one kAEOpenDocuments event (kAEPrintDocuments to print
+ * them), whose direct object is a list of file URLs.
  */
-static OSStatus deliver_urls(CFURLRef appURL, CFArrayRef urls, Boolean newInstance, CFURLRef *outLaunchedURL)
+static OSStatus send_documents_event(pid_t pid, CFArrayRef urls, Boolean print, Boolean queue)
+{
+	AppleEvent event;
+	AEDescList list;
+	AEDesc target;
+	SInt32 targetPid = pid;
+	OSStatus status;
+
+	status = AECreateDesc(typeKernelProcessID, &targetPid, sizeof(targetPid), &target);
+	if (status != noErr)
+		return status;
+	status = AECreateAppleEvent(kCoreEventClass, print ? kAEPrintDocuments : kAEOpenDocuments, &target, kAutoGenerateReturnID, kAnyTransactionID, &event);
+	AEDisposeDesc(&target);
+	if (status != noErr)
+		return status;
+	status = AECreateList(NULL, 0, false, &list);
+	for (CFIndex i = 0; status == noErr && i < CFArrayGetCount(urls); i++)
+	{
+		CFStringRef string = CFURLGetString(CFArrayGetValueAtIndex(urls, i));
+		char stack[1024];
+		char *utf8 = stack;
+		CFIndex length = string != NULL ? CFStringGetMaximumSizeForEncoding(CFStringGetLength(string), kCFStringEncodingUTF8) + 1 : 0;
+
+		if (length == 0)
+		{
+			status = paramErr;
+			break;
+		}
+		if (length > (CFIndex) sizeof(stack))
+			utf8 = malloc(length);
+		if (utf8 == NULL)
+			status = memFullErr;
+		else if (!CFStringGetCString(string, utf8, length, kCFStringEncodingUTF8))
+			status = paramErr;
+		else
+			status = AEPutPtr(&list, 0, typeFileURL, utf8, strlen(utf8));
+		if (utf8 != stack)
+			free(utf8);
+	}
+	if (status == noErr)
+		status = AEPutParamDesc(&event, keyDirectObject, &list);
+	AEDisposeDesc(&list);
+	if (status == noErr)
+		status = send_event(&event, pid, print ? kAEPrintDocuments : kAEOpenDocuments, queue);
+	AEDisposeDesc(&event);
+	return status;
+}
+
+/*
+ * Opens items with an application (none: just opens it, which reopens a running instance): file URLs go to it together as a kAEOpenDocuments event (or
+ * kAEPrintDocuments, with print), every other URL as its own kAEGetURL event. A running instance
+ * receives them. Otherwise the application is launched (always, with kLSLaunchNewInstance) and the
+ * events are queued in launchservicesd without waiting: the new process gets them as its first events
+ * when it checks in, and a process that never does is simply launched.
+ */
+static OSStatus deliver_items(CFURLRef appURL, CFArrayRef urls, Boolean newInstance, Boolean print, CFURLRef *outLaunchedURL);
+
+/* Whether two file URLs name the same path (a trailing slash does not matter). */
+static Boolean same_file_path(CFURLRef a, CFURLRef b)
+{
+	char pathA[PATH_MAX], pathB[PATH_MAX];
+	size_t lengthA, lengthB;
+
+	if (!CFURLGetFileSystemRepresentation(a, true, (UInt8 *) pathA, sizeof(pathA)) ||
+			!CFURLGetFileSystemRepresentation(b, true, (UInt8 *) pathB, sizeof(pathB)))
+		return false;
+	lengthA = strlen(pathA);
+	lengthB = strlen(pathB);
+	while (lengthA > 1 && pathA[lengthA - 1] == '/')
+		pathA[--lengthA] = 0;
+	while (lengthB > 1 && pathB[lengthB - 1] == '/')
+		pathB[--lengthB] = 0;
+	return strcmp(pathA, pathB) == 0;
+}
+
+static OSStatus deliver_urls(CFURLRef appURL, CFArrayRef itemURLs, Boolean newInstance, Boolean print, CFURLRef *outLaunchedURL)
+{
+	/* The application among its own items (how open -a asks for just the application) is not a document. */
+	CFMutableArrayRef urls = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+	OSStatus result;
+
+	for (CFIndex i = 0; itemURLs != NULL && i < CFArrayGetCount(itemURLs); i++)
+	{
+		CFURLRef item = CFArrayGetValueAtIndex(itemURLs, i);
+
+		if (!(is_file_url(item) && same_file_path(item, appURL)))
+			CFArrayAppendValue(urls, item);
+	}
+	result = deliver_items(appURL, urls, newInstance, print, outLaunchedURL);
+	CFRelease(urls);
+	return result;
+}
+
+static OSStatus deliver_items(CFURLRef appURL, CFArrayRef urls, Boolean newInstance, Boolean print, CFURLRef *outLaunchedURL)
 {
 	CFBundleRef bundle = CFBundleCreate(kCFAllocatorDefault, appURL);
 	CFStringRef identifier = bundle != NULL ? CFBundleGetIdentifier(bundle) : NULL;
 	char bundleID[512] = "";
 	pid_t pid = 0;
+	Boolean started = false;
 	OSStatus status;
 
 	if (identifier != NULL)
@@ -223,16 +377,36 @@ static OSStatus deliver_urls(CFURLRef appURL, CFArrayRef urls, Boolean newInstan
 		status = launch_application_pid(appURL, &pid);
 		if (status != noErr)
 			return status;
+		started = true;
 	}
 
-	for (CFIndex i = 0; i < CFArrayGetCount(urls); i++)
-	{
-		CFStringRef string = CFURLGetString(CFArrayGetValueAtIndex(urls, i));
+	CFMutableArrayRef files = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
 
-		status = string != NULL ? send_get_url_event(pid, string) : paramErr;
+	/* Opening a running application without items is a reopen. */
+	if (!started && (urls == NULL || CFArrayGetCount(urls) == 0))
+		send_reopen_event(pid);
+
+	for (CFIndex i = 0; urls != NULL && i < CFArrayGetCount(urls); i++)
+	{
+		CFURLRef item = CFArrayGetValueAtIndex(urls, i);
+		CFStringRef string = CFURLGetString(item);
+
+		if (is_file_url(item))
+		{
+			CFArrayAppendValue(files, item);
+			continue;
+		}
+		status = string != NULL ? send_get_url_event(pid, string, started) : paramErr;
 		if (status != noErr)
 			os_log_error(OS_LOG_DEFAULT, "LaunchServices: could not deliver a URL to process %d: %d", (int) pid, (int) status);
 	}
+	if (CFArrayGetCount(files) > 0)
+	{
+		status = send_documents_event(pid, files, print, started);
+		if (status != noErr)
+			os_log_error(OS_LOG_DEFAULT, "LaunchServices: could not deliver documents to process %d: %d", (int) pid, (int) status);
+	}
+	CFRelease(files);
 
 	if (outLaunchedURL != NULL)
 	{
@@ -274,8 +448,16 @@ static CFURLRef copy_scheme_handler_app(CFURLRef url)
 	return app;
 }
 
-/* Items that are URLs for a scheme (not files, not links the host desktop opens), grouped by handling application. */
-static OSStatus open_scheme_urls(CFArrayRef urls, Boolean newInstance, CFURLRef *outLaunchedURL)
+/* The application that opens the item: for a document the handler registered for its type, for another URL the one for its scheme. */
+static CFURLRef copy_handler_app(CFURLRef url)
+{
+	if (is_file_url(url))
+		return LSCopyDefaultApplicationURLForURL(url, kLSRolesAll, NULL);
+	return copy_scheme_handler_app(url);
+}
+
+/* Items that are documents or URLs for a scheme (not links the host desktop opens), grouped by handling application. */
+static OSStatus open_items_with_handlers(CFArrayRef urls, Boolean newInstance, Boolean print, CFURLRef *outLaunchedURL)
 {
 	CFMutableDictionaryRef groups = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 	OSStatus ret = noErr;
@@ -283,7 +465,7 @@ static OSStatus open_scheme_urls(CFArrayRef urls, Boolean newInstance, CFURLRef 
 	for (CFIndex i = 0; i < CFArrayGetCount(urls); i++)
 	{
 		CFURLRef url = CFArrayGetValueAtIndex(urls, i);
-		CFURLRef app = copy_scheme_handler_app(url);
+		CFURLRef app = copy_handler_app(url);
 		CFMutableArrayRef group;
 
 		if (app == NULL)
@@ -312,7 +494,7 @@ static OSStatus open_scheme_urls(CFArrayRef urls, Boolean newInstance, CFURLRef 
 			CFDictionaryGetKeysAndValues(groups, apps, lists);
 			for (CFIndex i = 0; i < n; i++)
 			{
-				OSStatus temp = deliver_urls(apps[i], lists[i], newInstance, outLaunchedURL);
+				OSStatus temp = deliver_urls(apps[i], lists[i], newInstance, print, outLaunchedURL);
 				if (temp != noErr)
 					ret = temp;
 			}
@@ -327,19 +509,20 @@ static OSStatus open_scheme_urls(CFArrayRef urls, Boolean newInstance, CFURLRef 
 }
 
 /*
- * Apple Events: URLs for a URL scheme are delivered as kAEGetURL events. Not supported yet:
- * - an application is started without 'oapp' and documents opened with an explicit application
- *   are not sent to it as 'odoc', so only the application is launched for them.
- * - passThruParams: it is ignored. Without kLSLaunchNewInstance a URL goes to a running instance of
- *   its handler; every other call starts a new instance.
+ * Apple Events: documents are delivered as one kAEOpenDocuments event per application (kAEPrintDocuments
+ * with kLSLaunchAndPrint), URLs for a URL scheme as kAEGetURL events, a running application opened
+ * without items as kAEReopenApplication. A new process gets them as its first events, through
+ * launchservicesd. Not supported yet:
+ * - passThruParams: it is ignored. Without kLSLaunchNewInstance items go to a running instance of
+ *   their handler; every other call starts a new instance.
  */
 OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLaunchedURL)
 {
 	CFIndex count, i;
 	CFURLRef url;
 	OSStatus ret = noErr, temp;
-	CFMutableArrayRef schemeURLs;
-	Boolean newInstance;
+	CFMutableArrayRef items;
+	Boolean newInstance, print;
 
 	if (outLaunchedURL != NULL)
 		*outLaunchedURL = NULL;
@@ -349,41 +532,32 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 
 	count = inLaunchSpec->itemURLs != NULL ? CFArrayGetCount(inLaunchSpec->itemURLs) : 0;
 	newInstance = (inLaunchSpec->launchFlags & kLSLaunchNewInstance) != 0;
+	print = (inLaunchSpec->launchFlags & kLSLaunchAndPrint) != 0;
 
 	if (inLaunchSpec->appURL != NULL)
 	{
-		/* The application opens all items, so it is launched once; URLs that are not files are
-		   handed to it as events. */
-		schemeURLs = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
-		for (i = 0; i < count; i++)
-		{
-			url = CFArrayGetValueAtIndex(inLaunchSpec->itemURLs, i);
-			if (!is_file_url(url))
-				CFArrayAppendValue(schemeURLs, url);
-		}
-		if (CFArrayGetCount(schemeURLs) > 0)
-			ret = deliver_urls(inLaunchSpec->appURL, schemeURLs, newInstance, outLaunchedURL);
-		else
-			ret = launch_application(inLaunchSpec->appURL, outLaunchedURL);
-		CFRelease(schemeURLs);
-		return ret;
+		/* The application opens all items, so it is launched once and handed the items as events. */
+		return deliver_urls(inLaunchSpec->appURL, inLaunchSpec->itemURLs, newInstance, print, outLaunchedURL);
 	}
 
 	if (count == 0)
 		return paramErr;
 
-	schemeURLs = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+	items = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
 	for (i = 0; i < count; i++)
 	{
 		url = CFArrayGetValueAtIndex(inLaunchSpec->itemURLs, i);
 
 		if (is_file_url(url))
 		{
-			/* First check if it's a "mac thing", if not forward to xdg-open */
+			/* An application bundle is launched, any other file is opened by its handler. */
 			if (is_application_url(url))
 				temp = launch_application(url, outLaunchedURL);
 			else
-				temp = kLSApplicationNotFoundErr;
+			{
+				CFArrayAppendValue(items, url);
+				continue;
+			}
 		}
 		else if (_LSIsHostOpenURL(url))
 		{
@@ -391,7 +565,7 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 		}
 		else
 		{
-			CFArrayAppendValue(schemeURLs, url);
+			CFArrayAppendValue(items, url);
 			continue;
 		}
 
@@ -399,13 +573,13 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 			ret = temp;
 	}
 
-	if (CFArrayGetCount(schemeURLs) > 0)
+	if (CFArrayGetCount(items) > 0)
 	{
-		temp = open_scheme_urls(schemeURLs, newInstance, outLaunchedURL);
+		temp = open_items_with_handlers(items, newInstance, print, outLaunchedURL);
 		if (temp != noErr)
 			ret = temp;
 	}
-	CFRelease(schemeURLs);
+	CFRelease(items);
 	return ret;
 }
 
