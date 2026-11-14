@@ -31,6 +31,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sched.h>
 #include <sys/poll.h>
 #include <sys/syscall.h>
+#include <linux/capability.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <getopt.h>
@@ -46,6 +47,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "darling-config.h"
 #include "launcher-env.h"
 #include "launcher-ids.h"
+#include "launcher-mode.h"
 #include "launcher-prefix.h"
 #include "launcher-pulse.h"
 #include "launcher-server.h"
@@ -63,12 +65,42 @@ uid_t g_originalUid, g_originalGid;
 bool g_fixPermissions = false;
 char g_workingDirectory[4096];
 static struct launcher_ids g_invokingIds;
+static enum launcher_mode g_mode = LAUNCHER_MODE_ROOT;
+static void refuseContainerOfAnotherMode(pid_t pid);
+
+// Where the installation is: compiled in for the root mode, and for the unprivileged
+// modes wherever this executable lives (see launcherInstallPrefix()).
+static char g_serverPath[4096];
+static char g_mldrPath[4096];
+static char g_libexecPath[4096];
+// the invoking user's name, once looked up
+static char g_loginName[256];
+
+#if defined(__ANDROID__)
+	// Android hosts have neither setuid installs nor user namespaces to count on.
+	#define LAUNCHER_DEFAULT_NONROOT true
+#else
+	#define LAUNCHER_DEFAULT_NONROOT false
+#endif
+
+// Only the root mode has ids to switch. Without root, the launcher already has only the
+// invoking user's ids, and the container's processes are the user's.
+static bool privilegedMode(void)
+{
+	return g_mode == LAUNCHER_MODE_ROOT;
+}
+
+static void joinRootlessNamespaces(pid_t pid);
+static bool lookUpLoginName(void);
+static bool resolveProgramArgument(int argc, char** argv);
 
 // Everything the launcher does inside the user's prefix (which the user names
 // and controls) runs with the user's effective ids, so that it can only do what
 // the user could do without Darling. See launcher-ids.h for the states.
 static void useInvokingIds(void)
 {
+	if (!privilegedMode())
+		return;
 	if (!launcherUseInvokingIds(&g_invokingIds))
 	{
 		fprintf(stderr, "Cannot switch to your user and group ids: %s\n", strerror(errno));
@@ -79,6 +111,8 @@ static void useInvokingIds(void)
 // For the rest of its life the launcher only talks to processes of the user.
 static void dropPrivileges(void)
 {
+	if (!privilegedMode())
+		return;
 	if (!launcherDropPrivileges(&g_invokingIds))
 	{
 		fprintf(stderr, "Cannot drop root privileges: %s\n", strerror(errno));
@@ -88,6 +122,8 @@ static void dropPrivileges(void)
 
 static void restoreRootIds(void)
 {
+	if (!privilegedMode())
+		return;
 	if (!launcherRestoreRootIds())
 	{
 		fprintf(stderr, "Cannot switch back to root ids: %s\n", strerror(errno));
@@ -125,6 +161,17 @@ static void waitForProcessExit(int handle, pid_t pid)
 		usleep(10000);
 }
 
+// Whether the process has any effective or permitted capability. A failure to tell counts as having one.
+static bool hasCapabilities(void)
+{
+	struct __user_cap_header_struct header = { _LINUX_CAPABILITY_VERSION_3, 0 };
+	struct __user_cap_data_struct data[2] = { 0 };
+
+	if (syscall(SYS_capget, &header, data) != 0)
+		return true;
+	return (data[0].effective | data[1].effective | data[0].permitted | data[1].permitted) != 0;
+}
+
 int main(int argc, char ** argv)
 {
 	pid_t pidInit;
@@ -135,10 +182,37 @@ int main(int argc, char ** argv)
 		return 1;
 	}
 
-	if (geteuid() != 0)
+	// Whether the launcher has root's power decides the mode; the environment only chooses
+	// between the unprivileged modes (see launcherSelectMode()).
+	enum launcher_privilege privilege = launcherClassifyPrivilege(geteuid() == 0, getauxval(AT_SECURE) != 0, hasCapabilities());
+	if (privilege == LAUNCHER_PRIVILEGED_NOT_ROOT)
+	{
+		fprintf(stderr, "darling was started with privileges, but not as root (installed set-group-ID or with file capabilities,\n"
+			"or run with capabilities). Install it setuid root, or run it as an ordinary user without privileges.\n");
+		return 1;
+	}
+	g_mode = launcherSelectMode(privilege == LAUNCHER_PRIVILEGED, getenv("DARLING_NONROOT"), getenv("DARLING_ROOTLESS"), LAUNCHER_DEFAULT_NONROOT);
+	if (g_mode == LAUNCHER_MODE_NONE)
 	{
 		missingSetuidRoot();
 		return 1;
+	}
+	unsetenv("DARLING_NONROOT");
+	unsetenv("DARLING_ROOTLESS");
+
+	{
+		char exePath[4096], installPrefix[4096];
+		ssize_t len = readlink("/proc/self/exe", exePath, sizeof(exePath) - 1);
+
+		exePath[len > 0 ? len : 0] = '\0';
+		if (!launcherInstallPrefix(g_mode, INSTALL_PREFIX, len > 0 ? exePath : NULL, installPrefix, sizeof(installPrefix))
+			|| snprintf(g_serverPath, sizeof(g_serverPath), "%s/bin/darlingserver", installPrefix) >= (int) sizeof(g_serverPath)
+			|| snprintf(g_libexecPath, sizeof(g_libexecPath), "%s/libexec/darling", installPrefix) >= (int) sizeof(g_libexecPath)
+			|| snprintf(g_mldrPath, sizeof(g_mldrPath), "%s/usr/libexec/darling/mldr", g_libexecPath) >= (int) sizeof(g_mldrPath))
+		{
+			fprintf(stderr, "The installation path is too long.\n");
+			return 1;
+		}
 	}
 
 	if (!launcherSaveInvokingIds(&g_invokingIds))
@@ -152,7 +226,7 @@ int main(int argc, char ** argv)
 	// darlingserver must start with real root ids, and creating namespaces needs
 	// them as well. From here on the launcher is fully root, so every step that
 	// acts on a path or file the user controls switches to the user's ids first.
-	if (!launcherBecomeRoot())
+	if (privilegedMode() && !launcherBecomeRoot())
 	{
 		fprintf(stderr, "Cannot switch to root ids: %s\n", strerror(errno));
 		return 1;
@@ -255,7 +329,7 @@ int main(int argc, char ** argv)
 
 			dropPrivileges();
 			scan = launcherFindOrphanedInit("/proc", prefix, g_originalUid,
-				INSTALL_PREFIX "/libexec/darling/usr/libexec/darling/mldr", &orphan);
+				g_mldrPath, &orphan);
 			if (scan > 0)
 			{
 				int orphanFd = openProcessHandle(orphan);
@@ -305,7 +379,29 @@ int main(int argc, char ** argv)
 		int launchdFd = openProcessHandle(launchd_pid);
 		int serverFd = openProcessHandle(pidInit);
 
+		// Without a PID namespace ending launchd does not end the container's other processes. They are
+		// below launchd in the process tree (launchd adopts the orphans), so take them from there while
+		// the tree is still whole.
+		pid_t* descendants = NULL;
+		int descendantCount = 0;
+		if (g_mode == LAUNCHER_MODE_NONROOT)
+		{
+			const size_t maxDescendants = 4096;
+
+			descendants = malloc(maxDescendants * sizeof(pid_t));
+			if (descendants != NULL)
+				descendantCount = launcherCollectDescendants("/proc", pidInit, descendants, maxDescendants);
+			if (descendantCount < 0)
+				descendantCount = 0;
+		}
+
 		kill(launchd_pid, SIGKILL);
+		for (int i = 0; i < descendantCount; i++)
+		{
+			if (descendants[i] != launchd_pid)
+				kill(descendants[i], SIGKILL);
+		}
+		free(descendants);
 		if (kill(pidInit, SIGKILL) != 0 && errno != ESRCH)
 		{
 			fprintf(stderr, "Failed to shutdown Darling container: %s\n", strerror(errno));
@@ -327,7 +423,7 @@ int main(int argc, char ** argv)
 	{
 		pid_t liveServer = 0;
 		int scan = launcherFindPrefixServer("/proc", prefix, g_originalUid,
-			INSTALL_PREFIX "/bin/darlingserver", &liveServer);
+			g_serverPath, &liveServer);
 		if (scan < 0)
 		{
 			fprintf(stderr, "Cannot inspect existing Darling servers; refusing to reinitialize %s.\n", prefix);
@@ -347,7 +443,7 @@ int main(int argc, char ** argv)
 		pid_t orphanedInit = 0;
 		useInvokingIds();
 		scan = launcherFindOrphanedInit("/proc", prefix, g_originalUid,
-			INSTALL_PREFIX "/libexec/darling/usr/libexec/darling/mldr", &orphanedInit);
+			g_mldrPath, &orphanedInit);
 		restoreRootIds();
 		if (scan > 0)
 		{
@@ -392,8 +488,28 @@ int main(int argc, char ** argv)
 		}
 	}
 
+	// A container belongs to the mode that started it. Talking to the shellspawn of one started in
+	// another mode would give a shell with the wrong ids and mounts, so refuse and ask to stop it.
+	if (!privilegedMode())
+		refuseContainerOfAnotherMode(pidInit);
+
 #if USE_LINUX_4_11_HACK
-	joinServerMountNamespace(pidInit);
+	// The root mode joins the container's mount namespace as root. The rootless mode joins the user
+	// namespace it made and the mount namespace in it, as the user who owns them: the overlay is mounted
+	// in there, and a socket in the host's view of the prefix cannot be connected to. The non-root mode has
+	// no namespaces; the shellspawn socket is reached through the prefix directory.
+	if (privilegedMode())
+		joinServerMountNamespace(pidInit);
+	else if (g_mode == LAUNCHER_MODE_ROOTLESS)
+	{
+		// The namespaces to join were made by the user's own darlingserver. Look up the user's name and
+		// the program's path first, through this process's own files and name services, so that nothing
+		// after the join resolves a name or a path in the container's mount tree. (The root mode keeps
+		// resolving the program's path in the container's view of the files.)
+		if (!lookUpLoginName() || !resolveProgramArgument(argc, argv))
+			return 1;
+		joinRootlessNamespaces(pidInit);
+	}
 #endif
 
 	// Joining the mount namespace was the last step that needs root. Drop it
@@ -405,6 +521,9 @@ int main(int argc, char ** argv)
 	// a name service module.
 	dropPrivileges();
 
+	if (!resolveProgramArgument(argc, argv))
+		return 1;
+
 	if (strcmp(argv[1], "shell") == 0)
 	{
 		// Spawn the shell
@@ -415,38 +534,171 @@ int main(int argc, char ** argv)
 	}
 	else
 	{
-		bool doExec = strcmp(argv[1], "exec") == 0;
-		int argvIndex = doExec ? 2 : 1;
+		int argvIndex = strcmp(argv[1], "exec") == 0 ? 2 : 1;
 
-		if (doExec && argc <= 2)
-		{
-			printf("'exec' subcommand requires a binary to execute.\n");
-			return 1;
-		}
-
-		char *fullPath;
-		char *path = realpath(argv[argvIndex], NULL);
-
-		if (path == NULL)
-		{
-			printf("'%s' is not a supported command or a file.\n", argv[argvIndex]);
-			return 1;
-		}
-
-		fullPath = malloc(strlen(SYSTEM_ROOT) + strlen(path) + 1);
-		strcpy(fullPath, SYSTEM_ROOT);
-		strcat(fullPath, path);
-		free(path);
-
-		argv[argvIndex] = fullPath;
-
-		if (doExec)
+		if (argvIndex == 2)
 			spawnBinary(argv[argvIndex], (const char**) &argv[argvIndex]);
 		else
 			spawnShell((const char**) &argv[argvIndex]);
 	}
 
 	return 0;
+}
+
+// Exits unless the running container (the darlingserver pid) was started in the launcher's own
+// unprivileged mode, as launcherServerRunsInMode() judges from its namespaces.
+static void refuseContainerOfAnotherMode(pid_t pid)
+{
+	struct stat userNs, mntNs;
+	char procPath[64];
+	int procfd, matches;
+
+	if (stat("/proc/self/ns/user", &userNs) != 0 || stat("/proc/self/ns/mnt", &mntNs) != 0)
+	{
+		fprintf(stderr, "Cannot examine this process's namespaces: %s\n", strerror(errno));
+		exit(1);
+	}
+
+	snprintf(procPath, sizeof(procPath), "/proc/%d", (int) pid);
+	procfd = open(procPath, O_PATH | O_DIRECTORY | O_CLOEXEC);
+	if (procfd < 0)
+	{
+		fprintf(stderr, "The Darling container (process %d) exited. Try again.\n", (int) pid);
+		exit(1);
+	}
+	matches = launcherServerRunsInMode(procfd, g_mode, &userNs, &mntNs);
+	close(procfd);
+
+	if (matches < 0)
+	{
+		if (errno == ENOENT || errno == ESRCH)
+			fprintf(stderr, "The Darling container (process %d) exited. Try again.\n", (int) pid);
+		else
+			fprintf(stderr, "Cannot examine the Darling container (process %d): %s\n", (int) pid, strerror(errno));
+		exit(1);
+	}
+	if (matches == 0)
+	{
+		fprintf(stderr, "The Darling container of %s (process %d) was started in another mode (as root, rootless or non-root)\n"
+			"than this command runs in. Run 'darling shutdown' as the user who started it, then try again.\n", prefix, (int) pid);
+		exit(1);
+	}
+}
+
+// For "darling exec <program>" and "darling <program>", replaces the program argument with the guest
+// path of the file it names on the host. Prints why and returns false if there is none. Nothing to do
+// for "darling shell", or when it was done already.
+static bool resolveProgramArgument(int argc, char** argv)
+{
+	static bool resolved = false;
+
+	if (resolved || strcmp(argv[1], "shell") == 0)
+		return true;
+
+	bool doExec = strcmp(argv[1], "exec") == 0;
+	int argvIndex = doExec ? 2 : 1;
+
+	if (doExec && argc <= 2)
+	{
+		printf("'exec' subcommand requires a binary to execute.\n");
+		return false;
+	}
+
+	char *fullPath;
+	char *path = realpath(argv[argvIndex], NULL);
+
+	if (path == NULL)
+	{
+		printf("'%s' is not a supported command or a file.\n", argv[argvIndex]);
+		return false;
+	}
+
+	fullPath = malloc(strlen(SYSTEM_ROOT) + strlen(path) + 1);
+	strcpy(fullPath, SYSTEM_ROOT);
+	strcat(fullPath, path);
+	free(path);
+
+	argv[argvIndex] = fullPath;
+	resolved = true;
+	return true;
+}
+
+// Rootless mode: the container's mount namespace is owned by the user namespace the launcher's server
+// child made, so it can only be joined from inside that user namespace. The user is that namespace's
+// owner, which gives the launcher the right to join it, and nothing else: the checks below insist on a
+// direct child of the launcher's own namespace that was made by this user, and the namespaces are
+// opened through a pinned /proc/<pid> descriptor (see launcherOpenRootlessNamespaces()).
+static void joinRootlessNamespaces(pid_t pid)
+{
+	struct stat exe, userNs, mntNs;
+	char procPath[64];
+	int procfd, userfd = -1, mntfd = -1;
+	enum launcher_server_check check;
+
+	if (stat(g_serverPath, &exe) != 0
+		|| stat("/proc/self/ns/user", &userNs) != 0
+		|| stat("/proc/self/ns/mnt", &mntNs) != 0)
+	{
+		fprintf(stderr, "Cannot examine darlingserver or this process's namespaces: %s\n", strerror(errno));
+		exit(1);
+	}
+
+	snprintf(procPath, sizeof(procPath), "/proc/%d", (int) pid);
+	procfd = open(procPath, O_PATH | O_DIRECTORY | O_CLOEXEC);
+	if (procfd < 0)
+		check = LAUNCHER_SERVER_GONE;
+	else
+	{
+		check = launcherOpenRootlessNamespaces(procfd, &exe, &userNs, &mntNs, &userfd, &mntfd);
+		int error = errno;
+		close(procfd);
+		errno = error;
+	}
+
+	switch (check)
+	{
+		case LAUNCHER_SERVER_OK:
+			break;
+		case LAUNCHER_SERVER_GONE:
+			fprintf(stderr, "The Darling container (process %d) exited. Try again.\n", (int) pid);
+			exit(1);
+		case LAUNCHER_SERVER_WRONG_EXE:
+			fprintf(stderr, "Process %d, named in %s/.init.pid, is not running %s.\n"
+				"If Darling was updated while the container was running, run 'darling shutdown' and try again.\n",
+				(int) pid, prefix, g_serverPath);
+			exit(1);
+		case LAUNCHER_SERVER_FOREIGN_USERNS:
+		case LAUNCHER_SERVER_SAME_MNTNS:
+			fprintf(stderr, "Process %d, named in %s/.init.pid, is not a rootless Darling container of this user; refusing to join it.\n"
+				"Run 'darling shutdown' and try again.\n", (int) pid, prefix);
+			exit(1);
+		case LAUNCHER_SERVER_ERROR:
+		default:
+			fprintf(stderr, "Cannot examine the Darling container (process %d): %s\n", (int) pid, strerror(errno));
+			exit(1);
+	}
+
+	if (setns(userfd, CLONE_NEWUSER) != 0 || setns(mntfd, CLONE_NEWNS) != 0)
+	{
+		fprintf(stderr, "Cannot join the container's namespaces: %s\n", strerror(errno));
+		exit(1);
+	}
+	close(userfd);
+	close(mntfd);
+
+	// Joining a user namespace grants every capability in it. The rest of the launcher only talks to
+	// shellspawn and resolves paths, none of which needs them: give them all up.
+	{
+		struct __user_cap_header_struct header = { _LINUX_CAPABILITY_VERSION_3, 0 };
+		struct __user_cap_data_struct data[2];
+
+		memset(data, 0, sizeof(data));
+		if (syscall(SYS_capset, &header, data) != 0)
+		{
+			fprintf(stderr, "Cannot drop the capabilities of the container's user namespace: %s\n", strerror(errno));
+			exit(1);
+		}
+	}
 }
 
 // Joins the mount namespace of the container's darlingserver. This runs as
@@ -464,7 +716,7 @@ void joinServerMountNamespace(pid_t pid)
 	int procfd, nsfd;
 	enum launcher_server_check check;
 
-	if (stat(INSTALL_PREFIX "/bin/darlingserver", &exe) != 0
+	if (stat(g_serverPath, &exe) != 0
 		|| stat("/proc/self/ns/user", &userNs) != 0
 		|| stat("/proc/self/ns/mnt", &mntNs) != 0)
 	{
@@ -494,7 +746,7 @@ void joinServerMountNamespace(pid_t pid)
 		case LAUNCHER_SERVER_WRONG_EXE:
 			fprintf(stderr, "Process %d, named in %s/.init.pid, is not running %s.\n"
 				"If Darling was updated while the container was running, run 'darling shutdown' and try again.\n",
-				(int) pid, prefix, INSTALL_PREFIX "/bin/darlingserver");
+				(int) pid, prefix, g_serverPath);
 			exit(1);
 		case LAUNCHER_SERVER_FOREIGN_USERNS:
 		case LAUNCHER_SERVER_SAME_MNTNS:
@@ -866,6 +1118,38 @@ int connectToShellspawn(void)
 	return sockfd;
 }
 
+// Finds the invoking user's own account name, whatever ids this process has now, into g_loginName.
+// Prints why and returns false if there is none.
+static bool lookUpLoginName(void)
+{
+	struct passwd* pw = getpwuid(g_originalUid);
+	char loginBuffer[sizeof(g_loginName)] = "";
+	const char* userEnv = getenv("USER");
+	const char* lognameEnv = getenv("LOGNAME");
+	const char* login;
+
+	if (pw != NULL)
+	{
+		strncpy(loginBuffer, pw->pw_name, sizeof(loginBuffer) - 1);
+		pw = NULL;
+	}
+	{
+		struct passwd* byUser = (userEnv && userEnv[0]) ? getpwnam(userEnv) : NULL;
+		bool userIsUid = byUser != NULL && byUser->pw_uid == g_originalUid;
+		struct passwd* byLogname = (lognameEnv && lognameEnv[0]) ? getpwnam(lognameEnv) : NULL;
+		bool lognameIsUid = byLogname != NULL && byLogname->pw_uid == g_originalUid;
+
+		login = launcherPickLoginName(loginBuffer, userEnv, userIsUid, lognameEnv, lognameIsUid, getlogin());
+	}
+	if (!login)
+	{
+		fprintf(stderr, "Cannot determine your user name\n");
+		return false;
+	}
+	snprintf(g_loginName, sizeof(g_loginName), "%s", login);
+	return true;
+}
+
 void setupShellspawnEnv(int sockfd)
 {
 	static const char* skip_vars[] = {
@@ -886,19 +1170,9 @@ void setupShellspawnEnv(int sockfd)
 		"/usr/local/bin");
 	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, "TMPDIR=/private/tmp");
 
-	const char* login = NULL;
-	struct passwd* pw = getpwuid(geteuid());
-
-	if (pw != NULL)
-		login = pw->pw_name;
-
-	if (!login)
-		login = getlogin();
-	if (!login)
-	{
-		fprintf(stderr, "Cannot determine your user name\n");
+	if (g_loginName[0] == '\0' && !lookUpLoginName())
 		exit(1);
-	}
+	const char* login = g_loginName;
 
 	snprintf(buffer2, sizeof(buffer2), "HOME=/Users/%s", login);
 	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, buffer2);
@@ -937,7 +1211,11 @@ void setupWorkingDir(int sockfd)
 
 void setupIDs(int sockfd)
 {
+	// In the rootless mode the user is the only id of the container's user namespace, and it is 0 there.
 	int ids[2] = { g_originalUid, g_originalGid };
+
+	if (g_mode == LAUNCHER_MODE_ROOTLESS)
+		ids[0] = ids[1] = 0;
 	pushShellspawnCommandData(sockfd, SHELLSPAWN_SETUIDGID, ids, sizeof(ids));
 }
 
@@ -1068,6 +1346,44 @@ void missingSetuidRoot(void)
 
 	fprintf(stderr, "Sorry, the `%s' binary is not setuid root, which is mandatory.\n", path);
 	fprintf(stderr, "Darling needs this in order to create mount and PID namespaces and to perform mounts.\n");
+	fprintf(stderr, "Without it, set DARLING_ROOTLESS=1 to run in a user namespace of your own, or DARLING_NONROOT=1 to run without namespaces.\n");
+}
+
+// Rootless mode, in the child that becomes darlingserver: a user namespace in which the user is the
+// only id (0, so that the child has the capabilities for mounts and a PID namespace there), and mount
+// and UTS namespaces owned by it. The SysV IPC namespace stays shared, as in the root mode.
+static bool writeProcFile(const char* path, const char* text)
+{
+	int fd = open(path, O_WRONLY | O_CLOEXEC);
+	size_t length = strlen(text);
+	bool ok = fd >= 0 && write(fd, text, length) == (ssize_t) length;
+
+	if (fd >= 0)
+		close(fd);
+	return ok;
+}
+
+static bool enterRootlessNamespaces(void)
+{
+	char map[64];
+
+	if (unshare(CLONE_NEWUSER | CLONE_NEWNS | CLONE_NEWUTS) != 0)
+	{
+		fprintf(stderr, "Cannot create the user namespace for rootless mode: %s\n"
+			"If this host does not allow user namespaces, set DARLING_NONROOT=1 to run without namespaces.\n", strerror(errno));
+		return false;
+	}
+
+	// An unprivileged process may map only its own ids, and only after giving up setgroups().
+	snprintf(map, sizeof(map), "0 %u 1\n", (unsigned) g_originalUid);
+	if (!writeProcFile("/proc/self/setgroups", "deny\n")
+		|| !(snprintf(map, sizeof(map), "0 %u 1\n", (unsigned) g_originalGid), writeProcFile("/proc/self/gid_map", map))
+		|| !(snprintf(map, sizeof(map), "0 %u 1\n", (unsigned) g_originalUid), writeProcFile("/proc/self/uid_map", map)))
+	{
+		fprintf(stderr, "Cannot map your user into the rootless user namespace: %s\n", strerror(errno));
+		return false;
+	}
+	return true;
 }
 
 pid_t spawnInitProcess(void)
@@ -1086,7 +1402,8 @@ pid_t spawnInitProcess(void)
 	// the container (Mesa among them) pass SysV shared memory segment IDs to the
 	// X server through MIT-SHM, which the server can only attach in its own
 	// namespace.
-	if (unshare(CLONE_NEWUTS) != 0)
+	// Only root can do this here; the unprivileged modes give the child its own namespaces below.
+	if (privilegedMode() && unshare(CLONE_NEWUTS) != 0)
 	{
 		fprintf(stderr, "Cannot unshare the UTS namespace to create darling-init: %s\n", strerror(errno));
 		exit(1);
@@ -1114,6 +1431,14 @@ pid_t spawnInitProcess(void)
 
 		close(pipefd[0]);
 
+		if (g_mode == LAUNCHER_MODE_ROOTLESS && !enterRootlessNamespaces())
+			exit(1);
+
+		// An unprivileged launcher may run from anywhere; darlingserver is told where the system image is.
+		// (A privileged launcher never passes this: darlingserver ignores it for root.)
+		if (!privilegedMode() && strcmp(g_libexecPath, INSTALL_PREFIX "/libexec/darling") != 0)
+			setenv("DARLING_LIBEXEC_PATH", g_libexecPath, 1);
+
 		// This exec runs darlingserver as full root. When another user started
 		// us setuid, the kernel marked our own exec secure (AT_SECURE) and the C
 		// library ignored the dangerous loader variables, but darlingserver's
@@ -1128,7 +1453,7 @@ pid_t spawnInitProcess(void)
 			exit(1);
 		}
 
-		execve(INSTALL_PREFIX "/bin/darlingserver", serverArgv, serverEnv);
+		execve(g_serverPath, serverArgv, serverEnv);
 
 		fprintf(stderr, "Failed to start darlingserver\n");
 		exit(1);
