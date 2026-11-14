@@ -429,14 +429,14 @@ void __darling_thread_rpc_socket_refresh(void) {
 	}
 };
 
-/* Dedicated to cached Darwin TSD reads; native bridge compatibility state must
- * use separate storage. Main-executable ELF TLS offsets are per-thread stable. */
-static __thread void* shared_cache_darling_tsd;
+#if defined(__aarch64__)
+/* Holds the Darwin TSD base of the calling thread for guest code that reads it
+ * from the native thread pointer (ARM64 only). Nothing else may use this
+ * storage. The variable lives in the main executable's static TLS, so its
+ * offset from the thread pointer is the same on every native thread. */
+static __thread void* darwin_tsd_slot;
 
 uintptr_t __darling_arm64_tsd_slot_offset(void) {
-#if defined(__aarch64__)
-    return (uintptr_t)&shared_cache_darling_tsd - (uintptr_t)__builtin_thread_pointer();
-#else
-    return UINTPTR_MAX;
-#endif
+    return (uintptr_t)&darwin_tsd_slot - (uintptr_t)__builtin_thread_pointer();
 }
+#endif
