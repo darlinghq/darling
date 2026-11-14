@@ -35,6 +35,8 @@ header = r"""
 #define INSTALL_PREFIX "/opt/darling"
 #define SHELLSPAWN_SOCKPATH "/var/run/shellspawn.sock"
 static const char *prefix = "/synthetic-prefix";
+static const char *g_serverPath = INSTALL_PREFIX "/bin/darlingserver";
+static const char *g_mldrPath = INSTALL_PREFIX "/libexec/darling/usr/libexec/darling/mldr";
 static uid_t g_originalUid = 1000;
 static int scan_result;
 static pid_t detected_server;

@@ -110,6 +110,119 @@ enum launcher_server_check launcherOpenServerMountNs(int procfd, const struct st
 	return LAUNCHER_SERVER_OK;
 }
 
+enum launcher_server_check launcherOpenRootlessNamespaces(int procfd, const struct stat* exe, const struct stat* userNs,
+	const struct stat* mntNs, int* userfd, int* mntfd)
+{
+	struct stat st;
+	int user = -1, mnt = -1, owner = -1, parent = -1, result = LAUNCHER_SERVER_ERROR;
+	uid_t ownerUid;
+
+	*userfd = *mntfd = -1;
+
+	if (fstatat(procfd, "exe", &st, 0) != 0)
+		return lookupFailure();
+	if (!sameFile(&st, exe))
+		return LAUNCHER_SERVER_WRONG_EXE;
+
+	user = openat(procfd, "ns/user", O_RDONLY | O_CLOEXEC);
+	if (user < 0)
+		return lookupFailure();
+	mnt = openat(procfd, "ns/mnt", O_RDONLY | O_CLOEXEC);
+	if (mnt < 0)
+	{
+		result = lookupFailure();
+		goto fail;
+	}
+
+	// The container's user namespace must be a different one, a direct child of the launcher's, and
+	// created by the invoking user (its owner is then the launcher's effective uid): the namespace
+	// Rootless mode makes. Anything else is refused before it is joined.
+	if (fstat(user, &st) != 0)
+		goto fail;
+	if (sameFile(&st, userNs))
+	{
+		result = LAUNCHER_SERVER_FOREIGN_USERNS;
+		goto fail;
+	}
+	parent = ioctl(user, NS_GET_PARENT);
+	if (parent < 0)
+	{
+		// EPERM: the parent is outside the launcher's user namespace.
+		result = (errno == EPERM) ? LAUNCHER_SERVER_FOREIGN_USERNS : LAUNCHER_SERVER_ERROR;
+		goto fail;
+	}
+	if (fstat(parent, &st) != 0)
+		goto fail;
+	if (!sameFile(&st, userNs))
+	{
+		result = LAUNCHER_SERVER_FOREIGN_USERNS;
+		goto fail;
+	}
+	if (ioctl(user, NS_GET_OWNER_UID, &ownerUid) != 0)
+		goto fail;
+	if (ownerUid != geteuid())
+	{
+		result = LAUNCHER_SERVER_FOREIGN_USERNS;
+		goto fail;
+	}
+
+	// The mount namespace must belong to that user namespace and be another one than the launcher's.
+	owner = ioctl(mnt, NS_GET_USERNS);
+	if (owner < 0)
+	{
+		result = (errno == EPERM) ? LAUNCHER_SERVER_FOREIGN_USERNS : LAUNCHER_SERVER_ERROR;
+		goto fail;
+	}
+	{
+		struct stat ownerSt, userSt;
+
+		if (fstat(owner, &ownerSt) != 0 || fstat(user, &userSt) != 0)
+			goto fail;
+		if (!sameFile(&ownerSt, &userSt))
+		{
+			result = LAUNCHER_SERVER_FOREIGN_USERNS;
+			goto fail;
+		}
+	}
+	if (fstat(mnt, &st) != 0)
+		goto fail;
+	if (sameFile(&st, mntNs))
+	{
+		result = LAUNCHER_SERVER_SAME_MNTNS;
+		goto fail;
+	}
+
+	// Both namespaces were opened through the same pinned directory: make sure the process was still
+	// the server afterwards.
+	if (fstatat(procfd, "exe", &st, 0) != 0)
+	{
+		result = lookupFailure();
+		goto fail;
+	}
+	if (!sameFile(&st, exe))
+	{
+		result = LAUNCHER_SERVER_WRONG_EXE;
+		goto fail;
+	}
+
+	close(owner);
+	close(parent);
+	*userfd = user;
+	*mntfd = mnt;
+	return LAUNCHER_SERVER_OK;
+
+fail:
+	if (owner >= 0)
+		close(owner);
+	if (parent >= 0)
+		close(parent);
+	if (mnt >= 0)
+		close(mnt);
+	if (user >= 0)
+		close(user);
+	return result;
+}
+
 bool launcherServerCommandLineMatchesPrefix(const char* cmdline, size_t length,
 	const char* prefix)
 {
@@ -545,4 +658,115 @@ int launcherFindOrphanedInit(const char* procPath, const char* prefix, uid_t uid
 	closedir(procDir);
 	close(procfd);
 	return result;
+}
+
+// The parent of the process whose /proc/PID/stat contents are given. The name field is in
+// parentheses and may hold spaces and parentheses, so the fields after it start after the last one.
+static bool parentFromStat(const char* stat, pid_t* parent)
+{
+	const char* end = strrchr(stat, ')');
+	char state;
+	int ppid;
+
+	if (end == NULL || sscanf(end + 1, " %c %d", &state, &ppid) != 2 || ppid < 0)
+		return false;
+	*parent = (pid_t) ppid;
+	return true;
+}
+
+int launcherCollectDescendants(const char* procPath, pid_t root, pid_t* out, size_t max)
+{
+	enum { MAX_PROCESSES = 1 << 18 };
+	DIR* dir = opendir(procPath);
+	struct dirent* ent;
+	pid_t* pids = NULL;
+	pid_t* parents = NULL;
+	size_t count = 0, capacity = 0;
+	int dirFd;
+
+	if (dir == NULL)
+		return -1;
+	dirFd = dirfd(dir);
+
+	while ((ent = readdir(dir)) != NULL)
+	{
+		char* endptr;
+		long pid = strtol(ent->d_name, &endptr, 10);
+		char path[64], buffer[1024];
+		pid_t parent;
+		int fd;
+		ssize_t got;
+
+		if (*endptr != '\0' || endptr == ent->d_name || pid <= 0)
+			continue;
+		snprintf(path, sizeof(path), "%ld/stat", pid);
+		fd = openat(dirFd, path, O_RDONLY | O_CLOEXEC);
+		if (fd < 0)
+			continue;
+		got = read(fd, buffer, sizeof(buffer) - 1);
+		close(fd);
+		if (got <= 0)
+			continue;
+		buffer[got] = '\0';
+		if (!parentFromStat(buffer, &parent))
+			continue;
+
+		if (count == capacity)
+		{
+			size_t newCapacity = capacity ? capacity * 2 : 256;
+			pid_t* newPids = realloc(pids, newCapacity * sizeof(pid_t));
+			pid_t* newParents;
+
+			if (newPids == NULL)
+				goto fail;
+			pids = newPids;
+			newParents = realloc(parents, newCapacity * sizeof(pid_t));
+			if (newParents == NULL)
+				goto fail;
+			parents = newParents;
+			capacity = newCapacity;
+		}
+		if (count == MAX_PROCESSES)
+			goto fail;
+		pids[count] = (pid_t) pid;
+		parents[count] = parent;
+		count++;
+	}
+	closedir(dir);
+	dir = NULL;
+
+	// Breadth first, through a queue that starts with root itself.
+	pid_t* queue = malloc((max + 1) * sizeof(pid_t));
+	size_t tail = 1;
+
+	if (queue == NULL)
+		goto fail;
+	queue[0] = root;
+	for (size_t head = 0; head < tail; head++)
+	{
+		for (size_t i = 0; i < count && tail <= max; i++)
+		{
+			bool known = false;
+
+			if (parents[i] != queue[head])
+				continue;
+			for (size_t seen = 0; seen < tail && !known; seen++)
+				known = queue[seen] == pids[i];
+			if (!known)
+				queue[tail++] = pids[i];
+		}
+	}
+	if (tail > 1)
+		memcpy(out, queue + 1, (tail - 1) * sizeof(pid_t));
+	free(queue);
+	free(pids);
+	free(parents);
+	return (int) (tail - 1);
+
+fail:
+	if (dir != NULL)
+		closedir(dir);
+	free(pids);
+	free(parents);
+	return -1;
 }

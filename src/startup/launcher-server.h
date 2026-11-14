@@ -54,6 +54,13 @@ enum launcher_server_check
 enum launcher_server_check launcherOpenServerMountNs(int procfd, const struct stat* exe,
 	const struct stat* userNs, const struct stat* mntNs, int* nsfd);
 
+// The rootless counterpart of launcherOpenServerMountNs(): the container's namespaces are the user
+// namespace the rootless launcher made (a child of the launcher's own, owned by the launcher's
+// effective uid) and a mount namespace of it. On LAUNCHER_SERVER_OK, *userfd and *mntfd are open
+// descriptors of the checked namespaces, to be joined in that order with setns(). Otherwise both are -1.
+enum launcher_server_check launcherOpenRootlessNamespaces(int procfd, const struct stat* exe,
+	const struct stat* userNs, const struct stat* mntNs, int* userfd, int* mntfd);
+
 // Whether a live process from the installed darlingserver executable was
 // started for this exact prefix by the invoking uid. Returns 1 with *pid set
 // when found, 0 when absent, and -1 if the process list could not be checked.
@@ -85,5 +92,12 @@ bool launcherServerCommandLineMatchesPrefix(const char* cmdline, size_t length,
 // Extract the real uid from the Linux Uid status line. The real uid remains
 // the invoking user even while darlingserver temporarily has effective uid 0.
 bool launcherServerStatusRealUid(const char* status, size_t length, uid_t* uid);
+
+// Collects the pids of the processes below root in the process tree (children, their children and so
+// on, not root itself) of procPath, as /proc is, into out, which holds up to max entries. Returns the
+// number found, or -1 if the process list cannot be read. Used by the unprivileged non-root mode, where
+// the container has no PID namespace of its own to end all its processes at once.
+// procPath is normally /proc and is injectable for host-side tests.
+int launcherCollectDescendants(const char* procPath, pid_t root, pid_t* out, size_t max);
 
 #endif
