@@ -3,6 +3,9 @@ project(UIKit)
 remove_sdk_framework(UIKit)
 generate_sdk_framework(UIKit VERSION A HEADER "include/UIKit")
 
+# UIKit exists only for 64-bit processes, so no 32-bit slice is built.
+set(DARLING_LIB_64BIT_ONLY TRUE)
+
 add_framework(UIKit
     IOSSUPPORT
     CURRENT_VERSION
