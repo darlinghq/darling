@@ -25,7 +25,6 @@
 #include <stdlib.h>
 
 extern uint32_t CGSMainConnectionID(void);
-extern int CGSSetGlobalHotKeyOperatingMode(uint32_t cid, int mode);
 
 static int g_failures;
 #define CHECK(cond) do { if (!(cond)) { printf("FAIL %d: %s\n", __LINE__, #cond); g_failures++; } } while (0)
