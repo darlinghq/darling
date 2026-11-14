@@ -38,3 +38,7 @@ distinguish arbitrary stale addresses after reuse.
 The production change adds only HomeResFile. Existing allocation, lifetime,
 current-file selection and writer behavior are unchanged. Unrelated lifecycle
 edge cases remain outside this suite.
+
+Native Darwin i386 execution and its configuration limit are documented in
+[i386-qualification.md](i386-qualification.md). The native witness sources are
+separate from the host-adapter suite above.
