@@ -37,6 +37,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "socket_bitmap.h"
 #include "image_protection.h"
 #include "interpreter_path.h"
+#include "fat_slice.h"
 #include <sys/resource.h>
 #include <sys/prctl.h>
 #include <sys/socket.h>
@@ -403,7 +404,7 @@ void load(const char* path, cpu_type_t forced_arch, bool expect_dylinker, char**
 		reexec32(argv);
 #endif
 	}
-	else if (magic == FAT_MAGIC || magic == FAT_CIGAM)
+	else if (mldr_fat_is_magic((const uint8_t*) &magic))
 	{
 		lseek(fd, 0, SEEK_SET);
 		load_fat(fd, forced_arch, expect_dylinker, argv, lr);
@@ -418,101 +419,61 @@ void load(const char* path, cpu_type_t forced_arch, bool expect_dylinker, char**
 }
 
 static void load_fat(int fd, cpu_type_t forced_arch, bool expect_dylinker, char** argv, struct load_results* lr) {
-	struct fat_header fhdr;
-	struct fat_arch best_arch = {0};
-	int bpref_index = -1;
+	uint8_t header[MLDR_FAT_MAX_HEADER];
+	struct mldr_fat_slice slice;
+	struct stat st;
+	uint32_t native, fallback;
 
-	best_arch.cputype = CPU_TYPE_ANY;
+#if defined(__x86_64__)
+	native = CPU_TYPE_X86_64;
+	fallback = CPU_TYPE_X86;
+#elif defined(__i386__)
+	native = CPU_TYPE_X86;
+	fallback = 0;
+#elif defined(__aarch64__)
+	native = CPU_TYPE_ARM64;
+	fallback = CPU_TYPE_ARM;
+#else
+	#error Unsupported CPU architecture
+#endif
 
-	if (read(fd, &fhdr, sizeof(fhdr)) != sizeof(fhdr))
+	if (fstat(fd, &st) != 0 || st.st_size < 0)
+	{
+		fprintf(stderr, "Cannot determine the size of the fat file.\n");
+		exit(1);
+	}
+
+	ssize_t got = pread(fd, header, sizeof(header), 0);
+	if (got < 0)
 	{
 		fprintf(stderr, "Cannot read fat file header.\n");
 		exit(1);
 	}
 
-	const bool swap = fhdr.magic == FAT_CIGAM;
-
-#define SWAP32(x) x = __bswap_32(x)
-
-	if (swap)
-		SWAP32(fhdr.nfat_arch);
-
-	uint32_t i;
-	for (i = 0; i < fhdr.nfat_arch; i++)
+	switch (mldr_fat_select(header, (size_t) got, (uint64_t) st.st_size, lr->bprefs, (uint32_t) forced_arch,
+			native, fallback, &slice))
 	{
-		struct fat_arch arch;
-
-		if (read(fd, &arch, sizeof(arch)) != sizeof(arch))
-		{
-			fprintf(stderr, "Cannot read fat_arch header.\n");
+		case MLDR_FAT_OK:
+			break;
+		case MLDR_FAT_NO_MATCH:
+			fprintf(stderr, "No supported architecture found in fat binary.\n");
 			exit(1);
-		}
-
-		if (swap)
-		{
-			SWAP32(arch.cputype);
-			SWAP32(arch.cpusubtype);
-			SWAP32(arch.offset);
-			SWAP32(arch.size);
-			SWAP32(arch.align);
-		}
-
-		if (!forced_arch)
-		{
-			int j;
-			for (j = 0; j < 4; j++)
-			{
-				if (lr->bprefs[j] && arch.cputype == lr->bprefs[j])
-				{
-					if (bpref_index == -1 || bpref_index > j)
-					{
-						best_arch = arch;
-						bpref_index = j;
-						break;
-					}
-				}
-			}
-
-			if (bpref_index == -1)
-			{
-#if defined(__x86_64__)
-				if (arch.cputype == CPU_TYPE_X86_64)
-					best_arch = arch;
-				else if (best_arch.cputype == CPU_TYPE_ANY && arch.cputype == CPU_TYPE_X86)
-					best_arch = arch;
-#elif defined(__i386__)
-				if (arch.cputype == CPU_TYPE_X86)
-					best_arch = arch;
-#elif defined(__aarch64__)
-				if (arch.cputype == CPU_TYPE_ARM64)
-					best_arch = arch;
-				else if (best_arch.cputype == CPU_TYPE_ANY && arch.cputype == CPU_TYPE_ARM)
-					best_arch = arch;
-#else
-	#error Unsupported CPU architecture
-#endif
-			}
-		}
-		else
-		{
-			if (arch.cputype == forced_arch)
-				best_arch = arch;
-		}
+		default:
+			fprintf(stderr, "Malformed fat file header.\n");
+			exit(1);
 	}
 
-	if (best_arch.cputype == CPU_TYPE_ANY)
-	{
-		fprintf(stderr, "No supported architecture found in fat binary.\n");
-		exit(1);
-	}
-
-	if (lseek(fd, best_arch.offset, SEEK_SET) == -1)
+	// the slice offset has to be representable as a file offset (32-bit builds
+	// without large file support cannot address more)
+	off_t slice_offset = (off_t) slice.offset;
+	if (slice_offset < 0 || (uint64_t) slice_offset != slice.offset ||
+			lseek(fd, slice_offset, SEEK_SET) == -1)
 	{
 		fprintf(stderr, "Cannot seek to selected arch in fat binary.\n");
 		exit(1);
 	}
 
-	if (best_arch.cputype & CPU_ARCH_ABI64) {
+	if (slice.cputype & CPU_ARCH_ABI64) {
 #if defined(__x86_64__) || defined(__aarch64__)
 		load64(fd, expect_dylinker, lr);
 #else

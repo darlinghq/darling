@@ -21,6 +21,7 @@ set(mldr_sources
 	socket_bitmap.c
 	image_protection.c
 	interpreter_path.c
+	fat_slice.c
 	commpage.c
 	elfcalls/elfcalls.c
 	elfcalls/native_fork.c
@@ -92,6 +93,10 @@ add_test(NAME mldr_image_protection COMMAND mldr_image_protection_test)
 add_executable(mldr_interpreter_path_test ${CMAKE_SOURCE_DIR}/tests/mldr/interpreter_path.c interpreter_path.c)
 target_include_directories(mldr_interpreter_path_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME mldr_interpreter_path COMMAND mldr_interpreter_path_test)
+
+add_executable(mldr_fat_slice_test ${CMAKE_SOURCE_DIR}/tests/mldr/fat_slice.c fat_slice.c)
+target_include_directories(mldr_fat_slice_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME mldr_fat_slice COMMAND mldr_fat_slice_test)
 
 add_executable(mldr_thread_stack_test ${CMAKE_SOURCE_DIR}/tests/mldr/thread_stack.c elfcalls/thread_stack.c)
 target_include_directories(mldr_thread_stack_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/elfcalls)
