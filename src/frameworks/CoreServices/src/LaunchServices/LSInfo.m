@@ -59,6 +59,13 @@ static NSString* fourcc(UInt32 code)
 	return rv;
 }
 
+// Registrations of bundles that were removed stay in the database. Like macOS, the lookups below
+// skip an application whose bundle is no longer on disk.
+static BOOL bundleIsPresent(NSString* path)
+{
+	return path != nil && access([path fileSystemRepresentation], F_OK) == 0;
+}
+
 OSStatus
 LSFindApplicationForInfo(
   OSType inCreator,
@@ -90,18 +97,20 @@ LSFindApplicationForInfo(
 			query = [query stringByAppendingFormat:@" and path like '%%%@'", escape((NSString*) inName)];
 		
 		FMResultSet* rs = [db executeQuery:query];
-		if ([rs next])
+		retval = kLSApplicationNotFoundErr;
+		while ([rs next])
 		{
 			NSString* path = [rs stringForColumn:@"path"];
+			if (!bundleIsPresent(path))
+				continue;
 			if (outAppURL)
 				*outAppURL = (CFURLRef) [[NSURL alloc] initFileURLWithPath:path isDirectory:YES];
 			if (outAppRef)
 				FSPathMakeRef((const UInt8*) [path fileSystemRepresentation], outAppRef, NULL);
 
 			retval = noErr;
+			break;
 		}
-		else
-			retval = kLSApplicationNotFoundErr;
 		[rs close];
 	}];
 
@@ -130,15 +139,16 @@ CFArrayRef LSCopyApplicationURLsForBundleIdentifier(CFStringRef inBundleIdentifi
 	[dq inDatabase:^(FMDatabase* db) {
 		FMResultSet* rs = [db executeQuery:@"select path from bundle where package_type='APPL' and bundle_id = ?", inBundleIdentifier];
 
-		if ([rs next])
+		NSMutableArray* mut = [[NSMutableArray alloc] init];
+		while ([rs next])
 		{
-			NSMutableArray* mut = [[NSMutableArray alloc] init];
-			do
-			{
-				[mut addObject: [NSURL fileURLWithPath: [rs stringForColumn:@"path"] isDirectory: YES]];
-			}
-			while ([rs next]);
+			NSString* path = [rs stringForColumn:@"path"];
+			if (bundleIsPresent(path))
+				[mut addObject: [NSURL fileURLWithPath: path isDirectory: YES]];
+		}
 
+		if ([mut count] > 0)
+		{
 			retval = (CFArrayRef) [[NSArray alloc] initWithArray: mut];
 			[mut release];
 		}
@@ -228,18 +238,22 @@ LSGetApplicationForInfo(
 			@"end asc"];
 
 		FMResultSet* rs = [db executeQuery:query];
-		if ([rs next])
+		retval = kLSApplicationNotFoundErr;
+		// Registrations of bundles that were removed stay in the database; the first
+		// handler that is still on disk wins.
+		while ([rs next])
 		{
 			NSString* path = [rs stringForColumn:@"path"];
+			if (access([path fileSystemRepresentation], F_OK) != 0)
+				continue;
 			if (outAppURL)
 				*outAppURL = (CFURLRef) [[NSURL alloc] initFileURLWithPath:path isDirectory:YES];
 			if (outAppRef)
 				FSPathMakeRef((const UInt8*) [path fileSystemRepresentation], outAppRef, NULL);
 
 			retval = noErr;
+			break;
 		}
-		else
-			retval = kLSApplicationNotFoundErr;
 		[rs close];
 	}];
 
@@ -275,9 +289,20 @@ CFURLRef LSCopyDefaultApplicationURLForContentType(CFStringRef inContentType, LS
 
 		FMResultSet* rs = [db executeQuery:query, inContentType];
 
-		if ([rs next])
+		NSString* path = nil;
+		while ([rs next])
 		{
-			retval = (CFURLRef) [[NSURL alloc] initFileURLWithPath: [rs stringForColumn:@"path"] isDirectory: YES];
+			NSString* candidate = [rs stringForColumn:@"path"];
+			if (bundleIsPresent(candidate))
+			{
+				path = candidate;
+				break;
+			}
+		}
+
+		if (path != nil)
+		{
+			retval = (CFURLRef) [[NSURL alloc] initFileURLWithPath: path isDirectory: YES];
 		}
 		else
 		{
@@ -521,8 +546,14 @@ static CFStringRef copyDeclaredHandler(NSString* query, CFStringRef value)
 
 	[dq inDatabase:^(FMDatabase* db) {
 		FMResultSet* rs = [db executeQuery:query, value];
-		if ([rs next])
-			retval = (CFStringRef) [[rs stringForColumn:@"bundle_id"] copy];
+		while ([rs next])
+		{
+			if (bundleIsPresent([rs stringForColumn:@"path"]))
+			{
+				retval = (CFStringRef) [[rs stringForColumn:@"bundle_id"] copy];
+				break;
+			}
+		}
 		[rs close];
 	}];
 
@@ -541,7 +572,7 @@ CFStringRef LSCopyDefaultHandlerForURLScheme(CFStringRef inURLScheme)
 	if (handler != NULL)
 		return handler;
 
-	return copyDeclaredHandler(@"select bundle.bundle_id from bundle"
+	return copyDeclaredHandler(@"select bundle.bundle_id, bundle.path from bundle"
 		@" INNER JOIN bundle_url_type T on T.bundle=bundle.id"
 		@" INNER JOIN bundle_url_type_scheme S on S.type=T.id"
 		@" where bundle.package_type='APPL' and S.scheme=?", inURLScheme);
@@ -557,12 +588,16 @@ static NSArray<NSString*>* copyDeclaredHandlersForScheme(CFStringRef inURLScheme
 		return result;
 
 	[dq inDatabase:^(FMDatabase* db) {
-		FMResultSet* rs = [db executeQuery:@"select distinct bundle.bundle_id from bundle"
+		FMResultSet* rs = [db executeQuery:@"select distinct bundle.bundle_id, bundle.path from bundle"
 			@" INNER JOIN bundle_url_type T on T.bundle=bundle.id"
 			@" INNER JOIN bundle_url_type_scheme S on S.type=T.id"
 			@" where bundle.package_type='APPL' and S.scheme=?", (NSString*) inURLScheme];
 		while ([rs next])
-			[result addObject:[rs stringForColumn:@"bundle_id"]];
+		{
+			NSString* bundleID = [rs stringForColumn:@"bundle_id"];
+			if (bundleIsPresent([rs stringForColumn:@"path"]) && ![result containsObject:bundleID])
+				[result addObject:bundleID];
+		}
 		[rs close];
 	}];
 	return result;
@@ -628,7 +663,7 @@ CFStringRef LSCopyDefaultRoleHandlerForContentType(CFStringRef inContentType, LS
 	if (handler != NULL)
 		return handler;
 
-	query = @"select bundle.bundle_id, AD.rank from bundle INNER JOIN app_doc AD on AD.bundle=bundle.id"
+	query = @"select bundle.bundle_id, bundle.path, AD.rank from bundle INNER JOIN app_doc AD on AD.bundle=bundle.id"
 		@" INNER JOIN app_doc_uti AU on AU.doc=AD.id WHERE bundle.package_type='APPL' AND AU.uti=?";
 	if (inRole != kLSRolesAll)
 		query = [query stringByAppendingFormat:@" and AD.role in (%@)", roleSQLArray(inRole)];
