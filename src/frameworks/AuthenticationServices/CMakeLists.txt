@@ -14,6 +14,7 @@ generate_sdk_framework(AuthenticationServices
 
 
 add_framework(AuthenticationServices
+	IOSSUPPORT_ALIAS
 	FAT
 	CURRENT_VERSION
 	VERSION ${FRAMEWORK_VERSION}

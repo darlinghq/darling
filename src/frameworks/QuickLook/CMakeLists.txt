@@ -13,6 +13,7 @@ generate_sdk_framework(QuickLook
 )
 
 add_framework(QuickLook
+    IOSSUPPORT_ALIAS
     FAT
     CURRENT_VERSION
     VERSION ${FRAMEWORK_VERSION}

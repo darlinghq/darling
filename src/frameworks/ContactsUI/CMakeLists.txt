@@ -13,6 +13,7 @@ generate_sdk_framework(ContactsUI
 )
 
 add_framework(ContactsUI
+    IOSSUPPORT_ALIAS
     FAT
     CURRENT_VERSION
     VERSION ${FRAMEWORK_VERSION}
