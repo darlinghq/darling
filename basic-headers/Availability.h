@@ -235,7 +235,6 @@
 #define __IPHONE_14_1    140100
 #define __IPHONE_14_2    140200
 #define __IPHONE_14_3    140300
-#define __IPHONE_14_4    140400
 #define __IPHONE_14_5    140500
 #define __IPHONE_14_6    140600
 #define __IPHONE_14_7    140700
@@ -317,7 +316,6 @@
 #define __WATCHOS_6_0     60000
 #define __WATCHOS_6_0_1   60001
 #define __WATCHOS_6_1     60100
-#define __WATCHOS_6_1_1   60101
 #define __WATCHOS_6_2     60200
 #define __WATCHOS_7_0     70000
 #define __WATCHOS_7_1     70100
