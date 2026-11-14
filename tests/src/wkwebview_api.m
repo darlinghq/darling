@@ -121,7 +121,8 @@ static void spinFor(NSTimeInterval seconds) {
 }
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
     id value = change[NSKeyValueChangeNewKey];
-    [_changes addObject:[NSString stringWithFormat:@"%@=%@", keyPath, value == [NSNull null] ? @"nil" : value]];
+    [_changes addObject:[NSString stringWithFormat:@"%@=%@", keyPath,
+        value == [NSNull null] ? @"nil" : [value isKindOfClass:[NSNumber class]] && ![keyPath isEqual:@"loading"] ? [NSString stringWithFormat:@"%g", [value doubleValue]] : value]];
 }
 @end
 
@@ -492,6 +493,10 @@ static NSMutableArray<NSString *> *gBackendCalls;
 static void testBackendSeam(void) {
     gBackendCalls = [NSMutableArray new];
     [WKWebView _setBackendClass:[FakeBackend class]];
+    NSURL *URL = [NSURL URLWithString:@"https://example.invalid/ok"];
+    // The view's last reference must go when the pool ends: temporaries autoreleased by the
+    // checks below (weak property loads) die with this pool, not the caller's.
+    @autoreleasepool {
     WKWebViewConfiguration *config = [WKWebViewConfiguration new];
     MessageHandler *handler = [MessageHandler new];
     [config.userContentController addScriptMessageHandler:handler name:@"native"];
@@ -500,7 +505,6 @@ static void testBackendSeam(void) {
 
     Recorder *delegate = [Recorder new];
     view.navigationDelegate = delegate;
-    NSURL *URL = [NSURL URLWithString:@"https://example.invalid/ok"];
     WKNavigation *navigation = [view loadRequest:[NSURLRequest requestWithURL:URL]];
     CHECK([gBackendCalls containsObject:@"start"], "the navigation is handed to the backend");
     spin(^BOOL { return delegate.events.count >= 3; }, 5);
@@ -530,8 +534,6 @@ static void testBackendSeam(void) {
     CHECK(handler.message == nil, "a message for an unregistered name is dropped");
 
     [gBackendCalls removeAllObjects];
-    @autoreleasepool {
-        view = nil;
     }
     CHECK([gBackendCalls containsObject:@"invalidate"], "releasing the view invalidates its backend");
 
