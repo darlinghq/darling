@@ -1386,7 +1386,9 @@ do_file_init(void)
 
 	launchd_system_start = runtime_get_wall_time();
 
-	if (getpid() == 1) {
+	// Without a PID namespace (the non-root mode) launchd is not process 1 but is the container's
+	// system launchd all the same.
+	if (getpid() == 1 || (getenv("DARLING_NONROOT") != NULL && strcmp(getenv("DARLING_NONROOT"), "1") == 0)) {
 		pid1_magic = true;
 	}
 

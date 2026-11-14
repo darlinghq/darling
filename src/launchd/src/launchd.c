@@ -160,7 +160,11 @@ main(int argc, char *const *argv)
 		}
 	}
 
-	if (getpid() != 1 && getppid() != 1) {
+	// Set by darlingserver when the container has no PID namespace of its own (the non-root mode), in
+	// which launchd is an ordinary child process and cannot be process 1.
+	bool no_pid_namespace = getenv("DARLING_NONROOT") != NULL && strcmp(getenv("DARLING_NONROOT"), "1") == 0;
+
+	if (getpid() != 1 && getppid() != 1 && !no_pid_namespace) {
 		fprintf(stderr, "%s: This program is not meant to be run directly.\n", getprogname());
 		exit(EXIT_FAILURE);
 	}

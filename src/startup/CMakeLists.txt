@@ -20,7 +20,7 @@ if (DARLING_ANDROID_HOST)
 	add_definitions(-DDARLING_ANDROID_HOST=1 -DDARLING_ANDROID_TMPDIR="${DARLING_ANDROID_TMPDIR}")
 endif()
 
-add_executable(darling darling.c launcher-env.c launcher-ids.c launcher-prefix.c launcher-server.c launcher-tmp.c)
+add_executable(darling darling.c launcher-env.c launcher-ids.c launcher-mode.c launcher-prefix.c launcher-server.c launcher-tmp.c)
 
 # Bionic has forkpty() and openpty() in libc and no libutil
 if (NOT DARLING_ANDROID_HOST)
@@ -98,6 +98,16 @@ add_test(NAME launcher_env COMMAND launcher_env_test)
 add_executable(launcher_tmp_test ${CMAKE_SOURCE_DIR}/tests/launcher/tmp.c launcher-tmp.c)
 target_include_directories(launcher_tmp_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME launcher_tmp COMMAND launcher_tmp_test)
+
+# the launcher's mode selection, install prefix and user name rules, and the process tree walk
+add_executable(launcher_mode_test ${CMAKE_SOURCE_DIR}/tests/launcher/mode.c launcher-mode.c launcher-server.c)
+target_include_directories(launcher_mode_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME launcher_mode COMMAND launcher_mode_test)
+
+# how the rootless launcher examines and joins the container's namespaces
+add_executable(launcher_rootless_ns_test ${CMAKE_SOURCE_DIR}/tests/launcher/rootless-ns.c launcher-server.c)
+target_include_directories(launcher_rootless_ns_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME launcher_rootless_ns COMMAND launcher_rootless_ns_test)
 
 # the setuid launcher's prefix path and socket path checks
 add_executable(launcher_prefix_test ${CMAKE_SOURCE_DIR}/tests/launcher/prefix.c launcher-prefix.c)
