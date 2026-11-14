@@ -22,6 +22,7 @@
 
 #include <CoreFoundation/CFBase.h>
 #include <CoreServices/MacTypes.h>
+#include <stdbool.h>
 #include <HIToolbox/CarbonEventsCore.h>
 
 #ifdef __cplusplus
@@ -34,8 +35,22 @@ typedef struct EventHotKeyID {
 } EventHotKeyID;
 typedef struct OpaqueEventHotKeyRef *EventHotKeyRef;
 
+enum {
+	kEventHotKeyPressed = 5,
+	kEventHotKeyReleased = 6,
+};
+
+enum {
+	typeEventHotKeyID = 'hkid',
+};
+
+enum {
+	kEventHotKeyNoOptions = 0,
+	kEventHotKeyExclusive = 1 << 0,
+};
+
 EventTargetRef GetApplicationEventTarget(void);
-OSStatus GetEventDispatcherTarget();
+EventTargetRef GetEventDispatcherTarget(void);
 
 OSStatus ProcessHICommand(const HICommand * a);
 

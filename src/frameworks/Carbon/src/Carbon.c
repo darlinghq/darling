@@ -44,18 +44,6 @@ void FlushEvents(EventMask a, EventMask b)
     if (verbose) puts("STUB: FlushEvents called");
 }
 
-EventTargetRef GetApplicationEventTarget(void)
-{
-    if (verbose) puts("STUB: GetApplicationEventTarget called");
-	return (EventTargetRef)0;
-}
-
-OSStatus GetEventDispatcherTarget()
-{
-    if (verbose) puts("STUB: GetEventDispatcherTarget called");
-	return 0;
-}
-
 OSStatus GetScrapByName(CFStringRef a, OptionBits b, ScrapRef * c)
 {
     if (verbose) puts("STUB: GetScrapByName called");
@@ -119,12 +107,6 @@ OSStatus RunStandardAlert(DialogRef a, ModalFilterUPP b, DialogItemIndex * c)
 OSStatus SetEventMask(EventMask a)
 {
     if (verbose) puts("STUB: SetEventMask called");
-	return 0;
-}
-
-OSStatus SetEventParameter(EventRef a, EventParamName b, EventParamType c, UInt32 d, const void * e)
-{
-    if (verbose) puts("STUB: SetEventParameter called");
 	return 0;
 }
 

@@ -1587,6 +1587,36 @@ void* CGSInputButtonState(void) {
 	return NULL;
 };
 
+void* CGSSetHotKeyWithExclusion(void) {
+	if (verbose) LOG_FUNC("STUB: CGSSetHotKeyWithExclusion called\n");
+	return NULL;
+};
+
+void* CGSSetHotKey(void) {
+	if (verbose) LOG_FUNC("STUB: CGSSetHotKey called\n");
+	return NULL;
+};
+
+void* CGSGetHotKey(void) {
+	if (verbose) LOG_FUNC("STUB: CGSGetHotKey called\n");
+	return NULL;
+};
+
+void* CGSRemoveHotKey(void) {
+	if (verbose) LOG_FUNC("STUB: CGSRemoveHotKey called\n");
+	return NULL;
+};
+
+void* CGSIsHotKeyEnabled(void) {
+	if (verbose) LOG_FUNC("STUB: CGSIsHotKeyEnabled called\n");
+	return NULL;
+};
+
+void* CGSSetHotKeyEnabled(void) {
+	if (verbose) LOG_FUNC("STUB: CGSSetHotKeyEnabled called\n");
+	return NULL;
+};
+
 void* CGSMainConnectionID(void) {
 	if (verbose) LOG_FUNC("STUB: CGSMainConnectionID called\n");
 	return NULL;
