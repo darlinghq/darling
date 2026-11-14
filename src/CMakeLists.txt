@@ -501,6 +501,7 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 	add_subdirectory(MobileKeyBag)
 	# launchd's event monitor; needs CoreServices (FSEvents)
 	add_subdirectory(eventmonitor)
+	add_subdirectory(usernoted)
 endif()
 
 if (COMPONENT_iokitd)

@@ -1,5 +1,9 @@
 project(UserNotifications)
 
+include_directories(
+	${CMAKE_SOURCE_DIR}/src/usernoted
+)
+
 remove_sdk_framework(UserNotifications)
 
 set(DYLIB_COMPAT_VERSION "1.0.0")

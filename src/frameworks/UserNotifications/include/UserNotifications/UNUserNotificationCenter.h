@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2021 Lubos Dolezel
+ Copyright (C) 2026 Darling developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -23,7 +24,7 @@
 #import <Foundation/Foundation.h>
 
 @protocol UNUserNotificationCenterDelegate;
-@class UNNotificationSettings, UNNotificationRequest, UNNotificationCategory;
+@class UNNotificationSettings, UNNotificationRequest, UNNotificationCategory, UNNotification, UNNotificationResponse;
 
 typedef NS_OPTIONS(NSUInteger, UNAuthorizationOptions) {
     UNAuthorizationOptionBadge = (1 << 0),
@@ -35,6 +36,29 @@ typedef NS_OPTIONS(NSUInteger, UNAuthorizationOptions) {
     UNAuthorizationOptionProvisional = (1 << 6),
     UNAuthorizationOptionAnnouncement = (1 << 7)
 };
+
+typedef NS_OPTIONS(NSUInteger, UNNotificationPresentationOptions) {
+    UNNotificationPresentationOptionNone = 0,
+    UNNotificationPresentationOptionBadge = (1 << 0),
+    UNNotificationPresentationOptionSound = (1 << 1),
+    UNNotificationPresentationOptionAlert = (1 << 2),
+    UNNotificationPresentationOptionList = (1 << 3),
+    UNNotificationPresentationOptionBanner = (1 << 4)
+};
+
+@protocol UNUserNotificationCenterDelegate <NSObject>
+@optional
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+       willPresentNotification:(UNNotification *)notification
+         withCompletionHandler:(void (^)(UNNotificationPresentationOptions options))completionHandler;
+
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+didReceiveNotificationResponse:(UNNotificationResponse *)response
+         withCompletionHandler:(void (^)(void))completionHandler;
+
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+   openSettingsForNotification:(nullable UNNotification *)notification;
+@end
 
 @interface UNUserNotificationCenter : NSObject {
     id<UNUserNotificationCenterDelegate> _delegate;
@@ -51,9 +75,14 @@ typedef NS_OPTIONS(NSUInteger, UNAuthorizationOptions) {
 - (void) getNotificationSettingsWithCompletionHandler: (void (^)(UNNotificationSettings *settings)) completionHandler;
 
 - (void) addNotificationRequest: (UNNotificationRequest *) request
-          withCompletionHandler: (void (^)(NSError *error)) completionHandler;
+           withCompletionHandler: (void (^)(NSError *error)) completionHandler;
 
+- (void) getPendingNotificationRequestsWithCompletionHandler: (void (^)(NSArray<UNNotificationRequest *> *requests)) completionHandler;
+- (void) removePendingNotificationRequestsWithIdentifiers: (NSArray<NSString *> *) identifiers;
 - (void) removeAllPendingNotificationRequests;
+
+- (void) getDeliveredNotificationsWithCompletionHandler: (void (^)(NSArray<UNNotification *> *notifications)) completionHandler;
+- (void) removeDeliveredNotificationsWithIdentifiers: (NSArray<NSString *> *) identifiers;
 - (void) removeAllDeliveredNotifications;
 
 - (void) setNotificationCategories: (NSSet<UNNotificationCategory *> *) categories;

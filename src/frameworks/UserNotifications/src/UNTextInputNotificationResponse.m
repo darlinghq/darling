@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2021 Lubos Dolezel
+ Copyright (C) 2026 Darling developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,28 +19,51 @@
 */
 
 #import <UserNotifications/UNTextInputNotificationResponse.h>
-#import <darling-stub-forwarding.h>
 
 @implementation UNTextInputNotificationResponse
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+@synthesize userText = _userText;
+
++ (BOOL)supportsSecureCoding
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return YES;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
++ (instancetype)responseWithNotification:(UNNotification *)notification actionIdentifier:(NSString *)actionIdentifier userText:(nullable NSString *)userText
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    UNTextInputNotificationResponse *response = [[[self alloc] init] autorelease];
+    response->_notification = [notification copy];
+    response->_actionIdentifier = [actionIdentifier copy];
+    response->_userText = [userText copy];
+    return response;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (void)dealloc
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    [_userText release];
+    [super dealloc];
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (id)copyWithZone:(NSZone *)zone
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    UNTextInputNotificationResponse *copy = [super copyWithZone:zone];
+    copy->_userText = [self.userText copyWithZone:zone];
+    return copy;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [super encodeWithCoder:coder];
+    [coder encodeObject:_userText forKey:@"userText"];
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super initWithCoder:coder];
+    if (self) {
+        _userText = [[coder decodeObjectOfClass:[NSString class] forKey:@"userText"] copy];
+    }
+    return self;
 }
 
 @end

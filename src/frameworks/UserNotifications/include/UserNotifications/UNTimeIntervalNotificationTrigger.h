@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2021 Lubos Dolezel
+ Copyright (C) 2026 Darling developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +18,21 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef _USERNOTIFICATIONS_UNTIMEINTERVALNOTIFICATIONTRIGGER_H_
+#define _USERNOTIFICATIONS_UNTIMEINTERVALNOTIFICATIONTRIGGER_H_
 
-@interface UNTimeIntervalNotificationTrigger : NSObject
+#import <UserNotifications/UNNotificationTrigger.h>
+
+@interface UNTimeIntervalNotificationTrigger : UNNotificationTrigger {
+    NSTimeInterval _timeInterval;
+}
+
++ (instancetype)triggerWithTimeInterval:(NSTimeInterval)timeInterval repeats:(BOOL)repeats;
+
+@property(readonly) NSTimeInterval timeInterval;
+
+- (nullable NSDate *)nextTriggerDate;
 
 @end
+
+#endif

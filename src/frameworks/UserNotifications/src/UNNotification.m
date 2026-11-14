@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2021 Lubos Dolezel
+ Copyright (C) 2026 Darling developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,31 +19,54 @@
 */
 
 #import <UserNotifications/UNNotification.h>
-#import <darling-stub-forwarding.h>
-
-NSString* const UNNotificationDefaultActionIdentifier = @"UNNotificationDefaultActionIdentifier";
-NSString* const UNNotificationDismissActionIdentifier = @"UNNotificationDismissActionIdentifier";
 
 @implementation UNNotification
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+@synthesize date = _date;
+@synthesize request = _request;
+
++ (BOOL)supportsSecureCoding
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return YES;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
++ (instancetype)notificationWithRequest:(UNNotificationRequest *)request date:(NSDate *)date
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    UNNotification *notification = [[[self alloc] init] autorelease];
+    notification->_request = [request copy];
+    notification->_date = date ? [date copy] : [[NSDate date] copy];
+    return notification;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (void)dealloc
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    [_date release];
+    [_request release];
+    [super dealloc];
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (id)copyWithZone:(NSZone *)zone
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    UNNotification *copy = [[[self class] allocWithZone:zone] init];
+    copy->_date = [self.date copyWithZone:zone];
+    copy->_request = [self.request copyWithZone:zone];
+    return copy;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeObject:_date forKey:@"date"];
+    [coder encodeObject:_request forKey:@"request"];
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super init];
+    if (self) {
+        _date = [[coder decodeObjectOfClass:[NSDate class] forKey:@"date"] copy];
+        _request = [[coder decodeObjectOfClass:[UNNotificationRequest class] forKey:@"request"] copy];
+    }
+    return self;
 }
 
 @end

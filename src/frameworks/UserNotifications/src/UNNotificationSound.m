@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2021 Lubos Dolezel
+ Copyright (C) 2026 Darling developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,28 +19,87 @@
 */
 
 #import <UserNotifications/UNNotificationSound.h>
-#import <darling-stub-forwarding.h>
 
 @implementation UNNotificationSound
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+@synthesize soundName = _soundName;
+@synthesize audioVolume = _audioVolume;
+@synthesize critical = _critical;
+
++ (BOOL)supportsSecureCoding
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return YES;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
++ (instancetype)defaultSound
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    return [self soundNamed:nil];
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
++ (instancetype)defaultCriticalSound
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return [self criticalSoundNamed:nil withAudioVolume:1.0f];
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
++ (instancetype)defaultCriticalSoundWithAudioVolume:(float)volume
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    return [self criticalSoundNamed:nil withAudioVolume:volume];
+}
+
++ (instancetype)soundNamed:(UNNotificationSoundName)name
+{
+    UNNotificationSound *sound = [[[self alloc] init] autorelease];
+    sound->_soundName = [name copy];
+    sound->_audioVolume = 1.0f;
+    sound->_critical = NO;
+    return sound;
+}
+
++ (instancetype)criticalSoundNamed:(UNNotificationSoundName)name
+{
+    return [self criticalSoundNamed:name withAudioVolume:1.0f];
+}
+
++ (instancetype)criticalSoundNamed:(UNNotificationSoundName)name withAudioVolume:(float)volume
+{
+    UNNotificationSound *sound = [[[self alloc] init] autorelease];
+    sound->_soundName = [name copy];
+    sound->_audioVolume = volume;
+    sound->_critical = YES;
+    return sound;
+}
+
+- (void)dealloc
+{
+    [_soundName release];
+    [super dealloc];
+}
+
+- (id)copyWithZone:(NSZone *)zone
+{
+    UNNotificationSound *copy = [[[self class] allocWithZone:zone] init];
+    copy->_soundName = [self.soundName copyWithZone:zone];
+    copy->_audioVolume = self.audioVolume;
+    copy->_critical = self.critical;
+    return copy;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeObject:_soundName forKey:@"soundName"];
+    [coder encodeFloat:_audioVolume forKey:@"audioVolume"];
+    [coder encodeBool:_critical forKey:@"critical"];
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super init];
+    if (self) {
+        _soundName = [[coder decodeObjectOfClass:[NSString class] forKey:@"soundName"] copy];
+        _audioVolume = [coder decodeFloatForKey:@"audioVolume"];
+        _critical = [coder decodeBoolForKey:@"critical"];
+    }
+    return self;
 }
 
 @end
