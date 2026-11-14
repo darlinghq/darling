@@ -37,7 +37,16 @@ add_executable(mldr ${mldr_sources})
 target_compile_options(mldr PRIVATE -pthread)
 target_link_options(mldr PRIVATE -pthread)
 
-target_link_libraries(mldr PRIVATE -lrt -ldl mldr_dserver_rpc -lm)
+if (DARLING_ANDROID_HOST)
+	# Bionic has no separate librt; its POSIX semaphores come from a separate library where it is provided.
+	find_library(ANDROID_POSIX_SEMAPHORE_LIB android-posix-semaphore)
+	target_link_libraries(mldr PRIVATE -ldl mldr_dserver_rpc -lm)
+	if (ANDROID_POSIX_SEMAPHORE_LIB)
+		target_link_libraries(mldr PRIVATE ${ANDROID_POSIX_SEMAPHORE_LIB})
+	endif()
+else()
+	target_link_libraries(mldr PRIVATE -lrt -ldl mldr_dserver_rpc -lm)
+endif()
 
 install(TARGETS mldr DESTINATION libexec/darling/usr/libexec/darling)
 install(PROGRAMS $<TARGET_FILE:mldr> DESTINATION libexec/darling/bin)
