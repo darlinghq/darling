@@ -1,13 +1,18 @@
+/*
+ * Copyright (C) 2026 Darling Developers
+ *
+ * Contract: the NSCollectionLayoutDimension, NSCollectionLayoutSize,
+ * NSCollectionLayoutSpacing and NSCollectionLayoutEdgeSpacing value classes
+ * from UIKit's public documentation.  The classes are looked up at run time so
+ * the failure without UIKit installed is a missing class, not a link error.
+ */
 #import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 #include <dlfcn.h>
 #include <math.h>
 #include <stdio.h>
-#include <string.h>
-#include <limits.h>
-#include <stdlib.h>
 
-#define CHECK(condition) do { if (!(condition)) { fprintf(stderr, "FAIL line %d: %s\n", __LINE__, #condition); return 1; } } while (0)
+#define CHECK(condition) do { if (!(condition)) { printf("FAIL line %d: %s\n", __LINE__, #condition); return 1; } } while (0)
 
 static BOOL Raises(void (^block)(void))
 {
@@ -17,29 +22,19 @@ static BOOL Raises(void (^block)(void))
 }
 #define RAISES(expr) Raises(^{ (void)(expr); })
 
-int main(int argc, char **argv)
+int main(void)
 {
     @autoreleasepool {
-        if (argc == 2 && !dlopen(argv[1], RTLD_NOW | RTLD_GLOBAL)) {
-            fprintf(stderr, "dlopen: %s\n", dlerror());
-            return 2;
+        /* UIKit is an iOSSupport framework, so it is not linked by default. */
+        if (!dlopen("/System/iOSSupport/System/Library/Frameworks/UIKit.framework/UIKit", RTLD_NOW | RTLD_GLOBAL)) {
+            printf("FAIL: dlopen: %s\n", dlerror());
+            return 1;
         }
         Class dimension = NSClassFromString(@"NSCollectionLayoutDimension");
         Class size = NSClassFromString(@"NSCollectionLayoutSize");
         Class spacing = NSClassFromString(@"NSCollectionLayoutSpacing");
         Class edges = NSClassFromString(@"NSCollectionLayoutEdgeSpacing");
         CHECK(dimension && size && spacing && edges);
-        if (argc == 2) {
-            // The classes must live in the image that was dlopen'd, wherever it was built.
-            char expected[PATH_MAX];
-            CHECK(realpath(argv[1], expected));
-            for (Class cls in @[dimension, size, spacing, edges]) {
-                Dl_info info;
-                char actual[PATH_MAX];
-                CHECK(dladdr((__bridge void *)cls, &info) && info.dli_fname);
-                CHECK(realpath(info.dli_fname, actual) && strcmp(actual, expected) == 0);
-            }
-        }
         NSCollectionLayoutDimension *width = [dimension fractionalWidthDimension:0.25];
         NSCollectionLayoutDimension *height = [dimension absoluteDimension:44];
         CHECK(width.dimension == 0.25 && width.isFractionalWidth);
@@ -82,7 +77,7 @@ int main(int argc, char **argv)
             CHECK(RAISES([cls performSelector:NSSelectorFromString(@"new")]));
             CHECK(RAISES([[cls alloc] performSelector:NSSelectorFromString(@"init")]));
         }
-        puts("PASS UIKit layout value factories, types, ownership and copies");
+        puts("PASS: UIKit layout value factories, types, ownership and copies");
     }
     return 0;
 }

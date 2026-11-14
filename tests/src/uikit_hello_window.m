@@ -56,7 +56,7 @@
 	       label.frame.origin.x, label.frame.origin.y);
 
 	/* Bounded run: proves the run loop delivered the callback, then exits. */
-	[NSTimer scheduledTimerWithTimeInterval:20.0
+	[NSTimer scheduledTimerWithTimeInterval:2.0
 	                                 target:self
 	                               selector:@selector(finishFixture:)
 	                               userInfo:nil
