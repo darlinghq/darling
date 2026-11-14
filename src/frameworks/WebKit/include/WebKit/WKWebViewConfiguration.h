@@ -1,24 +1,39 @@
 /*
- This file is part of Darling.
-
- Copyright (C) 2017 Lubos Dolezel
-
- Darling is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
-
- Darling is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ Copyright (C) 2026 Lubos Dolezel
+ Darling is free software under the GNU GPL version 3 or later.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <WebKit/WKPreferences.h>
+#import <WebKit/WKProcessPool.h>
+#import <WebKit/WKURLSchemeHandler.h>
+#import <WebKit/WKUserContentController.h>
+#import <WebKit/WKWebsiteDataStore.h>
 
-@interface WKWebViewConfiguration : NSObject
+NS_ASSUME_NONNULL_BEGIN
+
+typedef NS_OPTIONS(NSUInteger, WKAudiovisualMediaTypes) {
+    WKAudiovisualMediaTypeNone = 0,
+    WKAudiovisualMediaTypeAudio = 1 << 0,
+    WKAudiovisualMediaTypeVideo = 1 << 1,
+    WKAudiovisualMediaTypeAll = NSUIntegerMax
+};
+
+@interface WKWebViewConfiguration : NSObject <NSCopying>
+
+@property (nonatomic, strong) WKProcessPool *processPool;
+@property (nonatomic, strong) WKPreferences *preferences;
+@property (nonatomic, strong) WKUserContentController *userContentController;
+@property (nonatomic, strong) WKWebsiteDataStore *websiteDataStore;
+@property (nonatomic) BOOL suppressesIncrementalRendering;
+@property (nullable, nonatomic, copy) NSString *applicationNameForUserAgent;
+@property (nonatomic) BOOL allowsAirPlayForMediaPlayback;
+@property (nonatomic) WKAudiovisualMediaTypes mediaTypesRequiringUserActionForPlayback;
+@property (nonatomic) BOOL limitsNavigationsToAppBoundDomains;
+
+- (void)setURLSchemeHandler:(nullable id <WKURLSchemeHandler>)urlSchemeHandler forURLScheme:(NSString *)urlScheme;
+- (nullable id <WKURLSchemeHandler>)urlSchemeHandlerForURLScheme:(NSString *)urlScheme;
 
 @end
+
+NS_ASSUME_NONNULL_END

@@ -97,6 +97,7 @@ add_framework(WebKit
         src/WKDOMRange.m
         src/WKDOMText.m
         src/WKDOMTextIterator.m
+        src/WKError.m
         src/WKFrameInfo.m
         src/WKFullKeyboardAccessWatcher.m
         src/WKFullScreenWindowController.m
@@ -161,6 +162,7 @@ add_framework(WebKit
         src/WKWebProcessPlugInScriptWorld.m
         src/WKWebsiteDataRecord.m
         src/WKWebsiteDataStore.m
+        src/WKUnavailableWebViewBackend.m
         src/WKWebView.m
         src/WKWebViewConfiguration.m
         src/WKWindowFeatures.m
@@ -170,4 +172,19 @@ add_framework(WebKit
         objc
         Foundation
         CFNetwork
+        AppKit
+)
+
+# The web view classes are written with ARC.
+set_source_files_properties(
+    src/WKNavigation.m
+    src/WKPreferences.m
+    src/WKScriptMessage.m
+    src/WKUnavailableWebViewBackend.m
+    src/WKUserContentController.m
+    src/WKUserScript.m
+    src/WKWebView.m
+    src/WKWebViewConfiguration.m
+    src/WKWebsiteDataStore.m
+    PROPERTIES COMPILE_FLAGS "-fobjc-arc"
 )
