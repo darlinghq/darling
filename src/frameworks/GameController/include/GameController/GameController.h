@@ -26,6 +26,7 @@
 #import <GameController/CBCentralManagerDelegate.h>
 #import <GameController/CBPeripheralDelegate.h>
 #import <GameController/DigitizerValueChangedDelegate.h>
+#import <GameController/GCDeviceHaptics.h>
 #import <GameController/GCNamedProfile.h>
 #import <GameController/GameControllerClientProtocol.h>
 #import <GameController/GameControllerDaemon.h>

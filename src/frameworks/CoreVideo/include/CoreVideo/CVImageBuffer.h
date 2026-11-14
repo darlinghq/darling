@@ -25,6 +25,7 @@ extern const CFStringRef kCVImageBufferGammaLevelKey;
 extern const CFStringRef kCVImageBufferYCbCrMatrixKey;
 extern const CFStringRef kCVImageBufferColorPrimariesKey;
 extern const CFStringRef kCVImageBufferTransferFunctionKey;
+extern const CFStringRef kCVImageBufferAmbientViewingEnvironmentKey;
 
 extern const CFStringRef kCVImageBufferCGColorSpaceKey;
 

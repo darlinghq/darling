@@ -79,5 +79,9 @@ extern CFStringRef const kVTProfileLevel_H264_Main_5_1;
 extern CFStringRef const kVTProfileLevel_H264_Main_5_2;
 
 extern CFStringRef const kVTEncodeFrameOptionKey_ForceKeyFrame;
+extern CFStringRef const kVTEncodeFrameOptionKey_BaseFrameQP;
+
+extern CFStringRef const kVTCompressionPropertyKey_EncoderID;
+extern CFStringRef const kVTProfileLevel_HEVC_Main_AutoLevel;
 
 #endif

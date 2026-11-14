@@ -68,6 +68,7 @@
 #import <AVFAudio/AVAudioSession.h>
 #import <AVFAudio/AVAudioSettings.h>
 #import <AVFAudio/AVVCAudioBuffer.h>
+#import <AVFAudio/AVSpeechSynthesis.h>
 #import <AVFAudio/AVAudioEnvironmentDistanceAttenuationParameters.h>
 #import <AVFAudio/AVAudioEnvironmentReverbParameters.h>
 #import <AVFAudio/AVAudioEnvironmentNode.h>
