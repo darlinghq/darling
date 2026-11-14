@@ -677,27 +677,9 @@ void* clSetEventCallback(void)
     return NULL;
 }
 
-void* clSetKernelArg(void)
-{
-    if (verbose) puts("STUB: clSetKernelArg called");
-    return NULL;
-}
-
 void* clSetKernelArgByNameAPPLE(void)
 {
     if (verbose) puts("STUB: clSetKernelArgByNameAPPLE called");
-    return NULL;
-}
-
-void* clSetKernelArgsListAPPLE(void)
-{
-    if (verbose) puts("STUB: clSetKernelArgsListAPPLE called");
-    return NULL;
-}
-
-void* clSetKernelArgsVaListAPPLE(void)
-{
-    if (verbose) puts("STUB: clSetKernelArgsVaListAPPLE called");
     return NULL;
 }
 
@@ -987,4 +969,37 @@ void* gcl_unmap(void)
 {
     if (verbose) puts("STUB: gcl_unmap called");
     return NULL;
+}
+
+cl_int clSetKernelArg(cl_kernel kernel, cl_uint arg_index, size_t arg_size, const void* arg_value)
+{
+    // No OpenCL runtime exists here, so there is no kernel an argument could
+    // be set on: the documented error for an invalid kernel.
+    (void) kernel;
+    (void) arg_index;
+    (void) arg_size;
+    (void) arg_value;
+    return CL_INVALID_KERNEL;
+}
+
+cl_int clSetKernelArgsVaListAPPLE(cl_kernel kernel, cl_uint num_args, va_list args)
+{
+    for (cl_uint i = 0; i < num_args; i++) {
+        cl_uint index = va_arg(args, cl_uint);
+        size_t size = va_arg(args, size_t);
+        const void* value = va_arg(args, const void*);
+        cl_int err = clSetKernelArg(kernel, index, size, value);
+        if (err != CL_SUCCESS)
+            return err;
+    }
+    return CL_SUCCESS;
+}
+
+cl_int clSetKernelArgsListAPPLE(cl_kernel kernel, cl_uint num_args, ...)
+{
+    va_list args;
+    va_start(args, num_args);
+    cl_int err = clSetKernelArgsVaListAPPLE(kernel, num_args, args);
+    va_end(args);
+    return err;
 }

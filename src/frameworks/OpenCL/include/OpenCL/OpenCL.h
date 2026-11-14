@@ -21,7 +21,8 @@
 #ifndef _OpenCL_H_
 #define _OpenCL_H_
 
-#import <Foundation/Foundation.h>
+#include <OpenCL/cl_platform.h>
+#include <OpenCL/cl.h>
 
 
 void* clBuildProgram(void);
@@ -132,10 +133,7 @@ void* clRetainProgram(void);
 void* clRetainSampler(void);
 void* clSetCommandQueueProperty(void);
 void* clSetEventCallback(void);
-void* clSetKernelArg(void);
 void* clSetKernelArgByNameAPPLE(void);
-void* clSetKernelArgsListAPPLE(void);
-void* clSetKernelArgsVaListAPPLE(void);
 void* clSetMemObjectDestructorAPPLE(void);
 void* clSetMemObjectDestructorCallback(void);
 void* clSetUserEventStatus(void);
