@@ -13,6 +13,7 @@ generate_sdk_framework(StoreKit
 )
 
 add_framework(StoreKit
+    IOSSUPPORT_ALIAS
     FAT
     CURRENT_VERSION
     VERSION ${FRAMEWORK_VERSION}

@@ -1,24 +1,24 @@
 /*
- This file is part of Darling.
-
- Copyright (C) 2017 Lubos Dolezel
-
- Darling is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
-
- Darling is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ Copyright (C) 2026 Lubos Dolezel
+ Darling is free software under the GNU GPL version 3 or later.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
-@protocol WKUIDelegate
+@class WKFrameInfo, WKNavigationAction, WKWebView, WKWebViewConfiguration, WKWindowFeatures;
+
+NS_ASSUME_NONNULL_BEGIN
+
+@protocol WKUIDelegate <NSObject>
+
+@optional
+
+- (nullable WKWebView *)webView:(WKWebView *)webView createWebViewWithConfiguration:(WKWebViewConfiguration *)configuration forNavigationAction:(WKNavigationAction *)navigationAction windowFeatures:(WKWindowFeatures *)windowFeatures;
+- (void)webViewDidClose:(WKWebView *)webView;
+- (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(void))completionHandler;
+- (void)webView:(WKWebView *)webView runJavaScriptConfirmPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(BOOL result))completionHandler;
+- (void)webView:(WKWebView *)webView runJavaScriptTextInputPanelWithPrompt:(NSString *)prompt defaultText:(nullable NSString *)defaultText initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSString * _Nullable result))completionHandler;
 
 @end
+
+NS_ASSUME_NONNULL_END

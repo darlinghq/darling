@@ -1,24 +1,39 @@
 /*
- This file is part of Darling.
-
- Copyright (C) 2017 Lubos Dolezel
-
- Darling is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
-
- Darling is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ Copyright (C) 2026 Lubos Dolezel
+ Darling is free software under the GNU GPL version 3 or later.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
-@protocol WKNavigationDelegate
+@class WKNavigation, WKNavigationAction, WKNavigationResponse, WKWebView;
+
+NS_ASSUME_NONNULL_BEGIN
+
+typedef NS_ENUM(NSInteger, WKNavigationActionPolicy) {
+    WKNavigationActionPolicyCancel,
+    WKNavigationActionPolicyAllow,
+};
+
+typedef NS_ENUM(NSInteger, WKNavigationResponsePolicy) {
+    WKNavigationResponsePolicyCancel,
+    WKNavigationResponsePolicyAllow,
+};
+
+@protocol WKNavigationDelegate <NSObject>
+
+@optional
+
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler;
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationResponse:(WKNavigationResponse *)navigationResponse decisionHandler:(void (^)(WKNavigationResponsePolicy))decisionHandler;
+- (void)webView:(WKWebView *)webView didStartProvisionalNavigation:(null_unspecified WKNavigation *)navigation;
+- (void)webView:(WKWebView *)webView didReceiveServerRedirectForProvisionalNavigation:(null_unspecified WKNavigation *)navigation;
+- (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(null_unspecified WKNavigation *)navigation withError:(NSError *)error;
+- (void)webView:(WKWebView *)webView didCommitNavigation:(null_unspecified WKNavigation *)navigation;
+- (void)webView:(WKWebView *)webView didFinishNavigation:(null_unspecified WKNavigation *)navigation;
+- (void)webView:(WKWebView *)webView didFailNavigation:(null_unspecified WKNavigation *)navigation withError:(NSError *)error;
+- (void)webView:(WKWebView *)webView didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential * _Nullable credential))completionHandler;
+- (void)webViewWebContentProcessDidTerminate:(WKWebView *)webView;
 
 @end
+
+NS_ASSUME_NONNULL_END

@@ -13,6 +13,7 @@ generate_sdk_framework(PDFKit
 )
 
 add_framework(PDFKit
+    IOSSUPPORT_ALIAS
     FAT
     CURRENT_VERSION
     VERSION ${FRAMEWORK_VERSION}

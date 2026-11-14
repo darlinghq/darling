@@ -53,6 +53,15 @@
 #define PAGE_SIZE ((size_t) sysconf(_SC_PAGESIZE))
 #define PAGE_ALIGN(x) (x & ~(PAGE_SIZE-1))
 
+#if defined(__aarch64__)
+// The thread-pointer-relative TSD slot offset mldr's elfcalls provide.
+#define TEST_TSD_SLOT_OFFSET 64
+uintptr_t __darling_arm64_tsd_slot_offset(void)
+{
+	return TEST_TSD_SLOT_OFFSET;
+}
+#endif
+
 static int code_signing_gate(int fd, uint64_t image_offset, struct load_results* lr)
 {
 	(void) image_offset; (void) lr;
@@ -360,6 +369,85 @@ static void test_low_slots(void)
 }
 #endif
 
+#if defined(__aarch64__)
+// The Darwin TSD base read pair (mrs Xn, TPIDRRO_EL0; and Xn, Xn, #~7) in an
+// instruction section is rewritten to read the native TLS slot; the same words
+// in a data section, and a lone CPU number read, are left alone; the code pages
+// are executable and not writable afterwards.
+static void test_tsd_reads(void)
+{
+	const uint32_t mrs_ro = 0xD53BD068u; // mrs x8, TPIDRRO_EL0
+	const uint32_t and_not7 = 0x927DF108u; // and x8, x8, #~7
+	const uint32_t mrs_el0 = 0xD53BD048u; // mrs x8, TPIDR_EL0
+	const uint32_t ldr_slot = 0xF9400108u | ((TEST_TSD_SLOT_OFFSET / 8) << 10); // ldr x8, [x8, #slot]
+	const uint32_t and7 = 0x92400908u; // and x8, x8, #7 (CPU number)
+
+	struct fixture f;
+	fixture_init(&f, MH_EXECUTE, MH_PIE, UNIT);
+	struct segment_command_64* seg = (struct segment_command_64*) (f.bytes + f.cmd_offset);
+	seg->cmd = LC_SEGMENT_64;
+	seg->cmdsize = sizeof(*seg) + 2 * sizeof(struct section_64);
+	strncpy(seg->segname, "__TEXT", sizeof(seg->segname));
+	seg->vmaddr = IMAGE_BASE;
+	seg->vmsize = UNIT;
+	seg->filesize = UNIT;
+	seg->maxprot = seg->initprot = VM_PROT_READ | VM_PROT_EXECUTE;
+	seg->nsects = 2;
+	struct section_64* sect = (struct section_64*) (seg + 1);
+	strncpy(sect[0].sectname, "__text", sizeof(sect[0].sectname));
+	strncpy(sect[0].segname, "__TEXT", sizeof(sect[0].segname));
+	sect[0].addr = IMAGE_BASE + 0x1000;
+	sect[0].size = 0x10;
+	sect[0].offset = 0x1000;
+	sect[0].flags = S_REGULAR | S_ATTR_PURE_INSTRUCTIONS | S_ATTR_SOME_INSTRUCTIONS;
+	strncpy(sect[1].sectname, "__const", sizeof(sect[1].sectname));
+	strncpy(sect[1].segname, "__TEXT", sizeof(sect[1].segname));
+	sect[1].addr = IMAGE_BASE + 0x2000;
+	sect[1].size = 0x10;
+	sect[1].offset = 0x2000;
+	sect[1].flags = S_REGULAR;
+	f.cmd_offset += seg->cmdsize;
+	f.header->ncmds++;
+	f.header->sizeofcmds += seg->cmdsize;
+
+	uint32_t* text = (uint32_t*) (f.bytes + 0x1000);
+	text[0] = mrs_ro; text[1] = and_not7; text[2] = mrs_ro; text[3] = and7;
+	uint32_t* data = (uint32_t*) (f.bytes + 0x2000);
+	data[0] = mrs_ro; data[1] = and_not7; data[2] = mrs_ro; data[3] = and7;
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	load64(fd, false, &lr);
+	const uintptr_t slide = lr.mh - IMAGE_BASE;
+	const uint32_t* t = (const uint32_t*) (IMAGE_BASE + 0x1000 + slide);
+	const uint32_t* d = (const uint32_t*) (IMAGE_BASE + 0x2000 + slide);
+
+	check(t[0] == mrs_el0 && t[1] == ldr_slot, "tsd reads: the pair in an instruction section reads the native TLS slot");
+	check(t[2] == mrs_ro && t[3] == and7, "tsd reads: a CPU number read is left alone");
+	check(d[0] == mrs_ro && d[1] == and_not7, "tsd reads: the same words in a data section are left alone");
+
+	// the code pages are r-x
+	char line[256];
+	bool found = false, exec_only = false;
+	FILE* maps = fopen("/proc/self/maps", "r");
+	while (maps && fgets(line, sizeof(line), maps)) {
+		unsigned long lo, hi;
+		char perms[8];
+		if (sscanf(line, "%lx-%lx %7s", &lo, &hi, perms) == 3 && lo <= (uintptr_t) t && (uintptr_t) t < hi) {
+			found = true;
+			exec_only = strncmp(perms, "r-x", 3) == 0;
+		}
+	}
+	if (maps)
+		fclose(maps);
+	check(found && exec_only, "tsd reads: the rewritten page is readable and executable, not writable");
+
+	close(fd);
+	free(f.bytes);
+}
+
+#endif
+
 static void run_expect(void (*test)(void), const char* name, int expected_status)
 {
 	fflush(stdout);
@@ -408,6 +496,7 @@ int main(void)
 	thread_case = THREAD_LONG_COUNT;
 	run_expect(test_unixthread, "unixthread count past the command refused", 1);
 	run(test_low_slots, "low slots");
+	run(test_tsd_reads, "tsd reads");
 #endif
 	return failures ? 1 : 0;
 }
