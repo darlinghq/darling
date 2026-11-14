@@ -110,6 +110,25 @@ enum launcher_server_check launcherOpenServerMountNs(int procfd, const struct st
 	return LAUNCHER_SERVER_OK;
 }
 
+int launcherServerRunsInMode(int procfd, enum launcher_mode mode,
+	const struct stat* userNs, const struct stat* mntNs)
+{
+	struct stat serverUserNs, serverMntNs;
+	bool sameUser, sameMnt;
+
+	if (mode != LAUNCHER_MODE_ROOTLESS && mode != LAUNCHER_MODE_NONROOT)
+		return 1;
+
+	if (fstatat(procfd, "ns/user", &serverUserNs, 0) != 0 || fstatat(procfd, "ns/mnt", &serverMntNs, 0) != 0)
+		return -1;
+	sameUser = sameFile(&serverUserNs, userNs);
+	sameMnt = sameFile(&serverMntNs, mntNs);
+
+	if (mode == LAUNCHER_MODE_ROOTLESS)
+		return sameUser ? 0 : 1;
+	return (sameUser && sameMnt) ? 1 : 0;
+}
+
 enum launcher_server_check launcherOpenRootlessNamespaces(int procfd, const struct stat* exe, const struct stat* userNs,
 	const struct stat* mntNs, int* userfd, int* mntfd)
 {

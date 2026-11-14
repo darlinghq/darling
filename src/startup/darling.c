@@ -65,6 +65,7 @@ bool g_fixPermissions = false;
 char g_workingDirectory[4096];
 static struct launcher_ids g_invokingIds;
 static enum launcher_mode g_mode = LAUNCHER_MODE_ROOT;
+static void refuseContainerOfAnotherMode(pid_t pid);
 
 // Where the installation is: compiled in for the root mode, and for the unprivileged
 // modes wherever this executable lives (see launcherInstallPrefix()).
@@ -471,6 +472,11 @@ int main(int argc, char ** argv)
 		}
 	}
 
+	// A container belongs to the mode that started it. Talking to the shellspawn of one started in
+	// another mode would give a shell with the wrong ids and mounts, so refuse and ask to stop it.
+	if (!privilegedMode())
+		refuseContainerOfAnotherMode(pidInit);
+
 #if USE_LINUX_4_11_HACK
 	// The root mode joins the container's mount namespace as root. The rootless mode joins the user
 	// namespace it made and the mount namespace in it, as the user who owns them: the overlay is mounted
@@ -521,6 +527,46 @@ int main(int argc, char ** argv)
 	}
 
 	return 0;
+}
+
+// Exits unless the running container (the darlingserver pid) was started in the launcher's own
+// unprivileged mode, as launcherServerRunsInMode() judges from its namespaces.
+static void refuseContainerOfAnotherMode(pid_t pid)
+{
+	struct stat userNs, mntNs;
+	char procPath[64];
+	int procfd, matches;
+
+	if (stat("/proc/self/ns/user", &userNs) != 0 || stat("/proc/self/ns/mnt", &mntNs) != 0)
+	{
+		fprintf(stderr, "Cannot examine this process's namespaces: %s\n", strerror(errno));
+		exit(1);
+	}
+
+	snprintf(procPath, sizeof(procPath), "/proc/%d", (int) pid);
+	procfd = open(procPath, O_PATH | O_DIRECTORY | O_CLOEXEC);
+	if (procfd < 0)
+	{
+		fprintf(stderr, "The Darling container (process %d) exited. Try again.\n", (int) pid);
+		exit(1);
+	}
+	matches = launcherServerRunsInMode(procfd, g_mode, &userNs, &mntNs);
+	close(procfd);
+
+	if (matches < 0)
+	{
+		if (errno == ENOENT || errno == ESRCH)
+			fprintf(stderr, "The Darling container (process %d) exited. Try again.\n", (int) pid);
+		else
+			fprintf(stderr, "Cannot examine the Darling container (process %d): %s\n", (int) pid, strerror(errno));
+		exit(1);
+	}
+	if (matches == 0)
+	{
+		fprintf(stderr, "The Darling container of %s (process %d) was started in another mode (as root, rootless or non-root)\n"
+			"than this command runs in. Run 'darling shutdown' as the user who started it, then try again.\n", prefix, (int) pid);
+		exit(1);
+	}
 }
 
 // For "darling exec <program>" and "darling <program>", replaces the program argument with the guest
