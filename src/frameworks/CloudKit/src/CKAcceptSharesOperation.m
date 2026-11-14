@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,24 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CloudKit/CKAcceptSharesOperation.h>
-#import <darling-stub-forwarding.h>
+#import "CKInternal.h"
 
 @implementation CKAcceptSharesOperation
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+@synthesize shareMetadatas = _shareMetadatas;
+@synthesize perShareCompletionBlock = _perShareCompletionBlock;
+@synthesize acceptSharesCompletionBlock = _acceptSharesCompletionBlock;
+
+- (instancetype)initWithShareMetadatas:(NSArray<CKShareMetadata *> *)shareMetadatas
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    if ((self = [super init]))
+        _shareMetadatas = [shareMetadatas copy];
+    return self;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (void)_performWithError:(NSError *)error
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    if (_acceptSharesCompletionBlock)
+        _acceptSharesCompletionBlock(error);
 }
-
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
-}
-
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
-}
-
 @end

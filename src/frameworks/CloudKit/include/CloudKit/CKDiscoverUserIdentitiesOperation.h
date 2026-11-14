@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,28 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CloudKit/CKDefines.h>
+#import <CloudKit/CKOperation.h>
+#import <CloudKit/CKUserIdentity.h>
+#import <CloudKit/CKUserIdentityLookupInfo.h>
 
-@interface CKDiscoverUserIdentitiesOperation : NSObject
+NS_ASSUME_NONNULL_BEGIN
 
+// Finds the users that match e-mail addresses, phone numbers or user records.
+@interface CKDiscoverUserIdentitiesOperation : CKOperation {
+@private
+    NSArray<CKUserIdentityLookupInfo *> *_userIdentityLookupInfos;
+    void (^_userIdentityDiscoveredBlock)(CKUserIdentity *identity, CKUserIdentityLookupInfo *lookupInfo);
+    void (^_discoverUserIdentitiesCompletionBlock)(NSError * _Nullable operationError);
+}
+
+- (instancetype)init;
+- (instancetype)initWithUserIdentityLookupInfos:(NSArray<CKUserIdentityLookupInfo *> *)userIdentityLookupInfos;
+
+@property (nonatomic, copy) NSArray<CKUserIdentityLookupInfo *> *userIdentityLookupInfos;
+@property (nonatomic, copy, nullable) void (^userIdentityDiscoveredBlock)(CKUserIdentity *identity, CKUserIdentityLookupInfo *lookupInfo);
+@property (nonatomic, copy, nullable) void (^discoverUserIdentitiesCompletionBlock)(NSError * _Nullable operationError);
 @end
+
+NS_ASSUME_NONNULL_END

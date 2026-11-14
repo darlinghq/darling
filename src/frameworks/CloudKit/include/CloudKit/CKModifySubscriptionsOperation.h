@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,26 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CloudKit/CKDefines.h>
+#import <CloudKit/CKDatabaseOperation.h>
+#import <CloudKit/CKSubscription.h>
 
-@interface CKModifySubscriptionsOperation : NSObject
+NS_ASSUME_NONNULL_BEGIN
 
+// Saves and deletes subscriptions.
+@interface CKModifySubscriptionsOperation : CKDatabaseOperation {
+@private
+    NSArray<CKSubscription *> *_subscriptionsToSave;
+    NSArray<CKSubscriptionID> *_subscriptionIDsToDelete;
+    void (^_modifySubscriptionsCompletionBlock)(NSArray<CKSubscription *> * _Nullable savedSubscriptions, NSArray<CKSubscriptionID> * _Nullable deletedSubscriptionIDs, NSError * _Nullable operationError);
+}
+
+- (instancetype)initWithSubscriptionsToSave:(nullable NSArray<CKSubscription *> *)subscriptionsToSave subscriptionIDsToDelete:(nullable NSArray<CKSubscriptionID> *)subscriptionIDsToDelete;
+
+@property (nonatomic, copy, nullable) NSArray<CKSubscription *> *subscriptionsToSave;
+@property (nonatomic, copy, nullable) NSArray<CKSubscriptionID> *subscriptionIDsToDelete NS_REFINED_FOR_SWIFT;
+@property (nonatomic, copy, nullable) void (^modifySubscriptionsCompletionBlock)(NSArray<CKSubscription *> * _Nullable savedSubscriptions, NSArray<CKSubscriptionID> * _Nullable deletedSubscriptionIDs, NSError * _Nullable operationError) NS_REFINED_FOR_SWIFT;
 @end
+
+NS_ASSUME_NONNULL_END

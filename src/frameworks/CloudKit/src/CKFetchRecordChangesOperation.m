@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,31 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CloudKit/CKFetchRecordChangesOperation.h>
-#import <darling-stub-forwarding.h>
+#import "CKInternal.h"
 
 @implementation CKFetchRecordChangesOperation
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+@synthesize recordZoneID = _recordZoneID;
+@synthesize previousServerChangeToken = _previousServerChangeToken;
+@synthesize resultsLimit = _resultsLimit;
+@synthesize desiredKeys = _desiredKeys;
+@synthesize moreComing = _moreComing;
+@synthesize recordChangedBlock = _recordChangedBlock;
+@synthesize recordWithIDWasDeletedBlock = _recordWithIDWasDeletedBlock;
+@synthesize fetchRecordChangesCompletionBlock = _fetchRecordChangesCompletionBlock;
+
+- (instancetype)initWithRecordZoneID:(CKRecordZoneID *)recordZoneID previousServerChangeToken:(CKServerChangeToken *)previousServerChangeToken
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    if ((self = [super init])) {
+        _recordZoneID = [recordZoneID copy];
+        _previousServerChangeToken = [previousServerChangeToken copy];
+    }
+    return self;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (void)_performWithError:(NSError *)error
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    if (_fetchRecordChangesCompletionBlock)
+        _fetchRecordChangesCompletionBlock(nil, nil, error);
 }
-
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
-}
-
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
-}
-
 @end

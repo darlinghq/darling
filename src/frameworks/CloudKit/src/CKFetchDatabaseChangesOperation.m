@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,36 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CloudKit/CKFetchDatabaseChangesOperation.h>
-#import <darling-stub-forwarding.h>
+#import "CKInternal.h"
 
 @implementation CKFetchDatabaseChangesOperation
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+@synthesize previousServerChangeToken = _previousServerChangeToken;
+@synthesize resultsLimit = _resultsLimit;
+@synthesize fetchAllChanges = _fetchAllChanges;
+@synthesize recordZoneWithIDChangedBlock = _recordZoneWithIDChangedBlock;
+@synthesize recordZoneWithIDWasDeletedBlock = _recordZoneWithIDWasDeletedBlock;
+@synthesize recordZoneWithIDWasPurgedBlock = _recordZoneWithIDWasPurgedBlock;
+@synthesize changeTokenUpdatedBlock = _changeTokenUpdatedBlock;
+@synthesize fetchDatabaseChangesCompletionBlock = _fetchDatabaseChangesCompletionBlock;
+
+- (instancetype)init
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    if ((self = [super init]))
+        _fetchAllChanges = YES;
+    return self;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (instancetype)initWithPreviousServerChangeToken:(CKServerChangeToken *)previousServerChangeToken
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    if ((self = [self init]))
+        _previousServerChangeToken = [previousServerChangeToken copy];
+    return self;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (void)_performWithError:(NSError *)error
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    if (_fetchDatabaseChangesCompletionBlock)
+        _fetchDatabaseChangesCompletionBlock(nil, NO, error);
 }
-
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
-}
-
 @end

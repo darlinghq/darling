@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,27 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CloudKit/CKDefines.h>
+#import <CloudKit/CKDatabaseOperation.h>
+#import <CloudKit/CKRecordZone.h>
+#import <CloudKit/CKRecordZoneID.h>
 
-@interface CKModifyRecordZonesOperation : NSObject
+NS_ASSUME_NONNULL_BEGIN
 
+// Saves and deletes record zones.
+@interface CKModifyRecordZonesOperation : CKDatabaseOperation {
+@private
+    NSArray<CKRecordZone *> *_recordZonesToSave;
+    NSArray<CKRecordZoneID *> *_recordZoneIDsToDelete;
+    void (^_modifyRecordZonesCompletionBlock)(NSArray<CKRecordZone *> * _Nullable savedRecordZones, NSArray<CKRecordZoneID *> * _Nullable deletedRecordZoneIDs, NSError * _Nullable operationError);
+}
+
+- (instancetype)initWithRecordZonesToSave:(nullable NSArray<CKRecordZone *> *)recordZonesToSave recordZoneIDsToDelete:(nullable NSArray<CKRecordZoneID *> *)recordZoneIDsToDelete;
+
+@property (nonatomic, copy, nullable) NSArray<CKRecordZone *> *recordZonesToSave;
+@property (nonatomic, copy, nullable) NSArray<CKRecordZoneID *> *recordZoneIDsToDelete;
+@property (nonatomic, copy, nullable) void (^modifyRecordZonesCompletionBlock)(NSArray<CKRecordZone *> * _Nullable savedRecordZones, NSArray<CKRecordZoneID *> * _Nullable deletedRecordZoneIDs, NSError * _Nullable operationError);
 @end
+
+NS_ASSUME_NONNULL_END

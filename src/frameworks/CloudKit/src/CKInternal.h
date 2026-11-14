@@ -20,6 +20,7 @@
 // Declarations shared by the implementation files of the public CloudKit data types. Not installed.
 
 #import <Foundation/Foundation.h>
+#import <CloudKit/CKError.h>
 #import <CloudKit/CKRecord.h>
 #import <CloudKit/CKRecordID.h>
 #import <CloudKit/CKRecordZoneID.h>
@@ -79,4 +80,55 @@ void CKValidateName(NSString *name, NSString *what);
 
 @interface CKSubscription ()
 - (instancetype)_initWithSubscriptionID:(CKSubscriptionID)subscriptionID;
+@end
+
+#import <CloudKit/CKContainer.h>
+#import <CloudKit/CKDatabase.h>
+#import <CloudKit/CKOperation.h>
+#import <CloudKit/CKDatabaseOperation.h>
+#import <CloudKit/CKFetchRecordsOperation.h>
+#import <CloudKit/CKModifyRecordsOperation.h>
+#import <CloudKit/CKQueryOperation.h>
+#import <CloudKit/CKFetchDatabaseChangesOperation.h>
+#import <CloudKit/CKFetchRecordChangesOperation.h>
+#import <CloudKit/CKFetchRecordZoneChangesConfiguration.h>
+#import <CloudKit/CKFetchRecordZoneChangesOptions.h>
+#import <CloudKit/CKFetchRecordZoneChangesOperation.h>
+#import <CloudKit/CKOperationConfiguration.h>
+#import <CloudKit/CKOperationGroup.h>
+#import <CloudKit/CKFetchRecordZonesOperation.h>
+#import <CloudKit/CKModifyRecordZonesOperation.h>
+#import <CloudKit/CKFetchSubscriptionsOperation.h>
+#import <CloudKit/CKModifySubscriptionsOperation.h>
+#import <CloudKit/CKFetchShareMetadataOperation.h>
+#import <CloudKit/CKAcceptSharesOperation.h>
+#import <CloudKit/CKFetchShareParticipantsOperation.h>
+#import <CloudKit/CKDiscoverUserIdentitiesOperation.h>
+#import <CloudKit/CKDiscoverAllUserIdentitiesOperation.h>
+
+// The error of every request that needs an iCloud account: there is none.
+static inline NSError *CKNotAuthenticatedError(void)
+{
+    return [NSError errorWithDomain:CKErrorDomain code:CKErrorNotAuthenticated
+                           userInfo:@{NSLocalizedDescriptionKey: @"No iCloud account is available to authenticate the request"}];
+}
+
+static inline NSError *CKCancelledError(void)
+{
+    return [NSError errorWithDomain:CKErrorDomain code:CKErrorOperationCancelled
+                           userInfo:@{NSLocalizedDescriptionKey: @"The operation was cancelled"}];
+}
+
+@interface CKOperation ()
+// Called once when the operation runs, with the error that ends it. Subclasses deliver it to their
+// completion blocks, with no results.
+- (void)_performWithError:(NSError *)error;
+@end
+
+@interface CKDatabase ()
+- (instancetype)_initWithContainer:(CKContainer *)container databaseScope:(CKDatabaseScope)databaseScope;
+@end
+
+@interface CKContainer ()
+- (instancetype)_initWithContainerIdentifier:(NSString *)containerIdentifier;
 @end

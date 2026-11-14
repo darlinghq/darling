@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,22 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CloudKit/CKDefines.h>
+#import <CloudKit/CKOperation.h>
+#import <CloudKit/CKUserIdentity.h>
 
-@interface CKDiscoverAllUserIdentitiesOperation : NSObject
+NS_ASSUME_NONNULL_BEGIN
 
+// Finds the people in the user's contacts who use the app.
+@interface CKDiscoverAllUserIdentitiesOperation : CKOperation {
+@private
+    void (^_userIdentityDiscoveredBlock)(CKUserIdentity *identity);
+    void (^_discoverAllUserIdentitiesCompletionBlock)(NSError * _Nullable operationError);
+}
+
+@property (nonatomic, copy, nullable) void (^userIdentityDiscoveredBlock)(CKUserIdentity *identity);
+@property (nonatomic, copy, nullable) void (^discoverAllUserIdentitiesCompletionBlock)(NSError * _Nullable operationError);
 @end
+
+NS_ASSUME_NONNULL_END

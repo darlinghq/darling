@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,22 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CloudKit/CKDefines.h>
+#import <CloudKit/CKOperation.h>
 
-@interface CKDatabaseOperation : NSObject
+NS_ASSUME_NONNULL_BEGIN
 
+@class CKDatabase;
+
+// An operation that works on one database of a container.
+@interface CKDatabaseOperation : CKOperation {
+@private
+    CKDatabase *_database;
+}
+
+// The database to run against; an operation added through a database gets that database.
+@property (nonatomic, strong, nullable) CKDatabase *database;
 @end
+
+NS_ASSUME_NONNULL_END

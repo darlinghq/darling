@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,23 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CloudKit/CKDefines.h>
+#import <CloudKit/CKServerChangeToken.h>
 
-@interface CKFetchRecordZoneChangesOptions : NSObject
+NS_ASSUME_NONNULL_BEGIN
 
+// The per-zone settings of CKFetchRecordZoneChangesOperation before CKFetchRecordZoneChangesConfiguration.
+@interface CKFetchRecordZoneChangesOptions : NSObject <NSSecureCoding, NSCopying> {
+@private
+    CKServerChangeToken *_previousServerChangeToken;
+    NSUInteger _resultsLimit;
+    NSArray<CKRecordFieldKey> *_desiredKeys;
+}
+
+@property (nonatomic, copy, nullable) CKServerChangeToken *previousServerChangeToken;
+@property (nonatomic, assign) NSUInteger resultsLimit;
+@property (nonatomic, copy, nullable) NSArray<CKRecordFieldKey> *desiredKeys;
 @end
+
+NS_ASSUME_NONNULL_END

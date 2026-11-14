@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,27 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CloudKit/CKDefines.h>
+#import <CloudKit/CKOperation.h>
+#import <CloudKit/CKShare.h>
+#import <CloudKit/CKShareMetadata.h>
 
-@interface CKAcceptSharesOperation : NSObject
+NS_ASSUME_NONNULL_BEGIN
 
+// Accepts shares that were offered to the user.
+@interface CKAcceptSharesOperation : CKOperation {
+@private
+    NSArray<CKShareMetadata *> *_shareMetadatas;
+    void (^_perShareCompletionBlock)(CKShareMetadata *shareMetadata, CKShare * _Nullable acceptedShare, NSError * _Nullable error);
+    void (^_acceptSharesCompletionBlock)(NSError * _Nullable operationError);
+}
+
+- (instancetype)initWithShareMetadatas:(NSArray<CKShareMetadata *> *)shareMetadatas;
+
+@property (nonatomic, copy, nullable) NSArray<CKShareMetadata *> *shareMetadatas;
+@property (nonatomic, copy, nullable) void (^perShareCompletionBlock)(CKShareMetadata *shareMetadata, CKShare * _Nullable acceptedShare, NSError * _Nullable error);
+@property (nonatomic, copy, nullable) void (^acceptSharesCompletionBlock)(NSError * _Nullable operationError);
 @end
+
+NS_ASSUME_NONNULL_END
