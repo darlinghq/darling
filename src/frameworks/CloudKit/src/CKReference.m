@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,82 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CloudKit/CKReference.h>
-#import <darling-stub-forwarding.h>
+#import "CKInternal.h"
 
 @implementation CKReference
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
++ (BOOL)supportsSecureCoding
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return YES;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (instancetype)initWithRecordID:(CKRecordID *)recordID action:(CKReferenceAction)action
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    if (recordID == nil)
+        CKRaiseInvalid(@"CKException", @"recordID can not be nil");
+    if ((self = [super init])) {
+        _recordID = [recordID copy];
+        _referenceAction = action;
+    }
+    return self;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (instancetype)initWithRecord:(CKRecord *)record action:(CKReferenceAction)action
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    if (record == nil)
+        CKRaiseInvalid(@"CKException", @"record can not be nil");
+    return [self initWithRecordID:record.recordID action:action];
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (instancetype)initWithCoder:(NSCoder *)coder
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    CKRecordID *recordID = [coder decodeObjectOfClass:[CKRecordID class] forKey:@"RecordID"];
+    if (recordID == nil) {
+        return nil;
+    }
+    return [self initWithRecordID:recordID action:(CKReferenceAction)[coder decodeIntegerForKey:@"Action"]];
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeObject:_recordID forKey:@"RecordID"];
+    [coder encodeInteger:(NSInteger)_referenceAction forKey:@"Action"];
+}
+
+- (id)copyWithZone:(NSZone *)zone
+{
+    // Immutable.
+    return self;
+}
+
+- (CKRecordID *)recordID
+{
+    return _recordID;
+}
+
+- (CKReferenceAction)referenceAction
+{
+    return _referenceAction;
+}
+
+- (BOOL)isEqual:(id)object
+{
+    if (self == object)
+        return YES;
+    if (![object isKindOfClass:[CKReference class]])
+        return NO;
+    CKReference *other = object;
+    return _referenceAction == other->_referenceAction && [_recordID isEqual:other->_recordID];
+}
+
+- (NSUInteger)hash
+{
+    return _recordID.hash ^ _referenceAction;
+}
+
+- (NSString *)description
+{
+    return [NSString stringWithFormat:@"<%@: %p; recordID=%@>", [self class], self, _recordID];
 }
 
 @end

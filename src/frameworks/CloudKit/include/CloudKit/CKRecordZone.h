@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,41 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CloudKit/CKRecordZoneID.h>
 
-@interface CKRecordZone : NSObject
+NS_ASSUME_NONNULL_BEGIN
+
+@class CKReference;
+
+typedef NS_OPTIONS(NSUInteger, CKRecordZoneCapabilities) {
+    CKRecordZoneCapabilityFetchChanges = 1 << 0,
+    CKRecordZoneCapabilityAtomic = 1 << 1,
+    CKRecordZoneCapabilitySharing = 1 << 2,
+    CKRecordZoneCapabilityZoneWideSharing = 1 << 3,
+} NS_SWIFT_NAME(CKRecordZone.Capabilities);
+
+@interface CKRecordZone : NSObject <NSSecureCoding, NSCopying> {
+@private
+    CKRecordZoneID *_zoneID;
+    CKRecordZoneCapabilities _capabilities;
+    CKReference *_share;
+}
+
++ (CKRecordZone *)defaultRecordZone;
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
+- (instancetype)initWithZoneName:(NSString *)zoneName;
+- (instancetype)initWithZoneID:(CKRecordZoneID *)zoneID;
+
+@property (nonatomic, readonly, copy) CKRecordZoneID *zoneID;
+@property (nonatomic, readonly, assign) CKRecordZoneCapabilities capabilities;
+
+// Reference to the share of a zone that is shared as a whole.
+@property (nonatomic, readonly, copy, nullable) CKReference *share;
 
 @end
+
+NS_ASSUME_NONNULL_END

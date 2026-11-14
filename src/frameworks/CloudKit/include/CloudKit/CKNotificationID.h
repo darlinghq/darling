@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,16 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
-@interface CKNotificationID : NSObject
+NS_ASSUME_NONNULL_BEGIN
 
+// Opaque identifier of a notification.
+NS_SWIFT_NAME(CKNotification.ID)
+@interface CKNotificationID : NSObject <NSSecureCoding, NSCopying> {
+@private
+    NSString *_UUID;
+}
 @end
+
+NS_ASSUME_NONNULL_END

@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,91 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CloudKit/CKShareParticipant.h>
-#import <darling-stub-forwarding.h>
+#import "CKInternal.h"
 
 @implementation CKShareParticipant
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
++ (BOOL)supportsSecureCoding
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return YES;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (instancetype)_initWithUserIdentity:(CKUserIdentity *)identity permission:(CKShareParticipantPermission)permission acceptanceStatus:(CKShareParticipantAcceptanceStatus)status role:(CKShareParticipantRole)role
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    if ((self = [super init])) {
+        _userIdentity = identity;
+        _permission = permission;
+        _acceptanceStatus = status;
+        _role = role;
+    }
+    return self;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (instancetype)initWithCoder:(NSCoder *)coder
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    CKUserIdentity *identity = [coder decodeObjectOfClass:[CKUserIdentity class] forKey:@"UserIdentity"];
+    if (identity == nil) {
+        return nil;
+    }
+    return [self _initWithUserIdentity:identity
+                            permission:(CKShareParticipantPermission)[coder decodeIntegerForKey:@"Permission"]
+                      acceptanceStatus:(CKShareParticipantAcceptanceStatus)[coder decodeIntegerForKey:@"AcceptanceStatus"]
+                                  role:(CKShareParticipantRole)[coder decodeIntegerForKey:@"Role"]];
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (void)encodeWithCoder:(NSCoder *)coder
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    [coder encodeObject:_userIdentity forKey:@"UserIdentity"];
+    [coder encodeInteger:_permission forKey:@"Permission"];
+    [coder encodeInteger:_acceptanceStatus forKey:@"AcceptanceStatus"];
+    [coder encodeInteger:_role forKey:@"Role"];
+}
+
+- (id)copyWithZone:(NSZone *)zone
+{
+    return [[[self class] allocWithZone:zone] _initWithUserIdentity:_userIdentity permission:_permission
+                                                   acceptanceStatus:_acceptanceStatus role:_role];
+}
+
+- (CKUserIdentity *)userIdentity
+{
+    return _userIdentity;
+}
+
+- (CKShareParticipantPermission)permission
+{
+    return _permission;
+}
+
+- (void)setPermission:(CKShareParticipantPermission)permission
+{
+    _permission = permission;
+}
+
+- (CKShareParticipantAcceptanceStatus)acceptanceStatus
+{
+    return _acceptanceStatus;
+}
+
+- (CKShareParticipantRole)role
+{
+    return _role;
+}
+
+- (void)setRole:(CKShareParticipantRole)role
+{
+    _role = role;
+}
+
+// The deprecated type is the role under its older name; the values agree.
+- (CKShareParticipantType)type
+{
+    return (CKShareParticipantType)_role;
+}
+
+- (void)setType:(CKShareParticipantType)type
+{
+    _role = (CKShareParticipantRole)type;
 }
 
 @end

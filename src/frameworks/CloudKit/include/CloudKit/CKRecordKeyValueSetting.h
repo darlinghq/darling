@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,22 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CloudKit/CKDefines.h>
+#import <CloudKit/CKRecordValue.h>
 
-@protocol CKRecordKeyValueSetting
+NS_ASSUME_NONNULL_BEGIN
+
+// Key-value access to the fields of a record.
+@protocol CKRecordKeyValueSetting <NSObject>
+
+- (nullable id<CKRecordValue>)objectForKey:(CKRecordFieldKey)key;
+- (void)setObject:(nullable id<CKRecordValue>)object forKey:(CKRecordFieldKey)key;
+- (nullable id<CKRecordValue>)objectForKeyedSubscript:(CKRecordFieldKey)key;
+- (void)setObject:(nullable id<CKRecordValue>)object forKeyedSubscript:(CKRecordFieldKey)key;
+- (NSArray<CKRecordFieldKey> *)allKeys;
+- (NSArray<CKRecordFieldKey> *)changedKeys;
 
 @end
+
+NS_ASSUME_NONNULL_END

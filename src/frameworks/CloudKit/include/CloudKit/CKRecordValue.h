@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,30 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CoreLocation/CLLocation.h>
 
-@protocol CKRecordValue
+NS_ASSUME_NONNULL_BEGIN
 
+@class CKReference;
+@class CKAsset;
+
+// Marker protocol of the classes a record field may hold.
+NS_SWIFT_NAME(__CKRecordObjCValue)
+@protocol CKRecordValue <NSObject>
 @end
+
+@interface NSString (CKRecordValue) <CKRecordValue>
+@end
+@interface NSNumber (CKRecordValue) <CKRecordValue>
+@end
+@interface NSArray (CKRecordValue) <CKRecordValue>
+@end
+@interface NSDate (CKRecordValue) <CKRecordValue>
+@end
+@interface NSData (CKRecordValue) <CKRecordValue>
+@end
+@interface CLLocation (CKRecordValue) <CKRecordValue>
+@end
+
+NS_ASSUME_NONNULL_END

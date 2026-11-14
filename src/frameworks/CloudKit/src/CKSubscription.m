@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,81 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CloudKit/CKSubscription.h>
-#import <darling-stub-forwarding.h>
+#import "CKInternal.h"
 
 @implementation CKSubscription
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
++ (BOOL)supportsSecureCoding
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return YES;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (instancetype)_initWithSubscriptionID:(CKSubscriptionID)subscriptionID
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    if (subscriptionID == nil)
+        CKRaiseInvalid(@"CKException", @"subscriptionID can not be nil");
+    if ((self = [super init]))
+        _subscriptionID = [subscriptionID copy];
+    return self;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (instancetype)initWithCoder:(NSCoder *)coder
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    CKSubscriptionID subscriptionID = [coder decodeObjectOfClass:[NSString class] forKey:@"SubscriptionID"];
+    if (subscriptionID == nil) {
+        return nil;
+    }
+    if ((self = [self _initWithSubscriptionID:subscriptionID]))
+        _notificationInfo = [[coder decodeObjectOfClass:[CKNotificationInfo class] forKey:@"NotificationInfo"] copy];
+    return self;
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (void)encodeWithCoder:(NSCoder *)coder
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    [coder encodeObject:_subscriptionID forKey:@"SubscriptionID"];
+    [coder encodeObject:_notificationInfo forKey:@"NotificationInfo"];
+}
+
+- (id)copyWithZone:(NSZone *)zone
+{
+    CKSubscription *copy = [[[self class] allocWithZone:zone] _initWithSubscriptionID:_subscriptionID];
+    copy->_notificationInfo = [_notificationInfo copy];
+    return copy;
+}
+
+- (CKSubscriptionID)subscriptionID
+{
+    return _subscriptionID;
+}
+
+// Overridden by the concrete subscriptions.
+- (CKSubscriptionType)subscriptionType
+{
+    return 0;
+}
+
+- (CKNotificationInfo *)notificationInfo
+{
+    return _notificationInfo;
+}
+
+- (void)setNotificationInfo:(CKNotificationInfo *)notificationInfo
+{
+    _notificationInfo = [notificationInfo copy];
+}
+
+- (BOOL)isEqual:(id)object
+{
+    if (self == object)
+        return YES;
+    if (![object isKindOfClass:[CKSubscription class]] || [object subscriptionType] != [self subscriptionType])
+        return NO;
+    return [_subscriptionID isEqual:((CKSubscription *)object)->_subscriptionID];
+}
+
+- (NSUInteger)hash
+{
+    return _subscriptionID.hash;
 }
 
 @end

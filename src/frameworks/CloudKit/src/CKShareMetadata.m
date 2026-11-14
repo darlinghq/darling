@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,92 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CloudKit/CKShareMetadata.h>
-#import <darling-stub-forwarding.h>
+#import "CKInternal.h"
 
+// Only ever produced from a server response; the properties are read-only.
 @implementation CKShareMetadata
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
++ (BOOL)supportsSecureCoding
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return YES;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (instancetype)initWithCoder:(NSCoder *)coder
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    if ((self = [super init])) {
+        _containerIdentifier = [[coder decodeObjectOfClass:[NSString class] forKey:@"ContainerIdentifier"] copy];
+        _share = [[coder decodeObjectOfClass:[CKShare class] forKey:@"Share"] copy];
+        _rootRecordID = [[coder decodeObjectOfClass:[CKRecordID class] forKey:@"RootRecordID"] copy];
+        _participantRole = (CKShareParticipantRole)[coder decodeIntegerForKey:@"ParticipantRole"];
+        _participantStatus = (CKShareParticipantAcceptanceStatus)[coder decodeIntegerForKey:@"ParticipantStatus"];
+        _participantPermission = (CKShareParticipantPermission)[coder decodeIntegerForKey:@"ParticipantPermission"];
+        _ownerIdentity = [[coder decodeObjectOfClass:[CKUserIdentity class] forKey:@"OwnerIdentity"] copy];
+        _rootRecord = [[coder decodeObjectOfClass:[CKRecord class] forKey:@"RootRecord"] copy];
+    }
+    return self;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (void)encodeWithCoder:(NSCoder *)coder
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    [coder encodeObject:_containerIdentifier forKey:@"ContainerIdentifier"];
+    [coder encodeObject:_share forKey:@"Share"];
+    [coder encodeObject:_rootRecordID forKey:@"RootRecordID"];
+    [coder encodeInteger:_participantRole forKey:@"ParticipantRole"];
+    [coder encodeInteger:_participantStatus forKey:@"ParticipantStatus"];
+    [coder encodeInteger:_participantPermission forKey:@"ParticipantPermission"];
+    [coder encodeObject:_ownerIdentity forKey:@"OwnerIdentity"];
+    [coder encodeObject:_rootRecord forKey:@"RootRecord"];
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (id)copyWithZone:(NSZone *)zone
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    // Immutable.
+    return self;
+}
+
+- (NSString *)containerIdentifier
+{
+    return _containerIdentifier;
+}
+
+- (CKShare *)share
+{
+    return _share;
+}
+
+- (CKRecordID *)rootRecordID
+{
+    return _rootRecordID;
+}
+
+- (CKShareParticipantRole)participantRole
+{
+    return _participantRole;
+}
+
+- (CKShareParticipantAcceptanceStatus)participantStatus
+{
+    return _participantStatus;
+}
+
+- (CKShareParticipantPermission)participantPermission
+{
+    return _participantPermission;
+}
+
+- (CKShareParticipantType)participantType
+{
+    return (CKShareParticipantType)_participantRole;
+}
+
+- (CKUserIdentity *)ownerIdentity
+{
+    return _ownerIdentity;
+}
+
+- (CKRecord *)rootRecord
+{
+    return _rootRecord;
 }
 
 @end

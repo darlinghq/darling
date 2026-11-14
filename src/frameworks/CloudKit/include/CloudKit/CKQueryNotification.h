@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,32 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CloudKit/CKNotification.h>
 
-@interface CKQueryNotification : NSObject
+NS_ASSUME_NONNULL_BEGIN
+
+typedef NS_ENUM(NSInteger, CKQueryNotificationReason) {
+    CKQueryNotificationReasonRecordCreated = 1,
+    CKQueryNotificationReasonRecordUpdated = 2,
+    CKQueryNotificationReasonRecordDeleted = 3,
+} NS_SWIFT_NAME(CKQueryNotification.Reason);
+
+// Sent for a query subscription when a matching record changed.
+@interface CKQueryNotification : CKNotification {
+@private
+    CKQueryNotificationReason _queryNotificationReason;
+    NSDictionary<CKRecordFieldKey, id> *_recordFields;
+    CKRecordID *_recordID;
+    CKDatabaseScope _databaseScope;
+}
+
+@property (nonatomic, readonly, assign) CKQueryNotificationReason queryNotificationReason;
+// Fields of the record that were requested through the subscription's desired keys.
+@property (nonatomic, readonly, copy, nullable) NSDictionary<CKRecordFieldKey, id> *recordFields;
+@property (nonatomic, readonly, copy, nullable) CKRecordID *recordID;
+@property (nonatomic, readonly, assign) CKDatabaseScope databaseScope;
 
 @end
+
+NS_ASSUME_NONNULL_END

@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,59 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
-@interface CKShareParticipant : NSObject
+NS_ASSUME_NONNULL_BEGIN
+
+@class CKUserIdentity;
+
+typedef NS_ENUM(NSInteger, CKShareParticipantAcceptanceStatus) {
+    CKShareParticipantAcceptanceStatusUnknown = 0,
+    CKShareParticipantAcceptanceStatusPending = 1,
+    CKShareParticipantAcceptanceStatusAccepted = 2,
+    CKShareParticipantAcceptanceStatusRemoved = 3,
+} NS_SWIFT_NAME(CKShare_Participant_AcceptanceStatus);
+
+typedef NS_ENUM(NSInteger, CKShareParticipantPermission) {
+    CKShareParticipantPermissionUnknown = 0,
+    CKShareParticipantPermissionNone = 1,
+    CKShareParticipantPermissionReadOnly = 2,
+    CKShareParticipantPermissionReadWrite = 3,
+} NS_SWIFT_NAME(CKShare_Participant_Permission);
+
+typedef NS_ENUM(NSInteger, CKShareParticipantRole) {
+    CKShareParticipantRoleUnknown = 0,
+    CKShareParticipantRoleOwner = 1,
+    CKShareParticipantRolePrivateUser = 3,
+    CKShareParticipantRolePublicUser = 4,
+} NS_SWIFT_NAME(CKShare_Participant_Role);
+
+typedef NS_ENUM(NSInteger, CKShareParticipantType) {
+    CKShareParticipantTypeUnknown = 0,
+    CKShareParticipantTypeOwner = 1,
+    CKShareParticipantTypePrivateUser = 3,
+    CKShareParticipantTypePublicUser = 4,
+} NS_SWIFT_NAME(CKShare_Participant_ParticipantType) API_DEPRECATED_WITH_REPLACEMENT("CKShareParticipantRole", macos(10.12, 10.14));
+
+// A person a share was offered to, or its owner.
+NS_SWIFT_NAME(CKShare.Participant)
+@interface CKShareParticipant : NSObject <NSSecureCoding, NSCopying> {
+@private
+    CKUserIdentity *_userIdentity;
+    CKShareParticipantPermission _permission;
+    CKShareParticipantAcceptanceStatus _acceptanceStatus;
+    CKShareParticipantRole _role;
+}
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
+@property (nonatomic, readonly, strong) CKUserIdentity *userIdentity;
+@property (nonatomic, assign) CKShareParticipantPermission permission;
+@property (nonatomic, readonly, assign) CKShareParticipantAcceptanceStatus acceptanceStatus;
+@property (nonatomic, assign) CKShareParticipantRole role;
+@property (nonatomic, assign) CKShareParticipantType type API_DEPRECATED_WITH_REPLACEMENT("role", macos(10.12, 10.14));
 
 @end
+
+NS_ASSUME_NONNULL_END

@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,22 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CloudKit/CKNotification.h>
+#import <CloudKit/CKRecordZoneID.h>
 
-@interface CKRecordZoneNotification : NSObject
+NS_ASSUME_NONNULL_BEGIN
+
+// Sent for a record zone subscription when the zone changed.
+@interface CKRecordZoneNotification : CKNotification {
+@private
+    CKRecordZoneID *_recordZoneID;
+    CKDatabaseScope _databaseScope;
+}
+
+@property (nonatomic, readonly, copy, nullable) CKRecordZoneID *recordZoneID;
+@property (nonatomic, readonly, assign) CKDatabaseScope databaseScope;
 
 @end
+
+NS_ASSUME_NONNULL_END

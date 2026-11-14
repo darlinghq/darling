@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,28 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CloudKit/CKDefines.h>
 
-@interface CKQuery : NSObject
+NS_ASSUME_NONNULL_BEGIN
+
+// A search of the records of one type.
+@interface CKQuery : NSObject <NSSecureCoding, NSCopying> {
+@private
+    CKRecordType _recordType;
+    NSPredicate *_predicate;
+    NSArray<NSSortDescriptor *> *_sortDescriptors;
+}
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
+- (instancetype)initWithRecordType:(CKRecordType)recordType predicate:(NSPredicate *)predicate NS_REFINED_FOR_SWIFT;
+
+@property (nonatomic, readonly, copy) CKRecordType recordType NS_REFINED_FOR_SWIFT;
+@property (nonatomic, readonly, copy) NSPredicate *predicate;
+@property (nonatomic, copy, nullable) NSArray<NSSortDescriptor *> *sortDescriptors;
 
 @end
+
+NS_ASSUME_NONNULL_END

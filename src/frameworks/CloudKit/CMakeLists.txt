@@ -281,4 +281,5 @@ add_framework(CloudKit
         system
         objc
         Foundation
+        CoreLocation
 )

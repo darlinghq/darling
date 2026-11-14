@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,26 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CloudKit/CKSubscription.h>
+#import <CloudKit/CKRecordZoneID.h>
 
-@interface CKRecordZoneSubscription : NSObject
+NS_ASSUME_NONNULL_BEGIN
+
+// Fires when anything changes in a record zone.
+@interface CKRecordZoneSubscription : CKSubscription <NSSecureCoding, NSCopying> {
+@private
+    CKRecordZoneID *_zoneID;
+    CKRecordType _recordType;
+}
+
+- (instancetype)initWithZoneID:(CKRecordZoneID *)zoneID;
+- (instancetype)initWithZoneID:(CKRecordZoneID *)zoneID subscriptionID:(CKSubscriptionID)subscriptionID NS_REFINED_FOR_SWIFT;
+
+@property (nonatomic, copy) CKRecordZoneID *zoneID;
+// Restricts the subscription to one record type.
+@property (nonatomic, copy, nullable) CKRecordType recordType NS_REFINED_FOR_SWIFT;
 
 @end
+
+NS_ASSUME_NONNULL_END

@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,52 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import "CKInternal.h"
 #import <CloudKit/CKNotificationID.h>
-#import <darling-stub-forwarding.h>
 
 @implementation CKNotificationID
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
++ (BOOL)supportsSecureCoding
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return YES;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (instancetype)initWithCoder:(NSCoder *)coder
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    if ((self = [super init]))
+        _UUID = [[coder decodeObjectOfClass:[NSString class] forKey:@"UUID"] copy];
+    return self;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (void)encodeWithCoder:(NSCoder *)coder
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    [coder encodeObject:_UUID forKey:@"UUID"];
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (id)copyWithZone:(NSZone *)zone
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    // Immutable.
+    return self;
+}
+
+- (BOOL)isEqual:(id)object
+{
+    if (self == object)
+        return YES;
+    if (![object isKindOfClass:[CKNotificationID class]])
+        return NO;
+    NSString *other = ((CKNotificationID *)object)->_UUID;
+    return _UUID == other || [_UUID isEqual:other];
+}
+
+- (NSUInteger)hash
+{
+    return _UUID.hash;
+}
+
+- (NSString *)description
+{
+    return [NSString stringWithFormat:@"<%@: %p; UUID=%@>", [self class], self, _UUID];
 }
 
 @end
