@@ -1395,7 +1395,15 @@ static bool enterRootlessNamespaces(void)
 		|| !(snprintf(map, sizeof(map), "0 %u 1\n", (unsigned) g_originalGid), writeProcFile("/proc/self/gid_map", map))
 		|| !(snprintf(map, sizeof(map), "0 %u 1\n", (unsigned) g_originalUid), writeProcFile("/proc/self/uid_map", map)))
 	{
-		fprintf(stderr, "Cannot map your user into the rootless user namespace: %s\n", strerror(errno));
+		int error = errno;
+
+		fprintf(stderr, "Cannot map your user into the rootless user namespace: %s\n", strerror(error));
+		// Some hosts let an unprivileged process create a user namespace without any capability in it
+		// (Ubuntu does so through AppArmor, see kernel.apparmor_restrict_unprivileged_userns).
+		if (error == EPERM || error == EACCES)
+			fprintf(stderr, "This host lets you create user namespaces but not use them, as Ubuntu's AppArmor restriction of\n"
+				"unprivileged user namespaces does. Allow them for the darling launcher in an AppArmor profile,\n"
+				"or set DARLING_NONROOT=1 to run without namespaces.\n");
 		return false;
 	}
 	return true;
