@@ -9,13 +9,13 @@
 		<key>com.apple.usernoted</key>
 		<true/>
 	</dict>
-	<key>POSIXSpawnType</key>
-	<string>Adaptive</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/usr/libexec/usernoted</string>
 	</array>
 	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
 	<true/>
 </dict>
 </plist>

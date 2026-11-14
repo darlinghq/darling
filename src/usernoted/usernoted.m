@@ -733,7 +733,7 @@ static void handle_client_message(xpc_connection_t conn, xpc_object_t msg)
 int main(int argc, const char** argv)
 {
 	@autoreleasepool {
-		s_daemon_queue = dispatch_queue_create("org.darlinghq.usernoted", NULL);
+		s_daemon_queue = dispatch_get_main_queue();
 		s_delivered = [[NSMutableArray alloc] init];
 		s_pending = [[NSMutableArray alloc] init];
 		s_clients = [[NSMutableArray alloc] init];

@@ -102,7 +102,7 @@ static xpc_connection_t get_usernoted_connection(void)
             service_name = USERNOTED_MACH_SERVICE;
 
         s_usernoted_conn = xpc_connection_create_mach_service(service_name,
-            dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), 0);
+            NULL, 0);
 
         xpc_connection_set_event_handler(s_usernoted_conn, ^(xpc_object_t event) {
             if (xpc_get_type(event) == XPC_TYPE_DICTIONARY)
