@@ -71,6 +71,8 @@ static enum launcher_mode g_mode = LAUNCHER_MODE_ROOT;
 static char g_serverPath[4096];
 static char g_mldrPath[4096];
 static char g_libexecPath[4096];
+// the invoking user's name, once looked up
+static char g_loginName[4096];
 
 #if defined(__ANDROID__)
 	// Android hosts have neither setuid installs nor user namespaces to count on.
@@ -87,6 +89,8 @@ static bool privilegedMode(void)
 }
 
 static void joinRootlessNamespaces(pid_t pid);
+static bool lookUpLoginName(void);
+static bool resolveProgramArgument(int argc, char** argv);
 
 // Everything the launcher does inside the user's prefix (which the user names
 // and controls) runs with the user's effective ids, so that it can only do what
@@ -475,7 +479,15 @@ int main(int argc, char ** argv)
 	if (privilegedMode())
 		joinServerMountNamespace(pidInit);
 	else if (g_mode == LAUNCHER_MODE_ROOTLESS)
+	{
+		// The namespaces to join were made by the user's own darlingserver. Look up the user's name and
+		// the program's path first, through this process's own files and name services, so that nothing
+		// after the join resolves a name or a path in the container's mount tree. (The root mode keeps
+		// resolving the program's path in the container's view of the files.)
+		if (!lookUpLoginName() || !resolveProgramArgument(argc, argv))
+			return 1;
 		joinRootlessNamespaces(pidInit);
+	}
 #endif
 
 	// Joining the mount namespace was the last step that needs root. Drop it
@@ -487,6 +499,9 @@ int main(int argc, char ** argv)
 	// a name service module.
 	dropPrivileges();
 
+	if (!resolveProgramArgument(argc, argv))
+		return 1;
+
 	if (strcmp(argv[1], "shell") == 0)
 	{
 		// Spawn the shell
@@ -497,38 +512,53 @@ int main(int argc, char ** argv)
 	}
 	else
 	{
-		bool doExec = strcmp(argv[1], "exec") == 0;
-		int argvIndex = doExec ? 2 : 1;
+		int argvIndex = strcmp(argv[1], "exec") == 0 ? 2 : 1;
 
-		if (doExec && argc <= 2)
-		{
-			printf("'exec' subcommand requires a binary to execute.\n");
-			return 1;
-		}
-
-		char *fullPath;
-		char *path = realpath(argv[argvIndex], NULL);
-
-		if (path == NULL)
-		{
-			printf("'%s' is not a supported command or a file.\n", argv[argvIndex]);
-			return 1;
-		}
-
-		fullPath = malloc(strlen(SYSTEM_ROOT) + strlen(path) + 1);
-		strcpy(fullPath, SYSTEM_ROOT);
-		strcat(fullPath, path);
-		free(path);
-
-		argv[argvIndex] = fullPath;
-
-		if (doExec)
+		if (argvIndex == 2)
 			spawnBinary(argv[argvIndex], (const char**) &argv[argvIndex]);
 		else
 			spawnShell((const char**) &argv[argvIndex]);
 	}
 
 	return 0;
+}
+
+// For "darling exec <program>" and "darling <program>", replaces the program argument with the guest
+// path of the file it names on the host. Prints why and returns false if there is none. Nothing to do
+// for "darling shell", or when it was done already.
+static bool resolveProgramArgument(int argc, char** argv)
+{
+	static bool resolved = false;
+
+	if (resolved || strcmp(argv[1], "shell") == 0)
+		return true;
+
+	bool doExec = strcmp(argv[1], "exec") == 0;
+	int argvIndex = doExec ? 2 : 1;
+
+	if (doExec && argc <= 2)
+	{
+		printf("'exec' subcommand requires a binary to execute.\n");
+		return false;
+	}
+
+	char *fullPath;
+	char *path = realpath(argv[argvIndex], NULL);
+
+	if (path == NULL)
+	{
+		printf("'%s' is not a supported command or a file.\n", argv[argvIndex]);
+		return false;
+	}
+
+	fullPath = malloc(strlen(SYSTEM_ROOT) + strlen(path) + 1);
+	strcpy(fullPath, SYSTEM_ROOT);
+	strcat(fullPath, path);
+	free(path);
+
+	argv[argvIndex] = fullPath;
+	resolved = true;
+	return true;
 }
 
 // Rootless mode: the container's mount namespace is owned by the user namespace the launcher's server
@@ -1026,27 +1056,10 @@ int connectToShellspawn(void)
 	return sockfd;
 }
 
-void setupShellspawnEnv(int sockfd)
+// Finds the invoking user's own account name, whatever ids this process has now, into g_loginName.
+// Prints why and returns false if there is none.
+static bool lookUpLoginName(void)
 {
-	static const char* skip_vars[] = {
-		"PATH",
-		"TMPDIR",
-		"HOME",
-		"DARLING_PREFIX",
-	};
-
-	char buffer2[4096];
-
-	// Push environment variables
-	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, 
-		"PATH=/usr/bin:"
-		"/bin:"
-		"/usr/sbin:"
-		"/sbin:"
-		"/usr/local/bin");
-	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, "TMPDIR=/private/tmp");
-
-	// The invoking user's own account, whatever ids this process has now.
 	struct passwd* pw = getpwuid(g_originalUid);
 	char loginBuffer[256] = "";
 	const char* userEnv = getenv("USER");
@@ -1069,8 +1082,35 @@ void setupShellspawnEnv(int sockfd)
 	if (!login)
 	{
 		fprintf(stderr, "Cannot determine your user name\n");
-		exit(1);
+		return false;
 	}
+	snprintf(g_loginName, sizeof(g_loginName), "%s", login);
+	return true;
+}
+
+void setupShellspawnEnv(int sockfd)
+{
+	static const char* skip_vars[] = {
+		"PATH",
+		"TMPDIR",
+		"HOME",
+		"DARLING_PREFIX",
+	};
+
+	char buffer2[4096];
+
+	// Push environment variables
+	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, 
+		"PATH=/usr/bin:"
+		"/bin:"
+		"/usr/sbin:"
+		"/sbin:"
+		"/usr/local/bin");
+	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, "TMPDIR=/private/tmp");
+
+	if (g_loginName[0] == '\0' && !lookUpLoginName())
+		exit(1);
+	const char* login = g_loginName;
 
 	snprintf(buffer2, sizeof(buffer2), "HOME=/Users/%s", login);
 	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, buffer2);
