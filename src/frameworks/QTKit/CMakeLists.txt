@@ -228,4 +228,5 @@ add_framework(QTKit
         system
         objc
         Foundation
+        AppKit
 )

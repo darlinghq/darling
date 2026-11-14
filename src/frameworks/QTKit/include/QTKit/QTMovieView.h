@@ -17,10 +17,17 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import <AppKit/AppKitIvarLayout.h>
+#import <AppKit/NSView.h>
 #include <Foundation/Foundation.h>
 #include <QTKit/QTKitDefines.h>
 
-@interface QTMovieView : NSObject
+// Legacy ObjC ABI (i386): instance size must stay 0x74, Apple's (NSView's 0x50
+// plus 0x24 of Apple's own state, which we don't keep). An application's
+// subclass puts its ivars right after it. Don't add ivars here.
+@interface QTMovieView : NSView {
+    NS_LEGACY_IVAR_PAD(_QTMovieViewReserved, 0x24)
+}
 
 @end
 
