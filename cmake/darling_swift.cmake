@@ -11,15 +11,25 @@
 #     SOURCES <swift sources>
 #     [FLAGS <extra swiftc -frontend flags>]
 #     [MODULES <overlay Modules this one imports; built by this function earlier>]
+#     [WEAK_MODULES <overlay Modules that are imported like MODULES but whose dylib is linked weakly (the load
+#                    command is LC_LOAD_WEAK_DYLIB), for dependencies that macOS also links weakly>]
 #     [OBJECTS <objects from add_darling_swift_object linked into the dylib>]
 #     [LINK_FLAGS <extra linker flags>]
 #     [NATIVE_SOURCES <C/C++/Objective-C sources linked into the same dylib>]
 #     [NATIVE_FLAGS <compile flags for NATIVE_SOURCES>]
 #     [LIBRARIES <extra link libraries/targets>]
-#     [INSTALL_NAME <name>])
+#     [INSTALL_NAME <name>]
+#     [FRAMEWORK])
 #
 # creates the target swift<Module> (libswift<Module>.dylib, install name /usr/lib/swift/libswift<Module>.dylib)
 # and the module <Module>.swiftmodule in ${DARLING_SWIFT_MODULE_DIR} for overlays that import it.
+#
+# With FRAMEWORK the library is the binary of a framework instead (Combine): it is built as
+# <Module>.framework/Versions/A/<Module> in the current binary directory, has the install name
+# /System/Library/Frameworks/<Module>.framework/Versions/A/<Module> unless INSTALL_NAME is given, and is installed
+# with the Versions/Current and top-level symlinks. The target keeps the name swift<Module>. The module's
+# autolink entry names -lswift<Module>, so a libswift<Module>.dylib symlink to the binary is created next to it
+# (the directory every overlay already searches with -L).
 #
 # Required variables: SWIFT_TOOLCHAIN_FOUND and friends (swift_toolchain.cmake), and
 #   DARLING_SWIFT_STDLIB_MODULES  directory with <Name>.swiftmodule/<arch>-apple-macos.swiftinterface for the
@@ -27,6 +37,7 @@
 #   DARLING_SWIFT_RUNTIME_DIR     directory with the runtime's libswiftCore.dylib
 
 include(CMakeParseArguments)
+include(InstallSymlink)
 
 set(DARLING_SWIFT_DEPLOYMENT_TARGET "26.0" CACHE INTERNAL "macOS version the Swift overlays are built for")
 set(DARLING_SWIFT_SDK "${DARLING_TOP_DIRECTORY}/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
@@ -92,7 +103,7 @@ function(add_darling_swift_object module)
 endfunction()
 
 function(add_darling_swift_library module)
-	cmake_parse_arguments(SWIFTLIB "" "INSTALL_NAME" "SOURCES;FLAGS;MODULES;OBJECTS;LINK_FLAGS;NATIVE_SOURCES;NATIVE_FLAGS;LIBRARIES" ${ARGN})
+	cmake_parse_arguments(SWIFTLIB "FRAMEWORK" "INSTALL_NAME" "SOURCES;FLAGS;MODULES;WEAK_MODULES;OBJECTS;LINK_FLAGS;NATIVE_SOURCES;NATIVE_FLAGS;LIBRARIES" ${ARGN})
 
 	if (NOT SWIFT_TOOLCHAIN_FOUND)
 		message(FATAL_ERROR "add_darling_swift_library(${module}) needs the Swift toolchain")
@@ -116,8 +127,10 @@ function(add_darling_swift_library module)
 
 	set(module_deps)
 	set(module_libs)
-	foreach(dep IN LISTS SWIFTLIB_MODULES)
+	foreach(dep IN LISTS SWIFTLIB_MODULES SWIFTLIB_WEAK_MODULES)
 		list(APPEND module_deps "${DARLING_SWIFT_MODULE_DIR}/${dep}.swiftmodule")
+	endforeach()
+	foreach(dep IN LISTS SWIFTLIB_MODULES)
 		# Modules from add_darling_swift_object have no dylib of their own.
 		if (TARGET swift${dep})
 			list(APPEND module_libs "swift${dep}")
@@ -153,6 +166,8 @@ function(add_darling_swift_library module)
 
 	if (SWIFTLIB_INSTALL_NAME)
 		set(DYLIB_INSTALL_NAME "${SWIFTLIB_INSTALL_NAME}")
+	elseif (SWIFTLIB_FRAMEWORK)
+		set(DYLIB_INSTALL_NAME "/System/Library/Frameworks/${module}.framework/Versions/A/${module}")
 	else()
 		set(DYLIB_INSTALL_NAME "/usr/lib/swift/libswift${module}.dylib")
 	endif()
@@ -171,6 +186,20 @@ function(add_darling_swift_library module)
 		LINKER_LANGUAGE C
 		OUTPUT_NAME "swift${module}"
 	)
+	if (SWIFTLIB_FRAMEWORK)
+		set(framework_dir "${CMAKE_CURRENT_BINARY_DIR}/${module}.framework/Versions/A")
+		set_target_properties(swift${module} PROPERTIES
+			OUTPUT_NAME "${module}"
+			PREFIX ""
+			SUFFIX ""
+			LIBRARY_OUTPUT_DIRECTORY "${framework_dir}"
+			RUNTIME_OUTPUT_DIRECTORY "${framework_dir}"
+		)
+		add_custom_command(TARGET swift${module} POST_BUILD
+			COMMAND "${CMAKE_COMMAND}" -E create_symlink "${module}.framework/Versions/A/${module}"
+				"${CMAKE_CURRENT_BINARY_DIR}/libswift${module}.dylib"
+			VERBATIM)
+	endif()
 	# The overlays are built for the macOS version they compile against: libswiftCoreFoundation hides CGFloat's
 	# old CoreGraphics-mangled symbols from clients that target macOS before 12, and Darling's default deployment
 	# target is older than that.
@@ -181,10 +210,22 @@ function(add_darling_swift_library module)
 		" -Wl,-L,${DARLING_SWIFT_RUNTIME_DIR} -Wl,-L,${CMAKE_CURRENT_BINARY_DIR}")
 	target_link_libraries(swift${module} system objc "${DARLING_SWIFT_RUNTIME_DIR}/libswiftCore.dylib"
 		${module_libs} ${SWIFTLIB_LIBRARIES})
-	foreach(dep IN LISTS SWIFTLIB_MODULES)
+	foreach(dep IN LISTS SWIFTLIB_MODULES SWIFTLIB_WEAK_MODULES)
 		if (TARGET swift${dep})
 			add_dependencies(swift${module} swift${dep})
 		endif()
 	endforeach()
-	install(TARGETS swift${module} DESTINATION libexec/darling/usr/lib/swift)
+	# The weak dependencies are found by ld64's -weak-l through the -L directory above (the module's autolink entry
+	# names the same library, which stays weak).
+	foreach(dep IN LISTS SWIFTLIB_WEAK_MODULES)
+		set_property(TARGET swift${module} APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-weak-lswift${dep}")
+	endforeach()
+	if (SWIFTLIB_FRAMEWORK)
+		set(framework_root "libexec/darling/System/Library/Frameworks/${module}.framework")
+		install(TARGETS swift${module} DESTINATION "${framework_root}/Versions/A")
+		InstallSymlink(A "${CMAKE_INSTALL_PREFIX}/${framework_root}/Versions/Current")
+		InstallSymlink("Versions/Current/${module}" "${CMAKE_INSTALL_PREFIX}/${framework_root}/${module}")
+	else()
+		install(TARGETS swift${module} DESTINATION libexec/darling/usr/lib/swift)
+	endif()
 endfunction()

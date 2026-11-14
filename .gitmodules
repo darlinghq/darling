@@ -463,6 +463,9 @@
 [submodule "src/external/stanford-srp"]
 	path = src/external/stanford-srp
 	url = ../stanford-srp.git
+[submodule "src/external/OpenCombine"]
+	path = src/external/OpenCombine
+	url = ../OpenCombine.git
 [submodule "src/external/swift-foundation"]
 	path = src/external/swift-foundation
 	url = ../swift-foundation.git
