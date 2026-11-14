@@ -19,6 +19,16 @@
 
 #include <Foundation/Foundation.h>
 
-@interface OSAScriptElement : NSObject
+@interface OSAScriptElement : NSObject {
+    NSRange _range;
+}
+
+- (instancetype)initWithRange:(NSRange)range;
+
+@property (readonly) NSRange range;
+@property (readonly) NSArray *subElements;
+@property (readonly) NSRange rangeOfSubElements;
+@property (readonly) NSString *title;
+@property (readonly) NSRange nameRange;
 
 @end

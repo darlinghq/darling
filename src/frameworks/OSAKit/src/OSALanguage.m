@@ -22,7 +22,7 @@
 #import <darling-stub-forwarding.h>
 
 // Darling has no OSA components. OSAKit reports a single AppleScript language so script editors can
-// describe documents; its language instance and component calls stay stubs. The features mask is
+// describe documents; its component calls stay stubs. The features mask is
 // empty because nothing can compile, run or record scripts here.
 static const OSType kOSAScriptingComponentType = 'osa ';
 static const OSType kAppleScriptSubtype = 'ascr';

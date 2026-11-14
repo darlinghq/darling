@@ -17,8 +17,5 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
-
-@protocol NSSplitViewDelegate
-
-@end
+// AppKit defines this protocol.
+#import <AppKit/AppKit.h>

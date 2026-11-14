@@ -17,8 +17,26 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <AppKit/AppKit.h>
 
-@interface OSAScriptView : NSObject
+@class OSAScriptAssistant;
+
+@interface OSAScriptView : NSTextView
+{
+    BOOL _usesScriptAssistant;
+    BOOL _usesTabs;
+    NSUInteger _tabWidth;
+    BOOL _wrapsLines;
+    BOOL _indentsWrappedLines;
+    NSUInteger _indentWidth;
+}
+
+@property (copy) NSString *source;
+@property BOOL usesScriptAssistant;
+@property BOOL usesTabs;
+@property NSUInteger tabWidth;
+@property BOOL wrapsLines;
+@property BOOL indentsWrappedLines;
+@property NSUInteger indentWidth;
 
 @end

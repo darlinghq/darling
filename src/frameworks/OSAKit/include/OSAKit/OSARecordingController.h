@@ -19,6 +19,13 @@
 
 #include <Foundation/Foundation.h>
 
+@class OSAScriptController;
+
 @interface OSARecordingController : NSObject
+
++ (instancetype)sharedRecordingController;
+
+// The script controller that is recording. Always nil: there is no Apple event recorder.
+@property (readonly) OSAScriptController *controller;
 
 @end

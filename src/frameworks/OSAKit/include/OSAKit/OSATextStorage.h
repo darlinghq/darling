@@ -17,8 +17,26 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <AppKit/AppKit.h>
 
-@interface OSATextStorage : NSObject
+@class OSAScriptController;
+
+@interface OSATextStorage : NSTextStorage {
+    NSMutableAttributedString *_contents;
+    BOOL _wrapsLines;
+    BOOL _indentsWrappedLines;
+    NSDate *_date;
+    OSAScriptController *_controller;
+}
+
+@property BOOL wrapsLines;
+@property BOOL indentsWrappedLines;
+// When the characters last changed; clients compare it with -[OSAScript date] to skip recompiling.
+@property (retain) NSDate *date;
+// Not retained: the document owns both the controller and this storage.
+@property (assign) OSAScriptController *controller;
+
+- (void)replaceCharactersInRange:(NSRange)range withString:(NSString *)string withUndoManager:(NSUndoManager *)undoManager;
+- (void)replaceCharactersInRange:(NSRange)range withAttributedString:(NSAttributedString *)string withUndoManager:(NSUndoManager *)undoManager;
 
 @end

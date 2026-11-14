@@ -156,6 +156,7 @@ NSString* const OSAScriptErrorPartialResultKey = @"OSAScriptErrorPartialResultKe
 NSString* const OSAScriptErrorOffendingObjectKey = @"OSAScriptErrorOffendingObjectKey";
 NSString* const OSAScriptErrorExpectedTypeKey = @"OSAScriptErrorExpectedTypeKey";
 NSString* const OSAScriptErrorAppAddressKey = @"OSAScriptErrorAppAddressKey";
+NSString* const OSAScriptErrorAppNameKey = @"OSAScriptErrorAppNameKey";
 NSString* const OSAScriptErrorRangeKey = @"OSAScriptErrorRangeKey";
 
 NSString* const OSAStorageScriptType = @"script";

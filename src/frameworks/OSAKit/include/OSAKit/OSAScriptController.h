@@ -17,8 +17,38 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <AppKit/AppKit.h>
+#import <OSAKit/OSAScript.h>
+#import <OSAKit/OSAScriptView.h>
 
-@interface OSAScriptController : NSObject
+typedef NS_ENUM(NSInteger, OSAScriptState) {
+    OSAScriptStopped,
+    OSAScriptRunning,
+    OSAScriptRecording,
+};
+
+@interface OSAScriptController : NSController
+{
+    OSAScriptView *_scriptView;
+    NSTextView *_resultView;
+    OSAScript *_script;
+    OSALanguage *_language;
+    OSAScriptState _scriptState;
+    BOOL _compiling;
+    NSUndoManager *_undoManager;
+    NSAppleEventDescriptor *_defaultTarget;
+}
+
+@property (assign) OSAScriptView *scriptView;
+@property (assign) NSTextView *resultView;
+@property (retain) OSAScript *script;
+@property (retain) OSALanguage *language;
+@property (readonly) OSAScriptState scriptState;
+@property (readonly, getter=isCompiling) BOOL compiling;
+
+- (IBAction)compileScript:(id)sender;
+- (IBAction)recordScript:(id)sender;
+- (IBAction)runScript:(id)sender;
+- (IBAction)stopScript:(id)sender;
 
 @end

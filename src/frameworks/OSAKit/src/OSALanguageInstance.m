@@ -20,7 +20,67 @@
 #import <OSAKit/OSALanguageInstance.h>
 #import <darling-stub-forwarding.h>
 
+// Darling has no OSA components, so there is never a component instance to hand out.
 @implementation OSALanguageInstance
+
++ (instancetype)languageInstanceWithLanguage:(OSALanguage *)language
+{
+    return [[[self alloc] initWithLanguage:language] autorelease];
+}
+
++ (ComponentInstance)defaultAppleScriptComponentInstance
+{
+    return NULL;
+}
+
+- (instancetype)initWithLanguage:(OSALanguage *)language
+{
+    if (language == nil) {
+        [self release];
+        return nil;
+    }
+    self = [super init];
+    if (self != nil)
+        _language = [language retain];
+    return self;
+}
+
+- (void)dealloc
+{
+    [_language release];
+    [_defaultTarget release];
+    [super dealloc];
+}
+
+- (OSALanguage *)language
+{
+    return [[_language retain] autorelease];
+}
+
+- (ComponentInstance)componentInstance
+{
+    return NULL;
+}
+
+- (NSAppleEventDescriptor *)defaultTarget
+{
+    return [[_defaultTarget retain] autorelease];
+}
+
+- (void)setDefaultTarget:(NSAppleEventDescriptor *)target
+{
+    [target retain];
+    [_defaultTarget release];
+    _defaultTarget = target;
+}
+
+- (NSAttributedString *)richTextFromDescriptor:(NSAppleEventDescriptor *)descriptor
+{
+    NSString *text = [descriptor stringValue];
+    if (text == nil)
+        return nil;
+    return [[[NSAttributedString alloc] initWithString:text] autorelease];
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {

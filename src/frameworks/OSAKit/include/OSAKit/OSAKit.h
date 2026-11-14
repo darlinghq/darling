@@ -155,6 +155,7 @@ extern NSString* const OSAScriptErrorPartialResultKey;
 extern NSString* const OSAScriptErrorOffendingObjectKey;
 extern NSString* const OSAScriptErrorExpectedTypeKey;
 extern NSString* const OSAScriptErrorAppAddressKey;
+extern NSString* const OSAScriptErrorAppNameKey;
 extern NSString* const OSAScriptErrorRangeKey;
 
 // OSAScript storage types (uniform type identifiers)
