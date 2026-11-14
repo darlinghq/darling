@@ -39,12 +39,33 @@ enum launcher_mode
 	LAUNCHER_MODE_NONE,
 };
 
+// Whether the launcher was started with privileges, from the kernel's facts about it.
+enum launcher_privilege
+{
+	// No root ids, no secure exec, no capabilities: an ordinary user's process.
+	LAUNCHER_UNPRIVILEGED,
+	// Effective uid 0 (setuid root, or run by root).
+	LAUNCHER_PRIVILEGED,
+	// Privileged in some way, but not with effective uid 0: for instance a set-group-ID
+	// or file-capability install, or capabilities passed down as ambient ones. The root
+	// mode needs uid 0 and the unprivileged modes must not run with privileges, so the
+	// launcher refuses to run.
+	LAUNCHER_PRIVILEGED_NOT_ROOT,
+};
+
+// Classifies the launcher. euidRoot: the effective uid is 0. secureExec: the kernel
+// marked the exec secure (AT_SECURE: set-user-ID, set-group-ID or file capabilities
+// took effect, or an LSM asked for it). capabilities: the effective or permitted
+// capability set is not empty. Any of them makes the launcher privileged; the
+// environment plays no part.
+enum launcher_privilege launcherClassifyPrivilege(bool euidRoot, bool secureExec, bool capabilities);
+
 // Chooses the mode from whether the process has root's power and from the
 // DARLING_NONROOT and DARLING_ROOTLESS settings (a value starting with '1', 't' or
 // 'T' enables one; DARLING_NONROOT wins if both are set).
 //
-// The settings are looked at only when the launcher is not privileged. A process
-// with root's power (effective uid 0) is always in the root mode, whatever the
+// The settings are looked at only when the launcher is not privileged. A privileged
+// process (see launcherClassifyPrivilege()) is always in the root mode, whatever the
 // environment says: the environment is the user's, and must not be able to turn
 // a privileged launcher into a different one. An unprivileged process can do
 // whatever either unprivileged mode does by itself, so letting its environment

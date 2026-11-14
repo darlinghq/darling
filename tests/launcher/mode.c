@@ -17,6 +17,22 @@ static int g_failures = 0;
 		if (!(cond)) { printf("FAIL %d: %s\n", __LINE__, #cond); g_failures++; } \
 	} while (0)
 
+static void testPrivilege(void)
+{
+	// the setuid launcher run by a user (AT_SECURE and euid 0), or root itself
+	CHECK(launcherClassifyPrivilege(true, true, true) == LAUNCHER_PRIVILEGED);
+	CHECK(launcherClassifyPrivilege(true, false, true) == LAUNCHER_PRIVILEGED);
+	CHECK(launcherClassifyPrivilege(true, false, false) == LAUNCHER_PRIVILEGED);
+	CHECK(launcherClassifyPrivilege(true, true, false) == LAUNCHER_PRIVILEGED);
+	// an ordinary user's process
+	CHECK(launcherClassifyPrivilege(false, false, false) == LAUNCHER_UNPRIVILEGED);
+	// a secure exec without euid 0 (set-group-ID, file capabilities) is never an unprivileged mode
+	CHECK(launcherClassifyPrivilege(false, true, false) == LAUNCHER_PRIVILEGED_NOT_ROOT);
+	CHECK(launcherClassifyPrivilege(false, true, true) == LAUNCHER_PRIVILEGED_NOT_ROOT);
+	// nor are capabilities without euid 0 (ambient ones, say)
+	CHECK(launcherClassifyPrivilege(false, false, true) == LAUNCHER_PRIVILEGED_NOT_ROOT);
+}
+
 static void testSelect(void)
 {
 	// a privileged launcher is in the root mode whatever the environment says
@@ -122,6 +138,7 @@ static void testDescendants(void)
 
 int main(void)
 {
+	testPrivilege();
 	testSelect();
 	testPrefix();
 	testLoginName();

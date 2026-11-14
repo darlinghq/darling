@@ -25,6 +25,15 @@ static bool enabled(const char* value)
 	return value != NULL && (value[0] == '1' || value[0] == 't' || value[0] == 'T');
 }
 
+enum launcher_privilege launcherClassifyPrivilege(bool euidRoot, bool secureExec, bool capabilities)
+{
+	if (euidRoot)
+		return LAUNCHER_PRIVILEGED;
+	if (secureExec || capabilities)
+		return LAUNCHER_PRIVILEGED_NOT_ROOT;
+	return LAUNCHER_UNPRIVILEGED;
+}
+
 enum launcher_mode launcherSelectMode(bool privileged, const char* nonRoot, const char* rootless, bool defaultNonRoot)
 {
 	if (privileged)

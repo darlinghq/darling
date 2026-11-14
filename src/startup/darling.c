@@ -155,6 +155,17 @@ static void waitForProcessExit(int handle, pid_t pid)
 		usleep(10000);
 }
 
+// Whether the process has any effective or permitted capability. A failure to tell counts as having one.
+static bool hasCapabilities(void)
+{
+	struct __user_cap_header_struct header = { _LINUX_CAPABILITY_VERSION_3, 0 };
+	struct __user_cap_data_struct data[2] = { 0 };
+
+	if (syscall(SYS_capget, &header, data) != 0)
+		return true;
+	return (data[0].effective | data[1].effective | data[0].permitted | data[1].permitted) != 0;
+}
+
 int main(int argc, char ** argv)
 {
 	pid_t pidInit;
@@ -167,7 +178,14 @@ int main(int argc, char ** argv)
 
 	// Whether the launcher has root's power decides the mode; the environment only chooses
 	// between the unprivileged modes (see launcherSelectMode()).
-	g_mode = launcherSelectMode(geteuid() == 0, getenv("DARLING_NONROOT"), getenv("DARLING_ROOTLESS"), LAUNCHER_DEFAULT_NONROOT);
+	enum launcher_privilege privilege = launcherClassifyPrivilege(geteuid() == 0, getauxval(AT_SECURE) != 0, hasCapabilities());
+	if (privilege == LAUNCHER_PRIVILEGED_NOT_ROOT)
+	{
+		fprintf(stderr, "darling was started with privileges, but not as root (installed set-group-ID or with file capabilities,\n"
+			"or run with capabilities). Install it setuid root, or run it as an ordinary user without privileges.\n");
+		return 1;
+	}
+	g_mode = launcherSelectMode(privilege == LAUNCHER_PRIVILEGED, getenv("DARLING_NONROOT"), getenv("DARLING_ROOTLESS"), LAUNCHER_DEFAULT_NONROOT);
 	if (g_mode == LAUNCHER_MODE_NONE)
 	{
 		missingSetuidRoot();

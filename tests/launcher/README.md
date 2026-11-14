@@ -27,7 +27,8 @@ cc -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -Isrc/startup tests/launcher/mode.c sr
 /tmp/mode-test
 ```
 
-covers the mode selection (a privileged launcher ignores `DARLING_NONROOT`/`DARLING_ROOTLESS`), the install
+covers how the launcher tells it is privileged (effective uid 0, a secure exec or any capability; privileged
+without uid 0 is refused), the mode selection (a privileged launcher ignores `DARLING_NONROOT`/`DARLING_ROOTLESS`), the install
 prefix taken from the executable's path in the unprivileged modes only, the user name rules and the process
 tree walk used by the non-root shutdown.
 
