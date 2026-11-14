@@ -18,7 +18,10 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <QTKit/QTKitDefines.h>
 
 @interface QTVideoRendererWebKitOnly : NSObject
 
 @end
+
+QTKIT_EXTERN NSString * const QTVideoRendererWebKitOnlyNewImageAvailableNotification;

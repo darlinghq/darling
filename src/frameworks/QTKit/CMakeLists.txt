@@ -19,6 +19,7 @@ add_framework(QTKit
 
     SOURCES
         src/QTKit.m
+        src/QTKitConstants.m
         src/QTAudioCompressionOptions.m
         src/QTCompressionOptionsInternal.m
         src/QTCompressionOptions.m

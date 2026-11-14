@@ -18,7 +18,15 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <QTKit/QTKitDefines.h>
 
 @interface QTSampleBuffer : NSObject
 
 @end
+
+QTKIT_EXTERN NSString * const QTSampleBufferDateRecordedAttribute;
+QTKIT_EXTERN NSString * const QTSampleBufferExplicitSceneChange;
+QTKIT_EXTERN NSString * const QTSampleBufferHostTimeAttribute;
+QTKIT_EXTERN NSString * const QTSampleBufferSMPTETimeAttribute;
+QTKIT_EXTERN NSString * const QTSampleBufferSceneChangeTypeAttribute;
+QTKIT_EXTERN NSString * const QTSampleBufferTimeStampDiscontinuitySceneChange;

@@ -18,7 +18,13 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <QTKit/QTKitDefines.h>
 
 @interface QTMovieView : NSObject
 
 @end
+
+QTKIT_EXTERN NSString * const QTMovieViewControllerVisibleBinding;
+QTKIT_EXTERN NSString * const QTMovieViewFillColorBinding;
+QTKIT_EXTERN NSString * const QTMovieViewMovieBinding;
+QTKIT_EXTERN NSString * const QTMovieViewPreservesAspectRatioBinding;

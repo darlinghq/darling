@@ -18,7 +18,32 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <QTKit/QTKitDefines.h>
 
 @interface QTUtilities : NSObject
 
 @end
+
+QTKIT_EXTERN NSString * const kQTTimeFormatterComponentDays;
+QTKIT_EXTERN NSString * const kQTTimeFormatterComponentHours;
+QTKIT_EXTERN NSString * const kQTTimeFormatterComponentMinutes;
+QTKIT_EXTERN NSString * const kQTTimeFormatterComponentOrder;
+QTKIT_EXTERN NSString * const kQTTimeFormatterComponentOrderBigEndian;
+QTKIT_EXTERN NSString * const kQTTimeFormatterComponentOrderLittleEndian;
+QTKIT_EXTERN NSString * const kQTTimeFormatterComponentSeconds;
+QTKIT_EXTERN NSString * const kQTTimeFormatterComponentSeparator;
+QTKIT_EXTERN NSString * const kQTTimeFormatterDecimalSeparator;
+QTKIT_EXTERN NSString * const kQTTimeFormatterDigitGroupingSeparator;
+QTKIT_EXTERN NSString * const kQTTimeFormatterMaximumFractionDigits;
+QTKIT_EXTERN NSString * const kQTTimeFormatterMaximumIntegerDigits;
+QTKIT_EXTERN NSString * const kQTTimeFormatterMinimumFractionDigits;
+QTKIT_EXTERN NSString * const kQTTimeFormatterMinimumIntegerDigits;
+QTKIT_EXTERN NSString * const kQTTimeFormatterNegativePrefix;
+QTKIT_EXTERN NSString * const kQTTimeFormatterNegativeSuffix;
+QTKIT_EXTERN NSString * const kQTTimeFormatterNonfiniteSymbol;
+QTKIT_EXTERN NSString * const kQTTimeFormatterOptionalComponents;
+QTKIT_EXTERN NSString * const kQTTimeFormatterPositivePrefix;
+QTKIT_EXTERN NSString * const kQTTimeFormatterPositiveSuffix;
+QTKIT_EXTERN NSString * const kQTTimeFormatterRequiredComponents;
+QTKIT_EXTERN NSString * const kQTTimeFormatterShowsSignInAllComponents;
+QTKIT_EXTERN NSString * const kQTTimeFormatterUsesDigitGroupingSeparator;

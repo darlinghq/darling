@@ -18,7 +18,11 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <QTKit/QTKitDefines.h>
 
 @interface QTCaptureSession : NSObject
 
 @end
+
+QTKIT_EXTERN NSString * const QTCaptureSessionErrorKey;
+QTKIT_EXTERN NSString * const QTCaptureSessionRuntimeErrorNotification;

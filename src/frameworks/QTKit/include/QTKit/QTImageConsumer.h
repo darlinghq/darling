@@ -18,7 +18,17 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <QTKit/QTKitDefines.h>
 
 @protocol QTImageConsumer
 
 @end
+
+QTKIT_EXTERN NSString * const QTImageConsumerFrequencyKey;
+QTKIT_EXTERN NSString * const QTImageConsumerLatencyKey;
+QTKIT_EXTERN NSString * const QTImageConsumerOpenGLDisplayMaskKey;
+QTKIT_EXTERN NSString * const QTImageConsumerOutputColorSpaceKey;
+QTKIT_EXTERN NSString * const QTImageConsumerPixelBufferAttributesKey;
+QTKIT_EXTERN NSString * const QTImageConsumerTargetDimensionsHeightKey;
+QTKIT_EXTERN NSString * const QTImageConsumerTargetDimensionsKey;
+QTKIT_EXTERN NSString * const QTImageConsumerTargetDimensionsWidthKey;

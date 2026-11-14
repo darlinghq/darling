@@ -23,6 +23,9 @@
 
 #import <Foundation/Foundation.h>
 
+#import <QTKit/QTKitDefines.h>
+#import <QTKit/QTTime.h>
+
 #import <QTKit/ModernizerXPCProtocol.h>
 #import <QTKit/NSUserInterfaceValidations.h>
 #import <QTKit/QTCaptureOperationDescriptor.h>

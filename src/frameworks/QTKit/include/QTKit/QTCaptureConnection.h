@@ -18,7 +18,19 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <QTKit/QTKitDefines.h>
 
 @interface QTCaptureConnection : NSObject
 
 @end
+
+QTKIT_EXTERN NSString * const QTCaptureConnectionAttributeDidChangeNotification;
+QTKIT_EXTERN NSString * const QTCaptureConnectionAttributeWillChangeNotification;
+QTKIT_EXTERN NSString * const QTCaptureConnectionAudioAveragePowerLevelsAttribute;
+QTKIT_EXTERN NSString * const QTCaptureConnectionAudioMasterVolumeAttribute;
+QTKIT_EXTERN NSString * const QTCaptureConnectionAudioPeakHoldLevelsAttribute;
+QTKIT_EXTERN NSString * const QTCaptureConnectionAudioVolumesAttribute;
+QTKIT_EXTERN NSString * const QTCaptureConnectionChangedAttributeKey;
+QTKIT_EXTERN NSString * const QTCaptureConnectionEnabledAudioChannelsAttribute;
+QTKIT_EXTERN NSString * const QTCaptureConnectionFormatDescriptionDidChangeNotification;
+QTKIT_EXTERN NSString * const QTCaptureConnectionFormatDescriptionWillChangeNotification;
