@@ -62,12 +62,15 @@ static NSString *CurrentEvent(void)
 	return [NSString stringWithFormat:@"%.4s/%.4s", (char *) &c, (char *) &i];
 }
 
-@interface DocApp : NSObject <NSApplicationDelegate>
+@interface DocApp : NSObject <NSApplicationDelegate> {
+	NSString *_bundleID;
+}
 @property (copy) NSString *bundleID;
 - (void)log:(NSString *)what;
 @end
 
 @implementation DocApp
+@synthesize bundleID = _bundleID;
 - (void)log:(NSString *)what
 {
 	AppendLog(self.bundleID, [NSString stringWithFormat:@"%@ [current event %@]", what, CurrentEvent()]);
@@ -124,7 +127,7 @@ static NSString *CurrentEvent(void)
 }
 @end
 
-static int RunApp(NSString *bundleID)
+static int RunApp(NSString *bundleID, int argc, char **argv)
 {
 	@autoreleasepool {
 		AppendLog(bundleID, [NSString stringWithFormat:@"pid %d", (int) getpid()]);
@@ -133,7 +136,8 @@ static int RunApp(NSString *bundleID)
 		DocApp *delegate = [bundleID isEqualToString:ID_FILE] ? [[SingleDocApp alloc] init] : [[DocApp alloc] init];
 		delegate.bundleID = bundleID;
 		[app setDelegate:delegate];
-		[app run];
+		// As a program built on NSApplicationMain: a file named in argv is opened first.
+		NSApplicationMain(argc, (const char **) argv);
 	}
 	return 0;
 }
@@ -352,7 +356,7 @@ int main(int argc, char **argv)
 	@autoreleasepool {
 		NSString *bid = [[NSBundle mainBundle] bundleIdentifier];
 		if ([bid isEqualToString:ID_FILES] || [bid isEqualToString:ID_FILE])
-			return RunApp(bid);
+			return RunApp(bid, argc, argv);
 
 		char path[4096];
 		uint32_t len = sizeof(path);
