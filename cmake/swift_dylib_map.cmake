@@ -17,6 +17,10 @@
 #    found a Swift toolchain; an entry for a dylib that is not built is harmless,
 #    since ld64 only opens the file when a link refers to it.
 # 3. Framework bundles (Combine.framework, CryptoKit.framework).
+#
+# The Foundation and CoreGraphics overlays are mapped to the placeholders that
+# Foundation and CoreGraphics re-export, because the overlays link those
+# frameworks and cannot be their dependencies (see below).
 
 set(DARLING_SWIFT_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/external/swift")
 
@@ -29,7 +33,6 @@ set(DARLING_SWIFT_GENERATED_DYLIBS
 	libswiftDispatch.dylib
 	libswiftos.dylib
 	libswiftXPC.dylib
-	libswiftCoreGraphics.dylib
 	libswiftIOKit.dylib
 	libswiftCoreAudio.dylib
 	libswiftCompression.dylib
@@ -83,6 +86,12 @@ function(_darling_swift_dylib_map_compute out)
 	# placeholder: the overlay cannot be a dependency of the targets it is built from.
 	set(placeholder "${CMAKE_BINARY_DIR}/src/external/foundation/libswiftFoundation_placeholder.dylib")
 	string(APPEND map " -Wl,-dylib_file,/usr/lib/swift/libswiftFoundation.dylib:${placeholder} -Wl,-dylib_file,@rpath/libswiftFoundation.dylib:${placeholder}")
+
+	# CoreGraphics re-exports the CoreGraphics overlay in the same way (see the CoreGraphics CMakeLists.txt), so the
+	# overlay's install name resolves to CoreGraphics' placeholder inside the build. The overlay links CoreGraphics
+	# and cannot be a dependency of it.
+	set(cg_placeholder "${CMAKE_BINARY_DIR}/src/external/cocotron/CoreGraphics/libswiftCoreGraphics_placeholder.dylib")
+	string(APPEND map " -Wl,-dylib_file,/usr/lib/swift/libswiftCoreGraphics.dylib:${cg_placeholder} -Wl,-dylib_file,@rpath/libswiftCoreGraphics.dylib:${cg_placeholder}")
 
 	foreach(fw_name ${DARLING_SWIFT_FRAMEWORKS})
 		set(fw_binary "${DARLING_SWIFT_SOURCE_DIR}/${fw_name}.framework/Versions/A/${fw_name}")
