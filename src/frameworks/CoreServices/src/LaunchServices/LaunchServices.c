@@ -318,7 +318,45 @@ static OSStatus send_documents_event(pid_t pid, CFArrayRef urls, Boolean print, 
  * events are queued in launchservicesd without waiting: the new process gets them as its first events
  * when it checks in, and a process that never does is simply launched.
  */
-static OSStatus deliver_urls(CFURLRef appURL, CFArrayRef urls, Boolean newInstance, Boolean print, CFURLRef *outLaunchedURL)
+static OSStatus deliver_items(CFURLRef appURL, CFArrayRef urls, Boolean newInstance, Boolean print, CFURLRef *outLaunchedURL);
+
+/* Whether two file URLs name the same path (a trailing slash does not matter). */
+static Boolean same_file_path(CFURLRef a, CFURLRef b)
+{
+	char pathA[PATH_MAX], pathB[PATH_MAX];
+	size_t lengthA, lengthB;
+
+	if (!CFURLGetFileSystemRepresentation(a, true, (UInt8 *) pathA, sizeof(pathA)) ||
+			!CFURLGetFileSystemRepresentation(b, true, (UInt8 *) pathB, sizeof(pathB)))
+		return false;
+	lengthA = strlen(pathA);
+	lengthB = strlen(pathB);
+	while (lengthA > 1 && pathA[lengthA - 1] == '/')
+		pathA[--lengthA] = 0;
+	while (lengthB > 1 && pathB[lengthB - 1] == '/')
+		pathB[--lengthB] = 0;
+	return strcmp(pathA, pathB) == 0;
+}
+
+static OSStatus deliver_urls(CFURLRef appURL, CFArrayRef itemURLs, Boolean newInstance, Boolean print, CFURLRef *outLaunchedURL)
+{
+	/* The application among its own items (how open -a asks for just the application) is not a document. */
+	CFMutableArrayRef urls = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+	OSStatus result;
+
+	for (CFIndex i = 0; itemURLs != NULL && i < CFArrayGetCount(itemURLs); i++)
+	{
+		CFURLRef item = CFArrayGetValueAtIndex(itemURLs, i);
+
+		if (!(is_file_url(item) && same_file_path(item, appURL)))
+			CFArrayAppendValue(urls, item);
+	}
+	result = deliver_items(appURL, urls, newInstance, print, outLaunchedURL);
+	CFRelease(urls);
+	return result;
+}
+
+static OSStatus deliver_items(CFURLRef appURL, CFArrayRef urls, Boolean newInstance, Boolean print, CFURLRef *outLaunchedURL)
 {
 	CFBundleRef bundle = CFBundleCreate(kCFAllocatorDefault, appURL);
 	CFStringRef identifier = bundle != NULL ? CFBundleGetIdentifier(bundle) : NULL;
