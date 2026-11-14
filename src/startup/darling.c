@@ -72,7 +72,7 @@ static char g_serverPath[4096];
 static char g_mldrPath[4096];
 static char g_libexecPath[4096];
 // the invoking user's name, once looked up
-static char g_loginName[4096];
+static char g_loginName[256];
 
 #if defined(__ANDROID__)
 	// Android hosts have neither setuid installs nor user namespaces to count on.
@@ -1061,7 +1061,7 @@ int connectToShellspawn(void)
 static bool lookUpLoginName(void)
 {
 	struct passwd* pw = getpwuid(g_originalUid);
-	char loginBuffer[256] = "";
+	char loginBuffer[sizeof(g_loginName)] = "";
 	const char* userEnv = getenv("USER");
 	const char* lognameEnv = getenv("LOGNAME");
 	const char* login;
