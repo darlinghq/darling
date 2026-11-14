@@ -52,7 +52,10 @@ static EventHotKeyID g_lastID;
 			g_seenReleased++;
 		g_lastData1 = [event data1];
 		g_lastWindow = [event windowNumber];
-		g_lastFlags = [event modifierFlags];
+		// The press carries the modifiers of the hot key; a release reports the modifiers still
+		// held then, which depends on the order the keys are let go in.
+		if ([event subtype] == 6)
+			g_lastFlags = [event modifierFlags];
 		if (g_swallow)
 			return;
 		g_inSendEvent = YES;
