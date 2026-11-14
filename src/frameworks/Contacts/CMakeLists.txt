@@ -19,6 +19,7 @@ add_framework(Contacts
 
     SOURCES
         src/Contacts.m
+        src/CNError.m
         src/CNContactVCardWritingAdapter.m
         src/CNChangeHistoryGroupChange.m
         src/CNContactSuggestionMatch.m
