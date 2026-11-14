@@ -57,12 +57,17 @@ void elfcalls_make(struct elf_calls* calls);
 // reads the base through a register that Linux owns, so only ARM64 advertises
 // the slot and the other architectures' apple vectors are unchanged.
 #define MLDR_TSD_SLOT_KEY "darling_tsd_slot_offset="
-#define MLDR_APPLEP_COUNT 5
+// Size in bytes of the elf_calls table, so that a consumer built against a
+// longer table does not use members this loader does not have.
+#define MLDR_ELFCALLS_SIZE_KEY "elf_calls_size="
+#define MLDR_APPLEP_COUNT 6
 #define MLDR_TSD_SLOT_SIZE (sizeof(MLDR_TSD_SLOT_KEY) + 2 * sizeof(unsigned long))
+#define MLDR_ELFCALLS_SIZE_SIZE (sizeof(MLDR_ELFCALLS_SIZE_KEY) + 2 * sizeof(size_t))
 uintptr_t __darling_arm64_tsd_slot_offset(void);
 #else
 #define MLDR_APPLEP_COUNT 4
 #define MLDR_TSD_SLOT_SIZE 0
+#define MLDR_ELFCALLS_SIZE_SIZE 0
 #endif
 
 static struct elf_calls _elfcalls;
@@ -86,6 +91,8 @@ void FUNCTION_NAME(const char* filepath, struct load_results* lr)
 #if defined(__aarch64__)
 	char __user* tsd_slot_user;
 	char tsd_slot[MLDR_TSD_SLOT_SIZE] = {0};
+	char __user* elfcalls_size_user;
+	char elfcalls_size[MLDR_ELFCALLS_SIZE_SIZE] = {0};
 #endif
 	char __user* applep_contents[MLDR_APPLEP_COUNT];
 
@@ -135,7 +142,7 @@ void FUNCTION_NAME(const char* filepath, struct load_results* lr)
 	// `envc`-count pointers for env vars (+1 for NULL)
 	// `sizeof(applep_contents) / sizeof(*applep_contents)`-count pointers for applep arguments (already includes NULL)
 	// space for exepath, kernfd, and elfcalls
-	sp -= 1 + 1 + (lr->argc + 1) + (lr->envc + 1) + (sizeof(applep_contents) / sizeof(*applep_contents)) + user_long_count(exepath_len + sizeof(EXECUTABLE_PATH) + sizeof(kernfd) + sizeof(elfcalls) + MLDR_TSD_SLOT_SIZE);
+	sp -= 1 + 1 + (lr->argc + 1) + (lr->envc + 1) + (sizeof(applep_contents) / sizeof(*applep_contents)) + user_long_count(exepath_len + sizeof(EXECUTABLE_PATH) + sizeof(kernfd) + sizeof(elfcalls) + MLDR_TSD_SLOT_SIZE + MLDR_ELFCALLS_SIZE_SIZE);
 
 	exepath_user = (char __user*) lr->stack_top - exepath_len - sizeof(EXECUTABLE_PATH);
 	memcpy(exepath_user, EXECUTABLE_PATH, sizeof(EXECUTABLE_PATH)-1);
@@ -160,6 +167,10 @@ void FUNCTION_NAME(const char* filepath, struct load_results* lr)
 	         (unsigned long)__darling_arm64_tsd_slot_offset());
 	tsd_slot_user = elfcalls_user - MLDR_TSD_SLOT_SIZE;
 	memcpy(tsd_slot_user, tsd_slot, MLDR_TSD_SLOT_SIZE);
+
+	snprintf(elfcalls_size, sizeof(elfcalls_size), MLDR_ELFCALLS_SIZE_KEY "%zx", sizeof(_elfcalls));
+	elfcalls_size_user = tsd_slot_user - MLDR_ELFCALLS_SIZE_SIZE;
+	memcpy(elfcalls_size_user, elfcalls_size, MLDR_ELFCALLS_SIZE_SIZE);
 #endif
 
 	applep_contents[0] = exepath_user;
@@ -167,7 +178,8 @@ void FUNCTION_NAME(const char* filepath, struct load_results* lr)
 	applep_contents[2] = elfcalls_user;
 #if defined(__aarch64__)
 	applep_contents[3] = tsd_slot_user;
-	applep_contents[4] = NULL;
+	applep_contents[4] = elfcalls_size_user;
+	applep_contents[5] = NULL;
 #else
 	applep_contents[3] = NULL;
 #endif
