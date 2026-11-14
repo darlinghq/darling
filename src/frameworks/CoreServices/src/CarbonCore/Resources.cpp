@@ -238,6 +238,26 @@ void FSCreateResFile(const FSRef* parentDir, UniCharCount nameLength, const UniC
 	g_lastError = noErr;
 }
 
+ResFileRefNum HomeResFile(Handle resource)
+{
+	std::unique_lock<std::mutex> l(g_resourcesLock);
+
+	if (resource)
+	{
+		for (auto const& [refNum, resources] : g_resources)
+		{
+			if (resources->dataByHandle(resource))
+			{
+				g_lastError = noErr;
+				return refNum;
+			}
+		}
+	}
+
+	g_lastError = resNotFound;
+	return kResFileNotOpened;
+}
+
 ResFileRefNum CurResFile(void)
 {
 	return g_currentResFile;
