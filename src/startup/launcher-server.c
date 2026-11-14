@@ -110,6 +110,119 @@ enum launcher_server_check launcherOpenServerMountNs(int procfd, const struct st
 	return LAUNCHER_SERVER_OK;
 }
 
+enum launcher_server_check launcherOpenRootlessNamespaces(int procfd, const struct stat* exe, const struct stat* userNs,
+	const struct stat* mntNs, int* userfd, int* mntfd)
+{
+	struct stat st;
+	int user = -1, mnt = -1, owner = -1, parent = -1, result = LAUNCHER_SERVER_ERROR;
+	uid_t ownerUid;
+
+	*userfd = *mntfd = -1;
+
+	if (fstatat(procfd, "exe", &st, 0) != 0)
+		return lookupFailure();
+	if (!sameFile(&st, exe))
+		return LAUNCHER_SERVER_WRONG_EXE;
+
+	user = openat(procfd, "ns/user", O_RDONLY | O_CLOEXEC);
+	if (user < 0)
+		return lookupFailure();
+	mnt = openat(procfd, "ns/mnt", O_RDONLY | O_CLOEXEC);
+	if (mnt < 0)
+	{
+		result = lookupFailure();
+		goto fail;
+	}
+
+	// The container's user namespace must be a different one, a direct child of the launcher's, and
+	// created by the invoking user (its owner is then the launcher's effective uid): the namespace
+	// Rootless mode makes. Anything else is refused before it is joined.
+	if (fstat(user, &st) != 0)
+		goto fail;
+	if (sameFile(&st, userNs))
+	{
+		result = LAUNCHER_SERVER_FOREIGN_USERNS;
+		goto fail;
+	}
+	parent = ioctl(user, NS_GET_PARENT);
+	if (parent < 0)
+	{
+		// EPERM: the parent is outside the launcher's user namespace.
+		result = (errno == EPERM) ? LAUNCHER_SERVER_FOREIGN_USERNS : LAUNCHER_SERVER_ERROR;
+		goto fail;
+	}
+	if (fstat(parent, &st) != 0)
+		goto fail;
+	if (!sameFile(&st, userNs))
+	{
+		result = LAUNCHER_SERVER_FOREIGN_USERNS;
+		goto fail;
+	}
+	if (ioctl(user, NS_GET_OWNER_UID, &ownerUid) != 0)
+		goto fail;
+	if (ownerUid != geteuid())
+	{
+		result = LAUNCHER_SERVER_FOREIGN_USERNS;
+		goto fail;
+	}
+
+	// The mount namespace must belong to that user namespace and be another one than the launcher's.
+	owner = ioctl(mnt, NS_GET_USERNS);
+	if (owner < 0)
+	{
+		result = (errno == EPERM) ? LAUNCHER_SERVER_FOREIGN_USERNS : LAUNCHER_SERVER_ERROR;
+		goto fail;
+	}
+	{
+		struct stat ownerSt, userSt;
+
+		if (fstat(owner, &ownerSt) != 0 || fstat(user, &userSt) != 0)
+			goto fail;
+		if (!sameFile(&ownerSt, &userSt))
+		{
+			result = LAUNCHER_SERVER_FOREIGN_USERNS;
+			goto fail;
+		}
+	}
+	if (fstat(mnt, &st) != 0)
+		goto fail;
+	if (sameFile(&st, mntNs))
+	{
+		result = LAUNCHER_SERVER_SAME_MNTNS;
+		goto fail;
+	}
+
+	// Both namespaces were opened through the same pinned directory: make sure the process was still
+	// the server afterwards.
+	if (fstatat(procfd, "exe", &st, 0) != 0)
+	{
+		result = lookupFailure();
+		goto fail;
+	}
+	if (!sameFile(&st, exe))
+	{
+		result = LAUNCHER_SERVER_WRONG_EXE;
+		goto fail;
+	}
+
+	close(owner);
+	close(parent);
+	*userfd = user;
+	*mntfd = mnt;
+	return LAUNCHER_SERVER_OK;
+
+fail:
+	if (owner >= 0)
+		close(owner);
+	if (parent >= 0)
+		close(parent);
+	if (mnt >= 0)
+		close(mnt);
+	if (user >= 0)
+		close(user);
+	return result;
+}
+
 bool launcherServerCommandLineMatchesPrefix(const char* cmdline, size_t length,
 	const char* prefix)
 {

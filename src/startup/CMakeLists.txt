@@ -90,6 +90,11 @@ add_executable(launcher_mode_test ${CMAKE_SOURCE_DIR}/tests/launcher/mode.c laun
 target_include_directories(launcher_mode_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME launcher_mode COMMAND launcher_mode_test)
 
+# how the rootless launcher examines and joins the container's namespaces
+add_executable(launcher_rootless_ns_test ${CMAKE_SOURCE_DIR}/tests/launcher/rootless-ns.c launcher-server.c)
+target_include_directories(launcher_rootless_ns_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME launcher_rootless_ns COMMAND launcher_rootless_ns_test)
+
 # the setuid launcher's prefix path and socket path checks
 add_executable(launcher_prefix_test ${CMAKE_SOURCE_DIR}/tests/launcher/prefix.c launcher-prefix.c)
 target_include_directories(launcher_prefix_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

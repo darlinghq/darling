@@ -54,6 +54,13 @@ enum launcher_server_check
 enum launcher_server_check launcherOpenServerMountNs(int procfd, const struct stat* exe,
 	const struct stat* userNs, const struct stat* mntNs, int* nsfd);
 
+// The rootless counterpart of launcherOpenServerMountNs(): the container's namespaces are the user
+// namespace the rootless launcher made (a child of the launcher's own, owned by the launcher's
+// effective uid) and a mount namespace of it. On LAUNCHER_SERVER_OK, *userfd and *mntfd are open
+// descriptors of the checked namespaces, to be joined in that order with setns(). Otherwise both are -1.
+enum launcher_server_check launcherOpenRootlessNamespaces(int procfd, const struct stat* exe,
+	const struct stat* userNs, const struct stat* mntNs, int* userfd, int* mntfd);
+
 // Whether a live process from the installed darlingserver executable was
 // started for this exact prefix by the invoking uid. Returns 1 with *pid set
 // when found, 0 when absent, and -1 if the process list could not be checked.

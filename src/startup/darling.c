@@ -31,6 +31,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sched.h>
 #include <sys/poll.h>
 #include <sys/syscall.h>
+#include <linux/capability.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <getopt.h>
@@ -84,6 +85,8 @@ static bool privilegedMode(void)
 {
 	return g_mode == LAUNCHER_MODE_ROOT;
 }
+
+static void joinRootlessNamespaces(pid_t pid);
 
 // Everything the launcher does inside the user's prefix (which the user names
 // and controls) runs with the user's effective ids, so that it can only do what
@@ -447,10 +450,14 @@ int main(int argc, char ** argv)
 	}
 
 #if USE_LINUX_4_11_HACK
-	// Only the root mode: in the others the container's mount namespace belongs to a user namespace
-	// of its own or does not exist, and the shellspawn socket is reached through the prefix directory.
+	// The root mode joins the container's mount namespace as root. The rootless mode joins the user
+	// namespace it made and the mount namespace in it, as the user who owns them: the overlay is mounted
+	// in there, and a socket in the host's view of the prefix cannot be connected to. The non-root mode has
+	// no namespaces; the shellspawn socket is reached through the prefix directory.
 	if (privilegedMode())
 		joinServerMountNamespace(pidInit);
+	else if (g_mode == LAUNCHER_MODE_ROOTLESS)
+		joinRootlessNamespaces(pidInit);
 #endif
 
 	// Joining the mount namespace was the last step that needs root. Drop it
@@ -504,6 +511,84 @@ int main(int argc, char ** argv)
 	}
 
 	return 0;
+}
+
+// Rootless mode: the container's mount namespace is owned by the user namespace the launcher's server
+// child made, so it can only be joined from inside that user namespace. The user is that namespace's
+// owner, which gives the launcher the right to join it, and nothing else: the checks below insist on a
+// direct child of the launcher's own namespace that was made by this user, and the namespaces are
+// opened through a pinned /proc/<pid> descriptor (see launcherOpenRootlessNamespaces()).
+static void joinRootlessNamespaces(pid_t pid)
+{
+	struct stat exe, userNs, mntNs;
+	char procPath[64];
+	int procfd, userfd = -1, mntfd = -1;
+	enum launcher_server_check check;
+
+	if (stat(g_serverPath, &exe) != 0
+		|| stat("/proc/self/ns/user", &userNs) != 0
+		|| stat("/proc/self/ns/mnt", &mntNs) != 0)
+	{
+		fprintf(stderr, "Cannot examine darlingserver or this process's namespaces: %s\n", strerror(errno));
+		exit(1);
+	}
+
+	snprintf(procPath, sizeof(procPath), "/proc/%d", (int) pid);
+	procfd = open(procPath, O_PATH | O_DIRECTORY | O_CLOEXEC);
+	if (procfd < 0)
+		check = LAUNCHER_SERVER_GONE;
+	else
+	{
+		check = launcherOpenRootlessNamespaces(procfd, &exe, &userNs, &mntNs, &userfd, &mntfd);
+		int error = errno;
+		close(procfd);
+		errno = error;
+	}
+
+	switch (check)
+	{
+		case LAUNCHER_SERVER_OK:
+			break;
+		case LAUNCHER_SERVER_GONE:
+			fprintf(stderr, "The Darling container (process %d) exited. Try again.\n", (int) pid);
+			exit(1);
+		case LAUNCHER_SERVER_WRONG_EXE:
+			fprintf(stderr, "Process %d, named in %s/.init.pid, is not running %s.\n"
+				"If Darling was updated while the container was running, run 'darling shutdown' and try again.\n",
+				(int) pid, prefix, g_serverPath);
+			exit(1);
+		case LAUNCHER_SERVER_FOREIGN_USERNS:
+		case LAUNCHER_SERVER_SAME_MNTNS:
+			fprintf(stderr, "Process %d, named in %s/.init.pid, is not a rootless Darling container of this user; refusing to join it.\n"
+				"Run 'darling shutdown' and try again.\n", (int) pid, prefix);
+			exit(1);
+		case LAUNCHER_SERVER_ERROR:
+		default:
+			fprintf(stderr, "Cannot examine the Darling container (process %d): %s\n", (int) pid, strerror(errno));
+			exit(1);
+	}
+
+	if (setns(userfd, CLONE_NEWUSER) != 0 || setns(mntfd, CLONE_NEWNS) != 0)
+	{
+		fprintf(stderr, "Cannot join the container's namespaces: %s\n", strerror(errno));
+		exit(1);
+	}
+	close(userfd);
+	close(mntfd);
+
+	// Joining a user namespace grants every capability in it. The rest of the launcher only talks to
+	// shellspawn and resolves paths, none of which needs them: give them all up.
+	{
+		struct __user_cap_header_struct header = { _LINUX_CAPABILITY_VERSION_3, 0 };
+		struct __user_cap_data_struct data[2];
+
+		memset(data, 0, sizeof(data));
+		if (syscall(SYS_capset, &header, data) != 0)
+		{
+			fprintf(stderr, "Cannot drop the capabilities of the container's user namespace: %s\n", strerror(errno));
+			exit(1);
+		}
+	}
 }
 
 // Joins the mount namespace of the container's darlingserver. This runs as
