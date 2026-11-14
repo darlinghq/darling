@@ -24,7 +24,7 @@
 #import <Foundation/Foundation.h>
 
 @protocol UNUserNotificationCenterDelegate;
-@class UNNotificationSettings, UNNotificationRequest, UNNotificationCategory, UNNotification, UNNotificationResponse;
+@class UNUserNotificationCenter, UNNotificationSettings, UNNotificationRequest, UNNotificationCategory, UNNotification, UNNotificationResponse;
 
 typedef NS_OPTIONS(NSUInteger, UNAuthorizationOptions) {
     UNAuthorizationOptionBadge = (1 << 0),

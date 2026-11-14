@@ -46,7 +46,7 @@
 - (NSDate *)nextTriggerDate
 {
     NSCalendar *calendar = [NSCalendar currentCalendar];
-    return [calendar nextDateAfterDate:[NSDate date] matchingComponents:_dateComponents options:NSCalendarMatchNextTime];
+    return [calendar dateFromComponents:_dateComponents];
 }
 
 - (id)copyWithZone:(NSZone *)zone
@@ -66,7 +66,12 @@
 {
     self = [super initWithCoder:coder];
     if (self) {
-        _dateComponents = [[coder decodeObjectOfClass:[NSDateComponents class] forKey:@"dateComponents"] copy];
+        if ([coder respondsToSelector:@selector(decodeObjectOfClass:forKey:)]) {
+            _dateComponents = [[coder decodeObjectOfClass:[NSDateComponents class] forKey:@"dateComponents"] copy];
+        }
+        if (!_dateComponents) {
+            _dateComponents = [[coder decodeObjectForKey:@"dateComponents"] copy];
+        }
     }
     return self;
 }
