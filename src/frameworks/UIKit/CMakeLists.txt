@@ -6,7 +6,6 @@ generate_sdk_framework(UIKit VERSION A HEADER "include/UIKit")
 add_framework(UIKit
     IOSSUPPORT
     CURRENT_VERSION
-    FAT
     VERSION A
     SOURCES
         src/UICollectionViewCompositionalLayout.m
