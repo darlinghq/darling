@@ -124,6 +124,82 @@ static void mldr_explain_mmap_failure(int err, uintptr_t addr)
 
 #endif /* MLDR_MMAP_MIN_ADDR_HINT_DEFINED */
 
+#if defined(GEN_64BIT) && defined(__aarch64__) && !defined(MLDR_TSD_REWRITE_DEFINED)
+#define MLDR_TSD_REWRITE_DEFINED
+
+#include "tsd_rewrite.h"
+
+uintptr_t __darling_arm64_tsd_slot_offset(void);
+
+// Changes the Darwin TSD base reads in the instruction sections of one mapped
+// segment so that they read the native TLS slot (see tsd_rewrite.h). Only
+// sections the Mach-O marks as holding instructions are scanned, so data
+// words that happen to look like the pair are never touched. The pages are
+// made writable only while they are patched, and are never writable and
+// executable together.
+static void mldr_rewrite_tsd_reads(struct segment_command_64* seg, uintptr_t seg_addr, int useprot, size_t host_ps)
+{
+	const uintptr_t slot_offset = __darling_arm64_tsd_slot_offset();
+	if (!mldr_tsd_slot_offset_valid(slot_offset))
+		return;
+
+	// the section headers follow the segment command, inside its cmdsize
+	if (seg->cmdsize < sizeof(*seg) || (seg->cmdsize - sizeof(*seg)) / sizeof(struct section_64) < seg->nsects)
+		return;
+
+	struct section_64* sect = (struct section_64*) (seg + 1);
+	// the file-backed pages of the segment mapping
+	const uintptr_t mapped_end = seg_addr + mldr_page_roundup(seg->filesize, host_ps);
+
+	for (uint32_t i = 0; i < seg->nsects; i++, sect++)
+	{
+		if (!(sect->flags & (S_ATTR_PURE_INSTRUCTIONS | S_ATTR_SOME_INSTRUCTIONS)))
+			continue;
+		if (sect->addr < seg->vmaddr || sect->addr - seg->vmaddr >= seg->filesize)
+			continue;
+
+		uint64_t offset = sect->addr - seg->vmaddr;
+		uint64_t size = sect->size;
+		if (size > seg->filesize - offset)
+			size = seg->filesize - offset;
+		// instructions are 4-byte aligned in the file and in memory
+		if ((offset & 3) != 0)
+			continue;
+
+		uint32_t* insns = (uint32_t*) (seg_addr + offset);
+		size_t count = size / sizeof(uint32_t);
+		if (mldr_tsd_count_reads(insns, count) == 0)
+			continue;
+
+		uintptr_t first_page = ((uintptr_t) insns) & ~(host_ps - 1);
+		uintptr_t end = mldr_page_roundup(((uintptr_t) insns) + count * sizeof(uint32_t), host_ps);
+		if (end > mapped_end)
+			end = mapped_end;
+
+		if (mprotect((void*) first_page, end - first_page, PROT_READ | PROT_WRITE) != 0)
+		{
+			fprintf(stderr, "mldr: cannot make %s,%s writable to rewrite TSD reads at %p: %s\n",
+				seg->segname, sect->sectname, (void*) first_page, strerror(errno));
+			exit(1);
+		}
+
+		mldr_tsd_rewrite_reads(insns, count, slot_offset);
+
+		// Make the new instructions visible to instruction fetch before the
+		// pages can execute again.
+		__builtin___clear_cache((char*) insns, (char*) (insns + count));
+
+		if (mprotect((void*) first_page, end - first_page, useprot) != 0)
+		{
+			fprintf(stderr, "mldr: cannot restore the protection of %s,%s at %p: %s\n",
+				seg->segname, sect->sectname, (void*) first_page, strerror(errno));
+			exit(1);
+		}
+	}
+}
+
+#endif /* GEN_64BIT && __aarch64__ */
+
 // Definitions:
 // FUNCTION_NAME (load32/load64)
 // SEGMENT_STRUCT (segment_command/SEGMENT_STRUCT)
@@ -379,6 +455,12 @@ no_slide:
 								mprotect((void*) PAGE_ALIGN(tail), PAGE_SIZE, useprot);
 						}
 					}
+
+#if defined(GEN_64BIT) && defined(__aarch64__)
+					// Before the segment is sealed: sealing makes it unchangeable.
+					if (useprot & PROT_EXEC)
+						mldr_rewrite_tsd_reads(seg, seg_addr, useprot, host_ps);
+#endif
 
 					if (lr->seal_images && (useprot & PROT_READ) && !(useprot & PROT_WRITE) &&
 						(strncmp(seg->segname, SEG_TEXT, sizeof(seg->segname)) == 0 ||
