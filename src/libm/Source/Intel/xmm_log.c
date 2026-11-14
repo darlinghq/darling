@@ -407,46 +407,8 @@ static inline double _xlog2( double x )
 
 #if defined( BUILDING_FOR_CARBONCORE_LEGACY )
 
-#warning goofy use of scaled log() to do log2()
-double log2( double x )
-{
-	static const double conversion = 1.0 / 6.9314718055994530942E-1;
-	xDouble xd = DOUBLE_2_XDOUBLE( x );
-	
-	xDouble xIsNaN = _mm_cmpunord_sd( xd, xd );
-	xDouble safeX = _mm_andnot_pd( xIsNaN, xd );
-	
-	xDouble xGTzero = _mm_cmpgt_sdm( safeX, (double*) &minusZeroD );
-	xDouble xLTinf =  _mm_cmplt_sdm( safeX, (double*) &plusinf );
-	
-	// mainline: 0 < x < inf
-	if( _mm_istrue_sd( _mm_and_pd( xGTzero, xLTinf ) ) ) {
-		xd = _xlog(xd);
-		xd = _mm_mul_sdm(xd, &conversion);
-	}
-	
-	// edge cases
-	else {
-		if( _mm_istrue_sd( _mm_cmpeq_sd( xd, minusZeroD ) ) )
-			xd = _mm_div_sd( _mm_load_sd( &two ), minusZeroD );
-		else {
-			xDouble inf = plusinf;
-			xDouble isInf = _mm_cmpeq_sd( xd, inf );
-			inf = _mm_andnot_pd( xIsNaN, inf );
-			inf = _mm_andnot_pd( isInf, inf );
-			
-			xDouble xLTzero = _mm_cmplt_sdm( safeX, (double*) &minusZeroD );
-			
-			xd = _mm_sub_sd( xd, inf );				//silence NaN, set finite values to -Inf
-			xd = _mm_add_sd( xd, inf );
-			xLTzero = _mm_and_pd( xLTzero, (xDouble) logNaN );
-			xd = _mm_add_sd( xLTzero, xd );   //set to NaN if x < 0
-		}
-	}
-	
-	// return
-	return XDOUBLE_2_DOUBLE( xd );
-}
+// log2 for this configuration is the table-driven x87 implementation in log.S
+// (BASE2 in log_universal.h), which returns exact results for powers of two.
 
 #else
 

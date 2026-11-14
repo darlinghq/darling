@@ -114,7 +114,8 @@ if (TARGET_i386 OR TARGET_x86_64)
 		Source/Intel/log2f.S
 		Source/Intel/log2.S
 		Source/Intel/logf.S
-		#Source/Intel/log.S
+		# log.S provides double log2 (BASE2) when built with BUILDING_FOR_CARBONCORE_LEGACY
+		Source/Intel/log.S
 		Source/Intel/lrintl.S
 		Source/Intel/lroundf.S
 		Source/Intel/lroundl.S
