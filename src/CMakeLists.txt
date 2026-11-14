@@ -356,7 +356,10 @@ add_subdirectory(shellspawn)
 # hands the system preferences to darlingserver before shellspawn accepts commands
 add_subdirectory(prefsd)
 # imports the host's CA certificates into the guest's System keychain
-add_subdirectory(hostcerts)
+# Security and build-security-certificates are available with the system component.
+if (COMPONENT_system)
+	add_subdirectory(hostcerts)
+endif()
 
 # typically considered CLI components, but required by launchctl (which is necessary for launchd to bootstrap)
 add_subdirectory(external/libedit)
