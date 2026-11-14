@@ -254,6 +254,17 @@ struct _CGLDisplay
 static CFMutableDictionaryRef g_displays;
 static pthread_mutex_t g_displaysMutex = PTHREAD_MUTEX_INITIALIZER;
 
+// Where a context's EGL binding is. EGL binds a context to at most one
+// thread at a time and refuses a second thread (EGL_BAD_ACCESS) until the
+// first one releases it.
+enum cgl_binding {
+    CGL_BINDING_FREE,   // bound to no thread
+    CGL_BINDING_BOUND,  // bound to binding_thread
+    CGL_BINDING_PARKED  // released by binding_thread, which still has it as its current context
+};
+
+static pthread_mutex_t g_bindingMutex = PTHREAD_MUTEX_INITIALIZER;
+
 struct _CGLContextObj {
     GLuint retain_count;
     pthread_mutex_t lock;
@@ -281,6 +292,16 @@ struct _CGLContextObj {
     GLuint copy_framebuffers[2];
     struct _CGLContextObj *prev_active;
     struct _CGLContextObj *next_active;
+    // Which thread the EGL context is bound to (see the thread hand-off
+    // notes above setCurrentContext). Guarded by g_bindingMutex.
+    enum cgl_binding binding;
+    pthread_t binding_thread;
+    // Set once another thread has been refused the context because it was
+    // bound elsewhere.
+    int multi_thread;
+    // Nesting depth of CGLLockContext; only the thread holding the lock
+    // touches it.
+    unsigned lock_depth;
 };
 
 static struct _CGLContextObj *g_activeContexts = NULL;
@@ -617,9 +638,8 @@ CGLContextObj CGLGetCurrentContext(void) {
     return pthread_getspecific(key);
 }
 
-// Makes context current without bringing IOSurface contents into its
-// rectangle textures; used inside this framework.
-static CGLError setCurrentContext(CGLContextObj context) {
+// The EGL part of making context current on this thread.
+static CGLError bindCurrentContext(CGLContextObj context) {
     // A context exists only if EGL was loaded, and without EGL nothing can be current.
     if (!native_egl_available())
         return context ? kCGLBadContext : kCGLNoError;
@@ -675,6 +695,44 @@ static CGLError setCurrentContext(CGLContextObj context) {
         pthread_setspecific(get_current_context_key(), NULL);
     }
     return kCGLNoError;
+}
+
+// Thread hand-off. On macOS an application may make one context current on
+// several threads, as long as the threads take turns under CGLLockContext:
+// a render thread locks, makes it current, draws and unlocks, while the main
+// thread does the same at other times and never makes it non-current.
+// EGL cannot move a bound context to another thread, so this framework
+// moves it at the lock boundaries instead. Once a thread has been refused a
+// context that another thread has bound (the application shares it), the
+// outermost CGLUnlockContext on the binding thread releases the EGL binding
+// while the context stays that thread's current context ("parked"), and the
+// next CGLLockContext on that thread binds it again. A context that no other
+// thread ever asked for is never released this way.
+
+static int threadHoldsBinding(CGLContextObj context) {
+    return context->binding == CGL_BINDING_BOUND && pthread_equal(context->binding_thread, pthread_self());
+}
+
+// Makes context current without bringing IOSurface contents into its
+// rectangle textures; used inside this framework.
+static CGLError setCurrentContext(CGLContextObj context) {
+    CGLContextObj previous = CGLGetCurrentContext();
+    CGLError error = bindCurrentContext(context);
+    pthread_mutex_lock(&g_bindingMutex);
+    if (error == kCGLNoError) {
+        // Binding another context (or none) releases the previous one.
+        if (previous != NULL && previous != context && threadHoldsBinding(previous))
+            previous->binding = CGL_BINDING_FREE;
+        if (context != NULL) {
+            context->binding = CGL_BINDING_BOUND;
+            context->binding_thread = pthread_self();
+        }
+    } else if (context != NULL && context->binding == CGL_BINDING_BOUND &&
+               !pthread_equal(context->binding_thread, pthread_self())) {
+        context->multi_thread = 1;
+    }
+    pthread_mutex_unlock(&g_bindingMutex);
+    return error;
 }
 
 static void refreshRectangleTextures(CGLContextObj context);
@@ -1015,6 +1073,9 @@ static CGLError createContext(CGLPixelFormatObj pixelFormat, CGLContextObj share
     context->pacer.last_ns = 0;
     context->pixel_format = pixelFormat ? CGLRetainPixelFormat(pixelFormat) : NULL;
     context->enables = 0;
+    context->binding = CGL_BINDING_FREE;
+    context->multi_thread = 0;
+    context->lock_depth = 0;
     atomic_init(&context->dmabuf_import, 0);
     context->gpu_copy = 0;
     context->copy_framebuffers[0] = context->copy_framebuffers[1] = 0;
@@ -1124,6 +1185,15 @@ CGLError CGLLockContext(CGLContextObj context) {
         return kCGLBadContext;
     }
     pthread_mutex_lock(&(context->lock));
+    if (context->lock_depth++ == 0 && CGLGetCurrentContext() == context) {
+        // Take back the binding that was handed to another thread or parked
+        // (see the thread hand-off notes at setCurrentContext).
+        pthread_mutex_lock(&g_bindingMutex);
+        int rebind = context->multi_thread && !threadHoldsBinding(context);
+        pthread_mutex_unlock(&g_bindingMutex);
+        if (rebind)
+            setCurrentContext(context);
+    }
     // Locking the current context precedes drawing with it, so rectangle
     // textures specified from surfaces the CPU has written since get the
     // new contents.
@@ -1135,6 +1205,14 @@ CGLError CGLLockContext(CGLContextObj context) {
 CGLError CGLUnlockContext(CGLContextObj context) {
     if (context == NULL) {
         return kCGLBadContext;
+    }
+    if (context->lock_depth > 0 && --context->lock_depth == 0) {
+        pthread_mutex_lock(&g_bindingMutex);
+        int park = context->multi_thread && threadHoldsBinding(context);
+        if (park && p_eglMakeCurrent(context->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
+            context->binding = CGL_BINDING_PARKED;
+        }
+        pthread_mutex_unlock(&g_bindingMutex);
     }
     pthread_mutex_unlock(&(context->lock));
     return kCGLNoError;
@@ -1149,6 +1227,14 @@ CGLError CGLFlushDrawable(CGLContextObj context) {
         glFlush();
         return kCGLNoError;
     }
+    // Swapping needs the context bound on this thread; a thread without it
+    // (for instance one that was refused the context, see the thread
+    // hand-off notes at setCurrentContext) must not reach the driver.
+    pthread_mutex_lock(&g_bindingMutex);
+    int bound_here = threadHoldsBinding(context);
+    pthread_mutex_unlock(&g_bindingMutex);
+    if (!bound_here)
+        return kCGLBadContext;
     glFinish();
     // Re-check after glFinish() in case CGLDestroyWindow cleared the surface concurrently
     EGLSurface surf_after = atomic_load_explicit(&context->egl_surface, memory_order_acquire);
