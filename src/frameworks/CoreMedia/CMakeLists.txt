@@ -20,6 +20,7 @@ add_framework(CoreMedia
     SOURCES
         src/CoreMedia.c
         src/CMTime.c
+        src/CMTimeRange.c
         src/CMSampleBuffer.c
 
     DEPENDENCIES

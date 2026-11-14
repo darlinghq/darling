@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+typedef const struct CF_BRIDGED_TYPE(id) opaqueCMFormatDescription *CMFormatDescriptionRef;
+
 extern const CFStringRef kCMFormatDescriptionTransferFunction_ITU_R_709_2;
 extern const CFStringRef kCMFormatDescriptionTransferFunction_SMPTE_240M_1995;
 extern const CFStringRef kCMFormatDescriptionTransferFunction_UseGamma;

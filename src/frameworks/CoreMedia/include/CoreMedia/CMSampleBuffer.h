@@ -21,6 +21,28 @@
 #define _CMSAMPLEBUFFER_H_
 
 #include <CoreFoundation/CoreFoundation.h>
+#include <CoreMedia/CMBase.h>
+#include <CoreMedia/CMTime.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct CF_BRIDGED_TYPE(id) opaqueCMSampleBuffer *CMSampleBufferRef;
+
+// Timing of one sample, or of every sample of a buffer when they share it.
+#pragma pack(push, 4)
+typedef struct
+{
+	CMTime duration;
+	CMTime presentationTimeStamp;
+	CMTime decodeTimeStamp;
+}
+CMSampleTimingInfo;
+#pragma pack(pop)
+
+// Every time of the structure is invalid.
+extern const CMSampleTimingInfo kCMTimingInfoInvalid;
 
 extern const CFStringRef kCMSampleAttachmentKey_DisplayImmediately;
 extern const CFStringRef kCMSampleAttachmentKey_NotSync;
@@ -28,5 +50,9 @@ extern const CFStringRef kCMSampleAttachmentKey_IsDependedOnByOthers;
 
 // Sample buffer attachment: the decoder is reset before this buffer is decoded.
 extern const CFStringRef kCMSampleBufferAttachmentKey_ResetDecoderBeforeDecoding;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
