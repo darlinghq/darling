@@ -213,3 +213,15 @@ int qtn_file_init_with_mount_point(qtn_file_t a, char b[1024])
 int qtn_proc_init_with_data(qtn_proc_t proc, void* data, size_t data_len) {
 	return 0;
 };
+
+/* Process responsibility. Nothing here tracks who launched whom, so every process is
+ * responsible for itself and disclaiming responsibility for a child is accepted. */
+int responsibility_get_pid_responsible_for_pid(int pid)
+{
+	return pid;
+}
+
+int responsibility_spawnattrs_setdisclaim(void* attrs, int disclaim)
+{
+	return 0;
+}
