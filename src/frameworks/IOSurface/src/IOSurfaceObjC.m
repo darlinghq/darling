@@ -473,9 +473,8 @@ static void writeBackGPUContents(IOSurface* surface)
 	{
 		CFMutableDictionaryRef matching = IOServiceNameMatching("IOSurfaceRoot");
 
+		// IOServiceGetMatchingService() consumes the matching dictionary, so it must not be released here.
 		g_surfaceService = IOServiceGetMatchingService(kIOMasterPortDefault, matching);
-
-		CFRelease(matching);
 
 		// Without IOSurfaceRoot, surfaces are allocated in user space.
 	}
