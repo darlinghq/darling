@@ -1,0 +1,5 @@
+framework module Vision [extern_c] [system] {
+  umbrella header "Vision.h"
+  export *
+  module * { export * }
+}
