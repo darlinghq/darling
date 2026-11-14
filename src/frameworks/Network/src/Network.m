@@ -21,6 +21,9 @@
 #include <Network/Network.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <dispatch/dispatch.h>
+#import <Foundation/Foundation.h>
 
 static int verbose = 0;
 
@@ -29,16 +32,25 @@ static void initme(void) {
     verbose = getenv("STUB_VERBOSE") != NULL;
 }
 
-void* NWCreateDispatchDataFromNSData(void)
+dispatch_data_t NWCreateDispatchDataFromNSData(NSData* data)
 {
-    if (verbose) puts("STUB: NWCreateDispatchDataFromNSData called");
-    return NULL;
+    if (data == nil) return NULL;
+    // dispatch_data_create copies the bytes when given the default destructor.
+    return dispatch_data_create([data bytes], [data length], DISPATCH_TARGET_QUEUE_DEFAULT, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
 }
 
-void* NWCreateNSDataFromDispatchData(void)
+NSData* NWCreateNSDataFromDispatchData(dispatch_data_t data)
 {
-    if (verbose) puts("STUB: NWCreateNSDataFromDispatchData called");
-    return NULL;
+    if (data == NULL) return nil;
+    size_t total = dispatch_data_get_size(data);
+    // One buffer for the whole content, filled from the data's regions in order.
+    void* buffer = malloc(total ? total : 1);
+    if (buffer == NULL) return nil;
+    dispatch_data_apply(data, ^bool(dispatch_data_t region, size_t offset, const void* bytes, size_t size) {
+        memcpy((char*) buffer + offset, bytes, size);
+        return true;
+    });
+    return [[NSData alloc] initWithBytesNoCopy: buffer length: total freeWhenDone: YES];
 }
 
 void* NWMonitorStatusToString(void)

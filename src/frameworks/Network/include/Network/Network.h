@@ -123,8 +123,11 @@
 
 #include <nw/nw.h>
 
-void* NWCreateDispatchDataFromNSData(void);
-void* NWCreateNSDataFromDispatchData(void);
+#ifdef __OBJC__
+// Conversions between NSData and dispatch data (copying); the results are +1 references.
+NW_RETURNS_RETAINED NSData * NW_NULLABLE NWCreateNSDataFromDispatchData(dispatch_data_t NW_NULLABLE data);
+NW_RETURNS_RETAINED dispatch_data_t NW_NULLABLE NWCreateDispatchDataFromNSData(NSData * NW_NULLABLE data);
+#endif
 void* NWMonitorStatusToString(void);
 void* NWPBAddressEndpointReadFrom(void);
 void* NWPBAgentClassReadFrom(void);

@@ -1,0 +1,5 @@
+framework module Network [extern_c] [system] {
+  umbrella header "Network.h"
+  export *
+  module * { export * }
+}
