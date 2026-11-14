@@ -133,3 +133,14 @@ set_tests_properties(mldr_sockpath_missing mldr_sockpath_empty PROPERTIES
 add_test(NAME mldr_sockpath_set COMMAND ${CMAKE_COMMAND} -E env --unset=__mldr_sockpath __mldr_sockpath=/nonexistent.sock $<TARGET_FILE:mldr> /nonexistent)
 set_tests_properties(mldr_sockpath_set PROPERTIES
 	PASS_REGULAR_EXPRESSION "Cannot open /nonexistent")
+
+# Run the real i386 retry path with injected mapping/environment/exec failures.
+if (BUILD_TARGET_32BIT)
+	add_executable(mldr32_layout_retry_test ${CMAKE_SOURCE_DIR}/tests/mldr/layout_retry.c)
+	add_dependencies(mldr32_layout_retry_test generate_dserver_rpc_wrappers rtsig_h)
+	target_include_directories(mldr32_layout_retry_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+	target_compile_options(mldr32_layout_retry_test PRIVATE -m32 -ffunction-sections -fdata-sections)
+	target_link_options(mldr32_layout_retry_test PRIVATE -m32 -Wl,--gc-sections)
+	add_test(NAME mldr32_layout_retry COMMAND mldr32_layout_retry_test)
+	set_tests_properties(mldr32_layout_retry PROPERTIES TIMEOUT 15)
+endif()

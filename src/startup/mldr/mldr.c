@@ -793,9 +793,17 @@ static void ensure_top_range_free(struct load_results* lr, unsigned long stack_s
 	}
 
 	const char* str = getenv(LAYOUT_RETRY_ENV);
-	int retries = str ? atoi(str) : 0;
-	if (retries >= LAYOUT_RETRY_MAX)
-		return; // the mappings below report the conflict
+	int retries = 0;
+	if (str != NULL) {
+		char* end = NULL;
+		errno = 0;
+		long value = strtol(str, &end, 10);
+		if (str[0] < '0' || str[0] > '9' || end == str ||
+		    *end != '\0' || errno == ERANGE ||
+		    value < 0 || value >= LAYOUT_RETRY_MAX)
+			return; // invalid or exhausted retry budget
+		retries = (int)value;
+	}
 
 	char selfpath[1024];
 	ssize_t len = readlink("/proc/self/exe", selfpath, sizeof(selfpath) - 1);
@@ -805,7 +813,8 @@ static void ensure_top_range_free(struct load_results* lr, unsigned long stack_s
 
 	char count[16];
 	snprintf(count, sizeof(count), "%d", retries + 1);
-	setenv(LAYOUT_RETRY_ENV, count, 1);
+	if (setenv(LAYOUT_RETRY_ENV, count, 1) != 0)
+		return;
 
 	execv(selfpath, lr->argv);
 	unsetenv(LAYOUT_RETRY_ENV);
