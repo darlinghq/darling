@@ -48,6 +48,13 @@ int socket_bitmap_get(socket_bitmap_t* bitmap) {
 		// socket_bitmap_put (guard_table_postfork_child) and the realloc that shrank the bitmap waited forever for a
 		// glibc malloc arena lock another thread of the parent held at the fork (launchd's spawn children hung:
 		// a boot stuck black, every process idle; the raw fork syscall runs none of glibc's fork handling).
+		// from at most 16384 down (Darwin's OPEN_MAX is 10240). The kernel sizes a process's
+		// descriptor table to its highest descriptor, and with the slots at the top of the host's 524288 limit every
+		// process had a 4 MB table (8 bytes a slot, vmalloc, charged to the device's cgroup: ~190 MB on an idle
+		// iPhone, invisible in PSS). A guest that opens more than that still gets its descriptors (a slot in use is
+		// never handed out or replaced).
+		if (limit.rlim_cur > 16384)
+			limit.rlim_cur = 16384;
 		bitmap->highest = limit.rlim_cur - 1;
 	}
 	if (!bitmap->bits) {
