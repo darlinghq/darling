@@ -55,6 +55,8 @@ static char* g_userEnv[] = {
 	"WAYLAND_DISPLAY=wayland-0",
 	"XAUTHORITY=/home/user/.Xauthority",
 	"XDG_RUNTIME_DIR=/run/user/1000",
+	"DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus",
+	"DBUS_SESSION_BUS_PID=1234",
 	"PULSE_SERVER=unix:/run/user/1000/pulse/native",
 	"PULSE_RUNTIME_PATH=/tmp/pulse-abc",
 	"PULSE_COOKIE=/home/user/.config/pulse/cookie",
@@ -112,11 +114,13 @@ static void test_restricted(void)
 	CHECK(indexOf(env, "WAYLAND_DISPLAY=wayland-0") == 11);
 	CHECK(indexOf(env, "XAUTHORITY=/home/user/.Xauthority") == 12);
 	CHECK(indexOf(env, "XDG_RUNTIME_DIR=/run/user/1000") == 13);
-	CHECK(indexOf(env, "PULSE_SERVER=unix:/run/user/1000/pulse/native") == 14);
-	CHECK(indexOf(env, "PULSE_RUNTIME_PATH=/tmp/pulse-abc") == 15);
-	CHECK(indexOf(env, "PULSE_COOKIE=/home/user/.config/pulse/cookie") == 16);
+	CHECK(indexOf(env, "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus") == 14);
+	CHECK(!hasName(env, "DBUS_SESSION_BUS_PID"));
+	CHECK(indexOf(env, "PULSE_SERVER=unix:/run/user/1000/pulse/native") == 15);
+	CHECK(indexOf(env, "PULSE_RUNTIME_PATH=/tmp/pulse-abc") == 16);
+	CHECK(indexOf(env, "PULSE_COOKIE=/home/user/.config/pulse/cookie") == 17);
 	CHECK(!hasName(env, "PULSE_SINK"));
-	CHECK(countOf(env) == 17);
+	CHECK(countOf(env) == 18);
 	CHECK(!hasName(env, "DISPLAYS"));
 
 	// In particular, none of these.
