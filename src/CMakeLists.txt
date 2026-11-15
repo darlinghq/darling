@@ -546,6 +546,7 @@ if (COMPONENT_gui)
 
 	# /Applications
 	add_subdirectory(external/TextEdit)
+	add_subdirectory(external/Console)
 
 	# not currently used by anything we build
 	add_subdirectory(external/dbuskit)
