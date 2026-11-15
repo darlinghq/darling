@@ -82,7 +82,7 @@ jobs:
           local dir="$1" url="$2"
           [ -f "$dir/.gitmodules" ] || return 0
 
-          local name path full rel_url child_url child_slug sha pr_url
+          local name path full rel_url child_url child_slug sha pr_url track
           while read -r name; do
             path=$(git config --file "$dir/.gitmodules" --get "submodule.$name.path") || continue
             rel_url=$(git config --file "$dir/.gitmodules" --get "submodule.$name.url") || continue
@@ -104,6 +104,17 @@ jobs:
 
             child_url=$(resolve_url "$url" "$rel_url")
             echo "updating $full from $child_url"
+
+            # A submodule that tracks a branch other than its default one
+            # (branch = ... in .gitmodules) needs that branch fetched first:
+            # actions/checkout clones submodules shallow and single-branch, so
+            # refs/remotes/origin/<branch> does not exist and
+            # `submodule update --remote` fails to find it.
+            track=$(git config --file "$dir/.gitmodules" --get "submodule.$name.branch" || true)
+            if [ -n "$track" ] && [ "$track" != "." ]; then
+              git -C "$dir" submodule update --init -- "$path"
+              git -C "$dir/$path" fetch origin "+refs/heads/$track:refs/remotes/origin/$track"
+            fi
             git -C "$dir" submodule update --init --remote --checkout -- "$path"
 
             # The commit the parent should end up pointing at: the head of the
