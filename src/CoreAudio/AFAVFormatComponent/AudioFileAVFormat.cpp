@@ -543,6 +543,20 @@ OSStatus AudioFileAVFormat::appendPackets(UInt32 numBytes, const AudioStreamPack
 	return noErr;
 }
 
+OSStatus AudioFileAVFormat::ReadPacketData(Boolean inUseCache, UInt32* ioNumBytes, AudioStreamPacketDescription* outPacketDescriptions,
+	SInt64 inStartingPacket, UInt32* ioNumPackets, void* outBuffer)
+{
+	OSStatus status = AudioFileObject::ReadPacketData(inUseCache, ioNumBytes, outPacketDescriptions, inStartingPacket, ioNumPackets, outBuffer);
+
+	// QUIRK: reading packets up to or past the end of linear PCM audio is not an error;
+	// the packets that exist are returned, and none at all past the end.
+	// Evidence: black-box observation on macOS 26.7.3 (tier 2), for WAVE, AIFF and CAF files.
+	// Test: test_fixtures, reads at and after the end (tests/src/audiofile_pcm.c)
+	if (status == kAudioFileEndOfFileError && GetDataFormat().mFormatID == kAudioFormatLinearPCM)
+		return noErr;
+	return status;
+}
+
 OSStatus AudioFileAVFormat::WriteBytes(Boolean inUseCache, SInt64 inStartingByte, UInt32* ioNumBytes, const void* inBuffer)
 {
 	if (!CanWrite())

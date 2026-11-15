@@ -123,10 +123,11 @@ static void testContainer(const char* path, AudioFileTypeID type, UInt32 flags)
 		CHECK(packets == 10);
 		CHECK(memcmp(back, samples + 1000, 40) == 0);
 
+		// Reading packets of linear PCM at the end of the audio is not an error on macOS: no packets come back
 		bytes = 40;
 		packets = 10;
-		OSStatus status = AudioFileReadPacketData(file, false, &bytes, NULL, FRAMES, &packets, back);
-		CHECK(status == kAudioFileEndOfFileError);
+		CHECK_OK(AudioFileReadPacketData(file, false, &bytes, NULL, FRAMES, &packets, back));
+		CHECK(packets == 0);
 
 		free(back);
 		CHECK_OK(AudioFileClose(file));

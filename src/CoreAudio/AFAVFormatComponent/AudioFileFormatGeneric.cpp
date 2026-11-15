@@ -18,6 +18,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "AudioFileFormatGeneric.h"
+#include "AudioFileNativeFormat.h"
 #include <cstring>
 #include <set>
 #include <sstream>
@@ -88,6 +89,17 @@ void AudioFileFormatGeneric::GetFileTypeName(CFStringRef *outName)
 
 UncertainResult AudioFileFormatGeneric::FileDataIsThisFormat(UInt32 inDataByteSize, const void* inData)
 {
+	// The signatures of the containers that are read without FFmpeg
+	if (AudioFileNativeFormat::handlesFileType(m_description.fileType))
+	{
+		if (AudioFileNativeFormat::signatureMatches(m_description.fileType, inData, inDataByteSize))
+			return kTrue;
+
+		// libavformat does not tell AIFF from AIFF-C, and the other native containers are not these either
+		if (AudioFileNativeFormat::anySignatureMatches(inData, inDataByteSize))
+			return kFalse;
+	}
+
 	if (!ffmpegContainersAvailable())
 		return kFalse;
 

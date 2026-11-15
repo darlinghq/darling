@@ -45,6 +45,8 @@ public:
 	OSStatus OpenFromDataSource() override;
 	OSStatus Close() override;
 
+	OSStatus ReadPacketData(Boolean inUseCache, UInt32* ioNumBytes, AudioStreamPacketDescription* outPacketDescriptions,
+		SInt64 inStartingPacket, UInt32* ioNumPackets, void* outBuffer) override;
 	OSStatus WriteBytes(Boolean inUseCache, SInt64 inStartingByte, UInt32* ioNumBytes, const void* inBuffer) override;
 	OSStatus WritePackets(Boolean inUseCache, UInt32 inNumBytes, const AudioStreamPacketDescription* inPacketDescriptions,
 		SInt64 inStartingPacket, UInt32* ioNumPackets, const void* inBuffer) override;
@@ -54,6 +56,10 @@ public:
 	OSStatus GetMagicCookieDataSize(UInt32* outDataSize, UInt32* isWritable) override;
 	OSStatus GetMagicCookieData(UInt32* ioDataSize, void* ioPropertyData) override;
 	OSStatus SetMagicCookieData(UInt32 inDataSize, const void* inPropertyData) override;
+protected:
+	// For objects that handle some files themselves: this one never writes through libavformat
+	void markNative() { m_finished = true; }
+
 private:
 	OSStatus startMuxer();
 	OSStatus finishMuxer();

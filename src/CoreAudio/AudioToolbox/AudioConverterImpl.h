@@ -10,6 +10,8 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 }
 
+class PCMConverter;
+
 class __attribute__((visibility("hidden"))) AudioConverter
 {
 	AudioConverter(const AudioStreamBasicDescription* inSourceFormat, const AudioStreamBasicDescription* inDestinationFormat);
@@ -19,6 +21,9 @@ public:
 
 	void flush();
 	UInt32 frameSize() const { return m_sourceFormat.mBytesPerFrame; }
+
+	// Linear PCM to linear PCM is converted without FFmpeg
+	PCMConverter* nativeConverter() const { return m_pcm; }
 	
 	OSStatus fillComplex(AudioConverterComplexInputDataProc dataProc, void* opaque, UInt32* ioOutputDataPacketSize, AudioBufferList *outOutputData, AudioStreamPacketDescription* outPacketDescription);
 	
@@ -45,6 +50,7 @@ private:
 	int resample(const uint8_t** input, int samples);
 private:
 	AudioStreamBasicDescription m_sourceFormat, m_destinationFormat;
+	PCMConverter* m_pcm = nullptr;
 	UInt32 m_inputChannelLayout, m_outputChannelLayout;
 	AVSampleFormat m_targetFormat;
 	AVCodecContext* m_decoder;

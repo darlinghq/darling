@@ -18,6 +18,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "AudioConverterImpl.h"
+#include "PCMConverter.h"
 #include <CarbonCore/MacErrors.h>
 #include <algorithm>
 #include <stdexcept>
@@ -61,6 +62,12 @@ AudioConverter::AudioConverter(const AudioStreamBasicDescription* inSourceFormat
 void AudioConverter::flush()
 {
 	TRACE();
+	if (m_pcm)
+	{
+		m_pcm->reset();
+		return;
+	}
+
 	avcodec_flush_buffers(m_decoder);
 	// Encoders without state of their own, like PCM, don't support this and complain about it
 	if (m_encoderInitialized && (m_encoder->codec->capabilities & AV_CODEC_CAP_ENCODER_FLUSH))
@@ -91,7 +98,18 @@ OSStatus AudioConverter::create(const AudioStreamBasicDescription* inSourceForma
     if (!inSourceFormat || !inDestinationFormat)
         return paramErr;
 	
-	// Every conversion is done through FFmpeg
+	if (inSourceFormat->mFormatID == kAudioFormatLinearPCM && inDestinationFormat->mFormatID == kAudioFormatLinearPCM)
+	{
+		OSStatus status = PCMConverter::validate(inSourceFormat, inDestinationFormat);
+		if (status != noErr)
+			return status;
+
+		*out = new AudioConverter(inSourceFormat, inDestinationFormat);
+		(*out)->m_pcm = new PCMConverter(inSourceFormat, inDestinationFormat);
+		return noErr;
+	}
+
+	// Compressed formats are converted through FFmpeg
 	if (!ffmpegCodecsAvailable())
 		return kAudioConverterErr_FormatNotSupported;
 
@@ -125,7 +143,8 @@ OSStatus AudioConverter::create(const AudioStreamBasicDescription* inSourceForma
 
 	(*out)->m_decoder = cIn = avcodec_alloc_context3(codecIn);
 	
-	if (inSourceFormat->mFormatID == kAudioFormatLinearPCM)
+	// Raw samples have no header of their own to tell the decoder how many channels there are
+	if (inSourceFormat->mFormatID == kAudioFormatLinearPCM || inSourceFormat->mFormatID == kAudioFormatULaw || inSourceFormat->mFormatID == kAudioFormatALaw)
 	{
 #warning "TODO: Remove deprecated 'channels' once we no longer support older distros" 
 #if LIBAVCODEC_VERSION_MAJOR >= 61
@@ -232,6 +251,7 @@ void AudioConverter::allocateBuffers()
 AudioConverter::~AudioConverter()
 {
 	TRACE();
+	delete m_pcm;
 	if (m_decoder)
 		avcodec_free_context(&m_decoder);
 	if (m_encoder)
@@ -255,6 +275,9 @@ template <typename T> OSStatus setPropertyT(UInt32 inPropertyDataSize, T* localP
 
 OSStatus AudioConverter::setProperty(AudioConverterPropertyID inPropertyID, UInt32 inPropertyDataSize, const void *inPropertyData)
 {
+	if (m_pcm)
+		return m_pcm->setProperty(inPropertyID, inPropertyDataSize, inPropertyData);
+
 	switch (inPropertyID)
 	{
 		case kAudioConverterEncodeBitRate:
@@ -312,6 +335,9 @@ OSStatus AudioConverter::setProperty(AudioConverterPropertyID inPropertyID, UInt
 
 OSStatus AudioConverter::getPropertyInfo(AudioConverterPropertyID inPropertyID, UInt32 *outSize, Boolean *outWritable)
 {
+	if (m_pcm)
+		return m_pcm->getPropertyInfo(inPropertyID, outSize, outWritable);
+
 	STUB();
 	return unimpErr;
 }
@@ -330,6 +356,9 @@ template <typename T> OSStatus getPropertyT(UInt32 *ioPropertyDataSize, const T*
 
 OSStatus AudioConverter::getProperty(AudioConverterPropertyID inPropertyID, UInt32 *ioPropertyDataSize, void *outPropertyData)
 {
+	if (m_pcm)
+		return m_pcm->getProperty(inPropertyID, ioPropertyDataSize, outPropertyData);
+
 	switch (inPropertyID)
 	{
 		case kAudioConverterEncodeBitRate:
@@ -421,6 +450,9 @@ OSStatus AudioConverter::fillComplex(AudioConverterComplexInputDataProc dataProc
 	UInt32* ioOutputDataPacketSize, AudioBufferList *outOutputData, AudioStreamPacketDescription* outPacketDescription)
 {
 	AVFrame* srcaudio;
+
+	if (m_pcm)
+		return m_pcm->fillComplex(AudioConverterRef(this), dataProc, opaque, ioOutputDataPacketSize, outOutputData, outPacketDescription);
 
 	if (ioOutputDataPacketSize && m_destinationFormat.mBytesPerPacket && outOutputData->mNumberBuffers == 1)
 	{
