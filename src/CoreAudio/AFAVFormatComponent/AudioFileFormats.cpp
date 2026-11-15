@@ -18,6 +18,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "AudioFileAVFormat.h"
+#include "AudioFileNativeFormat.h"
 #include "AudioFileComponentBase.h"
 #include "AudioFileFormatGeneric.h"
 
@@ -28,9 +29,18 @@ static const UInt32 PACKED_SIGNED = kAudioFormatFlagIsSignedInteger | kAudioForm
 static const UInt32 PACKED_FLOAT = kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked;
 static const UInt32 BIG = kAudioFormatFlagIsBigEndian;
 
-static const std::vector<Format> BIG_ENDIAN_PCM = {
+static const std::vector<Format> BIG_ENDIAN_INTEGER_PCM = {
 	Format(kAudioFormatLinearPCM, PACKED_SIGNED | BIG, 8),
 	Format(kAudioFormatLinearPCM, PACKED_SIGNED | BIG, 16),
+	Format(kAudioFormatLinearPCM, PACKED_SIGNED | BIG, 24),
+	Format(kAudioFormatLinearPCM, PACKED_SIGNED | BIG, 32),
+};
+
+// AIFF-C adds floating-point samples, and 16-bit samples of either byte order
+static const std::vector<Format> AIFC_PCM = {
+	Format(kAudioFormatLinearPCM, PACKED_SIGNED | BIG, 8),
+	Format(kAudioFormatLinearPCM, PACKED_SIGNED | BIG, 16),
+	Format(kAudioFormatLinearPCM, PACKED_SIGNED, 16),
 	Format(kAudioFormatLinearPCM, PACKED_SIGNED | BIG, 24),
 	Format(kAudioFormatLinearPCM, PACKED_SIGNED | BIG, 32),
 	Format(kAudioFormatLinearPCM, PACKED_FLOAT | BIG, 32),
@@ -59,7 +69,7 @@ static const Description AIFF_DESCRIPTION = {
 	{ "aif", "aiff" },
 	{ "public.aiff-audio", "public.audio", "public.data" },
 	{ "audio/aiff", "audio/x-aiff" },
-	BIG_ENDIAN_PCM,
+	BIG_ENDIAN_INTEGER_PCM,
 };
 
 static const Description AIFC_DESCRIPTION = {
@@ -67,7 +77,7 @@ static const Description AIFC_DESCRIPTION = {
 	{ "aifc", "cdda" },
 	{ "public.aifc-audio", "public.audio", "public.data" },
 	{ "audio/aiff", "audio/x-aiff" },
-	BIG_ENDIAN_PCM,
+	AIFC_PCM,
 };
 
 static const Description CAF_DESCRIPTION = {
@@ -163,7 +173,11 @@ public:
 	AVFormatComponent(AudioComponentInstance inInstance)
 	: AudioFileObjectComponentBase(inInstance)
 	{
-		mAudioFileObject = new AudioFileAVFormat(D.fileType, D.demuxer, D.muxer);
+		// Linear PCM in the common containers is handled without FFmpeg, and the rest through it
+		if (AudioFileNativeFormat::handlesFileType(D.fileType))
+			mAudioFileObject = new AudioFileNativeFormat(D.fileType, D.demuxer, D.muxer);
+		else
+			mAudioFileObject = new AudioFileAVFormat(D.fileType, D.demuxer, D.muxer);
 	}
 
 	AudioFileFormat* GetAudioFormat() const override

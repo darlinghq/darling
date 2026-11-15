@@ -18,6 +18,7 @@ set(component_sources
 	AUPublic/AUBase/ComponentBase.cpp
 	PublicUtility/CACFDictionary.cpp
 	AudioFileAVFormat.cpp
+	AudioFileNativeFormat.cpp
 	AudioFileFormatGeneric.cpp
 	AudioFileFormats.cpp
 )
