@@ -445,7 +445,10 @@ OSStatus ExtAudioFile::drainConverter(bool endOfStream)
 		output.mBuffers[0].mDataByteSize = packets * (m_fileFormat.mBytesPerPacket ? m_fileFormat.mBytesPerPacket : UInt32(m_outputBuffer.size()));
 
 		OSStatus status = AudioConverterFillComplexBuffer(m_converter, writeInputProc, this, &packets, &output, nullptr);
-		if (status != noErr)
+
+		// The converter hands back the error of its input, together with what it could convert before that
+		const bool inputRunOut = (status == NO_MORE_DATA_YET);
+		if (status != noErr && !inputRunOut)
 			return status;
 		if (packets == 0 || output.mBuffers[0].mDataByteSize == 0)
 			return noErr;
@@ -455,6 +458,9 @@ OSStatus ExtAudioFile::drainConverter(bool endOfStream)
 			return status;
 
 		m_nextPacket += packets;
+
+		if (inputRunOut)
+			return noErr;
 	}
 }
 
