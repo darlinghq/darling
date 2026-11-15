@@ -1,0 +1,5 @@
+framework module OpenCL [extern_c] [system] {
+  umbrella header "OpenCL.h"
+  export *
+  module * { export * }
+}
