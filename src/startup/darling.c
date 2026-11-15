@@ -47,6 +47,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "darling-config.h"
 #include "launcher-env.h"
 #include "launcher-ids.h"
+#include "launcher-locale.h"
 #include "launcher-mode.h"
 #include "launcher-prefix.h"
 #include "launcher-pulse.h"
@@ -261,6 +262,7 @@ int main(int argc, char ** argv)
 	checkPrefixOwner();
 	ensureSystemAccounts();
 	ensureZoneinfoLink();
+	ensureGlobalPreferences();
 
 	// The container's programs have the guest's HOME, so the PulseAudio client library cannot find the
 	// host user's server by itself on a host without XDG_RUNTIME_DIR. Name the host's locations for it.
@@ -2025,6 +2027,45 @@ void ensureZoneinfoLink()
 	snprintf(path, sizeof(path), "%s/var/db/timezone/zoneinfo", prefix);
 	if (lstat(path, &st) != 0 && errno == ENOENT && symlink("/usr/share/zoneinfo", path) != 0)
 		fprintf(stderr, "Cannot create %s: %s\n", path, strerror(errno));
+
+	restoreRootIds();
+}
+
+// The system-wide preferences of a prefix (/Library/Preferences/.GlobalPreferences.plist) set the
+// current locale (AppleLocale) and the language list (AppleLanguages). A prefix that has neither gets
+// them from the host's locale (LANGUAGE and the messages locale for the languages; LC_ALL, LC_TIME and
+// LANG for the formats), so that dates, numbers and sorting follow the user's host; en_US and en-US
+// when the host has none. Values the prefix already has are never changed. A running container
+// has the prefix mounted, where a change made from outside is not seen reliably, so it is left for the
+// next start.
+void ensureGlobalPreferences()
+{
+	const char* dirs[] = { "/Library", "/Library/Preferences" };
+	char path[4096];
+	struct launcher_locale locale;
+
+	if (getInitProcess() != 0)
+		return;
+
+	launcherDeriveLocale(getenv("LC_ALL"), getenv("LC_MESSAGES"), getenv("LC_TIME"), getenv("LANG"),
+		getenv("LANGUAGE"), &locale);
+
+	useInvokingIds();
+
+	for (size_t i = 0; i < sizeof(dirs)/sizeof(dirs[0]); i++)
+	{
+		snprintf(path, sizeof(path), "%s%s", prefix, dirs[i]);
+		if (mkdir(path, 0755) != 0 && errno != EEXIST)
+		{
+			fprintf(stderr, "Cannot create %s: %s\n", path, strerror(errno));
+			restoreRootIds();
+			return;
+		}
+	}
+
+	snprintf(path, sizeof(path), "%s/Library/Preferences/.GlobalPreferences.plist", prefix);
+	if (launcherSeedGlobalPreferences(path, &locale) == LAUNCHER_GLOBAL_PREFS_ERROR)
+		fprintf(stderr, "Cannot write the default locale to %s: %s\n", path, strerror(errno));
 
 	restoreRootIds();
 }

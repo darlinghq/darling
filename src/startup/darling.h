@@ -73,6 +73,7 @@ void darlingPreInit(void);
 void checkPrefixOwner(void);
 void ensureSystemAccounts(void);
 void ensureZoneinfoLink(void);
+void ensureGlobalPreferences(void);
 
 int isModuleLoaded(void);
 
