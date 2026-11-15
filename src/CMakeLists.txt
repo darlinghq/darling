@@ -128,6 +128,11 @@ add_executable(rtsig \"${CMAKE_CURRENT_SOURCE_DIR}/startup/rtsig.c\")
 	execute_process(
 		COMMAND ${CMAKE_COMMAND} -E env
 			--unset=CFLAGS --unset=CXXFLAGS --unset=LDFLAGS --unset=CPPFLAGS
+			# The host tools link against build-machine libraries. A cross build
+			# normally points pkg-config at the target's .pc files, so hide that
+			# setting from this build or it picks target libraries for host tools.
+			--unset=PKG_CONFIG_LIBDIR --unset=PKG_CONFIG_PATH
+			--unset=PKG_CONFIG_SYSROOT_DIR
 			CC=${HOST_CC} CXX=${HOST_CXX}
 			${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}"
 			-S "${HOST_TOOLS_SRC_DIR}"
@@ -209,6 +214,13 @@ add_executable(rtsig \"${CMAKE_CURRENT_SOURCE_DIR}/startup/rtsig.c\")
 	add_executable(iconset2icns IMPORTED GLOBAL)
 	set_target_properties(iconset2icns PROPERTIES
 		IMPORTED_LOCATION "${HOST_TOOLS_BUILD_DIR}/buildtools/iconset2icns")
+
+	# swift/prebuilt_install.cmake runs the build-machine copy of
+	# install_name_tool on the prebuilt dylibs. In a non-cross build the
+	# in-tree cctools misc directory provides this target.
+	add_executable(install_name_tool_host IMPORTED GLOBAL)
+	set_target_properties(install_name_tool_host PROPERTIES
+		IMPORTED_LOCATION "${HOST_TOOLS_BUILD_DIR}/misc/${APPLE_TARGET_TRIPLET_PRIMARY}-install_name_tool")
 
 	# startup/rtsig.h is generated from the build machine's C library; see
 	# src/startup/CMakeLists.txt
