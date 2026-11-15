@@ -373,6 +373,10 @@ InstallSymlink(/proc/self/mounts ${CMAKE_INSTALL_PREFIX}/libexec/darling/private
 InstallSymlink(/Volumes/SystemRoot/etc/localtime ${CMAKE_INSTALL_PREFIX}/libexec/darling/private/etc/localtime)
 
 InstallSymlink(/Volumes/SystemRoot/usr/share/zoneinfo ${CMAKE_INSTALL_PREFIX}/libexec/darling/usr/share/zoneinfo)
+# macOS 10.13 and later keep the zone files in /var/db/timezone/zoneinfo, which
+# libc and applications that read zone files themselves open. Point it at the
+# zone directory above, so every reader finds the same data.
+InstallSymlink(/usr/share/zoneinfo ${CMAKE_INSTALL_PREFIX}/libexec/darling/private/var/db/timezone/zoneinfo)
 
 install(DIRECTORY DESTINATION libexec/darling/Library/Preferences)
 

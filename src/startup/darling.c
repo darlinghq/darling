@@ -260,6 +260,7 @@ int main(int argc, char ** argv)
 	}
 	checkPrefixOwner();
 	ensureSystemAccounts();
+	ensureZoneinfoLink();
 
 	// The container's programs have the guest's HOME, so the PulseAudio client library cannot find the
 	// host user's server by itself on a host without XDG_RUNTIME_DIR. Name the host's locations for it.
@@ -1990,6 +1991,40 @@ void ensureSystemAccounts()
 	addMissingAccounts(ACCOUNT_FILE_PASSWD, "passwd");
 	addMissingAccounts(ACCOUNT_FILE_MASTER_PASSWD, "master.passwd");
 	addMissingAccounts(ACCOUNT_FILE_GROUP, "group");
+
+	restoreRootIds();
+}
+
+// macOS keeps the time zone files in /var/db/timezone/zoneinfo, where /var is a link to /private/var.
+// A prefix has /var as a directory of its own, so the link the install layout puts under
+// private/var/db is only visible as /private/var/db/timezone; add the same link at /var/db. A
+// prefix that already has anything at that path keeps it.
+void ensureZoneinfoLink()
+{
+	const char* dirs[] = { "/var/db", "/var/db/timezone" };
+	char path[4096];
+	struct stat st;
+
+	snprintf(path, sizeof(path), "%s/var", prefix);
+	if (lstat(path, &st) != 0 || !S_ISDIR(st.st_mode))
+		return; // a prefix whose /var is a link to /private/var already sees the install layout's link
+
+	useInvokingIds();
+
+	for (size_t i = 0; i < sizeof(dirs)/sizeof(dirs[0]); i++)
+	{
+		snprintf(path, sizeof(path), "%s%s", prefix, dirs[i]);
+		if (mkdir(path, 0755) != 0 && errno != EEXIST)
+		{
+			fprintf(stderr, "Cannot create %s: %s\n", path, strerror(errno));
+			restoreRootIds();
+			return;
+		}
+	}
+
+	snprintf(path, sizeof(path), "%s/var/db/timezone/zoneinfo", prefix);
+	if (lstat(path, &st) != 0 && errno == ENOENT && symlink("/usr/share/zoneinfo", path) != 0)
+		fprintf(stderr, "Cannot create %s: %s\n", path, strerror(errno));
 
 	restoreRootIds();
 }
