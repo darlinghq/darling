@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,7 +56,20 @@ extern uint32_t _qtn_file_get_flags(qtn_file_t file);
 
 extern const char *_qtn_error(int err);
 
-extern const char *_qtn_xattr_name;
+// Agent identifier, timestamp and metadata (the UUID field) of a quarantine record. These are
+// exported by macOS's libquarantine but not declared in a public header; the parameter and
+// return types are inferred from observed behaviour (the timestamp is time_t-sized, 32 bits on
+// i386, and its setter returns nothing), not from a published prototype.
+extern int _qtn_file_set_identifier(qtn_file_t file, const char *identifier);
+extern const char *_qtn_file_get_identifier(qtn_file_t file);
+extern void _qtn_file_set_timestamp(qtn_file_t file, time_t timestamp);
+extern time_t _qtn_file_get_timestamp(qtn_file_t file);
+extern int _qtn_file_set_metadata(qtn_file_t file, const void *data, size_t len);
+extern const void *_qtn_file_get_metadata(qtn_file_t file);
+extern size_t _qtn_file_get_metadata_size(qtn_file_t file);
+
+// The exported symbol is the attribute name's bytes (an array), as on macOS.
+extern const char _qtn_xattr_name[];
 
 extern int __esp_enabled();
 extern int __esp_check_ns(const char *a, void *b);
@@ -110,6 +124,13 @@ int qtn_proc_init_with_data(qtn_proc_t proc, void* data, size_t data_len);
 
 #define qtn_file_init_with_data _qtn_file_init_with_data
 #define qtn_file_to_data _qtn_file_to_data
+#define qtn_file_set_identifier _qtn_file_set_identifier
+#define qtn_file_get_identifier _qtn_file_get_identifier
+#define qtn_file_set_timestamp _qtn_file_set_timestamp
+#define qtn_file_get_timestamp _qtn_file_get_timestamp
+#define qtn_file_set_metadata _qtn_file_set_metadata
+#define qtn_file_get_metadata _qtn_file_get_metadata
+#define qtn_file_get_metadata_size _qtn_file_get_metadata_size
 
 #define qtn_error _qtn_error
 

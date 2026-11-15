@@ -10,7 +10,7 @@ add_darling_library(system_quarantine SHARED
 	quarantine.c
 )
 set_target_properties(system_quarantine PROPERTIES OUTPUT_NAME "quarantine")
-target_link_libraries(system_quarantine PRIVATE system_c system_dyld system_malloc)
+target_link_libraries(system_quarantine PRIVATE system_kernel system_c system_dyld system_malloc platform)
 make_fat(system_quarantine)
 
 install(TARGETS system_quarantine DESTINATION libexec/darling/usr/lib/system)
