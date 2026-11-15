@@ -22,15 +22,10 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define _CS_FILES_H
 #include <CoreServices/MacTypes.h>
 #include <CoreServices/FileManager.h>
+#include <sys/types.h>
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-#if __LP64__
-	typedef int FSIORefNum;
-#else
-	typedef SInt16 FSIORefNum;
 #endif
 
 enum {
@@ -44,6 +39,53 @@ enum {
 typedef SInt16 FSVolumeRefNum;
 typedef UInt32 FSVolumeInfoBitmap;
 
+enum {
+	kFSInvalidVolumeRefNum = 0
+};
+
+enum {
+	fsRtParID = 1,
+	fsRtDirID = 2
+};
+
+// Positioning modes of the fork I/O calls (ioPosMode / positionMode).
+enum {
+	fsAtMark = 0,
+	fsFromStart = 1,
+	fsFromLEOF = 2,
+	fsFromMark = 3
+};
+
+// Flags that can be or-ed into a positioning mode.
+enum {
+	kFSAllowConcurrentAsyncIOBit = 3,
+	kFSAllowConcurrentAsyncIOMask = 0x0008,
+	kFSPleaseCacheBit = 4,
+	kFSPleaseCacheMask = 0x0010,
+	kFSNoCacheBit = 5,
+	kFSNoCacheMask = 0x0020,
+	kFSForceReadBit = 6,
+	kFSForceReadMask = 0x0040,
+	kFSNewLineBit = 7,
+	kFSNewLineMask = 0x0080,
+	kFSNewLineCharMask = 0xFF00
+};
+
+typedef struct OpaqueFSIterator* FSIterator;
+
+enum {
+	kFSIterateFlat = 0,
+	kFSIterateSubtree = 1,
+	kFSIterateDelete = 2,
+	kFSIterateReserved = (int) 0xFFFFFFFC
+};
+typedef OptionBits FSIteratorFlags;
+
+enum {
+	kFSEjectVolumeForceEject = (1 << 0)
+};
+
+#pragma pack(push, 2)
 typedef struct FSVolumeInfo {
 	UTCDateTime createDate;
 	UTCDateTime modifyDate;
@@ -67,6 +109,7 @@ typedef struct FSVolumeInfo {
 	UInt16 driveNumber;
 	FSIORefNum driverRefNum;
 } FSVolumeInfo;
+#pragma pack(pop)
 
 OSErr FSGetDataForkName(HFSUniStr255* dataForkName);
 OSErr FSGetResourceForkName(HFSUniStr255* rsrcForkName);
@@ -75,7 +118,102 @@ OSErr FSOpenFork(const FSRef* ref, UniCharCount forkNameLength, const UniChar* f
 OSErr FSGetForkSize(FSIORefNum forkRefNum, SInt64* forkSize);
 OSErr FSCloseFork(FSIORefNum forkRefNum);
 
+OSErr FSReadFork(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 positionOffset, ByteCount requestCount, void* buffer, ByteCount* actualCount);
+OSErr FSGetForkPosition(FSIORefNum forkRefNum, SInt64* position);
+OSErr FSSetForkPosition(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 positionOffset);
+
+OSErr FSOpenIterator(const FSRef* container, FSIteratorFlags iteratorFlags, FSIterator* iterator);
+OSErr FSCloseIterator(FSIterator iterator);
+OSErr FSGetCatalogInfoBulk(FSIterator iterator, ItemCount maximumObjects, ItemCount* actualObjects, Boolean* containerChanged, FSCatalogInfoBitmap whichInfo, FSCatalogInfo* catalogInfos, FSRef* refs, FSSpecPtr specs, HFSUniStr255* names);
+
+OSStatus FSEjectVolumeSync(FSVolumeRefNum vRefNum, OptionBits flags, pid_t* dissenter);
+
 OSErr FSGetVolumeInfo(FSVolumeRefNum volume, ItemCount volumeIndex, FSVolumeRefNum *actualVolume, FSVolumeInfoBitmap whichInfo, FSVolumeInfo *info, HFSUniStr255 *volumeName, FSRef *rootDirectory);
+
+// Version 1 to 5 layouts of the buffer PBHGetVolParmsSync fills; the version is in vMVersion.
+#pragma pack(push, 2)
+struct GetVolParmsInfoBuffer {
+	SInt16 vMVersion;
+	SInt32 vMAttrib;
+	Handle vMLocalHand;
+	SInt32 vMServerAdr;
+	SInt32 vMVolumeGrade;
+	SInt16 vMForeignPrivID;
+	SInt32 vMExtendedAttributes;
+	void* vMDeviceID;
+	UniCharCount vMMaxNameLength;
+};
+typedef struct GetVolParmsInfoBuffer GetVolParmsInfoBuffer;
+#pragma pack(pop)
+
+// Volume attribute bits of GetVolParmsInfoBuffer.vMAttrib.
+enum {
+	bLimitFCBs = 31,
+	bLocalWList = 30,
+	bNoMiniFndr = 29,
+	bNoVNEdit = 28,
+	bNoLclSync = 27,
+	bTrshOffLine = 26,
+	bNoSwitchTo = 25,
+	bNoDeskItems = 20,
+	bNoBootBlks = 19,
+	bAccessCntl = 18,
+	bNoSysDir = 17,
+	bHasExtFSVol = 16,
+	bHasOpenDeny = 15,
+	bHasCopyFile = 14,
+	bHasMoveRename = 13,
+	bHasDesktopMgr = 12,
+	bHasShortName = 11,
+	bHasFolderLock = 10,
+	bHasPersonalAccessPrivileges = 9,
+	bHasUserGroupList = 8,
+	bHasCatSearch = 7,
+	bHasFileIDs = 6,
+	bHasBTreeMgr = 5,
+	bHasBlankAccessPrivileges = 4,
+	bSupportsAsyncRequests = 3,
+	bSupportsTrashVolumeCache = 2
+};
+
+// The I/O flavour of the legacy File Manager parameter block; PBHGetVolParmsSync reads the
+// buffer fields and writes ioActCount.
+#pragma pack(push, 2)
+struct HIOParam {
+	QElemPtr qLink;
+	SInt16 qType;
+	SInt16 ioTrap;
+	Ptr ioCmdAddr;
+	IOCompletionUPP ioCompletion;
+	volatile OSErr ioResult;
+	StringPtr ioNamePtr;
+	FSVolumeRefNum ioVRefNum;
+	FSIORefNum ioRefNum;
+	SInt8 ioVersNum;
+	SInt8 ioPermssn;
+	Ptr ioMisc;
+	Ptr ioBuffer;
+	SInt32 ioReqCount;
+	SInt32 ioActCount;
+	SInt16 ioPosMode;
+	SInt32 ioPosOffset;
+};
+#pragma pack(pop)
+typedef struct HIOParam HIOParam;
+typedef HIOParam* HIOParamPtr;
+
+// Only the I/O member is declared; the other members of the original union are not used by the
+// calls Darling provides, so the padding keeps the size at least as large as theirs.
+#pragma pack(push, 2)
+union HParamBlockRec {
+	HIOParam ioParam;
+	char reserved[256];
+};
+typedef union HParamBlockRec HParamBlockRec;
+#pragma pack(pop)
+typedef HParamBlockRec* HParmBlkPtr;
+
+OSErr PBHGetVolParmsSync(HParmBlkPtr paramBlock);
 
 OSStatus FSCopyObjectSync(const FSRef *source, const FSRef *destinationDir, CFStringRef copyName, FSRef *newRef, OptionBits whichInfo);
 OSStatus FSMoveObjectSync(const FSRef *source, const FSRef *destinationDir, CFStringRef moveName, FSRef *newRef, OptionBits whichInfo);

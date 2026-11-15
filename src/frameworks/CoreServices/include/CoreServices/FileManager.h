@@ -55,13 +55,19 @@ typedef struct FSSpec FSSpec;
 
 typedef struct FSSpec* FSSpecPtr;
 
+// The File Manager structures below use 2-byte packing, as in the public Files.h; programs built
+// against that header index arrays of FSCatalogInfo and read fields at these offsets.
+#pragma pack(push, 2)
+
+typedef struct __FSFileSecurity* FSFileSecurityRef;
+
 struct FSPermissionInfo
 {
 	uint32_t userID, groupID; // uid, gid
 	uint8_t reserved1;
 	uint8_t userAccess; // mode for the current user
 	uint16_t mode; // mode
-	uint32_t reserved2;
+	FSFileSecurityRef fileSec;
 };
 
 struct FSCatalogInfo
@@ -93,6 +99,12 @@ struct FSCatalogInfo
 };
 typedef struct FSCatalogInfo FSCatalogInfo;
 
+#if __LP64__
+	typedef int FSIORefNum;
+#else
+	typedef SInt16 FSIORefNum;
+#endif
+
 typedef void* IOCompletionUPP;
 typedef void* QElemPtr;
 typedef uint16_t FSAllocationFlags;
@@ -108,17 +120,17 @@ struct FSRefParam
 	Ptr ioCmdAddr;
 	IOCompletionUPP ioCompletion;
 	volatile OSErr ioResult;
-	const Str255* ioNamePtr;
+	ConstStringPtr ioNamePtr;
 	short ioVRefNum;
 	SInt16 reserved1;
 	UInt8 reserved2;
 	UInt8 reserved3;
-	const FSRefPtr ref;
+	const FSRef* ref;
 	FSCatalogInfoBitmap whichInfo;
 	struct FSCatalogInfo* catInfo;
 	UniCharCount nameLength;
 	const UniChar* name;
-	long ioDirID;
+	SInt32 ioDirID;
 	FSSpecPtr spec;
 	FSRefPtr parentRef;
 	FSRefPtr newRef;
@@ -128,7 +140,7 @@ struct FSRefParam
 
 struct CatPositionRec
 {
-	long initialize;
+	SInt32 initialize;
 	short priv[6];
 };
 
@@ -142,10 +154,10 @@ struct FSForkIOParam
 	volatile OSErr ioResult;
 	void * reserved1;
 	SInt16 reserved2;
-	SInt16 forkRefNum;
+	FSIORefNum forkRefNum;
 	UInt8 reserved3;
 	SInt8 permissions;
-	const FSRefPtr ref;
+	const FSRef* ref;
 	Ptr buffer;
 	UInt32 requestCount;
 	UInt32 actualCount;
@@ -159,10 +171,23 @@ struct FSForkIOParam
 	struct HFSUniStr255* outForkName;
 };
 
+#pragma pack(pop)
+
 enum
 {
 	kFSPathMakeRefDefaultOptions = 0,
 	kFSPathMakeRefDoNotFollowLeafSymlink = 1
+};
+
+enum
+{
+	kFSNodeLockedMask = 0x0001,
+	kFSNodeResOpenMask = 0x0004,
+	kFSNodeDataOpenMask = 0x0008,
+	kFSNodeIsDirectoryMask = 0x0010,
+	kFSNodeCopyProtectMask = 0x0040,
+	kFSNodeForkOpenMask = 0x0080,
+	kFSNodeInSharedMask = 0x0100
 };
 
 enum
@@ -227,6 +252,7 @@ OSErr PBCreateDirectoryUnicodeSync(struct FSRefParam* paramBlock);
 OSErr PBCreateFileUnicodeSync(struct FSRefParam* paramBlock);
 OSErr PBGetCatalogInfoSync(struct FSRefParam *paramBlock);
 OSErr PBMakeFSRefUnicodeSync(struct FSRefParam *paramBlock);
+OSErr PBMakeFSRefSync(struct FSRefParam *paramBlock);
 OSErr PBOpenForkSync(struct FSForkIOParam *paramBlock);
 OSErr PBReadForkSync(struct FSForkIOParam *paramBlock);
 OSErr PBWriteForkSync(struct FSForkIOParam *paramBlock);
