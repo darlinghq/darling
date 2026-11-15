@@ -10,7 +10,21 @@ concurrency:
 
 jobs:
   build-deb:
-    runs-on: ubuntu-latest
+    # Build the packages natively on each architecture. The arm64 runner is a
+    # regular arm64 Linux machine, so the build does not need a cross toolchain
+    # and the resulting .debs are native arm64 packages.
+    name: Build DEBs (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: amd64
+          runs-on: ubuntu-latest
+          artifact: debs
+        - arch: arm64
+          runs-on: ubuntu-24.04-arm
+          artifact: debs-arm64
+    runs-on: ${{ matrix.runs-on }}
     steps:
     - name: Checkout Darling
       uses: actions/checkout@v4
@@ -48,11 +62,11 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: ~/.ccache
-        key: ccache-deb-${{ github.ref_name }}-${{ github.run_id }}
+        key: ccache-deb-${{ matrix.arch }}-${{ github.ref_name }}-${{ github.run_id }}
         restore-keys: |
-          ccache-deb-${{ github.ref_name }}-
-          ccache-deb-${{ github.event.repository.default_branch }}-
-          ccache-deb-
+          ccache-deb-${{ matrix.arch }}-${{ github.ref_name }}-
+          ccache-deb-${{ matrix.arch }}-${{ github.event.repository.default_branch }}-
+          ccache-deb-${{ matrix.arch }}-
 
     - name: Build DEBs
       run: |
@@ -70,7 +84,7 @@ jobs:
       uses: actions/cache/save@v4
       with:
         path: ~/.ccache
-        key: ccache-deb-${{ github.ref_name }}-${{ github.run_id }}
+        key: ccache-deb-${{ matrix.arch }}-${{ github.ref_name }}-${{ github.run_id }}
 
     - name: Move DEBs
       run: |
@@ -79,7 +93,7 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4.1.0
       with:
-        name: 'debs'
+        name: ${{ matrix.artifact }}
         path: dist/
 
   build-dsc:
