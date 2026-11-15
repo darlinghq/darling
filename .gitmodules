@@ -474,3 +474,7 @@
 	path = src/external/swift-cmark
 	url = ../swift-cmark.git
 	branch = release/6.3
+[submodule "src/external/openal-soft"]
+	path = src/external/openal-soft
+	url = ../openal-soft.git
+	branch = v1.20
