@@ -23,6 +23,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sstream>
 #include <string>
 #include <CarbonCore/MacErrors.h>
+#include "../FFmpegAvailability.h"
 
 extern "C" {
 #include <libavformat/avformat.h>
@@ -87,6 +88,9 @@ void AudioFileFormatGeneric::GetFileTypeName(CFStringRef *outName)
 
 UncertainResult AudioFileFormatGeneric::FileDataIsThisFormat(UInt32 inDataByteSize, const void* inData)
 {
+	if (!ffmpegContainersAvailable())
+		return kFalse;
+
 	std::vector<uint8_t> buf(inDataByteSize + AVPROBE_PADDING_SIZE);
 	AVProbeData probeData = {};
 

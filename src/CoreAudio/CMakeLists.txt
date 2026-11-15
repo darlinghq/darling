@@ -16,10 +16,11 @@ include_directories(
 )
 add_definitions(-DHAVE_AV_FRAME_ALLOC=1)
 
-wrap_elf(swresample libswresample.so)
-wrap_elf(avcodec libavcodec.so)
-wrap_elf(avformat libavformat.so)
-wrap_elf(avutil libavutil.so)
+# FFmpeg is optional at run time: see FFmpegAvailability.h
+wrap_elf(swresample libswresample.so OPTIONAL darling_swresample_available)
+wrap_elf(avcodec libavcodec.so OPTIONAL darling_avcodec_available)
+wrap_elf(avformat libavformat.so OPTIONAL darling_avformat_available)
+wrap_elf(avutil libavutil.so OPTIONAL darling_avutil_available)
 #wrap_elf(asound libasound.so)
 wrap_elf(pulse libpulse.so)
 

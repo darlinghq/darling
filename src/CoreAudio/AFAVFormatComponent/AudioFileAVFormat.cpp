@@ -23,6 +23,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 extern "C" {
 #include <libavformat/avformat.h>
+#include "../FFmpegAvailability.h"
 #include <libavutil/channel_layout.h>
 #include <libavutil/mem.h>
 }
@@ -146,7 +147,7 @@ Boolean AudioFileAVFormat::IsDataFormatSupported(const AudioStreamBasicDescripti
 	// Whatever the demuxer found is supported
 	if (m_opened)
 		return true;
-	if (!m_muxer)
+	if (!m_muxer || !ffmpegContainersAvailable())
 		return false;
 
 	const AVOutputFormat* muxer = av_guess_format(m_muxer, nullptr, nullptr);
@@ -242,6 +243,9 @@ void AudioFileAVFormat::freeIO()
 
 OSStatus AudioFileAVFormat::OpenFromDataSource()
 {
+	if (!ffmpegContainersAvailable())
+		return kAudioFileUnsupportedFileTypeError;
+
 	const AVInputFormat* demuxer = av_find_input_format(m_demuxer);
 	AVFormatContext* input = avformat_alloc_context();
 	OSStatus status = kAudioFileInvalidFileError;
@@ -382,6 +386,9 @@ OSStatus AudioFileAVFormat::startMuxer()
 {
 	if (m_output)
 		return noErr;
+
+	if (!ffmpegContainersAvailable())
+		return kAudioFileUnsupportedDataFormatError;
 
 	const AudioStreamBasicDescription& format = GetDataFormat();
 	AVFormatContext* output = nullptr;
