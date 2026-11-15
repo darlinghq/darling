@@ -3,7 +3,9 @@ project(frameworks)
 if (COMPONENT_system)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "system")
 
-	# for memberd
+	# DirectoryService.framework (used by memberd) is built on CFOpenDirectory,
+	# which OpenDirectory.framework re-exports
+	add_subdirectory(OpenDirectory/CFOpenDirectory)
 	add_subdirectory(DirectoryServices)
 endif()
 
