@@ -23,7 +23,9 @@ static CFDataRef encode(CGImageRef image, CFStringRef type) {
     CGImageDestinationAddImage(dest, image, NULL);
     bool ok = CGImageDestinationFinalize(dest);
     CFRelease(dest);
-    if (!ok) {
+    // An encoder that produces nothing for this image (for example icns, which
+    // only holds the standard icon sizes) has nothing to read back.
+    if (!ok || CFDataGetLength(data) == 0) {
         CFRelease(data);
         return NULL;
     }
