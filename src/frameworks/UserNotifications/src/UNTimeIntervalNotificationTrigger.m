@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2021 Lubos Dolezel
+ Copyright (C) 2026 Darling developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,28 +19,49 @@
 */
 
 #import <UserNotifications/UNTimeIntervalNotificationTrigger.h>
-#import <darling-stub-forwarding.h>
 
 @implementation UNTimeIntervalNotificationTrigger
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+@synthesize timeInterval = _timeInterval;
+
++ (BOOL)supportsSecureCoding
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return YES;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
++ (instancetype)triggerWithTimeInterval:(NSTimeInterval)timeInterval repeats:(BOOL)repeats
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    UNTimeIntervalNotificationTrigger *trigger = [[[self alloc] init] autorelease];
+    trigger->_timeInterval = timeInterval;
+    trigger->_repeats = repeats;
+    return trigger;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (NSDate *)nextTriggerDate
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return [NSDate dateWithTimeIntervalSinceNow:_timeInterval];
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (id)copyWithZone:(NSZone *)zone
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    UNTimeIntervalNotificationTrigger *copy = [super copyWithZone:zone];
+    copy->_timeInterval = self.timeInterval;
+    return copy;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [super encodeWithCoder:coder];
+    [coder encodeDouble:_timeInterval forKey:@"timeInterval"];
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super initWithCoder:coder];
+    if (self) {
+        _timeInterval = [coder decodeDoubleForKey:@"timeInterval"];
+    }
+    return self;
 }
 
 @end

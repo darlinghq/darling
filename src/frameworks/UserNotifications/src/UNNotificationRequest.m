@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2021 Lubos Dolezel
+ Copyright (C) 2026 Darling developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,28 +19,62 @@
 */
 
 #import <UserNotifications/UNNotificationRequest.h>
-#import <darling-stub-forwarding.h>
 
 @implementation UNNotificationRequest
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+@synthesize identifier = _identifier;
+@synthesize content = _content;
+@synthesize trigger = _trigger;
+
++ (BOOL)supportsSecureCoding
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return YES;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
++ (instancetype)requestWithIdentifier:(NSString *)identifier
+                              content:(UNNotificationContent *)content
+                              trigger:(nullable UNNotificationTrigger *)trigger
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    UNNotificationRequest *request = [[[self alloc] init] autorelease];
+    request->_identifier = [identifier copy];
+    request->_content = [content copy];
+    request->_trigger = [trigger copy];
+    return request;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (void)dealloc
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    [_identifier release];
+    [_content release];
+    [_trigger release];
+    [super dealloc];
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (id)copyWithZone:(NSZone *)zone
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    UNNotificationRequest *copy = [[[self class] allocWithZone:zone] init];
+    copy->_identifier = [self.identifier copyWithZone:zone];
+    copy->_content = [self.content copyWithZone:zone];
+    copy->_trigger = [self.trigger copyWithZone:zone];
+    return copy;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeObject:_identifier forKey:@"identifier"];
+    [coder encodeObject:_content forKey:@"content"];
+    [coder encodeObject:_trigger forKey:@"trigger"];
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super init];
+    if (self) {
+        _identifier = [[coder decodeObjectOfClass:[NSString class] forKey:@"identifier"] copy];
+        _content = [[coder decodeObjectOfClass:[UNNotificationContent class] forKey:@"content"] copy];
+        _trigger = [[coder decodeObjectOfClass:[UNNotificationTrigger class] forKey:@"trigger"] copy];
+    }
+    return self;
 }
 
 @end

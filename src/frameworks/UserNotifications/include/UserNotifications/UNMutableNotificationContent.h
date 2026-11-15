@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2021 Lubos Dolezel
+ Copyright (C) 2026 Darling developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +18,30 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef _USERNOTIFICATIONS_UNMUTABLENOTIFICATIONCONTENT_H_
+#define _USERNOTIFICATIONS_UNMUTABLENOTIFICATIONCONTENT_H_
 
-@interface UNMutableNotificationContent : NSObject
+#import <UserNotifications/UNNotificationContent.h>
+
+@interface UNMutableNotificationContent : UNNotificationContent
+
+@property(copy) NSArray<UNNotificationAttachment *> *attachments;
+@property(copy) NSNumber *badge;
+@property(copy) NSString *body;
+@property(copy) NSString *categoryIdentifier;
+@property(copy) NSString *launchImageName;
+@property(copy) UNNotificationSound *sound;
+@property(copy) NSString *subtitle;
+@property(copy) NSString *threadIdentifier;
+@property(copy) NSString *title;
+@property(copy) NSDictionary *userInfo;
+@property UNNotificationInterruptionLevel interruptionLevel;
+@property(copy) NSString *summaryArgument;
+@property NSUInteger summaryArgumentCount;
+@property(copy) NSString *targetContentIdentifier;
+@property double relevanceScore;
+@property(copy) NSString *filterCriteria;
 
 @end
+
+#endif
