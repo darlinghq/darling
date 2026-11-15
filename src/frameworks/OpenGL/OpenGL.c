@@ -306,6 +306,9 @@ struct _CGLContextObj {
     int multi_thread;
     // A request to release the binding is queued on the main thread.
     int release_pending;
+    // The main thread waits for a thread other than the main thread to
+    // release the binding (at its next CGLLockContext or CGLUnlockContext).
+    int release_wanted;
     // Nesting depth of CGLLockContext and the thread holding it; only that
     // thread writes them, under the context's lock.
     unsigned lock_depth;
@@ -724,6 +727,35 @@ static CGLError bindCurrentContext(CGLContextObj context) {
 // it is refused as before. A thread other than the main thread that binds a
 // context is not asked: its run loop, if it has one, is not known.
 // A context that no other thread asked for is never released this way.
+//
+// Waiting for the request has a hole: a render thread that holds an
+// application lock while it asks for the context deadlocks with a main thread
+// that blocks on that lock instead of returning to its run loop (the render
+// thread then gives up after the wait below). On macOS the second thread's
+// CGLSetCurrentContext succeeds at once whatever the main thread is doing,
+// because the context stays current on the main thread as well (observed on
+// macOS 26.7.3 with a two-thread probe). To come as close as EGL allows, once
+// a context is known to be used by more than one thread the main thread
+// releases its binding every time it returns to its run loop (before it
+// waits, and when a nested run loop exits), so that the other thread finds
+// the context free. The request above remains as the fallback for a main
+// thread that has not been back in its run loop yet. The main thread still
+// has the context as its current context and binds it again at its next
+// CGLSetCurrentContext or CGLLockContext of it. Limitation: raw GL calls on
+// the main thread after it was parked, with neither of those calls in
+// between, find no EGL context (macOS allows them); EGL gives no cheaper way
+// to have the binding follow the thread.
+//
+// The other direction: the render thread then keeps the binding between
+// frames, so the main thread's next CGLSetCurrentContext (or the rebind in
+// CGLLockContext) is refused. The main thread then asks the holding thread
+// (only a thread other than the main thread can be asked this way) to give
+// the binding up where it next enters or leaves CGLLockContext, which is
+// between its uses of the context, and waits for that, while still answering
+// requests of its own by the same rule. A bind that loses against another
+// thread's bind of a shared context is repeated a few times. Raw GL calls
+// of the thread that gave the binding up, before its next lock or
+// CGLSetCurrentContext, find no EGL context.
 
 // How long a refused thread waits for the main thread to answer. The main
 // thread may be in the middle of a long run of GL calls (set-up that compiles
@@ -751,6 +783,44 @@ static void releaseRequestedBinding(CGLContextObj context) {
     pthread_mutex_unlock(&g_bindingMutex);
 }
 
+// Run loop observer (on the main run loop): parks the main thread's binding
+// of every context that other threads use. Runs on the main thread only.
+static void parkMultiThreadBindings(void) {
+    pthread_mutex_lock(&g_activeContextsMutex);
+    for (struct _CGLContextObj *ctx = g_activeContexts; ctx != NULL; ctx = ctx->next_active) {
+        pthread_mutex_lock(&g_bindingMutex);
+        int park = ctx->multi_thread && threadHoldsBinding(ctx);
+        pthread_mutex_unlock(&g_bindingMutex);
+        if (park)
+            releaseRequestedBinding(ctx);
+    }
+    pthread_mutex_unlock(&g_activeContextsMutex);
+}
+
+// Marks context as used by more than one thread and makes sure the main run
+// loop parks the main thread's binding whenever it goes idle.
+static void noteMultiThread(CGLContextObj context) {
+    static int observer_added;
+    pthread_mutex_lock(&g_bindingMutex);
+    context->multi_thread = 1;
+    int add = !observer_added;
+    observer_added = 1;
+    pthread_mutex_unlock(&g_bindingMutex);
+    if (!add)
+        return;
+    CFRunLoopObserverRef observer = CFRunLoopObserverCreateWithHandler(
+        NULL, kCFRunLoopBeforeWaiting | kCFRunLoopExit, true, LONG_MAX,
+        ^(CFRunLoopObserverRef o, CFRunLoopActivity activity) {
+            (void) o;
+            (void) activity;
+            parkMultiThreadBindings();
+        });
+    if (observer) {
+        CFRunLoopAddObserver(CFRunLoopGetMain(), observer, kCFRunLoopCommonModes);
+        CFRelease(observer);
+    }
+}
+
 // Runs on the main thread's run loop. The context was retained for it.
 static void releaseBindingOnThisThread(CGLContextObj context) {
     releaseRequestedBinding(context);
@@ -772,13 +842,63 @@ static void answerPendingRelease(CGLContextObj context) {
 
 static CGLError bindCurrentContext(CGLContextObj context);
 
+static struct timespec handoffDeadline(void) {
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    struct timespec deadline = { now.tv_sec + HANDOFF_WAIT_SECONDS, (long) now.tv_usec * 1000 };
+    if (deadline.tv_nsec >= 1000 * 1000 * 1000) {
+        deadline.tv_sec++;
+        deadline.tv_nsec -= 1000 * 1000 * 1000;
+    }
+    return deadline;
+}
+
+// Gives the binding up on the calling thread, which is not the main thread,
+// if the main thread is waiting for it. Called where this thread enters or
+// leaves the context's lock, i.e. between uses of the context.
+static void releaseWantedBinding(CGLContextObj context) {
+    if (pthread_main_np())
+        return;
+    pthread_mutex_lock(&g_bindingMutex);
+    if (context->release_wanted && threadHoldsBinding(context) &&
+        p_eglMakeCurrent(context->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
+        context->binding = CGL_BINDING_PARKED;
+        context->release_wanted = 0;
+        pthread_cond_broadcast(&g_bindingCond);
+    }
+    pthread_mutex_unlock(&g_bindingMutex);
+}
+
 // Called when binding was refused because another thread holds the context.
 // Returns whether a release was requested and awaited (the caller retries).
 static int requestRelease(CGLContextObj context) {
+    noteMultiThread(context);
     pthread_mutex_lock(&g_bindingMutex);
-    context->multi_thread = 1;
-    if (context->binding != CGL_BINDING_BOUND || !context->binding_thread_is_main ||
-        context->release_pending || pthread_main_np()) {
+    if (context->binding != CGL_BINDING_BOUND || context->release_pending) {
+        pthread_mutex_unlock(&g_bindingMutex);
+        return 0;
+    }
+    struct timespec deadline = handoffDeadline();
+    if (!context->binding_thread_is_main) {
+        // Another thread than the main thread holds the context and the main
+        // thread, for which a context is current whatever other threads do,
+        // wants it back: that thread gives it up where it next locks or
+        // unlocks the context.
+        if (!pthread_main_np()) {
+            pthread_mutex_unlock(&g_bindingMutex);
+            return 0;
+        }
+        context->release_wanted = 1;
+        while (context->binding == CGL_BINDING_BOUND && context->release_wanted) {
+            if (pthread_cond_timedwait(&g_bindingCond, &g_bindingMutex, &deadline) != 0)
+                break;
+        }
+        context->release_wanted = 0;
+        int released = context->binding != CGL_BINDING_BOUND;
+        pthread_mutex_unlock(&g_bindingMutex);
+        return released;
+    }
+    if (pthread_main_np()) {
         pthread_mutex_unlock(&g_bindingMutex);
         return 0;
     }
@@ -787,13 +907,6 @@ static int requestRelease(CGLContextObj context) {
     CFRunLoopRef main_loop = CFRunLoopGetMain();
     CFRunLoopPerformBlock(main_loop, kCFRunLoopCommonModes, ^{ releaseBindingOnThisThread(context); });
     CFRunLoopWakeUp(main_loop);
-    struct timeval now;
-    gettimeofday(&now, NULL);
-    struct timespec deadline = { now.tv_sec + HANDOFF_WAIT_SECONDS, (long) now.tv_usec * 1000 };
-    if (deadline.tv_nsec >= 1000 * 1000 * 1000) {
-        deadline.tv_sec++;
-        deadline.tv_nsec -= 1000 * 1000 * 1000;
-    }
     while (context->binding == CGL_BINDING_BOUND && context->release_pending) {
         if (pthread_cond_timedwait(&g_bindingCond, &g_bindingMutex, &deadline) != 0)
             break;
@@ -808,13 +921,25 @@ static int requestRelease(CGLContextObj context) {
 static CGLError setCurrentContext(CGLContextObj context) {
     CGLContextObj previous = CGLGetCurrentContext();
     CGLError error = bindCurrentContext(context);
-    if (error != kCGLNoError && context != NULL) {
+    // A bind that fails because another thread holds the context asks that
+    // thread to release it; the thread that got released may bind it again
+    // before this one does (or be in the middle of binding it), so try again
+    // a few times.
+    for (int attempt = 0; error != kCGLNoError && context != NULL && attempt < 20; attempt++) {
         pthread_mutex_lock(&g_bindingMutex);
         int held_elsewhere = context->binding == CGL_BINDING_BOUND &&
                              !pthread_equal(context->binding_thread, pthread_self());
+        int multi_thread = context->multi_thread;
         pthread_mutex_unlock(&g_bindingMutex);
-        if (held_elsewhere && requestRelease(context))
-            error = bindCurrentContext(context);
+        if (held_elsewhere) {
+            if (!requestRelease(context))
+                break;
+        } else if (multi_thread) {
+            usleep(1000);
+        } else {
+            break;
+        }
+        error = bindCurrentContext(context);
     }
     pthread_mutex_lock(&g_bindingMutex);
     if (error == kCGLNoError) {
@@ -1172,6 +1297,7 @@ static CGLError createContext(CGLPixelFormatObj pixelFormat, CGLContextObj share
     context->binding = CGL_BINDING_FREE;
     context->multi_thread = 0;
     context->release_pending = 0;
+    context->release_wanted = 0;
     context->binding_thread_is_main = 0;
     context->lock_depth = 0;
     atomic_init(&context->dmabuf_import, 0);
@@ -1283,7 +1409,29 @@ CGLError CGLLockContext(CGLContextObj context) {
         return kCGLBadContext;
     }
     answerPendingRelease(context);
-    pthread_mutex_lock(&(context->lock));
+    if (!pthread_main_np()) {
+        pthread_mutex_lock(&g_bindingMutex);
+        int nested = context->lock_depth > 0 && pthread_equal(context->lock_owner, pthread_self());
+        pthread_mutex_unlock(&g_bindingMutex);
+        if (!nested)
+            releaseWantedBinding(context);
+        // A second thread uses a context the main thread has bound.
+        pthread_mutex_lock(&g_bindingMutex);
+        int main_bound = context->binding_thread_is_main && context->binding != CGL_BINDING_FREE;
+        pthread_mutex_unlock(&g_bindingMutex);
+        if (main_bound)
+            noteMultiThread(context);
+    }
+    if (pthread_main_np()) {
+        // The thread that holds the lock may ask the main thread to release
+        // the binding while this thread waits for the lock: keep answering.
+        while (pthread_mutex_trylock(&(context->lock)) != 0) {
+            answerPendingRelease(context);
+            usleep(1000);
+        }
+    } else {
+        pthread_mutex_lock(&(context->lock));
+    }
     if (context->lock_depth++ == 0) {
         pthread_mutex_lock(&g_bindingMutex);
         context->lock_owner = pthread_self();
@@ -1314,6 +1462,7 @@ CGLError CGLUnlockContext(CGLContextObj context) {
         pthread_mutex_lock(&g_bindingMutex);
         context->lock_owner = (pthread_t) 0;
         pthread_mutex_unlock(&g_bindingMutex);
+        releaseWantedBinding(context);
     }
     pthread_mutex_unlock(&(context->lock));
     return kCGLNoError;
