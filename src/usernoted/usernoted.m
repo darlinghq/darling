@@ -109,6 +109,17 @@ static NSMutableDictionary<NSString*, NSMutableArray<xpc_object_t>*>* s_queued_r
 static NSMutableDictionary<NSString*, NSSet*>* s_categories;
 static uint32_t s_next_synthetic_id = 1000;
 
+/* The checked-in session of an app (daemon queue only), or nil when the app has none. */
+static UNClientSession* session_for_bundle(NSString* bundle_id)
+{
+	for (UNClientSession* s in s_clients)
+	{
+		if ([s.bundleID isEqualToString:bundle_id])
+			return s;
+	}
+	return nil;
+}
+
 static void setup_dbus(void)
 {
 #if defined(__x86_64__)
@@ -288,9 +299,8 @@ static void on_notification_closed(uint32_t id, uint32_t reason, void* context)
 	});
 }
 
-static void post_record_to_desktop(UNRecord* r)
+static void show_record_on_desktop(UNRecord* r, BOOL with_sound)
 {
-	r.date = [NSDate date];
 
 	/* Map title and subtitle to summary: title + subtitle -> summary */
 	NSString* summary = nil;
@@ -333,7 +343,7 @@ static void post_record_to_desktop(UNRecord* r)
 			r.body ? [r.body UTF8String] : "",
 			actions_c, action_count,
 			r.imagePath ? [r.imagePath UTF8String] : NULL,
-			r.soundFile ? [r.soundFile UTF8String] : NULL,
+			(with_sound && r.soundFile) ? [r.soundFile UTF8String] : NULL,
 			r.urgency, -1);
 
 		/* If standard Notify failed, try desktop portal */
@@ -356,6 +366,69 @@ static void post_record_to_desktop(UNRecord* r)
 
 	r.hostID = host_id;
 	[s_delivered addObject:r];
+}
+
+/* How long the daemon waits for the app's answer to will-present before presenting normally. */
+#define WILL_PRESENT_TIMEOUT_SECONDS 3
+
+/*
+ * UNUserNotificationCenter: an app that is in the foreground is asked, through its delegate's
+ * userNotificationCenter:willPresentNotification:withCompletionHandler:, how the notification
+ * is to be presented (the completion handler's options). Otherwise it is presented at once.
+ */
+static void post_record_to_desktop(UNRecord* r)
+{
+	r.date = [NSDate date];
+
+	UNClientSession* session = r.isNSUser ? nil : session_for_bundle(r.bundleID);
+	if (session == nil || session.connection == NULL)
+	{
+		show_record_on_desktop(r, YES);
+		return;
+	}
+
+	xpc_object_t request = xpc_dictionary_create(NULL, NULL, 0);
+	xpc_dictionary_set_string(request, UN_KEY_OP, UN_OP_WILL_PRESENT);
+	xpc_dictionary_set_string(request, UN_KEY_NOTIFICATION_ID, [r.identifier UTF8String]);
+	if (r.title) xpc_dictionary_set_string(request, UN_KEY_TITLE, [r.title UTF8String]);
+	if (r.subtitle) xpc_dictionary_set_string(request, UN_KEY_SUBTITLE, [r.subtitle UTF8String]);
+	if (r.body) xpc_dictionary_set_string(request, UN_KEY_BODY, [r.body UTF8String]);
+	if (r.categoryID) xpc_dictionary_set_string(request, UN_KEY_CATEGORY_ID, [r.categoryID UTF8String]);
+
+	/* the reply and the timeout both run on the daemon queue, so the flag needs no lock */
+	__block BOOL answered = NO;
+
+	xpc_connection_send_message_with_reply(session.connection, request, s_daemon_queue, ^(xpc_object_t reply) {
+		if (answered)
+			return;
+		answered = YES;
+
+		BOOL foreground = NO;
+		int64_t options = 0;
+		if (xpc_get_type(reply) == XPC_TYPE_DICTIONARY)
+		{
+			foreground = xpc_dictionary_get_bool(reply, UN_KEY_FOREGROUND);
+			options = xpc_dictionary_get_int64(reply, UN_KEY_PRESENT_OPTIONS);
+		}
+
+		if (!foreground)
+		{
+			show_record_on_desktop(r, YES);
+		}
+		else if (options & UN_PRESENT_VISIBLE)
+		{
+			show_record_on_desktop(r, (options & UN_PRESENT_SOUND) != 0);
+		}
+		/* else: the app asked for nothing to be shown, so the notification is not delivered */
+	});
+	xpc_release(request);
+
+	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, WILL_PRESENT_TIMEOUT_SECONDS * NSEC_PER_SEC), s_daemon_queue, ^{
+		if (answered)
+			return;
+		answered = YES;
+		show_record_on_desktop(r, YES);
+	});
 }
 
 static void schedule_record(UNRecord* r, double fire_date_epoch, double time_interval, BOOL repeats)

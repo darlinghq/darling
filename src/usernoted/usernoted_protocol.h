@@ -53,6 +53,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define UN_KEY_ACTION_KEY "action-key"        // string ("default" or action identifier)
 #define UN_KEY_REASON "reason"                // int64 (close reason)
 #define UN_KEY_IDENTIFIERS "identifiers"      // array of string identifiers
+#define UN_KEY_FOREGROUND "foreground"        // bool (will-present reply: the app is the active application)
+#define UN_KEY_PRESENT_OPTIONS "present-options" // int64 (will-present reply: UNNotificationPresentationOptions)
 
 // Operations from client to daemon:
 #define UN_OP_CHECKIN "checkin"
@@ -71,5 +73,17 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 // Operations from daemon to client:
 #define UN_OP_ACTION_INVOKED "action-invoked"
 #define UN_OP_NOTIFICATION_CLOSED "notification-closed"
+// The daemon is about to present a notification of a running app and asks the app
+// (with a reply) whether it is in the foreground and, if so, how to present it.
+#define UN_OP_WILL_PRESENT "will-present"
+
+// UNNotificationPresentationOptions bits, as in the public UserNotifications API
+#define UN_PRESENT_BADGE  (1 << 0)
+#define UN_PRESENT_SOUND  (1 << 1)
+#define UN_PRESENT_ALERT  (1 << 2)
+#define UN_PRESENT_LIST   (1 << 3)
+#define UN_PRESENT_BANNER (1 << 4)
+// the options that put something on screen (as opposed to badge and sound only)
+#define UN_PRESENT_VISIBLE (UN_PRESENT_ALERT | UN_PRESENT_LIST | UN_PRESENT_BANNER)
 
 #endif

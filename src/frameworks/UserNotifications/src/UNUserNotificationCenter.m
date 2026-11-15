@@ -34,6 +34,8 @@
 
 #include <xpc/xpc.h>
 #import <objc/runtime.h>
+#import <objc/message.h>
+#include <dlfcn.h>
 #include "../../../usernoted/usernoted_protocol.h"
 
 static const char kCategoriesKey;
@@ -47,11 +49,100 @@ static dispatch_once_t s_conn_once;
 
 static UNUserNotificationCenter *s_currentCenter = nil;
 
+/*
+ * Whether this process is the active (foreground) application. A process that never created an
+ * NSApplication (a command-line tool, a daemon) is not. NSApp is read without being created.
+ */
+static BOOL application_is_active(void)
+{
+    id *appPointer = (id *) dlsym(RTLD_DEFAULT, "NSApp");
+    id app = appPointer ? *appPointer : nil;
+    if (app == nil || ![app respondsToSelector:@selector(isActive)])
+        return NO;
+    return ((BOOL (*)(id, SEL)) objc_msgSend)(app, @selector(isActive));
+}
+
+static UNNotification *notification_from_message(xpc_object_t msg)
+{
+    const char *ident = xpc_dictionary_get_string(msg, UN_KEY_NOTIFICATION_ID);
+    const char *title = xpc_dictionary_get_string(msg, UN_KEY_TITLE);
+    const char *subtitle = xpc_dictionary_get_string(msg, UN_KEY_SUBTITLE);
+    const char *body = xpc_dictionary_get_string(msg, UN_KEY_BODY);
+    const char *category_id = xpc_dictionary_get_string(msg, UN_KEY_CATEGORY_ID);
+
+    UNMutableNotificationContent *content = [[[UNMutableNotificationContent alloc] init] autorelease];
+    if (title) content.title = [NSString stringWithUTF8String:title];
+    if (subtitle) content.subtitle = [NSString stringWithUTF8String:subtitle];
+    if (body) content.body = [NSString stringWithUTF8String:body];
+    if (category_id) content.categoryIdentifier = [NSString stringWithUTF8String:category_id];
+
+    NSString *identifier = ident ? [NSString stringWithUTF8String:ident] : @"";
+    UNNotificationRequest *req = [UNNotificationRequest requestWithIdentifier:identifier content:content trigger:nil];
+    return [UNNotification notificationWithRequest:req date:[NSDate date]];
+}
+
+static void send_will_present_reply(xpc_object_t request, BOOL foreground, int64_t options)
+{
+    xpc_object_t reply = xpc_dictionary_create_reply(request);
+    if (reply == NULL)
+        return;
+    xpc_dictionary_set_bool(reply, UN_KEY_FOREGROUND, foreground);
+    xpc_dictionary_set_int64(reply, UN_KEY_PRESENT_OPTIONS, options);
+    xpc_connection_send_message(s_usernoted_conn, reply);
+    xpc_release(reply);
+}
+
+/*
+ * The daemon is about to present a notification. In the foreground the app decides, through
+ * the delegate, how it is presented; a delegate that does not implement the method silences it,
+ * as the documented default does. An app that is not in the foreground gets it presented as usual.
+ */
+static void handle_will_present(xpc_object_t request)
+{
+    xpc_retain(request);
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!application_is_active())
+        {
+            send_will_present_reply(request, NO, 0);
+            xpc_release(request);
+            return;
+        }
+
+        id<UNUserNotificationCenterDelegate> del = s_currentCenter.delegate;
+        SEL sel = @selector(userNotificationCenter:willPresentNotification:withCompletionHandler:);
+        if (![del respondsToSelector:sel])
+        {
+            send_will_present_reply(request, YES, 0);
+            xpc_release(request);
+            return;
+        }
+
+        UNNotification *notif = notification_from_message(request);
+        __block BOOL replied = NO;
+        [del userNotificationCenter:s_currentCenter willPresentNotification:notif
+              withCompletionHandler:^(UNNotificationPresentationOptions options) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (replied)
+                    return;
+                replied = YES;
+                send_will_present_reply(request, YES, (int64_t) options);
+                xpc_release(request);
+            });
+        }];
+    });
+}
+
 static void handle_daemon_message(xpc_object_t msg)
 {
     const char *op = xpc_dictionary_get_string(msg, UN_KEY_OP);
     if (!op)
         return;
+
+    if (strcmp(op, UN_OP_WILL_PRESENT) == 0)
+    {
+        handle_will_present(msg);
+        return;
+    }
 
     if (strcmp(op, UN_OP_ACTION_INVOKED) == 0)
     {
