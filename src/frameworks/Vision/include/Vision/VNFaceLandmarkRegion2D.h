@@ -17,8 +17,23 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <Vision/VNFaceLandmarkRegion.h>
 
-@interface VNFaceLandmarkRegion2D : NSObject
+NS_ASSUME_NONNULL_BEGIN
+
+// The points of a region in two dimensions. The Swift overlay wraps the two
+// pointer accessors (refined for Swift) into array-returning ones.
+API_AVAILABLE(macos(10.13))
+@interface VNFaceLandmarkRegion2D : VNFaceLandmarkRegion
+
+// pointCount points, normalized to the face bounding box (each coordinate 0 to 1).
+@property (readonly, assign) const CGPoint *normalizedPoints NS_REFINED_FOR_SWIFT;
+
+// The same points converted to a coordinate system of the given image size. Swift sees it under the
+// double-underscore name the overlay wraps.
+- (const CGPoint *)pointsInImageOfSize:(CGSize)imageSize NS_SWIFT_NAME(__pointsInImage(imageSize:));
 
 @end
+
+NS_ASSUME_NONNULL_END

@@ -17,8 +17,17 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
+// A group of points that outlines one facial feature.
+API_AVAILABLE(macos(10.13))
 @interface VNFaceLandmarkRegion : NSObject
 
+// Number of points in the region.
+@property (readonly) NSUInteger pointCount;
+
 @end
+
+NS_ASSUME_NONNULL_END
