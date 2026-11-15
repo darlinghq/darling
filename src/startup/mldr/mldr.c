@@ -351,6 +351,11 @@ int main(int argc, char** argv, char** envp)
 		exit(1);
 	}
 
+	if (dserver_rpc_set_executable_uuid(mldr_load_results.uuid) < 0) {
+		fprintf(stderr, "Failed to tell darlingserver about our executable UUID\n");
+		exit(1);
+	}
+
 	__mldr_main_stack_top = (void*)mldr_load_results.stack_top;
 
 	// Before any of the program's code runs; it needs the darlingserver connection,
