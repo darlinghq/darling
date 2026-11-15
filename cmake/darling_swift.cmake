@@ -37,7 +37,8 @@
 # that dominate a whole-module build are not split by -num-threads (that only parallelises LLVM code generation), so
 # per-file jobs are the only way to use more than one core. The price is that the optimiser sees one file at a time
 # (about three times the CPU time and a slightly larger dylib). The module interface and the dylib's export table are
-# unchanged. With DARLING_SWIFT_JOBS=1 (or small modules) the old whole-module job is used.
+# unchanged. With DARLING_SWIFT_WMO=ON (packaging and CI builds), DARLING_SWIFT_JOBS=1 or for small modules the
+# whole-module job is used.
 #
 # Required variables: SWIFT_TOOLCHAIN_FOUND and friends (swift_toolchain.cmake), and
 #   DARLING_SWIFT_STDLIB_MODULES  directory with <Name>.swiftmodule/<arch>-apple-macos.swiftinterface for the
@@ -52,6 +53,7 @@ set(DARLING_SWIFT_JOBS "${_darling_swift_cores}" CACHE STRING
 	"Number of parallel swiftc jobs for each Swift overlay module (1: single whole-module job)")
 set(DARLING_SWIFT_PARALLEL_MIN_SOURCES "16" CACHE STRING
 	"Modules with fewer sources than this are compiled as one whole-module job (the build time is negligible)")
+option(DARLING_SWIFT_WMO "Compile every Swift overlay module as one whole-module job (slower build, best optimisation; for packaging and CI)" OFF)
 if (CMAKE_GENERATOR MATCHES "Ninja" AND NOT CMAKE_VERSION VERSION_LESS 3.15)
 	# The swiftc driver runs its own jobs, so at most one module is compiled at a time to avoid oversubscribing the CPUs
 	# on top of Ninja's -j. (Make has no such pool: with make -jN the module jobs can overlap.)
@@ -90,7 +92,7 @@ endfunction()
 function(_darling_swift_compile module out_var)
 	cmake_parse_arguments(C "" "OBJECT;MODULE;COMMENT" "SOURCES;COMMON;DEPENDS" ${ARGN})
 	list(LENGTH C_SOURCES source_count)
-	if (DARLING_SWIFT_JOBS GREATER 1 AND NOT source_count LESS DARLING_SWIFT_PARALLEL_MIN_SOURCES)
+	if (NOT DARLING_SWIFT_WMO AND DARLING_SWIFT_JOBS GREATER 1 AND NOT source_count LESS DARLING_SWIFT_PARALLEL_MIN_SOURCES)
 		set(object_dir "${CMAKE_CURRENT_BINARY_DIR}/swift-objects/${module}")
 		set(map "${CMAKE_CURRENT_BINARY_DIR}/swift-${module}-output-file-map.json")
 		set(objects)
