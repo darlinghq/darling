@@ -41,6 +41,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CarbonCore/DateTimeUtils.h>
 #include <CarbonCore/Resources.h>
 #include <sys/xattr.h>
+#include <sys/mount.h>
 #include <mutex>
 #include <errno.h>
 #include <darling/emulation/linux_premigration/ext/file_handle.h>
@@ -980,6 +981,90 @@ OSErr FSGetCatalogInfoBulk(FSIterator iterator, ItemCount maximumObjects, ItemCo
 }
 
 // ---- Volumes ---------------------------------------------------------------------------------
+
+// Darling has one volume, the root file system. With no volume index it is found by the reference
+// number -100 only (0, kFSInvalidVolumeRefNum, is nsvErr); with an index it is volume number 1.
+//
+// QUIRK: the fields not named by whichInfo are left alone. The values a local volume gets on macOS
+// 10.14.4 (tier 2, black-box, vd-upstream/mac-probes/v665-vi2.c and v665-vi.c): sizes and block
+// counts from statfs (total and free bytes are blocks times the block size), the file count the
+// used inodes, a folder count of 0, resource and data clump size 4096, next allocation 0, next
+// catalog ID 2, flags default-volume plus journaling-active (0x4020), signature 0x4244, file system
+// ID 25461, drive number 1, driver reference number 0, backup and checked dates 0. The Mac listed a
+// second volume at index 2; Darling has one.
+// Test: tests/src/file_manager_iterators.c (volume info test)
+OSErr FSGetVolumeInfo(FSVolumeRefNum volume, ItemCount volumeIndex, FSVolumeRefNum* actualVolume, FSVolumeInfoBitmap whichInfo, FSVolumeInfo* info, HFSUniStr255* volumeName, FSRef* rootDirectory)
+{
+	if (volumeIndex == 0 ? volume != kBootVolumeRefNum : volumeIndex != 1)
+		return nsvErr;
+
+	if (info && whichInfo != kFSVolInfoNone)
+	{
+		struct statfs sf;
+		struct stat st;
+		if (::statfs("/", &sf) != 0 || ::stat("/", &st) != 0)
+			return makeOSStatus(errno);
+
+		if (whichInfo & kFSVolInfoCreateDate)
+			info->createDate = Darling::time_tToUTC(st.st_ctime);
+		if (whichInfo & kFSVolInfoModDate)
+			info->modifyDate = Darling::time_tToUTC(st.st_mtime);
+		if (whichInfo & kFSVolInfoBackupDate)
+			memset(&info->backupDate, 0, sizeof(info->backupDate));
+		if (whichInfo & kFSVolInfoCheckedDate)
+			memset(&info->checkedDate, 0, sizeof(info->checkedDate));
+		if (whichInfo & kFSVolInfoFileCount)
+			info->fileCount = (UInt32) (sf.f_files - sf.f_ffree);
+		if (whichInfo & kFSVolInfoDirCount)
+			info->folderCount = 0;
+		if (whichInfo & kFSVolInfoSizes)
+		{
+			info->totalBytes = (UInt64) sf.f_blocks * sf.f_bsize;
+			info->freeBytes = (UInt64) sf.f_bfree * sf.f_bsize;
+		}
+		if (whichInfo & kFSVolInfoBlocks)
+		{
+			info->blockSize = (UInt32) sf.f_bsize;
+			info->totalBlocks = (UInt32) sf.f_blocks;
+			info->freeBlocks = (UInt32) sf.f_bfree;
+		}
+		if (whichInfo & kFSVolInfoNextAlloc)
+			info->nextAllocation = 0;
+		if (whichInfo & kFSVolInfoRsrcClump)
+			info->rsrcClumpSize = 4096;
+		if (whichInfo & kFSVolInfoDataClump)
+			info->dataClumpSize = 4096;
+		if (whichInfo & kFSVolInfoNextID)
+			info->nextCatalogID = 2;
+		if (whichInfo & kFSVolInfoFinderInfo)
+			memset(info->finderInfo, 0, sizeof(info->finderInfo));
+		if (whichInfo & kFSVolInfoFlags)
+			info->flags = kFSVolFlagDefaultVolumeMask | kFSVolFlagJournalingActiveMask;
+		if (whichInfo & kFSVolInfoFSInfo)
+		{
+			info->filesystemID = 25461;
+			info->signature = 0x4244;
+		}
+		if (whichInfo & kFSVolInfoDriveInfo)
+		{
+			info->driveNumber = 1;
+			info->driverRefNum = 0;
+		}
+	}
+
+	if (actualVolume)
+		*actualVolume = kBootVolumeRefNum;
+	if (volumeName)
+	{
+		const size_t length = strlen(kBootVolumeName);
+		volumeName->length = (uint16_t) length;
+		for (size_t i = 0; i < length; i++)
+			volumeName->unicode[i] = (uint8_t) kBootVolumeName[i];
+	}
+	if (rootDirectory)
+		return FSPathMakeRef((const uint8_t*) "/", rootDirectory, nullptr);
+	return noErr;
+}
 
 // QUIRK: the volume reference numbers FSEjectVolumeSync and PBHGetVolParmsSync accept: the startup
 // volume (-100), 0 and positive numbers for PBHGetVolParmsSync, and anything else fails with

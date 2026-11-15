@@ -37,4 +37,5 @@ add_framework(HIToolbox
 		CoreGraphics
 		CoreServices
 		system
+		cxx
 )

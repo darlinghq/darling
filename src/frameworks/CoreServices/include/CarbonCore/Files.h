@@ -81,6 +81,37 @@ enum {
 };
 typedef OptionBits FSIteratorFlags;
 
+// Which FSVolumeInfo fields FSGetVolumeInfo fills (FSVolumeInfoBitmap).
+enum {
+	kFSVolInfoNone = 0x0000,
+	kFSVolInfoCreateDate = 0x0001,
+	kFSVolInfoModDate = 0x0002,
+	kFSVolInfoBackupDate = 0x0004,
+	kFSVolInfoCheckedDate = 0x0008,
+	kFSVolInfoFileCount = 0x0010,
+	kFSVolInfoDirCount = 0x0020,
+	kFSVolInfoSizes = 0x0040,
+	kFSVolInfoBlocks = 0x0080,
+	kFSVolInfoNextAlloc = 0x0100,
+	kFSVolInfoRsrcClump = 0x0200,
+	kFSVolInfoDataClump = 0x0400,
+	kFSVolInfoNextID = 0x0800,
+	kFSVolInfoFinderInfo = 0x1000,
+	kFSVolInfoFlags = 0x2000,
+	kFSVolInfoFSInfo = 0x4000,
+	kFSVolInfoDriveInfo = 0x8000,
+	kFSVolInfoGettableInfo = 0xFFFF,
+	kFSVolInfoSettableInfo = 0x3004
+};
+
+// FSVolumeInfo.flags bits.
+enum {
+	kFSVolFlagDefaultVolumeMask = 0x0020,
+	kFSVolFlagFilesOpenMask = 0x0040,
+	kFSVolFlagHardwareLockedMask = 0x0080,
+	kFSVolFlagJournalingActiveMask = 0x4000
+};
+
 enum {
 	kFSEjectVolumeForceEject = (1 << 0)
 };

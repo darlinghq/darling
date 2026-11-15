@@ -523,6 +523,41 @@ static void test_legacy_32bit(void)
 }
 #endif
 
+static void test_volume_info(void)
+{
+	FSVolumeInfo info;
+	FSVolumeRefNum actual = 77;
+	HFSUniStr255 name;
+	FSRef root;
+	char path[64] = "";
+
+	memset(&info, 0, sizeof(info));
+	CHECK_ERR(FSGetVolumeInfo(-100, 0, &actual, 0xFFFF, &info, &name, &root), noErr);
+	CHECK(actual == -100);
+	CHECK(name.length > 0);
+	FSRefMakePath(&root, (UInt8*) path, sizeof(path));
+	CHECK(strcmp(path, "/") == 0);
+	CHECK(info.blockSize > 0 && info.totalBlocks > 0);
+	CHECK(info.totalBytes == (UInt64) info.blockSize * info.totalBlocks);
+	CHECK(info.freeBytes == (UInt64) info.blockSize * info.freeBlocks);
+	CHECK(info.freeBytes <= info.totalBytes);
+	CHECK(info.createDate.lowSeconds != 0);
+	CHECK(info.flags & 0x0020); // the default volume
+	CHECK(info.rsrcClumpSize == 4096 && info.dataClumpSize == 4096);
+
+	// Only the fields named in the bitmap are written.
+	memset(&info, 0x5a, sizeof(info));
+	CHECK_ERR(FSGetVolumeInfo(-100, 0, NULL, 0x0080, &info, NULL, NULL), noErr);
+	CHECK(info.blockSize > 0 && info.blockSize != 0x5a5a5a5a);
+	CHECK(info.fileCount == 0x5a5a5a5a && info.flags == 0x5a5a && info.totalBytes == 0x5a5a5a5a5a5a5a5aULL);
+
+	// The volume can be found by index 1 or by 0 with no volume; unknown ones fail.
+	CHECK_ERR(FSGetVolumeInfo(0, 1, &actual, 0, NULL, NULL, NULL), noErr);
+	CHECK(actual == -100);
+	CHECK_ERR(FSGetVolumeInfo(0, 0, &actual, 0, NULL, NULL, NULL), nsvErr);
+	CHECK_ERR(FSGetVolumeInfo(12345, 0, &actual, 0, NULL, NULL, NULL), nsvErr);
+}
+
 int main(void)
 {
 	strcpy(g_root, "/tmp/fm_iterators_XXXXXX");
@@ -551,6 +586,7 @@ int main(void)
 	test_iterator();
 	test_forks();
 	test_catalog_ids();
+	test_volume_info();
 
 	// FSEjectVolumeSync with a volume reference that does not exist.
 	pid_t dissenter = 4242;
