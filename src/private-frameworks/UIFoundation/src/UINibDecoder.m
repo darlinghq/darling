@@ -44,8 +44,11 @@ enum UINibValueType {
     UINibValueInt16 = 1,
     UINibValueInt32 = 2,
     UINibValueInt64 = 3,
-    UINibValueTrue = 4,
-    UINibValueFalse = 5,
+    // Read off ibtool output (macOS 26.7.3): the boolean keys that are YES by default
+    // (NSAllowsKeyEquivalentLocalization, NSIsSeparator on a separator item) carry type 5,
+    // those that are NO by default (NSHiddenInRepresentation) type 4.
+    UINibValueFalse = 4,
+    UINibValueTrue = 5,
     UINibValueFloat = 6,
     UINibValueDouble = 7,
     UINibValueData = 8,

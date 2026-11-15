@@ -13,7 +13,7 @@
 static int failures;
 #define CHECK(c) do { if (!(c)) { fprintf(stderr, "FAIL line %d: %s\n", __LINE__, #c); failures++; } } while (0)
 
-enum { tInt8, tInt16, tInt32, tInt64, tTrue, tFalse, tFloat, tDouble, tData, tNil, tObject };
+enum { tInt8, tInt16, tInt32, tInt64, tFalse, tTrue, tFloat, tDouble, tData, tNil, tObject };
 
 // ---- A small NIBArchive writer, the inverse of the documented layout ----
 static void varint(NSMutableData *d, uint32_t v) {
