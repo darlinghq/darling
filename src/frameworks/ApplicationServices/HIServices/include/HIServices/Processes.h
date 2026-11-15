@@ -19,6 +19,13 @@ struct LaunchParamBlockRec
 
 enum { kNoProcess = 0, kSystemProcess = 1, kCurrentProcess = 2 };
 
+enum
+{
+	kProcessTransformToForegroundApplication = 1,
+	kProcessTransformToBackgroundApplication = 2,
+	kProcessTransformToUIElementApplication = 4
+};
+
 #ifdef __cplusplus
 extern "C" {
 #endif
