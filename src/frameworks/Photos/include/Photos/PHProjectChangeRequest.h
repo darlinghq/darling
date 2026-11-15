@@ -17,8 +17,17 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <Photos/PHChangeRequest.h>
 
-@interface PHProjectChangeRequest : NSObject
+NS_ASSUME_NONNULL_BEGIN
+
+@interface PHProjectChangeRequest : PHChangeRequest
+
+// Takes any fast-enumerable collection of PHAsset (an array or a fetch
+// result). Swift sees this as __removeAssets and wraps it with typed overloads.
+- (void)removeAssets:(id<NSFastEnumeration>)assets NS_REFINED_FOR_SWIFT API_AVAILABLE(macos(10.14));
 
 @end
+
+NS_ASSUME_NONNULL_END
