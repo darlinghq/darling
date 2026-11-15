@@ -26,6 +26,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <sstream>
 #include "stub.h"
+#include "../FFmpegAvailability.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -90,6 +91,10 @@ OSStatus AudioConverter::create(const AudioStreamBasicDescription* inSourceForma
     if (!inSourceFormat || !inDestinationFormat)
         return paramErr;
 	
+	// Every conversion is done through FFmpeg
+	if (!ffmpegCodecsAvailable())
+		return kAudioConverterErr_FormatNotSupported;
+
 	// TODO: non-interleaved audio
 
 	const AVCodec *codecIn, *codecOut;
