@@ -23,6 +23,8 @@ IMAGEIO_EXTERN const CFStringRef kCGImageSourceCreateThumbnailFromImageIfAbsent;
 IMAGEIO_EXTERN const CFStringRef kCGImageSourceCreateThumbnailFromImageAlways;
 IMAGEIO_EXTERN const CFStringRef kCGImageSourceThumbnailMaxPixelSize;
 IMAGEIO_EXTERN const CFStringRef kCGImageSourceCreateThumbnailWithTransform;
+IMAGEIO_EXTERN const CFStringRef kCGImageSourceShouldCacheImmediately;
+IMAGEIO_EXTERN const CFStringRef kCGImageSourceTypeIdentifierHint;
 
 IMAGEIO_EXTERN CGImageSourceRef CGImageSourceCreateWithData(CFDataRef data, CFDictionaryRef options);
 IMAGEIO_EXTERN CGImageSourceRef CGImageSourceCreateWithURL(CFURLRef url, CFDictionaryRef options);
