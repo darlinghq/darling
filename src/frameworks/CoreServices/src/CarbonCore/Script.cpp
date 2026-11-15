@@ -20,7 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CarbonCore/Script.h>
 #include <CarbonCore/UnicodeUtilities.h>
 #include <CoreFoundation/CoreFoundation.h>
-#include <dlfcn.h>
+#include <atomic>
 #include <string.h>
 #include <mutex>
 #include <vector>
@@ -138,29 +138,61 @@ static std::string buildKCHR(const UCKeyboardLayout* layout)
 	return blob;
 }
 
-// The Text Input Sources API is in HIToolbox, which sits above CarbonCore. The current keyboard
-// layout is looked up through it at run time when something asks for the KCHR cache; without it
-// (no HIToolbox in the process, or no layout) there is no cache.
-static const UCKeyboardLayout* copyCurrentUnicodeLayout(CFDataRef* holder)
+// The current keyboard layout belongs to HIToolbox (Text Input Sources), which sits above
+// CarbonCore. HIToolbox registers a provider when it is loaded; the provider returns the
+// 'uchr' data of the current layout (a retained CFData) or NULL. Without a provider, or when it
+// returns nothing, the cache is made from a built-in US layout.
+typedef CFDataRef (*KeyboardLayoutProvider)(void);
+static std::atomic<KeyboardLayoutProvider> g_layoutProvider{nullptr};
+
+extern "C" __attribute__((visibility("default")))
+void CarbonCoreSetKeyboardLayoutProvider(KeyboardLayoutProvider provider)
 {
-	typedef CFTypeRef (*CopyLayoutFn)(void);
-	typedef void* (*GetPropertyFn)(CFTypeRef, CFStringRef);
+	g_layoutProvider = provider;
+}
 
-	CopyLayoutFn copyLayout = (CopyLayoutFn) dlsym(RTLD_DEFAULT, "TISCopyCurrentKeyboardLayoutInputSource");
-	GetPropertyFn getProperty = (GetPropertyFn) dlsym(RTLD_DEFAULT, "TISGetInputSourceProperty");
-	CFStringRef* layoutKey = (CFStringRef*) dlsym(RTLD_DEFAULT, "kTISPropertyUnicodeKeyLayoutData");
-	if (!copyLayout || !getProperty || !layoutKey || !*layoutKey)
-		return nullptr;
+// US keyboard, virtual key codes 0x00-0x35: the unshifted character (0 for none).
+static const char kUSPlain[0x36] = {
+	'a', 's', 'd', 'f', 'h', 'g', 'z', 'x', 'c', 'v', 0, 'b', 'q', 'w', 'e', 'r',
+	'y', 't', '1', '2', '3', '4', '6', '5', '=', '9', '7', '-', '8', '0', ']', 'o',
+	'u', '[', 'i', 'p', '\r', 'l', 'j', '\'', 'k', ';', '\\', ',', '/', 'n', 'm', '.',
+	'\t', ' ', '`', 8, 0, 0x1b,
+};
 
-	CFTypeRef source = copyLayout();
-	if (!source)
-		return nullptr;
+static char usShifted(char c)
+{
+	if (c >= 'a' && c <= 'z')
+		return c - 'a' + 'A';
+	const char* from = "1234567890-=[]\\;',./`";
+	const char* to = "!@#$%^&*()_+{}|:\"<>?~";
+	const char* at = strchr(from, c);
+	return (c && at) ? to[at - from] : c;
+}
 
-	CFDataRef data = (CFDataRef) getProperty(source, *layoutKey);
-	if (data)
-		*holder = (CFDataRef) CFRetain(data);
-	CFRelease(source);
-	return data ? (const UCKeyboardLayout*) CFDataGetBytePtr(*holder) : nullptr;
+static std::string buildFallbackKCHR()
+{
+	uint8_t tables[3][128];
+	memset(tables, 0, sizeof(tables));
+	for (int key = 0; key < 0x36; key++)
+	{
+		char c = kUSPlain[key];
+		tables[0][key] = c;
+		tables[1][key] = usShifted(c);
+		tables[2][key] = (c >= 'a' && c <= 'z') ? (c & 0x1f) : c;
+	}
+
+	uint8_t tableIndex[256];
+	for (int m = 0; m < 256; m++)
+		tableIndex[m] = (m & 0x90) ? 2 : (m & 0x06) ? 1 : 0; // control, then shift and caps lock
+
+	std::string blob;
+	const uint16_t version = 0, tableCount = 3, deadKeyCount = 0;
+	blob.append((const char*) &version, 2);
+	blob.append((const char*) tableIndex, sizeof(tableIndex));
+	blob.append((const char*) &tableCount, 2);
+	blob.append((const char*) tables, sizeof(tables));
+	blob.append((const char*) &deadKeyCount, 2);
+	return blob;
 }
 
 static std::mutex g_kchrLock;
@@ -171,18 +203,23 @@ static std::string g_kchrSource;
 
 static const void* kchrCache()
 {
-	CFDataRef holder = nullptr;
-	const UCKeyboardLayout* layout = copyCurrentUnicodeLayout(&holder);
-	if (!layout)
-		return nullptr;
-
-	std::string source((const char*) CFDataGetBytePtr(holder), CFDataGetLength(holder));
-	CFRelease(holder);
+	std::string source;
+	bool fallback = true;
+	KeyboardLayoutProvider provider = g_layoutProvider;
+	CFDataRef data = provider ? provider() : nullptr;
+	if (data)
+	{
+		source.assign((const char*) CFDataGetBytePtr(data), CFDataGetLength(data));
+		CFRelease(data);
+		fallback = false;
+	}
+	else
+		source = "us-default";
 
 	std::lock_guard<std::mutex> lock(g_kchrLock);
 	if (g_kchrBlocks.empty() || source != g_kchrSource)
 	{
-		g_kchrBlocks.push_back(new std::string(buildKCHR((const UCKeyboardLayout*) source.data())));
+		g_kchrBlocks.push_back(new std::string(fallback ? buildFallbackKCHR() : buildKCHR((const UCKeyboardLayout*) source.data())));
 		g_kchrSource = source;
 	}
 	return g_kchrBlocks.back()->data();

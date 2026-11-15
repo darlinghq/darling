@@ -174,3 +174,25 @@ OSStatus TISDeregisterInputSource(TISInputSourceRef inputSource)
 {
 	return noErr;
 }
+
+// CarbonCore's keyboard-layout provider (for the KCHR cache of GetScriptManagerVariable): the
+// 'uchr' data of the current keyboard layout, retained, or NULL.
+extern "C" void CarbonCoreSetKeyboardLayoutProvider(CFDataRef (*provider)(void));
+
+static CFDataRef copyCurrentLayoutData(void)
+{
+	TISInputSourceRef source = TISCopyCurrentKeyboardLayoutInputSource();
+	if (!source)
+		return NULL;
+	CFDataRef data = (CFDataRef) TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData);
+	if (data)
+		CFRetain(data);
+	CFRelease(source);
+	return data;
+}
+
+__attribute__((constructor))
+static void registerKeyboardLayoutProvider(void)
+{
+	CarbonCoreSetKeyboardLayoutProvider(copyCurrentLayoutData);
+}
