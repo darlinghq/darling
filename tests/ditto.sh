@@ -7,6 +7,7 @@
 # Prints PASS/FAIL lines and exits non-zero if anything failed.
 
 DITTO=${1:-ditto}
+umask 022  # the expected modes assume the usual default
 T=$(mktemp -d /tmp/dittotest.XXXXXX) || exit 2
 trap 'cd /; rm -rf "$T"' EXIT
 cd "$T" || exit 2
