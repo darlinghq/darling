@@ -24,6 +24,10 @@ Every su call must run under `timeout 15s`.
              per container, not global)
   uninstall  tools/uninstall with a shutdown-user.sh that fails: must exit
              non-zero before removing anything
+Rootless cases: with DARLING_NONROOT or DARLING_ROOTLESS enabled and a
+non-root user, shutdown-user.sh must shut down the user's own container
+directly (no sudo, no su) and ignore other users' containers. Without those
+settings it must still re-exec itself through sudo.
 """
 
 import os
@@ -186,6 +190,136 @@ with tempfile.TemporaryDirectory(prefix="uninstall-") as d:
         failed = True
     else:
         print(f"PASS [uninstall]: exit {res.returncode}, nothing removed after a failed shutdown")
+
+# Rootless mode: the invoking user's own container is stopped directly, without
+# sudo or su. Other users' containers cannot be stopped without their
+# privileges, so they are ignored. Without a rootless setting the script must
+# still escalate through sudo.
+ROOTLESS_STUBS = {
+    "whoami": "echo alice\n",
+    "sleep": ":\n",
+    "timeout": 'echo "$1" >> "$TIMEOUTS"\nshift\nexec "$@"\n',
+    "ps": STUBS["ps"],
+    "darling": r'''
+echo "${DPREFIX:-}|$*" >> "$CALLS"
+grep -v ' /sbin/launchd$' "$TABLE" > "$TABLE.new"; mv "$TABLE.new" "$TABLE"
+''',
+    "sudo": 'echo "$*" >> "$SUDO_CALLS"\nexit 0\n',
+}
+ROOTLESS_CASES = [
+    # name, table, parents, setting, expected exit is zero, expected darling
+    # calls, expected number of sudo calls
+    ("nonroot",
+     ["4261 Ssl alice darlingserver /srv/dp 0 0 4 0", "4262 Ssl alice /sbin/launchd"],
+     ["4262 4261"], "DARLING_NONROOT", True, ["/srv/dp|shutdown"], 0),
+    ("rootless", ["4263 Ssl alice /sbin/launchd"], [], "DARLING_ROOTLESS", True,
+     ["|shutdown"], 0),
+    ("otheruser", ["4264 Ssl bob /sbin/launchd"], [], "DARLING_NONROOT", True, [], 0),
+    ("escalate", ["4265 Ssl alice /sbin/launchd"], [], None, True, [], 1),
+]
+with tempfile.TemporaryDirectory(prefix="shutdown-user-rootless-") as d:
+    bindir = os.path.join(d, "bin")
+    os.mkdir(bindir)
+    for name, body in ROOTLESS_STUBS.items():
+        path = os.path.join(bindir, name)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("#!/bin/sh\n" + body)
+        os.chmod(path, stat.S_IRWXU)
+
+    for name, table, parents, setting, want_ok, want_calls, want_sudo in ROOTLESS_CASES:
+        table_path = os.path.join(d, name + ".table")
+        calls_path = os.path.join(d, name + ".calls")
+        sudo_path = os.path.join(d, name + ".sudo")
+        timeouts_path = os.path.join(d, name + ".timeouts")
+        with open(table_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(table) + "\n")
+        if parents:
+            with open(table_path + ".parents", "w", encoding="utf-8") as f:
+                f.write("\n".join(parents) + "\n")
+        for path in (calls_path, sudo_path, timeouts_path):
+            open(path, "w").close()
+        env = dict(os.environ, PATH=bindir + ":" + os.environ.get("PATH", "/usr/bin:/bin"),
+                   TABLE=table_path, CALLS=calls_path, SUDO_CALLS=sudo_path,
+                   TIMEOUTS=timeouts_path)
+        env.pop("DARLING_NONROOT", None)
+        env.pop("DARLING_ROOTLESS", None)
+        if setting:
+            env[setting] = "1"
+        try:
+            res = subprocess.run(["/bin/sh", script], env=env, capture_output=True, text=True, timeout=20)
+        except subprocess.TimeoutExpired:
+            print(f"FAIL [{name}]: still looping after 20 s")
+            failed = True
+            continue
+        with open(calls_path, encoding="utf-8") as f:
+            calls = f.read().splitlines()
+        with open(sudo_path, encoding="utf-8") as f:
+            sudo_calls = f.read().splitlines()
+        with open(timeouts_path, encoding="utf-8") as f:
+            timeouts = f.read().splitlines()
+        problems = []
+        if (res.returncode == 0) != want_ok:
+            problems.append(f"exit status {res.returncode}")
+        if calls != want_calls:
+            problems.append(f"darling calls {calls}, want {want_calls}")
+        if len(sudo_calls) != want_sudo:
+            problems.append(f"{len(sudo_calls)} sudo calls, want {want_sudo}")
+        if timeouts != ["15s"] * len(calls):
+            problems.append(f"shutdown run under timeouts {timeouts}")
+        if problems:
+            print(f"FAIL [{name}]: " + "; ".join(problems))
+            sys.stdout.write(res.stdout + res.stderr)
+            failed = True
+        else:
+            print(f"PASS [{name}]: exit {res.returncode}, {len(calls)} darling calls, "
+                  f"{len(sudo_calls)} sudo calls")
+
+# A rootless uninstall must not escalate and must remove the user's own prefix.
+with tempfile.TemporaryDirectory(prefix="uninstall-rootless-") as d:
+    tools = os.path.join(d, "tools")
+    bindir = os.path.join(d, "bin")
+    os.mkdir(tools)
+    os.mkdir(bindir)
+    os.mkdir(os.path.join(d, "libexec"))
+    log = os.path.join(d, "removed")
+    sudo_log = os.path.join(d, "sudo")
+    open(log, "w").close()
+    open(sudo_log, "w").close()
+    stubs = {
+        os.path.join(tools, "uninstall"): open(uninstall, encoding="utf-8").read(),
+        os.path.join(tools, "shutdown-user.sh"): "#!/bin/sh\nexit 0\n",
+        os.path.join(bindir, "whoami"): "#!/bin/sh\necho alice\n",
+        os.path.join(bindir, "darling"): "#!/bin/sh\nexit 0\n",
+        os.path.join(bindir, "sudo"): f'#!/bin/sh\necho "$*" >> "{sudo_log}"\nexit 0\n',
+    }
+    for cmd in ("rm", "rmdir", "find"):
+        stubs[os.path.join(bindir, cmd)] = f'#!/bin/sh\necho "{cmd} $*" >> "{log}"\n'
+    for path, body in stubs.items():
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(body)
+        os.chmod(path, stat.S_IRWXU)
+    env = dict(os.environ, PATH=bindir + ":" + os.environ.get("PATH", "/usr/bin:/bin"),
+               DARLING_ROOTLESS="1")
+    env.pop("DARLING_NONROOT", None)
+    res = subprocess.run(["/bin/sh", os.path.join(tools, "uninstall")], env=env,
+                         capture_output=True, text=True, timeout=20)
+    removed = open(log, encoding="utf-8").read().splitlines()
+    sudo_calls = open(sudo_log, encoding="utf-8").read().splitlines()
+    problems = []
+    if res.returncode != 0:
+        problems.append(f"exit status {res.returncode}")
+    if sudo_calls:
+        problems.append(f"unexpected sudo call {sudo_calls[0]!r}")
+    if not any(line.startswith("rm ") for line in removed):
+        problems.append("nothing removed")
+    if any(line.startswith("find ") for line in removed):
+        problems.append("tried to remove the kernel module without root")
+    if problems:
+        print(f"FAIL [uninstall-rootless]: " + "; ".join(problems))
+        sys.stdout.write(res.stdout + res.stderr)
+        failed = True
+    else:
+        print(f"PASS [uninstall-rootless]: exit 0, nothing escalated, {len(removed)} removals")
 
 if failed:
     print("FAIL: shutdown-user.sh regression")
