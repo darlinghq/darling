@@ -79,6 +79,7 @@ function(mig defFileName)
 				${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_XTRACE_SUFFIX}
 			DEPENDS
 				migexe migcom
+				${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
 		)
 
 		if (NOT TARGET ${bareName}_xtrace_mig AND NOT MIG_NO_XTRACE)
