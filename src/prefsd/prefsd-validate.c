@@ -19,6 +19,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "prefsd-validate.h"
 
+#include <stdio.h>
 #include <string.h>
 
 enum prefsd_file_verdict prefsd_check_file(const struct stat* st)
@@ -143,4 +144,197 @@ bool prefsd_parse_code_signing_policy(const char* s, size_t len, enum prefsd_cod
 		}
 	}
 	return false;
+}
+
+bool prefsd_is_valid_os_product_version(const char* s, size_t len)
+{
+	if (s == NULL || len == 0 || len >= 32)
+		return false;
+	if (s[0] == '.' || s[len - 1] == '.')
+		return false;
+
+	int dot_count = 0;
+	for (size_t i = 0; i < len; i++)
+	{
+		char c = s[i];
+		if (c == '.')
+		{
+			dot_count++;
+			if (i + 1 < len && s[i + 1] == '.')
+				return false;
+		}
+		else if (c < '0' || c > '9')
+		{
+			return false;
+		}
+	}
+	if (dot_count > 2)
+		return false;
+
+	int major = 0;
+	if (sscanf(s, "%d", &major) < 1 || major < 0)
+		return false;
+
+	return true;
+}
+
+bool prefsd_is_valid_os_version(const char* s, size_t len)
+{
+	if (s == NULL || len == 0 || len >= 32)
+		return false;
+
+	bool has_alnum = false;
+	for (size_t i = 0; i < len; i++)
+	{
+		char c = s[i];
+		if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')))
+			return false;
+		has_alnum = true;
+	}
+	return has_alnum;
+}
+
+bool prefsd_is_valid_os_release(const char* s, size_t len)
+{
+	if (s == NULL || len == 0 || len >= 32)
+		return false;
+	if (s[0] == '.' || s[len - 1] == '.')
+		return false;
+
+	int dot_count = 0;
+	for (size_t i = 0; i < len; i++)
+	{
+		char c = s[i];
+		if (c == '.')
+		{
+			dot_count++;
+			if (i + 1 < len && s[i + 1] == '.')
+				return false;
+		}
+		else if (c < '0' || c > '9')
+		{
+			return false;
+		}
+	}
+	if (dot_count < 1 || dot_count > 2)
+		return false;
+
+	int major = 0;
+	if (sscanf(s, "%d", &major) < 1 || major < 0)
+		return false;
+
+	return true;
+}
+
+bool prefsd_is_valid_ios_support_version(const char* s, size_t len)
+{
+	if (s == NULL || len == 0 || len >= 32)
+		return false;
+	if (len == 4 && memcmp(s, "none", 4) == 0)
+		return true;
+	return prefsd_is_valid_os_product_version(s, len);
+}
+
+const char* prefsd_product_name_for_version(const char* product_version)
+{
+	if (product_version == NULL)
+		return "macOS";
+	int major = 0;
+	if (sscanf(product_version, "%d", &major) == 1 && major < 11)
+		return "Mac OS X";
+	return "macOS";
+}
+
+bool prefsd_should_have_system_version_compat(const char* product_version)
+{
+	if (product_version == NULL)
+		return false;
+	int major = 0;
+	return sscanf(product_version, "%d", &major) == 1 && major >= 11;
+}
+
+bool prefsd_compute_ios_support_version(const char* product_version, const char* override_ios_version, char* out, size_t out_len)
+{
+	if (out_len == 0)
+		return false;
+	out[0] = '\0';
+
+	if (override_ios_version != NULL && override_ios_version[0] != '\0')
+	{
+		if (strcmp(override_ios_version, "none") == 0)
+			return false;
+		snprintf(out, out_len, "%s", override_ios_version);
+		return true;
+	}
+
+	if (product_version == NULL || product_version[0] == '\0')
+		return false;
+
+	int major = 0, minor = 0, patch = 0;
+	int parts = sscanf(product_version, "%d.%d.%d", &major, &minor, &patch);
+	if (parts < 1)
+		return false;
+
+	if (major < 10)
+		return false;
+
+	if (major == 10)
+	{
+		if (minor < 14)
+			return false;
+		if (minor == 14)
+		{
+			snprintf(out, out_len, "12.2");
+			return true;
+		}
+		if (minor == 15)
+		{
+			if (parts >= 3)
+			{
+				if (patch < 4)
+					snprintf(out, out_len, "13.%d", patch);
+				else
+					snprintf(out, out_len, "13.4");
+			}
+			else
+			{
+				snprintf(out, out_len, "13.0");
+			}
+			return true;
+		}
+		snprintf(out, out_len, "13.4");
+		return true;
+	}
+
+	if (major >= 11 && major < 26)
+	{
+		int ios_major = major + 3;
+		if (parts >= 2)
+			snprintf(out, out_len, "%d.%d", ios_major, minor);
+		else
+			snprintf(out, out_len, "%d.0", ios_major);
+		return true;
+	}
+
+	// major >= 26
+	if (parts >= 2)
+		snprintf(out, out_len, "%d.%d", major, minor);
+	else
+		snprintf(out, out_len, "%d.0", major);
+	return true;
+}
+
+void prefsd_compute_compat_product_version(const char* product_version, char* out, size_t out_len)
+{
+	if (out_len == 0)
+		return;
+	out[0] = '\0';
+	if (product_version == NULL || product_version[0] == '\0')
+		return;
+
+	int major = 0;
+	if (sscanf(product_version, "%d", &major) == 1 && major >= 11)
+		snprintf(out, out_len, "10.16");
+	else
+		snprintf(out, out_len, "%s", product_version);
 }
