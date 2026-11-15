@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,27 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CloudKit/CKDefines.h>
+#import <CloudKit/CKOperation.h>
+#import <CloudKit/CKShareParticipant.h>
+#import <CloudKit/CKUserIdentityLookupInfo.h>
 
-@interface CKFetchShareParticipantsOperation : NSObject
+NS_ASSUME_NONNULL_BEGIN
 
+// Looks up the people a share can be offered to.
+@interface CKFetchShareParticipantsOperation : CKOperation {
+@private
+    NSArray<CKUserIdentityLookupInfo *> *_userIdentityLookupInfos;
+    void (^_shareParticipantFetchedBlock)(CKShareParticipant *participant);
+    void (^_fetchShareParticipantsCompletionBlock)(NSError * _Nullable operationError);
+}
+
+- (instancetype)initWithUserIdentityLookupInfos:(NSArray<CKUserIdentityLookupInfo *> *)userIdentityLookupInfos;
+
+@property (nonatomic, copy, nullable) NSArray<CKUserIdentityLookupInfo *> *userIdentityLookupInfos;
+@property (nonatomic, copy, nullable) void (^shareParticipantFetchedBlock)(CKShareParticipant *participant);
+@property (nonatomic, copy, nullable) void (^fetchShareParticipantsCompletionBlock)(NSError * _Nullable operationError);
 @end
+
+NS_ASSUME_NONNULL_END

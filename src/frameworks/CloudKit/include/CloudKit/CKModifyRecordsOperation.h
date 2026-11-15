@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,48 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CloudKit/CKDefines.h>
+#import <CloudKit/CKDatabaseOperation.h>
+#import <CloudKit/CKRecord.h>
+#import <CloudKit/CKRecordID.h>
 
-@interface CKModifyRecordsOperation : NSObject
+NS_ASSUME_NONNULL_BEGIN
 
+typedef NS_ENUM(NSInteger, CKRecordSavePolicy) {
+    // Fails the save of a record when the server has a newer version of it.
+    CKRecordSaveIfServerRecordUnchanged = 0,
+    // Saves only the changed fields, overwriting whatever the server has for them.
+    CKRecordSaveChangedKeys = 1,
+    // Saves all fields, overwriting the server's record.
+    CKRecordSaveAllKeys = 2,
+} NS_SWIFT_NAME(CKModifyRecordsOperation.RecordSavePolicy);
+
+// Saves and deletes records.
+@interface CKModifyRecordsOperation : CKDatabaseOperation {
+@private
+    NSArray<CKRecord *> *_recordsToSave;
+    NSArray<CKRecordID *> *_recordIDsToDelete;
+    CKRecordSavePolicy _savePolicy;
+    NSData *_clientChangeTokenData;
+    BOOL _atomic;
+    void (^_perRecordProgressBlock)(CKRecord *record, double progress);
+    void (^_perRecordCompletionBlock)(CKRecord *record, NSError * _Nullable error);
+    void (^_modifyRecordsCompletionBlock)(NSArray<CKRecord *> * _Nullable savedRecords, NSArray<CKRecordID *> * _Nullable deletedRecordIDs, NSError * _Nullable operationError);
+}
+
+- (instancetype)init;
+- (instancetype)initWithRecordsToSave:(nullable NSArray<CKRecord *> *)records recordIDsToDelete:(nullable NSArray<CKRecordID *> *)recordIDs;
+
+@property (nonatomic, copy, nullable) NSArray<CKRecord *> *recordsToSave;
+@property (nonatomic, copy, nullable) NSArray<CKRecordID *> *recordIDsToDelete;
+@property (nonatomic, assign) CKRecordSavePolicy savePolicy;
+@property (nonatomic, copy, nullable) NSData *clientChangeTokenData;
+// With YES (the default) either all changes in a zone are applied or none.
+@property (nonatomic, assign, getter=isAtomic) BOOL atomic;
+@property (nonatomic, copy, nullable) void (^perRecordProgressBlock)(CKRecord *record, double progress);
+@property (nonatomic, copy, nullable) void (^perRecordCompletionBlock)(CKRecord *record, NSError * _Nullable error);
+@property (nonatomic, copy, nullable) void (^modifyRecordsCompletionBlock)(NSArray<CKRecord *> * _Nullable savedRecords, NSArray<CKRecordID *> * _Nullable deletedRecordIDs, NSError * _Nullable operationError);
 @end
+
+NS_ASSUME_NONNULL_END

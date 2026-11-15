@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,42 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CloudKit/CKFetchRecordZoneChangesOptions.h>
-#import <darling-stub-forwarding.h>
+#import "CKInternal.h"
 
 @implementation CKFetchRecordZoneChangesOptions
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+@synthesize previousServerChangeToken = _previousServerChangeToken;
+@synthesize resultsLimit = _resultsLimit;
+@synthesize desiredKeys = _desiredKeys;
+
++ (BOOL)supportsSecureCoding
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return YES;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (instancetype)initWithCoder:(NSCoder *)coder
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    if ((self = [self init])) {
+        _previousServerChangeToken = [[coder decodeObjectOfClass:[CKServerChangeToken class] forKey:@"PreviousServerChangeToken"] copy];
+        _resultsLimit = (NSUInteger)[coder decodeIntegerForKey:@"ResultsLimit"];
+        _desiredKeys = [[coder decodeObjectOfClasses:[NSSet setWithObjects:[NSArray class], [NSString class], nil] forKey:@"DesiredKeys"] copy];
+    }
+    return self;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (void)encodeWithCoder:(NSCoder *)coder
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    [coder encodeObject:_previousServerChangeToken forKey:@"PreviousServerChangeToken"];
+    [coder encodeInteger:(NSInteger)_resultsLimit forKey:@"ResultsLimit"];
+    [coder encodeObject:_desiredKeys forKey:@"DesiredKeys"];
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (id)copyWithZone:(NSZone *)zone
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    CKFetchRecordZoneChangesOptions *copy = [[[self class] allocWithZone:zone] init];
+    copy->_previousServerChangeToken = _previousServerChangeToken;
+    copy->_resultsLimit = _resultsLimit;
+    copy->_desiredKeys = _desiredKeys;
+    return copy;
 }
-
 @end

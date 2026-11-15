@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,38 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CloudKit/CKModifyRecordsOperation.h>
-#import <darling-stub-forwarding.h>
+#import "CKInternal.h"
 
 @implementation CKModifyRecordsOperation
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+@synthesize recordsToSave = _recordsToSave;
+@synthesize recordIDsToDelete = _recordIDsToDelete;
+@synthesize savePolicy = _savePolicy;
+@synthesize clientChangeTokenData = _clientChangeTokenData;
+@synthesize atomic = _atomic;
+@synthesize perRecordProgressBlock = _perRecordProgressBlock;
+@synthesize perRecordCompletionBlock = _perRecordCompletionBlock;
+@synthesize modifyRecordsCompletionBlock = _modifyRecordsCompletionBlock;
+
+- (instancetype)init
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    if ((self = [super init]))
+        _atomic = YES;
+    return self;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (instancetype)initWithRecordsToSave:(NSArray<CKRecord *> *)records recordIDsToDelete:(NSArray<CKRecordID *> *)recordIDs
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    if ((self = [self init])) {
+        _recordsToSave = [records copy];
+        _recordIDsToDelete = [recordIDs copy];
+    }
+    return self;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (void)_performWithError:(NSError *)error
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    if (_modifyRecordsCompletionBlock)
+        _modifyRecordsCompletionBlock(nil, nil, error);
 }
-
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
-}
-
 @end

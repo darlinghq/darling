@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,28 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CloudKit/CKFetchRecordZonesOperation.h>
-#import <darling-stub-forwarding.h>
+#import "CKInternal.h"
 
 @implementation CKFetchRecordZonesOperation
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+@synthesize recordZoneIDs = _recordZoneIDs;
+@synthesize fetchRecordZonesCompletionBlock = _fetchRecordZonesCompletionBlock;
+
+- (instancetype)initWithRecordZoneIDs:(NSArray<CKRecordZoneID *> *)zoneIDs
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    if ((self = [super init]))
+        _recordZoneIDs = [zoneIDs copy];
+    return self;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
++ (instancetype)fetchAllRecordZonesOperation
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    return [[self alloc] init];
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (void)_performWithError:(NSError *)error
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    if (_fetchRecordZonesCompletionBlock)
+        _fetchRecordZonesCompletionBlock(nil, error);
 }
-
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
-}
-
 @end
