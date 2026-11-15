@@ -1,7 +1,12 @@
-// task-info-flavors.c
 // A guest must not be able to abort or crash darlingserver through task_info().
-// Expected output: "PASS", exit 0. Run under a host-side timeout: before the
-// fix the server dies and this process blocks (see task-info-flavors.md).
+// Expected output: "PASS", exit 0. When the server dies, every process in the
+// prefix dies with it and this one blocks, so run it under a host-side timeout
+// (a guest alarm() cannot break the hang: signal delivery goes through RPCs
+// to the server), e.g. timeout 30 darling shell <path>/task_info_flavors.
+//
+// Expected codes: an unimplemented flavor and a port that is not a task port
+// both yield KERN_INVALID_ARGUMENT (xnu task_info(); checked on macOS 26.7.3
+// and 10.14.4).
 
 #include <stdio.h>
 #include <mach/mach.h>
