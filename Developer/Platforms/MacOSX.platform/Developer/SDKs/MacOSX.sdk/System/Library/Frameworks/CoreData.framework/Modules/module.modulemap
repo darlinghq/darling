@@ -1,0 +1,5 @@
+framework module CoreData [extern_c] [system] {
+  umbrella header "CoreData.h"
+  export *
+  module * { export * }
+}
