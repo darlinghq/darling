@@ -97,8 +97,8 @@ int main(int argc, char **argv)
 		CFStringGetCString(name, buf, sizeof buf, kCFStringEncodingUTF8);
 		CFRelease(name);
 	}
-	// the kernel truncates process names to 15 characters on some systems
-	CHECK(strncmp(buf, base, 15) == 0 && buf[0] != 0);
+	// an executable that is not inside an application bundle is named by its file name
+	CHECK(strcmp(buf, base) == 0 && buf[0] != 0);
 	name = NULL;
 	CHECK(CopyProcessName(&bad, &name) == procNotFound);
 

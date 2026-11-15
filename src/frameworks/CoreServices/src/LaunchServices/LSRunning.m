@@ -38,6 +38,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <signal.h>
 #include <pthread.h>
 #include <Block.h>
+#include <libproc.h>
 
 static xpc_connection_t g_lsdConnection, g_endpointConnection;
 
@@ -183,28 +184,53 @@ static CFStringRef copyTypeKeyForSelf(void)
 	return type;
 }
 
-static CFStringRef copyProcessString(pid_t pid, const char* file, bool exe)
+// The path of the Mach-O executable a process runs. /proc/<pid>/exe would name
+// Darling's loader, so the kernel's own answer is used.
+static CFStringRef copyProcessExecutablePath(pid_t pid)
 {
-	char path[64], buf[4096];
-	ssize_t len;
+	char buf[PROC_PIDPATHINFO_MAXSIZE];
+	int len = proc_pidpath((int) pid, buf, sizeof(buf));
 
-	snprintf(path, sizeof(path), "/proc/%d/%s", (int) pid, file);
-	if (exe)
-		len = readlink(path, buf, sizeof(buf) - 1);
-	else
-	{
-		int fd = open(path, O_RDONLY);
-		if (fd < 0)
-			return NULL;
-		len = read(fd, buf, sizeof(buf) - 1);
-		close(fd);
-		while (len > 0 && buf[len - 1] == '\n')
-			len--;
-	}
 	if (len <= 0)
 		return NULL;
-	buf[len] = 0;
+	buf[len < (int) sizeof(buf) ? len : (int) sizeof(buf) - 1] = 0;
 	return CFStringCreateWithCString(NULL, buf, kCFStringEncodingUTF8);
+}
+
+// The name of a process: the display name of the application bundle the
+// executable sits in (<name>.app/Contents/MacOS/<executable>), the bundle
+// name when it has no display name, else the executable's file name.
+static CFStringRef copyProcessDisplayName(CFStringRef exePath)
+{
+	CFStringRef name = NULL;
+	CFRange found = CFStringFind(exePath, CFSTR(".app/Contents/MacOS/"), kCFCompareBackwards);
+
+	if (found.location != kCFNotFound)
+	{
+		CFStringRef bundlePath = CFStringCreateWithSubstring(NULL, exePath, CFRangeMake(0, found.location + 4));
+		CFURLRef url = CFURLCreateWithFileSystemPath(NULL, bundlePath, kCFURLPOSIXPathStyle, true);
+		CFBundleRef bundle = url ? CFBundleCreate(NULL, url) : NULL;
+
+		if (bundle)
+		{
+			CFTypeRef value = CFBundleGetValueForInfoDictionaryKey(bundle, _kCFBundleDisplayNameKey);
+			if (!value || CFGetTypeID(value) != CFStringGetTypeID() || CFStringGetLength(value) == 0)
+				value = CFBundleGetValueForInfoDictionaryKey(bundle, kCFBundleNameKey);
+			if (value && CFGetTypeID(value) == CFStringGetTypeID() && CFStringGetLength(value) > 0)
+				name = CFRetain(value);
+			CFRelease(bundle);
+		}
+		if (url)
+			CFRelease(url);
+		CFRelease(bundlePath);
+	}
+	if (!name)
+	{
+		CFRange slash = CFStringFind(exePath, CFSTR("/"), kCFCompareBackwards);
+		CFIndex start = slash.location == kCFNotFound ? 0 : slash.location + 1;
+		name = CFStringCreateWithSubstring(NULL, exePath, CFRangeMake(start, CFStringGetLength(exePath) - start));
+	}
+	return name;
 }
 
 OSStatus _LSSetApplicationInformationItem(int sessionID, LSASNRef asn, CFStringRef key, CFStringRef value, CFDictionaryRef *info)
@@ -250,9 +276,15 @@ CFTypeRef _LSCopyApplicationInformationItem(int sessionID, CFTypeRef asn, CFStri
 		return CFNumberCreate(NULL, kCFNumberLongType, &lpid);
 	}
 	if (CFEqual(what, _kLSExecutablePathKey))
-		return copyProcessString(pid, "exe", true);
+		return copyProcessExecutablePath(pid);
 	if (CFEqual(what, _kLSDisplayNameKey))
-		return copyProcessString(pid, "comm", false);
+	{
+		CFStringRef path = copyProcessExecutablePath(pid);
+		CFStringRef name = path ? copyProcessDisplayName(path) : NULL;
+		if (path)
+			CFRelease(path);
+		return name;
+	}
 	if (CFEqual(what, _kLSApplicationTypeKey) && pid == getpid())
 		return CFRetain(copyTypeKeyForSelf());
 	return NULL;

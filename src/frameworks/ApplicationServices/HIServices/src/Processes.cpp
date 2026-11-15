@@ -272,23 +272,26 @@ CFDictionaryRef ProcessInformationCopyDictionary(const ProcessSerialNumber *PSN,
 	CFMutableDictionaryRef dict;
 	OSStatus status;
 	CFNumberRef pid;
-	char procpath[PATH_MAX], lpath[100];
-	int len;
 	
 	status = CopyProcessName(PSN, &name);
 	if (status != noErr)
 		return nullptr;
 
-	sprintf(lpath, "/proc/%u/exe", (unsigned int)PSN->lowLongOfPSN);
-	len = ::readlink(lpath, procpath, sizeof(procpath)-1);
-	if (len < 0)
+	pid_t realPID;
+	if (resolvePID(PSN, &realPID) != noErr)
+	{
+		CFRelease(name);
 		return nullptr;
-
-	procpath[len] = '\0';
+	}
+	path = (CFStringRef) copyInfoItem(realPID, _kLSExecutablePathKey);
+	if (!path)
+	{
+		CFRelease(name);
+		return nullptr;
+	}
 	
 	dict = CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 	pid = CFNumberCreate(nullptr, kCFNumberLongType, &PSN->lowLongOfPSN);
-	path = CFStringCreateWithCString(nullptr, procpath, kCFStringEncodingUTF8);
 	
 	CFDictionaryAddValue(dict, CFSTR("PSN"), pid);
 	CFDictionaryAddValue(dict, CFSTR("pid"), pid);
