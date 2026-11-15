@@ -143,7 +143,8 @@ OSStatus AudioConverter::create(const AudioStreamBasicDescription* inSourceForma
 
 	(*out)->m_decoder = cIn = avcodec_alloc_context3(codecIn);
 	
-	if (inSourceFormat->mFormatID == kAudioFormatLinearPCM)
+	// Raw samples have no header of their own to tell the decoder how many channels there are
+	if (inSourceFormat->mFormatID == kAudioFormatLinearPCM || inSourceFormat->mFormatID == kAudioFormatULaw || inSourceFormat->mFormatID == kAudioFormatALaw)
 	{
 #warning "TODO: Remove deprecated 'channels' once we no longer support older distros" 
 #if LIBAVCODEC_VERSION_MAJOR >= 61
