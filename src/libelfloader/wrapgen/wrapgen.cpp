@@ -24,7 +24,7 @@
 // TODO: use wrapgen32 to generate 32-bit wrappers.
 
 void parse_elf(const char* elf, std::string& soname_out, std::set<std::string>& functions_out, std::set<std::string>& vars_out);
-void generate_wrapper(std::ofstream& output, const char* soname, const std::set<std::string>& symbols);
+void generate_wrapper(std::ofstream& output, const char* soname, const std::set<std::string>& symbols, const std::string& availabilitySymbol);
 void generate_var_wrappers(std::ofstream& output, std::ofstream& outputHeader, const std::set<std::string>& vars);
 Elf64_Off vaddr_to_offset(const Elf64_Ehdr* ehdr, Elf64_Addr vaddr);
 
@@ -35,9 +35,9 @@ int main(int argc, const char** argv)
 	std::string soname;
 	std::ofstream output;
 
-	if (argc != 4)
+	if (argc != 4 && argc != 5)
 	{
-		std::cerr << "Usage: " << argv[0] << " <library-name> <output-file> <var-access-header>\n";
+		std::cerr << "Usage: " << argv[0] << " <library-name> <output-file> <var-access-header> [<availability-function>]\n";
 		return 1;
 	}
 
@@ -79,7 +79,7 @@ int main(int argc, const char** argv)
 		}
 
 		parse_elf(elfLibrary.c_str(), soname, functions, vars);
-		generate_wrapper(output, soname.c_str(), functions);
+		generate_wrapper(output, soname.c_str(), functions, argc == 5 ? argv[4] : "");
 
 		if (!vars.empty())
 		{
@@ -251,7 +251,12 @@ end_dyn:
 	munmap((void*) ehdr, length);
 }
 
-void generate_wrapper(std::ofstream& output, const char* soname, const std::set<std::string>& symbols)
+// With a non-empty availabilitySymbol the library is optional: a missing ELF library
+// does not abort the process when the wrapper is loaded. The wrapper then exports
+// "int <availabilitySymbol>(void)", which tells whether the library could be loaded.
+// Calling any wrapped function while the library is missing still fails fatally, so a
+// client has to check the availability function first.
+void generate_wrapper(std::ofstream& output, const char* soname, const std::set<std::string>& symbols, const std::string& availabilitySymbol)
 {
 	output << "#include <elfcalls.h>\n"
 		"extern struct elf_calls* _elfcalls;\n\n"
@@ -274,10 +279,22 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 		"static void open_library(void) {\n"
 		"\tif (!lib_handle)\n"
 		"\t\tlib_handle = _elfcalls->dlopen_fatal(__elfname);\n"
-		"}\n\n"
-		"__attribute__((constructor)) static void initializer() {\n"
-		"\topen_library();\n"
 		"}\n\n";
+
+	if (availabilitySymbol.empty())
+	{
+		output << "__attribute__((constructor)) static void initializer() {\n"
+			"\topen_library();\n"
+			"}\n\n";
+	}
+	else
+	{
+		output << "__attribute__((visibility(\"default\"))) int " << availabilitySymbol << "(void) {\n"
+			"\tif (!lib_handle && _elfcalls)\n"
+			"\t\tlib_handle = _elfcalls->dlopen(__elfname);\n"
+			"\treturn lib_handle != 0;\n"
+			"}\n\n";
+	}
 
 	output << "__attribute__((destructor)) static void destructor() {\n"
 		"\tif (lib_handle)\n"
