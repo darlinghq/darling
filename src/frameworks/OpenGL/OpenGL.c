@@ -2488,6 +2488,10 @@ CGLError CGLSetParameter(CGLContextObj context, CGLContextParameter parameter, c
             context->swap_interval = v;
         return success ? kCGLNoError : kCGLBadValue;
     }
+    // 280 and 284 size internal function caches of the original implementation
+    // (set by SDL 1.2, among others); they have no observable effect here.
+    if (parameter == 280 || parameter == 284)
+        return kCGLNoError;
     fprintf(stderr, "CGLSetParameter unimplemented for parameter %d\n", parameter);
     return kCGLNoError;
 }
