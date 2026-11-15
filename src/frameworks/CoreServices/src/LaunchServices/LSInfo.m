@@ -946,19 +946,6 @@ OSStatus LSSetExtensionHiddenForRef(const FSRef *inRef, Boolean hide)
 	return status;
 }
 
-// Private SPI.
-Boolean _LSASNExtractHighAndLowParts(CFTypeRef asn, UInt32 *outHigh, UInt32 *outLow)
-{
-	if (outHigh) *outHigh = 0;
-	if (outLow) *outLow = 0;
-	return false;
-}
-
-CFArrayRef _LSCopyApplicationArray(int sessionID)
-{
-	return NULL;
-}
-
 OSStatus _LSSetWeakBindingURLForType(int sessionID, int unknown, CFStringRef contentType, LSRolesMask roles, CFURLRef appURL)
 {
 	return kLSUnknownErr;

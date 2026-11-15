@@ -321,16 +321,6 @@ OSStatus LSGetExtensionInfo(UniCharCount inNameLen, const UniChar* inNameBuffer,
 
 // TODO: See https://gist.github.com/zorgiepoo/d751cba19a0167a589a2
 
-CFTypeRef _LSCopyApplicationInformationItem(int /* hopefully */, CFTypeRef asn, CFStringRef what)
-{
-	return NULL;
-}
-
-CFDictionaryRef _LSCopyApplicationInformation(int, CFTypeRef asn, int)
-{
-	return NULL;
-}
-
 /*
 OSStatus _LSOpenURLsWithRole(CFArrayRef inURLs, LSRolesMask inRole, void *unknown)
 {

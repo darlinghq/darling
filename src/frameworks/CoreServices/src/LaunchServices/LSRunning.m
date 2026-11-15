@@ -29,6 +29,14 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <dispatch/dispatch.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <ctype.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <pthread.h>
 #include <Block.h>
 
 static xpc_connection_t g_lsdConnection, g_endpointConnection;
@@ -39,6 +47,7 @@ static mach_port_name_t deathPort();
 static CFTypeRef g_ourASN;
 
 static CFStringRef g_applicationType = NULL;
+static pthread_mutex_t g_typeLock = PTHREAD_MUTEX_INITIALIZER; // guards g_applicationType
 static LSServerConnectionAllowedBlock g_connectionAllowedBlock = NULL;
 
 CFDictionaryRef _LSApplicationCheckIn(int sessionID, CFDictionaryRef applicationInfo)
@@ -95,9 +104,11 @@ CFDictionaryRef _LSApplicationCheckIn(int sessionID, CFDictionaryRef application
 
 	if (!CFDictionaryContainsValue(modAppInfo, _kLSApplicationTypeKey))
 	{
+		pthread_mutex_lock(&g_typeLock);
 		if (!g_applicationType)
 			g_applicationType = _kLSApplicationForegroundTypeKey;
 		CFDictionaryAddValue(modAppInfo, _kLSApplicationTypeKey, g_applicationType);
+		pthread_mutex_unlock(&g_typeLock);
 	}
 
 	xpc_object_t dict = createCommandDictionary(_kLSXPCCheckIn);
@@ -148,17 +159,195 @@ LSASNRef _LSCopyFrontApplication(LSSessionID sessionID)
 	return NULL;
 }
 
+// Returns the PID an ASN refers to, or -1 if it is not a valid ASN.
+static pid_t asnToPid(LSASNRef asn)
+{
+	long pid;
+	if (!asn || CFGetTypeID(asn) != CFNumberGetTypeID() || !CFNumberGetValue(asn, kCFNumberLongType, &pid))
+		return -1;
+	return (pid > 0 && pid <= 0x7fffffff) ? (pid_t) pid : -1;
+}
+
+static bool processExists(pid_t pid)
+{
+	return kill(pid, 0) == 0 || errno == EPERM;
+}
+
+static CFStringRef copyTypeKeyForSelf(void)
+{
+	CFStringRef type;
+	pthread_mutex_lock(&g_typeLock);
+	// A process that never checked in as an application is not a foreground one.
+	type = g_applicationType ? g_applicationType : _kLSApplicationBackgroundOnlyTypeKey;
+	pthread_mutex_unlock(&g_typeLock);
+	return type;
+}
+
+static CFStringRef copyProcessString(pid_t pid, const char* file, bool exe)
+{
+	char path[64], buf[4096];
+	ssize_t len;
+
+	snprintf(path, sizeof(path), "/proc/%d/%s", (int) pid, file);
+	if (exe)
+		len = readlink(path, buf, sizeof(buf) - 1);
+	else
+	{
+		int fd = open(path, O_RDONLY);
+		if (fd < 0)
+			return NULL;
+		len = read(fd, buf, sizeof(buf) - 1);
+		close(fd);
+		while (len > 0 && buf[len - 1] == '\n')
+			len--;
+	}
+	if (len <= 0)
+		return NULL;
+	buf[len] = 0;
+	return CFStringCreateWithCString(NULL, buf, kCFStringEncodingUTF8);
+}
+
 OSStatus _LSSetApplicationInformationItem(int sessionID, LSASNRef asn, CFStringRef key, CFStringRef value, CFDictionaryRef *info)
 {
-	// TODO: This talks to lsd to change the property of *any* app
-	return unimpErr;
+	if (info)
+		*info = NULL;
+
+	if (asnToPid(asn) != getpid() || !key || !CFEqual(key, _kLSApplicationTypeKey))
+		return unimpErr; // changing other processes needs a registry in lsd
+
+	if (!value || !(CFEqual(value, _kLSApplicationForegroundTypeKey)
+		|| CFEqual(value, _kLSApplicationBackgroundOnlyTypeKey)
+		|| CFEqual(value, _kLSApplicationUIElementTypeKey)))
+	{
+		return paramErr;
+	}
+
+	pthread_mutex_lock(&g_typeLock);
+	if (CFEqual(value, _kLSApplicationForegroundTypeKey))
+		g_applicationType = _kLSApplicationForegroundTypeKey;
+	else if (CFEqual(value, _kLSApplicationBackgroundOnlyTypeKey))
+		g_applicationType = _kLSApplicationBackgroundOnlyTypeKey;
+	else
+		g_applicationType = _kLSApplicationUIElementTypeKey;
+	pthread_mutex_unlock(&g_typeLock);
+
+	if (info)
+		*info = _LSCopyApplicationInformation(sessionID, asn, 0);
+	return noErr;
+}
+
+CFTypeRef _LSCopyApplicationInformationItem(int sessionID, CFTypeRef asn, CFStringRef what)
+{
+	pid_t pid = asnToPid(asn);
+	if (pid < 0 || !what || !processExists(pid))
+		return NULL;
+
+	if (CFEqual(what, _kLSASNKey))
+		return CFRetain(asn);
+	if (CFEqual(what, _kLSPIDKey))
+	{
+		long lpid = pid;
+		return CFNumberCreate(NULL, kCFNumberLongType, &lpid);
+	}
+	if (CFEqual(what, _kLSExecutablePathKey))
+		return copyProcessString(pid, "exe", true);
+	if (CFEqual(what, _kLSDisplayNameKey))
+		return copyProcessString(pid, "comm", false);
+	if (CFEqual(what, _kLSApplicationTypeKey) && pid == getpid())
+		return CFRetain(copyTypeKeyForSelf());
+	return NULL;
+}
+
+CFDictionaryRef _LSCopyApplicationInformation(int sessionID, CFTypeRef asn, int unknown)
+{
+	CFStringRef keys[] = { _kLSASNKey, _kLSPIDKey, _kLSExecutablePathKey, _kLSDisplayNameKey, _kLSApplicationTypeKey };
+	CFMutableDictionaryRef dict = NULL;
+
+	if (asnToPid(asn) < 0)
+		return NULL;
+
+	for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); i++)
+	{
+		CFTypeRef value = _LSCopyApplicationInformationItem(sessionID, asn, keys[i]);
+		if (!value)
+			continue;
+		if (!dict)
+			dict = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+		CFDictionarySetValue(dict, keys[i], value);
+		CFRelease(value);
+	}
+	return dict;
+}
+
+Boolean _LSASNExtractHighAndLowParts(LSASNRef asn, UInt32* outHigh, UInt32* outLow)
+{
+	pid_t pid = asnToPid(asn);
+
+	// An ASN is the PID of the process, so the high part is always 0.
+	if (outHigh) *outHigh = 0;
+	if (outLow) *outLow = pid > 0 ? (UInt32) pid : 0;
+	return pid > 0;
+}
+
+static int comparePids(const void* a, const void* b)
+{
+	pid_t x = *(const pid_t*) a, y = *(const pid_t*) b;
+	return (x > y) - (x < y);
+}
+
+CFArrayRef _LSCopyApplicationArray(int sessionID)
+{
+	DIR* dir = opendir("/proc");
+	if (!dir)
+		return NULL;
+
+	size_t count = 0, cap = 256;
+	pid_t* pids = malloc(cap * sizeof(pid_t));
+	struct dirent* ent;
+
+	while (pids && (ent = readdir(dir)) != NULL)
+	{
+		if (!isdigit((unsigned char) ent->d_name[0]))
+			continue;
+		if (count == cap)
+		{
+			pid_t* grown = realloc(pids, (cap *= 2) * sizeof(pid_t));
+			if (!grown)
+			{
+				free(pids);
+				pids = NULL;
+				break;
+			}
+			pids = grown;
+		}
+		pids[count++] = (pid_t) atoi(ent->d_name);
+	}
+	closedir(dir);
+	if (!pids)
+		return NULL;
+
+	qsort(pids, count, sizeof(pid_t), comparePids);
+
+	CFMutableArrayRef array = CFArrayCreateMutable(NULL, count, &kCFTypeArrayCallBacks);
+	for (size_t i = 0; i < count; i++)
+	{
+		LSASNRef asn = _LSASNCreateWithPid(NULL, pids[i]);
+		CFArrayAppendValue(array, asn);
+		CFRelease(asn);
+	}
+	free(pids);
+	return array;
 }
 
 void _LSSetApplicationLaunchServicesServerConnectionStatus(uint64_t flags, LSServerConnectionAllowedBlock block)
 {
 	// TODO
 	if (flags & 2) // Called from ApplicationServices/HIServices - this disables connecting to lsd???
+	{
+		pthread_mutex_lock(&g_typeLock);
 		g_applicationType = _kLSApplicationBackgroundOnlyTypeKey;
+		pthread_mutex_unlock(&g_typeLock);
+	}
 	
 	if (g_connectionAllowedBlock)
 		Block_release(g_connectionAllowedBlock);
