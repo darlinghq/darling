@@ -36,7 +36,14 @@
 // way NSKeyedUnarchiver would decode them; the unkeyed NSCoder methods raise
 // NSInvalidArchiveOperationException. Every archived object is decoded once; later
 // references return the same instance.
-@interface UINibDecoder : NSCoder
+struct UINibDecoderState;
+
+@interface UINibDecoder : NSCoder {
+@private
+    // Private state; declared here because the i386 legacy ABI has no @implementation ivars.
+    struct UINibDecoderState *_s;
+    id<UINibDecoderDelegate> _delegate;
+}
 
 // Returns nil if the data is not a well-formed NIBArchive (bad header, tables outside the
 // data, indexes out of range, unknown value types).

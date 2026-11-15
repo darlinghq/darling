@@ -112,24 +112,27 @@ static BOOL readFixed(const UINibReader *r, size_t *offset, void *out, size_t si
     return YES;
 }
 
-@implementation UINibDecoder {
-    NSData *_data;
-    const uint8_t *_bytes;
-    uint32_t _objectCount, _keyCount, _valueCount, _classCount;
-    UINibObjectRecord *_objects;
-    UINibValueRecord *_values;
-    NSString **_keys;
-    NSString **_classNames;
+// The decoder state lives in a heap structure: the i386 legacy Objective-C ABI cannot declare
+// instance variables in @implementation.
+struct UINibDecoderState {
+    NSData *data;
+    const uint8_t *bytes;
+    uint32_t objectCount, keyCount, valueCount, classCount;
+    UINibObjectRecord *objects;
+    UINibValueRecord *values;
+    NSString **keys;
+    NSString **classNames;
     // The decoded object of each archived object. While an object is being decoded its slot
     // holds the allocated instance without owning it (so references back to it resolve);
     // afterwards the slot owns its object.
-    id *_decoded;
-    uint8_t *_state;
-    uint32_t _current;
-    unsigned _depth;
-    id<UINibDecoderDelegate> _delegate;
-    NSMutableDictionary *_classMap;
-}
+    id *decoded;
+    uint8_t *state;
+    uint32_t current;
+    unsigned depth;
+    NSMutableDictionary *classMap;
+};
+
+@implementation UINibDecoder
 
 @synthesize delegate = _delegate;
 
@@ -139,15 +142,20 @@ static BOOL readFixed(const UINibReader *r, size_t *offset, void *out, size_t si
     if (self == nil)
         return nil;
 
-    // The decoder reads from a private immutable copy.
-    _data = [data copy];
-    UINibReader reader = { [_data bytes], [_data length] };
-    if (_data == nil || ![self _parseWithReader: &reader]) {
+    _s = calloc(1, sizeof(struct UINibDecoderState));
+    if (_s == NULL) {
         [self release];
         return nil;
     }
-    _bytes = reader.bytes;
-    _classMap = [NSMutableDictionary new];
+    // The decoder reads from a private immutable copy.
+    _s->data = [data copy];
+    UINibReader reader = { [_s->data bytes], [_s->data length] };
+    if (_s->data == nil || ![self _parseWithReader: &reader]) {
+        [self release];
+        return nil;
+    }
+    _s->bytes = reader.bytes;
+    _s->classMap = [NSMutableDictionary new];
     return self;
 }
 
@@ -168,38 +176,38 @@ static BOOL readFixed(const UINibReader *r, size_t *offset, void *out, size_t si
         header[i] = CFSwapInt32LittleToHost(header[i]);
 
     size_t objectsOffset = header[3], keysOffset = header[5], valuesOffset = header[7], classesOffset = header[9];
-    _objectCount = header[2];
-    _keyCount = header[4];
-    _valueCount = header[6];
-    _classCount = header[8];
+    _s->objectCount = header[2];
+    _s->keyCount = header[4];
+    _s->valueCount = header[6];
+    _s->classCount = header[8];
 
     // Each record takes at least one byte, which bounds the counts by the size of the data.
-    if (_objectCount == 0 || _objectCount > r->length || _keyCount > r->length || _valueCount > r->length ||
-        _classCount > r->length)
+    if (_s->objectCount == 0 || _s->objectCount > r->length || _s->keyCount > r->length || _s->valueCount > r->length ||
+        _s->classCount > r->length)
         return NO;
 
-    _objects = calloc(_objectCount, sizeof(UINibObjectRecord));
-    _values = calloc(_valueCount ? _valueCount : 1, sizeof(UINibValueRecord));
-    _keys = calloc(_keyCount ? _keyCount : 1, sizeof(NSString *));
-    _classNames = calloc(_classCount ? _classCount : 1, sizeof(NSString *));
-    _decoded = calloc(_objectCount, sizeof(id));
-    _state = calloc(_objectCount, sizeof(uint8_t));
-    if (!_objects || !_values || !_keys || !_classNames || !_decoded || !_state)
+    _s->objects = calloc(_s->objectCount, sizeof(UINibObjectRecord));
+    _s->values = calloc(_s->valueCount ? _s->valueCount : 1, sizeof(UINibValueRecord));
+    _s->keys = calloc(_s->keyCount ? _s->keyCount : 1, sizeof(NSString *));
+    _s->classNames = calloc(_s->classCount ? _s->classCount : 1, sizeof(NSString *));
+    _s->decoded = calloc(_s->objectCount, sizeof(id));
+    _s->state = calloc(_s->objectCount, sizeof(uint8_t));
+    if (!_s->objects || !_s->values || !_s->keys || !_s->classNames || !_s->decoded || !_s->state)
         return NO;
 
     offset = keysOffset;
-    for (uint32_t i = 0; i < _keyCount; i++) {
+    for (uint32_t i = 0; i < _s->keyCount; i++) {
         uint32_t length;
         if (!readVarint(r, &offset, &length) || length > r->length - offset)
             return NO;
-        _keys[i] = [[NSString alloc] initWithBytes: r->bytes + offset length: length encoding: NSUTF8StringEncoding];
-        if (_keys[i] == nil)
+        _s->keys[i] = [[NSString alloc] initWithBytes: r->bytes + offset length: length encoding: NSUTF8StringEncoding];
+        if (_s->keys[i] == nil)
             return NO;
         offset += length;
     }
 
     offset = classesOffset;
-    for (uint32_t i = 0; i < _classCount; i++) {
+    for (uint32_t i = 0; i < _s->classCount; i++) {
         uint32_t length, extraCount;
         if (!readVarint(r, &offset, &length) || !readVarint(r, &offset, &extraCount))
             return NO;
@@ -211,16 +219,16 @@ static BOOL readFixed(const UINibReader *r, size_t *offset, void *out, size_t si
         uint32_t nameLength = length;
         while (nameLength > 0 && r->bytes[offset + nameLength - 1] == 0)
             nameLength--;
-        _classNames[i] = [[NSString alloc] initWithBytes: r->bytes + offset length: nameLength encoding: NSUTF8StringEncoding];
-        if (_classNames[i] == nil)
+        _s->classNames[i] = [[NSString alloc] initWithBytes: r->bytes + offset length: nameLength encoding: NSUTF8StringEncoding];
+        if (_s->classNames[i] == nil)
             return NO;
         offset += length;
     }
 
     offset = valuesOffset;
-    for (uint32_t i = 0; i < _valueCount; i++) {
-        UINibValueRecord *value = &_values[i];
-        if (!readVarint(r, &offset, &value->keyIndex) || value->keyIndex >= _keyCount)
+    for (uint32_t i = 0; i < _s->valueCount; i++) {
+        UINibValueRecord *value = &_s->values[i];
+        if (!readVarint(r, &offset, &value->keyIndex) || value->keyIndex >= _s->keyCount)
             return NO;
         if (!readFixed(r, &offset, &value->type, 1))
             return NO;
@@ -286,7 +294,7 @@ static BOOL readFixed(const UINibReader *r, size_t *offset, void *out, size_t si
             if (!readFixed(r, &offset, &object, sizeof(object)))
                 return NO;
             value->u.object = CFSwapInt32LittleToHost(object);
-            if (value->u.object >= _objectCount)
+            if (value->u.object >= _s->objectCount)
                 return NO;
             break;
         }
@@ -296,13 +304,13 @@ static BOOL readFixed(const UINibReader *r, size_t *offset, void *out, size_t si
     }
 
     offset = objectsOffset;
-    for (uint32_t i = 0; i < _objectCount; i++) {
-        UINibObjectRecord *object = &_objects[i];
+    for (uint32_t i = 0; i < _s->objectCount; i++) {
+        UINibObjectRecord *object = &_s->objects[i];
         if (!readVarint(r, &offset, &object->classIndex) || !readVarint(r, &offset, &object->firstValue) ||
             !readVarint(r, &offset, &object->valueCount))
             return NO;
-        if (object->classIndex >= _classCount || object->firstValue > _valueCount ||
-            object->valueCount > _valueCount - object->firstValue)
+        if (object->classIndex >= _s->classCount || object->firstValue > _s->valueCount ||
+            object->valueCount > _s->valueCount - object->firstValue)
             return NO;
     }
     return YES;
@@ -310,21 +318,26 @@ static BOOL readFixed(const UINibReader *r, size_t *offset, void *out, size_t si
 
 - (void) dealloc
 {
-    for (uint32_t i = 0; _decoded && i < _objectCount; i++)
-        if (_state[i] == UINibStateDone)
-            [_decoded[i] release];
-    for (uint32_t i = 0; _keys && i < _keyCount; i++)
-        [_keys[i] release];
-    for (uint32_t i = 0; _classNames && i < _classCount; i++)
-        [_classNames[i] release];
-    free(_objects);
-    free(_values);
-    free(_keys);
-    free(_classNames);
-    free(_decoded);
-    free(_state);
-    [_classMap release];
-    [_data release];
+    if (_s == NULL) {
+        [super dealloc];
+        return;
+    }
+    for (uint32_t i = 0; _s->decoded && i < _s->objectCount; i++)
+        if (_s->state[i] == UINibStateDone)
+            [_s->decoded[i] release];
+    for (uint32_t i = 0; _s->keys && i < _s->keyCount; i++)
+        [_s->keys[i] release];
+    for (uint32_t i = 0; _s->classNames && i < _s->classCount; i++)
+        [_s->classNames[i] release];
+    free(_s->objects);
+    free(_s->values);
+    free(_s->keys);
+    free(_s->classNames);
+    free(_s->decoded);
+    free(_s->state);
+    [_s->classMap release];
+    [_s->data release];
+    free(_s);
     [super dealloc];
 }
 
@@ -338,14 +351,14 @@ static BOOL readFixed(const UINibReader *r, size_t *offset, void *out, size_t si
     if (className == nil)
         return;
     if (cls == Nil)
-        [_classMap removeObjectForKey: className];
+        [_s->classMap removeObjectForKey: className];
     else
-        [_classMap setObject: cls forKey: className];
+        [_s->classMap setObject: cls forKey: className];
 }
 
 - (Class) classForClassName: (NSString *) className
 {
-    return className != nil ? [_classMap objectForKey: className] : Nil;
+    return className != nil ? [_s->classMap objectForKey: className] : Nil;
 }
 
 #pragma mark - Values
@@ -354,11 +367,11 @@ static BOOL readFixed(const UINibReader *r, size_t *offset, void *out, size_t si
 {
     if (key == nil)
         return NULL;
-    const UINibObjectRecord *object = &_objects[_current];
+    const UINibObjectRecord *object = &_s->objects[_s->current];
     const UINibValueRecord *found = NULL;
     for (uint32_t i = 0; i < object->valueCount; i++) {
-        const UINibValueRecord *value = &_values[object->firstValue + i];
-        if ([_keys[value->keyIndex] isEqualToString: key])
+        const UINibValueRecord *value = &_s->values[object->firstValue + i];
+        if ([_s->keys[value->keyIndex] isEqualToString: key])
             found = value;
     }
     return found;
@@ -523,44 +536,44 @@ static BOOL readFixed(const UINibReader *r, size_t *offset, void *out, size_t si
         [_delegate unarchiver: self willReplaceObject: object withObject: replacement];
     if (object == replacement || object == nil)
         return;
-    for (uint32_t i = 0; i < _objectCount; i++) {
-        if (_state[i] == UINibStateNone || _decoded[i] != object)
+    for (uint32_t i = 0; i < _s->objectCount; i++) {
+        if (_s->state[i] == UINibStateNone || _s->decoded[i] != object)
             continue;
-        _decoded[i] = [replacement retain];
+        _s->decoded[i] = [replacement retain];
         // A slot of an object that is still being decoded does not own its object.
-        if (_state[i] == UINibStateDone)
+        if (_s->state[i] == UINibStateDone)
             [object release];
     }
 }
 
 - (id) _decodedObjectAtIndex: (uint32_t) index
 {
-    if (index >= _objectCount)
+    if (index >= _s->objectCount)
         [NSException raise: NSInvalidArchiveOperationException format: @"object index out of range"];
-    if (_state[index] == UINibStateDone)
-        return _decoded[index];
-    if (_state[index] == UINibStateDecoding) {
-        if (_decoded[index] != nil)
-            return _decoded[index];
+    if (_s->state[index] == UINibStateDone)
+        return _s->decoded[index];
+    if (_s->state[index] == UINibStateDecoding) {
+        if (_s->decoded[index] != nil)
+            return _s->decoded[index];
         [NSException raise: NSInvalidArchiveOperationException format: @"circular reference between collections"];
     }
-    if (_depth >= UINibMaximumDepth)
+    if (_s->depth >= UINibMaximumDepth)
         [NSException raise: NSInvalidArchiveOperationException format: @"objects nested too deeply"];
 
-    _state[index] = UINibStateDecoding;
-    _depth++;
+    _s->state[index] = UINibStateDecoding;
+    _s->depth++;
     BOOL finished = NO;
     @try {
         [self _decodeObjectAtIndex: index];
         finished = YES;
     } @finally {
-        _depth--;
+        _s->depth--;
         if (!finished) {
-            _decoded[index] = nil;
-            _state[index] = UINibStateNone;
+            _s->decoded[index] = nil;
+            _s->state[index] = UINibStateNone;
         }
     }
-    return _decoded[index];
+    return _s->decoded[index];
 }
 
 static BOOL classNameIsOneOf(NSString *className, const char *const names[])
@@ -574,10 +587,10 @@ static BOOL classNameIsOneOf(NSString *className, const char *const names[])
 
 - (const UINibValueRecord *) _valueNamed: (NSString *) key ofObject: (uint32_t) index
 {
-    uint32_t saved = _current;
-    _current = index;
+    uint32_t saved = _s->current;
+    _s->current = index;
     const UINibValueRecord *value = [self _valueForKey: key];
-    _current = saved;
+    _s->current = saved;
     return value;
 }
 
@@ -592,7 +605,7 @@ static BOOL classNameIsOneOf(NSString *className, const char *const names[])
     static const char *const setClasses[] = { "NSSet", "NSMutableSet", NULL };
     static const char *const orderedSetClasses[] = { "NSOrderedSet", "NSMutableOrderedSet", NULL };
     static const char *const dictionaryClasses[] = { "NSDictionary", "NSMutableDictionary", NULL };
-    const UINibObjectRecord *object = &_objects[index];
+    const UINibObjectRecord *object = &_s->objects[index];
     BOOL mutableClass = [className hasPrefix: @"NSMutable"];
 
     if (classNameIsOneOf(className, stringClasses)) {
@@ -618,7 +631,7 @@ static BOOL classNameIsOneOf(NSString *className, const char *const names[])
                             : [[NSData alloc] initWithBytes: bytes->u.data.bytes length: bytes->u.data.length];
     }
     if ([className isEqualToString: @"NSNumber"] && object->valueCount == 1) {
-        const UINibValueRecord *value = &_values[object->firstValue];
+        const UINibValueRecord *value = &_s->values[object->firstValue];
         switch (value->type) {
         case UINibValueInt8:
         case UINibValueInt16:
@@ -643,8 +656,8 @@ static BOOL classNameIsOneOf(NSString *className, const char *const names[])
 
     NSMutableArray *elements = [NSMutableArray array];
     for (uint32_t i = 0; i < object->valueCount; i++) {
-        const UINibValueRecord *value = &_values[object->firstValue + i];
-        if (![_keys[value->keyIndex] isEqualToString: UINibEmptyKey])
+        const UINibValueRecord *value = &_s->values[object->firstValue + i];
+        if (![_s->keys[value->keyIndex] isEqualToString: UINibEmptyKey])
             continue;
         id element = [self _objectForValue: value];
         if (element == nil)
@@ -674,8 +687,8 @@ static BOOL classNameIsOneOf(NSString *className, const char *const names[])
 
 - (void) _decodeObjectAtIndex: (uint32_t) index
 {
-    NSString *className = _classNames[_objects[index].classIndex];
-    Class substitute = [_classMap objectForKey: className];
+    NSString *className = _s->classNames[_s->objects[index].classIndex];
+    Class substitute = [_s->classMap objectForKey: className];
     id instance = nil;
     BOOL viaClass = YES;
 
@@ -693,21 +706,21 @@ static BOOL classNameIsOneOf(NSString *className, const char *const names[])
             cls = [cls classForKeyedUnarchiver];
         if (cls != Nil) {
             id allocated = [cls allocWithZone: NULL];
-            _decoded[index] = allocated;
-            uint32_t saved = _current;
-            _current = index;
+            _s->decoded[index] = allocated;
+            uint32_t saved = _s->current;
+            _s->current = index;
             @try {
                 instance = [allocated initWithCoder: self];
             } @finally {
-                _current = saved;
+                _s->current = saved;
             }
             if (instance != nil)
                 instance = [instance awakeAfterUsingCoder: self];
             // The slot can have been replaced meanwhile (replaceObject:withObject:), which
             // retained the replacement for it.
-            if (_decoded[index] != allocated && _decoded[index] != nil)
-                [_decoded[index] release];
-            _decoded[index] = nil;
+            if (_s->decoded[index] != allocated && _s->decoded[index] != nil)
+                [_s->decoded[index] release];
+            _s->decoded[index] = nil;
         }
     }
 
@@ -722,8 +735,8 @@ static BOOL classNameIsOneOf(NSString *className, const char *const names[])
             instance = replacement;
         }
     }
-    _decoded[index] = instance;
-    _state[index] = UINibStateDone;
+    _s->decoded[index] = instance;
+    _s->state[index] = UINibStateDone;
 }
 
 @end
