@@ -37,6 +37,12 @@
 
 #include <CFOpenDirectory/CFODTrigger.h>
 
+/*!
+    @const      kODSessionLocalPath
+    @abstract   session option: path of a local-only directory database to open instead of the system one
+*/
+CF_EXPORT const CFStringRef kODSessionLocalPath __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_NA);
+
 /* 8239461 */
 CF_EXPORT const ODRecordType kODRecordTypeUserAuthenticationData __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_NA);
 

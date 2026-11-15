@@ -35,12 +35,6 @@ CFTypeID ODContextGetTypeID(void)
     return 0;
 }
 
-tDirStatus ODConvertToLegacyErrorCode(CFIndex code)
-{
-    if (verbose) puts("STUB: ODConvertToLegacyErrorCode called");
-    return eNotYetImplemented;
-}
-
 bool ODNodeAddAccountPolicy(ODNodeRef node, CFDictionaryRef policy, ODPolicyCategoryType category, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeAddAccountPolicy called");

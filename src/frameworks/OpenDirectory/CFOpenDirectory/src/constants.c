@@ -25,6 +25,14 @@
 
 #define OD_ATTR_ASSIGN(x) CFStringRef kODAttributeType ## x = CFSTR("dsAttrTypeStandard:" # x)
 
+#pragma mark Session Options
+
+CFStringRef kODSessionLocalPath						= CFSTR("LocalPath");
+CFStringRef kODSessionProxyAddress					= CFSTR("ProxyAddress");
+CFStringRef kODSessionProxyPort						= CFSTR("ProxyPort");
+CFStringRef kODSessionProxyUsername					= CFSTR("ProxyUsername");
+CFStringRef kODSessionProxyPassword					= CFSTR("ProxyPassword");
+
 #pragma mark Record Types
 
 CFStringRef kODRecordTypeAttributeTypes				= CFSTR("dsRecTypeStandard:AttributeTypes");
