@@ -24,4 +24,8 @@ if (Python3_Interpreter_FOUND)
 		COMMAND ${CMAKE_COMMAND} -E env CC=${CMAKE_C_COMPILER}
 			${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/wrapgen/arm64-wrappers.py
 			--wrapgen $<TARGET_FILE:wrapgen> --source-dir ${CMAKE_SOURCE_DIR})
+	add_test(NAME wrapgen_variadic_warning
+		COMMAND ${CMAKE_COMMAND} -E env CC=${CMAKE_C_COMPILER}
+			${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/wrapgen/variadic-warning.py
+			--wrapgen $<TARGET_FILE:wrapgen>)
 endif()

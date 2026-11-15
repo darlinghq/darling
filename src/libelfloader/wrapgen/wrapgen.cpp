@@ -319,6 +319,25 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 		"\\tbr x17\\n\");\n"
 		"#endif\n\n";
 
+	// Guest call sites bind directly to the host function through the resolver generated below, so a
+	// variadic prototype means the guest passes its arguments in one layout while the host reads them in
+	// another. That mismatch is not detectable here and crashes at run time: it killed every Darling app
+	// at once through libdbus's dbus_message_append_args. A generated shim cannot fix it, because the
+	// variadic tail has to be forwarded under a different ABI, which needs assembly per call site. So
+	// flag these in the generated wrapper rather than emit one that fails mysteriously at run time.
+	static const std::set<std::string> variadic_symbols = {
+		// libdbus
+		"dbus_message_append_args",
+		"dbus_message_get_args",
+		// libtiff
+		"TIFFGetField",
+		"TIFFSetField",
+		"TIFFGetFieldDefaulted",
+		"TIFFError",
+		"TIFFErrorExt",
+		"TIFFWarning",
+	};
+
 	for (const std::string& sym : symbols)
 	{
 		// ABI adapters for every caller of these four GL entry points, not for
@@ -331,6 +350,18 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 		// general; the adapter below repacks them for these signatures only.
 		bool packedGLUpload = sym == "glTexSubImage3D" || sym == "glTexSubImage3DEXT" ||
 			sym == "glCompressedTexSubImage3D" || sym == "glCompressedTexSubImage3DARB";
+		// wrapgen emits a wrapper for every exported symbol, whether or not any guest image imports
+		// it, so refusing to generate one would break the build for a symbol nothing calls - TIFFError
+		// is exactly that case today. The wrapper is only dangerous when it is actually called, so warn
+		// in the generated translation unit instead: it still reaches the compiler log and any developer
+		// who adds a call site, without failing an unrelated build.
+		if (variadic_symbols.count(sym))
+		{
+			output << "#warning \"wrapgen: '" << sym << "' from " << soname
+				<< " is variadic. A guest caller passes arguments in a different layout than the host"
+				<< " expects and the call will crash. Call it through a hand-written shim that does not"
+				<< " forward the variadic tail, or avoid it.\"\n";
+		}
 		output << "#if defined(__arm64__)\n"
 			"__attribute__((visibility(\"hidden\"), used))\n"
 			"struct lazy_symbol __elf_lazy_symbol_" << sym << " = { 0, \"" << sym << "\" };\n"
