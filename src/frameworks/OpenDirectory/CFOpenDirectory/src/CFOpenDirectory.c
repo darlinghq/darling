@@ -250,16 +250,6 @@ void ODQueryScheduleWithRunLoop(ODQueryRef query, CFRunLoopRef runLoop, CFString
     if (verbose) puts("STUB: ODQueryScheduleWithRunLoop called");
 }
 
-void ODQuerySetCallback(ODQueryRef query, ODQueryCallback callback, void *userInfo)
-{
-    if (verbose) puts("STUB: ODQuerySetCallback called");
-}
-
-void ODQuerySetDispatchQueue(ODQueryRef query, dispatch_queue_t queue)
-{
-    if (verbose) puts("STUB: ODQuerySetDispatchQueue called");
-}
-
 void ODQuerySynchronize(ODQueryRef query)
 {
     if (verbose) puts("STUB: ODQuerySynchronize called");
