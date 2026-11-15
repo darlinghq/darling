@@ -566,6 +566,7 @@ if (COMPONENT_gui)
 	add_subdirectory(external/cups)
 	add_subdirectory(pboard)
 	add_subdirectory(distnoted)
+	add_subdirectory(settingsd)
 
 	# /Applications
 	add_subdirectory(external/TextEdit)
