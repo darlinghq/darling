@@ -14,8 +14,21 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 
 	add_subdirectory(CoreServices)
 
+	# secd (part of Security, which is built for CLI as well) links CoreData.
+	# When Cocotron's CoreData is not being built, use the stub instead.
+	if (COMPONENT_gui)
+		set(NO_INSTALL_ARG NO_INSTALL)
+		set(STUB_SUFFIX "_stub")
+	else()
+		set(NO_INSTALL_ARG "")
+		set(STUB_SUFFIX "")
+	endif()
+	add_subdirectory(dev-stubs/CoreData)
+
 	# these are also stubs, but they're needed for Security
 	add_subdirectory(Accounts)
+	# CloudKit links CoreLocation, so it must be part of the same component.
+	add_subdirectory(CoreLocation)
 	add_subdirectory(CloudKit)
 	add_subdirectory(CryptoTokenKit)
 	add_subdirectory(LocalAuthentication)
@@ -101,7 +114,6 @@ if (COMPONENT_gui_stubs)
 	add_subdirectory(CoreAudioKit)
 	add_subdirectory(CoreBluetooth)
 	add_subdirectory(CoreHaptics)
-	add_subdirectory(CoreLocation)
 	add_subdirectory(CoreML)
 	add_subdirectory(CoreMIDI)
 	add_subdirectory(CoreMediaIO)
@@ -185,7 +197,6 @@ if ((COMPONENT_cli_dev AND NOT COMPONENT_gui) OR COMPONENT_cli_dev_gui_stubs)
 	add_subdirectory(dev-stubs/AppKit)
 	add_subdirectory(dev-stubs/AudioToolbox)
 	add_subdirectory(dev-stubs/Cocoa)
-	add_subdirectory(dev-stubs/CoreData)
 	add_subdirectory(dev-stubs/CoreGraphics)
 	add_subdirectory(dev-stubs/CoreText)
 	add_subdirectory(dev-stubs/ImageIO)
