@@ -89,22 +89,54 @@
 
 
 /*
+ * Darling: clang (16 and later) predefines the TARGET_OS_* macros from -target, so the definitions
+ * below only fill in what the compiler did not. Without the #ifndef guards an iOS target compiled
+ * against this header became macOS (TARGET_OS_IOS 0, TARGET_OS_OSX 1).
+ */
+
+/*
  *    gcc based compiler used on Mac OS X
  */
 #if defined(__GNUC__) && ( defined(__APPLE_CPP__) || defined(__APPLE_CC__) || defined(__MACOS_CLASSIC__) )
-    #define TARGET_OS_MAC               1
-    #define TARGET_OS_WIN32             0
-    #define TARGET_OS_UNIX              0
-    #define TARGET_OS_OSX               1
-    #define TARGET_OS_IPHONE            0
-    #define TARGET_OS_IOS               0
-    #define TARGET_OS_WATCH             0
-    #define TARGET_OS_BRIDGE            0
-    #define TARGET_OS_TV                0
-    #define TARGET_OS_SIMULATOR         0
-    #define TARGET_OS_EMBEDDED          0 
-    #define TARGET_IPHONE_SIMULATOR     TARGET_OS_SIMULATOR /* deprecated */
-    #define TARGET_OS_NANO              TARGET_OS_WATCH /* deprecated */ 
+    #ifndef TARGET_OS_MAC
+    #define TARGET_OS_MAC 1
+    #endif
+    #ifndef TARGET_OS_WIN32
+    #define TARGET_OS_WIN32 0
+    #endif
+    #ifndef TARGET_OS_UNIX
+    #define TARGET_OS_UNIX 0
+    #endif
+    #ifndef TARGET_OS_OSX
+    #define TARGET_OS_OSX 1
+    #endif
+    #ifndef TARGET_OS_IPHONE
+    #define TARGET_OS_IPHONE 0
+    #endif
+    #ifndef TARGET_OS_IOS
+    #define TARGET_OS_IOS 0
+    #endif
+    #ifndef TARGET_OS_WATCH
+    #define TARGET_OS_WATCH 0
+    #endif
+    #ifndef TARGET_OS_BRIDGE
+    #define TARGET_OS_BRIDGE 0
+    #endif
+    #ifndef TARGET_OS_TV
+    #define TARGET_OS_TV 0
+    #endif
+    #ifndef TARGET_OS_SIMULATOR
+    #define TARGET_OS_SIMULATOR 0
+    #endif
+    #ifndef TARGET_OS_EMBEDDED
+    #define TARGET_OS_EMBEDDED 0
+    #endif
+    #ifndef TARGET_IPHONE_SIMULATOR
+    #define TARGET_IPHONE_SIMULATOR TARGET_OS_SIMULATOR /* deprecated */
+    #endif
+    #ifndef TARGET_OS_NANO
+    #define TARGET_OS_NANO TARGET_OS_WATCH /* deprecated */
+    #endif
     #if defined(__ppc__) 
         #define TARGET_CPU_PPC          1
         #define TARGET_CPU_PPC64        0
@@ -216,10 +248,18 @@
  *   CodeWarrior compiler from Metrowerks/Motorola
  */
 #elif defined(__MWERKS__)
-    #define TARGET_OS_MAC               1
-    #define TARGET_OS_WIN32             0
-    #define TARGET_OS_UNIX              0
-    #define TARGET_OS_EMBEDDED          0
+    #ifndef TARGET_OS_MAC
+    #define TARGET_OS_MAC 1
+    #endif
+    #ifndef TARGET_OS_WIN32
+    #define TARGET_OS_WIN32 0
+    #endif
+    #ifndef TARGET_OS_UNIX
+    #define TARGET_OS_UNIX 0
+    #endif
+    #ifndef TARGET_OS_EMBEDDED
+    #define TARGET_OS_EMBEDDED 0
+    #endif
     #if defined(__POWERPC__)
         #define TARGET_CPU_PPC          1
         #define TARGET_CPU_PPC64        0
@@ -342,10 +382,18 @@
         #define TARGET_CPU_SPARC  0
         #define TARGET_CPU_ALPHA  0
     #endif
-    #define TARGET_OS_MAC                1
-    #define TARGET_OS_WIN32              0
-    #define TARGET_OS_UNIX               0
-    #define TARGET_OS_EMBEDDED           0
+    #ifndef TARGET_OS_MAC
+    #define TARGET_OS_MAC 1
+    #endif
+    #ifndef TARGET_OS_WIN32
+    #define TARGET_OS_WIN32 0
+    #endif
+    #ifndef TARGET_OS_UNIX
+    #define TARGET_OS_UNIX 0
+    #endif
+    #ifndef TARGET_OS_EMBEDDED
+    #define TARGET_OS_EMBEDDED 0
+    #endif
     #if TARGET_CPU_PPC || TARGET_CPU_PPC64
         #define TARGET_RT_BIG_ENDIAN     1
         #define TARGET_RT_LITTLE_ENDIAN  0
