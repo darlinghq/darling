@@ -35,12 +35,6 @@ CFTypeID ODContextGetTypeID(void)
     return 0;
 }
 
-tDirStatus ODConvertToLegacyErrorCode(CFIndex code)
-{
-    if (verbose) puts("STUB: ODConvertToLegacyErrorCode called");
-    return eNotYetImplemented;
-}
-
 bool ODNodeAddAccountPolicy(ODNodeRef node, CFDictionaryRef policy, ODPolicyCategoryType category, CFErrorRef *error)
 {
     if (verbose) puts("STUB: ODNodeAddAccountPolicy called");
@@ -248,16 +242,6 @@ bool ODNodeVerifyCredentialsExtended(ODNodeRef node, ODRecordType recordType, OD
 void ODQueryScheduleWithRunLoop(ODQueryRef query, CFRunLoopRef runLoop, CFStringRef runLoopMode)
 {
     if (verbose) puts("STUB: ODQueryScheduleWithRunLoop called");
-}
-
-void ODQuerySetCallback(ODQueryRef query, ODQueryCallback callback, void *userInfo)
-{
-    if (verbose) puts("STUB: ODQuerySetCallback called");
-}
-
-void ODQuerySetDispatchQueue(ODQueryRef query, dispatch_queue_t queue)
-{
-    if (verbose) puts("STUB: ODQuerySetDispatchQueue called");
 }
 
 void ODQuerySynchronize(ODQueryRef query)

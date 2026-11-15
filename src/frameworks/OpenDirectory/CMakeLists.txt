@@ -2,7 +2,7 @@ project(OpenDirectory)
 
 remove_sdk_framework(OpenDirectory)
 
-add_subdirectory(CFOpenDirectory)
+# CFOpenDirectory is added by src/frameworks/CMakeLists.txt with the system component
 
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")

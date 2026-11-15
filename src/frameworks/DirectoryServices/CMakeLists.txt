@@ -18,8 +18,12 @@ add_framework(DirectoryService
     VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
-        src/DirectoryService.c
+        ${CMAKE_SOURCE_DIR}/src/external/OpenDirectory/DirectoryService/DirServices.c
+        ${CMAKE_SOURCE_DIR}/src/external/OpenDirectory/DirectoryService/DirServicesCustom.c
+        ${CMAKE_SOURCE_DIR}/src/external/OpenDirectory/DirectoryService/DirServicesUtils.c
 
     DEPENDENCIES
         system
+        CoreFoundation
+        CFOpenDirectory
 )
