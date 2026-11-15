@@ -48,6 +48,7 @@
 #include <mach-o/loader.h>
 #include <mach-o/fat.h>
 #include "loader.h"
+#include "exec_policy.h"
 
 // The definitions mldr.c provides to loader.c.
 #define PAGE_SIZE ((size_t) sysconf(_SC_PAGESIZE))

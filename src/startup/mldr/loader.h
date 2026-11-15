@@ -20,6 +20,8 @@ struct load_results {
 	char* root_path;
 	size_t root_path_length;
 	unsigned long stack_top;
+	// size of the initial mapping below stack_top
+	unsigned long stack_map_size;
 	char* socket_path;
 	int kernfd;
 	int lifetime_pipe;
