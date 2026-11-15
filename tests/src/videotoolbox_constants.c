@@ -2,14 +2,16 @@
 // Copyright (C) 2026 Lubos Dolezel
 //
 // VideoToolbox public constants and the pixel rotation entry points. The
-// expected strings are the values printed by the public constants on macOS 27
-// (arm64), a black-box observation; the H.264 profile/level strings are the
-// constant names without the kVTProfileLevel_ prefix. The pixel rotation
+// expected strings for the existing constants are values printed on macOS 27
+// (arm64); the deinterlacing constants are checked against their public
+// property and mode names. The H.264 profile/level strings are the constant
+// names without the kVTProfileLevel_ prefix. The pixel rotation
 // functions use the documented prototypes; no session can be created here, so
 // creation must fail with kVTCouldNotCreateInstanceErr and a NULL session.
 // Prints PASS or FAIL lines, then ALL PASSED or FAILED n.
 #include <CoreFoundation/CoreFoundation.h>
 #include <VideoToolbox/VTCompressionProperties.h>
+#include <VideoToolbox/VTDecompressionProperties.h>
 #include <VideoToolbox/VTErrors.h>
 #include <VideoToolbox/VTPixelRotationProperties.h>
 #include <VideoToolbox/VTPixelRotationSession.h>
@@ -99,6 +101,11 @@ int main(void)
 	CHECK(kVTPixelTransferPropertyKey_DestinationICCProfile, "DestinationICCProfile");
 	CHECK(kVTPixelTransferPropertyKey_DestinationYCbCrMatrix, "DestinationYCbCrMatrix");
 	CHECK(kVTPixelTransferPropertyKey_RealTime, "RealTime");
+
+	CHECK(kVTDecompressionPropertyKey_DeinterlaceMode, "DeinterlaceMode");
+	CHECK(kVTDecompressionPropertyKey_FieldMode, "FieldMode");
+	CHECK(kVTDecompressionProperty_DeinterlaceMode_Temporal, "Temporal");
+	CHECK(kVTDecompressionProperty_FieldMode_DeinterlaceFields, "DeinterlaceFields");
 
 	if (kVTPixelRotationNotSupportedErr == -12914 && kVTInvalidSessionErr == -12903
 	    && kVTParameterErr == -12902 && kVTCouldNotCreateInstanceErr == -12907) {

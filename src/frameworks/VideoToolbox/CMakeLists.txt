@@ -20,6 +20,7 @@ add_framework(VideoToolbox
     SOURCES
         src/VideoToolbox.m
         src/VTCompressionProperties.c
+        src/VTDecompressionProperties.c
         src/VTPixelRotationSession.c
         src/VTPixelTransferProperties.c
         src/FigMetalTransferHelper.m
