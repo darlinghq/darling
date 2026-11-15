@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,48 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CloudKit/CKAsset.h>
-#import <darling-stub-forwarding.h>
+#import "CKInternal.h"
 
 @implementation CKAsset
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
++ (BOOL)supportsSecureCoding
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return YES;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (instancetype)initWithFileURL:(NSURL *)fileURL
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    if (fileURL == nil)
+        CKRaiseInvalid(NSInvalidArgumentException, @"Null fileURL");
+    if (![fileURL isFileURL])
+        CKRaiseInvalid(NSInvalidArgumentException, @"Non-file URL");
+    if ((self = [super init]))
+        _fileURL = [fileURL copy];
+    return self;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (instancetype)initWithCoder:(NSCoder *)coder
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    NSURL *url = [coder decodeObjectOfClass:[NSURL class] forKey:@"FileURL"];
+    if (url == nil || ![url isFileURL]) {
+        return nil;
+    }
+    return [self initWithFileURL:url];
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (void)encodeWithCoder:(NSCoder *)coder
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    [coder encodeObject:_fileURL forKey:@"FileURL"];
+}
+
+- (NSURL *)fileURL
+{
+    return _fileURL;
+}
+
+- (NSString *)description
+{
+    return [NSString stringWithFormat:@"<%@: %p; path=%@>", [self class], self, _fileURL.path];
 }
 
 @end

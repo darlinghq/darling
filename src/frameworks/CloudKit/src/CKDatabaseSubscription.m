@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,58 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CloudKit/CKDatabaseSubscription.h>
-#import <darling-stub-forwarding.h>
+#import "CKInternal.h"
 
 @implementation CKDatabaseSubscription
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
++ (BOOL)supportsSecureCoding
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return YES;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (instancetype)init
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    return [self initWithSubscriptionID:[[NSUUID UUID] UUIDString]];
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (instancetype)initWithSubscriptionID:(CKSubscriptionID)subscriptionID
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return [self _initWithSubscriptionID:subscriptionID];
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (instancetype)initWithCoder:(NSCoder *)coder
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    if ((self = [super initWithCoder:coder]))
+        _recordType = [[coder decodeObjectOfClass:[NSString class] forKey:@"RecordType"] copy];
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [super encodeWithCoder:coder];
+    [coder encodeObject:_recordType forKey:@"RecordType"];
+}
+
+- (id)copyWithZone:(NSZone *)zone
+{
+    CKDatabaseSubscription *copy = [super copyWithZone:zone];
+    copy->_recordType = _recordType;
+    return copy;
+}
+
+- (CKSubscriptionType)subscriptionType
+{
+    return CKSubscriptionTypeDatabase;
+}
+
+- (CKRecordType)recordType
+{
+    return _recordType;
+}
+
+- (void)setRecordType:(CKRecordType)recordType
+{
+    _recordType = [recordType copy];
 }
 
 @end

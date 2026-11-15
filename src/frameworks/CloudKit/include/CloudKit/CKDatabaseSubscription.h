@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,23 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CloudKit/CKSubscription.h>
 
-@interface CKDatabaseSubscription : NSObject
+NS_ASSUME_NONNULL_BEGIN
+
+// Fires when anything changes in a database.
+@interface CKDatabaseSubscription : CKSubscription <NSSecureCoding, NSCopying> {
+@private
+    CKRecordType _recordType;
+}
+
+// Without an ID, a random one is generated.
+- (instancetype)init;
+- (instancetype)initWithSubscriptionID:(CKSubscriptionID)subscriptionID NS_REFINED_FOR_SWIFT;
+
+@property (nonatomic, copy, nullable) CKRecordType recordType NS_REFINED_FOR_SWIFT;
 
 @end
+
+NS_ASSUME_NONNULL_END

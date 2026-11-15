@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,83 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CloudKit/CKNotificationInfo.h>
-#import <darling-stub-forwarding.h>
+#import "CKInternal.h"
 
 @implementation CKNotificationInfo
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+@synthesize alertBody = _alertBody;
+@synthesize alertLocalizationKey = _alertLocalizationKey;
+@synthesize title = _title;
+@synthesize titleLocalizationKey = _titleLocalizationKey;
+@synthesize subtitle = _subtitle;
+@synthesize subtitleLocalizationKey = _subtitleLocalizationKey;
+@synthesize alertActionLocalizationKey = _alertActionLocalizationKey;
+@synthesize alertLaunchImage = _alertLaunchImage;
+@synthesize soundName = _soundName;
+@synthesize category = _category;
+@synthesize collapseIDKey = _collapseIDKey;
+@synthesize alertLocalizationArgs = _alertLocalizationArgs;
+@synthesize titleLocalizationArgs = _titleLocalizationArgs;
+@synthesize subtitleLocalizationArgs = _subtitleLocalizationArgs;
+@synthesize desiredKeys = _desiredKeys;
+@synthesize shouldBadge = _shouldBadge;
+@synthesize shouldSendContentAvailable = _shouldSendContentAvailable;
+@synthesize shouldSendMutableContent = _shouldSendMutableContent;
+
++ (BOOL)supportsSecureCoding
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return YES;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+// The string properties, in the order they are archived.
+static NSArray<NSString *> *CKNotificationInfoStringKeys(void)
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    return @[@"alertBody", @"alertLocalizationKey", @"title", @"titleLocalizationKey", @"subtitle",
+             @"subtitleLocalizationKey", @"alertActionLocalizationKey", @"alertLaunchImage", @"soundName",
+             @"category", @"collapseIDKey"];
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+static NSArray<NSString *> *CKNotificationInfoArrayKeys(void)
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return @[@"alertLocalizationArgs", @"titleLocalizationArgs", @"subtitleLocalizationArgs", @"desiredKeys"];
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+static NSArray<NSString *> *CKNotificationInfoBoolKeys(void)
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    return @[@"shouldBadge", @"shouldSendContentAvailable", @"shouldSendMutableContent"];
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    if ((self = [super init])) {
+        for (NSString *key in CKNotificationInfoStringKeys())
+            [self setValue:[coder decodeObjectOfClass:[NSString class] forKey:key] forKey:key];
+        NSSet *arrayClasses = [NSSet setWithObjects:[NSArray class], [NSString class], nil];
+        for (NSString *key in CKNotificationInfoArrayKeys())
+            [self setValue:[coder decodeObjectOfClasses:arrayClasses forKey:key] forKey:key];
+        for (NSString *key in CKNotificationInfoBoolKeys())
+            [self setValue:@([coder decodeBoolForKey:key]) forKey:key];
+    }
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    for (NSString *key in CKNotificationInfoStringKeys())
+        [coder encodeObject:[self valueForKey:key] forKey:key];
+    for (NSString *key in CKNotificationInfoArrayKeys())
+        [coder encodeObject:[self valueForKey:key] forKey:key];
+    for (NSString *key in CKNotificationInfoBoolKeys())
+        [coder encodeBool:[[self valueForKey:key] boolValue] forKey:key];
+}
+
+- (id)copyWithZone:(NSZone *)zone
+{
+    CKNotificationInfo *copy = [[[self class] allocWithZone:zone] init];
+    for (NSString *key in [[CKNotificationInfoStringKeys() arrayByAddingObjectsFromArray:CKNotificationInfoArrayKeys()]
+                           arrayByAddingObjectsFromArray:CKNotificationInfoBoolKeys()])
+        [copy setValue:[self valueForKey:key] forKey:key];
+    return copy;
 }
 
 @end

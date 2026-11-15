@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,40 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import "CKInternal.h"
 #import <CloudKit/CKNotification.h>
-#import <darling-stub-forwarding.h>
 
 @implementation CKNotification
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+// The wire format of push payloads is not documented; no payload is recognised as a CloudKit notification.
++ (instancetype)notificationFromRemoteNotificationDictionary:(NSDictionary *)notificationDictionary
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return nil;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (CKNotificationType)notificationType
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    return 0;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
-}
-
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
-}
+- (CKNotificationID *)notificationID { return _notificationID; }
+- (NSString *)containerIdentifier { return _containerIdentifier; }
+- (BOOL)isPruned { return _isPruned; }
+- (CKSubscriptionID)subscriptionID { return _subscriptionID; }
+- (CKRecordID *)subscriptionOwnerUserRecordID { return _subscriptionOwnerUserRecordID; }
+- (NSString *)alertBody { return _alertBody; }
+- (NSString *)alertLocalizationKey { return _alertLocalizationKey; }
+- (NSArray<NSString *> *)alertLocalizationArgs { return _alertLocalizationArgs; }
+- (NSString *)title { return _title; }
+- (NSString *)titleLocalizationKey { return _titleLocalizationKey; }
+- (NSArray<NSString *> *)titleLocalizationArgs { return _titleLocalizationArgs; }
+- (NSString *)subtitle { return _subtitle; }
+- (NSString *)subtitleLocalizationKey { return _subtitleLocalizationKey; }
+- (NSArray<NSString *> *)subtitleLocalizationArgs { return _subtitleLocalizationArgs; }
+- (NSString *)alertActionLocalizationKey { return _alertActionLocalizationKey; }
+- (NSString *)alertLaunchImage { return _alertLaunchImage; }
+- (NSNumber *)badge { return _badge; }
+- (NSString *)soundName { return _soundName; }
+- (NSString *)category { return _category; }
 
 @end

@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,30 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
-@interface CKRecordID : NSObject
+NS_ASSUME_NONNULL_BEGIN
+
+@class CKRecordZoneID;
+
+// Identifies a record: its name (at most 255 characters) and the zone it lives in.
+NS_SWIFT_NAME(CKRecord.ID)
+@interface CKRecordID : NSObject <NSSecureCoding, NSCopying> {
+@private
+    NSString *_recordName;
+    CKRecordZoneID *_zoneID;
+}
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
+// Uses the default zone of the current user.
+- (instancetype)initWithRecordName:(NSString *)recordName NS_REFINED_FOR_SWIFT;
+- (instancetype)initWithRecordName:(NSString *)recordName zoneID:(CKRecordZoneID *)zoneID NS_REFINED_FOR_SWIFT;
+
+@property (nonatomic, readonly, copy) NSString *recordName;
+@property (nonatomic, readonly, copy) CKRecordZoneID *zoneID;
 
 @end
+
+NS_ASSUME_NONNULL_END

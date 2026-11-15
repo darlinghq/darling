@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,19 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import "CKInternal.h"
 #import <CloudKit/CKQueryNotification.h>
-#import <darling-stub-forwarding.h>
 
 @implementation CKQueryNotification
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (CKNotificationType)notificationType
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return CKNotificationTypeQuery;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
-}
-
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
-}
-
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
-}
+- (CKQueryNotificationReason)queryNotificationReason { return _queryNotificationReason; }
+- (NSDictionary<CKRecordFieldKey, id> *)recordFields { return _recordFields; }
+- (CKRecordID *)recordID { return _recordID; }
+- (CKDatabaseScope)databaseScope { return _databaseScope; }
 
 @end

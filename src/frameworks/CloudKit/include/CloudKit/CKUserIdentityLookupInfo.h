@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,36 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
-@interface CKUserIdentityLookupInfo : NSObject
+NS_ASSUME_NONNULL_BEGIN
+
+@class CKRecordID;
+
+// Describes a user to look up by e-mail address, phone number or user record.
+NS_SWIFT_NAME(CKUserIdentity.LookupInfo)
+@interface CKUserIdentityLookupInfo : NSObject <NSSecureCoding, NSCopying> {
+@private
+    NSString *_emailAddress;
+    NSString *_phoneNumber;
+    CKRecordID *_userRecordID;
+}
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
+- (instancetype)initWithEmailAddress:(NSString *)emailAddress;
+- (instancetype)initWithPhoneNumber:(NSString *)phoneNumber;
+- (instancetype)initWithUserRecordID:(CKRecordID *)userRecordID;
+
+@property (nonatomic, readonly, copy, nullable) NSString *emailAddress;
+@property (nonatomic, readonly, copy, nullable) NSString *phoneNumber;
+@property (nonatomic, readonly, copy, nullable) CKRecordID *userRecordID;
+
++ (NSArray<CKUserIdentityLookupInfo *> *)lookupInfosWithEmails:(NSArray<NSString *> *)emails NS_SWIFT_NAME(lookupInfos(withEmails:));
++ (NSArray<CKUserIdentityLookupInfo *> *)lookupInfosWithPhoneNumbers:(NSArray<NSString *> *)phoneNumbers NS_SWIFT_NAME(lookupInfos(withPhoneNumbers:));
++ (NSArray<CKUserIdentityLookupInfo *> *)lookupInfosWithRecordIDs:(NSArray<CKRecordID *> *)recordIDs NS_SWIFT_NAME(lookupInfos(withRecordIDs:));
 
 @end
+
+NS_ASSUME_NONNULL_END

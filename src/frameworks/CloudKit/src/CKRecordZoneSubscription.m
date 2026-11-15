@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,79 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <CloudKit/CKRecordZoneSubscription.h>
-#import <darling-stub-forwarding.h>
+#import "CKInternal.h"
 
 @implementation CKRecordZoneSubscription
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
++ (BOOL)supportsSecureCoding
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return YES;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (instancetype)initWithZoneID:(CKRecordZoneID *)zoneID
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    return [self initWithZoneID:zoneID subscriptionID:[[NSUUID UUID] UUIDString]];
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (instancetype)initWithZoneID:(CKRecordZoneID *)zoneID subscriptionID:(CKSubscriptionID)subscriptionID
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    if (zoneID == nil)
+        CKRaiseInvalid(@"CKException", @"zoneID can not be nil");
+    if ((self = [self _initWithSubscriptionID:subscriptionID]))
+        _zoneID = [zoneID copy];
+    return self;
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (instancetype)initWithCoder:(NSCoder *)coder
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+    if ((self = [super initWithCoder:coder])) {
+        _zoneID = [[coder decodeObjectOfClass:[CKRecordZoneID class] forKey:@"ZoneID"] copy];
+        _recordType = [[coder decodeObjectOfClass:[NSString class] forKey:@"RecordType"] copy];
+        if (_zoneID == nil) {
+            return nil;
+        }
+    }
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [super encodeWithCoder:coder];
+    [coder encodeObject:_zoneID forKey:@"ZoneID"];
+    [coder encodeObject:_recordType forKey:@"RecordType"];
+}
+
+- (id)copyWithZone:(NSZone *)zone
+{
+    CKRecordZoneSubscription *copy = [super copyWithZone:zone];
+    copy->_zoneID = _zoneID;
+    copy->_recordType = _recordType;
+    return copy;
+}
+
+- (CKSubscriptionType)subscriptionType
+{
+    return CKSubscriptionTypeRecordZone;
+}
+
+- (CKRecordZoneID *)zoneID
+{
+    return _zoneID;
+}
+
+- (void)setZoneID:(CKRecordZoneID *)zoneID
+{
+    _zoneID = [zoneID copy];
+}
+
+- (CKRecordType)recordType
+{
+    return _recordType;
+}
+
+- (void)setRecordType:(CKRecordType)recordType
+{
+    _recordType = [recordType copy];
 }
 
 @end
