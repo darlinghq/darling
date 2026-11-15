@@ -229,6 +229,9 @@
 [submodule "src/external/TextEdit"]
 	path = src/external/TextEdit
 	url = ../darling-TextEdit.git
+[submodule "src/external/Console"]
+	path = src/external/Console
+	url = ../darling-Console.git
 [submodule "src/external/bsm"]
 	path = src/external/bsm
 	url = ../darling-bsm.git
