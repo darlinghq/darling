@@ -31,6 +31,14 @@
 # autolink entry names -lswift<Module>, so a libswift<Module>.dylib symlink to the binary is created next to it
 # (the directory every overlay already searches with -L).
 #
+# Compilation is parallel. A module with at least DARLING_SWIFT_PARALLEL_MIN_SOURCES sources is compiled by the swiftc
+# driver in batch mode (-j DARLING_SWIFT_JOBS): every source file gets its own object file and the files are compiled
+# concurrently, instead of one single-threaded whole-module frontend job. The type-checking and SIL optimisation
+# that dominate a whole-module build are not split by -num-threads (that only parallelises LLVM code generation), so
+# per-file jobs are the only way to use more than one core. The price is that the optimiser sees one file at a time
+# (about three times the CPU time and a slightly larger dylib). The module interface and the dylib's export table are
+# unchanged. With DARLING_SWIFT_JOBS=1 (or small modules) the old whole-module job is used.
+#
 # Required variables: SWIFT_TOOLCHAIN_FOUND and friends (swift_toolchain.cmake), and
 #   DARLING_SWIFT_STDLIB_MODULES  directory with <Name>.swiftmodule/<arch>-apple-macos.swiftinterface for the
 #                                 Swift runtime the overlays run on
@@ -39,6 +47,19 @@
 include(CMakeParseArguments)
 include(InstallSymlink)
 
+cmake_host_system_information(RESULT _darling_swift_cores QUERY NUMBER_OF_LOGICAL_CORES)
+set(DARLING_SWIFT_JOBS "${_darling_swift_cores}" CACHE STRING
+	"Number of parallel swiftc jobs for each Swift overlay module (1: single whole-module job)")
+set(DARLING_SWIFT_PARALLEL_MIN_SOURCES "16" CACHE STRING
+	"Modules with fewer sources than this are compiled as one whole-module job (the build time is negligible)")
+if (CMAKE_GENERATOR MATCHES "Ninja" AND NOT CMAKE_VERSION VERSION_LESS 3.15)
+	# The swiftc driver runs its own jobs, so at most one module is compiled at a time to avoid oversubscribing the CPUs
+	# on top of Ninja's -j. (Make has no such pool: with make -jN the module jobs can overlap.)
+	set_property(GLOBAL APPEND PROPERTY JOB_POOLS darling_swift=1)
+	set(_DARLING_SWIFT_JOB_POOL JOB_POOL darling_swift)
+else()
+	set(_DARLING_SWIFT_JOB_POOL)
+endif()
 set(DARLING_SWIFT_DEPLOYMENT_TARGET "26.0" CACHE INTERNAL "macOS version the Swift overlays are built for")
 set(DARLING_SWIFT_SDK "${DARLING_TOP_DIRECTORY}/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
 # Foundation's headers include <AE/AE.h>, which the SDK ships as a subframework of CoreServices.
@@ -58,6 +79,54 @@ function(_darling_swift_resource_dir out)
 	list(GET clang_dirs 0 clang_dir)
 	execute_process(COMMAND "${CMAKE_COMMAND}" -E create_symlink "${clang_dir}" "${dir}/clang")
 	set(${out} "${dir}" PARENT_SCOPE)
+endfunction()
+
+# _darling_swift_compile(<Module> <out var for the objects>
+#     OBJECT <object path used by the whole-module job> SOURCES <abs paths> COMMON <swiftc flags> MODULE <swiftmodule>
+#     DEPENDS <files> COMMENT <text>)
+#
+# Adds the command that compiles the sources and emits the module. Whole-module: one object (OBJECT); parallel: one
+# object per source in <binary dir>/swift-objects/<Module>/, listed in the out variable.
+function(_darling_swift_compile module out_var)
+	cmake_parse_arguments(C "" "OBJECT;MODULE;COMMENT" "SOURCES;COMMON;DEPENDS" ${ARGN})
+	list(LENGTH C_SOURCES source_count)
+	if (DARLING_SWIFT_JOBS GREATER 1 AND NOT source_count LESS DARLING_SWIFT_PARALLEL_MIN_SOURCES)
+		set(object_dir "${CMAKE_CURRENT_BINARY_DIR}/swift-objects/${module}")
+		set(map "${CMAKE_CURRENT_BINARY_DIR}/swift-${module}-output-file-map.json")
+		set(objects)
+		set(entries)
+		set(index 0)
+		foreach(src IN LISTS C_SOURCES)
+			set(object "${object_dir}/${index}.o")
+			list(APPEND objects "${object}")
+			list(APPEND entries "\"${src}\": {\"object\": \"${object}\"}")
+			math(EXPR index "${index} + 1")
+		endforeach()
+		list(JOIN entries ",\n  " entries)
+		file(MAKE_DIRECTORY "${object_dir}")
+		file(WRITE "${map}" "{\n  ${entries}\n}\n")
+		add_custom_command(
+			OUTPUT ${objects} "${C_MODULE}"
+			COMMAND "${SWIFT_COMPILER}" -c -no-whole-module-optimization -enable-batch-mode
+				-j "${DARLING_SWIFT_JOBS}" -output-file-map "${map}"
+				${C_SOURCES} ${C_COMMON} -emit-module -emit-module-path "${C_MODULE}"
+			DEPENDS ${C_SOURCES} ${C_DEPENDS} "${map}"
+			COMMENT "${C_COMMENT} (${DARLING_SWIFT_JOBS} jobs)"
+			${_DARLING_SWIFT_JOB_POOL}
+			VERBATIM
+		)
+		set(${out_var} ${objects} PARENT_SCOPE)
+	else()
+		add_custom_command(
+			OUTPUT "${C_OBJECT}" "${C_MODULE}"
+			COMMAND "${SWIFT_COMPILER}" -frontend -c ${C_SOURCES} ${C_COMMON}
+				-emit-module-path "${C_MODULE}" -o "${C_OBJECT}"
+			DEPENDS ${C_SOURCES} ${C_DEPENDS}
+			COMMENT "${C_COMMENT}"
+			VERBATIM
+		)
+		set(${out_var} "${C_OBJECT}" PARENT_SCOPE)
+	endif()
 endfunction()
 
 # add_darling_swift_object(<Module> SOURCES <swift sources> [FLAGS ...] [MODULES ...])
@@ -83,9 +152,9 @@ function(add_darling_swift_object module)
 		get_filename_component(src "${src}" ABSOLUTE)
 		list(APPEND sources "${src}")
 	endforeach()
-	add_custom_command(
-		OUTPUT "${obj}" "${swiftmodule}"
-		COMMAND "${SWIFT_COMPILER}" -frontend -c ${sources}
+	_darling_swift_compile("${module}" objects
+		OBJECT "${obj}" MODULE "${swiftmodule}" SOURCES ${sources} DEPENDS ${module_deps}
+		COMMON
 			-target "${APPLE_ARCH_64BIT}-apple-macosx${DARLING_SWIFT_DEPLOYMENT_TARGET}"
 			-sdk "${DARLING_SWIFT_SDK}" -resource-dir "${resource_dir}"
 			-I "${DARLING_SWIFT_STDLIB_MODULES}" -I "${DARLING_SWIFT_MODULE_DIR}"
@@ -93,13 +162,9 @@ function(add_darling_swift_object module)
 			-swift-version 5 -module-name "${module}" -parse-as-library -O
 			${DARLING_SWIFT_SDK_SUBFRAMEWORKS}
 			${SWIFTOBJ_FLAGS}
-			-emit-module-path "${swiftmodule}" -o "${obj}"
-		DEPENDS ${sources} ${module_deps}
-		COMMENT "Compiling the Swift module ${module} for ${APPLE_ARCH_64BIT}"
-		VERBATIM
-	)
-	set_source_files_properties("${obj}" PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
-	set(${module}_OBJECT "${obj}" PARENT_SCOPE)
+		COMMENT "Compiling the Swift module ${module} for ${APPLE_ARCH_64BIT}")
+	set_source_files_properties(${objects} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
+	set(${module}_OBJECT ${objects} PARENT_SCOPE)
 endfunction()
 
 function(add_darling_swift_library module)
@@ -146,9 +211,9 @@ function(add_darling_swift_library module)
 	# Library evolution matches Apple's overlays, so binaries built against the macOS SDK use the same access
 	# patterns. The platform-neutral SwiftStdlib availability names are what the overlay sources use for the
 	# stdlib's release versions.
-	add_custom_command(
-		OUTPUT "${obj}" "${swiftmodule}"
-		COMMAND "${SWIFT_COMPILER}" -frontend -c ${sources}
+	_darling_swift_compile("${module}" objects
+		OBJECT "${obj}" MODULE "${swiftmodule}" SOURCES ${sources} DEPENDS ${module_deps}
+		COMMON
 			-target "${target}" -sdk "${DARLING_SWIFT_SDK}" -resource-dir "${resource_dir}"
 			-I "${DARLING_SWIFT_STDLIB_MODULES}" -I "${DARLING_SWIFT_MODULE_DIR}"
 			-module-cache-path "${DARLING_SWIFT_MODULE_CACHE}"
@@ -157,12 +222,8 @@ function(add_darling_swift_library module)
 			-define-availability "SwiftStdlib 5.7:macOS 13.0"
 			${DARLING_SWIFT_SDK_SUBFRAMEWORKS}
 			${SWIFTLIB_FLAGS}
-			-emit-module-path "${swiftmodule}" -o "${obj}"
-		DEPENDS ${sources} ${module_deps}
-		COMMENT "Compiling the Swift overlay ${module} for ${APPLE_ARCH_64BIT}"
-		VERBATIM
-	)
-	set_source_files_properties("${obj}" PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
+		COMMENT "Compiling the Swift overlay ${module} for ${APPLE_ARCH_64BIT}")
+	set_source_files_properties(${objects} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
 
 	if (SWIFTLIB_INSTALL_NAME)
 		set(DYLIB_INSTALL_NAME "${SWIFTLIB_INSTALL_NAME}")
@@ -173,7 +234,7 @@ function(add_darling_swift_library module)
 	endif()
 	set(DARLING_LIB_64BIT_ONLY TRUE)
 
-	add_darling_library(swift${module} SHARED "${obj}" ${SWIFTLIB_OBJECTS} ${SWIFTLIB_NATIVE_SOURCES})
+	add_darling_library(swift${module} SHARED ${objects} ${SWIFTLIB_OBJECTS} ${SWIFTLIB_NATIVE_SOURCES})
 	if (SWIFTLIB_LINK_FLAGS)
 		list(JOIN SWIFTLIB_LINK_FLAGS " " extra_link_flags)
 		set_property(TARGET swift${module} APPEND_STRING PROPERTY LINK_FLAGS " ${extra_link_flags}")
