@@ -1,0 +1,5 @@
+framework module CoreMedia [extern_c] [system] {
+  umbrella header "CoreMedia.h"
+  export *
+  module * { export * }
+}

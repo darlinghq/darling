@@ -21,7 +21,9 @@
 #ifndef _CoreMedia_H_
 #define _CoreMedia_H_
 
+#include <CoreMedia/CMBase.h>
 #include <CoreMedia/CMTime.h>
+#include <CoreMedia/CMTimeRange.h>
 #include <CoreMedia/CMFormatDescription.h>
 #include <CoreMedia/CMSampleBuffer.h>
 
@@ -276,9 +278,6 @@ void* CMTextFormatDescriptionGetDefaultTextBox(void);
 void* CMTextFormatDescriptionGetDisplayFlags(void);
 void* CMTextFormatDescriptionGetFontName(void);
 void* CMTextFormatDescriptionGetJustification(void);
-void* CMTimeAbsoluteValue(void);
-void* CMTimeAdd(void);
-void* CMTimeClampToRange(void);
 void* CMTimeCodeFormatDescriptionCopyAsBigEndianTimeCodeDescriptionBlockBuffer(void);
 void* CMTimeCodeFormatDescriptionCreate(void);
 void* CMTimeCodeFormatDescriptionCreateFromBigEndianTimeCodeDescriptionBlockBuffer(void);
@@ -286,17 +285,11 @@ void* CMTimeCodeFormatDescriptionCreateFromBigEndianTimeCodeDescriptionData(void
 void* CMTimeCodeFormatDescriptionGetFrameDuration(void);
 void* CMTimeCodeFormatDescriptionGetFrameQuanta(void);
 void* CMTimeCodeFormatDescriptionGetTimeCodeFlags(void);
-void* CMTimeCompare(void);
-void* CMTimeConvertScale(void);
 void* CMTimeCopyAsCVBufferTimeDictionary(void);
 void* CMTimeCopyAsDictionary(void);
 void* CMTimeCopyDescription(void);
-void* CMTimeGetSeconds(void);
-void* CMTimeMake(void);
 void* CMTimeMakeFromCVBufferTimeDictionary(void);
 void* CMTimeMakeFromDictionary(void);
-void* CMTimeMakeWithEpoch(void);
-void* CMTimeMakeWithSeconds(void);
 void* CMTimeMapDurationFromRangeToRange(void);
 void* CMTimeMapTimeFromRangeToRange(void);
 void* CMTimeMappingCopyAsDictionary(void);
@@ -305,25 +298,13 @@ void* CMTimeMappingMake(void);
 void* CMTimeMappingMakeEmpty(void);
 void* CMTimeMappingMakeFromDictionary(void);
 void* CMTimeMappingShow(void);
-void* CMTimeMaximum(void);
-void* CMTimeMinimum(void);
-void* CMTimeMultiply(void);
 void* CMTimeMultiplyByFloat64(void);
 void* CMTimeMultiplyByRatio(void);
-void* CMTimeRangeContainsTime(void);
-void* CMTimeRangeContainsTimeRange(void);
 void* CMTimeRangeCopyAsDictionary(void);
 void* CMTimeRangeCopyDescription(void);
-void* CMTimeRangeEqual(void);
-void* CMTimeRangeFromTimeToTime(void);
-void* CMTimeRangeGetEnd(void);
-void* CMTimeRangeGetIntersection(void);
-void* CMTimeRangeGetUnion(void);
-void* CMTimeRangeMake(void);
 void* CMTimeRangeMakeFromDictionary(void);
 void* CMTimeRangeShow(void);
 void* CMTimeShow(void);
-void* CMTimeSubtract(void);
 void* CMTimeSyncClockCreateForSystemDomainClockIdentifier(void);
 void* CMTimebaseAddTimer(void);
 void* CMTimebaseAddTimerDispatchSource(void);

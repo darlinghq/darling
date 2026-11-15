@@ -1316,21 +1316,6 @@ void* CMTextFormatDescriptionGetJustification(void) {
     return NULL;
 }
 
-void* CMTimeAbsoluteValue(void) {
-    if (verbose) puts("STUB: CMTimeAbsoluteValue called");
-    return NULL;
-}
-
-void* CMTimeAdd(void) {
-    if (verbose) puts("STUB: CMTimeAdd called");
-    return NULL;
-}
-
-void* CMTimeClampToRange(void) {
-    if (verbose) puts("STUB: CMTimeClampToRange called");
-    return NULL;
-}
-
 void* CMTimeCodeFormatDescriptionCopyAsBigEndianTimeCodeDescriptionBlockBuffer(void) {
     if (verbose) puts("STUB: CMTimeCodeFormatDescriptionCopyAsBigEndianTimeCodeDescriptionBlockBuffer called");
     return NULL;
@@ -1366,16 +1351,6 @@ void* CMTimeCodeFormatDescriptionGetTimeCodeFlags(void) {
     return NULL;
 }
 
-void* CMTimeCompare(void) {
-    if (verbose) puts("STUB: CMTimeCompare called");
-    return NULL;
-}
-
-void* CMTimeConvertScale(void) {
-    if (verbose) puts("STUB: CMTimeConvertScale called");
-    return NULL;
-}
-
 void* CMTimeCopyAsCVBufferTimeDictionary(void) {
     if (verbose) puts("STUB: CMTimeCopyAsCVBufferTimeDictionary called");
     return NULL;
@@ -1391,16 +1366,6 @@ void* CMTimeCopyDescription(void) {
     return NULL;
 }
 
-void* CMTimeGetSeconds(void) {
-    if (verbose) puts("STUB: CMTimeGetSeconds called");
-    return NULL;
-}
-
-void* CMTimeMake(void) {
-    if (verbose) puts("STUB: CMTimeMake called");
-    return NULL;
-}
-
 void* CMTimeMakeFromCVBufferTimeDictionary(void) {
     if (verbose) puts("STUB: CMTimeMakeFromCVBufferTimeDictionary called");
     return NULL;
@@ -1408,16 +1373,6 @@ void* CMTimeMakeFromCVBufferTimeDictionary(void) {
 
 void* CMTimeMakeFromDictionary(void) {
     if (verbose) puts("STUB: CMTimeMakeFromDictionary called");
-    return NULL;
-}
-
-void* CMTimeMakeWithEpoch(void) {
-    if (verbose) puts("STUB: CMTimeMakeWithEpoch called");
-    return NULL;
-}
-
-void* CMTimeMakeWithSeconds(void) {
-    if (verbose) puts("STUB: CMTimeMakeWithSeconds called");
     return NULL;
 }
 
@@ -1461,21 +1416,6 @@ void* CMTimeMappingShow(void) {
     return NULL;
 }
 
-void* CMTimeMaximum(void) {
-    if (verbose) puts("STUB: CMTimeMaximum called");
-    return NULL;
-}
-
-void* CMTimeMinimum(void) {
-    if (verbose) puts("STUB: CMTimeMinimum called");
-    return NULL;
-}
-
-void* CMTimeMultiply(void) {
-    if (verbose) puts("STUB: CMTimeMultiply called");
-    return NULL;
-}
-
 void* CMTimeMultiplyByFloat64(void) {
     if (verbose) puts("STUB: CMTimeMultiplyByFloat64 called");
     return NULL;
@@ -1486,16 +1426,6 @@ void* CMTimeMultiplyByRatio(void) {
     return NULL;
 }
 
-void* CMTimeRangeContainsTime(void) {
-    if (verbose) puts("STUB: CMTimeRangeContainsTime called");
-    return NULL;
-}
-
-void* CMTimeRangeContainsTimeRange(void) {
-    if (verbose) puts("STUB: CMTimeRangeContainsTimeRange called");
-    return NULL;
-}
-
 void* CMTimeRangeCopyAsDictionary(void) {
     if (verbose) puts("STUB: CMTimeRangeCopyAsDictionary called");
     return NULL;
@@ -1503,36 +1433,6 @@ void* CMTimeRangeCopyAsDictionary(void) {
 
 void* CMTimeRangeCopyDescription(void) {
     if (verbose) puts("STUB: CMTimeRangeCopyDescription called");
-    return NULL;
-}
-
-void* CMTimeRangeEqual(void) {
-    if (verbose) puts("STUB: CMTimeRangeEqual called");
-    return NULL;
-}
-
-void* CMTimeRangeFromTimeToTime(void) {
-    if (verbose) puts("STUB: CMTimeRangeFromTimeToTime called");
-    return NULL;
-}
-
-void* CMTimeRangeGetEnd(void) {
-    if (verbose) puts("STUB: CMTimeRangeGetEnd called");
-    return NULL;
-}
-
-void* CMTimeRangeGetIntersection(void) {
-    if (verbose) puts("STUB: CMTimeRangeGetIntersection called");
-    return NULL;
-}
-
-void* CMTimeRangeGetUnion(void) {
-    if (verbose) puts("STUB: CMTimeRangeGetUnion called");
-    return NULL;
-}
-
-void* CMTimeRangeMake(void) {
-    if (verbose) puts("STUB: CMTimeRangeMake called");
     return NULL;
 }
 
@@ -1548,11 +1448,6 @@ void* CMTimeRangeShow(void) {
 
 void* CMTimeShow(void) {
     if (verbose) puts("STUB: CMTimeShow called");
-    return NULL;
-}
-
-void* CMTimeSubtract(void) {
-    if (verbose) puts("STUB: CMTimeSubtract called");
     return NULL;
 }
 

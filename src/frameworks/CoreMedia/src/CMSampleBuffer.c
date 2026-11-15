@@ -19,5 +19,11 @@
 
 #include <CoreMedia/CMSampleBuffer.h>
 
+const CMSampleTimingInfo kCMTimingInfoInvalid = {
+    .duration = { .value = 0, .timescale = 0, .flags = 0, .epoch = 0 },
+    .presentationTimeStamp = { .value = 0, .timescale = 0, .flags = 0, .epoch = 0 },
+    .decodeTimeStamp = { .value = 0, .timescale = 0, .flags = 0, .epoch = 0 },
+};
+
 const CFStringRef kCMSampleAttachmentKey_DisplayImmediately = CFSTR("DisplayImmediately");
 const CFStringRef kCMSampleBufferAttachmentKey_ResetDecoderBeforeDecoding = CFSTR("ResetDecoderBeforeDecoding");
