@@ -19,6 +19,7 @@ add_framework(CloudKit
 
     SOURCES
         src/CloudKit.m
+        src/CKErrorConstants.m
         src/CKFlowControl.m
         src/CKRecordZoneID.m
         src/CKRepairAssetsOperation.m

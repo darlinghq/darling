@@ -23,6 +23,7 @@
 
 #import <Foundation/Foundation.h>
 
+#import <CloudKit/CKError.h>
 #import <CloudKit/APSConnectionDelegate.h>
 #import <CloudKit/C2RequestDelegate.h>
 #import <CloudKit/CKAssetRepairSchedulerDelegate.h>
