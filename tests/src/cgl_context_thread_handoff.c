@@ -8,7 +8,9 @@
 // The render thread must get the context on its first attempt, within a
 // bounded time, on every frame. Also checked: nested locks, errors for a
 // NULL context, and that a context used by a single thread keeps its
-// binding after CGLUnlockContext. Needs an offscreen OpenGL context (a host
+// binding after CGLUnlockContext. The main thread may also be busy with GL
+// calls for longer than a short grace period before it returns to its run
+// loop, or take the context's lock itself while the render thread waits. Needs an offscreen OpenGL context (a host
 // EGL driver).
 #include <CoreFoundation/CoreFoundation.h>
 #include <OpenGL/OpenGL.h>
@@ -73,32 +75,48 @@ int main(void)
 	CGLPixelFormatObj format = NULL;
 	GLint screens = 0;
 	CHECK(CGLChoosePixelFormat(attrs, &format, &screens) == kCGLNoError);
-	CHECK(CGLCreateContext(format, NULL, &g_context) == kCGLNoError);
-	if (!g_context) {
-		printf("FAIL: no context\n");
-		return 1;
-	}
-
 	CHECK(CGLLockContext(NULL) == kCGLBadContext);
 	CHECK(CGLUnlockContext(NULL) == kCGLBadContext);
 
-	// Main thread: set-up, then only the run loop.
-	CHECK(CGLSetCurrentContext(g_context) == kCGLNoError);
-	CHECK(glGetString(GL_VERSION) != NULL);
+	// Main thread: set-up, then (1) only the run loop, (2) a long stretch of
+	// GL work before the run loop, (3) a CGLLockContext while the render
+	// thread already holds the lock and waits for the main thread.
+	for (int mode = 0; mode < 3; mode++) {
+		g_done = 0;
+		CHECK(CGLCreateContext(format, NULL, &g_context) == kCGLNoError);
+		if (!g_context) {
+			printf("FAIL: no context\n");
+			return 1;
+		}
+		CHECK(CGLSetCurrentContext(g_context) == kCGLNoError);
+		CHECK(glGetString(GL_VERSION) != NULL);
 
-	pthread_t thread;
-	pthread_create(&thread, NULL, render_thread, NULL);
-	while (!g_done)
-		CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, false);
-	pthread_join(thread, NULL);
+		pthread_t thread;
+		pthread_create(&thread, NULL, render_thread, NULL);
+		if (mode == 1) {
+			// Longer than any short grace period: busy with GL calls, not
+			// back in the run loop yet.
+			for (int i = 0; i < 60; i++) {
+				CHECK(glGetString(GL_VERSION) != NULL);
+				usleep(10000);
+			}
+		} else if (mode == 2) {
+			usleep(100000);
+			CHECK(CGLLockContext(g_context) == kCGLNoError);
+			CHECK(CGLUnlockContext(g_context) == kCGLNoError);
+		}
+		while (!g_done)
+			CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, false);
+		pthread_join(thread, NULL);
 
-	// Nested locks on one thread.
-	CHECK(CGLLockContext(g_context) == kCGLNoError);
-	CHECK(CGLLockContext(g_context) == kCGLNoError);
-	CHECK(CGLUnlockContext(g_context) == kCGLNoError);
-	CHECK(CGLUnlockContext(g_context) == kCGLNoError);
-	CGLSetCurrentContext(NULL);
-	CGLDestroyContext(g_context);
+		// Nested locks on one thread.
+		CHECK(CGLLockContext(g_context) == kCGLNoError);
+		CHECK(CGLLockContext(g_context) == kCGLNoError);
+		CHECK(CGLUnlockContext(g_context) == kCGLNoError);
+		CHECK(CGLUnlockContext(g_context) == kCGLNoError);
+		CGLSetCurrentContext(NULL);
+		CGLDestroyContext(g_context);
+	}
 
 	// A context used by a single thread keeps its binding after unlocking.
 	CGLContextObj single = NULL;

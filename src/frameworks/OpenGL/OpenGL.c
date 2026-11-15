@@ -718,19 +718,28 @@ static CGLError bindCurrentContext(CGLContextObj context) {
 // release the EGL binding when it next runs. The main thread keeps the
 // context as its current context ("parked"): a later CGLSetCurrentContext,
 // or CGLLockContext of the current context, binds it again if no other
-// thread holds it. The refused thread waits a short, bounded time for the
+// thread holds it. The refused thread waits a bounded time for the
 // release, once per request, so that it cannot deadlock against a main
 // thread that is itself waiting for it; if the main thread does not respond
 // it is refused as before. A thread other than the main thread that binds a
 // context is not asked: its run loop, if it has one, is not known.
 // A context that no other thread asked for is never released this way.
 
+// How long a refused thread waits for the main thread to answer. The main
+// thread may be in the middle of a long run of GL calls (set-up that compiles
+// shaders can take seconds on a software driver) before it is back in its run
+// loop; a refused thread draws with no context, which crashes the host GL
+// driver, so it is better to wait. Only the first refusal of a request waits.
+#define HANDOFF_WAIT_SECONDS 10
+
 static int threadHoldsBinding(CGLContextObj context) {
     return context->binding == CGL_BINDING_BOUND && pthread_equal(context->binding_thread, pthread_self());
 }
 
-// Runs on the main thread's run loop. The context was retained for it.
-static void releaseBindingOnThisThread(CGLContextObj context) {
+// Gives the EGL binding up on the calling (main) thread if another thread
+// asked for the context. The context stays this thread's current context
+// ("parked").
+static void releaseRequestedBinding(CGLContextObj context) {
     pthread_mutex_lock(&g_bindingMutex);
     context->release_pending = 0;
     // Not while this thread is inside CGLLockContext (a nested run loop).
@@ -740,7 +749,25 @@ static void releaseBindingOnThisThread(CGLContextObj context) {
         context->binding = CGL_BINDING_PARKED;
     pthread_cond_broadcast(&g_bindingCond);
     pthread_mutex_unlock(&g_bindingMutex);
+}
+
+// Runs on the main thread's run loop. The context was retained for it.
+static void releaseBindingOnThisThread(CGLContextObj context) {
+    releaseRequestedBinding(context);
     CGLReleaseContext(context);
+}
+
+// The main thread is about to wait for the context's lock, which the thread
+// that asked for the binding may hold while it waits for the main thread:
+// answer the request first instead of leaving both waiting.
+static void answerPendingRelease(CGLContextObj context) {
+    if (!pthread_main_np())
+        return;
+    pthread_mutex_lock(&g_bindingMutex);
+    int pending = context->release_pending && threadHoldsBinding(context);
+    pthread_mutex_unlock(&g_bindingMutex);
+    if (pending)
+        releaseRequestedBinding(context);
 }
 
 static CGLError bindCurrentContext(CGLContextObj context);
@@ -762,7 +789,7 @@ static int requestRelease(CGLContextObj context) {
     CFRunLoopWakeUp(main_loop);
     struct timeval now;
     gettimeofday(&now, NULL);
-    struct timespec deadline = { now.tv_sec, (long) now.tv_usec * 1000 + 100 * 1000 * 1000 };
+    struct timespec deadline = { now.tv_sec + HANDOFF_WAIT_SECONDS, (long) now.tv_usec * 1000 };
     if (deadline.tv_nsec >= 1000 * 1000 * 1000) {
         deadline.tv_sec++;
         deadline.tv_nsec -= 1000 * 1000 * 1000;
@@ -1255,6 +1282,7 @@ CGLError CGLLockContext(CGLContextObj context) {
     if (context == NULL) {
         return kCGLBadContext;
     }
+    answerPendingRelease(context);
     pthread_mutex_lock(&(context->lock));
     if (context->lock_depth++ == 0) {
         pthread_mutex_lock(&g_bindingMutex);
