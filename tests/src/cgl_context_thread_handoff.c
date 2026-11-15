@@ -10,14 +10,18 @@
 // NULL context, and that a context used by a single thread keeps its
 // binding after CGLUnlockContext. The main thread may also be busy with GL
 // calls for longer than a short grace period before it returns to its run
-// loop, or take the context's lock itself while the render thread waits. Needs an offscreen OpenGL context (a host
-// EGL driver).
+// loop, or take the context's lock itself while the render thread waits. A
+// render thread may also hold an application lock while it asks for the
+// context, with a main thread that returned to its run loop earlier and then
+// blocks on that lock: the render thread must get the context at once. Needs
+// an offscreen OpenGL context (a host EGL driver).
 #include <CoreFoundation/CoreFoundation.h>
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/gl.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 static int g_failures = 0;
@@ -65,6 +69,47 @@ static void* render_thread(void* arg)
 	return NULL;
 }
 
+static pthread_mutex_t g_app_lock = PTHREAD_MUTEX_INITIALIZER;
+static volatile int g_stage;
+
+static double now_seconds(void)
+{
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return tv.tv_sec + tv.tv_usec / 1e6;
+}
+
+// Render thread that holds an application lock while it asks for the context.
+static void* locking_render_thread(void* arg)
+{
+	(void) arg;
+	// First contact: the context is only locked, which tells the framework
+	// that a second thread uses it.
+	CHECK(CGLLockContext(g_context) == kCGLNoError);
+	CHECK(CGLUnlockContext(g_context) == kCGLNoError);
+	g_stage = 1;
+	while (g_stage < 2)
+		usleep(1000);
+
+	pthread_mutex_lock(&g_app_lock);
+	g_stage = 3;
+	double start = now_seconds();
+	CHECK(CGLLockContext(g_context) == kCGLNoError);
+	CGLError error = CGLSetCurrentContext(g_context);
+	double waited = now_seconds() - start;
+	if (error != kCGLNoError || waited > 3.0)
+		printf("locked render thread: error %d after %.2f s\n", (int) error, waited);
+	CHECK(error == kCGLNoError);
+	CHECK(waited < 3.0);
+	CHECK(glGetString(GL_VERSION) != NULL);
+	CHECK(CGLFlushDrawable(g_context) == kCGLNoError);
+	CHECK(CGLUnlockContext(g_context) == kCGLNoError);
+	CGLSetCurrentContext(NULL);
+	pthread_mutex_unlock(&g_app_lock);
+	g_done = 1;
+	return NULL;
+}
+
 int main(void)
 {
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -81,7 +126,7 @@ int main(void)
 	// Main thread: set-up, then (1) only the run loop, (2) a long stretch of
 	// GL work before the run loop, (3) a CGLLockContext while the render
 	// thread already holds the lock and waits for the main thread.
-	for (int mode = 0; mode < 3; mode++) {
+	for (int mode = 0; mode < 4; mode++) {
 		g_done = 0;
 		CHECK(CGLCreateContext(format, NULL, &g_context) == kCGLNoError);
 		if (!g_context) {
@@ -92,6 +137,37 @@ int main(void)
 		CHECK(glGetString(GL_VERSION) != NULL);
 
 		pthread_t thread;
+		if (mode == 3) {
+			g_stage = 0;
+			pthread_create(&thread, NULL, locking_render_thread, NULL);
+			while (g_stage < 1)
+				CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, false);
+			// Back in the run loop at least once after the second thread
+			// showed up, then block on the application lock the render
+			// thread takes next.
+			for (int i = 0; i < 4; i++)
+				CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, false);
+			g_stage = 2;
+			while (g_stage < 3)
+				usleep(1000);
+			pthread_mutex_lock(&g_app_lock);
+			pthread_mutex_unlock(&g_app_lock);
+			pthread_join(thread, NULL);
+			// The main thread has the context current and draws with it
+			// after making it current again, and after locking it.
+			CHECK(CGLGetCurrentContext() == g_context);
+			CHECK(CGLSetCurrentContext(g_context) == kCGLNoError);
+			CHECK(glGetString(GL_VERSION) != NULL);
+			CHECK(CGLSetCurrentContext(NULL) == kCGLNoError);
+			CHECK(CGLSetCurrentContext(g_context) == kCGLNoError);
+			CHECK(CGLLockContext(g_context) == kCGLNoError);
+			CHECK(glGetString(GL_VERSION) != NULL);
+			CHECK(CGLFlushDrawable(g_context) == kCGLNoError);
+			CHECK(CGLUnlockContext(g_context) == kCGLNoError);
+			CGLSetCurrentContext(NULL);
+			CGLDestroyContext(g_context);
+			continue;
+		}
 		pthread_create(&thread, NULL, render_thread, NULL);
 		if (mode == 1) {
 			// Longer than any short grace period: busy with GL calls, not
