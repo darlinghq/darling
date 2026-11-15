@@ -273,6 +273,7 @@
 #import <Contacts/CNContactsWithIdentifiersPredicate.h>
 #import <Contacts/CNPostalAddress.h>
 #import <Contacts/_CNContactMatchingFetchRequestInfos.h>
+#import <Contacts/CNError.h>
 #import <Contacts/CNErrorFactory.h>
 #import <Contacts/CNMockContactsLogger.h>
 #import <Contacts/CNPolicy.h>
