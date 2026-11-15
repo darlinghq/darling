@@ -283,3 +283,6 @@ add_framework(CloudKit
         Foundation
         CoreLocation
 )
+
+# The implementations are written for ARC (no retain/release/dealloc anywhere in the target).
+target_compile_options(CloudKit PRIVATE -fobjc-arc)

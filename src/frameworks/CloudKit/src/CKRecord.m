@@ -58,6 +58,15 @@ static void CKValidateKey(NSString *key)
     }
 }
 
+// The share's documented system fields (title, thumbnail, type) use reserved keys that the ordinary
+// key rules would reject; only a CKShare may set them.
+static BOOL CKIsShareSystemKey(CKRecord *record, NSString *key)
+{
+    return [record isKindOfClass:[CKShare class]] &&
+           ([key isEqualToString:CKShareTitleKey] || [key isEqualToString:CKShareThumbnailImageDataKey] ||
+            [key isEqualToString:CKShareTypeKey]);
+}
+
 // Validates a value and returns the copy to store.
 static id CKCopyValidatedValue(id value)
 {
@@ -228,7 +237,8 @@ static id CKCopyValidatedValue(id value)
 
 - (void)setObject:(id<CKRecordValue>)object forKey:(CKRecordFieldKey)key
 {
-    CKValidateKey(key);
+    if (!CKIsShareSystemKey(self, key))
+        CKValidateKey(key);
     if (object == nil) {
         [_values removeObjectForKey:key];
     } else {
