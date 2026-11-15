@@ -40,4 +40,25 @@ IMAGEIO_EXTERN CGImageRef CGImageSourceCreateThumbnailAtIndex(CGImageSourceRef s
 
 IMAGEIO_EXTERN CGImageSourceRef CGImageSourceCreateWithDataProvider(CGDataProviderRef provider, CFDictionaryRef options);
 
+IMAGEIO_EXTERN const CFStringRef kCGImageAuxiliaryDataTypeDepth;
+IMAGEIO_EXTERN const CFStringRef kCGImageAuxiliaryDataTypeDisparity;
+IMAGEIO_EXTERN const CFStringRef kCGImageAuxiliaryDataTypeHDRGainMap;
+IMAGEIO_EXTERN const CFStringRef kCGImageAuxiliaryDataTypeISOGainMap;
+IMAGEIO_EXTERN const CFStringRef kCGImageAuxiliaryDataInfoData;
+IMAGEIO_EXTERN const CFStringRef kCGImageAuxiliaryDataInfoDataDescription;
+
+IMAGEIO_EXTERN CFDictionaryRef CGImageSourceCopyAuxiliaryDataInfoAtIndex(CGImageSourceRef isrc, size_t index, CFStringRef auxiliaryImageDataType);
+
+typedef CF_ENUM(int32_t, CGImageSourceStatus) {
+    kCGImageStatusUnexpectedEOF = -5,
+    kCGImageStatusInvalidData = -4,
+    kCGImageStatusUnknownType = -3,
+    kCGImageStatusReadingHeader = -2,
+    kCGImageStatusIncomplete = -1,
+    kCGImageStatusComplete = 0
+};
+
+IMAGEIO_EXTERN CFArrayRef CGImageSourceCopyTypeIdentifiers(void);
+IMAGEIO_EXTERN CGImageSourceStatus CGImageSourceGetStatus(CGImageSourceRef isrc);
+
 CF_IMPLICIT_BRIDGING_DISABLED
