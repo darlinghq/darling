@@ -79,6 +79,9 @@ int main(void)
 		PasteboardSynchronize(clip);
 		PasteboardGetItemIdentifier(clip, 1, &item);
 		check("not provided yet", owner->provided == 0);
+		PasteboardFlavorFlags promiseFlags = 99;
+		check("an NSPasteboard promise is not flagged Promised through the Pasteboard Manager",
+			PasteboardGetItemFlavorFlags(clip, item, CFSTR("public.utf8-plain-text"), &promiseFlags) == noErr && !(promiseFlags & kPasteboardFlavorPromised));
 		check("read provides", PasteboardCopyItemFlavorData(clip, item, CFSTR("public.utf8-plain-text"), &data) == noErr
 			&& CFDataGetLength(data) == 13 && owner->provided == 1);
 		PasteboardCopyItemFlavorData(clip, item, CFSTR("public.utf8-plain-text"), &data);

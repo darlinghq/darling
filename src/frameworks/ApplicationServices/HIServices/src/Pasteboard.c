@@ -272,8 +272,10 @@ OSStatus PasteboardPutItemFlavor(PasteboardRef ref, PasteboardItemID item, CFStr
 		return translateStatus(CFPasteboardSetData(ref->pasteboard, id, type, data, (CFPasteboardFlavorFlags)flags), paramErr);
 	}
 	if (keeper == NULL) return noPasteboardPromiseKeeperErr;
+	// (the promise is made visible: macOS reports promises of the Pasteboard Manager as flagged Promised, unlike
+	// NSPasteboard's)
 	CFRetain(ref);   // released with the provider
-	CFPasteboardStatus status = CFPasteboardPromiseData(ref->pasteboard, id, type, (CFPasteboardFlavorFlags)flags, &gKeeperProvider, ref);
+	CFPasteboardStatus status = CFPasteboardPromiseData(ref->pasteboard, id, type, (CFPasteboardFlavorFlags)flags | kCFPasteboardFlavorPromiseVisible, &gKeeperProvider, ref);
 	if (status != kCFPasteboardSuccess) CFRelease(ref);
 	return translateStatus(status, noPasteboardPromiseKeeperErr);
 }
