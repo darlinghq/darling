@@ -177,6 +177,7 @@ int sandbox_unsuspend(void);
  * yields 0 and releasing always succeeds, as on macOS. Nothing is enforced. */
 char *sandbox_extension_issue_file(const char *extension_class, const char *path, uint32_t flags);
 char *sandbox_extension_issue_file_to_process(const char *extension_class, const char *path, uint32_t flags, audit_token_t target);
+char *sandbox_extension_issue_file_to_self(const char *extension_class, const char *path, uint32_t flags);
 char *sandbox_extension_issue_mach(const char *extension_class, const char *name, uint32_t flags);
 char *sandbox_extension_issue_mach_to_process(const char *extension_class, const char *name, uint32_t flags, audit_token_t target);
 char *sandbox_extension_issue_generic(const char *extension_class, uint32_t flags);

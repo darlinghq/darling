@@ -397,6 +397,12 @@ char *sandbox_extension_issue_file_to_process(const char *extension_class, const
 	return sandbox_extension_issue(SANDBOX_EXT_FILE, extension_class, path, flags);
 }
 
+char *sandbox_extension_issue_file_to_self(const char *extension_class, const char *path, uint32_t flags)
+{
+	// The grantee is the calling process; the token carries no grantee anyway
+	return sandbox_extension_issue(SANDBOX_EXT_FILE, extension_class, path, flags);
+}
+
 char *sandbox_extension_issue_mach(const char *extension_class, const char *name, uint32_t flags)
 {
 	return sandbox_extension_issue(SANDBOX_EXT_MACH, extension_class, name, flags);
