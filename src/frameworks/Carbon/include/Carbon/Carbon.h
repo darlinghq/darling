@@ -40,4 +40,6 @@
 #include <HIToolbox/TextInputSources.h>
 #include <HIToolbox/TextServices.h>
 
+#include <CarbonSound/CarbonSound.h>
+
 #endif
