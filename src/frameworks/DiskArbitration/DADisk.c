@@ -7,6 +7,10 @@
 #include <CoreFoundation/CFURL.h>
 #include <CoreFoundation/CFDictionary.h>
 #include <CoreFoundation/CoreFoundation.h>
+#include <limits.h>
+#include <stdlib.h>
+
+#include "DAPrivate.h"
 
 #define CONST_STRING_DECL(name, value) const CFStringRef name = CFSTR(value);
 
@@ -99,13 +103,6 @@ void _DADiskInitializeMatchObjects(void)
 	pthread_once(&once, DADiskInitializeMatchObjects);
 }
 
-struct __DADisk
-{
-  CFRuntimeBase _parent;
-  DASessionRef session;
-  CFStringRef path;
-};
-
 static CFTypeID _kDADiskTypeID = 0;
 static void DADiskFinalize(CFTypeRef cf);
 static Boolean DADiskEqual(CFTypeRef cf1, CFTypeRef cf2);
@@ -138,35 +135,49 @@ DADiskFinalize (CFTypeRef cf)
 {
 	DADiskRef disk = (DADiskRef) cf;
 	CFRelease(disk->session);
-	CFRelease(disk->path);
+	CFRelease(disk->name);
 }
 
+// Disks are equal when they have the same BSD name.
 static Boolean
 DADiskEqual (CFTypeRef cf1, CFTypeRef cf2)
 {
 	DADiskRef d1 = (DADiskRef) cf1;
 	DADiskRef d2 = (DADiskRef) cf2;
-	return CFStringCompare(d1->path, d2->path, 0) == kCFCompareEqualTo;
+	return CFEqual(d1->name, d2->name);
 }
 
 static CFHashCode
 DADiskHash (CFTypeRef cf)
 {
-	return CFHash(((DADiskRef) cf)->path);
+	return CFHash(((DADiskRef) cf)->name);
+}
+
+static DADiskRef DADiskCreateWithName(CFAllocatorRef allocator, DASessionRef session, const char* name)
+{
+	DADiskRef new;
+
+	if (session == NULL || name == NULL)
+		return NULL;
+	if (strncmp(name, "/dev/", 5) == 0)
+		name += 5;
+	if (strlen(name) >= sizeof(new->bsdName))
+		return NULL;
+
+	new = (DADiskRef) _CFRuntimeCreateInstance (allocator, _kDADiskTypeID,
+												DADISK_SIZE, 0);
+	if (new == NULL)
+		return NULL;
+	strcpy(new->bsdName, name);
+	new->name = CFStringCreateWithCString(allocator, name, kCFStringEncodingUTF8);
+	new->session = (DASessionRef) CFRetain(session);
+	return new;
 }
 
 static DADiskRef
 DADiskCreateCopy (CFAllocatorRef allocator, DADiskRef disk)
 {
-	CFStringRef path;
-	DADiskRef new;
-	
-	new = (DADiskRef) _CFRuntimeCreateInstance (allocator, _kDADiskTypeID,
-												DADISK_SIZE, 0);
-	new->path = (CFStringRef) CFRetain(disk->path);
-	new->session = (DASessionRef) CFRetain(disk->session);
-	
-	return new;
+	return DADiskCreateWithName(allocator, disk->session, disk->bsdName);
 }
 
 CFTypeID DADiskGetTypeID(void)
@@ -174,45 +185,39 @@ CFTypeID DADiskGetTypeID(void)
 	return _kDADiskTypeID;
 }
 
+// Any name gives a disk; one that names no disk has no description.
 DADiskRef DADiskCreateFromBSDName(CFAllocatorRef allocator,
 		DASessionRef session, const char* name)
 {
-	CFStringRef path;
-	DADiskRef new;
-	
-	path = CFStringCreateWithCString(allocator, name, kCFStringEncodingUTF8);
-	
-	new = (DADiskRef) _CFRuntimeCreateInstance (allocator, _kDADiskTypeID,
-												DADISK_SIZE, 0);
-	new->path = path;
-	new->session = (DASessionRef) CFRetain(session);
-	
-	return new;
+	return DADiskCreateWithName(allocator, session, name);
 }
 
 DADiskRef DADiskCreateFromIOMedia(CFAllocatorRef allocator,
 		DASessionRef session, io_service_t media)
 {
-	return DADiskCreateFromBSDName(allocator, session, "/dummy");
+	return NULL;
 }
 
+// Only the exact mount point of a volume gives a disk (a trailing slash does not matter).
 DADiskRef DADiskCreateFromVolumePath(CFAllocatorRef allocator,
 		DASessionRef session, CFURLRef url)
 {
-	CFStringRef path;
-	DADiskRef new;
-	
-	new = (DADiskRef) _CFRuntimeCreateInstance (allocator, _kDADiskTypeID,
-												DADISK_SIZE, 0);
-	new->path = (CFStringRef) CFRetain(CFURLGetString(url));
-	new->session = (DASessionRef) CFRetain(session);
-	
-	return new;
+	char path[PATH_MAX], resolved[PATH_MAX], name[64];
+
+	if (session == NULL || url == NULL)
+		return NULL;
+	if (!CFURLGetFileSystemRepresentation(url, true, (UInt8*) path, sizeof(path)))
+		return NULL;
+	if (realpath(path, resolved) == NULL)
+		return NULL;
+	if (!_DAClientLookupPath(session, resolved, name, sizeof(name)))
+		return NULL;
+	return DADiskCreateWithName(allocator, session, name);
 }
 
 const char* DADiskGetBSDName(DADiskRef disk)
 {
-	return CFStringGetCStringPtr(disk->path,kCFStringEncodingUTF8);
+	return disk->bsdName;
 }
 
 io_service_t DADiskCopyIOMedia(DADiskRef disk)
@@ -222,13 +227,25 @@ io_service_t DADiskCopyIOMedia(DADiskRef disk)
 
 CFDictionaryRef DADiskCopyDescription(DADiskRef disk)
 {
-	return CFDictionaryCreate(NULL, NULL, NULL, 0,
-			&kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	return _DAClientCopyDescription(disk->session, disk->bsdName);
 }
 
+// The whole disk of "diskNsM" is "diskN"; NULL if it does not exist.
 DADiskRef DADiskCopyWholeDisk(DADiskRef disk)
 {
-	return (DADiskRef) CFRetain(disk);
+	char whole[sizeof(disk->bsdName)];
+	char* slice;
+
+	strcpy(whole, disk->bsdName);
+	slice = strchr(whole + 4, 's');
+	if (strncmp(whole, "disk", 4) == 0 && slice != NULL)
+		*slice = 0;
+
+	CFDictionaryRef description = _DAClientCopyDescription(disk->session, whole);
+	if (description == NULL)
+		return NULL;
+	CFRelease(description);
+	return DADiskCreateWithName(CFGetAllocator(disk), disk->session, whole);
 }
 
 // There is no disk arbitration daemon, so no disk exists and every operation on a disk fails.
