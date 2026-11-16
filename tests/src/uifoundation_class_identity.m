@@ -17,14 +17,20 @@
 // UIFoundation (and not unrelated libraries), and no class is defined by both
 // AppKit and UIFoundation (the runtime would then pick one of the two).
 //
-// Instances AppKit's text view creates are the UIFoundation classes, and a
-// paragraph style survives a keyed archive round trip and a copy.
+// A few constants AppKit keeps are checked the other way round, and
+// NSConvertGlyphsToPackedGlyphs is UIFoundation's.
+//
+// Instances AppKit's text view creates are the UIFoundation classes, a
+// paragraph style survives a keyed archive round trip and a copy, and the
+// moved classes get AppKit's objects (attachment cell, shadow colour) through
+// the provider AppKit registers.
 //
 // Loads AppKit with dlopen; needs an X display (AppKit's text view looks up
 // fonts). Prints PASS or FAIL lines, then
 // ALL PASSED or FAILED n.
 #import <Foundation/Foundation.h>
 #include <dlfcn.h>
+#include <math.h>
 #include <objc/runtime.h>
 #include <stdio.h>
 #include <string.h>
@@ -50,6 +56,25 @@ static const char *const uifoundationClasses[] = {
     "NSCollectionViewTransitionLayout",
     "NSCollectionViewUpdateItem",
     "NSCollectionViewFlowLayoutInvalidationContext",
+    "NSShadow",
+    "NSTextAttachment",
+    "NSTextStorage",
+    "NSGlyphGenerator",
+    "NSTypesetter",
+    "NSATSTypesetter",
+    "NSLayoutManager",
+    "NSTextContainer",
+    // TextKit 2 is newer than 10.14; UIFoundation defines it on macOS 26.7.3.
+    "NSTextRange",
+    "NSTextContentManager",
+    "NSTextContentStorage",
+    "NSTextLayoutManager",
+};
+
+// Classes AppKit defines on macOS that subclass or use the moved classes.
+static const char *const appkitClasses[] = {
+    "NSTextView",
+    "NSTextAttachmentCell",
 };
 
 // String constants UIFoundation defines (and AppKit does not) on macOS, with
@@ -70,6 +95,33 @@ static const struct {
     {"NSFlowLayoutCommonRowHorizontalAlignmentKey", @"UIFlowLayoutCommonRowHorizontalAlignmentKey"},
     {"NSFlowLayoutLastRowHorizontalAlignmentKey", @"UIFlowLayoutLastRowHorizontalAlignmentKey"},
     {"NSFlowLayoutRowVerticalAlignmentKey", @"UIFlowLayoutRowVerticalAlignmentKey"},
+    {"NSFontAttributeName", @"NSFont"},
+    {"NSParagraphStyleAttributeName", @"NSParagraphStyle"},
+    {"NSForegroundColorAttributeName", @"NSColor"},
+    {"NSBackgroundColorAttributeName", @"NSBackgroundColor"},
+    {"NSUnderlineStyleAttributeName", @"NSUnderline"},
+    {"NSAttachmentAttributeName", @"NSAttachment"},
+    {"NSShadowAttributeName", @"NSShadow"},
+    {"NSLinkAttributeName", @"NSLink"},
+    {"NSSuperscriptAttributeName", @"NSSuperScript"},
+    {"NSSpellingStateAttributeName", @"NSSpellingState"},
+    {"NSDocumentTypeDocumentAttribute", @"DocumentType"},
+    {"NSPlainTextDocumentType", @"NSPlainText"},
+    {"NSRTFTextDocumentType", @"NSRTF"},
+    {"NSTextStorageWillProcessEditingNotification", @"NSTextStorageWillProcessEditingNotification"},
+    {"NSTextStorageDidProcessEditingNotification", @"NSTextStorageDidProcessEditingNotification"},
+    {"NSTextViewDidChangeSelectionNotification", @"NSTextViewDidChangeSelectionNotification"},
+    {"NSTextViewDidChangeTypingAttributesNotification", @"NSTextViewDidChangeTypingAttributesNotification"},
+    {NULL, nil},
+};
+
+// String constants AppKit itself defines on macOS 10.14.4 and 26.7.3.
+static const struct {
+    const char *symbol;
+    NSString *value;
+} appkitStrings[] = {
+    {"NSUsesScreenFontsDocumentAttribute", @"UsesScreenFonts"},
+    {"NSViewFrameDidChangeNotification", @"NSViewFrameDidChangeNotification"},
     {NULL, nil},
 };
 
@@ -139,6 +191,21 @@ static void checkString(void *appkit, void *uif, const char *symbol, NSString *v
           viaUIFoundation ? [*viaUIFoundation UTF8String] : "(missing)");
 }
 
+static void checkAppKitClass(const char *name)
+{
+    Class cls = objc_getClass(name);
+    expect(cls != Nil && hasSuffix(class_getImageName(cls), "/AppKit"), "%s: defined by AppKit (%s)", name,
+          cls ? class_getImageName(cls) : "missing");
+}
+
+static void checkAppKitString(void *appkit, void *uif, const char *symbol, NSString *value)
+{
+    NSString **viaAppKit = dlsym(appkit, symbol);
+    expect(viaAppKit != NULL && hasSuffix(imageOf(viaAppKit), "/AppKit") && [*viaAppKit isEqualToString: value],
+          "%s: defined by AppKit (%s)", symbol, imageOf(viaAppKit));
+    expect(dlsym(uif, symbol) == NULL, "%s: not defined by UIFoundation", symbol);
+}
+
 static void checkNoClassInBoth(const char *appkitImage, const char *uifImage)
 {
     unsigned int appkitCount = 0, uifCount = 0;
@@ -180,6 +247,14 @@ static void checkNoClassInBoth(const char *appkitImage, const char *uifImage)
      startingColumn:(NSInteger)column
          columnSpan:(NSInteger)columnSpan;
 - (id)initWithMarkerFormat:(NSString *)format options:(NSUInteger)options;
+- (id)layoutManager;
+- (id)textContainer;
+- (id)attachmentCell;
+- (id)attachment;
+- (void)setContents:(NSData *)contents;
+- (NSData *)contents;
+- (id)shadowColor;
+- (CGFloat)alphaComponent;
 @end
 
 static void checkAppKitInstances(void)
@@ -223,6 +298,42 @@ static void checkAppKitInstances(void)
     expect(isUIFoundation(class_getImageName([copied class])) && [copied isEqual: mutableStyle] &&
                   [[copied textBlocks] objectAtIndex: 0] == block && [[copied textLists] objectAtIndex: 0] == list,
           "an immutable copy keeps the text block and list (%s)", class_getName([copied class]));
+    // The text view's text system objects are, or derive from, the moved
+    // classes.
+    id storage = [textView textStorage], layoutManager = [textView layoutManager],
+       container = [textView textContainer];
+    expect([storage isKindOfClass: objc_getClass("NSTextStorage")] &&
+                  [layoutManager isKindOfClass: objc_getClass("NSLayoutManager")] &&
+                  [container isKindOfClass: objc_getClass("NSTextContainer")],
+          "NSTextView's storage, layout manager and container are the UIFoundation classes or subclasses (%s, %s, %s)",
+          class_getName([storage class]), class_getName([layoutManager class]), class_getName([container class]));
+    expect(isUIFoundation(class_getImageName([layoutManager class])) &&
+                  isUIFoundation(class_getImageName([container class])),
+          "a plain text view's layout manager and container come from UIFoundation");
+
+    // A text attachment made in UIFoundation gets its cell from AppKit, and
+    // a keyed archive round trip keeps the contents and gives it a new cell.
+    id attachment = [[[objc_getClass("NSTextAttachment") alloc] init] autorelease];
+    id cell = [attachment attachmentCell];
+    expect(cell != nil && [cell isKindOfClass: objc_getClass("NSTextAttachmentCell")] && [cell attachment] == attachment,
+          "a new text attachment has an AppKit NSTextAttachmentCell pointing back to it (%s)",
+          cell ? class_getName([cell class]) : "nil");
+    NSData *payload = [@"payload" dataUsingEncoding: NSUTF8StringEncoding];
+    [attachment setContents: payload];
+    id decodedAttachment =
+            [NSKeyedUnarchiver unarchiveObjectWithData: [NSKeyedArchiver archivedDataWithRootObject: attachment]];
+    expect(decodedAttachment != nil && [[decodedAttachment contents] isEqual: payload] &&
+                  [[decodedAttachment attachmentCell] isKindOfClass: objc_getClass("NSTextAttachmentCell")],
+          "a text attachment survives a keyed archive round trip");
+
+    // A new shadow is black with an alpha of one third, an AppKit colour.
+    id shadow = [[[objc_getClass("NSShadow") alloc] init] autorelease];
+    id shadowColor = [shadow shadowColor];
+    expect(shadowColor != nil && [shadowColor isKindOfClass: objc_getClass("NSColor")] &&
+                  fabs([shadowColor alphaComponent] - 1.0 / 3.0) < 0.001,
+          "a new shadow's colour is an NSColor with alpha 1/3 (%s)",
+          shadowColor ? class_getName([shadowColor class]) : "nil");
+
     id defaultStyle = [objc_getClass("NSParagraphStyle") defaultParagraphStyle];
     expect(defaultStyle == [objc_getClass("NSParagraphStyle") defaultParagraphStyle] &&
                   isUIFoundation(class_getImageName([defaultStyle class])),
@@ -263,6 +374,13 @@ int main(void)
         expect(kind != NULL && [*kind isEqualToString: @"NSCollectionElementKindSelectionRectIndicator"],
                "NSCollectionElementKindSelectionRectIndicator: value");
     }
+    for (size_t i = 0; i < sizeof(appkitClasses) / sizeof(appkitClasses[0]); i++)
+        checkAppKitClass(appkitClasses[i]);
+    for (size_t i = 0; appkitStrings[i].symbol != NULL; i++)
+        checkAppKitString(appkit, uif, appkitStrings[i].symbol, appkitStrings[i].value);
+    void *pack = dlsym(uif, "NSConvertGlyphsToPackedGlyphs");
+    expect(pack != NULL && pack == dlsym(appkit, "NSConvertGlyphsToPackedGlyphs") && isUIFoundation(imageOf(pack)),
+          "NSConvertGlyphsToPackedGlyphs is UIFoundation's, also through AppKit (%s)", imageOf(pack));
     if (appkitImage && uifImage)
         checkNoClassInBoth(appkitImage, uifImage);
     checkAppKitInstances();
