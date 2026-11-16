@@ -368,6 +368,15 @@ static void destroy(DAMedia* media, const DAModelEvents* events)
 	free(media);
 }
 
+// A disk image's volume: mounted from a file (an absolute path outside /dev) by a file system that names its macOS
+// kind, as darling-dmg does through the kernel layer ("hfs"). Another FUSE file system with a file as its source
+// reports its Linux type ("fuse" or "fuse.<subtype>") and is not a disk.
+static bool isImageVolume(const struct statfs* volume)
+{
+	return volume->f_mntfromname[0] == '/' && strncmp(volume->f_mntfromname, "/dev/", 5) != 0
+		&& strncmp(volume->f_fstypename, "fuse", 4) != 0;
+}
+
 void DAModelRescan(const DAModelEvents* events)
 {
 	int count = getfsstat(NULL, 0, MNT_NOWAIT);
@@ -393,7 +402,7 @@ void DAModelRescan(const DAModelEvents* events)
 	{
 		const struct statfs* volume = &volumes[i];
 		bool root = strcmp(volume->f_mntonname, "/") == 0;
-		bool image = !root && volume->f_mntfromname[0] == '/' && strncmp(volume->f_mntfromname, "/dev/", 5) != 0;
+		bool image = !root && isImageVolume(volume);
 		if (!root && !image)
 			continue;
 
@@ -428,8 +437,7 @@ void DAModelRescan(const DAModelEvents* events)
 	for (int i = 0; i < count; i++)
 	{
 		const struct statfs* volume = &volumes[i];
-		bool image = strcmp(volume->f_mntonname, "/") != 0 && volume->f_mntfromname[0] == '/'
-			&& strncmp(volume->f_mntfromname, "/dev/", 5) != 0;
+		bool image = strcmp(volume->f_mntonname, "/") != 0 && isImageVolume(volume);
 		if (image && DAModelFindMountPoint(volume->f_mntonname) == NULL)
 			appear(volume, false, events);
 	}

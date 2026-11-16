@@ -126,5 +126,56 @@ if build da-ops "$here/da-ops.c"; then
 	[ "$(rc ops)" = 0 ] || fail "ops: the sequence failed: $(outputs ops)"
 fi
 
+# a FUSE file system whose source is a file, but which is not a disk image (it names no volume kind), is not a disk.
+# It is mounted from the host, in the guest's /Volumes; only non-root mode's guest sees host mounts.
+if [ "${DARLING_NONROOT:-}" = 1 ] && cc -o "$work/fuse-file-source" "$here/fuse-file-source-host.c" \
+		$(pkg-config --cflags --libs fuse3) 2>"$work/ffs.build"; then
+	touch "$work/source.img"
+	mkdir "$DPREFIX/Volumes/File Source"
+	"$work/fuse-file-source" "$work/source.img" "$DPREFIX/Volumes/File Source" &
+	sleep 1
+	guest filesource "echo \"disk: \$('$gw/da-disks' --name '/Volumes/File Source')\"; df '/Volumes/File Source' | grep -c source.img"
+	fusermount3 -u "$DPREFIX/Volumes/File Source"
+	wait
+	rmdir "$DPREFIX/Volumes/File Source" 2>/dev/null # unless diskarbitrationd removed it
+	[ "$(tr '\n' '|' < "$work/filesource.out")" = "disk: |1|" ] \
+		&& pass "a FUSE volume that is not a disk image" || fail "a FUSE volume that is not a disk image: $(outputs filesource)"
+else
+	echo "SKIP: a FUSE volume that is not a disk image (needs non-root mode and libfuse3)"
+fi
+
+# only root and the user who attached an image may unmount or eject it: another user gets kDAReturnNotPrivileged.
+# Changing the uid needs a guest running as root (rootless mode); elsewhere the case is skipped.
+if [ -x "$work/da-ops" ]; then
+	guest priv "(hdiutil attach -quiet '$gw/unmount-test.dmg' || exit 9
+		leaf=\$('$gw/da-disks' --name '/Volumes/Unmount Test')
+		'$gw/da-ops' --uid 501 unmount \$leaf 0; '$gw/da-ops' --uid 501 eject \${leaf%s1}
+		test -e '/Volumes/Unmount Test/hello.txt' && echo still-mounted
+		hdiutil detach -quiet '/Volumes/Unmount Test')"
+	if grep -q "cannot change uid" "$work/priv.out"; then
+		echo "SKIP: unmount and eject by another user (the guest cannot change its uid)"
+	else
+		[ "$(tr '\n' '|' < "$work/priv.out")" = "status f8da0009|status f8da0009|still-mounted|" ] \
+			&& pass "unmount and eject by another user" || fail "unmount and eject by another user: $(outputs priv)"
+	fi
+fi
+
+# without the daemon (its job unloaded) a session still works and knows no disks. Unloading needs a guest running as
+# root (rootless mode); elsewhere the case is skipped.
+if [ -x "$work/da-ops" ]; then
+	guest nodaemon "(P=/System/Library/LaunchDaemons/com.apple.diskarbitrationd.plist
+		launchctl unload \$P 2>/dev/null
+		if launchctl list | grep -q 'com.apple.diskarbitrationd\$'; then echo not-unloaded; exit 0; fi
+		'$gw/da-ops' no-daemon disk0s1; r=\$?
+		launchctl load \$P 2>/dev/null; exit \$r)"
+	if grep -q not-unloaded "$work/nodaemon.out"; then
+		echo "SKIP: session without the daemon (the guest cannot unload the daemon's job)"
+	else
+		[ "$(rc nodaemon)" = 0 ] && [ "$(grep -v '^status\|^string' "$work/nodaemon.out" | tr '\n' '|')" = "root volume: none|description: absent|released|" ] \
+			&& grep -Eq '^status [1-9a-f]' "$work/nodaemon.out" \
+			&& pass "session without the daemon" || fail "session without the daemon: rc $(rc nodaemon), $(outputs nodaemon)"
+	fi
+fi
+
 rm -rf "$work"
 [ "$failures" = 0 ]
