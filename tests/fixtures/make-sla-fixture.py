@@ -3,12 +3,13 @@
 agreement in English (region code 0, resources 5000), German (region code 3, resources 5001) and Japanese
 (region code 14, resources 5002, Shift JIS).
 
-Usage: make-sla-fixture.py <output.xml> [<LPic first field> [good|short-lpic|overcount]]
+Usage: make-sla-fixture.py <output.xml> [<LPic first field> [good|short-lpic|overcount|lines]]
 
 The layout follows public descriptions of the UDIF licence resources ('LPic' language table, one 'STR#' with the
 language name, button titles and prompt per language, and the agreement text as 'TEXT' in the language's Mac
 encoding). The first LPic field (the default language) defaults to 5000. The "short-lpic" variant cuts the LPic
-table off inside its first entry; "overcount" claims five entries in a table that has three.
+table off inside its first entry; "overcount" claims five entries in a table that has three; "lines" makes the
+English text "A<CR>B<CR><CR>C<LF>D<CR><LF>" (to see how line breaks are shown).
 """
 import plistlib
 import struct
@@ -51,6 +52,8 @@ def main():
         lpic += struct.pack(">HHH", region, res_id - 5000, two_byte)
         strs.append(resource(res_id, "buttons",
                              struct.pack(">H", len(strings)) + b"".join(pascal(s, encoding) for s in strings)))
+        if variant == "lines" and region == 0:
+            text = "A\rB\r\rC\nD\r\n"
         texts.append(resource(res_id, "SLA", text.encode(encoding)))
     if variant == "short-lpic":
         lpic = lpic[:7]
