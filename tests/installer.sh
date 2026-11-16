@@ -178,5 +178,45 @@ has js && pass "a JavaScript selected condition keeps the default" || fail "a Ja
 grep -q "Warning: choice Script: the JavaScript in 'selected' is not evaluated" choices.out && pass "an unevaluated JavaScript condition is reported" || fail "an unevaluated JavaScript condition is reported"
 "$INSTALLER" -pkginfo -pkg "$DIR/choices.pkg" 2>&1 | tr '\n' ' ' | grep -qx 'default js ' && pass "-pkginfo lists the packages that would be installed" || fail "-pkginfo lists the packages that would be installed"
 
+# ---- choice XML (-showChoicesXML, choice changes files) ------------------
+# Observed on macOS 26 (x86_64). The "js" choice is left out below: macOS evaluates its
+# JavaScript condition, Darling keeps the default.
+flat() { tr -d ' \n'; }
+CH="$DIR/choices.pkg"
+"$INSTALLER" -pkg "$CH" -showChoicesXML 2>&1 | flat | grep -q '<key>choiceIdentifier</key><string>__ROOT_CHOICE_IDENT_Choices</string><key>choiceIsEnabled</key><true/><key>choiceIsSelected</key><integer>-1</integer>' && pass "-showChoicesXML: root choice with mixed selection" || fail "-showChoicesXML: root choice with mixed selection"
+"$INSTALLER" -pkg "$CH" -showChoicesXML 2>&1 | flat | grep -q '<key>choiceIdentifier</key><string>default</string><key>choiceIsEnabled</key><true/><key>choiceIsSelected</key><integer>1</integer><key>choiceIsVisible</key><true/><key>choiceSizeInKilobytes</key><integer>1</integer><key>choiceTitle</key><string>Default</string><key>pathsOfActivePackagesInChoice</key><array><string>file://localhost/.*choices.pkg#default.pkg</string></array>' && pass "-showChoicesXML: a leaf choice" || fail "-showChoicesXML: a leaf choice"
+"$INSTALLER" -pkg "$CH" -showChoicesXML 2>&1 | flat | grep -q '<string>inactive</string>.*<key>choiceSizeInKilobytes</key><integer>0</integer><key>choiceTitle</key><string>Inactive</string><key>pathsOfActivePackagesInChoice</key><array/>' && pass "-showChoicesXML: an inactive package is not listed" || fail "-showChoicesXML: an inactive package is not listed"
+changes() { flat | grep -o '<integer>[01]</integer><key>choiceAttribute</key><string>selected</string><key>choiceIdentifier</key><string>[a-z]*</string>' | sed 's/<integer>\(.\)<\/integer>.*<string>\([a-z]*\)<\/string>$/\2=\1/' | tr '\n' ' '; }
+eq "-showChoiceChangesXML: selected states" "$("$INSTALLER" -pkg "$CH" -target / -showChoiceChangesXML 2>&1 | changes | tr ' ' '\n' | grep -v '^js=' | tr '\n' ' ')" "default=1 startfalse=0 selfalse=0 inactive=1 "
+"$INSTALLER" -pkg "$CH" -target / -showChoiceChangesXML 2>&1 | grep -c '<dict>' | grep -qx 15 && pass "-showChoiceChangesXML: visible, enabled and selected per choice" || fail "-showChoiceChangesXML: visible, enabled and selected per choice"
+
+cat > dict.plist <<X
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><array>
+<dict><key>choiceIdentifier</key><string>startfalse</string><key>choiceAttribute</key><string>selected</string><key>attributeSetting</key><integer>1</integer></dict>
+<dict><key>choiceIdentifier</key><string>default</string><key>choiceAttribute</key><string>selected</string><key>attributeSetting</key><integer>0</integer></dict>
+<dict><key>choiceIdentifier</key><string>nosuchchoice</string><key>choiceAttribute</key><string>selected</string><key>attributeSetting</key><integer>1</integer></dict>
+</array></plist>
+X
+cat > strings.plist <<X
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><array><string>startfalse</string><string>default</string></array></plist>
+X
+for f in dict strings; do
+	eq "-showChoicesAfterApplyingChangesXML with a $f file" "$("$INSTALLER" -pkg "$CH" -target / -showChoicesAfterApplyingChangesXML $f.plist 2>&1 | changes | tr ' ' '\n' | grep -v '^js=' | tr '\n' ' ')" "default=0 startfalse=1 selfalse=0 inactive=1 "
+done
+eq "-showChoicesAfterApplyingChangesXML without -target: exit status 255" "$("$INSTALLER" -pkg "$CH" -showChoicesAfterApplyingChangesXML dict.plist >/dev/null 2>&1; echo $?)" 255
+"$INSTALLER" -pkg "$CH" -showChoicesAfterApplyingChangesXML dict.plist 2>&1 | grep -qx 'installer: Error -target parameter required' && pass "a missing -target is reported" || fail "a missing -target is reported"
+eq "a missing choices file" "$("$INSTALLER" -pkg "$CH" -target / -showChoicesAfterApplyingChangesXML /nonexistent.plist 2>&1)" "installer: choices file '/nonexistent.plist' either could not be found or was malformed."
+eq "a missing choices file: exit status 1" "$("$INSTALLER" -pkg "$CH" -target / -showChoicesAfterApplyingChangesXML /nonexistent.plist >/dev/null 2>&1; echo $?)" 1
+
+mkdir dst6
+t "-applyChoiceChangesXML installs" "$INSTALLER" -pkg "$CH" -target "$T/dst6" -applyChoiceChangesXML dict.plist
+[ -e dst6/startfalse.txt ] && pass "-applyChoiceChangesXML selects a deselected choice" || fail "-applyChoiceChangesXML selects a deselected choice"
+[ ! -e dst6/default.txt ] && pass "-applyChoiceChangesXML deselects a selected choice" || fail "-applyChoiceChangesXML deselects a selected choice"
+[ ! -e dst6/selfalse.txt ] && pass "-applyChoiceChangesXML leaves other choices alone" || fail "-applyChoiceChangesXML leaves other choices alone"
+
 echo
 if [ "$fails" -eq 0 ]; then echo "all passed"; else echo "$fails failed"; exit 1; fi
