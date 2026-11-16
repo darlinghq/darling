@@ -18,7 +18,11 @@
 */
 
 #include <Foundation/Foundation.h>
+#import <AppKit/NSCollectionViewLayoutInvalidationContext.h>
+#import <AppKit/AppKitIvarLayout.h>
 
-@interface NSCollectionViewFlowLayoutInvalidationContext : NSObject
+@interface NSCollectionViewFlowLayoutInvalidationContext : NSCollectionViewLayoutInvalidationContext {
+    NS_LEGACY_IVAR_PAD(_NSCollectionViewFlowLayoutInvalidationContextReserved, 4)
+}
 
 @end
