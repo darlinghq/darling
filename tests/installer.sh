@@ -72,7 +72,7 @@ if [ "$MODE" = build ]; then
 
 	# a product archive: choices with literal-boolean and JavaScript conditions
 	mkdir product && cd product || exit 2
-	for c in default startfalse selfalse js inactive; do
+	for c in default startfalse selfalse js inactive follows; do
 		mkdir "$c.pkg" "root-$c"
 		echo "$c" > "root-$c/$c.txt"
 		bsdtar --format odc -cf - -C "root-$c" . | gzip > "$c.pkg/Payload"
@@ -89,21 +89,45 @@ EOF2
 <title>Choices</title>
 <choices-outline>
 <line choice="default"/><line choice="startfalse"/><line choice="selfalse"/>
-<line choice="js"/><line choice="inactive"/>
+<line choice="js"/><line choice="inactive"/><line choice="follows"/>
 </choices-outline>
 <choice id="default" title="Default"><pkg-ref id="org.darling.test.default"/></choice>
 <choice id="startfalse" title="Start false" start_selected="false"><pkg-ref id="org.darling.test.startfalse"/></choice>
 <choice id="selfalse" title="Selected false" selected="false"><pkg-ref id="org.darling.test.selfalse"/></choice>
 <choice id="js" title="Script" selected="system.compareVersions(system.version.ProductVersion, '99.0') &gt;= 0"><pkg-ref id="org.darling.test.js"/></choice>
 <choice id="inactive" title="Inactive"><pkg-ref id="org.darling.test.inactive"/></choice>
+<choice id="follows" title="Follows" selected="!choices.default.selected"><pkg-ref id="org.darling.test.follows"/></choice>
 <pkg-ref id="org.darling.test.default" installKBytes="1">#default.pkg</pkg-ref>
 <pkg-ref id="org.darling.test.startfalse" installKBytes="1">#startfalse.pkg</pkg-ref>
 <pkg-ref id="org.darling.test.selfalse" installKBytes="1">#selfalse.pkg</pkg-ref>
 <pkg-ref id="org.darling.test.js" installKBytes="1">#js.pkg</pkg-ref>
 <pkg-ref id="org.darling.test.inactive" installKBytes="1" active="false">#inactive.pkg</pkg-ref>
+<pkg-ref id="org.darling.test.follows" installKBytes="1">#follows.pkg</pkg-ref>
 </installer-gui-script>
 EOF2
 	bsdtar --format xar --options xar:compression=none -cf "$DIR/choices.pkg" Distribution *.pkg || exit 2
+
+	# a product whose installation-check script fails with a message
+	mkdir ../check && cd ../check || exit 2
+	cp -R ../product/default.pkg .
+	cat > Distribution <<'EOF2'
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+<title>Check</title>
+<script><![CDATA[
+function mustFail() {
+	my.result.type = 'Fatal';
+	my.result.message = 'Needs a newer system';
+	return false;
+}
+]]></script>
+<installation-check script="mustFail()"/>
+<choices-outline><line choice="default"/></choices-outline>
+<choice id="default" title="Default"><pkg-ref id="org.darling.test.default"/></choice>
+<pkg-ref id="org.darling.test.default" installKBytes="1">#default.pkg</pkg-ref>
+</installer-gui-script>
+EOF2
+	bsdtar --format xar --options xar:compression=none -cf "$DIR/checkfail.pkg" Distribution default.pkg || exit 2
 	cd ..
 	exit 0
 fi
@@ -172,11 +196,32 @@ has default && pass "a choice is selected by default" || fail "a choice is selec
 has startfalse && fail "start_selected=false is not installed" || pass "start_selected=false is not installed"
 has selfalse && fail "selected=false is not installed" || pass "selected=false is not installed"
 has inactive && fail "a pkg-ref with active=false is not installed" || pass "a pkg-ref with active=false is not installed"
-# Darling has no JavaScript engine here: an unevaluated condition keeps the default (selected) and says so.
-# (These two checks describe Darling, not macOS, which evaluates the expression.)
-has js && pass "a JavaScript selected condition keeps the default" || fail "a JavaScript selected condition keeps the default"
-grep -q "Warning: choice Script: the JavaScript in 'selected' is not evaluated" choices.out && pass "an unevaluated JavaScript condition is reported" || fail "an unevaluated JavaScript condition is reported"
-"$INSTALLER" -pkginfo -pkg "$DIR/choices.pkg" 2>&1 | tr '\n' ' ' | grep -qx 'default js ' && pass "-pkginfo lists the packages that would be installed" || fail "-pkginfo lists the packages that would be installed"
+# JavaScript conditions need JavaScriptCore, an optional component. With it they are evaluated
+# (as on macOS: the "js" condition is false there); without it the default (selected) is kept and
+# a warning says so.
+if grep -q "JavaScriptCore is not available" choices.out; then
+	jsc=no
+else
+	jsc=yes
+fi
+if [ $jsc = yes ]; then
+	has js && fail "a false JavaScript selected condition deselects the choice" || pass "a false JavaScript selected condition deselects the choice"
+	has follows && fail "a condition can refer to another choice" || pass "a condition can refer to another choice"
+	grep -q "Warning: choice" choices.out && fail "no warning when JavaScript is evaluated" || pass "no warning when JavaScript is evaluated"
+else
+	has js && pass "without JavaScriptCore a JavaScript condition keeps the default" || fail "without JavaScriptCore a JavaScript condition keeps the default"
+	grep -q "Warning: choice Script: the JavaScript in 'selected' is not evaluated" choices.out && pass "an unevaluated JavaScript condition is reported" || fail "an unevaluated JavaScript condition is reported"
+fi
+echo "(JavaScriptCore: $jsc)"
+mkdir dst7
+if [ $jsc = yes ]; then
+	nt "a failing installation-check stops the install" "$INSTALLER" -pkg "$DIR/checkfail.pkg" -target "$T/dst7"
+	"$INSTALLER" -pkg "$DIR/checkfail.pkg" -target "$T/dst7" 2>&1 | grep -qx 'installer: Needs a newer system' && pass "the check's message is reported" || fail "the check's message is reported"
+	[ ! -e dst7/default.txt ] && pass "nothing is installed after a failed check" || fail "nothing is installed after a failed check"
+else
+	t "without JavaScriptCore an installation-check is skipped with a warning" "$INSTALLER" -pkg "$DIR/checkfail.pkg" -target "$T/dst7"
+fi
+"$INSTALLER" -pkginfo -pkg "$DIR/choices.pkg" 2>&1 | tr '\n' ' ' | grep -qx "$([ $jsc = yes ] && echo 'default ' || echo 'default js follows ')" && pass "-pkginfo lists the packages that would be installed" || fail "-pkginfo lists the packages that would be installed"
 
 # ---- choice XML (-showChoicesXML, choice changes files) ------------------
 # Observed on macOS 26 (x86_64). The "js" choice is left out below: macOS evaluates its
@@ -187,8 +232,8 @@ CH="$DIR/choices.pkg"
 "$INSTALLER" -pkg "$CH" -showChoicesXML 2>&1 | flat | grep -q '<key>choiceIdentifier</key><string>default</string><key>choiceIsEnabled</key><true/><key>choiceIsSelected</key><integer>1</integer><key>choiceIsVisible</key><true/><key>choiceSizeInKilobytes</key><integer>1</integer><key>choiceTitle</key><string>Default</string><key>pathsOfActivePackagesInChoice</key><array><string>file://localhost/.*choices.pkg#default.pkg</string></array>' && pass "-showChoicesXML: a leaf choice" || fail "-showChoicesXML: a leaf choice"
 "$INSTALLER" -pkg "$CH" -showChoicesXML 2>&1 | flat | grep -q '<string>inactive</string>.*<key>choiceSizeInKilobytes</key><integer>0</integer><key>choiceTitle</key><string>Inactive</string><key>pathsOfActivePackagesInChoice</key><array/>' && pass "-showChoicesXML: an inactive package is not listed" || fail "-showChoicesXML: an inactive package is not listed"
 changes() { flat | grep -o '<integer>[01]</integer><key>choiceAttribute</key><string>selected</string><key>choiceIdentifier</key><string>[a-z]*</string>' | sed 's/<integer>\(.\)<\/integer>.*<string>\([a-z]*\)<\/string>$/\2=\1/' | tr '\n' ' '; }
-eq "-showChoiceChangesXML: selected states" "$("$INSTALLER" -pkg "$CH" -target / -showChoiceChangesXML 2>&1 | changes | tr ' ' '\n' | grep -v '^js=' | tr '\n' ' ')" "default=1 startfalse=0 selfalse=0 inactive=1 "
-"$INSTALLER" -pkg "$CH" -target / -showChoiceChangesXML 2>&1 | grep -c '<dict>' | grep -qx 15 && pass "-showChoiceChangesXML: visible, enabled and selected per choice" || fail "-showChoiceChangesXML: visible, enabled and selected per choice"
+eq "-showChoiceChangesXML: selected states" "$("$INSTALLER" -pkg "$CH" -target / -showChoiceChangesXML 2>&1 | changes | tr ' ' '\n' | grep -v '^js=\|^follows=' | tr '\n' ' ')" "default=1 startfalse=0 selfalse=0 inactive=1 "
+"$INSTALLER" -pkg "$CH" -target / -showChoiceChangesXML 2>&1 | grep -c '<dict>' | grep -qx 18 && pass "-showChoiceChangesXML: visible, enabled and selected per choice" || fail "-showChoiceChangesXML: visible, enabled and selected per choice"
 
 cat > dict.plist <<X
 <?xml version="1.0" encoding="UTF-8"?>
@@ -205,7 +250,7 @@ cat > strings.plist <<X
 <plist version="1.0"><array><string>startfalse</string><string>default</string></array></plist>
 X
 for f in dict strings; do
-	eq "-showChoicesAfterApplyingChangesXML with a $f file" "$("$INSTALLER" -pkg "$CH" -target / -showChoicesAfterApplyingChangesXML $f.plist 2>&1 | changes | tr ' ' '\n' | grep -v '^js=' | tr '\n' ' ')" "default=0 startfalse=1 selfalse=0 inactive=1 "
+	eq "-showChoicesAfterApplyingChangesXML with a $f file" "$("$INSTALLER" -pkg "$CH" -target / -showChoicesAfterApplyingChangesXML $f.plist 2>&1 | changes | tr ' ' '\n' | grep -v '^js=\|^follows=' | tr '\n' ' ')" "default=0 startfalse=1 selfalse=0 inactive=1 "
 done
 eq "-showChoicesAfterApplyingChangesXML without -target: exit status 255" "$("$INSTALLER" -pkg "$CH" -showChoicesAfterApplyingChangesXML dict.plist >/dev/null 2>&1; echo $?)" 255
 "$INSTALLER" -pkg "$CH" -showChoicesAfterApplyingChangesXML dict.plist 2>&1 | grep -qx 'installer: Error -target parameter required' && pass "a missing -target is reported" || fail "a missing -target is reported"
