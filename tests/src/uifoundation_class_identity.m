@@ -43,6 +43,13 @@ static const char *const uifoundationClasses[] = {
     "NSTextTable",
     "NSTextTableBlock",
     "NSGlyphInfo",
+    "NSCollectionViewLayout",
+    "NSCollectionViewFlowLayout",
+    "NSCollectionViewLayoutAttributes",
+    "NSCollectionViewLayoutInvalidationContext",
+    "NSCollectionViewTransitionLayout",
+    "NSCollectionViewUpdateItem",
+    "NSCollectionViewFlowLayoutInvalidationContext",
 };
 
 // String constants UIFoundation defines (and AppKit does not) on macOS, with
@@ -55,6 +62,12 @@ static const struct {
     {"NSTextListMarkerDecimal", @"{decimal}"},
     {"NSTextListMarkerDisc", @"{disc}"},
     {"NSTextListMarkerHyphen", @"{hyphen}"},
+    {"NSCollectionElementKindSectionHeader", @"UICollectionElementKindSectionHeader"},
+    {"NSCollectionElementKindSectionFooter", @"UICollectionElementKindSectionFooter"},
+    {"NSCollectionElementKindInterItemGapIndicator", @"NSCollectionElementKindInterItemGapIndicator"},
+    {"NSFlowLayoutCommonRowHorizontalAlignmentKey", @"UIFlowLayoutCommonRowHorizontalAlignmentKey"},
+    {"NSFlowLayoutLastRowHorizontalAlignmentKey", @"UIFlowLayoutLastRowHorizontalAlignmentKey"},
+    {"NSFlowLayoutRowVerticalAlignmentKey", @"UIFlowLayoutRowVerticalAlignmentKey"},
     {NULL, nil},
 };
 
