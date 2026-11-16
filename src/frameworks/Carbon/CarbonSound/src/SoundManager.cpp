@@ -502,7 +502,8 @@ OSErr submit(Channel* ch, const SndCommand& cmd, bool noWait, bool immediate)
 				std::lock_guard<std::mutex> lock(ch->mutex);
 				const Float64 rate = (ch->items.empty() && !ch->started) ? 44100 : ch->outputRate;
 				ch->outputRate = rate;
-				item.frames.assign((size_t) ((double) std::max<short>(0, cmd.param1) * rate / 1000.0) * 2, 0.0f);
+				// param1 is the duration in half-milliseconds.
+				item.frames.assign((size_t) ((double) std::max<short>(0, cmd.param1) * rate / 2000.0) * 2, 0.0f);
 			}
 			return enqueue(ch, std::move(item), noWait, false);
 		}
