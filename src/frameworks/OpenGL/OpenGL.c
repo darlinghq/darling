@@ -277,6 +277,12 @@ struct _CGLContextObj {
     EGLContext egl_context;
     _Atomic EGLSurface egl_surface;
     EGLSurface fallback_pbuffer;
+    // The display-covering window CGLSetFullScreen created and the surface on
+    // it (fullscreen_window is 0 when there is none); the context owns both.
+    // Guarded by lock.
+    CGSConnectionID fullscreen_connection;
+    CGSWindowID fullscreen_window;
+    EGLSurface fullscreen_surface;
     // EGL has no function for getting the current swap interval,
     // so we need to save the last set value. The default is 0.
     // This is the application's value; a paced context never gives it to EGL.
@@ -1060,10 +1066,94 @@ CGLError CGLSetVirtualScreen(CGLContextObj context, GLint screen) {
     return screen == 0 ? kCGLNoError : kCGLBadValue;
 }
 
-CGLError CGLSetFullScreen(CGLContextObj ctx) {
-    printf("STUB: CGLSetFullScreen\n");
+// Releases the surface and window of a fullscreen drawable that was taken out
+// of a context (see CGLClearDrawable and CGLSetFullScreenOnDisplay).
+static void destroyFullScreen(CGLContextObj ctx, CGSConnectionID connection, CGSWindowID window,
+                              EGLSurface surface) {
+    if (surface != EGL_NO_SURFACE)
+        p_eglDestroySurface(ctx->egl_display, surface);
+    if (window != 0)
+        CGSReleaseWindow(connection, window);
+}
 
+// The display a fullscreen context covers: the one named by the display mask,
+// or the main display when the pixel format has no mask.
+static CGDirectDisplayID fullScreenDisplay(CGLContextObj ctx, int use_format_mask, GLuint mask) {
+    if (use_format_mask) {
+        GLint format_mask = 0;
+        if (CGLDescribePixelFormat(ctx->pixel_format, 0, kCGLPFADisplayMask, &format_mask) != kCGLNoError)
+            return CGMainDisplayID();
+        mask = (GLuint) format_mask;
+        // A pixel format without a display mask attribute describes none.
+        if (mask == 0)
+            return CGMainDisplayID();
+    }
+    return CGOpenGLDisplayMaskToDisplayID(mask);
+}
+
+static CGLError setFullScreen(CGLContextObj ctx, int use_format_mask, GLuint mask) {
+    if (!ctx)
+        return kCGLBadContext;
+
+    // Only a context whose pixel format asked for kCGLPFAFullScreen can be
+    // given a fullscreen drawable.
+    GLint wanted = 0;
+    if (!ctx->pixel_format ||
+        CGLDescribePixelFormat(ctx->pixel_format, 0, kCGLPFAFullScreen, &wanted) != kCGLNoError ||
+        !wanted)
+        return kCGLBadFullScreen;
+
+    if (!use_format_mask && mask == 0)
+        return kCGLBadDisplay;
+    CGDirectDisplayID display = fullScreenDisplay(ctx, use_format_mask, mask);
+    if (display == kCGNullDirectDisplay)
+        return kCGLBadDisplay;
+
+    CGSConnectionID cid = CGSMainConnectionID();
+    if (!getCGLDisplay(cid))
+        return kCGLBadConnection;
+
+    // A window of the display's size above everything else, which leaves the
+    // application's own windows to receive the input; the context draws into it.
+    CGSWindowID window = 0;
+    void *drawable = NULL;
+    if (_CGSCreateDisplayOverlayWindow(cid, CGDisplayBounds(display), &window, &drawable) != kCGErrorSuccess)
+        return kCGLBadWindow;
+    EGLSurface surface = p_eglCreateWindowSurface(ctx->egl_display, ctx->egl_config,
+                                                  (EGLNativeWindowType) drawable, NULL);
+    if (surface == EGL_NO_SURFACE) {
+        CGSReleaseWindow(cid, window);
+        return kCGLBadState;
+    }
+
+    pthread_mutex_lock(&ctx->lock);
+    CGSConnectionID old_connection = ctx->fullscreen_connection;
+    CGSWindowID old_window = ctx->fullscreen_window;
+    EGLSurface old_surface = ctx->fullscreen_surface;
+    EGLSurface old_fallback = ctx->fallback_pbuffer;
+    ctx->fullscreen_connection = cid;
+    ctx->fullscreen_window = window;
+    ctx->fullscreen_surface = surface;
+    ctx->fallback_pbuffer = EGL_NO_SURFACE;
+    atomic_store_explicit(&ctx->egl_surface, surface, memory_order_release);
+    int is_current = (CGLGetCurrentContext() == ctx);
+    pthread_mutex_unlock(&ctx->lock);
+
+    // A context that is current draws into the new surface from now on.
+    if (is_current)
+        setCurrentContext(ctx);
+    if (old_fallback != EGL_NO_SURFACE)
+        p_eglDestroySurface(ctx->egl_display, old_fallback);
+    destroyFullScreen(ctx, old_connection, old_window, old_surface);
     return kCGLNoError;
+}
+
+CGLError CGLSetFullScreenOnDisplay(CGLContextObj ctx, GLuint display_mask) {
+    return setFullScreen(ctx, 0, display_mask);
+}
+
+CGLError CGLSetFullScreen(CGLContextObj ctx) {
+    return setFullScreen(ctx, 1, 0);
 }
 
 CGLError CGLChoosePixelFormat(
@@ -1117,6 +1207,12 @@ CGLError CGLClearDrawable(CGLContextObj ctx)
     pthread_mutex_lock(&ctx->lock);
     EGLSurface old_fallback = ctx->fallback_pbuffer;
     ctx->fallback_pbuffer = EGL_NO_SURFACE;
+    CGSConnectionID fullscreen_connection = ctx->fullscreen_connection;
+    CGSWindowID fullscreen_window = ctx->fullscreen_window;
+    EGLSurface fullscreen_surface = ctx->fullscreen_surface;
+    ctx->fullscreen_connection = 0;
+    ctx->fullscreen_window = 0;
+    ctx->fullscreen_surface = EGL_NO_SURFACE;
     atomic_store_explicit(&ctx->egl_surface, (EGLSurface)EGL_NO_SURFACE, memory_order_release);
     int is_current = (CGLGetCurrentContext() == ctx);
     pthread_mutex_unlock(&ctx->lock);
@@ -1129,6 +1225,23 @@ CGLError CGLClearDrawable(CGLContextObj ctx)
         if (is_current) {
             // Disassociate any surface from the current thread's EGL context
             p_eglMakeCurrent(ctx->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, ctx->egl_context);
+        }
+        // Leaving fullscreen: the surface is unbound now, so it can go together with its window.
+        destroyFullScreen(ctx, fullscreen_connection, fullscreen_window, fullscreen_surface);
+        // A current context that was drawing fullscreen stays usable: it gets
+        // the small pbuffer a context without a drawable draws into, so that
+        // its drawing calls do not fail with an incomplete framebuffer.
+        if (is_current && fullscreen_surface != EGL_NO_SURFACE) {
+            const EGLint pbufferAttribs[] = { EGL_WIDTH, 1, EGL_HEIGHT, 1, EGL_NONE };
+            EGLSurface pbuf = p_eglCreatePbufferSurface(ctx->egl_display, ctx->egl_config, pbufferAttribs);
+            if (pbuf != EGL_NO_SURFACE && p_eglMakeCurrent(ctx->egl_display, pbuf, pbuf, ctx->egl_context)) {
+                pthread_mutex_lock(&ctx->lock);
+                ctx->fallback_pbuffer = pbuf;
+                atomic_store_explicit(&ctx->egl_surface, pbuf, memory_order_release);
+                pthread_mutex_unlock(&ctx->lock);
+            } else if (pbuf != EGL_NO_SURFACE) {
+                p_eglDestroySurface(ctx->egl_display, pbuf);
+            }
         }
     }
 
@@ -1288,6 +1401,9 @@ static CGLError createContext(CGLPixelFormatObj pixelFormat, CGLContextObj share
     context->egl_context = egl_context;
     atomic_init(&context->egl_surface, (EGLSurface)EGL_NO_SURFACE);
     context->fallback_pbuffer = EGL_NO_SURFACE;
+    context->fullscreen_connection = 0;
+    context->fullscreen_window = 0;
+    context->fullscreen_surface = EGL_NO_SURFACE;
     context->swap_interval = interval;
     context->paced = paced;
     context->pacer.period_ns = cgl_period_ns_from_millihertz(0);
@@ -1373,6 +1489,8 @@ void CGLReleaseContext(CGLContextObj context) {
         p_eglDestroySurface(context->egl_display, context->fallback_pbuffer);
         context->fallback_pbuffer = EGL_NO_SURFACE;
     }
+    destroyFullScreen(context, context->fullscreen_connection, context->fullscreen_window,
+                      context->fullscreen_surface);
 
     pthread_mutex_destroy(&(context->lock));
 

@@ -27,6 +27,7 @@ CGL_EXPORT CGLError CGLUnlockContext(CGLContextObj context);
 
 CGL_EXPORT CGLError CGLSetCurrentContext(CGLContextObj ctx);
 CGL_EXPORT CGLError CGLSetFullScreen(CGLContextObj ctx);
+CGL_EXPORT CGLError CGLSetFullScreenOnDisplay(CGLContextObj ctx, GLuint display_mask);
 CGL_EXPORT CGLContextObj CGLGetCurrentContext(void);
 CGL_EXPORT CGLError CGLGetVirtualScreen(CGLContextObj ctx, GLint *screen);
 CGL_EXPORT CGLError CGLSetVirtualScreen(CGLContextObj ctx, GLint screen);
