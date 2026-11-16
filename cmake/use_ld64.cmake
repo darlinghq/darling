@@ -66,6 +66,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/libiconv.2.dylib:${CMAKE_BINARY_DIR}/src/libiconv/libiconv.2.dylib \
 -Wl,-dylib_file,/usr/lib/libcharset.1.dylib:${CMAKE_BINARY_DIR}/src/external/libiconv/libcharset.1.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/CFNetwork.framework/Versions/A/CFNetwork:${CMAKE_BINARY_DIR}/src/external/cfnetwork/src/CFNetwork \
+-Wl,-dylib_file,/System/Library/PrivateFrameworks/CoreAutoLayout.framework/Versions/A/CoreAutoLayout:${CMAKE_BINARY_DIR}/src/external/cocotron/CoreAutoLayout/CoreAutoLayout \
 -Wl,-dylib_file,/usr/lib/libxml2.2.dylib:${CMAKE_BINARY_DIR}/src/external/libxml2/libxml2.2.dylib \
 -Wl,-dylib_file,/usr/lib/libpam.2.dylib:${CMAKE_BINARY_DIR}/src/external/openpam/libpam.2.dylib \
 -Wl,-dylib_file,/usr/lib/libbsm.0.dylib:${CMAKE_BINARY_DIR}/src/external/bsm/libbsm.0.dylib \
