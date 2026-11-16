@@ -31,6 +31,12 @@ add_framework(UIFoundation
         src/NSTextTable.m
         src/NSTextTableBlock.m
         src/NSGlyphInfo.m
+        src/NSTextAttributeKeys.m
+        src/NSShadow.m
+        src/NSTextAttachment.m
+        src/NSTextStorage.m
+        src/NSTextStorage_concrete.m
+        src/NSGlyphGenerator.m
         src/NSFontAssetRequest.m
         src/NSCollectionViewData.m
         src/NSCoreTypesetter.m
@@ -128,4 +134,6 @@ add_framework(UIFoundation
         system
         objc
         Foundation
+        CoreFoundation
+        CoreGraphics
 )

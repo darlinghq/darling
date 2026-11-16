@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSFont.h>
 #import <AppKit/NSParagraphStyle.h>
 #import <AppKit/NSTextView.h>
+#import <UIFoundation/UIFoundationGraphicsContext.h>
 
 // The attribute keys carry the string values macOS gives them, which is also what archived attributed strings
 // and CoreText's kCTFontAttributeName and kCTParagraphStyleAttributeName use.
@@ -140,7 +141,7 @@ NSFont *NSFontAttributeInDictionary(NSDictionary *dictionary) {
     NSFont *font = [dictionary objectForKey: NSFontAttributeName];
 
     if (font == nil)
-        font = [NSFont fontWithName: @"Arial" size: 12.0];
+        font = _UIFoundationDefaultTextFont();
 
     return font;
 }
@@ -149,7 +150,7 @@ NSColor *NSForegroundColorAttributeInDictionary(NSDictionary *dictionary) {
     NSColor *color = [dictionary objectForKey: NSForegroundColorAttributeName];
 
     if (color == nil)
-        color = [NSColor blackColor];
+        color = _UIFoundationTextColorForRole(_UIFoundationTextColorRoleText);
 
     return color;
 }

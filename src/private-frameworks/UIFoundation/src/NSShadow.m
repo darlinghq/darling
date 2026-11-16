@@ -17,13 +17,14 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
-#import <AppKit/NSColor.h>
-#import <AppKit/NSGraphicsContext.h>
-#import <AppKit/NSRaise.h>
 #import <AppKit/NSShadow.h>
-#import <ApplicationServices/ApplicationServices.h>
+#import <CoreGraphics/CoreGraphics.h>
+#import <Foundation/NSRaise.h>
+#import <UIFoundation/UIFoundationGraphicsContext.h>
 
-@interface NSColor (NSAppKitPrivate)
+// The shadow colour is an AppKit colour object, which gives its colour as a
+// CGColor (owned by the caller).
+@protocol _UIFoundationShadowColor
 - (CGColorRef) CGColorRef;
 @end
 
@@ -31,7 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - init {
     _offset = NSMakeSize(0, 0); // what is the default?
-    _color = [[NSColor colorWithCalibratedWhite: 0 alpha: 1.0 / 3.0] retain];
+    // Black with one third alpha, supplied by AppKit.
+    _color = [_UIFoundationTextColorForRole(_UIFoundationTextColorRoleShadow) retain];
     _blurRadius = 0;
     return self;
 }
@@ -85,8 +87,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) set {
-    CGContextRef context = [[NSGraphicsContext currentContext] graphicsPort];
-    CGColorRef color = [_color CGColorRef];
+    CGContextRef context = _UIFoundationCurrentCGContext();
+    if (context == NULL)
+        return;
+
+    CGColorRef color = [(id<_UIFoundationShadowColor>) _color CGColorRef];
 
     CGContextSetShadowWithColor(context, _offset, _blurRadius, color);
 

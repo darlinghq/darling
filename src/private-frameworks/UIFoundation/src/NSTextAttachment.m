@@ -18,9 +18,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 // Original - Christopher Lloyd <cjwl@objc.net>
-#import <AppKit/NSFileWrapper.h>
+#import <Foundation/NSFileWrapper.h>
 #import <AppKit/NSImage.h>
 #import <AppKit/NSTextAttachment.h>
+#import <UIFoundation/UIFoundationGraphicsContext.h>
 
 // NSTextAttachmentViewProvider's initializer; this AppKit has no provider base
 // class, so registered provider classes supply it themselves.
@@ -73,7 +74,8 @@ static NSMutableDictionary *viewProviderClasses;
          * _drawAttachment:] only ever reaches the cell through -[NSTextAttachment attachmentCell].
          * Without this, an attachment created from data had a nil cell, so the layout manager drew
          * nothing for it at all -- silently, because messaging nil is a no-op. */
-        _cell = [[NSTextAttachmentCell alloc] init];
+        // NSTextAttachmentCell is an AppKit class; AppKit makes the cell.
+        _cell = _UIFoundationNewTextAttachmentCell();
         [_cell setAttachment: self];
     }
     return self;
@@ -215,7 +217,7 @@ static NSMutableDictionary *viewProviderClasses;
     if (_image != nil)
         return _image;
     NSData *contents = [self contents];
-    return contents ? [[[NSImage alloc] initWithData: contents] autorelease] : nil;
+    return _UIFoundationImageWithData(contents);
 }
 
 - (CGRect) attachmentBoundsForAttributes: (NSDictionary<NSAttributedStringKey, id> *) attributes

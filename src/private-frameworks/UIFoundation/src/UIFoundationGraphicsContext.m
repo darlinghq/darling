@@ -51,3 +51,35 @@ BOOL _UIFoundationCurrentContextIsDrawingToScreen(void)
     id<_UIFoundationGraphicsContextProvider> provider = _UIFoundationGraphicsContextProvider();
     return provider ? [provider currentContextIsDrawingToScreen] : NO;
 }
+
+id _UIFoundationTextColorForRole(_UIFoundationTextColorRole role)
+{
+    id<_UIFoundationGraphicsContextProvider> provider = _UIFoundationGraphicsContextProvider();
+    if (![provider respondsToSelector: @selector(textColorForRole:)])
+        return nil;
+    return [provider textColorForRole: role];
+}
+
+id _UIFoundationDefaultTextFont(void)
+{
+    id<_UIFoundationGraphicsContextProvider> provider = _UIFoundationGraphicsContextProvider();
+    if (![provider respondsToSelector: @selector(defaultTextFont)])
+        return nil;
+    return [provider defaultTextFont];
+}
+
+id _UIFoundationImageWithData(NSData *data)
+{
+    id<_UIFoundationGraphicsContextProvider> provider = _UIFoundationGraphicsContextProvider();
+    if (data == nil || ![provider respondsToSelector: @selector(imageWithData:)])
+        return nil;
+    return [provider imageWithData: data];
+}
+
+id _UIFoundationNewTextAttachmentCell(void)
+{
+    id<_UIFoundationGraphicsContextProvider> provider = _UIFoundationGraphicsContextProvider();
+    if (![provider respondsToSelector: @selector(newTextAttachmentCell)])
+        return nil;
+    return [provider newTextAttachmentCell];
+}
