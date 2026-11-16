@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <Foundation/NSLocale.h>
 
 #import "NSParagraphStyle-Private.h"
-#import <AppKit/NSRaise.h>
+#import <Foundation/NSRaise.h>
 #import <AppKit/NSTextBlock.h>
 #import <AppKit/NSTextList.h>
 #import <AppKit/NSTextTab.h>
