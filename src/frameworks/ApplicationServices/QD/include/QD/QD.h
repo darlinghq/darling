@@ -133,6 +133,7 @@ extern "C" {
 #endif
 
 /* Cursor visibility. */
+void InitCursor(void);
 void HideCursor(void);
 void ShowCursor(void);
 
