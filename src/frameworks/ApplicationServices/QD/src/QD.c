@@ -36,6 +36,18 @@ void InitCursor()
     if (verbose) puts("STUB: InitCursor called");	
 }
 
+// Cursor visibility is a counter: every HideCursor is balanced by a ShowCursor, as for the
+// display-level calls these are built on.
+void HideCursor(void)
+{
+    CGDisplayHideCursor(CGMainDisplayID());
+}
+
+void ShowCursor(void)
+{
+    CGDisplayShowCursor(CGMainDisplayID());
+}
+
 static uint32_t gFakeScreenDevice;
 
 GDHandle DMGetFirstScreenDevice(Boolean a)
