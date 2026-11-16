@@ -22,6 +22,7 @@ add_framework(UIFoundation
 
     SOURCES
         src/UIFoundation.m
+        src/UIFoundationGraphicsContext.m
         src/NSFontAssetRequest.m
         src/NSCollectionViewData.m
         src/NSCoreTypesetter.m
