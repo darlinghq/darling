@@ -18,7 +18,10 @@
 */
 
 #include <Foundation/Foundation.h>
+#import <AppKit/AppKitIvarLayout.h>
 
-@interface NSStringDrawingContext : NSObject
+@interface NSStringDrawingContext : NSObject {
+    NS_LEGACY_IVAR_PAD(_NSStringDrawingContextReserved, 4)
+}
 
 @end

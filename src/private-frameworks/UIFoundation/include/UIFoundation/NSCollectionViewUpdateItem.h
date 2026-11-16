@@ -18,7 +18,10 @@
 */
 
 #include <Foundation/Foundation.h>
+#import <AppKit/AppKitIvarLayout.h>
 
-@interface NSCollectionViewUpdateItem : NSObject
+@interface NSCollectionViewUpdateItem : NSObject {
+    NS_LEGACY_IVAR_PAD(_NSCollectionViewUpdateItemReserved, 60)
+}
 
 @end

@@ -18,7 +18,10 @@
 */
 
 #include <Foundation/Foundation.h>
+#import <AppKit/AppKitIvarLayout.h>
 
-@interface NSTextAlternatives : NSObject
+@interface NSTextAlternatives : NSObject {
+    NS_LEGACY_IVAR_PAD(_NSTextAlternativesReserved, 12)
+}
 
 @end
