@@ -132,7 +132,11 @@ jobs:
               if git -C "$dir/$path" push --force \
                    "https://x-access-token:${GH_TOKEN}@github.com/${child_slug}.git" \
                    "HEAD:refs/heads/$branch"; then
-                pr_url=$(gh pr view "$branch" --repo "$child_slug" --json url --jq .url 2>/dev/null || true)
+                # Only an open PR can carry the commit just pushed: `gh pr view
+                # <branch>` would also find an earlier PR from this branch that
+                # has already been merged or closed, and no new PR would be made.
+                pr_url=$(gh pr list --repo "$child_slug" --head "$branch" --state open \
+                           --json url --jq '.[0].url // empty' 2>/dev/null || true)
                 if [ -z "$pr_url" ]; then
                   pr_url=$(gh pr create --repo "$child_slug" --head "$branch" \
                     --title "Update submodules to latest commits" \
