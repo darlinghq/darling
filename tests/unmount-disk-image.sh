@@ -37,6 +37,14 @@ if attach; then
 	guest cleanup1 "hdiutil detach -force '$mp'"
 fi
 
+# unmount(2) again in a program that ignores SIGCHLD (its children are reaped by the kernel)
+if attach; then
+	guest prog2 "'$guest_work/unmount-disk-image' '$mp' ignore-sigchld"
+	cat "$work/prog2.out"
+	[ "$(cat "$work/prog2.rc")" = 0 ] && pass "unmount(2) checks, SIGCHLD ignored" || fail "unmount(2) checks, SIGCHLD ignored"
+	guest cleanup2 "hdiutil detach -force '$mp'"
+fi
+
 # hdiutil detach of a busy volume: refused with EBUSY's message and exit status
 if attach; then
 	guest busy "exec 3<'$mp/hello.txt'; hdiutil detach '$mp'"
