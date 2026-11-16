@@ -62,8 +62,7 @@ guest rounds "(for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
 done)"
 [ "$(rc rounds)" = 0 ] && pass "unmount then attach at once, 20 rounds" || fail "unmount then attach at once: $(outputs rounds)"
 
-# disk appeared, disappeared and description-changed callbacks (see da-callbacks.c; a daemon restart is
-# diskarbitration-restart.sh)
+# disk appeared, disappeared and description-changed callbacks (see da-callbacks.c)
 if build da-callbacks "$here/da-callbacks.c"; then
 	guest cb-attach "hdiutil attach -quiet '$gw/unmount-test.dmg'"
 	guest cb-existing "'$gw/da-callbacks' existing '/Volumes/Unmount Test'"
@@ -74,6 +73,24 @@ if build da-callbacks "$here/da-callbacks.c"; then
 	for t in existing attach-detach unscheduled unregister; do
 		[ "$(rc "cb-$t")" = 0 ] && pass "callbacks: $t" || fail "callbacks: $t: $(outputs "cb-$t")"
 	done
+
+	# a session keeps working after the daemon restarts (launchd starts it again): the session's connection is
+	# interrupted, and it says hello again
+	cat >"$work/daemon-pid" <<'SCRIPT'
+#!/bin/sh
+launchctl list | awk '/com.apple.diskarbitrationd$/ { print $1 }'
+SCRIPT
+	cat >"$work/kill-daemon" <<'SCRIPT'
+#!/bin/sh
+kill -TERM "$("$(dirname "$0")/daemon-pid")"
+SCRIPT
+	chmod +x "$work/daemon-pid" "$work/kill-daemon"
+	guest cb-restart "(before=\$('$gw/daemon-pid')
+		'$gw/da-callbacks' restart '$gw/unmount-test.dmg' '/Volumes/Unmount Test' '$gw/kill-daemon' || exit 1
+		after=\$('$gw/daemon-pid')
+		test \"\$before\" != \"\$after\" || { echo \"the daemon did not restart (pid \$before)\"; exit 1; })"
+	[ "$(rc cb-restart)" = 0 ] && pass "callbacks: after a daemon restart" \
+		|| fail "callbacks: after a daemon restart: $(rc cb-restart) $(outputs cb-restart)"
 fi
 
 rm -rf "$work"

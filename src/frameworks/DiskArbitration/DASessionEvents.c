@@ -57,7 +57,9 @@ struct DACallout
 	struct DACallout* next;
 };
 
-// The connection's handlers outlive the session; they reach it through this, which says when it is gone.
+// The connection's handlers outlive the session; they reach it through this, which says when it is gone. The
+// handlers hold lock while they use the session; the references are atomic, so a handler can take one while it
+// holds the lock.
 struct DASessionLink
 {
 	pthread_mutex_t lock;
@@ -68,18 +70,13 @@ struct DASessionLink
 
 static struct DASessionLink* linkRetain(struct DASessionLink* link)
 {
-	pthread_mutex_lock(&link->lock);
-	link->references++;
-	pthread_mutex_unlock(&link->lock);
+	__atomic_add_fetch(&link->references, 1, __ATOMIC_RELAXED);
 	return link;
 }
 
 static void linkRelease(struct DASessionLink* link)
 {
-	pthread_mutex_lock(&link->lock);
-	int left = --link->references;
-	pthread_mutex_unlock(&link->lock);
-	if (left == 0)
+	if (__atomic_sub_fetch(&link->references, 1, __ATOMIC_ACQ_REL) == 0)
 	{
 		pthread_mutex_destroy(&link->lock);
 		free(link);

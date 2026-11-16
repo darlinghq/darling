@@ -96,8 +96,8 @@ The disks there already are come leaf first too. A session that is never schedul
 Darling's image volume is mounted before its disk appears, so its leaf appears with `DAVolumePath` already set and no
 changed callback follows.
 
-`diskarbitration-restart.sh` checks that a session keeps working after `diskarbitrationd` restarts. It fails for now:
-libxpc's reconnection to a restarted launchd service never reaches the new instance.
+A session keeps working after `diskarbitrationd` restarts: its connection is interrupted, it says hello again and
+catches up (`da-callbacks restart`, Darling only).
 
 ## Darling's disks
 
