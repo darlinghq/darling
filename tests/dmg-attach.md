@@ -42,3 +42,19 @@ mounts a volume whose stored name is empty, `.` or `..` as `untitled` (same rule
 macOS removes a mount point it made in `/Volumes` when its volume goes away, even after a bare `unmount(2)`;
 Darling has nothing doing that yet (DiskArbitration), so attach treats an empty directory in `/Volumes` with
 nothing mounted on it as free. `unmount-disk-image.sh`, which attaches again after `unmount(2)`, depends on it.
+
+### More fixtures
+
+- `fixtures/amp-name.dmg`: made on the same host with `hdiutil create -size 2m -fs HFS+ -volname "Tom & Jerry <1>"`
+  and `hdiutil convert -format UDZO`. `hdiutil attach -plist` there reports
+  `<string>/Volumes/Tom &amp; Jerry &lt;1&gt;</string>`.
+- `fixtures/long-name-key.hfs.gz` and `fixtures/bad-blkx.dmg`: damaged images made by
+  `fixtures/make-crafted-fixtures.py` (from a raw HFS+ image made there with `hdiutil create -layout NONE` and
+  `hdiutil convert -format UDTO`, and from `unmount-test.dmg`); used by `dmg-crafted.c` (in Darling) and
+  `dmg-crafted-host.cpp` (on the host, with AddressSanitizer).
+- `dmg-mount-point-name.cpp`: host unit test of the mount point naming rules (build line in the file).
+
+Two images with the same volume name attached at the same moment must get different mount points (the name is
+chosen and the volume mounted while holding a lock on the mount root). When the volume cannot be mounted, hdiutil
+prints what FUSE or fusermount said after the `attach failed` line (checked in non-root and root mode; rootless mode
+mounts on a read-only directory without complaint).
