@@ -23,8 +23,8 @@ plans actually produced), and each ends in working, tested software.
   `-DCMAKE_INSTALL_PREFIX=$HOME/darling-finder`; install with `make install` (no sudo).
   `/usr/local` belongs to another session — never install there.
 - Test containers: `~/.darling-finder` (`DARLING_ROOTLESS=1`), `~/.darling-finder-nr`
-  (`DARLING_NONROOT=1`), `~/.darling-finder-root` (root mode: temporary setuid on
-  `~/darling-finder/bin/darling`, only with the user's OK, reverted after).
+  (`DARLING_NONROOT=1`), `~/.darling-finder-root` (root mode). The user keeps
+  `~/darling-finder/bin/darling` setuid root; re-apply it (`chown root:root`, `chmod 4755`) after an install.
 - Push branches but open **no pull requests** until the whole roadmap is done and the
   app works (user's rule).
 - Runtime testing follows the darling-skills `darling-guest-testing` skill
