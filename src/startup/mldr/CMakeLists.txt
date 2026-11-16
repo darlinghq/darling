@@ -36,6 +36,15 @@ endif()
 
 add_executable(mldr ${mldr_sources})
 
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+	target_sources(mldr PRIVATE
+		fex/fex_elfcalls.c
+		fex/fex_syscall.c
+		fex/fex_engine.cpp
+	)
+	set_source_files_properties(fex/fex_engine.cpp PROPERTIES COMPILE_FLAGS "-std=c++17")
+endif()
+
 target_compile_options(mldr PRIVATE -pthread)
 target_link_options(mldr PRIVATE -pthread)
 
@@ -132,6 +141,15 @@ if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
 	add_executable(mldr_cpu_caps_x86_test ${CMAKE_SOURCE_DIR}/tests/mldr/cpu_caps_x86.c cpu_caps_x86.c)
 	target_include_directories(mldr_cpu_caps_x86_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 	add_test(NAME mldr_cpu_caps_x86 COMMAND mldr_cpu_caps_x86_test)
+endif()
+
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+	add_executable(mldr_fex_bridge_test ${CMAKE_SOURCE_DIR}/tests/mldr/fex_bridge.c fex/fex_elfcalls.c fex/fex_syscall.c)
+	target_include_directories(mldr_fex_bridge_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+	target_compile_options(mldr_fex_bridge_test PRIVATE -pthread)
+	target_link_options(mldr_fex_bridge_test PRIVATE -pthread)
+	target_link_libraries(mldr_fex_bridge_test PRIVATE -ldl)
+	add_test(NAME mldr_fex_bridge COMMAND mldr_fex_bridge_test)
 endif()
 
 # mldr must refuse to start without a darlingserver socket path instead of falling back
