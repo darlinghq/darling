@@ -23,6 +23,14 @@ NSCollectionViewSupplementaryElementKind const
         NSCollectionElementKindInterItemGapIndicator =
                 @"NSCollectionElementKindInterItemGapIndicator";
 
+// Exported by UIFoundation but not declared in the public headers.
+APPKIT_EXPORT NSCollectionViewSupplementaryElementKind const NSCollectionElementKindInterSectionGapIndicator;
+APPKIT_EXPORT NSCollectionViewSupplementaryElementKind const NSCollectionElementKindItem;
+NSCollectionViewSupplementaryElementKind const NSCollectionElementKindInterSectionGapIndicator =
+        @"NSCollectionElementKindInterSectionGapIndicator";
+NSCollectionViewSupplementaryElementKind const NSCollectionElementKindItem =
+        @"NSCollectionElementKindItem";
+
 @implementation NSCollectionViewLayout
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

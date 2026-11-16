@@ -65,6 +65,8 @@ static const struct {
     {"NSCollectionElementKindSectionHeader", @"UICollectionElementKindSectionHeader"},
     {"NSCollectionElementKindSectionFooter", @"UICollectionElementKindSectionFooter"},
     {"NSCollectionElementKindInterItemGapIndicator", @"NSCollectionElementKindInterItemGapIndicator"},
+    {"NSCollectionElementKindInterSectionGapIndicator", @"NSCollectionElementKindInterSectionGapIndicator"},
+    {"NSCollectionElementKindItem", @"NSCollectionElementKindItem"},
     {"NSFlowLayoutCommonRowHorizontalAlignmentKey", @"UIFlowLayoutCommonRowHorizontalAlignmentKey"},
     {"NSFlowLayoutLastRowHorizontalAlignmentKey", @"UIFlowLayoutLastRowHorizontalAlignmentKey"},
     {"NSFlowLayoutRowVerticalAlignmentKey", @"UIFlowLayoutRowVerticalAlignmentKey"},
