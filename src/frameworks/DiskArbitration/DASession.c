@@ -5,11 +5,8 @@
 #include <CoreFoundation/CFRuntime.h>
 #include <CoreFoundation/CFBase.h>
 
-struct _DASession
-{
-  CFRuntimeBase _parent;
-  const CFArrayCallBacks *_callBacks;
-};
+#include "DAPrivate.h"
+#include "DAProtocol.h"
 
 static CFTypeID _kDASessionTypeID = 0;
 
@@ -39,11 +36,20 @@ DASessionInitialize (void)
 	_kDASessionTypeID = _CFRuntimeRegisterClass (&DASessionClass);
 }
 
-#define DASESSION_SIZE sizeof(struct _DASession) - sizeof(CFRuntimeBase)
+#define DASESSION_SIZE sizeof(struct __DASession) - sizeof(CFRuntimeBase)
 
 static void
 DASessionFinalize (CFTypeRef cf)
 {
+	DASessionRef session = (DASessionRef) cf;
+
+	if (session->connection != NULL)
+	{
+		xpc_connection_cancel(session->connection);
+		xpc_release(session->connection);
+	}
+	if (session->queue != NULL)
+		dispatch_release(session->queue);
 }
 
 static Boolean
@@ -69,6 +75,18 @@ CFTypeID DASessionGetTypeID(void)
 	return _kDASessionTypeID;
 }
 
+// Connects to diskarbitrationd. Without the daemon the session still works; its requests then find no disks.
+void _DASessionConnect(DASessionRef session)
+{
+	session->queue = dispatch_queue_create("com.apple.DiskArbitration.session", NULL);
+	session->connection = xpc_connection_create_mach_service(DA_SERVICE_NAME, session->queue, 0);
+	if (session->connection == NULL)
+		return;
+	xpc_connection_set_event_handler(session->connection, ^(xpc_object_t event) {
+	});
+	xpc_connection_resume(session->connection);
+}
+
 DASessionRef DASessionCreate(CFAllocatorRef allocator)
 {
 	DASessionRef new;
@@ -77,7 +95,10 @@ DASessionRef DASessionCreate(CFAllocatorRef allocator)
 	
 	new = (DASessionRef) _CFRuntimeCreateInstance (allocator, _kDASessionTypeID,
 												DASESSION_SIZE, 0);
-	
+	if (new == NULL)
+		return NULL;
+
+	_DASessionConnect(new);
 	return new;
 }
 
