@@ -4,11 +4,10 @@
 // does not exist, SndNewChannel, the order in which queued sounds and callback commands run,
 // waitCmd, quietCmd, flushCmd, a full queue, queuing from inside a callback, and SndDisposeChannel
 // with and without waiting for the queue.
-// Observed on macOS 10.14.4 (i386): -205 (badChannel) for a NULL channel in every call, and -2004
-// from SndNewChannel on a machine that has no audio output device, where the rest of the test is
-// skipped. The sequencing checks follow the documented behaviour of the commands (that machine
-// could not play), and run only when a channel can be opened. Build for i386 (x86_64 only prints
-// that the test does not apply).
+// Observed on macOS 10.14.4 (i386): -205 (badChannel) for a NULL channel in every call; with an
+// output device SndNewChannel succeeds and every check below passes, and waitCmd's duration is in
+// half-milliseconds; without one SndNewChannel returns -2004 and the rest of the test is skipped.
+// Build for i386 (x86_64 only prints that the test does not apply).
 #include <stdio.h>
 
 #if __LP64__
@@ -234,13 +233,14 @@ int main(void)
 	CHECK(event_count() == 2 && tag_at(0) == 11 && tag_at(1) == 12);
 	CHECK(time_at(1) < 250);
 
-	// waitCmd holds back what follows.
+	// waitCmd holds back what follows; its parameter is in half-milliseconds (macOS 10.14.4
+	// measured 76 ms for 150 and 151 ms for 300).
 	reset_events();
-	CHECK(do_cmd(chan, waitCmd, 150, 0, 0) == noErr);
+	CHECK(do_cmd(chan, waitCmd, 300, 0, 0) == noErr);
 	CHECK(do_cmd(chan, callBackCmd, 0, 21, 0) == noErr);
 	wait_events(1, 1000);
 	CHECK(event_count() == 1 && tag_at(0) == 21);
-	CHECK(time_at(0) >= 110 && time_at(0) < 600);
+	CHECK(time_at(0) >= 110 && time_at(0) < 250);
 
 	// quietCmd stops the sound that is playing; what is queued behind it still runs.
 	reset_events();
