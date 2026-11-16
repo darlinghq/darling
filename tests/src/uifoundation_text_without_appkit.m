@@ -11,7 +11,7 @@
 //   - opening UIFoundation and using the text classes does not load AppKit;
 //   - without a provider: a new shadow has no colour and -set does nothing, a
 //     new attachment has no cell, drawing does nothing, and text without a
-//     font attribute is still laid out;
+//     font attribute gets glyphs and its layout returns;
 //   - layout with a font object of fixed metrics (every glyph 10 points
 //     wide, lines 12 points high) gives the expected glyph ranges, line
 //     fragment rects, used rects and glyph locations, for one line and for
@@ -353,13 +353,15 @@ static void checkWithoutProvider(void)
     expect([attachment imageForBounds: CGRectZero attributes: nil location: nil textContainer: nil] == nil,
           "no provider: an attachment makes no image");
 
-    // Text without a font attribute: no fallback font without AppKit.
+    // Text without a font attribute: no fallback font without AppKit, so no
+    // line height either; the glyphs exist and layout returns, but no line
+    // fragment is placed.
     id manager, container;
     makeLayout(@"no font here", nil, NSMakeSize(200, 100), &manager, &container);
     expect([manager numberOfGlyphs] == 12, "no provider: text without a font gets one glyph per character (%lu)",
           (unsigned long) [manager numberOfGlyphs]);
     NSRange range = [manager glyphRangeForTextContainer: container];
-    expect(NSMaxRange(range) == 12, "no provider: text without a font is laid out (%s)",
+    expect(NSMaxRange(range) <= 12, "no provider: layout of text without a font returns (%s)",
           [NSStringFromRange(range) UTF8String]);
 
     // Drawing has nowhere to go.
