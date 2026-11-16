@@ -8,8 +8,8 @@ plans actually produced), and each ends in working, tested software.
 
 | # | Plan | Repos | Depends on | Status |
 |---|------|-------|-----------|--------|
-| 1 | Real `unmount(2)`; `hdiutil detach` uses it | xnu, darling-dmg | — | planned: `2026-11-16-unmount-syscall.md` |
-| 2 | Disk-image attach library; `hdiutil` on top of it; volume naming; licence agreements in `hdiutil` | darling-dmg | 1 | — |
+| 1 | Real `unmount(2)`; `hdiutil detach` uses it | xnu, darling-dmg | — | done: `2026-11-16-unmount-syscall.md` |
+| 2 | Disk-image attach library; `hdiutil` on top of it; volume naming; licence agreements in `hdiutil` | darling-dmg | 1 | planned: `2026-11-16-disk-image-attach-library.md` |
 | 3 | DiskArbitration: `diskarbitrationd` + client library; `hdiutil` reports DA disk names | darling (src/frameworks/DiskArbitration, new daemon), darling-dmg | 1, 2 | — |
 | 4 | Foundation volume enumeration, NSURL volume keys, trash; NSWorkspace volumes, eject, mount notifications, `iconForFile:`, recycle, reveal | foundation, cocotron | 3 | — |
 | 5 | NSCollectionView (modern API, layouts, selection, drag & drop); pasteboard file URLs | cocotron | — (parallel to 1–4) | — |
@@ -19,8 +19,14 @@ plans actually produced), and each ends in working, tested software.
 
 ## Common rules for every plan
 
-- Build tree: `~/Projects/darling/build` (`cmake .. && make -j$(nproc)`), install
-  with `sudo make install` or the darling-skills `scripts/rebuild.sh <Target>`.
+- Build tree: `~/Projects/darling/build`, configured with
+  `-DCMAKE_INSTALL_PREFIX=$HOME/darling-finder`; install with `make install` (no sudo).
+  `/usr/local` belongs to another session — never install there.
+- Test containers: `~/.darling-finder` (`DARLING_ROOTLESS=1`), `~/.darling-finder-nr`
+  (`DARLING_NONROOT=1`), `~/.darling-finder-root` (root mode: temporary setuid on
+  `~/darling-finder/bin/darling`, only with the user's OK, reverted after).
+- Push branches but open **no pull requests** until the whole roadmap is done and the
+  app works (user's rule).
 - Runtime testing follows the darling-skills `darling-guest-testing` skill
   (`https://github.com/darlinghq/darling-skills`); read its `SKILL.md` first.
 - Black-box comparison with real macOS: `ssh lubos@10.10.10.152` (macOS
