@@ -2,6 +2,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <time.h>
+
+UInt32 TickCount(void)
+{
+	// Ticks are 1/60 s; the count wraps around like the 32-bit value it returns.
+	uint64_t ns = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+	return (UInt32) ((ns / 1000) * 60 / 1000000);
+}
 
 UInt8 LMGetKbdType(void)
 {

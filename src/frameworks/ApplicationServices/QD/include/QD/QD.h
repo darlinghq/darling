@@ -132,6 +132,10 @@ typedef unsigned long GWorldFlags;
 extern "C" {
 #endif
 
+/* Cursor visibility. */
+void HideCursor(void);
+void ShowCursor(void);
+
 /* Rectangles. */
 void SetRect(Rect *r, short left, short top, short right, short bottom);
 void OffsetRect(Rect *r, short dh, short dv);
