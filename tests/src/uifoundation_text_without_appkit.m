@@ -78,8 +78,11 @@ static BOOL appKitLoaded(void)
     return NO;
 }
 
-// The AppKit headers are not used; only what is called is declared.
-typedef unsigned int NSGlyph;
+// The AppKit headers are not used; only what is called is declared. NSGlyph
+// is the type Darling's NSFont.h declares (NSUInteger; macOS uses unsigned
+// int), so that the glyph arrays the text system hands to the test font
+// have the element size it writes.
+typedef NSUInteger NSGlyph;
 
 @protocol TextSystemMethods
 - (id)initWithString:(NSString *)string attributes:(NSDictionary *)attributes;
@@ -143,16 +146,22 @@ typedef unsigned int NSGlyph;
     for (NSUInteger i = 0; i < count; i++)
         advancements[i] = NSMakeSize(10, 0);
 }
-// Where `current` goes relative to `previous`: after the previous glyph's
-// advance.
+// Answered as Darling's NSFont answers it, which is what the text system is
+// written against: the advance of `current`, and none for NSNullGlyph.
 - (NSPoint)positionOfGlyph:(NSGlyph)current precededByGlyph:(NSGlyph)previous isNominal:(BOOL *)isNominal
 {
     if (isNominal)
         *isNominal = YES;
-    return NSMakePoint(previous == 0 /* NSNullGlyph */ ? 0 : 10, 0);
+    return NSMakePoint(current == 0 /* NSNullGlyph */ ? 0 : 10, 0);
 }
 - (void)set
 {
+}
+// With AppKit loaded, the text storage's attribute fixing replaces a font
+// that does not cover the characters of its range; this one covers them all.
+- (NSCharacterSet *)coveredCharacterSet
+{
+    return [[NSCharacterSet characterSetWithCharactersInString: @""] invertedSet];
 }
 @end
 
