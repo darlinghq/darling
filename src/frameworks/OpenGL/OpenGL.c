@@ -269,6 +269,8 @@ static pthread_mutex_t g_bindingMutex = PTHREAD_MUTEX_INITIALIZER;
 // Signalled (under g_bindingMutex) when a context's binding is released.
 static pthread_cond_t g_bindingCond = PTHREAD_COND_INITIALIZER;
 
+struct cgl_profile_strings;
+
 struct _CGLContextObj {
     GLuint retain_count;
     pthread_mutex_t lock;
@@ -290,6 +292,14 @@ struct _CGLContextObj {
     int paced;
     struct cgl_swap_pacer pacer;
     CGLPixelFormatObj pixel_format;
+    // The OpenGL profile requested (kCGLOGLPVersion_*); 0 is a legacy context.
+    GLint profile;
+    // What glGetString and friends report for the profile (see the profile
+    // strings below), made on first use; guarded by profile_lock, not by
+    // lock: a thread that waits for the main thread to give the context up
+    // holds lock, and the main thread's glGetString must not wait for it.
+    pthread_mutex_t profile_lock;
+    struct cgl_profile_strings *profile_strings;
     // CGLEnable state, one bit per enable_bit() index. Recorded only: none
     // of the options changes how this implementation renders.
     unsigned enables;
@@ -1409,6 +1419,9 @@ static CGLError createContext(CGLPixelFormatObj pixelFormat, CGLContextObj share
     context->pacer.period_ns = cgl_period_ns_from_millihertz(0);
     context->pacer.last_ns = 0;
     context->pixel_format = pixelFormat ? CGLRetainPixelFormat(pixelFormat) : NULL;
+    context->profile = profile == kCGLOGLPVersion_Legacy ? 0 : profile;
+    pthread_mutex_init(&context->profile_lock, NULL);
+    context->profile_strings = NULL;
     context->enables = 0;
     context->binding = CGL_BINDING_FREE;
     context->multi_thread = 0;
@@ -1456,6 +1469,7 @@ CGLContextObj CGLRetainContext(CGLContextObj context) {
 }
 
 static void forgetSurfaceBindings(CGLContextObj context);
+static void freeProfileStrings(struct cgl_profile_strings *strings);
 
 void CGLReleaseContext(CGLContextObj context) {
     if (context == NULL) {
@@ -1496,6 +1510,8 @@ void CGLReleaseContext(CGLContextObj context) {
 
     if (context->pixel_format != NULL)
         CGLReleasePixelFormat(context->pixel_format);
+    freeProfileStrings(context->profile_strings);
+    pthread_mutex_destroy(&context->profile_lock);
 
     p_eglDestroyContext(context->egl_display, context->egl_context);
 
@@ -1903,6 +1919,313 @@ static int has_extension(const char *extensions, const char *name) {
     return 0;
 }
 
+
+// OpenGL profiles: what a context reports about itself.
+//
+// A context asks for a profile through kCGLPFAOpenGLProfile. The host's
+// context can offer more than that profile (a compatibility context is
+// usually the host's newest version, and a core one the newest core
+// version), so glGetString, glGetStringi and glGetIntegerv answer for the
+// profile instead, with the version, shading language version and
+// extensions a Mac reports for it:
+//  - a legacy context (the default) is OpenGL 2.1, GLSL 1.20, and lists the
+//    extensions of a 2.1 context through glGetString(GL_EXTENSIONS);
+//  - a core context (3.2 or 4.1) reports at most 4.1, GLSL 4.10, and lists
+//    its extensions through glGetStringi and GL_NUM_EXTENSIONS.
+// Only what the host context supports is listed, and nothing is added to
+// what the host version has: a host below the cap reports its own version.
+// Functions stay resolvable whatever the profile says; only the reports
+// change. GL_VENDOR and GL_RENDERER are the host's.
+//
+// The framework's own questions to the host driver (which copy method it
+// has, which renderer it is) use the host_* functions, not these answers.
+
+#ifndef GL_MAJOR_VERSION
+#define GL_MAJOR_VERSION 0x821B
+#endif
+#ifndef GL_MINOR_VERSION
+#define GL_MINOR_VERSION 0x821C
+#endif
+#ifndef GL_NUM_EXTENSIONS
+#define GL_NUM_EXTENSIONS 0x821D
+#endif
+
+typedef const GLubyte *(*cgl_host_get_string_proc)(GLenum name);
+typedef const GLubyte *(*cgl_host_get_stringi_proc)(GLenum name, GLuint index);
+typedef void (*cgl_host_get_integerv_proc)(GLenum pname, GLint *params);
+static cgl_host_get_string_proc p_hostGetString;
+static cgl_host_get_stringi_proc p_hostGetStringi;
+static cgl_host_get_integerv_proc p_hostGetIntegerv;
+
+static void load_host_queries(void) {
+    p_hostGetString = (cgl_host_get_string_proc) p_eglGetProcAddress("glGetString");
+    p_hostGetStringi = (cgl_host_get_stringi_proc) p_eglGetProcAddress("glGetStringi");
+    p_hostGetIntegerv = (cgl_host_get_integerv_proc) p_eglGetProcAddress("glGetIntegerv");
+}
+
+static void ensure_host_queries(void) {
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    if (native_egl_available())
+        pthread_once(&once, load_host_queries);
+}
+
+static const GLubyte *host_glGetString(GLenum name) {
+    ensure_host_queries();
+    return p_hostGetString ? p_hostGetString(name) : NULL;
+}
+
+static const GLubyte *host_glGetStringi(GLenum name, GLuint index) {
+    ensure_host_queries();
+    return p_hostGetStringi ? p_hostGetStringi(name, index) : NULL;
+}
+
+static void host_glGetIntegerv(GLenum pname, GLint *params) {
+    ensure_host_queries();
+    if (p_hostGetIntegerv)
+        p_hostGetIntegerv(pname, params);
+}
+
+static const char *const legacy_extensions[] = {
+    "GL_ARB_color_buffer_float", "GL_ARB_depth_buffer_float", "GL_ARB_depth_clamp", "GL_ARB_depth_texture",
+    "GL_ARB_draw_buffers", "GL_ARB_draw_elements_base_vertex", "GL_ARB_draw_instanced",
+    "GL_ARB_fragment_program", "GL_ARB_fragment_program_shadow", "GL_ARB_fragment_shader",
+    "GL_ARB_framebuffer_object", "GL_ARB_framebuffer_sRGB", "GL_ARB_half_float_pixel",
+    "GL_ARB_half_float_vertex", "GL_ARB_imaging", "GL_ARB_instanced_arrays", "GL_ARB_multisample",
+    "GL_ARB_multitexture", "GL_ARB_occlusion_query", "GL_ARB_pixel_buffer_object", "GL_ARB_point_parameters",
+    "GL_ARB_point_sprite", "GL_ARB_provoking_vertex", "GL_ARB_seamless_cube_map", "GL_ARB_shader_objects",
+    "GL_ARB_shader_texture_lod", "GL_ARB_shading_language_100", "GL_ARB_shadow", "GL_ARB_shadow_ambient",
+    "GL_ARB_sync", "GL_ARB_texture_border_clamp", "GL_ARB_texture_compression",
+    "GL_ARB_texture_compression_rgtc", "GL_ARB_texture_cube_map", "GL_ARB_texture_env_add",
+    "GL_ARB_texture_env_combine", "GL_ARB_texture_env_crossbar", "GL_ARB_texture_env_dot3",
+    "GL_ARB_texture_float", "GL_ARB_texture_mirrored_repeat", "GL_ARB_texture_non_power_of_two",
+    "GL_ARB_texture_rectangle", "GL_ARB_texture_rg", "GL_ARB_transpose_matrix", "GL_ARB_vertex_array_bgra",
+    "GL_ARB_vertex_blend", "GL_ARB_vertex_buffer_object", "GL_ARB_vertex_program", "GL_ARB_vertex_shader",
+    "GL_ARB_window_pos", "GL_EXT_abgr", "GL_EXT_bgra", "GL_EXT_bindable_uniform", "GL_EXT_blend_color",
+    "GL_EXT_blend_equation_separate", "GL_EXT_blend_func_separate", "GL_EXT_blend_minmax",
+    "GL_EXT_blend_subtract", "GL_EXT_clip_volume_hint", "GL_EXT_debug_label", "GL_EXT_debug_marker",
+    "GL_EXT_depth_bounds_test", "GL_EXT_draw_buffers2", "GL_EXT_draw_range_elements", "GL_EXT_fog_coord",
+    "GL_EXT_framebuffer_blit", "GL_EXT_framebuffer_multisample", "GL_EXT_framebuffer_multisample_blit_scaled",
+    "GL_EXT_framebuffer_object", "GL_EXT_framebuffer_sRGB", "GL_EXT_geometry_shader4",
+    "GL_EXT_gpu_program_parameters", "GL_EXT_gpu_shader4", "GL_EXT_multi_draw_arrays",
+    "GL_EXT_packed_depth_stencil", "GL_EXT_packed_float", "GL_EXT_provoking_vertex", "GL_EXT_rescale_normal",
+    "GL_EXT_secondary_color", "GL_EXT_separate_specular_color", "GL_EXT_shadow_funcs",
+    "GL_EXT_stencil_two_side", "GL_EXT_stencil_wrap", "GL_EXT_texture_array",
+    "GL_EXT_texture_compression_dxt1", "GL_EXT_texture_compression_s3tc", "GL_EXT_texture_env_add",
+    "GL_EXT_texture_filter_anisotropic", "GL_EXT_texture_integer", "GL_EXT_texture_lod_bias",
+    "GL_EXT_texture_mirror_clamp", "GL_EXT_texture_rectangle", "GL_EXT_texture_shared_exponent",
+    "GL_EXT_texture_sRGB", "GL_EXT_texture_sRGB_decode", "GL_EXT_timer_query", "GL_EXT_transform_feedback",
+    "GL_EXT_vertex_array_bgra", "GL_APPLE_aux_depth_stencil", "GL_APPLE_client_storage",
+    "GL_APPLE_element_array", "GL_APPLE_fence", "GL_APPLE_float_pixels", "GL_APPLE_flush_buffer_range",
+    "GL_APPLE_flush_render", "GL_APPLE_packed_pixels", "GL_APPLE_pixel_buffer", "GL_APPLE_rgb_422",
+    "GL_APPLE_row_bytes", "GL_APPLE_specular_vector", "GL_APPLE_texture_range", "GL_APPLE_transform_hint",
+    "GL_APPLE_vertex_array_object", "GL_APPLE_vertex_array_range", "GL_APPLE_vertex_point_size",
+    "GL_APPLE_vertex_program_evaluators", "GL_APPLE_ycbcr_422", "GL_ATI_separate_stencil",
+    "GL_ATI_texture_compression_3dc", "GL_ATI_texture_env_combine3", "GL_ATI_texture_float",
+    "GL_ATI_texture_mirror_once", "GL_IBM_rasterpos_clip", "GL_NV_blend_square", "GL_NV_conditional_render",
+    "GL_NV_depth_clamp", "GL_NV_fog_distance", "GL_NV_light_max_exponent", "GL_NV_texgen_reflection",
+    "GL_NV_texture_barrier", "GL_SGIS_generate_mipmap", "GL_SGIS_texture_edge_clamp", "GL_SGIS_texture_lod",
+};
+
+static const char *const core_extensions[] = {
+    "GL_ARB_blend_func_extended", "GL_ARB_draw_buffers_blend", "GL_ARB_draw_indirect",
+    "GL_ARB_ES2_compatibility", "GL_ARB_explicit_attrib_location", "GL_ARB_gpu_shader_fp64",
+    "GL_ARB_gpu_shader5", "GL_ARB_instanced_arrays", "GL_ARB_internalformat_query", "GL_ARB_occlusion_query2",
+    "GL_ARB_sample_shading", "GL_ARB_sampler_objects", "GL_ARB_separate_shader_objects",
+    "GL_ARB_shader_bit_encoding", "GL_ARB_shader_subroutine", "GL_ARB_shading_language_include",
+    "GL_ARB_tessellation_shader", "GL_ARB_texture_buffer_object_rgb32", "GL_ARB_texture_cube_map_array",
+    "GL_ARB_texture_gather", "GL_ARB_texture_query_lod", "GL_ARB_texture_rgb10_a2ui",
+    "GL_ARB_texture_storage", "GL_ARB_texture_swizzle", "GL_ARB_timer_query", "GL_ARB_transform_feedback2",
+    "GL_ARB_transform_feedback3", "GL_ARB_vertex_attrib_64bit", "GL_ARB_vertex_type_2_10_10_10_rev",
+    "GL_ARB_viewport_array", "GL_EXT_debug_label", "GL_EXT_debug_marker", "GL_EXT_depth_bounds_test",
+    "GL_EXT_framebuffer_multisample_blit_scaled", "GL_EXT_texture_compression_s3tc",
+    "GL_EXT_texture_filter_anisotropic", "GL_EXT_texture_mirror_clamp", "GL_EXT_texture_sRGB_decode",
+    "GL_APPLE_client_storage", "GL_APPLE_container_object_shareable", "GL_APPLE_flush_render",
+    "GL_APPLE_rgb_422", "GL_APPLE_row_bytes", "GL_APPLE_texture_range", "GL_ATI_texture_mirror_once",
+    "GL_NV_texture_barrier",
+};
+
+struct cgl_profile_strings {
+    int core;
+    int major, minor;
+    char version[160];
+    char shading_language[16];
+    // legacy: the extension list as one string
+    char *legacy_list;
+    // core: the extensions, pointing into core_extensions
+    const char **core_list;
+    GLint core_count;
+};
+
+static void freeProfileStrings(struct cgl_profile_strings *strings) {
+    if (!strings)
+        return;
+    free(strings->legacy_list);
+    free(strings->core_list);
+    free(strings);
+}
+
+// The part of a host version string after the number: what follows
+// "major.minor[.release] ", without a "(Core Profile)" kind of note.
+static const char *version_vendor_text(const char *version) {
+    const char *p = version;
+    while ((*p >= '0' && *p <= '9') || *p == '.')
+        p++;
+    while (*p == ' ')
+        p++;
+    if (*p == '(') {
+        const char *close = strchr(p, ')');
+        p = close ? close + 1 : p + strlen(p);
+        while (*p == ' ')
+            p++;
+    }
+    return p;
+}
+
+static int host_list_has(const char *list, const char *name) {
+    return list && has_extension(list, name);
+}
+
+// Works out what a context reports. Called with the context current (its
+// host context answers the questions), from the thread that has it.
+static struct cgl_profile_strings *makeProfileStrings(CGLContextObj context) {
+    const char *hostVersion = (const char *) host_glGetString(GL_VERSION);
+    int major = 0, minor = 0;
+    if (!hostVersion || sscanf(hostVersion, "%d.%d", &major, &minor) != 2)
+        return NULL;
+
+    struct cgl_profile_strings *strings = calloc(1, sizeof(*strings));
+    if (!strings)
+        return NULL;
+    strings->core = context->profile != 0;
+
+    // QUIRK: a 3.2 core request reports the same version as a 4.1 core
+    // request (the newest core version, capped at 4.1), not 3.2. Not
+    // documented. Evidence: black-box observation on macOS 10.14.4 and
+    // 26.7.3 (tier 2), probes in the PR's Provenance. Test:
+    // cgl_profile_strings ("QUIRK test": 3.2 and 4.1 describe alike).
+    int capMajor = strings->core ? 4 : 2, capMinor = 1;
+    if (major > capMajor || (major == capMajor && minor > capMinor)) {
+        major = capMajor;
+        minor = capMinor;
+    }
+    strings->major = major;
+    strings->minor = minor;
+    const char *text = version_vendor_text(hostVersion);
+    snprintf(strings->version, sizeof(strings->version), "%d.%d%s%s", major, minor, *text ? " " : "", text);
+
+    // GLSL: 1.20 for legacy, 4.10 for core, or the host's number when it is lower.
+    int glsl = strings->core ? 410 : 120;
+    const char *hostGlsl = (const char *) host_glGetString(GL_SHADING_LANGUAGE_VERSION);
+    int glslMajor = 0, glslMinor = 0;
+    if (hostGlsl && sscanf(hostGlsl, "%d.%d", &glslMajor, &glslMinor) == 2 && glslMajor * 100 + glslMinor < glsl)
+        glsl = glslMajor * 100 + glslMinor;
+    snprintf(strings->shading_language, sizeof(strings->shading_language), "%d.%02d", glsl / 100, glsl % 100);
+
+    if (!strings->core) {
+        const char *hostList = (const char *) host_glGetString(GL_EXTENSIONS);
+        size_t size = 1;
+        for (size_t i = 0; i < sizeof(legacy_extensions) / sizeof(legacy_extensions[0]); i++)
+            size += strlen(legacy_extensions[i]) + 1;
+        strings->legacy_list = malloc(size);
+        if (!strings->legacy_list) {
+            freeProfileStrings(strings);
+            return NULL;
+        }
+        char *out = strings->legacy_list;
+        *out = '\0';
+        for (size_t i = 0; i < sizeof(legacy_extensions) / sizeof(legacy_extensions[0]); i++) {
+            if (!host_list_has(hostList, legacy_extensions[i]))
+                continue;
+            size_t length = strlen(legacy_extensions[i]);
+            if (out != strings->legacy_list)
+                *out++ = ' ';
+            memcpy(out, legacy_extensions[i], length + 1);
+            out += length;
+        }
+    } else {
+        const size_t count = sizeof(core_extensions) / sizeof(core_extensions[0]);
+        strings->core_list = calloc(count, sizeof(char *));
+        if (!strings->core_list) {
+            freeProfileStrings(strings);
+            return NULL;
+        }
+        GLint hostCount = 0;
+        host_glGetIntegerv(GL_NUM_EXTENSIONS, &hostCount);
+        for (size_t i = 0; i < count; i++) {
+            for (GLint j = 0; j < hostCount; j++) {
+                const char *name = (const char *) host_glGetStringi(GL_EXTENSIONS, (GLuint) j);
+                if (name && strcmp(name, core_extensions[i]) == 0) {
+                    strings->core_list[strings->core_count++] = core_extensions[i];
+                    break;
+                }
+            }
+        }
+    }
+    return strings;
+}
+
+// The strings of the current context of this thread, or NULL when there is
+// none (the host answers then, with an error or its own values).
+static struct cgl_profile_strings *currentProfileStrings(void) {
+    CGLContextObj context = CGLGetCurrentContext();
+    if (!context)
+        return NULL;
+    pthread_mutex_lock(&context->profile_lock);
+    if (!context->profile_strings)
+        context->profile_strings = makeProfileStrings(context);
+    struct cgl_profile_strings *strings = context->profile_strings;
+    pthread_mutex_unlock(&context->profile_lock);
+    return strings;
+}
+
+CGL_EXPORT const GLubyte *glGetString(GLenum name) {
+    if (name == GL_VERSION || name == GL_SHADING_LANGUAGE_VERSION || name == GL_EXTENSIONS) {
+        struct cgl_profile_strings *strings = currentProfileStrings();
+        if (strings) {
+            if (name == GL_VERSION)
+                return (const GLubyte *) strings->version;
+            if (name == GL_SHADING_LANGUAGE_VERSION)
+                return (const GLubyte *) strings->shading_language;
+            // a core context has no extension string; the host raises GL_INVALID_ENUM
+            if (!strings->core)
+                return (const GLubyte *) strings->legacy_list;
+        }
+    }
+    return host_glGetString(name);
+}
+
+CGL_EXPORT const GLubyte *glGetStringi(GLenum name, GLuint index) {
+    if (name == GL_EXTENSIONS) {
+        struct cgl_profile_strings *strings = currentProfileStrings();
+        if (strings && strings->core)
+            return index < (GLuint) strings->core_count ? (const GLubyte *) strings->core_list[index] : host_glGetStringi(name, UINT_MAX);
+        // OpenGL 2.1 has no indexed strings: nothing to return, and the host
+        // is asked for an index no list has so that it raises an error.
+        if (strings)
+            return host_glGetStringi(name, UINT_MAX);
+    }
+    return host_glGetStringi(name, index);
+}
+
+CGL_EXPORT void glGetIntegerv(GLenum pname, GLint *params) {
+    if (pname == GL_MAJOR_VERSION || pname == GL_MINOR_VERSION || pname == GL_NUM_EXTENSIONS) {
+        struct cgl_profile_strings *strings = currentProfileStrings();
+        if (strings && strings->core) {
+            *params = pname == GL_MAJOR_VERSION ? strings->major
+                : pname == GL_MINOR_VERSION ? strings->minor : strings->core_count;
+            return;
+        }
+        // These queries start with OpenGL 3.0; a 2.1 context raises
+        // GL_INVALID_ENUM. The host would answer, so it is given a pname
+        // that no version knows, which raises it.
+        if (strings) {
+            host_glGetIntegerv(0, params);
+            return;
+        }
+    }
+    host_glGetIntegerv(pname, params);
+}
+
 static enum dmabuf_import dmabuf_import(CGLContextObj context) {
     int support = atomic_load(&context->dmabuf_import);
     if (support != DMABUF_IMPORT_UNKNOWN)
@@ -2070,7 +2393,7 @@ static int has_gl_extension(int major, const char *name) {
         if (!p_glGetStringi)
             return 0;
         GLint count = 0;
-        glGetIntegerv(GL_NUM_EXTENSIONS, &count);
+        host_glGetIntegerv(GL_NUM_EXTENSIONS, &count);
         for (GLint i = 0; i < count; i++) {
             const GLubyte *extension = p_glGetStringi(GL_EXTENSIONS, (GLuint) i);
             if (extension && strcmp((const char *) extension, name) == 0)
@@ -2078,7 +2401,7 @@ static int has_gl_extension(int major, const char *name) {
         }
         return 0;
     }
-    const GLubyte *extensions = glGetString(GL_EXTENSIONS);
+    const GLubyte *extensions = host_glGetString(GL_EXTENSIONS);
     return extensions && has_extension((const char *) extensions, name);
 }
 
@@ -2106,7 +2429,7 @@ static int softwareEGLDevice(EGLDisplay display) {
 // CPU copy through the imported memory, which costs more than the plain
 // CPU copy (measured on llvmpipe), so rectangle textures keep the latter.
 static int softwareRenderer(CGLContextObj context) {
-    const GLubyte *renderer = glGetString(GL_RENDERER);
+    const GLubyte *renderer = host_glGetString(GL_RENDERER);
     static const char *const names[] = { "llvmpipe", "lavapipe", "softpipe", "swrast", "Software Rasterizer" };
     for (size_t i = 0; renderer && i < sizeof(names) / sizeof(names[0]); i++) {
         if (strstr((const char *) renderer, names[i]))
@@ -2127,7 +2450,7 @@ static enum gpu_copy gpu_copy(CGLContextObj context) {
     }
 
     int major = 0, minor = 0;
-    const GLubyte *version = glGetString(GL_VERSION);
+    const GLubyte *version = host_glGetString(GL_VERSION);
     if (version)
         sscanf((const char *) version, "%d.%d", &major, &minor);
 
@@ -2703,9 +3026,9 @@ static uint64_t registryVideoMegabytes(void) {
 
 // Describes the renderer of the context that is current, which has the given display.
 static void describeCurrentRenderer(EGLDisplay egl_display, struct cgl_renderer *out) {
-    const char *vendor = (const char *) glGetString(GL_VENDOR);
-    const char *renderer = (const char *) glGetString(GL_RENDERER);
-    const char *version = (const char *) glGetString(GL_VERSION);
+    const char *vendor = (const char *) host_glGetString(GL_VENDOR);
+    const char *renderer = (const char *) host_glGetString(GL_RENDERER);
+    const char *version = (const char *) host_glGetString(GL_VERSION);
     int major = 0, minor = 0;
     if (version)
         sscanf(version, "%d.%d", &major, &minor);
