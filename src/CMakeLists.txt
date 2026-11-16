@@ -503,6 +503,9 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_gui_common")
 
 	add_subdirectory(external/libxml2)
+	# Foundation links and re-exports CoreAutoLayout (the Auto Layout classes, a cocotron framework), so it is built with
+	# Foundation even when the GUI components are not
+	add_subdirectory(external/cocotron/CoreAutoLayout)
 	add_subdirectory(external/foundation)
 	add_subdirectory(external/cfnetwork/src)
 	add_subdirectory(external/sqlite)
