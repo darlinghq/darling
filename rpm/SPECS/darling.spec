@@ -218,6 +218,7 @@ pushd build
 	           -DOpenGL_GL_PREFERENCE=GLVND \
 	           -DDEBIAN_PACKAGING=ON \
 	           -DJSC_UNIFIED_BUILD=ON \
+	           -DDARLING_SWIFT_WMO=ON \
 	           ..
 	%{make_build} -j `nproc`
 popd

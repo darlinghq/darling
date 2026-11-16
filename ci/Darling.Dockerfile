@@ -85,6 +85,7 @@ RUN mkdir -p build && cd build && \
         -DCMAKE_CXX_FLAGS_INIT="-Wno-incompatible-pointer-types" \
         -DTARGET_i386=OFF \
         -DDARLING_NO_DSYM=ON \
+        -DDARLING_SWIFT_WMO=ON \
         -GNinja && \
     ninja -j$(nproc) && \
     ninja install && \
