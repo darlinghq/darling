@@ -61,9 +61,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
         [string getCharacters: characterChunk
                         range: NSMakeRange(characterIndex, chunkSize)];
-        [font getGlyphs: glyphChunk
-                forCharacters: characterChunk
-                       length: chunkSize];
+        if (font != nil)
+            [font getGlyphs: glyphChunk
+                    forCharacters: characterChunk
+                           length: chunkSize];
+        else
+            // No font (no font attribute, and no AppKit to supply the
+            // fallback font): the characters get glyph 0, NSNullGlyph.
+            memset(glyphChunk, 0, sizeof(glyphChunk));
 
         [glyphStorage insertGlyphs: glyphChunk
                                  length: chunkSize

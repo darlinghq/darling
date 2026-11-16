@@ -41,6 +41,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (void) _updateBidiLevelsForRange: (NSRange) range;
 @end
 
+// Text with no font attribute uses the fallback font AppKit provides. Without
+// AppKit loaded there is none, and its glyphs take no space.
+static NSPoint _positionOfGlyphWithoutFont(NSFont *font, SEL selector,
+                                           NSGlyph glyph, NSGlyph previous,
+                                           BOOL *isNominal)
+{
+    if (isNominal != NULL)
+        *isNominal = YES;
+    return NSZeroPoint;
+}
+
 @implementation NSTypesetter_concrete
 
 - init {
@@ -965,6 +976,8 @@ static void loadGlyphAndCharacterCacheForLocation(NSTypesetter_concrete *self,
         _positionOfGlyph = (void *) [_font
                 methodForSelector: @selector(positionOfGlyph:
                                              precededByGlyph:isNominal:)];
+        if (_positionOfGlyph == NULL)
+            _positionOfGlyph = _positionOfGlyphWithoutFont;
 
         [_font getGlyphs: &spaceGlyph forCharacters: &space length: 1];
         _whitespaceAdvancement = [_font advancementForGlyph: spaceGlyph].width;
@@ -1078,6 +1091,8 @@ static void loadGlyphAndCharacterCacheForLocation(NSTypesetter_concrete *self,
         _positionOfGlyph = (void *) [_font
                 methodForSelector: @selector(positionOfGlyph:
                                              precededByGlyph:isNominal:)];
+        if (_positionOfGlyph == NULL)
+            _positionOfGlyph = _positionOfGlyphWithoutFont;
     }
 
     if (((_paragraphBreak && _nextGlyphLocation >= _numberOfGlyphs) ||
