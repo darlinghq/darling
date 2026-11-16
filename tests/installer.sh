@@ -104,5 +104,29 @@ if [ ! -e "$DIR/victim" ]; then pass "a regular file replaces an earlier link in
 mkdir dst4
 nt "a script that cannot be executed fails the install" "$INSTALLER" -pkg "$DIR/badscript.pkg" -target "$T/dst4"
 
+# ---- information queries and command-line errors ----------------------
+# Expectations were observed on macOS 26 (x86_64) and also hold there.
+eq "-pkginfo lists the package name" "$("$INSTALLER" -pkginfo -pkg "$DIR/plain.pkg" 2>&1)" plain
+eq "-dominfo lists nothing for a package without domains" "$("$INSTALLER" -dominfo -pkg "$DIR/plain.pkg" 2>&1)" ""
+case "$("$INSTALLER" -volinfo -pkg "$DIR/plain.pkg" 2>&1)" in
+/*) pass "-volinfo lists mount points" ;;
+*) fail "-volinfo lists mount points" ;;
+esac
+"$INSTALLER" -volinfo -pkg "$DIR/plain.pkg" 2>&1 | grep -qx / && pass "-volinfo includes /" || fail "-volinfo includes /"
+eq "-volinfo -plist: first line" "$("$INSTALLER" -volinfo -plist -pkg "$DIR/plain.pkg" 2>&1 | sed -n 1p)" '<?xml version="1.0" encoding="UTF-8"?>'
+"$INSTALLER" -pkginfo -plist -pkg "$DIR/plain.pkg" 2>&1 | tr -d ' \n' | grep -q '<key>Package</key><string>plain</string>' && pass "-pkginfo -plist has a Package entry" || fail "-pkginfo -plist has a Package entry"
+"$INSTALLER" -dominfo -plist -pkg "$DIR/plain.pkg" 2>&1 | grep -qx '<array/>' && pass "-dominfo -plist is an empty array" || fail "-dominfo -plist is an empty array"
+"$INSTALLER" -pkginfo -verbose -pkg "$DIR/plain.pkg" 2>&1 | grep -q '^Package  *: plain$' && pass "-pkginfo -verbose has a Package line" || fail "-pkginfo -verbose has a Package line"
+eq "no arguments: exit status 255" "$("$INSTALLER" >/dev/null 2>&1; echo $?)" 255
+eq "unknown option: exit status 255" "$("$INSTALLER" -bogus -pkg "$DIR/plain.pkg" >/dev/null 2>&1; echo $?)" 255
+"$INSTALLER" -bogus -pkg "$DIR/plain.pkg" 2>&1 | grep -qx 'installer: invalid option -bogus' && pass "unknown option is named" || fail "unknown option is named"
+eq "-dominfo without -pkg: exit status 255" "$("$INSTALLER" -dominfo >/dev/null 2>&1; echo $?)" 255
+"$INSTALLER" -dominfo 2>&1 | grep -qx 'installer: Error a package must be specified.' && pass "missing package is reported" || fail "missing package is reported"
+eq "-tgt is a synonym of -target: bad target message" "$("$INSTALLER" -pkg "$DIR/plain.pkg" -tgt /nonexistent 2>&1)" "installer: Error trying to locate volume at /nonexistent"
+eq "bad target: exit status 1" "$("$INSTALLER" -pkg "$DIR/plain.pkg" -tgt /nonexistent >/dev/null 2>&1; echo $?)" 1
+eq "missing package file" "$("$INSTALLER" -pkg /nonexistent.pkg -target / 2>&1)" "installer: Error - the package path specified was invalid: '/nonexistent.pkg'."
+"$INSTALLER" -vers >/dev/null 2>&1 && pass "-vers succeeds" || fail "-vers succeeds"
+"$INSTALLER" -help >/dev/null 2>&1 && pass "-help succeeds" || fail "-help succeeds"
+
 echo
 if [ "$fails" -eq 0 ]; then echo "all passed"; else echo "$fails failed"; exit 1; fi
