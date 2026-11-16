@@ -62,5 +62,19 @@ guest rounds "(for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
 done)"
 [ "$(rc rounds)" = 0 ] && pass "unmount then attach at once, 20 rounds" || fail "unmount then attach at once: $(outputs rounds)"
 
+# disk appeared, disappeared and description-changed callbacks (see da-callbacks.c; a daemon restart is
+# diskarbitration-restart.sh)
+if build da-callbacks "$here/da-callbacks.c"; then
+	guest cb-attach "hdiutil attach -quiet '$gw/unmount-test.dmg'"
+	guest cb-existing "'$gw/da-callbacks' existing '/Volumes/Unmount Test'"
+	guest cb-detach "hdiutil detach -quiet '/Volumes/Unmount Test'"
+	guest cb-attach-detach "'$gw/da-callbacks' attach-detach '$gw/unmount-test.dmg' '/Volumes/Unmount Test'"
+	guest cb-unscheduled "'$gw/da-callbacks' unscheduled"
+	guest cb-unregister "'$gw/da-callbacks' unregister"
+	for t in existing attach-detach unscheduled unregister; do
+		[ "$(rc "cb-$t")" = 0 ] && pass "callbacks: $t" || fail "callbacks: $t: $(outputs "cb-$t")"
+	done
+fi
+
 rm -rf "$work"
 [ "$failures" = 0 ]

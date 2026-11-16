@@ -83,6 +83,22 @@ It has no volume name, path or kind.
 The other images: `fixtures/slash-name.dmg` has `DAVolumeName` "A/B" at `/Volumes/A:B`, and `fixtures/amp-name.dmg`
 has "Tom & Jerry <1>".
 
+### Callbacks
+
+Running `da-callbacks attach-detach` four times gave the same order every time:
+
+1. attaching: appeared `disk5s1`, appeared `disk5`, then changed `disk5s1` with `DAVolumePath` (the volume mounts);
+2. detaching: changed `disk5s1` with `DAVolumePath`, disappeared `disk5`, disappeared `disk5s1`.
+
+The disks there already are come leaf first too. A session that is never scheduled gets no callbacks, and after
+`DAUnregisterCallback` nothing more is delivered.
+
+Darling's image volume is mounted before its disk appears, so its leaf appears with `DAVolumePath` already set and no
+changed callback follows.
+
+`diskarbitration-restart.sh` checks that a session keeps working after `diskarbitrationd` restarts. It fails for now:
+libxpc's reconnection to a restarted launchd service never reaches the new instance.
+
 ## Darling's disks
 
 Darling has no IOKit block devices. `diskarbitrationd` makes its disks from the mount table:

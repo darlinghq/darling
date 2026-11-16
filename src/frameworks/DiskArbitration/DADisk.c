@@ -38,6 +38,7 @@ CONST_STRING_DECL(kDADiskDescriptionMediaRemovableKey, "DAMediaRemovable");
 CONST_STRING_DECL(kDADiskDescriptionMediaSizeKey, "DAMediaSize");
 CONST_STRING_DECL(kDADiskDescriptionMediaTypeKey, "DAMediaType");
 CONST_STRING_DECL(kDADiskDescriptionMediaUUIDKey, "DAMediaUUID");
+CONST_STRING_DECL(kDADiskDescriptionAppearanceTimeKey, "DAAppearanceTime");
 CONST_STRING_DECL(kDADiskDescriptionMediaWholeKey, "DAMediaWhole");
 CONST_STRING_DECL(kDADiskDescriptionMediaWritableKey, "DAMediaWritable");
 CONST_STRING_DECL(kDADiskDescriptionMediaEncryptedKey, "DAMediaEncrypted");

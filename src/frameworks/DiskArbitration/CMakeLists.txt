@@ -9,6 +9,7 @@ set(da_SRCS
 	DADisk.c
 	DADissenter.c
 	DASession.c
+	DASessionEvents.c
 )
 
 set(DYLIB_COMPAT_VERSION "1.0.0")

@@ -20,17 +20,106 @@
 #include "DAServer.h"
 
 #include <DiskArbitration/DADissenter.h>
+#include <stdlib.h>
 #include <string.h>
 #include <xpc/xpc.h>
 
 #include "../DAProtocol.h"
 
 static dispatch_queue_t g_queue;
-static const DAModelEvents g_events = { 0 };
+
+// The connections that said hello, which get every event.
+static xpc_connection_t* g_subscribers;
+static size_t g_subscriberCount;
+
+static bool setDescription(xpc_object_t message, CFDictionaryRef description)
+{
+	CFDataRef data = CFPropertyListCreateData(NULL, description, kCFPropertyListBinaryFormat_v1_0, 0, NULL);
+	if (data == NULL)
+		return false;
+	xpc_dictionary_set_data(message, DA_KEY_DESCRIPTION, CFDataGetBytePtr(data), CFDataGetLength(data));
+	CFRelease(data);
+	return true;
+}
+
+static void broadcast(const char* event, const char* name, CFArrayRef keys, CFDictionaryRef description)
+{
+	if (g_subscriberCount == 0)
+		return;
+
+	xpc_object_t message = xpc_dictionary_create(NULL, NULL, 0);
+	xpc_dictionary_set_string(message, DA_KEY_EVENT, event);
+	xpc_dictionary_set_string(message, DA_KEY_NAME, name);
+	setDescription(message, description);
+	if (keys != NULL)
+	{
+		xpc_object_t array = xpc_array_create(NULL, 0);
+		for (CFIndex i = 0; i < CFArrayGetCount(keys); i++)
+		{
+			char key[256];
+			if (CFStringGetCString(CFArrayGetValueAtIndex(keys, i), key, sizeof(key), kCFStringEncodingUTF8))
+				xpc_array_set_string(array, XPC_ARRAY_APPEND, key);
+		}
+		xpc_dictionary_set_value(message, DA_KEY_KEYS, array);
+		xpc_release(array);
+	}
+
+	for (size_t i = 0; i < g_subscriberCount; i++)
+		xpc_connection_send_message(g_subscribers[i], message);
+	xpc_release(message);
+}
+
+static void appeared(void* context, const char* name, CFDictionaryRef description)
+{
+	broadcast(DA_EVENT_APPEARED, name, NULL, description);
+}
+
+static void disappeared(void* context, const char* name, CFDictionaryRef description)
+{
+	broadcast(DA_EVENT_DISAPPEARED, name, NULL, description);
+}
+
+static void changed(void* context, const char* name, CFArrayRef keys, CFDictionaryRef description)
+{
+	broadcast(DA_EVENT_CHANGED, name, keys, description);
+}
+
+static const DAModelEvents g_events = {
+	.appeared = appeared,
+	.disappeared = disappeared,
+	.changed = changed,
+};
 
 const DAModelEvents* DAServerEvents(void)
 {
 	return &g_events;
+}
+
+static void subscribe(xpc_connection_t peer)
+{
+	for (size_t i = 0; i < g_subscriberCount; i++)
+	{
+		if (g_subscribers[i] == peer)
+			return;
+	}
+	xpc_connection_t* grown = realloc(g_subscribers, sizeof(*grown) * (g_subscriberCount + 1));
+	if (grown == NULL)
+		return;
+	g_subscribers = grown;
+	g_subscribers[g_subscriberCount++] = xpc_retain(peer);
+}
+
+static void unsubscribe(xpc_connection_t peer)
+{
+	for (size_t i = 0; i < g_subscriberCount; i++)
+	{
+		if (g_subscribers[i] == peer)
+		{
+			xpc_release(peer);
+			g_subscribers[i] = g_subscribers[--g_subscriberCount];
+			return;
+		}
+	}
 }
 
 static void replyStatus(xpc_object_t reply, DAReturn status)
@@ -63,15 +152,35 @@ static void handleDescribe(xpc_object_t message, xpc_object_t reply)
 		return;
 	}
 
-	CFDataRef data = CFPropertyListCreateData(NULL, whole ? media->whole : media->leaf,
-		kCFPropertyListBinaryFormat_v1_0, 0, NULL);
-	if (data == NULL)
-	{
+	if (!setDescription(reply, whole ? media->whole : media->leaf))
 		replyStatus(reply, kDAReturnError);
-		return;
+}
+
+static void appendDisk(xpc_object_t disks, const DAMedia* media, bool whole)
+{
+	char name[32];
+	xpc_object_t disk = xpc_dictionary_create(NULL, NULL, 0);
+
+	DAModelName(media, whole, name, sizeof(name));
+	xpc_dictionary_set_string(disk, DA_KEY_NAME, name);
+	if (setDescription(disk, whole ? media->whole : media->leaf))
+		xpc_array_append_value(disks, disk);
+	xpc_release(disk);
+}
+
+// The peer gets every event from now on; the reply lists the disks there are now.
+static void handleHello(xpc_connection_t peer, xpc_object_t reply)
+{
+	xpc_object_t disks = xpc_array_create(NULL, 0);
+
+	subscribe(peer);
+	for (DAMedia* media = DAModelFirst(); media != NULL; media = media->next)
+	{
+		appendDisk(disks, media, false);
+		appendDisk(disks, media, true);
 	}
-	xpc_dictionary_set_data(reply, DA_KEY_DESCRIPTION, CFDataGetBytePtr(data), CFDataGetLength(data));
-	CFRelease(data);
+	xpc_dictionary_set_value(reply, DA_KEY_DISKS, disks);
+	xpc_release(disks);
 }
 
 static void handleLookupPath(xpc_object_t message, xpc_object_t reply)
@@ -114,6 +223,8 @@ static void handleMessage(xpc_connection_t peer, xpc_object_t message)
 		handleDescribe(message, reply);
 	else if (op != NULL && strcmp(op, DA_OP_LOOKUP_PATH) == 0)
 		handleLookupPath(message, reply);
+	else if (op != NULL && strcmp(op, DA_OP_HELLO) == 0)
+		handleHello(peer, reply);
 	else
 		replyStatus(reply, kDAReturnUnsupported);
 
@@ -124,12 +235,21 @@ static void handleMessage(xpc_connection_t peer, xpc_object_t message)
 static void acceptPeer(xpc_connection_t peer)
 {
 	xpc_connection_set_event_handler(peer, ^(xpc_object_t message) {
+		if (message == XPC_ERROR_CONNECTION_INVALID)
+		{
+			dispatch_async(g_queue, ^{
+				unsubscribe(peer);
+			});
+			return;
+		}
 		if (xpc_get_type(message) != XPC_TYPE_DICTIONARY)
 			return;
+		xpc_retain(peer);
 		xpc_retain(message);
 		dispatch_async(g_queue, ^{
 			handleMessage(peer, message);
 			xpc_release(message);
+			xpc_release(peer);
 		});
 	});
 	xpc_connection_resume(peer);

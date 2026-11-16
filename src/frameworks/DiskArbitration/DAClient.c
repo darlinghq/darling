@@ -65,18 +65,10 @@ static void restoreValueTypes(CFMutableDictionaryRef description)
 	}
 }
 
-CFDictionaryRef _DAClientCopyDescription(DASessionRef session, const char* name)
+CFMutableDictionaryRef _DAClientDescriptionFromMessage(xpc_object_t message)
 {
-	xpc_object_t message = xpc_dictionary_create(NULL, NULL, 0);
-	xpc_dictionary_set_string(message, DA_KEY_OP, DA_OP_DESCRIBE);
-	xpc_dictionary_set_string(message, DA_KEY_NAME, name);
-	xpc_object_t reply = _DAClientRequest(session, message);
-	xpc_release(message);
-	if (reply == NULL)
-		return NULL;
-
 	size_t length;
-	const void* bytes = xpc_dictionary_get_data(reply, DA_KEY_DESCRIPTION, &length);
+	const void* bytes = xpc_dictionary_get_data(message, DA_KEY_DESCRIPTION, &length);
 	CFMutableDictionaryRef description = NULL;
 	if (bytes != NULL)
 	{
@@ -93,6 +85,20 @@ CFDictionaryRef _DAClientCopyDescription(DASessionRef session, const char* name)
 			CFRelease(list);
 		}
 	}
+	return description;
+}
+
+CFDictionaryRef _DAClientCopyDescription(DASessionRef session, const char* name)
+{
+	xpc_object_t message = xpc_dictionary_create(NULL, NULL, 0);
+	xpc_dictionary_set_string(message, DA_KEY_OP, DA_OP_DESCRIBE);
+	xpc_dictionary_set_string(message, DA_KEY_NAME, name);
+	xpc_object_t reply = _DAClientRequest(session, message);
+	xpc_release(message);
+	if (reply == NULL)
+		return NULL;
+
+	CFDictionaryRef description = _DAClientDescriptionFromMessage(reply);
 	xpc_release(reply);
 	return description;
 }
