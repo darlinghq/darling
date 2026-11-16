@@ -191,6 +191,7 @@
 #import <WebKit/WKWebView.h>
 #import <WebKit/WKWebViewConfiguration.h>
 #import <WebKit/WKWindowFeatures.h>
+#import <WebKit/WebScriptObject.h>
 #import <WebKit/WebView.h>
 
 extern NSString *WebKitErrorDomain;

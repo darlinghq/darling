@@ -21,3 +21,8 @@
 
 @interface WebScriptObject : NSObject
 @end
+
+// The value JavaScript's undefined maps to; there is only one instance.
+@interface WebUndefined : NSObject <NSCoding, NSCopying>
++ (WebUndefined *)undefined;
+@end

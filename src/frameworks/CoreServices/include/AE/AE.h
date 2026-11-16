@@ -3,6 +3,7 @@
 
 #include <AE/AEDataModel.h>
 #include <AE/AppleEvents.h>
+#include <stdarg.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -60,6 +61,47 @@ OSErr AERemoveSpecialHandler(AEKeyword functionClass, AEEventHandlerUPP handler,
 OSErr AEGetSpecialHandler(AEKeyword functionClass, AEEventHandlerUPP *handler, Boolean isSysHandler);
 
 OSStatus AEPrintDescToHandle(const AEDesc *desc, Handle *result);
+
+// Why parsing a format string failed.
+enum {
+	aeBuildSyntaxNoErr = 0,
+	aeBuildSyntaxBadToken = 1,           // unexpected character
+	aeBuildSyntaxBadEOF = 2,             // the string ended too early
+	aeBuildSyntaxNoEOF = 3,              // extra text after the end of the description
+	aeBuildSyntaxBadNegative = 4,        // "-" not followed by digits
+	aeBuildSyntaxMissingQuote = 5,       // unterminated quoted four-character code
+	aeBuildSyntaxBadHex = 6,             // non-hex character between $ signs
+	aeBuildSyntaxOddHex = 7,             // odd number of hex digits
+	aeBuildSyntaxNoCloseHex = 8,         // missing closing $
+	aeBuildSyntaxUncoercedHex = 9,       // hex string without a type
+	aeBuildSyntaxNoCloseString = 10,     // missing closing quote of a string
+	aeBuildSyntaxBadDesc = 11,           // not a descriptor
+	aeBuildSyntaxBadData = 12,           // bad data inside parentheses
+	aeBuildSyntaxNoCloseParen = 13,      // missing ")"
+	aeBuildSyntaxNoCloseBracket = 14,    // expected "," or "]"
+	aeBuildSyntaxNoCloseBrace = 15,      // expected "," or "}"
+	aeBuildSyntaxNoKey = 16,             // missing key in a record
+	aeBuildSyntaxNoColon = 17,           // missing ":" after a key
+	aeBuildSyntaxCoercedList = 18,       // a list cannot be given a type
+	aeBuildSyntaxUncoercedDoubleAt = 19, // "@@" without a type
+};
+typedef UInt32 AEBuildErrorCode;
+
+typedef struct AEBuildError {
+	AEBuildErrorCode fError;
+	UInt32 fErrorPos;
+} AEBuildError;
+
+OSStatus AEBuildDesc(AEDesc *dst, AEBuildError *error, const char *src, ...);
+OSStatus vAEBuildDesc(AEDesc *dst, AEBuildError *error, const char *src, va_list args);
+OSStatus AEBuildParameters(AppleEvent *event, AEBuildError *error, const char *format, ...);
+OSStatus vAEBuildParameters(AppleEvent *event, AEBuildError *error, const char *format, va_list args);
+OSStatus AEBuildAppleEvent(AEEventClass theClass, AEEventID theID, DescType addressType, const void *addressData,
+	long addressLength, SInt16 returnID, SInt32 transactionID, AppleEvent *result, AEBuildError *error,
+	const char *paramsFmt, ...);
+OSStatus vAEBuildAppleEvent(AEEventClass theClass, AEEventID theID, DescType addressType, const void *addressData,
+	long addressLength, SInt16 returnID, SInt32 transactionID, AppleEvent *result, AEBuildError *error,
+	const char *paramsFmt, va_list args);
 
 #ifdef __cplusplus
 }
