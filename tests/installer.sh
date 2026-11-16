@@ -72,7 +72,7 @@ if [ "$MODE" = build ]; then
 
 	# a product archive: choices with literal-boolean and JavaScript conditions
 	mkdir product && cd product || exit 2
-	for c in default startfalse selfalse js inactive follows nonbool apis; do
+	for c in default startfalse selfalse js inactive follows nonbool apis apis2; do
 		mkdir "$c.pkg" "root-$c"
 		echo "$c" > "root-$c/$c.txt"
 		bsdtar --format odc -cf - -C "root-$c" . | gzip > "$c.pkg/Payload"
@@ -89,7 +89,7 @@ EOF2
 <title>Choices</title>
 <choices-outline>
 <line choice="default"/><line choice="startfalse"/><line choice="selfalse"/>
-<line choice="js"/><line choice="inactive"/><line choice="follows"/><line choice="nonbool"/><line choice="apis"/>
+<line choice="js"/><line choice="inactive"/><line choice="follows"/><line choice="nonbool"/><line choice="apis"/><line choice="apis2"/>
 </choices-outline>
 <choice id="default" title="Default"><pkg-ref id="org.darling.test.default"/></choice>
 <choice id="startfalse" title="Start false" start_selected="false"><pkg-ref id="org.darling.test.startfalse"/></choice>
@@ -99,6 +99,7 @@ EOF2
 <choice id="follows" title="Follows" selected="!choices.default.selected"><pkg-ref id="org.darling.test.follows"/></choice>
 <choice id="nonbool" title="Not a boolean" selected="'abc'"><pkg-ref id="org.darling.test.nonbool"/></choice>
 <choice id="apis" title="APIs" selected="system.sysctl('kern.ostype') == 'Darwin' &amp;&amp; typeof system.env.PATH == 'string' &amp;&amp; my.target.availableKilobytes &gt; 0 &amp;&amp; choices.default.selected == true"><pkg-ref id="org.darling.test.apis"/></choice>
+<choice id="apis2" title="APIs 2" description="Second set" selected="typeof system.version.ProductVersion == 'string' &amp;&amp; system.files.plistAtPath('/System/Library/CoreServices/SystemVersion.plist').ProductVersion == system.version.ProductVersion &amp;&amp; system.files.plistAtPath('/nonexistent.plist') === null &amp;&amp; system.localizedString('nokey') === null &amp;&amp; system.propertiesOf({a: 1, b: 2}).length == 2 &amp;&amp; choices.default.title == 'Default' &amp;&amp; choices.apis2.description == 'Second set' &amp;&amp; choices.default.packages[0].identifier == 'org.darling.test.default' &amp;&amp; ['clean', 'installed', 'upgrade', 'downgrade', 'mixed'].indexOf(choices.default.packageUpgradeAction) &gt;= 0"><pkg-ref id="org.darling.test.apis2"/></choice>
 <pkg-ref id="org.darling.test.default" installKBytes="1">#default.pkg</pkg-ref>
 <pkg-ref id="org.darling.test.startfalse" installKBytes="1">#startfalse.pkg</pkg-ref>
 <pkg-ref id="org.darling.test.selfalse" installKBytes="1">#selfalse.pkg</pkg-ref>
@@ -107,6 +108,7 @@ EOF2
 <pkg-ref id="org.darling.test.follows" installKBytes="1">#follows.pkg</pkg-ref>
 <pkg-ref id="org.darling.test.nonbool" installKBytes="1">#nonbool.pkg</pkg-ref>
 <pkg-ref id="org.darling.test.apis" installKBytes="1">#apis.pkg</pkg-ref>
+<pkg-ref id="org.darling.test.apis2" installKBytes="1">#apis2.pkg</pkg-ref>
 </installer-gui-script>
 EOF2
 	bsdtar --format xar --options xar:compression=none -cf "$DIR/choices.pkg" Distribution *.pkg || exit 2
@@ -132,6 +134,10 @@ function mustFail() {
 </installer-gui-script>
 EOF2
 	bsdtar --format xar --options xar:compression=none -cf "$DIR/checkfail.pkg" Distribution default.pkg || exit 2
+
+	# the same, but the result type is Warn: the install continues
+	sed -e "s/'Fatal'/'Warn'/" -e 's|<title>Check</title>|<title>Check warn</title>|' Distribution > Distribution.warn && mv Distribution.warn Distribution
+	bsdtar --format xar --options xar:compression=none -cf "$DIR/checkwarn.pkg" Distribution default.pkg || exit 2
 	cd ..
 	exit 0
 fi
@@ -212,6 +218,7 @@ if [ $jsc = yes ]; then
 	has js && fail "a false JavaScript selected condition deselects the choice" || pass "a false JavaScript selected condition deselects the choice"
 	has follows && fail "a condition can refer to another choice" || pass "a condition can refer to another choice"
 	has nonbool && fail "a condition that is not a boolean is false (observed on macOS)" || pass "a condition that is not a boolean is false (observed on macOS)"
+	has apis2 && pass "system.files, localizedString, propertiesOf and the choices properties follow the documentation" || fail "system.files, localizedString, propertiesOf and the choices properties follow the documentation"
 	has apis && pass "system.sysctl, system.env, my.target and choices are available to conditions" || fail "system.sysctl, system.env, my.target and choices are available to conditions"
 	grep -q "Warning: choice" choices.out && fail "no warning when JavaScript is evaluated" || pass "no warning when JavaScript is evaluated"
 else
@@ -224,10 +231,13 @@ if [ $jsc = yes ]; then
 	nt "a failing installation-check stops the install" "$INSTALLER" -pkg "$DIR/checkfail.pkg" -target "$T/dst7"
 	"$INSTALLER" -pkg "$DIR/checkfail.pkg" -target "$T/dst7" 2>&1 | grep -qx 'installer: Needs a newer system' && pass "the check's message is reported" || fail "the check's message is reported"
 	[ ! -e dst7/default.txt ] && pass "nothing is installed after a failed check" || fail "nothing is installed after a failed check"
+	mkdir dst8
+	"$INSTALLER" -pkg "$DIR/checkwarn.pkg" -target "$T/dst8" > warn.out 2>&1
+	[ -e dst8/default.txt ] && grep -qx 'installer: Warning: Needs a newer system' warn.out && pass "a check whose result type is Warn only warns" || fail "a check whose result type is Warn only warns"
 else
 	t "without JavaScriptCore an installation-check is skipped with a warning" "$INSTALLER" -pkg "$DIR/checkfail.pkg" -target "$T/dst7"
 fi
-"$INSTALLER" -pkginfo -pkg "$DIR/choices.pkg" 2>&1 | tr '\n' ' ' | grep -qx "$([ $jsc = yes ] && echo 'default apis ' || echo 'default js follows nonbool apis ')" && pass "-pkginfo lists the packages that would be installed" || fail "-pkginfo lists the packages that would be installed"
+"$INSTALLER" -pkginfo -pkg "$DIR/choices.pkg" 2>&1 | tr '\n' ' ' | grep -qx "$([ $jsc = yes ] && echo 'default apis apis2 ' || echo 'default js follows nonbool apis apis2 ')" && pass "-pkginfo lists the packages that would be installed" || fail "-pkginfo lists the packages that would be installed"
 
 # ---- choice XML (-showChoicesXML, choice changes files) ------------------
 # Observed on macOS 26 (x86_64). The "js" choice is left out below: macOS evaluates its
@@ -238,8 +248,8 @@ CH="$DIR/choices.pkg"
 "$INSTALLER" -pkg "$CH" -showChoicesXML 2>&1 | flat | grep -q '<key>choiceIdentifier</key><string>default</string><key>choiceIsEnabled</key><true/><key>choiceIsSelected</key><integer>1</integer><key>choiceIsVisible</key><true/><key>choiceSizeInKilobytes</key><integer>1</integer><key>choiceTitle</key><string>Default</string><key>pathsOfActivePackagesInChoice</key><array><string>file://localhost/.*choices.pkg#default.pkg</string></array>' && pass "-showChoicesXML: a leaf choice" || fail "-showChoicesXML: a leaf choice"
 "$INSTALLER" -pkg "$CH" -showChoicesXML 2>&1 | flat | grep -q '<string>inactive</string>.*<key>choiceSizeInKilobytes</key><integer>0</integer><key>choiceTitle</key><string>Inactive</string><key>pathsOfActivePackagesInChoice</key><array/>' && pass "-showChoicesXML: an inactive package is not listed" || fail "-showChoicesXML: an inactive package is not listed"
 changes() { flat | grep -o '<integer>[01]</integer><key>choiceAttribute</key><string>selected</string><key>choiceIdentifier</key><string>[a-z]*</string>' | sed 's/<integer>\(.\)<\/integer>.*<string>\([a-z]*\)<\/string>$/\2=\1/' | tr '\n' ' '; }
-eq "-showChoiceChangesXML: selected states" "$("$INSTALLER" -pkg "$CH" -target / -showChoiceChangesXML 2>&1 | changes | tr ' ' '\n' | grep -v '^js=\|^follows=\|^nonbool=\|^apis=' | tr '\n' ' ')" "default=1 startfalse=0 selfalse=0 inactive=1 "
-"$INSTALLER" -pkg "$CH" -target / -showChoiceChangesXML 2>&1 | grep -c '<dict>' | grep -qx 24 && pass "-showChoiceChangesXML: visible, enabled and selected per choice" || fail "-showChoiceChangesXML: visible, enabled and selected per choice"
+eq "-showChoiceChangesXML: selected states" "$("$INSTALLER" -pkg "$CH" -target / -showChoiceChangesXML 2>&1 | changes | tr ' ' '\n' | grep -v '^js=\|^follows=\|^nonbool=\|^apis=\|^apis2=' | tr '\n' ' ')" "default=1 startfalse=0 selfalse=0 inactive=1 "
+"$INSTALLER" -pkg "$CH" -target / -showChoiceChangesXML 2>&1 | grep -c '<dict>' | grep -qx 27 && pass "-showChoiceChangesXML: visible, enabled and selected per choice" || fail "-showChoiceChangesXML: visible, enabled and selected per choice"
 
 cat > dict.plist <<X
 <?xml version="1.0" encoding="UTF-8"?>
@@ -256,7 +266,7 @@ cat > strings.plist <<X
 <plist version="1.0"><array><string>startfalse</string><string>default</string></array></plist>
 X
 for f in dict strings; do
-	eq "-showChoicesAfterApplyingChangesXML with a $f file" "$("$INSTALLER" -pkg "$CH" -target / -showChoicesAfterApplyingChangesXML $f.plist 2>&1 | changes | tr ' ' '\n' | grep -v '^js=\|^follows=\|^nonbool=\|^apis=' | tr '\n' ' ')" "default=0 startfalse=1 selfalse=0 inactive=1 "
+	eq "-showChoicesAfterApplyingChangesXML with a $f file" "$("$INSTALLER" -pkg "$CH" -target / -showChoicesAfterApplyingChangesXML $f.plist 2>&1 | changes | tr ' ' '\n' | grep -v '^js=\|^follows=\|^nonbool=\|^apis=\|^apis2=' | tr '\n' ' ')" "default=0 startfalse=1 selfalse=0 inactive=1 "
 done
 eq "-showChoicesAfterApplyingChangesXML without -target: exit status 255" "$("$INSTALLER" -pkg "$CH" -showChoicesAfterApplyingChangesXML dict.plist >/dev/null 2>&1; echo $?)" 255
 "$INSTALLER" -pkg "$CH" -showChoicesAfterApplyingChangesXML dict.plist 2>&1 | grep -qx 'installer: Error -target parameter required' && pass "a missing -target is reported" || fail "a missing -target is reported"
