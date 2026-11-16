@@ -1,5 +1,6 @@
 // The private libdarling-dmg API that hdiutil and DiskImageMounter attach disk images with.
-// Usage: dmg-api <unmount-test.dmg> <a file that is not a disk image> <empty directory to mount in>
+// Usage: dmg-api <image> <its volume name> <a file that is not a disk image> <empty directory to mount in>
+// The image must contain hello.txt with "hello\n" (fixtures/unmount-test.dmg under any file name).
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -22,14 +23,14 @@ static void check(int ok, const char* what)
 
 int main(int argc, char** argv)
 {
-	if (argc != 4) {
-		fprintf(stderr, "usage: %s <image> <not an image> <mount root>\n", argv[0]);
+	if (argc != 5) {
+		fprintf(stderr, "usage: %s <image> <volume name> <not an image> <mount root>\n", argv[0]);
 		return 2;
 	}
 
 	darling_dmg_image* image = NULL;
 	check(darling_dmg_open("/nonexistent-dmg-api.dmg", &image) == ENOENT && image == NULL, "open of a missing file: ENOENT");
-	check(darling_dmg_open(argv[2], &image) == EFTYPE && image == NULL, "open of a file that is not an image: EFTYPE");
+	check(darling_dmg_open(argv[3], &image) == EFTYPE && image == NULL, "open of a file that is not an image: EFTYPE");
 
 	int err = darling_dmg_open(argv[1], &image);
 	check(err == 0 && image != NULL, "open of the fixture");
@@ -37,13 +38,15 @@ int main(int argc, char** argv)
 		return 1;
 
 	const char* name = darling_dmg_volume_name(image);
-	check(name != NULL && name[0] != 0, "volume name is not empty");
+	check(name != NULL && strcmp(name, argv[2]) == 0, "volume name is the name stored in the image");
+	if (name != NULL && strcmp(name, argv[2]) != 0)
+		printf("  volume name: '%s'\n", name);
 
-	struct darling_dmg_attach_options options = { .mount_root = argv[3], .mount_point = NULL };
+	struct darling_dmg_attach_options options = { .mount_root = argv[4], .mount_point = NULL };
 	char mp[MAXPATHLEN];
 	err = darling_dmg_attach(image, &options, mp, sizeof(mp));
 	check(err == 0, "attach under the given mount root");
-	check(strncmp(mp, argv[3], strlen(argv[3])) == 0, "mount point is under the mount root");
+	check(strncmp(mp, argv[4], strlen(argv[4])) == 0, "mount point is under the mount root");
 
 	char file[MAXPATHLEN];
 	snprintf(file, sizeof(file), "%s/hello.txt", mp);
