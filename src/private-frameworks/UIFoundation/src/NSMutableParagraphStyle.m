@@ -16,6 +16,7 @@ FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+#import "UIFoundation-ExtraIvars.h"
 #import "NSParagraphStyle-Private.h"
 
 @implementation NSMutableParagraphStyle
@@ -34,149 +35,149 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) setParagraphStyle: (NSParagraphStyle *) other {
-    _writingDirection = other->_writingDirection;
-    _paragraphSpacing = other->_paragraphSpacing;
-    _paragraphSpacingBefore = other->_paragraphSpacingBefore;
+    UIF_EXTRA_NSParagraphStyle(self)->_writingDirection = UIF_EXTRA_NSParagraphStyle(other)->_writingDirection;
+    UIF_EXTRA_NSParagraphStyle(self)->_paragraphSpacing = UIF_EXTRA_NSParagraphStyle(other)->_paragraphSpacing;
+    UIF_EXTRA_NSParagraphStyle(self)->_paragraphSpacingBefore = UIF_EXTRA_NSParagraphStyle(other)->_paragraphSpacingBefore;
     [self setTextBlocks: [other textBlocks]];
     [self setTextLists: [other textLists]];
-    _headerLevel = other->_headerLevel;
-    _firstLineHeadIndent = other->_firstLineHeadIndent;
-    _headIndent = other->_headIndent;
-    _tailIndent = other->_tailIndent;
-    _alignment = other->_alignment;
-    _lineBreakMode = other->_lineBreakMode;
-    _minimumLineHeight = other->_minimumLineHeight;
-    _maximumLineHeight = other->_maximumLineHeight;
-    _lineHeightMultiple = other->_lineHeightMultiple;
-    _lineSpacing = other->_lineSpacing;
-    _defaultTabInterval = other->_defaultTabInterval;
+    UIF_EXTRA_NSParagraphStyle(self)->_headerLevel = UIF_EXTRA_NSParagraphStyle(other)->_headerLevel;
+    UIF_EXTRA_NSParagraphStyle(self)->_firstLineHeadIndent = UIF_EXTRA_NSParagraphStyle(other)->_firstLineHeadIndent;
+    UIF_EXTRA_NSParagraphStyle(self)->_headIndent = UIF_EXTRA_NSParagraphStyle(other)->_headIndent;
+    UIF_EXTRA_NSParagraphStyle(self)->_tailIndent = UIF_EXTRA_NSParagraphStyle(other)->_tailIndent;
+    UIF_EXTRA_NSParagraphStyle(self)->_alignment = UIF_EXTRA_NSParagraphStyle(other)->_alignment;
+    UIF_EXTRA_NSParagraphStyle(self)->_lineBreakMode = UIF_EXTRA_NSParagraphStyle(other)->_lineBreakMode;
+    UIF_EXTRA_NSParagraphStyle(self)->_minimumLineHeight = UIF_EXTRA_NSParagraphStyle(other)->_minimumLineHeight;
+    UIF_EXTRA_NSParagraphStyle(self)->_maximumLineHeight = UIF_EXTRA_NSParagraphStyle(other)->_maximumLineHeight;
+    UIF_EXTRA_NSParagraphStyle(self)->_lineHeightMultiple = UIF_EXTRA_NSParagraphStyle(other)->_lineHeightMultiple;
+    UIF_EXTRA_NSParagraphStyle(self)->_lineSpacing = UIF_EXTRA_NSParagraphStyle(other)->_lineSpacing;
+    UIF_EXTRA_NSParagraphStyle(self)->_defaultTabInterval = UIF_EXTRA_NSParagraphStyle(other)->_defaultTabInterval;
     [self setTabStops: [other tabStops]];
-    _hyphenationFactor = other->_hyphenationFactor;
-    _tighteningFactorForTruncation = other->_tighteningFactorForTruncation;
-    _horizontalAlignment = other->_horizontalAlignment;
-    _usesDefaultHyphenation = other->_usesDefaultHyphenation;
-    _allowsDefaultTighteningForTruncation = other->_allowsDefaultTighteningForTruncation;
-    _lineBreakStrategy = other->_lineBreakStrategy;
+    UIF_EXTRA_NSParagraphStyle(self)->_hyphenationFactor = UIF_EXTRA_NSParagraphStyle(other)->_hyphenationFactor;
+    UIF_EXTRA_NSParagraphStyle(self)->_tighteningFactorForTruncation = UIF_EXTRA_NSParagraphStyle(other)->_tighteningFactorForTruncation;
+    UIF_EXTRA_NSParagraphStyle(self)->_horizontalAlignment = UIF_EXTRA_NSParagraphStyle(other)->_horizontalAlignment;
+    UIF_EXTRA_NSParagraphStyle(self)->_usesDefaultHyphenation = UIF_EXTRA_NSParagraphStyle(other)->_usesDefaultHyphenation;
+    UIF_EXTRA_NSParagraphStyle(self)->_allowsDefaultTighteningForTruncation = UIF_EXTRA_NSParagraphStyle(other)->_allowsDefaultTighteningForTruncation;
+    UIF_EXTRA_NSParagraphStyle(self)->_lineBreakStrategy = UIF_EXTRA_NSParagraphStyle(other)->_lineBreakStrategy;
 }
 
 - (void) setBaseWritingDirection: (NSWritingDirection) direction {
-    _writingDirection = direction;
+    UIF_EXTRA_NSParagraphStyle(self)->_writingDirection = direction;
 }
 
 - (void) setHorizontalAlignment: (NSInteger) alignment {
-    _horizontalAlignment = alignment;
+    UIF_EXTRA_NSParagraphStyle(self)->_horizontalAlignment = alignment;
 }
 
 - (void) setParagraphSpacing: (CGFloat) spacing {
-    _paragraphSpacing = spacing;
+    UIF_EXTRA_NSParagraphStyle(self)->_paragraphSpacing = spacing;
 }
 
 - (void) setParagraphSpacingBefore: (CGFloat) spacing {
-    _paragraphSpacingBefore = spacing;
+    UIF_EXTRA_NSParagraphStyle(self)->_paragraphSpacingBefore = spacing;
 }
 
 - (void) setTextBlocks: (NSArray *) blocks {
     blocks = [blocks copy];
-    [_textBlocks release];
-    _textBlocks = blocks;
+    [UIF_EXTRA_NSParagraphStyle(self)->_textBlocks release];
+    UIF_EXTRA_NSParagraphStyle(self)->_textBlocks = blocks;
 }
 
 - (void) setTextLists: (NSArray *) lists {
     lists = [lists copy];
-    [_textLists release];
-    _textLists = lists;
+    [UIF_EXTRA_NSParagraphStyle(self)->_textLists release];
+    UIF_EXTRA_NSParagraphStyle(self)->_textLists = lists;
 }
 
 - (void) setHeaderLevel: (NSInteger) level {
-    _headerLevel = level;
+    UIF_EXTRA_NSParagraphStyle(self)->_headerLevel = level;
 }
 
 - (void) setFirstLineHeadIndent: (CGFloat) indent {
-    _firstLineHeadIndent = indent;
+    UIF_EXTRA_NSParagraphStyle(self)->_firstLineHeadIndent = indent;
 }
 
 - (void) setHeadIndent: (CGFloat) indent {
-    _headIndent = indent;
+    UIF_EXTRA_NSParagraphStyle(self)->_headIndent = indent;
 }
 
 - (void) setTailIndent: (CGFloat) indent {
-    _tailIndent = indent;
+    UIF_EXTRA_NSParagraphStyle(self)->_tailIndent = indent;
 }
 
 - (void) setAlignment: (NSTextAlignment) alignment {
-    _alignment = alignment;
+    UIF_EXTRA_NSParagraphStyle(self)->_alignment = alignment;
 }
 
 - (void) setLineBreakMode: (NSLineBreakMode) mode {
-    _lineBreakMode = mode;
+    UIF_EXTRA_NSParagraphStyle(self)->_lineBreakMode = mode;
 }
 
 - (void) setMinimumLineHeight: (CGFloat) height {
-    _minimumLineHeight = height;
+    UIF_EXTRA_NSParagraphStyle(self)->_minimumLineHeight = height;
 }
 
 - (void) setMaximumLineHeight: (CGFloat) height {
-    _maximumLineHeight = height;
+    UIF_EXTRA_NSParagraphStyle(self)->_maximumLineHeight = height;
 }
 
 - (void) setLineHeightMultiple: (CGFloat) multiple {
-    _lineHeightMultiple = multiple;
+    UIF_EXTRA_NSParagraphStyle(self)->_lineHeightMultiple = multiple;
 }
 
 - (void) setLineSpacing: (CGFloat) spacing {
-    _lineSpacing = spacing;
+    UIF_EXTRA_NSParagraphStyle(self)->_lineSpacing = spacing;
 }
 
 - (void) setDefaultTabInterval: (CGFloat) interval {
-    _defaultTabInterval = interval;
+    UIF_EXTRA_NSParagraphStyle(self)->_defaultTabInterval = interval;
 }
 
 - (void) setTabStops: (NSArray *) tabStops {
     if (tabStops == nil)
         tabStops = [[self class] _defaultTabStops];
-    if (tabStops != _tabStops) {
-        [_tabStops removeAllObjects];
-        [_tabStops addObjectsFromArray: tabStops];
-        [_tabStops sortUsingSelector: @selector(compare:)];
+    if (tabStops != UIF_EXTRA_NSParagraphStyle(self)->_tabStops) {
+        [UIF_EXTRA_NSParagraphStyle(self)->_tabStops removeAllObjects];
+        [UIF_EXTRA_NSParagraphStyle(self)->_tabStops addObjectsFromArray: tabStops];
+        [UIF_EXTRA_NSParagraphStyle(self)->_tabStops sortUsingSelector: @selector(compare:)];
     }
 }
 
 - (void) addTabStop: (NSTextTab *) tabStop {
-    NSUInteger index = [_tabStops
+    NSUInteger index = [UIF_EXTRA_NSParagraphStyle(self)->_tabStops
             indexOfObjectPassingTest: ^BOOL(NSTextTab *other, NSUInteger id,
                                             BOOL *stop) {
               return [other compare: tabStop] == NSOrderedDescending;
             }];
 
     if (index == NSNotFound) {
-        [_tabStops addObject: tabStop];
+        [UIF_EXTRA_NSParagraphStyle(self)->_tabStops addObject: tabStop];
     } else {
-        [_tabStops insertObject: tabStop atIndex: index];
+        [UIF_EXTRA_NSParagraphStyle(self)->_tabStops insertObject: tabStop atIndex: index];
     }
 }
 
 - (void) removeTabStop: (NSTextTab *) tabStop {
-    [_tabStops removeObject: tabStop];
+    [UIF_EXTRA_NSParagraphStyle(self)->_tabStops removeObject: tabStop];
 }
 
 - (void) setHyphenationFactor: (float) factor {
-    _hyphenationFactor = factor;
+    UIF_EXTRA_NSParagraphStyle(self)->_hyphenationFactor = factor;
 }
 
 - (void) setTighteningFactorForTruncation: (float) factor {
-    _tighteningFactorForTruncation = factor;
+    UIF_EXTRA_NSParagraphStyle(self)->_tighteningFactorForTruncation = factor;
 }
 
 - (void) setUsesDefaultHyphenation: (BOOL) value {
-    _usesDefaultHyphenation = value;
+    UIF_EXTRA_NSParagraphStyle(self)->_usesDefaultHyphenation = value;
 }
 
 - (void) setAllowsDefaultTighteningForTruncation: (BOOL) value {
-    _allowsDefaultTighteningForTruncation = value;
+    UIF_EXTRA_NSParagraphStyle(self)->_allowsDefaultTighteningForTruncation = value;
 }
 
 - (void) setLineBreakStrategy: (NSLineBreakStrategy) strategy {
-    _lineBreakStrategy = strategy;
+    UIF_EXTRA_NSParagraphStyle(self)->_lineBreakStrategy = strategy;
 }
 
 @end

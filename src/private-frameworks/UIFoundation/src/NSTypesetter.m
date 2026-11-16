@@ -1,3 +1,4 @@
+#import "UIFoundation-ExtraIvars.h"
 #import "NSTypesetter_concrete.h"
 #import <AppKit/NSAttributedString.h>
 #import <AppKit/NSParagraphStyle.h>
@@ -39,64 +40,65 @@
 }
 
 - (void) dealloc {
-    [_layoutManager release];
-    _textContainers = nil;
-    [_attributedString release];
-    _string = nil;
+    [UIF_EXTRA_NSTypesetter(self)->_layoutManager release];
+    UIF_EXTRA_NSTypesetter(self)->_textContainers = nil;
+    [UIF_EXTRA_NSTypesetter(self)->_attributedString release];
+    UIF_EXTRA_NSTypesetter(self)->_string = nil;
+    UIF_EXTRA_FREE(NSTypesetter, self);
     [super dealloc];
 }
 
 - (NSTypesetterBehavior) typesetterBehavior {
-    return _behavior;
+    return UIF_EXTRA_NSTypesetter(self)->_behavior;
 }
 
 - (CGFloat) hyphenationFactor {
-    return _hyphenationFactor;
+    return UIF_EXTRA_NSTypesetter(self)->_hyphenationFactor;
 }
 
 - (CGFloat) lineFragmentPadding {
-    return _lineFragmentPadding;
+    return UIF_EXTRA_NSTypesetter(self)->_lineFragmentPadding;
 }
 
 - (BOOL) usesFontLeading {
-    return _usesFontLeading;
+    return UIF_EXTRA_NSTypesetter(self)->_usesFontLeading;
 }
 
 - (BOOL) bidiProcessingEnabled {
-    return _bidiProcessingEnabled;
+    return UIF_EXTRA_NSTypesetter(self)->_bidiProcessingEnabled;
 }
 
 - (void) setTypesetterBehavior: (NSTypesetterBehavior) behavior {
-    _behavior = behavior;
+    UIF_EXTRA_NSTypesetter(self)->_behavior = behavior;
 }
 
 - (void) setHyphenationFactor: (CGFloat) factor {
-    _hyphenationFactor = factor;
+    UIF_EXTRA_NSTypesetter(self)->_hyphenationFactor = factor;
 }
 
 - (void) setLineFragmentPadding: (CGFloat) padding {
-    _lineFragmentPadding = padding;
+    UIF_EXTRA_NSTypesetter(self)->_lineFragmentPadding = padding;
 }
 
 - (void) setUsesFontLeading: (BOOL) flag {
-    _usesFontLeading = flag;
+    UIF_EXTRA_NSTypesetter(self)->_usesFontLeading = flag;
 }
 
 - (void) setBidiProcessingEnabled: (BOOL) flag {
-    _bidiProcessingEnabled = flag;
+    UIF_EXTRA_NSTypesetter(self)->_bidiProcessingEnabled = flag;
 }
 
 - (NSRange) characterRangeForGlyphRange: (NSRange) glyphRange
                        actualGlyphRange: (NSRange *) actualGlyphRange
 {
-    return [_layoutManager characterRangeForGlyphRange: glyphRange
+    return [UIF_EXTRA_NSTypesetter(self)->_layoutManager characterRangeForGlyphRange: glyphRange
                                       actualGlyphRange: actualGlyphRange];
 }
 
 - (NSRange) glyphRangeForCharacterRange: (NSRange) characterRange
                    actualCharacterRange: (NSRange *) actualCharacterRange
 {
-    return [_layoutManager glyphRangeForCharacterRange: characterRange
+    return [UIF_EXTRA_NSTypesetter(self)->_layoutManager glyphRangeForCharacterRange: characterRange
                                   actualCharacterRange: actualCharacterRange];
 }
 
@@ -150,7 +152,7 @@
                     usedRect: (NSRect) usedRect
               baselineOffset: (CGFloat) baselineOffset
 {
-    [_layoutManager setLineFragmentRect: fragmentRect
+    [UIF_EXTRA_NSTypesetter(self)->_layoutManager setLineFragmentRect: fragmentRect
                           forGlyphRange: glyphRange
                                usedRect: usedRect];
 }
@@ -165,20 +167,20 @@
           atGlyphIndex: (NSUInteger) glyphIndex
         characterIndex: (NSUInteger) characterIndex
 {
-    [_layoutManager insertGlyph: glyph
+    [UIF_EXTRA_NSTypesetter(self)->_layoutManager insertGlyph: glyph
                    atGlyphIndex: glyphIndex
                  characterIndex: characterIndex];
 }
 
 - (void) deleteGlyphsInRange: (NSRange) glyphRange {
-    [_layoutManager deleteGlyphsInRange: glyphRange];
+    [UIF_EXTRA_NSTypesetter(self)->_layoutManager deleteGlyphsInRange: glyphRange];
 }
 
 - (void) setNotShownAttribute: (BOOL) flag forGlyphRange: (NSRange) range {
     NSInteger i, max = NSMaxRange(range);
 
     for (i = range.location; i < max; i++)
-        [_layoutManager setNotShownAttribute: flag forGlyphAtIndex: i];
+        [UIF_EXTRA_NSTypesetter(self)->_layoutManager setNotShownAttribute: flag forGlyphAtIndex: i];
 }
 
 - (void) setDrawsOutsideLineFragment: (BOOL) flag
@@ -187,18 +189,18 @@
     int i, max = NSMaxRange(range);
 
     for (i = range.location; i < max; i++)
-        [_layoutManager setDrawsOutsideLineFragment: flag forGlyphAtIndex: i];
+        [UIF_EXTRA_NSTypesetter(self)->_layoutManager setDrawsOutsideLineFragment: flag forGlyphAtIndex: i];
 }
 
 - (void) setLocation: (NSPoint) location
             withAdvancements: (const CGFloat *) nominalAdvancements
         forStartOfGlyphRange: (NSRange) glyphRange
 {
-    [_layoutManager setLocation: location forStartOfGlyphRange: glyphRange];
+    [UIF_EXTRA_NSTypesetter(self)->_layoutManager setLocation: location forStartOfGlyphRange: glyphRange];
 }
 
 - (void) setAttachmentSize: (NSSize) size forGlyphRange: (NSRange) glyphRange {
-    [_layoutManager setAttachmentSize: size forGlyphRange: glyphRange];
+    [UIF_EXTRA_NSTypesetter(self)->_layoutManager setAttachmentSize: size forGlyphRange: glyphRange];
 }
 
 - (void) setBidiLevels: (const unsigned char *) bidiLevels
@@ -249,7 +251,7 @@
 }
 
 - (NSAttributedString *) attributedString {
-    return _attributedString;
+    return UIF_EXTRA_NSTypesetter(self)->_attributedString;
 }
 
 - (NSDictionary *) attributesForExtraLineFragment {
@@ -258,19 +260,19 @@
 }
 
 - (NSLayoutManager *) layoutManager {
-    return _layoutManager;
+    return UIF_EXTRA_NSTypesetter(self)->_layoutManager;
 }
 
 - (NSArray *) textContainers {
-    return _textContainers;
+    return UIF_EXTRA_NSTypesetter(self)->_textContainers;
 }
 
 - (NSTextContainer *) currentTextContainer {
-    return _currentTextContainer;
+    return UIF_EXTRA_NSTypesetter(self)->_currentTextContainer;
 }
 
 - (NSParagraphStyle *) currentParagraphStyle {
-    return _currentParagraphStyle;
+    return UIF_EXTRA_NSTypesetter(self)->_currentParagraphStyle;
 }
 
 - (NSRange) paragraphCharacterRange {
@@ -296,7 +298,7 @@
 - (NSTypesetterControlCharacterAction) actionForControlCharacterAtIndex:
         (NSUInteger) characterIndex
 {
-    unichar c = [[_attributedString string] characterAtIndex: characterIndex];
+    unichar c = [[UIF_EXTRA_NSTypesetter(self)->_attributedString string] characterAtIndex: characterIndex];
     if ([[NSCharacterSet newlineCharacterSet] characterIsMember: c]) {
         return NSTypesetterParagraphBreakAction;
     }
@@ -321,9 +323,9 @@
 
 - (void) setAttributedString: (NSAttributedString *) text {
     text = [text retain];
-    [_attributedString release];
-    _attributedString = text;
-    _string = [_attributedString string];
+    [UIF_EXTRA_NSTypesetter(self)->_attributedString release];
+    UIF_EXTRA_NSTypesetter(self)->_attributedString = text;
+    UIF_EXTRA_NSTypesetter(self)->_string = [UIF_EXTRA_NSTypesetter(self)->_attributedString string];
 }
 
 - (void) setHardInvalidation: (BOOL) invalidate
@@ -365,7 +367,7 @@
                        writingDirection: (NSWritingDirection) direction
                             maxLocation: (CGFloat) maxLocation
 {
-    NSArray *stops = [_currentParagraphStyle tabStops];
+    NSArray *stops = [UIF_EXTRA_NSTypesetter(self)->_currentParagraphStyle tabStops];
     NSInteger i, count = [stops count];
 
     for (i = 0; i < count; i++) {

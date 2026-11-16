@@ -17,6 +17,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
+#import "UIFoundation-ExtraIvars.h"
 #import <AppKit/NSTextTableBlock.h>
 
 @implementation NSTextTableBlock
@@ -27,32 +28,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
         startingColumn: (int) startingColumn
             columnSpan: (int) columnSpan
 {
-    _table = table;
-    _startingRow = startingRow;
-    _rowSpan = rowSpan;
-    _startingColumn = startingColumn;
-    _columnSpan = columnSpan;
+    UIF_EXTRA_NSTextTableBlock(self)->_table = table;
+    UIF_EXTRA_NSTextTableBlock(self)->_startingRow = startingRow;
+    UIF_EXTRA_NSTextTableBlock(self)->_rowSpan = rowSpan;
+    UIF_EXTRA_NSTextTableBlock(self)->_startingColumn = startingColumn;
+    UIF_EXTRA_NSTextTableBlock(self)->_columnSpan = columnSpan;
     return self;
 }
 
 - (NSTextTable *) table {
-    return _table;
+    return UIF_EXTRA_NSTextTableBlock(self)->_table;
 }
 
 - (int) startingRow {
-    return _startingRow;
+    return UIF_EXTRA_NSTextTableBlock(self)->_startingRow;
 }
 
 - (int) rowSpan {
-    return _rowSpan;
+    return UIF_EXTRA_NSTextTableBlock(self)->_rowSpan;
 }
 
 - (int) startingColumn {
-    return _startingColumn;
+    return UIF_EXTRA_NSTextTableBlock(self)->_startingColumn;
 }
 
 - (int) columnSpan {
-    return _columnSpan;
+    return UIF_EXTRA_NSTextTableBlock(self)->_columnSpan;
 }
+
+UIF_EXTRA_DEALLOC(NSTextTableBlock)
 
 @end

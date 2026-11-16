@@ -17,6 +17,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
+#import "UIFoundation-ExtraIvars.h"
 #import <Foundation/NSRaise.h>
 #import <AppKit/NSTextBlock.h>
 #import <Foundation/NSArray.h>
@@ -29,27 +30,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (NSColor *) backgroundColor {
-    return _backgroundColor;
+    return UIF_EXTRA_NSTextBlock(self)->_backgroundColor;
 }
 
 - (NSColor *) borderColorForEdge: (NSRectEdge) edge {
-    return [_borderColors objectAtIndex: edge];
+    return [UIF_EXTRA_NSTextBlock(self)->_borderColors objectAtIndex: edge];
 }
 
 - (NSTextBlockVerticalAlignment) verticalAlignment {
-    return _verticalAlignment;
+    return UIF_EXTRA_NSTextBlock(self)->_verticalAlignment;
 }
 
 - (CGFloat) contentWidth {
-    return _contentWidth;
+    return UIF_EXTRA_NSTextBlock(self)->_contentWidth;
 }
 
 - (NSTextBlockValueType) contentWidthValueType {
-    return _contentWidthValueType;
+    return UIF_EXTRA_NSTextBlock(self)->_contentWidthValueType;
 }
 
 - (CGFloat) valueForDimension: (NSTextBlockDimension) dimension {
-    return _dimensionValues[dimension];
+    return UIF_EXTRA_NSTextBlock(self)->_dimensionValues[dimension];
 }
 
 - (NSTextBlockValueType) valueTypeForDimension: (NSTextBlockDimension) dimension
@@ -59,47 +60,47 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (CGFloat) widthForLayer: (NSTextBlockLayer) layer edge: (NSRectEdge) edge {
-    return _layerWidths[layer][edge];
+    return UIF_EXTRA_NSTextBlock(self)->_layerWidths[layer][edge];
 }
 
 - (NSTextBlockValueType) widthValueTypeForLayer: (NSTextBlockLayer) layer
                                            edge: (NSRectEdge) edge
 {
-    return _layerValueTypes[layer][edge];
+    return UIF_EXTRA_NSTextBlock(self)->_layerValueTypes[layer][edge];
 }
 
 - (void) setBackgroundColor: (NSColor *) color {
     color = [color copy];
-    [_backgroundColor release];
-    _backgroundColor = color;
+    [UIF_EXTRA_NSTextBlock(self)->_backgroundColor release];
+    UIF_EXTRA_NSTextBlock(self)->_backgroundColor = color;
 }
 
 - (void) setBorderColor: (NSColor *) color {
-    int i, count = [_borderColors count];
+    int i, count = [UIF_EXTRA_NSTextBlock(self)->_borderColors count];
 
     for (i = 0; i < count; i++)
-        [_borderColors replaceObjectAtIndex: i withObject: color];
+        [UIF_EXTRA_NSTextBlock(self)->_borderColors replaceObjectAtIndex: i withObject: color];
 }
 
 - (void) setBorderColor: (NSColor *) color forEdge: (NSRectEdge) edge {
-    [_borderColors replaceObjectAtIndex: edge withObject: color];
+    [UIF_EXTRA_NSTextBlock(self)->_borderColors replaceObjectAtIndex: edge withObject: color];
 }
 
 - (void) setVerticalAlignment: (NSTextBlockVerticalAlignment) alignment {
-    _verticalAlignment = alignment;
+    UIF_EXTRA_NSTextBlock(self)->_verticalAlignment = alignment;
 }
 
 - (void) setContentWidth: (CGFloat) width type: (NSTextBlockValueType) type {
-    _contentWidth = width;
-    _contentWidthValueType = type;
+    UIF_EXTRA_NSTextBlock(self)->_contentWidth = width;
+    UIF_EXTRA_NSTextBlock(self)->_contentWidthValueType = type;
 }
 
 - (void) setValue: (CGFloat) value
                 type: (NSTextBlockValueType) type
         forDimension: (NSTextBlockDimension) dimension
 {
-    _dimensionValues[dimension] = value;
-    _dimensionValueTypes[dimension] = type;
+    UIF_EXTRA_NSTextBlock(self)->_dimensionValues[dimension] = value;
+    UIF_EXTRA_NSTextBlock(self)->_dimensionValueTypes[dimension] = type;
 }
 
 - (void) setWidth: (CGFloat) value
@@ -109,8 +110,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     int i;
 
     for (i = 0; i <= NSMaxYEdge; i++) {
-        _layerWidths[layer][i] = value;
-        _layerValueTypes[layer][i] = type;
+        UIF_EXTRA_NSTextBlock(self)->_layerWidths[layer][i] = value;
+        UIF_EXTRA_NSTextBlock(self)->_layerValueTypes[layer][i] = type;
     }
 }
 
@@ -119,8 +120,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
          forLayer: (NSTextBlockLayer) layer
              edge: (NSRectEdge) edge
 {
-    _layerWidths[layer][edge] = value;
-    _layerValueTypes[layer][edge] = type;
+    UIF_EXTRA_NSTextBlock(self)->_layerWidths[layer][edge] = value;
+    UIF_EXTRA_NSTextBlock(self)->_layerValueTypes[layer][edge] = type;
 }
 
 - (NSRect) rectForLayoutAtPoint: (NSPoint) point
@@ -148,5 +149,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 {
     NSUnimplementedMethod();
 }
+
+UIF_EXTRA_DEALLOC(NSTextBlock)
 
 @end
