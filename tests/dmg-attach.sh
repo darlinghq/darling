@@ -31,7 +31,8 @@ volumes_and_helpers() {
 
 cp "$here/fixtures/unmount-test.dmg" "$work/Unmount Test.dmg"
 for f in "Second Copy" "Third Copy" "Fourth Copy" renamed; do cp "$here/fixtures/unmount-test.dmg" "$work/$f.dmg"; done
-cp "$here/fixtures/slash-name.dmg" "$work/slash-name.dmg"
+cp "$here/fixtures/slash-name.dmg" "$here/fixtures/amp-name.dmg" "$here/fixtures/bad-blkx.dmg" "$work/"
+gunzip -c "$here/fixtures/long-name-key.hfs.gz" > "$work/long-name-key.hfs"
 echo "this is not a disk image" > "$work/text.txt"
 mkdir "$work/mountroot"
 
@@ -89,6 +90,35 @@ guest slash "hdiutil attach '$gw/slash-name.dmg'"
 	|| fail "slash in the volume name: $(cat "$work/slash.out" "$work/slash.err")"
 guest d4 "hdiutil detach -quiet '/Volumes/A:B'"
 
+# two images with the same volume name attached at the same moment: each gets its own mount point
+guest parallel "hdiutil attach '$image' >'$gw/p1.out' & hdiutil attach '$second' >'$gw/p2.out' & wait; cat '$gw/p1.out' '$gw/p2.out' | sort; cat '/Volumes/Unmount Test/hello.txt' '/Volumes/Unmount Test 1/hello.txt'"
+[ "$(cat "$work/parallel.out")" = "/Volumes/Unmount Test
+/Volumes/Unmount Test 1
+hello
+hello" ] && pass "same name attached in parallel" || fail "same name attached in parallel: $(cat "$work/parallel.out" "$work/parallel.err" | tr '\n' '|')"
+guest d6 "hdiutil detach -quiet '/Volumes/Unmount Test 1'; hdiutil detach -quiet '/Volumes/Unmount Test'"
+
+# -plist escapes the mount point (macOS: <string>/Volumes/Tom &amp; Jerry &lt;1&gt;</string>)
+guest amp "hdiutil attach -plist '$gw/amp-name.dmg'"
+grep -q '<string>/Volumes/Tom &amp; Jerry &lt;1&gt;</string>' "$work/amp.out" && pass "-plist escapes the mount point" \
+	|| fail "-plist escaping: $(grep -A1 mount-point "$work/amp.out")"
+guest d7 "hdiutil detach -quiet '/Volumes/Tom & Jerry <1>'"
+
+# when the file system cannot be mounted, the reason (from FUSE) is reported. fusermount needs write access to the
+# mount point in non-root mode; root and rootless mode mount directly, so the case is skipped there.
+mkdir "$work/readonly"
+chmod 0555 "$work/readonly"
+guest fusefail "hdiutil attach -mountpoint '$gw/readonly' '$image'"
+if [ "$(rc fusefail)" = 0 ]; then
+	echo "SKIP: mount failure message (the mount succeeded: only non-root mode needs write access)"
+	guest d8 "hdiutil detach -quiet '$gw/readonly'"
+else
+	[ "$(rc fusefail)" = 1 ] && [ "$(sed -n 1p "$work/fusefail.err")" = "hdiutil: attach failed - Input/output error" ] \
+		&& grep -qi "fusermount" "$work/fusefail.err" && pass "mount failure reports why" \
+		|| fail "mount failure message: rc $(rc fusefail), stderr: $(cat "$work/fusefail.err" | tr '\n' '|')"
+fi
+[ -d "$work/readonly" ] && chmod 0755 "$work/readonly"
+
 # under another mount root the suffix for a taken name starts at 2
 mkdir "$work/root2"
 guest mr1 "hdiutil attach -mountroot '$gw/root2' '$image'"
@@ -103,6 +133,13 @@ guest d5 "hdiutil detach -quiet '$gw/root2/Unmount Test 2'; hdiutil detach -quie
 	&& { guest api "'$gw/dmg-api' '$renamed' 'Unmount Test' '$gw/text.txt' '$gw/mountroot'"; cat "$work/api.out" "$work/api.err"
 	     [ "$(rc api)" = 0 ] && pass "library API" || fail "library API"; } \
 	|| fail "library API test does not build"
+
+# damaged images
+"$DARLING_SKILLS/darling-guest-testing/scripts/guest-cc.sh" -o "$work/dmg-crafted" "$here/dmg-crafted.c" \
+	-I"$here/../src/external/darling-dmg/include" -L"$DARLING_ROOT/usr/lib/darling" -ldarling-dmg \
+	&& { guest crafted "'$gw/dmg-crafted' '$gw/long-name-key.hfs' '$gw/bad-blkx.dmg'"; cat "$work/crafted.out" "$work/crafted.err"
+	     [ "$(rc crafted)" = 0 ] && pass "damaged images" || fail "damaged images: rc $(rc crafted)"; } \
+	|| fail "damaged image test does not build"
 
 "$here/unmount-disk-image.sh" || failures=$((failures + 1))
 
