@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# Stops the running Darling containers served by one installation.
+# Usage: shutdown-user.sh [INSTALL_PREFIX]
+# Containers of other installations on the same machine are left alone, as
+# they would need their own launcher to be stopped. Without an argument the
+# installation of the `darling` found in PATH is used.
+
 # The launcher treats a setting starting with 1, t or T as enabled.
 setting_enabled() {
 	case "${1:-}" in
@@ -7,6 +13,27 @@ setting_enabled() {
 	esac
 	return 1
 }
+
+INSTALL_PREFIX=${1:-}
+if [ -z "$INSTALL_PREFIX" ]
+then
+	DARLING_BIN=$(command -v darling) || DARLING_BIN=
+	[ -n "$DARLING_BIN" ] && INSTALL_PREFIX=$(dirname "$(dirname "$DARLING_BIN")")
+fi
+if [ -z "$INSTALL_PREFIX" ]
+then
+	echo "No Darling installation to shut down" >&2
+	exit 0
+fi
+INSTALL_PREFIX=$(readlink -f "$INSTALL_PREFIX")
+case "$INSTALL_PREFIX" in
+*[!A-Za-z0-9._/+-]*)
+	# The value ends up in `su -c`.
+	echo "Unsupported installation prefix: $INSTALL_PREFIX" >&2
+	exit 1
+	;;
+esac
+SERVER_PATH=$(readlink -f "$INSTALL_PREFIX/bin/darlingserver")
 
 CURRENT_USER=$(whoami)
 nonroot=0
@@ -20,7 +47,7 @@ then
 		nonroot=1
 	else
 		echo "$0 must be run as root, invoking sudo"
-		exec sudo su -c "$0" "$@"
+		exec sudo sh "$0" "$@"
 	fi
 fi
 
@@ -50,28 +77,60 @@ launchd_pids() {
 	fi
 }
 
+# The darlingserver process a container's launchd belongs to (its parent).
+container_server() {
+	ps -o ppid= -p "$1" | tr -d '[:space:]'
+}
+
+# Whether darlingserver process $1 is this installation's binary. The
+# executable link is authoritative (readable as root); otherwise fall back to
+# argv[0] when it is an absolute path. A bare "darlingserver" cannot be
+# attributed to an installation, so it is not ours.
+server_is_ours() {
+	exe=$(readlink "/proc/$1/exe" 2>/dev/null)
+	if [ -z "$exe" ]
+	then
+		exe=$(ps -o args= -p "$1" | awk '{ print $1 }')
+		case "$exe" in
+		/*) exe=$(readlink -f "$exe") ;;
+		*) return 1 ;;
+		esac
+	fi
+	[ "$exe" = "$SERVER_PATH" ]
+}
+
+# Containers served by this installation's darlingserver only.
+own_launchd_pids() {
+	for PID in $(launchd_pids)
+	do
+		server=$(container_server "$PID")
+		[ -n "$server" ] && server_is_ours "$server" && echo "$PID"
+	done
+}
+
 # The prefix a container's launchd belongs to: its parent is darlingserver,
-# started as "darlingserver PREFIX UID GID ...". `su --login` drops DPREFIX,
-# so without this a container in a non-default prefix could never be stopped.
-# Only plain absolute paths are passed on, since the value ends up in `su -c`.
+# started as "darlingserver PREFIX UID GID ..." (argv[0] may be a full path).
+# `su --login` drops DPREFIX, so without this a container in a non-default
+# prefix could never be stopped. Only plain absolute paths are passed on,
+# since the value ends up in `su -c`.
 container_prefix() {
-	parent=$(ps -o ppid= -p "$1" | tr -d '[:space:]')
+	parent=$(container_server "$1")
 	[ -n "$parent" ] || return
-	ps -o args= -p "$parent" | awk '$1 == "darlingserver" && $2 ~ /^\/[A-Za-z0-9._\/+-]*$/ { print $2 }'
+	ps -o args= -p "$parent" | awk '$2 ~ /^\/[A-Za-z0-9._\/+-]*$/ { print $2 }'
 }
 
 # Each round shuts down every container still running. The bound is on rounds,
 # not on one PID, so one stuck container cannot starve the others and a
 # container that comes back under a new PID cannot loop forever.
 rounds=0
-PIDS=$(launchd_pids)
+PIDS=$(own_launchd_pids)
 
 while [ -n "$PIDS" ]
 do
 	if [ "$rounds" -ge 5 ]
 	then
 		echo "Darling (launchd PIDs $(echo $PIDS)) is still running after $rounds shutdown rounds, giving up." >&2
-		echo "Try \`DPREFIX=<prefix> darling shutdown\` as the user that owns it." >&2
+		echo "Try \`DPREFIX=<prefix> $INSTALL_PREFIX/bin/darling shutdown\` as the user that owns it." >&2
 		exit 1
 	fi
 	for PID in $PIDS
@@ -83,10 +142,10 @@ do
 			PREFIX=$(container_prefix "$PID")
 			if [ -n "$PREFIX" ]
 			then
-				SHUTDOWN_COMMAND="DPREFIX='$PREFIX' darling shutdown"
+				SHUTDOWN_COMMAND="DPREFIX='$PREFIX' '$INSTALL_PREFIX/bin/darling' shutdown"
 				echo "Darling currently running for $RUNNING_USER in $PREFIX, shutting it down..."
 			else
-				SHUTDOWN_COMMAND="darling shutdown"
+				SHUTDOWN_COMMAND="'$INSTALL_PREFIX/bin/darling' shutdown"
 				echo "Darling currently running for $RUNNING_USER, shutting it down..."
 			fi
 			if [ "$nonroot" = 1 ]
@@ -99,7 +158,7 @@ do
 	done
 	rounds=$((rounds + 1))
 	sleep 2
-	PIDS=$(launchd_pids)
+	PIDS=$(own_launchd_pids)
 done
 
 echo "No instances running now"
