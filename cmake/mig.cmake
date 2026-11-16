@@ -1,3 +1,6 @@
+# Every MIG output depends on this file, so changing how stubs are generated regenerates them.
+set(MIG_CMAKE_FILE "${CMAKE_CURRENT_LIST_FILE}")
+
 function(mig defFileName)
         set(MIG_EXECUTABLE "${CMAKE_BINARY_DIR}/build-mig")
 
@@ -54,8 +57,18 @@ function(mig defFileName)
 			set(MIG_ARCH_SUFFIX "-${MIG_ARCH}-")
 		endif()
 
+		# A .defs file is often a stub that #includes another one (libsyscall/mach/*.defs include
+		# osfmk/mach/*.defs), so a second preprocessor run, with the same flags as the one in mig.sh,
+		# lists every included file in a depfile. The user source is the first output, so it names the rule.
+		set(MIG_USER_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_USER_SOURCE_SUFFIX})
+		get_filename_component(MIG_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}" DIRECTORY)
+		set(MIG_DEPFILE_ARGS "")
+		if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.20 OR CMAKE_GENERATOR MATCHES "Ninja")
+			set(MIG_DEPFILE_ARGS DEPFILE ${MIG_USER_SOURCE}.d)
+		endif()
+
 		add_custom_command(OUTPUT
-			${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_USER_SOURCE_SUFFIX}
+			${MIG_USER_SOURCE}
 			${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_USER_HEADER_SUFFIX}
 			${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_SERVER_SOURCE_SUFFIX}
 			${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_SERVER_HEADER_SUFFIX}
@@ -74,12 +87,17 @@ function(mig defFileName)
 				${MIG_FLAGS}
 				${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
 			COMMAND
+				${CMAKE_C_COMPILER} -x c -M -MT ${MIG_USER_SOURCE} -MF ${MIG_USER_SOURCE}.d
+				-arch ${MIG_ARCH} -target ${MIG_TARGET_TRIPLET_PRIMARY} -D__MACH30__
+				${MIG_FLAGS} -I ${MIG_SOURCE_DIR}
+				${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
+			COMMAND
 				# this is so that the xtrace file is always produced so that the command is not constantly re-run
 				# for MIG definitions that produce no xtrace files
 				${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/${relativeName}${MIG_ARCH_SUFFIX}${MIG_XTRACE_SUFFIX}
 			DEPENDS
-				migexe migcom
-				${CMAKE_CURRENT_SOURCE_DIR}/${defFileName}
+				migexe migcom ${CMAKE_CURRENT_SOURCE_DIR}/${defFileName} ${MIG_CMAKE_FILE}
+			${MIG_DEPFILE_ARGS}
 		)
 
 		if (NOT TARGET ${bareName}_xtrace_mig AND NOT MIG_NO_XTRACE)
