@@ -31,6 +31,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -48,7 +49,15 @@ static pid_t frontPID(void) {
 	return pid;
 }
 
-int main(void) {
+int main(int argc, char **argv) {
+	// Asker mode: a freshly started process (not a fork: libnotify tokens of the parent are not
+	// usable in a forked child) prints what GetFrontProcess() reports to the pipe fd in argv[2].
+	if (argc == 3 && !strcmp(argv[1], "ask")) {
+		pid_t seen = frontPID();
+		(void) !write(atoi(argv[2]), &seen, sizeof(seen));
+		return 0;
+	}
+
 	GetFrontFn getFront = (GetFrontFn) dlsym(RTLD_DEFAULT, "_CGSGetFrontProcess");
 	SetFrontFn setFront = (SetFrontFn) dlsym(RTLD_DEFAULT, "_CGSSetFrontProcess");
 	CHECK(getFront != NULL && setFront != NULL);
@@ -81,14 +90,15 @@ int main(void) {
 	CHECK(getFront(&got) == 0 && got == child);
 	CHECK(frontPID() == child);
 
-	// The same answer for a process that did not set it: ask from a second child.
+	// The same answer for a process that did not set it: ask from a second, separately started process.
 	int fds[2];
 	CHECK(pipe(fds) == 0);
 	pid_t asker = fork();
 	if (asker == 0) {
-		pid_t seen = frontPID();
-		(void) !write(fds[1], &seen, sizeof(seen));
-		_exit(0);
+		char fdArg[16];
+		snprintf(fdArg, sizeof(fdArg), "%d", fds[1]);
+		execl(argv[0], argv[0], "ask", fdArg, (char *) NULL);
+		_exit(127);
 	}
 	pid_t seen = -1;
 	CHECK(read(fds[0], &seen, sizeof(seen)) == (ssize_t) sizeof(seen) && seen == child);
