@@ -24,6 +24,8 @@ guest() {
 	timeout -s KILL 120 darling shell /bin/sh -c "{ $1; } >'$gw/$name.out' 2>'$gw/$name.err'; echo \$? >'$gw/$name.rc'" </dev/null >/dev/null 2>&1
 }
 rc() { cat "$work/$1.rc" 2>/dev/null; }
+# the mount point attach printed: the last field of the last line of its table
+mount_point() { tail -n 1 "$work/$1.out" | cut -f 3; }
 
 volumes_and_helpers() {
 	guest "$1" "ls /Volumes; ps ax | grep '[d]arling-dmg-mount'"
@@ -66,32 +68,32 @@ guest read "cat '/Volumes/Unmount Test/hello.txt'"
 
 # a second image with the same volume name at the same time: the lowest free " <n>" suffix, from 1, in /Volumes
 guest second "hdiutil attach '$second'"
-mp2=$(tail -n 1 "$work/second.out")
+mp2=$(mount_point second)
 guest read2 "cat '$mp2/hello.txt' && cat '/Volumes/Unmount Test/hello.txt'"
 [ "$(rc second)" = 0 ] && [ "$mp2" = "/Volumes/Unmount Test 1" ] && [ "$(cat "$work/read2.out")" = "hello
 hello" ] && pass "two images attached at once" || fail "two images: rc $(rc second), mount point '$mp2', read: $(cat "$work/read2.out" "$work/read2.err")"
 guest third "hdiutil attach '$third'"
-[ "$(tail -n 1 "$work/third.out")" = "/Volumes/Unmount Test 2" ] && pass "third image with the same name" \
+[ "$(mount_point third)" = "/Volumes/Unmount Test 2" ] && pass "third image with the same name" \
 	|| fail "third image: $(cat "$work/third.out" "$work/third.err")"
 guest fourth "hdiutil detach -quiet '/Volumes/Unmount Test 1' && hdiutil attach '$fourth'"
-[ "$(tail -n 1 "$work/fourth.out")" = "/Volumes/Unmount Test 1" ] && pass "a freed name is used again" \
+[ "$(mount_point fourth)" = "/Volumes/Unmount Test 1" ] && pass "a freed name is used again" \
 	|| fail "freed name: $(cat "$work/fourth.out" "$work/fourth.err")"
 guest d2 "for v in '/Volumes/Unmount Test 1' '/Volumes/Unmount Test 2' '/Volumes/Unmount Test'; do hdiutil detach -quiet \"\$v\"; done"
 
 # the mount point is named after the volume, not the file
 guest renamed "hdiutil attach '$renamed'"
-[ "$(tail -n 1 "$work/renamed.out")" = "/Volumes/Unmount Test" ] && pass "mount point named after the volume" \
+[ "$(mount_point renamed)" = "/Volumes/Unmount Test" ] && pass "mount point named after the volume" \
 	|| fail "renamed image: $(cat "$work/renamed.out" "$work/renamed.err")"
 guest d3 "hdiutil detach -quiet '/Volumes/Unmount Test'"
 
 # a "/" in the volume name appears as ":" in the mount point
 guest slash "hdiutil attach '$gw/slash-name.dmg'"
-[ "$(tail -n 1 "$work/slash.out")" = "/Volumes/A:B" ] && pass "slash in the volume name" \
+[ "$(mount_point slash)" = "/Volumes/A:B" ] && pass "slash in the volume name" \
 	|| fail "slash in the volume name: $(cat "$work/slash.out" "$work/slash.err")"
 guest d4 "hdiutil detach -quiet '/Volumes/A:B'"
 
 # two images with the same volume name attached at the same moment: each gets its own mount point
-guest parallel "hdiutil attach '$image' >'$gw/p1.out' & hdiutil attach '$second' >'$gw/p2.out' & wait; cat '$gw/p1.out' '$gw/p2.out' | sort; cat '/Volumes/Unmount Test/hello.txt' '/Volumes/Unmount Test 1/hello.txt'"
+guest parallel "hdiutil attach '$image' >'$gw/p1.out' & hdiutil attach '$second' >'$gw/p2.out' & wait; { tail -n 1 '$gw/p1.out'; tail -n 1 '$gw/p2.out'; } | cut -f 3 | sort; cat '/Volumes/Unmount Test/hello.txt' '/Volumes/Unmount Test 1/hello.txt'"
 [ "$(cat "$work/parallel.out")" = "/Volumes/Unmount Test
 /Volumes/Unmount Test 1
 hello
@@ -123,9 +125,76 @@ fi
 mkdir "$work/root2"
 guest mr1 "hdiutil attach -mountroot '$gw/root2' '$image'"
 guest mr2 "hdiutil attach -mountroot '$gw/root2' '$second'"
-[ "$(tail -n 1 "$work/mr1.out")" = "$gw/root2/Unmount Test" ] && [ "$(tail -n 1 "$work/mr2.out")" = "$gw/root2/Unmount Test 2" ] \
+[ "$(mount_point mr1)" = "$gw/root2/Unmount Test" ] && [ "$(mount_point mr2)" = "$gw/root2/Unmount Test 2" ] \
 	&& pass "same name under -mountroot" || fail "same name under -mountroot: $(cat "$work/mr1.out" "$work/mr1.err" "$work/mr2.out" "$work/mr2.err")"
-guest d5 "hdiutil detach -quiet '$gw/root2/Unmount Test 2'; hdiutil detach -quiet '$gw/root2/Unmount Test'"
+# a volume outside the guest's /Volumes is not one of DiskArbitration's disks (getfsstat does not list it); detach
+# still unmounts it
+guest d5 "hdiutil detach '$gw/root2/Unmount Test 2' && hdiutil detach -quiet '$gw/root2/Unmount Test' && test ! -e '$gw/root2/Unmount Test/hello.txt' && test ! -e '$gw/root2/Unmount Test 2/hello.txt'"
+[ "$(rc d5)" = 0 ] && [ "$(cat "$work/d5.out")" = "\"$gw/root2/Unmount Test 2\" ejected." ] \
+	&& pass "detach under -mountroot" || fail "detach under -mountroot: rc $(rc d5), out: $(cat "$work/d5.out" "$work/d5.err")"
+
+# the attach table, -plist entries and detach through DiskArbitration (macOS 26.7.3: see dmg-attach.md)
+"$DARLING_SKILLS/darling-guest-testing/scripts/guest-cc.sh" -o "$work/da-disks" "$here/da-disks.c" \
+	-framework DiskArbitration -framework CoreFoundation >/dev/null 2>&1 || fail "da-disks does not build"
+"$DARLING_SKILLS/darling-guest-testing/scripts/guest-cc.sh" -o "$work/da-ops" "$here/da-ops.c" \
+	-framework DiskArbitration -framework CoreFoundation >/dev/null 2>&1 || fail "da-ops does not build"
+cp "$here/fixtures/apm.dmg" "$here/fixtures/nolayout.dmg" "$work/"
+
+guest table "hdiutil attach '$image' && '$gw/da-disks' --name '/Volumes/Unmount Test' >'$gw/leaf.out'"
+leaf=$(cat "$work/leaf.out" 2>/dev/null)
+whole=${leaf%s1}
+whole_line=$(tail -n 2 "$work/table.out" | head -n 1)
+leaf_line=$(tail -n 1 "$work/table.out")
+widths=$(tail -n 2 "$work/table.out" | awk -F '\t' '{ printf "%d %d ", length($1), length($2) }')
+[ "$(rc table)" = 0 ] && [ -n "$leaf" ] \
+	&& printf '%s\n' "$whole_line" | grep -Eqx "/dev/$whole {0,10}	GUID_partition_scheme {10}	" \
+	&& printf '%s\n' "$leaf_line" | grep -Eqx "/dev/$leaf {0,8}	Apple_HFS {22}	/Volumes/Unmount Test" \
+	&& [ "$widths" = "20 31 20 31 " ] \
+	&& pass "attach table" || fail "attach table: rc $(rc table), disk '$leaf', widths $widths, out: $(cat "$work/table.out" | tr '\t\n' '>|')"
+guest dt1 "hdiutil detach -quiet '/Volumes/Unmount Test'"
+
+guest plistdev "hdiutil attach -plist '$image' && '$gw/da-disks' --name '/Volumes/Unmount Test' >'$gw/leaf.out'"
+leaf=$(cat "$work/leaf.out" 2>/dev/null)
+entries=$(grep -A1 '<key>dev-entry</key>' "$work/plistdev.out" | sed -n 's:.*<string>\(.*\)</string>.*:\1:p' | tr '\n' ' ')
+mountable=$(grep -A1 '<key>potentially-mountable</key>' "$work/plistdev.out" | grep -o 'true\|false' | tr '\n' ' ')
+[ "$(rc plistdev)" = 0 ] && [ -n "$leaf" ] && [ "$entries" = "/dev/$leaf /dev/${leaf%s1} " ] && [ "$mountable" = "true false " ] \
+	&& pass "-plist dev entries" || fail "-plist dev entries: disk '$leaf', entries '$entries', mountable '$mountable'"
+guest dt2 "hdiutil detach -quiet '/Volumes/Unmount Test'"
+
+guest apm "hdiutil attach '$gw/apm.dmg'"
+[ "$(rc apm)" = 0 ] && [ "$(tail -n 2 "$work/apm.out" | head -n 1 | cut -f 2 | sed 's/ *$//')" = Apple_partition_scheme ] \
+	&& [ "$(mount_point apm)" = /Volumes/APMv ] \
+	&& pass "apm scheme" || fail "apm scheme: rc $(rc apm), out: $(cat "$work/apm.out" "$work/apm.err" | tr '\t\n' '>|')"
+guest dt3 "hdiutil detach -quiet /Volumes/APMv"
+
+guest nolayout "hdiutil attach '$gw/nolayout.dmg'"
+[ "$(rc nolayout)" = 0 ] && [ "$(tail -n 2 "$work/nolayout.out" | head -n 1 | cut -f 2 | tr -d ' ')" = "" ] \
+	&& [ "$(mount_point nolayout)" = /Volumes/NoLayout ] \
+	&& pass "no partition map" || fail "no partition map: rc $(rc nolayout), out: $(cat "$work/nolayout.out" "$work/nolayout.err" | tr '\t\n' '>|')"
+guest dt4 "hdiutil detach -quiet /Volumes/NoLayout"
+
+guest bydev "hdiutil attach -quiet '$image' && d=\$('$gw/da-disks' --name '/Volumes/Unmount Test') && echo \${d%s1} >'$gw/whole.out' && hdiutil detach /dev/\${d%s1}"
+whole=$(cat "$work/whole.out" 2>/dev/null)
+[ "$(rc bydev)" = 0 ] && [ -n "$whole" ] && [ "$(cat "$work/bydev.out")" = "\"$whole\" ejected." ] \
+	&& pass "detach by device" || fail "detach by device: rc $(rc bydev), out: $(cat "$work/bydev.out" "$work/bydev.err")"
+
+guest unknowndev "hdiutil detach /dev/disk99"
+[ "$(rc unknowndev)" = 1 ] && [ "$(cat "$work/unknowndev.err")" = "hdiutil: detach failed - No such file or directory" ] \
+	&& pass "detach unknown device" || fail "detach unknown device: rc $(rc unknowndev), err: $(cat "$work/unknowndev.err")"
+
+guest dissent "(hdiutil attach -quiet '$image' && d=\$('$gw/da-disks' --name '/Volumes/Unmount Test') && echo \${d%s1} >'$gw/whole.out' || exit 9
+	'$gw/da-ops' deny 30 >/dev/null & deny=\$!; sleep 2
+	hdiutil detach /dev/\${d%s1} >'$gw/dissent1.out' 2>'$gw/dissent1.err'; echo \$? >'$gw/dissent1.rc'
+	hdiutil detach -force /dev/\${d%s1} >'$gw/dissent2.out' 2>'$gw/dissent2.err'; echo \$? >'$gw/dissent2.rc'
+	test -e '/Volumes/Unmount Test' && echo mounted >'$gw/dissent2.mp' || echo gone >'$gw/dissent2.mp'
+	kill \$deny; wait \$deny; hdiutil detach -quiet /dev/\${d%s1})"
+whole=$(cat "$work/whole.out" 2>/dev/null)
+[ "$(rc dissent1)" = 2 ] && [ "$(cat "$work/dissent1.out")" = "in use by test" ] && [ "$(wc -c < "$work/dissent1.out")" = 14 ] \
+	&& [ "$(cat "$work/dissent1.err")" = "hdiutil: couldn't unmount \"$whole\" - Resource busy" ] \
+	&& pass "detach with a dissenter" || fail "detach with a dissenter: rc $(rc dissent1), out: $(cat "$work/dissent1.out" "$work/dissent1.err")"
+[ "$(rc dissent2)" = 2 ] && [ "$(cat "$work/dissent2.err")" = "hdiutil: couldn't eject \"$whole\" - Resource busy" ] \
+	&& [ "$(cat "$work/dissent2.mp")" = gone ] \
+	&& pass "-force with a dissenter" || fail "-force with a dissenter: rc $(rc dissent2), mount point $(cat "$work/dissent2.mp"), out: $(cat "$work/dissent2.out" "$work/dissent2.err")"
 
 # the library API
 "$DARLING_SKILLS/darling-guest-testing/scripts/guest-cc.sh" -o "$work/dmg-api" "$here/dmg-api.c" \

@@ -29,6 +29,7 @@ for f in sla-test sla-short-lpic sla-overcount sla-lines unmount-test; do cp "$h
 	|| fail "licence agreement API test does not build"
 
 # hdiutil attach with stdin not a terminal: the agreement text goes to stdout, then one answer is read per line.
+# After it, attach prints its table (the whole disk, then the volume with its mount point in the last field).
 text="SLA TEST AGREEMENT (English) This is the English test agreement."
 image="$gw/sla-test.dmg"
 mp="/Volumes/Unmount Test"
@@ -55,7 +56,7 @@ canceled() { # <name> <description>: text printed, attach canceled, exit 1, noth
 		&& pass "$2" || fail "$2: rc $(rc "$1"), mounted $(mounted "$1"), helpers $(cat "$work/$1.helpers"), out: $(cat "$work/$1.out"), err: $(cat "$work/$1.err")"
 }
 agreed() { # <name> <description>: text printed, then the mount point; exit 0, mounted
-	[ "$(rc "$1")" = 0 ] && [ "$(sed -n 1p "$work/$1.out")" = "$text" ] && [ "$(sed -n 2p "$work/$1.out")" = "$mp" ] \
+	[ "$(rc "$1")" = 0 ] && [ "$(sed -n 1p "$work/$1.out")" = "$text" ] && [ "$(tail -n 1 "$work/$1.out" | cut -f 3)" = "$mp" ] \
 		&& [ "$(mounted "$1")" = yes ] \
 		&& pass "$2" || fail "$2: rc $(rc "$1"), mounted $(mounted "$1"), out: $(cat "$work/$1.out"), err: $(cat "$work/$1.err")"
 }
@@ -86,7 +87,8 @@ attach plisty 'y\n' -plist
 
 for f in sla-short-lpic sla-overcount; do
 	guest "$f" "hdiutil attach '$gw/$f.dmg' </dev/null"
-	[ "$(rc "$f")" = 0 ] && [ "$(cat "$work/$f.out")" = "$mp" ] && pass "$f: no agreement, attached" \
+	[ "$(rc "$f")" = 0 ] && [ "$(wc -l < "$work/$f.out")" = 2 ] && [ "$(tail -n 1 "$work/$f.out" | cut -f 3)" = "$mp" ] \
+		&& pass "$f: no agreement, attached" \
 		|| fail "$f: rc $(rc "$f"), out: $(cat "$work/$f.out"), err: $(cat "$work/$f.err")"
 	guest "$f-detach" "hdiutil detach -quiet '$mp'"
 done
