@@ -10,7 +10,7 @@
 //      a session that is never scheduled gets no callbacks;
 //  unregister
 //      after DAUnregisterCallback (here from inside the first callback) nothing more is delivered;
-//  restart <image> <mount point> <shell command that restarts diskarbitrationd>
+//  restart <image> <mount point> <shell command that kills diskarbitrationd>
 //      a session keeps getting callbacks after the daemon restarts (not on macOS: it needs to restart the daemon).
 // Link with -framework DiskArbitration -framework CoreFoundation. Except for restart, the program also passes on
 // macOS 26.7.3.
