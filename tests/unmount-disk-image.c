@@ -1,8 +1,11 @@
 // unmount(2) on a mounted disk image: a directory inside the volume is not a mount point (EINVAL), a volume with
 // an open file is busy (EBUSY) unless MNT_FORCE is given, and once unmounted the path is no longer a mount point.
-// Usage: unmount-disk-image <mount point of tests/fixtures/unmount-test.dmg>
+// With "ignore-sigchld" the program ignores SIGCHLD first, so that the kernel reaps its children itself: unmount()
+// must not depend on reaping a helper process it started.
+// Usage: unmount-disk-image <mount point of tests/fixtures/unmount-test.dmg> [ignore-sigchld]
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/mount.h>
@@ -34,8 +37,10 @@ static int readable(const char* path)
 
 int main(int argc, char** argv)
 {
-	if (argc != 2) {
-		fprintf(stderr, "usage: %s <mount point>\n", argv[0]);
+	if (argc == 3 && strcmp(argv[2], "ignore-sigchld") == 0)
+		signal(SIGCHLD, SIG_IGN);
+	else if (argc != 2) {
+		fprintf(stderr, "usage: %s <mount point> [ignore-sigchld]\n", argv[0]);
 		return 2;
 	}
 

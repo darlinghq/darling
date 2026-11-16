@@ -25,7 +25,7 @@ hdiutil convert ut.dmg -format UDZO -o ut-ro.dmg
 
 ## Expected behaviour (observed on macOS 26.7.3, x86_64)
 
-`unmount-disk-image.c` passes unchanged on macOS with the image attached.
+`unmount-disk-image.c` passes unchanged on macOS with the image attached, also with `ignore-sigchld`.
 
 `hdiutil detach`:
 
