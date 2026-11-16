@@ -55,6 +55,7 @@ OSStatus UCCompareTextDefault(uint32_t options, const UniChar* text1, unsigned l
 OSStatus UCCompareTextNoLocale(uint32_t options, const UniChar* text1, unsigned long text1len, const UniChar* text2, unsigned long text2len, Boolean* equiv, int32_t* order);
 
 typedef UInt16 UCKeyOutput;
+typedef UInt16 UCKeyCharSeq;
 
 enum {
   kUCKeyLayoutHeaderFormat      = 0x1002,
@@ -65,6 +66,39 @@ enum {
   kUCKeyStateTerminatorsFormat  = 0x6001,
   kUCKeySequenceDataIndexFormat = 0x7001
 };
+
+// A state record maps the pending dead-key state to an output. If the state is zero, the record
+// gives stateZeroCharData and moves to stateZeroNextState. Otherwise a matching entry in
+// stateEntryData gives its character and next state; with no matching entry the state terminator
+// is given, followed by stateZeroCharData, and the state becomes stateZeroNextState.
+struct UCKeyStateRecord {
+  UCKeyCharSeq        stateZeroCharData;
+  UInt16              stateZeroNextState;
+  UInt16              stateEntryCount;
+  UInt16              stateEntryFormat;
+  UInt32              stateEntryData[1];
+};
+typedef struct UCKeyStateRecord         UCKeyStateRecord;
+
+enum {
+  kUCKeyStateEntryTerminalFormat = 0x0001,
+  kUCKeyStateEntryRangeFormat   = 0x0002
+};
+
+struct UCKeyStateEntryTerminal {
+  UInt16              curState;
+  UCKeyCharSeq        charData;
+};
+typedef struct UCKeyStateEntryTerminal  UCKeyStateEntryTerminal;
+
+struct UCKeyStateEntryRange {
+  UInt16              curStateStart;
+  UInt8               curStateRange;
+  UInt8               deltaMultiplier;
+  UCKeyCharSeq        charData;
+  UInt16              nextState;
+};
+typedef struct UCKeyStateEntryRange     UCKeyStateEntryRange;
 
 struct UCKeyboardTypeHeader {
   UInt32              keyboardTypeFirst;
@@ -107,6 +141,20 @@ struct UCKeyToCharTableIndex {
   UInt32              keyToCharTableOffsets[1];
 };
 typedef struct UCKeyToCharTableIndex    UCKeyToCharTableIndex;
+
+struct UCKeyStateRecordsIndex {
+  UInt16              keyStateRecordsIndexFormat;
+  UInt16              keyStateRecordCount;
+  UInt32              keyStateRecordOffsets[1];
+};
+typedef struct UCKeyStateRecordsIndex   UCKeyStateRecordsIndex;
+
+struct UCKeyStateTerminators {
+  UInt16              keyStateTerminatorsFormat;
+  UInt16              keyStateTerminatorCount;
+  UCKeyCharSeq        keyStateTerminators[1];
+};
+typedef struct UCKeyStateTerminators    UCKeyStateTerminators;
 
 struct UCKeySequenceDataIndex {
   UInt16              keySequenceDataIndexFormat;
