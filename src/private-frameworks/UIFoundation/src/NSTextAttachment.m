@@ -18,6 +18,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 // Original - Christopher Lloyd <cjwl@objc.net>
+#import "UIFoundation-ExtraIvars.h"
 #import <Foundation/NSFileWrapper.h>
 #import <AppKit/NSImage.h>
 #import <AppKit/NSTextAttachment.h>
@@ -66,17 +67,17 @@ static NSMutableDictionary *viewProviderClasses;
 
 - (instancetype) initWithData: (NSData *) contentData ofType: (NSString *) uti {
     if ((self = [super init])) {
-        _contents = [contentData copy];
-        _fileType = [uti copy];
-        _bounds = CGRectZero;
-        _allowsTextAttachmentView = YES;
+        UIF_EXTRA_NSTextAttachment(self)->_contents = [contentData copy];
+        UIF_EXTRA_NSTextAttachment(self)->_fileType = [uti copy];
+        UIF_EXTRA_NSTextAttachment(self)->_bounds = CGRectZero;
+        UIF_EXTRA_NSTextAttachment(self)->_allowsTextAttachmentView = YES;
         /* Every other initializer here gives the attachment a cell, and -[NSLayoutManager
          * _drawAttachment:] only ever reaches the cell through -[NSTextAttachment attachmentCell].
          * Without this, an attachment created from data had a nil cell, so the layout manager drew
          * nothing for it at all -- silently, because messaging nil is a no-op. */
         // NSTextAttachmentCell is an AppKit class; AppKit makes the cell.
-        _cell = _UIFoundationNewTextAttachmentCell();
-        [_cell setAttachment: self];
+        UIF_EXTRA_NSTextAttachment(self)->_cell = _UIFoundationNewTextAttachmentCell();
+        [UIF_EXTRA_NSTextAttachment(self)->_cell setAttachment: self];
     }
     return self;
 }
@@ -87,7 +88,7 @@ static NSMutableDictionary *viewProviderClasses;
 
 - (instancetype) initWithFileWrapper: (NSFileWrapper *) fileWrapper {
     if ((self = [self initWithData: nil ofType: nil])) {
-        _fileWrapper = [fileWrapper retain];
+        UIF_EXTRA_NSTextAttachment(self)->_fileWrapper = [fileWrapper retain];
     }
     return self;
 }
@@ -99,10 +100,10 @@ static NSMutableDictionary *viewProviderClasses;
     self = [self initWithData: [coder decodeObjectOfClass: [NSData class] forKey: @"Contents"]
                        ofType: [coder decodeObjectOfClass: [NSString class] forKey: @"FileType"]];
     if (self) {
-        _bounds = NSRectToCGRect([coder decodeRectForKey: @"Bounds"]);
-        _lineLayoutPadding = [coder decodeDoubleForKey: @"LineLayoutPadding"];
+        UIF_EXTRA_NSTextAttachment(self)->_bounds = NSRectToCGRect([coder decodeRectForKey: @"Bounds"]);
+        UIF_EXTRA_NSTextAttachment(self)->_lineLayoutPadding = [coder decodeDoubleForKey: @"LineLayoutPadding"];
         if ([coder containsValueForKey: @"AllowsTextAttachmentView"])
-            _allowsTextAttachmentView = [coder decodeBoolForKey: @"AllowsTextAttachmentView"];
+            UIF_EXTRA_NSTextAttachment(self)->_allowsTextAttachmentView = [coder decodeBoolForKey: @"AllowsTextAttachmentView"];
     }
     return self;
 }
@@ -112,101 +113,102 @@ static NSMutableDictionary *viewProviderClasses;
         [NSException raise: NSInvalidArgumentException
                     format: @"-[%@ %s]: only keyed archiving is supported", [self class], sel_getName(_cmd)];
     [coder encodeObject: [self contents] forKey: @"Contents"];
-    [coder encodeObject: _fileType forKey: @"FileType"];
-    [coder encodeRect: NSRectFromCGRect(_bounds) forKey: @"Bounds"];
-    [coder encodeDouble: _lineLayoutPadding forKey: @"LineLayoutPadding"];
-    [coder encodeBool: _allowsTextAttachmentView forKey: @"AllowsTextAttachmentView"];
+    [coder encodeObject: UIF_EXTRA_NSTextAttachment(self)->_fileType forKey: @"FileType"];
+    [coder encodeRect: NSRectFromCGRect(UIF_EXTRA_NSTextAttachment(self)->_bounds) forKey: @"Bounds"];
+    [coder encodeDouble: UIF_EXTRA_NSTextAttachment(self)->_lineLayoutPadding forKey: @"LineLayoutPadding"];
+    [coder encodeBool: UIF_EXTRA_NSTextAttachment(self)->_allowsTextAttachmentView forKey: @"AllowsTextAttachmentView"];
 }
 
 - (void) dealloc {
-    [_contents release];
-    [_fileType release];
-    [_image release];
-    [_fileWrapper release];
-    [_cell release];
+    [UIF_EXTRA_NSTextAttachment(self)->_contents release];
+    [UIF_EXTRA_NSTextAttachment(self)->_fileType release];
+    [UIF_EXTRA_NSTextAttachment(self)->_image release];
+    [UIF_EXTRA_NSTextAttachment(self)->_fileWrapper release];
+    [UIF_EXTRA_NSTextAttachment(self)->_cell release];
+    UIF_EXTRA_FREE(NSTextAttachment, self);
     [super dealloc];
 }
 
 // Without explicit contents, a regular-file wrapper supplies them.
 - (NSData *) contents {
-    if (_contents == nil && [_fileWrapper isRegularFile])
-        return [_fileWrapper regularFileContents];
-    return _contents;
+    if (UIF_EXTRA_NSTextAttachment(self)->_contents == nil && [UIF_EXTRA_NSTextAttachment(self)->_fileWrapper isRegularFile])
+        return [UIF_EXTRA_NSTextAttachment(self)->_fileWrapper regularFileContents];
+    return UIF_EXTRA_NSTextAttachment(self)->_contents;
 }
 
 - (void) setContents: (NSData *) contents {
     contents = [contents copy];
-    [_contents release];
-    _contents = contents;
+    [UIF_EXTRA_NSTextAttachment(self)->_contents release];
+    UIF_EXTRA_NSTextAttachment(self)->_contents = contents;
 }
 
 - (NSString *) fileType {
-    return _fileType;
+    return UIF_EXTRA_NSTextAttachment(self)->_fileType;
 }
 
 - (void) setFileType: (NSString *) fileType {
     fileType = [fileType copy];
-    [_fileType release];
-    _fileType = fileType;
+    [UIF_EXTRA_NSTextAttachment(self)->_fileType release];
+    UIF_EXTRA_NSTextAttachment(self)->_fileType = fileType;
 }
 
 - (NSImage *) image {
-    return _image;
+    return UIF_EXTRA_NSTextAttachment(self)->_image;
 }
 
 - (void) setImage: (NSImage *) image {
     [image retain];
-    [_image release];
-    _image = image;
+    [UIF_EXTRA_NSTextAttachment(self)->_image release];
+    UIF_EXTRA_NSTextAttachment(self)->_image = image;
 }
 
 - (CGRect) bounds {
-    return _bounds;
+    return UIF_EXTRA_NSTextAttachment(self)->_bounds;
 }
 
 - (void) setBounds: (CGRect) bounds {
-    _bounds = bounds;
+    UIF_EXTRA_NSTextAttachment(self)->_bounds = bounds;
 }
 
 - (NSFileWrapper *) fileWrapper {
-    return _fileWrapper;
+    return UIF_EXTRA_NSTextAttachment(self)->_fileWrapper;
 }
 
 - (void) setFileWrapper: (NSFileWrapper *) fileWrapper {
     fileWrapper = [fileWrapper retain];
-    [_fileWrapper release];
-    _fileWrapper = fileWrapper;
+    [UIF_EXTRA_NSTextAttachment(self)->_fileWrapper release];
+    UIF_EXTRA_NSTextAttachment(self)->_fileWrapper = fileWrapper;
 }
 
 - (id<NSTextAttachmentCell>) attachmentCell {
-    return _cell;
+    return UIF_EXTRA_NSTextAttachment(self)->_cell;
 }
 
 - (void) setAttachmentCell: (id<NSTextAttachmentCell>) cell {
     cell = [cell retain];
-    [_cell release];
-    _cell = cell;
+    [UIF_EXTRA_NSTextAttachment(self)->_cell release];
+    UIF_EXTRA_NSTextAttachment(self)->_cell = cell;
 }
 
 - (CGFloat) lineLayoutPadding {
-    return _lineLayoutPadding;
+    return UIF_EXTRA_NSTextAttachment(self)->_lineLayoutPadding;
 }
 
 - (void) setLineLayoutPadding: (CGFloat) padding {
-    _lineLayoutPadding = padding;
+    UIF_EXTRA_NSTextAttachment(self)->_lineLayoutPadding = padding;
 }
 
 - (BOOL) allowsTextAttachmentView {
-    return _allowsTextAttachmentView;
+    return UIF_EXTRA_NSTextAttachment(self)->_allowsTextAttachmentView;
 }
 
 - (void) setAllowsTextAttachmentView: (BOOL) allows {
-    _allowsTextAttachmentView = allows;
+    UIF_EXTRA_NSTextAttachment(self)->_allowsTextAttachmentView = allows;
 }
 
 - (BOOL) usesTextAttachmentView {
-    return _allowsTextAttachmentView && _fileType != nil &&
-           [[self class] textAttachmentViewProviderClassForFileType: _fileType] != Nil;
+    return UIF_EXTRA_NSTextAttachment(self)->_allowsTextAttachmentView && UIF_EXTRA_NSTextAttachment(self)->_fileType != nil &&
+           [[self class] textAttachmentViewProviderClassForFileType: UIF_EXTRA_NSTextAttachment(self)->_fileType] != Nil;
 }
 
 - (NSImage *) imageForBounds: (CGRect) bounds
@@ -214,8 +216,8 @@ static NSMutableDictionary *viewProviderClasses;
                     location: (id<NSTextLocation>) location
                textContainer: (NSTextContainer *) textContainer
 {
-    if (_image != nil)
-        return _image;
+    if (UIF_EXTRA_NSTextAttachment(self)->_image != nil)
+        return UIF_EXTRA_NSTextAttachment(self)->_image;
     NSData *contents = [self contents];
     return _UIFoundationImageWithData(contents);
 }
@@ -226,14 +228,14 @@ static NSMutableDictionary *viewProviderClasses;
                     proposedLineFragment: (CGRect) proposedLineFragment
                                 position: (CGPoint) position
 {
-    if (!CGRectIsEmpty(_bounds))
-        return _bounds;
-    NSImage *image = [self imageForBounds: _bounds
+    if (!CGRectIsEmpty(UIF_EXTRA_NSTextAttachment(self)->_bounds))
+        return UIF_EXTRA_NSTextAttachment(self)->_bounds;
+    NSImage *image = [self imageForBounds: UIF_EXTRA_NSTextAttachment(self)->_bounds
                                attributes: attributes
                                  location: location
                             textContainer: textContainer];
     if (image == nil)
-        return _bounds;
+        return UIF_EXTRA_NSTextAttachment(self)->_bounds;
     NSSize size = [image size];
     return CGRectMake(0, 0, size.width, size.height);
 }
@@ -244,7 +246,7 @@ static NSMutableDictionary *viewProviderClasses;
 {
     if (![self usesTextAttachmentView])
         return nil;
-    Class providerClass = [[self class] textAttachmentViewProviderClassForFileType: _fileType];
+    Class providerClass = [[self class] textAttachmentViewProviderClassForFileType: UIF_EXTRA_NSTextAttachment(self)->_fileType];
     id provider = [[providerClass alloc] initWithTextAttachment: self
                                                      parentView: parentView
                                               textLayoutManager: nil

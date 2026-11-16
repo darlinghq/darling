@@ -17,6 +17,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
+#import "UIFoundation-ExtraIvars.h"
 #import <AppKit/NSGlyphInfo.h>
 #import <Foundation/NSRaise.h>
 
@@ -26,14 +27,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
                    collection: (NSCharacterCollection) collection
                     glyphName: (NSString *) glyphName
 {
-    _identifier = identifier;
-    _collection = collection;
-    _glyphName = [glyphName copy];
+    UIF_EXTRA_NSGlyphInfo(self)->_identifier = identifier;
+    UIF_EXTRA_NSGlyphInfo(self)->_collection = collection;
+    UIF_EXTRA_NSGlyphInfo(self)->_glyphName = [glyphName copy];
     return self;
 }
 
 - (void) dealloc {
-    [_glyphName release];
+    [UIF_EXTRA_NSGlyphInfo(self)->_glyphName release];
+    UIF_EXTRA_FREE(NSGlyphInfo, self);
     [super dealloc];
 }
 
@@ -63,15 +65,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (NSUInteger) characterIdentifier {
-    return _identifier;
+    return UIF_EXTRA_NSGlyphInfo(self)->_identifier;
 }
 
 - (NSCharacterCollection) characterCollection {
-    return _collection;
+    return UIF_EXTRA_NSGlyphInfo(self)->_collection;
 }
 
 - (NSString *) glyphName {
-    return _glyphName;
+    return UIF_EXTRA_NSGlyphInfo(self)->_glyphName;
 }
 
 @end

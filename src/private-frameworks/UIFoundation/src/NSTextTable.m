@@ -17,40 +17,43 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
+#import "UIFoundation-ExtraIvars.h"
 #import <AppKit/NSTextTable.h>
 
 @implementation NSTextTable
 
 - (unsigned) numberOfColumns {
-    return _numberOfColumns;
+    return UIF_EXTRA_NSTextTable(self)->_numberOfColumns;
 }
 
 - (BOOL) collapsesBorders {
-    return _collapsesBorders;
+    return UIF_EXTRA_NSTextTable(self)->_collapsesBorders;
 }
 
 - (BOOL) hidesEmptyCells {
-    return _hidesEmptyCells;
+    return UIF_EXTRA_NSTextTable(self)->_hidesEmptyCells;
 }
 
 - (NSTextTableLayoutAlgorithm) layoutAlgorithm {
-    return _layoutAlgorithm;
+    return UIF_EXTRA_NSTextTable(self)->_layoutAlgorithm;
 }
 
 - (void) setNumberOfColumns: (unsigned) numberOfColumns {
-    _numberOfColumns = numberOfColumns;
+    UIF_EXTRA_NSTextTable(self)->_numberOfColumns = numberOfColumns;
 }
 
 - (void) setCollapsesBorders: (BOOL) yorn {
-    _collapsesBorders = yorn;
+    UIF_EXTRA_NSTextTable(self)->_collapsesBorders = yorn;
 }
 
 - (void) setHidesEmptyCells: (BOOL) yorn {
-    _hidesEmptyCells = yorn;
+    UIF_EXTRA_NSTextTable(self)->_hidesEmptyCells = yorn;
 }
 
 - (void) setLayoutAlgorithm: (NSTextTableLayoutAlgorithm) algorithm {
-    _layoutAlgorithm = algorithm;
+    UIF_EXTRA_NSTextTable(self)->_layoutAlgorithm = algorithm;
 }
+
+UIF_EXTRA_DEALLOC(NSTextTable)
 
 @end
