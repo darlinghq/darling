@@ -34,6 +34,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <endian.h>
 #include "commpage.h"
 #include "loader.h"
+#if defined(__aarch64__)
+#include "fex/fex_bridge.h"
+#endif
 #include "socket_bitmap.h"
 #include "image_protection.h"
 #include "interpreter_path.h"
@@ -1062,6 +1065,9 @@ static void start_thread(struct load_results* lr) {
 		:
 	);
 #elif defined(__aarch64__)
+	if (lr->emulated_x86_64) {
+		fex_start_main_thread(lr);
+	}
 	__asm__ volatile(
 		"mov sp, %1\n"
 		"br %0"
