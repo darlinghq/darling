@@ -11,6 +11,7 @@
 #include <stdlib.h>
 
 #include "DAPrivate.h"
+#include "DAProtocol.h"
 
 #define CONST_STRING_DECL(name, value) const CFStringRef name = CFSTR(value);
 
@@ -247,4 +248,33 @@ DADiskRef DADiskCopyWholeDisk(DADiskRef disk)
 		return NULL;
 	CFRelease(description);
 	return DADiskCreateWithName(CFGetAllocator(disk), disk->session, whole);
+}
+
+void DADiskUnmount(DADiskRef disk, DADiskUnmountOptions options, DADiskUnmountCallback callback, void* context)
+{
+	_DASessionRequest(disk->session, DA_OP_UNMOUNT, disk->bsdName, options, callback, context);
+}
+
+void DADiskEject(DADiskRef disk, DADiskEjectOptions options, DADiskEjectCallback callback, void* context)
+{
+	_DASessionRequest(disk->session, DA_OP_EJECT, disk->bsdName, options, callback, context);
+}
+
+// A volume that is mounted is busy, as on macOS. Mounting one again is not supported: an image volume needs the
+// disk image layer, which DiskArbitration does not use.
+void DADiskMountWithArguments(DADiskRef disk, CFURLRef path, DADiskMountOptions options, DADiskMountCallback callback,
+	void* context, CFStringRef arguments[])
+{
+	CFDictionaryRef description = DADiskCopyDescription(disk);
+	bool mounted = description != NULL && CFDictionaryContainsKey(description, kDADiskDescriptionVolumePathKey);
+	if (description != NULL)
+		CFRelease(description);
+	_DASessionComplete(disk->session, disk->bsdName, callback, context,
+		mounted ? kDAReturnBusy : kDAReturnUnsupported, NULL);
+}
+
+void DADiskMount(DADiskRef disk, CFURLRef path, DADiskMountOptions options, DADiskMountCallback callback,
+	void* context)
+{
+	DADiskMountWithArguments(disk, path, options, callback, context, NULL);
 }

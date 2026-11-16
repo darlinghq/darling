@@ -84,4 +84,13 @@ DA_HIDDEN bool _DAClientLookupPath(DASessionRef session, const char* path, char*
 DA_HIDDEN void _DASessionConnect(DASessionRef session);
 DA_HIDDEN void _DASessionDisconnect(DASessionRef session);
 
+// Sends a DA_OP_UNMOUNT or DA_OP_EJECT request; function (a DADiskUnmountCallback, DADiskEjectCallback or
+// DADiskMountCallback, or NULL) gets the result where the session is scheduled.
+DA_HIDDEN void _DASessionRequest(DASessionRef session, const char* op, const char* name, uint64_t options,
+	void* function, void* context);
+
+// Has function (as above) called with that result where the session is scheduled.
+DA_HIDDEN void _DASessionComplete(DASessionRef session, const char* name, void* function, void* context,
+	DAReturn status, CFStringRef string);
+
 #endif

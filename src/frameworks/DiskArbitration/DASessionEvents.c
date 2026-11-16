@@ -35,6 +35,11 @@ enum
 	DA_CALLBACK_APPEARED,
 	DA_CALLBACK_DISAPPEARED,
 	DA_CALLBACK_CHANGED,
+	DA_CALLBACK_UNMOUNT_APPROVAL,
+	DA_CALLBACK_EJECT_APPROVAL,
+	// not registered: a callout's own
+	DA_CALLOUT_COMPLETION, // an unmount, eject or mount callback
+	DA_CALLOUT_APPROVAL,   // an approval request from the daemon
 };
 
 struct DACallback
@@ -53,7 +58,11 @@ struct DACallout
 {
 	struct DACallback* callback;
 	char name[64];
-	CFArrayRef keys; // for DA_CALLBACK_CHANGED
+	CFArrayRef keys;             // for DA_CALLBACK_CHANGED
+	DADissenterRef dissenter;    // for DA_CALLOUT_COMPLETION; NULL for success
+	xpc_object_t request;        // for DA_CALLOUT_APPROVAL: the daemon's request, answered after the callbacks
+	CFDictionaryRef description; // for DA_CALLOUT_APPROVAL
+	int approvalKind;            // for DA_CALLOUT_APPROVAL: DA_CALLBACK_UNMOUNT_APPROVAL or DA_CALLBACK_EJECT_APPROVAL
 	struct DACallout* next;
 };
 
@@ -132,6 +141,12 @@ static void callbackReleaseLocked(struct DACallback* callback)
 	free(callback);
 }
 
+static void appendCalloutLocked(DASessionRef session, struct DACallout* callout)
+{
+	*session->calloutsTail = callout;
+	session->calloutsTail = &callout->next;
+}
+
 static void queueCalloutLocked(DASessionRef session, struct DACallback* callback, CFStringRef name,
 	CFDictionaryRef description, CFArrayRef keys)
 {
@@ -152,8 +167,7 @@ static void queueCalloutLocked(DASessionRef session, struct DACallback* callback
 	callback->references++;
 	if (keys != NULL)
 		callout->keys = CFRetain(keys);
-	*session->calloutsTail = callout;
-	session->calloutsTail = &callout->next;
+	appendCalloutLocked(session, callout);
 }
 
 static void queueLocked(DASessionRef session, int kind, CFStringRef name, CFDictionaryRef description, CFArrayRef keys)
@@ -163,6 +177,90 @@ static void queueLocked(DASessionRef session, int kind, CFStringRef name, CFDict
 		if (callback->kind == kind)
 			queueCalloutLocked(session, callback, name, description, keys);
 	}
+}
+
+static void calloutFree(struct DACallout* callout)
+{
+	if (callout->keys != NULL)
+		CFRelease(callout->keys);
+	if (callout->dissenter != NULL)
+		CFRelease(callout->dissenter);
+	if (callout->request != NULL)
+		xpc_release(callout->request);
+	if (callout->description != NULL)
+		CFRelease(callout->description);
+	free(callout);
+}
+
+// A callout with a callback of its own, which no registration holds.
+static struct DACallout* newPrivateCallout(int kind, const char* name, void* function, void* context)
+{
+	struct DACallout* callout = calloc(1, sizeof(*callout));
+	struct DACallback* callback = calloc(1, sizeof(*callback));
+	if (callout == NULL || callback == NULL || strlcpy(callout->name, name, sizeof(callout->name)) >= sizeof(callout->name))
+	{
+		free(callout);
+		free(callback);
+		return NULL;
+	}
+	callback->kind = kind;
+	callback->function = function;
+	callback->context = context;
+	callback->references = 1;
+	callout->callback = callback;
+	return callout;
+}
+
+static void replyToApproval(DASessionRef session, xpc_object_t request, DADissenterRef dissenter)
+{
+	xpc_object_t reply = xpc_dictionary_create_reply(request);
+	if (reply == NULL)
+		return;
+	xpc_dictionary_set_int64(reply, DA_KEY_STATUS, dissenter != NULL ? DADissenterGetStatus(dissenter) : kDAReturnSuccess);
+	CFStringRef string = dissenter != NULL ? DADissenterGetStatusString(dissenter) : NULL;
+	char text[1024];
+	if (string != NULL && CFStringGetCString(string, text, sizeof(text), kCFStringEncodingUTF8))
+		xpc_dictionary_set_string(reply, DA_KEY_STRING, text);
+	xpc_connection_send_message(session->connection, reply);
+	xpc_release(reply);
+}
+
+// Runs the matching approval callbacks until one dissents, and answers the daemon.
+static void runApproval(DASessionRef session, DADiskRef disk, struct DACallout* callout)
+{
+	struct DACallback* callbacks[64];
+	int count = 0;
+
+	pthread_mutex_lock(&session->lock);
+	for (struct DACallback* callback = session->callbacks; callback != NULL && count < 64; callback = callback->next)
+	{
+		if (callback->kind == callout->approvalKind && !callback->removed
+			&& matches(callback->match, callout->description))
+		{
+			callback->references++;
+			callbacks[count++] = callback;
+		}
+	}
+	pthread_mutex_unlock(&session->lock);
+
+	DADissenterRef dissenter = NULL;
+	for (int i = 0; i < count; i++)
+	{
+		pthread_mutex_lock(&session->lock);
+		bool removed = callbacks[i]->removed;
+		pthread_mutex_unlock(&session->lock);
+		if (dissenter == NULL && !removed)
+			dissenter = ((DADiskUnmountApprovalCallback) callbacks[i]->function)(disk, callbacks[i]->context);
+	}
+
+	pthread_mutex_lock(&session->lock);
+	for (int i = 0; i < count; i++)
+		callbackReleaseLocked(callbacks[i]);
+	pthread_mutex_unlock(&session->lock);
+
+	replyToApproval(session, callout->request, dissenter);
+	if (dissenter != NULL)
+		CFRelease(dissenter); // the callback's dissenter belongs to the framework
 }
 
 // Runs the queued callouts; on a run loop the session is scheduled on, or on its dispatch queue.
@@ -185,8 +283,12 @@ static void deliver(DASessionRef session)
 		bool removed = callback->removed;
 		pthread_mutex_unlock(&session->lock);
 
-		DADiskRef disk = removed ? NULL : DADiskCreateFromBSDName(NULL, session, callout->name);
-		if (disk != NULL)
+		DADiskRef disk = DADiskCreateFromBSDName(NULL, session, callout->name);
+		if (disk != NULL && callback->kind == DA_CALLOUT_APPROVAL)
+		{
+			runApproval(session, disk, callout);
+		}
+		else if (disk != NULL && !removed)
 		{
 			switch (callback->kind)
 			{
@@ -199,16 +301,18 @@ static void deliver(DASessionRef session)
 				case DA_CALLBACK_CHANGED:
 					((DADiskDescriptionChangedCallback) callback->function)(disk, callout->keys, callback->context);
 					break;
+				case DA_CALLOUT_COMPLETION:
+					((DADiskUnmountCallback) callback->function)(disk, callout->dissenter, callback->context);
+					break;
 			}
-			CFRelease(disk);
 		}
+		if (disk != NULL)
+			CFRelease(disk);
 
 		pthread_mutex_lock(&session->lock);
 		callbackReleaseLocked(callback);
 		pthread_mutex_unlock(&session->lock);
-		if (callout->keys != NULL)
-			CFRelease(callout->keys);
-		free(callout);
+		calloutFree(callout);
 		callout = next;
 	}
 
@@ -495,6 +599,56 @@ static void sayHello(DASessionRef session)
 	xpc_release(message);
 }
 
+static bool isScheduledLocked(DASessionRef session)
+{
+	return session->target != NULL || CFArrayGetCount(session->schedules) > 0;
+}
+
+// An approval request: it waits for the session's matching approval callbacks, if the session has any and is
+// scheduled; otherwise it is approved at once. On the session's queue.
+static void handleApproval(DASessionRef session, xpc_object_t request)
+{
+	const char* kind = xpc_dictionary_get_string(request, DA_KEY_KIND);
+	const char* name = xpc_dictionary_get_string(request, DA_KEY_NAME);
+	int approvalKind = kind == NULL ? -1 : strcmp(kind, DA_OP_UNMOUNT) == 0 ? DA_CALLBACK_UNMOUNT_APPROVAL
+		: strcmp(kind, DA_OP_EJECT) == 0 ? DA_CALLBACK_EJECT_APPROVAL : -1;
+	CFMutableDictionaryRef description = _DAClientDescriptionFromMessage(request);
+	bool queued = false;
+
+	pthread_mutex_lock(&session->lock);
+	bool wanted = false;
+	for (struct DACallback* callback = session->callbacks; callback != NULL && !wanted; callback = callback->next)
+	{
+		wanted = callback->kind == approvalKind && !callback->removed && description != NULL
+			&& matches(callback->match, description);
+	}
+	if (wanted && name != NULL && isScheduledLocked(session))
+	{
+		struct DACallout* callout = newPrivateCallout(DA_CALLOUT_APPROVAL, name, NULL, NULL);
+		if (callout != NULL)
+		{
+			callout->request = xpc_retain(request);
+			callout->description = CFRetain(description);
+			callout->approvalKind = approvalKind;
+			appendCalloutLocked(session, callout);
+			signalLocked(session);
+			queued = true;
+		}
+	}
+	pthread_mutex_unlock(&session->lock);
+
+	if (!queued)
+		replyToApproval(session, request, NULL);
+	if (description != NULL)
+		CFRelease(description);
+}
+
+static bool isApproval(xpc_object_t event)
+{
+	const char* kind = xpc_dictionary_get_string(event, DA_KEY_EVENT);
+	return kind != NULL && strcmp(kind, DA_EVENT_APPROVE) == 0;
+}
+
 static void handleEvent(struct DASessionLink* link, xpc_object_t event)
 {
 	pthread_mutex_lock(&link->lock);
@@ -503,6 +657,8 @@ static void handleEvent(struct DASessionLink* link, xpc_object_t event)
 	{
 		if (event == XPC_ERROR_CONNECTION_INTERRUPTED)
 			sayHello(session);
+		else if (xpc_get_type(event) == XPC_TYPE_DICTIONARY && isApproval(event))
+			handleApproval(session, event);
 		else if (xpc_get_type(event) == XPC_TYPE_DICTIONARY && session->helloPending)
 			xpc_array_append_value(session->earlyEvents, event);
 		else if (xpc_get_type(event) == XPC_TYPE_DICTIONARY)
@@ -573,9 +729,7 @@ void _DASessionDisconnect(DASessionRef session)
 		struct DACallout* callout = session->callouts;
 		session->callouts = callout->next;
 		callbackReleaseLocked(callout->callback);
-		if (callout->keys != NULL)
-			CFRelease(callout->keys);
-		free(callout);
+		calloutFree(callout);
 	}
 	while (session->callbacks != NULL)
 	{
@@ -728,7 +882,7 @@ void DAUnregisterCallback(DASessionRef session, void* callback, void* context)
 	for (struct DACallback** link = &session->callbacks; *link != NULL;)
 	{
 		struct DACallback* registered = *link;
-		if (registered->function == callback && registered->context == context)
+		if (registered->function == callback && registered->context == context && registered->kind <= DA_CALLBACK_CHANGED)
 		{
 			*link = registered->next;
 			registered->removed = true;
@@ -740,4 +894,99 @@ void DAUnregisterCallback(DASessionRef session, void* callback, void* context)
 		}
 	}
 	pthread_mutex_unlock(&session->lock);
+}
+
+void DARegisterDiskUnmountApprovalCallback(DASessionRef session, CFDictionaryRef match,
+	DADiskUnmountApprovalCallback callback, void* context)
+{
+	registerCallback(session, DA_CALLBACK_UNMOUNT_APPROVAL, callback, context, match, NULL);
+}
+
+void DARegisterDiskEjectApprovalCallback(DASessionRef session, CFDictionaryRef match,
+	DADiskEjectApprovalCallback callback, void* context)
+{
+	registerCallback(session, DA_CALLBACK_EJECT_APPROVAL, callback, context, match, NULL);
+}
+
+void DAUnregisterApprovalCallback(DASessionRef session, void* callback, void* context)
+{
+	if (session == NULL)
+		return;
+
+	pthread_mutex_lock(&session->lock);
+	for (struct DACallback** link = &session->callbacks; *link != NULL;)
+	{
+		struct DACallback* registered = *link;
+		bool approval = registered->kind == DA_CALLBACK_UNMOUNT_APPROVAL || registered->kind == DA_CALLBACK_EJECT_APPROVAL;
+		if (approval && registered->function == callback && registered->context == context)
+		{
+			*link = registered->next;
+			registered->removed = true;
+			callbackReleaseLocked(registered);
+		}
+		else
+		{
+			link = &registered->next;
+		}
+	}
+	pthread_mutex_unlock(&session->lock);
+}
+
+// Queues a request's completion callback, run where the session is scheduled.
+void _DASessionComplete(DASessionRef session, const char* name, void* function, void* context, DAReturn status,
+	CFStringRef string)
+{
+	if (function == NULL)
+		return;
+	struct DACallout* callout = newPrivateCallout(DA_CALLOUT_COMPLETION, name, function, context);
+	if (callout == NULL)
+		return;
+	if (status != kDAReturnSuccess)
+		callout->dissenter = DADissenterCreate(NULL, status, string);
+
+	pthread_mutex_lock(&session->lock);
+	appendCalloutLocked(session, callout);
+	signalLocked(session);
+	pthread_mutex_unlock(&session->lock);
+}
+
+void _DASessionRequest(DASessionRef session, const char* op, const char* name, uint64_t options, void* function,
+	void* context)
+{
+	if (session->connection == NULL)
+	{
+		_DASessionComplete(session, name, function, context, kDAReturnNotReady, NULL);
+		return;
+	}
+
+	xpc_object_t message = xpc_dictionary_create(NULL, NULL, 0);
+	xpc_dictionary_set_string(message, DA_KEY_OP, op);
+	xpc_dictionary_set_string(message, DA_KEY_NAME, name);
+	xpc_dictionary_set_uint64(message, DA_KEY_OPTIONS, options);
+
+	struct DASessionLink* link = linkRetain(session->link);
+	char* disk = strdup(name);
+	xpc_connection_send_message_with_reply(session->connection, message, session->queue, ^(xpc_object_t reply) {
+		pthread_mutex_lock(&link->lock);
+		DASessionRef current = link->session;
+		if (current != NULL && disk != NULL)
+		{
+			DAReturn status = kDAReturnError; // the daemon went away before it answered
+			CFStringRef string = NULL;
+			if (xpc_get_type(reply) == XPC_TYPE_DICTIONARY)
+			{
+				status = (DAReturn) xpc_dictionary_get_int64(reply, DA_KEY_STATUS);
+				const char* text = xpc_dictionary_get_string(reply, DA_KEY_STRING);
+				if (text != NULL)
+					string = CFStringCreateWithCString(NULL, text, kCFStringEncodingUTF8);
+			}
+			_DASessionComplete(current, disk, function, context, status, string);
+			if (string != NULL)
+				CFRelease(string);
+		}
+		pthread_mutex_unlock(&link->lock);
+		linkRelease(link);
+		free(disk);
+	});
+	xpc_release(message);
 }

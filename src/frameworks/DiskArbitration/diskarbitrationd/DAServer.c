@@ -25,6 +25,7 @@
 #include <xpc/xpc.h>
 
 #include "../DAProtocol.h"
+#include "DAOperations.h"
 
 static dispatch_queue_t g_queue;
 
@@ -32,7 +33,18 @@ static dispatch_queue_t g_queue;
 static xpc_connection_t* g_subscribers;
 static size_t g_subscriberCount;
 
-static bool setDescription(xpc_object_t message, CFDictionaryRef description)
+dispatch_queue_t DAServerQueue(void)
+{
+	return g_queue;
+}
+
+void DAServerForEachSubscriber(void (^block)(xpc_connection_t peer))
+{
+	for (size_t i = 0; i < g_subscriberCount; i++)
+		block(g_subscribers[i]);
+}
+
+bool DAServerSetDescription(xpc_object_t message, CFDictionaryRef description)
 {
 	CFDataRef data = CFPropertyListCreateData(NULL, description, kCFPropertyListBinaryFormat_v1_0, 0, NULL);
 	if (data == NULL)
@@ -50,7 +62,7 @@ static void broadcast(const char* event, const char* name, CFArrayRef keys, CFDi
 	xpc_object_t message = xpc_dictionary_create(NULL, NULL, 0);
 	xpc_dictionary_set_string(message, DA_KEY_EVENT, event);
 	xpc_dictionary_set_string(message, DA_KEY_NAME, name);
-	setDescription(message, description);
+	DAServerSetDescription(message, description);
 	if (keys != NULL)
 	{
 		xpc_object_t array = xpc_array_create(NULL, 0);
@@ -152,7 +164,7 @@ static void handleDescribe(xpc_object_t message, xpc_object_t reply)
 		return;
 	}
 
-	if (!setDescription(reply, whole ? media->whole : media->leaf))
+	if (!DAServerSetDescription(reply, whole ? media->whole : media->leaf))
 		replyStatus(reply, kDAReturnError);
 }
 
@@ -163,7 +175,7 @@ static void appendDisk(xpc_object_t disks, const DAMedia* media, bool whole)
 
 	DAModelName(media, whole, name, sizeof(name));
 	xpc_dictionary_set_string(disk, DA_KEY_NAME, name);
-	if (setDescription(disk, whole ? media->whole : media->leaf))
+	if (DAServerSetDescription(disk, whole ? media->whole : media->leaf))
 		xpc_array_append_value(disks, disk);
 	xpc_release(disk);
 }
@@ -225,6 +237,18 @@ static void handleMessage(xpc_connection_t peer, xpc_object_t message)
 		handleLookupPath(message, reply);
 	else if (op != NULL && strcmp(op, DA_OP_HELLO) == 0)
 		handleHello(peer, reply);
+	else if (op != NULL && strcmp(op, DA_OP_UNMOUNT) == 0)
+	{
+		DAOperationUnmount(peer, message, reply); // replies when it is done
+		xpc_release(reply);
+		return;
+	}
+	else if (op != NULL && strcmp(op, DA_OP_EJECT) == 0)
+	{
+		DAOperationEject(peer, message, reply);
+		xpc_release(reply);
+		return;
+	}
 	else
 		replyStatus(reply, kDAReturnUnsupported);
 
