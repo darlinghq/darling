@@ -81,9 +81,14 @@ static void seal_segment(const char* name, uintptr_t address, uint64_t file_size
 	(void) name; (void) address; (void) file_size; (void) prot;
 }
 
+static bool setup_space_saw_emulated_x86_64;
+static int32_t setup_space_saw_cputype;
+
 static void setup_space(struct load_results* lr, bool is_64_bit)
 {
-	(void) lr; (void) is_64_bit;
+	(void) is_64_bit;
+	setup_space_saw_emulated_x86_64 = lr->emulated_x86_64;
+	setup_space_saw_cputype = lr->cputype;
 }
 
 static void load(const char* path, cpu_type_t cpu, bool expect_dylinker, char** argv, struct load_results* lr)
@@ -184,7 +189,9 @@ static void add_segment(struct fixture* f, const char* name, uint64_t vmaddr, ui
 
 static int fixture_file(const struct fixture* f)
 {
-	char path[] = "/tmp/mldr-segment-mapping.XXXXXX";
+	char path[512];
+	const char* tmp = getenv("TMPDIR");
+	snprintf(path, sizeof(path), "%s/mldr-segment-mapping.XXXXXX", (tmp && tmp[0]) ? tmp : "/tmp");
 	int fd = mkstemp(path);
 	if (fd < 0) {
 		perror("mkstemp");
@@ -375,6 +382,113 @@ static void test_low_slots(void)
 	check(load_dylinker_slot(&start2, &end2), "low slots: second image mapped");
 	check(start2 >= end1 && end2 <= 0x800000000000ULL, "low slots: second image gets the next slot");
 }
+
+struct x86_thread_command {
+	uint32_t cmd;
+	uint32_t cmdsize;
+	uint32_t flavor;
+	uint32_t count;
+	uint64_t rax, rbx, rcx, rdx, rdi, rsi, rbp, rsp;
+	uint64_t r8, r9, r10, r11, r12, r13, r14, r15;
+	uint64_t rip, rflags;
+	uint64_t cs, fs, gs;
+};
+
+static void test_unixthread_x86_64_on_arm64(void)
+{
+	struct fixture f;
+	fixture_init(&f, MH_EXECUTE, MH_PIE, UNIT);
+	f.header->cputype = CPU_TYPE_X86_64;
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE, UNIT, 0, UNIT, VM_PROT_READ | VM_PROT_EXECUTE);
+
+	struct x86_thread_command* tc = (struct x86_thread_command*) (f.bytes + f.cmd_offset);
+	tc->cmd = LC_UNIXTHREAD;
+	tc->cmdsize = sizeof(*tc);
+	tc->flavor = 4; // x86_THREAD_STATE64
+	tc->count = (sizeof(*tc) - 4 * sizeof(uint32_t)) / sizeof(uint32_t); // 42
+	tc->rip = IMAGE_BASE + ENTRY_OFFSET;
+	tc->rsp = 0x7777;
+	f.cmd_offset += sizeof(*tc);
+	f.header->ncmds++;
+	f.header->sizeofcmds += sizeof(*tc);
+
+	switch (thread_case) {
+		case THREAD_VALID: break;
+		case THREAD_TRUNCATED: tc->cmdsize = 16; f.header->sizeofcmds -= sizeof(*tc) - 16; break;
+		case THREAD_BAD_FLAVOR: tc->flavor = 6; break;
+		case THREAD_SHORT_COUNT: tc->count--; break;
+		case THREAD_LONG_COUNT: tc->count++; break;
+	}
+
+	setup_space_saw_emulated_x86_64 = false;
+	setup_space_saw_cputype = 0;
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	load64(fd, false, &lr);
+
+	check(setup_space_saw_emulated_x86_64 && setup_space_saw_cputype == CPU_TYPE_X86_64,
+		"x86_64 unixthread: setup_space sees emulated_x86_64 and CPU_TYPE_X86_64");
+	check(lr.emulated_x86_64 && lr.cputype == CPU_TYPE_X86_64,
+		"x86_64 unixthread: load_results records emulated_x86_64");
+	check(lr.mh != 0 && lr.entry_point == lr.mh + ENTRY_OFFSET,
+		"x86_64 unixthread: entry point is the slid rip");
+
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_dylinker_arch_mismatch(void)
+{
+	struct fixture f;
+	fixture_init(&f, MH_DYLINKER, 0, UNIT);
+	f.header->cputype = CPU_TYPE_ARM64;
+	add_segment(&f, "__TEXT", 0, UNIT, 0, UNIT, VM_PROT_READ | VM_PROT_EXECUTE);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	lr.cputype = CPU_TYPE_X86_64;
+	load64(fd, true, &lr);
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_fat_arch_selection_arm64(void)
+{
+	const struct fat_arch slices_both[] = {
+		{ .cputype = CPU_TYPE_X86_64, .offset = 0x4000 },
+		{ .cputype = CPU_TYPE_ARM64,  .offset = 0x8000 },
+	};
+	const struct fat_arch slices_x86_only[] = {
+		{ .cputype = CPU_TYPE_ARM,    .offset = 0x2000 },
+		{ .cputype = CPU_TYPE_X86_64, .offset = 0x6000 },
+	};
+	const uint32_t no_bprefs[4] = {0};
+	const uint32_t x86_bprefs[4] = { CPU_TYPE_X86_64, 0, 0, 0 };
+
+	struct fat_arch best = { .cputype = CPU_TYPE_ANY };
+	int bpref_idx = -1;
+	for (size_t i = 0; i < 2; i++)
+		mldr_consider_fat_arch(&slices_both[i], 0, no_bprefs, &best, &bpref_idx);
+	check(best.cputype == CPU_TYPE_ARM64 && best.offset == 0x8000,
+		"fat selection: arm64 preferred over x86_64 by default");
+
+	best = (struct fat_arch){ .cputype = CPU_TYPE_ANY };
+	bpref_idx = -1;
+	for (size_t i = 0; i < 2; i++)
+		mldr_consider_fat_arch(&slices_x86_only[i], 0, no_bprefs, &best, &bpref_idx);
+	check(best.cputype == CPU_TYPE_X86_64 && best.offset == 0x6000,
+		"fat selection: x86_64 selected when arm64 slice is absent");
+
+	best = (struct fat_arch){ .cputype = CPU_TYPE_ANY };
+	bpref_idx = -1;
+	for (size_t i = 0; i < 2; i++)
+		mldr_consider_fat_arch(&slices_both[i], 0, x86_bprefs, &best, &bpref_idx);
+	check(best.cputype == CPU_TYPE_X86_64 && best.offset == 0x4000,
+		"fat selection: bprefs selects x86_64 over arm64");
+}
 #endif
 
 #if defined(__aarch64__)
@@ -507,6 +621,18 @@ int main(void)
 	run_expect(test_unixthread, "unixthread short count refused", 1);
 	thread_case = THREAD_LONG_COUNT;
 	run_expect(test_unixthread, "unixthread count past the command refused", 1);
+	thread_case = THREAD_VALID;
+	run(test_unixthread_x86_64_on_arm64, "x86_64 unixthread on arm64");
+	thread_case = THREAD_TRUNCATED;
+	run_expect(test_unixthread_x86_64_on_arm64, "x86_64 unixthread truncated command refused", 1);
+	thread_case = THREAD_BAD_FLAVOR;
+	run_expect(test_unixthread_x86_64_on_arm64, "x86_64 unixthread other flavor refused", 1);
+	thread_case = THREAD_SHORT_COUNT;
+	run_expect(test_unixthread_x86_64_on_arm64, "x86_64 unixthread short count refused", 1);
+	thread_case = THREAD_LONG_COUNT;
+	run_expect(test_unixthread_x86_64_on_arm64, "x86_64 unixthread count past the command refused", 1);
+	run_expect(test_dylinker_arch_mismatch, "dylinker arch mismatch refused", 1);
+	run(test_fat_arch_selection_arm64, "fat arch selection on arm64");
 	run(test_low_slots, "low slots");
 	run(test_tsd_reads, "tsd reads");
 #endif
