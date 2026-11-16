@@ -8,9 +8,21 @@
 
 struct ProcessInfoRec
 {
-	unsigned long processInfoLength;
-	// fields omitted
+	UInt32 processInfoLength;
+	StringPtr processName;
+	ProcessSerialNumber processNumber;
+	UInt32 processType;
+	OSType processSignature;
+	UInt32 processMode;
+	Ptr processLocation;
+	UInt32 processSize;
+	UInt32 processFreeMem;
+	ProcessSerialNumber processLauncher;
+	UInt32 processLaunchDate;
+	UInt32 processActiveTime;
+	FSRef* processAppRef;
 };
+typedef struct ProcessInfoRec ProcessInfoRec;
 
 struct LaunchParamBlockRec
 {
@@ -18,6 +30,19 @@ struct LaunchParamBlockRec
 };
 
 enum { kNoProcess = 0, kSystemProcess = 1, kCurrentProcess = 2 };
+
+enum
+{
+	kSetFrontProcessFrontWindowOnly = 1,
+	kSetFrontProcessCausedByUser = 2
+};
+
+enum
+{
+	kProcessTransformToForegroundApplication = 1,
+	kProcessTransformToBackgroundApplication = 2,
+	kProcessTransformToUIElementApplication = 4
+};
 
 #ifdef __cplusplus
 extern "C" {

@@ -18,6 +18,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <HIServices/Processes.h>
+#include <LaunchServices/LaunchServicesPriv.h>
+#include <atomic>
 #include <CarbonCore/MacErrors.h>
 #include <unistd.h>
 #include <signal.h>
@@ -42,28 +44,57 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 // CFStringRef kCFBundleNameKey = CFSTR("kCFBundleNameKey");
 // CFStringRef kCFBundleIdentifierKey = CFSTR("kCFBundleIdentifierKey");
 
-OSStatus CopyProcessName(const ProcessSerialNumber* psn, CFStringRef* name)
+// The Process Manager sits on top of LaunchServices: a process serial number is
+// the process' ASN split into (high, low) parts, and everything else is looked
+// up with the LaunchServices application information calls.
+
+// Resolves a serial number (including kCurrentProcess) to a live process.
+static OSErr resolvePID(const ProcessSerialNumber* psn, pid_t* pid)
 {
-	char buf[1024];
-	char path[100];
-	int fd, len;
+	if (!psn)
+		return paramErr;
 
-	sprintf(path, "/proc/%u/comm", (unsigned int)psn->lowLongOfPSN);
-
-	fd = ::open(path, O_RDONLY);
-	if (fd == -1)
+	if (psn->highLongOfPSN == 0 && psn->lowLongOfPSN == kCurrentProcess)
 	{
-		*name = nullptr;
+		*pid = getpid();
+		return noErr;
+	}
+	if (psn->highLongOfPSN != 0 || psn->lowLongOfPSN == kNoProcess
+		|| psn->lowLongOfPSN > 0x7fffffffu)
+	{
 		return procNotFound;
 	}
 
-	len = ::read(fd, buf, sizeof(buf)-1);
-	buf[len] = '\0';
+	if (kill((pid_t) psn->lowLongOfPSN, 0) != 0 && errno != EPERM)
+		return procNotFound;
 
-	::close(fd);
-	
-	*name = CFStringCreateWithCString(NULL, buf, kCFStringEncodingUTF8);
+	*pid = (pid_t) psn->lowLongOfPSN;
 	return noErr;
+}
+
+static CFTypeRef copyInfoItem(pid_t pid, CFStringRef key)
+{
+	CFTypeRef asn = _LSASNCreateWithPid(nullptr, pid);
+	CFTypeRef value = _LSCopyApplicationInformationItem(kLSDefaultSessionID, asn, key);
+	CFRelease(asn);
+	return value;
+}
+
+OSStatus CopyProcessName(const ProcessSerialNumber* psn, CFStringRef* name)
+{
+	pid_t pid;
+	OSErr err;
+
+	if (!name)
+		return paramErr;
+	*name = nullptr;
+
+	err = resolvePID(psn, &pid);
+	if (err != noErr)
+		return err;
+
+	*name = (CFStringRef) copyInfoItem(pid, _kLSDisplayNameKey);
+	return *name ? noErr : procNotFound;
 }
 
 void ExitToShell()
@@ -73,47 +104,69 @@ void ExitToShell()
 
 OSErr GetCurrentProcess(ProcessSerialNumber* psn)
 {
-	psn->highLongOfPSN = 0;
-	psn->lowLongOfPSN = getpid();
+	if (!psn)
+		return paramErr;
+
+	CFTypeRef asn = _LSASNCreateWithPid(nullptr, getpid());
+	UInt32 high, low;
+	bool ok = _LSASNExtractHighAndLowParts(asn, &high, &low);
+	CFRelease(asn);
+	if (!ok)
+		return procNotFound;
+
+	psn->highLongOfPSN = high;
+	psn->lowLongOfPSN = low;
 	return noErr;
 }
 
+// The frontmost process, as far as this process knows: Darling has no window
+// server that could tell, so only SetFrontProcess calls are tracked.
+static std::atomic<pid_t> g_frontPID(0);
+
 OSErr GetFrontProcess(ProcessSerialNumber* psn)
 {
-	STUB();
+	if (!psn)
+		return paramErr;
+
+	pid_t front = g_frontPID.load();
+	if (front > 0 && (kill(front, 0) == 0 || errno == EPERM))
+		return GetProcessForPID(front, psn);
 	return GetCurrentProcess(psn);
 }
 
 OSErr GetNextProcess(ProcessSerialNumber* psn)
 {
-	DIR* dir = opendir("/proc");
-	struct dirent* ent;
-	int nextAfter = psn->lowLongOfPSN;
-	bool found = false, next = false;
-	
-	if (nextAfter == kCurrentProcess)
-		nextAfter = getpid();
-	else if (nextAfter == kNoProcess)
-		next = true;
-	
-	while ((ent = readdir(dir)) != nullptr)
+	if (!psn)
+		return paramErr;
+
+	pid_t after = 0;
+	if (psn->highLongOfPSN == 0 && psn->lowLongOfPSN == kNoProcess)
+		after = 0;
+	else
 	{
-		if (!isdigit(ent->d_name[0]))
-			continue;
-		if (next)
+		OSErr err = resolvePID(psn, &after);
+		if (err != noErr)
+			return err;
+	}
+
+	CFArrayRef list = _LSCopyApplicationArray(kLSDefaultSessionID);
+	if (!list)
+		return procNotFound;
+
+	OSErr result = procNotFound;
+	for (CFIndex i = 0; i < CFArrayGetCount(list); i++)
+	{
+		UInt32 high, low;
+		if (_LSASNExtractHighAndLowParts(CFArrayGetValueAtIndex(list, i), &high, &low) && low > (UInt32) after)
 		{
-			psn->lowLongOfPSN = atoi(ent->d_name);
-			psn->highLongOfPSN = 0;
-			found = true;
+			psn->highLongOfPSN = high;
+			psn->lowLongOfPSN = low;
+			result = noErr;
 			break;
 		}
-		else if (atoi(ent->d_name) == nextAfter)
-			next = true;
 	}
-	
-	closedir(dir);
-	
-	return found ? noErr : procNotFound;
+	CFRelease(list);
+	return result;
 }
 
 OSStatus GetProcessBundleLocation(const ProcessSerialNumber* psn, FSRef* location)
@@ -125,26 +178,70 @@ OSStatus GetProcessBundleLocation(const ProcessSerialNumber* psn, FSRef* locatio
 
 OSStatus GetProcessForPID(pid_t pid, ProcessSerialNumber* psn)
 {
-	psn->highLongOfPSN = 0;
-	psn->lowLongOfPSN = pid;
+	if (!psn)
+		return paramErr;
+	if (pid <= 0 || (kill(pid, 0) != 0 && errno != EPERM))
+		return procNotFound;
+
+	CFTypeRef asn = _LSASNCreateWithPid(nullptr, pid);
+	UInt32 high, low;
+	bool ok = _LSASNExtractHighAndLowParts(asn, &high, &low);
+	CFRelease(asn);
+	if (!ok)
+		return procNotFound;
+
+	psn->highLongOfPSN = high;
+	psn->lowLongOfPSN = low;
 	return noErr;
 }
 
 OSErr GetProcessInformation(const ProcessSerialNumber* psn, ProcessInfoRec* pi)
 {
-	STUB();
-	unsigned long len = pi->processInfoLength;
-	
-	memset(pi, 0, len);
-	pi->processInfoLength = len;
-	
+	pid_t pid;
+	OSErr err;
+
+	if (!pi || pi->processInfoLength != sizeof(ProcessInfoRec))
+		return paramErr;
+
+	err = resolvePID(psn, &pid);
+	if (err != noErr)
+		return err;
+
+	StringPtr nameBuf = pi->processName;
+	FSRef* appRef = pi->processAppRef;
+	memset(pi, 0, sizeof(*pi));
+	pi->processInfoLength = sizeof(*pi);
+	pi->processName = nameBuf;
+	pi->processAppRef = appRef;
+
+	err = GetProcessForPID(pid, &pi->processNumber);
+	if (err != noErr)
+		return err;
+
+	// Processes without a creator or file type report '????'.
+	pi->processType = '????';
+	pi->processSignature = '????';
+
+	if (nameBuf)
+	{
+		CFStringRef name = (CFStringRef) copyInfoItem(pid, _kLSDisplayNameKey);
+		nameBuf[0] = 0;
+		if (name)
+		{
+			CFIndex used = 0;
+			CFStringGetBytes(name, CFRangeMake(0, CFStringGetLength(name)), kCFStringEncodingMacRoman, '?', false, nameBuf + 1, 255, &used);
+			nameBuf[0] = (unsigned char) used;
+			CFRelease(name);
+		}
+	}
 	return noErr;
 }
 
 OSStatus GetProcessPID(const ProcessSerialNumber* psn, pid_t* pid)
 {
-	*pid = psn->lowLongOfPSN;
-	return noErr;
+	if (!pid)
+		return paramErr;
+	return resolvePID(psn, pid);
 }
 
 Boolean IsProcessVisible(const ProcessSerialNumber* psn)
@@ -175,23 +272,26 @@ CFDictionaryRef ProcessInformationCopyDictionary(const ProcessSerialNumber *PSN,
 	CFMutableDictionaryRef dict;
 	OSStatus status;
 	CFNumberRef pid;
-	char procpath[PATH_MAX], lpath[100];
-	int len;
 	
 	status = CopyProcessName(PSN, &name);
 	if (status != noErr)
 		return nullptr;
 
-	sprintf(lpath, "/proc/%u/exe", (unsigned int)PSN->lowLongOfPSN);
-	len = ::readlink(lpath, procpath, sizeof(procpath)-1);
-	if (len < 0)
+	pid_t realPID;
+	if (resolvePID(PSN, &realPID) != noErr)
+	{
+		CFRelease(name);
 		return nullptr;
-
-	procpath[len] = '\0';
+	}
+	path = (CFStringRef) copyInfoItem(realPID, _kLSExecutablePathKey);
+	if (!path)
+	{
+		CFRelease(name);
+		return nullptr;
+	}
 	
 	dict = CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 	pid = CFNumberCreate(nullptr, kCFNumberLongType, &PSN->lowLongOfPSN);
-	path = CFStringCreateWithCString(nullptr, procpath, kCFStringEncodingUTF8);
 	
 	CFDictionaryAddValue(dict, CFSTR("PSN"), pid);
 	CFDictionaryAddValue(dict, CFSTR("pid"), pid);
@@ -210,19 +310,39 @@ CFDictionaryRef ProcessInformationCopyDictionary(const ProcessSerialNumber *PSN,
 
 OSErr SameProcess(const ProcessSerialNumber* psn1, const ProcessSerialNumber* psn2, Boolean* result)
 {
-	*result = psn1->lowLongOfPSN == psn2->highLongOfPSN;
+	if (!psn1 || !psn2 || !result)
+		return paramErr;
+
+	// An unresolvable serial number is simply not the same process.
+	pid_t pid1, pid2;
+	*result = resolvePID(psn1, &pid1) == noErr && resolvePID(psn2, &pid2) == noErr && pid1 == pid2;
 	return noErr;
 }
 
 OSErr SetFrontProcess(const ProcessSerialNumber* psn)
 {
-	STUB();
-	return noErr;
+	return SetFrontProcessWithOptions(psn, 0);
 }
 
 OSErr SetFrontProcessWithOptions(const ProcessSerialNumber* psn, OptionBits opts)
 {
-	STUB();
+	pid_t pid;
+	OSErr err;
+
+	if (opts & ~(OptionBits) (kSetFrontProcessFrontWindowOnly | kSetFrontProcessCausedByUser))
+		return paramErr;
+
+	// The system process is accepted and left alone.
+	if (psn && psn->highLongOfPSN == 0 && psn->lowLongOfPSN == kSystemProcess)
+		return noErr;
+
+	err = resolvePID(psn, &pid);
+	if (err != noErr)
+		return err;
+
+	// Darling has no window server that could restack another process' windows,
+	// so the request is recorded and answered with success for every process.
+	g_frontPID.store(pid);
 	return noErr;
 }
 
@@ -234,8 +354,47 @@ OSErr ShowHideProcess(const ProcessSerialNumber* psn, Boolean visible)
 
 OSStatus TransformProcessType(const ProcessSerialNumber* psn, UInt32 type)
 {
-	STUB();
-	return noErr;
+	CFStringRef newType;
+	pid_t pid;
+	OSErr err;
+
+	switch (type)
+	{
+		case kProcessTransformToForegroundApplication:
+			newType = _kLSApplicationForegroundTypeKey;
+			break;
+		case kProcessTransformToBackgroundApplication:
+			newType = _kLSApplicationBackgroundOnlyTypeKey;
+			break;
+		case kProcessTransformToUIElementApplication:
+			newType = _kLSApplicationUIElementTypeKey;
+			break;
+		default:
+			return paramErr;
+	}
+
+	err = resolvePID(psn, &pid);
+	if (err != noErr)
+		return err;
+
+	// QUIRK: transforming a process to the type it already has fails with
+	// paramErr. Not documented. Evidence: black-box observation on macOS
+	// 10.14.4 (i386, x86_64) and 26.7.3 (tier 2): a command-line process
+	// (initially background-only) got paramErr for Background, noErr for
+	// UIElement, noErr for Foreground, paramErr for Foreground again and noErr
+	// for Background. Test: tests/src/process_manager.c (transform to the
+	// current type).
+	CFStringRef current = (CFStringRef) copyInfoItem(pid, _kLSApplicationTypeKey);
+	bool same = current && CFEqual(current, newType);
+	if (current)
+		CFRelease(current);
+	if (same)
+		return paramErr;
+
+	CFTypeRef asn = _LSASNCreateWithPid(nullptr, pid);
+	OSStatus status = _LSSetApplicationInformationItem(kLSDefaultSessionID, asn, _kLSApplicationTypeKey, newType, nullptr);
+	CFRelease(asn);
+	return status;
 }
 
 OSErr WakeUpProcess(const ProcessSerialNumber* psn)

@@ -69,6 +69,7 @@ extern const CFStringRef _kLSASNKey;
 
 extern const CFStringRef _kLSApplicationForegroundTypeKey;
 extern const CFStringRef _kLSApplicationBackgroundOnlyTypeKey;
+extern const CFStringRef _kLSApplicationUIElementTypeKey;
 
 extern const CFStringRef _kLSExecutableFormatKey;
 extern const CFStringRef _kLSExecutableFormatMachOKey;
@@ -80,6 +81,11 @@ extern const CFStringRef _kLSExecutableFormatCFMKey;
 CFDictionaryRef _LSApplicationCheckIn(LSSessionID sessionID, CFDictionaryRef applicationInfo);
 
 CFTypeRef _LSGetCurrentApplicationASN(void);
+// Only the application type (_kLSApplicationTypeKey) of the calling process
+// can be changed; other processes and keys return unimpErr. There is no
+// registry of other processes' attributes, so the information calls below
+// report what can be derived from the process itself (PID, executable path,
+// name) for any live process, and the application type for this process.
 OSStatus _LSSetApplicationInformationItem(LSSessionID sessionID, LSASNRef asn, CFStringRef key, CFStringRef value, CFDictionaryRef *info);
 
 // Returns the ASN of the application that currently has focus, or NULL when
@@ -98,6 +104,7 @@ LSASNRef _LSASNCreateWithPid(CFAllocatorRef allocator, pid_t pid);
 OSStatus _LSLaunchApplication(CFURLRef appPath);
 
 Boolean _LSASNExtractHighAndLowParts(LSASNRef asn, UInt32* outHigh, UInt32* outLow);
+// ASNs of all live processes, ordered by PID.
 CFArrayRef _LSCopyApplicationArray(LSSessionID sessionID);
 OSStatus _LSSetWeakBindingURLForType(LSSessionID sessionID, int unknown, CFStringRef contentType, LSRolesMask roles, CFURLRef appURL);
 
