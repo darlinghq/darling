@@ -116,7 +116,6 @@ extern const uint32_t UICurrentCoderVersion;
 
 void* CFArrayCreateWithNonRetainedObjectsFromNSArray(void);
 void* CFDictionaryCreateWithNonRetainedValuesFromNSDictionary(void);
-void* NSConvertGlyphsToPackedGlyphs(void);
 void* NSDefaultFont(void);
 void* NSStringFromCGAffineTransform(void);
 void* NSTextAlignmentFromCTTextAlignment(void);

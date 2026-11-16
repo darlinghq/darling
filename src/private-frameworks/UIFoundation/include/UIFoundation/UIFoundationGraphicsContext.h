@@ -27,14 +27,40 @@
 // own context stack stays the single source of truth, so anything that
 // changes the current NSGraphicsContext is seen by UIFoundation too.
 //
+// The same provider hands UIFoundation the few AppKit objects its text classes
+// need but cannot create themselves: colours for the standard text roles, the
+// fallback font, images made from attachment data and attachment cells. They
+// come back as plain objects that UIFoundation only stores, compares and sends
+// messages to.
+//
 // Without a registered provider (a process that uses UIFoundation without
-// AppKit) the functions report no context, and drawing does nothing.
+// AppKit) the functions report no context and no objects, and drawing does
+// nothing.
 
 #ifndef _UIFoundationGraphicsContext_H_
 #define _UIFoundationGraphicsContext_H_
 
 #import <Foundation/NSObject.h>
 #include <CoreGraphics/CGContext.h>
+
+@class NSData;
+
+// Colours the text system falls back on when attributes name none.
+typedef NS_ENUM(NSInteger, _UIFoundationTextColorRole) {
+    // Text without a foreground colour; also underlines and strikethroughs
+    // without a colour of their own.
+    _UIFoundationTextColorRoleText = 0,
+    // Glyphs drawn without any colour at all.
+    _UIFoundationTextColorRoleControlText,
+    // Selected text without a selected foreground colour.
+    _UIFoundationTextColorRoleSelectedText,
+    // The selection highlight without a selected background colour.
+    _UIFoundationTextColorRoleSelectedTextBackground,
+    // The marker under misspelled words.
+    _UIFoundationTextColorRoleSpellingIndicator,
+    // A new shadow's colour.
+    _UIFoundationTextColorRoleShadow,
+};
 
 @protocol _UIFoundationGraphicsContextProvider <NSObject>
 
@@ -49,6 +75,22 @@
 // Whether the current context draws to the screen, as opposed to printing or
 // drawing into a PDF or a bitmap.
 - (BOOL)currentContextIsDrawingToScreen;
+
+@optional
+
+// A colour object for the role, or nil. Not retained for the caller.
+- (id)textColorForRole:(_UIFoundationTextColorRole)role;
+
+// The font used for text that has no font attribute, or nil. Not retained
+// for the caller.
+- (id)defaultTextFont;
+
+// An image made from the data, or nil if the data holds no image. Not
+// retained for the caller.
+- (id)imageWithData:(NSData *)data;
+
+// A new attachment cell for a text attachment, owned by the caller, or nil.
+- (id)newTextAttachmentCell;
 
 @end
 
@@ -68,6 +110,13 @@ FOUNDATION_EXPORT id<_UIFoundationGraphicsContextProvider> _UIFoundationGraphics
 FOUNDATION_EXPORT CGContextRef _UIFoundationCurrentCGContext(void);
 FOUNDATION_EXPORT BOOL _UIFoundationCurrentContextIsFlipped(void);
 FOUNDATION_EXPORT BOOL _UIFoundationCurrentContextIsDrawingToScreen(void);
+
+// Wrappers for the optional methods: nil when no provider is registered or it
+// does not implement the method. Ownership is as for the methods.
+FOUNDATION_EXPORT id _UIFoundationTextColorForRole(_UIFoundationTextColorRole role);
+FOUNDATION_EXPORT id _UIFoundationDefaultTextFont(void);
+FOUNDATION_EXPORT id _UIFoundationImageWithData(NSData *data);
+FOUNDATION_EXPORT id _UIFoundationNewTextAttachmentCell(void);
 
 #ifdef __cplusplus
 }

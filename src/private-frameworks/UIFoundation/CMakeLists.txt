@@ -31,6 +31,21 @@ add_framework(UIFoundation
         src/NSTextTable.m
         src/NSTextTableBlock.m
         src/NSGlyphInfo.m
+        src/NSTextAttributeKeys.m
+        src/NSShadow.m
+        src/NSTextAttachment.m
+        src/NSTextStorage.m
+        src/NSTextStorage_concrete.m
+        src/NSGlyphGenerator.m
+        src/NSGlyphPacking.m
+        src/NSRangeArray.m
+        src/NSBidiHelper.m
+        src/NSTypesetter.m
+        src/NSTypesetter_concrete.m
+        src/NSATSTypesetter.m
+        src/NSTextContainer.m
+        src/NSLayoutManager.m
+        src/NSTextKit2.m
         src/NSFontAssetRequest.m
         src/NSCollectionViewData.m
         src/NSCoreTypesetter.m
@@ -128,4 +143,6 @@ add_framework(UIFoundation
         system
         objc
         Foundation
+        CoreFoundation
+        CoreGraphics
 )
