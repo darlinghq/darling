@@ -32,6 +32,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <ctype.h>
 #include <iostream>
+#include <dlfcn.h>
 
 #define STUB() // TODO
 #ifndef PATH_MAX
@@ -119,8 +120,8 @@ OSErr GetCurrentProcess(ProcessSerialNumber* psn)
 	return noErr;
 }
 
-// The frontmost process, as far as this process knows: Darling has no window
-// server that could tell, so only SetFrontProcess calls are tracked.
+// The frontmost process, as far as this process knows: only SetFrontProcess calls are
+// tracked (the display servers do not tell which process has the input focus).
 static std::atomic<pid_t> g_frontPID(0);
 
 OSErr GetFrontProcess(ProcessSerialNumber* psn)
@@ -340,8 +341,22 @@ OSErr SetFrontProcessWithOptions(const ProcessSerialNumber* psn, OptionBits opts
 	if (err != noErr)
 		return err;
 
-	// Darling has no window server that could restack another process' windows,
-	// so the request is recorded and answered with success for every process.
+	// CoreGraphics (the window system layer) activates the process' windows: it asks the display
+	// server directly where it can, and otherwise the process itself. It is a private entry
+	// point, looked up at run time, so that an older CoreGraphics simply does nothing. The
+	// request is a request: the window manager or compositor decides, so only a bad argument
+	// is an error.
+	typedef int32_t (*ActivateProcessFunction)(pid_t pid, uint32_t options);
+	static const ActivateProcessFunction activate =
+		(ActivateProcessFunction) dlsym(RTLD_DEFAULT, "_CGSActivateProcess");
+	const uint32_t kFrontWindowOnly = 1; // kCGSActivateProcessFrontWindowOnly
+	if (activate)
+	{
+		int32_t cgError = activate(pid, (opts & kSetFrontProcessFrontWindowOnly) ? kFrontWindowOnly : 0);
+		if (cgError == 1001) // kCGErrorIllegalArgument
+			return paramErr;
+	}
+
 	g_frontPID.store(pid);
 	return noErr;
 }
