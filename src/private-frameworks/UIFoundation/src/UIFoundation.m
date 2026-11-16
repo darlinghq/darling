@@ -44,12 +44,6 @@ void* CFDictionaryCreateWithNonRetainedValuesFromNSDictionary(void)
     return NULL;
 }
 
-void* NSConvertGlyphsToPackedGlyphs(void)
-{
-    if (verbose) puts("STUB: NSConvertGlyphsToPackedGlyphs called");
-    return NULL;
-}
-
 void* NSDefaultFont(void)
 {
     if (verbose) puts("STUB: NSDefaultFont called");

@@ -30,7 +30,6 @@
 #import <AppKit/NSTextLayoutManager.h>
 #import <AppKit/NSTextRange.h>
 #import <AppKit/NSTextStorage.h>
-#import <AppKit/NSTextView.h>
 
 NSString *const NSTextContentStorageUnsupportedAttributeAddedNotification =
         @"NSTextContentStorageUnsupportedAttributeAddedNotification";
@@ -572,25 +571,6 @@ NSAttributedStringDocumentReadingOptionKey const
     [_layoutManager invalidateLayoutForCharacterRange: NSMakeRange(0, length)
                                                isSoft: NO
                                  actualCharacterRange: NULL];
-}
-
-@end
-
-#pragma mark - NSTextView
-
-@implementation NSTextView (NSTextKit2)
-
-+ (instancetype) textViewUsingTextLayoutManager: (BOOL) usingTextLayoutManager {
-    // Only TextKit 1 text views exist here.
-    return [[[self alloc] initWithFrame: NSZeroRect] autorelease];
-}
-
-- (NSTextLayoutManager *) textLayoutManager {
-    return nil;
-}
-
-- (NSTextContentStorage *) textContentStorage {
-    return nil;
 }
 
 @end

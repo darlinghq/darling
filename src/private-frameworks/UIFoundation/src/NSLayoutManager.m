@@ -17,12 +17,9 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
-#import <AppKit/NSBezierPath.h>
 #import <AppKit/NSGlyphGenerator.h>
-#import <AppKit/NSGraphicsContextFunctions.h>
 #import <AppKit/NSImage.h>
 #import <AppKit/NSLayoutManager.h>
-#import <AppKit/NSRaise.h>
 #import <AppKit/NSTextAttachment.h>
 #import <AppKit/NSTextContainer.h>
 #import <AppKit/NSTextStorage.h>
@@ -32,16 +29,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSAttributedString.h>
 #import <AppKit/NSColor.h>
-#import <AppKit/NSGraphics.h>
 #import <AppKit/NSParagraphStyle.h>
-#import <AppKit/NSStringDrawing.h>
-#import <ApplicationServices/ApplicationServices.h>
+#import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/NSKeyedArchiver.h>
+#import <Foundation/NSRaise.h>
 #import <Foundation/NSRaiseException.h>
 #import <Foundation/NSRangeEntries.h>
+#import <UIFoundation/UIFoundationGraphicsContext.h>
 
 #import "NSBidiHelper.h"
-#import "NSRulerMarker+NSTextExtensions.h"
 
 typedef struct {
     NSRect rect;
@@ -1760,6 +1756,42 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
 
 #define DEBUG_LM_DRAWING 0
 
+// UIFoundation draws into the context AppKit has made current, which it gets
+// through the provider AppKit registers. Without one there is nothing to draw
+// into and these do nothing.
+
+// Fills the rectangle with the current fill colour, replacing what is there.
+static void _fillRect(NSRect rect) {
+    CGContextRef context = _UIFoundationCurrentCGContext();
+    if (context == NULL)
+        return;
+    CGContextSaveGState(context);
+    CGContextSetBlendMode(context, kCGBlendModeCopy);
+    CGContextFillRect(context, NSRectToCGRect(rect));
+    CGContextRestoreGState(context);
+}
+
+// Strokes the lines with the current stroke colour, using the given width,
+// cap and dash pattern and the default join, miter limit and flatness.
+static void _strokeLines(CGPathRef path, CGFloat lineWidth, CGLineCap lineCap,
+                         const CGFloat *dashes, size_t dashCount)
+{
+    CGContextRef context = _UIFoundationCurrentCGContext();
+    if (context == NULL)
+        return;
+    CGContextSaveGState(context);
+    CGContextSetLineWidth(context, lineWidth);
+    CGContextSetMiterLimit(context, 10.0);
+    CGContextSetFlatness(context, 0.6);
+    CGContextSetLineCap(context, lineCap);
+    CGContextSetLineJoin(context, kCGLineJoinMiter);
+    CGContextSetLineDash(context, 0.0, dashes, dashCount);
+    CGContextBeginPath(context);
+    CGContextAddPath(context, path);
+    CGContextStrokePath(context);
+    CGContextRestoreGState(context);
+}
+
 - (void) showPackedGlyphs: (char *) glyphs
                     length: (NSUInteger) length
                 glyphRange: (NSRange) glyphRange
@@ -1768,12 +1800,15 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
                      color: (NSColor *) color
         printingAdjustment: (NSSize) printingAdjustment
 {
-    CGContextRef context = NSCurrentGraphicsPort();
-    [font setInContext: [NSGraphicsContext currentContext]];
+    CGContextRef context = _UIFoundationCurrentCGContext();
+    if (context == NULL)
+        return;
+    // Sets the font, its size and the text matrix in the current context.
+    [font set];
     if (color)
         [color setFill];
     else
-        [[NSColor controlTextColor] setFill];
+        [_UIFoundationTextColorForRole(_UIFoundationTextColorRoleControlText) setFill];
     CGGlyph *cgGlyphs = (CGGlyph *) glyphs;
     NSInteger cgGlyphsLength = length / 2;
     CGSize advances[cgGlyphsLength];
@@ -1826,14 +1861,15 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
 #endif
 
     if (selectedColor == nil)
-        selectedColor = [NSColor selectedTextBackgroundColor];
+        selectedColor = _UIFoundationTextColorForRole(
+                _UIFoundationTextColorRoleSelectedTextBackground);
 
     [selectedColor setFill];
     for (i = 0; i < rectCount; i++) {
         NSRect fill = rectArray[i];
         fill.origin.x += origin.x;
         fill.origin.y += origin.y;
-        NSRectFill(fill);
+        _fillRect(fill);
     }
 }
 
@@ -1858,7 +1894,7 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
                                                   actualGlyphRange: NULL];
         NSUInteger location = characterRange.location;
         NSUInteger limit = NSMaxRange(characterRange);
-        BOOL isFlipped = [[NSGraphicsContext currentContext] isFlipped];
+        BOOL isFlipped = _UIFoundationCurrentContextIsFlipped();
         CGFloat usedHeight =
                 [self usedRectForTextContainer: container].size.height;
 
@@ -1926,9 +1962,7 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
                     tempAttrs = [_delegate layoutManager: self
                             shouldUseTemporaryAttributes: tempAttrs
                                       forDrawingToScreen:
-                                              [[NSGraphicsContext
-                                                      currentContext]
-                                                      isDrawingToScreen]
+                                              _UIFoundationCurrentContextIsDrawingToScreen()
                                         atCharacterIndex: location
                                           effectiveRange: NULL];
                 }
@@ -1964,7 +1998,7 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
                     fill.origin.x += origin.x;
                     fill.origin.y += origin.y;
 
-                    NSRectFill(fill);
+                    _fillRect(fill);
                 }
             }
 
@@ -1995,7 +2029,7 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
     NSUInteger i, rectCount;
     NSRange characterRange = [self characterRangeForGlyphRange: glyphRange
                                               actualGlyphRange: NULL];
-    BOOL isFlipped = [[NSGraphicsContext currentContext] isFlipped];
+    BOOL isFlipped = _UIFoundationCurrentContextIsFlipped();
     NSTextContainer *container =
             [self textContainerForGlyphAtIndex: glyphRange.location
                                 effectiveRange: NULL];
@@ -2005,17 +2039,14 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
                                      inTextContainer: container
                                            rectCount: &rectCount];
 
-    NSBezierPath *path = [NSBezierPath bezierPath];
+    CGMutablePathRef path = CGPathCreateMutable();
 
     // Lots more stylistic options available than just this
-    [path setLineWidth: (underlineVal & NSUnderlineStyleThick) ? 1 : .5];
-    [path setLineCapStyle: NSSquareLineCapStyle];
-    if (underlineVal & NSUnderlinePatternDash) {
-        CGFloat lineDash[] = {.75, 3.25};
-        [path setLineDash: lineDash
-                    count: sizeof(lineDash) / sizeof(lineDash[0])
-                    phase: 0.0];
-    }
+    CGFloat lineWidth = (underlineVal & NSUnderlineStyleThick) ? 1 : .5;
+    CGFloat lineDash[] = {.75, 3.25};
+    size_t lineDashCount = (underlineVal & NSUnderlinePatternDash)
+                                   ? sizeof(lineDash) / sizeof(lineDash[0])
+                                   : 0;
 
     NSPoint origin = containerOrigin;
 
@@ -2029,9 +2060,9 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
         fill.origin.y +=
                 origin.y + baselineOffset -
                 .5; // .5 so it's better aligned on pixels - looks sharper
-        [path moveToPoint: fill.origin];
         CGFloat width = fill.size.width;
-        [path relativeLineToPoint: NSMakePoint(width, 0)];
+        CGPathMoveToPoint(path, NULL, fill.origin.x, fill.origin.y);
+        CGPathAddLineToPoint(path, NULL, fill.origin.x + width, fill.origin.y);
     }
 
     NSDictionary *attributes =
@@ -2051,9 +2082,7 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
         if (checkTemporaryAttributesUsage) {
             tmpAttrs = [_delegate layoutManager: self
                     shouldUseTemporaryAttributes: tmpAttrs
-                              forDrawingToScreen: [[NSGraphicsContext
-                                                          currentContext]
-                                                          isDrawingToScreen]
+                              forDrawingToScreen: _UIFoundationCurrentContextIsDrawingToScreen()
                                 atCharacterIndex: characterRange.location
                                   effectiveRange: NULL];
         }
@@ -2070,11 +2099,13 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
                 [attributes objectForKey: NSForegroundColorAttributeName];
         if (underlineColor == nil) {
             // ... and to black if still no luck
-            underlineColor = [NSColor blackColor];
+            underlineColor = _UIFoundationTextColorForRole(
+                    _UIFoundationTextColorRoleText);
         }
     }
     [underlineColor set];
-    [path stroke];
+    _strokeLines(path, lineWidth, kCGLineCapSquare, lineDash, lineDashCount);
+    CGPathRelease(path);
 }
 
 - (void) underlineGlyphRange: (NSRange) glyphRange
@@ -2113,7 +2144,7 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
     NSUInteger i, rectCount;
     NSRange characterRange = [self characterRangeForGlyphRange: glyphRange
                                               actualGlyphRange: NULL];
-    BOOL isFlipped = [[NSGraphicsContext currentContext] isFlipped];
+    BOOL isFlipped = _UIFoundationCurrentContextIsFlipped();
     NSTextContainer *container =
             [self textContainerForGlyphAtIndex: glyphRange.location
                                 effectiveRange: NULL];
@@ -2122,17 +2153,14 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
                                      inTextContainer: container
                                            rectCount: &rectCount];
 
-    NSBezierPath *path = [NSBezierPath bezierPath];
+    CGMutablePathRef path = CGPathCreateMutable();
 
     // Lots more stylistic options available than just this
-    [path setLineWidth: (strikethroughVal & NSUnderlineStyleThick) ? 1 : .5];
-    [path setLineCapStyle: NSSquareLineCapStyle];
-    if (strikethroughVal & NSUnderlinePatternDash) {
-        CGFloat lineDash[] = {.75, 3.25};
-        [path setLineDash: lineDash
-                    count: sizeof(lineDash) / sizeof(lineDash[0])
-                    phase: 0.0];
-    }
+    CGFloat lineWidth = (strikethroughVal & NSUnderlineStyleThick) ? 1 : .5;
+    CGFloat lineDash[] = {.75, 3.25};
+    size_t lineDashCount = (strikethroughVal & NSUnderlinePatternDash)
+                                   ? sizeof(lineDash) / sizeof(lineDash[0])
+                                   : 0;
 
     NSPoint origin = containerOrigin;
 
@@ -2143,9 +2171,9 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
 
         fill.origin.x += origin.x;
         fill.origin.y += origin.y + baselineOffset;
-        [path moveToPoint: fill.origin];
         CGFloat width = fill.size.width;
-        [path relativeLineToPoint: NSMakePoint(width, 0)];
+        CGPathMoveToPoint(path, NULL, fill.origin.x, fill.origin.y);
+        CGPathAddLineToPoint(path, NULL, fill.origin.x + width, fill.origin.y);
     }
 
     NSDictionary *attributes =
@@ -2154,10 +2182,12 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
     NSColor *underlineColor =
             [attributes objectForKey: NSUnderlineColorAttributeName];
     if (underlineColor == nil) {
-        underlineColor = [NSColor blackColor];
+        underlineColor =
+                _UIFoundationTextColorForRole(_UIFoundationTextColorRoleText);
     }
     [underlineColor set];
-    [path stroke];
+    _strokeLines(path, lineWidth, kCGLineCapSquare, lineDash, lineDashCount);
+    CGPathRelease(path);
 }
 
 - (void) strikethroughGlyphRange: (NSRange) glyphRange
@@ -2194,20 +2224,15 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
     NSUInteger i, rectCount;
     NSRange characterRange = [self characterRangeForGlyphRange: glyphRange
                                               actualGlyphRange: NULL];
-    BOOL isFlipped = [[NSGraphicsContext currentContext] isFlipped];
+    BOOL isFlipped = _UIFoundationCurrentContextIsFlipped();
     CGFloat usedHeight = [self usedRectForTextContainer: container].size.height;
     NSRect *rects = [self rectArrayForCharacterRange: characterRange
                         withinSelectedCharacterRange: NSMakeRange(NSNotFound, 0)
                                      inTextContainer: container
                                            rectCount: &rectCount];
 
-    NSBezierPath *path = [NSBezierPath bezierPath];
-    [path setLineWidth: 2.];
-    [path setLineCapStyle: NSRoundLineCapStyle];
+    CGMutablePathRef path = CGPathCreateMutable();
     CGFloat lineDash[] = {.75, 3.25};
-    [path setLineDash: lineDash
-                count: sizeof(lineDash) / sizeof(lineDash[0])
-                phase: 0.0];
 
     for (i = 0; i < rectCount; i++) {
         NSRect fill = rects[i];
@@ -2217,12 +2242,15 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
 
         fill.origin.x += origin.x + 2; // some margin because of the line cap
         fill.origin.y += origin.y;
-        [path moveToPoint: fill.origin];
         CGFloat width = fill.size.width;
-        [path relativeLineToPoint: NSMakePoint(width, 0)];
+        CGPathMoveToPoint(path, NULL, fill.origin.x, fill.origin.y);
+        CGPathAddLineToPoint(path, NULL, fill.origin.x + width, fill.origin.y);
     }
-    [[NSColor redColor] setStroke];
-    [path stroke];
+    [_UIFoundationTextColorForRole(_UIFoundationTextColorRoleSpellingIndicator)
+            setStroke];
+    _strokeLines(path, 2., kCGLineCapRound, lineDash,
+                 sizeof(lineDash) / sizeof(lineDash[0]));
+    CGPathRelease(path);
 }
 
 - (NSColor *) _selectedColor {
@@ -2231,7 +2259,8 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
             objectForKey: NSForegroundColorAttributeName];
 
     if (selectedColor == nil) {
-        selectedColor = [NSColor selectedTextColor];
+        selectedColor = _UIFoundationTextColorForRole(
+                _UIFoundationTextColorRoleSelectedText);
     }
     return selectedColor;
 }
@@ -2295,7 +2324,8 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
             NSColor *strikeThruColor = [attributes
                     objectForKey: NSStrikethroughColorAttributeName];
             if (strikeThruColor == nil) {
-                strikeThruColor = [NSColor blackColor];
+                strikeThruColor = _UIFoundationTextColorForRole(
+                        _UIFoundationTextColorRoleText);
             }
             [self strikethroughGlyphRange: glyphRange
                          strikethroughType: NSUnderlineStyleThick
@@ -2385,8 +2415,7 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
     // Get the location of the fragment
     NSPoint point = fragment->location;
 
-    NSGraphicsContext *context = [NSGraphicsContext currentContext];
-    BOOL isFlipped = [context isFlipped];
+    BOOL isFlipped = _UIFoundationCurrentContextIsFlipped();
 
     // Correct its y-coord depending on the flippedness of the context
     if (!isFlipped) {
@@ -2434,7 +2463,8 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
         // Prepare the font - we're within an attribute run - so this font will
         // be good for this entire range
         NSFont *font = NSFontAttributeInDictionary(attributes);
-        [font setInContext: context];
+        // Sets the font, its size and the text matrix in the current context.
+        [font set];
 
         // We intersect with the selection so we apparently need to tread
         // carefully...
@@ -2720,9 +2750,7 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
                             tempAttrs = [_delegate layoutManager: self
                                     shouldUseTemporaryAttributes: tempAttrs
                                               forDrawingToScreen:
-                                                      [[NSGraphicsContext
-                                                              currentContext]
-                                                              isDrawingToScreen]
+                                                      _UIFoundationCurrentContextIsDrawingToScreen()
                                                 atCharacterIndex: charIndex
                                                   effectiveRange: &tempRange];
                         }
@@ -3069,77 +3097,6 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
     [self addTemporaryAttributes: [NSDictionary dictionaryWithObject: value
                                                               forKey: attrName]
                forCharacterRange: charRange];
-}
-
-- (NSArray *) rulerMarkersForTextView: (NSTextView *) view
-                       paragraphStyle: (NSParagraphStyle *) style
-                                ruler: (NSRulerView *) ruler
-{
-    NSMutableArray *markers = [NSMutableArray array];
-
-    CGFloat delta =
-            view.textContainer.lineFragmentPadding + view.textContainerOrigin.x;
-
-    // Add the margins markers
-#if 0
-    // Don't add these markers for now - their values are ignored by the layout manager
-    NSRulerMarker *marker = nil;
-    
-    marker = [NSRulerMarker leftMarginMarkerWithRulerView:ruler location:style.headIndent + delta];
-    [marker setRepresentedObject:@"NSHeadIndentRulerMarkerTag"];
-    [markers addObject:marker];
-    
-    // Looks like tailIndent value is a bit more complex - see Cocoa specs
-    marker = [NSRulerMarker rightMarginMarkerWithRulerView:ruler location:view.textContainer.containerSize.width - style.tailIndent - delta];
-    [marker setRepresentedObject:@"NSTailIndentRulerMarkerTag"];
-    [markers addObject:marker];
-    
-    marker = [NSRulerMarker firstIndentMarkerWithRulerView:ruler location:style.firstLineHeadIndent + delta];
-    [marker setRepresentedObject:@"NSFirstLineHeadIndentRulerMarkerTag"];
-    [markers addObject:marker];
-#endif
-    // Add the tab stops markers
-    for (NSTextTab *textTab in style.tabStops) {
-        NSRulerMarker *marker = nil;
-        switch (textTab.tabStopType) {
-        case NSLeftTabStopType:
-            marker = [NSRulerMarker
-                    leftTabMarkerWithRulerView: ruler
-                                      location: textTab.location + delta];
-            break;
-        case NSRightTabStopType:
-            marker = [NSRulerMarker
-                    rightTabMarkerWithRulerView: ruler
-                                       location: textTab.location + delta];
-            break;
-        case NSCenterTabStopType:
-            marker = [NSRulerMarker
-                    centerTabMarkerWithRulerView: ruler
-                                        location: textTab.location + delta];
-            break;
-        case NSDecimalTabStopType:
-            marker = [NSRulerMarker
-                    decimalTabMarkerWithRulerView: ruler
-                                         location: textTab.location + delta];
-            break;
-        default:
-            break;
-        }
-        if (marker) {
-            [marker setRepresentedObject: textTab];
-            [marker setRemovable: YES];
-            [markers addObject: marker];
-        }
-    }
-    return markers;
-}
-
-- (NSView *) rulerAccessoryViewForTextView: (NSTextView *) view
-                            paragraphStyle: (NSParagraphStyle *) style
-                                     ruler: (NSRulerView *) ruler
-                                   enabled: (BOOL) isEnabled
-{
-    return nil;
 }
 
 // Stored only: layout is always contiguous.
