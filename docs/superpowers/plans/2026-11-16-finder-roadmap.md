@@ -10,7 +10,7 @@ plans actually produced), and each ends in working, tested software.
 |---|------|-------|-----------|--------|
 | 1 | Real `unmount(2)`; `hdiutil detach` uses it | xnu, darling-dmg | — | done: `2026-11-16-unmount-syscall.md` |
 | 2 | Disk-image attach library; `hdiutil` on top of it; volume naming; licence agreements in `hdiutil` | darling-dmg | 1 | done: `2026-11-16-disk-image-attach-library.md` |
-| 3 | DiskArbitration: `diskarbitrationd` + client library; `hdiutil` reports DA disk names | darling (src/frameworks/DiskArbitration, new daemon), darling-dmg, darling-xnu (volume name and kind) | 1, 2 | planned: `2026-11-16-disk-arbitration.md` |
+| 3 | DiskArbitration: `diskarbitrationd` + client library; `hdiutil` reports DA disk names | darling (src/frameworks/DiskArbitration, new daemon), darling-dmg, darling-xnu (volume name and kind) | 1, 2 | done: `2026-11-16-disk-arbitration.md` |
 | 4 | Foundation volume enumeration, NSURL volume keys, trash; NSWorkspace volumes, eject, mount notifications, `iconForFile:`, recycle, reveal | foundation, cocotron | 3 | — |
 | 5 | NSCollectionView (modern API, layouts, selection, drag & drop); pasteboard file URLs | cocotron | — (parallel to 1–4) | — |
 | 6 | DiskImageMounter.app (licence UI, attach, open volume) | darling | 2, 4 | — |
