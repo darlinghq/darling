@@ -43,6 +43,13 @@ static const char *const uifoundationClasses[] = {
     "NSTextTable",
     "NSTextTableBlock",
     "NSGlyphInfo",
+    "NSCollectionViewLayout",
+    "NSCollectionViewFlowLayout",
+    "NSCollectionViewLayoutAttributes",
+    "NSCollectionViewLayoutInvalidationContext",
+    "NSCollectionViewTransitionLayout",
+    "NSCollectionViewUpdateItem",
+    "NSCollectionViewFlowLayoutInvalidationContext",
 };
 
 // String constants UIFoundation defines (and AppKit does not) on macOS, with
@@ -55,6 +62,14 @@ static const struct {
     {"NSTextListMarkerDecimal", @"{decimal}"},
     {"NSTextListMarkerDisc", @"{disc}"},
     {"NSTextListMarkerHyphen", @"{hyphen}"},
+    {"NSCollectionElementKindSectionHeader", @"UICollectionElementKindSectionHeader"},
+    {"NSCollectionElementKindSectionFooter", @"UICollectionElementKindSectionFooter"},
+    {"NSCollectionElementKindInterItemGapIndicator", @"NSCollectionElementKindInterItemGapIndicator"},
+    {"NSCollectionElementKindInterSectionGapIndicator", @"NSCollectionElementKindInterSectionGapIndicator"},
+    {"NSCollectionElementKindItem", @"NSCollectionElementKindItem"},
+    {"NSFlowLayoutCommonRowHorizontalAlignmentKey", @"UIFlowLayoutCommonRowHorizontalAlignmentKey"},
+    {"NSFlowLayoutLastRowHorizontalAlignmentKey", @"UIFlowLayoutLastRowHorizontalAlignmentKey"},
+    {"NSFlowLayoutRowVerticalAlignmentKey", @"UIFlowLayoutRowVerticalAlignmentKey"},
     {NULL, nil},
 };
 
@@ -240,6 +255,14 @@ int main(void)
         checkClass(appkit, uif, uifoundationClasses[i]);
     for (size_t i = 0; uifoundationStrings[i].symbol != NULL; i++)
         checkString(appkit, uif, uifoundationStrings[i].symbol, uifoundationStrings[i].value);
+    {
+        // AppKit, not UIFoundation, defines the selection rectangle element kind.
+        NSString **kind = dlsym(appkit, "NSCollectionElementKindSelectionRectIndicator");
+        expect(kind != NULL && appkitImage && strcmp(imageOf(kind), appkitImage) == 0,
+               "NSCollectionElementKindSelectionRectIndicator: defined by AppKit (%s)", imageOf(kind));
+        expect(kind != NULL && [*kind isEqualToString: @"NSCollectionElementKindSelectionRectIndicator"],
+               "NSCollectionElementKindSelectionRectIndicator: value");
+    }
     if (appkitImage && uifImage)
         checkNoClassInBoth(appkitImage, uifImage);
     checkAppKitInstances();
