@@ -12,7 +12,7 @@
 #include <string.h>
 
 static int failures;
-static void check(const char *name, int ok)
+static void expect(const char *name, int ok)
 {
 	printf("%s: %s\n", ok ? "PASS" : "FAIL", name);
 	failures += !ok;
@@ -39,28 +39,28 @@ int main(void)
 		NSInteger before = [general changeCount];
 		[general clearContents];
 		[general setString:@"héllo" forType:NSPasteboardTypeString];
-		check("change count moved by a clear", [general changeCount] == before + 1);
-		check("the reference is told", (PasteboardSynchronize(clip) & kPasteboardModified) != 0);
+		expect("change count moved by a clear", [general changeCount] == before + 1);
+		expect("the reference is told", (PasteboardSynchronize(clip) & kPasteboardModified) != 0);
 		ItemCount count = 0;
 		PasteboardItemID item = 0;
 		CFDataRef data = NULL;
-		check("one item", PasteboardGetItemCount(clip, &count) == noErr && count == 1);
-		check("its identifier", PasteboardGetItemIdentifier(clip, 1, &item) == noErr);
-		check("UTF-8 data", PasteboardCopyItemFlavorData(clip, item, CFSTR("public.utf8-plain-text"), &data) == noErr
+		expect("one item", PasteboardGetItemCount(clip, &count) == noErr && count == 1);
+		expect("its identifier", PasteboardGetItemIdentifier(clip, 1, &item) == noErr);
+		expect("UTF-8 data", PasteboardCopyItemFlavorData(clip, item, CFSTR("public.utf8-plain-text"), &data) == noErr
 			&& CFDataGetLength(data) == 6 && memcmp(CFDataGetBytePtr(data), "h\xc3\xa9llo", 6) == 0);
 		CFStringRef name = NULL;
 		PasteboardCopyName(clip, &name);
-		check("same name", [(NSString *)name isEqualToString:[general name]]);
+		expect("same name", [(NSString *)name isEqualToString:[general name]]);
 
 		// Pasteboard Manager -> NSPasteboard
 		before = [general changeCount];
-		check("clear", PasteboardClear(clip) == noErr);
-		check("the change count moved", [general changeCount] == before + 1);
+		expect("clear", PasteboardClear(clip) == noErr);
+		expect("the change count moved", [general changeCount] == before + 1);
 		CFDataRef text = (CFDataRef)[@"carbon-text" dataUsingEncoding:NSUTF8StringEncoding];
-		check("put", PasteboardPutItemFlavor(clip, (PasteboardItemID)1, CFSTR("public.utf8-plain-text"), text, 0) == noErr);
-		check("string", [[general stringForType:NSPasteboardTypeString] isEqualToString:@"carbon-text"]);
-		check("types", [[general types] containsObject:@"public.utf8-plain-text"]);
-		check("legacy type", [[general dataForType:@"NSStringPboardType"] length] == 11);
+		expect("put", PasteboardPutItemFlavor(clip, (PasteboardItemID)1, CFSTR("public.utf8-plain-text"), text, 0) == noErr);
+		expect("string", [[general stringForType:NSPasteboardTypeString] isEqualToString:@"carbon-text"]);
+		expect("types", [[general types] containsObject:@"public.utf8-plain-text"]);
+		expect("legacy type", [[general dataForType:@"NSStringPboardType"] length] == 11);
 
 		// find
 		NSPasteboard *find = [NSPasteboard pasteboardWithName:NSPasteboardNameFind];
@@ -69,23 +69,23 @@ int main(void)
 		[find clearContents];
 		[find setString:@"needle" forType:NSPasteboardTypeString];
 		PasteboardSynchronize(carbonFind);
-		check("find board shared", PasteboardGetItemIdentifier(carbonFind, 1, &item) == noErr
+		expect("find board shared", PasteboardGetItemIdentifier(carbonFind, 1, &item) == noErr
 			&& PasteboardCopyItemFlavorData(carbonFind, item, CFSTR("public.utf8-plain-text"), &data) == noErr && CFDataGetLength(data) == 6);
-		check("find is not the clipboard", ![[general stringForType:NSPasteboardTypeString] isEqualToString:@"needle"]);
+		expect("find is not the clipboard", ![[general stringForType:NSPasteboardTypeString] isEqualToString:@"needle"]);
 
 		// a promise made through NSPasteboard is kept for a Pasteboard Manager read
 		Owner *owner = [[Owner alloc] init];
 		[general declareTypes:@[NSPasteboardTypeString] owner:owner];
 		PasteboardSynchronize(clip);
 		PasteboardGetItemIdentifier(clip, 1, &item);
-		check("not provided yet", owner->provided == 0);
+		expect("not provided yet", owner->provided == 0);
 		PasteboardFlavorFlags promiseFlags = 99;
-		check("an NSPasteboard promise is not flagged Promised through the Pasteboard Manager",
+		expect("an NSPasteboard promise is not flagged Promised through the Pasteboard Manager",
 			PasteboardGetItemFlavorFlags(clip, item, CFSTR("public.utf8-plain-text"), &promiseFlags) == noErr && !(promiseFlags & kPasteboardFlavorPromised));
-		check("read provides", PasteboardCopyItemFlavorData(clip, item, CFSTR("public.utf8-plain-text"), &data) == noErr
+		expect("read provides", PasteboardCopyItemFlavorData(clip, item, CFSTR("public.utf8-plain-text"), &data) == noErr
 			&& CFDataGetLength(data) == 13 && owner->provided == 1);
 		PasteboardCopyItemFlavorData(clip, item, CFSTR("public.utf8-plain-text"), &data);
-		check("provided once", owner->provided == 1);
+		expect("provided once", owner->provided == 1);
 	}
 	printf(failures ? "FAILED\n" : "ALL PASSED\n");
 	return failures ? 1 : 0;
