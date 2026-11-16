@@ -338,13 +338,18 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 	if (header.filetype == MH_EXECUTE)
 		mldr_apply_exec_policy(lr, header.cputype == CPU_TYPE_X86, header.flags);
 
-	tmp_map_base = mmap(NULL, PAGE_ROUNDUP(sizeof(header) + header.sizeofcmds), PROT_READ, MAP_PRIVATE, fd, fat_offset);
+	const size_t tmp_host_ps = mldr_get_host_page_size();
+	const off_t tmp_off_aligned = (off_t)((uintptr_t)fat_offset & ~(tmp_host_ps - 1));
+	const size_t tmp_off_delta = (size_t)((uintptr_t)fat_offset - (uintptr_t)tmp_off_aligned);
+	const size_t tmp_map_len = mldr_page_roundup(tmp_off_delta + sizeof(header) + header.sizeofcmds, tmp_host_ps);
+
+	tmp_map_base = mmap(NULL, tmp_map_len, PROT_READ, MAP_PRIVATE, fd, tmp_off_aligned);
 	if (tmp_map_base == MAP_FAILED) {
 		fprintf(stderr, "Failed to mmap header + commands\n");
 		exit(1);
 	}
 
-	cmds = (void*)((char*)tmp_map_base + sizeof(header));
+	cmds = (void*)((char*)tmp_map_base + tmp_off_delta + sizeof(header));
 
 	if ((header.filetype == MH_EXECUTE && header.flags & MH_PIE) || header.filetype == MH_DYLINKER)
 	{
@@ -487,18 +492,84 @@ no_slide:
 
 				const size_t host_ps = mldr_get_host_page_size();
 				const size_t page_sz = mldr_get_macho_page_size(header.cputype);
+				const off_t file_offset = (off_t)(seg->fileoff + fat_offset);
+				const size_t total_segment_size = mldr_page_roundup(seg->vmsize, page_sz);
+				const bool subpage_fallback = (seg->filesize > 0) &&
+					(((seg_addr | (uintptr_t)file_offset) & (host_ps - 1)) != 0);
 
 				// 1. Map the file-backed portion of the segment
 				if (seg->filesize > 0)
 				{
-					rv = compatible_mmap((void*)seg_addr, seg->filesize, useprot,
-							MAP_FIXED_NOREPLACE | MAP_PRIVATE, fd, seg->fileoff + fat_offset);
-					if (rv == (void*)MAP_FAILED)
+					if (!subpage_fallback)
 					{
-						int err = errno;
-						fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)seg_addr, strerror(err));
-						mldr_explain_mmap_failure(err, seg_addr);
-						exit(1);
+						rv = compatible_mmap((void*)seg_addr, seg->filesize, useprot,
+								MAP_FIXED_NOREPLACE | MAP_PRIVATE, fd, file_offset);
+						if (rv == (void*)MAP_FAILED)
+						{
+							int err = errno;
+							fprintf(stderr, "Cannot mmap segment %s at %p: %s\n", seg->segname, (void*)seg_addr, strerror(err));
+							mldr_explain_mmap_failure(err, seg_addr);
+							exit(1);
+						}
+					}
+					else
+					{
+						// Sub-host-page aligned segment (e.g. 4 KB-aligned x86_64 slice on a 16 KB/64 KB arm64 kernel):
+						// map host pages anonymously for the full segment vmsize and pread the file portion.
+						uintptr_t map_start = seg_addr & ~(host_ps - 1);
+						uintptr_t map_end = mldr_page_roundup(seg_addr + total_segment_size, host_ps);
+						for (uintptr_t pg = map_start; pg < map_end; pg += host_ps)
+						{
+							rv = compatible_mmap((void*)pg, host_ps, PROT_READ | PROT_WRITE,
+									MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
+							if (rv == (void*)MAP_FAILED && errno == EEXIST)
+							{
+								if (mprotect((void*)pg, host_ps, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
+								{
+									fprintf(stderr, "Cannot mprotect shared page for %s at %p: %s\n",
+										seg->segname, (void*)pg, strerror(errno));
+									exit(1);
+								}
+							}
+							else if (rv == (void*)MAP_FAILED)
+							{
+								int err = errno;
+								fprintf(stderr, "Cannot mmap anonymous page for %s at %p: %s\n",
+									seg->segname, (void*)pg, strerror(err));
+								mldr_explain_mmap_failure(err, pg);
+								exit(1);
+							}
+						}
+
+						size_t remaining = (size_t)seg->filesize;
+						size_t copied = 0;
+						while (remaining > 0)
+						{
+							ssize_t n = pread(fd, (char*)seg_addr + copied, remaining, file_offset + (off_t)copied);
+							if (n <= 0)
+							{
+								if (n < 0 && errno == EINTR)
+									continue;
+								fprintf(stderr, "Cannot pread segment %s: %s\n", seg->segname,
+									n < 0 ? strerror(errno) : "unexpected EOF");
+								exit(1);
+							}
+							copied += (size_t)n;
+							remaining -= (size_t)n;
+						}
+
+						for (uintptr_t pg = map_start; pg < map_end; pg += host_ps)
+						{
+							int target_prot = (pg == map_start && (seg_addr & (host_ps - 1)) != 0)
+								? (useprot | PROT_EXEC)
+								: useprot;
+							if (mprotect((void*)pg, host_ps, target_prot) != 0)
+							{
+								fprintf(stderr, "Cannot mprotect segment %s at %p: %s\n",
+									seg->segname, (void*)pg, strerror(errno));
+								exit(1);
+							}
+						}
 					}
 
 					if (seg->fileoff == 0)
@@ -510,16 +581,17 @@ no_slide:
 					if (seg->filesize < seg->vmsize)
 					{
 						uintptr_t tail = seg_addr + seg->filesize;
-						uintptr_t tail_end = PAGE_ROUNDUP(tail);
+						uintptr_t tail_end = mldr_page_roundup(tail, host_ps);
 						if (tail_end > seg_addr + seg->vmsize)
 							tail_end = seg_addr + seg->vmsize;
 						if (tail_end > tail)
 						{
+							uintptr_t tail_pg = tail & ~(host_ps - 1);
 							if (!(useprot & PROT_WRITE))
-								mprotect((void*) PAGE_ALIGN(tail), PAGE_SIZE, useprot | PROT_WRITE);
-							memset((void*) tail, 0, tail_end - tail);
+								mprotect((void*)tail_pg, host_ps, useprot | PROT_WRITE);
+							memset((void*)tail, 0, tail_end - tail);
 							if (!(useprot & PROT_WRITE))
-								mprotect((void*) PAGE_ALIGN(tail), PAGE_SIZE, useprot);
+								mprotect((void*)tail_pg, host_ps, useprot);
 						}
 					}
 
@@ -529,7 +601,7 @@ no_slide:
 						mldr_rewrite_tsd_reads(seg, seg_addr, useprot, host_ps);
 #endif
 
-					if (lr->seal_images && (useprot & PROT_READ) && !(useprot & PROT_WRITE) &&
+					if (!subpage_fallback && lr->seal_images && (useprot & PROT_READ) && !(useprot & PROT_WRITE) &&
 						(strncmp(seg->segname, SEG_TEXT, sizeof(seg->segname)) == 0 ||
 						 strncmp(seg->segname, SEG_LINKEDIT, sizeof(seg->segname)) == 0))
 					{
@@ -540,21 +612,23 @@ no_slide:
 				// 2. Map the remaining BSS/anonymous pages (if any) beyond the file-backed pages.
 				// Round the total segment size up to the Mach-O target page size (page_sz)
 				// so that the gap between adjacent segments is completely covered by BSS mappings.
-				size_t file_pages = seg->filesize > 0 ? mldr_page_roundup(seg->filesize, host_ps) : 0;
-				size_t total_segment_size = mldr_page_roundup(seg->vmsize, page_sz);
-				if (total_segment_size > file_pages)
+				if (!subpage_fallback)
 				{
-					uintptr_t bss_addr = seg_addr + file_pages;
-					size_t bss_size = total_segment_size - file_pages;
-
-					rv = compatible_mmap((void*)bss_addr, bss_size, useprot,
-							MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
-					if (rv == (void*)MAP_FAILED)
+					size_t file_pages = seg->filesize > 0 ? mldr_page_roundup(seg->filesize, host_ps) : 0;
+					if (total_segment_size > file_pages)
 					{
-						int err = errno;
-						fprintf(stderr, "Cannot mmap bss for segment %s at %p: %s\n", seg->segname, (void*)bss_addr, strerror(err));
-						mldr_explain_mmap_failure(err, bss_addr);
-						exit(1);
+						uintptr_t bss_addr = seg_addr + file_pages;
+						size_t bss_size = total_segment_size - file_pages;
+
+						rv = compatible_mmap((void*)bss_addr, bss_size, useprot,
+								MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
+						if (rv == (void*)MAP_FAILED)
+						{
+							int err = errno;
+							fprintf(stderr, "Cannot mmap bss for segment %s at %p: %s\n", seg->segname, (void*)bss_addr, strerror(err));
+							mldr_explain_mmap_failure(err, bss_addr);
+							exit(1);
+						}
 					}
 				}
 
@@ -709,7 +783,7 @@ no_slide:
 		lr->entry_point = entryPoint;
 
 	if (tmp_map_base)
-		munmap(tmp_map_base, PAGE_ROUNDUP(sizeof(header) + header.sizeofcmds));
+		munmap(tmp_map_base, tmp_map_len);
 
 	// the image was mapped from a snapshot (code_signing_gate()); the mappings keep it alive
 	if (fd != source_fd)
