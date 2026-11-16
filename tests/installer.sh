@@ -136,6 +136,27 @@ EOF2
 	bsdtar --format xar --options xar:compression=none -cf "$DIR/checkfail.pkg" Distribution default.pkg || exit 2
 
 	# the same, but the result type is Warn: the install continues
+	# a product whose choice runs a program from Resources (system.run and runOnce)
+	cd .. && mkdir run && cd run || exit 2
+	cp -R ../product/default.pkg .
+	mkdir Resources
+	printf '#!/bin/sh\necho "$@" >> "$DSTVOLUME/run.log"\nexit 7\n' > Resources/probe.sh
+	chmod 755 Resources/probe.sh
+	cat > Distribution <<'EOF2'
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+<title>Run</title>
+<options allow-external-scripts="true"/>
+<choices-outline><line choice="default"/></choices-outline>
+<choice id="default" title="Default" selected="system.run('probe.sh', 'a', 'b') == 7 &amp;&amp; system.runOnce('probe.sh', 'once') == 7 &amp;&amp; system.runOnce('probe.sh', 'once') == 7"><pkg-ref id="org.darling.test.default"/></choice>
+<pkg-ref id="org.darling.test.default" installKBytes="1">#default.pkg</pkg-ref>
+</installer-gui-script>
+EOF2
+	bsdtar --format xar --options xar:compression=none -cf "$DIR/run.pkg" Distribution default.pkg Resources || exit 2
+	sed -e 's/allow-external-scripts="true"/allow-external-scripts="false"/' Distribution > Distribution.off && mv Distribution.off Distribution
+	bsdtar --format xar --options xar:compression=none -cf "$DIR/runoff.pkg" Distribution default.pkg Resources || exit 2
+	cd ../check
+
 	sed -e "s/'Fatal'/'Warn'/" -e 's|<title>Check</title>|<title>Check warn</title>|' Distribution > Distribution.warn && mv Distribution.warn Distribution
 	bsdtar --format xar --options xar:compression=none -cf "$DIR/checkwarn.pkg" Distribution default.pkg || exit 2
 	cd ..
@@ -233,6 +254,22 @@ if [ $jsc = yes ]; then
 	[ ! -e dst7/default.txt ] && pass "nothing is installed after a failed check" || fail "nothing is installed after a failed check"
 	mkdir dst8
 	"$INSTALLER" -pkg "$DIR/checkwarn.pkg" -target "$T/dst8" > warn.out 2>&1
+	# system.run and runOnce: refused without a terminal, run after the user agrees on one
+	mkdir dst9 dst10 dst11
+	"$INSTALLER" -pkg "$DIR/run.pkg" -target "$T/dst9" < /dev/null > run-noterm.out 2>&1
+	[ ! -e dst9/run.log ] && grep -q "needs your confirmation on a terminal; not running it" run-noterm.out && pass "system.run is not run without a terminal" || fail "system.run is not run without a terminal"
+	[ ! -e dst9/default.txt ] && pass "a condition on a program that did not run is false" || fail "a condition on a program that did not run is false"
+	if command -v script >/dev/null 2>&1; then
+		printf 'y\n' | script -q /dev/null "$INSTALLER" -pkg "$DIR/run.pkg" -target "$T/dst10" > run-term.out 2>&1
+		[ "$(cat dst10/run.log 2>/dev/null | tr -d '\r' | tr '\n' '|')" = "a b|once|" ] && pass "system.run runs the program, runOnce only once, with the user's agreement" || fail "system.run runs the program, runOnce only once, with the user's agreement (log: $(cat dst10/run.log 2>/dev/null | tr '\n' '|'))"
+		[ -e dst10/default.txt ] && pass "the exit code of the program decides the condition" || fail "the exit code of the program decides the condition"
+		printf 'y\n' | script -q /dev/null "$INSTALLER" -pkg "$DIR/runoff.pkg" -target "$T/dst11" > runoff.out 2>&1
+		[ ! -e dst11/run.log ] && grep -q "allow-external-scripts is not enabled" runoff.out && pass "system.run needs allow-external-scripts" || fail "system.run needs allow-external-scripts"
+	else
+		echo "SKIP system.run with a terminal: script(1) not available"
+	fi
+	"$INSTALLER" -pkg "$DIR/run.pkg" -target "$T/dst9" -showChoiceChangesXML < /dev/null > /dev/null 2>&1
+	[ ! -e dst9/run.log ] && pass "information queries never run programs" || fail "information queries never run programs"
 	[ -e dst8/default.txt ] && grep -qx 'installer: Warning: Needs a newer system' warn.out && pass "a check whose result type is Warn only warns" || fail "a check whose result type is Warn only warns"
 else
 	t "without JavaScriptCore an installation-check is skipped with a warning" "$INSTALLER" -pkg "$DIR/checkfail.pkg" -target "$T/dst7"
