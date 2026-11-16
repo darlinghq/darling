@@ -38,6 +38,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "image_protection.h"
 #include "interpreter_path.h"
 #include "fat_slice.h"
+#include "exec_policy.h"
 #include <sys/resource.h>
 #include <sys/prctl.h>
 #include <sys/personality.h>
@@ -822,6 +823,12 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 	#error Unsupported architecture
 #endif
 
+	// The personality is inherited across fork and exec, so drop whatever the
+	// previous process of this tree had; the main executable's header decides
+	// again in mldr_apply_exec_policy().
+	mldr_apply_exec_policy(lr, false, 0);
+
+	lr->stack_map_size = size;
 	if (compatible_mmap((void*)(lr->stack_top - size), size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE | MAP_GROWSDOWN, -1, 0) == MAP_FAILED) {
 		fprintf(stderr, "Failed to allocate stack of %lu bytes: %d (%s)\n", size, errno, strerror(errno));
 		exit(1);

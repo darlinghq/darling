@@ -279,6 +279,10 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 		exit(1);
 	}
 
+	// before any segment is mapped, so that they get the executable-data mode
+	if (header.filetype == MH_EXECUTE)
+		mldr_apply_exec_policy(lr, header.cputype == CPU_TYPE_X86, header.flags);
+
 	tmp_map_base = mmap(NULL, PAGE_ROUNDUP(sizeof(header) + header.sizeofcmds), PROT_READ, MAP_PRIVATE, fd, fat_offset);
 	if (tmp_map_base == MAP_FAILED) {
 		fprintf(stderr, "Failed to mmap header + commands\n");

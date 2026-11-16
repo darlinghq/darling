@@ -22,6 +22,7 @@ set(mldr_sources
 	image_protection.c
 	interpreter_path.c
 	fat_slice.c
+	exec_policy.c
 	commpage.c
 	elfcalls/elfcalls.c
 	elfcalls/native_fork.c
@@ -123,7 +124,7 @@ add_executable(mldr_tsd_rewrite_test ${CMAKE_SOURCE_DIR}/tests/mldr/tsd_rewrite.
 target_include_directories(mldr_tsd_rewrite_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME mldr_tsd_rewrite COMMAND mldr_tsd_rewrite_test)
 
-add_executable(mldr_segment_mapping_test ${CMAKE_SOURCE_DIR}/tests/mldr/segment_mapping.c)
+add_executable(mldr_segment_mapping_test ${CMAKE_SOURCE_DIR}/tests/mldr/segment_mapping.c exec_policy.c)
 target_include_directories(mldr_segment_mapping_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME mldr_segment_mapping COMMAND mldr_segment_mapping_test)
 
@@ -153,3 +154,7 @@ if (BUILD_TARGET_32BIT)
 	add_test(NAME mldr32_layout_retry COMMAND mldr32_layout_retry_test)
 	set_tests_properties(mldr32_layout_retry PROPERTIES TIMEOUT 15)
 endif()
+
+add_executable(mldr_exec_policy_test ${CMAKE_SOURCE_DIR}/tests/mldr/exec_policy.c exec_policy.c)
+target_include_directories(mldr_exec_policy_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME mldr_exec_policy COMMAND mldr_exec_policy_test)
