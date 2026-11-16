@@ -1,5 +1,6 @@
 // unmount(2) on a mounted disk image: a directory inside the volume is not a mount point (EINVAL), a volume with
-// an open file is busy (EBUSY) unless MNT_FORCE is given, and once unmounted the path is no longer a mount point.
+// an open file is busy (EBUSY) unless MNT_FORCE is given, and once unmounted the path is no longer a mount point
+// (or no longer exists: DiskArbitration removes mount points in /Volumes whose volume went away).
 // With "ignore-sigchld" the program ignores SIGCHLD first, so that the kernel reaps its children itself: unmount()
 // must not depend on reaping a helper process it started.
 // Usage: unmount-disk-image <mount point of tests/fixtures/unmount-test.dmg> [ignore-sigchld]
@@ -66,11 +67,16 @@ int main(int argc, char** argv)
 	if (fd >= 0)
 		close(fd);
 
-	check(statfs(mp, &after) == 0 && strcmp(after.f_mntonname, before.f_mntonname) != 0,
-		"path is no longer the volume's mount point");
+	// DiskArbitration removes a mount point in /Volumes once its volume is gone (as on macOS), so the path may be
+	// gone too
+	errno = 0;
+	int stat_result = statfs(mp, &after);
+	check((stat_result == 0 && strcmp(after.f_mntonname, before.f_mntonname) != 0)
+		|| (stat_result == -1 && errno == ENOENT), "path is no longer the volume's mount point");
 
 	errno = 0;
-	check(unmount(mp, 0) == -1 && errno == EINVAL, "unmounting again fails: not a mount point");
+	check(unmount(mp, 0) == -1 && (errno == EINVAL || errno == ENOENT),
+		"unmounting again fails: not a mount point (or no longer there)");
 
 	return failures ? 1 : 0;
 }
