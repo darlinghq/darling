@@ -35,6 +35,19 @@
 // {path: an exact mount point, no trailing slash} -> {name} | {status: kDAReturnNotFound}
 #define DA_OP_LOOKUP_PATH "lookup-path"
 
+// {} -> {disks: an array of {name, description}, each leaf before its whole disk}. From then on the daemon sends the
+// connection an event message for every change, and again after a new hello on a new connection.
+#define DA_OP_HELLO "hello"
+#define DA_KEY_DISKS "disks"
+
+// Event messages from the daemon: {event, name, description, and for "changed" also keys}. A disk appears leaf
+// first, then its whole disk; it disappears whole disk first, then the leaf.
+#define DA_KEY_EVENT "event"
+#define DA_KEY_KEYS  "keys" // an array of description key strings
+#define DA_EVENT_APPEARED    "appeared"
+#define DA_EVENT_DISAPPEARED "disappeared"
+#define DA_EVENT_CHANGED     "changed"
+
 // A description travels as a binary property list of the disk description dictionary, with two differences
 // because a property list holds neither URLs nor UUIDs: kDADiskDescriptionVolumePathKey is the mount point as a
 // path string, and the UUID keys are UUID strings. The library turns them into a CFURL and CFUUIDs.

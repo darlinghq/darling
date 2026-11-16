@@ -320,8 +320,8 @@ static void appear(const struct statfs* volume, bool root, const DAModelEvents* 
 
 	if (events != NULL)
 	{
-		report(events->appeared, events->context, media, true);
 		report(events->appeared, events->context, media, false);
+		report(events->appeared, events->context, media, true);
 	}
 }
 
@@ -334,6 +334,19 @@ static void refresh(DAMedia* media, const struct statfs* volume, const DAModelEv
 	updateDescription(&media->leaf, describeLeaf(media, volume), &leafKeys);
 	reportChange(events, media, true, wholeKeys);
 	reportChange(events, media, false, leafKeys);
+}
+
+// The leaf's volume is no longer mounted: it loses its mount point.
+static void volumeGone(DAMedia* media, const DAModelEvents* events)
+{
+	media->mounted = false;
+	if (!CFDictionaryContainsKey(media->leaf, KEY_VOLUME_PATH))
+		return;
+	CFDictionaryRemoveValue(media->leaf, KEY_VOLUME_PATH);
+
+	CFMutableArrayRef keys = CFArrayCreateMutable(NULL, 1, &kCFTypeArrayCallBacks);
+	CFArrayAppendValue(keys, KEY_VOLUME_PATH);
+	reportChange(events, media, false, keys);
 }
 
 static void destroy(DAMedia* media, const DAModelEvents* events)
@@ -403,6 +416,7 @@ void DAModelRescan(const DAModelEvents* events)
 		char mountPoint[MAXPATHLEN];
 		bool root = media->root;
 		strlcpy(mountPoint, media->mountPoint, sizeof(mountPoint));
+		volumeGone(media, events);
 		destroy(media, events);
 		if (!root)
 			DAModelRemoveMountPoint(mountPoint);
