@@ -5,9 +5,12 @@
 //  mount <BSD name>                DADiskMount at the default place; prints the same
 //  busy-file <mount point>         unmounts the volume's leaf (no options) while a file in it is open
 //  describe <BSD name>             prints "present" if the disk has a description, otherwise "absent"
+//  no-daemon <BSD name>            for when diskarbitrationd cannot be reached: looks up "/" and the disk, asks
+//                                  to unmount it, releases everything, and prints what it got (Darling only)
 //  deny <seconds>                  for that long, dissents from every unmount and eject with kDAReturnBusy and
 //                                  "in use by test", printing "approval asked for <BSD name>"
 //  hang <seconds>                  for that long, answers every unmount and eject approval only after 30 s
+// With "--uid <uid>" first, the program runs as that user (it must start as root); it exits with 3 if it cannot.
 // The request modes exit with 0 once the completion callback has run (whatever its status), 1 if it did not run
 // within 60 s. Link with -framework DiskArbitration -framework CoreFoundation. The program also runs on macOS.
 #include <CoreFoundation/CoreFoundation.h>
@@ -66,11 +69,22 @@ static DADiskRef leaf_for(DASessionRef session, const char* mp)
 
 int main(int argc, char** argv)
 {
+	if (argc > 2 && strcmp(argv[1], "--uid") == 0)
+	{
+		if (setuid((uid_t) atoi(argv[2])) != 0 || geteuid() != (uid_t) atoi(argv[2]))
+		{
+			printf("cannot change uid\n");
+			return 3;
+		}
+		argc -= 2;
+		argv += 2;
+	}
+
 	DASessionRef session = DASessionCreate(NULL);
 	if (session == NULL || argc < 3)
 	{
-		fprintf(stderr, "usage: da-ops unmount <name> <options> | eject <name> | mount <name> | busy-file <mp>"
-			" | describe <name> | deny <seconds> | hang <seconds>\n");
+		fprintf(stderr, "usage: da-ops [--uid <uid>] unmount <name> <options> | eject <name> | mount <name> | busy-file <mp>"
+			" | describe <name> | no-daemon <name> | deny <seconds> | hang <seconds>\n");
 		return 2;
 	}
 	DASessionScheduleWithRunLoop(session, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
@@ -85,6 +99,31 @@ int main(int argc, char** argv)
 		fflush(stdout);
 		CFRunLoopRunInMode(kCFRunLoopDefaultMode, atof(argv[2]), false);
 		return 0;
+	}
+
+	if (strcmp(mode, "no-daemon") == 0)
+	{
+		CFURLRef root = CFURLCreateFromFileSystemRepresentation(NULL, (const UInt8*) "/", 1, true);
+		DADiskRef rootDisk = DADiskCreateFromVolumePath(NULL, session, root);
+		printf("root volume: %s\n", rootDisk ? "a disk" : "none");
+		DADiskRef disk = DADiskCreateFromBSDName(NULL, session, argv[2]);
+		CFDictionaryRef description = disk ? DADiskCopyDescription(disk) : NULL;
+		printf("description: %s\n", description ? "present" : "absent");
+		if (disk != NULL)
+		{
+			DADiskUnmount(disk, kDADiskUnmountOptionDefault, completed, NULL);
+			wait_done();
+			CFRelease(disk);
+		}
+		if (description != NULL)
+			CFRelease(description);
+		if (rootDisk != NULL)
+			CFRelease(rootDisk);
+		CFRelease(root);
+		DASessionUnscheduleFromRunLoop(session, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+		CFRelease(session);
+		printf("released\n");
+		return done ? 0 : 1;
 	}
 
 	if (strcmp(mode, "describe") == 0)

@@ -73,7 +73,9 @@ struct DASessionLink
 {
 	pthread_mutex_t lock;
 	DASessionRef session;        // NULL once the session is finalized
-	xpc_connection_t connection; // released once it is invalid, not before: messages may still be arriving
+	xpc_connection_t connection; // the link's own reference, released once the connection is invalid, not before:
+	                             // messages may still be arriving. The session holds another one until it is
+	                             // finalized, so its requests never use a released connection.
 	int references;
 };
 
@@ -696,7 +698,7 @@ void _DASessionConnect(DASessionRef session)
 	if (session->connection == NULL)
 		return;
 
-	link->connection = session->connection;
+	link->connection = xpc_retain(session->connection);
 	linkRetain(link); // for the connection, until it is invalid
 	xpc_connection_set_event_handler(session->connection, ^(xpc_object_t event) {
 		handleEvent(link, event);
@@ -716,9 +718,13 @@ void _DASessionDisconnect(DASessionRef session)
 		pthread_mutex_unlock(&session->link->lock);
 		linkRelease(session->link);
 	}
-	// the connection's handler releases it once it is invalid
+	// the connection's handler releases the link's reference once it is invalid
 	if (session->connection != NULL)
+	{
 		xpc_connection_cancel(session->connection);
+		xpc_release(session->connection);
+		session->connection = NULL;
+	}
 	if (session->queue != NULL)
 		dispatch_release(session->queue);
 	if (session->earlyEvents != NULL)
