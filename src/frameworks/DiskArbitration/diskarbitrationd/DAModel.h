@@ -54,9 +54,9 @@ typedef struct DAModelEvents
 	void (*changed)(void* context, const char* name, CFArrayRef keys, CFDictionaryRef description);
 } DAModelEvents;
 
-// Brings the disks in line with the mount table. Disks whose volume went away disappear (whole disk first), and
-// their mount points in /Volumes are removed; new volumes appear (whole disk first); changed descriptions are
-// reported with the keys that changed. A disk whose volume DiskArbitration unmounted (mounted == false) is left
+// Brings the disks in line with the mount table. A disk whose volume went away first changes (its leaf loses
+// DAVolumePath), then disappears (whole disk first), and its mount point in /Volumes is removed; new volumes appear
+// (leaf first, as on macOS); changed descriptions are reported with the keys that changed. A disk whose volume DiskArbitration unmounted (mounted == false) is left
 // alone: it stays until it is ejected.
 void DAModelRescan(const DAModelEvents* events);
 
