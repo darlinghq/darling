@@ -30,6 +30,7 @@
 #include <CarbonCore/Math64.h>
 #include <CarbonCore/Multiprocessing.h>
 #include <CarbonCore/MixedMode.h>
+#include <CarbonCore/Script.h>
 #include <CarbonCore/TextCommon.h>
 #include <CarbonCore/TextEncodingConverter.h>
 #include <CarbonCore/TextUtils.h>

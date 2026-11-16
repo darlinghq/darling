@@ -13,7 +13,7 @@ add_framework(OSServices
 	PARENT "CoreServices"
 
 	SOURCES
-		empty.c
+		Power.c
 
 	DEPENDENCIES
 		CoreFoundation

@@ -18,3 +18,4 @@
 */
 
 #include <OSServices/IconStorage.h>
+#include <OSServices/Power.h>

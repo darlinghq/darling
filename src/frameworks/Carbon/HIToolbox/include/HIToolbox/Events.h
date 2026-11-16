@@ -190,6 +190,12 @@ enum {
 // maps it with the event's Option/Control state. The event kind, Command, Shift and Caps Lock
 // do not matter, and neither does the character in the message. Not a Carbon event-queue call.
 Boolean IsCmdChar(const EventRecord* event, short test);
+// Deprecated. Translates a key code (virtual key in bits 0-6, key-up flag in bit 7, the high byte of
+// the event modifiers in bits 8-15) with the 'KCHR' data transData, usually the block returned by
+// GetScriptManagerVariable(smKCHRCache). The result has the first character in bits 16-23 (only for
+// an accent followed by a character that does not combine with it) and the character in bits 0-7;
+// *state holds the dead-key state, 0 when no accent is pending.
+UInt32 KeyTranslate(const void* transData, UInt16 keycode, UInt32* state);
 // Returns true if a Command-period or Escape is pending in the event queue.
 Boolean CheckEventQueueForUserCancel(void);
 
