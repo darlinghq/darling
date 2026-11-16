@@ -17,7 +17,11 @@
 // UIFoundation (and not unrelated libraries), and no class is defined by both
 // AppKit and UIFoundation (the runtime would then pick one of the two).
 //
-// Loads AppKit with dlopen; needs no display. Prints PASS or FAIL lines, then
+// Instances AppKit's text view creates are the UIFoundation classes, and a
+// paragraph style survives a keyed archive round trip and a copy.
+//
+// Loads AppKit with dlopen; needs an X display (AppKit's text view looks up
+// fonts). Prints PASS or FAIL lines, then
 // ALL PASSED or FAILED n.
 #import <Foundation/Foundation.h>
 #include <dlfcn.h>
@@ -31,6 +35,14 @@
 // Classes UIFoundation defines (and AppKit does not) on macOS.
 static const char *const uifoundationClasses[] = {
     "UINibDecoder",
+    "NSParagraphStyle",
+    "NSMutableParagraphStyle",
+    "NSTextTab",
+    "NSTextList",
+    "NSTextBlock",
+    "NSTextTable",
+    "NSTextTableBlock",
+    "NSGlyphInfo",
 };
 
 // String constants UIFoundation defines (and AppKit does not) on macOS, with
@@ -39,6 +51,10 @@ static const struct {
     const char *symbol;
     NSString *value;
 } uifoundationStrings[] = {
+    {"NSTabColumnTerminatorsAttributeName", @"NSTabColumnTerminatorsAttributeName"},
+    {"NSTextListMarkerDecimal", @"{decimal}"},
+    {"NSTextListMarkerDisc", @"{disc}"},
+    {"NSTextListMarkerHyphen", @"{hyphen}"},
     {NULL, nil},
 };
 
@@ -130,6 +146,74 @@ static void checkNoClassInBoth(const char *appkitImage, const char *uifImage)
           [both count] ? [[both componentsJoinedByString: @", "] UTF8String] : "");
 }
 
+// The AppKit headers are not used; only what is called is declared.
+@protocol TextValueMethods
++ (id)defaultParagraphStyle;
+- (id)initWithFrame:(NSRect)frame;
+- (void)setString:(NSString *)string;
+- (void)setAlignment:(NSInteger)alignment;
+- (NSInteger)alignment;
+- (id)textStorage;
+- (NSArray *)tabStops;
+- (NSArray *)textBlocks;
+- (NSArray *)textLists;
+- (void)setTextBlocks:(NSArray *)blocks;
+- (void)setTextLists:(NSArray *)lists;
+- (id)initWithTable:(id)table
+        startingRow:(NSInteger)row
+            rowSpan:(NSInteger)rowSpan
+     startingColumn:(NSInteger)column
+         columnSpan:(NSInteger)columnSpan;
+- (id)initWithMarkerFormat:(NSString *)format options:(NSUInteger)options;
+@end
+
+static void checkAppKitInstances(void)
+{
+    // AppKit's text view makes the paragraph style when the alignment is set
+    // (2 is NSTextAlignmentCenter on macOS on Intel).
+    id textView = [[[objc_getClass("NSTextView") alloc] initWithFrame: NSMakeRect(0, 0, 200, 100)] autorelease];
+    [textView setString: @"hello"];
+    [textView setAlignment: 2];
+    id style = [[textView textStorage] attribute: @"NSParagraphStyle" atIndex: 0 effectiveRange: NULL];
+    expect(style != nil && isUIFoundation(class_getImageName([style class])) &&
+                  [style isKindOfClass: objc_getClass("NSParagraphStyle")] && [style alignment] == 2,
+          "paragraph style NSTextView sets is a UIFoundation class (%s)", style ? class_getName([style class]) : "nil");
+    NSArray *tabs = [style tabStops];
+    expect([tabs count] > 0 && isUIFoundation(class_getImageName([[tabs objectAtIndex: 0] class])),
+          "its tab stops are UIFoundation's NSTextTab");
+
+    // A mutable copy survives a keyed archive. (Text blocks and lists are not
+    // archived: Darling's NSTextBlock and NSTextList do not implement
+    // NSCoding yet.)
+    id mutableStyle = [[style mutableCopy] autorelease];
+    expect(isUIFoundation(class_getImageName([mutableStyle class])), "mutable copy is a UIFoundation class (%s)",
+          class_getName([mutableStyle class]));
+    NSData *archive = [NSKeyedArchiver archivedDataWithRootObject: mutableStyle];
+    id decoded = [NSKeyedUnarchiver unarchiveObjectWithData: archive];
+    expect(decoded != nil && isUIFoundation(class_getImageName([decoded class])) && [decoded isEqual: mutableStyle] &&
+                  [[decoded tabStops] isEqual: [mutableStyle tabStops]],
+          "paragraph style survives a keyed archive round trip (%s)", decoded ? class_getName([decoded class]) : "nil");
+
+    // The other value classes, made directly, and stored in a paragraph style.
+    id table = [[[objc_getClass("NSTextTable") alloc] init] autorelease];
+    id block = [[[objc_getClass("NSTextTableBlock") alloc] initWithTable: table
+                                                             startingRow: 0
+                                                                 rowSpan: 1
+                                                          startingColumn: 0
+                                                              columnSpan: 1] autorelease];
+    id list = [[[objc_getClass("NSTextList") alloc] initWithMarkerFormat: @"{decimal}" options: 0] autorelease];
+    [mutableStyle setTextBlocks: [NSArray arrayWithObject: block]];
+    [mutableStyle setTextLists: [NSArray arrayWithObject: list]];
+    id copied = [[mutableStyle copy] autorelease];
+    expect(isUIFoundation(class_getImageName([copied class])) && [copied isEqual: mutableStyle] &&
+                  [[copied textBlocks] objectAtIndex: 0] == block && [[copied textLists] objectAtIndex: 0] == list,
+          "an immutable copy keeps the text block and list (%s)", class_getName([copied class]));
+    id defaultStyle = [objc_getClass("NSParagraphStyle") defaultParagraphStyle];
+    expect(defaultStyle == [objc_getClass("NSParagraphStyle") defaultParagraphStyle] &&
+                  isUIFoundation(class_getImageName([defaultStyle class])),
+          "defaultParagraphStyle is one UIFoundation instance");
+}
+
 int main(void)
 {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -158,6 +242,7 @@ int main(void)
         checkString(appkit, uif, uifoundationStrings[i].symbol, uifoundationStrings[i].value);
     if (appkitImage && uifImage)
         checkNoClassInBoth(appkitImage, uifImage);
+    checkAppKitInstances();
 
     [pool release];
     if (failures)

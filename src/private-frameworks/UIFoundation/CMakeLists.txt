@@ -23,6 +23,14 @@ add_framework(UIFoundation
     SOURCES
         src/UIFoundation.m
         src/UIFoundationGraphicsContext.m
+        src/NSParagraphStyle.m
+        src/NSMutableParagraphStyle.m
+        src/NSTextTab.m
+        src/NSTextList.m
+        src/NSTextBlock.m
+        src/NSTextTable.m
+        src/NSTextTableBlock.m
+        src/NSGlyphInfo.m
         src/NSFontAssetRequest.m
         src/NSCollectionViewData.m
         src/NSCoreTypesetter.m
