@@ -277,6 +277,23 @@ set(CMAKE_ASM_FLAGS "-target ${APPLE_TARGET_TRIPLET_PRIMARY} ${CMAKE_ASM_FLAGS}"
 set(CMAKE_OBJC_FLAGS "-target ${APPLE_TARGET_TRIPLET_PRIMARY} ${CMAKE_OBJC_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
 
 add_definitions(-target ${APPLE_TARGET_TRIPLET_PRIMARY})
+
+# clang's default CPU for an arm64 Darwin target is the Apple M1, so without this
+# the Mach-O code uses ARMv8.4+ instructions (e.g. stlur from LRCPC2) and dies with
+# SIGILL on most non-Apple arm64 hosts: a Raspberry Pi 4 (Cortex-A72, ARMv8.0) or
+# Android phones with Cortex-A76/A78 cores (ARMv8.2). ARMv8.0 is what Linux and
+# Android guarantee; raise it to trade portability for speed. It has to be -mcpu:
+# for Darwin triples -march leaves "-target-cpu apple-m1" in place, and the CPU's
+# features still apply. Hand-written assembly is left alone: it states its own
+# instructions (and may check for them at run time), the CPU only gates what the
+# assembler accepts.
+if (TARGET_ARM64)
+	set(DARLING_ARM64_CPU "generic" CACHE STRING "Baseline -mcpu for compiled arm64 Mach-O code")
+	foreach(lang C CXX OBJC OBJCXX)
+		set(CMAKE_${lang}_FLAGS "${CMAKE_${lang}_FLAGS} -mcpu=${DARLING_ARM64_CPU}")
+	endforeach()
+endif()
+
 include(darling_lib)
 include(darling_static_lib)
 include(darling_bundle)
