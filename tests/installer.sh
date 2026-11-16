@@ -26,7 +26,7 @@ pkgxar() {
 <?xml version="1.0" encoding="utf-8"?>
 <pkg-info format-version="2" identifier="$id" version="1.0" install-location="/" auth="root">
 <payload installKBytes="1" numberOfFiles="1"/>
-$([ -n "$scripts" ] && echo '<scripts><postinstall file="./postinstall"/></scripts>')
+$([ -n "$scripts" ] && echo '<scripts><postinstall file="./postinstall"/><postupgrade file="./postinstall"/></scripts>')
 </pkg-info>
 EOF
 	if [ -n "$scripts" ]; then
@@ -63,12 +63,48 @@ if [ "$MODE" = build ]; then
 	bsdtar -P --format odc -cf - -s '|^second-src|link-src|' link-src second-src | gzip > payload.gz
 	pkgxar linkwrite org.darling.test.linkwrite
 
-	# a postinstall script the kernel cannot launch (no interpreter line, so exec fails with ENOEXEC)
+	# a postinstall script that cannot be launched (not executable, so exec fails with EACCES)
 	mkdir scripts-src
 	printf 'exit 0\n' > scripts-src/postinstall
-	chmod 755 scripts-src/postinstall
+	chmod 644 scripts-src/postinstall
 	bsdtar --format odc -cf - -C root . | gzip > payload.gz
 	pkgxar badscript org.darling.test.badscript scripts-src
+
+	# a product archive: choices with literal-boolean and JavaScript conditions
+	mkdir product && cd product || exit 2
+	for c in default startfalse selfalse js inactive; do
+		mkdir "$c.pkg" "root-$c"
+		echo "$c" > "root-$c/$c.txt"
+		bsdtar --format odc -cf - -C "root-$c" . | gzip > "$c.pkg/Payload"
+		cat > "$c.pkg/PackageInfo" <<EOF2
+<?xml version="1.0" encoding="utf-8"?>
+<pkg-info format-version="2" identifier="org.darling.test.$c" version="1.0" install-location="/" auth="root">
+<payload installKBytes="1" numberOfFiles="1"/>
+</pkg-info>
+EOF2
+	done
+	cat > Distribution <<'EOF2'
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+<title>Choices</title>
+<choices-outline>
+<line choice="default"/><line choice="startfalse"/><line choice="selfalse"/>
+<line choice="js"/><line choice="inactive"/>
+</choices-outline>
+<choice id="default" title="Default"><pkg-ref id="org.darling.test.default"/></choice>
+<choice id="startfalse" title="Start false" start_selected="false"><pkg-ref id="org.darling.test.startfalse"/></choice>
+<choice id="selfalse" title="Selected false" selected="false"><pkg-ref id="org.darling.test.selfalse"/></choice>
+<choice id="js" title="Script" selected="system.compareVersions(system.version.ProductVersion, '99.0') &gt;= 0"><pkg-ref id="org.darling.test.js"/></choice>
+<choice id="inactive" title="Inactive"><pkg-ref id="org.darling.test.inactive"/></choice>
+<pkg-ref id="org.darling.test.default" installKBytes="1">#default.pkg</pkg-ref>
+<pkg-ref id="org.darling.test.startfalse" installKBytes="1">#startfalse.pkg</pkg-ref>
+<pkg-ref id="org.darling.test.selfalse" installKBytes="1">#selfalse.pkg</pkg-ref>
+<pkg-ref id="org.darling.test.js" installKBytes="1">#js.pkg</pkg-ref>
+<pkg-ref id="org.darling.test.inactive" installKBytes="1" active="false">#inactive.pkg</pkg-ref>
+</installer-gui-script>
+EOF2
+	bsdtar --format xar --options xar:compression=none -cf "$DIR/choices.pkg" Distribution *.pkg || exit 2
+	cd ..
 	exit 0
 fi
 
@@ -127,6 +163,20 @@ eq "bad target: exit status 1" "$("$INSTALLER" -pkg "$DIR/plain.pkg" -tgt /nonex
 eq "missing package file" "$("$INSTALLER" -pkg /nonexistent.pkg -target / 2>&1)" "installer: Error - the package path specified was invalid: '/nonexistent.pkg'."
 "$INSTALLER" -vers >/dev/null 2>&1 && pass "-vers succeeds" || fail "-vers succeeds"
 "$INSTALLER" -help >/dev/null 2>&1 && pass "-help succeeds" || fail "-help succeeds"
+
+# ---- Distribution choices -------------------------------------------------
+mkdir dst5
+"$INSTALLER" -pkg "$DIR/choices.pkg" -target "$T/dst5" > choices.out 2>&1
+has() { [ -e "dst5/$1.txt" ]; }
+has default && pass "a choice is selected by default" || fail "a choice is selected by default"
+has startfalse && fail "start_selected=false is not installed" || pass "start_selected=false is not installed"
+has selfalse && fail "selected=false is not installed" || pass "selected=false is not installed"
+has inactive && fail "a pkg-ref with active=false is not installed" || pass "a pkg-ref with active=false is not installed"
+# Darling has no JavaScript engine here: an unevaluated condition keeps the default (selected) and says so.
+# (These two checks describe Darling, not macOS, which evaluates the expression.)
+has js && pass "a JavaScript selected condition keeps the default" || fail "a JavaScript selected condition keeps the default"
+grep -q "Warning: choice Script: the JavaScript in 'selected' is not evaluated" choices.out && pass "an unevaluated JavaScript condition is reported" || fail "an unevaluated JavaScript condition is reported"
+"$INSTALLER" -pkginfo -pkg "$DIR/choices.pkg" 2>&1 | tr '\n' ' ' | grep -qx 'default js ' && pass "-pkginfo lists the packages that would be installed" || fail "-pkginfo lists the packages that would be installed"
 
 echo
 if [ "$fails" -eq 0 ]; then echo "all passed"; else echo "$fails failed"; exit 1; fi
