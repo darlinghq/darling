@@ -19,6 +19,7 @@ it into a copy of `fixtures/unmount-test.dmg` (the command is deprecated but wor
 | `sla-test.dmg` | `5000 good` | English (region 0, Mac Roman), German (region 3, Mac Roman, non-ASCII text and prompt), Japanese (region 14, Shift JIS) |
 | `sla-short-lpic.dmg` | `5000 short-lpic` | as above, the `LPic` table cut off inside its first entry |
 | `sla-overcount.dmg` | `5000 overcount` | as above, `LPic` claims five entries but has three |
+| `sla-lines.dmg` | `5000 lines` | as `sla-test.dmg`, English text `A<CR>B<CR><CR>C<LF>D<CR><LF>` |
 
 The resource layout follows public descriptions of the UDIF licence resources: `LPic` 5000 holds the default
 language and a table of (region code, resource ID - 5000, two-byte flag); per language a `TEXT` (or `RTF `) with
@@ -50,6 +51,7 @@ The user's languages were `en-US`, `cs-CZ`. With stdin not a terminal:
 
 No prompt text is printed when stdin is not a terminal. In a terminal the text is shown in a pager (`(END)`),
 followed by the prompt `Agree Y/N? ` (this case was not automated: `script` runs of it hang on that host).
+Darling prints the text without a pager and then the same prompt; that case is not covered by `dmg-license.sh`.
 
 The text is printed reflowed: a single line break (CR or LF) becomes a space, a run of two or more starts a new
 paragraph (an empty line), and the output ends with a line break. `TEXT` data `A\rB\r\rC\nD\r\n` prints as
