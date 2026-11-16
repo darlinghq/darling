@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <mach-o/loader.h>
+#include <mach-o/fat.h>
 
 struct load_results {
 	unsigned long mh;
@@ -15,6 +17,8 @@ struct load_results {
 
 	unsigned long vm_addr_max;
 	bool _32on64;
+	bool emulated_x86_64;
+	int32_t cputype;
 	unsigned long base;
 	uint32_t bprefs[4];
 	char* root_path;
@@ -34,5 +38,57 @@ struct load_results {
 	char** argv;
 	char** envp;
 };
+
+static inline void mldr_consider_fat_arch(
+	const struct fat_arch* arch,
+	cpu_type_t forced_arch,
+	const uint32_t bprefs[4],
+	struct fat_arch* best_arch,
+	int* bpref_index)
+{
+	if (!forced_arch)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			if (bprefs[j] && (uint32_t)arch->cputype == bprefs[j])
+			{
+				if (*bpref_index == -1 || *bpref_index > j)
+				{
+					*best_arch = *arch;
+					*bpref_index = j;
+					break;
+				}
+			}
+		}
+
+		if (*bpref_index == -1)
+		{
+#if defined(__x86_64__)
+			if (arch->cputype == CPU_TYPE_X86_64)
+				*best_arch = *arch;
+			else if (best_arch->cputype == CPU_TYPE_ANY && arch->cputype == CPU_TYPE_X86)
+				*best_arch = *arch;
+#elif defined(__i386__)
+			if (arch->cputype == CPU_TYPE_X86)
+				*best_arch = *arch;
+#elif defined(__aarch64__)
+			if (arch->cputype == CPU_TYPE_ARM64)
+				*best_arch = *arch;
+			else if ((best_arch->cputype == CPU_TYPE_ANY || best_arch->cputype == CPU_TYPE_ARM) &&
+			         arch->cputype == CPU_TYPE_X86_64)
+				*best_arch = *arch;
+			else if (best_arch->cputype == CPU_TYPE_ANY && arch->cputype == CPU_TYPE_ARM)
+				*best_arch = *arch;
+#else
+#error Unsupported CPU architecture
+#endif
+		}
+	}
+	else
+	{
+		if (arch->cputype == forced_arch)
+			*best_arch = *arch;
+	}
+}
 
 #endif // _MLDR_LOADER_H_

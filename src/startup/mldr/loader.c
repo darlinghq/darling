@@ -14,7 +14,16 @@
 // Keyed on GEN_64BIT, not __aarch64__. mldr.c includes this file twice, once per word
 // size, and __aarch64__ is true in both passes, so a definition guarded only by the
 // architecture is emitted twice and the second one is a redefinition error.
-#if defined(GEN_64BIT) && defined(__aarch64__)
+#if defined(GEN_64BIT)
+#define MLDR_X86_THREAD_STATE64 4
+struct mldr_x86_thread_state64 {
+	uint64_t rax, rbx, rcx, rdx, rdi, rsi, rbp, rsp;
+	uint64_t r8, r9, r10, r11, r12, r13, r14, r15;
+	uint64_t rip, rflags;
+	uint64_t cs, fs, gs;
+};
+#define MLDR_X86_THREAD_STATE64_COUNT (sizeof(struct mldr_x86_thread_state64) / sizeof(uint32_t))
+#if defined(__aarch64__)
 #define MLDR_ARM_THREAD_STATE64 6
 struct mldr_arm_thread_state64 {
 	uint64_t x[29];
@@ -25,6 +34,7 @@ struct mldr_arm_thread_state64 {
 	uint32_t cpsr;
 };
 #define MLDR_ARM_THREAD_STATE64_COUNT (sizeof(struct mldr_arm_thread_state64) / sizeof(uint32_t))
+#endif
 #endif
 
 static int native_prot(int prot);
@@ -250,28 +260,73 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 	void* tmp_map_base = NULL;
 	const int source_fd = fd;
 
+	fat_offset = lseek(fd, 0, SEEK_CUR);
+
 	if (!expect_dylinker)
 	{
+		if (pread(fd, &header, sizeof(header), fat_offset) != sizeof(header))
+		{
+			fprintf(stderr, "Cannot read the mach header.\n");
+			exit(1);
+		}
 #if defined(GEN_64BIT)
+#if defined(__aarch64__)
+		if (header.cputype != CPU_TYPE_ARM64 && header.cputype != CPU_TYPE_X86_64)
+		{
+			fprintf(stderr, "Unsupported 64-bit Mach-O cputype: 0x%x\n", header.cputype);
+			exit(1);
+		}
+		lr->emulated_x86_64 = (header.cputype == CPU_TYPE_X86_64);
+#elif defined(__x86_64__)
+		if (header.cputype != CPU_TYPE_X86_64)
+		{
+			fprintf(stderr, "Unsupported 64-bit Mach-O cputype: 0x%x\n", header.cputype);
+			exit(1);
+		}
+#endif
+		if (lr->cputype != 0 && header.cputype != lr->cputype)
+		{
+			fprintf(stderr, "Mach-O architecture mismatch: expected 0x%x, got 0x%x\n", lr->cputype, header.cputype);
+			exit(1);
+		}
+		lr->cputype = header.cputype;
 		setup_space(lr, true);
 #elif defined(GEN_32BIT)
 		lr->_32on64 = true;
+		lr->cputype = header.cputype;
 		setup_space(lr, false);
 #else
 		#error Unsupported architecture
 #endif
-	}
-
-	fat_offset = lseek(fd, 0, SEEK_CUR);
-
-	if (!expect_dylinker)
 		fd = code_signing_gate(fd, fat_offset, lr);
+	}
 
 	if (read(fd, &header, sizeof(header)) != sizeof(header))
 	{
 		fprintf(stderr, "Cannot read the mach header.\n");
 		exit(1);
 	}
+
+#if defined(GEN_64BIT)
+#if defined(__aarch64__)
+	if (header.cputype != CPU_TYPE_ARM64 && header.cputype != CPU_TYPE_X86_64)
+	{
+		fprintf(stderr, "Unsupported 64-bit Mach-O cputype: 0x%x\n", header.cputype);
+		exit(1);
+	}
+#elif defined(__x86_64__)
+	if (header.cputype != CPU_TYPE_X86_64)
+	{
+		fprintf(stderr, "Unsupported 64-bit Mach-O cputype: 0x%x\n", header.cputype);
+		exit(1);
+	}
+#endif
+	if (lr->cputype != 0 && header.cputype != lr->cputype)
+	{
+		fprintf(stderr, "Mach-O architecture mismatch: expected 0x%x, got 0x%x\n", lr->cputype, header.cputype);
+		exit(1);
+	}
+#endif
 
 	if (header.filetype != (expect_dylinker ? MH_DYLINKER : MH_EXECUTE))
 	{
@@ -528,26 +583,43 @@ no_slide:
 			case LC_UNIXTHREAD:
 			{
 #ifdef GEN_64BIT
-#if defined(__x86_64__)
-				entryPoint = ((uint64_t*) lc)[18];
-#elif defined(__aarch64__)
-				if (lc->cmdsize < sizeof(*lc) + 2 * sizeof(uint32_t) + sizeof(struct mldr_arm_thread_state64)) {
-					fprintf(stderr, "Truncated ARM64 LC_UNIXTHREAD command\n");
-					exit(1);
-				}
 				uint32_t* thread_command_data = (uint32_t*)(lc + 1);
-				if (thread_command_data[0] != MLDR_ARM_THREAD_STATE64 ||
-						thread_command_data[1] < MLDR_ARM_THREAD_STATE64_COUNT ||
-						thread_command_data[1] > (lc->cmdsize - sizeof(*lc) - 2 * sizeof(uint32_t)) / sizeof(uint32_t)) {
-					fprintf(stderr, "Invalid ARM64 LC_UNIXTHREAD state\n");
+				if (header.cputype == CPU_TYPE_X86_64) {
+					if (lc->cmdsize < sizeof(*lc) + 2 * sizeof(uint32_t) + sizeof(struct mldr_x86_thread_state64)) {
+						fprintf(stderr, "Truncated x86_64 LC_UNIXTHREAD command\n");
+						exit(1);
+					}
+					if (thread_command_data[0] != MLDR_X86_THREAD_STATE64 ||
+							thread_command_data[1] < MLDR_X86_THREAD_STATE64_COUNT ||
+							thread_command_data[1] > (lc->cmdsize - sizeof(*lc) - 2 * sizeof(uint32_t)) / sizeof(uint32_t)) {
+						fprintf(stderr, "Invalid x86_64 LC_UNIXTHREAD state\n");
+						exit(1);
+					}
+					struct mldr_x86_thread_state64 state;
+					memcpy(&state, &thread_command_data[2], sizeof(state));
+					entryPoint = state.rip;
+				}
+#if defined(__aarch64__)
+				else if (header.cputype == CPU_TYPE_ARM64) {
+					if (lc->cmdsize < sizeof(*lc) + 2 * sizeof(uint32_t) + sizeof(struct mldr_arm_thread_state64)) {
+						fprintf(stderr, "Truncated ARM64 LC_UNIXTHREAD command\n");
+						exit(1);
+					}
+					if (thread_command_data[0] != MLDR_ARM_THREAD_STATE64 ||
+							thread_command_data[1] < MLDR_ARM_THREAD_STATE64_COUNT ||
+							thread_command_data[1] > (lc->cmdsize - sizeof(*lc) - 2 * sizeof(uint32_t)) / sizeof(uint32_t)) {
+						fprintf(stderr, "Invalid ARM64 LC_UNIXTHREAD state\n");
+						exit(1);
+					}
+					struct mldr_arm_thread_state64 state;
+					memcpy(&state, &thread_command_data[2], sizeof(state));
+					entryPoint = state.pc;
+				}
+#endif
+				else {
+					fprintf(stderr, "Unsupported cputype 0x%x for LC_UNIXTHREAD\n", header.cputype);
 					exit(1);
 				}
-				struct mldr_arm_thread_state64 state;
-				memcpy(&state, &thread_command_data[2], sizeof(state));
-				entryPoint = state.pc;
-#else
-#error Unsupported 64-bit architecture
-#endif
 #endif
 #ifdef GEN_32BIT
 				entryPoint = ((uint32_t*) lc)[14];
