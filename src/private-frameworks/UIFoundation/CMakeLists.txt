@@ -118,6 +118,12 @@ add_framework(UIFoundation
         src/NSWordMLReader.m
         src/NSWordMLWriter.m
 
+        src/NSCollectionViewLayout.m
+        src/NSCollectionViewFlowLayout.m
+        src/NSCollectionViewLayoutAttributes.m
+        src/NSCollectionViewLayoutInvalidationContext.m
+        src/NSIndexPathCollectionViewAdditions.m
+
     DEPENDENCIES
         system
         objc
