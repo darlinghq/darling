@@ -133,7 +133,10 @@ NSString *const NSTextStorageDidProcessEditingNotification =
             postNotificationName: NSTextStorageWillProcessEditingNotification
                           object: self];
 
-    [self fixAttributesInRange: NS_EXTRA(NSTextStorage, self)->_editedRange];
+    // Attribute fixing (font substitution, paragraph styles) is implemented
+    // by AppKit; without AppKit loaded the attributes are left as they are.
+    if ([self respondsToSelector: @selector(fixAttributesInRange:)])
+        [self fixAttributesInRange: NS_EXTRA(NSTextStorage, self)->_editedRange];
 
     if ([_delegate
                 respondsToSelector: @selector(textStorageDidProcessEditing:)]) {
