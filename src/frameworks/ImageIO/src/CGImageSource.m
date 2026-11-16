@@ -199,7 +199,8 @@ CFArrayRef CGImageSourceCopyTypeIdentifiers(void)
 {
     const void *types[] = {
         CFSTR("public.png"), CFSTR("public.tiff"), CFSTR("public.jpeg"),
-        CFSTR("com.microsoft.bmp"), CFSTR("com.compuserve.gif"), CFSTR("com.apple.icns")
+        CFSTR("com.microsoft.bmp"), CFSTR("com.compuserve.gif"), CFSTR("com.apple.icns"),
+        CFSTR("com.adobe.photoshop-image")
     };
     return CFArrayCreate(NULL, types, sizeof types / sizeof types[0], &kCFTypeArrayCallBacks);
 }
