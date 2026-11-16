@@ -120,17 +120,36 @@ OSErr GetCurrentProcess(ProcessSerialNumber* psn)
 	return noErr;
 }
 
-// The frontmost process, as far as this process knows: only SetFrontProcess calls are
-// tracked (the display servers do not tell which process has the input focus).
+// The frontmost process as last requested through SetFrontProcess: the fallback for when the
+// window system cannot say which process has the input focus.
 static std::atomic<pid_t> g_frontPID(0);
+
+static bool processExists(pid_t pid)
+{
+	return pid > 0 && (kill(pid, 0) == 0 || errno == EPERM);
+}
 
 OSErr GetFrontProcess(ProcessSerialNumber* psn)
 {
 	if (!psn)
 		return paramErr;
 
-	pid_t front = g_frontPID.load();
-	if (front > 0 && (kill(front, 0) == 0 || errno == EPERM))
+	// CoreGraphics (the window system layer) knows the process that really has the focus where
+	// the display server tells (X11) or where processes report it (Wayland). It is a private
+	// entry point, looked up at run time, like _CGSActivateProcess below.
+	typedef int32_t (*FrontProcessFunction)(pid_t* pid);
+	static const FrontProcessFunction frontProcess =
+		(FrontProcessFunction) dlsym(RTLD_DEFAULT, "_CGSGetFrontProcess");
+	pid_t front = 0;
+	if (frontProcess && frontProcess(&front) == 0 /* kCGErrorSuccess */ && processExists(front))
+	{
+		if (GetProcessForPID(front, psn) == noErr)
+			return noErr;
+	}
+
+	// Without an answer: the process SetFrontProcess activated last, else this one.
+	front = g_frontPID.load();
+	if (processExists(front))
 		return GetProcessForPID(front, psn);
 	return GetCurrentProcess(psn);
 }
