@@ -26,5 +26,6 @@ add_framework(QD
 
     DEPENDENCIES
 	CoreFoundation
+	CoreGraphics
         system
 )

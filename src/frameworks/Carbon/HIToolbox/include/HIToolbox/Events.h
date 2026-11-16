@@ -12,6 +12,9 @@ typedef OSType EventParamName;
 typedef OSType EventParamType;
 
 void GetKeys(KeyMap theKeys);
+
+// Time since system startup in ticks of 1/60 second.
+UInt32 TickCount(void);
 void FlushEvents(EventMask a, EventMask b);
 
 OSStatus SetEventMask(EventMask a);
