@@ -468,6 +468,10 @@ NSAttributedStringDocumentReadingOptionKey const
     if (oldStorage != newStorage) {
         [_layoutManager retain];
         [oldStorage removeLayoutManager: _layoutManager];
+        // Removal from a text storage leaves the layout manager's unretained
+        // storage pointer behind, which would dangle once the storage is gone.
+        if (newStorage == nil)
+            [_layoutManager setTextStorage: nil];
         [newStorage addLayoutManager: _layoutManager];
         [_layoutManager release];
     }
