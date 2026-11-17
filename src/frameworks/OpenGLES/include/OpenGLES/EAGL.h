@@ -31,19 +31,24 @@ void EAGLGetVersion(unsigned int *major, unsigned int *minor);
 }
 #endif
 
+NS_ASSUME_NONNULL_BEGIN
+
 @interface EAGLSharegroup : NSObject
-@property (copy) NSString *debugLabel;
+@property (nullable, copy, nonatomic) NSString *debugLabel;
 @end
 
 @interface EAGLContext : NSObject
-- (instancetype)initWithAPI:(EAGLRenderingAPI)api;
-- (instancetype)initWithAPI:(EAGLRenderingAPI)api sharegroup:(EAGLSharegroup *)sharegroup;
-+ (BOOL)setCurrentContext:(EAGLContext *)context;
-+ (EAGLContext *)currentContext;
+- (nullable instancetype)init NS_UNAVAILABLE;
+- (nullable instancetype)initWithAPI:(EAGLRenderingAPI)api;
+- (nullable instancetype)initWithAPI:(EAGLRenderingAPI)api sharegroup:(nullable EAGLSharegroup *)sharegroup NS_DESIGNATED_INITIALIZER;
++ (BOOL)setCurrentContext:(nullable EAGLContext *)context;
++ (nullable EAGLContext *)currentContext;
 @property (readonly) EAGLRenderingAPI API;
-@property (readonly) EAGLSharegroup *sharegroup;
-@property (copy) NSString *debugLabel;
-@property (getter=isMultiThreaded) BOOL multiThreaded;
+@property (nonnull, readonly) EAGLSharegroup *sharegroup;
+@property (nullable, copy, nonatomic) NSString *debugLabel;
+@property (getter=isMultiThreaded, nonatomic) BOOL multiThreaded;
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif

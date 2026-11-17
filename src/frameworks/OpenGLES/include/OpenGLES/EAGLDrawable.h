@@ -14,6 +14,8 @@
 
 #import <OpenGLES/EAGL.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
 FOUNDATION_EXPORT NSString *const kEAGLDrawablePropertyRetainedBacking;
 FOUNDATION_EXPORT NSString *const kEAGLDrawablePropertyColorFormat;
 FOUNDATION_EXPORT NSString *const kEAGLColorFormatRGBA8;
@@ -24,15 +26,17 @@ FOUNDATION_EXPORT NSString *const kEAGLColorFormatSRGBA8;
 #ifndef EAGL_DRAWABLE_PROTOCOL
 #define EAGL_DRAWABLE_PROTOCOL
 @protocol EAGLDrawable
-@property (copy) NSDictionary *drawableProperties;
+@property (nullable, copy) NSDictionary<NSString *, id> *drawableProperties;
 @end
 #endif
 
 @interface EAGLContext (EAGLContextDrawableAdditions)
-- (BOOL)renderbufferStorage:(NSUInteger)target fromDrawable:(id<EAGLDrawable>)drawable;
+- (BOOL)renderbufferStorage:(NSUInteger)target fromDrawable:(nullable id<EAGLDrawable>)drawable;
 - (BOOL)presentRenderbuffer:(NSUInteger)target;
 - (BOOL)presentRenderbuffer:(NSUInteger)target atTime:(CFTimeInterval)presentationTime;
 - (BOOL)presentRenderbuffer:(NSUInteger)target afterMinimumDuration:(CFTimeInterval)duration;
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif
