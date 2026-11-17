@@ -321,13 +321,7 @@ static OSStatus renderCallback(void *refCon, AudioUnitRenderActionFlags *flags, 
     STATE(self)->_chunkOffset = 0;
     STATE(self)->_queuedBytes = 0;
     pthread_mutex_unlock(&STATE(self)->_lock);
-    if (STATE(self)->_status == AVQueuedSampleBufferRenderingStatusFailed) {
-        [self willChangeValueForKey:@"status"];
-        STATE(self)->_status = AVQueuedSampleBufferRenderingStatusUnknown;
-        [STATE(self)->_error release];
-        STATE(self)->_error = nil;
-        [self didChangeValueForKey:@"status"];
-    }
+    // A failed renderer stays failed after a flush (macOS 26.7.3 and 10.14.4 probe: status and error kept).
 }
 
 - (void)flushFromSourceTime:(CMTime)time completionHandler:(void (^)(BOOL flushSucceeded))completionHandler
