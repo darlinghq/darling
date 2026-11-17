@@ -256,5 +256,11 @@ if build appkit-workspace-type-icons "$ext/cocotron/tests/appkit-workspace-type-
 	[ "$(rc typeicons)" = 0 ] && pass "type icons" || fail "type icons: $(outputs typeicons)"
 fi
 
+# recycle: recycleURLs:completionHandler: (see nsworkspace-recycle.m)
+if build nsworkspace-recycle "$ext/cocotron/tests/nsworkspace-recycle.m" -framework AppKit; then
+	guest recycle "(d=\$(mktemp -d \"\$HOME/recycle-test.XXXXXX\") || exit 1; '$gw/nsworkspace-recycle' \"\$d\"; r=\$?; rm -rf \"\$d\"; exit \$r)"
+	[ "$(rc recycle)" = 0 ] && pass "recycle" || fail "recycle: $(outputs recycle)"
+fi
+
 rm -rf "$work"
 [ "$failures" = 0 ]
