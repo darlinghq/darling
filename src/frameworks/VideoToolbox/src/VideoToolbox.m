@@ -918,7 +918,7 @@ void* VTPreprocessingSessionSetProperty(void)
 
 // No supplemental decoders exist in this implementation, so there is nothing
 // to register.
-void VTRegisterSupplementalVideoDecoderIfAvailable(uint32_t codecType)
+void VTRegisterSupplementalVideoDecoderIfAvailable(CMVideoCodecType codecType)
 {
     (void) codecType;
 }
