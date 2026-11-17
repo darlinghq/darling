@@ -145,7 +145,6 @@ NSNotificationName const AVSampleBufferAudioRendererOutputConfigurationDidChange
 
 - (void)failWithDescription:(NSString *)description status:(OSStatus)status
 {
-    NSLog(@"%@ failed: %@ (%d)", [self class], description, (int)status);
     [self willChangeValueForKey:@"status"];
     _status = AVQueuedSampleBufferRenderingStatusFailed;
     [_error release];
@@ -247,25 +246,18 @@ static OSStatus renderCallback(void *refCon, AudioUnitRenderActionFlags *flags, 
     if (status != noErr)
         return status;
     AURenderCallbackStruct callback = { renderCallback, self };
-    const char *step = "stream format";
     status = AudioUnitSetProperty(_unit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, format, sizeof(*format));
     if (status == noErr) {
-        step = "render callback";
         status = AudioUnitSetProperty(_unit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0,
                                       &callback, sizeof(callback));
     }
     if (status == noErr) {
-        step = "initialize";
         status = AudioUnitInitialize(_unit);
     }
     if (status == noErr) {
-        step = "start";
         status = AudioOutputUnitStart(_unit);
     }
     if (status != noErr) {
-        NSLog(@"AVSampleBufferAudioRenderer: output unit %s failed (%d) for %.0f Hz, %u channels, %u bits, flags 0x%x",
-              step, (int)status, format->mSampleRate, (unsigned)format->mChannelsPerFrame, (unsigned)format->mBitsPerChannel,
-              (unsigned)format->mFormatFlags);
         AudioComponentInstanceDispose(_unit);
         _unit = NULL;
         return status;

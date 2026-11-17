@@ -66,6 +66,7 @@ static int64_t host_nanoseconds(void)
     int64_t _anchorHostNanoseconds;
     BOOL _delaysRateChangeUntilHasSufficientMediaData;
     NSMutableArray *_renderers;
+    NSMutableArray *_observers; /* live time observers; their timers do not retain us */
 }
 
 - (instancetype)init
@@ -76,12 +77,17 @@ static int64_t host_nanoseconds(void)
         _anchorHostNanoseconds = host_nanoseconds();
         _delaysRateChangeUntilHasSufficientMediaData = YES;
         _renderers = [[NSMutableArray alloc] init];
+        _observers = [[NSMutableArray alloc] init];
     }
     return self;
 }
 
 - (void)dealloc
 {
+    for (_AVSampleBufferRenderSynchronizerObserver *observer in _observers)
+        if (observer->_timer != NULL)
+            dispatch_source_cancel(observer->_timer);
+    [_observers release];
     [_lock release];
     [_renderers release];
     [super dealloc];
@@ -157,8 +163,12 @@ static CMTime current_time(CMTime anchor, int64_t anchorHost, float rate)
 - (void)addRenderer:(id<AVQueuedSampleBufferRendering>)renderer
 {
     [_lock lock];
-    if (![_renderers containsObject:renderer])
-        [_renderers addObject:renderer];
+    if ([_renderers containsObject:renderer]) {
+        [_lock unlock];
+        [NSException raise:NSInternalInconsistencyException
+                    format:@"Cannot add renderer %p : The SampleBufferRenderer cannot be added to a Synchronizer more than once.", renderer];
+    }
+    [_renderers addObject:renderer];
     [_lock unlock];
     if ([(id)renderer respondsToSelector:@selector(_setSynchronizer:)])
         [(id)renderer _setSynchronizer:self];
@@ -183,6 +193,13 @@ static CMTime current_time(CMTime anchor, int64_t anchorHost, float rate)
     }
 }
 
+- (void)trackObserver:(_AVSampleBufferRenderSynchronizerObserver *)observer
+{
+    [_lock lock];
+    [_observers addObject:observer];
+    [_lock unlock];
+}
+
 - (id)addPeriodicTimeObserverForInterval:(CMTime)interval queue:(dispatch_queue_t)queue
                               usingBlock:(void (^)(CMTime time))block
 {
@@ -201,6 +218,7 @@ static CMTime current_time(CMTime anchor, int64_t anchorHost, float rate)
         if (synchronizer.rate != 0)
             report([synchronizer currentTime]);
     });
+    [self trackObserver:observer];
     dispatch_resume(observer->_timer);
     return [observer autorelease];
 }
@@ -228,6 +246,7 @@ static CMTime current_time(CMTime anchor, int64_t anchorHost, float rate)
         }
         watcher->_lastTime = now;
     });
+    [self trackObserver:observer];
     dispatch_resume(observer->_timer);
     return [observer autorelease];
 }
@@ -239,6 +258,9 @@ static CMTime current_time(CMTime anchor, int64_t anchorHost, float rate)
     _AVSampleBufferRenderSynchronizerObserver *o = observer;
     if (o->_timer != NULL)
         dispatch_source_cancel(o->_timer);
+    [_lock lock];
+    [_observers removeObject:o];
+    [_lock unlock];
 }
 
 @end

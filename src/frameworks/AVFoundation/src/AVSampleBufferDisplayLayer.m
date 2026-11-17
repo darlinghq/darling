@@ -20,7 +20,6 @@
 #import <AVFoundation/AVSampleBufferDisplayLayer.h>
 #import <CoreMedia/CoreMedia.h>
 #import <CoreVideo/CoreVideo.h>
-#import <objc/message.h>
 
 NSNotificationName const AVSampleBufferDisplayLayerFailedToDecodeNotification =
     @"AVSampleBufferDisplayLayerFailedToDecodeNotification";
@@ -134,7 +133,6 @@ static CGImageRef createImageFromPixelBuffer(CVPixelBufferRef buffer)
 
 - (void)failWithDescription:(NSString *)description
 {
-    NSLog(@"%@ failed: %@", [self class], description);
     [self willChangeValueForKey:@"status"];
     _status = AVQueuedSampleBufferRenderingStatusFailed;
     [_error release];
@@ -171,15 +169,6 @@ static CGImageRef createImageFromPixelBuffer(CVPixelBufferRef buffer)
         self.contents = (id)image;
         [CATransaction commit];
         CGImageRelease(image);
-        /* UIKit draws a layer's contents with its view: as with a presented GL frame, the view
-           is redrawn and its window flushed. */
-        id view = self.delegate;
-        if ([view respondsToSelector:@selector(setNeedsDisplay:)])
-            ((void (*)(id, SEL, BOOL))objc_msgSend)(view, @selector(setNeedsDisplay:), YES);
-        id window = [view respondsToSelector:@selector(_appKitWindow)]
-            ? ((id (*)(id, SEL))objc_msgSend)(view, @selector(_appKitWindow)) : nil;
-        if ([window respondsToSelector:@selector(displayIfNeeded)])
-            ((void (*)(id, SEL))objc_msgSend)(window, @selector(displayIfNeeded));
     });
 }
 
