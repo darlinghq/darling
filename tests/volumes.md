@@ -139,3 +139,15 @@ CFRunLoop or NSRunLoop with `AEInstallEventHandler` or `NSAppleEventManager`) re
 
 `LSOpenApplication` with a NULL `application` gives `paramErr` (-50). With a directory that has no executable, it
 gives `kLSNoExecutableErr` (-10827).
+
+A logger app set as `NSFileViewer` (in `~/Applications`) recorded the events below, with all parameters and the
+`esrc`/`inte` attributes. Each of these gave the same event, `aevt`/`odoc`, a list of 1 bookmark-data item,
+`'aapd'` = true, `esrc` 3 and `inte` 112:
+- `selectFile:` of a file;
+- `selectFile:` of a folder;
+- `activateFileViewerSelectingURLs:` of a folder;
+- `open -a Viewer <file>`;
+- `open -a Viewer <folder>`;
+- `open -R <file>`.
+
+A reveal cannot be told apart from an open.
