@@ -20,7 +20,7 @@ if (DARLING_ANDROID_HOST)
 	add_definitions(-DDARLING_ANDROID_HOST=1 -DDARLING_ANDROID_TMPDIR="${DARLING_ANDROID_TMPDIR}")
 endif()
 
-add_executable(darling darling.c launcher-env.c launcher-ids.c launcher-locale.c launcher-mode.c launcher-prefix.c launcher-pulse.c launcher-server.c launcher-tmp.c)
+add_executable(darling darling.c launcher-env.c launcher-ids.c launcher-locale.c launcher-mode.c launcher-prefix.c launcher-pulse.c launcher-server.c launcher-tmp.c muvm-trampoline.c)
 
 # Bionic has forkpty() and openpty() in libc and no libutil
 if (NOT DARLING_ANDROID_HOST)
