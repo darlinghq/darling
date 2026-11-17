@@ -21,6 +21,17 @@
 
 @implementation NSCollectionViewFlowLayoutInvalidationContext
 
+// QUIRK: a new context invalidates the delegate metrics and the attributes (both flags are YES), not nothing.
+// Not documented. Evidence: black-box observation on macOS 26.7.3 and 27.0.1 (tier 2).
+// Test: tests/appkit-collection-view-compositional-layout.m (darling-cocotron).
+- (instancetype) init {
+    if ((self = [super init]) != nil) {
+        _invalidateFlowLayoutDelegateMetrics = YES;
+        _invalidateFlowLayoutAttributes = YES;
+    }
+    return self;
+}
+
 - (BOOL) invalidateFlowLayoutDelegateMetrics {
     return _invalidateFlowLayoutDelegateMetrics;
 }
