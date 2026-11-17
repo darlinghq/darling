@@ -44,7 +44,7 @@ jobs:
         # libressl-* submodules are intentionally pinned to fixed historical
         # tags (not moving branches), so they must not be auto-updated.
         # Paths are relative to the top of the darling checkout.
-        pinned='src/external/libressl-2.2.9 src/external/libressl-2.5.5 src/external/libressl-2.6.5 src/external/libressl-2.8.3'
+        pinned='src/external/libressl-2.2.9 src/external/libressl-2.5.5 src/external/libressl-2.6.5 src/external/libressl-2.8.3 src/external/libressl-3.3.6'
 
         branch=update-submodules
         nested_prs=""

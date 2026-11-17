@@ -358,6 +358,10 @@
 	path = src/external/libressl-2.8.3
 	url = ../darling-libressl.git
 	branch = v2.8.3
+[submodule "src/external/libressl-3.3.6"]
+	path = src/external/libressl-3.3.6
+	url = ../darling-libressl.git
+	branch = v3.3.6
 [submodule "src/external/OpenLDAP"]
 	path = src/external/OpenLDAP
 	url = ../darling-openldap.git
