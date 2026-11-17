@@ -150,6 +150,15 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
 	target_link_options(mldr_fex_bridge_test PRIVATE -pthread)
 	target_link_libraries(mldr_fex_bridge_test PRIVATE -ldl)
 	add_test(NAME mldr_fex_bridge COMMAND mldr_fex_bridge_test)
+
+	add_executable(mldr_fexcore_paths_test ${CMAKE_SOURCE_DIR}/tests/mldr/fexcore_paths.c
+		fex/fex_elfcalls.c fex/fex_syscall.c fex/fex_engine.cpp)
+	target_include_directories(mldr_fexcore_paths_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+	set_target_properties(mldr_fexcore_paths_test PROPERTIES LINKER_LANGUAGE CXX)
+	target_compile_options(mldr_fexcore_paths_test PRIVATE -pthread)
+	target_link_options(mldr_fexcore_paths_test PRIVATE -pthread)
+	target_link_libraries(mldr_fexcore_paths_test PRIVATE -ldl)
+	add_test(NAME mldr_fexcore_paths COMMAND mldr_fexcore_paths_test)
 endif()
 
 # mldr must refuse to start without a darlingserver socket path instead of falling back

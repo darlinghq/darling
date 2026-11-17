@@ -15,33 +15,152 @@ typedef int (*darling_fexcore_run_thread_fn)(
 	struct fex_x86_64_state* state,
 	fex_syscall_cb_t syscall_cb);
 
+#define FEXCORE_MAX_CANDIDATES 5
+#define FEXCORE_PATH_MAX 4096
+
 static darling_fexcore_run_thread_fn g_run_thread_fn = nullptr;
 static pthread_once_t g_fexcore_init_once = PTHREAD_ONCE_INIT;
 static uint8_t* g_initial_gs_zero_page = nullptr;
 static uint8_t* g_callback_return_stub = nullptr;
 
+static void add_candidate(const char* path, char* buf, size_t buf_size, size_t* used,
+	size_t* count, size_t max_paths, const char** out)
+{
+	if (*count >= max_paths) {
+		return;
+	}
+	size_t len = strlen(path);
+	if (*used + len + 1 > buf_size) {
+		return;
+	}
+	char* dst = buf + *used;
+	memcpy(dst, path, len + 1);
+	out[*count] = dst;
+	*used += len + 1;
+	(*count)++;
+}
+
+// Fills `out` with the paths to try, in order, writing their text into `buf`; the
+// entries alias `buf` and are only valid until the next call. An explicit
+// DARLING_FEXCORE_LIB overrides discovery entirely: falling back to an installed
+// copy would hide a broken override.
+extern "C" size_t fexcore_candidate_paths(char* buf, size_t buf_size, size_t max_paths,
+	const char** out, const char* self_exe)
+{
+	if (!buf || !out || max_paths == 0) {
+		return 0;
+	}
+	size_t used = 0;
+	size_t count = 0;
+
+	const char* override_path = getenv("DARLING_FEXCORE_LIB");
+	if (override_path && override_path[0]) {
+		add_candidate(override_path, buf, buf_size, &used, &count, max_paths, out);
+		return count;
+	}
+
+	if (self_exe && self_exe[0]) {
+		char dir[FEXCORE_PATH_MAX];
+		size_t len = strlen(self_exe);
+		if (len < sizeof(dir)) {
+			memcpy(dir, self_exe, len + 1);
+			char* slash = strrchr(dir, '/');
+			if (slash) {
+				*slash = '\0';
+			} else {
+				memcpy(dir, ".", 2);
+			}
+
+			// mldr is installed both as <prefix>/libexec/darling/bin/mldr and as
+			// <prefix>/libexec/darling/usr/libexec/darling/mldr, so the shim sits one and
+			// three levels up from those directories respectively.
+			char candidate[FEXCORE_PATH_MAX];
+			int written = snprintf(candidate, sizeof(candidate), "%s/../lib/libdarling-fexcore.so", dir);
+			if (written >= 0 && static_cast<size_t>(written) < sizeof(candidate)) {
+				add_candidate(candidate, buf, buf_size, &used, &count, max_paths, out);
+			}
+			written = snprintf(candidate, sizeof(candidate),
+				"%s/../../../lib/libdarling-fexcore.so", dir);
+			if (written >= 0 && static_cast<size_t>(written) < sizeof(candidate)) {
+				add_candidate(candidate, buf, buf_size, &used, &count, max_paths, out);
+			}
+		}
+	}
+
+	add_candidate(INSTALL_PREFIX "/libexec/darling/lib/libdarling-fexcore.so",
+		buf, buf_size, &used, &count, max_paths, out);
+	add_candidate("libFEXCore.so", buf, buf_size, &used, &count, max_paths, out);
+	return count;
+}
+
+enum candidate_state {
+	CANDIDATE_UNUSED,
+	CANDIDATE_LOAD_FAILED,
+	CANDIDATE_SYMBOL_MISSING,
+};
+
+struct candidate_result {
+	enum candidate_state state;
+	char reason[256];
+};
+
 static void init_fexcore_runtime(void)
 {
-	const char* override_path = getenv("DARLING_FEXCORE_LIB");
-	const char* lib_path = (override_path && override_path[0]) ? override_path : "libFEXCore.so";
+	char self_exe[FEXCORE_PATH_MAX] = "";
+	ssize_t self_len = readlink("/proc/self/exe", self_exe, sizeof(self_exe) - 1);
+	if (self_len > 0) {
+		self_exe[self_len] = '\0';
+	}
 
-	void* handle = dlopen(lib_path, RTLD_NOW | RTLD_LOCAL);
-	if (!handle) {
+	char buf[FEXCORE_MAX_CANDIDATES * FEXCORE_PATH_MAX];
+	const char* paths[FEXCORE_MAX_CANDIDATES];
+	size_t count = fexcore_candidate_paths(buf, sizeof(buf), FEXCORE_MAX_CANDIDATES, paths,
+		self_len > 0 ? self_exe : nullptr);
+
+	// A missing candidate is routine: only one of the discovery paths matches an
+	// install layout. Diagnostics are held back and printed only when the search
+	// fails or when a library that exists cannot be used.
+	struct candidate_result results[FEXCORE_MAX_CANDIDATES] = {};
+	size_t first_broken = 0;
+
+	for (size_t i = 0; i < count; i++) {
+		void* handle = dlopen(paths[i], RTLD_NOW | RTLD_LOCAL);
+		if (!handle) {
+			results[i].state = CANDIDATE_LOAD_FAILED;
+			snprintf(results[i].reason, sizeof(results[i].reason), "%s", dlerror());
+			continue;
+		}
+		void* sym = dlsym(handle, "darling_fexcore_run_thread");
+		if (!sym) {
+			results[i].state = CANDIDATE_SYMBOL_MISSING;
+			snprintf(results[i].reason, sizeof(results[i].reason), "%s", dlerror());
+			dlclose(handle);
+			continue;
+		}
+		g_run_thread_fn = reinterpret_cast<darling_fexcore_run_thread_fn>(sym);
+		break;
+	}
+
+	if (!g_run_thread_fn) {
+		for (size_t i = 0; i < count; i++) {
+			if (results[i].state == CANDIDATE_LOAD_FAILED) {
+				fprintf(stderr, "[mldr/fex] cannot load %s: %s\n", paths[i], results[i].reason);
+			} else if (results[i].state == CANDIDATE_SYMBOL_MISSING) {
+				fprintf(stderr, "[mldr/fex] cannot use %s: %s\n", paths[i], results[i].reason);
+			}
+		}
 		fprintf(stderr,
-			"[mldr/fex] fatal: %s not found (%s); cannot execute x86_64 Mach-O binary on aarch64\n",
-			lib_path, dlerror());
+			"[mldr/fex] fatal: no FEXCore library found; cannot execute an x86_64 Mach-O binary on aarch64\n");
 		exit(1);
 	}
 
-	void* sym = dlsym(handle, "darling_fexcore_run_thread");
-	if (!sym) {
-		fprintf(stderr,
-			"[mldr/fex] fatal: darling_fexcore_run_thread symbol missing in %s (%s)\n",
-			lib_path, dlerror());
-		exit(1);
+	while (first_broken < count && results[first_broken].state != CANDIDATE_SYMBOL_MISSING) {
+		first_broken++;
 	}
-
-	g_run_thread_fn = reinterpret_cast<darling_fexcore_run_thread_fn>(sym);
+	if (first_broken < count) {
+		fprintf(stderr, "[mldr/fex] skipped %s: %s\n", paths[first_broken],
+			results[first_broken].reason);
+	}
 
 	size_t page_sz = static_cast<size_t>(sysconf(_SC_PAGESIZE));
 	void* zero_page = mmap(nullptr, page_sz, PROT_READ | PROT_WRITE,
