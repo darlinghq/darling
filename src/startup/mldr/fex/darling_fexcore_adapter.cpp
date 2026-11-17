@@ -117,7 +117,7 @@ public:
       Frame->State.xmm.sse.data[i][1] = guest.xmm[i][1];
     }
 
-    if (nr == DARLING_FEX_CALLBACK_RETURN_SYSCALL && t_exit_jmp) {
+    if ((nr == DARLING_FEX_CALLBACK_RETURN_SYSCALL || guest.unwind_thread) && t_exit_jmp) {
       longjmp(*t_exit_jmp, 1);
     }
 

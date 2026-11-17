@@ -516,5 +516,6 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 	}
 
 	state->rax = (uint64_t)ret;
+	state->unwind_thread = fex_elfcalls_has_pending_terminate() ? 1 : 0;
 	return ret;
 }

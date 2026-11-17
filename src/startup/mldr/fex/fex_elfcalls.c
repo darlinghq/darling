@@ -29,6 +29,35 @@ static uint32_t g_dlsym_count = 0;
 
 static darling_thread_create_callbacks_t g_guest_thread_cbs = NULL;
 
+struct fex_deferred_terminate {
+	bool pending;
+	void* stackaddr;
+	unsigned long freesize;
+	unsigned long pthobj_size;
+};
+static __thread struct fex_deferred_terminate t_deferred_terminate = { false, NULL, 0, 0 };
+
+bool fex_elfcalls_has_pending_terminate(void)
+{
+	return t_deferred_terminate.pending;
+}
+
+int fex_elfcalls_flush_deferred_terminate(void)
+{
+	if (!t_deferred_terminate.pending)
+		return 0;
+
+	void* stackaddr = t_deferred_terminate.stackaddr;
+	unsigned long freesize = t_deferred_terminate.freesize;
+	unsigned long pthobj_size = t_deferred_terminate.pthobj_size;
+	t_deferred_terminate.pending = false;
+
+	if (g_host_elfcalls.darling_thread_terminate) {
+		return g_host_elfcalls.darling_thread_terminate(stackaddr, freesize, pthobj_size);
+	}
+	return 0;
+}
+
 static void write_x86_64_syscall_stub(uint8_t* dst, uint32_t syscall_nr)
 {
 	// movl $syscall_nr, %eax (0xb8 + imm32); syscall (0x0f 0x05); ret (0xc3); nop (0x90)
@@ -254,15 +283,20 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 	state->rdx = x1;
 	v0 = d0;
 	memcpy(&state->xmm[0][0], &v0, sizeof(double));
-	return (long)x0;
+	long ret = (long)x0;
 #else
 	typedef uint64_t (*host_fn_t)(uint64_t, uint64_t, uint64_t, uint64_t,
 		uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
-	uint64_t ret = ((host_fn_t)target)(state->rdi, state->rsi, state->rdx, state->rcx,
+	uint64_t ret_val = ((host_fn_t)target)(state->rdi, state->rsi, state->rdx, state->rcx,
 		state->r8, state->r9, s0, s1, s2, s3);
-	state->rax = ret;
-	return (long)ret;
+	state->rax = ret_val;
+	long ret = (long)ret_val;
 #endif
+
+	if (t_deferred_terminate.pending) {
+		state->unwind_thread = 1;
+	}
+	return ret;
 }
 
 long fex_elfcalls_dispatch(uint32_t index, struct fex_x86_64_state* state)
@@ -306,11 +340,13 @@ long fex_elfcalls_dispatch(uint32_t index, struct fex_x86_64_state* state)
 				dthread);
 			break;
 		}
-		case 5: // darling_thread_terminate
-			ret = (uint64_t)(int64_t)g_host_elfcalls.darling_thread_terminate(
-				(void*)(uintptr_t)state->rdi,
-				(unsigned long)state->rsi,
-				(unsigned long)state->rdx);
+		case 5: // darling_thread_terminate (deferred until FEX thread cleanup runs)
+			t_deferred_terminate.pending = true;
+			t_deferred_terminate.stackaddr = (void*)(uintptr_t)state->rdi;
+			t_deferred_terminate.freesize = (unsigned long)state->rsi;
+			t_deferred_terminate.pthobj_size = (unsigned long)state->rdx;
+			state->unwind_thread = 1;
+			ret = 0;
 			break;
 		case 6: // darling_thread_get_stack
 			ret = (uintptr_t)g_host_elfcalls.darling_thread_get_stack();
@@ -408,5 +444,8 @@ long fex_elfcalls_dispatch(uint32_t index, struct fex_x86_64_state* state)
 	}
 
 	state->rax = ret;
+	if (t_deferred_terminate.pending) {
+		state->unwind_thread = 1;
+	}
 	return (long)ret;
 }

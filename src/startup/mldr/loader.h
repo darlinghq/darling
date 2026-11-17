@@ -4,8 +4,28 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#if __has_include(<mach-o/loader.h>)
 #include <mach-o/loader.h>
+#endif
+#if __has_include(<mach-o/fat.h>)
 #include <mach-o/fat.h>
+#else
+struct fat_arch {
+	int32_t cputype;
+	int32_t cpusubtype;
+	uint32_t offset;
+	uint32_t size;
+	uint32_t align;
+};
+typedef int32_t cpu_type_t;
+#ifndef CPU_TYPE_ANY
+#define CPU_TYPE_ANY ((cpu_type_t) -1)
+#define CPU_TYPE_X86 ((cpu_type_t) 7)
+#define CPU_TYPE_ARM ((cpu_type_t) 12)
+#define CPU_TYPE_X86_64 ((cpu_type_t) (CPU_TYPE_X86 | 0x01000000))
+#define CPU_TYPE_ARM64 ((cpu_type_t) (CPU_TYPE_ARM | 0x01000000))
+#endif
+#endif
 
 struct load_results {
 	unsigned long mh;
