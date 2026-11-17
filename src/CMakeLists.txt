@@ -563,6 +563,7 @@ if (COMPONENT_gui)
 	add_subdirectory(CoreAudio)
 	add_subdirectory(external/cups)
 	add_subdirectory(pboard)
+	add_subdirectory(distnoted)
 
 	# /Applications
 	add_subdirectory(external/TextEdit)
