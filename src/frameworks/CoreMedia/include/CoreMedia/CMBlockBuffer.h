@@ -63,6 +63,13 @@ CM_EXPORT OSStatus CMBlockBufferCreateWithMemoryBlock(CFAllocatorRef structureAl
 	size_t blockLength, CFAllocatorRef blockAllocator, const CMBlockBufferCustomBlockSource *customBlockSource,
 	size_t offsetToData, size_t dataLength, CMBlockBufferFlags flags,
 	CF_RETURNS_RETAINED CMBlockBufferRef *blockBufferOut);
+CM_EXPORT OSStatus CMBlockBufferAssureBlockMemory(CMBlockBufferRef theBuffer);
+CM_EXPORT Boolean CMBlockBufferIsRangeContiguous(CMBlockBufferRef theBuffer, size_t offset, size_t length);
+CM_EXPORT Boolean CMBlockBufferIsEmpty(CMBlockBufferRef theBuffer);
+CM_EXPORT OSStatus CMBlockBufferCopyDataBytes(CMBlockBufferRef theSourceBuffer, size_t offsetToData, size_t dataLength,
+	void *destination);
+CM_EXPORT OSStatus CMBlockBufferFillDataBytes(char fillByte, CMBlockBufferRef destinationBuffer,
+	size_t offsetIntoDestination, size_t dataLength);
 CM_EXPORT size_t CMBlockBufferGetDataLength(CMBlockBufferRef theBuffer);
 CM_EXPORT OSStatus CMBlockBufferGetDataPointer(CMBlockBufferRef theBuffer, size_t offset,
 	size_t *lengthAtOffsetOut, size_t *totalLengthOut, char **dataPointerOut);

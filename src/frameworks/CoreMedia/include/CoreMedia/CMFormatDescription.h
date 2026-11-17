@@ -30,6 +30,7 @@ enum {
 	kCMFormatDescriptionError_InvalidParameter = -12710,
 	kCMFormatDescriptionError_AllocationFailed = -12711,
 	kCMFormatDescriptionError_ValueNotAvailable = -12718,
+	kCMFormatDescriptionBridgeError_InvalidParameter = -12712,
 };
 
 typedef const struct CF_BRIDGED_TYPE(id) opaqueCMFormatDescription *CMFormatDescriptionRef;
@@ -117,6 +118,7 @@ CM_EXPORT const CFStringRef kCMFormatDescriptionExtension_SampleDescriptionExten
 CM_EXPORT const CFStringRef kCMFormatDescriptionExtension_VerbatimSampleDescription;
 
 CM_EXPORT CFTypeID CMFormatDescriptionGetTypeID(void);
+CM_EXPORT Boolean CMFormatDescriptionEqual(CMFormatDescriptionRef desc, CMFormatDescriptionRef otherDesc);
 CM_EXPORT CMMediaType CMFormatDescriptionGetMediaType(CMFormatDescriptionRef desc);
 CM_EXPORT FourCharCode CMFormatDescriptionGetMediaSubType(CMFormatDescriptionRef desc);
 CM_EXPORT CFDictionaryRef CMFormatDescriptionGetExtensions(CMFormatDescriptionRef desc);

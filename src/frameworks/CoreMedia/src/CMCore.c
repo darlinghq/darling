@@ -26,21 +26,13 @@
 #include <CoreVideo/CoreVideo.h>
 #include <dispatch/dispatch.h>
 #include <string.h>
-#include <math.h>
-#include <stdio.h>
 #include <stdlib.h>
-
-static void unimplemented(const char *function)
-{
-	if (getenv("STUB_VERBOSE") != NULL)
-		fprintf(stderr, "CoreMedia: %s is not implemented\n", function);
-}
 
 #pragma mark - CF classes
 
-#define CM_CLASS(name, finalizer) \
+#define CM_CLASS(name, cname, ...) \
 	static CFTypeID name##TypeID = _kCFRuntimeNotATypeID; \
-	static const CFRuntimeClass name##Class = { .version = 0, .className = #name, .finalize = finalizer }; \
+	static const CFRuntimeClass name##Class = { .version = 0, .className = cname, __VA_ARGS__ }; \
 	static CFTypeID name##GetTypeID(void) \
 	{ \
 		static dispatch_once_t once; \
@@ -75,7 +67,37 @@ static void formatDescriptionFinalize(CFTypeRef cf)
 	free(desc->cookie);
 }
 
-CM_CLASS(CMFormatDescription_, formatDescriptionFinalize)
+static Boolean sameBytes(const void *a, size_t aSize, const void *b, size_t bSize)
+{
+	return aSize == bSize && (aSize == 0 || memcmp(a, b, aSize) == 0);
+}
+
+/* Descriptions of the same media type and subtype whose parameters and extensions are equal are
+   equal. */
+static Boolean formatDescriptionEqual(CFTypeRef cf1, CFTypeRef cf2)
+{
+	const struct opaqueCMFormatDescription *a = cf1, *b = cf2;
+	if (a->mediaType != b->mediaType || a->subType != b->subType)
+		return false;
+	if (a->extensions != b->extensions && (a->extensions == NULL || b->extensions == NULL
+		|| !CFEqual(a->extensions, b->extensions)))
+		return false;
+	if (a->mediaType == kCMMediaType_Video)
+		return a->dimensions.width == b->dimensions.width && a->dimensions.height == b->dimensions.height;
+	if (a->mediaType == kCMMediaType_Audio)
+		return memcmp(&a->asbd, &b->asbd, sizeof(a->asbd)) == 0
+			&& sameBytes(a->layout, a->layoutSize, b->layout, b->layoutSize)
+			&& sameBytes(a->cookie, a->cookieSize, b->cookie, b->cookieSize);
+	return true;
+}
+
+static CFHashCode formatDescriptionHash(CFTypeRef cf)
+{
+	const struct opaqueCMFormatDescription *desc = cf;
+	return (CFHashCode)desc->mediaType ^ ((CFHashCode)desc->subType << 1);
+}
+
+CM_CLASS(CMFormatDescription_, "CMFormatDescription", .finalize = formatDescriptionFinalize, .equal = formatDescriptionEqual, .hash = formatDescriptionHash)
 
 static struct opaqueCMFormatDescription *newFormatDescription(CFAllocatorRef allocator, CMMediaType mediaType,
 	FourCharCode subType, CFDictionaryRef extensions)
@@ -90,6 +112,13 @@ static struct opaqueCMFormatDescription *newFormatDescription(CFAllocatorRef all
 }
 
 CFTypeID CMFormatDescriptionGetTypeID(void) { return CMFormatDescription_GetTypeID(); }
+
+Boolean CMFormatDescriptionEqual(CMFormatDescriptionRef desc1, CMFormatDescriptionRef desc2)
+{
+	if (desc1 == NULL || desc2 == NULL)
+		return desc1 == desc2;
+	return CFEqual(desc1, desc2);
+}
 
 CMMediaType CMFormatDescriptionGetMediaType(CMFormatDescriptionRef desc) { return desc ? desc->mediaType : 0; }
 FourCharCode CMFormatDescriptionGetMediaSubType(CMFormatDescriptionRef desc) { return desc ? desc->subType : 0; }
@@ -188,8 +217,13 @@ OSStatus CMVideoFormatDescriptionGetH264ParameterSetAtIndex(CMFormatDescriptionR
 		*NALUnitHeaderLengthOut = nalLength;
 	if (parameterSetPointerOut == NULL && parameterSetSizeOut == NULL)
 		return noErr;
-	if (parameterSetIndex >= count)
-		return kCMFormatDescriptionError_InvalidParameter;
+	if (parameterSetIndex >= count) {
+		if (parameterSetPointerOut != NULL)
+			*parameterSetPointerOut = NULL;
+		if (parameterSetSizeOut != NULL)
+			*parameterSetSizeOut = 0;
+		return kCMFormatDescriptionBridgeError_InvalidParameter;
+	}
 	if (parameterSetPointerOut != NULL)
 		*parameterSetPointerOut = sets[parameterSetIndex];
 	if (parameterSetSizeOut != NULL)
@@ -213,8 +247,10 @@ OSStatus CMAudioFormatDescriptionCreate(CFAllocatorRef allocator, const AudioStr
 {
 	if (formatDescriptionOut != NULL)
 		*formatDescriptionOut = NULL;
-	if (asbd == NULL || formatDescriptionOut == NULL || (layoutSize != 0 && layout == NULL)
-		|| (magicCookieSize != 0 && magicCookie == NULL))
+	/* QUIRK: a non-zero layout or cookie size with a NULL pointer is not an error; the description is made
+	   without that layout or cookie. Observed on macOS 10.14.4 and 26.7.3 (black-box, tier 2).
+	   Test: test_quirk_audio_description_null_layout_with_size in coremedia_objects.c */
+	if (asbd == NULL || formatDescriptionOut == NULL)
 		return kCMFormatDescriptionError_InvalidParameter;
 	struct opaqueCMFormatDescription *desc = newFormatDescription(allocator, kCMMediaType_Audio, asbd->mFormatID, extensions);
 	if (desc == NULL)
@@ -275,12 +311,26 @@ static void blockBufferFinalize(CFTypeRef cf)
 		CFRelease(buffer->blockAllocator);
 }
 
-CM_CLASS(CMBlockBuffer_, blockBufferFinalize)
+CM_CLASS(CMBlockBuffer_, "CMBlockBuffer", .finalize = blockBufferFinalize)
 
 CFTypeID CMBlockBufferGetTypeID(void) { return CMBlockBuffer_GetTypeID(); }
 
-/* With no memory block, one of blockLength bytes is allocated, by the custom source or the block
-   allocator (the default one when NULL), and freed the same way; kCFAllocatorNull frees nothing. */
+/* Memory is taken from the custom source, or the block allocator (the default one when NULL), and freed
+   the same way; kCFAllocatorNull frees nothing. Without a memory block, the block is only allocated
+   when asked for (kCMBlockBufferAssureMemoryNowFlag or CMBlockBufferAssureBlockMemory), and one cannot
+   be described without a length. */
+static OSStatus assureMemory(struct OpaqueCMBlockBuffer *buffer)
+{
+	if (buffer->memory != NULL || buffer->blockLength == 0)
+		return kCMBlockBufferNoErr;
+	if (buffer->hasSource)
+		buffer->memory = buffer->source.AllocateBlock != NULL
+			? buffer->source.AllocateBlock(buffer->source.refCon, buffer->blockLength) : NULL;
+	else
+		buffer->memory = CFAllocatorAllocate(buffer->blockAllocator, buffer->blockLength, 0);
+	return buffer->memory != NULL ? kCMBlockBufferNoErr : kCMBlockBufferBlockAllocationFailedErr;
+}
+
 OSStatus CMBlockBufferCreateWithMemoryBlock(CFAllocatorRef structureAllocator, void *memoryBlock, size_t blockLength,
 	CFAllocatorRef blockAllocator, const CMBlockBufferCustomBlockSource *customBlockSource, size_t offsetToData,
 	size_t dataLength, CMBlockBufferFlags flags, CMBlockBufferRef *blockBufferOut)
@@ -288,13 +338,14 @@ OSStatus CMBlockBufferCreateWithMemoryBlock(CFAllocatorRef structureAllocator, v
 	if (blockBufferOut == NULL)
 		return kCMBlockBufferBadPointerParameterErr;
 	*blockBufferOut = NULL;
-	if (offsetToData > blockLength || dataLength > blockLength - offsetToData)
+	if ((memoryBlock == NULL && blockLength == 0) || offsetToData > blockLength || dataLength > blockLength - offsetToData)
 		return kCMBlockBufferBadLengthParameterErr;
 	if (customBlockSource != NULL && customBlockSource->version != kCMBlockBufferCustomBlockSourceVersion)
 		return kCMBlockBufferBadCustomBlockSourceErr;
 	struct OpaqueCMBlockBuffer *buffer = CM_NEW(struct OpaqueCMBlockBuffer *, CMBlockBuffer_, structureAllocator);
 	if (buffer == NULL)
 		return kCMBlockBufferStructureAllocationFailedErr;
+	buffer->memory = memoryBlock;
 	buffer->blockLength = blockLength;
 	buffer->offset = offsetToData;
 	buffer->dataLength = dataLength;
@@ -302,42 +353,86 @@ OSStatus CMBlockBufferCreateWithMemoryBlock(CFAllocatorRef structureAllocator, v
 		buffer->source = *customBlockSource;
 		buffer->hasSource = true;
 	} else {
-		buffer->blockAllocator = CFRetain(blockAllocator != NULL ? blockAllocator : kCFAllocatorDefault);
+		buffer->blockAllocator = CFRetain(blockAllocator != NULL ? blockAllocator : CFAllocatorGetDefault());
 	}
-	if (memoryBlock == NULL && blockLength > 0) {
-		if (buffer->hasSource)
-			memoryBlock = buffer->source.AllocateBlock ? buffer->source.AllocateBlock(buffer->source.refCon, blockLength) : NULL;
-		else
-			memoryBlock = CFAllocatorAllocate(buffer->blockAllocator, blockLength, 0);
-		if (memoryBlock == NULL) {
+	if ((flags & kCMBlockBufferAssureMemoryNowFlag) != 0) {
+		OSStatus status = assureMemory(buffer);
+		if (status != kCMBlockBufferNoErr) {
 			CFRelease(buffer);
-			return kCMBlockBufferBlockAllocationFailedErr;
+			return status;
 		}
 	}
-	buffer->memory = memoryBlock;
 	*blockBufferOut = buffer;
 	return kCMBlockBufferNoErr;
 }
 
+OSStatus CMBlockBufferAssureBlockMemory(CMBlockBufferRef theBuffer)
+{
+	return theBuffer == NULL ? kCMBlockBufferBadPointerParameterErr : assureMemory(theBuffer);
+}
+
 size_t CMBlockBufferGetDataLength(CMBlockBufferRef theBuffer) { return theBuffer ? theBuffer->dataLength : 0; }
+
+Boolean CMBlockBufferIsEmpty(CMBlockBufferRef theBuffer) { return theBuffer == NULL || theBuffer->dataLength == 0; }
+
+/* The data of one memory block is contiguous when it is allocated and the range lies inside it. */
+Boolean CMBlockBufferIsRangeContiguous(CMBlockBufferRef theBuffer, size_t offset, size_t length)
+{
+	return theBuffer != NULL && theBuffer->memory != NULL && offset <= theBuffer->dataLength
+		&& length <= theBuffer->dataLength - offset;
+}
 
 OSStatus CMBlockBufferGetDataPointer(CMBlockBufferRef theBuffer, size_t offset, size_t *lengthAtOffsetOut,
 	size_t *totalLengthOut, char **dataPointerOut)
 {
 	if (theBuffer == NULL)
 		return kCMBlockBufferBadPointerParameterErr;
-	if (theBuffer->dataLength == 0)
-		return kCMBlockBufferEmptyBBufErr;
+	if (lengthAtOffsetOut != NULL)
+		*lengthAtOffsetOut = 0;
+	if (totalLengthOut != NULL)
+		*totalLengthOut = theBuffer->dataLength;
+	if (dataPointerOut != NULL)
+		*dataPointerOut = NULL;
 	if (offset >= theBuffer->dataLength)
-		return kCMBlockBufferBadOffsetParameterErr;
+		return theBuffer->dataLength == 0 ? kCMBlockBufferEmptyBBufErr : kCMBlockBufferBadOffsetParameterErr;
 	if (theBuffer->memory == NULL)
 		return kCMBlockBufferUnallocatedBlockErr;
 	if (lengthAtOffsetOut != NULL)
 		*lengthAtOffsetOut = theBuffer->dataLength - offset;
-	if (totalLengthOut != NULL)
-		*totalLengthOut = theBuffer->dataLength;
 	if (dataPointerOut != NULL)
 		*dataPointerOut = (char *)theBuffer->memory + theBuffer->offset + offset;
+	return kCMBlockBufferNoErr;
+}
+
+OSStatus CMBlockBufferCopyDataBytes(CMBlockBufferRef theSourceBuffer, size_t offsetToData, size_t dataLength,
+	void *destination)
+{
+	if (theSourceBuffer == NULL || destination == NULL)
+		return kCMBlockBufferBadPointerParameterErr;
+	if (offsetToData > theSourceBuffer->dataLength || dataLength > theSourceBuffer->dataLength - offsetToData)
+		return kCMBlockBufferBadLengthParameterErr;
+	if (dataLength == 0)
+		return kCMBlockBufferNoErr;
+	if (theSourceBuffer->memory == NULL)
+		return kCMBlockBufferUnallocatedBlockErr;
+	memcpy(destination, (const char *)theSourceBuffer->memory + theSourceBuffer->offset + offsetToData, dataLength);
+	return kCMBlockBufferNoErr;
+}
+
+OSStatus CMBlockBufferFillDataBytes(char fillByte, CMBlockBufferRef destinationBuffer, size_t offsetIntoDestination,
+	size_t dataLength)
+{
+	if (destinationBuffer == NULL)
+		return kCMBlockBufferBadPointerParameterErr;
+	if (offsetIntoDestination > destinationBuffer->dataLength
+		|| dataLength > destinationBuffer->dataLength - offsetIntoDestination)
+		return kCMBlockBufferBadLengthParameterErr;
+	if (dataLength == 0)
+		return kCMBlockBufferNoErr;
+	OSStatus status = assureMemory(destinationBuffer);
+	if (status != kCMBlockBufferNoErr)
+		return status;
+	memset((char *)destinationBuffer->memory + destinationBuffer->offset + offsetIntoDestination, fillByte, dataLength);
 	return kCMBlockBufferNoErr;
 }
 
@@ -355,6 +450,8 @@ struct opaqueCMSampleBuffer {
 	CMItemCount numSizes;
 	CFMutableArrayRef attachments;
 	Boolean dataReady;
+	CMSampleBufferMakeDataReadyCallback makeDataReady;
+	void *makeDataReadyRefcon;
 };
 
 static void sampleBufferFinalize(CFTypeRef cf)
@@ -372,7 +469,7 @@ static void sampleBufferFinalize(CFTypeRef cf)
 	free(sbuf->sizes);
 }
 
-CM_CLASS(CMSampleBuffer_, sampleBufferFinalize)
+CM_CLASS(CMSampleBuffer_, "CMSampleBuffer", .finalize = sampleBufferFinalize)
 
 CFTypeID CMSampleBufferGetTypeID(void) { return CMSampleBuffer_GetTypeID(); }
 
@@ -402,8 +499,18 @@ static struct opaqueCMSampleBuffer *newSampleBuffer(CFAllocatorRef allocator, CM
 	return sbuf;
 }
 
-/* A buffer that is not ready would be made ready by the callback when its data is needed; this
-   CoreMedia asks for it at once. */
+/* A buffer that is not ready is made ready by the callback when CMSampleBufferMakeDataReady asks for
+   it, not at creation. */
+static void setDataReady(struct opaqueCMSampleBuffer *sbuf, Boolean dataReady,
+	CMSampleBufferMakeDataReadyCallback callback, void *refcon)
+{
+	sbuf->dataReady = dataReady;
+	if (!dataReady) {
+		sbuf->makeDataReady = callback;
+		sbuf->makeDataReadyRefcon = refcon;
+	}
+}
+
 OSStatus CMSampleBufferCreate(CFAllocatorRef allocator, CMBlockBufferRef dataBuffer, Boolean dataReady,
 	CMSampleBufferMakeDataReadyCallback makeDataReadyCallback, void *makeDataReadyRefcon,
 	CMFormatDescriptionRef formatDescription, CMItemCount numSamples, CMItemCount numSampleTimingEntries,
@@ -419,11 +526,7 @@ OSStatus CMSampleBufferCreate(CFAllocatorRef allocator, CMBlockBufferRef dataBuf
 	if (sbuf == NULL)
 		return status;
 	sbuf->dataBuffer = dataBuffer ? (CMBlockBufferRef)CFRetain(dataBuffer) : NULL;
-	sbuf->dataReady = dataReady;
-	if (!dataReady && makeDataReadyCallback != NULL && dataBuffer != NULL) {
-		status = makeDataReadyCallback(sbuf, makeDataReadyRefcon);
-		sbuf->dataReady = status == noErr;
-	}
+	setDataReady(sbuf, dataReady, makeDataReadyCallback, makeDataReadyRefcon);
 	*sampleBufferOut = sbuf;
 	return noErr;
 }
@@ -453,9 +556,7 @@ OSStatus CMSampleBufferCreateForImageBuffer(CFAllocatorRef allocator, CVImageBuf
 	if (sbuf == NULL)
 		return status;
 	sbuf->imageBuffer = (CVImageBufferRef)CFRetain(imageBuffer);
-	sbuf->dataReady = dataReady;
-	if (!dataReady && makeDataReadyCallback != NULL)
-		sbuf->dataReady = makeDataReadyCallback(sbuf, makeDataReadyRefcon) == noErr;
+	setDataReady(sbuf, dataReady, makeDataReadyCallback, makeDataReadyRefcon);
 	*sampleBufferOut = sbuf;
 	return noErr;
 }
@@ -466,6 +567,23 @@ OSStatus CMSampleBufferCreateReadyWithImageBuffer(CFAllocatorRef allocator, CVIm
 {
 	return CMSampleBufferCreateForImageBuffer(allocator, imageBuffer, true, NULL, NULL, formatDescription,
 		sampleTiming, sampleBufferOut);
+}
+
+Boolean CMSampleBufferDataIsReady(CMSampleBufferRef sbuf) { return sbuf != NULL && sbuf->dataReady; }
+
+OSStatus CMSampleBufferMakeDataReady(CMSampleBufferRef sbuf)
+{
+	if (sbuf == NULL)
+		return kCMSampleBufferError_RequiredParameterMissing;
+	struct opaqueCMSampleBuffer *mutable = (struct opaqueCMSampleBuffer *)sbuf;
+	if (mutable->dataReady)
+		return noErr;
+	if (mutable->makeDataReady == NULL)
+		return kCMSampleBufferError_BufferNotReady;
+	OSStatus status = mutable->makeDataReady(sbuf, mutable->makeDataReadyRefcon);
+	if (status == noErr)
+		mutable->dataReady = true;
+	return status;
 }
 
 CVImageBufferRef CMSampleBufferGetImageBuffer(CMSampleBufferRef sbuf) { return sbuf ? sbuf->imageBuffer : NULL; }
@@ -486,7 +604,7 @@ CMTime CMSampleBufferGetDecodeTimeStamp(CMSampleBufferRef sbuf)
 /* One timing entry for many samples gives each sample's duration. */
 CMTime CMSampleBufferGetDuration(CMSampleBufferRef sbuf)
 {
-	if (sbuf == NULL || sbuf->numTiming == 0)
+	if (sbuf == NULL)
 		return kCMTimeInvalid;
 	if (sbuf->numTiming == 1)
 		return CMTimeMultiply(sbuf->timing[0].duration, (int32_t)sbuf->numSamples);
@@ -513,7 +631,13 @@ CFArrayRef CMSampleBufferGetSampleAttachmentsArray(CMSampleBufferRef sbuf, Boole
 	return sbuf->attachments;
 }
 
-/* Each sample in turn, as a sample buffer of its own sharing the data. */
+static void releaseParentBlock(void *refcon, void *doomedMemoryBlock, size_t sizeInBytes)
+{
+	CFRelease((CMBlockBufferRef)refcon);
+}
+
+/* Each sample in turn, as a sample buffer of its own sharing the data; its block keeps the parent's
+   block alive. */
 OSStatus CMSampleBufferCallForEachSample(CMSampleBufferRef sbuf,
 	OSStatus (*callback)(CMSampleBufferRef sampleBuffer, CMItemCount index, void *refcon), void *refcon)
 {
@@ -537,8 +661,13 @@ OSStatus CMSampleBufferCallForEachSample(CMSampleBufferRef sbuf,
 		char *data = NULL;
 		CMBlockBufferRef block = NULL;
 		OSStatus status = noErr;
-		if (sbuf->dataBuffer != NULL && CMBlockBufferGetDataPointer(sbuf->dataBuffer, offset, NULL, NULL, &data) == noErr)
-			status = CMBlockBufferCreateWithMemoryBlock(NULL, data, size, kCFAllocatorNull, NULL, 0, size, 0, &block);
+		if (sbuf->dataBuffer != NULL && CMBlockBufferGetDataPointer(sbuf->dataBuffer, offset, NULL, NULL, &data) == noErr) {
+			CMBlockBufferCustomBlockSource source = { kCMBlockBufferCustomBlockSourceVersion, NULL, releaseParentBlock,
+				(void *)CFRetain(sbuf->dataBuffer) };
+			status = CMBlockBufferCreateWithMemoryBlock(NULL, data, size, NULL, &source, 0, size, 0, &block);
+			if (status != noErr)
+				CFRelease(sbuf->dataBuffer);
+		}
 		CMSampleBufferRef sample = NULL;
 		if (status == noErr)
 			status = CMSampleBufferCreate(NULL, block, true, NULL, NULL, sbuf->formatDescription, 1, 1, &timing, 1,

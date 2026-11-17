@@ -296,16 +296,6 @@ void* CMBlockBufferAppendMemoryBlock(void) {
     return NULL;
 }
 
-void* CMBlockBufferAssureBlockMemory(void) {
-    if (verbose) puts("STUB: CMBlockBufferAssureBlockMemory called");
-    return NULL;
-}
-
-void* CMBlockBufferCopyDataBytes(void) {
-    if (verbose) puts("STUB: CMBlockBufferCopyDataBytes called");
-    return NULL;
-}
-
 void* CMBlockBufferCreateContiguous(void) {
     if (verbose) puts("STUB: CMBlockBufferCreateContiguous called");
     return NULL;
@@ -318,21 +308,6 @@ void* CMBlockBufferCreateEmpty(void) {
 
 void* CMBlockBufferCreateWithBufferReference(void) {
     if (verbose) puts("STUB: CMBlockBufferCreateWithBufferReference called");
-    return NULL;
-}
-
-void* CMBlockBufferFillDataBytes(void) {
-    if (verbose) puts("STUB: CMBlockBufferFillDataBytes called");
-    return NULL;
-}
-
-void* CMBlockBufferIsEmpty(void) {
-    if (verbose) puts("STUB: CMBlockBufferIsEmpty called");
-    return NULL;
-}
-
-void* CMBlockBufferIsRangeContiguous(void) {
-    if (verbose) puts("STUB: CMBlockBufferIsRangeContiguous called");
     return NULL;
 }
 
@@ -616,11 +591,6 @@ void* CMFormatDescriptionCreate(void) {
     return NULL;
 }
 
-void* CMFormatDescriptionEqual(void) {
-    if (verbose) puts("STUB: CMFormatDescriptionEqual called");
-    return NULL;
-}
-
 void* CMFormatDescriptionEqualIgnoringExtensionKeys(void) {
     if (verbose) puts("STUB: CMFormatDescriptionEqualIgnoringExtensionKeys called");
     return NULL;
@@ -871,11 +841,6 @@ void* CMSampleBufferCreateCopyWithNewTiming(void) {
     return NULL;
 }
 
-void* CMSampleBufferDataIsReady(void) {
-    if (verbose) puts("STUB: CMSampleBufferDataIsReady called");
-    return NULL;
-}
-
 void* CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(void) {
     if (verbose) puts("STUB: CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer called");
     return NULL;
@@ -948,11 +913,6 @@ void* CMSampleBufferInvalidate(void) {
 
 void* CMSampleBufferIsValid(void) {
     if (verbose) puts("STUB: CMSampleBufferIsValid called");
-    return NULL;
-}
-
-void* CMSampleBufferMakeDataReady(void) {
-    if (verbose) puts("STUB: CMSampleBufferMakeDataReady called");
     return NULL;
 }
 
