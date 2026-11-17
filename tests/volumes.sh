@@ -193,5 +193,51 @@ then
 	guest wv-cleanup "test -e '/Volumes/Unmount Test' && hdiutil detach -quiet '/Volumes/Unmount Test'; true"
 fi
 
+# mount notifications: NSWorkspace's DidMount, WillUnmount and DidUnmount, in macOS's order, on the main thread,
+# for attach, detach, our own eject and a dissented eject (see nsworkspace-mount-notifications.m)
+if build nsworkspace-mount-notifications "$ext/cocotron/tests/nsworkspace-mount-notifications.m" -framework AppKit \
+	&& build da-ops "$here/da-ops.c" -framework DiskArbitration -framework CoreFoundation
+then
+	cp "$here/fixtures/slash-name.dmg" "$work/"
+	guest notes "'$gw/nsworkspace-mount-notifications' '$gw/unmount-test.dmg' '/Volumes/Unmount Test' '$gw/da-ops'"
+	guest notes-slash "'$gw/nsworkspace-mount-notifications' '$gw/slash-name.dmg' '/Volumes/A:B'"
+	guest notes-cleanup "test -e '/Volumes/Unmount Test' && hdiutil detach -quiet '/Volumes/Unmount Test'; test -e '/Volumes/A:B' && hdiutil detach -quiet '/Volumes/A:B'; true"
+	# an eject that took less than 5 s is written "elapsed=<5"
+	normalize() { sed -E 's/elapsed=([0-4])\.[0-9]/elapsed=<5/' "$work/$1.out"; }
+	u="/Volumes/Unmount Test Unmount Test url=1 object=1 main=1"
+	cat >"$work/notes.expected" <<EXPECTED
+same workspace on another thread=1
+step 1
+DidMount $u
+step 2
+WillUnmount $u
+DidUnmount $u
+step 3
+DidMount $u
+WillUnmount $u
+DidUnmount $u
+eject: 1 elapsed=<5 posted-before-return=1
+step 4
+DidMount $u
+WillUnmount $u
+dissented eject: 0 elapsed=<5 posted-before-return=0
+WillUnmount $u
+DidUnmount $u
+eject: 1 elapsed=<5 posted-before-return=1
+EXPECTED
+	if normalize notes | diff "$work/notes.expected" - >"$work/notes.diff" && [ "$(rc notes)" = 0 ]; then
+		pass "mount notifications"
+	else
+		fail "mount notifications: $(tr '\n' '|' <"$work/notes.diff") $(cat "$work/notes.err")"
+	fi
+	a="/Volumes/A:B A/B url=1 object=1 main=1"
+	printf 'same workspace on another thread=1\nstep 1\nDidMount %s\nstep 2\nWillUnmount %s\nDidUnmount %s\n' "$a" "$a" "$a" >"$work/notes-slash.expected"
+	if diff "$work/notes-slash.expected" "$work/notes-slash.out" >"$work/notes-slash.diff" && [ "$(rc notes-slash)" = 0 ]; then
+		pass "mount notifications, a name with a slash"
+	else
+		fail "mount notifications, a name with a slash: $(tr '\n' '|' <"$work/notes-slash.diff") $(cat "$work/notes-slash.err")"
+	fi
+fi
+
 rm -rf "$work"
 [ "$failures" = 0 ]
