@@ -68,5 +68,57 @@ if build volume-flags "$ext/xnu/tests/volume-flags.c"; then
 	fi
 fi
 
+# volume keys: NSURL's volume resource keys for volumes and for a file in one (see nsurl-volume-keys.m)
+value() { # <name> <path> <key>: the value the program printed for that path and key
+	awk -v p="== $2" -v k="$3 = " '$0 == p { on = 1; next } /^== / { on = 0 } on && index($0, k) == 1 { print substr($0, length(k) + 1); exit }' "$work/$1.out"
+}
+expect_key() { # <name> <path> <key> <expected>
+	got=$(value "$1" "$2" "NSURL$3Key")
+	[ "$got" = "$4" ] || { keys_ok=0; echo "  $2: $3 is '$got', expected '$4'"; }
+}
+if build nsurl-volume-keys "$ext/corefoundation/tests/nsurl-volume-keys.m" -framework Foundation; then
+	cp "$here/fixtures/slash-name.dmg" "$here/fixtures/amp-name.dmg" "$work/"
+	guest keys-attach "hdiutil attach -quiet '$gw/unmount-test.dmg' && hdiutil attach -quiet '$gw/slash-name.dmg' && hdiutil attach -quiet '$gw/amp-name.dmg'"
+	guest keys "'$gw/nsurl-volume-keys' / '/Volumes/Unmount Test/' '/Volumes/Unmount Test/hello.txt' '/Volumes/A:B' '/Volumes/Tom & Jerry <1>'"
+	guest keys-detach "hdiutil detach -quiet '/Volumes/Unmount Test'; hdiutil detach -quiet '/Volumes/A:B'; hdiutil detach -quiet '/Volumes/Tom & Jerry <1>'"
+	guest keys-after "'$gw/nsurl-volume-keys' '/Volumes/Unmount Test' /Volumes"
+	keys_ok=1
+	for p in '/Volumes/Unmount Test/' '/Volumes/Unmount Test/hello.txt'; do
+		expect_key keys "$p" VolumeName "Unmount Test"
+		expect_key keys "$p" VolumeLocalizedName "Unmount Test"
+		for k in VolumeIsEjectable VolumeIsRemovable VolumeIsReadOnly VolumeIsLocal VolumeIsBrowsable; do
+			expect_key keys "$p" $k 1
+		done
+		expect_key keys "$p" VolumeIsRootFileSystem 0
+		expect_key keys "$p" VolumeIsInternal nil
+		expect_key keys "$p" VolumeLocalizedFormatDescription "Mac OS Extended"
+		expect_key keys "$p" VolumeTypeName hfs
+		expect_key keys "$p" VolumeURL "file:///Volumes/Unmount%20Test/"
+		expect_key keys "$p" VolumeIdentifier "8 bytes"
+	done
+	expect_key keys '/Volumes/Unmount Test/' IsVolume 1
+	expect_key keys '/Volumes/Unmount Test/hello.txt' IsVolume 0
+	case $(value keys '/Volumes/Unmount Test/' NSURLVolumeUUIDStringKey) in
+		????????-????-????-????-????????????) ;;
+		*) keys_ok=0; echo "  the image has no volume UUID" ;;
+	esac
+	expect_key keys / VolumeIsEjectable 0
+	expect_key keys / VolumeIsRemovable 0
+	expect_key keys / VolumeIsInternal 1
+	expect_key keys / VolumeIsRootFileSystem 1
+	expect_key keys / VolumeIsBrowsable 1
+	expect_key keys / IsVolume 1
+	expect_key keys / VolumeURL "file:///"
+	expect_key keys '/Volumes/A:B' VolumeName "A/B"
+	expect_key keys '/Volumes/Tom & Jerry <1>' VolumeName "Tom & Jerry <1>"
+	[ "$keys_ok" = 1 ] && [ "$(rc keys)" = 0 ] && pass "volume keys" || fail "volume keys: $(rc keys) $(cat "$work/keys.err")"
+	# after the image is detached (Review Focus 2)
+	keys_ok=1
+	expect_key keys-after /Volumes VolumeURL "file:///"
+	expect_key keys-after '/Volumes/Unmount Test' VolumeName nil
+	[ "$keys_ok" = 1 ] && [ "$(rc keys-after)" = 0 ] && pass "volume keys after detach" \
+		|| fail "volume keys after detach: $(rc keys-after) $(outputs keys-after)"
+fi
+
 rm -rf "$work"
 [ "$failures" = 0 ]
