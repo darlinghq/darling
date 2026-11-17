@@ -102,9 +102,25 @@ static void* mock_thread_get_stack(void)
 	return (void*)0x7fff00002000ULL;
 }
 
+static char g_fork_seq[128] = "";
+static bool g_fork_last_is_child = false;
+static int g_fork_stub_ret = 4242;
+
+static void test_fork_lock_hook(void)
+{
+	strcat(g_fork_seq, "lock;");
+}
+
+static void test_fork_unlock_hook(bool is_child)
+{
+	g_fork_last_is_child = is_child;
+	strcat(g_fork_seq, is_child ? "unlock(child);" : "unlock(parent);");
+}
+
 static int mock_native_fork(void)
 {
-	return 4242;
+	strcat(g_fork_seq, "fork;");
+	return g_fork_stub_ret;
 }
 
 static int mock_inherited_nofile_limit(unsigned int limits[2])
@@ -215,9 +231,49 @@ static void test_elfcalls_trampolines(void)
 	      last_cb_fn == 0x100200UL && last_cb_arg0 == 0x12345000UL && last_cb_arg1 == 9,
 		"wrapped thread_set_tsd_base works from a child pthread and updates thread gs_base");
 
+	fex_elfcalls_set_fork_hooks(test_fork_lock_hook, test_fork_unlock_hook);
+
+	// 1. native_fork in parent (ret = 4242)
+	g_fork_seq[0] = '\0';
+	g_fork_stub_ret = 4242;
 	memset(&st, 0, sizeof(st));
 	st.rax = DARLING_FEX_ELFCALL_SYSCALL_BASE + 31;
-	check(fex_linux_syscall_dispatch(&st) == 4242, "native_fork (slot 31) dispatches");
+	long r_fork1 = fex_linux_syscall_dispatch(&st);
+	check(r_fork1 == 4242 && st.rax == 4242, "native_fork (slot 31) dispatches in parent");
+	check(strcmp(g_fork_seq, "lock;fork;unlock(parent);") == 0 && !g_fork_last_is_child,
+		"native_fork parent runs lock -> fork -> unlock(is_child=false)");
+
+	// 2. native_fork in child (ret = 0)
+	g_fork_seq[0] = '\0';
+	g_fork_stub_ret = 0;
+	memset(&st, 0, sizeof(st));
+	st.rax = DARLING_FEX_ELFCALL_SYSCALL_BASE + 31;
+	long r_fork2 = fex_linux_syscall_dispatch(&st);
+	check(r_fork2 == 0 && st.rax == 0, "native_fork (slot 31) returns 0 in child");
+	check(strcmp(g_fork_seq, "lock;fork;unlock(child);") == 0 && g_fork_last_is_child,
+		"native_fork child runs lock -> fork -> unlock(is_child=true)");
+
+	// 3. native_fork on error (ret = -EAGAIN)
+	g_fork_seq[0] = '\0';
+	g_fork_stub_ret = -EAGAIN;
+	memset(&st, 0, sizeof(st));
+	st.rax = DARLING_FEX_ELFCALL_SYSCALL_BASE + 31;
+	long r_fork3 = fex_linux_syscall_dispatch(&st);
+	check(r_fork3 == -EAGAIN && st.rax == (uint64_t)(int64_t)-EAGAIN, "native_fork (slot 31) returns -EAGAIN on error");
+	check(strcmp(g_fork_seq, "lock;fork;unlock(parent);") == 0 && !g_fork_last_is_child,
+		"native_fork error runs lock -> fork -> unlock(is_child=false)");
+
+	// 4. native_fork with NULL hooks reset
+	fex_elfcalls_set_fork_hooks(NULL, NULL);
+	g_fork_seq[0] = '\0';
+	g_fork_stub_ret = 777;
+	memset(&st, 0, sizeof(st));
+	st.rax = DARLING_FEX_ELFCALL_SYSCALL_BASE + 31;
+	long r_fork_nohooks = fex_linux_syscall_dispatch(&st);
+	check(r_fork_nohooks == 777 && st.rax == 777,
+		"native_fork (slot 31) dispatches cleanly with NULL fork hooks");
+	check(strcmp(g_fork_seq, "fork;") == 0,
+		"native_fork with NULL hooks invokes host fork without hook callbacks");
 
 	unsigned int limits[2] = {0, 0};
 	memset(&st, 0, sizeof(st));

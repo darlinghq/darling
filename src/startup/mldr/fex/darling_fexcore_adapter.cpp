@@ -251,3 +251,15 @@ extern "C" int darling_fexcore_run_thread(
   ::munmap(callret_alloc, callret_alloc_size);
   return static_cast<int>(state->rax);
 }
+
+extern "C" void darling_fexcore_lock_before_fork(void) {
+  if (g_ctx) {
+    g_ctx->LockBeforeFork(t_thread_state);
+  }
+}
+
+extern "C" void darling_fexcore_unlock_after_fork(bool is_child) {
+  if (g_ctx) {
+    g_ctx->UnlockAfterFork(t_thread_state, is_child);
+  }
+}
