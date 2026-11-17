@@ -27,6 +27,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "muvm-trampoline.h"
 
+extern char** environ;
+
 // The launcher target is built without the mach-o include directory mldr uses,
 // so only the few header fields the decision needs are declared here.
 #ifndef MH_MAGIC_64
@@ -49,6 +51,25 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define FAT_MAX_ARCHS 64U
 #define FAT_ARCH_SIZE 20U
 #define HEADER_SIZE (8U + FAT_MAX_ARCHS * FAT_ARCH_SIZE)
+
+// muvm passes only named variables into the guest; mldr needs the prefix and
+// the architecture preference, and a GUI program needs its session.
+static const char* const kForwardedVariables[] =
+{
+	"HOME",
+	"USER",
+	"LOGNAME",
+	"SHELL",
+	"PATH",
+	"TERM",
+	"TMPDIR",
+	"LANG",
+	"LC_ALL",
+	"XDG_RUNTIME_DIR",
+	"WAYLAND_DISPLAY",
+	"DPREFIX",
+	"__mldr_bprefs",
+};
 
 static uint32_t swap32(uint32_t value)
 {
@@ -203,4 +224,125 @@ bool darling_muvm_needed(long page_size, enum darling_target_slice slice)
 bool darling_muvm_stdio_ok(int stdin_fd, int stdout_fd, int stderr_fd)
 {
 	return isatty(stdin_fd) && isatty(stdout_fd) && isatty(stderr_fd);
+}
+
+// An environ entry for name, or NULL when the variable is not set. An entry
+// that does not match the whole name (PATHX for PATH) does not count.
+static const char* environEntry(const char* name)
+{
+	size_t length = strlen(name);
+
+	for (char** entry = environ; *entry != NULL; entry++)
+	{
+		if (strncmp(*entry, name, length) == 0 && (*entry)[length] == '=')
+			return *entry;
+	}
+
+	return NULL;
+}
+
+static size_t countForwardedVariables(void)
+{
+	size_t count = 0;
+
+	for (size_t i = 0; i < sizeof(kForwardedVariables) / sizeof(kForwardedVariables[0]); i++)
+	{
+		if (environEntry(kForwardedVariables[i]) != NULL)
+			count++;
+	}
+
+	// Every DARLING_* variable the user set, for local paths the launcher's
+	// configuration uses.
+	for (char** entry = environ; *entry != NULL; entry++)
+	{
+		if (strncmp(*entry, "DARLING_", 8) == 0 && (*entry)[8] != '=')
+			count++;
+	}
+
+	return count;
+}
+
+bool darling_reexec_under_muvm(char* const argv[], size_t target_index, const char* target_path)
+{
+	static char launcher[4096];
+	ssize_t launcher_length;
+	size_t argc, forwarded, slots, at, name_bytes;
+	char** muvm_argv;
+	char* names;
+	char* cursor;
+
+	for (argc = 0; argv[argc] != NULL; argc++)
+		;
+
+	launcher_length = readlink("/proc/self/exe", launcher, sizeof(launcher) - 1);
+	if (launcher_length <= 0 || (size_t) launcher_length >= sizeof(launcher) - 1)
+		return false;
+	launcher[launcher_length] = '\0';
+
+	forwarded = countForwardedVariables();
+
+	// muvm, one "-e NAME" pair per forwarded variable, "--", the launcher, every
+	// argument but argv[0], and the null terminator.
+	slots = 2 * forwarded + argc + 3;
+	muvm_argv = calloc(slots, sizeof(*muvm_argv));
+	if (muvm_argv == NULL)
+		return false;
+
+	// The DARLING_* names have to be split out of their "NAME=value" entries.
+	name_bytes = 0;
+	for (char** entry = environ; *entry != NULL; entry++)
+	{
+		if (strncmp(*entry, "DARLING_", 8) == 0 && (*entry)[8] != '=')
+			name_bytes += strcspn(*entry, "=") + 1;
+	}
+	names = malloc(name_bytes ? name_bytes : 1);
+	if (names == NULL)
+	{
+		free(muvm_argv);
+		return false;
+	}
+	cursor = names;
+
+	at = 0;
+	muvm_argv[at++] = (char*) "muvm";
+
+	for (size_t i = 0; i < sizeof(kForwardedVariables) / sizeof(kForwardedVariables[0]); i++)
+	{
+		if (environEntry(kForwardedVariables[i]) != NULL)
+		{
+			muvm_argv[at++] = (char*) "-e";
+			muvm_argv[at++] = (char*) kForwardedVariables[i];
+		}
+	}
+
+	for (char** entry = environ; *entry != NULL; entry++)
+	{
+		if (strncmp(*entry, "DARLING_", 8) == 0 && (*entry)[8] != '=')
+		{
+			size_t length = strcspn(*entry, "=");
+
+			memcpy(cursor, *entry, length);
+			cursor[length] = '\0';
+			muvm_argv[at++] = (char*) "-e";
+			muvm_argv[at++] = cursor;
+			cursor += length + 1;
+		}
+	}
+
+	// Everything between the launcher and the target is the subcommand, if any,
+	// and stays as it is; only the target becomes the resolved absolute path.
+	muvm_argv[at++] = (char*) "--";
+	muvm_argv[at++] = launcher;
+
+	for (size_t i = 1; i < target_index; i++)
+		muvm_argv[at++] = argv[i];
+	muvm_argv[at++] = (char*) target_path;
+
+	for (size_t i = target_index + 1; i < argc; i++)
+		muvm_argv[at++] = argv[i];
+
+	muvm_argv[at] = NULL;
+
+	execvp("muvm", muvm_argv);
+	return false;
 }

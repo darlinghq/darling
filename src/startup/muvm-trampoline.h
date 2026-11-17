@@ -53,4 +53,11 @@ bool darling_muvm_needed(long page_size, enum darling_target_slice slice);
 // console to a terminal; a redirected descriptor would silently lose output.
 bool darling_muvm_stdio_ok(int stdin_fd, int stdout_fd, int stderr_fd);
 
+// Re-executes this launcher under muvm, with the launcher path made absolute,
+// argv[target_index] replaced by target_path, the arguments before the target
+// kept as they are, and the variables muvm needs forwarded with -e. Must be
+// called with privileges already dropped: execve preserves the saved set-uid.
+// Returns only on failure, with errno set.
+bool darling_reexec_under_muvm(char* const argv[], size_t target_index, const char* target_path);
+
 #endif // _MUVM_TRAMPOLINE_H
