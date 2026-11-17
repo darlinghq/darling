@@ -25,6 +25,7 @@ struct gles_slot {
 void *gles_resolve(struct gles_slot *slot);
 
 #ifdef GLES_FUNCTIONS_C
+#if defined(__arm64__)
 /* Saves the argument registers around gles_resolve, then jumps to the
  * function: x16 holds the slot. */
 __asm__(
@@ -62,16 +63,79 @@ __asm__(
 	"\tmov sp, x29\n"
 	"\tldp x29, x30, [sp], #16\n"
 	"\tbr x17\n");
+#elif defined(__x86_64__)
+/* The same on x86_64, where the guest and the host share the System V
+ * calling convention: saves the six integer argument registers, the vector
+ * count that variadic callers pass in al and xmm0-7 around gles_resolve,
+ * then jumps to the function. r11 holds the slot. */
+__asm__(
+	".text\n"
+	".p2align 4\n"
+	".private_extern _gles_trampoline_common\n"
+	"_gles_trampoline_common:\n"
+	"\tmovq (%r11), %r10\n"
+	"\ttestq %r10, %r10\n"
+	"\tjz 1f\n"
+	"\tjmp *%r10\n"
+	"1:\tpushq %rbp\n"
+	"\tmovq %rsp, %rbp\n"
+	"\tsubq $192, %rsp\n"
+	"\tmovq %rdi, 0(%rsp)\n"
+	"\tmovq %rsi, 8(%rsp)\n"
+	"\tmovq %rdx, 16(%rsp)\n"
+	"\tmovq %rcx, 24(%rsp)\n"
+	"\tmovq %r8, 32(%rsp)\n"
+	"\tmovq %r9, 40(%rsp)\n"
+	"\tmovq %rax, 48(%rsp)\n"
+	"\tmovdqu %xmm0, 64(%rsp)\n"
+	"\tmovdqu %xmm1, 80(%rsp)\n"
+	"\tmovdqu %xmm2, 96(%rsp)\n"
+	"\tmovdqu %xmm3, 112(%rsp)\n"
+	"\tmovdqu %xmm4, 128(%rsp)\n"
+	"\tmovdqu %xmm5, 144(%rsp)\n"
+	"\tmovdqu %xmm6, 160(%rsp)\n"
+	"\tmovdqu %xmm7, 176(%rsp)\n"
+	"\tmovq %r11, %rdi\n"
+	"\tcall _gles_resolve\n"
+	"\tmovq %rax, %r10\n"
+	"\tmovq 0(%rsp), %rdi\n"
+	"\tmovq 8(%rsp), %rsi\n"
+	"\tmovq 16(%rsp), %rdx\n"
+	"\tmovq 24(%rsp), %rcx\n"
+	"\tmovq 32(%rsp), %r8\n"
+	"\tmovq 40(%rsp), %r9\n"
+	"\tmovq 48(%rsp), %rax\n"
+	"\tmovdqu 64(%rsp), %xmm0\n"
+	"\tmovdqu 80(%rsp), %xmm1\n"
+	"\tmovdqu 96(%rsp), %xmm2\n"
+	"\tmovdqu 112(%rsp), %xmm3\n"
+	"\tmovdqu 128(%rsp), %xmm4\n"
+	"\tmovdqu 144(%rsp), %xmm5\n"
+	"\tmovdqu 160(%rsp), %xmm6\n"
+	"\tmovdqu 176(%rsp), %xmm7\n"
+	"\tmovq %rbp, %rsp\n"
+	"\tpopq %rbp\n"
+	"\tjmp *%r10\n");
+#else
+#error "OpenGLES is built for x86_64 and arm64 only"
+#endif
 #endif
 
 #define GLES_SLOT(name) \
 	__attribute__((visibility("hidden"), used)) struct gles_slot gles_slot_##name = { 0, #name };
 
+#if defined(__arm64__)
 #define GLES_TRAMPOLINE(name) \
 	__asm__(".text\n.p2align 2\n.globl _" #name "\n_" #name ":\n" \
 		"\tadrp x16, _gles_slot_" #name "@PAGE\n" \
 		"\tadd x16, x16, _gles_slot_" #name "@PAGEOFF\n" \
 		"\tb _gles_trampoline_common\n");
+#else
+#define GLES_TRAMPOLINE(name) \
+	__asm__(".text\n.p2align 4\n.globl _" #name "\n_" #name ":\n" \
+		"\tleaq _gles_slot_" #name "(%rip), %r11\n" \
+		"\tjmp _gles_trampoline_common\n");
+#endif
 
 /* A stack argument as the host reads it: in the low bytes of 8. */
 static inline uint64_t gles_stack_gp(const void *value, size_t size)

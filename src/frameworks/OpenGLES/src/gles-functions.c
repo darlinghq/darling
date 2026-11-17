@@ -123,20 +123,32 @@ GLES_TRAMPOLINE(glBlendFunciOES)
 GLES_SLOT(glBlendParameteriNV)
 GLES_TRAMPOLINE(glBlendParameteriNV)
 GLES_SLOT(glBlitFramebuffer)
+#if defined(__arm64__)
 void glBlitFramebuffer(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter)
 {
 	((void (*)(GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLint, uint64_t, uint64_t))gles_resolve(&gles_slot_glBlitFramebuffer))(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, gles_stack_gp(&mask, sizeof(mask)), gles_stack_gp(&filter, sizeof(filter)));
 }
+#else
+GLES_TRAMPOLINE(glBlitFramebuffer)
+#endif
 GLES_SLOT(glBlitFramebufferANGLE)
+#if defined(__arm64__)
 void glBlitFramebufferANGLE(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter)
 {
 	((void (*)(GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLint, uint64_t, uint64_t))gles_resolve(&gles_slot_glBlitFramebufferANGLE))(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, gles_stack_gp(&mask, sizeof(mask)), gles_stack_gp(&filter, sizeof(filter)));
 }
+#else
+GLES_TRAMPOLINE(glBlitFramebufferANGLE)
+#endif
 GLES_SLOT(glBlitFramebufferNV)
+#if defined(__arm64__)
 void glBlitFramebufferNV(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter)
 {
 	((void (*)(GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLint, uint64_t, uint64_t))gles_resolve(&gles_slot_glBlitFramebufferNV))(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, gles_stack_gp(&mask, sizeof(mask)), gles_stack_gp(&filter, sizeof(filter)));
 }
+#else
+GLES_TRAMPOLINE(glBlitFramebufferNV)
+#endif
 GLES_SLOT(glBufferAttachMemoryNV)
 GLES_TRAMPOLINE(glBufferAttachMemoryNV)
 GLES_SLOT(glBufferData)
@@ -186,10 +198,14 @@ GLES_TRAMPOLINE(glClearStencil)
 GLES_SLOT(glClearTexImageEXT)
 GLES_TRAMPOLINE(glClearTexImageEXT)
 GLES_SLOT(glClearTexSubImageEXT)
+#if defined(__arm64__)
 void glClearTexSubImageEXT(GLuint texture, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, const void * data)
 {
 	((void (*)(GLuint, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, uint64_t, uint64_t, uint64_t))gles_resolve(&gles_slot_glClearTexSubImageEXT))(texture, level, xoffset, yoffset, zoffset, width, height, depth, gles_stack_gp(&format, sizeof(format)), gles_stack_gp(&type, sizeof(type)), gles_stack_gp(&data, sizeof(data)));
 }
+#else
+GLES_TRAMPOLINE(glClearTexSubImageEXT)
+#endif
 GLES_SLOT(glClientActiveTexture)
 GLES_TRAMPOLINE(glClientActiveTexture)
 GLES_SLOT(glClientWaitSync)
@@ -239,15 +255,23 @@ GLES_TRAMPOLINE(glCompressedTexImage3DOES)
 GLES_SLOT(glCompressedTexSubImage2D)
 GLES_TRAMPOLINE(glCompressedTexSubImage2D)
 GLES_SLOT(glCompressedTexSubImage3D)
+#if defined(__arm64__)
 void glCompressedTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei imageSize, const void * data)
 {
 	((void (*)(GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, uint64_t, uint64_t, uint64_t))gles_resolve(&gles_slot_glCompressedTexSubImage3D))(target, level, xoffset, yoffset, zoffset, width, height, depth, gles_stack_gp(&format, sizeof(format)), gles_stack_gp(&imageSize, sizeof(imageSize)), gles_stack_gp(&data, sizeof(data)));
 }
+#else
+GLES_TRAMPOLINE(glCompressedTexSubImage3D)
+#endif
 GLES_SLOT(glCompressedTexSubImage3DOES)
+#if defined(__arm64__)
 void glCompressedTexSubImage3DOES(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei imageSize, const void * data)
 {
 	((void (*)(GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, uint64_t, uint64_t, uint64_t))gles_resolve(&gles_slot_glCompressedTexSubImage3DOES))(target, level, xoffset, yoffset, zoffset, width, height, depth, gles_stack_gp(&format, sizeof(format)), gles_stack_gp(&imageSize, sizeof(imageSize)), gles_stack_gp(&data, sizeof(data)));
 }
+#else
+GLES_TRAMPOLINE(glCompressedTexSubImage3DOES)
+#endif
 GLES_SLOT(glConservativeRasterParameteriNV)
 GLES_TRAMPOLINE(glConservativeRasterParameteriNV)
 GLES_SLOT(glCopyBufferSubData)
@@ -255,20 +279,32 @@ GLES_TRAMPOLINE(glCopyBufferSubData)
 GLES_SLOT(glCopyBufferSubDataNV)
 GLES_TRAMPOLINE(glCopyBufferSubDataNV)
 GLES_SLOT(glCopyImageSubData)
+#if defined(__arm64__)
 void glCopyImageSubData(GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth)
 {
 	((void (*)(GLuint, GLenum, GLint, GLint, GLint, GLint, GLuint, GLenum, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))gles_resolve(&gles_slot_glCopyImageSubData))(srcName, srcTarget, srcLevel, srcX, srcY, srcZ, dstName, dstTarget, gles_stack_gp(&dstLevel, sizeof(dstLevel)), gles_stack_gp(&dstX, sizeof(dstX)), gles_stack_gp(&dstY, sizeof(dstY)), gles_stack_gp(&dstZ, sizeof(dstZ)), gles_stack_gp(&srcWidth, sizeof(srcWidth)), gles_stack_gp(&srcHeight, sizeof(srcHeight)), gles_stack_gp(&srcDepth, sizeof(srcDepth)));
 }
+#else
+GLES_TRAMPOLINE(glCopyImageSubData)
+#endif
 GLES_SLOT(glCopyImageSubDataEXT)
+#if defined(__arm64__)
 void glCopyImageSubDataEXT(GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth)
 {
 	((void (*)(GLuint, GLenum, GLint, GLint, GLint, GLint, GLuint, GLenum, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))gles_resolve(&gles_slot_glCopyImageSubDataEXT))(srcName, srcTarget, srcLevel, srcX, srcY, srcZ, dstName, dstTarget, gles_stack_gp(&dstLevel, sizeof(dstLevel)), gles_stack_gp(&dstX, sizeof(dstX)), gles_stack_gp(&dstY, sizeof(dstY)), gles_stack_gp(&dstZ, sizeof(dstZ)), gles_stack_gp(&srcWidth, sizeof(srcWidth)), gles_stack_gp(&srcHeight, sizeof(srcHeight)), gles_stack_gp(&srcDepth, sizeof(srcDepth)));
 }
+#else
+GLES_TRAMPOLINE(glCopyImageSubDataEXT)
+#endif
 GLES_SLOT(glCopyImageSubDataOES)
+#if defined(__arm64__)
 void glCopyImageSubDataOES(GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth)
 {
 	((void (*)(GLuint, GLenum, GLint, GLint, GLint, GLint, GLuint, GLenum, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))gles_resolve(&gles_slot_glCopyImageSubDataOES))(srcName, srcTarget, srcLevel, srcX, srcY, srcZ, dstName, dstTarget, gles_stack_gp(&dstLevel, sizeof(dstLevel)), gles_stack_gp(&dstX, sizeof(dstX)), gles_stack_gp(&dstY, sizeof(dstY)), gles_stack_gp(&dstZ, sizeof(dstZ)), gles_stack_gp(&srcWidth, sizeof(srcWidth)), gles_stack_gp(&srcHeight, sizeof(srcHeight)), gles_stack_gp(&srcDepth, sizeof(srcDepth)));
 }
+#else
+GLES_TRAMPOLINE(glCopyImageSubDataOES)
+#endif
 GLES_SLOT(glCopyPathNV)
 GLES_TRAMPOLINE(glCopyPathNV)
 GLES_SLOT(glCopyTexImage2D)
@@ -558,10 +594,14 @@ GLES_TRAMPOLINE(glExtGetShadersQCOM)
 GLES_SLOT(glExtGetTexLevelParameterivQCOM)
 GLES_TRAMPOLINE(glExtGetTexLevelParameterivQCOM)
 GLES_SLOT(glExtGetTexSubImageQCOM)
+#if defined(__arm64__)
 void glExtGetTexSubImageQCOM(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, void * texels)
 {
 	((void (*)(GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, uint64_t, uint64_t, uint64_t))gles_resolve(&gles_slot_glExtGetTexSubImageQCOM))(target, level, xoffset, yoffset, zoffset, width, height, depth, gles_stack_gp(&format, sizeof(format)), gles_stack_gp(&type, sizeof(type)), gles_stack_gp(&texels, sizeof(texels)));
 }
+#else
+GLES_TRAMPOLINE(glExtGetTexSubImageQCOM)
+#endif
 GLES_SLOT(glExtGetTexturesQCOM)
 GLES_TRAMPOLINE(glExtGetTexturesQCOM)
 GLES_SLOT(glExtIsProgramBinaryQCOM)
@@ -1853,10 +1893,14 @@ GLES_TRAMPOLINE(glTexImage3DOES)
 GLES_SLOT(glTexPageCommitmentEXT)
 GLES_TRAMPOLINE(glTexPageCommitmentEXT)
 GLES_SLOT(glTexPageCommitmentMemNV)
+#if defined(__arm64__)
 void glTexPageCommitmentMemNV(GLenum target, GLint layer, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLuint memory, GLuint64 offset, GLboolean commit)
 {
 	((void (*)(GLenum, GLint, GLint, GLint, GLint, GLint, GLsizei, GLsizei, uint64_t, uint64_t, uint64_t, uint64_t))gles_resolve(&gles_slot_glTexPageCommitmentMemNV))(target, layer, level, xoffset, yoffset, zoffset, width, height, gles_stack_gp(&depth, sizeof(depth)), gles_stack_gp(&memory, sizeof(memory)), gles_stack_gp(&offset, sizeof(offset)), gles_stack_gp(&commit, sizeof(commit)));
 }
+#else
+GLES_TRAMPOLINE(glTexPageCommitmentMemNV)
+#endif
 GLES_SLOT(glTexParameterIiv)
 GLES_TRAMPOLINE(glTexParameterIiv)
 GLES_SLOT(glTexParameterIivEXT)
@@ -1916,24 +1960,36 @@ GLES_TRAMPOLINE(glTexStorageMem3DMultisampleEXT)
 GLES_SLOT(glTexSubImage2D)
 GLES_TRAMPOLINE(glTexSubImage2D)
 GLES_SLOT(glTexSubImage3D)
+#if defined(__arm64__)
 void glTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, const void * pixels)
 {
 	((void (*)(GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, uint64_t, uint64_t, uint64_t))gles_resolve(&gles_slot_glTexSubImage3D))(target, level, xoffset, yoffset, zoffset, width, height, depth, gles_stack_gp(&format, sizeof(format)), gles_stack_gp(&type, sizeof(type)), gles_stack_gp(&pixels, sizeof(pixels)));
 }
+#else
+GLES_TRAMPOLINE(glTexSubImage3D)
+#endif
 GLES_SLOT(glTexSubImage3DOES)
+#if defined(__arm64__)
 void glTexSubImage3DOES(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, const void * pixels)
 {
 	((void (*)(GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, uint64_t, uint64_t, uint64_t))gles_resolve(&gles_slot_glTexSubImage3DOES))(target, level, xoffset, yoffset, zoffset, width, height, depth, gles_stack_gp(&format, sizeof(format)), gles_stack_gp(&type, sizeof(type)), gles_stack_gp(&pixels, sizeof(pixels)));
 }
+#else
+GLES_TRAMPOLINE(glTexSubImage3DOES)
+#endif
 GLES_SLOT(glTextureAttachMemoryNV)
 GLES_TRAMPOLINE(glTextureAttachMemoryNV)
 GLES_SLOT(glTextureFoveationParametersQCOM)
 GLES_TRAMPOLINE(glTextureFoveationParametersQCOM)
 GLES_SLOT(glTexturePageCommitmentMemNV)
+#if defined(__arm64__)
 void glTexturePageCommitmentMemNV(GLuint texture, GLint layer, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLuint memory, GLuint64 offset, GLboolean commit)
 {
 	((void (*)(GLuint, GLint, GLint, GLint, GLint, GLint, GLsizei, GLsizei, uint64_t, uint64_t, uint64_t, uint64_t))gles_resolve(&gles_slot_glTexturePageCommitmentMemNV))(texture, layer, level, xoffset, yoffset, zoffset, width, height, gles_stack_gp(&depth, sizeof(depth)), gles_stack_gp(&memory, sizeof(memory)), gles_stack_gp(&offset, sizeof(offset)), gles_stack_gp(&commit, sizeof(commit)));
 }
+#else
+GLES_TRAMPOLINE(glTexturePageCommitmentMemNV)
+#endif
 GLES_SLOT(glTextureStorage1DEXT)
 GLES_TRAMPOLINE(glTextureStorage1DEXT)
 GLES_SLOT(glTextureStorage2DEXT)

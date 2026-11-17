@@ -98,10 +98,8 @@ if (COMPONENT_gui)
 	add_subdirectory(OpenGL)
 	add_subdirectory(ImageIO)
 	add_subdirectory(UIKit)
-	# iOS's OpenGL ES is the host's (EGL and GLES), reached through mldr: arm64 only, as iOS apps are.
-	if (TARGET_ARM64)
-		add_subdirectory(OpenGLES)
-	endif()
+	# iOS's OpenGL ES is the host's (EGL and GLES), reached through mldr.
+	add_subdirectory(OpenGLES)
 endif()
 
 # this is for all the other stubbed frameworks

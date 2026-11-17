@@ -9,7 +9,7 @@ Each entry point is a trampoline that jumps to the host's function, found the
 first time it is called (gles_resolve in EAGLContext.m). The trampolines
 leave every argument register alone, so one shape fits every signature.
 
-The exception is a function some of whose arguments are on the stack in
+On arm64 the exception is a function some of whose arguments are on the stack in
 different places for Apple's arm64 ABI and the host's (AAPCS64): Apple's packs
 stack arguments by their size, AAPCS64 gives each 8 bytes. Those get a C
 wrapper that passes the stack arguments as 8-byte values.
@@ -99,6 +99,9 @@ def main():
         if all(apple == aapcs for _, apple, aapcs in stack):
             print(f"GLES_TRAMPOLINE({name})")
             continue
+        # The wrapper repacks stack arguments for AAPCS64 only: x86_64 has
+        # the same stack layout on both sides, so it jumps like the others.
+        print("#if defined(__arm64__)")
         # The stack arguments, as the host reads them: each in its own 8 bytes.
         on_stack = {n for n, _, _ in stack}
         decl = ", ".join(f"{t} {n}" for t, n, _, _ in args)
@@ -111,6 +114,9 @@ def main():
         print("{")
         print(f"\t{ret_kw}(({ret} (*)({host}))gles_resolve(&gles_slot_{name}))({call});")
         print("}")
+        print("#else")
+        print(f"GLES_TRAMPOLINE({name})")
+        print("#endif")
     print()
     print(f"/* {len(functions)} functions. */")
 

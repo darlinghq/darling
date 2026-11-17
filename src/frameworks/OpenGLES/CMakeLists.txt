@@ -5,7 +5,10 @@ set(DYLIB_CURRENT_VERSION "1.0.0")
 
 # iOS's OpenGL ES: EAGLContext on the host's EGL, and the GL functions, each
 # the host's (Mesa's on Linux, the phone driver's on Android). See
-# src/EAGLContext.m. arm64 only, as iOS apps are.
+# src/EAGLContext.m. OpenGLES exists only for 64-bit processes (x86_64 and
+# arm64), as iOS apps are, so no 32-bit slice is built.
+set(DARLING_LIB_64BIT_ONLY TRUE)
+
 generate_sdk_framework(OpenGLES VERSION A HEADER "include/OpenGLES")
 
 add_framework(OpenGLES
