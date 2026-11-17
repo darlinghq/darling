@@ -228,6 +228,23 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 			}
 			*ioDataSize = sizeof(AudioDeviceID);
 			return kAudioHardwareNoError;
+		case kAudioHardwarePropertyTapList:
+			// No process tap can exist (see AudioHardwareTapping.m): the system object lists none.
+			if (id() != kAudioObjectSystemObject)
+				break;
+			*ioDataSize = 0;
+			return kAudioHardwareNoError;
+		case kAudioHardwarePropertyTranslateUIDToTap:
+			// The qualifier is the tap's UID string and the answer is the tap's object ID, which is
+			// unknown for every UID as no tap exists.
+			if (id() != kAudioObjectSystemObject)
+				break;
+			if (inQualifierDataSize != sizeof(CFStringRef) || !inQualifierData)
+				return kAudioHardwareBadPropertySizeError;
+			if (AudioObjectID* tapId = static_cast<AudioObjectID*>(outData); tapId && *ioDataSize >= sizeof(AudioObjectID))
+				*tapId = kAudioObjectUnknown;
+			*ioDataSize = sizeof(AudioObjectID);
+			return kAudioHardwareNoError;
 		case kAudioHardwarePropertyDevices:
 		{
 			// Only the system object exposes the full device list.

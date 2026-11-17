@@ -60,8 +60,24 @@ enum
     kAudioHardwarePropertyHogModeIsAllowed                      = 'hogr',
     kAudioHardwarePropertyUserSessionIsActiveOrHeadless         = 'user',
     kAudioHardwarePropertyServiceRestarted                      = 'srst',
-    kAudioHardwarePropertyPowerHint                             = 'powh'
+    kAudioHardwarePropertyPowerHint                             = 'powh',
+    kAudioHardwarePropertyTapList                               = 'tps#',
+    kAudioHardwarePropertyTranslateUIDToTap                     = 'uidt'
 
+};
+
+// The audio tap object class and its properties (macOS 14.2 and later). A tap is made from a
+// CATapDescription, see AudioHardwareTapping.h.
+enum
+{
+    kAudioTapClassID = 'tcls'
+};
+
+enum
+{
+    kAudioTapPropertyUID            = 'tuid',
+    kAudioTapPropertyDescription    = 'tdsc',
+    kAudioTapPropertyFormat         = 'tfmt'
 };
 
 enum

@@ -9,6 +9,7 @@ set(coreaudio_sources
     AudioHardwareImpl.cpp
     AudioHardwareListenerRegistry.cpp
     AudioObjectListenerBlocks.cpp
+    AudioHardwareTapping.m
     CATapDescription.m
     HostTime.mm
     pulse/AudioHardwareImplPA.cpp
