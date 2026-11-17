@@ -17,19 +17,17 @@
  * or none). As on iOS, apps draw into a renderbuffer of their own, which
  * -renderbufferStorage:fromDrawable: sizes to a CAEAGLLayer. Presenting it
  * reads its pixels back into an image, which becomes the layer's contents,
- * and UIKit draws those as it draws a view.
+ * and the layer displays those as it does any contents.
  */
 
 #import <OpenGLES/EAGL.h>
 #import <OpenGLES/EAGLDrawable.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <QuartzCore/CALayer.h>
-#import <objc/message.h>
 #include <elfcalls.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <os/lock.h>
 
 #include "gles-functions.h"
@@ -159,7 +157,11 @@ static BOOL egl_load(void)
 }
 
 /* Called when a host function is missing: does nothing and returns 0. */
+#if defined(__arm64__)
 __asm__(".text\n.p2align 2\n_gles_missing:\n\tmov x0, #0\n\tmovi d0, #0\n\tret\n");
+#else
+__asm__(".text\n.p2align 4\n_gles_missing:\n\txorl %eax, %eax\n\tpxor %xmm0, %xmm0\n\tret\n");
+#endif
 extern void gles_missing(void);
 
 /* iOS names the host may know by another. */
@@ -447,17 +449,11 @@ static pthread_key_t sCurrentContextKey;
 - (BOOL)isMultiThreaded { return _multiThreaded; }
 - (void)setMultiThreaded:(BOOL)multiThreaded { _multiThreaded = multiThreaded; }
 
-/* The size a layer is shown at, in pixels: its view's, when it has one,
- * since UIKit sizes views rather than their layers. */
+/* The size a layer is shown at, in pixels. */
 static CGSize drawable_pixel_size(CALayer *drawable)
 {
 	CGRect bounds = [drawable bounds];
 	CGFloat scale = [drawable contentsScale];
-	id delegate = [drawable delegate];
-	if (delegate != nil && [delegate respondsToSelector:@selector(contentScaleFactor)]) {
-		bounds = ((CGRect (*)(id, SEL))objc_msgSend)(delegate, @selector(bounds));
-		scale = ((CGFloat (*)(id, SEL))objc_msgSend)(delegate, @selector(contentScaleFactor));
-	}
 	if (scale <= 0)
 		scale = 1;
 	return CGSizeMake(floor(bounds.size.width * scale), floor(bounds.size.height * scale));
@@ -588,63 +584,19 @@ static void release_pixels(void *info, const void *data, size_t size)
 	return image;
 }
 
-/* DARLING_EAGL_TRACE=1: every second, how long reading the frame back and
- * showing it took. */
-static double trace_now(void)
-{
-	struct timespec ts;
-	clock_gettime(CLOCK_MONOTONIC, &ts);
-	return ts.tv_sec * 1e3 + ts.tv_nsec / 1e6;
-}
-
-/* Shows the image: the layer's contents, drawn by its view. */
+/* Shows the image as the layer's contents, on the main thread, where
+ * layer contents are set. */
 static void show_on_layer(CALayer *layer, CGImageRef image)
 {
-	void (^show)(void) = ^{
-		[layer setContents:(__bridge id)image];
-		id view = [layer delegate];
-		if (view == nil || ![view respondsToSelector:@selector(setNeedsDisplay:)])
-			return;
-		((void (*)(id, SEL, BOOL))objc_msgSend)(view, @selector(setNeedsDisplay:), YES);
-		/* Apps that present from their own loop (SDL's, say) seldom let
-		 * the run loop wait, which is when UIKit would draw: draw now. */
-		/* The AppKit window that hosts the view (a UIView's -window is its UIWindow). */
-		SEL hostWindow = [view respondsToSelector:@selector(_appKitWindow)] ? @selector(_appKitWindow) : @selector(window);
-		id window = [view respondsToSelector:hostWindow] ? ((id (*)(id, SEL))objc_msgSend)(view, hostWindow) : nil;
-		if (window != nil && [window respondsToSelector:@selector(displayIfNeeded)])
-			((void (*)(id, SEL))objc_msgSend)(window, @selector(displayIfNeeded));
-	};
 	if ([NSThread isMainThread]) {
-		show();
+		[layer setContents:(__bridge id)image];
 	} else {
 		CGImageRetain(image);
 		dispatch_async(dispatch_get_main_queue(), ^{
-			show();
+			[layer setContents:(__bridge id)image];
 			CGImageRelease(image);
 		});
 	}
-}
-
-static void trace_present(double read, double show)
-{
-	static int tracing = -1, count;
-	static double reading, showing, since;
-	if (tracing < 0)
-		tracing = getenv("DARLING_EAGL_TRACE") != NULL;
-	if (!tracing)
-		return;
-	reading += read;
-	showing += show;
-	count++;
-	double now = trace_now();
-	if (since == 0)
-		since = now;
-	if (now - since < 1000)
-		return;
-	NSLog(@"OpenGLES: %d presents, %.2f ms reading back, %.2f ms showing", count, reading / count, showing / count);
-	count = 0;
-	reading = showing = 0;
-	since = now;
 }
 
 - (BOOL)presentRenderbuffer:(NSUInteger)target
@@ -656,14 +608,11 @@ static void trace_present(double read, double show)
 	CALayer *layer = [_drawables objectForKey:@(renderbuffer)];
 	if (layer == nil)
 		return NO;
-	double started = trace_now();
 	CGImageRef image = [self copyRenderbufferImage:renderbuffer opaque:[layer isOpaque]];
 	if (image == NULL)
 		return NO;
-	double read = trace_now();
 	show_on_layer(layer, image);
 	CGImageRelease(image);
-	trace_present(read - started, trace_now() - read);
 	return YES;
 }
 
