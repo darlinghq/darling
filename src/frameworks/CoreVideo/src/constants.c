@@ -63,6 +63,7 @@ const CFStringRef kCVPixelBufferBytesPerRowAlignmentKey = CFSTR("BytesPerRowAlig
 const CFStringRef kCVPixelBufferHeightKey = CFSTR("Height");
 const CFStringRef kCVPixelBufferWidthKey = CFSTR("Width");
 const CFStringRef kCVPixelBufferIOSurfaceOpenGLTextureCompatibilityKey = CFSTR("IOSurfaceOpenGLTextureCompatibility");
+const CFStringRef kCVOpenGLESTextureCacheMaximumTextureAgeKey = CFSTR("MaximumTextureAge");
 const CFStringRef kCVPixelBufferPoolMaximumBufferAgeKey = CFSTR("MaximumBufferAge");
 const CFStringRef kCVPixelBufferPoolMinimumBufferCountKey = CFSTR("MinimumBufferCount");
 
