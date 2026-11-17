@@ -132,13 +132,18 @@ static void init_fexcore_runtime(void)
 			continue;
 		}
 		void* sym = dlsym(handle, "darling_fexcore_run_thread");
-		if (!sym) {
+		void* lock_sym = dlsym(handle, "darling_fexcore_lock_before_fork");
+		void* unlock_sym = dlsym(handle, "darling_fexcore_unlock_after_fork");
+		if (!sym || !lock_sym || !unlock_sym) {
 			results[i].state = CANDIDATE_SYMBOL_MISSING;
 			snprintf(results[i].reason, sizeof(results[i].reason), "%s", dlerror());
 			dlclose(handle);
 			continue;
 		}
 		g_run_thread_fn = reinterpret_cast<darling_fexcore_run_thread_fn>(sym);
+		fex_elfcalls_set_fork_hooks(
+			reinterpret_cast<fex_fork_lock_fn_t>(lock_sym),
+			reinterpret_cast<fex_fork_unlock_fn_t>(unlock_sym));
 		break;
 	}
 

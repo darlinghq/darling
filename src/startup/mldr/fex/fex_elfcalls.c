@@ -28,6 +28,8 @@ static void* g_dlsym_targets[DARLING_FEX_DLSYM_MAX_SLOTS];
 static uint32_t g_dlsym_count = 0;
 
 static darling_thread_create_callbacks_t g_guest_thread_cbs = NULL;
+static fex_fork_lock_fn_t g_fork_lock_hook = NULL;
+static fex_fork_unlock_fn_t g_fork_unlock_hook = NULL;
 
 struct fex_deferred_terminate {
 	bool pending;
@@ -56,6 +58,12 @@ int fex_elfcalls_flush_deferred_terminate(void)
 		return g_host_elfcalls.darling_thread_terminate(stackaddr, freesize, pthobj_size);
 	}
 	return 0;
+}
+
+void fex_elfcalls_set_fork_hooks(fex_fork_lock_fn_t lock_hook, fex_fork_unlock_fn_t unlock_hook)
+{
+	g_fork_lock_hook = lock_hook;
+	g_fork_unlock_hook = unlock_hook;
 }
 
 static void write_x86_64_syscall_stub(uint8_t* dst, uint32_t syscall_nr)
@@ -432,9 +440,20 @@ long fex_elfcalls_dispatch(uint32_t index, struct fex_x86_64_state* state)
 		case 30: // dserver_close_process_lifetime_pipe
 			g_host_elfcalls.dserver_close_process_lifetime_pipe((int)state->rdi);
 			break;
-		case 31: // native_fork
-			ret = (uint64_t)(int64_t)g_host_elfcalls.native_fork();
+		case 31: { // native_fork
+			pthread_mutex_lock(&g_dlsym_mutex);
+			if (g_fork_lock_hook) {
+				g_fork_lock_hook();
+			}
+			int fork_ret = g_host_elfcalls.native_fork ? g_host_elfcalls.native_fork() : -ENOSYS;
+			bool is_child = (fork_ret == 0);
+			if (g_fork_unlock_hook) {
+				g_fork_unlock_hook(is_child);
+			}
+			pthread_mutex_unlock(&g_dlsym_mutex);
+			ret = (uint64_t)(int64_t)fork_ret;
 			break;
+		}
 		case 32: // inherited_nofile_limit
 			ret = (uint64_t)(int64_t)g_host_elfcalls.inherited_nofile_limit(
 				(unsigned int*)(uintptr_t)state->rdi);

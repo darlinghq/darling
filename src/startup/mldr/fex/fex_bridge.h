@@ -44,10 +44,17 @@ struct fex_x86_64_state {
 
 typedef long (*fex_syscall_cb_t)(struct fex_x86_64_state* state);
 
+typedef void (*fex_fork_lock_fn_t)(void);
+typedef void (*fex_fork_unlock_fn_t)(bool is_child);
+
+void darling_fexcore_lock_before_fork(void);
+void darling_fexcore_unlock_after_fork(bool is_child);
+
 struct elf_calls* fex_elfcalls_get_trampoline_table(const struct elf_calls* host_calls);
 long fex_elfcalls_dispatch(uint32_t index, struct fex_x86_64_state* state);
 bool fex_elfcalls_has_pending_terminate(void);
 int fex_elfcalls_flush_deferred_terminate(void);
+void fex_elfcalls_set_fork_hooks(fex_fork_lock_fn_t lock_hook, fex_fork_unlock_fn_t unlock_hook);
 
 void* fex_dlsym_wrap_if_func(void* host_sym, const char* symbol_name);
 long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state);
