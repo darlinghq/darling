@@ -20,7 +20,7 @@
 #ifndef _VTERRORS_H_
 #define _VTERRORS_H_
 
-#include <CoreFoundation/CoreFoundation.h>
+#include <VideoToolbox/VTBase.h>
 
 enum {
 	kVTPropertyNotSupportedErr = -12900,
@@ -67,7 +67,26 @@ enum {
 	kVTCouldNotFindExtensionErr = -19510,
 	kVTExtensionConflictErr = -19511,
 	kVTVideoEncoderAutoWhiteBalanceNotLockedErr = -19512,
-	kVTLogTransferFunctionMismatchErr = -19513
+	kVTLogTransferFunctionMismatchErr = -19513,
+};
+
+typedef CF_OPTIONS(uint32_t, VTDecodeFrameFlags) {
+	kVTDecodeFrame_EnableAsynchronousDecompression = 1 << 0,
+	kVTDecodeFrame_DoNotOutputFrame = 1 << 1,
+	kVTDecodeFrame_1xRealTimePlayback = 1 << 2,
+	kVTDecodeFrame_EnableTemporalProcessing = 1 << 3,
+};
+
+typedef CF_OPTIONS(UInt32, VTDecodeInfoFlags) {
+	kVTDecodeInfo_Asynchronous = 1UL << 0,
+	kVTDecodeInfo_FrameDropped = 1UL << 1,
+	kVTDecodeInfo_ImageBufferModifiable = 1UL << 2,
+	kVTDecodeInfo_SkippedLeadingFrameDropped = 1UL << 3,
+};
+
+typedef CF_OPTIONS(UInt32, VTEncodeInfoFlags) {
+	kVTEncodeInfo_Asynchronous = 1UL << 0,
+	kVTEncodeInfo_FrameDropped = 1UL << 1,
 };
 
 #endif
