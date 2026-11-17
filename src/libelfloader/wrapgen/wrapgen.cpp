@@ -280,14 +280,11 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 		"\tif (!lib_handle)\n"
 		"\t\tlib_handle = _elfcalls->dlopen_fatal(__elfname);\n"
 		"}\n\n";
+	// The host library is opened when a function in it is first resolved, not when this
+	// wrapper loads: hosts without it (Android has no libpulse) can still run programs that
+	// link it without calling it.
 
-	if (availabilitySymbol.empty())
-	{
-		output << "__attribute__((constructor)) static void initializer() {\n"
-			"\topen_library();\n"
-			"}\n\n";
-	}
-	else
+	if (!availabilitySymbol.empty())
 	{
 		output << "__attribute__((visibility(\"default\"))) int " << availabilitySymbol << "(void) {\n"
 			"\tif (!lib_handle && _elfcalls)\n"
@@ -416,7 +413,8 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 		if (packedGLUpload)
 			output << "\treturn __elf_abi_" << sym << ";\n";
 		else
-			output << "\tif (!_elfcalls)\n\t\treturn __elf_lazy_" << sym << ";\n";
+			// Always the trampoline, so that binding never opens the host library.
+			output << "\treturn __elf_lazy_" << sym << ";\n";
 		output <<
 			"#endif\n"
 			"\topen_library();\n"
@@ -438,6 +436,7 @@ void generate_var_wrappers(std::ofstream& output, std::ofstream& outputHeader, c
 	for (const std::string& sym : vars)
 	{
 		output << "void* __elf_get_" << sym << "(void) {\n"
+			"\topen_library();\n"
 			"\treturn _elfcalls->dlsym_fatal(lib_handle, \"" << sym << "\");\n"
 			"}\n\n";
 		
