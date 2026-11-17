@@ -88,7 +88,7 @@ They arrive as follows:
 | an `http:` URL | `NSFileReadUnsupportedSchemeError` (262) |
 
 - macOS renames a colliding item `name HH-MM-SS-mmm.ext`. Darling keeps its documented-safe `name N.ext`.
-- `recycleURLs:completionHandler:` calls its handler on the main thread. `newURLs` lists only the items that moved. When one item fails, the error has code 4 (that failure's code) and `NSUnderlyingErrors`.
+- `recycleURLs:completionHandler:` calls its handler on the main thread. `newURLs` lists only the items that moved. When one item fails, the error has code 4 (that failure's code), and its userInfo has exactly `NSLocalizedDescription` and the key `"NSUnderlyingErrors"` (not the documented `NSMultipleUnderlyingErrorsKey`), whose value lists the failures.
 
 **Icons** (all 32×32; compared by pixels):
 
