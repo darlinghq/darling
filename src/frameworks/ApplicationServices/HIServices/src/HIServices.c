@@ -1624,18 +1624,6 @@ void* HIS_XPC_SetNetworkLocation(void)
     return NULL;
 }
 
-void* HIShapeContainsPoint(void)
-{
-    if (verbose) puts("STUB: HIShapeContainsPoint called");
-    return NULL;
-}
-
-void* HIShapeCreateCopy(void)
-{
-    if (verbose) puts("STUB: HIShapeCreateCopy called");
-    return NULL;
-}
-
 void* HIShapeCreateCopyAsQDRgn(void)
 {
     if (verbose) puts("STUB: HIShapeCreateCopyAsQDRgn called");
@@ -1645,12 +1633,6 @@ void* HIShapeCreateCopyAsQDRgn(void)
 void* HIShapeCreateDifference(void)
 {
     if (verbose) puts("STUB: HIShapeCreateDifference called");
-    return NULL;
-}
-
-void* HIShapeCreateEmpty(void)
-{
-    if (verbose) puts("STUB: HIShapeCreateEmpty called");
     return NULL;
 }
 
@@ -1690,12 +1672,6 @@ void* HIShapeCreateWithQDRgn(void)
     return NULL;
 }
 
-void* HIShapeCreateWithRect(void)
-{
-    if (verbose) puts("STUB: HIShapeCreateWithRect called");
-    return NULL;
-}
-
 void* HIShapeCreateXor(void)
 {
     if (verbose) puts("STUB: HIShapeCreateXor called");
@@ -1720,18 +1696,6 @@ void* HIShapeGetAsQDRgn(void)
     return NULL;
 }
 
-void* HIShapeGetBounds(void)
-{
-    if (verbose) puts("STUB: HIShapeGetBounds called");
-    return NULL;
-}
-
-void* HIShapeGetTypeID(void)
-{
-    if (verbose) puts("STUB: HIShapeGetTypeID called");
-    return NULL;
-}
-
 void* HIShapeInset(void)
 {
     if (verbose) puts("STUB: HIShapeInset called");
@@ -1741,24 +1705,6 @@ void* HIShapeInset(void)
 void* HIShapeIntersect(void)
 {
     if (verbose) puts("STUB: HIShapeIntersect called");
-    return NULL;
-}
-
-void* HIShapeIntersectsRect(void)
-{
-    if (verbose) puts("STUB: HIShapeIntersectsRect called");
-    return NULL;
-}
-
-void* HIShapeIsEmpty(void)
-{
-    if (verbose) puts("STUB: HIShapeIsEmpty called");
-    return NULL;
-}
-
-void* HIShapeIsRectangular(void)
-{
-    if (verbose) puts("STUB: HIShapeIsRectangular called");
     return NULL;
 }
 
