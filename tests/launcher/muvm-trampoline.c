@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "muvm-trampoline.h"
@@ -249,6 +250,182 @@ static void test_stdio(void)
 	close(pipeEnds[1]);
 }
 
+static void writeStubMuvm(const char* directory, const char* recordPath)
+{
+	char path[PATH_MAX];
+	FILE* file;
+
+	snprintf(path, sizeof(path), "%s/muvm", directory);
+	file = fopen(path, "w");
+	if (file == NULL)
+		return;
+	fprintf(file,
+		"#!/bin/sh\n"
+		"exec > '%s'\n"
+		"for argument in \"$@\"; do printf 'ARG:%%s\\n' \"$argument\"; done\n",
+		recordPath);
+	fclose(file);
+	chmod(path, 0755);
+}
+
+// Runs the trampoline in a child and returns its exit status, or -1.
+static int runReexec(char* const argv[], size_t targetIndex, const char* targetPath)
+{
+	pid_t child = fork();
+	int status;
+
+	if (child < 0)
+		return -1;
+
+	if (child == 0)
+	{
+		darling_reexec_under_muvm(argv, targetIndex, targetPath);
+		_exit(3);
+	}
+
+	if (waitpid(child, &status, 0) != child || !WIFEXITED(status))
+		return -1;
+
+	return WEXITSTATUS(status);
+}
+
+static size_t readRecord(const char* path, char lines[][PATH_MAX], size_t max)
+{
+	FILE* file = fopen(path, "r");
+	size_t count = 0;
+	char line[PATH_MAX];
+
+	if (file == NULL)
+		return 0;
+
+	while (count < max && fgets(line, sizeof(line), file) != NULL)
+	{
+		line[strcspn(line, "\n")] = '\0';
+		if (strncmp(line, "ARG:", 4) == 0)
+			snprintf(lines[count++], PATH_MAX, "%s", line + 4);
+	}
+
+	fclose(file);
+	return count;
+}
+
+static bool hasPair(char lines[][PATH_MAX], size_t count, const char* name)
+{
+	for (size_t i = 0; i + 1 < count; i++)
+	{
+		if (strcmp(lines[i], "-e") == 0 && strcmp(lines[i + 1], name) == 0)
+			return true;
+	}
+
+	return false;
+}
+
+static size_t indexOf(char lines[][PATH_MAX], size_t count, const char* value)
+{
+	for (size_t i = 0; i < count; i++)
+	{
+		if (strcmp(lines[i], value) == 0)
+			return i;
+	}
+
+	return (size_t) -1;
+}
+
+static void test_reexec(void)
+{
+	char stubDirectory[PATH_MAX], recordPath[PATH_MAX], launcher[PATH_MAX];
+	char lines[256][PATH_MAX];
+	char* execArgv[] = { (char*) "darling", (char*) "exec", (char*) "some/app", (char*) "first", (char*) "second", NULL };
+	char* plainArgv[] = { (char*) "darling", (char*) "some/app", (char*) "first", NULL };
+	const char* path = getenv("PATH");
+	ssize_t launcherLength;
+	size_t count, dash;
+
+	snprintf(stubDirectory, sizeof(stubDirectory), "%s/stub", g_directory);
+	mkdir(stubDirectory, 0755);
+	snprintf(recordPath, sizeof(recordPath), "%s/record", g_directory);
+	writeStubMuvm(stubDirectory, recordPath);
+	check(access(inDirectory("stub/muvm"), X_OK) == 0, "the stub muvm is executable");
+
+	setenv("MUVM_RECORD", recordPath, 1);
+	if (path != NULL)
+	{
+		char searchPath[PATH_MAX * 2];
+		snprintf(searchPath, sizeof(searchPath), "%s:%s", stubDirectory, path);
+		setenv("PATH", searchPath, 1);
+	}
+	else
+		setenv("PATH", stubDirectory, 1);
+
+	setenv("HOME", "/home/someone", 1);
+	setenv("TERM", "xterm", 1);
+	setenv("DARLING_TEST_VARIABLE", "1", 1);
+	setenv("NOT_FORWARDED", "1", 1);
+	unsetenv("TMPDIR");
+	unsetenv("__mldr_bprefs");
+
+	launcherLength = readlink("/proc/self/exe", launcher, sizeof(launcher) - 1);
+	if (launcherLength <= 0)
+	{
+		check(false, "this test can find its own executable");
+		return;
+	}
+	launcher[launcherLength] = '\0';
+
+	unlink(recordPath);
+	check(runReexec(execArgv, 2, "/resolved/app") == 0, "the exec form re-execs muvm");
+	count = readRecord(recordPath, lines, 256);
+	check(count > 3 && strcmp(lines[0], "-e") == 0, "muvm receives -e before any command");
+
+	dash = indexOf(lines, count, "--");
+	check(dash != (size_t) -1 && dash > 0, "muvm receives a -- separator");
+
+	if (dash != (size_t) -1 && dash + 6 == count)
+	{
+		check(strcmp(lines[dash + 1], launcher) == 0,
+			"the launcher is passed by absolute path");
+		check(strcmp(lines[dash + 2], "exec") == 0,
+			"the exec subcommand is kept");
+		check(strcmp(lines[dash + 3], "/resolved/app") == 0,
+			"the target is replaced by its resolved path");
+		check(strcmp(lines[dash + 4], "first") == 0 && strcmp(lines[dash + 5], "second") == 0,
+			"the target's own arguments follow it");
+	}
+	else
+		check(false, "the exec form ends after the target's arguments");
+
+	check(hasPair(lines, count, "HOME"), "HOME is forwarded");
+	check(hasPair(lines, count, "TERM"), "TERM is forwarded");
+	check(hasPair(lines, count, "DARLING_TEST_VARIABLE"), "every DARLING_ variable is forwarded");
+	check(!hasPair(lines, count, "NOT_FORWARDED"), "an unrelated variable is not forwarded");
+	check(!hasPair(lines, count, "TMPDIR"), "an unset variable is not forwarded");
+	check(!hasPair(lines, count, "__mldr_bprefs"), "an unset architecture preference is not forwarded");
+
+	setenv("__mldr_bprefs", "01000007", 1);
+	unlink(recordPath);
+	check(runReexec(plainArgv, 1, "/resolved/app") == 0, "the plain form re-execs muvm");
+	count = readRecord(recordPath, lines, 256);
+	check(hasPair(lines, count, "__mldr_bprefs"),
+		"a set architecture preference reaches the guest");
+
+	dash = indexOf(lines, count, "--");
+	check(dash != (size_t) -1 && dash > 0, "the plain form reaches the separator");
+
+	if (dash != (size_t) -1 && dash + 4 == count)
+	{
+		check(strcmp(lines[dash + 1], launcher) == 0,
+			"the plain form passes the launcher by absolute path");
+		check(strcmp(lines[dash + 2], "/resolved/app") == 0,
+			"the plain form replaces the target with its resolved path");
+		check(strcmp(lines[dash + 3], "first") == 0,
+			"the plain form keeps the target's arguments");
+	}
+	else
+		check(false, "the plain form ends after the target's arguments");
+
+	unsetenv("__mldr_bprefs");
+}
+
 int main(void)
 {
 	char template[] = "/tmp/darling-muvm-trampoline-XXXXXX";
@@ -265,6 +442,7 @@ int main(void)
 	test_bprefs_environment();
 	test_needed_matrix();
 	test_stdio();
+	test_reexec();
 
 	if (g_failures != 0)
 	{
