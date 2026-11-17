@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "../loader.h"
+struct load_results;
 #include "../elfcalls/elfcalls.h"
 
 #ifdef __cplusplus
@@ -39,12 +39,15 @@ struct fex_x86_64_state {
 	uint64_t gs_base;
 	uint64_t fs_base;
 	uint64_t xmm[16][2];
+	uint8_t unwind_thread;
 };
 
 typedef long (*fex_syscall_cb_t)(struct fex_x86_64_state* state);
 
 struct elf_calls* fex_elfcalls_get_trampoline_table(const struct elf_calls* host_calls);
 long fex_elfcalls_dispatch(uint32_t index, struct fex_x86_64_state* state);
+bool fex_elfcalls_has_pending_terminate(void);
+int fex_elfcalls_flush_deferred_terminate(void);
 
 void* fex_dlsym_wrap_if_func(void* host_sym, const char* symbol_name);
 long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state);

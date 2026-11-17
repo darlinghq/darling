@@ -83,6 +83,25 @@ static void* mock_thread_create(unsigned long stack_size, unsigned long pthobj_s
 	return (void*)0xdeadbeefUL;
 }
 
+static void* recorded_term_stackaddr = NULL;
+static unsigned long recorded_term_freesize = 0;
+static unsigned long recorded_term_pthobj_size = 0;
+static int recorded_term_call_count = 0;
+
+static int mock_thread_terminate(void* stackaddr, unsigned long freesize, unsigned long pthobj_size)
+{
+	recorded_term_stackaddr = stackaddr;
+	recorded_term_freesize = freesize;
+	recorded_term_pthobj_size = pthobj_size;
+	recorded_term_call_count++;
+	return 0;
+}
+
+static void* mock_thread_get_stack(void)
+{
+	return (void*)0x7fff00002000ULL;
+}
+
 static int mock_native_fork(void)
 {
 	return 4242;
@@ -102,6 +121,18 @@ static double host_math_Add8(
 {
 	uint64_t sum = a + b + c + d + e + f + g + h;
 	return (double)sum + (x * y);
+}
+
+static uint64_t host_terminating_function(void)
+{
+	struct fex_x86_64_state term_st;
+	memset(&term_st, 0, sizeof(term_st));
+	term_st.rax = DARLING_FEX_ELFCALL_SYSCALL_BASE + 5;
+	term_st.rdi = 0x7fff00003000ULL;
+	term_st.rsi = 0x8000;
+	term_st.rdx = 0x400;
+	fex_linux_syscall_dispatch(&term_st);
+	return 999;
 }
 
 static void* child_cb_worker(void* arg)
@@ -124,6 +155,8 @@ static void test_elfcalls_trampolines(void)
 	host_calls.dlopen = mock_dlopen;
 	host_calls.dlsym = dlsym;
 	host_calls.darling_thread_create = mock_thread_create;
+	host_calls.darling_thread_terminate = mock_thread_terminate;
+	host_calls.darling_thread_get_stack = mock_thread_get_stack;
 	host_calls.native_fork = mock_native_fork;
 	host_calls.inherited_nofile_limit = mock_inherited_nofile_limit;
 
@@ -198,6 +231,37 @@ static void test_elfcalls_trampolines(void)
 	st.rdi = 0x123456789abcdef0ULL;
 	check(fex_linux_syscall_dispatch(&st) == 0 && st.rax == 0x123456789abcdef0ULL,
 		"DARLING_FEX_CALLBACK_RETURN_SYSCALL restores callback return value in rax");
+
+	// Task 0.1: darling_thread_terminate deferral
+	check(!fex_elfcalls_has_pending_terminate(), "no pending terminate initially");
+	memset(&st, 0, sizeof(st));
+	st.rax = DARLING_FEX_ELFCALL_SYSCALL_BASE + 5;
+	st.rdi = 0x7fff00001000ULL;
+	st.rsi = 0x4000;
+	st.rdx = 0x200;
+	check(fex_linux_syscall_dispatch(&st) == 0, "darling_thread_terminate (slot 5) dispatches successfully");
+	check(st.unwind_thread == 1, "darling_thread_terminate sets state->unwind_thread = 1");
+	check(recorded_term_call_count == 0, "host darling_thread_terminate was NOT called eagerly during dispatch");
+	check(fex_elfcalls_has_pending_terminate(), "pending terminate flag is set");
+
+	// Verify unwind_thread remains set if another elfcall returns while termination is pending
+	memset(&st, 0, sizeof(st));
+	st.rax = DARLING_FEX_ELFCALL_SYSCALL_BASE + 6; // darling_thread_get_stack
+	fex_linux_syscall_dispatch(&st);
+	check(st.unwind_thread == 1, "state->unwind_thread remains 1 when subsequent call runs with pending terminate");
+
+	// Flush deferred termination
+	fex_elfcalls_flush_deferred_terminate();
+	check(!fex_elfcalls_has_pending_terminate(), "pending terminate flag is cleared after flush");
+	check(recorded_term_call_count == 1, "host darling_thread_terminate was called exactly once on flush");
+	check(recorded_term_stackaddr == (void*)0x7fff00001000ULL &&
+	      recorded_term_freesize == 0x4000 &&
+	      recorded_term_pthobj_size == 0x200,
+	      "host darling_thread_terminate received exact stackaddr, freesize, and pthobj_size");
+
+	// Flush again and assert no duplicate termination call
+	fex_elfcalls_flush_deferred_terminate();
+	check(recorded_term_call_count == 1, "second flush is a no-op; terminate not called again");
 }
 
 static void test_dlsym_wrapping(void)
@@ -236,6 +300,17 @@ static void test_dlsym_wrapping(void)
 	double out = 0.0;
 	memcpy(&out, &st.xmm[0][0], sizeof(double));
 	check(out == 46.0, "fex_dlsym_dispatch forwards integer, stack, and xmm float arguments (1..8 + 2.5*4.0 = 46)");
+
+	void* fn_term_stub = fex_dlsym_wrap_if_func((void*)host_terminating_function, "host_terminating_function");
+	const uint8_t* term_code = (const uint8_t*)fn_term_stub;
+	uint32_t term_sc_nr = 0;
+	memcpy(&term_sc_nr, &term_code[1], sizeof(term_sc_nr));
+	memset(&st, 0, sizeof(st));
+	st.rax = term_sc_nr;
+	fex_linux_syscall_dispatch(&st);
+	check(st.rax == 999, "fex_dlsym_dispatch returns function return value");
+	check(st.unwind_thread == 1, "fex_dlsym_dispatch sets unwind_thread=1 when nested call triggers termination");
+	fex_elfcalls_flush_deferred_terminate();
 }
 
 static void test_syscall_translations(void)

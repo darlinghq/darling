@@ -1,4 +1,5 @@
 #include "fex_bridge.h"
+#include "../loader.h"
 #include <dlfcn.h>
 #include <errno.h>
 #include <pthread.h>
@@ -238,6 +239,7 @@ void fex_start_main_thread(struct load_results* lr)
 	state.gs_base = gs_base;
 
 	int rc = run_fn(&state, fex_linux_syscall_dispatch);
+	fex_elfcalls_flush_deferred_terminate();
 	_exit(rc);
 }
 
@@ -273,6 +275,7 @@ void fex_start_darling_thread(
 	state.gs_base = static_cast<uint64_t>(gs_base);
 
 	int rc = run_fn(&state, fex_linux_syscall_dispatch);
+	fex_elfcalls_flush_deferred_terminate();
 	_exit(rc);
 }
 
