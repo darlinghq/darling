@@ -110,8 +110,8 @@ static CMTime current_time(CMTime anchor, int64_t anchorHost, float rate)
     if (!CMTIME_IS_NUMERIC(anchor))
         return anchor;
     Float64 elapsed = (host_nanoseconds() - anchorHost) / 1e9 * rate;
-    int32_t timescale = anchor.timescale > 0 ? anchor.timescale : 1000000000;
-    return CMTimeAdd(anchor, CMTimeMakeWithSeconds(elapsed, timescale));
+    // Nanosecond resolution: a coarse anchor timescale (CMTimeMake(5, 1)) would round the elapsed time to zero.
+    return CMTimeAdd(anchor, CMTimeMakeWithSeconds(elapsed, 1000000000));
 }
 
 - (CMTime)currentTime
