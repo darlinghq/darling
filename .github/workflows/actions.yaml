@@ -9,7 +9,22 @@ concurrency:
   cancel-in-progress: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
 
 jobs:
+  # Builds of branches in this repository wait for a maintainer's approval in
+  # the ci-approval environment. Pushes to the default branch run without it,
+  # and pull requests from forks are left to the repository's fork approval
+  # setting, so they aren't approved twice.
+  approval:
+    if: >-
+      !(github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) &&
+      !(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
+    runs-on: ubuntu-latest
+    environment: ci-approval
+    steps:
+    - run: echo "Approved"
+
   build-deb:
+    needs: approval
+    if: ${{ !cancelled() && (needs.approval.result == 'success' || needs.approval.result == 'skipped') }}
     # Build the packages natively on each architecture. The arm64 runner is a
     # regular arm64 Linux machine, so the build does not need a cross toolchain
     # and the resulting .debs are native arm64 packages.
@@ -48,12 +63,14 @@ jobs:
     # system-wide rather than relying on CCACHE_* reaching the compiler.
     # The mtime sloppiness settings matter in CI: a fresh checkout gives every
     # file a current timestamp, which would otherwise make ccache refuse to
-    # cache the results.
+    # cache the results. max_size has to hold a whole build's objects: when the
+    # cache is smaller, ccache evicts entries while it writes new ones, and the
+    # later part of every build misses.
     - name: Configure ccache
       run: |
         sudo tee /etc/ccache.conf > /dev/null <<EOF
         cache_dir = ${HOME}/.ccache
-        max_size = 2G
+        max_size = 5G
         compiler_check = content
         sloppiness = time_macros,include_file_mtime,include_file_ctime
         EOF
@@ -64,9 +81,7 @@ jobs:
         path: ~/.ccache
         key: ccache-deb-${{ matrix.arch }}-${{ github.ref_name }}-${{ github.run_id }}
         restore-keys: |
-          ccache-deb-${{ matrix.arch }}-${{ github.ref_name }}-
           ccache-deb-${{ matrix.arch }}-${{ github.event.repository.default_branch }}-
-          ccache-deb-${{ matrix.arch }}-
 
     - name: Build DEBs
       run: |
@@ -77,10 +92,13 @@ jobs:
       if: always()
       run: ccache --show-stats --verbose
 
+    # Only pushes to the default branch save a cache; every other run restores
+    # the default branch's. The repository's cache storage is limited, and a
+    # cache per branch and pull request would evict the one all builds share.
     # Saved even when the build fails, so that a long build that dies near the
     # end still leaves its object files behind for the next run.
     - name: Save ccache
-      if: always()
+      if: always() && github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
       uses: actions/cache/save@v4
       with:
         path: ~/.ccache
@@ -97,6 +115,8 @@ jobs:
         path: dist/
 
   build-dsc:
+    needs: approval
+    if: ${{ !cancelled() && (needs.approval.result == 'success' || needs.approval.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Darling
