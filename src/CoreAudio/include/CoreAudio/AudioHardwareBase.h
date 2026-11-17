@@ -43,6 +43,7 @@ enum
 	kAudioObjectPropertyScopeOutput         = 'outp',
 	kAudioObjectPropertyScopePlayThrough    = 'ptru',
 	kAudioObjectPropertyElementMaster       = 0,
+	kAudioObjectPropertyElementMain         = 0,
 };
 
 enum
