@@ -22,8 +22,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-// Audio MIDI Setup links these AVB model classes before opening any AVB pane.
-// The AVB backend remains unavailable, but the classes can be instantiated.
+// Classes of the AVB model that clients link against. The AVB backend stays unavailable (no
+// interface reports one), but the classes exist and can be instantiated.
 @interface AVBConfigurationURL : NSObject
 @end
 @implementation AVBConfigurationURL
