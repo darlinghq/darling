@@ -18,28 +18,23 @@
 */
 
 #import <UIFoundation/NSCollectionViewFlowLayoutInvalidationContext.h>
-#import <darling-stub-forwarding.h>
 
 @implementation NSCollectionViewFlowLayoutInvalidationContext
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+- (BOOL) invalidateFlowLayoutDelegateMetrics {
+    return _invalidateFlowLayoutDelegateMetrics;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
+- (void) setInvalidateFlowLayoutDelegateMetrics: (BOOL) invalidate {
+    _invalidateFlowLayoutDelegateMetrics = invalidate;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+- (BOOL) invalidateFlowLayoutAttributes {
+    return _invalidateFlowLayoutAttributes;
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
+- (void) setInvalidateFlowLayoutAttributes: (BOOL) invalidate {
+    _invalidateFlowLayoutAttributes = invalidate;
 }
 
 @end
