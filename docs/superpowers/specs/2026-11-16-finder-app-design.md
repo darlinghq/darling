@@ -358,6 +358,12 @@ format description, including malformed and truncated input.
   (viewer role). Not `LSUIElement`.
 - DiskImageMounter `Info.plist`: `CFBundleDocumentTypes` for disk images
   (`com.apple.disk-image-udif` and the related disk-image UTIs, viewer role);
+  it also exports `com.apple.disk-image-udif` (`UTExportedTypeDeclarations`:
+  conforms to `com.apple.disk-image` and `public.disk-image`; extensions
+  `dmg`, `udif`, `img`; MIME type `application/x-apple-diskimage`), as
+  macOS's DiskImageMounter does (observed with `lsregister -dump` on macOS
+  26.7.3). Until then a `.dmg` is a file of unknown type, and
+  `nsworkspace-icon-kinds.m` skips its `.dmg` checks;
   `LSUIElement` so it has no Dock presence.
 - Finder classes (names are the builder's call): app delegate (open
   documents, reveal requests, quit after last window), window controller,

@@ -239,5 +239,22 @@ EXPECTED
 	fi
 fi
 
+# icon kinds: icons for files, folders, disk images, bundles without an icon and volumes (see nsworkspace-icon-kinds.m),
+# and the existing iconForFile: and iconForFileType: checks
+if build nsworkspace-icon-kinds "$ext/cocotron/tests/nsworkspace-icon-kinds.m" -framework AppKit -framework UniformTypeIdentifiers; then
+	attach
+	guest icons "'$gw/nsworkspace-icon-kinds' '/Volumes/Unmount Test'"
+	detach
+	[ "$(rc icons)" = 0 ] && pass "icon kinds" || fail "icon kinds: $(outputs icons)"
+fi
+if build nsworkspace-iconforfile "$ext/cocotron/tests/nsworkspace-iconforfile.m" -framework AppKit; then
+	guest iconforfile "'$gw/nsworkspace-iconforfile' strict"
+	[ "$(rc iconforfile)" = 0 ] && pass "iconforfile strict" || fail "iconforfile strict: $(outputs iconforfile)"
+fi
+if build appkit-workspace-type-icons "$ext/cocotron/tests/appkit-workspace-type-icons.m" -framework AppKit; then
+	guest typeicons "'$gw/appkit-workspace-type-icons'"
+	[ "$(rc typeicons)" = 0 ] && pass "type icons" || fail "type icons: $(outputs typeicons)"
+fi
+
 rm -rf "$work"
 [ "$failures" = 0 ]
