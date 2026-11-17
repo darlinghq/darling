@@ -33,9 +33,7 @@ NSString *const CIDetectorTypeText = @"CIDetectorTypeText";
 
 // No detector finds anything yet: each type answers with an empty feature list, so callers take
 // their nothing-detected path.
-@implementation CIDetector {
-    NSString *_type;
-}
+@implementation CIDetector
 
 + (CIDetector *)detectorOfType:(NSString *)type context:(CIContext *)context options:(NSDictionary *)options {
     (void)context;
@@ -43,14 +41,7 @@ NSString *const CIDetectorTypeText = @"CIDetectorTypeText";
     if (![type isEqualToString:CIDetectorTypeFace] && ![type isEqualToString:CIDetectorTypeRectangle] &&
         ![type isEqualToString:CIDetectorTypeQRCode] && ![type isEqualToString:CIDetectorTypeText])
         return nil;
-    CIDetector *detector = [[[self alloc] init] autorelease];
-    detector->_type = [type copy];
-    return detector;
-}
-
-- (void)dealloc {
-    [_type release];
-    [super dealloc];
+    return [[[self alloc] init] autorelease];
 }
 
 - (NSArray *)featuresInImage:(CIImage *)image {
