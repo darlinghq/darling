@@ -472,7 +472,9 @@ static CFStringRef copyUserHandler(CFStringRef matchKey, CFStringRef value, cons
 	return result;
 }
 
-static OSStatus setUserHandler(CFStringRef matchKey, CFStringRef value, const CFStringRef* roleKeys, CFIndex roleKeyCount, CFStringRef bundleID)
+// Stores a value (a handler bundle ID, or the handler options) under each of roleKeys in the handler
+// entry that matches matchKey/value.
+static OSStatus setUserHandler(CFStringRef matchKey, CFStringRef value, const CFStringRef* roleKeys, CFIndex roleKeyCount, CFTypeRef bundleID)
 {
 	CFArrayRef handlers = copyHandlers();
 	CFMutableArrayRef newHandlers;
@@ -854,6 +856,14 @@ OSStatus LSCanURLAcceptURL(CFURLRef inItemURL, CFURLRef inTargetURL, LSRolesMask
 	if (!inItemURL || !inTargetURL || !outAcceptsItem)
 		return paramErr;
 	*outAcceptsItem = false;
+
+	// The target has to be an application.
+	LSItemInfoRecord targetInfo;
+	OSStatus status = LSCopyItemInfoForURL(inTargetURL, kLSRequestBasicFlagsOnly, &targetInfo);
+	if (status != noErr)
+		return status;
+	if (!(targetInfo.flags & kLSItemInfoIsApplication))
+		return kLSNotAnApplicationErr;
 	return noErr;
 }
 
@@ -949,4 +959,254 @@ OSStatus LSSetExtensionHiddenForRef(const FSRef *inRef, Boolean hide)
 OSStatus _LSSetWeakBindingURLForType(int sessionID, int unknown, CFStringRef contentType, LSRolesMask roles, CFURLRef appURL)
 {
 	return kLSUnknownErr;
+}
+
+// FSRef variants. The URL functions hold the behaviour; these only translate the reference.
+static CFURLRef copyURLForRef(const FSRef *inRef)
+{
+	return CFURLCreateFromFSRef(kCFAllocatorDefault, (struct FSRef *) inRef);
+}
+
+OSStatus LSCopyDisplayNameForRef(const FSRef *inRef, CFStringRef *outDisplayName)
+{
+	if (!inRef || !outDisplayName)
+		return paramErr;
+
+	CFURLRef url = copyURLForRef(inRef);
+	if (!url)
+		return fnfErr;
+	OSStatus status = LSCopyDisplayNameForURL(url, outDisplayName);
+	CFRelease(url);
+	return status;
+}
+
+OSStatus LSCopyItemInfoForRef(const FSRef *inItemRef, LSRequestedInfo inWhichInfo, LSItemInfoRecord *outItemInfo)
+{
+	if (!inItemRef || !outItemInfo)
+		return paramErr;
+
+	CFURLRef url = copyURLForRef(inItemRef);
+	if (!url)
+		return fnfErr;
+	OSStatus status = LSCopyItemInfoForURL(url, inWhichInfo, outItemInfo);
+	CFRelease(url);
+	return status;
+}
+
+OSStatus LSGetApplicationForItem(const FSRef *inItemRef, LSRolesMask inRoleMask, FSRef *outAppRef, CFURLRef *outAppURL)
+{
+	if (outAppURL)
+		*outAppURL = NULL;
+	if (!inItemRef)
+		return paramErr;
+
+	CFURLRef url = copyURLForRef(inItemRef);
+	if (!url)
+		return fnfErr;
+	OSStatus status = LSGetApplicationForURL(url, inRoleMask, outAppRef, outAppURL);
+	CFRelease(url);
+	return status;
+}
+
+OSStatus LSCanRefAcceptItem(const FSRef *inItemFSRef, const FSRef *inTargetRef, LSRolesMask inRoleMask, LSAcceptanceFlags inFlags, Boolean *outAcceptsItem)
+{
+	if (!inItemFSRef || !inTargetRef || !outAcceptsItem)
+		return paramErr;
+
+	CFURLRef item = copyURLForRef(inItemFSRef);
+	CFURLRef target = copyURLForRef(inTargetRef);
+	OSStatus status = fnfErr;
+	if (item && target)
+		status = LSCanURLAcceptURL(item, target, inRoleMask, inFlags, outAcceptsItem);
+	if (item)
+		CFRelease(item);
+	if (target)
+		CFRelease(target);
+	return status;
+}
+
+OSStatus LSRegisterFSRef(const FSRef *inRef, Boolean inUpdate)
+{
+	if (!inRef)
+		return paramErr;
+
+	CFURLRef url = copyURLForRef(inRef);
+	if (!url)
+		return fnfErr;
+	OSStatus status = LSRegisterURL(url, inUpdate);
+	CFRelease(url);
+	return status;
+}
+
+// No item attribute can be set; the attributes LSCopyItemAttribute answers are derived from the item.
+OSStatus LSSetItemAttribute(const FSRef *inItem, LSRolesMask inRoles, CFStringRef inAttributeName, CFTypeRef inValue)
+{
+	if (!inItem || !inAttributeName)
+		return paramErr;
+	return kLSAttributeNotSettableErr;
+}
+
+// Handler options are kept in the user's handler entry for the content type, next to the chosen handlers.
+static CFStringRef const kLSHandlerOptionsEntryKey = CFSTR("LSHandlerOptions");
+
+LSHandlerOptions LSGetHandlerOptionsForContentType(CFStringRef inContentType)
+{
+	LSHandlerOptions options = kLSHandlerOptionsDefault;
+	CFArrayRef handlers = inContentType != NULL ? copyHandlers() : NULL;
+
+	for (CFIndex i = 0; handlers != NULL && i < CFArrayGetCount(handlers); i++)
+	{
+		CFDictionaryRef entry = CFArrayGetValueAtIndex(handlers, i);
+		if (!handlerMatches(entry, kLSHandlerContentTypeKey, inContentType))
+			continue;
+
+		CFTypeRef value = CFDictionaryGetValue(entry, kLSHandlerOptionsEntryKey);
+		SInt32 number;
+		if (value != NULL && CFGetTypeID(value) == CFNumberGetTypeID() && CFNumberGetValue(value, kCFNumberSInt32Type, &number))
+			options = (LSHandlerOptions) number;
+		break;
+	}
+	if (handlers != NULL)
+		CFRelease(handlers);
+	return options;
+}
+
+OSStatus LSSetHandlerOptionsForContentType(CFStringRef inContentType, LSHandlerOptions inOptions)
+{
+	if (inContentType == NULL)
+		return paramErr;
+
+	SInt32 number = (SInt32) inOptions;
+	CFNumberRef value = CFNumberCreate(NULL, kCFNumberSInt32Type, &number);
+	CFStringRef keys[] = { kLSHandlerOptionsEntryKey };
+	OSStatus status = setUserHandler(kLSHandlerContentTypeKey, inContentType, keys, 1, value);
+	CFRelease(value);
+	return status;
+}
+
+// Kind strings
+
+static CFStringRef copyKindStringForUTI(CFStringRef uti)
+{
+	CFStringRef description = uti != NULL ? UTTypeCopyDescription(uti) : NULL;
+
+	if (description != NULL && CFStringGetLength(description) == 0)
+	{
+		CFRelease(description);
+		description = NULL;
+	}
+	return description;
+}
+
+// The kind string for the content type tagged with the given class and value; "Document" when the
+// type is not declared with a description.
+static CFStringRef copyKindStringForTag(CFStringRef tagClass, CFStringRef tag)
+{
+	CFStringRef uti = UTTypeCreatePreferredIdentifierForTag(tagClass, tag, NULL);
+	CFStringRef kind = copyKindStringForUTI(uti);
+
+	if (uti != NULL)
+		CFRelease(uti);
+	return kind != NULL ? kind : (CFStringRef) CFRetain(CFSTR("Document"));
+}
+
+static CFStringRef copyKindStringForExtension(CFStringRef extension)
+{
+	CFMutableStringRef lower = CFStringCreateMutableCopy(NULL, 0, extension);
+
+	CFStringLowercase(lower, NULL);
+	CFStringRef kind = copyKindStringForTag(kUTTagClassFilenameExtension, lower);
+	CFRelease(lower);
+	return kind;
+}
+
+OSStatus LSCopyKindStringForURL(CFURLRef inURL, CFStringRef *outKindString)
+{
+	if (!inURL || !outKindString)
+		return paramErr;
+	*outKindString = NULL;
+
+	// Only items on disk have a kind; any other URL is an unknown-error case.
+	CFStringRef scheme = CFURLCopyScheme(inURL);
+	Boolean isFile = scheme && CFStringCompare(scheme, CFSTR("file"), kCFCompareCaseInsensitive) == kCFCompareEqualTo;
+	if (scheme)
+		CFRelease(scheme);
+	UInt8 path[PATH_MAX];
+	struct stat st;
+	if (!isFile || !CFURLGetFileSystemRepresentation(inURL, true, path, sizeof(path)))
+		return kLSUnknownErr;
+	if (stat((const char *) path, &st) != 0)
+		return fnfErr;
+
+	CFStringRef extension = CFURLCopyPathExtension(inURL);
+	CFStringRef kind;
+
+	if (S_ISDIR(st.st_mode))
+	{
+		if (extension && CFStringCompare(extension, CFSTR("app"), kCFCompareCaseInsensitive) == kCFCompareEqualTo)
+			kind = CFRetain(CFSTR("Application"));
+		else if (extension && CFStringGetLength(extension) > 0)
+		{
+			// Packages and other directories with an extension use the description of their type.
+			CFMutableStringRef lower = CFStringCreateMutableCopy(NULL, 0, extension);
+			CFStringLowercase(lower, NULL);
+			CFStringRef uti = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, lower, kUTTypeDirectory);
+			kind = copyKindStringForUTI(uti);
+			if (uti)
+				CFRelease(uti);
+			CFRelease(lower);
+			if (!kind)
+				kind = CFRetain(CFSTR("Folder"));
+		}
+		else
+			kind = CFRetain(CFSTR("Folder"));
+	}
+	else if (extension && CFStringGetLength(extension) > 0)
+		kind = copyKindStringForExtension(extension);
+	else
+		kind = CFRetain(CFSTR("Document"));
+
+	if (extension)
+		CFRelease(extension);
+	*outKindString = kind;
+	return noErr;
+}
+
+OSStatus LSCopyKindStringForRef(const FSRef *inFSRef, CFStringRef *outKindString)
+{
+	if (!inFSRef || !outKindString)
+		return paramErr;
+
+	CFURLRef url = copyURLForRef(inFSRef);
+	if (!url)
+		return fnfErr;
+	OSStatus status = LSCopyKindStringForURL(url, outKindString);
+	CFRelease(url);
+	return status;
+}
+
+OSStatus LSCopyKindStringForTypeInfo(OSType inType, OSType inCreator, CFStringRef inExtension, CFStringRef *outKindString)
+{
+	if (!outKindString || (inType == kLSUnknownType && inExtension == NULL))
+		return paramErr;
+
+	// The file extension is the more specific tag; the creator does not take part in the lookup.
+	if (inExtension != NULL && CFStringGetLength(inExtension) > 0)
+		*outKindString = copyKindStringForExtension(inExtension);
+	else
+	{
+		CFStringRef code = UTCreateStringForOSType(inType);
+		*outKindString = copyKindStringForTag(kUTTagClassOSType, code);
+		CFRelease(code);
+	}
+	return noErr;
+}
+
+OSStatus LSCopyKindStringForMIMEType(CFStringRef inMIMEType, CFStringRef *outKindString)
+{
+	if (inMIMEType == NULL || outKindString == NULL)
+		return paramErr;
+
+	*outKindString = copyKindStringForTag(kUTTagClassMIMEType, inMIMEType);
+	return noErr;
 }
