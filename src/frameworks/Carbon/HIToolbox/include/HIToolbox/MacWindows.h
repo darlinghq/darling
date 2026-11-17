@@ -3,6 +3,7 @@
 
 //#include <X11/Xlib.h>
 #include <CarbonCore/MacErrors.h>
+#include <HIToolbox/HIGeometry.h>
 #include "CoreServices/MacTypes.h"
 #include <stdint.h>
 #include <QD/QD.h>
@@ -21,7 +22,6 @@ typedef OptionBits WindowAttributes;
 typedef OptionBits WindowGroupAttributes;
 typedef uint32_t WindowRegionCode;
 
-typedef Rect HIRect;
 typedef void* TransitionWindowOptions;
 typedef uint32_t WindowTransitionAction;
 typedef uint32_t WindowTransitionEffect;
