@@ -22,6 +22,8 @@
 
 #include <CoreGraphics/CoreGraphics.h>
 
+typedef CGPoint HIPoint;
+typedef CGSize HISize;
 typedef CGRect HIRect;
 
 #endif

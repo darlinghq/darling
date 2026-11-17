@@ -29,7 +29,9 @@
 #include <HIToolbox/CarbonEvents.h>
 #include <HIToolbox/Dialogs.h>
 #include <HIToolbox/Drag.h>
+#include <HIToolbox/Appearance.h>
 #include <HIToolbox/Events.h>
+#include <HIToolbox/HITheme.h>
 #include <HIToolbox/HIObject.h>
 #include <HIToolbox/Lists.h>
 #include <HIToolbox/Menus.h>
