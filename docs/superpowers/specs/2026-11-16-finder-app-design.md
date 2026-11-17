@@ -401,13 +401,14 @@ logger app registered as `com.apple.finder` (black-box, tier 2):
 | `open -R <file>` | `aevt`/`odoc`, a list of 1 item |
 | `selectFile:nil inFileViewerRootedAtPath:<dir>` | `aevt`/`rapp`, no items |
 
-- A reveal carries the extra parameter `'aapd'` set to true. But LaunchServices
-  adds `'aapd'` = true to every `odoc` and `rapp` it delivers, also for a plain
-  `open -a App file` and `LSOpenFromURLSpec` (observed on macOS 26.7.3; see
-  `tests/volumes.md`), so it does not tell a reveal from an open. Darling's
-  LaunchServices adds it the same way. **Open question for plan 5:** how Finder
-  tells a reveal (show each item's folder and select it; items in one folder
-  selected together) from an open of a folder or document.
+- Every `odoc` Finder receives is a reveal: Finder shows each item's folder and
+  selects the item (items in one folder are selected together). A reveal and a
+  plain open (`open -a Finder <item>`, `LSOpenFromURLSpec`) are the same event:
+  `aevt`/`odoc`, a list of bookmark-data items, `'aapd'` = true, and the same
+  `esrc`/`inte` attributes, for files and folders alike (observed on macOS
+  26.7.3 with an `NSFileViewer` logger; see `tests/volumes.md`). LaunchServices
+  adds `'aapd'` to every `odoc` and `rapp` it delivers, so it carries no
+  meaning for Finder.
 - Each item is bookmark data (`typeBookmarkData`, `'bmrk'`), not a path or an
   alias; Finder resolves it with `URLByResolvingBookmarkData:` (or the CFURL
   call).
