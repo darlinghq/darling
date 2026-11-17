@@ -303,7 +303,6 @@ static int map_x86_64_nr_to_arm64(uint64_t x86_nr)
 		case 332: return 291;
 		case 424: return 424;
 		case 434: return 434;
-		case 435: return 435;
 		default:  return -1;
 	}
 }
@@ -467,8 +466,14 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 			ret = raw_host_syscall(21, a1, a2, a3, (long)(uintptr_t)host_ev_ptr, 0, 0);
 			break;
 		}
-		case 56: // clone: x86_64 passes (flags, stack, ptid, ctid, tls); arm64 swaps ctid and tls
-			ret = raw_host_syscall(220, a1, a2, a3, a5, a4, a6);
+		case 56:  // clone
+		case 435: // clone3
+			// Thread creation in Darling is handled via the darling_thread_create ELF call
+			// (bsdthread_create), and process fork via native_fork. Direct host clone/clone3
+			// from emulated code cannot safely initialize FEX execution context or Darling
+			// Mach thread state. Return -ENOSYS so callers fail cleanly rather than creating
+			// unmanaged host threads or corrupted state.
+			ret = -ENOSYS;
 			break;
 		case 232: // epoll_wait
 		case 281: { // epoll_pwait
@@ -490,7 +495,7 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 				}
 			}
 			long sigmask_arg = (nr == 281) ? a5 : 0;
-			long sigsetsize_arg = (nr == 281) ? a6 : sizeof(sigset_t);
+			long sigsetsize_arg = (nr == 281) ? a6 : (long)sizeof(sigset_t);
 			ret = raw_host_syscall(22, a1, (long)(uintptr_t)host_evs, maxevents,
 				a4, sigmask_arg, sigsetsize_arg);
 			if (ret > 0) {

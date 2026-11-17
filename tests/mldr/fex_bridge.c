@@ -433,6 +433,28 @@ static void test_syscall_translations(void)
 		"x86_64 fstat populates st_nlink@16, st_mode@24, and st_size@48==37");
 
 	close((int)mfd);
+
+	// 5. clone (56) and clone3 (435) return -ENOSYS
+	// Thread creation must go through darling_thread_create ELF call, not raw clone.
+	// For clone(56): we pass CLONE_VM | CLONE_THREAD with NULL stack, which would return
+	// -EINVAL from an unfiltered host kernel, verifying our explicit -ENOSYS intercept
+	// and register writeback (st.rax == (uint64_t)(long)-ENOSYS).
+	// For clone3(435): on an unfiltered Linux kernel, invalid args (NULL, 0) return -EINVAL;
+	// some seccomp sandboxes pre-filter raw clone3 to -ENOSYS. Our intercept guarantees
+	// uniform -ENOSYS across all environments.
+	memset(&st, 0, sizeof(st));
+	st.rax = 56;
+	st.rdi = 0x00010000 | 0x00000100; // CLONE_VM | CLONE_THREAD
+	st.rsi = 0; // null stack
+	check(fex_linux_syscall_dispatch(&st) == -ENOSYS && st.rax == (uint64_t)(long)-ENOSYS,
+		"x86_64 clone(56) returns -ENOSYS and updates rax");
+
+	memset(&st, 0, sizeof(st));
+	st.rax = 435;
+	st.rdi = 0;
+	st.rsi = 0;
+	check(fex_linux_syscall_dispatch(&st) == -ENOSYS && st.rax == (uint64_t)(long)-ENOSYS,
+		"x86_64 clone3(435) returns -ENOSYS and updates rax");
 }
 
 int main(void)
