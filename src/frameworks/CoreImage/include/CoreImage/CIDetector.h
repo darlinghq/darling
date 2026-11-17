@@ -17,8 +17,36 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+
+@class CIImage;
+@class CIContext;
+@class CIFeature;
+
+NS_ASSUME_NONNULL_BEGIN
 
 @interface CIDetector : NSObject
 
++ (nullable CIDetector *)detectorOfType:(NSString *)type
+                                context:(nullable CIContext *)context
+                                options:(nullable NSDictionary<NSString *, id> *)options;
+
+- (NSArray<CIFeature *> *)featuresInImage:(CIImage *)image;
+- (NSArray<CIFeature *> *)featuresInImage:(CIImage *)image
+                                  options:(nullable NSDictionary<NSString *, id> *)options;
+
 @end
+
+extern NSString *const CIDetectorTypeFace;
+extern NSString *const CIDetectorTypeRectangle;
+extern NSString *const CIDetectorTypeQRCode;
+extern NSString *const CIDetectorTypeText;
+
+extern NSString *const CIDetectorAccuracy;
+extern NSString *const CIDetectorAccuracyLow;
+extern NSString *const CIDetectorAccuracyHigh;
+extern NSString *const CIDetectorTracking;
+extern NSString *const CIDetectorMinFeatureSize;
+extern NSString *const CIDetectorImageOrientation;
+
+NS_ASSUME_NONNULL_END

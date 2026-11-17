@@ -20,7 +20,20 @@
 #import <CoreImage/CIFeature.h>
 #import <darling-stub-forwarding.h>
 
+NSString *const CIFeatureTypeFace = @"Face";
+NSString *const CIFeatureTypeRectangle = @"Rectangle";
+NSString *const CIFeatureTypeQRCode = @"QRCode";
+NSString *const CIFeatureTypeText = @"Text";
+
 @implementation CIFeature
+
+- (NSString *)type {
+    return nil;
+}
+
+- (CGRect)bounds {
+    return CGRectMake(0, 0, 0, 0);
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);

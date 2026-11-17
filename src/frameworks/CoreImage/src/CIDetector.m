@@ -20,6 +20,10 @@
 #import <CoreImage/CIDetector.h>
 #import <darling-stub-forwarding.h>
 
+NSString *const CIDetectorTracking = @"CIDetectorTracking";
+NSString *const CIDetectorMinFeatureSize = @"CIDetectorMinFeatureSize";
+NSString *const CIDetectorImageOrientation = @"CIDetectorImageOrientation";
+NSString *const CIDetectorTypeRectangle = @"CIDetectorTypeRectangle";
 NSString *const CIDetectorAccuracy = @"CIDetectorAccuracy";
 NSString *const CIDetectorAccuracyHigh = @"CIDetectorAccuracyHigh";
 NSString *const CIDetectorAccuracyLow = @"CIDetectorAccuracyLow";
@@ -27,7 +31,28 @@ NSString *const CIDetectorTypeFace = @"CIDetectorTypeFace";
 NSString *const CIDetectorTypeQRCode = @"CIDetectorTypeQRCode";
 NSString *const CIDetectorTypeText = @"CIDetectorTypeText";
 
+// No detector finds anything yet: each type answers with an empty feature list, so callers take
+// their nothing-detected path.
 @implementation CIDetector
+
++ (CIDetector *)detectorOfType:(NSString *)type context:(CIContext *)context options:(NSDictionary *)options {
+    (void)context;
+    (void)options;
+    if (![type isEqualToString:CIDetectorTypeFace] && ![type isEqualToString:CIDetectorTypeRectangle] &&
+        ![type isEqualToString:CIDetectorTypeQRCode] && ![type isEqualToString:CIDetectorTypeText])
+        return nil;
+    return [[[self alloc] init] autorelease];
+}
+
+- (NSArray *)featuresInImage:(CIImage *)image {
+    return [self featuresInImage:image options:nil];
+}
+
+- (NSArray *)featuresInImage:(CIImage *)image options:(NSDictionary *)options {
+    (void)image;
+    (void)options;
+    return [NSArray array];
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
