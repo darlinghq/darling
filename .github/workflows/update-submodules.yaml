@@ -3,6 +3,9 @@ name: Update submodules
 on:
   workflow_dispatch: {}
 
+# Two runs at once would race to push to the same branches.
+concurrency: update-submodules
+
 jobs:
   update-submodules:
     runs-on: ubuntu-latest
@@ -72,6 +75,81 @@ jobs:
             sed -E 's#^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)##'
         }
 
+        # bump_body <dir> <repo-url> <intro>
+        #
+        # Writes a pull request body for the submodule bumps staged in <dir>:
+        # <intro>, then one row per moved submodule with its old and new
+        # commit and a link to the changes between them.
+        bump_body() {
+          local dir="$1" url="$2" intro="$3"
+          local old new path name child_slug
+          echo "$intro"
+          echo
+          echo "| Submodule | From | To | Changes |"
+          echo "|---|---|---|---|"
+          git -C "$dir" diff --cached --raw --no-abbrev HEAD |
+            awk '$1 == ":160000" && $2 == "160000" { sub(/^[^\t]*\t/, ""); print $0 }' |
+            while read -r path; do
+              old=$(git -C "$dir" rev-parse "HEAD:$path")
+              new=$(git -C "$dir" rev-parse ":$path")
+              name=$(git config --file "$dir/.gitmodules" --get-regexp '\.path$' |
+                       awk -v p="$path" '$2 == p { sub(/^submodule\./, "", $1); sub(/\.path$/, "", $1); print $1 }')
+              child_slug=$(slug_of "$(resolve_url "$url" "$(git config --file "$dir/.gitmodules" --get "submodule.$name.url")")")
+              echo "| \`$path\` | \`${old:0:9}\` | \`${new:0:9}\` | [compare](https://github.com/$child_slug/compare/$old...$new) |"
+            done
+        }
+
+        # publish <dir> <slug> <title> <body-file>
+        #
+        # Commits everything that changed in <dir> to $branch of <slug> and
+        # opens a pull request for it, or updates the one already open. An open
+        # pull request is never rewritten: the new state goes on top of its
+        # branch as another commit, so commits a nested pull request's gitlinks
+        # point at stay reachable and reviewers keep the history. When the
+        # default branch has moved on since, that commit also has it as a
+        # parent, so the pull request shows only the submodule changes.
+        # Prints the pull request URL, and leaves <dir> checked out at the
+        # pushed commit so that a parent repository records exactly that one.
+        publish() {
+          local dir="$1" slug="$2" title="$3" body="$4"
+          local remote="https://x-access-token:${GH_TOKEN}@github.com/${slug}.git"
+          local base base_sha tree pr_url head parents commit status
+
+          base=$(gh repo view "$slug" --json defaultBranchRef --jq .defaultBranchRef.name) || return 1
+          base_sha=$(git -C "$dir" rev-parse HEAD)
+          git -C "$dir" add -u
+          tree=$(git -C "$dir" write-tree)
+
+          pr_url=$(gh pr list --repo "$slug" --head "$branch" --state open \
+                     --json url --jq '.[0].url // empty') || return 1
+          if [ -n "$pr_url" ]; then
+            git -C "$dir" fetch -q --depth=1 "$remote" "refs/heads/$branch" || return 1
+            head=$(git -C "$dir" rev-parse FETCH_HEAD)
+            if [ "$(git -C "$dir" rev-parse "$head^{tree}")" = "$tree" ]; then
+              commit=$head
+            else
+              parents="-p $head"
+              status=$(gh api "repos/$slug/compare/$head...$base_sha" --jq .status) || return 1
+              case "$status" in
+                identical|behind) ;;
+                *) parents="$parents -p $base_sha" ;;
+              esac
+              commit=$(git -C "$dir" commit-tree "$tree" $parents -m "$title")
+              git -C "$dir" push -q "$remote" "$commit:refs/heads/$branch" || return 1
+            fi
+            gh pr edit "$pr_url" --repo "$slug" --title "$title" --body-file "$body" >/dev/null || return 1
+          else
+            commit=$(git -C "$dir" commit-tree "$tree" -p "$base_sha" -m "$title")
+            # With no open pull request, whatever the branch still holds is
+            # left over from one that was merged or closed.
+            git -C "$dir" push -q --force "$remote" "$commit:refs/heads/$branch" || return 1
+            pr_url=$(gh pr create --repo "$slug" --base "$base" --head "$branch" \
+                       --title "$title" --body-file "$body") || return 1
+          fi
+          git -C "$dir" checkout -q "$commit"
+          echo "$pr_url"
+        }
+
         # update_repo <dir> <repo-url>
         #
         # Bumps every *local* (relative-URL) submodule of <dir> to the head of
@@ -128,22 +206,11 @@ jobs:
               # commit in the child's repo, so open a PR there.
               child_slug=$(slug_of "$child_url")
               echo "nested changes in $full -> PR against $child_slug"
-              git -C "$dir/$path" commit -a -m "Update submodules to latest commits"
-              if git -C "$dir/$path" push --force \
-                   "https://x-access-token:${GH_TOKEN}@github.com/${child_slug}.git" \
-                   "HEAD:refs/heads/$branch"; then
-                # Only an open PR can carry the commit just pushed: `gh pr view
-                # <branch>` would also find an earlier PR from this branch that
-                # has already been merged or closed, and no new PR would be made.
-                pr_url=$(gh pr list --repo "$child_slug" --head "$branch" --state open \
-                           --json url --jq '.[0].url // empty' 2>/dev/null || true)
-                if [ -z "$pr_url" ]; then
-                  pr_url=$(gh pr create --repo "$child_slug" --head "$branch" \
-                    --title "Update submodules to latest commits" \
-                    --body "Automated update of this repository's submodule references to the latest commit on each submodule's remote default branch." \
-                    || true)
-                fi
-                [ -n "$pr_url" ] || pr_url="https://github.com/${child_slug}/tree/${branch}"
+              git -C "$dir/$path" add -u
+              bump_body "$dir/$path" "$child_url" \
+                "Automated update of this repository's submodule references to the latest commit on each submodule's remote default branch." \
+                > /tmp/nested-body.md
+              if pr_url=$(publish "$dir/$path" "$child_slug" "Update submodules to latest commits" /tmp/nested-body.md); then
                 # Leave the gitlink pointing at the commit just pushed, so this
                 # PR and the nested one describe the same tree. The commit is
                 # only on $branch in the child until that PR lands, so the
@@ -167,8 +234,14 @@ jobs:
 
         update_repo . "$(git remote get-url origin)"
 
+        git add -u
+        if git diff --cached --quiet HEAD; then
+          echo "all submodules are up to date"
+          exit 0
+        fi
+
         {
-          echo "Automated update of all submodule references to the latest commit on each submodule's remote default branch, recursively, for submodules hosted alongside their parent (relative \`../\` remotes). Submodules pointing at external projects are left untouched."
+          bump_body . "$(git remote get-url origin)" "Automated update of all submodule references to the latest commit on each submodule's remote default branch, recursively, for submodules hosted alongside their parent (relative \`../\` remotes). Submodules pointing at external projects are left untouched."
           if [ -n "$nested_prs" ]; then
             echo
             echo "Nested submodules changed too. Those bumps had to be committed in their own repositories:"
@@ -185,14 +258,8 @@ jobs:
             echo
             echo "Updating them needs the Darling bot app installed on those repositories with \`Contents\` and \`Pull requests\` write access."
           fi
+          echo
+          echo "This pull request is updated in place by later runs while it is open: each run adds a commit and rewrites this description."
         } > /tmp/pr-body.md
 
-    - name: Create pull request
-      uses: peter-evans/create-pull-request@v6
-      with:
-        token: ${{ steps.app-token.outputs.token }}
-        commit-message: "Update submodules to latest commits"
-        title: "Update submodules to latest commits"
-        body-path: /tmp/pr-body.md
-        branch: update-submodules
-        delete-branch: true
+        publish . "$GITHUB_REPOSITORY" "Update submodules to latest commits" /tmp/pr-body.md
