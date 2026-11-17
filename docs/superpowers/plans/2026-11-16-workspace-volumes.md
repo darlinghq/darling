@@ -575,8 +575,8 @@ Run it in one mode with `TESTS=tests/volumes.sh <scratch>/helpers/matrix-plan2.s
 - Produces:
   - The file viewer's bundle ID: the `NSFileViewer` user default when it is a non-empty string, else `com.apple.finder`.
   - **`activateFileViewerSelectingURLs:(NSArray<NSURL*>*)urls`:**
-    - builds one `'aevt'`/`'odoc'` event addressed to the file viewer, whose direct object is a list of the URLs' bookmark data (`typeBookmarkData`), in order, and which has the parameter `'aapd'` = `typeBoolean` true;
-    - `'aapd'` is undocumented: a `QUIRK:` comment cites the macOS 26 observation (tier 2) and `nsworkspace-reveal.m`;
+    - builds one `'aevt'`/`'odoc'` event addressed to the file viewer, whose direct object is a list of the URLs' bookmark data (`typeBookmarkData`), in order;
+    - `'aapd'` = true is added by LaunchServices (Task 8's ruling), not here;
     - calls `LSOpenApplication` with the event as `initialEvent` (no `kLSLaunchDontSwitch`);
     - does nothing for an empty array, a URL without bookmark data, or when the file viewer is not found.
   - **`selectFile:(NSString*)path inFileViewerRootedAtPath:(NSString*)root`:**
@@ -590,7 +590,7 @@ Run it in one mode with `TESTS=tests/volumes.sh <scratch>/helpers/matrix-plan2.s
   - Then the driver installs the `com.apple.finder` receiver bundle and registers it.
   - `selectFile:<dir>/a.txt inFileViewerRootedAtPath:@"/"` returns YES, and `aevt odoc aapd bmrk:file://<dir>/a.txt` is the receiver's first event.
   - `activateFileViewerSelectingURLs:@[a, sub/b]` gives `aevt odoc aapd bmrk:<a> bmrk:<sub/b>`.
-  - `selectFile:nil inFileViewerRootedAtPath:<dir>` gives `aevt rapp`.
+  - `selectFile:nil inFileViewerRootedAtPath:<dir>` gives `aevt rapp aapd`.
   - With `NSFileViewer` set (in the test's argument domain) to `org.darlinghq.test.ae-receiver` and `Receiver.app` registered, the reveal goes to that bundle's `events.txt`.
 
   Add the case "reveal" to `tests/volumes.sh`. It removes the receiver bundles afterwards.

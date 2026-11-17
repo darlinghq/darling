@@ -262,5 +262,34 @@ if build nsworkspace-recycle "$ext/cocotron/tests/nsworkspace-recycle.m" -framew
 	[ "$(rc recycle)" = 0 ] && pass "recycle" || fail "recycle: $(outputs recycle)"
 fi
 
+# make_app <dir> <name> <bundle ID>: an application bundle whose executable is ae-receiver (built before)
+make_app() {
+	mkdir -p "$1/$2.app/Contents/MacOS"
+	cp "$work/ae-receiver" "$1/$2.app/Contents/MacOS/ae-receiver"
+	cat >"$1/$2.app/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key><string>ae-receiver</string>
+	<key>CFBundleIdentifier</key><string>$3</string>
+	<key>CFBundleName</key><string>$2</string>
+	<key>CFBundlePackageType</key><string>APPL</string>
+</dict>
+</plist>
+PLIST
+}
+
+# LSOpenApplication: launching an application with an initial Apple Event (see launchservices_open_application.m)
+if build ae-receiver "$here/src/ae-receiver.m" -framework AppKit \
+	&& build launchservices_open_application "$here/src/launchservices_open_application.m" -framework Foundation -framework CoreServices
+then
+	mkdir "$work/ls"
+	make_app "$work/ls" Receiver org.darlinghq.test.ae-receiver
+	guest lsopen "'$gw/launchservices_open_application' '$gw/ls'"
+	[ "$(rc lsopen)" = 0 ] && pass "LSOpenApplication" || fail "LSOpenApplication: $(outputs lsopen) events: $(tr '\n' '|' <"$work/ls/events.txt" 2>/dev/null)"
+	rm -rf "$work/ls"
+fi
+
 rm -rf "$work"
 [ "$failures" = 0 ]

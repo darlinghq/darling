@@ -117,3 +117,20 @@ They arrive as follows:
 
 The root path is never sent. The file viewer is found by bundle ID: the `NSFileViewer` default, else `com.apple.finder`.
 
+
+### Events LaunchServices delivers (macOS 26.7.3, with `ae-receiver.m` as the application)
+
+The receiver installs its handlers in `applicationWillFinishLaunching:`. A process without `NSApplication` (a plain
+CFRunLoop or NSRunLoop with `AEInstallEventHandler` or `NSAppleEventManager`) received no events at all.
+
+| Call | Application | Event |
+|------|-------------|-------|
+| `open -a App` | not running | `aevt`/`oapp`, no `'aapd'` |
+| `open -a App` | running | `aevt`/`rapp`, `'aapd'` true |
+| `open -a App file`, `LSOpenFromURLSpec` with the app and a file | either | `aevt`/`odoc`, 1 bookmark-data item, `'aapd'` true |
+| `LSOpenApplication`, no initial event | not running | `aevt`/`oapp`, no `'aapd'` |
+| `LSOpenApplication`, no initial event | running | `aevt`/`rapp`, `'aapd'` true; the same process |
+| `LSOpenApplication` with an initial `aevt`/`odoc` of two `typeFileURL` items | either | that event, its items unchanged, `'aapd'` added |
+
+`LSOpenApplication` with a NULL `application` gives `paramErr` (-50). With a directory that has no executable, it
+gives `kLSNoExecutableErr` (-10827).
