@@ -20,7 +20,10 @@
 #import <Foundation/Foundation.h>
 #import <AVFoundation/AVQueuedSampleBufferRendering.h>
 
-@interface AVSampleBufferAudioRenderer : NSObject <AVQueuedSampleBufferRendering>
+@interface AVSampleBufferAudioRenderer : NSObject <AVQueuedSampleBufferRendering> {
+@private
+    id _internal;
+}
 
 @property (nonatomic, readonly) AVQueuedSampleBufferRenderingStatus status;
 @property (nonatomic, readonly) NSError *error;

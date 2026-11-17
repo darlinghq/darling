@@ -23,7 +23,10 @@
 #import <AVFoundation/AVAnimation.h>
 #import <AVFoundation/AVQueuedSampleBufferRendering.h>
 
-@interface AVSampleBufferDisplayLayer : CALayer <AVQueuedSampleBufferRendering>
+@interface AVSampleBufferDisplayLayer : CALayer <AVQueuedSampleBufferRendering> {
+@private
+    id _internal;
+}
 
 @property (retain) __attribute__((NSObject)) CMTimebaseRef controlTimebase;
 @property (copy) AVLayerVideoGravity videoGravity;

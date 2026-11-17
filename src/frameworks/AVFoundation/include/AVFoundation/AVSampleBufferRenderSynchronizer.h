@@ -21,7 +21,10 @@
 #import <AVFoundation/AVQueuedSampleBufferRendering.h>
 #import <CoreMedia/CMSync.h>
 
-@interface AVSampleBufferRenderSynchronizer : NSObject
+@interface AVSampleBufferRenderSynchronizer : NSObject {
+@private
+    id _internal;
+}
 
 @property (nonatomic, readonly) CMTimebaseRef timebase;
 @property (nonatomic) float rate;

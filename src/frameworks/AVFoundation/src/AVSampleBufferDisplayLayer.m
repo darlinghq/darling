@@ -66,7 +66,8 @@ static CGImageRef createImageFromPixelBuffer(CVPixelBufferRef buffer)
  * client that paces its own output (VLC does) appear on time. Frames whose pixels Core Graphics
  * cannot draw (biplanar YCbCr) fail the layer with an error, as an undecodable frame does.
  */
-@implementation AVSampleBufferDisplayLayer {
+@interface _AVSampleBufferDisplayLayerState : NSObject {
+@public
     CMTimebaseRef _controlTimebase;
     NSString *_videoGravity;
     AVQueuedSampleBufferRenderingStatus _status;
@@ -76,12 +77,20 @@ static CGImageRef createImageFromPixelBuffer(CVPixelBufferRef buffer)
     dispatch_queue_t _requestQueue;
     void (^_requestBlock)(void);
 }
+@end
+@implementation _AVSampleBufferDisplayLayerState
+@end
+
+#define STATE(self_) (((_AVSampleBufferDisplayLayerState *)(self_)->_internal))
+
+@implementation AVSampleBufferDisplayLayer
 
 - (instancetype)init
 {
     if ((self = [super init]) != nil) {
-        _videoGravity = [AVLayerVideoGravityResizeAspect copy];
-        _preventsDisplaySleepDuringVideoPlayback = YES;
+        _internal = [[_AVSampleBufferDisplayLayerState alloc] init];
+        STATE(self)->_videoGravity = [AVLayerVideoGravityResizeAspect copy];
+        STATE(self)->_preventsDisplaySleepDuringVideoPlayback = YES;
     }
     return self;
 }
@@ -89,32 +98,33 @@ static CGImageRef createImageFromPixelBuffer(CVPixelBufferRef buffer)
 - (void)dealloc
 {
     [self stopRequestingMediaData];
-    if (_controlTimebase != NULL)
-        CFRelease(_controlTimebase);
-    [_videoGravity release];
-    [_error release];
+    if (STATE(self)->_controlTimebase != NULL)
+        CFRelease(STATE(self)->_controlTimebase);
+    [STATE(self)->_videoGravity release];
+    [STATE(self)->_error release];
+    [_internal release];
     [super dealloc];
 }
 
-- (CMTimebaseRef)controlTimebase { return _controlTimebase; }
+- (CMTimebaseRef)controlTimebase { return STATE(self)->_controlTimebase; }
 
 - (void)setControlTimebase:(CMTimebaseRef)timebase
 {
     if (timebase != NULL)
         CFRetain(timebase);
-    if (_controlTimebase != NULL)
-        CFRelease(_controlTimebase);
-    _controlTimebase = timebase;
+    if (STATE(self)->_controlTimebase != NULL)
+        CFRelease(STATE(self)->_controlTimebase);
+    STATE(self)->_controlTimebase = timebase;
 }
 
-- (CMTimebaseRef)timebase { return _controlTimebase; }
+- (CMTimebaseRef)timebase { return STATE(self)->_controlTimebase; }
 
-- (NSString *)videoGravity { return _videoGravity; }
+- (NSString *)videoGravity { return STATE(self)->_videoGravity; }
 
 - (void)setVideoGravity:(NSString *)gravity
 {
-    NSString *old = _videoGravity;
-    _videoGravity = [gravity copy];
+    NSString *old = STATE(self)->_videoGravity;
+    STATE(self)->_videoGravity = [gravity copy];
     [old release];
     if ([gravity isEqualToString:AVLayerVideoGravityResize])
         self.contentsGravity = kCAGravityResize;
@@ -124,29 +134,33 @@ static CGImageRef createImageFromPixelBuffer(CVPixelBufferRef buffer)
         self.contentsGravity = kCAGravityResizeAspect;
 }
 
-@synthesize status = _status, error = _error, preventsCapture = _preventsCapture,
-    preventsDisplaySleepDuringVideoPlayback = _preventsDisplaySleepDuringVideoPlayback;
+- (AVQueuedSampleBufferRenderingStatus)status { return STATE(self)->_status; }
+- (NSError *)error { return STATE(self)->_error; }
+- (BOOL)preventsCapture { return STATE(self)->_preventsCapture; }
+- (void)setPreventsCapture:(BOOL)prevents { STATE(self)->_preventsCapture = prevents; }
+- (BOOL)preventsDisplaySleepDuringVideoPlayback { return STATE(self)->_preventsDisplaySleepDuringVideoPlayback; }
+- (void)setPreventsDisplaySleepDuringVideoPlayback:(BOOL)prevents { STATE(self)->_preventsDisplaySleepDuringVideoPlayback = prevents; }
 
 - (BOOL)requiresFlushToResumeDecoding { return NO; }
-- (BOOL)isReadyForMoreMediaData { return _status != AVQueuedSampleBufferRenderingStatusFailed; }
+- (BOOL)isReadyForMoreMediaData { return STATE(self)->_status != AVQueuedSampleBufferRenderingStatusFailed; }
 - (BOOL)hasSufficientMediaDataForReliablePlaybackStart { return YES; }
 
 - (void)failWithDescription:(NSString *)description
 {
     [self willChangeValueForKey:@"status"];
-    _status = AVQueuedSampleBufferRenderingStatusFailed;
-    [_error release];
-    _error = [[NSError alloc] initWithDomain:@"AVFoundationErrorDomain" code:-11821 /* AVErrorDecodeFailed */
+    STATE(self)->_status = AVQueuedSampleBufferRenderingStatusFailed;
+    [STATE(self)->_error release];
+    STATE(self)->_error = [[NSError alloc] initWithDomain:@"AVFoundationErrorDomain" code:-11821 /* AVErrorDecodeFailed */
                                     userInfo:@{ NSLocalizedDescriptionKey: description }];
     [self didChangeValueForKey:@"status"];
     [[NSNotificationCenter defaultCenter]
         postNotificationName:AVSampleBufferDisplayLayerFailedToDecodeNotification object:self
-                    userInfo:@{ AVSampleBufferDisplayLayerFailedToDecodeNotificationErrorKey: _error }];
+                    userInfo:@{ AVSampleBufferDisplayLayerFailedToDecodeNotificationErrorKey: STATE(self)->_error }];
 }
 
 - (void)enqueueSampleBuffer:(CMSampleBufferRef)sampleBuffer
 {
-    if (sampleBuffer == NULL || _status == AVQueuedSampleBufferRenderingStatusFailed)
+    if (sampleBuffer == NULL || STATE(self)->_status == AVQueuedSampleBufferRenderingStatusFailed)
         return;
     CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     if (imageBuffer == NULL) {
@@ -158,9 +172,9 @@ static CGImageRef createImageFromPixelBuffer(CVPixelBufferRef buffer)
         [self failWithDescription:@"The image buffer's pixel format cannot be displayed"];
         return;
     }
-    if (_status != AVQueuedSampleBufferRenderingStatusRendering) {
+    if (STATE(self)->_status != AVQueuedSampleBufferRenderingStatusRendering) {
         [self willChangeValueForKey:@"status"];
-        _status = AVQueuedSampleBufferRenderingStatusRendering;
+        STATE(self)->_status = AVQueuedSampleBufferRenderingStatusRendering;
         [self didChangeValueForKey:@"status"];
     }
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -174,11 +188,11 @@ static CGImageRef createImageFromPixelBuffer(CVPixelBufferRef buffer)
 
 - (void)flush
 {
-    if (_status == AVQueuedSampleBufferRenderingStatusFailed) {
+    if (STATE(self)->_status == AVQueuedSampleBufferRenderingStatusFailed) {
         [self willChangeValueForKey:@"status"];
-        _status = AVQueuedSampleBufferRenderingStatusUnknown;
-        [_error release];
-        _error = nil;
+        STATE(self)->_status = AVQueuedSampleBufferRenderingStatusUnknown;
+        [STATE(self)->_error release];
+        STATE(self)->_error = nil;
         [self didChangeValueForKey:@"status"];
     }
 }
@@ -194,10 +208,10 @@ static CGImageRef createImageFromPixelBuffer(CVPixelBufferRef buffer)
 - (void)requestMediaDataWhenReadyOnQueue:(dispatch_queue_t)queue usingBlock:(void (^)(void))block
 {
     [self stopRequestingMediaData];
-    _requestQueue = queue;
+    STATE(self)->_requestQueue = queue;
     dispatch_retain(queue);
-    _requestBlock = [block copy];
-    void (^request)(void) = [_requestBlock retain];
+    STATE(self)->_requestBlock = [block copy];
+    void (^request)(void) = [STATE(self)->_requestBlock retain];
     dispatch_async(queue, ^{
         request();
         [request release];
@@ -206,12 +220,12 @@ static CGImageRef createImageFromPixelBuffer(CVPixelBufferRef buffer)
 
 - (void)stopRequestingMediaData
 {
-    if (_requestQueue != NULL) {
-        dispatch_release(_requestQueue);
-        _requestQueue = NULL;
+    if (STATE(self)->_requestQueue != NULL) {
+        dispatch_release(STATE(self)->_requestQueue);
+        STATE(self)->_requestQueue = NULL;
     }
-    [_requestBlock release];
-    _requestBlock = nil;
+    [STATE(self)->_requestBlock release];
+    STATE(self)->_requestBlock = nil;
 }
 
 @end

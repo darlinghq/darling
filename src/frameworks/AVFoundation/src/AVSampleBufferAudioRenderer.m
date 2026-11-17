@@ -45,7 +45,8 @@ NSNotificationName const AVSampleBufferAudioRendererOutputConfigurationDidChange
  * synchronizer plays at once. About half a second is queued before it stops asking for more data.
  * Formats other than interleaved linear PCM fail it with an error.
  */
-@implementation AVSampleBufferAudioRenderer {
+@interface _AVSampleBufferAudioRendererState : NSObject {
+@public
     AVQueuedSampleBufferRenderingStatus _status;
     NSError *_error;
     NSString *_audioOutputDeviceUniqueID;
@@ -65,14 +66,22 @@ NSNotificationName const AVSampleBufferAudioRendererOutputConfigurationDidChange
     BOOL _started;
     AVSampleBufferRenderSynchronizer *_synchronizer; /* not retained: the synchronizer keeps us */
 }
+@end
+@implementation _AVSampleBufferAudioRendererState
+@end
+
+#define STATE(self_) (((_AVSampleBufferAudioRendererState *)(self_)->_internal))
+
+@implementation AVSampleBufferAudioRenderer
 
 - (instancetype)init
 {
     if ((self = [super init]) != nil) {
-        _volume = 1.0f;
-        _audioTimePitchAlgorithm = [@"AVAudioTimePitchAlgorithmTimeDomain" copy];
-        _chunks = [[NSMutableArray alloc] init];
-        pthread_mutex_init(&_lock, NULL);
+        _internal = [[_AVSampleBufferAudioRendererState alloc] init];
+        STATE(self)->_volume = 1.0f;
+        STATE(self)->_audioTimePitchAlgorithm = [@"AVAudioTimePitchAlgorithmTimeDomain" copy];
+        STATE(self)->_chunks = [[NSMutableArray alloc] init];
+        pthread_mutex_init(&STATE(self)->_lock, NULL);
     }
     return self;
 }
@@ -81,39 +90,41 @@ NSNotificationName const AVSampleBufferAudioRendererOutputConfigurationDidChange
 {
     [self stopRequestingMediaData];
     [self disposeUnit];
-    pthread_mutex_destroy(&_lock);
-    [_chunks release];
-    [_error release];
-    [_audioOutputDeviceUniqueID release];
-    [_audioTimePitchAlgorithm release];
+    pthread_mutex_destroy(&STATE(self)->_lock);
+    [STATE(self)->_chunks release];
+    [STATE(self)->_error release];
+    [STATE(self)->_audioOutputDeviceUniqueID release];
+    [STATE(self)->_audioTimePitchAlgorithm release];
+    [_internal release];
     [super dealloc];
 }
 
-@synthesize status = _status, error = _error;
+- (AVQueuedSampleBufferRenderingStatus)status { return STATE(self)->_status; }
+- (NSError *)error { return STATE(self)->_error; }
 
-- (float)volume { return _volume; }
-- (void)setVolume:(float)volume { _volume = volume; }
-- (BOOL)isMuted { return _muted; }
-- (void)setMuted:(BOOL)muted { _muted = muted; }
+- (float)volume { return STATE(self)->_volume; }
+- (void)setVolume:(float)volume { STATE(self)->_volume = volume; }
+- (BOOL)isMuted { return STATE(self)->_muted; }
+- (void)setMuted:(BOOL)muted { STATE(self)->_muted = muted; }
 
 - (void)_setSynchronizer:(AVSampleBufferRenderSynchronizer *)synchronizer
 {
-    _synchronizer = synchronizer;
+    STATE(self)->_synchronizer = synchronizer;
 }
 
-- (NSString *)audioOutputDeviceUniqueID { return _audioOutputDeviceUniqueID; }
+- (NSString *)audioOutputDeviceUniqueID { return STATE(self)->_audioOutputDeviceUniqueID; }
 - (void)setAudioOutputDeviceUniqueID:(NSString *)uid
 {
-    NSString *old = _audioOutputDeviceUniqueID;
-    _audioOutputDeviceUniqueID = [uid copy];
+    NSString *old = STATE(self)->_audioOutputDeviceUniqueID;
+    STATE(self)->_audioOutputDeviceUniqueID = [uid copy];
     [old release];
 }
 
-- (NSString *)audioTimePitchAlgorithm { return _audioTimePitchAlgorithm; }
+- (NSString *)audioTimePitchAlgorithm { return STATE(self)->_audioTimePitchAlgorithm; }
 - (void)setAudioTimePitchAlgorithm:(NSString *)algorithm
 {
-    NSString *old = _audioTimePitchAlgorithm;
-    _audioTimePitchAlgorithm = [algorithm copy];
+    NSString *old = STATE(self)->_audioTimePitchAlgorithm;
+    STATE(self)->_audioTimePitchAlgorithm = [algorithm copy];
     [old release];
 }
 
@@ -121,34 +132,34 @@ NSNotificationName const AVSampleBufferAudioRendererOutputConfigurationDidChange
 
 - (size_t)targetBytes
 {
-    size_t bytesPerSecond = (size_t)(_format.mSampleRate * _format.mBytesPerFrame);
+    size_t bytesPerSecond = (size_t)(STATE(self)->_format.mSampleRate * STATE(self)->_format.mBytesPerFrame);
     return bytesPerSecond > 0 ? bytesPerSecond / 2 : 64 * 1024;
 }
 
 - (BOOL)isReadyForMoreMediaData
 {
-    if (_status == AVQueuedSampleBufferRenderingStatusFailed)
+    if (STATE(self)->_status == AVQueuedSampleBufferRenderingStatusFailed)
         return NO;
-    pthread_mutex_lock(&_lock);
-    BOOL ready = _queuedBytes < [self targetBytes];
-    pthread_mutex_unlock(&_lock);
+    pthread_mutex_lock(&STATE(self)->_lock);
+    BOOL ready = STATE(self)->_queuedBytes < [self targetBytes];
+    pthread_mutex_unlock(&STATE(self)->_lock);
     return ready;
 }
 
 - (BOOL)hasSufficientMediaDataForReliablePlaybackStart
 {
-    pthread_mutex_lock(&_lock);
-    BOOL enough = _queuedBytes >= [self targetBytes] / 2;
-    pthread_mutex_unlock(&_lock);
+    pthread_mutex_lock(&STATE(self)->_lock);
+    BOOL enough = STATE(self)->_queuedBytes >= [self targetBytes] / 2;
+    pthread_mutex_unlock(&STATE(self)->_lock);
     return enough;
 }
 
 - (void)failWithDescription:(NSString *)description status:(OSStatus)status
 {
     [self willChangeValueForKey:@"status"];
-    _status = AVQueuedSampleBufferRenderingStatusFailed;
-    [_error release];
-    _error = [[NSError alloc] initWithDomain:AVFoundationErrorDomain code:-11800 /* AVErrorUnknown */
+    STATE(self)->_status = AVQueuedSampleBufferRenderingStatusFailed;
+    [STATE(self)->_error release];
+    STATE(self)->_error = [[NSError alloc] initWithDomain:AVFoundationErrorDomain code:-11800 /* AVErrorUnknown */
                                     userInfo:@{ NSLocalizedDescriptionKey: description,
                                                 NSUnderlyingErrorKey: [NSError errorWithDomain:NSOSStatusErrorDomain code:status userInfo:nil] }];
     [self didChangeValueForKey:@"status"];
@@ -164,35 +175,35 @@ static OSStatus renderCallback(void *refCon, AudioUnitRenderActionFlags *flags, 
 {
     AudioBuffer *out = &ioData->mBuffers[0];
     size_t wanted = out->mDataByteSize, copied = 0;
-    BOOL playing = _synchronizer == nil || _synchronizer.rate != 0;
-    pthread_mutex_lock(&_lock);
-    while (playing && copied < wanted && _chunks.count > 0) {
-        NSData *chunk = _chunks[0];
-        size_t n = MIN(wanted - copied, chunk.length - _chunkOffset);
-        memcpy((char *)out->mData + copied, (const char *)chunk.bytes + _chunkOffset, n);
+    BOOL playing = STATE(self)->_synchronizer == nil || STATE(self)->_synchronizer.rate != 0;
+    pthread_mutex_lock(&STATE(self)->_lock);
+    while (playing && copied < wanted && STATE(self)->_chunks.count > 0) {
+        NSData *chunk = STATE(self)->_chunks[0];
+        size_t n = MIN(wanted - copied, chunk.length - STATE(self)->_chunkOffset);
+        memcpy((char *)out->mData + copied, (const char *)chunk.bytes + STATE(self)->_chunkOffset, n);
         copied += n;
-        _chunkOffset += n;
-        _queuedBytes -= n;
-        if (_chunkOffset == chunk.length) {
-            [_chunks removeObjectAtIndex:0];
-            _chunkOffset = 0;
+        STATE(self)->_chunkOffset += n;
+        STATE(self)->_queuedBytes -= n;
+        if (STATE(self)->_chunkOffset == chunk.length) {
+            [STATE(self)->_chunks removeObjectAtIndex:0];
+            STATE(self)->_chunkOffset = 0;
         }
     }
-    BOOL wantMore = _queuedBytes < [self targetBytes] && _requestBlock != nil && !_requestPending;
+    BOOL wantMore = STATE(self)->_queuedBytes < [self targetBytes] && STATE(self)->_requestBlock != nil && !STATE(self)->_requestPending;
     if (wantMore)
-        _requestPending = YES;
-    pthread_mutex_unlock(&_lock);
+        STATE(self)->_requestPending = YES;
+    pthread_mutex_unlock(&STATE(self)->_lock);
     memset((char *)out->mData + copied, 0, wanted - copied);
     if (copied == 0)
         *flags |= kAudioUnitRenderAction_OutputIsSilence;
 
-    float gain = _muted ? 0.0f : _volume;
+    float gain = STATE(self)->_muted ? 0.0f : STATE(self)->_volume;
     if (gain != 1.0f && copied > 0) {
-        if (_format.mFormatFlags & kAudioFormatFlagIsFloat && _format.mBitsPerChannel == 32) {
+        if (STATE(self)->_format.mFormatFlags & kAudioFormatFlagIsFloat && STATE(self)->_format.mBitsPerChannel == 32) {
             float *samples = out->mData;
             for (size_t i = 0; i < copied / sizeof(float); i++)
                 samples[i] *= gain;
-        } else if (_format.mBitsPerChannel == 16) {
+        } else if (STATE(self)->_format.mBitsPerChannel == 16) {
             int16_t *samples = out->mData;
             for (size_t i = 0; i < copied / sizeof(int16_t); i++)
                 samples[i] = (int16_t)(samples[i] * gain);
@@ -205,17 +216,17 @@ static OSStatus renderCallback(void *refCon, AudioUnitRenderActionFlags *flags, 
 
 - (void)scheduleRequest
 {
-    dispatch_queue_t queue = _requestQueue;
-    void (^block)(void) = [_requestBlock retain];
+    dispatch_queue_t queue = STATE(self)->_requestQueue;
+    void (^block)(void) = [STATE(self)->_requestBlock retain];
     if (queue == NULL || block == nil) {
         [block release];
         return;
     }
     [self retain];
     dispatch_async(queue, ^{
-        pthread_mutex_lock(&_lock);
-        _requestPending = NO;
-        pthread_mutex_unlock(&_lock);
+        pthread_mutex_lock(&STATE(self)->_lock);
+        STATE(self)->_requestPending = NO;
+        pthread_mutex_unlock(&STATE(self)->_lock);
         block();
         [block release];
         [self release];
@@ -224,14 +235,14 @@ static OSStatus renderCallback(void *refCon, AudioUnitRenderActionFlags *flags, 
 
 - (void)disposeUnit
 {
-    if (_unit == NULL)
+    if (STATE(self)->_unit == NULL)
         return;
-    if (_started)
-        AudioOutputUnitStop(_unit);
-    AudioUnitUninitialize(_unit);
-    AudioComponentInstanceDispose(_unit);
-    _unit = NULL;
-    _started = NO;
+    if (STATE(self)->_started)
+        AudioOutputUnitStop(STATE(self)->_unit);
+    AudioUnitUninitialize(STATE(self)->_unit);
+    AudioComponentInstanceDispose(STATE(self)->_unit);
+    STATE(self)->_unit = NULL;
+    STATE(self)->_started = NO;
 }
 
 - (OSStatus)openUnitWithFormat:(const AudioStreamBasicDescription *)format
@@ -242,34 +253,34 @@ static OSStatus renderCallback(void *refCon, AudioUnitRenderActionFlags *flags, 
     AudioComponent component = AudioComponentFindNext(NULL, &description);
     if (component == NULL)
         return kAudioUnitErr_InvalidElement;
-    OSStatus status = AudioComponentInstanceNew(component, &_unit);
+    OSStatus status = AudioComponentInstanceNew(component, &STATE(self)->_unit);
     if (status != noErr)
         return status;
     AURenderCallbackStruct callback = { renderCallback, self };
-    status = AudioUnitSetProperty(_unit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, format, sizeof(*format));
+    status = AudioUnitSetProperty(STATE(self)->_unit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, format, sizeof(*format));
     if (status == noErr) {
-        status = AudioUnitSetProperty(_unit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0,
+        status = AudioUnitSetProperty(STATE(self)->_unit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0,
                                       &callback, sizeof(callback));
     }
     if (status == noErr) {
-        status = AudioUnitInitialize(_unit);
+        status = AudioUnitInitialize(STATE(self)->_unit);
     }
     if (status == noErr) {
-        status = AudioOutputUnitStart(_unit);
+        status = AudioOutputUnitStart(STATE(self)->_unit);
     }
     if (status != noErr) {
-        AudioComponentInstanceDispose(_unit);
-        _unit = NULL;
+        AudioComponentInstanceDispose(STATE(self)->_unit);
+        STATE(self)->_unit = NULL;
         return status;
     }
-    _started = YES;
-    _format = *format;
+    STATE(self)->_started = YES;
+    STATE(self)->_format = *format;
     return noErr;
 }
 
 - (void)enqueueSampleBuffer:(CMSampleBufferRef)sampleBuffer
 {
-    if (sampleBuffer == NULL || _status == AVQueuedSampleBufferRenderingStatusFailed)
+    if (sampleBuffer == NULL || STATE(self)->_status == AVQueuedSampleBufferRenderingStatusFailed)
         return;
     const AudioStreamBasicDescription *format =
         CMAudioFormatDescriptionGetStreamBasicDescription(CMSampleBufferGetFormatDescription(sampleBuffer));
@@ -278,7 +289,7 @@ static OSStatus renderCallback(void *refCon, AudioUnitRenderActionFlags *flags, 
         [self failWithDescription:@"Only interleaved linear PCM can be rendered" status:kAudioFormatUnsupportedDataFormatError];
         return;
     }
-    if (_unit == NULL || memcmp(format, &_format, sizeof(*format)) != 0) {
+    if (STATE(self)->_unit == NULL || memcmp(format, &STATE(self)->_format, sizeof(*format)) != 0) {
         OSStatus status = [self openUnitWithFormat:format];
         if (status != noErr) {
             [self failWithDescription:@"The audio output could not be started" status:status];
@@ -291,30 +302,30 @@ static OSStatus renderCallback(void *refCon, AudioUnitRenderActionFlags *flags, 
     if (length == 0 || CMBlockBufferGetDataPointer(block, 0, NULL, NULL, &bytes) != noErr)
         return;
     NSData *chunk = [[NSData alloc] initWithBytes:bytes length:length];
-    pthread_mutex_lock(&_lock);
-    [_chunks addObject:chunk];
-    _queuedBytes += length;
-    pthread_mutex_unlock(&_lock);
+    pthread_mutex_lock(&STATE(self)->_lock);
+    [STATE(self)->_chunks addObject:chunk];
+    STATE(self)->_queuedBytes += length;
+    pthread_mutex_unlock(&STATE(self)->_lock);
     [chunk release];
-    if (_status != AVQueuedSampleBufferRenderingStatusRendering) {
+    if (STATE(self)->_status != AVQueuedSampleBufferRenderingStatusRendering) {
         [self willChangeValueForKey:@"status"];
-        _status = AVQueuedSampleBufferRenderingStatusRendering;
+        STATE(self)->_status = AVQueuedSampleBufferRenderingStatusRendering;
         [self didChangeValueForKey:@"status"];
     }
 }
 
 - (void)flush
 {
-    pthread_mutex_lock(&_lock);
-    [_chunks removeAllObjects];
-    _chunkOffset = 0;
-    _queuedBytes = 0;
-    pthread_mutex_unlock(&_lock);
-    if (_status == AVQueuedSampleBufferRenderingStatusFailed) {
+    pthread_mutex_lock(&STATE(self)->_lock);
+    [STATE(self)->_chunks removeAllObjects];
+    STATE(self)->_chunkOffset = 0;
+    STATE(self)->_queuedBytes = 0;
+    pthread_mutex_unlock(&STATE(self)->_lock);
+    if (STATE(self)->_status == AVQueuedSampleBufferRenderingStatusFailed) {
         [self willChangeValueForKey:@"status"];
-        _status = AVQueuedSampleBufferRenderingStatusUnknown;
-        [_error release];
-        _error = nil;
+        STATE(self)->_status = AVQueuedSampleBufferRenderingStatusUnknown;
+        [STATE(self)->_error release];
+        STATE(self)->_error = nil;
         [self didChangeValueForKey:@"status"];
     }
 }
@@ -334,26 +345,26 @@ static OSStatus renderCallback(void *refCon, AudioUnitRenderActionFlags *flags, 
 - (void)requestMediaDataWhenReadyOnQueue:(dispatch_queue_t)queue usingBlock:(void (^)(void))block
 {
     [self stopRequestingMediaData];
-    pthread_mutex_lock(&_lock);
-    _requestQueue = queue;
+    pthread_mutex_lock(&STATE(self)->_lock);
+    STATE(self)->_requestQueue = queue;
     dispatch_retain(queue);
-    _requestBlock = [block copy];
-    _requestPending = YES;
-    pthread_mutex_unlock(&_lock);
+    STATE(self)->_requestBlock = [block copy];
+    STATE(self)->_requestPending = YES;
+    pthread_mutex_unlock(&STATE(self)->_lock);
     [self scheduleRequest];
 }
 
 - (void)stopRequestingMediaData
 {
-    pthread_mutex_lock(&_lock);
-    if (_requestQueue != NULL) {
-        dispatch_release(_requestQueue);
-        _requestQueue = NULL;
+    pthread_mutex_lock(&STATE(self)->_lock);
+    if (STATE(self)->_requestQueue != NULL) {
+        dispatch_release(STATE(self)->_requestQueue);
+        STATE(self)->_requestQueue = NULL;
     }
-    [_requestBlock release];
-    _requestBlock = nil;
-    _requestPending = NO;
-    pthread_mutex_unlock(&_lock);
+    [STATE(self)->_requestBlock release];
+    STATE(self)->_requestBlock = nil;
+    STATE(self)->_requestPending = NO;
+    pthread_mutex_unlock(&STATE(self)->_lock);
 }
 
 @end

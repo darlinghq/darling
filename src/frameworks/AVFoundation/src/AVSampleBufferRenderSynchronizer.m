@@ -59,7 +59,8 @@ static int64_t host_nanoseconds(void)
 
 // The synchronizer keeps its own clock: a media time that advances at the rate, from the host time
 // it was last anchored at.
-@implementation AVSampleBufferRenderSynchronizer {
+@interface _AVSampleBufferRenderSynchronizerState : NSObject {
+@public
     NSLock *_lock;
     float _rate;
     CMTime _anchorTime;
@@ -68,28 +69,37 @@ static int64_t host_nanoseconds(void)
     NSMutableArray *_renderers;
     NSMutableArray *_observers; /* live time observers; their timers do not retain us */
 }
+@end
+@implementation _AVSampleBufferRenderSynchronizerState
+@end
+
+#define STATE(self_) (((_AVSampleBufferRenderSynchronizerState *)(self_)->_internal))
+
+@implementation AVSampleBufferRenderSynchronizer
 
 - (instancetype)init
 {
     if ((self = [super init]) != nil) {
-        _lock = [[NSLock alloc] init];
-        _anchorTime = kCMTimeZero;
-        _anchorHostNanoseconds = host_nanoseconds();
-        _delaysRateChangeUntilHasSufficientMediaData = YES;
-        _renderers = [[NSMutableArray alloc] init];
-        _observers = [[NSMutableArray alloc] init];
+        _internal = [[_AVSampleBufferRenderSynchronizerState alloc] init];
+        STATE(self)->_lock = [[NSLock alloc] init];
+        STATE(self)->_anchorTime = kCMTimeZero;
+        STATE(self)->_anchorHostNanoseconds = host_nanoseconds();
+        STATE(self)->_delaysRateChangeUntilHasSufficientMediaData = YES;
+        STATE(self)->_renderers = [[NSMutableArray alloc] init];
+        STATE(self)->_observers = [[NSMutableArray alloc] init];
     }
     return self;
 }
 
 - (void)dealloc
 {
-    for (_AVSampleBufferRenderSynchronizerObserver *observer in _observers)
+    for (_AVSampleBufferRenderSynchronizerObserver *observer in STATE(self)->_observers)
         if (observer->_timer != NULL)
             dispatch_source_cancel(observer->_timer);
-    [_observers release];
-    [_lock release];
-    [_renderers release];
+    [STATE(self)->_observers release];
+    [STATE(self)->_lock release];
+    [STATE(self)->_renderers release];
+    [_internal release];
     [super dealloc];
 }
 
@@ -106,17 +116,17 @@ static CMTime current_time(CMTime anchor, int64_t anchorHost, float rate)
 
 - (CMTime)currentTime
 {
-    [_lock lock];
-    CMTime time = current_time(_anchorTime, _anchorHostNanoseconds, _rate);
-    [_lock unlock];
+    [STATE(self)->_lock lock];
+    CMTime time = current_time(STATE(self)->_anchorTime, STATE(self)->_anchorHostNanoseconds, STATE(self)->_rate);
+    [STATE(self)->_lock unlock];
     return time;
 }
 
 - (float)rate
 {
-    [_lock lock];
-    float rate = _rate;
-    [_lock unlock];
+    [STATE(self)->_lock lock];
+    float rate = STATE(self)->_rate;
+    [STATE(self)->_lock unlock];
     return rate;
 }
 
@@ -133,43 +143,44 @@ static CMTime current_time(CMTime anchor, int64_t anchorHost, float rate)
 - (void)setRate:(float)rate time:(CMTime)time atHostTime:(CMTime)hostTime
 {
     int64_t now = host_nanoseconds();
-    [_lock lock];
+    [STATE(self)->_lock lock];
     // An invalid time keeps the current one; a host time sets when the given time is reached.
-    CMTime anchor = CMTIME_IS_VALID(time) ? time : current_time(_anchorTime, _anchorHostNanoseconds, _rate);
+    CMTime anchor = CMTIME_IS_VALID(time) ? time : current_time(STATE(self)->_anchorTime, STATE(self)->_anchorHostNanoseconds, STATE(self)->_rate);
     int64_t anchorHost = now;
     if (CMTIME_IS_NUMERIC(hostTime))
         anchorHost = (int64_t)(CMTimeGetSeconds(hostTime) * 1e9);
-    BOOL changed = (_rate != rate);
-    _rate = rate;
-    _anchorTime = anchor;
-    _anchorHostNanoseconds = anchorHost;
-    [_lock unlock];
+    BOOL changed = (STATE(self)->_rate != rate);
+    STATE(self)->_rate = rate;
+    STATE(self)->_anchorTime = anchor;
+    STATE(self)->_anchorHostNanoseconds = anchorHost;
+    [STATE(self)->_lock unlock];
 
     if (changed)
         [[NSNotificationCenter defaultCenter]
             postNotificationName:AVSampleBufferRenderSynchronizerRateDidChangeNotification object:self];
 }
 
-@synthesize delaysRateChangeUntilHasSufficientMediaData = _delaysRateChangeUntilHasSufficientMediaData;
+- (BOOL)delaysRateChangeUntilHasSufficientMediaData { return STATE(self)->_delaysRateChangeUntilHasSufficientMediaData; }
+- (void)setDelaysRateChangeUntilHasSufficientMediaData:(BOOL)delays { STATE(self)->_delaysRateChangeUntilHasSufficientMediaData = delays; }
 
 - (NSArray *)renderers
 {
-    [_lock lock];
-    NSArray *renderers = [[_renderers copy] autorelease];
-    [_lock unlock];
+    [STATE(self)->_lock lock];
+    NSArray *renderers = [[STATE(self)->_renderers copy] autorelease];
+    [STATE(self)->_lock unlock];
     return renderers;
 }
 
 - (void)addRenderer:(id<AVQueuedSampleBufferRendering>)renderer
 {
-    [_lock lock];
-    if ([_renderers containsObject:renderer]) {
-        [_lock unlock];
+    [STATE(self)->_lock lock];
+    if ([STATE(self)->_renderers containsObject:renderer]) {
+        [STATE(self)->_lock unlock];
         [NSException raise:NSInternalInconsistencyException
                     format:@"Cannot add renderer %p : The SampleBufferRenderer cannot be added to a Synchronizer more than once.", renderer];
     }
-    [_renderers addObject:renderer];
-    [_lock unlock];
+    [STATE(self)->_renderers addObject:renderer];
+    [STATE(self)->_lock unlock];
     if ([(id)renderer respondsToSelector:@selector(_setSynchronizer:)])
         [(id)renderer _setSynchronizer:self];
 }
@@ -177,12 +188,12 @@ static CMTime current_time(CMTime anchor, int64_t anchorHost, float rate)
 - (void)removeRenderer:(id<AVQueuedSampleBufferRendering>)renderer atTime:(CMTime)time
      completionHandler:(void (^)(BOOL didRemoveRenderer))completionHandler
 {
-    [_lock lock];
-    BOOL had = [_renderers containsObject:renderer];
+    [STATE(self)->_lock lock];
+    BOOL had = [STATE(self)->_renderers containsObject:renderer];
     if (had && [(id)renderer respondsToSelector:@selector(_setSynchronizer:)])
         [(id)renderer _setSynchronizer:nil];
-    [_renderers removeObject:renderer];
-    [_lock unlock];
+    [STATE(self)->_renderers removeObject:renderer];
+    [STATE(self)->_lock unlock];
 
     if (completionHandler != nil) {
         void (^handler)(BOOL) = [completionHandler copy];
@@ -195,9 +206,9 @@ static CMTime current_time(CMTime anchor, int64_t anchorHost, float rate)
 
 - (void)trackObserver:(_AVSampleBufferRenderSynchronizerObserver *)observer
 {
-    [_lock lock];
-    [_observers addObject:observer];
-    [_lock unlock];
+    [STATE(self)->_lock lock];
+    [STATE(self)->_observers addObject:observer];
+    [STATE(self)->_lock unlock];
 }
 
 - (id)addPeriodicTimeObserverForInterval:(CMTime)interval queue:(dispatch_queue_t)queue
@@ -258,9 +269,9 @@ static CMTime current_time(CMTime anchor, int64_t anchorHost, float rate)
     _AVSampleBufferRenderSynchronizerObserver *o = observer;
     if (o->_timer != NULL)
         dispatch_source_cancel(o->_timer);
-    [_lock lock];
-    [_observers removeObject:o];
-    [_lock unlock];
+    [STATE(self)->_lock lock];
+    [STATE(self)->_observers removeObject:o];
+    [STATE(self)->_lock unlock];
 }
 
 @end
