@@ -271,9 +271,9 @@ them the same way.
 - `recycleURLs:completionHandler:` and `NSFileManager
   -trashItemAtURL:resultingItemURL:error:` (to `~/.Trash`, collision-safe).
 - `selectFile:inFileViewerRootedAtPath:` and
-  `activateFileViewerSelectingURLs:` send Finder the documented reveal Apple
-  Event (`kAEMiscStandards`/`kAEMakeObjectsVisible`) with the items, via
-  LaunchServices (launching Finder if needed).
+  `activateFileViewerSelectingURLs:` send the file viewer the reveal event
+  macOS 26 sends (see "Reveal requests" below), via LaunchServices
+  (launching it by bundle ID if needed).
 
 ### NSCollectionView and drag & drop
 
@@ -360,7 +360,7 @@ format description, including malformed and truncated input.
   (`com.apple.disk-image-udif` and the related disk-image UTIs, viewer role);
   `LSUIElement` so it has no Dock presence.
 - Finder classes (names are the builder's call): app delegate (open
-  documents, reveal event, quit after last window), window controller,
+  documents, reveal requests, quit after last window), window controller,
   sidebar, icon-view controller, list-view controller, free-form layout,
   `.DS_Store` reader, file-operation queue with progress window, Get Info
   panel.
@@ -383,10 +383,42 @@ format description, including malformed and truncated input.
   mount → Finder window layout → copy into a temporary destination → eject.
   GUI checks follow the darling-skills X11/Wayland test guides.
 
+## Reveal requests (observed on macOS 26)
+
+What NSWorkspace and `open` send the file viewer, observed on macOS 26 with a
+logger app registered as `com.apple.finder` (black-box, tier 2):
+
+| Call | Event the file viewer gets |
+|------|----------------------------|
+| `selectFile:inFileViewerRootedAtPath:` | `aevt`/`odoc`, a list of 1 item |
+| `activateFileViewerSelectingURLs:` | one `aevt`/`odoc` with all the items in order, even from different folders |
+| `open -R <file>` | `aevt`/`odoc`, a list of 1 item |
+| `selectFile:nil inFileViewerRootedAtPath:<dir>` | `aevt`/`rapp`, no items |
+
+- A reveal carries the extra parameter `'aapd'` set to true. With it, Finder
+  shows each item's folder and selects the item (items in one folder are
+  selected together). An `odoc` without it is a plain open.
+- Each item is bookmark data (`typeBookmarkData`, `'bmrk'`), not a path or an
+  alias; Finder resolves it with `URLByResolvingBookmarkData:` (or the CFURL
+  call).
+- The root path argument of `selectFile:inFileViewerRootedAtPath:` is never
+  sent.
+- A file viewer that isn't running is launched by bundle ID, and the first
+  event arrived about 70 ms after it finished launching, so Finder installs
+  its Apple Event handlers in `applicationWillFinishLaunching:`.
+- The bundle ID is `com.apple.finder`; the `NSFileViewer` default can name
+  another one.
+- macOS 26 sent no `misc`/`mvis` or Finder-specific event. An AppleScript
+  dictionary would only matter for `tell application "Finder" to reveal`.
+- Darling: NSWorkspace sends these same events. Only when no file viewer app
+  is installed in the prefix does it fall back to asking the Linux file
+  manager to show the item.
+
 ## Decisions made by the designer (for review)
 
 - Attach without `-nobrowse` semantics, so mounted images are visible.
-- Reveal hand-off uses the documented "make objects visible" Apple Event.
+- Reveal hand-off uses the event macOS 26 was observed to send (below), not
+  the older "make objects visible" event, which macOS 26 never sent.
 - Images stay mounted after Finder/DiskImageMounter quit.
 - New apps live in-tree (`src/Finder`, `src/DiskImageMounter`).
 - darling-dmg FUSE mounts carry a distinctive subtype that

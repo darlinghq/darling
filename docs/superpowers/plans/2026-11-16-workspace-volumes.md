@@ -16,7 +16,7 @@
   - ejects through DiskArbitration;
   - turns DiskArbitration callbacks into the mount notifications;
   - draws icons from types and volumes;
-  - reveals files by sending the documented `kAEMiscStandards`/`kAEMakeObjectsVisible` Apple Event to `com.apple.finder` through a new `LSOpenApplication` that supports `initialEvent`.
+  - reveals files by sending the file viewer (`com.apple.finder`, or the `NSFileViewer` default) the `aevt`/`odoc` event macOS 26 sends for a reveal (bookmark-data items plus `'aapd'` = true), through a new `LSOpenApplication` that supports `initialEvent`.
 
 **Tech Stack:** C (darling-xnu, CoreServices), Objective-C (CoreFoundation's NSURL.m, Foundation, AppKit/cocotron), shell test drivers.
 
@@ -30,7 +30,7 @@
   - no verbatim copying (§4);
   - tests from the documented contract (§8);
   - a Provenance note in every commit (§7).
-- Anti-goal: any app-specific logic: no checks on bundle IDs, app names, DMG names or specific background images. The one bundle ID named here, `com.apple.finder`, is the documented receiver of the reveal event, not a check on the caller.
+- Anti-goal: any app-specific logic: no checks on bundle IDs, app names, DMG names or specific background images. The one bundle ID named here, `com.apple.finder`, is the receiver of the reveal event (overridable by the `NSFileViewer` default), not a check on the caller.
 - Anti-goal: re-implementing lower-layer functionality privately in a higher layer.
 - All three launcher modes (root, rootless, non-root) must support mount, eject and the end-to-end flow. Every guest test here runs in all three.
 - Build tree `~/Projects/darling/build`. Install only into `~/darling-finder`. Re-apply setuid to `~/darling-finder/bin/darling` after an install (`chown root:root`, `chmod 4755`).
@@ -137,6 +137,16 @@ They arrive as follows:
 - `@[]`: nil;
 - one file: the same pixels as `iconForFile:`;
 - two files: `NSImageNameMultipleDocuments`.
+
+### Reveal (user-supplied macOS 26 observation; see the spec's "Reveal requests")
+
+| Call | Event the file viewer gets |
+|------|----------------------------|
+| `selectFile:inFileViewerRootedAtPath:` | `aevt`/`odoc`, a list of 1 bookmark-data item, `'aapd'` true |
+| `activateFileViewerSelectingURLs:` | one `aevt`/`odoc` with all items in order, `'aapd'` true |
+| `selectFile:nil inFileViewerRootedAtPath:<dir>` | `aevt`/`rapp`, no items |
+
+The root path is never sent. The file viewer is found by bundle ID: the `NSFileViewer` default, else `com.apple.finder`.
 
 ## Review Focus
 
@@ -533,14 +543,14 @@ Run it in one mode with `TESTS=tests/volumes.sh <scratch>/helpers/matrix-plan2.s
   - Errors: a NULL `appParams` or `application`, or `version` ≠ 0 → `paramErr`; a path that isn't an application → `kLSApplicationNotFoundErr` (−10814).
 - `tests/src/ae-receiver.c`: a bundle executable.
   - It installs handlers for every event (`typeWildCard`/`typeWildCard`).
-  - For each event it appends `<class> <id> <direct-object file URLs, space separated>` to `<bundle>/../events.txt`.
+  - For each event it appends `<class> <id>[ aapd]<items>` to `<bundle>/../events.txt`: ` aapd` when the event has an `'aapd'` parameter that is true; then, for each direct-object item, ` <url>` for a `typeFileURL` and ` bmrk:<url>` for `typeBookmarkData` (resolved with `CFURLCreateByResolvingBookmarkData`).
   - It exits 20 s after the last event.
   - The test builds two bundles around it: `Receiver.app` (`org.darlinghq.test.ae-receiver`), and later `Finder.app` (`com.apple.finder`, for Task 9).
 
 - [ ] **Step 1: Write the failing test** `launchservices_open_application.m <dir with Receiver.app>`:
   - register the bundle;
-  - `LSOpenApplication` with an `initialEvent` `'misc'`/`'mvis'` whose direct object is a list of two `typeFileURL`s. Expected: noErr, a pid > 0, and `events.txt` gets `misc mvis <url1> <url2>` as its first line within 10 s;
-  - call it again while the receiver runs. Expected: the same pid, and a second `misc mvis` line;
+  - `LSOpenApplication` with an `initialEvent` `'aevt'`/`'odoc'` whose direct object is a list of two `typeFileURL`s. Expected: noErr, a pid > 0, and `events.txt` gets `aevt odoc <url1> <url2>` as its first line within 10 s;
+  - call it again while the receiver runs. Expected: the same pid, and a second `aevt odoc` line;
   - a NULL `application` → `paramErr`;
   - a plain directory → −10814.
 
@@ -550,10 +560,10 @@ Run it in one mode with `TESTS=tests/volumes.sh <scratch>/helpers/matrix-plan2.s
 - [ ] **Step 4: Run it to see it pass.** Rebuild `LaunchServices` and `launchservicesd` (as needed) and install `src/frameworks/CoreServices`, then `run-volumes all`. Expected: PASS in all three modes.
 - [ ] **Step 5: Commit** in darling: "LaunchServices: LSOpenApplication with an initial event". Provenance: the public LSOpenDeprecated.h contract.
 
-### Task 9: Reveal in Finder
+### Task 9: Reveal in the file viewer
 
 **Files:**
-- Modify: cocotron `AppKit/MacWorkspace.m` (`selectFile:inFileViewerRootedAtPath:` ~:400, `activateFileViewerSelectingURLs:` ~:562)
+- Modify: cocotron `AppKit/MacWorkspace.m` (`selectFile:inFileViewerRootedAtPath:` ~:400, `activateFileViewerSelectingURLs:` ~:562); darling `src/frameworks/CoreServices/include/AE/AEDataModel.h` (add `typeBookmarkData = 'bmrk'`, public on macOS)
 - Create: cocotron `tests/nsworkspace-reveal.m`
 - Test: `tests/volumes.sh` (reuses Task 8's `ae-receiver.c`)
 
@@ -561,31 +571,34 @@ Run it in one mode with `TESTS=tests/volumes.sh <scratch>/helpers/matrix-plan2.s
 - Consumes:
   - Task 8's `LSOpenApplication`;
   - `URLForApplicationWithBundleIdentifier:` (MacWorkspace.m:582);
-  - Foundation's `NSAppleEventDescriptor`, for building the event.
-- Produces, with `kAEMiscStandards` (`'misc'`), `kAEMakeObjectsVisible` (`'mvis'`) and `typeFileURL` items:
+  - Foundation's `NSAppleEventDescriptor`, for building the event; `-[NSURL bookmarkDataWithOptions:...]` for the items.
+- Produces:
+  - The file viewer's bundle ID: the `NSFileViewer` user default when it is a non-empty string, else `com.apple.finder`.
   - **`activateFileViewerSelectingURLs:(NSArray<NSURL*>*)urls`:**
-    - builds a `'misc'`/`'mvis'` event addressed to `com.apple.finder`, whose direct object is a list of the file URLs;
-    - finds Finder with `URLForApplicationWithBundleIdentifier:@"com.apple.finder"`;
+    - builds one `'aevt'`/`'odoc'` event addressed to the file viewer, whose direct object is a list of the URLs' bookmark data (`typeBookmarkData`), in order, and which has the parameter `'aapd'` = `typeBoolean` true;
+    - `'aapd'` is undocumented: a `QUIRK:` comment cites the macOS 26 observation (tier 2) and `nsworkspace-reveal.m`;
     - calls `LSOpenApplication` with the event as `initialEvent` (no `kLSLaunchDontSwitch`);
-    - does nothing for an empty array or when Finder is not found.
+    - does nothing for an empty array, a URL without bookmark data, or when the file viewer is not found.
   - **`selectFile:(NSString*)path inFileViewerRootedAtPath:(NSString*)root`:**
+    - `root` is not sent;
     - a non-empty `path` → the same event for `[path]`;
-    - an empty or nil `path` with a non-empty `root` → `'aevt'`/`'odoc'` with `root`;
-    - returns YES once the event is handed to LaunchServices, NO when Finder is not found or the launch fails.
+    - a nil or empty `path` → `'aevt'`/`'rapp'` with no items;
+    - returns YES once the event is handed to LaunchServices, NO when the file viewer is not found or the launch fails.
 
 - [ ] **Step 1: Write the failing test** `nsworkspace-reveal.m <dir>`:
-  - Before the test registers a Finder: `selectFile:@"/tmp" inFileViewerRootedAtPath:@""` returns NO, because the guest has no Finder yet (plan 7).
+  - Before the test registers a file viewer: `selectFile:@"/tmp" inFileViewerRootedAtPath:@""` returns NO, because the guest has no Finder yet (plan 7).
   - Then the driver installs the `com.apple.finder` receiver bundle and registers it.
-  - `selectFile:<dir>/a.txt inFileViewerRootedAtPath:@""` returns YES, and `misc mvis file://<dir>/a.txt` is the receiver's first event.
-  - `activateFileViewerSelectingURLs:@[a, b]` gives `misc mvis <a> <b>`.
-  - `selectFile:nil inFileViewerRootedAtPath:<dir>` gives `aevt odoc file://<dir>/`.
+  - `selectFile:<dir>/a.txt inFileViewerRootedAtPath:@"/"` returns YES, and `aevt odoc aapd bmrk:file://<dir>/a.txt` is the receiver's first event.
+  - `activateFileViewerSelectingURLs:@[a, sub/b]` gives `aevt odoc aapd bmrk:<a> bmrk:<sub/b>`.
+  - `selectFile:nil inFileViewerRootedAtPath:<dir>` gives `aevt rapp`.
+  - With `NSFileViewer` set (in the test's argument domain) to `org.darlinghq.test.ae-receiver` and `Receiver.app` registered, the reveal goes to that bundle's `events.txt`.
 
-  Add the case "reveal" to `tests/volumes.sh`. It removes the receiver bundle afterwards.
+  Add the case "reveal" to `tests/volumes.sh`. It removes the receiver bundles afterwards.
 - [ ] **Step 2: Run it to see it fail.** Run `run-volumes rootless`. Expected: FAIL (NO where YES is expected).
 - [ ] **Step 3: Implement** per the Interfaces.
 - [ ] **Step 4: Run it to see it pass.** Rebuild and install AppKit, then `run-volumes all`. Expected: every case of `tests/volumes.sh` passes in all three modes. Also run `TESTS="tests/diskarbitration.sh tests/dmg-attach.sh tests/volume-attributes.sh"` in all modes. Expected: no new FAIL.
 - [ ] **Step 5: Commit.**
-  - cocotron: "NSWorkspace: reveal in Finder with the make-objects-visible event".
+  - cocotron: "NSWorkspace: reveal in the file viewer with the event macOS sends"; darling: the `typeBookmarkData` constant.
   - darling bump.
   - Mark plan 4 done in `docs/superpowers/plans/2026-11-16-finder-roadmap.md`, with the Repos cell: "xnu, corefoundation, foundation, cocotron, darling (CoreServices)".
-  - Provenance: the documented Apple Event constants and NSWorkspace contract.
+  - Provenance: the NSWorkspace contract, the public Apple Event constants, and the macOS 26 black-box observation of the reveal events (user-supplied).
