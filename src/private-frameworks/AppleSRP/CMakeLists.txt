@@ -45,6 +45,9 @@ include_directories(
     ${SRP_SOURCE_DIR}
 )
 
+# linked against the LibreSSL 2.8.3 libcrypto.44, so use its headers
+include_directories(BEFORE ${CMAKE_SOURCE_DIR}/src/external/libressl-2.8.3/include)
+
 add_framework(AppleSRP
     FAT
     CURRENT_VERSION
