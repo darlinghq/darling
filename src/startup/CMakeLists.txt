@@ -130,6 +130,12 @@ add_executable(launcher_prefix_test ${CMAKE_SOURCE_DIR}/tests/launcher/prefix.c 
 target_include_directories(launcher_prefix_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME launcher_prefix COMMAND launcher_prefix_test)
 
+# when the launcher hands an x86_64 program to muvm
+add_executable(launcher_muvm_trampoline_test
+	${CMAKE_SOURCE_DIR}/tests/launcher/muvm-trampoline.c muvm-trampoline.c)
+target_include_directories(launcher_muvm_trampoline_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME launcher_muvm_trampoline COMMAND launcher_muvm_trampoline_test)
+
 # the setuid launcher's checks before it joins the server's mount namespace
 add_executable(launcher_server_test ${CMAKE_SOURCE_DIR}/tests/launcher/server.c launcher-server.c)
 target_include_directories(launcher_server_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
