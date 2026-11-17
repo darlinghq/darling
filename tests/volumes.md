@@ -117,6 +117,11 @@ They arrive as follows:
 
 The root path is never sent. The file viewer is found by bundle ID: the `NSFileViewer` default, else `com.apple.finder`.
 
+With `NSFileViewer` set to the bundle ID of `ae-receiver.m` (macOS 26.7.3, `nsworkspace-reveal.m`), the reveal of a file
+gives that application `aevt odoc aapd bmrk:<file URL>`. That worked with the application in a folder in
+`~/Applications`. With the application in `/tmp`, macOS logged "Finder replacement … not found" and did not use it.
+Darling does not restrict where the application is.
+
 
 ### Events LaunchServices delivers (macOS 26.7.3, with `ae-receiver.m` as the application)
 

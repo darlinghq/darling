@@ -291,5 +291,16 @@ then
 	rm -rf "$work/ls"
 fi
 
+# reveal: selectFile:inFileViewerRootedAtPath: and activateFileViewerSelectingURLs: (see nsworkspace-reveal.m), with
+# receivers standing in for Finder (com.apple.finder) and for an NSFileViewer app; removed afterwards
+if [ -x "$work/ae-receiver" ] && build nsworkspace-reveal "$ext/cocotron/tests/nsworkspace-reveal.m" -framework AppKit -framework CoreServices; then
+	mkdir -p "$work/rev/finder" "$work/rev/viewer"
+	make_app "$work/rev/finder" Finder com.apple.finder
+	make_app "$work/rev/viewer" Receiver org.darlinghq.test.ae-receiver
+	guest reveal "'$gw/nsworkspace-reveal' '$gw/rev'"
+	[ "$(rc reveal)" = 0 ] && pass "reveal" || fail "reveal: $(outputs reveal)"
+	rm -rf "$work/rev"
+fi
+
 rm -rf "$work"
 [ "$failures" = 0 ]
