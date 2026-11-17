@@ -1,5 +1,6 @@
 #import "UIFoundation-ExtraIvars.h"
 #import "NSTypesetter_concrete.h"
+#import "NSLayoutManager-Private.h"
 #import <AppKit/NSAttributedString.h>
 #import <AppKit/NSParagraphStyle.h>
 #import <Foundation/NSRaise.h>
@@ -318,7 +319,7 @@
 }
 
 - (NSFont *) substituteFontForFont: (NSFont *) font {
-    return font;
+    return [UIF_EXTRA_NSTypesetter(self)->_layoutManager _layoutFontForFont: font] ?: font;
 }
 
 - (void) setAttributedString: (NSAttributedString *) text {

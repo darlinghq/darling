@@ -965,7 +965,7 @@ static void loadGlyphAndCharacterCacheForLocation(NSTypesetter_concrete *self,
     }
     _attributesGlyphRange = _attributesRange; // FIX
 
-    nextFont = NSFontAttributeInDictionary(_attributes);
+    nextFont = [self substituteFontForFont: NSFontAttributeInDictionary(_attributes)];
     if (_font != nextFont) {
 #if DEBUG_FETCHATTRIBUTES
         NSLog(@"switching font to %@", nextFont);
@@ -1081,7 +1081,7 @@ static void loadGlyphAndCharacterCacheForLocation(NSTypesetter_concrete *self,
     }
 
     if (_font == nil) {
-        _font = NSFontAttributeInDictionary(nil);
+        _font = [self substituteFontForFont: NSFontAttributeInDictionary(nil)];
 
 #if DEBUGLAYOUTGLYPHSINLAYOUTMANAGER
         NSLog(@"_font is nil - defaulting to font: %@", _font);
