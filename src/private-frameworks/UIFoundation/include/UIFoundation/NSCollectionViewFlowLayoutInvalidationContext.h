@@ -17,12 +17,5 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
-#import <AppKit/NSCollectionViewLayoutInvalidationContext.h>
-#import <AppKit/AppKitIvarLayout.h>
-
-@interface NSCollectionViewFlowLayoutInvalidationContext : NSCollectionViewLayoutInvalidationContext {
-    NS_LEGACY_IVAR_PAD(_NSCollectionViewFlowLayoutInvalidationContextReserved, 4)
-}
-
-@end
+// Declared by AppKit, which owns the public interface and the instance variables.
+#import <AppKit/NSCollectionViewFlowLayout.h>
