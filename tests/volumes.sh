@@ -149,5 +149,49 @@ if build filemanager-trash-volumes "$ext/foundation/tests/filemanager-trash-volu
 	[ "$(rc trash)" = 0 ] && pass "trash on other volumes" || fail "trash on other volumes: $(outputs trash)"
 fi
 
+# workspace volumes: NSWorkspace's volume lists, file system info and eject (see nsworkspace-volumes.m); the dissenter
+# is da-ops (see diskarbitration.md)
+if build nsworkspace-volumes "$ext/cocotron/tests/nsworkspace-volumes.m" -framework AppKit \
+	&& build da-ops "$here/da-ops.c" -framework DiskArbitration -framework CoreFoundation
+then
+	nwv="'$gw/nsworkspace-volumes'"
+	gone="(for i in 1 2 3 4 5 6 7 8 9 10; do test -e '/Volumes/Unmount Test' || exit 0; sleep 0.5; done; echo 'still mounted'; exit 1)"
+	guest wv "hdiutil attach -quiet '$gw/unmount-test.dmg'
+		$nwv lists; $nwv info '/Volumes/Unmount Test'; $nwv info /; $nwv info /nonexistent
+		$nwv eject /nonexistent; $nwv eject /; ls / >/dev/null && echo 'root works'
+		$nwv eject '/Volumes/Unmount Test/hello.txt'; $gone && echo 'gone after eject'
+		hdiutil attach -quiet '$gw/unmount-test.dmg'; $nwv eject-path '/Volumes/Unmount Test'; $gone && echo 'gone after eject-path'
+		hdiutil attach -quiet '$gw/unmount-test.dmg'
+		'$gw/da-ops' deny 15 >'$gw/deny.out' & deny=\$!
+		for i in 1 2 3 4 5 6 7 8 9 10; do grep -q ready '$gw/deny.out' && break; sleep 0.5; done
+		$nwv eject '/Volumes/Unmount Test' | sed 's/^/dissented /'; test -d '/Volumes/Unmount Test' && echo 'mounted after dissent'
+		kill \$deny; wait \$deny
+		$nwv eject '/Volumes/Unmount Test' | sed 's/^/undissented /'; $gone && echo 'gone after undissented eject'"
+	wv_ok=1
+	expect_line() { # <expected line>
+		grep -qxF "$1" "$work/wv.out" || { wv_ok=0; echo "  missing: $1"; }
+	}
+	local_paths=$(line wv "local: ")
+	case "|${local_paths#local: }|" in *"|/|"*) ;; *) wv_ok=0; echo "  no / in $local_paths" ;; esac
+	case "|${local_paths#local: }|" in *"|/Volumes/Unmount Test|"*) ;; *) wv_ok=0; echo "  no image in $local_paths" ;; esac
+	expect_line "removable: /Volumes/Unmount Test"
+	expect_line "info /Volumes/Unmount Test: 1 1 0 1 hfs hfs"
+	case $(line wv "info /: ") in "info /: 1 0 "[01]" 0 "*) ;; *) wv_ok=0; echo "  $(line wv "info /: ")" ;; esac
+	expect_line "info /nonexistent: 0 0 0 0 nil nil"
+	expect_line "eject /nonexistent: 0 NSOSStatusErrorDomain -36 0"
+	expect_line "eject /: 0 NSOSStatusErrorDomain -47 0"
+	expect_line "root works"
+	expect_line "eject /Volumes/Unmount Test/hello.txt: 1 - 0 0"
+	expect_line "gone after eject"
+	expect_line "eject-path /Volumes/Unmount Test: 1"
+	expect_line "gone after eject-path"
+	expect_line "dissented eject /Volumes/Unmount Test: 0 NSOSStatusErrorDomain -47 0"
+	expect_line "mounted after dissent"
+	expect_line "undissented eject /Volumes/Unmount Test: 1 - 0 0"
+	expect_line "gone after undissented eject"
+	[ "$wv_ok" = 1 ] && pass "workspace volumes" || fail "workspace volumes: $(outputs wv)"
+	guest wv-cleanup "test -e '/Volumes/Unmount Test' && hdiutil detach -quiet '/Volumes/Unmount Test'; true"
+fi
+
 rm -rf "$work"
 [ "$failures" = 0 ]
