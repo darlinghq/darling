@@ -19,6 +19,11 @@
 #include <sys/time.h>
 #include <IOSurface/IOSurface.h>
 #include <IOSurface/IOSurfacePriv.h>
+#include <dirent.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#include <elfcalls.h>
 #include <pthread.h>
 
 // Try to get the right (generic) type definitions.
@@ -97,26 +102,364 @@ CGL_EGL_FUNCTIONS(CGL_EGL_DECLARE)
 
 static int native_egl_loaded;
 
-static void load_native_egl(void) {
-    void *handle = dlopen("/usr/lib/native/libEGL.dylib", RTLD_NOW | RTLD_LOCAL);
-    if (!handle)
-        return;
-#define CGL_EGL_RESOLVE(name) \
-    if (!(p_##name = (__typeof__(p_##name)) dlsym(handle, #name))) { \
-        dlclose(handle); \
-        return; \
+// Host EGL vendor selection.
+//
+// The host's EGL is libglvnd's libEGL, which loads every vendor driver listed
+// in its vendor directories the first time any EGL call needs them, so that it
+// can answer client-extension queries and ask each vendor for a display. A
+// vendor that will never be used still costs its libraries' memory in every
+// process, up to a hundred megabytes or more for a software renderer or a
+// proprietary driver. Where the window-system connection already shows that a
+// vendor cannot serve it, glvnd is told, through its documented
+// __EGL_VENDOR_LIBRARY_FILENAMES variable, to load only the others. When that
+// cannot be established, or the user set glvnd's own variables, nothing is
+// changed and all vendors load as before.
+//
+// The variable is set in the host C library's environment only (reached the
+// way the IOSurface framework reaches host libc), for the duration of glvnd's
+// vendor loading. The Darwin environment that child processes inherit is not
+// touched.
+#define CGL_GLVND_VENDOR_DIRS_COUNT 2
+static const char *const glvnd_vendor_dirs[CGL_GLVND_VENDOR_DIRS_COUNT] = {
+    "/etc/glvnd/egl_vendor.d",
+    "/usr/share/glvnd/egl_vendor.d",
+};
+// The host file system is visible under this path in the prefix.
+#define CGL_HOST_ROOT "/Volumes/SystemRoot"
+#define CGL_VENDOR_MAX_FILES 32
+#define CGL_VENDOR_NAME_MAX 256
+
+struct vendor_file {
+    char host_path[PATH_MAX];
+    char name[CGL_VENDOR_NAME_MAX];
+    int proprietary_gpu; // the library is NVIDIA's EGL vendor library
+};
+
+static int vendor_file_cmp(const void *a, const void *b) {
+    return strcmp(((const struct vendor_file *) a)->name, ((const struct vendor_file *) b)->name);
+}
+
+// Reads a vendor JSON and tells whether it names NVIDIA's EGL vendor library.
+// Only the "library_path" value is looked at.
+static int vendor_json_is_nvidia(const char *guest_path) {
+    FILE *f = fopen(guest_path, "r");
+    if (!f)
+        return -1;
+    char buf[2048];
+    size_t n = fread(buf, 1, sizeof(buf) - 1, f);
+    fclose(f);
+    buf[n] = 0;
+    const char *key = strstr(buf, "library_path");
+    if (!key)
+        return -1;
+    const char *colon = strchr(key, ':');
+    if (!colon)
+        return -1;
+    const char *quote = strchr(colon, '"');
+    if (!quote)
+        return -1;
+    const char *end = strchr(quote + 1, '"');
+    if (!end)
+        return -1;
+    size_t len = (size_t) (end - quote - 1);
+    return len >= 13 && !strncmp(quote + 1, "libEGL_nvidia", 13);
+}
+
+// Lists the vendor files glvnd would read, in its order: sorted by name, a
+// file in an earlier directory hiding a later one of the same name.
+// Returns the count, or -1 if a file cannot be classified.
+static int list_vendor_files(struct vendor_file *files) {
+    int count = 0;
+    for (int d = 0; d < CGL_GLVND_VENDOR_DIRS_COUNT; d++) {
+        char dir[PATH_MAX];
+        snprintf(dir, sizeof(dir), CGL_HOST_ROOT "%s", glvnd_vendor_dirs[d]);
+        DIR *dp = opendir(dir);
+        if (!dp)
+            continue;
+        struct dirent *ent;
+        while ((ent = readdir(dp))) {
+            size_t len = strlen(ent->d_name);
+            if (len < 6 || strcmp(ent->d_name + len - 5, ".json") || len >= CGL_VENDOR_NAME_MAX)
+                continue;
+            int dup = 0;
+            for (int i = 0; i < count; i++)
+                dup |= !strcmp(files[i].name, ent->d_name);
+            if (dup)
+                continue;
+            if (count == CGL_VENDOR_MAX_FILES) {
+                closedir(dp);
+                return -1;
+            }
+            struct vendor_file *vf = &files[count];
+            char guest_path[PATH_MAX];
+            snprintf(guest_path, sizeof(guest_path), "%s/%s", dir, ent->d_name);
+            snprintf(vf->host_path, sizeof(vf->host_path), "%s/%s", glvnd_vendor_dirs[d], ent->d_name);
+            snprintf(vf->name, sizeof(vf->name), "%s", ent->d_name);
+            vf->proprietary_gpu = vendor_json_is_nvidia(guest_path);
+            if (vf->proprietary_gpu < 0) {
+                closedir(dp);
+                return -1;
+            }
+            count++;
+        }
+        closedir(dp);
     }
-    CGL_EGL_FUNCTIONS(CGL_EGL_RESOLVE)
+    qsort(files, count, sizeof(files[0]), vendor_file_cmp);
+    return count;
+}
+
+extern struct elf_calls *_elfcalls;
+
+static int (*host_setenv)(const char *, const char *, int);
+static int (*host_unsetenv)(const char *);
+static int (*host_access)(const char *, int);
+
+static int resolve_host_libc(void) {
+    if (!_elfcalls)
+        return 0;
+    void *libc = _elfcalls->dlopen("libc.so.6");
+    if (!libc)
+        return 0;
+    host_setenv = _elfcalls->dlsym(libc, "setenv");
+    host_unsetenv = _elfcalls->dlsym(libc, "unsetenv");
+    host_access = _elfcalls->dlsym(libc, "access");
+    return host_setenv && host_unsetenv && host_access;
+}
+
+// Whether the NVIDIA proprietary driver has a device on the host (desktop
+// driver or the Tegra one), as opposed to its EGL libraries merely being
+// installed.
+static int host_has_nvidia_device(void) {
+    return host_access("/dev/nvidiactl", 0) == 0 || host_access("/dev/nvhost-ctrl", 0) == 0;
+}
+
+enum vendor_choice {
+    vendors_all,
+    vendors_without_nvidia,
+    vendors_only_nvidia,
+};
+
+// X11: the NVIDIA EGL platform needs an X server driven by the NVIDIA driver
+// (the NV-GLX extension) or one offering DRI3; Mesa's software rasterizer
+// works without either. A server with neither can only be served by Mesa,
+// and one driven by the NVIDIA driver can only be served by NVIDIA's EGL.
+// DRI3 alone does not tell whose device it opens, so it decides nothing.
+static enum vendor_choice x11_vendor_choice(void *x11_display) {
+    void *xlib = dlopen("/usr/lib/native/libX11.dylib", RTLD_NOW | RTLD_LOCAL);
+    if (!xlib)
+        return vendors_all;
+    int (*query_extension)(void *, const char *, int *, int *, int *) = dlsym(xlib, "XQueryExtension");
+    if (!query_extension)
+        return vendors_all;
+    int major, event, error;
+    if (query_extension(x11_display, "NV-GLX", &major, &event, &error))
+        return vendors_only_nvidia;
+    if (query_extension(x11_display, "DRI3", &major, &event, &error))
+        return vendors_all;
+    return vendors_without_nvidia;
+}
+
+// Wayland: NVIDIA's EGL platform shares buffers with the compositor through
+// linux-dmabuf or wl_drm. A compositor offering neither, such as one that
+// renders in software, can only be served by shared-memory software
+// rendering. The interfaces are looked up on a short connection of their own
+// (the wire protocol's registry and sync requests) rather than on the
+// backend's, whose event queues are not ours to read. Returns 1 only if the
+// whole registry was read and neither interface is among its globals.
+static int wayland_offers_gpu_buffers(void) {
+    const char *name = getenv("WAYLAND_DISPLAY");
+    if (!name || !*name)
+        return 1;
+    // The compositor's socket is on the host file system, which the prefix
+    // shows under CGL_HOST_ROOT.
+    const char *directory = "";
+    if (name[0] != '/') {
+        directory = getenv("XDG_RUNTIME_DIR");
+        if (!directory || !*directory)
+            return 1;
+    }
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    if (snprintf(addr.sun_path, sizeof(addr.sun_path), CGL_HOST_ROOT "%s%s%s", directory, *directory ? "/" : "", name)
+        >= (int) sizeof(addr.sun_path))
+        return 1;
+    addr.sun_len = sizeof(addr);
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0)
+        return 1;
+    struct timeval timeout = { 2, 0 };
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    int offers = 1;
+    // wl_display.get_registry(registry = 2), wl_display.sync(callback = 3)
+    uint32_t request[6] = { 1, (12u << 16) | 1, 2, 1, (12u << 16) | 0, 3 };
+    if (connect(fd, (struct sockaddr *) &addr, sizeof(addr)) != 0
+        || write(fd, request, sizeof(request)) != (ssize_t) sizeof(request)) {
+        close(fd);
+        return 1;
+    }
+    uint32_t buf[4096];
+    size_t have = 0;
+    int found = 0;
+    for (;;) {
+        ssize_t n = read(fd, (char *) buf + have, sizeof(buf) - have);
+        if (n <= 0)
+            break;
+        have += n;
+        size_t pos = 0;
+        int finished = 0;
+        while (have - pos >= 8) {
+            uint32_t object = buf[pos / 4], size = buf[pos / 4 + 1] >> 16, opcode = buf[pos / 4 + 1] & 0xffff;
+            if (size < 8 || size > sizeof(buf) || have - pos < size)
+                break;
+            const uint32_t *args = &buf[pos / 4 + 2];
+            if (object == 2 && opcode == 0 && size >= 20) {
+                // wl_registry.global: name, interface (length with NUL, padded), version
+                uint32_t len = args[1];
+                const char *iface = (const char *) &args[2];
+                if (len > 0 && len <= size - 20 && iface[len - 1] == 0
+                    && (!strcmp(iface, "zwp_linux_dmabuf_v1") || !strcmp(iface, "wl_drm")))
+                    found = 1;
+            } else if (object == 3 && opcode == 0) {
+                offers = found;
+                finished = 1;
+                break;
+            } else if (object == 1 && opcode == 0) {
+                finished = 2; // a protocol error: unsure
+                break;
+            }
+            pos += size;
+        }
+        if (finished)
+            break;
+        if (pos) {
+            memmove(buf, (char *) buf + pos, have - pos);
+            have -= pos;
+        } else if (have == sizeof(buf)) {
+            break;
+        }
+    }
+    close(fd);
+    return offers;
+}
+
+static enum vendor_choice choose_vendors(void *native_display, EGLenum platform) {
+    if (!native_display)
+        return vendors_all;
+    enum vendor_choice choice = vendors_all;
+    if (platform == EGL_PLATFORM_X11_KHR)
+        choice = x11_vendor_choice(native_display);
+    // Without an NVIDIA device its EGL cannot be used, whatever the server.
+    if (platform == EGL_PLATFORM_WAYLAND_KHR && !wayland_offers_gpu_buffers())
+        choice = vendors_without_nvidia;
+    if (choice != vendors_without_nvidia && !host_has_nvidia_device()
+        && (platform == EGL_PLATFORM_X11_KHR || platform == EGL_PLATFORM_WAYLAND_KHR))
+        choice = vendors_without_nvidia;
+    return choice;
+}
+
+// Sets the vendor list for glvnd, returning 1 if the variable was set and has
+// to be removed again.
+static int restrict_host_vendors(void *native_display, EGLenum platform) {
+    if (getenv("__EGL_VENDOR_LIBRARY_FILENAMES") || getenv("__EGL_VENDOR_LIBRARY_DIRS"))
+        return 0;
+    if (!resolve_host_libc())
+        return 0;
+    enum vendor_choice choice = choose_vendors(native_display, platform);
+    if (choice == vendors_all)
+        return 0;
+    struct vendor_file files[CGL_VENDOR_MAX_FILES];
+    int count = list_vendor_files(files);
+    if (count <= 0)
+        return 0;
+    char list[PATH_MAX * 4];
+    size_t used = 0;
+    int kept = 0, dropped = 0;
+    for (int i = 0; i < count; i++) {
+        if (files[i].proprietary_gpu != (choice == vendors_only_nvidia)) {
+            dropped++;
+            continue;
+        }
+        int n = snprintf(list + used, sizeof(list) - used, "%s%s", kept ? ":" : "", files[i].host_path);
+        if (n < 0 || (size_t) n >= sizeof(list) - used)
+            return 0;
+        used += n;
+        kept++;
+    }
+    if (!kept || !dropped)
+        return 0;
+    return host_setenv("__EGL_VENDOR_LIBRARY_FILENAMES", list, 1) == 0;
+}
+
+// Host libraries run with the guest's environment but see the real Linux file
+// system, so the guest's HOME (/Users/<name>) does not exist for them and
+// Mesa cannot create its shader cache under it. Unless the user chose a cache
+// location or turned the cache off, point Mesa at the guest user's cache
+// directory inside the prefix, as seen from the host. Mesa derives all its
+// cache layouts (multi-file, single-file, database) from this directory. Only
+// the host C library's environment is changed, never the guest's.
+static void set_host_shader_cache_dir(void) {
+    static const char *const user_choices[] = {
+        "MESA_SHADER_CACHE_DIR", "MESA_SHADER_CACHE_DISABLE",
+        "MESA_GLSL_CACHE_DIR", "MESA_GLSL_CACHE_DISABLE", "XDG_CACHE_HOME",
+    };
+    for (size_t i = 0; i < sizeof(user_choices) / sizeof(user_choices[0]); i++)
+        if (getenv(user_choices[i]))
+            return;
+    const char *prefix = getenv("DARLING_PREFIX");
+    const char *home = getenv("HOME");
+    if (!prefix || prefix[0] != '/' || !home || home[0] != '/' || !resolve_host_libc())
+        return;
+    char dir[PATH_MAX];
+    int n = snprintf(dir, sizeof(dir), "%s%s/Library/Caches/Mesa", prefix, home);
+    if (n > 0 && (size_t) n < sizeof(dir))
+        host_setenv("MESA_SHADER_CACHE_DIR", dir, 0);
+}
+
+static void load_native_egl(void *native_display, EGLenum platform) {
+    set_host_shader_cache_dir();
+    int restricted = restrict_host_vendors(native_display, platform);
+    void *handle = dlopen("/usr/lib/native/libEGL.dylib", RTLD_NOW | RTLD_LOCAL);
+    if (handle) {
+#define CGL_EGL_RESOLVE(name) \
+        if (!handle || !(p_##name = (__typeof__(p_##name)) dlsym(handle, #name))) { \
+            if (handle) \
+                dlclose(handle); \
+            handle = NULL; \
+        }
+        CGL_EGL_FUNCTIONS(CGL_EGL_RESOLVE)
 #undef CGL_EGL_RESOLVE
-    native_egl_loaded = 1;
+        // Client extensions are answered from the vendor list, so this makes
+        // glvnd read the variable now, once, before it is removed again.
+        if (handle && restricted)
+            p_eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
+        native_egl_loaded = handle != NULL;
+    }
+    if (restricted)
+        host_unsetenv("__EGL_VENDOR_LIBRARY_FILENAMES");
+}
+
+// The first caller loads the host EGL for good. A registering window-system
+// display passes its native display so the vendor can be chosen to match it;
+// every other entry point passes none and gets every vendor, as an offscreen
+// renderer may want any of them.
+static int native_egl_load(void *native_display, EGLenum platform) {
+    static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+    static int attempted;
+    pthread_mutex_lock(&lock);
+    if (!attempted) {
+        attempted = 1;
+        load_native_egl(native_display, platform);
+    }
+    int loaded = native_egl_loaded;
+    pthread_mutex_unlock(&lock);
+    return loaded;
 }
 
 // Every entry point that can reach EGL before a context or a window exists
 // checks this; contexts and windows only exist once EGL has been loaded.
 static int native_egl_available(void) {
-    static pthread_once_t once = PTHREAD_ONCE_INIT;
-    pthread_once(&once, load_native_egl);
-    return native_egl_loaded;
+    return native_egl_load(NULL, 0);
 }
 
 static EGLDisplay display;
@@ -395,7 +738,7 @@ static int attributes_count(const CGLPixelFormatAttribute *attrs) {
 // is not terminated either: EGL may have returned a handle that a live
 // context still uses.
 static CGLError register_native_display(void *native_display, EGLenum platform) {
-    if (!native_display || !native_egl_available())
+    if (!native_display || !native_egl_load(native_display, platform))
         return kCGLBadConnection;
     EGLDisplay candidate = p_eglGetPlatformDisplay(platform, native_display, NULL);
     if (candidate == EGL_NO_DISPLAY || !p_eglInitialize(candidate, NULL, NULL))

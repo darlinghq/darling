@@ -13,6 +13,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(PC_EGL egl)
 
 include_directories(${PC_EGL_INCLUDE_DIRS})
+include_directories(${CMAKE_SOURCE_DIR}/src/startup/mldr/elfcalls)
 
 generate_sdk_framework(OpenGL
     VERSION ${FRAMEWORK_VERSION}
