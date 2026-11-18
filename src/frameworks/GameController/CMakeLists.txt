@@ -41,6 +41,8 @@ add_framework(GameController
         src/GCControllerMBDelegate.m
         src/GCControllerCBDelegate.m
         src/GCController.m
+        src/GCColor.m
+        src/GCMouse.m
         src/GCPhysicalInputProfile.m
         src/GCEventViewController.m
         src/_GCController.m
