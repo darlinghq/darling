@@ -230,3 +230,53 @@ DADiskRef DADiskCopyWholeDisk(DADiskRef disk)
 {
 	return (DADiskRef) CFRetain(disk);
 }
+
+// There is no disk arbitration daemon, so no disk exists and every operation on a disk fails.
+// QUIRK: for a disk object made from a BSD name that names no disk, the claim, eject and
+// unmount operations call their completion callback before returning, with a dissenter of
+// status kDAReturnBadArgument and no status string. The documentation only says the callback is
+// called once the operation completes. Evidence: black-box observation on macOS 26.7.3 (tier 2;
+// the callback ran before the call returned, on the calling thread, whether or not the session
+// was scheduled on a run loop or dispatch queue). A disk object counts as claimed only after a
+// successful claim, so never here.
+// Test: tests/src/diskarbitration_operations.c (quirk_*)
+typedef void (*DADiskOperationCallback)(DADiskRef disk, DADissenterRef dissenter, void *context);
+
+static void DADiskFailOperation(DADiskRef disk, DADiskOperationCallback callback, void *context)
+{
+	if (!callback)
+		return;
+	DADissenterRef dissenter = DADissenterCreate(CFGetAllocator(disk), kDAReturnBadArgument, NULL);
+	callback(disk, dissenter, context);
+	if (dissenter)
+		CFRelease(dissenter);
+}
+
+void DADiskClaim(DADiskRef disk, DADiskClaimOptions options,
+		DADiskClaimReleaseCallback release, void *releaseContext,
+		DADiskClaimCallback callback, void *callbackContext)
+{
+	DADiskFailOperation(disk, (DADiskOperationCallback) callback, callbackContext);
+}
+
+Boolean DADiskIsClaimed(DADiskRef disk)
+{
+	return false;
+}
+
+void DADiskUnclaim(DADiskRef disk)
+{
+	// Nothing is claimed, so there is nothing to release
+}
+
+void DADiskEject(DADiskRef disk, DADiskEjectOptions options,
+		DADiskEjectCallback callback, void *context)
+{
+	DADiskFailOperation(disk, (DADiskOperationCallback) callback, context);
+}
+
+void DADiskUnmount(DADiskRef disk, DADiskUnmountOptions options,
+		DADiskUnmountCallback callback, void *context)
+{
+	DADiskFailOperation(disk, (DADiskOperationCallback) callback, context);
+}
