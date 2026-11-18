@@ -10,6 +10,8 @@
 CF_EXTERN_C_BEGIN
 
 Boolean _CSCheckFix(CFStringRef str);
+// Turns off the compatibility fixes _CSCheckFix() reports.
+void _CSCheckFixDisable(void);
 int _CSGetProcessorArchitecture(void);
 
 // Also assumed

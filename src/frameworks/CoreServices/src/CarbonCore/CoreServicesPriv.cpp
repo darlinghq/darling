@@ -10,6 +10,12 @@ Boolean _CSCheckFix(CFStringRef str)
 	return 0;
 }
 
+// No fix is ever reported as applying (see _CSCheckFix()), so there is nothing
+// left to turn off. The call returns nothing and has no other effect.
+// Test: coreservices_spi.c
+void _CSCheckFixDisable(void)
+{
+}
 
 // Returns the CPU type of the running process, as in <mach/machine.h>.
 int _CSGetProcessorArchitecture(void)
