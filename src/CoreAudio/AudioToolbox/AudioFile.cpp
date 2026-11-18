@@ -573,20 +573,37 @@ OSStatus AudioFileGetGlobalInfo( AudioFilePropertyID inPropertyID,
 		case kAudioFileGlobalInfo_TypesForUTI:
 		case kAudioFileGlobalInfo_TypesForExtension:
 		{
-			CFStringRef str = static_cast<CFStringRef>(inSpecifier);
-			if (inSpecifierSize != sizeof(str))
+			// The specifier is a buffer holding a CFStringRef, like every other specifier
+			CFStringRef str;
+			if (!inSpecifier || inSpecifierSize != sizeof(str))
 				return kAudioFileBadPropertySizeError;
-			
+			str = *static_cast<const CFStringRef*>(inSpecifier);
+			if (!str)
+				return kAudio_ParamError;
+
+			// CFStringGetCStringPtr() may return NULL for any string, so copy it when it does
+			std::string key;
+			if (const char* cstr = CFStringGetCStringPtr(str, kCFStringEncodingUTF8))
+				key = cstr;
+			else
+			{
+				CFIndex size = CFStringGetMaximumSizeForEncoding(CFStringGetLength(str), kCFStringEncodingUTF8) + 1;
+
+				key.resize(size);
+				if (!CFStringGetCString(str, &key[0], size, kCFStringEncodingUTF8))
+					return kAudio_ParamError;
+				key.resize(key.find('\0'));
+			}
+
 			AudioFileFormatManager* mgr = AudioFileFormatManager::instance();
-			const char* cstr = CFStringGetCStringPtr(str, kCFStringEncodingUTF8);
 			std::set<UInt32> set;
 
 			if (inPropertyID == kAudioFileGlobalInfo_TypesForMIMEType)
-				set = mgr->typesForMIME(cstr);
+				set = mgr->typesForMIME(key.c_str());
 			else if (inPropertyID == kAudioFileGlobalInfo_TypesForUTI)
-				set = mgr->typesForUTI(cstr);
+				set = mgr->typesForUTI(key.c_str());
 			else if (inPropertyID == kAudioFileGlobalInfo_TypesForExtension)
-				set = mgr->typesForExtension(cstr);
+				set = mgr->typesForExtension(key.c_str());
 
 			*ioDataSize = set.size() * sizeof(UInt32);
 			writeUInt32Set(set, outPropertyData);
