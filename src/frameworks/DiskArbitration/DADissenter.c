@@ -1,10 +1,11 @@
 #include "DADissenter.h"
 #include <CoreFoundation/CFRuntime.h>
 
-struct _DADissenter
+struct __DADissenter
 {
   CFRuntimeBase _parent;
-  const CFArrayCallBacks *_callBacks;
+  DAReturn status;
+  CFStringRef string;	// may be NULL
 };
 
 static CFTypeID _kDADissenterTypeID = 0;
@@ -32,11 +33,14 @@ DADissenterInitialize (void)
 	_kDADissenterTypeID = _CFRuntimeRegisterClass (&DADissenterClass);
 }
 
-#define DADISSENTER_SIZE sizeof(struct _DADissenter) - sizeof(CFRuntimeBase)
+#define DADISSENTER_SIZE sizeof(struct __DADissenter) - sizeof(CFRuntimeBase)
 
 static void
 DADissenterFinalize (CFTypeRef cf)
 {
+	DADissenterRef dissenter = (DADissenterRef) cf;
+	if (dissenter->string)
+		CFRelease(dissenter->string);
 }
 
 static Boolean
@@ -64,21 +68,25 @@ CFTypeID DADissenterGetTypeID(void)
 
 DADissenterRef DADissenterCreate(CFAllocatorRef allocator, DAReturn status, CFStringRef string)
 {
-	DADissenterRef new;
+	struct __DADissenter *new;
 	
-	new = (DADissenterRef) _CFRuntimeCreateInstance (allocator,
+	new = (struct __DADissenter *) _CFRuntimeCreateInstance (allocator,
 												_kDADissenterTypeID,
 												DADISSENTER_SIZE, 0);
+	if (!new)
+		return NULL;
+	new->status = status;
+	new->string = string ? CFStringCreateCopy(allocator, string) : NULL;
 	
 	return new;
 }
 
 DAReturn DADissenterGetStatus(DADissenterRef dissenter)
 {
-	return 0;
+	return dissenter->status;
 }
 
 CFStringRef DADissenterGetStatusString(DADissenterRef dissenter)
 {
-	return CFSTR("dummy");
+	return dissenter->string;
 }

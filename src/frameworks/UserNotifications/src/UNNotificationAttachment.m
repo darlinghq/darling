@@ -20,6 +20,8 @@
 
 #import <UserNotifications/UNNotificationAttachment.h>
 
+NSString *const UNNotificationAttachmentOptionsTypeHintKey = @"typeHint";
+
 @implementation UNNotificationAttachment
 
 @synthesize identifier = _identifier;

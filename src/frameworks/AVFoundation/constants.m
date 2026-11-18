@@ -59,6 +59,7 @@ NSString *const AVVideoCodecH264 = @"avc1";
 NSString *const AVVideoCodecHEVC = @"hvc1";
 NSString *const AVVideoCodecJPEG = @"jpeg";
 NSString *const AVVideoCodecKey = @"AVVideoCodecKey";
+NSString *const AVVideoCodecTypeJPEG = @"jpeg";
 NSString *const AVVideoCompressionPropertiesKey = @"AVVideoCompressionPropertiesKey";
 NSString *const AVVideoHeightKey = @"AVVideoHeightKey";
 NSString *const AVVideoMaxKeyFrameIntervalKey = @"MaxKeyFrameInterval";

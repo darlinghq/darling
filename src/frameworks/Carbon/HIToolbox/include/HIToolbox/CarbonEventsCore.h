@@ -30,6 +30,22 @@ enum {
 
 enum {
 	kEventClassKeyboard = 'keyb',
+	kEventClassAppleEvent = 'eppc',
+};
+
+enum {
+	kEventAppleEvent = 1,
+};
+
+enum {
+	kEventParamAEEventClass = 'eevc',
+	kEventParamAEEventID = 'eeid',
+};
+
+// Options of SendEventToEventTargetWithOptions()
+enum {
+	kEventTargetDontPropagate = 1 << 0,    // the event is not passed on to the targets behind the target
+	kEventTargetSendToAllHandlers = 1 << 1 // every handler of a target gets the event, handled or not
 };
 
 enum {
@@ -85,7 +101,12 @@ EventTime GetEventTime(EventRef inEvent);
 OSStatus GetEventParameter(EventRef inEvent, EventParamName inName, EventParamType inDesiredType, EventParamType* outActualType, ByteCount inBufferSize, ByteCount* outActualSize, void* outData);
 OSStatus SetEventParameter(EventRef inEvent, EventParamName inName, EventParamType inType, ByteCount inSize, const void* inDataPtr);
 
+EventRef CopyEvent(EventRef inOther);
+OSStatus SetEventTime(EventRef inEvent, EventTime inTime);
+
 EventQueueRef GetMainEventQueue();
+EventQueueRef GetCurrentEventQueue(void);
+EventRef GetCurrentEvent(void);
 OSStatus PostEventToQueue(EventQueueRef a, EventRef b, EventPriority c);
 OSStatus ReceiveNextEvent(ItemCount a, const EventTypeSpec* b, EventTimeout c, Boolean d, EventRef* e);
 
@@ -93,6 +114,12 @@ OSStatus ReceiveNextEvent(ItemCount a, const EventTypeSpec* b, EventTimeout c, B
 // GetEventDispatcherTarget()); the newest handler of a target sees an event first.
 OSStatus InstallEventHandler(EventTargetRef inTarget, EventHandlerUPP inHandler, ItemCount inNumTypes, const EventTypeSpec* inList, void* inUserData, EventHandlerRef* outRef);
 OSStatus RemoveEventHandler(EventHandlerRef inHandlerRef);
+OSStatus AddEventTypesToHandler(EventHandlerRef inHandlerRef, ItemCount inNumTypes, const EventTypeSpec* inList);
+OSStatus RemoveEventTypesFromHandler(EventHandlerRef inHandlerRef, ItemCount inNumTypes, const EventTypeSpec* inList);
+OSStatus SendEventToEventTargetWithOptions(EventRef inEvent, EventTargetRef inTarget, OptionBits inOptions);
+
+// Processes the Apple event a Carbon event of class kEventClassAppleEvent stands for.
+OSStatus AEProcessEvent(EventRef inEvent);
 OSStatus SendEventToEventTarget(EventRef inEvent, EventTargetRef inTarget);
 
 EventHandlerUPP NewEventHandlerUPP(EventHandlerProcPtr userRoutine);
