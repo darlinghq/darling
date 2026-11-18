@@ -58,6 +58,10 @@ extern const CFStringRef _kLSArchitectureUnknownValue;
 extern const CFStringRef _kLSArchitectureKey;
 
 extern const CFStringRef _kLSPIDKey;
+
+// Key of the options dictionary of the private open calls: a true value opens
+// the item without bringing the application to the front.
+extern const CFStringRef _kLSOpenOptionBackgroundLaunchKey;
 extern const CFStringRef _kLSExecutablePathKey;
 extern const CFStringRef _kLSCheckInTimeKey;
 extern const CFStringRef _kLSDisplayNameKey;
