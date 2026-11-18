@@ -45,8 +45,12 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
+#if __has_include(<mach-o/loader.h>)
 #include <mach-o/loader.h>
+#endif
+#if __has_include(<mach-o/fat.h>)
 #include <mach-o/fat.h>
+#endif
 #include "loader.h"
 #include "exec_policy.h"
 
@@ -76,9 +80,26 @@ static int code_signing_gate(int fd, uint64_t image_offset, struct load_results*
 	return fd;
 }
 
+struct seal_record {
+	char name[16];
+	uintptr_t address;
+	uint64_t file_size;
+	int prot;
+};
+#define MAX_SEALS 16
+static struct seal_record recorded_seals[MAX_SEALS];
+static size_t recorded_seal_count = 0;
+
 static void seal_segment(const char* name, uintptr_t address, uint64_t file_size, int prot)
 {
-	(void) name; (void) address; (void) file_size; (void) prot;
+	if (recorded_seal_count < MAX_SEALS) {
+		strncpy(recorded_seals[recorded_seal_count].name, name ? name : "", sizeof(recorded_seals[0].name) - 1);
+		recorded_seals[recorded_seal_count].name[sizeof(recorded_seals[0].name) - 1] = '\0';
+		recorded_seals[recorded_seal_count].address = address;
+		recorded_seals[recorded_seal_count].file_size = file_size;
+		recorded_seals[recorded_seal_count].prot = prot;
+		recorded_seal_count++;
+	}
 }
 
 static bool setup_space_saw_emulated_x86_64;
@@ -491,6 +512,7 @@ static void test_fat_arch_selection_arm64(void)
 }
 #endif
 
+
 #if defined(__aarch64__)
 // The Darwin TSD base read pair (mrs Xn, TPIDRRO_EL0; and Xn, Xn, #~7) in an
 // instruction section is rewritten to read the native TLS slot; the same words
@@ -571,8 +593,266 @@ static void test_tsd_reads(void)
 	close(fd);
 	free(f.bytes);
 }
-
 #endif
+
+static bool get_mapping_perms(uintptr_t addr, char perms_out[5])
+{
+	FILE* f = fopen("/proc/self/maps", "r");
+	if (!f) return false;
+	char line[512];
+	bool found = false;
+	while (fgets(line, sizeof(line), f))
+	{
+		uintptr_t start, end;
+		char perms[5];
+		if (sscanf(line, "%lx-%lx %4s", &start, &end, perms) == 3)
+		{
+			if (addr >= start && addr < end)
+			{
+				memcpy(perms_out, perms, 4);
+				perms_out[4] = '\0';
+				found = true;
+				break;
+			}
+		}
+	}
+	fclose(f);
+	return found;
+}
+
+static void test_subpage_isolated_rw(void)
+{
+	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	const size_t sub_off = host_ps / 4;
+	const size_t sub_sz = host_ps / 4;
+
+	struct fixture f;
+	fixture_init(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE, host_ps, 0, host_ps, VM_PROT_READ | VM_PROT_EXECUTE);
+	add_segment(&f, "__DATA", IMAGE_BASE + 2 * host_ps + sub_off, sub_sz, host_ps, 0x100, VM_PROT_READ | VM_PROT_WRITE);
+
+	memset(f.bytes + host_ps, 0x33, 0x100);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	load64(fd, false, &lr);
+
+	const uintptr_t slide = lr.mh - IMAGE_BASE;
+	uintptr_t data_page = (IMAGE_BASE + 2 * host_ps + sub_off + slide) & ~(host_ps - 1);
+	char perms[5] = {0};
+	bool ok = get_mapping_perms(data_page, perms);
+	check(ok, "isolated subpage rw: mapping found in /proc/self/maps");
+	check(strcmp(perms, "rw-p") == 0, "isolated subpage rw: has rw-p and no x");
+
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_subpage_isolated_rx(void)
+{
+	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	const size_t sub_off = host_ps / 4;
+	const size_t sub_sz = host_ps / 4;
+
+	struct fixture f;
+	fixture_init(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE, host_ps, 0, host_ps, VM_PROT_READ | VM_PROT_EXECUTE);
+	add_segment(&f, "__SUBTEXT", IMAGE_BASE + 2 * host_ps + sub_off, sub_sz, host_ps, 0x100, VM_PROT_READ | VM_PROT_EXECUTE);
+
+	memset(f.bytes + host_ps, 0x44, 0x100);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	load64(fd, false, &lr);
+
+	const uintptr_t slide = lr.mh - IMAGE_BASE;
+	uintptr_t sub_page = (IMAGE_BASE + 2 * host_ps + sub_off + slide) & ~(host_ps - 1);
+	char perms[5] = {0};
+	bool ok = get_mapping_perms(sub_page, perms);
+	check(ok, "isolated subpage rx: mapping found in /proc/self/maps");
+	check(strcmp(perms, "r-xp") == 0, "isolated subpage rx: has r-xp and no w");
+
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_subpage_shared_rx_rw(void)
+{
+	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	const size_t sub_off = host_ps / 2;
+
+	struct fixture f;
+	fixture_init(&f, MH_EXECUTE, MH_PIE, 5 * host_ps);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE + host_ps, sub_off, 0, sub_off, VM_PROT_READ | VM_PROT_EXECUTE);
+	add_segment(&f, "__DATA", IMAGE_BASE + host_ps + sub_off, 2 * host_ps, sub_off, 0x100, VM_PROT_READ | VM_PROT_WRITE);
+
+	memset(f.bytes + sub_off, 0x55, 0x100);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	load64(fd, false, &lr);
+
+	const uintptr_t slide = lr.mh - (IMAGE_BASE + host_ps);
+	uintptr_t shared_page = IMAGE_BASE + host_ps + slide;
+	uintptr_t pure_rw_page = shared_page + host_ps;
+
+	char perms[5] = {0};
+	check(get_mapping_perms(shared_page, perms), "shared rx+rw: shared page in maps");
+	check(strcmp(perms, "rwxp") == 0, "shared rx+rw: shared page retains union rwxp");
+
+	check(get_mapping_perms(pure_rw_page, perms), "shared rx+rw: pure rw page in maps");
+	check(strcmp(perms, "rw-p") == 0, "shared rx+rw: non-shared page stays rw-p (no x)");
+
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_subpage_shared_rw_r(void)
+{
+	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	const size_t sub_off = host_ps / 2;
+
+	struct fixture f;
+	fixture_init(&f, MH_EXECUTE, MH_PIE, 5 * host_ps);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE, host_ps, 0, host_ps, VM_PROT_READ | VM_PROT_EXECUTE);
+	add_segment(&f, "__DATA", IMAGE_BASE + 2 * host_ps, sub_off, host_ps, sub_off, VM_PROT_READ | VM_PROT_WRITE);
+	add_segment(&f, "__RO", IMAGE_BASE + 2 * host_ps + sub_off, host_ps - sub_off, host_ps + sub_off, 0x100, VM_PROT_READ);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	load64(fd, false, &lr);
+
+	const uintptr_t slide = lr.mh - IMAGE_BASE;
+	uintptr_t shared_page = IMAGE_BASE + 2 * host_ps + slide;
+
+	char perms[5] = {0};
+	check(get_mapping_perms(shared_page, perms), "shared rw+r: shared page in maps");
+	check(strcmp(perms, "rw-p") == 0, "shared rw+r: shared page retains union rw-p (no x)");
+
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_subpage_unaligned_bss(void)
+{
+	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	const size_t sub_off = host_ps / 4;
+
+	struct fixture f;
+	fixture_init(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE, host_ps, 0, host_ps, VM_PROT_READ | VM_PROT_EXECUTE);
+	add_segment(&f, "__BSS", IMAGE_BASE + 2 * host_ps + sub_off, host_ps, host_ps, 0, VM_PROT_READ | VM_PROT_WRITE);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	load64(fd, false, &lr);
+
+	const uintptr_t slide = lr.mh - IMAGE_BASE;
+	uintptr_t bss_page = (IMAGE_BASE + 2 * host_ps + sub_off + slide) & ~(host_ps - 1);
+	char perms[5] = {0};
+	check(get_mapping_perms(bss_page, perms), "unaligned bss: mapped in maps");
+	check(strcmp(perms, "rw-p") == 0, "unaligned bss: has rw-p");
+
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_seal_readonly_segments(void)
+{
+	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	struct fixture f;
+	fixture_init(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE, host_ps, 0, host_ps, VM_PROT_READ | VM_PROT_EXECUTE);
+	add_segment(&f, "__DATA", IMAGE_BASE + 2 * host_ps, host_ps, host_ps, host_ps, VM_PROT_READ | VM_PROT_WRITE);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	lr.seal_images = true;
+	recorded_seal_count = 0;
+	load64(fd, false, &lr);
+
+	const uintptr_t slide = lr.mh - IMAGE_BASE;
+	check(recorded_seal_count == 1, "seal readonly: exactly 1 segment sealed");
+	if (recorded_seal_count >= 1) {
+		check(strcmp(recorded_seals[0].name, "__TEXT") == 0, "seal readonly: __TEXT sealed");
+		check(recorded_seals[0].address == IMAGE_BASE + slide, "seal readonly: __TEXT address matches");
+		check(recorded_seals[0].file_size == host_ps, "seal readonly: __TEXT length matches");
+		check(recorded_seals[0].prot == (PROT_READ | PROT_EXEC), "seal readonly: __TEXT prot is R-X");
+	}
+
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_seal_shared_page_with_writable_not_sealed(void)
+{
+	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	const size_t sub_off = host_ps / 2;
+
+	struct fixture f;
+	fixture_init(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE + host_ps, sub_off, 0, sub_off, VM_PROT_READ | VM_PROT_EXECUTE);
+	add_segment(&f, "__DATA", IMAGE_BASE + host_ps + sub_off, host_ps, sub_off, 0x100, VM_PROT_READ | VM_PROT_WRITE);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	lr.seal_images = true;
+	recorded_seal_count = 0;
+	load64(fd, false, &lr);
+
+	check(recorded_seal_count == 0, "seal shared with writable: no segments sealed");
+
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_seal_contiguous_runs_differing_prot(void)
+{
+	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	const size_t sub_off = host_ps / 2;
+
+	struct fixture f;
+	fixture_init(&f, MH_EXECUTE, MH_PIE, 6 * host_ps);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE + host_ps, host_ps + sub_off, 0, host_ps + sub_off, VM_PROT_READ);
+	add_segment(&f, "__SUBEXEC", IMAGE_BASE + 2 * host_ps + sub_off, host_ps - sub_off, host_ps + sub_off, host_ps - sub_off, VM_PROT_READ | VM_PROT_EXECUTE);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	lr.seal_images = true;
+	recorded_seal_count = 0;
+	load64(fd, false, &lr);
+
+	const uintptr_t slide = lr.mh - (IMAGE_BASE + host_ps);
+	check(recorded_seal_count == 2, "seal contiguous differing prot: split into 2 runs");
+	if (recorded_seal_count >= 2) {
+		check(recorded_seals[0].address == IMAGE_BASE + host_ps + slide, "seal run 0 address");
+		check(recorded_seals[0].file_size == host_ps, "seal run 0 len is 1 page");
+		check(recorded_seals[0].prot == PROT_READ, "seal run 0 prot is PROT_READ");
+
+		check(recorded_seals[1].address == IMAGE_BASE + 2 * host_ps + slide, "seal run 1 address");
+		check(recorded_seals[1].file_size == host_ps, "seal run 1 len is 1 page");
+		check(recorded_seals[1].prot == (PROT_READ | PROT_EXEC), "seal run 1 prot is PROT_READ | PROT_EXEC");
+	}
+
+	close(fd);
+	free(f.bytes);
+}
 
 static void run_expect(void (*test)(void), const char* name, int expected_status)
 {
@@ -609,6 +889,14 @@ int main(void)
 {
 	run(test_executable, "executable");
 	run(test_dylinker, "dylinker");
+	run(test_subpage_isolated_rw, "subpage isolated rw");
+	run(test_subpage_isolated_rx, "subpage isolated rx");
+	run(test_subpage_shared_rx_rw, "subpage shared rx+rw");
+	run(test_subpage_shared_rw_r, "subpage shared rw+r");
+	run(test_subpage_unaligned_bss, "subpage unaligned bss");
+	run(test_seal_readonly_segments, "seal readonly segments");
+	run(test_seal_shared_page_with_writable_not_sealed, "seal shared page with writable not sealed");
+	run(test_seal_contiguous_runs_differing_prot, "seal contiguous runs differing prot");
 #if defined(__aarch64__)
 	thread_case = THREAD_VALID;
 	run(test_unixthread, "unixthread");
