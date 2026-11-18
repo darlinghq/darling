@@ -1,6 +1,7 @@
 #ifndef COREAUDIOTYPES_H
 #define COREAUDIOTYPES_H
 #include <MacTypes.h>
+#include <CoreFoundation/CFAvailability.h>
 
 #define COREAUDIOTYPES_VERSION 1052
 
@@ -349,7 +350,7 @@ enum
 
 
 
-typedef UInt32 AudioChannelBitmap; enum
+typedef CF_OPTIONS(UInt32, AudioChannelBitmap)
 {
     kAudioChannelBit_Left = (1U<<0),
     kAudioChannelBit_Right = (1U<<1),
@@ -370,7 +371,7 @@ typedef UInt32 AudioChannelBitmap; enum
     kAudioChannelBit_TopBackCenter = (1U<<16),
     kAudioChannelBit_TopBackRight = (1U<<17)
 };
-typedef UInt32 AudioChannelFlags; enum
+typedef CF_OPTIONS(UInt32, AudioChannelFlags)
 {
     kAudioChannelFlags_AllOff = 0,
     kAudioChannelFlags_RectangularCoordinates = (1U<<0),
