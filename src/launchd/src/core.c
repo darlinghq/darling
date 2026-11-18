@@ -8071,7 +8071,16 @@ job_mig_send_signal(job_t j, mach_port_t srp, name_t targetlabel, int sig)
 		return BOOTSTRAP_NO_MEMORY;
 	}
 
+#ifdef DARLING
+	/* The system launchd runs as root and serves every user of the container,
+	 * where macOS has one launchd per user whose getuid() is the caller's.
+	 * Comparing against getuid() would refuse every non-root caller, including
+	 * "launchctl unload" of the agent the same user loaded.
+	 */
+	if (unlikely(j->deny_job_creation)) {
+#else
 	if (unlikely(ldc->euid != 0 && ldc->euid != getuid()) || j->deny_job_creation) {
+#endif
 #if TARGET_OS_EMBEDDED	
 		if (!j->embedded_god) {
 			return BOOTSTRAP_NOT_PRIVILEGED;
@@ -9655,6 +9664,15 @@ jobmgr_find_by_name(jobmgr_t jm, const char *where)
 	 * spawns through spawn_via_launchd() go there instead of failing.
 	 */
 	if (for_launchservices) {
+		jmi = root_jobmgr;
+	}
+
+	/* Likewise there is no separate Background session below the system one
+	 * (launchd is PID 1 here, so the lookup above only finds one that exists
+	 * as a submanager). Agents limited to the Background session, as loaded
+	 * by "launchctl load -S Background", belong to the system session.
+	 */
+	if (jmi == NULL && strcasecmp(where, VPROCMGR_SESSION_BACKGROUND) == 0) {
 		jmi = root_jobmgr;
 	}
 #endif
