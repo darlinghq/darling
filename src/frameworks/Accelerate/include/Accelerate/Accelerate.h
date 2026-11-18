@@ -91,6 +91,13 @@ vImage_Error vImageBoxConvolve_ARGB8888(
     vImage_Flags flags
 );
 
+// Fills every pixel of dest with color (the four channel bytes in memory order).
+vImage_Error vImageBufferFill_ARGB8888(
+    const vImage_Buffer *dest,
+    const Pixel_8888 color,
+    vImage_Flags flags
+);
+
 vImage_Error vImageBuffer_InitWithCGImage(
     vImage_Buffer *buf,
     const vImage_CGImageFormat *format,

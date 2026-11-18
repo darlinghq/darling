@@ -69,6 +69,44 @@ vImage_Error vImageBuffer_InitWithCGImage(
     return kvImageUnsupportedConversion;
 }
 
+vImage_Error vImageBufferFill_ARGB8888(
+    const vImage_Buffer *dest,
+    const Pixel_8888 color,
+    vImage_Flags flags
+) {
+    if (!dest || !color) {
+        return kvImageNullPointerArgument;
+    }
+
+    // An empty buffer has no pixels to write, so it is not an error and its data pointer is unused.
+    if (dest->width == 0 || dest->height == 0) {
+        return kvImageNoError;
+    }
+
+    if (!dest->data) {
+        return kvImageNullPointerArgument;
+    }
+
+    if (dest->width > SIZE_MAX / 4 || dest->rowBytes < (size_t)dest->width * 4 ||
+        dest->rowBytes > SIZE_MAX / dest->height) {
+        return kvImageInvalidRowBytes;
+    }
+
+    // QUIRK: the flags are not validated. kvImageNoFlags and kvImageDoNotTile are the documented
+    // values, but unknown bits and the other kvImage flags are accepted and ignored (alpha is never
+    // preserved) instead of returning kvImageUnknownFlagsBit. Evidence: black-box observation on
+    // macOS 26.7 (tier 2). Test: vimage_buffer_fill_argb8888 (unknown flags, "quirk" checks).
+    (void)flags;
+
+    uint8_t* row = (uint8_t*)dest->data;
+    for (vImagePixelCount y = 0; y < dest->height; y++, row += dest->rowBytes) {
+        for (vImagePixelCount x = 0; x < dest->width; x++) {
+            memcpy(row + x * 4, color, 4);
+        }
+    }
+    return kvImageNoError;
+}
+
 vImage_Error vImagePermuteChannels_ARGB8888(
     const vImage_Buffer *src,
     const vImage_Buffer *dest,

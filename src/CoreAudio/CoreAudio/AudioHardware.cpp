@@ -28,6 +28,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <memory>
 #include <mutex>
 #include <unordered_map>
+#include <vector>
 #include "stub.h"
 
 // Exposed (declared in AudioHardwareImplPA.h) so AudioHardwareImplPA can add/remove
@@ -246,6 +247,97 @@ OSStatus AudioObjectRemovePropertyListener(AudioObjectID inObjectID,
 		return kAudioHardwareBadObjectError;
 	
 	return obj->removePropertyListener(inAddress, inListener, inClientData);
+}
+
+// The deprecated AudioHardware listeners are registered as AudioObject listeners on the
+// system object. Each registration owns a record that is the client data of the AudioObject
+// listener, and that remembers the AudioHardware proc and its client data.
+namespace {
+struct HardwareListener
+{
+	AudioHardwarePropertyID propertyID;
+	AudioHardwarePropertyListenerProc proc;
+	void* clientData;
+};
+
+std::mutex g_hardwareListenersMutex;
+std::vector<HardwareListener*> g_hardwareListeners;
+
+OSStatus deliverToHardwareListener(AudioObjectID, UInt32 inNumberAddresses,
+		const AudioObjectPropertyAddress* inAddresses, void* inClientData)
+{
+	// The record outlives the AudioObject registration, which is removed before it is freed.
+	const HardwareListener* listener = static_cast<const HardwareListener*>(inClientData);
+	for (UInt32 i = 0; i < inNumberAddresses; i++)
+		listener->proc(inAddresses[i].mSelector, listener->clientData);
+	return kAudioHardwareNoError;
+}
+}
+
+OSStatus AudioHardwareAddPropertyListener(AudioHardwarePropertyID inPropertyID,
+		AudioHardwarePropertyListenerProc inProc, void* inClientData)
+{
+	if (!inProc)
+		return kAudioHardwareIllegalOperationError;
+
+	AudioObjectPropertyAddress address = {
+		inPropertyID, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster
+	};
+
+	std::lock_guard<std::mutex> lock(g_hardwareListenersMutex);
+
+	// QUIRK: registering a proc again for the same property fails with
+	// kAudioHardwareIllegalOperationError, as does a NULL proc. Not documented; the pair is
+	// the only key AudioHardwareRemovePropertyListener has. Evidence: black-box observation on
+	// macOS 26.7 (tier 2). Test: coreaudio audio_hardware_property_listener
+	// (duplicate and NULL registrations).
+	for (const HardwareListener* existing : g_hardwareListeners)
+	{
+		if (existing->propertyID == inPropertyID && existing->proc == inProc)
+			return kAudioHardwareIllegalOperationError;
+	}
+
+	HardwareListener* listener = new HardwareListener{ inPropertyID, inProc, inClientData };
+	OSStatus status = AudioObjectAddPropertyListener(kAudioObjectSystemObject, &address,
+			deliverToHardwareListener, listener);
+	if (status != kAudioHardwareNoError)
+	{
+		delete listener;
+		return status;
+	}
+
+	g_hardwareListeners.push_back(listener);
+	return kAudioHardwareNoError;
+}
+
+OSStatus AudioHardwareRemovePropertyListener(AudioHardwarePropertyID inPropertyID,
+		AudioHardwarePropertyListenerProc inProc)
+{
+	if (!inProc)
+		return kAudioHardwareIllegalOperationError;
+
+	AudioObjectPropertyAddress address = {
+		inPropertyID, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster
+	};
+
+	std::lock_guard<std::mutex> lock(g_hardwareListenersMutex);
+	for (auto it = g_hardwareListeners.begin(); it != g_hardwareListeners.end(); ++it)
+	{
+		HardwareListener* listener = *it;
+		if (listener->propertyID != inPropertyID || listener->proc != inProc)
+			continue;
+
+		OSStatus status = AudioObjectRemovePropertyListener(kAudioObjectSystemObject, &address,
+				deliverToHardwareListener, listener);
+		g_hardwareListeners.erase(it);
+		// The record is deliberately not freed: a delivery already under way on another thread may
+		// still read it, and it is only a few words per removed registration.
+		(void) status;
+		return kAudioHardwareNoError;
+	}
+
+	// Removing a proc that is not registered is not an error.
+	return kAudioHardwareNoError;
 }
 
 OSStatus AudioHardwareUnload(void)
