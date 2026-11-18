@@ -94,5 +94,9 @@ extern CFStringRef const kVTEncodeFrameOptionKey_BaseFrameQP;
 
 extern CFStringRef const kVTCompressionPropertyKey_EncoderID;
 extern CFStringRef const kVTProfileLevel_HEVC_Main_AutoLevel;
+extern CFStringRef const kVTProfileLevel_HEVC_Main10_AutoLevel;
+
+// CFData, 24 bytes (the layout of the mastering display colour volume format description extension).
+extern CFStringRef const kVTCompressionPropertyKey_MasteringDisplayColorVolume;
 
 #endif

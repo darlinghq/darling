@@ -30,6 +30,10 @@
 
 OSStatus VTSessionSetProperty(VTSessionRef session, CFStringRef propertyKey, CFTypeRef propertyValue)
 {
+	// No encoder or decoder exists, so no property can be honoured: a session never
+	// exists to take it. A missing session or key is a parameter error.
+	if (session == NULL || propertyKey == NULL)
+		return kVTParameterErr;
 	return kVTInvalidSessionErr;
 }
 
