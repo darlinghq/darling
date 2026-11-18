@@ -103,6 +103,11 @@ LSASNRef _LSASNCreateWithPid(CFAllocatorRef allocator, pid_t pid);
 
 OSStatus _LSLaunchApplication(CFURLRef appPath);
 
+// Shows a file or folder in the host desktop's file manager (the folder containing it with the item selected when
+// reveal is set, otherwise the item opened). No file manager lives in the prefix, so this reaches the host through the
+// desktop portal; kLSApplicationNotFoundErr when it cannot.
+OSStatus _LSOpenFileOnHost(CFURLRef fileURL, Boolean reveal);
+
 Boolean _LSASNExtractHighAndLowParts(LSASNRef asn, UInt32* outHigh, UInt32* outLow);
 // ASNs of all live processes, ordered by PID.
 CFArrayRef _LSCopyApplicationArray(LSSessionID sessionID);

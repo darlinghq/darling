@@ -30,6 +30,7 @@
 #include <xpc/xpc.h>
 #include <dispatch/dispatch.h>
 #include <string.h>
+#include <sys/stat.h>
 #include "LSDProtocol.h"
 
 static void get_main_executable_info(CFURLRef appURL, CFStringRef *exec, CFStringRef *bundleName);
@@ -516,6 +517,21 @@ static OSStatus open_items_with_handlers(CFArrayRef urls, Boolean newInstance, B
  * - passThruParams: it is ignored. Without kLSLaunchNewInstance items go to a running instance of
  *   their handler; every other call starts a new instance.
  */
+static Boolean is_folder_without_handler(CFURLRef url)
+{
+	char path[PATH_MAX];
+	struct stat st;
+	CFURLRef app;
+
+	if (!CFURLGetFileSystemRepresentation(url, true, (UInt8 *) path, sizeof(path)) || stat(path, &st) != 0 || !S_ISDIR(st.st_mode))
+		return FALSE;
+	app = copy_handler_app(url);
+	if (app == NULL)
+		return TRUE;
+	CFRelease(app);
+	return FALSE;
+}
+
 OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLaunchedURL)
 {
 	CFIndex count, i;
@@ -553,6 +569,9 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 			/* An application bundle is launched, any other file is opened by its handler. */
 			if (is_application_url(url))
 				temp = launch_application(url, outLaunchedURL);
+			else if (is_folder_without_handler(url))
+				/* There is no Finder in the prefix, so a folder is shown by the host's file manager. */
+				temp = _LSOpenFileOnHost(url, FALSE);
 			else
 			{
 				CFArrayAppendValue(items, url);

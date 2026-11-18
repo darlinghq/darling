@@ -155,13 +155,38 @@ static int portal_unavailable(const char* error_name)
 	return 0;
 }
 
+/* Sends the call on a new connection to the session bus and consumes it. */
+static int send_portal_call(const struct ls_host_dbus* api, DBusConnection* connection, DBusMessage* call)
+{
+	DBusMessage* reply;
+	DBusError error;
+	int result;
+
+	api->error_init(&error);
+	reply = api->connection_send_with_reply_and_block(connection, call,
+		api->timeout_ms > 0 ? api->timeout_ms : DEFAULT_TIMEOUT_MS, &error);
+	if (reply != NULL)
+	{
+		/* The reply is the portal's request handle: the item is with the desktop now. */
+		result = LS_HOST_OPEN_OK;
+		api->message_unref(reply);
+	}
+	else if (portal_unavailable(error.name))
+		result = LS_HOST_OPEN_NO_PORTAL;
+	else
+		result = LS_HOST_OPEN_FAILED;
+
+	api->error_free(&error);
+	api->message_unref(call);
+	api->connection_close(connection);
+	api->connection_unref(connection);
+	return result;
+}
+
 int _LSHostOpenURL(const struct ls_host_dbus* api, const char* url)
 {
 	DBusConnection* connection;
 	DBusMessage* call;
-	DBusMessage* reply;
-	DBusError error;
-	int result;
 
 	if (_LSHostOpenValidateURL(url) < 0)
 		return LS_HOST_OPEN_INVALID_URL;
@@ -179,24 +204,45 @@ int _LSHostOpenURL(const struct ls_host_dbus* api, const char* url)
 		api->connection_unref(connection);
 		return LS_HOST_OPEN_FAILED;
 	}
+	return send_portal_call(api, connection, call);
+}
 
-	api->error_init(&error);
-	reply = api->connection_send_with_reply_and_block(connection, call,
-		api->timeout_ms > 0 ? api->timeout_ms : DEFAULT_TIMEOUT_MS, &error);
-	if (reply != NULL)
+/* OpenFile and OpenDirectory take the item as a file descriptor: (parent window, fd, options). */
+int _LSHostOpenFileDescriptor(const struct ls_host_dbus* api, int fd, int reveal)
+{
+	DBusConnection* connection;
+	DBusMessage* call;
+	DBusMessageIter args, options;
+	const char* parent_window = "";
+
+	if (fd < 0)
+		return LS_HOST_OPEN_INVALID_URL;
+	if (!api_complete(api))
+		return LS_HOST_OPEN_NO_PORTAL;
+
+	connection = open_session_bus(api);
+	if (connection == NULL)
+		return LS_HOST_OPEN_NO_PORTAL;
+
+	call = api->message_new_method_call(PORTAL_NAME, PORTAL_PATH, PORTAL_INTERFACE,
+		reveal ? "OpenDirectory" : "OpenFile");
+	if (call != NULL)
 	{
-		/* The reply is the portal's request handle: the URL is with the desktop now. */
-		result = LS_HOST_OPEN_OK;
-		api->message_unref(reply);
+		api->message_iter_init_append(call, &args);
+		if (!api->message_iter_append_basic(&args, DBUS_TYPE_STRING, &parent_window)
+			|| !api->message_iter_append_basic(&args, DBUS_TYPE_UNIX_FD, &fd)
+			|| !api->message_iter_open_container(&args, DBUS_TYPE_ARRAY, "{sv}", &options)
+			|| !api->message_iter_close_container(&args, &options))
+		{
+			api->message_unref(call);
+			call = NULL;
+		}
 	}
-	else if (portal_unavailable(error.name))
-		result = LS_HOST_OPEN_NO_PORTAL;
-	else
-		result = LS_HOST_OPEN_FAILED;
-
-	api->error_free(&error);
-	api->message_unref(call);
-	api->connection_close(connection);
-	api->connection_unref(connection);
-	return result;
+	if (call == NULL)
+	{
+		api->connection_close(connection);
+		api->connection_unref(connection);
+		return LS_HOST_OPEN_FAILED;
+	}
+	return send_portal_call(api, connection, call);
 }
