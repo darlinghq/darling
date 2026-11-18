@@ -8,11 +8,20 @@
 // by starting the GUI; glvnd's override variable does not appear in the
 // process or its children; and a GL window still renders and presents.
 // Without a host to learn from the test only checks the last two.
+// Host libraries cannot create files under the guest's /Users, so the host
+// shader cache is pointed into the prefix: after compiling and drawing with a
+// GLSL program the cache directory under the guest's Library/Caches must hold
+// entries, and the variable that selects it must stay out of the guest's and
+// child processes' environment. With MESA_SHADER_CACHE_DIR or
+// MESA_SHADER_CACHE_DISABLE set by the user, or without a Mesa renderer, that
+// part is skipped.
 #import <AppKit/AppKit.h>
 #import <CoreGraphics/CGSubWindow.h>
 #import <OpenGL/CGLInternal.h>
 #import <OpenGL/gl.h>
+#include <dirent.h>
 #include <dlfcn.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,6 +68,58 @@ static int x_server_is_software_only(void) {
     return result;
 }
 
+// Counts the entries below dir, recursively.
+static int count_entries(const char *dir) {
+    DIR *d = opendir(dir);
+    if (!d)
+        return -1;
+    int count = 0;
+    struct dirent *e;
+    while ((e = readdir(d))) {
+        if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, ".."))
+            continue;
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/%s", dir, e->d_name);
+        int sub = e->d_type == DT_DIR ? count_entries(path) : 0;
+        count += 1 + (sub > 0 ? sub : 0);
+    }
+    closedir(d);
+    return count;
+}
+
+// Compiles, links and draws with a small GLSL program so the driver has a
+// shader to cache.
+static void draw_with_program(void) {
+    unsigned (*create_shader)(unsigned) = dlsym(RTLD_DEFAULT, "glCreateShader");
+    void (*shader_source)(unsigned, int, const char **, const int *) = dlsym(RTLD_DEFAULT, "glShaderSource");
+    void (*compile_shader)(unsigned) = dlsym(RTLD_DEFAULT, "glCompileShader");
+    unsigned (*create_program)(void) = dlsym(RTLD_DEFAULT, "glCreateProgram");
+    void (*attach_shader)(unsigned, unsigned) = dlsym(RTLD_DEFAULT, "glAttachShader");
+    void (*link_program)(unsigned) = dlsym(RTLD_DEFAULT, "glLinkProgram");
+    void (*use_program)(unsigned) = dlsym(RTLD_DEFAULT, "glUseProgram");
+    CHECK(create_shader && shader_source && compile_shader && create_program && attach_shader && link_program && use_program);
+    if (!(create_shader && shader_source && compile_shader && create_program && attach_shader && link_program && use_program))
+        return;
+    const char *vs_text = "#version 120\nvoid main() { gl_Position = ftransform(); }\n";
+    const char *fs_text = "#version 120\nvoid main() { gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0); }\n";
+    unsigned vs = create_shader(0x8B31), fs = create_shader(0x8B30), program = create_program();
+    shader_source(vs, 1, &vs_text, NULL);
+    shader_source(fs, 1, &fs_text, NULL);
+    compile_shader(vs);
+    compile_shader(fs);
+    attach_shader(program, vs);
+    attach_shader(program, fs);
+    link_program(program);
+    use_program(program);
+    glBegin(GL_TRIANGLES);
+    glVertex2f(-1, -1); glVertex2f(3, -1); glVertex2f(-1, 3);
+    glEnd();
+    unsigned char pixel[4] = {0};
+    glReadPixels(10, 10, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+    CHECK(pixel[0] == 0 && pixel[1] == 255 && pixel[2] == 0);
+    use_program(0);
+}
+
 @interface VendorFixture : NSObject
 - (void) run:(NSTimer *)timer;
 @end
@@ -101,6 +162,33 @@ static int x_server_is_software_only(void) {
     }
     // A shell started from here must not see the override either.
     CHECK(system("test -z \"$__EGL_VENDOR_LIBRARY_FILENAMES\"") == 0);
+
+    if (drawable) {
+        BOOL user_chose = getenv("MESA_SHADER_CACHE_DIR") || getenv("MESA_SHADER_CACHE_DISABLE")
+            || getenv("MESA_GLSL_CACHE_DIR") || getenv("MESA_GLSL_CACHE_DISABLE") || getenv("XDG_CACHE_HOME");
+        char cache[1024];
+        snprintf(cache, sizeof(cache), "%s/Library/Caches/Mesa", getenv("HOME") ?: "");
+        draw_with_program();
+        CHECK(glGetError() == GL_NO_ERROR);
+        CGLFlushDrawable(context);
+        if (!user_chose && getenv("DARLING_PREFIX") && software_only == 1) {
+            // The driver writes entries on a worker thread.
+            int entries = count_entries(cache);
+            for (int i = 0; i < 50 && entries <= 0; i++) {
+                usleep(100000);
+                entries = count_entries(cache);
+            }
+            printf("shader cache %s: %d entries\n", cache, entries);
+            CHECK(entries > 0);
+        } else {
+            printf("shader cache not checked\n");
+        }
+        // The cache location is for host libraries only.
+        if (!user_chose) {
+            CHECK(getenv("MESA_SHADER_CACHE_DIR") == NULL);
+            CHECK(system("test -z \"$MESA_SHADER_CACHE_DIR\"") == 0);
+        }
+    }
 
     CGLSetCurrentContext(NULL);
     if (drawable) CGLDestroyWindow(drawable);

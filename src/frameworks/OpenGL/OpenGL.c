@@ -391,7 +391,33 @@ static int restrict_host_vendors(void *native_display, EGLenum platform) {
     return host_setenv("__EGL_VENDOR_LIBRARY_FILENAMES", list, 1) == 0;
 }
 
+// Host libraries run with the guest's environment but see the real Linux file
+// system, so the guest's HOME (/Users/<name>) does not exist for them and
+// Mesa cannot create its shader cache under it. Unless the user chose a cache
+// location or turned the cache off, point Mesa at the guest user's cache
+// directory inside the prefix, as seen from the host. Mesa derives all its
+// cache layouts (multi-file, single-file, database) from this directory. Only
+// the host C library's environment is changed, never the guest's.
+static void set_host_shader_cache_dir(void) {
+    static const char *const user_choices[] = {
+        "MESA_SHADER_CACHE_DIR", "MESA_SHADER_CACHE_DISABLE",
+        "MESA_GLSL_CACHE_DIR", "MESA_GLSL_CACHE_DISABLE", "XDG_CACHE_HOME",
+    };
+    for (size_t i = 0; i < sizeof(user_choices) / sizeof(user_choices[0]); i++)
+        if (getenv(user_choices[i]))
+            return;
+    const char *prefix = getenv("DARLING_PREFIX");
+    const char *home = getenv("HOME");
+    if (!prefix || prefix[0] != '/' || !home || home[0] != '/' || !resolve_host_libc())
+        return;
+    char dir[PATH_MAX];
+    int n = snprintf(dir, sizeof(dir), "%s%s/Library/Caches/Mesa", prefix, home);
+    if (n > 0 && (size_t) n < sizeof(dir))
+        host_setenv("MESA_SHADER_CACHE_DIR", dir, 0);
+}
+
 static void load_native_egl(void *native_display, EGLenum platform) {
+    set_host_shader_cache_dir();
     int restricted = restrict_host_vendors(native_display, platform);
     void *handle = dlopen("/usr/lib/native/libEGL.dylib", RTLD_NOW | RTLD_LOCAL);
     if (handle) {
