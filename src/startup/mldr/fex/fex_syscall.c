@@ -307,6 +307,49 @@ static int map_x86_64_nr_to_arm64(uint64_t x86_nr)
 	}
 }
 
+static int copy_guest_memory(void* local, void* guest, size_t len, bool to_guest)
+{
+	if (len == 0)
+		return 0;
+	if (!local || !guest)
+		return -EFAULT;
+
+	struct iovec local_iov = {
+		.iov_base = local,
+		.iov_len = len,
+	};
+	struct iovec remote_iov = {
+		.iov_base = guest,
+		.iov_len = len,
+	};
+
+	ssize_t n = to_guest
+		? process_vm_writev(getpid(), &local_iov, 1, &remote_iov, 1, 0)
+		: process_vm_readv(getpid(), &local_iov, 1, &remote_iov, 1, 0);
+
+	if (n < 0 || (size_t)n != len) {
+		return (n >= 0 || errno == EFAULT) ? -EFAULT : -errno;
+	}
+	return 0;
+}
+
+int fex_copy_to_guest(void* guest, const void* src, size_t len)
+{
+	return copy_guest_memory((void*)src, guest, len, true);
+}
+
+int fex_copy_from_guest(void* dst, const void* guest, size_t len)
+{
+	return copy_guest_memory(dst, (void*)guest, len, false);
+}
+
+static long copy_host_stat_to_guest(const struct arm64_kernel_stat* host_st, uintptr_t guest_addr)
+{
+	struct x86_64_linux_stat guest_st;
+	convert_host_stat_to_x86_64(host_st, &guest_st);
+	return fex_copy_to_guest((void*)guest_addr, &guest_st, sizeof(guest_st));
+}
+
 long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 {
 	if (!state)
@@ -344,22 +387,12 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 				fex_set_current_thread_gs_base((uint64_t)a2);
 				ret = 0;
 			} else if (a1 == X86_ARCH_GET_GS) {
-				if (!a2) {
-					ret = -EFAULT;
-				} else {
-					*(uint64_t*)(uintptr_t)a2 = state->gs_base;
-					ret = 0;
-				}
+				ret = fex_copy_to_guest((void*)(uintptr_t)a2, &state->gs_base, sizeof(state->gs_base));
 			} else if (a1 == X86_ARCH_SET_FS) {
 				state->fs_base = (uint64_t)a2;
 				ret = 0;
 			} else if (a1 == X86_ARCH_GET_FS) {
-				if (!a2) {
-					ret = -EFAULT;
-				} else {
-					*(uint64_t*)(uintptr_t)a2 = state->fs_base;
-					ret = 0;
-				}
+				ret = fex_copy_to_guest((void*)(uintptr_t)a2, &state->fs_base, sizeof(state->fs_base));
 			} else {
 				ret = -EINVAL;
 			}
@@ -402,22 +435,22 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 			struct arm64_kernel_stat host_st;
 			int flags = (nr == 6) ? AT_SYMLINK_NOFOLLOW : 0;
 			ret = raw_host_syscall(79, AT_FDCWD, a1, (long)(uintptr_t)&host_st, flags, 0, 0);
-			if (ret == 0 && a2 != 0)
-				convert_host_stat_to_x86_64(&host_st, (struct x86_64_linux_stat*)(uintptr_t)a2);
+			if (ret == 0)
+				ret = copy_host_stat_to_guest(&host_st, (uintptr_t)a2);
 			break;
 		}
 		case 5: { // fstat(fd, statbuf)
 			struct arm64_kernel_stat host_st;
 			ret = raw_host_syscall(80, a1, (long)(uintptr_t)&host_st, 0, 0, 0, 0);
-			if (ret == 0 && a2 != 0)
-				convert_host_stat_to_x86_64(&host_st, (struct x86_64_linux_stat*)(uintptr_t)a2);
+			if (ret == 0)
+				ret = copy_host_stat_to_guest(&host_st, (uintptr_t)a2);
 			break;
 		}
 		case 262: { // newfstatat(dfd, path, statbuf, flag)
 			struct arm64_kernel_stat host_st;
 			ret = raw_host_syscall(79, a1, a2, (long)(uintptr_t)&host_st, a4, 0, 0);
-			if (ret == 0 && a3 != 0)
-				convert_host_stat_to_x86_64(&host_st, (struct x86_64_linux_stat*)(uintptr_t)a3);
+			if (ret == 0)
+				ret = copy_host_stat_to_guest(&host_st, (uintptr_t)a3);
 			break;
 		}
 		case 82: // rename -> renameat2(AT_FDCWD, old, AT_FDCWD, new, 0)
@@ -456,11 +489,15 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 		case 233: { // epoll_ctl(epfd, op, fd, event)
 			struct epoll_event host_ev;
 			struct epoll_event* host_ev_ptr = NULL;
-			if (a4 != 0) {
-				const struct x86_64_epoll_event* guest_ev =
-					(const struct x86_64_epoll_event*)(uintptr_t)a4;
-				host_ev.events = guest_ev->events;
-				host_ev.data.u64 = guest_ev->data;
+			if (a2 != EPOLL_CTL_DEL) {
+				struct x86_64_epoll_event guest_ev;
+				int copy_rc = fex_copy_from_guest(&guest_ev, (const void*)(uintptr_t)a4, sizeof(guest_ev));
+				if (copy_rc != 0) {
+					ret = copy_rc;
+					break;
+				}
+				host_ev.events = guest_ev.events;
+				host_ev.data.u64 = guest_ev.data;
 				host_ev_ptr = &host_ev;
 			}
 			ret = raw_host_syscall(21, a1, a2, a3, (long)(uintptr_t)host_ev_ptr, 0, 0);
@@ -478,7 +515,7 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 		case 232: // epoll_wait
 		case 281: { // epoll_pwait
 			int maxevents = (int)a3;
-			if (maxevents <= 0 || a2 == 0) {
+			if (maxevents <= 0) {
 				ret = -EINVAL;
 				break;
 			}
@@ -499,12 +536,30 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 			ret = raw_host_syscall(22, a1, (long)(uintptr_t)host_evs, maxevents,
 				a4, sigmask_arg, sigsetsize_arg);
 			if (ret > 0) {
-				struct x86_64_epoll_event* guest_evs =
-					(struct x86_64_epoll_event*)(uintptr_t)a2;
+				struct x86_64_epoll_event stack_guest_evs[64];
+				struct x86_64_epoll_event* guest_evs = stack_guest_evs;
+				size_t guest_alloc_sz = 0;
+				if (ret > 64) {
+					guest_alloc_sz = (size_t)ret * sizeof(struct x86_64_epoll_event);
+					guest_evs = mmap(NULL, guest_alloc_sz, PROT_READ | PROT_WRITE,
+						MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+					if (guest_evs == MAP_FAILED) {
+						if (alloc_sz > 0)
+							munmap(host_evs, alloc_sz);
+						ret = -ENOMEM;
+						break;
+					}
+				}
 				for (long i = 0; i < ret; i++) {
 					guest_evs[i].events = host_evs[i].events;
 					guest_evs[i].data = host_evs[i].data.u64;
 				}
+				int copy_rc = fex_copy_to_guest((void*)(uintptr_t)a2, guest_evs,
+					(size_t)ret * sizeof(struct x86_64_epoll_event));
+				if (guest_alloc_sz > 0)
+					munmap(guest_evs, guest_alloc_sz);
+				if (copy_rc != 0)
+					ret = copy_rc;
 			}
 			if (alloc_sz > 0)
 				munmap(host_evs, alloc_sz);

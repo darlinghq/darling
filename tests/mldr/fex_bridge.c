@@ -513,10 +513,329 @@ static void test_syscall_translations(void)
 		"x86_64 clone3(435) returns -ENOSYS and updates rax");
 }
 
+static void test_safe_memory_access(void)
+{
+	// 1. Direct fex_copy_to_guest and fex_copy_from_guest tests
+	uint64_t val = 0x1234567890abcdefULL, out = 0;
+	check(fex_copy_to_guest(&out, &val, sizeof(val)) == 0 && out == val,
+		"fex_copy_to_guest succeeds with valid pointer");
+	uint64_t from_out = 0;
+	check(fex_copy_from_guest(&from_out, &val, sizeof(val)) == 0 && from_out == val,
+		"fex_copy_from_guest succeeds with valid pointer");
+	check(fex_copy_to_guest(&out, &val, 0) == 0, "fex_copy_to_guest len=0 returns 0");
+	check(fex_copy_from_guest(&from_out, &val, 0) == 0, "fex_copy_from_guest len=0 returns 0");
+	check(fex_copy_to_guest(NULL, &val, sizeof(val)) == -EFAULT, "fex_copy_to_guest NULL returns -EFAULT");
+	check(fex_copy_from_guest(&from_out, NULL, sizeof(val)) == -EFAULT, "fex_copy_from_guest NULL returns -EFAULT");
+	check(fex_copy_to_guest((void*)1, &val, sizeof(val)) == -EFAULT, "fex_copy_to_guest bad pointer returns -EFAULT");
+	check(fex_copy_from_guest(&from_out, (void*)1, sizeof(val)) == -EFAULT, "fex_copy_from_guest bad pointer returns -EFAULT");
+
+	// 2. Straddling page test for partial transfers
+	const size_t ps = sysconf(_SC_PAGESIZE);
+	void* pages = mmap(NULL, 2 * ps, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	check(pages != MAP_FAILED, "allocate 2 pages for straddle test");
+	if (pages != MAP_FAILED) {
+		mprotect((char*)pages + ps, ps, PROT_NONE);
+		void* straddle_ptr = (char*)pages + ps - 4;
+		uint64_t straddle_buf = 0x55aa55aa55aa55aaULL;
+		check(fex_copy_to_guest(straddle_ptr, &straddle_buf, 8) == -EFAULT,
+			"fex_copy_to_guest across straddling PROT_NONE page returns -EFAULT");
+		check(fex_copy_from_guest(&straddle_buf, straddle_ptr, 8) == -EFAULT,
+			"fex_copy_from_guest across straddling PROT_NONE page returns -EFAULT");
+		munmap(pages, 2 * ps);
+	}
+
+	// 3. PROT_READ page test: writing to read-only memory returns -EFAULT
+	void* ro_page = mmap(NULL, ps, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	check(ro_page != MAP_FAILED, "allocate PROT_READ page for read-only write test");
+	if (ro_page != MAP_FAILED) {
+		uint64_t write_val = 0xdeadbeefULL;
+		check(fex_copy_to_guest(ro_page, &write_val, sizeof(write_val)) == -EFAULT,
+			"fex_copy_to_guest into PROT_READ page returns -EFAULT");
+	}
+
+	// 4. arch_prctl GET_GS and GET_FS on bad pointer return -EFAULT without crash
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rax = 158;
+	st.rdi = 0x1004; // ARCH_GET_GS
+	st.rsi = 1;      // bad pointer (void*)1
+	check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+		"arch_prctl(ARCH_GET_GS) on bad pointer returns -EFAULT and updates rax");
+
+	memset(&st, 0, sizeof(st));
+	st.rax = 158;
+	st.rdi = 0x1003; // ARCH_GET_FS
+	st.rsi = 1;      // bad pointer (void*)1
+	check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+		"arch_prctl(ARCH_GET_FS) on bad pointer returns -EFAULT and updates rax");
+
+	// 5. stat / lstat / fstat / newfstatat with NULL, (void*)1, PROT_READ, and valid buffers
+	int tmp_fd = memfd_create("efault_stat_test", 0);
+	check(tmp_fd >= 0, "memfd_create for efault stat test");
+
+	if (tmp_fd >= 0) {
+		uint8_t raw_stat_buf[144];
+
+		// fstat (5)
+		memset(&st, 0, sizeof(st));
+		st.rax = 5;
+		st.rdi = (uint64_t)tmp_fd;
+		st.rsi = 0; // NULL
+		check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+			"fstat with NULL statbuf returns -EFAULT and updates rax");
+
+		memset(&st, 0, sizeof(st));
+		st.rax = 5;
+		st.rdi = (uint64_t)tmp_fd;
+		st.rsi = 1; // (void*)1
+		check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+			"fstat with bad statbuf returns -EFAULT without crash");
+
+		if (ro_page != MAP_FAILED) {
+			memset(&st, 0, sizeof(st));
+			st.rax = 5;
+			st.rdi = (uint64_t)tmp_fd;
+			st.rsi = (uint64_t)(uintptr_t)ro_page;
+			check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+				"fstat with PROT_READ statbuf returns -EFAULT");
+		}
+
+		memset(&st, 0, sizeof(st));
+		st.rax = 5;
+		st.rdi = (uint64_t)tmp_fd;
+		st.rsi = (uint64_t)(uintptr_t)raw_stat_buf;
+		check(fex_linux_syscall_dispatch(&st) == 0 && st.rax == 0,
+			"fstat with valid statbuf succeeds");
+
+		// stat (4)
+		memset(&st, 0, sizeof(st));
+		st.rax = 4;
+		st.rdi = (uint64_t)(uintptr_t)"/dev/null";
+		st.rsi = 0; // NULL
+		check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+			"stat with NULL statbuf returns -EFAULT and updates rax");
+
+		memset(&st, 0, sizeof(st));
+		st.rax = 4;
+		st.rdi = (uint64_t)(uintptr_t)"/dev/null";
+		st.rsi = 1; // (void*)1
+		check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+			"stat with bad statbuf returns -EFAULT without crash");
+
+		memset(&st, 0, sizeof(st));
+		st.rax = 4;
+		st.rdi = (uint64_t)(uintptr_t)"/dev/null";
+		st.rsi = (uint64_t)(uintptr_t)raw_stat_buf;
+		check(fex_linux_syscall_dispatch(&st) == 0 && st.rax == 0,
+			"stat with valid statbuf succeeds");
+
+		// lstat (6)
+		memset(&st, 0, sizeof(st));
+		st.rax = 6;
+		st.rdi = (uint64_t)(uintptr_t)"/dev/null";
+		st.rsi = 0; // NULL
+		check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+			"lstat with NULL statbuf returns -EFAULT");
+
+		memset(&st, 0, sizeof(st));
+		st.rax = 6;
+		st.rdi = (uint64_t)(uintptr_t)"/dev/null";
+		st.rsi = 1; // (void*)1
+		check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+			"lstat with bad statbuf returns -EFAULT without crash");
+
+		memset(&st, 0, sizeof(st));
+		st.rax = 6;
+		st.rdi = (uint64_t)(uintptr_t)"/dev/null";
+		st.rsi = (uint64_t)(uintptr_t)raw_stat_buf;
+		check(fex_linux_syscall_dispatch(&st) == 0 && st.rax == 0,
+			"lstat with valid statbuf succeeds");
+
+		// newfstatat (262)
+		memset(&st, 0, sizeof(st));
+		st.rax = 262;
+		st.rdi = (uint64_t)tmp_fd;
+		st.rsi = (uint64_t)(uintptr_t)"";
+		st.rdx = 0; // NULL
+		st.r10 = AT_EMPTY_PATH;
+		check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+			"newfstatat with NULL statbuf returns -EFAULT");
+
+		memset(&st, 0, sizeof(st));
+		st.rax = 262;
+		st.rdi = (uint64_t)tmp_fd;
+		st.rsi = (uint64_t)(uintptr_t)"";
+		st.rdx = 1; // bad pointer
+		st.r10 = AT_EMPTY_PATH;
+		check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+			"newfstatat with bad statbuf returns -EFAULT");
+
+		memset(&st, 0, sizeof(st));
+		st.rax = 262;
+		st.rdi = (uint64_t)tmp_fd;
+		st.rsi = (uint64_t)(uintptr_t)"";
+		st.rdx = (uint64_t)(uintptr_t)raw_stat_buf;
+		st.r10 = AT_EMPTY_PATH;
+		check(fex_linux_syscall_dispatch(&st) == 0 && st.rax == 0,
+			"newfstatat with valid statbuf succeeds");
+
+		close(tmp_fd);
+	}
+
+	if (ro_page != MAP_FAILED) {
+		munmap(ro_page, ps);
+	}
+
+	// 6. epoll_ctl on NULL and bad pointer
+	int epfd = epoll_create1(0);
+	check(epfd >= 0, "epoll_create1 for efault test");
+	int pipefds[2] = {-1, -1};
+	check(pipe(pipefds) == 0, "pipe for efault test");
+
+	if (epfd >= 0 && pipefds[0] >= 0 && pipefds[1] >= 0) {
+		memset(&st, 0, sizeof(st));
+		st.rax = 233; // epoll_ctl
+		st.rdi = (uint64_t)epfd;
+		st.rsi = EPOLL_CTL_ADD;
+		st.rdx = (uint64_t)pipefds[0];
+		st.r10 = 0; // NULL event pointer
+		check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+			"epoll_ctl ADD with NULL event returns -EFAULT and updates rax");
+
+		memset(&st, 0, sizeof(st));
+		st.rax = 233; // epoll_ctl
+		st.rdi = (uint64_t)epfd;
+		st.rsi = EPOLL_CTL_ADD;
+		st.rdx = (uint64_t)pipefds[0];
+		st.r10 = 1; // bad pointer
+		check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+			"epoll_ctl ADD with bad event pointer returns -EFAULT");
+
+		// EPOLL_CTL_DEL does not read event pointer on Linux: NULL does not return -EFAULT
+		memset(&st, 0, sizeof(st));
+		st.rax = 233;
+		st.rdi = (uint64_t)epfd;
+		st.rsi = EPOLL_CTL_DEL;
+		st.rdx = (uint64_t)pipefds[0];
+		st.r10 = 0; // NULL event
+		long del_rc = fex_linux_syscall_dispatch(&st);
+		check(del_rc != -EFAULT, "epoll_ctl DEL with NULL event does not return -EFAULT");
+
+		// 7. epoll_wait and epoll_pwait on NULL and bad pointer
+		memset(&st, 0, sizeof(st));
+		st.rax = 232;
+		st.rdi = (uint64_t)epfd;
+		st.rsi = (uint64_t)(uintptr_t)NULL;
+		st.rdx = 0; // maxevents = 0
+		st.r10 = 0;
+		check(fex_linux_syscall_dispatch(&st) == -EINVAL, "epoll_wait with maxevents=0 returns -EINVAL");
+
+		// NULL event pointer with 0 ready events (timeout=0) -> returns 0
+		memset(&st, 0, sizeof(st));
+		st.rax = 232;
+		st.rdi = (uint64_t)epfd;
+		st.rsi = 0; // NULL events
+		st.rdx = 1; // maxevents = 1
+		st.r10 = 0; // timeout = 0
+		check(fex_linux_syscall_dispatch(&st) == 0 && st.rax == 0,
+			"epoll_wait with 0 ready events on NULL returns 0");
+
+		// epoll_pwait with 0 ready events on NULL -> returns 0
+		memset(&st, 0, sizeof(st));
+		st.rax = 281; // epoll_pwait
+		st.rdi = (uint64_t)epfd;
+		st.rsi = 0; // NULL events
+		st.rdx = 1; // maxevents = 1
+		st.r10 = 0; // timeout = 0
+		st.r8 = 0;  // sigmask
+		st.r9 = 0;  // sigsetsize
+		check(fex_linux_syscall_dispatch(&st) == 0 && st.rax == 0,
+			"epoll_pwait with 0 ready events on NULL returns 0");
+
+		// Add pipefds[1] to epoll (ready for writing)
+		struct __attribute__((packed)) {
+			uint32_t events;
+			uint64_t data;
+		} ev_add = { .events = EPOLLOUT, .data = 42 };
+		memset(&st, 0, sizeof(st));
+		st.rax = 233;
+		st.rdi = (uint64_t)epfd;
+		st.rsi = EPOLL_CTL_ADD;
+		st.rdx = (uint64_t)pipefds[1];
+		st.r10 = (uint64_t)(uintptr_t)&ev_add;
+		check(fex_linux_syscall_dispatch(&st) == 0, "epoll_ctl ADD pipefds[1] for wait test");
+
+		// Now events ARE ready: epoll_wait with NULL events pointer must return -EFAULT
+		memset(&st, 0, sizeof(st));
+		st.rax = 232;
+		st.rdi = (uint64_t)epfd;
+		st.rsi = 0; // NULL events
+		st.rdx = 1;
+		st.r10 = 0;
+		check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+			"epoll_wait with ready events on NULL returns -EFAULT and updates rax");
+
+		// epoll_wait with bad pointer (void*)1 must return -EFAULT without crashing
+		memset(&st, 0, sizeof(st));
+		st.rax = 232;
+		st.rdi = (uint64_t)epfd;
+		st.rsi = 1; // (void*)1
+		st.rdx = 1;
+		st.r10 = 0;
+		check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+			"epoll_wait with ready events on bad pointer returns -EFAULT");
+
+		// epoll_pwait with ready events on NULL must return -EFAULT
+		memset(&st, 0, sizeof(st));
+		st.rax = 281;
+		st.rdi = (uint64_t)epfd;
+		st.rsi = 0; // NULL events
+		st.rdx = 1;
+		st.r10 = 0;
+		st.r8 = 0;
+		st.r9 = 0;
+		check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+			"epoll_pwait with ready events on NULL returns -EFAULT and updates rax");
+
+		// epoll_pwait with ready events on bad pointer (void*)1 must return -EFAULT without crashing
+		memset(&st, 0, sizeof(st));
+		st.rax = 281;
+		st.rdi = (uint64_t)epfd;
+		st.rsi = 1; // (void*)1
+		st.rdx = 1;
+		st.r10 = 0;
+		st.r8 = 0;
+		st.r9 = 0;
+		check(fex_linux_syscall_dispatch(&st) == -EFAULT && st.rax == (uint64_t)(long)-EFAULT,
+			"epoll_pwait with ready events on bad pointer returns -EFAULT");
+
+		// epoll_pwait with valid event buffer succeeds
+		struct __attribute__((packed)) {
+			uint32_t events;
+			uint64_t data;
+		} ev_wait_out = {0, 0};
+		memset(&st, 0, sizeof(st));
+		st.rax = 281;
+		st.rdi = (uint64_t)epfd;
+		st.rsi = (uint64_t)(uintptr_t)&ev_wait_out;
+		st.rdx = 1;
+		st.r10 = 0;
+		st.r8 = 0;
+		st.r9 = 0;
+		check(fex_linux_syscall_dispatch(&st) == 1 && ev_wait_out.data == 42,
+			"epoll_pwait with valid buffer succeeds and unpacks event");
+
+		close(epfd);
+		close(pipefds[0]);
+		close(pipefds[1]);
+	}
+}
+
 int main(void)
 {
 	test_elfcalls_trampolines();
 	test_dlsym_wrapping();
 	test_syscall_translations();
+	test_safe_memory_access();
 	return failures ? 1 : 0;
 }

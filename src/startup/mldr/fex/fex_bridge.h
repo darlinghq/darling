@@ -63,6 +63,9 @@ darling_thread_create_callbacks_t fex_wrap_guest_thread_callbacks(darling_thread
 
 long fex_linux_syscall_dispatch(struct fex_x86_64_state* state);
 
+int fex_copy_to_guest(void* guest, const void* src, size_t len);
+int fex_copy_from_guest(void* dst, const void* guest, size_t len);
+
 void fex_set_current_thread_gs_base(uint64_t gs_base);
 uint64_t fex_get_current_thread_gs_base(void);
 uint64_t fex_invoke_guest_callback(uintptr_t guest_fn, uint64_t arg0, uint64_t arg1);
