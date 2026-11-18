@@ -1974,6 +1974,15 @@ CGLError CGLFlushDrawable(CGLContextObj context) {
     return ok ? kCGLNoError : kCGLBadDrawable;
 }
 
+// GL_APPLE_flush_render: swaps the drawable of the current context, like
+// CGLFlushDrawable on it. The function has no result, and with no current
+// context there is nothing to swap.
+void glSwapAPPLE(void) {
+    CGLContextObj context = CGLGetCurrentContext();
+    if (context != NULL)
+        CGLFlushDrawable(context);
+}
+
 // IOSurface-backed textures.
 //
 // On macOS the IOSurface is the storage of a texture that

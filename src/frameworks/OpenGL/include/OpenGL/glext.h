@@ -5900,6 +5900,14 @@ GLAPI void APIENTRY glFlushMappedBufferRangeAPPLE (GLenum target, GLintptr offse
 #endif
 #endif /* GL_APPLE_flush_buffer_range */
 
+#ifndef GL_APPLE_flush_render
+#define GL_APPLE_flush_render 1
+typedef void (APIENTRYP PFNGLSWAPAPPLEPROC) (void);
+#ifdef GL_GLEXT_PROTOTYPES
+GLAPI void APIENTRY glSwapAPPLE (void);
+#endif
+#endif /* GL_APPLE_flush_render */
+
 #ifndef GL_APPLE_object_purgeable
 #define GL_APPLE_object_purgeable 1
 #define GL_BUFFER_OBJECT_APPLE            0x85B3
