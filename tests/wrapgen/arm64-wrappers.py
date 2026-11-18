@@ -84,8 +84,9 @@ def structural_checks(source):
         check("___elf_abi_%s:" % sym in source, "stack-argument adapter for " + sym)
         check("\treturn __elf_abi_%s;" % sym in source, sym + " resolver returns its adapter")
     check("___elf_abi_fixture_wide" not in source, "no adapter for an unrelated function")
-    check("\tif (!_elfcalls)\n\t\treturn __elf_lazy_fixture_wide;" in source,
-          "early resolver of an unrelated function returns its trampoline")
+    check("\treturn __elf_lazy_fixture_wide;\n#endif" in source
+          and "\tif (!_elfcalls)" not in source,
+          "resolver of an unrelated function always returns its trampoline")
     check("__elf_get_fixture_value" in source, "variable accessor still generated")
 
 
