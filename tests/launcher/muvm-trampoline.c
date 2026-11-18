@@ -79,7 +79,11 @@ static void writeThin(const char* path, uint32_t cputype)
 // A universal binary, which is stored big-endian.
 static void writeFat(const char* path, const uint32_t* cputypes, size_t count)
 {
-	uint8_t header[8 + 20 * 8] = { 0 };
+	size_t sz = 8 + 20 * count;
+	uint8_t* header = malloc(sz);
+	if (!header)
+		return;
+	memset(header, 0, sz);
 	FILE* file = fopen(path, "wb");
 
 	put32(header, 0xcafebabeU);
@@ -88,14 +92,43 @@ static void writeFat(const char* path, const uint32_t* cputypes, size_t count)
 	for (size_t i = 0; i < count; i++)
 	{
 		put32(header + 8 + 20 * i, cputypes[i]);
+		put32(header + 8 + 20 * i + 8, 0x1000U * (uint32_t) (i + 1));
 		put32(header + 8 + 20 * i + 12, 0x1000U * (uint32_t) (i + 1));
 	}
 
 	if (file != NULL)
 	{
-		fwrite(header, 1, 8 + 20 * count, file);
+		fwrite(header, 1, sz, file);
 		fclose(file);
 	}
+	free(header);
+}
+
+static void writeFat64(const char* path, const uint32_t* cputypes, size_t count)
+{
+	size_t sz = 8 + 32 * count;
+	uint8_t* header = malloc(sz);
+	if (!header)
+		return;
+	memset(header, 0, sz);
+	FILE* file = fopen(path, "wb");
+
+	put32(header, 0xcafebabfU);
+	put32(header + 4, (uint32_t) count);
+
+	for (size_t i = 0; i < count; i++)
+	{
+		put32(header + 8 + 32 * i, cputypes[i]);
+		put32(header + 8 + 32 * i + 12, 0x1000U * (uint32_t) (i + 1));
+		put32(header + 8 + 32 * i + 20, 0x1000U * (uint32_t) (i + 1));
+	}
+
+	if (file != NULL)
+	{
+		fwrite(header, 1, sz, file);
+		fclose(file);
+	}
+	free(header);
 }
 
 static void test_thin_files(void)
@@ -171,6 +204,68 @@ static void test_fat_files(void)
 	}
 	check(darling_target_slice_arch(inDirectory("fat-truncated"), NULL) == DARLING_TARGET_SLICE_NONE,
 		"a truncated universal binary is not read past its end");
+
+	uint32_t atCap[64];
+	for (int i = 0; i < 63; i++)
+		atCap[i] = 0x9999;
+	atCap[63] = CPU_TYPE_X86_64;
+	writeFat(inDirectory("fat-64-entries"), atCap, 64);
+	check(darling_target_slice_arch(inDirectory("fat-64-entries"), NULL) == DARLING_TARGET_SLICE_X86_64,
+		"an x86_64 slice at entry 64 (the cap) is found by streaming");
+
+	uint32_t aboveCap[65];
+	for (int i = 0; i < 64; i++)
+		aboveCap[i] = 0x9999;
+	aboveCap[64] = CPU_TYPE_X86_64;
+	writeFat(inDirectory("fat-65-entries"), aboveCap, 65);
+	check(darling_target_slice_arch(inDirectory("fat-65-entries"), NULL) == DARLING_TARGET_SLICE_NONE,
+		"an architecture count above the 64-entry cap is rejected");
+
+	writeFat64(inDirectory("fat-64bit-header"), intel, 1);
+	check(darling_target_slice_arch(inDirectory("fat-64bit-header"), NULL) == DARLING_TARGET_SLICE_X86_64,
+		"a 64-bit fat Mach-O (FAT_MAGIC_64) is recognized");
+
+	writeFat64(inDirectory("fat-64bit-both"), arm32AndIntel, 2);
+	check(darling_target_slice_arch(inDirectory("fat-64bit-both"), NULL) == DARLING_TARGET_SLICE_X86_64,
+		"64-bit fat header with 2 entries selects x86_64 at 32-byte stride");
+
+	{
+		int fd = open(inDirectory("fat-zero"), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		if (fd >= 0)
+		{
+			uint8_t hdr[8] = { 0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 0 };
+			write(fd, hdr, sizeof(hdr));
+			close(fd);
+		}
+	}
+	check(darling_target_slice_arch(inDirectory("fat-zero"), NULL) == DARLING_TARGET_SLICE_NONE,
+		"a fat table with zero entries is rejected");
+
+	{
+		int fd = open(inDirectory("fat-wrap"), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		if (fd >= 0)
+		{
+			uint8_t hdr[8] = { 0xca, 0xfe, 0xba, 0xbe, 0xff, 0xff, 0xff, 0xff };
+			write(fd, hdr, sizeof(hdr));
+			close(fd);
+		}
+	}
+	check(darling_target_slice_arch(inDirectory("fat-wrap"), NULL) == DARLING_TARGET_SLICE_NONE,
+		"a 32-bit wrapped entry count is rejected by bounds check");
+
+	writeFat(inDirectory("fat-exceeds-size"), both, 2);
+	{
+		int fd = open(inDirectory("fat-exceeds-size"), O_WRONLY);
+		if (fd >= 0)
+		{
+			uint8_t count[4] = { 0, 0, 0, 3 };
+			lseek(fd, 4, SEEK_SET);
+			write(fd, count, sizeof(count));
+			close(fd);
+		}
+	}
+	check(darling_target_slice_arch(inDirectory("fat-exceeds-size"), NULL) == DARLING_TARGET_SLICE_NONE,
+		"a fat table declaring more entries than file size allows is rejected");
 }
 
 static void test_bprefs_environment(void)

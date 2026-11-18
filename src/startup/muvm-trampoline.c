@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -38,6 +39,8 @@ extern char** environ;
 #define MH_CIGAM 0xcefaedfeU
 #define FAT_MAGIC 0xcafebabeU
 #define FAT_CIGAM 0xbebafecaU
+#define FAT_MAGIC_64 0xcafebabfU
+#define FAT_CIGAM_64 0xbfbafecaU
 
 #define CPU_TYPE_ARM 12U
 #define CPU_TYPE_X86 7U
@@ -46,11 +49,9 @@ extern char** environ;
 #define CPU_TYPE_X86_64 (CPU_TYPE_X86 | CPU_ARCH_ABI64)
 #endif
 
-// A fat header is 8 bytes; each fat_arch is 20. A table larger than this is
-// not something a linker produced.
+// Both mldr (MLDR_FAT_MAX_ARCHES) and the launcher cap universal binary
+// architecture tables at 64 entries.
 #define FAT_MAX_ARCHS 64U
-#define FAT_ARCH_SIZE 20U
-#define HEADER_SIZE (8U + FAT_MAX_ARCHS * FAT_ARCH_SIZE)
 
 // muvm passes only named variables into the guest; mldr needs the prefix and
 // the architecture preference, and a GUI program needs its session.
@@ -70,6 +71,26 @@ static const char* const kForwardedVariables[] =
 	"DPREFIX",
 	"__mldr_bprefs",
 };
+
+static bool read_exact(int fd, void* buf, size_t len)
+{
+	uint8_t* p = (uint8_t*)buf;
+	size_t total = 0;
+	while (total < len)
+	{
+		ssize_t n = read(fd, p + total, len - total);
+		if (n < 0)
+		{
+			if (errno == EINTR)
+				continue;
+			return false;
+		}
+		if (n == 0)
+			return false;
+		total += (size_t)n;
+	}
+	return true;
+}
 
 static uint32_t swap32(uint32_t value)
 {
@@ -93,8 +114,7 @@ static enum darling_target_slice sliceFromCpuType(uint32_t cputype)
 
 enum darling_target_slice darling_target_slice_arch(const char* path, const uint32_t bprefs[4])
 {
-	uint8_t header[HEADER_SIZE];
-	ssize_t got;
+	uint8_t header[8];
 	uint32_t magic;
 	int fd;
 
@@ -110,22 +130,23 @@ enum darling_target_slice darling_target_slice_arch(const char* path, const uint
 
 	struct stat st;
 
-	if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode))
+	if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_size < 8)
 	{
 		close(fd);
 		return DARLING_TARGET_SLICE_NONE;
 	}
 
-	got = read(fd, header, sizeof(header));
-	close(fd);
-
-	if (got < 8)
+	if (!read_exact(fd, header, sizeof(header)))
+	{
+		close(fd);
 		return DARLING_TARGET_SLICE_NONE;
+	}
 
 	memcpy(&magic, header, sizeof(magic));
 
 	if (magic == MH_CIGAM_64 || magic == MH_MAGIC_64)
 	{
+		close(fd);
 		uint32_t cputype;
 
 		memcpy(&cputype, header + 4, sizeof(cputype));
@@ -134,63 +155,112 @@ enum darling_target_slice darling_target_slice_arch(const char* path, const uint
 		return sliceFromCpuType(cputype);
 	}
 
-	// A 32-bit thin Mach-O, or something that is not Mach-O at all; mldr reaches
-	// the same conclusion on its own.
-	if (magic != FAT_CIGAM && magic != FAT_MAGIC)
+	bool swap = false;
+	unsigned width = 0;
+
+	if (magic == FAT_MAGIC)
+	{
+		swap = false;
+		width = 20;
+	}
+	else if (magic == FAT_CIGAM)
+	{
+		swap = true;
+		width = 20;
+	}
+	else if (magic == FAT_MAGIC_64)
+	{
+		swap = false;
+		width = 32;
+	}
+	else if (magic == FAT_CIGAM_64)
+	{
+		swap = true;
+		width = 32;
+	}
+	else
+	{
+		close(fd);
 		return DARLING_TARGET_SLICE_NONE;
+	}
 
-	bool swap = magic == FAT_CIGAM;
 	uint32_t nfat_arch;
-
 	memcpy(&nfat_arch, header + 4, sizeof(nfat_arch));
 	if (swap)
 		nfat_arch = swap32(nfat_arch);
 
-	if (nfat_arch == 0 || nfat_arch > FAT_MAX_ARCHS
-		|| got < (ssize_t) (8 + nfat_arch * FAT_ARCH_SIZE))
-		return DARLING_TARGET_SLICE_NONE;
-
-	uint32_t archs[FAT_MAX_ARCHS];
-
-	for (uint32_t i = 0; i < nfat_arch; i++)
+	// Both mldr and muvm-trampoline cap universal binaries at 64 architectures.
+	// A file declaring 0 architectures, more than FAT_MAX_ARCHS, or a table
+	// extending beyond the file size is malformed.
+	if (nfat_arch == 0 || nfat_arch > FAT_MAX_ARCHS)
 	{
-		uint32_t cputype;
-
-		memcpy(&cputype, header + 8 + i * FAT_ARCH_SIZE, sizeof(cputype));
-		archs[i] = swap ? swap32(cputype) : cputype;
+		close(fd);
+		return DARLING_TARGET_SLICE_NONE;
 	}
 
-	// mldr lets the first matching __mldr_bprefs entry choose, which is the
-	// lowest bprefs index that names an architecture present in the file.
+	if ((uint64_t)8 + (uint64_t)nfat_arch * width > (uint64_t)st.st_size)
+	{
+		close(fd);
+		return DARLING_TARGET_SLICE_NONE;
+	}
+
+	// Stream entries in small fixed-size chunks on the stack (O(1) memory).
+	bool bprefs_found[4] = { false, false, false, false };
+	bool found_arm64 = false;
+	bool found_x86_64 = false;
+	bool found_arm32 = false;
+
+	uint8_t chunk[16 * 32];
+	uint32_t remaining = nfat_arch;
+
+	while (remaining > 0)
+	{
+		uint32_t count = remaining < 16 ? remaining : 16;
+		size_t to_read = count * width;
+		if (!read_exact(fd, chunk, to_read))
+		{
+			close(fd);
+			return DARLING_TARGET_SLICE_NONE;
+		}
+
+		for (uint32_t i = 0; i < count; i++)
+		{
+			uint32_t cputype;
+			memcpy(&cputype, chunk + i * width, sizeof(cputype));
+			if (swap)
+				cputype = swap32(cputype);
+
+			for (int j = 0; j < 4; j++)
+			{
+				if (bprefs && bprefs[j] && cputype == bprefs[j])
+					bprefs_found[j] = true;
+			}
+
+			if (cputype == CPU_TYPE_ARM64)
+				found_arm64 = true;
+			else if (cputype == CPU_TYPE_X86_64)
+				found_x86_64 = true;
+			else if (cputype == CPU_TYPE_ARM)
+				found_arm32 = true;
+		}
+		remaining -= count;
+	}
+	close(fd);
+
+	// 1. Check user/environment architecture preferences (__mldr_bprefs).
 	for (int j = 0; j < 4; j++)
 	{
-		if (bprefs && bprefs[j])
-		{
-			for (uint32_t i = 0; i < nfat_arch; i++)
-			{
-				if (archs[i] == bprefs[j])
-					return sliceFromCpuType(archs[i]);
-			}
-		}
+		if (bprefs && bprefs[j] && bprefs_found[j])
+			return sliceFromCpuType(bprefs[j]);
 	}
 
-	// No preference: mldr takes arm64, then x86_64 over a 32-bit arm slice.
-	const enum darling_target_slice order[] =
-	{
-		DARLING_TARGET_SLICE_ARM64,
-		DARLING_TARGET_SLICE_X86_64,
-		DARLING_TARGET_SLICE_ARM32,
-	};
-	const uint32_t cputypes[] = { CPU_TYPE_ARM64, CPU_TYPE_X86_64, CPU_TYPE_ARM };
-
-	for (size_t k = 0; k < sizeof(order) / sizeof(order[0]); k++)
-	{
-		for (uint32_t i = 0; i < nfat_arch; i++)
-		{
-			if (archs[i] == cputypes[k])
-				return order[k];
-		}
-	}
+	// 2. Default preference: arm64, then x86_64, then 32-bit arm.
+	if (found_arm64)
+		return DARLING_TARGET_SLICE_ARM64;
+	if (found_x86_64)
+		return DARLING_TARGET_SLICE_X86_64;
+	if (found_arm32)
+		return DARLING_TARGET_SLICE_ARM32;
 
 	return DARLING_TARGET_SLICE_NONE;
 }
