@@ -33,7 +33,8 @@ enum {
 	kTextEncodingISOLatin1 = 0x201,
 	kTextEncodingWindowsLatin1 = 0x500,
 	kTextEncodingUS_ASCII = 0x600,
-	kTextEncodingUnicodeDefault = 0x100
+	kTextEncodingUnicodeDefault = 0x100,
+	kTextEncodingUnknown = 0xFFFF
 };
 
 enum {

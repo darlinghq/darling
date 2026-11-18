@@ -41,6 +41,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CarbonCore/DateTimeUtils.h>
 #include <CarbonCore/Resources.h>
 #include <sys/xattr.h>
+#include <sys/time.h>
+#include <pwd.h>
 #include <sys/mount.h>
 #include <mutex>
 #include <errno.h>
@@ -1438,3 +1440,222 @@ extern "C" OSStatus FSMoveObjectSync(const FSRef *source, const FSRef *destinati
 	return noErr;
 }
 
+
+// Converts a UTF-16 name as taken by the FS*Unicode calls to the UTF-8 name of a directory entry.
+// A slash cannot appear in a Linux name, so (as HFS+ names are) a slash in the name stands for a colon when
+// creating; see FSCreateFileUnicode.
+static bool unicodeNameToUTF8(UniCharCount length, const UniChar* name, std::string& out)
+{
+	CFStringRef str = CFStringCreateWithCharacters(NULL, name, length);
+	if (!str)
+		return false;
+
+	CFIndex bufsize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+	std::unique_ptr<char[]> buf(new char[bufsize]);
+	bool ok = CFStringGetCString(str, buf.get(), bufsize, kCFStringEncodingUTF8);
+	CFRelease(str);
+
+	if (ok)
+		out = buf.get();
+	return ok;
+}
+
+// QUIRK: FSCreateFileUnicode stores a slash in the requested name as a colon, fails with errFSMissingName for an
+// empty name and with dupFNErr for an existing one.
+// Not documented. Evidence: black-box observation on macOS 26.7.3 (tier 2).
+// Test: tests/src/file_manager_unicode.c (test_quirk_create_file_slash_becomes_colon)
+extern "C" OSErr FSCreateFileUnicode(const FSRef* parentRef, UniCharCount nameLength, const UniChar* name,
+	FSCatalogInfoBitmap whichInfo, const FSCatalogInfo* catalogInfo, FSRef* newRef, FSSpecPtr newSpec)
+{
+	std::string dir, leaf;
+
+	if (!parentRef)
+		return errFSBadFSRef;
+	if (nameLength == 0)
+		return errFSMissingName;
+	if (!name)
+		return bdNamErr;
+	if (nameLength > 255)
+		return errFSNameTooLong;
+	if (!FSRefMakePath(parentRef, dir))
+		return fnfErr;
+	if (!unicodeNameToUTF8(nameLength, name, leaf))
+		return bdNamErr;
+
+	std::replace(leaf.begin(), leaf.end(), '/', ':');
+
+	struct stat st;
+	if (stat(dir.c_str(), &st) != 0)
+		return fnfErr;
+	if (!S_ISDIR(st.st_mode))
+		return errFSNotAFolder;
+
+	std::string path = dir;
+	if (path.back() != '/')
+		path += '/';
+	path += leaf;
+
+	int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0666);
+	if (fd == -1)
+		return errno == EEXIST ? dupFNErr : makeOSStatus(errno);
+	close(fd);
+
+	if (newSpec)
+		memset(newSpec, 0, sizeof(*newSpec));
+
+	FSRef created;
+	OSStatus status = FSPathMakeRef((const uint8_t*) path.c_str(), &created, nullptr);
+	if (status != noErr)
+		return status;
+
+	if (whichInfo != kFSCatInfoNone && catalogInfo)
+	{
+		status = FSSetCatalogInfo(&created, whichInfo, catalogInfo);
+		if (status != noErr)
+			return status;
+	}
+
+	if (newRef)
+		*newRef = created;
+	return noErr;
+}
+
+// QUIRK: FSMakeFSRefUnicode answers the parent itself for an empty name, bdNamErr for a name containing a colon
+// or equal to "..", and fnfErr for a name containing a slash.
+// Not documented. Evidence: black-box observation on macOS 26.7.3 (tier 2).
+// Test: tests/src/file_manager_unicode.c (test_quirk_make_fsref_special_names)
+extern "C" OSStatus FSMakeFSRefUnicode(const FSRef* parentRef, UniCharCount nameLength, const UniChar* name,
+	TextEncoding textEncodingHint, FSRef* newRef)
+{
+	std::string dir, leaf;
+	(void) textEncodingHint;
+
+	if (!parentRef || !newRef)
+		return errFSBadFSRef;
+	if (nameLength > 0 && !name)
+		return bdNamErr;
+	if (!FSRefMakePath(parentRef, dir))
+		return fnfErr;
+
+	struct stat st;
+	if (lstat(dir.c_str(), &st) != 0)
+		return fnfErr;
+	if (!S_ISDIR(st.st_mode))
+		return errFSNotAFolder;
+
+	if (nameLength == 0)
+	{
+		*newRef = *parentRef;
+		return noErr;
+	}
+	if (nameLength > 255)
+		return errFSNameTooLong;
+	if (!unicodeNameToUTF8(nameLength, name, leaf))
+		return bdNamErr;
+	if (leaf.find(':') != std::string::npos || leaf == "..")
+		return bdNamErr;
+	if (leaf.find('/') != std::string::npos)
+		return fnfErr;
+
+	std::string path = dir;
+	if (path.back() != '/')
+		path += '/';
+	path += leaf;
+
+	if (lstat(path.c_str(), &st) != 0)
+		return errno == ENOTDIR ? errFSNotAFolder : fnfErr;
+
+	return FSPathMakeRef((const uint8_t*) path.c_str(), newRef, nullptr);
+}
+
+extern "C" CFStringRef FSCreateStringFromHFSUniStr(CFAllocatorRef alloc, const HFSUniStr255* uniStr)
+{
+	if (!uniStr)
+		return NULL;
+
+	UniCharCount length = std::min<UniCharCount>(uniStr->length, 255);
+	return CFStringCreateWithCharacters(alloc, uniStr->unicode, length);
+}
+
+extern "C" OSStatus FSGetHFSUniStrFromString(CFStringRef theString, HFSUniStr255* theOutString)
+{
+	if (!theString || !theOutString)
+		return paramErr;
+
+	CFIndex length = CFStringGetLength(theString);
+	if (length > 255)
+		return errFSNameTooLong;
+
+	theOutString->length = length;
+	CFStringGetCharacters(theString, CFRangeMake(0, length), theOutString->unicode);
+	return noErr;
+}
+
+static std::string trashDirectoryPath()
+{
+	const char* home = getenv("HOME");
+	if (!home || !*home)
+	{
+		struct passwd* pw = getpwuid(getuid());
+		home = pw ? pw->pw_dir : nullptr;
+	}
+	if (!home || !*home)
+		return std::string();
+	return std::string(home) + "/.Trash";
+}
+
+// QUIRK: when the trash already holds an item of that name, the moved item is renamed to the name followed by
+// a space and the local time as HH-MM-SS-mmm, with the original extension (if any) after it.
+// Not documented. Evidence: black-box observation on macOS 26.7.3 (tier 2).
+// Test: tests/src/file_manager_unicode.c (test_quirk_trash_name_collision)
+extern "C" OSStatus FSMoveObjectToTrashSync(const FSRef* source, FSRef* target, OptionBits options)
+{
+	(void) options;
+
+	std::string srcPath, trash;
+	if (!source)
+		return errFSBadFSRef;
+	if (!FSRefMakePath(source, srcPath))
+		return fnfErr;
+
+	struct stat st;
+	if (lstat(srcPath.c_str(), &st) != 0)
+		return fnfErr;
+
+	trash = trashDirectoryPath();
+	if (trash.empty())
+		return fnfErr;
+	if (mkdir(trash.c_str(), 0700) != 0 && errno != EEXIST)
+		return makeOSStatus(errno);
+
+	std::string name = srcPath.substr(srcPath.rfind('/') + 1);
+	if (name.empty())
+		return paramErr;
+
+	if (lstat((trash + "/" + name).c_str(), &st) == 0)
+	{
+		struct timeval tv;
+		struct tm tmv;
+		char stamp[32];
+
+		gettimeofday(&tv, nullptr);
+		localtime_r(&tv.tv_sec, &tmv);
+		snprintf(stamp, sizeof(stamp), " %02d-%02d-%02d-%03d", tmv.tm_hour, tmv.tm_min, tmv.tm_sec, (int) (tv.tv_usec / 1000));
+
+		size_t dot = name.rfind('.');
+		std::string ext = (dot != std::string::npos && dot > 0) ? name.substr(dot) : std::string();
+		name = name + stamp + ext;
+	}
+
+	FSRef trashRef;
+	OSStatus status = FSPathMakeRef((const uint8_t*) trash.c_str(), &trashRef, nullptr);
+	if (status != noErr)
+		return status;
+
+	CFStringRef cfName = CFStringCreateWithCString(NULL, name.c_str(), kCFStringEncodingUTF8);
+	if (!cfName)
+		return paramErr;
+	status = FSMoveObjectSync(source, &trashRef, cfName, target, 0);
+	CFRelease(cfName);
+	return status;
+}

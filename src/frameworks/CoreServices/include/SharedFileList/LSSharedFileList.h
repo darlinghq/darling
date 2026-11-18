@@ -103,6 +103,20 @@ LSSharedFileListItemRef LSSharedFileListInsertItemURL(
     CFDictionaryRef inPropertiesToSet,
     CFArrayRef inPropertiesToClear);
 
+LSSharedFileListItemRef LSSharedFileListInsertItemFSRef(
+    LSSharedFileListRef inList,
+    LSSharedFileListItemRef insertAfterThisItem,
+    CFStringRef inDisplayName,
+    IconRef inIconRef,
+    const FSRef *inFSRef,
+    CFDictionaryRef inPropertiesToSet,
+    CFArrayRef inPropertiesToClear);
+
+CFURLRef LSSharedFileListItemCopyResolvedURL(
+    LSSharedFileListItemRef inItem,
+    UInt32 inFlags,
+    CFErrorRef *outError);
+
 OSStatus LSSharedFileListItemRemove(
     LSSharedFileListRef inList,
     LSSharedFileListItemRef inItem);
