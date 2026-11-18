@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Host test: LaunchServices hands web and mail URLs to the XDG desktop portal
-# (org.freedesktop.portal.OpenURI) and to nothing else.
+# Host test: LaunchServices hands web and mail URLs, and files and folders as descriptors, to the XDG desktop
+# portal (org.freedesktop.portal.OpenURI) and to nothing else.
 # usage: python3 tests/launchservices-host-open-portal.py [REPO_ROOT]
 #
 # LSHostOpenBus.c and LSHostOpenURL.c are built natively against the host's
@@ -31,6 +31,7 @@ PROBE = r"""
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -113,6 +114,48 @@ static void serve_portal(int mode, int ready_fd)
 				}
 				snprintf(line, sizeof(line), "OpenURI\t%s\t%s\t%d\t%s", parent ? parent : "(none)",
 					uri ? uri : "(none)", count, dbus_message_get_signature(m));
+				record(line);
+
+				DBusMessage *reply = NULL;
+				if (mode == PORTAL_ACCEPT)
+				{
+					const char *handle = "/org/freedesktop/portal/desktop/request/1_1/t";
+					reply = dbus_message_new_method_return(m);
+					dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &handle, DBUS_TYPE_INVALID);
+				}
+				else if (mode == PORTAL_DENY)
+					reply = dbus_message_new_error(m, "org.freedesktop.portal.Error.NotAllowed", "denied");
+				if (reply)
+				{
+					dbus_connection_send(c, reply, NULL);
+					dbus_connection_flush(c);
+					dbus_message_unref(reply);
+				}
+			}
+			else if ((dbus_message_is_method_call(m, "org.freedesktop.portal.OpenURI", "OpenFile")
+					|| dbus_message_is_method_call(m, "org.freedesktop.portal.OpenURI", "OpenDirectory"))
+				&& strcmp(dbus_message_get_path(m), "/org/freedesktop/portal/desktop") == 0)
+			{
+				DBusMessageIter it;
+				const char *parent = NULL;
+				int fd = -1;
+				char target[4096] = "(none)", fdpath[64], line[8192];
+				dbus_message_iter_init(m, &it);
+				if (dbus_message_iter_get_arg_type(&it) == DBUS_TYPE_STRING)
+					dbus_message_iter_get_basic(&it, &parent);
+				dbus_message_iter_next(&it);
+				if (dbus_message_iter_get_arg_type(&it) == DBUS_TYPE_UNIX_FD)
+					dbus_message_iter_get_basic(&it, &fd);
+				if (fd >= 0)
+				{
+					ssize_t n;
+					snprintf(fdpath, sizeof(fdpath), "/proc/self/fd/%d", fd);
+					n = readlink(fdpath, target, sizeof(target) - 1);
+					target[n > 0 ? n : 0] = 0;
+					close(fd);
+				}
+				snprintf(line, sizeof(line), "%s\t%s\t%s\t%s", dbus_message_get_member(m),
+					parent ? parent : "(none)", target, dbus_message_get_signature(m));
 				record(line);
 
 				DBusMessage *reply = NULL;
@@ -214,6 +257,29 @@ int main(int argc, char **argv)
 	CHECK(_LSHostOpenURL(&api, "mailto:someone@example.org?subject=Hi%20there") == LS_HOST_OPEN_OK);
 	CHECK(calls_recorded(last, sizeof(last)) == 2);
 
+	/* A file or folder goes as a descriptor: OpenFile opens it, OpenDirectory shows its folder with it selected. */
+	reset();
+	{
+		char item[4096], expect_open[8192], expect_reveal[8192];
+		int fd;
+		snprintf(item, sizeof(item), "%s/shown item", bus_dir);
+		CHECK(mkdir(item, 0700) == 0);
+		fd = open(item, O_RDONLY | O_CLOEXEC);
+		CHECK(fd >= 0);
+		CHECK(_LSHostOpenFileDescriptor(&api, fd, 0) == LS_HOST_OPEN_OK);
+		CHECK(calls_recorded(last, sizeof(last)) == 1);
+		snprintf(expect_open, sizeof(expect_open), "OpenFile\t\t%s\tsha{sv}", item);
+		CHECK(strcmp(last, expect_open) == 0);
+		CHECK(_LSHostOpenFileDescriptor(&api, fd, 1) == LS_HOST_OPEN_OK);
+		CHECK(calls_recorded(last, sizeof(last)) == 2);
+		snprintf(expect_reveal, sizeof(expect_reveal), "OpenDirectory\t\t%s\tsha{sv}", item);
+		CHECK(strcmp(last, expect_reveal) == 0);
+		CHECK(fcntl(fd, F_GETFD) >= 0);   /* the descriptor stays the caller's */
+		close(fd);
+		CHECK(_LSHostOpenFileDescriptor(&api, -1, 0) == LS_HOST_OPEN_INVALID_URL);
+		CHECK(calls_recorded(last, sizeof(last)) == 2);
+	}
+
 	/* A URL the policy refuses never reaches the bus. */
 	reset();
 	CHECK(_LSHostOpenURL(&api, "file:///etc/passwd") == LS_HOST_OPEN_INVALID_URL);
@@ -281,6 +347,20 @@ int main(int argc, char **argv)
 	CHECK(calls_recorded(last, sizeof(last)) == 1);
 	stop_portal(portal);
 
+	/* The same for descriptors. */
+	reset();
+	portal = start_portal(PORTAL_DENY);
+	CHECK(portal > 0);
+	{
+		int fd = open("/", O_RDONLY | O_CLOEXEC);
+		CHECK(_LSHostOpenFileDescriptor(&api, fd, 1) == LS_HOST_OPEN_FAILED);
+		CHECK(calls_recorded(last, sizeof(last)) == 1);
+		stop_portal(portal);
+		reset();
+		CHECK(_LSHostOpenFileDescriptor(&api, fd, 1) == LS_HOST_OPEN_NO_PORTAL);
+		close(fd);
+	}
+
 	/* A portal that does not answer: a failure after the timeout, with no second attempt. */
 	reset();
 	portal = start_portal(PORTAL_HANG);
@@ -291,7 +371,7 @@ int main(int argc, char **argv)
 	stop_portal(portal);
 
 	if (failures == 0)
-		puts("PASS: host URL opening through the desktop portal");
+		puts("PASS: host URL and file opening through the desktop portal");
 	fflush(stdout);
 	return failures == 0 ? 0 : 1;
 }

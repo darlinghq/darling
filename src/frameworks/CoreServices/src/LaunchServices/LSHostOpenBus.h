@@ -21,9 +21,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /*
- * Hands a URL to the host desktop through the OpenURI interface of the XDG
- * desktop portal (org.freedesktop.portal.OpenURI), on the user's D-Bus
- * session bus. Nothing else is used: if there is no portal, the URL is not
+ * Hands a URL, or a file or folder, to the host desktop through the OpenURI
+ * interface of the XDG desktop portal (org.freedesktop.portal.OpenURI), on the
+ * user's D-Bus session bus. Nothing else is used: if there is no portal, the URL is not
  * opened.
  *
  * This part has no Darling or CoreFoundation dependencies. The libdbus-1
@@ -90,6 +90,15 @@ char* _LSHostOpenSessionAddress(const struct ls_host_dbus* api);
 
 /* Opens the URL through the portal and returns one of the values above. */
 int _LSHostOpenURL(const struct ls_host_dbus* api, const char* url);
+
+/*
+ * Asks the portal to show an item in the desktop's file manager: with reveal
+ * set, the folder that contains the item with the item selected
+ * (OpenDirectory), otherwise the item itself, a folder being opened as a
+ * folder (OpenFile). fd is a descriptor open on the item; it is only read from
+ * while the call is made. Returns one of the values above.
+ */
+int _LSHostOpenFileDescriptor(const struct ls_host_dbus* api, int fd, int reveal);
 
 #ifdef __cplusplus
 }
