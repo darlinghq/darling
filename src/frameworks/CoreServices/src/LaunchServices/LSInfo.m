@@ -816,6 +816,51 @@ OSStatus LSCopyDisplayNameForURL(CFURLRef inURL, CFStringRef *outDisplayName)
 	return noErr;
 }
 
+// The applications that declare documents of the file's name extension (directly or through a type
+// with that extension), the preferred ones first, skipping registrations of bundles that were removed.
+static CFArrayRef copyApplicationsForFileExtension(NSString* extension, LSRolesMask inRoleMask)
+{
+	__block NSMutableArray* urls = nil;
+	FMDatabaseQueue* dq = getDatabaseQueue();
+
+	if (dq == nil || [extension length] == 0)
+		return NULL;
+
+	[dq inDatabase:^(FMDatabase* db) {
+		NSString* escaped = escape(extension);
+		NSString* query = [NSString stringWithFormat:@"select path, AD.rank from bundle INNER JOIN app_doc AD on AD.bundle=bundle.id where bundle.package_type='APPL'"
+			@" and (EXISTS (SELECT * FROM app_doc_extension AE WHERE AE.doc=AD.id AND AE.extension = '%@')"
+			@" OR "
+			@"EXISTS (SELECT * FROM app_doc_uti AU JOIN uti ON uti.type_identifier = AU.uti JOIN uti_tag UT ON UT.uti=uti.id WHERE AU.doc=AD.id AND UT.tag = 'public.filename-extension' AND UT.value='%@'))",
+			escaped, escaped];
+
+		if (inRoleMask != kLSRolesAll)
+			query = [query stringByAppendingFormat:@" and AD.role IN (%@)", roleSQLArray(inRoleMask)];
+		query = [query stringByAppendingString:@" order by case "
+			@"when AD.rank='Owner' then 1 "
+			@"when AD.rank='Default' then 2 "
+			@"when AD.rank='Alternate' then 3 "
+			@"else 5 "
+			@"end asc"];
+
+		FMResultSet* rs = [db executeQuery:query];
+		while ([rs next])
+		{
+			NSString* path = [rs stringForColumn:@"path"];
+			if (access([path fileSystemRepresentation], F_OK) != 0)
+				continue;
+			NSURL* app = [[[NSURL alloc] initFileURLWithPath:path isDirectory:YES] autorelease];
+			if (urls == nil)
+				urls = [NSMutableArray array];
+			if (![urls containsObject:app])
+				[urls addObject:app];
+		}
+		[rs close];
+	}];
+
+	return urls != nil ? (CFArrayRef) [urls retain] : NULL;
+}
+
 CFArrayRef LSCopyApplicationURLsForURL(CFURLRef inURL, LSRolesMask inRoleMask)
 {
 	CFStringRef scheme;
@@ -824,14 +869,14 @@ CFArrayRef LSCopyApplicationURLsForURL(CFURLRef inURL, LSRolesMask inRoleMask)
 	if (inURL == NULL)
 		return NULL;
 
-	// Only URLs for a URL scheme are answered; the applications for a document come from its content type.
 	scheme = CFURLCopyScheme(inURL);
 	if (scheme == NULL)
 		return NULL;
+	// The applications for a document are the ones that declare its name extension.
 	if (CFStringCompare(scheme, CFSTR("file"), kCFCompareCaseInsensitive) == kCFCompareEqualTo)
 	{
 		CFRelease(scheme);
-		return NULL;
+		return copyApplicationsForFileExtension([[(NSURL*) inURL pathExtension] lowercaseString], inRoleMask);
 	}
 
 	urls = [NSMutableArray array];
