@@ -37,7 +37,7 @@ BuildRequires:  libglvnd-devel mesa-libGL-devel mesa-libEGL-devel
 BuildRequires:  libxml2-devel elfutils-libelf-devel
 BuildRequires:  libbsd-devel
 BuildRequires:  ffmpeg-devel pulseaudio-libs-devel openssl-devel giflib-devel
-BuildRequires:  libXrandr-devel libXcursor-devel libxkbfile-devel dbus-devel mesa-libGLU-devel
+BuildRequires:  libXrandr-devel libXi-devel libXcursor-devel libxkbfile-devel dbus-devel mesa-libGLU-devel
 BuildRequires:  vulkan-headers llvm-devel libcap-devel bash vulkan-loader-devel
 
 Requires: darling-cli darling-python2 darling-ruby darling-perl darling-gui darling-gui-stubs darling-pyobjc

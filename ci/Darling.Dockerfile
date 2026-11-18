@@ -44,6 +44,7 @@ RUN apt-get update && apt-get install -y \
     libfontconfig1-dev \
     libbsd-dev \
     libxrandr-dev \
+    libxi-dev \
     libxcursor-dev \
     libgif-dev \
     libavutil-dev \
