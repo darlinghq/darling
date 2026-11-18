@@ -113,6 +113,12 @@ Boolean _LSASNExtractHighAndLowParts(LSASNRef asn, UInt32* outHigh, UInt32* outL
 CFArrayRef _LSCopyApplicationArray(LSSessionID sessionID);
 OSStatus _LSSetWeakBindingURLForType(LSSessionID sessionID, int unknown, CFStringRef contentType, LSRolesMask roles, CFURLRef appURL);
 
+// The URL of the icon file that shows documents of a content type, or NULL when no application declares one
+// (the caller then uses a generic icon). Looks at the icon of the type's own declaration (UTTypeIconFile), then at the
+// icon in CFBundleDocumentTypes of the handler application (the user's choice, else by handler rank). Follows the
+// Create rule. Only the file is located; callers load it as they see fit.
+CFURLRef _LSCopyIconURLForContentType(CFStringRef contentType);
+
 // Assumed
 #define kLSDownloadRiskCategoryKey CFSTR("LSDownloadRiskCategory")
 
