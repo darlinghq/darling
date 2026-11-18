@@ -20,6 +20,8 @@
 #import <AuthenticationServices/ASWebAuthenticationSession.h>
 #import <darling-stub-forwarding.h>
 
+NSErrorDomain const ASWebAuthenticationSessionErrorDomain = @"com.apple.AuthenticationServices.WebAuthenticationSession";
+
 @implementation ASWebAuthenticationSession
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
