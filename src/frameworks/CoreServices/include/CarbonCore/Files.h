@@ -246,8 +246,24 @@ typedef HParamBlockRec* HParmBlkPtr;
 
 OSErr PBHGetVolParmsSync(HParmBlkPtr paramBlock);
 
+enum {
+	kFSFileOperationDefaultOptions = 0,
+	kFSFileOperationOverwrite = 1,
+	kFSFileOperationSkipSourcePermissionCheck = 2,
+	kFSFileOperationDoNotMoveAcrossVolumes = 4,
+	kFSFileOperationSkipPreflight = 8
+};
+
 OSStatus FSCopyObjectSync(const FSRef *source, const FSRef *destinationDir, CFStringRef copyName, FSRef *newRef, OptionBits whichInfo);
 OSStatus FSMoveObjectSync(const FSRef *source, const FSRef *destinationDir, CFStringRef moveName, FSRef *newRef, OptionBits whichInfo);
+OSStatus FSMoveObjectToTrashSync(const FSRef *source, FSRef *target, OptionBits options);
+
+OSErr FSCreateFileUnicode(const FSRef* parentRef, UniCharCount nameLength, const UniChar* name,
+	FSCatalogInfoBitmap whichInfo, const FSCatalogInfo* catalogInfo, FSRef* newRef, FSSpecPtr newSpec);
+OSStatus FSMakeFSRefUnicode(const FSRef* parentRef, UniCharCount nameLength, const UniChar* name,
+	TextEncoding textEncodingHint, FSRef* newRef);
+CFStringRef FSCreateStringFromHFSUniStr(CFAllocatorRef alloc, const HFSUniStr255* uniStr);
+OSStatus FSGetHFSUniStrFromString(CFStringRef theString, HFSUniStr255* theOutString);
 
 #ifdef __cplusplus
 }

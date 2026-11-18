@@ -629,7 +629,51 @@ OSStatus LSSharedFileListItemResolve(
 			*outURL = NULL;
 		}
 	}
+	if (outRef && item->url) {
+		CFURLGetFSRef(item->url, outRef);
+	}
 	return noErr;
+}
+
+CFURLRef LSSharedFileListItemCopyResolvedURL(
+	LSSharedFileListItemRef inItem,
+	UInt32 inFlags,
+	CFErrorRef *outError)
+{
+	CFURLRef url = NULL;
+	OSStatus status = LSSharedFileListItemResolve(inItem, inFlags, &url, NULL);
+
+	if (status == noErr && !url) {
+		status = fnfErr;
+	}
+	if (status != noErr && outError) {
+		*outError = CFErrorCreate(kCFAllocatorDefault, kCFErrorDomainOSStatus, status, NULL);
+	}
+	return status == noErr ? url : NULL;
+}
+
+LSSharedFileListItemRef LSSharedFileListInsertItemFSRef(
+	LSSharedFileListRef inList,
+	LSSharedFileListItemRef insertAfterThisItem,
+	CFStringRef inDisplayName,
+	IconRef inIconRef,
+	const FSRef *inFSRef,
+	CFDictionaryRef inPropertiesToSet,
+	CFArrayRef inPropertiesToClear)
+{
+	if (!inList || !inFSRef) {
+		return NULL;
+	}
+
+	CFURLRef url = CFURLCreateFromFSRef(CFGetAllocator(inList), (FSRef *)inFSRef);
+	if (!url) {
+		return NULL;
+	}
+
+	LSSharedFileListItemRef item = LSSharedFileListInsertItemURL(inList, insertAfterThisItem, inDisplayName,
+		inIconRef, url, inPropertiesToSet, inPropertiesToClear);
+	CFRelease(url);
+	return item;
 }
 
 LSSharedFileListItemRef LSSharedFileListInsertItemURL(
