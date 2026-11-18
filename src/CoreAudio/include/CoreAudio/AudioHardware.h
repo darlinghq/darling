@@ -253,6 +253,14 @@ OSStatus AudioDeviceGetNearestStartTime(AudioObjectID inDevice,
 OSStatus AudioHardwareGetProperty(AudioHardwarePropertyID inPropId, UInt32* ioPropertyDataSize, void* outPropertyData);
 OSStatus AudioHardwareGetPropertyInfo(AudioHardwarePropertyID inPropertyID, UInt32* outSize, Boolean* outWritable);
 
+// Deprecated: AudioObjectAddPropertyListener on kAudioObjectSystemObject does the same.
+typedef OSStatus (*AudioHardwarePropertyListenerProc)(AudioHardwarePropertyID inPropertyID, void* inClientData);
+
+OSStatus AudioHardwareAddPropertyListener(AudioHardwarePropertyID inPropertyID,
+		AudioHardwarePropertyListenerProc inProc, void* inClientData);
+OSStatus AudioHardwareRemovePropertyListener(AudioHardwarePropertyID inPropertyID,
+		AudioHardwarePropertyListenerProc inProc);
+
 enum
 {
     kAudioDeviceTransportTypeVirtual = 'virt'
