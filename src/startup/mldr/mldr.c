@@ -28,8 +28,12 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#if __has_include(<mach-o/loader.h>)
 #include <mach-o/loader.h>
+#endif
+#if __has_include(<mach-o/fat.h>)
 #include <mach-o/fat.h>
+#endif
 #include <dlfcn.h>
 #include <endian.h>
 #include "commpage.h"
