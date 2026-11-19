@@ -20,6 +20,7 @@
 #include "gpubuffer.h"
 #include "linux_dmabuf.h"
 #include <elfcalls.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -172,6 +173,7 @@ static bool g_deviceFailed;
 enum JobKind
 {
 	JOB_CREATE,
+	JOB_IMPORT,
 	JOB_DESTROY,
 	JOB_DOWNLOAD,
 	JOB_UPLOAD,
@@ -181,7 +183,7 @@ struct Job
 {
 	enum JobKind kind;
 	_IOSurfaceGPUBo* bo;
-	// JOB_CREATE
+	// JOB_CREATE, JOB_IMPORT
 	const char* renderNode;
 	const uint64_t* modifiers;
 	size_t modifierCount;
@@ -377,6 +379,8 @@ static bool listed(uint64_t modifier, const uint64_t* modifiers, size_t count)
 	return false;
 }
 
+static bool bindBuffer(_IOSurfaceGPUBo* bo);
+
 static bool createBo(struct Job* job)
 {
 	_IOSurfaceGPUBo* bo = job->bo;
@@ -405,7 +409,14 @@ static bool createBo(struct Job* job)
 	d->fd = gbm.bo_get_fd(bo->bo);
 	if (d->fd < 0 || d->stride == 0 || d->stride > INT32_MAX)
 		return false;
+	return bindBuffer(bo);
+}
 
+// Makes the buffer's DMA-BUF a texture and a framebuffer of the helper's
+// context, and checks that they are complete and of the buffer's size.
+static bool bindBuffer(_IOSurfaceGPUBo* bo)
+{
+	_IOSurfaceGPUBoDescription* d = &bo->description;
 	HostEGLint attributes[] = {
 		H_EGL_WIDTH, (HostEGLint) d->width,
 		H_EGL_HEIGHT, (HostEGLint) d->height,
@@ -440,6 +451,16 @@ static bool createBo(struct Job* job)
 	uint32_t status = gl.checkFramebufferStatus(H_GL_FRAMEBUFFER);
 	gl.bindFramebuffer(H_GL_FRAMEBUFFER, 0);
 	return status == H_GL_FRAMEBUFFER_COMPLETE && gl.getError() == H_GL_NO_ERROR;
+}
+
+// A buffer another process made: only its DMA-BUF is used, no buffer
+// object of this process's buffer manager.
+static bool importBo(struct Job* job)
+{
+	_IOSurfaceGPUBo* bo = job->bo;
+	if (!openDevice(job->renderNode))
+		return false;
+	return bindBuffer(bo);
 }
 
 static bool download(struct Job* job)
@@ -488,6 +509,9 @@ static void* helperThread(void* unused)
 		{
 			case JOB_CREATE:
 				job->ok = createBo(job);
+				break;
+			case JOB_IMPORT:
+				job->ok = importBo(job);
 				break;
 			case JOB_DESTROY:
 				releaseBo(job->bo);
@@ -540,11 +564,10 @@ static bool runJob(struct Job* job)
 	return job->ok;
 }
 
-_IOSurfaceGPUBo* _IOSurfaceGPUBoCreate(const char* renderNode, uint32_t width, uint32_t height,
-	uint32_t fourcc, const uint64_t* modifiers, size_t modifierCount)
+// A new buffer record for width x height pixels in DRM format fourcc, or
+// NULL if the format or size is not one buffers are made in.
+static _IOSurfaceGPUBo* newBo(uint32_t width, uint32_t height, uint32_t fourcc)
 {
-	if (g_disabled || renderNode == NULL || modifiers == NULL || modifierCount == 0)
-		return NULL;
 	if (width == 0 || height == 0 || width > INT32_MAX || height > INT32_MAX)
 		return NULL;
 
@@ -571,15 +594,14 @@ _IOSurfaceGPUBo* _IOSurfaceGPUBoCreate(const char* renderNode, uint32_t width, u
 		.width = width,
 		.height = height,
 	};
+	return bo;
+}
 
-	struct Job job = {
-		.kind = JOB_CREATE,
-		.bo = bo,
-		.renderNode = renderNode,
-		.modifiers = modifiers,
-		.modifierCount = modifierCount,
-	};
-	if (runJob(&job))
+// Runs a job that sets up bo, and releases bo if it fails.
+static _IOSurfaceGPUBo* runSetup(struct Job* job)
+{
+	_IOSurfaceGPUBo* bo = job->bo;
+	if (runJob(job))
 		return bo;
 
 	// A buffer that could not be made complete is released on the
@@ -590,8 +612,60 @@ _IOSurfaceGPUBo* _IOSurfaceGPUBoCreate(const char* renderNode, uint32_t width, u
 		runJob(&destroy);
 	}
 	else
+	{
+		if (bo->description.fd >= 0)
+			close(bo->description.fd);
 		free(bo);
+	}
 	return NULL;
+}
+
+_IOSurfaceGPUBo* _IOSurfaceGPUBoCreate(const char* renderNode, uint32_t width, uint32_t height,
+	uint32_t fourcc, const uint64_t* modifiers, size_t modifierCount)
+{
+	if (g_disabled || renderNode == NULL || modifiers == NULL || modifierCount == 0)
+		return NULL;
+	_IOSurfaceGPUBo* bo = newBo(width, height, fourcc);
+	if (bo == NULL)
+		return NULL;
+
+	struct Job job = {
+		.kind = JOB_CREATE,
+		.bo = bo,
+		.renderNode = renderNode,
+		.modifiers = modifiers,
+		.modifierCount = modifierCount,
+	};
+	return runSetup(&job);
+}
+
+_IOSurfaceGPUBo* _IOSurfaceGPUBoImport(const char* renderNode, const _IOSurfaceGPUBoDescription* description)
+{
+	if (g_disabled || renderNode == NULL || description == NULL || description->fd < 0)
+		return NULL;
+	// One plane at offset 0, in a layout that is not linear (see createBo).
+	if (description->offset != 0 || description->stride == 0 || description->stride > INT32_MAX
+		|| description->modifier == IOSURFACE_DRM_FORMAT_MOD_LINEAR
+		|| description->modifier == H_DRM_FORMAT_MOD_INVALID)
+		return NULL;
+	_IOSurfaceGPUBo* bo = newBo(description->width, description->height, description->fourcc);
+	if (bo == NULL)
+		return NULL;
+	bo->description.modifier = description->modifier;
+	bo->description.stride = description->stride;
+	bo->description.fd = fcntl(description->fd, F_DUPFD_CLOEXEC, 0);
+	if (bo->description.fd < 0)
+	{
+		free(bo);
+		return NULL;
+	}
+
+	struct Job job = {
+		.kind = JOB_IMPORT,
+		.bo = bo,
+		.renderNode = renderNode,
+	};
+	return runSetup(&job);
 }
 
 void _IOSurfaceGPUBoDestroy(_IOSurfaceGPUBo* bo)

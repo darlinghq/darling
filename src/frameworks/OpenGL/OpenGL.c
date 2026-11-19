@@ -2087,8 +2087,8 @@ CGL_HOST_GL_CALL_VOID(glGetFramebufferAttachmentParameteriv,
 //
 // Each texture remembers the surface it was last specified from. The binding
 // retains the surface, as the texture would on macOS, and is dropped when
-// the same texture is specified from another surface, when a texture that
-// holds a copy is deleted, or when the context is destroyed.
+// the same texture is specified from another surface, when the texture is
+// deleted, or when the context is destroyed.
 
 struct surface_binding {
     CGLContextObj context;
@@ -4122,17 +4122,34 @@ static void writeBackTexture(CGLContextObj context, GLuint texture) {
     writeBackRendered(context, texture);
 }
 
-// Writes the texture, which context shares, back into its surface and drops
-// its bindings, as it is deleted. Textures that use the surface's memory
-// keep theirs until a lock of the surface has waited for their rendering.
+// Whether a texture that context shares uses its surface's memory or GPU
+// buffer.
+static int textureImported(CGLContextObj context, GLuint texture) {
+    int imported = 0;
+    pthread_mutex_lock(&g_surfaceBindingsMutex);
+    for (size_t i = 0; i < g_surfaceBindingCount && !imported; i++) {
+        imported = g_surfaceBindings[i].imported && g_surfaceBindings[i].texture == texture
+            && sharesTextures(g_surfaceBindings[i].context, context);
+    }
+    pthread_mutex_unlock(&g_surfaceBindingsMutex);
+    return imported;
+}
+
+// Writes the texture, which context shares and which is current, back into
+// its surface and drops its bindings, as it is deleted, so that the surface
+// is released as on macOS. A texture that uses the surface's memory or GPU
+// buffer has its rendering finished first: no later lock of the surface
+// waits for a context without textures on it.
 static void releaseTextureBindings(CGLContextObj context, GLuint texture) {
     writeBackRendered(context, texture);
+    if (textureImported(context, texture))
+        host_glFinish();
     GLuint unused[8];
     int unusedCount = 0;
     pthread_mutex_lock(&g_surfaceBindingsMutex);
     for (size_t i = 0; i < g_surfaceBindingCount; ) {
         struct surface_binding *binding = &g_surfaceBindings[i];
-        if (binding->imported || binding->texture != texture || !sharesTextures(binding->context, context)) {
+        if (binding->texture != texture || !sharesTextures(binding->context, context)) {
             i++;
             continue;
         }

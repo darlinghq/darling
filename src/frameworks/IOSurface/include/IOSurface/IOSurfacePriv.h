@@ -181,14 +181,17 @@ typedef struct
 // Such an API gives the surface a GPU buffer, in a layout of the driver's
 // own, the first time it renders into the surface. From then on the surface
 // keeps its contents in the buffer as well as in its memory, and IOSurface
-// copies between the two on the GPU:
+// copies between the two on the GPU. Every process that shares the surface
+// uses the same buffer (darlingserver keeps it):
 //  - GPU rendering into the buffer is reported with
-//    _IOSurfaceGPUDidWriteBuffer once it has completed. IOSurface copies it
-//    into the memory there and then, so that the memory has it for the CPU
-//    and for other processes, and changes the seed.
-//  - CPU writes reach the buffer when the write lock ends. Writes made in
-//    another process reach it when the API calls _IOSurfaceGPUWillUse
-//    before it uses the buffer.
+//    _IOSurfaceGPUDidWriteBuffer once it has completed, and the seed
+//    changes. IOSurface copies the rendering into the memory there and then
+//    if a process holding the surface reads its memory (it has not imported
+//    the buffer, or uses the memory through _IOSurfaceGetDMABuf), and
+//    otherwise at the next lock, in whichever process takes it.
+//  - CPU writes reach the buffer when the write lock ends in a process that
+//    uses the buffer. Writes made elsewhere reach it when the API calls
+//    _IOSurfaceGPUWillUse before it uses the buffer.
 //
 // _IOSurfaceGetGPUBuffer fills in *buffer for plane planeIndex and returns
 // true if the surface has a buffer on the DRM render node renderNode (a host
@@ -199,12 +202,15 @@ typedef struct
 // (only single-plane surfaces with four bytes per pixel can, in the formats
 // ARGB8888 and ABGR8888, at the plane's size), if it has one in another
 // format or on another render node, or if the host lacks the libraries.
-// The caller sets buffer->version. The descriptor belongs to the surface
-// and stays valid while the caller holds a reference to it. Only the
-// process that made the buffer uses it; others use the memory.
+// A buffer another process made is returned if it is on renderNode, in
+// fourcc and in one of the given modifiers. Once it returns true, the
+// caller counts as using the buffer rather than the memory. The caller sets
+// buffer->version. The descriptor belongs to the surface and stays valid
+// while the caller holds a reference to it.
 //
-// _IOSurfaceGetGPUBufferStatistics reports whether the surface has a GPU
-// buffer in this process, and the copies made between it and the memory.
+// _IOSurfaceGetGPUBufferStatistics reports whether the surface's GPU buffer
+// is in use in this process, and the copies this process made between it
+// and the memory.
 #define _IOSURFACE_GPU_BUFFER_VERSION 1
 #define _IOSURFACE_GPU_BUFFER_CREATE 1
 
