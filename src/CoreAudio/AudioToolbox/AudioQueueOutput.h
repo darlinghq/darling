@@ -36,6 +36,16 @@ public:
 	virtual OSStatus pause() override;
 	virtual OSStatus reset() override;
 
+	virtual OSStatus processingTapNew(AudioQueueProcessingTapCallback inCallback, void* inClientData,
+			AudioQueueProcessingTapFlags inFlags, UInt32* outMaxFrames,
+			AudioStreamBasicDescription* outProcessingFormat, AudioQueueProcessingTapRef* outAQTap) override;
+	virtual OSStatus processingTapDispose(AudioQueueProcessingTapRef inAQTap) override;
+	virtual OSStatus processingTapGetSourceAudio(AudioQueueProcessingTapRef inAQTap, UInt32 inNumberFrames,
+			AudioTimeStamp* ioTimeStamp, AudioQueueProcessingTapFlags* outFlags, UInt32* outNumberFrames,
+			AudioBufferList* ioData) override;
+	virtual OSStatus processingTapGetQueueTime(AudioQueueProcessingTapRef inAQTap,
+			Float64* outQueueSampleTime, UInt32* outQueueFrameCount) override;
+
 	virtual OSStatus setOfflineRenderFormat(const AudioStreamBasicDescription *inFormat, const AudioChannelLayout *inLayout) override;
 	virtual OSStatus offlineRender(const AudioTimeStamp *inTimestamp, AudioQueueBufferRef ioBuffer, UInt32 inNumberFrames) override;
 
@@ -60,6 +70,13 @@ private:
 	static OSStatus renderCallback(void* refCon, AudioUnitRenderActionFlags* flags, const AudioTimeStamp* timeStamp,
 		UInt32 busNumber, UInt32 numberFrames, AudioBufferList* ioData);
 	OSStatus render(UInt32 numberFrames, AudioBufferList* ioData);
+	void destroyTap();
+	OSStatus renderTapped(UInt32 numberFrames, AudioBufferList* ioData);
+	void finishRender(std::vector<AudioQueueBufferRef>& finished, UInt32 numberFrames);
+	struct Tap;
+	OSStatus pullTapSource(Tap* tap, UInt32 inNumberFrames, AudioQueueProcessingTapFlags* outFlags,
+			UInt32* outNumberFrames, AudioBufferList* ioData);
+	UInt32 pullLocked(uint8_t* out, UInt32 wantBytes, std::vector<AudioQueueBufferRef>& finished);
 	OSStatus ensureUnit();
 	void returnBuffers(const std::vector<AudioQueueBufferRef>& buffers);
 	bool onCallbackQueue() const;
@@ -103,6 +120,19 @@ private:
 	bool m_running = false;
 	bool m_paused = false;
 	bool m_stopWhenDrained = false;
+
+	bool m_streamStart = true; // the next audio pulled starts a continuous stream (tap flag)
+
+	// Offline rendering (AudioQueueSetOfflineRenderFormat): the queue runs without the
+	// output unit and AudioQueueOfflineRender pulls its audio in the offline format.
+	std::atomic<bool> m_offline { false };
+	AudioStreamBasicDescription m_offlineFormat = {};
+
+	// The processing tap: one per queue, created and disposed only while the queue is
+	// stopped. m_tapMutex is held for as long as the tap's callback runs, so disposing
+	// the tap waits for a callback in progress. Taken before m_mutex, never after.
+	std::mutex m_tapMutex;
+	Tap* m_tap = nullptr;
 
 	std::atomic<uint64_t> m_renderedFrames { 0 };
 	std::atomic<float> m_volume { 1.0f };

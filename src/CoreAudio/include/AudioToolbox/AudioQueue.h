@@ -32,9 +32,13 @@ enum
 	kAudioQueueErr_CodecNotFound = -66673,
 	kAudioQueueErr_InvalidCodecAccess = -66672,
 	kAudioQueueErr_QueueInvalidated = -66671,
+	kAudioQueueErr_TooManyTaps = -66670,
+	kAudioQueueErr_InvalidTapContext = -66669,
+	kAudioQueueErr_InvalidTapType = -66667,
 	kAudioQueueErr_BufferEnqueuedTwice = -66666,
 	kAudioQueueErr_CannotStartYet = -66665,
 	kAudioQueueErr_EnqueueDuringReset = -66632,
+	kAudioQueueErr_InvalidOfflineMode = -66626,
 };
 
 enum
@@ -55,6 +59,23 @@ typedef struct AudioQueueParameterEvent
 } AudioQueueParameterEvent;
 
 typedef struct OpaqueAudioQueue* AudioQueueRef;
+
+typedef UInt32 AudioQueueProcessingTapFlags;
+enum
+{
+	kAudioQueueProcessingTap_PreEffects = (1 << 0),
+	kAudioQueueProcessingTap_PostEffects = (1 << 1),
+	kAudioQueueProcessingTap_Siphon = (1 << 2),
+	kAudioQueueProcessingTap_StartOfStream = (1 << 8),
+	kAudioQueueProcessingTap_EndOfStream = (1 << 9),
+};
+
+typedef struct OpaqueAudioQueueProcessingTap* AudioQueueProcessingTapRef;
+
+typedef void (*AudioQueueProcessingTapCallback)(void* inClientData,
+		AudioQueueProcessingTapRef inAQTap, UInt32 inNumberFrames,
+		AudioTimeStamp* ioTimeStamp, AudioQueueProcessingTapFlags* ioFlags,
+		UInt32* outNumberFrames, AudioBufferList* ioData);
 
 typedef struct AudioQueueBuffer
 {
@@ -132,6 +153,16 @@ OSStatus AudioQueueDeviceGetCurrentTime(AudioQueueRef inAQ, AudioTimeStamp *outT
 OSStatus AudioQueueDeviceGetNearestStartTime(AudioQueueRef inAQ, AudioTimeStamp *ioRequestedStartTime, UInt32 inFlags);
 OSStatus AudioQueueDeviceTranslateTime(AudioQueueRef inAQ, const AudioTimeStamp *inTime, AudioTimeStamp *outTime);
 OSStatus AudioQueueGetCurrentTime(AudioQueueRef inAQ, AudioQueueTimelineRef inTimeline, AudioTimeStamp *outTimeStamp, Boolean *outTimelineDiscontinuity);
+
+OSStatus AudioQueueProcessingTapNew(AudioQueueRef inAQ, AudioQueueProcessingTapCallback inCallback,
+		void* inClientData, AudioQueueProcessingTapFlags inFlags, UInt32* outMaxFrames,
+		AudioStreamBasicDescription* outProcessingFormat, AudioQueueProcessingTapRef* outAQTap);
+OSStatus AudioQueueProcessingTapDispose(AudioQueueProcessingTapRef inAQTap);
+OSStatus AudioQueueProcessingTapGetSourceAudio(AudioQueueProcessingTapRef inAQTap, UInt32 inNumberFrames,
+		AudioTimeStamp* ioTimeStamp, AudioQueueProcessingTapFlags* outFlags, UInt32* outNumberFrames,
+		AudioBufferList* ioData);
+OSStatus AudioQueueProcessingTapGetQueueTime(AudioQueueProcessingTapRef inAQTap,
+		Float64* outQueueSampleTime, UInt32* outQueueFrameCount);
 
 #ifdef	__cplusplus
 }
