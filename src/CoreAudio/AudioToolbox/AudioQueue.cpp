@@ -140,7 +140,35 @@ OSStatus AudioQueueEnqueueBufferWithParameters(AudioQueueRef inAQ,
 	return inAQ->enqueueBuffer(inBuffer, inNumPacketDescs, inPacketDescs);
 }
 
+// A timeline lets a client learn whether the queue's sample time was interrupted, as
+// when its output device changes. The queue always plays to the default output unit,
+// whose timeline runs on, so a timeline never reports a discontinuity.
+struct OpaqueAudioQueueTimeline
+{
+	AudioQueueRef queue;
+};
+
+OSStatus AudioQueueCreateTimeline(AudioQueueRef inAQ, AudioQueueTimelineRef *outTimeline)
+{
+	if (!inAQ || !outTimeline)
+		return kAudio_ParamError;
+	*outTimeline = new OpaqueAudioQueueTimeline { inAQ };
+	return noErr;
+}
+
+OSStatus AudioQueueDisposeTimeline(AudioQueueRef inAQ, AudioQueueTimelineRef inTimeline)
+{
+	if (!inAQ || !inTimeline || inTimeline->queue != inAQ)
+		return kAudio_ParamError;
+	delete inTimeline;
+	return noErr;
+}
+
 OSStatus AudioQueueGetCurrentTime(AudioQueueRef inAQ, AudioQueueTimelineRef inTimeline, AudioTimeStamp *outTimeStamp, Boolean *outTimelineDiscontinuity)
 {
+	if (!inAQ)
+		return kAudio_ParamError;
+	if (inTimeline && inTimeline->queue != inAQ)
+		return kAudio_ParamError;
 	return inAQ->getCurrentTime(outTimeStamp, outTimelineDiscontinuity);
 }
