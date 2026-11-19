@@ -653,6 +653,11 @@ struct _CGLContextObj {
     // first use, and the framebuffers a blit copy uses.
     int gpu_copy;
     GLuint copy_framebuffers[2];
+    // Contexts that share object state (textures among them) have the same
+    // share group number.
+    uint64_t share_group;
+    // GL_MAX_COLOR_ATTACHMENTS, found out on first use (0 until then).
+    GLint max_color_attachments;
     struct _CGLContextObj *prev_active;
     struct _CGLContextObj *next_active;
     // Which thread the EGL context is bound to (see the thread hand-off
@@ -1775,6 +1780,9 @@ static CGLError createContext(CGLPixelFormatObj pixelFormat, CGLContextObj share
     atomic_init(&context->dmabuf_import, 0);
     context->gpu_copy = 0;
     context->copy_framebuffers[0] = context->copy_framebuffers[1] = 0;
+    static _Atomic uint64_t lastShareGroup;
+    context->share_group = share ? share->share_group : atomic_fetch_add(&lastShareGroup, 1) + 1;
+    context->max_color_attachments = 0;
 
     pthread_mutex_lock(&g_activeContextsMutex);
     context->prev_active = NULL;
@@ -1983,6 +1991,75 @@ void glSwapAPPLE(void) {
         CGLFlushDrawable(context);
 }
 
+// GL functions this framework exports in place of the host's, so that
+// rendering into IOSurface-backed textures reaches the surfaces (see
+// "Writing GL rendering back into surfaces" below). The framework's own
+// calls go straight to the host's through these.
+#define CGL_HOST_GL_FUNCTIONS(X) \
+    X(glFlush) \
+    X(glFinish) \
+    X(glFenceSync) \
+    X(glDeleteTextures) \
+    X(glTexImage2D) \
+    X(glBindFramebuffer) \
+    X(glBindFramebufferEXT) \
+    X(glDeleteFramebuffers) \
+    X(glDeleteFramebuffersEXT) \
+    X(glGetFramebufferAttachmentParameteriv)
+
+#define CGL_HOST_GL_DECLARE(name) static __typeof__(name) *p_host_##name;
+CGL_HOST_GL_FUNCTIONS(CGL_HOST_GL_DECLARE)
+#undef CGL_HOST_GL_DECLARE
+
+// The library this framework re-exports the host's GL functions from.
+#define CGL_HOST_GL_LIBRARY "/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib"
+
+static void load_host_gl(void) {
+    void *library = dlopen(CGL_HOST_GL_LIBRARY, RTLD_LAZY | RTLD_LOCAL);
+    if (!library)
+        return;
+#define CGL_HOST_GL_LOAD(name) p_host_##name = (__typeof__(p_host_##name)) dlsym(library, #name);
+    CGL_HOST_GL_FUNCTIONS(CGL_HOST_GL_LOAD)
+#undef CGL_HOST_GL_LOAD
+}
+
+static void ensure_host_gl(void) {
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    pthread_once(&once, load_host_gl);
+}
+
+// host_glFlush() and so on: the host's function, or nothing without one.
+#define CGL_HOST_GL_CALL(result, name, params, args) \
+    static result host_##name params { \
+        ensure_host_gl(); \
+        if (p_host_##name) \
+            return p_host_##name args; \
+        return (result) 0; \
+    }
+#define CGL_HOST_GL_CALL_VOID(name, params, args) \
+    static void host_##name params { \
+        ensure_host_gl(); \
+        if (p_host_##name) \
+            p_host_##name args; \
+    }
+CGL_HOST_GL_CALL_VOID(glFlush, (void), ())
+CGL_HOST_GL_CALL_VOID(glFinish, (void), ())
+CGL_HOST_GL_CALL(GLsync, glFenceSync, (GLenum condition, GLbitfield flags), (condition, flags))
+CGL_HOST_GL_CALL_VOID(glDeleteTextures, (GLsizei n, const GLuint *textures), (n, textures))
+CGL_HOST_GL_CALL_VOID(glTexImage2D, (GLenum target, GLint level, GLint internalFormat, GLsizei width,
+                                     GLsizei height, GLint border, GLenum format, GLenum type,
+                                     const GLvoid *pixels),
+                      (target, level, internalFormat, width, height, border, format, type, pixels))
+CGL_HOST_GL_CALL_VOID(glBindFramebuffer, (GLenum target, GLuint framebuffer), (target, framebuffer))
+CGL_HOST_GL_CALL_VOID(glBindFramebufferEXT, (GLenum target, GLuint framebuffer), (target, framebuffer))
+CGL_HOST_GL_CALL_VOID(glDeleteFramebuffers, (GLsizei n, const GLuint *framebuffers), (n, framebuffers))
+CGL_HOST_GL_CALL_VOID(glDeleteFramebuffersEXT, (GLsizei n, const GLuint *framebuffers), (n, framebuffers))
+CGL_HOST_GL_CALL_VOID(glGetFramebufferAttachmentParameteriv,
+                      (GLenum target, GLenum attachment, GLenum pname, GLint *params),
+                      (target, attachment, pname, params))
+#undef CGL_HOST_GL_CALL
+#undef CGL_HOST_GL_CALL_VOID
+
 // IOSurface-backed textures.
 //
 // On macOS the IOSurface is the storage of a texture that
@@ -1998,14 +2075,16 @@ void glSwapAPPLE(void) {
 // plane's pixels are copied into the texture by the call, and
 // CGLReadbackIOSurface copies the texture back into the surface. CPU writes
 // to the surface after the call reach the texture only through another
-// call. GL rendering into the texture reaches the surface through
+// call. GL rendering into the texture reaches the surface when the context
+// flushes it, before the texture is deleted or given other contents (see
+// "Writing GL rendering back into surfaces"), and through
 // CGLReadbackIOSurface, which IOSurface also calls before a lock of the
 // surface or the creation of a Mach port for it (see writeBackSurface).
 //
 // Each texture remembers the surface it was last specified from. The binding
 // retains the surface, as the texture would on macOS, and is dropped when
-// the same texture is specified from another surface or when the context is
-// destroyed.
+// the same texture is specified from another surface, when a texture that
+// holds a copy is deleted, or when the context is destroyed.
 
 struct surface_binding {
     CGLContextObj context;
@@ -2030,18 +2109,40 @@ struct surface_binding {
     // the same plane in the same format and size share a shadow.
     GLuint shadow;
     uint32_t shadowFormat;
+    // The texture may have been rendered into since it was last written
+    // back (one that holds a copy) or since the binding was made (one that
+    // uses the surface's memory), and when that was last noted (a value of
+    // g_renderSerial; 0 if never).
+    int dirty;
+    uint64_t rendered;
 };
 
 static struct surface_binding *g_surfaceBindings;
 static size_t g_surfaceBindingCount, g_surfaceBindingCapacity;
 static pthread_mutex_t g_surfaceBindingsMutex = PTHREAD_MUTEX_INITIALIZER;
+// The number of bindings, read without the lock so that GL calls skip the
+// writeback work when there are none.
+static _Atomic size_t g_bindingCount;
+// Orders the notes of rendering. Guarded by g_surfaceBindingsMutex.
+static uint64_t g_renderSerial;
+
+// Removes the binding at index i. Called with the bindings locked.
+static void removeSurfaceBinding(size_t i) {
+    atomic_fetch_sub(&g_bindingCount, 1);
+    CFRelease(g_surfaceBindings[i].surface);
+    g_surfaceBindings[i] = g_surfaceBindings[--g_surfaceBindingCount];
+}
+
+// Whether the two contexts share textures.
+static int sharesTextures(CGLContextObj a, CGLContextObj b) {
+    return a == b || a->share_group == b->share_group;
+}
 
 static void forgetSurfaceBindings(CGLContextObj context) {
     pthread_mutex_lock(&g_surfaceBindingsMutex);
     for (size_t i = 0; i < g_surfaceBindingCount; ) {
         if (g_surfaceBindings[i].context == context) {
-            CFRelease(g_surfaceBindings[i].surface);
-            g_surfaceBindings[i] = g_surfaceBindings[--g_surfaceBindingCount];
+            removeSurfaceBinding(i);
         } else {
             i++;
         }
@@ -2112,12 +2213,13 @@ static int rememberSurfaceBinding(const struct surface_binding *binding) {
             CFRelease(g_surfaceBindings[i].surface);
         } else {
             g_surfaceBindingCount++;
+            atomic_fetch_add(&g_bindingCount, 1);
         }
         g_surfaceBindings[i] = *binding;
     }
     pthread_mutex_unlock(&g_surfaceBindingsMutex);
     if (unusedShadow != 0)
-        glDeleteTextures(1, &unusedShadow);
+        host_glDeleteTextures(1, &unusedShadow);
     return ok;
 }
 
@@ -2703,7 +2805,7 @@ static int importSurfacePlane(CGLContextObj context, GLenum target, GLenum inter
     // The texture has the image's size afterwards only if the driver took
     // the image; it is emptied first so that its old size does not count.
     // Checking it so leaves the GL error state to the application.
-    glTexImage2D(target, 0, (GLint) internal_format, 0, 0, 0, format, type, NULL);
+    host_glTexImage2D(target, 0, (GLint) internal_format, 0, 0, 0, format, type, NULL);
     p_glEGLImageTargetTexture2DOES(target, image);
     // The texture keeps the memory after the image is gone.
     p_eglDestroyImageKHR(context->egl_display, image);
@@ -2844,17 +2946,17 @@ static int gpuCopy(CGLContextObj context, GLuint source, GLenum sourceTarget,
     glDisable(GL_SCISSOR_TEST);
     if (srgb)
         glDisable(GL_FRAMEBUFFER_SRGB);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, context->copy_framebuffers[0]);
+    host_glBindFramebuffer(GL_READ_FRAMEBUFFER, context->copy_framebuffers[0]);
     glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, sourceTarget, source, 0);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, context->copy_framebuffers[1]);
+    host_glBindFramebuffer(GL_DRAW_FRAMEBUFFER, context->copy_framebuffers[1]);
     glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, destinationTarget, destination, 0);
     p_glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
     // Detached again, so that the framebuffers keep no texture alive.
     glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, sourceTarget, 0, 0);
     glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, destinationTarget, 0, 0);
 
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint) readFramebuffer);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, (GLuint) drawFramebuffer);
+    host_glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint) readFramebuffer);
+    host_glBindFramebuffer(GL_DRAW_FRAMEBUFFER, (GLuint) drawFramebuffer);
     if (scissor)
         glEnable(GL_SCISSOR_TEST);
     if (srgb)
@@ -2897,7 +2999,7 @@ static GLuint shadowTexture(CGLContextObj context, IOSurfaceRef surface, GLuint 
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &importedHeight);
     glBindTexture(GL_TEXTURE_2D, (GLuint) previous);
     if (importedWidth != width || importedHeight != height) {
-        glDeleteTextures(1, &shadow);
+        host_glDeleteTextures(1, &shadow);
         return 0;
     }
     return shadow;
@@ -2933,7 +3035,7 @@ static GLuint copySurfacePlaneToRectangle(CGLContextObj context, GLenum target, 
         struct pixel_store saved, none = { 0, 0, 0, 0, 4 };
         savePixelStore(0, &saved);
         setPixelStore(0, &none);
-        glTexImage2D(target, 0, (GLint) internal_format, width, height, 0, format, type, NULL);
+        host_glTexImage2D(target, 0, (GLint) internal_format, width, height, 0, format, type, NULL);
         setPixelStore(0, &saved);
     }
     gpuCopy(context, shadow, GL_TEXTURE_2D, (GLuint) texture, target, width, height);
@@ -2982,6 +3084,8 @@ static void refreshRectangleTextures(CGLContextObj context) {
     }
 }
 
+static void writeBackTexture(CGLContextObj context, GLuint texture);
+
 CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum internal_format,
                                 GLsizei width, GLsizei height, GLenum format, GLenum type,
                                 IOSurfaceRef ioSurface, GLuint plane) {
@@ -3011,9 +3115,20 @@ CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum interna
     GLint texture = 0;
     glGetIntegerv(bindingQuery, &texture);
 
+    // Rendering into the texture since its last copy belongs to the surface
+    // it was specified from before.
+    if (texture != 0)
+        writeBackTexture(ctx, (GLuint) texture);
+    // A texture that used another surface's memory must have finished
+    // rendering into it before it uses this one's: nothing else waits for
+    // that rendering once the binding is gone.
+    struct surface_binding previousBinding;
+    if (texture != 0 && findSurfaceBinding(ctx, (GLuint) texture, &previousBinding) && previousBinding.imported
+        && previousBinding.dirty && (previousBinding.surface != ioSurface || previousBinding.plane != plane))
+        host_glFinish();
+
     // A texture that already uses this plane's memory in the same way is
     // left alone; it has the surface's current contents.
-    struct surface_binding previousBinding;
     GLint allocatedWidth = 0, allocatedHeight = 0, allocatedFormat = 0;
     glGetTexLevelParameteriv(target, 0, GL_TEXTURE_WIDTH, &allocatedWidth);
     glGetTexLevelParameteriv(target, 0, GL_TEXTURE_HEIGHT, &allocatedHeight);
@@ -3047,13 +3162,13 @@ CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum interna
         if (rowLength == 0) {
             // Rows that are not a whole number of pixels apart go up one by one.
             if (allocatedWidth != width || allocatedHeight != height || allocatedFormat != (GLint) internal_format)
-                glTexImage2D(target, 0, (GLint) internal_format, width, height, 0, format, type, NULL);
+                host_glTexImage2D(target, 0, (GLint) internal_format, width, height, 0, format, type, NULL);
             for (GLsizei row = 0; row < height; row++)
                 glTexSubImage2D(target, 0, 0, row, width, 1, format, type, (const char *) pixels + row * rowBytes);
         } else if (allocatedWidth == width && allocatedHeight == height && allocatedFormat == (GLint) internal_format)
             glTexSubImage2D(target, 0, 0, 0, width, height, format, type, pixels);
         else
-            glTexImage2D(target, 0, (GLint) internal_format, width, height, 0, format, type, pixels);
+            host_glTexImage2D(target, 0, (GLint) internal_format, width, height, 0, format, type, pixels);
 
         setPixelStore(0, &saved);
     }
@@ -3069,7 +3184,7 @@ CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum interna
         };
         if (!rememberSurfaceBinding(&binding)) {
             if (shadow != 0 && !shadowInUseByAny(ctx, shadow))
-                glDeleteTextures(1, &shadow);
+                host_glDeleteTextures(1, &shadow);
             error = kCGLBadAlloc;
         }
     }
@@ -3081,14 +3196,17 @@ CGLError CGLTexImageIOSurface2D(CGLContextObj ctx, GLenum target, GLenum interna
 // Set while this thread copies a texture into a surface.
 static __thread int t_readingBack;
 
-// Records that the texture of binding matches its surface at seed.
+// Records that the texture of binding matches its surface at seed, so it
+// has nothing left to write back.
 static void setBindingSeed(const struct surface_binding *binding, uint32_t seed) {
     pthread_mutex_lock(&g_surfaceBindingsMutex);
     for (size_t i = 0; i < g_surfaceBindingCount; i++) {
         if (g_surfaceBindings[i].context == binding->context
             && g_surfaceBindings[i].texture == binding->texture
-            && g_surfaceBindings[i].surface == binding->surface)
+            && g_surfaceBindings[i].surface == binding->surface) {
             g_surfaceBindings[i].seed = seed;
+            g_surfaceBindings[i].dirty = 0;
+        }
     }
     pthread_mutex_unlock(&g_surfaceBindingsMutex);
 }
@@ -3122,7 +3240,7 @@ static int finishImportedSurface(IOSurfaceRef ioSurface) {
     for (size_t i = 0; i < count; i++) {
         CGLContextObj previous;
         if (enterContext(contexts[i], &previous) == kCGLNoError) {
-            glFinish();
+            host_glFinish();
             leaveContext(contexts[i], previous);
         }
         CGLReleaseContext(contexts[i]);
@@ -3130,24 +3248,108 @@ static int finishImportedSurface(IOSurfaceRef ioSurface) {
     return found;
 }
 
+// Copies the texture of binding, which holds a copy of its surface, into
+// the surface, in context, which is current and shares the texture. On the
+// GPU through the shadow if there is one, else through the CPU.
+static CGLError copyBindingToSurface(CGLContextObj context, const struct surface_binding *binding) {
+    IOSurfaceRef ioSurface = binding->surface;
+    if (binding->shadow != 0) {
+        // The shadow is the surface's memory: the copy lands there once the
+        // GPU is done, and a lock marks the surface modified, as the CPU
+        // copy does. A texture respecified since is left alone.
+        if (!glIsTexture(binding->texture) || !rectangleMatchesShadow(binding))
+            return kCGLBadValue;
+        gpuCopy(context, binding->texture, binding->target, binding->shadow, GL_TEXTURE_2D,
+                binding->width, binding->height);
+        host_glFinish();
+        uint32_t seed = 0;
+        t_readingBack = 1;
+        IOSurfaceLock(ioSurface, 0, NULL);
+        IOSurfaceUnlock(ioSurface, 0, &seed);
+        t_readingBack = 0;
+        setBindingSeed(binding, seed);
+        return kCGLNoError;
+    }
+
+    if (!glIsTexture(binding->texture))
+        return kCGLBadValue;
+    GLenum bindingQuery = textureBindingQuery(binding->target);
+    GLint oldTexture = 0, width = 0, height = 0;
+    glGetIntegerv(bindingQuery, &oldTexture);
+    glBindTexture(binding->target, binding->texture);
+    glGetTexLevelParameteriv(binding->target, 0, GL_TEXTURE_WIDTH, &width);
+    glGetTexLevelParameteriv(binding->target, 0, GL_TEXTURE_HEIGHT, &height);
+
+    // The texture may have been respecified since; it must still fit.
+    void *pixels;
+    GLint rowLength;
+    size_t rowBytes, pixelBytes;
+    CGLError error = planeForTransfer(ioSurface, binding->plane, width, height, binding->format, binding->type,
+                                      &pixels, &rowLength, &rowBytes, &pixelBytes);
+    if (error == kCGLNoError) {
+        struct pixel_store saved, transfer = { 0, rowLength, 0, 0, 1 };
+        savePixelStore(1, &saved);
+        setPixelStore(1, &transfer);
+        uint32_t seed = 0;
+        t_readingBack = 1;
+        IOSurfaceLock(ioSurface, 0, NULL);
+        if (rowLength == 0) {
+            // Rows that are not a whole number of pixels apart: read the
+            // texture packed and copy the rows to where they belong.
+            size_t packedRow = (size_t) width * pixelBytes;
+            uint8_t *packed = malloc(packedRow * (size_t) height);
+            if (packed != NULL) {
+                glGetTexImage(binding->target, 0, binding->format, binding->type, packed);
+                for (GLint row = 0; row < height; row++)
+                    memcpy((uint8_t *) pixels + row * rowBytes, packed + row * packedRow, packedRow);
+                free(packed);
+            }
+        } else {
+            glGetTexImage(binding->target, 0, binding->format, binding->type, pixels);
+        }
+        IOSurfaceUnlock(ioSurface, 0, &seed);
+        t_readingBack = 0;
+        setPixelStore(1, &saved);
+        setBindingSeed(binding, seed);
+    }
+
+    glBindTexture(binding->target, (GLuint) oldTexture);
+    return error;
+}
+
 // Brings GL rendering on ioSurface into the surface's memory. Textures that
 // use the memory itself only need their contexts' work to finish. A texture
-// that holds a copy, the one last specified from the surface, is copied into
-// the surface, on the GPU through its shadow if it has one; with
-// onlyIfUnmodified, not if the CPU has written the surface since the texture
-// last matched it, as its contents are newer then.
+// that holds a copy is copied into the surface: the one last rendered into
+// (see "Writing GL rendering back into surfaces"), or, if none has been and
+// no texture uses the memory, the one last specified from the surface.
+// With onlyIfUnmodified, not if
+// the CPU has written the surface since the texture last matched it, as
+// its contents are newer then.
 static CGLError readBackSurface(IOSurfaceRef ioSurface, int onlyIfUnmodified) {
     int imported = finishImportedSurface(ioSurface);
 
     struct surface_binding binding = { 0 };
     pthread_mutex_lock(&g_surfaceBindingsMutex);
+    size_t chosen = SIZE_MAX;
     for (size_t i = g_surfaceBindingCount; i-- > 0; ) {
-        if (g_surfaceBindings[i].surface == ioSurface && !g_surfaceBindings[i].imported) {
-            binding = g_surfaceBindings[i];
-            break;
-        }
+        if (g_surfaceBindings[i].surface != ioSurface || g_surfaceBindings[i].imported)
+            continue;
+        if (chosen == SIZE_MAX || g_surfaceBindings[i].rendered > g_surfaceBindings[chosen].rendered)
+            chosen = i;
     }
+    if (chosen != SIZE_MAX)
+        binding = g_surfaceBindings[chosen];
     if (binding.context && onlyIfUnmodified && IOSurfaceGetSeed(ioSurface) != binding.seed)
+        binding.context = NULL;
+    // Where textures use the surface's memory, the memory has their
+    // rendering, and a copy not rendered into since it was last copied
+    // holds nothing newer.
+    if (binding.context && imported && !binding.dirty)
+        binding.context = NULL;
+    // A texture whose rendering has been noted and written back since holds
+    // nothing newer either. Other textures are copied, so that changes made
+    // in other ways (glTexSubImage2D, glCopyTexSubImage2D) reach the surface.
+    if (binding.context && onlyIfUnmodified && binding.rendered != 0 && !binding.dirty)
         binding.context = NULL;
     if (binding.context)
         CGLRetainContext(binding.context);
@@ -3165,78 +3367,16 @@ static CGLError readBackSurface(IOSurfaceRef ioSurface, int onlyIfUnmodified) {
         return kCGLNoError;
     }
 
+    // A context current here that shares the texture copies it without a
+    // switch; otherwise the binding's own context is made current.
+    CGLContextObj current = CGLGetCurrentContext();
+    CGLContextObj copier = current && sharesTextures(current, binding.context) ? current : binding.context;
     CGLContextObj previous;
-    CGLError error = enterContext(binding.context, &previous);
-    if (error != kCGLNoError) {
-        CGLReleaseContext(binding.context);
-        return error;
-    }
-
-    if (binding.shadow != 0) {
-        // The shadow is the surface's memory: the copy lands there once the
-        // GPU is done, and a lock marks the surface modified, as the CPU
-        // copy does. A texture respecified since is left alone.
-        if (!glIsTexture(binding.texture) || !rectangleMatchesShadow(&binding)) {
-            leaveContext(binding.context, previous);
-            CGLReleaseContext(binding.context);
-            return kCGLBadValue;
-        }
-        gpuCopy(binding.context, binding.texture, binding.target, binding.shadow, GL_TEXTURE_2D,
-                binding.width, binding.height);
-        glFinish();
-        uint32_t seed = 0;
-        t_readingBack = 1;
-        IOSurfaceLock(ioSurface, 0, NULL);
-        IOSurfaceUnlock(ioSurface, 0, &seed);
-        t_readingBack = 0;
-        setBindingSeed(&binding, seed);
-        leaveContext(binding.context, previous);
-        CGLReleaseContext(binding.context);
-        return kCGLNoError;
-    }
-
-    GLenum bindingQuery = textureBindingQuery(binding.target);
-    GLint oldTexture = 0, width = 0, height = 0;
-    glGetIntegerv(bindingQuery, &oldTexture);
-    glBindTexture(binding.target, binding.texture);
-    glGetTexLevelParameteriv(binding.target, 0, GL_TEXTURE_WIDTH, &width);
-    glGetTexLevelParameteriv(binding.target, 0, GL_TEXTURE_HEIGHT, &height);
-
-    // The texture may have been respecified since; it must still fit.
-    void *pixels;
-    GLint rowLength;
-    size_t rowBytes, pixelBytes;
-    error = planeForTransfer(ioSurface, binding.plane, width, height, binding.format, binding.type,
-                             &pixels, &rowLength, &rowBytes, &pixelBytes);
+    CGLError error = enterContext(copier, &previous);
     if (error == kCGLNoError) {
-        struct pixel_store saved, transfer = { 0, rowLength, 0, 0, 1 };
-        savePixelStore(1, &saved);
-        setPixelStore(1, &transfer);
-        uint32_t seed = 0;
-        t_readingBack = 1;
-        IOSurfaceLock(ioSurface, 0, NULL);
-        if (rowLength == 0) {
-            // Rows that are not a whole number of pixels apart: read the
-            // texture packed and copy the rows to where they belong.
-            size_t packedRow = (size_t) width * pixelBytes;
-            uint8_t *packed = malloc(packedRow * (size_t) height);
-            if (packed != NULL) {
-                glGetTexImage(binding.target, 0, binding.format, binding.type, packed);
-                for (GLint row = 0; row < height; row++)
-                    memcpy((uint8_t *) pixels + row * rowBytes, packed + row * packedRow, packedRow);
-                free(packed);
-            }
-        } else {
-            glGetTexImage(binding.target, 0, binding.format, binding.type, pixels);
-        }
-        IOSurfaceUnlock(ioSurface, 0, &seed);
-        t_readingBack = 0;
-        setPixelStore(1, &saved);
-        setBindingSeed(&binding, seed);
+        error = copyBindingToSurface(copier, &binding);
+        leaveContext(copier, previous);
     }
-
-    glBindTexture(binding.target, (GLuint) oldTexture);
-    leaveContext(binding.context, previous);
     CGLReleaseContext(binding.context);
     return error;
 }
@@ -3252,9 +3392,286 @@ CGLError CGLReadbackIOSurface(IOSurfaceRef ioSurface) {
 // rendering, so it is copied into the surface unless the CPU has written
 // the surface since. A surface with no texture, or one this thread is
 // already copying into, is left alone.
+static void noteDrawFramebuffer(CGLContextObj context);
+
 static void writeBackSurface(IOSurfaceRef ioSurface) {
-    if (!t_readingBack)
-        readBackSurface(ioSurface, 1);
+    if (t_readingBack)
+        return;
+    // Rendering of this thread's context is noted first, so that the
+    // texture last rendered into is the one copied.
+    CGLContextObj current = CGLGetCurrentContext();
+    if (current != NULL)
+        noteDrawFramebuffer(current);
+    readBackSurface(ioSurface, 1);
+}
+
+// Writing GL rendering back into surfaces.
+//
+// On macOS the surface is the storage of a texture specified from it, so
+// rendering into the texture is in the surface for the CPU and for other
+// contexts and processes once the producer has flushed it, whatever happens
+// to the texture afterwards. A texture that holds a copy of its surface has
+// the rendering only in the texture, so this framework copies it into the
+// surface:
+//  - when a context that shares the texture calls glFlush, glFinish,
+//    glFenceSync or CGLFlushDrawable;
+//  - before the texture is deleted (glDeleteTextures), or its level 0 is
+//    given other contents (glTexImage2D, which the host carries out, while
+//    on macOS the texture keeps the surface) or specified from another
+//    surface (CGLTexImageIOSurface2D).
+// Only textures that may have been rendered into since their last copy are
+// copied, once each. Rendering is noted, without following individual
+// draws, when the texture is a color attachment of the context's draw
+// framebuffer at one of these calls, when another draw framebuffer is
+// bound, when the framebuffer is deleted, and before a lock of the
+// surface. The copy keeps to the rule of the copy before a lock: a CPU write
+// made since the texture last matched the surface is newer and is kept.
+//
+// The copy is made in the calling context, which shares the texture, so
+// that no other context has to be made current.
+
+// The most color attachments of one framebuffer that are looked at.
+#define CGL_MAX_NOTED_ATTACHMENTS 16
+
+// Whether a context that shares textures with context has a texture
+// specified from a surface.
+static int sharesBinding(CGLContextObj context) {
+    int found = 0;
+    pthread_mutex_lock(&g_surfaceBindingsMutex);
+    for (size_t i = 0; i < g_surfaceBindingCount && !found; i++)
+        found = sharesTextures(g_surfaceBindings[i].context, context);
+    pthread_mutex_unlock(&g_surfaceBindingsMutex);
+    return found;
+}
+
+// The current context, if there may be anything for it to write back.
+static CGLContextObj contextWithCopies(void) {
+    if (atomic_load_explicit(&g_bindingCount, memory_order_relaxed) == 0 || t_readingBack)
+        return NULL;
+    return CGLGetCurrentContext();
+}
+
+// Notes rendering into the textures specified from surfaces that are color
+// attachments of the draw framebuffer of context, which is current.
+static void noteDrawFramebuffer(CGLContextObj context) {
+    if (atomic_load_explicit(&g_bindingCount, memory_order_relaxed) == 0 || t_readingBack
+        || !sharesBinding(context))
+        return;
+    GLint framebuffer = 0;
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &framebuffer);
+    if (framebuffer == 0)
+        return;
+    if (context->max_color_attachments == 0) {
+        GLint max = 0;
+        glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &max);
+        context->max_color_attachments = max < 1 ? 1 : max > CGL_MAX_NOTED_ATTACHMENTS ? CGL_MAX_NOTED_ATTACHMENTS : max;
+    }
+    GLuint textures[CGL_MAX_NOTED_ATTACHMENTS];
+    int count = 0;
+    for (GLint i = 0; i < context->max_color_attachments; i++) {
+        GLint type = GL_NONE, name = 0;
+        host_glGetFramebufferAttachmentParameteriv(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i,
+                                                   GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &type);
+        if (type != GL_TEXTURE)
+            continue;
+        host_glGetFramebufferAttachmentParameteriv(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i,
+                                                   GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &name);
+        if (name != 0)
+            textures[count++] = (GLuint) name;
+    }
+    if (count == 0)
+        return;
+    pthread_mutex_lock(&g_surfaceBindingsMutex);
+    for (size_t i = 0; i < g_surfaceBindingCount; i++) {
+        struct surface_binding *binding = &g_surfaceBindings[i];
+        if (!sharesTextures(binding->context, context))
+            continue;
+        for (int j = 0; j < count; j++) {
+            if (binding->texture == textures[j]) {
+                binding->dirty = 1;
+                binding->rendered = ++g_renderSerial;
+                break;
+            }
+        }
+    }
+    pthread_mutex_unlock(&g_surfaceBindingsMutex);
+}
+
+// Copies the textures that context shares and that may have been rendered
+// into since their last copy (only texture, unless it is 0) into their
+// surfaces. context is current.
+static void writeBackRendered(CGLContextObj context, GLuint texture) {
+    for (;;) {
+        struct surface_binding binding;
+        int found = 0;
+        pthread_mutex_lock(&g_surfaceBindingsMutex);
+        for (size_t i = 0; i < g_surfaceBindingCount && !found; i++) {
+            struct surface_binding *candidate = &g_surfaceBindings[i];
+            if (candidate->imported || !candidate->dirty || !sharesTextures(candidate->context, context)
+                || (texture != 0 && candidate->texture != texture))
+                continue;
+            candidate->dirty = 0;
+            binding = *candidate;
+            CFRetain(binding.surface);
+            found = 1;
+        }
+        pthread_mutex_unlock(&g_surfaceBindingsMutex);
+        if (!found)
+            return;
+        if (IOSurfaceGetSeed(binding.surface) == binding.seed)
+            copyBindingToSurface(context, &binding);
+        CFRelease(binding.surface);
+    }
+}
+
+static void writeBackCurrentContext(void) {
+    CGLContextObj context = contextWithCopies();
+    if (context == NULL)
+        return;
+    noteDrawFramebuffer(context);
+    writeBackRendered(context, 0);
+}
+
+// Set while glTexImage2D specifies a texture from its surface again, whose
+// contents are then not the rendering's.
+static __thread int t_respecifying;
+
+static void writeBackTexture(CGLContextObj context, GLuint texture) {
+    if (atomic_load_explicit(&g_bindingCount, memory_order_relaxed) == 0 || t_readingBack || t_respecifying)
+        return;
+    noteDrawFramebuffer(context);
+    writeBackRendered(context, texture);
+}
+
+// Writes the texture, which context shares, back into its surface and drops
+// its bindings, as it is deleted. Textures that use the surface's memory
+// keep theirs until a lock of the surface has waited for their rendering.
+static void releaseTextureBindings(CGLContextObj context, GLuint texture) {
+    writeBackRendered(context, texture);
+    GLuint unused[8];
+    int unusedCount = 0;
+    pthread_mutex_lock(&g_surfaceBindingsMutex);
+    for (size_t i = 0; i < g_surfaceBindingCount; ) {
+        struct surface_binding *binding = &g_surfaceBindings[i];
+        if (binding->imported || binding->texture != texture || !sharesTextures(binding->context, context)) {
+            i++;
+            continue;
+        }
+        GLuint shadow = binding->shadow;
+        removeSurfaceBinding(i);
+        int used = 0;
+        for (size_t j = 0; j < g_surfaceBindingCount && !used; j++)
+            used = g_surfaceBindings[j].shadow == shadow && sharesTextures(g_surfaceBindings[j].context, context);
+        for (int j = 0; j < unusedCount && !used; j++)
+            used = unused[j] == shadow;
+        if (shadow != 0 && !used && unusedCount < (int) (sizeof(unused) / sizeof(unused[0])))
+            unused[unusedCount++] = shadow;
+    }
+    pthread_mutex_unlock(&g_surfaceBindingsMutex);
+    if (unusedCount > 0)
+        host_glDeleteTextures(unusedCount, unused);
+}
+
+CGL_EXPORT void glFlush(void) {
+    writeBackCurrentContext();
+    host_glFlush();
+}
+
+CGL_EXPORT void glFinish(void) {
+    writeBackCurrentContext();
+    host_glFinish();
+}
+
+// The copies are made before the fence, so waiting for it covers them.
+CGL_EXPORT GLsync glFenceSync(GLenum condition, GLbitfield flags) {
+    writeBackCurrentContext();
+    return host_glFenceSync(condition, flags);
+}
+
+static void noteCurrentDrawFramebuffer(GLenum target) {
+    CGLContextObj context = contextWithCopies();
+    if (context != NULL && target != GL_READ_FRAMEBUFFER)
+        noteDrawFramebuffer(context);
+}
+
+CGL_EXPORT void glBindFramebuffer(GLenum target, GLuint framebuffer) {
+    noteCurrentDrawFramebuffer(target);
+    host_glBindFramebuffer(target, framebuffer);
+}
+
+CGL_EXPORT void glBindFramebufferEXT(GLenum target, GLuint framebuffer) {
+    noteCurrentDrawFramebuffer(target);
+    host_glBindFramebufferEXT(target, framebuffer);
+}
+
+CGL_EXPORT void glDeleteFramebuffers(GLsizei n, const GLuint *framebuffers) {
+    noteCurrentDrawFramebuffer(GL_DRAW_FRAMEBUFFER);
+    host_glDeleteFramebuffers(n, framebuffers);
+}
+
+CGL_EXPORT void glDeleteFramebuffersEXT(GLsizei n, const GLuint *framebuffers) {
+    noteCurrentDrawFramebuffer(GL_DRAW_FRAMEBUFFER);
+    host_glDeleteFramebuffersEXT(n, framebuffers);
+}
+
+CGL_EXPORT void glDeleteTextures(GLsizei n, const GLuint *textures) {
+    CGLContextObj context = contextWithCopies();
+    if (context != NULL && n > 0 && textures != NULL) {
+        noteDrawFramebuffer(context);
+        for (GLsizei i = 0; i < n; i++) {
+            if (textures[i] != 0)
+                releaseTextureBindings(context, textures[i]);
+        }
+    }
+    host_glDeleteTextures(n, textures);
+}
+
+// QUIRK: glTexImage2D on level 0 of a texture specified from a surface
+// leaves the texture the surface's, with its size and contents: rendering
+// before the call stays in the surface and rendering after it reaches the
+// surface. Not documented. Evidence: black-box observation on macOS 26.7.3
+// (tier 2), Apple Software Renderer, rectangle textures, with and without
+// pixel data and with another size; the call raises GL_INVALID_OPERATION
+// there, which is not reproduced here. Test: the respecify case of
+// tests/src/opengl_iosurface_writeback.m.
+// The host carries the call out, so what was rendered before is written
+// back first and the texture is then specified from the surface again.
+CGL_EXPORT void glTexImage2D(GLenum target, GLint level, GLint internalFormat, GLsizei width, GLsizei height,
+                             GLint border, GLenum format, GLenum type, const GLvoid *pixels) {
+    CGLContextObj context = NULL;
+    GLint texture = 0;
+    struct surface_binding binding;
+    int bound = 0;
+    if (level == 0 && (target == GL_TEXTURE_2D || target == GL_TEXTURE_RECTANGLE)
+        && (context = contextWithCopies()) != NULL) {
+        glGetIntegerv(textureBindingQuery(target), &texture);
+        if (texture != 0) {
+            writeBackTexture(context, (GLuint) texture);
+            bound = findSurfaceBinding(context, (GLuint) texture, &binding) && binding.target == target;
+            if (bound)
+                CFRetain(binding.surface);
+        }
+    }
+    host_glTexImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
+    if (bound) {
+        // A texture that used the surface's memory does not any more; it is
+        // imported again.
+        if (binding.imported) {
+            pthread_mutex_lock(&g_surfaceBindingsMutex);
+            for (size_t i = 0; i < g_surfaceBindingCount; i++) {
+                if (g_surfaceBindings[i].context == context && g_surfaceBindings[i].texture == (GLuint) texture) {
+                    removeSurfaceBinding(i);
+                    break;
+                }
+            }
+            pthread_mutex_unlock(&g_surfaceBindingsMutex);
+        }
+        t_respecifying = 1;
+        CGLTexImageIOSurface2D(context, target, binding.internalFormat, binding.width, binding.height,
+                               binding.format, binding.type, binding.surface, binding.plane);
+        t_respecifying = 0;
+        CFRelease(binding.surface);
+    }
 }
 
 CGLError CGLSetDrawableRefreshRate(CGLContextObj context, uint32_t millihertz) {
