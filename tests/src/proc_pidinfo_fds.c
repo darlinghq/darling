@@ -82,6 +82,7 @@ static int v4_endpoints(const struct in_sockinfo *i, in_addr_t laddr, int lport,
 
 int main(void)
 {
+	char big[512];
 	int pid = getpid();
 	in_addr_t lo = htonl(INADDR_LOOPBACK);
 
@@ -284,6 +285,50 @@ int main(void)
 	    vi.pfi.fi_type == PROX_FDTYPE_VNODE && ends_with(vi.pvip.vip_path, "/dev/null"));
 	CHECK("vnode path info of a socket: EBADF",
 	    call_fdinfo(pid, cfd, PROC_PIDFDVNODEPATHINFO, &vi, sizeof vi) == 0 && errno == EBADF);
+
+	/* Kqueue info (PROC_PIDFDKQUEUEINFO) */
+	struct kqueue_fdinfo ki;
+	memset(&ki, 0xAA, sizeof ki);
+	CHECK("kqueue info returns sizeof(struct kqueue_fdinfo)",
+	    call_fdinfo(pid, kq, PROC_PIDFDKQUEUEINFO, &ki, sizeof ki) == (int) sizeof ki);
+	CHECK("kqueue info: fi_type is kqueue, open for reading and writing",
+	    ki.pfi.fi_type == PROX_FDTYPE_KQUEUE && ki.pfi.fi_openflags == 3);
+	CHECK("kqueue info: kq_stat is a nameless FIFO-like object", (ki.kqueueinfo.kq_stat.vst_mode & 0170000) == 0010000);
+	CHECK("kqueue info: kq_state has only the documented flags",
+	    (ki.kqueueinfo.kq_state & ~(PROC_KQUEUE_SELECT | PROC_KQUEUE_SLEEP | PROC_KQUEUE_32 | PROC_KQUEUE_64 | PROC_KQUEUE_QOS)) == 0);
+	struct kevent kev;
+	EV_SET(&kev, pp[0], EVFILT_READ, EV_ADD, 0, 0, NULL);
+	CHECK("register an event on the kqueue", kevent(kq, &kev, 1, NULL, 0, NULL) == 0);
+	CHECK("kqueue info with a registered event",
+	    call_fdinfo(pid, kq, PROC_PIDFDKQUEUEINFO, &ki, sizeof ki) == (int) sizeof ki && ki.pfi.fi_type == PROX_FDTYPE_KQUEUE);
+	CHECK("kqueue info, bigger buffer: same size returned",
+	    call_fdinfo(pid, kq, PROC_PIDFDKQUEUEINFO, big, sizeof big) == (int) sizeof ki);
+	CHECK("kqueue info, short buffer: ENOMEM",
+	    call_fdinfo(pid, kq, PROC_PIDFDKQUEUEINFO, &ki, sizeof ki - 1) == 0 && errno == ENOMEM);
+	CHECK("kqueue info of a file: EBADF", call_fdinfo(pid, vf, PROC_PIDFDKQUEUEINFO, &ki, sizeof ki) == 0 && errno == EBADF);
+	CHECK("kqueue info of a pipe: EBADF", call_fdinfo(pid, pp[0], PROC_PIDFDKQUEUEINFO, &ki, sizeof ki) == 0 && errno == EBADF);
+	CHECK("kqueue info of a closed descriptor: EBADF", call_fdinfo(pid, 777, PROC_PIDFDKQUEUEINFO, &ki, sizeof ki) == 0 && errno == EBADF);
+	CHECK("kqueue info of a nonexistent process: ESRCH", call_fdinfo(999999, kq, PROC_PIDFDKQUEUEINFO, &ki, sizeof ki) == 0 && errno == ESRCH);
+	CHECK("kqueue info of a socket: EBADF", call_fdinfo(pid, cfd, PROC_PIDFDKQUEUEINFO, &ki, sizeof ki) == 0 && errno == EBADF);
+
+	/* Unsupported flavors fail with EINVAL and write nothing to stderr */
+	{
+		int ep[2], saved = dup(2);
+		char junk[64];
+		long got = -1;
+		int r1, e1, r2, e2;
+		pipe(ep);
+		fcntl(ep[0], F_SETFL, O_NONBLOCK);
+		dup2(ep[1], 2);
+		errno = 0; r1 = call_fdinfo(pid, kq, 77, &ki, sizeof ki); e1 = errno;
+		errno = 0; r2 = proc_pidinfo(pid, 77, 0, junk, sizeof junk); e2 = errno;
+		dup2(saved, 2);
+		got = read(ep[0], junk, sizeof junk);
+		CHECK("unsupported pidfdinfo flavor: EINVAL", r1 == 0 && e1 == EINVAL);
+		CHECK("unsupported pidinfo flavor: EINVAL", r2 == 0 && e2 == EINVAL);
+		CHECK("unsupported flavors print nothing to stderr", got < 0 && errno == EAGAIN);
+		close(ep[0]); close(ep[1]); close(saved);
+	}
 
 	printf("%d failure(s)\n", failures);
 	return failures;
