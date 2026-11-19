@@ -485,3 +485,6 @@
 	path = src/external/openal-soft
 	url = ../openal-soft.git
 	branch = v1.20
+[submodule "src/external/lsof"]
+	path = src/external/lsof
+	url = ../darling-lsof.git
