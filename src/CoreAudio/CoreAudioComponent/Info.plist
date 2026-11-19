@@ -132,6 +132,29 @@
 			<key>version</key>
 			<integer>1</integer>
 		</dict>
+		<dict>
+			<key>description</key>
+			<string>Graphic equalizer with 10 or 31 bands</string>
+			<key>factoryFunction</key>
+			<string>GraphicEQUnitFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: AUGraphicEQ</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>greq</string>
+			<key>tags</key>
+			<array>
+				<string>Effects</string>
+				<string>Equalizer</string>
+			</array>
+			<key>type</key>
+			<string>aufx</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
 	<string>CoreAudio</string>
