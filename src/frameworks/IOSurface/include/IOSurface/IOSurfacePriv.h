@@ -106,13 +106,26 @@ struct _IOSurfaceLockUnlock
 // the registered functions in registration order. Registering the same
 // functions again, more than a few registrations, and registrations with
 // an unknown version are ignored.
+//
+// A GPU API that registers with _IOSURFACE_GPU_CALLBACKS_VERSION_REPORTS_WRITES
+// reports rendering into its copies with _IOSurfaceGPUDidWrite. A lock with
+// kIOSurfaceLockAvoidSync then fails with kIOReturnCannotLock while such
+// rendering has not been written back, and otherwise calls that API's
+// finish instead of its writeback: finish waits for GPU work already
+// submitted into the surface's memory (an imported DMA-BUF) and copies
+// nothing. finish may be NULL. Callbacks registered with
+// _IOSURFACE_GPU_CALLBACKS_VERSION have no finish; their writeback is
+// called before every lock, kIOSurfaceLockAvoidSync or not.
 #define _IOSURFACE_GPU_CALLBACKS_VERSION 1
+#define _IOSURFACE_GPU_CALLBACKS_VERSION_REPORTS_WRITES 2
 
 typedef struct
 {
 	uint32_t version;
 	void (*writeback)(IOSurfaceRef surface);
 	void (*forget)(IOSurfaceRef surface);
+	// _IOSURFACE_GPU_CALLBACKS_VERSION_REPORTS_WRITES only.
+	void (*finish)(IOSurfaceRef surface);
 } _IOSurfaceGPUCallbacks;
 
 // Private interface between IOSurface.framework and a GPU API that can use
@@ -148,9 +161,24 @@ typedef struct
 	uint32_t bytesPerRow;
 } _IOSurfaceDMABuf;
 
+// Reporting GPU writes, which every process sharing the surface sees.
+//
+// _IOSurfaceGPUDidWrite: the API has rendered into a copy of the surface's
+// contents that it keeps, so the copy is newer than the surface's memory
+// until its writeback callback copies it in (which, done under a lock for
+// writing, changes the seed). Call it once the rendering is known, e.g.
+// when the framebuffer it went to is flushed or unbound, and only for a
+// copy that the writeback will copy in.
+//
+// _IOSurfaceGPUDidWriteMemory: GPU rendering into the surface's memory
+// itself (an imported DMA-BUF) has been submitted, e.g. by a flush. The
+// contents have changed, so the seed changes, and copies that GPU APIs
+// hold are older than the memory.
 __BEGIN_DECLS
 void _IOSurfaceSetGPUCallbacks(const _IOSurfaceGPUCallbacks *callbacks);
 bool _IOSurfaceGetDMABuf(IOSurfaceRef surface, size_t planeIndex, _IOSurfaceDMABuf *buffer);
+void _IOSurfaceGPUDidWrite(IOSurfaceRef surface);
+void _IOSurfaceGPUDidWriteMemory(IOSurfaceRef surface);
 __END_DECLS
 
 #endif
