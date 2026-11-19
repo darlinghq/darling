@@ -264,8 +264,6 @@ int main(int argc, char ** argv)
 		missingSetuidRoot();
 		return 1;
 	}
-	unsetenv("DARLING_NONROOT");
-	unsetenv("DARLING_ROOTLESS");
 
 	{
 		char exePath[4096], installPrefix[4096];
@@ -302,6 +300,8 @@ int main(int argc, char ** argv)
 #if defined(__aarch64__)
 	relaunchUnderMuvm(argv);
 #endif
+	unsetenv("DARLING_NONROOT");
+	unsetenv("DARLING_ROOTLESS");
 
 	enum darling_prefix_error prefixError;
 	prefix = darlingSelectPrefix(getenv("DPREFIX"), getenv("DARLING_PROFILE"),

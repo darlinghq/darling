@@ -14,6 +14,7 @@
 #include <string.h>
 
 #include "loader.h"
+#include "exec_policy.h"
 
 // Keyed on GEN_64BIT, not __aarch64__. mldr.c includes this file twice, once per word
 // size, and __aarch64__ is true in both passes, so a definition guarded only by the
@@ -490,7 +491,7 @@ void FUNCTION_NAME(int fd, bool expect_dylinker, struct load_results* lr)
 
 		pie = true;
 	}
-no_slide:
+no_slide:;
 
 	struct mldr_segment_info segs[64];
 	size_t num_segs = 0;
