@@ -20,7 +20,32 @@
 #import <UIFoundation/NSStringDrawingContext.h>
 #import <darling-stub-forwarding.h>
 
+// The layout results are written by AppKit's string drawing, which reports
+// them through the context.
+@interface NSStringDrawingContext ()
+@property CGFloat actualScaleFactor;
+@property CGFloat actualTrackingAdjustment;
+@property NSRect totalBounds;
+@end
+
 @implementation NSStringDrawingContext
+
+@synthesize minimumScaleFactor = _minimumScaleFactor;
+@synthesize minimumTrackingAdjustment = _minimumTrackingAdjustment;
+@synthesize actualScaleFactor = _actualScaleFactor;
+@synthesize actualTrackingAdjustment = _actualTrackingAdjustment;
+@synthesize totalBounds = _totalBounds;
+
+// Scaling and tracking adjustment are never applied by our string drawing, so
+// the actual factors keep their identity values.
+- (instancetype)init
+{
+    self = [super init];
+    if (self != nil) {
+        _actualScaleFactor = 1.0;
+    }
+    return self;
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {

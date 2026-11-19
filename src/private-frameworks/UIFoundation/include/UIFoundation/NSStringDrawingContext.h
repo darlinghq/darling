@@ -21,7 +21,17 @@
 #import <AppKit/AppKitIvarLayout.h>
 
 @interface NSStringDrawingContext : NSObject {
-    NS_LEGACY_IVAR_PAD(_NSStringDrawingContextReserved, 4)
+    CGFloat _minimumScaleFactor;
+    CGFloat _minimumTrackingAdjustment;
+    CGFloat _actualScaleFactor;
+    CGFloat _actualTrackingAdjustment;
+    NSRect _totalBounds;
 }
+
+@property CGFloat minimumScaleFactor;
+@property CGFloat minimumTrackingAdjustment;
+@property(readonly) CGFloat actualScaleFactor;
+@property(readonly) CGFloat actualTrackingAdjustment;
+@property(readonly) NSRect totalBounds;
 
 @end
