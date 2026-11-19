@@ -23,6 +23,7 @@
 #import <Foundation/Foundation.h>
 #import <IOKit/IOCFSerialize.h>
 #include "dmabuf.h"
+#include "gpubuffer.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <os/log.h>
@@ -122,6 +123,9 @@ typedef struct
 	// Created with kIOSurfacePlaneInfo. A surface without it still has one
 	// plane internally, but reports a plane count of 0.
 	bool planar;
+	// The surface's GPU buffer in this process, once this object has found
+	// it (see "GPU buffers"); guarded by g_gpuSurfacesLock.
+	struct GPUSurface* gpu;
 } ImplData;
 
 static void initState(ImplData* idata)
@@ -141,6 +145,7 @@ static void initState(ImplData* idata)
 	idata->purgeability = kIOSurfacePurgeableNonVolatile;
 	idata->allowsPixelSizeCasting = true;
 	idata->planar = true;
+	idata->gpu = NULL;
 }
 
 // When the caller gives no element size, assume 4 bytes, the size of the
@@ -464,6 +469,164 @@ static bool gpuContentsPending(struct SharedHeader* shared)
 	return atomic_load(&shared->gpuVersion) > atomic_load(&shared->cpuVersion);
 }
 
+// GPU buffers.
+//
+// A GPU API whose driver cannot render into the surface's memory gives the
+// surface a GPU buffer in the driver's own layout (_IOSurfaceGetGPUBuffer,
+// gpubuffer.h) and renders into that instead. The buffer is a second store
+// of the contents, next to the memory, which stays what the CPU and other
+// processes see. It is kept in step with the memory by copies on the GPU,
+// using the versions of the contents:
+//  - Completed rendering into the buffer (_IOSurfaceGPUDidWriteBuffer)
+//    raises gpuVersion and gives the buffer that version. The buffer is
+//    copied into the memory there and then, which raises cpuVersion to
+//    match, and the seed changes. So, as on macOS, the memory holds the
+//    rendering once it has been flushed, and a lock with
+//    kIOSurfaceLockAvoidSync needs no synchronisation for it.
+//  - A lock copies the buffer into the memory if the buffer is still the
+//    newer of the two (an earlier copy failed).
+//  - The end of a lock for writing copies the memory into the buffer, so
+//    that GPU use after the unlock sees the CPU's writes. A write made in
+//    another process, which has no access to the buffer, reaches it when
+//    the GPU API calls _IOSurfaceGPUWillUse.
+// The buffer belongs to this process. Every IOSurface object of the
+// process for the surface finds the same buffer through the identity of the
+// surface's memory object, and the buffer goes away with the last of them.
+
+struct GPUSurface
+{
+	struct GPUSurface* next;
+	dev_t device;
+	ino_t inode;
+	// IOSurface objects of this process that have found it.
+	unsigned int references;
+	// NULL in a child process after fork().
+	_IOSurfaceGPUBo* bo;
+	// The version of the contents the buffer holds.
+	uint64_t version;
+	uint64_t downloads, uploads;
+};
+
+// Guards the list, the objects' links to it and the buffers' versions, and
+// is held during copies, which it serialises.
+static pthread_mutex_t g_gpuSurfacesLock = PTHREAD_MUTEX_INITIALIZER;
+static struct GPUSurface* g_gpuSurfaces;
+// The number of buffers, read without the lock so that surfaces skip the
+// work while there are none.
+static _Atomic int g_gpuSurfaceCount;
+
+static bool mayHaveGPUSurface(ImplData* data)
+{
+	return data->fd >= 0 && (data->gpu != NULL || atomic_load_explicit(&g_gpuSurfaceCount, memory_order_relaxed) > 0);
+}
+
+// The surface's buffer, or NULL. Called with g_gpuSurfacesLock held.
+static struct GPUSurface* findGPUSurface(ImplData* data)
+{
+	if (data->gpu != NULL || data->fd < 0)
+		return data->gpu;
+	for (struct GPUSurface* gpu = g_gpuSurfaces; gpu != NULL; gpu = gpu->next)
+	{
+		if (gpu->device == data->device && gpu->inode == data->inode)
+		{
+			gpu->references++;
+			data->gpu = gpu;
+			return gpu;
+		}
+	}
+	return NULL;
+}
+
+static void releaseGPUSurface(ImplData* data)
+{
+	pthread_mutex_lock(&g_gpuSurfacesLock);
+	struct GPUSurface* gpu = data->gpu;
+	data->gpu = NULL;
+	if (gpu != NULL && --gpu->references == 0)
+	{
+		struct GPUSurface** entry = &g_gpuSurfaces;
+		while (*entry != gpu)
+			entry = &(*entry)->next;
+		*entry = gpu->next;
+		atomic_fetch_sub(&g_gpuSurfaceCount, 1);
+		_IOSurfaceGPUBoDestroy(gpu->bo);
+		free(gpu);
+	}
+	pthread_mutex_unlock(&g_gpuSurfacesLock);
+}
+
+static void* planeMemory(ImplData* data)
+{
+	return (void*)(uintptr_t)(data->surface->address + data->surface->planes[0].memoryOffset);
+}
+
+// Copies the buffer into the memory if it is newer. Called with
+// g_gpuSurfacesLock held.
+static void downloadGPUSurface(ImplData* data, struct GPUSurface* gpu)
+{
+	if (gpu->bo == NULL || gpu->version <= atomic_load(&data->shared->cpuVersion))
+		return;
+	if (_IOSurfaceGPUBoDownload(gpu->bo, planeMemory(data), data->surface->planes[0].bytesPerRow))
+	{
+		gpu->downloads++;
+		raiseVersion(&data->shared->cpuVersion, gpu->version);
+	}
+}
+
+// Copies the memory into the buffer if it is newer. Called with
+// g_gpuSurfacesLock held.
+static void uploadGPUSurface(ImplData* data, struct GPUSurface* gpu)
+{
+	uint64_t cpu = atomic_load(&data->shared->cpuVersion);
+	if (gpu->bo == NULL || cpu <= gpu->version)
+		return;
+	if (_IOSurfaceGPUBoUpload(gpu->bo, planeMemory(data), data->surface->planes[0].bytesPerRow))
+	{
+		gpu->uploads++;
+		gpu->version = cpu;
+	}
+}
+
+static void syncGPUSurface(ImplData* data, bool toMemory)
+{
+	if (!mayHaveGPUSurface(data))
+		return;
+	pthread_mutex_lock(&g_gpuSurfacesLock);
+	struct GPUSurface* gpu = findGPUSurface(data);
+	if (gpu != NULL)
+	{
+		if (toMemory)
+			downloadGPUSurface(data, gpu);
+		else
+			uploadGPUSurface(data, gpu);
+	}
+	pthread_mutex_unlock(&g_gpuSurfacesLock);
+}
+
+// A child process does not use the buffers it inherited (gpubuffer.h).
+static void gpuSurfacesBeforeFork(void)
+{
+	pthread_mutex_lock(&g_gpuSurfacesLock);
+}
+
+static void gpuSurfacesAfterForkInParent(void)
+{
+	pthread_mutex_unlock(&g_gpuSurfacesLock);
+}
+
+static void gpuSurfacesAfterForkInChild(void)
+{
+	for (struct GPUSurface* gpu = g_gpuSurfaces; gpu != NULL; gpu = gpu->next)
+		gpu->bo = NULL;
+	_IOSurfaceGPUBoForked();
+	pthread_mutex_unlock(&g_gpuSurfacesLock);
+}
+
+static void registerGPUSurfaceForkHandlers(void)
+{
+	pthread_atfork(gpuSurfacesBeforeFork, gpuSurfacesAfterForkInParent, gpuSurfacesAfterForkInChild);
+}
+
 void _IOSurfaceSetGPUCallbacks(const _IOSurfaceGPUCallbacks* callbacks)
 {
 	if (callbacks == NULL || (callbacks->version != _IOSURFACE_GPU_CALLBACKS_VERSION
@@ -534,6 +697,9 @@ static void writeBackGPUContents(IOSurface* surface, struct SharedHeader* shared
 			function((IOSurfaceRef) surface);
 	}
 	t_inGPUWriteback = false;
+	// The surface's GPU buffer, if rendering in it has not reached the
+	// memory yet.
+	syncGPUSurface((ImplData*) surface->_impl, true);
 	raiseVersion(&shared->cpuVersion, pending);
 }
 
@@ -915,6 +1081,8 @@ static void recordIdentity(ImplData* idata)
 				callbacks->forget((IOSurfaceRef) self);
 		}
 
+		releaseGPUSurface(data);
+
 		if (data->localUseCount > 0)
 			atomic_fetch_sub(&data->shared->useCount, 1);
 		if (data->registered)
@@ -1282,9 +1450,13 @@ static void recordIdentity(ImplData* idata)
 		return ret;
 	_IOSurfaceDMABufEndCPUAccess(data->dmabuf, !(options & kIOSurfaceLockReadOnly));
 	// The CPU's writes are the newest contents; copies that GPU APIs hold
-	// are older. The seed changed when the lock was taken.
+	// are older, and the GPU buffer gets them. The seed changed when the
+	// lock was taken.
 	if (!(options & kIOSurfaceLockReadOnly))
+	{
 		bumpVersion(data->shared, &data->shared->cpuVersion);
+		syncGPUSurface(data, false);
+	}
 	if (seed)
 		*seed = data->shared->seed;
 	return ret;
@@ -1367,6 +1539,127 @@ void _IOSurfaceGPUDidWriteMemory(IOSurfaceRef buffer)
 	ImplData* data = (ImplData*) ((IOSurface*) buffer)->_impl;
 	bumpVersion(data->shared, &data->shared->cpuVersion);
 	atomic_fetch_add(&data->shared->seed, 1);
+}
+
+bool _IOSurfaceGetGPUBuffer(IOSurfaceRef buffer, size_t planeIndex, const char* renderNode, uint32_t fourcc,
+	const uint64_t* modifiers, size_t modifierCount, uint32_t flags, _IOSurfaceGPUBuffer* out)
+{
+	if (!buffer || !out || out->version != _IOSURFACE_GPU_BUFFER_VERSION || !renderNode)
+		return false;
+	if (fourcc != IOSURFACE_DRM_FORMAT_ARGB8888 && fourcc != IOSURFACE_DRM_FORMAT_ABGR8888)
+		return false;
+	ImplData* data = (ImplData*) ((IOSurface*) buffer)->_impl;
+	// The buffer holds one plane at its full size; a surface in memory that
+	// another process cannot map is left as it is.
+	if (data->fd < 0 || data->surface->planeCount != 1 || planeIndex != 0)
+		return false;
+	const struct _IOSurfacePlane* plane = &data->surface->planes[0];
+	if (plane->bytesPerElement != 4 || plane->bytesPerRow % 4 != 0)
+		return false;
+
+	pthread_mutex_lock(&g_gpuSurfacesLock);
+	struct GPUSurface* gpu = findGPUSurface(data);
+	if (gpu == NULL && (flags & _IOSURFACE_GPU_BUFFER_CREATE))
+	{
+		static pthread_once_t once = PTHREAD_ONCE_INIT;
+		pthread_once(&once, registerGPUSurfaceForkHandlers);
+
+		// The buffer starts with the contents of the memory.
+		uint64_t version = atomic_load(&data->shared->cpuVersion);
+		_IOSurfaceGPUBo* bo = _IOSurfaceGPUBoCreate(renderNode, plane->width, plane->height, fourcc,
+			modifiers, modifierCount);
+		gpu = bo ? calloc(1, sizeof(*gpu)) : NULL;
+		if (gpu && _IOSurfaceGPUBoUpload(bo, planeMemory(data), plane->bytesPerRow))
+		{
+			*gpu = (struct GPUSurface) {
+				.next = g_gpuSurfaces,
+				.device = data->device,
+				.inode = data->inode,
+				.references = 1,
+				.bo = bo,
+				.version = version,
+				.uploads = 1,
+			};
+			g_gpuSurfaces = gpu;
+			atomic_fetch_add(&g_gpuSurfaceCount, 1);
+			data->gpu = gpu;
+		}
+		else
+		{
+			_IOSurfaceGPUBoDestroy(bo);
+			free(gpu);
+			gpu = NULL;
+		}
+	}
+
+	bool found = false;
+	if (gpu != NULL && gpu->bo != NULL && _IOSurfaceGPUBoOnRenderNode(gpu->bo, renderNode))
+	{
+		_IOSurfaceGPUBoDescription description;
+		_IOSurfaceGPUBoDescribe(gpu->bo, &description);
+		if (description.fourcc == fourcc)
+		{
+			out->fd = description.fd;
+			out->fourcc = description.fourcc;
+			out->modifier = description.modifier;
+			out->offset = description.offset;
+			out->stride = description.stride;
+			out->width = description.width;
+			out->height = description.height;
+			found = true;
+		}
+	}
+	pthread_mutex_unlock(&g_gpuSurfacesLock);
+	return found;
+}
+
+void _IOSurfaceGPUWillUse(IOSurfaceRef buffer)
+{
+	if (buffer)
+		syncGPUSurface((ImplData*) ((IOSurface*) buffer)->_impl, false);
+}
+
+void _IOSurfaceGPUDidWriteBuffer(IOSurfaceRef buffer)
+{
+	if (!buffer)
+		return;
+	ImplData* data = (ImplData*) ((IOSurface*) buffer)->_impl;
+	if (!mayHaveGPUSurface(data))
+		return;
+
+	pthread_mutex_lock(&g_gpuSurfacesLock);
+	struct GPUSurface* gpu = findGPUSurface(data);
+	bool wrote = gpu != NULL && gpu->bo != NULL;
+	if (wrote)
+	{
+		gpu->version = bumpVersion(data->shared, &data->shared->gpuVersion);
+		downloadGPUSurface(data, gpu);
+	}
+	pthread_mutex_unlock(&g_gpuSurfacesLock);
+	// The contents changed; they are in the memory before the seed says so.
+	if (wrote)
+		atomic_fetch_add(&data->shared->seed, 1);
+}
+
+bool _IOSurfaceGetGPUBufferStatistics(IOSurfaceRef buffer, _IOSurfaceGPUBufferStatistics* statistics)
+{
+	if (!buffer || !statistics || statistics->version != _IOSURFACE_GPU_BUFFER_VERSION)
+		return false;
+	ImplData* data = (ImplData*) ((IOSurface*) buffer)->_impl;
+	statistics->hasBuffer = false;
+	statistics->downloads = statistics->uploads = 0;
+	if (!mayHaveGPUSurface(data))
+		return true;
+	pthread_mutex_lock(&g_gpuSurfacesLock);
+	struct GPUSurface* gpu = findGPUSurface(data);
+	if (gpu != NULL)
+	{
+		statistics->hasBuffer = gpu->bo != NULL;
+		statistics->downloads = gpu->downloads;
+		statistics->uploads = gpu->uploads;
+	}
+	pthread_mutex_unlock(&g_gpuSurfacesLock);
+	return true;
 }
 
 IOSurfaceID IOSurfaceGetID(IOSurfaceRef buffer)

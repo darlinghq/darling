@@ -26,6 +26,7 @@ add_framework(IOSurface
         src/constants.m
         src/IOSurfaceObjC.m
         src/dmabuf.c
+        src/gpubuffer.c
 
     DEPENDENCIES
         system
