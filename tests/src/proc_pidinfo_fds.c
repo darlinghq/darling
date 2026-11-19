@@ -53,6 +53,13 @@ static int fd_type(const struct proc_fdinfo *l, int n, int fd)
 	return -1;
 }
 
+/* Darling reports host paths below /Volumes/SystemRoot */
+static int ends_with(const char *s, const char *suffix)
+{
+	size_t n = strlen(s), m = strlen(suffix);
+	return n >= m && strcmp(s + n - m, suffix) == 0;
+}
+
 static int call_fdinfo(int pid, int fd, int flavor, void *buf, int size)
 {
 	errno = 0;
@@ -274,7 +281,7 @@ int main(void)
 	memset(&vi, 0, sizeof vi);
 	CHECK("vnode path info of /dev/null",
 	    call_fdinfo(pid, vf, PROC_PIDFDVNODEPATHINFO, &vi, sizeof vi) == (int) sizeof vi &&
-	    vi.pfi.fi_type == PROX_FDTYPE_VNODE && strcmp(vi.pvip.vip_path, "/dev/null") == 0);
+	    vi.pfi.fi_type == PROX_FDTYPE_VNODE && ends_with(vi.pvip.vip_path, "/dev/null"));
 	CHECK("vnode path info of a socket: EBADF",
 	    call_fdinfo(pid, cfd, PROC_PIDFDVNODEPATHINFO, &vi, sizeof vi) == 0 && errno == EBADF);
 
