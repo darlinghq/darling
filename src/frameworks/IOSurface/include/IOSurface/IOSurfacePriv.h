@@ -174,11 +174,75 @@ typedef struct
 // itself (an imported DMA-BUF) has been submitted, e.g. by a flush. The
 // contents have changed, so the seed changes, and copies that GPU APIs
 // hold are older than the memory.
+//
+// Private interface between IOSurface.framework and a GPU API whose driver
+// can only sample the surface's memory, not render into it: on some hosts a
+// DMA-BUF in the memory's linear layout is "external only" to the driver.
+// Such an API gives the surface a GPU buffer, in a layout of the driver's
+// own, the first time it renders into the surface. From then on the surface
+// keeps its contents in the buffer as well as in its memory, and IOSurface
+// copies between the two on the GPU:
+//  - GPU rendering into the buffer is reported with
+//    _IOSurfaceGPUDidWriteBuffer once it has completed. IOSurface copies it
+//    into the memory there and then, so that the memory has it for the CPU
+//    and for other processes, and changes the seed.
+//  - CPU writes reach the buffer when the write lock ends. Writes made in
+//    another process reach it when the API calls _IOSurfaceGPUWillUse
+//    before it uses the buffer.
+//
+// _IOSurfaceGetGPUBuffer fills in *buffer for plane planeIndex and returns
+// true if the surface has a buffer on the DRM render node renderNode (a host
+// path) in DRM format fourcc. With _IOSURFACE_GPU_BUFFER_CREATE, a surface
+// that has none gets one in one of the given layout modifiers, which the
+// caller's driver must be able to render into, holding the surface's
+// current contents. It returns false if the surface cannot have a buffer
+// (only single-plane surfaces with four bytes per pixel can, in the formats
+// ARGB8888 and ABGR8888, at the plane's size), if it has one in another
+// format or on another render node, or if the host lacks the libraries.
+// The caller sets buffer->version. The descriptor belongs to the surface
+// and stays valid while the caller holds a reference to it. Only the
+// process that made the buffer uses it; others use the memory.
+//
+// _IOSurfaceGetGPUBufferStatistics reports whether the surface has a GPU
+// buffer in this process, and the copies made between it and the memory.
+#define _IOSURFACE_GPU_BUFFER_VERSION 1
+#define _IOSURFACE_GPU_BUFFER_CREATE 1
+
+typedef struct
+{
+	uint32_t version;
+	// The buffer's DMA-BUF, its DRM format and layout modifier.
+	int fd;
+	uint32_t fourcc;
+	uint64_t modifier;
+	// Where the plane starts in the DMA-BUF (always 0), its row stride in
+	// bytes, and its size in pixels.
+	uint32_t offset;
+	uint32_t stride;
+	uint32_t width, height;
+} _IOSurfaceGPUBuffer;
+
+typedef struct
+{
+	uint32_t version;
+	bool hasBuffer;
+	// Copies from the buffer into the memory, and from the memory into the
+	// buffer.
+	uint64_t downloads;
+	uint64_t uploads;
+} _IOSurfaceGPUBufferStatistics;
+
 __BEGIN_DECLS
 void _IOSurfaceSetGPUCallbacks(const _IOSurfaceGPUCallbacks *callbacks);
 bool _IOSurfaceGetDMABuf(IOSurfaceRef surface, size_t planeIndex, _IOSurfaceDMABuf *buffer);
 void _IOSurfaceGPUDidWrite(IOSurfaceRef surface);
 void _IOSurfaceGPUDidWriteMemory(IOSurfaceRef surface);
+bool _IOSurfaceGetGPUBuffer(IOSurfaceRef surface, size_t planeIndex, const char *renderNode, uint32_t fourcc,
+                            const uint64_t *modifiers, size_t modifierCount, uint32_t flags,
+                            _IOSurfaceGPUBuffer *buffer);
+void _IOSurfaceGPUWillUse(IOSurfaceRef surface);
+void _IOSurfaceGPUDidWriteBuffer(IOSurfaceRef surface);
+bool _IOSurfaceGetGPUBufferStatistics(IOSurfaceRef surface, _IOSurfaceGPUBufferStatistics *statistics);
 __END_DECLS
 
 #endif
