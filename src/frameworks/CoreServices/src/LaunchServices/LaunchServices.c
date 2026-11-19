@@ -20,6 +20,7 @@
 #include <LaunchServices/LaunchServices.h>
 #include <LaunchServices/LaunchServicesPriv.h>
 #include "LSHostOpen.h"
+#include "LSLaunch.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -31,11 +32,19 @@
 #include <dispatch/dispatch.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <uuid/uuid.h>
 #include "LSDProtocol.h"
 
 static void get_main_executable_info(CFURLRef appURL, CFStringRef *exec, CFStringRef *bundleName);
 static Boolean is_file_url(CFURLRef url);
-static OSStatus launch_application_pid(CFURLRef appPath, pid_t *outPid);
+/* What a launch hands the new process besides the items: arguments and environment variables. */
+struct launch_parameters
+{
+	CFArrayRef argv;
+	CFDictionaryRef environment;
+};
+
+static OSStatus launch_application_pid(CFURLRef appPath, const struct launch_parameters *params, pid_t *outPid);
 
 // One request to launchservicesd and its reply, or NULL when it cannot be reached in time.
 static xpc_object_t lsd_request(xpc_object_t request, int64_t timeoutMs)
@@ -120,19 +129,6 @@ static Boolean is_file_url(CFURLRef url)
 	{
 		ret = CFStringCompare(scheme, CFSTR("file"), kCFCompareCaseInsensitive) == kCFCompareEqualTo;
 		CFRelease(scheme);
-	}
-	return ret;
-}
-
-static OSStatus launch_application(CFURLRef appURL, CFURLRef *outLaunchedURL)
-{
-	OSStatus ret = _LSLaunchApplication(appURL);
-
-	if (ret == noErr && outLaunchedURL != NULL)
-	{
-		if (*outLaunchedURL != NULL)
-			CFRelease(*outLaunchedURL);
-		*outLaunchedURL = CFRetain(appURL);
 	}
 	return ret;
 }
@@ -319,7 +315,8 @@ static OSStatus send_documents_event(pid_t pid, CFArrayRef urls, Boolean print, 
  * events are queued in launchservicesd without waiting: the new process gets them as its first events
  * when it checks in, and a process that never does is simply launched.
  */
-static OSStatus deliver_items(CFURLRef appURL, CFArrayRef urls, Boolean newInstance, Boolean print, CFURLRef *outLaunchedURL);
+static OSStatus deliver_items(CFURLRef appURL, CFArrayRef urls, Boolean newInstance, Boolean print,
+	const struct launch_parameters *params, CFURLRef *outLaunchedURL);
 
 /* Whether two file URLs name the same path (a trailing slash does not matter). */
 static Boolean same_file_path(CFURLRef a, CFURLRef b)
@@ -339,7 +336,8 @@ static Boolean same_file_path(CFURLRef a, CFURLRef b)
 	return strcmp(pathA, pathB) == 0;
 }
 
-static OSStatus deliver_urls(CFURLRef appURL, CFArrayRef itemURLs, Boolean newInstance, Boolean print, CFURLRef *outLaunchedURL)
+static OSStatus deliver_urls(CFURLRef appURL, CFArrayRef itemURLs, Boolean newInstance, Boolean print,
+	const struct launch_parameters *params, CFURLRef *outLaunchedURL)
 {
 	/* The application among its own items (how open -a asks for just the application) is not a document. */
 	CFMutableArrayRef urls = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
@@ -352,12 +350,13 @@ static OSStatus deliver_urls(CFURLRef appURL, CFArrayRef itemURLs, Boolean newIn
 		if (!(is_file_url(item) && same_file_path(item, appURL)))
 			CFArrayAppendValue(urls, item);
 	}
-	result = deliver_items(appURL, urls, newInstance, print, outLaunchedURL);
+	result = deliver_items(appURL, urls, newInstance, print, params, outLaunchedURL);
 	CFRelease(urls);
 	return result;
 }
 
-static OSStatus deliver_items(CFURLRef appURL, CFArrayRef urls, Boolean newInstance, Boolean print, CFURLRef *outLaunchedURL)
+static OSStatus deliver_items(CFURLRef appURL, CFArrayRef urls, Boolean newInstance, Boolean print,
+	const struct launch_parameters *params, CFURLRef *outLaunchedURL)
 {
 	CFBundleRef bundle = CFBundleCreate(kCFAllocatorDefault, appURL);
 	CFStringRef identifier = bundle != NULL ? CFBundleGetIdentifier(bundle) : NULL;
@@ -375,7 +374,7 @@ static OSStatus deliver_items(CFURLRef appURL, CFArrayRef urls, Boolean newInsta
 		pid = find_running_instance(bundleID);
 	if (pid == 0)
 	{
-		status = launch_application_pid(appURL, &pid);
+		status = launch_application_pid(appURL, params, &pid);
 		if (status != noErr)
 			return status;
 		started = true;
@@ -458,7 +457,8 @@ static CFURLRef copy_handler_app(CFURLRef url)
 }
 
 /* Items that are documents or URLs for a scheme (not links the host desktop opens), grouped by handling application. */
-static OSStatus open_items_with_handlers(CFArrayRef urls, Boolean newInstance, Boolean print, CFURLRef *outLaunchedURL)
+static OSStatus open_items_with_handlers(CFArrayRef urls, Boolean newInstance, Boolean print,
+	const struct launch_parameters *params, CFURLRef *outLaunchedURL)
 {
 	CFMutableDictionaryRef groups = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 	OSStatus ret = noErr;
@@ -495,7 +495,7 @@ static OSStatus open_items_with_handlers(CFArrayRef urls, Boolean newInstance, B
 			CFDictionaryGetKeysAndValues(groups, apps, lists);
 			for (CFIndex i = 0; i < n; i++)
 			{
-				OSStatus temp = deliver_urls(apps[i], lists[i], newInstance, print, outLaunchedURL);
+				OSStatus temp = deliver_urls(apps[i], lists[i], newInstance, print, params, outLaunchedURL);
 				if (temp != noErr)
 					ret = temp;
 			}
@@ -513,9 +513,9 @@ static OSStatus open_items_with_handlers(CFArrayRef urls, Boolean newInstance, B
  * Apple Events: documents are delivered as one kAEOpenDocuments event per application (kAEPrintDocuments
  * with kLSLaunchAndPrint), URLs for a URL scheme as kAEGetURL events, a running application opened
  * without items as kAEReopenApplication. A new process gets them as its first events, through
- * launchservicesd. Not supported yet:
- * - passThruParams: it is ignored. Without kLSLaunchNewInstance items go to a running instance of
- *   their handler; every other call starts a new instance.
+ * launchservicesd. Without kLSLaunchNewInstance items, and an application bundle among the items, go
+ * to a running instance of their application; otherwise a new instance is started. Not supported yet:
+ * - passThruParams: it is ignored.
  */
 static Boolean is_folder_without_handler(CFURLRef url)
 {
@@ -534,6 +534,13 @@ static Boolean is_folder_without_handler(CFURLRef url)
 
 OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLaunchedURL)
 {
+	return _LSOpenFromURLSpecWithParameters(inLaunchSpec, NULL, NULL, outLaunchedURL);
+}
+
+OSStatus _LSOpenFromURLSpecWithParameters(const LSLaunchURLSpec *inLaunchSpec, CFArrayRef argv,
+	CFDictionaryRef environment, CFURLRef *outLaunchedURL)
+{
+	const struct launch_parameters params = { argv, environment };
 	CFIndex count, i;
 	CFURLRef url;
 	OSStatus ret = noErr, temp;
@@ -553,7 +560,7 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 	if (inLaunchSpec->appURL != NULL)
 	{
 		/* The application opens all items, so it is launched once and handed the items as events. */
-		return deliver_urls(inLaunchSpec->appURL, inLaunchSpec->itemURLs, newInstance, print, outLaunchedURL);
+		return deliver_urls(inLaunchSpec->appURL, inLaunchSpec->itemURLs, newInstance, print, &params, outLaunchedURL);
 	}
 
 	if (count == 0)
@@ -566,9 +573,12 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 
 		if (is_file_url(url))
 		{
-			/* An application bundle is launched, any other file is opened by its handler. */
+			/*
+			 * An application bundle is opened like an application without items: a running instance
+			 * is reopened unless a new one is asked for. Any other file is opened by its handler.
+			 */
 			if (is_application_url(url))
-				temp = launch_application(url, outLaunchedURL);
+				temp = deliver_items(url, NULL, newInstance, print, &params, outLaunchedURL);
 			else if (is_folder_without_handler(url))
 				/* There is no Finder in the prefix, so a folder is shown by the host's file manager. */
 				temp = _LSOpenFileOnHost(url, FALSE);
@@ -594,7 +604,7 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 
 	if (CFArrayGetCount(items) > 0)
 	{
-		temp = open_items_with_handlers(items, newInstance, print, outLaunchedURL);
+		temp = open_items_with_handlers(items, newInstance, print, &params, outLaunchedURL);
 		if (temp != noErr)
 			ret = temp;
 	}
@@ -604,16 +614,179 @@ OSStatus LSOpenFromURLSpec(const LSLaunchURLSpec *inLaunchSpec, CFURLRef *outLau
 
 OSStatus _LSLaunchApplication(CFURLRef appPath)
 {
-	return launch_application_pid(appPath, NULL);
+	return launch_application_pid(appPath, NULL, NULL);
 }
 
-static OSStatus launch_application_pid(CFURLRef appPath, pid_t *outPid)
+/*
+ * The variables that name the host's window system (X11 or Wayland) and the AppKit backend for it.
+ * On macOS an application opened through LaunchServices joins the caller's login session and so its
+ * window server; here the window server is the host display the caller's own variables name, which
+ * the container's launchd lacks when the container was started from a terminal without them.
+ */
+static const char *const window_system_variables[] = {
+	"DISPLAY",
+	"WAYLAND_DISPLAY",
+	"XAUTHORITY",
+	"XDG_RUNTIME_DIR",
+	"DARLING_APPKIT_BACKEND",
+};
+
+static char *copy_cfstring_utf8(CFStringRef string)
+{
+	CFIndex size;
+	char *result;
+
+	if (string == NULL || CFGetTypeID(string) != CFStringGetTypeID())
+		return NULL;
+	size = CFStringGetMaximumSizeForEncoding(CFStringGetLength(string), kCFStringEncodingUTF8) + 1;
+	result = malloc(size);
+	if (result != NULL && !CFStringGetCString(string, result, size, kCFStringEncodingUTF8))
+	{
+		free(result);
+		result = NULL;
+	}
+	return result;
+}
+
+static void free_string_list(char **list)
+{
+	if (list == NULL)
+		return;
+	for (char **p = list; *p != NULL; p++)
+		free(*p);
+	free(list);
+}
+
+/* The new process's arguments: the executable, then the CFStrings of argv. NULL if one is not a string. */
+static char **copy_arguments(const char *exec, CFArrayRef argv)
+{
+	CFIndex count = argv != NULL ? CFArrayGetCount(argv) : 0;
+	char **result = calloc(count + 2, sizeof(char *));
+
+	if (result == NULL)
+		return NULL;
+	result[0] = strdup(exec);
+	if (result[0] == NULL)
+		goto fail;
+	for (CFIndex i = 0; i < count; i++)
+	{
+		result[i + 1] = copy_cfstring_utf8(CFArrayGetValueAtIndex(argv, i));
+		if (result[i + 1] == NULL)
+			goto fail;
+	}
+	return result;
+
+fail:
+	free_string_list(result);
+	return NULL;
+}
+
+/*
+ * NAME=value entries set in the new process on top of launchd's environment: the caller's window
+ * system variables, then the requested environment (which wins). NULL if an entry is not a string.
+ */
+static char **copy_environment(CFDictionaryRef environment)
+{
+	const size_t nvars = sizeof(window_system_variables) / sizeof(window_system_variables[0]);
+	CFIndex count = environment != NULL ? CFDictionaryGetCount(environment) : 0;
+	char **result = calloc(nvars + count + 1, sizeof(char *));
+	size_t n = 0;
+
+	if (result == NULL)
+		return NULL;
+
+	for (size_t i = 0; i < nvars; i++)
+	{
+		const char *value = getenv(window_system_variables[i]);
+		CFStringRef key;
+		Boolean requested;
+
+		if (value == NULL)
+			continue;
+		key = CFStringCreateWithCString(kCFAllocatorDefault, window_system_variables[i], kCFStringEncodingUTF8);
+		requested = environment != NULL && key != NULL && CFDictionaryContainsKey(environment, key);
+		if (key != NULL)
+			CFRelease(key);
+		if (requested)
+			continue;
+		if (asprintf(&result[n], "%s=%s", window_system_variables[i], value) < 0)
+		{
+			result[n] = NULL;
+			goto fail;
+		}
+		n++;
+	}
+
+	if (count > 0)
+	{
+		const void **keys = malloc(count * sizeof(void *)), **values = malloc(count * sizeof(void *));
+
+		if (keys == NULL || values == NULL)
+		{
+			free(keys);
+			free(values);
+			goto fail;
+		}
+		CFDictionaryGetKeysAndValues(environment, keys, values);
+		for (CFIndex i = 0; i < count; i++)
+		{
+			char *key = copy_cfstring_utf8(keys[i]), *value = copy_cfstring_utf8(values[i]);
+
+			if (key == NULL || value == NULL || key[0] == 0 || strchr(key, '=') != NULL ||
+					asprintf(&result[n], "%s=%s", key, value) < 0)
+			{
+				result[n] = NULL;
+				free(key);
+				free(value);
+				free(keys);
+				free(values);
+				goto fail;
+			}
+			n++;
+			free(key);
+			free(value);
+		}
+		free(keys);
+		free(values);
+	}
+	return result;
+
+fail:
+	free_string_list(result);
+	return NULL;
+}
+
+/*
+ * The launchd label of a new application process. Every launch is its own job, so that a new
+ * instance never finds the job of a running (or exited but not yet removed) one with the same
+ * name: launchd would answer with that process instead of starting a new one.
+ */
+static char *copy_job_label(CFURLRef appPath, const char *name)
+{
+	CFBundleRef bundle = CFBundleCreate(kCFAllocatorDefault, appPath);
+	CFStringRef identifier = bundle != NULL ? CFBundleGetIdentifier(bundle) : NULL;
+	char *base = copy_cfstring_utf8(identifier), *label = NULL;
+	uuid_t uuid;
+	uuid_string_t uuidString;
+
+	if (bundle != NULL)
+		CFRelease(bundle);
+	uuid_generate_random(uuid);
+	uuid_unparse_upper(uuid, uuidString);
+	if (asprintf(&label, "application.%s.%s", base != NULL ? base : name, uuidString) < 0)
+		label = NULL;
+	free(base);
+	return label;
+}
+
+static OSStatus launch_application_pid(CFURLRef appPath, const struct launch_parameters *params, pid_t *outPid)
 {
 	CFStringRef executable = NULL, bundleName = NULL;
 	CFIndex nameSize = 0, execSize = 0;
 	CFURLRef pre = NULL, url_plus_exec = NULL;
 	pid_t pid = -1;
-	char *name = NULL, *exec = NULL, *argv[2];
+	char *name = NULL, *exec = NULL, *label = NULL, **argv = NULL, **env = NULL;
+	struct spawn_via_launchd_attr attr;
 	OSStatus status = kLSApplicationNotFoundErr;
 
 	/* Read info.plist, find path to main executable */
@@ -674,10 +847,23 @@ static OSStatus launch_application_pid(CFURLRef appPath, pid_t *outPid)
 	CFStringGetFileSystemRepresentation(execPath, exec, execSize);
 	CFRelease(execPath);
 
-	argv[0] = exec;
-	argv[1] = NULL;
+	/* Arguments and environment variables that are not strings are a bad parameter. */
+	status = paramErr;
+	argv = copy_arguments(exec, params != NULL ? params->argv : NULL);
+	env = copy_environment(params != NULL ? params->environment : NULL);
+	if (argv == NULL || env == NULL)
+		goto cleanup;
+
+	status = memFullErr;
+	label = copy_job_label(appPath, name);
+	if (label == NULL)
+		goto cleanup;
+
+	memset(&attr, 0, sizeof(attr));
+	attr.spawn_env = (const char *const *) env;
+
 	/* Applications are launchd jobs, as on macOS. */
-	pid = spawn_via_launchd(name, (const char *const *)argv, NULL);
+	pid = spawn_via_launchd(label, (const char *const *) argv, &attr);
 	if (pid < 0)
 	{
 		os_log_error(OS_LOG_DEFAULT, "LaunchServices: launchd could not spawn %{public}s: %{darwin.errno}d", exec, errno);
@@ -694,6 +880,9 @@ cleanup:
 		free(name);
 	if (exec)
 		free(exec);
+	free(label);
+	free_string_list(argv);
+	free_string_list(env);
 	if (executable)
 		CFRelease(executable);
 	if (bundleName)

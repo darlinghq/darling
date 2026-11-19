@@ -11578,10 +11578,13 @@ job_mig_spawn_internal(job_t j, vm_offset_t indata, mach_msg_type_number_t indat
 	}
 #endif
 
+	/* Darling has no per-user launchd: the system launchd starts the job itself, as the caller (below). */
+#ifndef DARLING
 	if (unlikely(pid1_magic && ldc->euid && ldc->uid)) {
 		job_log(j, LOG_DEBUG, "Punting spawn to per-user-context");
 		return VPROC_ERR_TRY_PER_USER;
 	}
+#endif
 
 	if (!job_assumes(j, indataCnt != 0)) {
 		return 1;
@@ -11633,7 +11636,16 @@ job_mig_spawn_internal(job_t j, vm_offset_t indata, mach_msg_type_number_t indat
 	}
 
 	if (pid1_magic) {
+#ifdef DARLING
+		/* On macOS the caller's per-user launchd starts the application, so it runs as the
+		 * caller's user, with that user's HOME, USER, LOGNAME, SHELL and TMPDIR. Here the
+		 * system launchd (root) does, so it becomes the caller's effective user for the job.
+		 * The effective id is the one darlingserver keeps in the audit token.
+		 */
+		jr->mach_uid = ldc->euid;
+#else
 		jr->mach_uid = ldc->uid;
+#endif
 	}
 
 	// TODO: Consolidate the app and legacy_LS_job bits.
