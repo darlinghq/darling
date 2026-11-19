@@ -47,7 +47,7 @@ static io_service_t g_surfaceService;
 // describes the surface to the process that receives it; the planes follow
 // at dataOffset. The layout is the same for i386 and x86_64 processes.
 #define SHARED_MAGIC 0x49535246 // 'ISRF'
-#define SHARED_VERSION 1
+#define SHARED_VERSION 2
 
 enum
 {
@@ -71,15 +71,23 @@ struct SharedHeader
 	// The state below is updated in place by every process that maps the
 	// surface.
 
-	// Incremented by every unlock that ends a lock for writing.
+	// Changed whenever the contents may have changed: by every lock for
+	// writing, and when GPU rendering reaches the memory (see
+	// "Versions of the contents").
 	_Atomic uint32_t seed;
 	// The number of IOSurface objects, in all processes, whose use count
 	// is not zero.
 	_Atomic int32_t useCount;
+	// The version of the contents in the surface's memory, and the newest
+	// version a GPU API holds outside of it. The memory is up to date while
+	// cpuVersion >= gpuVersion.
+	_Atomic uint64_t cpuVersion;
+	_Atomic uint64_t gpuVersion;
 };
 
 _Static_assert(offsetof(struct SharedHeader, planes) == 40, "shared header layout");
-_Static_assert(sizeof(struct SharedHeader) == 432, "shared header layout");
+_Static_assert(offsetof(struct SharedHeader, cpuVersion) == 432, "shared header layout");
+_Static_assert(sizeof(struct SharedHeader) == 448, "shared header layout");
 
 typedef struct
 {
@@ -409,9 +417,57 @@ static pthread_mutex_t g_gpuCallbacksMutex = PTHREAD_MUTEX_INITIALIZER;
 // callback takes itself do not call any writeback again.
 static __thread bool t_inGPUWriteback;
 
+// Versions of the contents.
+//
+// A GPU API that keeps its own copy of a surface (a texture that is not a
+// view of the surface's memory) can hold contents newer than the memory:
+// rendering into the copy reaches the memory only when the API's writeback
+// callback copies it there. The shared header records this with two
+// counters, so that every process sharing the surface agrees on it:
+//  - a GPU API that renders into its copy raises gpuVersion above both
+//    (_IOSurfaceGPUDidWrite); the seed does not change yet, since the memory
+//    has not;
+//  - a lock runs the writeback callbacks and then raises cpuVersion to the
+//    gpuVersion it saw before them: the memory holds the newest contents,
+//    or the APIs chose to keep it as it was;
+//  - a lock with kIOSurfaceLockAvoidSync fails with kIOReturnCannotLock
+//    instead while gpuVersion is above cpuVersion, as that lock would have
+//    to copy GPU contents into the memory first;
+//  - the end of a lock for writing, and GPU rendering into the memory
+//    itself (_IOSurfaceGPUDidWriteMemory), raise cpuVersion above both, so
+//    that GPU APIs know their copies are older.
+
+// Raises *version to at least value.
+static void raiseVersion(_Atomic uint64_t* version, uint64_t value)
+{
+	uint64_t current = atomic_load(version);
+	while (current < value && !atomic_compare_exchange_weak(version, &current, value))
+		;
+}
+
+// Makes *version the newest of the two versions, and returns it.
+static uint64_t bumpVersion(struct SharedHeader* shared, _Atomic uint64_t* version)
+{
+	for (;;)
+	{
+		uint64_t cpu = atomic_load(&shared->cpuVersion);
+		uint64_t gpu = atomic_load(&shared->gpuVersion);
+		uint64_t current = version == &shared->cpuVersion ? cpu : gpu;
+		uint64_t next = (cpu > gpu ? cpu : gpu) + 1;
+		if (atomic_compare_exchange_weak(version, &current, next))
+			return next;
+	}
+}
+
+static bool gpuContentsPending(struct SharedHeader* shared)
+{
+	return atomic_load(&shared->gpuVersion) > atomic_load(&shared->cpuVersion);
+}
+
 void _IOSurfaceSetGPUCallbacks(const _IOSurfaceGPUCallbacks* callbacks)
 {
-	if (callbacks == NULL || callbacks->version != _IOSURFACE_GPU_CALLBACKS_VERSION)
+	if (callbacks == NULL || (callbacks->version != _IOSURFACE_GPU_CALLBACKS_VERSION
+		&& callbacks->version != _IOSURFACE_GPU_CALLBACKS_VERSION_REPORTS_WRITES))
 	{
 		os_log_error(OS_LOG_DEFAULT, "IOSurface: ignoring GPU callbacks with an unknown version");
 		return;
@@ -435,7 +491,13 @@ void _IOSurfaceSetGPUCallbacks(const _IOSurfaceGPUCallbacks* callbacks)
 		os_log_error(OS_LOG_DEFAULT, "IOSurface: too many GPU callback registrations, ignoring another one");
 		return;
 	}
-	g_gpuCallbacks[count] = *callbacks;
+	// A registration with the original version has no finish member.
+	g_gpuCallbacks[count] = (_IOSurfaceGPUCallbacks) {
+		.version = callbacks->version,
+		.writeback = callbacks->writeback,
+		.forget = callbacks->forget,
+		.finish = callbacks->version == _IOSURFACE_GPU_CALLBACKS_VERSION_REPORTS_WRITES ? callbacks->finish : NULL,
+	};
 	atomic_store_explicit(&g_gpuCallbacksCount, count + 1, memory_order_release);
 	pthread_mutex_unlock(&g_gpuCallbacksMutex);
 }
@@ -450,19 +512,29 @@ static const _IOSurfaceGPUCallbacks* gpuCallbacks(int index)
 
 // Brings GPU work on the surface into its memory before the CPU or another
 // process sees it, asking every registered GPU API in registration order.
-static void writeBackGPUContents(IOSurface* surface)
+// With avoidSync, APIs that report their writes (see
+// _IOSURFACE_GPU_CALLBACKS_VERSION_REPORTS_WRITES) have nothing to copy, as
+// the caller has checked gpuContentsPending, and are only asked to finish
+// GPU work submitted into the memory. APIs that do not report their writes
+// are asked to write back, as nothing tells whether they have anything to
+// copy.
+static void writeBackGPUContents(IOSurface* surface, struct SharedHeader* shared, bool avoidSync)
 {
 	if (t_inGPUWriteback)
 		return;
 
+	uint64_t pending = atomic_load(&shared->gpuVersion);
 	t_inGPUWriteback = true;
 	const _IOSurfaceGPUCallbacks* callbacks;
 	for (int i = 0; (callbacks = gpuCallbacks(i)) != NULL; i++)
 	{
-		if (callbacks->writeback != NULL)
-			callbacks->writeback((IOSurfaceRef) surface);
+		bool reportsWrites = callbacks->version == _IOSURFACE_GPU_CALLBACKS_VERSION_REPORTS_WRITES;
+		void (*function)(IOSurfaceRef) = avoidSync && reportsWrites ? callbacks->finish : callbacks->writeback;
+		if (function != NULL)
+			function((IOSurfaceRef) surface);
 	}
 	t_inGPUWriteback = false;
+	raiseVersion(&shared->cpuVersion, pending);
 }
 
 @implementation IOSurface
@@ -790,7 +862,7 @@ static void recordIdentity(ImplData* idata)
 	ImplData* data = (ImplData*) _impl;
 	fileport_t port = MACH_PORT_NULL;
 	if (data->fd >= 0)
-		writeBackGPUContents(self);
+		writeBackGPUContents(self, data->shared, false);
 	if (data->fd < 0 || fileport_makeport(data->fd, &port) != 0)
 		return MACH_PORT_NULL;
 	return port;
@@ -1161,8 +1233,13 @@ static void recordIdentity(ImplData* idata)
 - (kern_return_t)lockWithOptions:(IOSurfaceLockOptions)options seed:(nullable uint32_t *)seed
 {
 	ImplData* data = (ImplData*) _impl;
+	bool avoidSync = (options & kIOSurfaceLockAvoidSync) != 0;
+	// A GPU API holds newer contents, which a lock would copy into the
+	// memory.
+	if (avoidSync && !t_inGPUWriteback && gpuContentsPending(data->shared))
+		return kIOReturnCannotLock;
 	// CPU access sees the GPU work submitted before the lock.
-	writeBackGPUContents(self);
+	writeBackGPUContents(self, data->shared, avoidSync);
 
 	struct _IOSurfaceLockUnlock args = {
 		.surfaceID = data->surface->surfaceID,
@@ -1176,8 +1253,18 @@ static void recordIdentity(ImplData* idata)
 		return ret;
 	// Devices that share the memory finish with it before the CPU reads it.
 	_IOSurfaceDMABufBeginCPUAccess(data->dmabuf, !(options & kIOSurfaceLockReadOnly));
+	// QUIRK: a lock for writing changes the seed when it is taken, and the
+	// lock reports the new value; the unlock leaves it alone. The header
+	// comment in IOSurfaceRef.h says the unlock increments it.
+	// Evidence: black-box observation on macOS 10.14.4 (x86_64, i386) and
+	// 26.7.3 (x86_64) (tier 2): each write lock, nested ones included,
+	// returns the previous seed plus one, and the unlock returns that value.
+	// Test: iosurface_seed_versions ("seed changes at the write lock").
+	uint32_t current = (options & kIOSurfaceLockReadOnly)
+		? data->shared->seed
+		: atomic_fetch_add(&data->shared->seed, 1) + 1;
 	if (seed)
-		*seed = data->shared->seed;
+		*seed = current;
 	return ret;
 }
 
@@ -1194,12 +1281,12 @@ static void recordIdentity(ImplData* idata)
 	if (ret != kIOSurfaceSuccess)
 		return ret;
 	_IOSurfaceDMABufEndCPUAccess(data->dmabuf, !(options & kIOSurfaceLockReadOnly));
-	// The end of a lock for writing marks the contents as modified.
-	uint32_t current = (options & kIOSurfaceLockReadOnly)
-		? data->shared->seed
-		: atomic_fetch_add(&data->shared->seed, 1) + 1;
+	// The CPU's writes are the newest contents; copies that GPU APIs hold
+	// are older. The seed changed when the lock was taken.
+	if (!(options & kIOSurfaceLockReadOnly))
+		bumpVersion(data->shared, &data->shared->cpuVersion);
 	if (seed)
-		*seed = current;
+		*seed = data->shared->seed;
 	return ret;
 }
 
@@ -1263,6 +1350,23 @@ bool _IOSurfaceGetDMABuf(IOSurfaceRef buffer, size_t planeIndex, _IOSurfaceDMABu
 	out->offset = plane->memoryOffset;
 	out->bytesPerRow = plane->bytesPerRow;
 	return true;
+}
+
+void _IOSurfaceGPUDidWrite(IOSurfaceRef buffer)
+{
+	if (!buffer)
+		return;
+	ImplData* data = (ImplData*) ((IOSurface*) buffer)->_impl;
+	bumpVersion(data->shared, &data->shared->gpuVersion);
+}
+
+void _IOSurfaceGPUDidWriteMemory(IOSurfaceRef buffer)
+{
+	if (!buffer)
+		return;
+	ImplData* data = (ImplData*) ((IOSurface*) buffer)->_impl;
+	bumpVersion(data->shared, &data->shared->cpuVersion);
+	atomic_fetch_add(&data->shared->seed, 1);
 }
 
 IOSurfaceID IOSurfaceGetID(IOSurfaceRef buffer)

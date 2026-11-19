@@ -711,6 +711,7 @@ static inline int attribute_has_argument(CGLPixelFormatAttribute attr) {
 }
 
 static void writeBackSurface(IOSurfaceRef ioSurface);
+static void finishSurface(IOSurfaceRef ioSurface);
 
 __attribute__((constructor))
 static void _CGLInitialize(void)
@@ -719,10 +720,13 @@ static void _CGLInitialize(void)
 
     // A binding retains its surface, so a surface is never freed while
     // this framework has state for it and no forget callback is needed.
+    // Rendering into textures is reported to IOSurface as it is noted (see
+    // "Writing GL rendering back into surfaces").
     static const _IOSurfaceGPUCallbacks callbacks = {
-        .version = _IOSURFACE_GPU_CALLBACKS_VERSION,
+        .version = _IOSURFACE_GPU_CALLBACKS_VERSION_REPORTS_WRITES,
         .writeback = writeBackSurface,
         .forget = NULL,
+        .finish = finishSurface,
     };
     _IOSurfaceSetGPUCallbacks(&callbacks);
 }
@@ -2115,6 +2119,9 @@ struct surface_binding {
     // g_renderSerial; 0 if never).
     int dirty;
     uint64_t rendered;
+    // A texture that uses the surface's memory has been rendered into since
+    // a context that shares it last flushed.
+    int unflushed;
 };
 
 static struct surface_binding *g_surfaceBindings;
@@ -2126,9 +2133,17 @@ static _Atomic size_t g_bindingCount;
 // Orders the notes of rendering. Guarded by g_surfaceBindingsMutex.
 static uint64_t g_renderSerial;
 
+// Rendering into the surface's memory that no flush has reported yet
+// changed the contents all the same. Called with the bindings locked.
+static void reportUnflushedBinding(const struct surface_binding *binding) {
+    if (binding->unflushed)
+        _IOSurfaceGPUDidWriteMemory(binding->surface);
+}
+
 // Removes the binding at index i. Called with the bindings locked.
 static void removeSurfaceBinding(size_t i) {
     atomic_fetch_sub(&g_bindingCount, 1);
+    reportUnflushedBinding(&g_surfaceBindings[i]);
     CFRelease(g_surfaceBindings[i].surface);
     g_surfaceBindings[i] = g_surfaceBindings[--g_surfaceBindingCount];
 }
@@ -2210,6 +2225,7 @@ static int rememberSurfaceBinding(const struct surface_binding *binding) {
             GLuint shadow = g_surfaceBindings[i].shadow;
             if (shadow != 0 && shadow != binding->shadow && !shadowInUse(binding->context, shadow, i))
                 unusedShadow = shadow;
+            reportUnflushedBinding(&g_surfaceBindings[i]);
             CFRelease(g_surfaceBindings[i].surface);
         } else {
             g_surfaceBindingCount++;
@@ -3522,6 +3538,14 @@ static void writeBackSurface(IOSurfaceRef ioSurface) {
     readBackSurface(ioSurface, 1);
 }
 
+// IOSurface's finish callback, before a lock with kIOSurfaceLockAvoidSync:
+// rendering into textures that use the surface's memory is waited for, and
+// nothing is copied.
+static void finishSurface(IOSurfaceRef ioSurface) {
+    if (!t_readingBack)
+        finishImportedSurface(ioSurface);
+}
+
 // Writing GL rendering back into surfaces.
 //
 // On macOS the surface is the storage of a texture specified from it, so
@@ -3546,6 +3570,15 @@ static void writeBackSurface(IOSurfaceRef ioSurface) {
 //
 // The copy is made in the calling context, which shares the texture, so
 // that no other context has to be made current.
+//
+// IOSurface is told about the rendering as it is noted. Rendering into a
+// copy is reported with _IOSurfaceGPUDidWrite, so that a lock with
+// kIOSurfaceLockAvoidSync fails until the copy has been written back.
+// Rendering into a surface's memory is reported with
+// _IOSurfaceGPUDidWriteMemory at the next of these calls, so that the seed
+// changes, as it does on macOS when a flush makes rendering into a surface
+// visible. A lock with kIOSurfaceLockAvoidSync waits for that rendering
+// (the finish callback) but copies nothing.
 
 // The most color attachments of one framebuffer that are looked at.
 #define CGL_MAX_NOTED_ATTACHMENTS 16
@@ -3607,6 +3640,13 @@ static void noteDrawFramebuffer(CGLContextObj context) {
             if (binding->texture == textures[j]) {
                 binding->dirty = 1;
                 binding->rendered = ++g_renderSerial;
+                // A copy is newer than the surface until it is written
+                // back, which it is unless the CPU has written the surface
+                // since the copy last matched it.
+                if (binding->imported)
+                    binding->unflushed = 1;
+                else if (IOSurfaceGetSeed(binding->surface) == binding->seed)
+                    _IOSurfaceGPUDidWrite(binding->surface);
                 break;
             }
         }
@@ -3641,12 +3681,32 @@ static void writeBackRendered(CGLContextObj context, GLuint texture) {
     }
 }
 
+// Rendering into the memory of surfaces through textures that context
+// shares has been submitted: the surfaces' contents have changed.
+static void reportMemoryWrites(CGLContextObj context) {
+    pthread_mutex_lock(&g_surfaceBindingsMutex);
+    for (size_t i = 0; i < g_surfaceBindingCount; i++) {
+        struct surface_binding *binding = &g_surfaceBindings[i];
+        if (!binding->unflushed || !sharesTextures(binding->context, context))
+            continue;
+        // Bindings of the same surface are reported once.
+        for (size_t j = i; j < g_surfaceBindingCount; j++) {
+            if (g_surfaceBindings[j].surface == binding->surface
+                && sharesTextures(g_surfaceBindings[j].context, context))
+                g_surfaceBindings[j].unflushed = 0;
+        }
+        _IOSurfaceGPUDidWriteMemory(binding->surface);
+    }
+    pthread_mutex_unlock(&g_surfaceBindingsMutex);
+}
+
 static void writeBackCurrentContext(void) {
     CGLContextObj context = contextWithCopies();
     if (context == NULL)
         return;
     noteDrawFramebuffer(context);
     writeBackRendered(context, 0);
+    reportMemoryWrites(context);
 }
 
 // Set while glTexImage2D specifies a texture from its surface again, whose
