@@ -28,6 +28,7 @@ set(audiotoolbox_sources
 	MusicDevice.cpp
 	AudioToolbox.cpp
 	AudioHardwareService.cpp
+	AudioUnitUtilities.cpp
 )
 
 add_framework(AudioToolbox

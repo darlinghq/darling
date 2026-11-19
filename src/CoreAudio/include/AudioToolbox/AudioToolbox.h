@@ -7,6 +7,7 @@
 #include <AudioToolbox/AudioConverter.h>
 #include <AudioToolbox/AUGraph.h>
 #include <AudioToolbox/AudioUnitParameters.h>
+#include <AudioToolbox/AudioUnitUtilities.h>
 #include <AudioToolbox/AudioFormat.h>
 #include <AudioToolbox/AudioUnit.h>
 #include <AudioToolbox/ExtendedAudioFile.h>
