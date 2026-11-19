@@ -20,9 +20,10 @@
 //               own;
 //  - fork:      a child process sees the flushed rendering in the memory.
 // Where the surface has a GPU buffer, the copies are counted through the
-// private statistics: one copy into the memory per flush and none at a lock
-// after the flush, one copy into the buffer per CPU write, and none for a
-// consumer context. A 1920x1080 surface is timed (printed, not checked):
+// private statistics: one copy into the memory per flushed rendering, made
+// at the flush or, where no other process reads the memory (as here), at
+// the first lock after it, and none at later locks; one copy into the
+// buffer per CPU write, and none for a consumer context. A 1920x1080 surface is timed (printed, not checked):
 // glFlush after a clear (which includes the copy into the memory where there
 // is a GPU buffer), a lock after that flush, and a lock of rendering that
 // has not been flushed.
@@ -320,13 +321,15 @@ static void functionalCases(CGLContextObj producer, CGLContextObj consumer, GLen
 	kern_return_t result = 0;
 	EXPECT_PIXEL(lockedPixel(s, kIOSurfaceLockAvoidSync | kIOSurfaceLockReadOnly, &result), RED);
 	CHECK(result == kIOReturnSuccess);
+	struct copies afterFirstLock = copiesOf(s);
 	EXPECT_PIXEL(lockedPixel(s, kIOSurfaceLockReadOnly, NULL), RED);
 	CHECK(IOSurfaceGetSeed(s) == flushed);
 	struct copies afterLocks = copiesOf(s);
 	if (afterFlush.hasBuffer) {
-		CHECK(afterFlush.downloads >= 1);
-		// The flush copied the rendering; the locks copy nothing.
-		CHECK(afterLocks.downloads == afterFlush.downloads);
+		// The rendering was copied once, at the flush or at the first lock;
+		// the second lock copies nothing.
+		CHECK(afterFirstLock.downloads >= 1 && afterFirstLock.downloads <= afterFlush.downloads + 1);
+		CHECK(afterLocks.downloads == afterFirstLock.downloads);
 		CHECK(afterLocks.uploads == afterFlush.uploads);
 	}
 

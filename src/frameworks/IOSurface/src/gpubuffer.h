@@ -70,6 +70,13 @@ __attribute__((visibility("hidden")))
 _IOSurfaceGPUBo* _IOSurfaceGPUBoCreate(const char* renderNode, uint32_t width, uint32_t height,
 	uint32_t fourcc, const uint64_t* modifiers, size_t modifierCount);
 
+// Uses a buffer another process made, given by its description: the
+// DMA-BUF (duplicated, the caller keeps its descriptor), its format,
+// modifier, stride and size, with one plane at offset 0. The buffer must be
+// on the render node at renderNode. Returns NULL if it cannot be used.
+__attribute__((visibility("hidden")))
+_IOSurfaceGPUBo* _IOSurfaceGPUBoImport(const char* renderNode, const _IOSurfaceGPUBoDescription* description);
+
 __attribute__((visibility("hidden")))
 void _IOSurfaceGPUBoDestroy(_IOSurfaceGPUBo* bo);
 
