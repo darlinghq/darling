@@ -2149,16 +2149,18 @@ static int sharesTextures(CGLContextObj a, CGLContextObj b) {
 static void reportUnflushedBinding(const struct surface_binding *binding) {
     if (!binding->unflushed)
         return;
-    if (!binding->gpuBuffer) {
-        _IOSurfaceGPUDidWriteMemory(binding->surface);
-        return;
-    }
-    // IOSurface copies the buffer into the memory, so the rendering has to
-    // be complete; it can only be waited for where the context is current.
+    // The rendering has to be complete before it is reported (IOSurface
+    // copies a buffer into the memory, and a reader of the memory has no
+    // other way to wait for it); it can only be waited for where the
+    // context is current.
     CGLContextObj current = CGLGetCurrentContext();
-    if (current != NULL && sharesTextures(current, binding->context))
+    if (current != NULL && sharesTextures(current, binding->context)
+        && (binding->gpuBuffer || _IOSurfaceIsShared(binding->surface)))
         host_glFinish();
-    _IOSurfaceGPUDidWriteBuffer(binding->surface);
+    if (binding->gpuBuffer)
+        _IOSurfaceGPUDidWriteBuffer(binding->surface);
+    else
+        _IOSurfaceGPUDidWriteMemory(binding->surface);
 }
 
 // Removes the binding at index i. Called with the bindings locked.
@@ -4074,8 +4076,8 @@ static void writeBackRendered(CGLContextObj context, GLuint texture) {
 
 // Rendering into the memory or the GPU buffer of surfaces through textures
 // that context, which is current, shares has been submitted: the surfaces'
-// contents have changed. Rendering into a GPU buffer is finished first, as
-// IOSurface copies it into the memory.
+// contents have changed. The rendering is finished first: IOSurface copies a
+// GPU buffer into the memory, and readers of the memory cannot wait for it.
 static void reportMemoryWrites(CGLContextObj context) {
     pthread_mutex_lock(&g_surfaceBindingsMutex);
     int finished = 0;
@@ -4090,14 +4092,19 @@ static void reportMemoryWrites(CGLContextObj context) {
                 && sharesTextures(g_surfaceBindings[j].context, context))
                 g_surfaceBindings[j].unflushed = 0;
         }
-        if (binding->gpuBuffer) {
-            if (!finished)
-                host_glFinish();
+        // glFlush only submits the work, but on macOS the memory holds the
+        // rendering once the producer has flushed. A reader in this process
+        // waits for it in its lock; one in another process cannot wait for
+        // this context's work, so for a surface that another process may
+        // map the work is finished (once per call) before the report.
+        if (!finished && (binding->gpuBuffer || _IOSurfaceIsShared(binding->surface))) {
+            host_glFinish();
             finished = 1;
-            _IOSurfaceGPUDidWriteBuffer(binding->surface);
-        } else {
-            _IOSurfaceGPUDidWriteMemory(binding->surface);
         }
+        if (binding->gpuBuffer)
+            _IOSurfaceGPUDidWriteBuffer(binding->surface);
+        else
+            _IOSurfaceGPUDidWriteMemory(binding->surface);
     }
     pthread_mutex_unlock(&g_surfaceBindingsMutex);
 }

@@ -1868,6 +1868,18 @@ void _IOSurfaceGPUDidWrite(IOSurfaceRef buffer)
 	bumpVersion(data->shared, &data->shared->gpuVersion);
 }
 
+bool _IOSurfaceIsShared(IOSurfaceRef buffer)
+{
+	if (!buffer)
+		return false;
+	ImplData* data = (ImplData*) ((IOSurface*) buffer)->_impl;
+	if (data->fd < 0)
+		return false;
+	// The service counts this process too once it uses the memory, so more
+	// than one means another process may read it (UINT32_MAX: not known).
+	return atomic_load(&data->shared->memoryProcesses) > 1;
+}
+
 void _IOSurfaceGPUDidWriteMemory(IOSurfaceRef buffer)
 {
 	if (!buffer)
