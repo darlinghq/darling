@@ -2339,6 +2339,11 @@ static PFNEGLDESTROYIMAGEKHRPROC p_eglDestroyImageKHR;
 // do not declare.
 typedef void (*cgl_image_target_texture_proc)(GLenum target, void *image);
 static cgl_image_target_texture_proc p_glEGLImageTargetTexture2DOES;
+// eglQueryDmaBufModifiersEXT (EGL_EXT_image_dma_buf_import_modifiers).
+typedef EGLBoolean (*cgl_query_modifiers_proc)(EGLDisplay display, EGLint format, EGLint maxModifiers,
+                                               uint64_t *modifiers, EGLBoolean *externalOnly,
+                                               EGLint *modifierCount);
+static cgl_query_modifiers_proc p_eglQueryDmaBufModifiersEXT;
 
 // GPU copies between textures. Looked up rather than linked, as the host GL
 // library need not export them.
@@ -2362,6 +2367,8 @@ static void load_image_functions(void) {
     p_eglDestroyImageKHR = (PFNEGLDESTROYIMAGEKHRPROC) p_eglGetProcAddress("eglDestroyImageKHR");
     p_glEGLImageTargetTexture2DOES =
         (cgl_image_target_texture_proc) p_eglGetProcAddress("glEGLImageTargetTexture2DOES");
+    p_eglQueryDmaBufModifiersEXT =
+        (cgl_query_modifiers_proc) p_eglGetProcAddress("eglQueryDmaBufModifiersEXT");
 }
 
 static int has_extension(const char *extensions, const char *name) {
@@ -2751,15 +2758,119 @@ static uint32_t drmFormat(GLenum internal_format, GLenum format, GLenum type) {
     }
 }
 
+// Whether the display can use an image of the plane memory's linear layout
+// (a pitch-linear dma-buf, which is what IOSurface exports) as a 2D texture
+// of DRM format fourcc that GL can sample, copy from and render into. Some
+// drivers import such images but accept them only as external-only
+// textures: binding one to GL_TEXTURE_2D fails, and importing one with a
+// plane offset or through another route can crash the driver. The
+// modifiers the display lists for the format say which case it is, so
+// nothing needs to be tried. Answers are kept per display and format. With
+// no modifier listing to ask, the import is left to be tried.
+struct linear_import_answer {
+    EGLDisplay display;
+    uint32_t fourcc;
+    int usable;
+};
+#define LINEAR_IMPORT_ANSWERS 32
+static struct linear_import_answer g_linearImportAnswers[LINEAR_IMPORT_ANSWERS];
+static size_t g_linearImportAnswerCount;
+static pthread_mutex_t g_linearImportMutex = PTHREAD_MUTEX_INITIALIZER;
+
+static int queryLinearImportUsable(EGLDisplay display, uint32_t fourcc) {
+    if (!p_eglQueryDmaBufModifiersEXT)
+        return 1;
+    EGLint count = 0;
+    if (!p_eglQueryDmaBufModifiersEXT(display, (EGLint) fourcc, 0, NULL, NULL, &count))
+        return 1;
+    if (count <= 0)
+        return 1;
+    uint64_t *modifiers = malloc((size_t) count * sizeof(*modifiers));
+    EGLBoolean *externalOnly = malloc((size_t) count * sizeof(*externalOnly));
+    int usable = 1;
+    if (modifiers && externalOnly) {
+        EGLint returned = 0;
+        if (p_eglQueryDmaBufModifiersEXT(display, (EGLint) fourcc, count, modifiers, externalOnly, &returned)) {
+            usable = 0;
+            for (EGLint i = 0; i < returned; i++) {
+                if (modifiers[i] == CGL_DRM_FORMAT_MOD_LINEAR && !externalOnly[i])
+                    usable = 1;
+            }
+        }
+    }
+    free(modifiers);
+    free(externalOnly);
+    return usable;
+}
+
+static int linearImportUsable(CGLContextObj context, uint32_t fourcc) {
+    EGLDisplay display = context->egl_display;
+    pthread_mutex_lock(&g_linearImportMutex);
+    for (size_t i = 0; i < g_linearImportAnswerCount; i++) {
+        if (g_linearImportAnswers[i].display == display && g_linearImportAnswers[i].fourcc == fourcc) {
+            int usable = g_linearImportAnswers[i].usable;
+            pthread_mutex_unlock(&g_linearImportMutex);
+            return usable;
+        }
+    }
+    pthread_mutex_unlock(&g_linearImportMutex);
+
+    int usable = queryLinearImportUsable(display, fourcc);
+    pthread_mutex_lock(&g_linearImportMutex);
+    if (g_linearImportAnswerCount < LINEAR_IMPORT_ANSWERS)
+        g_linearImportAnswers[g_linearImportAnswerCount++] =
+            (struct linear_import_answer) { display, fourcc, usable };
+    pthread_mutex_unlock(&g_linearImportMutex);
+    return usable;
+}
+
+// GL errors that were pending when an import attempt began. The attempt
+// may fail in the driver and raise errors of its own, which belong to no
+// application call; they are cleared afterwards and the earlier ones are
+// raised again, so that glGetError shows the application exactly its own.
+// Only the error codes that a harmless call can raise again are kept
+// (the others are rare enough that dropping them is the lesser harm).
+struct gl_errors {
+    unsigned enumError : 1, valueError : 1, operationError : 1;
+};
+
+static void saveGLErrors(struct gl_errors *saved) {
+    memset(saved, 0, sizeof(*saved));
+    // Each code has its own flag, so one call returns at most one per code.
+    for (int i = 0; i < 16; i++) {
+        GLenum error = glGetError();
+        if (error == GL_NO_ERROR)
+            break;
+        if (error == GL_INVALID_ENUM)
+            saved->enumError = 1;
+        else if (error == GL_INVALID_VALUE)
+            saved->valueError = 1;
+        else if (error == GL_INVALID_OPERATION)
+            saved->operationError = 1;
+    }
+}
+
+static void restoreGLErrors(const struct gl_errors *saved) {
+    for (int i = 0; i < 16 && glGetError() != GL_NO_ERROR; i++)
+        ;
+    // None of these calls changes state when it fails. An invalid uniform
+    // location other than -1 is an error with or without a current program.
+    if (saved->enumError)
+        glDisable(0xffff);
+    if (saved->valueError)
+        glGenTextures(-1, NULL);
+    if (saved->operationError)
+        glUniform1i(-2, 0);
+}
+
 // Makes an EGL image of width x height pixels of the plane's memory in DRM
 // format fourcc, or returns EGL_NO_IMAGE_KHR.
 static EGLImageKHR createPlaneImage(CGLContextObj context, uint32_t fourcc, GLsizei width, GLsizei height,
                                    IOSurfaceRef surface, GLuint plane) {
     enum dmabuf_import support = dmabuf_import(context);
     if (support == DMABUF_IMPORT_UNSUPPORTED)
-        return 0;
-
-    if (support == DMABUF_IMPORT_UNSUPPORTED)
+        return EGL_NO_IMAGE_KHR;
+    if (!linearImportUsable(context, fourcc))
         return EGL_NO_IMAGE_KHR;
 
     _IOSurfaceDMABuf buffer = { .version = _IOSURFACE_DMABUF_VERSION };
@@ -2804,7 +2915,9 @@ static int importSurfacePlane(CGLContextObj context, GLenum target, GLenum inter
         return 0;
     // The texture has the image's size afterwards only if the driver took
     // the image; it is emptied first so that its old size does not count.
-    // Checking it so leaves the GL error state to the application.
+    // Errors of the attempt are not the application's.
+    struct gl_errors saved;
+    saveGLErrors(&saved);
     host_glTexImage2D(target, 0, (GLint) internal_format, 0, 0, 0, format, type, NULL);
     p_glEGLImageTargetTexture2DOES(target, image);
     // The texture keeps the memory after the image is gone.
@@ -2813,6 +2926,7 @@ static int importSurfacePlane(CGLContextObj context, GLenum target, GLenum inter
     GLint importedWidth = 0, importedHeight = 0;
     glGetTexLevelParameteriv(target, 0, GL_TEXTURE_WIDTH, &importedWidth);
     glGetTexLevelParameteriv(target, 0, GL_TEXTURE_HEIGHT, &importedHeight);
+    restoreGLErrors(&saved);
     return importedWidth == width && importedHeight == height;
 }
 
@@ -2985,6 +3099,8 @@ static GLuint shadowTexture(CGLContextObj context, IOSurfaceRef surface, GLuint 
     EGLImageKHR image = createPlaneImage(context, fourcc, width, height, surface, plane);
     if (image == EGL_NO_IMAGE_KHR)
         return 0;
+    struct gl_errors saved;
+    saveGLErrors(&saved);
     GLint previous = 0;
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous);
     glGenTextures(1, &shadow);
@@ -3000,8 +3116,9 @@ static GLuint shadowTexture(CGLContextObj context, IOSurfaceRef surface, GLuint 
     glBindTexture(GL_TEXTURE_2D, (GLuint) previous);
     if (importedWidth != width || importedHeight != height) {
         host_glDeleteTextures(1, &shadow);
-        return 0;
+        shadow = 0;
     }
+    restoreGLErrors(&saved);
     return shadow;
 }
 
