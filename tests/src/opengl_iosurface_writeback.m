@@ -25,6 +25,9 @@
 // Each case runs for GL_TEXTURE_RECTANGLE and, where the implementation
 // takes it (Darling does, macOS does not), GL_TEXTURE_2D. Reads are by the
 // CPU under a read-only lock and through a texture of another context.
+// Where Darling gives the surface a GPU buffer (a driver that cannot render
+// into the surface's memory), each case also prints whether it has one and
+// the copies made, through the private statistics.
 //
 // Needs an offscreen OpenGL context. AppKit is set up first so that the
 // window system's display is the one used, unless the argument
@@ -38,12 +41,17 @@
 #include <OpenGL/CGLIOSurface.h>
 #include <OpenGL/gl.h>
 #include <OpenGL/glext.h>
+#include <dlfcn.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#if __has_include(<IOSurface/IOSurfacePriv.h>)
+#include <IOSurface/IOSurfacePriv.h>
+#define HAVE_PRIVATE_HEADER 1
+#endif
 
 #ifndef GL_TEXTURE_RECTANGLE
 #define GL_TEXTURE_RECTANGLE GL_TEXTURE_RECTANGLE_ARB
@@ -70,6 +78,18 @@ static void expectPixel(const char *what, const char *target, uint32_t got, uint
 		printf("FAIL: %s (%s): %08x, expected %08x\n", what, target, got, expected);
 		g_failures++;
 	}
+}
+
+// Prints whether Darling gave the surface a GPU buffer, and its copies.
+static void printGPUBuffer(const char *what, const char *target, IOSurfaceRef surface) {
+#ifdef HAVE_PRIVATE_HEADER
+	typedef bool (*statistics_proc)(IOSurfaceRef, _IOSurfaceGPUBufferStatistics *);
+	statistics_proc statistics = (statistics_proc) dlsym(RTLD_DEFAULT, "_IOSurfaceGetGPUBufferStatistics");
+	_IOSurfaceGPUBufferStatistics s = { .version = _IOSURFACE_GPU_BUFFER_VERSION };
+	if (statistics && statistics(surface, &s))
+		printf("gpu buffer (%s, %s): %s, downloads %llu, uploads %llu\n", what, target, s.hasBuffer ? "yes" : "no",
+			(unsigned long long) s.downloads, (unsigned long long) s.uploads);
+#endif
 }
 
 static void finish(int status) {
@@ -259,6 +279,7 @@ static void runSingleThreadCases(CGLContextObj producer, CGLContextObj consumer,
 	glFlush();
 	expectPixel("keep: CPU sees the flushed rendering", name, cpuPixel(s), RED);
 	expectPixel("keep: another context sees the flushed rendering", name, consumerPixel(consumer, s), RED);
+	printGPUBuffer("keep", name, s);
 	stopProducer(&p);
 	CFRelease(s);
 
@@ -270,6 +291,7 @@ static void runSingleThreadCases(CGLContextObj producer, CGLContextObj consumer,
 	stopProducer(&p);
 	expectPixel("delete: CPU sees the rendering after the texture is deleted", name, cpuPixel(s), RED);
 	expectPixel("delete: another context sees it", name, consumerPixel(consumer, s), RED);
+	printGPUBuffer("delete", name, s);
 	CFRelease(s);
 
 	// delete-unflushed
@@ -280,6 +302,7 @@ static void runSingleThreadCases(CGLContextObj producer, CGLContextObj consumer,
 	p.texture = 0;
 	glFlush();
 	expectPixel("delete-unflushed: rendering before the delete is in the surface", name, cpuPixel(s), RED);
+	printGPUBuffer("delete-unflushed", name, s);
 	stopProducer(&p);
 	CFRelease(s);
 
@@ -298,6 +321,7 @@ static void runSingleThreadCases(CGLContextObj producer, CGLContextObj consumer,
 	glFlush();
 	expectPixel("consumer: the producer's second rendering is in the surface", name, cpuPixel(s), GREEN);
 	expectPixel("consumer: another context sees the second rendering", name, consumerPixel(consumer, s), GREEN);
+	printGPUBuffer("consumer", name, s);
 	stopProducer(&p);
 	CGLSetCurrentContext(consumer);
 	glDeleteTextures(1, &consumerTexture);
@@ -324,6 +348,7 @@ static void runSingleThreadCases(CGLContextObj producer, CGLContextObj consumer,
 	render(GREEN);
 	glFlush();
 	expectPixel("respecify: rendering after it covers the whole surface", name, cpuPixel(s), GREEN);
+	printGPUBuffer("respecify", name, s);
 	stopProducer(&p);
 	CFRelease(s);
 
@@ -339,6 +364,8 @@ static void runSingleThreadCases(CGLContextObj producer, CGLContextObj consumer,
 	glFlush();
 	expectPixel("rebind: rendering after the rebind is in the second surface", name, cpuPixel(second), CYAN);
 	expectPixel("rebind: and not in the first", name, cpuPixel(first), MAGENTA);
+	printGPUBuffer("rebind, first", name, first);
+	printGPUBuffer("rebind, second", name, second);
 	stopProducer(&p);
 	CFRelease(first);
 	CFRelease(second);
@@ -394,6 +421,7 @@ static void *consumerThread(void *arg) {
 	} else {
 		expectPixel("threads: CPU on another thread sees the flushed rendering", name, cpuPixel(h->surface), RED);
 		expectPixel("threads: a context on another thread sees it", name, consumerPixel(context, h->surface), RED);
+		printGPUBuffer("threads", name, h->surface);
 		CGLReleaseContext(context);
 	}
 	pthread_mutex_lock(&h->lock);
