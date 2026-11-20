@@ -2,3 +2,7 @@ Copyright (C) 2012-2023 Darling developers
 Copyright (C) 1999-2017 Apple, Inc.
 Copyright (C) 1989-2005 Free Software Foundation, Inc.
 
+
+The fonts in src/fonts/nimbus-sans and the HelveticaNeue.ttc built from them:
+Copyright 2014 by (URW)++ Design & Development, GNU Affero General Public License version 3 with
+the font embedding exception stated in src/fonts/nimbus-sans/LICENSE; see THIRD-PARTY-NOTICES.md.
