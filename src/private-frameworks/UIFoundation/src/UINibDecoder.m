@@ -130,6 +130,8 @@ struct UINibDecoderState {
     // afterwards the slot owns its object.
     id *decoded;
     uint8_t *state;
+    // How many values -decodeValueOfObjCType:at: has read from each object.
+    uint32_t *sequence;
     uint32_t current;
     unsigned depth;
     NSMutableDictionary *classMap;
@@ -195,7 +197,8 @@ struct UINibDecoderState {
     _s->classNames = calloc(_s->classCount ? _s->classCount : 1, sizeof(NSString *));
     _s->decoded = calloc(_s->objectCount, sizeof(id));
     _s->state = calloc(_s->objectCount, sizeof(uint8_t));
-    if (!_s->objects || !_s->values || !_s->keys || !_s->classNames || !_s->decoded || !_s->state)
+    _s->sequence = calloc(_s->objectCount, sizeof(uint32_t));
+    if (!_s->objects || !_s->values || !_s->keys || !_s->classNames || !_s->decoded || !_s->state || !_s->sequence)
         return NO;
 
     offset = keysOffset;
@@ -338,6 +341,7 @@ struct UINibDecoderState {
     free(_s->classNames);
     free(_s->decoded);
     free(_s->state);
+    free(_s->sequence);
     [_s->classMap release];
     [_s->data release];
     free(_s);
@@ -511,12 +515,55 @@ struct UINibDecoderState {
     return NULL;
 }
 
-#pragma mark - Unkeyed coding is not supported
+#pragma mark - Values without a key
 
+// An object that encodes values without a key (NSMapTable and NSHashTable do) has them archived
+// under the keys "$0", "$1" and so on, in the order they were encoded. They are read back in that
+// order: each call takes the next one of the object being decoded.
 - (void) decodeValueOfObjCType: (const char *) type at: (void *) data
 {
-    [NSException raise: NSInvalidArchiveOperationException
-                format: @"UINibDecoder supports keyed coding only (decodeValueOfObjCType:at:)"];
+    NSString *key = [NSString stringWithFormat: @"$%u", (unsigned) _s->sequence[_s->current]++];
+
+    if (type == NULL || data == NULL)
+        return;
+    switch (*type) {
+    case '@':
+        // As with the other coders the caller owns what is decoded through this method.
+        *(id *) data = [[self decodeObjectForKey: key] retain];
+        break;
+    case 'c':
+    case 'C':
+        *(char *) data = (char) [self _integerForKey: key];
+        break;
+    case 'B':
+        *(BOOL *) data = [self _integerForKey: key] != 0;
+        break;
+    case 's':
+    case 'S':
+        *(short *) data = (short) [self _integerForKey: key];
+        break;
+    case 'i':
+    case 'I':
+        *(int *) data = (int) [self _integerForKey: key];
+        break;
+    case 'l':
+    case 'L':
+        *(long *) data = (long) [self _integerForKey: key];
+        break;
+    case 'q':
+    case 'Q':
+        *(long long *) data = (long long) [self _integerForKey: key];
+        break;
+    case 'f':
+        *(float *) data = (float) [self _doubleForKey: key];
+        break;
+    case 'd':
+        *(double *) data = [self _doubleForKey: key];
+        break;
+    default:
+        [NSException raise: NSInvalidArchiveOperationException
+                    format: @"UINibDecoder cannot decode a value of type %s without a key", type];
+    }
 }
 
 - (NSData *) decodeDataObject
