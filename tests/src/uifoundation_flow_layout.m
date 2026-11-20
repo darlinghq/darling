@@ -327,6 +327,34 @@ static void test_drop_target_on_item_and_in_gap(void)
     }
 }
 
+// An empty section takes drops too: the drop target in a view whose sections are all empty is the gap before the
+// first section's first item, and the gap before an empty section's first item is one item, at the section's top
+// inset and the leading edge (observed on macOS 26.7.3 and 10.14.4; the hosts also give that frame, with the item
+// category, for any later index of the empty section, which is not pinned)
+static void test_drop_target_in_empty_sections(void)
+{
+    NSEdgeInsets inset = NSEdgeInsetsMake(5, 7, 5, 7);
+    NSCollectionView *view = makeView(NSMakeSize(300, 300), flow(80, 30, inset), @[@0], nil);
+    NSCollectionViewLayout *layout = view.collectionViewLayout;
+    NSCollectionElementCategory gap = NSCollectionElementCategoryInterItemGap;
+    checkTarget(layout, NSMakePoint(150, 150), gap, 0, NSZeroRect, NO);
+    checkTarget(layout, NSMakePoint(10, 10), gap, 0, NSZeroRect, NO);
+    NSCollectionViewLayoutAttributes *a =
+        [layout layoutAttributesForInterItemGapBeforeIndexPath: [NSIndexPath indexPathForItem: 0 inSection: 0]];
+    expect(a != nil && NSEqualRects(a.frame, NSMakeRect(0, 5, 80, 30)), "gap before an empty section's first item: %s",
+           [NSStringFromRect(a.frame) UTF8String]);
+
+    // An empty section before one with items
+    view = makeView(NSMakeSize(300, 300), flow(80, 30, inset), @[@0, @3], nil);
+    layout = view.collectionViewLayout;
+    a = [layout layoutAttributesForInterItemGapBeforeIndexPath: [NSIndexPath indexPathForItem: 0 inSection: 0]];
+    expect(NSEqualRects(a.frame, NSMakeRect(0, 5, 80, 30)), "gap before the empty first section's item: %s",
+           [NSStringFromRect(a.frame) UTF8String]);
+    a = [layout layoutAttributesForInterItemGapBeforeIndexPath: [NSIndexPath indexPathForItem: 0 inSection: 1]];
+    expect(NSEqualRects(a.frame, NSMakeRect(-3, 15, 10, 30)), "gap before the second section's first item: %s",
+           [NSStringFromRect(a.frame) UTF8String]);
+}
+
 int main(void)
 {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -340,6 +368,7 @@ int main(void)
     test_elements_in_rect();
     test_cross_axis_change_invalidates();
     test_drop_target_on_item_and_in_gap();
+    test_drop_target_in_empty_sections();
     [keep release];
     [pool release];
     if (failures)

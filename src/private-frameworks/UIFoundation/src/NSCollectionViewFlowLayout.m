@@ -106,6 +106,10 @@ static void placeLine(const CGFloat *lengths, NSInteger count, BOOL uniform, NSI
     }
 }
 
+@interface NSCollectionViewFlowLayout ()
+- (NSCollectionViewLayoutAttributes *) _gapInEmptySection: (NSInteger) section;
+@end
+
 @implementation NSCollectionViewFlowLayout
 
 + (Class) invalidationContextClass {
@@ -159,6 +163,8 @@ FLOW_PROPERTY(NSSize, footerReferenceSize, setFooterReferenceSize, _footerRefere
     _sectionItems = nil;
     [_sectionLines release];
     _sectionLines = nil;
+    [_sectionStarts release];
+    _sectionStarts = nil;
     _contentSize = NSZeroSize;
 }
 
@@ -196,6 +202,7 @@ FLOW_PROPERTY(NSSize, footerReferenceSize, setFooterReferenceSize, _footerRefere
     [self _discardLayout];
     _sectionItems = [[NSMutableArray alloc] init];
     _sectionLines = [[NSMutableArray alloc] init];
+    _sectionStarts = [[NSMutableArray alloc] init];
 
     NSCollectionView *view = self.collectionView;
     BOOL horizontal = [self _isHorizontal];
@@ -218,6 +225,7 @@ FLOW_PROPERTY(NSSize, footerReferenceSize, setFooterReferenceSize, _footerRefere
         [_sectionItems addObject: items];
         [_sectionLines addObject: lines];
         along += horizontal ? inset.left : inset.top;
+        [_sectionStarts addObject: [NSNumber numberWithDouble: along]];
 
         CGFloat *acrossLengths = malloc(sizeof(CGFloat) * (count + 1) * 3);
         CGFloat *alongLengths = acrossLengths + count + 1;
@@ -322,10 +330,12 @@ FLOW_PROPERTY(NSSize, footerReferenceSize, setFooterReferenceSize, _footerRefere
     NSArray *items = [_sectionItems objectAtIndex: indexPath.section];
     NSArray *lines = [_sectionLines objectAtIndex: indexPath.section];
     NSInteger count = [items count], index = indexPath.item;
-    if (index < 0 || index > count || count == 0)
+    if (index < 0 || index > count)
         return nil;
 
     BOOL horizontal = [self _isHorizontal];
+    if (count == 0)
+        return [self _gapInEmptySection: indexPath.section];
     CGFloat spacing = [self _interitemSpacingForSection: indexPath.section delegate: [self.collectionView delegate]];
     FlowRect gap;
     if (index == count) {
@@ -346,6 +356,22 @@ FLOW_PROPERTY(NSSize, footerReferenceSize, setFooterReferenceSize, _footerRefere
     }
     NSCollectionViewLayoutAttributes *attributes = [[[self class] layoutAttributesClass]
         layoutAttributesForInterItemGapBeforeIndexPath: indexPath];
+    attributes.frame = rectFromFlow(gap, horizontal);
+    return attributes;
+}
+
+// QUIRK: in a section with no items, the gap before its first item is one item size at the leading edge (across
+// position 0, not the section inset) and at the section's start along the flow. Not documented. Evidence: black-box
+// observation on macOS 26.7.3 and 10.14.4 (tier 2; darling's tests/collection-view.md).
+// Test: uifoundation_flow_layout.m test_drop_target_in_empty_sections
+- (NSCollectionViewLayoutAttributes *) _gapInEmptySection: (NSInteger) section {
+    BOOL horizontal = [self _isHorizontal];
+    NSIndexPath *path = [NSIndexPath indexPathForItem: 0 inSection: section];
+    NSSize size = [self _sizeForItemAtIndexPath: path delegate: [self.collectionView delegate]];
+    FlowRect gap = {0, [[_sectionStarts objectAtIndex: section] doubleValue], horizontal ? size.height : size.width,
+                    horizontal ? size.width : size.height};
+    NSCollectionViewLayoutAttributes *attributes = [[[self class] layoutAttributesClass]
+        layoutAttributesForInterItemGapBeforeIndexPath: path];
     attributes.frame = rectFromFlow(gap, horizontal);
     return attributes;
 }
@@ -394,15 +420,19 @@ FLOW_PROPERTY(NSSize, footerReferenceSize, setFooterReferenceSize, _footerRefere
             i = end;
         }
     }
+    // With no items at all, a drop goes before the first item of the first section
     if (lastSection < 0)
-        return nil;
+        return [_sectionItems count] > 0
+                   ? [self layoutAttributesForInterItemGapBeforeIndexPath: [NSIndexPath indexPathForItem: 0 inSection: 0]]
+                   : nil;
     NSInteger count = [[_sectionItems objectAtIndex: lastSection] count];
     return [self layoutAttributesForInterItemGapBeforeIndexPath: [NSIndexPath indexPathForItem: count
                                                                                       inSection: lastSection]];
 }
 
-// A vertical flow depends on the width and the horizontal origin, a horizontal one on the height and the vertical
-// origin; scrolling along the flow and growing along it change nothing (observed on macOS 26.7.3 and 10.14.4).
+// QUIRK: a vertical flow is invalidated by a new width or horizontal origin, a horizontal one by a new height or
+// vertical origin; scrolling along the flow and growing along it change nothing. Not documented. Evidence: black-box observation on macOS 26.7.3 and 10.14.4 (tier 2; darling's tests/collection-view.md).
+// Test: uifoundation_flow_layout.m test_cross_axis_change_invalidates
 - (BOOL) shouldInvalidateLayoutForBoundsChange: (NSRect) newBounds {
     NSRect bounds = [self.collectionView bounds];
     if ([self _isHorizontal])
