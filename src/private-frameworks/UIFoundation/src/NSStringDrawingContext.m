@@ -30,11 +30,12 @@
 
 @implementation NSStringDrawingContext
 
-@synthesize minimumScaleFactor = _minimumScaleFactor;
-@synthesize minimumTrackingAdjustment = _minimumTrackingAdjustment;
-@synthesize actualScaleFactor = _actualScaleFactor;
-@synthesize actualTrackingAdjustment = _actualTrackingAdjustment;
-@synthesize totalBounds = _totalBounds;
+NS_EXTRA_SYNTHESIZE_ASSIGN(NSStringDrawingContext, minimumScaleFactor, _minimumScaleFactor, CGFloat, minimumScaleFactor, setMinimumScaleFactor:)
+NS_EXTRA_SYNTHESIZE_ASSIGN(NSStringDrawingContext, minimumTrackingAdjustment, _minimumTrackingAdjustment, CGFloat, minimumTrackingAdjustment, setMinimumTrackingAdjustment:)
+NS_EXTRA_SYNTHESIZE_ASSIGN(NSStringDrawingContext, actualScaleFactor, _actualScaleFactor, CGFloat, actualScaleFactor, setActualScaleFactor:)
+NS_EXTRA_SYNTHESIZE_ASSIGN(NSStringDrawingContext, actualTrackingAdjustment, _actualTrackingAdjustment, CGFloat, actualTrackingAdjustment, setActualTrackingAdjustment:)
+NS_EXTRA_SYNTHESIZE_ASSIGN(NSStringDrawingContext, totalBounds, _totalBounds, NSRect, totalBounds, setTotalBounds:)
+NS_EXTRA_DEALLOC(NSStringDrawingContext)
 
 // Scaling and tracking adjustment are never applied by our string drawing, so
 // the actual factors keep their identity values.
@@ -42,7 +43,7 @@
 {
     self = [super init];
     if (self != nil) {
-        _actualScaleFactor = 1.0;
+        NS_EXTRA(NSStringDrawingContext, self)->_actualScaleFactor = 1.0;
     }
     return self;
 }
