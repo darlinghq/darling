@@ -187,12 +187,16 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     } else {
         _editedMask |= editedMask;
         _changeInLength += delta;
-        range.length += delta;
 
-        if (NS_EXTRA(NSTextStorage, self)->_editedRange.location == -1 && NS_EXTRA(NSTextStorage, self)->_editedRange.length == -1)
-            NS_EXTRA(NSTextStorage, self)->_editedRange = range;
-        else
-            NS_EXTRA(NSTextStorage, self)->_editedRange = NSUnionRange(NS_EXTRA(NSTextStorage, self)->_editedRange, range);
+        // The edited range so far and the range of this edit are both in the
+        // string as it was before this edit. Their union contains every
+        // character this edit replaced, so the change in length applies to
+        // it as a whole and the result is a range in the edited string.
+        NSRange edited = NS_EXTRA(NSTextStorage, self)->_editedRange;
+        if (edited.location != -1 || edited.length != -1)
+            range = NSUnionRange(edited, range);
+        range.length += delta;
+        NS_EXTRA(NSTextStorage, self)->_editedRange = range;
     }
 }
 
