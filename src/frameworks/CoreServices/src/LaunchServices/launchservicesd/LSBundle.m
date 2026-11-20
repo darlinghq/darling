@@ -388,7 +388,30 @@ static FSEventStreamRef g_eventStream;
 		if (![self setupBundleID:&needsProcessing]) return NO;
 		if (needsProcessing) {
 			NSDictionary* infoDict = (NSDictionary*) CFBundleGetInfoDictionary(_bundle);
-			NSArray* utis = [infoDict objectForKey:(NSString*) kUTExportedTypeDeclarationsKey];
+			// Imported declarations describe types the bundle uses but does not own. They are
+			// registered after its exported ones, and a type the bundle also exports keeps its
+			// exported declaration.
+			NSMutableArray* utis = [NSMutableArray array];
+			NSMutableSet<NSString*>* declared = [NSMutableSet set];
+			for (NSString* key in @[ (NSString*) kUTExportedTypeDeclarationsKey, (NSString*) kUTImportedTypeDeclarationsKey ])
+			{
+				id declarations = [infoDict objectForKey:key];
+				if (![declarations isKindOfClass: [NSArray class]])
+					continue;
+				for (id declaration in (NSArray*) declarations)
+				{
+					if (![declaration isKindOfClass: [NSDictionary class]])
+						continue;
+					id identifier = declaration[(NSString*) kUTTypeIdentifierKey];
+					if ([identifier isKindOfClass: [NSString class]])
+					{
+						if ([declared containsObject: [identifier lowercaseString]])
+							continue;
+						[declared addObject: [identifier lowercaseString]];
+					}
+					[utis addObject: declaration];
+				}
+			}
 			if (![self processUTIs:utis] || ![self processFileAssociations] || ![self processURLTypes])
 				return NO;
 		}
