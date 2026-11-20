@@ -76,6 +76,7 @@ typedef EventHandlerProcPtr EventHandlerUPP;
 typedef SInt16 EventPriority;
 typedef void* EventHandlerRef;
 
+typedef struct OpaqueEventLoopRef* EventLoopRef;
 
 typedef struct HICommand {
 	UInt32 attributes;
@@ -130,6 +131,14 @@ UInt32 GetCurrentKeyModifiers(void);
 
 // SPI: checks whether a key event is a system symbolic hot key.
 Boolean _IsSymbolicHotKeyEvent(EventRef inEvent, UInt32* outHotKeyCode, Boolean* outEnabled);
+
+EventLoopRef GetMainEventLoop();
+EventLoopRef GetCurrentEventLoop();
+void RunCurrentEventLoop(EventTimeout inTimeout);
+OSStatus QuitEventLoop(EventLoopRef inEventLoop);
+CFTypeRef GetCFRunLoopFromEventLoop(EventLoopRef inEventLoop);
+void RunApplicationEventLoop(void);
+void QuitApplicationEventLoop(void);
 
 #ifdef __cplusplus
 }
