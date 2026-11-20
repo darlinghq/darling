@@ -315,10 +315,20 @@ OSStatus AudioHardwareImpl::getPropertyCFString(CFStringRef str, UInt32* ioDataS
 
 OSStatus AudioHardwareImpl::getPropertyString(CFStringRef str, UInt32* ioDataSize, void* outData)
 {
-	const char* cstr = CFStringGetCStringPtr(str, kCFStringEncodingUTF8);
-	if (char* target = static_cast<char*>(outData))
-		strlcpy(target, cstr, *ioDataSize);
-	*ioDataSize = strlen(cstr) + 1;
+	// CFStringGetCStringPtr() may return NULL for any string, so convert into the caller's buffer
+	// (the property is a NUL-terminated C string) and report the size including the terminator.
+	CFIndex needed = CFStringGetMaximumSizeForEncoding(CFStringGetLength(str), kCFStringEncodingUTF8) + 1;
+	if (char* target = static_cast<char*>(outData); target && *ioDataSize > 0)
+	{
+		if (!CFStringGetCString(str, target, *ioDataSize, kCFStringEncodingUTF8))
+		{
+			target[0] = 0;
+			return kAudioHardwareBadPropertySizeError;
+		}
+		*ioDataSize = strlen(target) + 1;
+		return noErr;
+	}
+	*ioDataSize = needed;
 	return noErr;
 }
 
