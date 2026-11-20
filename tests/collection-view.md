@@ -114,3 +114,34 @@ of a scroll view in a window; frames are {x, y, width, height}.
 - `selectAll:` selects nothing without multiple selection and every item with it; `deselectAll:` empties the selection.
 - A relayout keeps the selection. Any `reloadData`, with fewer items or the same ones, empties it.
 - `selectionIndexes` are section 0's index paths, both ways.
+
+## Selecting with the mouse and the keyboard
+
+`appkit-collection-view-mouse.m` (darling-cocotron): events sent to an ordered-in window; three columns of 80×30 items.
+Same on both hosts, except where noted. The highlight states are 1 (for selection), 2 (for deselection) and 0 (none).
+
+- A click on an item, nothing selected: shouldHighlight/didHighlight item → 1, shouldSelect, didSelect,
+  shouldHighlight/didHighlight item → 0.
+- A click on another item with multiple selection: the new item → 1; the old ones → 2, shouldDeselect, didDeselect,
+  → 0; then shouldSelect and didSelect the new one, and it goes back to 0.
+- Without multiple selection (⌘-click too): the new item → 1, shouldSelect, didSelect, → 0, then shouldDeselect,
+  didDeselect, → 0 of the old one.
+- ⌘-click on an unselected item adds it (→ 1, should/didSelect, → 0); on a selected one removes it (→ 2,
+  should/didDeselect, → 0). Shift-click adds just the clicked item, not the items between.
+- A click on the background deselects everything (shouldDeselect, didDeselect, → 0; no highlight before); when empty
+  selection isn't allowed, nothing happens.
+- When shouldSelect returns an empty set: the item → 1, shouldSelect, → 0, nothing selected and no didSelect.
+- A rubber band highlights the items as it reaches them (→ 1; the delegate is also called with empty sets while it
+  moves) and ends with shouldSelect of the covered items, didSelect of what the delegate allowed, and → 0 of the covered
+  items. A ⌘-band that starts by reaching a selected item deselects the covered ones (→ 2, should/didDeselect of all
+  covered, → 0). Without multiple selection a band only deselects (the background click) and selects nothing.
+- A second click (click count 2) on a selected item reaches the item's view with the item selected, and calls no
+  delegate method.
+- Arrow keys: shouldDeselect and didDeselect of the old item, then shouldSelect and didSelect of the new one, no
+  highlight calls. Left and right move within a row (right at a row's end does nothing); up and down to the item above
+  or below. Shift-arrows select the range in index order from the item first selected to the new one (shift-right then
+  shift-down from 4 adds 5, then 6–8; shift-up then removes 6–8). With nothing selected, arrows do nothing.
+- Hosts differ at the last row: from item 8 (row 2, column 2), down selects item 9 (row 3, column 0) on host A and
+  does nothing on host B; the test pins neither.
+- The first click a process sends to its window activates it and its mouse up arrives late; the test starts with a
+  click that isn't part of any case.
