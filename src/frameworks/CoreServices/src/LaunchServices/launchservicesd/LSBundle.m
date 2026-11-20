@@ -25,7 +25,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <zlib.h>
 #include <LaunchServices/UTType.h>
 
-#define DATABASE_VERSION 1
+#define DATABASE_VERSION 2
 
 static FMDatabase* g_database;
 // Every registration write must participate in the caller's transaction.
@@ -202,6 +202,10 @@ static FSEventStreamRef g_eventStream;
 	NSString* role = dict[@"CFBundleTypeRole"];
 	NSString* rank = dict[@"LSHandlerRank"];
 	NSString* documentClass = dict[@"NSDocumentClass"];
+	// A document type distributed as a directory that is presented as a single file.
+	id typeIsPackage = dict[@"LSTypeIsPackage"];
+	NSNumber* isPackage = [NSNumber numberWithBool:
+		[typeIsPackage respondsToSelector: @selector(boolValue)] && [typeIsPackage boolValue]];
 
 	// TODO: exportable types?
 
@@ -210,8 +214,8 @@ static FSEventStreamRef g_eventStream;
 	if (!rank)
 		rank = @"Default";
 
-	LS_UPDATE(@"insert into app_doc (icon,name,role,rank,class,bundle) values (?,?,?,?,?,?)",
-		iconFile, displayName, role, rank, documentClass, myId);
+	LS_UPDATE(@"insert into app_doc (icon,name,role,rank,class,is_package,bundle) values (?,?,?,?,?,?,?)",
+		iconFile, displayName, role, rank, documentClass, isPackage, myId);
 	appDocId = [NSNumber numberWithInt: [g_database lastInsertRowId]];
 
 	NSArray<NSString*>* contentTypes = dict[@"LSItemContentTypes"];
@@ -560,6 +564,30 @@ static void createDBSchema(void)
 	}
 }
 
+// Version 2 records LSTypeIsPackage of document types. Clearing the checksums makes the next
+// scan register every bundle again, which fills it in (and registers imported type declarations,
+// which version 1 skipped).
+static void upgradeDBSchemaTo2(void)
+{
+	char* errorMessage = NULL;
+
+	sqlite3_exec(g_database.sqliteHandle,
+		"BEGIN;"
+		"ALTER TABLE `app_doc` ADD COLUMN `is_package` INTEGER NOT NULL DEFAULT 0;"
+		"UPDATE `bundle` SET `checksum` = 0;"
+		"UPDATE `globals` SET `value` = '2' WHERE `key` = 'version';"
+		"COMMIT;",
+		NULL, NULL, &errorMessage);
+
+	if (errorMessage != NULL)
+	{
+		NSLog(@"launchservicesd: upgradeDBSchemaTo2 error: %s\n", errorMessage);
+		sqlite3_free(errorMessage);
+		sqlite3_exec(g_database.sqliteHandle, "ROLLBACK;", NULL, NULL, NULL);
+		exit(1);
+	}
+}
+
 static void setupDBSchema(void)
 {
 	FMResultSet* rs = [g_database executeQuery:@"select value from `globals` where key = ?", @"version"];
@@ -569,11 +597,14 @@ static void setupDBSchema(void)
 	}
 	else
 	{
-		if ([rs intForColumn: @"value"] != DATABASE_VERSION)
+		int version = [rs intForColumn: @"value"];
+		[rs close];
+		if (version < 2)
+			upgradeDBSchemaTo2();
+		else if (version != DATABASE_VERSION)
 		{
 			// TODO: This is where we'll do DB schema updates or possibly just delete everything and index from scratch
 		}
-		[rs close];
 	}
 }
 
