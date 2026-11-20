@@ -18,6 +18,7 @@
 */
 
 #import <AppKit/NSCollectionViewLayoutInvalidationContext.h>
+#import "NSCollectionViewLayoutPrivate.h"
 
 @implementation NSCollectionViewLayoutInvalidationContext
 
@@ -32,6 +33,14 @@
 
 - (BOOL) invalidateDataSourceCounts {
     return _invalidateDataSourceCounts;
+}
+
+- (void) _setInvalidateEverything: (BOOL) invalidate {
+    _invalidateEverything = invalidate;
+}
+
+- (void) _setInvalidateDataSourceCounts: (BOOL) invalidate {
+    _invalidateDataSourceCounts = invalidate;
 }
 
 - (void) invalidateItemsAtIndexPaths: (NSSet<NSIndexPath *> *) indexPaths {

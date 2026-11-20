@@ -18,6 +18,7 @@
 */
 
 #import <AppKit/NSCollectionViewFlowLayout.h>
+#import <UIFoundation/NSCollectionViewFlowLayoutInvalidationContext.h>
 
 NSString *const NSCollectionElementKindSectionHeader =
         @"UICollectionElementKindSectionHeader";
@@ -49,6 +50,10 @@ NSString *const NSFlowLayoutRowVerticalAlignmentKey =
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+}
+
++ (Class) invalidationContextClass {
+    return [NSCollectionViewFlowLayoutInvalidationContext class];
 }
 
 - (instancetype) init {
