@@ -17,6 +17,7 @@
 #include <CarbonCore/BackupCore.h>
 #endif
 
+#include <CarbonCore/Aliases.h>
 #include <CarbonCore/Components.h>
 #include <CarbonCore/DateTimeUtils.h>
 #include <CarbonCore/Debugging.h>
