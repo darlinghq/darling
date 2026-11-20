@@ -5,6 +5,7 @@
 #include <OpenGL/OpenGL.h>
 #include <CoreGraphics/CoreGraphicsPrivate.h>
 #include <CoreFoundation/CFDictionary.h>
+#include <CoreFoundation/CFNotificationCenter.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,6 +24,14 @@ CGL_EXPORT CGLWindowRef CGLGetWindowForContext(CGLContextObj context, void *nati
 // of 0 accepts any alpha-capable configuration.
 CGL_EXPORT CGLWindowRef CGLGetWindowWithAlpha(void *native_window, unsigned long visual_id);
 CGL_EXPORT void CGLDestroyWindow(CGLWindowRef window);
+
+// Posted to CoreFoundation's local notification center, on the swapping
+// thread, after CGLFlushDrawable has swapped a surface made by CGLGetWindow*.
+// The object is the native_window the surface was made for. A window-system
+// backend that has to do work after a swap (a Wayland subsurface commit)
+// observes it, so that a client that swaps through CGL directly, not through
+// AppKit, is presented too.
+#define kCGLWindowDidSwapNotification CFSTR("CGLWindowDidSwapNotification")
 
 // Refresh rate of the output the context presents on, in millihertz (the unit
 // wl_output reports). A Wayland context keeps its swap interval in software
