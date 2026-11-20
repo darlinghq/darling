@@ -5,7 +5,9 @@
 #include <AudioToolbox/AudioFormat.h>
 #include <CoreAudio/AudioHardware.h>
 #include <mach/mach_time.h>
+#include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdlib>
 #include <cstring>
 
@@ -81,6 +83,7 @@ AudioQueueOutput::~AudioQueueOutput()
 		m_cbThread.detach(); // deleted by its own thread (dispose from a callback)
 	else
 		m_cbThread.join();
+	destroyTap(); // a tap is destroyed with its queue
 	for (AudioQueueBufferRef buffer : m_allocated)
 	{
 		free(buffer->mAudioData);
@@ -169,11 +172,37 @@ OSStatus AudioQueueOutput::renderCallback(void* refCon, AudioUnitRenderActionFla
 	return static_cast<AudioQueueOutput*>(refCon)->render(numberFrames, ioData);
 }
 
+UInt32 AudioQueueOutput::pullLocked(uint8_t* out, UInt32 want, std::vector<AudioQueueBufferRef>& finished)
+{
+	UInt32 done = 0;
+	while (!m_paused && done < want && !m_pending.empty())
+	{
+		AudioQueueBufferRef buffer = m_pending.front();
+		UInt32 left = buffer->mAudioDataByteSize - m_offset;
+		UInt32 n = std::min(left, want - done);
+		memcpy(out + done, static_cast<uint8_t*>(buffer->mAudioData) + m_offset, n);
+		done += n;
+		m_offset += n;
+		if (m_offset >= buffer->mAudioDataByteSize)
+		{
+			m_pending.pop_front();
+			m_offset = 0;
+			finished.push_back(buffer);
+		}
+	}
+	return done;
+}
+
 OSStatus AudioQueueOutput::render(UInt32 numberFrames, AudioBufferList* ioData)
 {
+	{
+		std::lock_guard<std::mutex> tapLock(m_tapMutex);
+		if (m_tap)
+			return renderTapped(numberFrames, ioData);
+	}
+
 	std::vector<AudioQueueBufferRef> finished;
 	const UInt32 frameBytes = m_format.mBytesPerFrame;
-	bool stopNow = false;
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -181,23 +210,7 @@ OSStatus AudioQueueOutput::render(UInt32 numberFrames, AudioBufferList* ioData)
 		{
 			uint8_t* out = static_cast<uint8_t*>(ioData->mBuffers[b].mData);
 			UInt32 want = std::min<UInt32>(ioData->mBuffers[b].mDataByteSize, numberFrames * frameBytes);
-			UInt32 done = 0;
-
-			while (!m_paused && done < want && !m_pending.empty())
-			{
-				AudioQueueBufferRef buffer = m_pending.front();
-				UInt32 left = buffer->mAudioDataByteSize - m_offset;
-				UInt32 n = std::min(left, want - done);
-				memcpy(out + done, static_cast<uint8_t*>(buffer->mAudioData) + m_offset, n);
-				done += n;
-				m_offset += n;
-				if (m_offset >= buffer->mAudioDataByteSize)
-				{
-					m_pending.pop_front();
-					m_offset = 0;
-					finished.push_back(buffer);
-				}
-			}
+			UInt32 done = pullLocked(out, want, finished);
 			// Underrun or pause: silence (zero is silence for float and signed PCM).
 			if (done < want)
 				memset(out + done, 0, want - done);
@@ -211,7 +224,16 @@ OSStatus AudioQueueOutput::render(UInt32 numberFrames, AudioBufferList* ioData)
 					samples[i] *= volume;
 			}
 		}
+	}
+	finishRender(finished, numberFrames);
+	return noErr;
+}
 
+void AudioQueueOutput::finishRender(std::vector<AudioQueueBufferRef>& finished, UInt32 numberFrames)
+{
+	bool stopNow;
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
 		if (!m_paused)
 			m_renderedFrames.fetch_add(numberFrames, std::memory_order_relaxed);
 		stopNow = m_stopWhenDrained && m_pending.empty();
@@ -232,9 +254,419 @@ OSStatus AudioQueueOutput::render(UInt32 numberFrames, AudioBufferList* ioData)
 				m_running = false;
 				m_stopWhenDrained = false;
 			}
-			AudioOutputUnitStop(m_unit);
+			if (m_unit)
+				AudioOutputUnitStop(m_unit);
 		});
 	}
+}
+
+// ---- Linear PCM sample access, for the processing tap and offline rendering ----
+
+namespace
+{
+	struct SampleLayout
+	{
+		bool isFloat;
+		UInt32 bytes;		// per sample
+		UInt32 channels;
+		UInt32 frameBytes;
+		UInt32 chunkStep;	// bytes between channels of one frame (0 when the data is one channel)
+	};
+
+	// Native-endian packed integer (16, 24, 32 bit) or float (32, 64 bit) PCM, interleaved,
+	// or a single non-interleaved channel.
+	bool describeSamples(const AudioStreamBasicDescription& f, SampleLayout& l)
+	{
+		if (f.mFormatID != kAudioFormatLinearPCM || f.mChannelsPerFrame == 0 || f.mBitsPerChannel == 0
+				|| f.mBitsPerChannel % 8 || (f.mFormatFlags & kAudioFormatFlagIsBigEndian)
+				|| f.mFramesPerPacket != 1)
+			return false;
+		l.isFloat = f.mFormatFlags & kAudioFormatFlagIsFloat;
+		l.bytes = f.mBitsPerChannel / 8;
+		l.channels = f.mChannelsPerFrame;
+		if (l.isFloat ? (l.bytes != 4 && l.bytes != 8)
+				: (!(f.mFormatFlags & kAudioFormatFlagIsSignedInteger) || (l.bytes != 2 && l.bytes != 3 && l.bytes != 4)))
+			return false;
+		bool nonInterleaved = f.mFormatFlags & kAudioFormatFlagIsNonInterleaved;
+		if (nonInterleaved && l.channels > 1)
+			return false;
+		l.frameBytes = nonInterleaved ? l.bytes : l.bytes * l.channels;
+		l.chunkStep = l.bytes;
+		return f.mBytesPerFrame == l.frameBytes;
+	}
+
+	float loadSample(const uint8_t* p, const SampleLayout& l)
+	{
+		if (l.isFloat)
+		{
+			if (l.bytes == 4)
+			{
+				float v;
+				memcpy(&v, p, 4);
+				return v;
+			}
+			double v;
+			memcpy(&v, p, 8);
+			return float(v);
+		}
+		int32_t v;
+		switch (l.bytes)
+		{
+			case 2:
+			{
+				int16_t s;
+				memcpy(&s, p, 2);
+				return float(s) / 32768.0f;
+			}
+			case 3:
+				v = int32_t(uint32_t(p[0]) << 8 | uint32_t(p[1]) << 16 | uint32_t(p[2]) << 24) >> 8;
+				return float(v) / 8388608.0f;
+			default:
+				memcpy(&v, p, 4);
+				return float(double(v) / 2147483648.0);
+		}
+	}
+
+	void storeSample(uint8_t* p, const SampleLayout& l, float x)
+	{
+		if (l.isFloat)
+		{
+			if (l.bytes == 4)
+				memcpy(p, &x, 4);
+			else
+			{
+				double d = x;
+				memcpy(p, &d, 8);
+			}
+			return;
+		}
+		if (!(x <= 1.0f))
+			x = 1.0f; // also catches NaN
+		if (x < -1.0f)
+			x = -1.0f;
+		switch (l.bytes)
+		{
+			case 2:
+			{
+				int16_t s = int16_t(std::lrintf(std::min(x * 32768.0f, 32767.0f)));
+				memcpy(p, &s, 2);
+				break;
+			}
+			case 3:
+			{
+				int32_t v = int32_t(std::lrintf(std::min(x * 8388608.0f, 8388607.0f)));
+				p[0] = uint8_t(v);
+				p[1] = uint8_t(v >> 8);
+				p[2] = uint8_t(v >> 16);
+				break;
+			}
+			default:
+			{
+				int32_t v = int32_t(std::lrint(std::min(double(x) * 2147483648.0, 2147483647.0)));
+				memcpy(p, &v, 4);
+			}
+		}
+	}
+
+	void unpackSamples(const uint8_t* raw, const SampleLayout& l, UInt32 frames, float* const* planes, float gain)
+	{
+		for (UInt32 c = 0; c < l.channels; c++)
+			for (UInt32 i = 0; i < frames; i++)
+				planes[c][i] = loadSample(raw + i * l.frameBytes + c * l.chunkStep, l) * gain;
+	}
+
+	// planes[c] may be null (silence).
+	void packSamples(uint8_t* raw, const SampleLayout& l, UInt32 frames, const float* const* planes, float gain)
+	{
+		for (UInt32 c = 0; c < l.channels; c++)
+			for (UInt32 i = 0; i < frames; i++)
+				storeSample(raw + i * l.frameBytes + c * l.chunkStep, l, planes[c] ? planes[c][i] * gain : 0.0f);
+	}
+
+	const UInt32 kTapMaxFrames = 2048;
+}
+
+struct AudioQueueOutput::Tap : OpaqueAudioQueueProcessingTap
+{
+	Tap(OpaqueAudioQueue* q, const SampleLayout& l, AudioQueueProcessingTapCallback cb, void* data,
+			AudioQueueProcessingTapFlags f)
+	: OpaqueAudioQueueProcessingTap(q), layout(l), callback(cb), clientData(data), flags(f),
+		raw(size_t(kTapMaxFrames) * l.frameBytes), source(size_t(kTapMaxFrames) * l.channels),
+		listMemory(offsetof(AudioBufferList, mBuffers) + l.channels * sizeof(AudioBuffer))
+	{
+	}
+
+	AudioBufferList* list() { return reinterpret_cast<AudioBufferList*>(listMemory.data()); }
+	float* plane(UInt32 c) { return source.data() + size_t(c) * kTapMaxFrames; }
+
+	SampleLayout layout;
+	AudioQueueProcessingTapCallback callback;
+	void* clientData;
+	AudioQueueProcessingTapFlags flags;
+	std::vector<uint8_t> raw;		// source audio in the queue's format
+	std::vector<float> source;		// the same, in the processing format
+	std::vector<uint8_t> listMemory;
+
+	// Only while the callback runs (under m_tapMutex)
+	bool active = false;
+	std::thread::id thread;
+	Float64 chunkTime = 0;			// queue sample time of the chunk
+	UInt32 chunkFrames = 0;
+	bool paused = false;
+	bool startOfStream = false;		// this chunk begins a continuous stream
+	bool sourced = false;			// the callback has pulled source audio
+	std::vector<AudioQueueBufferRef> finished;	// buffers fully consumed by this render
+};
+
+void AudioQueueOutput::destroyTap()
+{
+	delete m_tap;
+	m_tap = nullptr;
+}
+
+OSStatus AudioQueueOutput::renderTapped(UInt32 numberFrames, AudioBufferList* ioData)
+{
+	// Where the tap sits: the queue's audio is converted to the processing format (float,
+	// one buffer per channel), and the tap is called on chunks of at most kTapMaxFrames. The result is
+	// converted back to the queue's format. A tap that returns fewer frames than the
+	// chunk leaves the rest of the chunk silent. The queue has no effects of its own, so
+	// pre- and post-effects taps sit at the same point; the queue volume is applied to
+	// what comes out of the tap, so a tap always sees the unattenuated audio.
+	Tap* tap = m_tap;
+	const SampleLayout& l = tap->layout;
+	const float volume = m_volume.load(std::memory_order_relaxed);
+	const bool siphon = tap->flags & kAudioQueueProcessingTap_Siphon;
+
+	uint8_t* out = static_cast<uint8_t*>(ioData->mBuffers[0].mData);
+	const UInt32 wantFrames = std::min<UInt32>(ioData->mBuffers[0].mDataByteSize, numberFrames * l.frameBytes) / l.frameBytes;
+	const uint64_t baseTime = m_renderedFrames.load(std::memory_order_relaxed);
+
+	tap->finished.clear();
+	tap->active = true;
+	tap->thread = std::this_thread::get_id();
+
+	UInt32 done = 0;
+	while (done < wantFrames)
+	{
+		const UInt32 chunk = std::min(wantFrames - done, kTapMaxFrames);
+		uint8_t* chunkOut = out + size_t(done) * l.frameBytes;
+		tap->chunkTime = Float64(baseTime + done);
+		tap->chunkFrames = chunk;
+		{
+			// Playback beginning or resuming is reported with the first chunk after it, to
+			// every source pull of that chunk.
+			std::lock_guard<std::mutex> lock(m_mutex);
+			tap->paused = m_paused;
+			tap->startOfStream = false;
+			if (!m_paused && m_streamStart)
+			{
+				tap->startOfStream = true;
+				m_streamStart = false;
+			}
+		}
+		tap->sourced = false;
+
+		AudioTimeStamp stamp;
+		memset(&stamp, 0, sizeof(stamp));
+		stamp.mSampleTime = tap->chunkTime;
+		stamp.mFlags = kAudioTimeStampSampleTimeValid;
+		AudioQueueProcessingTapFlags flags = tap->flags;
+		UInt32 produced = 0;
+		AudioBufferList* list = tap->list();
+		list->mNumberBuffers = l.channels;
+
+		if (siphon)
+		{
+			// The tap observes the source audio; what the queue plays is that audio itself.
+			UInt32 got = 0;
+			AudioQueueProcessingTapFlags pullFlags = 0;
+			for (UInt32 c = 0; c < l.channels; c++)
+				list->mBuffers[c] = { 1, chunk * UInt32(sizeof(float)), tap->plane(c) };
+			pullTapSource(tap, chunk, &pullFlags, &got, list);
+			tap->sourced = false; // a siphon's callback has not asked for source audio
+			flags |= pullFlags;
+			UInt32 zero = 0;
+			tap->callback(tap->clientData, tap, chunk, &stamp, &flags, &zero, list);
+			produced = got;
+			if (volume == 1.0f)
+				memcpy(chunkOut, tap->raw.data(), size_t(got) * l.frameBytes);
+			else
+			{
+				float* planes[8];
+				std::vector<float*> many;
+				float** p = planes;
+				if (l.channels > 8)
+				{
+					many.resize(l.channels);
+					p = many.data();
+				}
+				for (UInt32 c = 0; c < l.channels; c++)
+					p[c] = tap->plane(c);
+				unpackSamples(tap->raw.data(), l, got, p, 1.0f);
+				packSamples(chunkOut, l, got, p, volume);
+			}
+		}
+		else
+		{
+			for (UInt32 c = 0; c < l.channels; c++)
+				list->mBuffers[c] = { 1, 0, nullptr };
+			UInt32 frames = 0;
+			tap->callback(tap->clientData, tap, chunk, &stamp, &flags, &frames, list);
+			produced = std::min(frames, chunk);
+			std::vector<const float*> planes(l.channels);
+			for (UInt32 c = 0; c < l.channels; c++)
+				planes[c] = static_cast<const float*>(list->mBuffers[c].mData);
+			packSamples(chunkOut, l, produced, planes.data(), volume);
+		}
+		if (produced < chunk)
+			memset(chunkOut + size_t(produced) * l.frameBytes, 0, size_t(chunk - produced) * l.frameBytes);
+		done += chunk;
+	}
+	tap->active = false;
+
+	ioData->mBuffers[0].mDataByteSize = wantFrames * l.frameBytes;
+	for (UInt32 b = 1; b < ioData->mNumberBuffers; b++)
+		memset(ioData->mBuffers[b].mData, 0, ioData->mBuffers[b].mDataByteSize);
+
+	std::vector<AudioQueueBufferRef> finished;
+	finished.swap(tap->finished);
+	finishRender(finished, numberFrames);
+	return noErr;
+}
+
+OSStatus AudioQueueOutput::processingTapNew(AudioQueueProcessingTapCallback inCallback, void* inClientData,
+		AudioQueueProcessingTapFlags inFlags, UInt32* outMaxFrames,
+		AudioStreamBasicDescription* outProcessingFormat, AudioQueueProcessingTapRef* outAQTap)
+{
+	// One of pre- or post-effects, and optionally the siphon flag; nothing else.
+	const AudioQueueProcessingTapFlags placement = inFlags & (kAudioQueueProcessingTap_PreEffects | kAudioQueueProcessingTap_PostEffects);
+	if ((inFlags & ~(kAudioQueueProcessingTap_PreEffects | kAudioQueueProcessingTap_PostEffects | kAudioQueueProcessingTap_Siphon))
+			|| (placement != kAudioQueueProcessingTap_PreEffects && placement != kAudioQueueProcessingTap_PostEffects))
+		return kAudio_ParamError;
+	SampleLayout layout;
+	if (!describeSamples(m_format, layout))
+		return kAudioFormatUnsupportedDataFormatError;
+
+	std::lock_guard<std::mutex> tapLock(m_tapMutex);
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		if (m_running)
+			return kAudioQueueErr_InvalidRunState;
+	}
+	if (m_tap)
+		return kAudioQueueErr_TooManyTaps;
+	m_tap = new Tap(this, layout, inCallback, inClientData, inFlags);
+
+	*outMaxFrames = kTapMaxFrames;
+	memset(outProcessingFormat, 0, sizeof(*outProcessingFormat));
+	outProcessingFormat->mSampleRate = m_format.mSampleRate;
+	outProcessingFormat->mFormatID = kAudioFormatLinearPCM;
+	outProcessingFormat->mFormatFlags = kAudioFormatFlagsNativeFloatPacked | kAudioFormatFlagIsNonInterleaved;
+	outProcessingFormat->mBytesPerPacket = 4;
+	outProcessingFormat->mFramesPerPacket = 1;
+	outProcessingFormat->mBytesPerFrame = 4;
+	outProcessingFormat->mChannelsPerFrame = layout.channels;
+	outProcessingFormat->mBitsPerChannel = 32;
+	*outAQTap = m_tap;
+	return noErr;
+}
+
+OSStatus AudioQueueOutput::processingTapDispose(AudioQueueProcessingTapRef inAQTap)
+{
+	// Synchronous: a callback in progress on another thread is waited for through m_tapMutex.
+	// A callback cannot dispose its own tap.
+	// QUIRK: a tap can be disposed while the queue is running, although the public header
+	// asks for a stopped queue. Evidence: black-box observation on macOS 26.7.3 (tier 2),
+	// AudioQueueProcessingTapDispose on a started offline-rendering queue returns noErr.
+	// Test: test_quirk_dispose_tap_while_running (in test_siphon)
+	Tap* current = m_tap;
+	if (current && current->active && current->thread == std::this_thread::get_id())
+		return kAudioQueueErr_InvalidTapContext;
+	std::lock_guard<std::mutex> tapLock(m_tapMutex);
+	if (inAQTap != m_tap)
+		return kAudioQueueErr_InvalidParameter;
+	delete m_tap;
+	m_tap = nullptr;
+	return noErr;
+}
+
+OSStatus AudioQueueOutput::processingTapGetSourceAudio(AudioQueueProcessingTapRef inAQTap, UInt32 inNumberFrames,
+		AudioTimeStamp* ioTimeStamp, AudioQueueProcessingTapFlags* outFlags, UInt32* outNumberFrames,
+		AudioBufferList* ioData)
+{
+	// Called from the tap's callback only. Not under m_tapMutex: the callback runs with it
+	// held, by this very thread.
+	Tap* tap = static_cast<Tap*>(inAQTap);
+	if (!tap->active || tap->thread != std::this_thread::get_id())
+		return kAudioQueueErr_InvalidTapContext;
+	if (tap->flags & kAudioQueueProcessingTap_Siphon)
+		return kAudioQueueErr_InvalidTapContext;
+	if (!outNumberFrames)
+		return kAudioQueueErr_InvalidParameter;
+	OSStatus status = pullTapSource(tap, inNumberFrames, outFlags, outNumberFrames, ioData);
+	if (status == noErr && ioTimeStamp)
+	{
+		ioTimeStamp->mFlags |= kAudioTimeStampSampleTimeValid;
+		ioTimeStamp->mSampleTime = tap->chunkTime;
+	}
+	return status;
+}
+
+OSStatus AudioQueueOutput::pullTapSource(Tap* tap, UInt32 inNumberFrames, AudioQueueProcessingTapFlags* outFlags,
+		UInt32* outNumberFrames, AudioBufferList* ioData)
+{
+	const SampleLayout& l = tap->layout;
+	if (!ioData || ioData->mNumberBuffers != l.channels)
+		return kAudioQueueErr_InvalidParameter;
+	const UInt32 frames = std::min(inNumberFrames, kTapMaxFrames);
+	for (UInt32 c = 0; c < l.channels; c++)
+	{
+		if (ioData->mBuffers[c].mData && ioData->mBuffers[c].mDataByteSize < frames * sizeof(float))
+			return kAudioQueueErr_InvalidParameter;
+	}
+
+	UInt32 bytes;
+	AudioQueueProcessingTapFlags flags = 0;
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		if (tap->startOfStream)
+			flags |= kAudioQueueProcessingTap_StartOfStream;
+		bytes = pullLocked(tap->raw.data(), frames * l.frameBytes, tap->finished);
+		if (!m_paused && bytes < frames * l.frameBytes && m_stopWhenDrained && m_pending.empty())
+			flags |= kAudioQueueProcessingTap_EndOfStream;
+	}
+	const UInt32 got = bytes / l.frameBytes;
+
+	std::vector<float*> planes(l.channels);
+	for (UInt32 c = 0; c < l.channels; c++)
+	{
+		if (!ioData->mBuffers[c].mData)
+			ioData->mBuffers[c].mData = tap->plane(c);
+		planes[c] = static_cast<float*>(ioData->mBuffers[c].mData);
+		ioData->mBuffers[c].mNumberChannels = 1;
+		ioData->mBuffers[c].mDataByteSize = got * sizeof(float);
+	}
+	unpackSamples(tap->raw.data(), l, got, planes.data(), 1.0f);
+
+	if (outNumberFrames)
+		*outNumberFrames = got;
+	if (outFlags)
+		*outFlags = flags;
+	tap->sourced = true;
+	return noErr;
+}
+
+OSStatus AudioQueueOutput::processingTapGetQueueTime(AudioQueueProcessingTapRef inAQTap,
+		Float64* outQueueSampleTime, UInt32* outQueueFrameCount)
+{
+	Tap* tap = static_cast<Tap*>(inAQTap);
+	// Only from the callback and after it has pulled source audio, which a siphon never does.
+	if (!tap->active || tap->thread != std::this_thread::get_id() || !tap->sourced)
+		return kAudioQueueErr_InvalidTapContext;
+	if (!outQueueSampleTime || !outQueueFrameCount)
+		return kAudioQueueErr_InvalidParameter;
+	*outQueueSampleTime = tap->chunkTime;
+	*outQueueFrameCount = tap->paused ? 0 : tap->chunkFrames;
 	return noErr;
 }
 
@@ -281,20 +713,32 @@ void AudioQueueOutput::drainCallbacks()
 OSStatus AudioQueueOutput::start(const AudioTimeStamp *inStartTime)
 {
 	std::lock_guard<std::mutex> control(m_controlMutex);
-	OSStatus status = ensureUnit();
+	bool offline;
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		offline = m_offline;
+	}
+	OSStatus status = noErr;
+	if (!offline)
+		status = ensureUnit();
 	if (status != noErr)
 		return status;
 
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
+		if (m_paused || !m_running)
+			m_streamStart = true;
 		m_paused = false;
 		m_stopWhenDrained = false;
 		if (m_running)
 			return noErr;
 	}
-	status = AudioOutputUnitStart(m_unit);
-	if (status != noErr)
-		return status;
+	if (!offline)
+	{
+		status = AudioOutputUnitStart(m_unit);
+		if (status != noErr)
+			return status;
+	}
 	std::lock_guard<std::mutex> lock(m_mutex);
 	m_running = true;
 	return noErr;
@@ -304,7 +748,9 @@ OSStatus AudioQueueOutput::prime(UInt32 inNumberOfFramesToPrepare, UInt32 *outNu
 {
 	// Nothing is decoded ahead of time: linear PCM is played as it is.
 	std::unique_lock<std::mutex> control(m_controlMutex);
-	OSStatus status = ensureUnit();
+	OSStatus status = noErr;
+	if (!m_offline)
+		status = ensureUnit();
 	control.unlock();
 	if (status != noErr)
 		return status;
@@ -347,7 +793,8 @@ OSStatus AudioQueueOutput::stop(Boolean inImmediate)
 			}
 			m_running = false;
 		}
-		AudioOutputUnitStop(m_unit);
+		if (m_unit)
+			AudioOutputUnitStop(m_unit);
 		return noErr;
 	}
 
@@ -367,6 +814,7 @@ OSStatus AudioQueueOutput::stop(Boolean inImmediate)
 		std::lock_guard<std::mutex> lock(m_mutex);
 		m_paused = false;
 		m_stopWhenDrained = false;
+		m_streamStart = true;
 		unplayed.assign(m_pending.begin(), m_pending.end());
 		m_pending.clear();
 		m_offset = 0;
@@ -394,6 +842,7 @@ OSStatus AudioQueueOutput::reset()
 		m_pending.clear();
 		m_offset = 0;
 		m_stopWhenDrained = false;
+		m_streamStart = true;
 	}
 	returnBuffers(unplayed);
 	drainCallbacks();
@@ -567,12 +1016,84 @@ OSStatus AudioQueueOutput::getProperty(AudioQueuePropertyID inID, void *outData,
 
 OSStatus AudioQueueOutput::setOfflineRenderFormat(const AudioStreamBasicDescription *inFormat, const AudioChannelLayout *inLayout)
 {
-	STUB();
-	return unimpErr;
+	// A NULL format leaves offline mode. Either way the queue must be stopped.
+	std::lock_guard<std::mutex> control(m_controlMutex);
+	std::lock_guard<std::mutex> lock(m_mutex);
+	if (m_running)
+		return kAudioQueueErr_InvalidRunState;
+	if (!inFormat)
+	{
+		m_offline = false;
+		return noErr;
+	}
+	// Linear PCM at the queue's sample rate and channel count; the sample format may differ.
+	SampleLayout layout;
+	if (!describeSamples(*inFormat, layout))
+		return kAudioFormatUnsupportedDataFormatError;
+	if (inFormat->mSampleRate != m_format.mSampleRate || inFormat->mChannelsPerFrame != m_format.mChannelsPerFrame)
+		return kAudioFormatUnsupportedDataFormatError;
+	m_offlineFormat = *inFormat;
+	m_offline = true;
+	return noErr;
 }
 
 OSStatus AudioQueueOutput::offlineRender(const AudioTimeStamp *inTimestamp, AudioQueueBufferRef ioBuffer, UInt32 inNumberFrames)
 {
-	STUB();
-	return unimpErr;
+	SampleLayout queueLayout, offlineLayout;
+	AudioStreamBasicDescription offlineFormat;
+	UInt32 frames;
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		if (!m_offline)
+			return kAudioQueueErr_InvalidOfflineMode;
+		if (!m_running)
+			return kAudioQueueErr_InvalidRunState;
+		if (!inTimestamp || !(inTimestamp->mFlags & kAudioTimeStampSampleTimeValid) || !ioBuffer || !inNumberFrames)
+			return kAudio_ParamError;
+		if (!m_allocated.count(ioBuffer))
+			return kAudioQueueErr_InvalidBuffer;
+		offlineFormat = m_offlineFormat;
+		describeSamples(m_format, queueLayout);
+		describeSamples(offlineFormat, offlineLayout);
+		if (UInt64(inNumberFrames) * offlineLayout.frameBytes > ioBuffer->mAudioDataBytesCapacity)
+			return kAudio_ParamError;
+
+		// Only what has been enqueued is rendered: the buffer's size says how much that was
+		// (and a tap is asked for that many frames, not for the full count).
+		UInt64 bytes = 0;
+		for (AudioQueueBufferRef buffer : m_pending)
+			bytes += buffer->mAudioDataByteSize;
+		bytes -= m_offset;
+		frames = UInt32(std::min<UInt64>(bytes / queueLayout.frameBytes, inNumberFrames));
+	}
+	if (!frames)
+	{
+		ioBuffer->mAudioDataByteSize = 0;
+		return noErr;
+	}
+
+	// Render in the queue's format, then convert to the offline format when it differs.
+	std::vector<uint8_t> queueData(size_t(frames) * queueLayout.frameBytes);
+	AudioBufferList list;
+	list.mNumberBuffers = 1;
+	list.mBuffers[0].mNumberChannels = queueLayout.channels;
+	list.mBuffers[0].mDataByteSize = UInt32(queueData.size());
+	list.mBuffers[0].mData = queueData.data();
+	render(frames, &list);
+	const UInt32 producedFrames = list.mBuffers[0].mDataByteSize / queueLayout.frameBytes;
+
+	uint8_t* out = static_cast<uint8_t*>(ioBuffer->mAudioData);
+	if (offlineFormat.mFormatFlags == m_format.mFormatFlags && offlineFormat.mBitsPerChannel == m_format.mBitsPerChannel)
+		memcpy(out, queueData.data(), size_t(producedFrames) * queueLayout.frameBytes);
+	else
+	{
+		std::vector<float> samples(size_t(frames) * queueLayout.channels);
+		std::vector<float*> planes(queueLayout.channels);
+		for (UInt32 c = 0; c < queueLayout.channels; c++)
+			planes[c] = samples.data() + size_t(c) * frames;
+		unpackSamples(queueData.data(), queueLayout, producedFrames, planes.data(), 1.0f);
+		packSamples(out, offlineLayout, producedFrames, planes.data(), 1.0f);
+	}
+	ioBuffer->mAudioDataByteSize = producedFrames * offlineLayout.frameBytes;
+	return noErr;
 }

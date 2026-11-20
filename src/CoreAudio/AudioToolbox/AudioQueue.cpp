@@ -172,3 +172,36 @@ OSStatus AudioQueueGetCurrentTime(AudioQueueRef inAQ, AudioQueueTimelineRef inTi
 		return kAudio_ParamError;
 	return inAQ->getCurrentTime(outTimeStamp, outTimelineDiscontinuity);
 }
+
+OSStatus AudioQueueProcessingTapNew(AudioQueueRef inAQ, AudioQueueProcessingTapCallback inCallback,
+		void* inClientData, AudioQueueProcessingTapFlags inFlags, UInt32* outMaxFrames,
+		AudioStreamBasicDescription* outProcessingFormat, AudioQueueProcessingTapRef* outAQTap)
+{
+	if (!inAQ || !inCallback || !outMaxFrames || !outProcessingFormat || !outAQTap)
+		return kAudioQueueErr_InvalidParameter;
+	return inAQ->processingTapNew(inCallback, inClientData, inFlags, outMaxFrames, outProcessingFormat, outAQTap);
+}
+
+OSStatus AudioQueueProcessingTapDispose(AudioQueueProcessingTapRef inAQTap)
+{
+	if (!inAQTap)
+		return kAudioQueueErr_InvalidParameter;
+	return inAQTap->queue->processingTapDispose(inAQTap);
+}
+
+OSStatus AudioQueueProcessingTapGetSourceAudio(AudioQueueProcessingTapRef inAQTap, UInt32 inNumberFrames,
+		AudioTimeStamp* ioTimeStamp, AudioQueueProcessingTapFlags* outFlags, UInt32* outNumberFrames,
+		AudioBufferList* ioData)
+{
+	if (!inAQTap)
+		return kAudioQueueErr_InvalidParameter;
+	return inAQTap->queue->processingTapGetSourceAudio(inAQTap, inNumberFrames, ioTimeStamp, outFlags, outNumberFrames, ioData);
+}
+
+OSStatus AudioQueueProcessingTapGetQueueTime(AudioQueueProcessingTapRef inAQTap,
+		Float64* outQueueSampleTime, UInt32* outQueueFrameCount)
+{
+	if (!inAQTap)
+		return kAudioQueueErr_InvalidParameter;
+	return inAQTap->queue->processingTapGetQueueTime(inAQTap, outQueueSampleTime, outQueueFrameCount);
+}

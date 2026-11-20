@@ -2,6 +2,17 @@
 #define	AUDIOQUEUEBASE_H
 #include "AudioQueue.h"
 
+struct OpaqueAudioQueue;
+
+// A processing tap. The queue that created it owns it; the public tap functions
+// are forwarded to that queue.
+struct OpaqueAudioQueueProcessingTap
+{
+	explicit OpaqueAudioQueueProcessingTap(OpaqueAudioQueue* q) : queue(q) {}
+	virtual ~OpaqueAudioQueueProcessingTap() {}
+	OpaqueAudioQueue* const queue;
+};
+
 struct OpaqueAudioQueue
 {
 public:
@@ -32,6 +43,16 @@ public:
 	virtual OSStatus freeBuffer(AudioQueueBufferRef inBuffer);
 	virtual OSStatus enqueueBuffer(AudioQueueBufferRef inBuffer, UInt32 inNumPacketDescs, const AudioStreamPacketDescription *inPacketDescs);
 	virtual OSStatus getCurrentTime(AudioTimeStamp *outTimeStamp, Boolean *outTimelineDiscontinuity);
+
+	virtual OSStatus processingTapNew(AudioQueueProcessingTapCallback inCallback, void* inClientData,
+			AudioQueueProcessingTapFlags inFlags, UInt32* outMaxFrames,
+			AudioStreamBasicDescription* outProcessingFormat, AudioQueueProcessingTapRef* outAQTap);
+	virtual OSStatus processingTapDispose(AudioQueueProcessingTapRef inAQTap);
+	virtual OSStatus processingTapGetSourceAudio(AudioQueueProcessingTapRef inAQTap, UInt32 inNumberFrames,
+			AudioTimeStamp* ioTimeStamp, AudioQueueProcessingTapFlags* outFlags, UInt32* outNumberFrames,
+			AudioBufferList* ioData);
+	virtual OSStatus processingTapGetQueueTime(AudioQueueProcessingTapRef inAQTap,
+			Float64* outQueueSampleTime, UInt32* outQueueFrameCount);
 
 	virtual OSStatus setOfflineRenderFormat(const AudioStreamBasicDescription *inFormat, const AudioChannelLayout *inLayout) = 0;
 	virtual OSStatus offlineRender(const AudioTimeStamp *inTimestamp, AudioQueueBufferRef ioBuffer, UInt32 inNumberFrames) = 0;
