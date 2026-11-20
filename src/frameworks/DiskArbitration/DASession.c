@@ -168,16 +168,9 @@ void DAApprovalSessionUnscheduleFromRunLoop(DAApprovalSessionRef session,
 	
 }
 
-/* Approval and peek callbacks are accepted and never called. */
+/* Mount approval and peek callbacks are accepted and never called: Darling's DiskArbitration mounts nothing and
+   has no probing phase. */
 void DARegisterDiskMountApprovalCallback(DASessionRef session, CFDictionaryRef match, DADiskMountApprovalCallback callback, void *context)
-{
-}
-
-void DARegisterDiskUnmountApprovalCallback(DASessionRef session, CFDictionaryRef match, DADiskUnmountApprovalCallback callback, void *context)
-{
-}
-
-void DARegisterDiskEjectApprovalCallback(DASessionRef session, CFDictionaryRef match, DADiskEjectApprovalCallback callback, void *context)
 {
 }
 
@@ -185,6 +178,3 @@ void DARegisterDiskPeekCallback(DASessionRef session, CFDictionaryRef match, CFI
 {
 }
 
-void DAUnregisterApprovalCallback(DASessionRef session, void *callback, void *context)
-{
-}

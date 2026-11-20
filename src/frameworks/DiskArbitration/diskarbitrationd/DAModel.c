@@ -301,6 +301,8 @@ static void appear(const struct statfs* volume, bool root, const DAModelEvents* 
 	if (media == NULL)
 		return;
 
+	static unsigned long lastId;
+	media->id = ++lastId;
 	media->unit = root ? 0 : freeUnit();
 	media->root = root;
 	media->mounted = true;
@@ -433,6 +435,20 @@ void DAModelRescan(const DAModelEvents* events)
 	}
 
 	free(volumes);
+}
+
+void DAModelUnmounted(DAMedia* media, const DAModelEvents* events)
+{
+	char mountPoint[MAXPATHLEN];
+	strlcpy(mountPoint, media->mountPoint, sizeof(mountPoint));
+	volumeGone(media, events);
+	if (!media->root)
+		DAModelRemoveMountPoint(mountPoint);
+}
+
+void DAModelRemove(DAMedia* media, const DAModelEvents* events)
+{
+	destroy(media, events);
 }
 
 void DAModelRemoveMountPoint(const char* mountPoint)
