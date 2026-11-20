@@ -27,7 +27,8 @@ C_MODULES = ['Darwin', 'Darwin.MacTypes', 'Darwin.os.lock', 'Dispatch', 'os.log'
 # Modules that need Foundation (and so the AE headers, see below).
 FOUNDATION_MODULES = ['CoreFoundation', 'Foundation', 'CoreGraphics', 'QuartzCore',
                       'CoreText', 'AppKit', 'OpenGL', 'CoreData', 'UniformTypeIdentifiers',
-                      'Combine']
+                      'Combine', 'Contacts', 'Network', 'Photos', 'Vision', 'Metal',
+                      'SceneKit', 'CryptoTokenKit', 'CoreLocation', 'MapKit']
 OBJC_MODULES = ['ObjectiveC']
 
 

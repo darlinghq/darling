@@ -19,6 +19,18 @@
 
 #import <Foundation/Foundation.h>
 
+#ifndef NS_ERROR_ENUM
+#define __NS_ERROR_ENUM_GET_MACRO(_1, _2, NAME, ...) NAME
+#if ((__cplusplus && __cplusplus >= 201103L && (__has_extension(cxx_strong_enums) || __has_feature(objc_fixed_enum))) || (!__cplusplus && __has_feature(objc_fixed_enum))) && __has_attribute(ns_error_domain)
+#define __NS_NAMED_ERROR_ENUM(_domain, _name)     enum _name : NSInteger _name; enum __attribute__((ns_error_domain(_domain))) _name : NSInteger
+#define __NS_ANON_ERROR_ENUM(_domain)             enum __attribute__((ns_error_domain(_domain))) : NSInteger
+#else
+#define __NS_NAMED_ERROR_ENUM(_domain, _name) NS_ENUM(NSInteger, _name)
+#define __NS_ANON_ERROR_ENUM(_domain) NS_ENUM(NSInteger)
+#endif
+#define NS_ERROR_ENUM(...) __NS_ERROR_ENUM_GET_MACRO(__VA_ARGS__, __NS_NAMED_ERROR_ENUM, __NS_ANON_ERROR_ENUM)(__VA_ARGS__)
+#endif
+
 NS_ASSUME_NONNULL_BEGIN
 
 // Error domain of the Contacts framework.
