@@ -1661,13 +1661,30 @@
 			</array>
 			<key>UTTypeTagSpecification</key>
 			<dict>
+				<key>public.mime-type</key>
+				<array>
+					<string>audio/mp4</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.apple.m4a-audio</string>
+			<key>UTTypeDescription</key>
+			<string>Apple MPEG-4 audio</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.mpeg-4-audio</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
 				<key>public.filename-extension</key>
 				<array>
 					<string>m4a</string>
 				</array>
 				<key>public.mime-type</key>
 				<array>
-					<string>audio/mp4</string>
+					<string>audio/x-m4a</string>
 				</array>
 			</dict>
 		</dict>
@@ -1706,6 +1723,50 @@
 				<key>public.mime-type</key>
 				<array>
 					<string>audio/mpeg</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>org.xiph.flac</string>
+			<key>UTTypeDescription</key>
+			<string>FLAC audio</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.audio</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>flac</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>audio/flac</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>org.xiph.ogg-audio</string>
+			<key>UTTypeDescription</key>
+			<string>Ogg Audio</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.audio</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>ogg</string>
+					<string>oga</string>
+					<string>opus</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>audio/ogg</string>
 				</array>
 			</dict>
 		</dict>
@@ -1752,7 +1813,7 @@
 			<key>UTTypeIdentifier</key>
 			<string>com.microsoft.waveform-audio</string>
 			<key>UTTypeDescription</key>
-			<string>WAVE audio</string>
+			<string>Waveform audio</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.audio</string>
