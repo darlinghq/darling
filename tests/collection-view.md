@@ -145,3 +145,30 @@ Same on both hosts, except where noted. The highlight states are 1 (for selectio
   does nothing on host B; the test pins neither.
 - The first click a process sends to its window activates it and its mouse up arrives late; the test starts with a
   click that isn't part of any case.
+
+## Dragging sessions
+
+Pinned by `appkit-dragging-session.m` (object model, both hosts) and `appkit-dragging-session-live.m` (a drag between
+two windows of one process, driven by `appkit-dragging-session-{x11,wayland}.sh`).
+
+- A new `NSDraggingItem` has a zero dragging frame. `setDraggingFrame:contents:` installs an image components provider
+  that returns one component keyed `NSDraggingImageComponentIconKey`, framed at (0, 0, width, height) of the dragging
+  frame. A new `NSDraggingImageComponent` has its key, nil contents and a zero frame.
+- `beginDraggingSessionWithItems:event:source:` returns a session whose formation is `NSDraggingFormationNone`, which
+  animates to its destination, and whose sequence number is nonzero. The drag pasteboard holds one item per dragging
+  item, in order. An item with a zero-size dragging frame raises `NSRangeException`.
+- A session's dragging location and leader index before the drag starts differ between runs and hosts; nothing pins
+  them.
+- Enumerating a session's dragging items with a class filter visits only the items readable as that
+  class: with items URL, string, URL, `NSURL` visits items 0 and 2 and `NSString` item 1.
+- `NSURL` writes only its URL type (`public.file-url` for a file URL, `public.url` otherwise) to a pasteboard item; no
+  plain-text form.
+
+Not observed on the hosts (the live drag needs synthesized input there); `appkit-dragging-session-live.m` checks these
+from the documented contract on Darling only:
+
+- The destination sees the source's operation mask narrowed by the modifier held (Option: Copy). With no modifier, a
+  source allowing Copy and Move and a destination answering Move end with Move. The destination's `draggingSource` is
+  the source object passed to the session.
+- The source is sent willBeginAtPoint, movedToPoint while the pointer moves (X11 only; Wayland gives clients no global
+  pointer position), then endedAtPoint:operation:.
