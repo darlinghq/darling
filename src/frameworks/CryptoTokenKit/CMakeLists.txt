@@ -28,6 +28,7 @@ add_framework(CryptoTokenKit
 
 	SOURCES
 		src/ctkclient.c
+		src/ctkatr.c
 		src/ctkclient_test.c
 		src/ctkcodec.c
 		src/ctkloginhelper.c
