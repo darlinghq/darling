@@ -567,6 +567,12 @@ struct job_s {
 	mach_port_t asport;
 	au_asid_t asid;
 	uuid_t expected_audit_uuid;
+	/* The process whose private XPC domain the job belongs to: the job is an
+	 * XPC service bundled in that process's application. Zero for any other
+	 * job.
+	 */
+	pid_t domain_owner;
+	LIST_ENTRY(job_s) domain_sle;
 	bool 	
 		// man launchd.plist --> Debug
 		debug:1,
@@ -743,7 +749,11 @@ struct job_s {
 		system_app :1,
 		joins_gui_session :1,
 		low_priority_background_io :1,
-		legacy_timers :1;
+		legacy_timers :1,
+		// The bundled XPC services of the process were already registered.
+		domain_checked:1,
+		// The job is linked into _s_domain_jobs.
+		in_domain_list:1;
 
 	const char label[0];
 };
@@ -752,6 +762,8 @@ static size_t hash_label(const char *label) __attribute__((pure));
 static size_t hash_ms(const char *msstr) __attribute__((pure));
 static SLIST_HEAD(, job_s) s_curious_jobs;
 static LIST_HEAD(, job_s) managed_actives[ACTIVE_JOB_HASH_SIZE];
+// Jobs that live in the private XPC domain of a process (see domain_owner).
+static LIST_HEAD(, job_s) _s_domain_jobs;
 
 #define job_assumes(j, e) os_assumes_ctx(job_log_bug, j, (e))
 #define job_assumes_zero(j, e) os_assumes_zero_ctx(job_log_bug, j, (e))
@@ -862,6 +874,11 @@ static char **mach_cmd2argv(const char *string);
 static size_t our_strhash(const char *s) __attribute__((pure));
 
 void eliminate_double_reboot(void);
+
+#pragma mark Process Domain Forward Declarations
+static void job_domain_setup(job_t j);
+static void job_domain_teardown(job_t j);
+static struct machservice *job_domain_lookup_service(job_t j, const char *name);
 
 #pragma mark XPC Domain Forward Declarations
 static job_t _xpc_domain_import_service(jobmgr_t jm, launch_data_t pload);
@@ -1431,6 +1448,11 @@ job_remove(job_t j)
 		}
 	}
 
+	if (j->in_domain_list) {
+		LIST_REMOVE(j, domain_sle);
+		j->in_domain_list = false;
+	}
+
 	if (!j->removing) {
 		j->removing = true;
 		job_dispatch_curious_jobs(j);
@@ -1907,6 +1929,11 @@ job_new_subjob(job_t j, uuid_t identifier)
 		nj->needs_kickoff = j->needs_kickoff;
 		nj->currently_ignored = true;
 		nj->dedicated_instance = true;
+		if (j->domain_owner) {
+			nj->domain_owner = j->domain_owner;
+			nj->in_domain_list = true;
+			LIST_INSERT_HEAD(&_s_domain_jobs, nj, domain_sle);
+		}
 		nj->xpc_service = j->xpc_service;
 		nj->xpc_bootstrapper = j->xpc_bootstrapper;
 		nj->jetsam_priority = j->jetsam_priority;
@@ -3585,6 +3612,8 @@ job_reap(job_t j)
 
 	job_log(j, LOG_DEBUG, "Reaping");
 
+	job_domain_teardown(j);
+
 	if (unlikely(j->weird_bootstrap)) {
 		int64_t junk = 0;
 		job_mig_swap_integer(j, VPROC_GSK_WEIRD_BOOTSTRAP, 0, 0, &junk);
@@ -4099,6 +4128,9 @@ job_callback_proc(job_t j, struct kevent *kev)
 
 	if (fflags & NOTE_EXEC) {
 		program_changed = true;
+
+		// The process now runs another program, with other bundled services.
+		job_domain_teardown(j);
 
 		if (j->anonymous) {
 			struct proc_bsdshortinfo proc;
@@ -6413,7 +6445,7 @@ machservice_new(job_t j, const char *name, mach_port_t *serviceport, bool pid_lo
 	 * by others. We could just do this with a simple bit, but then we'd have to
 	 * uniquify the names ourselves to avoid collisions. This is just easier.
 	 */
-	if (!j->dedicated_instance) {
+	if (!(j->dedicated_instance || j->domain_owner)) {
 		LIST_INSERT_HEAD(&where2put->ms_hash[hash_ms(ms->name)], ms, name_hash_sle);	
 	}
 	LIST_INSERT_HEAD(&port_hash[HASH_PORT(ms->port)], ms, port_hash_sle);
@@ -7338,7 +7370,7 @@ machservice_delete(job_t j, struct machservice *ms, bool port_died)
 	}
 	SLIST_REMOVE(&j->machservices, ms, machservice, sle);
 
-	if (!(j->dedicated_instance || ms->event_channel)) {
+	if (!(j->dedicated_instance || j->domain_owner || ms->event_channel)) {
 		LIST_REMOVE(ms, name_hash_sle);
 	}
 	LIST_REMOVE(ms, port_hash_sle);
@@ -8949,7 +8981,7 @@ job_mig_check_in2(job_t j, name_t servicename, mach_port_t *serviceportp, uuid_t
 		return BOOTSTRAP_NO_MEMORY;
 	}
 
-	if (j->dedicated_instance) {
+	if (j->dedicated_instance || j->domain_owner) {
 		struct machservice *msi = NULL;
 		SLIST_FOREACH(msi, &j->machservices, sle) {
 			if (strncmp(servicename, msi->name, sizeof(name_t) - 1) == 0) {
@@ -8973,7 +9005,7 @@ job_mig_check_in2(job_t j, name_t servicename, mach_port_t *serviceportp, uuid_t
 			return BOOTSTRAP_UNKNOWN_SERVICE;
 		}
 	} else if (ms == NULL) {
-		if (job_assumes(j, !j->dedicated_instance)) {
+		if (job_assumes(j, !(j->dedicated_instance || j->domain_owner))) {
 			*serviceportp = MACH_PORT_NULL;
 
 #if HAVE_SANDBOX
@@ -9125,7 +9157,17 @@ job_mig_look_up2(job_t j, mach_port_t srp, name_t servicename, mach_port_t *serv
 	}
 #endif
 
-	if (per_pid_lookup) {
+	/* The XPC services bundled in the caller's application are private to the
+	 * caller: they take precedence over, and are invisible to, everybody else.
+	 */
+	if (!per_pid_lookup && !xpc_req) {
+		job_domain_setup(j);
+		ms = job_domain_lookup_service(j, servicename);
+	}
+
+	if (ms) {
+		// Found in the caller's own domain.
+	} else if (per_pid_lookup) {
 		ms = jobmgr_lookup_service(j->mgr, servicename, false, target_pid);
 	} else {
 		if (xpc_req) {
@@ -10575,6 +10617,227 @@ xpc_domain_add_services(job_t j, vm_offset_t services_buff, mach_msg_type_number
 	return error;
 }
 #endif
+
+#pragma mark Process Domains
+/* XPC services bundled in an application (Contents/XPCServices/<name>.xpc)
+ * are reachable with xpc_connection_create() by the bundle identifier of the
+ * service, from the process that owns the application only. launchctl(1)
+ * describes a "pid/<pid>" domain per process that holds the services visible
+ * to the process.
+ *
+ * The domain of a process is filled in when the process first talks to
+ * launchd: the services declared by the bundle of its executable are imported
+ * as ordinary on-demand jobs, owned by the process (domain_owner). Their Mach
+ * services stay out of the name hash, so only a look-up by the owner finds
+ * them. The jobs are removed when the process exits or runs another program.
+ */
+extern xpc_object_t xpc_create_from_plist(const void *data, size_t size);
+
+#define DOMAIN_INFO_PLIST_MAX (1024 * 1024)
+#define DOMAIN_BUNDLE_EXEC_DIR "/Contents/MacOS/"
+#define DOMAIN_SERVICES_DIR "/Contents/XPCServices"
+
+static xpc_object_t
+job_domain_read_info_plist(const char *path)
+{
+	xpc_object_t plist = NULL;
+	int fd = open(path, O_RDONLY | O_CLOEXEC);
+	if (fd == -1) {
+		return NULL;
+	}
+
+	struct stat st;
+	if (fstat(fd, &st) == 0 && S_ISREG(st.st_mode) && st.st_size > 0 && st.st_size <= DOMAIN_INFO_PLIST_MAX) {
+		size_t size = (size_t)st.st_size;
+		char *buf = malloc(size);
+		size_t got = 0;
+		while (buf && got < size) {
+			ssize_t n = read(fd, buf + got, size - got);
+			if (n <= 0) {
+				break;
+			}
+			got += (size_t)n;
+		}
+		if (buf && got == size) {
+			plist = xpc_create_from_plist(buf, size);
+		}
+		free(buf);
+	}
+	(void)close(fd);
+
+	if (plist && xpc_get_type(plist) != XPC_TYPE_DICTIONARY) {
+		xpc_release(plist);
+		plist = NULL;
+	}
+	return plist;
+}
+
+static void
+job_domain_add_service(job_t owner, const char *servicesdir, const char *bundlename, uid_t uid)
+{
+	char path[PATH_MAX];
+	(void)snprintf(path, sizeof(path), "%s/%s/Contents/Info.plist", servicesdir, bundlename);
+
+	xpc_object_t info = job_domain_read_info_plist(path);
+	if (!info) {
+		return;
+	}
+
+	const char *ident = xpc_dictionary_get_string(info, "CFBundleIdentifier");
+	xpc_object_t svc = xpc_dictionary_get_value(info, "XPCService");
+	if (!ident || !*ident || strlen(ident) >= sizeof(name_t) || !svc || xpc_get_type(svc) != XPC_TYPE_DICTIONARY) {
+		job_log(owner, LOG_DEBUG, "Not an XPC service bundle: %s", bundlename);
+		goto out;
+	}
+
+	/* Only services of type Application (the default) are private to the
+	 * application; System and User services belong to other domains.
+	 */
+	const char *type = xpc_dictionary_get_string(svc, "ServiceType");
+	if (type && strcasecmp(type, "Application") != 0) {
+		job_log(owner, LOG_DEBUG, "Skipping XPC service %s of type %s", ident, type);
+		goto out;
+	}
+
+	char defaultexec[NAME_MAX + 1];
+	const char *exec = xpc_dictionary_get_string(info, "CFBundleExecutable");
+	if (!exec || !*exec || strchr(exec, '/')) {
+		(void)snprintf(defaultexec, sizeof(defaultexec), "%.*s", (int)(strlen(bundlename) - strlen(".xpc")), bundlename);
+		exec = defaultexec;
+	}
+	(void)snprintf(path, sizeof(path), "%s/%s%s%s", servicesdir, bundlename, DOMAIN_BUNDLE_EXEC_DIR, exec);
+	if (access(path, X_OK) != 0) {
+		job_log(owner, LOG_NOTICE, "XPC service %s has no executable: %s", ident, path);
+		goto out;
+	}
+
+	char label[PATH_MAX];
+	(void)snprintf(label, sizeof(label), "pid.%d.%s", owner->p, ident);
+	if (job_find(NULL, label)) {
+		job_log(owner, LOG_DEBUG, "XPC service %s is declared twice", ident);
+		goto out;
+	}
+
+	const char *argv[] = { path, NULL };
+	job_t sj = job_new(owner->mgr, label, NULL, argv);
+	if (!sj) {
+		goto out;
+	}
+
+	// Set before the Mach service is created, so that it stays out of the name hash.
+	sj->domain_owner = owner->p;
+	sj->in_domain_list = true;
+	LIST_INSERT_HEAD(&_s_domain_jobs, sj, domain_sle);
+	sj->mach_uid = uid;
+
+	mach_port_t port = MACH_PORT_NULL;
+	if (!machservice_new(sj, ident, &port, false)) {
+		job_remove(sj);
+		goto out;
+	}
+
+	job_log(sj, LOG_DEBUG, "Registered XPC service %s for PID %d", ident, owner->p);
+	(void)job_dispatch(sj, false);
+
+out:
+	xpc_release(info);
+}
+
+void
+job_domain_setup(job_t j)
+{
+	if (j->domain_checked || j->domain_owner || j->alias || j->p <= 0) {
+		return;
+	}
+	j->domain_checked = true;
+
+	char exepath[PATH_MAX];
+	if (proc_pidpath(j->p, exepath, sizeof(exepath)) <= 0) {
+		return;
+	}
+
+	// The bundle is the innermost one that holds the executable.
+	char *bundleexec = NULL;
+	for (char *cur = exepath; (cur = strstr(cur, DOMAIN_BUNDLE_EXEC_DIR)); cur++) {
+		bundleexec = cur;
+	}
+	if (!bundleexec) {
+		return;
+	}
+	*bundleexec = '\0';
+
+	char servicesdir[PATH_MAX];
+	if (snprintf(servicesdir, sizeof(servicesdir), "%s%s", exepath, DOMAIN_SERVICES_DIR) >= (int)sizeof(servicesdir)) {
+		return;
+	}
+
+	DIR *dir = opendir(servicesdir);
+	if (!dir) {
+		return;
+	}
+
+	struct proc_bsdshortinfo proc;
+	if (proc_pidinfo(j->p, PROC_PIDT_SHORTBSDINFO, 1, &proc, PROC_PIDT_SHORTBSDINFO_SIZE) <= 0) {
+		(void)closedir(dir);
+		return;
+	}
+
+	struct dirent *de;
+	while ((de = readdir(dir))) {
+		size_t len = strlen(de->d_name);
+		if (len > strlen(".xpc") && strcmp(de->d_name + len - strlen(".xpc"), ".xpc") == 0) {
+			job_domain_add_service(j, servicesdir, de->d_name, proc.pbsi_uid);
+		}
+	}
+	(void)closedir(dir);
+}
+
+void
+job_domain_teardown(job_t j)
+{
+	if (!j->domain_checked) {
+		return;
+	}
+	j->domain_checked = false;
+
+	/* Removing a job may remove others (its instances), so start over after
+	 * every removal. Jobs that are still running are stopped and removed when
+	 * they have exited; they are skipped from then on.
+	 */
+	for (;;) {
+		job_t ji = NULL;
+		LIST_FOREACH(ji, &_s_domain_jobs, domain_sle) {
+			if (ji->domain_owner == j->p && !ji->removal_pending && !ji->removing) {
+				break;
+			}
+		}
+		if (!ji) {
+			break;
+		}
+		job_log(ji, LOG_DEBUG, "Removing XPC service of PID %d", j->p);
+		job_remove(ji);
+	}
+}
+
+struct machservice *
+job_domain_lookup_service(job_t j, const char *name)
+{
+	job_t ji = NULL;
+	LIST_FOREACH(ji, &_s_domain_jobs, domain_sle) {
+		if (ji->domain_owner != j->p || ji->dedicated_instance || ji->removal_pending) {
+			continue;
+		}
+
+		struct machservice *ms = NULL;
+		SLIST_FOREACH(ms, &ji->machservices, sle) {
+			if (strcmp(ms->name, name) == 0) {
+				return ms;
+			}
+		}
+	}
+
+	return NULL;
+}
 
 #pragma mark XPC Events
 int
