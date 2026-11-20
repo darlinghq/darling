@@ -246,6 +246,8 @@ if (Python3_Interpreter_FOUND)
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/install-symlink.py)
 	add_test(NAME android_layout
 		COMMAND ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/tests/android-layout.cmake)
+	add_test(NAME architecture
+		COMMAND ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/tests/architecture.cmake)
 	add_test(NAME debian_packaging
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/debian-packaging.py)
 	# debian-packaging.py exits with 77 when debhelper is not installed

@@ -40,4 +40,54 @@ macro(generate_architecture)
     else ()
         set(APPLE_TARGET_TRIPLET_PRIMARY "")
     endif ()
+
+    # One list of every enabled slice, i386 included, in the order i386, x86_64, arm64. Components
+    # loop over it once instead of treating the 32-bit and 64-bit slices as separate paths.
+    set(DARLING_ARCHS "")
+    if (TARGET_i386)
+        list(APPEND DARLING_ARCHS i386)
+    endif ()
+    if (TARGET_x86_64)
+        list(APPEND DARLING_ARCHS x86_64)
+    endif ()
+    if (TARGET_ARM64)
+        list(APPEND DARLING_ARCHS arm64)
+    endif ()
 endmacro()
+
+# The properties that differ per slice. An unknown architecture is an error, so a new slice (for
+# example PowerPC) has to be described here before any component can build it.
+
+# darling_arch_triple(<arch> <out-var>): the target triple of the slice.
+function(darling_arch_triple arch out)
+    if (arch STREQUAL "i386")
+        set(${out} "i386-apple-darwin20" PARENT_SCOPE)
+    elseif (arch STREQUAL "x86_64")
+        set(${out} "x86_64-apple-darwin20" PARENT_SCOPE)
+    elseif (arch STREQUAL "arm64")
+        set(${out} "aarch64-apple-darwin20" PARENT_SCOPE)
+    else ()
+        message(FATAL_ERROR "darling_arch_triple: unknown architecture '${arch}'")
+    endif ()
+endfunction()
+
+# darling_arch_is_64bit(<arch> <out-var>): TRUE for the 64-bit slices.
+function(darling_arch_is_64bit arch out)
+    if (arch STREQUAL "i386")
+        set(${out} FALSE PARENT_SCOPE)
+    elseif (arch STREQUAL "x86_64" OR arch STREQUAL "arm64")
+        set(${out} TRUE PARENT_SCOPE)
+    else ()
+        message(FATAL_ERROR "darling_arch_is_64bit: unknown architecture '${arch}'")
+    endif ()
+endfunction()
+
+# darling_arch_objc_abi(<arch> <out-var>): "legacy" (the 32-bit Objective-C runtime) or "modern".
+function(darling_arch_objc_abi arch out)
+    darling_arch_is_64bit(${arch} is_64bit)
+    if (is_64bit)
+        set(${out} "modern" PARENT_SCOPE)
+    else ()
+        set(${out} "legacy" PARENT_SCOPE)
+    endif ()
+endfunction()
