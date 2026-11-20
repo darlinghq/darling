@@ -31,6 +31,7 @@ add_framework(CryptoTokenKit
 		src/ctkclient_test.c
 		src/ctkcodec.c
 		src/ctkloginhelper.c
+		src/TKTLVRecord.m
 		src/TKTokenWatcher.m
 
 	DEPENDENCIES
