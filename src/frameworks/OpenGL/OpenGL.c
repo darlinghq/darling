@@ -2180,6 +2180,13 @@ static _Atomic size_t g_bindingCount;
 // Orders the notes of rendering. Guarded by g_surfaceBindingsMutex.
 static uint64_t g_renderSerial;
 
+// The share group number is the identity of the group (a number is never
+// reused, so it stays distinct from the groups of later contexts); the
+// group object an application sees is that number.
+CGLShareGroupObj CGLGetShareGroup(CGLContextObj ctx) {
+    return ctx ? (CGLShareGroupObj)(uintptr_t) ctx->share_group : NULL;
+}
+
 // Whether the two contexts share textures.
 static int sharesTextures(CGLContextObj a, CGLContextObj b) {
     return a == b || a->share_group == b->share_group;
