@@ -98,3 +98,19 @@ of a scroll view in a window; frames are {x, y, width, height}.
 - The default `backgroundColors` is one color, the control background color.
 - A plain NSCollectionViewItem without a nib raises when its view is loaded on host B (it looks for a nib named after
   the class); the tests give their item classes a `loadView`.
+
+## Selection
+
+`appkit-collection-view-selection.m` (darling-cocotron), same on both hosts:
+
+- Defaults: not selectable, no multiple selection, empty selection allowed, `selectionIndexPaths` an empty set and
+  `selectionIndexes` an empty index set.
+- `selectItemsAtIndexPaths:scrollPosition:` and `deselectItemsAtIndexPaths:` change the selection without asking or
+  telling the delegate (as documented), also when the view isn't selectable or several paths are selected without
+  multiple selection, and without a key-value notification for `selectionIndexPaths`; setting `selectionIndexPaths`
+  notifies its observers.
+- Visible items show the selection (`selected`), items made later for selected paths are selected and reused ones for
+  other paths aren't; programmatic selection leaves `highlightState` at none.
+- `selectAll:` selects nothing without multiple selection and every item with it; `deselectAll:` empties the selection.
+- A relayout keeps the selection. Any `reloadData`, with fewer items or the same ones, empties it.
+- `selectionIndexes` are section 0's index paths, both ways.
