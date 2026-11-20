@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Test optional-wrapper acquisition, using a host adapter for Mach-O metadata.
 
-The generated acquisition/availability/destructor C is used verbatim. Symbol
+The generated acquisition/availability C is used verbatim; the host library must stay loaded when the wrapper is unloaded (no release). Symbol
 resolvers and the Mach-O __elfname section are excluded from the host adapter.
 The elf_calls hooks count acquisitions and releases, with a barrier forcing
 concurrent lazy acquisitions to overlap. This is a host test, not a Darwin ABI
@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
     pthread_barrier_destroy(&barrier);
     printf("WRAPPER_ACQUISITIONS=%d RELEASES=%d BAD_READS=%d MODE=%s\n",
            opened, closed, bad, argv[2]);
-    return opened == 1 && closed == !missing && bad == 0 ? 0 : 1;
+    return opened == 1 && closed == 0 && bad == 0 ? 0 : 1;
 }
 '''
 
@@ -81,7 +81,7 @@ def main():
     generated = out/'generated.c'
     subprocess.run([a.wrapgen,a.elf,str(generated),str(out/'vars.h'),'fixture_available'],check=True)
     body = generated.read_text().split('#if defined(__arm64__)',1)[0]
-    assert 'static void destructor()' in body
+    assert 'dlclose_fatal' not in body, 'wrappers must not unload host libraries'
     (out/'adapter.c').write_text(body+'\nconst char __elfname[] = "fixture";\n')
     (out/'harness.c').write_text(HARNESS)
     inc = str(Path(a.source_dir)/'src/startup/mldr/elfcalls')
