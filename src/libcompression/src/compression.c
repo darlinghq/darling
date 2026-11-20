@@ -1,7 +1,59 @@
+// The buffer functions for LZFSE (the reference lzfse library) and ZLIB (a raw
+// DEFLATE stream, RFC 1951, without the zlib header and checksum). The other
+// algorithms and the stream functions are not implemented: the buffer
+// functions return 0 and the stream functions an error for them.
+
 #include <compression.h>
+#include <lzfse.h>
+#include <stdlib.h>
+#include <zlib.h>
 
 size_t
 compression_encode_scratch_buffer_size(compression_algorithm algorithm) {
+    if (algorithm == COMPRESSION_LZFSE)
+        return lzfse_encode_scratch_size();
+    return 0;
+}
+
+size_t
+compression_decode_scratch_buffer_size(compression_algorithm algorithm) {
+    if (algorithm == COMPRESSION_LZFSE)
+        return lzfse_decode_scratch_size();
+    return 0;
+}
+
+// Returns the number of bytes written, or 0 when the output does not fit.
+static size_t
+zlib_encode(uint8_t *dst, size_t dst_size, const uint8_t *src, size_t src_size) {
+    z_stream stream = { 0 };
+    if (deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -15, 8, Z_DEFAULT_STRATEGY) != Z_OK)
+        return 0;
+    stream.next_in = (Bytef *) src;
+    stream.avail_in = (uInt) src_size;
+    stream.next_out = dst;
+    stream.avail_out = (uInt) dst_size;
+    int status = deflate(&stream, Z_FINISH);
+    size_t written = stream.total_out;
+    deflateEnd(&stream);
+    return status == Z_STREAM_END ? written : 0;
+}
+
+// Returns the number of bytes written: all of the output, or dst_size when it
+// does not fit; 0 for invalid or incomplete input.
+static size_t
+zlib_decode(uint8_t *dst, size_t dst_size, const uint8_t *src, size_t src_size) {
+    z_stream stream = { 0 };
+    if (inflateInit2(&stream, -15) != Z_OK)
+        return 0;
+    stream.next_in = (Bytef *) src;
+    stream.avail_in = (uInt) src_size;
+    stream.next_out = dst;
+    stream.avail_out = (uInt) dst_size;
+    int status = inflate(&stream, Z_FINISH);
+    size_t written = stream.total_out;
+    inflateEnd(&stream);
+    if (status == Z_STREAM_END || (stream.avail_out == 0 && (status == Z_OK || status == Z_BUF_ERROR)))
+        return written;
     return 0;
 }
 
@@ -10,12 +62,17 @@ compression_encode_buffer(uint8_t * __restrict dst_buffer, size_t dst_size,
                           const uint8_t * __restrict src_buffer, size_t src_size,
                           void * __restrict __nullable scratch_buffer,
                           compression_algorithm algorithm) {
-    return 0;
-}
-
-size_t
-compression_decode_scratch_buffer_size(compression_algorithm algorithm) {
-    return 0;
+    // Empty input still encodes to a valid (empty) stream.
+    if (dst_size == 0)
+        return 0;
+    switch (algorithm) {
+    case COMPRESSION_LZFSE:
+        return lzfse_encode_buffer(dst_buffer, dst_size, src_buffer, src_size, scratch_buffer);
+    case COMPRESSION_ZLIB:
+        return zlib_encode(dst_buffer, dst_size, src_buffer, src_size);
+    default:
+        return 0;
+    }
 }
 
 size_t
@@ -23,7 +80,16 @@ compression_decode_buffer(uint8_t * __restrict dst_buffer, size_t dst_size,
                           const uint8_t * __restrict src_buffer, size_t src_size,
                           void * __restrict __nullable scratch_buffer,
                           compression_algorithm algorithm) {
-    return 0;
+    if (dst_size == 0 || src_size == 0)
+        return 0;
+    switch (algorithm) {
+    case COMPRESSION_LZFSE:
+        return lzfse_decode_buffer(dst_buffer, dst_size, src_buffer, src_size, scratch_buffer);
+    case COMPRESSION_ZLIB:
+        return zlib_decode(dst_buffer, dst_size, src_buffer, src_size);
+    default:
+        return 0;
+    }
 }
 
 compression_status
@@ -43,4 +109,3 @@ compression_status
 compression_stream_destroy(compression_stream * stream) {
     return COMPRESSION_STATUS_ERROR;
 }
-
