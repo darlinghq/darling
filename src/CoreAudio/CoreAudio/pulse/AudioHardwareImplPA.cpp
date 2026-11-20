@@ -544,8 +544,14 @@ static void paSubscribeCB(pa_context* c, pa_subscription_event_type_t t, uint32_
 {
 	AudioHardwareImplPA* self = static_cast<AudioHardwareImplPA*>(userdata);
 	unsigned facility = t & PA_SUBSCRIPTION_EVENT_FACILITY_MASK;
+	unsigned type = t & PA_SUBSCRIPTION_EVENT_TYPE_MASK;
 
-	if (facility == PA_SUBSCRIPTION_EVENT_SINK || facility == PA_SUBSCRIPTION_EVENT_SOURCE)
+	// The list of devices changes when a device appears or disappears. PulseAudio also reports
+	// "change" for a sink or source whose state, volume or mute changed, which happens whenever a
+	// stream starts or stops; that leaves the list as it was, and announcing it makes applications
+	// that rebuild their output on a device list change restart it again and again.
+	if ((facility == PA_SUBSCRIPTION_EVENT_SINK || facility == PA_SUBSCRIPTION_EVENT_SOURCE) &&
+		(type == PA_SUBSCRIPTION_EVENT_NEW || type == PA_SUBSCRIPTION_EVENT_REMOVE))
 	{
 		// We're being called from within PADispatchMainLoop's GCD queue here
 		// (the same queue refreshDeviceList() needs to wait on), so calling
