@@ -190,6 +190,30 @@ static void fixture_init(struct fixture* f, uint32_t filetype, uint32_t flags, s
 	f->cmd_offset = sizeof(*f->header);
 }
 
+// The page-layout tests below use x86_64 images: their segments are aligned to a 4 KB
+// guest page, so on a host with larger pages a segment can start inside a host page.
+// arm64 segments are always 16 KB aligned, so the same layouts are not valid arm64
+// images: the loader assumes 16 KB-aligned arm64 segments.
+#define X86_64_GUEST_PAGE 0x1000UL
+
+static void fixture_init_x86_64(struct fixture* f, uint32_t filetype, uint32_t flags, size_t size)
+{
+	fixture_init(f, filetype, flags, size);
+	f->header->cputype = CPU_TYPE_X86_64;
+}
+
+// A test that cannot apply on this host exits with this status; run_expect() reports it as SKIP.
+#define TEST_SKIP_STATUS 77
+
+#define SKIP_UNLESS_HOST_PAGE_EXCEEDS_GUEST_PAGE() \
+	do { \
+		if ((size_t) sysconf(_SC_PAGESIZE) <= X86_64_GUEST_PAGE) { \
+			printf("SKIP: %s: host page is not larger than a 4 KB guest page\n", __func__); \
+			fflush(stdout); \
+			_exit(TEST_SKIP_STATUS); \
+		} \
+	} while (0)
+
 static void add_segment(struct fixture* f, const char* name, uint64_t vmaddr, uint64_t vmsize,
 		uint64_t fileoff, uint64_t filesize, vm_prot_t prot)
 {
@@ -623,11 +647,12 @@ static bool get_mapping_perms(uintptr_t addr, char perms_out[5])
 static void test_subpage_isolated_rw(void)
 {
 	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	SKIP_UNLESS_HOST_PAGE_EXCEEDS_GUEST_PAGE();
 	const size_t sub_off = host_ps / 4;
 	const size_t sub_sz = host_ps / 4;
 
 	struct fixture f;
-	fixture_init(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
+	fixture_init_x86_64(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
 
 	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
 	add_segment(&f, "__TEXT", IMAGE_BASE, host_ps, 0, host_ps, VM_PROT_READ | VM_PROT_EXECUTE);
@@ -653,11 +678,12 @@ static void test_subpage_isolated_rw(void)
 static void test_subpage_isolated_rx(void)
 {
 	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	SKIP_UNLESS_HOST_PAGE_EXCEEDS_GUEST_PAGE();
 	const size_t sub_off = host_ps / 4;
 	const size_t sub_sz = host_ps / 4;
 
 	struct fixture f;
-	fixture_init(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
+	fixture_init_x86_64(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
 
 	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
 	add_segment(&f, "__TEXT", IMAGE_BASE, host_ps, 0, host_ps, VM_PROT_READ | VM_PROT_EXECUTE);
@@ -683,10 +709,11 @@ static void test_subpage_isolated_rx(void)
 static void test_subpage_shared_rx_rw(void)
 {
 	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	SKIP_UNLESS_HOST_PAGE_EXCEEDS_GUEST_PAGE();
 	const size_t sub_off = host_ps / 2;
 
 	struct fixture f;
-	fixture_init(&f, MH_EXECUTE, MH_PIE, 5 * host_ps);
+	fixture_init_x86_64(&f, MH_EXECUTE, MH_PIE, 5 * host_ps);
 
 	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
 	add_segment(&f, "__TEXT", IMAGE_BASE + host_ps, sub_off, 0, sub_off, VM_PROT_READ | VM_PROT_EXECUTE);
@@ -716,10 +743,11 @@ static void test_subpage_shared_rx_rw(void)
 static void test_subpage_shared_rw_r(void)
 {
 	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	SKIP_UNLESS_HOST_PAGE_EXCEEDS_GUEST_PAGE();
 	const size_t sub_off = host_ps / 2;
 
 	struct fixture f;
-	fixture_init(&f, MH_EXECUTE, MH_PIE, 5 * host_ps);
+	fixture_init_x86_64(&f, MH_EXECUTE, MH_PIE, 5 * host_ps);
 
 	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
 	add_segment(&f, "__TEXT", IMAGE_BASE, host_ps, 0, host_ps, VM_PROT_READ | VM_PROT_EXECUTE);
@@ -744,10 +772,11 @@ static void test_subpage_shared_rw_r(void)
 static void test_subpage_unaligned_bss(void)
 {
 	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	SKIP_UNLESS_HOST_PAGE_EXCEEDS_GUEST_PAGE();
 	const size_t sub_off = host_ps / 4;
 
 	struct fixture f;
-	fixture_init(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
+	fixture_init_x86_64(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
 
 	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
 	add_segment(&f, "__TEXT", IMAGE_BASE, host_ps, 0, host_ps, VM_PROT_READ | VM_PROT_EXECUTE);
@@ -769,13 +798,12 @@ static void test_subpage_unaligned_bss(void)
 
 static void test_seal_readonly_segments(void)
 {
-	const size_t host_ps = sysconf(_SC_PAGESIZE);
 	struct fixture f;
-	fixture_init(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
+	fixture_init(&f, MH_EXECUTE, MH_PIE, 4 * UNIT);
 
 	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
-	add_segment(&f, "__TEXT", IMAGE_BASE, host_ps, 0, host_ps, VM_PROT_READ | VM_PROT_EXECUTE);
-	add_segment(&f, "__DATA", IMAGE_BASE + 2 * host_ps, host_ps, host_ps, host_ps, VM_PROT_READ | VM_PROT_WRITE);
+	add_segment(&f, "__TEXT", IMAGE_BASE, UNIT, 0, UNIT, VM_PROT_READ | VM_PROT_EXECUTE);
+	add_segment(&f, "__DATA", IMAGE_BASE + 2 * UNIT, UNIT, UNIT, UNIT, VM_PROT_READ | VM_PROT_WRITE);
 
 	int fd = fixture_file(&f);
 	struct load_results lr = {0};
@@ -788,7 +816,7 @@ static void test_seal_readonly_segments(void)
 	if (recorded_seal_count >= 1) {
 		check(strcmp(recorded_seals[0].name, "__TEXT") == 0, "seal readonly: __TEXT sealed");
 		check(recorded_seals[0].address == IMAGE_BASE + slide, "seal readonly: __TEXT address matches");
-		check(recorded_seals[0].file_size == host_ps, "seal readonly: __TEXT length matches");
+		check(recorded_seals[0].file_size == UNIT, "seal readonly: __TEXT length matches");
 		check(recorded_seals[0].prot == (PROT_READ | PROT_EXEC), "seal readonly: __TEXT prot is R-X");
 	}
 
@@ -799,10 +827,11 @@ static void test_seal_readonly_segments(void)
 static void test_seal_shared_page_with_writable_not_sealed(void)
 {
 	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	SKIP_UNLESS_HOST_PAGE_EXCEEDS_GUEST_PAGE();
 	const size_t sub_off = host_ps / 2;
 
 	struct fixture f;
-	fixture_init(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
+	fixture_init_x86_64(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
 
 	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
 	add_segment(&f, "__TEXT", IMAGE_BASE + host_ps, sub_off, 0, sub_off, VM_PROT_READ | VM_PROT_EXECUTE);
@@ -823,10 +852,11 @@ static void test_seal_shared_page_with_writable_not_sealed(void)
 static void test_seal_contiguous_runs_differing_prot(void)
 {
 	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	SKIP_UNLESS_HOST_PAGE_EXCEEDS_GUEST_PAGE();
 	const size_t sub_off = host_ps / 2;
 
 	struct fixture f;
-	fixture_init(&f, MH_EXECUTE, MH_PIE, 6 * host_ps);
+	fixture_init_x86_64(&f, MH_EXECUTE, MH_PIE, 6 * host_ps);
 
 	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
 	add_segment(&f, "__TEXT", IMAGE_BASE + host_ps, host_ps + sub_off, 0, host_ps + sub_off, VM_PROT_READ);
@@ -872,6 +902,10 @@ static void run_expect(void (*test)(void), const char* name, int expected_status
 	int status;
 	while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
 		;
+	if (WIFEXITED(status) && WEXITSTATUS(status) == TEST_SKIP_STATUS) {
+		printf("SKIP: %s\n", name);
+		return;
+	}
 	char what[128];
 	if (WIFEXITED(status))
 		snprintf(what, sizeof(what), "%s (exit status %d)", name, WEXITSTATUS(status));
