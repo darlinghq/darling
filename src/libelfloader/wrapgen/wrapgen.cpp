@@ -296,10 +296,13 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 			"}\n\n";
 	}
 
-	output << "__attribute__((destructor)) static void destructor() {\n"
-		"\tif (lib_handle)\n"
-		"\t\t_elfcalls->dlclose_fatal(lib_handle);\n"
-		"}\n\n";
+	// The host library is deliberately not released when the wrapper goes away.
+	// The wrapper's terminator runs when the process exits, and releasing the
+	// library then unmaps it while native threads (display link, driver worker
+	// threads) are still running or exiting: their thread-specific-data
+	// destructors, registered by libraries such as libGLdispatch, then run
+	// against freed or unmapped code and data. On macOS the process just ends.
+	// A host library stays mapped until the process ends.
 
 	// dyld runs symbol resolvers while binding, and for non-lazy binds (chained fixups, bind_at_load)
 	// that happens before libSystem's initializer sets _elfcalls. Such resolvers return a trampoline
