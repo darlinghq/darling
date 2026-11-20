@@ -103,6 +103,29 @@ OSStatus vAEBuildAppleEvent(AEEventClass theClass, AEEventID theID, DescType add
 	long addressLength, SInt16 returnID, SInt32 transactionID, AppleEvent *result, AEBuildError *error,
 	const char *paramsFmt, va_list args);
 
+// AEStream: build a descriptor, list, record or Apple Event by appending to a stream.
+typedef struct OpaqueAEStreamRef* AEStreamRef;
+
+AEStreamRef AEStreamOpen(void);
+OSStatus AEStreamClose(AEStreamRef ref, AEDesc *desc);
+OSStatus AEStreamOpenDesc(AEStreamRef ref, DescType newType);
+OSStatus AEStreamWriteData(AEStreamRef ref, const void *data, Size length);
+OSStatus AEStreamCloseDesc(AEStreamRef ref);
+OSStatus AEStreamWriteDesc(AEStreamRef ref, DescType newType, const void *data, Size length);
+OSStatus AEStreamWriteAEDesc(AEStreamRef ref, const AEDesc *desc);
+OSStatus AEStreamOpenList(AEStreamRef ref);
+OSStatus AEStreamCloseList(AEStreamRef ref);
+OSStatus AEStreamOpenRecord(AEStreamRef ref, DescType newType);
+OSStatus AEStreamSetRecordType(AEStreamRef ref, DescType newType);
+OSStatus AEStreamCloseRecord(AEStreamRef ref);
+OSStatus AEStreamWriteKeyDesc(AEStreamRef ref, AEKeyword key, DescType newType, const void *data, Size length);
+OSStatus AEStreamOpenKeyDesc(AEStreamRef ref, AEKeyword key, DescType newType);
+OSStatus AEStreamWriteKey(AEStreamRef ref, AEKeyword key);
+AEStreamRef AEStreamCreateEvent(AEEventClass clazz, AEEventID id, DescType targetType, const void *targetData,
+	Size targetLength, SInt16 returnID, SInt32 transactionID);
+AEStreamRef AEStreamOpenEvent(AppleEvent *event);
+OSStatus AEStreamOptionalParam(AEStreamRef ref, AEKeyword key);
+
 #ifdef __cplusplus
 }
 #endif
