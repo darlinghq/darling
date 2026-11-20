@@ -1090,6 +1090,23 @@ static const SInt32 kVolParmsExtendedAttributes = 0x10ac2432;
 static const UniCharCount kVolParmsMaxNameLength = 85;
 static const char kVolParmsDeviceID[] = "";
 
+// Copies the leading bytes of the version 5 volume parameters that fit in a buffer of the given
+// size, and returns how many were copied.
+static size_t copyVolParms(void* buffer, size_t size)
+{
+	GetVolParmsInfoBuffer parms;
+	memset(&parms, 0, sizeof(parms));
+	parms.vMVersion = 5;
+	parms.vMAttrib = kVolParmsAttrib;
+	parms.vMExtendedAttributes = kVolParmsExtendedAttributes;
+	parms.vMDeviceID = (void*) kVolParmsDeviceID;
+	parms.vMMaxNameLength = kVolParmsMaxNameLength;
+
+	const size_t n = std::min<size_t>(size, sizeof(parms));
+	memcpy(buffer, &parms, n);
+	return n;
+}
+
 OSErr PBHGetVolParmsSync(HParmBlkPtr paramBlock)
 {
 	if (!paramBlock)
@@ -1105,22 +1122,27 @@ OSErr PBHGetVolParmsSync(HParmBlkPtr paramBlock)
 		err = paramErr;
 
 	if (err == noErr)
-	{
-		GetVolParmsInfoBuffer parms;
-		memset(&parms, 0, sizeof(parms));
-		parms.vMVersion = 5;
-		parms.vMAttrib = kVolParmsAttrib;
-		parms.vMExtendedAttributes = kVolParmsExtendedAttributes;
-		parms.vMDeviceID = (void*) kVolParmsDeviceID;
-		parms.vMMaxNameLength = kVolParmsMaxNameLength;
-
-		const size_t n = std::min<size_t>(io.ioReqCount, sizeof(parms));
-		memcpy(io.ioBuffer, &parms, n);
-		io.ioActCount = (SInt32) n;
-	}
+		io.ioActCount = (SInt32) copyVolParms(io.ioBuffer, io.ioReqCount);
 
 	io.ioResult = err;
 	return err;
+}
+
+// QUIRK: fills as many leading bytes of the version 5 buffer as bufferSize allows, and succeeds
+// with nothing written when bufferSize is 0 (no error for a short buffer). Only the startup
+// volume (-100) is accepted: 0, other negative numbers and positive numbers (which
+// PBHGetVolParmsSync accepts) fail with nsvErr and leave the buffer alone. Not documented.
+// Evidence: black-box observation on macOS 26.7.3 x86_64 and macOS 10.14.4 i386 (tier 2).
+// Test: tests/src/file_manager_volume_parms.c
+OSStatus FSGetVolumeParms(FSVolumeRefNum volume, GetVolParmsInfoBuffer* buffer, ByteCount bufferSize)
+{
+	if (volume != kBootVolumeRefNum)
+		return nsvErr;
+	if (!buffer)
+		return paramErr;
+
+	copyVolParms(buffer, bufferSize);
+	return noErr;
 }
 
 // ---- PBMakeFSRefSync -------------------------------------------------------------------------
