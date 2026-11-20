@@ -936,8 +936,12 @@ OSStatus LSCopyItemInfoForURL(CFURLRef inURL, LSRequestedInfo inWhichInfo, LSIte
 		if (S_ISDIR(st.st_mode))
 		{
 			outItemInfo->flags |= kLSItemInfoIsContainer;
-			if (extension && (CFEqual(extension, CFSTR("app")) || CFEqual(extension, CFSTR("bundle")) || CFEqual(extension, CFSTR("framework"))))
+			// Same answer as kCFURLIsPackageKey: by type, and a symbolic link is not a package.
+			CFTypeRef package = NULL;
+			if ((outItemInfo->flags & kLSItemInfoIsSymlink) == 0 && CFURLCopyResourcePropertyForKey(inURL, kCFURLIsPackageKey, &package, NULL) && package && CFGetTypeID(package) == CFBooleanGetTypeID() && CFBooleanGetValue(package))
 				outItemInfo->flags |= kLSItemInfoIsPackage;
+			if (package)
+				CFRelease(package);
 			if (extension && CFEqual(extension, CFSTR("app")))
 				outItemInfo->flags |= kLSItemInfoIsApplication | kLSItemInfoIsNativeApp;
 		}
