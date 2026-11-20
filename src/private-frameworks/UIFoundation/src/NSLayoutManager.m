@@ -1012,10 +1012,33 @@ static CGFloat _glyphRunWidth(NSFont *font, const NSGlyph *glyphs, NSInteger len
         *actualRange = charRange;
 }
 
+// The range whose layout goes when charRange's does: whole paragraphs, as a
+// change can move every line of the paragraphs it touches. An empty range
+// stays as it is.
+static NSRange paragraphsForInvalidation(NSTextStorage *storage, NSRange charRange)
+{
+    NSUInteger length = [storage length];
+    if (charRange.length == 0 || charRange.location >= length)
+        return charRange;
+    if (NSMaxRange(charRange) > length)
+        charRange.length = length - charRange.location;
+    return [[storage string] paragraphRangeForRange: charRange];
+}
+
+- (void) invalidateLayoutForCharacterRange: (NSRange) charRange
+                      actualCharacterRange: (NSRangePointer) actualRange
+{
+    [self invalidateLayoutForCharacterRange: charRange
+                                     isSoft: NO
+                       actualCharacterRange: actualRange];
+}
+
 - (void) invalidateLayoutForCharacterRange: (NSRange) charRange
                                     isSoft: (BOOL) isSoft
                       actualCharacterRange: (NSRangePointer) actualRangep
 {
+    if (actualRangep != NULL)
+        *actualRangep = paragraphsForInvalidation(_textStorage, charRange);
 
 #if DEBUG_LM_LAYOUT
     NSLog(@"invalidateLayoutForCharacterRange: %@ isSoft: %@ "
