@@ -204,3 +204,16 @@ them, so item views and layout attributes disagree.
   part of any item fills the gap's frame (the layout's inter-item gap attributes). The gap view goes when the drag
   leaves. The item highlight stays through `performDragOperation:` and `concludeDragOperation:` and goes at
   `draggingEnded:`. Right after `draggingExited:` both hosts showed item 4 as the drop target again; not pinned.
+
+## File URLs on the pasteboard
+
+Pinned by `appkit-pasteboard-file-urls.m`, on a uniquely named pasteboard with two files made in the temporary
+directory.
+
+- Writing two file NSURLs gives two items, each with `public.file-url`; they read back as the two URLs in order, and
+  `NSFilenamesPboardType` gives their paths.
+- A pasteboard on which `NSFilenamesPboardType` is declared and set to a list of paths has `public.file-url` among
+  its `types`, holds one item per path, and reads back as file URLs in order.
+- `NSPasteboardURLReadingFileURLsOnlyKey` leaves out a web URL; `NSPasteboardURLReadingContentsConformToTypesKey`
+  keeps the files whose type conforms to one of the given types (`public.image` keeps a `.png` and not a `.txt`;
+  `public.movie` keeps neither). `canReadObjectForClasses:options:` answers as `readObjectsForClasses:options:` reads.
