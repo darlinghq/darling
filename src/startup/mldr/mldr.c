@@ -797,6 +797,49 @@ static void ensure_top_range_free(struct load_results* lr, unsigned long stack_s
 }
 #endif
 
+#ifdef __i386__
+// How much stack the main thread gets: the stack limit, like the main thread
+// of a macOS process (8 MB by default), but at most 8 MB and at least the
+// initial size.
+#define MAIN_STACK_RESERVE_MAX (8UL * 1024 * 1024)
+
+static unsigned long main_stack_reserve(const struct rlimit* limit, unsigned long initial_size) {
+	unsigned long reserve = MAIN_STACK_RESERVE_MAX;
+	if (limit->rlim_cur != RLIM_INFINITY && limit->rlim_cur < reserve)
+		reserve = limit->rlim_cur;
+	if (reserve < initial_size)
+		reserve = initial_size;
+	return reserve & ~((unsigned long) PAGE_SIZE - 1);
+}
+
+// Maps the main thread stack in full, with a guard page at its low end. It goes
+// right below the commpage when that range is free, otherwise wherever the
+// kernel finds room; lr->stack_top is the end of the mapping either way.
+static bool map_main_stack_i386(struct load_results* lr, unsigned long reserve) {
+	const int prot = PROT_READ | PROT_WRITE;
+	const int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE;
+
+	void* wanted = (void*)(lr->stack_top - reserve);
+	void* stack = compatible_mmap(wanted, reserve, prot, flags | MAP_FIXED_NOREPLACE, -1, 0);
+	if (stack == MAP_FAILED && errno == EEXIST) {
+		stack = compatible_mmap(NULL, reserve, prot, flags, -1, 0);
+		if (stack != MAP_FAILED)
+			lr->stack_top = (unsigned long) stack + reserve;
+	}
+	if (stack == MAP_FAILED)
+		return false;
+
+	// The lowest page is a guard, so that a stack overflow faults instead of
+	// running into the mapping below. It is not part of the usable stack, which
+	// the exec policy may make executable.
+	if (mprotect(stack, PAGE_SIZE, PROT_NONE) != 0)
+		return false;
+
+	lr->stack_map_size = reserve - PAGE_SIZE;
+	return true;
+}
+#endif
+
 static void setup_space(struct load_results* lr, bool is_64_bit) {
 	struct rlimit limit;
 	getrlimit(RLIMIT_STACK, &limit);
@@ -828,11 +871,25 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 	// again in mldr_apply_exec_policy().
 	mldr_apply_exec_policy(lr, false, 0);
 
+#ifdef __i386__
+	// A 32-bit process has the host's initial stack (with argv, envp and the
+	// auxiliary vector) at a random place close to the top of the address
+	// space, possibly right below the commpage. A main-thread stack that only
+	// grows on demand then runs into that mapping without any fault and
+	// overwrites those strings and the auxiliary vector (the C library reads
+	// the page size from it). So the whole stack is mapped up front, and if
+	// the space below the commpage is not free it is put elsewhere.
+	if (!map_main_stack_i386(lr, main_stack_reserve(&limit, size))) {
+		fprintf(stderr, "Failed to allocate the main thread stack: %d (%s)\n", errno, strerror(errno));
+		exit(1);
+	}
+#else
 	lr->stack_map_size = size;
 	if (compatible_mmap((void*)(lr->stack_top - size), size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE | MAP_GROWSDOWN, -1, 0) == MAP_FAILED) {
 		fprintf(stderr, "Failed to allocate stack of %lu bytes: %d (%s)\n", size, errno, strerror(errno));
 		exit(1);
 	}
+#endif
 
 	unset_special_env();
 
