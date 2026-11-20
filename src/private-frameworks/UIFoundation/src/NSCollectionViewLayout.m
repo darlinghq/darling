@@ -56,8 +56,9 @@ NSCollectionViewSupplementaryElementKind const NSCollectionElementKindItem =
     _collectionView = collectionView;
 }
 
-// A plain context: only a collection view's reloadData marks everything as invalid (observed on macOS 26.7.3 and
-// 10.14.4; tests/src/uifoundation_collection_layout_contract.m).
+// QUIRK: -invalidateLayout passes a plain context, which marks nothing as invalid; only a collection view's
+// reloadData does. Not documented. Evidence: black-box observation on macOS 26.7.3 and 10.14.4 (tier 2; darling's tests/collection-view.md).
+// Test: uifoundation_collection_layout_contract.m test_invalidate_layout_passes_plain_context
 - (void) invalidateLayout {
     NSCollectionViewLayoutInvalidationContext *context = [[[[self class] invalidationContextClass] alloc] init];
     [self invalidateLayoutWithContext: context];

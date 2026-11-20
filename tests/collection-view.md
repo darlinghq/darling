@@ -204,6 +204,12 @@ them, so item views and layout attributes disagree.
   part of any item fills the gap's frame (the layout's inter-item gap attributes). The gap view goes when the drag
   leaves. The item highlight stays through `performDragOperation:` and `concludeDragOperation:` and goes at
   `draggingEnded:`. Right after `draggingExited:` both hosts showed item 4 as the drop target again; not pinned.
+- A view with no items takes a drop too: the flow layout's drop target anywhere in it is the gap before item 0 of
+  section 0 (`NSCollectionElementCategoryInterItemGap`, zero frame), and the delegate is asked to validate, then
+  accept, `NSCollectionViewDropBefore` index path {0,0}. The gap before an empty section's first item is one item size
+  at the section's top inset, at x 0 rather than the left inset; the hosts give that same frame, with the item category,
+  for any later index of the empty section (not pinned). Pinned by `test_drop_on_empty_view` and
+  `uifoundation_flow_layout.m` `test_drop_target_in_empty_sections`.
 
 ## File URLs on the pasteboard
 
@@ -217,3 +223,5 @@ directory.
 - `NSPasteboardURLReadingFileURLsOnlyKey` leaves out a web URL; `NSPasteboardURLReadingContentsConformToTypesKey`
   keeps the files whose type conforms to one of the given types (`public.image` keeps a `.png` and not a `.txt`;
   `public.movie` keeps neither). `canReadObjectForClasses:options:` answers as `readObjectsForClasses:options:` reads.
+- On a pasteboard that holds only a list of file names, `availableTypeFromArray:` finds `public.file-url`, and
+  `stringForType:` / `dataForType:` of it give the first file's URL string.
