@@ -26,6 +26,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #import <Foundation/NSURL.h>
 #include <unistd.h>
 #import <fmdb/FMDatabaseQueue.h>
+#include <CoreFoundation/CFURLPriv.h>
 
 extern FMDatabaseQueue* getDatabaseQueue(void);
 extern NSString* escape(NSString* str);
@@ -440,6 +441,63 @@ static NSArray<NSString*>* identifiersForTagLocked(FMDatabase* db, NSString* tag
 		[result addObject: dynamicIdentifier(tagClass, tag, conformingTo)];
 
 	return result;
+}
+
+// Whether a directory is a package by its type, for kCFURLIsPackageKey (CoreFoundation checks the
+// Finder's bundle bit itself): a type declared for its name extension conforms to com.apple.package,
+// or an application declares a document type with that extension, or of such a type, with
+// LSTypeIsPackage.
+static Boolean directoryIsPackage(CFURLRef url)
+{
+	FMDatabaseQueue* dq = getDatabaseQueue();
+	if (!dq)
+		return false;
+
+	__block Boolean result = false;
+	@autoreleasepool
+	{
+		NSString* extension = [(NSURL*) url pathExtension];
+		if ([extension length] == 0)
+			return false;
+
+		[dq inDatabase:^(FMDatabase* db) {
+			NSMutableArray<NSString*>* declared = [NSMutableArray array];
+			for (NSString* identifier in identifiersForTagLocked(db, (NSString*) kUTTagClassFilenameExtension, extension, nil))
+			{
+				if (isDynamicIdentifier(identifier))
+					continue;
+				if (conformsLocked(db, identifier, (NSString*) kUTTypePackage))
+				{
+					result = true;
+					return;
+				}
+				[declared addObject: identifier];
+			}
+
+			FMResultSet* rs = [db executeQuery: @"select 1 from app_doc D inner join app_doc_extension E on E.doc=D.id "
+				@"where D.is_package = 1 and E.extension = ? collate nocase limit 1", extension];
+			result = [rs next];
+			[rs close];
+
+			for (NSString* identifier in declared)
+			{
+				if (result)
+					break;
+				rs = [db executeQuery: @"select 1 from app_doc D inner join app_doc_uti U on U.doc=D.id "
+					@"where D.is_package = 1 and U.uti = ? collate nocase limit 1", identifier];
+				result = [rs next];
+				[rs close];
+			}
+		}];
+	}
+	return result;
+}
+
+// CoreFoundation answers kCFURLIsPackageKey through LaunchServices once it is loaded.
+__attribute__((constructor))
+static void registerPackageProvider(void)
+{
+	_CFURLSetPackageProvider(directoryIsPackage);
 }
 
 _Nullable CFArrayRef
