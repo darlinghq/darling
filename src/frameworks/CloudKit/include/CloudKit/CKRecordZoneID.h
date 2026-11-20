@@ -18,6 +18,7 @@
 */
 
 #import <Foundation/Foundation.h>
+#import <CloudKit/CKDefines.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

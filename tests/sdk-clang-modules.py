@@ -28,7 +28,7 @@ C_MODULES = ['Darwin', 'Darwin.MacTypes', 'Darwin.os.lock', 'Dispatch', 'os.log'
 FOUNDATION_MODULES = ['CoreFoundation', 'Foundation', 'CoreGraphics', 'QuartzCore',
                       'CoreText', 'AppKit', 'OpenGL', 'CoreData', 'UniformTypeIdentifiers',
                       'Combine', 'Contacts', 'Network', 'Photos', 'Vision', 'Metal',
-                      'SceneKit', 'CryptoTokenKit', 'CoreLocation', 'MapKit']
+                      'SceneKit', 'CryptoTokenKit', 'CoreLocation', 'MapKit', 'CloudKit']
 OBJC_MODULES = ['ObjectiveC']
 
 
