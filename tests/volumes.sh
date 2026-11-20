@@ -130,22 +130,25 @@ if build filemanager-volumes "$ext/foundation/tests/filemanager-volumes.m" -fram
 	[ "$(rc volumes)" = 0 ] && pass "mounted volumes" || fail "mounted volumes: $(outputs volumes)"
 fi
 
-# trash on other volumes: NSTrashDirectory and trashItemAtURL: on the home volume, on the host's file system (a volume
-# of its own in every mode) and on a read-only image (see filemanager-trash-volumes.m). The other volume's
-# .Trashes/<uid> must not exist before; it is removed afterwards, and .Trashes too if the case made it.
+# trash on other volumes: NSTrashDirectory and trashItemAtURL: on the home volume, on another host file system and on a
+# read-only image (see filemanager-trash-volumes.m). The other file system is the user's runtime directory,
+# /run/user/<uid> (TRASH_OTHER_VOLUME overrides it): a tmpfs of its own that the guest sees in every mode and whose root
+# the user owns, so the volume's trash can be made there. (/dev/shm is not used: the container has its own /dev.) The other volume's .Trashes/<uid> must not exist before; it is removed afterwards, and .Trashes too if the
+# case made it.
 if build filemanager-trash-volumes "$ext/foundation/tests/filemanager-trash-volumes.m" -framework Foundation; then
-	mkdir "$work/other"
-	host_trashes=$(df --output=target "$work" | tail -n 1)/.Trashes
+	other=$(mktemp -d "${TRASH_OTHER_VOLUME:-/run/user/$(id -u)}/darling-trash.XXXXXX")
+	host_trashes=$(df --output=target "$other" | tail -n 1)/.Trashes
 	trashes_existed=0
 	[ -e "$host_trashes" ] && trashes_existed=1
 	attach
 	guest trash "(uid=\$(id -u); test ! -e '/Volumes/SystemRoot$host_trashes/'\$uid || { echo \"$host_trashes/\$uid exists\"; exit 1; }
 		d=\$(mktemp -d \"\$HOME/trash-test.XXXXXX\") || exit 1
-		'$gw/filemanager-trash-volumes' \"\$d\" '$gw/other' '/Volumes/Unmount Test/hello.txt'; r=\$?
+		'$gw/filemanager-trash-volumes' \"\$d\" '/Volumes/SystemRoot$other' '/Volumes/Unmount Test/hello.txt'; r=\$?
 		rm -rf \"\$d\" '/Volumes/SystemRoot$host_trashes/'\$uid
 		[ $trashes_existed = 1 ] || rmdir '/Volumes/SystemRoot$host_trashes' 2>/dev/null
 		exit \$r)"
 	detach
+	rm -rf "$other"
 	[ "$(rc trash)" = 0 ] && pass "trash on other volumes" || fail "trash on other volumes: $(outputs trash)"
 fi
 
