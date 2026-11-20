@@ -1,5 +1,6 @@
 #include "AudioQueue.h"
 #include "AudioQueueOutput.h"
+#include "AudioQueueInput.h"
 #include <CarbonCore/MacErrors.h>
 
 OSStatus AudioQueueStart(AudioQueueRef inAQ, const AudioTimeStamp *inStartTime)
@@ -49,8 +50,19 @@ OSStatus AudioQueueNewInput(const AudioStreamBasicDescription *inFormat,
 		CFStringRef inCallbackRunLoopMode, UInt32 inFlags,
 		AudioQueueRef *outAQ)
 {
-	*outAQ = nullptr;
-	return unimpErr;
+	return AudioQueueInput::create(inFormat, inCallbackProc, inUserData, inCallbackRunLoop,
+			inCallbackRunLoopMode, nullptr, nullptr, (AudioQueueInput**) outAQ);
+}
+
+OSStatus AudioQueueNewInputWithDispatchQueue(AudioQueueRef *outAQ,
+		const AudioStreamBasicDescription *inFormat, UInt32 inFlags,
+		dispatch_queue_t inCallbackDispatchQueue,
+		AudioQueueInputCallbackBlock inCallbackBlock)
+{
+	if (!inCallbackDispatchQueue || !inCallbackBlock)
+		return kAudio_ParamError;
+	return AudioQueueInput::create(inFormat, nullptr, nullptr, nullptr, nullptr,
+			inCallbackDispatchQueue, inCallbackBlock, (AudioQueueInput**) outAQ);
 }
 
 OSStatus AudioQueueDispose(AudioQueueRef inAQ, Boolean inImmediate)
@@ -90,7 +102,7 @@ OSStatus AudioQueueAddPropertyListener(AudioQueueRef inAQ, AudioQueuePropertyID 
 
 OSStatus AudioQueueRemovePropertyListener(AudioQueueRef inAQ, AudioQueuePropertyID inID, AudioQueuePropertyListenerProc inProc, void *inUserData)
 {
-	return inAQ->addPropertyListener(inID, inProc, inUserData);
+	return inAQ->removePropertyListener(inID, inProc, inUserData);
 }
 
 OSStatus AudioQueueSetOfflineRenderFormat(AudioQueueRef inAQ, const AudioStreamBasicDescription *inFormat, const AudioChannelLayout *inLayout)

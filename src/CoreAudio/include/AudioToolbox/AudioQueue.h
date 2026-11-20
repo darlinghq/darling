@@ -4,6 +4,7 @@
 #include <CoreServices/MacTypes.h>
 #include <CoreFoundation/CFString.h>
 #include <CoreFoundation/CFRunLoop.h>
+#include <dispatch/dispatch.h>
 
 #ifdef	__cplusplus
 extern "C" {
@@ -34,6 +35,7 @@ enum
 	kAudioQueueErr_QueueInvalidated = -66671,
 	kAudioQueueErr_TooManyTaps = -66670,
 	kAudioQueueErr_InvalidTapContext = -66669,
+	kAudioQueueErr_RecordUnderrun = -66668,
 	kAudioQueueErr_InvalidTapType = -66667,
 	kAudioQueueErr_BufferEnqueuedTwice = -66666,
 	kAudioQueueErr_CannotStartYet = -66665,
@@ -44,8 +46,25 @@ enum
 enum
 {
 	kAudioQueueProperty_IsRunning = 'aqrn',
+	kAudioQueueDeviceProperty_SampleRate = 'aqsr',
+	kAudioQueueDeviceProperty_NumberChannels = 'aqdc',
+	kAudioQueueProperty_CurrentDevice = 'aqcd',
+	kAudioQueueProperty_MagicCookie = 'aqmc',
+	kAudioQueueProperty_MaximumOutputPacketSize = 'xops',
 	kAudioQueueProperty_StreamDescription = 'aqft',
+	kAudioQueueProperty_ChannelLayout = 'aqcl',
+	kAudioQueueProperty_EnableLevelMetering = 'aqme',
+	kAudioQueueProperty_CurrentLevelMeter = 'aqmv',
+	kAudioQueueProperty_CurrentLevelMeterDB = 'aqmd',
+	kAudioQueueProperty_DecodeBufferSizeFrames = 'dcbf',
+	kAudioQueueProperty_ConverterError = 'qcve',
 };
+
+typedef struct AudioQueueLevelMeterState
+{
+	Float32 mAveragePower;
+	Float32 mPeakPower;
+} AudioQueueLevelMeterState;
 
 enum
 {
@@ -114,6 +133,17 @@ OSStatus AudioQueueNewInput(const AudioStreamBasicDescription *inFormat,
 		void *inUserData, CFRunLoopRef inCallbackRunLoop,
 		CFStringRef inCallbackRunLoopMode, UInt32 inFlags,
 		AudioQueueRef *outAQ);
+
+#ifdef __BLOCKS__
+typedef void (^AudioQueueInputCallbackBlock)(AudioQueueRef inAQ,
+		AudioQueueBufferRef inBuffer, const AudioTimeStamp* inStartTime,
+		UInt32 inNumberPacketDescriptions,
+		const AudioStreamPacketDescription* inPacketDescs);
+OSStatus AudioQueueNewInputWithDispatchQueue(AudioQueueRef *outAQ,
+		const AudioStreamBasicDescription *inFormat, UInt32 inFlags,
+		dispatch_queue_t inCallbackDispatchQueue,
+		AudioQueueInputCallbackBlock inCallbackBlock);
+#endif
 
 OSStatus AudioQueueDispose(AudioQueueRef inAQ, Boolean inImmediate);
 
