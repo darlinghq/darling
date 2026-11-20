@@ -36,8 +36,8 @@ public:
 	virtual OSStatus setProperty(AudioQueuePropertyID inID, const void *inData, UInt32 inDataSize);
 	virtual OSStatus getPropertySize(AudioQueuePropertyID inID, UInt32 *outDataSize);
 
-	OSStatus addPropertyListener(AudioQueuePropertyID inID, AudioQueuePropertyListenerProc inProc, void *inUserData);
-	OSStatus removePropertyListener(AudioQueuePropertyID inID, AudioQueuePropertyListenerProc inProc, void *inUserData);
+	virtual OSStatus addPropertyListener(AudioQueuePropertyID inID, AudioQueuePropertyListenerProc inProc, void *inUserData);
+	virtual OSStatus removePropertyListener(AudioQueuePropertyID inID, AudioQueuePropertyListenerProc inProc, void *inUserData);
 
 	virtual OSStatus allocateBuffer(UInt32 inBufferByteSize, UInt32 inNumberPacketDescriptions, AudioQueueBufferRef *outBuffer);
 	virtual OSStatus freeBuffer(AudioQueueBufferRef inBuffer);
