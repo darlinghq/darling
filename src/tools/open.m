@@ -259,6 +259,21 @@ int main(int argc, char *argv[])
 
 static void usage(void)
 {
-	printf("Usage: open [filenames]\n"
-		"Help: Use open to open files, folders, and URLs from the command line.\n");
+	// Printed on stderr, as macOS does, but listing only the options this implementation acts on.
+	fprintf(stderr,
+		"Usage: open [-e] [-t] [-n] [-g] [-j] [-b <bundle identifier>] [-a <application>] [filenames] [--args arguments]\n"
+		"Help: Opens files, folders and URLs from the command line, each with its default application\n"
+		"      unless another one is chosen. An argument that is not an existing file but has a URL\n"
+		"      scheme is opened as a URL.\n"
+		"Options:\n"
+		"      -a <application>      Open with the named application.\n"
+		"      -b <bundle id>        Open with the application that has this bundle identifier.\n"
+		"      -e                    Open with TextEdit.\n"
+		"      -t                    Open with the default text editor.\n"
+		"      -n, --new             Start a new instance of the application even if one is running.\n"
+		"      -g, --background      Do not bring the application to the front.\n"
+		"      -j, --hide            Start the application hidden.\n"
+		"      --args                Pass all following arguments to the application instead of opening them.\n"
+		"Not supported yet: -f, -R (--reveal), -h (--header) and -s.\n"
+		"Accepted but without effect: -F (--fresh), -W (--wait-apps).\n");
 }
