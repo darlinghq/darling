@@ -48,6 +48,18 @@
 #define DA_EVENT_DISAPPEARED "disappeared"
 #define DA_EVENT_CHANGED     "changed"
 
+// {name, options} -> {status, string (optional)}: kDADiskUnmountOption* for unmount, kDADiskEjectOption* for eject.
+// The reply comes once the request is done, after the approval round.
+#define DA_OP_UNMOUNT "unmount"
+#define DA_OP_EJECT   "eject"
+#define DA_KEY_OPTIONS "options" // uint64
+#define DA_KEY_STRING  "string"  // a dissenter's status string
+
+// An approval request from the daemon, sent to every connection that said hello: {event: "approve", kind, name,
+// description} -> {status (0 approves), string (optional)}.
+#define DA_EVENT_APPROVE "approve"
+#define DA_KEY_KIND      "kind" // DA_OP_UNMOUNT or DA_OP_EJECT
+
 // A description travels as a binary property list of the disk description dictionary, with two differences
 // because a property list holds neither URLs nor UUIDs: kDADiskDescriptionVolumePathKey is the mount point as a
 // path string, and the UUID keys are UUID strings. The library turns them into a CFURL and CFUUIDs.

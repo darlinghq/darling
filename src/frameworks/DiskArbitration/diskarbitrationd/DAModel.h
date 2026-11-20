@@ -34,6 +34,7 @@
 typedef struct DAMedia
 {
 	int unit;
+	unsigned long id;             // never reused, unlike the unit
 	bool root;                    // the root volume's disk
 	bool mounted;                 // the leaf's volume is mounted on mountPoint
 	bool seen;                    // found by the current rescan
@@ -59,6 +60,13 @@ typedef struct DAModelEvents
 // (leaf first, as on macOS); changed descriptions are reported with the keys that changed. A disk whose volume DiskArbitration unmounted (mounted == false) is left
 // alone: it stays until it is ejected.
 void DAModelRescan(const DAModelEvents* events);
+
+// The leaf's volume was unmounted through DiskArbitration: it loses DAVolumePath (reported as changed), and its
+// mount point in /Volumes is removed. The disk stays until it is ejected.
+void DAModelUnmounted(DAMedia* media, const DAModelEvents* events);
+
+// The disk is ejected: it disappears (whole disk first) and is freed.
+void DAModelRemove(DAMedia* media, const DAModelEvents* events);
 
 // The media a BSD name ("diskN" or "diskNs1", optionally after "/dev/") names, or NULL; *whole tells which.
 DAMedia* DAModelFindName(const char* name, bool* whole);

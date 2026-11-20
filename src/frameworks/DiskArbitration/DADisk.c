@@ -11,6 +11,7 @@
 #include <stdlib.h>
 
 #include "DAPrivate.h"
+#include "DAProtocol.h"
 
 #define CONST_STRING_DECL(name, value) const CFStringRef name = CFSTR(value);
 
@@ -249,17 +250,15 @@ DADiskRef DADiskCopyWholeDisk(DADiskRef disk)
 	return DADiskCreateWithName(CFGetAllocator(disk), disk->session, whole);
 }
 
-// There is no disk arbitration daemon, so no disk exists and every operation on a disk fails.
+typedef void (*DADiskOperationCallback)(DADiskRef disk, DADissenterRef dissenter, void *context);
+
 // QUIRK: for a disk object made from a BSD name that names no disk, the claim, eject and
 // unmount operations call their completion callback before returning, with a dissenter of
 // status kDAReturnBadArgument and no status string. The documentation only says the callback is
 // called once the operation completes. Evidence: black-box observation on macOS 26.7.3 (tier 2;
 // the callback ran before the call returned, on the calling thread, whether or not the session
-// was scheduled on a run loop or dispatch queue). A disk object counts as claimed only after a
-// successful claim, so never here.
+// was scheduled on a run loop or dispatch queue).
 // Test: tests/src/diskarbitration_operations.c (quirk_*)
-typedef void (*DADiskOperationCallback)(DADiskRef disk, DADissenterRef dissenter, void *context);
-
 static void DADiskFailOperation(DADiskRef disk, DADiskOperationCallback callback, void *context)
 {
 	if (!callback)
@@ -270,6 +269,17 @@ static void DADiskFailOperation(DADiskRef disk, DADiskOperationCallback callback
 		CFRelease(dissenter);
 }
 
+static bool DADiskExists(DADiskRef disk)
+{
+	CFDictionaryRef description = _DAClientCopyDescription(disk->session, disk->bsdName);
+	if (description == NULL)
+		return false;
+	CFRelease(description);
+	return true;
+}
+
+// diskarbitrationd does not take claims yet, so every claim fails as for a disk that does not exist. A disk object
+// counts as claimed only after a successful claim, so never here.
 void DADiskClaim(DADiskRef disk, DADiskClaimOptions options,
 		DADiskClaimReleaseCallback release, void *releaseContext,
 		DADiskClaimCallback callback, void *callbackContext)
@@ -287,14 +297,37 @@ void DADiskUnclaim(DADiskRef disk)
 	// Nothing is claimed, so there is nothing to release
 }
 
-void DADiskEject(DADiskRef disk, DADiskEjectOptions options,
-		DADiskEjectCallback callback, void *context)
+void DADiskUnmount(DADiskRef disk, DADiskUnmountOptions options, DADiskUnmountCallback callback, void* context)
 {
-	DADiskFailOperation(disk, (DADiskOperationCallback) callback, context);
+	if (!DADiskExists(disk))
+		DADiskFailOperation(disk, (DADiskOperationCallback) callback, context);
+	else
+		_DASessionRequest(disk->session, DA_OP_UNMOUNT, disk->bsdName, options, callback, context);
 }
 
-void DADiskUnmount(DADiskRef disk, DADiskUnmountOptions options,
-		DADiskUnmountCallback callback, void *context)
+void DADiskEject(DADiskRef disk, DADiskEjectOptions options, DADiskEjectCallback callback, void* context)
 {
-	DADiskFailOperation(disk, (DADiskOperationCallback) callback, context);
+	if (!DADiskExists(disk))
+		DADiskFailOperation(disk, (DADiskOperationCallback) callback, context);
+	else
+		_DASessionRequest(disk->session, DA_OP_EJECT, disk->bsdName, options, callback, context);
+}
+
+// A volume that is mounted is busy, as on macOS. Mounting one again is not supported: an image volume needs the
+// disk image layer, which DiskArbitration does not use.
+void DADiskMountWithArguments(DADiskRef disk, CFURLRef path, DADiskMountOptions options, DADiskMountCallback callback,
+	void* context, CFStringRef arguments[])
+{
+	CFDictionaryRef description = DADiskCopyDescription(disk);
+	bool mounted = description != NULL && CFDictionaryContainsKey(description, kDADiskDescriptionVolumePathKey);
+	if (description != NULL)
+		CFRelease(description);
+	_DASessionComplete(disk->session, disk->bsdName, callback, context,
+		mounted ? kDAReturnBusy : kDAReturnUnsupported, NULL);
+}
+
+void DADiskMount(DADiskRef disk, CFURLRef path, DADiskMountOptions options, DADiskMountCallback callback,
+	void* context)
+{
+	DADiskMountWithArguments(disk, path, options, callback, context, NULL);
 }

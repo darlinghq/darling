@@ -75,14 +75,14 @@ if build da-callbacks "$here/da-callbacks.c"; then
 	done
 
 	# a session keeps working after the daemon restarts (launchd starts it again): the session's connection is
-	# interrupted, and it says hello again
+	# interrupted, and it says hello again. The daemon is killed with SIGKILL, which nothing can delay.
 	cat >"$work/daemon-pid" <<'SCRIPT'
 #!/bin/sh
 launchctl list | awk '/com.apple.diskarbitrationd$/ { print $1 }'
 SCRIPT
 	cat >"$work/kill-daemon" <<'SCRIPT'
 #!/bin/sh
-kill -TERM "$("$(dirname "$0")/daemon-pid")"
+kill -KILL "$("$(dirname "$0")/daemon-pid")"
 SCRIPT
 	chmod +x "$work/daemon-pid" "$work/kill-daemon"
 	guest cb-restart "(before=\$('$gw/daemon-pid')
@@ -91,6 +91,39 @@ SCRIPT
 		test \"\$before\" != \"\$after\" || { echo \"the daemon did not restart (pid \$before)\"; exit 1; })"
 	[ "$(rc cb-restart)" = 0 ] && pass "callbacks: after a daemon restart" \
 		|| fail "callbacks: after a daemon restart: $(rc cb-restart) $(outputs cb-restart)"
+fi
+
+# unmount, eject, mount, approvals and dissenters (see da-ops.c and da-ops-sequence.sh); the values are macOS's,
+# except "mount unmounted leaf" (macOS mounts it again; Darling cannot) and the timing cases
+if build da-ops "$here/da-ops.c"; then
+	cp "$here/da-ops-sequence.sh" "$work/"
+	guest ops "'$gw/da-ops-sequence.sh' '$gw'"
+	expect() { # <case> <expected result, an extended regular expression>
+		got=$(grep "^$1: " "$work/ops.out" | head -n 1 | cut -d: -f2- | sed 's/^ //')
+		echo "$got" | grep -Eqx "$2" && pass "ops: $1" || fail "ops: $1: '$got', expected '$2'"
+	}
+	expect "eject leaf" "status f8da000c"
+	expect "unmount unknown leaf" "status f8da0003"
+	expect "eject whole while mounted" "status c010"
+	expect "unmount with a busy file" "status c010"
+	expect "mount mounted leaf" "status f8da0002"
+	expect "unmount, dissenter" "status f8da0002 string in use by test"
+	expect "whole unmount, dissenter" "status f8da0002 string in use by test"
+	expect "eject, dissenter" "status f8da0002 string in use by test"
+	expect "forced unmount, dissenter" "status 0"
+	expect "mount point after unmount" "gone"
+	expect "leaf approval asked" "yes"
+	expect "whole approval asked" "yes"
+	expect "unmount again" "status f8da0007"
+	expect "mount unmounted leaf" "status f8da000c"
+	expect "whole unmount, nothing mounted" "status 0"
+	expect "eject" "status 0"
+	expect "eject again" "status f8da0003"
+	expect "unmount, hanging approver" "status 0 in ([0-9]|1[0-5]) s"
+	expect "unmount, killed approver" "status 0 in [0-3] s"
+	expect "unmount, volume vanished" "status f8da000[37] in ([0-9]|1[0-5]) s"
+	expect "disk after vanishing" "absent"
+	[ "$(rc ops)" = 0 ] || fail "ops: the sequence failed: $(outputs ops)"
 fi
 
 rm -rf "$work"

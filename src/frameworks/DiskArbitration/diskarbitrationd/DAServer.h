@@ -22,6 +22,8 @@
 #define DA_SERVER_H
 
 #include <dispatch/dispatch.h>
+#include <stdbool.h>
+#include <xpc/xpc.h>
 
 #include "DAModel.h"
 
@@ -30,5 +32,14 @@ void DAServerStart(dispatch_queue_t queue);
 
 // What model changes are reported to (the server's clients).
 const DAModelEvents* DAServerEvents(void);
+
+// The daemon's queue.
+dispatch_queue_t DAServerQueue(void);
+
+// Calls block for every connection that said hello.
+void DAServerForEachSubscriber(void (^block)(xpc_connection_t peer));
+
+// Puts a description into a message as DA_KEY_DESCRIPTION (see DAProtocol.h); false if it cannot be encoded.
+bool DAServerSetDescription(xpc_object_t message, CFDictionaryRef description);
 
 #endif

@@ -99,6 +99,37 @@ changed callback follows.
 A session keeps working after `diskarbitrationd` restarts: its connection is interrupted, it says hello again and
 catches up (`da-callbacks restart`, Darling only).
 
+### Unmount, eject, mount and approvals
+
+`da-ops` with the image attached, in this order (the statuses are what the completion callback's dissenter gives; 0
+means no dissenter):
+
+| Request | Status |
+|---------|--------|
+| eject the leaf `disk5s1` | `f8da000c` (kDAReturnUnsupported) |
+| unmount `disk5s9`, which does not exist | `f8da0003` (kDAReturnBadArgument) |
+| eject `disk5` while its volume is mounted | `c010` |
+| unmount the leaf while a file in the volume is open | `c010` |
+| mount the leaf while it is mounted | `f8da0002` (kDAReturnBusy) |
+| with `da-ops deny` running: unmount the leaf; unmount `disk5` with kDADiskUnmountOptionWhole; eject `disk5` | `f8da0002` with the string "in use by test", each time |
+| with `deny` running: unmount the leaf with kDADiskUnmountOptionForce | 0, and the mount point is gone |
+| unmount the leaf again | `f8da0007` (kDAReturnNotMounted) |
+| unmount `disk5` with kDADiskUnmountOptionWhole, nothing mounted | 0 |
+| unmount `disk5` without options | `f8da0007` |
+| eject `disk5` | 0 |
+| eject it again | `f8da0003` |
+
+The approver was asked about `disk5s1` for each leaf unmount, including the forced one (its dissent is then
+ignored), and about `disk5` for each eject. An eject of a mounted disk with `deny` running gets the dissent, so the
+approval comes before the check that the volume is unmounted. `c010` is 0xC000 with the errno EBUSY (16).
+
+macOS mounts an unmounted leaf again when asked. Darling cannot (DiskArbitration does not drive the disk image
+layer), so its mount request completes with `f8da000c`. A request also completes when an approver does not answer
+for 10 s or has gone away, and when the volume disappears while the approval round runs.
+
+`statfs` gives an attached image's `f_owner` as the user who attached it (501), and 0 for `/`; only root and that
+user may unmount or eject the image.
+
 ## Darling's disks
 
 Darling has no IOKit block devices. `diskarbitrationd` makes its disks from the mount table:
