@@ -172,3 +172,35 @@ from the documented contract on Darling only:
   the source object passed to the session.
 - The source is sent willBeginAtPoint, movedToPoint while the pointer moves (X11 only; Wayland gives clients no global
   pointer position), then endedAtPoint:operation:.
+
+## Dragging and dropping items
+
+Pinned by `appkit-collection-view-drag.m`: the source side by mouse events sent to the window, with
+`beginDraggingSessionWithItems:event:source:` overridden to record the drag instead of starting it; the destination
+side by calling the view's NSDraggingDestination methods with a stand-in NSDraggingInfo. The view uses overlay
+scrollers: with legacy ones the hosts narrow it after the first layout and keep the item views where that layout put
+them, so item views and layout attributes disagree.
+
+- A new collection view's source mask is every operation within the application and none outside it.
+  `setDraggingSourceOperationMask:forLocal:` sets each.
+- With a delegate that provides pasteboard writers, a press on an item does not track the mouse in `mouseDown:`; the
+  drag starts on a later dragged event. Host A started on a 3 point move and on a 2 point move split over four events,
+  host B on a 4 point move; neither on a single 2 point event. The test pins only that a click starts none.
+- A drag from a selected item asks `canDrag` with the whole selection and the mouse-down event, then
+  `pasteboardWriterForItemAtIndexPath:` for each selected item in index order, and begins one session with the
+  mouse-down event and the view as the source: one dragging item per writer, framed at the item's view, with one image
+  component. An item whose writer is nil is left out.
+- A drag from an unselected item first selects only it (shouldDeselect the others, then shouldSelect it), then drags
+  it. When `canDrag` answers NO nothing is dragged; it is asked again on every dragged event, and the selection stays.
+- A plain click on an item that is already selected changes nothing and calls no delegate method (no highlight, no
+  selection), with or without a drag-capable delegate. Pinned in `appkit-collection-view-mouse.m`.
+- The drop proposed at a point is the flow layout's drop target there: on an item, `NSCollectionViewDropOn` that
+  item (to its edges); in a gap of a row, `NSCollectionViewDropBefore` the item after it; right of a row's last item,
+  before the next index; between rows, before the first item of the lower row; after the last item or below every
+  item, before the item count. The delegate's changes to the index path and operation in `validateDrop:` are what
+  `acceptDrop:` gets; when it returns None, enter and update return None and the drop is not accepted
+  (`prepareForDragOperation:` still answers YES).
+- Over an item the item's `highlightState` is `NSCollectionViewItemHighlightAsDropTarget`; over a gap, a view not
+  part of any item fills the gap's frame (the layout's inter-item gap attributes). The gap view goes when the drag
+  leaves. The item highlight stays through `performDragOperation:` and `concludeDragOperation:` and goes at
+  `draggingEnded:`. Right after `draggingExited:` both hosts showed item 4 as the drop target again; not pinned.
