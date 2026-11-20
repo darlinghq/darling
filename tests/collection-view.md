@@ -77,3 +77,24 @@ of a scroll view in a window; frames are {x, y, width, height}.
 - Gap attributes: before an item that starts a row, one interitem spacing left of it ({-10, 0, 10, 30}); before any
   other item, the space from the previous one ({80, 0, 90, 30}); after the last item, one spacing right of it
   ({80, 80, 10, 30}).
+
+## Collection view placement and reuse
+
+`appkit-collection-view-layout.m` and `collection-data-source.m` (darling-cocotron's tests), same on both hosts:
+
+- `reloadData` asks the data source for no item; the next layout pass does. It invalidates the layout once, with a
+  context whose `invalidateEverything` and `invalidateDataSourceCounts` are YES.
+- Item views are subviews of the collection view, at their layout attributes' frames and alpha.
+- With 5 000 80×30 items in a 300×300 scroll view, only the visible items are asked for (fewer than 100). Scrolling to
+  the end makes at most a row more items than are visible; the others are reused, and `prepareForReuse` is called.
+- After a reload with fewer items, the views of items no longer shown stay subviews of the collection view but are
+  hidden.
+- Layout passes without an invalidation don't prepare the layout again; an invalidation prepares it once more.
+- In a clip view the collection view is at least as large as the clip view. A vertical layout (any layout that isn't a
+  horizontal flow) keeps the clip view's width even when its content is wider (content 400×300 in a 300×200 clip view:
+  300×300) and grows to the content's height; a horizontal flow grows in width instead (5 items 80×30 in 200×100:
+  260×100). With no content at all, host A sizes the view to the clip view and host B leaves its frame alone (not
+  checked).
+- The default `backgroundColors` is one color, the control background color.
+- A plain NSCollectionViewItem without a nib raises when its view is loaded on host B (it looks for a nib named after
+  the class); the tests give their item classes a `loadView`.

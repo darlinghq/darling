@@ -68,6 +68,13 @@ static BOOL endsWith(const char *s, const char *suffix)
 static void checkFlow(const char *name, CGFloat width, NSSize itemSize, NSEdgeInsets inset, BOOL useDefaultSize,
                       NSArray *counts, const double (*expected)[4], size_t expectedCount, double height)
 {
+    // In a window, in a scroll view as high as the content expected, so every item is visible; items are made in the
+    // layout pass
+    NSWindow *window = [[[NSWindow alloc] initWithContentRect: NSMakeRect(0, 0, width, height)
+                                                    styleMask: NSWindowStyleMaskBorderless
+                                                      backing: NSBackingStoreBuffered
+                                                        defer: NO] autorelease];
+    NSScrollView *scroll = [[[NSScrollView alloc] initWithFrame: NSMakeRect(0, 0, width, height)] autorelease];
     NSCollectionView *view = [[[NSCollectionView alloc] initWithFrame: NSMakeRect(0, 0, width, 100)] autorelease];
     NSCollectionViewFlowLayout *layout = [[[NSCollectionViewFlowLayout alloc] init] autorelease];
     if (!useDefaultSize)
@@ -78,7 +85,10 @@ static void checkFlow(const char *name, CGFloat width, NSSize itemSize, NSEdgeIn
     FlowSource *source = [[[FlowSource alloc] init] autorelease];
     source->counts = counts;
     view.dataSource = source;
+    scroll.documentView = view;
+    [window.contentView addSubview: scroll];
     [view reloadData];
+    [view layoutSubtreeIfNeeded];
     NSSize size = useDefaultSize ? NSMakeSize(50, 50) : itemSize;
     for (size_t i = 0; i < expectedCount; i++) {
         NSIndexPath *path = [NSIndexPath indexPathForItem: (NSInteger) expected[i][1]
@@ -96,6 +106,7 @@ static void checkFlow(const char *name, CGFloat width, NSSize itemSize, NSEdgeIn
 int main(void)
 {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    [NSApplication sharedApplication];
 
     // Placement.
     const char *uifClasses[] = {"NSCollectionViewLayout", "NSCollectionViewFlowLayout",
