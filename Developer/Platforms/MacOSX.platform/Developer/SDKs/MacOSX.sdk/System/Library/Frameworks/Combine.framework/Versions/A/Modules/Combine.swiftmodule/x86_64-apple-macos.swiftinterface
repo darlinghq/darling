@@ -1,0 +1,2590 @@
+// swift-interface-format-version: 1.0
+// swift-compiler-version: Apple Swift version 6.4.2 effective-5.10 (swiftlang-6.4.2.1.4 clang-2100.4.1.1)
+// swift-module-flags: -target x86_64-apple-macos27.2 -target-variant x86_64-apple-ios18.0-macabi -enable-objc-interop -enable-library-evolution -language-mode 5 -O -library-level api -enable-library-evolution -enable-library-evolution -enable-library-evolution -enable-library-evolution -enable-library-evolution -enable-experimental-feature DebugDescriptionMacro -enable-bare-slash-regex -user-module-version 3023 -module-name Combine
+// swift-module-flags-ignorable:  -formal-cxx-interoperability-mode=off -interface-compiler-version 6.4.2
+import Darwin
+import Swift
+import _Concurrency
+import _StringProcessing
+import _SwiftConcurrencyShims
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func multicast<S>(_ createSubject: @escaping () -> S) -> Combine::Publishers.Combine::Multicast<Self, S> where S : Combine::Subject, Self.Failure == S.Failure, Self.Output == S.Output
+  public func multicast<S>(subject: S) -> Combine::Publishers.Combine::Multicast<Self, S> where S : Combine::Subject, Self.Failure == S.Failure, Self.Output == S.Output
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  final public class Multicast<Upstream, SubjectType> : Combine::ConnectablePublisher where Upstream : Combine::Publisher, SubjectType : Combine::Subject, Upstream.Failure == SubjectType.Failure, Upstream.Output == SubjectType.Output {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    final public let upstream: Upstream
+    final public let createSubject: () -> SubjectType
+    public init(upstream: Upstream, createSubject: @escaping () -> SubjectType)
+    @objc deinit
+    final public func receive<S>(subscriber: S) where S : Combine::Subscriber, SubjectType.Failure == S.Failure, SubjectType.Output == S.Input
+    final public func connect() -> any Combine::Cancellable
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public protocol Cancellable {
+  func cancel()
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public protocol Subscription : Combine::Cancellable, Combine::CustomCombineIdentifierConvertible {
+  func request(_ demand: Combine::Subscribers.Combine::Demand)
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public enum Subscriptions {
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Subscriptions {
+  public static var empty: any Combine::Subscription {
+    get
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+final public class AnyCancellable : Combine::Cancellable, Swift::Hashable {
+  public init(_ cancel: @escaping () -> Swift::Void)
+  public init<C>(_ canceller: C) where C : Combine::Cancellable
+  @objc deinit
+  final public func cancel()
+  final public func hash(into hasher: inout Swift::Hasher)
+  public static func == (lhs: Combine::AnyCancellable, rhs: Combine::AnyCancellable) -> Swift::Bool
+  final public var hashValue: Swift::Int {
+    get
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::AnyCancellable {
+  @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+  final public func store<C>(in collection: inout C) where C : Swift::RangeReplaceableCollection, C.Element == Combine::AnyCancellable
+  @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+  final public func store(in set: inout Swift::Set<Combine::AnyCancellable>)
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Cancellable {
+  @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+  public func store<C>(in collection: inout C) where C : Swift::RangeReplaceableCollection, C.Element == Combine::AnyCancellable
+  @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+  public func store(in set: inout Swift::Set<Combine::AnyCancellable>)
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func subscribe<S>(on scheduler: S, options: S.SchedulerOptions? = nil) -> Combine::Publishers.Combine::SubscribeOn<Self, S> where S : Combine::Scheduler
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct SubscribeOn<Upstream, Context> : Combine::Publisher where Upstream : Combine::Publisher, Context : Combine::Scheduler {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let scheduler: Context
+    public let options: Context.SchedulerOptions?
+    public init(upstream: Upstream, scheduler: Context, options: Context.SchedulerOptions?)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func measureInterval<S>(using scheduler: S, options: S.SchedulerOptions? = nil) -> Combine::Publishers.Combine::MeasureInterval<Self, S> where S : Combine::Scheduler
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct MeasureInterval<Upstream, Context> : Combine::Publisher where Upstream : Combine::Publisher, Context : Combine::Scheduler {
+    public typealias Output = Context.SchedulerTimeType.Stride
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let scheduler: Context
+    public init(upstream: Upstream, scheduler: Context)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, S.Input == Context.SchedulerTimeType.Stride
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func drop(while predicate: @escaping (Self.Output) -> Swift::Bool) -> Combine::Publishers.Combine::DropWhile<Self>
+  public func tryDrop(while predicate: @escaping (Self.Output) throws -> Swift::Bool) -> Combine::Publishers.Combine::TryDropWhile<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct DropWhile<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let predicate: (Combine::Publishers.Combine::DropWhile<Upstream>.Combine::Output) -> Swift::Bool
+    public init(upstream: Upstream, predicate: @escaping (Combine::Publishers.Combine::DropWhile<Upstream>.Output) -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+  public struct TryDropWhile<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Swift::Error
+    public let upstream: Upstream
+    public let predicate: (Combine::Publishers.Combine::TryDropWhile<Upstream>.Combine::Output) throws -> Swift::Bool
+    public init(upstream: Upstream, predicate: @escaping (Combine::Publishers.Combine::TryDropWhile<Upstream>.Output) throws -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Output == S.Input, S.Failure == any Swift::Error
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public struct Record<Output, Failure> : Combine::Publisher where Failure : Swift::Error {
+  public let recording: Combine::Record<Output, Failure>.Combine::Recording
+  public init(record: (inout Combine::Record<Output, Failure>.Combine::Recording) -> Swift::Void)
+  public init(recording: Combine::Record<Output, Failure>.Combine::Recording)
+  public init(output: [Output], completion: Combine::Subscribers.Combine::Completion<Failure>)
+  public func receive<S>(subscriber: S) where Output == S.Input, Failure == S.Failure, S : Combine::Subscriber
+  public struct Recording {
+    public typealias Input = Output
+    public var output: [Output] {
+      get
+    }
+    public var completion: Combine::Subscribers.Combine::Completion<Failure> {
+      get
+    }
+    public init()
+    public init(output: [Output], completion: Combine::Subscribers.Combine::Completion<Failure> = .finished)
+    public mutating func receive(_ input: Combine::Record<Output, Failure>.Combine::Recording.Combine::Input)
+    public mutating func receive(completion: Combine::Subscribers.Combine::Completion<Failure>)
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Record.Combine::Recording : Swift::Codable where Output : Swift::Decodable, Output : Swift::Encodable, Failure : Swift::Decodable, Failure : Swift::Encodable {
+  public init(from decoder: any Swift::Decoder) throws
+  public func encode(into encoder: any Swift::Encoder) throws
+  public func encode(to encoder: any Swift::Encoder) throws
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Record : Swift::Codable where Output : Swift::Decodable, Output : Swift::Encodable, Failure : Swift::Decodable, Failure : Swift::Encodable {
+  public func encode(to encoder: any Swift::Encoder) throws
+  public init(from decoder: any Swift::Decoder) throws
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func filter(_ isIncluded: @escaping (Self.Output) -> Swift::Bool) -> Combine::Publishers.Combine::Filter<Self>
+  public func tryFilter(_ isIncluded: @escaping (Self.Output) throws -> Swift::Bool) -> Combine::Publishers.Combine::TryFilter<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Filter<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let isIncluded: (Upstream.Output) -> Swift::Bool
+    public init(upstream: Upstream, isIncluded: @escaping (Upstream.Output) -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+  public struct TryFilter<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Swift::Error
+    public let upstream: Upstream
+    public let isIncluded: (Upstream.Output) throws -> Swift::Bool
+    public init(upstream: Upstream, isIncluded: @escaping (Upstream.Output) throws -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Output == S.Input, S.Failure == any Swift::Error
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Filter {
+  public func filter(_ isIncluded: @escaping (Combine::Publishers.Combine::Filter<Upstream>.Output) -> Swift::Bool) -> Combine::Publishers.Combine::Filter<Upstream>
+  public func tryFilter(_ isIncluded: @escaping (Combine::Publishers.Combine::Filter<Upstream>.Output) throws -> Swift::Bool) -> Combine::Publishers.Combine::TryFilter<Upstream>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::TryFilter {
+  public func filter(_ isIncluded: @escaping (Combine::Publishers.Combine::TryFilter<Upstream>.Output) -> Swift::Bool) -> Combine::Publishers.Combine::TryFilter<Upstream>
+  public func tryFilter(_ isIncluded: @escaping (Combine::Publishers.Combine::TryFilter<Upstream>.Output) throws -> Swift::Bool) -> Combine::Publishers.Combine::TryFilter<Upstream>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func breakpoint(receiveSubscription: ((any Combine::Subscription) -> Swift::Bool)? = nil, receiveOutput: ((Self.Output) -> Swift::Bool)? = nil, receiveCompletion: ((Combine::Subscribers.Combine::Completion<Self.Failure>) -> Swift::Bool)? = nil) -> Combine::Publishers.Combine::Breakpoint<Self>
+  public func breakpointOnError() -> Combine::Publishers.Combine::Breakpoint<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Breakpoint<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let receiveSubscription: ((any Combine::Subscription) -> Swift::Bool)?
+    public let receiveOutput: ((Upstream.Output) -> Swift::Bool)?
+    public let receiveCompletion: ((Combine::Subscribers.Combine::Completion<Combine::Publishers.Combine::Breakpoint<Upstream>.Combine::Failure>) -> Swift::Bool)?
+    public init(upstream: Upstream, receiveSubscription: ((any Combine::Subscription) -> Swift::Bool)? = nil, receiveOutput: ((Upstream.Output) -> Swift::Bool)? = nil, receiveCompletion: ((Combine::Subscribers.Combine::Completion<Combine::Publishers.Combine::Breakpoint<Upstream>.Failure>) -> Swift::Bool)? = nil)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public struct Deferred<DeferredPublisher> : Combine::Publisher where DeferredPublisher : Combine::Publisher {
+  public typealias Output = DeferredPublisher.Output
+  public typealias Failure = DeferredPublisher.Failure
+  public let createPublisher: () -> DeferredPublisher
+  public init(createPublisher: @escaping () -> DeferredPublisher)
+  public func receive<S>(subscriber: S) where S : Combine::Subscriber, DeferredPublisher.Failure == S.Failure, DeferredPublisher.Output == S.Input
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func allSatisfy(_ predicate: @escaping (Self.Output) -> Swift::Bool) -> Combine::Publishers.Combine::AllSatisfy<Self>
+  public func tryAllSatisfy(_ predicate: @escaping (Self.Output) throws -> Swift::Bool) -> Combine::Publishers.Combine::TryAllSatisfy<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct AllSatisfy<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Swift::Bool
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let predicate: (Upstream.Output) -> Swift::Bool
+    public init(upstream: Upstream, predicate: @escaping (Upstream.Output) -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, S.Input == Swift::Bool
+  }
+  public struct TryAllSatisfy<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Swift::Bool
+    public typealias Failure = Swift::Error
+    public let upstream: Upstream
+    public let predicate: (Upstream.Output) throws -> Swift::Bool
+    public init(upstream: Upstream, predicate: @escaping (Upstream.Output) throws -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, S.Failure == any Swift::Error, S.Input == Swift::Bool
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func sink(receiveCompletion: @escaping (Combine::Subscribers.Combine::Completion<Self.Failure>) -> Swift::Void, receiveValue: @escaping (Self.Output) -> Swift::Void) -> Combine::AnyCancellable
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher where Self.Failure == Swift::Never {
+  public func sink(receiveValue: @escaping (Self.Output) -> Swift::Void) -> Combine::AnyCancellable
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Subscribers {
+  final public class Sink<Input, Failure> : Combine::Subscriber, Combine::Cancellable, Swift::CustomStringConvertible, Swift::CustomReflectable, Swift::CustomPlaygroundDisplayConvertible where Failure : Swift::Error {
+    final public var receiveValue: (Input) -> Swift::Void {
+      get
+    }
+    final public var receiveCompletion: (Combine::Subscribers.Combine::Completion<Failure>) -> Swift::Void {
+      get
+    }
+    final public var description: Swift::String {
+      get
+    }
+    final public var customMirror: Swift::Mirror {
+      get
+    }
+    final public var playgroundDescription: Any {
+      get
+    }
+    public init(receiveCompletion: @escaping (Combine::Subscribers.Combine::Completion<Failure>) -> Swift::Void, receiveValue: @escaping (Input) -> Swift::Void)
+    @objc deinit
+    final public func receive(subscription: any Combine::Subscription)
+    final public func receive(_ value: Input) -> Combine::Subscribers.Combine::Demand
+    final public func receive(completion: Combine::Subscribers.Combine::Completion<Failure>)
+    final public func cancel()
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+@usableFromInline
+@_fixed_layout internal class AnySubscriberBase<Input, Failure> : Combine::Subscriber where Failure : Swift::Error {
+  @inline(__always) @inlinable internal init() {}
+  @objc @inline(__always) @inlinable deinit {}
+  @usableFromInline
+  internal func receive(subscription: any Combine::Subscription)
+  @usableFromInline
+  internal func receive(_ input: Input) -> Combine::Subscribers.Combine::Demand
+  @usableFromInline
+  internal func receive(completion: Combine::Subscribers.Combine::Completion<Failure>)
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+@usableFromInline
+@_fixed_layout final internal class AnySubscriberBox<Base> : Combine::AnySubscriberBase<Base.Input, Base.Failure> where Base : Combine::Subscriber {
+  @usableFromInline
+  final internal let base: Base
+  @inlinable internal init(_ base: Base) {
+        self.base = base
+    }
+  @objc @inlinable deinit {}
+  @inlinable override final internal func receive(subscription: any Combine::Subscription) {
+        base.receive(subscription: subscription)
+    }
+  @inlinable override final internal func receive(_ input: Combine::AnySubscriberBox<Base>.Input) -> Combine::Subscribers.Combine::Demand {
+        base.receive(input)
+    }
+  @inlinable override final internal func receive(completion: Combine::Subscribers.Combine::Completion<Combine::AnySubscriberBox<Base>.Failure>) {
+        base.receive(completion: completion)
+    }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+@usableFromInline
+@_fixed_layout final internal class ClosureBasedAnySubscriber<Input, Failure> : Combine::AnySubscriberBase<Input, Failure> where Failure : Swift::Error {
+  @usableFromInline
+  final internal let receiveSubscriptionThunk: (any Combine::Subscription) -> Swift::Void
+  @usableFromInline
+  final internal let receiveValueThunk: (Input) -> Combine::Subscribers.Combine::Demand
+  @usableFromInline
+  final internal let receiveCompletionThunk: (Combine::Subscribers.Combine::Completion<Failure>) -> Swift::Void
+  @inlinable internal init(_ rcvSubscription: @escaping (any Combine::Subscription) -> Swift::Void, _ rcvValue: @escaping (Input) -> Combine::Subscribers.Combine::Demand, _ rcvCompletion: @escaping (Combine::Subscribers.Combine::Completion<Failure>) -> Swift::Void) {
+        receiveSubscriptionThunk = rcvSubscription
+        receiveValueThunk = rcvValue
+        receiveCompletionThunk = rcvCompletion
+    }
+  @objc @inlinable deinit {}
+  @inlinable override final internal func receive(subscription: any Combine::Subscription) {
+        receiveSubscriptionThunk(subscription)
+    }
+  @inlinable override final internal func receive(_ input: Input) -> Combine::Subscribers.Combine::Demand {
+        receiveValueThunk(input)
+    }
+  @inlinable override final internal func receive(completion: Combine::Subscribers.Combine::Completion<Failure>) {
+        receiveCompletionThunk(completion)
+    }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+@frozen public struct AnySubscriber<Input, Failure> : Combine::Subscriber, Swift::CustomStringConvertible, Swift::CustomReflectable, Swift::CustomPlaygroundDisplayConvertible where Failure : Swift::Error {
+  @usableFromInline
+  internal let box: Combine::AnySubscriberBase<Input, Failure>
+  @usableFromInline
+  internal let descriptionThunk: () -> Swift::String
+  @usableFromInline
+  internal let customMirrorThunk: () -> Swift::Mirror
+  @usableFromInline
+  internal let playgroundDescriptionThunk: () -> Any
+  public let combineIdentifier: Combine::CombineIdentifier
+  public var description: Swift::String {
+    get
+  }
+  public var customMirror: Swift::Mirror {
+    get
+  }
+  public var playgroundDescription: Any {
+    get
+  }
+  @inline(__always) @inlinable public init<S>(_ s: S) where Input == S.Input, Failure == S.Failure, S : Combine::Subscriber {
+        if let erased = s as? AnySubscriber<Input, Failure> {
+            self = erased
+        } else {
+            combineIdentifier = s.combineIdentifier
+
+            box = AnySubscriberBox(s)
+
+             
+            if let desc = s as? CustomStringConvertible {
+                descriptionThunk = {
+                    return desc.description
+                }
+            } else {
+                let fixedDescription = "\(type(of: s))"
+                descriptionThunk = { fixedDescription }
+            }
+
+            customMirrorThunk = {
+                if let mir = s as? CustomReflectable {
+                    return mir.customMirror
+                } else {
+                    return Mirror(s, children: [:])
+                }
+            }
+
+            if let play = s as? CustomPlaygroundDisplayConvertible {
+                playgroundDescriptionThunk = { play.playgroundDescription }
+            } else if let desc = s as? CustomStringConvertible {
+                playgroundDescriptionThunk = { desc.description }
+            } else {
+                let fixedDescription = "\(type(of: s))"
+                playgroundDescriptionThunk = { fixedDescription }
+            }
+        }
+    }
+  public init<S>(_ s: S) where Input == S.Output, Failure == S.Failure, S : Combine::Subject
+  @inline(__always) @inlinable public init(receiveSubscription: ((any Combine::Subscription) -> Swift::Void)? = nil, receiveValue: ((Input) -> Combine::Subscribers.Combine::Demand)? = nil, receiveCompletion: ((Combine::Subscribers.Combine::Completion<Failure>) -> Swift::Void)? = nil) {
+        box = ClosureBasedAnySubscriber(
+            receiveSubscription ?? { _ in },
+            receiveValue ?? { _ in return .none },
+            receiveCompletion ?? { _ in }
+        )
+        
+         
+        combineIdentifier = CombineIdentifier()
+        descriptionThunk = {
+            return "Anonymous AnySubscriber"
+        }
+        
+        customMirrorThunk = {
+            return Mirror(reflecting: "Anonymous AnySubscriber")
+        }
+        playgroundDescriptionThunk = {
+            return "Anonymous AnySubscriber"
+        }
+    }
+  @inline(__always) @inlinable public func receive(subscription: any Combine::Subscription) {
+        box.receive(subscription: subscription)
+    }
+  @inline(__always) @inlinable public func receive(_ value: Input) -> Combine::Subscribers.Combine::Demand {
+        box.receive(value)
+    }
+  @inline(__always) @inlinable public func receive(completion: Combine::Subscribers.Combine::Completion<Failure>) {
+        box.receive(completion: completion)
+    }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher where Self.Output : Swift::Equatable {
+  public func removeDuplicates() -> Combine::Publishers.Combine::RemoveDuplicates<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func removeDuplicates(by predicate: @escaping (Self.Output, Self.Output) -> Swift::Bool) -> Combine::Publishers.Combine::RemoveDuplicates<Self>
+  public func tryRemoveDuplicates(by predicate: @escaping (Self.Output, Self.Output) throws -> Swift::Bool) -> Combine::Publishers.Combine::TryRemoveDuplicates<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct RemoveDuplicates<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let predicate: (Combine::Publishers.Combine::RemoveDuplicates<Upstream>.Combine::Output, Combine::Publishers.Combine::RemoveDuplicates<Upstream>.Combine::Output) -> Swift::Bool
+    public init(upstream: Upstream, predicate: @escaping (Combine::Publishers.Combine::RemoveDuplicates<Upstream>.Output, Combine::Publishers.Combine::RemoveDuplicates<Upstream>.Output) -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+  public struct TryRemoveDuplicates<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Swift::Error
+    public let upstream: Upstream
+    public let predicate: (Combine::Publishers.Combine::TryRemoveDuplicates<Upstream>.Combine::Output, Combine::Publishers.Combine::TryRemoveDuplicates<Upstream>.Combine::Output) throws -> Swift::Bool
+    public init(upstream: Upstream, predicate: @escaping (Combine::Publishers.Combine::TryRemoveDuplicates<Upstream>.Output, Combine::Publishers.Combine::TryRemoveDuplicates<Upstream>.Output) throws -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Output == S.Input, S.Failure == any Swift::Error
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public protocol TopLevelDecoder {
+  associatedtype Input
+  func decode<T>(_ type: T.Type, from: Self.Input) throws -> T where T : Swift::Decodable
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public protocol TopLevelEncoder {
+  associatedtype Output
+  func encode<T>(_ value: T) throws -> Self.Output where T : Swift::Encodable
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Decode<Upstream, Output, Coder> : Combine::Publisher where Upstream : Combine::Publisher, Output : Swift::Decodable, Coder : Combine::TopLevelDecoder, Upstream.Output == Coder.Input {
+    public typealias Failure = Swift::Error
+    public let upstream: Upstream
+    public init(upstream: Upstream, decoder: Coder)
+    public func receive<S>(subscriber: S) where Output == S.Input, S : Combine::Subscriber, S.Failure == any Swift::Error
+  }
+  public struct Encode<Upstream, Coder> : Combine::Publisher where Upstream : Combine::Publisher, Coder : Combine::TopLevelEncoder, Upstream.Output : Swift::Encodable {
+    public typealias Failure = Swift::Error
+    public typealias Output = Coder.Output
+    public let upstream: Upstream
+    public init(upstream: Upstream, encoder: Coder)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Coder.Output == S.Input, S.Failure == any Swift::Error
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func decode<Item, Coder>(type: Item.Type, decoder: Coder) -> Combine::Publishers.Combine::Decode<Self, Item, Coder> where Item : Swift::Decodable, Coder : Combine::TopLevelDecoder, Self.Output == Coder.Input
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher where Self.Output : Swift::Encodable {
+  public func encode<Coder>(encoder: Coder) -> Combine::Publishers.Combine::Encode<Self, Coder> where Coder : Combine::TopLevelEncoder
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public struct Just<Output> : Combine::Publisher {
+  public typealias Failure = Swift::Never
+  public let output: Output
+  public init(_ output: Output)
+  public func receive<S>(subscriber: S) where Output == S.Input, S : Combine::Subscriber, S.Failure == Swift::Never
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Just : Swift::Equatable where Output : Swift::Equatable {
+  public static func == (lhs: Combine::Just<Output>, rhs: Combine::Just<Output>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Just where Output : Swift::Comparable {
+  public func min() -> Combine::Just<Output>
+  public func max() -> Combine::Just<Output>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Just where Output : Swift::Equatable {
+  public func contains(_ output: Output) -> Combine::Just<Swift::Bool>
+  public func removeDuplicates() -> Combine::Just<Output>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Just {
+  public func allSatisfy(_ predicate: (Output) -> Swift::Bool) -> Combine::Just<Swift::Bool>
+  public func tryAllSatisfy(_ predicate: (Output) throws -> Swift::Bool) -> Swift::Result<Swift::Bool, any Swift::Error>.Combine::Publisher
+  public func collect() -> Combine::Just<[Output]>
+  public func compactMap<T>(_ transform: (Output) -> T?) -> Swift::Optional<T>.Combine::Publisher
+  public func min(by areInIncreasingOrder: (Output, Output) -> Swift::Bool) -> Combine::Just<Output>
+  public func max(by areInIncreasingOrder: (Output, Output) -> Swift::Bool) -> Combine::Just<Output>
+  public func prepend(_ elements: Output...) -> Combine::Publishers.Combine::Sequence<[Output], Combine::Just<Output>.Combine::Failure>
+  public func prepend<S>(_ elements: S) -> Combine::Publishers.Combine::Sequence<[Output], Combine::Just<Output>.Combine::Failure> where Output == S.Element, S : Swift::Sequence
+  public func append(_ elements: Output...) -> Combine::Publishers.Combine::Sequence<[Output], Combine::Just<Output>.Combine::Failure>
+  public func append<S>(_ elements: S) -> Combine::Publishers.Combine::Sequence<[Output], Combine::Just<Output>.Combine::Failure> where Output == S.Element, S : Swift::Sequence
+  public func contains(where predicate: (Output) -> Swift::Bool) -> Combine::Just<Swift::Bool>
+  public func tryContains(where predicate: (Output) throws -> Swift::Bool) -> Swift::Result<Swift::Bool, any Swift::Error>.Combine::Publisher
+  public func count() -> Combine::Just<Swift::Int>
+  public func dropFirst(_ count: Swift::Int = 1) -> Swift::Optional<Output>.Combine::Publisher
+  public func drop(while predicate: (Output) -> Swift::Bool) -> Swift::Optional<Output>.Combine::Publisher
+  public func first() -> Combine::Just<Output>
+  public func first(where predicate: (Output) -> Swift::Bool) -> Swift::Optional<Output>.Combine::Publisher
+  public func last() -> Combine::Just<Output>
+  public func last(where predicate: (Output) -> Swift::Bool) -> Swift::Optional<Output>.Combine::Publisher
+  public func filter(_ isIncluded: (Output) -> Swift::Bool) -> Swift::Optional<Output>.Combine::Publisher
+  public func ignoreOutput() -> Combine::Empty<Output, Combine::Just<Output>.Combine::Failure>
+  public func map<T>(_ transform: (Output) -> T) -> Combine::Just<T>
+  public func tryMap<T>(_ transform: (Output) throws -> T) -> Swift::Result<T, any Swift::Error>.Combine::Publisher
+  public func mapError<E>(_ transform: (Combine::Just<Output>.Combine::Failure) -> E) -> Swift::Result<Output, E>.Combine::Publisher where E : Swift::Error
+  public func output(at index: Swift::Int) -> Swift::Optional<Output>.Combine::Publisher
+  public func output<R>(in range: R) -> Swift::Optional<Output>.Combine::Publisher where R : Swift::RangeExpression, R.Bound == Swift::Int
+  public func prefix(_ maxLength: Swift::Int) -> Swift::Optional<Output>.Combine::Publisher
+  public func prefix(while predicate: (Output) -> Swift::Bool) -> Swift::Optional<Output>.Combine::Publisher
+  public func reduce<T>(_ initialResult: T, _ nextPartialResult: (T, Output) -> T) -> Swift::Result<T, Combine::Just<Output>.Combine::Failure>.Combine::Publisher
+  public func tryReduce<T>(_ initialResult: T, _ nextPartialResult: (T, Output) throws -> T) -> Swift::Result<T, any Swift::Error>.Combine::Publisher
+  public func removeDuplicates(by predicate: (Output, Output) -> Swift::Bool) -> Combine::Just<Output>
+  public func tryRemoveDuplicates(by predicate: (Output, Output) throws -> Swift::Bool) -> Swift::Result<Output, any Swift::Error>.Combine::Publisher
+  public func replaceError(with output: Output) -> Combine::Just<Output>
+  public func replaceEmpty(with output: Output) -> Combine::Just<Output>
+  public func retry(_ times: Swift::Int) -> Combine::Just<Output>
+  public func scan<T>(_ initialResult: T, _ nextPartialResult: (T, Output) -> T) -> Swift::Result<T, Combine::Just<Output>.Combine::Failure>.Combine::Publisher
+  public func tryScan<T>(_ initialResult: T, _ nextPartialResult: (T, Output) throws -> T) -> Swift::Result<T, any Swift::Error>.Combine::Publisher
+  public func setFailureType<E>(to failureType: E.Type) -> Swift::Result<Output, E>.Combine::Publisher where E : Swift::Error
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+final public class PassthroughSubject<Output, Failure> : Combine::Subject where Failure : Swift::Error {
+  public init()
+  @objc deinit
+  final public func send(subscription: any Combine::Subscription)
+  final public func receive<S>(subscriber: __owned S) where Output == S.Input, Failure == S.Failure, S : Combine::Subscriber
+  final public func send(_ input: Output)
+  final public func send(completion: Combine::Subscribers.Combine::Completion<Failure>)
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher where Self.Output : Swift::Equatable {
+  public func contains(_ output: Self.Output) -> Combine::Publishers.Combine::Contains<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Contains<Upstream> : Combine::Publisher where Upstream : Combine::Publisher, Upstream.Output : Swift::Equatable {
+    public typealias Output = Swift::Bool
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let output: Upstream.Output
+    public init(upstream: Upstream, output: Upstream.Output)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, S.Input == Swift::Bool
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Contains : Swift::Equatable where Upstream : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Contains<Upstream>, rhs: Combine::Publishers.Combine::Contains<Upstream>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func combineLatest<P>(_ other: P) -> Combine::Publishers.Combine::CombineLatest<Self, P> where P : Combine::Publisher, Self.Failure == P.Failure
+  public func combineLatest<P, T>(_ other: P, _ transform: @escaping (Self.Output, P.Output) -> T) -> Combine::Publishers.Combine::Map<Combine::Publishers.Combine::CombineLatest<Self, P>, T> where P : Combine::Publisher, Self.Failure == P.Failure
+  public func combineLatest<P, Q>(_ publisher1: P, _ publisher2: Q) -> Combine::Publishers.Combine::CombineLatest3<Self, P, Q> where P : Combine::Publisher, Q : Combine::Publisher, Self.Failure == P.Failure, P.Failure == Q.Failure
+  public func combineLatest<P, Q, T>(_ publisher1: P, _ publisher2: Q, _ transform: @escaping (Self.Output, P.Output, Q.Output) -> T) -> Combine::Publishers.Combine::Map<Combine::Publishers.Combine::CombineLatest3<Self, P, Q>, T> where P : Combine::Publisher, Q : Combine::Publisher, Self.Failure == P.Failure, P.Failure == Q.Failure
+  public func combineLatest<P, Q, R>(_ publisher1: P, _ publisher2: Q, _ publisher3: R) -> Combine::Publishers.Combine::CombineLatest4<Self, P, Q, R> where P : Combine::Publisher, Q : Combine::Publisher, R : Combine::Publisher, Self.Failure == P.Failure, P.Failure == Q.Failure, Q.Failure == R.Failure
+  public func combineLatest<P, Q, R, T>(_ publisher1: P, _ publisher2: Q, _ publisher3: R, _ transform: @escaping (Self.Output, P.Output, Q.Output, R.Output) -> T) -> Combine::Publishers.Combine::Map<Combine::Publishers.Combine::CombineLatest4<Self, P, Q, R>, T> where P : Combine::Publisher, Q : Combine::Publisher, R : Combine::Publisher, Self.Failure == P.Failure, P.Failure == Q.Failure, Q.Failure == R.Failure
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct CombineLatest<A, B> : Combine::Publisher where A : Combine::Publisher, B : Combine::Publisher, A.Failure == B.Failure {
+    public typealias Output = (A.Output, B.Output)
+    public typealias Failure = A.Failure
+    public let a: A
+    public let b: B
+    public init(_ a: A, _ b: B)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, B.Failure == S.Failure, S.Input == (A.Output, B.Output)
+  }
+  public struct CombineLatest3<A, B, C> : Combine::Publisher where A : Combine::Publisher, B : Combine::Publisher, C : Combine::Publisher, A.Failure == B.Failure, B.Failure == C.Failure {
+    public typealias Output = (A.Output, B.Output, C.Output)
+    public typealias Failure = A.Failure
+    public let a: A
+    public let b: B
+    public let c: C
+    public init(_ a: A, _ b: B, _ c: C)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, C.Failure == S.Failure, S.Input == (A.Output, B.Output, C.Output)
+  }
+  public struct CombineLatest4<A, B, C, D> : Combine::Publisher where A : Combine::Publisher, B : Combine::Publisher, C : Combine::Publisher, D : Combine::Publisher, A.Failure == B.Failure, B.Failure == C.Failure, C.Failure == D.Failure {
+    public typealias Output = (A.Output, B.Output, C.Output, D.Output)
+    public typealias Failure = A.Failure
+    public let a: A
+    public let b: B
+    public let c: C
+    public let d: D
+    public init(_ a: A, _ b: B, _ c: C, _ d: D)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, D.Failure == S.Failure, S.Input == (A.Output, B.Output, C.Output, D.Output)
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::CombineLatest : Swift::Equatable where A : Swift::Equatable, B : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::CombineLatest<A, B>, rhs: Combine::Publishers.Combine::CombineLatest<A, B>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::CombineLatest3 : Swift::Equatable where A : Swift::Equatable, B : Swift::Equatable, C : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::CombineLatest3<A, B, C>, rhs: Combine::Publishers.Combine::CombineLatest3<A, B, C>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::CombineLatest4 : Swift::Equatable where A : Swift::Equatable, B : Swift::Equatable, C : Swift::Equatable, D : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::CombineLatest4<A, B, C, D>, rhs: Combine::Publishers.Combine::CombineLatest4<A, B, C, D>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func prefix(_ maxLength: Swift::Int) -> Combine::Publishers.Combine::Output<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::ConnectablePublisher {
+  public func autoconnect() -> Combine::Publishers.Combine::Autoconnect<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public class Autoconnect<Upstream> : Combine::Publisher where Upstream : Combine::ConnectablePublisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    final public let upstream: Upstream
+    public init(upstream: Upstream)
+    @objc deinit
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func print(_ prefix: Swift::String = "", to stream: (any Swift::TextOutputStream)? = nil) -> Combine::Publishers.Combine::Print<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Print<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let prefix: Swift::String
+    public let upstream: Upstream
+    public let stream: (any Swift::TextOutputStream)?
+    public init(upstream: Upstream, prefix: Swift::String, to stream: (any Swift::TextOutputStream)? = nil)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+}
+@available(iOS 13.0, macOS 10.15, tvOS 13.0, watchOS 6.0, *)
+public protocol ObservableObject : AnyObject {
+  associatedtype ObjectWillChangePublisher : Combine::Publisher = Combine::ObservableObjectPublisher where Self.ObjectWillChangePublisher.Failure == Swift::Never
+  var objectWillChange: Self.ObjectWillChangePublisher { get }
+}
+@_hasMissingDesignatedInitializers @available(iOS 13.0, macOS 10.15, tvOS 13.0, watchOS 6.0, *)
+final public class ObservableObjectPublisher : Combine::Publisher {
+  public typealias Output = Swift::Void
+  public typealias Failure = Swift::Never
+  public init()
+  @objc deinit
+  final public func receive<S>(subscriber: S) where S : Combine::Subscriber, S.Failure == Swift::Never, S.Input == ()
+  final public func send()
+}
+@available(iOS 13.0, macOS 10.15, tvOS 13.0, watchOS 6.0, *)
+extension Combine::ObservableObject where Self.ObjectWillChangePublisher == Combine::ObservableObjectPublisher {
+  public var objectWillChange: Combine::ObservableObjectPublisher {
+    get
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func prefix(while predicate: @escaping (Self.Output) -> Swift::Bool) -> Combine::Publishers.Combine::PrefixWhile<Self>
+  public func tryPrefix(while predicate: @escaping (Self.Output) throws -> Swift::Bool) -> Combine::Publishers.Combine::TryPrefixWhile<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct PrefixWhile<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let predicate: (Combine::Publishers.Combine::PrefixWhile<Upstream>.Combine::Output) -> Swift::Bool
+    public init(upstream: Upstream, predicate: @escaping (Combine::Publishers.Combine::PrefixWhile<Upstream>.Output) -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+  public struct TryPrefixWhile<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Swift::Error
+    public let upstream: Upstream
+    public let predicate: (Combine::Publishers.Combine::TryPrefixWhile<Upstream>.Combine::Output) throws -> Swift::Bool
+    public init(upstream: Upstream, predicate: @escaping (Combine::Publishers.Combine::TryPrefixWhile<Upstream>.Output) throws -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Output == S.Input, S.Failure == any Swift::Error
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+final public class Future<Output, Failure> : Combine::Publisher where Failure : Swift::Error {
+  public typealias Promise = (Swift::Result<Output, Failure>) -> Swift::Void
+  public init(_ attemptToFulfill: @escaping (@escaping Combine::Future<Output, Failure>.Combine::Promise) -> Swift::Void)
+  @objc deinit
+  final public func receive<S>(subscriber: S) where Output == S.Input, Failure == S.Failure, S : Combine::Subscriber
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public struct Empty<Output, Failure> : Combine::Publisher, Swift::Equatable where Failure : Swift::Error {
+  public init(completeImmediately: Swift::Bool = true)
+  public init(completeImmediately: Swift::Bool = true, outputType: Output.Type, failureType: Failure.Type)
+  public let completeImmediately: Swift::Bool
+  public func receive<S>(subscriber: S) where Output == S.Input, Failure == S.Failure, S : Combine::Subscriber
+  public static func == (lhs: Combine::Empty<Output, Failure>, rhs: Combine::Empty<Output, Failure>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher where Self.Failure == Swift::Never {
+  public func setFailureType<E>(to failureType: E.Type) -> Combine::Publishers.Combine::SetFailureType<Self, E> where E : Swift::Error
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct SetFailureType<Upstream, Failure> : Combine::Publisher where Upstream : Combine::Publisher, Failure : Swift::Error, Upstream.Failure == Swift::Never {
+    public typealias Output = Upstream.Output
+    public let upstream: Upstream
+    public init(upstream: Upstream)
+    public func receive<S>(subscriber: S) where Failure == S.Failure, S : Combine::Subscriber, Upstream.Output == S.Input
+    public func setFailureType<E>(to failure: E.Type) -> Combine::Publishers.Combine::SetFailureType<Upstream, E> where E : Swift::Error
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::SetFailureType : Swift::Equatable where Upstream : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::SetFailureType<Upstream, Failure>, rhs: Combine::Publishers.Combine::SetFailureType<Upstream, Failure>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Swift::Optional {
+  @available(macOS 11.0, iOS 14.0, tvOS 14.0, watchOS 7.0, *)
+  public var publisher: Swift::Optional<Wrapped>.Combine::Publisher {
+    get
+  }
+  @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+  public struct Publisher : Combine::Publisher {
+    public typealias Output = Wrapped
+    public typealias Failure = Swift::Never
+    public let output: Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output?
+    public init(_ output: Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output?)
+    public func receive<S>(subscriber: S) where Wrapped == S.Input, S : Combine::Subscriber, S.Failure == Swift::Never
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Swift::Optional.Combine::Publisher : Swift::Equatable where Wrapped : Swift::Equatable {
+  public static func == (lhs: Swift::Optional<Wrapped>.Combine::Publisher, rhs: Swift::Optional<Wrapped>.Combine::Publisher) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Swift::Optional.Combine::Publisher where Wrapped : Swift::Equatable {
+  public func contains(_ output: Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> Swift::Optional<Swift::Bool>.Combine::Publisher
+  public func removeDuplicates() -> Swift::Optional<Wrapped>.Combine::Publisher
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Swift::Optional.Combine::Publisher where Wrapped : Swift::Comparable {
+  public func min() -> Swift::Optional<Wrapped>.Combine::Publisher
+  public func max() -> Swift::Optional<Wrapped>.Combine::Publisher
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Swift::Optional.Combine::Publisher {
+  public func allSatisfy(_ predicate: (Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> Swift::Bool) -> Swift::Optional<Swift::Bool>.Combine::Publisher
+  public func collect() -> Swift::Optional<[Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output]>.Combine::Publisher
+  public func compactMap<T>(_ transform: (Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> T?) -> Swift::Optional<T>.Combine::Publisher
+  public func min(by areInIncreasingOrder: (Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output, Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> Swift::Bool) -> Swift::Optional<Wrapped>.Combine::Publisher
+  public func max(by areInIncreasingOrder: (Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output, Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> Swift::Bool) -> Swift::Optional<Wrapped>.Combine::Publisher
+  public func contains(where predicate: (Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> Swift::Bool) -> Swift::Optional<Swift::Bool>.Combine::Publisher
+  public func count() -> Swift::Optional<Swift::Int>.Combine::Publisher
+  public func dropFirst(_ count: Swift::Int = 1) -> Swift::Optional<Wrapped>.Combine::Publisher
+  public func drop(while predicate: (Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> Swift::Bool) -> Swift::Optional<Wrapped>.Combine::Publisher
+  public func first() -> Swift::Optional<Wrapped>.Combine::Publisher
+  public func first(where predicate: (Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> Swift::Bool) -> Swift::Optional<Wrapped>.Combine::Publisher
+  public func last() -> Swift::Optional<Wrapped>.Combine::Publisher
+  public func last(where predicate: (Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> Swift::Bool) -> Swift::Optional<Wrapped>.Combine::Publisher
+  public func filter(_ isIncluded: (Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> Swift::Bool) -> Swift::Optional<Wrapped>.Combine::Publisher
+  public func ignoreOutput() -> Combine::Empty<Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output, Swift::Optional<Wrapped>.Combine::Publisher.Combine::Failure>
+  public func map<T>(_ transform: (Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> T) -> Swift::Optional<T>.Combine::Publisher
+  public func output(at index: Swift::Int) -> Swift::Optional<Wrapped>.Combine::Publisher
+  public func output<R>(in range: R) -> Swift::Optional<Wrapped>.Combine::Publisher where R : Swift::RangeExpression, R.Bound == Swift::Int
+  public func prefix(_ maxLength: Swift::Int) -> Swift::Optional<Wrapped>.Combine::Publisher
+  public func prefix(while predicate: (Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> Swift::Bool) -> Swift::Optional<Wrapped>.Combine::Publisher
+  public func reduce<T>(_ initialResult: T, _ nextPartialResult: (T, Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> T) -> Swift::Optional<T>.Combine::Publisher
+  public func removeDuplicates(by predicate: (Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output, Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> Swift::Bool) -> Swift::Optional<Wrapped>.Combine::Publisher
+  public func replaceError(with output: Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> Swift::Optional<Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output>.Combine::Publisher
+  public func replaceEmpty(with output: Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> Combine::Just<Wrapped>
+  public func retry(_ times: Swift::Int) -> Swift::Optional<Wrapped>.Combine::Publisher
+  public func scan<T>(_ initialResult: T, _ nextPartialResult: (T, Swift::Optional<Wrapped>.Combine::Publisher.Combine::Output) -> T) -> Swift::Optional<T>.Combine::Publisher
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func contains(where predicate: @escaping (Self.Output) -> Swift::Bool) -> Combine::Publishers.Combine::ContainsWhere<Self>
+  public func tryContains(where predicate: @escaping (Self.Output) throws -> Swift::Bool) -> Combine::Publishers.Combine::TryContainsWhere<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct ContainsWhere<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Swift::Bool
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let predicate: (Upstream.Output) -> Swift::Bool
+    public init(upstream: Upstream, predicate: @escaping (Upstream.Output) -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, S.Input == Swift::Bool
+  }
+  public struct TryContainsWhere<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Swift::Bool
+    public typealias Failure = Swift::Error
+    public let upstream: Upstream
+    public let predicate: (Upstream.Output) throws -> Swift::Bool
+    public init(upstream: Upstream, predicate: @escaping (Upstream.Output) throws -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, S.Failure == any Swift::Error, S.Input == Swift::Bool
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public enum Publishers {
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public protocol Publisher<Output, Failure> {
+  associatedtype Output
+  associatedtype Failure : Swift::Error
+  func receive<S>(subscriber: S) where S : Combine::Subscriber, Self.Failure == S.Failure, Self.Output == S.Input
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  @inline(never) public func subscribe<S>(_ subscriber: S) where S : Combine::Subscriber, Self.Failure == S.Failure, Self.Output == S.Input
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher where Self.Failure == Swift::Never {
+  @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
+  public func assign(to published: inout Combine::Published<Self.Output>.Combine::Publisher)
+}
+@available(iOS 13.0, macOS 10.15, tvOS 13.0, watchOS 6.0, *)
+@propertyWrapper public struct Published<Value> {
+  @_alwaysEmitIntoClient public init(wrappedValue: Value) {
+        self.init(initialValue: wrappedValue)
+    }
+  public init(initialValue: Value)
+  @available(*, unavailable, message: "@Published is only available on properties of classes")
+  public var wrappedValue: Value {
+    get
+    set
+  }
+  public static subscript<EnclosingSelf>(_enclosingInstance object: EnclosingSelf, wrapped wrappedKeyPath: Swift::ReferenceWritableKeyPath<EnclosingSelf, Value>, storage storageKeyPath: Swift::ReferenceWritableKeyPath<EnclosingSelf, Combine::Published<Value>>) -> Value where EnclosingSelf : AnyObject {
+    get
+    set
+  }
+  public struct Publisher : Combine::Publisher {
+    public typealias Output = Value
+    public typealias Failure = Swift::Never
+    public func receive<S>(subscriber: S) where Value == S.Input, S : Combine::Subscriber, S.Failure == Swift::Never
+  }
+  public var projectedValue: Combine::Published<Value>.Combine::Publisher {
+    mutating get
+    @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
+    _modify
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public protocol ConnectablePublisher<Output, Failure> : Combine::Publisher {
+  func connect() -> any Combine::Cancellable
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher where Self.Failure == Swift::Never {
+  public func makeConnectable() -> Combine::Publishers.Combine::MakeConnectable<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct MakeConnectable<Upstream> : Combine::ConnectablePublisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public init(upstream: Upstream)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+    public func connect() -> any Combine::Cancellable
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func collect() -> Combine::Publishers.Combine::Collect<Self>
+  public func collect(_ count: Swift::Int) -> Combine::Publishers.Combine::CollectByCount<Self>
+  public func collect<S>(_ strategy: Combine::Publishers.Combine::TimeGroupingStrategy<S>, options: S.SchedulerOptions? = nil) -> Combine::Publishers.Combine::CollectByTime<Self, S> where S : Combine::Scheduler
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public enum TimeGroupingStrategy<Context> where Context : Combine::Scheduler {
+    case byTime(Context, Context.SchedulerTimeType.Stride)
+    case byTimeOrCount(Context, Context.SchedulerTimeType.Stride, Swift::Int)
+  }
+  public struct CollectByTime<Upstream, Context> : Combine::Publisher where Upstream : Combine::Publisher, Context : Combine::Scheduler {
+    public typealias Output = [Upstream.Output]
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let strategy: Combine::Publishers.Combine::TimeGroupingStrategy<Context>
+    public let options: Context.SchedulerOptions?
+    public init(upstream: Upstream, strategy: Combine::Publishers.Combine::TimeGroupingStrategy<Context>, options: Context.SchedulerOptions?)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, S.Input == [Upstream.Output]
+  }
+  public struct Collect<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = [Upstream.Output]
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public init(upstream: Upstream)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, S.Input == [Upstream.Output]
+  }
+  public struct CollectByCount<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = [Upstream.Output]
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let count: Swift::Int
+    public init(upstream: Upstream, count: Swift::Int)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, S.Input == [Upstream.Output]
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Collect : Swift::Equatable where Upstream : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Collect<Upstream>, rhs: Combine::Publishers.Combine::Collect<Upstream>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::CollectByCount : Swift::Equatable where Upstream : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::CollectByCount<Upstream>, rhs: Combine::Publishers.Combine::CollectByCount<Upstream>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func receive<S>(on scheduler: S, options: S.SchedulerOptions? = nil) -> Combine::Publishers.Combine::ReceiveOn<Self, S> where S : Combine::Scheduler
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct ReceiveOn<Upstream, Context> : Combine::Publisher where Upstream : Combine::Publisher, Context : Combine::Scheduler {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let scheduler: Context
+    public let options: Context.SchedulerOptions?
+    public init(upstream: Upstream, scheduler: Context, options: Context.SchedulerOptions?)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public enum Subscribers {
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public protocol Subscriber<Input, Failure> : Combine::CustomCombineIdentifierConvertible {
+  associatedtype Input
+  associatedtype Failure : Swift::Error
+  func receive(subscription: any Combine::Subscription)
+  func receive(_ input: Self.Input) -> Combine::Subscribers.Combine::Demand
+  func receive(completion: Combine::Subscribers.Combine::Completion<Self.Failure>)
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Subscribers {
+  @frozen public enum Completion<Failure> where Failure : Swift::Error {
+    case finished
+    case failure(Failure)
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Subscribers.Combine::Completion : Swift::Equatable where Failure : Swift::Equatable {
+  public static func == (a: Combine::Subscribers.Combine::Completion<Failure>, b: Combine::Subscribers.Combine::Completion<Failure>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Subscribers.Combine::Completion : Swift::Hashable where Failure : Swift::Hashable {
+  public func hash(into hasher: inout Swift::Hasher)
+  public var hashValue: Swift::Int {
+    get
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Subscribers.Combine::Completion : Swift::Encodable where Failure : Swift::Encodable {
+  public func encode(to encoder: any Swift::Encoder) throws
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Subscribers.Combine::Completion : Swift::Decodable where Failure : Swift::Decodable {
+  public init(from decoder: any Swift::Decoder) throws
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Subscribers {
+  @frozen public struct Demand : Swift::Equatable, Swift::Comparable, Swift::Hashable, Swift::Codable, Swift::CustomStringConvertible {
+    @usableFromInline
+    internal let rawValue: Swift::UInt
+    @inline(__always) @inlinable internal init(rawValue: Swift::UInt) {
+            self.rawValue = min(UInt(Int.max) + 1, rawValue)
+        }
+    public static let unlimited: Combine::Subscribers.Combine::Demand
+    public static let none: Combine::Subscribers.Combine::Demand
+    @inline(__always) @inlinable public static func max(_ value: Swift::Int) -> Combine::Subscribers.Combine::Demand {
+            precondition(value >= 0)
+            return Demand(rawValue: UInt(value))
+        }
+    public var description: Swift::String {
+      get
+    }
+    @inline(__always) @inlinable public static func + (lhs: Combine::Subscribers.Combine::Demand, rhs: Combine::Subscribers.Combine::Demand) -> Combine::Subscribers.Combine::Demand {
+            if lhs == .unlimited {
+                return .unlimited
+            } else {
+                if rhs == .unlimited {
+                    return .unlimited
+                } else {
+                    let lhsValue: Int = numericCast(lhs.rawValue)
+                    let rhsvalue: Int = numericCast(rhs.rawValue)
+                    let r = lhsValue.addingReportingOverflow(rhsvalue)
+                    if r.overflow {
+                        return .unlimited
+                    } else {
+                        return .max(r.partialValue)
+                    }
+                }
+            }
+        }
+    @inline(__always) @inlinable public static func += (lhs: inout Combine::Subscribers.Combine::Demand, rhs: Combine::Subscribers.Combine::Demand) {
+            if lhs == .unlimited { return }
+            lhs = lhs + rhs
+        }
+    @inline(__always) @inlinable public static func + (lhs: Combine::Subscribers.Combine::Demand, rhs: Swift::Int) -> Combine::Subscribers.Combine::Demand {
+            if lhs == .unlimited {
+                return .unlimited
+            } else {
+                let lhsValue: Int = numericCast(lhs.rawValue)
+                let r = lhsValue.addingReportingOverflow(rhs)
+                if r.overflow {
+                    return .unlimited
+                } else {
+                    return .max(r.partialValue)
+                }
+            }
+        }
+    @inline(__always) @inlinable public static func += (lhs: inout Combine::Subscribers.Combine::Demand, rhs: Swift::Int) {
+            lhs = lhs + rhs
+        }
+    public static func * (lhs: Combine::Subscribers.Combine::Demand, rhs: Swift::Int) -> Combine::Subscribers.Combine::Demand
+    @inline(__always) @inlinable public static func *= (lhs: inout Combine::Subscribers.Combine::Demand, rhs: Swift::Int) {
+            lhs = lhs * rhs
+        }
+    @inline(__always) @inlinable public static func - (lhs: Combine::Subscribers.Combine::Demand, rhs: Combine::Subscribers.Combine::Demand) -> Combine::Subscribers.Combine::Demand {
+            if lhs == .unlimited {
+                return .unlimited
+            } else {
+                if rhs == .unlimited {
+                    return .none
+                } else {
+                    let lhsValue: Int = numericCast(lhs.rawValue)
+                    let rhsValue: Int = numericCast(rhs.rawValue)
+                    let r = lhsValue.subtractingReportingOverflow(rhsValue)
+                    if r.overflow {
+                        return .max(0)
+                    } else {
+                        return .max(r.partialValue)
+                    }
+                }
+            }
+        }
+    @inline(__always) @inlinable public static func -= (lhs: inout Combine::Subscribers.Combine::Demand, rhs: Combine::Subscribers.Combine::Demand) {
+            lhs = lhs - rhs
+        }
+    @inline(__always) @inlinable public static func - (lhs: Combine::Subscribers.Combine::Demand, rhs: Swift::Int) -> Combine::Subscribers.Combine::Demand {
+            if lhs == .unlimited {
+                return .unlimited
+            } else {
+                let lhsValue: Int = numericCast(lhs.rawValue)
+                let r = lhsValue.subtractingReportingOverflow(rhs)
+                if r.overflow {
+                    return .max(0)
+                } else {
+                    return .max(r.partialValue)
+                }
+            }
+        }
+    @inline(__always) @inlinable public static func -= (lhs: inout Combine::Subscribers.Combine::Demand, rhs: Swift::Int) {
+            if lhs == .unlimited { return }
+            lhs = lhs - rhs
+        }
+    @inline(__always) @inlinable public static func > (lhs: Combine::Subscribers.Combine::Demand, rhs: Swift::Int) -> Swift::Bool {
+            if lhs == .unlimited {
+                return true
+            } else {
+                return numericCast(lhs.rawValue) > rhs
+            }
+        }
+    @inline(__always) @inlinable public static func >= (lhs: Combine::Subscribers.Combine::Demand, rhs: Swift::Int) -> Swift::Bool {
+            if lhs == .unlimited {
+                return true
+            } else {
+                return numericCast(lhs.rawValue) >= rhs
+            }
+        }
+    @inline(__always) @inlinable public static func > (lhs: Swift::Int, rhs: Combine::Subscribers.Combine::Demand) -> Swift::Bool {
+            if rhs == .unlimited {
+                return false
+            } else {
+                return lhs > numericCast(rhs.rawValue)
+            }
+        }
+    @inline(__always) @inlinable public static func >= (lhs: Swift::Int, rhs: Combine::Subscribers.Combine::Demand) -> Swift::Bool {
+            if rhs == .unlimited {
+                return false
+            } else {
+                return lhs >= numericCast(rhs.rawValue)
+            }
+        }
+    @inline(__always) @inlinable public static func < (lhs: Combine::Subscribers.Combine::Demand, rhs: Swift::Int) -> Swift::Bool {
+            if lhs == .unlimited {
+                return false
+            } else {
+                return numericCast(lhs.rawValue) < rhs
+            }
+        }
+    @inline(__always) @inlinable public static func < (lhs: Swift::Int, rhs: Combine::Subscribers.Combine::Demand) -> Swift::Bool {
+            if rhs == .unlimited {
+                return true
+            } else {
+                return lhs < numericCast(rhs.rawValue)
+            }
+        }
+    @inline(__always) @inlinable public static func <= (lhs: Combine::Subscribers.Combine::Demand, rhs: Swift::Int) -> Swift::Bool {
+            if lhs == .unlimited {
+                return false
+            } else {
+                return numericCast(lhs.rawValue) <= rhs
+            }
+        }
+    @inline(__always) @inlinable public static func <= (lhs: Swift::Int, rhs: Combine::Subscribers.Combine::Demand) -> Swift::Bool {
+            if rhs == .unlimited {
+                return true
+            } else {
+                return lhs <= numericCast(rhs.rawValue)
+            }
+        }
+    @inline(__always) @inlinable public static func < (lhs: Combine::Subscribers.Combine::Demand, rhs: Combine::Subscribers.Combine::Demand) -> Swift::Bool {
+            switch (lhs, rhs) {
+            case (.unlimited, .unlimited):
+                return false
+            case (.unlimited, _):
+                return false
+            case (_, .unlimited):
+                return true
+            default:
+                return lhs.rawValue < rhs.rawValue
+            }
+        }
+    @inline(__always) @inlinable public static func <= (lhs: Combine::Subscribers.Combine::Demand, rhs: Combine::Subscribers.Combine::Demand) -> Swift::Bool {
+            switch (lhs, rhs) {
+            case (.unlimited, .unlimited):
+                return true
+            case (.unlimited, _):
+                return false
+            case (_, .unlimited):
+                return true
+            default:
+                return lhs.rawValue <= rhs.rawValue
+            }
+        }
+    @inline(__always) @inlinable public static func >= (lhs: Combine::Subscribers.Combine::Demand, rhs: Combine::Subscribers.Combine::Demand) -> Swift::Bool {
+            switch (lhs, rhs) {
+            case (.unlimited, .unlimited):
+                return true
+            case (.unlimited, _):
+                return true
+            case (_, .unlimited):
+                return false
+            default:
+                return lhs.rawValue >= rhs.rawValue
+            }
+        }
+    @inline(__always) @inlinable public static func > (lhs: Combine::Subscribers.Combine::Demand, rhs: Combine::Subscribers.Combine::Demand) -> Swift::Bool {
+            switch (lhs, rhs) {
+            case (.unlimited, .unlimited):
+                return false
+            case (.unlimited, _):
+                return true
+            case (_, .unlimited):
+                return false
+            default:
+                return lhs.rawValue > rhs.rawValue
+            }
+        }
+    @inline(__always) @inlinable public static func == (lhs: Combine::Subscribers.Combine::Demand, rhs: Swift::Int) -> Swift::Bool {
+            if lhs == .unlimited {
+                return false
+            } else {
+                return numericCast(lhs.rawValue) == rhs
+            }
+        }
+    @inline(__always) @inlinable public static func != (lhs: Combine::Subscribers.Combine::Demand, rhs: Swift::Int) -> Swift::Bool {
+            if lhs == .unlimited {
+                return true
+            } else {
+                return numericCast(lhs.rawValue) != rhs
+            }
+        }
+    @inline(__always) @inlinable public static func == (lhs: Swift::Int, rhs: Combine::Subscribers.Combine::Demand) -> Swift::Bool {
+            if rhs == .unlimited {
+                return false
+            } else {
+                return rhs.rawValue == lhs
+            }
+        }
+    @inline(__always) @inlinable public static func != (lhs: Swift::Int, rhs: Combine::Subscribers.Combine::Demand) -> Swift::Bool {
+            if rhs == .unlimited {
+                return true
+            } else {
+                return numericCast(rhs.rawValue) != lhs
+            }
+        }
+    @inline(__always) @inlinable public var max: Swift::Int? {
+      get {
+            if self == .unlimited {
+                return nil
+            } else {
+                return numericCast(rawValue)
+            }
+        }
+    }
+    public init(from decoder: any Swift::Decoder) throws
+    public func encode(to encoder: any Swift::Encoder) throws
+    public static func == (a: Combine::Subscribers.Combine::Demand, b: Combine::Subscribers.Combine::Demand) -> Swift::Bool
+    public func hash(into hasher: inout Swift::Hasher)
+    public var hashValue: Swift::Int {
+      get
+    }
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Subscriber where Self.Input == () {
+  public func receive() -> Combine::Subscribers.Combine::Demand
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func map<T>(_ keyPath: Swift::KeyPath<Self.Output, T>) -> Combine::Publishers.Combine::MapKeyPath<Self, T>
+  public func map<T0, T1>(_ keyPath0: Swift::KeyPath<Self.Output, T0>, _ keyPath1: Swift::KeyPath<Self.Output, T1>) -> Combine::Publishers.Combine::MapKeyPath2<Self, T0, T1>
+  public func map<T0, T1, T2>(_ keyPath0: Swift::KeyPath<Self.Output, T0>, _ keyPath1: Swift::KeyPath<Self.Output, T1>, _ keyPath2: Swift::KeyPath<Self.Output, T2>) -> Combine::Publishers.Combine::MapKeyPath3<Self, T0, T1, T2>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct MapKeyPath<Upstream, Output> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let keyPath: Swift::KeyPath<Upstream.Output, Output>
+    public func receive<S>(subscriber: S) where Output == S.Input, S : Combine::Subscriber, Upstream.Failure == S.Failure
+  }
+  public struct MapKeyPath2<Upstream, Output0, Output1> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = (Output0, Output1)
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let keyPath0: Swift::KeyPath<Upstream.Output, Output0>
+    public let keyPath1: Swift::KeyPath<Upstream.Output, Output1>
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, S.Input == (Output0, Output1)
+  }
+  public struct MapKeyPath3<Upstream, Output0, Output1, Output2> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = (Output0, Output1, Output2)
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let keyPath0: Swift::KeyPath<Upstream.Output, Output0>
+    public let keyPath1: Swift::KeyPath<Upstream.Output, Output1>
+    public let keyPath2: Swift::KeyPath<Upstream.Output, Output2>
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, S.Input == (Output0, Output1, Output2)
+  }
+}
+@available(macOS 11.0, iOS 14.0, tvOS 14.0, watchOS 7.0, *)
+public protocol _Introspection : AnyObject {
+  func willReceive<P, S>(publisher: P, subscriber: S) where P : Combine::Publisher, S : Combine::Subscriber, P.Failure == S.Failure, P.Output == S.Input
+  func didReceive<P, S>(publisher: P, subscriber: S) where P : Combine::Publisher, S : Combine::Subscriber, P.Failure == S.Failure, P.Output == S.Input
+  func willReceive<S>(subscriber: S, subscription: any Combine::Subscription) where S : Combine::Subscriber
+  func didReceive<S>(subscriber: S, subscription: any Combine::Subscription) where S : Combine::Subscriber
+  func willReceive<S>(subscriber: S, input: S.Input) where S : Combine::Subscriber
+  func didReceive<S>(subscriber: S, input: S.Input, resultingDemand: Combine::Subscribers.Combine::Demand) where S : Combine::Subscriber
+  func willReceive<S>(subscriber: S, completion: Combine::Subscribers.Combine::Completion<S.Failure>) where S : Combine::Subscriber
+  func didReceive<S>(subscriber: S, completion: Combine::Subscribers.Combine::Completion<S.Failure>) where S : Combine::Subscriber
+  func willRequest(subscription: any Combine::Subscription, _ demand: Combine::Subscribers.Combine::Demand)
+  func didRequest(subscription: any Combine::Subscription, _ demand: Combine::Subscribers.Combine::Demand)
+  func willCancel(subscription: any Combine::Subscription)
+  func didCancel(subscription: any Combine::Subscription)
+}
+@available(macOS 11.0, iOS 14.0, tvOS 14.0, watchOS 7.0, *)
+extension Combine::_Introspection {
+  public func willReceive<P, S>(publisher: P, subscriber: S) where P : Combine::Publisher, S : Combine::Subscriber, P.Failure == S.Failure, P.Output == S.Input
+  public func didReceive<P, S>(publisher: P, subscriber: S) where P : Combine::Publisher, S : Combine::Subscriber, P.Failure == S.Failure, P.Output == S.Input
+  public func willReceive<S>(subscriber: S, subscription: any Combine::Subscription) where S : Combine::Subscriber
+  public func didReceive<S>(subscriber: S, subscription: any Combine::Subscription) where S : Combine::Subscriber
+  public func willReceive<S>(subscriber: S, input: S.Input) where S : Combine::Subscriber
+  public func didReceive<S>(subscriber: S, input: S.Input, resultingDemand: Combine::Subscribers.Combine::Demand) where S : Combine::Subscriber
+  public func willReceive<S>(subscriber: S, completion: Combine::Subscribers.Combine::Completion<S.Failure>) where S : Combine::Subscriber
+  public func didReceive<S>(subscriber: S, completion: Combine::Subscribers.Combine::Completion<S.Failure>) where S : Combine::Subscriber
+  public func willRequest(subscription: any Combine::Subscription, _ demand: Combine::Subscribers.Combine::Demand)
+  public func didRequest(subscription: any Combine::Subscription, _ demand: Combine::Subscribers.Combine::Demand)
+  public func willCancel(subscription: any Combine::Subscription)
+  public func didCancel(subscription: any Combine::Subscription)
+  public func enable()
+  public func disable()
+  public var isEnabled: Swift::Bool {
+    get
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher where Self.Failure == Swift::Never {
+  @available(macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
+  public var values: Combine::AsyncPublisher<Self> {
+    get
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  @available(macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
+  public var values: Combine::AsyncThrowingPublisher<Self> {
+    get
+  }
+}
+@available(macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
+public struct AsyncPublisher<P> : _Concurrency::AsyncSequence where P : Combine::Publisher, P.Failure == Swift::Never {
+  public typealias Element = P.Output
+  public struct Iterator : _Concurrency::AsyncIteratorProtocol {
+    public mutating func next() async -> P.Output?
+    @available(macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
+    public typealias Element = P.Output
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    @_implements(_Concurrency::AsyncIteratorProtocol, Failure) public typealias __AsyncIteratorProtocol_Failure = Swift::Never
+  }
+  public init(_ publisher: P)
+  public func makeAsyncIterator() -> Combine::AsyncPublisher<P>.Combine::Iterator
+  @available(macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
+  public typealias AsyncIterator = Combine::AsyncPublisher<P>.Combine::Iterator
+  @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+  @_implements(_Concurrency::AsyncSequence, Failure) public typealias __AsyncSequence_Failure = Swift::Never
+}
+@available(macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
+public struct AsyncThrowingPublisher<P> : _Concurrency::AsyncSequence where P : Combine::Publisher {
+  public typealias Element = P.Output
+  public struct Iterator : _Concurrency::AsyncIteratorProtocol {
+    public mutating func next() async throws -> P.Output?
+    @available(macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
+    public typealias Element = P.Output
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    @_implements(_Concurrency::AsyncIteratorProtocol, Failure) public typealias __AsyncIteratorProtocol_Failure = any Swift::Error
+  }
+  public init(_ publisher: P)
+  public func makeAsyncIterator() -> Combine::AsyncThrowingPublisher<P>.Combine::Iterator
+  @available(macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
+  public typealias AsyncIterator = Combine::AsyncThrowingPublisher<P>.Combine::Iterator
+  @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+  @_implements(_Concurrency::AsyncSequence, Failure) public typealias __AsyncSequence_Failure = any Swift::Error
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func prefix<P>(untilOutputFrom publisher: P) -> Combine::Publishers.Combine::PrefixUntilOutput<Self, P> where P : Combine::Publisher
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct PrefixUntilOutput<Upstream, Other> : Combine::Publisher where Upstream : Combine::Publisher, Other : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let other: Other
+    public init(upstream: Upstream, other: Other)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public protocol Subject<Output, Failure> : AnyObject, Combine::Publisher {
+  func send(_ value: Self.Output)
+  func send(completion: Combine::Subscribers.Combine::Completion<Self.Failure>)
+  func send(subscription: any Combine::Subscription)
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Subject where Self.Output == () {
+  public func send()
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func subscribe<S>(_ subject: S) -> Combine::AnyCancellable where S : Combine::Subject, Self.Failure == S.Failure, Self.Output == S.Output
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func reduce<T>(_ initialResult: T, _ nextPartialResult: @escaping (T, Self.Output) -> T) -> Combine::Publishers.Combine::Reduce<Self, T>
+  public func tryReduce<T>(_ initialResult: T, _ nextPartialResult: @escaping (T, Self.Output) throws -> T) -> Combine::Publishers.Combine::TryReduce<Self, T>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Reduce<Upstream, Output> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let initial: Output
+    public let nextPartialResult: (Output, Upstream.Output) -> Output
+    public init(upstream: Upstream, initial: Output, nextPartialResult: @escaping (Output, Upstream.Output) -> Output)
+    public func receive<S>(subscriber: S) where Output == S.Input, S : Combine::Subscriber, Upstream.Failure == S.Failure
+  }
+  public struct TryReduce<Upstream, Output> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Failure = Swift::Error
+    public let upstream: Upstream
+    public let initial: Output
+    public let nextPartialResult: (Output, Upstream.Output) throws -> Output
+    public init(upstream: Upstream, initial: Output, nextPartialResult: @escaping (Output, Upstream.Output) throws -> Output)
+    public func receive<S>(subscriber: S) where Output == S.Input, S : Combine::Subscriber, S.Failure == any Swift::Error
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func compactMap<T>(_ transform: @escaping (Self.Output) -> T?) -> Combine::Publishers.Combine::CompactMap<Self, T>
+  public func tryCompactMap<T>(_ transform: @escaping (Self.Output) throws -> T?) -> Combine::Publishers.Combine::TryCompactMap<Self, T>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct CompactMap<Upstream, Output> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let transform: (Upstream.Output) -> Output?
+    public init(upstream: Upstream, transform: @escaping (Upstream.Output) -> Output?)
+    public func receive<S>(subscriber: S) where Output == S.Input, S : Combine::Subscriber, Upstream.Failure == S.Failure
+  }
+  public struct TryCompactMap<Upstream, Output> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Failure = Swift::Error
+    public let upstream: Upstream
+    public let transform: (Upstream.Output) throws -> Output?
+    public init(upstream: Upstream, transform: @escaping (Upstream.Output) throws -> Output?)
+    public func receive<S>(subscriber: S) where Output == S.Input, S : Combine::Subscriber, S.Failure == any Swift::Error
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::CompactMap {
+  public func compactMap<T>(_ transform: @escaping (Output) -> T?) -> Combine::Publishers.Combine::CompactMap<Upstream, T>
+  public func map<T>(_ transform: @escaping (Output) -> T) -> Combine::Publishers.Combine::CompactMap<Upstream, T>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::TryCompactMap {
+  public func compactMap<T>(_ transform: @escaping (Output) throws -> T?) -> Combine::Publishers.Combine::TryCompactMap<Upstream, T>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func merge<P>(with other: P) -> Combine::Publishers.Combine::Merge<Self, P> where P : Combine::Publisher, Self.Failure == P.Failure, Self.Output == P.Output
+  public func merge<B, C>(with b: B, _ c: C) -> Combine::Publishers.Combine::Merge3<Self, B, C> where B : Combine::Publisher, C : Combine::Publisher, Self.Failure == B.Failure, Self.Output == B.Output, B.Failure == C.Failure, B.Output == C.Output
+  public func merge<B, C, D>(with b: B, _ c: C, _ d: D) -> Combine::Publishers.Combine::Merge4<Self, B, C, D> where B : Combine::Publisher, C : Combine::Publisher, D : Combine::Publisher, Self.Failure == B.Failure, Self.Output == B.Output, B.Failure == C.Failure, B.Output == C.Output, C.Failure == D.Failure, C.Output == D.Output
+  public func merge<B, C, D, E>(with b: B, _ c: C, _ d: D, _ e: E) -> Combine::Publishers.Combine::Merge5<Self, B, C, D, E> where B : Combine::Publisher, C : Combine::Publisher, D : Combine::Publisher, E : Combine::Publisher, Self.Failure == B.Failure, Self.Output == B.Output, B.Failure == C.Failure, B.Output == C.Output, C.Failure == D.Failure, C.Output == D.Output, D.Failure == E.Failure, D.Output == E.Output
+  public func merge<B, C, D, E, F>(with b: B, _ c: C, _ d: D, _ e: E, _ f: F) -> Combine::Publishers.Combine::Merge6<Self, B, C, D, E, F> where B : Combine::Publisher, C : Combine::Publisher, D : Combine::Publisher, E : Combine::Publisher, F : Combine::Publisher, Self.Failure == B.Failure, Self.Output == B.Output, B.Failure == C.Failure, B.Output == C.Output, C.Failure == D.Failure, C.Output == D.Output, D.Failure == E.Failure, D.Output == E.Output, E.Failure == F.Failure, E.Output == F.Output
+  public func merge<B, C, D, E, F, G>(with b: B, _ c: C, _ d: D, _ e: E, _ f: F, _ g: G) -> Combine::Publishers.Combine::Merge7<Self, B, C, D, E, F, G> where B : Combine::Publisher, C : Combine::Publisher, D : Combine::Publisher, E : Combine::Publisher, F : Combine::Publisher, G : Combine::Publisher, Self.Failure == B.Failure, Self.Output == B.Output, B.Failure == C.Failure, B.Output == C.Output, C.Failure == D.Failure, C.Output == D.Output, D.Failure == E.Failure, D.Output == E.Output, E.Failure == F.Failure, E.Output == F.Output, F.Failure == G.Failure, F.Output == G.Output
+  public func merge<B, C, D, E, F, G, H>(with b: B, _ c: C, _ d: D, _ e: E, _ f: F, _ g: G, _ h: H) -> Combine::Publishers.Combine::Merge8<Self, B, C, D, E, F, G, H> where B : Combine::Publisher, C : Combine::Publisher, D : Combine::Publisher, E : Combine::Publisher, F : Combine::Publisher, G : Combine::Publisher, H : Combine::Publisher, Self.Failure == B.Failure, Self.Output == B.Output, B.Failure == C.Failure, B.Output == C.Output, C.Failure == D.Failure, C.Output == D.Output, D.Failure == E.Failure, D.Output == E.Output, E.Failure == F.Failure, E.Output == F.Output, F.Failure == G.Failure, F.Output == G.Output, G.Failure == H.Failure, G.Output == H.Output
+  public func merge(with other: Self) -> Combine::Publishers.Combine::MergeMany<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Merge<A, B> : Combine::Publisher where A : Combine::Publisher, B : Combine::Publisher, A.Failure == B.Failure, A.Output == B.Output {
+    public typealias Output = A.Output
+    public typealias Failure = A.Failure
+    public let a: A
+    public let b: B
+    public init(_ a: A, _ b: B)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, B.Failure == S.Failure, B.Output == S.Input
+    public func merge<P>(with other: P) -> Combine::Publishers.Combine::Merge3<A, B, P> where P : Combine::Publisher, B.Failure == P.Failure, B.Output == P.Output
+    public func merge<Z, Y>(with z: Z, _ y: Y) -> Combine::Publishers.Combine::Merge4<A, B, Z, Y> where Z : Combine::Publisher, Y : Combine::Publisher, B.Failure == Z.Failure, B.Output == Z.Output, Z.Failure == Y.Failure, Z.Output == Y.Output
+    public func merge<Z, Y, X>(with z: Z, _ y: Y, _ x: X) -> Combine::Publishers.Combine::Merge5<A, B, Z, Y, X> where Z : Combine::Publisher, Y : Combine::Publisher, X : Combine::Publisher, B.Failure == Z.Failure, B.Output == Z.Output, Z.Failure == Y.Failure, Z.Output == Y.Output, Y.Failure == X.Failure, Y.Output == X.Output
+    public func merge<Z, Y, X, W>(with z: Z, _ y: Y, _ x: X, _ w: W) -> Combine::Publishers.Combine::Merge6<A, B, Z, Y, X, W> where Z : Combine::Publisher, Y : Combine::Publisher, X : Combine::Publisher, W : Combine::Publisher, B.Failure == Z.Failure, B.Output == Z.Output, Z.Failure == Y.Failure, Z.Output == Y.Output, Y.Failure == X.Failure, Y.Output == X.Output, X.Failure == W.Failure, X.Output == W.Output
+    public func merge<Z, Y, X, W, V>(with z: Z, _ y: Y, _ x: X, _ w: W, _ v: V) -> Combine::Publishers.Combine::Merge7<A, B, Z, Y, X, W, V> where Z : Combine::Publisher, Y : Combine::Publisher, X : Combine::Publisher, W : Combine::Publisher, V : Combine::Publisher, B.Failure == Z.Failure, B.Output == Z.Output, Z.Failure == Y.Failure, Z.Output == Y.Output, Y.Failure == X.Failure, Y.Output == X.Output, X.Failure == W.Failure, X.Output == W.Output, W.Failure == V.Failure, W.Output == V.Output
+    public func merge<Z, Y, X, W, V, U>(with z: Z, _ y: Y, _ x: X, _ w: W, _ v: V, _ u: U) -> Combine::Publishers.Combine::Merge8<A, B, Z, Y, X, W, V, U> where Z : Combine::Publisher, Y : Combine::Publisher, X : Combine::Publisher, W : Combine::Publisher, V : Combine::Publisher, U : Combine::Publisher, B.Failure == Z.Failure, B.Output == Z.Output, Z.Failure == Y.Failure, Z.Output == Y.Output, Y.Failure == X.Failure, Y.Output == X.Output, X.Failure == W.Failure, X.Output == W.Output, W.Failure == V.Failure, W.Output == V.Output, V.Failure == U.Failure, V.Output == U.Output
+  }
+  public struct Merge3<A, B, C> : Combine::Publisher where A : Combine::Publisher, B : Combine::Publisher, C : Combine::Publisher, A.Failure == B.Failure, A.Output == B.Output, B.Failure == C.Failure, B.Output == C.Output {
+    public typealias Output = A.Output
+    public typealias Failure = A.Failure
+    public let a: A
+    public let b: B
+    public let c: C
+    public init(_ a: A, _ b: B, _ c: C)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, C.Failure == S.Failure, C.Output == S.Input
+    public func merge<P>(with other: P) -> Combine::Publishers.Combine::Merge4<A, B, C, P> where P : Combine::Publisher, C.Failure == P.Failure, C.Output == P.Output
+    public func merge<Z, Y>(with z: Z, _ y: Y) -> Combine::Publishers.Combine::Merge5<A, B, C, Z, Y> where Z : Combine::Publisher, Y : Combine::Publisher, C.Failure == Z.Failure, C.Output == Z.Output, Z.Failure == Y.Failure, Z.Output == Y.Output
+    public func merge<Z, Y, X>(with z: Z, _ y: Y, _ x: X) -> Combine::Publishers.Combine::Merge6<A, B, C, Z, Y, X> where Z : Combine::Publisher, Y : Combine::Publisher, X : Combine::Publisher, C.Failure == Z.Failure, C.Output == Z.Output, Z.Failure == Y.Failure, Z.Output == Y.Output, Y.Failure == X.Failure, Y.Output == X.Output
+    public func merge<Z, Y, X, W>(with z: Z, _ y: Y, _ x: X, _ w: W) -> Combine::Publishers.Combine::Merge7<A, B, C, Z, Y, X, W> where Z : Combine::Publisher, Y : Combine::Publisher, X : Combine::Publisher, W : Combine::Publisher, C.Failure == Z.Failure, C.Output == Z.Output, Z.Failure == Y.Failure, Z.Output == Y.Output, Y.Failure == X.Failure, Y.Output == X.Output, X.Failure == W.Failure, X.Output == W.Output
+    public func merge<Z, Y, X, W, V>(with z: Z, _ y: Y, _ x: X, _ w: W, _ v: V) -> Combine::Publishers.Combine::Merge8<A, B, C, Z, Y, X, W, V> where Z : Combine::Publisher, Y : Combine::Publisher, X : Combine::Publisher, W : Combine::Publisher, V : Combine::Publisher, C.Failure == Z.Failure, C.Output == Z.Output, Z.Failure == Y.Failure, Z.Output == Y.Output, Y.Failure == X.Failure, Y.Output == X.Output, X.Failure == W.Failure, X.Output == W.Output, W.Failure == V.Failure, W.Output == V.Output
+  }
+  public struct Merge4<A, B, C, D> : Combine::Publisher where A : Combine::Publisher, B : Combine::Publisher, C : Combine::Publisher, D : Combine::Publisher, A.Failure == B.Failure, A.Output == B.Output, B.Failure == C.Failure, B.Output == C.Output, C.Failure == D.Failure, C.Output == D.Output {
+    public typealias Output = A.Output
+    public typealias Failure = A.Failure
+    public let a: A
+    public let b: B
+    public let c: C
+    public let d: D
+    public init(_ a: A, _ b: B, _ c: C, _ d: D)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, D.Failure == S.Failure, D.Output == S.Input
+    public func merge<P>(with other: P) -> Combine::Publishers.Combine::Merge5<A, B, C, D, P> where P : Combine::Publisher, D.Failure == P.Failure, D.Output == P.Output
+    public func merge<Z, Y>(with z: Z, _ y: Y) -> Combine::Publishers.Combine::Merge6<A, B, C, D, Z, Y> where Z : Combine::Publisher, Y : Combine::Publisher, D.Failure == Z.Failure, D.Output == Z.Output, Z.Failure == Y.Failure, Z.Output == Y.Output
+    public func merge<Z, Y, X>(with z: Z, _ y: Y, _ x: X) -> Combine::Publishers.Combine::Merge7<A, B, C, D, Z, Y, X> where Z : Combine::Publisher, Y : Combine::Publisher, X : Combine::Publisher, D.Failure == Z.Failure, D.Output == Z.Output, Z.Failure == Y.Failure, Z.Output == Y.Output, Y.Failure == X.Failure, Y.Output == X.Output
+    public func merge<Z, Y, X, W>(with z: Z, _ y: Y, _ x: X, _ w: W) -> Combine::Publishers.Combine::Merge8<A, B, C, D, Z, Y, X, W> where Z : Combine::Publisher, Y : Combine::Publisher, X : Combine::Publisher, W : Combine::Publisher, D.Failure == Z.Failure, D.Output == Z.Output, Z.Failure == Y.Failure, Z.Output == Y.Output, Y.Failure == X.Failure, Y.Output == X.Output, X.Failure == W.Failure, X.Output == W.Output
+  }
+  public struct Merge5<A, B, C, D, E> : Combine::Publisher where A : Combine::Publisher, B : Combine::Publisher, C : Combine::Publisher, D : Combine::Publisher, E : Combine::Publisher, A.Failure == B.Failure, A.Output == B.Output, B.Failure == C.Failure, B.Output == C.Output, C.Failure == D.Failure, C.Output == D.Output, D.Failure == E.Failure, D.Output == E.Output {
+    public typealias Output = A.Output
+    public typealias Failure = A.Failure
+    public let a: A
+    public let b: B
+    public let c: C
+    public let d: D
+    public let e: E
+    public init(_ a: A, _ b: B, _ c: C, _ d: D, _ e: E)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, E.Failure == S.Failure, E.Output == S.Input
+    public func merge<P>(with other: P) -> Combine::Publishers.Combine::Merge6<A, B, C, D, E, P> where P : Combine::Publisher, E.Failure == P.Failure, E.Output == P.Output
+    public func merge<Z, Y>(with z: Z, _ y: Y) -> Combine::Publishers.Combine::Merge7<A, B, C, D, E, Z, Y> where Z : Combine::Publisher, Y : Combine::Publisher, E.Failure == Z.Failure, E.Output == Z.Output, Z.Failure == Y.Failure, Z.Output == Y.Output
+    public func merge<Z, Y, X>(with z: Z, _ y: Y, _ x: X) -> Combine::Publishers.Combine::Merge8<A, B, C, D, E, Z, Y, X> where Z : Combine::Publisher, Y : Combine::Publisher, X : Combine::Publisher, E.Failure == Z.Failure, E.Output == Z.Output, Z.Failure == Y.Failure, Z.Output == Y.Output, Y.Failure == X.Failure, Y.Output == X.Output
+  }
+  public struct Merge6<A, B, C, D, E, F> : Combine::Publisher where A : Combine::Publisher, B : Combine::Publisher, C : Combine::Publisher, D : Combine::Publisher, E : Combine::Publisher, F : Combine::Publisher, A.Failure == B.Failure, A.Output == B.Output, B.Failure == C.Failure, B.Output == C.Output, C.Failure == D.Failure, C.Output == D.Output, D.Failure == E.Failure, D.Output == E.Output, E.Failure == F.Failure, E.Output == F.Output {
+    public typealias Output = A.Output
+    public typealias Failure = A.Failure
+    public let a: A
+    public let b: B
+    public let c: C
+    public let d: D
+    public let e: E
+    public let f: F
+    public init(_ a: A, _ b: B, _ c: C, _ d: D, _ e: E, _ f: F)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, F.Failure == S.Failure, F.Output == S.Input
+    public func merge<P>(with other: P) -> Combine::Publishers.Combine::Merge7<A, B, C, D, E, F, P> where P : Combine::Publisher, F.Failure == P.Failure, F.Output == P.Output
+    public func merge<Z, Y>(with z: Z, _ y: Y) -> Combine::Publishers.Combine::Merge8<A, B, C, D, E, F, Z, Y> where Z : Combine::Publisher, Y : Combine::Publisher, F.Failure == Z.Failure, F.Output == Z.Output, Z.Failure == Y.Failure, Z.Output == Y.Output
+  }
+  public struct Merge7<A, B, C, D, E, F, G> : Combine::Publisher where A : Combine::Publisher, B : Combine::Publisher, C : Combine::Publisher, D : Combine::Publisher, E : Combine::Publisher, F : Combine::Publisher, G : Combine::Publisher, A.Failure == B.Failure, A.Output == B.Output, B.Failure == C.Failure, B.Output == C.Output, C.Failure == D.Failure, C.Output == D.Output, D.Failure == E.Failure, D.Output == E.Output, E.Failure == F.Failure, E.Output == F.Output, F.Failure == G.Failure, F.Output == G.Output {
+    public typealias Output = A.Output
+    public typealias Failure = A.Failure
+    public let a: A
+    public let b: B
+    public let c: C
+    public let d: D
+    public let e: E
+    public let f: F
+    public let g: G
+    public init(_ a: A, _ b: B, _ c: C, _ d: D, _ e: E, _ f: F, _ g: G)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, G.Failure == S.Failure, G.Output == S.Input
+    public func merge<P>(with other: P) -> Combine::Publishers.Combine::Merge8<A, B, C, D, E, F, G, P> where P : Combine::Publisher, G.Failure == P.Failure, G.Output == P.Output
+  }
+  public struct Merge8<A, B, C, D, E, F, G, H> : Combine::Publisher where A : Combine::Publisher, B : Combine::Publisher, C : Combine::Publisher, D : Combine::Publisher, E : Combine::Publisher, F : Combine::Publisher, G : Combine::Publisher, H : Combine::Publisher, A.Failure == B.Failure, A.Output == B.Output, B.Failure == C.Failure, B.Output == C.Output, C.Failure == D.Failure, C.Output == D.Output, D.Failure == E.Failure, D.Output == E.Output, E.Failure == F.Failure, E.Output == F.Output, F.Failure == G.Failure, F.Output == G.Output, G.Failure == H.Failure, G.Output == H.Output {
+    public typealias Output = A.Output
+    public typealias Failure = A.Failure
+    public let a: A
+    public let b: B
+    public let c: C
+    public let d: D
+    public let e: E
+    public let f: F
+    public let g: G
+    public let h: H
+    public init(_ a: A, _ b: B, _ c: C, _ d: D, _ e: E, _ f: F, _ g: G, _ h: H)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, H.Failure == S.Failure, H.Output == S.Input
+  }
+  public struct MergeMany<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let publishers: [Upstream]
+    public init(_ upstream: Upstream...)
+    public init<S>(_ upstream: S) where Upstream == S.Element, S : Swift::Sequence
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+    public func merge(with other: Upstream) -> Combine::Publishers.Combine::MergeMany<Upstream>
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Merge : Swift::Equatable where A : Swift::Equatable, B : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Merge<A, B>, rhs: Combine::Publishers.Combine::Merge<A, B>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Merge3 : Swift::Equatable where A : Swift::Equatable, B : Swift::Equatable, C : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Merge3<A, B, C>, rhs: Combine::Publishers.Combine::Merge3<A, B, C>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Merge4 : Swift::Equatable where A : Swift::Equatable, B : Swift::Equatable, C : Swift::Equatable, D : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Merge4<A, B, C, D>, rhs: Combine::Publishers.Combine::Merge4<A, B, C, D>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Merge5 : Swift::Equatable where A : Swift::Equatable, B : Swift::Equatable, C : Swift::Equatable, D : Swift::Equatable, E : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Merge5<A, B, C, D, E>, rhs: Combine::Publishers.Combine::Merge5<A, B, C, D, E>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Merge6 : Swift::Equatable where A : Swift::Equatable, B : Swift::Equatable, C : Swift::Equatable, D : Swift::Equatable, E : Swift::Equatable, F : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Merge6<A, B, C, D, E, F>, rhs: Combine::Publishers.Combine::Merge6<A, B, C, D, E, F>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Merge7 : Swift::Equatable where A : Swift::Equatable, B : Swift::Equatable, C : Swift::Equatable, D : Swift::Equatable, E : Swift::Equatable, F : Swift::Equatable, G : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Merge7<A, B, C, D, E, F, G>, rhs: Combine::Publishers.Combine::Merge7<A, B, C, D, E, F, G>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Merge8 : Swift::Equatable where A : Swift::Equatable, B : Swift::Equatable, C : Swift::Equatable, D : Swift::Equatable, E : Swift::Equatable, F : Swift::Equatable, G : Swift::Equatable, H : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Merge8<A, B, C, D, E, F, G, H>, rhs: Combine::Publishers.Combine::Merge8<A, B, C, D, E, F, G, H>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::MergeMany : Swift::Equatable where Upstream : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::MergeMany<Upstream>, rhs: Combine::Publishers.Combine::MergeMany<Upstream>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Swift::Result {
+  public var publisher: Swift::Result<Success, Failure>.Combine::Publisher {
+    get
+  }
+  @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+  public struct Publisher : Combine::Publisher {
+    public typealias Output = Success
+    public let result: Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Failure>
+    public init(_ result: Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Failure>)
+    public init(_ output: Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output)
+    public init(_ failure: Failure)
+    public func receive<S>(subscriber: S) where Success == S.Input, Failure == S.Failure, S : Combine::Subscriber
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Swift::Result.Combine::Publisher : Swift::Equatable where Success : Swift::Equatable, Failure : Swift::Equatable {
+  public static func == (lhs: Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Failure>.Combine::Publisher, rhs: Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Failure>.Combine::Publisher) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Swift::Result.Combine::Publisher where Success : Swift::Equatable {
+  public func contains(_ output: Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) -> Swift::Result<Swift::Bool, Failure>.Combine::Publisher
+  public func removeDuplicates() -> Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Failure>.Combine::Publisher
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Swift::Result.Combine::Publisher where Success : Swift::Comparable {
+  public func min() -> Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Failure>.Combine::Publisher
+  public func max() -> Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Failure>.Combine::Publisher
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Swift::Result.Combine::Publisher {
+  public func allSatisfy(_ predicate: (Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) -> Swift::Bool) -> Swift::Result<Swift::Bool, Failure>.Combine::Publisher
+  public func tryAllSatisfy(_ predicate: (Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) throws -> Swift::Bool) -> Swift::Result<Swift::Bool, any Swift::Error>.Combine::Publisher
+  public func collect() -> Swift::Result<[Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output], Failure>.Combine::Publisher
+  public func min(by areInIncreasingOrder: (Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) -> Swift::Bool) -> Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Failure>.Combine::Publisher
+  public func tryMin(by areInIncreasingOrder: (Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) throws -> Swift::Bool) -> Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, any Swift::Error>.Combine::Publisher
+  public func max(by areInIncreasingOrder: (Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) -> Swift::Bool) -> Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Failure>.Combine::Publisher
+  public func tryMax(by areInIncreasingOrder: (Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) throws -> Swift::Bool) -> Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, any Swift::Error>.Combine::Publisher
+  public func contains(where predicate: (Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) -> Swift::Bool) -> Swift::Result<Swift::Bool, Failure>.Combine::Publisher
+  public func tryContains(where predicate: (Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) throws -> Swift::Bool) -> Swift::Result<Swift::Bool, any Swift::Error>.Combine::Publisher
+  public func count() -> Swift::Result<Swift::Int, Failure>.Combine::Publisher
+  public func first() -> Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Failure>.Combine::Publisher
+  public func last() -> Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Failure>.Combine::Publisher
+  public func ignoreOutput() -> Combine::Empty<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Failure>
+  public func map<T>(_ transform: (Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) -> T) -> Swift::Result<T, Failure>.Combine::Publisher
+  public func tryMap<T>(_ transform: (Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) throws -> T) -> Swift::Result<T, any Swift::Error>.Combine::Publisher
+  public func mapError<E>(_ transform: (Failure) -> E) -> Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, E>.Combine::Publisher where E : Swift::Error
+  public func reduce<T>(_ initialResult: T, _ nextPartialResult: (T, Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) -> T) -> Swift::Result<T, Failure>.Combine::Publisher
+  public func tryReduce<T>(_ initialResult: T, _ nextPartialResult: (T, Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) throws -> T) -> Swift::Result<T, any Swift::Error>.Combine::Publisher
+  public func removeDuplicates(by predicate: (Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) -> Swift::Bool) -> Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Failure>.Combine::Publisher
+  public func tryRemoveDuplicates(by predicate: (Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) throws -> Swift::Bool) -> Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, any Swift::Error>.Combine::Publisher
+  public func replaceError(with output: Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) -> Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Swift::Never>.Combine::Publisher
+  public func replaceEmpty(with output: Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) -> Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Failure>.Combine::Publisher
+  public func retry(_ times: Swift::Int) -> Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, Failure>.Combine::Publisher
+  public func scan<T>(_ initialResult: T, _ nextPartialResult: (T, Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) -> T) -> Swift::Result<T, Failure>.Combine::Publisher
+  public func tryScan<T>(_ initialResult: T, _ nextPartialResult: (T, Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output) throws -> T) -> Swift::Result<T, any Swift::Error>.Combine::Publisher
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Swift::Result.Combine::Publisher where Failure == Swift::Never {
+  public func setFailureType<E>(to failureType: E.Type) -> Swift::Result<Swift::Result<Success, Failure>.Combine::Publisher.Combine::Output, E>.Combine::Publisher where E : Swift::Error
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func scan<T>(_ initialResult: T, _ nextPartialResult: @escaping (T, Self.Output) -> T) -> Combine::Publishers.Combine::Scan<Self, T>
+  public func tryScan<T>(_ initialResult: T, _ nextPartialResult: @escaping (T, Self.Output) throws -> T) -> Combine::Publishers.Combine::TryScan<Self, T>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Scan<Upstream, Output> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let initialResult: Output
+    public let nextPartialResult: (Output, Upstream.Output) -> Output
+    public init(upstream: Upstream, initialResult: Output, nextPartialResult: @escaping (Output, Upstream.Output) -> Output)
+    public func receive<S>(subscriber: S) where Output == S.Input, S : Combine::Subscriber, Upstream.Failure == S.Failure
+  }
+  public struct TryScan<Upstream, Output> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Failure = Swift::Error
+    public let upstream: Upstream
+    public let initialResult: Output
+    public let nextPartialResult: (Output, Upstream.Output) throws -> Output
+    public init(upstream: Upstream, initialResult: Output, nextPartialResult: @escaping (Output, Upstream.Output) throws -> Output)
+    public func receive<S>(subscriber: S) where Output == S.Input, S : Combine::Subscriber, S.Failure == any Swift::Error
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public struct ImmediateScheduler : Combine::Scheduler {
+  public struct SchedulerTimeType : Swift::Strideable {
+    public func distance(to other: Combine::ImmediateScheduler.Combine::SchedulerTimeType) -> Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride
+    public func advanced(by n: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride) -> Combine::ImmediateScheduler.Combine::SchedulerTimeType
+    public struct Stride : Swift::ExpressibleByFloatLiteral, Swift::Comparable, Swift::SignedNumeric, Swift::Codable, Combine::SchedulerTimeIntervalConvertible {
+      public typealias FloatLiteralType = Swift::Double
+      public typealias IntegerLiteralType = Swift::Int
+      public typealias Magnitude = Swift::Int
+      public var magnitude: Swift::Int
+      public init(_ value: Swift::Int)
+      public init(integerLiteral value: Swift::Int)
+      public init(floatLiteral value: Swift::Double)
+      public init?<T>(exactly source: T) where T : Swift::BinaryInteger
+      public static func < (lhs: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride, rhs: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride) -> Swift::Bool
+      public static func * (lhs: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride, rhs: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride) -> Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride
+      public static func + (lhs: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride, rhs: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride) -> Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride
+      public static func - (lhs: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride, rhs: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride) -> Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride
+      public static func -= (lhs: inout Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride, rhs: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride)
+      public static func *= (lhs: inout Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride, rhs: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride)
+      public static func += (lhs: inout Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride, rhs: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride)
+      public static func seconds(_ s: Swift::Int) -> Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride
+      public static func seconds(_ s: Swift::Double) -> Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride
+      public static func milliseconds(_ ms: Swift::Int) -> Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride
+      public static func microseconds(_ us: Swift::Int) -> Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride
+      public static func nanoseconds(_ ns: Swift::Int) -> Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride
+      public static func == (a: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride, b: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride) -> Swift::Bool
+      public func encode(to encoder: any Swift::Encoder) throws
+      public init(from decoder: any Swift::Decoder) throws
+    }
+  }
+  public typealias SchedulerOptions = Swift::Never
+  public static let shared: Combine::ImmediateScheduler
+  public func schedule(options: Combine::ImmediateScheduler.Combine::SchedulerOptions?, _ action: @escaping () -> Swift::Void)
+  public var now: Combine::ImmediateScheduler.Combine::SchedulerTimeType {
+    get
+  }
+  public var minimumTolerance: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride {
+    get
+  }
+  public func schedule(after date: Combine::ImmediateScheduler.Combine::SchedulerTimeType, tolerance: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride, options: Combine::ImmediateScheduler.Combine::SchedulerOptions?, _ action: @escaping () -> Swift::Void)
+  @discardableResult
+  public func schedule(after date: Combine::ImmediateScheduler.Combine::SchedulerTimeType, interval: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride, tolerance: Combine::ImmediateScheduler.Combine::SchedulerTimeType.Combine::Stride, options: Combine::ImmediateScheduler.Combine::SchedulerOptions?, _ action: @escaping () -> Swift::Void) -> any Combine::Cancellable
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func count() -> Combine::Publishers.Combine::Count<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Count<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Swift::Int
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public init(upstream: Upstream)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, S.Input == Swift::Int
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Count : Swift::Equatable where Upstream : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Count<Upstream>, rhs: Combine::Publishers.Combine::Count<Upstream>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func last(where predicate: @escaping (Self.Output) -> Swift::Bool) -> Combine::Publishers.Combine::LastWhere<Self>
+  public func tryLast(where predicate: @escaping (Self.Output) throws -> Swift::Bool) -> Combine::Publishers.Combine::TryLastWhere<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct LastWhere<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let predicate: (Combine::Publishers.Combine::LastWhere<Upstream>.Combine::Output) -> Swift::Bool
+    public init(upstream: Upstream, predicate: @escaping (Combine::Publishers.Combine::LastWhere<Upstream>.Output) -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+  public struct TryLastWhere<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Swift::Error
+    public let upstream: Upstream
+    public let predicate: (Combine::Publishers.Combine::TryLastWhere<Upstream>.Combine::Output) throws -> Swift::Bool
+    public init(upstream: Upstream, predicate: @escaping (Combine::Publishers.Combine::TryLastWhere<Upstream>.Output) throws -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Output == S.Input, S.Failure == any Swift::Error
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func ignoreOutput() -> Combine::Publishers.Combine::IgnoreOutput<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct IgnoreOutput<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Swift::Never
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public init(upstream: Upstream)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, S.Input == Swift::Never
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::IgnoreOutput : Swift::Equatable where Upstream : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::IgnoreOutput<Upstream>, rhs: Combine::Publishers.Combine::IgnoreOutput<Upstream>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+final public class CurrentValueSubject<Output, Failure> : Combine::Subject where Failure : Swift::Error {
+  final public var value: Output {
+    get
+    set
+  }
+  public init(_ value: Output)
+  @objc deinit
+  final public func send(subscription: any Combine::Subscription)
+  final public func receive<S>(subscriber: S) where Output == S.Input, Failure == S.Failure, S : Combine::Subscriber
+  final public func send(_ input: Output)
+  final public func send(completion: Combine::Subscribers.Combine::Completion<Failure>)
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher where Self.Failure == Swift::Never {
+  public func assign<Root>(to keyPath: Swift::ReferenceWritableKeyPath<Root, Self.Output>, on object: Root) -> Combine::AnyCancellable
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Subscribers {
+  final public class Assign<Root, Input> : Combine::Subscriber, Combine::Cancellable, Swift::CustomStringConvertible, Swift::CustomReflectable, Swift::CustomPlaygroundDisplayConvertible {
+    public typealias Failure = Swift::Never
+    final public var object: Root? {
+      get
+    }
+    final public let keyPath: Swift::ReferenceWritableKeyPath<Root, Input>
+    final public var description: Swift::String {
+      get
+    }
+    final public var customMirror: Swift::Mirror {
+      get
+    }
+    final public var playgroundDescription: Any {
+      get
+    }
+    public init(object: Root, keyPath: Swift::ReferenceWritableKeyPath<Root, Input>)
+    @objc deinit
+    final public func receive(subscription: any Combine::Subscription)
+    final public func receive(_ value: Input) -> Combine::Subscribers.Combine::Demand
+    final public func receive(completion: Combine::Subscribers.Combine::Completion<Swift::Never>)
+    final public func cancel()
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public protocol SchedulerTimeIntervalConvertible {
+  static func seconds(_ s: Swift::Int) -> Self
+  static func seconds(_ s: Swift::Double) -> Self
+  static func milliseconds(_ ms: Swift::Int) -> Self
+  static func microseconds(_ us: Swift::Int) -> Self
+  static func nanoseconds(_ ns: Swift::Int) -> Self
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public protocol Scheduler<SchedulerTimeType> {
+  associatedtype SchedulerTimeType : Swift::Strideable where Self.SchedulerTimeType.Stride : Combine::SchedulerTimeIntervalConvertible
+  associatedtype SchedulerOptions
+  var now: Self.SchedulerTimeType { get }
+  var minimumTolerance: Self.SchedulerTimeType.Stride { get }
+  func schedule(options: Self.SchedulerOptions?, _ action: @escaping () -> Swift::Void)
+  func schedule(after date: Self.SchedulerTimeType, tolerance: Self.SchedulerTimeType.Stride, options: Self.SchedulerOptions?, _ action: @escaping () -> Swift::Void)
+  func schedule(after date: Self.SchedulerTimeType, interval: Self.SchedulerTimeType.Stride, tolerance: Self.SchedulerTimeType.Stride, options: Self.SchedulerOptions?, _ action: @escaping () -> Swift::Void) -> any Combine::Cancellable
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Scheduler {
+  public func schedule(after date: Self.SchedulerTimeType, _ action: @escaping () -> Swift::Void)
+  public func schedule(_ action: @escaping () -> Swift::Void)
+  public func schedule(after date: Self.SchedulerTimeType, tolerance: Self.SchedulerTimeType.Stride, _ action: @escaping () -> Swift::Void)
+  public func schedule(after date: Self.SchedulerTimeType, interval: Self.SchedulerTimeType.Stride, tolerance: Self.SchedulerTimeType.Stride, _ action: @escaping () -> Swift::Void) -> any Combine::Cancellable
+  public func schedule(after date: Self.SchedulerTimeType, interval: Self.SchedulerTimeType.Stride, _ action: @escaping () -> Swift::Void) -> any Combine::Cancellable
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher where Self.Failure == Self.Output.Failure, Self.Output : Combine::Publisher {
+  public func switchToLatest() -> Combine::Publishers.Combine::SwitchToLatest<Self.Output, Self>
+}
+@available(macOS 11.0, iOS 14.0, tvOS 14.0, watchOS 7.0, *)
+extension Combine::Publisher where Self.Failure == Swift::Never, Self.Output : Combine::Publisher {
+  public func switchToLatest() -> Combine::Publishers.Combine::SwitchToLatest<Self.Output, Combine::Publishers.Combine::SetFailureType<Self, Self.Output.Failure>>
+}
+@available(macOS 11.0, iOS 14.0, tvOS 14.0, watchOS 7.0, *)
+extension Combine::Publisher where Self.Failure == Swift::Never, Self.Output : Combine::Publisher, Self.Output.Failure == Swift::Never {
+  public func switchToLatest() -> Combine::Publishers.Combine::SwitchToLatest<Self.Output, Self>
+}
+@available(macOS 11.0, iOS 14.0, tvOS 14.0, watchOS 7.0, *)
+extension Combine::Publisher where Self.Output : Combine::Publisher, Self.Output.Failure == Swift::Never {
+  public func switchToLatest() -> Combine::Publishers.Combine::SwitchToLatest<Combine::Publishers.Combine::SetFailureType<Self.Output, Self.Failure>, Combine::Publishers.Combine::Map<Self, Combine::Publishers.Combine::SetFailureType<Self.Output, Self.Failure>>>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct SwitchToLatest<P, Upstream> : Combine::Publisher where P : Combine::Publisher, P == Upstream.Output, Upstream : Combine::Publisher, P.Failure == Upstream.Failure {
+    public typealias Output = P.Output
+    public typealias Failure = P.Failure
+    public let upstream: Upstream
+    public init(upstream: Upstream)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, P.Output == S.Input, Upstream.Failure == S.Failure
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func retry(_ retries: Swift::Int) -> Combine::Publishers.Combine::Retry<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Retry<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let retries: Swift::Int?
+    public init(upstream: Upstream, retries: Swift::Int?)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Retry : Swift::Equatable where Upstream : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Retry<Upstream>, rhs: Combine::Publishers.Combine::Retry<Upstream>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func mapError<E>(_ transform: @escaping (Self.Failure) -> E) -> Combine::Publishers.Combine::MapError<Self, E> where E : Swift::Error
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct MapError<Upstream, Failure> : Combine::Publisher where Upstream : Combine::Publisher, Failure : Swift::Error {
+    public typealias Output = Upstream.Output
+    public let upstream: Upstream
+    public let transform: (Upstream.Failure) -> Failure
+    public init(upstream: Upstream, transform: @escaping (Upstream.Failure) -> Failure)
+    public init(upstream: Upstream, _ map: @escaping (Upstream.Failure) -> Failure)
+    public func receive<S>(subscriber: S) where Failure == S.Failure, S : Combine::Subscriber, Upstream.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func throttle<S>(for interval: S.SchedulerTimeType.Stride, scheduler: S, latest: Swift::Bool) -> Combine::Publishers.Combine::Throttle<Self, S> where S : Combine::Scheduler
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Throttle<Upstream, Context> : Combine::Publisher where Upstream : Combine::Publisher, Context : Combine::Scheduler {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let interval: Context.SchedulerTimeType.Stride
+    public let scheduler: Context
+    public let latest: Swift::Bool
+    public init(upstream: Upstream, interval: Context.SchedulerTimeType.Stride, scheduler: Context, latest: Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func share() -> Combine::Publishers.Combine::Share<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  final public class Share<Upstream> : Combine::Publisher, Swift::Equatable where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    final public let upstream: Upstream
+    public init(upstream: Upstream)
+    final public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+    public static func == (lhs: Combine::Publishers.Combine::Share<Upstream>, rhs: Combine::Publishers.Combine::Share<Upstream>) -> Swift::Bool
+    @objc deinit
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher where Self.Output : Swift::Comparable {
+  public func min() -> Combine::Publishers.Combine::Comparison<Self>
+  public func max() -> Combine::Publishers.Combine::Comparison<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func min(by areInIncreasingOrder: @escaping (Self.Output, Self.Output) -> Swift::Bool) -> Combine::Publishers.Combine::Comparison<Self>
+  public func tryMin(by areInIncreasingOrder: @escaping (Self.Output, Self.Output) throws -> Swift::Bool) -> Combine::Publishers.Combine::TryComparison<Self>
+  public func max(by areInIncreasingOrder: @escaping (Self.Output, Self.Output) -> Swift::Bool) -> Combine::Publishers.Combine::Comparison<Self>
+  public func tryMax(by areInIncreasingOrder: @escaping (Self.Output, Self.Output) throws -> Swift::Bool) -> Combine::Publishers.Combine::TryComparison<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Comparison<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let areInIncreasingOrder: (Upstream.Output, Upstream.Output) -> Swift::Bool
+    public init(upstream: Upstream, areInIncreasingOrder: @escaping (Upstream.Output, Upstream.Output) -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+  public struct TryComparison<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Swift::Error
+    public let upstream: Upstream
+    public let areInIncreasingOrder: (Upstream.Output, Upstream.Output) throws -> Swift::Bool
+    public init(upstream: Upstream, areInIncreasingOrder: @escaping (Upstream.Output, Upstream.Output) throws -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Output == S.Input, S.Failure == any Swift::Error
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func replaceNil<T>(with output: T) -> Combine::Publishers.Combine::Map<Self, T> where Self.Output == T?
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func replaceError(with output: Self.Output) -> Combine::Publishers.Combine::ReplaceError<Self>
+  public func replaceEmpty(with output: Self.Output) -> Combine::Publishers.Combine::ReplaceEmpty<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct ReplaceEmpty<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let output: Combine::Publishers.Combine::ReplaceEmpty<Upstream>.Combine::Output
+    public let upstream: Upstream
+    public init(upstream: Upstream, output: Combine::Publishers.Combine::ReplaceEmpty<Upstream>.Output)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+  public struct ReplaceError<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Swift::Never
+    public let output: Combine::Publishers.Combine::ReplaceError<Upstream>.Combine::Output
+    public let upstream: Upstream
+    public init(upstream: Upstream, output: Combine::Publishers.Combine::ReplaceError<Upstream>.Output)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Output == S.Input, S.Failure == Swift::Never
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::ReplaceEmpty : Swift::Equatable where Upstream : Swift::Equatable, Upstream.Output : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::ReplaceEmpty<Upstream>, rhs: Combine::Publishers.Combine::ReplaceEmpty<Upstream>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::ReplaceError : Swift::Equatable where Upstream : Swift::Equatable, Upstream.Output : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::ReplaceError<Upstream>, rhs: Combine::Publishers.Combine::ReplaceError<Upstream>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func assertNoFailure(_ prefix: Swift::String = "", file: Swift::StaticString = #file, line: Swift::UInt = #line) -> Combine::Publishers.Combine::AssertNoFailure<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct AssertNoFailure<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Swift::Never
+    public let upstream: Upstream
+    public let prefix: Swift::String
+    public let file: Swift::StaticString
+    public let line: Swift::UInt
+    public init(upstream: Upstream, prefix: Swift::String, file: Swift::StaticString, line: Swift::UInt)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Output == S.Input, S.Failure == Swift::Never
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func drop<P>(untilOutputFrom publisher: P) -> Combine::Publishers.Combine::DropUntilOutput<Self, P> where P : Combine::Publisher, Self.Failure == P.Failure
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct DropUntilOutput<Upstream, Other> : Combine::Publisher where Upstream : Combine::Publisher, Other : Combine::Publisher, Upstream.Failure == Other.Failure {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let other: Other
+    public init(upstream: Upstream, other: Other)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Output == S.Input, Other.Failure == S.Failure
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::DropUntilOutput : Swift::Equatable where Upstream : Swift::Equatable, Other : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::DropUntilOutput<Upstream, Other>, rhs: Combine::Publishers.Combine::DropUntilOutput<Upstream, Other>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func handleEvents(receiveSubscription: ((any Combine::Subscription) -> Swift::Void)? = nil, receiveOutput: ((Self.Output) -> Swift::Void)? = nil, receiveCompletion: ((Combine::Subscribers.Combine::Completion<Self.Failure>) -> Swift::Void)? = nil, receiveCancel: (() -> Swift::Void)? = nil, receiveRequest: ((Combine::Subscribers.Combine::Demand) -> Swift::Void)? = nil) -> Combine::Publishers.Combine::HandleEvents<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct HandleEvents<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public var receiveSubscription: ((any Combine::Subscription) -> Swift::Void)?
+    public var receiveOutput: ((Combine::Publishers.Combine::HandleEvents<Upstream>.Combine::Output) -> Swift::Void)?
+    public var receiveCompletion: ((Combine::Subscribers.Combine::Completion<Combine::Publishers.Combine::HandleEvents<Upstream>.Combine::Failure>) -> Swift::Void)?
+    public var receiveCancel: (() -> Swift::Void)?
+    public var receiveRequest: ((Combine::Subscribers.Combine::Demand) -> Swift::Void)?
+    public init(upstream: Upstream, receiveSubscription: ((any Combine::Subscription) -> Swift::Void)? = nil, receiveOutput: ((Combine::Publishers.Combine::HandleEvents<Upstream>.Output) -> Swift::Void)? = nil, receiveCompletion: ((Combine::Subscribers.Combine::Completion<Combine::Publishers.Combine::HandleEvents<Upstream>.Failure>) -> Swift::Void)? = nil, receiveCancel: (() -> Swift::Void)? = nil, receiveRequest: ((Combine::Subscribers.Combine::Demand) -> Swift::Void)?)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func prepend(_ elements: Self.Output...) -> Combine::Publishers.Combine::Concatenate<Combine::Publishers.Combine::Sequence<[Self.Output], Self.Failure>, Self>
+  public func prepend<S>(_ elements: S) -> Combine::Publishers.Combine::Concatenate<Combine::Publishers.Combine::Sequence<S, Self.Failure>, Self> where S : Swift::Sequence, Self.Output == S.Element
+  public func prepend<P>(_ publisher: P) -> Combine::Publishers.Combine::Concatenate<P, Self> where P : Combine::Publisher, Self.Failure == P.Failure, Self.Output == P.Output
+  public func append(_ elements: Self.Output...) -> Combine::Publishers.Combine::Concatenate<Self, Combine::Publishers.Combine::Sequence<[Self.Output], Self.Failure>>
+  public func append<S>(_ elements: S) -> Combine::Publishers.Combine::Concatenate<Self, Combine::Publishers.Combine::Sequence<S, Self.Failure>> where S : Swift::Sequence, Self.Output == S.Element
+  public func append<P>(_ publisher: P) -> Combine::Publishers.Combine::Concatenate<Self, P> where P : Combine::Publisher, Self.Failure == P.Failure, Self.Output == P.Output
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Concatenate<Prefix, Suffix> : Combine::Publisher where Prefix : Combine::Publisher, Suffix : Combine::Publisher, Prefix.Failure == Suffix.Failure, Prefix.Output == Suffix.Output {
+    public typealias Output = Suffix.Output
+    public typealias Failure = Suffix.Failure
+    public let prefix: Prefix
+    public let suffix: Suffix
+    public init(prefix: Prefix, suffix: Suffix)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Suffix.Failure == S.Failure, Suffix.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Concatenate : Swift::Equatable where Prefix : Swift::Equatable, Suffix : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Concatenate<Prefix, Suffix>, rhs: Combine::Publishers.Combine::Concatenate<Prefix, Suffix>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public struct CombineIdentifier : Swift::Hashable, Swift::CustomStringConvertible {
+  public init()
+  public init(_ obj: Swift::AnyObject)
+  public var description: Swift::String {
+    get
+  }
+  public static func == (a: Combine::CombineIdentifier, b: Combine::CombineIdentifier) -> Swift::Bool
+  public func hash(into hasher: inout Swift::Hasher)
+  public var hashValue: Swift::Int {
+    get
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public protocol CustomCombineIdentifierConvertible {
+  var combineIdentifier: Combine::CombineIdentifier { get }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::CustomCombineIdentifierConvertible where Self : AnyObject {
+  public var combineIdentifier: Combine::CombineIdentifier {
+    get
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func debounce<S>(for dueTime: S.SchedulerTimeType.Stride, scheduler: S, options: S.SchedulerOptions? = nil) -> Combine::Publishers.Combine::Debounce<Self, S> where S : Combine::Scheduler
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Debounce<Upstream, Context> : Combine::Publisher where Upstream : Combine::Publisher, Context : Combine::Scheduler {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let dueTime: Context.SchedulerTimeType.Stride
+    public let scheduler: Context
+    public let options: Context.SchedulerOptions?
+    public init(upstream: Upstream, dueTime: Context.SchedulerTimeType.Stride, scheduler: Context, options: Context.SchedulerOptions?)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public struct Fail<Output, Failure> : Combine::Publisher where Failure : Swift::Error {
+  public init(error: Failure)
+  public init(outputType: Output.Type, failure: Failure)
+  public let error: Failure
+  public func receive<S>(subscriber: S) where Output == S.Input, Failure == S.Failure, S : Combine::Subscriber
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Fail : Swift::Equatable where Failure : Swift::Equatable {
+  public static func == (lhs: Combine::Fail<Output, Failure>, rhs: Combine::Fail<Output, Failure>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func last() -> Combine::Publishers.Combine::Last<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Last<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public init(upstream: Upstream)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Last : Swift::Equatable where Upstream : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Last<Upstream>, rhs: Combine::Publishers.Combine::Last<Upstream>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+@usableFromInline
+@_fixed_layout internal class PublisherBoxBase<Output, Failure> : Combine::Publisher where Failure : Swift::Error {
+  @inlinable internal init() {}
+  @objc @inlinable deinit {}
+  @usableFromInline
+  internal func receive<S>(subscriber: S) where Output == S.Input, Failure == S.Failure, S : Combine::Subscriber
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+@usableFromInline
+@_fixed_layout final internal class PublisherBox<Base> : Combine::PublisherBoxBase<Base.Output, Base.Failure> where Base : Combine::Publisher {
+  @usableFromInline
+  final internal let base: Base
+  @inlinable internal init(_ base: Base) {
+        self.base = base
+    }
+  @objc @inlinable deinit {}
+  @inlinable override final internal func receive<S>(subscriber: S) where S : Combine::Subscriber, Base.Failure == S.Failure, Base.Output == S.Input {
+        base.receive(subscriber: subscriber)
+    }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+@frozen public struct AnyPublisher<Output, Failure> : Swift::CustomStringConvertible, Swift::CustomPlaygroundDisplayConvertible where Failure : Swift::Error {
+  @usableFromInline
+  internal let box: Combine::PublisherBoxBase<Output, Failure>
+  public var description: Swift::String {
+    get
+  }
+  public var playgroundDescription: Any {
+    get
+  }
+  @inlinable public init<P>(_ publisher: P) where Output == P.Output, Failure == P.Failure, P : Combine::Publisher {
+         
+        if let erased = publisher as? AnyPublisher<Output, Failure> {
+            box = erased.box
+        } else {
+            box = PublisherBox(publisher)
+        }
+    }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::AnyPublisher : Combine::Publisher {
+  @inlinable public func receive<S>(subscriber: S) where Output == S.Input, Failure == S.Failure, S : Combine::Subscriber {
+        return box.receive(subscriber: subscriber)
+    }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func map<T>(_ transform: @escaping (Self.Output) -> T) -> Combine::Publishers.Combine::Map<Self, T>
+  public func tryMap<T>(_ transform: @escaping (Self.Output) throws -> T) -> Combine::Publishers.Combine::TryMap<Self, T>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Map<Upstream, Output> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let transform: (Upstream.Output) -> Output
+    public init(upstream: Upstream, transform: @escaping (Upstream.Output) -> Output)
+    public func receive<S>(subscriber: S) where Output == S.Input, S : Combine::Subscriber, Upstream.Failure == S.Failure
+  }
+  public struct TryMap<Upstream, Output> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Failure = Swift::Error
+    public let upstream: Upstream
+    public let transform: (Upstream.Output) throws -> Output
+    public init(upstream: Upstream, transform: @escaping (Upstream.Output) throws -> Output)
+    public func receive<S>(subscriber: S) where Output == S.Input, S : Combine::Subscriber, S.Failure == any Swift::Error
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Map {
+  public func map<T>(_ transform: @escaping (Output) -> T) -> Combine::Publishers.Combine::Map<Upstream, T>
+  public func tryMap<T>(_ transform: @escaping (Output) throws -> T) -> Combine::Publishers.Combine::TryMap<Upstream, T>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::TryMap {
+  public func map<T>(_ transform: @escaping (Output) -> T) -> Combine::Publishers.Combine::TryMap<Upstream, T>
+  public func tryMap<T>(_ transform: @escaping (Output) throws -> T) -> Combine::Publishers.Combine::TryMap<Upstream, T>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func timeout<S>(_ interval: S.SchedulerTimeType.Stride, scheduler: S, options: S.SchedulerOptions? = nil, customError: (() -> Self.Failure)? = nil) -> Combine::Publishers.Combine::Timeout<Self, S> where S : Combine::Scheduler
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Timeout<Upstream, Context> : Combine::Publisher where Upstream : Combine::Publisher, Context : Combine::Scheduler {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let interval: Context.SchedulerTimeType.Stride
+    public let scheduler: Context
+    public let options: Context.SchedulerOptions?
+    public let customError: (() -> Combine::Publishers.Combine::Timeout<Upstream, Context>.Combine::Failure)?
+    public init(upstream: Upstream, interval: Context.SchedulerTimeType.Stride, scheduler: Context, options: Context.SchedulerOptions?, customError: (() -> Combine::Publishers.Combine::Timeout<Upstream, Context>.Failure)?)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func buffer(size: Swift::Int, prefetch: Combine::Publishers.Combine::PrefetchStrategy, whenFull: Combine::Publishers.Combine::BufferingStrategy<Self.Failure>) -> Combine::Publishers.Combine::Buffer<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public enum PrefetchStrategy {
+    case keepFull
+    case byRequest
+    public static func == (a: Combine::Publishers.Combine::PrefetchStrategy, b: Combine::Publishers.Combine::PrefetchStrategy) -> Swift::Bool
+    public func hash(into hasher: inout Swift::Hasher)
+    public var hashValue: Swift::Int {
+      get
+    }
+  }
+  public enum BufferingStrategy<Failure> where Failure : Swift::Error {
+    case dropNewest
+    case dropOldest
+    case customError(() -> Failure)
+  }
+  public struct Buffer<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let size: Swift::Int
+    public let prefetch: Combine::Publishers.Combine::PrefetchStrategy
+    public let whenFull: Combine::Publishers.Combine::BufferingStrategy<Combine::Publishers.Combine::Buffer<Upstream>.Combine::Failure>
+    public init(upstream: Upstream, size: Swift::Int, prefetch: Combine::Publishers.Combine::PrefetchStrategy, whenFull: Combine::Publishers.Combine::BufferingStrategy<Combine::Publishers.Combine::Buffer<Upstream>.Failure>)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Swift::Sequence {
+  public var publisher: Combine::Publishers.Combine::Sequence<Self, Swift::Never> {
+    get
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Sequence<Elements, Failure> : Combine::Publisher where Elements : Swift::Sequence, Failure : Swift::Error {
+    public typealias Output = Elements.Element
+    public let sequence: Elements
+    public init(sequence: Elements)
+    public func receive<S>(subscriber: S) where Failure == S.Failure, S : Combine::Subscriber, Elements.Element == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Sequence where Failure == Swift::Never {
+  public func min(by areInIncreasingOrder: (Combine::Publishers.Combine::Sequence<Elements, Failure>.Output, Combine::Publishers.Combine::Sequence<Elements, Failure>.Output) -> Swift::Bool) -> Swift::Optional<Combine::Publishers.Combine::Sequence<Elements, Failure>.Output>.Combine::Publisher
+  public func max(by areInIncreasingOrder: (Combine::Publishers.Combine::Sequence<Elements, Failure>.Output, Combine::Publishers.Combine::Sequence<Elements, Failure>.Output) -> Swift::Bool) -> Swift::Optional<Combine::Publishers.Combine::Sequence<Elements, Failure>.Output>.Combine::Publisher
+  public func first(where predicate: (Combine::Publishers.Combine::Sequence<Elements, Failure>.Output) -> Swift::Bool) -> Swift::Optional<Combine::Publishers.Combine::Sequence<Elements, Failure>.Output>.Combine::Publisher
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Sequence {
+  public func allSatisfy(_ predicate: (Combine::Publishers.Combine::Sequence<Elements, Failure>.Output) -> Swift::Bool) -> Swift::Result<Swift::Bool, Failure>.Combine::Publisher
+  public func tryAllSatisfy(_ predicate: (Combine::Publishers.Combine::Sequence<Elements, Failure>.Output) throws -> Swift::Bool) -> Swift::Result<Swift::Bool, any Swift::Error>.Combine::Publisher
+  public func collect() -> Swift::Result<[Combine::Publishers.Combine::Sequence<Elements, Failure>.Output], Failure>.Combine::Publisher
+  public func compactMap<T>(_ transform: (Combine::Publishers.Combine::Sequence<Elements, Failure>.Output) -> T?) -> Combine::Publishers.Combine::Sequence<[T], Failure>
+  public func contains(where predicate: (Combine::Publishers.Combine::Sequence<Elements, Failure>.Output) -> Swift::Bool) -> Swift::Result<Swift::Bool, Failure>.Combine::Publisher
+  public func tryContains(where predicate: (Combine::Publishers.Combine::Sequence<Elements, Failure>.Output) throws -> Swift::Bool) -> Swift::Result<Swift::Bool, any Swift::Error>.Combine::Publisher
+  public func drop(while predicate: (Elements.Element) -> Swift::Bool) -> Combine::Publishers.Combine::Sequence<Swift::DropWhileSequence<Elements>, Failure>
+  public func dropFirst(_ count: Swift::Int = 1) -> Combine::Publishers.Combine::Sequence<Swift::DropFirstSequence<Elements>, Failure>
+  public func filter(_ isIncluded: (Combine::Publishers.Combine::Sequence<Elements, Failure>.Output) -> Swift::Bool) -> Combine::Publishers.Combine::Sequence<[Combine::Publishers.Combine::Sequence<Elements, Failure>.Output], Failure>
+  public func ignoreOutput() -> Combine::Empty<Combine::Publishers.Combine::Sequence<Elements, Failure>.Output, Failure>
+  public func map<T>(_ transform: (Elements.Element) -> T) -> Combine::Publishers.Combine::Sequence<[T], Failure>
+  public func prefix(_ maxLength: Swift::Int) -> Combine::Publishers.Combine::Sequence<Swift::PrefixSequence<Elements>, Failure>
+  public func prefix(while predicate: (Elements.Element) -> Swift::Bool) -> Combine::Publishers.Combine::Sequence<[Elements.Element], Failure>
+  public func reduce<T>(_ initialResult: T, _ nextPartialResult: @escaping (T, Combine::Publishers.Combine::Sequence<Elements, Failure>.Output) -> T) -> Swift::Result<T, Failure>.Combine::Publisher
+  public func tryReduce<T>(_ initialResult: T, _ nextPartialResult: @escaping (T, Combine::Publishers.Combine::Sequence<Elements, Failure>.Output) throws -> T) -> Swift::Result<T, any Swift::Error>.Combine::Publisher
+  public func replaceNil<T>(with output: T) -> Combine::Publishers.Combine::Sequence<[Combine::Publishers.Combine::Sequence<Elements, Failure>.Output], Failure> where Elements.Element == T?
+  public func scan<T>(_ initialResult: T, _ nextPartialResult: @escaping (T, Combine::Publishers.Combine::Sequence<Elements, Failure>.Output) -> T) -> Combine::Publishers.Combine::Sequence<[T], Failure>
+  public func setFailureType<E>(to error: E.Type) -> Combine::Publishers.Combine::Sequence<Elements, E> where E : Swift::Error
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Sequence where Elements.Element : Swift::Equatable {
+  public func removeDuplicates() -> Combine::Publishers.Combine::Sequence<[Combine::Publishers.Combine::Sequence<Elements, Failure>.Output], Failure>
+  public func contains(_ output: Elements.Element) -> Swift::Result<Swift::Bool, Failure>.Combine::Publisher
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Sequence where Failure == Swift::Never, Elements.Element : Swift::Comparable {
+  public func min() -> Swift::Optional<Combine::Publishers.Combine::Sequence<Elements, Failure>.Output>.Combine::Publisher
+  public func max() -> Swift::Optional<Combine::Publishers.Combine::Sequence<Elements, Failure>.Output>.Combine::Publisher
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Sequence where Elements : Swift::Collection, Failure == Swift::Never {
+  public func first() -> Swift::Optional<Combine::Publishers.Combine::Sequence<Elements, Failure>.Output>.Combine::Publisher
+  public func output(at index: Elements.Index) -> Swift::Optional<Combine::Publishers.Combine::Sequence<Elements, Failure>.Output>.Combine::Publisher
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Sequence where Elements : Swift::Collection {
+  public func count() -> Swift::Result<Swift::Int, Failure>.Combine::Publisher
+  public func output(in range: Swift::Range<Elements.Index>) -> Combine::Publishers.Combine::Sequence<[Combine::Publishers.Combine::Sequence<Elements, Failure>.Output], Failure>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Sequence where Elements : Swift::BidirectionalCollection, Failure == Swift::Never {
+  public func last() -> Swift::Optional<Combine::Publishers.Combine::Sequence<Elements, Failure>.Output>.Combine::Publisher
+  public func last(where predicate: (Combine::Publishers.Combine::Sequence<Elements, Failure>.Output) -> Swift::Bool) -> Swift::Optional<Combine::Publishers.Combine::Sequence<Elements, Failure>.Output>.Combine::Publisher
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Sequence where Elements : Swift::RandomAccessCollection, Failure == Swift::Never {
+  public func output(at index: Elements.Index) -> Swift::Optional<Combine::Publishers.Combine::Sequence<Elements, Failure>.Output>.Combine::Publisher
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Sequence where Elements : Swift::RandomAccessCollection {
+  public func output(in range: Swift::Range<Elements.Index>) -> Combine::Publishers.Combine::Sequence<[Combine::Publishers.Combine::Sequence<Elements, Failure>.Output], Failure>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Sequence where Elements : Swift::RandomAccessCollection, Failure == Swift::Never {
+  public func count() -> Combine::Just<Swift::Int>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Sequence where Elements : Swift::RandomAccessCollection {
+  public func count() -> Swift::Result<Swift::Int, Failure>.Combine::Publisher
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Sequence where Elements : Swift::RangeReplaceableCollection {
+  public func prepend(_ elements: Combine::Publishers.Combine::Sequence<Elements, Failure>.Output...) -> Combine::Publishers.Combine::Sequence<Elements, Failure>
+  public func prepend<S>(_ elements: S) -> Combine::Publishers.Combine::Sequence<Elements, Failure> where S : Swift::Sequence, Elements.Element == S.Element
+  public func prepend(_ publisher: Combine::Publishers.Combine::Sequence<Elements, Failure>) -> Combine::Publishers.Combine::Sequence<Elements, Failure>
+  public func append(_ elements: Combine::Publishers.Combine::Sequence<Elements, Failure>.Output...) -> Combine::Publishers.Combine::Sequence<Elements, Failure>
+  public func append<S>(_ elements: S) -> Combine::Publishers.Combine::Sequence<Elements, Failure> where S : Swift::Sequence, Elements.Element == S.Element
+  public func append(_ publisher: Combine::Publishers.Combine::Sequence<Elements, Failure>) -> Combine::Publishers.Combine::Sequence<Elements, Failure>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Sequence : Swift::Equatable where Elements : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Sequence<Elements, Failure>, rhs: Combine::Publishers.Combine::Sequence<Elements, Failure>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func zip<P>(_ other: P) -> Combine::Publishers.Combine::Zip<Self, P> where P : Combine::Publisher, Self.Failure == P.Failure
+  public func zip<P, T>(_ other: P, _ transform: @escaping (Self.Output, P.Output) -> T) -> Combine::Publishers.Combine::Map<Combine::Publishers.Combine::Zip<Self, P>, T> where P : Combine::Publisher, Self.Failure == P.Failure
+  public func zip<P, Q>(_ publisher1: P, _ publisher2: Q) -> Combine::Publishers.Combine::Zip3<Self, P, Q> where P : Combine::Publisher, Q : Combine::Publisher, Self.Failure == P.Failure, P.Failure == Q.Failure
+  public func zip<P, Q, T>(_ publisher1: P, _ publisher2: Q, _ transform: @escaping (Self.Output, P.Output, Q.Output) -> T) -> Combine::Publishers.Combine::Map<Combine::Publishers.Combine::Zip3<Self, P, Q>, T> where P : Combine::Publisher, Q : Combine::Publisher, Self.Failure == P.Failure, P.Failure == Q.Failure
+  public func zip<P, Q, R>(_ publisher1: P, _ publisher2: Q, _ publisher3: R) -> Combine::Publishers.Combine::Zip4<Self, P, Q, R> where P : Combine::Publisher, Q : Combine::Publisher, R : Combine::Publisher, Self.Failure == P.Failure, P.Failure == Q.Failure, Q.Failure == R.Failure
+  public func zip<P, Q, R, T>(_ publisher1: P, _ publisher2: Q, _ publisher3: R, _ transform: @escaping (Self.Output, P.Output, Q.Output, R.Output) -> T) -> Combine::Publishers.Combine::Map<Combine::Publishers.Combine::Zip4<Self, P, Q, R>, T> where P : Combine::Publisher, Q : Combine::Publisher, R : Combine::Publisher, Self.Failure == P.Failure, P.Failure == Q.Failure, Q.Failure == R.Failure
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Zip<A, B> : Combine::Publisher where A : Combine::Publisher, B : Combine::Publisher, A.Failure == B.Failure {
+    public typealias Output = (A.Output, B.Output)
+    public typealias Failure = A.Failure
+    public let a: A
+    public let b: B
+    public init(_ a: A, _ b: B)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, B.Failure == S.Failure, S.Input == (A.Output, B.Output)
+  }
+  public struct Zip3<A, B, C> : Combine::Publisher where A : Combine::Publisher, B : Combine::Publisher, C : Combine::Publisher, A.Failure == B.Failure, B.Failure == C.Failure {
+    public typealias Output = (A.Output, B.Output, C.Output)
+    public typealias Failure = A.Failure
+    public let a: A
+    public let b: B
+    public let c: C
+    public init(_ a: A, _ b: B, _ c: C)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, C.Failure == S.Failure, S.Input == (A.Output, B.Output, C.Output)
+  }
+  public struct Zip4<A, B, C, D> : Combine::Publisher where A : Combine::Publisher, B : Combine::Publisher, C : Combine::Publisher, D : Combine::Publisher, A.Failure == B.Failure, B.Failure == C.Failure, C.Failure == D.Failure {
+    public typealias Output = (A.Output, B.Output, C.Output, D.Output)
+    public typealias Failure = A.Failure
+    public let a: A
+    public let b: B
+    public let c: C
+    public let d: D
+    public init(_ a: A, _ b: B, _ c: C, _ d: D)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, D.Failure == S.Failure, S.Input == (A.Output, B.Output, C.Output, D.Output)
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Zip : Swift::Equatable where A : Swift::Equatable, B : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Zip<A, B>, rhs: Combine::Publishers.Combine::Zip<A, B>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Zip3 : Swift::Equatable where A : Swift::Equatable, B : Swift::Equatable, C : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Zip3<A, B, C>, rhs: Combine::Publishers.Combine::Zip3<A, B, C>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Zip4 : Swift::Equatable where A : Swift::Equatable, B : Swift::Equatable, C : Swift::Equatable, D : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Zip4<A, B, C, D>, rhs: Combine::Publishers.Combine::Zip4<A, B, C, D>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func output(at index: Swift::Int) -> Combine::Publishers.Combine::Output<Self>
+  public func output<R>(in range: R) -> Combine::Publishers.Combine::Output<Self> where R : Swift::RangeExpression, R.Bound == Swift::Int
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Output<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let range: Swift::CountableRange<Swift::Int>
+    public init(upstream: Upstream, range: Swift::CountableRange<Swift::Int>)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Output : Swift::Equatable where Upstream : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Output<Upstream>, rhs: Combine::Publishers.Combine::Output<Upstream>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func `catch`<P>(_ handler: @escaping (Self.Failure) -> P) -> Combine::Publishers.Combine::Catch<Self, P> where P : Combine::Publisher, Self.Output == P.Output
+  public func tryCatch<P>(_ handler: @escaping (Self.Failure) throws -> P) -> Combine::Publishers.Combine::TryCatch<Self, P> where P : Combine::Publisher, Self.Output == P.Output
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Catch<Upstream, NewPublisher> : Combine::Publisher where Upstream : Combine::Publisher, NewPublisher : Combine::Publisher, Upstream.Output == NewPublisher.Output {
+    public typealias Output = Upstream.Output
+    public typealias Failure = NewPublisher.Failure
+    public let upstream: Upstream
+    public let handler: (Upstream.Failure) -> NewPublisher
+    public init(upstream: Upstream, handler: @escaping (Upstream.Failure) -> NewPublisher)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, NewPublisher.Failure == S.Failure, NewPublisher.Output == S.Input
+  }
+  public struct TryCatch<Upstream, NewPublisher> : Combine::Publisher where Upstream : Combine::Publisher, NewPublisher : Combine::Publisher, Upstream.Output == NewPublisher.Output {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Swift::Error
+    public let upstream: Upstream
+    public let handler: (Upstream.Failure) throws -> NewPublisher
+    public init(upstream: Upstream, handler: @escaping (Upstream.Failure) throws -> NewPublisher)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, NewPublisher.Output == S.Input, S.Failure == any Swift::Error
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func flatMap<T, P>(maxPublishers: Combine::Subscribers.Combine::Demand = .unlimited, _ transform: @escaping (Self.Output) -> P) -> Combine::Publishers.Combine::FlatMap<P, Self> where T == P.Output, P : Combine::Publisher, Self.Failure == P.Failure
+}
+@available(macOS 11.0, iOS 14.0, tvOS 14.0, watchOS 7.0, *)
+extension Combine::Publisher where Self.Failure == Swift::Never {
+  public func flatMap<P>(maxPublishers: Combine::Subscribers.Combine::Demand = .unlimited, _ transform: @escaping (Self.Output) -> P) -> Combine::Publishers.Combine::FlatMap<P, Combine::Publishers.Combine::SetFailureType<Self, P.Failure>> where P : Combine::Publisher
+}
+@available(macOS 11.0, iOS 14.0, tvOS 14.0, watchOS 7.0, *)
+extension Combine::Publisher where Self.Failure == Swift::Never {
+  public func flatMap<P>(maxPublishers: Combine::Subscribers.Combine::Demand = .unlimited, _ transform: @escaping (Self.Output) -> P) -> Combine::Publishers.Combine::FlatMap<P, Self> where P : Combine::Publisher, P.Failure == Swift::Never
+}
+@available(macOS 11.0, iOS 14.0, tvOS 14.0, watchOS 7.0, *)
+extension Combine::Publisher {
+  public func flatMap<P>(maxPublishers: Combine::Subscribers.Combine::Demand = .unlimited, _ transform: @escaping (Self.Output) -> P) -> Combine::Publishers.Combine::FlatMap<Combine::Publishers.Combine::SetFailureType<P, Self.Failure>, Self> where P : Combine::Publisher, P.Failure == Swift::Never
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct FlatMap<NewPublisher, Upstream> : Combine::Publisher where NewPublisher : Combine::Publisher, Upstream : Combine::Publisher, NewPublisher.Failure == Upstream.Failure {
+    public typealias Output = NewPublisher.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let maxPublishers: Combine::Subscribers.Combine::Demand
+    public let transform: (Upstream.Output) -> NewPublisher
+    public init(upstream: Upstream, maxPublishers: Combine::Subscribers.Combine::Demand, transform: @escaping (Upstream.Output) -> NewPublisher)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, NewPublisher.Output == S.Input, Upstream.Failure == S.Failure
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func delay<S>(for interval: S.SchedulerTimeType.Stride, tolerance: S.SchedulerTimeType.Stride? = nil, scheduler: S, options: S.SchedulerOptions? = nil) -> Combine::Publishers.Combine::Delay<Self, S> where S : Combine::Scheduler
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Delay<Upstream, Context> : Combine::Publisher where Upstream : Combine::Publisher, Context : Combine::Scheduler {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let interval: Context.SchedulerTimeType.Stride
+    public let tolerance: Context.SchedulerTimeType.Stride
+    public let scheduler: Context
+    public let options: Context.SchedulerOptions?
+    public init(upstream: Upstream, interval: Context.SchedulerTimeType.Stride, tolerance: Context.SchedulerTimeType.Stride, scheduler: Context, options: Context.SchedulerOptions? = nil)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func dropFirst(_ count: Swift::Int = 1) -> Combine::Publishers.Combine::Drop<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct Drop<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let count: Swift::Int
+    public init(upstream: Upstream, count: Swift::Int)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::Drop : Swift::Equatable where Upstream : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::Drop<Upstream>, rhs: Combine::Publishers.Combine::Drop<Upstream>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Future where Failure == Swift::Never {
+  @available(macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
+  final public var value: Output {
+    get async
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Future {
+  @available(macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
+  final public var value: Output {
+    get async throws
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func eraseToAnyPublisher() -> Combine::AnyPublisher<Self.Output, Self.Failure>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publisher {
+  public func first() -> Combine::Publishers.Combine::First<Self>
+  public func first(where predicate: @escaping (Self.Output) -> Swift::Bool) -> Combine::Publishers.Combine::FirstWhere<Self>
+  public func tryFirst(where predicate: @escaping (Self.Output) throws -> Swift::Bool) -> Combine::Publishers.Combine::TryFirstWhere<Self>
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers {
+  public struct First<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public init(upstream: Upstream)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+  public struct FirstWhere<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Upstream.Failure
+    public let upstream: Upstream
+    public let predicate: (Combine::Publishers.Combine::FirstWhere<Upstream>.Combine::Output) -> Swift::Bool
+    public init(upstream: Upstream, predicate: @escaping (Combine::Publishers.Combine::FirstWhere<Upstream>.Output) -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Failure == S.Failure, Upstream.Output == S.Input
+  }
+  public struct TryFirstWhere<Upstream> : Combine::Publisher where Upstream : Combine::Publisher {
+    public typealias Output = Upstream.Output
+    public typealias Failure = Swift::Error
+    public let upstream: Upstream
+    public let predicate: (Combine::Publishers.Combine::TryFirstWhere<Upstream>.Combine::Output) throws -> Swift::Bool
+    public init(upstream: Upstream, predicate: @escaping (Combine::Publishers.Combine::TryFirstWhere<Upstream>.Output) throws -> Swift::Bool)
+    public func receive<S>(subscriber: S) where S : Combine::Subscriber, Upstream.Output == S.Input, S.Failure == any Swift::Error
+  }
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::First : Swift::Equatable where Upstream : Swift::Equatable {
+  public static func == (lhs: Combine::Publishers.Combine::First<Upstream>, rhs: Combine::Publishers.Combine::First<Upstream>) -> Swift::Bool
+}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Subscribers.Combine::Completion : Swift::Sendable {}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Subscribers.Combine::Demand : Swift::Sendable {}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Subscribers.Combine::Demand : Swift::BitwiseCopyable {}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::PrefetchStrategy : Swift::Equatable {}
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension Combine::Publishers.Combine::PrefetchStrategy : Swift::Hashable {}

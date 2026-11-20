@@ -259,6 +259,14 @@ function(add_darling_swift_library module)
 			RUNTIME_OUTPUT_DIRECTORY "${framework_dir}"
 		)
 		add_custom_command(TARGET swift${module} POST_BUILD
+			COMMAND "${CMAKE_COMMAND}" -E make_directory "${framework_dir}/Modules/${module}.swiftmodule"
+			COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+				"${DARLING_SWIFT_MODULE_DIR}/${module}.swiftmodule"
+				"${framework_dir}/Modules/${module}.swiftmodule/${APPLE_ARCH_64BIT}-apple-macos.swiftmodule"
+			COMMAND "${CMAKE_COMMAND}" -E create_symlink "Versions/Current/Modules"
+				"${CMAKE_CURRENT_BINARY_DIR}/${module}.framework/Modules"
+			COMMAND "${CMAKE_COMMAND}" -E create_symlink "Versions/Current/${module}"
+				"${CMAKE_CURRENT_BINARY_DIR}/${module}.framework/${module}"
 			COMMAND "${CMAKE_COMMAND}" -E create_symlink "${module}.framework/Versions/A/${module}"
 				"${CMAKE_CURRENT_BINARY_DIR}/libswift${module}.dylib"
 			VERBATIM)
@@ -286,7 +294,9 @@ function(add_darling_swift_library module)
 	if (SWIFTLIB_FRAMEWORK)
 		set(framework_root "libexec/darling/System/Library/Frameworks/${module}.framework")
 		install(TARGETS swift${module} DESTINATION "${framework_root}/Versions/A")
+		install(DIRECTORY "${framework_dir}/Modules" DESTINATION "${framework_root}/Versions/A")
 		InstallSymlink(A "${CMAKE_INSTALL_PREFIX}/${framework_root}/Versions/Current")
+		InstallSymlink("Versions/Current/Modules" "${CMAKE_INSTALL_PREFIX}/${framework_root}/Modules")
 		InstallSymlink("Versions/Current/${module}" "${CMAKE_INSTALL_PREFIX}/${framework_root}/${module}")
 	else()
 		install(TARGETS swift${module} DESTINATION libexec/darling/usr/lib/swift)

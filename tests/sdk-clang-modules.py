@@ -26,7 +26,8 @@ C_MODULES = ['Darwin', 'Darwin.MacTypes', 'Darwin.os.lock', 'Dispatch', 'os.log'
              'os.activity', 'os.signpost', 'XPC', 'CommonCrypto', 'simd']
 # Modules that need Foundation (and so the AE headers, see below).
 FOUNDATION_MODULES = ['CoreFoundation', 'Foundation', 'CoreGraphics', 'QuartzCore',
-                      'CoreText', 'AppKit', 'OpenGL', 'CoreData', 'UniformTypeIdentifiers']
+                      'CoreText', 'AppKit', 'OpenGL', 'CoreData', 'UniformTypeIdentifiers',
+                      'Combine']
 OBJC_MODULES = ['ObjectiveC']
 
 
@@ -111,6 +112,15 @@ class SdkModules(unittest.TestCase):
         self.assertEqual(dump.returncode, 0, dump.stderr)
         self.assertIn('SwiftNameAttr', dump.stdout)
         self.assertIn('"managedObjectResultType"', dump.stdout)
+
+    def test_appkit_apinotes_apply(self):
+        code = '@import AppKit;\n'
+        dump = self.clang(code, '-I', str(AE_INCLUDE), '-D__swift__=60000', '-fapinotes-modules',
+                          '-Xclang', '-ast-dump', '-Xclang', '-ast-dump-filter',
+                          '-Xclang', 'NSFontWeight')
+        self.assertEqual(dump.returncode, 0, dump.stderr)
+        self.assertIn('SwiftNameAttr', dump.stdout)
+        self.assertIn('"NSFont.Weight"', dump.stdout)
 
     def test_simd_headers_compile(self):
         code = ('#include <simd/simd.h>\n'
