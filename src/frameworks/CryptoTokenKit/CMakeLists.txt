@@ -32,6 +32,7 @@ add_framework(CryptoTokenKit
 		src/ctkclient_test.c
 		src/ctkcodec.c
 		src/ctkloginhelper.c
+		src/TKSmartCardATR.m
 		src/TKTLVRecord.m
 		src/TKTokenWatcher.m
 
