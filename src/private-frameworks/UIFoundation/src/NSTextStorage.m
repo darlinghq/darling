@@ -81,7 +81,13 @@ NSString *const NSTextStorageDidProcessEditingNotification =
 }
 
 - (void) addLayoutManager: (NSLayoutManager *) layoutManager {
-    if (layoutManager == nil || [_layoutManagers indexOfObjectIdenticalTo: layoutManager] != NSNotFound)
+    if (layoutManager == nil)
+        return;
+    // A subclass may have been initialized through -[NSAttributedString init],
+    // which does not reach the initializers above.
+    if (_layoutManagers == nil)
+        _layoutManagers = [NSMutableArray new];
+    if ([_layoutManagers indexOfObjectIdenticalTo: layoutManager] != NSNotFound)
         return;
     [_layoutManagers addObject: layoutManager];
     [layoutManager setTextStorage: self];
