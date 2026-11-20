@@ -29,6 +29,7 @@ set(audiotoolbox_sources
 	MusicDevice.cpp
 	AudioToolbox.cpp
 	AudioHardwareService.cpp
+	AUParameters.m
 	AudioUnitUtilities.cpp
 )
 
@@ -45,6 +46,7 @@ add_framework(AudioToolbox
         cxx
 		CoreFoundation
 		CoreAudio
+		Foundation
 		CoreServices
 		objc
 		avformat
