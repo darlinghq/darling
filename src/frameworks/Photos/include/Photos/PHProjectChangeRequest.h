@@ -20,14 +20,6 @@
 #import <Foundation/Foundation.h>
 #import <Photos/PHChangeRequest.h>
 
-#ifndef NS_REFINED_FOR_SWIFT
-#if __has_attribute(swift_private)
-#define NS_REFINED_FOR_SWIFT __attribute__((swift_private))
-#else
-#define NS_REFINED_FOR_SWIFT
-#endif
-#endif
-
 NS_ASSUME_NONNULL_BEGIN
 
 @interface PHProjectChangeRequest : PHChangeRequest
