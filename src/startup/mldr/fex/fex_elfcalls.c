@@ -66,14 +66,23 @@ void fex_elfcalls_set_fork_hooks(fex_fork_lock_fn_t lock_hook, fex_fork_unlock_f
 	g_fork_unlock_hook = unlock_hook;
 }
 
+// Each stub is entered with the C calling convention and enters the host with `syscall`. FEX, like the
+// hardware, overwrites %rcx with the return address on `syscall`, so the fourth argument is copied
+// to %r10 first, which is where the syscall convention keeps it.
+#define FEX_STUB_SIZE 16
+
 static void write_x86_64_syscall_stub(uint8_t* dst, uint32_t syscall_nr)
 {
-	// movl $syscall_nr, %eax (0xb8 + imm32); syscall (0x0f 0x05); ret (0xc3); nop (0x90)
-	dst[0] = 0xb8;
-	memcpy(&dst[1], &syscall_nr, sizeof(syscall_nr));
-	dst[5] = 0x0f;
-	dst[6] = 0x05;
-	dst[7] = 0xc3;
+	// movq %rcx, %r10 (0x49 0x89 0xca); movl $syscall_nr, %eax (0xb8 + imm32); syscall (0x0f 0x05); ret (0xc3)
+	dst[0] = 0x49;
+	dst[1] = 0x89;
+	dst[2] = 0xca;
+	dst[3] = 0xb8;
+	memcpy(&dst[4], &syscall_nr, sizeof(syscall_nr));
+	dst[8] = 0x0f;
+	dst[9] = 0x05;
+	dst[10] = 0xc3;
+	memset(&dst[11], 0x90, FEX_STUB_SIZE - 11);
 }
 
 static void init_elfcall_stubs(void)
@@ -88,7 +97,7 @@ static void init_elfcall_stubs(void)
 
 	void** table_slots = (void**)&g_trampoline_elfcalls;
 	for (uint32_t i = 0; i < DARLING_FEX_ELFCALL_COUNT; i++) {
-		uint8_t* stub = g_elfcall_stub_page + (i * 8);
+		uint8_t* stub = g_elfcall_stub_page + (i * FEX_STUB_SIZE);
 		write_x86_64_syscall_stub(stub, DARLING_FEX_ELFCALL_SYSCALL_BASE + i);
 		table_slots[i] = stub;
 	}
@@ -103,7 +112,7 @@ static void init_elfcall_stubs(void)
 static void init_dlsym_stubs(void)
 {
 	size_t page_sz = (size_t)sysconf(_SC_PAGESIZE);
-	size_t needed = DARLING_FEX_DLSYM_MAX_SLOTS * 8;
+	size_t needed = DARLING_FEX_DLSYM_MAX_SLOTS * FEX_STUB_SIZE;
 	size_t area_size = (needed + page_sz - 1) & ~(page_sz - 1);
 
 	g_dlsym_stub_area = mmap(NULL, area_size, PROT_READ | PROT_WRITE,
@@ -115,7 +124,7 @@ static void init_dlsym_stubs(void)
 	}
 
 	for (uint32_t i = 0; i < DARLING_FEX_DLSYM_MAX_SLOTS; i++)
-		write_x86_64_syscall_stub(g_dlsym_stub_area + (i * 8), DARLING_FEX_DLSYM_SYSCALL_BASE + i);
+		write_x86_64_syscall_stub(g_dlsym_stub_area + (i * FEX_STUB_SIZE), DARLING_FEX_DLSYM_SYSCALL_BASE + i);
 
 	if (mprotect(g_dlsym_stub_area, area_size, PROT_READ | PROT_EXEC) != 0) {
 		fprintf(stderr, "mldr/fex: failed to mprotect dlsym stub area RX: %s\n", strerror(errno));
@@ -205,7 +214,7 @@ void* fex_dlsym_wrap_if_func(void* host_sym, const char* symbol_name)
 
 	for (uint32_t i = 0; i < g_dlsym_count; i++) {
 		if (g_dlsym_targets[i] == host_sym) {
-			void* existing = g_dlsym_stub_area + (i * 8);
+			void* existing = g_dlsym_stub_area + (i * FEX_STUB_SIZE);
 			pthread_mutex_unlock(&g_dlsym_mutex);
 			return existing;
 		}
@@ -219,7 +228,7 @@ void* fex_dlsym_wrap_if_func(void* host_sym, const char* symbol_name)
 
 	uint32_t slot = g_dlsym_count++;
 	g_dlsym_targets[slot] = host_sym;
-	void* stub = g_dlsym_stub_area + (slot * 8);
+	void* stub = g_dlsym_stub_area + (slot * FEX_STUB_SIZE);
 
 	pthread_mutex_unlock(&g_dlsym_mutex);
 	return stub;
@@ -260,7 +269,7 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 	register uint64_t x0 asm("x0") = state->rdi;
 	register uint64_t x1 asm("x1") = state->rsi;
 	register uint64_t x2 asm("x2") = state->rdx;
-	register uint64_t x3 asm("x3") = state->rcx;
+	register uint64_t x3 asm("x3") = state->r10;
 	register uint64_t x4 asm("x4") = state->r8;
 	register uint64_t x5 asm("x5") = state->r9;
 	register uint64_t x6 asm("x6") = s0;
@@ -295,7 +304,7 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 #else
 	typedef uint64_t (*host_fn_t)(uint64_t, uint64_t, uint64_t, uint64_t,
 		uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
-	uint64_t ret_val = ((host_fn_t)target)(state->rdi, state->rsi, state->rdx, state->rcx,
+	uint64_t ret_val = ((host_fn_t)target)(state->rdi, state->rsi, state->rdx, state->r10,
 		state->r8, state->r9, s0, s1, s2, s3);
 	state->rax = ret_val;
 	long ret = (long)ret_val;
@@ -340,7 +349,7 @@ long fex_elfcalls_dispatch(uint32_t index, struct fex_x86_64_state* state)
 				(unsigned long)state->rdi,
 				(unsigned long)state->rsi,
 				(void*)(uintptr_t)state->rdx,
-				(uintptr_t)state->rcx,
+				(uintptr_t)state->r10,
 				(uintptr_t)state->r8,
 				(uintptr_t)state->r9,
 				arg6,
@@ -378,7 +387,7 @@ long fex_elfcalls_dispatch(uint32_t index, struct fex_x86_64_state* state)
 				(const char*)(uintptr_t)state->rdi,
 				(int)state->rsi,
 				(unsigned short)state->rdx,
-				(unsigned int)state->rcx);
+				(unsigned int)state->r10);
 			break;
 		case 12: // sem_wait
 			ret = (uint64_t)(int64_t)g_host_elfcalls.sem_wait((int*)(uintptr_t)state->rdi);
