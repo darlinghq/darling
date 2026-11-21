@@ -83,13 +83,15 @@ reexport(CoreServices SearchKit ${SearchKit_BUILD})
 reexport(CoreServices SharedFileList ${SharedFileList_BUILD})
 reexport(CoreServices OSServices ${OSServices_BUILD})
 
-if (TARGET_ARM64)
+# The arm64 slice reexports its own list of symbols
+darling_archs(coreservices_intel_archs FAMILY x86)
+darling_archs(coreservices_arm_archs FAMILY arm)
+darling_xarch_flags(coreservices_intel_reexports ARCHS ${coreservices_intel_archs}
+  OPTIONS "-Wl,-reexported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/reexport.exp")
+darling_xarch_flags(coreservices_arm_reexports ARCHS ${coreservices_arm_archs}
+  OPTIONS "-Wl,-reexported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/reexport_arm64.exp")
 set_property(TARGET CoreServices APPEND_STRING PROPERTY
-  LINK_FLAGS " -Wl,-reexported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/reexport_arm64.exp")
-else ()
-set_property(TARGET CoreServices APPEND_STRING PROPERTY
-  LINK_FLAGS " -Wl,-reexported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/reexport.exp")
-endif ()
+  LINK_FLAGS " ${coreservices_intel_reexports} ${coreservices_arm_reexports}")
 
 # The release comes from the emulated kernel (libsystem_kernel), so that
 # SystemVersion.plist, sw_vers and kern.osproductversion always agree.

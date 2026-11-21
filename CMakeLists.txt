@@ -222,14 +222,42 @@ endif(CMAKE_POSITION_INDEPENDENT_CODE)
 
 enable_language(ASM-ATT)
 
+# The slices of every Mach-O binary Darling builds, any combination of i386, x86_64 and arm64
+# (see cmake/architecture.cmake). The default is the slices a host of the target's architecture
+# runs: arm64 alone on arm64, i386 and x86_64 on x86-64.
 if (_TARGET_ARCH_ARM64)
-	option(TARGET_i386 "Enable i386 slices" OFF)
-	option(TARGET_x86_64 "Enable x86_64 slices" OFF)
-	option(TARGET_ARM64 "Enable arm64 slices" ON)
+	set(_DARLING_ARCHS_DEFAULT "arm64")
 else()
-	option(TARGET_i386 "Enable i386 slices" ON)
-	option(TARGET_x86_64 "Enable x86_64 slices" ON)
-	option(TARGET_ARM64 "Enable arm64 slices" OFF)
+	set(_DARLING_ARCHS_DEFAULT "i386;x86_64")
+endif()
+set(DARLING_ARCHS "${_DARLING_ARCHS_DEFAULT}" CACHE STRING
+	"Architectures of the Mach-O slices to build, a list of i386, x86_64 and arm64")
+
+# TARGET_i386, TARGET_x86_64 and TARGET_ARM64 used to be the options that chose the slices. When
+# one is given (-DTARGET_ARM64=ON, or a build tree configured before DARLING_ARCHS), it adds that
+# slice to DARLING_ARCHS or removes it, and is then dropped from the cache: generate_architecture()
+# sets the TARGET_* variables from DARLING_ARCHS.
+set(_darling_archs_updated "${DARLING_ARCHS}")
+foreach (_darling_legacy IN ITEMS i386 x86_64 ARM64)
+	get_property(_darling_legacy_set CACHE TARGET_${_darling_legacy} PROPERTY VALUE SET)
+	if (_darling_legacy_set)
+		string(TOLOWER "${_darling_legacy}" _darling_legacy_arch)
+		if (TARGET_${_darling_legacy})
+			list(APPEND _darling_archs_updated ${_darling_legacy_arch})
+		else()
+			list(REMOVE_ITEM _darling_archs_updated ${_darling_legacy_arch})
+		endif()
+		message(DEPRECATION "TARGET_${_darling_legacy} is replaced by DARLING_ARCHS; "
+			"it was applied to DARLING_ARCHS and removed from the cache")
+		unset(TARGET_${_darling_legacy} CACHE)
+	endif()
+endforeach()
+if (_darling_archs_updated)
+	list(REMOVE_DUPLICATES _darling_archs_updated)
+endif()
+if (NOT "${_darling_archs_updated}" STREQUAL "${DARLING_ARCHS}")
+	set(DARLING_ARCHS "${_darling_archs_updated}" CACHE STRING
+		"Architectures of the Mach-O slices to build, a list of i386, x86_64 and arm64" FORCE)
 endif()
 option(DEBIAN_PACKAGING "Packaging for Debian" OFF)
 option(ENABLE_TESTS "Install in-prefix unit tests" OFF)

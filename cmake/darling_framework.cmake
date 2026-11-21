@@ -175,193 +175,57 @@ function(add_separated_framework name)
 	# `add_darling_object_library` automatically adds arch flags based on the same variables we use, so this works fine
 	add_darling_object_library(${my_name}_obj ${FRAMEWORK_SOURCES})
 
-	if (BUILD_TARGET_32BIT)
-		set(DARLING_LIB_32BIT_ONLY TRUE)
+	# One library per slice, named ${my_name}_<arch>, joined with lipo into ${my_name} (and, with
+	# circular dependencies, the firstpass libraries into ${my_name}_firstpass).
+	set(slice_targets "")
+	set(firstpass_targets "")
+	foreach (arch IN LISTS DARLING_ARCHS)
+		set(slice ${my_name}_${arch})
+		set(DARLING_LIB_ARCHS ${arch})
 		if (FRAMEWORK_CIRCULAR_DEPENDENCIES OR FRAMEWORK_UPWARD_DEPENDENCIES)
-			add_circular(${my_name}_${APPLE_ARCH_32BIT}
+			add_circular(${slice}
 				SIBLINGS ${FRAMEWORK_CIRCULAR_DEPENDENCIES}
 				UPWARD ${FRAMEWORK_UPWARD_DEPENDENCIES}
 				OBJECTS $<TARGET_OBJECTS:${my_name}_obj> ${FRAMEWORK_OBJECTS}
 				STRONG_DEPENDENCIES ${FRAMEWORK_STRONG_DEPENDENCIES}
 			)
 		else (FRAMEWORK_CIRCULAR_DEPENDENCIES OR FRAMEWORK_UPWARD_DEPENDENCIES)
-			add_darling_library(${my_name}_${APPLE_ARCH_32BIT} $<TARGET_OBJECTS:${my_name}_obj> ${FRAMEWORK_OBJECTS})
-			target_link_libraries(${my_name}_${APPLE_ARCH_32BIT} PRIVATE ${FRAMEWORK_STRONG_DEPENDENCIES})
+			add_darling_library(${slice} $<TARGET_OBJECTS:${my_name}_obj> ${FRAMEWORK_OBJECTS})
+			target_link_libraries(${slice} PRIVATE ${FRAMEWORK_STRONG_DEPENDENCIES})
 		endif (FRAMEWORK_CIRCULAR_DEPENDENCIES OR FRAMEWORK_UPWARD_DEPENDENCIES)
-		set(DARLING_LIB_32BIT_ONLY FALSE)
-		set_target_properties(${my_name}_${APPLE_ARCH_32BIT} PROPERTIES
-					OUTPUT_NAME "${name}_${APPLE_ARCH_32BIT}"
-							SUFFIX ""
-					PREFIX ""
-					ADHOC_CODESIGN_IDENTIFIER "${name}")
-		set_property(TARGET ${my_name}_${APPLE_ARCH_32BIT} APPEND_STRING PROPERTY
-			COMPILE_FLAGS " -arch ${APPLE_ARCH_32BIT}")
-		 set_property(TARGET ${my_name}_${APPLE_ARCH_32BIT} APPEND_STRING PROPERTY
-				LINK_FLAGS " -arch ${APPLE_ARCH_32BIT}")
+		unset(DARLING_LIB_ARCHS)
+		set_target_properties(${slice} PROPERTIES
+			OUTPUT_NAME "${name}_${arch}"
+			SUFFIX ""
+			PREFIX ""
+			ADHOC_CODESIGN_IDENTIFIER "${name}")
 		if (NOT FRAMEWORK_CURRENT_VERSION)
-			add_library("${my_name}_${APPLE_ARCH_32BIT}" ALIAS "${name}_${APPLE_ARCH_32BIT}")
+			add_library("${slice}" ALIAS "${name}_${arch}")
 		endif (NOT FRAMEWORK_CURRENT_VERSION)
 
 		if (FRAMEWORK_DEPENDENCIES)
-		  target_link_libraries(${my_name}_${APPLE_ARCH_32BIT} PRIVATE ${FRAMEWORK_DEPENDENCIES})
+			target_link_libraries(${slice} PRIVATE ${FRAMEWORK_DEPENDENCIES})
 		endif (FRAMEWORK_DEPENDENCIES)
 
 		if (FRAMEWORK_LINK_FLAGS)
-			set_property(TARGET ${my_name}_${APPLE_ARCH_32BIT} APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
+			set_property(TARGET ${slice} APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
 		endif (FRAMEWORK_LINK_FLAGS)
-		add_swift_dylib_map(${my_name}_${APPLE_ARCH_32BIT})
-	endif (BUILD_TARGET_32BIT)
+		add_swift_dylib_map(${slice})
 
-	if (BUILD_TARGET_64BIT)
-		set(DARLING_LIB_64BIT_ONLY TRUE)
-		if (FRAMEWORK_CIRCULAR_DEPENDENCIES OR FRAMEWORK_UPWARD_DEPENDENCIES)
-			add_circular(${my_name}_${APPLE_ARCH_64BIT}
-				SIBLINGS ${FRAMEWORK_CIRCULAR_DEPENDENCIES}
-				UPWARD ${FRAMEWORK_UPWARD_DEPENDENCIES}
-				OBJECTS $<TARGET_OBJECTS:${my_name}_obj> ${FRAMEWORK_OBJECTS}
-				STRONG_DEPENDENCIES ${FRAMEWORK_STRONG_DEPENDENCIES}
-			)
-		else (FRAMEWORK_CIRCULAR_DEPENDENCIES OR FRAMEWORK_UPWARD_DEPENDENCIES)
-			add_darling_library(${my_name}_${APPLE_ARCH_64BIT} $<TARGET_OBJECTS:${my_name}_obj> ${FRAMEWORK_OBJECTS})
-			target_link_libraries(${my_name}_${APPLE_ARCH_64BIT} PRIVATE ${FRAMEWORK_STRONG_DEPENDENCIES})
-		endif (FRAMEWORK_CIRCULAR_DEPENDENCIES OR FRAMEWORK_UPWARD_DEPENDENCIES)
-		set(DARLING_LIB_64BIT_ONLY FALSE)
-		set_target_properties(${my_name}_${APPLE_ARCH_64BIT} PROPERTIES
-					OUTPUT_NAME "${name}_${APPLE_ARCH_64BIT}"
-							SUFFIX ""
-					PREFIX ""
-					ADHOC_CODESIGN_IDENTIFIER "${name}")
-		set_property(TARGET ${my_name}_${APPLE_ARCH_64BIT} APPEND_STRING PROPERTY
-			COMPILE_FLAGS " -arch ${APPLE_ARCH_64BIT}")
-		set_property(TARGET ${my_name}_${APPLE_ARCH_64BIT} APPEND_STRING PROPERTY
-			LINK_FLAGS " -arch ${APPLE_ARCH_64BIT}")
-		if (NOT FRAMEWORK_CURRENT_VERSION)
-			add_library("${my_name}_${APPLE_ARCH_64BIT}" ALIAS "${name}_${APPLE_ARCH_64BIT}")
-		endif (NOT FRAMEWORK_CURRENT_VERSION)
-
-		if (FRAMEWORK_DEPENDENCIES)
-		  target_link_libraries(${my_name}_${APPLE_ARCH_64BIT} PRIVATE ${FRAMEWORK_DEPENDENCIES})
-		endif (FRAMEWORK_DEPENDENCIES)
-
-		if (FRAMEWORK_LINK_FLAGS)
-			set_property(TARGET ${my_name}_${APPLE_ARCH_64BIT} APPEND_STRING PROPERTY LINK_FLAGS " ${FRAMEWORK_LINK_FLAGS}")
-		endif (FRAMEWORK_LINK_FLAGS)
-		add_swift_dylib_map(${my_name}_${APPLE_ARCH_64BIT})
-	endif (BUILD_TARGET_64BIT)
-
-	if (BUILD_TARGET_32BIT AND BUILD_TARGET_64BIT)
+		list(APPEND slice_targets ${slice})
 		if (FRAMEWORK_CIRCULAR_DEPENDENCIES)
-			add_dependencies(${my_name}_${APPLE_ARCH_64BIT}_firstpass ${my_name}_${APPLE_ARCH_32BIT}_firstpass)
-			add_custom_command(TARGET ${my_name}_${APPLE_ARCH_64BIT}_firstpass POST_BUILD
-				COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
-					-arch ${APPLE_ARCH_32BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_32BIT}_firstpass>
-					-arch ${APPLE_ARCH_64BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}_firstpass>
-					-create
-					-output
-					${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
-				COMMENT "Running lipo to create ${my_name}_firstpass"
-				BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
-			)
-			add_library(${my_name}_firstpass SHARED IMPORTED GLOBAL)
-			set_target_properties(${my_name}_firstpass PROPERTIES
-				SUFFIX ""
-				PREFIX ""
-				IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
-			)
-			add_dependencies(${my_name}_firstpass ${my_name}_${APPLE_ARCH_64BIT}_firstpass)
+			list(APPEND firstpass_targets ${slice}_firstpass)
 		endif (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+	endforeach ()
 
-		add_dependencies(${my_name}_${APPLE_ARCH_64BIT} ${my_name}_${APPLE_ARCH_32BIT})
-		add_custom_command(TARGET ${my_name}_${APPLE_ARCH_64BIT} POST_BUILD
-			COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
-				-arch ${APPLE_ARCH_32BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_32BIT}>
-				-arch ${APPLE_ARCH_64BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}>
-				-create
-				-output
-				${CMAKE_CURRENT_BINARY_DIR}/${my_name}
-			COMMENT "Running lipo to create ${my_name}"
-			BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}
-		)
-		add_library(${my_name} SHARED IMPORTED GLOBAL)
-		set_target_properties(${my_name} PROPERTIES
-			SUFFIX ""
-			PREFIX ""
-			IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${my_name}
-		)
-		add_dependencies(${my_name} ${my_name}_${APPLE_ARCH_64BIT})
-	elseif (BUILD_TARGET_32BIT)
-		if (FRAMEWORK_CIRCULAR_DEPENDENCIES)
-			add_custom_command(TARGET ${my_name}_${APPLE_ARCH_32BIT}_firstpass POST_BUILD
-				COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
-					-arch ${APPLE_ARCH_32BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_32BIT}_firstpass>
-					-create
-					-output
-					${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
-				COMMENT "Running lipo to create ${my_name}_firstpass"
-				BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
-			)
-			add_library(${my_name}_firstpass SHARED IMPORTED GLOBAL)
-			set_target_properties(${my_name}_firstpass PROPERTIES
-				SUFFIX ""
-				PREFIX ""
-				IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
-			)
-			add_dependencies(${my_name}_firstpass ${my_name}_${APPLE_ARCH_32BIT}_firstpass)
-		endif (FRAMEWORK_CIRCULAR_DEPENDENCIES)
-
-		add_custom_command(TARGET ${my_name}_${APPLE_ARCH_32BIT} POST_BUILD
-			COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
-				-arch ${APPLE_ARCH_32BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_32BIT}>
-				-create
-				-output
-				${CMAKE_CURRENT_BINARY_DIR}/${my_name}
-			COMMENT "Running lipo to create ${my_name}"
-			BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}
-		)
-		add_library(${my_name} SHARED IMPORTED GLOBAL)
-		set_target_properties(${my_name} PROPERTIES
-			SUFFIX ""
-			PREFIX ""
-			IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${my_name}
-		)
-		add_dependencies(${my_name} ${my_name}_${APPLE_ARCH_32BIT})
-	elseif (BUILD_TARGET_64BIT)
-		if (FRAMEWORK_CIRCULAR_DEPENDENCIES)
-			add_custom_command(TARGET ${my_name}_${APPLE_ARCH_64BIT}_firstpass POST_BUILD
-				COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
-					-arch ${APPLE_ARCH_64BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}_firstpass>
-					-create
-					-output
-					${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
-				COMMENT "Running lipo to create ${my_name}_firstpass"
-				BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
-			)
-			add_library(${my_name}_firstpass SHARED IMPORTED GLOBAL)
-			set_target_properties(${my_name}_firstpass PROPERTIES
-				SUFFIX ""
-				PREFIX ""
-				IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
-			)
-			add_dependencies(${my_name}_firstpass ${my_name}_${APPLE_ARCH_64BIT}_firstpass)
-		endif (FRAMEWORK_CIRCULAR_DEPENDENCIES)
-
-		add_custom_command(TARGET ${my_name}_${APPLE_ARCH_64BIT} POST_BUILD
-			COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
-				-arch ${APPLE_ARCH_64BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}>
-				-create
-				-output
-				${CMAKE_CURRENT_BINARY_DIR}/${my_name}
-			COMMENT "Running lipo to create ${my_name}"
-			BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}
-		)
-		add_library(${my_name} SHARED IMPORTED GLOBAL)
-		set_target_properties(${my_name} PROPERTIES
-			SUFFIX ""
-			PREFIX ""
-			IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${my_name}
-		)
-		add_dependencies(${my_name} ${my_name}_${APPLE_ARCH_64BIT})
-	endif (BUILD_TARGET_32BIT AND BUILD_TARGET_64BIT)
+	if (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+		darling_lipo(${my_name}_firstpass IMPORTED SHARED
+			OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
+			SLICES ${firstpass_targets})
+	endif (FRAMEWORK_CIRCULAR_DEPENDENCIES)
+	darling_lipo(${my_name} IMPORTED SHARED
+		OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${my_name}
+		SLICES ${slice_targets})
 
 	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${my_name} DESTINATION "libexec/darling/${sys_library_dir}/${dir_name}/${name}.framework/Versions/${FRAMEWORK_VERSION}/")
 

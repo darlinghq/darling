@@ -4,8 +4,9 @@
 # found by swift_toolchain.cmake, cross-compiling for macOS: swiftc compiles the sources against Darling's
 # source-tree SDK, and the object is linked by Darling's ld64 like any other Darling dylib.
 #
-# The slice built is the one this build produces for every other Darling library (APPLE_ARCH_64BIT: x86_64, or
-# arm64 when TARGET_ARM64 is on).
+# Only one slice is built: the primary 64-bit slice (APPLE_ARCH_64BIT, see architecture.cmake), even when
+# DARLING_ARCHS has more. Every other Darling library has all the slices, so a library that reexports an overlay
+# (Foundation, CoreGraphics, CoreText) does so from that slice only.
 #
 # add_darling_swift_library(<Module>
 #     SOURCES <swift sources>
@@ -234,7 +235,7 @@ function(add_darling_swift_library module)
 	else()
 		set(DYLIB_INSTALL_NAME "/usr/lib/swift/libswift${module}.dylib")
 	endif()
-	set(DARLING_LIB_64BIT_ONLY TRUE)
+	set(DARLING_LIB_ARCHS ${APPLE_ARCH_64BIT})
 
 	add_darling_library(swift${module} SHARED ${objects} ${SWIFTLIB_OBJECTS} ${SWIFTLIB_NATIVE_SOURCES})
 	if (SWIFTLIB_LINK_FLAGS)
