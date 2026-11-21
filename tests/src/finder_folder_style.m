@@ -151,6 +151,27 @@ int main(int argc, char **argv)
                [NSString stringWithFormat: @"wrong-types: a style with the defaults (%@, toolbar %d, icon %g)",
                 NSStringFromSize(style.windowContentSize), style.showsToolbar, style.iconSize]);
 
+        // Numbers that aren't finite keep the defaults
+        style = styleFor(volume, @"icon-nan");
+        expect(style.iconSize == 64 && style.textSize == 12 && style.backgroundColor == nil,
+               [NSString stringWithFormat: @"icon-nan: icon 64, text 12, no colour (%g, %g, %@)", style.iconSize,
+                style.textSize, style.backgroundColor]);
+        // A size that doesn't scan as a finite number is none; a finite one, however large, is the window's to limit
+        for (NSString *name in @[ @"bounds-inf", @"bounds-nan" ]) {
+            NSSize size = styleFor(volume, name).windowContentSize;
+            expect(isfinite(size.width) && isfinite(size.height),
+                   [NSString stringWithFormat: @"%@: a finite window size or none (%@)", name, NSStringFromSize(size)]);
+        }
+
+        // A picture that is a file inside the volume is passed on whatever it holds; the colour comes with it
+        [@"not a picture" writeToFile: [volume stringByAppendingPathComponent: @".background/notes.png"] atomically: NO
+                             encoding: NSUTF8StringEncoding error: NULL];
+        style = styleFor(volume, @"picture-not-image");
+        expect([resolved(style.backgroundImageURL) isEqual: resolved([NSURL fileURLWithPath: [volume stringByAppendingPathComponent: @".background/notes.png"]])]
+                   && colourIs(style.backgroundColor, 0.2, 0.4, 0.6),
+               [NSString stringWithFormat: @"picture-not-image: the file and the colour (%@, %@)", style.backgroundImageURL,
+                style.backgroundColor]);
+
         expect(styleFor(volume, nil) == nil, @"a folder without .DS_Store has no style");
         expect(styleFor(volume, @"empty") == nil, @"a folder with an empty .DS_Store has no style");
         expect(styleFor(volume, @"bad-magic") == nil, @"a folder with a malformed .DS_Store has no style");

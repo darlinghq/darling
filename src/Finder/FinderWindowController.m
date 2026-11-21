@@ -120,17 +120,21 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
     NSSize size = _style.windowContentSize;
     if (size.width <= 0 || size.height <= 0)
         return;
+    // At most the screen's visible frame, title bar and toolbar included; limited before the window gets it
     NSRect visible = [(window.screen ?: [NSScreen mainScreen]) visibleFrame];
+    NSSize current = [window.contentView frame].size;
+    NSSize chrome = NSMakeSize(NSWidth([window frame]) - current.width, NSHeight([window frame]) - current.height);
+    BOOL limited = NO;
+    if (!NSIsEmptyRect(visible)) {
+        limited = size.width > NSWidth(visible) - chrome.width || size.height > NSHeight(visible) - chrome.height;
+        size.width = MIN(size.width, NSWidth(visible) - chrome.width);
+        size.height = MIN(size.height, NSHeight(visible) - chrome.height);
+    }
     size.width = MAX(size.width, window.contentMinSize.width);
     size.height = MAX(size.height, window.contentMinSize.height);
     [window setContentSize:size];
-    // At most the screen's visible frame, title bar and toolbar included
-    NSRect frame = [window frame];
-    if (!NSIsEmptyRect(visible) && (NSWidth(frame) > NSWidth(visible) || NSHeight(frame) > NSHeight(visible))) {
-        NSSize chrome = NSMakeSize(NSWidth(frame) - size.width, NSHeight(frame) - size.height);
-        [window setContentSize:NSMakeSize(MAX(window.contentMinSize.width, MIN(size.width, NSWidth(visible) - chrome.width)),
-                                          MAX(window.contentMinSize.height, MIN(size.height, NSHeight(visible) - chrome.height)))];
-        frame = [window frame];
+    if (limited) {
+        NSRect frame = [window frame];
         frame.origin = NSMakePoint(NSMinX(visible), NSMaxY(visible) - NSHeight(frame));
         [window setFrame:frame display:NO];
     }

@@ -47,6 +47,13 @@ def styled(picture):
     ]
 
 
+def picture_with_colour(path):
+    """A picture background (type 2) at path inside the volume "Styled Test", with the colour (0.2, 0.4, 0.6) too."""
+    return [(".", "icvp", "blob", icvp({"iconSize": 64.0, "backgroundType": 2, "backgroundColorRed": 0.2,
+                                        "backgroundColorGreen": 0.4, "backgroundColorBlue": 0.6,
+                                        "backgroundImageAlias": alias_v2("Styled Test", path)}))]
+
+
 def icv4(size, label):
     """An older 'icvo' blob: "icv4", the icon size (2 bytes), the arrangement ("none"), the label position ("botm" or
     "rght"), then 12 more bytes."""
@@ -96,6 +103,18 @@ def main():
         "icon-tiny": write_store([(".", "icvp", "blob", icvp({"iconSize": 0.0}))]),
         "icon-huge": write_store([(".", "icvp", "blob", icvp({"iconSize": 4096.0}))]),
         "list": write_store([(".", "vstl", "type", "Nlsv")]),
+        # Numbers that aren't finite: sizes and colour components NaN, window bounds that scan as infinite
+        "icon-nan": write_store([(".", "icvp", "blob", icvp({"iconSize": float("nan"), "textSize": float("nan"),
+                                                             "backgroundType": 1, "backgroundColorRed": float("nan"),
+                                                             "backgroundColorGreen": 0.4, "backgroundColorBlue": 0.6}))]),
+        "bounds-inf": write_store([(".", "bwsp", "blob", bwsp({"WindowBounds": "{{0, 0}, {1e400, 1e400}}"}))]),
+        # Finite, but so large that adding a title bar's height changes nothing
+        "bounds-vast": write_store([(".", "bwsp", "blob", bwsp({"WindowBounds": "{{0, 0}, {1e39, 1e39}}"}))]),
+        "bounds-nan": write_store([(".", "bwsp", "blob", bwsp({"WindowBounds": "{{0, 0}, {nan, nan}}"}))]),
+        # A picture that can't be used, with a colour to fall back on: a file that isn't an image, and one wider than
+        # any screen
+        "picture-not-image": write_store(picture_with_colour("/.background/notes.png")),
+        "picture-too-wide": write_store(picture_with_colour("/.background/wide.png")),
         "wrong-types": write_store([("Styled App.app", "Iloc", "long", 5),
                                     (".", "bwsp", "blob", plistlib.dumps(["WindowBounds"], fmt=plistlib.FMT_BINARY)),
                                     (".", "icvp", "blob", icvp({"iconSize": "big"}))]),

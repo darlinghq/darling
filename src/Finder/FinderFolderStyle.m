@@ -28,6 +28,7 @@
 
 #import "FinderFolderStyle.h"
 #import "FinderDSStore.h"
+#include <math.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 
@@ -46,10 +47,11 @@ static id FinderPropertyList(FinderDSStoreRecord *record)
     return [list isKindOfClass:[NSDictionary class]] ? list : nil;
 }
 
+// A number setting; one that isn't finite (a property list can hold NaN and infinities) counts as missing
 static NSNumber *FinderNumber(NSDictionary *dictionary, NSString *key)
 {
     id value = dictionary[key];
-    return [value isKindOfClass:[NSNumber class]] ? value : nil;
+    return [value isKindOfClass:[NSNumber class]] && isfinite([value doubleValue]) ? value : nil;
 }
 
 static uint16_t FinderUInt16(const uint8_t *bytes)
@@ -238,7 +240,7 @@ static NSURL *FinderFileInVolume(NSString *path, NSURL *volume)
     id bounds = window[@"WindowBounds"];
     if ([bounds isKindOfClass:[NSString class]]) {
         NSSize size = NSRectFromString(bounds).size;
-        if (size.width > 0 && size.height > 0)
+        if (size.width > 0 && size.height > 0 && isfinite(size.width) && isfinite(size.height))
             _windowContentSize = size;
     }
     if (FinderNumber(window, @"ShowToolbar"))

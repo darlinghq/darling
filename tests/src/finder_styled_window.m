@@ -1,4 +1,4 @@
-// CFLAGS: -framework Foundation -framework AppKit -framework CoreServices -fobjc-arc -Isrc/Finder src/Finder/FinderDirectory.m src/Finder/FinderDSStore.m src/Finder/FinderFolderStyle.m src/Finder/FinderFreeformLayout.m src/Finder/FinderIconViewController.m src/Finder/FinderListViewController.m src/Finder/FinderSidebarController.m src/Finder/FinderWindowController.m
+// CFLAGS: -framework Foundation -framework AppKit -framework ImageIO -framework CoreServices -fobjc-arc -Isrc/Finder src/Finder/FinderDirectory.m src/Finder/FinderDSStore.m src/Finder/FinderFolderStyle.m src/Finder/FinderFreeformLayout.m src/Finder/FinderIconViewController.m src/Finder/FinderListViewController.m src/Finder/FinderSidebarController.m src/Finder/FinderWindowController.m
 // ARGS: tests/fixtures/dsstore
 // Copyright (C) 2026 Lubos Dolezel
 //
@@ -9,6 +9,7 @@
 // of range. See tests/finder.md. Needs a display.
 // Usage: finder_styled_window <fixture dir>. Prints PASS/FAIL lines; exits 1 on a failure.
 #import <AppKit/AppKit.h>
+#import "FinderFolderStyle.h"
 #import "FinderFreeformLayout.h"
 #import "FinderIconViewController.h"
 #import "FinderWindowController.h"
@@ -219,6 +220,7 @@ int main(int argc, char **argv)
         }
         expect(inside, [NSString stringWithFormat: @"hostile positions: every item inside the content %@ (%lu items)",
                         NSStringFromSize(content), (unsigned long) [positions count]]);
+
         [window close];
 
         // Window and icon sizes out of range
@@ -244,6 +246,70 @@ int main(int argc, char **argv)
                [NSString stringWithFormat: @"unreadable bounds: the standard size %@ (%@)", NSStringFromSize(standard),
                 NSStringFromSize(contentSize(window))]);
         [window close];
+        window = openWindow(makeFolder(dir, @"NaN Bounds", @"bounds-nan", @[]));
+        expect(NSEqualSizes(contentSize(window), standard),
+               [NSString stringWithFormat: @"bounds-nan: the standard size %@ (%@)", NSStringFromSize(standard),
+                NSStringFromSize(contentSize(window))]);
+        [window close];
+        for (NSString *name in @[ @"bounds-inf", @"bounds-vast" ]) {
+            window = openWindow(makeFolder(dir, name, name, @[]));
+            NSRect frame = [window.window frame];
+            expect(NSWidth(frame) <= NSWidth(visible) && NSHeight(frame) <= NSHeight(visible) && NSMinY(frame) >= NSMinY(visible),
+                   [NSString stringWithFormat: @"%@: within the screen's visible frame %@ (%@)", name,
+                    NSStringFromRect(visible), NSStringFromRect(frame)]);
+            [window close];
+        }
+        window = openWindow(makeFolder(dir, @"NaN Icons", @"icon-nan", @[ @"x.txt" ]));
+        expect(NSWidth([someItem(window).imageView frame]) == 64,
+               [NSString stringWithFormat: @"icon size NaN: 64 (%g)", NSWidth([someItem(window).imageView frame])]);
+        [window close];
+
+        // Background pictures that can't be used give the colour; one that can is shown. The style is made with the
+        // temporary folder as its volume, so the pictures resolve.
+        NSString *pictures = makeFolder(dir, @"Pictures", nil, @[ @"x.txt" ]);
+        [fm createDirectoryAtPath: [pictures stringByAppendingPathComponent: @".background"] withIntermediateDirectories: NO
+                       attributes: nil error: NULL];
+        [@"not a picture" writeToFile: [pictures stringByAppendingPathComponent: @".background/notes.png"] atomically: NO
+                             encoding: NSUTF8StringEncoding error: NULL];
+        NSDictionary *sizes = @{ @"wide.png": [NSValue valueWithSize: NSMakeSize(9000, 2)],
+                                 @"background.png": [NSValue valueWithSize: NSMakeSize(4, 4)] };
+        for (NSString *file in sizes) {
+            NSSize size = [sizes[file] sizeValue];
+            NSBitmapImageRep *rep = [[NSBitmapImageRep alloc] initWithBitmapDataPlanes: NULL pixelsWide: size.width
+                                                                            pixelsHigh: size.height bitsPerSample: 8
+                                                                       samplesPerPixel: 3 hasAlpha: NO isPlanar: NO
+                                                                        colorSpaceName: NSDeviceRGBColorSpace
+                                                                           bytesPerRow: 0 bitsPerPixel: 0];
+            [[rep representationUsingType: NSPNGFileType properties: @{}]
+                writeToFile: [pictures stringByAppendingPathComponent: [@".background" stringByAppendingPathComponent: file]]
+                 atomically: NO];
+        }
+        window = openWindow(pictures);
+        icons = collectionViewOf(window);
+        FinderIconViewController *controller = (FinderIconViewController *) icons.dataSource;
+        NSDictionary *cases = @{ @"picture-not-image": @"a file that isn't a picture",
+                                 @"picture-too-wide": @"a picture 9000 pixels wide" };
+        for (NSString *fixture in cases) {
+            [fm removeItemAtPath: [pictures stringByAppendingPathComponent: @".DS_Store"] error: NULL];
+            [fm copyItemAtPath: [fixtureDir stringByAppendingPathComponent: [fixture stringByAppendingString: @".DS_Store"]]
+                        toPath: [pictures stringByAppendingPathComponent: @".DS_Store"] error: NULL];
+            FinderFolderStyle *style = [FinderFolderStyle styleForFolder: [NSURL fileURLWithPath: pictures]
+                                                                  volume: [NSURL fileURLWithPath: pictures]];
+            [controller applyStyle: style];
+            NSColor *colour = [[icons.backgroundColors firstObject] colorUsingColorSpaceName: NSCalibratedRGBColorSpace];
+            expect(style.backgroundImageURL != nil && icons.backgroundView == nil && colour != nil
+                       && fabs([colour redComponent] - 0.2) < 0.01 && fabs([colour blueComponent] - 0.6) < 0.01,
+                   [NSString stringWithFormat: @"%@: no picture, the colour (%@, %@, %@)", cases[fixture],
+                    style.backgroundImageURL, icons.backgroundView, colour]);
+        }
+        [fm removeItemAtPath: [pictures stringByAppendingPathComponent: @".DS_Store"] error: NULL];
+        [fm copyItemAtPath: [fixtureDir stringByAppendingPathComponent: @"styled.DS_Store"]
+                    toPath: [pictures stringByAppendingPathComponent: @".DS_Store"] error: NULL];
+        [controller applyStyle: [FinderFolderStyle styleForFolder: [NSURL fileURLWithPath: pictures]
+                                                           volume: [NSURL fileURLWithPath: pictures]]];
+        expect(icons.backgroundView != nil, @"a 4x4 picture is shown");
+        [window close];
+
         window = openWindow(makeFolder(dir, @"Tiny Icons", @"icon-tiny", @[ @"x.txt" ]));
         expect(NSWidth([someItem(window).imageView frame]) == 16,
                [NSString stringWithFormat: @"icon size 0: 16 (%g)", NSWidth([someItem(window).imageView frame])]);

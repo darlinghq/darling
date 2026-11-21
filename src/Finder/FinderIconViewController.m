@@ -21,6 +21,7 @@
 #import "FinderDirectory.h"
 #import "FinderFolderStyle.h"
 #import "FinderFreeformLayout.h"
+#import <ImageIO/ImageIO.h>
 #include <math.h>
 
 static NSString *const FinderIconItemIdentifier = @"FinderIconItem";
@@ -85,10 +86,33 @@ static FinderIconLook FinderStyledLook(FinderFolderStyle *style)
 
 @end
 
-// The picture at its natural size, or nil if it can't be loaded
+// Pictures larger than this either way aren't used: a small file can declare a size that takes all memory to decode
+static const NSInteger FinderBackgroundMaximumPixels = 8192;
+
+// The picture's size in pixels, from its header (nothing is decoded), or NO if it isn't a picture
+static BOOL FinderPictureSize(NSURL *url, NSInteger *width, NSInteger *height)
+{
+    CGImageSourceRef source = CGImageSourceCreateWithURL((__bridge CFURLRef) url, NULL);
+    if (source == NULL)
+        return NO;
+    NSDictionary *properties = CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(source, 0, NULL));
+    CFRelease(source);
+    id w = properties[(__bridge NSString *) kCGImagePropertyPixelWidth], h = properties[(__bridge NSString *) kCGImagePropertyPixelHeight];
+    if (![w isKindOfClass:[NSNumber class]] || ![h isKindOfClass:[NSNumber class]])
+        return NO;
+    *width = [w integerValue];
+    *height = [h integerValue];
+    return YES;
+}
+
+// The picture at its natural size, or nil if it can't be loaded or is too large
 static NSImage *FinderBackgroundImage(NSURL *url)
 {
-    NSImage *image = url != nil ? [[NSImage alloc] initWithContentsOfURL:url] : nil;
+    NSInteger width = 0, height = 0;
+    if (url == nil || !FinderPictureSize(url, &width, &height) || width <= 0 || height <= 0
+        || width > FinderBackgroundMaximumPixels || height > FinderBackgroundMaximumPixels)
+        return nil;
+    NSImage *image = [[NSImage alloc] initWithContentsOfURL:url];
     NSImageRep *rep = [[image representations] firstObject];
     if (rep == nil || [rep pixelsWide] <= 0 || [rep pixelsHigh] <= 0)
         return nil;

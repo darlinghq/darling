@@ -110,14 +110,19 @@ The harness, `tests/finder.sh`, runs Finder through LaunchServices (`open` in th
   - the format is not documented by Apple. Reader and fixture writer follow public third-party descriptions: Wim
     Lewis's DSStoreFormat notes (in the Mac::Finder::DSStore distribution), Mark Mentovai's description, and the
     documentation of the Python `ds_store` and `mac_alias` packages. No code was copied;
-  - a malformed store is ignored as a whole; a setting of an unexpected type keeps its default;
+  - a malformed store is ignored as a whole; a setting of an unexpected type, or a number that isn't finite, keeps
+    its default;
   - records match items by canonical equivalence of the names, case-sensitively;
   - window size and chrome apply when a window opens on the folder; the view, sizes, label position, background
     and positions whenever it is shown. A folder without a usable store gets the standard look;
   - window content 300×200 up to the screen's visible frame; icons 16 to 512 points (64); text 10 to 16 (12);
   - a position is the item's centre, top-left origin; items without one go in a grid below the others;
   - the background picture is drawn at its natural size, top left, and must be a regular file inside the folder's
-    own volume (alias tag 18 or 2, or a bookmark's path), or it isn't used;
+    own volume (alias tag 18 or 2, or a bookmark's path), or it isn't used. A picture over 8192 pixels either way
+    (read from its header through ImageIO, which now gives a PNG's `PixelWidth` and `PixelHeight`, as on both Macs:
+    `imageio-png-properties.m`), or a file that isn't a picture, isn't used either; the colour is, if one is given;
+  - items placed to the right of the visible width can't be scrolled to yet. With a layout of its own, macOS
+    26.7.3's `NSCollectionView` is as wide as the content; 10.14.4's, like ours, keeps the scroll view's width;
   - older `icvo` and `BKGD` records are read when there is no `icvp`; `vstl` `Nlsv` is the list view;
   - View > Show/Hide Toolbar (⌥⌘T) and Show/Hide Sidebar (⌃⌘S). On macOS, `NSWindow` neither retitles a
     `toggleToolbarShown:` item nor enables it without a toolbar; the application titles it
@@ -158,7 +163,9 @@ Finder's `Info.plist` on 26.7.3:
 `.DS_Store` files Finder wrote on 26.7.3 parse (`finder_dsstore.m`): `/Applications/.DS_Store` holds only
 `lg1S`, `ph1S` (`comp`) and `modD`, `moDD` (`blob`, not `dutc`) for `Xcode.app`. Driving macOS Finder with
 `osascript` from ssh (a styled folder written by Finder, and reading back how it shows `styled-test.dmg`) needs the
-Automation permission on the Mac; until it is given, those checks are not made.
+Automation permission on the Mac; until it is given, those checks are not made. Open: they are what would show
+whether `Iloc` centres, the item frames and the picture reference are read as Finder writes them (the reader and
+the fixture writer share one reading of the public descriptions).
 
 Ours differs in two ways:
 - the package type is `APPL`, because LaunchServices counts only `APPL` bundles as applications;
