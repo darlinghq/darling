@@ -25,8 +25,8 @@
 // Containers are read with the host libavformat (AVFoundation demuxes on its own on macOS too),
 // through custom I/O over the guest file descriptor so that every path the guest can open works.
 // Video is decoded by VideoToolbox (VTDecompressionSession) from CoreMedia sample buffers.
-// Audio is not played: AVFoundation has no audio renderer yet, so only the video track is shown
-// and the playback clock runs without sound.
+// Audio is decoded by AudioToolbox (AudioConverter) and played through an AudioQueue; it is the master
+// clock while it plays, and the video follows it.
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreVideo/CoreVideo.h>
@@ -50,7 +50,8 @@ typedef struct {
 	int width, height;
 	float frameRate;
 	int64_t durationUs;
-	bool decodable; // video: VideoToolbox has a decoder for the codec
+	int sampleRate, channels; // audio
+	bool decodable; // video: VideoToolbox has a decoder for the codec; audio: AudioToolbox can convert it to PCM
 } AVPETrackInfo;
 
 typedef struct AVPEMedia AVPEMedia;
@@ -65,7 +66,7 @@ const AVPETrackInfo *AVPEMediaTrack(const AVPEMedia *media, int index);
 
 typedef struct AVPEEngine AVPEEngine;
 
-// The callbacks run on the engine's thread (seekDone for a seek that a newer AVPEEngineSeek replaced
+// The callbacks run on the engine's threads (seekDone for a seek that a newer AVPEEngineSeek replaced
 // before it started runs on the thread of that call). They may run before AVPEEngineCreate returns,
 // must not wait for the thread that calls AVPEEngineDestroy and must not call back into the engine.
 // None runs after AVPEEngineDestroy returned.
@@ -78,9 +79,11 @@ typedef struct {
 	// The seek identified by token ended: the target frame is shown (finished), or a later seek
 	// replaced it (not finished).
 	void (*seekDone)(void *context, uint64_t token, bool finished);
+	// Playback that had to wait for the audio to start is now running.
+	void (*started)(void *context);
 } AVPECallbacks;
 
-// Takes ownership of the media. The first frame is decoded and shown without playing.
+// Takes ownership of the media, also when it returns NULL. The first frame is decoded and shown without playing.
 AVPEEngine *AVPEEngineCreate(AVPEMedia *media, AVPECallbacks callbacks);
 void AVPEEngineDestroy(AVPEEngine *engine);
 
@@ -89,6 +92,11 @@ float AVPEEngineRate(AVPEEngine *engine);
 int64_t AVPEEngineTimeUs(AVPEEngine *engine);
 void AVPEEngineSeek(AVPEEngine *engine, int64_t timeUs, uint64_t token);
 int64_t AVPEEngineDurationUs(const AVPEEngine *engine);
+// The audio level, 0 (silent) and up (1 is the signal as it is). Without an audio track it has no effect.
+void AVPEEngineSetVolume(AVPEEngine *engine, float volume);
+bool AVPEEngineHasAudio(const AVPEEngine *engine);
+// True while playing is requested but the clock stands still, until the audio of the position is heard.
+bool AVPEEngineWaiting(AVPEEngine *engine);
 
 #ifdef __cplusplus
 }

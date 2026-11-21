@@ -65,13 +65,27 @@
 - (NSError *)error { return _player->error; }
 - (AVPlayerItem *)currentItem { return _player->item; }
 - (float)rate { return [_player rate]; }
-- (void)setRate:(float)rate { [_player setRate:rate]; }
+- (void)setRate:(float)rate
+{
+    [self willChangeValueForKey:@"rate"];
+    [self willChangeValueForKey:@"timeControlStatus"];
+    [_player setRate:rate];
+    [self didChangeValueForKey:@"timeControlStatus"];
+    [self didChangeValueForKey:@"rate"];
+}
+- (AVPlayerTimeControlStatus)timeControlStatus { return (AVPlayerTimeControlStatus)[_player timeControlStatus]; }
+// The wait for the audio to start is what AVFoundation calls evaluating the buffering rate.
+- (AVPlayerWaitingReason)reasonForWaitingToPlay
+{
+    return [_player timeControlStatus] == AVPlayerTimeControlStatusWaitingToPlayAtSpecifiedRate
+        ? AVPlayerWaitingWhileEvaluatingBufferingRateReason : nil;
+}
 - (void)play { [self setRate:1.0f]; }
 - (void)pause { [self setRate:0.0f]; }
 - (float)volume { return _player->volume; }
-- (void)setVolume:(float)volume { _player->volume = volume; }
+- (void)setVolume:(float)volume { _player->volume = volume; [_player updateVolume]; }
 - (BOOL)isMuted { return _player->muted; }
-- (void)setMuted:(BOOL)muted { _player->muted = muted; }
+- (void)setMuted:(BOOL)muted { _player->muted = muted; [_player updateVolume]; }
 - (AVPlayerActionAtItemEnd)actionAtItemEnd { return (AVPlayerActionAtItemEnd)_player->actionAtItemEnd; }
 - (void)setActionAtItemEnd:(AVPlayerActionAtItemEnd)action { _player->actionAtItemEnd = action; }
 

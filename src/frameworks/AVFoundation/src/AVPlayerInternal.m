@@ -145,10 +145,16 @@ static void engineSeekDone(void *context, uint64_t token, bool finished)
     [(AVPlayerInternal *)context _engineSeekDone:token finished:finished];
 }
 
+static void engineStarted(void *context)
+{
+    [(AVPlayerInternal *)context _engineStarted];
+}
+
 @interface AVPlayerInternal ()
 - (void)_engineFrame:(CVPixelBufferRef)pixelBuffer;
 - (void)_engineEnded;
 - (void)_engineSeekDone:(uint64_t)token finished:(BOOL)finished;
+- (void)_engineStarted;
 - (void)_deliverLatestFrame;
 - (void)_onMain:(void (^)(AVPlayer *player))block;
 - (void)_stopEngine;
@@ -289,12 +295,11 @@ static void engineSeekDone(void *context, uint64_t token, bool finished)
     if ([asset isKindOfClass:[AVURLAsset class]] && [asset isPlayable] && [[(AVURLAsset *)asset URL] isFileURL]) {
         AVPEMedia *media = AVPEMediaOpen([[[(AVURLAsset *)asset URL] path] fileSystemRepresentation]);
         if (media) {
-            AVPECallbacks callbacks = { self, engineFrame, engineEnded, engineSeekDone };
-            engine = AVPEEngineCreate(media, callbacks);
-            if (!engine)
-                AVPEMediaClose(media);
+            AVPECallbacks callbacks = { self, engineFrame, engineEnded, engineSeekDone, engineStarted };
+            engine = AVPEEngineCreate(media, callbacks); // takes the media, also when it fails
         }
     }
+    [self updateVolume];
     if (!engine) {
         failure = [NSError errorWithDomain:AVFoundationErrorDomain code:AVPlaybackErrorFileFormatNotRecognized
                                   userInfo:@{ NSLocalizedDescriptionKey: @"Cannot Open" }];
@@ -316,6 +321,21 @@ static void engineSeekDone(void *context, uint64_t token, bool finished)
         [current _setStatus:result ? AVPlayerItemStatusFailed : AVPlayerItemStatusReadyToPlay error:result];
     }];
     [result release];
+}
+
+// The level of the audio: the volume, or silence while muted.
+- (void)updateVolume
+{
+    if (engine)
+        AVPEEngineSetVolume(engine, muted ? 0.0f : volume);
+}
+
+- (NSInteger)timeControlStatus
+{
+    if (!engine || AVPEEngineRate(engine) <= 0)
+        return 0; // AVPlayerTimeControlStatusPaused
+    // Waiting while the clock stands still until the audio of the position is heard.
+    return AVPEEngineWaiting(engine) ? 1 : 2;
 }
 
 - (float)rate
@@ -481,10 +501,20 @@ static void engineSeekDone(void *context, uint64_t token, bool finished)
     CGImageRelease(image);
 }
 
+- (void)_engineStarted
+{
+    [self _onMain:^(AVPlayer *owner) {
+        [owner willChangeValueForKey:@"timeControlStatus"];
+        [owner didChangeValueForKey:@"timeControlStatus"];
+    }];
+}
+
 - (void)_engineEnded
 {
     [self _onMain:^(AVPlayer *owner) {
         [owner willChangeValueForKey:@"rate"];
+        [owner willChangeValueForKey:@"timeControlStatus"];
+        [owner didChangeValueForKey:@"timeControlStatus"];
         [owner didChangeValueForKey:@"rate"];
         AVPlayerItem *current = item;
         if (current) {
