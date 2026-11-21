@@ -118,8 +118,11 @@ int main(void)
     CHECK(moved.m41 == 1 && moved.m42 == 2 && moved.m43 == 3 && moved.m11 == 1 && moved.m44 == 1);
     SCNMatrix4 scaled = SCNMatrix4MakeScale(2, 3, 4);
     CHECK(scaled.m11 == 2 && scaled.m22 == 3 && scaled.m33 == 4 && scaled.m44 == 1 && scaled.m41 == 0);
+    // SCNMatrix4Translate: m, then the translation (observed; CATransform3DTranslate does the opposite).
     p = apply(SCNMatrix4Translate(scaled, 1, 1, 1), 1, 1, 1);
     CHECK_POINT(p, 3, 4, 5);
+    SCNMatrix4 turned = SCNMatrix4Translate(SCNMatrix4MakeRotation(M_PI / 2, 0, 0, 1), 1, 0, 0);
+    CHECK(near(turned.m41, 1) && near(turned.m42, 0) && near(turned.m43, 0));
 
     // SCNMatrix4Mult: a is applied first (row vectors): the product of a translation and a scale moves, then scales.
     // The element values are what SCNMatrix4Mult returned on macOS 26.7.3 for these inputs.

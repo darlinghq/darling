@@ -60,7 +60,7 @@ static inline SCNVector4 SCNVector4Make(CGFloat x, CGFloat y, CGFloat z, CGFloat
     return v;
 }
 
-// SCNMatrix4 is the Core Animation matrix on macOS, and these three are its CATransform3D counterparts.
+// SCNMatrix4 is the Core Animation matrix on macOS. MakeTranslation and MakeScale are the CATransform3D ones.
 static inline SCNMatrix4 SCNMatrix4MakeTranslation(CGFloat tx, CGFloat ty, CGFloat tz)
 {
     return CATransform3DMakeTranslation(tx, ty, tz);
@@ -71,9 +71,13 @@ static inline SCNMatrix4 SCNMatrix4MakeScale(CGFloat sx, CGFloat sy, CGFloat sz)
     return CATransform3DMakeScale(sx, sy, sz);
 }
 
+// Not CATransform3DTranslate: the translation follows m (m, then the translation), which is not the order of the
+// Core Animation function (translation, then m), as observed on macOS 26.7.3 (x86_64, tier 2): translating a
+// scale by (1, 1, 1) leaves (1, 1, 1) in the fourth row where CATransform3DTranslate gives the scale factors.
+// Test: tests/src/scenekit_matrix4.m, "SCNMatrix4Translate".
 static inline SCNMatrix4 SCNMatrix4Translate(SCNMatrix4 m, CGFloat tx, CGFloat ty, CGFloat tz)
 {
-    return CATransform3DTranslate(m, tx, ty, tz);
+    return CATransform3DConcat(m, CATransform3DMakeTranslation(tx, ty, tz));
 }
 
 extern bool SCNVector3EqualToVector3(SCNVector3 a, SCNVector3 b);
