@@ -22,11 +22,16 @@
 #import "FinderIconViewController.h"
 #import "FinderListViewController.h"
 #import "FinderSidebarController.h"
+#import <CoreServices/CoreServices.h>
 
 static NSToolbarItemIdentifier const FinderViewStyleItem = @"FinderViewStyle";
 static NSToolbarItemIdentifier const FinderHistoryItem = @"FinderHistory";
 
+static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t count, void *paths,
+                               const FSEventStreamEventFlags flags[], const FSEventStreamEventId ids[]);
+
 @implementation FinderWindowController {
+    FSEventStreamRef _watch;
     FinderDirectory *_directory;
     FinderIconViewController *_icons;
     FinderListViewController *_list;
@@ -116,6 +121,50 @@ static NSToolbarItemIdentifier const FinderHistoryItem = @"FinderHistory";
     self.window.representedURL = _folderURL;
     _icons.items = _directory.items;
     _list.items = _directory.items;
+    [self watchFolder];
+}
+
+#pragma mark Watching the folder
+
+// An FSEvents stream on the folder (WatchRoot: its own removal or move is reported too); on any event, a window whose
+// folder no longer exists closes
+- (void)watchFolder
+{
+    [self stopWatching];
+    FSEventStreamContext context = { 0, (__bridge void *)self, NULL, NULL, NULL };
+    _watch = FSEventStreamCreate(NULL, FinderFolderEvents, &context, (__bridge CFArrayRef) @[ [_folderURL path] ],
+                                 kFSEventStreamEventIdSinceNow, 0.3, kFSEventStreamCreateFlagWatchRoot);
+    if (_watch == NULL)
+        return;
+    FSEventStreamScheduleWithRunLoop(_watch, CFRunLoopGetMain(), kCFRunLoopCommonModes);
+    FSEventStreamStart(_watch);
+}
+
+- (void)stopWatching
+{
+    if (_watch == NULL)
+        return;
+    FSEventStreamStop(_watch);
+    FSEventStreamInvalidate(_watch);
+    FSEventStreamRelease(_watch);
+    _watch = NULL;
+}
+
+- (void)folderChanged
+{
+    BOOL directory = NO;
+    if (![[NSFileManager defaultManager] fileExistsAtPath:[_folderURL path] isDirectory:&directory] || !directory)
+        [self close];
+}
+
+- (void)windowWillClose:(NSNotification *)notification
+{
+    [self stopWatching];
+}
+
+- (void)dealloc
+{
+    [self stopWatching];
 }
 
 - (void)selectItems:(NSArray<NSURL *> *)items
@@ -331,3 +380,9 @@ static NSToolbarItemIdentifier const FinderHistoryItem = @"FinderHistory";
 }
 
 @end
+
+static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t count, void *paths,
+                               const FSEventStreamEventFlags flags[], const FSEventStreamEventId ids[])
+{
+    [(__bridge FinderWindowController *)info folderChanged];
+}

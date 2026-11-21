@@ -1,9 +1,9 @@
-// CFLAGS: -framework Foundation -framework AppKit -fobjc-arc -Isrc/Finder src/Finder/FinderDirectory.m src/Finder/FinderIconViewController.m src/Finder/FinderListViewController.m src/Finder/FinderSidebarController.m src/Finder/FinderWindowController.m
+// CFLAGS: -framework Foundation -framework AppKit -framework CoreServices -fobjc-arc -Isrc/Finder src/Finder/FinderDirectory.m src/Finder/FinderIconViewController.m src/Finder/FinderListViewController.m src/Finder/FinderSidebarController.m src/Finder/FinderWindowController.m
 // ARGS: "$(mktemp -d)/w"
 // Copyright (C) 2026 Lubos Dolezel
 //
 // A Finder window (src/Finder/FinderWindowController), in process: its title, the items of its icon view and their
-// labels, and selecting items. See tests/finder.md. Needs a display. Usage: finder_window <new directory>.
+// labels, selecting items, switching views, the history, a folder of 2000 items, and a folder that is removed. See tests/finder.md. Needs a display. Usage: finder_window <new directory>.
 // Prints PASS/FAIL lines; exits 1 on a failure.
 #import <AppKit/AppKit.h>
 #import "FinderWindowController.h"
@@ -181,7 +181,41 @@ int main(int argc, char **argv)
         [controller openSelection: nil];
         expect([[[opened path] stringByResolvingSymlinksInPath] isEqual: [other stringByResolvingSymlinksInPath]], [NSString stringWithFormat: @"openSelection: opens the selected item (%@)", [opened path]]);
 
+        // A large folder: 2000 items, and scrolling to the last one makes it visible
+        NSString *large = [dir stringByAppendingPathComponent: @"Large"];
+        [fm createDirectoryAtPath: large withIntermediateDirectories: YES attributes: nil error: NULL];
+        for (int i = 1; i <= 2000; i++)
+            [fm createFileAtPath: [large stringByAppendingPathComponent: [NSString stringWithFormat: @"item %04d.txt", i]]
+                        contents: [NSData data] attributes: nil];
+        controller.viewStyle = FinderViewStyleIcons;
+        [controller showFolder: [NSURL fileURLWithPath: large]];
+        spin();
+        [window.contentView layoutSubtreeIfNeeded];
+        expect([icons numberOfItemsInSection: 0] == 2000,
+               [NSString stringWithFormat: @"a large folder shows its 2000 items (%ld)", (long) [icons numberOfItemsInSection: 0]]);
+        NSIndexPath *last = [NSIndexPath indexPathForItem: 1999 inSection: 0];
+        [icons scrollToItemsAtIndexPaths: [NSSet setWithObject: last]
+                        scrollPosition: NSCollectionViewScrollPositionNearestHorizontalEdge];
+        spin();
+        NSRect lastFrame = [icons frameForItemAtIndex: 1999];
+        expect(!NSIsEmptyRect(lastFrame) && NSIntersectsRect(lastFrame, [icons visibleRect]),
+               [NSString stringWithFormat: @"scrolling to the last item makes it visible (%@ in %@)", NSStringFromRect(lastFrame),
+                                          NSStringFromRect([icons visibleRect])]);
+
         [window close];
+
+        // A window whose folder is removed closes
+        NSString *doomed = [dir stringByAppendingPathComponent: @"Doomed"];
+        [fm createDirectoryAtPath: doomed withIntermediateDirectories: YES attributes: nil error: NULL];
+        [fm createFileAtPath: [doomed stringByAppendingPathComponent: @"x.txt"] contents: [NSData data] attributes: nil];
+        FinderWindowController *gone = [[FinderWindowController alloc] initWithFolderURL: [NSURL fileURLWithPath: doomed]];
+        [gone showWindow: nil];
+        spin();
+        [fm removeItemAtPath: doomed error: NULL];
+        NSDate *end = [NSDate dateWithTimeIntervalSinceNow: 10];
+        while ([gone.window isVisible] && [end timeIntervalSinceNow] > 0)
+            spin();
+        expect(![gone.window isVisible], @"a window whose folder is removed closes");
         printf(failures ? "FAILED %d\n" : "ALL PASSED\n", failures);
     }
     return failures != 0;

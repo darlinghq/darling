@@ -12,8 +12,9 @@ In-process tests, in the guest (`build/tmp/helpers/src-test.sh <mode> <file>`; e
   10.14.4 and 26.7.3; the order it checks is the one macOS gives.
 - `tests/src/finder_window.m` (needs a display): a window's title and size, its icon view's items and labels, selecting
   items, switching to the list view and back (the selection stays), showing another folder (the view stays), the
-  history (back, forward, the enclosing folder with the folder it came from selected) and opening the selection. It
-  passes unchanged on both Macs.
+  history (back, forward, the enclosing folder with the folder it came from selected), opening the selection, a
+  folder of 2000 items (scrolling to the last one shows it), and a window whose folder is removed closing. It passes
+  unchanged on both Macs.
 - `tests/src/finder_reveal.m` (needs a display): `openURLs:` with files in two folders, a file that doesn't exist
   and a folder gives a window per folder with its files selected, and the folder's own window with nothing
   selected. It passes unchanged on both Macs.
@@ -45,6 +46,9 @@ The harness, `tests/finder.sh`, runs Finder through LaunchServices (`open` in th
 | reveal several | `open -R` of files in F and G gives windows on both |
 | open -R missing | `open -R` with a file that doesn't exist exits 1 with "The file … does not exist." (as on macOS) and reveals nothing |
 | open file | a stand-in editor registered for `.fndtest`; `open -R F/doc.fndtest`, then Command-Down, and the editor gets `odoc` for it |
+| odd names | a folder named `Ünï 日本 😀` opens in its window; `open -R` of a file in it whose name has a newline, and of one with a 255-byte name, gives that window |
+| large folder | a folder of 2000 files shows its window within 5 s of `open` returning; End in it is fine |
+| folder removed | with F open too, deleting F2 (from the host side) closes F2's window within 10 s; F's stays |
 | unreadable | a folder that can't be read gives an alert and no window; after the alert Finder quits (skipped when the guest runs as root) |
 
 ## Notes
@@ -64,6 +68,14 @@ The harness, `tests/finder.sh`, runs Finder through LaunchServices (`open` in th
   - AppKit's `outlineView:sortDescriptorsDidChange:` (`appkit-outline-view-sort-descriptors.m`);
   - AppKit's `columnsInRect:`, which left out the last column when the first was wide, so it wasn't drawn
     (`appkit-table-view-columns-in-rect.m`).
+- Window titles are compared as canonically equivalent Unicode. Foundation decomposes file paths, on macOS as
+  here (`fileURLWithPath:`, `fileSystemRepresentation` and bookmarks all give the decomposed form on 10.14.4 and
+  26.7.3), so a folder whose name is stored precomposed gets a window titled with the decomposed form.
+- A window watches its folder with an FSEvents stream (`kFSEventStreamCreateFlagWatchRoot`); on any event, if the
+  folder is gone, the window closes. Darling's FSEvents (inotify) reports the folder's own removal as an event on
+  it, and sees changes made from the host.
+- `scrollToItemsAtIndexPaths:scrollPosition:` with `NSCollectionViewScrollPositionNone` does not scroll on macOS;
+  AppKit scrolled. Fixed (`appkit-collection-view-scroll-position-none.m`); Finder uses the nearest edge.
 - Ejecting from the volume's own window closes that window from within its own event handling. AppKit used to
   validate the window's toolbar half a second later anyway, and to update closed windows in `updateWindows`; by
   then the toolbar item's target (the window's controller) was gone, and Finder crashed. AppKit now validates a

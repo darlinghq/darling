@@ -54,17 +54,22 @@ volume="/Volumes/Unmount Test"
 detach_all() { guest detach-all "for d in '$volume'*; do hdiutil detach -quiet \"\$d\"; done; true"; }
 
 # Finder's windows with that title, one id per line (empty title: every Finder window but the menu bar)
+# Titles are compared as canonically equivalent Unicode: Foundation decomposes file paths (as on macOS), so a folder
+# whose name is stored precomposed gets a window titled with the decomposed form
+nfc() { python3 -I -c 'import sys, unicodedata; print(unicodedata.normalize("NFC", sys.argv[1]))' "$1"; }
 find_windows() {
 	if [ $display = x11 ]; then
+		local want
+		want=$(nfc "$1")
 		xdotool search --onlyvisible --class Finder 2>/dev/null | while read -r w; do
 			xprop -id "$w" _NET_WM_WINDOW_TYPE 2>/dev/null | grep -q _DOCK && continue
-			[ -z "$1" ] || [ "$(xdotool getwindowname "$w")" = "$1" ] && echo "$w"; done
+			[ -z "$1" ] || [ "$(nfc "$(xdotool getwindowname "$w")")" = "$want" ] && echo "$w"; done
 	else
 		swaymsg -t get_tree | python3 -I -c '
-import json, sys
-title = sys.argv[1]
+import json, sys, unicodedata
+title = unicodedata.normalize("NFC", sys.argv[1])
 def walk(n):
-    if n.get("app_id") == "Finder" and n.get("type") in ("con", "floating_con") and (not title or n.get("name") == title):
+    if n.get("app_id") == "Finder" and n.get("type") in ("con", "floating_con") and (not title or unicodedata.normalize("NFC", n.get("name") or "") == title):
         print(n["id"])
     for c in n.get("nodes", []) + n.get("floating_nodes", []):
         walk(c)
@@ -342,6 +347,67 @@ PLIST
 	fi
 	guest kill-editor "kill \$(ps ax | grep '[E]ditor.app/Contents/MacOS' | awk '{print \$1}') 2>/dev/null; true"
 	rm -rf "$work/editor" "$work/F/doc.fndtest"
+fi
+quit_finder
+
+# odd names: a folder named with accents, CJK and an emoji holds a file whose name has a newline and one whose name
+# is 255 bytes long; the folder opens in its window, and revealing either file gives that window
+odd="Ünï 日本 😀"
+long=$(printf 'n%.0s' $(seq 251)).txt
+mkdir -p "$work/$odd"
+touch "$work/$odd/line
+break.txt" "$work/$odd/$long"
+guest open-odd "open '$gw/$odd'"
+if window "$odd" 30; then pass "odd names: open"; else fail "odd names: open: $(outputs open-odd)"; fi
+quit_finder
+guest reveal-newline "open -R '$gw/$odd/line
+break.txt'"
+if [ "$(rc reveal-newline)" = 0 ] && window "$odd" 30; then
+	pass "odd names: reveal a name with a newline"
+else
+	fail "odd names: reveal a name with a newline: rc $(rc reveal-newline) $(outputs reveal-newline)"
+fi
+quit_finder
+guest reveal-long "open -R '$gw/$odd/$long'"
+if [ "$(rc reveal-long)" = 0 ] && window "$odd" 30; then
+	pass "odd names: reveal a 255-byte name"
+else
+	fail "odd names: reveal a 255-byte name: rc $(rc reveal-long) $(outputs reveal-long)"
+fi
+quit_finder
+
+# large folder: a folder of 2000 files shows its window within 5 s of open returning; End (to the last item) is fine
+mkdir -p "$work/Large"
+(cd "$work/Large" && seq -f "item %04g.txt" 1 2000 | xargs -d '\n' touch)
+guest open-large "open '$gw/Large'"
+start=$(date +%s)
+if window Large 30; then
+	took=$(($(date +%s) - start))
+	key End
+	if [ $took -le 5 ] && [ "$(windows Large)" = 1 ]; then
+		pass "large folder (${took} s)"
+	else
+		fail "large folder: the window took ${took} s; windows titled Large after End: $(windows Large)"
+	fi
+else
+	fail "large folder: no window: $(outputs open-large)"
+fi
+quit_finder
+
+# folder removed: a window whose folder is deleted (here from the host side) closes within 10 s
+mkdir -p "$work/F2" "$work/F"
+touch "$work/F2/x.txt"
+guest open-f2 "open '$gw/F'; open '$gw/F2'"
+if window F2 30 && window F 5; then
+	rm -r "$work/F2"
+	for ((i = 0; i < 10; i++)); do [ "$(windows F2)" = 0 ] && break; sleep 1; done
+	if [ "$(windows F2)" = 0 ] && [ "$(windows F)" = 1 ]; then
+		pass "folder removed"
+	else
+		fail "folder removed: windows F2 $(windows F2), F $(windows F) after 10 s"
+	fi
+else
+	fail "folder removed: no window: $(outputs open-f2)"
 fi
 quit_finder
 

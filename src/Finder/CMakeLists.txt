@@ -19,7 +19,7 @@ set(Finder_sources
 )
 add_darling_executable(Finder ${Finder_sources})
 set_source_files_properties(${Finder_sources} PROPERTIES COMPILE_FLAGS -fobjc-arc)
-target_link_libraries(Finder AppKit Foundation objc)
+target_link_libraries(Finder AppKit Foundation CoreServices objc)
 
 set(Finder_contents "libexec/darling/System/Library/CoreServices/Finder.app/Contents")
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/PkgInfo "APPL????")
