@@ -23,6 +23,7 @@ static pthread_once_t g_elfcall_init_once = PTHREAD_ONCE_INIT;
 
 static pthread_mutex_t g_dlsym_mutex = PTHREAD_MUTEX_INITIALIZER;
 static uint8_t* g_dlsym_stub_area = NULL;
+static char* g_dlsym_names[DARLING_FEX_DLSYM_MAX_SLOTS];
 static pthread_once_t g_dlsym_init_once = PTHREAD_ONCE_INIT;
 static void* g_dlsym_targets[DARLING_FEX_DLSYM_MAX_SLOTS];
 static uint32_t g_dlsym_count = 0;
@@ -197,7 +198,6 @@ darling_thread_create_callbacks_t fex_wrap_guest_thread_callbacks(darling_thread
 
 void* fex_dlsym_wrap_if_func(void* host_sym, const char* symbol_name)
 {
-	(void)symbol_name;
 	if (!host_sym)
 		return NULL;
 
@@ -228,10 +228,27 @@ void* fex_dlsym_wrap_if_func(void* host_sym, const char* symbol_name)
 
 	uint32_t slot = g_dlsym_count++;
 	g_dlsym_targets[slot] = host_sym;
+	g_dlsym_names[slot] = symbol_name ? strdup(symbol_name) : NULL;
 	void* stub = g_dlsym_stub_area + (slot * FEX_STUB_SIZE);
 
 	pthread_mutex_unlock(&g_dlsym_mutex);
 	return stub;
+}
+
+// A host library calls a function pointer it was given natively, but the guest's functions are x86_64
+// code. Xlib's error handlers are the only callbacks the X11 backend hands it directly, so those two
+// are replaced by host functions that run the guest handler under FEX.
+static uintptr_t g_guest_x_error_handler = 0;
+static uintptr_t g_guest_x_io_error_handler = 0;
+
+static int host_x_error_handler(void* display, void* event)
+{
+	return (int)fex_invoke_guest_callback(g_guest_x_error_handler, (uint64_t)(uintptr_t)display, (uint64_t)(uintptr_t)event);
+}
+
+static int host_x_io_error_handler(void* display)
+{
+	return (int)fex_invoke_guest_callback(g_guest_x_io_error_handler, (uint64_t)(uintptr_t)display, 0);
 }
 
 long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
@@ -245,6 +262,23 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 
 	if (!target)
 		return -ENOSYS;
+
+	const char* name = (slot < DARLING_FEX_DLSYM_MAX_SLOTS) ? g_dlsym_names[slot] : NULL;
+	uintptr_t* guest_handler = NULL;
+	uint64_t host_handler = 0;
+	if (name && strcmp(name, "XSetErrorHandler") == 0) {
+		guest_handler = &g_guest_x_error_handler;
+		host_handler = (uint64_t)(uintptr_t)host_x_error_handler;
+	} else if (name && strcmp(name, "XSetIOErrorHandler") == 0) {
+		guest_handler = &g_guest_x_io_error_handler;
+		host_handler = (uint64_t)(uintptr_t)host_x_io_error_handler;
+	}
+	uint64_t previous_guest_handler = 0;
+	if (guest_handler) {
+		previous_guest_handler = *guest_handler;
+		*guest_handler = (uintptr_t)state->rdi;
+		state->rdi = state->rdi ? host_handler : 0;
+	}
 
 	// The arguments after the sixth are on the guest stack, above the return address. X11 and Wayland
 	// functions take up to a dozen (XRRGetOutputProperty has 13), so forward a generous number of
@@ -313,6 +347,8 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 		  "x16", "x17", "x18", "x30", "cc", "memory"
 	);
 
+	if (guest_handler && x0 == host_handler)
+		x0 = previous_guest_handler;
 	state->rax = x0;
 	state->rdx = x1;
 	v0 = d0;
