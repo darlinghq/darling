@@ -20,14 +20,13 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #import <Foundation/Foundation.h>
 #include <xpc/xpc.h>
 #include <dispatch/dispatch.h>
-#include <dlfcn.h>
+#include <darling_dbus.h>
 #include <spawn.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include "usernoted_protocol.h"
 #include "usernoted_dbus.h"
 
-#define DBUS_WRAPPER_PATH "/usr/lib/native/libdbus.dylib"
 
 @interface UNRecord : NSObject
 @property (nonatomic, copy) NSString* identifier;
@@ -123,56 +122,48 @@ static UNClientSession* session_for_bundle(NSString* bundle_id)
 static void setup_dbus(void)
 {
 #if defined(__x86_64__)
-	void* lib = dlopen(DBUS_WRAPPER_PATH, RTLD_NOW | RTLD_LOCAL);
-	if (lib == NULL)
+	const struct darling_dbus* shared = darling_dbus_get(0);
+	if (shared == NULL)
 		return;
 
 	memset(&s_dbus_api, 0, sizeof(s_dbus_api));
-#define BIND(field, name) \
-	if ((*(void**) &s_dbus_api.field = dlsym(lib, name)) == NULL) \
-		goto fail;
-	BIND(connection_open_private, "dbus_connection_open_private");
-	BIND(bus_register, "dbus_bus_register");
-	BIND(bus_add_match, "dbus_bus_add_match");
-	BIND(connection_close, "dbus_connection_close");
-	BIND(connection_unref, "dbus_connection_unref");
-	BIND(connection_read_write, "dbus_connection_read_write");
-	BIND(connection_pop_message, "dbus_connection_pop_message");
-	BIND(connection_send, "dbus_connection_send");
-	BIND(connection_flush, "dbus_connection_flush");
-	BIND(connection_send_with_reply_and_block, "dbus_connection_send_with_reply_and_block");
-	BIND(message_new_method_call, "dbus_message_new_method_call");
-	BIND(message_new_method_return, "dbus_message_new_method_return");
-	BIND(message_new_error, "dbus_message_new_error");
-	BIND(message_iter_init_append, "dbus_message_iter_init_append");
-	BIND(message_iter_append_basic, "dbus_message_iter_append_basic");
-	BIND(message_iter_open_container, "dbus_message_iter_open_container");
-	BIND(message_iter_close_container, "dbus_message_iter_close_container");
-	BIND(message_iter_init, "dbus_message_iter_init");
-	BIND(message_iter_get_arg_type, "dbus_message_iter_get_arg_type");
-	BIND(message_iter_get_basic, "dbus_message_iter_get_basic");
-	BIND(message_iter_recurse, "dbus_message_iter_recurse");
-	BIND(message_iter_next, "dbus_message_iter_next");
-	BIND(message_is_signal, "dbus_message_is_signal");
-	BIND(message_is_method_call, "dbus_message_is_method_call");
-	BIND(message_get_path, "dbus_message_get_path");
-	BIND(message_get_interface, "dbus_message_get_interface");
-	BIND(message_get_member, "dbus_message_get_member");
-	BIND(message_get_signature, "dbus_message_get_signature");
-	BIND(message_unref, "dbus_message_unref");
-	BIND(error_init, "dbus_error_init");
-	BIND(error_free, "dbus_error_free");
-	BIND(address_escape_value, "dbus_address_escape_value");
-	BIND(free, "dbus_free");
-#undef BIND
+	s_dbus_api.connection_open_private = shared->connection_open_private;
+	s_dbus_api.bus_register = shared->bus_register;
+	s_dbus_api.bus_add_match = shared->bus_add_match;
+	s_dbus_api.connection_close = shared->connection_close;
+	s_dbus_api.connection_unref = shared->connection_unref;
+	s_dbus_api.connection_read_write = shared->connection_read_write;
+	s_dbus_api.connection_pop_message = shared->connection_pop_message;
+	s_dbus_api.connection_send = shared->connection_send;
+	s_dbus_api.connection_flush = shared->connection_flush;
+	s_dbus_api.connection_send_with_reply_and_block = shared->connection_send_with_reply_and_block;
+	s_dbus_api.message_new_method_call = shared->message_new_method_call;
+	s_dbus_api.message_new_method_return = shared->message_new_method_return;
+	s_dbus_api.message_new_error = shared->message_new_error;
+	s_dbus_api.message_iter_init_append = shared->message_iter_init_append;
+	s_dbus_api.message_iter_append_basic = shared->message_iter_append_basic;
+	s_dbus_api.message_iter_open_container = shared->message_iter_open_container;
+	s_dbus_api.message_iter_close_container = shared->message_iter_close_container;
+	s_dbus_api.message_iter_init = shared->message_iter_init;
+	s_dbus_api.message_iter_get_arg_type = shared->message_iter_get_arg_type;
+	s_dbus_api.message_iter_get_basic = shared->message_iter_get_basic;
+	s_dbus_api.message_iter_recurse = shared->message_iter_recurse;
+	s_dbus_api.message_iter_next = shared->message_iter_next;
+	s_dbus_api.message_is_signal = shared->message_is_signal;
+	s_dbus_api.message_is_method_call = shared->message_is_method_call;
+	s_dbus_api.message_get_path = shared->message_get_path;
+	s_dbus_api.message_get_interface = shared->message_get_interface;
+	s_dbus_api.message_get_member = shared->message_get_member;
+	s_dbus_api.message_get_signature = shared->message_get_signature;
+	s_dbus_api.message_unref = shared->message_unref;
+	s_dbus_api.error_init = shared->error_init;
+	s_dbus_api.error_free = shared->error_free;
+	s_dbus_api.address_escape_value = shared->address_escape_value;
+	s_dbus_api.free = shared->free;
 
 	s_dbus_api.getenv = getenv;
 	s_dbus_ready = YES;
 	s_dbus_conn = _UNHostDBusConnect(&s_dbus_api);
-	return;
-
-fail:
-	dlclose(lib);
 #endif
 }
 

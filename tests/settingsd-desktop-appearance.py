@@ -30,6 +30,7 @@ import time
 
 root = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 settingsd = os.path.join(root, "src/settingsd")
+loader = os.path.join(root, "src/libdarlingdbus")
 
 for tool in ("cc", "pkg-config", "dbus-daemon"):
     if shutil.which(tool) is None:
@@ -466,9 +467,9 @@ with tempfile.TemporaryDirectory(prefix="settingsd-dbus-") as tmp:
         sys.exit(0)
 
     build = subprocess.run(["cc", "-std=gnu11", "-Wall", "-g", "-fsanitize=address,undefined",
-                            "-fno-sanitize-recover=undefined", f"-I{settingsd}", probe_c,
-                            os.path.join(settingsd, "settingsd_dbus.c"),
-                            *flags.stdout.split(), "-lm", "-o", os.path.join(tmp, "probe")],
+                            "-fno-sanitize-recover=undefined", f"-I{settingsd}", f"-I{loader}/include", probe_c,
+                            os.path.join(settingsd, "settingsd_dbus.c"), f"{loader}/darling_dbus.c",
+                            *flags.stdout.split(), "-lm", "-ldl", "-lpthread", "-o", os.path.join(tmp, "probe")],
                            capture_output=True, text=True)
     if build.returncode != 0:
         print(build.stdout + build.stderr)

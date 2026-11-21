@@ -17,53 +17,20 @@
 
 #include "settingsd_dbus.h"
 #include <dbus/dbus.h>
-#include <dlfcn.h>
+#include <darling_dbus.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#define DBUS_WRAPPER_PATH "/usr/lib/native/libdbus.dylib"
 #define PORTAL_NAME "org.freedesktop.portal.Desktop"
 #define PORTAL_PATH "/org/freedesktop/portal/desktop"
 #define PORTAL_INTERFACE "org.freedesktop.portal.Settings"
 #define SETTINGS_NAMESPACE "org.freedesktop.appearance"
 #define MAX_ADDRESS_LENGTH 1024
 
-struct dbus_functions {
-    DBusConnection* (*connection_open_private)(const char*, DBusError*);
-    dbus_bool_t (*bus_register)(DBusConnection*, DBusError*);
-    void (*bus_add_match)(DBusConnection*, const char*, DBusError*);
-    void (*connection_close)(DBusConnection*);
-    void (*connection_unref)(DBusConnection*);
-    dbus_bool_t (*connection_get_is_connected)(DBusConnection*);
-    dbus_bool_t (*connection_get_unix_fd)(DBusConnection*, int*);
-    dbus_bool_t (*connection_read_write)(DBusConnection*, int);
-    DBusMessage* (*connection_pop_message)(DBusConnection*);
-    void (*connection_flush)(DBusConnection*);
-    DBusMessage* (*connection_send_with_reply_and_block)(DBusConnection*, DBusMessage*, int, DBusError*);
-    DBusMessage* (*message_new_method_call)(const char*, const char*, const char*, const char*);
-    void (*message_iter_init_append)(DBusMessage*, DBusMessageIter*);
-    dbus_bool_t (*message_iter_append_basic)(DBusMessageIter*, int, const void*);
-    dbus_bool_t (*message_iter_init)(DBusMessage*, DBusMessageIter*);
-    int (*message_iter_get_arg_type)(DBusMessageIter*);
-    void (*message_iter_get_basic)(DBusMessageIter*, void*);
-    void (*message_iter_recurse)(DBusMessageIter*, DBusMessageIter*);
-    dbus_bool_t (*message_iter_next)(DBusMessageIter*);
-    dbus_bool_t (*message_is_signal)(DBusMessage*, const char*, const char*);
-    int (*message_get_type)(DBusMessage*);
-    const char* (*message_get_path)(DBusMessage*);
-    const char* (*message_get_sender)(DBusMessage*);
-    void (*message_unref)(DBusMessage*);
-    void (*error_init)(DBusError*);
-    void (*error_free)(DBusError*);
-    char* (*address_escape_value)(const char*);
-    void (*free)(void*);
-};
-
-static struct dbus_functions s_api;
-static void *s_libdbus = NULL;
+static const struct darling_dbus *s_api = NULL;
 static DBusConnection *s_conn = NULL;
 
 static int s_has_dark = 0;
@@ -73,55 +40,11 @@ static int s_contrast = 0;
 static int s_has_accent = 0;
 static double s_r = 0.0, s_g = 0.48, s_b = 1.0;
 
-static int load_dbus_symbols(void) {
-    if (s_libdbus != NULL)
-        return 0;
-
-    s_libdbus = dlopen(DBUS_WRAPPER_PATH, RTLD_NOW | RTLD_LOCAL);
-    if (!s_libdbus) {
-        s_libdbus = dlopen("libdbus-1.so.3", RTLD_NOW | RTLD_LOCAL);
-        if (!s_libdbus)
-            s_libdbus = dlopen("libdbus-1.so", RTLD_NOW | RTLD_LOCAL);
-    }
-    if (!s_libdbus)
-        return -1;
-
-#define LOAD_SYM(name) do { \
-        s_api.name = dlsym(s_libdbus, "dbus_" #name); \
-        if (!s_api.name) return -2; \
-    } while (0)
-
-    LOAD_SYM(connection_open_private);
-    LOAD_SYM(bus_register);
-    LOAD_SYM(bus_add_match);
-    LOAD_SYM(connection_close);
-    LOAD_SYM(connection_unref);
-    LOAD_SYM(connection_get_is_connected);
-    LOAD_SYM(connection_get_unix_fd);
-    LOAD_SYM(connection_read_write);
-    LOAD_SYM(connection_pop_message);
-    LOAD_SYM(connection_flush);
-    LOAD_SYM(connection_send_with_reply_and_block);
-    LOAD_SYM(message_new_method_call);
-    LOAD_SYM(message_iter_init_append);
-    LOAD_SYM(message_iter_append_basic);
-    LOAD_SYM(message_iter_init);
-    LOAD_SYM(message_iter_get_arg_type);
-    LOAD_SYM(message_iter_get_basic);
-    LOAD_SYM(message_iter_recurse);
-    LOAD_SYM(message_iter_next);
-    LOAD_SYM(message_is_signal);
-    LOAD_SYM(message_get_type);
-    LOAD_SYM(message_get_path);
-    LOAD_SYM(message_get_sender);
-    LOAD_SYM(message_unref);
-    LOAD_SYM(error_init);
-    LOAD_SYM(error_free);
-    LOAD_SYM(address_escape_value);
-    LOAD_SYM(free);
-#undef LOAD_SYM
-
-    return 0;
+static int load_dbus_symbols(void)
+{
+    if (s_api == NULL)
+        s_api = darling_dbus_get(DARLING_DBUS_HOST_FALLBACK);
+    return s_api != NULL ? 0 : -1;
 }
 
 static int session_address_allowed(const char *address) {
@@ -147,13 +70,13 @@ static char *get_session_bus_address(void) {
         char path[MAX_ADDRESS_LENGTH];
         if (snprintf(path, sizeof(path), "%s/bus", runtime_dir) < (int)sizeof(path)) {
             if (access(path, R_OK | W_OK) == 0) {
-                char *escaped = s_api.address_escape_value(path);
+                char *escaped = s_api->address_escape_value(path);
                 if (escaped) {
                     size_t len = strlen("unix:path=") + strlen(escaped) + 1;
                     char *addr = malloc(len);
                     if (addr)
                         snprintf(addr, len, "unix:path=%s", escaped);
-                    s_api.free(escaped);
+                    s_api->free(escaped);
                     return addr;
                 }
             }
@@ -165,7 +88,7 @@ static char *get_session_bus_address(void) {
 
 int settingsd_dbus_init(void) {
     if (s_conn != NULL) {
-        if (s_api.connection_get_is_connected(s_conn))
+        if (s_api->connection_get_is_connected(s_conn))
             return 0;
         settingsd_dbus_close();
     }
@@ -178,33 +101,33 @@ int settingsd_dbus_init(void) {
         return -2;
 
     DBusError err;
-    s_api.error_init(&err);
+    s_api->error_init(&err);
 
-    s_conn = s_api.connection_open_private(address, &err);
+    s_conn = s_api->connection_open_private(address, &err);
     free(address);
 
     if (!s_conn) {
-        s_api.error_free(&err);
+        s_api->error_free(&err);
         return -3;
     }
 
-    if (!s_api.bus_register(s_conn, &err)) {
-        s_api.error_free(&err);
-        s_api.connection_close(s_conn);
-        s_api.connection_unref(s_conn);
+    if (!s_api->bus_register(s_conn, &err)) {
+        s_api->error_free(&err);
+        s_api->connection_close(s_conn);
+        s_api->connection_unref(s_conn);
         s_conn = NULL;
         return -4;
     }
 
     // Subscribe to SettingChanged signal from the portal
-    s_api.bus_add_match(s_conn,
+    s_api->bus_add_match(s_conn,
         "type='signal',sender='" PORTAL_NAME "',path='" PORTAL_PATH "',interface='" PORTAL_INTERFACE "',member='SettingChanged'",
         &err);
-    s_api.bus_add_match(s_conn,
+    s_api->bus_add_match(s_conn,
         "type='signal',interface='org.freedesktop.DBus.Local',member='Disconnected'",
         &err);
-    s_api.connection_flush(s_conn);
-    s_api.error_free(&err);
+    s_api->connection_flush(s_conn);
+    s_api->error_free(&err);
 
     return 0;
 }
@@ -212,16 +135,16 @@ int settingsd_dbus_init(void) {
 int settingsd_dbus_get_fd(int *out_fd) {
     if (!s_conn || !out_fd)
         return -1;
-    if (!s_api.connection_get_unix_fd(s_conn, out_fd))
+    if (!s_api->connection_get_unix_fd(s_conn, out_fd))
         return -2;
     return 0;
 }
 
 static int unwrap_variant(DBusMessageIter *iter, DBusMessageIter *out_cur) {
     *out_cur = *iter;
-    while (s_api.message_iter_get_arg_type(out_cur) == DBUS_TYPE_VARIANT) {
+    while (s_api->message_iter_get_arg_type(out_cur) == DBUS_TYPE_VARIANT) {
         DBusMessageIter sub;
-        s_api.message_iter_recurse(out_cur, &sub);
+        s_api->message_iter_recurse(out_cur, &sub);
         *out_cur = sub;
     }
     return 1;
@@ -230,8 +153,8 @@ static int unwrap_variant(DBusMessageIter *iter, DBusMessageIter *out_cur) {
 static int extract_uint32_value(DBusMessageIter *iter, uint32_t *out) {
     DBusMessageIter cur;
     unwrap_variant(iter, &cur);
-    if (s_api.message_iter_get_arg_type(&cur) == DBUS_TYPE_UINT32) {
-        s_api.message_iter_get_basic(&cur, out);
+    if (s_api->message_iter_get_arg_type(&cur) == DBUS_TYPE_UINT32) {
+        s_api->message_iter_get_basic(&cur, out);
         return 1;
     }
     return 0;
@@ -240,16 +163,16 @@ static int extract_uint32_value(DBusMessageIter *iter, uint32_t *out) {
 static int extract_accent_color_value(DBusMessageIter *iter, double *out_r, double *out_g, double *out_b) {
     DBusMessageIter cur;
     unwrap_variant(iter, &cur);
-    if (s_api.message_iter_get_arg_type(&cur) == DBUS_TYPE_STRUCT) {
+    if (s_api->message_iter_get_arg_type(&cur) == DBUS_TYPE_STRUCT) {
         DBusMessageIter sIter;
-        s_api.message_iter_recurse(&cur, &sIter);
-        if (s_api.message_iter_get_arg_type(&sIter) == DBUS_TYPE_DOUBLE) {
+        s_api->message_iter_recurse(&cur, &sIter);
+        if (s_api->message_iter_get_arg_type(&sIter) == DBUS_TYPE_DOUBLE) {
             double r = 0, g = 0, b = 0;
-            s_api.message_iter_get_basic(&sIter, &r);
-            if (s_api.message_iter_next(&sIter) && s_api.message_iter_get_arg_type(&sIter) == DBUS_TYPE_DOUBLE) {
-                s_api.message_iter_get_basic(&sIter, &g);
-                if (s_api.message_iter_next(&sIter) && s_api.message_iter_get_arg_type(&sIter) == DBUS_TYPE_DOUBLE) {
-                    s_api.message_iter_get_basic(&sIter, &b);
+            s_api->message_iter_get_basic(&sIter, &r);
+            if (s_api->message_iter_next(&sIter) && s_api->message_iter_get_arg_type(&sIter) == DBUS_TYPE_DOUBLE) {
+                s_api->message_iter_get_basic(&sIter, &g);
+                if (s_api->message_iter_next(&sIter) && s_api->message_iter_get_arg_type(&sIter) == DBUS_TYPE_DOUBLE) {
+                    s_api->message_iter_get_basic(&sIter, &b);
                     if (r >= 0.0 && r <= 1.0 && g >= 0.0 && g <= 1.0 && b >= 0.0 && b <= 1.0) {
                         *out_r = r;
                         *out_g = g;
@@ -273,36 +196,36 @@ static int read_portal_key(const char *key, DBusMessageIter *out_value_iter, DBu
     const char *methods[] = { "ReadOne", "Read" };
     for (size_t m = 0; m < sizeof(methods) / sizeof(methods[0]); m++) {
         DBusError err;
-        s_api.error_init(&err);
+        s_api->error_init(&err);
 
-        DBusMessage *msg = s_api.message_new_method_call(PORTAL_NAME, PORTAL_PATH, PORTAL_INTERFACE, methods[m]);
+        DBusMessage *msg = s_api->message_new_method_call(PORTAL_NAME, PORTAL_PATH, PORTAL_INTERFACE, methods[m]);
         if (!msg) {
-            s_api.error_free(&err);
+            s_api->error_free(&err);
             return 0;
         }
 
         DBusMessageIter iter;
-        s_api.message_iter_init_append(msg, &iter);
+        s_api->message_iter_init_append(msg, &iter);
         const char *ns = SETTINGS_NAMESPACE;
-        s_api.message_iter_append_basic(&iter, DBUS_TYPE_STRING, &ns);
-        s_api.message_iter_append_basic(&iter, DBUS_TYPE_STRING, &key);
+        s_api->message_iter_append_basic(&iter, DBUS_TYPE_STRING, &ns);
+        s_api->message_iter_append_basic(&iter, DBUS_TYPE_STRING, &key);
 
-        DBusMessage *reply = s_api.connection_send_with_reply_and_block(s_conn, msg, 5000, &err);
-        s_api.message_unref(msg);
+        DBusMessage *reply = s_api->connection_send_with_reply_and_block(s_conn, msg, 5000, &err);
+        s_api->message_unref(msg);
 
         if (reply) {
-            if (s_api.message_get_type(reply) == DBUS_MESSAGE_TYPE_METHOD_RETURN) {
-                if (s_api.message_iter_init(reply, out_value_iter)) {
-                    s_api.error_free(&err);
+            if (s_api->message_get_type(reply) == DBUS_MESSAGE_TYPE_METHOD_RETURN) {
+                if (s_api->message_iter_init(reply, out_value_iter)) {
+                    s_api->error_free(&err);
                     *out_reply = reply;
                     return 1;
                 }
             }
-            s_api.message_unref(reply);
+            s_api->message_unref(reply);
         }
 
         int unknown_method = (err.name && strcmp(err.name, "org.freedesktop.DBus.Error.UnknownMethod") == 0);
-        s_api.error_free(&err);
+        s_api->error_free(&err);
 
         if (!unknown_method) {
             // Error was something other than UnknownMethod (e.g. key not found or portal error)
@@ -333,7 +256,7 @@ int settingsd_dbus_read_appearance(int *out_has_dark, int *out_dark,
             s_dark = (val == 1) ? 1 : 0;
             read_count++;
         }
-        s_api.message_unref(reply);
+        s_api->message_unref(reply);
     }
 
     // 2. contrast
@@ -344,7 +267,7 @@ int settingsd_dbus_read_appearance(int *out_has_dark, int *out_dark,
             s_contrast = (val == 1) ? 1 : 0;
             read_count++;
         }
-        s_api.message_unref(reply);
+        s_api->message_unref(reply);
     }
 
     // 3. accent-color
@@ -360,7 +283,7 @@ int settingsd_dbus_read_appearance(int *out_has_dark, int *out_dark,
             // Values outside [0, 1] treated as not set
             s_has_accent = 0;
         }
-        s_api.message_unref(reply);
+        s_api->message_unref(reply);
     }
 
     if (out_has_dark) *out_has_dark = s_has_dark;
@@ -379,12 +302,12 @@ int settingsd_dbus_process_messages(int timeout_ms, settingsd_change_cb callback
     if (!s_conn)
         return -1;
 
-    if (!s_api.connection_get_is_connected(s_conn)) {
+    if (!s_api->connection_get_is_connected(s_conn)) {
         settingsd_dbus_close();
         return -1;
     }
 
-    if (!s_api.connection_read_write(s_conn, timeout_ms)) {
+    if (!s_api->connection_read_write(s_conn, timeout_ms)) {
         settingsd_dbus_close();
         return -1;
     }
@@ -393,31 +316,31 @@ int settingsd_dbus_process_messages(int timeout_ms, settingsd_change_cb callback
     int state_changed = 0;
     DBusMessage *msg;
 
-    while ((msg = s_api.connection_pop_message(s_conn)) != NULL) {
+    while ((msg = s_api->connection_pop_message(s_conn)) != NULL) {
         processed++;
 
-        if (s_api.message_is_signal(msg, "org.freedesktop.DBus.Local", "Disconnected")) {
-            s_api.message_unref(msg);
+        if (s_api->message_is_signal(msg, "org.freedesktop.DBus.Local", "Disconnected")) {
+            s_api->message_unref(msg);
             settingsd_dbus_close();
             return -1;
         }
 
-        if (s_api.message_is_signal(msg, PORTAL_INTERFACE, "SettingChanged")) {
-            const char *path = s_api.message_get_path(msg);
+        if (s_api->message_is_signal(msg, PORTAL_INTERFACE, "SettingChanged")) {
+            const char *path = s_api->message_get_path(msg);
             if (!path || strcmp(path, PORTAL_PATH) != 0) {
-                s_api.message_unref(msg);
+                s_api->message_unref(msg);
                 continue;
             }
 
             DBusMessageIter iter;
-            if (s_api.message_iter_init(msg, &iter)) {
+            if (s_api->message_iter_init(msg, &iter)) {
                 const char *ns = NULL;
                 const char *key = NULL;
-                if (s_api.message_iter_get_arg_type(&iter) == DBUS_TYPE_STRING) {
-                    s_api.message_iter_get_basic(&iter, &ns);
-                    if (s_api.message_iter_next(&iter) && s_api.message_iter_get_arg_type(&iter) == DBUS_TYPE_STRING) {
-                        s_api.message_iter_get_basic(&iter, &key);
-                        if (s_api.message_iter_next(&iter) && ns && strcmp(ns, SETTINGS_NAMESPACE) == 0 && key) {
+                if (s_api->message_iter_get_arg_type(&iter) == DBUS_TYPE_STRING) {
+                    s_api->message_iter_get_basic(&iter, &ns);
+                    if (s_api->message_iter_next(&iter) && s_api->message_iter_get_arg_type(&iter) == DBUS_TYPE_STRING) {
+                        s_api->message_iter_get_basic(&iter, &key);
+                        if (s_api->message_iter_next(&iter) && ns && strcmp(ns, SETTINGS_NAMESPACE) == 0 && key) {
                             if (strcmp(key, "color-scheme") == 0) {
                                 uint32_t val = 0;
                                 if (extract_uint32_value(&iter, &val)) {
@@ -451,7 +374,7 @@ int settingsd_dbus_process_messages(int timeout_ms, settingsd_change_cb callback
             }
         }
 
-        s_api.message_unref(msg);
+        s_api->message_unref(msg);
     }
 
     if (state_changed && callback) {
@@ -463,8 +386,8 @@ int settingsd_dbus_process_messages(int timeout_ms, settingsd_change_cb callback
 
 void settingsd_dbus_close(void) {
     if (s_conn) {
-        s_api.connection_close(s_conn);
-        s_api.connection_unref(s_conn);
+        s_api->connection_close(s_conn);
+        s_api->connection_unref(s_conn);
         s_conn = NULL;
     }
 }
