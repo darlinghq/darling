@@ -73,4 +73,34 @@ enum prefsd_code_signing_policy {
 // Parses the CodeSigningPolicy value: exactly "off", "warn" or "enforce".
 bool prefsd_parse_code_signing_policy(const char* s, size_t len, enum prefsd_code_signing_policy* out);
 
+// Validates the format of OSProductVersion (e.g. "12.6.8", "26.4").
+// 1..31 characters, digits and dots only, no leading/trailing/consecutive dots,
+// at most 3 components.
+bool prefsd_is_valid_os_product_version(const char* s, size_t len);
+
+// Validates the format of OSVersion (e.g. "21G725", "25E246").
+// 1..31 alphanumeric characters only.
+bool prefsd_is_valid_os_version(const char* s, size_t len);
+
+// Validates the format of OSRelease (e.g. "21.6.0", "25.4.0").
+// 1..31 characters, digits and dots only, 2 or 3 components.
+bool prefsd_is_valid_os_release(const char* s, size_t len);
+
+// Validates the optional OSiOSSupportVersion override (e.g. "15.6" or "none").
+bool prefsd_is_valid_ios_support_version(const char* s, size_t len);
+
+// Returns "Mac OS X" for 10.x, or "macOS" for 11+.
+const char* prefsd_product_name_for_version(const char* product_version);
+
+// Whether SystemVersionCompat.plist should exist (major >= 11).
+bool prefsd_should_have_system_version_compat(const char* product_version);
+
+// Computes the iOSSupportVersion for a macOS version string and optional override.
+// Returns true if the key should be included in SystemVersion.plist, false if omitted.
+bool prefsd_compute_ios_support_version(const char* product_version, const char* override_ios_version, char* out, size_t out_len);
+
+// Maps a macOS product version string to its corresponding compatibility version
+// for SystemVersionCompat.plist: "10.16" for major >= 11; or the version unchanged for major < 11.
+void prefsd_compute_compat_product_version(const char* product_version, char* out, size_t out_len);
+
 #endif // _PREFSD_VALIDATE_H
