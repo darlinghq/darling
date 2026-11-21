@@ -63,6 +63,7 @@ typedef NS_ENUM(NSInteger, MPRepeatType) {
     MPRepeatTypeAll
 };
 
+MP_EXTERN NSString *const MPMediaItemPropertyAlbumArtist;
 MP_EXTERN NSString *const MPMediaItemPropertyAlbumTitle;
 MP_EXTERN NSString *const MPMediaItemPropertyAlbumTrackCount;
 MP_EXTERN NSString *const MPMediaItemPropertyAlbumTrackNumber;
@@ -73,6 +74,8 @@ MP_EXTERN NSString *const MPMediaItemPropertyDiscCount;
 MP_EXTERN NSString *const MPMediaItemPropertyDiscNumber;
 MP_EXTERN NSString *const MPMediaItemPropertyGenre;
 MP_EXTERN NSString *const MPMediaItemPropertyPlaybackDuration;
+MP_EXTERN NSString *const MPMediaItemPropertyPlayCount;
+MP_EXTERN NSString *const MPMediaItemPropertyRating;
 MP_EXTERN NSString *const MPMediaItemPropertyTitle;
 
 MP_EXTERN NSString *const MPNowPlayingInfoPropertyElapsedPlaybackTime;

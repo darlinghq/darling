@@ -20,6 +20,7 @@
 #import <MediaPlayer/MediaPlayer.h>
 
 // Values as macOS reports them.
+NSString *const MPMediaItemPropertyAlbumArtist = @"albumArtist";
 NSString *const MPMediaItemPropertyAlbumTitle = @"albumTitle";
 NSString *const MPMediaItemPropertyAlbumTrackCount = @"albumTrackCount";
 NSString *const MPMediaItemPropertyAlbumTrackNumber = @"albumTrackNumber";
@@ -30,6 +31,8 @@ NSString *const MPMediaItemPropertyDiscCount = @"discCount";
 NSString *const MPMediaItemPropertyDiscNumber = @"discNumber";
 NSString *const MPMediaItemPropertyGenre = @"genre";
 NSString *const MPMediaItemPropertyPlaybackDuration = @"playbackDuration";
+NSString *const MPMediaItemPropertyPlayCount = @"playCount";
+NSString *const MPMediaItemPropertyRating = @"rating";
 NSString *const MPMediaItemPropertyTitle = @"title";
 
 NSString *const MPNowPlayingInfoPropertyElapsedPlaybackTime = @"MPNowPlayingInfoPropertyElapsedPlaybackTime";
