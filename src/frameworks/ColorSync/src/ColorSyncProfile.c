@@ -151,9 +151,9 @@ CFDataRef ColorSyncProfileCopyTag(ColorSyncProfileRef prof, CFStringRef signatur
 	return CFDataCreate(kCFAllocatorDefault, bytes + tag.offset, tag.size);
 }
 
-// GUESS: the signatures come in tag table order, and a signature that repeats (invalid under ICC.1:2022, 7.3.1)
-// is listed once, as ColorSyncProfileContainsTag and ColorSyncProfileCopyTag see only its first entry.
-// The page says neither.
+// GUESS: the signatures come in tag table order (the original's order for distinct signatures looked hash-based
+// on macOS 26.7.3, so it is not reproduced), and a signature that repeats (invalid under ICC.1:2022, 7.3.1)
+// is listed once, at its first position. The page says neither.
 CFArrayRef ColorSyncProfileCopyTagSignatures(ColorSyncProfileRef prof)
 {
 	const struct __ColorSyncProfile* profile = profileOrNull(prof);

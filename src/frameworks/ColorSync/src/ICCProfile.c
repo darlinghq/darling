@@ -43,13 +43,13 @@ ICCTag ICCProfileTagAt(const uint8_t* data, uint32_t index)
 
 // GUESS: how strictly the original validates is not documented. This checks what is needed to read
 // tags safely, plus the header signature, and stays lenient about the spec's alignment and ordering rules.
+// The profile size field in the header is not compared with the length of the data: ColorSyncProfileCreate on
+// macOS 26.7.3 accepts a size field that is larger or smaller than the data (black-box observation, tier 2).
 bool ICCProfileValidate(const uint8_t* data, size_t length)
 {
 	if (!data || length < ICC_HEADER_SIZE + 4 || length > UINT32_MAX)
 		return false;
 	if (readBigEndian32(data + ICC_FILE_SIGNATURE_OFFSET) != ICC_FILE_SIGNATURE)
-		return false;
-	if (readBigEndian32(data) > length)
 		return false;
 
 	const uint32_t count = ICCProfileTagCount(data);
@@ -66,12 +66,15 @@ bool ICCProfileValidate(const uint8_t* data, size_t length)
 	return true;
 }
 
-// GUESS: duplicate signatures are invalid under ICC.1:2022, 7.3.1, but are accepted here and the first entry
-// wins, because the pages do not say how the original treats them.
+// QUIRK: duplicate signatures are invalid under ICC.1:2022, 7.3.1, but are accepted, and the last entry of a
+// signature is the one that ColorSyncProfileContainsTag and ColorSyncProfileCopyTag see. Not documented.
+// Evidence: black-box observation of ColorSyncProfileCopyTag on macOS 26.7.3 (x86_64), tier 2, for two and
+// three entries with one signature: the data of the last entry came back.
+// Test: ICCProfileTest.c, "last duplicate wins".
 bool ICCProfileFindTag(const uint8_t* data, uint32_t signature, ICCTag* outTag)
 {
 	const uint32_t count = ICCProfileTagCount(data);
-	for (uint32_t i = 0; i < count; i++)
+	for (uint32_t i = count; i-- > 0;)
 	{
 		const ICCTag tag = ICCProfileTagAt(data, i);
 		if (tag.signature == signature)

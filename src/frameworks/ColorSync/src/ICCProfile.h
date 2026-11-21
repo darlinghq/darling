@@ -37,8 +37,7 @@ typedef struct ICCTag {
 	uint32_t size;
 } ICCTag;
 
-// True if the bytes have the 'acsp' file signature at byte 36, a size field no larger than the data, and a
-// tag table with every tag's offset and size inside the data and past the table. Nothing else in the
+// True if the bytes have the 'acsp' file signature at byte 36 and a tag table with every tag's offset and size inside the data and past the table. Nothing else in the
 // header or the tag data is checked.
 bool ICCProfileValidate(const uint8_t* data, size_t length);
 
@@ -46,7 +45,7 @@ bool ICCProfileValidate(const uint8_t* data, size_t length);
 uint32_t ICCProfileTagCount(const uint8_t* data);
 ICCTag ICCProfileTagAt(const uint8_t* data, uint32_t index);
 
-// Finds the first tag with the signature.
+// Finds the last tag with the signature.
 bool ICCProfileFindTag(const uint8_t* data, uint32_t signature, ICCTag* outTag);
 
 // Writes to outIndices the table index of the first entry of each distinct signature, in table order, and the

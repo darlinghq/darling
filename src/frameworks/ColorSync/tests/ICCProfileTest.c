@@ -71,12 +71,13 @@ int main(void)
 	expect(ICCProfileValidate(empty, sizeof empty), "empty tag table");
 	expect(ICCProfileTagCount(empty) == 0, "empty count");
 
-	// Duplicate signatures are accepted; the first entry wins and each signature is listed once, in table order.
+	// Duplicate signatures are accepted; the last entry wins (QUIRK, see ICCProfileFindTag) and each signature is
+	// listed once, in table order.
 	uint8_t dup[256];
 	memcpy(dup, profile, length);
 	put32(dup + 144, SIG('w', 't', 'p', 't'));
 	expect(ICCProfileValidate(dup, length), "duplicate signatures validate");
-	expect(ICCProfileFindTag(dup, SIG('w', 't', 'p', 't'), &tag) && tag.offset == 156, "first duplicate wins");
+	expect(ICCProfileFindTag(dup, SIG('w', 't', 'p', 't'), &tag) && tag.offset == 160, "last duplicate wins");
 	uint32_t indices[2], indexCount;
 	expect(ICCProfileFirstTagIndices(dup, indices, &indexCount) && indexCount == 1 && indices[0] == 0, "duplicate listed once");
 	expect(ICCProfileFirstTagIndices(profile, indices, &indexCount) && indexCount == 2 && indices[0] == 0 && indices[1] == 1, "distinct signatures all listed");
@@ -156,7 +157,9 @@ int main(void)
 
 	memcpy(bad, profile, length);
 	put32(bad, (uint32_t) length + 1);
-	expect(!ICCProfileValidate(bad, length), "header size larger than the data");
+	expect(ICCProfileValidate(bad, length), "header size larger than the data is accepted");
+	put32(bad, 10);
+	expect(ICCProfileValidate(bad, length), "header size smaller than the data is accepted");
 
 	if (g_failures)
 	{
