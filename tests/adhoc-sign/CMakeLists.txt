@@ -16,14 +16,16 @@ add_test(NAME adhoc_sign_fixtures
 
 # what the build produced (run after building them): the dynamic linker, a universal dylib
 # linked by the compiler driver, an executable, and a framework put together by lipo from
-# separately linked slices
-add_test(NAME adhoc_sign_outputs
-	COMMAND $<TARGET_FILE:adhoc-sign-check>
-		$<TARGET_FILE:system_loader>
-		$<TARGET_FILE:system_kernel>
-		$<TARGET_FILE:launchctl>)
-add_test(NAME adhoc_sign_framework
-	COMMAND $<TARGET_FILE:adhoc-sign-check> --expect-identifier=CoreFoundation $<TARGET_FILE:CoreFoundation>)
+# separately linked slices. Not in a build of the Linux part only (DARLING_BUILD_MACHO=OFF).
+if (DARLING_BUILD_MACHO)
+	add_test(NAME adhoc_sign_outputs
+		COMMAND $<TARGET_FILE:adhoc-sign-check>
+			$<TARGET_FILE:system_loader>
+			$<TARGET_FILE:system_kernel>
+			$<TARGET_FILE:launchctl>)
+	add_test(NAME adhoc_sign_framework
+		COMMAND $<TARGET_FILE:adhoc-sign-check> --expect-identifier=CoreFoundation $<TARGET_FILE:CoreFoundation>)
+endif()
 
 # every image the last install wrote (install_manifest.txt; skipped until something was
 # installed from this build directory). Catches images that are built or installed without

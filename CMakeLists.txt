@@ -259,6 +259,8 @@ if (NOT "${_darling_archs_updated}" STREQUAL "${DARLING_ARCHS}")
 	set(DARLING_ARCHS "${_darling_archs_updated}" CACHE STRING
 		"Architectures of the Mach-O slices to build, a list of i386, x86_64 and arm64" FORCE)
 endif()
+option(DARLING_BUILD_MACHO
+	"Build the Mach-O part of Darling; OFF builds only the parts that run on Linux (install component core_native)" ON)
 option(DEBIAN_PACKAGING "Packaging for Debian" OFF)
 option(ENABLE_TESTS "Install in-prefix unit tests" OFF)
 option(REGENERATE_SDK "Regenerate Header Files For Open Source SDK" OFF)

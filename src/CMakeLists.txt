@@ -40,7 +40,9 @@ set(CMAKE_C_USE_LINKER_INFORMATION FALSE)
 # these projects are always built
 #
 
-set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
+# What this first part installs runs on Linux (darlingserver, the launcher, mldr, the developer
+# ld): it goes to the install component core_native, which is packaged per host architecture.
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core_native")
 
 #add_subdirectory(external/xcbuild)
 add_subdirectory(bsdln)
@@ -251,6 +253,13 @@ add_subdirectory(startup)
 include_directories(${CMAKE_SOURCE_DIR}/basic-headers)
 
 add_subdirectory(external/bootstrap_cmds)
+
+# The rest is the Mach-O part of Darling, which is the same for every host architecture.
+# DARLING_BUILD_MACHO=OFF builds and installs only the Linux part above.
+if (NOT DARLING_BUILD_MACHO)
+	return()
+endif()
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
 
 add_definitions(
 	-D__APPLE__
