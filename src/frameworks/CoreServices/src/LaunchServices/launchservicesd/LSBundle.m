@@ -538,8 +538,10 @@ static FSEventStreamRef g_eventStream;
 
 +(void)watchForBundles
 {
+	// File-level events: the callback looks for bundles' Info.plist files. Without the flag a stream reports
+	// only the directories that changed, with no item flags.
 	g_eventStream = FSEventStreamCreate(NULL, fsEventCallback, NULL, (CFArrayRef) MONITORED_DIRECTORIES,
-		kFSEventStreamEventIdSinceNow, 1, kFSEventStreamCreateFlagUseCFTypes);
+		kFSEventStreamEventIdSinceNow, 1, kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagFileEvents);
 
 	FSEventStreamSetDispatchQueue(g_eventStream, g_serverQueue);
 	FSEventStreamStart(g_eventStream);
