@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <pthread.h>
 #include <sched.h>
 #include <signal.h>
 #include <stddef.h>
@@ -350,6 +351,81 @@ static long copy_host_stat_to_guest(const struct arm64_kernel_stat* host_st, uin
 	return fex_copy_to_guest((void*)guest_addr, &guest_st, sizeof(guest_st));
 }
 
+// Guest signal actions. The guest's rt_sigaction cannot go to the host kernel: the x86_64
+// struct sigaction has a sa_restorer field the host's lacks, and a guest handler is x86_64 code
+// that the kernel would run natively. A handler installed that way also replaces the host
+// SIGSEGV/SIGBUS/... handlers that FEX's generated code depends on. So the guest's actions are
+// kept in a table and the host only sees a handler that notes the signal, which is enough to
+// interrupt a blocked host syscall with EINTR. Delivering a signal to a guest handler is not
+// implemented.
+struct x86_64_ksigaction {
+	uint64_t handler;
+	uint64_t flags;
+	uint64_t restorer;
+	uint64_t mask;
+};
+
+#define GUEST_SIG_DFL 0
+#define GUEST_SIG_IGN 1
+#define GUEST_NSIG 65
+
+static struct x86_64_ksigaction g_guest_sigactions[GUEST_NSIG];
+static pthread_mutex_t g_guest_sigactions_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static void guest_signal_noted(int sig)
+{
+	(void)sig;
+}
+
+// Faults raised by the generated code itself: the host keeps its own handler for them.
+static bool signal_owned_by_jit(int sig)
+{
+	return sig == SIGILL || sig == SIGTRAP || sig == SIGBUS || sig == SIGFPE || sig == SIGSEGV;
+}
+
+static long guest_rt_sigaction(long sig, uintptr_t new_action, uintptr_t old_action, long sigsetsize)
+{
+	if (sig <= 0 || sig >= GUEST_NSIG || sig == SIGKILL || sig == SIGSTOP)
+		return -EINVAL;
+	if (sigsetsize != sizeof(uint64_t))
+		return -EINVAL;
+
+	struct x86_64_ksigaction requested;
+	if (new_action) {
+		long rc = fex_copy_from_guest(&requested, (void*)new_action, sizeof(requested));
+		if (rc != 0)
+			return rc;
+	}
+
+	pthread_mutex_lock(&g_guest_sigactions_lock);
+	struct x86_64_ksigaction previous = g_guest_sigactions[sig];
+	long ret = 0;
+	if (new_action) {
+		if (!signal_owned_by_jit((int)sig)) {
+			struct sigaction host;
+			memset(&host, 0, sizeof(host));
+			if (requested.handler == GUEST_SIG_DFL) {
+				host.sa_handler = SIG_DFL;
+			} else if (requested.handler == GUEST_SIG_IGN) {
+				host.sa_handler = SIG_IGN;
+			} else {
+				host.sa_handler = guest_signal_noted;
+				host.sa_flags = (int)(requested.flags & (SA_RESTART | SA_NOCLDSTOP | SA_NOCLDWAIT));
+				memcpy(&host.sa_mask, &requested.mask, sizeof(requested.mask));
+			}
+			if (sigaction((int)sig, &host, NULL) != 0)
+				ret = -errno;
+		}
+		if (ret == 0)
+			g_guest_sigactions[sig] = requested;
+	}
+	pthread_mutex_unlock(&g_guest_sigactions_lock);
+
+	if (ret == 0 && old_action)
+		ret = fex_copy_to_guest((void*)old_action, &previous, sizeof(previous));
+	return ret;
+}
+
 long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 {
 	if (!state)
@@ -381,6 +457,10 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 	long ret = -ENOSYS;
 
 	switch (nr) {
+		case 13: // rt_sigaction
+			ret = guest_rt_sigaction(a1, (uintptr_t)a2, (uintptr_t)a3, a4);
+			break;
+
 		case 158: // arch_prctl
 			if (a1 == X86_ARCH_SET_GS) {
 				state->gs_base = (uint64_t)a2;
