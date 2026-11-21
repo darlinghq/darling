@@ -18,7 +18,7 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <AVFoundation/AVAssetTrack.h>
+#import "AVPlaybackPrivate.h"
 #import <darling-stub-forwarding.h>
 
 @implementation AVAssetTrack
@@ -31,30 +31,41 @@
                      timeRange:(CMTimeRange)timeRange
 {
     if ((self = [super init])) {
-        _asset = asset;
-        _trackID = trackID;
-        _mediaType = [mediaType copy];
-        _naturalSize = naturalSize;
-        _nominalFrameRate = nominalFrameRate;
-        _timeRange = timeRange;
-        _enabled = YES;
+        _assetTrack = [[AVAssetTrackInternal alloc] init];
+        _assetTrack->asset = asset;
+        _assetTrack->trackID = trackID;
+        _assetTrack->mediaType = [mediaType copy];
+        _assetTrack->naturalSize = naturalSize;
+        _assetTrack->nominalFrameRate = nominalFrameRate;
+        _assetTrack->timeRange = timeRange;
     }
     return self;
 }
 
 - (void)dealloc
 {
-    [_mediaType release];
+    [_assetTrack release];
     [super dealloc];
 }
 
-- (AVAsset *)asset { return _asset; }
-- (CMPersistentTrackID)trackID { return _trackID; }
-- (AVMediaType)mediaType { return _mediaType; }
-- (CGSize)naturalSize { return _naturalSize; }
-- (float)nominalFrameRate { return _nominalFrameRate; }
-- (CMTimeRange)timeRange { return _timeRange; }
-- (BOOL)isEnabled { return _enabled; }
+- (AVAsset *)asset { return _assetTrack->asset; }
+- (CMPersistentTrackID)trackID { return _assetTrack->trackID; }
+- (AVMediaType)mediaType { return _assetTrack->mediaType; }
+- (CGSize)naturalSize { return _assetTrack->naturalSize; }
+- (float)nominalFrameRate { return _assetTrack->nominalFrameRate; }
+- (CMTimeRange)timeRange { return _assetTrack->timeRange; }
+- (BOOL)isEnabled { return YES; }
+- (BOOL)isPlayable { return YES; }
+
+- (AVKeyValueStatus)statusOfValueForKey:(NSString *)key error:(NSError **)outError
+{
+    return AVPlaybackStatusOfKey(self, key, outError);
+}
+
+- (void)loadValuesAsynchronouslyForKeys:(NSArray<NSString *> *)keys completionHandler:(void (^)(void))handler
+{
+    AVPlaybackLoadKeys(keys, handler);
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);

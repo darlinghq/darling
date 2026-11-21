@@ -18,17 +18,15 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <AVFoundation/AVPlayerItem.h>
+#import "AVPlaybackPrivate.h"
 #import <AVFoundation/AVURLAsset.h>
-#import <AVFoundation/AVError.h>
 #import <darling-stub-forwarding.h>
 
 @implementation AVPlayerItem
 
 + (instancetype)playerItemWithURL:(NSURL *)URL
 {
-    AVAsset *asset = [AVURLAsset URLAssetWithURL:URL options:nil];
-    return [self playerItemWithAsset:asset];
+    return [[[self alloc] initWithURL:URL] autorelease];
 }
 
 + (instancetype)playerItemWithAsset:(AVAsset *)asset
@@ -38,52 +36,53 @@
 
 - (instancetype)initWithURL:(NSURL *)URL
 {
-    AVAsset *asset = [AVURLAsset URLAssetWithURL:URL options:nil];
-    return [self initWithAsset:asset];
+    return [self initWithAsset:[AVURLAsset URLAssetWithURL:URL options:nil]];
 }
 
 - (instancetype)initWithAsset:(AVAsset *)asset
 {
     if ((self = [super init])) {
-        _asset = [asset retain];
-        _tracks = [[NSMutableArray alloc] init];
-        _currentTime = kCMTimeZero;
-
-        if ([_asset isPlayable]) {
-            _status = AVPlayerItemStatusReadyToPlay;
-            _duration = [_asset duration];
-            _presentationSize = [_asset naturalSize];
-        } else {
-            _status = AVPlayerItemStatusFailed;
-            _error = [[NSError alloc] initWithDomain:@"AVFoundationErrorDomain"
-                                                code:-11828 /* AVErrorFileFormatUnrecognized */
-                                            userInfo:nil];
-            _duration = kCMTimeZero;
-            _presentationSize = CGSizeZero;
-        }
+        _playerItem = [[AVPlayerItemInternal alloc] init];
+        _playerItem->asset = [asset retain];
+        _playerItem->status = AVPlayerItemStatusUnknown;
+        _playerItem->outputs = [[NSMutableArray alloc] init];
     }
     return self;
 }
 
 - (void)dealloc
 {
-    [_asset release];
-    [_error release];
-    [_tracks release];
+    for (AVPlayerItemOutput *output in [[_playerItem->outputs copy] autorelease])
+        [self removeOutput:output];
+    [_playerItem release];
     [super dealloc];
 }
 
-- (AVPlayerItemStatus)status { return _status; }
-- (NSError *)error { return _error; }
-- (AVAsset *)asset { return _asset; }
-- (CMTime)duration { return _duration; }
-- (CGSize)presentationSize { return _presentationSize; }
-- (NSArray *)tracks { return _tracks; }
-- (CMTime)currentTime { return _currentTime; }
+- (AVPlayerItemInternal *)_internal { return _playerItem; }
 
-- (void)_setCurrentTime:(CMTime)time
+- (void)_setStatus:(AVPlayerItemStatus)status error:(NSError *)error
 {
-    _currentTime = time;
+    [self willChangeValueForKey:@"status"];
+    [self willChangeValueForKey:@"error"];
+    _playerItem->status = status;
+    [_playerItem->error release];
+    _playerItem->error = [error retain];
+    [self didChangeValueForKey:@"error"];
+    [self didChangeValueForKey:@"status"];
+}
+
+- (AVPlayerItemStatus)status { return (AVPlayerItemStatus)_playerItem->status; }
+- (NSError *)error { return _playerItem->error; }
+- (AVAsset *)asset { return _playerItem->asset; }
+- (CMTime)duration { return [_playerItem->asset duration]; }
+- (CGSize)presentationSize { return [_playerItem->asset naturalSize]; }
+- (NSArray *)tracks { return [NSArray array]; }
+- (NSArray<AVPlayerItemOutput *> *)outputs { return [[_playerItem->outputs copy] autorelease]; }
+
+- (CMTime)currentTime
+{
+    AVPlayer *player = _playerItem->player;
+    return player ? [player currentTime] : kCMTimeZero;
 }
 
 - (void)seekToTime:(CMTime)time
@@ -93,11 +92,13 @@
 
 - (void)seekToTime:(CMTime)time completionHandler:(void (^)(BOOL finished))completionHandler
 {
-    _currentTime = time;
-    if (completionHandler) {
-        completionHandler(YES);
+    AVPlayer *player = _playerItem->player;
+    if (player) {
+        [player seekToTime:time completionHandler:completionHandler];
+    } else if (completionHandler) {
+        void (^handler)(BOOL) = [completionHandler copy];
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{ handler(NO); [handler release]; });
     }
-    [[NSNotificationCenter defaultCenter] postNotificationName:AVPlayerItemTimeJumpedNotification object:self];
 }
 
 - (void)seekToTime:(CMTime)time toleranceBefore:(CMTime)toleranceBefore toleranceAfter:(CMTime)toleranceAfter
@@ -112,24 +113,46 @@
 
 - (void)stepByCount:(NSInteger)stepCount
 {
-    // Step roughly 1/30s per step
-    CMTime stepDuration = CMTimeMake(stepCount, 30);
-    CMTime newTime = CMTimeAdd(_currentTime, stepDuration);
-    if (CMTimeCompare(newTime, kCMTimeZero) < 0) {
-        newTime = kCMTimeZero;
+    float rate = 30.0f;
+    for (AVAssetTrack *track in [_playerItem->asset tracksWithMediaType:AVMediaTypeVideo]) {
+        if ([track nominalFrameRate] > 0) {
+            rate = [track nominalFrameRate];
+            break;
+        }
     }
-    if (CMTimeCompare(newTime, _duration) > 0) {
-        newTime = _duration;
-    }
-    [self seekToTime:newTime completionHandler:nil];
+    double seconds = CMTimeGetSeconds([self currentTime]) + (double)stepCount / rate;
+    double duration = CMTimeGetSeconds([self duration]);
+    if (seconds < 0)
+        seconds = 0;
+    if (duration > 0 && seconds > duration)
+        seconds = duration;
+    [self seekToTime:CMTimeMakeWithSeconds(seconds, 1000000)];
 }
 
-- (void)_didPlayToEnd
+- (void)addOutput:(AVPlayerItemOutput *)output
 {
-    _currentTime = _duration;
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [[NSNotificationCenter defaultCenter] postNotificationName:AVPlayerItemDidPlayToEndTimeNotification object:self];
-    });
+    if ([output isKindOfClass:[AVPlayerItemVideoOutput class]] && ![_playerItem->outputs containsObject:output]) {
+        [_playerItem->outputs addObject:output];
+        [(AVPlayerItemVideoOutput *)output _setItem:self];
+    }
+}
+
+- (void)removeOutput:(AVPlayerItemOutput *)output
+{
+    if ([_playerItem->outputs containsObject:output]) {
+        [(AVPlayerItemVideoOutput *)output _setItem:nil];
+        [_playerItem->outputs removeObject:output];
+    }
+}
+
+- (AVKeyValueStatus)statusOfValueForKey:(NSString *)key error:(NSError **)outError
+{
+    return AVPlaybackStatusOfKey(self, key, outError);
+}
+
+- (void)loadValuesAsynchronouslyForKeys:(NSArray<NSString *> *)keys completionHandler:(void (^)(void))handler
+{
+    AVPlaybackLoadKeys(keys, handler);
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {

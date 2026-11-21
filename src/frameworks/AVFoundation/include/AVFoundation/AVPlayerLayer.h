@@ -20,25 +20,20 @@
 
 #import <Foundation/Foundation.h>
 #import <QuartzCore/CALayer.h>
-#import <QuartzCore/CATransaction.h>
 #import <AVFoundation/AVAnimation.h>
-#import <CoreVideo/CoreVideo.h>
 
 @class AVPlayer;
+@class AVPlayerLayerInternal;
 
 @interface AVPlayerLayer : CALayer {
-@protected
-    AVPlayer *_player;
-    AVLayerVideoGravity _videoGravity;
-    BOOL _readyForDisplay;
+@private
+    AVPlayerLayerInternal *_playerLayer;
 }
 
-+ (instancetype)playerLayerWithPlayer:(AVPlayer *)player;
++ (AVPlayerLayer *)playerLayerWithPlayer:(AVPlayer *)player;
 
-@property (retain) AVPlayer *player;
-@property (copy) AVLayerVideoGravity videoGravity;
-@property (readonly, getter=isReadyForDisplay) BOOL readyForDisplay;
-
-- (void)_displayCGImage:(CGImageRef)image;
+@property (nonatomic, retain) AVPlayer *player;
+@property (nonatomic, copy) AVLayerVideoGravity videoGravity;
+@property (nonatomic, readonly, getter=isReadyForDisplay) BOOL readyForDisplay;
 
 @end

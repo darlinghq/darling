@@ -18,92 +18,106 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <AVFoundation/AVPlayerLayer.h>
-#import <AVFoundation/AVPlayer.h>
+#import "AVPlaybackPrivate.h"
+#import <QuartzCore/CATransaction.h>
 #import <darling-stub-forwarding.h>
 
 @implementation AVPlayerLayer
 
-+ (instancetype)playerLayerWithPlayer:(AVPlayer *)player
++ (AVPlayerLayer *)playerLayerWithPlayer:(AVPlayer *)player
 {
     AVPlayerLayer *layer = [[[self alloc] init] autorelease];
-    layer.player = player;
+    [layer setPlayer:player];
     return layer;
 }
 
 - (instancetype)init
 {
     if ((self = [super init])) {
-        _videoGravity = [AVLayerVideoGravityResizeAspect copy];
+        _playerLayer = [[AVPlayerLayerInternal alloc] init];
+        _playerLayer->videoGravity = [AVLayerVideoGravityResizeAspect copy];
         self.contentsGravity = kCAGravityResizeAspect;
-        _readyForDisplay = NO;
+    }
+    return self;
+}
+
+// Core Animation makes layers of this class for its own use (the presentation layer).
+- (instancetype)initWithLayer:(id)layer
+{
+    if ((self = [super initWithLayer:layer])) {
+        _playerLayer = [[AVPlayerLayerInternal alloc] init];
+        AVPlayerLayerInternal *source = [layer isKindOfClass:[AVPlayerLayer class]] ? ((AVPlayerLayer *)layer)->_playerLayer : nil;
+        _playerLayer->videoGravity = [(source ? source->videoGravity : AVLayerVideoGravityResizeAspect) copy];
+        _playerLayer->readyForDisplay = source ? source->readyForDisplay : NO;
     }
     return self;
 }
 
 - (void)dealloc
 {
-    if (_player) {
-        [_player _unregisterPlayerLayer:self];
-        [_player release];
+    if (_playerLayer->player) {
+        // Waits for a frame delivery that is using the layer right now.
+        [[_playerLayer->player _internal] unregisterLayer:self];
     }
-    [_videoGravity release];
+    [_playerLayer release];
     [super dealloc];
 }
 
-- (AVPlayer *)player { return _player; }
+- (AVPlayer *)player { return _playerLayer->player; }
 
 - (void)setPlayer:(AVPlayer *)player
 {
-    if (_player != player) {
-        if (_player) {
-            [_player _unregisterPlayerLayer:self];
-            [_player release];
-        }
-        _player = [player retain];
-        if (_player) {
-            [_player _registerPlayerLayer:self];
-            CGImageRef current = [_player _copyCurrentFrameImage];
-            if (current) {
-                [self _displayCGImage:current];
-                CGImageRelease(current);
-            }
+    if (_playerLayer->player == player)
+        return;
+    [self willChangeValueForKey:@"player"];
+    AVPlayer *old = _playerLayer->player;
+    if (old)
+        [[old _internal] unregisterLayer:self];
+    _playerLayer->player = [player retain];
+    [old release];
+    if (player) {
+        [[player _internal] registerLayer:self];
+        CGImageRef current = [[player _internal] copyLatestImage];
+        if (current) {
+            [self _showImage:current];
+            CGImageRelease(current);
         }
     }
+    [self didChangeValueForKey:@"player"];
 }
 
-- (AVLayerVideoGravity)videoGravity { return _videoGravity; }
+- (AVLayerVideoGravity)videoGravity { return _playerLayer->videoGravity; }
 
 - (void)setVideoGravity:(AVLayerVideoGravity)gravity
 {
-    if (_videoGravity != gravity) {
-        [_videoGravity release];
-        _videoGravity = [gravity copy];
-
-        if ([_videoGravity isEqualToString:AVLayerVideoGravityResize]) {
-            self.contentsGravity = kCAGravityResize;
-        } else if ([_videoGravity isEqualToString:AVLayerVideoGravityResizeAspectFill]) {
-            self.contentsGravity = kCAGravityResizeAspectFill;
-        } else {
-            self.contentsGravity = kCAGravityResizeAspect;
-        }
-    }
+    if (!gravity || [_playerLayer->videoGravity isEqualToString:gravity])
+        return;
+    [self willChangeValueForKey:@"videoGravity"];
+    [_playerLayer->videoGravity release];
+    _playerLayer->videoGravity = [gravity copy];
+    if ([gravity isEqualToString:AVLayerVideoGravityResize])
+        self.contentsGravity = kCAGravityResize;
+    else if ([gravity isEqualToString:AVLayerVideoGravityResizeAspectFill])
+        self.contentsGravity = kCAGravityResizeAspectFill;
+    else
+        self.contentsGravity = kCAGravityResizeAspect;
+    [self didChangeValueForKey:@"videoGravity"];
 }
 
-- (BOOL)isReadyForDisplay { return _readyForDisplay; }
+- (BOOL)isReadyForDisplay { return _playerLayer->readyForDisplay; }
 
-- (void)_displayCGImage:(CGImageRef)image
+// Main thread, so that the layer tree is only changed from there.
+- (void)_showImage:(CGImageRef)image
 {
-    if (!image) return;
-    CGImageRetain(image);
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [CATransaction begin];
-        [CATransaction setDisableActions:YES];
-        self.contents = (id)image;
-        [CATransaction commit];
-        _readyForDisplay = YES;
-        CGImageRelease(image);
-    });
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.contents = (id)image;
+    [CATransaction commit];
+    if (!_playerLayer->readyForDisplay) {
+        [self willChangeValueForKey:@"readyForDisplay"];
+        _playerLayer->readyForDisplay = YES;
+        [self didChangeValueForKey:@"readyForDisplay"];
+    }
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {

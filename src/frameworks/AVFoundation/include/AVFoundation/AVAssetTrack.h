@@ -23,34 +23,24 @@
 #import <CoreMedia/CMTime.h>
 #import <CoreMedia/CMTimeRange.h>
 #import <CoreGraphics/CGGeometry.h>
+#import <AVFoundation/AVAsynchronousKeyValueLoading.h>
 #import <AVFoundation/AVMediaFormat.h>
 
 @class AVAsset;
+@class AVAssetTrackInternal;
 
-@interface AVAssetTrack : NSObject {
-@protected
-    __unsafe_unretained AVAsset *_asset;
-    CMPersistentTrackID _trackID;
-    AVMediaType _mediaType;
-    CGSize _naturalSize;
-    float _nominalFrameRate;
-    CMTimeRange _timeRange;
-    BOOL _enabled;
+@interface AVAssetTrack : NSObject <AVAsynchronousKeyValueLoading> {
+@private
+    AVAssetTrackInternal *_assetTrack;
 }
 
-@property (readonly, assign) AVAsset *asset;
-@property (readonly) CMPersistentTrackID trackID;
-@property (readonly) AVMediaType mediaType;
-@property (readonly) CGSize naturalSize;
-@property (readonly) float nominalFrameRate;
-@property (readonly) CMTimeRange timeRange;
-@property (readonly, getter=isEnabled) BOOL enabled;
-
-- (instancetype)_initWithAsset:(AVAsset *)asset
-                       trackID:(CMPersistentTrackID)trackID
-                     mediaType:(AVMediaType)mediaType
-                   naturalSize:(CGSize)naturalSize
-              nominalFrameRate:(float)nominalFrameRate
-                     timeRange:(CMTimeRange)timeRange;
+@property (nonatomic, readonly, assign) AVAsset *asset;
+@property (nonatomic, readonly) CMPersistentTrackID trackID;
+@property (nonatomic, readonly) AVMediaType mediaType;
+@property (nonatomic, readonly) CGSize naturalSize;
+@property (nonatomic, readonly) float nominalFrameRate;
+@property (nonatomic, readonly) CMTimeRange timeRange;
+@property (nonatomic, readonly, getter=isEnabled) BOOL enabled;
+@property (nonatomic, readonly, getter=isPlayable) BOOL playable;
 
 @end

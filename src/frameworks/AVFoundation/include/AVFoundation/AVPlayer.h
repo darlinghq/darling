@@ -20,11 +20,9 @@
 
 #import <Foundation/Foundation.h>
 #import <CoreMedia/CMTime.h>
-#import <CoreVideo/CoreVideo.h>
-#import <CoreGraphics/CGImage.h>
 
 @class AVPlayerItem;
-@class AVPlayerLayer;
+@class AVPlayerInternal;
 
 typedef NS_ENUM(NSInteger, AVPlayerStatus) {
     AVPlayerStatusUnknown = 0,
@@ -39,16 +37,8 @@ typedef NS_ENUM(NSInteger, AVPlayerActionAtItemEnd) {
 };
 
 @interface AVPlayer : NSObject {
-@protected
-    AVPlayerItem *_currentItem;
-    AVPlayerStatus _status;
-    NSError *_error;
-    float _rate;
-    float _volume;
-    BOOL _muted;
-    AVPlayerActionAtItemEnd _actionAtItemEnd;
-
-    void *_playerEngine;
+@private
+    AVPlayerInternal *_player;
 }
 
 + (instancetype)playerWithURL:(NSURL *)URL;
@@ -56,13 +46,13 @@ typedef NS_ENUM(NSInteger, AVPlayerActionAtItemEnd) {
 - (instancetype)initWithURL:(NSURL *)URL;
 - (instancetype)initWithPlayerItem:(AVPlayerItem *)item;
 
-@property (readonly) AVPlayerStatus status;
-@property (readonly) NSError *error;
-@property (readonly) AVPlayerItem *currentItem;
-@property float rate;
-@property float volume;
-@property (getter=isMuted) BOOL muted;
-@property AVPlayerActionAtItemEnd actionAtItemEnd;
+@property (nonatomic, readonly) AVPlayerStatus status;
+@property (nonatomic, readonly) NSError *error;
+@property (nonatomic, readonly) AVPlayerItem *currentItem;
+@property (nonatomic) float rate;
+@property (nonatomic) float volume;
+@property (nonatomic, getter=isMuted) BOOL muted;
+@property (nonatomic) AVPlayerActionAtItemEnd actionAtItemEnd;
 
 - (void)replaceCurrentItemWithPlayerItem:(AVPlayerItem *)item;
 - (void)play;
@@ -75,12 +65,5 @@ typedef NS_ENUM(NSInteger, AVPlayerActionAtItemEnd) {
 
 - (id)addPeriodicTimeObserverForInterval:(CMTime)interval queue:(dispatch_queue_t)queue usingBlock:(void (^)(CMTime time))block;
 - (void)removeTimeObserver:(id)observer;
-
-- (void)_registerPlayerLayer:(AVPlayerLayer *)layer;
-- (void)_unregisterPlayerLayer:(AVPlayerLayer *)layer;
-- (CGImageRef)_copyCurrentFrameImage;
-- (void)_deliverFrameToLayers:(CGImageRef)image;
-- (void)_didReachEOF;
-- (void)_fireTimeObservers:(CMTime)time;
 
 @end

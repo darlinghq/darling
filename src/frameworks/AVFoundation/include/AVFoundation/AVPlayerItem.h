@@ -21,8 +21,11 @@
 #import <Foundation/Foundation.h>
 #import <CoreMedia/CMTime.h>
 #import <CoreGraphics/CGGeometry.h>
+#import <AVFoundation/AVAsynchronousKeyValueLoading.h>
 
 @class AVAsset;
+@class AVPlayerItemOutput;
+@class AVPlayerItemInternal;
 
 typedef NS_ENUM(NSInteger, AVPlayerItemStatus) {
     AVPlayerItemStatusUnknown = 0,
@@ -35,15 +38,9 @@ extern NSString *const AVPlayerItemFailedToPlayToEndTimeNotification;
 extern NSString *const AVPlayerItemPlaybackStalledNotification;
 extern NSString *const AVPlayerItemTimeJumpedNotification;
 
-@interface AVPlayerItem : NSObject {
-@protected
-    AVAsset *_asset;
-    AVPlayerItemStatus _status;
-    NSError *_error;
-    CMTime _duration;
-    CGSize _presentationSize;
-    CMTime _currentTime;
-    NSMutableArray *_tracks;
+@interface AVPlayerItem : NSObject <AVAsynchronousKeyValueLoading> {
+@private
+    AVPlayerItemInternal *_playerItem;
 }
 
 + (instancetype)playerItemWithURL:(NSURL *)URL;
@@ -51,12 +48,13 @@ extern NSString *const AVPlayerItemTimeJumpedNotification;
 - (instancetype)initWithURL:(NSURL *)URL;
 - (instancetype)initWithAsset:(AVAsset *)asset;
 
-@property (readonly) AVPlayerItemStatus status;
-@property (readonly) NSError *error;
+@property (nonatomic, readonly) AVPlayerItemStatus status;
+@property (nonatomic, readonly) NSError *error;
 @property (nonatomic, readonly) AVAsset *asset;
-@property (readonly) CMTime duration;
-@property (readonly) CGSize presentationSize;
-@property (readonly) NSArray *tracks;
+@property (nonatomic, readonly) CMTime duration;
+@property (nonatomic, readonly) CGSize presentationSize;
+@property (nonatomic, readonly) NSArray *tracks;
+@property (nonatomic, readonly) NSArray<AVPlayerItemOutput *> *outputs;
 
 - (CMTime)currentTime;
 - (void)seekToTime:(CMTime)time;
@@ -65,7 +63,7 @@ extern NSString *const AVPlayerItemTimeJumpedNotification;
 - (void)seekToTime:(CMTime)time toleranceBefore:(CMTime)toleranceBefore toleranceAfter:(CMTime)toleranceAfter completionHandler:(void (^)(BOOL finished))completionHandler;
 - (void)stepByCount:(NSInteger)stepCount;
 
-- (void)_setCurrentTime:(CMTime)time;
-- (void)_didPlayToEnd;
+- (void)addOutput:(AVPlayerItemOutput *)output;
+- (void)removeOutput:(AVPlayerItemOutput *)output;
 
 @end

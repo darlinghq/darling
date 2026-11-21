@@ -20,24 +20,14 @@
 
 #import <AVFoundation/AVAsset.h>
 
-@interface AVURLAsset : AVAsset {
-@protected
-    NSURL *_URL;
-    NSDictionary *_options;
-    CMTime _duration;
-    CGSize _naturalSize;
-    float _preferredRate;
-    float _preferredVolume;
-    BOOL _playable;
-    NSMutableArray<AVAssetTrack *> *_tracks;
-}
-
-+ (instancetype)URLAssetWithURL:(NSURL *)URL options:(NSDictionary<NSString *,id> *)options;
-- (instancetype)initWithURL:(NSURL *)URL options:(NSDictionary<NSString *,id> *)options;
-
-@property (nonatomic, readonly, copy) NSURL *URL;
+@interface AVURLAsset : AVAsset
 
 + (NSArray<NSString *> *)audiovisualTypes;
 + (NSArray<NSString *> *)audiovisualMIMETypes;
++ (instancetype)URLAssetWithURL:(NSURL *)URL options:(NSDictionary<NSString *, id> *)options;
+
+- (instancetype)initWithURL:(NSURL *)URL options:(NSDictionary<NSString *, id> *)options;
+
+@property (nonatomic, readonly, copy) NSURL *URL;
 
 @end

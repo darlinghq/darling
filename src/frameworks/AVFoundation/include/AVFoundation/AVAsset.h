@@ -23,13 +23,18 @@
 #import <CoreMedia/CMTime.h>
 #import <CoreMedia/CMTimeRange.h>
 #import <CoreGraphics/CGGeometry.h>
+#import <AVFoundation/AVAsynchronousKeyValueLoading.h>
 #import <AVFoundation/AVMediaFormat.h>
 
 @class AVAssetTrack;
+@class AVAssetInternal;
 
 extern NSString *const AVURLAssetPreferPreciseDurationAndTimingKey;
 
-@interface AVAsset : NSObject
+@interface AVAsset : NSObject <AVAsynchronousKeyValueLoading> {
+@private
+    AVAssetInternal *_asset;
+}
 
 + (instancetype)assetWithURL:(NSURL *)URL;
 

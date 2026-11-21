@@ -18,10 +18,36 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <AVFoundation/AVAsset.h>
+#import "AVPlaybackPrivate.h"
 #import <AVFoundation/AVURLAsset.h>
-#import <AVFoundation/AVAssetTrack.h>
+#import <AVFoundation/AVError.h>
 #import <darling-stub-forwarding.h>
+
+AVKeyValueStatus AVPlaybackStatusOfKey(id object, NSString *key, NSError **outError)
+{
+    // The properties of these classes are all available as soon as the object exists.
+    if (key && [object respondsToSelector:NSSelectorFromString(key)]) {
+        if (outError)
+            *outError = nil;
+        return AVKeyValueStatusLoaded;
+    }
+    if (outError) {
+        *outError = [NSError errorWithDomain:AVFoundationErrorDomain code:-11800
+                                    userInfo:@{ NSLocalizedDescriptionKey: @"The operation could not be completed" }];
+    }
+    return AVKeyValueStatusFailed;
+}
+
+void AVPlaybackLoadKeys(NSArray *keys, void (^handler)(void))
+{
+    if (!handler)
+        return;
+    void (^copy)(void) = [handler copy];
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        copy();
+        [copy release];
+    });
+}
 
 @implementation AVAsset
 
@@ -30,12 +56,30 @@
     return [AVURLAsset URLAssetWithURL:URL options:nil];
 }
 
-- (CMTime)duration { return kCMTimeZero; }
+- (instancetype)init
+{
+    if ((self = [super init])) {
+        _asset = [[AVAssetInternal alloc] init];
+        _asset->duration = kCMTimeZero;
+        _asset->tracks = [[NSArray alloc] init];
+    }
+    return self;
+}
+
+- (void)dealloc
+{
+    [_asset release];
+    [super dealloc];
+}
+
+- (AVAssetInternal *)_internal { return _asset; }
+
+- (CMTime)duration { return _asset->duration; }
 - (float)preferredRate { return 1.0f; }
 - (float)preferredVolume { return 1.0f; }
-- (CGSize)naturalSize { return CGSizeZero; }
-- (BOOL)isPlayable { return NO; }
-- (NSArray<AVAssetTrack *> *)tracks { return [NSArray array]; }
+- (CGSize)naturalSize { return _asset->naturalSize; }
+- (BOOL)isPlayable { return _asset->playable; }
+- (NSArray<AVAssetTrack *> *)tracks { return _asset->tracks; }
 
 - (NSArray<AVAssetTrack *> *)tracksWithMediaType:(AVMediaType)mediaType
 {
@@ -59,6 +103,16 @@
             return track;
     }
     return nil;
+}
+
+- (AVKeyValueStatus)statusOfValueForKey:(NSString *)key error:(NSError **)outError
+{
+    return AVPlaybackStatusOfKey(self, key, outError);
+}
+
+- (void)loadValuesAsynchronouslyForKeys:(NSArray<NSString *> *)keys completionHandler:(void (^)(void))handler
+{
+    AVPlaybackLoadKeys(keys, handler);
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
