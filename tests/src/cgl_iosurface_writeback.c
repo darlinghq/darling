@@ -13,6 +13,11 @@
 // current or locked after a CPU write, and into it before a lock; on a
 // software renderer (llvmpipe and the like) they keep the CPU copy. Each case
 // prints the path it took: dmabuf-2d, dmabuf-rect-gpucopy or cpu-copy.
+// Where the driver cannot render into the memory, Darling gives the surface
+// a GPU buffer when rendering is first written back, and a 2D texture then
+// uses that buffer, which IOSurface keeps in step with the memory; such a
+// case also prints "gpu buffer" and from then on is checked as a texture
+// that uses the memory.
 //
 // Needs an offscreen OpenGL context (a host EGL driver).
 #define GL_GLEXT_PROTOTYPES 1
@@ -23,11 +28,17 @@
 #include <OpenGL/glext.h>
 #include <OpenGL/CGLIOSurface.h>
 #include <OpenGL/CGLInternal.h>
+#include <dlfcn.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#if __has_include(<IOSurface/IOSurfacePriv.h>)
+#include <IOSurface/IOSurfacePriv.h>
+#define HAVE_PRIVATE_HEADER 1
+#endif
 
 #define W 16
 #define H 8
@@ -98,6 +109,20 @@ static int softwareRenderer(void)
 	const char* renderer = (const char*) glGetString(GL_RENDERER);
 	return renderer && (strstr(renderer, "llvmpipe") || strstr(renderer, "lavapipe")
 		|| strstr(renderer, "softpipe") || strstr(renderer, "swrast") || strstr(renderer, "Software Rasterizer"));
+}
+
+// Whether Darling has given the surface a GPU buffer.
+static int hasGPUBuffer(IOSurfaceRef surface)
+{
+#ifdef HAVE_PRIVATE_HEADER
+	typedef bool (*statistics_proc)(IOSurfaceRef, _IOSurfaceGPUBufferStatistics*);
+	statistics_proc statistics = (statistics_proc) dlsym(RTLD_DEFAULT, "_IOSurfaceGetGPUBufferStatistics");
+	_IOSurfaceGPUBufferStatistics s = { .version = _IOSURFACE_GPU_BUFFER_VERSION };
+	return statistics && statistics(surface, &s) && s.hasBuffer;
+#else
+	(void) surface;
+	return 0;
+#endif
 }
 
 static IOSurfaceRef createSurface(void)
@@ -178,6 +203,10 @@ static void runCase(CGLContextObj context, GLenum target, const char* name)
 	corners(surface, &first, &last);
 	printf("after rendering red: %08x %08x\n", first, last);
 	CHECK(first == RED && last == RED);
+	if (target == GL_TEXTURE_2D && !gpu && hasGPUBuffer(surface)) {
+		printf("gpu buffer\n");
+		gpu = 1;
+	}
 
 	// So is rendering after that.
 	clearTexture(0.0f, 0.0f, 1.0f);

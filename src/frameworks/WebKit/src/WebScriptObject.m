@@ -45,3 +45,61 @@
 }
 
 @end
+
+// WebUndefined is the one-instance object that stands for a JavaScript undefined value.
+@implementation WebUndefined
+
++ (WebUndefined *)undefined
+{
+    static WebUndefined *undefined;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        undefined = [[super allocWithZone:NULL] init];
+    });
+    return undefined;
+}
+
++ (id)allocWithZone:(NSZone *)zone
+{
+    return [self undefined];
+}
+
+- (id)copyWithZone:(NSZone *)zone
+{
+    return self;
+}
+
+- (id)retain
+{
+    return self;
+}
+
+- (oneway void)release
+{
+}
+
+- (id)autorelease
+{
+    return self;
+}
+
+- (NSUInteger)retainCount
+{
+    return NSUIntegerMax;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+}
+
+- (id)initWithCoder:(NSCoder *)coder
+{
+    return [WebUndefined undefined];
+}
+
+- (NSString *)description
+{
+    return @"undefined";
+}
+
+@end

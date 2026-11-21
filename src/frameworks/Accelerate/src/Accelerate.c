@@ -69,6 +69,44 @@ vImage_Error vImageBuffer_InitWithCGImage(
     return kvImageUnsupportedConversion;
 }
 
+vImage_Error vImageBufferFill_ARGB8888(
+    const vImage_Buffer *dest,
+    const Pixel_8888 color,
+    vImage_Flags flags
+) {
+    if (!dest || !color) {
+        return kvImageNullPointerArgument;
+    }
+
+    // An empty buffer has no pixels to write, so it is not an error and its data pointer is unused.
+    if (dest->width == 0 || dest->height == 0) {
+        return kvImageNoError;
+    }
+
+    if (!dest->data) {
+        return kvImageNullPointerArgument;
+    }
+
+    if (dest->width > SIZE_MAX / 4 || dest->rowBytes < (size_t)dest->width * 4 ||
+        dest->rowBytes > SIZE_MAX / dest->height) {
+        return kvImageInvalidRowBytes;
+    }
+
+    // QUIRK: the flags are not validated. kvImageNoFlags and kvImageDoNotTile are the documented
+    // values, but unknown bits and the other kvImage flags are accepted and ignored (alpha is never
+    // preserved) instead of returning kvImageUnknownFlagsBit. Evidence: black-box observation on
+    // macOS 26.7 (tier 2). Test: vimage_buffer_fill_argb8888 (unknown flags, "quirk" checks).
+    (void)flags;
+
+    uint8_t* row = (uint8_t*)dest->data;
+    for (vImagePixelCount y = 0; y < dest->height; y++, row += dest->rowBytes) {
+        for (vImagePixelCount x = 0; x < dest->width; x++) {
+            memcpy(row + x * 4, color, 4);
+        }
+    }
+    return kvImageNoError;
+}
+
 vImage_Error vImagePermuteChannels_ARGB8888(
     const vImage_Buffer *src,
     const vImage_Buffer *dest,
@@ -336,4 +374,141 @@ vImage_Error vImageUnpremultiplyData_ARGB8888(
 ) {
     // Not implemented. Report that instead of claiming the pixels were converted.
     return kvImageUnsupportedConversion;
+}
+
+/* The sum of the `size` samples centred on sample `center` of a line of `count` samples, given its
+   prefix sums. Samples outside the line follow the edge style: kvImageEdgeExtend repeats the nearest
+   end sample, kvImageBackgroundColorFill uses `outside`; the other styles leave them out. */
+static uint64_t boxWindowSum(const uint32_t *line, const uint64_t *prefix, size_t count, int64_t center,
+                             uint32_t size, vImage_Flags edge, uint64_t outside)
+{
+    int64_t reach = size / 2;
+    int64_t low = center - reach, high = center + reach;
+    uint64_t before = low < 0 ? (uint64_t)-low : 0;
+    uint64_t after = high >= (int64_t)count ? (uint64_t)(high - (int64_t)count + 1) : 0;
+    low = low < 0 ? 0 : low;
+    high = high >= (int64_t)count ? (int64_t)count - 1 : high;
+    uint64_t sum = prefix[high + 1] - prefix[low];
+    if (edge == kvImageEdgeExtend)
+        sum += before * line[0] + after * line[count - 1];
+    else if (edge == kvImageBackgroundColorFill)
+        sum += (before + after) * outside;
+    return sum;
+}
+
+/* How many of the `size` samples centred on sample `center` of a line of `count` samples lie on it. */
+static uint64_t boxSamplesInside(int64_t center, size_t count, uint32_t size)
+{
+    int64_t low = center - size / 2, high = center + size / 2;
+    low = low < 0 ? 0 : low;
+    high = high >= (int64_t)count ? (int64_t)count - 1 : high;
+    return (uint64_t)(high - low + 1);
+}
+
+static int boxWindowLeaves(int64_t center, size_t count, uint32_t size)
+{
+    return center - size / 2 < 0 || center + size / 2 >= (int64_t)count;
+}
+
+static void boxPrefix(const uint32_t *line, size_t count, uint64_t *prefix)
+{
+    prefix[0] = 0;
+    for (size_t i = 0; i < count; i++)
+        prefix[i + 1] = prefix[i] + line[i];
+}
+
+/* From the public Convolution.h: the mean of each channel over a kernel_height x kernel_width window.
+   The window is summed exactly and divided once, rounding to the nearest integer. It is placed in the
+   source image, and samples beyond the source's edges follow the one edge style in `flags`:
+   kvImageEdgeExtend repeats the edge samples, kvImageBackgroundColorFill uses backgroundColor (zero
+   when it is NULL), kvImageTruncateKernel averages the samples inside the image and kvImageCopyInPlace
+   copies the source pixel where the window leaves the image. With kvImageLeaveAlphaUnchanged the
+   first channel (alpha) is copied from the source instead of being averaged. No scratch memory is needed, so the
+   temporary buffer size reported is 0. */
+vImage_Error vImageBoxConvolve_ARGB8888(const vImage_Buffer *src, const vImage_Buffer *dest, void *tempBuffer,
+    vImagePixelCount srcOffsetToROI_X, vImagePixelCount srcOffsetToROI_Y, uint32_t kernel_height, uint32_t kernel_width,
+    const uint8_t *backgroundColor, vImage_Flags flags)
+{
+    if (flags & kvImageGetTempBufferSize)
+        return 0;
+    if (src == NULL || dest == NULL || src->data == NULL || dest->data == NULL)
+        return kvImageNullPointerArgument;
+    if (!(kernel_height & 1) || !(kernel_width & 1))
+        return kvImageInvalidKernelSize;
+    vImage_Flags edge = flags & (kvImageCopyInPlace | kvImageBackgroundColorFill | kvImageEdgeExtend |
+                                 kvImageTruncateKernel);
+    if (edge == 0 || (edge & (edge - 1)) != 0)
+        return kvImageInvalidEdgeStyle;
+    if (srcOffsetToROI_X > src->width || srcOffsetToROI_Y > src->height ||
+        dest->width > src->width - srcOffsetToROI_X || dest->height > src->height - srcOffsetToROI_Y)
+        return kvImageBufferSizeMismatch;
+    if (dest->width == 0 || dest->height == 0)
+        return kvImageNoError;
+
+    size_t srcWidth = src->width, srcHeight = src->height, width = dest->width, height = dest->height;
+    size_t longest = srcWidth > srcHeight ? srcWidth : srcHeight;
+    /* The horizontal sums of every source row for each output column, a line of samples, its prefix
+       sums and the vertical sums of one output column. */
+    uint32_t *rows = malloc(srcHeight * width * sizeof(uint32_t));
+    uint32_t *line = malloc(longest * sizeof(uint32_t));
+    uint64_t *prefix = malloc((longest + 1) * sizeof(uint64_t));
+    /* Output pixels are written after the source may have been overwritten (in place), so what is
+       copied from the source (copy in place, an unchanged alpha channel) comes from a copy of the ROI. */
+    int needsROI = edge == kvImageCopyInPlace || (flags & kvImageLeaveAlphaUnchanged);
+    uint8_t *roi = needsROI ? malloc(width * height * 4) : NULL;
+    if (rows == NULL || line == NULL || prefix == NULL || (needsROI && roi == NULL)) {
+        free(rows);
+        free(line);
+        free(prefix);
+        free(roi);
+        return kvImageMemoryAllocationError;
+    }
+    for (size_t y = 0; roi != NULL && y < height; y++)
+        memcpy(roi + y * width * 4, (const uint8_t *)src->data + (srcOffsetToROI_Y + y) * src->rowBytes +
+               srcOffsetToROI_X * 4, width * 4);
+
+    for (size_t channel = 0; channel < 4; channel++) {
+        if (channel == 0 && (flags & kvImageLeaveAlphaUnchanged)) {
+            for (size_t y = 0; y < height; y++)
+                for (size_t x = 0; x < width; x++)
+                    ((uint8_t *)dest->data)[y * dest->rowBytes + x * 4] = roi[(y * width + x) * 4];
+            continue;
+        }
+        uint64_t background = backgroundColor != NULL ? backgroundColor[channel] : 0;
+        for (size_t y = 0; y < srcHeight; y++) {
+            const uint8_t *in = (const uint8_t *)src->data + y * src->rowBytes + channel;
+            for (size_t x = 0; x < srcWidth; x++)
+                line[x] = in[x * 4];
+            boxPrefix(line, srcWidth, prefix);
+            for (size_t x = 0; x < width; x++)
+                rows[y * width + x] = (uint32_t)boxWindowSum(line, prefix, srcWidth,
+                    (int64_t)(srcOffsetToROI_X + x), kernel_width, edge, background);
+        }
+        for (size_t x = 0; x < width; x++) {
+            for (size_t y = 0; y < srcHeight; y++)
+                line[y] = rows[y * width + x];
+            boxPrefix(line, srcHeight, prefix);
+            for (size_t y = 0; y < height; y++) {
+                int64_t cx = (int64_t)(srcOffsetToROI_X + x), cy = (int64_t)(srcOffsetToROI_Y + y);
+                uint8_t *out = (uint8_t *)dest->data + y * dest->rowBytes + x * 4 + channel;
+                if (edge == kvImageCopyInPlace && (boxWindowLeaves(cx, srcWidth, kernel_width) ||
+                                                   boxWindowLeaves(cy, srcHeight, kernel_height))) {
+                    *out = roi[(y * width + x) * 4 + channel];
+                    continue;
+                }
+                uint64_t sum = boxWindowSum(line, prefix, srcHeight, cy, kernel_height, edge,
+                                            (uint64_t)kernel_width * background);
+                uint64_t count = (uint64_t)kernel_width * kernel_height;
+                if (edge == kvImageTruncateKernel)
+                    count = boxSamplesInside(cx, srcWidth, kernel_width) * boxSamplesInside(cy, srcHeight, kernel_height);
+                *out = (uint8_t)((sum + count / 2) / count);
+            }
+        }
+    }
+    free(rows);
+    free(line);
+    free(prefix);
+    free(roi);
+    (void)tempBuffer;
+    return kvImageNoError;
 }

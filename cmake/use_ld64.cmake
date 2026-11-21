@@ -66,6 +66,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/libiconv.2.dylib:${CMAKE_BINARY_DIR}/src/libiconv/libiconv.2.dylib \
 -Wl,-dylib_file,/usr/lib/libcharset.1.dylib:${CMAKE_BINARY_DIR}/src/external/libiconv/libcharset.1.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/CFNetwork.framework/Versions/A/CFNetwork:${CMAKE_BINARY_DIR}/src/external/cfnetwork/src/CFNetwork \
+-Wl,-dylib_file,/System/Library/PrivateFrameworks/CoreAutoLayout.framework/Versions/A/CoreAutoLayout:${CMAKE_BINARY_DIR}/src/external/cocotron/CoreAutoLayout/CoreAutoLayout \
 -Wl,-dylib_file,/usr/lib/libxml2.2.dylib:${CMAKE_BINARY_DIR}/src/external/libxml2/libxml2.2.dylib \
 -Wl,-dylib_file,/usr/lib/libpam.2.dylib:${CMAKE_BINARY_DIR}/src/external/openpam/libpam.2.dylib \
 -Wl,-dylib_file,/usr/lib/libbsm.0.dylib:${CMAKE_BINARY_DIR}/src/external/bsm/libbsm.0.dylib \
@@ -134,6 +135,8 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/system/libkxld.dylib:${CMAKE_BINARY_DIR}/src/external/xnu/libkern/kxld/libkxld.dylib \
 -Wl,-dylib_file,/usr/lib/libcrypto.44.dylib:${CMAKE_BINARY_DIR}/src/external/libressl-2.8.3/libcrypto.44.dylib \
 -Wl,-dylib_file,/usr/lib/libssl.46.dylib:${CMAKE_BINARY_DIR}/src/external/libressl-2.8.3/libssl.46.dylib \
+-Wl,-dylib_file,/usr/lib/libcrypto.46.dylib:${CMAKE_BINARY_DIR}/src/external/libressl-3.3.6/libcrypto.46.dylib \
+-Wl,-dylib_file,/usr/lib/libssl.48.dylib:${CMAKE_BINARY_DIR}/src/external/libressl-3.3.6/libssl.48.dylib \
 -Wl,-dylib_file,/usr/lib/libMobileGestalt.dylib:${CMAKE_BINARY_DIR}/src/libMobileGestalt/libMobileGestalt.dylib \
 -Wl,-dylib_file,/System/Library/Frameworks/Security.framework/Versions/A/Security:${CMAKE_BINARY_DIR}/src/external/security/OSX/Security \
 -Wl,-dylib_file,/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation:${CMAKE_BINARY_DIR}/src/external/foundation/Foundation \
@@ -145,6 +148,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/System/Library/Frameworks/CFOpenDirectory.framework/Versions/A/CFOpenDirectory:${CMAKE_BINARY_DIR}/src/frameworks/OpenDirectory/CFOpenDirectory/CFOpenDirectory \
 -Wl,-dylib_file,/usr/lib/libnetwork.dylib:${CMAKE_BINARY_DIR}/src/external/libnetwork/libnetwork.dylib \
 -Wl,-dylib_file,/usr/lib/system/libcache.dylib:${CMAKE_BINARY_DIR}/src/libcache/libcache.dylib \
+-Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/CarbonSound.framework/Versions/A/CarbonSound:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/CarbonSound/CarbonSound \
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/CommonPanels.framework/Versions/A/CommonPanels:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/CommonPanels/CommonPanels \
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/Help.framework/Versions/A/Help:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/Help/Help \
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/HIToolbox.framework/Versions/A/HIToolbox:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/HIToolbox/HIToolbox \
@@ -158,6 +162,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/System/Library/Frameworks/QuartzCore.framework/Versions/A/QuartzCore:${COCOTRON_FW_PATH}/QuartzCore/QuartzCore \
 -Wl,-dylib_file,/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL:${CMAKE_BINARY_DIR}/src/frameworks/OpenGL/OpenGL \
 -Wl,-dylib_file,/System/Library/PrivateFrameworks/Onyx2D.framework/Versions/A/Onyx2D:${CMAKE_BINARY_DIR}/src/external/cocotron/Onyx2D/Onyx2D \
+-Wl,-dylib_file,/System/Library/PrivateFrameworks/CollectionViewCore.framework/Versions/A/CollectionViewCore:${CMAKE_BINARY_DIR}/src/external/cocotron/CollectionViewCore/CollectionViewCore \
 -Wl,-dylib_file,/System/Library/PrivateFrameworks/UIFoundation.framework/Versions/A/UIFoundation:${CMAKE_BINARY_DIR}/src/private-frameworks/UIFoundation/UIFoundation \
 -Wl,-dylib_file,/usr/lib/darling/libelfloader.dylib:${CMAKE_BINARY_DIR}/src/libelfloader/libelfloader.dylib \
 -Wl,-dylib_file,/usr/lib/native/libavcodec.dylib:${CMAKE_BINARY_DIR}/src/native/libavcodec.dylib \

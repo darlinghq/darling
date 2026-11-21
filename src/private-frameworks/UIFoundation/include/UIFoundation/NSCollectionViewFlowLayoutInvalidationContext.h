@@ -17,8 +17,5 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
-
-@interface NSCollectionViewFlowLayoutInvalidationContext : NSObject
-
-@end
+// Declared by AppKit, which owns the public interface and the instance variables.
+#import <AppKit/NSCollectionViewFlowLayout.h>

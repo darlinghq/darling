@@ -228,6 +228,23 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 			}
 			*ioDataSize = sizeof(AudioDeviceID);
 			return kAudioHardwareNoError;
+		case kAudioHardwarePropertyTapList:
+			// No process tap can exist (see AudioHardwareTapping.m): the system object lists none.
+			if (id() != kAudioObjectSystemObject)
+				break;
+			*ioDataSize = 0;
+			return kAudioHardwareNoError;
+		case kAudioHardwarePropertyTranslateUIDToTap:
+			// The qualifier is the tap's UID string and the answer is the tap's object ID, which is
+			// unknown for every UID as no tap exists.
+			if (id() != kAudioObjectSystemObject)
+				break;
+			if (inQualifierDataSize != sizeof(CFStringRef) || !inQualifierData)
+				return kAudioHardwareBadPropertySizeError;
+			if (AudioObjectID* tapId = static_cast<AudioObjectID*>(outData); tapId && *ioDataSize >= sizeof(AudioObjectID))
+				*tapId = kAudioObjectUnknown;
+			*ioDataSize = sizeof(AudioObjectID);
+			return kAudioHardwareNoError;
 		case kAudioHardwarePropertyDevices:
 		{
 			// Only the system object exposes the full device list.
@@ -527,8 +544,14 @@ static void paSubscribeCB(pa_context* c, pa_subscription_event_type_t t, uint32_
 {
 	AudioHardwareImplPA* self = static_cast<AudioHardwareImplPA*>(userdata);
 	unsigned facility = t & PA_SUBSCRIPTION_EVENT_FACILITY_MASK;
+	unsigned type = t & PA_SUBSCRIPTION_EVENT_TYPE_MASK;
 
-	if (facility == PA_SUBSCRIPTION_EVENT_SINK || facility == PA_SUBSCRIPTION_EVENT_SOURCE)
+	// The list of devices changes when a device appears or disappears. PulseAudio also reports
+	// "change" for a sink or source whose state, volume or mute changed, which happens whenever a
+	// stream starts or stops; that leaves the list as it was, and announcing it makes applications
+	// that rebuild their output on a device list change restart it again and again.
+	if ((facility == PA_SUBSCRIPTION_EVENT_SINK || facility == PA_SUBSCRIPTION_EVENT_SOURCE) &&
+		(type == PA_SUBSCRIPTION_EVENT_NEW || type == PA_SUBSCRIPTION_EVENT_REMOVE))
 	{
 		// We're being called from within PADispatchMainLoop's GCD queue here
 		// (the same queue refreshDeviceList() needs to wait on), so calling

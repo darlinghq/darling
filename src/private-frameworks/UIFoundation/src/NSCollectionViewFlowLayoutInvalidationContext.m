@@ -18,28 +18,34 @@
 */
 
 #import <UIFoundation/NSCollectionViewFlowLayoutInvalidationContext.h>
-#import <darling-stub-forwarding.h>
 
 @implementation NSCollectionViewFlowLayoutInvalidationContext
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+// QUIRK: a new context invalidates the delegate metrics and the attributes (both flags are YES), not nothing.
+// Not documented. Evidence: black-box observation on macOS 26.7.3 and 27.0.1 (tier 2).
+// Test: tests/appkit-collection-view-compositional-layout.m (darling-cocotron).
+- (instancetype) init {
+    if ((self = [super init]) != nil) {
+        _invalidateFlowLayoutDelegateMetrics = YES;
+        _invalidateFlowLayoutAttributes = YES;
+    }
+    return self;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
+- (BOOL) invalidateFlowLayoutDelegateMetrics {
+    return _invalidateFlowLayoutDelegateMetrics;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+- (void) setInvalidateFlowLayoutDelegateMetrics: (BOOL) invalidate {
+    _invalidateFlowLayoutDelegateMetrics = invalidate;
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
+- (BOOL) invalidateFlowLayoutAttributes {
+    return _invalidateFlowLayoutAttributes;
+}
+
+- (void) setInvalidateFlowLayoutAttributes: (BOOL) invalidate {
+    _invalidateFlowLayoutAttributes = invalidate;
 }
 
 @end

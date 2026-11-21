@@ -106,13 +106,26 @@ struct _IOSurfaceLockUnlock
 // the registered functions in registration order. Registering the same
 // functions again, more than a few registrations, and registrations with
 // an unknown version are ignored.
+//
+// A GPU API that registers with _IOSURFACE_GPU_CALLBACKS_VERSION_REPORTS_WRITES
+// reports rendering into its copies with _IOSurfaceGPUDidWrite. A lock with
+// kIOSurfaceLockAvoidSync then fails with kIOReturnCannotLock while such
+// rendering has not been written back, and otherwise calls that API's
+// finish instead of its writeback: finish waits for GPU work already
+// submitted into the surface's memory (an imported DMA-BUF) and copies
+// nothing. finish may be NULL. Callbacks registered with
+// _IOSURFACE_GPU_CALLBACKS_VERSION have no finish; their writeback is
+// called before every lock, kIOSurfaceLockAvoidSync or not.
 #define _IOSURFACE_GPU_CALLBACKS_VERSION 1
+#define _IOSURFACE_GPU_CALLBACKS_VERSION_REPORTS_WRITES 2
 
 typedef struct
 {
 	uint32_t version;
 	void (*writeback)(IOSurfaceRef surface);
 	void (*forget)(IOSurfaceRef surface);
+	// _IOSURFACE_GPU_CALLBACKS_VERSION_REPORTS_WRITES only.
+	void (*finish)(IOSurfaceRef surface);
 } _IOSurfaceGPUCallbacks;
 
 // Private interface between IOSurface.framework and a GPU API that can use
@@ -148,9 +161,100 @@ typedef struct
 	uint32_t bytesPerRow;
 } _IOSurfaceDMABuf;
 
+// Reporting GPU writes, which every process sharing the surface sees.
+//
+// _IOSurfaceGPUDidWrite: the API has rendered into a copy of the surface's
+// contents that it keeps, so the copy is newer than the surface's memory
+// until its writeback callback copies it in (which, done under a lock for
+// writing, changes the seed). Call it once the rendering is known, e.g.
+// when the framebuffer it went to is flushed or unbound, and only for a
+// copy that the writeback will copy in.
+//
+// _IOSurfaceGPUDidWriteMemory: GPU rendering into the surface's memory
+// itself (an imported DMA-BUF) has been submitted, e.g. by a flush. The
+// contents have changed, so the seed changes, and copies that GPU APIs
+// hold are older than the memory.
+//
+// Private interface between IOSurface.framework and a GPU API whose driver
+// can only sample the surface's memory, not render into it: on some hosts a
+// DMA-BUF in the memory's linear layout is "external only" to the driver.
+// Such an API gives the surface a GPU buffer, in a layout of the driver's
+// own, the first time it renders into the surface. From then on the surface
+// keeps its contents in the buffer as well as in its memory, and IOSurface
+// copies between the two on the GPU. Every process that shares the surface
+// uses the same buffer (darlingserver keeps it):
+//  - GPU rendering into the buffer is reported with
+//    _IOSurfaceGPUDidWriteBuffer once it has completed, and the seed
+//    changes. IOSurface copies the rendering into the memory there and then
+//    if a process holding the surface reads its memory (it has not imported
+//    the buffer, or uses the memory through _IOSurfaceGetDMABuf), and
+//    otherwise at the next lock, in whichever process takes it.
+//  - CPU writes reach the buffer when the write lock ends in a process that
+//    uses the buffer. Writes made elsewhere reach it when the API calls
+//    _IOSurfaceGPUWillUse before it uses the buffer.
+//
+// _IOSurfaceGetGPUBuffer fills in *buffer for plane planeIndex and returns
+// true if the surface has a buffer on the DRM render node renderNode (a host
+// path) in DRM format fourcc. With _IOSURFACE_GPU_BUFFER_CREATE, a surface
+// that has none gets one in one of the given layout modifiers, which the
+// caller's driver must be able to render into, holding the surface's
+// current contents. It returns false if the surface cannot have a buffer
+// (only single-plane surfaces with four bytes per pixel can, in the formats
+// ARGB8888 and ABGR8888, at the plane's size), if it has one in another
+// format or on another render node, or if the host lacks the libraries.
+// A buffer another process made is returned if it is on renderNode, in
+// fourcc and in one of the given modifiers. Once it returns true, the
+// caller counts as using the buffer rather than the memory. The caller sets
+// buffer->version. The descriptor belongs to the surface and stays valid
+// while the caller holds a reference to it.
+//
+// _IOSurfaceGetGPUBufferStatistics reports whether the surface's GPU buffer
+// is in use in this process, and the copies this process made between it
+// and the memory.
+#define _IOSURFACE_GPU_BUFFER_VERSION 1
+#define _IOSURFACE_GPU_BUFFER_CREATE 1
+
+typedef struct
+{
+	uint32_t version;
+	// The buffer's DMA-BUF, its DRM format and layout modifier.
+	int fd;
+	uint32_t fourcc;
+	uint64_t modifier;
+	// Where the plane starts in the DMA-BUF (always 0), its row stride in
+	// bytes, and its size in pixels.
+	uint32_t offset;
+	uint32_t stride;
+	uint32_t width, height;
+} _IOSurfaceGPUBuffer;
+
+typedef struct
+{
+	uint32_t version;
+	bool hasBuffer;
+	// Copies from the buffer into the memory, and from the memory into the
+	// buffer.
+	uint64_t downloads;
+	uint64_t uploads;
+} _IOSurfaceGPUBufferStatistics;
+
 __BEGIN_DECLS
 void _IOSurfaceSetGPUCallbacks(const _IOSurfaceGPUCallbacks *callbacks);
 bool _IOSurfaceGetDMABuf(IOSurfaceRef surface, size_t planeIndex, _IOSurfaceDMABuf *buffer);
+void _IOSurfaceGPUDidWrite(IOSurfaceRef surface);
+void _IOSurfaceGPUDidWriteMemory(IOSurfaceRef surface);
+// Whether a process other than this one holds the surface and may read its
+// memory, as the IOSurface service counts them (also true while the count is
+// not known). Such a reader cannot wait for this process's GPU work, so a GPU
+// API that renders into the memory finishes the work before it reports the
+// write; for a surface that is not shared, a lock in this process waits.
+bool _IOSurfaceIsShared(IOSurfaceRef surface);
+bool _IOSurfaceGetGPUBuffer(IOSurfaceRef surface, size_t planeIndex, const char *renderNode, uint32_t fourcc,
+                            const uint64_t *modifiers, size_t modifierCount, uint32_t flags,
+                            _IOSurfaceGPUBuffer *buffer);
+void _IOSurfaceGPUWillUse(IOSurfaceRef surface);
+void _IOSurfaceGPUDidWriteBuffer(IOSurfaceRef surface);
+bool _IOSurfaceGetGPUBufferStatistics(IOSurfaceRef surface, _IOSurfaceGPUBufferStatistics *statistics);
 __END_DECLS
 
 #endif

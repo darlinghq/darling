@@ -20,7 +20,6 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #import <Foundation/Foundation.h>
 #import <AppKit/NSPasteboard.h>
-#import <AppKit/NSDisplay.h>
 
 int main(int argc, const char *argv[]) {
     [NSAutoreleasePool new];
@@ -28,16 +27,8 @@ int main(int argc, const char *argv[]) {
     NSFileHandle *handle = [NSFileHandle fileHandleWithStandardInput];
     NSData *data = [handle readDataToEndOfFile];
 
+    // The pasteboard service keeps the data, so there is nothing to serve once it has been handed over.
     NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
-    [pasteboard setData: data forType: NSStringPboardType];
-
-    // While we're the clipboard owner, make sure to process incoming requests.
-    NSInteger changeCount = [pasteboard changeCount];
-    NSDisplay *display = [NSDisplay currentDisplay];
-    while (changeCount == [pasteboard changeCount]) {
-        [display nextEventMatchingMask: NSAnyEventMask
-                             untilDate: [NSDate distantFuture]
-                                inMode: NSDefaultRunLoopMode
-                               dequeue: YES];
-    }
+    [pasteboard declareTypes: [NSArray arrayWithObject: NSPasteboardTypeString] owner: nil];
+    return [pasteboard setData: data forType: NSPasteboardTypeString] ? 0 : 1;
 }

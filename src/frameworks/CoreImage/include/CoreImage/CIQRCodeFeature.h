@@ -17,8 +17,19 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <CoreImage/CIFeature.h>
 
-@interface CIQRCodeFeature : NSObject
+NS_ASSUME_NONNULL_BEGIN
+
+@interface CIQRCodeFeature : CIFeature
+
+@property (readonly) CGRect bounds;
+@property (readonly) CGPoint topLeft;
+@property (readonly) CGPoint topRight;
+@property (readonly) CGPoint bottomLeft;
+@property (readonly) CGPoint bottomRight;
+@property (nullable, readonly) NSString *messageString;
 
 @end
+
+NS_ASSUME_NONNULL_END

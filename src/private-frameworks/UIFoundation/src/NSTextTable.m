@@ -1,45 +1,59 @@
-/*
- This file is part of Darling.
+/* Copyright (c) 2007 Christopher J. W. Lloyd
 
- Copyright (C) 2025 Darling Developers
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
 
- Darling is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
- Darling is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
- You should have received a copy of the GNU General Public License
- along with Darling.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
-#import <UIFoundation/NSTextTable.h>
-#import <darling-stub-forwarding.h>
+#import "UIFoundation-ExtraIvars.h"
+#import <AppKit/NSTextTable.h>
 
 @implementation NSTextTable
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+- (unsigned) numberOfColumns {
+    return UIF_EXTRA_NSTextTable(self)->_numberOfColumns;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
+- (BOOL) collapsesBorders {
+    return UIF_EXTRA_NSTextTable(self)->_collapsesBorders;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+- (BOOL) hidesEmptyCells {
+    return UIF_EXTRA_NSTextTable(self)->_hidesEmptyCells;
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
+- (NSTextTableLayoutAlgorithm) layoutAlgorithm {
+    return UIF_EXTRA_NSTextTable(self)->_layoutAlgorithm;
 }
+
+- (void) setNumberOfColumns: (unsigned) numberOfColumns {
+    UIF_EXTRA_NSTextTable(self)->_numberOfColumns = numberOfColumns;
+}
+
+- (void) setCollapsesBorders: (BOOL) yorn {
+    UIF_EXTRA_NSTextTable(self)->_collapsesBorders = yorn;
+}
+
+- (void) setHidesEmptyCells: (BOOL) yorn {
+    UIF_EXTRA_NSTextTable(self)->_hidesEmptyCells = yorn;
+}
+
+- (void) setLayoutAlgorithm: (NSTextTableLayoutAlgorithm) algorithm {
+    UIF_EXTRA_NSTextTable(self)->_layoutAlgorithm = algorithm;
+}
+
+UIF_EXTRA_DEALLOC(NSTextTable)
 
 @end

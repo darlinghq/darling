@@ -6,6 +6,7 @@ set(CarbonCore_SRCS
 	MacMemory.cpp
 	MacLocales.cpp
 	UnicodeUtilities.cpp
+	Script.cpp
 	UnicodeConverter.cpp
 	Gestalt.cpp
 	FileManager.cpp

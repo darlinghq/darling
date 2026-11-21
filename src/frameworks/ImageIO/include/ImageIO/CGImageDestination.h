@@ -15,6 +15,9 @@ CF_IMPLICIT_BRIDGING_ENABLED
 
 IMAGEIO_EXTERN const CFStringRef kCGImageDestinationLossyCompressionQuality;
 IMAGEIO_EXTERN const CFStringRef kCGImageDestinationBackgroundColor;
+IMAGEIO_EXTERN const CFStringRef kCGImageDestinationImageMaxPixelSize;
+IMAGEIO_EXTERN const CFStringRef kCGImageDestinationOptimizeColorForSharing;
+IMAGEIO_EXTERN const CFStringRef kCGImageDestinationPreserveGainMap;
 
 IMAGEIO_EXTERN CFTypeID CGImageDestinationGetTypeID(void);
 

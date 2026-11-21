@@ -29,16 +29,21 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <errno.h>
 #include <iconv.h>
 #include <alloca.h>
+#include <limits.h>
 #include <libgen.h>
 #include <sstream>
 #include <fstream>
 #include <map>
+#include <set>
 #include <regex.h>
 #include <fcntl.h>
 #include <vector>
 #include <CarbonCore/DateTimeUtils.h>
 #include <CarbonCore/Resources.h>
 #include <sys/xattr.h>
+#include <sys/time.h>
+#include <pwd.h>
+#include <sys/mount.h>
 #include <mutex>
 #include <errno.h>
 #include <darling/emulation/linux_premigration/ext/file_handle.h>
@@ -174,6 +179,61 @@ OSStatus FSRefMakePath(const FSRef* fsref, uint8_t* path, uint32_t maxSize)
 	return noErr;
 }
 
+// Darling presents the root file system as the one volume. It carries the reference number the
+// startup volume has on macOS and the volume name below.
+static const FSVolumeRefNum kBootVolumeRefNum = -100;
+static const char kBootVolumeName[] = "Macintosh HD";
+
+// Node IDs of directories handed out by FSGetCatalogInfo, so that a directory ID can be turned
+// back into a path (PBMakeFSRefSync). Only directories this process has looked at can be found.
+static std::map<uint32_t, std::string> g_dirNodeIDs;
+static std::mutex g_dirNodeIDsLock;
+
+// The root directory has node ID fsRtDirID and parent ID fsRtParID; other items use their inode
+// number, the closest thing to a catalog node ID.
+static void nodeIDsForPath(const std::string& path, const struct stat& st, uint32_t* nodeID, uint32_t* parentID)
+{
+	std::lock_guard<std::mutex> lock(g_dirNodeIDsLock);
+
+	if (path == "/")
+	{
+		*nodeID = fsRtDirID;
+		*parentID = fsRtParID;
+		g_dirNodeIDs[fsRtDirID] = path;
+		return;
+	}
+
+	*nodeID = (uint32_t) st.st_ino;
+	if (S_ISDIR(st.st_mode))
+		g_dirNodeIDs[*nodeID] = path;
+
+	size_t slash = path.find_last_of('/');
+	std::string parent = (slash == std::string::npos || slash == 0) ? std::string("/") : path.substr(0, slash);
+	struct stat pst;
+	if (parent == "/")
+	{
+		*parentID = fsRtDirID;
+		g_dirNodeIDs[fsRtDirID] = parent;
+	}
+	else if (::stat(parent.c_str(), &pst) == 0)
+	{
+		*parentID = (uint32_t) pst.st_ino;
+		g_dirNodeIDs[*parentID] = parent;
+	}
+	else
+		*parentID = 0;
+}
+
+static bool dirNodeIDToPath(uint32_t nodeID, std::string& path)
+{
+	std::lock_guard<std::mutex> lock(g_dirNodeIDsLock);
+	auto it = g_dirNodeIDs.find(nodeID);
+	if (it == g_dirNodeIDs.end())
+		return false;
+	path = it->second;
+	return true;
+}
+
 OSStatus FSGetCatalogInfo(const FSRef* ref, uint32_t infoBits, FSCatalogInfo* infoOut, HFSUniStr255* nameOut, FSSpecPtr fsspec, FSRef* parentDir)
 {
 	std::string path;
@@ -221,26 +281,20 @@ OSStatus FSGetCatalogInfo(const FSRef* ref, uint32_t infoBits, FSCatalogInfo* in
 		if (infoBits & kFSCatInfoNodeFlags)
 		{
 			if (S_ISDIR(st.st_mode))
-				infoOut->nodeFlags = 4;
+				infoOut->nodeFlags = kFSNodeIsDirectoryMask;
 		}
-	
+
+		if (infoBits & kFSCatInfoVolume)
+			infoOut->volume = kBootVolumeRefNum;
+
 		if (infoBits & (kFSCatInfoParentDirID|kFSCatInfoNodeID))
 		{
-			/*
+			uint32_t nodeID, parentID;
+			nodeIDsForPath(path, st, &nodeID, &parentID);
 			if (infoBits & kFSCatInfoNodeID)
-				infoOut->nodeID = ref->inodes[0];
-			for (int i = FSRef_MAX_DEPTH-1; i > 0; i--)
-			{
-				if (ref->inodes[i] == 0)
-					continue;
-				
-				if (infoBits & kFSCatInfoParentDirID)
-					infoOut->parentDirID = ref->inodes[i-1];
-				if (infoBits & kFSCatInfoNodeID)
-					infoOut->nodeID = ref->inodes[i];
-			}
-			*/
-			// TODO
+				infoOut->nodeID = nodeID;
+			if (infoBits & kFSCatInfoParentDirID)
+				infoOut->parentDirID = parentID;
 		}
 
 		if (infoBits & kFSCatInfoDataSizes)
@@ -483,6 +537,7 @@ struct OpenFork
 {
 	int fd = -1;
 	std::vector<uint8_t> data;
+	SInt64 position = 0; // current mark of an in-memory (resource) fork; a data fork uses the fd offset
 };
 
 static std::map<FSIORefNum, OpenFork> g_openForks;
@@ -514,9 +569,25 @@ OSErr FSOpenFork(const FSRef* ref, UniCharCount forkNameLength, const UniChar* f
 			case fsRdWrPerm: flags = O_RDWR; break;
 			default: flags = O_RDONLY; break;
 		}
-		fork.fd = ::open(path.c_str(), flags);
+		// QUIRK: FSReadFork succeeds on a fork opened with write-only permission, so such a fork is
+		// opened for reading as well when the file allows it.
+		// Not documented. Evidence: black-box observation on macOS 10.14.4, i386 and x86_64 (tier 2),
+		// vd-upstream/mac-probes/v665-fs1.c.
+		// Test: tests/src/file_manager_iterators.c
+		if (flags == O_WRONLY)
+			fork.fd = ::open(path.c_str(), O_RDWR);
+		if (fork.fd == -1)
+			fork.fd = ::open(path.c_str(), flags);
 		if (fork.fd == -1)
 			return makeOSStatus(errno);
+
+		// A directory has no data fork.
+		struct stat st;
+		if (::fstat(fork.fd, &st) == 0 && S_ISDIR(st.st_mode))
+		{
+			::close(fork.fd);
+			return errFSForkNotFound;
+		}
 	}
 	else
 	{
@@ -612,6 +683,569 @@ OSErr PBCloseForkSync(FSForkIOParam *paramBlock)
 {
 	STUB();
 	return unimpErr;
+}
+
+
+// ---- Fork position and reading --------------------------------------------------------------
+
+static SInt64 forkSize(const OpenFork& fork)
+{
+	if (fork.fd == -1)
+		return (SInt64) fork.data.size();
+	struct stat st;
+	return (::fstat(fork.fd, &st) == 0) ? (SInt64) st.st_size : -1;
+}
+
+static SInt64 forkMark(const OpenFork& fork)
+{
+	if (fork.fd == -1)
+		return fork.position;
+	return (SInt64) ::lseek(fork.fd, 0, SEEK_CUR);
+}
+
+static void forkSetMark(OpenFork& fork, SInt64 position)
+{
+	if (fork.fd == -1)
+		fork.position = position;
+	else
+		::lseek(fork.fd, (off_t) position, SEEK_SET);
+}
+
+// Resolves a positioning mode and offset to a new mark. `size` is the logical end of fork.
+// Only the low two bits of the mode select the base; the caching and newline flags and any other
+// bits do not matter.
+enum ForkPositionResult { kForkPosOK, kForkPosBeforeStart, kForkPosPastEnd };
+
+static ForkPositionResult resolveForkPosition(SInt64 mark, SInt64 size, UInt16 positionMode, SInt64 offset, SInt64* target)
+{
+	switch (positionMode & 3)
+	{
+		case fsFromStart: *target = offset; break;
+		case fsFromLEOF: *target = size + offset; break;
+		case fsFromMark: *target = mark + offset; break;
+		default: *target = mark; break; // fsAtMark: the offset is ignored
+	}
+
+	if (*target < 0)
+		return kForkPosBeforeStart;
+	if (*target > size)
+		return kForkPosPastEnd;
+	return kForkPosOK;
+}
+
+OSErr FSGetForkPosition(FSIORefNum forkRefNum, SInt64* position)
+{
+	if (!position)
+		return paramErr;
+
+	std::lock_guard<std::mutex> lock(g_openForksLock);
+	auto it = g_openForks.find(forkRefNum);
+	if (it == g_openForks.end())
+		return fnOpnErr;
+
+	*position = forkMark(it->second);
+	return noErr;
+}
+
+// QUIRK: moving the mark of a fork with a positioning mode that lands before the start of the
+// fork fails with posErr and leaves the mark at 0, except fsFromMark, which fails with eofErr and
+// leaves the mark at the end of the fork; landing after the end fails with eofErr and leaves the
+// mark at the end. Not documented. Evidence: black-box observation on macOS 10.14.4, i386 and
+// x86_64 (tier 2), vd-upstream/mac-probes/v665-fs1.c.
+// Test: tests/src/file_manager_iterators.c (fork position tests)
+OSErr FSSetForkPosition(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 positionOffset)
+{
+	std::lock_guard<std::mutex> lock(g_openForksLock);
+	auto it = g_openForks.find(forkRefNum);
+	if (it == g_openForks.end())
+		return fnOpnErr;
+
+	OpenFork& fork = it->second;
+	const SInt64 size = forkSize(fork);
+	if (size < 0)
+		return ioErr;
+
+	SInt64 target;
+	switch (resolveForkPosition(forkMark(fork), size, positionMode, positionOffset, &target))
+	{
+		case kForkPosBeforeStart:
+			if ((positionMode & 3) == fsFromMark)
+			{
+				forkSetMark(fork, size);
+				return eofErr;
+			}
+			forkSetMark(fork, 0);
+			return posErr;
+		case kForkPosPastEnd:
+			forkSetMark(fork, size);
+			return eofErr;
+		default:
+			forkSetMark(fork, target);
+			return noErr;
+	}
+}
+
+// QUIRK: a read that begins before the start of the fork fails with posErr and moves the mark to
+// 0 (also for fsFromMark), one that begins after the end fails with eofErr and moves the mark to the
+// end; a read that reaches the end before requestCount bytes were read returns what was available
+// with eofErr, while one that ends exactly at the end succeeds. The newline mode stops after the
+// first byte equal to the newline character, which is included. Not documented. Evidence:
+// black-box observation on macOS 10.14.4, i386 and x86_64 (tier 2),
+// vd-upstream/mac-probes/v665-fs1.c.
+// Test: tests/src/file_manager_iterators.c (fork read tests)
+OSErr FSReadFork(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 positionOffset, ByteCount requestCount, void* buffer, ByteCount* actualCount)
+{
+	if (actualCount)
+		*actualCount = 0;
+
+	std::lock_guard<std::mutex> lock(g_openForksLock);
+	auto it = g_openForks.find(forkRefNum);
+	if (it == g_openForks.end())
+		return fnOpnErr;
+	if (!buffer && requestCount > 0)
+		return paramErr;
+
+	OpenFork& fork = it->second;
+	const SInt64 size = forkSize(fork);
+	if (size < 0)
+		return ioErr;
+
+	SInt64 start;
+	switch (resolveForkPosition(forkMark(fork), size, positionMode, positionOffset, &start))
+	{
+		case kForkPosBeforeStart:
+			forkSetMark(fork, 0);
+			return posErr;
+		case kForkPosPastEnd:
+			forkSetMark(fork, size);
+			return eofErr;
+		default:
+			break;
+	}
+
+	const ByteCount available = (ByteCount) (size - start);
+	const ByteCount wanted = std::min(requestCount, available);
+	ByteCount done = 0;
+
+	if (fork.fd == -1)
+	{
+		if (wanted > 0)
+			memcpy(buffer, fork.data.data() + start, wanted);
+		done = wanted;
+	}
+	else
+	{
+		while (done < wanted)
+		{
+			ssize_t n = ::pread(fork.fd, (uint8_t*) buffer + done, wanted - done, (off_t) (start + done));
+			if (n < 0)
+			{
+				if (errno == EINTR)
+					continue;
+				return makeOSStatus(errno);
+			}
+			if (n == 0)
+				break;
+			done += n;
+		}
+	}
+
+	bool foundNewline = false;
+	if ((positionMode & kFSNewLineMask) && done > 0)
+	{
+		const uint8_t newline = (positionMode & kFSNewLineCharMask) >> 8;
+		const void* hit = memchr(buffer, newline, done);
+		if (hit)
+		{
+			done = (const uint8_t*) hit - (const uint8_t*) buffer + 1;
+			foundNewline = true;
+		}
+	}
+
+	forkSetMark(fork, start + done);
+	if (actualCount)
+		*actualCount = done;
+	return (done < requestCount && !foundNewline) ? eofErr : noErr;
+}
+
+// ---- Catalog iterators -----------------------------------------------------------------------
+
+// An iterator lists the names in its container as they were when it was opened.
+struct OpaqueFSIterator
+{
+	std::string path;
+	std::vector<std::string> names;
+	size_t next = 0;
+};
+
+static std::set<FSIterator> g_iterators;
+static std::mutex g_iteratorsLock;
+
+// QUIRK: only kFSIterateFlat (0) and kFSIterateDelete (2) are accepted; kFSIterateSubtree and every
+// other flag fail with errFSBadIteratorFlags. Not documented (the header says that for now only
+// kFSIterateFlat works with FSGetCatalogInfoBulk). Evidence: black-box observation on macOS 10.14.4,
+// i386 and x86_64 (tier 2), vd-upstream/mac-probes/v665-fs1.c.
+// Test: tests/src/file_manager_iterators.c (iterator flag tests)
+OSErr FSOpenIterator(const FSRef* container, FSIteratorFlags iteratorFlags, FSIterator* iterator)
+{
+	if (!container || !iterator)
+		return paramErr;
+	if (iteratorFlags & ~(OptionBits) kFSIterateDelete)
+		return errFSBadIteratorFlags;
+
+	std::string path;
+	if (!FSRefMakePath(container, path))
+		return errFSBadFSRef;
+
+	struct stat st;
+	if (::stat(path.c_str(), &st) != 0)
+		return (errno == ENOENT) ? fnfErr : makeOSStatus(errno);
+	if (!S_ISDIR(st.st_mode))
+		return errFSNotAFolder;
+
+	std::unique_ptr<OpaqueFSIterator> it(new OpaqueFSIterator);
+	it->path = path;
+
+	DIR* dir = ::opendir(path.c_str());
+	if (!dir)
+		return makeOSStatus(errno);
+	while (struct dirent* entry = ::readdir(dir))
+	{
+		if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
+			it->names.push_back(entry->d_name);
+	}
+	::closedir(dir);
+
+	std::lock_guard<std::mutex> lock(g_iteratorsLock);
+	*iterator = it.get();
+	g_iterators.insert(it.release());
+	return noErr;
+}
+
+OSErr FSCloseIterator(FSIterator iterator)
+{
+	if (!iterator)
+		return paramErr;
+
+	std::lock_guard<std::mutex> lock(g_iteratorsLock);
+	auto found = g_iterators.find(iterator);
+	if (found == g_iterators.end())
+		return errFSIteratorNotFound;
+
+	g_iterators.erase(found);
+	delete iterator;
+	return noErr;
+}
+
+// QUIRK: when the iterator runs out before maximumObjects items were returned, the items found are
+// returned together with errFSNoMoreItems; a call that returns exactly maximumObjects succeeds and
+// the next call returns errFSNoMoreItems with no items. containerChanged stays false, also when
+// items were added after the iterator was opened. Not documented. Evidence: black-box observation
+// on macOS 10.14.4, i386 and x86_64 (tier 2), vd-upstream/mac-probes/v665-fs1.c.
+// Test: tests/src/file_manager_iterators.c (iterator tests)
+OSErr FSGetCatalogInfoBulk(FSIterator iterator, ItemCount maximumObjects, ItemCount* actualObjects, Boolean* containerChanged, FSCatalogInfoBitmap whichInfo, FSCatalogInfo* catalogInfos, FSRef* refs, FSSpecPtr specs, HFSUniStr255* names)
+{
+	if (actualObjects)
+		*actualObjects = 0;
+	if (containerChanged)
+		*containerChanged = false;
+	if (!iterator || !actualObjects)
+		return paramErr;
+	if (whichInfo != kFSCatInfoNone && !catalogInfos)
+		return errFSMissingCatInfo;
+
+	std::lock_guard<std::mutex> lock(g_iteratorsLock);
+	if (g_iterators.find(iterator) == g_iterators.end())
+		return errFSIteratorNotFound;
+
+	ItemCount count = 0;
+	while (count < maximumObjects && iterator->next < iterator->names.size())
+	{
+		const std::string path = (iterator->path == "/" ? std::string() : iterator->path) + "/" + iterator->names[iterator->next++];
+		FSRef ref;
+		if (FSPathMakeRefWithOptions((const uint8_t*) path.c_str(), kFSPathMakeRefDoNotFollowLeafSymlink, &ref, nullptr) != noErr)
+			continue; // removed since the iterator was opened
+
+		if (catalogInfos || names)
+		{
+			FSCatalogInfo scratch;
+			OSStatus err = FSGetCatalogInfo(&ref, whichInfo, catalogInfos ? &catalogInfos[count] : &scratch, names ? &names[count] : nullptr, nullptr, nullptr);
+			if (err != noErr)
+				continue;
+		}
+		if (refs)
+			refs[count] = ref;
+		count++;
+	}
+
+	*actualObjects = count;
+	return (count < maximumObjects) ? errFSNoMoreItems : noErr;
+}
+
+// ---- Volumes ---------------------------------------------------------------------------------
+
+// Darling has one volume, the root file system. With no volume index it is found by the reference
+// number -100 only (0, kFSInvalidVolumeRefNum, is nsvErr); with an index it is volume number 1.
+//
+// QUIRK: the fields not named by whichInfo are left alone. The values a local volume gets on macOS
+// 10.14.4 (tier 2, black-box, vd-upstream/mac-probes/v665-vi2.c and v665-vi.c): sizes and block
+// counts from statfs (total and free bytes are blocks times the block size), the file count the
+// used inodes, a folder count of 0, resource and data clump size 4096, next allocation 0, next
+// catalog ID 2, flags default-volume plus journaling-active (0x4020), signature 0x4244, file system
+// ID 25461, drive number 1, driver reference number 0, backup and checked dates 0. The Mac listed a
+// second volume at index 2; Darling has one.
+// Test: tests/src/file_manager_iterators.c (volume info test)
+OSErr FSGetVolumeInfo(FSVolumeRefNum volume, ItemCount volumeIndex, FSVolumeRefNum* actualVolume, FSVolumeInfoBitmap whichInfo, FSVolumeInfo* info, HFSUniStr255* volumeName, FSRef* rootDirectory)
+{
+	if (volumeIndex == 0 ? volume != kBootVolumeRefNum : volumeIndex != 1)
+		return nsvErr;
+
+	if (info && whichInfo != kFSVolInfoNone)
+	{
+		struct statfs sf;
+		struct stat st;
+		if (::statfs("/", &sf) != 0 || ::stat("/", &st) != 0)
+			return makeOSStatus(errno);
+
+		if (whichInfo & kFSVolInfoCreateDate)
+			info->createDate = Darling::time_tToUTC(st.st_ctime);
+		if (whichInfo & kFSVolInfoModDate)
+			info->modifyDate = Darling::time_tToUTC(st.st_mtime);
+		if (whichInfo & kFSVolInfoBackupDate)
+			memset(&info->backupDate, 0, sizeof(info->backupDate));
+		if (whichInfo & kFSVolInfoCheckedDate)
+			memset(&info->checkedDate, 0, sizeof(info->checkedDate));
+		if (whichInfo & kFSVolInfoFileCount)
+			info->fileCount = (UInt32) (sf.f_files - sf.f_ffree);
+		if (whichInfo & kFSVolInfoDirCount)
+			info->folderCount = 0;
+		if (whichInfo & kFSVolInfoSizes)
+		{
+			info->totalBytes = (UInt64) sf.f_blocks * sf.f_bsize;
+			info->freeBytes = (UInt64) sf.f_bfree * sf.f_bsize;
+		}
+		if (whichInfo & kFSVolInfoBlocks)
+		{
+			info->blockSize = (UInt32) sf.f_bsize;
+			info->totalBlocks = (UInt32) sf.f_blocks;
+			info->freeBlocks = (UInt32) sf.f_bfree;
+		}
+		if (whichInfo & kFSVolInfoNextAlloc)
+			info->nextAllocation = 0;
+		if (whichInfo & kFSVolInfoRsrcClump)
+			info->rsrcClumpSize = 4096;
+		if (whichInfo & kFSVolInfoDataClump)
+			info->dataClumpSize = 4096;
+		if (whichInfo & kFSVolInfoNextID)
+			info->nextCatalogID = 2;
+		if (whichInfo & kFSVolInfoFinderInfo)
+			memset(info->finderInfo, 0, sizeof(info->finderInfo));
+		if (whichInfo & kFSVolInfoFlags)
+			info->flags = kFSVolFlagDefaultVolumeMask | kFSVolFlagJournalingActiveMask;
+		if (whichInfo & kFSVolInfoFSInfo)
+		{
+			info->filesystemID = 25461;
+			info->signature = 0x4244;
+		}
+		if (whichInfo & kFSVolInfoDriveInfo)
+		{
+			info->driveNumber = 1;
+			info->driverRefNum = 0;
+		}
+	}
+
+	if (actualVolume)
+		*actualVolume = kBootVolumeRefNum;
+	if (volumeName)
+	{
+		const size_t length = strlen(kBootVolumeName);
+		volumeName->length = (uint16_t) length;
+		for (size_t i = 0; i < length; i++)
+			volumeName->unicode[i] = (uint8_t) kBootVolumeName[i];
+	}
+	if (rootDirectory)
+		return FSPathMakeRef((const uint8_t*) "/", rootDirectory, nullptr);
+	return noErr;
+}
+
+// QUIRK: the volume reference numbers FSEjectVolumeSync and PBHGetVolParmsSync accept: the startup
+// volume (-100), 0 and positive numbers for PBHGetVolParmsSync, and anything else fails with
+// nsvErr. Ejecting never succeeds here: the only volume is the root file system, which cannot be
+// ejected, and the call reports errFSOperationNotSupported for it. Evidence for the nsvErr cases:
+// black-box observation on macOS 10.14.4, i386 and x86_64 (tier 2),
+// vd-upstream/mac-probes/v665-fs1.c; the startup-volume result is not observed (ejecting a startup
+// volume was not tried) and follows the error's documented meaning.
+// Test: tests/src/file_manager_iterators.c (volume tests)
+OSStatus FSEjectVolumeSync(FSVolumeRefNum vRefNum, OptionBits flags, pid_t* dissenter)
+{
+	if (vRefNum != kBootVolumeRefNum)
+		return nsvErr;
+	return errFSOperationNotSupported;
+}
+
+// Values reported for the volume by version 5 of the volume parameters buffer, as observed for a
+// local startup volume on macOS 10.14.4 (tier 2), vd-upstream/mac-probes/v665-fs1.c.
+static const SInt32 kVolParmsAttrib = 0x28084408;
+static const SInt32 kVolParmsExtendedAttributes = 0x10ac2432;
+static const UniCharCount kVolParmsMaxNameLength = 85;
+static const char kVolParmsDeviceID[] = "";
+
+// Copies the leading bytes of the version 5 volume parameters that fit in a buffer of the given
+// size, and returns how many were copied.
+static size_t copyVolParms(void* buffer, size_t size)
+{
+	GetVolParmsInfoBuffer parms;
+	memset(&parms, 0, sizeof(parms));
+	parms.vMVersion = 5;
+	parms.vMAttrib = kVolParmsAttrib;
+	parms.vMExtendedAttributes = kVolParmsExtendedAttributes;
+	parms.vMDeviceID = (void*) kVolParmsDeviceID;
+	parms.vMMaxNameLength = kVolParmsMaxNameLength;
+
+	const size_t n = std::min<size_t>(size, sizeof(parms));
+	memcpy(buffer, &parms, n);
+	return n;
+}
+
+OSErr PBHGetVolParmsSync(HParmBlkPtr paramBlock)
+{
+	if (!paramBlock)
+		return paramErr;
+
+	HIOParam& io = paramBlock->ioParam;
+	io.ioActCount = 0;
+
+	OSErr err = noErr;
+	if (io.ioVRefNum < 0 && io.ioVRefNum != kBootVolumeRefNum)
+		err = nsvErr;
+	else if (!io.ioBuffer || io.ioReqCount <= 0)
+		err = paramErr;
+
+	if (err == noErr)
+		io.ioActCount = (SInt32) copyVolParms(io.ioBuffer, io.ioReqCount);
+
+	io.ioResult = err;
+	return err;
+}
+
+// QUIRK: fills as many leading bytes of the version 5 buffer as bufferSize allows, and succeeds
+// with nothing written when bufferSize is 0 (no error for a short buffer). Only the startup
+// volume (-100) is accepted: 0, other negative numbers and positive numbers (which
+// PBHGetVolParmsSync accepts) fail with nsvErr and leave the buffer alone. Not documented.
+// Evidence: black-box observation on macOS 26.7.3 x86_64 and macOS 10.14.4 i386 (tier 2).
+// Test: tests/src/file_manager_volume_parms.c
+OSStatus FSGetVolumeParms(FSVolumeRefNum volume, GetVolParmsInfoBuffer* buffer, ByteCount bufferSize)
+{
+	if (volume != kBootVolumeRefNum)
+		return nsvErr;
+	if (!buffer)
+		return paramErr;
+
+	copyVolParms(buffer, bufferSize);
+	return noErr;
+}
+
+// ---- PBMakeFSRefSync -------------------------------------------------------------------------
+
+// Resolves the Pascal pathname of a legacy parameter block. A name with a colon that does not begin
+// with one starts with a volume name and is a full path; otherwise it is relative to the directory
+// ioDirID names, or to the current directory for ID 0. A leading colon only marks a relative path,
+// and each further empty component goes up one directory.
+static OSErr makeFSRefFromHFSPath(const FSRefParam* param, std::string& out)
+{
+	std::string name;
+	if (param->ioNamePtr)
+	{
+		const unsigned char* pstr = (const unsigned char*) param->ioNamePtr;
+		CFStringRef str = CFStringCreateWithBytes(nullptr, pstr + 1, pstr[0], kCFStringEncodingMacRoman, false);
+		if (!str)
+			return paramErr;
+		char buf[1024];
+		bool ok = CFStringGetCString(str, buf, sizeof(buf), kCFStringEncodingUTF8);
+		CFRelease(str);
+		if (!ok)
+			return paramErr;
+		name = buf;
+	}
+
+	const bool fullPath = !name.empty() && name[0] != ':' && name.find(':') != std::string::npos;
+	std::string path;
+	size_t pos = 0;
+
+	if (fullPath)
+	{
+		size_t colon = name.find(':');
+		if (name.compare(0, colon, kBootVolumeName) != 0)
+			return nsvErr;
+		path = "/";
+		pos = colon + 1;
+	}
+	else
+	{
+		if (param->ioDirID == 0)
+		{
+			char cwd[PATH_MAX];
+			if (!::getcwd(cwd, sizeof(cwd)))
+				return fnfErr;
+			path = cwd;
+		}
+		else if (param->ioDirID == fsRtParID)
+			return nsvErr;
+		else if (!dirNodeIDToPath(param->ioDirID, path))
+			return fnfErr;
+		pos = (!name.empty() && name[0] == ':') ? 1 : 0;
+	}
+
+	while (pos < name.size())
+	{
+		size_t colon = name.find(':', pos);
+		if (colon == std::string::npos)
+			colon = name.size();
+		std::string component = name.substr(pos, colon - pos);
+		pos = colon + 1;
+
+		if (component.empty())
+		{
+			size_t slash = path.find_last_of('/');
+			path = (slash == std::string::npos || slash == 0) ? std::string("/") : path.substr(0, slash);
+		}
+		else if (component.find('/') != std::string::npos)
+			return fnfErr;
+		else
+		{
+			if (path.empty() || path.back() != '/')
+				path += '/';
+			path += component;
+		}
+	}
+
+	out = path;
+	return noErr;
+}
+
+// QUIRK: PBMakeFSRefSync with a NULL newRef fails with errFSBadFSRef; ioDirID 1, a name that has a
+// colon in the middle but does not name this volume, and a volume name that does not exist fail
+// with nsvErr, and an unknown directory ID or a missing item with fnfErr; the volume reference
+// number is ignored. Not documented. Evidence: black-box observation on macOS 10.14.4, i386 (tier
+// 2; the call does not exist in 64-bit processes), vd-upstream/mac-probes/v665-fs2.c.
+// Test: tests/src/file_manager_iterators.c (PBMakeFSRefSync tests)
+OSErr PBMakeFSRefSync(FSRefParam* paramBlock)
+{
+	if (!paramBlock)
+		return paramErr;
+
+	OSErr err;
+	std::string path;
+	if (!paramBlock->newRef)
+		err = errFSBadFSRef;
+	else if ((err = makeFSRefFromHFSPath(paramBlock, path)) == noErr)
+	{
+		if (FSPathMakeRefWithOptions((const uint8_t*) path.c_str(), kFSPathMakeRefDoNotFollowLeafSymlink, paramBlock->newRef, nullptr) != noErr)
+			err = fnfErr;
+	}
+
+	paramBlock->ioResult = err;
+	return err;
 }
 
 static bool copyFileContents(const char* src, const char* dst, mode_t mode)
@@ -828,3 +1462,222 @@ extern "C" OSStatus FSMoveObjectSync(const FSRef *source, const FSRef *destinati
 	return noErr;
 }
 
+
+// Converts a UTF-16 name as taken by the FS*Unicode calls to the UTF-8 name of a directory entry.
+// A slash cannot appear in a Linux name, so (as HFS+ names are) a slash in the name stands for a colon when
+// creating; see FSCreateFileUnicode.
+static bool unicodeNameToUTF8(UniCharCount length, const UniChar* name, std::string& out)
+{
+	CFStringRef str = CFStringCreateWithCharacters(NULL, name, length);
+	if (!str)
+		return false;
+
+	CFIndex bufsize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+	std::unique_ptr<char[]> buf(new char[bufsize]);
+	bool ok = CFStringGetCString(str, buf.get(), bufsize, kCFStringEncodingUTF8);
+	CFRelease(str);
+
+	if (ok)
+		out = buf.get();
+	return ok;
+}
+
+// QUIRK: FSCreateFileUnicode stores a slash in the requested name as a colon, fails with errFSMissingName for an
+// empty name and with dupFNErr for an existing one.
+// Not documented. Evidence: black-box observation on macOS 26.7.3 (tier 2).
+// Test: tests/src/file_manager_unicode.c (test_quirk_create_file_slash_becomes_colon)
+extern "C" OSErr FSCreateFileUnicode(const FSRef* parentRef, UniCharCount nameLength, const UniChar* name,
+	FSCatalogInfoBitmap whichInfo, const FSCatalogInfo* catalogInfo, FSRef* newRef, FSSpecPtr newSpec)
+{
+	std::string dir, leaf;
+
+	if (!parentRef)
+		return errFSBadFSRef;
+	if (nameLength == 0)
+		return errFSMissingName;
+	if (!name)
+		return bdNamErr;
+	if (nameLength > 255)
+		return errFSNameTooLong;
+	if (!FSRefMakePath(parentRef, dir))
+		return fnfErr;
+	if (!unicodeNameToUTF8(nameLength, name, leaf))
+		return bdNamErr;
+
+	std::replace(leaf.begin(), leaf.end(), '/', ':');
+
+	struct stat st;
+	if (stat(dir.c_str(), &st) != 0)
+		return fnfErr;
+	if (!S_ISDIR(st.st_mode))
+		return errFSNotAFolder;
+
+	std::string path = dir;
+	if (path.back() != '/')
+		path += '/';
+	path += leaf;
+
+	int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0666);
+	if (fd == -1)
+		return errno == EEXIST ? dupFNErr : makeOSStatus(errno);
+	close(fd);
+
+	if (newSpec)
+		memset(newSpec, 0, sizeof(*newSpec));
+
+	FSRef created;
+	OSStatus status = FSPathMakeRef((const uint8_t*) path.c_str(), &created, nullptr);
+	if (status != noErr)
+		return status;
+
+	if (whichInfo != kFSCatInfoNone && catalogInfo)
+	{
+		status = FSSetCatalogInfo(&created, whichInfo, catalogInfo);
+		if (status != noErr)
+			return status;
+	}
+
+	if (newRef)
+		*newRef = created;
+	return noErr;
+}
+
+// QUIRK: FSMakeFSRefUnicode answers the parent itself for an empty name, bdNamErr for a name containing a colon
+// or equal to "..", and fnfErr for a name containing a slash.
+// Not documented. Evidence: black-box observation on macOS 26.7.3 (tier 2).
+// Test: tests/src/file_manager_unicode.c (test_quirk_make_fsref_special_names)
+extern "C" OSStatus FSMakeFSRefUnicode(const FSRef* parentRef, UniCharCount nameLength, const UniChar* name,
+	TextEncoding textEncodingHint, FSRef* newRef)
+{
+	std::string dir, leaf;
+	(void) textEncodingHint;
+
+	if (!parentRef || !newRef)
+		return errFSBadFSRef;
+	if (nameLength > 0 && !name)
+		return bdNamErr;
+	if (!FSRefMakePath(parentRef, dir))
+		return fnfErr;
+
+	struct stat st;
+	if (lstat(dir.c_str(), &st) != 0)
+		return fnfErr;
+	if (!S_ISDIR(st.st_mode))
+		return errFSNotAFolder;
+
+	if (nameLength == 0)
+	{
+		*newRef = *parentRef;
+		return noErr;
+	}
+	if (nameLength > 255)
+		return errFSNameTooLong;
+	if (!unicodeNameToUTF8(nameLength, name, leaf))
+		return bdNamErr;
+	if (leaf.find(':') != std::string::npos || leaf == "..")
+		return bdNamErr;
+	if (leaf.find('/') != std::string::npos)
+		return fnfErr;
+
+	std::string path = dir;
+	if (path.back() != '/')
+		path += '/';
+	path += leaf;
+
+	if (lstat(path.c_str(), &st) != 0)
+		return errno == ENOTDIR ? errFSNotAFolder : fnfErr;
+
+	return FSPathMakeRef((const uint8_t*) path.c_str(), newRef, nullptr);
+}
+
+extern "C" CFStringRef FSCreateStringFromHFSUniStr(CFAllocatorRef alloc, const HFSUniStr255* uniStr)
+{
+	if (!uniStr)
+		return NULL;
+
+	UniCharCount length = std::min<UniCharCount>(uniStr->length, 255);
+	return CFStringCreateWithCharacters(alloc, uniStr->unicode, length);
+}
+
+extern "C" OSStatus FSGetHFSUniStrFromString(CFStringRef theString, HFSUniStr255* theOutString)
+{
+	if (!theString || !theOutString)
+		return paramErr;
+
+	CFIndex length = CFStringGetLength(theString);
+	if (length > 255)
+		return errFSNameTooLong;
+
+	theOutString->length = length;
+	CFStringGetCharacters(theString, CFRangeMake(0, length), theOutString->unicode);
+	return noErr;
+}
+
+static std::string trashDirectoryPath()
+{
+	const char* home = getenv("HOME");
+	if (!home || !*home)
+	{
+		struct passwd* pw = getpwuid(getuid());
+		home = pw ? pw->pw_dir : nullptr;
+	}
+	if (!home || !*home)
+		return std::string();
+	return std::string(home) + "/.Trash";
+}
+
+// QUIRK: when the trash already holds an item of that name, the moved item is renamed to the name followed by
+// a space and the local time as HH-MM-SS-mmm, with the original extension (if any) after it.
+// Not documented. Evidence: black-box observation on macOS 26.7.3 (tier 2).
+// Test: tests/src/file_manager_unicode.c (test_quirk_trash_name_collision)
+extern "C" OSStatus FSMoveObjectToTrashSync(const FSRef* source, FSRef* target, OptionBits options)
+{
+	(void) options;
+
+	std::string srcPath, trash;
+	if (!source)
+		return errFSBadFSRef;
+	if (!FSRefMakePath(source, srcPath))
+		return fnfErr;
+
+	struct stat st;
+	if (lstat(srcPath.c_str(), &st) != 0)
+		return fnfErr;
+
+	trash = trashDirectoryPath();
+	if (trash.empty())
+		return fnfErr;
+	if (mkdir(trash.c_str(), 0700) != 0 && errno != EEXIST)
+		return makeOSStatus(errno);
+
+	std::string name = srcPath.substr(srcPath.rfind('/') + 1);
+	if (name.empty())
+		return paramErr;
+
+	if (lstat((trash + "/" + name).c_str(), &st) == 0)
+	{
+		struct timeval tv;
+		struct tm tmv;
+		char stamp[32];
+
+		gettimeofday(&tv, nullptr);
+		localtime_r(&tv.tv_sec, &tmv);
+		snprintf(stamp, sizeof(stamp), " %02d-%02d-%02d-%03d", tmv.tm_hour, tmv.tm_min, tmv.tm_sec, (int) (tv.tv_usec / 1000));
+
+		size_t dot = name.rfind('.');
+		std::string ext = (dot != std::string::npos && dot > 0) ? name.substr(dot) : std::string();
+		name = name + stamp + ext;
+	}
+
+	FSRef trashRef;
+	OSStatus status = FSPathMakeRef((const uint8_t*) trash.c_str(), &trashRef, nullptr);
+	if (status != noErr)
+		return status;
+
+	CFStringRef cfName = CFStringCreateWithCString(NULL, name.c_str(), kCFStringEncodingUTF8);
+	if (!cfName)
+		return paramErr;
+	status = FSMoveObjectSync(source, &trashRef, cfName, target, 0);
+	CFRelease(cfName);
+	return status;
+}

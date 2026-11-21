@@ -22,6 +22,8 @@
 #define _HIServices_H_
 #include <CoreServices/MacTypes.h>
 #include "Processes.h"
+#include "Pasteboard.h"
+#include "HIShape.h"
 
 #ifdef __cplusplus
 extern "C" {

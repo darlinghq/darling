@@ -1,45 +1,61 @@
-/*
- This file is part of Darling.
+/* Copyright (c) 2007 Christopher J. W. Lloyd
 
- Copyright (C) 2025 Darling Developers
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
 
- Darling is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
- Darling is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
- You should have received a copy of the GNU General Public License
- along with Darling.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
-#import <UIFoundation/NSTextTableBlock.h>
-#import <darling-stub-forwarding.h>
+#import "UIFoundation-ExtraIvars.h"
+#import <AppKit/NSTextTableBlock.h>
 
 @implementation NSTextTableBlock
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- initWithTable: (NSTextTable *) table
+           startingRow: (int) startingRow
+               rowSpan: (int) rowSpan
+        startingColumn: (int) startingColumn
+            columnSpan: (int) columnSpan
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    UIF_EXTRA_NSTextTableBlock(self)->_table = table;
+    UIF_EXTRA_NSTextTableBlock(self)->_startingRow = startingRow;
+    UIF_EXTRA_NSTextTableBlock(self)->_rowSpan = rowSpan;
+    UIF_EXTRA_NSTextTableBlock(self)->_startingColumn = startingColumn;
+    UIF_EXTRA_NSTextTableBlock(self)->_columnSpan = columnSpan;
+    return self;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
+- (NSTextTable *) table {
+    return UIF_EXTRA_NSTextTableBlock(self)->_table;
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+- (int) startingRow {
+    return UIF_EXTRA_NSTextTableBlock(self)->_startingRow;
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
+- (int) rowSpan {
+    return UIF_EXTRA_NSTextTableBlock(self)->_rowSpan;
 }
+
+- (int) startingColumn {
+    return UIF_EXTRA_NSTextTableBlock(self)->_startingColumn;
+}
+
+- (int) columnSpan {
+    return UIF_EXTRA_NSTextTableBlock(self)->_columnSpan;
+}
+
+UIF_EXTRA_DEALLOC(NSTextTableBlock)
 
 @end

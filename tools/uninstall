@@ -1,15 +1,32 @@
 #!/bin/sh
 set +e
 
-if [ "$(whoami)" != "root" ]
+# The launcher treats a setting starting with 1, t or T as enabled.
+setting_enabled() {
+	case "${1:-}" in
+	1*|[tT]*) return 0 ;;
+	esac
+	return 1
+}
+
+CURRENT_USER=$(whoami)
+nonroot=0
+if [ "$CURRENT_USER" != "root" ]
 then
-	echo "Uninstall must be run as root, invoking sudo"
-	exec sudo su -c "$0" "$@"
+	# A rootless Darling is installed under the user's own prefix, so it can
+	# be removed without root privileges.
+	if setting_enabled "$DARLING_NONROOT" || setting_enabled "$DARLING_ROOTLESS"
+	then
+		nonroot=1
+	else
+		echo "Uninstall must be run as root, invoking sudo"
+		exec sudo su -c "$0" "$@"
+	fi
 fi
 
 if command -v darling
 then
-	$(dirname "$0")/shutdown-user.sh || exit 1
+	$(dirname "$0")/shutdown-user.sh "$(dirname "$(dirname "$(command -v darling)")")" || exit 1
 fi
 
 INSTALL_PREFIX="$(dirname "$(dirname "$(which darling)")")"
@@ -21,5 +38,9 @@ fi
 rm -f "${INSTALL_PREFIX}/bin/darling"
 rm -f "${INSTALL_PREFIX}/bin/darlingserver"
 rm -f "${INSTALL_PREFIX}/bin/darling-coredump"
-find /lib/modules -name darling-mach.ko -delete
+# The kernel module is loaded by root; a rootless uninstall cannot remove it.
+if [ "$nonroot" != 1 ]
+then
+	find /lib/modules -name darling-mach.ko -delete
+fi
 echo "Uninstall complete"

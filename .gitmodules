@@ -229,6 +229,9 @@
 [submodule "src/external/TextEdit"]
 	path = src/external/TextEdit
 	url = ../darling-TextEdit.git
+[submodule "src/external/Console"]
+	path = src/external/Console
+	url = ../darling-Console.git
 [submodule "src/external/bsm"]
 	path = src/external/bsm
 	url = ../darling-bsm.git
@@ -355,6 +358,10 @@
 	path = src/external/libressl-2.8.3
 	url = ../darling-libressl.git
 	branch = v2.8.3
+[submodule "src/external/libressl-3.3.6"]
+	path = src/external/libressl-3.3.6
+	url = ../darling-libressl.git
+	branch = v3.3.6
 [submodule "src/external/OpenLDAP"]
 	path = src/external/OpenLDAP
 	url = ../darling-openldap.git
@@ -478,3 +485,6 @@
 	path = src/external/openal-soft
 	url = ../openal-soft.git
 	branch = v1.20
+[submodule "src/external/lsof"]
+	path = src/external/lsof
+	url = ../darling-lsof.git

@@ -1624,18 +1624,6 @@ void* HIS_XPC_SetNetworkLocation(void)
     return NULL;
 }
 
-void* HIShapeContainsPoint(void)
-{
-    if (verbose) puts("STUB: HIShapeContainsPoint called");
-    return NULL;
-}
-
-void* HIShapeCreateCopy(void)
-{
-    if (verbose) puts("STUB: HIShapeCreateCopy called");
-    return NULL;
-}
-
 void* HIShapeCreateCopyAsQDRgn(void)
 {
     if (verbose) puts("STUB: HIShapeCreateCopyAsQDRgn called");
@@ -1645,12 +1633,6 @@ void* HIShapeCreateCopyAsQDRgn(void)
 void* HIShapeCreateDifference(void)
 {
     if (verbose) puts("STUB: HIShapeCreateDifference called");
-    return NULL;
-}
-
-void* HIShapeCreateEmpty(void)
-{
-    if (verbose) puts("STUB: HIShapeCreateEmpty called");
     return NULL;
 }
 
@@ -1690,12 +1672,6 @@ void* HIShapeCreateWithQDRgn(void)
     return NULL;
 }
 
-void* HIShapeCreateWithRect(void)
-{
-    if (verbose) puts("STUB: HIShapeCreateWithRect called");
-    return NULL;
-}
-
 void* HIShapeCreateXor(void)
 {
     if (verbose) puts("STUB: HIShapeCreateXor called");
@@ -1720,18 +1696,6 @@ void* HIShapeGetAsQDRgn(void)
     return NULL;
 }
 
-void* HIShapeGetBounds(void)
-{
-    if (verbose) puts("STUB: HIShapeGetBounds called");
-    return NULL;
-}
-
-void* HIShapeGetTypeID(void)
-{
-    if (verbose) puts("STUB: HIShapeGetTypeID called");
-    return NULL;
-}
-
 void* HIShapeInset(void)
 {
     if (verbose) puts("STUB: HIShapeInset called");
@@ -1741,24 +1705,6 @@ void* HIShapeInset(void)
 void* HIShapeIntersect(void)
 {
     if (verbose) puts("STUB: HIShapeIntersect called");
-    return NULL;
-}
-
-void* HIShapeIntersectsRect(void)
-{
-    if (verbose) puts("STUB: HIShapeIntersectsRect called");
-    return NULL;
-}
-
-void* HIShapeIsEmpty(void)
-{
-    if (verbose) puts("STUB: HIShapeIsEmpty called");
-    return NULL;
-}
-
-void* HIShapeIsRectangular(void)
-{
-    if (verbose) puts("STUB: HIShapeIsRectangular called");
     return NULL;
 }
 
@@ -2119,102 +2065,6 @@ void* MSHMIGSourceSetNoSendersCallback(void)
 void* MSHMIGSourceSetSendOnceCallback(void)
 {
     if (verbose) puts("STUB: MSHMIGSourceSetSendOnceCallback called");
-    return NULL;
-}
-
-void* PasteboardClear(void)
-{
-    if (verbose) puts("STUB: PasteboardClear called");
-    return NULL;
-}
-
-void* PasteboardCopyItemFlavorData(void)
-{
-    if (verbose) puts("STUB: PasteboardCopyItemFlavorData called");
-    return NULL;
-}
-
-void* PasteboardCopyItemFlavors(void)
-{
-    if (verbose) puts("STUB: PasteboardCopyItemFlavors called");
-    return NULL;
-}
-
-void* PasteboardCopyName(void)
-{
-    if (verbose) puts("STUB: PasteboardCopyName called");
-    return NULL;
-}
-
-void* PasteboardCopyPasteLocation(void)
-{
-    if (verbose) puts("STUB: PasteboardCopyPasteLocation called");
-    return NULL;
-}
-
-void* PasteboardCreate(void)
-{
-    if (verbose) puts("STUB: PasteboardCreate called");
-    return NULL;
-}
-
-void* PasteboardGetCFPasteboard(void)
-{
-    if (verbose) puts("STUB: PasteboardGetCFPasteboard called");
-    return NULL;
-}
-
-void* PasteboardGetItemCount(void)
-{
-    if (verbose) puts("STUB: PasteboardGetItemCount called");
-    return NULL;
-}
-
-void* PasteboardGetItemFlavorFlags(void)
-{
-    if (verbose) puts("STUB: PasteboardGetItemFlavorFlags called");
-    return NULL;
-}
-
-void* PasteboardGetItemIdentifier(void)
-{
-    if (verbose) puts("STUB: PasteboardGetItemIdentifier called");
-    return NULL;
-}
-
-void* PasteboardGetTypeID(void)
-{
-    if (verbose) puts("STUB: PasteboardGetTypeID called");
-    return NULL;
-}
-
-void* PasteboardPutItemFlavor(void)
-{
-    if (verbose) puts("STUB: PasteboardPutItemFlavor called");
-    return NULL;
-}
-
-void* PasteboardResolvePromises(void)
-{
-    if (verbose) puts("STUB: PasteboardResolvePromises called");
-    return NULL;
-}
-
-void* PasteboardSetPasteLocation(void)
-{
-    if (verbose) puts("STUB: PasteboardSetPasteLocation called");
-    return NULL;
-}
-
-void* PasteboardSetPromiseKeeper(void)
-{
-    if (verbose) puts("STUB: PasteboardSetPromiseKeeper called");
-    return NULL;
-}
-
-void* PasteboardSynchronize(void)
-{
-    if (verbose) puts("STUB: PasteboardSynchronize called");
     return NULL;
 }
 

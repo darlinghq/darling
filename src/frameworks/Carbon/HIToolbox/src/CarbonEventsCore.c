@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <pthread.h>
 
 static int verbose = 0;
 
@@ -29,10 +30,32 @@ static void initme(void) {
     verbose = getenv("STUB_VERBOSE") != NULL;
 }
 
-EventQueueRef GetMainEventQueue()
+// Event queues are only identities here: nothing can be posted to one.
+struct OpaqueEventQueueRef
 {
-    if (verbose) puts("STUB: GetMainEventQueue called");
-	return 0;
+    int unused;
+};
+
+static struct OpaqueEventQueueRef g_mainQueue;
+
+EventQueueRef GetMainEventQueue(void)
+{
+    return &g_mainQueue;
+}
+
+// Every thread has an event queue of its own; the main thread's is the main queue.
+EventQueueRef GetCurrentEventQueue(void)
+{
+    static _Thread_local struct OpaqueEventQueueRef threadQueue;
+
+    return pthread_main_np() ? &g_mainQueue : &threadQueue;
+}
+
+// The event being dispatched by an event loop of the calling thread. No event loop dispatches
+// events here, and an event sent with SendEventToEventTarget() is not reported either.
+EventRef GetCurrentEvent(void)
+{
+    return NULL;
 }
 
 OSStatus PostEventToQueue(EventQueueRef a, EventRef b, EventPriority c)

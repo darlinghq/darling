@@ -7,6 +7,8 @@ const CFStringRef _kLSArchitecturei386Value = CFSTR("i386");
 const CFStringRef _kLSArchitecturex86_64Value = CFSTR("x86_64");
 const CFStringRef _kLSArchitectureUnknownValue = CFSTR("unknown");
 
+const CFStringRef _kLSOpenOptionBackgroundLaunchKey = CFSTR("_kLSOpenOptionBackgroundLaunchKey");
+
 const CFStringRef _kLSPIDKey = CFSTR("LSPID");
 const CFStringRef _kLSExecutablePathKey = CFSTR("LSExecutablePath");
 const CFStringRef _kLSCheckInTimeKey = CFSTR("LSCheckInTime");

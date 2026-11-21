@@ -186,11 +186,6 @@ void* CMAudioFormatDescriptionCopyAsBigEndianSoundDescriptionBlockBuffer(void) {
     return NULL;
 }
 
-void* CMAudioFormatDescriptionCreate(void) {
-    if (verbose) puts("STUB: CMAudioFormatDescriptionCreate called");
-    return NULL;
-}
-
 void* CMAudioFormatDescriptionCreateFromBigEndianSoundDescriptionBlockBuffer(void) {
     if (verbose) puts("STUB: CMAudioFormatDescriptionCreateFromBigEndianSoundDescriptionBlockBuffer called");
     return NULL;
@@ -216,18 +211,8 @@ void* CMAudioFormatDescriptionGetChannelCount(void) {
     return NULL;
 }
 
-void* CMAudioFormatDescriptionGetChannelLayout(void) {
-    if (verbose) puts("STUB: CMAudioFormatDescriptionGetChannelLayout called");
-    return NULL;
-}
-
 void* CMAudioFormatDescriptionGetFormatList(void) {
     if (verbose) puts("STUB: CMAudioFormatDescriptionGetFormatList called");
-    return NULL;
-}
-
-void* CMAudioFormatDescriptionGetMagicCookie(void) {
-    if (verbose) puts("STUB: CMAudioFormatDescriptionGetMagicCookie called");
     return NULL;
 }
 
@@ -238,11 +223,6 @@ void* CMAudioFormatDescriptionGetMostCompatibleFormat(void) {
 
 void* CMAudioFormatDescriptionGetRichestDecodableFormat(void) {
     if (verbose) puts("STUB: CMAudioFormatDescriptionGetRichestDecodableFormat called");
-    return NULL;
-}
-
-void* CMAudioFormatDescriptionGetStreamBasicDescription(void) {
-    if (verbose) puts("STUB: CMAudioFormatDescriptionGetStreamBasicDescription called");
     return NULL;
 }
 
@@ -316,16 +296,6 @@ void* CMBlockBufferAppendMemoryBlock(void) {
     return NULL;
 }
 
-void* CMBlockBufferAssureBlockMemory(void) {
-    if (verbose) puts("STUB: CMBlockBufferAssureBlockMemory called");
-    return NULL;
-}
-
-void* CMBlockBufferCopyDataBytes(void) {
-    if (verbose) puts("STUB: CMBlockBufferCopyDataBytes called");
-    return NULL;
-}
-
 void* CMBlockBufferCreateContiguous(void) {
     if (verbose) puts("STUB: CMBlockBufferCreateContiguous called");
     return NULL;
@@ -338,41 +308,6 @@ void* CMBlockBufferCreateEmpty(void) {
 
 void* CMBlockBufferCreateWithBufferReference(void) {
     if (verbose) puts("STUB: CMBlockBufferCreateWithBufferReference called");
-    return NULL;
-}
-
-void* CMBlockBufferCreateWithMemoryBlock(void) {
-    if (verbose) puts("STUB: CMBlockBufferCreateWithMemoryBlock called");
-    return NULL;
-}
-
-void* CMBlockBufferFillDataBytes(void) {
-    if (verbose) puts("STUB: CMBlockBufferFillDataBytes called");
-    return NULL;
-}
-
-void* CMBlockBufferGetDataLength(void) {
-    if (verbose) puts("STUB: CMBlockBufferGetDataLength called");
-    return NULL;
-}
-
-void* CMBlockBufferGetDataPointer(void) {
-    if (verbose) puts("STUB: CMBlockBufferGetDataPointer called");
-    return NULL;
-}
-
-void* CMBlockBufferGetTypeID(void) {
-    if (verbose) puts("STUB: CMBlockBufferGetTypeID called");
-    return NULL;
-}
-
-void* CMBlockBufferIsEmpty(void) {
-    if (verbose) puts("STUB: CMBlockBufferIsEmpty called");
-    return NULL;
-}
-
-void* CMBlockBufferIsRangeContiguous(void) {
-    if (verbose) puts("STUB: CMBlockBufferIsRangeContiguous called");
     return NULL;
 }
 
@@ -656,38 +591,8 @@ void* CMFormatDescriptionCreate(void) {
     return NULL;
 }
 
-void* CMFormatDescriptionEqual(void) {
-    if (verbose) puts("STUB: CMFormatDescriptionEqual called");
-    return NULL;
-}
-
 void* CMFormatDescriptionEqualIgnoringExtensionKeys(void) {
     if (verbose) puts("STUB: CMFormatDescriptionEqualIgnoringExtensionKeys called");
-    return NULL;
-}
-
-void* CMFormatDescriptionGetExtension(void) {
-    if (verbose) puts("STUB: CMFormatDescriptionGetExtension called");
-    return NULL;
-}
-
-void* CMFormatDescriptionGetExtensions(void) {
-    if (verbose) puts("STUB: CMFormatDescriptionGetExtensions called");
-    return NULL;
-}
-
-void* CMFormatDescriptionGetMediaSubType(void) {
-    if (verbose) puts("STUB: CMFormatDescriptionGetMediaSubType called");
-    return NULL;
-}
-
-void* CMFormatDescriptionGetMediaType(void) {
-    if (verbose) puts("STUB: CMFormatDescriptionGetMediaType called");
-    return NULL;
-}
-
-void* CMFormatDescriptionGetTypeID(void) {
-    if (verbose) puts("STUB: CMFormatDescriptionGetTypeID called");
     return NULL;
 }
 
@@ -916,11 +821,6 @@ void* CMSampleBufferCallBlockForEachSample(void) {
     return NULL;
 }
 
-void* CMSampleBufferCallForEachSample(void) {
-    if (verbose) puts("STUB: CMSampleBufferCallForEachSample called");
-    return NULL;
-}
-
 void* CMSampleBufferCopyPCMDataIntoAudioBufferList(void) {
     if (verbose) puts("STUB: CMSampleBufferCopyPCMDataIntoAudioBufferList called");
     return NULL;
@@ -931,11 +831,6 @@ void* CMSampleBufferCopySampleBufferForRange(void) {
     return NULL;
 }
 
-void* CMSampleBufferCreate(void) {
-    if (verbose) puts("STUB: CMSampleBufferCreate called");
-    return NULL;
-}
-
 void* CMSampleBufferCreateCopy(void) {
     if (verbose) puts("STUB: CMSampleBufferCreateCopy called");
     return NULL;
@@ -943,26 +838,6 @@ void* CMSampleBufferCreateCopy(void) {
 
 void* CMSampleBufferCreateCopyWithNewTiming(void) {
     if (verbose) puts("STUB: CMSampleBufferCreateCopyWithNewTiming called");
-    return NULL;
-}
-
-void* CMSampleBufferCreateForImageBuffer(void) {
-    if (verbose) puts("STUB: CMSampleBufferCreateForImageBuffer called");
-    return NULL;
-}
-
-void* CMSampleBufferCreateReady(void) {
-    if (verbose) puts("STUB: CMSampleBufferCreateReady called");
-    return NULL;
-}
-
-void* CMSampleBufferCreateReadyWithImageBuffer(void) {
-    if (verbose) puts("STUB: CMSampleBufferCreateReadyWithImageBuffer called");
-    return NULL;
-}
-
-void* CMSampleBufferDataIsReady(void) {
-    if (verbose) puts("STUB: CMSampleBufferDataIsReady called");
     return NULL;
 }
 
@@ -978,36 +853,6 @@ void* CMSampleBufferGetAudioStreamPacketDescriptions(void) {
 
 void* CMSampleBufferGetAudioStreamPacketDescriptionsPtr(void) {
     if (verbose) puts("STUB: CMSampleBufferGetAudioStreamPacketDescriptionsPtr called");
-    return NULL;
-}
-
-void* CMSampleBufferGetDataBuffer(void) {
-    if (verbose) puts("STUB: CMSampleBufferGetDataBuffer called");
-    return NULL;
-}
-
-void* CMSampleBufferGetDecodeTimeStamp(void) {
-    if (verbose) puts("STUB: CMSampleBufferGetDecodeTimeStamp called");
-    return NULL;
-}
-
-void* CMSampleBufferGetDuration(void) {
-    if (verbose) puts("STUB: CMSampleBufferGetDuration called");
-    return NULL;
-}
-
-void* CMSampleBufferGetFormatDescription(void) {
-    if (verbose) puts("STUB: CMSampleBufferGetFormatDescription called");
-    return NULL;
-}
-
-void* CMSampleBufferGetImageBuffer(void) {
-    if (verbose) puts("STUB: CMSampleBufferGetImageBuffer called");
-    return NULL;
-}
-
-void* CMSampleBufferGetNumSamples(void) {
-    if (verbose) puts("STUB: CMSampleBufferGetNumSamples called");
     return NULL;
 }
 
@@ -1028,16 +873,6 @@ void* CMSampleBufferGetOutputPresentationTimeStamp(void) {
 
 void* CMSampleBufferGetOutputSampleTimingInfoArray(void) {
     if (verbose) puts("STUB: CMSampleBufferGetOutputSampleTimingInfoArray called");
-    return NULL;
-}
-
-void* CMSampleBufferGetPresentationTimeStamp(void) {
-    if (verbose) puts("STUB: CMSampleBufferGetPresentationTimeStamp called");
-    return NULL;
-}
-
-void* CMSampleBufferGetSampleAttachmentsArray(void) {
-    if (verbose) puts("STUB: CMSampleBufferGetSampleAttachmentsArray called");
     return NULL;
 }
 
@@ -1066,11 +901,6 @@ void* CMSampleBufferGetTotalSampleSize(void) {
     return NULL;
 }
 
-void* CMSampleBufferGetTypeID(void) {
-    if (verbose) puts("STUB: CMSampleBufferGetTypeID called");
-    return NULL;
-}
-
 void* CMSampleBufferHasDataFailed(void) {
     if (verbose) puts("STUB: CMSampleBufferHasDataFailed called");
     return NULL;
@@ -1083,11 +913,6 @@ void* CMSampleBufferInvalidate(void) {
 
 void* CMSampleBufferIsValid(void) {
     if (verbose) puts("STUB: CMSampleBufferIsValid called");
-    return NULL;
-}
-
-void* CMSampleBufferMakeDataReady(void) {
-    if (verbose) puts("STUB: CMSampleBufferMakeDataReady called");
     return NULL;
 }
 
@@ -1631,16 +1456,6 @@ void* CMVideoFormatDescriptionCopyAsBigEndianImageDescriptionBlockBuffer(void) {
     return NULL;
 }
 
-void* CMVideoFormatDescriptionCreate(void) {
-    if (verbose) puts("STUB: CMVideoFormatDescriptionCreate called");
-    return NULL;
-}
-
-void* CMVideoFormatDescriptionCreateForImageBuffer(void) {
-    if (verbose) puts("STUB: CMVideoFormatDescriptionCreateForImageBuffer called");
-    return NULL;
-}
-
 void* CMVideoFormatDescriptionCreateFromBigEndianImageDescriptionBlockBuffer(void) {
     if (verbose) puts("STUB: CMVideoFormatDescriptionCreateFromBigEndianImageDescriptionBlockBuffer called");
     return NULL;
@@ -1666,18 +1481,8 @@ void* CMVideoFormatDescriptionGetCleanAperture(void) {
     return NULL;
 }
 
-void* CMVideoFormatDescriptionGetDimensions(void) {
-    if (verbose) puts("STUB: CMVideoFormatDescriptionGetDimensions called");
-    return NULL;
-}
-
 void* CMVideoFormatDescriptionGetExtensionKeysCommonWithImageBuffers(void) {
     if (verbose) puts("STUB: CMVideoFormatDescriptionGetExtensionKeysCommonWithImageBuffers called");
-    return NULL;
-}
-
-void* CMVideoFormatDescriptionGetH264ParameterSetAtIndex(void) {
-    if (verbose) puts("STUB: CMVideoFormatDescriptionGetH264ParameterSetAtIndex called");
     return NULL;
 }
 
@@ -1693,11 +1498,6 @@ void* CMVideoFormatDescriptionGetPresentationDimensions(void) {
 
 void* CMVideoFormatDescriptionGetVideoDynamicRange(void) {
     if (verbose) puts("STUB: CMVideoFormatDescriptionGetVideoDynamicRange called");
-    return NULL;
-}
-
-void* CMVideoFormatDescriptionMatchesImageBuffer(void) {
-    if (verbose) puts("STUB: CMVideoFormatDescriptionMatchesImageBuffer called");
     return NULL;
 }
 

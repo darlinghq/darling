@@ -84,3 +84,32 @@ OSStatus OpaqueAudioQueue::getCurrentTime(AudioTimeStamp *outTimeStamp, Boolean 
 	STUB();
 	return unimpErr;
 }
+
+OSStatus OpaqueAudioQueue::processingTapNew(AudioQueueProcessingTapCallback inCallback, void* inClientData,
+		AudioQueueProcessingTapFlags inFlags, UInt32* outMaxFrames,
+		AudioStreamBasicDescription* outProcessingFormat, AudioQueueProcessingTapRef* outAQTap)
+{
+	STUB();
+	return unimpErr;
+}
+
+OSStatus OpaqueAudioQueue::processingTapDispose(AudioQueueProcessingTapRef inAQTap)
+{
+	STUB();
+	return unimpErr;
+}
+
+OSStatus OpaqueAudioQueue::processingTapGetSourceAudio(AudioQueueProcessingTapRef inAQTap, UInt32 inNumberFrames,
+		AudioTimeStamp* ioTimeStamp, AudioQueueProcessingTapFlags* outFlags, UInt32* outNumberFrames,
+		AudioBufferList* ioData)
+{
+	STUB();
+	return unimpErr;
+}
+
+OSStatus OpaqueAudioQueue::processingTapGetQueueTime(AudioQueueProcessingTapRef inAQTap,
+		Float64* outQueueSampleTime, UInt32* outQueueFrameCount)
+{
+	STUB();
+	return unimpErr;
+}

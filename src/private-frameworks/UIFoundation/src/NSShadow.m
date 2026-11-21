@@ -1,45 +1,148 @@
-/*
- This file is part of Darling.
+/* Copyright (c) 2006-2007 Christopher J. W. Lloyd
 
- Copyright (C) 2025 Darling Developers
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
 
- Darling is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
- Darling is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
- You should have received a copy of the GNU General Public License
- along with Darling.  If not, see <http://www.gnu.org/licenses/>.
-*/
+#import <AppKit/NSShadow.h>
+#import <CoreGraphics/CoreGraphics.h>
+#import <Foundation/NSRaise.h>
+#import <Foundation/NSKeyedArchiver.h>
+#import <UIFoundation/UIFoundationGraphicsContext.h>
 
-#import <UIFoundation/NSShadow.h>
-#import <darling-stub-forwarding.h>
+// The shadow colour is an AppKit colour object, which gives its colour as a
+// CGColor (owned by the caller).
+@protocol _UIFoundationShadowColor
+- (CGColorRef) CGColorRef;
+@end
 
 @implementation NSShadow
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+- init {
+    _offset = NSMakeSize(0, 0); // what is the default?
+    // Black with one third alpha, supplied by AppKit.
+    _color = [_UIFoundationTextColorForRole(_UIFoundationTextColorRoleShadow) retain];
+    _blurRadius = 0;
+    return self;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
+- (void) dealloc {
+    [_color release];
+    [super dealloc];
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+// Keyed archives keep the offset, blur radius and colour under the keys
+// below; a zero offset component or blur radius is left out, and so is the
+// colour while it is the default one. A colour set to nil is archived as nil.
+// Keys and omissions as NSKeyedArchiver writes them on macOS 10.14.4 and
+// 26.7.3. Test: tests/shadow-coding.m
+static NSString *const NSShadowHorizKey = @"NSShadowHoriz";
+static NSString *const NSShadowVertKey = @"NSShadowVert";
+static NSString *const NSShadowBlurRadiusKey = @"NSShadowBlurRadius";
+static NSString *const NSShadowColorKey = @"NSShadowColor";
+
++ (BOOL) supportsSecureCoding {
+    return YES;
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
+- initWithCoder: (NSCoder *) coder {
+    if (![coder allowsKeyedCoding]) {
+        NSUnimplementedMethod();
+        [self release];
+        return nil;
+    }
+    self = [self init];
+    if (self == nil)
+        return nil;
+
+    _offset = NSMakeSize([coder decodeDoubleForKey: NSShadowHorizKey], [coder decodeDoubleForKey: NSShadowVertKey]);
+    _blurRadius = [coder decodeDoubleForKey: NSShadowBlurRadiusKey];
+    if ([coder containsValueForKey: NSShadowColorKey]) {
+        Class colorClass = NSClassFromString(@"NSColor");
+        id color = colorClass != Nil ? [coder decodeObjectOfClass: colorClass forKey: NSShadowColorKey]
+                                     : [coder decodeObjectForKey: NSShadowColorKey];
+
+        [_color release];
+        _color = [color retain];
+    }
+    return self;
+}
+
+- (void) encodeWithCoder: (NSCoder *) coder {
+    if (![coder allowsKeyedCoding]) {
+        NSUnimplementedMethod();
+        return;
+    }
+    if (_offset.width != 0)
+        [coder encodeDouble: _offset.width forKey: NSShadowHorizKey];
+    if (_offset.height != 0)
+        [coder encodeDouble: _offset.height forKey: NSShadowVertKey];
+    if (_blurRadius != 0)
+        [coder encodeDouble: _blurRadius forKey: NSShadowBlurRadiusKey];
+
+    id defaultColor = _UIFoundationTextColorForRole(_UIFoundationTextColorRoleShadow);
+
+    if (_color == nil || ![_color isEqual: defaultColor])
+        [coder encodeObject: _color forKey: NSShadowColorKey];
+}
+
+- copyWithZone: (NSZone *) zone {
+    NSShadow *copy = NSCopyObject(self, 0, zone);
+
+    copy->_color = [_color copy];
+
+    return copy;
+}
+
+- (NSSize) shadowOffset {
+    return _offset;
+}
+
+- (NSColor *) shadowColor {
+    return _color;
+}
+
+- (CGFloat) shadowBlurRadius {
+    return _blurRadius;
+}
+
+- (void) setShadowOffset: (NSSize) offset {
+    _offset = offset;
+}
+
+- (void) setShadowColor: (NSColor *) color {
+    color = [color copy];
+    [_color release];
+    _color = color;
+}
+
+- (void) setShadowBlurRadius: (CGFloat) radius {
+    _blurRadius = radius;
+}
+
+- (void) set {
+    CGContextRef context = _UIFoundationCurrentCGContext();
+    if (context == NULL)
+        return;
+
+    CGColorRef color = [(id<_UIFoundationShadowColor>) _color CGColorRef];
+
+    CGContextSetShadowWithColor(context, _offset, _blurRadius, color);
+
+    CGColorRelease(color);
 }
 
 @end

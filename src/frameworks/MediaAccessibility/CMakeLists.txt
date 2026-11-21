@@ -19,8 +19,12 @@ add_framework(MediaAccessibility
 
     SOURCES
         src/MediaAccessibility.c
+        src/CaptionAppearance.c
+        src/AccessibilitySettings.c
 
     DEPENDENCIES
         system
         CoreFoundation
+        CoreGraphics
+        CoreText
 )

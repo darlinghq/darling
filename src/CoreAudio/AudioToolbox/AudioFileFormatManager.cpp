@@ -100,7 +100,10 @@ void AudioFileFormatManager::analyzeAudioFileComponent(AudioComponent audioCompo
 			ci.canWrite = true;
 	}
 
+	// These properties hold a CFArrayRef, owned by the caller: the size is that of a pointer,
+	// not the sizeof(UInt32) left by the reads above (the component refuses it in 64-bit code)
 	CFArrayRef array = nullptr;
+	propSize = sizeof(array);
 	if (::AudioFileComponentGetGlobalInfo(component, kAudioFileComponent_UTIsForType, 0, nullptr, &propSize, &array) == noErr && array)
 	{
 		ci.utis = cfArrayToVector(array);
@@ -108,6 +111,7 @@ void AudioFileFormatManager::analyzeAudioFileComponent(AudioComponent audioCompo
 	}
 
 	array = nullptr;
+	propSize = sizeof(array);
 	if (::AudioFileComponentGetGlobalInfo(component, kAudioFileComponent_MIMETypesForType, 0, nullptr, &propSize, &array) == noErr && array)
 	{
 		ci.mimeTypes = cfArrayToVector(array);
@@ -115,6 +119,7 @@ void AudioFileFormatManager::analyzeAudioFileComponent(AudioComponent audioCompo
 	}
 
 	array = nullptr;
+	propSize = sizeof(array);
 	if (::AudioFileComponentGetGlobalInfo(component, kAudioFileComponent_ExtensionsForType, 0, nullptr, &propSize, &array) == noErr && array)
 	{
 		ci.extensions = cfArrayToVector(array);

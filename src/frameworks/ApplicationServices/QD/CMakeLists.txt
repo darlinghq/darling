@@ -20,8 +20,12 @@ add_framework(QD
 
     SOURCES
     	src/QD.c
+    	src/QDRects.c
+    	src/QDRegions.c
+    	src/QDPorts.c
 
     DEPENDENCIES
 	CoreFoundation
+	CoreGraphics
         system
 )

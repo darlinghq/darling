@@ -8,6 +8,10 @@ NSString *WebElementLinkURLKey = @"WebElementLinkURL";
 
 NSString *const WebViewDidChangeSelectionNotification = @"WebViewDidChangeSelectionNotification";
 
+NSString *WebViewProgressStartedNotification = @"WebProgressStartedNotification";
+NSString *WebViewProgressEstimateChangedNotification = @"WebProgressEstimateChangedNotification";
+NSString *WebViewProgressFinishedNotification = @"WebProgressFinishedNotification";
+
 NSString *WebElementDOMNodeKey = @"WebElementDOMNode";
 NSString *WebElementFrameKey = @"WebElementFrame";
 NSString *WebElementIsSelectedKey = @"WebElementIsSelected";

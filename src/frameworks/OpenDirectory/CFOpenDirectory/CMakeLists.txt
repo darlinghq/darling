@@ -28,6 +28,7 @@ add_framework(CFOpenDirectory
 		src/CFOpenDirectoryLocal.c
 		src/od_passwd_file.c
 		src/constants.c
+		src/legacy_errors.c
 
 	DEPENDENCIES
 		system

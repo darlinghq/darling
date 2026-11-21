@@ -1,8 +1,9 @@
 project(ditto)
 
-install(FILES ditto DESTINATION libexec/darling/usr/bin
-	PERMISSIONS
-		OWNER_READ OWNER_WRITE OWNER_EXECUTE
-		GROUP_READ GROUP_EXECUTE
-		WORLD_READ WORLD_EXECUTE
+add_darling_executable(ditto ditto.c)
+target_include_directories(ditto PRIVATE
+	${CMAKE_SOURCE_DIR}/src/external/libarchive/libarchive/libarchive
 )
+target_link_libraries(ditto archive)
+
+install(TARGETS ditto DESTINATION libexec/darling/usr/bin)

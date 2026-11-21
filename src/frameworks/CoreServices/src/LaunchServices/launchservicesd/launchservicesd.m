@@ -280,7 +280,8 @@ static QueuedEvent* openApplicationEvent(void)
 }
 
 // Delivers the first event(s) of a process: what its launch queued, with open-application first
-// unless the launch is about to open or print documents.
+// unless the launch is about to open or print documents or open a URL (on macOS 26 an application
+// launched to open a URL gets the URL event alone).
 static void sendInitialEvents(AEReceiver* receiver)
 {
 	receiver->initialEvents = 2;
@@ -292,7 +293,8 @@ static void sendInitialEvents(AEReceiver* receiver)
 		events = [NSMutableArray array];
 
 	QueuedEvent* first = [events firstObject];
-	if (first == nil || (first->eventID != kAEOpenDocuments && first->eventID != kAEPrintDocuments))
+	if (first == nil || (first->eventID != kAEOpenDocuments && first->eventID != kAEPrintDocuments &&
+			first->eventID != kAEGetURL))
 	{
 		QueuedEvent* open = openApplicationEvent();
 

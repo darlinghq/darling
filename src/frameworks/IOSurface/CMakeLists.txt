@@ -14,6 +14,8 @@ generate_sdk_framework(IOSurface
 
 # dmabuf.c calls into the host C library through the ELF loader.
 include_directories(${CMAKE_SOURCE_DIR}/src/startup/mldr/elfcalls)
+# The IOSurface service's calls (IOSurfaceObjC.m) take darlingserver's types.
+include_directories(${CMAKE_SOURCE_DIR}/src/external/darlingserver/include)
 
 add_framework(IOSurface
     FAT
@@ -26,6 +28,7 @@ add_framework(IOSurface
         src/constants.m
         src/IOSurfaceObjC.m
         src/dmabuf.c
+        src/gpubuffer.c
 
     DEPENDENCIES
         system

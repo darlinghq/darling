@@ -34,5 +34,9 @@
 #include <CoreVideo/CVMetalTextureCache.h>
 #include <CoreVideo/CVOpenGLTexture.h>
 #include <CoreVideo/CVOpenGLTextureCache.h>
+#if TARGET_OS_IPHONE
+#include <CoreVideo/CVOpenGLESTexture.h>
+#include <CoreVideo/CVOpenGLESTextureCache.h>
+#endif
 
 #endif

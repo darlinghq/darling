@@ -40,9 +40,3 @@ OSErr FSGetResourceForkName(HFSUniStr255* rsrcForkName)
 	return noErr;
 }
 
-OSErr FSGetVolumeInfo(FSVolumeRefNum volume, ItemCount volumeIndex, FSVolumeRefNum *actualVolume, FSVolumeInfoBitmap whichInfo, FSVolumeInfo *info, HFSUniStr255 *volumeName, FSRef *rootDirectory)
-{
-	STUB();
-
-	return unimpErr;
-}

@@ -19,6 +19,15 @@ const CFStringRef kCGImageSourceTypeIdentifierHint = CFSTR("kCGImageSourceTypeId
 const CFStringRef kCGImageSourceShouldCacheImmediately = CFSTR("kCGImageSourceShouldCacheImmediately");
 const CFStringRef kCGImageSourceThumbnailMaxPixelSize = CFSTR("kCGImageSourceThumbnailMaxPixelSize");
 
+// Each value is the constant's own name (read on macOS 26.7.3).
+// Test: tests/src/imageio_property_names.c
+const CFStringRef kCGImageAuxiliaryDataTypeDepth = CFSTR("kCGImageAuxiliaryDataTypeDepth");
+const CFStringRef kCGImageAuxiliaryDataTypeDisparity = CFSTR("kCGImageAuxiliaryDataTypeDisparity");
+const CFStringRef kCGImageAuxiliaryDataTypeHDRGainMap = CFSTR("kCGImageAuxiliaryDataTypeHDRGainMap");
+const CFStringRef kCGImageAuxiliaryDataTypeISOGainMap = CFSTR("kCGImageAuxiliaryDataTypeISOGainMap");
+const CFStringRef kCGImageAuxiliaryDataInfoData = CFSTR("kCGImageAuxiliaryDataInfoData");
+const CFStringRef kCGImageAuxiliaryDataInfoDataDescription = CFSTR("kCGImageAuxiliaryDataInfoDataDescription");
+
 @interface _O2ImageSource : O2ImageSource
 @end
 
@@ -173,4 +182,33 @@ CGImageSourceRef CGImageSourceCreateWithDataProvider(CGDataProviderRef provider,
 {
     printf("STUB %s\n", __PRETTY_FUNCTION__);
     return nil;
+}
+
+// No decoder here reads auxiliary data (depth, disparity, gain maps), so every
+// source has none; the documented answer for that is NULL. macOS also answers
+// NULL for a PNG for each of the four types.
+CFDictionaryRef CGImageSourceCopyAuxiliaryDataInfoAtIndex(CGImageSourceRef isrc, size_t index, CFStringRef auxiliaryImageDataType)
+{
+    return NULL;
+}
+
+// The types the Onyx2D decoders behind O2ImageSource can read. macOS lists 62;
+// all of these six are among them. The gap is the formats we cannot decode.
+// Test: tests/src/imageio_source_queries.c reads each type back from data.
+CFArrayRef CGImageSourceCopyTypeIdentifiers(void)
+{
+    const void *types[] = {
+        CFSTR("public.png"), CFSTR("public.tiff"), CFSTR("public.jpeg"),
+        CFSTR("com.microsoft.bmp"), CFSTR("com.compuserve.gif"), CFSTR("com.apple.icns"),
+        CFSTR("com.adobe.photoshop-image")
+    };
+    return CFArrayCreate(NULL, types, sizeof types / sizeof types[0], &kCFTypeArrayCallBacks);
+}
+
+// There are no incremental sources here, so a source that exists was created
+// from complete data of a recognised type. macOS reports complete (0) for a PNG
+// source and kCGImageStatusInvalidData (-4) for NULL (observed on macOS 26.7.3).
+CGImageSourceStatus CGImageSourceGetStatus(CGImageSourceRef isrc)
+{
+    return isrc != NULL ? kCGImageStatusComplete : kCGImageStatusInvalidData;
 }

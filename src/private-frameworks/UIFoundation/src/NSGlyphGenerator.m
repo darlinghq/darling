@@ -1,45 +1,86 @@
-/*
- This file is part of Darling.
+/* Copyright (c) 2006-2007 Christopher J. W. Lloyd
 
- Copyright (C) 2025 Darling Developers
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
 
- Darling is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
- Darling is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
- You should have received a copy of the GNU General Public License
- along with Darling.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
-#import <UIFoundation/NSGlyphGenerator.h>
-#import <darling-stub-forwarding.h>
+#import <AppKit/NSAttributedString.h>
+#import <AppKit/NSGlyphGenerator.h>
 
 @implementation NSGlyphGenerator
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
++ sharedGlyphGenerator {
+    NSGlyphGenerator *shared = nil;
+
+    if (shared == nil)
+        shared = [self new];
+
+    return shared;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (void) generateGlyphsForGlyphStorage: (id<NSGlyphStorage>) glyphStorage
+             desiredNumberOfCharacters: (NSUInteger) numberOfCharacters
+                            glyphIndex: (NSUInteger *) glyphIndexp
+                        characterIndex: (NSUInteger *) characterIndexp
 {
-    DarlingStubForwardInvocation(self, anInvocation);
-}
+    NSAttributedString *text = [glyphStorage attributedString];
+    NSString *string = [text string];
+    NSUInteger length = [string length];
+    NSUInteger characterIndex = *characterIndexp;
+    NSUInteger glyphIndex = *glyphIndexp;
+    NSRange effectiveRange = NSMakeRange(0, 0);
+    NSDictionary *attributes = nil;
+    NSFont *font = nil;
+    NSInteger i;
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
-}
+    for (i = 0; i < numberOfCharacters && characterIndex < length;) {
+        NSUInteger chunkSize = MIN(1024, numberOfCharacters - i);
+        unichar characterChunk[chunkSize];
+        NSGlyph glyphChunk[chunkSize];
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
+        if (!NSLocationInRange(characterIndex, effectiveRange)) {
+            attributes = [text attributesAtIndex: characterIndex
+                                  effectiveRange: &effectiveRange];
+            font = NSFontAttributeInDictionary(attributes);
+        }
+        if (chunkSize > (NSMaxRange(effectiveRange) - characterIndex))
+            chunkSize = NSMaxRange(effectiveRange) - characterIndex;
+
+        [string getCharacters: characterChunk
+                        range: NSMakeRange(characterIndex, chunkSize)];
+        if (font != nil)
+            [font getGlyphs: glyphChunk
+                    forCharacters: characterChunk
+                           length: chunkSize];
+        else
+            // No font (no font attribute, and no AppKit to supply the
+            // fallback font): the characters get glyph 0, NSNullGlyph.
+            memset(glyphChunk, 0, sizeof(glyphChunk));
+
+        [glyphStorage insertGlyphs: glyphChunk
+                                 length: chunkSize
+                forStartingGlyphAtIndex: glyphIndex
+                         characterIndex: characterIndex];
+
+        characterIndex += chunkSize;
+        glyphIndex += chunkSize;
+        i += chunkSize;
+    }
+    *glyphIndexp = glyphIndex;
+    *characterIndexp = characterIndex;
 }
 
 @end

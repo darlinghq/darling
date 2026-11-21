@@ -17,8 +17,21 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CoreGraphics/CGGeometry.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 @interface CIFeature : NSObject
 
+@property (readonly, retain) NSString *type;
+@property (readonly, assign) CGRect bounds;
+
 @end
+
+extern NSString *const CIFeatureTypeFace;
+extern NSString *const CIFeatureTypeRectangle;
+extern NSString *const CIFeatureTypeQRCode;
+extern NSString *const CIFeatureTypeText;
+
+NS_ASSUME_NONNULL_END

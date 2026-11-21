@@ -24,6 +24,7 @@ add_framework(VideoToolbox
         src/VTPixelRotationSession.c
         src/VTPixelTransferProperties.c
         src/FigMetalTransferHelper.m
+        src/VTSessions.c
 
     DEPENDENCIES
         system

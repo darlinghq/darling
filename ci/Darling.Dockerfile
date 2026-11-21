@@ -44,6 +44,7 @@ RUN apt-get update && apt-get install -y \
     libfontconfig1-dev \
     libbsd-dev \
     libxrandr-dev \
+    libxi-dev \
     libxcursor-dev \
     libgif-dev \
     libavutil-dev \
@@ -85,6 +86,7 @@ RUN mkdir -p build && cd build && \
         -DCMAKE_CXX_FLAGS_INIT="-Wno-incompatible-pointer-types" \
         -DTARGET_i386=OFF \
         -DDARLING_NO_DSYM=ON \
+        -DDARLING_SWIFT_WMO=ON \
         -GNinja && \
     ninja -j$(nproc) && \
     ninja install && \

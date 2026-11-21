@@ -17,8 +17,25 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CoreMedia/CMSampleBuffer.h>
+#import <CoreMedia/CMSync.h>
+#import <dispatch/dispatch.h>
 
-@protocol AVQueuedSampleBufferRendering
+typedef NS_ENUM(NSInteger, AVQueuedSampleBufferRenderingStatus) {
+    AVQueuedSampleBufferRenderingStatusUnknown,
+    AVQueuedSampleBufferRenderingStatusRendering,
+    AVQueuedSampleBufferRenderingStatusFailed,
+};
+
+@protocol AVQueuedSampleBufferRendering <NSObject>
+
+@property (nonatomic, readonly) CMTimebaseRef timebase;
+- (void)enqueueSampleBuffer:(CMSampleBufferRef)sampleBuffer;
+- (void)flush;
+@property (nonatomic, readonly, getter=isReadyForMoreMediaData) BOOL readyForMoreMediaData;
+- (void)requestMediaDataWhenReadyOnQueue:(dispatch_queue_t)queue usingBlock:(void (^)(void))block;
+- (void)stopRequestingMediaData;
+@property (nonatomic, readonly) BOOL hasSufficientMediaDataForReliablePlaybackStart;
 
 @end

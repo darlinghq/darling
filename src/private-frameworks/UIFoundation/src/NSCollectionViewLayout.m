@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2025 Darling Developers
+ Copyright (C) 2019 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,30 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <UIFoundation/NSCollectionViewLayout.h>
-#import <darling-stub-forwarding.h>
+#import <AppKit/NSCollectionViewLayout.h>
+
+NSCollectionViewSupplementaryElementKind const
+        NSCollectionElementKindInterItemGapIndicator =
+                @"NSCollectionElementKindInterItemGapIndicator";
+
+// Exported by UIFoundation but not declared in the public headers.
+APPKIT_EXPORT NSCollectionViewSupplementaryElementKind const NSCollectionElementKindInterSectionGapIndicator;
+APPKIT_EXPORT NSCollectionViewSupplementaryElementKind const NSCollectionElementKindItem;
+NSCollectionViewSupplementaryElementKind const NSCollectionElementKindInterSectionGapIndicator =
+        @"NSCollectionElementKindInterSectionGapIndicator";
+NSCollectionViewSupplementaryElementKind const NSCollectionElementKindItem =
+        @"NSCollectionElementKindItem";
 
 @implementation NSCollectionViewLayout
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
-    DarlingStubForwardInvocation(self, anInvocation);
-}
-
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
-}
-
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    DarlingStubForwardInvocation(self, anInvocation);
+    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
 }
 
 @end

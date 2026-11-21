@@ -7,6 +7,13 @@
 const CFStringRef kCGImageDestinationLossyCompressionQuality=(CFStringRef)@"kCGImageDestinationLossyCompressionQuality";
 const CFStringRef kCGImageDestinationBackgroundColor=(CFStringRef)@"kCGImageDestinationBackgroundColor";
 
+// Each value is the constant's own name (read on macOS 26.7.3). The destination
+// accepts these options and does not act on them yet.
+// Test: tests/src/imageio_property_names.c
+const CFStringRef kCGImageDestinationImageMaxPixelSize = CFSTR("kCGImageDestinationImageMaxPixelSize");
+const CFStringRef kCGImageDestinationOptimizeColorForSharing = CFSTR("kCGImageDestinationOptimizeColorForSharing");
+const CFStringRef kCGImageDestinationPreserveGainMap = CFSTR("kCGImageDestinationPreserveGainMap");
+
 CFTypeID CGImageDestinationGetTypeID(void) {
    return O2ImageDestinationGetTypeID();
 }

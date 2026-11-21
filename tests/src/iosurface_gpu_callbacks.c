@@ -106,7 +106,7 @@ int main(void)
 
 	// An unknown version does not claim the registration.
 	_IOSurfaceGPUCallbacks future = {
-		.version = _IOSURFACE_GPU_CALLBACKS_VERSION + 1,
+		.version = _IOSURFACE_GPU_CALLBACKS_VERSION_REPORTS_WRITES + 1,
 		.writeback = ignored,
 		.forget = ignored,
 	};

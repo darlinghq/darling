@@ -1,5 +1,15 @@
 #include <HIToolbox/Events.h>
 #include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <time.h>
+
+UInt32 TickCount(void)
+{
+	// Ticks are 1/60 s; the count wraps around like the 32-bit value it returns.
+	uint64_t ns = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+	return (UInt32) ((ns / 1000) * 60 / 1000000);
+}
 
 UInt8 LMGetKbdType(void)
 {
@@ -230,4 +240,145 @@ Boolean CheckEventQueueForUserCancel(void)
 {
 	// There is no Carbon event queue to inspect.
 	return false;
+}
+
+// ---- KeyTranslate ----------------------------------------------------------------------------
+
+// The layout of the 'KCHR' data is described at GetScriptManagerVariable(smKCHRCache) in CarbonCore.
+// After the character tables come the dead-key records: the table number and the virtual key code
+// of the key that starts the accent, the number of completer pairs, the pairs (a character and what
+// it combines into) and the character the accent is on its own. Counts are native 16-bit values.
+// A dead-key state is the byte offset of the record, counted from the table count.
+struct KCHRView
+{
+	const uint8_t* base;
+	const uint8_t* tables;
+	uint16_t tableCount;
+	const uint8_t* records;
+	uint16_t recordCount;
+};
+
+struct KCHRDeadKey
+{
+	const uint8_t* start;
+	uint8_t table;
+	uint8_t key;
+	uint16_t pairCount;
+	const uint8_t* pairs;
+	uint8_t alone;
+	UInt32 state;
+	const uint8_t* next;
+};
+
+static bool kchrOpen(const void* data, KCHRView* view)
+{
+	const uint8_t* base = (const uint8_t*) data;
+	view->base = base;
+	memcpy(&view->tableCount, base + 258, 2);
+	view->tables = base + 260;
+	const uint8_t* afterTables = view->tables + (size_t) view->tableCount * 128;
+	memcpy(&view->recordCount, afterTables, 2);
+	view->records = afterTables + 2;
+	return true;
+}
+
+static KCHRDeadKey kchrDeadKeyAt(const KCHRView& view, const uint8_t* at)
+{
+	KCHRDeadKey rec;
+	rec.start = at;
+	rec.table = at[0];
+	rec.key = at[1];
+	memcpy(&rec.pairCount, at + 2, 2);
+	rec.pairs = at + 4;
+	rec.alone = at[4 + 2 * (size_t) rec.pairCount];
+	rec.state = (UInt32) (at - (view.base + 258));
+	rec.next = at + 4 + 2 * (size_t) rec.pairCount + 2;
+	return rec;
+}
+
+static bool kchrFindDeadKey(const KCHRView& view, uint8_t table, uint8_t key, KCHRDeadKey* found)
+{
+	const uint8_t* at = view.records;
+	for (uint16_t i = 0; i < view.recordCount; i++)
+	{
+		KCHRDeadKey rec = kchrDeadKeyAt(view, at);
+		if (rec.table == table && rec.key == key)
+		{
+			*found = rec;
+			return true;
+		}
+		at = rec.next;
+	}
+	return false;
+}
+
+static bool kchrFindState(const KCHRView& view, UInt32 state, KCHRDeadKey* found)
+{
+	const uint8_t* at = view.records;
+	for (uint16_t i = 0; i < view.recordCount; i++)
+	{
+		KCHRDeadKey rec = kchrDeadKeyAt(view, at);
+		if (rec.state == state)
+		{
+			*found = rec;
+			return true;
+		}
+		at = rec.next;
+	}
+	return false;
+}
+
+// QUIRK: KeyTranslate takes the key-up bit of the key code (bit 7) into account only for dead
+// keys: an up event never changes the dead-key state, gives the character the key would produce
+// without a pending accent, and for a key that starts an accent gives the accent character. A
+// state that is not one this function returned is not specified; it is treated as no pending
+// accent. Not documented. Evidence:
+// black-box observation on macOS 10.14.4, i386 and x86_64 (tier 2),
+// vd-upstream/mac-probes/v665-kt.c and v665-kt2.c.
+// Test: tests/src/hitoolbox_keytranslate.c
+UInt32 KeyTranslate(const void* transData, UInt16 keycode, UInt32* state)
+{
+	if (!transData || !state)
+		return 0;
+
+	KCHRView view;
+	kchrOpen(transData, &view);
+
+	const uint8_t modifiers = keycode >> 8;
+	const uint8_t key = keycode & 0x7F;
+	const bool up = keycode & 0x80;
+	const uint8_t table = view.base[2 + modifiers];
+	if (table >= view.tableCount)
+		return 0;
+
+	const uint8_t ch = view.tables[(size_t) table * 128 + key];
+	KCHRDeadKey trigger;
+	const bool isTrigger = kchrFindDeadKey(view, table, key, &trigger);
+
+	if (up)
+		return isTrigger ? trigger.alone : ch;
+
+	KCHRDeadKey pending;
+	if (*state != 0 && kchrFindState(view, *state, &pending))
+	{
+		if (isTrigger)
+		{
+			// The pending accent comes out on its own and this key starts a new one.
+			*state = trigger.state;
+			return pending.alone;
+		}
+		if (ch == 0)
+			return 0; // modifier and other keys without a character leave the accent pending
+
+		*state = 0;
+		for (uint16_t i = 0; i < pending.pairCount; i++)
+		{
+			if (pending.pairs[2 * i] == ch)
+				return pending.pairs[2 * i + 1];
+		}
+		return ((UInt32) pending.alone << 16) | ch;
+	}
+
+	*state = isTrigger ? trigger.state : 0;
+	return isTrigger ? 0 : ch;
 }

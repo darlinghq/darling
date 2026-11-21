@@ -16,8 +16,10 @@ add_framework(AE
 
 	SOURCES
 		empty.c
+		AEBuild.c
 		AEDescriptors.c
 		AEEvents.c
+		AEStream.c
 
 	DEPENDENCIES
 		CoreFoundation

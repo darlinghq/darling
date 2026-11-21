@@ -51,6 +51,12 @@ static const char* const serverEnvAllowlist[] = {
 	"XAUTHORITY",
 	// Where a Wayland socket named by a relative WAYLAND_DISPLAY lives.
 	"XDG_RUNTIME_DIR",
+	// The host's D-Bus session bus, for the container's daemons that talk to the
+	// desktop (usernoted posts notifications there). It is an address that is
+	// connected to later with the user's ids, in the container; darlingserver
+	// itself never reads it. Without it, a daemon can only guess the usual
+	// $XDG_RUNTIME_DIR/bus, which fails when the session bus lives elsewhere.
+	"DBUS_SESSION_BUS_ADDRESS",
 	// The host's PulseAudio server and cookie, as the user chose them or as the launcher found them for
 	// a host without XDG_RUNTIME_DIR. Like the display variables they are paths and addresses that the
 	// container's own processes use with the user's ids; darlingserver never reads them.

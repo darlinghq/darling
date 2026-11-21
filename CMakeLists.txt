@@ -172,6 +172,11 @@ if(${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_C_COMPILER_VERSION} VERSI
 	set(IGNORED_WARNINGS "${IGNORED_WARNINGS} -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types")
 endif()
 
+# DARLING: clang 22 also makes incompatible-pointer-types an error by default.
+if(${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_C_COMPILER_VERSION} VERSION_GREATER_EQUAL "22")
+	set(IGNORED_WARNINGS "${IGNORED_WARNINGS} -Wno-error=incompatible-pointer-types")
+endif()
+
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${IGNORED_WARNINGS}")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${IGNORED_WARNINGS}")
 
@@ -384,7 +389,7 @@ if(NOT DEBIAN_PACKAGING)
 	# only for direct installs; staged (DESTDIR) installs are packaging and must not touch running instances
 	# a container left running would keep using the files being replaced
 	install(CODE "if (\"\$ENV{DESTDIR}\" STREQUAL \"\")
-		execute_process(COMMAND bash \"${DARLING_TOP_DIRECTORY}/tools/shutdown-user.sh\"
+		execute_process(COMMAND bash \"${DARLING_TOP_DIRECTORY}/tools/shutdown-user.sh\" \"${CMAKE_INSTALL_PREFIX}\"
 			RESULT_VARIABLE DARLING_SHUTDOWN_RESULT)
 		if (NOT DARLING_SHUTDOWN_RESULT STREQUAL \"0\")
 			message(FATAL_ERROR \"Running Darling containers could not be shut down; installation stopped\")

@@ -249,6 +249,7 @@
 #import <AVFoundation/AVStreamingResourceInspector.h>
 #import <AVFoundation/AVFigAssetInspector.h>
 #import <AVFoundation/AVTimebaseObserver.h>
+#import <AVFoundation/AVTime.h>
 #import <AVFoundation/AVPeriodicTimebaseObserver.h>
 #import <AVFoundation/AVOccasionalTimebaseObserver.h>
 #import <AVFoundation/AVOnceTimebaseObserver.h>
@@ -576,6 +577,7 @@
 #import <AVFoundation/AVFAudio.h>
 #import <AVFoundation/AVMediaFormat.h>
 #import <AVFoundation/AVAudioSettings.h>
+#import <AVFoundation/AVAudioProcessingSettings.h>
 #import <AVFoundation/AVAnimation.h>
 #import <AVFoundation/AVVideoSettings.h>
 

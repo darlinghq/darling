@@ -128,6 +128,11 @@ add_executable(rtsig \"${CMAKE_CURRENT_SOURCE_DIR}/startup/rtsig.c\")
 	execute_process(
 		COMMAND ${CMAKE_COMMAND} -E env
 			--unset=CFLAGS --unset=CXXFLAGS --unset=LDFLAGS --unset=CPPFLAGS
+			# The host tools link against build-machine libraries. A cross build
+			# normally points pkg-config at the target's .pc files, so hide that
+			# setting from this build or it picks target libraries for host tools.
+			--unset=PKG_CONFIG_LIBDIR --unset=PKG_CONFIG_PATH
+			--unset=PKG_CONFIG_SYSROOT_DIR
 			CC=${HOST_CC} CXX=${HOST_CXX}
 			${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}"
 			-S "${HOST_TOOLS_SRC_DIR}"
@@ -210,6 +215,13 @@ add_executable(rtsig \"${CMAKE_CURRENT_SOURCE_DIR}/startup/rtsig.c\")
 	set_target_properties(iconset2icns PROPERTIES
 		IMPORTED_LOCATION "${HOST_TOOLS_BUILD_DIR}/buildtools/iconset2icns")
 
+	# swift/prebuilt_install.cmake runs the build-machine copy of
+	# install_name_tool on the prebuilt dylibs. In a non-cross build the
+	# in-tree cctools misc directory provides this target.
+	add_executable(install_name_tool_host IMPORTED GLOBAL)
+	set_target_properties(install_name_tool_host PROPERTIES
+		IMPORTED_LOCATION "${HOST_TOOLS_BUILD_DIR}/misc/${APPLE_TARGET_TRIPLET_PRIMARY}-install_name_tool")
+
 	# startup/rtsig.h is generated from the build machine's C library; see
 	# src/startup/CMakeLists.txt
 	set(DARLING_HOST_RTSIG "${HOST_TOOLS_BUILD_DIR}/rtsig")
@@ -265,6 +277,23 @@ set(CMAKE_ASM_FLAGS "-target ${APPLE_TARGET_TRIPLET_PRIMARY} ${CMAKE_ASM_FLAGS}"
 set(CMAKE_OBJC_FLAGS "-target ${APPLE_TARGET_TRIPLET_PRIMARY} ${CMAKE_OBJC_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
 
 add_definitions(-target ${APPLE_TARGET_TRIPLET_PRIMARY})
+
+# clang's default CPU for an arm64 Darwin target is the Apple M1, so without this
+# the Mach-O code uses ARMv8.4+ instructions (e.g. stlur from LRCPC2) and dies with
+# SIGILL on most non-Apple arm64 hosts: a Raspberry Pi 4 (Cortex-A72, ARMv8.0) or
+# Android phones with Cortex-A76/A78 cores (ARMv8.2). ARMv8.0 is what Linux and
+# Android guarantee; raise it to trade portability for speed. It has to be -mcpu:
+# for Darwin triples -march leaves "-target-cpu apple-m1" in place, and the CPU's
+# features still apply. Hand-written assembly is left alone: it states its own
+# instructions (and may check for them at run time), the CPU only gates what the
+# assembler accepts.
+if (TARGET_ARM64)
+	set(DARLING_ARM64_CPU "generic" CACHE STRING "Baseline -mcpu for compiled arm64 Mach-O code")
+	foreach(lang C CXX OBJC OBJCXX)
+		set(CMAKE_${lang}_FLAGS "${CMAKE_${lang}_FLAGS} -mcpu=${DARLING_ARM64_CPU}")
+	endforeach()
+endif()
+
 include(darling_lib)
 include(darling_static_lib)
 include(darling_bundle)
@@ -378,6 +407,7 @@ if (COMPONENT_system)
 	add_subdirectory(external/libiconv)
 	add_subdirectory(external/bzip2)
 	add_subdirectory(external/libressl-2.8.3)
+	add_subdirectory(external/libressl-3.3.6)
 	add_subdirectory(external/libarchive/libarchive)
 	add_subdirectory(external/liblzma)
 	add_subdirectory(external/OpenDirectory)
@@ -437,6 +467,7 @@ if (COMPONENT_cli)
 	add_subdirectory(external/gnudiff)
 	add_subdirectory(external/openssh)
 	add_subdirectory(external/top)
+	add_subdirectory(external/lsof)
 	add_subdirectory(external/screen)
 	add_subdirectory(unxip)
 	add_subdirectory(external/rsync)
@@ -474,6 +505,9 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_gui_common")
 
 	add_subdirectory(external/libxml2)
+	# Foundation links and re-exports CoreAutoLayout (the Auto Layout classes, a cocotron framework), so it is built with
+	# Foundation even when the GUI components are not
+	add_subdirectory(external/cocotron/CoreAutoLayout)
 	add_subdirectory(external/foundation)
 	add_subdirectory(external/cfnetwork/src)
 	add_subdirectory(external/sqlite)
@@ -493,6 +527,7 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 	add_subdirectory(libIOReport)
 	add_subdirectory(libLaunchServicesSupport)
 	add_subdirectory(libsystemstats)
+	add_subdirectory(runningboardd)
 	add_subdirectory(opendirectory_internal)
 	add_subdirectory(external/fmdb)
 	add_subdirectory(external/libnetwork)
@@ -527,12 +562,17 @@ if (COMPONENT_gui)
 
 	add_subdirectory(external/cocotron)
 
+	# /System/Library/Fonts
+	add_subdirectory(fonts)
+
 	add_subdirectory(CoreAudio)
 	add_subdirectory(external/cups)
 	add_subdirectory(pboard)
+	add_subdirectory(distnoted)
 
 	# /Applications
 	add_subdirectory(external/TextEdit)
+	add_subdirectory(external/Console)
 
 	# not currently used by anything we build
 	add_subdirectory(external/dbuskit)

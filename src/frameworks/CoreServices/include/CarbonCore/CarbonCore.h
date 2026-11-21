@@ -17,6 +17,7 @@
 #include <CarbonCore/BackupCore.h>
 #endif
 
+#include <CarbonCore/Aliases.h>
 #include <CarbonCore/Components.h>
 #include <CarbonCore/DateTimeUtils.h>
 #include <CarbonCore/Debugging.h>
@@ -30,6 +31,7 @@
 #include <CarbonCore/Math64.h>
 #include <CarbonCore/Multiprocessing.h>
 #include <CarbonCore/MixedMode.h>
+#include <CarbonCore/Script.h>
 #include <CarbonCore/TextCommon.h>
 #include <CarbonCore/TextEncodingConverter.h>
 #include <CarbonCore/TextUtils.h>

@@ -49,6 +49,21 @@ struct sigaction sigchld_oldaction;
 void setupSocket(void);
 int listenForConnections(void);
 void spawnShell(int fd);
+
+// The host session's variables that the launcher passes with every command (see
+// launcher-env.c). This service inherited the ones of whichever launcher started the
+// container; a later command from a session that has none of them, or other values, must not
+// get these, so they are dropped before the command's own environment is applied.
+static const char* const sessionVariables[] = {
+	"DISPLAY",
+	"WAYLAND_DISPLAY",
+	"XAUTHORITY",
+	"XDG_RUNTIME_DIR",
+	"DBUS_SESSION_BUS_ADDRESS",
+	"PULSE_SERVER",
+	"PULSE_RUNTIME_PATH",
+	"PULSE_COOKIE",
+};
 void setupSigchild(void);
 void restoreSigchild(void);
 void reapAll(void);
@@ -210,6 +225,9 @@ void spawnShell(int fd)
 	int wstatus = 0;
 
 	bool read_cmds = true;
+
+	for (size_t i = 0; i < sizeof(sessionVariables) / sizeof(sessionVariables[0]); i++)
+		unsetenv(sessionVariables[i]);
 
 	// argv[0] is replaced by the login shell's name once the client has
 	// chosen the user (see below); a client's SETEXEC discards it.

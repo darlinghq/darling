@@ -59,6 +59,7 @@ NSString *const AVVideoCodecH264 = @"avc1";
 NSString *const AVVideoCodecHEVC = @"hvc1";
 NSString *const AVVideoCodecJPEG = @"jpeg";
 NSString *const AVVideoCodecKey = @"AVVideoCodecKey";
+NSString *const AVVideoCodecTypeJPEG = @"jpeg";
 NSString *const AVVideoCompressionPropertiesKey = @"AVVideoCompressionPropertiesKey";
 NSString *const AVVideoHeightKey = @"AVVideoHeightKey";
 NSString *const AVVideoMaxKeyFrameIntervalKey = @"MaxKeyFrameInterval";
@@ -84,6 +85,10 @@ const NSErrorDomain AVFoundationErrorDomain = @"AVFoundationErrorDomain";
 
 const AVFileType AVFileTypeMPEG4 = @"public.mpeg-4";
 const AVFileType AVFileTypeQuickTimeMovie = @"com.apple.quicktime-movie";
+
+const AVAudioTimePitchAlgorithm AVAudioTimePitchAlgorithmTimeDomain = @"TimeDomain";
+const AVAudioTimePitchAlgorithm AVAudioTimePitchAlgorithmSpectral = @"Spectral";
+const AVAudioTimePitchAlgorithm AVAudioTimePitchAlgorithmVarispeed = @"Varispeed";
 
 const AVLayerVideoGravity AVLayerVideoGravityResize = @"AVLayerVideoGravityResize";
 const AVLayerVideoGravity AVLayerVideoGravityResizeAspect = @"AVLayerVideoGravityResizeAspect";

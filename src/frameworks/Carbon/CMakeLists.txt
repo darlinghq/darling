@@ -9,6 +9,7 @@ append_path_sdk_subframework(${carbon_sdk_path} carbon_sdk_path Carbon
     VERSION ${FRAMEWORK_VERSION}
 )
 
+add_subdirectory(CarbonSound)
 add_subdirectory(CommonPanels)
 add_subdirectory(Help)
 add_subdirectory(HIToolbox)
@@ -36,6 +37,7 @@ add_framework(Carbon
         src/Carbon.c
 
     DEPENDENCIES
+        CarbonSound
         CommonPanels
         Help
         HIToolbox
@@ -50,6 +52,7 @@ add_framework(Carbon
         system
 )
 
+set(CarbonSound_BUILD ${CMAKE_CURRENT_BINARY_DIR}/CarbonSound/CarbonSound)
 set(CommonPanels_BUILD ${CMAKE_CURRENT_BINARY_DIR}/CommonPanels/CommonPanels)
 set(Help_BUILD ${CMAKE_CURRENT_BINARY_DIR}/Help/Help)
 set(HIToolbox_BUILD ${CMAKE_CURRENT_BINARY_DIR}/HIToolbox/HIToolbox)
@@ -60,6 +63,7 @@ set(Print_BUILD ${CMAKE_CURRENT_BINARY_DIR}/Print/Print)
 set(SecurityHI_BUILD ${CMAKE_CURRENT_BINARY_DIR}/SecurityHI/SecurityHI)
 set(SpeechRecognition_BUILD ${CMAKE_CURRENT_BINARY_DIR}/SpeechRecognition/SpeechRecognition)
 
+reexport(Carbon CarbonSound ${CarbonSound_BUILD})
 reexport(Carbon CommonPanels ${CommonPanels_BUILD})
 reexport(Carbon Help ${Help_BUILD})
 reexport(Carbon HIToolbox ${HIToolbox_BUILD})

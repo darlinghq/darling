@@ -31,9 +31,33 @@ static void initme(void) {
     verbose = getenv("STUB_VERBOSE") != NULL;
 }
 
-void InitCursor()
+// Number of HideCursor calls not yet balanced by ShowCursor. The display-level hide count it
+// feeds is not queryable, so this is what InitCursor uses to bring the cursor back.
+static int gCursorHideLevel;
+
+// Cursor visibility is a counter: every HideCursor is balanced by a ShowCursor, as for the
+// display-level calls these are built on.
+void HideCursor(void)
 {
-    if (verbose) puts("STUB: InitCursor called");	
+    __atomic_add_fetch(&gCursorHideLevel, 1, __ATOMIC_SEQ_CST);
+    CGDisplayHideCursor(CGMainDisplayID());
+}
+
+void ShowCursor(void)
+{
+    int level = __atomic_load_n(&gCursorHideLevel, __ATOMIC_SEQ_CST);
+    while (level > 0 && !__atomic_compare_exchange_n(&gCursorHideLevel, &level, level - 1, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
+        ;
+    CGDisplayShowCursor(CGMainDisplayID());
+}
+
+// Resets the hide level to zero, so the cursor is visible again however many HideCursor calls
+// were outstanding. Only the visibility is reset: no layer below AppKit can set the cursor shape.
+void InitCursor(void)
+{
+    int level = __atomic_exchange_n(&gCursorHideLevel, 0, __ATOMIC_SEQ_CST);
+    for (; level > 0; level--)
+        CGDisplayShowCursor(CGMainDisplayID());
 }
 
 static uint32_t gFakeScreenDevice;

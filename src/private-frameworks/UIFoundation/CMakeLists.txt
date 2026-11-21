@@ -22,13 +22,36 @@ add_framework(UIFoundation
 
     SOURCES
         src/UIFoundation.m
+        src/UIFoundationGraphicsContext.m
+        src/NSParagraphStyle.m
+        src/NSMutableParagraphStyle.m
+        src/NSTextTab.m
+        src/NSTextList.m
+        src/NSTextBlock.m
+        src/NSTextTable.m
+        src/NSTextTableBlock.m
+        src/NSGlyphInfo.m
+        src/NSTextAttributeKeys.m
+        src/NSShadow.m
+        src/NSTextAttachment.m
+        src/NSTextStorage.m
+        src/NSTextStorage_concrete.m
+        src/NSGlyphGenerator.m
+        src/NSGlyphPacking.m
+        src/NSRangeArray.m
+        src/NSBidiHelper.m
+        src/NSTypesetter.m
+        src/NSTypesetter_concrete.m
+        src/NSATSTypesetter.m
+        src/NSTextContainer.m
+        src/NSLayoutManager.m
+        src/NSTextKit2.m
         src/NSFontAssetRequest.m
         src/NSCollectionViewData.m
         src/NSCoreTypesetter.m
         src/NSExtraLMData.m
         src/NSLayoutManagerTextBlockHelper.m
         src/NSLayoutManagerTextBlockRowArrayCache.m
-        src/NSLayoutManager.m
         src/UINibCoderValue.m
         src/NSStorage.m
         src/NSStringDrawingContext.m
@@ -42,41 +65,28 @@ add_framework(UIFoundation
         src/UICollectionViewAnimation.m
         src/NSTextAlternatives.m
         src/UICollectionViewLayoutAttributesAuxiliary.m
-        src/NSCollectionViewLayoutAttributes.m
-        src/NSCollectionViewLayoutInvalidationContext.m
-        src/NSCollectionViewLayout.m
         src/NSCollectionViewUpdateItem.m
         src/_NSCollectionViewCore.m
         src/UIViewAnimationContext.m
-        src/NSShadow.m
-        src/NSTextAttachment.m
         src/NSTextAttachmentViewProvider.m
         src/_UIPointVector.m
         src/UIPointFIFO.m
         src/UIBoxcarFilterPointFIFO.m
         src/UIQuadCurvePointFIFO.m
-        src/NSFontDescriptor.m
         src/NSCTFontDescriptor.m
         src/NSMutableFontDescriptor.m
-        src/NSTextContainer.m
-        src/NSTextList.m
         src/NSTextLineFragment.m
         src/UICollectionViewIndexMapper.m
         src/NSCollectionViewUpdate.m
         src/NSCollectionViewTransitionLayout.m
         src/NSConcreteNotifyingMutableAttributedString.m
         src/_NSTextStorageSideData.m
-        src/NSTextStorage.m
         src/NSConcreteTextStorage.m
         src/_NSFlowLayoutItem.m
         src/_NSFlowLayoutSection.m
         src/_NSFlowLayoutRow.m
         src/_NSFlowLayoutInfo.m
         src/NSTextBlockLayoutHelper.m
-        src/NSTextBlock.m
-        src/NSTextTableBlock.m
-        src/NSTextTable.m
-        src/NSTypesetter.m
         src/NSRTFReaderTableState.m
         src/NSRTFReader.m
         src/NSRTFWriter.m
@@ -91,22 +101,14 @@ add_framework(UIFoundation
         src/UINibStringIDTable.m
         src/__NSFontTypefaceInfo.m
         src/__NSSharedFontInstanceInfo.m
-        src/NSFont.m
         src/NSCTFont.m
-        src/_NSAttributes.m
-        src/_NSAttributeRun.m
         src/NSParagraphArbitrator.m
         src/UINibDecoder.m
-        src/NSGlyphGenerator.m
-        src/NSGlyphInfo.m
         src/NSIdentityGlyphInfo.m
         src/NSGlyphNameGlyphInfo.m
         src/NSCIDGlyphInfo.m
         src/NSCTGlyphInfo.m
-        src/NSTextTab.m
         src/NSParagraphStyleExtraData.m
-        src/NSParagraphStyle.m
-        src/NSMutableParagraphStyle.m
         src/NSOpenDocumentReader.m
         src/NSOpenDocumentWriter.m
         src/_NSUIAnimator.m
@@ -120,9 +122,7 @@ add_framework(UIFoundation
         src/_UICollectionViewPrefetchItem.m
         src/NSCollectionViewFlowLayoutInvalidationContext.m
         src/UICollectionViewFlowLayoutAuxiliary.m
-        src/NSCollectionViewFlowLayout.m
         src/_NSATSTypesetterGuts.m
-        src/NSATSTypesetter.m
         src/__NSATSStringSegment.m
         src/NSATSGlyphStorage.m
         src/NSATSLineFragment.m
@@ -133,8 +133,16 @@ add_framework(UIFoundation
         src/NSWordMLReader.m
         src/NSWordMLWriter.m
 
+        src/NSCollectionViewLayout.m
+        src/NSCollectionViewFlowLayout.m
+        src/NSCollectionViewLayoutAttributes.m
+        src/NSCollectionViewLayoutInvalidationContext.m
+        src/NSIndexPathCollectionViewAdditions.m
+
     DEPENDENCIES
         system
         objc
         Foundation
+        CoreFoundation
+        CoreGraphics
 )

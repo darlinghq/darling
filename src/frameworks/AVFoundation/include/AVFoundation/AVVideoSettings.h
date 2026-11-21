@@ -7,6 +7,7 @@ extern NSString *const AVVideoCodecH264;
 extern NSString *const AVVideoCodecHEVC;
 extern NSString *const AVVideoCodecJPEG;
 extern NSString *const AVVideoCodecKey;
+extern NSString *const AVVideoCodecTypeJPEG;
 extern NSString *const AVVideoCompressionPropertiesKey;
 extern NSString *const AVVideoHeightKey;
 extern NSString *const AVVideoWidthKey;

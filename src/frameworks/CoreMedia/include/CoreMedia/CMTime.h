@@ -94,6 +94,14 @@ CMTime CMTimeMinimum(CMTime time1, CMTime time2) CM_SWIFT_NAME(CMTimeMinimum(_:_
 CMTime CMTimeMaximum(CMTime time1, CMTime time2) CM_SWIFT_NAME(CMTimeMaximum(_:_:));
 CMTime CMTimeAbsoluteValue(CMTime time) CM_SWIFT_NAME(CMTimeAbsoluteValue(_:));
 
+#define CMTIME_IS_VALID(time) ((Boolean)(((time).flags & kCMTimeFlags_Valid) != 0))
+#define CMTIME_IS_INVALID(time) (!CMTIME_IS_VALID(time))
+#define CMTIME_IS_POSITIVE_INFINITY(time) ((Boolean)(CMTIME_IS_VALID(time) && (((time).flags & kCMTimeFlags_PositiveInfinity) != 0)))
+#define CMTIME_IS_NEGATIVE_INFINITY(time) ((Boolean)(CMTIME_IS_VALID(time) && (((time).flags & kCMTimeFlags_NegativeInfinity) != 0)))
+#define CMTIME_IS_INDEFINITE(time) ((Boolean)(CMTIME_IS_VALID(time) && (((time).flags & kCMTimeFlags_Indefinite) != 0)))
+#define CMTIME_IS_NUMERIC(time) ((Boolean)(((time).flags & (kCMTimeFlags_Valid | kCMTimeFlags_ImpliedValueFlagsMask)) == kCMTimeFlags_Valid))
+#define CMTIME_HAS_BEEN_ROUNDED(time) ((Boolean)(CMTIME_IS_NUMERIC(time) && (((time).flags & kCMTimeFlags_HasBeenRounded) != 0)))
+
 #ifdef __cplusplus
 }
 #endif

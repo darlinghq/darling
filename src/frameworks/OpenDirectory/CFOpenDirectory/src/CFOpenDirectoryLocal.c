@@ -37,6 +37,7 @@
 #include <CFOpenDirectory/CFOpenDirectoryConstants.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFRuntime.h>
+#include <dispatch/dispatch.h>
 #include "od_passwd_file.h"
 
 #include <errno.h>
@@ -91,6 +92,10 @@ struct __ODQuery
 	ODMatchType matchType;
 	CFArrayRef values;
 	CFIndex maxResults;
+	// Asynchronous delivery, see ODQuerySetDispatchQueue(); all guarded by queryLock
+	ODQueryCallback callback;
+	void* callbackInfo;
+	dispatch_queue_t queue;
 };
 
 #pragma mark - CF classes
@@ -126,6 +131,8 @@ static void queryFinalize(CFTypeRef cf)
 		CFRelease(query->attribute);
 	if (query->values)
 		CFRelease(query->values);
+	if (query->queue)
+		dispatch_release(query->queue);
 }
 
 static const CFRuntimeClass sessionClass = { 0, "ODSession", NULL, NULL, NULL, NULL, NULL, NULL, NULL };
@@ -1310,4 +1317,86 @@ CFArrayRef ODQueryCopyResults(ODQueryRef query, bool allowPartialResults, CFErro
 
 	clearError(error);
 	return results;
+}
+
+#pragma mark - Asynchronous queries
+
+// Protects the callback, its context and the queue of every query
+static pthread_mutex_t queryLock = PTHREAD_MUTEX_INITIALIZER;
+
+void ODQuerySetCallback(ODQueryRef query, ODQueryCallback callback, void* userInfo)
+{
+	if (!isA(query, ODQueryGetTypeID()))
+		return;
+
+	pthread_mutex_lock(&queryLock);
+	query->callback = callback;
+	query->callbackInfo = userInfo;
+	pthread_mutex_unlock(&queryLock);
+}
+
+// Runs on the query's queue: delivers all results in one call, then the completion call
+// (NULL results and NULL error) or, if the query failed, a single call carrying the error.
+// Does nothing if the query was detached from the queue or given another one meanwhile.
+static void deliverResults(ODQueryRef query, dispatch_queue_t queue)
+{
+	CFErrorRef error = NULL;
+	CFArrayRef results = ODQueryCopyResults(query, false, &error);
+
+	for (int phase = 0; phase < 2; phase++)
+	{
+		pthread_mutex_lock(&queryLock);
+		ODQueryCallback callback = query->callback;
+		void* info = query->callbackInfo;
+		bool attached = (query->queue == queue);
+		pthread_mutex_unlock(&queryLock);
+
+		if (!attached || callback == NULL)
+			break;
+
+		if (phase == 0)
+		{
+			if (results == NULL)
+			{
+				callback(query, NULL, error, info);
+				break;
+			}
+			if (CFArrayGetCount(results) > 0)
+				callback(query, results, NULL, info);
+		}
+		else
+			callback(query, NULL, NULL, info);
+	}
+
+	if (results != NULL)
+		CFRelease(results);
+	if (error != NULL)
+		CFRelease(error);
+}
+
+void ODQuerySetDispatchQueue(ODQueryRef query, dispatch_queue_t queue)
+{
+	if (!isA(query, ODQueryGetTypeID()))
+		return;
+
+	if (queue != NULL)
+		dispatch_retain(queue);
+
+	pthread_mutex_lock(&queryLock);
+	dispatch_queue_t previous = query->queue;
+	query->queue = queue;
+	pthread_mutex_unlock(&queryLock);
+
+	if (previous != NULL)
+		dispatch_release(previous);
+
+	if (queue != NULL)
+	{
+		// The block keeps the query alive until it has run
+		CFRetain(query);
+		dispatch_async(queue, ^{
+			deliverResults(query, queue);
+			CFRelease(query);
+		});
+	}
 }

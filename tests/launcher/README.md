@@ -37,3 +37,13 @@ Manual checks in an installed Darling (not part of the automated tests):
 - `DARLING_ROOTLESS=1 darling shell true` with a non-setuid `darling`, then `darling shutdown`.
 - `DARLING_NONROOT=1 darling shell true` likewise; the prefix's `/proc` is a link to `/Volumes/SystemRoot/proc`.
 - With the setuid `darling`, `DARLING_NONROOT=1 darling shell true` still runs in the root mode.
+
+## Default locale
+
+```sh
+cc -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -Isrc/startup tests/launcher/locale.c src/startup/launcher-locale.c -o /tmp/locale-test
+/tmp/locale-test
+```
+
+covers the mapping from `LANGUAGE`, `LC_ALL`, `LC_MESSAGES`, `LC_TIME` and `LANG` to the `AppleLocale` and `AppleLanguages` a new prefix gets in its
+`/Library/Preferences/.GlobalPreferences.plist`, and that existing values there are never changed.

@@ -23,6 +23,10 @@
 
 #import <Foundation/Foundation.h>
 
+// Option keys of +attachmentWithIdentifier:URL:options:error:. The value of the type hint is
+// a uniform type identifier string.
+extern NSString *const UNNotificationAttachmentOptionsTypeHintKey;
+
 @interface UNNotificationAttachment : NSObject <NSCopying, NSSecureCoding> {
     NSString *_identifier;
     NSURL *_URL;

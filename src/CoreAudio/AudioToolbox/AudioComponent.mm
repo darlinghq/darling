@@ -18,11 +18,13 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <AudioToolbox/AudioComponent.h>
+#include <AudioToolbox/AUComponent.h>
 #include <CarbonCore/Components.h>
 #include <CarbonCore/Resources.h>
 #include <CarbonCore/MacErrors.h>
 #include <CarbonCore/MacMemory.h>
 #include "AudioComponentManager.h"
+#include "AudioUnitUtilitiesInternal.h"
 #include <iostream>
 
 AudioComponent AudioComponentRegister(const AudioComponentDescription *inDesc, CFStringRef inName,
@@ -35,8 +37,24 @@ AudioComponent AudioComponentRegister(const AudioComponentDescription *inDesc, C
 	return AudioComponentManager::instance()->registerComponent(inDesc, name, inVersion, inFactory);
 }
 
-AudioComponent AudioComponentFindNext(AudioComponent inComponent, const AudioComponentDescription* desc)
+// iOS's I/O unit, RemoteIO, is the HAL output unit here: output on element 0, input on element 1
+// once enabled, both on the default devices.
+static const AudioComponentDescription* resolveRemoteIO(const AudioComponentDescription* desc,
+	AudioComponentDescription* storage)
 {
+	if (desc && desc->componentType == kAudioUnitType_Output && desc->componentSubType == kAudioUnitSubType_RemoteIO)
+	{
+		*storage = *desc;
+		storage->componentSubType = kAudioUnitSubType_HALOutput;
+		return storage;
+	}
+	return desc;
+}
+
+AudioComponent AudioComponentFindNext(AudioComponent inComponent, const AudioComponentDescription* inDesc)
+{
+	AudioComponentDescription storage;
+	const AudioComponentDescription* desc = resolveRemoteIO(inDesc, &storage);
 	auto matching = AudioComponentManager::instance()->findMatching(desc);
 	if (!matching.empty())
 	{
@@ -55,8 +73,10 @@ AudioComponent AudioComponentFindNext(AudioComponent inComponent, const AudioCom
 	return (AudioComponent) ::FindNextComponent(Component(inComponent), (ComponentDescription*) desc);
 }
 
-UInt32 AudioComponentCount(const AudioComponentDescription* desc)
+UInt32 AudioComponentCount(const AudioComponentDescription* inDesc)
 {
+	AudioComponentDescription storage;
+	const AudioComponentDescription* desc = resolveRemoteIO(inDesc, &storage);
 	const UInt32 carbonComponents = ::CountComponents((ComponentDescription*) desc);
 	UInt32 numDuplicates = 0;
 	Component carbonComponent = nullptr;
@@ -252,6 +272,8 @@ void AudioComponentInstantiate(AudioComponent component, AudioComponentInstantia
 
 OSStatus AudioComponentInstanceDispose(AudioComponentInstance inst)
 {
+	AUListenersForgetUnit(inst);
+
 	if (AudioComponentManager::isOurInstance(inst))
 	{
 		return AudioComponentManager::instance()->dispose(inst);

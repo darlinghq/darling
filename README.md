@@ -22,7 +22,9 @@
 
 [Website](https://darlinghq.org/) &bull;
 [Community Discord](https://discord.gg/XRD3mQA) &bull;
-[Bug Tracker](https://github.com/darlinghq/darling/issues)
+[Bug Tracker](https://github.com/darlinghq/darling/issues) &bull;
+[AppDB](https://appdb.darlinghq.org) &bull;
+[Blog](https://blog.darlinghq.org)
 
 ## Introduction
 

@@ -19,6 +19,14 @@
 
 #include <Foundation/Foundation.h>
 
+extern NSErrorDomain const ASWebAuthenticationSessionErrorDomain;
+
+typedef NS_ERROR_ENUM(ASWebAuthenticationSessionErrorDomain, ASWebAuthenticationSessionErrorCode) {
+    ASWebAuthenticationSessionErrorCodeCanceledLogin = 1,
+    ASWebAuthenticationSessionErrorCodePresentationContextNotProvided = 2,
+    ASWebAuthenticationSessionErrorCodePresentationContextInvalid = 3,
+};
+
 @interface ASWebAuthenticationSession : NSObject
 
 @end

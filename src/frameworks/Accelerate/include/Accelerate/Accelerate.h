@@ -77,6 +77,27 @@ enum {
     kvImageDoNotClamp = 2048
 };
 
+typedef uint8_t Pixel_8888[4];
+
+vImage_Error vImageBoxConvolve_ARGB8888(
+    const vImage_Buffer *src,
+    const vImage_Buffer *dest,
+    void *tempBuffer,
+    vImagePixelCount srcOffsetToROI_X,
+    vImagePixelCount srcOffsetToROI_Y,
+    uint32_t kernel_height,
+    uint32_t kernel_width,
+    const uint8_t *backgroundColor,
+    vImage_Flags flags
+);
+
+// Fills every pixel of dest with color (the four channel bytes in memory order).
+vImage_Error vImageBufferFill_ARGB8888(
+    const vImage_Buffer *dest,
+    const Pixel_8888 color,
+    vImage_Flags flags
+);
+
 vImage_Error vImageBuffer_InitWithCGImage(
     vImage_Buffer *buf,
     const vImage_CGImageFormat *format,

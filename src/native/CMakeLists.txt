@@ -3,6 +3,14 @@ project(native)
 include(wrap_elf)
 find_package(PkgConfig QUIET)
 
+# libdbus is used by CLI-side components too: LaunchServices and usernoted
+# (both in cli_gui_common) and iokitd talk to the host through this wrapper.
+if (COMPONENT_cli OR COMPONENT_dev_gui_common OR COMPONENT_iokitd)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_gui_common")
+
+	wrap_elf(dbus libdbus-1.so)
+endif()
+
 if (COMPONENT_gui)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "gui")
 
@@ -37,7 +45,6 @@ if (COMPONENT_gui)
 	endif()
 
 	wrap_elf(cairo libcairo.so)
-	wrap_elf(dbus libdbus-1.so)
 	wrap_elf(GL libGL.so "System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries")
 	wrap_elf(GLU libGLU.so "System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries")
 endif()

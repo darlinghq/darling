@@ -17,3 +17,7 @@ extern NSString *WebActionOriginalURLKey;
 @end
 
 extern NSString *const WebViewDidChangeSelectionNotification;
+
+extern NSString *WebViewProgressStartedNotification;
+extern NSString *WebViewProgressEstimateChangedNotification;
+extern NSString *WebViewProgressFinishedNotification;

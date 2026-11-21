@@ -473,6 +473,37 @@ CGSize CVImageBufferGetEncodedSize(CVImageBufferRef imageBuffer)
 	return (CGSize){(CGFloat)imageBuffer->width, (CGFloat)imageBuffer->height};
 }
 
+static bool cleanApertureValue(CFDictionaryRef aperture, CFStringRef key, double* out)
+{
+	CFTypeRef value = CFDictionaryGetValue(aperture, key);
+	return value && CFGetTypeID(value) == CFNumberGetTypeID() && CFNumberGetValue(value, kCFNumberDoubleType, out);
+}
+
+// The clean rectangle is the encoded rectangle without a clean aperture attachment, or when the
+// attachment lacks any of its four values. Otherwise the aperture is centered in the encoded
+// rectangle and moved by the horizontal offset to the right and the vertical offset up.
+CGRect CVImageBufferGetCleanRect(CVImageBufferRef imageBuffer)
+{
+	if (!imageBuffer)
+		return CGRectZero;
+
+	CGSize encoded = CVImageBufferGetEncodedSize(imageBuffer);
+	CGRect full = {{0, 0}, encoded};
+	CFTypeRef attachment = CVBufferGetAttachment(imageBuffer, kCVImageBufferCleanApertureKey, NULL);
+	if (!attachment || CFGetTypeID(attachment) != CFDictionaryGetTypeID())
+		return full;
+
+	double width, height, horizontalOffset, verticalOffset;
+	if (!cleanApertureValue(attachment, kCVImageBufferCleanApertureWidthKey, &width) ||
+		!cleanApertureValue(attachment, kCVImageBufferCleanApertureHeightKey, &height) ||
+		!cleanApertureValue(attachment, kCVImageBufferCleanApertureHorizontalOffsetKey, &horizontalOffset) ||
+		!cleanApertureValue(attachment, kCVImageBufferCleanApertureVerticalOffsetKey, &verticalOffset))
+		return full;
+
+	return CGRectMake((encoded.width - width) / 2 + horizontalOffset,
+		(encoded.height - height) / 2 - verticalOffset, width, height);
+}
+
 // The first lock locks the IOSurface of an IOSurface-backed buffer, with the flags of that lock:
 // read-only access leaves the surface's seed alone, any other lock marks the contents as
 // modified when it ends. Nested locks only count, and the last unlock ends the surface lock

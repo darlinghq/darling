@@ -25,18 +25,9 @@
 
 static int verbose = 0;
 
-// Value observed on macOS 26 by printing the public constant (rung 4).
-const CFStringRef kMACaptionAppearanceSettingsChangedNotification = CFSTR("com.apple.mediaaccessibility.captionAppearanceSettingsChanged");
-
 __attribute__((constructor))
 static void initme(void) {
     verbose = getenv("STUB_VERBOSE") != NULL;
-}
-
-void* MAAudibleMediaCopyPreferredCharacteristics(void)
-{
-    if (verbose) puts("STUB: MAAudibleMediaCopyPreferredCharacteristics called");
-    return NULL;
 }
 
 void* MAAudibleMediaPrefCopyPreferDescriptiveVideo(void)
@@ -63,33 +54,9 @@ void* MACaptionAppearanceAddPreferredLanguage(void)
     return NULL;
 }
 
-void* MACaptionAppearanceAddSelectedLanguage(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceAddSelectedLanguage called");
-    return NULL;
-}
-
-void* MACaptionAppearanceCopyBackgroundColor(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceCopyBackgroundColor called");
-    return NULL;
-}
-
 void* MACaptionAppearanceCopyFontDescriptorForLanguage(void)
 {
     if (verbose) puts("STUB: MACaptionAppearanceCopyFontDescriptorForLanguage called");
-    return NULL;
-}
-
-void* MACaptionAppearanceCopyFontDescriptorForStyle(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceCopyFontDescriptorForStyle called");
-    return NULL;
-}
-
-void* MACaptionAppearanceCopyFontDescriptorWithStrokeForStyle(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceCopyFontDescriptorWithStrokeForStyle called");
     return NULL;
 }
 
@@ -99,69 +66,15 @@ void* MACaptionAppearanceCopyFontForStyle(void)
     return NULL;
 }
 
-void* MACaptionAppearanceCopyForegroundColor(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceCopyForegroundColor called");
-    return NULL;
-}
-
-void* MACaptionAppearanceCopyPreferredCaptioningMediaCharacteristics(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceCopyPreferredCaptioningMediaCharacteristics called");
-    return NULL;
-}
-
 void* MACaptionAppearanceCopyPreferredLanguages(void)
 {
     if (verbose) puts("STUB: MACaptionAppearanceCopyPreferredLanguages called");
     return NULL;
 }
 
-void* MACaptionAppearanceCopySelectedLanguages(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceCopySelectedLanguages called");
-    return NULL;
-}
-
 void* MACaptionAppearanceCopyStrokeColor(void)
 {
     if (verbose) puts("STUB: MACaptionAppearanceCopyStrokeColor called");
-    return NULL;
-}
-
-void* MACaptionAppearanceCopyWindowColor(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceCopyWindowColor called");
-    return NULL;
-}
-
-void* MACaptionAppearanceDidDisplayCaptions(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceDidDisplayCaptions called");
-    return NULL;
-}
-
-void* MACaptionAppearanceGetBackgroundOpacity(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceGetBackgroundOpacity called");
-    return NULL;
-}
-
-void* MACaptionAppearanceGetDisplayType(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceGetDisplayType called");
-    return NULL;
-}
-
-void* MACaptionAppearanceGetForegroundOpacity(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceGetForegroundOpacity called");
-    return NULL;
-}
-
-void* MACaptionAppearanceGetRelativeCharacterSize(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceGetRelativeCharacterSize called");
     return NULL;
 }
 
@@ -180,24 +93,6 @@ void* MACaptionAppearanceGetShowCaptionsWhenAvailable(void)
 void* MACaptionAppearanceGetStrokeWidth(void)
 {
     if (verbose) puts("STUB: MACaptionAppearanceGetStrokeWidth called");
-    return NULL;
-}
-
-void* MACaptionAppearanceGetTextEdgeStyle(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceGetTextEdgeStyle called");
-    return NULL;
-}
-
-void* MACaptionAppearanceGetWindowOpacity(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceGetWindowOpacity called");
-    return NULL;
-}
-
-void* MACaptionAppearanceGetWindowRoundedCornerRadius(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceGetWindowRoundedCornerRadius called");
     return NULL;
 }
 
@@ -651,12 +546,6 @@ void* MACaptionAppearanceSetDidDisplayCaptionsCallback(void)
     return NULL;
 }
 
-void* MACaptionAppearanceSetDisplayType(void)
-{
-    if (verbose) puts("STUB: MACaptionAppearanceSetDisplayType called");
-    return NULL;
-}
-
 void* MACaptionAppearanceSetShowCaptions(void)
 {
     if (verbose) puts("STUB: MACaptionAppearanceSetShowCaptions called");
@@ -978,12 +867,6 @@ void* MAImageCaptioningCopyCaption(void)
 void* MAImageCaptioningCopyCaptionWithSource(void)
 {
     if (verbose) puts("STUB: MAImageCaptioningCopyCaptionWithSource called");
-    return NULL;
-}
-
-void* MAImageCaptioningCopyMetadataTagPath(void)
-{
-    if (verbose) puts("STUB: MAImageCaptioningCopyMetadataTagPath called");
     return NULL;
 }
 

@@ -33,10 +33,13 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "LSHostOpenBus.h"
 #include <CarbonCore/MacErrors.h>
 #include <dlfcn.h>
+#include <fcntl.h>
+#include <limits.h>
 #include <os/log.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define DBUS_WRAPPER_PATH "/usr/lib/native/libdbus.dylib"
 
@@ -176,6 +179,45 @@ OSStatus _LSOpenURLOnHost(CFURLRef url)
 			return kLSApplicationNotFoundErr;
 		default:
 			os_log_error(OS_LOG_DEFAULT, "LaunchServices: the desktop portal did not accept the URL");
+			return kLSServerCommunicationErr;
+	}
+}
+
+OSStatus _LSOpenFileOnHost(CFURLRef url, Boolean reveal)
+{
+	const struct ls_host_dbus* api;
+	char path[PATH_MAX];
+	int fd, r;
+
+	if (url == NULL || !CFURLGetFileSystemRepresentation(url, true, (UInt8*) path, sizeof(path)))
+		return paramErr;
+
+	/* The desktop gets the descriptor and finds the item from it, so no path has to be translated to the host's. */
+	fd = open(path, O_RDONLY | O_CLOEXEC);
+	if (fd < 0)
+		return fnfErr;
+
+	api = get_host_dbus();
+	if (api == NULL)
+	{
+		os_log_error(OS_LOG_DEFAULT, "LaunchServices: cannot open the item: the host D-Bus library is unavailable");
+		close(fd);
+		return kLSApplicationNotFoundErr;
+	}
+
+	r = _LSHostOpenFileDescriptor(api, fd, reveal);
+	close(fd);
+	switch (r)
+	{
+		case LS_HOST_OPEN_OK:
+			return noErr;
+		case LS_HOST_OPEN_INVALID_URL:
+			return paramErr;
+		case LS_HOST_OPEN_NO_PORTAL:
+			os_log_error(OS_LOG_DEFAULT, "LaunchServices: cannot open the item: no desktop portal on the session bus");
+			return kLSApplicationNotFoundErr;
+		default:
+			os_log_error(OS_LOG_DEFAULT, "LaunchServices: the desktop portal did not accept the item");
 			return kLSServerCommunicationErr;
 	}
 }

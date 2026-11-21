@@ -280,26 +280,29 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 		"\tif (!lib_handle)\n"
 		"\t\tlib_handle = _elfcalls->dlopen_fatal(__elfname);\n"
 		"}\n\n";
+	// A mandatory host library is opened when a function in it is first resolved, not when this
+	// wrapper loads: hosts without it (Android has no libpulse) can still run programs that
+	// link it without calling it.
 
-	if (availabilitySymbol.empty())
+	if (!availabilitySymbol.empty())
 	{
+		// Initialize optional libraries once before clients can call from threads.
+		// Optional libraries use non-fatal dlopen and expose the result separately.
 		output << "__attribute__((constructor)) static void initializer() {\n"
-			"\topen_library();\n"
-			"}\n\n";
-	}
-	else
-	{
-		output << "__attribute__((visibility(\"default\"))) int " << availabilitySymbol << "(void) {\n"
-			"\tif (!lib_handle && _elfcalls)\n"
-			"\t\tlib_handle = _elfcalls->dlopen(__elfname);\n"
+			"\tlib_handle = _elfcalls->dlopen(__elfname);\n"
+			"}\n\n"
+			"__attribute__((visibility(\"default\"))) int " << availabilitySymbol << "(void) {\n"
 			"\treturn lib_handle != 0;\n"
 			"}\n\n";
 	}
 
-	output << "__attribute__((destructor)) static void destructor() {\n"
-		"\tif (lib_handle)\n"
-		"\t\t_elfcalls->dlclose_fatal(lib_handle);\n"
-		"}\n\n";
+	// The host library is deliberately not released when the wrapper goes away.
+	// The wrapper's terminator runs when the process exits, and releasing the
+	// library then unmaps it while native threads (display link, driver worker
+	// threads) are still running or exiting: their thread-specific-data
+	// destructors, registered by libraries such as libGLdispatch, then run
+	// against freed or unmapped code and data. On macOS the process just ends.
+	// A host library stays mapped until the process ends.
 
 	// dyld runs symbol resolvers while binding, and for non-lazy binds (chained fixups, bind_at_load)
 	// that happens before libSystem's initializer sets _elfcalls. Such resolvers return a trampoline
@@ -416,7 +419,8 @@ void generate_wrapper(std::ofstream& output, const char* soname, const std::set<
 		if (packedGLUpload)
 			output << "\treturn __elf_abi_" << sym << ";\n";
 		else
-			output << "\tif (!_elfcalls)\n\t\treturn __elf_lazy_" << sym << ";\n";
+			// Always the trampoline, so that binding never opens the host library.
+			output << "\treturn __elf_lazy_" << sym << ";\n";
 		output <<
 			"#endif\n"
 			"\topen_library();\n"
@@ -438,6 +442,7 @@ void generate_var_wrappers(std::ofstream& output, std::ofstream& outputHeader, c
 	for (const std::string& sym : vars)
 	{
 		output << "void* __elf_get_" << sym << "(void) {\n"
+			"\topen_library();\n"
 			"\treturn _elfcalls->dlsym_fatal(lib_handle, \"" << sym << "\");\n"
 			"}\n\n";
 		

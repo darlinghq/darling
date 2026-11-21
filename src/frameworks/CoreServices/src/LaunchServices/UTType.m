@@ -19,10 +19,14 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include <LaunchServices/LaunchServices.h>
+#include <LaunchServices/LaunchServicesPriv.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSNumber.h>
+#import <Foundation/NSURL.h>
+#include <unistd.h>
 #import <fmdb/FMDatabaseQueue.h>
+#include <CoreFoundation/CFURLPriv.h>
 
 extern FMDatabaseQueue* getDatabaseQueue(void);
 extern NSString* escape(NSString* str);
@@ -439,6 +443,63 @@ static NSArray<NSString*>* identifiersForTagLocked(FMDatabase* db, NSString* tag
 	return result;
 }
 
+// Whether a directory is a package by its type, for kCFURLIsPackageKey (CoreFoundation checks the
+// Finder's bundle bit itself): a type declared for its name extension conforms to com.apple.package,
+// or an application declares a document type with that extension, or of such a type, with
+// LSTypeIsPackage.
+static Boolean directoryIsPackage(CFURLRef url)
+{
+	FMDatabaseQueue* dq = getDatabaseQueue();
+	if (!dq)
+		return false;
+
+	__block Boolean result = false;
+	@autoreleasepool
+	{
+		NSString* extension = [(NSURL*) url pathExtension];
+		if ([extension length] == 0)
+			return false;
+
+		[dq inDatabase:^(FMDatabase* db) {
+			NSMutableArray<NSString*>* declared = [NSMutableArray array];
+			for (NSString* identifier in identifiersForTagLocked(db, (NSString*) kUTTagClassFilenameExtension, extension, nil))
+			{
+				if (isDynamicIdentifier(identifier))
+					continue;
+				if (conformsLocked(db, identifier, (NSString*) kUTTypePackage))
+				{
+					result = true;
+					return;
+				}
+				[declared addObject: identifier];
+			}
+
+			FMResultSet* rs = [db executeQuery: @"select 1 from app_doc D inner join app_doc_extension E on E.doc=D.id "
+				@"where D.is_package = 1 and E.extension = ? collate nocase limit 1", extension];
+			result = [rs next];
+			[rs close];
+
+			for (NSString* identifier in declared)
+			{
+				if (result)
+					break;
+				rs = [db executeQuery: @"select 1 from app_doc D inner join app_doc_uti U on U.doc=D.id "
+					@"where D.is_package = 1 and U.uti = ? collate nocase limit 1", identifier];
+				result = [rs next];
+				[rs close];
+			}
+		}];
+	}
+	return result;
+}
+
+// CoreFoundation answers kCFURLIsPackageKey through LaunchServices once it is loaded.
+__attribute__((constructor))
+static void registerPackageProvider(void)
+{
+	_CFURLSetPackageProvider(directoryIsPackage);
+}
+
 _Nullable CFArrayRef
 UTTypeCreateAllIdentifiersForTag(
   CFStringRef inTagClass,
@@ -739,4 +800,102 @@ UTGetOSTypeFromString(CFStringRef inString)
 	}
 
 	return retval;
+}
+
+// The file of a declared icon name inside a bundle: icon names in Info.plist are relative to the bundle's
+// resources, and a name without an extension means an icns file.
+static NSString* existingIconInBundle(NSString* bundlePath, NSString* iconName)
+{
+	if (bundlePath == nil || [iconName length] == 0)
+		return nil;
+
+	if ([[iconName pathExtension] length] == 0)
+		iconName = [iconName stringByAppendingPathExtension: @"icns"];
+
+	NSString* file = [[bundlePath stringByAppendingPathComponent: @"Contents/Resources"] stringByAppendingPathComponent: iconName];
+	return access([file fileSystemRepresentation], R_OK) == 0 ? file : nil;
+}
+
+// The icon an application declares for a document type with CFBundleDocumentTypes: the one of the application
+// the user chose as handler (when there is one), otherwise by handler rank. Types matched by LSItemContentTypes
+// come before types matched by the older filename-extension lists.
+static NSString* documentTypeIconLocked(FMDatabase* db, NSString* uti, NSString* preferredBundleId)
+{
+	NSString* const kRankOrder = @" order by case when B.bundle_id = ? then 0 else 1 end,"
+		@" case when AD.rank='Owner' then 1 when AD.rank='Default' then 2 when AD.rank='Alternate' then 3 else 5 end, AD.id";
+	NSString* const kSelect = @"select B.path, AD.icon from app_doc AD inner join bundle B on B.id = AD.bundle";
+	NSString* const kHasIcon = @" and AD.icon is not null and AD.icon != '' and B.package_type = 'APPL'";
+	NSString* bundleId = preferredBundleId ?: @"";
+
+	FMResultSet* rs = [db executeQuery: [NSString stringWithFormat:
+		@"%@ inner join app_doc_uti AU on AU.doc = AD.id where AU.uti = ?%@%@", kSelect, kHasIcon, kRankOrder], uti, bundleId];
+	while ([rs next])
+	{
+		NSString* file = existingIconInBundle([rs stringForColumnIndex: 0], [rs stringForColumnIndex: 1]);
+		if (file != nil)
+		{
+			[rs close];
+			return file;
+		}
+	}
+	[rs close];
+
+	for (NSString* extension in tagValuesLocked(db, uti, @"public.filename-extension"))
+	{
+		rs = [db executeQuery: [NSString stringWithFormat:
+			@"%@ inner join app_doc_extension AE on AE.doc = AD.id where AE.extension = ? collate nocase%@%@",
+			kSelect, kHasIcon, kRankOrder], extension, bundleId];
+		while ([rs next])
+		{
+			NSString* file = existingIconInBundle([rs stringForColumnIndex: 0], [rs stringForColumnIndex: 1]);
+			if (file != nil)
+			{
+				[rs close];
+				return file;
+			}
+		}
+		[rs close];
+	}
+	return nil;
+}
+
+CFURLRef
+_LSCopyIconURLForContentType(CFStringRef inUTI)
+{
+	if (inUTI == NULL)
+		return NULL;
+
+	FMDatabaseQueue* dq = getDatabaseQueue();
+	if (!dq)
+		return NULL;
+
+	// The application the user picked for the type, if any, takes precedence over the declared handler ranks.
+	CFStringRef preferred = LSCopyDefaultRoleHandlerForContentType(inUTI, kLSRolesAll);
+
+	__block NSString* iconFile = nil;
+	[dq inDatabase:^(FMDatabase* db) {
+		// The icon of the type's own declaration comes first.
+		FMResultSet* rs = [db executeQuery: @"select B.path, UI.file from uti inner join uti_icon UI on UI.uti = uti.id "
+			@"inner join bundle B on B.id = uti.bundle where uti.type_identifier = ? order by UI.id", (NSString*) inUTI];
+		while ([rs next])
+		{
+			iconFile = existingIconInBundle([rs stringForColumnIndex: 0], [rs stringForColumnIndex: 1]);
+			if (iconFile != nil)
+				break;
+		}
+		[rs close];
+
+		if (iconFile == nil)
+			iconFile = documentTypeIconLocked(db, (NSString*) inUTI, (NSString*) preferred);
+		[iconFile retain];
+	}];
+
+	if (preferred != NULL)
+		CFRelease(preferred);
+
+	CFURLRef url = NULL;
+	if (iconFile != nil)
+		url = (CFURLRef) [[NSURL alloc] initFileURLWithPath: iconFile isDirectory: NO];
+	[iconFile release];
+	return url;
 }

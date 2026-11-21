@@ -31,6 +31,7 @@
 #include "HIToolboxInternal.h"
 #include <HIToolbox/CarbonEvents.h>
 #include <CarbonCore/MacErrors.h>
+#include <AE/AEDataModel.h>
 #include <CoreGraphics/CGEvent.h>
 
 #include <mach/mach_time.h>
@@ -96,6 +97,8 @@ static struct EventHandlerEntry g_standardRawEventHandler = {
 static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 static struct EventTarget g_applicationTarget = { NULL, NULL };
 static struct EventTarget g_dispatcherTarget = { &g_standardRawEventHandler, &g_applicationTarget };
+// The event monitor target: handlers installed on it only observe events sent to it.
+static struct EventTarget g_monitorTarget = { NULL, NULL };
 
 // Handlers removed while an event is being dispatched stay allocated (a dispatch may still
 // hold a pointer to them) and are freed when no dispatch is running.
@@ -119,6 +122,11 @@ EventTargetRef GetApplicationEventTarget(void)
 EventTargetRef GetEventDispatcherTarget(void)
 {
 	return &g_dispatcherTarget;
+}
+
+EventTargetRef GetEventMonitorTarget(void)
+{
+	return &g_monitorTarget;
 }
 
 OSStatus CreateEvent(CFAllocatorRef inAllocator, OSType inClassID, UInt32 inKind, EventTime inEventTime, EventAttributes inAttributes, EventRef* outEvent)
@@ -190,6 +198,66 @@ void ReleaseEvent(EventRef inEvent)
 	if (inEvent->cgEvent)
 		CFRelease(inEvent->cgEvent);
 	free(inEvent);
+}
+
+EventRef CopyEvent(EventRef inOther)
+{
+	if (!inOther)
+		return NULL;
+
+	EventRef copy = NULL;
+	if (CreateEvent(NULL, inOther->eventClass, inOther->kind, inOther->time, inOther->attributes, &copy) != noErr)
+		return NULL;
+
+	// The parameters are copied in the order they were set, which keeps the same lookup order
+	struct EventParameter* source[64];
+	size_t count = 0;
+	for (struct EventParameter* parameter = inOther->parameters; parameter; parameter = parameter->next)
+	{
+		if (count == sizeof(source) / sizeof(source[0]))
+			break;
+		source[count++] = parameter;
+	}
+	while (count > 0)
+	{
+		struct EventParameter* parameter = source[--count];
+		if (SetEventParameter(copy, parameter->name, parameter->type, parameter->size, parameter->data) != noErr)
+		{
+			ReleaseEvent(copy);
+			return NULL;
+		}
+	}
+	if (inOther->cgEvent)
+		copy->cgEvent = (CGEventRef) CFRetain(inOther->cgEvent);
+	return copy;
+}
+
+OSStatus SetEventTime(EventRef inEvent, EventTime inTime)
+{
+	if (!inEvent)
+		return paramErr;
+	inEvent->time = inTime;
+	return noErr;
+}
+
+OSStatus AEProcessEvent(EventRef inEvent)
+{
+	if (!inEvent)
+		return paramErr;
+	if (inEvent->eventClass != kEventClassAppleEvent)
+		return paramErr;
+
+	// The Apple event is identified by its class and ID
+	OSType eventClass, eventID;
+	OSStatus status = GetEventParameter(inEvent, kEventParamAEEventClass, typeType, NULL, sizeof(eventClass), NULL, &eventClass);
+	if (status == noErr)
+		status = GetEventParameter(inEvent, kEventParamAEEventID, typeType, NULL, sizeof(eventID), NULL, &eventID);
+	if (status != noErr)
+		return status;
+
+	// A Carbon event carries no Apple event data here, so there is nothing to hand to the
+	// Apple event handlers
+	return errAEEventNotHandled;
 }
 
 OSType GetEventClass(EventRef inEvent)
@@ -283,7 +351,7 @@ OSStatus InvokeEventHandlerUPP(EventHandlerCallRef inHandlerCallRef, EventRef in
 
 static bool isTarget(EventTargetRef target)
 {
-	return target == &g_applicationTarget || target == &g_dispatcherTarget;
+	return target == &g_applicationTarget || target == &g_dispatcherTarget || target == &g_monitorTarget;
 }
 
 static void freeHandler(struct EventHandlerEntry* handler)
@@ -351,8 +419,8 @@ OSStatus RemoveEventHandler(EventHandlerRef inHandlerRef)
 		return paramErr;
 
 	pthread_mutex_lock(&g_lock);
-	struct EventTarget* targets[2] = { &g_applicationTarget, &g_dispatcherTarget };
-	for (int i = 0; i < 2 && result != noErr; i++)
+	struct EventTarget* targets[3] = { &g_applicationTarget, &g_dispatcherTarget, &g_monitorTarget };
+	for (int i = 0; i < 3 && result != noErr; i++)
 	{
 		for (struct EventHandlerEntry** link = &targets[i]->handlers; *link; link = &(*link)->next)
 		{
@@ -377,6 +445,84 @@ OSStatus RemoveEventHandler(EventHandlerRef inHandlerRef)
 	return result;
 }
 
+// The handler an EventHandlerRef refers to, or NULL if the reference is not an installed handler.
+// Called with g_lock held.
+static struct EventHandlerEntry* findInstalledHandler(EventHandlerRef ref)
+{
+	struct EventTarget* targets[3] = { &g_applicationTarget, &g_dispatcherTarget, &g_monitorTarget };
+
+	for (int i = 0; i < 3; i++)
+	{
+		for (struct EventHandlerEntry* handler = targets[i]->handlers; handler; handler = handler->next)
+		{
+			if (handler == ref && !handler->removed)
+				return handler;
+		}
+	}
+	return NULL;
+}
+
+OSStatus AddEventTypesToHandler(EventHandlerRef inHandlerRef, ItemCount inNumTypes, const EventTypeSpec* inList)
+{
+	if (!inHandlerRef || (inNumTypes != 0 && !inList))
+		return paramErr;
+
+	pthread_mutex_lock(&g_lock);
+	struct EventHandlerEntry* handler = findInstalledHandler(inHandlerRef);
+	if (!handler)
+	{
+		pthread_mutex_unlock(&g_lock);
+		return paramErr;
+	}
+
+	EventTypeSpec* types = realloc(handler->types, (handler->typeCount + inNumTypes + 1) * sizeof(EventTypeSpec));
+	if (!types)
+	{
+		pthread_mutex_unlock(&g_lock);
+		return memFullErr;
+	}
+	handler->types = types;
+	for (ItemCount i = 0; i < inNumTypes; i++)
+	{
+		bool present = false;
+		for (ItemCount j = 0; j < handler->typeCount && !present; j++)
+			present = types[j].eventClass == inList[i].eventClass && types[j].eventKind == inList[i].eventKind;
+		if (!present)
+			types[handler->typeCount++] = inList[i];
+	}
+	pthread_mutex_unlock(&g_lock);
+	return noErr;
+}
+
+OSStatus RemoveEventTypesFromHandler(EventHandlerRef inHandlerRef, ItemCount inNumTypes, const EventTypeSpec* inList)
+{
+	if (!inHandlerRef || (inNumTypes != 0 && !inList))
+		return paramErr;
+
+	pthread_mutex_lock(&g_lock);
+	struct EventHandlerEntry* handler = findInstalledHandler(inHandlerRef);
+	if (!handler)
+	{
+		pthread_mutex_unlock(&g_lock);
+		return paramErr;
+	}
+
+	// Types the handler does not have are ignored
+	for (ItemCount i = 0; i < inNumTypes; i++)
+	{
+		for (ItemCount j = 0; j < handler->typeCount; j++)
+		{
+			if (handler->types[j].eventClass == inList[i].eventClass && handler->types[j].eventKind == inList[i].eventKind)
+			{
+				handler->types[j] = handler->types[--handler->typeCount];
+				break;
+			}
+		}
+	}
+	pthread_mutex_unlock(&g_lock);
+	return noErr;
+}
+
 static bool handlerWants(const struct EventHandlerEntry* handler, EventRef event)
 {
 	for (ItemCount i = 0; i < handler->typeCount; i++)
@@ -388,10 +534,13 @@ static bool handlerWants(const struct EventHandlerEntry* handler, EventRef event
 }
 
 // The result of the handlers from start on, newest first. eventNotHandledErr if none handled
-// the event; eventPassToNextTargetErr if one asked to go on with the next target.
-static OSStatus dispatchFrom(struct EventTarget* target, struct EventHandlerEntry* start, EventRef event)
+// the event; eventPassToNextTargetErr if one asked to go on with the next target. With
+// allHandlers, every handler for the event runs, handled or not, and the answer is that of the
+// first handler that did not answer eventNotHandledErr.
+static OSStatus dispatchFrom(struct EventTarget* target, struct EventHandlerEntry* start, EventRef event, bool allHandlers)
 {
 	struct EventHandlerEntry* handler = start;
+	OSStatus answer = eventNotHandledErr;
 
 	for (;;)
 	{
@@ -409,10 +558,20 @@ static OSStatus dispatchFrom(struct EventTarget* target, struct EventHandlerEntr
 		pthread_mutex_unlock(&g_lock);
 
 		if (!handler)
-			return eventNotHandledErr;
+			return answer;
 
 		struct HandlerCall call = { target, handler, event, 0 };
 		OSStatus result = proc(&call, event, userData);
+
+		if (allHandlers)
+		{
+			if (answer == eventNotHandledErr)
+				answer = result;
+			pthread_mutex_lock(&g_lock);
+			handler = handler->next;
+			pthread_mutex_unlock(&g_lock);
+			continue;
+		}
 
 		// A handler that has already passed the event on has had the rest of the handlers
 		// try it; its own "not handled" is the answer of the whole list.
@@ -447,7 +606,7 @@ static void endDispatch(void)
 	pthread_mutex_unlock(&g_lock);
 }
 
-OSStatus SendEventToEventTarget(EventRef inEvent, EventTargetRef inTarget)
+static OSStatus sendEvent(EventRef inEvent, EventTargetRef inTarget, OptionBits inOptions)
 {
 	if (!isTarget(inTarget))
 		return paramErr;
@@ -470,8 +629,10 @@ OSStatus SendEventToEventTarget(EventRef inEvent, EventTargetRef inTarget)
 		first = target->handlers;
 		pthread_mutex_unlock(&g_lock);
 
-		result = dispatchFrom(target, first, inEvent);
+		result = dispatchFrom(target, first, inEvent, (inOptions & kEventTargetSendToAllHandlers) != 0);
 		if (result != eventNotHandledErr && result != eventPassToNextTargetErr)
+			break;
+		if (inOptions & kEventTargetDontPropagate)
 			break;
 	}
 	endDispatch();
@@ -493,8 +654,18 @@ OSStatus CallNextEventHandler(EventHandlerCallRef inCallRef, EventRef inEvent)
 	pthread_mutex_unlock(&g_lock);
 
 	call->nextCalled = 1;
-	OSStatus result = dispatchFrom(call->target, next, inEvent);
+	OSStatus result = dispatchFrom(call->target, next, inEvent, false);
 
 	// Leaving the target is up to the handler that called this: it returns the status
 	return result;
+}
+
+OSStatus SendEventToEventTarget(EventRef inEvent, EventTargetRef inTarget)
+{
+	return sendEvent(inEvent, inTarget, 0);
+}
+
+OSStatus SendEventToEventTargetWithOptions(EventRef inEvent, EventTargetRef inTarget, OptionBits inOptions)
+{
+	return sendEvent(inEvent, inTarget, inOptions);
 }

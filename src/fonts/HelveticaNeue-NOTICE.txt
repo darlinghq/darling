@@ -1,0 +1,29 @@
+/System/Library/Fonts/HelveticaNeue.ttc
+
+The file is a renamed derivative of Nimbus Sans, one of the URW++ base 35
+fonts, version 1.00 (Regular, Bold) and 1.10 (Italic, Bold Italic), from
+https://github.com/ArtifexSoftware/urw-base35-fonts (commit
+3c0ba3b5687632dfc66526544a4e811fe0ec0cd9, two commits after tag 20200910).
+
+  Copyright 2014 by (URW)++ Design & Development
+
+The font is distributed under the GNU Affero General Public License version 3
+(COPYING), with the special exception in LICENSE that permits including the
+font programs in a Postscript or PDF file that consists of a document that
+contains text to be displayed or printed using the font.
+
+Modified on 2026-11-21 by the Darling project. Changes: the family, style,
+full and PostScript names (the 'name' table) were changed to "Helvetica Neue",
+"HelveticaNeue", "HelveticaNeue-Bold", "HelveticaNeue-Italic" and
+"HelveticaNeue-BoldItalic", so that the file can stand in for the font of
+that name on macOS; the four faces were collected in one TrueType collection.
+The glyph outlines and all other tables are unchanged. The copyright notice
+of the original authors is kept in the name table.
+
+The font is not a product of URW++ or of Apple, and neither supports it. The
+name "Helvetica" is the trademark of its owner; the file is a stand-in, not
+the font of that name.
+
+Corresponding source: the four unmodified source fonts and the script that
+makes the collection, make-helvetica-neue.py, are in the Darling source tree
+under src/fonts (https://github.com/darlinghq/darling).

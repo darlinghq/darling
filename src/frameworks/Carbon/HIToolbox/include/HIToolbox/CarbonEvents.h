@@ -51,6 +51,7 @@ enum {
 
 EventTargetRef GetApplicationEventTarget(void);
 EventTargetRef GetEventDispatcherTarget(void);
+EventTargetRef GetEventMonitorTarget(void);
 
 OSStatus ProcessHICommand(const HICommand * a);
 

@@ -22,6 +22,18 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+// Classes of the AVB model that clients link against. The AVB backend stays unavailable (no
+// interface reports one), but the classes exist and can be instantiated.
+@interface AVBConfigurationURL : NSObject
+@end
+@implementation AVBConfigurationURL
+@end
+
+@interface AVBVirtualAudioConfiguration : NSObject
+@end
+@implementation AVBVirtualAudioConfiguration
+@end
+
 static int verbose = 0;
 
 __attribute__((constructor))

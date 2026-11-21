@@ -37,6 +37,15 @@ Boolean _LSIsHostOpenURL(CFURLRef url);
  */
 OSStatus _LSOpenURLOnHost(CFURLRef url);
 
+/*
+ * Shows a file or folder in the host's file manager through the desktop portal
+ * (see LSHostOpenBus.h). With reveal the folder containing the item is shown
+ * with the item selected, otherwise the item is opened (a folder is shown as
+ * a folder). Returns kLSApplicationNotFoundErr when the host has no way to do
+ * it, as there is no file manager in the prefix.
+ */
+OSStatus _LSOpenFileOnHost(CFURLRef url, Boolean reveal);
+
 #ifdef __cplusplus
 }
 #endif

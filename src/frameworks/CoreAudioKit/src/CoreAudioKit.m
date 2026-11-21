@@ -19,10 +19,19 @@
 
 
 #include <CoreAudioKit/CoreAudioKit.h>
+#import <AppKit/NSViewController.h>
 #include <stdlib.h>
 #include <stdio.h>
 
 static int verbose = 0;
+
+// The view controller of the Network MIDI pane. It exists so that clients linking against it load, and
+// so that a storyboard can instantiate it; it adds nothing to NSViewController.
+@interface CANetworkMIDIViewController : NSViewController
+@end
+
+@implementation CANetworkMIDIViewController
+@end
 
 __attribute__((constructor))
 static void initme(void) {

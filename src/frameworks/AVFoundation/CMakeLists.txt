@@ -72,6 +72,7 @@ add_framework(AVFoundation
         src/AVPlayerItemTrack.m
         src/AVTimeFormatterInternal.m
         src/AVTimeFormatter.m
+        src/AVTime.m
         src/AVQueuePlayer.m
         src/AVQueuePlayerInternal.m
         src/AVCompositionInternal.m
@@ -526,6 +527,11 @@ add_framework(AVFoundation
         system
         objc
         Foundation
+        QuartzCore
+        CoreMedia
+        CoreVideo
+        CoreGraphics
+        AudioToolbox
 )
 
 # AVFAudio is a subframework of AVFoundation on Darwin, so a client that links only

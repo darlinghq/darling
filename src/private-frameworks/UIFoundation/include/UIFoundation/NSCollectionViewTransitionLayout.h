@@ -18,7 +18,11 @@
 */
 
 #include <Foundation/Foundation.h>
+#import <AppKit/NSCollectionViewLayout.h>
+#import <AppKit/AppKitIvarLayout.h>
 
-@interface NSCollectionViewTransitionLayout : NSObject
+@interface NSCollectionViewTransitionLayout : NSCollectionViewLayout {
+    NS_LEGACY_IVAR_PAD(_NSCollectionViewTransitionLayoutReserved, 80)
+}
 
 @end
