@@ -43,3 +43,38 @@ void vDSP_maxmgv(const float *__A, vDSP_Stride __IA, float *__C, vDSP_Length __N
 		}
 	}
 }
+
+// With N equal to zero the result is -infinity (maxv) or infinity (minv), and A is not read.
+// GUESS: a NaN element never compares greater (or less) than the best so far, so it is skipped and a vector
+// of only NaNs gives -infinity (or infinity). A negative stride walks backwards by the same formula. The
+// pages cover neither.
+#define VDSP_MAXV(NAME, T) \
+void NAME(const T* __A, vDSP_Stride __IA, T* __C, vDSP_Length __N) \
+{ \
+	T best = -INFINITY; \
+	for (vDSP_Length n = 0; n < __N; n++) \
+	{ \
+		const T value = __A[(long) n * __IA]; \
+		if (value > best) \
+			best = value; \
+	} \
+	*__C = best; \
+}
+
+#define VDSP_MINV(NAME, T) \
+void NAME(const T* __A, vDSP_Stride __IA, T* __C, vDSP_Length __N) \
+{ \
+	T best = INFINITY; \
+	for (vDSP_Length n = 0; n < __N; n++) \
+	{ \
+		const T value = __A[(long) n * __IA]; \
+		if (value < best) \
+			best = value; \
+	} \
+	*__C = best; \
+}
+
+VDSP_MAXV(vDSP_maxv, float)
+VDSP_MAXV(vDSP_maxvD, double)
+VDSP_MINV(vDSP_minv, float)
+VDSP_MINV(vDSP_minvD, double)

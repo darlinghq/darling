@@ -1,5 +1,5 @@
 // Native test: compile with the vDSP sources it covers and run on the host.
-//   cc -I include tests/vDSPTest.c src/arith.c src/convert.c src/fft.c src/extrema.c -lm -o vDSPTest
+//   cc -I include tests/vDSPTest.c src/arith.c src/convert.c src/fft.c src/extrema.c src/reduce.c -lm -o vDSPTest
 // Expected values follow the formulas in Apple's vDSP documentation.
 #include <vDSP/vDSP.h>
 #include <math.h>
@@ -189,6 +189,81 @@ static void testRealVectorOps(void)
 	expectNear(untouched[0], 42, 0, "zero count", 0);
 }
 
+// The inputs and expected values are those on the pages of the vDSP reduction functions, for example
+// https://developer.apple.com/documentation/accelerate/vdsp_sve and vdsp_dotpr.
+static void testReductions(void)
+{
+	const float a[] = { -1.5f, 2.25f, 3.6f, 0.2f, -0.1f, -4.3f };
+	float c;
+
+	vDSP_sve(a, 1, &c, 6);
+	expectNear(c, 0.15, 1e-5, "sve", 0);
+	vDSP_svemg(a, 1, &c, 6);
+	expectNear(c, 11.95, 1e-5, "svemg", 0);
+	vDSP_svs(a, 1, &c, 6);
+	expectNear(c, -2.6875, 1e-4, "svs", 0);
+	vDSP_maxv(a, 1, &c, 6);
+	expectNear(c, 3.6, 1e-6, "maxv", 0);
+	vDSP_minv(a, 1, &c, 6);
+	expectNear(c, -4.3, 1e-6, "minv", 0);
+
+	// An empty maximum is -infinity and an empty minimum is infinity, per the pages.
+	c = 0;
+	vDSP_maxv(a, 1, &c, 0);
+	if (!isinf(c) || c > 0)
+	{
+		printf("FAIL maxv empty: got %g\n", c);
+		g_failures++;
+	}
+	vDSP_minv(a, 1, &c, 0);
+	if (!isinf(c) || c < 0)
+	{
+		printf("FAIL minv empty: got %g\n", c);
+		g_failures++;
+	}
+
+	const float stats[] = { -8, -4, -2, 0, 2, 4, 8 };
+	vDSP_meanv(stats, 1, &c, 7);
+	expectNear(c, 0, 1e-6, "meanv", 0);
+	vDSP_measqv(stats, 1, &c, 7);
+	expectNear(c, 24, 1e-5, "measqv", 0);
+	vDSP_rmsqv(stats, 1, &c, 7);
+	expectNear(c, 4.899, 1e-3, "rmsqv", 0);
+
+	const float dotA[] = { 1, 2, 3, 4 }, dotB[] = { 5, 6, 7, 8 };
+	vDSP_dotpr(dotA, 1, dotB, 1, &c, 4);
+	expectNear(c, 70, 1e-5, "dotpr", 0);
+
+	// Strides: every other element of each input.
+	vDSP_sve(a, 2, &c, 3);
+	expectNear(c, -1.5 + 3.6 - 0.1, 1e-5, "sve stride", 0);
+	vDSP_dotpr(dotA, 2, dotB, 2, &c, 2);
+	expectNear(c, 1 * 5 + 3 * 7, 1e-5, "dotpr stride", 0);
+	vDSP_maxv(a, 3, &c, 2);
+	expectNear(c, 0.2, 1e-6, "maxv stride", 0);
+
+	const double d[] = { -1.5, 2.25, 3.6, 0.2, -0.1, -4.3 }, e[] = { 1, 2, 3, 4, 5, 6 };
+	double r;
+	vDSP_sveD(d, 1, &r, 6);
+	expectNear(r, 0.15, 1e-12, "sveD", 0);
+	vDSP_svemgD(d, 1, &r, 6);
+	expectNear(r, 11.95, 1e-12, "svemgD", 0);
+	vDSP_svsD(d, 1, &r, 6);
+	expectNear(r, -2.6875, 1e-12, "svsD", 0);
+	vDSP_maxvD(d, 1, &r, 6);
+	expectNear(r, 3.6, 1e-12, "maxvD", 0);
+	vDSP_minvD(d, 1, &r, 6);
+	expectNear(r, -4.3, 1e-12, "minvD", 0);
+	vDSP_meanvD(e, 1, &r, 6);
+	expectNear(r, 3.5, 1e-12, "meanvD", 0);
+	vDSP_measqvD(e, 1, &r, 6);
+	expectNear(r, 91.0 / 6, 1e-12, "measqvD", 0);
+	vDSP_rmsqvD(e, 1, &r, 6);
+	expectNear(r, sqrt(91.0 / 6), 1e-12, "rmsqvD", 0);
+	vDSP_dotprD(e, 1, e, 1, &r, 6);
+	expectNear(r, 91, 1e-12, "dotprD", 0);
+}
+
 static void testConvolution(void)
 {
 	const float signal[] = { 1, 2, 3, 4, 5 };
@@ -317,6 +392,7 @@ int main(void)
 {
 	testArithmetic();
 	testRealVectorOps();
+	testReductions();
 	testConvolution();
 	testDeq22();
 	testComplex();

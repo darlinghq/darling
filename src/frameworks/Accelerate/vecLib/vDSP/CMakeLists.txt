@@ -8,6 +8,7 @@ add_darling_library(vDSP SHARED
 	src/vDSP.c
 	src/extrema.c
 	src/arith.c
+	src/reduce.c
 	src/convert.c
 	src/fft.c
 )

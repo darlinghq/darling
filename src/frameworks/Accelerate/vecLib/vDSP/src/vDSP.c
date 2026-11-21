@@ -359,11 +359,13 @@ void* vDSP_distancesqD(void)
     return NULL;
 }
 
+/*
 void* vDSP_dotpr(void)
 {
     if (verbose) puts("STUB: vDSP_dotpr called");
     return NULL;
 }
+*/
 
 void* vDSP_dotpr2(void)
 {
@@ -389,11 +391,13 @@ void* vDSP_dotpr2_s8_24(void)
     return NULL;
 }
 
+/*
 void* vDSP_dotprD(void)
 {
     if (verbose) puts("STUB: vDSP_dotprD called");
     return NULL;
 }
+*/
 
 void* vDSP_dotpr_s1_15(void)
 {
@@ -807,17 +811,21 @@ void* vDSP_maxmgviD(void)
     return NULL;
 }
 
+/*
 void* vDSP_maxv(void)
 {
     if (verbose) puts("STUB: vDSP_maxv called");
     return NULL;
 }
+*/
 
+/*
 void* vDSP_maxvD(void)
 {
     if (verbose) puts("STUB: vDSP_maxvD called");
     return NULL;
 }
+*/
 
 void* vDSP_maxvi(void)
 {
@@ -843,29 +851,37 @@ void* vDSP_meamgvD(void)
     return NULL;
 }
 
+/*
 void* vDSP_meanv(void)
 {
     if (verbose) puts("STUB: vDSP_meanv called");
     return NULL;
 }
+*/
 
+/*
 void* vDSP_meanvD(void)
 {
     if (verbose) puts("STUB: vDSP_meanvD called");
     return NULL;
 }
+*/
 
+/*
 void* vDSP_measqv(void)
 {
     if (verbose) puts("STUB: vDSP_measqv called");
     return NULL;
 }
+*/
 
+/*
 void* vDSP_measqvD(void)
 {
     if (verbose) puts("STUB: vDSP_measqvD called");
     return NULL;
 }
+*/
 
 void* vDSP_minmgv(void)
 {
@@ -891,17 +907,21 @@ void* vDSP_minmgviD(void)
     return NULL;
 }
 
+/*
 void* vDSP_minv(void)
 {
     if (verbose) puts("STUB: vDSP_minv called");
     return NULL;
 }
+*/
 
+/*
 void* vDSP_minvD(void)
 {
     if (verbose) puts("STUB: vDSP_minvD called");
     return NULL;
 }
+*/
 
 void* vDSP_minvi(void)
 {
@@ -1011,17 +1031,21 @@ void* vDSP_rectD(void)
     return NULL;
 }
 
+/*
 void* vDSP_rmsqv(void)
 {
     if (verbose) puts("STUB: vDSP_rmsqv called");
     return NULL;
 }
+*/
 
+/*
 void* vDSP_rmsqvD(void)
 {
     if (verbose) puts("STUB: vDSP_rmsqvD called");
     return NULL;
 }
+*/
 
 void* vDSP_svdiv(void)
 {
@@ -1035,17 +1059,21 @@ void* vDSP_svdivD(void)
     return NULL;
 }
 
+/*
 void* vDSP_sve(void)
 {
     if (verbose) puts("STUB: vDSP_sve called");
     return NULL;
 }
+*/
 
+/*
 void* vDSP_sveD(void)
 {
     if (verbose) puts("STUB: vDSP_sveD called");
     return NULL;
 }
+*/
 
 void* vDSP_sve_svesq(void)
 {
@@ -1059,17 +1087,21 @@ void* vDSP_sve_svesqD(void)
     return NULL;
 }
 
+/*
 void* vDSP_svemg(void)
 {
     if (verbose) puts("STUB: vDSP_svemg called");
     return NULL;
 }
+*/
 
+/*
 void* vDSP_svemgD(void)
 {
     if (verbose) puts("STUB: vDSP_svemgD called");
     return NULL;
 }
+*/
 
 /*
 void* vDSP_svesq(void)
@@ -1085,17 +1117,21 @@ void* vDSP_svesqD(void)
     return NULL;
 }
 
+/*
 void* vDSP_svs(void)
 {
     if (verbose) puts("STUB: vDSP_svs called");
     return NULL;
 }
+*/
 
+/*
 void* vDSP_svsD(void)
 {
     if (verbose) puts("STUB: vDSP_svsD called");
     return NULL;
 }
+*/
 
 void* vDSP_vaam(void)
 {
