@@ -269,7 +269,8 @@ if build nsworkspace-recycle "$ext/cocotron/tests/nsworkspace-recycle.m" -framew
 	[ "$(rc recycle)" = 0 ] && pass "recycle" || fail "recycle: $(outputs recycle)"
 fi
 
-# make_app <dir> <name> <bundle ID>: an application bundle whose executable is ae-receiver (built before)
+# make_app <dir> <name> <bundle ID> [<more Info.plist keys>]: an application bundle whose executable is ae-receiver
+# (built before)
 make_app() {
 	mkdir -p "$1/$2.app/Contents/MacOS"
 	cp "$work/ae-receiver" "$1/$2.app/Contents/MacOS/ae-receiver"
@@ -282,6 +283,7 @@ make_app() {
 	<key>CFBundleIdentifier</key><string>$3</string>
 	<key>CFBundleName</key><string>$2</string>
 	<key>CFBundlePackageType</key><string>APPL</string>
+${4:-}
 </dict>
 </plist>
 PLIST
@@ -307,6 +309,22 @@ if [ -x "$work/ae-receiver" ] && build nsworkspace-reveal "$ext/cocotron/tests/n
 	guest reveal "'$gw/nsworkspace-reveal' '$gw/rev'"
 	[ "$(rc reveal)" = 0 ] && pass "reveal" || fail "reveal: $(outputs reveal)"
 	rm -rf "$work/rev"
+fi
+
+# folder handler: folders and volumes open with the application declaring their type, as Finder does with the
+# OSTypes 'fold' and 'disk' (see launchservices_folder_handler.m); the stand-in is removed afterwards
+FINDER_TYPES='<key>CFBundleDocumentTypes</key><array>
+	<dict><key>CFBundleTypeName</key><string>Folder</string><key>CFBundleTypeOSTypes</key><array><string>fold</string></array><key>CFBundleTypeRole</key><string>Editor</string></dict>
+	<dict><key>CFBundleTypeName</key><string>Volume</string><key>CFBundleTypeOSTypes</key><array><string>disk</string></array><key>CFBundleTypeRole</key><string>Editor</string></dict>
+</array>'
+if [ -x "$work/ae-receiver" ] && build launchservices_folder_handler "$here/src/launchservices_folder_handler.m" -framework Foundation -framework CoreServices; then
+	mkdir -p "$work/fh"
+	make_app "$work/fh" Finder com.apple.finder "$FINDER_TYPES"
+	attach
+	guest folders "'$gw/launchservices_folder_handler' '$gw/fh' '/Volumes/Unmount Test'"
+	detach
+	[ "$(rc folders)" = 0 ] && pass "folder handler" || fail "folder handler: $(outputs folders)"
+	rm -rf "$work/fh"
 fi
 
 rm -rf "$work"

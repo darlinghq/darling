@@ -1996,6 +1996,11 @@
 			<array>
 				<string>public.directory</string>
 			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>com.apple.ostype</key>
+				<string>fold</string>
+			</dict>
 		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
@@ -2006,6 +2011,11 @@
 			<array>
 				<string>public.folder</string>
 			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>com.apple.ostype</key>
+				<string>disk</string>
+			</dict>
 		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
