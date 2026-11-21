@@ -149,6 +149,22 @@ static void testRealVectorOps(void)
 	vDSP_vthr(&negZero, 1, &posZero, c, 1, 1);
 	expectNear(signbit(c[0]) ? 1 : 0, 1, 0, "vthr tie takes A", 0);
 
+	// Double precision: a -0 / +0 tie pins vmaxD (takes A), vminD (takes A) and vthrD (takes A); vsqD squares.
+	const double negZeroD = -0.0, posZeroD = 0.0, minusTwo = -2;
+	double d;
+	vDSP_vmaxD(&negZeroD, 1, &posZeroD, 1, &d, 1, 1);
+	expectNear(signbit(d) ? 1 : 0, 1, 0, "vmaxD tie takes A", 0);
+	vDSP_vminD(&posZeroD, 1, &negZeroD, 1, &d, 1, 1);
+	expectNear(signbit(d) ? 1 : 0, 0, 0, "vminD tie takes A", 0);
+	vDSP_vthrD(&negZeroD, 1, &posZeroD, &d, 1, 1);
+	expectNear(signbit(d) ? 1 : 0, 1, 0, "vthrD tie takes A", 0);
+	vDSP_vmaxD(&minusTwo, 1, &negZeroD, 1, &d, 1, 1);
+	expectNear(d, 0, 0, "vmaxD picks the larger", 0);
+	vDSP_vminD(&minusTwo, 1, &negZeroD, 1, &d, 1, 1);
+	expectNear(d, -2, 0, "vminD picks the smaller", 0);
+	vDSP_vsqD(&minusTwo, 1, &d, 1, 1);
+	expectNear(d, 4, 0, "vsqD", 0);
+
 	// vDSP_vfill, vDSP_vclr and vDSP_vramp.
 	float pi = (float) M_PI;
 	float filled[10];
