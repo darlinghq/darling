@@ -14,6 +14,12 @@
 #include <OpenGL/CGLRenderers.h>
 #include <OpenGL/glext.h>
 #include <OpenGL/CGLInternal.h>
+#include <OpenGL/gliDispatch.h>
+#include <stddef.h>
+// The layout check below compares this file's context struct with the public one.
+#define _CGLContextObject _CGLContextObjectPublic
+#include <OpenGL/CGLContext.h>
+#undef _CGLContextObject
 #include <CoreFoundation/CFDictionary.h>
 #include <CoreFoundation/CFRunLoop.h>
 #include <CoreFoundation/CFNotificationCenter.h>
@@ -615,7 +621,13 @@ static pthread_cond_t g_bindingCond = PTHREAD_COND_INITIALIZER;
 
 struct cgl_profile_strings;
 
-struct _CGLContextObj {
+struct _CGLContextObject {
+    // The first four members are the public layout (see CGLContext.h): code
+    // built with CGLMacro.h reads rend and calls through disp.
+    GLIContext rend;
+    GLIFunctionDispatch disp;
+    CGLPrivateObj priv;
+    void *stak;
     GLuint retain_count;
     pthread_mutex_t lock;
     EGLDisplay egl_display;
@@ -659,8 +671,8 @@ struct _CGLContextObj {
     uint64_t share_group;
     // GL_MAX_COLOR_ATTACHMENTS, found out on first use (0 until then).
     GLint max_color_attachments;
-    struct _CGLContextObj *prev_active;
-    struct _CGLContextObj *next_active;
+    struct _CGLContextObject *prev_active;
+    struct _CGLContextObject *next_active;
     // Which thread the EGL context is bound to (see the thread hand-off
     // notes above setCurrentContext). Guarded by g_bindingMutex.
     enum cgl_binding binding;
@@ -684,7 +696,13 @@ struct _CGLContextObj {
     pthread_t lock_owner;
 };
 
-static struct _CGLContextObj *g_activeContexts = NULL;
+_Static_assert(offsetof(struct _CGLContextObject, rend) == offsetof(struct _CGLContextObjectPublic, rend) &&
+               offsetof(struct _CGLContextObject, disp) == offsetof(struct _CGLContextObjectPublic, disp) &&
+               offsetof(struct _CGLContextObject, priv) == offsetof(struct _CGLContextObjectPublic, priv) &&
+               offsetof(struct _CGLContextObject, stak) == offsetof(struct _CGLContextObjectPublic, stak),
+               "the context starts with the public layout");
+
+static struct _CGLContextObject *g_activeContexts = NULL;
 static pthread_mutex_t g_activeContextsMutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct _CGLPixelFormatObj {
@@ -987,7 +1005,7 @@ CGL_EXPORT void CGLDestroyWindow(CGLWindowRef ref) {
 
     if (window->surface != EGL_NO_SURFACE) {
         pthread_mutex_lock(&g_activeContextsMutex);
-        for (struct _CGLContextObj *ctx = g_activeContexts; ctx != NULL; ctx = ctx->next_active) {
+        for (struct _CGLContextObject *ctx = g_activeContexts; ctx != NULL; ctx = ctx->next_active) {
             EGLSurface target = window->surface;
             if (atomic_compare_exchange_strong_explicit(&ctx->egl_surface, &target, (EGLSurface)EGL_NO_SURFACE,
                                                         memory_order_acq_rel, memory_order_acquire)) {
@@ -1218,7 +1236,7 @@ static void parkMultiThreadBinding(CGLContextObj context) {
 // of every context that other threads use. Runs on the main thread only.
 static void parkMultiThreadBindings(void) {
     pthread_mutex_lock(&g_activeContextsMutex);
-    for (struct _CGLContextObj *ctx = g_activeContexts; ctx != NULL; ctx = ctx->next_active) {
+    for (struct _CGLContextObject *ctx = g_activeContexts; ctx != NULL; ctx = ctx->next_active) {
         pthread_mutex_lock(&g_bindingMutex);
         int park = ctx->multi_thread && threadHoldsBinding(ctx);
         pthread_mutex_unlock(&g_bindingMutex);
@@ -1415,6 +1433,36 @@ CGLError CGLSetCurrentContext(CGLContextObj context) {
     if (error == kCGLNoError && context != NULL)
         refreshRectangleTextures(context);
     return error;
+}
+
+// The dispatch table of a context (CGL_MACRO). Each entry makes the context
+// current on the calling thread when it is not, and calls the host function.
+static void gli_enter(GLIContext rend) {
+    CGLContextObj context = (CGLContextObj) rend;
+    if (CGLGetCurrentContext() != context)
+        CGLSetCurrentContext(context);
+}
+
+static void gli_missing(void) {}
+
+static void *gli_host(unsigned slot);
+
+#include "gli_thunks.inc"
+
+_Static_assert(sizeof(GLIFunctionDispatch) == GLI_SLOT_COUNT * sizeof(void *), "one pointer per dispatch slot");
+
+static void *gli_host_functions[975];
+
+static void *gli_host(unsigned slot) {
+    void *function = gli_host_functions[slot];
+    if (function == NULL) {
+        for (const char *const *name = gli_host_names[slot]; *name != NULL && function == NULL; name++)
+            function = dlsym(RTLD_DEFAULT, *name);
+        if (function == NULL)
+            function = (void *) gli_missing;
+        gli_host_functions[slot] = function;
+    }
+    return function;
 }
 
 static int enable_bit(CGLContextEnable pname) {
@@ -1826,13 +1874,17 @@ static CGLError createContext(CGLPixelFormatObj pixelFormat, CGLContextObj share
         return egl_share != EGL_NO_CONTEXT ? kCGLBadMatch : kCGLBadContext;
     }
 
-    CGLContextObj context = malloc(sizeof(struct _CGLContextObj));
+    CGLContextObj context = malloc(sizeof(struct _CGLContextObject));
 
     if (context == NULL) {
         p_eglDestroyContext(owner, egl_context);
         return kCGLBadAlloc;
     }
 
+    context->rend = (GLIContext) context;
+    memcpy(&context->disp, gli_template, sizeof(context->disp));
+    context->priv = NULL;
+    context->stak = NULL;
     context->retain_count = 1;
     pthread_mutexattr_t lock_attr;
     pthread_mutexattr_init(&lock_attr);
