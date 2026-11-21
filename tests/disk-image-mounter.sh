@@ -239,6 +239,50 @@ else
 fi
 detach_all
 
+# license twice: two opens of a licence image, one second apart, before answering: one window; after Return, one mount
+: > "$work/finder/events.txt"
+guest lt1 "open '$gw/sla-test.dmg'"
+sleep 1
+guest lt2 "open '$gw/sla-test.dmg'"
+if window sla-test.dmg 60; then
+	sleep 3
+	n=$(windows sla-test.dmg)
+	key Return
+	if [ "$n" = 1 ] && wait_event "$odoc" 60 && wait_gone 15 && [ "$(mounts lt-mounts)" = 1 ]; then
+		pass "license twice"
+	else
+		fail "license twice: $n windows, events: $(events | tr '\n' '|'), running $(running), mounts $(mounts lt-mounts)"
+	fi
+else
+	fail "license twice: no window titled sla-test.dmg; $(outputs lt1)"
+fi
+detach_all
+
+# kill during license: DiskImageMounter killed while the agreement shows; nothing is mounted
+guest kl "open '$gw/sla-test.dmg'"
+if window sla-test.dmg 60; then
+	guest kill-dim1 "kill \$(ps ax | grep '[D]iskImageMounter.app' | awk '{print \$1}')"
+	if wait_gone 15 && [ "$(mounts kl-mounts)" = 0 ]; then
+		pass "kill during license"
+	else
+		fail "kill during license: running $(running), mounts $(mounts kl-mounts)"
+	fi
+else
+	fail "kill during license: no window titled sla-test.dmg; $(outputs kl)"
+fi
+detach_all
+
+# attached license image: attached already (agreed to with hdiutil), opened without asking; the volume is opened
+: > "$work/finder/events.txt"
+guest al-attach "printf 'y\n' | hdiutil attach '$gw/sla-test.dmg'"
+guest al "open '$gw/sla-test.dmg'"
+if wait_event "$odoc" 60 && ! window sla-test.dmg 1 && wait_gone 15 && [ "$(mounts al-mounts)" = 1 ]; then
+	pass "attached license image"
+else
+	fail "attached license image: attach rc $(rc al-attach) $(outputs al-attach), events: $(events | tr '\n' '|'), running $(running), mounts $(mounts al-mounts)"
+fi
+detach_all
+
 guest kill-dim "kill \$(ps ax | grep '[D]iskImageMounter.app' | awk '{print \$1}') 2>/dev/null; true"
 detach_all
 rm -rf "$work/finder"
