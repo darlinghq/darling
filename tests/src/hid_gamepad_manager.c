@@ -26,6 +26,10 @@
 static int failures;
 static const char *ctl;
 static int is_xbox;
+/* The layout the controller publishes: an Xbox One controller (standard layout: A is button 1, the
+ * hat is 1..8, sticks 16 bits, triggers Brake and Accelerator) or a DualShock 4 (Cross is button 2,
+ * the hat is 0..7, sticks 8 bits, triggers Rx and Ry) */
+static int btn_usage, hat_lo, hat_hi, hat_value_shift, nbuttons;
 
 static void check(const char *what, int cond)
 {
@@ -189,6 +193,11 @@ int main(int argc, char **argv)
 		return 2;
 	ctl = argv[1];
 	is_xbox = strcmp(argv[2], "xbox") == 0;
+	btn_usage = is_xbox ? 1 : 2;      /* the key BTN_SOUTH */
+	hat_lo = is_xbox ? 1 : 0;
+	hat_hi = hat_lo + 7;
+	hat_value_shift = is_xbox ? 0 : 1; /* the value of a direction numbered 1 (up) .. 8 is d - shift */
+	nbuttons = is_xbox ? 15 : 14;
 	setvbuf(stdout, NULL, _IOLBF, 0);
 
 	/* No controller yet */
@@ -247,11 +256,13 @@ int main(int argc, char **argv)
 	for (CFIndex i = 0; i < CFArrayGetCount(elems); i++)
 		dump_element((IOHIDElementRef) CFArrayGetValueAtIndex(elems, i));
 
-	IOHIDElementRef btnA = find_element(elems, kHIDPage_Button, 1);
+	IOHIDElementRef btnA = find_element(elems, kHIDPage_Button, btn_usage);
 	IOHIDElementRef lx = find_element(elems, kHIDPage_GenericDesktop, kHIDUsage_GD_X);
 	IOHIDElementRef hat = find_element(elems, kHIDPage_GenericDesktop, kHIDUsage_GD_Hatswitch);
-	IOHIDElementRef trig = is_xbox ? find_element(elems, kHIDPage_GenericDesktop, kHIDUsage_GD_Z) : find_element(elems, kHIDPage_GenericDesktop, kHIDUsage_GD_Rz);
-	check("button 1 element", btnA != NULL);
+	uint32_t trig_page = is_xbox ? kHIDPage_Simulation : kHIDPage_GenericDesktop;
+	uint32_t trig_usage = is_xbox ? kHIDUsage_Sim_Brake : kHIDUsage_GD_Ry; /* ABS_Z (LT) of the Xbox pad, ABS_RZ (R2) of the DS4 */
+	IOHIDElementRef trig = find_element(elems, trig_page, trig_usage);
+	check("button element", btnA != NULL);
 	check("X axis element", lx != NULL);
 	check("hat switch element", hat != NULL);
 	check("trigger element", trig != NULL);
@@ -262,18 +273,35 @@ int main(int argc, char **argv)
 	check("button: logical 0..1", IOHIDElementGetLogicalMin(btnA) == 0 && IOHIDElementGetLogicalMax(btnA) == 1);
 	check("button: report size 1", IOHIDElementGetReportSize(btnA) == 1);
 	check("axis: type Input_Misc", IOHIDElementGetType(lx) == kIOHIDElementTypeInput_Misc);
-	check("axis: logical range", is_xbox ? (IOHIDElementGetLogicalMin(lx) == -32768 && IOHIDElementGetLogicalMax(lx) == 32767)
+	check("axis: logical range is unsigned, from 0", is_xbox ? (IOHIDElementGetLogicalMin(lx) == 0 && IOHIDElementGetLogicalMax(lx) == 65535)
 		: (IOHIDElementGetLogicalMin(lx) == 0 && IOHIDElementGetLogicalMax(lx) == 255));
 	check("axis: physical range follows logical", IOHIDElementGetPhysicalMin(lx) == IOHIDElementGetLogicalMin(lx)
 		&& IOHIDElementGetPhysicalMax(lx) == IOHIDElementGetLogicalMax(lx));
-	check("axis: report size", IOHIDElementGetReportSize(lx) == (is_xbox ? 16 : 16));
+	check("axis: report size", IOHIDElementGetReportSize(lx) == (is_xbox ? 16 : 8));
 	check("axis: not relative, not array, not virtual", !IOHIDElementIsRelative(lx) && !IOHIDElementIsArray(lx) && !IOHIDElementIsVirtual(lx));
 	check("axis: no null state", !IOHIDElementHasNullState(lx));
-	check("hat: logical 1..8", IOHIDElementGetLogicalMin(hat) == 1 && IOHIDElementGetLogicalMax(hat) == 8);
+	check("hat: logical range 8 directions", IOHIDElementGetLogicalMin(hat) == hat_lo && IOHIDElementGetLogicalMax(hat) == hat_hi);
 	check("hat: physical 0..315 degrees", IOHIDElementGetPhysicalMin(hat) == 0 && IOHIDElementGetPhysicalMax(hat) == 315);
 	check("hat: has null state", IOHIDElementHasNullState(hat));
 	check("hat: report size 4", IOHIDElementGetReportSize(hat) == 4);
 	check("trigger: logical range", IOHIDElementGetLogicalMin(trig) == 0 && IOHIDElementGetLogicalMax(trig) == (is_xbox ? 1023 : 255));
+	check("trigger: report size", IOHIDElementGetReportSize(trig) == (is_xbox ? 10 : 8));
+	check("right stick is Z and Rz", find_element(elems, kHIDPage_GenericDesktop, kHIDUsage_GD_Z) && find_element(elems, kHIDPage_GenericDesktop, kHIDUsage_GD_Rz));
+	if (is_xbox)
+		check("second trigger is Accelerator", find_element(elems, kHIDPage_Simulation, kHIDUsage_Sim_Accelerator) != NULL);
+	else
+		check("second trigger is Rx", find_element(elems, kHIDPage_GenericDesktop, kHIDUsage_GD_Rx) != NULL);
+	/* Button usages are contiguous, 1 .. N, in the order of the report; a button the controller lacks is still there */
+	{
+		int contiguous = 1;
+		for (int u = 1; u <= nbuttons; u++)
+		{
+			IOHIDElementRef b = find_element(elems, kHIDPage_Button, u);
+			contiguous = contiguous && b && IOHIDElementGetType(b) == kIOHIDElementTypeInput_Button;
+		}
+		check("button usages are 1 .. N, all input buttons", contiguous);
+		check("no button above N", find_element(elems, kHIDPage_Button, nbuttons + 1) == NULL);
+	}
 	{
 		IOHIDElementRef parent = IOHIDElementGetParent(btnA);
 		check("button parent is the application collection", parent && IOHIDElementGetType(parent) == kIOHIDElementTypeCollection
@@ -289,7 +317,7 @@ int main(int argc, char **argv)
 		CFNumberRef n = CFNumberCreate(NULL, kCFNumberIntType, &page);
 		CFDictionarySetValue(d, CFSTR(kIOHIDElementUsagePageKey), n);
 		CFArrayRef buttons = IOHIDDeviceCopyMatchingElements(dev, d, kIOHIDOptionsTypeNone);
-		check("matching elements by usage page: buttons", buttons && CFArrayGetCount(buttons) >= (is_xbox ? 11 : 13));
+		check("matching elements by usage page: buttons", buttons && CFArrayGetCount(buttons) == nbuttons);
 		if (buttons)
 			CFRelease(buttons);
 		CFRelease(n); CFRelease(d);
@@ -312,26 +340,26 @@ int main(int argc, char **argv)
 	sync_point("rest");
 	spin(0.3);
 	check("at rest: button is 0", current(dev, btnA) == 0);
-	check("at rest: hat is outside 1..8 (null)", current(dev, hat) < 1 || current(dev, hat) > 8);
+	check("at rest: hat is outside its range (null state)", current(dev, hat) < hat_lo || current(dev, hat) > hat_hi);
 	check("GetValue on a value that never changed returns a value", current(dev, lx) != -99999);
 
 	cbcount = 0;
 	sync_point("press");
-	check("button press: callback", wait_cb(kHIDPage_Button, 1, 1));
+	check("button press: callback", wait_cb(kHIDPage_Button, btn_usage, 1));
 	check("button press: GetValue", current(dev, btnA) == 1);
-	check("button press: queue", drain_queue(queue, kHIDPage_Button, 1, 1, 1.0));
+	check("button press: queue", drain_queue(queue, kHIDPage_Button, btn_usage, 1, 1.0));
 	{
-		int i = find_cb(kHIDPage_Button, 1, 1);
+		int i = find_cb(kHIDPage_Button, btn_usage, 1);
 		check("callback sender is the device", cb_bad_sender == 0);
 		check("time stamp is set", i >= 0 && cbvals[i].stamp != 0);
 	}
 	sync_point("release");
-	check("button release: callback", wait_cb(kHIDPage_Button, 1, 0));
-	check("button release: queue", drain_queue(queue, kHIDPage_Button, 1, 0, 1.0));
+	check("button release: callback", wait_cb(kHIDPage_Button, btn_usage, 0));
+	check("button release: queue", drain_queue(queue, kHIDPage_Button, btn_usage, 0, 1.0));
 
 	sync_point("stick");
 	{
-		CFIndex hi = is_xbox ? 32767 : 255;
+		CFIndex hi = is_xbox ? 65535 : 255;
 		check("stick full right: callback", wait_cb(kHIDPage_GenericDesktop, kHIDUsage_GD_X, hi));
 		check("stick full right: GetValue", current(dev, lx) == hi);
 		check("stick full right: queue", drain_queue(queue, kHIDPage_GenericDesktop, kHIDUsage_GD_X, hi, 1.0));
@@ -341,32 +369,34 @@ int main(int argc, char **argv)
 			v && (IOHIDValueGetScaledValue(v, kIOHIDValueScaleTypePhysical) == (double) hi));
 		check("scaled value (calibrated) is within -1..1 or equals the range",
 			v && IOHIDValueGetScaledValue(v, kIOHIDValueScaleTypeCalibrated) >= -1.0);
-		check("value length is the report size in bytes", v && IOHIDValueGetLength(v) == 2);
+		check("value length is the report size in bytes", v && IOHIDValueGetLength(v) == (is_xbox ? 2 : 1));
 		check("value element is the axis", v && IOHIDValueGetElement(v) == lx);
 	}
 	sync_point("stick-low");
 	{
-		CFIndex lo = is_xbox ? -32768 : 0;
+		CFIndex lo = 0;
 		check("stick full left: callback", wait_cb(kHIDPage_GenericDesktop, kHIDUsage_GD_X, lo));
 		check("stick full left: GetValue", current(dev, lx) == lo);
 	}
 	sync_point("trigger");
 	{
 		CFIndex hi = is_xbox ? 1023 : 255;
-		check("trigger: callback", wait_cb(kHIDPage_GenericDesktop, is_xbox ? kHIDUsage_GD_Z : kHIDUsage_GD_Rz, hi));
+		check("trigger: callback", wait_cb(trig_page, trig_usage, hi));
 		check("trigger: GetValue", current(dev, trig) == hi);
 	}
+	/* direction d: 1 up, 2 up-right, 3 right, ... 7 left, 8 up-left */
+	cbcount = 0;
 	sync_point("hat-up");
-	check("hat up is 1 (callback)", wait_cb(kHIDPage_GenericDesktop, kHIDUsage_GD_Hatswitch, 1));
-	check("hat up: GetValue", current(dev, hat) == 1);
-	check("hat up: queue", drain_queue(queue, kHIDPage_GenericDesktop, kHIDUsage_GD_Hatswitch, 1, 1.0));
+	check("hat up (callback)", wait_cb(kHIDPage_GenericDesktop, kHIDUsage_GD_Hatswitch, 1 - hat_value_shift));
+	check("hat up: GetValue", current(dev, hat) == 1 - hat_value_shift);
+	check("hat up: queue", drain_queue(queue, kHIDPage_GenericDesktop, kHIDUsage_GD_Hatswitch, 1 - hat_value_shift, 1.0));
 	sync_point("hat-upright");
-	check("hat up-right is 2", wait_cb(kHIDPage_GenericDesktop, kHIDUsage_GD_Hatswitch, 2));
+	check("hat up-right", wait_cb(kHIDPage_GenericDesktop, kHIDUsage_GD_Hatswitch, 2 - hat_value_shift));
 	sync_point("hat-left");
-	check("hat left is 7", wait_cb(kHIDPage_GenericDesktop, kHIDUsage_GD_Hatswitch, 7));
+	check("hat left", wait_cb(kHIDPage_GenericDesktop, kHIDUsage_GD_Hatswitch, 7 - hat_value_shift));
 	sync_point("hat-center");
 	spin(0.3);
-	check("hat centred is outside 1..8", current(dev, hat) < 1 || current(dev, hat) > 8);
+	check("hat centred is outside its range (null state)", current(dev, hat) < hat_lo || current(dev, hat) > hat_hi);
 
 	IOHIDQueueStop(queue);
 	CFRelease(queue);
