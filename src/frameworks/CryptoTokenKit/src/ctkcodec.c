@@ -1,30 +1,34 @@
+/*
+ This file is part of Darling.
+
+ Copyright (C) 2026 Darling Developers
+
+ Darling is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ Darling is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "ctkcodec.h"
 
 bool ctk_ber_tag_valid(uint64_t tag)
 {
-	// Identifier octet 00 is not a tag: X.690 8.1.5 uses 00 00 as the end-of-contents marker, and ISO/IEC 7816-4
-	// (5.4.4, 2005 edition) keeps 00 and FF out of the tag values and allows them as padding between objects.
-	if (tag == 0)
-		return false;
-	uint8_t octets[CTK_BER_MAX_TAG_OCTETS];
-	size_t count = ctk_ber_encode_tag(tag, octets);
-	if (count == 1)
-		return (octets[0] & 0x1f) != 0x1f;
-	if ((octets[0] & 0x1f) != 0x1f)
-		return false;
-	for (size_t i = 1; i < count; i++) {
-		bool last = i == count - 1;
-		if (((octets[i] & 0x80) != 0) == last)
-			return false;
-	}
-	// 8.1.2.4.2 (c): bits 7 to 1 of the first subsequent octet are not all zero. A tag number of 30 or less
-	// has to use the single-octet form (8.1.2.2).
-	if ((octets[1] & 0x7f) == 0)
-		return false;
-	return count > 2 || octets[1] > 0x1e;
+	// Identifier octet 00 is not a tag: X.690 8.1.5 uses 00 00 as the end-of-contents marker. Any other integer
+	// is accepted and encodes to its minimal big-endian octets, as black-box observation of TKBERTLVRecord on
+	// macOS 26.7.3 shows (tier 2): tags such as 0x1f or 0x0101, which are not well-formed identifier octets
+	// under X.690 8.1.2, encode as they are, and only tag 0 is refused. Test: cryptotokenkit_codec.c, "tag validity".
+	return tag != 0;
 }
 
-bool ctk_ber_decode(const uint8_t *bytes, size_t length, ctk_tlv *out)
+static bool ber_decode(const uint8_t *bytes, size_t length, unsigned depth, ctk_tlv *out)
 {
 	size_t pos = 0;
 	if (length == 0)
@@ -32,7 +36,8 @@ bool ctk_ber_decode(const uint8_t *bytes, size_t length, ctk_tlv *out)
 
 	uint64_t tag = bytes[pos++];
 	if ((tag & 0x1f) == 0x1f) {
-		// High tag number form: further octets follow while bit 8 is set.
+		// High tag number form: further octets follow while bit 8 is set. The octets are not required to be
+		// minimal (1F 80 01, or a tag number below 31, are read as they stand), as observed on macOS 26.7.3.
 		size_t tag_octets = 1;
 		for (;;) {
 			if (pos >= length || tag_octets == CTK_BER_MAX_TAG_OCTETS)
@@ -49,12 +54,35 @@ bool ctk_ber_decode(const uint8_t *bytes, size_t length, ctk_tlv *out)
 		return false;
 	uint8_t first = bytes[pos++];
 	size_t value_length;
-	if (first < 0x80) {
+	bool indefinite = false;
+	if (first == 0x80) {
+		// X.690 8.1.3.6: the indefinite form. The content is a run of records that ends with 00 00 (8.1.5).
+		// QUIRK: nesting of indefinite records is accepted to a depth of 33 and not beyond. Not documented.
+		// Evidence: black-box observation of TKBERTLVRecord on macOS 26.7.3 (tier 2): 33 nested records decode,
+		// 34 do not. Test: cryptotokenkit_codec.c, "indefinite nesting depth".
+		if (depth >= CTK_BER_MAX_INDEFINITE_DEPTH)
+			return false;
+		size_t content = pos;
+		for (;;) {
+			if (length - pos >= 2 && bytes[pos] == 0 && bytes[pos + 1] == 0)
+				break;
+			ctk_tlv child;
+			if (!ber_decode(bytes + pos, length - pos, depth + 1, &child))
+				return false;
+			pos += child.total_length;
+		}
+		out->tag = tag;
+		out->value_offset = content;
+		out->value_length = pos - content;
+		out->total_length = pos + 2;
+		out->indefinite = true;
+		return true;
+	} else if (first < 0x80) {
 		value_length = first;
 	} else {
-		// 0x80 is the indefinite form and 0xFF is reserved; neither is a definite length.
+		// 0xFF is reserved; the other long forms give the length in the next 1 to 126 octets.
 		size_t count = first & 0x7f;
-		if (count == 0 || count > sizeof(size_t) || length - pos < count)
+		if (first == 0xff || count > sizeof(size_t) || length - pos < count)
 			return false;
 		value_length = 0;
 		for (size_t i = 0; i < count; i++)
@@ -67,7 +95,13 @@ bool ctk_ber_decode(const uint8_t *bytes, size_t length, ctk_tlv *out)
 	out->value_offset = pos;
 	out->value_length = value_length;
 	out->total_length = pos + value_length;
+	out->indefinite = indefinite;
 	return true;
+}
+
+bool ctk_ber_decode(const uint8_t *bytes, size_t length, ctk_tlv *out)
+{
+	return ber_decode(bytes, length, 0, out);
 }
 
 size_t ctk_ber_encode_tag(uint64_t tag, uint8_t out[CTK_BER_MAX_TAG_OCTETS])
@@ -115,6 +149,7 @@ bool ctk_simple_decode(const uint8_t *bytes, size_t length, ctk_tlv *out)
 	if (value_length > length - pos)
 		return false;
 
+	out->indefinite = false;
 	out->tag = bytes[0];
 	out->value_offset = pos;
 	out->value_length = value_length;
@@ -142,6 +177,7 @@ bool ctk_compact_decode(const uint8_t *bytes, size_t length, ctk_tlv *out)
 	if (value_length > length - 1)
 		return false;
 
+	out->indefinite = false;
 	out->tag = bytes[0] >> 4;
 	out->value_offset = 1;
 	out->value_length = value_length;

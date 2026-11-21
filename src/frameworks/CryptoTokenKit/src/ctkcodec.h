@@ -1,3 +1,22 @@
+/*
+ This file is part of Darling.
+
+ Copyright (C) 2026 Darling Developers
+
+ Darling is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ Darling is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #ifndef CTKCODEC_H
 #define CTKCODEC_H
 
@@ -14,17 +33,19 @@ typedef struct {
 	size_t value_offset;
 	size_t value_length;
 	size_t total_length;
+	bool indefinite; // BER only: the length was the indefinite form, and total_length includes the 00 00 that ends it
 } ctk_tlv;
 
 // BER-TLV, ITU-T X.690 clauses 8.1.2 (identifier octets) and 8.1.3 (length octets).
-// The tag is the identifier octets read as one big-endian integer, so at most 8 octets, and must be well
-// formed (ctk_ber_tag_valid). Only definite lengths are accepted (the indefinite form 0x80 is rejected). Decoding stops after the first record; total_length says how much it used.
+// The tag is the identifier octets read as one big-endian integer, so at most 8 octets (ctk_ber_tag_valid
+// refuses only 0). Both the definite lengths and the indefinite form (0x80, content ending with 00 00) are
+// decoded; the content of an indefinite record has to be a run of well-formed records. Decoding stops after the
+// first record; total_length says how much it used.
 #define CTK_BER_MAX_TAG_OCTETS 8
+#define CTK_BER_MAX_INDEFINITE_DEPTH 33
 #define CTK_BER_MAX_LENGTH_OCTETS (1 + sizeof(size_t))
 bool ctk_ber_decode(const uint8_t *bytes, size_t length, ctk_tlv *out);
-// True when the integer is the identifier octets of a well-formed tag (8.1.2): a single octet other than 00 whose
-// low five bits are not all set, or the high tag number form (first octet low bits all set, continuation bit set on every octet
-// after the first but the last, first subsequent octet not 0x80, tag number above 30).
+// True for every integer but 0, which is not a tag (it is the end-of-contents octet).
 bool ctk_ber_tag_valid(uint64_t tag);
 // Writes the identifier octets of a tag (the minimal big-endian octets of the integer) and returns how many.
 size_t ctk_ber_encode_tag(uint64_t tag, uint8_t out[CTK_BER_MAX_TAG_OCTETS]);

@@ -1,3 +1,22 @@
+/*
+ This file is part of Darling.
+
+ Copyright (C) 2026 Darling Developers
+
+ Darling is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ Darling is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #import <CryptoTokenKit/TKTLVRecord.h>
 #import <Foundation/Foundation.h>
 #include "ctkcodec.h"
@@ -5,16 +24,17 @@
 @interface TKTLVRecord ()
 - (instancetype)_initWithTag:(TKTLVTag)tag value:(NSData *)value data:(NSData *)data;
 // Decodes the record at the start of the buffer. Each encoding overrides this; the base class has none.
-+ (nullable instancetype)_recordFromBytes:(const uint8_t *)bytes length:(size_t)length consumed:(size_t *)consumed;
++ (nullable instancetype)_recordFromBytes:(const uint8_t *)bytes length:(size_t)length consumed:(size_t *)consumed indefinite:(BOOL *)indefinite;
 @end
 
 static BOOL decodeRecord(const uint8_t *bytes, size_t length, bool (*decode)(const uint8_t *, size_t, ctk_tlv *),
-                         size_t *consumed, TKTLVTag *tag, NSData **value, NSData **data)
+                         size_t *consumed, BOOL *indefinite, TKTLVTag *tag, NSData **value, NSData **data)
 {
 	ctk_tlv item;
 	// TKTLVTag is only as wide as NSUInteger, so a tag that does not fit (more than 4 octets on 32-bit) is rejected.
 	if (!decode(bytes, length, &item) || (uint64_t)(TKTLVTag)item.tag != item.tag)
 		return NO;
+	*indefinite = item.indefinite;
 	*consumed = item.total_length;
 	*tag = (TKTLVTag)item.tag;
 	*value = [NSData dataWithBytes:bytes + item.value_offset length:item.value_length];
@@ -24,12 +44,19 @@ static BOOL decodeRecord(const uint8_t *bytes, size_t length, bool (*decode)(con
 
 @implementation TKTLVRecord
 
+// The first record of the data; octets after it are ignored (black-box observation of TKBERTLVRecord,
+// TKSimpleTLVRecord and TKCompactTLVRecord on macOS 26.7.3, tier 2; test: cryptotokenkit_tlv.m "octets after
+// the record").
 + (instancetype)recordFromData:(NSData *)data
 {
 	size_t consumed = 0;
-	TKTLVRecord *record = [self _recordFromBytes:data.bytes length:data.length consumed:&consumed];
-	// Trailing octets after the record mean the data is not exactly one record.
-	return consumed == data.length ? record : nil;
+	BOOL indefinite = NO;
+	TKTLVRecord *record = [self _recordFromBytes:data.bytes length:data.length consumed:&consumed indefinite:&indefinite];
+	// QUIRK: a record of the indefinite length form has to be the last thing in the data, while octets after a
+	// definite-length record are left alone. Not documented. Evidence: black-box observation of
+	// TKBERTLVRecord on macOS 26.7.3 (tier 2), for +recordFromData: only, +sequenceOfRecordsFromData: reads a run of
+	// them. Test: cryptotokenkit_tlv.m, "indefinite length".
+	return indefinite && consumed != data.length ? nil : record;
 }
 
 + (NSArray<TKTLVRecord *> *)sequenceOfRecordsFromData:(NSData *)data
@@ -39,7 +66,8 @@ static BOOL decodeRecord(const uint8_t *bytes, size_t length, bool (*decode)(con
 	NSMutableArray<TKTLVRecord *> *records = [NSMutableArray array];
 	while (length > 0) {
 		size_t consumed = 0;
-		TKTLVRecord *record = [self _recordFromBytes:bytes length:length consumed:&consumed];
+		BOOL indefinite = NO;
+		TKTLVRecord *record = [self _recordFromBytes:bytes length:length consumed:&consumed indefinite:&indefinite];
 		if (record == nil)
 			return nil;
 		[records addObject:record];
@@ -49,8 +77,13 @@ static BOOL decodeRecord(const uint8_t *bytes, size_t length, bool (*decode)(con
 	return records;
 }
 
-+ (instancetype)_recordFromBytes:(const uint8_t *)bytes length:(size_t)length consumed:(size_t *)consumed
+// QUIRK: the abstract class raises NSInternalInconsistencyException when asked to decode, instead of returning
+// nil; only an empty sequence is accepted by +sequenceOfRecordsFromData: since it decodes nothing. Not
+// documented. Evidence: black-box observation of TKTLVRecord on macOS 26.7.3 (tier 2).
+// Test: cryptotokenkit_tlv.m, "abstract class".
++ (instancetype)_recordFromBytes:(const uint8_t *)bytes length:(size_t)length consumed:(size_t *)consumed indefinite:(BOOL *)indefinite
 {
+	[NSException raise:NSInternalInconsistencyException format:@"%@ cannot decode records, use a subclass", NSStringFromClass(self)];
 	return nil;
 }
 
@@ -86,19 +119,6 @@ static BOOL decodeRecord(const uint8_t *bytes, size_t length, bool (*decode)(con
 	return _data;
 }
 
-// GUESS: the documentation lists Equatable and Hashable for the records without saying what equal means;
-// two records of one class are equal when their encodings are.
-- (BOOL)isEqual:(id)other
-{
-	return other == self || ([other isKindOfClass:[TKTLVRecord class]] && [other class] == [self class] &&
-	                         [_data isEqualToData:((TKTLVRecord *)other)->_data]);
-}
-
-- (NSUInteger)hash
-{
-	return _data.hash;
-}
-
 @end
 
 static NSData *concatenatedData(NSArray<TKTLVRecord *> *records)
@@ -111,19 +131,18 @@ static NSData *concatenatedData(NSArray<TKTLVRecord *> *records)
 
 @implementation TKBERTLVRecord
 
-+ (instancetype)_recordFromBytes:(const uint8_t *)bytes length:(size_t)length consumed:(size_t *)consumed
++ (instancetype)_recordFromBytes:(const uint8_t *)bytes length:(size_t)length consumed:(size_t *)consumed indefinite:(BOOL *)indefinite
 {
 	TKTLVTag tag;
 	NSData *value, *data;
-	if (!decodeRecord(bytes, length, ctk_ber_decode, consumed, &tag, &value, &data))
+	if (!decodeRecord(bytes, length, ctk_ber_decode, consumed, indefinite, &tag, &value, &data))
 		return nil;
 	return [[[self alloc] _initWithTag:tag value:value data:data] autorelease];
 }
 
-// GUESS: the tag is taken as the integer whose big-endian octets are the identifier octets, so a tag
-// written 7F21 in ISO/IEC 7816 is 0x7f21. The documentation only says "BER-TLV tag encoding rules".
-// A tag that is not well-formed identifier octets (X.690 8.1.2), such as 0x1f or 0x0101, would encode to bytes
-// that do not read back as that tag, so it raises NSInvalidArgumentException (GUESS: the documentation does not say).
+// The tag is the integer whose big-endian octets are the identifier octets, so a tag written 7F21 in ISO/IEC 7816
+// is 0x7f21. Tag 0 raises NSInvalidArgumentException; every other integer encodes as it stands (see
+// ctk_ber_tag_valid).
 + (NSData *)dataForTag:(TKTLVTag)tag
 {
 	if (!ctk_ber_tag_valid(tag))
@@ -161,23 +180,24 @@ static NSData *concatenatedData(NSArray<TKTLVRecord *> *records)
 
 @implementation TKSimpleTLVRecord
 
-+ (instancetype)_recordFromBytes:(const uint8_t *)bytes length:(size_t)length consumed:(size_t *)consumed
++ (instancetype)_recordFromBytes:(const uint8_t *)bytes length:(size_t)length consumed:(size_t *)consumed indefinite:(BOOL *)indefinite
 {
 	TKTLVTag tag;
 	NSData *value, *data;
-	if (!decodeRecord(bytes, length, ctk_simple_decode, consumed, &tag, &value, &data))
+	if (!decodeRecord(bytes, length, ctk_simple_decode, consumed, indefinite, &tag, &value, &data))
 		return nil;
 	return [[[self alloc] _initWithTag:tag value:value data:data] autorelease];
 }
 
-// GUESS: a tag or value the Simple-TLV encoding cannot represent (tag 00 or FF, more than 65535 value octets)
-// raises NSInvalidArgumentException; the documentation does not say what happens.
+// More than 65535 value octets raises NSInvalidArgumentException (the length does not fit the encoding). Every tag
+// value is encoded as given, including 00 and FF, which the decoder does not accept (black-box observation of
+// TKSimpleTLVRecord on macOS 26.7.3, tier 2; test: cryptotokenkit_tlv.m "Simple tags 00 and FF").
 - (instancetype)initWithTag:(UInt8)tag value:(NSData *)value
 {
-	if (!ctk_simple_tag_valid(tag) || value.length > CTK_SIMPLE_MAX_LENGTH) {
+	if (value.length > CTK_SIMPLE_MAX_LENGTH) {
 		[self release];
-		[NSException raise:NSInvalidArgumentException format:@"TKSimpleTLVRecord cannot encode tag %#x with %lu value bytes",
-		                   tag, (unsigned long)value.length];
+		[NSException raise:NSInvalidArgumentException format:@"TKSimpleTLVRecord cannot encode %lu value bytes",
+		                   (unsigned long)value.length];
 	}
 	NSMutableData *data = [NSMutableData dataWithBytes:&tag length:1];
 	uint8_t length[3];
@@ -190,17 +210,17 @@ static NSData *concatenatedData(NSArray<TKTLVRecord *> *records)
 
 @implementation TKCompactTLVRecord
 
-+ (instancetype)_recordFromBytes:(const uint8_t *)bytes length:(size_t)length consumed:(size_t *)consumed
++ (instancetype)_recordFromBytes:(const uint8_t *)bytes length:(size_t)length consumed:(size_t *)consumed indefinite:(BOOL *)indefinite
 {
 	TKTLVTag tag;
 	NSData *value, *data;
-	if (!decodeRecord(bytes, length, ctk_compact_decode, consumed, &tag, &value, &data))
+	if (!decodeRecord(bytes, length, ctk_compact_decode, consumed, indefinite, &tag, &value, &data))
 		return nil;
 	return [[[self alloc] _initWithTag:tag value:value data:data] autorelease];
 }
 
-// GUESS: the tag is the 4-bit tag number (0..15) of ISO/IEC 7816-4, not the whole first octet, and a tag or
-// value that does not fit 4 bits raises NSInvalidArgumentException.
+// The tag is the 4-bit tag number (0..15) of ISO/IEC 7816-4, not the whole first octet, and a tag or value that
+// does not fit 4 bits raises NSInvalidArgumentException.
 - (instancetype)initWithTag:(UInt8)tag value:(NSData *)value
 {
 	if (tag > CTK_COMPACT_MAX_TAG || value.length > CTK_COMPACT_MAX_LENGTH) {
