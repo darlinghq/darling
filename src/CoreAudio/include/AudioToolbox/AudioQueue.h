@@ -58,6 +58,16 @@ enum
 	kAudioQueueProperty_CurrentLevelMeterDB = 'aqmd',
 	kAudioQueueProperty_DecodeBufferSizeFrames = 'dcbf',
 	kAudioQueueProperty_ConverterError = 'qcve',
+	kAudioQueueProperty_EnableTimePitch = 'q_tp',
+	kAudioQueueProperty_TimePitchAlgorithm = 'qtpa',
+	kAudioQueueProperty_TimePitchBypass = 'qtpb',
+};
+
+enum
+{
+	kAudioQueueTimePitchAlgorithm_Spectral = 'spec',
+	kAudioQueueTimePitchAlgorithm_TimeDomain = 'tido',
+	kAudioQueueTimePitchAlgorithm_Varispeed = 'vspd',
 };
 
 typedef struct AudioQueueLevelMeterState
@@ -69,6 +79,10 @@ typedef struct AudioQueueLevelMeterState
 enum
 {
 	kAudioQueueParam_Volume = 1,
+	kAudioQueueParam_PlayRate = 2,
+	kAudioQueueParam_Pitch = 3,
+	kAudioQueueParam_VolumeRampTime = 4,
+	kAudioQueueParam_Pan = 13,
 };
 
 typedef struct AudioQueueParameterEvent

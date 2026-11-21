@@ -84,6 +84,8 @@ AudioQueueOutput::~AudioQueueOutput()
 	else
 		m_cbThread.join();
 	destroyTap(); // a tap is destroyed with its queue
+	if (m_deviceUID)
+		CFRelease(m_deviceUID);
 	for (AudioQueueBufferRef buffer : m_allocated)
 	{
 		free(buffer->mAudioData);
@@ -119,7 +121,23 @@ OSStatus AudioQueueOutput::ensureUnit()
 	if (m_unit)
 		return noErr;
 
-	AudioComponentDescription desc = { kAudioUnitType_Output, kAudioUnitSubType_DefaultOutput, kAudioUnitManufacturer_Apple, 0, 0 };
+	// A device chosen with kAudioQueueProperty_CurrentDevice is played through the HAL output unit
+	// set to it; otherwise the default output unit follows the user's default device.
+	AudioDeviceID device = kAudioObjectUnknown;
+	bool chosen;
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		chosen = m_deviceUID != nullptr;
+	}
+	if (chosen)
+	{
+		device = resolveDevice();
+		if (device == kAudioObjectUnknown)
+			return kAudioQueueErr_InvalidDevice;
+	}
+
+	AudioComponentDescription desc = { kAudioUnitType_Output, chosen ? kAudioUnitSubType_HALOutput : kAudioUnitSubType_DefaultOutput,
+		kAudioUnitManufacturer_Apple, 0, 0 };
 	AudioComponent component = AudioComponentFindNext(nullptr, &desc);
 	if (!component)
 		return kAudioQueueErr_InvalidDevice;
@@ -128,6 +146,15 @@ OSStatus AudioQueueOutput::ensureUnit()
 	OSStatus status = AudioComponentInstanceNew(component, &unit);
 	if (status != noErr)
 		return status;
+	if (chosen)
+	{
+		status = AudioUnitSetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &device, sizeof(device));
+		if (status != noErr)
+		{
+			AudioComponentInstanceDispose(unit);
+			return kAudioQueueErr_InvalidDevice;
+		}
+	}
 
 	// The device's IO block. PulseAudio is given three of them, and with the default
 	// (1024 frames, ~64 ms in all) it runs dry under load. A queue promises no low
@@ -172,22 +199,37 @@ OSStatus AudioQueueOutput::renderCallback(void* refCon, AudioUnitRenderActionFla
 	return static_cast<AudioQueueOutput*>(refCon)->render(numberFrames, ioData);
 }
 
-UInt32 AudioQueueOutput::pullLocked(uint8_t* out, UInt32 want, std::vector<AudioQueueBufferRef>& finished)
+UInt32 AudioQueueOutput::pullLocked(uint8_t* out, UInt32 want, std::vector<AudioQueueBufferRef>& finished, Float64 queuePos)
 {
+	const UInt32 frameBytes = m_format.mBytesPerFrame;
 	UInt32 done = 0;
 	while (!m_paused && done < want && !m_pending.empty())
 	{
-		AudioQueueBufferRef buffer = m_pending.front();
-		UInt32 left = buffer->mAudioDataByteSize - m_offset;
+		Pending& entry = m_pending.front();
+		if (!entry.begun)
+			beginEntryLocked(entry, queuePos + done / frameBytes);
+		if (m_gapFrames)
+		{
+			// A start time ahead of the queue's position: silence until then.
+			UInt32 frames = UInt32(std::min<UInt64>(m_gapFrames, (want - done) / frameBytes));
+			if (!frames)
+				break;
+			memset(out + done, 0, size_t(frames) * frameBytes);
+			done += frames * frameBytes;
+			m_gapFrames -= frames;
+			continue;
+		}
+		UInt32 left = entry.endByte - m_offset;
 		UInt32 n = std::min(left, want - done);
-		memcpy(out + done, static_cast<uint8_t*>(buffer->mAudioData) + m_offset, n);
+		memcpy(out + done, static_cast<uint8_t*>(entry.buffer->mAudioData) + m_offset, n);
+		applyEntryGain(out + done, n / frameBytes);
 		done += n;
 		m_offset += n;
-		if (m_offset >= buffer->mAudioDataByteSize)
+		if (m_offset >= entry.endByte)
 		{
+			finished.push_back(entry.buffer);
 			m_pending.pop_front();
 			m_offset = 0;
-			finished.push_back(buffer);
 		}
 	}
 	return done;
@@ -210,19 +252,14 @@ OSStatus AudioQueueOutput::render(UInt32 numberFrames, AudioBufferList* ioData)
 		{
 			uint8_t* out = static_cast<uint8_t*>(ioData->mBuffers[b].mData);
 			UInt32 want = std::min<UInt32>(ioData->mBuffers[b].mDataByteSize, numberFrames * frameBytes);
-			UInt32 done = pullLocked(out, want, finished);
+			UInt32 done = pullLocked(out, want, finished, Float64(m_renderedFrames.load(std::memory_order_relaxed)));
 			// Underrun or pause: silence (zero is silence for float and signed PCM).
 			if (done < want)
 				memset(out + done, 0, want - done);
 			ioData->mBuffers[b].mDataByteSize = want;
 
-			const float volume = m_volume.load(std::memory_order_relaxed);
-			if (volume != 1.0f && (m_format.mFormatFlags & kAudioFormatFlagIsFloat) && m_format.mBitsPerChannel == 32)
-			{
-				float* samples = reinterpret_cast<float*>(out);
-				for (UInt32 i = 0; i < done / sizeof(float); i++)
-					samples[i] *= volume;
-			}
+			applyQueueGain(out, done / frameBytes);
+			updateLevels(out, want / frameBytes);
 		}
 	}
 	finishRender(finished, numberFrames);
@@ -256,6 +293,7 @@ void AudioQueueOutput::finishRender(std::vector<AudioQueueBufferRef>& finished, 
 			}
 			if (m_unit)
 				AudioOutputUnitStop(m_unit);
+			notifyRunning();
 		});
 	}
 }
@@ -528,6 +566,11 @@ OSStatus AudioQueueOutput::renderTapped(UInt32 numberFrames, AudioBufferList* io
 	for (UInt32 b = 1; b < ioData->mNumberBuffers; b++)
 		memset(ioData->mBuffers[b].mData, 0, ioData->mBuffers[b].mDataByteSize);
 
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		updateLevels(out, wantFrames);
+	}
+
 	std::vector<AudioQueueBufferRef> finished;
 	finished.swap(tap->finished);
 	finishRender(finished, numberFrames);
@@ -631,7 +674,7 @@ OSStatus AudioQueueOutput::pullTapSource(Tap* tap, UInt32 inNumberFrames, AudioQ
 		std::lock_guard<std::mutex> lock(m_mutex);
 		if (tap->startOfStream)
 			flags |= kAudioQueueProcessingTap_StartOfStream;
-		bytes = pullLocked(tap->raw.data(), frames * l.frameBytes, tap->finished);
+		bytes = pullLocked(tap->raw.data(), frames * l.frameBytes, tap->finished, tap->chunkTime);
 		if (!m_paused && bytes < frames * l.frameBytes && m_stopWhenDrained && m_pending.empty())
 			flags |= kAudioQueueProcessingTap_EndOfStream;
 	}
@@ -739,8 +782,11 @@ OSStatus AudioQueueOutput::start(const AudioTimeStamp *inStartTime)
 		if (status != noErr)
 			return status;
 	}
-	std::lock_guard<std::mutex> lock(m_mutex);
-	m_running = true;
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		m_running = true;
+	}
+	notifyRunning();
 	return noErr;
 }
 
@@ -757,11 +803,7 @@ OSStatus AudioQueueOutput::prime(UInt32 inNumberOfFramesToPrepare, UInt32 *outNu
 	if (outNumberOfFramesPrepared)
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
-		UInt64 bytes = 0;
-		for (AudioQueueBufferRef buffer : m_pending)
-			bytes += buffer->mAudioDataByteSize;
-		bytes -= m_offset;
-		UInt64 frames = bytes / m_format.mBytesPerFrame;
+		UInt64 frames = pendingFramesLocked();
 		if (inNumberOfFramesToPrepare && frames > inNumberOfFramesToPrepare)
 			frames = inNumberOfFramesToPrepare;
 		*outNumberOfFramesPrepared = UInt32(frames);
@@ -795,6 +837,7 @@ OSStatus AudioQueueOutput::stop(Boolean inImmediate)
 		}
 		if (m_unit)
 			AudioOutputUnitStop(m_unit);
+		notifyRunning();
 		return noErr;
 	}
 
@@ -815,12 +858,16 @@ OSStatus AudioQueueOutput::stop(Boolean inImmediate)
 		m_paused = false;
 		m_stopWhenDrained = false;
 		m_streamStart = true;
-		unplayed.assign(m_pending.begin(), m_pending.end());
+		for (const Pending& entry : m_pending)
+			unplayed.push_back(entry.buffer);
 		m_pending.clear();
 		m_offset = 0;
+		m_gapFrames = 0;
 	}
 	control.unlock();
 	returnBuffers(unplayed);
+	if (wasRunning)
+		notifyRunning();
 	drainCallbacks();
 	m_renderedFrames.store(0, std::memory_order_relaxed);
 	return noErr;
@@ -838,9 +885,11 @@ OSStatus AudioQueueOutput::reset()
 	std::vector<AudioQueueBufferRef> unplayed;
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
-		unplayed.assign(m_pending.begin(), m_pending.end());
+		for (const Pending& entry : m_pending)
+			unplayed.push_back(entry.buffer);
 		m_pending.clear();
 		m_offset = 0;
+		m_gapFrames = 0;
 		m_stopWhenDrained = false;
 		m_streamStart = true;
 	}
@@ -852,7 +901,9 @@ OSStatus AudioQueueOutput::reset()
 
 OSStatus AudioQueueOutput::dispose(Boolean inImmediate)
 {
-	// Disposing always stops first, so no callback can reach a deleted queue.
+	// Disposing always stops first, so no callback can reach a deleted queue. The queue's own
+	// stop is not reported to property listeners.
+	m_disposing = true;
 	if (onCallbackQueue())
 	{
 		// Called from an output callback: finish on the callback queue, after it.
@@ -907,9 +958,9 @@ OSStatus AudioQueueOutput::freeBuffer(AudioQueueBufferRef inBuffer)
 	std::lock_guard<std::mutex> lock(m_mutex);
 	if (!m_allocated.count(inBuffer))
 		return kAudioQueueErr_InvalidBuffer;
-	for (AudioQueueBufferRef pending : m_pending)
+	for (const Pending& pending : m_pending)
 	{
-		if (pending == inBuffer)
+		if (pending.buffer == inBuffer)
 			return kAudioQueueErr_BufferInQueue;
 	}
 	m_allocated.erase(inBuffer);
@@ -921,6 +972,16 @@ OSStatus AudioQueueOutput::freeBuffer(AudioQueueBufferRef inBuffer)
 
 OSStatus AudioQueueOutput::enqueueBuffer(AudioQueueBufferRef inBuffer, UInt32 inNumPacketDescs, const AudioStreamPacketDescription *inPacketDescs)
 {
+	return enqueueBufferWithParameters(inBuffer, inNumPacketDescs, inPacketDescs, 0, 0, 0, nullptr, nullptr, nullptr);
+}
+
+OSStatus AudioQueueOutput::enqueueBufferWithParameters(AudioQueueBufferRef inBuffer, UInt32 inNumPacketDescs,
+		const AudioStreamPacketDescription *inPacketDescs, UInt32 inTrimFramesAtStart, UInt32 inTrimFramesAtEnd,
+		UInt32 inNumParamValues, const AudioQueueParameterEvent *inParamValues,
+		const AudioTimeStamp *inStartTime, AudioTimeStamp *outActualStartTime)
+{
+	if (inNumParamValues && !inParamValues)
+		return kAudioQueueErr_InvalidParameter;
 	std::lock_guard<std::mutex> lock(m_mutex);
 	if (!m_allocated.count(inBuffer))
 		return kAudioQueueErr_InvalidBuffer;
@@ -928,12 +989,50 @@ OSStatus AudioQueueOutput::enqueueBuffer(AudioQueueBufferRef inBuffer, UInt32 in
 		return kAudioQueueErr_BufferEmpty;
 	if (inBuffer->mAudioDataByteSize > inBuffer->mAudioDataBytesCapacity)
 		return kAudioQueueErr_InvalidBuffer;
-	for (AudioQueueBufferRef pending : m_pending)
+	for (const Pending& pending : m_pending)
 	{
-		if (pending == inBuffer)
+		if (pending.buffer == inBuffer)
 			return kAudioQueueErr_BufferEnqueuedTwice;
 	}
-	m_pending.push_back(inBuffer);
+
+	Pending entry;
+	entry.buffer = inBuffer;
+	entry.startByte = 0;
+	entry.endByte = inBuffer->mAudioDataByteSize;
+
+	// QUIRK: frames to trim that together take away more than the buffer holds are not an
+	// error: the trim is ignored and the whole buffer plays. Trimming exactly all of it leaves
+	// nothing to play. Not documented. Evidence: black-box observation on macOS 26.7.3 x86_64
+	// and 10.14.4 (tier 2). Test: test_quirk_trim_larger_than_buffer_is_ignored in
+	// tests/src/audioqueue_properties.c
+	const UInt64 frames = inBuffer->mAudioDataByteSize / m_format.mBytesPerFrame;
+	if (UInt64(inTrimFramesAtStart) + inTrimFramesAtEnd <= frames)
+	{
+		entry.startByte = inTrimFramesAtStart * m_format.mBytesPerFrame;
+		entry.endByte -= inTrimFramesAtEnd * m_format.mBytesPerFrame;
+	}
+
+	if (inStartTime && (inStartTime->mFlags & kAudioTimeStampSampleTimeValid))
+	{
+		entry.hasStart = true;
+		entry.startSample = inStartTime->mSampleTime;
+	}
+	if (outActualStartTime)
+	{
+		// QUIRK: the actual start time reported back is the requested sample time (valid flag set)
+		// when a start time was given, and all zeros when not, in offline rendering at least;
+		// macOS 26.7.3 reports zeros in both cases. Not documented. Evidence: black-box
+		// observation on macOS 10.14.4 (tier 2); the older behaviour is followed. Test:
+		// test_quirk_actual_start_time_echoes_request in tests/src/audioqueue_properties.c
+		memset(outActualStartTime, 0, sizeof(*outActualStartTime));
+		if (entry.hasStart)
+		{
+			outActualStartTime->mSampleTime = entry.startSample;
+			outActualStartTime->mFlags = kAudioTimeStampSampleTimeValid;
+		}
+	}
+	entry.events.assign(inParamValues, inParamValues + inNumParamValues);
+	m_pending.push_back(std::move(entry));
 	return noErr;
 }
 
@@ -957,20 +1056,290 @@ OSStatus AudioQueueOutput::getCurrentTime(AudioTimeStamp *outTimeStamp, Boolean 
 	return noErr;
 }
 
+void AudioQueueOutput::notifyRunning()
+{
+	if (!m_disposing)
+		notifyListeners(kAudioQueueProperty_IsRunning);
+}
+
+void AudioQueueOutput::runOnClient(std::function<void()> job)
+{
+	if (m_runloop)
+	{
+		std::shared_ptr<CallbackGate> gate = m_gate;
+		CFRunLoopPerformBlock(m_runloop, m_runloopMode ? m_runloopMode : kCFRunLoopCommonModes, ^{
+			std::lock_guard<std::recursive_mutex> lock(gate->mutex);
+			if (gate->open)
+				job();
+		});
+		CFRunLoopWakeUp(m_runloop);
+	}
+	else
+		post(std::move(job));
+}
+
+// ---- what the enqueued buffers carry: start times, volume and pan ----
+
+void AudioQueueOutput::beginEntryLocked(Pending& entry, Float64 queuePos)
+{
+	entry.begun = true;
+	m_offset = entry.startByte;
+	m_gapFrames = 0;
+	const UInt32 frameBytes = m_format.mBytesPerFrame;
+
+	if (entry.hasStart)
+	{
+		if (entry.startSample > queuePos)
+			m_gapFrames = UInt64(std::llround(entry.startSample - queuePos));
+		else
+		{
+			// QUIRK: a start time already in the past plays the buffer from the frame that is due:
+			// the frames the start time is behind are dropped from its beginning. Not documented.
+			// Evidence: black-box observation on macOS 26.7.3 x86_64 and 10.14.4 (tier 2).
+			// Test: test_quirk_start_time_in_the_past_drops_frames in tests/src/audioqueue_properties.c
+			UInt64 available = (entry.endByte - entry.startByte) / frameBytes;
+			UInt64 cut = std::min<UInt64>(available, UInt64(std::llround(queuePos - entry.startSample)));
+			m_offset += UInt32(cut * frameBytes);
+		}
+	}
+
+	float rampTime = -1.0f, target = 1.0f;
+	bool volume = false;
+	for (const AudioQueueParameterEvent& event : entry.events)
+	{
+		switch (event.mID)
+		{
+			case kAudioQueueParam_Volume:
+				target = event.mValue;
+				volume = true;
+				break;
+			case kAudioQueueParam_VolumeRampTime:
+				rampTime = event.mValue;
+				break;
+			case kAudioQueueParam_Pan:
+				m_entryPan = std::min(1.0f, std::max(-1.0f, event.mValue));
+				break;
+			default:
+				// Play rate and pitch need the time/pitch effect, which the queue does not have.
+				break;
+		}
+	}
+	if (!volume)
+		return;
+	if (queuePos <= 0 && rampTime < 0)
+	{
+		// The very first audio of the stream starts at its volume.
+		m_entryGain = m_entryTarget = target;
+		m_entryRampLeft = 0;
+		return;
+	}
+	// QUIRK: a volume change takes effect as a linear ramp from the current volume, over the
+	// ramp time of the buffer's events but never less than 25 ms (also when no ramp time is
+	// given or it is zero). Not documented. Evidence: black-box observation on macOS 26.7.3
+	// x86_64 and 10.14.4 (tier 2). Test: test_quirk_volume_event_ramp_minimum in
+	// tests/src/audioqueue_properties.c
+	const double seconds = std::max<double>(rampTime, 0.025);
+	const UInt64 frames = std::max<UInt64>(1, UInt64(std::ceil(seconds * m_format.mSampleRate)));
+	m_entryTarget = target;
+	m_entryStep = (target - m_entryGain) / float(frames);
+	m_entryRampLeft = frames;
+}
+
+UInt64 AudioQueueOutput::pendingFramesLocked() const
+{
+	const UInt32 frameBytes = m_format.mBytesPerFrame;
+	const Float64 now = Float64(m_renderedFrames.load(std::memory_order_relaxed));
+	Float64 pos = now;
+	bool first = true;
+	for (const Pending& entry : m_pending)
+	{
+		UInt64 frames;
+		if (first && entry.begun)
+		{
+			pos += Float64(m_gapFrames);
+			frames = (entry.endByte - m_offset) / frameBytes;
+		}
+		else
+		{
+			frames = (entry.endByte - entry.startByte) / frameBytes;
+			if (entry.hasStart)
+			{
+				if (entry.startSample > pos)
+					pos = entry.startSample;
+				else
+					frames -= std::min<UInt64>(frames, UInt64(std::llround(pos - entry.startSample)));
+			}
+		}
+		first = false;
+		pos += Float64(frames);
+	}
+	return UInt64(pos - now);
+}
+
+namespace
+{
+	// Scales every frame of interleaved (or mono) PCM: the volume starts at `gain` and moves by
+	// `step` per frame; pan lowers the left channel for positive and the right for negative values.
+	void scaleFrames(const AudioStreamBasicDescription& format, uint8_t* data, UInt32 frames, float gain, float step, float pan)
+	{
+		SampleLayout l;
+		if (!describeSamples(format, l))
+			return;
+		const float left = pan > 0 ? 1.0f - pan : 1.0f;
+		const float right = pan < 0 ? 1.0f + pan : 1.0f;
+		for (UInt32 i = 0; i < frames; i++)
+		{
+			const float g = gain + step * float(i);
+			uint8_t* frame = data + size_t(i) * l.frameBytes;
+			for (UInt32 c = 0; c < l.channels; c++)
+			{
+				float factor = g;
+				if (l.channels >= 2 && c == 0)
+					factor *= left;
+				else if (l.channels >= 2 && c == 1)
+					factor *= right;
+				uint8_t* sample = frame + c * l.chunkStep;
+				storeSample(sample, l, loadSample(sample, l) * factor);
+			}
+		}
+	}
+}
+
+void AudioQueueOutput::applyEntryGain(uint8_t* data, UInt32 frames)
+{
+	if (!frames || (!m_entryRampLeft && m_entryGain == 1.0f && m_entryPan == 0.0f))
+		return;
+	UInt32 done = 0;
+	while (done < frames)
+	{
+		// A ramp is applied in one run, the rest of the frames at the final volume.
+		UInt32 run = m_entryRampLeft ? UInt32(std::min<UInt64>(m_entryRampLeft, frames - done)) : frames - done;
+		scaleFrames(m_format, data + size_t(done) * m_format.mBytesPerFrame, run, m_entryGain, m_entryRampLeft ? m_entryStep : 0.0f, m_entryPan);
+		if (m_entryRampLeft)
+		{
+			m_entryGain += m_entryStep * float(run);
+			m_entryRampLeft -= run;
+			if (!m_entryRampLeft)
+				m_entryGain = m_entryTarget;
+		}
+		done += run;
+	}
+}
+
+void AudioQueueOutput::applyQueueGain(uint8_t* data, UInt32 frames)
+{
+	const float volume = m_volume.load(std::memory_order_relaxed);
+	const float pan = std::min(1.0f, std::max(-1.0f, m_pan.load(std::memory_order_relaxed)));
+	if (frames && (volume != 1.0f || pan != 0.0f))
+		scaleFrames(m_format, data, frames, volume, 0.0f, pan);
+}
+
+void AudioQueueOutput::updateLevels(const uint8_t* data, UInt32 frames)
+{
+	if (!m_metering || !frames)
+		return;
+	SampleLayout l;
+	if (!describeSamples(m_format, l))
+		return;
+	std::vector<double> sums(l.channels, 0.0);
+	std::vector<float> peaks(l.channels, 0.0f);
+	for (UInt32 i = 0; i < frames; i++)
+	{
+		for (UInt32 c = 0; c < l.channels; c++)
+		{
+			const float v = loadSample(data + size_t(i) * l.frameBytes + c * l.chunkStep, l);
+			peaks[c] = std::max(peaks[c], std::fabs(v));
+			sums[c] += double(v) * v;
+		}
+	}
+	m_levels.resize(l.channels);
+	for (UInt32 c = 0; c < l.channels; c++)
+		m_levels[c] = AudioQueueLevelMeterState { float(std::sqrt(sums[c] / frames)), peaks[c] };
+}
+
+// ---- parameters and properties ----
+
 OSStatus AudioQueueOutput::getParameter(AudioQueueParameterID inParamID, AudioQueueParameterValue *outValue)
 {
-	if (inParamID != kAudioQueueParam_Volume || !outValue)
+	if (!outValue)
 		return kAudioQueueErr_InvalidParameter;
-	*outValue = m_volume.load(std::memory_order_relaxed);
-	return noErr;
+	switch (inParamID)
+	{
+		case kAudioQueueParam_Volume:
+			*outValue = m_volume.load(std::memory_order_relaxed);
+			return noErr;
+		case kAudioQueueParam_Pan:
+			*outValue = m_pan.load(std::memory_order_relaxed);
+			return noErr;
+		case kAudioQueueParam_PlayRate:
+			*outValue = m_playRate;
+			return noErr;
+		case kAudioQueueParam_Pitch:
+			*outValue = m_pitch;
+			return noErr;
+		case kAudioQueueParam_VolumeRampTime:
+			*outValue = m_volumeRampTime;
+			return noErr;
+	}
+	return kAudioQueueErr_InvalidParameter;
 }
 
 OSStatus AudioQueueOutput::setParameter(AudioQueueParameterID inParamID, AudioQueueParameterValue inValue)
 {
-	if (inParamID != kAudioQueueParam_Volume || !(inValue >= 0.0f && inValue <= 1.0f))
-		return kAudioQueueErr_InvalidParameter;
-	m_volume.store(inValue, std::memory_order_relaxed);
-	return noErr;
+	switch (inParamID)
+	{
+		case kAudioQueueParam_Volume:
+			m_volume.store(inValue, std::memory_order_relaxed);
+			return noErr;
+		case kAudioQueueParam_Pan:
+			m_pan.store(inValue, std::memory_order_relaxed);
+			return noErr;
+		case kAudioQueueParam_PlayRate:
+			m_playRate = inValue;
+			return noErr;
+		case kAudioQueueParam_Pitch:
+			m_pitch = inValue;
+			return noErr;
+		case kAudioQueueParam_VolumeRampTime:
+			m_volumeRampTime = inValue;
+			return noErr;
+	}
+	return kAudioQueueErr_InvalidParameter;
+}
+
+AudioDeviceID AudioQueueOutput::resolveDevice()
+{
+	AudioDeviceID device = kAudioObjectUnknown;
+	CFStringRef uid;
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		uid = m_deviceUID ? (CFStringRef) CFRetain(m_deviceUID) : nullptr;
+	}
+	if (uid)
+	{
+		AudioValueTranslation translation = { &uid, sizeof(uid), &device, sizeof(device) };
+		AudioObjectPropertyAddress address = { kAudioHardwarePropertyDeviceForUID, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
+		UInt32 size = sizeof(translation);
+		if (AudioObjectGetPropertyData(kAudioObjectSystemObject, &address, 0, nullptr, &size, &translation) != noErr)
+			device = kAudioObjectUnknown;
+		CFRelease(uid);
+	}
+	else
+	{
+		AudioObjectPropertyAddress address = { kAudioHardwarePropertyDefaultOutputDevice, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
+		UInt32 size = sizeof(device);
+		if (AudioObjectGetPropertyData(kAudioObjectSystemObject, &address, 0, nullptr, &size, &device) != noErr)
+			device = kAudioObjectUnknown;
+	}
+	if (device == kAudioObjectUnknown)
+		return device;
+
+	// It must be able to play.
+	AudioObjectPropertyAddress streams = { kAudioDevicePropertyStreams, kAudioObjectPropertyScopeOutput, kAudioObjectPropertyElementMaster };
+	UInt32 size = 0;
+	if (AudioObjectGetPropertyDataSize(device, &streams, 0, nullptr, &size) != noErr || size == 0)
+		return kAudioObjectUnknown;
+	return device;
 }
 
 OSStatus AudioQueueOutput::getPropertySize(AudioQueuePropertyID inID, UInt32 *outDataSize)
@@ -980,11 +1349,36 @@ OSStatus AudioQueueOutput::getPropertySize(AudioQueuePropertyID inID, UInt32 *ou
 	switch (inID)
 	{
 		case kAudioQueueProperty_IsRunning:
+		case kAudioQueueProperty_EnableLevelMetering:
+		case kAudioQueueProperty_DecodeBufferSizeFrames:
+		case kAudioQueueProperty_ConverterError:
+		case kAudioQueueProperty_EnableTimePitch:
+		case kAudioQueueProperty_TimePitchAlgorithm:
+		case kAudioQueueProperty_TimePitchBypass:
+		case kAudioQueueDeviceProperty_NumberChannels:
 			*outDataSize = sizeof(UInt32);
+			return noErr;
+		case kAudioQueueDeviceProperty_SampleRate:
+			*outDataSize = sizeof(Float64);
+			return noErr;
+		case kAudioQueueProperty_CurrentDevice:
+			*outDataSize = sizeof(CFStringRef);
 			return noErr;
 		case kAudioQueueProperty_StreamDescription:
 			*outDataSize = sizeof(AudioStreamBasicDescription);
 			return noErr;
+		case kAudioQueueProperty_CurrentLevelMeter:
+		case kAudioQueueProperty_CurrentLevelMeterDB:
+			*outDataSize = m_format.mChannelsPerFrame * sizeof(AudioQueueLevelMeterState);
+			return noErr;
+		case kAudioQueueProperty_ChannelLayout:
+		{
+			std::lock_guard<std::mutex> lock(m_mutex);
+			if (m_channelLayout.empty())
+				return kAudioQueueErr_InvalidProperty;
+			*outDataSize = UInt32(m_channelLayout.size());
+			return noErr;
+		}
 	}
 	return kAudioQueueErr_InvalidProperty;
 }
@@ -993,23 +1387,241 @@ OSStatus AudioQueueOutput::getProperty(AudioQueuePropertyID inID, void *outData,
 {
 	if (!outData || !ioDataSize)
 		return kAudioQueueErr_InvalidParameter;
+	UInt32 need;
+	OSStatus status = getPropertySize(inID, &need);
+	if (status != noErr)
+		return status;
+	// The running flag is read with a buffer of exactly four bytes (the same rule as an input queue's).
+	if (inID == kAudioQueueProperty_IsRunning ? *ioDataSize != need : *ioDataSize < need)
+		return kAudioQueueErr_InvalidPropertySize;
+
 	switch (inID)
 	{
 		case kAudioQueueProperty_IsRunning:
 		{
-			if (*ioDataSize < sizeof(UInt32))
-				return kAudioQueueErr_InvalidPropertySize;
 			std::lock_guard<std::mutex> lock(m_mutex);
 			*static_cast<UInt32*>(outData) = m_running ? 1 : 0;
-			*ioDataSize = sizeof(UInt32);
-			return noErr;
+			break;
 		}
 		case kAudioQueueProperty_StreamDescription:
-			if (*ioDataSize < sizeof(AudioStreamBasicDescription))
-				return kAudioQueueErr_InvalidPropertySize;
 			memcpy(outData, &m_format, sizeof(m_format));
-			*ioDataSize = sizeof(AudioStreamBasicDescription);
+			break;
+		case kAudioQueueProperty_ConverterError:
+			*static_cast<UInt32*>(outData) = 0;
+			break;
+		case kAudioQueueProperty_EnableLevelMetering:
+		{
+			std::lock_guard<std::mutex> lock(m_mutex);
+			*static_cast<UInt32*>(outData) = m_metering ? 1 : 0;
+			break;
+		}
+		case kAudioQueueProperty_CurrentLevelMeter:
+		case kAudioQueueProperty_CurrentLevelMeterDB:
+		{
+			std::lock_guard<std::mutex> lock(m_mutex);
+			if (!m_metering)
+				return kAudioQueueErr_InvalidPropertyValue;
+			AudioQueueLevelMeterState* out = static_cast<AudioQueueLevelMeterState*>(outData);
+			for (UInt32 c = 0; c < m_format.mChannelsPerFrame; c++)
+			{
+				out[c] = c < m_levels.size() ? m_levels[c] : AudioQueueLevelMeterState { 0, 0 };
+				if (inID == kAudioQueueProperty_CurrentLevelMeterDB)
+				{
+					// Decibels relative to full scale; silence is reported as -160 dB.
+					out[c].mAveragePower = 20 * std::log10(std::max(out[c].mAveragePower, 1e-8f));
+					out[c].mPeakPower = 20 * std::log10(std::max(out[c].mPeakPower, 1e-8f));
+				}
+			}
+			break;
+		}
+		case kAudioQueueProperty_DecodeBufferSizeFrames:
+		{
+			std::lock_guard<std::mutex> lock(m_mutex);
+			// Without a setting, the queue decodes ahead by a second and a half.
+			*static_cast<UInt32*>(outData) = m_decodeBufferFrames ? m_decodeBufferFrames : UInt32(m_format.mSampleRate * 1.5);
+			break;
+		}
+		case kAudioQueueProperty_EnableTimePitch:
+			*static_cast<UInt32*>(outData) = m_timePitchEnabled;
+			break;
+		case kAudioQueueProperty_TimePitchAlgorithm:
+			*static_cast<UInt32*>(outData) = m_timePitchAlgorithm;
+			break;
+		case kAudioQueueProperty_TimePitchBypass:
+			*static_cast<UInt32*>(outData) = m_timePitchBypass;
+			break;
+		case kAudioQueueProperty_ChannelLayout:
+		{
+			std::lock_guard<std::mutex> lock(m_mutex);
+			if (m_channelLayout.size() != need)
+				return kAudioQueueErr_InvalidPropertySize;
+			memcpy(outData, m_channelLayout.data(), need);
+			break;
+		}
+		case kAudioQueueProperty_CurrentDevice:
+		{
+			CFStringRef uid = nullptr;
+			status = deviceUID(&uid);
+			if (status != noErr)
+				return status;
+			*static_cast<CFStringRef*>(outData) = uid; // the caller releases it
+			break;
+		}
+		case kAudioQueueDeviceProperty_SampleRate:
+		case kAudioQueueDeviceProperty_NumberChannels:
+		{
+			AudioDeviceID device = resolveDevice();
+			if (device == kAudioObjectUnknown)
+				return kAudioQueueErr_InvalidDevice;
+			if (inID == kAudioQueueDeviceProperty_SampleRate)
+			{
+				Float64 rate = 0;
+				UInt32 size = sizeof(rate);
+				AudioObjectPropertyAddress address = { kAudioDevicePropertyNominalSampleRate, kAudioObjectPropertyScopeOutput, kAudioObjectPropertyElementMaster };
+				if (AudioObjectGetPropertyData(device, &address, 0, nullptr, &size, &rate) != noErr || rate <= 0)
+					return kAudioQueueErr_InvalidDevice;
+				*static_cast<Float64*>(outData) = rate;
+			}
+			else
+			{
+				AudioObjectPropertyAddress address = { kAudioDevicePropertyStreamConfiguration, kAudioObjectPropertyScopeOutput, kAudioObjectPropertyElementMaster };
+				UInt32 size = 0;
+				if (AudioObjectGetPropertyDataSize(device, &address, 0, nullptr, &size) != noErr || size < sizeof(AudioBufferList))
+					return kAudioQueueErr_InvalidDevice;
+				std::vector<uint8_t> memory(size);
+				AudioBufferList* list = reinterpret_cast<AudioBufferList*>(memory.data());
+				if (AudioObjectGetPropertyData(device, &address, 0, nullptr, &size, list) != noErr)
+					return kAudioQueueErr_InvalidDevice;
+				UInt32 channels = 0;
+				for (UInt32 i = 0; i < list->mNumberBuffers; i++)
+					channels += list->mBuffers[i].mNumberChannels;
+				*static_cast<UInt32*>(outData) = channels;
+			}
+			break;
+		}
+	}
+	*ioDataSize = need;
+	return noErr;
+}
+
+OSStatus AudioQueueOutput::deviceUID(CFStringRef* outUID)
+{
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		if (m_deviceUID)
+		{
+			*outUID = (CFStringRef) CFRetain(m_deviceUID);
 			return noErr;
+		}
+	}
+	// No device chosen: the one the queue would play to.
+	AudioDeviceID device = resolveDevice();
+	CFStringRef uid = nullptr;
+	if (device != kAudioObjectUnknown)
+	{
+		UInt32 size = sizeof(uid);
+		AudioObjectPropertyAddress address = { kAudioDevicePropertyDeviceUID, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
+		if (AudioObjectGetPropertyData(device, &address, 0, nullptr, &size, &uid) != noErr)
+			uid = nullptr;
+	}
+	if (!uid)
+	{
+		// QUIRK: a queue that has not been given a device and has no default output device
+		// to ask reports a placeholder UID: "AQDefaultOutput" on macOS 10.14.4 and
+		// "AQDefaultDevice" on 26.7.3 (both 15 characters, followed here is the older one).
+		// Not documented. Evidence: black-box observation on both, which had no audio
+		// device (tier 2). Test: test_quirk_default_device_uid_placeholder in
+		// tests/src/audioqueue_properties.c
+		uid = CFStringCreateCopy(nullptr, CFSTR("AQDefaultOutput"));
+	}
+	*outUID = uid;
+	return noErr;
+}
+
+OSStatus AudioQueueOutput::setProperty(AudioQueuePropertyID inID, const void *inData, UInt32 inDataSize)
+{
+	if (!inData)
+		return kAudio_ParamError;
+	switch (inID)
+	{
+		case kAudioQueueProperty_EnableLevelMetering:
+		{
+			if (inDataSize != sizeof(UInt32))
+				return kAudioQueueErr_InvalidPropertySize;
+			std::lock_guard<std::mutex> lock(m_mutex);
+			const bool enable = *static_cast<const UInt32*>(inData) != 0;
+			if (enable && !m_metering)
+				m_levels.assign(m_format.mChannelsPerFrame, AudioQueueLevelMeterState { 0, 0 });
+			m_metering = enable;
+			return noErr;
+		}
+		case kAudioQueueProperty_CurrentDevice:
+		{
+			if (inDataSize != sizeof(CFStringRef))
+				return kAudioQueueErr_InvalidPropertySize;
+			CFStringRef uid = *static_cast<const CFStringRef*>(inData);
+			if (uid && CFGetTypeID(uid) != CFStringGetTypeID())
+				return kAudioQueueErr_InvalidPropertyValue;
+			// The device is changed while the queue is stopped; the next start plays to it. An
+			// unknown UID is reported when the queue is started. No string means the default device.
+			std::lock_guard<std::mutex> control(m_controlMutex);
+			CFStringRef old;
+			{
+				std::lock_guard<std::mutex> lock(m_mutex);
+				if (m_running)
+					return kAudioQueueErr_InvalidRunState;
+				// A queue that renders offline has no device to choose.
+				if (m_offline)
+					return kAudioQueueErr_InvalidOfflineMode;
+				old = m_deviceUID;
+				m_deviceUID = uid ? (CFStringRef) CFRetain(uid) : nullptr;
+			}
+			if (old)
+				CFRelease(old);
+			if (m_unit)
+			{
+				AudioUnitUninitialize(m_unit);
+				AudioComponentInstanceDispose(m_unit);
+				m_unit = nullptr;
+			}
+			return noErr;
+		}
+		case kAudioQueueProperty_DecodeBufferSizeFrames:
+		case kAudioQueueProperty_EnableTimePitch:
+		case kAudioQueueProperty_TimePitchAlgorithm:
+		case kAudioQueueProperty_TimePitchBypass:
+		{
+			if (inDataSize != sizeof(UInt32))
+				return kAudioQueueErr_InvalidPropertySize;
+			const UInt32 value = *static_cast<const UInt32*>(inData);
+			std::lock_guard<std::mutex> lock(m_mutex);
+			// Linear PCM is played as it is: the settings are kept for the client to read back.
+			if (inID == kAudioQueueProperty_DecodeBufferSizeFrames)
+				m_decodeBufferFrames = value;
+			else if (inID == kAudioQueueProperty_EnableTimePitch)
+				m_timePitchEnabled = value;
+			else if (inID == kAudioQueueProperty_TimePitchAlgorithm)
+				m_timePitchAlgorithm = value;
+			else
+				m_timePitchBypass = value;
+			return noErr;
+		}
+		case kAudioQueueProperty_ChannelLayout:
+		{
+			if (inDataSize < offsetof(AudioChannelLayout, mChannelDescriptions))
+				return kAudioQueueErr_InvalidPropertySize;
+			std::lock_guard<std::mutex> lock(m_mutex);
+			m_channelLayout.assign(static_cast<const uint8_t*>(inData), static_cast<const uint8_t*>(inData) + inDataSize);
+			return noErr;
+		}
+		case kAudioQueueProperty_IsRunning:
+		case kAudioQueueProperty_StreamDescription:
+		case kAudioQueueProperty_CurrentLevelMeter:
+		case kAudioQueueProperty_CurrentLevelMeterDB:
+		case kAudioQueueProperty_ConverterError:
+		case kAudioQueueDeviceProperty_SampleRate:
+		case kAudioQueueDeviceProperty_NumberChannels:
+			return kAudioQueueErr_InvalidProperty; // read-only
 	}
 	return kAudioQueueErr_InvalidProperty;
 }
@@ -1060,11 +1672,7 @@ OSStatus AudioQueueOutput::offlineRender(const AudioTimeStamp *inTimestamp, Audi
 
 		// Only what has been enqueued is rendered: the buffer's size says how much that was
 		// (and a tap is asked for that many frames, not for the full count).
-		UInt64 bytes = 0;
-		for (AudioQueueBufferRef buffer : m_pending)
-			bytes += buffer->mAudioDataByteSize;
-		bytes -= m_offset;
-		frames = UInt32(std::min<UInt64>(bytes / queueLayout.frameBytes, inNumberFrames));
+		frames = UInt32(std::min<UInt64>(pendingFramesLocked(), inNumberFrames));
 	}
 	if (!frames)
 	{
