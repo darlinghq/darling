@@ -6,6 +6,7 @@
 #include <FEXCore/Core/X86Enums.h>
 #include <FEXCore/Debug/InternalThreadState.h>
 #include <FEXCore/HLE/SyscallHandler.h>
+#include <FEXCore/Utils/Allocator.h>
 #include <FEXCore/Utils/ArchHelpers/Arm64.h>
 #include <FEXCore/Utils/LogManager.h>
 
@@ -146,6 +147,7 @@ private:
 static std::once_flag g_ctx_once;
 static fextl::unique_ptr<FEXCore::Context::Context> g_ctx;
 static DarlingSignalDelegator* g_delegator = nullptr;
+static fextl::vector<FEXCore::Allocator::MemoryRegion> g_reserved_upper_va;
 static DarlingSyscallHandler* g_syscall_handler = nullptr;
 
 // x86 allows unaligned locked and ordered accesses. FEX's generated code uses half-barrier atomics
@@ -187,6 +189,11 @@ static void init_fex_context() {
   LogMan::Msg::InstallHandler([](LogMan::DebugLevels, const char* msg) {
     std::fprintf(stderr, "[FEXCore] %s\n", msg);
   });
+
+  // An x86_64 process only has the lower 47 bits of the address space, and Darwin's libraries rely on
+  // it (they mask pointers to 47 bits). The host hands out addresses above that, so reserve them.
+  const long host_page = sysconf(_SC_PAGESIZE);
+  g_reserved_upper_va = FEXCore::Allocator::Setup48BitAllocatorIfExists(host_page > 0 ? host_page : 4096);
 
   FEXCore::Config::Initialize();
   FEXCore::Config::Load();
