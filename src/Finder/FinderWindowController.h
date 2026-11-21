@@ -67,6 +67,12 @@ typedef NS_ENUM(NSInteger, FinderViewStyle) {
 - (IBAction)showAsIcons:(id)sender;
 - (IBAction)showAsList:(id)sender;
 
+// View > Show/Hide Toolbar (Option-Command-T): the window's toolbar, titled for what choosing it does
+- (IBAction)toggleToolbar:(id)sender;
+
+// View > Show/Hide Sidebar (Control-Command-S); a window whose folder's style hides the sidebar opens without it
+- (IBAction)toggleSidebar:(id)sender;
+
 // File > Eject (Command-E): ejects the volume the window's folder is on; enabled when it can be ejected
 - (IBAction)eject:(id)sender;
 

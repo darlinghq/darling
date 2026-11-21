@@ -55,6 +55,17 @@ In-process tests, in the guest (`build/tmp/helpers/src-test.sh <mode> <file>`; e
 
   Each case copies the fixture into a folder of a temporary "volume". A store Finder wrote for a styled folder (icon
   96, items at (100, 150) and (400, 150), 500×300, no toolbar) can be given too. It passes unchanged on both Macs.
+- `tests/src/finder_styled_window.m <fixture dir>` (needs a display): a window on a folder with `styled.DS_Store`:
+  - 640×400 content with no toolbar or sidebar;
+  - items centred where the store puts them, and one without a position below them;
+  - icons 128, text 13;
+  - the View menu's Show/Hide Toolbar and Sidebar;
+  - a folder without a style back in the flow layout, and the stored layout again on going back;
+  - hostile positions kept inside the content;
+  - window sizes out of range clamped (300×200 up to the screen's visible frame; unreadable ones give the standard
+    size), and icon sizes clamped to 16 and 512.
+
+  It passes unchanged on both Macs.
 
 The harness, `tests/finder.sh`, runs Finder through LaunchServices (`open` in the guest) on X11 or Wayland, like
 `tests/disk-image-mounter.sh` (same environment; see the header of the script):

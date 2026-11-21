@@ -258,6 +258,11 @@ static NSString *FinderFolderKey(NSURL *url)
     NSMenu *view = [[NSMenu alloc] initWithTitle:@"View"];
     [view addItemWithTitle:@"as Icons" action:@selector(showAsIcons:) keyEquivalent:@"1"];
     [view addItemWithTitle:@"as List" action:@selector(showAsList:) keyEquivalent:@"2"];
+    [view addItem:[NSMenuItem separatorItem]];
+    NSMenuItem *toolbar = [view addItemWithTitle:@"Hide Toolbar" action:@selector(toggleToolbar:) keyEquivalent:@"t"];
+    toolbar.keyEquivalentModifierMask = NSEventModifierFlagOption | NSEventModifierFlagCommand;
+    NSMenuItem *sidebar = [view addItemWithTitle:@"Hide Sidebar" action:@selector(toggleSidebar:) keyEquivalent:@"s"];
+    sidebar.keyEquivalentModifierMask = NSEventModifierFlagControl | NSEventModifierFlagCommand;
     [[main addItemWithTitle:@"View" action:NULL keyEquivalent:@""] setSubmenu:view];
 
     NSMenu *go = [[NSMenu alloc] initWithTitle:@"Go"];

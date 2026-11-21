@@ -19,6 +19,7 @@
 
 #import "FinderWindowController.h"
 #import "FinderDirectory.h"
+#import "FinderFolderStyle.h"
 #import "FinderIconViewController.h"
 #import "FinderListViewController.h"
 #import "FinderSidebarController.h"
@@ -36,6 +37,8 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
     FinderIconViewController *_icons;
     FinderListViewController *_list;
     FinderSidebarController *_sidebar;
+    NSSplitView *_split;
+    FinderFolderStyle *_style;
     NSSegmentedControl *_viewControl;
     NSSegmentedControl *_historyControl;
     NSMutableArray<NSURL *> *_back;
@@ -50,7 +53,6 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
                                                      backing:NSBackingStoreBuffered
                                                        defer:NO];
     window.releasedWhenClosed = NO;
-    window.minSize = NSMakeSize(300, 200);
     self = [super initWithWindow:window];
     if (self != nil) {
         _back = [NSMutableArray array];
@@ -89,16 +91,76 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
         [split adjustSubviews];
         [split setPosition:200 ofDividerAtIndex:0];
         [window.contentView addSubview:split];
+        _split = split;
 
         NSToolbar *toolbar = [[NSToolbar alloc] initWithIdentifier:@"FinderWindow"];
         toolbar.delegate = self;
         toolbar.displayMode = NSToolbarDisplayModeIconOnly;
         toolbar.allowsUserCustomization = NO;
         window.toolbar = toolbar;
+        // The content's minimum (a frame minimum set before the toolbar is attached grows with it on macOS)
+        window.contentMinSize = NSMakeSize(300, 200);
 
         [self displayFolder:folder];
+        [self applyWindowStyle];
     }
     return self;
+}
+
+// What only a new window takes from its folder's style: its size and whether it has a toolbar and a sidebar
+- (void)applyWindowStyle
+{
+    if (_style == nil)
+        return;
+    NSWindow *window = self.window;
+    window.toolbar.visible = _style.showsToolbar;
+    if (!_style.showsSidebar)
+        [self setSidebarShown:NO];
+
+    NSSize size = _style.windowContentSize;
+    if (size.width <= 0 || size.height <= 0)
+        return;
+    NSRect visible = [(window.screen ?: [NSScreen mainScreen]) visibleFrame];
+    size.width = MAX(size.width, window.contentMinSize.width);
+    size.height = MAX(size.height, window.contentMinSize.height);
+    [window setContentSize:size];
+    // At most the screen's visible frame, title bar and toolbar included
+    NSRect frame = [window frame];
+    if (!NSIsEmptyRect(visible) && (NSWidth(frame) > NSWidth(visible) || NSHeight(frame) > NSHeight(visible))) {
+        NSSize chrome = NSMakeSize(NSWidth(frame) - size.width, NSHeight(frame) - size.height);
+        [window setContentSize:NSMakeSize(MAX(window.contentMinSize.width, MIN(size.width, NSWidth(visible) - chrome.width)),
+                                          MAX(window.contentMinSize.height, MIN(size.height, NSHeight(visible) - chrome.height)))];
+        frame = [window frame];
+        frame.origin = NSMakePoint(NSMinX(visible), NSMaxY(visible) - NSHeight(frame));
+        [window setFrame:frame display:NO];
+    }
+}
+
+- (BOOL)sidebarShown
+{
+    NSView *sidebar = _sidebar.view;
+    return ![_split isSubviewCollapsed:sidebar];
+}
+
+// The sidebar is hidden (the split view collapses a hidden subview) or shown at its standard width
+- (void)setSidebarShown:(BOOL)shown
+{
+    if (shown == [self sidebarShown])
+        return;
+    _sidebar.view.hidden = !shown;
+    [_split adjustSubviews];
+    if (shown)
+        [_split setPosition:200 ofDividerAtIndex:0];
+}
+
+- (IBAction)toggleToolbar:(id)sender
+{
+    [self.window toggleToolbarShown:sender];
+}
+
+- (IBAction)toggleSidebar:(id)sender
+{
+    [self setSidebarShown:![self sidebarShown]];
 }
 
 + (NSAlert *)alertForFolder:(NSURL *)folder error:(NSError *)error
@@ -137,10 +199,14 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
     }
     _folderURL = url;
     _directory = directory;
+    _style = [FinderFolderStyle styleForFolder:url];
     self.window.title = [FinderDirectory displayNameForURL:_folderURL];
     self.window.representedURL = _folderURL;
-    _icons.items = _directory.items;
+    [_icons setItems:_directory.items style:_style];
     _list.items = _directory.items;
+    // A folder's style says how it is shown; without one, the window keeps its view
+    if (_style != nil)
+        self.viewStyle = _style.viewStyle;
     _sidebar.currentFolder = _folderURL;
     [self watchFolder];
     return YES;
@@ -358,6 +424,10 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
         return ![[_folderURL path] isEqual:@"/"];
     if (item.action == @selector(openSelection:))
         return [self.selectedItems count] > 0;
+    if (item.action == @selector(toggleToolbar:))
+        item.title = self.window.toolbar.visible ? @"Hide Toolbar" : @"Show Toolbar";
+    if (item.action == @selector(toggleSidebar:))
+        item.title = [self sidebarShown] ? @"Hide Sidebar" : @"Show Sidebar";
     if (item.action == @selector(showAsIcons:))
         item.state = _viewStyle == FinderViewStyleIcons ? NSControlStateValueOn : NSControlStateValueOff;
     else if (item.action == @selector(showAsList:))

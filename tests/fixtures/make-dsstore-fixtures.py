@@ -84,6 +84,17 @@ def main():
         # Only what Finder keeps about sizes and dates (as in /Applications/.DS_Store on macOS 26.7.3)
         "no-settings": write_store([("Xcode.app", "lg1S", "comp", 4096), ("Xcode.app", "ph1S", "comp", 8192),
                                     (".", "vSrn", "long", 1)]),
+        # Positions off the top left, far to the right, two items at one point, and one for an item that isn't there
+        "hostile-positions": write_store([("a.txt", "Iloc", "blob", iloc(-500 & 0xFFFFFFFF, -500 & 0xFFFFFFFF)),
+                                          ("b.txt", "Iloc", "blob", iloc(100000, 100)),
+                                          ("c.txt", "Iloc", "blob", iloc(50, 50)),
+                                          ("d.txt", "Iloc", "blob", iloc(50, 50)),
+                                          ("missing.txt", "Iloc", "blob", iloc(10, 10))]),
+        "bounds-small": write_store([(".", "bwsp", "blob", bwsp({"WindowBounds": "{{0, 0}, {10, 10}}"}))]),
+        "bounds-huge": write_store([(".", "bwsp", "blob", bwsp({"WindowBounds": "{{-500, -500}, {100000, 100000}}"}))]),
+        "bounds-garbage": write_store([(".", "bwsp", "blob", bwsp({"WindowBounds": "nonsense"}))]),
+        "icon-tiny": write_store([(".", "icvp", "blob", icvp({"iconSize": 0.0}))]),
+        "icon-huge": write_store([(".", "icvp", "blob", icvp({"iconSize": 4096.0}))]),
         "list": write_store([(".", "vstl", "type", "Nlsv")]),
         "wrong-types": write_store([("Styled App.app", "Iloc", "long", 5),
                                     (".", "bwsp", "blob", plistlib.dumps(["WindowBounds"], fmt=plistlib.FMT_BINARY)),
