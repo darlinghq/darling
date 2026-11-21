@@ -53,6 +53,9 @@ static inline CLLocationCoordinate2D CLLocationCoordinate2DMake(CLLocationDegree
 extern BOOL CLLocationCoordinate2DIsValid(CLLocationCoordinate2D coord);
 
 extern const CLLocationDistance kCLDistanceFilterNone;
+extern const CLLocationDistance CLLocationDistanceMax;
+extern const NSTimeInterval CLTimeIntervalMax;
+extern const CLLocationCoordinate2D kCLLocationCoordinate2DInvalid;
 
 extern const CLLocationAccuracy kCLLocationAccuracyBestForNavigation;
 extern const CLLocationAccuracy kCLLocationAccuracyBest;
@@ -60,6 +63,7 @@ extern const CLLocationAccuracy kCLLocationAccuracyNearestTenMeters;
 extern const CLLocationAccuracy kCLLocationAccuracyHundredMeters;
 extern const CLLocationAccuracy kCLLocationAccuracyKilometer;
 extern const CLLocationAccuracy kCLLocationAccuracyThreeKilometers;
+extern const CLLocationAccuracy kCLLocationAccuracyReduced;
 
 #ifdef __cplusplus
 }
@@ -100,6 +104,7 @@ extern const CLLocationAccuracy kCLLocationAccuracyThreeKilometers;
 @property(readonly, nonatomic, copy) NSDate *timestamp;
 
 - (CLLocationDistance)distanceFromLocation:(const CLLocation *)location;
+- (CLLocationDistance)getDistanceFrom:(const CLLocation *)location;
 
 @end
 

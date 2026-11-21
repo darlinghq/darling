@@ -20,6 +20,8 @@
 
 #import <CoreLocation/CLLocation.h>
 #import <CoreLocation/CLErrorDomain.h>
+#import <darling-stub-forwarding.h>
+#include <float.h>
 #include <math.h>
 
 const CLLocationDistance kCLDistanceFilterNone = -1.0;
@@ -29,6 +31,10 @@ const CLLocationAccuracy kCLLocationAccuracyNearestTenMeters = 10.0;
 const CLLocationAccuracy kCLLocationAccuracyHundredMeters = 100.0;
 const CLLocationAccuracy kCLLocationAccuracyKilometer = 1000.0;
 const CLLocationAccuracy kCLLocationAccuracyThreeKilometers = 3000.0;
+const CLLocationAccuracy kCLLocationAccuracyReduced = 6380000.0;
+const CLLocationDistance CLLocationDistanceMax = DBL_MAX;
+const NSTimeInterval CLTimeIntervalMax = DBL_MAX;
+const CLLocationCoordinate2D kCLLocationCoordinate2DInvalid = { -180.0, -180.0 };
 
 NSString *const kCLErrorDomain = @"kCLErrorDomain";
 
@@ -233,14 +239,32 @@ static double vincentyDistance(double lat1, double lon1, double lat2, double lon
 
 - (void)encodeWithCoder:(NSCoder *)coder
 {
-    [coder encodeDouble:_coordinate.latitude forKey:@"kCLLocationCoordinateLatitudeKey"];
-    [coder encodeDouble:_coordinate.longitude forKey:@"kCLLocationCoordinateLongitudeKey"];
-    [coder encodeDouble:_altitude forKey:@"kCLLocationAltitudeKey"];
-    [coder encodeDouble:_horizontalAccuracy forKey:@"kCLLocationHorizontalAccuracyKey"];
-    [coder encodeDouble:_verticalAccuracy forKey:@"kCLLocationVerticalAccuracyKey"];
-    [coder encodeDouble:_course forKey:@"kCLLocationCourseKey"];
-    [coder encodeDouble:_speed forKey:@"kCLLocationSpeedKey"];
-    [coder encodeObject:_timestamp forKey:@"kCLLocationTimestampKey"];
+    // The key names and the representation of the timestamp (seconds since the
+    // reference date, as a double) are those of the archives macOS writes. The
+    // "Raw" keys carry the same values since no filtering is applied here.
+    [coder encodeDouble:_coordinate.latitude forKey:@"kCLLocationCodingKeyCoordinateLatitude"];
+    [coder encodeDouble:_coordinate.longitude forKey:@"kCLLocationCodingKeyCoordinateLongitude"];
+    [coder encodeDouble:_coordinate.latitude forKey:@"kCLLocationCodingKeyRawCoordinateLatitude"];
+    [coder encodeDouble:_coordinate.longitude forKey:@"kCLLocationCodingKeyRawCoordinateLongitude"];
+    [coder encodeDouble:_altitude forKey:@"kCLLocationCodingKeyAltitude"];
+    [coder encodeDouble:_altitude forKey:@"kCLLocationCodingKeyRawAltitude"];
+    [coder encodeDouble:_horizontalAccuracy forKey:@"kCLLocationCodingKeyHorizontalAccuracy"];
+    [coder encodeDouble:_horizontalAccuracy forKey:@"kCLLocationCodingKeyRawHorizontalAccuracy"];
+    [coder encodeDouble:_verticalAccuracy forKey:@"kCLLocationCodingKeyVerticalAccuracy"];
+    [coder encodeDouble:_verticalAccuracy forKey:@"kCLLocationCodingKeyRawVerticalAccuracy"];
+    [coder encodeDouble:_course forKey:@"kCLLocationCodingKeyCourse"];
+    [coder encodeDouble:_course forKey:@"kCLLocationCodingKeyRawCourse"];
+    [coder encodeDouble:_speed forKey:@"kCLLocationCodingKeySpeed"];
+    [coder encodeDouble:[_timestamp timeIntervalSinceReferenceDate] forKey:@"kCLLocationCodingKeyTimestamp"];
+}
+
+static double decodeDoubleWithFallback(NSCoder *coder, NSString *key, NSString *rawKey, double defaultValue)
+{
+    if ([coder containsValueForKey:key])
+        return [coder decodeDoubleForKey:key];
+    if ([coder containsValueForKey:rawKey])
+        return [coder decodeDoubleForKey:rawKey];
+    return defaultValue;
 }
 
 - (instancetype)initWithCoder:(NSCoder *)coder
@@ -248,18 +272,51 @@ static double vincentyDistance(double lat1, double lon1, double lat2, double lon
     self = [super init];
     if (self)
     {
-        _coordinate.latitude = [coder decodeDoubleForKey:@"kCLLocationCoordinateLatitudeKey"];
-        _coordinate.longitude = [coder decodeDoubleForKey:@"kCLLocationCoordinateLongitudeKey"];
-        _altitude = [coder decodeDoubleForKey:@"kCLLocationAltitudeKey"];
-        _horizontalAccuracy = [coder decodeDoubleForKey:@"kCLLocationHorizontalAccuracyKey"];
-        _verticalAccuracy = [coder decodeDoubleForKey:@"kCLLocationVerticalAccuracyKey"];
-        _course = [coder decodeDoubleForKey:@"kCLLocationCourseKey"];
-        _speed = [coder decodeDoubleForKey:@"kCLLocationSpeedKey"];
-        _timestamp = [[coder decodeObjectOfClass:[NSDate class] forKey:@"kCLLocationTimestampKey"] retain];
-        if (!_timestamp)
-            _timestamp = [[NSDate alloc] init];
+        _coordinate.latitude = decodeDoubleWithFallback(coder, @"kCLLocationCodingKeyCoordinateLatitude",
+                                                        @"kCLLocationCodingKeyRawCoordinateLatitude", 0.0);
+        _coordinate.longitude = decodeDoubleWithFallback(coder, @"kCLLocationCodingKeyCoordinateLongitude",
+                                                         @"kCLLocationCodingKeyRawCoordinateLongitude", 0.0);
+        _altitude = decodeDoubleWithFallback(coder, @"kCLLocationCodingKeyAltitude",
+                                             @"kCLLocationCodingKeyRawAltitude", 0.0);
+        _horizontalAccuracy = decodeDoubleWithFallback(coder, @"kCLLocationCodingKeyHorizontalAccuracy",
+                                                       @"kCLLocationCodingKeyRawHorizontalAccuracy", -1.0);
+        _verticalAccuracy = decodeDoubleWithFallback(coder, @"kCLLocationCodingKeyVerticalAccuracy",
+                                                     @"kCLLocationCodingKeyRawVerticalAccuracy", -1.0);
+        _course = decodeDoubleWithFallback(coder, @"kCLLocationCodingKeyCourse",
+                                           @"kCLLocationCodingKeyRawCourse", -1.0);
+        _speed = [coder containsValueForKey:@"kCLLocationCodingKeySpeed"]
+                 ? [coder decodeDoubleForKey:@"kCLLocationCodingKeySpeed"] : -1.0;
+        _timestamp = [coder containsValueForKey:@"kCLLocationCodingKeyTimestamp"]
+                     ? [[NSDate alloc] initWithTimeIntervalSinceReferenceDate:[coder decodeDoubleForKey:@"kCLLocationCodingKeyTimestamp"]]
+                     : [[NSDate alloc] init];
     }
     return self;
+}
+
+- (CLLocationDistance)getDistanceFrom:(const CLLocation *)location
+{
+    return [self distanceFromLocation:location];
+}
+
+// Methods of the public API that are not implemented yet stay no-ops.
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    DarlingStubForwardInvocation(self, anInvocation);
+}
+
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
++ (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    DarlingStubForwardInvocation(self, anInvocation);
 }
 
 @end

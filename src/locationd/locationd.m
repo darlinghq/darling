@@ -79,7 +79,6 @@ static double calculateDistance(double lat1, double lon1, double lat2, double lo
 
 static dispatch_queue_t s_main_queue;
 static NSMutableArray<LocationClientSession*>* s_sessions;
-static NSMutableDictionary<NSString*, NSNumber*>* s_bundle_auth;
 
 static struct locationd_fix s_cached_fix;
 static BOOL s_has_cached_fix = NO;
@@ -89,39 +88,53 @@ static dispatch_source_t s_dbus_source = NULL;
 static dispatch_source_t s_poll_timer = NULL;
 static BOOL s_host_available = NO;
 static BOOL s_dbus_active = NO;
+static BOOL s_host_denied = NO;
+static NSTimeInterval s_last_host_init = 0.0;
 
 static void update_host_session(void);
+static void broadcast_auth_status(void);
 
-static int get_auth_for_bundle(NSString* bundleID)
+// The host bus or location service may not have been there when locationd started.
+static void retry_host_init(void)
+{
+    if (s_host_available)
+        return;
+
+    NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
+    if (now - s_last_host_init < 5.0)
+        return;
+    s_last_host_init = now;
+
+    s_host_available = (locationd_dbus_init(NULL, NULL) != LOCATIOND_BACKEND_NONE);
+    if (s_host_available)
+    {
+        s_host_denied = NO;
+        broadcast_auth_status();
+    }
+}
+
+// The host service decides: locationd is a single client of it, so the
+// authorization it reports is the same for every application. Nothing is
+// enforced here when the host allows access.
+static int current_auth_status(void)
 {
     if (!s_host_available)
         return 1; // kCLAuthorizationStatusRestricted
-
-    if (bundleID && [s_bundle_auth objectForKey:bundleID])
-        return [[s_bundle_auth objectForKey:bundleID] intValue];
-
-    // Permissive by default when host service is available
+    if (s_host_denied)
+        return 2; // kCLAuthorizationStatusDenied
     return 3; // kCLAuthorizationStatusAuthorizedAlways
 }
 
-static void set_auth_for_bundle(NSString* bundleID, int status)
+static void broadcast_auth_status(void)
 {
-    if (!bundleID)
-        return;
-    [s_bundle_auth setObject:[NSNumber numberWithInt:status] forKey:bundleID];
-}
-
-static void broadcast_auth_status(int status)
-{
+    int status = current_auth_status();
     for (LocationClientSession* s in s_sessions)
     {
-        if (s.bundleID)
-            set_auth_for_bundle(s.bundleID, status);
-
         xpc_object_t notif = xpc_dictionary_create(NULL, NULL, 0);
         xpc_dictionary_set_string(notif, CL_KEY_OP, CL_OP_AUTH_UPDATE);
         xpc_dictionary_set_int64(notif, CL_KEY_AUTH_STATUS, status);
         xpc_dictionary_set_int64(notif, CL_KEY_ACCURACY_AUTH, 0); // FullAccuracy
+        xpc_dictionary_set_bool(notif, CL_KEY_ENABLED, s_host_available);
         xpc_connection_send_message(s.connection, notif);
         xpc_release(notif);
     }
@@ -191,13 +204,12 @@ static void on_host_fix(const struct locationd_fix* fix, void* context)
 
 static void on_host_auth(enum locationd_auth_state status, void* context)
 {
-    int auth = 3; // kCLAuthorizationStatusAuthorizedAlways
-    if (status == LOCATIOND_AUTH_DENIED)
-        auth = 2; // kCLAuthorizationStatusDenied
-    else if (status == LOCATIOND_AUTH_RESTRICTED)
-        auth = 1; // kCLAuthorizationStatusRestricted
+    BOOL denied = (status == LOCATIOND_AUTH_DENIED);
+    if (denied == s_host_denied)
+        return;
 
-    broadcast_auth_status(auth);
+    s_host_denied = denied;
+    broadcast_auth_status();
 }
 
 static void on_host_error(int error_code, void* context)
@@ -223,7 +235,7 @@ static void setup_dbus_monitoring(void)
                 }
                 s_host_available = NO;
                 s_dbus_active = NO;
-                broadcast_auth_status(1); // Restricted
+                broadcast_auth_status();
             }
         });
         dispatch_resume(s_dbus_source);
@@ -242,7 +254,7 @@ static void setup_dbus_monitoring(void)
                 {
                     s_host_available = NO;
                     s_dbus_active = NO;
-                    broadcast_auth_status(1);
+                    broadcast_auth_status();
                 }
             }
         });
@@ -253,6 +265,7 @@ static void setup_dbus_monitoring(void)
 static void update_host_session(void)
 {
     BOOL any_updating = NO;
+    BOOL have_accuracy = NO, have_filter = NO, no_filter = NO;
     double best_accuracy = -1.0;
     double min_distance = -1.0;
 
@@ -261,26 +274,40 @@ static void update_host_session(void)
         if (s.isUpdating || s.hasRequestedLocation)
         {
             any_updating = YES;
-            if (best_accuracy < 0.0 || (s.desiredAccuracy >= 0.0 && s.desiredAccuracy < best_accuracy))
+
+            // Smaller desired accuracy values are better (Best is -1, BestForNavigation -2).
+            if (!have_accuracy || s.desiredAccuracy < best_accuracy)
                 best_accuracy = s.desiredAccuracy;
-            if (s.distanceFilter >= 0.0)
-            {
-                if (min_distance < 0.0 || s.distanceFilter < min_distance)
-                    min_distance = s.distanceFilter;
-            }
+            have_accuracy = YES;
+
+            // A client without a distance filter needs every update.
+            if (s.distanceFilter <= 0.0)
+                no_filter = YES;
+            else if (!have_filter || s.distanceFilter < min_distance)
+                min_distance = s.distanceFilter;
+            have_filter = YES;
         }
     }
+    if (no_filter)
+        min_distance = -1.0;
 
     if (any_updating)
     {
         if (!s_dbus_active)
         {
-            int rc = locationd_dbus_start(best_accuracy, min_distance,
-                                         on_host_fix, on_host_auth, on_host_error, NULL);
+            retry_host_init();
+            int rc = s_host_available ? locationd_dbus_start(best_accuracy, min_distance,
+                                         on_host_fix, on_host_auth, on_host_error, NULL) : -1;
             if (rc == 0)
             {
                 s_dbus_active = YES;
                 setup_dbus_monitoring();
+            }
+            else if (!s_host_denied)
+            {
+                // The host could not start a session (and did not say it was denied):
+                // tell the clients no location is available.
+                broadcast_error(0); // kCLErrorLocationUnknown
             }
         }
         else
@@ -311,7 +338,8 @@ static void handle_client_message(LocationClientSession* session, xpc_object_t m
             session.bundleID = [NSString stringWithUTF8String:bid];
         session.pid = (pid_t)xpc_dictionary_get_int64(msg, CL_KEY_PID);
 
-        int auth = get_auth_for_bundle(session.bundleID);
+        retry_host_init();
+        int auth = current_auth_status();
 
         xpc_object_t reply = xpc_dictionary_create_reply(msg);
         if (reply)
@@ -338,9 +366,8 @@ static void handle_client_message(LocationClientSession* session, xpc_object_t m
     }
     else if (strcmp(op, CL_OP_GET_STATE) == 0)
     {
-        const char* bid = xpc_dictionary_get_string(msg, CL_KEY_BUNDLE_ID);
-        NSString* bundleStr = bid ? [NSString stringWithUTF8String:bid] : session.bundleID;
-        int auth = get_auth_for_bundle(bundleStr);
+        retry_host_init();
+        int auth = current_auth_status();
 
         xpc_object_t reply = xpc_dictionary_create_reply(msg);
         if (reply)
@@ -367,12 +394,8 @@ static void handle_client_message(LocationClientSession* session, xpc_object_t m
     }
     else if (strcmp(op, CL_OP_REQUEST_AUTH) == 0)
     {
-        int auth = get_auth_for_bundle(session.bundleID);
-        if (s_host_available && auth != 2) // If not denied
-        {
-            auth = 3; // kCLAuthorizationStatusAuthorizedAlways
-            set_auth_for_bundle(session.bundleID, auth);
-        }
+        retry_host_init();
+        int auth = current_auth_status();
 
         xpc_object_t reply = xpc_dictionary_create_reply(msg);
         if (reply)
@@ -470,11 +493,11 @@ int main(int argc, const char* argv[])
     @autoreleasepool {
         s_main_queue = dispatch_get_main_queue();
         s_sessions = [[NSMutableArray alloc] init];
-        s_bundle_auth = [[NSMutableDictionary alloc] init];
 
         // Connect to host D-Bus
         int backend = locationd_dbus_init(NULL, NULL);
         s_host_available = (backend != LOCATIOND_BACKEND_NONE);
+        s_last_host_init = [[NSDate date] timeIntervalSince1970];
 
         const char* custom_service = getenv(LOCATIOND_SERVICE_ENV);
         if (custom_service && custom_service[0] != '\0')
@@ -484,7 +507,6 @@ int main(int argc, const char* argv[])
         else
         {
             setup_xpc_service(LOCATIOND_MACH_SERVICE);
-            setup_xpc_service(LOCATIOND_MACH_SERVICE_LEGACY);
         }
     }
 

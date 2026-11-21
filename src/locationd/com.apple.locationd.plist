@@ -8,10 +8,6 @@
 	<dict>
 		<key>com.apple.locationd.desktop.registration</key>
 		<true/>
-		<key>com.apple.locationd.desktop.synchronous</key>
-		<true/>
-		<key>com.apple.locationd</key>
-		<true/>
 	</dict>
 	<key>ProgramArguments</key>
 	<array>

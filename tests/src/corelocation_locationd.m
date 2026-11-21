@@ -17,151 +17,268 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/*
+ * CoreLocation contract tests that hold with or without a host location
+ * service: the CLLocation value class (checked against published geodesic
+ * values and the key names macOS archives use), and the CLLocationManager
+ * delegate contract (initial authorization callback from the run loop, one
+ * outcome for -requestLocation, safe stop/release while updating).
+ */
+
 #import <Foundation/Foundation.h>
 #import <CoreLocation/CoreLocation.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 
 static int s_fails = 0;
 
-static void test_check(const char* name, BOOL cond)
+#define CHECK(cond) do { \
+	if (cond) { printf("PASS: %s\n", #cond); } \
+	else { printf("FAIL (line %d): %s\n", __LINE__, #cond); s_fails++; } \
+} while (0)
+
+static void spin(double seconds, BOOL (^done)(void))
 {
-    if (cond) {
-        printf("PASS: %s\n", name);
-    } else {
-        printf("FAIL: %s\n", name);
-        s_fails++;
-    }
+	NSDate *until = [NSDate dateWithTimeIntervalSinceNow:seconds];
+	while ((!done || !done()) && [until timeIntervalSinceNow] > 0)
+		[[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
 }
 
-@interface TestLocationDelegate : NSObject <CLLocationManagerDelegate>
-@property (nonatomic, assign) BOOL gotAuthChange;
-@property (nonatomic, assign) BOOL gotLocationUpdate;
-@property (nonatomic, assign) BOOL gotError;
-@property (nonatomic, retain) CLLocation* lastReceivedLocation;
-@property (nonatomic, retain) NSError* lastReceivedError;
+@interface Delegate : NSObject <CLLocationManagerDelegate>
+{
+@public
+	int authChanges;
+	int authChangesOnMainThread;
+	int updates;
+	int failures;
+	NSInteger lastErrorCode;
+	NSString *lastErrorDomain;
+	CLLocation *lastLocation;
+	BOOL insideSetDelegate;
+	BOOL authCalledInsideSetDelegate;
+}
 @end
 
-@implementation TestLocationDelegate
-
+@implementation Delegate
 - (void)dealloc
 {
-    [_lastReceivedLocation release];
-    [_lastReceivedError release];
-    [super dealloc];
+	[lastErrorDomain release];
+	[lastLocation release];
+	[super dealloc];
 }
-
 - (void)locationManagerDidChangeAuthorization:(CLLocationManager *)manager
 {
-    self.gotAuthChange = YES;
-    printf("[Delegate] locationManagerDidChangeAuthorization: status=%d, accuracy=%d\n",
-           (int)manager.authorizationStatus, (int)manager.accuracyAuthorization);
+	authChanges++;
+	if ([NSThread isMainThread])
+		authChangesOnMainThread++;
+	if (insideSetDelegate)
+		authCalledInsideSetDelegate = YES;
 }
-
-- (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
-{
-    self.gotAuthChange = YES;
-    printf("[Delegate] didChangeAuthorizationStatus: %d\n", (int)status);
-}
-
 - (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray<CLLocation *> *)locations
 {
-    self.gotLocationUpdate = YES;
-    self.lastReceivedLocation = [locations firstObject];
-    printf("[Delegate] didUpdateLocations: count=%lu, first=%s\n",
-           (unsigned long)[locations count], [[locations.firstObject description] UTF8String]);
+	updates++;
+	[lastLocation release];
+	lastLocation = [[locations firstObject] retain];
 }
-
 - (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error
 {
-    self.gotError = YES;
-    self.lastReceivedError = error;
-    printf("[Delegate] didFailWithError: domain=%s, code=%ld\n",
-           [error.domain UTF8String], (long)error.code);
+	failures++;
+	lastErrorCode = error.code;
+	[lastErrorDomain release];
+	lastErrorDomain = [error.domain copy];
 }
-
 @end
 
-int main(int argc, const char* argv[])
+// A delegate implementing only the deprecated authorization callback.
+@interface LegacyDelegate : NSObject <CLLocationManagerDelegate>
 {
-    @autoreleasepool {
-        printf("=== Testing CoreLocation CLLocationManager ===\n");
+@public
+	int calls;
+}
+@end
+@implementation LegacyDelegate
+- (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
+{
+	calls++;
+}
+@end
 
-        BOOL enabled = [CLLocationManager locationServicesEnabled];
-        CLAuthorizationStatus classAuth = [CLLocationManager authorizationStatus];
-        printf("locationServicesEnabled: %d\n", enabled);
-        printf("authorizationStatus (class): %d\n", (int)classAuth);
+static double dist(double lat1, double lon1, double lat2, double lon2)
+{
+	CLLocation *a = [[[CLLocation alloc] initWithLatitude:lat1 longitude:lon1] autorelease];
+	CLLocation *b = [[[CLLocation alloc] initWithLatitude:lat2 longitude:lon2] autorelease];
+	return [a distanceFromLocation:b];
+}
 
-        CLLocationManager *mgr = [[CLLocationManager alloc] init];
-        test_check("mgr created", mgr != nil);
-        test_check("default desiredAccuracy is kCLLocationAccuracyBest (-1.0)",
-              mgr.desiredAccuracy == kCLLocationAccuracyBest);
-        test_check("default distanceFilter is kCLDistanceFilterNone (-1.0)",
-              mgr.distanceFilter == kCLDistanceFilterNone);
-        test_check("default location is nil before any update", mgr.location == nil);
+static void test_location_values(void)
+{
+	// Initializer defaults.
+	CLLocation *l = [[[CLLocation alloc] initWithLatitude:50.0875 longitude:14.4214] autorelease];
+	CHECK(l.coordinate.latitude == 50.0875 && l.coordinate.longitude == 14.4214);
+	CHECK(l.altitude == 0.0 && l.horizontalAccuracy == 0.0 && l.verticalAccuracy == -1.0);
+	CHECK(l.course == -1.0 && l.speed == -1.0 && l.timestamp != nil);
 
-        TestLocationDelegate *del = [[[TestLocationDelegate alloc] init] autorelease];
-        mgr.delegate = del;
+	NSDate *ts = [NSDate dateWithTimeIntervalSince1970:1000];
+	CLLocation *five = [[[CLLocation alloc] initWithCoordinate:CLLocationCoordinate2DMake(1, 2) altitude:3
+	                                        horizontalAccuracy:4 verticalAccuracy:5 timestamp:ts] autorelease];
+	CHECK(five.altitude == 3 && five.horizontalAccuracy == 4 && five.verticalAccuracy == 5);
+	CHECK(five.course == -1.0 && five.speed == -1.0);
+	CLLocation *seven = [[[CLLocation alloc] initWithCoordinate:CLLocationCoordinate2DMake(1, 2) altitude:3
+	                                         horizontalAccuracy:4 verticalAccuracy:5 course:6 speed:7 timestamp:ts] autorelease];
+	CHECK(seven.course == 6 && seven.speed == 7 && [seven.timestamp isEqualToDate:ts]);
 
-        // Run loop turn to receive initial auth change
-        NSDate *until = [NSDate dateWithTimeIntervalSinceNow:0.5];
-        while (!del.gotAuthChange && [until timeIntervalSinceNow] > 0) {
-            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
-        }
-        test_check("received initial authorization callback", del.gotAuthChange);
+	// Distances. A degree of longitude on the WGS-84 equator is a*pi/180; the
+	// second value is the published Vincenty/GRS80 example (Flinders Peak to
+	// Buninyong). macOS itself deviates from the exact ellipsoidal distance by
+	// up to a few parts per million, so these checks allow for that.
+	CHECK(dist(0, 0, 0, 0) == 0.0);
+	CHECK(fabs(dist(0, 0, 0, 1) - 111319.4908) < 0.001);
+	CHECK(fabs(dist(0, 1, 0, 0) - 111319.4908) < 0.001);
+	double fl_lat = -(37 + 57 / 60.0 + 3.72030 / 3600.0), fl_lon = 144 + 25 / 60.0 + 29.52440 / 3600.0;
+	double bu_lat = -(37 + 39 / 60.0 + 10.15610 / 3600.0), bu_lon = 143 + 55 / 60.0 + 35.38390 / 3600.0;
+	CHECK(fabs(dist(fl_lat, fl_lon, bu_lat, bu_lon) - 54972.271) < 0.5);
+	// Pole to pole is the meridian half-length, 20003931.4586 m.
+	CHECK(fabs(dist(90, 0, -90, 0) - 20003931.4586) < 20.0);
+	// Prague to London, measured on macOS 26 (Vincenty-class accuracy, a few mm).
+	CHECK(fabs(dist(50.0875, 14.4214, 51.5074, -0.1278) - 1036068.60) < 0.05);
+	CHECK(fabs(dist(40.7128, -74.0060, 35.6762, 139.6503) - 10875723.69) < 0.05);
 
-        // Test authorization request calls
-        [mgr requestWhenInUseAuthorization];
-        [mgr requestAlwaysAuthorization];
+	// Coordinates.
+	CLLocationCoordinate2D inv = kCLLocationCoordinate2DInvalid;
+	CHECK(inv.latitude == -180.0 && inv.longitude == -180.0 && !CLLocationCoordinate2DIsValid(inv));
+	CHECK(CLLocationCoordinate2DIsValid(CLLocationCoordinate2DMake(90, 180)));
+	CHECK(CLLocationCoordinate2DIsValid(CLLocationCoordinate2DMake(-90, -180)));
+	CHECK(!CLLocationCoordinate2DIsValid(CLLocationCoordinate2DMake(91, 0)));
+	CHECK(!CLLocationCoordinate2DIsValid(CLLocationCoordinate2DMake(0, -181)));
+	CHECK(!CLLocationCoordinate2DIsValid(CLLocationCoordinate2DMake(NAN, 0)));
 
-        // Test CLLocation class directly
-        CLLocation *loc1 = [[[CLLocation alloc] initWithLatitude:50.0875 longitude:14.4214] autorelease];
-        test_check("CLLocation lat/lon initialization",
-              fabs(loc1.coordinate.latitude - 50.0875) < 0.0001 &&
-              fabs(loc1.coordinate.longitude - 14.4214) < 0.0001);
+	CHECK(kCLLocationAccuracyBest == -1.0 && kCLLocationAccuracyBestForNavigation == -2.0);
+	CHECK(kCLDistanceFilterNone == -1.0 && CLLocationDistanceMax == DBL_MAX);
+	CHECK([kCLErrorDomain isEqualToString:@"kCLErrorDomain"]);
+	CHECK(kCLErrorLocationUnknown == 0 && kCLErrorDenied == 1 && kCLErrorNetwork == 2);
+}
 
-        CLLocation *loc2 = [[[CLLocation alloc] initWithLatitude:51.5074 longitude:-0.1278] autorelease];
-        CLLocationDistance dist = [loc1 distanceFromLocation:loc2];
-        test_check("CLLocation geodesic distance from Prague to London > 1000km", dist > 1000000.0 && dist < 1100000.0);
+static void test_location_coding(void)
+{
+	NSDate *ts = [NSDate dateWithTimeIntervalSince1970:1000];
+	CLLocation *l = [[[CLLocation alloc] initWithCoordinate:CLLocationCoordinate2DMake(1, 2) altitude:3
+	                                     horizontalAccuracy:4 verticalAccuracy:5 course:6 speed:7 timestamp:ts] autorelease];
+	CHECK([CLLocation supportsSecureCoding]);
 
-        CLLocationCoordinate2D validCoord = CLLocationCoordinate2DMake(50.0, 14.0);
-        CLLocationCoordinate2D invalidCoord = CLLocationCoordinate2DMake(100.0, 200.0);
-        test_check("CLLocationCoordinate2DIsValid on valid coordinate", CLLocationCoordinate2DIsValid(validCoord));
-        test_check("CLLocationCoordinate2DIsValid on invalid coordinate", !CLLocationCoordinate2DIsValid(invalidCoord));
+	NSData *data = [NSKeyedArchiver archivedDataWithRootObject:l requiringSecureCoding:YES error:nil];
+	CHECK(data != nil);
+	NSDictionary *plist = [NSPropertyListSerialization propertyListWithData:data options:0 format:NULL error:nil];
+	NSDictionary *obj = nil;
+	for (id o in plist[@"$objects"])
+		if ([o isKindOfClass:[NSDictionary class]] && o[@"kCLLocationCodingKeyCoordinateLatitude"])
+			obj = o;
+	CHECK(obj != nil);
+	// Key names and the timestamp representation of archives written by macOS.
+	CHECK([obj[@"kCLLocationCodingKeyCoordinateLatitude"] doubleValue] == 1);
+	CHECK([obj[@"kCLLocationCodingKeyCoordinateLongitude"] doubleValue] == 2);
+	CHECK([obj[@"kCLLocationCodingKeyAltitude"] doubleValue] == 3);
+	CHECK([obj[@"kCLLocationCodingKeyHorizontalAccuracy"] doubleValue] == 4);
+	CHECK([obj[@"kCLLocationCodingKeyVerticalAccuracy"] doubleValue] == 5);
+	CHECK([obj[@"kCLLocationCodingKeyCourse"] doubleValue] == 6);
+	CHECK([obj[@"kCLLocationCodingKeySpeed"] doubleValue] == 7);
+	CHECK([obj[@"kCLLocationCodingKeyTimestamp"] doubleValue] == [ts timeIntervalSinceReferenceDate]);
 
-        if (enabled) {
-            printf("Starting location updates...\n");
-            [mgr startUpdatingLocation];
+	CLLocation *d = [NSKeyedUnarchiver unarchivedObjectOfClass:[CLLocation class] fromData:data error:nil];
+	CHECK(d != nil && d.coordinate.latitude == 1 && d.coordinate.longitude == 2 && d.altitude == 3);
+	CHECK(d.horizontalAccuracy == 4 && d.verticalAccuracy == 5 && d.course == 6 && d.speed == 7);
+	CHECK([d.timestamp isEqualToDate:ts]);
+}
 
-            until = [NSDate dateWithTimeIntervalSinceNow:3.0];
-            while (!del.gotLocationUpdate && !del.gotError && [until timeIntervalSinceNow] > 0) {
-                [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
-            }
+static void test_manager_defaults_and_delegate(void)
+{
+	CLLocationManager *m = [[CLLocationManager alloc] init];
+	CHECK(m.desiredAccuracy == kCLLocationAccuracyBest);
+	CHECK(m.distanceFilter == kCLDistanceFilterNone);
+	CHECK(m.location == nil);
 
-            if (del.gotLocationUpdate) {
-                test_check("received didUpdateLocations callback", del.gotLocationUpdate);
-                test_check("manager.location is populated", mgr.location != nil);
-                test_check("latitude is valid", CLLocationCoordinate2DIsValid(mgr.location.coordinate));
-            } else if (del.gotError) {
-                printf("Location failed with error: %ld\n", (long)del.lastReceivedError.code);
-            }
+	CLAuthorizationStatus classStatus = [CLLocationManager authorizationStatus];
+	CHECK(m.authorizationStatus == classStatus);
+	BOOL enabled = [CLLocationManager locationServicesEnabled];
+	CHECK(m.locationServicesEnabled == enabled);
+	if (!enabled)
+		CHECK(classStatus == kCLAuthorizationStatusRestricted || classStatus == kCLAuthorizationStatusDenied ||
+		      classStatus == kCLAuthorizationStatusNotDetermined);
 
-            [mgr stopUpdatingLocation];
-        } else {
-            printf("Host location services disabled, verifying restricted status\n");
-            test_check("authorizationStatus is Restricted when disabled",
-                  [mgr authorizationStatus] == kCLAuthorizationStatusRestricted);
-        }
+	// The initial authorization callback comes from the run loop, not from inside -setDelegate:.
+	Delegate *del = [[Delegate alloc] init];
+	del->insideSetDelegate = YES;
+	m.delegate = del;
+	del->insideSetDelegate = NO;
+	CHECK(!del->authCalledInsideSetDelegate && del->authChanges == 0);
+	spin(2.0, ^BOOL { return del->authChanges > 0; });
+	CHECK(del->authChanges == 1 && del->authChangesOnMainThread == 1);
 
-        [mgr release];
-    }
+	// Asking for authorization again does not report a change that did not happen.
+	[m requestWhenInUseAuthorization];
+	[m requestAlwaysAuthorization];
+	spin(0.5, nil);
+	CHECK(del->authChanges == 1 || [CLLocationManager authorizationStatus] != classStatus);
 
-    if (s_fails == 0) {
-        printf("PASS: corelocation_locationd\n");
-        return 0;
-    } else {
-        printf("FAILED: %d checks failed\n", s_fails);
-        return 1;
-    }
+	// Only the deprecated callback implemented: it is used.
+	LegacyDelegate *legacy = [[LegacyDelegate alloc] init];
+	CLLocationManager *m2 = [[CLLocationManager alloc] init];
+	m2.delegate = legacy;
+	spin(2.0, ^BOOL { return legacy->calls > 0; });
+	CHECK(legacy->calls == 1);
+	m2.delegate = nil;
+	[m2 release];
+	[legacy release];
+
+	// -requestLocation ends in exactly one outcome: a location or an error in kCLErrorDomain.
+	[m requestLocation];
+	spin(15.0, ^BOOL { return del->updates + del->failures > 0; });
+	spin(0.3, nil);
+	CHECK(del->updates + del->failures == 1);
+	if (del->failures)
+		CHECK([del->lastErrorDomain isEqualToString:kCLErrorDomain]);
+	if (del->updates)
+		CHECK(CLLocationCoordinate2DIsValid(del->lastLocation.coordinate) && m.location != nil);
+
+	// Stopping and releasing a manager that is updating is safe, with callbacks possibly still queued.
+	m.delegate = nil;
+	[m startUpdatingLocation];
+	[m stopUpdatingLocation];
+	[m startUpdatingLocation];
+	[m release];
+
+	CLLocationManager *m3 = [[CLLocationManager alloc] init];
+	m3.delegate = del;
+	m3.desiredAccuracy = kCLLocationAccuracyKilometer;
+	m3.distanceFilter = 100.0;
+	[m3 startUpdatingLocation];
+	[m3 release];
+	spin(1.0, nil);
+
+	// A manager released from the delegate callback of its own request.
+	__block CLLocationManager *m4 = [[CLLocationManager alloc] init];
+	m4.delegate = del;
+	[m4 requestLocation];
+	[m4 release];
+	spin(1.0, nil);
+	del->authChanges = 0;
+	[del release];
+	CHECK(YES);
+}
+
+int main(int argc, const char *argv[])
+{
+	@autoreleasepool {
+		test_location_values();
+		test_location_coding();
+		test_manager_defaults_and_delegate();
+	}
+
+	if (s_fails == 0) {
+		printf("PASS: corelocation_locationd\n");
+		return 0;
+	}
+	printf("FAILED: %d checks failed\n", s_fails);
+	return 1;
 }

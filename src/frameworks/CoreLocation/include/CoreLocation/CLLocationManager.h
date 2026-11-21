@@ -29,10 +29,10 @@
 
 typedef NS_ENUM(int, CLAuthorizationStatus) {
 	kCLAuthorizationStatusNotDetermined = 0,
-	kCLAuthorizationStatusRestricted = 1,
-	kCLAuthorizationStatusDenied = 2,
-	kCLAuthorizationStatusAuthorizedAlways = 3,
-	kCLAuthorizationStatusAuthorizedWhenInUse = 4,
+	kCLAuthorizationStatusRestricted,
+	kCLAuthorizationStatusDenied,
+	kCLAuthorizationStatusAuthorizedAlways,
+	kCLAuthorizationStatusAuthorizedWhenInUse,
 	kCLAuthorizationStatusAuthorized = kCLAuthorizationStatusAuthorizedAlways,
 };
 
@@ -56,10 +56,9 @@ typedef NS_ENUM(NSInteger, CLAccuracyAuthorization) {
 	id<CLLocationManagerDelegate> _delegate;
 	CLLocationDistance _distanceFilter;
 	CLLocationAccuracy _desiredAccuracy;
-	CLLocation *_location;
 	CLAuthorizationStatus _authorizationStatus;
 	CLAccuracyAuthorization _accuracyAuthorization;
-	id _clientRegistration;
+	id _clientToken;
 }
 
 // Not retained, like other Cocoa delegates.
@@ -70,6 +69,7 @@ typedef NS_ENUM(NSInteger, CLAccuracyAuthorization) {
 
 @property (nonatomic, readonly) CLAuthorizationStatus authorizationStatus;
 @property (nonatomic, readonly) CLAccuracyAuthorization accuracyAuthorization;
+@property (readonly, nonatomic) BOOL locationServicesEnabled;
 
 + (CLAuthorizationStatus)authorizationStatus;
 + (BOOL)locationServicesEnabled;
