@@ -6,7 +6,8 @@
 // public.folder none for a volume, and Finder stays the default for folders when another application claims
 // public.folder with the same rank (tests/volumes.md).
 // Usage: launchservices_folder_handler <dir> <volume>, where <dir> holds Finder.app (a stand-in with Finder's two
-// document types and bundle ID) and <volume> is a mounted volume. Prints PASS/FAIL lines; exits 1 on a failure.
+// document types and bundle ID) and <volume> is a mounted volume. Where Finder is installed, it is the expected
+// handler, the stand-in competing with it. Prints PASS/FAIL lines; exits 1 on a failure.
 // Link with -framework Foundation -framework CoreServices.
 #import <Foundation/Foundation.h>
 #import <CoreServices/CoreServices.h>
@@ -76,13 +77,17 @@ int main(int argc, char **argv)
             return 2;
         }
         NSString *dir = [[NSString stringWithUTF8String:argv[1]] stringByStandardizingPath];
-        NSString *finder = [dir stringByAppendingPathComponent:@"Finder.app"];
-        if (LSRegisterURL((CFURLRef)[NSURL fileURLWithPath:finder], true) != noErr)
+        NSString *standIn = [dir stringByAppendingPathComponent:@"Finder.app"];
+        if (LSRegisterURL((CFURLRef)[NSURL fileURLWithPath:standIn], true) != noErr)
         {
             printf("FAIL: the stand-in Finder cannot be registered\n");
             return 1;
         }
         NSFileManager *fm = [NSFileManager defaultManager];
+        // Where Finder is installed it was registered first, so it stays the default (with the same rank, the
+        // application registered first is) and the stand-in is the competing claimer
+        NSString *installed = @"/System/Library/CoreServices/Finder.app";
+        NSString *finder = [fm fileExistsAtPath:installed] ? installed : standIn;
         for (NSString *name in @[ @"plain", @"odd.foo", @"x.rtfd" ])
             [fm createDirectoryAtPath:[dir stringByAppendingPathComponent:name] withIntermediateDirectories:YES
                 attributes:nil error:NULL];

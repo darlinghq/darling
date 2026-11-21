@@ -1,0 +1,244 @@
+/*
+ * This file is part of Darling.
+ *
+ * Copyright (C) 2026 Lubos Dolezel
+ *
+ * Darling is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Darling is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#import "FinderAppDelegate.h"
+#import "FinderDirectory.h"
+#import "FinderWindowController.h"
+
+// A folder's path as windows are looked up by it: standardized, without a trailing slash
+static NSString *FinderFolderKey(NSURL *url)
+{
+    return [[url URLByStandardizingPath] path];
+}
+
+@implementation FinderAppDelegate {
+    NSMutableArray<FinderWindowController *> *_controllers;
+    NSPoint _cascadePoint;
+}
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self != nil)
+        _controllers = [NSMutableArray array];
+    return self;
+}
+
+- (NSArray<FinderWindowController *> *)windowControllers
+{
+    NSMutableArray<FinderWindowController *> *ordered = [NSMutableArray array];
+    for (NSWindow *window in [NSApp orderedWindows]) {
+        for (FinderWindowController *controller in _controllers) {
+            if (controller.window == window)
+                [ordered addObject:controller];
+        }
+    }
+    for (FinderWindowController *controller in _controllers) {
+        if (![ordered containsObject:controller])
+            [ordered addObject:controller];
+    }
+    return ordered;
+}
+
+#pragma mark Windows
+
+- (FinderWindowController *)windowForFolder:(NSURL *)folder create:(BOOL)create
+{
+    NSString *key = FinderFolderKey(folder);
+    for (FinderWindowController *controller in _controllers) {
+        if ([FinderFolderKey(controller.folderURL) isEqual:key])
+            return controller;
+    }
+    if (!create)
+        return nil;
+
+    NSError *error = nil;
+    FinderDirectory *directory = [[FinderDirectory alloc] initWithURL:folder];
+    if (![directory reload:&error]) {
+        [self reportFolder:folder error:error];
+        return nil;
+    }
+
+    FinderWindowController *controller = [[FinderWindowController alloc] initWithFolderURL:folder];
+    __weak FinderAppDelegate *weakSelf = self;
+    __weak FinderWindowController *weakController = controller;
+    controller.openItem = ^(NSURL *item) {
+        [weakSelf openItem:item inWindow:weakController];
+    };
+    [_controllers addObject:controller];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(windowWillClose:)
+                                                 name:NSWindowWillCloseNotification
+                                               object:controller.window];
+    if (NSEqualPoints(_cascadePoint, NSZeroPoint))
+        [controller.window center];
+    _cascadePoint = [controller.window cascadeTopLeftFromPoint:_cascadePoint];
+    [controller showWindow:nil];
+    return controller;
+}
+
+- (void)windowWillClose:(NSNotification *)notification
+{
+    NSWindow *window = [notification object];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowWillCloseNotification object:window];
+    for (FinderWindowController *controller in [_controllers copy]) {
+        if (controller.window == window)
+            [_controllers removeObject:controller];
+    }
+}
+
+- (void)reportFolder:(NSURL *)folder error:(NSError *)error
+{
+    NSAlert *alert = [[NSAlert alloc] init];
+    alert.alertStyle = NSAlertStyleWarning;
+    alert.messageText = [NSString stringWithFormat:@"The folder “%@” can’t be opened.",
+                                                   [FinderDirectory displayNameForURL:folder]];
+    alert.informativeText = [error localizedDescription] ?: @"";
+    [alert addButtonWithTitle:@"OK"];
+    [NSApp activateIgnoringOtherApps:YES];
+    [alert runModal];
+}
+
+#pragma mark Opening
+
+// Folders and volumes open in their own window; packages, like other files, are items to reveal
+- (BOOL)opensAsFolder:(NSURL *)url
+{
+    BOOL directory = NO;
+    if (![[NSFileManager defaultManager] fileExistsAtPath:[url path] isDirectory:&directory] || !directory)
+        return NO;
+    return ![[NSWorkspace sharedWorkspace] isFilePackageAtPath:[url path]];
+}
+
+- (void)openURLs:(NSArray<NSURL *> *)urls
+{
+    NSFileManager *fm = [NSFileManager defaultManager];
+    NSMutableArray<NSURL *> *folders = [NSMutableArray array];
+    NSMutableArray<NSString *> *revealFolders = [NSMutableArray array];
+    NSMutableDictionary<NSString *, NSMutableArray<NSURL *> *> *revealed = [NSMutableDictionary dictionary];
+
+    for (NSURL *url in urls) {
+        if (![url isFileURL] || ![fm fileExistsAtPath:[url path]])
+            continue;
+        NSURL *item = [NSURL fileURLWithPath:FinderFolderKey(url)];
+        if ([self opensAsFolder:item]) {
+            [folders addObject:item];
+            continue;
+        }
+        NSString *parent = FinderFolderKey([item URLByDeletingLastPathComponent]);
+        if (revealed[parent] == nil) {
+            revealed[parent] = [NSMutableArray array];
+            [revealFolders addObject:parent];
+        }
+        [revealed[parent] addObject:item];
+    }
+
+    FinderWindowController *last = nil;
+    for (NSURL *folder in folders) {
+        FinderWindowController *controller = [self windowForFolder:folder create:YES];
+        if (controller != nil)
+            last = controller;
+    }
+    for (NSString *parent in revealFolders) {
+        FinderWindowController *controller = [self windowForFolder:[NSURL fileURLWithPath:parent isDirectory:YES]
+                                                            create:YES];
+        if (controller == nil)
+            continue;
+        [controller selectItems:revealed[parent]];
+        last = controller;
+    }
+
+    if (last != nil) {
+        [last showWindow:nil];
+        [NSApp activateIgnoringOtherApps:YES];
+    } else if ([_controllers count] == 0 && [urls count] > 0) {
+        // Nothing could be shown, and no window is left to keep the Finder running
+        [NSApp terminate:nil];
+    }
+}
+
+- (void)openItem:(NSURL *)item inWindow:(FinderWindowController *)controller
+{
+    if ([self opensAsFolder:item]) {
+        FinderWindowController *existing = [self windowForFolder:item create:NO];
+        if (existing != nil && existing != controller) {
+            [existing showWindow:nil];
+            return;
+        }
+        [controller showFolder:item];
+        return;
+    }
+    [[NSWorkspace sharedWorkspace] openURL:item];
+}
+
+#pragma mark NSApplicationDelegate
+
+- (void)applicationWillFinishLaunching:(NSNotification *)notification
+{
+    [NSApp setMainMenu:[self mainMenu]];
+}
+
+- (void)application:(NSApplication *)application openURLs:(NSArray<NSURL *> *)urls
+{
+    [self openURLs:urls];
+}
+
+// Launched without documents, or reopened with no window: a window on the home folder
+- (BOOL)applicationOpenUntitledFile:(NSApplication *)sender
+{
+    return [self windowForFolder:[NSURL fileURLWithPath:NSHomeDirectory() isDirectory:YES] create:YES] != nil;
+}
+
+- (BOOL)applicationShouldHandleReopen:(NSApplication *)sender hasVisibleWindows:(BOOL)flag
+{
+    return YES;
+}
+
+- (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender
+{
+    return YES;
+}
+
+#pragma mark Menus
+
+- (NSMenu *)mainMenu
+{
+    NSMenu *main = [[NSMenu alloc] initWithTitle:@"Main"];
+
+    NSMenu *finder = [[NSMenu alloc] initWithTitle:@"Finder"];
+    [finder addItemWithTitle:@"About Finder" action:@selector(orderFrontStandardAboutPanel:) keyEquivalent:@""];
+    [finder addItem:[NSMenuItem separatorItem]];
+    [finder addItemWithTitle:@"Hide Finder" action:@selector(hide:) keyEquivalent:@"h"];
+    [finder addItemWithTitle:@"Quit Finder" action:@selector(terminate:) keyEquivalent:@"q"];
+    [[main addItemWithTitle:@"Finder" action:NULL keyEquivalent:@""] setSubmenu:finder];
+
+    NSMenu *file = [[NSMenu alloc] initWithTitle:@"File"];
+    [file addItemWithTitle:@"Close Window" action:@selector(performClose:) keyEquivalent:@"w"];
+    [[main addItemWithTitle:@"File" action:NULL keyEquivalent:@""] setSubmenu:file];
+
+    NSMenu *window = [[NSMenu alloc] initWithTitle:@"Window"];
+    [window addItemWithTitle:@"Minimize" action:@selector(performMiniaturize:) keyEquivalent:@"m"];
+    [window addItemWithTitle:@"Zoom" action:@selector(performZoom:) keyEquivalent:@""];
+    [[main addItemWithTitle:@"Window" action:NULL keyEquivalent:@""] setSubmenu:window];
+    [NSApp setWindowsMenu:window];
+
+    return main;
+}
+
+@end

@@ -1,7 +1,7 @@
 #!/bin/bash
 # DiskImageMounter.app: opening disk images with LaunchServices (open in the guest), with a stand-in for Finder
-# (com.apple.finder, with Finder's folder and volume document types) that records the open event it gets for the
-# volume. See disk-image-mounter.md.
+# (com.apple.finder, with Finder's folder and volume document types at rank Owner, so that it wins over an installed
+# Finder) that records the open event it gets for the volume. See disk-image-mounter.md.
 # Needs DARLING_SKILLS (a darling-skills checkout), DARLING_ROOT (the installed tree), and a display of your own,
 # exported before the Darling container starts (it keeps the environment it started with; run `darling shutdown`
 # first): X11 with DISPLAY (and xdotool), or Wayland with WAYLAND_DISPLAY, XDG_RUNTIME_DIR, SWAYSOCK and
@@ -143,9 +143,10 @@ ${4:-}
 </plist>
 PLIST
 }
+# The stand-in's rank is Owner, so it is the volumes' handler even where the real Finder (rank Default) is installed
 FINDER_TYPES='<key>CFBundleDocumentTypes</key><array>
-	<dict><key>CFBundleTypeName</key><string>Folder</string><key>CFBundleTypeOSTypes</key><array><string>fold</string></array><key>CFBundleTypeRole</key><string>Editor</string></dict>
-	<dict><key>CFBundleTypeName</key><string>Volume</string><key>CFBundleTypeOSTypes</key><array><string>disk</string></array><key>CFBundleTypeRole</key><string>Editor</string></dict>
+	<dict><key>CFBundleTypeName</key><string>Folder</string><key>CFBundleTypeOSTypes</key><array><string>fold</string></array><key>CFBundleTypeRole</key><string>Editor</string><key>LSHandlerRank</key><string>Owner</string></dict>
+	<dict><key>CFBundleTypeName</key><string>Volume</string><key>CFBundleTypeOSTypes</key><array><string>disk</string></array><key>CFBundleTypeRole</key><string>Editor</string><key>LSHandlerRank</key><string>Owner</string></dict>
 </array>'
 
 # opener: DIMImageOpener in process (see src/dim_image_opener.m)
