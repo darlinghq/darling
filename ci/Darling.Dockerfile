@@ -76,7 +76,8 @@ RUN git submodule update --init --recursive --no-fetch 2>/dev/null || \
 # Key cmake flags:
 # - CMAKE_C_FLAGS_INIT: Appended to internal flags. Using CMAKE_C_FLAGS would 
 #   overwrite required warning suppressions like -Wno-nullability-completeness.
-# - TARGET_i386=OFF: Skip 32-bit slices to avoid noisy linker failures and ranlib warnings.
+# - DARLING_ARCHS: the host's 64-bit slice only, skipping the 32-bit slice to avoid noisy linker
+#   failures and ranlib warnings.
 RUN mkdir -p build && cd build && \
     cmake .. \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -84,7 +85,7 @@ RUN mkdir -p build && cd build && \
         -DCMAKE_CXX_COMPILER=clang++ \
         -DCMAKE_C_FLAGS_INIT="-Wno-incompatible-pointer-types" \
         -DCMAKE_CXX_FLAGS_INIT="-Wno-incompatible-pointer-types" \
-        -DTARGET_i386=OFF \
+        -DDARLING_ARCHS=$(if [ "$(uname -m)" = aarch64 ]; then echo arm64; else echo x86_64; fi) \
         -DDARLING_NO_DSYM=ON \
         -DDARLING_SWIFT_WMO=ON \
         -GNinja && \

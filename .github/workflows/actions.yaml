@@ -25,21 +25,10 @@ jobs:
   build-deb:
     needs: approval
     if: ${{ !cancelled() && (needs.approval.result == 'success' || needs.approval.result == 'skipped') }}
-    # Build the packages natively on each architecture. The arm64 runner is a
-    # regular arm64 Linux machine, so the build does not need a cross toolchain
-    # and the resulting .debs are native arm64 packages.
-    name: Build DEBs (${{ matrix.arch }})
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - arch: amd64
-          runs-on: ubuntu-latest
-          artifact: debs
-        - arch: arm64
-          runs-on: ubuntu-26.04-arm
-          artifact: debs-arm64
-    runs-on: ${{ matrix.runs-on }}
+    # The Architecture: all packages (the Mach-O part, with i386, x86_64 and
+    # arm64 slices) and the amd64 darling-core-native.
+    name: Build DEBs
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout Darling
       uses: actions/checkout@v4
@@ -79,9 +68,9 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: ~/.ccache
-        key: ccache-deb-${{ matrix.arch }}-${{ github.ref_name }}-${{ github.run_id }}
+        key: ccache-deb-amd64-${{ github.ref_name }}-${{ github.run_id }}
         restore-keys: |
-          ccache-deb-${{ matrix.arch }}-${{ github.event.repository.default_branch }}-
+          ccache-deb-amd64-${{ github.event.repository.default_branch }}-
 
     - name: Build DEBs
       run: |
@@ -102,7 +91,7 @@ jobs:
       uses: actions/cache/save@v4
       with:
         path: ~/.ccache
-        key: ccache-deb-${{ matrix.arch }}-${{ github.ref_name }}-${{ github.run_id }}
+        key: ccache-deb-amd64-${{ github.ref_name }}-${{ github.run_id }}
 
     - name: Move DEBs
       run: |
@@ -111,7 +100,7 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4.1.0
       with:
-        name: ${{ matrix.artifact }}
+        name: debs
         path: dist/
 
   build-dsc:

@@ -18,10 +18,15 @@ class Packaging(unittest.TestCase):
         self.root = Path(self.tmp.name)
         shutil.copytree(ROOT / 'debian', self.root / 'debian')
         (self.root / 'debbuild').mkdir()
+        (self.root / 'debbuild-native').mkdir()
         (self.root / 'debian/changelog').write_text(
             'darling (0.1-1) unstable; urgency=low\n\n  * Test fixture.\n\n'
             ' -- Test <test@example.invalid>  Wed, 30 Sep 2026 00:00:00 +0000\n')
-        self.env = dict(os.environ, DEB_HOST_ARCH='amd64', DEB_HOST_ARCH_OS='linux')
+        # The package build runs this test from inside debhelper, which exports DH_INTERNAL_OPTIONS
+        # (-a in the -arch targets) and other DH_* variables; they would limit the debhelper commands
+        # run here to some of the packages.
+        env = {k: v for k, v in os.environ.items() if not k.startswith('DH_')}
+        self.env = dict(env, DEB_HOST_ARCH='amd64', DEB_HOST_ARCH_OS='linux')
 
     def run_command(self, *args):
         return subprocess.run(args, cwd=self.root, env=self.env,
@@ -30,8 +35,8 @@ class Packaging(unittest.TestCase):
     def make(self, target):
         return self.run_command('make', '-f', 'debian/rules', target)
 
-    def install_script(self, fail=False):
-        (self.root / 'debbuild/cmake_install.cmake').write_text(
+    def install_script(self, fail=False, builddir='debbuild'):
+        (self.root / builddir / 'cmake_install.cmake').write_text(
             'file(APPEND "calls" "${COMPONENT}\\n")\n' +
             ('if(COMPONENT STREQUAL "core")\nmessage(FATAL_ERROR "fixture failure")\nendif()\n'
              if fail else '') +
@@ -40,13 +45,13 @@ class Packaging(unittest.TestCase):
 
     def test_component_install_stops_on_first_failure(self):
         self.install_script(fail=True)
-        result = self.make('override_dh_auto_install')
+        result = self.make('override_dh_auto_install-indep')
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertEqual((self.root / 'debbuild/calls').read_text(), 'core\n')
 
     def test_python_common_payload_reaches_binary_package(self):
         self.install_script()
-        result = self.make('override_dh_auto_install')
+        result = self.make('override_dh_auto_install-indep')
         self.assertEqual(result.returncode, 0, result.stdout)
         result = self.run_command('dh_install', '-pdarling-cli-python2-common',
                                   '--sourcedir=debian/tmp')
@@ -66,9 +71,30 @@ class Packaging(unittest.TestCase):
         tool.parent.mkdir(parents=True)
         tool.write_text('#!/bin/sh\necho "$1" >> calls\n[ "$1" != core ]\n')
         tool.chmod(0o755)
-        result = self.make('override_dh_makeshlibs')
+        result = self.make('override_dh_makeshlibs-indep')
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertEqual((self.root / 'calls').read_text(), 'core\n')
+
+    def test_native_payload_reaches_native_package(self):
+        # The architecture-specific build installs only core_native, from its own build directory
+        self.install_script(builddir='debbuild-native')
+        result = self.make('override_dh_auto_install-arch')
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual((self.root / 'debbuild-native/calls').read_text(), 'core_native\n')
+        result = self.run_command('dh_install', '-pdarling-core-native', '--sourcedir=debian/tmp')
+        self.assertEqual(result.returncode, 0, result.stdout)
+        payload = self.root / 'debian/darling-core-native/usr/share/darling-fixture/core_native'
+        self.assertTrue(payload.is_file(), 'dh_install omitted the native payload')
+
+    def test_only_the_native_package_is_architecture_specific(self):
+        packages = {}
+        for stanza in (self.root / 'debian/control').read_text().split('\n\n'):
+            fields = dict(line.split(': ', 1) for line in stanza.splitlines()
+                          if ': ' in line and not line.startswith(' '))
+            if 'Package' in fields:
+                packages[fields['Package']] = fields['Architecture']
+        self.assertEqual({name for name, arch in packages.items() if arch != 'all'},
+                         {'darling-core-native'})
 
 
 if __name__ == '__main__':

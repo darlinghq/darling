@@ -11,14 +11,19 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libc/darwin)
 add_definitions(-DPRIVATE)
 
-if (TARGET_i386 OR TARGET_x86_64)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -msse3")
-	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/Intel)
-	add_definitions(-Dmovsxw=movsw)
-elseif (TARGET_ARM64)
-	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/ARM)
-	add_definitions(-DARMLIBM_FENV_SUPPORT)
-endif ()
+# The Intel and the ARM slices are built from different sources (libm_intel_sources and
+# libm_arm_sources below), with their own headers and options, which libm_setup_family() gives a
+# target of one slice.
+function(libm_setup_family target family)
+	if (family STREQUAL "x86")
+		target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/Source/Intel)
+		target_compile_definitions(${target} PRIVATE movsxw=movsw)
+		target_compile_options(${target} PRIVATE $<$<COMPILE_LANGUAGE:C>:-msse -msse2 -msse3>)
+	else ()
+		target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/Source/ARM)
+		target_compile_definitions(${target} PRIVATE ARMLIBM_FENV_SUPPORT)
+	endif ()
+endfunction()
 
 set(libm_sources
 	Source/abs.c
@@ -34,8 +39,8 @@ set_source_files_properties(Source/sincos.c PROPERTIES COMPILE_FLAGS "-fno-built
 # pow(10, x) is otherwise folded into __exp10, the very function being defined
 set_source_files_properties(Source/exp10.c PROPERTIES COMPILE_FLAGS "-fno-builtin")
 
-if (TARGET_i386 OR TARGET_x86_64)
-	set(libm_sources ${libm_sources}
+# The sources of the Intel slices (i386, x86_64)
+set(libm_intel_sources
 		Source/Intel/acos.c
 		Source/Intel/asin.c
 		Source/Intel/atan.c
@@ -160,7 +165,7 @@ if (TARGET_i386 OR TARGET_x86_64)
 		Source/Intel/truncl.S
 		Source/Intel/trunc.S
 	)
-elseif (TARGET_ARM64)
+
 	# ARM64 / arm64e libm sources.
 	#
 	# Most transcendentals come from FreeBSD msun (also the basis of openlibm).
@@ -178,7 +183,7 @@ elseif (TARGET_ARM64)
 	# wrappers whose __builtin_ actually lowers to an instruction. Builtins
 	# like __builtin_sin/__builtin_pow that reduce back to a libm call are
 	# NOT used here (they would self-recurse).
-	set(libm_sources ${libm_sources}
+	set(libm_arm_sources
 		# transcendentals — double and float
 		Source/ARM/acos_freeBSD.c
 		Source/ARM/acosf_freeBSD.c
@@ -307,36 +312,60 @@ elseif (TARGET_ARM64)
 		# ___Libm_version stamp.
 		Source/ARM/version_info.c
 	)
-endif ()
+
 
 # Gross hack to rename symbols in $fenv_access_off variants
 set(CMAKE_AR "${CMAKE_CURRENT_SOURCE_DIR}/rename_wrapper")
 
-if (TARGET_i386 OR TARGET_x86_64)
-	add_darling_object_library(system_m_extra Source/Intel/xmm_misc.c Source/Intel/xmm_log.c Source/Intel/fmaxfminfdim.S Source/Intel/nextafter.S Source/Intel/xmm_remainder.c Source/Intel/e_remquol.S)
-	set_target_properties(system_m_extra PROPERTIES COMPILE_FLAGS "-UBUILDING_FOR_CARBONCORE_LEGACY -O0 -ggdb")
-else ()
-	add_darling_object_library(system_m_extra Source/empty.c)
-endif ()
-make_fat(system_m_extra)
+# One object library per slice, system_m_<arch>, with the sources of its family (and, for the Intel
+# slices, system_m_extra_<arch>, built without BUILDING_FOR_CARBONCORE_LEGACY)
+set(libm_arch_objects "")
+set(libm_intel_archs "")
+set(libm_arm_archs "")
+foreach (arch IN LISTS DARLING_ARCHS)
+	darling_arch_family(${arch} family)
+	if (family STREQUAL "x86")
+		add_darling_object_library(system_m_${arch} ARCHS ${arch} SOURCES ${libm_sources} ${libm_intel_sources})
+		add_darling_object_library(system_m_extra_${arch} ARCHS ${arch} SOURCES
+			Source/Intel/xmm_misc.c Source/Intel/xmm_log.c Source/Intel/fmaxfminfdim.S
+			Source/Intel/nextafter.S Source/Intel/xmm_remainder.c Source/Intel/e_remquol.S)
+		set_property(TARGET system_m_extra_${arch} APPEND_STRING PROPERTY
+			COMPILE_FLAGS " -UBUILDING_FOR_CARBONCORE_LEGACY -O0 -ggdb")
+		libm_setup_family(system_m_extra_${arch} ${family})
+		list(APPEND libm_arch_objects $<TARGET_OBJECTS:system_m_extra_${arch}>)
+		list(APPEND libm_intel_archs ${arch})
+	elseif (family STREQUAL "arm")
+		add_darling_object_library(system_m_${arch} ARCHS ${arch} SOURCES ${libm_sources} ${libm_arm_sources})
+		list(APPEND libm_arm_archs ${arch})
+	else ()
+		message(FATAL_ERROR "libm: no sources for the ${arch} slice")
+	endif ()
+	libm_setup_family(system_m_${arch} ${family})
+	list(APPEND libm_arch_objects $<TARGET_OBJECTS:system_m_${arch}>)
+endforeach ()
 
 set(DYLIB_INSTALL_NAME "/usr/lib/system/libsystem_m.dylib")
-if (TARGET_ARM64)
-	set(LIBM_ALIAS_FLAGS "-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_arm_vfp.a.alias")
-else ()
-	set(LIBM_ALIAS_FLAGS "-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_Intel.a.alias -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libmathCommonIntel.alias")
+# The export aliases of each family
+darling_xarch_flags(LIBM_INTEL_ALIAS_FLAGS ARCHS ${libm_intel_archs} OPTIONS
+	"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_Intel.a.alias"
+	"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libmathCommonIntel.alias")
+darling_xarch_flags(LIBM_ARM_ALIAS_FLAGS ARCHS ${libm_arm_archs} OPTIONS
+	"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_arm_vfp.a.alias")
+set(LIBM_LINK_FLAGS "${LIBM_INTEL_ALIAS_FLAGS} ${LIBM_ARM_ALIAS_FLAGS}")
+list(LENGTH DARLING_ARCHS libm_arch_count)
+if (libm_arch_count GREATER 1)
+	# Each slice's link gets the objects of the other slices too, which it skips
+	string(APPEND LIBM_LINK_FLAGS " -Wl,-no_arch_warnings")
 endif ()
 add_circular(system_m FAT
-	SOURCES
-		${libm_sources}
 	OBJECTS
-		$<TARGET_OBJECTS:system_m_extra>
+		${libm_arch_objects}
 	SIBLINGS
 		system_c
 		compiler_rt
 		system_dyld
 	LINK_FLAGS
-		"${LIBM_ALIAS_FLAGS}"
+		"${LIBM_LINK_FLAGS}"
 )
 #set_property(TARGET system_m APPEND_STRING PROPERTY LINK_FLAGS
 #	"-Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libm_Intel.a.alias -Wl,-alias_list,${CMAKE_CURRENT_SOURCE_DIR}/Exports/libmathCommonIntel.alias")
@@ -347,8 +376,15 @@ install(TARGETS system_m DESTINATION libexec/darling/usr/lib/system)
 
 set(CMAKE_AR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ar")
 set(CMAKE_RANLIB "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ar/${APPLE_TARGET_TRIPLET_PRIMARY}-ranlib")
-add_darling_static_library(system_m_static SOURCES ${libm_sources} $<TARGET_OBJECTS:system_m_extra>)
-make_fat(system_m_static)
+# One archive per slice, joined into system_m_static with lipo
+foreach (arch IN LISTS DARLING_ARCHS)
+	set(libm_static_objects $<TARGET_OBJECTS:system_m_${arch}>)
+	if (TARGET system_m_extra_${arch})
+		list(APPEND libm_static_objects $<TARGET_OBJECTS:system_m_extra_${arch}>)
+	endif ()
+	add_darling_static_library(system_m_static_${arch} ARCHS ${arch} SOURCES ${libm_static_objects})
+endforeach ()
+darling_lipo_static_library_slices(system_m_static ${DARLING_ARCHS})
 
 # Host-side check of the long double signbit helper in the SDK math.h
 add_test(NAME libm_signbit_header
