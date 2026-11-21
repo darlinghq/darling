@@ -88,6 +88,8 @@ The harness, `tests/finder.sh`, runs Finder through LaunchServices (`open` in th
 | odd names | a folder named `Ünï 日本 😀` opens in its window; `open -R` of a file in it whose name has a newline, and of one with a 255-byte name, gives that window |
 | large folder | a folder of 2000 files shows its window within 5 s of `open` returning; End in it is fine |
 | folder removed | with F open too, deleting F2 (from the host side) closes F2's window within 10 s; F's stays |
+| styled window | `open styled-test.dmg`: a window "Styled Test" within 60 s, its client area 640 wide and 400 to 440 high; the background picture shows (#2F6F9F within 8 per channel 20 points in from the bottom left; light at (320, 200), where the picture has a band) |
+| styled hidden item | `tests/src/finder_ls.m` on the attached volume lists `Styled App.app` and `Applications`, and not the invisible `Hidden Notes.txt`, `.background` or `.DS_Store` |
 | unreadable | a folder that can't be read gives an alert and no window; after the alert Finder quits (skipped when the guest runs as root) |
 
 ## Notes
@@ -95,9 +97,33 @@ The harness, `tests/finder.sh`, runs Finder through LaunchServices (`open` in th
 - An application LaunchServices launches runs without `HOME` in Darling. `NSHomeDirectory()` then comes from the user
   database, as macOS does it (macOS takes it from there even when `HOME` is set). So in rootless mode, where the guest
   runs as uid 0, Finder's home folder is `/var/root`.
-- `NSURLIsHiddenKey` can't be set in Darling: `chflags` has no `UF_HIDDEN` to store, and Foundation's
-  `setResourceValue:forKey:` says it succeeded anyway. `finder_directory` prints SKIP for that case. On macOS the
-  flag is stored and the item is hidden.
+- `NSURLIsHiddenKey` is YES for a name starting with ".", for `UF_HIDDEN`, and for the Finder's invisible flag
+  (`kIsInvisible`, byte 8 = 0x40 of `com.apple.FinderInfo`), as on macOS 10.14.4 and 26.7.3; setting it stores
+  both, and Darling's file systems keep the FinderInfo one (`chflags` has no `UF_HIDDEN` there)
+  (`src/external/corefoundation/tests/URLIsHidden.m`). Foundation's directory listings used to compute the hidden
+  keys themselves and store them through their setters, which cleared the flags on disk
+  (`src/external/foundation/tests/filemanager-contents-hidden-keys.m`).
+- A disk image's extended attributes reach the guest: darling-dmg answers the kernel with Linux error numbers, and
+  names its attributes as Darling's kernel layer keeps guest attributes (`user.<name>`); an item without FinderInfo
+  has none (`tests/src/dmg_xattr.m`, which passes unchanged on both Macs).
+- Styled windows (`.DS_Store`):
+  - the format is not documented by Apple. Reader and fixture writer follow public third-party descriptions: Wim
+    Lewis's DSStoreFormat notes (in the Mac::Finder::DSStore distribution), Mark Mentovai's description, and the
+    documentation of the Python `ds_store` and `mac_alias` packages. No code was copied;
+  - a malformed store is ignored as a whole; a setting of an unexpected type keeps its default;
+  - records match items by canonical equivalence of the names, case-sensitively;
+  - window size and chrome apply when a window opens on the folder; the view, sizes, label position, background
+    and positions whenever it is shown. A folder without a usable store gets the standard look;
+  - window content 300×200 up to the screen's visible frame; icons 16 to 512 points (64); text 10 to 16 (12);
+  - a position is the item's centre, top-left origin; items without one go in a grid below the others;
+  - the background picture is drawn at its natural size, top left, and must be a regular file inside the folder's
+    own volume (alias tag 18 or 2, or a bookmark's path), or it isn't used;
+  - older `icvo` and `BKGD` records are read when there is no `icvp`; `vstl` `Nlsv` is the list view;
+  - View > Show/Hide Toolbar (⌥⌘T) and Show/Hide Sidebar (⌃⌘S). On macOS, `NSWindow` neither retitles a
+    `toggleToolbarShown:` item nor enables it without a toolbar; the application titles it
+    (`appkit-window-toggle-toolbar-title.m`). A hidden toolbar takes no room: the window's frame is that of a window
+    without one, and the content keeps its size, on both Macs; AppKit kept the toolbar's height
+    (`appkit-toolbar-hidden-frame.m`).
 - The tests that need a stand-in for Finder keep working where Finder is installed:
   - `tests/disk-image-mounter.sh` declares the stand-in's types at `LSHandlerRank` `Owner`;
   - `tests/src/launchservices_folder_handler.m` expects the installed Finder, with the stand-in competing with it.
@@ -128,6 +154,11 @@ Finder's `Info.plist` on 26.7.3:
   `LSUIElement`;
 - document types "Folder" (`CFBundleTypeOSTypes` `fold`) and "Volume" (`disk`), both role Editor, with no
   `LSItemContentTypes`.
+
+`.DS_Store` files Finder wrote on 26.7.3 parse (`finder_dsstore.m`): `/Applications/.DS_Store` holds only
+`lg1S`, `ph1S` (`comp`) and `modD`, `moDD` (`blob`, not `dutc`) for `Xcode.app`. Driving macOS Finder with
+`osascript` from ssh (a styled folder written by Finder, and reading back how it shows `styled-test.dmg`) needs the
+Automation permission on the Mac; until it is given, those checks are not made.
 
 Ours differs in two ways:
 - the package type is `APPL`, because LaunchServices counts only `APPL` bundles as applications;

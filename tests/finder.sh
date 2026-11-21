@@ -411,6 +411,69 @@ else
 fi
 quit_finder
 
+# The client area of the window window() found: "<width> <height>"
+client_size() {
+	if [ $display = x11 ]; then
+		xdotool getwindowgeometry --shell "$WID" | sed -n 's/^WIDTH=//p; s/^HEIGHT=//p' | tr '\n' ' '
+	else
+		swaymsg -t get_tree | python3 -I -c '
+import json, sys
+want = int(sys.argv[1])
+def walk(n):
+    if n.get("id") == want:
+        print(n["rect"]["width"], n["rect"]["height"])
+    for c in n.get("nodes", []) + n.get("floating_nodes", []):
+        walk(c)
+walk(json.load(sys.stdin))' "$WID"
+	fi
+}
+pixel() { # <name> <x> <y>: the pixel of $work/<name>.png at (x, y) from its top left, as "r g b" (0-255)
+	convert "$work/$1.png" -format "%[fx:int(255*p{$2,$3}.r+0.5)] %[fx:int(255*p{$2,$3}.g+0.5)] %[fx:int(255*p{$2,$3}.b+0.5)]" info: 2>/dev/null
+}
+near() { # <r g b> <r g b> <tolerance>: 0 if every channel is within it
+	python3 -I -c 'import sys; a, b = sys.argv[1].split(), sys.argv[2].split(); sys.exit(not (len(a) == 3 and all(abs(int(x) - int(y)) <= int(sys.argv[3]) for x, y in zip(a, b))))' "$1" "$2" "$3"
+}
+
+# styled window: the volume of styled-test.dmg (tests/fixtures/make-styled-fixture.py) opens in a window styled by its
+# .DS_Store: 640 wide, 400 high plus at most a title bar, its background picture blue with a light band at (320, 200)
+styled="/Volumes/Styled Test"
+cp "$here/fixtures/styled-test.dmg" "$work/"
+guest open-styled "open '$gw/styled-test.dmg'"
+if window "Styled Test" 60; then
+	sleep 2
+	read -r width height <<<"$(client_size)"
+	shot styled
+	read -r iw ih <<<"$(identify -format '%w %h' "$work/styled.png" 2>/dev/null)"
+	corner=$(pixel styled 20 $((ih - 20)))
+	band=$(pixel styled 320 $((ih - 200)))
+	if [ "$width" != 640 ] || [ "$height" -lt 400 ] || [ "$height" -gt 440 ]; then
+		fail "styled window: client area ${width}x${height}, want 640x400 to 640x440"
+	elif ! near "$corner" "47 111 159" 8; then
+		fail "styled window: the background near the bottom left is ($corner), want (47 111 159) (image ${iw}x${ih})"
+	elif ! python3 -I -c 'import sys; c = sys.argv[1].split(); sys.exit(not (len(c) == 3 and all(int(x) > 200 for x in c)))' "$band"; then
+		fail "styled window: the band at (320, 200) is ($band), want light"
+	else
+		pass "styled window"
+	fi
+else
+	fail "styled window: no window: $(outputs open-styled), windows: $(windows '')"
+fi
+
+# styled hidden item: Finder's folder model lists the volume's items, not the invisible one or the dot files
+if build finder_ls "$here/src/finder_ls.m" -framework Foundation -fobjc-arc -I"$here/../src/Finder" \
+	"$here/../src/Finder/FinderDirectory.m"; then
+	guest ls-styled "'$gw/finder_ls' '$styled'"
+	listed=$(tr '\n' '|' <"$work/ls-styled.out")
+	if [ "$(rc ls-styled)" = 0 ] && grep -qx "Styled App.app" "$work/ls-styled.out" && grep -qx Applications "$work/ls-styled.out" \
+		&& ! grep -q "Hidden Notes.txt\|^\.background$\|^\.DS_Store$" "$work/ls-styled.out"; then
+		pass "styled hidden item"
+	else
+		fail "styled hidden item: listed $listed $(outputs ls-styled)"
+	fi
+fi
+quit_finder
+guest detach-styled "hdiutil detach -quiet '$styled'; true"
+
 # unreadable: a folder that can't be read gives an alert, no window; after it Finder quits
 if [ "$guest_uid" = 0 ]; then
 	skip "unreadable: the guest runs as root, every folder is readable"
