@@ -308,6 +308,9 @@ static bool run_codec(CMVideoCodecType codec, bool reorder, const char *name)
 	CVPixelBufferRef pb = make_nv12(0, kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange);
 	CHECK(VTCompressionSessionEncodeFrame(s, pb, CMTimeMake(0, 30), kCMTimeInvalid, NULL, NULL, NULL) == kVTInvalidSessionErr);
 	CHECK(VTCompressionSessionCompleteFrames(s, kCMTimeInvalid) == kVTInvalidSessionErr);
+	CHECK(VTSessionSetProperty(s, kVTCompressionPropertyKey_RealTime, kCFBooleanTrue) == kVTInvalidSessionErr);
+	/* prepare after invalidate: QUIRK, returns noErr on macOS (see VTCompressionSession.c) */
+	CHECK(VTCompressionSessionPrepareToEncodeFrames(s) == noErr);
 	CFRelease(pb);
 	CFRelease(s);
 	out_free(&out);

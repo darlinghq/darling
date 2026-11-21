@@ -1187,7 +1187,13 @@ OSStatus VTCompressionSessionPrepareToEncodeFrames(VTCompressionSessionRef sessi
 	bool inv = session->invalidated;
 	pthread_mutex_unlock(&session->lock);
 	if (inv)
-		return noErr; /* observed: harmless on an invalidated session */
+		/*
+		 * QUIRK: PrepareToEncodeFrames on an invalidated session returns noErr, while EncodeFrame, CompleteFrames
+		 * and the property calls return kVTInvalidSessionErr. Not documented. Evidence: black-box observation on
+		 * macOS 26.7.3 and 10.14.4 (tier 2).
+		 * Test: videotoolbox_compression, "prepare after invalidate".
+		 */
+		return noErr;
 	__block OSStatus st = noErr;
 	CFRetain(session);
 	dispatch_sync(session->queue, ^{
