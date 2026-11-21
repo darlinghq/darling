@@ -69,6 +69,7 @@ int fex_copy_from_guest(void* dst, const void* guest, size_t len);
 void fex_set_current_thread_gs_base(uint64_t gs_base);
 uint64_t fex_get_current_thread_gs_base(void);
 uint64_t fex_invoke_guest_callback(uintptr_t guest_fn, uint64_t arg0, uint64_t arg1);
+uint64_t fex_invoke_guest_callback_args(uintptr_t guest_fn, const uint64_t args[6]);
 
 void fex_start_main_thread(struct load_results* lr) __attribute__((noreturn));
 void fex_start_darling_thread(
