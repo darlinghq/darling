@@ -37,6 +37,7 @@ set(component_sources
 	SystemOutputAU.cpp
 	MatrixMixerAU.cpp
 	DefaultOutputAU.cpp
+	GenericOutputAU.cpp
 	GraphicEQUnit.cpp
 )
 
