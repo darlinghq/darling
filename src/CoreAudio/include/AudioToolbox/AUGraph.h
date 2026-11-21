@@ -28,7 +28,7 @@ enum
 	kAUGraphErr_InvalidConnection         = -10861,
 	kAUGraphErr_OutputNodeErr             = -10862,
 	kAUGraphErr_CannotDoInCurrentContext  = -10863,
-	kAUGraphErr_InvalidAudioUnit          = -10871,
+	kAUGraphErr_InvalidAudioUnit          = -10864,
 };
 
 struct AUNodeRenderCallback

@@ -565,26 +565,6 @@ void AudioQueueInput::returnBuffers(const std::vector<Filled>& buffers)
 	}
 }
 
-void AudioQueueInput::notifyListeners(AudioQueuePropertyID id)
-{
-	std::vector<Listener> listeners;
-	{
-		std::lock_guard<std::mutex> lock(m_listenerMutex);
-		for (const Listener& l : m_listeners)
-		{
-			if (l.id == id)
-				listeners.push_back(l);
-		}
-	}
-	if (listeners.empty())
-		return;
-	AudioQueueRef queue = this;
-	runOnClient([listeners, queue, id] {
-		for (const Listener& l : listeners)
-			l.proc(l.userData, queue, id);
-	});
-}
-
 // ---- control ----
 
 OSStatus AudioQueueInput::start(const AudioTimeStamp *inStartTime)
@@ -839,29 +819,6 @@ OSStatus AudioQueueInput::getCurrentTime(AudioTimeStamp *outTimeStamp, Boolean *
 }
 
 // ---- properties ----
-
-OSStatus AudioQueueInput::addPropertyListener(AudioQueuePropertyID inID, AudioQueuePropertyListenerProc inProc, void *inUserData)
-{
-	if (!inProc)
-		return kAudioQueueErr_InvalidParameter;
-	std::lock_guard<std::mutex> lock(m_listenerMutex);
-	m_listeners.push_back({ inID, inProc, inUserData });
-	return noErr;
-}
-
-OSStatus AudioQueueInput::removePropertyListener(AudioQueuePropertyID inID, AudioQueuePropertyListenerProc inProc, void *inUserData)
-{
-	std::lock_guard<std::mutex> lock(m_listenerMutex);
-	for (auto it = m_listeners.begin(); it != m_listeners.end(); ++it)
-	{
-		if (it->id == inID && it->proc == inProc && it->userData == inUserData)
-		{
-			m_listeners.erase(it);
-			break;
-		}
-	}
-	return noErr;
-}
 
 OSStatus AudioQueueInput::getPropertySize(AudioQueuePropertyID inID, UInt32 *outDataSize)
 {
