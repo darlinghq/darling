@@ -231,4 +231,7 @@ add_framework(QTKit
         Foundation
         AppKit
         CoreMedia
+        QuartzCore
+        AVFAudio
+        AVFoundation
 )

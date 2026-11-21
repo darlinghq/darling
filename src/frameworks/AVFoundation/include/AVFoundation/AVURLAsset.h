@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +18,26 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <AVFoundation/AVAsset.h>
 
-@interface AVURLAsset : NSObject
+@interface AVURLAsset : AVAsset {
+@protected
+    NSURL *_URL;
+    NSDictionary *_options;
+    CMTime _duration;
+    CGSize _naturalSize;
+    float _preferredRate;
+    float _preferredVolume;
+    BOOL _playable;
+    NSMutableArray<AVAssetTrack *> *_tracks;
+}
+
++ (instancetype)URLAssetWithURL:(NSURL *)URL options:(NSDictionary<NSString *,id> *)options;
+- (instancetype)initWithURL:(NSURL *)URL options:(NSDictionary<NSString *,id> *)options;
+
+@property (nonatomic, readonly, copy) NSURL *URL;
+
++ (NSArray<NSString *> *)audiovisualTypes;
++ (NSArray<NSString *> *)audiovisualMIMETypes;
 
 @end

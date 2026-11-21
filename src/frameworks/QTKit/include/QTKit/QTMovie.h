@@ -17,10 +17,99 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
-#include <QTKit/QTKitDefines.h>
+#import <Foundation/Foundation.h>
+#import <QTKit/QTKitDefines.h>
+#import <QTKit/QTTime.h>
+#import <QTKit/QTTimeRange.h>
 
-@interface QTMovie : NSObject
+@class AVPlayer;
+@class AVPlayerItem;
+@class NSImage;
+
+enum {
+    QTMovieLoadStateError = -1L,
+    QTMovieLoadStateLoading = 1000L,
+    QTMovieLoadStateLoaded = 2000L,
+    QTMovieLoadStatePlayable = 10000L,
+    QTMovieLoadStatePlaythroughOK = 20000L,
+    QTMovieLoadStateComplete = 100000L
+};
+
+typedef NSUInteger QTIncludeFlags;
+enum {
+    QTIncludeStillImageTypes = 1 << 0,
+    QTIncludeTranscodableTypes = 1 << 1,
+    QTIncludeAllTypes = 0xffff
+};
+
+@interface QTMovie : NSObject {
+@protected
+    AVPlayer *_player;
+    AVPlayerItem *_playerItem;
+    NSURL *_url;
+    NSString *_filePath;
+    float _rate;
+    float _volume;
+    BOOL _muted;
+    NSInteger _loadState;
+    NSMutableDictionary *_attributes;
+}
+
++ (BOOL)canInitWithFile:(NSString *)fileName;
++ (BOOL)canInitWithURL:(NSURL *)url;
++ (NSArray *)movieFileTypes:(QTIncludeFlags)types;
++ (NSArray *)movieUnregisteredFileTypes:(QTIncludeFlags)types;
+
++ (instancetype)movieWithFile:(NSString *)fileName error:(NSError **)errorPtr;
++ (instancetype)movieWithURL:(NSURL *)url error:(NSError **)errorPtr;
++ (instancetype)movieWithData:(NSData *)data error:(NSError **)errorPtr;
++ (instancetype)movieWithAttributes:(NSDictionary *)attributes error:(NSError **)errorPtr;
++ (instancetype)movie;
+
+- (instancetype)initWithFile:(NSString *)fileName error:(NSError **)errorPtr;
+- (instancetype)initWithURL:(NSURL *)url error:(NSError **)errorPtr;
+- (instancetype)initWithData:(NSData *)data error:(NSError **)errorPtr;
+- (instancetype)initWithAttributes:(NSDictionary *)attributes error:(NSError **)errorPtr;
+- (instancetype)init;
+
+- (NSDictionary *)movieAttributes;
+- (void)setMovieAttributes:(NSDictionary *)attributes;
+- (id)attributeForKey:(NSString *)attributeKey;
+- (void)setAttribute:(id)value forKey:(NSString *)attributeKey;
+
+- (void)play;
+- (void)stop;
+- (float)rate;
+- (void)setRate:(float)rate;
+- (float)volume;
+- (void)setVolume:(float)volume;
+- (BOOL)muted;
+- (void)setMuted:(BOOL)muted;
+
+- (QTTime)duration;
+- (QTTime)currentTime;
+- (void)setCurrentTime:(QTTime)time;
+- (void)gotoBeginning;
+- (void)gotoEnd;
+- (void)stepForward;
+- (void)stepBackward;
+
+- (NSSize)currentSize;
+- (NSImage *)currentFrameImage;
+- (NSImage *)posterImage;
+- (NSImage *)frameImageAtTime:(QTTime)time;
+- (NSImage *)frameImageAtTime:(QTTime)time withAttributes:(NSDictionary *)attributes error:(NSError **)errorPtr;
+
+- (BOOL)isIdling;
+- (void)setIdling:(BOOL)idling;
+- (BOOL)autoIdles;
+- (void)setAutoIdles:(BOOL)autoIdles;
+
+- (NSInteger)loadState;
+- (QTTimeRange)availableRanges;
+- (QTTimeRange)loadedRanges;
+
+- (AVPlayer *)_player;
 
 @end
 

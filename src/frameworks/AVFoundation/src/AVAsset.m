@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,9 +19,47 @@
 */
 
 #import <AVFoundation/AVAsset.h>
+#import <AVFoundation/AVURLAsset.h>
+#import <AVFoundation/AVAssetTrack.h>
 #import <darling-stub-forwarding.h>
 
 @implementation AVAsset
+
++ (instancetype)assetWithURL:(NSURL *)URL
+{
+    return [AVURLAsset URLAssetWithURL:URL options:nil];
+}
+
+- (CMTime)duration { return kCMTimeZero; }
+- (float)preferredRate { return 1.0f; }
+- (float)preferredVolume { return 1.0f; }
+- (CGSize)naturalSize { return CGSizeZero; }
+- (BOOL)isPlayable { return NO; }
+- (NSArray<AVAssetTrack *> *)tracks { return [NSArray array]; }
+
+- (NSArray<AVAssetTrack *> *)tracksWithMediaType:(AVMediaType)mediaType
+{
+    NSMutableArray *result = [NSMutableArray array];
+    for (AVAssetTrack *track in [self tracks]) {
+        if ([[track mediaType] isEqualToString:mediaType])
+            [result addObject:track];
+    }
+    return result;
+}
+
+- (NSArray<AVAssetTrack *> *)tracksWithMediaCharacteristic:(NSString *)mediaCharacteristic
+{
+    return [NSArray array];
+}
+
+- (AVAssetTrack *)trackWithTrackID:(CMPersistentTrackID)trackID
+{
+    for (AVAssetTrack *track in [self tracks]) {
+        if ([track trackID] == trackID)
+            return track;
+    }
+    return nil;
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);

@@ -12,6 +12,13 @@ generate_sdk_framework(AVFoundation
     HEADER "include/AVFoundation"
 )
 
+find_package(FFmpeg REQUIRED)
+
+include_directories(
+    ${FFMPEG_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/src/CoreAudio
+)
+
 add_framework(AVFoundation
     FAT
     CURRENT_VERSION
@@ -532,6 +539,10 @@ add_framework(AVFoundation
         CoreVideo
         CoreGraphics
         AudioToolbox
+        VideoToolbox
+        avformat
+        avcodec
+        avutil
 )
 
 # AVFAudio is a subframework of AVFoundation on Darwin, so a client that links only
