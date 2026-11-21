@@ -111,11 +111,15 @@ if build nsurl-volume-keys "$ext/corefoundation/tests/nsurl-volume-keys.m" -fram
 	expect_key keys / VolumeURL "file:///"
 	expect_key keys '/Volumes/A:B' VolumeName "A/B"
 	expect_key keys '/Volumes/Tom & Jerry <1>' VolumeName "Tom & Jerry <1>"
+	expect_key keys / TypeIdentifier public.volume
+	expect_key keys '/Volumes/Unmount Test/' TypeIdentifier public.volume
+	expect_key keys '/Volumes/Unmount Test/hello.txt' TypeIdentifier public.plain-text
 	[ "$keys_ok" = 1 ] && [ "$(rc keys)" = 0 ] && pass "volume keys" || fail "volume keys: $(rc keys) $(cat "$work/keys.err")"
 	# after the image is detached (Review Focus 2)
 	keys_ok=1
 	expect_key keys-after /Volumes VolumeURL "file:///"
 	expect_key keys-after '/Volumes/Unmount Test' VolumeName nil
+	expect_key keys-after /Volumes TypeIdentifier public.folder
 	[ "$keys_ok" = 1 ] && [ "$(rc keys-after)" = 0 ] && pass "volume keys after detach" \
 		|| fail "volume keys after detach: $(rc keys-after) $(outputs keys-after)"
 fi
