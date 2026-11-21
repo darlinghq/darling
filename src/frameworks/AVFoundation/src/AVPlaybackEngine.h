@@ -88,6 +88,9 @@ AVPEEngine *AVPEEngineCreate(AVPEMedia *media, AVPECallbacks callbacks);
 void AVPEEngineDestroy(AVPEEngine *engine);
 
 void AVPEEngineSetRate(AVPEEngine *engine, float rate);
+// How the audio is processed at rates other than 1: the pitch is kept (Spectral, TimeDomain) or follows the rate.
+typedef enum { AVPEAudioAlgorithmSpectral, AVPEAudioAlgorithmTimeDomain, AVPEAudioAlgorithmVarispeed } AVPEAudioAlgorithm;
+void AVPEEngineSetAudioAlgorithm(AVPEEngine *engine, AVPEAudioAlgorithm algorithm);
 float AVPEEngineRate(AVPEEngine *engine);
 int64_t AVPEEngineTimeUs(AVPEEngine *engine);
 void AVPEEngineSeek(AVPEEngine *engine, int64_t timeUs, uint64_t token);

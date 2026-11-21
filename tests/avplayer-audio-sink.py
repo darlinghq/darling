@@ -137,6 +137,42 @@ def near(value, expected, tolerance):
     return abs(value - expected) <= tolerance
 
 
+def tone_pitches(samples, parts=2):
+    """The sound as a whole (gaps of up to 60 ms bridged: a short dropout of the output is not a break) and the frequency of each of
+    `parts` equal parts of it: (seconds of sound, [Hz of each part]). The frequency of a part is the median of its 50 ms windows,
+    each counted from the rising zero crossings; a window with a dropout in it (a run of near-silence) is left out. The length of
+    the sound is from its first to its last sample above the threshold."""
+    threshold = 1500
+    idx = [i for i, v in enumerate(samples) if abs(v) > threshold]
+    if len(idx) < 100:
+        return 0.0, [0.0] * parts
+    runs, start, prev = [], idx[0], idx[0]
+    for i in idx[1:]:
+        if i - prev > RATE * 0.06:
+            runs.append((start, prev))
+            start = i
+        prev = i
+    runs.append((start, prev))
+    first, last = max(runs, key=lambda r: r[1] - r[0])
+    win = RATE // 20
+    freqs = []
+    for a in range(first, last - win, win):
+        w = samples[a:a + win]
+        longest = run = 0
+        for v in w:
+            run = run + 1 if abs(v) < 60 else 0
+            longest = max(longest, run)
+        if longest < 40:
+            freqs.append((a, sum(1 for k in range(1, win) if w[k - 1] < 0 <= w[k]) * 20.0))
+    out = []
+    for p in range(parts):
+        lo, hi = first + (last - first) * p // parts, first + (last - first) * (p + 1) // parts
+        # windows in the middle of the part: a window that straddles a change of pitch tells nothing
+        mid = sorted(f for a, f in freqs if lo <= a and a + win <= hi)
+        out.append(mid[len(mid) // 2] if mid else 0.0)
+    return (last - first) / RATE, out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--player', required=True, help='the guest path of avplayer-audio-play')
@@ -175,10 +211,32 @@ def main():
     check(near(full, 0.177, 0.06), 'volume 0.5 halves the level (rms %.3f)' % full)
     samples, _, _ = play('tones-mp3.mp3', 4, 1, 1, 1)
     check(not segments(samples), 'a muted player is silent')
-    samples, _, _ = play('tones-mp3.mp3', 4, 2)
-    segs = segments(samples)
-    total = sum(e - s for s, e, _, _ in segs)
-    check(near(total, 1.0, 0.25), 'rate 2: the two seconds take one (%.2f s)' % total)
+    # The default algorithm (Spectral) and TimeDomain keep the pitch at another rate, Varispeed lets it follow.
+    for algorithm, label, hz in (('default', 'the default algorithm', (440, 880)), ('TimeDomain', 'TimeDomain', (440, 880)),
+                                 ('LowQualityZeroLatency', 'LowQualityZeroLatency', (440, 880)), ('Varispeed', 'Varispeed', (880, 1760))):
+        for attempt in range(3):
+            samples, _, _ = play('tones-mp3.mp3', 4, 2, 1, 0, -1, algorithm)
+            seconds, parts = tone_pitches(samples, 4)
+            low, high = parts[0], parts[3]
+            if near(seconds, 1.0, 0.25) and near(low, hz[0], 0.1 * hz[0]) and near(high, hz[1], 0.1 * hz[1]):
+                break
+        check(near(seconds, 1.0, 0.25), 'rate 2, %s: the two seconds take one (%.2f s)' % (label, seconds))
+        check(near(low, hz[0], 0.1 * hz[0]) and near(high, hz[1], 0.1 * hz[1]), 'rate 2, %s: %d Hz, then %d Hz (%.0f Hz, %.0f Hz)' % (label, hz[0], hz[1], low, high))
+    # a rate set while playing, and the algorithm changed while playing: the sound goes on at the position
+    for attempt in range(3):
+        samples, _, _ = play('tones-mp3.mp3', 4, 1, 1, 0, -1, 'default', 2)
+        seconds, parts = tone_pitches(samples, 3)
+        if near(seconds, 1.5 + 0.25, 0.4) and near(parts[2], 880, 90):
+            break
+    check(near(seconds, 1.5 + 0.25, 0.4) and near(parts[0], 440, 45) and near(parts[2], 880, 90),
+          'rate 2 set after 1.5 s: 1.5 s plus the rest at double speed, the pitch stays (%.2f s; %.0f Hz ... %.0f Hz)' % (seconds, parts[0], parts[2]))
+    for attempt in range(3):
+        samples, _, _ = play('tones-mp3.mp3', 5, 0.8, 1, 0, -1, 'default', 'none', 'Varispeed')
+        seconds, parts = tone_pitches(samples, 5)
+        if parts[4] < 800 and seconds > 2.0:
+            break
+    check(parts[4] < 800 and seconds > 2.0,
+          'the algorithm changed to Varispeed while playing at rate 0.8: the 880 Hz tone ends up lower, at about 700 Hz (%.2f s; %.0f Hz at the end)' % (seconds, parts[4]))
     samples, _, _ = play('tones-mp3.mp3', 4, 1, 1, 0, 1.3)
     segs = segments(samples)
     total = sum(e - s for s, e, _, _ in segs)

@@ -29,6 +29,7 @@
     int status;
     NSError *error;
     NSMutableArray *outputs;
+    NSString *audioTimePitchAlgorithm; // nil: the default
     __unsafe_unretained AVPlayer *player; // the player the item was given to, if any
 }
 

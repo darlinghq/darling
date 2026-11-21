@@ -22,6 +22,7 @@
 #import <CoreMedia/CMTime.h>
 #import <CoreGraphics/CGGeometry.h>
 #import <AVFoundation/AVAsynchronousKeyValueLoading.h>
+#import <AVFoundation/AVAudioProcessingSettings.h>
 
 @class AVAsset;
 @class AVPlayerItemOutput;
@@ -55,6 +56,9 @@ extern NSString *const AVPlayerItemTimeJumpedNotification;
 @property (nonatomic, readonly) CGSize presentationSize;
 @property (nonatomic, readonly) NSArray *tracks;
 @property (nonatomic, readonly) NSArray<AVPlayerItemOutput *> *outputs;
+// How the audio is processed when the player plays at a rate other than 1. Spectral (the default) and
+// TimeDomain keep the pitch, Varispeed lets it follow the rate.
+@property (nonatomic, copy, null_resettable) AVAudioTimePitchAlgorithm audioTimePitchAlgorithm;
 
 - (CMTime)currentTime;
 - (void)seekToTime:(CMTime)time;

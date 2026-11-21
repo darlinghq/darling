@@ -300,6 +300,7 @@ static void engineStarted(void *context)
         }
     }
     [self updateVolume];
+    [self updateAudioTimePitchAlgorithm];
     if (!engine) {
         failure = [NSError errorWithDomain:AVFoundationErrorDomain code:AVPlaybackErrorFileFormatNotRecognized
                                   userInfo:@{ NSLocalizedDescriptionKey: @"Cannot Open" }];
@@ -321,6 +322,21 @@ static void engineStarted(void *context)
         [current _setStatus:result ? AVPlayerItemStatusFailed : AVPlayerItemStatusReadyToPlay error:result];
     }];
     [result release];
+}
+
+// The algorithm of the item as the engine knows it: the deprecated LowQualityZeroLatency plays like
+// TimeDomain, a name that is not an algorithm like the default.
+- (void)updateAudioTimePitchAlgorithm
+{
+    if (!engine || !item)
+        return;
+    NSString *name = [item audioTimePitchAlgorithm];
+    AVPEAudioAlgorithm algorithm = AVPEAudioAlgorithmSpectral;
+    if ([name isEqualToString:AVAudioTimePitchAlgorithmTimeDomain] || [name isEqualToString:AVAudioTimePitchAlgorithmLowQualityZeroLatency])
+        algorithm = AVPEAudioAlgorithmTimeDomain;
+    else if ([name isEqualToString:AVAudioTimePitchAlgorithmVarispeed])
+        algorithm = AVPEAudioAlgorithmVarispeed;
+    AVPEEngineSetAudioAlgorithm(engine, algorithm);
 }
 
 // The level of the audio: the volume, or silence while muted.

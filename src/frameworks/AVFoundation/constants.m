@@ -93,6 +93,7 @@ const AVFileType AVFileTypeQuickTimeMovie = @"com.apple.quicktime-movie";
 const AVAudioTimePitchAlgorithm AVAudioTimePitchAlgorithmTimeDomain = @"TimeDomain";
 const AVAudioTimePitchAlgorithm AVAudioTimePitchAlgorithmSpectral = @"Spectral";
 const AVAudioTimePitchAlgorithm AVAudioTimePitchAlgorithmVarispeed = @"Varispeed";
+const AVAudioTimePitchAlgorithm AVAudioTimePitchAlgorithmLowQualityZeroLatency = @"LowQualityZeroLatency";
 
 const AVLayerVideoGravity AVLayerVideoGravityResize = @"AVLayerVideoGravityResize";
 const AVLayerVideoGravity AVLayerVideoGravityResizeAspect = @"AVLayerVideoGravityResizeAspect";
