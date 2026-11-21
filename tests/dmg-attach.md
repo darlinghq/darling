@@ -92,3 +92,15 @@ Two images with the same volume name attached at the same moment must get differ
 chosen and the volume mounted while holding a lock on the mount root). When the volume cannot be mounted, hdiutil
 prints what FUSE or fusermount said after the `attach failed` line (checked in non-root and root mode; rootless mode
 mounts on a read-only directory without complaint).
+
+### Attaching an image that is attached (macOS 26.7.3, 25G342)
+
+- A second `hdiutil attach -nobrowse unmount-test.dmg`, also through a symbolic link to the file, prints the same
+  devices and `/Volumes/Unmount Test` and exits 0; `hdiutil info` still lists the image once. A copy of the file
+  attaches separately (`/Volumes/Unmount Test 1`).
+- A second attach of an attached `sla-test.dmg` does not ask for the agreement: with stdin `/dev/null` it prints the
+  devices and exits 0 (`dmg-license.sh`, "attached image asks nothing").
+
+In Darling the image is identified by its real path, which is the source (`f_mntfromname`) of its volume, so a hard
+link to an attached image attaches again. `dmg-attach.sh` "attach twice" and `dmg-api.c` check it; `dmg-api.c` does
+it under `/Volumes`, because `getfsstat` does not list volumes mounted on the host side (under `/Volumes/SystemRoot`).

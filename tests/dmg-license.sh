@@ -65,6 +65,14 @@ guest eof "hdiutil attach '$image' </dev/null"
 check_and_detach eof
 canceled eof "no answer: canceled"
 
+# an image that is attached already is not asked about again (macOS 26.7.3, see dmg-license.md)
+guest asked "printf 'y\\n' | hdiutil attach '$image'"
+guest again "hdiutil attach '$image' </dev/null"
+check_and_detach again
+[ "$(rc asked)" = 0 ] && [ "$(rc again)" = 0 ] && ! grep -q "SLA TEST AGREEMENT" "$work/again.out" \
+	&& [ "$(tail -n 1 "$work/again.out" | cut -f 3)" = "$mp" ] \
+	&& pass "attached image asks nothing" || fail "attached image asks nothing: rc $(rc asked) $(rc again), out: $(cat "$work/again.out"), err: $(cat "$work/again.err")"
+
 attach y 'y\n';          agreed y "answer y"
 attach Yes 'Yes\n';      agreed Yes "answer Yes"
 attach spacey ' y\n';    agreed spacey "answer ' y'"
