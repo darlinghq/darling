@@ -13,7 +13,7 @@ plans actually produced), and each ends in working, tested software.
 | 3 | DiskArbitration: `diskarbitrationd` + client library; `hdiutil` reports DA disk names | darling (src/frameworks/DiskArbitration, new daemon), darling-dmg, darling-xnu (volume name and kind) | 1, 2 | done: `2026-11-16-disk-arbitration.md` |
 | 4 | Foundation volume enumeration, NSURL volume keys, trash; NSWorkspace volumes, eject, mount notifications, `iconForFile:`, recycle, reveal | xnu, corefoundation, foundation, cocotron, darling (CoreServices) | 3 | done: `2026-11-16-workspace-volumes.md` |
 | 5 | NSCollectionView (modern API, layouts, selection, drag & drop); pasteboard file URLs | cocotron, darling (UIFoundation) | — (parallel to 1–4) | done: `2026-11-20-collection-view.md` |
-| 6 | DiskImageMounter.app (licence UI, attach, open volume) | darling | 2, 4 | — |
+| 6 | DiskImageMounter.app (licence UI, attach, open volume) | corefoundation, darling-dmg, cocotron, darling (CoreServices, DiskImageMounter) | 2, 4 | done: `2026-11-21-disk-image-mounter.md` |
 | 7 | Finder.app (windows, sidebar, icon/list views, `.DS_Store`, styled windows, file ops, eject, reveal) | darling | 4, 5 | — |
 | 8 | Launcher "open host file", `.desktop` + MIME, packaging; end-to-end test | darling (src/startup, packaging) | 6, 7 | — |
 
