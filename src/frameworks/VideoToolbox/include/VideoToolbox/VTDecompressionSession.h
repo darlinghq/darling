@@ -46,16 +46,54 @@ VT_EXPORT OSStatus VTDecompressionSessionCreate(CFAllocatorRef allocator,
 	CMVideoFormatDescriptionRef videoFormatDescription, CFDictionaryRef videoDecoderSpecification,
 	CFDictionaryRef destinationImageBufferAttributes, const VTDecompressionOutputCallbackRecord *outputCallback,
 	CF_RETURNS_RETAINED VTDecompressionSessionRef *decompressionSessionOut);
+VT_EXPORT OSStatus VTDecompressionSessionCreateWithOptions(CFAllocatorRef allocator,
+	CMVideoFormatDescriptionRef videoFormatDescription, CFDictionaryRef videoDecoderSpecification,
+	CFDictionaryRef destinationImageBufferAttributes, const VTDecompressionOutputCallbackRecord *outputCallback,
+	CFDictionaryRef options, CF_RETURNS_RETAINED VTDecompressionSessionRef *decompressionSessionOut);
 VT_EXPORT void VTDecompressionSessionInvalidate(VTDecompressionSessionRef session);
 VT_EXPORT CFTypeID VTDecompressionSessionGetTypeID(void);
 VT_EXPORT OSStatus VTDecompressionSessionDecodeFrame(VTDecompressionSessionRef session, CMSampleBufferRef sampleBuffer,
 	VTDecodeFrameFlags decodeFlags, void *sourceFrameRefCon, VTDecodeInfoFlags *infoFlagsOut);
+
+#if __BLOCKS__
+typedef void (^VTDecompressionOutputHandler)(OSStatus status, VTDecodeInfoFlags infoFlags,
+	CVImageBufferRef imageBuffer, CMTime presentationTimeStamp, CMTime presentationDuration);
+
+VT_EXPORT OSStatus VTDecompressionSessionDecodeFrameWithOutputHandler(VTDecompressionSessionRef session,
+	CMSampleBufferRef sampleBuffer, VTDecodeFrameFlags decodeFlags, VTDecodeInfoFlags *infoFlagsOut,
+	VTDecompressionOutputHandler outputHandler);
+VT_EXPORT OSStatus VTDecompressionSessionDecodeFrameWithOptionsAndOutputHandler(VTDecompressionSessionRef session,
+	CMSampleBufferRef sampleBuffer, VTDecodeFrameFlags decodeFlags, CFDictionaryRef frameOptions,
+	VTDecodeInfoFlags *infoFlagsOut, VTDecompressionOutputHandler outputHandler);
+#endif
+
+VT_EXPORT OSStatus VTDecompressionSessionDecodeFrameWithOptions(VTDecompressionSessionRef session,
+	CMSampleBufferRef sampleBuffer, VTDecodeFrameFlags decodeFlags, CFDictionaryRef frameOptions,
+	void *sourceFrameRefCon, VTDecodeInfoFlags *infoFlagsOut);
+
 VT_EXPORT OSStatus VTDecompressionSessionFinishDelayedFrames(VTDecompressionSessionRef session);
 VT_EXPORT Boolean VTDecompressionSessionCanAcceptFormatDescription(VTDecompressionSessionRef session,
 	CMFormatDescriptionRef newFormatDesc);
 VT_EXPORT OSStatus VTDecompressionSessionWaitForAsynchronousFrames(VTDecompressionSessionRef session);
 VT_EXPORT OSStatus VTDecompressionSessionCopyBlackPixelBuffer(VTDecompressionSessionRef session,
 	CF_RETURNS_RETAINED CVPixelBufferRef *pixelBufferOut);
+
+VT_EXPORT OSStatus VTDecompressionSessionCopyProperty(VTDecompressionSessionRef session, CFStringRef propertyKey,
+	CFAllocatorRef allocator, void *propertyValueOut);
+VT_EXPORT OSStatus VTDecompressionSessionSetProperty(VTDecompressionSessionRef session, CFStringRef propertyKey,
+	CFTypeRef propertyValue);
+VT_EXPORT OSStatus VTDecompressionSessionSetProperties(VTDecompressionSessionRef session,
+	CFDictionaryRef propertyDictionary);
+VT_EXPORT OSStatus VTDecompressionSessionCopySupportedPropertyDictionary(VTDecompressionSessionRef session,
+	CF_RETURNS_RETAINED CFDictionaryRef *supportedPropertyDictionaryOut);
+VT_EXPORT OSStatus VTDecompressionSessionCopySerializableProperties(VTDecompressionSessionRef session,
+	CFAllocatorRef allocator, CF_RETURNS_RETAINED CFDictionaryRef *dictionaryOut);
+
+VT_EXPORT OSStatus VTDecompressionSessionGetMinAndMaxOutputPresentationTimeStampOfFramesBeingDecoded(
+	VTDecompressionSessionRef session, CMTime *minPresentationTimeStampOut, CMTime *maxPresentationTimeStampOut);
+VT_EXPORT OSStatus VTDecompressionSessionGetMinOutputPresentationTimeStampOfFramesBeingDecoded(
+	VTDecompressionSessionRef session, CMTime *minPresentationTimeStampOut);
+
 VT_EXPORT Boolean VTIsHardwareDecodeSupported(CMVideoCodecType codecType);
 VT_EXPORT void VTRegisterSupplementalVideoDecoderIfAvailable(CMVideoCodecType codecType);
 

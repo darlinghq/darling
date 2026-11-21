@@ -12,6 +12,13 @@ generate_sdk_framework(VideoToolbox
     HEADER "include/VideoToolbox"
 )
 
+find_package(FFmpeg REQUIRED)
+
+include_directories(
+    ${FFMPEG_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/src/CoreAudio
+)
+
 add_framework(VideoToolbox
     FAT
     CURRENT_VERSION
@@ -30,4 +37,9 @@ add_framework(VideoToolbox
         system
         objc
         Foundation
+        CoreMedia
+        CoreVideo
+        avcodec
+        avutil
 )
+
