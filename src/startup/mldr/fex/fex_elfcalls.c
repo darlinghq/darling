@@ -229,6 +229,11 @@ void* fex_dlsym_wrap_if_func(void* host_sym, const char* symbol_name)
 	uint32_t slot = g_dlsym_count++;
 	g_dlsym_targets[slot] = host_sym;
 	g_dlsym_names[slot] = symbol_name ? strdup(symbol_name) : NULL;
+	if (symbol_name && !g_dlsym_names[slot]) {
+		pthread_mutex_unlock(&g_dlsym_mutex);
+		fprintf(stderr, "mldr/fex: out of memory recording the name of a host symbol\n");
+		abort();
+	}
 	void* stub = g_dlsym_stub_area + (slot * FEX_STUB_SIZE);
 
 	pthread_mutex_unlock(&g_dlsym_mutex);
@@ -240,6 +245,9 @@ void* fex_dlsym_wrap_if_func(void* host_sym, const char* symbol_name)
 // are replaced by host functions that run the guest handler under FEX.
 static uintptr_t g_guest_x_error_handler = 0;
 static uintptr_t g_guest_x_io_error_handler = 0;
+// The handlers Xlib had before the guest replaced them: host code that the guest may later restore.
+static uint64_t g_host_x_error_native = 0;
+static uint64_t g_host_x_io_error_native = 0;
 
 static int host_x_error_handler(void* display, void* event)
 {
@@ -335,19 +343,27 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 
 	const char* name = (slot < DARLING_FEX_DLSYM_MAX_SLOTS) ? g_dlsym_names[slot] : NULL;
 	uintptr_t* guest_handler = NULL;
+	uint64_t* host_native = NULL;
 	uint64_t host_handler = 0;
 	if (name && strcmp(name, "XSetErrorHandler") == 0) {
 		guest_handler = &g_guest_x_error_handler;
+		host_native = &g_host_x_error_native;
 		host_handler = (uint64_t)(uintptr_t)host_x_error_handler;
 	} else if (name && strcmp(name, "XSetIOErrorHandler") == 0) {
 		guest_handler = &g_guest_x_io_error_handler;
+		host_native = &g_host_x_io_error_native;
 		host_handler = (uint64_t)(uintptr_t)host_x_io_error_handler;
 	}
 	uint64_t previous_guest_handler = 0;
 	if (guest_handler) {
 		previous_guest_handler = *guest_handler;
-		*guest_handler = (uintptr_t)state->rdi;
-		state->rdi = state->rdi ? host_handler : 0;
+		if (state->rdi && state->rdi == *host_native) {
+			// The guest is restoring the handler Xlib had before ours: it is host code, so pass it back as is.
+			*guest_handler = 0;
+		} else {
+			*guest_handler = (uintptr_t)state->rdi;
+			state->rdi = state->rdi ? host_handler : 0;
+		}
 	}
 
 	// The arguments after the sixth are on the guest stack, above the return address. X11 and Wayland
@@ -424,16 +440,21 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 		"stp x9, x10, [sp, #96]\n\t"
 		"blr %[fn]\n\t"
 		"add sp, sp, #112\n\t"
-		: "+r"(x0), "+r"(x1), "+w"(d0), "+w"(d1), "+w"(d2), "+w"(d3),
-		  "+w"(d4), "+w"(d5), "+w"(d6), "+w"(d7)
-		: "r"(x2), "r"(x3), "r"(x4), "r"(x5), "r"(x6), "r"(x7),
-		  [stk] "r"(&st[2]), [fn] "r"(target)
+		: "+r"(x0), "+r"(x1), "+r"(x2), "+r"(x3), "+r"(x4), "+r"(x5), "+r"(x6), "+r"(x7),
+		  "+w"(d0), "+w"(d1), "+w"(d2), "+w"(d3), "+w"(d4), "+w"(d5), "+w"(d6), "+w"(d7)
+		: [stk] "r"(&st[2]), [fn] "r"(target)
 		: "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15",
-		  "x16", "x17", "x18", "x30", "cc", "memory"
+		  "x16", "x17", "x18", "x30", "cc", "memory",
+		  "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23",
+		  "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31"
 	);
 
-	if (guest_handler && x0 == host_handler)
-		x0 = previous_guest_handler;
+	if (guest_handler) {
+		if (x0 == host_handler)
+			x0 = previous_guest_handler;
+		else
+			*host_native = x0;
+	}
 	state->rax = x0;
 	state->rdx = x1;
 	v0 = d0;
