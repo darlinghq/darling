@@ -17,7 +17,7 @@
 
 //
 // End-to-end integration test for Darling appearance synchronization:
-// - Verifies AppKit observes AppleInterfaceThemeChangedNotification through
+// - Verifies AppKit observes AppleInterfaceThemeChangedNotification, posted by another process, through
 //   the distributed notification center and updates effectiveAppearance via KVO.
 // - Verifies view viewDidChangeEffectiveAppearance callbacks and dynamic system colors.
 // - Verifies settingsd FollowHostAppearance opt-out preference in com.darlinghq.settingsd.
@@ -30,6 +30,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
+#include <mach-o/dyld.h>
 
 #define SETTINGSD_DOMAIN CFSTR("com.darlinghq.settingsd")
 #define UNIVERSAL_ACCESS_DOMAIN CFSTR("com.apple.universalaccess")
@@ -123,13 +125,13 @@ static void set_global_pref(CFStringRef key, CFPropertyListRef val) {
     [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
+static char s_self_path[1024];
+
+// Posts the notification from a separate process, the way settingsd does, so that delivery across processes is covered.
 static void post_theme_changed_notification(void) {
-    CFNotificationCenterRef distCenter = CFNotificationCenterGetDistributedCenter();
-    if (distCenter != NULL) {
-        CFNotificationCenterPostNotification(distCenter,
-                                             CFSTR("AppleInterfaceThemeChangedNotification"),
-                                             NULL, NULL, TRUE);
-    }
+    char command[1100];
+    snprintf(command, sizeof(command), "'%s' --post", s_self_path);
+    system(command);
 }
 
 // Test helper objects for KVO and view callbacks
@@ -166,6 +168,19 @@ static void post_theme_changed_notification(void) {
 @end
 
 int main(int argc, char *argv[]) {
+    if (argc == 2 && strcmp(argv[1], "--post") == 0) {
+        CFNotificationCenterRef distCenter = CFNotificationCenterGetDistributedCenter();
+        if (distCenter != NULL) {
+            CFNotificationCenterPostNotification(distCenter, CFSTR("AppleInterfaceThemeChangedNotification"),
+                                                 NULL, NULL, TRUE);
+        }
+        return 0;
+    }
+    uint32_t selfPathSize = sizeof(s_self_path);
+    if (_NSGetExecutablePath(s_self_path, &selfPathSize) != 0) {
+        printf("FAIL: executable path\n");
+        return 1;
+    }
     setlinebuf(stdout);
     setlinebuf(stderr);
 

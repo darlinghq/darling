@@ -32,7 +32,10 @@ static BOOL s_verbose = NO;
 // QUIRK: Predefined macOS accent presets (-1 Graphite to 6 Pink) in the light appearance, and their
 // corresponding highlight float strings.
 // Evidence: black-box reads of +[NSColor controlAccentColor] in sRGB for each AppleAccentColor value on macOS
-// 10.14.4 (tier 2). The highlight strings were not checked against a Mac.
+// 10.14.4 (tier 2); the numbers are listed in https://alexwlchan.net/2022/changing-the-macos-accent-colour/. The
+// highlight strings are the format that https://pypi.org/project/osx-colors/ shows ("0.752941 0.964706 0.678431
+// Green"); on macOS 10.14.4, running with each of these strings and its accent reproduced the selection colours
+// that darling-cocotron pins, so they are consistent with AppKit but were not read back from a Mac's preferences.
 // Test: tests/settingsd-desktop-appearance.py (host portal mapping) and tests/src/appearance_theme_end_to_end.m
 static const struct {
     int code;
@@ -248,7 +251,7 @@ static void apply_appearance_settings(int has_dark, int dark,
         return;
     }
 
-    BOOL anyChanged = NO;
+    BOOL styleChanged = NO, contrastChanged = NO, colorsChanged = NO;
 
     // 1. Color scheme (AppleInterfaceStyle in global preferences)
     if (has_dark) {
@@ -260,12 +263,12 @@ static void apply_appearance_settings(int has_dark, int dark,
             if (dark) {
                 CFPreferencesSetValue(CFSTR("AppleInterfaceStyle"), CFSTR("Dark"),
                                       kCFPreferencesAnyApplication, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
-                anyChanged = YES;
+                styleChanged = YES;
             } else {
                 if ([lastStyle isEqualToString:@"Dark"]) {
                     CFPreferencesSetValue(CFSTR("AppleInterfaceStyle"), NULL,
                                           kCFPreferencesAnyApplication, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
-                    anyChanged = YES;
+                    styleChanged = YES;
                 }
             }
             CFPreferencesSetAppValue(CFSTR("LastAppliedInterfaceStyle"), (__bridge CFStringRef)hostStyle, SETTINGSD_DOMAIN);
@@ -283,7 +286,7 @@ static void apply_appearance_settings(int has_dark, int dark,
                                   UNIVERSAL_ACCESS_DOMAIN, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
             CFPreferencesSynchronize(UNIVERSAL_ACCESS_DOMAIN, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
             CFPreferencesSetAppValue(CFSTR("LastAppliedContrast"), (CFPropertyListRef)@(contrast), SETTINGSD_DOMAIN);
-            anyChanged = YES;
+            contrastChanged = YES;
         }
         if (lastContrastRef) CFRelease(lastContrastRef);
     }
@@ -303,20 +306,30 @@ static void apply_appearance_settings(int has_dark, int dark,
             CFPreferencesSetValue(CFSTR("AppleHighlightColor"), (CFPropertyListRef)[NSString stringWithUTF8String:highlightStr],
                                   kCFPreferencesAnyApplication, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
             CFPreferencesSetAppValue(CFSTR("LastAppliedAccentCode"), (CFPropertyListRef)@(accentCode), SETTINGSD_DOMAIN);
-            anyChanged = YES;
+            colorsChanged = YES;
         }
         if (lastAccentRef) CFRelease(lastAccentRef);
     }
 
-    if (anyChanged) {
+    if (styleChanged || contrastChanged || colorsChanged) {
         CFPreferencesSynchronize(kCFPreferencesAnyApplication, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
         CFPreferencesAppSynchronize(SETTINGSD_DOMAIN);
 
-        // QUIRK: Broadcast AppleInterfaceThemeChangedNotification through the distributed center.
-        // Evidence: macOS 10.14+ distributed notification dispatch (tier 2, MAC-EVIDENCE).
+        // QUIRK: a change of the interface style is announced as AppleInterfaceThemeChangedNotification and a change
+        // of the accent or highlight colour as AppleColorPreferencesChangedNotification, both through the
+        // distributed notification center; Increase Contrast has no known notification of its own, so it is announced
+        // with the first. Neither name is documented by Apple.
+        // Evidence: widely reported behaviour (tier 4), see the references next to the observers in
+        // darling-cocotron AppKit/NSApplication.m (AppleInterfaceThemeChangedNotification:
+        // https://samasaur1.github.io/blog/terminal-apps-respecting-system-dark-mode; accent change:
+        // https://alexwlchan.net/2022/changing-the-macos-accent-colour/).
+        // Test: tests/src/appearance_theme_end_to_end.m
         CFNotificationCenterRef distCenter = CFNotificationCenterGetDistributedCenter();
         if (distCenter != NULL) {
-            CFNotificationCenterPostNotification(distCenter, CFSTR("AppleInterfaceThemeChangedNotification"), NULL, NULL, TRUE);
+            if (styleChanged || contrastChanged)
+                CFNotificationCenterPostNotification(distCenter, CFSTR("AppleInterfaceThemeChangedNotification"), NULL, NULL, TRUE);
+            if (colorsChanged)
+                CFNotificationCenterPostNotification(distCenter, CFSTR("AppleColorPreferencesChangedNotification"), NULL, NULL, TRUE);
         }
     }
 }
