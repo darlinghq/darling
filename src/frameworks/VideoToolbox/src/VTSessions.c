@@ -198,8 +198,12 @@ static void VTDecompressionSessionFinalize(CFTypeRef cf)
 	struct OpaqueVTDecompressionSession *session = (struct OpaqueVTDecompressionSession *)cf;
 	session->invalidated = true;
 
+	/*
+	 * Every queued decode item holds a reference to the session, so none is outstanding here. The
+	 * last reference may be dropped by an item running on the decode queue itself, so the queue
+	 * must not be waited on.
+	 */
 	if (session->decodeQueue) {
-		dispatch_sync(session->decodeQueue, ^{});
 		dispatch_release(session->decodeQueue);
 		session->decodeQueue = NULL;
 	}
@@ -383,6 +387,72 @@ static inline uint8_t clamp_u8(int v)
 	return (uint8_t)(v < 0 ? 0 : (v > 255 ? 255 : v));
 }
 
+static bool output_format_supported(OSType format)
+{
+	switch (format) {
+	case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange:
+	case kCVPixelFormatType_420YpCbCr8BiPlanarFullRange:
+	case kCVPixelFormatType_420YpCbCr8Planar:
+	case kCVPixelFormatType_32BGRA:
+	case kCVPixelFormatType_32ARGB:
+		return true;
+	default:
+		return false;
+	}
+}
+
+// Whether the conversion below can turn a decoded frame of this format into the output format.
+static bool frame_convertible(int frameFormat, OSType outputFormat)
+{
+	switch (outputFormat) {
+	case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange:
+	case kCVPixelFormatType_420YpCbCr8BiPlanarFullRange:
+		return frameFormat == AV_PIX_FMT_YUV420P || frameFormat == AV_PIX_FMT_YUVJ420P || frameFormat == AV_PIX_FMT_NV12;
+	case kCVPixelFormatType_420YpCbCr8Planar:
+		return frameFormat == AV_PIX_FMT_YUV420P || frameFormat == AV_PIX_FMT_YUVJ420P;
+	case kCVPixelFormatType_32BGRA:
+		return frameFormat == AV_PIX_FMT_YUV420P || frameFormat == AV_PIX_FMT_YUVJ420P || frameFormat == AV_PIX_FMT_BGRA;
+	case kCVPixelFormatType_32ARGB:
+		return frameFormat == AV_PIX_FMT_YUV420P || frameFormat == AV_PIX_FMT_YUVJ420P || frameFormat == AV_PIX_FMT_ARGB;
+	default:
+		return false;
+	}
+}
+
+// Converts a 4:2:0 frame to packed 8-bit RGB. The matrix follows the frame's colour space (BT.709 when it is
+// unspecified and the picture is HD), the range its range flag.
+static void convert_yuv420_to_rgb32(const AVFrame *frame, uint8_t *dst, size_t dstStride, bool argb)
+{
+	bool full = frame->format == AV_PIX_FMT_YUVJ420P || frame->color_range == AVCOL_RANGE_JPEG;
+	bool bt709 = frame->colorspace == AVCOL_SPC_BT709 ||
+		(frame->colorspace == AVCOL_SPC_UNSPECIFIED && frame->height >= 720);
+	int yScale = full ? 256 : 298;
+	int yOffset = full ? 0 : 16;
+	int rv, gu, gv, bu;
+	if (bt709) {
+		rv = full ? 403 : 459; gu = full ? -48 : -55; gv = full ? -120 : -136; bu = full ? 475 : 541;
+	} else {
+		rv = full ? 359 : 409; gu = full ? -88 : -100; gv = full ? -183 : -208; bu = full ? 454 : 516;
+	}
+	size_t rI = argb ? 1 : 2, gI = argb ? 2 : 1, bI = argb ? 3 : 0, aI = argb ? 0 : 3;
+
+	for (int y = 0; y < frame->height; y++) {
+		uint8_t *rowDst = dst + (size_t)y * dstStride;
+		const uint8_t *rowY = frame->data[0] + (size_t)y * frame->linesize[0];
+		const uint8_t *rowU = frame->data[1] + (size_t)(y / 2) * frame->linesize[1];
+		const uint8_t *rowV = frame->data[2] + (size_t)(y / 2) * frame->linesize[2];
+		for (int x = 0; x < frame->width; x++) {
+			int c = yScale * ((int)rowY[x] - yOffset);
+			int d = (int)rowU[x / 2] - 128;
+			int e = (int)rowV[x / 2] - 128;
+			rowDst[4 * x + bI] = clamp_u8((c + bu * d + 128) >> 8);
+			rowDst[4 * x + gI] = clamp_u8((c + gu * d + gv * e + 128) >> 8);
+			rowDst[4 * x + rI] = clamp_u8((c + rv * e + 128) >> 8);
+			rowDst[4 * x + aI] = 255;
+		}
+	}
+}
+
 static OSStatus create_pixel_buffer_from_avframe(
 	struct OpaqueVTDecompressionSession *session,
 	AVFrame *frame,
@@ -397,6 +467,8 @@ static OSStatus create_pixel_buffer_from_avframe(
 	OSType pixelFormat = session->outputPixelFormat;
 	if (pixelFormat == 0)
 		pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
+	if (!frame_convertible(frame->format, pixelFormat))
+		return kVTVideoDecoderUnsupportedDataFormatErr;
 
 	CFMutableDictionaryRef attrs = CFDictionaryCreateMutable(kCFAllocatorDefault, 1,
 		&kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
@@ -471,67 +543,15 @@ static OSStatus create_pixel_buffer_from_avframe(
 				memcpy(dst + y * dstStride, src + y * srcStride, pWidth);
 			}
 		}
-	} else if (pixelFormat == kCVPixelFormatType_32BGRA) {
+	} else if (pixelFormat == kCVPixelFormatType_32BGRA || pixelFormat == kCVPixelFormatType_32ARGB) {
 		uint8_t *dst = (uint8_t*)CVPixelBufferGetBaseAddress(pixbuf);
 		size_t dstStride = CVPixelBufferGetBytesPerRow(pixbuf);
-		if (frame->format == AV_PIX_FMT_BGRA) {
+		if (frame->format == AV_PIX_FMT_BGRA || frame->format == AV_PIX_FMT_ARGB) {
 			for (size_t y = 0; y < height; y++) {
 				memcpy(dst + y * dstStride, frame->data[0] + y * frame->linesize[0], width * 4);
 			}
 		} else {
-			const uint8_t *srcY = frame->data[0];
-			int srcStrideY = frame->linesize[0];
-			const uint8_t *srcU = frame->data[1];
-			int srcStrideU = frame->linesize[1];
-			const uint8_t *srcV = frame->data[2];
-			int srcStrideV = frame->linesize[2];
-
-			for (size_t y = 0; y < height; y++) {
-				uint8_t *rowDst = dst + y * dstStride;
-				const uint8_t *rowY = srcY + y * srcStrideY;
-				const uint8_t *rowU = srcU + (y / 2) * srcStrideU;
-				const uint8_t *rowV = srcV + (y / 2) * srcStrideV;
-				for (size_t x = 0; x < width; x++) {
-					int c = (int)rowY[x] - 16;
-					int d = (int)rowU[x / 2] - 128;
-					int e = (int)rowV[x / 2] - 128;
-					rowDst[4 * x + 0] = clamp_u8((298 * c + 516 * d + 128) >> 8); /* B */
-					rowDst[4 * x + 1] = clamp_u8((298 * c - 100 * d - 208 * e + 128) >> 8); /* G */
-					rowDst[4 * x + 2] = clamp_u8((298 * c + 409 * e + 128) >> 8); /* R */
-					rowDst[4 * x + 3] = 255; /* A */
-				}
-			}
-		}
-	} else if (pixelFormat == kCVPixelFormatType_32ARGB) {
-		uint8_t *dst = (uint8_t*)CVPixelBufferGetBaseAddress(pixbuf);
-		size_t dstStride = CVPixelBufferGetBytesPerRow(pixbuf);
-		if (frame->format == AV_PIX_FMT_ARGB) {
-			for (size_t y = 0; y < height; y++) {
-				memcpy(dst + y * dstStride, frame->data[0] + y * frame->linesize[0], width * 4);
-			}
-		} else {
-			const uint8_t *srcY = frame->data[0];
-			int srcStrideY = frame->linesize[0];
-			const uint8_t *srcU = frame->data[1];
-			int srcStrideU = frame->linesize[1];
-			const uint8_t *srcV = frame->data[2];
-			int srcStrideV = frame->linesize[2];
-
-			for (size_t y = 0; y < height; y++) {
-				uint8_t *rowDst = dst + y * dstStride;
-				const uint8_t *rowY = srcY + y * srcStrideY;
-				const uint8_t *rowU = srcU + (y / 2) * srcStrideU;
-				const uint8_t *rowV = srcV + (y / 2) * srcStrideV;
-				for (size_t x = 0; x < width; x++) {
-					int c = (int)rowY[x] - 16;
-					int d = (int)rowU[x / 2] - 128;
-					int e = (int)rowV[x / 2] - 128;
-					rowDst[4 * x + 0] = 255; /* A */
-					rowDst[4 * x + 1] = clamp_u8((298 * c + 409 * e + 128) >> 8); /* R */
-					rowDst[4 * x + 2] = clamp_u8((298 * c - 100 * d - 208 * e + 128) >> 8); /* G */
-					rowDst[4 * x + 3] = clamp_u8((298 * c + 516 * d + 128) >> 8); /* B */
-				}
-			}
+			convert_yuv420_to_rgb32(frame, dst, dstStride, pixelFormat == kCVPixelFormatType_32ARGB);
 		}
 	}
 
@@ -907,7 +927,15 @@ OSStatus VTDecompressionSessionCreateWithOptions(
 	session->extradataIsAvcC = extradataIsAvcC;
 	session->isRealTime = true;
 	session->decodeQueue = dispatch_queue_create("org.darlinghq.videotoolbox.decode", DISPATCH_QUEUE_SERIAL);
-	pthread_mutex_init(&session->lock, NULL);
+	/*
+	 * Recursive: output callbacks run with the lock held and may call back into the session
+	 * (for instance to read a property).
+	 */
+	pthread_mutexattr_t lockAttr;
+	pthread_mutexattr_init(&lockAttr);
+	pthread_mutexattr_settype(&lockAttr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&session->lock, &lockAttr);
+	pthread_mutexattr_destroy(&lockAttr);
 	session->customProperties = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
 		&kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 	session->nextOpaqueId = 1;
@@ -917,19 +945,38 @@ OSStatus VTDecompressionSessionCreateWithOptions(
 	}
 
 	session->outputPixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
+	bool outputFormatRequested = false;
+	bool outputFormatFound = false;
 	if (destinationImageBufferAttributes != NULL) {
 		session->destinationAttributes = (CFDictionaryRef)CFRetain(destinationImageBufferAttributes);
 		CFTypeRef fmt = CFDictionaryGetValue(destinationImageBufferAttributes, kCVPixelBufferPixelFormatTypeKey);
 		if (fmt != NULL) {
+			// A single format or a list in order of preference: the first one that can be produced is used.
 			if (CFGetTypeID(fmt) == CFNumberGetTypeID()) {
-				CFNumberGetValue((CFNumberRef)fmt, kCFNumberSInt32Type, &session->outputPixelFormat);
+				OSType candidate = 0;
+				outputFormatRequested = true;
+				if (CFNumberGetValue((CFNumberRef)fmt, kCFNumberSInt32Type, &candidate) && output_format_supported(candidate)) {
+					session->outputPixelFormat = candidate;
+					outputFormatFound = true;
+				}
 			} else if (CFGetTypeID(fmt) == CFArrayGetTypeID() && CFArrayGetCount((CFArrayRef)fmt) > 0) {
-				CFTypeRef first = CFArrayGetValueAtIndex((CFArrayRef)fmt, 0);
-				if (first && CFGetTypeID(first) == CFNumberGetTypeID()) {
-					CFNumberGetValue((CFNumberRef)first, kCFNumberSInt32Type, &session->outputPixelFormat);
+				outputFormatRequested = true;
+				for (CFIndex i = 0; i < CFArrayGetCount((CFArrayRef)fmt) && !outputFormatFound; i++) {
+					CFTypeRef entry = CFArrayGetValueAtIndex((CFArrayRef)fmt, i);
+					OSType candidate = 0;
+					if (entry && CFGetTypeID(entry) == CFNumberGetTypeID() &&
+					    CFNumberGetValue((CFNumberRef)entry, kCFNumberSInt32Type, &candidate) &&
+					    output_format_supported(candidate)) {
+						session->outputPixelFormat = candidate;
+						outputFormatFound = true;
+					}
 				}
 			}
 		}
+	}
+	if (outputFormatRequested && !outputFormatFound) {
+		CFRelease(session);
+		return kVTPixelTransferNotSupportedErr;
 	}
 
 	*decompressionSessionOut = session;
@@ -1131,9 +1178,13 @@ OSStatus VTDecompressionSessionFinishDelayedFrames(VTDecompressionSessionRef ses
 	if (CFGetTypeID(session) != VTDecompressionSessionGetTypeID() || session->invalidated)
 		return kVTInvalidSessionErr;
 
-	pthread_mutex_lock(&session->lock);
-	OSStatus ret = VTDecompressionSessionDrainFrames_locked(session);
-	pthread_mutex_unlock(&session->lock);
+	// Frames queued for asynchronous decoding come first, then the decoder's delayed frames.
+	__block OSStatus ret = noErr;
+	dispatch_sync(session->decodeQueue, ^{
+		pthread_mutex_lock(&session->lock);
+		ret = VTDecompressionSessionDrainFrames_locked(session);
+		pthread_mutex_unlock(&session->lock);
+	});
 	return ret;
 }
 
@@ -1144,11 +1195,10 @@ OSStatus VTDecompressionSessionWaitForAsynchronousFrames(VTDecompressionSessionR
 	if (CFGetTypeID(session) != VTDecompressionSessionGetTypeID() || session->invalidated)
 		return kVTInvalidSessionErr;
 
-	dispatch_sync(session->decodeQueue, ^{
-		pthread_mutex_lock(&session->lock);
-		VTDecompressionSessionDrainFrames_locked(session);
-		pthread_mutex_unlock(&session->lock);
-	});
+	// Only waits for the queued frames. Frames the decoder holds back stay until
+	// VTDecompressionSessionFinishDelayedFrames, and draining here would also reset the decoder's
+	// reference frames.
+	dispatch_sync(session->decodeQueue, ^{});
 
 	return noErr;
 }
@@ -1322,11 +1372,11 @@ static void execute_decode_item(DecodeWorkItem *item)
 				CVPixelBufferRelease(pixbuf);
 			} else {
 				if (frameHandler) {
-					frameHandler(kVTVideoDecoderMalfunctionErr, frameInfoFlags, NULL, framePTS, frameDuration);
+					frameHandler(convErr != noErr ? convErr : kVTVideoDecoderMalfunctionErr, frameInfoFlags, NULL, framePTS, frameDuration);
 				} else if (session->outputCallbackRecord.decompressionOutputCallback) {
 					session->outputCallbackRecord.decompressionOutputCallback(
 						session->outputCallbackRecord.decompressionOutputRefCon,
-						frameRefCon, kVTVideoDecoderMalfunctionErr, frameInfoFlags, NULL, framePTS, frameDuration);
+						frameRefCon, convErr != noErr ? convErr : kVTVideoDecoderMalfunctionErr, frameInfoFlags, NULL, framePTS, frameDuration);
 				}
 			}
 		}

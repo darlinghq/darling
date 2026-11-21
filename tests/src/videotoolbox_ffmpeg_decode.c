@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 static int failures;
 
@@ -87,6 +88,20 @@ static void testDecompressionCallback(void *refCon, void *frameRefCon, OSStatus 
 	}
 }
 
+static VTDecompressionSessionRef gReSession;
+static int gReCalls;
+
+static void reentrantCallback(void *refCon, void *frameRefCon, OSStatus status,
+	VTDecodeInfoFlags flags, CVImageBufferRef image, CMTime pts, CMTime duration)
+{
+	CFTypeRef value = NULL;
+	if (VTSessionCopyProperty(gReSession, kVTDecompressionPropertyKey_RealTime, NULL, &value) == noErr) {
+		gReCalls++;
+		if (value)
+			CFRelease(value);
+	}
+}
+
 static CMSampleBufferRef createH264SampleBuffer(CMVideoFormatDescriptionRef format, const uint8_t *data, size_t size, CMTime pts)
 {
 	CMBlockBufferRef blockBuffer = NULL;
@@ -139,7 +154,15 @@ int main(void)
 	};
 
 	VTDecompressionSessionRef session = NULL;
-	CHECK(VTDecompressionSessionCreate(NULL, format64, NULL, NULL, &callbackRecord, &session) == noErr);
+	OSStatus createStatus = VTDecompressionSessionCreate(NULL, format64, NULL, NULL, &callbackRecord, &session);
+	if (createStatus == kVTCouldNotFindVideoDecoderErr) {
+		// The decoders come from the host's libavcodec, which is optional (and has no 32-bit wrapper
+		// without a 32-bit host FFmpeg): without it a session is refused the way it is without a codec.
+		printf("SKIP: no host libavcodec, sessions are refused with kVTCouldNotFindVideoDecoderErr\n");
+		CFRelease(format64);
+		return failures;
+	}
+	CHECK(createStatus == noErr);
 	CHECK(session != NULL);
 	CHECK(CFGetTypeID(session) == VTDecompressionSessionGetTypeID());
 
@@ -324,6 +347,91 @@ int main(void)
 	CFRelease(sbuf1);
 
 	CFRelease(session);
+
+	// 10. Output callbacks may call back into the session.
+	{
+		VTDecompressionSessionRef reSession = NULL;
+		VTDecompressionOutputCallbackRecord reRecord = {
+			.decompressionOutputCallback = reentrantCallback,
+			.decompressionOutputRefCon = NULL,
+		};
+		CHECK(VTDecompressionSessionCreate(NULL, format64, NULL, NULL, &reRecord, &reSession) == noErr);
+		if (reSession) {
+			gReSession = reSession;
+			gReCalls = 0;
+			CMSampleBufferRef sb = createH264SampleBuffer(format64, sample_h264_slice, sizeof(sample_h264_slice), CMTimeMake(1, 25));
+			CHECK(VTDecompressionSessionDecodeFrame(reSession, sb, 0, NULL, NULL) == noErr);
+			CHECK(VTDecompressionSessionFinishDelayedFrames(reSession) == noErr);
+			CHECK(gReCalls == 1);
+			CFRelease(sb);
+			VTDecompressionSessionInvalidate(reSession);
+			CFRelease(reSession);
+		}
+	}
+
+	// 11. Releasing a session while frames are still queued for asynchronous decoding is safe.
+	{
+		VTDecompressionSessionRef relSession = NULL;
+		CallbackState relState = { 0 };
+		VTDecompressionOutputCallbackRecord relRecord = {
+			.decompressionOutputCallback = testDecompressionCallback,
+			.decompressionOutputRefCon = &relState,
+		};
+		CHECK(VTDecompressionSessionCreate(NULL, format64, NULL, NULL, &relRecord, &relSession) == noErr);
+		if (relSession) {
+			for (int i = 0; i < 4; i++) {
+				CMSampleBufferRef sb = createH264SampleBuffer(format64, sample_h264_slice, sizeof(sample_h264_slice), CMTimeMake(i, 25));
+				CHECK(VTDecompressionSessionDecodeFrame(relSession, sb, kVTDecodeFrame_EnableAsynchronousDecompression, NULL, NULL) == noErr);
+				CFRelease(sb);
+			}
+			CFRelease(relSession);
+			usleep(300000);
+		}
+	}
+
+	// 12. Destination pixel formats: a list is taken in order of preference, one that cannot be produced is refused,
+	// and packed output is filled in.
+	{
+		int unsupported = 0x32767579; /* '2vuy' */
+		int bgra = kCVPixelFormatType_32BGRA;
+		CFNumberRef nUnsupported = CFNumberCreate(NULL, kCFNumberIntType, &unsupported);
+		CFNumberRef nBgra = CFNumberCreate(NULL, kCFNumberIntType, &bgra);
+
+		const void *k[] = { kCVPixelBufferPixelFormatTypeKey };
+		const void *v1[] = { nUnsupported };
+		CFDictionaryRef onlyUnsupported = CFDictionaryCreate(NULL, k, v1, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+		VTDecompressionSessionRef fmtSession = NULL;
+		CHECK(VTDecompressionSessionCreate(NULL, format64, NULL, onlyUnsupported, &callbackRecord, &fmtSession) == kVTPixelTransferNotSupportedErr);
+		CHECK(fmtSession == NULL);
+		CFRelease(onlyUnsupported);
+
+		const void *list[] = { nUnsupported, nBgra };
+		CFArrayRef formats = CFArrayCreate(NULL, list, 2, &kCFTypeArrayCallBacks);
+		const void *v2[] = { formats };
+		CFDictionaryRef preference = CFDictionaryCreate(NULL, k, v2, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+		CallbackState fmtState = { 0 };
+		VTDecompressionOutputCallbackRecord fmtRecord = {
+			.decompressionOutputCallback = testDecompressionCallback,
+			.decompressionOutputRefCon = &fmtState,
+		};
+		CHECK(VTDecompressionSessionCreate(NULL, format64, NULL, preference, &fmtRecord, &fmtSession) == noErr);
+		if (fmtSession) {
+			CMSampleBufferRef sb = createH264SampleBuffer(format64, sample_h264_slice, sizeof(sample_h264_slice), CMTimeMake(1, 25));
+			CHECK(VTDecompressionSessionDecodeFrame(fmtSession, sb, 0, NULL, NULL) == noErr);
+			CHECK(VTDecompressionSessionFinishDelayedFrames(fmtSession) == noErr);
+			CHECK(fmtState.callCount == 1);
+			CHECK(fmtState.lastStatus == noErr);
+			CHECK(fmtState.lastPixelFormat == kCVPixelFormatType_32BGRA);
+			CFRelease(sb);
+			VTDecompressionSessionInvalidate(fmtSession);
+			CFRelease(fmtSession);
+		}
+		CFRelease(preference);
+		CFRelease(formats);
+		CFRelease(nUnsupported);
+		CFRelease(nBgra);
+	}
+
 	CFRelease(format64);
 
 	if (failures == 0) {
