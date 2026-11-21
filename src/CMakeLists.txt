@@ -621,6 +621,8 @@ endif()
 
 # not a core component, but we always add it regardless of the components that are enabled;
 # it has its own component checks to determine which libraries to generate wrappers for.
+# the shared loader of the dbus wrapper (see native); static, so it has no components
+add_subdirectory(libdarlingdbus)
 add_subdirectory(native)
 
 # has its own component checks

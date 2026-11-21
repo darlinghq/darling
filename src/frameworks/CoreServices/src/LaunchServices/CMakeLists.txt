@@ -42,6 +42,7 @@ add_framework(LaunchServices
 		CarbonCore
 		AE
 		FMDB
+		darling_dbus_loader
 )
 
 add_subdirectory(launchservicesd)
