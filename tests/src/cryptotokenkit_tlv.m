@@ -74,7 +74,9 @@ static void test_ber(void)
 	// Observed: high tag number octets are read as they stand, minimal or not (1F 80 01, 1F 05), up to 8 octets.
 	CHECK([TKBERTLVRecord recordFromData:DATA(0x1f, 0x80, 0x01, 0x00)].tag == 0x1f8001);
 	CHECK([TKBERTLVRecord recordFromData:DATA(0x1f, 0x05, 0x00)].tag == 0x1f05);
-	CHECK([TKBERTLVRecord recordFromData:DATA(0x1f, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x01, 0x00)] != nil);
+	// TKTLVTag is as wide as NSUInteger, so a tag of 8 octets decodes only where that is 64 bits (not on i386).
+	CHECK(([TKBERTLVRecord recordFromData:DATA(0x1f, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x01, 0x00)] != nil) == (sizeof(TKTLVTag) == 8));
+	CHECK([TKBERTLVRecord recordFromData:DATA(0x1f, 0x81, 0x81, 0x01, 0x00)] != nil);
 	CHECK([TKBERTLVRecord recordFromData:DATA(0x1f, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x01, 0x00)] == nil);
 	// Tag cut off, identifier octet 00, tag 00 with a length.
 	CHECK([TKBERTLVRecord recordFromData:DATA(0x1f)] == nil);
