@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2019-2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -40,6 +40,66 @@
 + (void)forwardInvocation:(NSInvocation *)anInvocation
 {
     DarlingStubForwardInvocation(self, anInvocation);
+}
+
+@end
+
+@implementation NSValue (NSValueQTTimeExtensions)
+
++ (NSValue *)valueWithQTTime:(QTTime)time
+{
+    return [NSValue valueWithBytes:&time objCType:@encode(QTTime)];
+}
+
+- (QTTime)QTTimeValue
+{
+    QTTime time;
+    [self getValue:&time];
+    return time;
+}
+
++ (NSValue *)valueWithQTTimeRange:(QTTimeRange)range
+{
+    return [NSValue valueWithBytes:&range objCType:@encode(QTTimeRange)];
+}
+
+- (QTTimeRange)QTTimeRangeValue
+{
+    QTTimeRange range;
+    [self getValue:&range];
+    return range;
+}
+
+@end
+
+@implementation NSCoder (NSCoderQTTimeExtensions)
+
+- (void)encodeQTTime:(QTTime)time forKey:(NSString *)key
+{
+    [self encodeObject:[NSValue valueWithQTTime:time] forKey:key];
+}
+
+- (QTTime)decodeQTTimeForKey:(NSString *)key
+{
+    NSValue *val = [self decodeObjectForKey:key];
+    if ([val respondsToSelector:@selector(QTTimeValue)]) {
+        return [val QTTimeValue];
+    }
+    return QTZeroTime;
+}
+
+- (void)encodeQTTimeRange:(QTTimeRange)range forKey:(NSString *)key
+{
+    [self encodeObject:[NSValue valueWithQTTimeRange:range] forKey:key];
+}
+
+- (QTTimeRange)decodeQTTimeRangeForKey:(NSString *)key
+{
+    NSValue *val = [self decodeObjectForKey:key];
+    if ([val respondsToSelector:@selector(QTTimeRangeValue)]) {
+        return [val QTTimeRangeValue];
+    }
+    return QTZeroTimeRange;
 }
 
 @end
