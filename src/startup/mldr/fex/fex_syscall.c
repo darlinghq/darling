@@ -384,6 +384,13 @@ static bool signal_owned_by_jit(int sig)
 	return sig == SIGILL || sig == SIGTRAP || sig == SIGBUS || sig == SIGFPE || sig == SIGSEGV;
 }
 
+// glibc keeps the signals between 31 and SIGRTMIN for its own use and refuses to install handlers for
+// them, so the guest's request is only recorded in the table.
+static bool signal_reserved_by_libc(int sig)
+{
+	return sig > 31 && sig < SIGRTMIN;
+}
+
 static long guest_rt_sigaction(long sig, uintptr_t new_action, uintptr_t old_action, long sigsetsize)
 {
 	if (sig <= 0 || sig >= GUEST_NSIG || (new_action && (sig == SIGKILL || sig == SIGSTOP)))
@@ -402,7 +409,7 @@ static long guest_rt_sigaction(long sig, uintptr_t new_action, uintptr_t old_act
 	struct x86_64_ksigaction previous = g_guest_sigactions[sig];
 	long ret = 0;
 	if (new_action) {
-		if (!signal_owned_by_jit((int)sig)) {
+		if (!signal_owned_by_jit((int)sig) && !signal_reserved_by_libc((int)sig)) {
 			struct sigaction host;
 			memset(&host, 0, sizeof(host));
 			if (requested.handler == GUEST_SIG_DFL) {
