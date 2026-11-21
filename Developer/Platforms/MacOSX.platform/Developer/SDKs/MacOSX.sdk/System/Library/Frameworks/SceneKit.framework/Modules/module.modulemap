@@ -1,0 +1,5 @@
+framework module SceneKit [extern_c] [system] {
+  umbrella header "SceneKit.h"
+  export *
+  module * { export * }
+}

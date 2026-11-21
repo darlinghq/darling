@@ -23,6 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @class CKRecordID;
 @class CKUserIdentityLookupInfo;
+@class NSPersonNameComponents;
 
 // A user that takes part in sharing.
 @interface CKUserIdentity : NSObject <NSSecureCoding, NSCopying> {

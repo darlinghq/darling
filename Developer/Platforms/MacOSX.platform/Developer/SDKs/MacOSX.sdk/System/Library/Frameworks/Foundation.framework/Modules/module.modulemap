@@ -14,6 +14,11 @@ framework module Foundation [extern_c] [system] {
   // submodule pin includes it.
   exclude header "NSMutableCharacterSet.h"
   exclude header "NSSerializer.h"
+  exclude header "NSAutoresizingMaskLayoutConstraint.h"
+  exclude header "NSContentSizeLayoutConstraint.h"
+  exclude header "NSIBPrototypingLayoutConstraint.h"
+  exclude header "NSLayoutAnchor.h"
+  exclude header "NSLayoutConstraint.h"
 
   export *
 }

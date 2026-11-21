@@ -23,10 +23,13 @@ AE_INCLUDE = ROOT / 'src/frameworks/CoreServices/include'
 
 # Modules that only need the C headers.
 C_MODULES = ['Darwin', 'Darwin.MacTypes', 'Darwin.os.lock', 'Dispatch', 'os.log',
-             'os.activity', 'os.signpost', 'XPC', 'CommonCrypto']
+             'os.activity', 'os.signpost', 'XPC', 'CommonCrypto', 'simd']
 # Modules that need Foundation (and so the AE headers, see below).
 FOUNDATION_MODULES = ['CoreFoundation', 'Foundation', 'CoreGraphics', 'QuartzCore',
-                      'CoreText', 'AppKit', 'OpenGL']
+                      'CoreText', 'AppKit', 'OpenGL', 'CoreData', 'UniformTypeIdentifiers',
+                      'Combine', 'Contacts', 'Network', 'Photos', 'Vision', 'Metal',
+                      'SceneKit', 'CryptoTokenKit', 'CoreLocation', 'MapKit', 'CloudKit',
+                      'SwiftUI']
 OBJC_MODULES = ['ObjectiveC']
 
 
@@ -102,6 +105,36 @@ class SdkModules(unittest.TestCase):
                 self.assertEqual(dump.returncode, 0, dump.stderr)
                 self.assertIn('SwiftNameAttr', dump.stdout)
                 self.assertIn('"%s"' % swift_name, dump.stdout)
+
+    def test_coredata_apinotes_apply(self):
+        code = '@import CoreData;\n'
+        dump = self.clang(code, '-I', str(AE_INCLUDE), '-D__swift__=60000', '-fapinotes-modules',
+                          '-Xclang', '-ast-dump', '-Xclang', '-ast-dump-filter',
+                          '-Xclang', 'NSManagedObjectResultType')
+        self.assertEqual(dump.returncode, 0, dump.stderr)
+        self.assertIn('SwiftNameAttr', dump.stdout)
+        self.assertIn('"managedObjectResultType"', dump.stdout)
+
+    def test_appkit_apinotes_apply(self):
+        code = '@import AppKit;\n'
+        dump = self.clang(code, '-I', str(AE_INCLUDE), '-D__swift__=60000', '-fapinotes-modules',
+                          '-Xclang', '-ast-dump', '-Xclang', '-ast-dump-filter',
+                          '-Xclang', 'NSFontWeight')
+        self.assertEqual(dump.returncode, 0, dump.stderr)
+        self.assertIn('SwiftNameAttr', dump.stdout)
+        self.assertIn('"NSFont.Weight"', dump.stdout)
+
+    def test_simd_headers_compile(self):
+        code = ('#include <simd/simd.h>\n'
+                '#include <simd/vector.h>\n'
+                '#include <simd/types.h>\n'
+                '#include <simd/packed.h>\n'
+                '#include <simd/logic.h>\n'
+                '#include <simd/conversion.h>\n'
+                '#include <simd/math.h>\n'
+                'void f(void) { simd_packed_float4 pf; (void)pf; }\n')
+        res = self.clang(code, language='c')
+        self.assertEqual(res.returncode, 0, res.stderr)
 
     def test_darwin_umbrella_is_current(self):
         # Every header the generated Darwin umbrella includes must exist; a

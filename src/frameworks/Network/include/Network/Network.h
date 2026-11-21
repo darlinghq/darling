@@ -123,6 +123,20 @@
 
 #include <nw/nw.h>
 
+#ifndef NW_RETURNS_RETAINED
+#if defined(OS_OBJECT_RETURNS_RETAINED)
+#define NW_RETURNS_RETAINED OS_OBJECT_RETURNS_RETAINED
+#elif __has_attribute(ns_returns_retained)
+#define NW_RETURNS_RETAINED __attribute__((ns_returns_retained))
+#else
+#define NW_RETURNS_RETAINED
+#endif
+#endif
+
+#ifndef NW_NULLABLE
+#define NW_NULLABLE _Nullable
+#endif
+
 #ifdef __OBJC__
 // Conversions between NSData and dispatch data (copying); the results are +1 references.
 NW_RETURNS_RETAINED NSData * NW_NULLABLE NWCreateNSDataFromDispatchData(dispatch_data_t NW_NULLABLE data);

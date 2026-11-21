@@ -1,0 +1,5 @@
+framework module Combine [extern_c] [system] {
+  umbrella header "Combine.h"
+  export *
+  module * { export * }
+}

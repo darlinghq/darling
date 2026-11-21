@@ -1,0 +1,5 @@
+framework module SwiftUI [extern_c] [system] {
+    umbrella header "SwiftUI.h"
+    export *
+    module * {export *}
+}
