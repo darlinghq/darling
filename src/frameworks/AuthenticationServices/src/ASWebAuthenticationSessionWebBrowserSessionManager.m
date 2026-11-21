@@ -20,6 +20,65 @@
 #import <AuthenticationServices/ASWebAuthenticationSessionWebBrowserSessionManager.h>
 #import <darling-stub-forwarding.h>
 
+// This file is built with ARC (see CMakeLists.txt) so that `sessionHandler` is retained.
+// The implementation is 64-bit only, like the other ARC frameworks here: the 32-bit slice uses the
+// legacy runtime, which cannot synthesize this property, and keeps the stub.
+#if __LP64__
+
+static ASWebAuthenticationSessionWebBrowserSessionManager *sharedBrowserSessionManager;
+
+@implementation ASWebAuthenticationSessionWebBrowserSessionManager {
+    id<ASWebAuthenticationSessionWebBrowserSessionHandling> _sessionHandler;
+}
+
+@synthesize sessionHandler = _sessionHandler;
+
+// GUESS: the documentation calls this the shared manager and does not say what a subclass gets; it is
+// always an instance of this class.
++ (ASWebAuthenticationSessionWebBrowserSessionManager *)sharedManager
+{
+    static dispatch_once_t creation;
+    dispatch_once(&creation, ^{
+        sharedBrowserSessionManager = [[ASWebAuthenticationSessionWebBrowserSessionManager alloc] init];
+    });
+    return sharedBrowserSessionManager;
+}
+
+// GUESS: Darling has no component that opens a browser on behalf of Authentication Services, so
+// there is never a launch to report and the answer is always NO.
+- (BOOL)wasLaunchedByAuthenticationServices
+{
+    return NO;
+}
+
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    DarlingStubForwardInvocation(self, anInvocation);
+}
+
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
++ (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    DarlingStubForwardInvocation(self, anInvocation);
+}
+
+@end
+
+#else
+
+// The properties and methods of the public header have no implementation in the 32-bit stub.
+#pragma clang diagnostic ignored "-Wobjc-property-implementation"
+#pragma clang diagnostic ignored "-Wincomplete-implementation"
+
 @implementation ASWebAuthenticationSessionWebBrowserSessionManager
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
@@ -43,3 +102,5 @@
 }
 
 @end
+
+#endif
