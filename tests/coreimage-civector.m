@@ -85,7 +85,7 @@ int main(void) {
 
         // string reader: the documented form comes back
         CIVector *parsed = [CIVector vectorWithString: @"[1.0 0.5 0.3]"];
-        CHECK(parsed != nil && [parsed count] == 3 && [parsed X] == 1.0 && [parsed Y] == 0.5 && [parsed Z] == 0.3);
+        CHECK(parsed != nil && [parsed count] == 3 && [parsed X] == 1.0 && [parsed Y] == 0.5 && [parsed Z] == (CGFloat)0.3);
         CIVector *roundTrip = [CIVector vectorWithString: [five stringRepresentation]];
         CHECK([roundTrip count] == 5 && [roundTrip valueAtIndex: 4] == 50);
         // the brackets are optional, only as the first character
