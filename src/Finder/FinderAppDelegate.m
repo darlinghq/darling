@@ -192,6 +192,25 @@ static NSString *FinderFolderKey(NSURL *url)
 - (void)applicationWillFinishLaunching:(NSNotification *)notification
 {
     [NSApp setMainMenu:[self mainMenu]];
+    [[[NSWorkspace sharedWorkspace] notificationCenter] addObserver:self
+                                                           selector:@selector(volumeDidUnmount:)
+                                                               name:NSWorkspaceDidUnmountNotification
+                                                             object:nil];
+}
+
+// A volume went away, whoever unmounted it: its windows, and those of folders on it, close
+- (void)volumeDidUnmount:(NSNotification *)notification
+{
+    NSURL *volume = notification.userInfo[NSWorkspaceVolumeURLKey];
+    NSString *path = volume != nil ? FinderFolderKey(volume) : notification.userInfo[@"NSDevicePath"];
+    if (path == nil)
+        return;
+    NSString *prefix = [path hasSuffix:@"/"] ? path : [path stringByAppendingString:@"/"];
+    for (FinderWindowController *controller in [_controllers copy]) {
+        NSString *folder = FinderFolderKey(controller.folderURL);
+        if ([folder isEqual:path] || [folder hasPrefix:prefix])
+            [controller close];
+    }
 }
 
 - (void)application:(NSApplication *)application openURLs:(NSArray<NSURL *> *)urls
@@ -230,6 +249,8 @@ static NSString *FinderFolderKey(NSURL *url)
 
     NSMenu *file = [[NSMenu alloc] initWithTitle:@"File"];
     [file addItemWithTitle:@"Close Window" action:@selector(performClose:) keyEquivalent:@"w"];
+    [file addItem:[NSMenuItem separatorItem]];
+    [file addItemWithTitle:@"Eject" action:@selector(eject:) keyEquivalent:@"e"];
     [[main addItemWithTitle:@"File" action:NULL keyEquivalent:@""] setSubmenu:file];
 
     NSMenu *view = [[NSMenu alloc] initWithTitle:@"View"];

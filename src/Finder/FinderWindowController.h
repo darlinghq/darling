@@ -48,7 +48,10 @@ typedef NS_ENUM(NSInteger, FinderViewStyle) {
 - (IBAction)showAsIcons:(id)sender;
 - (IBAction)showAsList:(id)sender;
 
-// Called with an item the user opened (double-clicked).
+// File > Eject (Command-E): ejects the volume the window's folder is on; enabled when it can be ejected
+- (IBAction)eject:(id)sender;
+
+// Called with an item the user opened (double-clicked, or clicked in the sidebar).
 @property (copy) void (^openItem)(NSURL *item);
 
 @end

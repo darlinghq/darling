@@ -21,6 +21,7 @@
 #import "FinderDirectory.h"
 #import "FinderIconViewController.h"
 #import "FinderListViewController.h"
+#import "FinderSidebarController.h"
 
 static NSToolbarItemIdentifier const FinderViewStyleItem = @"FinderViewStyle";
 
@@ -28,6 +29,7 @@ static NSToolbarItemIdentifier const FinderViewStyleItem = @"FinderViewStyle";
     FinderDirectory *_directory;
     FinderIconViewController *_icons;
     FinderListViewController *_list;
+    FinderSidebarController *_sidebar;
     NSSegmentedControl *_viewControl;
 }
 
@@ -54,12 +56,28 @@ static NSToolbarItemIdentifier const FinderViewStyleItem = @"FinderViewStyle";
         _icons.openItem = open;
         _list = [[FinderListViewController alloc] init];
         _list.openItem = open;
+        _sidebar = [[FinderSidebarController alloc] init];
+        _sidebar.showFolder = open;
+
+        // The sidebar on the left, the folder's items on the right
+        NSRect bounds = [window.contentView bounds];
+        NSSplitView *split = [[NSSplitView alloc] initWithFrame:bounds];
+        split.vertical = YES;
+        split.dividerStyle = NSSplitViewDividerStyleThin;
+        split.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+        _sidebar.view.frame = NSMakeRect(0, 0, 200, NSHeight(bounds));
+        NSView *items = [[NSView alloc] initWithFrame:NSMakeRect(201, 0, NSWidth(bounds) - 201, NSHeight(bounds))];
         for (NSView *content in @[ _icons.view, _list.view ]) {
-            content.frame = [window.contentView bounds];
+            content.frame = [items bounds];
             content.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-            [window.contentView addSubview:content];
+            [items addSubview:content];
         }
         _list.view.hidden = YES;
+        [split addSubview:_sidebar.view];
+        [split addSubview:items];
+        [split adjustSubviews];
+        [split setPosition:200 ofDividerAtIndex:0];
+        [window.contentView addSubview:split];
 
         NSToolbar *toolbar = [[NSToolbar alloc] initWithIdentifier:@"FinderWindow"];
         toolbar.delegate = self;
@@ -127,8 +145,40 @@ static NSToolbarItemIdentifier const FinderViewStyleItem = @"FinderViewStyle";
     self.viewStyle = sender.selectedSegment == 1 ? FinderViewStyleList : FinderViewStyleIcons;
 }
 
+#pragma mark Eject
+
+// The volume this window's folder is on, if it can be ejected
+- (NSURL *)ejectableVolume
+{
+    NSURL *volume = nil;
+    NSNumber *ejectable = nil, *removable = nil;
+    if (![_folderURL getResourceValue:&volume forKey:NSURLVolumeURLKey error:NULL] || volume == nil)
+        return nil;
+    [volume getResourceValue:&ejectable forKey:NSURLVolumeIsEjectableKey error:NULL];
+    [volume getResourceValue:&removable forKey:NSURLVolumeIsRemovableKey error:NULL];
+    return [ejectable boolValue] || [removable boolValue] ? volume : nil;
+}
+
+- (IBAction)eject:(id)sender
+{
+    NSURL *volume = [self ejectableVolume];
+    NSError *error = nil;
+    if (volume == nil || [[NSWorkspace sharedWorkspace] unmountAndEjectDeviceAtURL:volume error:&error])
+        return;
+    NSString *name = nil;
+    [volume getResourceValue:&name forKey:NSURLVolumeLocalizedNameKey error:NULL];
+    NSAlert *alert = [[NSAlert alloc] init];
+    alert.alertStyle = NSAlertStyleWarning;
+    alert.messageText = [NSString stringWithFormat:@"The disk “%@” wasn’t ejected.", name ?: [volume lastPathComponent]];
+    alert.informativeText = [error localizedDescription] ?: @"";
+    [alert addButtonWithTitle:@"OK"];
+    [alert beginSheetModalForWindow:self.window completionHandler:nil];
+}
+
 - (BOOL)validateMenuItem:(NSMenuItem *)item
 {
+    if (item.action == @selector(eject:))
+        return [self ejectableVolume] != nil;
     if (item.action == @selector(showAsIcons:))
         item.state = _viewStyle == FinderViewStyleIcons ? NSControlStateValueOn : NSControlStateValueOff;
     else if (item.action == @selector(showAsList:))

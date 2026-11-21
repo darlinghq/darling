@@ -1,4 +1,4 @@
-// CFLAGS: -framework Foundation -framework AppKit -fobjc-arc -Isrc/Finder src/Finder/FinderDirectory.m src/Finder/FinderIconViewController.m src/Finder/FinderListViewController.m src/Finder/FinderWindowController.m
+// CFLAGS: -framework Foundation -framework AppKit -fobjc-arc -Isrc/Finder src/Finder/FinderDirectory.m src/Finder/FinderIconViewController.m src/Finder/FinderListViewController.m src/Finder/FinderSidebarController.m src/Finder/FinderWindowController.m
 // ARGS: "$(mktemp -d)/w"
 // Copyright (C) 2026 Lubos Dolezel
 //
@@ -39,13 +39,14 @@ static NSCollectionView *iconView(NSView *view)
     return nil;
 }
 
-// The first view of that class under view that is not hidden
-static NSView *findView(NSView *view, Class cls)
+// The list view under view, if it is shown: the outline view with a Kind column (the sidebar is one too)
+static NSOutlineView *shownListView(NSView *view)
 {
-    if ([view isKindOfClass: cls] && ![view isHiddenOrHasHiddenAncestor])
-        return view;
+    if ([view isKindOfClass: [NSOutlineView class]] && [(NSOutlineView *) view columnWithIdentifier: @"kind"] >= 0
+        && ![view isHiddenOrHasHiddenAncestor])
+        return (NSOutlineView *) view;
     for (NSView *subview in [view subviews]) {
-        NSView *found = findView(subview, cls);
+        NSOutlineView *found = shownListView(subview);
         if (found != nil)
             return found;
     }
@@ -123,7 +124,7 @@ int main(int argc, char **argv)
         [controller selectItems: @[ a, c ]];
         controller.viewStyle = FinderViewStyleList;
         spin();
-        NSOutlineView *list = (NSOutlineView *) findView(window.contentView, [NSOutlineView class]);
+        NSOutlineView *list = shownListView(window.contentView);
         expect(list != nil && [list numberOfRows] == 3, @"the list view shows the folder's three items");
         expect([names(controller.selectedItems) isEqual: (@[ @"a.txt", @"c.txt" ])],
                [NSString stringWithFormat: @"switching to the list keeps the selection (%@)", names(controller.selectedItems)]);

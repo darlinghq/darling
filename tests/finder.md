@@ -17,6 +17,11 @@ In-process tests, in the guest (`build/tmp/helpers/src-test.sh <mode> <file>`; e
   their cells show (sizes as `NSByteCountFormatter` gives them, `--` for a folder; dates in the medium date style and
   short time style; the kind as `NSURLLocalizedTypeDescriptionKey` gives it), sorting by size both ways and by name,
   expanding a folder in place, and selecting items in an expanded folder. It passes unchanged on both Macs.
+- `tests/src/finder_sidebar.m <disk image>` (needs a display): the sidebar. Favorites are Applications, the home
+  folder (titled with the user name), and Desktop, Documents and Downloads when they exist; Locations has the root
+  volume (no eject button), and an attached image's volume appears with an eject button and goes when it is
+  detached. It attaches and detaches the image itself. It passes unchanged on both Macs. In the guest, pass the
+  image's guest path: `ARGS=/Volumes/SystemRoot$PWD/tests/fixtures/unmount-test.dmg`.
 
 The harness, `tests/finder.sh`, runs Finder through LaunchServices (`open` in the guest) on X11 or Wayland, like
 `tests/disk-image-mounter.sh` (same environment; see the header of the script):
@@ -29,6 +34,9 @@ The harness, `tests/finder.sh`, runs Finder through LaunchServices (`open` in th
 | quit | Command-W on the last window ends Finder |
 | launch | `open -a Finder` (no documents) gives a window on the home folder |
 | volume | opening a disk image gives a window on its volume (DiskImageMounter, then LaunchServices) |
+| eject | with a window of F open, Command-E in the volume's window ejects the volume; its window closes, F's stays |
+| eject button | the same with the sidebar's eject button (X11 only: a headless sway has no pointer to click with) |
+| detached outside | `hdiutil detach` in the guest closes the volume's window |
 | unreadable | a folder that can't be read gives an alert and no window; after the alert Finder quits (skipped when the guest runs as root) |
 
 ## Notes
@@ -48,6 +56,10 @@ The harness, `tests/finder.sh`, runs Finder through LaunchServices (`open` in th
   - AppKit's `outlineView:sortDescriptorsDidChange:` (`appkit-outline-view-sort-descriptors.m`);
   - AppKit's `columnsInRect:`, which left out the last column when the first was wide, so it wasn't drawn
     (`appkit-table-view-columns-in-rect.m`).
+- Ejecting from the volume's own window closes that window from within its own event handling. AppKit used to
+  validate the window's toolbar half a second later anyway, and to update closed windows in `updateWindows`; by
+  then the toolbar item's target (the window's controller) was gone, and Finder crashed. AppKit now validates a
+  toolbar only while its window is shown (`appkit-toolbar-closed-window-validation.m`).
 - The kind strings are LaunchServices' type descriptions ("plain text", where macOS says "Plain Text Document").
 
 ## Observed on macOS

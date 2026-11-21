@@ -14,6 +14,7 @@ set(Finder_sources
 	FinderDirectory.m
 	FinderIconViewController.m
 	FinderListViewController.m
+	FinderSidebarController.m
 	FinderWindowController.m
 )
 add_darling_executable(Finder ${Finder_sources})

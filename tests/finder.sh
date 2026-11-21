@@ -106,6 +106,15 @@ key() { # <key>: to the window window() found, once it has had time to become ke
 	sleep 1
 }
 
+click() { # <x> <y>: a click in the window window() found, <x> from its left edge and <y> up from its bottom edge
+	# (X11 only)
+	local height
+	height=$(xdotool getwindowgeometry --shell "$WID" | sed -n 's/^HEIGHT=//p')
+	xdotool windowactivate --sync "$WID" 2>/dev/null
+	xdotool mousemove --window "$WID" "$1" $((height - $2)) click 1
+	sleep 1
+}
+
 shot() { # <name>: an image of the window window() found, in $work/<name>.png
 	if [ $display = x11 ]; then
 		import -silent -window "$WID" "$work/$1.png" 2>/dev/null
@@ -194,6 +203,69 @@ quit_finder
 # volume: DiskImageMounter opens the image's volume, which LaunchServices hands to Finder
 guest open-dmg "open '$gw/unmount-test.dmg'"
 if window "Unmount Test" 60; then pass "volume"; else fail "volume: $(outputs open-dmg), windows: $(windows '')"; fi
+quit_finder
+detach_all
+
+mounted() { guest mounted "mount | grep -c ' on $volume '"; cat "$work/mounted.out"; }
+
+# eject: Command-E in the volume's window ejects it; the window closes, and Finder's other windows stay
+guest open-f3 "open '$gw/F'"
+window F 30
+guest open-dmg2 "open '$gw/unmount-test.dmg'"
+if window "Unmount Test" 60; then
+	key cmd+e
+	if ! window_gone "Unmount Test" 15 || [ "$(mounted)" != 0 ]; then
+		fail "eject: windows $(windows 'Unmount Test'), mounted $(mounted)"
+	elif sleep 2 && [ "$(windows F)" != 1 ]; then
+		fail "eject: the window of F went too (Finder running: $(running))"
+	else
+		pass "eject"
+	fi
+else
+	fail "eject: no window: $(outputs open-dmg2)"
+fi
+quit_finder
+detach_all
+
+# eject button: the eject button of the volume in the sidebar (Locations' second row, 297 points above the bottom
+# of a new window) ejects it; the window closes, and Finder's other windows stay
+if [ $display = wayland ]; then
+	skip "eject button: a headless sway has no pointer to click with (Command-E covers ejecting on Wayland)"
+else
+guest open-f4 "open '$gw/F'"
+window F 30
+guest open-dmg4 "open '$gw/unmount-test.dmg'"
+if window "Unmount Test" 60; then
+	sleep 2
+	click 176 297
+	if ! window_gone "Unmount Test" 15 || [ "$(mounted)" != 0 ]; then
+		fail "eject button: windows $(windows 'Unmount Test'), mounted $(mounted)"
+	elif sleep 2 && [ "$(windows F)" != 1 ]; then
+		fail "eject button: the window of F went too (Finder running: $(running))"
+	else
+		pass "eject button"
+	fi
+else
+	fail "eject button: no window: $(outputs open-dmg4)"
+fi
+quit_finder
+detach_all
+fi
+
+# detached outside: the volume's window closes when something else detaches it
+guest open-dmg3 "open '$gw/unmount-test.dmg'"
+if window "Unmount Test" 60; then
+	guest detach "hdiutil detach '$volume'"
+	if [ "$(rc detach)" != 0 ]; then
+		fail "detached outside: hdiutil detach: rc $(rc detach) $(outputs detach)"
+	elif window_gone "Unmount Test" 10; then
+		pass "detached outside"
+	else
+		fail "detached outside: the window stays"
+	fi
+else
+	fail "detached outside: no window: $(outputs open-dmg3)"
+fi
 quit_finder
 detach_all
 
