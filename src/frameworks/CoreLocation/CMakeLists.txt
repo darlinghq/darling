@@ -56,3 +56,4 @@ add_framework(CoreLocation
         objc
         Foundation
 )
+target_include_directories(CoreLocation PRIVATE include ${CMAKE_SOURCE_DIR}/src/locationd)
