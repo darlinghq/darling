@@ -36,6 +36,17 @@ typedef NS_ENUM(NSInteger, AVPlayerActionAtItemEnd) {
     AVPlayerActionAtItemEndNone = 2
 };
 
+typedef NS_ENUM(NSInteger, AVPlayerTimeControlStatus) {
+    AVPlayerTimeControlStatusPaused = 0,
+    AVPlayerTimeControlStatusWaitingToPlayAtSpecifiedRate = 1,
+    AVPlayerTimeControlStatusPlaying = 2
+};
+
+typedef NSString *AVPlayerWaitingReason;
+extern NSString *const AVPlayerWaitingToMinimizeStallsReason;
+extern NSString *const AVPlayerWaitingWhileEvaluatingBufferingRateReason;
+extern NSString *const AVPlayerWaitingWithNoItemToPlayReason;
+
 @interface AVPlayer : NSObject {
 @private
     AVPlayerInternal *_player;
@@ -53,6 +64,8 @@ typedef NS_ENUM(NSInteger, AVPlayerActionAtItemEnd) {
 @property (nonatomic) float volume;
 @property (nonatomic, getter=isMuted) BOOL muted;
 @property (nonatomic) AVPlayerActionAtItemEnd actionAtItemEnd;
+@property (nonatomic, readonly) AVPlayerTimeControlStatus timeControlStatus;
+@property (nonatomic, readonly, copy) AVPlayerWaitingReason reasonForWaitingToPlay;
 
 - (void)replaceCurrentItemWithPlayerItem:(AVPlayerItem *)item;
 - (void)play;

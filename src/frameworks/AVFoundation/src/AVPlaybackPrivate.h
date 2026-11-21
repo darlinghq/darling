@@ -83,6 +83,9 @@ CGImageRef AVPlaybackCreateImageFromPixelBuffer(CVPixelBufferRef pixelBuffer);
 - (void)replaceItem:(AVPlayerItem *)newItem;
 - (float)rate;
 - (void)setRate:(float)rate;
+// Applies the player's volume and muted state to the audio output.
+- (void)updateVolume;
+- (NSInteger)timeControlStatus;
 - (CMTime)currentTime;
 - (void)seekToTime:(CMTime)time completionHandler:(void (^)(BOOL finished))completionHandler;
 - (void)registerLayer:(AVPlayerLayer *)layer;

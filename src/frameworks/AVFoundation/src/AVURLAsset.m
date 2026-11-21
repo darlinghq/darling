@@ -42,7 +42,7 @@
         if (media) {
             state->duration = CMTimeMake(AVPEMediaDurationUs(media), 1000000);
             NSMutableArray *tracks = [[NSMutableArray alloc] init];
-            BOOL hasVideo = NO, hasDecodableVideo = NO, hasAudio = NO;
+            BOOL hasVideo = NO, hasDecodableVideo = NO, hasDecodableAudio = NO;
             for (int i = 0; i < AVPEMediaTrackCount(media); i++) {
                 const AVPETrackInfo *info = AVPEMediaTrack(media, i);
                 AVMediaType type = info->type == AVPETrackVideo ? AVMediaTypeVideo : AVMediaTypeAudio;
@@ -52,7 +52,7 @@
                     if (CGSizeEqualToSize(state->naturalSize, CGSizeZero) && info->decodable)
                         state->naturalSize = CGSizeMake(info->width, info->height);
                 } else if (info->type == AVPETrackAudio) {
-                    hasAudio = YES;
+                    hasDecodableAudio |= info->decodable;
                 }
                 AVAssetTrack *track = [[AVAssetTrack alloc] _initWithAsset:self
                                                                     trackID:(CMPersistentTrackID)info->trackID
@@ -65,8 +65,8 @@
             }
             [state->tracks release];
             state->tracks = tracks;
-            // Video needs a decoder; audio-only media only has the clock (no audio output yet).
-            state->playable = hasVideo ? hasDecodableVideo : hasAudio;
+            // Video needs a decoder; media without video is playable if its audio can be decoded.
+            state->playable = hasVideo ? hasDecodableVideo : hasDecodableAudio;
             AVPEMediaClose(media);
         }
     }

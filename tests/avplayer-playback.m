@@ -5,8 +5,13 @@
 // at the right speed, pausing, periodic time observers, the layer contents, and creating and releasing
 // players while they play.
 //
-// The fixtures are tests/avplayer-fixtures/redblue-h264.{mp4,mkv,ts}: 64x48, 10 fps, 1.2 s of H.264
+// The video fixtures are tests/avplayer-fixtures/redblue-h264.{mp4,mkv,ts}: 64x48, 10 fps, 1.2 s of H.264
 // (High profile, B-frames, a keyframe every 6 frames): red for the first 0.6 s, blue for the rest.
+// redblue-h264-aac.mp4 is the same video with an AAC track. The audio fixtures are
+// tones-{aac.m4a,mp3.mp3,ac3.ac3,eac3.eac3,flac.flac,alac.m4a,opus.opus,pcm.wav}: 2 s of a 440 Hz tone
+// for the first second and an 880 Hz tone for the second, and tones-vorbis.ogg, which has no Core Audio
+// decoder. Audio goes to the default output device; this program checks the clock, the state and the
+// notifications, and tests/avplayer-audio-sink.py checks what is heard.
 // Pass the paths of one or more of them (the same file can be given from different places, for
 // instance inside the prefix and under /Volumes/SystemRoot). Works for i386 and x86_64:
 //   guest-cc.sh -a x86_64 -o avplayer-playback tests/avplayer-playback.m -framework Foundation -framework AVFoundation -framework QuartzCore -framework CoreMedia -framework CoreVideo
@@ -98,7 +103,8 @@ static void testAsset(NSString *path)
 
 	NSArray *video = [asset tracksWithMediaType:AVMediaTypeVideo];
 	CHECK([video count] == 1, "one video track (got %lu)", (unsigned long)[video count]);
-	CHECK([[asset tracksWithMediaType:AVMediaTypeAudio] count] == 0, "no audio track");
+	NSUInteger expectedAudio = [[path lastPathComponent] rangeOfString:@"-aac"].location != NSNotFound ? 1 : 0;
+	CHECK([[asset tracksWithMediaType:AVMediaTypeAudio] count] == expectedAudio, "%lu audio track(s)", (unsigned long)expectedAudio);
 	AVAssetTrack *track = [video firstObject];
 	CHECK([track naturalSize].width == 64 && [track naturalSize].height == 48, "track natural size");
 	CHECK([track nominalFrameRate] > 9.5 && [track nominalFrameRate] < 10.5, "track frame rate is 10 (got %g)", [track nominalFrameRate]);
@@ -235,12 +241,17 @@ static void testPlayback(NSString *path)
 
 	// Colors while playing: red first, blue later.
 	__block BOOL sawRed = NO, sawBlue = NO;
+	__block double timeAtBlue = -1;
 	spin(4.0, ^BOOL {
 		long p = centerPixel(output, NULL);
 		sawRed |= isRed(p);
+		if (isBlue(p) && !sawBlue)
+			timeAtBlue = CMTimeGetSeconds([player currentTime]);
 		sawBlue |= isBlue(p);
 		return ended;
 	});
+	// The frame follows the clock (which follows the audio, if there is any): blue starts at 0.6 s.
+	CHECK(timeAtBlue > 0.55 && timeAtBlue < 0.75, "the first blue frame came when the clock read %g", timeAtBlue);
 	double elapsed = nowSeconds() - start;
 	CHECK(ended, "AVPlayerItemDidPlayToEndTimeNotification is posted");
 	CHECK(elapsed > 1.0 && elapsed < 2.2, "playing takes about the duration (took %g s)", elapsed);
@@ -379,6 +390,224 @@ static void testLifetime(NSString *path)
 	printf("lifetime ok\n");
 }
 
+
+#pragma mark - Audio
+
+// Records the values of a key-value observed property.
+@interface Recorder : NSObject {
+@public
+	NSMutableArray *values; // an explicit instance variable: the 32-bit runtime does not synthesize them
+}
+@end
+@implementation Recorder
+- (instancetype)init { if ((self = [super init])) values = [[NSMutableArray alloc] init]; return self; }
+- (void)dealloc { [values release]; [super dealloc]; }
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
+{
+	[values addObject:[object valueForKey:keyPath]];
+}
+@end
+
+static void testAudioAsset(NSString *path)
+{
+	const char *name = [[path lastPathComponent] UTF8String];
+	AVURLAsset *asset = [AVURLAsset URLAssetWithURL:[NSURL fileURLWithPath:path] options:nil];
+	CHECK([asset isPlayable], "%s: an audio file is playable", name);
+	double duration = CMTimeGetSeconds([asset duration]);
+	CHECK(duration > 1.9 && duration < 2.1, "%s: duration is about 2 s (got %g)", name, duration);
+	NSArray *audio = [asset tracksWithMediaType:AVMediaTypeAudio];
+	CHECK([audio count] == 1, "%s: one audio track (got %lu)", name, (unsigned long)[audio count]);
+	CHECK([[asset tracksWithMediaType:AVMediaTypeVideo] count] == 0, "%s: no video track", name);
+	CHECK([asset naturalSize].width == 0 && [asset naturalSize].height == 0, "%s: no natural size", name);
+	CHECK(CMTimeGetSeconds([[audio firstObject] timeRange].duration) > 1.9, "%s: the track lasts about 2 s", name);
+
+	AVPlayerItem *item = [AVPlayerItem playerItemWithAsset:asset];
+	AVPlayer *player = [AVPlayer playerWithPlayerItem:item];
+	CHECK(spin(3.0, ^BOOL { return [player status] == AVPlayerStatusReadyToPlay; }), "%s: the player becomes ready", name);
+	CHECK([player rate] == 0 && [player timeControlStatus] == AVPlayerTimeControlStatusPaused, "%s: paused at the start", name);
+	CHECK(CMTimeGetSeconds([player currentTime]) == 0, "%s: at 0", name);
+}
+
+// An audio-only file plays: the clock follows the audio, the end is announced, pausing, resuming, seeking
+// and the rate work like they do with video.
+static void testAudioPlayback(NSString *path)
+{
+	const char *name = [[path lastPathComponent] UTF8String];
+	AVPlayerItem *item = [AVPlayerItem playerItemWithURL:[NSURL fileURLWithPath:path]];
+	AVPlayer *player = [AVPlayer playerWithPlayerItem:item];
+	spin(3.0, ^BOOL { return [player status] == AVPlayerStatusReadyToPlay; });
+	double duration = CMTimeGetSeconds([item duration]);
+
+	Recorder *recorder = [[[Recorder alloc] init] autorelease];
+	[player addObserver:recorder forKeyPath:@"timeControlStatus" options:0 context:NULL];
+	__block BOOL ended = NO;
+	__block double endedAt = 0;
+	id token = [[NSNotificationCenter defaultCenter] addObserverForName:AVPlayerItemDidPlayToEndTimeNotification object:item
+		queue:nil usingBlock:^(NSNotification *n) { ended = YES; endedAt = nowSeconds(); }];
+
+	double start = nowSeconds();
+	[player play];
+	CHECK([player rate] == 1.0f, "%s: rate is 1 after play", name);
+	CHECK([player timeControlStatus] != AVPlayerTimeControlStatusPaused, "%s: playing or waiting to play", name);
+	CHECK(spin(6.0, ^BOOL { return [player timeControlStatus] == AVPlayerTimeControlStatusPlaying; }), "%s: playback starts", name);
+	CHECK([player reasonForWaitingToPlay] == nil, "%s: nothing to wait for while playing", name);
+	CHECK(spin(duration + 6.0, ^BOOL { return ended; }), "%s: AVPlayerItemDidPlayToEndTimeNotification is posted", name);
+	double elapsed = endedAt - start;
+	// The clock follows what is heard and the audio takes a moment to start, so playing takes a little longer than
+	// the media; the end can come a tenth of a second before the last of the audio is heard (the output latency).
+	CHECK(elapsed > duration - 0.3 && elapsed < duration + 2.5, "%s: playing took %g s (duration %g)", name, elapsed, duration);
+	CHECK([player rate] == 0 && [player timeControlStatus] == AVPlayerTimeControlStatusPaused, "%s: paused at the end", name);
+	CHECK(fabs(CMTimeGetSeconds([player currentTime]) - duration) < 0.02, "%s: the time at the end is the duration (got %g)", name,
+	      CMTimeGetSeconds([player currentTime]));
+	CHECK([recorder->values count] >= 2 && [[recorder->values lastObject] integerValue] == AVPlayerTimeControlStatusPaused,
+	      "%s: timeControlStatus is key-value observable (%lu changes)", name, (unsigned long)[recorder->values count]);
+	[player play];
+	[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.3]];
+	CHECK([player rate] == 0, "%s: play at the end stays paused", name);
+	[player removeObserver:recorder forKeyPath:@"timeControlStatus"];
+	[[NSNotificationCenter defaultCenter] removeObserver:token];
+
+	// Seeks finish, paused or playing, and past the end stop at the duration.
+	__block int finished = -1;
+	[player seekToTime:CMTimeMakeWithSeconds(1.3, 600) completionHandler:^(BOOL f) { finished = f; }];
+	CHECK(spin(3.0, ^BOOL { return finished != -1; }) && finished == 1, "%s: a seek of a paused player finishes", name);
+	CHECK(fabs(CMTimeGetSeconds([player currentTime]) - 1.3) < 0.02, "%s: the time is the seek target", name);
+	finished = -1;
+	[player seekToTime:CMTimeMakeWithSeconds(9.0, 600) completionHandler:^(BOOL f) { finished = f; }];
+	CHECK(spin(3.0, ^BOOL { return finished != -1; }) && finished == 1, "%s: a seek past the end finishes", name);
+	CHECK(fabs(CMTimeGetSeconds([player currentTime]) - duration) < 0.02, "%s: and stops at the duration", name);
+
+	// Pausing keeps the position, resuming plays on to the end.
+	finished = -1;
+	[player seekToTime:kCMTimeZero completionHandler:^(BOOL f) { finished = f; }];
+	spin(3.0, ^BOOL { return finished != -1; });
+	ended = NO;
+	token = [[NSNotificationCenter defaultCenter] addObserverForName:AVPlayerItemDidPlayToEndTimeNotification object:item
+		queue:nil usingBlock:^(NSNotification *n) { ended = YES; endedAt = nowSeconds(); }];
+	[player play];
+	[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.6]];
+	[player pause];
+	double paused = CMTimeGetSeconds([player currentTime]);
+	CHECK(paused > 0.1 && paused < 0.7, "%s: paused partway (at %g)", name, paused);
+	CHECK([player timeControlStatus] == AVPlayerTimeControlStatusPaused, "%s: paused", name);
+	[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.4]];
+	CHECK(fabs(CMTimeGetSeconds([player currentTime]) - paused) < 0.02, "%s: the time stands still while paused", name);
+	CHECK(!ended, "%s: no end while paused", name);
+	[player play];
+	CHECK(spin(duration + 5.0, ^BOOL { return ended; }), "%s: resuming plays on to the end", name);
+	[[NSNotificationCenter defaultCenter] removeObserver:token];
+
+	// A seek while playing continues to play from the new position: 1.4 s is in the second tone.
+	finished = -1;
+	[player seekToTime:kCMTimeZero completionHandler:^(BOOL f) { finished = f; }];
+	spin(3.0, ^BOOL { return finished != -1; });
+	ended = NO;
+	token = [[NSNotificationCenter defaultCenter] addObserverForName:AVPlayerItemDidPlayToEndTimeNotification object:item
+		queue:nil usingBlock:^(NSNotification *n) { ended = YES; endedAt = nowSeconds(); }];
+	[player play];
+	[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.3]];
+	finished = -1;
+	start = nowSeconds();
+	[player seekToTime:CMTimeMakeWithSeconds(1.4, 600) completionHandler:^(BOOL f) { finished = f; }];
+	CHECK(spin(3.0, ^BOOL { return finished != -1; }) && finished == 1, "%s: a seek of a playing player finishes", name);
+	CHECK([player rate] == 1.0f, "%s: still playing after the seek", name);
+	double after = CMTimeGetSeconds([player currentTime]);
+	CHECK(after >= 1.39 && after < 1.9, "%s: playing on from the seek target (at %g)", name, after);
+	CHECK(spin(4.0, ^BOOL { return ended; }), "%s: the end follows the seek", name);
+	elapsed = endedAt - start;
+	CHECK(elapsed > 0.4 && elapsed < 2.5, "%s: the rest takes about 0.6 s plus the start of the audio (took %g)", name, elapsed);
+	[[NSNotificationCenter defaultCenter] removeObserver:token];
+
+	// Twice the speed takes half the time.
+	finished = -1;
+	[player seekToTime:kCMTimeZero completionHandler:^(BOOL f) { finished = f; }];
+	spin(3.0, ^BOOL { return finished != -1; });
+	ended = NO;
+	token = [[NSNotificationCenter defaultCenter] addObserverForName:AVPlayerItemDidPlayToEndTimeNotification object:item
+		queue:nil usingBlock:^(NSNotification *n) { ended = YES; endedAt = nowSeconds(); }];
+	start = nowSeconds();
+	[player setRate:2.0f];
+	CHECK([player rate] == 2.0f, "%s: the rate is 2", name);
+	CHECK(spin(4.0, ^BOOL { return ended; }), "%s: plays at rate 2 to the end", name);
+	elapsed = endedAt - start;
+	CHECK(elapsed > duration / 2 - 0.1 && elapsed < duration / 2 + 2.0, "%s: rate 2 takes half the time (took %g s)", name, elapsed);
+	[[NSNotificationCenter defaultCenter] removeObserver:token];
+
+	// Volume and muting are properties of the player and take any value; changing them while playing is fine.
+	[player setVolume:2.0f];
+	CHECK([player volume] == 2.0f, "%s: volume above 1 is kept", name);
+	[player setVolume:0.0f];
+	CHECK([player volume] == 0.0f, "%s: volume 0", name);
+	[player setVolume:0.25f];
+	[player setMuted:YES];
+	CHECK([player isMuted] && [player volume] == 0.25f, "%s: muting keeps the volume", name);
+	finished = -1;
+	[player seekToTime:kCMTimeZero completionHandler:^(BOOL f) { finished = f; }];
+	spin(3.0, ^BOOL { return finished != -1; });
+	[player setRate:1.0f];
+	[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
+	[player setMuted:NO];
+	[player setVolume:1.0f];
+	[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
+	CHECK([player rate] == 1.0f, "%s: volume changes do not stop playback", name);
+	[player pause];
+}
+
+// Players and their audio come and go while they play, are seeked and change rate.
+static void testAudioLifetime(NSString *path)
+{
+	NSURL *url = [NSURL fileURLWithPath:path];
+	for (int i = 0; i < 20; i++) {
+		@autoreleasepool {
+			AVPlayer *player = [[AVPlayer alloc] initWithURL:url];
+			id observer = [player addPeriodicTimeObserverForInterval:CMTimeMake(1, 50) queue:dispatch_get_main_queue() usingBlock:^(CMTime t) {}];
+			(void)observer;
+			[player play];
+			if (i % 2 == 0)
+				[player setRate:2.0f];
+			if (i % 3 == 0)
+				[player seekToTime:CMTimeMakeWithSeconds(1.0, 600)];
+			if (i % 4 == 0)
+				[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+			if (i % 5 == 0) {
+				[player setVolume:0.5f];
+				[player pause];
+				[player play];
+			}
+			[player release]; // while it plays
+		}
+	}
+	[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.3]];
+
+	AVPlayer *player = [AVPlayer playerWithURL:url];
+	[player play];
+	[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
+	for (int i = 0; i < 10; i++) {
+		[player setRate:(i % 2) ? 1.0f : 1.5f];
+		[player seekToTime:CMTimeMakeWithSeconds(0.1 * i, 600)];
+		[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.02]];
+	}
+	AVPlayerItem *other = [AVPlayerItem playerItemWithURL:url];
+	[player replaceCurrentItemWithPlayerItem:other];
+	CHECK([player rate] == 0, "the new item starts paused");
+	[player play];
+	[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
+	[player replaceCurrentItemWithPlayerItem:nil];
+	CHECK([player currentItem] == nil, "the audio item was removed");
+	printf("audio lifetime ok\n");
+}
+
+// Audio without a Core Audio decoder is not playable, whatever the container.
+static void testUnplayableAudio(NSString *path)
+{
+	AVURLAsset *asset = [AVURLAsset URLAssetWithURL:[NSURL fileURLWithPath:path] options:nil];
+	CHECK(![asset isPlayable], "%s is not playable", [[path lastPathComponent] UTF8String]);
+	AVPlayer *player = [AVPlayer playerWithURL:[NSURL fileURLWithPath:path]];
+	CHECK(spin(3.0, ^BOOL { return [player status] == AVPlayerStatusFailed; }), "a player of audio that cannot be decoded fails");
+	[player play];
+	CHECK([player rate] == 0, "and does not play");
+}
+
 int main(int argc, char **argv)
 {
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -394,11 +623,20 @@ int main(int argc, char **argv)
 		}
 		for (int i = 1; i < argc; i++) {
 			NSString *path = [NSString stringWithUTF8String:argv[i]];
+			NSString *file = [path lastPathComponent];
 			printf("== %s\n", argv[i]);
-			testAsset(path);
-			testPlayerBasics(path);
-			testPlayback(path);
-			testLayer(path);
+			if ([file hasPrefix:@"tones-vorbis"]) {
+				testUnplayableAudio(path);
+			} else if ([file hasPrefix:@"tones-"]) {
+				testAudioAsset(path);
+				testAudioPlayback(path);
+				testAudioLifetime(path);
+			} else {
+				testAsset(path);
+				testPlayerBasics(path);
+				testPlayback(path);
+				testLayer(path);
+			}
 		}
 		testBadAssets(NSTemporaryDirectory());
 		testLifetime(first);
