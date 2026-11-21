@@ -218,7 +218,14 @@ uint64_t fex_invoke_guest_callback_args(uintptr_t guest_fn, const uint64_t args[
 		fprintf(stderr, "[mldr/fex] fatal: failed to mmap a callback stack: %s\n", strerror(errno));
 		abort();
 	}
-	uintptr_t sp = reinterpret_cast<uintptr_t>(cb_stack) + kCallbackStackSize;
+	// The bottom page is a guard. The top keeps zeroed slack because a callback that tail-calls a host
+	// stub makes the bridge read the stack words above its return address.
+	const long page = sysconf(_SC_PAGESIZE);
+	if (mprotect(cb_stack, static_cast<size_t>(page), PROT_NONE) != 0) {
+		fprintf(stderr, "[mldr/fex] fatal: failed to guard a callback stack: %s\n", strerror(errno));
+		abort();
+	}
+	uintptr_t sp = reinterpret_cast<uintptr_t>(cb_stack) + kCallbackStackSize - 256;
 	sp &= ~uintptr_t(15);
 	sp -= sizeof(uint64_t);
 	*reinterpret_cast<uint64_t*>(sp) = reinterpret_cast<uintptr_t>(g_callback_return_stub);
