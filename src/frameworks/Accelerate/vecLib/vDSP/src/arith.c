@@ -209,6 +209,10 @@ VDSP_VMIN(vDSP_vmin, float)
 VDSP_VMIN(vDSP_vminD, double)
 
 // Raises every element below the threshold *B to it.
+// QUIRK: a NaN element is passed through unchanged instead of being replaced by the threshold, which is what
+// the page loop "A >= B ? A : B" would give. Not documented. Evidence: black-box observation of
+// vDSP_vthr on macOS 26.7.3 (x86_64) and macOS 27.0.1 (arm64), tier 2, both returning NaN for a NaN element.
+// Test: testRealVectorOps, "vthr quirk NaN passes through".
 #define VDSP_VTHR(NAME, T) \
 void NAME(const T* __A, vDSP_Stride __IA, const T* __B, T* __C, vDSP_Stride __IC, vDSP_Length __N) \
 { \
@@ -216,7 +220,7 @@ void NAME(const T* __A, vDSP_Stride __IA, const T* __B, T* __C, vDSP_Stride __IC
 	for (vDSP_Length n = 0; n < __N; n++) \
 	{ \
 		const T a = __A[(long) n * __IA]; \
-		__C[(long) n * __IC] = a >= threshold ? a : threshold; \
+		__C[(long) n * __IC] = a < threshold ? threshold : a; \
 	} \
 }
 

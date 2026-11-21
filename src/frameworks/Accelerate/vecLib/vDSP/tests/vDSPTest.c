@@ -10,7 +10,9 @@ static int g_failures;
 
 static void expectNear(double actual, double expected, double tolerance, const char* what, int index)
 {
-	if (fabs(actual - expected) > tolerance)
+	// A NaN must match a NaN: fabs(NaN - x) > tolerance is false, so it would otherwise pass for any expected value.
+	const int nanMismatch = isnan(actual) != isnan(expected);
+	if (nanMismatch || (!isnan(actual) && fabs(actual - expected) > tolerance))
 	{
 		printf("FAIL %s[%d]: got %g, expected %g\n", what, index, actual, expected);
 		g_failures++;
@@ -148,6 +150,11 @@ static void testRealVectorOps(void)
 	expectNear(signbit(c[0]) ? 1 : 0, 0, 0, "vmin tie takes A", 0);
 	vDSP_vthr(&negZero, 1, &posZero, c, 1, 1);
 	expectNear(signbit(c[0]) ? 1 : 0, 1, 0, "vthr tie takes A", 0);
+
+	// QUIRK test (see vDSP_vthr in arith.c): a NaN element passes through.
+	const float nanValue = NAN;
+	vDSP_vthr(&nanValue, 1, &threshold, c, 1, 1);
+	expectNear(c[0], NAN, 0, "vthr quirk NaN passes through", 0);
 
 	// Double precision: a -0 / +0 tie pins vmaxD (takes A), vminD (takes A) and vthrD (takes A); vsqD squares.
 	const double negZeroD = -0.0, posZeroD = 0.0, minusTwo = -2;
