@@ -105,6 +105,8 @@ private:
 	AudioDeviceID resolveDevice();
 	// Frames, at the queue's sample rate, that the output device holds between rendering and playing.
 	double deviceLatencyFrames();
+	double playoutSeconds();
+	void scheduleDrainStop();
 	OSStatus deviceUID(CFStringRef* outUID);
 	OSStatus ensureUnit();
 	void returnBuffers(const std::vector<AudioQueueBufferRef>& buffers);

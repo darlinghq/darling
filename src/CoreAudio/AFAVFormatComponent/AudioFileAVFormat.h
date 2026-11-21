@@ -20,6 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef _AUDIO_FILE_AV_FORMAT_H
 #define _AUDIO_FILE_AV_FORMAT_H
 #include "AudioFileObject.h"
+#include <AudioToolbox/AudioFile.h>
 #include <cstdint>
 #include <vector>
 
@@ -53,6 +54,10 @@ public:
 
 	OSStatus FrameToPacket(SInt64 inFrame, SInt64& outPacket, UInt32& outFrameOffsetInPacket) override;
 
+	OSStatus GetPropertyInfo(AudioFilePropertyID inPropertyID, UInt32* outDataSize, UInt32* isWritable) override;
+	OSStatus GetProperty(AudioFilePropertyID inPropertyID, UInt32* ioDataSize, void* outPropertyData) override;
+	OSStatus GetEstimatedDuration(Float64* duration) override;
+
 	OSStatus GetMagicCookieDataSize(UInt32* outDataSize, UInt32* isWritable) override;
 	OSStatus GetMagicCookieData(UInt32* ioDataSize, void* ioPropertyData) override;
 	OSStatus SetMagicCookieData(UInt32 inDataSize, const void* inPropertyData) override;
@@ -85,6 +90,9 @@ private:
 	bool m_opened = false;
 	bool m_finished = false;
 	std::vector<uint8_t> m_cookie;
+	// The priming and remainder frames of the stream, and the number of frames that are the sound (AAC in MPEG-4 files)
+	bool m_hasTableInfo = false;
+	AudioFilePacketTableInfo m_tableInfo = {};
 };
 
 #endif
