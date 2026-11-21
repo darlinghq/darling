@@ -42,6 +42,19 @@ In-process tests, in the guest (`build/tmp/helpers/src-test.sh <mode> <file>`; e
   Every truncation and 2000 mutations of the well-formed stores give nil or a store, without crashing. Extra stores
   given (copies Finder wrote) must parse, and their records are printed. It passes unchanged on both Macs, where the
   fixture directory has to be copied first.
+- `tests/src/finder_folder_style.m <fixture dir> [<Finder-made store>]` (AppKit, no window): a folder's view
+  settings from its `.DS_Store`:
+  - `styled`: the window size, chrome, view, icon and text sizes, label position, positions (a decomposed name found
+    by the precomposed one) and picture;
+  - `styled-bookmark`: the picture as bookmark data;
+  - `colour` and `legacy`: older `icvo`/`BKGD` records;
+  - `list`;
+  - pictures outside the volume (`..`, a symbolic link), missing or a folder: no picture, the rest kept;
+  - `wrong-types`: the defaults;
+  - no store, an empty, malformed or `no-settings` one: no style.
+
+  Each case copies the fixture into a folder of a temporary "volume". A store Finder wrote for a styled folder (icon
+  96, items at (100, 150) and (400, 150), 500×300, no toolbar) can be given too. It passes unchanged on both Macs.
 
 The harness, `tests/finder.sh`, runs Finder through LaunchServices (`open` in the guest) on X11 or Wayland, like
 `tests/disk-image-mounter.sh` (same environment; see the header of the script):

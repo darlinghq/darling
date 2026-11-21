@@ -3,11 +3,13 @@
 """Generates the .DS_Store fixtures in tests/fixtures/dsstore/ (committed; rerun after changing them).
 Usage: make-dsstore-fixtures.py [<output directory>]. Each fixture is described in tests/finder.md."""
 import os
+import plistlib
 import struct
 import sys
+import unicodedata
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dsstore import Raw, iloc, write_store  # noqa: E402
+from dsstore import Raw, alias_v2, bookmark, bwsp, icvp, iloc, write_store  # noqa: E402
 
 DECOMPOSED_U = "ü"
 
@@ -29,6 +31,28 @@ def multi_level(count=3000):
     return [("item %d.txt" % i, "Iloc", "blob", iloc(i, i * 2)) for i in range(count)]
 
 
+def styled(picture):
+    """The settings of the Styled Test disk image's window (tests/fixtures/make-styled-fixture.py), with the
+    background picture given as alias or bookmark data."""
+    return [
+        (".", "bwsp", "blob", bwsp({"WindowBounds": "{{200, 120}, {640, 400}}", "ShowToolbar": False,
+                                     "ShowSidebar": False})),
+        (".", "icvp", "blob", icvp({"iconSize": 128.0, "textSize": 13.0, "labelOnBottom": True, "backgroundType": 2,
+                                     "backgroundImageAlias": picture})),
+        (".", "vSrn", "long", 1),
+        (".", "vstl", "type", "icnv"),
+        ("Styled App.app", "Iloc", "blob", iloc(160, 200)),
+        ("Applications", "Iloc", "blob", iloc(480, 200)),
+        (unicodedata.normalize("NFD", "Ünï 😀.txt"), "Iloc", "blob", iloc(320, 330)),
+    ]
+
+
+def icv4(size, label):
+    """An older 'icvo' blob: "icv4", the icon size (2 bytes), the arrangement ("none"), the label position ("botm" or
+    "rght"), then 12 more bytes."""
+    return b"icv4" + struct.pack(">H", size) + b"none" + label.encode("ascii") + b"\0" * 12
+
+
 def utf16(name):
     data = name.encode("utf-16-be")
     return struct.pack(">I", len(data) // 2) + data
@@ -47,6 +71,23 @@ def main():
         "huge-count": write_store(all_types(), corrupt="huge-count"),
         "long-name": write_store([Raw(struct.pack(">I", 0x7FFFFFFF) + "x".encode("utf-16-be") + b"Iloclong\0\0\0\1", "x")]),
         "bad-magic": write_store(all_types(), corrupt="bad-magic"),
+        "styled": write_store(styled(alias_v2("Styled Test", "/.background/background.png"))),
+        "styled-bookmark": write_store(styled(bookmark("/Volumes/Styled Test",
+                                                        "/Volumes/Styled Test/.background/background.png"))),
+        "escape-dotdot": write_store(styled(alias_v2("Styled Test", "/../../etc/passwd"))),
+        "escape-link": write_store(styled(alias_v2("Styled Test", "/.background/link.png"))),
+        "colour": write_store([(".", "icvp", "blob", icvp({"backgroundType": 1, "backgroundColorRed": 0.2,
+                                                           "backgroundColorGreen": 0.4, "backgroundColorBlue": 0.6}))]),
+        # BKGD "ClrB": the colour as 16-bit red, green and blue, then 2 bytes
+        "legacy": write_store([(".", "icvo", "blob", icv4(72, "rght")),
+                               (".", "BKGD", "blob", b"ClrB" + struct.pack(">HHHH", 0x3333, 0x6666, 0x9999, 0))]),
+        # Only what Finder keeps about sizes and dates (as in /Applications/.DS_Store on macOS 26.7.3)
+        "no-settings": write_store([("Xcode.app", "lg1S", "comp", 4096), ("Xcode.app", "ph1S", "comp", 8192),
+                                    (".", "vSrn", "long", 1)]),
+        "list": write_store([(".", "vstl", "type", "Nlsv")]),
+        "wrong-types": write_store([("Styled App.app", "Iloc", "long", 5),
+                                    (".", "bwsp", "blob", plistlib.dumps(["WindowBounds"], fmt=plistlib.FMT_BINARY)),
+                                    (".", "icvp", "blob", icvp({"iconSize": "big"}))]),
     }
     for name, data in fixtures.items():
         with open(os.path.join(out, name + ".DS_Store"), "wb") as f:
