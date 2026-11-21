@@ -205,12 +205,20 @@ static darling_fexcore_run_thread_fn ensure_fexcore_loaded(void)
 	return g_run_thread_fn;
 }
 
-uint64_t fex_invoke_guest_callback(uintptr_t guest_fn, uint64_t arg0, uint64_t arg1)
+uint64_t fex_invoke_guest_callback_args(uintptr_t guest_fn, const uint64_t args[6])
 {
 	darling_fexcore_run_thread_fn run_fn = ensure_fexcore_loaded();
 
-	alignas(16) uint8_t cb_stack[16384];
-	uintptr_t sp = reinterpret_cast<uintptr_t>(cb_stack + sizeof(cb_stack));
+	// A guest callback can be as heavy as an error handler that logs, so it gets a real stack, not a few
+	// kilobytes of the host thread's.
+	constexpr size_t kCallbackStackSize = 512 * 1024;
+	void* cb_stack = mmap(nullptr, kCallbackStackSize, PROT_READ | PROT_WRITE,
+		MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
+	if (cb_stack == MAP_FAILED) {
+		fprintf(stderr, "[mldr/fex] fatal: failed to mmap a callback stack: %s\n", strerror(errno));
+		abort();
+	}
+	uintptr_t sp = reinterpret_cast<uintptr_t>(cb_stack) + kCallbackStackSize;
 	sp &= ~uintptr_t(15);
 	sp -= sizeof(uint64_t);
 	*reinterpret_cast<uint64_t*>(sp) = reinterpret_cast<uintptr_t>(g_callback_return_stub);
@@ -219,14 +227,25 @@ uint64_t fex_invoke_guest_callback(uintptr_t guest_fn, uint64_t arg0, uint64_t a
 	memset(&state, 0, sizeof(state));
 	state.rip = static_cast<uint64_t>(guest_fn);
 	state.rsp = static_cast<uint64_t>(sp);
-	state.rdi = arg0;
-	state.rsi = arg1;
+	state.rdi = args[0];
+	state.rsi = args[1];
+	state.rdx = args[2];
+	state.rcx = args[3];
+	state.r8 = args[4];
+	state.r9 = args[5];
 	state.rflags = 0x202;
 	state.gs_base = fex_get_current_thread_gs_base();
 
 	run_fn(&state, fex_linux_syscall_dispatch);
 	fex_set_current_thread_gs_base(state.gs_base);
+	munmap(cb_stack, kCallbackStackSize);
 	return state.rax;
+}
+
+uint64_t fex_invoke_guest_callback(uintptr_t guest_fn, uint64_t arg0, uint64_t arg1)
+{
+	const uint64_t args[6] = {arg0, arg1, 0, 0, 0, 0};
+	return fex_invoke_guest_callback_args(guest_fn, args);
 }
 
 void fex_start_main_thread(struct load_results* lr)
