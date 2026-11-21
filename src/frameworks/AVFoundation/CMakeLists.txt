@@ -12,6 +12,15 @@ generate_sdk_framework(AVFoundation
     HEADER "include/AVFoundation"
 )
 
+# The host FFmpeg demuxes the media files (see src/AVPlaybackEngine.h). Its libraries are optional
+# host libraries: avformat, avcodec and avutil are wrapped so that this framework loads without them, and
+# playback checks for them first.
+find_package(FFmpeg REQUIRED)
+
+include_directories(
+    ${FFMPEG_INCLUDE_DIR}
+)
+
 add_framework(AVFoundation
     FAT
     CURRENT_VERSION
@@ -22,6 +31,7 @@ add_framework(AVFoundation
         src/AVPlayerLayerIntermediateLayer.m
         src/AVPlayerLayerInternal.m
         src/AVPlayerLayer.m
+        src/AVPlaybackEngine.m
         src/CMTimeAsValue.m
         src/CMTimeRangeAsValue.m
         src/CMTimeMappingAsValue.m
@@ -532,6 +542,10 @@ add_framework(AVFoundation
         CoreVideo
         CoreGraphics
         AudioToolbox
+        VideoToolbox
+        avformat
+        avcodec
+        avutil
 )
 
 # AVFAudio is a subframework of AVFoundation on Darwin, so a client that links only

@@ -17,10 +17,94 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
-#include <QTKit/QTKitDefines.h>
+#import <Foundation/Foundation.h>
+#import <QTKit/QTKitDefines.h>
+#import <QTKit/QTTime.h>
+#import <QTKit/QTTimeRange.h>
+#import <QuartzCore/LegacyIvarLayout.h>
 
-@interface QTMovie : NSObject
+@class NSImage;
+
+enum {
+    QTMovieLoadStateError = -1L,
+    QTMovieLoadStateLoading = 1000L,
+    QTMovieLoadStateLoaded = 2000L,
+    QTMovieLoadStatePlayable = 10000L,
+    QTMovieLoadStatePlaythroughOK = 20000L,
+    QTMovieLoadStateComplete = 100000L
+};
+
+typedef NSUInteger QTIncludeFlags;
+enum {
+    QTIncludeStillImageTypes = 1 << 0,
+    QTIncludeTranscodableTypes = 1 << 1,
+    QTIncludeAggressiveTypes = 1 << 2,
+    QTIncludeCommonTypes = 0,
+    QTIncludeAllTypes = 0xffff
+};
+
+// Legacy ABI (i386): applications' subclasses are compiled against the instance size of the
+// framework's class, which is 84 bytes on macOS (the class pointer and 20 words of Apple's own
+// state, which we keep in one object). Don't add ivars here.
+@interface QTMovie : NSObject {
+@private
+    id _movieState;
+    NS_LEGACY_IVAR_PAD(_QTMovieReserved, 76)
+}
+
++ (BOOL)canInitWithFile:(NSString *)fileName;
++ (BOOL)canInitWithURL:(NSURL *)url;
++ (NSArray *)movieFileTypes:(QTIncludeFlags)types;
++ (NSArray *)movieUnregisteredFileTypes:(QTIncludeFlags)types;
+
++ (instancetype)movieWithFile:(NSString *)fileName error:(NSError **)errorPtr;
++ (instancetype)movieWithURL:(NSURL *)url error:(NSError **)errorPtr;
++ (instancetype)movieWithData:(NSData *)data error:(NSError **)errorPtr;
++ (instancetype)movieWithAttributes:(NSDictionary *)attributes error:(NSError **)errorPtr;
++ (instancetype)movie;
+
+- (instancetype)initWithFile:(NSString *)fileName error:(NSError **)errorPtr;
+- (instancetype)initWithURL:(NSURL *)url error:(NSError **)errorPtr;
+- (instancetype)initWithData:(NSData *)data error:(NSError **)errorPtr;
+- (instancetype)initWithAttributes:(NSDictionary *)attributes error:(NSError **)errorPtr;
+- (instancetype)init;
+
+- (NSDictionary *)movieAttributes;
+- (void)setMovieAttributes:(NSDictionary *)attributes;
+- (id)attributeForKey:(NSString *)attributeKey;
+- (void)setAttribute:(id)value forKey:(NSString *)attributeKey;
+
+- (void)play;
+- (void)stop;
+- (float)rate;
+- (void)setRate:(float)rate;
+- (float)volume;
+- (void)setVolume:(float)volume;
+- (BOOL)muted;
+- (void)setMuted:(BOOL)muted;
+
+- (QTTime)duration;
+- (QTTime)currentTime;
+- (void)setCurrentTime:(QTTime)time;
+- (void)gotoBeginning;
+- (void)gotoEnd;
+- (void)stepForward;
+- (void)stepBackward;
+
+- (NSSize)currentSize;
+- (NSImage *)currentFrameImage;
+- (NSImage *)posterImage;
+- (NSImage *)frameImageAtTime:(QTTime)time;
+- (NSImage *)frameImageAtTime:(QTTime)time withAttributes:(NSDictionary *)attributes error:(NSError **)errorPtr;
+
+- (BOOL)isIdling;
+- (void)setIdling:(BOOL)idling;
+- (BOOL)autoIdles;
+- (void)setAutoIdles:(BOOL)autoIdles;
+
+- (NSInteger)loadState;
+- (QTTimeRange)availableRanges;
+- (QTTimeRange)loadedRanges;
 
 @end
 

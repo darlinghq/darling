@@ -25,6 +25,7 @@
 
 #import <QTKit/QTKitDefines.h>
 #import <QTKit/QTTime.h>
+#import <QTKit/QTTimeRange.h>
 
 #import <QTKit/ModernizerXPCProtocol.h>
 #import <QTKit/NSUserInterfaceValidations.h>
@@ -240,32 +241,16 @@
 #import <QTKit/QTHUDMediaTimelineView.h>
 #import <QTKit/QTHUDDetentFunction.h>
 
-void* QTEqualTimeRanges(void);
 void* QTErrorFromOSStatus(void);
 void* QTGetComponentsFromFloatTime(void);
 void* QTGetComponentsFromRationalTime(void);
 void* QTGetResolvedImageConsumerAttributes(void);
-void* QTGetTimeInterval(void);
-void* QTGetTimeRecord(void);
-void* QTIntersectionTimeRange(void);
 void* QTKitCanUseIOSurface(void);
 void* QTLocalizedStringFromErrorCode(void);
 void* QTLocalizedStringFromKey(void);
 void* QTLocalizedStringFromTable(void);
-void* QTMakeTime(void);
-void* QTMakeTimeRange(void);
-void* QTMakeTimeScaled(void);
-void* QTMakeTimeWithTimeInterval(void);
-void* QTMakeTimeWithTimeRecord(void);
-void* QTMediaTypeStringForOSType(void);
-void* QTOSTypeForString(void);
 void* QTSetThreadName(void);
-void* QTStringForOSType(void);
 void* QTStringFromSMPTETime(void);
-void* QTStringFromTime(void);
-void* QTStringFromTimeRange(void);
-void* QTTimeCompare(void);
-void* QTTimeDecrement(void);
 void* QTTimeFormatterCopyProperty(void);
 void* QTTimeFormatterCreate(void);
 void* QTTimeFormatterCreateStringFromFloatTime(void);
@@ -275,15 +260,8 @@ void* QTTimeFormatterGetLocale(void);
 void* QTTimeFormatterGetRationalTimeFromString(void);
 void* QTTimeFormatterGetTypeID(void);
 void* QTTimeFormatterSetProperty(void);
-void* QTTimeFromString(void);
-void* QTTimeInTimeRange(void);
-void* QTTimeIncrement(void);
-void* QTTimeIsIndefinite(void);
-void* QTTimeRangeEnd(void);
-void* QTTimeRangeFromString(void);
 void* QTUICopyMeasurements(void);
 void* QTUIDraw(void);
 void* QTUIHitTest(void);
-void* QTUnionTimeRange(void);
 
 #endif

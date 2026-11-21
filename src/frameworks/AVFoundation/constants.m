@@ -49,6 +49,7 @@ NSString *const AVNumberOfChannelsKey = @"AVNumberOfChannelsKey";
 NSString *const AVPlayerItemDidPlayToEndTimeNotification = @"AVPlayerItemDidPlayToEndTimeNotification";
 NSString *const AVPlayerItemFailedToPlayToEndTimeNotification = @"AVPlayerItemFailedToPlayToEndTimeNotification";
 NSString *const AVPlayerItemPlaybackStalledNotification = @"AVPlayerItemPlaybackStalledNotification";
+NSString *const AVPlayerItemTimeJumpedNotification = @"AVPlayerItemTimeJumpedNotification";
 NSNotificationName const AVSampleBufferAudioRendererWasFlushedAutomaticallyNotification = @"AVSampleBufferAudioRendererWasFlushedAutomaticallyNotification";
 NSString *const AVSampleRateKey = @"AVSampleRateKey";
 NSString *const AVURLAssetPreferPreciseDurationAndTimingKey = @"AVURLAssetPreferPreciseDurationAndTimingKey";

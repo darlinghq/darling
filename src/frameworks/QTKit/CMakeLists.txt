@@ -20,6 +20,7 @@ add_framework(QTKit
     SOURCES
         src/QTKit.m
         src/QTKitConstants.m
+        src/QTTime.m
         src/QTAudioCompressionOptions.m
         src/QTCompressionOptionsInternal.m
         src/QTCompressionOptions.m
@@ -229,4 +230,8 @@ add_framework(QTKit
         objc
         Foundation
         AppKit
+        CoreMedia
+        QuartzCore
+        AVFAudio
+        AVFoundation
 )
