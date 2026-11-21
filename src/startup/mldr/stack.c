@@ -28,6 +28,9 @@
 #include "loader.h"
 #include <darling-config.h>
 #include "elfcalls/elfcalls.h"
+#if defined(__aarch64__) && defined(GEN_64BIT)
+#include "fex/fex_bridge.h"
+#endif
 
 #if defined(GEN_64BIT)
 #define FUNCTION_NAME setup_stack64
@@ -169,7 +172,12 @@ void FUNCTION_NAME(const char* filepath, struct load_results* lr)
 	#define POINTER_FORMAT "%x"
 #endif
 
-	snprintf(elfcalls, sizeof(elfcalls), "elf_calls=" POINTER_FORMAT, (unsigned long)(uintptr_t)&_elfcalls);
+	const struct elf_calls* target_elfcalls = &_elfcalls;
+#if defined(__aarch64__) && defined(GEN_64BIT)
+	if (lr->emulated_x86_64)
+		target_elfcalls = fex_elfcalls_get_trampoline_table(&_elfcalls);
+#endif
+	snprintf(elfcalls, sizeof(elfcalls), "elf_calls=" POINTER_FORMAT, (user_long_t)(uintptr_t)target_elfcalls);
 	elfcalls_user = kernfd_user - sizeof(elfcalls);
 	memcpy(elfcalls_user, elfcalls, sizeof(elfcalls));
 

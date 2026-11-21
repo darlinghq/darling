@@ -231,10 +231,6 @@ function(add_separated_framework name)
 							SUFFIX ""
 					PREFIX ""
 					ADHOC_CODESIGN_IDENTIFIER "${name}")
-		set_property(TARGET ${my_name}_${APPLE_ARCH_64BIT} APPEND_STRING PROPERTY
-			COMPILE_FLAGS " -arch ${APPLE_ARCH_64BIT}")
-		set_property(TARGET ${my_name}_${APPLE_ARCH_64BIT} APPEND_STRING PROPERTY
-			LINK_FLAGS " -arch ${APPLE_ARCH_64BIT}")
 		if (NOT FRAMEWORK_CURRENT_VERSION)
 			add_library("${my_name}_${APPLE_ARCH_64BIT}" ALIAS "${name}_${APPLE_ARCH_64BIT}")
 		endif (NOT FRAMEWORK_CURRENT_VERSION)
@@ -254,8 +250,8 @@ function(add_separated_framework name)
 			add_dependencies(${my_name}_${APPLE_ARCH_64BIT}_firstpass ${my_name}_${APPLE_ARCH_32BIT}_firstpass)
 			add_custom_command(TARGET ${my_name}_${APPLE_ARCH_64BIT}_firstpass POST_BUILD
 				COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
-					-arch ${APPLE_ARCH_32BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_32BIT}_firstpass>
-					-arch ${APPLE_ARCH_64BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}_firstpass>
+					$<TARGET_FILE:${my_name}_${APPLE_ARCH_32BIT}_firstpass>
+					$<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}_firstpass>
 					-create
 					-output
 					${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
@@ -274,8 +270,8 @@ function(add_separated_framework name)
 		add_dependencies(${my_name}_${APPLE_ARCH_64BIT} ${my_name}_${APPLE_ARCH_32BIT})
 		add_custom_command(TARGET ${my_name}_${APPLE_ARCH_64BIT} POST_BUILD
 			COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
-				-arch ${APPLE_ARCH_32BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_32BIT}>
-				-arch ${APPLE_ARCH_64BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}>
+				$<TARGET_FILE:${my_name}_${APPLE_ARCH_32BIT}>
+				$<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}>
 				-create
 				-output
 				${CMAKE_CURRENT_BINARY_DIR}/${my_name}
@@ -327,15 +323,25 @@ function(add_separated_framework name)
 		add_dependencies(${my_name} ${my_name}_${APPLE_ARCH_32BIT})
 	elseif (BUILD_TARGET_64BIT)
 		if (FRAMEWORK_CIRCULAR_DEPENDENCIES)
-			add_custom_command(TARGET ${my_name}_${APPLE_ARCH_64BIT}_firstpass POST_BUILD
-				COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
-					-arch ${APPLE_ARCH_64BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}_firstpass>
-					-create
-					-output
-					${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
-				COMMENT "Running lipo to create ${my_name}_firstpass"
-				BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
-			)
+			if (TARGET_ARM64 AND TARGET_x86_64)
+				add_custom_command(TARGET ${my_name}_${APPLE_ARCH_64BIT}_firstpass POST_BUILD
+					COMMAND ${CMAKE_COMMAND} -E copy_if_different
+						$<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}_firstpass>
+						${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
+					COMMENT "Copying fat 64-bit ${my_name}_firstpass"
+					BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
+				)
+			else ()
+				add_custom_command(TARGET ${my_name}_${APPLE_ARCH_64BIT}_firstpass POST_BUILD
+					COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
+						-arch ${APPLE_ARCH_64BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}_firstpass>
+						-create
+						-output
+						${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
+					COMMENT "Running lipo to create ${my_name}_firstpass"
+					BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}_firstpass
+				)
+			endif ()
 			add_library(${my_name}_firstpass SHARED IMPORTED GLOBAL)
 			set_target_properties(${my_name}_firstpass PROPERTIES
 				SUFFIX ""
@@ -345,15 +351,25 @@ function(add_separated_framework name)
 			add_dependencies(${my_name}_firstpass ${my_name}_${APPLE_ARCH_64BIT}_firstpass)
 		endif (FRAMEWORK_CIRCULAR_DEPENDENCIES)
 
-		add_custom_command(TARGET ${my_name}_${APPLE_ARCH_64BIT} POST_BUILD
-			COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
-				-arch ${APPLE_ARCH_64BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}>
-				-create
-				-output
-				${CMAKE_CURRENT_BINARY_DIR}/${my_name}
-			COMMENT "Running lipo to create ${my_name}"
-			BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}
-		)
+		if (TARGET_ARM64 AND TARGET_x86_64)
+			add_custom_command(TARGET ${my_name}_${APPLE_ARCH_64BIT} POST_BUILD
+				COMMAND ${CMAKE_COMMAND} -E copy_if_different
+					$<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}>
+					${CMAKE_CURRENT_BINARY_DIR}/${my_name}
+				COMMENT "Copying fat 64-bit ${my_name}"
+				BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}
+			)
+		else ()
+			add_custom_command(TARGET ${my_name}_${APPLE_ARCH_64BIT} POST_BUILD
+				COMMAND ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo
+					-arch ${APPLE_ARCH_64BIT} $<TARGET_FILE:${my_name}_${APPLE_ARCH_64BIT}>
+					-create
+					-output
+					${CMAKE_CURRENT_BINARY_DIR}/${my_name}
+				COMMENT "Running lipo to create ${my_name}"
+				BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${my_name}
+			)
+		endif ()
 		add_library(${my_name} SHARED IMPORTED GLOBAL)
 		set_target_properties(${my_name} PROPERTIES
 			SUFFIX ""

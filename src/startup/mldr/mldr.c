@@ -28,12 +28,19 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#if __has_include(<mach-o/loader.h>)
 #include <mach-o/loader.h>
+#endif
+#if __has_include(<mach-o/fat.h>)
 #include <mach-o/fat.h>
+#endif
 #include <dlfcn.h>
 #include <endian.h>
 #include "commpage.h"
 #include "loader.h"
+#if defined(__aarch64__)
+#include "fex/fex_bridge.h"
+#endif
 #include "socket_bitmap.h"
 #include "image_protection.h"
 #include "interpreter_path.h"
@@ -395,6 +402,8 @@ void load(const char* path, cpu_type_t forced_arch, bool expect_dylinker, char**
 	if (magic == MH_MAGIC_64 || magic == MH_CIGAM_64)
 	{
 #if defined(__x86_64__) || defined(__aarch64__)
+		if (forced_arch != 0)
+			lr->cputype = forced_arch;
 		lseek(fd, 0, SEEK_SET);
 		load64(fd, expect_dylinker, lr);
 #else
@@ -439,7 +448,7 @@ static void load_fat(int fd, cpu_type_t forced_arch, bool expect_dylinker, char*
 	fallback = 0;
 #elif defined(__aarch64__)
 	native = CPU_TYPE_ARM64;
-	fallback = CPU_TYPE_ARM;
+	fallback = CPU_TYPE_X86_64;
 #else
 	#error Unsupported CPU architecture
 #endif
@@ -853,13 +862,13 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 	ensure_top_range_free(lr, size);
 #endif
 
-	commpage_setup(is_64_bit);
+	commpage_setup_arch(is_64_bit, lr->emulated_x86_64);
 
 	// Using the default stack top would cause the stack to be placed just above the commpage
 	// and would collide with it eventually.
 	// Instead, we manually allocate a new stack below the commpage.
 #if __x86_64__ || __aarch64__
-	lr->stack_top = commpage_address(true);
+	lr->stack_top = commpage_address_arch(true, lr->emulated_x86_64);
 #elif __i386__
 	lr->stack_top = commpage_address(false);
 #else
@@ -1117,6 +1126,9 @@ static void start_thread(struct load_results* lr) {
 		:
 	);
 #elif defined(__aarch64__)
+	if (lr->emulated_x86_64) {
+		fex_start_main_thread(lr);
+	}
 	__asm__ volatile(
 		"mov sp, %1\n"
 		"br %0"

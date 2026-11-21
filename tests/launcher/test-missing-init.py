@@ -11,6 +11,12 @@ parser.add_argument("source", type=pathlib.Path)
 parser.add_argument("--run", action="store_true", help="compile and run the generated harness")
 args = parser.parse_args()
 source = args.source.read_text()
+relaunch_pos = source.index("relaunchUnderMuvm(argv);")
+unset_nonroot_pos = source.index('unsetenv("DARLING_NONROOT");')
+unset_rootless_pos = source.index('unsetenv("DARLING_ROOTLESS");')
+select_prefix_pos = source.index("darlingSelectPrefix(")
+if not (relaunch_pos < unset_nonroot_pos < select_prefix_pos and relaunch_pos < unset_rootless_pos < select_prefix_pos):
+    raise SystemExit("DARLING_NONROOT/DARLING_ROOTLESS must remain set across relaunchUnderMuvm and be unset before darlingSelectPrefix")
 start = source.index("\t// If prefix's init is not running, start it up")
 end = source.index("\n\t// A container belongs to the mode that started it", start)
 branch = source[start:end]

@@ -36,6 +36,15 @@ endif()
 
 add_executable(mldr ${mldr_sources})
 
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+	target_sources(mldr PRIVATE
+		fex/fex_elfcalls.c
+		fex/fex_syscall.c
+		fex/fex_engine.cpp
+	)
+	set_source_files_properties(fex/fex_engine.cpp PROPERTIES COMPILE_FLAGS "-std=c++17")
+endif()
+
 target_compile_options(mldr PRIVATE -pthread)
 target_link_options(mldr PRIVATE -pthread)
 
@@ -132,6 +141,116 @@ if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
 	add_executable(mldr_cpu_caps_x86_test ${CMAKE_SOURCE_DIR}/tests/mldr/cpu_caps_x86.c cpu_caps_x86.c)
 	target_include_directories(mldr_cpu_caps_x86_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 	add_test(NAME mldr_cpu_caps_x86 COMMAND mldr_cpu_caps_x86_test)
+endif()
+
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+	add_executable(mldr_fex_bridge_test ${CMAKE_SOURCE_DIR}/tests/mldr/fex_bridge.c fex/fex_elfcalls.c fex/fex_syscall.c)
+	target_include_directories(mldr_fex_bridge_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+	target_compile_options(mldr_fex_bridge_test PRIVATE -pthread)
+	target_link_options(mldr_fex_bridge_test PRIVATE -pthread)
+	target_link_libraries(mldr_fex_bridge_test PRIVATE -ldl)
+	add_test(NAME mldr_fex_bridge COMMAND mldr_fex_bridge_test)
+
+	add_executable(mldr_fexcore_paths_test ${CMAKE_SOURCE_DIR}/tests/mldr/fexcore_paths.c
+		fex/fex_elfcalls.c fex/fex_syscall.c fex/fex_engine.cpp)
+	target_include_directories(mldr_fexcore_paths_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+	set_target_properties(mldr_fexcore_paths_test PROPERTIES LINKER_LANGUAGE CXX)
+	target_compile_options(mldr_fexcore_paths_test PRIVATE -pthread)
+	target_link_options(mldr_fexcore_paths_test PRIVATE -pthread)
+	target_link_libraries(mldr_fexcore_paths_test PRIVATE -ldl)
+	add_test(NAME mldr_fexcore_paths COMMAND mldr_fexcore_paths_test)
+endif()
+
+# x86_64 emulation on aarch64 hosts. FEXCore is not vendored: the build needs a FEX
+# source tree and an already-configured build tree of it, because the shim links
+# FEXCore's static libraries and compiles with FEX's own define and include set.
+option(WITH_FEXCORE "Build the darling-fexcore x86_64 emulation shim (aarch64 hosts only)" OFF)
+
+if (WITH_FEXCORE)
+	if (NOT CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+		message(FATAL_ERROR "WITH_FEXCORE needs an aarch64 host: FEXCore emulates x86_64 on ARM")
+	endif()
+	if (NOT FEXCORE_SOURCE_DIR OR NOT FEXCORE_BUILD_DIR)
+		message(FATAL_ERROR
+			"WITH_FEXCORE needs -DFEXCORE_SOURCE_DIR=<FEX source tree> and -DFEXCORE_BUILD_DIR=<configured FEX build tree>")
+	endif()
+	if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		message(FATAL_ERROR "WITH_FEXCORE needs clang++: FEXCore headers use clang-specific attributes")
+	endif()
+
+	foreach (fexcore_archive
+		${FEXCORE_BUILD_DIR}/FEXCore/Source/libFEXCore.a
+		${FEXCORE_BUILD_DIR}/FEXCore/Source/libFEXCore_Base.a
+		${FEXCORE_BUILD_DIR}/External/cephes/libcephes_128bit.a
+		${FEXCORE_BUILD_DIR}/External/SoftFloat-3e/libsoftfloat_3e.a)
+		if (NOT EXISTS ${fexcore_archive})
+			message(FATAL_ERROR
+				"${fexcore_archive} is missing: FEXCORE_BUILD_DIR must point at a FEX build tree that was fully built")
+		endif()
+	endforeach()
+
+	add_library(darling-fexcore SHARED
+		fex/darling_fexcore_adapter.cpp
+		${FEXCORE_SOURCE_DIR}/FEXCore/Source/Utils/AllocatorHooks.cpp
+		${FEXCORE_SOURCE_DIR}/Source/Common/HostFeatures.cpp
+		${FEXCORE_SOURCE_DIR}/Source/Common/CPUInfo.cpp
+		${FEXCORE_SOURCE_DIR}/Source/Common/Linux/LinuxVersion.cpp)
+
+	target_include_directories(darling-fexcore PRIVATE
+		${FEXCORE_BUILD_DIR}/FEXCore/Source
+		${FEXCORE_SOURCE_DIR}/FEXCore/Source
+		${FEXCORE_SOURCE_DIR}/Source
+		${FEXCORE_BUILD_DIR}/Source
+		${FEXCORE_BUILD_DIR}/generated
+		${FEXCORE_SOURCE_DIR}/FEXCore/Source/IncludePrivate
+		${FEXCORE_SOURCE_DIR}/FEXCore/include
+		${FEXCORE_BUILD_DIR}/include
+		${FEXCORE_SOURCE_DIR}/FEXHeaderUtils
+		${FEXCORE_SOURCE_DIR}/CodeEmitter
+		${FEXCORE_SOURCE_DIR}/External/cephes/include
+		${FEXCORE_SOURCE_DIR}/External/SoftFloat-3e/include
+		${FEXCORE_SOURCE_DIR}/External/SoftFloat-3e/include/SoftFloat-3e
+		${FEXCORE_SOURCE_DIR}/External/unordered_dense/include
+		${FEXCORE_SOURCE_DIR}/External/range-v3/include
+		${FEXCORE_SOURCE_DIR}/External/zydis/include
+		${FEXCORE_SOURCE_DIR}/External/fmt/include)
+
+	target_compile_options(darling-fexcore PRIVATE
+		-O2 -std=gnu++20 -fPIC -fno-strict-aliasing -fwrapv -ffunction-sections -fno-exceptions
+		-DARCHITECTURE_arm64=1
+		-DFEXCORE_HAS_PRESERVE_ALL_ATTR=1
+		"-DFEXCORE_PRESERVE_ALL_ATTR=__attribute__((preserve_all))"
+		-DFEX_DISABLE_TELEMETRY=1
+		-DFEX_HAS_PRESERVE_ALL_ATTR=1
+		"-DFEX_PRESERVE_ALL_ATTR=__attribute__((preserve_all))"
+		-DFMT_SHARED
+		"-DGLOBAL_DATA_DIRECTORY=\"/usr/local/share/fex-emu/\""
+		-DHAS_PROGRAM_INVOCATION_NAME=1
+		-DHAS_SYSCALL_GETCPU=1
+		-DHAS_SYSCALL_GETTID=1
+		-DHAS_SYSCALL_RENAMEAT2=1
+		-DHAS_SYSCALL_STATX=1
+		-DHAS_SYSCALL_TGKILL=1
+		"-DINLINE=static inline"
+		-DINLINE_LEVEL=4
+		-DJIT_ARM64
+		-DSOFTFLOAT_BUILTIN_CLZ=1
+		-DSOFTFLOAT_FAST_DIV32TO16=1
+		-DSOFTFLOAT_FAST_DIV64TO32=1
+		-DSOFTFLOAT_FAST_INT64=1
+		-D_LARGEFILE64_SOURCE)
+
+	target_link_options(darling-fexcore PRIVATE -Wl,--no-undefined)
+	target_link_libraries(darling-fexcore PRIVATE
+		-Wl,--start-group
+		${FEXCORE_BUILD_DIR}/FEXCore/Source/libFEXCore.a
+		${FEXCORE_BUILD_DIR}/FEXCore/Source/libFEXCore_Base.a
+		${FEXCORE_BUILD_DIR}/External/cephes/libcephes_128bit.a
+		${FEXCORE_BUILD_DIR}/External/SoftFloat-3e/libsoftfloat_3e.a
+		-Wl,--end-group
+		-lfmt -lxxhash -lpthread -ldl -lm -lrt)
+
+	install(TARGETS darling-fexcore DESTINATION libexec/darling/lib)
 endif()
 
 # mldr must refuse to start without a darlingserver socket path instead of falling back

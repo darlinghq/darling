@@ -15,7 +15,11 @@ FUNCTION(add_darling_executable exe)
 		LINK_FLAGS " ${CMAKE_EXE_LINKER_FLAGS} -nostdlib ${CMAKE_BINARY_DIR}/src/external/csu/CMakeFiles/crt1.10.6.dir/start.S.o ")
 
 	if (BUILD_TARGET_64BIT)
-		target_compile_options(${exe} PRIVATE -arch ${APPLE_ARCH_64BIT})
+		set_property(TARGET ${exe} APPEND_STRING PROPERTY
+			COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ ${APPLE_ARCH_64BIT_FLAGS}")
+		set_property(TARGET ${exe} APPEND_STRING PROPERTY
+			LINK_FLAGS " ${APPLE_ARCH_64BIT_FLAGS}")
+		add_dependencies(${exe} lipo)
 	elseif (BUILD_TARGET_32BIT)
 		target_compile_options(${exe} PRIVATE -arch ${APPLE_ARCH_32BIT})
 		set_property(TARGET ${exe} APPEND_STRING PROPERTY

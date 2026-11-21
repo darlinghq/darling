@@ -45,8 +45,12 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
+#if __has_include(<mach-o/loader.h>)
 #include <mach-o/loader.h>
+#endif
+#if __has_include(<mach-o/fat.h>)
 #include <mach-o/fat.h>
+#endif
 #include "loader.h"
 #include "exec_policy.h"
 
@@ -76,14 +80,36 @@ static int code_signing_gate(int fd, uint64_t image_offset, struct load_results*
 	return fd;
 }
 
+struct seal_record {
+	char name[16];
+	uintptr_t address;
+	uint64_t file_size;
+	int prot;
+};
+#define MAX_SEALS 16
+static struct seal_record recorded_seals[MAX_SEALS];
+static size_t recorded_seal_count = 0;
+
 static void seal_segment(const char* name, uintptr_t address, uint64_t file_size, int prot)
 {
-	(void) name; (void) address; (void) file_size; (void) prot;
+	if (recorded_seal_count < MAX_SEALS) {
+		strncpy(recorded_seals[recorded_seal_count].name, name ? name : "", sizeof(recorded_seals[0].name) - 1);
+		recorded_seals[recorded_seal_count].name[sizeof(recorded_seals[0].name) - 1] = '\0';
+		recorded_seals[recorded_seal_count].address = address;
+		recorded_seals[recorded_seal_count].file_size = file_size;
+		recorded_seals[recorded_seal_count].prot = prot;
+		recorded_seal_count++;
+	}
 }
+
+static bool setup_space_saw_emulated_x86_64;
+static int32_t setup_space_saw_cputype;
 
 static void setup_space(struct load_results* lr, bool is_64_bit)
 {
-	(void) lr; (void) is_64_bit;
+	(void) is_64_bit;
+	setup_space_saw_emulated_x86_64 = lr->emulated_x86_64;
+	setup_space_saw_cputype = lr->cputype;
 }
 
 static void load(const char* path, cpu_type_t cpu, bool expect_dylinker, char** argv, struct load_results* lr)
@@ -164,6 +190,30 @@ static void fixture_init(struct fixture* f, uint32_t filetype, uint32_t flags, s
 	f->cmd_offset = sizeof(*f->header);
 }
 
+// The page-layout tests below use x86_64 images: their segments are aligned to a 4 KB
+// guest page, so on a host with larger pages a segment can start inside a host page.
+// arm64 segments are always 16 KB aligned, so the same layouts are not valid arm64
+// images: the loader assumes 16 KB-aligned arm64 segments.
+#define X86_64_GUEST_PAGE 0x1000UL
+
+static void fixture_init_x86_64(struct fixture* f, uint32_t filetype, uint32_t flags, size_t size)
+{
+	fixture_init(f, filetype, flags, size);
+	f->header->cputype = CPU_TYPE_X86_64;
+}
+
+// A test that cannot apply on this host exits with this status; run_expect() reports it as SKIP.
+#define TEST_SKIP_STATUS 77
+
+#define SKIP_UNLESS_HOST_PAGE_EXCEEDS_GUEST_PAGE() \
+	do { \
+		if ((size_t) sysconf(_SC_PAGESIZE) <= X86_64_GUEST_PAGE) { \
+			printf("SKIP: %s: host page is not larger than a 4 KB guest page\n", __func__); \
+			fflush(stdout); \
+			_exit(TEST_SKIP_STATUS); \
+		} \
+	} while (0)
+
 static void add_segment(struct fixture* f, const char* name, uint64_t vmaddr, uint64_t vmsize,
 		uint64_t fileoff, uint64_t filesize, vm_prot_t prot)
 {
@@ -184,7 +234,9 @@ static void add_segment(struct fixture* f, const char* name, uint64_t vmaddr, ui
 
 static int fixture_file(const struct fixture* f)
 {
-	char path[] = "/tmp/mldr-segment-mapping.XXXXXX";
+	char path[512];
+	const char* tmp = getenv("TMPDIR");
+	snprintf(path, sizeof(path), "%s/mldr-segment-mapping.XXXXXX", (tmp && tmp[0]) ? tmp : "/tmp");
 	int fd = mkstemp(path);
 	if (fd < 0) {
 		perror("mkstemp");
@@ -375,7 +427,115 @@ static void test_low_slots(void)
 	check(load_dylinker_slot(&start2, &end2), "low slots: second image mapped");
 	check(start2 >= end1 && end2 <= 0x800000000000ULL, "low slots: second image gets the next slot");
 }
+
+struct x86_thread_command {
+	uint32_t cmd;
+	uint32_t cmdsize;
+	uint32_t flavor;
+	uint32_t count;
+	uint64_t rax, rbx, rcx, rdx, rdi, rsi, rbp, rsp;
+	uint64_t r8, r9, r10, r11, r12, r13, r14, r15;
+	uint64_t rip, rflags;
+	uint64_t cs, fs, gs;
+};
+
+static void test_unixthread_x86_64_on_arm64(void)
+{
+	struct fixture f;
+	fixture_init(&f, MH_EXECUTE, MH_PIE, UNIT);
+	f.header->cputype = CPU_TYPE_X86_64;
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE, UNIT, 0, UNIT, VM_PROT_READ | VM_PROT_EXECUTE);
+
+	struct x86_thread_command* tc = (struct x86_thread_command*) (f.bytes + f.cmd_offset);
+	tc->cmd = LC_UNIXTHREAD;
+	tc->cmdsize = sizeof(*tc);
+	tc->flavor = 4; // x86_THREAD_STATE64
+	tc->count = (sizeof(*tc) - 4 * sizeof(uint32_t)) / sizeof(uint32_t); // 42
+	tc->rip = IMAGE_BASE + ENTRY_OFFSET;
+	tc->rsp = 0x7777;
+	f.cmd_offset += sizeof(*tc);
+	f.header->ncmds++;
+	f.header->sizeofcmds += sizeof(*tc);
+
+	switch (thread_case) {
+		case THREAD_VALID: break;
+		case THREAD_TRUNCATED: tc->cmdsize = 16; f.header->sizeofcmds -= sizeof(*tc) - 16; break;
+		case THREAD_BAD_FLAVOR: tc->flavor = 6; break;
+		case THREAD_SHORT_COUNT: tc->count--; break;
+		case THREAD_LONG_COUNT: tc->count++; break;
+	}
+
+	setup_space_saw_emulated_x86_64 = false;
+	setup_space_saw_cputype = 0;
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	load64(fd, false, &lr);
+
+	check(setup_space_saw_emulated_x86_64 && setup_space_saw_cputype == CPU_TYPE_X86_64,
+		"x86_64 unixthread: setup_space sees emulated_x86_64 and CPU_TYPE_X86_64");
+	check(lr.emulated_x86_64 && lr.cputype == CPU_TYPE_X86_64,
+		"x86_64 unixthread: load_results records emulated_x86_64");
+	check(lr.mh != 0 && lr.entry_point == lr.mh + ENTRY_OFFSET,
+		"x86_64 unixthread: entry point is the slid rip");
+
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_dylinker_arch_mismatch(void)
+{
+	struct fixture f;
+	fixture_init(&f, MH_DYLINKER, 0, UNIT);
+	f.header->cputype = CPU_TYPE_ARM64;
+	add_segment(&f, "__TEXT", 0, UNIT, 0, UNIT, VM_PROT_READ | VM_PROT_EXECUTE);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	lr.cputype = CPU_TYPE_X86_64;
+	load64(fd, true, &lr);
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_fat_arch_selection_arm64(void)
+{
+	const struct fat_arch slices_both[] = {
+		{ .cputype = CPU_TYPE_X86_64, .offset = 0x4000 },
+		{ .cputype = CPU_TYPE_ARM64,  .offset = 0x8000 },
+	};
+	const struct fat_arch slices_x86_only[] = {
+		{ .cputype = CPU_TYPE_ARM,    .offset = 0x2000 },
+		{ .cputype = CPU_TYPE_X86_64, .offset = 0x6000 },
+	};
+	const uint32_t no_bprefs[4] = {0};
+	const uint32_t x86_bprefs[4] = { CPU_TYPE_X86_64, 0, 0, 0 };
+
+	struct fat_arch best = { .cputype = CPU_TYPE_ANY };
+	int bpref_idx = -1;
+	for (size_t i = 0; i < 2; i++)
+		mldr_consider_fat_arch(&slices_both[i], 0, no_bprefs, &best, &bpref_idx);
+	check(best.cputype == CPU_TYPE_ARM64 && best.offset == 0x8000,
+		"fat selection: arm64 preferred over x86_64 by default");
+
+	best = (struct fat_arch){ .cputype = CPU_TYPE_ANY };
+	bpref_idx = -1;
+	for (size_t i = 0; i < 2; i++)
+		mldr_consider_fat_arch(&slices_x86_only[i], 0, no_bprefs, &best, &bpref_idx);
+	check(best.cputype == CPU_TYPE_X86_64 && best.offset == 0x6000,
+		"fat selection: x86_64 selected when arm64 slice is absent");
+
+	best = (struct fat_arch){ .cputype = CPU_TYPE_ANY };
+	bpref_idx = -1;
+	for (size_t i = 0; i < 2; i++)
+		mldr_consider_fat_arch(&slices_both[i], 0, x86_bprefs, &best, &bpref_idx);
+	check(best.cputype == CPU_TYPE_X86_64 && best.offset == 0x4000,
+		"fat selection: bprefs selects x86_64 over arm64");
+}
 #endif
+
 
 #if defined(__aarch64__)
 // The Darwin TSD base read pair (mrs Xn, TPIDRRO_EL0; and Xn, Xn, #~7) in an
@@ -457,8 +617,272 @@ static void test_tsd_reads(void)
 	close(fd);
 	free(f.bytes);
 }
-
 #endif
+
+static bool get_mapping_perms(uintptr_t addr, char perms_out[5])
+{
+	FILE* f = fopen("/proc/self/maps", "r");
+	if (!f) return false;
+	char line[512];
+	bool found = false;
+	while (fgets(line, sizeof(line), f))
+	{
+		uintptr_t start, end;
+		char perms[5];
+		if (sscanf(line, "%lx-%lx %4s", &start, &end, perms) == 3)
+		{
+			if (addr >= start && addr < end)
+			{
+				memcpy(perms_out, perms, 4);
+				perms_out[4] = '\0';
+				found = true;
+				break;
+			}
+		}
+	}
+	fclose(f);
+	return found;
+}
+
+static void test_subpage_isolated_rw(void)
+{
+	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	SKIP_UNLESS_HOST_PAGE_EXCEEDS_GUEST_PAGE();
+	const size_t sub_off = host_ps / 4;
+	const size_t sub_sz = host_ps / 4;
+
+	struct fixture f;
+	fixture_init_x86_64(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE, host_ps, 0, host_ps, VM_PROT_READ | VM_PROT_EXECUTE);
+	add_segment(&f, "__DATA", IMAGE_BASE + 2 * host_ps + sub_off, sub_sz, host_ps, 0x100, VM_PROT_READ | VM_PROT_WRITE);
+
+	memset(f.bytes + host_ps, 0x33, 0x100);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	load64(fd, false, &lr);
+
+	const uintptr_t slide = lr.mh - IMAGE_BASE;
+	uintptr_t data_page = (IMAGE_BASE + 2 * host_ps + sub_off + slide) & ~(host_ps - 1);
+	char perms[5] = {0};
+	bool ok = get_mapping_perms(data_page, perms);
+	check(ok, "isolated subpage rw: mapping found in /proc/self/maps");
+	check(strcmp(perms, "rw-p") == 0, "isolated subpage rw: has rw-p and no x");
+
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_subpage_isolated_rx(void)
+{
+	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	SKIP_UNLESS_HOST_PAGE_EXCEEDS_GUEST_PAGE();
+	const size_t sub_off = host_ps / 4;
+	const size_t sub_sz = host_ps / 4;
+
+	struct fixture f;
+	fixture_init_x86_64(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE, host_ps, 0, host_ps, VM_PROT_READ | VM_PROT_EXECUTE);
+	add_segment(&f, "__SUBTEXT", IMAGE_BASE + 2 * host_ps + sub_off, sub_sz, host_ps, 0x100, VM_PROT_READ | VM_PROT_EXECUTE);
+
+	memset(f.bytes + host_ps, 0x44, 0x100);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	load64(fd, false, &lr);
+
+	const uintptr_t slide = lr.mh - IMAGE_BASE;
+	uintptr_t sub_page = (IMAGE_BASE + 2 * host_ps + sub_off + slide) & ~(host_ps - 1);
+	char perms[5] = {0};
+	bool ok = get_mapping_perms(sub_page, perms);
+	check(ok, "isolated subpage rx: mapping found in /proc/self/maps");
+	check(strcmp(perms, "r-xp") == 0, "isolated subpage rx: has r-xp and no w");
+
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_subpage_shared_rx_rw(void)
+{
+	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	SKIP_UNLESS_HOST_PAGE_EXCEEDS_GUEST_PAGE();
+	const size_t sub_off = host_ps / 2;
+
+	struct fixture f;
+	fixture_init_x86_64(&f, MH_EXECUTE, MH_PIE, 5 * host_ps);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE + host_ps, sub_off, 0, sub_off, VM_PROT_READ | VM_PROT_EXECUTE);
+	add_segment(&f, "__DATA", IMAGE_BASE + host_ps + sub_off, 2 * host_ps, sub_off, 0x100, VM_PROT_READ | VM_PROT_WRITE);
+
+	memset(f.bytes + sub_off, 0x55, 0x100);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	load64(fd, false, &lr);
+
+	const uintptr_t slide = lr.mh - (IMAGE_BASE + host_ps);
+	uintptr_t shared_page = IMAGE_BASE + host_ps + slide;
+	uintptr_t pure_rw_page = shared_page + host_ps;
+
+	char perms[5] = {0};
+	check(get_mapping_perms(shared_page, perms), "shared rx+rw: shared page in maps");
+	check(strcmp(perms, "rwxp") == 0, "shared rx+rw: shared page retains union rwxp");
+
+	check(get_mapping_perms(pure_rw_page, perms), "shared rx+rw: pure rw page in maps");
+	check(strcmp(perms, "rw-p") == 0, "shared rx+rw: non-shared page stays rw-p (no x)");
+
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_subpage_shared_rw_r(void)
+{
+	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	SKIP_UNLESS_HOST_PAGE_EXCEEDS_GUEST_PAGE();
+	const size_t sub_off = host_ps / 2;
+
+	struct fixture f;
+	fixture_init_x86_64(&f, MH_EXECUTE, MH_PIE, 5 * host_ps);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE, host_ps, 0, host_ps, VM_PROT_READ | VM_PROT_EXECUTE);
+	add_segment(&f, "__DATA", IMAGE_BASE + 2 * host_ps, sub_off, host_ps, sub_off, VM_PROT_READ | VM_PROT_WRITE);
+	add_segment(&f, "__RO", IMAGE_BASE + 2 * host_ps + sub_off, host_ps - sub_off, host_ps + sub_off, 0x100, VM_PROT_READ);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	load64(fd, false, &lr);
+
+	const uintptr_t slide = lr.mh - IMAGE_BASE;
+	uintptr_t shared_page = IMAGE_BASE + 2 * host_ps + slide;
+
+	char perms[5] = {0};
+	check(get_mapping_perms(shared_page, perms), "shared rw+r: shared page in maps");
+	check(strcmp(perms, "rw-p") == 0, "shared rw+r: shared page retains union rw-p (no x)");
+
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_subpage_unaligned_bss(void)
+{
+	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	SKIP_UNLESS_HOST_PAGE_EXCEEDS_GUEST_PAGE();
+	const size_t sub_off = host_ps / 4;
+
+	struct fixture f;
+	fixture_init_x86_64(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE, host_ps, 0, host_ps, VM_PROT_READ | VM_PROT_EXECUTE);
+	add_segment(&f, "__BSS", IMAGE_BASE + 2 * host_ps + sub_off, host_ps, host_ps, 0, VM_PROT_READ | VM_PROT_WRITE);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	load64(fd, false, &lr);
+
+	const uintptr_t slide = lr.mh - IMAGE_BASE;
+	uintptr_t bss_page = (IMAGE_BASE + 2 * host_ps + sub_off + slide) & ~(host_ps - 1);
+	char perms[5] = {0};
+	check(get_mapping_perms(bss_page, perms), "unaligned bss: mapped in maps");
+	check(strcmp(perms, "rw-p") == 0, "unaligned bss: has rw-p");
+
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_seal_readonly_segments(void)
+{
+	struct fixture f;
+	fixture_init(&f, MH_EXECUTE, MH_PIE, 4 * UNIT);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE, UNIT, 0, UNIT, VM_PROT_READ | VM_PROT_EXECUTE);
+	add_segment(&f, "__DATA", IMAGE_BASE + 2 * UNIT, UNIT, UNIT, UNIT, VM_PROT_READ | VM_PROT_WRITE);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	lr.seal_images = true;
+	recorded_seal_count = 0;
+	load64(fd, false, &lr);
+
+	const uintptr_t slide = lr.mh - IMAGE_BASE;
+	check(recorded_seal_count == 1, "seal readonly: exactly 1 segment sealed");
+	if (recorded_seal_count >= 1) {
+		check(strcmp(recorded_seals[0].name, "__TEXT") == 0, "seal readonly: __TEXT sealed");
+		check(recorded_seals[0].address == IMAGE_BASE + slide, "seal readonly: __TEXT address matches");
+		check(recorded_seals[0].file_size == UNIT, "seal readonly: __TEXT length matches");
+		check(recorded_seals[0].prot == (PROT_READ | PROT_EXEC), "seal readonly: __TEXT prot is R-X");
+	}
+
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_seal_shared_page_with_writable_not_sealed(void)
+{
+	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	SKIP_UNLESS_HOST_PAGE_EXCEEDS_GUEST_PAGE();
+	const size_t sub_off = host_ps / 2;
+
+	struct fixture f;
+	fixture_init_x86_64(&f, MH_EXECUTE, MH_PIE, 4 * host_ps);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE + host_ps, sub_off, 0, sub_off, VM_PROT_READ | VM_PROT_EXECUTE);
+	add_segment(&f, "__DATA", IMAGE_BASE + host_ps + sub_off, host_ps, sub_off, 0x100, VM_PROT_READ | VM_PROT_WRITE);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	lr.seal_images = true;
+	recorded_seal_count = 0;
+	load64(fd, false, &lr);
+
+	check(recorded_seal_count == 0, "seal shared with writable: no segments sealed");
+
+	close(fd);
+	free(f.bytes);
+}
+
+static void test_seal_contiguous_runs_differing_prot(void)
+{
+	const size_t host_ps = sysconf(_SC_PAGESIZE);
+	SKIP_UNLESS_HOST_PAGE_EXCEEDS_GUEST_PAGE();
+	const size_t sub_off = host_ps / 2;
+
+	struct fixture f;
+	fixture_init_x86_64(&f, MH_EXECUTE, MH_PIE, 6 * host_ps);
+
+	add_segment(&f, "__PAGEZERO", 0, IMAGE_BASE, 0, 0, VM_PROT_NONE);
+	add_segment(&f, "__TEXT", IMAGE_BASE + host_ps, host_ps + sub_off, 0, host_ps + sub_off, VM_PROT_READ);
+	add_segment(&f, "__SUBEXEC", IMAGE_BASE + 2 * host_ps + sub_off, host_ps - sub_off, host_ps + sub_off, host_ps - sub_off, VM_PROT_READ | VM_PROT_EXECUTE);
+
+	int fd = fixture_file(&f);
+	struct load_results lr = {0};
+	lr.seal_images = true;
+	recorded_seal_count = 0;
+	load64(fd, false, &lr);
+
+	const uintptr_t slide = lr.mh - (IMAGE_BASE + host_ps);
+	check(recorded_seal_count == 2, "seal contiguous differing prot: split into 2 runs");
+	if (recorded_seal_count >= 2) {
+		check(recorded_seals[0].address == IMAGE_BASE + host_ps + slide, "seal run 0 address");
+		check(recorded_seals[0].file_size == host_ps, "seal run 0 len is 1 page");
+		check(recorded_seals[0].prot == PROT_READ, "seal run 0 prot is PROT_READ");
+
+		check(recorded_seals[1].address == IMAGE_BASE + 2 * host_ps + slide, "seal run 1 address");
+		check(recorded_seals[1].file_size == host_ps, "seal run 1 len is 1 page");
+		check(recorded_seals[1].prot == (PROT_READ | PROT_EXEC), "seal run 1 prot is PROT_READ | PROT_EXEC");
+	}
+
+	close(fd);
+	free(f.bytes);
+}
 
 static void run_expect(void (*test)(void), const char* name, int expected_status)
 {
@@ -478,6 +902,10 @@ static void run_expect(void (*test)(void), const char* name, int expected_status
 	int status;
 	while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
 		;
+	if (WIFEXITED(status) && WEXITSTATUS(status) == TEST_SKIP_STATUS) {
+		printf("SKIP: %s\n", name);
+		return;
+	}
 	char what[128];
 	if (WIFEXITED(status))
 		snprintf(what, sizeof(what), "%s (exit status %d)", name, WEXITSTATUS(status));
@@ -495,6 +923,14 @@ int main(void)
 {
 	run(test_executable, "executable");
 	run(test_dylinker, "dylinker");
+	run(test_subpage_isolated_rw, "subpage isolated rw");
+	run(test_subpage_isolated_rx, "subpage isolated rx");
+	run(test_subpage_shared_rx_rw, "subpage shared rx+rw");
+	run(test_subpage_shared_rw_r, "subpage shared rw+r");
+	run(test_subpage_unaligned_bss, "subpage unaligned bss");
+	run(test_seal_readonly_segments, "seal readonly segments");
+	run(test_seal_shared_page_with_writable_not_sealed, "seal shared page with writable not sealed");
+	run(test_seal_contiguous_runs_differing_prot, "seal contiguous runs differing prot");
 #if defined(__aarch64__)
 	thread_case = THREAD_VALID;
 	run(test_unixthread, "unixthread");
@@ -507,6 +943,18 @@ int main(void)
 	run_expect(test_unixthread, "unixthread short count refused", 1);
 	thread_case = THREAD_LONG_COUNT;
 	run_expect(test_unixthread, "unixthread count past the command refused", 1);
+	thread_case = THREAD_VALID;
+	run(test_unixthread_x86_64_on_arm64, "x86_64 unixthread on arm64");
+	thread_case = THREAD_TRUNCATED;
+	run_expect(test_unixthread_x86_64_on_arm64, "x86_64 unixthread truncated command refused", 1);
+	thread_case = THREAD_BAD_FLAVOR;
+	run_expect(test_unixthread_x86_64_on_arm64, "x86_64 unixthread other flavor refused", 1);
+	thread_case = THREAD_SHORT_COUNT;
+	run_expect(test_unixthread_x86_64_on_arm64, "x86_64 unixthread short count refused", 1);
+	thread_case = THREAD_LONG_COUNT;
+	run_expect(test_unixthread_x86_64_on_arm64, "x86_64 unixthread count past the command refused", 1);
+	run_expect(test_dylinker_arch_mismatch, "dylinker arch mismatch refused", 1);
+	run(test_fat_arch_selection_arm64, "fat arch selection on arm64");
 	run(test_low_slots, "low slots");
 	run(test_tsd_reads, "tsd reads");
 #endif

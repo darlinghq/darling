@@ -28,6 +28,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/stat.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <sched.h>
 #include <sys/poll.h>
 #include <sys/syscall.h>
@@ -53,6 +54,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "launcher-pulse.h"
 #include "launcher-server.h"
 #include "launcher-tmp.h"
+#include "muvm-trampoline.h"
 #include "prefix-state.h"
 #include "profile-prefix.h"
 
@@ -174,6 +176,68 @@ static bool hasCapabilities(void)
 	return (data[0].effective | data[1].effective | data[0].permitted | data[1].permitted) != 0;
 }
 
+#if defined(__aarch64__)
+// FEXCore assumes 4 KB pages, so on a host with larger pages an x86_64 Mach-O is
+// run under muvm's guest instead. That has to happen before any prefix work, so
+// the whole run takes place where the program can be loaded. Everything else,
+// including every file this cannot make sense of, falls through unchanged.
+static void relaunchUnderMuvm(char** argv)
+{
+	const char* which;
+	uint32_t bprefs[4];
+	enum darling_target_slice slice;
+	size_t pageSize, index;
+	char* path;
+
+	if (argv[1] == NULL || argv[1][0] == '-')
+		return;
+	if (strcmp(argv[1], "shell") == 0 || strcmp(argv[1], "shutdown") == 0)
+		return;
+
+	index = strcmp(argv[1], "exec") == 0 ? 2 : 1;
+	if (argv[index] == NULL)
+		return;
+
+	// A path that does not resolve is left for the code below to report.
+	path = realpath(argv[index], NULL);
+	if (path == NULL)
+		return;
+
+	darling_read_mldr_bprefs(bprefs);
+	slice = darling_target_slice_arch(path, bprefs);
+	pageSize = (size_t) sysconf(_SC_PAGESIZE);
+
+	if (!darling_muvm_needed((long) pageSize, slice))
+	{
+		free(path);
+		return;
+	}
+
+	// muvm routes its guest's console to a terminal only, so a redirected run
+	// would lose the program's output entirely rather than part of it.
+	if (!darling_muvm_stdio_ok(STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO))
+	{
+		which = !isatty(STDIN_FILENO) ? "standard input"
+			: !isatty(STDOUT_FILENO) ? "standard output" : "standard error";
+		fprintf(stderr,
+			"An x86_64 program needs muvm on this host, and muvm shows a program's output only on a terminal: %s is not one.\n",
+			which);
+		exit(1);
+	}
+
+	// execve keeps the saved set-uid, so the drop has to be final before anything
+	// named on PATH is run; this is how the rest of the launcher drops it too.
+	dropPrivileges();
+
+	darling_reexec_under_muvm(argv, index, path);
+
+	fprintf(stderr,
+		"Cannot run muvm: %s\nAn x86_64 program cannot be loaded on this host's %zu-byte pages; install muvm and put it on PATH.\n",
+		strerror(errno), pageSize);
+	exit(1);
+}
+#endif
+
 int main(int argc, char ** argv)
 {
 	pid_t pidInit;
@@ -199,8 +263,6 @@ int main(int argc, char ** argv)
 		missingSetuidRoot();
 		return 1;
 	}
-	unsetenv("DARLING_NONROOT");
-	unsetenv("DARLING_ROOTLESS");
 
 	{
 		char exePath[4096], installPrefix[4096];
@@ -233,6 +295,12 @@ int main(int argc, char ** argv)
 		fprintf(stderr, "Cannot switch to root ids: %s\n", strerror(errno));
 		return 1;
 	}
+
+#if defined(__aarch64__)
+	relaunchUnderMuvm(argv);
+#endif
+	unsetenv("DARLING_NONROOT");
+	unsetenv("DARLING_ROOTLESS");
 
 	enum darling_prefix_error prefixError;
 	prefix = darlingSelectPrefix(getenv("DPREFIX"), getenv("DARLING_PROFILE"),

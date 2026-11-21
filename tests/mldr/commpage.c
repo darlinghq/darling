@@ -144,6 +144,40 @@ static int protections(uintptr_t unused)
 	return 0;
 }
 
+#if defined(__aarch64__)
+static int protections_x86_64_on_arm64(uintptr_t unused)
+{
+	(void) unused;
+	char p[8];
+	uintptr_t base = commpage_address_arch(true, true);
+	size_t length = commpage_length_arch(true, true);
+
+	if (base != 0x00007fffffe00000ULL || length != 4096)
+		return 20;
+
+	commpage_setup_arch(true, true);
+
+	if (strcmp((const char*) base, "commpage 64-bit") != 0)
+		return 21;
+	if (*(volatile uint16_t*)(base + 0x01E) != 14)
+		return 22;
+	uint64_t caps64 = *(volatile uint64_t*)(base + 0x010);
+	if ((caps64 & 0x4000000000000000ULL) == 0 || (caps64 & 0x00000200ULL) == 0)
+		return 23;
+	uint8_t expected_shift = (uint8_t)__builtin_ctzl(sysconf(_SC_PAGESIZE));
+	if (*(volatile uint8_t*)(base + 0x04D) != expected_shift ||
+	    *(volatile uint8_t*)(base + 0x04E) != expected_shift)
+		return 24;
+
+	perms_at(base, p);
+	if (strcmp(p, "r--p") != 0)
+		return 25;
+	if (!write_faults((volatile uint8_t*) base))
+		return 26;
+	return 0;
+}
+#endif
+
 int main(void)
 {
 	uintptr_t base = area_base();
@@ -161,6 +195,10 @@ int main(void)
 	check(in_child(protections, 0) == 0, "free range: filled in, every page r--p, writes fault");
 	check(in_child(occupied, base) == 1, "a mapping at the start of the range is not replaced");
 	check(in_child(occupied, base + length - 4096) == 1, "a mapping at the end of the range is not replaced");
+#if defined(__aarch64__)
+	check(in_child(protections_x86_64_on_arm64, 0) == 0,
+		"x86_64-on-arm64 commpage: mapped at 0x7fffffe00000, version 14, kIsTranslated, r--p");
+#endif
 
 	return failures ? 1 : 0;
 }
