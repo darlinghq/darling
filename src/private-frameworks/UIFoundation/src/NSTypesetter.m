@@ -53,7 +53,7 @@
     return UIF_EXTRA_NSTypesetter(self)->_behavior;
 }
 
-- (CGFloat) hyphenationFactor {
+- (float) hyphenationFactor {
     return UIF_EXTRA_NSTypesetter(self)->_hyphenationFactor;
 }
 
@@ -73,7 +73,7 @@
     UIF_EXTRA_NSTypesetter(self)->_behavior = behavior;
 }
 
-- (void) setHyphenationFactor: (CGFloat) factor {
+- (void) setHyphenationFactor: (float) factor {
     UIF_EXTRA_NSTypesetter(self)->_hyphenationFactor = factor;
 }
 
@@ -233,11 +233,11 @@
     return NO;
 }
 
-- (CGFloat) hyphenationFactorForGlyphAtIndex: (NSUInteger) glyphIndex {
+- (float) hyphenationFactorForGlyphAtIndex: (NSUInteger) glyphIndex {
     return 0.0;
 }
 
-- (unichar) hyphenCharacterForGlyphAtIndex: (NSUInteger) glyphIndex {
+- (UTF32Char) hyphenCharacterForGlyphAtIndex: (NSUInteger) glyphIndex {
     return '-';
 }
 

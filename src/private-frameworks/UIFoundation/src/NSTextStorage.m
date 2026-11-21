@@ -64,11 +64,11 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     return _layoutManagers;
 }
 
-- (int) changeInLength {
+- (NSInteger) changeInLength {
     return _changeInLength;
 }
 
-- (unsigned) editedMask {
+- (NSTextStorageEditActions) editedMask {
     return _editedMask;
 }
 
@@ -123,7 +123,7 @@ NSString *const NSTextStorageDidProcessEditingNotification =
 }
 
 - (void) processEditing {
-    int i, count;
+    NSUInteger i, count;
 
     if ([_delegate respondsToSelector: @selector
                    (textStorageWillProcessEditing:)]) {
@@ -169,9 +169,9 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     }
 }
 
-- (void) edited: (unsigned) editedMask
+- (void) edited: (NSTextStorageEditActions) editedMask
                  range: (NSRange) range
-        changeInLength: (int) delta
+        changeInLength: (NSInteger) delta
 {
 
     if (_beginEditing == 0) {
