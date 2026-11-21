@@ -69,14 +69,10 @@ static CFMutableDictionaryRef *slotFor(CMAttachmentStore *store, CMAttachmentMod
 	return mode == kCMAttachmentMode_ShouldPropagate ? &store->propagating : &store->local;
 }
 
-// GUESS: a mode other than ShouldPropagate counts as ShouldNotPropagate, as CVBufferSetAttachment treats
-// it, so the same call behaves the same on every kind of bearer. The documentation does not cover it.
 // The values it replaces or moves are returned retained in `dropped`, for the caller to release unlocked.
-static void storeSet(CMAttachmentStore *store, CFStringRef key, CFTypeRef value, CMAttachmentMode mode,
+static void storeSet(CMAttachmentStore *store, CFStringRef key, CFTypeRef value, CMAttachmentMode effective,
 	CFTypeRef dropped[2])
 {
-	CMAttachmentMode effective = mode == kCMAttachmentMode_ShouldPropagate
-		? kCMAttachmentMode_ShouldPropagate : kCMAttachmentMode_ShouldNotPropagate;
 	CMAttachmentMode other = effective == kCMAttachmentMode_ShouldPropagate
 		? kCMAttachmentMode_ShouldNotPropagate : kCMAttachmentMode_ShouldPropagate;
 
@@ -103,7 +99,11 @@ static void storeSet(CMAttachmentStore *store, CFStringRef key, CFTypeRef value,
 void CMSetAttachment(CMAttachmentBearerRef target, CFStringRef key, CFTypeRef value, CMAttachmentMode attachmentMode)
 {
 	// A NULL value is documented as an error.
-	if (target == NULL || key == NULL || value == NULL)
+	// QUIRK: a mode that is neither of the two documented constants makes the call do nothing, on every kind of
+	// bearer (CMBlockBuffer, CMSampleBuffer, CVPixelBuffer). Not documented. Evidence: black-box observation
+	// on macOS 26.7.3 (x86_64) of CMSetAttachment with modes 2 and -1, tier 2.
+	// Test: tests/src/coremedia_attachments.c, "an invalid mode sets nothing".
+	if (target == NULL || key == NULL || value == NULL || !modeIsValid(attachmentMode))
 		return;
 	if (isCVBuffer(target)) {
 		// CVBufferSetAttachment drops the key's old attachment before it retains the new value, which
@@ -190,20 +190,15 @@ void CMRemoveAllAttachments(CMAttachmentBearerRef target)
 	CMAttachmentStore *store = CMCoreGetAttachmentStore(target);
 	if (store == NULL)
 		return;
-	// Snapshots keep the values alive until the lock is gone.
-	CFDictionaryRef dropped[2] = { NULL, NULL };
+	// The dictionaries leave the store, so a store that has had its attachments removed has no dictionary
+	// (CMCopyDictionaryOfAttachments gives NULL for it), and are released once the lock is gone.
+	CFTypeRef dropped[2];
 	pthread_mutex_lock(&storeLock);
-	CFMutableDictionaryRef dictionaries[2] = { store->propagating, store->local };
-	for (int i = 0; i < 2; i++) {
-		if (dictionaries[i] != NULL) {
-			dropped[i] = CFDictionaryCreateCopy(kCFAllocatorDefault, dictionaries[i]);
-			// Out of memory: keep the attachments rather than release them under the lock.
-			if (dropped[i] != NULL)
-				CFDictionaryRemoveAllValues(dictionaries[i]);
-		}
-	}
+	dropped[0] = store->propagating;
+	dropped[1] = store->local;
+	store->propagating = store->local = NULL;
 	pthread_mutex_unlock(&storeLock);
-	releaseAll((CFTypeRef *)dropped, 2);
+	releaseAll(dropped, 2);
 }
 
 CFDictionaryRef CMCopyDictionaryOfAttachments(CFAllocatorRef allocator, CMAttachmentBearerRef target,
@@ -218,11 +213,13 @@ CFDictionaryRef CMCopyDictionaryOfAttachments(CFAllocatorRef allocator, CMAttach
 		return NULL;
 	pthread_mutex_lock(&storeLock);
 	CFMutableDictionaryRef source = *slotFor(store, attachmentMode);
-	// A snapshot: later changes to the attachments do not show in it. No attachments is an empty dictionary.
-	CFDictionaryRef copy = source != NULL
-		? CFDictionaryCreateCopy(allocator, source)
-		: CFDictionaryCreate(allocator, NULL, NULL, 0, &kCFTypeDictionaryKeyCallBacks,
-			&kCFTypeDictionaryValueCallBacks);
+	// A snapshot: later changes to the attachments do not show in it.
+	// QUIRK: a CMSampleBuffer or CMBlockBuffer that has no dictionary for the mode (nothing was ever attached in
+	// it, or everything was removed with CMRemoveAllAttachments) gives NULL, while one whose attachments of the
+	// mode were removed one by one gives an empty dictionary. Not documented. Evidence: black-box observation on
+	// macOS 26.7.3 (x86_64), tier 2. A CVPixelBuffer always gives a dictionary, which CoreVideo supplies.
+	// Test: tests/src/coremedia_attachments.c, "no attachments gives NULL on a store".
+	CFDictionaryRef copy = source != NULL ? CFDictionaryCreateCopy(allocator, source) : NULL;
 	pthread_mutex_unlock(&storeLock);
 	return copy;
 }
@@ -236,7 +233,7 @@ static void setPair(const void *key, const void *value, void *context)
 
 void CMSetAttachments(CMAttachmentBearerRef target, CFDictionaryRef theAttachments, CMAttachmentMode attachmentMode)
 {
-	if (target == NULL || theAttachments == NULL)
+	if (target == NULL || theAttachments == NULL || !modeIsValid(attachmentMode))
 		return;
 	if (isCVBuffer(target)) {
 		CVBufferSetAttachments((CVBufferRef)target, theAttachments, attachmentMode);

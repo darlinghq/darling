@@ -25,6 +25,7 @@
 
 #include <CoreMedia/CoreMedia.h>
 #include <CoreVideo/CoreVideo.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -32,7 +33,8 @@ static int failures;
 
 #define CHECK(cond) do { if (!(cond)) { failures++; printf("FAIL line %d: %s\n", __LINE__, #cond); } } while (0)
 
-static void test_bearer(CMAttachmentBearerRef a, CMAttachmentBearerRef b)
+// `storeBacked` is true for the objects that keep their own attachment store (CMBlockBuffer, CMSampleBuffer).
+static void test_bearer(CMAttachmentBearerRef a, CMAttachmentBearerRef b, bool storeBacked)
 {
 	CFStringRef keyA = CFSTR("test.attachment.a"), keyB = CFSTR("test.attachment.b");
 	CFMutableArrayRef value = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
@@ -40,11 +42,16 @@ static void test_bearer(CMAttachmentBearerRef a, CMAttachmentBearerRef b)
 
 	CHECK(kCMAttachmentMode_ShouldNotPropagate != kCMAttachmentMode_ShouldPropagate);
 	CHECK(CMGetAttachment(a, keyA, &mode) == NULL);
-	// no attachments is an empty dictionary, not NULL
+	// QUIRK test: no attachments gives NULL on a store-backed bearer (macOS 26.7.3), an empty dictionary on a CVBuffer
 	CFDictionaryRef none = CMCopyDictionaryOfAttachments(NULL, a, kCMAttachmentMode_ShouldPropagate);
-	CHECK(none != NULL && CFDictionaryGetCount(none) == 0);
+	CHECK(storeBacked ? none == NULL : (none != NULL && CFDictionaryGetCount(none) == 0));
 	if (none != NULL)
 		CFRelease(none);
+
+	// QUIRK test: an invalid mode sets nothing, on every bearer (macOS 26.7.3)
+	CMSetAttachment(a, keyA, value, 2);
+	CMSetAttachment(a, keyA, value, -1);
+	CHECK(CMGetAttachment(a, keyA, &mode) == NULL && mode == 99);
 
 	// set retains; get reports the mode
 	CFIndex base = CFGetRetainCount(value);
@@ -82,6 +89,10 @@ static void test_bearer(CMAttachmentBearerRef a, CMAttachmentBearerRef b)
 	CMRemoveAllAttachments(a);
 	CMRemoveAllAttachments(b);
 	CHECK(CMGetAttachment(a, keyB, NULL) == NULL && CMGetAttachment(b, keyA, NULL) == NULL);
+	CFDictionaryRef afterRemoveAll = CMCopyDictionaryOfAttachments(NULL, a, kCMAttachmentMode_ShouldPropagate);
+	CHECK(storeBacked ? afterRemoveAll == NULL : (afterRemoveAll != NULL && CFDictionaryGetCount(afterRemoveAll) == 0));
+	if (afterRemoveAll != NULL)
+		CFRelease(afterRemoveAll);
 	CHECK(CFGetRetainCount(value) == base);
 
 	// a value the caller does not own (what CMGetAttachment returned) can be set in the other mode: the
@@ -103,18 +114,18 @@ int main(void)
 	CMBlockBufferRef block1 = NULL, block2 = NULL;
 	CHECK(CMBlockBufferCreateWithMemoryBlock(NULL, NULL, 16, NULL, NULL, 0, 16, 0, &block1) == noErr);
 	CHECK(CMBlockBufferCreateWithMemoryBlock(NULL, NULL, 16, NULL, NULL, 0, 16, 0, &block2) == noErr);
-	test_bearer(block1, block2);
+	test_bearer(block1, block2, true);
 
 	CMSampleBufferRef sample1 = NULL, sample2 = NULL;
 	CHECK(CMSampleBufferCreateReady(NULL, block1, NULL, 0, 0, NULL, 0, NULL, &sample1) == noErr);
 	CHECK(CMSampleBufferCreateReady(NULL, block2, NULL, 0, 0, NULL, 0, NULL, &sample2) == noErr);
-	test_bearer(sample1, sample2);
+	test_bearer(sample1, sample2, true);
 
 	// on a CVBuffer they are the CVBuffer attachment functions
 	CVPixelBufferRef pixels1 = NULL, pixels2 = NULL;
 	CHECK(CVPixelBufferCreate(NULL, 4, 4, kCVPixelFormatType_32BGRA, NULL, &pixels1) == kCVReturnSuccess);
 	CHECK(CVPixelBufferCreate(NULL, 4, 4, kCVPixelFormatType_32BGRA, NULL, &pixels2) == kCVReturnSuccess);
-	test_bearer(pixels1, pixels2);
+	test_bearer(pixels1, pixels2, false);
 	CMSetAttachment(pixels1, CFSTR("test.attachment.cv"), CFSTR("value"), kCMAttachmentMode_ShouldPropagate);
 	CFTypeRef found = CVBufferGetAttachment(pixels1, CFSTR("test.attachment.cv"), NULL);
 	CHECK(found != NULL && CFEqual(found, CFSTR("value")));
