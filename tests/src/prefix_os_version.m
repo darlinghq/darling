@@ -25,14 +25,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-typedef int32_t OSStatus;
-#define noErr 0
-enum {
-	gestaltSystemVersionMajor = 'sys1',
-	gestaltSystemVersionMinor = 'sys2',
-	gestaltSystemVersionBugFix = 'sys3',
-};
-extern OSStatus Gestalt(uint32_t selector, int* response);
+#include <CoreServices/CoreServices.h>
 
 #define PREF_PATH "/Library/Preferences/org.darlinghq.platform.plist"
 #define PREFSD_BIN "/usr/libexec/darling-prefsd"
@@ -162,8 +155,11 @@ static int run_checks(const char* expected_product, const char* expected_version
 		test_check((int) osv.patchVersion == exp_patch, "NSProcessInfo patchVersion matches expected");
 
 		NSString* pi_str = [pi operatingSystemVersionString];
-		test_check(pi_str != nil && [pi_str isEqualToString:[NSString stringWithUTF8String:expected_product]],
-			"NSProcessInfo operatingSystemVersionString matches expected product");
+		// "Version <product version> (Build <build>)". A binary built for an SDK before macOS 11 sees the
+		// compatibility version 10.16 for macOS 11 and later, so only the build is compared exactly.
+		NSString* expected_build = [NSString stringWithFormat:@"(Build %s)", expected_version];
+		test_check(pi_str != nil && [pi_str hasPrefix:@"Version "] && [pi_str hasSuffix:expected_build],
+			"NSProcessInfo operatingSystemVersionString has the expected build");
 
 		test_check([pi isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){exp_major, exp_minor, exp_patch}],
 			"NSProcessInfo isOperatingSystemAtLeastVersion current version is YES");
