@@ -12,6 +12,7 @@ set(Finder_sources
 	main.m
 	FinderAppDelegate.m
 	FinderDirectory.m
+	FinderDSStore.m
 	FinderIconViewController.m
 	FinderListViewController.m
 	FinderSidebarController.m

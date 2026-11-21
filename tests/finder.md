@@ -30,6 +30,18 @@ In-process tests, in the guest (`build/tmp/helpers/src-test.sh <mode> <file>`; e
   detached. The window's folder is the sidebar's selection (setting it shows nothing; a folder not in the sidebar
   selects nothing), and selecting an item shows it. It attaches and detaches the image itself. It passes unchanged on both Macs. In the guest, pass the
   image's guest path: `ARGS=/Volumes/SystemRoot$PWD/tests/fixtures/unmount-test.dmg`.
+- `tests/src/finder_dsstore.m <fixture dir> [<store>...]`: the `.DS_Store` reader. It uses the fixtures in
+  `tests/fixtures/dsstore/`, which `tests/fixtures/make-dsstore-fixtures.py` writes with our own writer
+  (`tests/fixtures/dsstore.py`, whose docstring describes the format and its public sources):
+  - `all-types`: a record of each value type, with names that need UTF-16 surrogates and normalization; its values
+    are compared;
+  - `multi-level`: 3000 records in a two-level tree;
+  - `empty`: none;
+  - `cycle`, `block-out-of-range`, `bad-type`, `huge-count`, `long-name` and `bad-magic`: malformed, and rejected.
+
+  Every truncation and 2000 mutations of the well-formed stores give nil or a store, without crashing. Extra stores
+  given (copies Finder wrote) must parse, and their records are printed. It passes unchanged on both Macs, where the
+  fixture directory has to be copied first.
 
 The harness, `tests/finder.sh`, runs Finder through LaunchServices (`open` in the guest) on X11 or Wayland, like
 `tests/disk-image-mounter.sh` (same environment; see the header of the script):
