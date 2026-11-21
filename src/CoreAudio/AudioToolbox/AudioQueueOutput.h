@@ -103,6 +103,8 @@ private:
 	void runOnClient(std::function<void()> job) override;
 	void notifyRunning();
 	AudioDeviceID resolveDevice();
+	// Frames, at the queue's sample rate, that the output device holds between rendering and playing.
+	double deviceLatencyFrames();
 	OSStatus deviceUID(CFStringRef* outUID);
 	OSStatus ensureUnit();
 	void returnBuffers(const std::vector<AudioQueueBufferRef>& buffers);
@@ -181,6 +183,10 @@ private:
 	std::atomic<uint64_t> m_renderedFrames { 0 };
 	std::atomic<float> m_volume { 1.0f };
 	double m_latencyFrames = 0;
+	// The size and time of the last block the output unit took (guarded by m_mutex), to tell how much of
+	// what was rendered is still on its way to the device.
+	UInt32 m_lastBlockFrames = 0;
+	uint64_t m_lastBlockNanos = 0;
 };
 
 #endif	/* AUDIOQUEUEOUTPUT_H */

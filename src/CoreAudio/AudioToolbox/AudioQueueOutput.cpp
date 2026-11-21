@@ -10,8 +10,16 @@
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 
 static const UInt32 kDeviceBufferFrames = 2048;
+
+static uint64_t monotonicNanos()
+{
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return uint64_t(ts.tv_sec) * 1000000000ull + uint64_t(ts.tv_nsec);
+}
 
 AudioQueueOutput::AudioQueueOutput(const AudioStreamBasicDescription *inFormat,
 		AudioQueueOutputCallback inCallbackProc,
@@ -272,7 +280,11 @@ void AudioQueueOutput::finishRender(std::vector<AudioQueueBufferRef>& finished, 
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
 		if (!m_paused)
+		{
 			m_renderedFrames.fetch_add(numberFrames, std::memory_order_relaxed);
+			m_lastBlockFrames = numberFrames;
+			m_lastBlockNanos = monotonicNanos();
+		}
 		stopNow = m_stopWhenDrained && m_pending.empty();
 	}
 
@@ -772,6 +784,7 @@ OSStatus AudioQueueOutput::start(const AudioTimeStamp *inStartTime)
 		if (m_paused || !m_running)
 			m_streamStart = true;
 		m_paused = false;
+		m_lastBlockNanos = 0; // no render since the start: the position cannot be extrapolated
 		m_stopWhenDrained = false;
 		if (m_running)
 			return noErr;
@@ -856,6 +869,7 @@ OSStatus AudioQueueOutput::stop(Boolean inImmediate)
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
 		m_paused = false;
+		m_lastBlockNanos = 0;
 		m_stopWhenDrained = false;
 		m_streamStart = true;
 		for (const Pending& entry : m_pending)
@@ -892,6 +906,8 @@ OSStatus AudioQueueOutput::reset()
 		m_gapFrames = 0;
 		m_stopWhenDrained = false;
 		m_streamStart = true;
+		m_lastBlockNanos = 0;
+		m_lastBlockFrames = 0;
 	}
 	returnBuffers(unplayed);
 	drainCallbacks();
@@ -1036,6 +1052,28 @@ OSStatus AudioQueueOutput::enqueueBufferWithParameters(AudioQueueBufferRef inBuf
 	return noErr;
 }
 
+double AudioQueueOutput::deviceLatencyFrames()
+{
+	AudioDeviceID device = kAudioObjectUnknown;
+	UInt32 size = sizeof(device);
+	if (!m_unit || AudioUnitGetProperty(m_unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &device, &size) != noErr
+			|| device == kAudioObjectUnknown)
+		return 0;
+
+	AudioObjectPropertyAddress address = { kAudioDevicePropertyLatency, kAudioObjectPropertyScopeOutput, kAudioObjectPropertyElementMaster };
+	UInt32 frames = 0;
+	size = sizeof(frames);
+	if (AudioObjectGetPropertyData(device, &address, 0, nullptr, &size, &frames) != noErr)
+		return 0;
+
+	Float64 deviceRate = 0;
+	address.mSelector = kAudioDevicePropertyNominalSampleRate;
+	size = sizeof(deviceRate);
+	if (AudioObjectGetPropertyData(device, &address, 0, nullptr, &size, &deviceRate) != noErr || deviceRate <= 0)
+		return 0;
+	return double(frames) * m_format.mSampleRate / deviceRate;
+}
+
 OSStatus AudioQueueOutput::getCurrentTime(AudioTimeStamp *outTimeStamp, Boolean *outTimelineDiscontinuity)
 {
 	if (!outTimeStamp)
@@ -1046,8 +1084,22 @@ OSStatus AudioQueueOutput::getCurrentTime(AudioTimeStamp *outTimeStamp, Boolean 
 			return kAudioQueueErr_InvalidRunState;
 	}
 	memset(outTimeStamp, 0, sizeof(*outTimeStamp));
-	// Frames heard so far: handed to the output unit, minus what it still holds.
-	double heard = double(m_renderedFrames.load(std::memory_order_relaxed)) - m_latencyFrames;
+	// Frames heard so far: handed to the output unit, minus what it still holds. The device holds what
+	// it measured when it took the last block, and that block itself; the time since then has played.
+	const double rendered = double(m_renderedFrames.load(std::memory_order_relaxed));
+	double heard;
+	{
+		const double deviceLatency = deviceLatencyFrames();
+		std::lock_guard<std::mutex> lock(m_mutex);
+		heard = rendered - std::max(deviceLatency, m_latencyFrames);
+		if (deviceLatency > 0 && m_lastBlockFrames)
+		{
+			heard -= m_lastBlockFrames;
+			if (!m_paused && m_lastBlockNanos)
+				heard += double(monotonicNanos() - m_lastBlockNanos) * m_format.mSampleRate / 1e9;
+			heard = std::min(heard, rendered);
+		}
+	}
 	outTimeStamp->mSampleTime = heard > 0 ? heard : 0;
 	outTimeStamp->mHostTime = mach_absolute_time();
 	outTimeStamp->mFlags = kAudioTimeStampSampleTimeValid | kAudioTimeStampHostTimeValid;
