@@ -164,6 +164,42 @@ def near(value, expected, tolerance):
     return abs(value - expected) <= tolerance
 
 
+def tone_pitches(samples, parts=2):
+    """The sound as a whole (gaps of up to 60 ms bridged: a short dropout of the output is not a break) and the frequency of each of
+    `parts` equal parts of it: (seconds of sound, [Hz of each part]). The frequency of a part is the median of its 50 ms windows,
+    each counted from the rising zero crossings; a window with a dropout in it (a run of near-silence) is left out. The length of
+    the sound is from its first to its last sample above the threshold."""
+    threshold = 1500
+    idx = [i for i, v in enumerate(samples) if abs(v) > threshold]
+    if len(idx) < 100:
+        return 0.0, [0.0] * parts
+    runs, start, prev = [], idx[0], idx[0]
+    for i in idx[1:]:
+        if i - prev > RATE * 0.06:
+            runs.append((start, prev))
+            start = i
+        prev = i
+    runs.append((start, prev))
+    first, last = max(runs, key=lambda r: r[1] - r[0])
+    win = RATE // 20
+    freqs = []
+    for a in range(first, last - win, win):
+        w = samples[a:a + win]
+        longest = run = 0
+        for v in w:
+            run = run + 1 if abs(v) < 60 else 0
+            longest = max(longest, run)
+        if longest < 40:
+            freqs.append((a, sum(1 for k in range(1, win) if w[k - 1] < 0 <= w[k]) * 20.0))
+    out = []
+    for p in range(parts):
+        lo, hi = first + (last - first) * p // parts, first + (last - first) * (p + 1) // parts
+        # windows in the middle of the part: a window that straddles a change of pitch tells nothing
+        mid = sorted(f for a, f in freqs if lo <= a and a + win <= hi)
+        out.append(mid[len(mid) // 2] if mid else 0.0)
+    return (last - first) / RATE, out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--player', required=True, help='the guest path of avaudioplayer-play')
@@ -251,11 +287,20 @@ def main():
     late = max((r for t, r, _ in wins if start + 1.2 < t < start + 1.8), default=0)
     check(early > 0.25 and 0.08 < middle < 0.26 and late < 0.02, 'a fade to 0 over a second: %.3f at the start, %.3f half way, %.3f after it' % (early, middle, late))
 
-    # rate: the duration changes (the pitch does too)
-    left, _, _, _ = play('tones', 'rate:2', 'play', 'wait:2.0', accept=lambda l, r: near(total(l), 1.0, 0.3))
-    check(near(total(left), 1.0, 0.3), 'rate 2: the two seconds take one (%.2f s)' % total(left))
-    left, _, _, _ = play('short', 'rate:0.5', 'play', 'wait:1.6', accept=lambda l, r: near(total(l), 0.8, 0.2))
-    check(near(total(left), 0.8, 0.2), 'rate 0.5: 0.4 s take 0.8 (%.2f s)' % total(left))
+    # rate: the duration changes, the pitch does not
+    left, _, _, _ = play('tones', 'rate:2', 'play', 'wait:2.0', accept=lambda l, r: near(tone_pitches(l)[0], 1.0, 0.3))
+    seconds, parts = tone_pitches(left, 4)
+    check(near(seconds, 1.0, 0.3), 'rate 2: the two seconds take one (%.2f s)' % seconds)
+    check(near(parts[0], 440, 40) and near(parts[3], 880, 80), 'rate 2 keeps the pitch: 440 Hz, then 880 Hz (%.0f Hz, %.0f Hz)' % (parts[0], parts[3]))
+    left, _, _, _ = play('short', 'rate:0.5', 'play', 'wait:1.6', accept=lambda l, r: near(tone_pitches(l)[0], 0.8, 0.2))
+    seconds, (low, high) = tone_pitches(left)
+    check(near(seconds, 0.8, 0.2), 'rate 0.5: 0.4 s take 0.8 (%.2f s)' % seconds)
+    check(near(low, 440, 40) and near(high, 440, 40), 'rate 0.5 keeps the pitch (%.0f Hz, %.0f Hz)' % (low, high))
+    # a rate changed while playing: no break, the pitch stays
+    left, _, _, _ = play('tones', 'play', 'wait:0.4', 'rate:2', 'wait:2.0', accept=lambda l, r: near(tone_pitches(l)[0], 1.2, 0.3))
+    seconds, parts = tone_pitches(left, 4)
+    check(near(seconds, 1.2, 0.3) and near(parts[0], 440, 40) and near(parts[3], 880, 80),
+          'rate 2 set after 0.4 s: 0.4 s plus 0.8 s of sound, 440 Hz then 880 Hz (%.2f s; %.0f Hz ... %.0f Hz)' % (seconds, parts[0], parts[3]))
 
     # playAtTime: the sound starts later
     left, _, offset, out = play('sine', 'playat:0.8', 'wait:2.2', accept=lambda l, r: segments(l))
