@@ -20,62 +20,105 @@
 
 #import <QTKit/QTMovieView.h>
 #import <QTKit/QTMovie.h>
+#import "QTMoviePrivate.h"
 #import <AVFoundation/AVFoundation.h>
 #import <QuartzCore/QuartzCore.h>
 #import <AppKit/NSColor.h>
 #import <AppKit/NSGraphics.h>
-#import <AppKit/NSLayoutConstraint.h>
 #import <objc/runtime.h>
 #import <darling-stub-forwarding.h>
 
-@interface NSLayoutConstraint (QTKitWorkaround)
-+ (void)deactivateConstraints:(NSArray *)constraints;
-@end
+// The height of the controller strip QTMovieView reserves at the bottom of its bounds when the
+// controller is visible. Only the space is kept: there is no controller drawn in it.
+static const CGFloat QTMovieViewControllerHeight = 16.0;
 
-@implementation NSLayoutConstraint (QTKitWorkaround)
-+ (void)deactivateConstraints:(NSArray *)constraints
-{
-    for (id c in constraints) {
-        if ([c respondsToSelector:@selector(setActive:)]) {
-            [c setActive:NO];
-        }
-    }
+// The state of a view. The view has no instance variables of its own: its instance layout
+// is fixed, because a subclass compiled against it puts its own variables right after them.
+@interface QTMovieViewState : NSObject {
+@public
+    QTMovie *movie;
+    AVPlayerLayer *playerLayer;
+    BOOL controllerVisible;
+    BOOL preservesAspectRatio;
+    BOOL editable;
+    NSColor *fillColor;
 }
 @end
 
-static char kQTMovieKey;
-static char kQTPlayerLayerKey;
-static char kQTPreservesAspectRatioKey;
-static char kQTFillColorKey;
-static char kQTControllerVisibleKey;
-static char kQTEditableKey;
+@implementation QTMovieViewState
+
+- (instancetype)init
+{
+    if ((self = [super init])) {
+        controllerVisible = YES;
+        fillColor = [[NSColor blackColor] retain];
+    }
+    return self;
+}
+
+- (void)dealloc
+{
+    [playerLayer removeFromSuperlayer];
+    playerLayer.player = nil;
+    [playerLayer release];
+    [movie release];
+    [fillColor release];
+    [super dealloc];
+}
+
+@end
+
+static char QTMovieViewStateKey;
 
 @implementation QTMovieView
 
+- (QTMovieViewState *)_state
+{
+    QTMovieViewState *state = objc_getAssociatedObject(self, &QTMovieViewStateKey);
+    if (!state) {
+        state = [[[QTMovieViewState alloc] init] autorelease];
+        objc_setAssociatedObject(self, &QTMovieViewStateKey, state, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+    return state;
+}
+
+- (void)_layoutPlayerLayer
+{
+    CGRect frame = NSRectToCGRect([self movieBounds]);
+    AVPlayerLayer *layer = [self _state]->playerLayer;
+    if (layer && !CGRectEqualToRect(layer.frame, frame)) {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        layer.frame = frame;
+        [CATransaction commit];
+    }
+}
+
 - (QTMovie *)movie
 {
-    return objc_getAssociatedObject(self, &kQTMovieKey);
+    return [self _state]->movie;
 }
 
 - (void)setMovie:(QTMovie *)movie
 {
-    AVPlayerLayer *oldLayer = objc_getAssociatedObject(self, &kQTPlayerLayerKey);
-    if (oldLayer) {
-        [oldLayer removeFromSuperlayer];
-        oldLayer.player = nil;
-        objc_setAssociatedObject(self, &kQTPlayerLayerKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    }
+    QTMovieViewState *state = [self _state];
+    if (state->movie == movie)
+        return;
 
-    objc_setAssociatedObject(self, &kQTMovieKey, movie, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [state->playerLayer removeFromSuperlayer];
+    state->playerLayer.player = nil;
+    [state->playerLayer release];
+    state->playerLayer = nil;
+    [state->movie release];
+    state->movie = [movie retain];
 
-    if (movie != nil) {
+    if (movie) {
         [self setWantsLayer:YES];
         AVPlayerLayer *layer = [AVPlayerLayer playerLayerWithPlayer:[movie _player]];
-        layer.frame = NSRectToCGRect([self bounds]);
-        layer.autoresizingMask = kCALayerWidthSizable | kCALayerHeightSizable;
-        layer.videoGravity = [self preservesAspectRatio] ? AVLayerVideoGravityResizeAspect : AVLayerVideoGravityResize;
+        layer.videoGravity = state->preservesAspectRatio ? AVLayerVideoGravityResizeAspect : AVLayerVideoGravityResize;
+        state->playerLayer = [layer retain];
         [self.layer addSublayer:layer];
-        objc_setAssociatedObject(self, &kQTPlayerLayerKey, layer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [self _layoutPlayerLayer];
     }
     [self setNeedsDisplay:YES];
 }
@@ -117,55 +160,62 @@ static char kQTEditableKey;
 
 - (BOOL)preservesAspectRatio
 {
-    NSNumber *val = objc_getAssociatedObject(self, &kQTPreservesAspectRatioKey);
-    return val ? [val boolValue] : YES;
+    return [self _state]->preservesAspectRatio;
 }
 
 - (void)setPreservesAspectRatio:(BOOL)preserves
 {
-    objc_setAssociatedObject(self, &kQTPreservesAspectRatioKey, [NSNumber numberWithBool:preserves], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    AVPlayerLayer *layer = objc_getAssociatedObject(self, &kQTPlayerLayerKey);
-    if (layer) {
-        layer.videoGravity = preserves ? AVLayerVideoGravityResizeAspect : AVLayerVideoGravityResize;
-    }
+    QTMovieViewState *state = [self _state];
+    state->preservesAspectRatio = preserves;
+    state->playerLayer.videoGravity = preserves ? AVLayerVideoGravityResizeAspect : AVLayerVideoGravityResize;
 }
 
 - (NSColor *)fillColor
 {
-    return objc_getAssociatedObject(self, &kQTFillColorKey);
+    return [self _state]->fillColor;
 }
 
 - (void)setFillColor:(NSColor *)fillColor
 {
-    objc_setAssociatedObject(self, &kQTFillColorKey, fillColor, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    QTMovieViewState *state = [self _state];
+    if (state->fillColor != fillColor) {
+        [state->fillColor release];
+        state->fillColor = [fillColor retain];
+    }
     [self setNeedsDisplay:YES];
 }
 
 - (BOOL)isControllerVisible
 {
-    NSNumber *val = objc_getAssociatedObject(self, &kQTControllerVisibleKey);
-    return val ? [val boolValue] : NO;
+    return [self _state]->controllerVisible;
 }
 
 - (void)setControllerVisible:(BOOL)visible
 {
-    objc_setAssociatedObject(self, &kQTControllerVisibleKey, [NSNumber numberWithBool:visible], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [self _state]->controllerVisible = visible;
+    [self _layoutPlayerLayer];
+    [self setNeedsDisplay:YES];
 }
 
 - (BOOL)isEditable
 {
-    NSNumber *val = objc_getAssociatedObject(self, &kQTEditableKey);
-    return val ? [val boolValue] : NO;
+    return [self _state]->editable;
 }
 
 - (void)setEditable:(BOOL)editable
 {
-    objc_setAssociatedObject(self, &kQTEditableKey, [NSNumber numberWithBool:editable], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [self _state]->editable = editable;
 }
 
 - (NSRect)movieBounds
 {
-    return [self bounds];
+    NSRect bounds = [self bounds];
+    if ([self isControllerVisible]) {
+        CGFloat strip = MIN(QTMovieViewControllerHeight, NSHeight(bounds));
+        bounds.origin.y += strip;
+        bounds.size.height -= strip;
+    }
+    return bounds;
 }
 
 - (void)drawRect:(NSRect)dirtyRect
@@ -175,21 +225,18 @@ static char kQTEditableKey;
         [fill setFill];
         NSRectFill(dirtyRect);
     }
-    if (![self wantsLayer]) {
-        NSImage *img = [[self movie] currentFrameImage];
-        if (img) {
-            [img drawInRect:[self bounds] fromRect:NSZeroRect operation:NSCompositeSourceOver fraction:1.0];
-        }
-    }
 }
 
 - (void)resizeSubviewsWithOldSize:(NSSize)oldSize
 {
     [super resizeSubviewsWithOldSize:oldSize];
-    AVPlayerLayer *layer = objc_getAssociatedObject(self, &kQTPlayerLayerKey);
-    if (layer) {
-        layer.frame = NSRectToCGRect([self bounds]);
-    }
+    [self _layoutPlayerLayer];
+}
+
+- (void)setFrameSize:(NSSize)newSize
+{
+    [super setFrameSize:newSize];
+    [self _layoutPlayerLayer];
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

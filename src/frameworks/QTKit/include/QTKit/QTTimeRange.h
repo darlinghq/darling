@@ -23,15 +23,11 @@
 #import <Foundation/Foundation.h>
 #import <QTKit/QTKitDefines.h>
 #import <QTKit/QTTime.h>
-#import <CoreMedia/CMTime.h>
-#import <CoreMedia/CMTimeRange.h>
 
 typedef struct QTTimeRange {
     QTTime time;
     QTTime duration;
 } QTTimeRange;
-
-QTKIT_EXTERN const QTTimeRange QTZeroTimeRange;
 
 QTKIT_EXTERN QTTimeRange QTMakeTimeRange(QTTime time, QTTime duration);
 QTKIT_EXTERN QTTime QTTimeRangeEnd(QTTimeRange range);
@@ -41,10 +37,5 @@ QTKIT_EXTERN QTTimeRange QTIntersectionTimeRange(QTTimeRange range1, QTTimeRange
 QTKIT_EXTERN QTTimeRange QTUnionTimeRange(QTTimeRange range1, QTTimeRange range2);
 QTKIT_EXTERN NSString *QTStringFromTimeRange(QTTimeRange range);
 QTKIT_EXTERN QTTimeRange QTTimeRangeFromString(NSString *string);
-
-QTKIT_EXTERN QTTime QTTimeFromCMTime(CMTime time);
-QTKIT_EXTERN CMTime CMTimeFromQTTime(QTTime time);
-QTKIT_EXTERN QTTimeRange QTTimeRangeFromCMTimeRange(CMTimeRange range);
-QTKIT_EXTERN CMTimeRange CMTimeRangeFromQTTimeRange(QTTimeRange range);
 
 #endif

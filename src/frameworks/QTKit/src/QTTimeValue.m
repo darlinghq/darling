@@ -44,11 +44,17 @@
 
 @end
 
+// NSValue's type string for these structs is the one of an unnamed struct ("{?=qll}"), as on macOS.
+// QUIRK: the real QTKit makes its values from unnamed structs; the type is observable through -objCType
+// and -isEqual:. Black-box observation of macOS 10.14.4 (tier 2). Test: tests/qtkit-time.m "NSValue".
+typedef struct { long long timeValue; long timeScale; long flags; } QTUnnamedTime;
+typedef struct { QTUnnamedTime time; QTUnnamedTime duration; } QTUnnamedTimeRange;
+
 @implementation NSValue (NSValueQTTimeExtensions)
 
 + (NSValue *)valueWithQTTime:(QTTime)time
 {
-    return [NSValue valueWithBytes:&time objCType:@encode(QTTime)];
+    return [NSValue valueWithBytes:&time objCType:@encode(QTUnnamedTime)];
 }
 
 - (QTTime)QTTimeValue
@@ -60,7 +66,7 @@
 
 + (NSValue *)valueWithQTTimeRange:(QTTimeRange)range
 {
-    return [NSValue valueWithBytes:&range objCType:@encode(QTTimeRange)];
+    return [NSValue valueWithBytes:&range objCType:@encode(QTUnnamedTimeRange)];
 }
 
 - (QTTimeRange)QTTimeRangeValue
@@ -99,7 +105,7 @@
     if ([val respondsToSelector:@selector(QTTimeRangeValue)]) {
         return [val QTTimeRangeValue];
     }
-    return QTZeroTimeRange;
+    return QTMakeTimeRange(QTZeroTime, QTZeroTime);
 }
 
 @end

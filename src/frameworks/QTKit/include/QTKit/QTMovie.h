@@ -21,9 +21,8 @@
 #import <QTKit/QTKitDefines.h>
 #import <QTKit/QTTime.h>
 #import <QTKit/QTTimeRange.h>
+#import <QuartzCore/LegacyIvarLayout.h>
 
-@class AVPlayer;
-@class AVPlayerItem;
 @class NSImage;
 
 enum {
@@ -39,20 +38,18 @@ typedef NSUInteger QTIncludeFlags;
 enum {
     QTIncludeStillImageTypes = 1 << 0,
     QTIncludeTranscodableTypes = 1 << 1,
+    QTIncludeAggressiveTypes = 1 << 2,
+    QTIncludeCommonTypes = 0,
     QTIncludeAllTypes = 0xffff
 };
 
+// Legacy ABI (i386): applications' subclasses are compiled against the instance size of the
+// framework's class, which is 84 bytes on macOS (the class pointer and 20 words of Apple's own
+// state, which we keep in one object). Don't add ivars here.
 @interface QTMovie : NSObject {
-@protected
-    AVPlayer *_player;
-    AVPlayerItem *_playerItem;
-    NSURL *_url;
-    NSString *_filePath;
-    float _rate;
-    float _volume;
-    BOOL _muted;
-    NSInteger _loadState;
-    NSMutableDictionary *_attributes;
+@private
+    id _movieState;
+    NS_LEGACY_IVAR_PAD(_QTMovieReserved, 76)
 }
 
 + (BOOL)canInitWithFile:(NSString *)fileName;
@@ -108,8 +105,6 @@ enum {
 - (NSInteger)loadState;
 - (QTTimeRange)availableRanges;
 - (QTTimeRange)loadedRanges;
-
-- (AVPlayer *)_player;
 
 @end
 

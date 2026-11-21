@@ -47,17 +47,17 @@
 
 OSType QTOSTypeForString(NSString *string)
 {
+    // QUIRK: the first four characters, in Mac OS Roman, with the first one in the highest byte; a shorter
+    // string is not padded, so its characters fill the low bytes ("abc" is 0x00616263), and the empty
+    // string is 0. Black-box observation of macOS 10.14.4 (tier 2). Test: tests/qtkit-time.m "OSType strings".
     if (!string || [string length] == 0) return 0;
-    NSData *data = [string dataUsingEncoding:NSMacOSRomanStringEncoding];
-    if (!data) data = [string dataUsingEncoding:NSASCIIStringEncoding];
+    NSData *data = [string dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:YES];
     if (!data) return 0;
     const uint8_t *bytes = (const uint8_t *)[data bytes];
-    NSUInteger len = [data length];
+    NSUInteger len = MIN([data length], (NSUInteger)4);
     OSType result = 0;
-    for (NSUInteger i = 0; i < 4; i++) {
-        uint8_t b = (i < len) ? bytes[i] : ' ';
-        result = (result << 8) | b;
-    }
+    for (NSUInteger i = 0; i < len; i++)
+        result = (result << 8) | bytes[i];
     return result;
 }
 
