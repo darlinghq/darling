@@ -94,6 +94,9 @@ int main(void)
 	}
 	CHECK(CGLSetCurrentContext(g_context) == kCGLNoError);
 
+	// The main thread is back in its run loop after the set-up.
+	CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.01, false);
+
 	double start = now_seconds();
 	pthread_t thread;
 	pthread_create(&thread, NULL, render_thread, NULL);

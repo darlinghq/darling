@@ -1241,7 +1241,7 @@ static void parkMultiThreadBindings(void) {
     pthread_mutex_lock(&g_activeContextsMutex);
     for (struct _CGLContextObject *ctx = g_activeContexts; ctx != NULL; ctx = ctx->next_active) {
         pthread_mutex_lock(&g_bindingMutex);
-        int park = ctx->multi_thread && threadHoldsBinding(ctx);
+        int park = threadHoldsBinding(ctx);
         pthread_mutex_unlock(&g_bindingMutex);
         if (park)
             releaseRequestedBinding(ctx);
@@ -1249,12 +1249,14 @@ static void parkMultiThreadBindings(void) {
     pthread_mutex_unlock(&g_activeContextsMutex);
 }
 
-// Marks context as used by more than one thread and makes sure the main run
-// loop parks the main thread's binding whenever it goes idle.
-static void noteMultiThread(CGLContextObj context) {
+// Makes sure the main run loop gives up the main thread's bindings whenever it
+// goes idle: the main thread then holds a context's binding only while it uses
+// it, and its next GL call takes the binding again. A thread that makes the
+// context current for the first time (see noteMultiThread) finds it free even
+// though nothing is known yet about other threads using it.
+static void ensureIdleObserver(void) {
     static int observer_added;
     pthread_mutex_lock(&g_bindingMutex);
-    context->multi_thread = 1;
     int add = !observer_added;
     observer_added = 1;
     pthread_mutex_unlock(&g_bindingMutex);
@@ -1271,6 +1273,14 @@ static void noteMultiThread(CGLContextObj context) {
         CFRunLoopAddObserver(CFRunLoopGetMain(), observer, kCFRunLoopCommonModes);
         CFRelease(observer);
     }
+}
+
+// Marks context as used by more than one thread.
+static void noteMultiThread(CGLContextObj context) {
+    pthread_mutex_lock(&g_bindingMutex);
+    context->multi_thread = 1;
+    pthread_mutex_unlock(&g_bindingMutex);
+    ensureIdleObserver();
 }
 
 // Runs on the main thread's run loop. The context was retained for it.
@@ -1432,8 +1442,37 @@ static CGLError setCurrentContext(CGLContextObj context) {
 
 static void refreshRectangleTextures(CGLContextObj context);
 
+// For a context that more than one thread uses, making it current only
+// records it as this thread's current context: the host binding is taken by the
+// first GL call (see gl_acquire_binding) and given up again at the outermost
+// CGLUnlockContext, so that no thread keeps the binding while it does
+// something else. Without this a thread that makes the context current and
+// then waits (for an application lock, say) keeps the others from it.
+static int setCurrentContextLazily(CGLContextObj context) {
+    pthread_mutex_lock(&g_bindingMutex);
+    int lazy = context->multi_thread && !threadHoldsBinding(context);
+    pthread_mutex_unlock(&g_bindingMutex);
+    if (!lazy || !native_egl_available())
+        return 0;
+    CGLContextObj previous = CGLGetCurrentContext();
+    if (previous != NULL && previous != context) {
+        pthread_mutex_lock(&g_bindingMutex);
+        if (threadHoldsBinding(previous) &&
+            p_eglMakeCurrent(previous->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
+            previous->binding = CGL_BINDING_FREE;
+            previous->release_count++;
+            if (gl_tls_bound == previous)
+                gl_tls_bound = NULL;
+            pthread_cond_broadcast(&g_bindingCond);
+        }
+        pthread_mutex_unlock(&g_bindingMutex);
+    }
+    pthread_setspecific(get_current_context_key(), context);
+    return 1;
+}
+
 CGLError CGLSetCurrentContext(CGLContextObj context) {
-    CGLError error = setCurrentContext(context);
+    CGLError error = (context != NULL && setCurrentContextLazily(context)) ? kCGLNoError : setCurrentContext(context);
     // A context that becomes current is about to be used, so rectangle
     // textures specified from surfaces the CPU has written since get the
     // new contents.
@@ -1444,10 +1483,13 @@ CGLError CGLSetCurrentContext(CGLContextObj context) {
 
 // The dispatch table of a context (CGL_MACRO). Each entry makes the context
 // current on the calling thread when it is not, and calls the host function.
-static void gli_enter(GLIContext rend) {
+static int gli_enter(GLIContext rend) {
     CGLContextObj context = (CGLContextObj) rend;
     if (CGLGetCurrentContext() != context)
         CGLSetCurrentContext(context);
+    if (GL_BOUND_HERE())
+        return 1;
+    return gl_acquire_binding();
 }
 
 __thread void *gl_tls_bound;
@@ -1946,6 +1988,7 @@ static CGLError createContext(CGLPixelFormatObj pixelFormat, CGLContextObj share
         return kCGLBadAlloc;
     }
 
+    ensureIdleObserver();
     context->rend = (GLIContext) context;
     memcpy(&context->disp, gli_template, sizeof(context->disp));
     context->priv = NULL;

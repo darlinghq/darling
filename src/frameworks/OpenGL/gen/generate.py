@@ -153,9 +153,12 @@ with open(os.path.join(root, 'gli_thunks.inc'), 'w') as f:
         ptypes = ', '.join([p[0] for p in plist]) or 'void'
         pnames = ', '.join('a%d' % k for k in range(len(plist)))
         f.write('static %s gli_%s(%s) {\n' % (ret, name, pdecl))
-        f.write('    gli_enter(rend);\n')
+        void = ret.strip() == 'void'
+        f.write('    int acquired = gli_enter(rend);\n')
         call = '((%s (*)(%s)) gli_host(%d))(%s)' % (ret, ptypes, i, pnames)
-        f.write('    %s%s;\n}\n' % ('' if ret.strip() == 'void' else 'return ', call))
+        f.write('    %s%s;\n' % ('' if void else '%s result = ' % ret, call))
+        f.write('    if (acquired == 2)\n        gl_release_transient();\n')
+        f.write('%s}\n' % ('' if void else '    return result;\n'))
     f.write('\nstatic const char *const gli_host_names[GLI_SLOT_COUNT][4] = {\n')
     for name, ret, plist in slots:
         ns = [n for casted, n in sorted(names_of.get(name, []), key=lambda x: x[0])][:3]
