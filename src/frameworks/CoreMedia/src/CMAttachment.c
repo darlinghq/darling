@@ -106,11 +106,7 @@ void CMSetAttachment(CMAttachmentBearerRef target, CFStringRef key, CFTypeRef va
 	if (target == NULL || key == NULL || value == NULL || !modeIsValid(attachmentMode))
 		return;
 	if (isCVBuffer(target)) {
-		// CVBufferSetAttachment drops the key's old attachment before it retains the new value, which
-		// frees a value that the caller got from CMGetAttachment and does not own. Hold it meanwhile.
-		CFRetain(value);
 		CVBufferSetAttachment((CVBufferRef)target, key, value, attachmentMode);
-		CFRelease(value);
 		return;
 	}
 	CMAttachmentStore *store = CMCoreGetAttachmentStore(target);
