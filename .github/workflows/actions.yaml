@@ -25,24 +25,10 @@ jobs:
   build-deb:
     needs: approval
     if: ${{ !cancelled() && (needs.approval.result == 'success' || needs.approval.result == 'skipped') }}
-    # The Mach-O part of Darling is the same for every host, so it is built once,
-    # on amd64, with i386, x86_64 and arm64 slices: the Architecture: all
-    # packages. darling-core-native, the parts that run on Linux, is built
-    # natively on each architecture: the amd64 job builds both kinds, the arm64
-    # runner (a regular arm64 Linux machine, no cross toolchain) only its own
-    # darling-core-native. The assemble-debs job puts the sets together.
-    name: Build DEBs (${{ matrix.arch }})
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - arch: amd64
-          runs-on: ubuntu-latest
-          make-deb-args: ''
-        - arch: arm64
-          runs-on: ubuntu-26.04-arm
-          make-deb-args: --arch-only
-    runs-on: ${{ matrix.runs-on }}
+    # The Architecture: all packages (the Mach-O part, with i386, x86_64 and
+    # arm64 slices) and the amd64 darling-core-native.
+    name: Build DEBs
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout Darling
       uses: actions/checkout@v4
@@ -82,14 +68,14 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: ~/.ccache
-        key: ccache-deb-${{ matrix.arch }}-${{ github.ref_name }}-${{ github.run_id }}
+        key: ccache-deb-amd64-${{ github.ref_name }}-${{ github.run_id }}
         restore-keys: |
-          ccache-deb-${{ matrix.arch }}-${{ github.event.repository.default_branch }}-
+          ccache-deb-amd64-${{ github.event.repository.default_branch }}-
 
     - name: Build DEBs
       run: |
         ccache --zero-stats
-        ./tools/debian/make-deb ${{ matrix.make-deb-args }}
+        ./tools/debian/make-deb
 
     - name: ccache statistics
       if: always()
@@ -105,7 +91,7 @@ jobs:
       uses: actions/cache/save@v4
       with:
         path: ~/.ccache
-        key: ccache-deb-${{ matrix.arch }}-${{ github.ref_name }}-${{ github.run_id }}
+        key: ccache-deb-amd64-${{ github.ref_name }}-${{ github.run_id }}
 
     - name: Move DEBs
       run: |
@@ -114,69 +100,8 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4.1.0
       with:
-        name: debs-build-${{ matrix.arch }}
-        path: dist/
-        retention-days: 1
-
-  # One installable set per host architecture, under the artifact names the
-  # daily packages are published from: "debs" (amd64) and "debs-arm64", each
-  # with the Architecture: all packages and its own darling-core-native. A set
-  # is uploaded when the builds it needs succeeded, so a failing arm64 build
-  # does not hold back the amd64 set.
-  assemble-debs:
-    needs: build-deb
-    if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
-    steps:
-    - name: Download amd64 build
-      continue-on-error: true
-      uses: actions/download-artifact@v4
-      with:
-        name: debs-build-amd64
-        path: build-amd64
-
-    - name: Download arm64 build
-      continue-on-error: true
-      uses: actions/download-artifact@v4
-      with:
-        name: debs-build-arm64
-        path: build-arm64
-
-    - name: Assemble the sets
-      id: sets
-      run: |
-        set -e
-        if ls build-amd64/*_all.deb > /dev/null 2>&1; then
-          mkdir debs
-          cp build-amd64/*_all.deb build-amd64/*_amd64.deb debs/
-          echo "amd64=true" >> "$GITHUB_OUTPUT"
-          if ls build-arm64/*_arm64.deb > /dev/null 2>&1; then
-            mkdir debs-arm64
-            cp build-amd64/*_all.deb build-arm64/*_arm64.deb debs-arm64/
-            echo "arm64=true" >> "$GITHUB_OUTPUT"
-          fi
-        fi
-        ls -l debs debs-arm64 2> /dev/null || true
-
-    - name: Upload amd64 set
-      if: steps.sets.outputs.amd64 == 'true'
-      uses: actions/upload-artifact@v4.1.0
-      with:
         name: debs
-        path: debs/
-
-    - name: Upload arm64 set
-      if: steps.sets.outputs.arm64 == 'true'
-      uses: actions/upload-artifact@v4.1.0
-      with:
-        name: debs-arm64
-        path: debs-arm64/
-
-    # A set that could not be put together fails the run after the others are uploaded
-    - name: Check that both sets were assembled
-      run: |
-        test "${{ steps.sets.outputs.amd64 }}" = true
-        test "${{ steps.sets.outputs.arm64 }}" = true
+        path: dist/
 
   build-dsc:
     needs: approval
