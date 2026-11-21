@@ -139,6 +139,13 @@ differ() { # <name> <name>: 0 if the two images differ
 	[ -n "$n" ] && [ "${n%.*}" != 0 ] 2>/dev/null
 }
 
+build() { # <program> <source> [<guest-cc arguments>...]
+	local program=$1 source=$2
+	shift 2
+	"$DARLING_SKILLS/darling-guest-testing/scripts/guest-cc.sh" -o "$work/$program" "$source" "$@" \
+		|| { fail "$program does not build"; return 1; }
+}
+
 # The folders
 mkdir -p "$work/F/sub" "$work/G"
 touch "$work/F/one.txt" "$work/F/two.txt" "$work/G/three.txt"
@@ -268,6 +275,75 @@ else
 fi
 quit_finder
 detach_all
+
+# reveal: open -R shows the file's folder (the in-process test, finder_reveal.m, checks the selection)
+guest reveal "open -R '$gw/F/one.txt'"
+if [ "$(rc reveal)" = 0 ] && window F 30; then pass "reveal"; else fail "reveal: rc $(rc reveal) $(outputs reveal)"; fi
+quit_finder
+
+# reveal several: files in two folders give a window for each
+guest reveal2 "open -R '$gw/F/one.txt' '$gw/G/three.txt'"
+if [ "$(rc reveal2)" = 0 ] && window F 30 && window G 10; then
+	pass "reveal several"
+else
+	fail "reveal several: rc $(rc reveal2) $(outputs reveal2), windows F $(windows F), G $(windows G)"
+fi
+quit_finder
+
+# open -R missing: a file that doesn't exist is an error (exit status 1, as on macOS), and nothing is revealed
+guest reveal-missing "open -R '$gw/nope' '$gw/F/one.txt'"
+sleep 5
+if [ "$(rc reveal-missing)" = 1 ] && grep -q "does not exist" "$work/reveal-missing.err" && [ "$(windows '')" = 0 ]; then
+	pass "open -R missing"
+else
+	fail "open -R missing: rc $(rc reveal-missing) $(outputs reveal-missing), windows $(windows '')"
+fi
+quit_finder
+
+# open file: Command-Down opens the selected file with its application (a stand-in editor for .fndtest files,
+# which records the Apple Events it gets)
+if build ae-receiver "$here/src/ae-receiver.m" -framework AppKit \
+	&& build ls_register "$here/src/ls_register.m" -framework Foundation -framework CoreServices; then
+	mkdir -p "$work/editor/Editor.app/Contents/MacOS"
+	cp "$work/ae-receiver" "$work/editor/Editor.app/Contents/MacOS/ae-receiver"
+	cat >"$work/editor/Editor.app/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key><string>ae-receiver</string>
+	<key>CFBundleIdentifier</key><string>org.darling.test.finder-editor</string>
+	<key>CFBundleName</key><string>Editor</string>
+	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>CFBundleDocumentTypes</key><array><dict>
+		<key>CFBundleTypeName</key><string>Finder test document</string>
+		<key>CFBundleTypeExtensions</key><array><string>fndtest</string></array>
+		<key>CFBundleTypeRole</key><string>Editor</string>
+		<key>LSHandlerRank</key><string>Owner</string>
+	</dict></array>
+</dict>
+</plist>
+PLIST
+	touch "$work/F/doc.fndtest"
+	guest register-editor "'$gw/ls_register' '$gw/editor/Editor.app'"
+	guest reveal-doc "open -R '$gw/F/doc.fndtest'"
+	if [ "$(rc register-editor)" != 0 ]; then
+		fail "open file: the stand-in editor cannot be registered: $(outputs register-editor)"
+	elif window F 30; then
+		key cmd+Down
+		for ((i = 0; i < 30; i++)); do grep -q "odoc.*doc.fndtest" "$work/editor/events.txt" 2>/dev/null && break; sleep 1; done
+		if grep -q "^aevt odoc .*doc.fndtest" "$work/editor/events.txt" 2>/dev/null; then
+			pass "open file"
+		else
+			fail "open file: the editor got: $(tr '\n' '|' < "$work/editor/events.txt" 2>/dev/null)"
+		fi
+	else
+		fail "open file: no window F: $(outputs reveal-doc)"
+	fi
+	guest kill-editor "kill \$(ps ax | grep '[E]ditor.app/Contents/MacOS' | awk '{print \$1}') 2>/dev/null; true"
+	rm -rf "$work/editor" "$work/F/doc.fndtest"
+fi
+quit_finder
 
 # unreadable: a folder that can't be read gives an alert, no window; after it Finder quits
 if [ "$guest_uid" = 0 ]; then

@@ -248,6 +248,7 @@ static NSString *FinderFolderKey(NSURL *url)
     [[main addItemWithTitle:@"Finder" action:NULL keyEquivalent:@""] setSubmenu:finder];
 
     NSMenu *file = [[NSMenu alloc] initWithTitle:@"File"];
+    [file addItemWithTitle:@"Open" action:@selector(openSelection:) keyEquivalent:@"o"];
     [file addItemWithTitle:@"Close Window" action:@selector(performClose:) keyEquivalent:@"w"];
     [file addItem:[NSMenuItem separatorItem]];
     [file addItemWithTitle:@"Eject" action:@selector(eject:) keyEquivalent:@"e"];
@@ -257,6 +258,17 @@ static NSString *FinderFolderKey(NSURL *url)
     [view addItemWithTitle:@"as Icons" action:@selector(showAsIcons:) keyEquivalent:@"1"];
     [view addItemWithTitle:@"as List" action:@selector(showAsList:) keyEquivalent:@"2"];
     [[main addItemWithTitle:@"View" action:NULL keyEquivalent:@""] setSubmenu:view];
+
+    NSMenu *go = [[NSMenu alloc] initWithTitle:@"Go"];
+    [go addItemWithTitle:@"Back" action:@selector(goBack:) keyEquivalent:@"["];
+    [go addItemWithTitle:@"Forward" action:@selector(goForward:) keyEquivalent:@"]"];
+    [go addItemWithTitle:@"Enclosing Folder"
+                  action:@selector(goToEnclosingFolder:)
+           keyEquivalent:[NSString stringWithFormat:@"%C", (unichar) NSUpArrowFunctionKey]];
+    [go addItemWithTitle:@"Selected Item"
+                  action:@selector(openSelection:)
+           keyEquivalent:[NSString stringWithFormat:@"%C", (unichar) NSDownArrowFunctionKey]];
+    [[main addItemWithTitle:@"Go" action:NULL keyEquivalent:@""] setSubmenu:go];
 
     NSMenu *window = [[NSMenu alloc] initWithTitle:@"Window"];
     [window addItemWithTitle:@"Minimize" action:@selector(performMiniaturize:) keyEquivalent:@"m"];

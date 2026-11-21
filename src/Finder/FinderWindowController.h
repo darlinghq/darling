@@ -31,8 +31,20 @@ typedef NS_ENUM(NSInteger, FinderViewStyle) {
 
 @property (readonly) NSURL *folderURL;
 
-// Shows another folder in this window, with nothing selected.
+// Shows another folder in this window, with nothing selected; the folder shown before goes in the history.
 - (void)showFolder:(NSURL *)folder;
+
+// The history: Go > Back (Command-[) and Forward (Command-]), and the toolbar's back and forward buttons
+@property (readonly) BOOL canGoBack;
+@property (readonly) BOOL canGoForward;
+- (IBAction)goBack:(id)sender;
+- (IBAction)goForward:(id)sender;
+
+// Go > Enclosing Folder (Command-Up): the folder's enclosing folder, with the folder selected in it
+- (IBAction)goToEnclosingFolder:(id)sender;
+
+// File > Open (Command-O) and Go > Selected Item (Command-Down): each selected item, as if double-clicked
+- (IBAction)openSelection:(id)sender;
 
 // Selects these items of the folder; items not in it are ignored.
 - (void)selectItems:(NSArray<NSURL *> *)items;

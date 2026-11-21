@@ -24,6 +24,7 @@
 #import "FinderSidebarController.h"
 
 static NSToolbarItemIdentifier const FinderViewStyleItem = @"FinderViewStyle";
+static NSToolbarItemIdentifier const FinderHistoryItem = @"FinderHistory";
 
 @implementation FinderWindowController {
     FinderDirectory *_directory;
@@ -31,6 +32,9 @@ static NSToolbarItemIdentifier const FinderViewStyleItem = @"FinderViewStyle";
     FinderListViewController *_list;
     FinderSidebarController *_sidebar;
     NSSegmentedControl *_viewControl;
+    NSSegmentedControl *_historyControl;
+    NSMutableArray<NSURL *> *_back;
+    NSMutableArray<NSURL *> *_forward;
 }
 
 - (instancetype)initWithFolderURL:(NSURL *)folder
@@ -44,6 +48,8 @@ static NSToolbarItemIdentifier const FinderViewStyleItem = @"FinderViewStyle";
     window.minSize = NSMakeSize(300, 200);
     self = [super initWithWindow:window];
     if (self != nil) {
+        _back = [NSMutableArray array];
+        _forward = [NSMutableArray array];
         window.delegate = self;
         __weak FinderWindowController *weakSelf = self;
         void (^open)(NSURL *) = ^(NSURL *item) {
@@ -85,12 +91,23 @@ static NSToolbarItemIdentifier const FinderViewStyleItem = @"FinderViewStyle";
         toolbar.allowsUserCustomization = NO;
         window.toolbar = toolbar;
 
-        [self showFolder:folder];
+        [self displayFolder:folder];
     }
     return self;
 }
 
 - (void)showFolder:(NSURL *)folder
+{
+    NSURL *current = _folderURL;
+    [self displayFolder:folder];
+    if (current != nil && ![[current path] isEqual:[_folderURL path]]) {
+        [_back addObject:current];
+        [_forward removeAllObjects];
+    }
+    [self historyChanged];
+}
+
+- (void)displayFolder:(NSURL *)folder
 {
     _folderURL = [NSURL fileURLWithPath:[[folder URLByStandardizingPath] path] isDirectory:YES];
     _directory = [[FinderDirectory alloc] initWithURL:_folderURL];
@@ -112,6 +129,71 @@ static NSToolbarItemIdentifier const FinderViewStyleItem = @"FinderViewStyle";
 - (NSArray<NSURL *> *)selectedItems
 {
     return _viewStyle == FinderViewStyleList ? _list.selectedItems : _icons.selectedItems;
+}
+
+#pragma mark History
+
+- (BOOL)canGoBack
+{
+    return [_back count] > 0;
+}
+
+- (BOOL)canGoForward
+{
+    return [_forward count] > 0;
+}
+
+- (void)historyChanged
+{
+    [_historyControl setEnabled:self.canGoBack forSegment:0];
+    [_historyControl setEnabled:self.canGoForward forSegment:1];
+}
+
+- (IBAction)goBack:(id)sender
+{
+    if (!self.canGoBack)
+        return;
+    NSURL *folder = [_back lastObject];
+    [_back removeLastObject];
+    [_forward addObject:_folderURL];
+    [self displayFolder:folder];
+    [self historyChanged];
+}
+
+- (IBAction)goForward:(id)sender
+{
+    if (!self.canGoForward)
+        return;
+    NSURL *folder = [_forward lastObject];
+    [_forward removeLastObject];
+    [_back addObject:_folderURL];
+    [self displayFolder:folder];
+    [self historyChanged];
+}
+
+- (IBAction)goToEnclosingFolder:(id)sender
+{
+    if ([[_folderURL path] isEqual:@"/"])
+        return;
+    NSURL *from = _folderURL;
+    [self showFolder:[from URLByDeletingLastPathComponent]];
+    [self selectItems:@[ from ]];
+}
+
+- (void)historyControlChanged:(NSSegmentedControl *)sender
+{
+    if (sender.selectedSegment == 0)
+        [self goBack:sender];
+    else
+        [self goForward:sender];
+}
+
+- (IBAction)openSelection:(id)sender
+{
+    for (NSURL *item in self.selectedItems) {
+        if (_openItem != nil)
+            _openItem(item);
+    }
 }
 
 #pragma mark Views
@@ -179,6 +261,14 @@ static NSToolbarItemIdentifier const FinderViewStyleItem = @"FinderViewStyle";
 {
     if (item.action == @selector(eject:))
         return [self ejectableVolume] != nil;
+    if (item.action == @selector(goBack:))
+        return self.canGoBack;
+    if (item.action == @selector(goForward:))
+        return self.canGoForward;
+    if (item.action == @selector(goToEnclosingFolder:))
+        return ![[_folderURL path] isEqual:@"/"];
+    if (item.action == @selector(openSelection:))
+        return [self.selectedItems count] > 0;
     if (item.action == @selector(showAsIcons:))
         item.state = _viewStyle == FinderViewStyleIcons ? NSControlStateValueOn : NSControlStateValueOff;
     else if (item.action == @selector(showAsList:))
@@ -190,7 +280,7 @@ static NSToolbarItemIdentifier const FinderViewStyleItem = @"FinderViewStyle";
 
 - (NSArray<NSToolbarItemIdentifier> *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar
 {
-    return @[ NSToolbarFlexibleSpaceItemIdentifier, FinderViewStyleItem ];
+    return @[ FinderHistoryItem, NSToolbarFlexibleSpaceItemIdentifier, FinderViewStyleItem ];
 }
 
 - (NSArray<NSToolbarItemIdentifier> *)toolbarAllowedItemIdentifiers:(NSToolbar *)toolbar
@@ -202,6 +292,24 @@ static NSToolbarItemIdentifier const FinderViewStyleItem = @"FinderViewStyle";
         itemForItemIdentifier:(NSToolbarItemIdentifier)identifier
     willBeInsertedIntoToolbar:(BOOL)flag
 {
+    if ([identifier isEqual:FinderHistoryItem]) {
+        _historyControl = [[NSSegmentedControl alloc] initWithFrame:NSMakeRect(0, 0, 60, 24)];
+        _historyControl.segmentCount = 2;
+        [_historyControl setLabel:@"‹" forSegment:0];
+        [_historyControl setLabel:@"›" forSegment:1];
+        [_historyControl setWidth:28 forSegment:0];
+        [_historyControl setWidth:28 forSegment:1];
+        [[_historyControl cell] setTrackingMode:NSSegmentSwitchTrackingMomentary];
+        _historyControl.target = self;
+        _historyControl.action = @selector(historyControlChanged:);
+        [self historyChanged];
+        NSToolbarItem *item = [[NSToolbarItem alloc] initWithItemIdentifier:identifier];
+        item.label = @"Back/Forward";
+        item.paletteLabel = @"Back/Forward";
+        item.toolTip = @"See the folders you viewed previously";
+        item.view = _historyControl;
+        return item;
+    }
     if (![identifier isEqual:FinderViewStyleItem])
         return nil;
     _viewControl = [[NSSegmentedControl alloc] initWithFrame:NSMakeRect(0, 0, 110, 24)];

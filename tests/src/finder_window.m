@@ -119,6 +119,8 @@ int main(int argc, char **argv)
         expect([names(controller.selectedItems) isEqual: (@[ @"b.txt" ])],
                [NSString stringWithFormat: @"items of another folder are ignored (%@)", names(controller.selectedItems)]);
 
+        expect(!controller.canGoBack && !controller.canGoForward, @"a new window has no history");
+
         // Switching views keeps the selection; the list view shows the same items
         expect(controller.viewStyle == FinderViewStyleIcons, @"a new window uses the icon view");
         [controller selectItems: @[ a, c ]];
@@ -147,6 +149,37 @@ int main(int argc, char **argv)
         expect([window.title isEqual: [fm displayNameAtPath: other]], @"showFolder: changes the title");
         expect([icons numberOfItemsInSection: 0] == 1 && [controller.selectedItems count] == 0,
                @"showFolder: shows the other folder's items, with nothing selected");
+
+        // History: back to the folder shown before, forward again; up to the enclosing folder, with the folder
+        // that was shown selected in it
+        expect(controller.canGoBack && !controller.canGoForward, @"after showFolder: it can go back");
+        [controller goBack: nil];
+        spin();
+        expect([[controller.folderURL path] isEqual: folder] && controller.canGoForward,
+               [NSString stringWithFormat: @"goBack: shows the folder before (%@)", [controller.folderURL path]]);
+        [controller goForward: nil];
+        spin();
+        expect([[controller.folderURL path] isEqual: other] && !controller.canGoForward,
+               [NSString stringWithFormat: @"goForward: shows it again (%@)", [controller.folderURL path]]);
+        [controller goToEnclosingFolder: nil];
+        spin();
+        expect([[controller.folderURL path] isEqual: dir], [NSString stringWithFormat: @"goToEnclosingFolder: shows the enclosing folder (%@)",
+                                                                                     [controller.folderURL path]]);
+        expect([names(controller.selectedItems) isEqual: (@[ @"Other" ])],
+               [NSString stringWithFormat: @"with the folder it came from selected (%@)", names(controller.selectedItems)]);
+        [controller goBack: nil];
+        spin();
+        expect([[controller.folderURL path] isEqual: other], @"goBack: from there returns");
+
+        // Opening the selection: a folder is shown in the window
+        [controller goToEnclosingFolder: nil];
+        spin();
+        __block NSURL *opened = nil;
+        controller.openItem = ^(NSURL *item) {
+            opened = item;
+        };
+        [controller openSelection: nil];
+        expect([[[opened path] stringByResolvingSymlinksInPath] isEqual: [other stringByResolvingSymlinksInPath]], [NSString stringWithFormat: @"openSelection: opens the selected item (%@)", [opened path]]);
 
         [window close];
         printf(failures ? "FAILED %d\n" : "ALL PASSED\n", failures);

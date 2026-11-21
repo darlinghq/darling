@@ -11,8 +11,12 @@ In-process tests, in the guest (`build/tmp/helpers/src-test.sh <mode> <file>`; e
   `NSURLIsHiddenKey`), their order, and the errors for a missing or unreadable folder. It passes unchanged on macOS
   10.14.4 and 26.7.3; the order it checks is the one macOS gives.
 - `tests/src/finder_window.m` (needs a display): a window's title and size, its icon view's items and labels, selecting
-  items, switching to the list view and back (the selection stays), and showing another folder (the view stays). It
+  items, switching to the list view and back (the selection stays), showing another folder (the view stays), the
+  history (back, forward, the enclosing folder with the folder it came from selected) and opening the selection. It
   passes unchanged on both Macs.
+- `tests/src/finder_reveal.m` (needs a display): `openURLs:` with files in two folders, a file that doesn't exist
+  and a folder gives a window per folder with its files selected, and the folder's own window with nothing
+  selected. It passes unchanged on both Macs.
 - `tests/src/finder_list_view.m` (needs a display): the list view. Its columns (Name, Date Modified, Size, Kind), what
   their cells show (sizes as `NSByteCountFormatter` gives them, `--` for a folder; dates in the medium date style and
   short time style; the kind as `NSURLLocalizedTypeDescriptionKey` gives it), sorting by size both ways and by name,
@@ -37,6 +41,10 @@ The harness, `tests/finder.sh`, runs Finder through LaunchServices (`open` in th
 | eject | with a window of F open, Command-E in the volume's window ejects the volume; its window closes, F's stays |
 | eject button | the same with the sidebar's eject button (X11 only: a headless sway has no pointer to click with) |
 | detached outside | `hdiutil detach` in the guest closes the volume's window |
+| reveal | `open -R F/one.txt` gives a window on F |
+| reveal several | `open -R` of files in F and G gives windows on both |
+| open -R missing | `open -R` with a file that doesn't exist exits 1 with "The file … does not exist." (as on macOS) and reveals nothing |
+| open file | a stand-in editor registered for `.fndtest`; `open -R F/doc.fndtest`, then Command-Down, and the editor gets `odoc` for it |
 | unreadable | a folder that can't be read gives an alert and no window; after the alert Finder quits (skipped when the guest runs as root) |
 
 ## Notes
