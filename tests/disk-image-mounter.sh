@@ -52,10 +52,10 @@ dim="$here/../src/DiskImageMounter"
 dmg=(-I"$here/../src/external/darling-dmg/include" -L"$DARLING_ROOT/usr/lib/darling" -ldarling-dmg)
 for f in unmount-test sla-test sla-one sla-rtf sla-nostrings bad-blkx; do cp "$here/fixtures/$f.dmg" "$work/"; done
 echo "This is not a disk image." > "$work/not-an-image.dmg"
-# Spaces and & in the path. (Not non-ASCII characters yet: Foundation decomposes them in file URLs and file system
-# representations, so a file whose name has precomposed characters, as Linux names usually have, is not found.)
-mkdir -p "$work/Dir With Space"
-cp "$here/fixtures/unmount-test.dmg" "$work/Dir With Space/odd & name.dmg"
+# Spaces, & and non-ASCII characters in the path. The names are precomposed, as Linux names usually are; Foundation
+# hands the kernel decomposed names, which the lookup finds as APFS does (tests/path-normalization.md).
+mkdir -p "$work/Dir With Späce"
+cp "$here/fixtures/unmount-test.dmg" "$work/Dir With Späce/ünï & co.dmg"
 
 # The volume of the fixtures, and whether DiskImageMounter runs; both in the guest.
 volume="/Volumes/Unmount Test"
@@ -193,9 +193,9 @@ else
 fi
 detach_all
 
-# odd path: spaces and & in the image's path
+# odd path: spaces, & and non-ASCII characters in the image's path
 : > "$work/finder/events.txt"
-guest odd "open '$gw/Dir With Space/odd & name.dmg'"
+guest odd "open '$gw/Dir With Späce/ünï & co.dmg'"
 if wait_event "$odoc" 60 && wait_gone 15; then pass "odd path"; else fail "odd path: $(outputs odd), events: $(events | tr '\n' '|')"; fi
 detach_all
 

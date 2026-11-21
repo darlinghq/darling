@@ -28,15 +28,12 @@ windows, so use a display of your own.
 | license window (in process) | the window's languages and initial language, texts, prompts, button titles, defaults, RTF, and the replies of Agree, Disagree and closing |
 | open | an image is attached, the stand-in Finder gets `odoc` for the volume, DiskImageMounter quits |
 | open twice | the attached image is opened again, not attached again |
-| odd path | spaces and `&` in the image's path |
+| odd path | spaces, `&` and non-ASCII characters in the image's path |
 | bad image | an error alert; Return dismisses it, nothing is mounted, DiskImageMounter quits |
 | license window | Escape declines (nothing mounted, it quits); opened again, Return agrees and the volume is opened |
 | license twice | two opens of a licence image one second apart give one window and, after Return, one mount |
 | kill during license | killing DiskImageMounter while the agreement shows leaves nothing mounted |
 | attached license image | an attached image with a licence agreement is opened without asking again |
-
-Image names with non-ASCII characters are not covered yet: Foundation decomposes such names in file URLs and
-file system representations, so a file whose name is precomposed, as Linux names usually are, is not found.
 
 ## Observed on macOS 26.7.3 (25G342), x86_64
 
