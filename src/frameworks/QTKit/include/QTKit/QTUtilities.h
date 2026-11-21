@@ -18,11 +18,16 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <MacTypes.h>
 #include <QTKit/QTKitDefines.h>
 
 @interface QTUtilities : NSObject
 
 @end
+
+QTKIT_EXTERN OSType QTOSTypeForString(NSString *string);
+QTKIT_EXTERN NSString *QTStringForOSType(OSType osType);
+QTKIT_EXTERN NSString *QTMediaTypeStringForOSType(OSType osType);
 
 QTKIT_EXTERN NSString * const kQTTimeFormatterComponentDays;
 QTKIT_EXTERN NSString * const kQTTimeFormatterComponentHours;

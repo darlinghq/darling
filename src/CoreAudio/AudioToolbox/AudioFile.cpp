@@ -66,9 +66,17 @@ static bool urlToPath(CFURLRef url, char* path)
 	return url && CFURLGetFileSystemRepresentation(url, true, reinterpret_cast<UInt8*>(path), PATH_MAX);
 }
 
+// What a file that cannot be opened at all reports: no reason is given, except for permissions.
+static OSStatus openErrnoToStatus(int err)
+{
+	return (err == EACCES || err == EPERM) ? kAudioFilePermissionsError : kAudioFileUnspecifiedError;
+}
+
 // Types to try for a file: what the caller says it is, then what its extension says,
-// and then whatever recognizes its contents.
-static std::vector<AudioFileTypeID> candidateTypes(AudioFileTypeID hint, CFURLRef url, const void* data, UInt32 dataSize)
+// and then whatever recognizes its contents. The types that recognized the contents are also returned in
+// `recognized`: if there are none, nothing says what the file is.
+static std::vector<AudioFileTypeID> candidateTypes(AudioFileTypeID hint, CFURLRef url, const void* data, UInt32 dataSize,
+	std::vector<AudioFileTypeID>& recognized)
 {
 	AudioFileFormatManager* manager = AudioFileFormatManager::instance();
 	std::vector<AudioFileTypeID> types;
@@ -107,7 +115,10 @@ static std::vector<AudioFileTypeID> candidateTypes(AudioFileTypeID hint, CFURLRe
 
 			UInt32 result = 0;
 			if (AudioFileComponentFileDataIsThisFormat(component, dataSize, data, &result) == noErr && result == 1)
+			{
 				add(type);
+				recognized.push_back(type);
+			}
 
 			AudioComponentInstanceDispose(component);
 		}
@@ -168,18 +179,23 @@ OSStatus AudioFileOpenURL ( CFURLRef inFileRef,
 
 	int fd = ::open(path, O_RDONLY);
 	if (fd < 0)
-		return errnoToStatus(errno);
+		return openErrnoToStatus(errno);
 
 	std::vector<uint8_t> probe(PROBE_SIZE);
 	const ssize_t probed = ::read(fd, probe.data(), probe.size());
 	::close(fd);
 
 	if (probed < 0)
-		return errnoToStatus(errno);
+		return openErrnoToStatus(errno);
+	if (probed == 0)
+		return kAudioFileUnspecifiedError; // an empty file
 
 	OSStatus status = kAudioFileUnsupportedFileTypeError;
+	OSStatus recognizedStatus = kAudioFileUnsupportedFileTypeError;
+	bool triedRecognized = false;
+	std::vector<AudioFileTypeID> recognized;
 
-	for (AudioFileTypeID type : candidateTypes(inFileTypeHint, inFileRef, probe.data(), UInt32(probed)))
+	for (AudioFileTypeID type : candidateTypes(inFileTypeHint, inFileRef, probe.data(), UInt32(probed), recognized))
 	{
 		AudioFileComponent component;
 		if (newFileComponent(type, &component) != noErr)
@@ -190,7 +206,7 @@ OSStatus AudioFileOpenURL ( CFURLRef inFileRef,
 		if (fd < 0)
 		{
 			AudioComponentInstanceDispose(component);
-			return errnoToStatus(errno);
+			return openErrnoToStatus(errno);
 		}
 
 		status = AudioFileComponentOpenURL(component, inFileRef, inPermissions, fd);
@@ -200,10 +216,17 @@ OSStatus AudioFileOpenURL ( CFURLRef inFileRef,
 			return noErr;
 		}
 
+		if (!triedRecognized && std::find(recognized.begin(), recognized.end(), type) != recognized.end())
+		{
+			triedRecognized = true;
+			recognizedStatus = status;
+		}
+
 		AudioComponentInstanceDispose(component);
 	}
 
-	return status;
+	// A file that looks like a kind of file but fails to open as one is invalid; one that looks like nothing is of an unsupported type
+	return triedRecognized ? recognizedStatus : kAudioFileUnsupportedFileTypeError;
 }
 
 OSStatus AudioFileInitializeWithCallbacks (
@@ -261,8 +284,11 @@ OSStatus AudioFileOpenWithCallbacks (
 		probed = 0;
 
 	OSStatus status = kAudioFileUnsupportedFileTypeError;
+	OSStatus recognizedStatus = kAudioFileUnsupportedFileTypeError;
+	bool triedRecognized = false;
+	std::vector<AudioFileTypeID> recognized;
 
-	for (AudioFileTypeID type : candidateTypes(inFileTypeHint, nullptr, probe.data(), probed))
+	for (AudioFileTypeID type : candidateTypes(inFileTypeHint, nullptr, probe.data(), probed, recognized))
 	{
 		AudioFileComponent component;
 		if (newFileComponent(type, &component) != noErr)
@@ -275,10 +301,16 @@ OSStatus AudioFileOpenWithCallbacks (
 			return noErr;
 		}
 
+		if (!triedRecognized && std::find(recognized.begin(), recognized.end(), type) != recognized.end())
+		{
+			triedRecognized = true;
+			recognizedStatus = status;
+		}
+
 		AudioComponentInstanceDispose(component);
 	}
 
-	return status;
+	return triedRecognized ? recognizedStatus : kAudioFileUnsupportedFileTypeError;
 }
 
 static AudioFileComponent toComponent(AudioFileID file)

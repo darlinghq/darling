@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +18,14 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+@class AVPlayerItem;
 
-@interface AVPlayerItemVideoOutputInternal : NSObject
+// Private state of the public class of the same name without "Internal".
+@interface AVPlayerItemVideoOutputInternal : NSObject {
+@public
+    __unsafe_unretained AVPlayerItem *item; // the item the output is added to
+    uint64_t lastSerial;
+}
 
 @end

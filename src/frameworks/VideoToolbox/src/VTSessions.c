@@ -18,6 +18,7 @@
 */
 
 #include <VideoToolbox/VideoToolbox.h>
+#include "VTCompressionInternal.h"
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFRuntime.h>
 #include <CoreMedia/CoreMedia.h>
@@ -294,6 +295,19 @@ void VTDecompressionSessionInvalidate(VTDecompressionSessionRef session)
 
 #pragma mark - NALU Formatting
 
+/* True when the buffer is a sequence of NAL units with 4-byte big-endian length prefixes that fills it exactly. */
+static bool is_length_prefixed(const uint8_t *src, size_t srcLen)
+{
+	size_t offset = 0;
+	while (offset + 4 <= srcLen) {
+		size_t len = ((size_t)src[offset] << 24) | ((size_t)src[offset + 1] << 16) | ((size_t)src[offset + 2] << 8) | src[offset + 3];
+		if (len == 0 || len > srcLen - offset - 4)
+			return false;
+		offset += 4 + len;
+	}
+	return offset == srcLen;
+}
+
 static uint8_t* prepare_packet_data(const uint8_t *src, size_t srcLen, bool isAvcC, size_t *outLen, bool *mustFree)
 {
 	*mustFree = false;
@@ -302,6 +316,9 @@ static uint8_t* prepare_packet_data(const uint8_t *src, size_t srcLen, bool isAv
 		return (uint8_t*)src;
 
 	bool isAnnexB = (src[0] == 0 && src[1] == 0 && (src[2] == 1 || (src[2] == 0 && srcLen > 3 && src[3] == 1)));
+	/* A length prefix of 256..511 (00 00 01 xx) looks like a start code: length-prefixed data that tiles exactly is not Annex B. */
+	if (isAvcC && isAnnexB && is_length_prefixed(src, srcLen))
+		isAnnexB = false;
 
 	if (isAvcC) {
 		if (isAnnexB) {
@@ -785,6 +802,8 @@ OSStatus VTSessionSetProperty(VTSessionRef session, CFStringRef propertyKey, CFT
 		return kVTParameterErr;
 	if (CFGetTypeID(session) == VTDecompressionSessionGetTypeID())
 		return VTDecompressionSessionSetProperty((VTDecompressionSessionRef)session, propertyKey, propertyValue);
+	if (CFGetTypeID(session) == VTCompressionSessionGetTypeID())
+		return VTCompressionSessionSetPropertyInternal(session, propertyKey, propertyValue);
 	return kVTInvalidSessionErr;
 }
 
@@ -794,6 +813,8 @@ OSStatus VTSessionSetProperties(VTSessionRef session, CFDictionaryRef propertyDi
 		return kVTParameterErr;
 	if (CFGetTypeID(session) == VTDecompressionSessionGetTypeID())
 		return VTDecompressionSessionSetProperties((VTDecompressionSessionRef)session, propertyDictionary);
+	if (CFGetTypeID(session) == VTCompressionSessionGetTypeID())
+		return VTCompressionSessionSetPropertiesInternal(session, propertyDictionary);
 	return kVTInvalidSessionErr;
 }
 
@@ -806,6 +827,8 @@ OSStatus VTSessionCopyProperty(VTSessionRef session, CFStringRef propertyKey, CF
 		return kVTParameterErr;
 	if (CFGetTypeID(session) == VTDecompressionSessionGetTypeID())
 		return VTDecompressionSessionCopyProperty((VTDecompressionSessionRef)session, propertyKey, allocator, propertyValueOut);
+	if (CFGetTypeID(session) == VTCompressionSessionGetTypeID())
+		return VTCompressionSessionCopyPropertyInternal(session, propertyKey, allocator, propertyValueOut);
 	return kVTInvalidSessionErr;
 }
 
@@ -817,6 +840,8 @@ OSStatus VTSessionCopySupportedPropertyDictionary(VTSessionRef session, CFDictio
 		return kVTParameterErr;
 	if (CFGetTypeID(session) == VTDecompressionSessionGetTypeID())
 		return VTDecompressionSessionCopySupportedPropertyDictionary((VTDecompressionSessionRef)session, supportedPropertyDictionaryOut);
+	if (CFGetTypeID(session) == VTCompressionSessionGetTypeID())
+		return VTCompressionSessionCopySupportedPropertyDictionaryInternal(session, supportedPropertyDictionaryOut);
 	return kVTInvalidSessionErr;
 }
 
@@ -1511,37 +1536,6 @@ OSStatus VTDecompressionSessionDecodeFrameWithOptionsAndOutputHandler(
 Boolean VTIsHardwareDecodeSupported(CMVideoCodecType codecType)
 {
 	return false;
-}
-
-#pragma mark - Compression Stubs
-
-OSStatus VTCompressionSessionCreate(CFAllocatorRef allocator, int32_t width, int32_t height, CMVideoCodecType codecType,
-	CFDictionaryRef encoderSpecification, CFDictionaryRef sourceImageBufferAttributes,
-	CFAllocatorRef compressedDataAllocator, VTCompressionOutputCallback outputCallback, void *outputCallbackRefCon,
-	VTCompressionSessionRef *compressionSessionOut)
-{
-	if (compressionSessionOut != NULL)
-		*compressionSessionOut = NULL;
-	return kVTCouldNotFindVideoEncoderErr;
-}
-
-void VTCompressionSessionInvalidate(VTCompressionSessionRef session) { }
-CFTypeID VTCompressionSessionGetTypeID(void) { return 0; }
-CVPixelBufferPoolRef VTCompressionSessionGetPixelBufferPool(VTCompressionSessionRef session) { return NULL; }
-OSStatus VTCompressionSessionPrepareToEncodeFrames(VTCompressionSessionRef session) { return kVTInvalidSessionErr; }
-
-OSStatus VTCompressionSessionEncodeFrame(VTCompressionSessionRef session, CVImageBufferRef imageBuffer,
-	CMTime presentationTimeStamp, CMTime duration, CFDictionaryRef frameProperties, void *sourceFrameRefcon,
-	VTEncodeInfoFlags *infoFlagsOut)
-{
-	if (infoFlagsOut != NULL)
-		*infoFlagsOut = 0;
-	return kVTInvalidSessionErr;
-}
-
-OSStatus VTCompressionSessionCompleteFrames(VTCompressionSessionRef session, CMTime completeUntilPresentationTimeStamp)
-{
-	return kVTInvalidSessionErr;
 }
 
 #pragma mark - Pixel Transfer Stubs

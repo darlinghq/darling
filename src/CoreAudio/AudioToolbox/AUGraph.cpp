@@ -23,6 +23,10 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <utility>
 #include <vector>
 
+// What AUGraphAddNode (on an open graph) and AUGraphOpen return for a description that
+// matches no audio component. The SDK header has no name for it.
+static const OSStatus kAUGraphErr_ComponentNotFound = -2005;
+
 OSStatus NewAUGraph(AUGraph* outGraph)
 {
 	if (!outGraph)
@@ -47,6 +51,16 @@ OSStatus AUGraphAddNode(AUGraph inGraph, const AudioComponentDescription* inDesc
 
 	std::lock_guard<std::recursive_mutex> lock(inGraph->mutex);
 
+	// A graph has at most one output node, whatever its subtype.
+	if (inDescription->componentType == kAudioUnitType_Output)
+	{
+		for (const auto& kv : inGraph->nodes)
+		{
+			if (kv.second.description.componentType == kAudioUnitType_Output)
+				return kAUGraphErr_OutputNodeErr;
+		}
+	}
+
 	AUNode id = inGraph->nextNodeId++;
 	AUGraphNodeEntry entry;
 	entry.id = id;
@@ -57,7 +71,7 @@ OSStatus AUGraphAddNode(AUGraph inGraph, const AudioComponentDescription* inDesc
 	{
 		entry.component = AudioComponentFindNext(nullptr, &entry.description);
 		if (!entry.component)
-			return kAUGraphErr_InvalidAudioUnit;
+			return kAUGraphErr_ComponentNotFound;
 
 		OSStatus s = AudioComponentInstanceNew(entry.component, &entry.unit);
 		if (s != noErr)
@@ -127,7 +141,7 @@ OSStatus AUGraphOpen(AUGraph inGraph)
 		AUGraphNodeEntry& entry = kv.second;
 		entry.component = AudioComponentFindNext(nullptr, &entry.description);
 
-		OSStatus s = entry.component ? AudioComponentInstanceNew(entry.component, &entry.unit) : kAUGraphErr_InvalidAudioUnit;
+		OSStatus s = entry.component ? AudioComponentInstanceNew(entry.component, &entry.unit) : kAUGraphErr_ComponentNotFound;
 		if (s != noErr)
 		{
 			for (auto& created : inGraph->nodes)

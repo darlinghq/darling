@@ -22,6 +22,12 @@
 
 @implementation AVAssetTrackInternal
 
+- (void)dealloc
+{
+    [mediaType release];
+    [super dealloc];
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
 }

@@ -97,11 +97,15 @@ OSStatus AudioQueueGetPropertySize(AudioQueueRef inAQ, AudioQueuePropertyID inID
 
 OSStatus AudioQueueAddPropertyListener(AudioQueueRef inAQ, AudioQueuePropertyID inID, AudioQueuePropertyListenerProc inProc, void *inUserData)
 {
+	if (!inAQ)
+		return paramErr;
 	return inAQ->addPropertyListener(inID, inProc, inUserData);
 }
 
 OSStatus AudioQueueRemovePropertyListener(AudioQueueRef inAQ, AudioQueuePropertyID inID, AudioQueuePropertyListenerProc inProc, void *inUserData)
 {
+	if (!inAQ)
+		return paramErr;
 	return inAQ->removePropertyListener(inID, inProc, inUserData);
 }
 
@@ -145,11 +149,8 @@ OSStatus AudioQueueEnqueueBufferWithParameters(AudioQueueRef inAQ,
 		UInt32 inNumParamValues, const AudioQueueParameterEvent *inParamValues,
 		const AudioTimeStamp *inStartTime, AudioTimeStamp *outActualStartTime)
 {
-	// Trimming, scheduled start times and per-buffer parameters are not supported:
-	// accept the plain case only, rather than play something else than asked.
-	if (inTrimFramesAtStart || inTrimFramesAtEnd || inNumParamValues || inStartTime || outActualStartTime)
-		return unimpErr;
-	return inAQ->enqueueBuffer(inBuffer, inNumPacketDescs, inPacketDescs);
+	return inAQ->enqueueBufferWithParameters(inBuffer, inNumPacketDescs, inPacketDescs, inTrimFramesAtStart,
+			inTrimFramesAtEnd, inNumParamValues, inParamValues, inStartTime, outActualStartTime);
 }
 
 // A timeline lets a client learn whether the queue's sample time was interrupted, as

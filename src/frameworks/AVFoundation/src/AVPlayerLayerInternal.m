@@ -22,6 +22,13 @@
 
 @implementation AVPlayerLayerInternal
 
+- (void)dealloc
+{
+    [player release];
+    [videoGravity release];
+    [super dealloc];
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
 }

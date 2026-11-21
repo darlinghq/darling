@@ -73,6 +73,8 @@ private:
 	SInt64 m_position = 0; // in client frames
 	SInt64 m_nextPacket = 0;
 	SInt64 m_skipFrames = 0; // client frames to drop after a seek into a packet
+	SInt64 m_primingFrames = 0; // file frames at the start of the stream that are not part of the sound (an encoder's delay)
+	SInt64 m_validFrames = -1; // file frames that are the sound, if the file says
 	UInt32 m_ioBufferSize = 64 * 1024;
 
 	std::vector<uint8_t> m_inputBuffer;
@@ -116,6 +118,18 @@ OSStatus ExtAudioFile::init()
 	{
 		m_clientFormat = m_fileFormat;
 		m_clientSet = true;
+	}
+
+	if (!m_forWriting)
+	{
+		// A compressed stream can begin with frames that the decoder needs to warm up, and end with padding
+		AudioFilePacketTableInfo info = {};
+		size = sizeof(info);
+		if (AudioFileGetProperty(m_file, kAudioFilePropertyPacketTableInfo, &size, &info) == noErr && info.mNumberValidFrames > 0)
+		{
+			m_primingFrames = info.mPrimingFrames;
+			m_validFrames = info.mNumberValidFrames;
+		}
 	}
 
 	if (m_forWriting)
@@ -232,6 +246,10 @@ OSStatus ExtAudioFile::setClientFormat(const AudioStreamBasicDescription* format
 	if (!m_forWriting)
 		m_position = SInt64(fileFrame * (m_clientFormat.mSampleRate / m_fileFormat.mSampleRate));
 
+	// The stream starts at its priming frames: they are decoded and dropped
+	if (!m_forWriting && m_primingFrames && m_position == 0 && m_nextPacket == 0 && m_skipFrames == 0)
+		m_skipFrames = SInt64(m_primingFrames * (m_clientFormat.mSampleRate / m_fileFormat.mSampleRate));
+
 	return needsConverter() ? createConverter() : noErr;
 }
 
@@ -319,6 +337,14 @@ OSStatus ExtAudioFile::read(UInt32* ioFrames, AudioBufferList* data)
 	if (!data->mNumberBuffers)
 		return kAudio_ParamError;
 	wanted = std::min(wanted, data->mBuffers[0].mDataByteSize / m_clientFormat.mBytesPerFrame);
+
+	// The padding at the end of the stream is not part of the sound
+	if (m_validFrames >= 0)
+	{
+		const SInt64 length = SInt64(m_validFrames * (m_clientFormat.mSampleRate / m_fileFormat.mSampleRate));
+		const SInt64 remaining = length - m_position;
+		wanted = remaining > 0 ? UInt32(std::min<SInt64>(wanted, remaining)) : 0;
+	}
 
 	if (nonInterleaved)
 		m_interleaveBuffer.resize(wanted * client.mBytesPerFrame);
@@ -537,7 +563,8 @@ OSStatus ExtAudioFile::seek(SInt64 frame)
 		return (frame == m_position) ? noErr : kExtAudioFileError_InvalidSeek;
 
 	const Float64 ratio = m_clientSet ? m_fileFormat.mSampleRate / m_clientFormat.mSampleRate : 1.0;
-	const SInt64 fileFrame = SInt64(frame * ratio);
+	const SInt64 soundFrame = SInt64(frame * ratio);
+	const SInt64 fileFrame = soundFrame + m_primingFrames;
 
 	if (m_fileFormat.mBytesPerPacket && m_fileFormat.mFramesPerPacket)
 	{
@@ -551,7 +578,7 @@ OSStatus ExtAudioFile::seek(SInt64 frame)
 		UInt32 size = sizeof(translation);
 
 		SInt64 length = 0;
-		if (fileFrameCount(&length) == noErr && fileFrame >= length)
+		if (fileFrameCount(&length) == noErr && soundFrame >= length)
 		{
 			UInt64 packets = 0;
 			size = sizeof(packets);
@@ -582,6 +609,12 @@ OSStatus ExtAudioFile::seek(SInt64 frame)
 
 OSStatus ExtAudioFile::fileFrameCount(SInt64* frames)
 {
+	if (m_validFrames >= 0)
+	{
+		*frames = m_validFrames;
+		return noErr;
+	}
+
 	UInt64 packets = 0;
 	UInt32 size = sizeof(packets);
 	OSStatus status = AudioFileGetProperty(m_file, kAudioFilePropertyAudioDataPacketCount, &size, &packets);

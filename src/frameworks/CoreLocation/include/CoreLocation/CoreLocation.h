@@ -60,9 +60,8 @@
 #import <CoreLocation/_CLRangingPeerDistanceInternal.h>
 #import <CoreLocation/_CLRangingPeer.h>
 #import <CoreLocation/_CLRangingPeerDistance.h>
-
-@protocol CLLocationManagerDelegate
-@end
+#import <CoreLocation/CLError.h>
+#import <CoreLocation/CLErrorDomain.h>
 
 void* CLClientCreateIso6709Notation(void);
 void* CLClientCreateWithBundleIdentifierAndPath(void);

@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +18,19 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+
+typedef NS_ENUM(NSInteger, AVKeyValueStatus) {
+    AVKeyValueStatusUnknown = 0,
+    AVKeyValueStatusLoading = 1,
+    AVKeyValueStatusLoaded = 2,
+    AVKeyValueStatusFailed = 3,
+    AVKeyValueStatusCancelled = 4
+};
 
 @protocol AVAsynchronousKeyValueLoading
+
+- (AVKeyValueStatus)statusOfValueForKey:(NSString *)key error:(NSError **)outError;
+- (void)loadValuesAsynchronouslyForKeys:(NSArray<NSString *> *)keys completionHandler:(void (^)(void))handler;
 
 @end

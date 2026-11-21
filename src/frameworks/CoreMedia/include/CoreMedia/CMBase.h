@@ -40,5 +40,9 @@
 
 typedef signed long CMItemCount;
 typedef signed long CMItemIndex;
+typedef int32_t CMPersistentTrackID;
+enum {
+    kCMPersistentTrackID_Invalid = 0
+};
 
 #endif

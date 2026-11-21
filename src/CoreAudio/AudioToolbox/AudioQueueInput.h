@@ -43,8 +43,6 @@ public:
 	virtual OSStatus getProperty(AudioQueuePropertyID inID, void *outData, UInt32 *ioDataSize) override;
 	virtual OSStatus setProperty(AudioQueuePropertyID inID, const void *inData, UInt32 inDataSize) override;
 	virtual OSStatus getPropertySize(AudioQueuePropertyID inID, UInt32 *outDataSize) override;
-	virtual OSStatus addPropertyListener(AudioQueuePropertyID inID, AudioQueuePropertyListenerProc inProc, void *inUserData) override;
-	virtual OSStatus removePropertyListener(AudioQueuePropertyID inID, AudioQueuePropertyListenerProc inProc, void *inUserData) override;
 
 	virtual OSStatus allocateBuffer(UInt32 inBufferByteSize, UInt32 inNumberPacketDescriptions, AudioQueueBufferRef *outBuffer) override;
 	virtual OSStatus freeBuffer(AudioQueueBufferRef inBuffer) override;
@@ -67,12 +65,6 @@ private:
 		AudioQueueBufferRef buffer;
 		AudioTimeStamp start;
 	};
-	struct Listener
-	{
-		AudioQueuePropertyID id;
-		AudioQueuePropertyListenerProc proc;
-		void* userData;
-	};
 
 	static OSStatus inputCallback(void* refCon, AudioUnitRenderActionFlags* flags, const AudioTimeStamp* timeStamp,
 		UInt32 busNumber, UInt32 numberFrames, AudioBufferList* ioData);
@@ -89,8 +81,7 @@ private:
 	// Called with m_mutex held; the callbacks are issued afterwards by returnBuffers().
 	void takePending(std::vector<Filled>& out);
 	void returnBuffers(const std::vector<Filled>& buffers);
-	void notifyListeners(AudioQueuePropertyID id);
-	void runOnClient(std::function<void()> job);
+	void runOnClient(std::function<void()> job) override;
 	void finishStop();
 	OSStatus shutdown(bool deliver);
 	bool onCallbackQueue() const;
@@ -151,8 +142,6 @@ private:
 	std::vector<float> m_levelSum;			// scratch for updateLevels
 
 	CFStringRef m_deviceUID = nullptr;		// set by the client; NULL tracks the default input device
-	std::mutex m_listenerMutex;
-	std::vector<Listener> m_listeners;
 };
 
 #endif	/* AUDIOQUEUEINPUT_H */
