@@ -72,6 +72,123 @@ static void testArithmetic(void)
 	expectFloats(in, (float[]) { 1, 4 }, 2, "vmul in place");
 }
 
+// Every case below is one of the examples on the vDSP function pages, or a hand-worked variation of one:
+// https://developer.apple.com/documentation/accelerate/vdsp_vdiv and the sibling pages named per case.
+static void testRealVectorOps(void)
+{
+	float c[8];
+
+	// vDSP_vdiv: B is passed first, the result is A / B (a = 10..50, b = 1..5 gives 10 everywhere).
+	const float divA[] = { 10, 20, 30, 40, 50 }, divB[] = { 1, 2, 3, 4, 5 };
+	vDSP_vdiv(divB, 1, divA, 1, c, 1, 5);
+	expectFloats(c, (float[]) { 10, 10, 10, 10, 10 }, 5, "vdiv");
+
+	const double divAD[] = { 10, 20, 30 }, divBD[] = { 1, 2, 3 };
+	double cD[3];
+	vDSP_vdivD(divBD, 1, divAD, 1, cD, 1, 3);
+	expectNear(cD[2], 10, 1e-12, "vdivD", 2);
+
+	// vDSP_vsdiv: C[n] = A[n] / B.
+	const float sA[] = { 1, 2, 3, 4, 5 };
+	float ten = 10;
+	vDSP_vsdiv(sA, 1, &ten, c, 1, 5);
+	expectFloats(c, (float[]) { 0.1f, 0.2f, 0.3f, 0.4f, 0.5f }, 5, "vsdiv");
+
+	// vDSP_vneg, vDSP_vabs and vDSP_vnabs share the input of their pages.
+	const float values[] = { -1, 2, -3, 4, -5, 6, -7, 8 };
+	vDSP_vneg(values, 1, c, 1, 8);
+	expectFloats(c, (float[]) { 1, -2, 3, -4, 5, -6, 7, -8 }, 8, "vneg");
+	vDSP_vabs(values, 1, c, 1, 8);
+	expectFloats(c, (float[]) { 1, 2, 3, 4, 5, 6, 7, 8 }, 8, "vabs");
+	vDSP_vnabs(values, 1, c, 1, 8);
+	expectFloats(c, (float[]) { -1, -2, -3, -4, -5, -6, -7, -8 }, 8, "vnabs");
+
+	const double valuesD[] = { -1.5, 2.5 };
+	vDSP_vnegD(valuesD, 1, cD, 1, 2);
+	expectNear(cD[0], 1.5, 1e-12, "vnegD", 0);
+	vDSP_vabsD(valuesD, 1, cD, 1, 2);
+	expectNear(cD[0], 1.5, 1e-12, "vabsD", 0);
+	vDSP_vnabsD(valuesD, 1, cD, 1, 2);
+	expectNear(cD[1], -2.5, 1e-12, "vnabsD", 1);
+
+	// vDSP_vsq: the page example.
+	const float sq[] = { -2, -0.5f, 0.5f, 3 };
+	vDSP_vsq(sq, 1, c, 1, 4);
+	expectFloats(c, (float[]) { 4, 0.25f, 0.25f, 9 }, 4, "vsq");
+
+	// vDSP_vma: D = A * B + C. vDSP_vmsa: D = A * B + scalar.
+	const float ma[] = { 1, 2, 3, 4, 5 }, mb[] = { 10, 20, 30, 40, 50 }, mc[] = { 5, 4, 3, 2, 1 };
+	vDSP_vma(ma, 1, mb, 1, mc, 1, c, 1, 5);
+	expectFloats(c, (float[]) { 15, 44, 93, 162, 251 }, 5, "vma");
+	float five = 5;
+	vDSP_vmsa(ma, 1, mb, 1, &five, c, 1, 5);
+	expectFloats(c, (float[]) { 15, 45, 95, 165, 255 }, 5, "vmsa");
+	const double maD[] = { 2 }, mbD[] = { 3 }, mcD[] = { 4 };
+	vDSP_vmaD(maD, 1, mbD, 1, mcD, 1, cD, 1, 1);
+	expectNear(cD[0], 10, 1e-12, "vmaD", 0);
+	vDSP_vmsaD(maD, 1, mbD, 1, mcD, cD, 1, 1);
+	expectNear(cD[0], 10, 1e-12, "vmsaD", 0);
+
+	// vDSP_vmax, vDSP_vmin and vDSP_vthr: the page example, a = {-2, -0.5, 0.5, 3}.
+	const float twos[] = { 2, 2, 2, 2 };
+	vDSP_vmax(sq, 1, twos, 1, c, 1, 4);
+	expectFloats(c, (float[]) { 2, 2, 2, 3 }, 4, "vmax");
+	vDSP_vmin(sq, 1, twos, 1, c, 1, 4);
+	expectFloats(c, (float[]) { -2, -0.5f, 0.5f, 2 }, 4, "vmin");
+	float threshold = -1;
+	vDSP_vthr(sq, 1, &threshold, c, 1, 4);
+	expectFloats(c, (float[]) { -1, -0.5f, 0.5f, 3 }, 4, "vthr");
+
+	// Ties between -0 and +0 pin the comparisons in the page loops: vmax takes A when B <= A, vmin takes A
+	// when A <= B, vthr takes A when A >= threshold.
+	const float negZero = -0.0f, posZero = 0.0f;
+	vDSP_vmax(&negZero, 1, &posZero, 1, c, 1, 1);
+	expectNear(signbit(c[0]) ? 1 : 0, 1, 0, "vmax tie takes A", 0);
+	vDSP_vmin(&posZero, 1, &negZero, 1, c, 1, 1);
+	expectNear(signbit(c[0]) ? 1 : 0, 0, 0, "vmin tie takes A", 0);
+	vDSP_vthr(&negZero, 1, &posZero, c, 1, 1);
+	expectNear(signbit(c[0]) ? 1 : 0, 1, 0, "vthr tie takes A", 0);
+
+	// vDSP_vfill, vDSP_vclr and vDSP_vramp.
+	float pi = (float) M_PI;
+	float filled[10];
+	vDSP_vfill(&pi, filled, 1, 10);
+	expectNear(filled[0], pi, 0, "vfill", 0);
+	expectNear(filled[9], pi, 0, "vfill", 9);
+	float cleared[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+	vDSP_vclr(cleared, 1, 10);
+	for (int i = 0; i < 10; i++)
+		expectNear(cleared[i], 0, 0, "vclr", i);
+	float start = 0, step = 1;
+	vDSP_vramp(&start, &step, c, 1, 8);
+	expectFloats(c, (float[]) { 0, 1, 2, 3, 4, 5, 6, 7 }, 8, "vramp");
+	double startD = 1, stepD = -0.5, rampD[3];
+	vDSP_vrampD(&startD, &stepD, rampD, 1, 3);
+	expectNear(rampD[2], 0, 1e-12, "vrampD", 2);
+
+	// vDSP_vrvrs: the page example, then an odd length.
+	float reversed[10] = { 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
+	vDSP_vrvrs(reversed, 1, 10);
+	expectFloats(reversed, (float[]) { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }, 10, "vrvrs");
+	float odd[] = { 1, 2, 3 };
+	vDSP_vrvrs(odd, 1, 3);
+	expectFloats(odd, (float[]) { 3, 2, 1 }, 3, "vrvrs odd");
+
+	// A stride of 2 touches only every other element, in the input and the output alike.
+	float strided[] = { 1, 99, 2, 99, 3, 99 };
+	vDSP_vrvrs(strided, 2, 3);
+	expectFloats(strided, (float[]) { 3, 99, 2, 99, 1, 99 }, 6, "vrvrs stride");
+	float wide[6] = { 0, 77, 0, 77, 0, 77 };
+	vDSP_vneg(strided, 2, wide, 2, 3);
+	expectFloats(wide, (float[]) { -3, 77, -2, 77, -1, 77 }, 6, "vneg stride");
+
+	// A count of zero writes nothing.
+	float untouched[] = { 42 };
+	vDSP_vfill(&pi, untouched, 1, 0);
+	vDSP_vrvrs(untouched, 1, 0);
+	expectNear(untouched[0], 42, 0, "zero count", 0);
+}
+
 static void testConvolution(void)
 {
 	const float signal[] = { 1, 2, 3, 4, 5 };
@@ -199,6 +316,7 @@ static void testFFT(vDSP_Length setupLog2, vDSP_Length log2n, vDSP_Stride stride
 int main(void)
 {
 	testArithmetic();
+	testRealVectorOps();
 	testConvolution();
 	testDeq22();
 	testComplex();
