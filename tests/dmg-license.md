@@ -20,6 +20,9 @@ it into a copy of `fixtures/unmount-test.dmg` (the command is deprecated but wor
 | `sla-short-lpic.dmg` | `5000 short-lpic` | as above, the `LPic` table cut off inside its first entry |
 | `sla-overcount.dmg` | `5000 overcount` | as above, `LPic` claims five entries but has three |
 | `sla-lines.dmg` | `5000 lines` | as `sla-test.dmg`, English text `A<CR>B<CR><CR>C<LF>D<CR><LF>` |
+| `sla-one.dmg` | `5000 one` | English only |
+| `sla-rtf.dmg` | `5000 rtf` | English only, the agreement as `RTF ` (`{\rtf1\ansi SLA TEST AGREEMENT {\b bold}\par}`) |
+| `sla-nostrings.dmg` | `5000 nostrings` | the three languages of `sla-test.dmg` without their `STR#` resources |
 
 The resource layout follows public descriptions of the UDIF licence resources: `LPic` 5000 holds the default
 language and a table of (region code, resource ID - 5000, two-byte flag); per language a `TEXT` (or `RTF `) with

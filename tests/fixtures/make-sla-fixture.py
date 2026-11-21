@@ -9,7 +9,8 @@ The layout follows public descriptions of the UDIF licence resources ('LPic' lan
 language name, button titles and prompt per language, and the agreement text as 'TEXT' in the language's Mac
 encoding). The first LPic field (the default language) defaults to 5000. The "short-lpic" variant cuts the LPic
 table off inside its first entry; "overcount" claims five entries in a table that has three; "lines" makes the
-English text "A<CR>B<CR><CR>C<LF>D<CR><LF>" (to see how line breaks are shown).
+English text "A<CR>B<CR><CR>C<LF>D<CR><LF>" (to see how line breaks are shown); "one" has English only; "rtf" has
+English only, as an 'RTF ' resource; "nostrings" has the three languages without their 'STR#' resources.
 """
 import plistlib
 import struct
@@ -46,18 +47,28 @@ def pascal(s, encoding):
 def main():
     default = int(sys.argv[2]) if len(sys.argv) > 2 else 5000
     variant = sys.argv[3] if len(sys.argv) > 3 else "good"
-    lpic = struct.pack(">HH", default, 5 if variant == "overcount" else len(LANGUAGES))
-    strs, texts = [], []
-    for region, res_id, encoding, two_byte, strings, text in LANGUAGES:
+    languages = LANGUAGES[:1] if variant in ("one", "rtf") else LANGUAGES
+    lpic = struct.pack(">HH", default, 5 if variant == "overcount" else len(languages))
+    strs, texts, rtfs = [], [], []
+    for region, res_id, encoding, two_byte, strings, text in languages:
         lpic += struct.pack(">HHH", region, res_id - 5000, two_byte)
         strs.append(resource(res_id, "buttons",
                              struct.pack(">H", len(strings)) + b"".join(pascal(s, encoding) for s in strings)))
         if variant == "lines" and region == 0:
             text = "A\rB\r\rC\nD\r\n"
-        texts.append(resource(res_id, "SLA", text.encode(encoding)))
+        if variant == "rtf":
+            rtfs.append(resource(res_id, "SLA", b"{\\rtf1\\ansi SLA TEST AGREEMENT {\\b bold}\\par}"))
+        else:
+            texts.append(resource(res_id, "SLA", text.encode(encoding)))
     if variant == "short-lpic":
         lpic = lpic[:7]
-    resources = {"LPic": [resource(5000, "", lpic)], "STR#": strs, "TEXT": texts}
+    resources = {"LPic": [resource(5000, "", lpic)]}
+    if variant != "nostrings":
+        resources["STR#"] = strs
+    if texts:
+        resources["TEXT"] = texts
+    if rtfs:
+        resources["RTF "] = rtfs
     with open(sys.argv[1], "wb") as f:
         plistlib.dump(resources, f)
 

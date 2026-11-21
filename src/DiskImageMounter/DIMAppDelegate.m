@@ -18,10 +18,12 @@
  */
 
 #import "DIMAppDelegate.h"
+#import "DIMLicenseWindowController.h"
 
 @implementation DIMAppDelegate {
     NSMutableArray<NSURL *> *_pending;
     DIMImageOpener *_current;
+    DIMLicenseWindowController *_licenseWindow;
     BOOL _launched;
 }
 
@@ -79,18 +81,19 @@
 - (void)imageOpener:(DIMImageOpener *)opener askAgreementForImage:(darling_dmg_image *)image
               reply:(void (^)(BOOL agreed))reply
 {
-    const struct darling_dmg_license *license =
-        darling_dmg_license_for_languages(image, NULL, 0);
-    NSAlert *alert = [[NSAlert alloc] init];
-    alert.messageText = [opener.imageURL lastPathComponent];
-    alert.informativeText = license != NULL && license->text != NULL ? [NSString stringWithUTF8String:license->text] : @"";
-    [alert addButtonWithTitle:@"Agree"];
-    [alert addButtonWithTitle:@"Disagree"];
-    [NSApp activateIgnoringOtherApps:YES];
-    BOOL agreed = [alert runModal] == NSAlertFirstButtonReturn;
-    dispatch_async(dispatch_get_main_queue(), ^{
-        reply(agreed);
-    });
+    DIMLicenseWindowController *controller =
+        [[DIMLicenseWindowController alloc] initWithImage:image
+                                                    title:[opener.imageURL lastPathComponent]
+                                       preferredLanguages:[NSLocale preferredLanguages]];
+    // The controller lives until it has answered.
+    _licenseWindow = controller;
+    [controller runWithReply:^(BOOL agreed) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (self->_licenseWindow == controller)
+                self->_licenseWindow = nil;
+            reply(agreed);
+        });
+    }];
 }
 
 - (void)imageOpener:(DIMImageOpener *)opener showError:(NSString *)message

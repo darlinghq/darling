@@ -50,7 +50,7 @@ build() { # <program> <source> [<guest-cc arguments>...]
 
 dim="$here/../src/DiskImageMounter"
 dmg=(-I"$here/../src/external/darling-dmg/include" -L"$DARLING_ROOT/usr/lib/darling" -ldarling-dmg)
-for f in unmount-test sla-test bad-blkx; do cp "$here/fixtures/$f.dmg" "$work/"; done
+for f in unmount-test sla-test sla-one sla-rtf sla-nostrings bad-blkx; do cp "$here/fixtures/$f.dmg" "$work/"; done
 echo "This is not a disk image." > "$work/not-an-image.dmg"
 # Spaces and & in the path. (Not non-ASCII characters yet: Foundation decomposes them in file URLs and file system
 # representations, so a file whose name has precomposed characters, as Linux names usually have, is not found.)
@@ -156,6 +156,14 @@ if build dim_image_opener "$here/src/dim_image_opener.m" "$dim/DIMImageOpener.m"
 	detach_all
 fi
 
+# license window (in process): DIMLicenseWindowController (see src/dim_license_window.m)
+if build dim_license_window "$here/src/dim_license_window.m" "$dim/DIMLicenseWindowController.m" -I"$dim" \
+	-fobjc-arc -framework AppKit "${dmg[@]}"; then
+	guest license-window "'$gw/dim_license_window' '$gw'"
+	[ "$(rc license-window)" = 0 ] && pass "license window (in process)" \
+		|| fail "license window (in process): $(outputs license-window)"
+fi
+
 # The stand-in Finder, registered with LaunchServices; removed at the end
 if build ae-receiver "$here/src/ae-receiver.m" -framework AppKit \
 	&& build ls_register "$here/src/ls_register.m" -framework Foundation -framework CoreServices; then
@@ -204,6 +212,32 @@ if window "" 60; then
 else
 	fail "bad image: no window; $(outputs bad)"
 fi
+
+# license window: Escape declines (nothing mounted, DiskImageMounter quits); opened again, Return agrees
+detach_all
+: > "$work/finder/events.txt"
+guest lw1 "open '$gw/sla-test.dmg'"
+if window sla-test.dmg 60; then
+	key Escape
+	if wait_gone 15 && [ "$(mounts lw1-mounts)" = 0 ] && [ -z "$(events)" ]; then
+		guest lw2 "open '$gw/sla-test.dmg'"
+		if window sla-test.dmg 60; then
+			key Return
+			if wait_event "$odoc" 60 && wait_gone 15 && [ "$(mounts lw2-mounts)" = 1 ]; then
+				pass "license window"
+			else
+				fail "license window: after Return: events: $(events | tr '\n' '|'), running $(running), mounts $(mounts lw2-mounts)"
+			fi
+		else
+			fail "license window: no window when opened again; $(outputs lw2)"
+		fi
+	else
+		fail "license window: after Escape: running $(running), mounts $(mounts lw1-mounts), events: $(events | tr '\n' '|')"
+	fi
+else
+	fail "license window: no window titled sla-test.dmg; $(outputs lw1)"
+fi
+detach_all
 
 guest kill-dim "kill \$(ps ax | grep '[D]iskImageMounter.app' | awk '{print \$1}') 2>/dev/null; true"
 detach_all
