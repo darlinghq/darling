@@ -8,7 +8,9 @@
 // for byte: return codes, the received header and body, every trailer level
 // (seqno, security and audit tokens, context), MACH_RCV_LARGE and
 // LARGE_IDENTITY answers, the effect of a full queue on the sender's rights,
-// the port's status, and messages the server delivered (reply ports,
+// the port's status (make-send count, seqno and queue length after each step
+// of a mix of MAKE_SEND and COPY_SEND traffic, also once the queue has moved
+// back to the port, and the no-senders notification it ends in), and messages the server delivered (reply ports,
 // descriptors) interleaved with simple ones.
 //
 // Port names and the process ID (in the audit token) differ between the two
@@ -408,6 +410,72 @@ static void leave(void)
 	sq_destroy(port);
 }
 
+// the make-send count, seqno and queue length step by step, with MAKE_SEND messages queued, received, and moved
+// back to the port by a no-senders request, until the notification
+static void mscount_steps(void)
+{
+	sq_buffer_t buffer;
+	char what[64];
+	mach_port_t port = sq_port(false);
+	mach_port_t notify = sq_port(false);
+	mach_port_t previous = MACH_PORT_NULL;
+	static const char steps[] = "MMrMMMrrMrIccMrrrMrMMr";
+	int id = 0;
+
+	label(port, "M");
+	label(notify, "N");
+	sq_set_qlimit(port, 16);
+	dump_status("mscount start", port);
+	for (unsigned i = 0; steps[i] != '\0'; i++)
+	{
+		mach_msg_return_t mr = MACH_MSG_SUCCESS;
+		switch (steps[i])
+		{
+		case 'M':
+			mr = sq_send_ex(port, MACH_MSG_TYPE_MAKE_SEND, 32, id++, 0, 0);
+			break;
+		case 'c':
+			mr = sq_send_ex(port, MACH_MSG_TYPE_COPY_SEND, 32, id++, 0, 0);
+			break;
+		case 'I':
+			mr = mach_port_insert_right(mach_task_self(), port, port, MACH_MSG_TYPE_MAKE_SEND);
+			break;
+		case 'r':
+			prefill(&buffer);
+			mr = sq_receive_ex(port, &buffer, sizeof(buffer), MACH_RCV_TIMEOUT | MACH_RCV_TRAILER_TYPE(0) |
+				MACH_RCV_TRAILER_ELEMENTS(MACH_RCV_TRAILER_SEQNO), 1000);
+			dump_received("mscount recv", mr, &buffer);
+			break;
+		}
+		snprintf(what, sizeof(what), "mscount step %u %c (mr %x)", i, steps[i], mr);
+		dump_status(what, port);
+	}
+
+	// queued MAKE_SEND messages and the own send right hold send rights; then only the messages
+	dump_status("mscount before request", port);
+	printf("request: kr=%x\n", mach_port_request_notification(mach_task_self(), port, MACH_NOTIFY_NO_SENDERS,
+		7, notify, MACH_MSG_TYPE_MAKE_SEND_ONCE, &previous));
+	dump_status("mscount after request", port);
+	sq_send_ex(port, MACH_MSG_TYPE_MAKE_SEND, 32, id++, 0, 0);
+	mach_port_deallocate(mach_task_self(), port);
+	dump_status("mscount own right dropped", port);
+	for (;;)
+	{
+		prefill(&buffer);
+		mach_msg_return_t mr = sq_receive_ex(port, &buffer, sizeof(buffer), MACH_RCV_TIMEOUT |
+			MACH_RCV_TRAILER_TYPE(0) | MACH_RCV_TRAILER_ELEMENTS(MACH_RCV_TRAILER_SEQNO), 100);
+		dump_received("mscount drain recv", mr, &buffer);
+		if (mr != MACH_MSG_SUCCESS)
+			break;
+	}
+	prefill(&buffer);
+	dump_received("mscount notification", sq_receive_ex(notify, &buffer, sizeof(buffer), MACH_RCV_TIMEOUT, 1000),
+		&buffer);
+	dump_status("mscount end", port);
+	sq_destroy(port);
+	sq_destroy(notify);
+}
+
 static int run_dump(void)
 {
 	// line by line, so that the output of a run that crashes ends where it crashed
@@ -419,6 +487,7 @@ static int run_dump(void)
 	errors();
 	interleaved();
 	leave();
+	mscount_steps();
 	fflush(stdout);
 	return sq_region_mapped() == 1 ? 10 : (sq_region_mapped() == 0 ? 11 : 12);
 }

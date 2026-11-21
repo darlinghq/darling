@@ -20,6 +20,15 @@
 //     gets MACH_RCV_PORT_CHANGED;
 //   - a no-senders request made while queued messages hold the only send
 //     rights fires only after the last of them has been received;
+//   - the make-send count: each MAKE_SEND message counts once, from its send
+//     on, whether it is still queued or was received. Read while one thread
+//     sends MAKE_SEND messages and another receives them, every status is a
+//     consistent one (make-send count = seqno + queued messages, for a port
+//     only MAKE_SEND messages give send rights to), and it is exact when
+//     traffic stops; a no-senders request armed in the middle of such traffic
+//     reports the exact count; the queue moved back to the port (peek,
+//     no-senders request) with MAKE_SEND messages queued and some already
+//     received keeps the count, the seqnos and the order;
 //   - inserting the port into a port set keeps its queue: the set receives
 //     every message in order with the seqnos the port would have given;
 //   - fork: the child has ports of its own that work (also many forks while
@@ -30,6 +39,7 @@
 #include "mach_sq_common.h"
 
 #include <pthread.h>
+#include <sched.h>
 #include <sys/wait.h>
 
 static mach_msg_trailer_size_t seqno_of(const sq_buffer_t* buffer)
@@ -365,6 +375,209 @@ static void test_no_senders(void)
 	printf("ok no-senders\n");
 }
 
+// ---- make-send count -------------------------------------------------------------------------
+
+#define MADE_COUNT 20000
+#define MADE_WINDOW 32
+
+static mach_port_t made_port;
+static volatile int made_sent, made_received;
+
+static mach_port_status_t made_status(mach_port_t port)
+{
+	mach_port_status_t status;
+	mach_msg_type_number_t count = MACH_PORT_RECEIVE_STATUS_COUNT;
+	SQ_KR(mach_port_get_attributes(mach_task_self(), port, MACH_PORT_RECEIVE_STATUS,
+		(mach_port_info_t) &status, &count), "get_attributes");
+	return status;
+}
+
+// MAKE_SEND messages, never more than MADE_WINDOW queued (so no send waits for room)
+static void* made_sender(void* arg)
+{
+	(void) arg;
+	for (int i = 0; i < MADE_COUNT; i++)
+	{
+		while (made_sent - __atomic_load_n(&made_received, __ATOMIC_ACQUIRE) >= MADE_WINDOW)
+			sched_yield();
+		SQ_KR(sq_send_ex(made_port, MACH_MSG_TYPE_MAKE_SEND, 32, i, 0, 0), "make-send");
+		__atomic_store_n(&made_sent, i + 1, __ATOMIC_RELEASE);
+	}
+	return NULL;
+}
+
+static void* made_receiver(void* arg)
+{
+	(void) arg;
+	sq_buffer_t buffer;
+	for (int i = 0; i < MADE_COUNT; i++)
+	{
+		SQ_KR(receive_seqno(made_port, &buffer, 10000), "receive made");
+		SQ_CHECK(buffer.header.msgh_id == i, "made: id %d, expected %d", buffer.header.msgh_id, i);
+		__atomic_store_n(&made_received, i + 1, __ATOMIC_RELEASE);
+	}
+	return NULL;
+}
+
+static void test_mscount_concurrent(void)
+{
+	pthread_t threads[2];
+	mach_port_status_t status;
+	mach_port_mscount_t last = 0;
+	unsigned reads = 0;
+
+	// no send right of its own: only the messages' MAKE_SEND rights count
+	made_port = sq_port(false);
+	sq_set_qlimit(made_port, MADE_WINDOW * 2);
+	made_sent = made_received = 0;
+
+	pthread_create(&threads[0], NULL, made_sender, NULL);
+	pthread_create(&threads[1], NULL, made_receiver, NULL);
+
+	// every read is one state of the port: each message sent so far was either received (it took a
+	// seqno) or is queued. darlingserver does a send's copyin and enqueue in one step and the queue is
+	// never full here, so no sent message is in between
+	while (__atomic_load_n(&made_received, __ATOMIC_ACQUIRE) < MADE_COUNT)
+	{
+		int sent_before = __atomic_load_n(&made_sent, __ATOMIC_ACQUIRE);
+		status = made_status(made_port);
+		int sent_after = __atomic_load_n(&made_sent, __ATOMIC_ACQUIRE);
+		reads++;
+		SQ_CHECK(status.mps_mscount == status.mps_seqno + status.mps_msgcount,
+			"read %u: mscount %u, seqno %u, msgcount %u", reads, status.mps_mscount, status.mps_seqno,
+			status.mps_msgcount);
+		SQ_CHECK(status.mps_mscount >= last, "mscount went back from %u to %u", last, status.mps_mscount);
+		SQ_CHECK((int) status.mps_mscount >= sent_before && (int) status.mps_mscount <= sent_after + 1,
+			"mscount %u, sent %d..%d", status.mps_mscount, sent_before, sent_after);
+		SQ_CHECK(status.mps_msgcount == 0 || status.mps_srights, "queued MAKE_SEND messages, no send rights");
+		last = status.mps_mscount;
+	}
+	pthread_join(threads[0], NULL);
+	pthread_join(threads[1], NULL);
+
+	status = made_status(made_port);
+	SQ_CHECK(status.mps_mscount == MADE_COUNT && status.mps_seqno == MADE_COUNT && status.mps_msgcount == 0 &&
+		!status.mps_srights, "quiescent: mscount %u seqno %u msgcount %u srights %d", status.mps_mscount,
+		status.mps_seqno, status.mps_msgcount, status.mps_srights);
+	sq_destroy(made_port);
+	printf("ok make-send count read during MAKE_SEND traffic (%u reads)\n", reads);
+}
+
+static void test_no_senders_during_made_traffic(void)
+{
+	pthread_t threads[2];
+	mach_port_t notify = sq_port(false);
+	mach_port_t previous = MACH_PORT_NULL;
+	sq_buffer_t buffer;
+
+	// the test's own send right keeps the port from having no senders until the traffic is over
+	made_port = sq_port(true);
+	sq_set_qlimit(made_port, MADE_WINDOW * 2);
+	made_sent = made_received = 0;
+
+	pthread_create(&threads[0], NULL, made_sender, NULL);
+	pthread_create(&threads[1], NULL, made_receiver, NULL);
+
+	while (__atomic_load_n(&made_received, __ATOMIC_ACQUIRE) < MADE_COUNT / 2)
+		sched_yield();
+	SQ_KR(mach_port_request_notification(mach_task_self(), made_port, MACH_NOTIFY_NO_SENDERS, 1, notify,
+		MACH_MSG_TYPE_MAKE_SEND_ONCE, &previous), "request no-senders during traffic");
+
+	pthread_join(threads[0], NULL);
+	pthread_join(threads[1], NULL);
+	SQ_CHECK(sq_receive(notify, &buffer, 1) == MACH_RCV_TIMED_OUT, "no-senders while the own send right exists");
+
+	mach_port_status_t status = made_status(made_port);
+	SQ_CHECK(status.mps_mscount == MADE_COUNT + 1 && status.mps_seqno == MADE_COUNT && status.mps_msgcount == 0,
+		"mscount %u seqno %u msgcount %u", status.mps_mscount, status.mps_seqno, status.mps_msgcount);
+
+	SQ_KR(mach_port_deallocate(mach_task_self(), made_port), "drop own send right");
+	SQ_KR(sq_receive(notify, &buffer, 5000), "no-senders notification");
+	SQ_CHECK(buffer.header.msgh_id == MACH_NOTIFY_NO_SENDERS, "notification id %d", buffer.header.msgh_id);
+	mach_no_senders_notification_t* ns = (mach_no_senders_notification_t*) &buffer;
+	SQ_CHECK(ns->not_count == MADE_COUNT + 1, "no-senders mscount %u, expected %d", ns->not_count, MADE_COUNT + 1);
+	sq_destroy(made_port);
+	sq_destroy(notify);
+	printf("ok no-senders armed during MAKE_SEND traffic\n");
+}
+
+static void test_made_queued_leave(void)
+{
+	sq_buffer_t buffer;
+	mach_port_status_t status;
+
+	// peek: 3 MAKE_SEND, then a send right of the test's own (one more), 2 COPY_SEND and 1 MAKE_SEND;
+	// one received before the queue moves to the port
+	mach_port_t port = sq_port(false);
+	sq_set_qlimit(port, 16);
+	for (int i = 0; i < 3; i++)
+		SQ_KR(sq_send_ex(port, MACH_MSG_TYPE_MAKE_SEND, 32, i, 0, 0), "make-send");
+	SQ_KR(mach_port_insert_right(mach_task_self(), port, port, MACH_MSG_TYPE_MAKE_SEND), "insert_right");
+	for (int i = 3; i < 5; i++)
+		SQ_KR(sq_send_ex(port, MACH_MSG_TYPE_COPY_SEND, 32, i, 0, 0), "copy-send");
+	SQ_KR(sq_send_ex(port, MACH_MSG_TYPE_MAKE_SEND, 32, 5, 0, 0), "make-send");
+	SQ_KR(receive_seqno(port, &buffer, 1000), "receive first");
+	SQ_CHECK(buffer.header.msgh_id == 0 && seqno_of(&buffer) == 0, "first: id %d seqno %u", buffer.header.msgh_id,
+		seqno_of(&buffer));
+	status = made_status(port);
+	SQ_CHECK(status.mps_mscount == 5 && status.mps_seqno == 1 && status.mps_msgcount == 5,
+		"before peek: mscount %u seqno %u msgcount %u", status.mps_mscount, status.mps_seqno, status.mps_msgcount);
+
+	mach_port_seqno_t seqno = 0;
+	mach_msg_size_t size = 0;
+	mach_msg_id_t id = -1;
+	mach_msg_max_trailer_t trailer;
+	mach_msg_type_number_t trailer_size = sizeof(trailer);
+	SQ_KR(mach_port_peek(mach_task_self(), port, MACH_RCV_TRAILER_NULL, &seqno, &size, &id,
+		(mach_msg_trailer_info_t) &trailer, &trailer_size), "peek");
+	SQ_CHECK(seqno == 1 && id == 1, "peek: seqno %u id %d", seqno, id);
+	status = made_status(port);
+	SQ_CHECK(status.mps_mscount == 5 && status.mps_seqno == 1 && status.mps_msgcount == 5,
+		"after peek: mscount %u seqno %u msgcount %u", status.mps_mscount, status.mps_seqno, status.mps_msgcount);
+	SQ_KR(sq_send_ex(port, MACH_MSG_TYPE_MAKE_SEND, 32, 6, 0, 0), "make-send after peek");
+	for (int i = 1; i < 7; i++)
+	{
+		SQ_KR(receive_seqno(port, &buffer, 1000), "receive after peek");
+		SQ_CHECK(buffer.header.msgh_id == i && seqno_of(&buffer) == (mach_msg_trailer_size_t) i,
+			"after peek: id %d seqno %u, expected %d", buffer.header.msgh_id, seqno_of(&buffer), i);
+	}
+	status = made_status(port);
+	SQ_CHECK(status.mps_mscount == 6 && status.mps_seqno == 7 && status.mps_msgcount == 0,
+		"peek end: mscount %u seqno %u msgcount %u", status.mps_mscount, status.mps_seqno, status.mps_msgcount);
+	sq_destroy(port);
+
+	// no-senders request: 6 MAKE_SEND messages hold the only send rights, 2 received before it is made
+	port = sq_port(false);
+	sq_set_qlimit(port, 16);
+	mach_port_t notify = sq_port(false);
+	mach_port_t previous = MACH_PORT_NULL;
+	for (int i = 0; i < 6; i++)
+		SQ_KR(sq_send_ex(port, MACH_MSG_TYPE_MAKE_SEND, 32, i, 0, 0), "make-send");
+	for (int i = 0; i < 2; i++)
+		SQ_KR(receive_seqno(port, &buffer, 1000), "receive before request");
+	// the count the request is made with is reached already, but queued messages still hold send rights
+	SQ_KR(mach_port_request_notification(mach_task_self(), port, MACH_NOTIFY_NO_SENDERS, 6, notify,
+		MACH_MSG_TYPE_MAKE_SEND_ONCE, &previous), "request no-senders");
+	SQ_CHECK(sq_receive(notify, &buffer, 50) == MACH_RCV_TIMED_OUT, "no-senders with messages queued");
+	status = made_status(port);
+	SQ_CHECK(status.mps_mscount == 6 && status.mps_seqno == 2 && status.mps_msgcount == 4 && status.mps_srights &&
+		status.mps_nsrequest, "after request: mscount %u seqno %u msgcount %u srights %d ns %d", status.mps_mscount,
+		status.mps_seqno, status.mps_msgcount, status.mps_srights, status.mps_nsrequest);
+	for (int i = 2; i < 6; i++)
+	{
+		SQ_KR(receive_seqno(port, &buffer, 1000), "receive after request");
+		SQ_CHECK(buffer.header.msgh_id == i && seqno_of(&buffer) == (mach_msg_trailer_size_t) i,
+			"after request: id %d seqno %u", buffer.header.msgh_id, seqno_of(&buffer));
+	}
+	SQ_KR(sq_receive(notify, &buffer, 5000), "no-senders notification");
+	mach_no_senders_notification_t* ns = (mach_no_senders_notification_t*) &buffer;
+	SQ_CHECK(buffer.header.msgh_id == MACH_NOTIFY_NO_SENDERS && ns->not_count == 6, "notification id %d count %u",
+		buffer.header.msgh_id, ns->not_count);
+	sq_destroy(port);
+	sq_destroy(notify);
+	printf("ok queue with MAKE_SEND messages moved back to the port\n");
+}
+
 // ---- port set ------------------------------------------------------------------------------------
 
 static void test_port_set(void)
@@ -487,6 +700,9 @@ int main(void)
 	test_receive_right_moves();
 	test_destroyed();
 	test_no_senders();
+	test_mscount_concurrent();
+	test_no_senders_during_made_traffic();
+	test_made_queued_leave();
 	test_port_set();
 	test_fork();
 	test_kill_switch();

@@ -9,6 +9,14 @@
 // anywhere in their sends and receives, also in the middle of messages that
 // never leave the task.
 //
+// The stopped task's make-send count is exact at every stop: one of its
+// threads sends MAKE_SEND messages to a port that has no other send rights
+// and another receives them, and the task is stopped many times while they
+// do. A stop can land anywhere, also right after a receiver took a message
+// from the queue and before it copied it out; at each stop the port's status
+// must still be one state of the port, in which every message sent was
+// received (seqno) or is queued: make-send count = seqno + queued messages.
+//
 // After it is continued, the task receives every message: the ones it queued
 // itself before, then the other task's, in order; a thread of it that was
 // waiting on an empty port while it was stopped gets the message sent there
@@ -21,11 +29,14 @@
 
 #include <errno.h>
 #include <pthread.h>
+#include <sched.h>
 #include <sys/wait.h>
 
 #define ROUNDS 8
 #define PER_ROUND 40
 #define FINISH_ID 99999
+#define MADE_STOPS 1500
+#define MADE_WINDOW 16
 
 typedef struct
 {
@@ -35,6 +46,7 @@ typedef struct
 	mach_msg_port_descriptor_t wait;
 	mach_port_name_t queue_name;
 	mach_port_name_t wait_name;
+	mach_port_name_t made_name;
 } hello_t;
 
 typedef struct
@@ -45,6 +57,44 @@ typedef struct
 
 static volatile int child_stop;
 static mach_port_t busy_ports[2];
+static mach_port_t made_port;
+static volatile int made_sent, made_received, made_done;
+
+static void* child_made_sender(void* arg)
+{
+	(void) arg;
+	while (!child_stop)
+	{
+		if (made_sent - __atomic_load_n(&made_received, __ATOMIC_ACQUIRE) >= MADE_WINDOW)
+		{
+			sched_yield();
+			continue;
+		}
+		if (sq_send_ex(made_port, MACH_MSG_TYPE_MAKE_SEND, 32, made_sent, 0, 0) != MACH_MSG_SUCCESS)
+			_exit(22);
+		__atomic_store_n(&made_sent, made_sent + 1, __ATOMIC_RELEASE);
+	}
+	__atomic_store_n(&made_done, 1, __ATOMIC_RELEASE);
+	return NULL;
+}
+
+static void* child_made_receiver(void* arg)
+{
+	(void) arg;
+	sq_buffer_t buffer;
+	for (;;)
+	{
+		int received = made_received;
+		if (__atomic_load_n(&made_done, __ATOMIC_ACQUIRE) && received == __atomic_load_n(&made_sent, __ATOMIC_ACQUIRE))
+			return NULL;
+		mach_msg_return_t mr = sq_receive(made_port, &buffer, 100);
+		if (mr == MACH_RCV_TIMED_OUT)
+			continue;
+		if (mr != MACH_MSG_SUCCESS || buffer.header.msgh_id != received)
+			_exit(23);
+		__atomic_store_n(&made_received, received + 1, __ATOMIC_RELEASE);
+	}
+}
 
 static void* child_busy(void* arg)
 {
@@ -79,9 +129,15 @@ static int child(void)
 	busy_ports[0] = sq_port(true);
 	busy_ports[1] = sq_port(true);
 	sq_send(busy_ports[0], 1); // a message in flight from the start
-	pthread_t threads[2];
+	pthread_t threads[4];
 	for (int t = 0; t < 2; t++)
 		pthread_create(&threads[t], NULL, child_busy, (void*) (intptr_t) t);
+
+	// no send right of its own: only the MAKE_SEND messages count
+	made_port = sq_port(false);
+	sq_set_qlimit(made_port, MADE_WINDOW * 2);
+	pthread_create(&threads[2], NULL, child_made_sender, NULL);
+	pthread_create(&threads[3], NULL, child_made_receiver, NULL);
 
 	hello_t hello = {
 		.header = {
@@ -95,6 +151,7 @@ static int child(void)
 		.wait = { .name = wait, .disposition = MACH_MSG_TYPE_COPY_SEND, .type = MACH_MSG_PORT_DESCRIPTOR },
 		.queue_name = queue,
 		.wait_name = wait,
+		.made_name = made_port,
 	};
 	if (mach_msg(&hello.header, MACH_SEND_MSG, sizeof(hello), 0, MACH_PORT_NULL, 0, MACH_PORT_NULL) != MACH_MSG_SUCCESS)
 		return 12;
@@ -105,8 +162,17 @@ static int child(void)
 		return 13;
 
 	child_stop = 1;
-	for (int t = 0; t < 2; t++)
+	for (int t = 0; t < 4; t++)
 		pthread_join(threads[t], NULL);
+
+	mach_port_status_t ps;
+	mach_msg_type_number_t count = MACH_PORT_RECEIVE_STATUS_COUNT;
+	if (mach_port_get_attributes(mach_task_self(), made_port, MACH_PORT_RECEIVE_STATUS, (mach_port_info_t) &ps,
+			&count) != KERN_SUCCESS)
+		return 17;
+	if (ps.mps_mscount != (mach_port_mscount_t) made_sent || ps.mps_seqno != (mach_port_seqno_t) made_sent ||
+			ps.mps_msgcount != 0 || made_sent == 0)
+		return 18;
 
 	for (int i = 0; i < 3; i++)
 		if (sq_receive(queue, &buffer, 1000) != MACH_MSG_SUCCESS || buffer.header.msgh_id != i)
@@ -153,6 +219,40 @@ int main(void)
 	bool introspect = task_for_pid(mach_task_self(), pid, &child_task) == KERN_SUCCESS;
 	if (!introspect)
 		printf("note: task_for_pid not permitted, no introspection\n");
+
+	// stops while the child's threads send and receive MAKE_SEND messages
+	if (introspect)
+	{
+		unsigned queued_stops = 0;
+		mach_port_mscount_t last = 0;
+		srandom(1);
+		for (int n = 0; n < MADE_STOPS; n++)
+		{
+			usleep(200 + random() % 1500);
+			SQ_CHECK(kill(pid, SIGSTOP) == 0, "SIGSTOP");
+			int status;
+			SQ_CHECK(waitpid(pid, &status, WUNTRACED) == pid && WIFSTOPPED(status), "child not stopped (0x%x)", status);
+
+			mach_port_status_t ps;
+			mach_msg_type_number_t count = MACH_PORT_RECEIVE_STATUS_COUNT;
+			double start = sq_now();
+			SQ_KR(mach_port_get_attributes(child_task, hello.msg.made_name, MACH_PORT_RECEIVE_STATUS,
+				(mach_port_info_t) &ps, &count), "get_attributes made");
+			timed(start, "mach_port_get_attributes");
+			SQ_CHECK(ps.mps_mscount == ps.mps_seqno + ps.mps_msgcount,
+				"stop %d: mscount %u, seqno %u, msgcount %u", n, ps.mps_mscount, ps.mps_seqno, ps.mps_msgcount);
+			SQ_CHECK(ps.mps_mscount >= last, "stop %d: mscount went back from %u to %u", n, last, ps.mps_mscount);
+			SQ_CHECK(ps.mps_msgcount == 0 || ps.mps_srights, "stop %d: queued, no send rights", n);
+			last = ps.mps_mscount;
+			if (ps.mps_msgcount != 0)
+				queued_stops++;
+
+			SQ_CHECK(kill(pid, SIGCONT) == 0, "SIGCONT");
+		}
+		SQ_CHECK(last > 0, "no MAKE_SEND traffic");
+		printf("%d stops during MAKE_SEND traffic, %u with messages queued, %u messages\n", MADE_STOPS, queued_stops,
+			last);
+	}
 
 	double worst = 0;
 	for (int round = 0; round < ROUNDS; round++)
