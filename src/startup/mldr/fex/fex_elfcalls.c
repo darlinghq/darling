@@ -246,14 +246,17 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 	if (!target)
 		return -ENOSYS;
 
-	uint64_t s0 = 0, s1 = 0, s2 = 0, s3 = 0;
+	// The arguments after the sixth are on the guest stack, above the return address. X11 and Wayland
+	// functions take up to a dozen (XRRGetOutputProperty has 13), so forward a generous number of
+	// words; the host function only reads the ones it has.
+	enum { FEX_STACK_ARG_WORDS = 16 };
+	uint64_t st[FEX_STACK_ARG_WORDS] = {0};
 	if (state->rsp != 0) {
 		const uint64_t* sp = (const uint64_t*)(uintptr_t)state->rsp;
-		s0 = sp[1];
-		s1 = sp[2];
-		s2 = sp[3];
-		s3 = sp[4];
+		for (int i = 0; i < FEX_STACK_ARG_WORDS; i++)
+			st[i] = sp[1 + i];
 	}
+	uint64_t s0 = st[0], s1 = st[1];
 
 #if defined(__aarch64__)
 	double v0, v1, v2, v3, v4, v5, v6, v7;
@@ -283,15 +286,29 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 	register double d6 asm("d6") = v6;
 	register double d7 asm("d7") = v7;
 
+	// x6 and x7 carry the first two stack words; the others go on the host stack (14 words, 16-aligned).
 	__asm__ volatile(
-		"sub sp, sp, #16\n\t"
-		"stp %[s2], %[s3], [sp]\n\t"
+		"sub sp, sp, #112\n\t"
+		"ldp x9, x10, [%[stk], #0]\n\t"
+		"stp x9, x10, [sp, #0]\n\t"
+		"ldp x9, x10, [%[stk], #16]\n\t"
+		"stp x9, x10, [sp, #16]\n\t"
+		"ldp x9, x10, [%[stk], #32]\n\t"
+		"stp x9, x10, [sp, #32]\n\t"
+		"ldp x9, x10, [%[stk], #48]\n\t"
+		"stp x9, x10, [sp, #48]\n\t"
+		"ldp x9, x10, [%[stk], #64]\n\t"
+		"stp x9, x10, [sp, #64]\n\t"
+		"ldp x9, x10, [%[stk], #80]\n\t"
+		"stp x9, x10, [sp, #80]\n\t"
+		"ldp x9, x10, [%[stk], #96]\n\t"
+		"stp x9, x10, [sp, #96]\n\t"
 		"blr %[fn]\n\t"
-		"add sp, sp, #16\n\t"
+		"add sp, sp, #112\n\t"
 		: "+r"(x0), "+r"(x1), "+w"(d0), "+w"(d1), "+w"(d2), "+w"(d3),
 		  "+w"(d4), "+w"(d5), "+w"(d6), "+w"(d7)
 		: "r"(x2), "r"(x3), "r"(x4), "r"(x5), "r"(x6), "r"(x7),
-		  [s2] "r"(s2), [s3] "r"(s3), [fn] "r"(target)
+		  [stk] "r"(&st[2]), [fn] "r"(target)
 		: "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15",
 		  "x16", "x17", "x18", "x30", "cc", "memory"
 	);
@@ -305,7 +322,7 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 	typedef uint64_t (*host_fn_t)(uint64_t, uint64_t, uint64_t, uint64_t,
 		uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
 	uint64_t ret_val = ((host_fn_t)target)(state->rdi, state->rsi, state->rdx, state->r10,
-		state->r8, state->r9, s0, s1, s2, s3);
+		state->r8, state->r9, s0, s1, st[2], st[3]);
 	state->rax = ret_val;
 	long ret = (long)ret_val;
 #endif
