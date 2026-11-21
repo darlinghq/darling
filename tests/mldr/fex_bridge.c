@@ -29,6 +29,14 @@ static void check(int ok, const char* what)
 		failures++;
 }
 
+// Each bridge stub is "mov r10, rcx" (3 bytes), then "mov eax, <number>".
+static uint64_t stub_syscall_nr(void* stub)
+{
+	uint32_t nr = 0;
+	memcpy(&nr, (const uint8_t*)stub + 3 + 1, sizeof(nr));
+	return nr;
+}
+
 static uintptr_t last_cb_fn = 0;
 static uint64_t last_cb_arg0 = 0;
 static uint64_t last_cb_arg1 = 0;
@@ -39,6 +47,16 @@ uint64_t fex_invoke_guest_callback(uintptr_t guest_fn, uint64_t arg0, uint64_t a
 	last_cb_arg0 = arg0;
 	last_cb_arg1 = arg1;
 	return 0x77;
+}
+
+static uintptr_t last_cb_args_fn = 0;
+static uint64_t last_cb_args[6];
+
+uint64_t fex_invoke_guest_callback_args(uintptr_t guest_fn, const uint64_t args[6])
+{
+	last_cb_args_fn = guest_fn;
+	memcpy(last_cb_args, args, sizeof(last_cb_args));
+	return 0x88;
 }
 
 static sigjmp_buf jb;
@@ -183,14 +201,15 @@ static void test_elfcalls_trampolines(void)
 	for (uint32_t i = 0; i < DARLING_FEX_ELFCALL_COUNT; i++) {
 		const uint8_t* code = (const uint8_t*)slots[i];
 		uint32_t imm = 0;
-		memcpy(&imm, &code[1], sizeof(imm));
-		if (code[0] != 0xb8 || imm != DARLING_FEX_ELFCALL_SYSCALL_BASE + i ||
-		    code[5] != 0x0f || code[6] != 0x05 || code[7] != 0xc3) {
+		memcpy(&imm, &code[4], sizeof(imm));
+		if (code[0] != 0x49 || code[1] != 0x89 || code[2] != 0xca || code[3] != 0xb8 ||
+		    imm != DARLING_FEX_ELFCALL_SYSCALL_BASE + i ||
+		    code[8] != 0x0f || code[9] != 0x05 || code[10] != 0xc3) {
 			all_valid = false;
 			break;
 		}
 	}
-	check(all_valid, "all 33 elf_calls stubs encode movl $nr, %eax; syscall; ret");
+	check(all_valid, "all 33 elf_calls stubs encode movq %rcx, %r10; movl $nr, %eax; syscall; ret");
 	check(write_faults((volatile uint8_t*)slots[0]), "elf_calls stub page is W^X (writes fault)");
 
 	struct darling_thread_create_callbacks guest_cbs = {
@@ -211,7 +230,7 @@ static void test_elfcalls_trampolines(void)
 	st.rdi = 11;
 	st.rsi = 22;
 	st.rdx = 33;
-	st.rcx = 44;
+	st.r10 = 44;
 	st.r8 = 55;
 	st.r9 = 66;
 	st.rsp = (uint64_t)(uintptr_t)fake_stack;
@@ -333,9 +352,7 @@ static void test_dlsym_wrapping(void)
 	check(fn_stub1 == fn_stub2, "repeated dlsym on same function returns deduplicated stub");
 	check(write_faults((volatile uint8_t*)fn_stub1), "dlsym stub page is W^X (writes fault)");
 
-	const uint8_t* code = (const uint8_t*)fn_stub1;
-	uint32_t sc_nr = 0;
-	memcpy(&sc_nr, &code[1], sizeof(sc_nr));
+	uint32_t sc_nr = (uint32_t)stub_syscall_nr(fn_stub1);
 
 	uint64_t stack[5] = { 0, 7, 8, 0, 0 };
 	struct fex_x86_64_state st;
@@ -344,7 +361,7 @@ static void test_dlsym_wrapping(void)
 	st.rdi = 1;
 	st.rsi = 2;
 	st.rdx = 3;
-	st.rcx = 4;
+	st.r10 = 4;
 	st.r8 = 5;
 	st.r9 = 6;
 	st.rsp = (uint64_t)(uintptr_t)stack;
@@ -358,15 +375,119 @@ static void test_dlsym_wrapping(void)
 	check(out == 46.0, "fex_dlsym_dispatch forwards integer, stack, and xmm float arguments (1..8 + 2.5*4.0 = 46)");
 
 	void* fn_term_stub = fex_dlsym_wrap_if_func((void*)host_terminating_function, "host_terminating_function");
-	const uint8_t* term_code = (const uint8_t*)fn_term_stub;
-	uint32_t term_sc_nr = 0;
-	memcpy(&term_sc_nr, &term_code[1], sizeof(term_sc_nr));
+	uint32_t term_sc_nr = (uint32_t)stub_syscall_nr(fn_term_stub);
 	memset(&st, 0, sizeof(st));
 	st.rax = term_sc_nr;
 	fex_linux_syscall_dispatch(&st);
 	check(st.rax == 999, "fex_dlsym_dispatch returns function return value");
 	check(st.unwind_thread == 1, "fex_dlsym_dispatch sets unwind_thread=1 when nested call triggers termination");
 	fex_elfcalls_flush_deferred_terminate();
+}
+
+static uint64_t g_host_png_cb = 0;
+static uint64_t host_png_set_read_fn(uint64_t png, uint64_t io, uint64_t cb)
+{
+	(void)png;
+	(void)io;
+	g_host_png_cb = cb;
+	return ((uint64_t (*)(uint64_t, uint64_t))cb)(5, 6);
+}
+
+// A host library that is handed a guest function pointer would call x86_64 code natively, so the
+// bridge hands it a host thunk that re-enters the guest instead.
+static void test_host_callback_thunks(void)
+{
+	void* stub = fex_dlsym_wrap_if_func((void*)host_png_set_read_fn, "png_set_read_fn");
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rax = stub_syscall_nr(stub);
+	st.rdx = 0x4000100;
+	long ret = fex_linux_syscall_dispatch(&st);
+	check(ret == 0x88 && st.rax == 0x88, "a guest callback passed to a host function returns through the guest");
+	check(g_host_png_cb != 0 && g_host_png_cb != 0x4000100, "the host function receives a host thunk, not the guest pointer");
+	check(last_cb_args_fn == 0x4000100 && last_cb_args[0] == 5 && last_cb_args[1] == 6,
+		"the thunk calls the guest function with the host's arguments");
+
+	void* other = fex_dlsym_wrap_if_func((void*)host_png_set_read_fn, "png_set_read_fn");
+	check(other == stub, "the same host function keeps one stub");
+}
+
+static uint64_t g_xlib_handler = 0xaaaa00;
+static uint64_t g_xlib_handler_seen = 0;
+static uint64_t host_XSetErrorHandler(uint64_t handler)
+{
+	uint64_t previous = g_xlib_handler;
+	g_xlib_handler_seen = handler;
+	g_xlib_handler = handler;
+	return previous;
+}
+
+static uint64_t set_error_handler(void* stub, uint64_t handler)
+{
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rax = stub_syscall_nr(stub);
+	st.rdi = handler;
+	fex_linux_syscall_dispatch(&st);
+	return st.rax;
+}
+
+// XSetErrorHandler returns the handler Xlib had, which is host code. A guest that saves it and restores
+// it later must not get it wrapped as if it were a guest function.
+static void test_xlib_handler_restore(void)
+{
+	void* stub = fex_dlsym_wrap_if_func((void*)host_XSetErrorHandler, "XSetErrorHandler");
+	uint64_t previous = set_error_handler(stub, 0x1111000);
+	check(previous == 0xaaaa00, "setting an Xlib handler returns the host's original handler");
+	check(g_xlib_handler_seen != 0x1111000 && g_xlib_handler_seen != 0,
+		"Xlib is given a host handler in place of the guest one");
+
+	uint64_t ours = set_error_handler(stub, 0xaaaa00);
+	check(g_xlib_handler_seen == 0xaaaa00, "restoring the host's original handler passes it to Xlib unchanged");
+	check(ours == 0x1111000, "replacing the guest's handler returns the guest's own pointer");
+	check(set_error_handler(stub, 0) == 0xaaaa00, "clearing the handler returns the previous one");
+}
+
+static void test_signal_mask_filter(void)
+{
+	sigset_t before;
+	pthread_sigmask(SIG_BLOCK, NULL, &before);
+
+	uint64_t mask = (1ull << (SIGUSR1 - 1)) | (1ull << (SIGSEGV - 1)) | (1ull << (SIGBUS - 1)) | (1ull << (SIGILL - 1));
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rax = 14; // rt_sigprocmask
+	st.rdi = SIG_SETMASK;
+	st.rsi = (uint64_t)(uintptr_t)&mask;
+	st.rdx = 0;
+	st.r10 = 8;
+	long ret = fex_linux_syscall_dispatch(&st);
+
+	sigset_t now;
+	pthread_sigmask(SIG_BLOCK, NULL, &now);
+	check(ret == 0, "a guest rt_sigprocmask succeeds");
+	check(sigismember(&now, SIGUSR1) == 1, "a signal the guest blocks is blocked on the host");
+	check(sigismember(&now, SIGSEGV) == 0 && sigismember(&now, SIGBUS) == 0 && sigismember(&now, SIGILL) == 0,
+		"the JIT's fault signals stay unblocked");
+
+	uint64_t old = 0;
+	memset(&st, 0, sizeof(st));
+	st.rax = 14;
+	st.rdi = SIG_SETMASK;
+	st.rsi = (uint64_t)(uintptr_t)&mask;
+	st.rdx = (uint64_t)(uintptr_t)&old;
+	st.r10 = 8;
+	fex_linux_syscall_dispatch(&st);
+	check(old == (1ull << (SIGUSR1 - 1)), "the old mask is reported in the x86_64 layout");
+
+	memset(&st, 0, sizeof(st));
+	st.rax = 14;
+	st.rdi = SIG_SETMASK;
+	st.rsi = 0;
+	st.rdx = 0;
+	st.r10 = 4;
+	check(fex_linux_syscall_dispatch(&st) == -EINVAL, "a mask size other than 8 is refused");
+	pthread_sigmask(SIG_SETMASK, &before, NULL);
 }
 
 static void test_syscall_translations(void)
@@ -835,6 +956,9 @@ int main(void)
 {
 	test_elfcalls_trampolines();
 	test_dlsym_wrapping();
+	test_host_callback_thunks();
+	test_xlib_handler_restore();
+	test_signal_mask_filter();
 	test_syscall_translations();
 	test_safe_memory_access();
 	return failures ? 1 : 0;
