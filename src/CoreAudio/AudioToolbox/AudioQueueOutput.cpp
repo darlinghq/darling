@@ -6,6 +6,8 @@
 #include <CoreAudio/AudioHardware.h>
 #include <mach/mach_time.h>
 #include <algorithm>
+#include <chrono>
+#include <thread>
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
@@ -291,23 +293,42 @@ void AudioQueueOutput::finishRender(std::vector<AudioQueueBufferRef>& finished, 
 	returnBuffers(finished);
 
 	if (stopNow)
-	{
-		// A deferred AudioQueueStop: everything enqueued has played. Stopping the unit
-		// from its own render thread is not allowed, so it happens on the callback queue.
-		post([this] {
-			std::lock_guard<std::mutex> control(m_controlMutex);
-			{
-				std::lock_guard<std::mutex> lock(m_mutex);
-				if (!m_stopWhenDrained || !m_running)
-					return;
-				m_running = false;
-				m_stopWhenDrained = false;
-			}
-			if (m_unit)
-				AudioOutputUnitStop(m_unit);
-			notifyRunning();
-		});
-	}
+		scheduleDrainStop();
+}
+
+// How long what has been handed to the output unit takes to leave the device.
+double AudioQueueOutput::playoutSeconds()
+{
+	const double deviceLatency = deviceLatencyFrames();
+	std::lock_guard<std::mutex> lock(m_mutex);
+	double seconds = (std::max(deviceLatency, m_latencyFrames) + m_lastBlockFrames) / m_format.mSampleRate;
+	if (!m_paused && m_lastBlockNanos)
+		seconds -= double(monotonicNanos() - m_lastBlockNanos) / 1e9;
+	return std::min(std::max(seconds, 0.0), 1.0);
+}
+
+void AudioQueueOutput::scheduleDrainStop()
+{
+	// A deferred AudioQueueStop: everything enqueued has been handed to the unit. Stopping the unit
+	// from its own render thread is not allowed, so it happens on the callback queue, and only after
+	// the device has played what it holds: the stop would cut it off.
+	post([this] {
+		const double wait = playoutSeconds();
+		if (wait > 0)
+			std::this_thread::sleep_for(std::chrono::duration<double>(wait));
+
+		std::lock_guard<std::mutex> control(m_controlMutex);
+		{
+			std::lock_guard<std::mutex> lock(m_mutex);
+			if (!m_stopWhenDrained || !m_running)
+				return;
+			m_running = false;
+			m_stopWhenDrained = false;
+		}
+		if (m_unit)
+			AudioOutputUnitStop(m_unit);
+		notifyRunning();
+	});
 }
 
 // ---- Linear PCM sample access, for the processing tap and offline rendering ----
@@ -841,16 +862,12 @@ OSStatus AudioQueueOutput::stop(Boolean inImmediate)
 			std::lock_guard<std::mutex> lock(m_mutex);
 			if (!m_running)
 				return noErr;
+			m_stopWhenDrained = true;
 			if (!m_pending.empty())
-			{
-				m_stopWhenDrained = true;
 				return noErr;
-			}
-			m_running = false;
 		}
-		if (m_unit)
-			AudioOutputUnitStop(m_unit);
-		notifyRunning();
+		// Nothing is waiting to be played: the unit stops once the device has played what it holds
+		scheduleDrainStop();
 		return noErr;
 	}
 
