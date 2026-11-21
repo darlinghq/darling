@@ -152,12 +152,6 @@ void* VTCompressionSessionCopySupportedPropertyDictionary(void)
     return NULL;
 }
 
-void* VTCompressionSessionEncodeFrameWithOutputHandler(void)
-{
-    if (verbose) puts("STUB: VTCompressionSessionEncodeFrameWithOutputHandler called");
-    return NULL;
-}
-
 void* VTCompressionSessionEndPass(void)
 {
     if (verbose) puts("STUB: VTCompressionSessionEndPass called");
@@ -227,12 +221,6 @@ void* VTCopySupportedPropertyForVideoEncoderID(void)
 void* VTCopyTemporalFilterList(void)
 {
     if (verbose) puts("STUB: VTCopyTemporalFilterList called");
-    return NULL;
-}
-
-void* VTCopyVideoEncoderList(void)
-{
-    if (verbose) puts("STUB: VTCopyVideoEncoderList called");
     return NULL;
 }
 
