@@ -50,6 +50,7 @@
 #endif
 
 #include "swap_pacing.h"
+#include "gl_exports.h"
 #include "drm_formats.h"
 
 #ifndef EGL_PLATFORM_WAYLAND_KHR
@@ -1217,6 +1218,8 @@ static void releaseRequestedBinding(CGLContextObj context) {
         p_eglMakeCurrent(context->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
         context->binding = CGL_BINDING_PARKED;
         context->release_count++;
+        if (gl_tls_bound == context)
+            gl_tls_bound = NULL;
     }
     pthread_cond_broadcast(&g_bindingCond);
     pthread_mutex_unlock(&g_bindingMutex);
@@ -1313,6 +1316,8 @@ static void releaseWantedBinding(CGLContextObj context) {
         p_eglMakeCurrent(context->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
         context->binding = CGL_BINDING_PARKED;
         context->release_count++;
+        if (gl_tls_bound == context)
+            gl_tls_bound = NULL;
         context->release_wanted = 0;
         pthread_cond_broadcast(&g_bindingCond);
     }
@@ -1410,6 +1415,7 @@ static CGLError setCurrentContext(CGLContextObj context) {
         if (previous != NULL && previous != context && threadHoldsBinding(previous)) {
             previous->binding = CGL_BINDING_FREE;
             previous->release_count++;
+            gl_tls_bound = NULL;
             // A thread that was refused the context may be waiting for this.
             pthread_cond_broadcast(&g_bindingCond);
         }
@@ -1418,6 +1424,7 @@ static CGLError setCurrentContext(CGLContextObj context) {
             context->binding_thread = pthread_self();
             context->binding_thread_is_main = pthread_main_np();
         }
+        gl_tls_bound = context;
     }
     pthread_mutex_unlock(&g_bindingMutex);
     return error;
@@ -1443,7 +1450,65 @@ static void gli_enter(GLIContext rend) {
         CGLSetCurrentContext(context);
 }
 
+__thread void *gl_tls_bound;
+
 static void gli_missing(void) {}
+
+// The host's OpenGL library (the wrapper this framework re-exports): where the
+// real functions live, as the framework's own gl* exports have the same names.
+static void *gl_native_handle(void) {
+    static void *handle;
+    if (handle == NULL)
+        handle = dlopen("/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib", RTLD_LAZY);
+    return handle;
+}
+
+static void *gl_native_symbol(const char *name) {
+    void *handle = gl_native_handle();
+    return handle != NULL ? dlsym(handle, name) : NULL;
+}
+
+int gl_acquire_binding(void) {
+    CGLContextObj context = CGLGetCurrentContext();
+    if (context == NULL)
+        return 0;
+    if (setCurrentContext(context) != kCGLNoError)
+        return 0;
+    if (gl_tls_bound == NULL)
+        return 0;
+    // Outside CGLLockContext, on a context that other threads use, the binding
+    // is only for this call.
+    pthread_mutex_lock(&g_bindingMutex);
+    int in_lock = context->lock_depth > 0 && pthread_equal(context->lock_owner, pthread_self());
+    int transient = context->multi_thread && !in_lock;
+    pthread_mutex_unlock(&g_bindingMutex);
+    return transient ? 2 : 1;
+}
+
+void gl_release_transient(void) {
+    CGLContextObj context = gl_tls_bound;
+    if (context == NULL)
+        return;
+    pthread_mutex_lock(&g_bindingMutex);
+    if (threadHoldsBinding(context) &&
+        p_eglMakeCurrent(context->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
+        context->binding = CGL_BINDING_PARKED;
+        context->release_count++;
+        gl_tls_bound = NULL;
+        pthread_cond_broadcast(&g_bindingCond);
+    }
+    pthread_mutex_unlock(&g_bindingMutex);
+}
+
+extern const char *const gl_export_names[];
+
+void *gl_resolve_real(unsigned index) {
+    void *function = gl_native_symbol(gl_export_names[index]);
+    if (function == NULL)
+        function = (void *) gli_missing;
+    gl_real_functions[index] = function;
+    return function;
+}
 
 static void *gli_host(unsigned slot);
 
@@ -1457,7 +1522,7 @@ static void *gli_host(unsigned slot) {
     void *function = gli_host_functions[slot];
     if (function == NULL) {
         for (const char *const *name = gli_host_names[slot]; *name != NULL && function == NULL; name++)
-            function = dlsym(RTLD_DEFAULT, *name);
+            function = gl_native_symbol(*name);
         if (function == NULL)
             function = (void *) gli_missing;
         gli_host_functions[slot] = function;
@@ -2059,15 +2124,10 @@ CGLError CGLLockContext(CGLContextObj context) {
         context->lock_owner = pthread_self();
         pthread_mutex_unlock(&g_bindingMutex);
     }
-    if (context->lock_depth == 1 && CGLGetCurrentContext() == context) {
-        // Take back a binding that was handed to another thread or parked
-        // (see the thread hand-off notes at setCurrentContext).
-        pthread_mutex_lock(&g_bindingMutex);
-        int rebind = context->multi_thread && !threadHoldsBinding(context);
-        pthread_mutex_unlock(&g_bindingMutex);
-        if (rebind)
-            setCurrentContext(context);
-    }
+    // The binding that was handed to another thread or parked is not taken
+    // back here: the first GL call of this thread on the context does that (see
+    // gl_acquire_binding), so a thread that only locks the context never waits
+    // for the thread that holds the binding.
     // Locking the current context precedes drawing with it, so rectangle
     // textures specified from surfaces the CPU has written since get the
     // new contents.
@@ -2085,15 +2145,14 @@ CGLError CGLUnlockContext(CGLContextObj context) {
         context->lock_owner = (pthread_t) 0;
         pthread_mutex_unlock(&g_bindingMutex);
         releaseWantedBinding(context);
-        // The main thread's use of a context other threads use ends with the
-        // outermost unlock: park the binding now (it also answers a request
+        // A thread's use of a context other threads use ends with the outermost
+        // unlock: park the binding now (it also answers a request
         // that arrived while the lock was held, see releaseRequestedBinding).
         // macOS leaves a context that several threads use unsafe to touch
         // without the lock, and a thread that wants the context while the
         // main thread is blocked outside this framework (on an application
         // lock, say) would otherwise wait for a binding nobody gives up.
-        if (pthread_main_np())
-            parkMultiThreadBinding(context);
+        parkMultiThreadBinding(context);
     }
     pthread_mutex_unlock(&(context->lock));
     return kCGLNoError;
@@ -2103,6 +2162,10 @@ CGLError CGLFlushDrawable(CGLContextObj context) {
     if (context == NULL) {
         return kCGLBadContext;
     }
+    // Another thread may hold the host binding of the context that is current
+    // here: get it (see gl_acquire_binding).
+    if (!GL_BOUND_HERE() && CGLGetCurrentContext() == context)
+        gl_acquire_binding();
     EGLSurface surf = atomic_load_explicit(&context->egl_surface, memory_order_acquire);
     if (surf == EGL_NO_SURFACE) {
         glFlush();
@@ -2824,7 +2887,7 @@ static struct cgl_profile_strings *currentProfileStrings(void) {
     return strings;
 }
 
-CGL_EXPORT const GLubyte *glGetString(GLenum name) {
+const GLubyte *override_glGetString(GLenum name) {
     if (name == GL_VERSION || name == GL_SHADING_LANGUAGE_VERSION || name == GL_EXTENSIONS) {
         struct cgl_profile_strings *strings = currentProfileStrings();
         if (strings) {
@@ -2840,7 +2903,7 @@ CGL_EXPORT const GLubyte *glGetString(GLenum name) {
     return host_glGetString(name);
 }
 
-CGL_EXPORT const GLubyte *glGetStringi(GLenum name, GLuint index) {
+const GLubyte *override_glGetStringi(GLenum name, GLuint index) {
     if (name == GL_EXTENSIONS) {
         struct cgl_profile_strings *strings = currentProfileStrings();
         if (strings && strings->core)
@@ -2853,7 +2916,7 @@ CGL_EXPORT const GLubyte *glGetStringi(GLenum name, GLuint index) {
     return host_glGetStringi(name, index);
 }
 
-CGL_EXPORT void glGetIntegerv(GLenum pname, GLint *params) {
+void override_glGetIntegerv(GLenum pname, GLint *params) {
     if (pname == GL_MAJOR_VERSION || pname == GL_MINOR_VERSION || pname == GL_NUM_EXTENSIONS) {
         struct cgl_profile_strings *strings = currentProfileStrings();
         if (strings && strings->core) {
@@ -4326,18 +4389,18 @@ static void releaseTextureBindings(CGLContextObj context, GLuint texture) {
         host_glDeleteTextures(unusedCount, unused);
 }
 
-CGL_EXPORT void glFlush(void) {
+void override_glFlush(void) {
     writeBackCurrentContext();
     host_glFlush();
 }
 
-CGL_EXPORT void glFinish(void) {
+void override_glFinish(void) {
     writeBackCurrentContext();
     host_glFinish();
 }
 
 // The copies are made before the fence, so waiting for it covers them.
-CGL_EXPORT GLsync glFenceSync(GLenum condition, GLbitfield flags) {
+GLsync override_glFenceSync(GLenum condition, GLbitfield flags) {
     writeBackCurrentContext();
     return host_glFenceSync(condition, flags);
 }
@@ -4348,27 +4411,27 @@ static void noteCurrentDrawFramebuffer(GLenum target) {
         noteDrawFramebuffer(context);
 }
 
-CGL_EXPORT void glBindFramebuffer(GLenum target, GLuint framebuffer) {
+void override_glBindFramebuffer(GLenum target, GLuint framebuffer) {
     noteCurrentDrawFramebuffer(target);
     host_glBindFramebuffer(target, framebuffer);
 }
 
-CGL_EXPORT void glBindFramebufferEXT(GLenum target, GLuint framebuffer) {
+void override_glBindFramebufferEXT(GLenum target, GLuint framebuffer) {
     noteCurrentDrawFramebuffer(target);
     host_glBindFramebufferEXT(target, framebuffer);
 }
 
-CGL_EXPORT void glDeleteFramebuffers(GLsizei n, const GLuint *framebuffers) {
+void override_glDeleteFramebuffers(GLsizei n, const GLuint *framebuffers) {
     noteCurrentDrawFramebuffer(GL_DRAW_FRAMEBUFFER);
     host_glDeleteFramebuffers(n, framebuffers);
 }
 
-CGL_EXPORT void glDeleteFramebuffersEXT(GLsizei n, const GLuint *framebuffers) {
+void override_glDeleteFramebuffersEXT(GLsizei n, const GLuint *framebuffers) {
     noteCurrentDrawFramebuffer(GL_DRAW_FRAMEBUFFER);
     host_glDeleteFramebuffersEXT(n, framebuffers);
 }
 
-CGL_EXPORT void glDeleteTextures(GLsizei n, const GLuint *textures) {
+void override_glDeleteTextures(GLsizei n, const GLuint *textures) {
     CGLContextObj context = contextWithCopies();
     if (context != NULL && n > 0 && textures != NULL) {
         noteDrawFramebuffer(context);
@@ -4390,7 +4453,7 @@ CGL_EXPORT void glDeleteTextures(GLsizei n, const GLuint *textures) {
 // tests/src/opengl_iosurface_writeback.m.
 // The host carries the call out, so what was rendered before is written
 // back first and the texture is then specified from the surface again.
-CGL_EXPORT void glTexImage2D(GLenum target, GLint level, GLint internalFormat, GLsizei width, GLsizei height,
+void override_glTexImage2D(GLenum target, GLint level, GLint internalFormat, GLsizei width, GLsizei height,
                              GLint border, GLenum format, GLenum type, const GLvoid *pixels) {
     CGLContextObj context = NULL;
     GLint texture = 0;
