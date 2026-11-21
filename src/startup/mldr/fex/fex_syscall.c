@@ -426,6 +426,45 @@ static long guest_rt_sigaction(long sig, uintptr_t new_action, uintptr_t old_act
 	return ret;
 }
 
+// x86_64 and arm64 Linux number four of the open flags differently. The guest uses the x86_64 values.
+#define X86_O_DIRECT     0040000L
+#define X86_O_LARGEFILE  0100000L
+#define X86_O_DIRECTORY  0200000L
+#define X86_O_NOFOLLOW   0400000L
+#define ARM64_O_DIRECTORY 0040000L
+#define ARM64_O_NOFOLLOW  0100000L
+#define ARM64_O_DIRECT    0200000L
+#define ARM64_O_LARGEFILE 0400000L
+#define OPEN_FLAGS_DIFFERENT (X86_O_DIRECT | X86_O_LARGEFILE | X86_O_DIRECTORY | X86_O_NOFOLLOW)
+
+static long open_flags_x86_to_host(long flags)
+{
+	long out = flags & ~OPEN_FLAGS_DIFFERENT;
+	if (flags & X86_O_DIRECT)
+		out |= ARM64_O_DIRECT;
+	if (flags & X86_O_LARGEFILE)
+		out |= ARM64_O_LARGEFILE;
+	if (flags & X86_O_DIRECTORY)
+		out |= ARM64_O_DIRECTORY;
+	if (flags & X86_O_NOFOLLOW)
+		out |= ARM64_O_NOFOLLOW;
+	return out;
+}
+
+static long open_flags_host_to_x86(long flags)
+{
+	long out = flags & ~OPEN_FLAGS_DIFFERENT;
+	if (flags & ARM64_O_DIRECT)
+		out |= X86_O_DIRECT;
+	if (flags & ARM64_O_LARGEFILE)
+		out |= X86_O_LARGEFILE;
+	if (flags & ARM64_O_DIRECTORY)
+		out |= X86_O_DIRECTORY;
+	if (flags & ARM64_O_NOFOLLOW)
+		out |= X86_O_NOFOLLOW;
+	return out;
+}
+
 long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 {
 	if (!state)
@@ -479,7 +518,19 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 			break;
 
 		case 2: // open -> openat(AT_FDCWD, path, flags, mode)
-			ret = raw_host_syscall(56, AT_FDCWD, a1, a2, a3, 0, 0);
+			ret = raw_host_syscall(56, AT_FDCWD, a1, open_flags_x86_to_host(a2), a3, 0, 0);
+			break;
+		case 257: // openat
+			ret = raw_host_syscall(56, a1, a2, open_flags_x86_to_host(a3), a4, 0, 0);
+			break;
+		case 72: // fcntl: the file status flags use the host numbering
+			if (a2 == F_SETFL) {
+				ret = raw_host_syscall(25, a1, a2, open_flags_x86_to_host(a3), 0, 0, 0);
+			} else {
+				ret = raw_host_syscall(25, a1, a2, a3, 0, 0, 0);
+				if (a2 == F_GETFL && ret >= 0)
+					ret = open_flags_host_to_x86(ret);
+			}
 			break;
 		case 85: // creat -> openat(AT_FDCWD, path, O_CREAT|O_WRONLY|O_TRUNC, mode)
 			ret = raw_host_syscall(56, AT_FDCWD, a1, O_CREAT | O_WRONLY | O_TRUNC, a2, 0, 0);
