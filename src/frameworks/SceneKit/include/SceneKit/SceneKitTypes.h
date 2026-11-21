@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2026 Darling Team
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -47,6 +47,35 @@ extern const SCNMatrix4 SCNMatrix4Identity;
 extern const SCNVector3 SCNVector3Zero;
 extern const SCNVector4 SCNVector4Zero;
 
+// The creation helpers of the public header are inline functions (they are not symbols of the framework).
+static inline SCNVector3 SCNVector3Make(CGFloat x, CGFloat y, CGFloat z)
+{
+    SCNVector3 v = { x, y, z };
+    return v;
+}
+
+static inline SCNVector4 SCNVector4Make(CGFloat x, CGFloat y, CGFloat z, CGFloat w)
+{
+    SCNVector4 v = { x, y, z, w };
+    return v;
+}
+
+// SCNMatrix4 is the Core Animation matrix on macOS, and these three are its CATransform3D counterparts.
+static inline SCNMatrix4 SCNMatrix4MakeTranslation(CGFloat tx, CGFloat ty, CGFloat tz)
+{
+    return CATransform3DMakeTranslation(tx, ty, tz);
+}
+
+static inline SCNMatrix4 SCNMatrix4MakeScale(CGFloat sx, CGFloat sy, CGFloat sz)
+{
+    return CATransform3DMakeScale(sx, sy, sz);
+}
+
+static inline SCNMatrix4 SCNMatrix4Translate(SCNMatrix4 m, CGFloat tx, CGFloat ty, CGFloat tz)
+{
+    return CATransform3DTranslate(m, tx, ty, tz);
+}
+
 extern bool SCNVector3EqualToVector3(SCNVector3 a, SCNVector3 b);
 extern bool SCNVector4EqualToVector4(SCNVector4 a, SCNVector4 b);
 
@@ -55,6 +84,8 @@ extern bool SCNMatrix4IsIdentity(SCNMatrix4 m);
 extern SCNMatrix4 SCNMatrix4Invert(SCNMatrix4 m);
 extern SCNMatrix4 SCNMatrix4MakeRotation(CGFloat angle, CGFloat x, CGFloat y, CGFloat z);
 extern SCNMatrix4 SCNMatrix4Rotate(SCNMatrix4 m, CGFloat angle, CGFloat x, CGFloat y, CGFloat z);
+// The product of a and b with a applied first (CATransform3DConcat: row vectors, translation in the fourth row).
+extern SCNMatrix4 SCNMatrix4Mult(SCNMatrix4 a, SCNMatrix4 b);
 extern SCNMatrix4 SCNMatrix4Scale(SCNMatrix4 m, CGFloat sx, CGFloat sy, CGFloat sz);
 
 #ifdef __cplusplus

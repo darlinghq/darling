@@ -386,7 +386,6 @@ void *SCNGetResourceBundle(void);
 void *SCNGetShaderCollectionOutputURL(void);
 void *SCNHasSpecialResourceBundle(void);
 void *SCNMatrix4FromGLKMatrix4(void);
-void *SCNMatrix4Mult(void);
 void *SCNMatrix4ToGLKMatrix4(void);
 void *SCNNodeGetBoundingSphere(void);
 void *SCNNodesToMDLAsset(void);

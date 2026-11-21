@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2026 Darling Team
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -58,6 +58,14 @@ SCNMatrix4 SCNMatrix4MakeRotation(CGFloat angle, CGFloat x, CGFloat y, CGFloat z
 
 SCNMatrix4 SCNMatrix4Rotate(SCNMatrix4 m, CGFloat angle, CGFloat x, CGFloat y, CGFloat z) {
     return CATransform3DRotate(m, angle, x, y, z);
+}
+
+// The operand order is the one observed on macOS 26.7.3 (x86_64): SCNMatrix4Mult(a, b) equals
+// CATransform3DConcat(a, b), so a is applied first. The documentation page calls `a` the left operand and says
+// "b followed by a", which does not settle it for the row-vector CATransform3D layout (tier 2 black-box evidence).
+// Test: tests/src/scenekit_matrix4.m, "SCNMatrix4Mult".
+SCNMatrix4 SCNMatrix4Mult(SCNMatrix4 a, SCNMatrix4 b) {
+    return CATransform3DConcat(a, b);
 }
 
 SCNMatrix4 SCNMatrix4Scale(SCNMatrix4 m, CGFloat sx, CGFloat sy, CGFloat sz) {

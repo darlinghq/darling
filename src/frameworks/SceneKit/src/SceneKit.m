@@ -336,11 +336,6 @@ void *SCNMatrix4FromGLKMatrix4(void) {
     return NULL;
 }
 
-void *SCNMatrix4Mult(void) {
-    if (verbose) puts("STUB: SCNMatrix4Mult called");
-    return NULL;
-}
-
 void *SCNMatrix4ToGLKMatrix4(void) {
     if (verbose) puts("STUB: SCNMatrix4ToGLKMatrix4 called");
     return NULL;
