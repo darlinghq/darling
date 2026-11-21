@@ -22,6 +22,7 @@ set(audiotoolbox_sources
 	AUGraph.cpp
 	AudioComponent.mm
 	AudioComponentManager.mm
+	AudioCodec.cpp
 	AudioFileComponent.cpp
 	AudioFileFormatManager.cpp
 	ExtendedAudioFile.cpp
