@@ -36,6 +36,15 @@ typedef NS_OPTIONS(NSUInteger, TKSmartCardProtocol) {
 // One interface-bytes group of an answer-to-reset: the TA/TB/TC bytes of the group and the protocol they announce.
 API_AVAILABLE(macos(10.10))
 @interface TKSmartCardATRInterfaceGroup : NSObject
+{
+	// Declared here, not in the implementation: the i386 slice uses the
+	// legacy Objective-C ABI, which needs every ivar in the interface.
+@private
+	NSNumber *_TA;
+	NSNumber *_TB;
+	NSNumber *_TC;
+	NSNumber *_protocol;
+}
 
 @property (nonatomic, readonly, nullable) NSNumber *TA;
 @property (nonatomic, readonly, nullable) NSNumber *TB;
@@ -47,6 +56,16 @@ API_AVAILABLE(macos(10.10))
 // The ISO 7816 answer-to-reset a card sends when powered up.
 API_AVAILABLE(macos(10.10))
 @interface TKSmartCardATR : NSObject
+{
+	// Declared here, not in the implementation: the i386 slice uses the
+	// legacy Objective-C ABI, which needs every ivar in the interface.
+@private
+	NSData *_bytes;
+	NSData *_historicalBytes;
+	NSArray<TKCompactTLVRecord *> *_historicalRecords;
+	NSArray<NSNumber *> *_protocols;
+	NSArray<TKSmartCardATRInterfaceGroup *> *_groups;
+}
 
 // The whole ATR, and its historical bytes part.
 @property (nonatomic, readonly) NSData *bytes;
