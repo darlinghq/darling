@@ -338,7 +338,8 @@ CFURLRef LSCopyDefaultApplicationURLForURL(CFURLRef inURL, LSRolesMask inRoleMas
 // The applications whose document types claim a type (the three ? are its identifier): by LSItemContentTypes, or,
 // for document types declared the older way, by one of the type's OSType tags in CFBundleTypeOSTypes (how Finder
 // declares folders and volumes) or one of its filename-extension tags in CFBundleTypeExtensions. %@ is the role
-// filter. Tested by tests/launchservices-folder-handler.py.
+// filter. Within a rank, the bundle registered first comes first (Finder stays the default for folders on macOS
+// 26.7.3 when another application claims public.folder). Tested by tests/launchservices-folder-handler.py.
 static NSString* const kDirectoryTypeHandlerQuery = @"select path, AD.rank from bundle INNER JOIN app_doc AD on AD.bundle=bundle.id"
 	@" where bundle.package_type='APPL' and ("
 	@"EXISTS (SELECT * FROM app_doc_uti AU WHERE AU.doc=AD.id AND AU.uti = ? COLLATE NOCASE)"
@@ -347,11 +348,11 @@ static NSString* const kDirectoryTypeHandlerQuery = @"select path, AD.rank from 
 	@" OR EXISTS (SELECT * FROM app_doc_extension AE JOIN uti_tag UT ON UT.tag = 'public.filename-extension'"
 	@" AND UT.value = AE.extension JOIN uti ON uti.id = UT.uti WHERE AE.doc=AD.id AND uti.type_identifier = ?))%@"
 	@" order by case when AD.rank='Owner' then 1 when AD.rank='Default' then 2 when AD.rank='Alternate' then 3"
-	@" else 5 end asc";
+	@" else 5 end asc, bundle.id asc";
 
-// The application for a directory of the given type: the first type, from the type itself through the types it
-// conforms to (nearest first), that an application claims decides, as for folders (public.folder) and volumes
-// (public.volume, which conforms to public.folder) on macOS.
+// The application for a directory of the given type: one that claims that type itself. Claims of the types it
+// conforms to do not count: on macOS 26.7.3 an application claiming public.item or public.directory is no
+// candidate for a folder, and one claiming public.folder none for a volume (tests/volumes.md).
 static NSString* copyApplicationForDirectoryType(NSString* type, LSRolesMask inRoleMask)
 {
 	FMDatabaseQueue* dq = getDatabaseQueue();
@@ -361,44 +362,19 @@ static NSString* copyApplicationForDirectoryType(NSString* type, LSRolesMask inR
 	NSString* roles = inRoleMask != kLSRolesAll
 		? [NSString stringWithFormat: @" and AD.role IN (%@)", roleSQLArray(inRoleMask)] : @"";
 	NSString* query = [NSString stringWithFormat: kDirectoryTypeHandlerQuery, roles];
-	NSMutableArray<NSString*>* pending = [NSMutableArray arrayWithObject: type];
-	NSMutableSet<NSString*>* seen = [NSMutableSet setWithObject: [type lowercaseString]];
 	__block NSString* found = nil;
 
-	while (found == nil && [pending count] > 0)
-	{
-		NSString* current = [[[pending objectAtIndex: 0] retain] autorelease];
-		[pending removeObjectAtIndex: 0];
-
-		[dq inDatabase:^(FMDatabase* db) {
-			FMResultSet* rs = [db executeQuery: query, current, current, current];
-			// Registrations of bundles that were removed stay in the database; skip them.
-			while (found == nil && [rs next])
-			{
-				NSString* path = [rs stringForColumn: @"path"];
-				if (bundleIsPresent(path))
-					found = [path copy];
-			}
-			[rs close];
-		}];
-
-		CFDictionaryRef declaration = UTTypeCopyDeclaration((CFStringRef) current);
-		if (declaration != NULL)
+	[dq inDatabase:^(FMDatabase* db) {
+		FMResultSet* rs = [db executeQuery: query, type, type, type];
+		// Registrations of bundles that were removed stay in the database; skip them.
+		while (found == nil && [rs next])
 		{
-			id conforms = [(NSDictionary*) declaration objectForKey: (NSString*) kUTTypeConformsToKey];
-			NSArray* parents = [conforms isKindOfClass: [NSString class]] ? @[ conforms ]
-				: [conforms isKindOfClass: [NSArray class]] ? conforms : @[];
-			for (id parent in parents)
-			{
-				if ([parent isKindOfClass: [NSString class]] && ![seen containsObject: [parent lowercaseString]])
-				{
-					[seen addObject: [parent lowercaseString]];
-					[pending addObject: parent];
-				}
-			}
-			CFRelease(declaration);
+			NSString* path = [rs stringForColumn: @"path"];
+			if (bundleIsPresent(path))
+				found = [path copy];
 		}
-	}
+		[rs close];
+	}];
 	return found;
 }
 

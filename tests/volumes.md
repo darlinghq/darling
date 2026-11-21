@@ -151,3 +151,22 @@ A logger app set as `NSFileViewer` (in `~/Applications`) recorded the events bel
 - `open -R <file>`.
 
 A reveal cannot be told apart from an open.
+
+**Directory handlers** (`NSURLTypeIdentifierKey`, `LSCopyDefaultApplicationURLForURL(url, kLSRolesAll)`; checked by
+`launchservices_folder_handler.m` and `launchservices-folder-handler.py`):
+
+| Path | Type | Handler |
+|------|------|---------|
+| a plain directory, or `odd.foo` with an undeclared extension | `public.folder` | Finder |
+| `/`, `/Volumes/Unmount Test` (with or without a trailing `/`) | `public.volume` | Finder |
+| `x.rtfd` | `com.apple.rtfd` | TextEdit |
+
+Finder declares a "Folder" document type (`CFBundleTypeOSTypes` `fold`) and a "Volume" one (`disk`), both role
+Editor. `UTTypeCopyPreferredTagWithClass(public.folder, com.apple.ostype)` is `fold`; for `public.volume` it is
+`disk`.
+
+Three applications in `~/Applications`, each with one document type (role Editor, rank Default) claiming in
+`LSItemContentTypes` `public.item`, `public.folder` or `public.directory`, registered with `LSRegisterURL`:
+- a folder: the default stays Finder; of the three, only the `public.folder` one is in
+  `LSCopyApplicationURLsForURL`;
+- `/`: the default stays Finder, and none of the three is in `LSCopyApplicationURLsForURL`.
