@@ -81,6 +81,14 @@ static const CGFloat FinderListIconSize = 16;
     NSDateFormatter *_dateFormatter;
 }
 
+// The outline view can outlive this controller (its window does)
+- (void)dealloc
+{
+    _outlineView.target = nil;
+    _outlineView.dataSource = nil;
+    _outlineView.delegate = nil;
+}
+
 - (instancetype)init
 {
     self = [super initWithNibName:nil bundle:nil];

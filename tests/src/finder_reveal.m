@@ -4,7 +4,7 @@
 //
 // Revealing items in Finder (src/Finder/FinderAppDelegate), in process: openURLs: with files in two folders, a file
 // that doesn't exist and a folder gives one window per folder, each with its items selected, and a window for the
-// folder itself with nothing selected. See tests/finder.md. Needs a display.
+// folder itself with nothing selected; revealing an item that appeared later selects it in the open window. See tests/finder.md. Needs a display.
 // Usage: finder_reveal <new directory>. Prints PASS/FAIL lines; exits 1 on a failure.
 #import <AppKit/AppKit.h>
 #import "FinderAppDelegate.h"
@@ -63,6 +63,14 @@ int main(int argc, char **argv)
                [NSString stringWithFormat: @"b's item is selected (%@)", names(windows[@"b"].selectedItems)]);
         expect(windows[@"c"] != nil && [windows[@"c"].selectedItems count] == 0,
                [NSString stringWithFormat: @"the folder c is shown, with nothing selected (%@)", names(windows[@"c"].selectedItems)]);
+
+        // Revealing an item that appeared after its folder's window opened: the window lists and selects it
+        [fm createFileAtPath: [dir stringByAppendingPathComponent: @"a/new.txt"] contents: [NSData data] attributes: nil];
+        [finder openURLs: @[ url(@"a/new.txt") ]];
+        [[NSRunLoop currentRunLoop] runUntilDate: [NSDate dateWithTimeIntervalSinceNow: 0.5]];
+        expect([finder.windowControllers count] == 3, @"no new window for a folder already shown");
+        expect([names(windows[@"a"].selectedItems) isEqual: @"new.txt"],
+               [NSString stringWithFormat: @"a new item revealed in an open window is selected (%@)", names(windows[@"a"].selectedItems)]);
 
         for (FinderWindowController *controller in finder.windowControllers)
             [controller close];

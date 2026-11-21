@@ -31,8 +31,15 @@ typedef NS_ENUM(NSInteger, FinderViewStyle) {
 
 @property (readonly) NSURL *folderURL;
 
-// Shows another folder in this window, with nothing selected; the folder shown before goes in the history.
+// Shows another folder in this window, with nothing selected; the folder shown before goes in the history. If the
+// folder can't be read, the window stays where it was and an alert sheet says why.
 - (void)showFolder:(NSURL *)folder;
+
+// Reads the folder again, for items that appeared or went since it was shown.
+- (void)reloadFolder;
+
+// The alert for a folder that can't be opened
++ (NSAlert *)alertForFolder:(NSURL *)folder error:(NSError *)error;
 
 // The history: Go > Back (Command-[) and Forward (Command-]), and the toolbar's back and forward buttons
 @property (readonly) BOOL canGoBack;

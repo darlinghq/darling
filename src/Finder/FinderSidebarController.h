@@ -34,6 +34,10 @@
 
 - (BOOL)showsEjectButtonForItem:(NSURL *)item;
 
+// The folder the window shows: its item, if it has one, is the selection (setting it shows nothing), so a click on
+// any other item is a change of selection.
+@property (nonatomic) NSURL *currentFolder;
+
 // Called with the item the user clicked; set by the window controller.
 @property (copy) void (^showFolder)(NSURL *folder);
 

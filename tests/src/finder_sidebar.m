@@ -95,6 +95,24 @@ int main(int argc, char **argv)
         NSURL *root = [NSURL fileURLWithPath: @"/" isDirectory: YES];
         expect(![sidebar showsEjectButtonForItem: root], @"the root volume has no eject button");
 
+        // The window's folder is shown as the sidebar's selection, without going anywhere; a click on an item
+        // that isn't selected shows it
+        __block NSURL *shownFolder = nil;
+        sidebar.showFolder = ^(NSURL *folder) {
+            shownFolder = folder;
+        };
+        NSOutlineView *outline = (NSOutlineView *) [(NSScrollView *) sidebar.view documentView];
+        NSURL *applications = [sidebar itemsInSection: 0][0];
+        sidebar.currentFolder = [NSURL fileURLWithPath: @"/Applications"];
+        expect(shownFolder == nil && [[outline itemAtRow: [outline selectedRow]] isEqual: applications],
+               @"currentFolder selects its item, without showing it");
+        sidebar.currentFolder = [NSURL fileURLWithPath: @"/usr"];
+        expect(shownFolder == nil && [outline selectedRow] == -1, @"a folder that isn't in the sidebar selects nothing");
+        [outline selectRowIndexes: [NSIndexSet indexSetWithIndex: [outline rowForItem: applications]] byExtendingSelection: NO];
+        expect([[[shownFolder URLByStandardizingPath] path] isEqual: @"/Applications"],
+               [NSString stringWithFormat: @"selecting an item shows it (%@)", [shownFolder path]]);
+        sidebar.showFolder = nil;
+
         expect(hdiutil(@[ @"attach", @"-noautoopen", image ]) == 0, @"hdiutil attach");
         expect(waitFor(10, ^BOOL {
                    return [paths([sidebar itemsInSection: 1]) containsObject: volume];

@@ -13,11 +13,13 @@ In-process tests, in the guest (`build/tmp/helpers/src-test.sh <mode> <file>`; e
 - `tests/src/finder_window.m` (needs a display): a window's title and size, its icon view's items and labels, selecting
   items, switching to the list view and back (the selection stays), showing another folder (the view stays), the
   history (back, forward, the enclosing folder with the folder it came from selected), opening the selection, a
-  folder of 2000 items (scrolling to the last one shows it), and a window whose folder is removed closing. It passes
-  unchanged on both Macs.
+  folder of 2000 items (scrolling to the last one shows it), a window whose folder is removed closing, going to a
+  folder that can't be read (the window stays, with an alert sheet; a history entry whose folder has gone is
+  dropped), and nothing in a window pointing at its controller once that has gone. It passes unchanged on both Macs.
 - `tests/src/finder_reveal.m` (needs a display): `openURLs:` with files in two folders, a file that doesn't exist
   and a folder gives a window per folder with its files selected, and the folder's own window with nothing
-  selected. It passes unchanged on both Macs.
+  selected; revealing an item that appeared after its folder's window opened selects it there. It passes unchanged on
+  both Macs.
 - `tests/src/finder_list_view.m` (needs a display): the list view. Its columns (Name, Date Modified, Size, Kind), what
   their cells show (sizes as `NSByteCountFormatter` gives them, `--` for a folder; dates in the medium date style and
   short time style; the kind as `NSURLLocalizedTypeDescriptionKey` gives it), sorting by size both ways and by name,
@@ -25,7 +27,8 @@ In-process tests, in the guest (`build/tmp/helpers/src-test.sh <mode> <file>`; e
 - `tests/src/finder_sidebar.m <disk image>` (needs a display): the sidebar. Favorites are Applications, the home
   folder (titled with the user name), and Desktop, Documents and Downloads when they exist; Locations has the root
   volume (no eject button), and an attached image's volume appears with an eject button and goes when it is
-  detached. It attaches and detaches the image itself. It passes unchanged on both Macs. In the guest, pass the
+  detached. The window's folder is the sidebar's selection (setting it shows nothing; a folder not in the sidebar
+  selects nothing), and selecting an item shows it. It attaches and detaches the image itself. It passes unchanged on both Macs. In the guest, pass the
   image's guest path: `ARGS=/Volumes/SystemRoot$PWD/tests/fixtures/unmount-test.dmg`.
 
 The harness, `tests/finder.sh`, runs Finder through LaunchServices (`open` in the guest) on X11 or Wayland, like

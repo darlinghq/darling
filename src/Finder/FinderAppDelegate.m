@@ -105,12 +105,7 @@ static NSString *FinderFolderKey(NSURL *url)
 
 - (void)reportFolder:(NSURL *)folder error:(NSError *)error
 {
-    NSAlert *alert = [[NSAlert alloc] init];
-    alert.alertStyle = NSAlertStyleWarning;
-    alert.messageText = [NSString stringWithFormat:@"The folder “%@” can’t be opened.",
-                                                   [FinderDirectory displayNameForURL:folder]];
-    alert.informativeText = [error localizedDescription] ?: @"";
-    [alert addButtonWithTitle:@"OK"];
+    NSAlert *alert = [FinderWindowController alertForFolder:folder error:error];
     [NSApp activateIgnoringOtherApps:YES];
     [alert runModal];
 }
@@ -148,6 +143,12 @@ static NSString *FinderFolderKey(NSURL *url)
         }
         [revealed[parent] addObject:item];
     }
+
+    // A window that is open already is read again: what is revealed may have appeared since
+    for (NSURL *folder in folders)
+        [[self windowForFolder:folder create:NO] reloadFolder];
+    for (NSString *parent in revealFolders)
+        [[self windowForFolder:[NSURL fileURLWithPath:parent isDirectory:YES] create:NO] reloadFolder];
 
     FinderWindowController *last = nil;
     for (NSURL *folder in folders) {

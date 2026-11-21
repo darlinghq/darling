@@ -27,6 +27,7 @@ static const CGFloat FinderSidebarIconSize = 16;
     NSArray<NSURL *> *_locations;
     NSMutableDictionary<NSString *, NSString *> *_volumeNames;
     NSMutableSet<NSString *> *_ejectable;
+    BOOL _showingCurrentFolder;
 }
 
 - (instancetype)init
@@ -49,6 +50,18 @@ static const CGFloat FinderSidebarIconSize = 16;
 - (void)dealloc
 {
     [[[NSWorkspace sharedWorkspace] notificationCenter] removeObserver:self];
+    // The outline view and its eject buttons can outlive this controller (their window does)
+    _outlineView.dataSource = nil;
+    _outlineView.delegate = nil;
+    [self clearTargetsIn:_outlineView];
+}
+
+- (void)clearTargetsIn:(NSView *)view
+{
+    if ([view isKindOfClass:[NSControl class]] && [(NSControl *)view target] == self)
+        [(NSControl *)view setTarget:nil];
+    for (NSView *subview in [view subviews])
+        [self clearTargetsIn:subview];
 }
 
 #pragma mark Items
@@ -93,6 +106,33 @@ static const CGFloat FinderSidebarIconSize = 16;
     [self loadLocations];
     [_outlineView reloadData];
     [self expandSections];
+    [self showCurrentFolder];
+}
+
+- (void)setCurrentFolder:(NSURL *)folder
+{
+    _currentFolder = folder;
+    [self showCurrentFolder];
+}
+
+// Selects the current folder's item, or nothing, without showing anything
+- (void)showCurrentFolder
+{
+    NSString *path = [[_currentFolder URLByStandardizingPath] path];
+    NSInteger found = -1;
+    for (NSInteger row = 0; path != nil && row < [_outlineView numberOfRows]; row++) {
+        id item = [_outlineView itemAtRow:row];
+        if ([item isKindOfClass:[NSURL class]] && [[[item URLByStandardizingPath] path] isEqual:path]) {
+            found = row;
+            break;
+        }
+    }
+    _showingCurrentFolder = YES;
+    if (found >= 0)
+        [_outlineView selectRowIndexes:[NSIndexSet indexSetWithIndex:found] byExtendingSelection:NO];
+    else
+        [_outlineView deselectAll:nil];
+    _showingCurrentFolder = NO;
 }
 
 - (NSArray<NSURL *> *)itemsInSection:(NSInteger)section
@@ -144,6 +184,7 @@ static const CGFloat FinderSidebarIconSize = 16;
     scroll.documentView = _outlineView;
     self.view = scroll;
     [self expandSections];
+    [self showCurrentFolder];
 }
 
 - (void)expandSections
@@ -267,6 +308,8 @@ static const CGFloat FinderSidebarIconSize = 16;
 
 - (void)outlineViewSelectionDidChange:(NSNotification *)notification
 {
+    if (_showingCurrentFolder)
+        return;
     id item = [_outlineView itemAtRow:[_outlineView selectedRow]];
     if ([item isKindOfClass:[NSURL class]] && _showFolder != nil)
         _showFolder(item);

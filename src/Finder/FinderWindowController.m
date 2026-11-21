@@ -101,10 +101,22 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
     return self;
 }
 
++ (NSAlert *)alertForFolder:(NSURL *)folder error:(NSError *)error
+{
+    NSAlert *alert = [[NSAlert alloc] init];
+    alert.alertStyle = NSAlertStyleWarning;
+    alert.messageText = [NSString stringWithFormat:@"The folder “%@” can’t be opened.",
+                                                   [FinderDirectory displayNameForURL:folder]];
+    alert.informativeText = [error localizedDescription] ?: @"";
+    [alert addButtonWithTitle:@"OK"];
+    return alert;
+}
+
 - (void)showFolder:(NSURL *)folder
 {
     NSURL *current = _folderURL;
-    [self displayFolder:folder];
+    if (![self displayFolder:folder])
+        return;
     if (current != nil && ![[current path] isEqual:[_folderURL path]]) {
         [_back addObject:current];
         [_forward removeAllObjects];
@@ -112,16 +124,34 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
     [self historyChanged];
 }
 
-- (void)displayFolder:(NSURL *)folder
+// Shows the folder; NO, with an alert sheet, if it can't be read and the window already shows one (a new window
+// shows its folder regardless: whoever made it has reported the error)
+- (BOOL)displayFolder:(NSURL *)folder
 {
-    _folderURL = [NSURL fileURLWithPath:[[folder URLByStandardizingPath] path] isDirectory:YES];
-    _directory = [[FinderDirectory alloc] initWithURL:_folderURL];
-    [_directory reload:NULL];
+    NSURL *url = [NSURL fileURLWithPath:[[folder URLByStandardizingPath] path] isDirectory:YES];
+    FinderDirectory *directory = [[FinderDirectory alloc] initWithURL:url];
+    NSError *error = nil;
+    if (![directory reload:&error] && _folderURL != nil) {
+        [[FinderWindowController alertForFolder:url error:error] beginSheetModalForWindow:self.window completionHandler:nil];
+        return NO;
+    }
+    _folderURL = url;
+    _directory = directory;
     self.window.title = [FinderDirectory displayNameForURL:_folderURL];
     self.window.representedURL = _folderURL;
     _icons.items = _directory.items;
     _list.items = _directory.items;
+    _sidebar.currentFolder = _folderURL;
     [self watchFolder];
+    return YES;
+}
+
+- (void)reloadFolder
+{
+    if (![_directory reload:NULL])
+        return;
+    _icons.items = _directory.items;
+    _list.items = _directory.items;
 }
 
 #pragma mark Watching the folder
@@ -165,6 +195,13 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
 - (void)dealloc
 {
     [self stopWatching];
+    // What the window still points at must not outlive this controller (the window can outlive it)
+    NSWindow *window = self.window;
+    if (window.delegate == self)
+        window.delegate = nil;
+    window.toolbar.delegate = nil;
+    _viewControl.target = nil;
+    _historyControl.target = nil;
 }
 
 - (void)selectItems:(NSArray<NSURL *> *)items
@@ -203,9 +240,10 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
     if (!self.canGoBack)
         return;
     NSURL *folder = [_back lastObject];
-    [_back removeLastObject];
-    [_forward addObject:_folderURL];
-    [self displayFolder:folder];
+    NSURL *current = _folderURL;
+    [_back removeLastObject]; // a folder that can't be shown any more leaves the history
+    if ([self displayFolder:folder])
+        [_forward addObject:current];
     [self historyChanged];
 }
 
@@ -214,9 +252,10 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
     if (!self.canGoForward)
         return;
     NSURL *folder = [_forward lastObject];
+    NSURL *current = _folderURL;
     [_forward removeLastObject];
-    [_back addObject:_folderURL];
-    [self displayFolder:folder];
+    if ([self displayFolder:folder])
+        [_back addObject:current];
     [self historyChanged];
 }
 
@@ -226,7 +265,8 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
         return;
     NSURL *from = _folderURL;
     [self showFolder:[from URLByDeletingLastPathComponent]];
-    [self selectItems:@[ from ]];
+    if (_folderURL != from)
+        [self selectItems:@[ from ]];
 }
 
 - (void)historyControlChanged:(NSSegmentedControl *)sender

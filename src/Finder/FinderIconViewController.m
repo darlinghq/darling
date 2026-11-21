@@ -133,6 +133,13 @@ static const CGFloat FinderIconSize = 64;
     FinderIconCollectionView *_collectionView;
 }
 
+// The collection view can outlive this controller (its window does)
+- (void)dealloc
+{
+    _collectionView.dataSource = nil;
+    _collectionView.delegate = nil;
+}
+
 - (void)loadView
 {
     NSScrollView *scroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, 0, 600, 400)];

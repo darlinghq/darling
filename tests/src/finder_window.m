@@ -53,6 +53,30 @@ static NSOutlineView *shownListView(NSView *view)
     return nil;
 }
 
+static NSString *controllerPath(FinderWindowController *controller)
+{
+    return [controller.folderURL path];
+}
+
+// YES if no table, outline or collection view under view has a data source, delegate or target left
+static BOOL noDanglingViews(NSView *view)
+{
+    if ([view isKindOfClass: [NSTableView class]]) {
+        NSTableView *table = (NSTableView *) view;
+        if (table.dataSource != nil || table.delegate != nil || table.target != nil)
+            return NO;
+    }
+    if ([view isKindOfClass: [NSCollectionView class]]) {
+        NSCollectionView *collection = (NSCollectionView *) view;
+        if (collection.dataSource != nil || collection.delegate != nil)
+            return NO;
+    }
+    for (NSView *subview in [view subviews])
+        if (!noDanglingViews(subview))
+            return NO;
+    return YES;
+}
+
 static void spin(void)
 {
     [[NSRunLoop currentRunLoop] runUntilDate: [NSDate dateWithTimeIntervalSinceNow: 0.2]];
@@ -65,6 +89,7 @@ int main(int argc, char **argv)
             fprintf(stderr, "usage: %s <new directory>\n", argv[0]);
             return 2;
         }
+        setvbuf(stdout, NULL, _IONBF, 0); // the results so far survive a crash
         [NSApplication sharedApplication];
         NSFileManager *fm = [NSFileManager defaultManager];
         NSString *dir = [NSString stringWithUTF8String: argv[1]];
@@ -216,6 +241,60 @@ int main(int argc, char **argv)
         while ([gone.window isVisible] && [end timeIntervalSinceNow] > 0)
             spin();
         expect(![gone.window isVisible], @"a window whose folder is removed closes");
+
+        // Going to a folder that can't be read leaves the window where it was, with an alert; a history entry whose
+        // folder has gone is dropped
+        NSString *stay = [dir stringByAppendingPathComponent: @"Stay"];
+        NSString *later = [dir stringByAppendingPathComponent: @"Later"];
+        [fm createDirectoryAtPath: stay withIntermediateDirectories: YES attributes: nil error: NULL];
+        [fm createDirectoryAtPath: later withIntermediateDirectories: YES attributes: nil error: NULL];
+        FinderWindowController *nav = [[FinderWindowController alloc] initWithFolderURL: [NSURL fileURLWithPath: stay]];
+        [nav showWindow: nil];
+        spin();
+        [nav showFolder: [NSURL fileURLWithPath: [dir stringByAppendingPathComponent: @"Missing"]]];
+        spin();
+        expect([[controllerPath(nav) lastPathComponent] isEqual: @"Stay"] && nav.window.attachedSheet != nil && !nav.canGoBack,
+               [NSString stringWithFormat: @"showFolder: of a folder that can't be read stays, with an alert (%@, sheet %d)",
+                                          controllerPath(nav), nav.window.attachedSheet != nil]);
+        if (nav.window.attachedSheet != nil)
+            [nav.window endSheet: nav.window.attachedSheet];
+        spin();
+        [nav showFolder: [NSURL fileURLWithPath: later]];
+        spin();
+        [nav goBack: nil];
+        spin();
+        [fm removeItemAtPath: later error: NULL];
+        [nav goForward: nil];
+        spin();
+        expect([[controllerPath(nav) lastPathComponent] isEqual: @"Stay"] && nav.window.attachedSheet != nil && !nav.canGoForward,
+               [NSString stringWithFormat: @"goForward: to a folder that has gone stays, with an alert, and drops it (%@)",
+                                          controllerPath(nav)]);
+        if (nav.window.attachedSheet != nil)
+            [nav.window endSheet: nav.window.attachedSheet];
+        [nav close];
+        spin();
+
+        // When a window's controller goes, nothing in the window still points at it (or at the view controllers)
+        NSWindow *kept = nil;
+        NSToolbar *keptToolbar = nil;
+        @autoreleasepool {
+            FinderWindowController *brief = [[FinderWindowController alloc] initWithFolderURL: folderURL];
+            [brief showWindow: nil];
+            spin();
+            kept = brief.window;
+            keptToolbar = kept.toolbar;
+            [brief close];
+        }
+        spin();
+        expect(kept.delegate == nil, @"the window's delegate is cleared when its controller goes");
+        expect(keptToolbar.delegate == nil, @"the toolbar's delegate is cleared");
+        BOOL toolbarTargets = YES;
+        for (NSToolbarItem *item in keptToolbar.items)
+            if ([item.view isKindOfClass: [NSControl class]] && [(NSControl *) item.view target] != nil)
+                toolbarTargets = NO;
+        expect(toolbarTargets, @"the toolbar controls' targets are cleared");
+        expect(noDanglingViews(kept.contentView),
+               @"the table, outline and collection views' data sources, delegates and targets are cleared");
         printf(failures ? "FAILED %d\n" : "ALL PASSED\n", failures);
     }
     return failures != 0;
