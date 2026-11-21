@@ -16,6 +16,13 @@
 
 static const UInt32 kDeviceBufferFrames = 2048;
 
+// Status codes AudioQueue returns for the time/pitch properties that AudioQueue.h does not name; see
+// the QUIRK comment at AudioQueueOutput::setProperty.
+static const OSStatus kTimePitchNotAllowed = -66629;
+static const OSStatus kTimePitchInvalidValue = -66630;
+// The deprecated low-quality, zero-latency algorithm: recognized by the queue, but refused.
+static const UInt32 kAudioQueueTimePitchAlgorithm_LowQualityZeroLatency = 'lqzl';
+
 static uint64_t monotonicNanos()
 {
 	struct timespec ts;
@@ -245,8 +252,9 @@ UInt32 AudioQueueOutput::pullLocked(uint8_t* out, UInt32 want, std::vector<Audio
 	return done;
 }
 
-OSStatus AudioQueueOutput::render(UInt32 numberFrames, AudioBufferList* ioData)
+OSStatus AudioQueueOutput::render(UInt32 numberFrames, AudioBufferList* ioData, UInt32* produced)
 {
+	// A queue with a processing tap plays its audio as it is: the time/pitch effect is not applied.
 	{
 		std::lock_guard<std::mutex> tapLock(m_tapMutex);
 		if (m_tap)
@@ -255,14 +263,20 @@ OSStatus AudioQueueOutput::render(UInt32 numberFrames, AudioBufferList* ioData)
 
 	std::vector<AudioQueueBufferRef> finished;
 	const UInt32 frameBytes = m_format.mBytesPerFrame;
+	double effectSpeed = 1.0;
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
 
+		const bool effect = ioData->mNumberBuffers == 1 && timePitchInUseLocked();
+		if (effect)
+			applyTimePitchLocked();
 		for (UInt32 b = 0; b < ioData->mNumberBuffers; b++)
 		{
 			uint8_t* out = static_cast<uint8_t*>(ioData->mBuffers[b].mData);
 			UInt32 want = std::min<UInt32>(ioData->mBuffers[b].mDataByteSize, numberFrames * frameBytes);
-			UInt32 done = pullLocked(out, want, finished, Float64(m_renderedFrames.load(std::memory_order_relaxed)));
+			UInt32 done = effect ? renderTimePitchLocked(out, want, finished) : pullLocked(out, want, finished, m_mediaRendered);
+			if (b == 0 && produced)
+				*produced = done / frameBytes;
 			// Underrun or pause: silence (zero is silence for float and signed PCM).
 			if (done < want)
 				memset(out + done, 0, want - done);
@@ -271,12 +285,14 @@ OSStatus AudioQueueOutput::render(UInt32 numberFrames, AudioBufferList* ioData)
 			applyQueueGain(out, done / frameBytes);
 			updateLevels(out, want / frameBytes);
 		}
+		if (effect)
+			effectSpeed = m_blockSpeed;
 	}
-	finishRender(finished, numberFrames);
+	finishRender(finished, numberFrames, effectSpeed);
 	return noErr;
 }
 
-void AudioQueueOutput::finishRender(std::vector<AudioQueueBufferRef>& finished, UInt32 numberFrames)
+void AudioQueueOutput::finishRender(std::vector<AudioQueueBufferRef>& finished, UInt32 numberFrames, double speed)
 {
 	bool stopNow;
 	{
@@ -284,10 +300,15 @@ void AudioQueueOutput::finishRender(std::vector<AudioQueueBufferRef>& finished, 
 		if (!m_paused)
 		{
 			m_renderedFrames.fetch_add(numberFrames, std::memory_order_relaxed);
+			m_mediaRendered += double(numberFrames) * speed;
+			m_blockSpeed = speed;
 			m_lastBlockFrames = numberFrames;
 			m_lastBlockNanos = monotonicNanos();
 		}
-		stopNow = m_stopWhenDrained && m_pending.empty();
+		const bool drained = m_pending.empty() && (!m_timePitch || m_timePitch->idle());
+		stopNow = m_stopWhenDrained && drained;
+		if (drained)
+			m_flushRequested = false; // played out: the next audio is a new stream
 	}
 
 	returnBuffers(finished);
@@ -455,6 +476,80 @@ namespace
 	}
 
 	const UInt32 kTapMaxFrames = 2048;
+}
+
+// ---- the time/pitch effect ----
+
+bool AudioQueueOutput::timePitchInUseLocked() const
+{
+	SampleLayout layout;
+	if (!describeSamples(m_format, layout))
+		return false;
+	// Audio the effect still holds is rendered through it even when it was switched off meanwhile.
+	if (m_timePitch && !m_timePitch->idle())
+		return true;
+	if (!m_timePitchEnabled || m_timePitchBypass)
+		return false;
+	return !TimePitchProcessor::isNeutral(m_timePitchAlgorithm == kAudioQueueTimePitchAlgorithm_Varispeed ? TimePitchProcessor::Varispeed
+			: m_timePitchAlgorithm == kAudioQueueTimePitchAlgorithm_TimeDomain ? TimePitchProcessor::TimeDomain : TimePitchProcessor::Spectral,
+			m_playRate, m_pitch);
+}
+
+void AudioQueueOutput::applyTimePitchLocked()
+{
+	SampleLayout layout;
+	describeSamples(m_format, layout);
+	if (!m_timePitch)
+		m_timePitch.reset(new TimePitchProcessor(layout.channels, m_format.mSampleRate));
+	const bool wanted = m_timePitchEnabled && !m_timePitchBypass;
+	const TimePitchProcessor::Algorithm algorithm = m_timePitchAlgorithm == kAudioQueueTimePitchAlgorithm_Varispeed ? TimePitchProcessor::Varispeed
+			: m_timePitchAlgorithm == kAudioQueueTimePitchAlgorithm_TimeDomain ? TimePitchProcessor::TimeDomain : TimePitchProcessor::Spectral;
+	m_timePitch->configure(algorithm, wanted ? m_playRate : 1.0, wanted ? m_pitch : 0.0);
+}
+
+UInt32 AudioQueueOutput::renderTimePitchLocked(uint8_t* out, UInt32 want, std::vector<AudioQueueBufferRef>& finished)
+{
+	SampleLayout layout;
+	describeSamples(m_format, layout);
+	const UInt32 frames = want / layout.frameBytes;
+
+	// What the effect reads: the queue's audio as the buffers' owner enqueued it (with the volume
+	// ramps and pan of the enqueued buffers), as planar float. The queue's own volume and pan come
+	// after the effect.
+	struct Feed : TimePitchProcessor::Source
+	{
+		AudioQueueOutput* queue;
+		const SampleLayout& layout;
+		std::vector<AudioQueueBufferRef>& finished;
+		Float64 position;	// the queue's time of the next frame pulled
+		Feed(AudioQueueOutput* q, const SampleLayout& l, std::vector<AudioQueueBufferRef>& f, Float64 p)
+		: queue(q), layout(l), finished(f), position(p) {}
+		size_t pull(float* const* planes, size_t count) override
+		{
+			queue->m_tpBytes.resize(count * layout.frameBytes);
+			const UInt32 got = queue->pullLocked(queue->m_tpBytes.data(), UInt32(queue->m_tpBytes.size()), finished, position) / layout.frameBytes;
+			position += got;
+			unpackSamples(queue->m_tpBytes.data(), layout, got, planes, 1.0f);
+			return got;
+		}
+		// The enqueued audio is the whole stream when the queue renders offline, was told to stop once it has played
+		// what it holds, or was flushed; otherwise the client is late with the next buffer.
+		bool endOfStream() override { return queue->m_offline || queue->m_stopWhenDrained || queue->m_flushRequested; }
+	} feed(this, layout, finished, m_mediaRendered);
+
+	m_tpOut.resize(layout.channels);
+	std::vector<float*> planes(layout.channels);
+	std::vector<const float*> cplanes(layout.channels);
+	for (UInt32 c = 0; c < layout.channels; c++)
+	{
+		m_tpOut[c].resize(frames);
+		planes[c] = m_tpOut[c].data();
+		cplanes[c] = planes[c];
+	}
+	const UInt32 got = UInt32(m_timePitch->render(planes.data(), frames, feed));
+	packSamples(out, layout, got, cplanes.data(), 1.0f);
+	m_blockSpeed = m_timePitch->speed();
+	return got * layout.frameBytes;
 }
 
 struct AudioQueueOutput::Tap : OpaqueAudioQueueProcessingTap
@@ -807,6 +902,7 @@ OSStatus AudioQueueOutput::start(const AudioTimeStamp *inStartTime)
 		m_paused = false;
 		m_lastBlockNanos = 0; // no render since the start: the position cannot be extrapolated
 		m_stopWhenDrained = false;
+		m_everStarted = true;
 		if (m_running)
 			return noErr;
 	}
@@ -834,6 +930,10 @@ OSStatus AudioQueueOutput::prime(UInt32 inNumberOfFramesToPrepare, UInt32 *outNu
 	control.unlock();
 	if (status != noErr)
 		return status;
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		m_primed = true;
+	}
 	if (outNumberOfFramesPrepared)
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
@@ -847,7 +947,10 @@ OSStatus AudioQueueOutput::prime(UInt32 inNumberOfFramesToPrepare, UInt32 *outNu
 
 OSStatus AudioQueueOutput::flush()
 {
-	// Everything enqueued is already queued for the output unit.
+	// Everything enqueued is already queued for the output unit. The time/pitch effect, which holds some audio
+	// back, is told that the stream ends with what is enqueued.
+	std::lock_guard<std::mutex> lock(m_mutex);
+	m_flushRequested = true;
 	return noErr;
 }
 
@@ -863,7 +966,8 @@ OSStatus AudioQueueOutput::stop(Boolean inImmediate)
 			if (!m_running)
 				return noErr;
 			m_stopWhenDrained = true;
-			if (!m_pending.empty())
+			// The time/pitch effect holds audio ahead of the output: the last of it is rendered first.
+			if (!m_pending.empty() || (m_timePitch && !m_timePitch->idle()))
 				return noErr;
 		}
 		// Nothing is waiting to be played: the unit stops once the device has played what it holds
@@ -894,6 +998,10 @@ OSStatus AudioQueueOutput::stop(Boolean inImmediate)
 		m_pending.clear();
 		m_offset = 0;
 		m_gapFrames = 0;
+		if (m_timePitch)
+			m_timePitch->reset();
+		m_mediaRendered = 0.0;
+		m_flushRequested = false;
 	}
 	control.unlock();
 	returnBuffers(unplayed);
@@ -925,6 +1033,11 @@ OSStatus AudioQueueOutput::reset()
 		m_streamStart = true;
 		m_lastBlockNanos = 0;
 		m_lastBlockFrames = 0;
+		m_primed = false;
+		if (m_timePitch)
+			m_timePitch->reset();
+		m_mediaRendered = 0.0;
+		m_flushRequested = false;
 	}
 	returnBuffers(unplayed);
 	drainCallbacks();
@@ -1104,7 +1217,7 @@ OSStatus AudioQueueOutput::getCurrentTime(AudioTimeStamp *outTimeStamp, Boolean 
 	// Frames heard so far: handed to the output unit, minus what it still holds. The device holds what
 	// it measured when it took the last block, and that block itself; the time since then has played.
 	const double rendered = double(m_renderedFrames.load(std::memory_order_relaxed));
-	double heard;
+	double heard, media;
 	{
 		const double deviceLatency = deviceLatencyFrames();
 		std::lock_guard<std::mutex> lock(m_mutex);
@@ -1116,7 +1229,14 @@ OSStatus AudioQueueOutput::getCurrentTime(AudioTimeStamp *outTimeStamp, Boolean 
 				heard += double(monotonicNanos() - m_lastBlockNanos) * m_format.mSampleRate / 1e9;
 			heard = std::min(heard, rendered);
 		}
+		// The timeline is in media time: what the time/pitch effect has stretched or squeezed counts
+		// for the time it stands for, so the sample time moves at the play rate.
+		if (m_mediaRendered == rendered && m_blockSpeed == 1.0)
+			media = heard;
+		else
+			media = m_mediaRendered - (rendered - heard) * m_blockSpeed;
 	}
+	heard = media;
 	outTimeStamp->mSampleTime = heard > 0 ? heard : 0;
 	outTimeStamp->mHostTime = mach_absolute_time();
 	outTimeStamp->mFlags = kAudioTimeStampSampleTimeValid | kAudioTimeStampHostTimeValid;
@@ -1188,8 +1308,13 @@ void AudioQueueOutput::beginEntryLocked(Pending& entry, Float64 queuePos)
 			case kAudioQueueParam_Pan:
 				m_entryPan = std::min(1.0f, std::max(-1.0f, event.mValue));
 				break;
+			case kAudioQueueParam_PlayRate:
+				m_playRate = event.mValue;
+				break;
+			case kAudioQueueParam_Pitch:
+				m_pitch = event.mValue;
+				break;
 			default:
-				// Play rate and pitch need the time/pitch effect, which the queue does not have.
 				break;
 		}
 	}
@@ -1217,7 +1342,7 @@ void AudioQueueOutput::beginEntryLocked(Pending& entry, Float64 queuePos)
 UInt64 AudioQueueOutput::pendingFramesLocked() const
 {
 	const UInt32 frameBytes = m_format.mBytesPerFrame;
-	const Float64 now = Float64(m_renderedFrames.load(std::memory_order_relaxed));
+	const Float64 now = m_mediaRendered;
 	Float64 pos = now;
 	bool first = true;
 	for (const Pending& entry : m_pending)
@@ -1341,14 +1466,14 @@ OSStatus AudioQueueOutput::getParameter(AudioQueueParameterID inParamID, AudioQu
 			*outValue = m_pan.load(std::memory_order_relaxed);
 			return noErr;
 		case kAudioQueueParam_PlayRate:
-			*outValue = m_playRate;
-			return noErr;
 		case kAudioQueueParam_Pitch:
-			*outValue = m_pitch;
-			return noErr;
 		case kAudioQueueParam_VolumeRampTime:
-			*outValue = m_volumeRampTime;
+		{
+			std::lock_guard<std::mutex> lock(m_mutex);
+			*outValue = inParamID == kAudioQueueParam_PlayRate ? m_playRate
+					: inParamID == kAudioQueueParam_Pitch ? m_pitch : m_volumeRampTime;
 			return noErr;
+		}
 	}
 	return kAudioQueueErr_InvalidParameter;
 }
@@ -1364,14 +1489,26 @@ OSStatus AudioQueueOutput::setParameter(AudioQueueParameterID inParamID, AudioQu
 			m_pan.store(inValue, std::memory_order_relaxed);
 			return noErr;
 		case kAudioQueueParam_PlayRate:
-			m_playRate = inValue;
-			return noErr;
 		case kAudioQueueParam_Pitch:
-			m_pitch = inValue;
-			return noErr;
 		case kAudioQueueParam_VolumeRampTime:
-			m_volumeRampTime = inValue;
+		{
+			// QUIRK: any play rate and pitch is accepted without an error and reads back as set, also outside
+			// the documented range of 0.5 to 2. The time/pitch effect acts on rates from 1/32 to 32
+			// and on a pitch of up to 2400 cents either way (more is cut to that), and it is applied with
+			// the next block that is rendered.
+			// Not documented. Evidence: black-box observation on macOS 26.7.3 x86_64 and 10.14.4 i386
+			// (tier 2): rates 0.25, 3 and 4 with TimeDomain play at that rate, a pitch of +-3000 cents with
+			// Spectral sounds as +-2400.
+			// Test: test_play_rate_keeps_the_pitch and test_pitch in tests/src/audioqueue_timepitch.c
+			std::lock_guard<std::mutex> lock(m_mutex);
+			if (inParamID == kAudioQueueParam_PlayRate)
+				m_playRate = inValue;
+			else if (inParamID == kAudioQueueParam_Pitch)
+				m_pitch = inValue;
+			else
+				m_volumeRampTime = inValue;
 			return noErr;
+		}
 	}
 	return kAudioQueueErr_InvalidParameter;
 }
@@ -1656,6 +1793,13 @@ OSStatus AudioQueueOutput::setProperty(AudioQueuePropertyID inID, const void *in
 			return noErr;
 		}
 		case kAudioQueueProperty_DecodeBufferSizeFrames:
+		{
+			if (inDataSize != sizeof(UInt32))
+				return kAudioQueueErr_InvalidPropertySize;
+			std::lock_guard<std::mutex> lock(m_mutex);
+			m_decodeBufferFrames = *static_cast<const UInt32*>(inData);
+			return noErr;
+		}
 		case kAudioQueueProperty_EnableTimePitch:
 		case kAudioQueueProperty_TimePitchAlgorithm:
 		case kAudioQueueProperty_TimePitchBypass:
@@ -1664,15 +1808,53 @@ OSStatus AudioQueueOutput::setProperty(AudioQueuePropertyID inID, const void *in
 				return kAudioQueueErr_InvalidPropertySize;
 			const UInt32 value = *static_cast<const UInt32*>(inData);
 			std::lock_guard<std::mutex> lock(m_mutex);
-			// Linear PCM is played as it is: the settings are kept for the client to read back.
-			if (inID == kAudioQueueProperty_DecodeBufferSizeFrames)
-				m_decodeBufferFrames = value;
-			else if (inID == kAudioQueueProperty_EnableTimePitch)
-				m_timePitchEnabled = value;
+			// QUIRK: the time/pitch properties are checked as follows, with status codes that
+			// the headers do not name (kTimePitchNotAllowed, kTimePitchInvalidValue):
+			//  - EnableTimePitch: kAudioQueueErr_InvalidRunState while the queue runs;
+			//    kTimePitchNotAllowed when it would switch the effect on after AudioQueuePrime
+			//    (AudioQueueReset allows it again); otherwise any value is accepted, nonzero
+			//    reads back as 1. Starting and stopping a queue does not lock the setting.
+			//  - TimePitchAlgorithm: kAudioQueueErr_InvalidRunState while the queue runs;
+			//    kTimePitchInvalidValue when the effect is not enabled or the value is not one of
+			//    the three algorithms; kTimePitchNotAllowed for the deprecated
+			//    low-quality-zero-latency algorithm (not offered by the queue). It may be changed
+			//    after AudioQueuePrime.
+			//  - TimePitchBypass: may be changed while the queue runs, but only on a queue that
+			//    has been started at least once and has the effect enabled, else
+			//    kTimePitchInvalidValue. Any nonzero value bypasses.
+			// Not documented. Evidence: black-box observation on macOS 26.7.3 x86_64 and 10.14.4
+			// i386 (tier 2), on queues in offline render mode (the Macs used had no audio output
+			// device, and on a queue bound to a device that does not exist every one of these
+			// returns kAudioQueueErr_InvalidDevice).
+			// Test: test_quirk_timepitch_property_status in tests/src/audioqueue_timepitch.c
+			if (inID == kAudioQueueProperty_EnableTimePitch)
+			{
+				if (m_running)
+					return kAudioQueueErr_InvalidRunState;
+				const bool enable = value != 0;
+				if (enable && !m_timePitchEnabled && m_primed)
+					return kTimePitchNotAllowed;
+				m_timePitchEnabled = enable;
+			}
 			else if (inID == kAudioQueueProperty_TimePitchAlgorithm)
+			{
+				if (m_running)
+					return kAudioQueueErr_InvalidRunState;
+				if (!m_timePitchEnabled)
+					return kTimePitchInvalidValue;
+				if (value == kAudioQueueTimePitchAlgorithm_LowQualityZeroLatency)
+					return kTimePitchNotAllowed;
+				if (value != kAudioQueueTimePitchAlgorithm_Spectral && value != kAudioQueueTimePitchAlgorithm_TimeDomain
+						&& value != kAudioQueueTimePitchAlgorithm_Varispeed)
+					return kTimePitchInvalidValue;
 				m_timePitchAlgorithm = value;
+			}
 			else
-				m_timePitchBypass = value;
+			{
+				if (!m_timePitchEnabled || !m_everStarted)
+					return kTimePitchInvalidValue;
+				m_timePitchBypass = value != 0;
+			}
 			return noErr;
 		}
 		case kAudioQueueProperty_ChannelLayout:
@@ -1723,6 +1905,7 @@ OSStatus AudioQueueOutput::offlineRender(const AudioTimeStamp *inTimestamp, Audi
 	SampleLayout queueLayout, offlineLayout;
 	AudioStreamBasicDescription offlineFormat;
 	UInt32 frames;
+	bool effect;
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
 		if (!m_offline)
@@ -1741,7 +1924,12 @@ OSStatus AudioQueueOutput::offlineRender(const AudioTimeStamp *inTimestamp, Audi
 
 		// Only what has been enqueued is rendered: the buffer's size says how much that was
 		// (and a tap is asked for that many frames, not for the full count).
+		// With the time/pitch effect on, the number of frames the enqueued audio makes is not known
+		// beforehand: the block is rendered in full, and what carries audio is reported.
+		effect = timePitchInUseLocked();
 		frames = UInt32(std::min<UInt64>(pendingFramesLocked(), inNumberFrames));
+		if (effect)
+			frames = pendingFramesLocked() || (m_timePitch && !m_timePitch->idle()) ? inNumberFrames : 0;
 	}
 	if (!frames)
 	{
@@ -1756,8 +1944,16 @@ OSStatus AudioQueueOutput::offlineRender(const AudioTimeStamp *inTimestamp, Audi
 	list.mBuffers[0].mNumberChannels = queueLayout.channels;
 	list.mBuffers[0].mDataByteSize = UInt32(queueData.size());
 	list.mBuffers[0].mData = queueData.data();
-	render(frames, &list);
-	const UInt32 producedFrames = list.mBuffers[0].mDataByteSize / queueLayout.frameBytes;
+	UInt32 audioFrames = 0;
+	render(frames, &list, &audioFrames);
+	const UInt32 producedFrames = effect ? audioFrames : list.mBuffers[0].mDataByteSize / queueLayout.frameBytes;
+	if (effect && producedFrames < frames)
+	{
+		// The end of the stream: the rest of the block is not part of the timeline.
+		std::lock_guard<std::mutex> lock(m_mutex);
+		m_renderedFrames.fetch_sub(frames - producedFrames, std::memory_order_relaxed);
+		m_mediaRendered -= double(frames - producedFrames) * m_blockSpeed;
+	}
 
 	uint8_t* out = static_cast<uint8_t*>(ioBuffer->mAudioData);
 	if (offlineFormat.mFormatFlags == m_format.mFormatFlags && offlineFormat.mBitsPerChannel == m_format.mBitsPerChannel)

@@ -13,6 +13,7 @@ set(audiotoolbox_sources
 	AudioConverter.cpp
 	AudioConverterImpl.cpp
 	PCMConverter.cpp
+	TimePitch.cpp
 	AudioFile.cpp
 	AudioQueueBase.cpp
 	AudioQueue.cpp
