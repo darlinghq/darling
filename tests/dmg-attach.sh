@@ -60,6 +60,15 @@ mp=$(grep -A1 '<key>mount-point</key>' "$work/plist.out" | sed -n 's:.*<string>\
 	&& pass "attach -plist reports the mount point" || fail "attach -plist: rc $(rc plist), mount point '$mp', stderr: $(cat "$work/plist.err")"
 guest d1 "hdiutil detach -quiet '$mp'"
 
+# attaching an attached image gives its mount point again, mounting nothing more (macOS 26.7.3, see dmg-attach.md)
+guest twice1 "hdiutil attach '$image'"
+guest twice2 "hdiutil attach '$image'"
+guest twicecount "for d in '/Volumes/Unmount Test'*; do [ \"\$(stat -f %d \"\$d\")\" != \"\$(stat -f %d /Volumes)\" ] && echo \"\$d\"; done | wc -l | tr -d ' '"
+[ "$(rc twice1)" = 0 ] && [ "$(rc twice2)" = 0 ] && [ "$(mount_point twice1)" = "/Volumes/Unmount Test" ] \
+	&& [ "$(mount_point twice2)" = "/Volumes/Unmount Test" ] && [ "$(cat "$work/twicecount.out")" = 1 ] \
+	&& pass "attach twice" || fail "attach twice: rc $(rc twice1) $(rc twice2), $(cat "$work/twice2.out" "$work/twice2.err" "$work/twicecount.out" | tr '\n' '|')"
+guest twiced "hdiutil detach -quiet '/Volumes/Unmount Test'"
+
 # the volume outlives the process that attached it
 guest attachq "hdiutil attach -quiet '$image'"
 guest read "cat '/Volumes/Unmount Test/hello.txt'"

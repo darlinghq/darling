@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mount.h>
 #include <sys/param.h>
@@ -42,6 +43,10 @@ int main(int argc, char** argv)
 	if (name != NULL && strcmp(name, argv[2]) != 0)
 		printf("  volume name: '%s'\n", name);
 
+	char attached[MAXPATHLEN];
+	check(darling_dmg_attached_mount_point(image, attached, sizeof(attached)) == ENOENT,
+		"an image that is not attached has no mount point");
+
 	struct darling_dmg_attach_options options = { .mount_root = argv[4], .mount_point = NULL };
 	char mp[MAXPATHLEN];
 	err = darling_dmg_attach(image, &options, mp, sizeof(mp));
@@ -64,6 +69,42 @@ int main(int argc, char** argv)
 	check(stat(mp, &st) != 0 && errno == ENOENT, "mount point directory removed");
 	err = darling_dmg_detach(mp, 0);
 	check(err == ENOENT || err == EINVAL, "detach again fails (no such mount)");
+
+	// Attached again, also through a symbolic link to it, the image is not mounted a second time: its mount point
+	// comes back (as hdiutil attach does on macOS 26.7.3, see dmg-attach.md). Under /Volumes: getfsstat does not list
+	// volumes mounted on the host side (/Volumes/SystemRoot), like the mount root above.
+	err = darling_dmg_attach(image, NULL, mp, sizeof(mp));
+	check(err == 0, "attach under /Volumes");
+	check(darling_dmg_attached_mount_point(image, attached, sizeof(attached)) == 0 && strcmp(attached, mp) == 0,
+		"an attached image has its mount point");
+	check(darling_dmg_attached_mount_point(image, attached, 2) == ENAMETOOLONG, "a mount point that does not fit: ENAMETOOLONG");
+	char link[MAXPATHLEN];
+	snprintf(link, sizeof(link), "%s/../dmg-api-link.dmg", argv[4]);
+	unlink(link);
+	darling_dmg_image* linked = NULL;
+	char again[MAXPATHLEN] = { 0 };
+	char target[MAXPATHLEN];
+	if (realpath(argv[1], target) != NULL && symlink(target, link) == 0 && darling_dmg_open(link, &linked) == 0)
+	{
+		check(darling_dmg_attach(linked, NULL, again, sizeof(again)) == 0 && strcmp(again, mp) == 0,
+			"attaching an attached image, through a link, gives its mount point");
+		darling_dmg_close(linked);
+	}
+	else
+		check(0, "a link to the image can be opened");
+	unlink(link);
+	int count = getfsstat(NULL, 0, MNT_NOWAIT), mounts = 0;
+	struct statfs* all = count > 0 ? calloc(count, sizeof(*all)) : NULL;
+	count = all != NULL ? getfsstat(all, count * sizeof(*all), MNT_NOWAIT) : 0;
+	char source[MAXPATHLEN];
+	if (realpath(argv[1], source) == NULL)
+		source[0] = 0;
+	for (int i = 0; i < count; i++)
+		mounts += strcmp(all[i].f_mntfromname, source) == 0;
+	free(all);
+	check(mounts == 1, "the image is mounted once");
+
+	check(darling_dmg_detach(mp, 0) == 0, "detach from /Volumes");
 
 	darling_dmg_close(image);
 	return failures ? 1 : 0;
