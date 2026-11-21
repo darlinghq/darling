@@ -109,7 +109,6 @@ void* const SCNLightingModelNone = (void*)0;
 void* const SCNLightingModelPhong = (void*)0;
 void* const SCNLightingModelPhysicallyBased = (void*)0;
 void* const SCNLightingModelShadowOnly = (void*)0;
-void* const SCNMatrix4Identity = (void*)0;
 void* const SCNModelTransform = (void*)0;
 void* const SCNModelViewProjectionTransform = (void*)0;
 void* const SCNModelViewTransform = (void*)0;
@@ -233,8 +232,6 @@ void* const SCNShaderModifierEntryPointLightingModel = (void*)0;
 void* const SCNShaderModifierEntryPointSurface = (void*)0;
 void* const SCNTextureOffsetXKey = (void*)0;
 void* const SCNTextureOffsetYKey = (void*)0;
-void* const SCNVector3Zero = (void*)0;
-void* const SCNVector4Zero = (void*)0;
 void* const SCNViewTransform = (void*)0;
 void* const _SCNShadableDidCompileNotificationName = (void*)0;
 void* const _SCNShadableIssuesKey = (void*)0;
@@ -334,43 +331,8 @@ void *SCNHasSpecialResourceBundle(void) {
     return NULL;
 }
 
-void *SCNMatrix4EqualToMatrix4(void) {
-    if (verbose) puts("STUB: SCNMatrix4EqualToMatrix4 called");
-    return NULL;
-}
-
 void *SCNMatrix4FromGLKMatrix4(void) {
     if (verbose) puts("STUB: SCNMatrix4FromGLKMatrix4 called");
-    return NULL;
-}
-
-void *SCNMatrix4Invert(void) {
-    if (verbose) puts("STUB: SCNMatrix4Invert called");
-    return NULL;
-}
-
-void *SCNMatrix4IsIdentity(void) {
-    if (verbose) puts("STUB: SCNMatrix4IsIdentity called");
-    return NULL;
-}
-
-void *SCNMatrix4MakeRotation(void) {
-    if (verbose) puts("STUB: SCNMatrix4MakeRotation called");
-    return NULL;
-}
-
-void *SCNMatrix4Mult(void) {
-    if (verbose) puts("STUB: SCNMatrix4Mult called");
-    return NULL;
-}
-
-void *SCNMatrix4Rotate(void) {
-    if (verbose) puts("STUB: SCNMatrix4Rotate called");
-    return NULL;
-}
-
-void *SCNMatrix4Scale(void) {
-    if (verbose) puts("STUB: SCNMatrix4Scale called");
     return NULL;
 }
 
@@ -416,16 +378,6 @@ void *SCNSetShaderCollectionEnabled(void) {
 
 void *SCNTextureContentWithGLInfo(void) {
     if (verbose) puts("STUB: SCNTextureContentWithGLInfo called");
-    return NULL;
-}
-
-void *SCNVector3EqualToVector3(void) {
-    if (verbose) puts("STUB: SCNVector3EqualToVector3 called");
-    return NULL;
-}
-
-void *SCNVector4EqualToVector4(void) {
-    if (verbose) puts("STUB: SCNVector4EqualToVector4 called");
     return NULL;
 }
 

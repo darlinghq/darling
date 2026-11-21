@@ -24,6 +24,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CarbonCore/MacErrors.h>
 #include <CarbonCore/MacMemory.h>
 #include "AudioComponentManager.h"
+#include "AudioUnitUtilitiesInternal.h"
 #include <iostream>
 
 AudioComponent AudioComponentRegister(const AudioComponentDescription *inDesc, CFStringRef inName,
@@ -271,6 +272,8 @@ void AudioComponentInstantiate(AudioComponent component, AudioComponentInstantia
 
 OSStatus AudioComponentInstanceDispose(AudioComponentInstance inst)
 {
+	AUListenersForgetUnit(inst);
+
 	if (AudioComponentManager::isOurInstance(inst))
 	{
 		return AudioComponentManager::instance()->dispose(inst);

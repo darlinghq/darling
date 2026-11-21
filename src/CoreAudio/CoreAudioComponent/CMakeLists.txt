@@ -9,6 +9,7 @@ include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/PublicUtility
 	${CMAKE_CURRENT_SOURCE_DIR}/AUPublic/AUBase
 	${CMAKE_CURRENT_SOURCE_DIR}/AUPublic/Utility
+	${CMAKE_CURRENT_SOURCE_DIR}/AUPublic/OtherBases
 )
 
 set(component_sources
@@ -19,6 +20,7 @@ set(component_sources
 	AUPublic/AUBase/AUPlugInDispatch.cpp
 	AUPublic/AUBase/AUScopeElement.cpp
 	AUPublic/AUBase/ComponentBase.cpp
+	AUPublic/OtherBases/AUEffectBase.cpp
 	AUPublic/Utility/AUBuffer.cpp
 	PublicUtility/CAAudioChannelLayout.cpp
 	PublicUtility/CAAudioChannelLayoutObject.cpp
@@ -35,6 +37,7 @@ set(component_sources
 	SystemOutputAU.cpp
 	MatrixMixerAU.cpp
 	DefaultOutputAU.cpp
+	GraphicEQUnit.cpp
 )
 
 add_darling_bundle(CoreAudioComponent "" ${component_sources})

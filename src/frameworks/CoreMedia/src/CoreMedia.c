@@ -566,11 +566,6 @@ void* CMClosedCaptionFormatDescriptionCreateFromBigEndianClosedCaptionDescriptio
     return NULL;
 }
 
-void* CMCopyDictionaryOfAttachments(void) {
-    if (verbose) puts("STUB: CMCopyDictionaryOfAttachments called");
-    return NULL;
-}
-
 void* CMCreateContiguousBlockBufferFromStream(void) {
     if (verbose) puts("STUB: CMCreateContiguousBlockBufferFromStream called");
     return NULL;
@@ -598,11 +593,6 @@ void* CMFormatDescriptionEqualIgnoringExtensionKeys(void) {
 
 void* CMFormatDescriptionGetWidestColorPropertiesFromFormatDescriptions(void) {
     if (verbose) puts("STUB: CMFormatDescriptionGetWidestColorPropertiesFromFormatDescriptions called");
-    return NULL;
-}
-
-void* CMGetAttachment(void) {
-    if (verbose) puts("STUB: CMGetAttachment called");
     return NULL;
 }
 
@@ -801,21 +791,6 @@ void* CMNotificationCenterUnregisterForBarrierSupport(void) {
     return NULL;
 }
 
-void* CMPropagateAttachments(void) {
-    if (verbose) puts("STUB: CMPropagateAttachments called");
-    return NULL;
-}
-
-void* CMRemoveAllAttachments(void) {
-    if (verbose) puts("STUB: CMRemoveAllAttachments called");
-    return NULL;
-}
-
-void* CMRemoveAttachment(void) {
-    if (verbose) puts("STUB: CMRemoveAttachment called");
-    return NULL;
-}
-
 void* CMSampleBufferCallBlockForEachSample(void) {
     if (verbose) puts("STUB: CMSampleBufferCallBlockForEachSample called");
     return NULL;
@@ -953,16 +928,6 @@ void* CMSampleBufferSetOutputPresentationTimeStamp(void) {
 
 void* CMSampleBufferTrackDataReadiness(void) {
     if (verbose) puts("STUB: CMSampleBufferTrackDataReadiness called");
-    return NULL;
-}
-
-void* CMSetAttachment(void) {
-    if (verbose) puts("STUB: CMSetAttachment called");
-    return NULL;
-}
-
-void* CMSetAttachments(void) {
-    if (verbose) puts("STUB: CMSetAttachments called");
     return NULL;
 }
 

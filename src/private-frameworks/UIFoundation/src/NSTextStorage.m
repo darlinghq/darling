@@ -64,11 +64,11 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     return _layoutManagers;
 }
 
-- (int) changeInLength {
+- (NSInteger) changeInLength {
     return _changeInLength;
 }
 
-- (unsigned) editedMask {
+- (NSTextStorageEditActions) editedMask {
     return _editedMask;
 }
 
@@ -81,7 +81,13 @@ NSString *const NSTextStorageDidProcessEditingNotification =
 }
 
 - (void) addLayoutManager: (NSLayoutManager *) layoutManager {
-    if (layoutManager == nil || [_layoutManagers indexOfObjectIdenticalTo: layoutManager] != NSNotFound)
+    if (layoutManager == nil)
+        return;
+    // A subclass may have been initialized through -[NSAttributedString init],
+    // which does not reach the initializers above.
+    if (_layoutManagers == nil)
+        _layoutManagers = [NSMutableArray new];
+    if ([_layoutManagers indexOfObjectIdenticalTo: layoutManager] != NSNotFound)
         return;
     [_layoutManagers addObject: layoutManager];
     [layoutManager setTextStorage: self];
@@ -117,7 +123,7 @@ NSString *const NSTextStorageDidProcessEditingNotification =
 }
 
 - (void) processEditing {
-    int i, count;
+    NSUInteger i, count;
 
     if ([_delegate respondsToSelector: @selector
                    (textStorageWillProcessEditing:)]) {
@@ -163,9 +169,9 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     }
 }
 
-- (void) edited: (unsigned) editedMask
+- (void) edited: (NSTextStorageEditActions) editedMask
                  range: (NSRange) range
-        changeInLength: (int) delta
+        changeInLength: (NSInteger) delta
 {
 
     if (_beginEditing == 0) {
@@ -181,12 +187,16 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     } else {
         _editedMask |= editedMask;
         _changeInLength += delta;
-        range.length += delta;
 
-        if (NS_EXTRA(NSTextStorage, self)->_editedRange.location == -1 && NS_EXTRA(NSTextStorage, self)->_editedRange.length == -1)
-            NS_EXTRA(NSTextStorage, self)->_editedRange = range;
-        else
-            NS_EXTRA(NSTextStorage, self)->_editedRange = NSUnionRange(NS_EXTRA(NSTextStorage, self)->_editedRange, range);
+        // The edited range so far and the range of this edit are both in the
+        // string as it was before this edit. Their union contains every
+        // character this edit replaced, so the change in length applies to
+        // it as a whole and the result is a range in the edited string.
+        NSRange edited = NS_EXTRA(NSTextStorage, self)->_editedRange;
+        if (edited.location != -1 || edited.length != -1)
+            range = NSUnionRange(edited, range);
+        range.length += delta;
+        NS_EXTRA(NSTextStorage, self)->_editedRange = range;
     }
 }
 

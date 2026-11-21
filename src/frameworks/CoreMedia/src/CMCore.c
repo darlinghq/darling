@@ -22,6 +22,7 @@
  */
 
 #include <CoreMedia/CoreMedia.h>
+#include "CMAttachmentStore.h"
 #include <CoreFoundation/CFRuntime.h>
 #include <CoreVideo/CoreVideo.h>
 #include <dispatch/dispatch.h>
@@ -294,6 +295,7 @@ struct OpaqueCMBlockBuffer {
 	Boolean hasSource;
 	size_t offset;
 	size_t dataLength;
+	CMAttachmentStore bearerAttachments;
 };
 
 static void blockBufferFinalize(CFTypeRef cf)
@@ -309,6 +311,7 @@ static void blockBufferFinalize(CFTypeRef cf)
 	}
 	if (buffer->blockAllocator != NULL)
 		CFRelease(buffer->blockAllocator);
+	CMAttachmentStoreRelease(&buffer->bearerAttachments);
 }
 
 CM_CLASS(CMBlockBuffer_, "CMBlockBuffer", .finalize = blockBufferFinalize)
@@ -452,6 +455,7 @@ struct opaqueCMSampleBuffer {
 	Boolean dataReady;
 	CMSampleBufferMakeDataReadyCallback makeDataReady;
 	void *makeDataReadyRefcon;
+	CMAttachmentStore bearerAttachments;
 };
 
 static void sampleBufferFinalize(CFTypeRef cf)
@@ -467,6 +471,7 @@ static void sampleBufferFinalize(CFTypeRef cf)
 		CFRelease(sbuf->attachments);
 	free(sbuf->timing);
 	free(sbuf->sizes);
+	CMAttachmentStoreRelease(&sbuf->bearerAttachments);
 }
 
 CM_CLASS(CMSampleBuffer_, "CMSampleBuffer", .finalize = sampleBufferFinalize)
@@ -683,4 +688,25 @@ OSStatus CMSampleBufferCallForEachSample(CMSampleBufferRef sbuf,
 		offset += size;
 	}
 	return noErr;
+}
+
+#pragma mark - Attachment bearers
+
+CMAttachmentStore *CMCoreGetAttachmentStore(CFTypeRef object)
+{
+	CFTypeID type = CFGetTypeID(object);
+	if (type == CMSampleBuffer_GetTypeID())
+		return &((struct opaqueCMSampleBuffer *)object)->bearerAttachments;
+	if (type == CMBlockBuffer_GetTypeID())
+		return &((struct OpaqueCMBlockBuffer *)object)->bearerAttachments;
+	return NULL;
+}
+
+void CMAttachmentStoreRelease(CMAttachmentStore *store)
+{
+	if (store->propagating != NULL)
+		CFRelease(store->propagating);
+	if (store->local != NULL)
+		CFRelease(store->local);
+	store->propagating = store->local = NULL;
 }

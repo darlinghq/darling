@@ -26,6 +26,14 @@ typedef NSUInteger TKTLVTag;
 // One tag-length-value record. The subclasses differ in how the tag and length are encoded.
 API_AVAILABLE(macos(10.10))
 @interface TKTLVRecord : NSObject
+{
+	// Declared here, not in the implementation: the i386 slice uses the
+	// legacy Objective-C ABI, which needs every ivar in the interface.
+@private
+	TKTLVTag _tag;
+	NSData *_value;
+	NSData *_data;
+}
 
 // The tag, the value without tag and length, and the record as encoded.
 @property (nonatomic, readonly) TKTLVTag tag;

@@ -23,3 +23,16 @@ const CFStringRef kVTDecompressionPropertyKey_DeinterlaceMode = CFSTR("Deinterla
 const CFStringRef kVTDecompressionPropertyKey_FieldMode = CFSTR("FieldMode");
 const CFStringRef kVTDecompressionProperty_DeinterlaceMode_Temporal = CFSTR("Temporal");
 const CFStringRef kVTDecompressionProperty_FieldMode_DeinterlaceFields = CFSTR("DeinterlaceFields");
+
+const CFStringRef kVTVideoDecoderSpecification_RequireHardwareAcceleratedVideoDecoder = CFSTR("RequireHardwareAcceleratedVideoDecoder");
+const CFStringRef kVTVideoDecoderSpecification_EnableHardwareAcceleratedVideoDecoder = CFSTR("EnableHardwareAcceleratedVideoDecoder");
+const CFStringRef kVTDecompressionPropertyKey_RealTime = CFSTR("RealTime");
+const CFStringRef kVTDecompressionPropertyKey_UsingHardwareAcceleratedVideoDecoder = CFSTR("UsingHardwareAcceleratedVideoDecoder");
+const CFStringRef kVTDecompressionPropertyKey_ThreadCount = CFSTR("ThreadCount");
+const CFStringRef kVTDecompressionPropertyKey_NumberOfFramesBeingDecoded = CFSTR("NumberOfFramesBeingDecoded");
+const CFStringRef kVTDecompressionPropertyKey_MinOutputPresentationTimeStampOfFramesBeingDecoded = CFSTR("MinOutputPresentationTimeStampOfFramesBeingDecoded");
+const CFStringRef kVTDecompressionPropertyKey_MaxOutputPresentationTimeStampOfFramesBeingDecoded = CFSTR("MaxOutputPresentationTimeStampOfFramesBeingDecoded");
+const CFStringRef kVTDecompressionPropertyKey_PixelBufferPool = CFSTR("PixelBufferPool");
+const CFStringRef kVTDecompressionPropertyKey_OutputPoolRequestedMinimumBufferCount = CFSTR("OutputPoolRequestedMinimumBufferCount");
+const CFStringRef kVTDecompressionPropertyKey_ContentHasInterframeDependencies = CFSTR("ContentHasInterframeDependencies");
+

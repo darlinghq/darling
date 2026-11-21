@@ -21,6 +21,7 @@
 #define _SCENEKIT_H_
 
 #import <Foundation/Foundation.h>
+#import <SceneKit/SceneKitTypes.h>
 
 #import <SceneKit/AVAudio3DMixing.h>
 #import <SceneKit/AVCaptureVideoDataOutputSampleBufferDelegate.h>
@@ -384,14 +385,7 @@ void *SCNGetPerformanceStatistics(void);
 void *SCNGetResourceBundle(void);
 void *SCNGetShaderCollectionOutputURL(void);
 void *SCNHasSpecialResourceBundle(void);
-void *SCNMatrix4EqualToMatrix4(void);
 void *SCNMatrix4FromGLKMatrix4(void);
-void *SCNMatrix4Invert(void);
-void *SCNMatrix4IsIdentity(void);
-void *SCNMatrix4MakeRotation(void);
-void *SCNMatrix4Mult(void);
-void *SCNMatrix4Rotate(void);
-void *SCNMatrix4Scale(void);
 void *SCNMatrix4ToGLKMatrix4(void);
 void *SCNNodeGetBoundingSphere(void);
 void *SCNNodesToMDLAsset(void);
@@ -401,8 +395,6 @@ void *SCNSetPerformanceStatisticsEnabled(void);
 void *SCNSetResourceBundle(void);
 void *SCNSetShaderCollectionEnabled(void);
 void *SCNTextureContentWithGLInfo(void);
-void *SCNVector3EqualToVector3(void);
-void *SCNVector4EqualToVector4(void);
 void *SCNWriteMTLTextureToFile(void);
 void *_SCNGetCollectedShadersForPid(void);
 void *_SCNGetPerformanceStatisticsForPid(void);
@@ -500,7 +492,6 @@ extern void* const SCNLightingModelNone;
 extern void* const SCNLightingModelPhong;
 extern void* const SCNLightingModelPhysicallyBased;
 extern void* const SCNLightingModelShadowOnly;
-extern void* const SCNMatrix4Identity;
 extern void* const SCNModelTransform;
 extern void* const SCNModelViewProjectionTransform;
 extern void* const SCNModelViewTransform;
@@ -624,8 +615,6 @@ extern void* const SCNShaderModifierEntryPointLightingModel;
 extern void* const SCNShaderModifierEntryPointSurface;
 extern void* const SCNTextureOffsetXKey;
 extern void* const SCNTextureOffsetYKey;
-extern void* const SCNVector3Zero;
-extern void* const SCNVector4Zero;
 extern void* const SCNViewTransform;
 extern void* const _SCNShadableDidCompileNotificationName;
 extern void* const _SCNShadableIssuesKey;

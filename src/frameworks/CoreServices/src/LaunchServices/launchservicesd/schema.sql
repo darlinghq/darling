@@ -1,5 +1,5 @@
 CREATE TABLE `globals` (`key` TEXT PRIMARY KEY, `value` TEXT);
-INSERT INTO `globals` (`key`, `value`) VALUES ('version', '1');
+INSERT INTO `globals` (`key`, `value`) VALUES ('version', '2');
 
 CREATE TABLE `bundle` (
 	`id` INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,6 +67,7 @@ CREATE TABLE `app_doc` (
 	`role` TEXT, -- CFBundleTypeRole
 	`rank` TEXT, -- LSHandlerRank
 	`class` TEXT, -- NSDocumentClass
+	`is_package` INTEGER NOT NULL DEFAULT 0, -- LSTypeIsPackage
 	FOREIGN KEY(`bundle`) REFERENCES `bundle`(`id`) ON DELETE CASCADE
 );
 CREATE INDEX `app_doc_bundle_index` ON `app_doc`(`bundle`);

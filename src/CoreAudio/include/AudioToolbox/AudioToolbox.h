@@ -7,12 +7,14 @@
 #include <AudioToolbox/AudioConverter.h>
 #include <AudioToolbox/AUGraph.h>
 #include <AudioToolbox/AudioUnitParameters.h>
+#include <AudioToolbox/AudioUnitUtilities.h>
 #include <AudioToolbox/AudioFormat.h>
 #include <AudioToolbox/AudioUnit.h>
 #include <AudioToolbox/ExtendedAudioFile.h>
 #include <AudioToolbox/MusicDevice.h>
 #include <AudioToolbox/AudioCodec.h>
 #include <AudioToolbox/AudioHardwareService.h>
+#include <AudioToolbox/AUParameters.h>
 
 // CA helper classes expect this
 #include <CoreServices/FileManager.h>

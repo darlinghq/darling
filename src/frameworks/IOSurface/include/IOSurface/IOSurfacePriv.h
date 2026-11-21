@@ -243,6 +243,12 @@ void _IOSurfaceSetGPUCallbacks(const _IOSurfaceGPUCallbacks *callbacks);
 bool _IOSurfaceGetDMABuf(IOSurfaceRef surface, size_t planeIndex, _IOSurfaceDMABuf *buffer);
 void _IOSurfaceGPUDidWrite(IOSurfaceRef surface);
 void _IOSurfaceGPUDidWriteMemory(IOSurfaceRef surface);
+// Whether a process other than this one holds the surface and may read its
+// memory, as the IOSurface service counts them (also true while the count is
+// not known). Such a reader cannot wait for this process's GPU work, so a GPU
+// API that renders into the memory finishes the work before it reports the
+// write; for a surface that is not shared, a lock in this process waits.
+bool _IOSurfaceIsShared(IOSurfaceRef surface);
 bool _IOSurfaceGetGPUBuffer(IOSurfaceRef surface, size_t planeIndex, const char *renderNode, uint32_t fourcc,
                             const uint64_t *modifiers, size_t modifierCount, uint32_t flags,
                             _IOSurfaceGPUBuffer *buffer);

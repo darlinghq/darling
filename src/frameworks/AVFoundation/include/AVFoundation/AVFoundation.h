@@ -577,6 +577,7 @@
 #import <AVFoundation/AVFAudio.h>
 #import <AVFoundation/AVMediaFormat.h>
 #import <AVFoundation/AVAudioSettings.h>
+#import <AVFoundation/AVAudioProcessingSettings.h>
 #import <AVFoundation/AVAnimation.h>
 #import <AVFoundation/AVVideoSettings.h>
 

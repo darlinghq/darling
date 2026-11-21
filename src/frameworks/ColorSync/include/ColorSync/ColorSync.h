@@ -70,16 +70,11 @@ void* ColorSyncNxMLUTGetOptions(void);
 void* ColorSyncNxMLUTGetProperties(void);
 void* ColorSyncNxMLUTGetRange(void);
 void* ColorSyncNxMLUTGetTypeID(void);
-void* ColorSyncProfileContainsTag(void);
 void* ColorSyncProfileCopyASCIIDescriptionString(void);
-void* ColorSyncProfileCopyData(void);
 void* ColorSyncProfileCopyDescriptionString(void);
 void* ColorSyncProfileCopyHeader(void);
 void* ColorSyncProfileCopyLocalizedDescriptionString(void);
 void* ColorSyncProfileCopyLocalizedStringDictionary(void);
-void* ColorSyncProfileCopyTag(void);
-void* ColorSyncProfileCopyTagSignatures(void);
-void* ColorSyncProfileCreate(void);
 void* ColorSyncProfileCreateDeviceProfile(void);
 void* ColorSyncProfileCreateDisplayTransferTablesFromVCGT(void);
 void* ColorSyncProfileCreateLink(void);
@@ -95,7 +90,6 @@ void* ColorSyncProfileFromCMProfile(void);
 void* ColorSyncProfileGetData(void);
 void* ColorSyncProfileGetDisplayTransferFormulaFromVCGT(void);
 void* ColorSyncProfileGetMD5(void);
-void* ColorSyncProfileGetTypeID(void);
 void* ColorSyncProfileGetURL(void);
 void* ColorSyncProfileInstall(void);
 void* ColorSyncProfileIsWideGamut(void);
@@ -133,6 +127,17 @@ void* ColorSyncVerifyGenericLabData(void);
 void* ColorSyncVerifySRGBData(void);
 
 // fixed-up declarations
+
+// GUESS: the pages name ColorSyncProfileRef but not its struct tag or constness; this is a plain pointer to an
+// opaque struct.
+typedef struct __ColorSyncProfile* ColorSyncProfileRef;
+
+CFTypeID ColorSyncProfileGetTypeID(void);
+ColorSyncProfileRef ColorSyncProfileCreate(CFDataRef data, CFErrorRef* error);
+CFDataRef ColorSyncProfileCopyData(ColorSyncProfileRef prof, CFErrorRef* error);
+bool ColorSyncProfileContainsTag(ColorSyncProfileRef prof, CFStringRef signature);
+CFDataRef ColorSyncProfileCopyTag(ColorSyncProfileRef prof, CFStringRef signature);
+CFArrayRef ColorSyncProfileCopyTagSignatures(ColorSyncProfileRef prof);
 
 CFUUIDRef ColorSyncCreateUUIDFromUInt32(unsigned int uuid);
 bool ColorSyncRegisterDevice(CFStringRef deviceClass, CFUUIDRef uuid, CFDictionaryRef info);

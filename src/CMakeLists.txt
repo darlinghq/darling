@@ -562,6 +562,9 @@ if (COMPONENT_gui)
 
 	add_subdirectory(external/cocotron)
 
+	# /System/Library/Fonts
+	add_subdirectory(fonts)
+
 	add_subdirectory(CoreAudio)
 	add_subdirectory(external/cups)
 	add_subdirectory(pboard)

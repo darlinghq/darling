@@ -20,6 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <LaunchServices/LaunchServices.h>
 #include <CarbonCore/MacErrors.h>
+#include "LSLaunch.h"
 #include <stdio.h>
 
 OSStatus
@@ -62,7 +63,10 @@ LSOpenURLsWithRole(
 		spec.passThruParams = NULL; // passThruParams expects an AEDesc*, not CFArrayRef
 	}
 
-	OSStatus status = LSOpenFromURLSpec(&spec, NULL);
+	// A process that is started gets argv after its executable's path, and environment on top of
+	// the session's environment.
+	OSStatus status = _LSOpenFromURLSpecWithParameters(&spec,
+		inAppParams ? inAppParams->argv : NULL, inAppParams ? inAppParams->environment : NULL, NULL);
 	if (appURL)
 		CFRelease(appURL);
 

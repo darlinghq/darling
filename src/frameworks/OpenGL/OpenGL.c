@@ -16,6 +16,7 @@
 #include <OpenGL/CGLInternal.h>
 #include <CoreFoundation/CFDictionary.h>
 #include <CoreFoundation/CFRunLoop.h>
+#include <CoreFoundation/CFNotificationCenter.h>
 #include <sys/time.h>
 #include <IOSurface/IOSurface.h>
 #include <IOSurface/IOSurfacePriv.h>
@@ -870,7 +871,33 @@ struct _CGLWindow {
     EGLDisplay display;
     EGLConfig config;
     EGLSurface surface;
+    // The window-system handle the surface was made for, and the list of live
+    // windows (guarded by g_windowsMutex) that a swap uses to find it.
+    void *native_window;
+    struct _CGLWindow *next;
 };
+
+static pthread_mutex_t g_windowsMutex = PTHREAD_MUTEX_INITIALIZER;
+static struct _CGLWindow *g_windows;
+
+// After a swap on a window surface, tells whoever presents that native
+// window (its window-system backend, which lives above this framework) that a
+// new frame is ready. The notification is posted on the swapping thread to the
+// local notification center, with the native window handle as its object.
+static void postWindowDidSwap(EGLSurface surface) {
+    void *native = NULL;
+    pthread_mutex_lock(&g_windowsMutex);
+    for (struct _CGLWindow *window = g_windows; window != NULL; window = window->next) {
+        if (window->surface == surface) {
+            native = window->native_window;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&g_windowsMutex);
+    if (native != NULL)
+        CFNotificationCenterPostNotification(CFNotificationCenterGetLocalCenter(),
+            kCGLWindowDidSwapNotification, native, NULL, true);
+}
 
 static CGLWindowRef createWindow(EGLDisplay owner, EGLConfig owner_config, void *native_window) {
     if (!native_window || owner == EGL_NO_DISPLAY)
@@ -886,6 +913,11 @@ static CGLWindowRef createWindow(EGLDisplay owner, EGLConfig owner_config, void 
         free(window);
         return NULL;
     }
+    window->native_window = native_window;
+    pthread_mutex_lock(&g_windowsMutex);
+    window->next = g_windows;
+    g_windows = window;
+    pthread_mutex_unlock(&g_windowsMutex);
     return window;
 }
 
@@ -968,6 +1000,14 @@ CGL_EXPORT void CGLDestroyWindow(CGLWindowRef ref) {
         p_eglMakeCurrent(current->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, current->egl_context);
     }
 
+    pthread_mutex_lock(&g_windowsMutex);
+    for (struct _CGLWindow **link = &g_windows; *link != NULL; link = &(*link)->next) {
+        if (*link == window) {
+            *link = window->next;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&g_windowsMutex);
     p_eglDestroySurface(window->display, window->surface);
     free(window);
 }
@@ -1983,6 +2023,8 @@ CGLError CGLFlushDrawable(CGLContextObj context) {
     if (context->paced)
         cgl_swap_pace(&context->pacer, context->swap_interval);
     EGLBoolean ok = p_eglSwapBuffers(context->egl_display, surf);
+    if (ok)
+        postWindowDidSwap(surf);
     return ok ? kCGLNoError : kCGLBadDrawable;
 }
 
@@ -2138,6 +2180,13 @@ static _Atomic size_t g_bindingCount;
 // Orders the notes of rendering. Guarded by g_surfaceBindingsMutex.
 static uint64_t g_renderSerial;
 
+// The share group number is the identity of the group (a number is never
+// reused, so it stays distinct from the groups of later contexts); the
+// group object an application sees is that number.
+CGLShareGroupObj CGLGetShareGroup(CGLContextObj ctx) {
+    return ctx ? (CGLShareGroupObj)(uintptr_t) ctx->share_group : NULL;
+}
+
 // Whether the two contexts share textures.
 static int sharesTextures(CGLContextObj a, CGLContextObj b) {
     return a == b || a->share_group == b->share_group;
@@ -2149,16 +2198,18 @@ static int sharesTextures(CGLContextObj a, CGLContextObj b) {
 static void reportUnflushedBinding(const struct surface_binding *binding) {
     if (!binding->unflushed)
         return;
-    if (!binding->gpuBuffer) {
-        _IOSurfaceGPUDidWriteMemory(binding->surface);
-        return;
-    }
-    // IOSurface copies the buffer into the memory, so the rendering has to
-    // be complete; it can only be waited for where the context is current.
+    // The rendering has to be complete before it is reported (IOSurface
+    // copies a buffer into the memory, and a reader of the memory has no
+    // other way to wait for it); it can only be waited for where the
+    // context is current.
     CGLContextObj current = CGLGetCurrentContext();
-    if (current != NULL && sharesTextures(current, binding->context))
+    if (current != NULL && sharesTextures(current, binding->context)
+        && (binding->gpuBuffer || _IOSurfaceIsShared(binding->surface)))
         host_glFinish();
-    _IOSurfaceGPUDidWriteBuffer(binding->surface);
+    if (binding->gpuBuffer)
+        _IOSurfaceGPUDidWriteBuffer(binding->surface);
+    else
+        _IOSurfaceGPUDidWriteMemory(binding->surface);
 }
 
 // Removes the binding at index i. Called with the bindings locked.
@@ -4074,8 +4125,8 @@ static void writeBackRendered(CGLContextObj context, GLuint texture) {
 
 // Rendering into the memory or the GPU buffer of surfaces through textures
 // that context, which is current, shares has been submitted: the surfaces'
-// contents have changed. Rendering into a GPU buffer is finished first, as
-// IOSurface copies it into the memory.
+// contents have changed. The rendering is finished first: IOSurface copies a
+// GPU buffer into the memory, and readers of the memory cannot wait for it.
 static void reportMemoryWrites(CGLContextObj context) {
     pthread_mutex_lock(&g_surfaceBindingsMutex);
     int finished = 0;
@@ -4090,14 +4141,19 @@ static void reportMemoryWrites(CGLContextObj context) {
                 && sharesTextures(g_surfaceBindings[j].context, context))
                 g_surfaceBindings[j].unflushed = 0;
         }
-        if (binding->gpuBuffer) {
-            if (!finished)
-                host_glFinish();
+        // glFlush only submits the work, but on macOS the memory holds the
+        // rendering once the producer has flushed. A reader in this process
+        // waits for it in its lock; one in another process cannot wait for
+        // this context's work, so for a surface that another process may
+        // map the work is finished (once per call) before the report.
+        if (!finished && (binding->gpuBuffer || _IOSurfaceIsShared(binding->surface))) {
+            host_glFinish();
             finished = 1;
-            _IOSurfaceGPUDidWriteBuffer(binding->surface);
-        } else {
-            _IOSurfaceGPUDidWriteMemory(binding->surface);
         }
+        if (binding->gpuBuffer)
+            _IOSurfaceGPUDidWriteBuffer(binding->surface);
+        else
+            _IOSurfaceGPUDidWriteMemory(binding->surface);
     }
     pthread_mutex_unlock(&g_surfaceBindingsMutex);
 }

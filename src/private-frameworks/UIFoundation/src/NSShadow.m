@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSShadow.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/NSRaise.h>
+#import <Foundation/NSKeyedArchiver.h>
 #import <UIFoundation/UIFoundationGraphicsContext.h>
 
 // The shadow colour is an AppKit colour object, which gives its colour as a
@@ -43,13 +44,59 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     [super dealloc];
 }
 
+// Keyed archives keep the offset, blur radius and colour under the keys
+// below; a zero offset component or blur radius is left out, and so is the
+// colour while it is the default one. A colour set to nil is archived as nil.
+// Keys and omissions as NSKeyedArchiver writes them on macOS 10.14.4 and
+// 26.7.3. Test: tests/shadow-coding.m
+static NSString *const NSShadowHorizKey = @"NSShadowHoriz";
+static NSString *const NSShadowVertKey = @"NSShadowVert";
+static NSString *const NSShadowBlurRadiusKey = @"NSShadowBlurRadius";
+static NSString *const NSShadowColorKey = @"NSShadowColor";
+
++ (BOOL) supportsSecureCoding {
+    return YES;
+}
+
 - initWithCoder: (NSCoder *) coder {
-    NSUnimplementedMethod();
+    if (![coder allowsKeyedCoding]) {
+        NSUnimplementedMethod();
+        [self release];
+        return nil;
+    }
+    self = [self init];
+    if (self == nil)
+        return nil;
+
+    _offset = NSMakeSize([coder decodeDoubleForKey: NSShadowHorizKey], [coder decodeDoubleForKey: NSShadowVertKey]);
+    _blurRadius = [coder decodeDoubleForKey: NSShadowBlurRadiusKey];
+    if ([coder containsValueForKey: NSShadowColorKey]) {
+        Class colorClass = NSClassFromString(@"NSColor");
+        id color = colorClass != Nil ? [coder decodeObjectOfClass: colorClass forKey: NSShadowColorKey]
+                                     : [coder decodeObjectForKey: NSShadowColorKey];
+
+        [_color release];
+        _color = [color retain];
+    }
     return self;
 }
 
 - (void) encodeWithCoder: (NSCoder *) coder {
-    NSUnimplementedMethod();
+    if (![coder allowsKeyedCoding]) {
+        NSUnimplementedMethod();
+        return;
+    }
+    if (_offset.width != 0)
+        [coder encodeDouble: _offset.width forKey: NSShadowHorizKey];
+    if (_offset.height != 0)
+        [coder encodeDouble: _offset.height forKey: NSShadowVertKey];
+    if (_blurRadius != 0)
+        [coder encodeDouble: _blurRadius forKey: NSShadowBlurRadiusKey];
+
+    id defaultColor = _UIFoundationTextColorForRole(_UIFoundationTextColorRoleShadow);
+
+    if (_color == nil || ![_color isEqual: defaultColor])
+        [coder encodeObject: _color forKey: NSShadowColorKey];
 }
 
 - copyWithZone: (NSZone *) zone {

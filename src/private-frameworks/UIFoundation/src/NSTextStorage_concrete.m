@@ -126,11 +126,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return [[result retain] autorelease];
 }
 
-static inline int
+static inline NSInteger
 replaceCharactersInRangeWithString(NSTextStorage_concrete *self, NSRange range,
                                    NSString *string)
 {
-    int delta = [string length] - range.length;
+    NSInteger delta = (NSInteger) [string length] - (NSInteger) range.length;
 
     [self->_string replaceCharactersInRange: range withString: string];
 
@@ -170,9 +170,9 @@ replaceCharactersInRangeWithAttributedString(NSTextStorage_concrete *self,
                                              NSAttributedString *other)
 {
     NSString *string = [other string];
-    unsigned location = 0;
-    unsigned limit = [string length];
-    int delta = replaceCharactersInRangeWithString(self, replaced, string);
+    NSUInteger location = 0;
+    NSUInteger limit = [string length];
+    NSInteger delta = replaceCharactersInRangeWithString(self, replaced, string);
 
     while (location < limit) {
         NSRange effectiveRange;
@@ -200,7 +200,7 @@ replaceCharactersInRangeWithAttributedString(NSTextStorage_concrete *self,
 - (void) replaceCharactersInRange: (NSRange) range
                        withString: (NSString *) string
 {
-    int delta = replaceCharactersInRangeWithString(self, range, string);
+    NSInteger delta = replaceCharactersInRangeWithString(self, range, string);
     [self edited: NSTextStorageEditedAttributes | NSTextStorageEditedCharacters
                      range: range
             changeInLength: delta];

@@ -274,6 +274,7 @@ add_framework(SceneKit
 		src/MDLMaterial+SCNModelIO.m
 		src/NSString+SCNExtensions.m
 		src/SceneKit.m
+		src/SceneKitTypes.m
 
 	DEPENDENCIES
 		system

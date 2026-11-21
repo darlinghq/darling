@@ -86,6 +86,10 @@ const NSErrorDomain AVFoundationErrorDomain = @"AVFoundationErrorDomain";
 const AVFileType AVFileTypeMPEG4 = @"public.mpeg-4";
 const AVFileType AVFileTypeQuickTimeMovie = @"com.apple.quicktime-movie";
 
+const AVAudioTimePitchAlgorithm AVAudioTimePitchAlgorithmTimeDomain = @"TimeDomain";
+const AVAudioTimePitchAlgorithm AVAudioTimePitchAlgorithmSpectral = @"Spectral";
+const AVAudioTimePitchAlgorithm AVAudioTimePitchAlgorithmVarispeed = @"Varispeed";
+
 const AVLayerVideoGravity AVLayerVideoGravityResize = @"AVLayerVideoGravityResize";
 const AVLayerVideoGravity AVLayerVideoGravityResizeAspect = @"AVLayerVideoGravityResizeAspect";
 const AVLayerVideoGravity AVLayerVideoGravityResizeAspectFill = @"AVLayerVideoGravityResizeAspectFill";
