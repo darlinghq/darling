@@ -13,8 +13,9 @@ add_darling_executable(DiskImageMounter
 	main.m
 	DIMAppDelegate.m
 	DIMImageOpener.m
+	DIMLicenseWindowController.m
 )
-set_source_files_properties(main.m DIMAppDelegate.m DIMImageOpener.m PROPERTIES COMPILE_FLAGS -fobjc-arc)
+set_source_files_properties(main.m DIMAppDelegate.m DIMImageOpener.m DIMLicenseWindowController.m PROPERTIES COMPILE_FLAGS -fobjc-arc)
 target_include_directories(DiskImageMounter PRIVATE ${CMAKE_SOURCE_DIR}/src/external/darling-dmg/include)
 target_link_libraries(DiskImageMounter darling-dmg AppKit Foundation objc)
 
