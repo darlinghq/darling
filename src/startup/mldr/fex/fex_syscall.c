@@ -11,6 +11,7 @@
 #include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
@@ -385,7 +386,7 @@ static bool signal_owned_by_jit(int sig)
 
 static long guest_rt_sigaction(long sig, uintptr_t new_action, uintptr_t old_action, long sigsetsize)
 {
-	if (sig <= 0 || sig >= GUEST_NSIG || sig == SIGKILL || sig == SIGSTOP)
+	if (sig <= 0 || sig >= GUEST_NSIG || (new_action && (sig == SIGKILL || sig == SIGSTOP)))
 		return -EINVAL;
 	if (sigsetsize != sizeof(uint64_t))
 		return -EINVAL;
@@ -424,6 +425,43 @@ static long guest_rt_sigaction(long sig, uintptr_t new_action, uintptr_t old_act
 	if (ret == 0 && old_action)
 		ret = fex_copy_to_guest((void*)old_action, &previous, sizeof(previous));
 	return ret;
+}
+
+// The guest may block signals, but the host's SIGBUS/SIGSEGV/... handlers must stay deliverable: a
+// synchronous fault in generated code with its signal blocked kills the process instead of being
+// patched, so those signals are dropped from every mask the guest sets.
+static long guest_rt_sigprocmask(long how, uintptr_t new_set, uintptr_t old_set, long sigsetsize)
+{
+	if (sigsetsize != sizeof(uint64_t))
+		return -EINVAL;
+
+	sigset_t host_new;
+	sigset_t host_old;
+	sigemptyset(&host_new);
+	if (new_set) {
+		uint64_t mask;
+		long rc = fex_copy_from_guest(&mask, (void*)new_set, sizeof(mask));
+		if (rc != 0)
+			return rc;
+		for (int sig = 1; sig < GUEST_NSIG; sig++) {
+			if ((mask & (1ull << (sig - 1))) && !signal_owned_by_jit(sig))
+				sigaddset(&host_new, sig);
+		}
+	}
+
+	int err = pthread_sigmask((int)how, new_set ? &host_new : NULL, &host_old);
+	if (err != 0)
+		return -err;
+
+	if (old_set) {
+		uint64_t mask = 0;
+		for (int sig = 1; sig < GUEST_NSIG; sig++) {
+			if (sigismember(&host_old, sig) == 1)
+				mask |= 1ull << (sig - 1);
+		}
+		return fex_copy_to_guest((void*)old_set, &mask, sizeof(mask));
+	}
+	return 0;
 }
 
 // x86_64 and arm64 Linux number four of the open flags differently. The guest uses the x86_64 values.
@@ -498,6 +536,10 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 	switch (nr) {
 		case 13: // rt_sigaction
 			ret = guest_rt_sigaction(a1, (uintptr_t)a2, (uintptr_t)a3, a4);
+			break;
+
+		case 14: // rt_sigprocmask
+			ret = guest_rt_sigprocmask(a1, (uintptr_t)a2, (uintptr_t)a3, a4);
 			break;
 
 		case 158: // arch_prctl
