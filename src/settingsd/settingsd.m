@@ -29,23 +29,25 @@
 
 static BOOL s_verbose = NO;
 
-// QUIRK: Predefined macOS Mojave 10.14 sRGB accent presets (-1 Graphite to 6 Pink)
-// and their corresponding highlight float strings.
-// Evidence: measured from macOS 10.14 Mojave General preference pane (tier 2, MAC-EVIDENCE).
+// QUIRK: Predefined macOS accent presets (-1 Graphite to 6 Pink) in the light appearance, and their
+// corresponding highlight float strings.
+// Evidence: black-box reads of +[NSColor controlAccentColor] in sRGB for each AppleAccentColor value on macOS
+// 10.14.4 (tier 2). The highlight strings were not checked against a Mac.
+// Test: tests/settingsd-desktop-appearance.py (host portal mapping) and tests/src/appearance_theme_end_to_end.m
 static const struct {
     int code;
     double r, g, b;
     const char *name;
     const char *highlight;
 } s_accent_presets[] = {
-    { -1, 0.55686, 0.55686, 0.57647, "Graphite", "0.847059 0.847059 0.847059 Graphite" },
-    {  0, 1.00000, 0.23137, 0.18824, "Red",      "1.000000 0.733333 0.721569 Red" },
-    {  1, 1.00000, 0.58431, 0.00000, "Orange",   "1.000000 0.874510 0.701961 Orange" },
-    {  2, 1.00000, 0.80000, 0.00000, "Yellow",   "1.000000 0.937255 0.690196 Yellow" },
-    {  3, 0.15686, 0.80392, 0.25490, "Green",    "0.752941 0.964706 0.678431 Green" },
+    { -1, 0.59600, 0.59600, 0.59600, "Graphite", "0.847059 0.847059 0.847059 Graphite" },
+    {  0, 0.87800, 0.22000, 0.24300, "Red",      "1.000000 0.733333 0.721569 Red" },
+    {  1, 0.96900, 0.51000, 0.10600, "Orange",   "1.000000 0.874510 0.701961 Orange" },
+    {  2, 0.98800, 0.72200, 0.15300, "Yellow",   "1.000000 0.937255 0.690196 Yellow" },
+    {  3, 0.38400, 0.72900, 0.27500, "Green",    "0.752941 0.964706 0.678431 Green" },
     {  4, 0.00000, 0.47843, 1.00000, "Blue",     "0.698039 0.843137 1.000000 Blue" },
-    {  5, 0.68627, 0.32157, 0.87059, "Purple",   "0.968627 0.831373 1.000000 Purple" },
-    {  6, 1.00000, 0.17647, 0.33333, "Pink",     "1.000000 0.749020 0.823529 Pink" },
+    {  5, 0.58400, 0.23900, 0.58800, "Purple",   "0.968627 0.831373 1.000000 Purple" },
+    {  6, 0.96900, 0.31000, 0.62000, "Pink",     "1.000000 0.749020 0.823529 Pink" },
 };
 
 static int find_closest_accent(double r, double g, double b, const char **out_highlight, const char **out_name) {

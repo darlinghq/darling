@@ -133,11 +133,14 @@ static void post_theme_changed_notification(void) {
 }
 
 // Test helper objects for KVO and view callbacks
-@interface TestAppearanceObserver : NSObject
+@interface TestAppearanceObserver : NSObject {
+    NSInteger _kvoCallCount;
+}
 @property (nonatomic) NSInteger kvoCallCount;
 @end
 
 @implementation TestAppearanceObserver
+@synthesize kvoCallCount = _kvoCallCount;
 - (void) observeValueForKeyPath: (NSString *) keyPath
                        ofObject: (id) object
                          change: (NSDictionary *) change
@@ -148,11 +151,14 @@ static void post_theme_changed_notification(void) {
 }
 @end
 
-@interface TestNotificationView : NSView
+@interface TestNotificationView : NSView {
+    NSInteger _viewCallbackCount;
+}
 @property (nonatomic) NSInteger viewCallbackCount;
 @end
 
 @implementation TestNotificationView
+@synthesize viewCallbackCount = _viewCallbackCount;
 - (void) viewDidChangeEffectiveAppearance {
     [super viewDidChangeEffectiveAppearance];
     _viewCallbackCount++;
@@ -214,12 +220,12 @@ int main(int argc, char *argv[]) {
             NSColor *rgbText = [textColor colorUsingColorSpaceName: NSCalibratedWhiteColorSpace];
             test_check("textColor has high brightness in DarkAqua", [rgbText whiteComponent] > 0.8f);
 
-            // Verify purple accent color (Mojave measured 0.686, 0.322, 0.871)
+            // Verify purple accent color (read on macOS 10.14.4: 0.584, 0.239, 0.588 in Aqua, 0.647, 0.314, 0.655 in DarkAqua)
             NSColor *accent = [NSColor controlAccentColor];
             NSColor *rgbAccent = [accent colorUsingColorSpaceName: NSCalibratedRGBColorSpace];
             CGFloat r = 0, g = 0, b = 0, a = 0;
             [rgbAccent getRed: &r green: &g blue: &b alpha: &a];
-            test_check("controlAccentColor is Purple", (r > 0.60f && g < 0.40f && b > 0.80f));
+            test_check("controlAccentColor is Purple", (r > 0.55f && r < 0.70f && g > 0.20f && g < 0.35f && b > 0.55f && b < 0.70f));
 
             // 2. Switch back to Light appearance + Orange accent
             set_global_pref(CFSTR("AppleInterfaceStyle"), NULL);
@@ -244,7 +250,7 @@ int main(int argc, char *argv[]) {
             accent = [NSColor controlAccentColor];
             rgbAccent = [accent colorUsingColorSpaceName: NSCalibratedRGBColorSpace];
             [rgbAccent getRed: &r green: &g blue: &b alpha: &a];
-            test_check("controlAccentColor is Orange", (r > 0.90f && g > 0.50f && b < 0.10f));
+            test_check("controlAccentColor is Orange", (r > 0.90f && g > 0.45f && g < 0.55f && b < 0.15f));
 
             // 3. Test FollowHostAppearance opt-out
             CFPreferencesSetValue(CFSTR("FollowHostAppearance"), kCFBooleanFalse,
