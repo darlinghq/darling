@@ -106,6 +106,30 @@ key() { # <key>: to the window window() found, once it has had time to become ke
 	sleep 1
 }
 
+shot() { # <name>: an image of the window window() found, in $work/<name>.png
+	if [ $display = x11 ]; then
+		import -silent -window "$WID" "$work/$1.png" 2>/dev/null
+	else
+		local rect
+		rect=$(swaymsg -t get_tree | python3 -I -c '
+import json, sys
+want = int(sys.argv[1])
+def walk(n):
+    if n.get("id") == want:
+        r = n["rect"]
+        print("%d,%d %dx%d" % (r["x"], r["y"], r["width"], r["height"]))
+    for c in n.get("nodes", []) + n.get("floating_nodes", []):
+        walk(c)
+walk(json.load(sys.stdin))' "$WID")
+		grim -g "$rect" "$work/$1.png" 2>/dev/null
+	fi
+}
+differ() { # <name> <name>: 0 if the two images differ
+	local n
+	n=$(compare -metric AE "$work/$1.png" "$work/$2.png" null: 2>&1 | cut -d' ' -f1)
+	[ -n "$n" ] && [ "${n%.*}" != 0 ] 2>/dev/null
+}
+
 # The folders
 mkdir -p "$work/F/sub" "$work/G"
 touch "$work/F/one.txt" "$work/F/two.txt" "$work/G/three.txt"
@@ -128,6 +152,30 @@ guest open-f2 "open '$gw/F'"
 sleep 3
 n=$(windows F)
 if [ "$n" = 1 ]; then pass "open twice"; else fail "open twice: $n windows titled F"; fi
+
+# views: Command-2 shows the list, Command-1 the icons again; the window stays, titled F (the in-process tests check
+# what each view shows)
+if window F 5; then
+	sleep 2
+	shot icons
+	key cmd+2
+	sleep 1
+	shot list
+	key cmd+1
+	sleep 1
+	shot icons-again
+	if ! differ icons list; then
+		fail "views: the window looks the same after Command-2"
+	elif ! differ list icons-again; then
+		fail "views: the window looks the same after Command-1"
+	elif [ "$(windows F)" != 1 ]; then
+		fail "views: $(windows F) windows titled F"
+	else
+		pass "views"
+	fi
+else
+	fail "views: no window F"
+fi
 
 # quit: closing the last window (Command-W) ends Finder
 if window F 5; then

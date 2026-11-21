@@ -1,4 +1,4 @@
-// CFLAGS: -framework Foundation -framework AppKit -fobjc-arc -Isrc/Finder src/Finder/FinderDirectory.m src/Finder/FinderIconViewController.m src/Finder/FinderWindowController.m
+// CFLAGS: -framework Foundation -framework AppKit -fobjc-arc -Isrc/Finder src/Finder/FinderDirectory.m src/Finder/FinderIconViewController.m src/Finder/FinderListViewController.m src/Finder/FinderWindowController.m
 // ARGS: "$(mktemp -d)/w"
 // Copyright (C) 2026 Lubos Dolezel
 //
@@ -39,6 +39,19 @@ static NSCollectionView *iconView(NSView *view)
     return nil;
 }
 
+// The first view of that class under view that is not hidden
+static NSView *findView(NSView *view, Class cls)
+{
+    if ([view isKindOfClass: cls] && ![view isHiddenOrHasHiddenAncestor])
+        return view;
+    for (NSView *subview in [view subviews]) {
+        NSView *found = findView(subview, cls);
+        if (found != nil)
+            return found;
+    }
+    return nil;
+}
+
 static void spin(void)
 {
     [[NSRunLoop currentRunLoop] runUntilDate: [NSDate dateWithTimeIntervalSinceNow: 0.2]];
@@ -71,9 +84,11 @@ int main(int argc, char **argv)
         expect([[controller.folderURL path] isEqual: folder], @"folderURL is the folder");
         expect([window.title isEqual: [fm displayNameAtPath: folder]],
                [NSString stringWithFormat: @"the title is the folder's display name (%@)", window.title]);
-        NSSize size = [window contentRectForFrameRect: window.frame].size;
-        expect(size.width == 800 && size.height == 500,
-               [NSString stringWithFormat: @"a new window is 800x500 (%@)", NSStringFromSize(size)]);
+        // The area the toolbar and title bar leave: 800x500 (macOS 10.14), or taller where the toolbar makes the
+        // window grow (macOS 26 gives 532)
+        NSSize size = window.contentLayoutRect.size;
+        expect(size.width == 800 && size.height >= 500 && size.height <= 540,
+               [NSString stringWithFormat: @"a new window's content is 800x500 or a little taller (%@)", NSStringFromSize(size)]);
 
         NSCollectionView *icons = iconView(window.contentView);
         [window.contentView layoutSubtreeIfNeeded];
@@ -103,8 +118,30 @@ int main(int argc, char **argv)
         expect([names(controller.selectedItems) isEqual: (@[ @"b.txt" ])],
                [NSString stringWithFormat: @"items of another folder are ignored (%@)", names(controller.selectedItems)]);
 
-        // Showing another folder
+        // Switching views keeps the selection; the list view shows the same items
+        expect(controller.viewStyle == FinderViewStyleIcons, @"a new window uses the icon view");
+        [controller selectItems: @[ a, c ]];
+        controller.viewStyle = FinderViewStyleList;
+        spin();
+        NSOutlineView *list = (NSOutlineView *) findView(window.contentView, [NSOutlineView class]);
+        expect(list != nil && [list numberOfRows] == 3, @"the list view shows the folder's three items");
+        expect([names(controller.selectedItems) isEqual: (@[ @"a.txt", @"c.txt" ])],
+               [NSString stringWithFormat: @"switching to the list keeps the selection (%@)", names(controller.selectedItems)]);
+        expect([[list selectedRowIndexes] count] == 2, @"the list view shows it");
+        expect(![list isHiddenOrHasHiddenAncestor] && [icons isHiddenOrHasHiddenAncestor],
+               @"the list view is shown instead of the icon view");
+        controller.viewStyle = FinderViewStyleIcons;
+        spin();
+        expect([names(controller.selectedItems) isEqual: (@[ @"a.txt", @"c.txt" ])] && [icons.selectionIndexPaths count] == 2,
+               [NSString stringWithFormat: @"switching back keeps it (%@)", names(controller.selectedItems)]);
+        controller.viewStyle = FinderViewStyleList;
+
+        // Showing another folder keeps the view
         [controller showFolder: [NSURL fileURLWithPath: other]];
+        spin();
+        expect(controller.viewStyle == FinderViewStyleList && [list numberOfRows] == 1,
+               @"showFolder: keeps the list view and shows the other folder in it");
+        controller.viewStyle = FinderViewStyleIcons;
         spin();
         expect([window.title isEqual: [fm displayNameAtPath: other]], @"showFolder: changes the title");
         expect([icons numberOfItemsInSection: 0] == 1 && [controller.selectedItems count] == 0,

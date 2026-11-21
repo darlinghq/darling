@@ -20,10 +20,15 @@
 #import "FinderWindowController.h"
 #import "FinderDirectory.h"
 #import "FinderIconViewController.h"
+#import "FinderListViewController.h"
+
+static NSToolbarItemIdentifier const FinderViewStyleItem = @"FinderViewStyle";
 
 @implementation FinderWindowController {
     FinderDirectory *_directory;
     FinderIconViewController *_icons;
+    FinderListViewController *_list;
+    NSSegmentedControl *_viewControl;
 }
 
 - (instancetype)initWithFolderURL:(NSURL *)folder
@@ -38,17 +43,30 @@
     self = [super initWithWindow:window];
     if (self != nil) {
         window.delegate = self;
-        _icons = [[FinderIconViewController alloc] init];
         __weak FinderWindowController *weakSelf = self;
-        _icons.openItem = ^(NSURL *item) {
+        void (^open)(NSURL *) = ^(NSURL *item) {
             FinderWindowController *controller = weakSelf;
             if (controller.openItem != nil)
                 controller.openItem(item);
         };
-        NSView *content = _icons.view;
-        content.frame = [window.contentView bounds];
-        content.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-        [window.contentView addSubview:content];
+
+        _icons = [[FinderIconViewController alloc] init];
+        _icons.openItem = open;
+        _list = [[FinderListViewController alloc] init];
+        _list.openItem = open;
+        for (NSView *content in @[ _icons.view, _list.view ]) {
+            content.frame = [window.contentView bounds];
+            content.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+            [window.contentView addSubview:content];
+        }
+        _list.view.hidden = YES;
+
+        NSToolbar *toolbar = [[NSToolbar alloc] initWithIdentifier:@"FinderWindow"];
+        toolbar.delegate = self;
+        toolbar.displayMode = NSToolbarDisplayModeIconOnly;
+        toolbar.allowsUserCustomization = NO;
+        window.toolbar = toolbar;
+
         [self showFolder:folder];
     }
     return self;
@@ -62,16 +80,96 @@
     self.window.title = [FinderDirectory displayNameForURL:_folderURL];
     self.window.representedURL = _folderURL;
     _icons.items = _directory.items;
+    _list.items = _directory.items;
 }
 
 - (void)selectItems:(NSArray<NSURL *> *)items
 {
-    [_icons selectItems:items];
+    if (_viewStyle == FinderViewStyleList)
+        [_list selectItems:items];
+    else
+        [_icons selectItems:items];
 }
 
 - (NSArray<NSURL *> *)selectedItems
 {
-    return _icons.selectedItems;
+    return _viewStyle == FinderViewStyleList ? _list.selectedItems : _icons.selectedItems;
+}
+
+#pragma mark Views
+
+- (void)setViewStyle:(FinderViewStyle)style
+{
+    if (style == _viewStyle)
+        return;
+    NSArray<NSURL *> *selected = self.selectedItems;
+    _viewStyle = style;
+    _icons.view.hidden = style != FinderViewStyleIcons;
+    _list.view.hidden = style != FinderViewStyleList;
+    [self selectItems:selected];
+    [self.window makeFirstResponder:style == FinderViewStyleList ? (NSView *) _list.outlineView
+                                                                 : (NSView *) _icons.collectionView];
+    _viewControl.selectedSegment = style;
+}
+
+- (IBAction)showAsIcons:(id)sender
+{
+    self.viewStyle = FinderViewStyleIcons;
+}
+
+- (IBAction)showAsList:(id)sender
+{
+    self.viewStyle = FinderViewStyleList;
+}
+
+- (void)viewControlChanged:(NSSegmentedControl *)sender
+{
+    self.viewStyle = sender.selectedSegment == 1 ? FinderViewStyleList : FinderViewStyleIcons;
+}
+
+- (BOOL)validateMenuItem:(NSMenuItem *)item
+{
+    if (item.action == @selector(showAsIcons:))
+        item.state = _viewStyle == FinderViewStyleIcons ? NSControlStateValueOn : NSControlStateValueOff;
+    else if (item.action == @selector(showAsList:))
+        item.state = _viewStyle == FinderViewStyleList ? NSControlStateValueOn : NSControlStateValueOff;
+    return YES;
+}
+
+#pragma mark NSToolbarDelegate
+
+- (NSArray<NSToolbarItemIdentifier> *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar
+{
+    return @[ NSToolbarFlexibleSpaceItemIdentifier, FinderViewStyleItem ];
+}
+
+- (NSArray<NSToolbarItemIdentifier> *)toolbarAllowedItemIdentifiers:(NSToolbar *)toolbar
+{
+    return [self toolbarDefaultItemIdentifiers:toolbar];
+}
+
+- (NSToolbarItem *)toolbar:(NSToolbar *)toolbar
+        itemForItemIdentifier:(NSToolbarItemIdentifier)identifier
+    willBeInsertedIntoToolbar:(BOOL)flag
+{
+    if (![identifier isEqual:FinderViewStyleItem])
+        return nil;
+    _viewControl = [[NSSegmentedControl alloc] initWithFrame:NSMakeRect(0, 0, 110, 24)];
+    _viewControl.segmentCount = 2;
+    [_viewControl setLabel:@"Icons" forSegment:0];
+    [_viewControl setLabel:@"List" forSegment:1];
+    [_viewControl setWidth:52 forSegment:0];
+    [_viewControl setWidth:52 forSegment:1];
+    [[_viewControl cell] setTrackingMode:NSSegmentSwitchTrackingSelectOne];
+    _viewControl.target = self;
+    _viewControl.action = @selector(viewControlChanged:);
+    _viewControl.selectedSegment = _viewStyle;
+    NSToolbarItem *item = [[NSToolbarItem alloc] initWithItemIdentifier:identifier];
+    item.label = @"View";
+    item.paletteLabel = @"View";
+    item.toolTip = @"Show items as icons or in a list";
+    item.view = _viewControl;
+    return item;
 }
 
 @end

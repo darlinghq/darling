@@ -19,8 +19,13 @@
 
 #import <AppKit/AppKit.h>
 
+typedef NS_ENUM(NSInteger, FinderViewStyle) {
+    FinderViewStyleIcons,
+    FinderViewStyleList,
+};
+
 // A Finder window: one folder's items, titled with the folder's display name.
-@interface FinderWindowController : NSWindowController <NSWindowDelegate>
+@interface FinderWindowController : NSWindowController <NSWindowDelegate, NSToolbarDelegate>
 
 - (instancetype)initWithFolderURL:(NSURL *)folder;
 
@@ -34,6 +39,14 @@
 
 // In the order they are shown.
 @property (readonly) NSArray<NSURL *> *selectedItems;
+
+// How the items are shown; a new window shows icons. Switching keeps the selection, and the window keeps its view
+// while it shows other folders.
+@property (nonatomic) FinderViewStyle viewStyle;
+
+// View > as Icons (Command-1) and as List (Command-2), and the toolbar's view control
+- (IBAction)showAsIcons:(id)sender;
+- (IBAction)showAsList:(id)sender;
 
 // Called with an item the user opened (double-clicked).
 @property (copy) void (^openItem)(NSURL *item);

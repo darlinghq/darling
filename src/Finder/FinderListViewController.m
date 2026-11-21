@@ -1,0 +1,307 @@
+/*
+ * This file is part of Darling.
+ *
+ * Copyright (C) 2026 Lubos Dolezel
+ *
+ * Darling is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Darling is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#import "FinderListViewController.h"
+#import "FinderDirectory.h"
+
+static const CGFloat FinderListIconSize = 16;
+
+// What a row shows of an item, read once
+@interface FinderListEntry : NSObject
+@property (copy) NSString *name;
+@property (strong) NSDate *modified;
+@property long long size; // -1 for folders
+@property (copy) NSString *kind;
+@property BOOL folder;
+@end
+
+@implementation FinderListEntry
+@end
+
+// The Name column's cell: the item's icon, then its name. The item is the cell's represented object.
+@interface FinderNameCell : NSTextFieldCell
+@end
+
+@implementation FinderNameCell
+
++ (NSImage *)iconForURL:(NSURL *)url
+{
+    static NSCache *icons; // path -> icon
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        icons = [[NSCache alloc] init];
+    });
+    NSImage *icon = [icons objectForKey:[url path]];
+    if (icon == nil) {
+        icon = [[[NSWorkspace sharedWorkspace] iconForFile:[url path]] copy];
+        [icon setSize:NSMakeSize(FinderListIconSize, FinderListIconSize)];
+        if (icon != nil)
+            [icons setObject:icon forKey:[url path]];
+    }
+    return icon;
+}
+
+- (void)drawWithFrame:(NSRect)frame inView:(NSView *)view
+{
+    NSURL *url = [self representedObject];
+    if ([url isKindOfClass:[NSURL class]]) {
+        NSImage *icon = [FinderNameCell iconForURL:url];
+        NSRect iconRect = NSMakeRect(NSMinX(frame) + 2, NSMidY(frame) - FinderListIconSize / 2, FinderListIconSize,
+                                     FinderListIconSize);
+        [icon drawInRect:iconRect fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1
+              respectFlipped:YES hints:nil];
+        frame.origin.x += FinderListIconSize + 6;
+        frame.size.width -= FinderListIconSize + 6;
+    }
+    [super drawWithFrame:frame inView:view];
+}
+
+@end
+
+@implementation FinderListViewController {
+    NSOutlineView *_outlineView;
+    NSMutableDictionary<NSString *, NSArray<NSURL *> *> *_children;
+    NSMutableDictionary<NSString *, FinderListEntry *> *_entries;
+    NSDateFormatter *_dateFormatter;
+}
+
+- (instancetype)init
+{
+    self = [super initWithNibName:nil bundle:nil];
+    if (self != nil) {
+        _items = @[];
+        _children = [NSMutableDictionary dictionary];
+        _entries = [NSMutableDictionary dictionary];
+        _dateFormatter = [[NSDateFormatter alloc] init];
+        _dateFormatter.dateStyle = NSDateFormatterMediumStyle;
+        _dateFormatter.timeStyle = NSDateFormatterShortStyle;
+    }
+    return self;
+}
+
+- (NSTableColumn *)columnWithIdentifier:(NSString *)identifier title:(NSString *)title width:(CGFloat)width
+{
+    NSTableColumn *column = [[NSTableColumn alloc] initWithIdentifier:identifier];
+    [[column headerCell] setStringValue:title];
+    column.width = width;
+    column.minWidth = 40;
+    column.editable = NO;
+    column.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:identifier ascending:YES];
+    return column;
+}
+
+- (void)loadView
+{
+    NSScrollView *scroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, 0, 600, 400)];
+    scroll.hasVerticalScroller = YES;
+    scroll.hasHorizontalScroller = YES;
+    scroll.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+
+    _outlineView = [[NSOutlineView alloc] initWithFrame:[scroll bounds]];
+    NSTableColumn *name = [self columnWithIdentifier:@"name" title:@"Name" width:300];
+    FinderNameCell *nameCell = [[FinderNameCell alloc] initTextCell:@""];
+    nameCell.lineBreakMode = NSLineBreakByTruncatingMiddle;
+    name.dataCell = nameCell;
+    [_outlineView addTableColumn:name];
+    [_outlineView addTableColumn:[self columnWithIdentifier:@"modified" title:@"Date Modified" width:180]];
+    NSTableColumn *size = [self columnWithIdentifier:@"size" title:@"Size" width:90];
+    [[size dataCell] setAlignment:NSTextAlignmentRight];
+    [_outlineView addTableColumn:size];
+    [_outlineView addTableColumn:[self columnWithIdentifier:@"kind" title:@"Kind" width:160]];
+    _outlineView.outlineTableColumn = name;
+    _outlineView.allowsMultipleSelection = YES;
+    _outlineView.usesAlternatingRowBackgroundColors = YES;
+    _outlineView.sortDescriptors = @[ name.sortDescriptorPrototype ];
+    _outlineView.target = self;
+    _outlineView.doubleAction = @selector(openClickedRow:);
+    _outlineView.dataSource = self;
+    _outlineView.delegate = self;
+
+    scroll.documentView = _outlineView;
+    self.view = scroll;
+}
+
+- (NSOutlineView *)outlineView
+{
+    [self view];
+    return _outlineView;
+}
+
+- (void)setItems:(NSArray<NSURL *> *)items
+{
+    [_children removeAllObjects];
+    [_entries removeAllObjects];
+    _items = [self sorted:items];
+    [self.outlineView reloadData];
+    [self.outlineView deselectAll:nil];
+}
+
+#pragma mark Entries and sorting
+
+- (FinderListEntry *)entryForURL:(NSURL *)url
+{
+    FinderListEntry *entry = _entries[[url path]];
+    if (entry != nil)
+        return entry;
+
+    entry = [[FinderListEntry alloc] init];
+    NSDictionary<NSURLResourceKey, id> *values = [url resourceValuesForKeys:@[
+        NSURLIsDirectoryKey, NSURLContentModificationDateKey, NSURLFileSizeKey, NSURLLocalizedTypeDescriptionKey
+    ] error:NULL];
+    entry.name = [FinderDirectory displayNameForURL:url];
+    entry.modified = values[NSURLContentModificationDateKey];
+    entry.kind = values[NSURLLocalizedTypeDescriptionKey] ?: @"";
+    entry.folder = [values[NSURLIsDirectoryKey] boolValue]
+        && ![[NSWorkspace sharedWorkspace] isFilePackageAtPath:[url path]];
+    entry.size = entry.folder ? -1 : [values[NSURLFileSizeKey] longLongValue];
+    _entries[[url path]] = entry;
+    return entry;
+}
+
+- (NSComparisonResult)compare:(NSURL *)a with:(NSURL *)b key:(NSString *)key
+{
+    FinderListEntry *ea = [self entryForURL:a], *eb = [self entryForURL:b];
+    NSComparisonResult result = NSOrderedSame;
+    if ([key isEqual:@"modified"])
+        result = [(ea.modified ?: [NSDate distantPast]) compare:(eb.modified ?: [NSDate distantPast])];
+    else if ([key isEqual:@"size"])
+        result = ea.size < eb.size ? NSOrderedAscending : ea.size > eb.size ? NSOrderedDescending : NSOrderedSame;
+    else if ([key isEqual:@"kind"])
+        result = [ea.kind localizedStandardCompare:eb.kind];
+    if (result == NSOrderedSame)
+        result = [ea.name localizedStandardCompare:eb.name];
+    return result;
+}
+
+- (NSArray<NSURL *> *)sorted:(NSArray<NSURL *> *)urls
+{
+    NSSortDescriptor *descriptor = [self.outlineView.sortDescriptors firstObject];
+    NSString *key = descriptor.key ?: @"name";
+    BOOL ascending = descriptor != nil ? descriptor.ascending : YES;
+    return [urls sortedArrayUsingComparator:^NSComparisonResult(NSURL *a, NSURL *b) {
+        NSComparisonResult result = [self compare:a with:b key:key];
+        return ascending ? result : (NSComparisonResult) -result;
+    }];
+}
+
+- (NSArray<NSURL *> *)childrenOfItem:(NSURL *)item
+{
+    if (item == nil)
+        return _items;
+    NSArray<NSURL *> *children = _children[[item path]];
+    if (children == nil) {
+        FinderDirectory *directory = [[FinderDirectory alloc] initWithURL:item];
+        [directory reload:NULL];
+        children = [self sorted:directory.items];
+        _children[[item path]] = children;
+    }
+    return children;
+}
+
+#pragma mark Selection
+
+- (void)selectItems:(NSArray<NSURL *> *)items
+{
+    NSMutableSet<NSString *> *wanted = [NSMutableSet set];
+    for (NSURL *item in items)
+        [wanted addObject:[[item URLByStandardizingPath] path]];
+    NSMutableIndexSet *rows = [NSMutableIndexSet indexSet];
+    for (NSInteger row = 0; row < [self.outlineView numberOfRows]; row++) {
+        NSURL *item = [self.outlineView itemAtRow:row];
+        if ([wanted containsObject:[[item URLByStandardizingPath] path]])
+            [rows addIndex:row];
+    }
+    [self.outlineView selectRowIndexes:rows byExtendingSelection:NO];
+    if ([rows count] > 0)
+        [self.outlineView scrollRowToVisible:[rows firstIndex]];
+}
+
+- (NSArray<NSURL *> *)selectedItems
+{
+    NSMutableArray<NSURL *> *selected = [NSMutableArray array];
+    [[self.outlineView selectedRowIndexes] enumerateIndexesUsingBlock:^(NSUInteger row, BOOL *stop) {
+        NSURL *item = [self.outlineView itemAtRow:row];
+        if (item != nil)
+            [selected addObject:item];
+    }];
+    return selected;
+}
+
+- (void)openClickedRow:(id)sender
+{
+    NSInteger row = [self.outlineView clickedRow];
+    NSURL *item = row >= 0 ? [self.outlineView itemAtRow:row] : nil;
+    if (item != nil && _openItem != nil)
+        _openItem(item);
+}
+
+#pragma mark NSOutlineViewDataSource
+
+- (NSInteger)outlineView:(NSOutlineView *)outlineView numberOfChildrenOfItem:(id)item
+{
+    return [[self childrenOfItem:item] count];
+}
+
+- (id)outlineView:(NSOutlineView *)outlineView child:(NSInteger)index ofItem:(id)item
+{
+    return [self childrenOfItem:item][index];
+}
+
+- (BOOL)outlineView:(NSOutlineView *)outlineView isItemExpandable:(id)item
+{
+    return [self entryForURL:item].folder;
+}
+
+- (id)outlineView:(NSOutlineView *)outlineView objectValueForTableColumn:(NSTableColumn *)column byItem:(id)item
+{
+    FinderListEntry *entry = [self entryForURL:item];
+    NSString *identifier = [column identifier];
+    if ([identifier isEqual:@"modified"])
+        return entry.modified != nil ? [_dateFormatter stringFromDate:entry.modified] : @"--";
+    if ([identifier isEqual:@"size"])
+        return entry.folder ? @"--"
+                            : [NSByteCountFormatter stringFromByteCount:entry.size
+                                                             countStyle:NSByteCountFormatterCountStyleFile];
+    if ([identifier isEqual:@"kind"])
+        return entry.kind;
+    return entry.name;
+}
+
+- (void)outlineView:(NSOutlineView *)outlineView sortDescriptorsDidChange:(NSArray<NSSortDescriptor *> *)old
+{
+    NSArray<NSURL *> *selected = self.selectedItems;
+    _items = [self sorted:_items];
+    for (NSString *path in [_children allKeys])
+        _children[path] = [self sorted:_children[path]];
+    [outlineView reloadData];
+    [self selectItems:selected];
+}
+
+#pragma mark NSOutlineViewDelegate
+
+- (void)outlineView:(NSOutlineView *)outlineView
+    willDisplayCell:(id)cell
+     forTableColumn:(NSTableColumn *)column
+               item:(id)item
+{
+    if ([[column identifier] isEqual:@"name"])
+        [cell setRepresentedObject:item];
+}
+
+@end

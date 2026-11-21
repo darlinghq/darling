@@ -232,6 +232,11 @@ static NSString *FinderFolderKey(NSURL *url)
     [file addItemWithTitle:@"Close Window" action:@selector(performClose:) keyEquivalent:@"w"];
     [[main addItemWithTitle:@"File" action:NULL keyEquivalent:@""] setSubmenu:file];
 
+    NSMenu *view = [[NSMenu alloc] initWithTitle:@"View"];
+    [view addItemWithTitle:@"as Icons" action:@selector(showAsIcons:) keyEquivalent:@"1"];
+    [view addItemWithTitle:@"as List" action:@selector(showAsList:) keyEquivalent:@"2"];
+    [[main addItemWithTitle:@"View" action:NULL keyEquivalent:@""] setSubmenu:view];
+
     NSMenu *window = [[NSMenu alloc] initWithTitle:@"Window"];
     [window addItemWithTitle:@"Minimize" action:@selector(performMiniaturize:) keyEquivalent:@"m"];
     [window addItemWithTitle:@"Zoom" action:@selector(performZoom:) keyEquivalent:@""];
