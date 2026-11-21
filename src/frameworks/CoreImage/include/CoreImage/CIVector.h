@@ -36,6 +36,7 @@
                          W: (CGFloat) w;
 + (CIVector *) vectorWithString: (NSString *) representation;
 + (CIVector *) vectorWithCGPoint: (CGPoint) point;
++ (CIVector *) vectorWithCGRect: (CGRect) rect;
 + (CIVector *) vectorWithCGAffineTransform: (CGAffineTransform) transform;
 
 - (instancetype) initWithValues: (const CGFloat *) values count: (size_t) count;
@@ -45,6 +46,7 @@
 - (instancetype) initWithX: (CGFloat) x Y: (CGFloat) y Z: (CGFloat) z W: (CGFloat) w;
 - (instancetype) initWithString: (NSString *) representation;
 - (instancetype) initWithCGPoint: (CGPoint) point;
+- (instancetype) initWithCGRect: (CGRect) rect;
 - (instancetype) initWithCGAffineTransform: (CGAffineTransform) transform;
 
 - (CGFloat) valueAtIndex: (size_t) index;
@@ -56,6 +58,7 @@
 - (CGFloat) W;
 
 - (CGPoint) CGPointValue;
+- (CGRect) CGRectValue;
 - (CGAffineTransform) CGAffineTransformValue;
 
 - (NSString *) stringRepresentation;

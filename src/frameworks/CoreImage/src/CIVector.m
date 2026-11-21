@@ -21,6 +21,7 @@
 #include <ctype.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <xlocale.h>
 #import <darling-stub-forwarding.h>
 
@@ -56,6 +57,10 @@
 
 + (CIVector *) vectorWithCGPoint: (CGPoint) point {
     return [[[self alloc] initWithCGPoint: point] autorelease];
+}
+
++ (CIVector *) vectorWithCGRect: (CGRect) rect {
+    return [[[self alloc] initWithCGRect: rect] autorelease];
 }
 
 + (CIVector *) vectorWithCGAffineTransform: (CGAffineTransform) transform {
@@ -105,14 +110,19 @@
     return [self initWithX: point.x Y: point.y];
 }
 
+/* The four values are x, y, width and height (observed on macOS 26.7.3: a vector made from
+   CGRectMake(1, 2, 3, 4) holds 1, 2, 3, 4 and gives that rectangle back). */
+- (instancetype) initWithCGRect: (CGRect) rect {
+    return [self initWithX: rect.origin.x Y: rect.origin.y Z: rect.size.width W: rect.size.height];
+}
+
 - (instancetype) initWithCGAffineTransform: (CGAffineTransform) transform {
     CGFloat values[6] = {transform.a, transform.b, transform.c, transform.d, transform.tx, transform.ty};
     return [self initWithValues: values count: 6];
 }
 
-/* Reads and writes of numbers go through strtod_l with the "C" locale, so neither the process's
-   locale nor Foundation's number scanner (which does not read every double back exactly) affects
-   the result. */
+/* Numbers are read through strtod_l with the "C" locale, so the process's locale does not
+   affect the result. */
 static locale_t CIVectorCLocale(void) {
     locale_t locale = newlocale(LC_ALL_MASK, "C", NULL);
 
@@ -129,45 +139,38 @@ static const char *CIVectorSkipSpace(const char *text) {
     return text;
 }
 
-/* The documentation says the string is in one of the formats stringRepresentation returns and
-   shows only bracketed, space separated lists such as "[10.0 23.0]". It says nothing about a
-   string that is not in one of them, and the initializer returns "an initialized CIVector", so
-   this gives an empty vector for one (GUESS). */
+/* QUIRK: the documentation shows only well-formed strings such as "[10.0 23.0]" and does not say
+   what any other string gives. Black-box observation of macOS 26.7.3 (tier 2): an opening
+   bracket is optional and is recognised only as the very first character (leading white space
+   before it makes the whole string unreadable); numbers separated by white space are then read
+   until the first thing that is not a number, which ends the list without an error, so a
+   closing bracket, trailing text or a comma simply stops it; a string with no number, and nil,
+   give a vector with no values. No exception is raised and no nil is returned.
+   Test: the "string reader" section of tests/coreimage-civector.m. */
 - (instancetype) initWithString: (NSString *) representation {
     NSMutableData *values = [NSMutableData data];
     const char *text = [representation UTF8String];
-    BOOL valid = NO;
 
     if (text != NULL) {
         locale_t locale = CIVectorCLocale();
-        const char *cursor = CIVectorSkipSpace(text);
+        const char *cursor = text;
 
         if (*cursor == '[') {
-            valid = YES;
             cursor++;
-            for (;;) {
-                cursor = CIVectorSkipSpace(cursor);
-                if (*cursor == ']') {
-                    cursor++;
-                    break;
-                }
+        }
+        for (;;) {
+            cursor = CIVectorSkipSpace(cursor);
 
-                char *end;
-                double value = strtod_l(cursor, &end, locale);
-                if (end == cursor) {
-                    valid = NO;
-                    break;
-                }
-                CGFloat component = value;
-                [values appendBytes: &component length: sizeof(component)];
-                cursor = end;
+            char *end;
+            double value = strtod_l(cursor, &end, locale);
+            if (end == cursor) {
+                break;
             }
-            valid = valid && *CIVectorSkipSpace(cursor) == '\0';
+            CGFloat component = value;
+            [values appendBytes: &component length: sizeof(component)];
+            cursor = end;
         }
         freelocale(locale);
-    }
-    if (!valid) {
-        [values setLength: 0];
     }
     return [self initWithValues: values.bytes count: values.length / sizeof(CGFloat)];
 }
@@ -214,44 +217,35 @@ static const char *CIVectorSkipSpace(const char *text) {
                                  [self valueAtIndex: 3], [self valueAtIndex: 4], [self valueAtIndex: 5]);
 }
 
-/* The documentation gives the shape (square brackets, values separated by a space) and two
-   examples that show a whole number with one decimal ("10.0"), and says a vector can be rebuilt
-   from the string. How other values are written is not documented. GUESS: the shortest %g form
-   that strtod_l reads back as the same double, so the round trip loses nothing, with ".0" added
-   to a whole number. A value that is infinite or not a number is written as inf or nan (GUESS);
-   the string reader above accepts those spellings through strtod_l. */
-static NSString *CIVectorComponentText(double value, locale_t locale) {
-    NSString *text = nil;
-
-    for (int digits = 15; digits <= 17; digits++) {
-        text = [NSString stringWithFormat: @"%.*g", digits, value];
-        if (value != value || strtod_l([text UTF8String], NULL, locale) == value) {
-            break;
-        }
-    }
-    BOOL plainInteger = [text rangeOfCharacterFromSet: [NSCharacterSet characterSetWithCharactersInString: @".eEnN"]].location == NSNotFound;
-
-    return plainInteger ? [text stringByAppendingString: @".0"] : text;
+- (CGRect) CGRectValue {
+    return CGRectMake([self valueAtIndex: 0], [self valueAtIndex: 1], [self valueAtIndex: 2],
+                      [self valueAtIndex: 3]);
 }
 
+/* QUIRK: the documentation's examples show every value with a decimal point ("[1.0 0.5 0.3]",
+   "[10.0 23.0]"). Black-box observation of macOS 26.7.3 (tier 2) gives "[1 0.5 0.3]" and
+   "[10 23]": each value is written the way printf's %g writes it (six significant digits, so
+   1234567.0 is "1.23457e+06" and 0.1 + 0.2 is "0.3"), separated by one space inside square
+   brackets, with "nan", "inf" and "-0" spelt like that. A string made from this one therefore
+   does not always give the same values back.
+   Test: the "string representation" section of tests/coreimage-civector.m. */
 - (NSString *) stringRepresentation {
     NSMutableString *result = [NSMutableString stringWithString: @"["];
-    locale_t locale = CIVectorCLocale();
 
     for (size_t i = 0; i < _count; i++) {
         if (i > 0) {
             [result appendString: @" "];
         }
-        [result appendString: CIVectorComponentText(_values[i], locale)];
+        [result appendFormat: @"%g", (double)_values[i]];
     }
-    freelocale(locale);
     [result appendString: @"]"];
     return result;
 }
 
-/* The documentation lists no equality for CIVector. A vector with the same values in the same
-   order is treated as equal (GUESS), as for the other small value classes. A NaN value is not
-   equal to anything, so a vector holding one is equal only to itself (GUESS). */
+/* QUIRK: the documentation lists no equality for CIVector. Observed on macOS 26.7.3 (tier 2):
+   two vectors are equal when they have the same number of values and the values are the same
+   bit for bit, so 0.0 and -0.0 differ and a vector holding a NaN is equal to another with the
+   same NaN. Test: the "equality" section of tests/coreimage-civector.m. */
 - (BOOL) isEqual: (id) other {
     if (other == self) {
         return YES;
@@ -260,7 +254,9 @@ static NSString *CIVectorComponentText(double value, locale_t locale) {
         return NO;
     }
     for (size_t i = 0; i < _count; i++) {
-        if ([other valueAtIndex: i] != _values[i]) {
+        CGFloat theirs = [other valueAtIndex: i];
+
+        if (memcmp(&theirs, &_values[i], sizeof(CGFloat)) != 0) {
             return NO;
         }
     }
@@ -271,8 +267,11 @@ static NSString *CIVectorComponentText(double value, locale_t locale) {
     NSUInteger result = _count;
 
     for (size_t i = 0; i < _count; i++) {
-        /* 0.0 and -0.0 are equal, so they must hash alike. */
-        result = result * 31 + (NSUInteger)[[NSNumber numberWithDouble: _values[i] == 0 ? 0.0 : (double)_values[i]] hash];
+        uint64_t bits = 0;
+        double value = _values[i];
+
+        memcpy(&bits, &value, sizeof(bits));
+        result = result * 31 + (NSUInteger)(bits ^ (bits >> 32));
     }
     return result;
 }
