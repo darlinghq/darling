@@ -251,6 +251,76 @@ static int host_x_io_error_handler(void* display)
 	return (int)fex_invoke_guest_callback(g_guest_x_io_error_handler, (uint64_t)(uintptr_t)display, 0);
 }
 
+// Host library functions that take function pointers other than Xlib's error handlers. The guest's
+// pointer is replaced by one of a small pool of host functions, each bound to one guest function, that
+// run it under FEX with the six integer arguments they are called with.
+#define FEX_CALLBACK_SLOTS 16
+
+static uintptr_t g_callback_guest_fn[FEX_CALLBACK_SLOTS];
+static pthread_mutex_t g_callback_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+#define FEX_CALLBACK_THUNK(n) \
+	static uint64_t host_callback_thunk_##n(uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, uint64_t a5) \
+	{ \
+		const uint64_t args[6] = {a0, a1, a2, a3, a4, a5}; \
+		return fex_invoke_guest_callback_args(g_callback_guest_fn[n], args); \
+	}
+FEX_CALLBACK_THUNK(0) FEX_CALLBACK_THUNK(1) FEX_CALLBACK_THUNK(2) FEX_CALLBACK_THUNK(3)
+FEX_CALLBACK_THUNK(4) FEX_CALLBACK_THUNK(5) FEX_CALLBACK_THUNK(6) FEX_CALLBACK_THUNK(7)
+FEX_CALLBACK_THUNK(8) FEX_CALLBACK_THUNK(9) FEX_CALLBACK_THUNK(10) FEX_CALLBACK_THUNK(11)
+FEX_CALLBACK_THUNK(12) FEX_CALLBACK_THUNK(13) FEX_CALLBACK_THUNK(14) FEX_CALLBACK_THUNK(15)
+
+typedef uint64_t (*host_callback_fn)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
+static const host_callback_fn g_callback_thunks[FEX_CALLBACK_SLOTS] = {
+	host_callback_thunk_0, host_callback_thunk_1, host_callback_thunk_2, host_callback_thunk_3,
+	host_callback_thunk_4, host_callback_thunk_5, host_callback_thunk_6, host_callback_thunk_7,
+	host_callback_thunk_8, host_callback_thunk_9, host_callback_thunk_10, host_callback_thunk_11,
+	host_callback_thunk_12, host_callback_thunk_13, host_callback_thunk_14, host_callback_thunk_15,
+};
+
+// The host function that stands for a guest function pointer (the same one for the same guest function).
+static uint64_t host_callback_for(uint64_t guest_fn)
+{
+	if (guest_fn == 0)
+		return 0;
+	uint64_t host = 0;
+	pthread_mutex_lock(&g_callback_mutex);
+	for (int i = 0; i < FEX_CALLBACK_SLOTS; i++) {
+		if (g_callback_guest_fn[i] == guest_fn || g_callback_guest_fn[i] == 0) {
+			g_callback_guest_fn[i] = guest_fn;
+			host = (uint64_t)(uintptr_t)g_callback_thunks[i];
+			break;
+		}
+	}
+	pthread_mutex_unlock(&g_callback_mutex);
+	if (host == 0) {
+		fprintf(stderr, "mldr/fex: out of host callback thunks (%d)\n", FEX_CALLBACK_SLOTS);
+		abort();
+	}
+	return host;
+}
+
+// Replaces the function pointers marked in the mask by a host function that does nothing.
+#define FEX_CALLBACK_IGNORE 0x80000000u
+
+static uint64_t host_callback_ignore(void)
+{
+	return 0;
+}
+
+// Which arguments (bit i = i-th integer argument) of a host function are function pointers.
+static const struct { const char* name; unsigned mask; } g_callback_args[] = {
+	{ "png_create_read_struct", 0xc }, { "png_create_write_struct", 0xc },
+	{ "png_set_error_fn", 0xc }, { "png_set_read_fn", 0x4 }, { "png_set_write_fn", 0xc },
+	{ "png_set_progressive_read_fn", 0x1c },
+	// TIFFClientOpen(name, mode, clientdata, read, write, seek, close, size, map, unmap)
+	{ "TIFFClientOpen", 0x3f8 },
+	// TIFFSetErrorHandler and friends take handlers with a va_list parameter, whose layout differs
+	// between the guest and the host; they are replaced by a function that ignores the message.
+	{ "TIFFSetErrorHandler", FEX_CALLBACK_IGNORE | 0x1 }, { "TIFFSetWarningHandler", FEX_CALLBACK_IGNORE | 0x1 },
+	{ "TIFFSetErrorHandlerExt", FEX_CALLBACK_IGNORE | 0x1 }, { "TIFFSetWarningHandlerExt", FEX_CALLBACK_IGNORE | 0x1 },
+};
+
 long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 {
 	if (!state)
@@ -289,6 +359,21 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 		const uint64_t* sp = (const uint64_t*)(uintptr_t)state->rsp;
 		for (int i = 0; i < FEX_STACK_ARG_WORDS; i++)
 			st[i] = sp[1 + i];
+	}
+	if (name && !guest_handler) {
+		for (size_t i = 0; i < sizeof(g_callback_args) / sizeof(g_callback_args[0]); i++) {
+			if (strcmp(name, g_callback_args[i].name) != 0)
+				continue;
+			unsigned mask = g_callback_args[i].mask;
+			bool ignore = (mask & FEX_CALLBACK_IGNORE) != 0;
+			uint64_t* args[6 + FEX_STACK_ARG_WORDS] = {&state->rdi, &state->rsi, &state->rdx, &state->r10, &state->r8, &state->r9};
+			for (int w = 0; w < FEX_STACK_ARG_WORDS; w++)
+				args[6 + w] = &st[w];
+			for (int a = 0; a < 6 + FEX_STACK_ARG_WORDS && a < 31; a++)
+				if (mask & (1u << a))
+					*args[a] = (*args[a] && ignore) ? (uint64_t)(uintptr_t)host_callback_ignore : host_callback_for(*args[a]);
+			break;
+		}
 	}
 	uint64_t s0 = st[0], s1 = st[1];
 
