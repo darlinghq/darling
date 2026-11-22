@@ -37,15 +37,6 @@ thread_local FEXCore::Core::InternalThreadState* t_thread_state = nullptr;
 // FEX-reserved instruction 0F 3E, which returns from HandleCallback to the host caller.
 static uint8_t* g_callback_return_stub = nullptr;
 
-class DarlingSignalDelegator final : public FEXCore::SignalDelegator {
-public:
-  ~DarlingSignalDelegator() override = default;
-
-  uintptr_t GetThunkCallbackRET() const override {
-    return reinterpret_cast<uintptr_t>(g_callback_return_stub);
-  }
-};
-
 static void fex_state_to_darling(
     FEXCore::Context::Context* ctx,
     FEXCore::Core::InternalThreadState* thread,
@@ -154,7 +145,6 @@ private:
 
 static std::once_flag g_ctx_once;
 static fextl::unique_ptr<FEXCore::Context::Context> g_ctx;
-static DarlingSignalDelegator* g_delegator = nullptr;
 static fextl::vector<FEXCore::Allocator::MemoryRegion> g_reserved_upper_va;
 static DarlingSyscallHandler* g_syscall_handler = nullptr;
 
@@ -331,13 +321,11 @@ static void init_fex_context() {
   FEXCore::HostFeatures features = FEX::FetchHostFeatures(true);
 
   g_ctx = FEXCore::Context::Context::CreateNewContext(features);
-  g_delegator = new DarlingSignalDelegator();
   g_syscall_handler = new DarlingSyscallHandler(g_ctx.get());
-  g_ctx->SetSignalDelegator(g_delegator);
+  g_ctx->SetSignalDelegator(darling_fex::signal_delegator(reinterpret_cast<uintptr_t>(g_callback_return_stub)));
   g_ctx->SetSyscallHandler(g_syscall_handler);
 
-  // InitCore installs the SIGSEGV handler the JIT relies on to resolve page faults in
-  // generated code; running without it faults in the host handler instead.
+  // InitCore generates the dispatcher and hands the delegator its signal entry points.
   if (!g_ctx->InitCore()) {
     std::fprintf(stderr, "[mldr/fex] fatal: FEXCore::Context::InitCore() failed\n");
     std::abort();
@@ -347,6 +335,7 @@ static void init_fex_context() {
   install_sigbus_handler();
 #endif
   darling_fex::host_signal_stacks_init();
+  darling_fex::signals_init(g_ctx.get(), features.SupportsAVX(), features.SupportsSVE256());
 }
 } // namespace
 
