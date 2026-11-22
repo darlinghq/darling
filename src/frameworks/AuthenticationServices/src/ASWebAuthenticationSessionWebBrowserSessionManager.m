@@ -33,8 +33,9 @@ static ASWebAuthenticationSessionWebBrowserSessionManager *sharedBrowserSessionM
 
 @synthesize sessionHandler = _sessionHandler;
 
-// GUESS: the documentation calls this the shared manager and does not say what a subclass gets; it is
-// always an instance of this class.
+// The documentation calls this the shared manager and does not say what a subclass gets: on macOS
+// 26.7.3 it is the same object from every thread and for a subclass, while alloc/init and copy give
+// other objects (black-box observation). It is always an instance of this class.
 + (ASWebAuthenticationSessionWebBrowserSessionManager *)sharedManager
 {
     static dispatch_once_t creation;
@@ -44,8 +45,8 @@ static ASWebAuthenticationSessionWebBrowserSessionManager *sharedBrowserSessionM
     return sharedBrowserSessionManager;
 }
 
-// GUESS: Darling has no component that opens a browser on behalf of Authentication Services, so
-// there is never a launch to report and the answer is always NO.
+// Darling has no component that opens a browser on behalf of Authentication Services, so there is never
+// a launch to report and the answer is always NO (macOS 26.7.3 answers NO outside such a launch).
 - (BOOL)wasLaunchedByAuthenticationServices
 {
     return NO;

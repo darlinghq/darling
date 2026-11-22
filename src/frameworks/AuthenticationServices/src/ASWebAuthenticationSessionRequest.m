@@ -26,8 +26,9 @@
 // legacy runtime, which cannot synthesize these properties, and keeps the stub.
 #if __LP64__
 
-// GUESS: the documentation lists init(coder:) and the NSSecureCoding conformance but not the archive
-// keys. These keys are our own; archives are only exchanged between Darling processes.
+// The documentation lists init(coder:) and the NSSecureCoding conformance but not the archive keys.
+// These keys are our own (they are not observable through the public API); archives are only exchanged
+// between Darling processes.
 static NSString *const kURLKey = @"requestURL";
 static NSString *const kUUIDKey = @"requestUUID";
 static NSString *const kEphemeralKey = @"ephemeralSession";
@@ -48,8 +49,9 @@ static NSString *const kSchemeKey = @"callbackScheme";
 @synthesize additionalHeaderFields = _additionalHeaderFields;
 @synthesize callbackURLScheme = _callbackURLScheme;
 
-// GUESS: the documentation lists no public initializer, so a request made with plain -init has no URL
-// and no UUID, although both properties are declared non-null.
+// The documentation lists no public initializer, so a request made with plain -init has no URL and no
+// UUID, although both properties are declared non-null. Observed on macOS 26.7.3 (black-box
+// observation): a bare alloc/init works and every property is nil or NO.
 
 + (BOOL)supportsSecureCoding
 {
@@ -72,7 +74,9 @@ static NSString *const kSchemeKey = @"callbackScheme";
     return self;
 }
 
-// GUESS: a request without a URL or UUID is not meaningful, so decoding such an archive fails.
+// A request without a URL or UUID cannot be decoded: macOS 26.7.3 fails to decode an archive without a URL
+// or UUID (NSCocoaErrorDomain 4865) and initWithCoder: with no request keys returns nil (black-box
+// observation). Test: tests/src/authenticationservices_web_session_request.m
 - (instancetype)initWithCoder:(NSCoder *)coder
 {
     NSURL *url = [coder decodeObjectOfClass:[NSURL class] forKey:kURLKey];
@@ -96,8 +100,9 @@ static NSString *const kSchemeKey = @"callbackScheme";
     [coder encodeObject:_callbackURLScheme forKey:kSchemeKey];
 }
 
-// GUESS: a copy is a new object that describes the same request (same UUID) but does not inherit the
-// delegate. The documentation lists NSCopying without saying what a copy is.
+// A copy is a new object of the same class that describes the same request (same UUID) but does not
+// inherit the delegate. The documentation lists NSCopying without saying what a copy is; on macOS
+// 26.7.3 a copy is a new object of the same class (black-box observation).
 - (id)copyWithZone:(NSZone *)zone
 {
     return [[[self class] allocWithZone:zone] initWithURL:_URL
@@ -107,9 +112,12 @@ static NSString *const kSchemeKey = @"callbackScheme";
                                         callbackURLScheme:_callbackURLScheme];
 }
 
-// GUESS: each call is forwarded to the delegate as made, on the calling thread and before the method
-// returns. The documentation does not say which thread or queue the delegate is called on, nor whether
-// a second completion or a completion after cancellation is dropped.
+// Each call is forwarded to the delegate as made, on the calling thread and before the method returns,
+// and nothing is dropped: a second completion, a cancellation after a completion and a completion
+// after a cancellation all reach the delegate, and a nil callback URL is forwarded as nil. The
+// documentation does not say which thread or queue the delegate is called on; this is what macOS 26.7.3
+// does, also when called from a background queue (black-box observation).
+// Test: tests/src/authenticationservices_web_session_request.m
 - (void)completeWithCallbackURL:(NSURL *)url
 {
     id<ASWebAuthenticationSessionRequestDelegate> delegate = self.delegate;

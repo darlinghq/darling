@@ -8,8 +8,11 @@
 //   https://developer.apple.com/documentation/authenticationservices/aswebauthenticationsessionwebbrowsersessionmanager
 //   https://developer.apple.com/documentation/authenticationservices/aswebauthenticationsessionwebbrowsersessionhandling
 // The documentation does not define the archive keys of a request. The tests that build a request name the
-// keys this implementation chose; they are marked GUESS and are not a statement about macOS.
-// Exits non-zero on failure. No display needed. Not run on macOS; written from the documentation only.
+// keys this implementation chose; they are not a statement about macOS. The behaviours the documentation
+// leaves open (decoding without a URL or UUID fails, a copy is a new object, the delegate is weak and is
+// called on the calling thread without dropping repeated calls, the manager is a singleton and keeps its
+// handler) were observed on macOS 26.7.3 (black-box observation) and are pinned here.
+// Exits non-zero on failure. No display needed.
 #import <Foundation/Foundation.h>
 #import <AuthenticationServices/ASWebAuthenticationSession.h>
 #import <AuthenticationServices/ASWebAuthenticationSessionRequest.h>
@@ -33,7 +36,7 @@ static void expect(BOOL ok, const char *label) {
 	failures += !ok;
 }
 
-// GUESS: the archive keys below are this implementation's own.
+// The archive keys below are this implementation's own.
 static ASWebAuthenticationSessionRequest *makeRequest(NSURL *url, NSUUID *uuid, BOOL ephemeral,
 		NSDictionary *headers, NSString *scheme) {
 	NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initRequiringSecureCoding:YES];
@@ -104,12 +107,12 @@ int main(void) {
 		expect(plain.additionalHeaderFields == nil, "additionalHeaderFields is nullable");
 		expect(plain.callbackURLScheme == nil, "callbackURLScheme is nullable");
 
-		// GUESS: an archive without a URL or UUID does not decode (init?(coder:) is failable).
+		// An archive without a URL or UUID does not decode (init?(coder:) is failable; macOS 26.7.3 agrees).
 		expect(makeRequest(nil, uuid, NO, nil, nil) == nil, "no URL fails to decode");
 		expect(makeRequest(url, nil, NO, nil, nil) == nil, "no UUID fails to decode");
 		expect([ASWebAuthenticationSessionRequest supportsSecureCoding], "supportsSecureCoding");
 
-		// Finishing a request informs the delegate. GUESS: the delegate is called before the method returns.
+		// Finishing a request informs the delegate before the method returns (macOS 26.7.3 agrees).
 		RecordingDelegate *delegate = [RecordingDelegate new];
 		request.delegate = delegate;
 		expect(request.delegate == delegate, "delegate getter");
@@ -127,6 +130,22 @@ int main(void) {
 		expect(cancelDelegate.canceledRequest == plain && cancelDelegate.error == error,
 			"cancelWithError: reaches the delegate with the request and the error");
 		expect(cancelDelegate.completedRequest == nil, "cancellation is not reported as a completion");
+
+		// Repeated and crossed calls are all forwarded: macOS 26.7.3 has no once-only rule, and forwards a nil
+		// callback URL as nil.
+		RecordingDelegate *repeat = [RecordingDelegate new];
+		ASWebAuthenticationSessionRequest *again = makeRequest(url, uuid, NO, nil, nil);
+		again.delegate = repeat;
+		[again completeWithCallbackURL:callbackURL];
+		repeat.callbackURL = nil;
+		[again completeWithCallbackURL:callbackURL];
+		expect([repeat.callbackURL isEqual:callbackURL], "a second completion reaches the delegate");
+		repeat.error = nil;
+		[again cancelWithError:error];
+		expect(repeat.error == error, "a cancellation after a completion reaches the delegate");
+		repeat.callbackURL = callbackURL;
+		[again completeWithCallbackURL:nil];
+		expect(repeat.callbackURL == nil, "a completion after a cancellation reaches the delegate, with a nil URL as nil");
 
 		// The delegate methods are optional and the delegate may be nil.
 		ASWebAuthenticationSessionRequest *quiet = makeRequest(url, uuid, NO, nil, nil);
@@ -146,7 +165,7 @@ int main(void) {
 		}
 		expect(weakHolder.delegate == nil, "delegate is not retained");
 
-		// NSCopying. GUESS: a copy is a new object; the documentation lists the conformance only.
+		// NSCopying: a copy is a new object (macOS 26.7.3 agrees); the documentation lists the conformance only.
 		ASWebAuthenticationSessionRequest *copy = [request copy];
 		expect(copy != nil && copy != request, "copy is a new object");
 		expect([copy.URL isEqual:url] && [copy.UUID isEqual:uuid] && copy.shouldUseEphemeralSession &&
@@ -163,7 +182,7 @@ int main(void) {
 		[manager.sessionHandler beginHandlingWebAuthenticationSessionRequest:request];
 		[manager.sessionHandler cancelWebAuthenticationSessionRequest:plain];
 		expect(handler.began == request && handler.canceled == plain, "handler receives begin and cancel requests");
-		// GUESS: nothing in Darling opens a browser for Authentication Services, so this is NO.
+		// Nothing in Darling opens a browser for Authentication Services, so this is NO.
 		expect(!manager.wasLaunchedByAuthenticationServices, "wasLaunchedByAuthenticationServices is NO");
 	}
 	if (failures == 0)
