@@ -28,6 +28,7 @@ add_framework(BackgroundAssets
         src/BADownloadManager.m
         src/BAAssetPack.m
         src/BAAssetPackManifest.m
+        src/BAAssetPackManager.m
 
     DEPENDENCIES
         system
