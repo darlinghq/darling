@@ -33,6 +33,21 @@ OSErr GetIconRef(SInt16 vRefNum, OSType creator, OSType iconType, IconRef *theIc
     return 0;
 }
 
+// GUESS: the public page gives only the declaration and the deprecation, not the results. Unlike its
+// neighbours in this file, which return 0 without writing their outputs, this one fails loudly: it
+// returns unimpErr and clears the outputs, so a caller never uses an IconRef that does not exist.
+OSStatus GetIconRefFromFileInfo(const FSRef *inRef, UniCharCount inFileNameLength, const UniChar *inFileName, FSCatalogInfoBitmap inWhichInfo, const FSCatalogInfo *inCatalogInfo, IconServicesUsageFlags inUsageFlags, IconRef *outIconRef, SInt16 *outLabel)
+{
+    printf("STUB %s\n", __PRETTY_FUNCTION__);
+
+    if (outIconRef != NULL)
+        *outIconRef = NULL;
+    if (outLabel != NULL)
+        *outLabel = 0;
+
+    return unimpErr;
+}
+
 OSStatus GetIconRefFromIconFamilyPtr(const IconFamilyResource *inIconFamilyPtr, Size inSize, IconRef *outIconRef)
 {
     printf("STUB %s\n", __PRETTY_FUNCTION__);
