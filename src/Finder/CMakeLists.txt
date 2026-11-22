@@ -13,6 +13,7 @@ set(Finder_sources
 	FinderAppDelegate.m
 	FinderDirectory.m
 	FinderDSStore.m
+	FinderFileOperation.m
 	FinderFolderStyle.m
 	FinderFreeformLayout.m
 	FinderIconViewController.m
