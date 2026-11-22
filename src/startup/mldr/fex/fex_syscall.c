@@ -680,20 +680,38 @@ static void fex_host_signal_handler(int sig, siginfo_t* info, void* ucontext)
 
 // At a syscall return: picks a pending signal the guest does not block and asks for its handler to run as
 // the syscall returns (state->signal_request). Returns false when there is none to run.
+// Takes one of `set` from the signals kept here, if any; outside a signal handler.
+static int take_kept_signal(uint64_t set, siginfo_t* info)
+{
+	uint64_t kept = __atomic_load_n(&t_pending, __ATOMIC_RELAXED) & set;
+	if (!kept)
+		return 0;
+	int sig = __builtin_ctzll(kept) + 1;
+	// A host handler may write the same slot meanwhile; nothing faults in between.
+	uint64_t all = ~0ULL, old = 0;
+	raw_host_syscall(SYS_rt_sigprocmask, SIG_BLOCK, (long)(uintptr_t)&all, (long)(uintptr_t)&old, sizeof(all), 0, 0);
+	*info = t_pending_info[sig];
+	__atomic_fetch_and(&t_pending, ~FEX_SIGBIT(sig), __ATOMIC_RELAXED);
+	raw_host_syscall(SYS_rt_sigprocmask, SIG_SETMASK, (long)(uintptr_t)&old, 0, sizeof(old), 0, 0);
+	return sig;
+}
+
+void fex_signals_after_fork_child(void)
+{
+	__atomic_store_n(&t_pending, 0, __ATOMIC_RELAXED);
+	t_restart_syscall = false;
+}
+
 static bool take_pending_signal(struct fex_x86_64_state* state)
 {
 	for (;;) {
-		uint64_t deliverable = __atomic_load_n(&t_pending, __ATOMIC_RELAXED) & ~guest_mask();
-		if (!deliverable)
+		// The common case costs no syscall.
+		if (!__atomic_load_n(&t_pending, __ATOMIC_RELAXED))
 			return false;
-		int sig = __builtin_ctzll(deliverable) + 1;
-
-		// A host handler may write the same slot meanwhile.
-		uint64_t all = ~0ULL & ~FEX_JIT_SIGNALS, old = 0;
-		raw_host_syscall(SYS_rt_sigprocmask, SIG_BLOCK, (long)(uintptr_t)&all, (long)(uintptr_t)&old, sizeof(all), 0, 0);
-		siginfo_t info = t_pending_info[sig];
-		__atomic_fetch_and(&t_pending, ~FEX_SIGBIT(sig), __ATOMIC_RELAXED);
-		raw_host_syscall(SYS_rt_sigprocmask, SIG_SETMASK, (long)(uintptr_t)&old, 0, sizeof(old), 0, 0);
+		siginfo_t info;
+		int sig = take_kept_signal(~guest_mask(), &info);
+		if (!sig)
+			return false;
 
 		pthread_mutex_lock(&g_guest_sigactions_lock);
 		struct fex_guest_sigaction action = load_guest_action(sig);
@@ -953,6 +971,23 @@ static long dispatch_syscall(struct fex_x86_64_state* state)
 				info.si_code = SI_KERNEL;
 				pend_signal(SIGSEGV, &info);
 				ret = restored;
+			}
+			break;
+		}
+
+		case 128: { // rt_sigtimedwait: a signal kept here counts as pending
+			uint64_t set;
+			ret = a4 == sizeof(uint64_t) ? fex_copy_from_guest(&set, (void*)a1, sizeof(set)) : -EINVAL;
+			if (ret != 0)
+				break;
+			siginfo_t info;
+			int sig = take_kept_signal(set, &info);
+			if (sig) {
+				ret = a2 ? fex_copy_to_guest((void*)a2, &info, sizeof(info)) : 0;
+				if (ret == 0)
+					ret = sig;
+			} else {
+				ret = guest_host_syscall(SYS_rt_sigtimedwait, a1, a2, a3, a4, 0, 0);
 			}
 			break;
 		}

@@ -935,6 +935,59 @@ static void test_guest_syscall_entry(uint64_t guest_handler, uint64_t saved_mask
 	set_guest_mask_to(saved_mask);
 }
 
+// A signal kept for the guest is pending for it: sigtimedwait takes it, and a forked child, which starts with
+// no pending signals, does not inherit it.
+static void test_kept_signals(uint64_t guest_handler, uint64_t saved_mask)
+{
+	set_guest_mask_to(FEX_SIGBIT(SIGTRAP));
+	guest_sigaction(SIGTRAP, guest_handler, 0, 0, NULL);
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+	raise_on_this_thread(SIGTRAP); // a JIT signal the guest blocks: kept
+	uint64_t trap = FEX_SIGBIT(SIGTRAP);
+	siginfo_t info;
+	memset(&info, 0, sizeof(info));
+	struct timespec zero = {0, 0};
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rax = 128; // rt_sigtimedwait
+	st.rdi = (uint64_t)(uintptr_t)&trap;
+	st.rsi = (uint64_t)(uintptr_t)&info;
+	st.rdx = (uint64_t)(uintptr_t)&zero;
+	st.r10 = 8;
+	long ret = fex_linux_syscall_dispatch(&st);
+	check(ret == SIGTRAP && info.si_signo == SIGTRAP && info.si_code == SI_TKILL && st.signal_request == NULL,
+		"sigtimedwait takes a signal kept for the guest, with its siginfo");
+	memset(&st, 0, sizeof(st));
+	st.rax = 128;
+	st.rdi = (uint64_t)(uintptr_t)&trap;
+	st.rdx = (uint64_t)(uintptr_t)&zero;
+	st.r10 = 8;
+	check(fex_linux_syscall_dispatch(&st) == -EAGAIN, "once");
+
+	raise_on_this_thread(SIGTRAP);
+	pid_t child = fork();
+	if (child == 0) {
+		fex_signals_after_fork_child();
+		uint64_t pending = 0;
+		guest_syscall(127, (uint64_t)(uintptr_t)&pending, 8, 0, 0, 0);
+		_exit(pending & trap ? 1 : 0);
+	}
+	int status = 0;
+	waitpid(child, &status, 0);
+	check(WIFEXITED(status) && WEXITSTATUS(status) == 0, "a forked child starts with nothing kept");
+	uint64_t pending = 0;
+	guest_syscall(127, (uint64_t)(uintptr_t)&pending, 8, 0, 0, 0);
+	check(pending & trap, "the parent still has it");
+	memset(&st, 0, sizeof(st));
+	st.rax = 128;
+	st.rdi = (uint64_t)(uintptr_t)&trap;
+	st.rdx = (uint64_t)(uintptr_t)&zero;
+	st.r10 = 8;
+	fex_linux_syscall_dispatch(&st);
+	guest_sigaction(SIGTRAP, 0, 0, 0, NULL);
+	set_guest_mask_to(saved_mask);
+}
+
 static void test_guest_signal_delivery(void)
 {
 	const uint64_t guest_handler = 0x123400;
@@ -1072,6 +1125,7 @@ static void test_guest_signal_delivery(void)
 	test_held_until_syscall_return(guest_handler, saved_mask);
 	test_syscall_restart(guest_handler, saved_mask);
 	test_guest_syscall_entry(guest_handler, saved_mask);
+	test_kept_signals(guest_handler, saved_mask);
 
 	guest_sigaction(SIGUSR1, 0, 0, 0, NULL);
 	guest_sigaction(SIGUSR2, 0, 0, 0, NULL);

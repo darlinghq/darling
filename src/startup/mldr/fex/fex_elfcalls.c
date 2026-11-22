@@ -843,6 +843,8 @@ long fex_elfcalls_dispatch(uint32_t index, struct fex_x86_64_state* state)
 			}
 			int fork_ret = g_host_elfcalls.native_fork ? g_host_elfcalls.native_fork() : -ENOSYS;
 			bool is_child = (fork_ret == 0);
+			if (is_child)
+				fex_signals_after_fork_child();
 			if (g_fork_unlock_hook) {
 				g_fork_unlock_hook(is_child);
 			}
