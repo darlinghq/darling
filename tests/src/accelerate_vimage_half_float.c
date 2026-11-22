@@ -1,8 +1,9 @@
+// CFLAGS: -framework Accelerate
 // Copyright (C) 2026 Darling developers
 //
 // vImageConvert_Planar16FtoPlanarF and vImageConvert_PlanarFtoPlanar16F convert between IEEE 754-2008
-// binary16 (half) and binary32 (single) planar buffers. Expected values come from the standard,
-// not from any macOS observation: the half bit patterns of the named values (1.0 is 0x3C00, -2.0 is
+// binary16 (half) and binary32 (single) planar buffers. The conversion values come from the standard
+// (and agree with macOS, see below): the half bit patterns of the named values (1.0 is 0x3C00, -2.0 is
 // 0xC000, the largest finite half 65504 is 0x7BFF, the smallest subnormal 2^-24 is 0x0001, infinity
 // is 0x7C00), the exhaustive round trip over all 65536 patterns, and round to nearest with ties to
 // even, checked at every midpoint between two adjacent finite halves (computed here with ldexpf,
@@ -15,13 +16,17 @@
 // non-zero) comes back as the quiet NaN with the same sign and lower fraction bits, the only
 // deviation from an identical round trip.
 //
-// kvImageGetTempBufferSize: the flag's documentation says the function returns the temporary buffer
-// size instead of performing the operation; none is needed, so 0 is returned and nothing is written.
-//
-// GUESS pins (the documentation lists no errors for these functions): null pointers and a null data
-// pointer give kvImageNullPointerArgument, differing width or height give kvImageBufferSizeMismatch,
-// a rowBytes too small for a row gives kvImageInvalidRowBytes, empty buffers succeed, flags other
-// than kvImageGetTempBufferSize are ignored. Build as in vImageTest.c:
+// Error results and flags: pinned to what macOS 26.7.3 and 10.14.4 return for the same calls
+// (black-box observation through the public API, identical on both): a NULL buffer pointer gives
+// kvImageNullPointerArgument (also with kvImageGetTempBufferSize); kvImageGetTempBufferSize returns 0
+// without looking at the buffers; kvImageLeaveAlphaUnchanged, kvImageHighQualityResampling and an unknown
+// bit give kvImageUnknownFlagsBit while kvImageDoNotTile is accepted; a destination wider or taller than
+// the source gives kvImageRoiLargerThanInputBuffer (also for an empty source), a narrower one is
+// converted at its own size; rowBytes smaller than a row is not an error; empty buffers succeed.
+// A NULL data pointer crashes macOS; here it gives kvImageNullPointerArgument. The rounding values (ties
+// to even at 1+2^-11 and 1+3*2^-11, 2^-25 to zero, 65520 to infinity, quiet NaN with the top ten payload
+// bits kept) were observed on both as well.
+// Build as in vImageTest.c:
 //   cc -I src/frameworks/Accelerate/include tests/src/accelerate_vimage_half_float.c \
 //      src/frameworks/Accelerate/src/Accelerate.c -lm -o accelerate_vimage_half_float
 #include <Accelerate/Accelerate.h>
@@ -266,38 +271,70 @@ static void testErrors(void)
 	CHECK(vImageConvert_Planar16FtoPlanarF(&halfBuffer, &singleBuffer, kvImageNoFlags) == kvImageNoError);
 	CHECK(vImageConvert_PlanarFtoPlanar16F(&singleBuffer, &halfBuffer, kvImageNoFlags) == kvImageNoError);
 
-	// Differing width or height.
-	vImage_Buffer narrow = { singles, 2, 2, 12 };
-	vImage_Buffer shorter = { singles, 1, 3, 12 };
-	CHECK(vImageConvert_Planar16FtoPlanarF(&halfBuffer, &narrow, kvImageNoFlags) == kvImageBufferSizeMismatch);
-	CHECK(vImageConvert_Planar16FtoPlanarF(&halfBuffer, &shorter, kvImageNoFlags) == kvImageBufferSizeMismatch);
-	CHECK(vImageConvert_PlanarFtoPlanar16F(&narrow, &halfBuffer, kvImageNoFlags) == kvImageBufferSizeMismatch);
-	CHECK(vImageConvert_PlanarFtoPlanar16F(&shorter, &halfBuffer, kvImageNoFlags) == kvImageBufferSizeMismatch);
+	// A destination wider or taller than the source: kvImageRoiLargerThanInputBuffer, nothing written.
+	vImage_Buffer wider = { singles, 2, 4, 16 };
+	vImage_Buffer taller = { singles, 3, 3, 12 };
+	singles[0] = 7.0f;
+	CHECK(vImageConvert_Planar16FtoPlanarF(&halfBuffer, &wider, kvImageNoFlags) == kvImageRoiLargerThanInputBuffer);
+	CHECK(vImageConvert_Planar16FtoPlanarF(&halfBuffer, &taller, kvImageNoFlags) == kvImageRoiLargerThanInputBuffer);
+	CHECK(singles[0] == 7.0f);
+	{
+		vImage_Buffer halfWide = { halves, 2, 4, 8 };
+		vImage_Buffer halfTall = { halves, 3, 3, 6 };
+		CHECK(vImageConvert_PlanarFtoPlanar16F(&singleBuffer, &halfWide, kvImageNoFlags) == kvImageRoiLargerThanInputBuffer);
+		CHECK(vImageConvert_PlanarFtoPlanar16F(&singleBuffer, &halfTall, kvImageNoFlags) == kvImageRoiLargerThanInputBuffer);
+	}
+	// An empty source with a destination that has pixels.
+	vImage_Buffer emptyWidth = { halves, 1, 0, 0 };
+	vImage_Buffer fourSingles = { singles, 1, 4, 16 };
+	CHECK(vImageConvert_Planar16FtoPlanarF(&emptyWidth, &fourSingles, kvImageNoFlags) == kvImageRoiLargerThanInputBuffer);
+	CHECK(singles[0] == 7.0f);
 
-	// Null buffers and null data.
+	// A narrower destination is converted at its own size (macOS: width 3 into width 4 returns 0).
+	{
+		uint16_t four[4] = { 0x3C00, 0x4000, 0x4200, 0x4400 };
+		float three[4] = { 0, 0, 0, 5.0f };
+		vImage_Buffer fourBuffer = { four, 1, 4, 8 };
+		vImage_Buffer threeBuffer = { three, 1, 3, 12 };
+		CHECK(vImageConvert_Planar16FtoPlanarF(&fourBuffer, &threeBuffer, kvImageNoFlags) == kvImageNoError);
+		CHECK(three[0] == 1.0f && three[1] == 2.0f && three[2] == 3.0f && three[3] == 5.0f);
+	}
+
+	// Null buffers (checked before the flags, also with kvImageGetTempBufferSize) and null data.
 	vImage_Buffer noData = { NULL, 2, 3, 12 };
 	CHECK(vImageConvert_Planar16FtoPlanarF(NULL, &singleBuffer, kvImageNoFlags) == kvImageNullPointerArgument);
 	CHECK(vImageConvert_Planar16FtoPlanarF(&halfBuffer, NULL, kvImageNoFlags) == kvImageNullPointerArgument);
 	CHECK(vImageConvert_PlanarFtoPlanar16F(NULL, &halfBuffer, kvImageNoFlags) == kvImageNullPointerArgument);
 	CHECK(vImageConvert_PlanarFtoPlanar16F(&singleBuffer, NULL, kvImageNoFlags) == kvImageNullPointerArgument);
+	CHECK(vImageConvert_Planar16FtoPlanarF(NULL, NULL, kvImageNoFlags) == kvImageNullPointerArgument);
+	CHECK(vImageConvert_Planar16FtoPlanarF(NULL, NULL, kvImageGetTempBufferSize) == kvImageNullPointerArgument);
+	CHECK(vImageConvert_PlanarFtoPlanar16F(NULL, NULL, kvImageGetTempBufferSize) == kvImageNullPointerArgument);
 	CHECK(vImageConvert_Planar16FtoPlanarF(&halfBuffer, &noData, kvImageNoFlags) == kvImageNullPointerArgument);
 	CHECK(vImageConvert_PlanarFtoPlanar16F(&noData, &halfBuffer, kvImageNoFlags) == kvImageNullPointerArgument);
 
-	// rowBytes too small for 3 pixels.
-	vImage_Buffer tightHalf = { halves, 2, 3, 4 };
-	vImage_Buffer tightSingle = { singles, 2, 3, 8 };
-	CHECK(vImageConvert_Planar16FtoPlanarF(&tightHalf, &singleBuffer, kvImageNoFlags) == kvImageInvalidRowBytes);
-	CHECK(vImageConvert_Planar16FtoPlanarF(&halfBuffer, &tightSingle, kvImageNoFlags) == kvImageInvalidRowBytes);
-	CHECK(vImageConvert_PlanarFtoPlanar16F(&tightSingle, &halfBuffer, kvImageNoFlags) == kvImageInvalidRowBytes);
-	CHECK(vImageConvert_PlanarFtoPlanar16F(&singleBuffer, &tightHalf, kvImageNoFlags) == kvImageInvalidRowBytes);
+	// rowBytes smaller than a row is not an error (macOS returns 0), one row high so nothing overlaps.
+	{
+		uint16_t row16[3] = { 0x3C00, 0x4000, 0x4200 };
+		float row32[3] = { 0, 0, 0 };
+		vImage_Buffer tightHalf = { row16, 1, 3, 2 };
+		vImage_Buffer tightSingle = { row32, 1, 3, 4 };
+		vImage_Buffer okSingle = { row32, 1, 3, 12 };
+		CHECK(vImageConvert_Planar16FtoPlanarF(&tightHalf, &okSingle, kvImageNoFlags) == kvImageNoError);
+		CHECK(row32[0] == 1.0f && row32[2] == 3.0f);
+		vImage_Buffer okHalf = { row16, 1, 3, 6 };
+		CHECK(vImageConvert_Planar16FtoPlanarF(&okHalf, &tightSingle, kvImageNoFlags) == kvImageNoError);
+		CHECK(vImageConvert_PlanarFtoPlanar16F(&tightSingle, &okHalf, kvImageNoFlags) == kvImageNoError);
+	}
 
 	// Empty buffers have nothing to convert and succeed, whatever their data pointers.
 	vImage_Buffer emptyHalf = { NULL, 0, 0, 0 };
 	vImage_Buffer emptySingle = { NULL, 0, 0, 0 };
+	vImage_Buffer zeroHeight = { NULL, 0, 4, 16 };
 	CHECK(vImageConvert_Planar16FtoPlanarF(&emptyHalf, &emptySingle, kvImageNoFlags) == kvImageNoError);
 	CHECK(vImageConvert_PlanarFtoPlanar16F(&emptySingle, &emptyHalf, kvImageNoFlags) == kvImageNoError);
+	CHECK(vImageConvert_Planar16FtoPlanarF(&zeroHeight, &zeroHeight, kvImageNoFlags) == kvImageNoError);
 
-	// kvImageGetTempBufferSize: 0 is returned and nothing is written, before any argument check.
+	// kvImageGetTempBufferSize: 0 is returned and nothing is written; the buffers are not checked.
 	halves[0] = 0x3C00;
 	singles[0] = 7.0f;
 	CHECK(vImageConvert_Planar16FtoPlanarF(&halfBuffer, &singleBuffer, kvImageGetTempBufferSize) == 0);
@@ -305,17 +342,22 @@ static void testErrors(void)
 	halves[0] = 0x1234;
 	CHECK(vImageConvert_PlanarFtoPlanar16F(&singleBuffer, &halfBuffer, kvImageGetTempBufferSize) == 0);
 	CHECK(halves[0] == 0x1234);
-	CHECK(vImageConvert_Planar16FtoPlanarF(NULL, NULL, kvImageGetTempBufferSize) == 0);
-	CHECK(vImageConvert_PlanarFtoPlanar16F(&narrow, &halfBuffer, kvImageGetTempBufferSize) == 0);
+	CHECK(vImageConvert_PlanarFtoPlanar16F(&wider, &halfBuffer, kvImageGetTempBufferSize) == 0);
+	CHECK(vImageConvert_Planar16FtoPlanarF(&noData, &halfBuffer, kvImageGetTempBufferSize) == 0);
 
-	// Other flags do not change the result (GUESS pin: unknown bits are accepted).
+	// kvImageDoNotTile is accepted; the flags macOS refuses give kvImageUnknownFlagsBit and write nothing.
 	halves[0] = 0x3C00;
 	singles[0] = 0;
 	CHECK(vImageConvert_Planar16FtoPlanarF(&halfBuffer, &singleBuffer, kvImageDoNotTile) == kvImageNoError);
 	CHECK(singles[0] == 1.0f);
-	singles[0] = 0;
-	CHECK(vImageConvert_Planar16FtoPlanarF(&halfBuffer, &singleBuffer, 0x40000000) == kvImageNoError);
-	CHECK(singles[0] == 1.0f);
+	singles[0] = 7.0f;
+	CHECK(vImageConvert_Planar16FtoPlanarF(&halfBuffer, &singleBuffer, kvImageLeaveAlphaUnchanged) == kvImageUnknownFlagsBit);
+	CHECK(vImageConvert_Planar16FtoPlanarF(&halfBuffer, &singleBuffer, kvImageHighQualityResampling) == kvImageUnknownFlagsBit);
+	CHECK(vImageConvert_Planar16FtoPlanarF(&halfBuffer, &singleBuffer, 0x40000000) == kvImageUnknownFlagsBit);
+	CHECK(vImageConvert_PlanarFtoPlanar16F(&singleBuffer, &halfBuffer, kvImageLeaveAlphaUnchanged) == kvImageUnknownFlagsBit);
+	CHECK(vImageConvert_PlanarFtoPlanar16F(&singleBuffer, &halfBuffer, kvImageHighQualityResampling) == kvImageUnknownFlagsBit);
+	CHECK(vImageConvert_PlanarFtoPlanar16F(&singleBuffer, &halfBuffer, 0x40000000) == kvImageUnknownFlagsBit);
+	CHECK(singles[0] == 7.0f);
 }
 
 int main(void)

@@ -187,60 +187,73 @@ static uint16_t float_to_half(float value) {
     return (uint16_t)(sign | magnitude);
 }
 
-// Shared checks of the two planar half/single converters; src_size and dest_size are the bytes per pixel.
+// Flag bits the two planar half/single converters refuse with kvImageUnknownFlagsBit.
+// Observed on macOS 26.7.3 and 10.14.4 (black-box observation through the public API): kvImageNoFlags,
+// kvImageDoNotTile and kvImageGetTempBufferSize are accepted; kvImageLeaveAlphaUnchanged,
+// kvImageHighQualityResampling and a bit outside the defined flags (0x40000000) give
+// kvImageUnknownFlagsBit. The other defined flags were not observed and are accepted.
+// Test: tests/src/accelerate_vimage_half_float.c
+#define PLANAR_CONVERT_REFUSED_FLAGS \
+    ((vImage_Flags)(kvImageLeaveAlphaUnchanged | kvImageHighQualityResampling | ~(vImage_Flags)0xfff))
+
+// The checks shared by the two planar half/single converters, in the order macOS applies them (observed
+// on macOS 26.7.3 and 10.14.4, identical on both; the documentation lists no errors for these functions):
+//  1. a NULL buffer pointer gives kvImageNullPointerArgument, even with kvImageGetTempBufferSize;
+//  2. a flag bit from PLANAR_CONVERT_REFUSED_FLAGS gives kvImageUnknownFlagsBit (the order of this check
+//     against the one above is not observed);
+//  3. kvImageGetTempBufferSize returns 0 without looking at the buffers: no temporary buffer is needed and
+//     nothing is written;
+//  4. a destination wider or taller than the source gives kvImageRoiLargerThanInputBuffer (also for an
+//     empty source and a destination with pixels). A narrower or shorter destination is not an error; its
+//     width and height are what gets converted, and the source rowBytes and dimensions beyond that are not
+//     looked at;
+//  5. an empty destination succeeds without touching either data pointer.
+// There is no rowBytes validation: a rowBytes smaller than a row succeeds on macOS, and so here.
+// The NULL data pointer of a non-empty buffer crashes macOS; kvImageNullPointerArgument is returned
+// instead, the documented error for a NULL pointer. Returns kvImageNoError when there is something to do.
 static vImage_Error check_planar_convert_buffers(const vImage_Buffer *src, const vImage_Buffer *dest,
-                                                 size_t src_size, size_t dest_size) {
+                                                 vImage_Flags flags, int *has_pixels) {
+    *has_pixels = 0;
     if (!src || !dest) {
         return kvImageNullPointerArgument;
     }
-    if (src->width != dest->width || src->height != dest->height) {
-        return kvImageBufferSizeMismatch;
+    if (flags & PLANAR_CONVERT_REFUSED_FLAGS) {
+        return kvImageUnknownFlagsBit;
     }
-    if (src->width == 0 || src->height == 0) {
+    if (flags & kvImageGetTempBufferSize) {
+        return kvImageNoError;
+    }
+    if (dest->width > src->width || dest->height > src->height) {
+        return kvImageRoiLargerThanInputBuffer;
+    }
+    if (dest->width == 0 || dest->height == 0) {
         return kvImageNoError;
     }
     if (!src->data || !dest->data) {
         return kvImageNullPointerArgument;
     }
-    if (src->width > SIZE_MAX / src_size || src->rowBytes < (size_t)src->width * src_size ||
-        src->rowBytes > SIZE_MAX / src->height ||
-        dest->width > SIZE_MAX / dest_size || dest->rowBytes < (size_t)dest->width * dest_size ||
-        dest->rowBytes > SIZE_MAX / dest->height) {
-        return kvImageInvalidRowBytes;
-    }
+    *has_pixels = 1;
     return kvImageNoError;
 }
 
-// kvImageGetTempBufferSize: the flag's documentation says the function returns the temporary buffer
-// size instead of performing the operation; no temporary buffer is needed, so 0 is returned first,
-// before any argument check, as vImageScale_ARGB8888 and vImageBoxConvolve_ARGB8888 do.
-//
-// GUESS: the documentation lists no error conditions for the two converters, and states no rule
-// that the source and destination dimensions are equal. The errors returned here (null pointers:
-// kvImageNullPointerArgument; differing width or height: kvImageBufferSizeMismatch; rowBytes too
-// small for a row: kvImageInvalidRowBytes) follow the names of the documented error constants and
-// the argument checks of vImageBufferFill_ARGB8888 above, and an empty buffer succeeds without
-// touching its data pointer, as there. Other flags are not validated: kvImageDoNotTile is documented
-// as the only useful one, and no tiling or threading is done here either way. The buffers must not
-// overlap (an in-place conversion is not documented).
+// The planar half to single converter. The rows are addressed by each buffer's own rowBytes and the
+// destination's width and height are converted. The buffers must not overlap (an in-place
+// conversion is not documented).
 vImage_Error vImageConvert_Planar16FtoPlanarF(
     const vImage_Buffer *src,
     const vImage_Buffer *dest,
     vImage_Flags flags
 ) {
-    if (flags & kvImageGetTempBufferSize) {
-        return 0;
-    }
-
-    vImage_Error error = check_planar_convert_buffers(src, dest, sizeof(uint16_t), sizeof(float));
-    if (error != kvImageNoError || src->width == 0 || src->height == 0) {
+    int has_pixels;
+    vImage_Error error = check_planar_convert_buffers(src, dest, flags, &has_pixels);
+    if (error != kvImageNoError || !has_pixels) {
         return error;
     }
 
     const uint8_t *src_row = (const uint8_t *)src->data;
     uint8_t *dest_row = (uint8_t *)dest->data;
-    for (vImagePixelCount y = 0; y < src->height; y++, src_row += src->rowBytes, dest_row += dest->rowBytes) {
-        for (vImagePixelCount x = 0; x < src->width; x++) {
+    for (vImagePixelCount y = 0; y < dest->height; y++, src_row += src->rowBytes, dest_row += dest->rowBytes) {
+        for (vImagePixelCount x = 0; x < dest->width; x++) {
             uint16_t half;
             memcpy(&half, src_row + x * sizeof(half), sizeof(half));
             float value = half_to_float(half);
@@ -250,26 +263,24 @@ vImage_Error vImageConvert_Planar16FtoPlanarF(
     return kvImageNoError;
 }
 
-// GUESS: see the comment on vImageConvert_Planar16FtoPlanarF; the same choices apply. The
-// rounding mode is not documented either; round to nearest, ties to even, is the IEEE 754 default.
+// The planar single to half converter; the checks and addressing are those of the function above. The
+// rounding is to nearest with ties to even, as observed on macOS 26.7.3 and 10.14.4 (black-box
+// observation; the values are listed in tests/src/accelerate_vimage_half_float.c).
 vImage_Error vImageConvert_PlanarFtoPlanar16F(
     const vImage_Buffer *src,
     const vImage_Buffer *dest,
     vImage_Flags flags
 ) {
-    if (flags & kvImageGetTempBufferSize) {
-        return 0;
-    }
-
-    vImage_Error error = check_planar_convert_buffers(src, dest, sizeof(float), sizeof(uint16_t));
-    if (error != kvImageNoError || src->width == 0 || src->height == 0) {
+    int has_pixels;
+    vImage_Error error = check_planar_convert_buffers(src, dest, flags, &has_pixels);
+    if (error != kvImageNoError || !has_pixels) {
         return error;
     }
 
     const uint8_t *src_row = (const uint8_t *)src->data;
     uint8_t *dest_row = (uint8_t *)dest->data;
-    for (vImagePixelCount y = 0; y < src->height; y++, src_row += src->rowBytes, dest_row += dest->rowBytes) {
-        for (vImagePixelCount x = 0; x < src->width; x++) {
+    for (vImagePixelCount y = 0; y < dest->height; y++, src_row += src->rowBytes, dest_row += dest->rowBytes) {
+        for (vImagePixelCount x = 0; x < dest->width; x++) {
             float value;
             memcpy(&value, src_row + x * sizeof(value), sizeof(value));
             uint16_t half = float_to_half(value);
