@@ -325,6 +325,13 @@ if (WITH_FEXCORE)
 		${FEXCORE_FMT_LIBRARY} ${FEXCORE_XXHASH_LIBRARY} -lpthread -ldl -lm -lrt)
 
 	install(TARGETS darling-fexcore DESTINATION libexec/darling/lib)
+
+	add_executable(mldr_fexcore_callbacks_test ${CMAKE_SOURCE_DIR}/tests/mldr/fexcore_callbacks.c)
+	target_include_directories(mldr_fexcore_callbacks_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+	target_compile_options(mldr_fexcore_callbacks_test PRIVATE -pthread)
+	target_link_options(mldr_fexcore_callbacks_test PRIVATE -pthread)
+	target_link_libraries(mldr_fexcore_callbacks_test PRIVATE darling-fexcore)
+	add_test(NAME mldr_fexcore_callbacks COMMAND mldr_fexcore_callbacks_test)
 endif()
 
 # mldr must refuse to start without a darlingserver socket path instead of falling back
