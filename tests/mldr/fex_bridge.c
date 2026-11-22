@@ -746,6 +746,80 @@ static void test_callback_struct(void)
 	check(g_outline_funcs_ptr == 0, "a NULL struct pointer reaches the library as NULL");
 }
 
+static uint64_t g_xim_values[4];
+// What libX11 keeps of XVaCreateNestedList(0, name1, value1, name2, value2, NULL): the values.
+static uint64_t host_XVaCreateNestedList(uint64_t unused, uint64_t n1, uint64_t v1, uint64_t n2, uint64_t v2, uint64_t end)
+{
+	(void)unused;
+	(void)n1;
+	(void)n2;
+	(void)end;
+	g_xim_values[0] = v1;
+	g_xim_values[1] = v2;
+	return 0x9200;
+}
+
+static uint64_t host_XSetICValues(uint64_t ic, uint64_t n1, uint64_t v1, uint64_t end)
+{
+	(void)ic;
+	(void)n1;
+	(void)end;
+	g_xim_values[2] = v1;
+	return 0;
+}
+
+// A (name, value) list with no terminator among the 22 words the bridge copies.
+static void set_overlong_xim_list(void)
+{
+	static uint64_t stack[17];
+	for (int i = 0; i < 17; i++)
+		stack[i] = (uint64_t)(uintptr_t)"spotLocation";
+	void* set = fex_dlsym_wrap_if_func((void*)host_XSetICValues, "XSetICValues");
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rax = stub_syscall_nr(set);
+	st.rsi = st.rdx = st.r10 = st.r8 = st.r9 = (uint64_t)(uintptr_t)"spotLocation";
+	st.rsp = (uint64_t)(uintptr_t)stack;
+	fex_linux_syscall_dispatch(&st);
+}
+
+// The XIMCallback { client_data, callback } structs in Xlib's input method value lists hold guest
+// callbacks; libX11 is given host copies holding thunks.
+static void test_xim_callbacks(void)
+{
+	uint64_t start_cb[2] = {0x7f00014000, 0x5500000};
+	uint64_t point = 0x00050006;
+	void* nested = fex_dlsym_wrap_if_func((void*)host_XVaCreateNestedList, "XVaCreateNestedList");
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rax = stub_syscall_nr(nested);
+	st.rsi = (uint64_t)(uintptr_t)"preeditStartCallback";
+	st.rdx = (uint64_t)(uintptr_t)start_cb;
+	st.r10 = (uint64_t)(uintptr_t)"spotLocation";
+	st.r8 = (uint64_t)(uintptr_t)&point;
+	fex_linux_syscall_dispatch(&st);
+
+	const uint64_t* host_cb = (const uint64_t*)(uintptr_t)g_xim_values[0];
+	bool copied = host_cb != NULL && host_cb != start_cb && !is_fake_guest_fn(host_cb[1]);
+	check(copied && host_cb[0] == 0x7f00014000,
+		"a preedit callback in a nested list reaches libX11 as a host XIMCallback with a thunk");
+	check(g_xim_values[1] == (uint64_t)(uintptr_t)&point, "values of other names are passed on as they are");
+	check(start_cb[1] == 0x5500000, "the guest's XIMCallback is left alone");
+	last_cb_args_fn = 0;
+	if (copied)
+		((void (*)(uint64_t, uint64_t, uint64_t))(uintptr_t)host_cb[1])(0x7f00015000, host_cb[0], 0x7f00016000);
+	check(last_cb_args_fn == 0x5500000 && last_cb_args[0] == 0x7f00015000 && last_cb_args[1] == 0x7f00014000 &&
+	      last_cb_args[2] == 0x7f00016000,
+		"the input method's call runs the guest callback with the IC, client data and call data");
+
+	void* set = fex_dlsym_wrap_if_func((void*)host_XSetICValues, "XSetICValues");
+	call_stub(set, 0x7f00017000, (uint64_t)(uintptr_t)"preeditStartCallback", (uint64_t)(uintptr_t)start_cb, 0);
+	check(copied && g_xim_values[2] == g_xim_values[0], "the same guest XIMCallback keeps one host copy");
+
+	check(aborts_with(set_overlong_xim_list, "an Xlib input method value list longer than 22 arguments is not supported"),
+		"a value list longer than the bridge copies stops the process and says why");
+}
+
 static uint64_t g_debug_callback_seen = 1;
 static uint64_t host_glDebugMessageCallback(uint64_t callback, uint64_t user_param)
 {
@@ -1247,6 +1321,7 @@ int main(void)
 	test_callback_arguments();
 	test_unsupported_callback();
 	test_callback_struct();
+	test_xim_callbacks();
 	test_syscall_translations();
 	test_safe_memory_access();
 	return failures ? 1 : 0;

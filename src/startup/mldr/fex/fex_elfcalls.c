@@ -206,6 +206,7 @@ struct fex_callback_rules {
 	unsigned args; // the g_callback_args mask, 0 if the function has no entry
 	const struct fex_unsupported_callback* unsupported; // its g_callback_unsupported entry, if any
 	const struct fex_callback_struct* callback_struct; // its g_callback_structs entry, if any
+	unsigned xim_list; // first argument of its g_xim_value_lists (name, value) list, 0 if none
 };
 static struct fex_callback_rules g_dlsym_rules[DARLING_FEX_DLSYM_MAX_SLOTS];
 static struct fex_callback_rules callback_rules_for(const char* name);
@@ -436,9 +437,54 @@ static const struct fex_callback_struct g_callback_structs[] = {
 	{ "FT_Outline_Decompose", 1, 6, 0xf },
 };
 
+// Xlib input method functions that take a NULL-terminated list of (name, value) pairs from argument
+// `first`. The value of a callback name (XNPreeditStartCallback and the others below) is a pointer to
+// an XIMCallback { client_data, callback }.
+static const struct { const char* name; unsigned first; } g_xim_value_lists[] = {
+	{ "XVaCreateNestedList", 1 }, { "XCreateIC", 1 }, { "XSetICValues", 1 }, { "XSetIMValues", 1 },
+};
+static const char* const g_xim_callback_names[] = {
+	"preeditStartCallback", "preeditDoneCallback", "preeditDrawCallback", "preeditCaretCallback",
+	"preeditStateNotifyCallback", "statusStartCallback", "statusDoneCallback", "statusDrawCallback",
+	"geometryCallback", "destroyCallback", "stringConversionCallback", "r6PreeditCallback",
+};
+
+// Host copies of XIMCallback structs. A nested list keeps the pointer it was given until the guest
+// frees the list, at a time the bridge does not see, so the copies are never freed; there is one per
+// distinct (client_data, callback) pair, as many as a client that creates one input context per window
+// registers callbacks. A change the guest makes to its XIMCallback after the call is not seen.
+struct fex_xim_callback { uint64_t client_data; uint64_t callback; uint64_t guest_callback; struct fex_xim_callback* next; };
+static struct fex_xim_callback* g_xim_callbacks = NULL;
+static pthread_mutex_t g_xim_callback_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static uint64_t host_xim_callback_for(uint64_t guest_struct)
+{
+	uint64_t guest[2];
+	if (guest_struct == 0 || fex_copy_from_guest(guest, (const void*)(uintptr_t)guest_struct, sizeof(guest)) != 0)
+		return guest_struct;
+	uint64_t thunk = host_callback_for(guest[1]);
+	pthread_mutex_lock(&g_xim_callback_mutex);
+	struct fex_xim_callback* c = g_xim_callbacks;
+	while (c && (c->client_data != guest[0] || c->guest_callback != guest[1]))
+		c = c->next;
+	if (!c) {
+		c = malloc(sizeof(*c));
+		if (!c) {
+			pthread_mutex_unlock(&g_xim_callback_mutex);
+			fprintf(stderr, "mldr/fex: out of memory copying an XIMCallback\n");
+			abort();
+		}
+		*c = (struct fex_xim_callback){ guest[0], thunk, guest[1], g_xim_callbacks };
+		g_xim_callbacks = c;
+	}
+	pthread_mutex_unlock(&g_xim_callback_mutex);
+	// XIMCallback is the first two words of the copy.
+	return (uint64_t)(uintptr_t)c;
+}
+
 static struct fex_callback_rules callback_rules_for(const char* name)
 {
-	struct fex_callback_rules r = { FEX_X_HANDLER_NONE, 0, NULL, NULL };
+	struct fex_callback_rules r = { FEX_X_HANDLER_NONE, 0, NULL, NULL, 0 };
 	if (!name)
 		return r;
 	if (strcmp(name, "XSetErrorHandler") == 0)
@@ -460,6 +506,9 @@ static struct fex_callback_rules callback_rules_for(const char* name)
 		}
 		r.callback_struct = &g_callback_structs[i];
 	}
+	for (size_t i = 0; i < sizeof(g_xim_value_lists) / sizeof(g_xim_value_lists[0]); i++)
+		if (strcmp(name, g_xim_value_lists[i].name) == 0)
+			r.xim_list = g_xim_value_lists[i].first;
 	return r;
 }
 
@@ -492,6 +541,27 @@ static void translate_guest_callbacks(const struct fex_callback_rules* rules, ui
 			*arg = (uint64_t)(uintptr_t)struct_copy;
 		}
 	}
+	if (rules->xim_list) {
+		// The host function reads the list with va_arg, past the words the bridge copies if it is longer,
+		// so a list whose terminator is not among them is not supported.
+		int a = (int)rules->xim_list;
+		for (; a < nargs && *args[a] != 0; a += 2) {
+			if (a + 1 >= nargs)
+				break;
+			const char* key = (const char*)(uintptr_t)*args[a];
+			for (size_t k = 0; k < sizeof(g_xim_callback_names) / sizeof(g_xim_callback_names[0]); k++) {
+				if (strcmp(key, g_xim_callback_names[k]) == 0) {
+					*args[a + 1] = host_xim_callback_for(*args[a + 1]);
+					break;
+				}
+			}
+		}
+		if (a >= nargs || *args[a] != 0) {
+			fprintf(stderr, "mldr/fex: an Xlib input method value list longer than %d arguments is not supported\n",
+				nargs);
+			abort();
+		}
+	}
 }
 
 long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
@@ -501,7 +571,7 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 
 	pthread_mutex_lock(&g_dlsym_mutex);
 	void* target = (slot < g_dlsym_count) ? g_dlsym_targets[slot] : NULL;
-	const struct fex_callback_rules rules = target ? g_dlsym_rules[slot] : (struct fex_callback_rules){ FEX_X_HANDLER_NONE, 0, NULL, NULL };
+	const struct fex_callback_rules rules = target ? g_dlsym_rules[slot] : (struct fex_callback_rules){ FEX_X_HANDLER_NONE, 0, NULL, NULL, 0 };
 	pthread_mutex_unlock(&g_dlsym_mutex);
 
 	if (!target)
