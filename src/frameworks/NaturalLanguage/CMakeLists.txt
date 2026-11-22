@@ -20,6 +20,9 @@ add_framework(NaturalLanguage
     SOURCES
         src/NLConstants.m
         src/NLTokenizer.m
+        src/NLTagger.m
+        src/NLLanguageRecognizer.m
+        src/NLEmbedding.m
 
     DEPENDENCIES
         system
