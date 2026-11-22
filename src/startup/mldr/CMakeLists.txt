@@ -326,12 +326,18 @@ if (WITH_FEXCORE)
 
 	install(TARGETS darling-fexcore DESTINATION libexec/darling/lib)
 
-	add_executable(mldr_fexcore_callbacks_test ${CMAKE_SOURCE_DIR}/tests/mldr/fexcore_callbacks.c)
+	add_executable(mldr_fexcore_callbacks_test ${CMAKE_SOURCE_DIR}/tests/mldr/fexcore_callbacks.c
+		fex/fex_elfcalls.c fex/fex_syscall.c fex/fex_engine.cpp)
 	target_include_directories(mldr_fexcore_callbacks_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+	set_target_properties(mldr_fexcore_callbacks_test PROPERTIES LINKER_LANGUAGE CXX)
 	target_compile_options(mldr_fexcore_callbacks_test PRIVATE -pthread)
 	target_link_options(mldr_fexcore_callbacks_test PRIVATE -pthread)
-	target_link_libraries(mldr_fexcore_callbacks_test PRIVATE darling-fexcore)
-	add_test(NAME mldr_fexcore_callbacks COMMAND mldr_fexcore_callbacks_test)
+	target_link_libraries(mldr_fexcore_callbacks_test PRIVATE -ldl)
+	add_dependencies(mldr_fexcore_callbacks_test darling-fexcore)
+	# Exits 77 (skipped) on hosts whose page size is not 4 KB; run it inside muvm there.
+	add_test(NAME mldr_fexcore_callbacks
+		COMMAND mldr_fexcore_callbacks_test $<TARGET_FILE:darling-fexcore>)
+	set_tests_properties(mldr_fexcore_callbacks PROPERTIES SKIP_RETURN_CODE 77)
 endif()
 
 # mldr must refuse to start without a darlingserver socket path instead of falling back
