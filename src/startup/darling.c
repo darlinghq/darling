@@ -46,6 +46,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "../shellspawn/shellspawn.h"
 #include "darling.h"
 #include "darling-config.h"
+#include "launcher-binfmt.h"
 #include "launcher-env.h"
 #include "launcher-ids.h"
 #include "launcher-locale.h"
@@ -250,6 +251,27 @@ int main(int argc, char ** argv)
 	{
 		showHelp(argv[0]);
 		return 1;
+	}
+
+	// Started by a binfmt_misc entry for a Mach-O file: the rest of the launcher sees the
+	// "exec" form of the command (see launcher-binfmt.h).
+	int execFd = launcherBinfmtExecFd();
+	if (execFd >= 0)
+	{
+		char program[4096];
+		char** execArgv = NULL;
+		bool known = launcherBinfmtProgramPath(execFd, program, sizeof(program));
+
+		close(execFd);
+		if (known)
+			execArgv = launcherBinfmtExecArgv(argc, argv, program);
+		if (execArgv == NULL)
+		{
+			fprintf(stderr, "Cannot tell which file to run: it is not on a file system, was removed, or its path is too long.\n");
+			return 1;
+		}
+		argv = execArgv;
+		argc++;
 	}
 
 	// Whether the launcher has root's power decides the mode; the environment only chooses
