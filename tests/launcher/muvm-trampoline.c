@@ -457,6 +457,7 @@ static void test_reexec(void)
 	setenv("DARLING_TEST_VARIABLE", "1", 1);
 	setenv("NOT_FORWARDED", "1", 1);
 	unsetenv("TMPDIR");
+	unsetenv("GDK_SCALE");
 	unsetenv("__mldr_bprefs");
 
 	launcherLength = readlink("/proc/self/exe", launcher, sizeof(launcher) - 1);
@@ -495,13 +496,16 @@ static void test_reexec(void)
 	check(!hasPair(lines, count, "NOT_FORWARDED"), "an unrelated variable is not forwarded");
 	check(!hasPair(lines, count, "TMPDIR"), "an unset variable is not forwarded");
 	check(!hasPair(lines, count, "__mldr_bprefs"), "an unset architecture preference is not forwarded");
+	check(!hasPair(lines, count, "GDK_SCALE"), "an unset desktop scale is not forwarded");
 
 	setenv("__mldr_bprefs", "01000007", 1);
+	setenv("GDK_SCALE", "2", 1);
 	unlink(recordPath);
 	check(runReexec(plainArgv, 1, "/resolved/app") == 0, "the plain form re-execs muvm");
 	count = readRecord(recordPath, lines, 256);
 	check(hasPair(lines, count, "__mldr_bprefs"),
 		"a set architecture preference reaches the guest");
+	check(hasPair(lines, count, "GDK_SCALE"), "the desktop's scale reaches the guest");
 
 	dash = indexOf(lines, count, "--");
 	check(dash != (size_t) -1 && dash > 0, "the plain form reaches the separator");
@@ -519,6 +523,7 @@ static void test_reexec(void)
 		check(false, "the plain form ends after the target's arguments");
 
 	unsetenv("__mldr_bprefs");
+	unsetenv("GDK_SCALE");
 }
 
 int main(void)

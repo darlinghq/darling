@@ -54,7 +54,10 @@ extern char** environ;
 #define FAT_MAX_ARCHS 64U
 
 // muvm passes only named variables into the guest; mldr needs the prefix and
-// the architecture preference, and a GUI program needs its session.
+// the architecture preference, and a GUI program needs its session. GDK_SCALE
+// is the scale an X11 desktop exports for its clients (AppKit's X11 backend
+// reads it, as X11 has no scale protocol), so the guest draws at the desktop's
+// scale.
 static const char* const kForwardedVariables[] =
 {
 	"HOME",
@@ -68,6 +71,7 @@ static const char* const kForwardedVariables[] =
 	"LC_ALL",
 	"XDG_RUNTIME_DIR",
 	"WAYLAND_DISPLAY",
+	"GDK_SCALE",
 	"DPREFIX",
 	"__mldr_bprefs",
 };
