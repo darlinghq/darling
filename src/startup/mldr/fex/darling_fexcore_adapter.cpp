@@ -24,6 +24,7 @@
 #include <ucontext.h>
 #include <unistd.h>
 
+#include "darling_fexcore_signals.h"
 #include "fex_bridge.h"
 
 namespace {
@@ -345,6 +346,7 @@ static void init_fex_context() {
 #if defined(__aarch64__)
   install_sigbus_handler();
 #endif
+  darling_fex::host_signal_stacks_init();
 }
 } // namespace
 
@@ -373,10 +375,17 @@ extern "C" int darling_fexcore_run_thread(
   t_syscall_cb = syscall_cb;
   t_exit_jmp = &exit_env;
   t_thread_state = thread;
+  // Only now can a guest handler run here: its syscalls need the callback and exit point above.
+  FEXCore::Core::InternalThreadState* prev_signal_thread = nullptr;
+  if (!darling_fex::signals_enter_thread(thread, &prev_signal_thread)) {
+    std::fprintf(stderr, "[mldr/fex] fatal: cannot set up the host signal stack\n");
+    std::abort();
+  }
 
   if (setjmp(exit_env) == 0) {
     g_ctx->ExecuteThread(thread);
   }
+  darling_fex::signals_leave_thread(prev_signal_thread);
 
   fex_state_to_darling(g_ctx.get(), thread, thread->CurrentFrame->State, state);
 
@@ -461,6 +470,12 @@ extern "C" int darling_fexcore_run_callback(
   t_syscall_cb = syscall_cb;
   t_exit_jmp = &exit_env;
   t_thread_state = thread;
+  // A callback on a thread that runs no guest code otherwise takes its signals like a guest thread meanwhile.
+  FEXCore::Core::InternalThreadState* prev_signal_thread = nullptr;
+  if (!prev_thread && !darling_fex::signals_enter_thread(thread, &prev_signal_thread)) {
+    std::fprintf(stderr, "[mldr/fex] fatal: cannot set up the host signal stack\n");
+    std::abort();
+  }
 
   if (setjmp(exit_env) == 0) {
     g_ctx->HandleCallback(thread, state->rip);
@@ -468,6 +483,10 @@ extern "C" int darling_fexcore_run_callback(
     // The guest thread is terminating and was unwound out of the callback, so the callback return that
     // balances the entry's count of nested JIT frames never ran.
     frame->SignalHandlerRefCounter--;
+  }
+
+  if (!prev_thread) {
+    darling_fex::signals_leave_thread(prev_signal_thread);
   }
 
   state->rax = cpu.gregs[FEXCore::X86State::REG_RAX];
