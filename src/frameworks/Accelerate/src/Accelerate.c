@@ -107,6 +107,178 @@ vImage_Error vImageBufferFill_ARGB8888(
     return kvImageNoError;
 }
 
+// IEEE 754-2008 binary16 (1 sign, 5 exponent with bias 15, 10 fraction bits) to binary32
+// (1, 8 with bias 127, 23). Every finite binary16 value is exactly representable in binary32.
+static float half_to_float(uint16_t half) {
+    uint32_t sign = (uint32_t)(half & 0x8000) << 16;
+    uint32_t exponent = (half >> 10) & 0x1f;
+    uint32_t fraction = half & 0x3ff;
+    uint32_t bits;
+
+    if (exponent == 0x1f) {
+        // Infinity, or a NaN whose payload moves up unchanged. IEEE 754-2008 convertFormat returns
+        // a quiet NaN for a signalling input, so the quiet bit is set when the fraction is not zero.
+        bits = sign | 0x7f800000u | (fraction << 13);
+        if (fraction != 0) {
+            bits |= 0x400000u;
+        }
+    } else if (exponent != 0) {
+        bits = sign | ((exponent + 112) << 23) | (fraction << 13);
+    } else if (fraction == 0) {
+        bits = sign;
+    } else {
+        // Subnormal: fraction * 2^-24. Renormalize so the leading set bit becomes the implicit one.
+        int lead = 9;
+        while (!(fraction & (1u << lead))) {
+            lead--;
+        }
+        bits = sign | ((uint32_t)(lead + 103) << 23) | ((fraction << (23 - lead)) & 0x7fffffu);
+    }
+
+    float result;
+    memcpy(&result, &bits, sizeof(result));
+    return result;
+}
+
+// binary32 to binary16, rounding to nearest with ties to even (the default IEEE 754 rounding).
+// Magnitudes that round past the largest finite half become infinity, magnitudes below half of the
+// smallest subnormal become a signed zero, and a NaN stays a NaN (quiet bit set, top payload bits kept).
+static uint16_t float_to_half(float value) {
+    uint32_t bits;
+    memcpy(&bits, &value, sizeof(bits));
+    uint32_t sign = (bits >> 16) & 0x8000u;
+    uint32_t exponent = (bits >> 23) & 0xff;
+    uint32_t fraction = bits & 0x7fffffu;
+
+    if (exponent == 0xff) {
+        if (fraction == 0) {
+            return (uint16_t)(sign | 0x7c00u);
+        }
+        return (uint16_t)(sign | 0x7c00u | 0x200u | (fraction >> 13));
+    }
+
+    // Exponent field of the result before rounding: unbiased exponent plus 15.
+    int32_t half_exponent = (int32_t)exponent - 112;
+    if (half_exponent >= 0x1f) {
+        return (uint16_t)(sign | 0x7c00u);
+    }
+
+    uint32_t magnitude;
+    uint32_t shift;
+    if (half_exponent >= 1) {
+        magnitude = ((uint32_t)half_exponent << 10) | (fraction >> 13);
+        shift = 13;
+    } else if (half_exponent >= -10) {
+        // Subnormal result: shift the significand (with its implicit one) down to units of 2^-24.
+        magnitude = (fraction | 0x800000u) >> (14 - half_exponent);
+        shift = 14 - (uint32_t)half_exponent;
+        fraction |= 0x800000u;
+    } else {
+        return (uint16_t)sign;
+    }
+
+    uint32_t discarded = fraction & ((1u << shift) - 1);
+    uint32_t halfway = 1u << (shift - 1);
+    if (discarded > halfway || (discarded == halfway && (magnitude & 1))) {
+        // A carry out of the fraction raises the exponent, which is the correct rounded result,
+        // including the step from the largest finite half to infinity.
+        magnitude++;
+    }
+    return (uint16_t)(sign | magnitude);
+}
+
+// Shared checks of the two planar half/single converters; src_size and dest_size are the bytes per pixel.
+static vImage_Error check_planar_convert_buffers(const vImage_Buffer *src, const vImage_Buffer *dest,
+                                                 size_t src_size, size_t dest_size) {
+    if (!src || !dest) {
+        return kvImageNullPointerArgument;
+    }
+    if (src->width != dest->width || src->height != dest->height) {
+        return kvImageBufferSizeMismatch;
+    }
+    if (src->width == 0 || src->height == 0) {
+        return kvImageNoError;
+    }
+    if (!src->data || !dest->data) {
+        return kvImageNullPointerArgument;
+    }
+    if (src->width > SIZE_MAX / src_size || src->rowBytes < (size_t)src->width * src_size ||
+        src->rowBytes > SIZE_MAX / src->height ||
+        dest->width > SIZE_MAX / dest_size || dest->rowBytes < (size_t)dest->width * dest_size ||
+        dest->rowBytes > SIZE_MAX / dest->height) {
+        return kvImageInvalidRowBytes;
+    }
+    return kvImageNoError;
+}
+
+// kvImageGetTempBufferSize: the flag's documentation says the function returns the temporary buffer
+// size instead of performing the operation; no temporary buffer is needed, so 0 is returned first,
+// before any argument check, as vImageScale_ARGB8888 and vImageBoxConvolve_ARGB8888 do.
+//
+// GUESS: the documentation lists no error conditions for the two converters, and states no rule
+// that the source and destination dimensions are equal. The errors returned here (null pointers:
+// kvImageNullPointerArgument; differing width or height: kvImageBufferSizeMismatch; rowBytes too
+// small for a row: kvImageInvalidRowBytes) follow the names of the documented error constants and
+// the argument checks of vImageBufferFill_ARGB8888 above, and an empty buffer succeeds without
+// touching its data pointer, as there. Other flags are not validated: kvImageDoNotTile is documented
+// as the only useful one, and no tiling or threading is done here either way. The buffers must not
+// overlap (an in-place conversion is not documented).
+vImage_Error vImageConvert_Planar16FtoPlanarF(
+    const vImage_Buffer *src,
+    const vImage_Buffer *dest,
+    vImage_Flags flags
+) {
+    if (flags & kvImageGetTempBufferSize) {
+        return 0;
+    }
+
+    vImage_Error error = check_planar_convert_buffers(src, dest, sizeof(uint16_t), sizeof(float));
+    if (error != kvImageNoError || src->width == 0 || src->height == 0) {
+        return error;
+    }
+
+    const uint8_t *src_row = (const uint8_t *)src->data;
+    uint8_t *dest_row = (uint8_t *)dest->data;
+    for (vImagePixelCount y = 0; y < src->height; y++, src_row += src->rowBytes, dest_row += dest->rowBytes) {
+        for (vImagePixelCount x = 0; x < src->width; x++) {
+            uint16_t half;
+            memcpy(&half, src_row + x * sizeof(half), sizeof(half));
+            float value = half_to_float(half);
+            memcpy(dest_row + x * sizeof(value), &value, sizeof(value));
+        }
+    }
+    return kvImageNoError;
+}
+
+// GUESS: see the comment on vImageConvert_Planar16FtoPlanarF; the same choices apply. The
+// rounding mode is not documented either; round to nearest, ties to even, is the IEEE 754 default.
+vImage_Error vImageConvert_PlanarFtoPlanar16F(
+    const vImage_Buffer *src,
+    const vImage_Buffer *dest,
+    vImage_Flags flags
+) {
+    if (flags & kvImageGetTempBufferSize) {
+        return 0;
+    }
+
+    vImage_Error error = check_planar_convert_buffers(src, dest, sizeof(float), sizeof(uint16_t));
+    if (error != kvImageNoError || src->width == 0 || src->height == 0) {
+        return error;
+    }
+
+    const uint8_t *src_row = (const uint8_t *)src->data;
+    uint8_t *dest_row = (uint8_t *)dest->data;
+    for (vImagePixelCount y = 0; y < src->height; y++, src_row += src->rowBytes, dest_row += dest->rowBytes) {
+        for (vImagePixelCount x = 0; x < src->width; x++) {
+            float value;
+            memcpy(&value, src_row + x * sizeof(value), sizeof(value));
+            uint16_t half = float_to_half(value);
+            memcpy(dest_row + x * sizeof(half), &half, sizeof(half));
+        }
+    }
+    return kvImageNoError;
+}
+
 vImage_Error vImagePermuteChannels_ARGB8888(
     const vImage_Buffer *src,
     const vImage_Buffer *dest,
