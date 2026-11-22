@@ -196,6 +196,16 @@ darling_thread_create_callbacks_t fex_wrap_guest_thread_callbacks(darling_thread
 	return &g_wrapped_thread_cbs;
 }
 
+// What the bridge does to the arguments of one host function, decided from its name when it is wrapped
+// so that a call does no name lookups.
+enum fex_x_handler { FEX_X_HANDLER_NONE, FEX_X_ERROR_HANDLER, FEX_X_IO_ERROR_HANDLER };
+struct fex_callback_rules {
+	enum fex_x_handler x_handler;
+	unsigned args; // the g_callback_args mask, 0 if the function has no entry
+};
+static struct fex_callback_rules g_dlsym_rules[DARLING_FEX_DLSYM_MAX_SLOTS];
+static struct fex_callback_rules callback_rules_for(const char* name);
+
 void* fex_dlsym_wrap_if_func(void* host_sym, const char* symbol_name)
 {
 	if (!host_sym)
@@ -228,6 +238,7 @@ void* fex_dlsym_wrap_if_func(void* host_sym, const char* symbol_name)
 
 	uint32_t slot = g_dlsym_count++;
 	g_dlsym_targets[slot] = host_sym;
+	g_dlsym_rules[slot] = callback_rules_for(symbol_name);
 	g_dlsym_names[slot] = symbol_name ? strdup(symbol_name) : NULL;
 	if (symbol_name && !g_dlsym_names[slot]) {
 		pthread_mutex_unlock(&g_dlsym_mutex);
@@ -395,6 +406,31 @@ static const struct { const char* name; unsigned mask; } g_callback_args[] = {
 	{ "wl_proxy_add_dispatcher", 0x2 },
 };
 
+static struct fex_callback_rules callback_rules_for(const char* name)
+{
+	struct fex_callback_rules r = { FEX_X_HANDLER_NONE, 0 };
+	if (!name)
+		return r;
+	if (strcmp(name, "XSetErrorHandler") == 0)
+		r.x_handler = FEX_X_ERROR_HANDLER;
+	else if (strcmp(name, "XSetIOErrorHandler") == 0)
+		r.x_handler = FEX_X_IO_ERROR_HANDLER;
+	for (size_t i = 0; i < sizeof(g_callback_args) / sizeof(g_callback_args[0]); i++)
+		if (strcmp(name, g_callback_args[i].name) == 0)
+			r.args = g_callback_args[i].mask;
+	return r;
+}
+
+// Replaces the guest function pointers among the arguments of a host function (args[i] is its i-th
+// integer argument) by host thunks, as its rules say.
+static void translate_guest_callbacks(const struct fex_callback_rules* rules, uint64_t* args[], int nargs)
+{
+	bool ignore = (rules->args & FEX_CALLBACK_IGNORE) != 0;
+	for (int a = 0; a < nargs && a < 31; a++)
+		if (rules->args & (1u << a))
+			*args[a] = (*args[a] && ignore) ? (uint64_t)(uintptr_t)host_callback_ignore : host_callback_for(*args[a]);
+}
+
 long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 {
 	if (!state)
@@ -402,20 +438,20 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 
 	pthread_mutex_lock(&g_dlsym_mutex);
 	void* target = (slot < g_dlsym_count) ? g_dlsym_targets[slot] : NULL;
+	const struct fex_callback_rules rules = target ? g_dlsym_rules[slot] : (struct fex_callback_rules){ FEX_X_HANDLER_NONE, 0 };
 	pthread_mutex_unlock(&g_dlsym_mutex);
 
 	if (!target)
 		return -ENOSYS;
 
-	const char* name = (slot < DARLING_FEX_DLSYM_MAX_SLOTS) ? g_dlsym_names[slot] : NULL;
 	uintptr_t* guest_handler = NULL;
 	uint64_t* host_native = NULL;
 	uint64_t host_handler = 0;
-	if (name && strcmp(name, "XSetErrorHandler") == 0) {
+	if (rules.x_handler == FEX_X_ERROR_HANDLER) {
 		guest_handler = &g_guest_x_error_handler;
 		host_native = &g_host_x_error_native;
 		host_handler = (uint64_t)(uintptr_t)host_x_error_handler;
-	} else if (name && strcmp(name, "XSetIOErrorHandler") == 0) {
+	} else if (rules.x_handler == FEX_X_IO_ERROR_HANDLER) {
 		guest_handler = &g_guest_x_io_error_handler;
 		host_native = &g_host_x_io_error_native;
 		host_handler = (uint64_t)(uintptr_t)host_x_io_error_handler;
@@ -442,20 +478,11 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 		for (int i = 0; i < FEX_STACK_ARG_WORDS; i++)
 			st[i] = sp[1 + i];
 	}
-	if (name && !guest_handler) {
-		for (size_t i = 0; i < sizeof(g_callback_args) / sizeof(g_callback_args[0]); i++) {
-			if (strcmp(name, g_callback_args[i].name) != 0)
-				continue;
-			unsigned mask = g_callback_args[i].mask;
-			bool ignore = (mask & FEX_CALLBACK_IGNORE) != 0;
-			uint64_t* args[6 + FEX_STACK_ARG_WORDS] = {&state->rdi, &state->rsi, &state->rdx, &state->r10, &state->r8, &state->r9};
-			for (int w = 0; w < FEX_STACK_ARG_WORDS; w++)
-				args[6 + w] = &st[w];
-			for (int a = 0; a < 6 + FEX_STACK_ARG_WORDS && a < 31; a++)
-				if (mask & (1u << a))
-					*args[a] = (*args[a] && ignore) ? (uint64_t)(uintptr_t)host_callback_ignore : host_callback_for(*args[a]);
-			break;
-		}
+	if (!guest_handler) {
+		uint64_t* args[6 + FEX_STACK_ARG_WORDS] = {&state->rdi, &state->rsi, &state->rdx, &state->r10, &state->r8, &state->r9};
+		for (int w = 0; w < FEX_STACK_ARG_WORDS; w++)
+			args[6 + w] = &st[w];
+		translate_guest_callbacks(&rules, args, 6 + FEX_STACK_ARG_WORDS);
 	}
 	uint64_t s0 = st[0], s1 = st[1];
 
