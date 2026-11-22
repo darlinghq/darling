@@ -17,6 +17,7 @@ set(Finder_sources
 	FinderFolderStyle.m
 	FinderFreeformLayout.m
 	FinderIconViewController.m
+	FinderItemActions.m
 	FinderListViewController.m
 	FinderOperationQueue.m
 	FinderSidebarController.m
