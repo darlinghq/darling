@@ -22,10 +22,13 @@
 
 // Placeholder: the documented parameters and properties are stored. While contentType is unset, or after it
 // is reset to nil, it is derived from the file extension, as documented.
-@implementation QLThumbnailGenerationRequest {
-    NSURL *_fileURL;
-    UTType *_contentType;
-}
+@implementation QLThumbnailGenerationRequest
+
+@synthesize size = _size;
+@synthesize scale = _scale;
+@synthesize representationTypes = _representationTypes;
+@synthesize minimumDimension = _minimumDimension;
+@synthesize iconMode = _iconMode;
 
 - (instancetype)initWithFileAtURL:(NSURL *)url
                              size:(CGSize)size

@@ -23,4 +23,9 @@
 // representations and the documented properties keep their zero values.
 @implementation QLThumbnailRepresentation
 
+@synthesize CGImage = _CGImage;
+@synthesize NSImage = _NSImage;
+@synthesize type = _type;
+@synthesize contentRect = _contentRect;
+
 @end

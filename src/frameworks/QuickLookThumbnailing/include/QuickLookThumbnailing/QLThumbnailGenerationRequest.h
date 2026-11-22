@@ -36,8 +36,20 @@ typedef NS_OPTIONS(NSUInteger, QLThumbnailGenerationRequestRepresentationTypes) 
 
 NS_ASSUME_NONNULL_BEGIN
 
+// The instance variables are declared here, and the properties are synthesized by name, because the
+// i386 slice uses the legacy Objective-C runtime: no automatic property synthesis and no instance
+// variables in @implementation.
 API_AVAILABLE(macos(10.15))
-@interface QLThumbnailGenerationRequest : NSObject
+@interface QLThumbnailGenerationRequest : NSObject {
+@private
+    NSURL *_fileURL;
+    UTType *_contentType;
+    CGSize _size;
+    CGFloat _scale;
+    QLThumbnailGenerationRequestRepresentationTypes _representationTypes;
+    CGFloat _minimumDimension;
+    BOOL _iconMode;
+}
 
 - (instancetype)initWithFileAtURL:(NSURL *)url
                              size:(CGSize)size

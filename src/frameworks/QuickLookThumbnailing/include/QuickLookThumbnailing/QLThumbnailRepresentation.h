@@ -36,8 +36,17 @@ typedef NS_ENUM(NSInteger, QLThumbnailRepresentationType) {
 
 NS_ASSUME_NONNULL_BEGIN
 
+// The instance variables are declared here, and the properties are synthesized by name, because the
+// i386 slice uses the legacy Objective-C runtime: no automatic property synthesis and no instance
+// variables in @implementation.
 API_AVAILABLE(macos(10.15))
-@interface QLThumbnailRepresentation : NSObject
+@interface QLThumbnailRepresentation : NSObject {
+@private
+    CGImageRef _CGImage;
+    NSImage *_NSImage;
+    QLThumbnailRepresentationType _type;
+    CGRect _contentRect;
+}
 
 @property (nonatomic, readonly) CGImageRef CGImage;
 @property (nonatomic, strong, readonly) NSImage *NSImage;
