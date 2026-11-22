@@ -21,6 +21,7 @@
 #import "FinderDirectory.h"
 #import "FinderFolderStyle.h"
 #import "FinderIconViewController.h"
+#import "FinderInfoPanelController.h"
 #import "FinderItemActions.h"
 #import "FinderListViewController.h"
 #import "FinderOperationQueue.h"
@@ -554,6 +555,12 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
     }];
 }
 
+- (IBAction)getInfo:(id)sender
+{
+    for (NSURL *item in self.selectedItems)
+        [FinderInfoPanelController showInfoForItem:item];
+}
+
 #pragma mark Eject
 
 // The volume this window's folder is on, if it can be ejected
@@ -594,7 +601,7 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
         return self.canGoForward;
     if (item.action == @selector(goToEnclosingFolder:))
         return ![[_folderURL path] isEqual:@"/"];
-    if (item.action == @selector(openSelection:) || item.action == @selector(copy:))
+    if (item.action == @selector(openSelection:) || item.action == @selector(copy:) || item.action == @selector(getInfo:))
         return [self.selectedItems count] > 0;
     if (item.action == @selector(paste:) || item.action == @selector(moveItemHere:))
         return ![self folderIsReadOnly] && [[self pasteboardItems] count] > 0;

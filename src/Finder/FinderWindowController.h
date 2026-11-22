@@ -90,6 +90,8 @@ typedef NS_ENUM(NSInteger, FinderViewStyle) {
 - (IBAction)rename:(id)sender;
 // File > Move to Trash (Command-Delete)
 - (IBAction)moveToTrash:(id)sender;
+// File > Get Info (Command-I): a Get Info panel for each selected item
+- (IBAction)getInfo:(id)sender;
 
 // Starts renaming the item in place, in the view shown. A name the Finder doesn't allow is refused with an alert;
 // changing a file's extension asks first.

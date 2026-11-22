@@ -1,4 +1,4 @@
-// CFLAGS: -framework Foundation -framework AppKit -framework ImageIO -framework CoreServices -fobjc-arc -Isrc/Finder src/Finder/FinderDirectory.m src/Finder/FinderDSStore.m src/Finder/FinderFileOperation.m src/Finder/FinderFolderStyle.m src/Finder/FinderFreeformLayout.m src/Finder/FinderIconViewController.m src/Finder/FinderItemActions.m src/Finder/FinderListViewController.m src/Finder/FinderOperationQueue.m src/Finder/FinderSidebarController.m src/Finder/FinderWindowController.m
+// CFLAGS: -framework Foundation -framework AppKit -framework ImageIO -framework CoreServices -fobjc-arc -Isrc/Finder src/Finder/FinderDirectory.m src/Finder/FinderDSStore.m src/Finder/FinderFileOperation.m src/Finder/FinderFolderStyle.m src/Finder/FinderFreeformLayout.m src/Finder/FinderIconViewController.m src/Finder/FinderItemActions.m src/Finder/FinderListViewController.m src/Finder/FinderOperationQueue.m src/Finder/FinderSidebarController.m src/Finder/FinderWindowController.m src/Finder/FinderInfoPanelController.m
 // ARGS: "$(mktemp -d)/w"
 // Copyright (C) 2026 Lubos Dolezel
 //
@@ -12,6 +12,7 @@
 // and detaches it with hdiutil. Prints PASS/FAIL/SKIP lines; exits 1 on a failure.
 #import <AppKit/AppKit.h>
 #import "FinderWindowController.h"
+#import "FinderInfoPanelController.h"
 #import "FinderOperationQueue.h"
 #include <stdio.h>
 #include <sys/stat.h>
@@ -283,6 +284,23 @@ int main(int argc, char **argv)
         [first selectItems: @[ d ]];
         expect(enabled(first, @selector(copy:)) && enabled(first, @selector(rename:)) && enabled(first, @selector(moveToTrash:)),
                @"one selected: copy, rename and move to trash are enabled");
+
+        // Get Info: a panel per selected item
+        [first selectItems: @[]];
+        expect(!enabled(first, @selector(getInfo:)), @"nothing selected: get info is disabled");
+        [first selectItems: @[ d, [one URLByAppendingPathComponent: @"Neu"] ]];
+        expect(enabled(first, @selector(getInfo:)), @"get info is enabled with items selected");
+        [first getInfo: nil];
+        NSMutableArray<NSString *> *infoTitles = [NSMutableArray array];
+        for (NSWindow *window in [NSApp windows]) {
+            if ([window isVisible] && [window.title hasSuffix: @" Info"]) {
+                [infoTitles addObject: window.title];
+                [window close];
+            }
+        }
+        [infoTitles sortUsingSelector: @selector(compare:)];
+        expect([infoTitles isEqual: (@[ @"Neu Info", @"d.txt Info" ])],
+               [NSString stringWithFormat: @"get info: a panel for each selected item (%@)", infoTitles]);
 
         if (argc < 3)
             printf("SKIP: a read-only folder: no disk image given\n");
