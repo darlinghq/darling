@@ -31,6 +31,9 @@ NSString * const kCIInputContrastKey = @"inputContrast";
 NSString * const kCIInputEVKey = @"inputEV";
 NSString * const kCIInputExtentKey = @"inputExtent";
 NSString * const kCIInputImageKey = @"inputImage";
+// GUESS: the documentation gives no string value for this key; the value follows every other input
+// key in this file ("input" plus the key name without the kCIInput prefix and Key suffix).
+NSString * const kCIInputIntensityKey = @"inputIntensity";
 NSString * const kCIInputSaturationKey = @"inputSaturation";
 NSString *const kCIInputRadiusKey = @"inputRadius";
 NSString * const kCIOutputImageKey = @"outputImage";
