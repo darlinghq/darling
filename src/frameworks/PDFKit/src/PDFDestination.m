@@ -19,6 +19,12 @@
 
 #import <PDFKit/PDFDestination.h>
 #import <darling-stub-forwarding.h>
+#include <float.h>
+
+// The documentation says only that this is the value used when a destination's x or y is
+// unimportant, and does not state it. macOS 26.7.3 and 10.14.4 report FLT_MAX stored as a CGFloat
+// (not CGFLOAT_MAX) (black-box observation). Test: tests/src/pdfkit_constants.m
+const CGFloat kPDFDestinationUnspecifiedValue = FLT_MAX;
 
 @implementation PDFDestination
 

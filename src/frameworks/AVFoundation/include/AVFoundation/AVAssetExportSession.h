@@ -22,6 +22,7 @@
 extern NSString *const AVAssetExportPresetHighestQuality;
 extern NSString *const AVAssetExportPresetMediumQuality;
 extern NSString *const AVAssetExportPresetLowQuality;
+extern NSString *const AVAssetExportPresetAppleM4A;
 
 @interface AVAssetExportSession : NSObject
 

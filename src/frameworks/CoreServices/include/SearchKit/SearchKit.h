@@ -23,5 +23,6 @@
 #include <SearchKit/SKAnalysis.h>
 #include <SearchKit/SKIndex.h>
 #include <SearchKit/SKSearch.h>
+#include <SearchKit/SKSummary.h>
 
 #endif

@@ -17,7 +17,11 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import <PDFKit/PDFKitExport.h>
 #include <Foundation/Foundation.h>
+#include <CoreGraphics/CoreGraphics.h>
+
+PDFKIT_EXPORT const CGFloat kPDFDestinationUnspecifiedValue;
 
 @interface PDFDestination : NSObject
 

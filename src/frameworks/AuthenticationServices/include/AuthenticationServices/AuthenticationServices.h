@@ -120,6 +120,7 @@
 #import <AuthenticationServices/ASWebAuthenticationSessionRequestClient.h>
 #import <AuthenticationServices/ASWebAuthenticationSessionRequestDelegate.h>
 #import <AuthenticationServices/ASWebAuthenticationSessionRequestServing.h>
+#import <AuthenticationServices/ASWebAuthenticationSessionWebBrowserSessionHandling.h>
 #import <AuthenticationServices/ASWebAuthenticationSessionWebBrowserSessionManager.h>
 #import <AuthenticationServices/AuthenticationServicesHelperProtocol.h>
 #import <AuthenticationServices/LAUIAuthenticationDelegate.h>
