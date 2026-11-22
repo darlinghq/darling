@@ -23,6 +23,9 @@
 NSString *const AVAssetExportPresetHighestQuality = @"AVAssetExportPresetHighestQuality";
 NSString *const AVAssetExportPresetMediumQuality = @"AVAssetExportPresetMediumQuality";
 NSString *const AVAssetExportPresetLowQuality = @"AVAssetExportPresetLowQuality";
+// GUESS: the documentation gives no string value for this preset; the value is the symbol name,
+// as for all three presets above.
+NSString *const AVAssetExportPresetAppleM4A = @"AVAssetExportPresetAppleM4A";
 NSString *const AVCaptureDeviceWasConnectedNotification = @"AVCaptureDeviceWasConnectedNotification";
 NSString *const AVCaptureDeviceWasDisconnectedNotification = @"AVCaptureDeviceWasDisconnectedNotification";
 NSString *const AVCaptureSessionDidStartRunningNotification = @"AVCaptureSessionDidStartRunningNotification";
@@ -102,6 +105,13 @@ const AVLayerVideoGravity AVLayerVideoGravityResizeAspectFill = @"AVLayerVideoGr
 const AVMediaType AVMediaTypeAudio = @"soun";
 const AVMediaType AVMediaTypeMuxed = @"muxx";
 const AVMediaType AVMediaTypeVideo = @"vide";
+
+// GUESS, the least supported value of this change's guesses: no public source gives the string. The
+// nearest siblings in the same AVMediaFormat.h family use short codes (AVMediaTypeAudio is "soun",
+// AVMediaTypeVideo "vide", AVMetadataID3MetadataKeyUserURL "WXXX"), which suggests a short code, but
+// guessing a code would be invention. The symbol name is only a placeholder, to be replaced by a
+// value printed on a real Mac.
+const AVMetadataKeySpace AVMetadataKeySpaceCommon = @"AVMetadataKeySpaceCommon";
 
 const AVMetadataKey AVMetadataCommonKeyAlbumName = @"albumName";
 const AVMetadataKey AVMetadataCommonKeyArtist = @"artist";
