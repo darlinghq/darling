@@ -18,7 +18,7 @@
 */
 
 /*
- * Format descriptions, block buffers and sample buffers as CF objects.
+ * Format descriptions, block buffers, sample buffers and the host time clock as CF objects.
  */
 
 #include <CoreMedia/CoreMedia.h>
@@ -26,6 +26,7 @@
 #include <CoreFoundation/CFRuntime.h>
 #include <CoreVideo/CoreVideo.h>
 #include <dispatch/dispatch.h>
+#include <mach/mach_time.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -688,6 +689,110 @@ OSStatus CMSampleBufferCallForEachSample(CMSampleBufferRef sbuf,
 		offset += size;
 	}
 	return noErr;
+}
+
+#pragma mark - Clocks
+
+/* The host time clock is the only clock: it reads mach_absolute_time and reports it with a large integer
+   timescale. GUESS: the documentation gives nanoseconds only as an example ("e.g."), without saying which
+   timescale it is; one billion is that example. */
+#define kHostClockTimeScale 1000000000
+
+struct OpaqueCMClock {
+	CFRuntimeBase base;
+};
+
+CM_CLASS(CMClock_, "CMClock")
+
+CFTypeID CMClockGetTypeID(void) { return CMClock_GetTypeID(); }
+
+CMClockRef CMClockGetHostTimeClock(void)
+{
+	static CMClockRef hostClock;
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{ hostClock = CM_NEW(CMClockRef, CMClock_, kCFAllocatorSystemDefault); });
+	return hostClock;
+}
+
+static Boolean hostTimebase(mach_timebase_info_data_t *info)
+{
+	return mach_timebase_info(info) == KERN_SUCCESS && info->numer != 0 && info->denom != 0;
+}
+
+/* a * b / c rounded to the nearest integer, without a 128-bit type (the i386 slice has none). Returns false
+   when c is 0 or the result does not fit 64 bits. GUESS: the documentation does not say how the host time
+   conversions round; they round to the nearest unit, halves up. */
+static Boolean mulDivRounded(uint64_t a, uint64_t b, uint64_t c, uint64_t *result)
+{
+	if (c == 0)
+		return false;
+	uint64_t a0 = a & 0xffffffffu, a1 = a >> 32, b0 = b & 0xffffffffu, b1 = b >> 32;
+	uint64_t p00 = a0 * b0, p01 = a0 * b1, p10 = a1 * b0, p11 = a1 * b1;
+	uint64_t mid = (p00 >> 32) + (p01 & 0xffffffffu) + (p10 & 0xffffffffu);
+	uint64_t lo = (p00 & 0xffffffffu) | (mid << 32);
+	uint64_t hi = p11 + (p01 >> 32) + (p10 >> 32) + (mid >> 32);
+
+	/* binary long division of hi:lo by c; the running remainder can need a 65th bit */
+	uint64_t quotientHigh = 0, quotientLow = 0, remainder = 0;
+	for (int bit = 127; bit >= 0; bit--) {
+		Boolean carry = (remainder >> 63) != 0;
+		remainder = (remainder << 1) | (((bit >= 64 ? hi : lo) >> (bit & 63)) & 1);
+		Boolean subtract = carry || remainder >= c;
+		if (subtract)
+			remainder -= c;
+		if (bit >= 64)
+			quotientHigh |= (uint64_t)subtract << (bit - 64);
+		else
+			quotientLow |= (uint64_t)subtract << bit;
+	}
+	if (quotientHigh != 0)
+		return false;
+	if (remainder >= c - remainder) {
+		if (quotientLow == UINT64_MAX)
+			return false;
+		quotientLow++;
+	}
+	*result = quotientLow;
+	return true;
+}
+
+CMTime CMClockMakeHostTimeFromSystemUnits(uint64_t hostTime)
+{
+	mach_timebase_info_data_t info;
+	uint64_t ns;
+	/* GUESS: the documentation does not cover a failing timebase query (mach_timebase_info does not fail in
+	   practice); the time is then invalid. */
+	if (!hostTimebase(&info))
+		return kCMTimeInvalid;
+	/* nanoseconds per tick are numer / denom. GUESS: a time that does not fit the 64-bit value of a CMTime
+	   is not representable; the documentation does not say what the conversion returns then, so it gives an
+	   invalid time. */
+	if (!mulDivRounded(hostTime, info.numer, info.denom, &ns) || ns > (uint64_t)INT64_MAX)
+		return kCMTimeInvalid;
+	return CMTimeMake((int64_t)ns, kHostClockTimeScale);
+}
+
+uint64_t CMClockConvertHostTimeToSystemUnits(CMTime hostTime)
+{
+	mach_timebase_info_data_t info;
+	uint64_t ticks;
+	/* GUESS: the documentation does not cover a time that is invalid, infinite, indefinite or negative, a
+	   failing timebase query or ticks that overflow 64 bits; the conversion gives 0 for all of them. */
+	if (!hostTimebase(&info) || (hostTime.flags & (kCMTimeFlags_Valid | kCMTimeFlags_ImpliedValueFlagsMask)) != kCMTimeFlags_Valid
+			|| hostTime.value < 0 || hostTime.timescale <= 0)
+		return 0;
+	/* ticks = value / timescale seconds * 1e9 ns/s * denom / numer ticks/ns */
+	if (!mulDivRounded((uint64_t)hostTime.value, 1000000000ull * info.denom, (uint64_t)hostTime.timescale * info.numer, &ticks))
+		return 0;
+	return ticks;
+}
+
+CMTime CMClockGetTime(CMClockRef clock)
+{
+	/* GUESS: the documentation does not say what a NULL or foreign clock gives; an invalid time. */
+	if (clock == NULL || CFGetTypeID(clock) != CMClock_GetTypeID())
+		return kCMTimeInvalid;
+	return CMClockMakeHostTimeFromSystemUnits(mach_absolute_time());
 }
 
 #pragma mark - Attachment bearers
