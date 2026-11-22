@@ -527,11 +527,6 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 		return fex_dlsym_dispatch((uint32_t)(nr - DARLING_FEX_DLSYM_SYSCALL_BASE), state);
 	}
 
-	if (nr == DARLING_FEX_CALLBACK_RETURN_SYSCALL) {
-		state->rax = state->rdi;
-		return 0;
-	}
-
 	long a1 = (long)state->rdi;
 	long a2 = (long)state->rsi;
 	long a3 = (long)state->rdx;

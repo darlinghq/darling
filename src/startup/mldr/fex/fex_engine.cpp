@@ -20,9 +20,9 @@ typedef int (*darling_fexcore_run_thread_fn)(
 #define FEXCORE_PATH_MAX 4096
 
 static darling_fexcore_run_thread_fn g_run_thread_fn = nullptr;
+static darling_fexcore_run_thread_fn g_run_callback_fn = nullptr;
 static pthread_once_t g_fexcore_init_once = PTHREAD_ONCE_INIT;
 static uint8_t* g_initial_gs_zero_page = nullptr;
-static uint8_t* g_callback_return_stub = nullptr;
 
 static void add_candidate(const char* path, char* buf, size_t buf_size, size_t* used,
 	size_t* count, size_t max_paths, const char** out)
@@ -167,15 +167,17 @@ static void init_fexcore_runtime(void)
 			continue;
 		}
 		void* sym = dlsym(handle, "darling_fexcore_run_thread");
+		void* callback_sym = dlsym(handle, "darling_fexcore_run_callback");
 		void* lock_sym = dlsym(handle, "darling_fexcore_lock_before_fork");
 		void* unlock_sym = dlsym(handle, "darling_fexcore_unlock_after_fork");
-		if (!sym || !lock_sym || !unlock_sym) {
+		if (!sym || !callback_sym || !lock_sym || !unlock_sym) {
 			results[i].state = CANDIDATE_SYMBOL_MISSING;
 			snprintf(results[i].reason, sizeof(results[i].reason), "%s", dlerror());
 			dlclose(handle);
 			continue;
 		}
 		g_run_thread_fn = reinterpret_cast<darling_fexcore_run_thread_fn>(sym);
+		g_run_callback_fn = reinterpret_cast<darling_fexcore_run_thread_fn>(callback_sym);
 		fex_elfcalls_set_fork_hooks(
 			reinterpret_cast<fex_fork_lock_fn_t>(lock_sym),
 			reinterpret_cast<fex_fork_unlock_fn_t>(unlock_sym));
@@ -218,27 +220,6 @@ static void init_fexcore_runtime(void)
 		exit(1);
 	}
 	g_initial_gs_zero_page = static_cast<uint8_t*>(zero_page);
-
-	uint8_t* ret_stub = static_cast<uint8_t*>(mmap(nullptr, page_sz, PROT_READ | PROT_WRITE,
-		MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
-	if (ret_stub == MAP_FAILED) {
-		fprintf(stderr, "[mldr/fex] fatal: failed to mmap callback return stub: %s\n", strerror(errno));
-		exit(1);
-	}
-	uint32_t ret_nr = DARLING_FEX_CALLBACK_RETURN_SYSCALL;
-	ret_stub[0] = 0x48; // movq %rax, %rdi
-	ret_stub[1] = 0x89;
-	ret_stub[2] = 0xc7;
-	ret_stub[3] = 0xb8; // movl $DARLING_FEX_CALLBACK_RETURN_SYSCALL, %eax
-	memcpy(&ret_stub[4], &ret_nr, sizeof(ret_nr));
-	ret_stub[8] = 0x0f; // syscall
-	ret_stub[9] = 0x05;
-	if (mprotect(ret_stub, page_sz, PROT_READ | PROT_EXEC) != 0) {
-		fprintf(stderr, "[mldr/fex] fatal: failed to mprotect callback return stub RX: %s\n", strerror(errno));
-		exit(1);
-	}
-	__builtin___clear_cache(reinterpret_cast<char*>(ret_stub), reinterpret_cast<char*>(ret_stub) + page_sz);
-	g_callback_return_stub = ret_stub;
 }
 
 static darling_fexcore_run_thread_fn ensure_fexcore_loaded(void)
@@ -249,45 +230,24 @@ static darling_fexcore_run_thread_fn ensure_fexcore_loaded(void)
 
 uint64_t fex_invoke_guest_callback_args(uintptr_t guest_fn, const uint64_t args[6])
 {
-	darling_fexcore_run_thread_fn run_fn = ensure_fexcore_loaded();
-
-	// A guest callback can be as heavy as an error handler that logs, so it gets a real stack, not a few
-	// kilobytes of the host thread's.
-	constexpr size_t kCallbackStackSize = 512 * 1024;
-	void* cb_stack = mmap(nullptr, kCallbackStackSize, PROT_READ | PROT_WRITE,
-		MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
-	if (cb_stack == MAP_FAILED) {
-		fprintf(stderr, "[mldr/fex] fatal: failed to mmap a callback stack: %s\n", strerror(errno));
-		abort();
-	}
-	// The bottom page is a guard. The top keeps zeroed slack because a callback that tail-calls a host
-	// stub makes the bridge read the stack words above its return address.
-	const long page = sysconf(_SC_PAGESIZE);
-	if (mprotect(cb_stack, static_cast<size_t>(page), PROT_NONE) != 0) {
-		fprintf(stderr, "[mldr/fex] fatal: failed to guard a callback stack: %s\n", strerror(errno));
-		abort();
-	}
-	uintptr_t sp = reinterpret_cast<uintptr_t>(cb_stack) + kCallbackStackSize - 256;
-	sp &= ~uintptr_t(15);
-	sp -= sizeof(uint64_t);
-	*reinterpret_cast<uint64_t*>(sp) = reinterpret_cast<uintptr_t>(g_callback_return_stub);
+	ensure_fexcore_loaded();
 
 	struct fex_x86_64_state state;
 	memset(&state, 0, sizeof(state));
 	state.rip = static_cast<uint64_t>(guest_fn);
-	state.rsp = static_cast<uint64_t>(sp);
 	state.rdi = args[0];
 	state.rsi = args[1];
 	state.rdx = args[2];
 	state.rcx = args[3];
 	state.r8 = args[4];
 	state.r9 = args[5];
-	state.rflags = 0x202;
 	state.gs_base = fex_get_current_thread_gs_base();
 
-	run_fn(&state, fex_linux_syscall_dispatch);
+	if (g_run_callback_fn(&state, fex_linux_syscall_dispatch) != 0) {
+		fprintf(stderr, "[mldr/fex] fatal: cannot run a guest callback\n");
+		abort();
+	}
 	fex_set_current_thread_gs_base(state.gs_base);
-	munmap(cb_stack, kCallbackStackSize);
 	return state.rax;
 }
 

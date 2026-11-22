@@ -115,7 +115,6 @@ public:
   void HandleSyscall(FEXCore::Core::CpuStateFrame* Frame) override {
     struct fex_x86_64_state guest{};
     fex_state_to_darling(CTX, t_thread_state, Frame->State, &guest);
-    uint64_t nr = guest.rax;
 
     if (t_syscall_cb) {
       t_syscall_cb(&guest);
@@ -129,7 +128,7 @@ public:
       Frame->State.xmm.sse.data[i][1] = guest.xmm[i][1];
     }
 
-    if ((nr == DARLING_FEX_CALLBACK_RETURN_SYSCALL || guest.unwind_thread) && t_exit_jmp) {
+    if (guest.unwind_thread && t_exit_jmp) {
       longjmp(*t_exit_jmp, 1);
     }
 
@@ -358,52 +357,17 @@ extern "C" int darling_fexcore_run_thread(
 
   std::call_once(g_ctx_once, init_fex_context);
 
-  FEXCore::Core::InternalThreadState* thread = g_ctx->CreateThread(nullptr);
-  if (!thread) {
+  if (t_thread_state) {
+    std::fprintf(stderr, "[mldr/fex] a host thread cannot start a guest thread while it runs guest code\n");
     return -1;
   }
-
-  // FEX's dispatcher keeps a per-thread call-return stack and generated code writes below
-  // State.callret_sp; a zero value faults at -8. Guarded allocation mirrors
-  // LinuxSyscalls/ThreadManager.cpp:170-196; the quarter-in start is FEX's default there,
-  // leaving room for underflows.
-  constexpr size_t kCallRetSize = FEXCore::Core::InternalThreadState::CALLRET_STACK_SIZE;
-  const size_t host_page = static_cast<size_t>(sysconf(_SC_PAGESIZE));
-  const size_t callret_alloc_size = kCallRetSize + 2 * host_page;
-  void* callret_alloc = ::mmap(nullptr, callret_alloc_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  if (callret_alloc == MAP_FAILED) {
-    g_ctx->DestroyThread(thread);
+  HostThreadEmulator* emu = host_thread_emulator();
+  if (!emu) {
     return -1;
   }
-  void* callret_base = static_cast<uint8_t*>(callret_alloc) + host_page;
-  if (::mprotect(callret_base, kCallRetSize, PROT_READ | PROT_WRITE) != 0) {
-    ::munmap(callret_alloc, callret_alloc_size);
-    g_ctx->DestroyThread(thread);
-    return -1;
-  }
-  thread->CallRetStackBase = callret_base;
-
-  // FEX keeps the GDT per thread; with a zeroed CPUState segment_arrays stays null and the
-  // decoder dereferences null when it reads the CS descriptor. Mirrors the default setup in
-  // FEX's ThreadManager.cpp for a thread that inherits nothing.
-  static thread_local FEXCore::Core::CPUState::gdt_segment gdt[32] {};
-  auto* frame = thread->CurrentFrame;
-  frame->State.segment_arrays[FEXCore::Core::CPUState::SEGMENT_ARRAY_INDEX_GDT] = &gdt[0];
-  frame->State.segment_arrays[FEXCore::Core::CPUState::SEGMENT_ARRAY_INDEX_LDT] = &gdt[0];
-  frame->State.cs_idx = FEXCore::Core::CPUState::DEFAULT_USER_CS << 3;
-  auto* cs = FEXCore::Core::CPUState::GetSegmentFromIndex(frame->State, frame->State.cs_idx);
-  FEXCore::Core::CPUState::SetGDTBase(cs, 0);
-  FEXCore::Core::CPUState::SetGDTLimit(cs, 0xF'FFFFU);
-  frame->State.cs_cached = FEXCore::Core::CPUState::CalculateGDTBase(*cs);
-  cs->L = 1;
-  cs->D = 0;
-  frame->State.callret_sp = reinterpret_cast<uint64_t>(callret_base) + kCallRetSize / 4;
-
+  FEXCore::Core::InternalThreadState* thread = emu->thread;
+  reset_callret_sp(emu);
   darling_to_fex_state(g_ctx.get(), thread, state, thread->CurrentFrame->State);
-
-  fex_syscall_cb_t prev_cb = t_syscall_cb;
-  jmp_buf* prev_jmp = t_exit_jmp;
-  FEXCore::Core::InternalThreadState* prev_thread = t_thread_state;
 
   jmp_buf exit_env{};
   t_syscall_cb = syscall_cb;
@@ -416,12 +380,9 @@ extern "C" int darling_fexcore_run_thread(
 
   fex_state_to_darling(g_ctx.get(), thread, thread->CurrentFrame->State, state);
 
-  t_syscall_cb = prev_cb;
-  t_exit_jmp = prev_jmp;
-  t_thread_state = prev_thread;
-
-  g_ctx->DestroyThread(thread);
-  ::munmap(callret_alloc, callret_alloc_size);
+  t_syscall_cb = nullptr;
+  t_exit_jmp = nullptr;
+  t_thread_state = nullptr;
   return static_cast<int>(state->rax);
 }
 

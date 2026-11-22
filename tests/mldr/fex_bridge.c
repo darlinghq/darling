@@ -335,12 +335,6 @@ static void test_elfcalls_trampolines(void)
 	check(fex_linux_syscall_dispatch(&st) == 0 && limits[0] == 256 && limits[1] == 4096,
 		"inherited_nofile_limit (slot 32) dispatches");
 
-	memset(&st, 0, sizeof(st));
-	st.rax = DARLING_FEX_CALLBACK_RETURN_SYSCALL;
-	st.rdi = 0x123456789abcdef0ULL;
-	check(fex_linux_syscall_dispatch(&st) == 0 && st.rax == 0x123456789abcdef0ULL,
-		"DARLING_FEX_CALLBACK_RETURN_SYSCALL restores callback return value in rax");
-
 	// Task 0.1: darling_thread_terminate deferral
 	check(!fex_elfcalls_has_pending_terminate(), "no pending terminate initially");
 	memset(&st, 0, sizeof(st));
