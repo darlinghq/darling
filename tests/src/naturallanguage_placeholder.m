@@ -2,12 +2,12 @@
 // Copyright (C) 2026 Darling developers
 //
 // NaturalLanguage is a placeholder framework. NLTagger reports its tokens with no tags, NLLanguageRecognizer
-// reports NLLanguageUndetermined, the NLEmbedding factories return nil, and NLTokenizer is built on
+// recognizes no language (nil, as macOS 26.7.3 does when it finds none), the NLEmbedding factories return nil, and NLTokenizer is built on
 // CFStringTokenizer. This test checks only what does not depend on CFStringTokenizer's word, sentence and
 // paragraph boundaries: the classes, the constants, the document unit, empty and nil strings, ranges that need
 // no tokenizing, and the placeholder results. The boundary expectations are in naturallanguage_tokenizer.m.
-// The constant values are not documented and are not pinned. Prints OK, or the failures with a non-zero exit
-// status.
+// The constant and enum values are not documented; they are pinned to what macOS 26.7.3 and 10.14.4 report
+// (black-box observation). Prints OK, or the failures with a non-zero exit status.
 #import <Foundation/Foundation.h>
 #import <NaturalLanguage/NaturalLanguage.h>
 #include <stdio.h>
@@ -56,6 +56,19 @@ int main(void)
 		// The values are not documented: only presence is checked.
 		CHECK(NLLanguageEnglish != nil, "NLLanguageEnglish is nil");
 		CHECK(NLLanguageUndetermined != nil, "NLLanguageUndetermined is nil");
+		// The values macOS 26.7.3 and 10.14.4 report for the constants and the enums.
+		CHECK([NLLanguageEnglish isEqualToString:@"en"] && [NLLanguageUndetermined isEqualToString:@"und"], "language strings");
+		CHECK([NLTagSchemeLexicalClass isEqualToString:@"LexicalClass"] &&
+		      [NLTagSchemeNameTypeOrLexicalClass isEqualToString:@"NameTypeOrLexicalClass"], "tag scheme strings");
+		CHECK([NLTagNoun isEqualToString:@"Noun"] && [NLTagVerb isEqualToString:@"Verb"] &&
+		      [NLTagAdjective isEqualToString:@"Adjective"] && [NLTagNumber isEqualToString:@"Number"] &&
+		      [NLTagPersonalName isEqualToString:@"PersonalName"] &&
+		      [NLTagOrganizationName isEqualToString:@"OrganizationName"] &&
+		      [NLTagPlaceName isEqualToString:@"PlaceName"], "tag strings");
+		CHECK(NLTokenUnitWord == 0 && NLTokenUnitSentence == 1 && NLTokenUnitParagraph == 2 && NLTokenUnitDocument == 3, "NLTokenUnit values");
+		CHECK(NLTokenizerAttributeNumeric == 1 && NLTokenizerAttributeSymbolic == 2 && NLTokenizerAttributeEmoji == 4, "NLTokenizerAttributes values");
+		CHECK(NLTaggerOmitWords == 1 && NLTaggerOmitPunctuation == 2 && NLTaggerOmitWhitespace == 4 &&
+		      NLTaggerOmitOther == 8 && NLTaggerJoinNames == 16 && NLTaggerJoinContractions == 32, "NLTaggerOptions values");
 		CHECK(NLTagSchemeLexicalClass != nil, "NLTagSchemeLexicalClass is nil");
 		CHECK(NLTagSchemeNameTypeOrLexicalClass != nil, "NLTagSchemeNameTypeOrLexicalClass is nil");
 		CHECK(NLTagNoun != nil, "NLTagNoun is nil");
@@ -95,12 +108,13 @@ int main(void)
 		(void)[tokenizer tokenRangeAtIndex:NSUIntegerMax];
 		[tokenizer release];
 
-		// The document unit is one token, so a length that overflows location + length is still a range to the
-		// end of the string and selects that token.
+		// The document unit is one token. As for the other units, macOS 26.7.3 finds nothing for a range
+		// that ends beyond the string ({0, NSUIntegerMax}), while {1, NSUIntegerMax} (location + length
+		// wraps around to 0) selects the token (black-box observation, see NLTokenizerTokensMeetingRange).
 		NLTokenizer *docTokenizer = [[NLTokenizer alloc] initWithUnit:NLTokenUnitDocument];
 		docTokenizer.string = @"Hello world";
 		CHECK([[docTokenizer tokensForRange:NSMakeRange(0, 11)] count] == 1, "document unit: one token expected");
-		CHECK([[docTokenizer tokensForRange:NSMakeRange(0, NSUIntegerMax)] count] == 1, "document unit: tokensForRange: with length NSUIntegerMax");
+		CHECK([[docTokenizer tokensForRange:NSMakeRange(0, NSUIntegerMax)] count] == 0, "document unit: tokensForRange: with length NSUIntegerMax");
 		CHECK([[docTokenizer tokensForRange:NSMakeRange(1, NSUIntegerMax)] count] == 1, "document unit: tokensForRange: with location 1 and length NSUIntegerMax");
 		CHECK([[docTokenizer tokensForRange:NSMakeRange(100, NSUIntegerMax)] count] == 0, "document unit: a range beyond the string has tokens");
 		(void)[docTokenizer tokenRangeAtIndex:NSUIntegerMax];
@@ -144,15 +158,18 @@ int main(void)
 		[empty release];
 
 		// NLLanguageRecognizer: no language.
-		CHECK([[NLLanguageRecognizer dominantLanguageForString:@"This is English text."] isEqualToString:NLLanguageUndetermined], "dominantLanguageForString: is not undetermined");
-		CHECK([[NLLanguageRecognizer dominantLanguageForString:@""] isEqualToString:NLLanguageUndetermined], "dominantLanguageForString: of an empty string is not undetermined");
-		CHECK([[NLLanguageRecognizer dominantLanguageForString:nil] isEqualToString:NLLanguageUndetermined], "dominantLanguageForString: of nil is not undetermined");
+		// macOS 26.7.3 answers nil, not NLLanguageUndetermined, when no language is recognized (an empty
+		// string, text without letters, a new recognizer); the placeholder recognizes nothing.
+		CHECK([NLLanguageRecognizer dominantLanguageForString:@"This is English text."] == nil, "dominantLanguageForString: is not nil");
+		CHECK([NLLanguageRecognizer dominantLanguageForString:@""] == nil, "dominantLanguageForString: of an empty string is not nil");
+		CHECK([NLLanguageRecognizer dominantLanguageForString:@"12345 !!!"] == nil, "dominantLanguageForString: of digits and punctuation is not nil");
+		CHECK([NLLanguageRecognizer dominantLanguageForString:nil] == nil, "dominantLanguageForString: of nil is not nil");
 		NLLanguageRecognizer *recognizer = [[NLLanguageRecognizer alloc] init];
 		CHECK([recognizer.languageHints count] == 0, "languageHints not empty initially");
 		CHECK([recognizer.languageConstraints count] == 0, "languageConstraints not empty initially");
 		[recognizer processString:@"Bonjour tout le monde"];
 		[recognizer processString:nil];
-		CHECK([recognizer.dominantLanguage isEqualToString:NLLanguageUndetermined], "dominantLanguage is not undetermined");
+		CHECK(recognizer.dominantLanguage == nil, "dominantLanguage is not nil");
 		NSDictionary<NLLanguage, NSNumber *> *hypotheses = [recognizer languageHypothesesWithMaximum:3];
 		CHECK(hypotheses != nil && [hypotheses count] == 0, "languageHypotheses is not an empty dictionary");
 		recognizer.languageHints = @{NLLanguageEnglish: @0.5};
@@ -160,7 +177,10 @@ int main(void)
 		CHECK([recognizer.languageHints count] == 1, "languageHints not stored");
 		CHECK([recognizer.languageConstraints isEqualToArray:@[NLLanguageEnglish]], "languageConstraints not stored");
 		[recognizer reset];
-		CHECK([recognizer.dominantLanguage isEqualToString:NLLanguageUndetermined], "dominantLanguage is not undetermined after reset");
+		CHECK(recognizer.dominantLanguage == nil, "dominantLanguage is not nil after reset");
+		// reset keeps the hints and the constraints (observed on macOS 26.7.3).
+		CHECK([recognizer.languageHints count] == 1, "reset cleared the languageHints");
+		CHECK([recognizer.languageConstraints isEqualToArray:@[NLLanguageEnglish]], "reset cleared the languageConstraints");
 		[recognizer release];
 
 		// NLEmbedding: no embedding is available.

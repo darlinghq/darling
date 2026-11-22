@@ -24,6 +24,11 @@
 // describes an empty embedding: no dimension, no vocabulary, no vectors and no neighbors.
 @implementation NLEmbedding
 
+@synthesize dimension = _dimension;
+@synthesize vocabularySize = _vocabularySize;
+@synthesize language = _language;
+@synthesize revision = _revision;
+
 - (void)dealloc
 {
     [_language release];

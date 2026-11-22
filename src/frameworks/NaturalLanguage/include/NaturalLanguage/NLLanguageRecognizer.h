@@ -25,8 +25,15 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+// The instance variables are declared here, and the properties are synthesized by name, because the
+// i386 slice uses the legacy Objective-C runtime: no automatic property synthesis and no instance
+// variables in @implementation.
 API_AVAILABLE(macos(10.14))
-@interface NLLanguageRecognizer : NSObject
+@interface NLLanguageRecognizer : NSObject {
+@private
+    NSDictionary<NLLanguage, NSNumber *> *_languageHints;
+    NSArray<NLLanguage> *_languageConstraints;
+}
 
 - (instancetype)init;
 

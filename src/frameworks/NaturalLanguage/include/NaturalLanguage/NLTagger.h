@@ -51,8 +51,15 @@ typedef NS_OPTIONS(NSUInteger, NLTaggerOptions) {
     NLTaggerJoinContractions = 1 << 5,
 } API_AVAILABLE(macos(10.14));
 
+// The instance variables are declared here, and the properties are synthesized by name, because the
+// i386 slice uses the legacy Objective-C runtime: no automatic property synthesis and no instance
+// variables in @implementation.
 API_AVAILABLE(macos(10.14))
-@interface NLTagger : NSObject
+@interface NLTagger : NSObject {
+@private
+    NSString *_string;
+    NSArray<NLTagScheme> *_tagSchemes;
+}
 
 - (instancetype)initWithTagSchemes:(NSArray<NLTagScheme> *)tagSchemes;
 

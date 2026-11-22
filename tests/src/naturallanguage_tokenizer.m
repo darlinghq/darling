@@ -7,8 +7,10 @@
 // break iterator, the paragraph unit, the word unit skipping whitespace and punctuation, and the numbers flag.
 // Until the submodule pin includes them the word, paragraph and numeric cases are expected to fail. The
 // placeholder behaviour that does not depend on those boundaries is in naturallanguage_placeholder.m. The
-// handling of punctuation, the result when no token covers an index and zero-length or out-of-range ranges
-// are not documented and are not pinned. Prints OK, or the failures with a non-zero exit status.
+// handling of punctuation, the result when no token covers an index and the zero-length and out-of-range
+// ranges are not documented: they are pinned to what macOS 26.7.3 reports for the same calls (black-box
+// observation), see test_quirk_tokens_for_range_past_end and test_token_range_for_range_clamps below.
+// Prints OK, or the failures with a non-zero exit status.
 #import <Foundation/Foundation.h>
 #import <NaturalLanguage/NaturalLanguage.h>
 #include <stdio.h>
@@ -42,9 +44,98 @@ static NSArray<NSString *> *tokenStrings(NLTokenUnit unit, NSString *string)
 	return strings;
 }
 
+// QUIRK (see NLTokenizerTokensMeetingRange in src/NLTokenizer.m): tokensForRange: and
+// enumerateTokensInRange:usingBlock: find no token when location + length (with wraparound) is beyond the
+// end of the string, instead of cutting the range to the string. Expected counts, per unit
+// (word, sentence, paragraph, document), are the ones macOS 26.7.3 returns for a 47 character string.
+static void test_quirk_tokens_for_range_past_end(void)
+{
+	NSString *string = @"Hello, big world! It's 12.5 now.\nNew line here.";
+	CHECK([string length] == 47, "the sample string is not 47 characters long");
+	struct { NSUInteger location, length; int counts[4]; } cases[] = {
+		{0, 47, {9, 3, 2, 1}},
+		{0, 48, {0, 0, 0, 0}},
+		{0, NSUIntegerMax, {0, 0, 0, 0}},
+		{2, 45, {9, 3, 2, 1}},
+		{2, 46, {0, 0, 0, 0}},
+		{0, 0, {0, 0, 0, 1}},
+		{46, 1, {0, 1, 1, 1}},
+		{46, 0, {0, 1, 1, 1}},
+		{47, 0, {0, 0, 0, 1}},
+		{47, 1, {0, 0, 0, 0}},
+		{44, 40, {0, 0, 0, 0}},
+		{49, 3, {0, 0, 0, 0}},
+		{1, NSUIntegerMax - 1, {0, 0, 0, 0}},
+		{1, NSUIntegerMax, {0, 0, 0, 1}},
+		{40, NSUIntegerMax, {1, 1, 1, 1}},
+		{100, NSUIntegerMax, {0, 0, 0, 0}},
+	};
+	for (NLTokenUnit unit = NLTokenUnitWord; unit <= NLTokenUnitDocument; unit++) {
+		NLTokenizer *tokenizer = [[NLTokenizer alloc] initWithUnit:unit];
+		tokenizer.string = string;
+		for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+			NSRange range = NSMakeRange(cases[i].location, cases[i].length);
+			NSUInteger tokens = [[tokenizer tokensForRange:range] count];
+			__block NSUInteger enumerated = 0;
+			[tokenizer enumerateTokensInRange:range usingBlock:^(NSRange r, NLTokenizerAttributes f, BOOL *stop) { enumerated++; }];
+			if (tokens != (NSUInteger)cases[i].counts[unit] || enumerated != tokens) {
+				printf("FAIL: unit %d range {%lu, %lu}: %lu tokens, %lu enumerated, expected %d\n", (int)unit,
+				       (unsigned long)range.location, (unsigned long)range.length, (unsigned long)tokens,
+				       (unsigned long)enumerated, cases[i].counts[unit]);
+				failures++;
+			}
+		}
+		[tokenizer release];
+	}
+	// The tokens themselves for the sample text (word unit), and one range inside the string.
+	NLTokenizer *words = [[NLTokenizer alloc] initWithUnit:NLTokenUnitWord];
+	words.string = string;
+	NSArray<NSValue *> *all = [words tokensForRange:NSMakeRange(0, 47)];
+	NSRange expected[] = {{0, 5}, {7, 3}, {11, 5}, {18, 4}, {23, 4}, {28, 3}, {33, 3}, {37, 4}, {42, 4}};
+	CHECK([all count] == 9, "word tokens of the sample text: wrong count");
+	for (NSUInteger i = 0; i < [all count] && i < 9; i++) {
+		CHECK(NSEqualRanges([[all objectAtIndex:i] rangeValue], expected[i]), "word tokens of the sample text: wrong range");
+	}
+	[words release];
+}
+
+// tokenRangeForRange: cuts a range that reaches past the end and unions the tokens it meets (macOS 26.7.3).
+static void test_token_range_for_range_clamps(void)
+{
+	NSString *string = @"Hello, big world! It's 12.5 now.\nNew line here.";
+	NLTokenizer *words = [[NLTokenizer alloc] initWithUnit:NLTokenUnitWord];
+	words.string = string;
+	CHECK(NSEqualRanges([words tokenRangeForRange:NSMakeRange(3, 6)], NSMakeRange(0, 10)), "tokenRangeForRange: {3, 6}");
+	CHECK(NSEqualRanges([words tokenRangeForRange:NSMakeRange(0, NSUIntegerMax)], NSMakeRange(0, 46)), "tokenRangeForRange: {0, NSUIntegerMax}");
+	CHECK([words tokenRangeForRange:NSMakeRange(5, 0)].location == NSNotFound, "tokenRangeForRange: empty range in the comma");
+	CHECK([words tokenRangeForRange:NSMakeRange(49, 3)].location == NSNotFound, "tokenRangeForRange: range beyond the end");
+	CHECK([words tokenRangeForRange:NSMakeRange(49, 0)].location == NSNotFound, "tokenRangeForRange: empty range beyond the end");
+	CHECK(NSEqualRanges([words tokenRangeAtIndex:0], NSMakeRange(0, 5)), "tokenRangeAtIndex:0");
+	CHECK(NSEqualRanges([words tokenRangeAtIndex:7], NSMakeRange(7, 3)), "tokenRangeAtIndex:7");
+	CHECK([words tokenRangeAtIndex:5].location == NSNotFound, "tokenRangeAtIndex: in the comma");
+	CHECK([words tokenRangeAtIndex:47].location == NSNotFound, "tokenRangeAtIndex: at the end");
+	CHECK([words tokenRangeAtIndex:52].location == NSNotFound, "tokenRangeAtIndex: beyond the end");
+	[words release];
+	NLTokenizer *sentences = [[NLTokenizer alloc] initWithUnit:NLTokenUnitSentence];
+	sentences.string = string;
+	CHECK(NSEqualRanges([sentences tokenRangeForRange:NSMakeRange(5, 0)], NSMakeRange(0, 18)), "sentence tokenRangeForRange: empty range");
+	CHECK(NSEqualRanges([sentences tokenRangeForRange:NSMakeRange(3, 6)], NSMakeRange(0, 18)), "sentence tokenRangeForRange: {3, 6}");
+	CHECK(NSEqualRanges([sentences tokenRangeForRange:NSMakeRange(0, NSUIntegerMax)], NSMakeRange(0, 47)), "sentence tokenRangeForRange: {0, NSUIntegerMax}");
+	[sentences release];
+	NLTokenizer *empty = [[NLTokenizer alloc] initWithUnit:NLTokenUnitWord];
+	CHECK([empty tokenRangeAtIndex:0].location == NSNotFound, "tokenRangeAtIndex: with no string");
+	empty.string = @"";
+	CHECK([empty tokenRangeAtIndex:0].location == NSNotFound, "tokenRangeAtIndex: with an empty string");
+	CHECK([[empty tokensForRange:NSMakeRange(0, 0)] count] == 0, "tokensForRange: of an empty string");
+	[empty release];
+}
+
 int main(void)
 {
 	@autoreleasepool {
+		test_quirk_tokens_for_range_past_end();
+		test_token_range_for_range_clamps();
+
 		// Word unit: whitespace separates tokens and is not a token.
 		NSArray<NSString *> *words = tokenStrings(NLTokenUnitWord, @"Hello big world 42");
 		CHECK([words containsObject:@"Hello"], "word unit: Hello missing");
@@ -106,12 +197,11 @@ int main(void)
 		}];
 		CHECK(sawNumeric, "the token 123 is not flagged numeric");
 
-		// Not documented, only checked not to crash.
+		// Ranges that reach past the end find no token (macOS 26.7.3, QUIRK above), and do not raise.
 		tokenizer.string = @"Hello world";
-		(void)[tokenizer tokensForRange:NSMakeRange(4, 100)];
-		// A length that overflows location + length is still a range to the end of the string.
-		CHECK([[tokenizer tokensForRange:NSMakeRange(0, NSUIntegerMax)] count] == [[tokenizer tokensForRange:NSMakeRange(0, 11)] count], "tokensForRange: with length NSUIntegerMax");
-		CHECK([[tokenizer tokensForRange:NSMakeRange(1, NSUIntegerMax)] count] == [[tokenizer tokensForRange:NSMakeRange(1, 10)] count], "tokensForRange: with location 1 and length NSUIntegerMax");
+		CHECK([[tokenizer tokensForRange:NSMakeRange(4, 100)] count] == 0, "tokensForRange: reaching past the end");
+		CHECK([[tokenizer tokensForRange:NSMakeRange(0, NSUIntegerMax)] count] == 0, "tokensForRange: with length NSUIntegerMax");
+		CHECK([[tokenizer tokensForRange:NSMakeRange(1, NSUIntegerMax)] count] == 0, "tokensForRange: with location 1 and length NSUIntegerMax");
 		[tokenizer release];
 
 		// NLTagger: the tokens are the tokenizer's tokens for the unit, each reported with no tag.

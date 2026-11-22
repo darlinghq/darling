@@ -33,8 +33,17 @@ typedef NS_ENUM(NSInteger, NLDistanceType) {
 
 NS_ASSUME_NONNULL_BEGIN
 
+// The instance variables are declared here, and the properties are synthesized by name, because the
+// i386 slice uses the legacy Objective-C runtime: no automatic property synthesis and no instance
+// variables in @implementation.
 API_AVAILABLE(macos(10.15))
-@interface NLEmbedding : NSObject
+@interface NLEmbedding : NSObject {
+@private
+    NSUInteger _dimension;
+    NSUInteger _vocabularySize;
+    NLLanguage _language;
+    NSUInteger _revision;
+}
 
 + (nullable NLEmbedding *)wordEmbeddingForLanguage:(NLLanguage)language;
 + (nullable NLEmbedding *)wordEmbeddingForLanguage:(NLLanguage)language revision:(NSUInteger)revision;

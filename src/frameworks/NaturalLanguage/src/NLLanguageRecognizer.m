@@ -20,19 +20,20 @@
 #import <NaturalLanguage/NLLanguageRecognizer.h>
 
 // Placeholder: no language is recognized. The text is not analyzed and every result is "no language":
-// dominantLanguage is NLLanguageUndetermined and the hypotheses are empty. Hints and constraints are stored.
+// dominantLanguage is nil and the hypotheses are empty. Hints and constraints are stored.
 //
-// GUESS: the documentation types the dominant language as optional and describes NLLanguageUndetermined as
-// the identifier for a language the framework does not recognize; it does not say which of the two (nil or
-// undetermined) is returned when nothing is recognized, and undetermined is used.
-// GUESS: the documentation says reset returns the recognizer to its initial state but not whether that
-// includes the hints and constraints; both are cleared, the state init gives them.
+// Observed on macOS 26.7.3 (black-box observation through the public API; tests/src/naturallanguage_placeholder.m):
+// a recognizer that found no language (a new one, an empty string, text without letters) answers nil, not
+// NLLanguageUndetermined, and reset does not clear the hints or the constraints.
 @implementation NLLanguageRecognizer
+
+@synthesize languageHints = _languageHints;
+@synthesize languageConstraints = _languageConstraints;
 
 + (NLLanguage)dominantLanguageForString:(NSString *)string
 {
     NSLog(@"Stub called: %@ in %@", NSStringFromSelector(_cmd), [self class]);
-    return NLLanguageUndetermined;
+    return nil;
 }
 
 - (instancetype)init
@@ -59,7 +60,7 @@
 - (NLLanguage)dominantLanguage
 {
     NSLog(@"Stub called: %@ in %@", NSStringFromSelector(_cmd), [self class]);
-    return NLLanguageUndetermined;
+    return nil;
 }
 
 - (NSDictionary<NLLanguage, NSNumber *> *)languageHypothesesWithMaximum:(NSUInteger)maxHypotheses
@@ -70,9 +71,8 @@
 
 - (void)reset
 {
+    // Nothing was analyzed, so there is no result to drop; the hints and constraints stay (see above).
     NSLog(@"Stub called: %@ in %@", NSStringFromSelector(_cmd), [self class]);
-    self.languageHints = [NSDictionary dictionary];
-    self.languageConstraints = [NSArray array];
 }
 
 @end

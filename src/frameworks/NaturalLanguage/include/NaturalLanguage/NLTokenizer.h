@@ -23,8 +23,9 @@
 #import <Foundation/Foundation.h>
 #import <NaturalLanguage/NLLanguage.h>
 
-// The documentation lists the cases in this order and gives no numeric values.
-// GUESS: values 0 to 3 in the documented order word, sentence, paragraph, document.
+// The documentation lists the cases in this order and gives no numeric values. The values are 0 to 3 in
+// that order, as in the public headers of macOS 26.7.3's SDK (also the ABI of 10.14).
+// Test: tests/src/naturallanguage_placeholder.m
 typedef NS_ENUM(NSInteger, NLTokenUnit) {
     NLTokenUnitWord = 0,
     NLTokenUnitSentence = 1,
@@ -32,19 +33,27 @@ typedef NS_ENUM(NSInteger, NLTokenUnit) {
     NLTokenUnitDocument = 3,
 } API_AVAILABLE(macos(10.14));
 
-// The documentation lists the members alphabetically (emoji, numeric, symbolic) and states no bit values; that
-// order is no evidence of them, and callers compile the values in.
-// GUESS: one bit per member in the listed order, emoji first.
+// The documentation lists the members alphabetically (emoji, numeric, symbolic) and states no bit values;
+// that order is no evidence of them, and callers compile the values in. The values are the ones in the
+// public headers of macOS 26.7.3's SDK: numeric 1, symbolic 2, emoji 4 (also the ABI of 10.14).
+// Test: tests/src/naturallanguage_placeholder.m
 typedef NS_OPTIONS(NSUInteger, NLTokenizerAttributes) {
-    NLTokenizerAttributeEmoji = 1 << 0,
-    NLTokenizerAttributeNumeric = 1 << 1,
-    NLTokenizerAttributeSymbolic = 1 << 2,
+    NLTokenizerAttributeNumeric = 1 << 0,
+    NLTokenizerAttributeSymbolic = 1 << 1,
+    NLTokenizerAttributeEmoji = 1 << 2,
 } API_AVAILABLE(macos(10.14));
 
 NS_ASSUME_NONNULL_BEGIN
 
+// The instance variables are declared here, and the properties are synthesized by name, because the
+// i386 slice uses the legacy Objective-C runtime: no automatic property synthesis and no instance
+// variables in @implementation.
 API_AVAILABLE(macos(10.14))
-@interface NLTokenizer : NSObject
+@interface NLTokenizer : NSObject {
+@private
+    NSString *_string;
+    NLTokenUnit _unit;
+}
 
 - (instancetype)initWithUnit:(NLTokenUnit)unit;
 

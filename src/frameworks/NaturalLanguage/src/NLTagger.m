@@ -32,9 +32,9 @@
 // NLTaggerJoinNames and NLTaggerJoinContractions are ignored.
 // GUESS: dominantLanguage is NLLanguageUndetermined; the documentation types it as optional and does not say
 // which of nil and undetermined means that no language was found.
-@implementation NLTagger {
-    NSString *_string;
-}
+@implementation NLTagger
+
+@synthesize tagSchemes = _tagSchemes;
 
 - (instancetype)initWithTagSchemes:(NSArray<NLTagScheme> *)tagSchemes
 {

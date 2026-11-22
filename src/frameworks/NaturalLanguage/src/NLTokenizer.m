@@ -25,14 +25,14 @@
 // Only NLTokenizerAttributeNumeric is ever reported, from the tokenizer's has-numbers flag; emoji and symbolic
 // are not detected.
 //
-// GUESS: the documentation does not say whether a word token includes punctuation; CFStringTokenizer's choice is kept.
-// GUESS: tokenRangeAtIndex: returns {NSNotFound, 0} when no token covers the index (whitespace between words
-// for the word unit, an index at or beyond the end, an empty or nil string); the documentation names no result.
-// GUESS: tokenRangeForRange: returns {NSNotFound, 0} when no token meets the range.
-// GUESS: a zero-length range meets the token that covers its location, as tokenRangeForRange: documents;
-// the documentation does not say what tokensForRange: and enumerateTokensInRange:usingBlock: do with one.
-// GUESS: a range reaching past the end of the string is cut to the string, and one starting beyond the end
-// meets no token; the documentation does not say whether an exception is raised.
+// Observed on macOS 26.7.3 (black-box observation through the public API; tests/src/naturallanguage_tokenizer.m):
+// punctuation is not part of a word token; tokenRangeAtIndex: returns {NSNotFound, 0} when no token covers
+// the index (whitespace between words for the word unit, an index at or beyond the end, an empty or unset
+// string); tokenRangeForRange: returns the union of the tokens that meet the range, or {NSNotFound, 0}; it
+// cuts a range that reaches past the end to the string, and finds nothing for one that starts beyond it.
+// tokensForRange: and enumerateTokensInRange:usingBlock: raise no exception and are stricter, see
+// NLTokenizerTokensMeetingRange. Not observed, so left as it was written: which tokens a placeholder
+// should flag symbolic or emoji (only numeric is reported).
 
 // Calls block for each token of the whole string in order until block sets *stop.
 static void NLTokenizerEnumerate(NSString *string, NLTokenUnit unit,
@@ -80,17 +80,19 @@ static BOOL NLTokenizerClamp(NSRange *range, NSUInteger length)
     return YES;
 }
 
-static BOOL NLTokenizerMeets(NSRange token, NSRange range)
+// Whether token meets a range that ends at end (location + length, which may have wrapped around). A
+// zero-length range meets the token that covers its location.
+static BOOL NLTokenizerMeets(NSRange token, NSUInteger location, NSUInteger length, NSUInteger end)
 {
-    if (range.length == 0) {
-        return range.location >= token.location && range.location < NSMaxRange(token);
+    if (length == 0) {
+        return location >= token.location && location < NSMaxRange(token);
     }
-    return token.location < NSMaxRange(range) && NSMaxRange(token) > range.location;
+    return token.location < end && NSMaxRange(token) > location;
 }
 
-@implementation NLTokenizer {
-    NSString *_string;
-}
+@implementation NLTokenizer
+
+@synthesize unit = _unit;
 
 - (instancetype)initWithUnit:(NLTokenUnit)unit
 {
@@ -123,21 +125,57 @@ static BOOL NLTokenizerMeets(NSRange token, NSRange range)
 {
 }
 
-- (void)enumerateTokensInRange:(NSRange)range
-                    usingBlock:(void (^)(NSRange tokenRange, NLTokenizerAttributes flags, BOOL *stop))block
+// Calls block for each token that meets range, in order. range has been checked or cut by the caller.
+// end is range's end as location + length, which may have wrapped around.
+static void NLTokenizerEnumerateMeeting(NSString *string, NLTokenUnit unit, NSRange range, NSUInteger end,
+                                        void (^block)(NSRange tokenRange, NLTokenizerAttributes flags, BOOL *stop))
 {
-    if (!block || !NLTokenizerClamp(&range, [_string length])) {
-        return;
-    }
     __block BOOL stopped = NO;
-    NLTokenizerEnumerate(_string, _unit, ^(NSRange token, NLTokenizerAttributes flags, BOOL *stop) {
-        if (NLTokenizerMeets(token, range)) {
+    NLTokenizerEnumerate(string, unit, ^(NSRange token, NLTokenizerAttributes flags, BOOL *stop) {
+        if (NLTokenizerMeets(token, range.location, range.length, end)) {
             block(token, flags, &stopped);
             *stop = stopped;
-        } else if (token.location >= NSMaxRange(range)) {
+        } else if (end >= range.location && token.location >= end) {
             *stop = YES;
         }
     });
+}
+
+// The tokens meeting a range, with the checks of tokensForRange: and enumerateTokensInRange:usingBlock:.
+// QUIRK: these two do not cut a range to the string like tokenRangeForRange: does. They find no token
+// when location + length (computed with wraparound, so {1, NSUIntegerMax} ends at 0) is beyond the end of
+// the string, whatever the unit; for the document unit anything else that is inside the string, including
+// {1, NSUIntegerMax} and an empty range, meets the one document token; for the other units an empty range
+// at location 0 finds no token, while one elsewhere meets the token that covers it.
+// Not documented. Evidence: black-box observation on macOS 26.7.3 (tier 2), probe nlr.m with
+// {0,48}, {2,46}, {47,1}, {1,NSUIntegerMax}, {40,NSUIntegerMax}, {0,0}, {46,0}, {47,0} on all four units.
+// Test: test_quirk_tokens_for_range_past_end in tests/src/naturallanguage_tokenizer.m
+static void NLTokenizerTokensMeetingRange(NSString *string, NLTokenUnit unit, NSRange range,
+                                          void (^block)(NSRange tokenRange, NLTokenizerAttributes flags, BOOL *stop))
+{
+    NSUInteger length = [string length];
+    NSUInteger end = range.location + range.length;
+    if (length == 0 || end > length) {
+        return;
+    }
+    if (unit == NLTokenUnitDocument) {
+        BOOL stop = NO;
+        block(NSMakeRange(0, length), 0, &stop);
+        return;
+    }
+    if (range.length == 0 && range.location == 0) {
+        return;
+    }
+    NLTokenizerEnumerateMeeting(string, unit, range, end, block);
+}
+
+- (void)enumerateTokensInRange:(NSRange)range
+                    usingBlock:(void (^)(NSRange tokenRange, NLTokenizerAttributes flags, BOOL *stop))block
+{
+    if (!block) {
+        return;
+    }
+    NLTokenizerTokensMeetingRange(_string, _unit, range, block);
 }
 
 - (NSArray<NSValue *> *)tokensForRange:(NSRange)range
@@ -156,13 +194,24 @@ static BOOL NLTokenizerMeets(NSRange token, NSRange range)
 
 - (NSRange)tokenRangeForRange:(NSRange)range
 {
-    NSArray<NSValue *> *tokens = [self tokensForRange:range];
-    if ([tokens count] == 0) {
-        return NSMakeRange(NSNotFound, 0);
+    // Unlike tokensForRange:, a range that reaches past the end is cut to the string, and an empty range
+    // meets the token that covers its location (also at location 0).
+    __block BOOL found = NO;
+    __block NSRange result = NSMakeRange(NSNotFound, 0);
+    NSUInteger length = [_string length];
+    if (length == 0 || !NLTokenizerClamp(&range, length) || (range.length == 0 && range.location == length)) {
+        return result;
     }
-    NSRange first = [[tokens objectAtIndex:0] rangeValue];
-    NSRange last = [[tokens objectAtIndex:[tokens count] - 1] rangeValue];
-    return NSMakeRange(first.location, NSMaxRange(last) - first.location);
+    NLTokenizerEnumerateMeeting(_string, _unit, range, range.location + range.length,
+                                ^(NSRange token, NLTokenizerAttributes flags __attribute__((unused)), BOOL *stop __attribute__((unused))) {
+        if (!found) {
+            result = token;
+            found = YES;
+        } else {
+            result.length = NSMaxRange(token) - result.location;
+        }
+    });
+    return result;
 }
 
 @end
