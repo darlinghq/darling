@@ -27,6 +27,7 @@ Description: Darling core components
 Package: darling-core-native
 Architecture: amd64 arm64
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: ${darling:Recommends}
 Breaks: darling-core (<< ${source:Version})
 Replaces: darling-core (<< ${source:Version})
 Description: Darling components that run on Linux

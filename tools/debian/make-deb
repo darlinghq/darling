@@ -35,4 +35,4 @@ case "$1" in
     ;;
 esac
 
-debuild --preserve-envvar 'CCACHE_*' --no-lintian -us -uc ${ARG}
+debuild --preserve-envvar 'CCACHE_*' --preserve-envvar 'DARLING_WITH_FEXCORE' --preserve-envvar 'FEXCORE_*' --no-lintian -us -uc ${ARG}
