@@ -78,9 +78,13 @@ bool darling_muvm_wayland_wanted(const char* wayland_display, const char* path_e
 
 // Re-executes this launcher under muvm, with the launcher path made absolute,
 // argv[target_index] replaced by target_path, the arguments before the target
-// kept as they are, and the variables muvm needs forwarded with -e. Must be
-// called with privileges already dropped: execve preserves the saved set-uid.
-// Returns only on failure, with errno set.
-bool darling_reexec_under_muvm(char* const argv[], size_t target_index, const char* target_path);
+// kept as they are, and the variables muvm needs forwarded with -e. With
+// host_wayland, the guest's own WAYLAND_DISPLAY and XDG_RUNTIME_DIR are used (muvm
+// sets both, and still reads the host's from its own environment) instead of
+// the forwarded host values, and the cursor theme variables AppKit's Wayland
+// backend reads are forwarded. Must be called with privileges already dropped:
+// execve preserves the saved set-uid. Returns only on failure, with errno set.
+bool darling_reexec_under_muvm(char* const argv[], size_t target_index, const char* target_path,
+	bool host_wayland);
 
 #endif // _MUVM_TRAMPOLINE_H

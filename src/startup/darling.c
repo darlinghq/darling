@@ -230,7 +230,10 @@ static void relaunchUnderMuvm(char** argv)
 	// named on PATH is run; this is how the rest of the launcher drops it too.
 	dropPrivileges();
 
-	darling_reexec_under_muvm(argv, index, path);
+	// The probe reads files named on PATH, so it runs only with the user's own
+	// privileges.
+	darling_reexec_under_muvm(argv, index, path,
+		darling_muvm_wayland_wanted(getenv("WAYLAND_DISPLAY"), getenv("PATH"), darling_muvm_wayland_capable));
 
 	fprintf(stderr,
 		"Cannot run muvm: %s\nAn x86_64 program cannot be loaded on this host's %zu-byte pages; install muvm and put it on PATH.\n",

@@ -3,7 +3,9 @@
 // The Mach-O headers are written here byte by byte, so the sniffing is checked
 // against the on-disk layout rather than against the code that reads it. The
 // re-exec is run in a child with a stub muvm on PATH, which records the argv it
-// was handed.
+// was handed and which of DISPLAY, XAUTHORITY and WAYLAND_DISPLAY it runs with.
+// The Wayland capability probe is run against directories of fake muvm-guest
+// files.
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -357,14 +359,19 @@ static void writeStubMuvm(const char* directory, const char* recordPath)
 	fprintf(file,
 		"#!/bin/sh\n"
 		"exec > '%s'\n"
-		"for argument in \"$@\"; do printf 'ARG:%%s\\n' \"$argument\"; done\n",
+		"for argument in \"$@\"; do printf 'ARG:%%s\\n' \"$argument\"; done\n"
+		"[ \"${DISPLAY+set}\" ] && echo ENV:DISPLAY\n"
+		"[ \"${XAUTHORITY+set}\" ] && echo ENV:XAUTHORITY\n"
+		"[ \"${WAYLAND_DISPLAY+set}\" ] && echo ENV:WAYLAND_DISPLAY\n"
+		"exit 0\n",
 		recordPath);
 	fclose(file);
 	chmod(path, 0755);
 }
 
 // Runs the trampoline in a child and returns its exit status, or -1.
-static int runReexec(char* const argv[], size_t targetIndex, const char* targetPath)
+static int runReexec(char* const argv[], size_t targetIndex, const char* targetPath,
+	bool hostWayland)
 {
 	pid_t child = fork();
 	int status;
@@ -374,7 +381,7 @@ static int runReexec(char* const argv[], size_t targetIndex, const char* targetP
 
 	if (child == 0)
 	{
-		darling_reexec_under_muvm(argv, targetIndex, targetPath);
+		darling_reexec_under_muvm(argv, targetIndex, targetPath, hostWayland);
 		_exit(3);
 	}
 
@@ -469,7 +476,8 @@ static void test_reexec(void)
 	launcher[launcherLength] = '\0';
 
 	unlink(recordPath);
-	check(runReexec(execArgv, 2, "/resolved/app") == 0, "the exec form re-execs muvm");
+	check(runReexec(execArgv, 2, "/resolved/app", false) == 0,
+		"the exec form re-execs muvm");
 	count = readRecord(recordPath, lines, 256);
 	check(count > 3 && strcmp(lines[0], "-e") == 0, "muvm receives -e before any command");
 
@@ -501,7 +509,8 @@ static void test_reexec(void)
 	setenv("__mldr_bprefs", "01000007", 1);
 	setenv("GDK_SCALE", "2", 1);
 	unlink(recordPath);
-	check(runReexec(plainArgv, 1, "/resolved/app") == 0, "the plain form re-execs muvm");
+	check(runReexec(plainArgv, 1, "/resolved/app", false) == 0,
+		"the plain form re-execs muvm");
 	count = readRecord(recordPath, lines, 256);
 	check(hasPair(lines, count, "__mldr_bprefs"),
 		"a set architecture preference reaches the guest");
@@ -524,6 +533,102 @@ static void test_reexec(void)
 
 	unsetenv("__mldr_bprefs");
 	unsetenv("GDK_SCALE");
+}
+
+// Whether the stub muvm saw name set in its own environment.
+static bool muvmSawEnv(const char* recordPath, const char* name)
+{
+	FILE* file = fopen(recordPath, "r");
+	char line[PATH_MAX], wanted[64];
+	bool seen = false;
+
+	if (file == NULL)
+		return false;
+
+	snprintf(wanted, sizeof(wanted), "ENV:%s", name);
+	while (fgets(line, sizeof(line), file) != NULL)
+	{
+		line[strcspn(line, "\n")] = '\0';
+		if (strcmp(line, wanted) == 0)
+			seen = true;
+	}
+
+	fclose(file);
+	return seen;
+}
+
+static void setHostSession(void)
+{
+	setenv("DISPLAY", ":0", 1);
+	setenv("XAUTHORITY", "/home/someone/.Xauthority", 1);
+	setenv("WAYLAND_DISPLAY", "wayland-1", 1);
+	setenv("XDG_RUNTIME_DIR", "/run/user/4242", 1);
+	setenv("XCURSOR_THEME", "Adwaita", 1);
+	setenv("XCURSOR_SIZE", "32", 1);
+}
+
+static void clearHostSession(void)
+{
+	unsetenv("DISPLAY");
+	unsetenv("XAUTHORITY");
+	unsetenv("WAYLAND_DISPLAY");
+	unsetenv("XDG_RUNTIME_DIR");
+	unsetenv("XCURSOR_THEME");
+	unsetenv("XCURSOR_SIZE");
+}
+
+// The host has an X11 and a Wayland session. muvm decides what to serve from its
+// own environment, so the launcher must leave DISPLAY and XAUTHORITY there in
+// both cases: AppKit falls back to X11 through them when the guest ends up
+// without a Wayland socket.
+static void test_reexec_display(void)
+{
+	char recordPath[PATH_MAX];
+	char lines[256][PATH_MAX];
+	char* argv[] = { (char*) "darling", (char*) "some/app", NULL };
+	size_t count;
+
+	snprintf(recordPath, sizeof(recordPath), "%s/record", g_directory);
+	setHostSession();
+	setenv("DARLING_APPKIT_BACKEND", "x11", 1);
+
+	unlink(recordPath);
+	check(runReexec(argv, 1, "/resolved/app", false) == 0, "an X11 run re-execs muvm");
+	count = readRecord(recordPath, lines, 256);
+	check(hasPair(lines, count, "WAYLAND_DISPLAY") && hasPair(lines, count, "XDG_RUNTIME_DIR"),
+		"an X11 run forwards the session variables as it always did");
+	check(!hasPair(lines, count, "XCURSOR_THEME") && !hasPair(lines, count, "XCURSOR_SIZE"),
+		"an X11 run does not forward the cursor variables");
+	check(hasPair(lines, count, "DARLING_APPKIT_BACKEND"), "an explicit AppKit backend reaches the guest");
+	check(muvmSawEnv(recordPath, "DISPLAY") && muvmSawEnv(recordPath, "XAUTHORITY")
+		&& muvmSawEnv(recordPath, "WAYLAND_DISPLAY"),
+		"an X11 run leaves muvm's environment alone");
+
+	unlink(recordPath);
+	check(runReexec(argv, 1, "/resolved/app", true) == 0, "a Wayland run re-execs muvm");
+	count = readRecord(recordPath, lines, 256);
+	check(muvmSawEnv(recordPath, "DISPLAY") && muvmSawEnv(recordPath, "XAUTHORITY"),
+		"a Wayland run keeps DISPLAY and XAUTHORITY in muvm's environment, the fallback when the proxy fails");
+	check(muvmSawEnv(recordPath, "WAYLAND_DISPLAY"),
+		"a Wayland run keeps WAYLAND_DISPLAY in muvm's environment, which is what makes muvm serve it");
+	check(!hasPair(lines, count, "WAYLAND_DISPLAY") && !hasPair(lines, count, "XDG_RUNTIME_DIR"),
+		"a Wayland run leaves the guest's own WAYLAND_DISPLAY and XDG_RUNTIME_DIR alone");
+	check(hasPair(lines, count, "XCURSOR_THEME") && hasPair(lines, count, "XCURSOR_SIZE"),
+		"a Wayland run forwards the cursor theme and size");
+	check(hasPair(lines, count, "HOME") && hasPair(lines, count, "PATH") && hasPair(lines, count, "DARLING_TEST_VARIABLE"),
+		"a Wayland run still forwards the ordinary variables");
+	check(hasPair(lines, count, "DARLING_APPKIT_BACKEND"),
+		"a Wayland run does not interfere with an explicit AppKit backend");
+
+	unsetenv("XCURSOR_SIZE");
+	unlink(recordPath);
+	check(runReexec(argv, 1, "/resolved/app", true) == 0, "a Wayland run re-execs muvm again");
+	count = readRecord(recordPath, lines, 256);
+	check(hasPair(lines, count, "XCURSOR_THEME") && !hasPair(lines, count, "XCURSOR_SIZE"),
+		"an unset cursor variable is not forwarded");
+
+	unsetenv("DARLING_APPKIT_BACKEND");
+	clearHostSession();
 }
 
 static int g_probeCalls;
@@ -659,6 +764,7 @@ int main(void)
 	test_needed_matrix();
 	test_stdio();
 	test_reexec();
+	test_reexec_display();
 	test_wayland_wanted();
 	test_wayland_capable();
 

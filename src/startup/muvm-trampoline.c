@@ -76,6 +76,18 @@ static const char* const kForwardedVariables[] =
 	"__mldr_bprefs",
 };
 
+// What AppKit's Wayland backend reads besides the session: the cursor theme
+// and size the desktop exports. The keymap comes from the compositor and the
+// locale is forwarded above.
+static const char* const kWaylandVariables[] =
+{
+	"XCURSOR_THEME",
+	"XCURSOR_SIZE",
+};
+
+#define FIXED_VARIABLE_MAX (sizeof(kForwardedVariables) / sizeof(kForwardedVariables[0]) \
+	+ sizeof(kWaylandVariables) / sizeof(kWaylandVariables[0]))
+
 static bool read_exact(int fd, void* buf, size_t len)
 {
 	uint8_t* p = (uint8_t*)buf;
@@ -315,22 +327,33 @@ static const char* environEntry(const char* name)
 	return NULL;
 }
 
-static size_t countForwardedVariables(void)
+// A variable the guest has a value of its own for when it uses the host's
+// Wayland session: muvm exports its WAYLAND_DISPLAY (a socket that exists only
+// when the compositor is served), and muvm-guest sets the guest's
+// XDG_RUNTIME_DIR, which the host's value matches only by chance.
+static bool guestOwnsVariable(const char* name)
+{
+	return strcmp(name, "WAYLAND_DISPLAY") == 0 || strcmp(name, "XDG_RUNTIME_DIR") == 0;
+}
+
+// The fixed variables the user has set and the guest should receive.
+static size_t fixedForwardedVariables(bool host_wayland, const char* names[FIXED_VARIABLE_MAX])
 {
 	size_t count = 0;
 
 	for (size_t i = 0; i < sizeof(kForwardedVariables) / sizeof(kForwardedVariables[0]); i++)
 	{
-		if (environEntry(kForwardedVariables[i]) != NULL)
-			count++;
+		if (environEntry(kForwardedVariables[i]) != NULL && !(host_wayland && guestOwnsVariable(kForwardedVariables[i])))
+			names[count++] = kForwardedVariables[i];
 	}
 
-	// Every DARLING_* variable the user set, for local paths the launcher's
-	// configuration uses.
-	for (char** entry = environ; *entry != NULL; entry++)
+	if (host_wayland)
 	{
-		if (strncmp(*entry, "DARLING_", 8) == 0 && (*entry)[8] != '=')
-			count++;
+		for (size_t i = 0; i < sizeof(kWaylandVariables) / sizeof(kWaylandVariables[0]); i++)
+		{
+			if (environEntry(kWaylandVariables[i]) != NULL)
+				names[count++] = kWaylandVariables[i];
+		}
 	}
 
 	return count;
@@ -459,14 +482,17 @@ bool darling_muvm_wayland_wanted(const char* wayland_display, const char* path_e
 	return darling_wayland_display_is_plain(wayland_display) && probe(path_env);
 }
 
-bool darling_reexec_under_muvm(char* const argv[], size_t target_index, const char* target_path)
+bool darling_reexec_under_muvm(char* const argv[], size_t target_index, const char* target_path,
+	bool host_wayland)
 {
 	static char launcher[4096];
 	ssize_t launcher_length;
 	size_t argc, forwarded, slots, at, name_bytes;
+	const char* fixed[FIXED_VARIABLE_MAX];
 	char** muvm_argv;
 	char* names;
 	char* cursor;
+	size_t darling_variables = 0;
 
 	for (argc = 0; argv[argc] != NULL; argc++)
 		;
@@ -476,11 +502,19 @@ bool darling_reexec_under_muvm(char* const argv[], size_t target_index, const ch
 		return false;
 	launcher[launcher_length] = '\0';
 
-	forwarded = countForwardedVariables();
+	forwarded = fixedForwardedVariables(host_wayland, fixed);
+
+	// Every DARLING_* variable the user set, for local paths the launcher's
+	// configuration uses.
+	for (char** entry = environ; *entry != NULL; entry++)
+	{
+		if (strncmp(*entry, "DARLING_", 8) == 0 && (*entry)[8] != '=')
+			darling_variables++;
+	}
 
 	// muvm, one "-e NAME" pair per forwarded variable, "--", the launcher, every
 	// argument but argv[0], and the null terminator.
-	slots = 2 * forwarded + argc + 3;
+	slots = 2 * (forwarded + darling_variables) + argc + 3;
 	muvm_argv = calloc(slots, sizeof(*muvm_argv));
 	if (muvm_argv == NULL)
 		return false;
@@ -503,13 +537,10 @@ bool darling_reexec_under_muvm(char* const argv[], size_t target_index, const ch
 	at = 0;
 	muvm_argv[at++] = (char*) "muvm";
 
-	for (size_t i = 0; i < sizeof(kForwardedVariables) / sizeof(kForwardedVariables[0]); i++)
+	for (size_t i = 0; i < forwarded; i++)
 	{
-		if (environEntry(kForwardedVariables[i]) != NULL)
-		{
-			muvm_argv[at++] = (char*) "-e";
-			muvm_argv[at++] = (char*) kForwardedVariables[i];
-		}
+		muvm_argv[at++] = (char*) "-e";
+		muvm_argv[at++] = (char*) fixed[i];
 	}
 
 	for (char** entry = environ; *entry != NULL; entry++)
