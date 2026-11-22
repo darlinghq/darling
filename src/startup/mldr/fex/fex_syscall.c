@@ -84,33 +84,56 @@ uint64_t fex_get_current_thread_gs_base(void)
 	return t_current_gs_base;
 }
 
-#if defined(__aarch64__)
-// Every host syscall mldr makes for the guest enters the kernel at fex_host_svc_insn, so a host handler can
-// tell that a thread is at the kernel entry of a guest syscall (hold_for_syscall_return).
-long fex_host_svc(long a1, long a2, long a3, long a4, long a5, long a6, long nr);
-__asm__(
-	".text\n"
-	".p2align 2\n"
-	".globl fex_host_svc\n"
-	".hidden fex_host_svc\n"
-	".type fex_host_svc, %function\n"
-	"fex_host_svc:\n"
-	"	mov x8, x6\n"
-	".globl fex_host_svc_insn\n"
-	".hidden fex_host_svc_insn\n"
-	"fex_host_svc_insn:\n"
-	"	svc #0\n"
-	"	ret\n"
-	".size fex_host_svc, .-fex_host_svc\n");
-#endif
-
 static long raw_host_syscall(long nr, long a1, long a2, long a3, long a4, long a5, long a6)
 {
 #if defined(__aarch64__)
-	return fex_host_svc(a1, a2, a3, a4, a5, a6, nr);
+	register long x8 asm("x8") = nr;
+	register long x0 asm("x0") = a1;
+	register long x1 asm("x1") = a2;
+	register long x2 asm("x2") = a3;
+	register long x3 asm("x3") = a4;
+	register long x4 asm("x4") = a5;
+	register long x5 asm("x5") = a6;
+	__asm__ volatile(
+		"svc #0"
+		: "+r"(x0)
+		: "r"(x1), "r"(x2), "r"(x3), "r"(x4), "r"(x5), "r"(x8)
+		: "memory", "cc"
+	);
+	return x0;
 #else
 	long ret = syscall(nr, a1, a2, a3, a4, a5, a6);
 	return (ret == -1) ? -errno : ret;
+#endif
+}
+
+#if defined(__aarch64__)
+// The host syscall that carries out a guest syscall enters the kernel at fex_guest_svc_insn, and only that
+// one: a host handler can tell that the thread is at the kernel entry of the guest's own syscall
+// (hold_for_syscall_return), not of a helper syscall mldr makes around it.
+long fex_guest_svc(long a1, long a2, long a3, long a4, long a5, long a6, long nr);
+__asm__(
+	".text\n"
+	".p2align 2\n"
+	".globl fex_guest_svc\n"
+	".hidden fex_guest_svc\n"
+	".type fex_guest_svc, %function\n"
+	"fex_guest_svc:\n"
+	"	mov x8, x6\n"
+	".globl fex_guest_svc_insn\n"
+	".hidden fex_guest_svc_insn\n"
+	"fex_guest_svc_insn:\n"
+	"	svc #0\n"
+	"	ret\n"
+	".size fex_guest_svc, .-fex_guest_svc\n");
+#endif
+
+static long guest_host_syscall(long nr, long a1, long a2, long a3, long a4, long a5, long a6)
+{
+#if defined(__aarch64__)
+	return fex_guest_svc(a1, a2, a3, a4, a5, a6, nr);
+#else
+	return raw_host_syscall(nr, a1, a2, a3, a4, a5, a6);
 #endif
 }
 
@@ -453,8 +476,7 @@ static __thread uint64_t t_guest_blocked_jit_signals;
 static __thread uint64_t t_pending;
 static __thread siginfo_t t_pending_info[GUEST_NSIG];
 static __thread struct fex_signal_request t_request;
-// The thread is in fex_host_svc for a guest syscall, and a signal turned that into EINTR to be restarted.
-static __thread bool t_in_guest_syscall;
+// A signal turned the guest's syscall into EINTR at its kernel entry; the syscall is to be made again.
 static __thread bool t_restart_syscall;
 
 static uint64_t unblockable(uint64_t mask)
@@ -588,8 +610,18 @@ static void deliver_now(int sig, siginfo_t* info, void* ucontext)
 }
 
 #if defined(__aarch64__)
-extern const char fex_host_svc_insn[];
+extern const char fex_guest_svc_insn[];
 #endif
+
+bool fex_at_guest_syscall_entry(const void* pc)
+{
+#if defined(__aarch64__)
+	return pc == (const void*)fex_guest_svc || pc == (const void*)fex_guest_svc_insn;
+#else
+	(void)pc;
+	return false;
+#endif
+}
 
 // The guest thread is in host code: the handler runs when its syscall returns. If the thread is at the
 // kernel entry of a guest syscall (about to make it, or rewound by the kernel to restart it), the syscall
@@ -605,12 +637,13 @@ static void hold_for_syscall_return(int sig, siginfo_t* info, void* ucontext)
 		return;
 	}
 	pend_signal(sig, info);
+	if (mask & FEX_SIGBIT(sig))
+		return; // a JIT signal the guest blocks: it waits for the guest to unblock it
 #if defined(__aarch64__)
 	ucontext_t* uc = ucontext;
-	uintptr_t pc = (uintptr_t)uc->uc_mcontext.pc;
-	if (t_in_guest_syscall && (pc == (uintptr_t)fex_host_svc || pc == (uintptr_t)fex_host_svc_insn)) {
+	if (fex_at_guest_syscall_entry((const void*)(uintptr_t)uc->uc_mcontext.pc)) {
 		uc->uc_mcontext.regs[0] = (uint64_t)-EINTR;
-		uc->uc_mcontext.pc = (uintptr_t)fex_host_svc_insn + 4;
+		uc->uc_mcontext.pc = (uintptr_t)fex_guest_svc_insn + 4;
 		t_restart_syscall = true;
 	}
 #endif
@@ -892,7 +925,6 @@ static long dispatch_syscall(struct fex_x86_64_state* state)
 	long a6 = (long)state->r9;
 	long ret = -ENOSYS;
 
-	t_in_guest_syscall = true;
 	switch (nr) {
 		case 13: // rt_sigaction
 			ret = guest_rt_sigaction(a1, (uintptr_t)a2, (uintptr_t)a3, a4);
@@ -951,10 +983,10 @@ static long dispatch_syscall(struct fex_x86_64_state* state)
 			break;
 
 		case 2: // open -> openat(AT_FDCWD, path, flags, mode)
-			ret = raw_host_syscall(56, AT_FDCWD, a1, open_flags_x86_to_host(a2), a3, 0, 0);
+			ret = guest_host_syscall(56, AT_FDCWD, a1, open_flags_x86_to_host(a2), a3, 0, 0);
 			break;
 		case 257: // openat
-			ret = raw_host_syscall(56, a1, a2, open_flags_x86_to_host(a3), a4, 0, 0);
+			ret = guest_host_syscall(56, a1, a2, open_flags_x86_to_host(a3), a4, 0, 0);
 			break;
 		case 72: // fcntl: the file status flags use the host numbering
 			if (a2 == F_SETFL) {
@@ -966,7 +998,7 @@ static long dispatch_syscall(struct fex_x86_64_state* state)
 			}
 			break;
 		case 85: // creat -> openat(AT_FDCWD, path, O_CREAT|O_WRONLY|O_TRUNC, mode)
-			ret = raw_host_syscall(56, AT_FDCWD, a1, O_CREAT | O_WRONLY | O_TRUNC, a2, 0, 0);
+			ret = guest_host_syscall(56, AT_FDCWD, a1, O_CREAT | O_WRONLY | O_TRUNC, a2, 0, 0);
 			break;
 		case 21: // access -> faccessat(AT_FDCWD, path, mode, 0)
 			ret = raw_host_syscall(48, AT_FDCWD, a1, a2, 0, 0, 0);
@@ -991,7 +1023,7 @@ static long dispatch_syscall(struct fex_x86_64_state* state)
 				ts.tv_nsec = (long)(timeout_ms % 1000) * 1000000L;
 				tsp = &ts;
 			}
-			ret = raw_host_syscall(73, a1, a2, (long)(uintptr_t)tsp, 0, 0, 0);
+			ret = guest_host_syscall(73, a1, a2, (long)(uintptr_t)tsp, 0, 0, 0);
 			break;
 		}
 		case 4: // stat(path, statbuf)
@@ -1097,7 +1129,7 @@ static long dispatch_syscall(struct fex_x86_64_state* state)
 			}
 			long sigmask_arg = (nr == 281) ? a5 : 0;
 			long sigsetsize_arg = (nr == 281) ? a6 : (long)sizeof(sigset_t);
-			ret = raw_host_syscall(22, a1, (long)(uintptr_t)host_evs, maxevents,
+			ret = guest_host_syscall(22, a1, (long)(uintptr_t)host_evs, maxevents,
 				a4, sigmask_arg, sigsetsize_arg);
 			if (ret > 0) {
 				struct x86_64_epoll_event stack_guest_evs[64];
@@ -1132,7 +1164,7 @@ static long dispatch_syscall(struct fex_x86_64_state* state)
 		default: {
 			int arm64_nr = map_x86_64_nr_to_arm64(nr);
 			if (arm64_nr >= 0)
-				ret = raw_host_syscall(arm64_nr, a1, a2, a3, a4, a5, a6);
+				ret = guest_host_syscall(arm64_nr, a1, a2, a3, a4, a5, a6);
 			else
 				ret = -ENOSYS;
 			break;
@@ -1156,7 +1188,6 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 	for (;;) {
 		t_restart_syscall = false;
 		long ret = dispatch_syscall(state);
-		t_in_guest_syscall = false;
 		bool restart = t_restart_syscall && ret == -EINTR;
 		t_restart_syscall = false;
 		if (state->unwind_thread)

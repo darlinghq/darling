@@ -126,6 +126,9 @@ int darling_fexcore_signal_return(uint64_t* guest_mask);
 
 void fex_signals_set_hooks(fex_signal_preempt_fn_t preempt, fex_signal_deliver_fn_t deliver,
 	fex_signal_return_fn_t sigreturn);
+// Whether a host handler interrupted a thread at the kernel entry of a guest's own syscall (about to make it,
+// or rewound by the kernel to restart it), not of a helper syscall mldr makes around it.
+bool fex_at_guest_syscall_entry(const void* pc);
 
 struct elf_calls* fex_elfcalls_get_trampoline_table(const struct elf_calls* host_calls);
 long fex_elfcalls_dispatch(uint32_t index, struct fex_x86_64_state* state);

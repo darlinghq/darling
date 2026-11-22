@@ -889,6 +889,52 @@ static void test_syscall_restart(uint64_t guest_handler, uint64_t saved_mask)
 	set_guest_mask_to(saved_mask);
 }
 
+static void* write_later(void* arg)
+{
+	usleep(500 * 1000);
+	if (write(*(int*)arg, "x", 1) != 1)
+		abort();
+	return NULL;
+}
+
+// Only the guest's own syscall is turned into EINTR at its kernel entry, and a signal the guest blocks does
+// not interrupt it.
+static void test_guest_syscall_entry(uint64_t guest_handler, uint64_t saved_mask)
+{
+	extern const char fex_guest_svc_insn[];
+	static const uint32_t other_svc[2] = { 0xd2800008 /* mov x8, #0 */, 0xd4000001 /* svc #0 */ };
+	check(fex_at_guest_syscall_entry(fex_guest_svc_insn) && fex_at_guest_syscall_entry((const char*)fex_guest_svc_insn - 4)
+		&& !fex_at_guest_syscall_entry(&other_svc[1]) && !fex_at_guest_syscall_entry(&other_svc[0]),
+		"only the guest's own syscall entry counts as one, not another svc (a helper syscall)");
+
+	set_guest_mask_to(FEX_SIGBIT(SIGTRAP));
+	guest_sigaction(SIGTRAP, guest_handler, 0, 0, NULL);
+	g_fake_preempt_answer = FEX_SIGNAL_AT_SYSCALL_RETURN;
+	int fds[2];
+	if (pipe(fds) != 0)
+		abort();
+	struct interrupter it = { gettid(), SIGTRAP };
+	pthread_t t;
+	pthread_create(&t, NULL, interrupt_later, &it);
+	pthread_t w;
+	pthread_create(&w, NULL, write_later, &fds[1]);
+	char byte = 0;
+	struct fex_x86_64_state st = guest_syscall_state(0 /* read */, fds[0], (uint64_t)(uintptr_t)&byte, 1);
+	pthread_join(t, NULL);
+	pthread_join(w, NULL);
+	check((long)st.rax == 1 && byte == 'x' && st.signal_request == NULL,
+		"a signal the guest blocks does not interrupt its blocked syscall");
+	close(fds[0]);
+	close(fds[1]);
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+	// It is still kept for the guest; unblocking takes it.
+	uint64_t trap = FEX_SIGBIT(SIGTRAP);
+	st = guest_syscall_state(14, SIG_UNBLOCK, (uint64_t)(uintptr_t)&trap, 0);
+	check(st.signal_request && st.signal_request->sig == SIGTRAP, "and it runs once unblocked");
+	guest_sigaction(SIGTRAP, 0, 0, 0, NULL);
+	set_guest_mask_to(saved_mask);
+}
+
 static void test_guest_signal_delivery(void)
 {
 	const uint64_t guest_handler = 0x123400;
@@ -1025,6 +1071,7 @@ static void test_guest_signal_delivery(void)
 	test_signal_masks(guest_handler, saved_mask);
 	test_held_until_syscall_return(guest_handler, saved_mask);
 	test_syscall_restart(guest_handler, saved_mask);
+	test_guest_syscall_entry(guest_handler, saved_mask);
 
 	guest_sigaction(SIGUSR1, 0, 0, 0, NULL);
 	guest_sigaction(SIGUSR2, 0, 0, 0, NULL);
