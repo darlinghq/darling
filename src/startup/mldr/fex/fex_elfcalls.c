@@ -196,12 +196,14 @@ darling_thread_create_callbacks_t fex_wrap_guest_thread_callbacks(darling_thread
 	return &g_wrapped_thread_cbs;
 }
 
+struct fex_unsupported_callback { const char* name; unsigned mask; const char* reason; };
 // What the bridge does to the arguments of one host function, decided from its name when it is wrapped
 // so that a call does no name lookups.
 enum fex_x_handler { FEX_X_HANDLER_NONE, FEX_X_ERROR_HANDLER, FEX_X_IO_ERROR_HANDLER };
 struct fex_callback_rules {
 	enum fex_x_handler x_handler;
 	unsigned args; // the g_callback_args mask, 0 if the function has no entry
+	const struct fex_unsupported_callback* unsupported; // its g_callback_unsupported entry, if any
 };
 static struct fex_callback_rules g_dlsym_rules[DARLING_FEX_DLSYM_MAX_SLOTS];
 static struct fex_callback_rules callback_rules_for(const char* name);
@@ -404,11 +406,25 @@ static const struct { const char* name; unsigned mask; } g_callback_args[] = {
 	// wl_proxy_add_dispatcher(proxy, dispatcher, implementation, data): libwayland-client calls the dispatcher
 	// as dispatcher(implementation, proxy, opcode, message, arguments) for every event of the proxy.
 	{ "wl_proxy_add_dispatcher", 0x2 },
+	// XIfEvent(display, event, predicate, arg) and its siblings call the predicate on each queued event.
+	{ "XIfEvent", 0x4 }, { "XCheckIfEvent", 0x4 }, { "XPeekIfEvent", 0x4 },
+	// DGifOpen(user_data, read_fn, error): giflib reads the file through read_fn until DGifCloseFile.
+	{ "DGifOpen", 0x2 },
+};
+
+// Host functions whose callbacks a thunk cannot run: their callbacks take more than six integer
+// arguments, or floating point ones. Handing them a guest callback stops the process with a message,
+// because the library would otherwise call it with arguments the guest never sees.
+static const struct fex_unsupported_callback g_callback_unsupported[] = {
+	// GLDEBUGPROC takes seven arguments (source, type, id, severity, length, message, user_param).
+	{ "glDebugMessageCallback", 0x1, "its callback takes seven arguments" },
+	{ "glDebugMessageCallbackARB", 0x1, "its callback takes seven arguments" },
+	{ "glDebugMessageCallbackKHR", 0x1, "its callback takes seven arguments" },
 };
 
 static struct fex_callback_rules callback_rules_for(const char* name)
 {
-	struct fex_callback_rules r = { FEX_X_HANDLER_NONE, 0 };
+	struct fex_callback_rules r = { FEX_X_HANDLER_NONE, 0, NULL };
 	if (!name)
 		return r;
 	if (strcmp(name, "XSetErrorHandler") == 0)
@@ -418,6 +434,9 @@ static struct fex_callback_rules callback_rules_for(const char* name)
 	for (size_t i = 0; i < sizeof(g_callback_args) / sizeof(g_callback_args[0]); i++)
 		if (strcmp(name, g_callback_args[i].name) == 0)
 			r.args = g_callback_args[i].mask;
+	for (size_t i = 0; i < sizeof(g_callback_unsupported) / sizeof(g_callback_unsupported[0]); i++)
+		if (strcmp(name, g_callback_unsupported[i].name) == 0)
+			r.unsupported = &g_callback_unsupported[i];
 	return r;
 }
 
@@ -429,6 +448,14 @@ static void translate_guest_callbacks(const struct fex_callback_rules* rules, ui
 	for (int a = 0; a < nargs && a < 31; a++)
 		if (rules->args & (1u << a))
 			*args[a] = (*args[a] && ignore) ? (uint64_t)(uintptr_t)host_callback_ignore : host_callback_for(*args[a]);
+	const struct fex_unsupported_callback* u = rules->unsupported;
+	for (int a = 0; u && a < nargs && a < 31; a++) {
+		if ((u->mask & (1u << a)) && *args[a] != 0) {
+			fprintf(stderr, "mldr/fex: %s was given a guest callback, which the FEX bridge cannot run: %s\n",
+				u->name, u->reason);
+			abort();
+		}
+	}
 }
 
 long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
@@ -438,7 +465,7 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 
 	pthread_mutex_lock(&g_dlsym_mutex);
 	void* target = (slot < g_dlsym_count) ? g_dlsym_targets[slot] : NULL;
-	const struct fex_callback_rules rules = target ? g_dlsym_rules[slot] : (struct fex_callback_rules){ FEX_X_HANDLER_NONE, 0 };
+	const struct fex_callback_rules rules = target ? g_dlsym_rules[slot] : (struct fex_callback_rules){ FEX_X_HANDLER_NONE, 0, NULL };
 	pthread_mutex_unlock(&g_dlsym_mutex);
 
 	if (!target)

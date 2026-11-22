@@ -636,6 +636,96 @@ static void test_wayland_dispatcher(void)
 	check(g_wl_seen_dispatcher == 0, "a NULL dispatcher stays NULL");
 }
 
+// Calls the bridge stub of a fake host function with up to four integer arguments.
+static uint64_t call_stub(void* stub, uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3)
+{
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rax = stub_syscall_nr(stub);
+	st.rdi = a0;
+	st.rsi = a1;
+	st.rdx = a2;
+	st.r10 = a3;
+	fex_linux_syscall_dispatch(&st);
+	return st.rax;
+}
+
+// What the fakes below return when they are handed a guest function instead of a thunk.
+#define GOT_GUEST_FN 0xbad0bad0u
+
+// Xlib calls the predicate of XIfEvent and its siblings as predicate(display, event, arg).
+static uint64_t host_call_predicate(uint64_t display, uint64_t event, uint64_t predicate, uint64_t arg)
+{
+	if (is_fake_guest_fn(predicate))
+		return GOT_GUEST_FN;
+	return ((uint64_t (*)(uint64_t, uint64_t, uint64_t))(uintptr_t)predicate)(display, event, arg);
+}
+// One fake per name: the bridge keeps one stub, and one name, per host function.
+static uint64_t host_XIfEvent(uint64_t d, uint64_t e, uint64_t p, uint64_t a) { return host_call_predicate(d, e, p, a); }
+static uint64_t host_XCheckIfEvent(uint64_t d, uint64_t e, uint64_t p, uint64_t a) { return host_call_predicate(d, e, p, a); }
+static uint64_t host_XPeekIfEvent(uint64_t d, uint64_t e, uint64_t p, uint64_t a) { return host_call_predicate(d, e, p, a); }
+
+// giflib reads the file through read_fn(gif, buffer, length) for as long as it is open.
+static uint64_t g_gif_read_fn = 0;
+static uint64_t host_DGifOpen(uint64_t user_data, uint64_t read_fn, uint64_t error)
+{
+	(void)user_data;
+	(void)error;
+	g_gif_read_fn = read_fn;
+	return 0x9100;
+}
+
+static void test_callback_arguments(void)
+{
+	const char* predicates[] = {"XIfEvent", "XCheckIfEvent", "XPeekIfEvent"};
+	void* fakes[] = {(void*)host_XIfEvent, (void*)host_XCheckIfEvent, (void*)host_XPeekIfEvent};
+	for (size_t i = 0; i < sizeof(predicates) / sizeof(predicates[0]); i++) {
+		void* stub = fex_dlsym_wrap_if_func(fakes[i], predicates[i]);
+		last_cb_args_fn = 0;
+		uint64_t ret = call_stub(stub, 0x7f0000b000, 0x7f0000c000, 0x5100000 + i, 0x7f0000d000);
+		char what[128];
+		snprintf(what, sizeof(what), "%s runs the guest predicate with the display, event and argument", predicates[i]);
+		check(ret == 0x88 && last_cb_args_fn == 0x5100000 + i && last_cb_args[0] == 0x7f0000b000 &&
+		      last_cb_args[1] == 0x7f0000c000 && last_cb_args[2] == 0x7f0000d000, what);
+	}
+
+	void* stub = fex_dlsym_wrap_if_func((void*)host_DGifOpen, "DGifOpen");
+	bool replaced = call_stub(stub, 0x7f0000e000, 0x5200000, 0, 0) == 0x9100 && g_gif_read_fn != 0 &&
+		!is_fake_guest_fn(g_gif_read_fn);
+	check(replaced, "DGifOpen keeps a host thunk in place of the guest read function");
+	last_cb_args_fn = 0;
+	if (replaced)
+		((uint64_t (*)(uint64_t, uint64_t, uint64_t))(uintptr_t)g_gif_read_fn)(0x7f0000f000, 0x7f00010000, 13);
+	check(last_cb_args_fn == 0x5200000 && last_cb_args[1] == 0x7f00010000 && last_cb_args[2] == 13,
+		"a later read by giflib runs the guest read function");
+}
+
+static uint64_t g_debug_callback_seen = 1;
+static uint64_t host_glDebugMessageCallback(uint64_t callback, uint64_t user_param)
+{
+	(void)user_param;
+	g_debug_callback_seen = callback;
+	return 0;
+}
+
+static void set_guest_debug_callback(void)
+{
+	void* stub = fex_dlsym_wrap_if_func((void*)host_glDebugMessageCallback, "glDebugMessageCallback");
+	call_stub(stub, 0x5300000, 0, 0, 0);
+}
+
+// A callback with more arguments than a thunk forwards stops the process with a message instead of
+// being called later with arguments the guest never sees.
+static void test_unsupported_callback(void)
+{
+	void* stub = fex_dlsym_wrap_if_func((void*)host_glDebugMessageCallback, "glDebugMessageCallback");
+	call_stub(stub, 0, 0x1234, 0, 0);
+	check(g_debug_callback_seen == 0, "removing an unsupported callback (NULL) still reaches the host");
+	check(aborts_with(set_guest_debug_callback, "glDebugMessageCallback was given a guest callback, which the FEX "
+		"bridge cannot run: its callback takes seven arguments"),
+		"a guest callback the bridge cannot run stops the process and says why");
+}
+
 static void test_syscall_translations(void)
 {
 	struct fex_x86_64_state st;
@@ -1108,6 +1198,8 @@ int main(void)
 	test_xlib_handler_restore();
 	test_signal_mask_filter();
 	test_wayland_dispatcher();
+	test_callback_arguments();
+	test_unsupported_callback();
 	test_syscall_translations();
 	test_safe_memory_access();
 	return failures ? 1 : 0;
