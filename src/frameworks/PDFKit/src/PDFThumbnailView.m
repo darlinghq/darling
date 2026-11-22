@@ -22,6 +22,10 @@
 #import <AppKit/NSColor.h>
 #import <darling-stub-forwarding.h>
 
+// GUESS: the documentation gives no string value for this notification name; the value is the
+// symbol name, as for the other framework notifications in Darling.
+NSString * const PDFThumbnailViewDocumentEditedNotification = @"PDFThumbnailViewDocumentEditedNotification";
+
 @implementation PDFThumbnailView
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

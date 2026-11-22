@@ -25,6 +25,14 @@ PDFDocumentAttribute const PDFDocumentCreationDateAttribute = @"CreationDate";
 PDFDocumentAttribute const PDFDocumentKeywordsAttribute = @"Keywords";
 PDFDocumentAttribute const PDFDocumentTitleAttribute = @"Title";
 
+// GUESS: the documentation gives no string values for these notification names; the values
+// are the symbol names, as for the other framework notifications in Darling.
+NSNotificationName const PDFDocumentDidBeginFindNotification = @"PDFDocumentDidBeginFindNotification";
+NSNotificationName const PDFDocumentDidBeginPageFindNotification = @"PDFDocumentDidBeginPageFindNotification";
+NSNotificationName const PDFDocumentDidEndFindNotification = @"PDFDocumentDidEndFindNotification";
+NSNotificationName const PDFDocumentDidEndPageFindNotification = @"PDFDocumentDidEndPageFindNotification";
+NSNotificationName const PDFDocumentDidUnlockNotification = @"PDFDocumentDidUnlockNotification";
+
 @implementation PDFDocument
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

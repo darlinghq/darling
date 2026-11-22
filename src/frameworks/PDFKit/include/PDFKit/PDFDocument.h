@@ -27,6 +27,12 @@ PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentCreationDateAttribute;
 PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentKeywordsAttribute;
 PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentTitleAttribute;
 
+PDFKIT_EXPORT NSNotificationName const PDFDocumentDidBeginFindNotification;
+PDFKIT_EXPORT NSNotificationName const PDFDocumentDidBeginPageFindNotification;
+PDFKIT_EXPORT NSNotificationName const PDFDocumentDidEndFindNotification;
+PDFKIT_EXPORT NSNotificationName const PDFDocumentDidEndPageFindNotification;
+PDFKIT_EXPORT NSNotificationName const PDFDocumentDidUnlockNotification;
+
 @interface PDFDocument : NSObject
 
 @end
