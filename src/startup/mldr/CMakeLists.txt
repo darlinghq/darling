@@ -326,6 +326,12 @@ if (WITH_FEXCORE)
 		${FEXCORE_FMT_LIBRARY} ${FEXCORE_XXHASH_LIBRARY} -lpthread -ldl -lm -lrt)
 
 	install(TARGETS darling-fexcore DESTINATION libexec/darling/lib)
+	install(FILES ${CMAKE_SOURCE_DIR}/THIRD-PARTY-NOTICES.md
+		DESTINATION libexec/darling/usr/share/licenses/darling-fexcore)
+	install(FILES ${FEXCORE_SOURCE_DIR}/LICENSE
+		DESTINATION libexec/darling/usr/share/licenses/darling-fexcore RENAME LICENSE-FEX)
+	install(FILES ${FEXCORE_SOURCE_DIR}/External/cephes/LICENSE
+		DESTINATION libexec/darling/usr/share/licenses/darling-fexcore RENAME LICENSE-cephes)
 
 	add_executable(mldr_fexcore_callbacks_test ${CMAKE_SOURCE_DIR}/tests/mldr/fexcore_callbacks.c
 		fex/fex_elfcalls.c fex/fex_syscall.c fex/fex_engine.cpp)
