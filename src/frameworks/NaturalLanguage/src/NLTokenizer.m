@@ -60,7 +60,8 @@ static void NLTokenizerEnumerate(NSString *string, NLTokenUnit unit,
     CFStringTokenizerTokenType type;
     while (!stop && (type = CFStringTokenizerAdvanceToNextToken(tokenizer)) != kCFStringTokenizerTokenNone) {
         CFRange token = CFStringTokenizerGetCurrentTokenRange(tokenizer);
-        NLTokenizerAttributes flags = (type & kCFStringTokenizerTokenHasNumbersMask) ? NLTokenizerAttributeNumeric : 0;
+        // CoreFoundation spells this mask "HasHasNumbers" (the documented name).
+        NLTokenizerAttributes flags = (type & kCFStringTokenizerTokenHasHasNumbersMask) ? NLTokenizerAttributeNumeric : 0;
         block(NSMakeRange(token.location, token.length), flags, &stop);
     }
     CFRelease(tokenizer);
