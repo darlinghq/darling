@@ -29,6 +29,8 @@
 #include <sys/utsname.h>
 #include <sys/wait.h>
 #include <sys/xattr.h>
+#include <stdlib.h>
+#include <ucontext.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -104,7 +106,6 @@ static long raw_host_syscall(long nr, long a1, long a2, long a3, long a4, long a
 	return (ret == -1) ? -errno : ret;
 #endif
 }
-
 struct arm64_kernel_stat {
 	uint64_t st_dev;
 	uint64_t st_ino;
@@ -352,43 +353,235 @@ static long copy_host_stat_to_guest(const struct arm64_kernel_stat* host_st, uin
 	return fex_copy_to_guest((void*)guest_addr, &guest_st, sizeof(guest_st));
 }
 
-// Guest signal actions. The guest's rt_sigaction cannot go to the host kernel: the x86_64
-// struct sigaction has a sa_restorer field the host's lacks, and a guest handler is x86_64 code
-// that the kernel would run natively. A handler installed that way also replaces the host
-// SIGSEGV/SIGBUS/... handlers that FEX's generated code depends on. So the guest's actions are
-// kept in a table and the host only sees a handler that notes the signal, which is enough to
-// interrupt a blocked host syscall with EINTR. Delivering a signal to a guest handler is not
-// implemented.
-struct x86_64_ksigaction {
+// Guest signals. The guest's rt_sigaction cannot go to the host kernel: a guest handler is x86_64 code the
+// kernel would run natively, and it would replace the host SIGSEGV/SIGBUS/... handlers FEX's generated code
+// depends on. The guest's actions and each thread's alternate signal stack are kept here, and the host gets
+// fex_host_signal_handler, which hands a signal to the guest thread running on the interrupted host thread:
+// the shim builds the x86_64 signal frame and the thread resumes in the guest handler, which comes back
+// through rt_sigreturn. The host's blocked set is the guest's, less the signals the JIT needs.
+#define GUEST_SIG_DFL 0
+#define GUEST_SIG_IGN 1
+#define GUEST_NSIG 65
+#define GUEST_SS_AUTODISARM (1U << 31)
+#define GUEST_MINSIGSTKSZ 2048
+
+// The kernel's struct sigaction on arm64.
+struct host_ksigaction {
 	uint64_t handler;
 	uint64_t flags;
 	uint64_t restorer;
 	uint64_t mask;
 };
 
-#define GUEST_SIG_DFL 0
-#define GUEST_SIG_IGN 1
-#define GUEST_NSIG 65
-
-static struct x86_64_ksigaction g_guest_sigactions[GUEST_NSIG];
+static struct fex_guest_sigaction g_guest_sigactions[GUEST_NSIG];
 static pthread_mutex_t g_guest_sigactions_lock = PTHREAD_MUTEX_INITIALIZER;
+static __thread struct fex_guest_stack t_guest_altstack = { .flags = FEX_GUEST_SS_DISABLE };
+static fex_signal_preempt_fn_t g_signal_preempt;
+static fex_signal_deliver_fn_t g_signal_deliver;
+static fex_signal_return_fn_t g_signal_return;
 
-static void guest_signal_noted(int sig)
-{
-	(void)sig;
-}
-
-// Faults raised by the generated code itself: the host keeps its own handler for them.
 static bool signal_owned_by_jit(int sig)
 {
-	return sig == SIGILL || sig == SIGTRAP || sig == SIGBUS || sig == SIGFPE || sig == SIGSEGV;
+	return (FEX_JIT_SIGNALS & FEX_SIGBIT(sig)) != 0;
 }
 
-// glibc keeps the signals between 31 and SIGRTMIN for its own use and refuses to install handlers for
-// them, so the guest's request is only recorded in the table.
-static bool signal_reserved_by_libc(int sig)
+// The guest may block signals 32 and 33, which glibc's wrappers refuse to touch, so the host calls are raw.
+static long host_rt_sigaction(int sig, const struct host_ksigaction* act)
 {
-	return sig > 31 && sig < SIGRTMIN;
+	return raw_host_syscall(SYS_rt_sigaction, sig, (long)(uintptr_t)act, 0, sizeof(uint64_t), 0, 0);
+}
+
+static uint64_t host_context_mask(void* ucontext)
+{
+	uint64_t mask;
+	memcpy(&mask, &((ucontext_t*)ucontext)->uc_sigmask, sizeof(mask));
+	return mask;
+}
+
+static void set_host_context_mask(void* ucontext, uint64_t mask)
+{
+	mask &= ~(FEX_JIT_SIGNALS | FEX_SIGBIT(SIGKILL) | FEX_SIGBIT(SIGSTOP));
+	memcpy(&((ucontext_t*)ucontext)->uc_sigmask, &mask, sizeof(mask));
+}
+
+// The table is read from signal handlers, so each field is loaded and stored whole.
+static struct fex_guest_sigaction load_guest_action(int sig)
+{
+	struct fex_guest_sigaction a;
+	a.handler = __atomic_load_n(&g_guest_sigactions[sig].handler, __ATOMIC_RELAXED);
+	a.flags = __atomic_load_n(&g_guest_sigactions[sig].flags, __ATOMIC_RELAXED);
+	a.restorer = __atomic_load_n(&g_guest_sigactions[sig].restorer, __ATOMIC_RELAXED);
+	a.mask = __atomic_load_n(&g_guest_sigactions[sig].mask, __ATOMIC_RELAXED);
+	return a;
+}
+
+static void store_guest_action(int sig, const struct fex_guest_sigaction* a)
+{
+	__atomic_store_n(&g_guest_sigactions[sig].flags, a->flags, __ATOMIC_RELAXED);
+	__atomic_store_n(&g_guest_sigactions[sig].restorer, a->restorer, __ATOMIC_RELAXED);
+	__atomic_store_n(&g_guest_sigactions[sig].mask, a->mask, __ATOMIC_RELAXED);
+	__atomic_store_n(&g_guest_sigactions[sig].handler, a->handler, __ATOMIC_RELEASE);
+}
+
+static bool signal_ignored_by_default(int sig)
+{
+	return sig == SIGCHLD || sig == SIGCONT || sig == SIGURG || sig == SIGWINCH;
+}
+
+// A fault the kernel raised for the instruction being executed. Linux never ignores or holds one back.
+static bool is_thread_fault(int sig, const siginfo_t* info)
+{
+	return signal_owned_by_jit(sig) && info->si_code > 0;
+}
+
+// The guest's blocked set as its rt_sigprocmask sees it: the host's, plus the JIT's signals the guest
+// blocks (the host blocks those only for mldr's own purposes, as while a thread starts). The host never blocks those (a fault in generated code with its signal blocked would kill the
+// process instead of being handled).
+static __thread uint64_t t_guest_blocked_jit_signals;
+
+
+static uint64_t unblockable(uint64_t mask)
+{
+	return mask & ~(FEX_SIGBIT(SIGKILL) | FEX_SIGBIT(SIGSTOP));
+}
+
+static uint64_t guest_mask(void)
+{
+	uint64_t host = 0;
+	raw_host_syscall(SYS_rt_sigprocmask, SIG_BLOCK, 0, (long)(uintptr_t)&host, sizeof(host), 0, 0);
+	return (host & ~FEX_JIT_SIGNALS) | t_guest_blocked_jit_signals;
+}
+
+// The same from a host handler: the interrupted context's set, not the handler's (which blocks everything).
+static uint64_t guest_mask_in_handler(void* ucontext)
+{
+	return (host_context_mask(ucontext) & ~FEX_JIT_SIGNALS) | t_guest_blocked_jit_signals;
+}
+
+// Outside a signal handler: the guest's new blocked set, and the host's to match.
+static void set_guest_mask(uint64_t mask)
+{
+	t_guest_blocked_jit_signals = mask & FEX_JIT_SIGNALS;
+	uint64_t host = unblockable(mask) & ~FEX_JIT_SIGNALS;
+	raw_host_syscall(SYS_rt_sigprocmask, SIG_SETMASK, (long)(uintptr_t)&host, 0, sizeof(host), 0, 0);
+}
+
+// The guest's disposition is the default: let the host kernel apply it to the process. `ucontext` is the
+// host handler's context, or null outside one (the signal is not blocked on the host then).
+static void take_default_action(int sig, void* ucontext)
+{
+	if (signal_ignored_by_default(sig))
+		return;
+	struct host_ksigaction dfl = { .handler = (uint64_t)(uintptr_t)SIG_DFL };
+	host_rt_sigaction(sig, &dfl);
+	if (ucontext)
+		set_host_context_mask(ucontext, host_context_mask(ucontext) & ~FEX_SIGBIT(sig));
+	raw_host_syscall(SYS_tgkill, raw_host_syscall(SYS_getpid, 0, 0, 0, 0, 0, 0),
+		raw_host_syscall(SYS_gettid, 0, 0, 0, 0, 0, 0), sig, 0, 0, 0);
+}
+
+static void reset_after_one_delivery(int sig, const struct fex_guest_sigaction* action)
+{
+	if (!(action->flags & FEX_GUEST_SA_RESETHAND))
+		return;
+	// Not under g_guest_sigactions_lock: a host handler cannot take it. A concurrent rt_sigaction wins.
+	__atomic_store_n(&g_guest_sigactions[sig].handler, (uint64_t)GUEST_SIG_DFL, __ATOMIC_RELEASE);
+	if (!signal_owned_by_jit(sig)) {
+		struct host_ksigaction dfl = { .handler = (uint64_t)(uintptr_t)SIG_DFL };
+		host_rt_sigaction(sig, &dfl);
+	}
+}
+
+// The blocked set while a guest handler runs, as Linux computes it.
+static uint64_t handler_mask(int sig, const struct fex_guest_sigaction* action, uint64_t interrupted)
+{
+	uint64_t blocked = interrupted | action->mask;
+	if (!(action->flags & FEX_GUEST_SA_NODEFER))
+		blocked |= FEX_SIGBIT(sig);
+	return unblockable(blocked);
+}
+
+// The guest thread on this host thread is in emulated code: run its handler now.
+static void deliver_now(int sig, siginfo_t* info, void* ucontext)
+{
+	struct fex_guest_sigaction action = load_guest_action(sig);
+	bool fault = is_thread_fault(sig, info);
+	uint64_t mask = guest_mask_in_handler(ucontext);
+	if (fault && ((mask & FEX_SIGBIT(sig)) || action.handler <= GUEST_SIG_IGN)) {
+		take_default_action(sig, ucontext);
+		return;
+	}
+	if (action.handler == GUEST_SIG_IGN)
+		return;
+	if (action.handler == GUEST_SIG_DFL) {
+		take_default_action(sig, ucontext);
+		return;
+	}
+
+	struct fex_guest_stack altstack = t_guest_altstack;
+	if (g_signal_deliver(sig, info, ucontext, &action, &altstack, mask) != FEX_SIGNAL_DELIVERED) {
+		if (fault)
+			take_default_action(sig, ucontext);
+		return;
+	}
+	uint64_t blocked = handler_mask(sig, &action, mask);
+	t_guest_blocked_jit_signals = blocked & FEX_JIT_SIGNALS;
+	set_host_context_mask(ucontext, blocked);
+	reset_after_one_delivery(sig, &action);
+}
+
+#if defined(__aarch64__)
+extern const char fex_host_svc_insn[];
+#endif
+
+static void fex_host_signal_handler(int sig, siginfo_t* info, void* ucontext)
+{
+	int saved_errno = errno;
+	uint64_t restored_mask = 0;
+	switch (g_signal_preempt(&sig, info, ucontext, &restored_mask)) {
+	case FEX_SIGNAL_RETURNED:
+		// A guest handler returned: errno is the interrupted context's again.
+		t_guest_blocked_jit_signals = restored_mask & FEX_JIT_SIGNALS;
+		return;
+	case FEX_SIGNAL_CONSUMED:
+		break;
+	case FEX_SIGNAL_FOR_GUEST:
+		deliver_now(sig, info, ucontext);
+		break;
+	default: {
+		struct fex_guest_sigaction action = load_guest_action(sig);
+		if (is_thread_fault(sig, info) || action.handler == GUEST_SIG_DFL)
+			take_default_action(sig, ucontext);
+		break;
+	}
+	}
+	errno = saved_errno;
+}
+
+static long install_host_handler(int sig, uint64_t guest_flags)
+{
+	// Runs on the shim's signal stack with every signal but the JIT's blocked; the mask the guest handler
+	// runs with is set in the context it returns to.
+	struct host_ksigaction act = {
+		.handler = (uint64_t)(uintptr_t)fex_host_signal_handler,
+		.flags = SA_SIGINFO | SA_ONSTACK | (guest_flags & (SA_RESTART | SA_NOCLDSTOP | SA_NOCLDWAIT)),
+		.mask = ~FEX_JIT_SIGNALS,
+	};
+	return host_rt_sigaction(sig, &act);
+}
+
+void fex_signals_set_hooks(fex_signal_preempt_fn_t preempt, fex_signal_deliver_fn_t deliver,
+	fex_signal_return_fn_t sigreturn)
+{
+	g_signal_preempt = preempt;
+	g_signal_deliver = deliver;
+	g_signal_return = sigreturn;
+	for (int sig = 1; sig < GUEST_NSIG; sig++) {
+		if (signal_owned_by_jit(sig) && install_host_handler(sig, SA_RESTART) != 0) {
+			fprintf(stderr, "[mldr/fex] fatal: cannot install the host handler for signal %d\n", sig);
+			abort();
+		}
+	}
 }
 
 static long guest_rt_sigaction(long sig, uintptr_t new_action, uintptr_t old_action, long sigsetsize)
@@ -398,34 +591,34 @@ static long guest_rt_sigaction(long sig, uintptr_t new_action, uintptr_t old_act
 	if (sigsetsize != sizeof(uint64_t))
 		return -EINVAL;
 
-	struct x86_64_ksigaction requested;
+	struct fex_guest_sigaction requested;
 	if (new_action) {
 		long rc = fex_copy_from_guest(&requested, (void*)new_action, sizeof(requested));
 		if (rc != 0)
 			return rc;
+		if (requested.handler > GUEST_SIG_IGN && !g_signal_deliver)
+			return -ENOSYS;
 	}
 
 	pthread_mutex_lock(&g_guest_sigactions_lock);
-	struct x86_64_ksigaction previous = g_guest_sigactions[sig];
+	struct fex_guest_sigaction previous = load_guest_action((int)sig);
 	long ret = 0;
 	if (new_action) {
-		if (!signal_owned_by_jit((int)sig) && !signal_reserved_by_libc((int)sig)) {
-			struct sigaction host;
-			memset(&host, 0, sizeof(host));
-			if (requested.handler == GUEST_SIG_DFL) {
-				host.sa_handler = SIG_DFL;
-			} else if (requested.handler == GUEST_SIG_IGN) {
-				host.sa_handler = SIG_IGN;
+		// The table first: a signal reaching the host handler must find the action it was installed for.
+		store_guest_action((int)sig, &requested);
+		if (!signal_owned_by_jit((int)sig)) {
+			if (requested.handler <= GUEST_SIG_IGN) {
+				struct host_ksigaction host = {
+					.handler = requested.handler,
+					.flags = requested.flags & (SA_NOCLDSTOP | SA_NOCLDWAIT),
+				};
+				ret = host_rt_sigaction((int)sig, &host);
 			} else {
-				host.sa_handler = guest_signal_noted;
-				host.sa_flags = (int)(requested.flags & (SA_RESTART | SA_NOCLDSTOP | SA_NOCLDWAIT));
-				memcpy(&host.sa_mask, &requested.mask, sizeof(requested.mask));
+				ret = install_host_handler((int)sig, requested.flags);
 			}
-			if (sigaction((int)sig, &host, NULL) != 0)
-				ret = -errno;
 		}
-		if (ret == 0)
-			g_guest_sigactions[sig] = requested;
+		if (ret != 0)
+			store_guest_action((int)sig, &previous);
 	}
 	pthread_mutex_unlock(&g_guest_sigactions_lock);
 
@@ -434,48 +627,31 @@ static long guest_rt_sigaction(long sig, uintptr_t new_action, uintptr_t old_act
 	return ret;
 }
 
-// The guest may block signals, but the host's SIGBUS/SIGSEGV/... handlers must stay deliverable: a
-// synchronous fault in generated code with its signal blocked kills the process instead of being
-// patched, so those signals are dropped from every mask the guest sets.
+// The guest's blocked set is kept here in full; the host blocks the same less the JIT's signals (a fault in
+// generated code with its signal blocked would kill the process instead of being handled).
 static long guest_rt_sigprocmask(long how, uintptr_t new_set, uintptr_t old_set, long sigsetsize)
 {
 	if (sigsetsize != sizeof(uint64_t))
 		return -EINVAL;
 
-	sigset_t host_new;
-	sigset_t host_old;
-	sigemptyset(&host_new);
+	uint64_t old = guest_mask();
 	if (new_set) {
 		uint64_t mask;
 		long rc = fex_copy_from_guest(&mask, (void*)new_set, sizeof(mask));
 		if (rc != 0)
 			return rc;
-		for (int sig = 1; sig < GUEST_NSIG; sig++) {
-			if ((mask & (1ull << (sig - 1))) && !signal_owned_by_jit(sig))
-				sigaddset(&host_new, sig);
-		}
+		if (how == SIG_BLOCK)
+			mask = old | mask;
+		else if (how == SIG_UNBLOCK)
+			mask = old & ~mask;
+		else if (how != SIG_SETMASK)
+			return -EINVAL;
+		set_guest_mask(mask);
 	}
-
-	int err = pthread_sigmask((int)how, new_set ? &host_new : NULL, &host_old);
-	if (err != 0)
-		return -err;
-
-	if (old_set) {
-		uint64_t mask = 0;
-		for (int sig = 1; sig < GUEST_NSIG; sig++) {
-			if (sigismember(&host_old, sig) == 1)
-				mask |= 1ull << (sig - 1);
-		}
-		return fex_copy_to_guest((void*)old_set, &mask, sizeof(mask));
-	}
+	if (old_set)
+		return fex_copy_to_guest((void*)old_set, &old, sizeof(old));
 	return 0;
 }
-
-#define GUEST_MINSIGSTKSZ 2048
-
-// The guest's alternate signal stack, per thread. The host's belongs to the FEXCore shim, which runs its
-// signal handlers on it.
-static __thread struct fex_guest_stack t_guest_altstack = { .flags = FEX_GUEST_SS_DISABLE };
 
 // Each guest thread's alternate signal stack, as Linux keeps it; `guest_sp` is the caller's stack pointer.
 static long guest_sigaltstack(uintptr_t new_stack, uintptr_t old_stack, uint64_t guest_sp)
@@ -553,11 +729,8 @@ static long open_flags_host_to_x86(long flags)
 	return out;
 }
 
-long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
+static long dispatch_syscall(struct fex_x86_64_state* state)
 {
-	if (!state)
-		return -EINVAL;
-
 	uint64_t nr = state->rax;
 
 	if (nr >= DARLING_FEX_ELFCALL_SYSCALL_BASE &&
@@ -586,6 +759,26 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 		case 14: // rt_sigprocmask
 			ret = guest_rt_sigprocmask(a1, (uintptr_t)a2, (uintptr_t)a3, a4);
 			break;
+
+		case 15: { // rt_sigreturn
+			if (!g_signal_return) {
+				ret = -ENOSYS;
+				break;
+			}
+			uint64_t mask = 0;
+			int restored = g_signal_return(&mask); // does not return for a handler of emulated code
+			if (restored == 1) {
+				set_guest_mask(mask);
+				state->frame_restored = 1;
+				ret = 0;
+			} else {
+				// An unreadable frame: the kernel answers with SIGSEGV.
+				take_default_action(SIGSEGV, NULL);
+				ret = restored;
+			}
+			break;
+		}
+
 
 		case 131: // sigaltstack
 			ret = guest_sigaltstack((uintptr_t)a1, (uintptr_t)a2, state->rsp);
@@ -800,4 +993,12 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 	state->rax = (uint64_t)ret;
 	state->unwind_thread = fex_elfcalls_has_pending_terminate() ? 1 : 0;
 	return ret;
+}
+
+long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
+{
+	if (!state)
+		return -EINVAL;
+
+	return dispatch_syscall(state);
 }

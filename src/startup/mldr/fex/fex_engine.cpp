@@ -115,7 +115,7 @@ extern "C" size_t fexcore_not_found_message(char* buf, size_t buf_size, const ch
 			"[mldr/fex] fatal: no usable libdarling-fexcore.so; cannot execute an x86_64 Mach-O "
 			"binary on aarch64. Lines above tagged \"found but unusable\" name a shim that exists "
 			"but could not be used (a missing dependency such as libfmt, or a shim that predates "
-			"the fork hooks).\n"
+			"the fork or signal hooks).\n"
 			"[mldr/fex] Install a Darling package that ships the FEXCore shim, build Darling with "
 			"-DWITH_FEXCORE=ON (see src/startup/mldr/CMakeLists.txt), or set DARLING_FEXCORE_LIB to "
 			"the shim's path.\n"
@@ -170,7 +170,10 @@ static void init_fexcore_runtime(void)
 		void* callback_sym = dlsym(handle, "darling_fexcore_run_callback");
 		void* lock_sym = dlsym(handle, "darling_fexcore_lock_before_fork");
 		void* unlock_sym = dlsym(handle, "darling_fexcore_unlock_after_fork");
-		if (!sym || !callback_sym || !lock_sym || !unlock_sym) {
+		void* preempt_sym = dlsym(handle, "darling_fexcore_signal_preempt");
+		void* deliver_sym = dlsym(handle, "darling_fexcore_signal_deliver");
+		void* return_sym = dlsym(handle, "darling_fexcore_signal_return");
+		if (!sym || !callback_sym || !lock_sym || !unlock_sym || !preempt_sym || !deliver_sym || !return_sym) {
 			results[i].state = CANDIDATE_SYMBOL_MISSING;
 			snprintf(results[i].reason, sizeof(results[i].reason), "%s", dlerror());
 			dlclose(handle);
@@ -181,6 +184,10 @@ static void init_fexcore_runtime(void)
 		fex_elfcalls_set_fork_hooks(
 			reinterpret_cast<fex_fork_lock_fn_t>(lock_sym),
 			reinterpret_cast<fex_fork_unlock_fn_t>(unlock_sym));
+		fex_signals_set_hooks(
+			reinterpret_cast<fex_signal_preempt_fn_t>(preempt_sym),
+			reinterpret_cast<fex_signal_deliver_fn_t>(deliver_sym),
+			reinterpret_cast<fex_signal_return_fn_t>(return_sym));
 		break;
 	}
 

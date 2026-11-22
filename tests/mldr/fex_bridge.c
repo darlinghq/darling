@@ -574,7 +574,7 @@ static void test_signal_mask_filter(void)
 	st.rdx = (uint64_t)(uintptr_t)&old;
 	st.r10 = 8;
 	fex_linux_syscall_dispatch(&st);
-	check(old == (1ull << (SIGUSR1 - 1)), "the old mask is reported in the x86_64 layout");
+	check(old == mask, "the guest reads back the set it blocked, the JIT's signals included, in the x86_64 layout");
 
 	memset(&st, 0, sizeof(st));
 	st.rax = 14;
@@ -583,6 +583,14 @@ static void test_signal_mask_filter(void)
 	st.rdx = 0;
 	st.r10 = 4;
 	check(fex_linux_syscall_dispatch(&st) == -EINVAL, "a mask size other than 8 is refused");
+
+	uint64_t none = 0;
+	memset(&st, 0, sizeof(st));
+	st.rax = 14;
+	st.rdi = SIG_SETMASK;
+	st.rsi = (uint64_t)(uintptr_t)&none;
+	st.r10 = 8;
+	fex_linux_syscall_dispatch(&st);
 	pthread_sigmask(SIG_SETMASK, &before, NULL);
 }
 
