@@ -66,10 +66,16 @@ add_framework(WebKit
         src/DOMObject.m
         src/DOMRange.m
         src/WebView.m
+        src/WebArchive.m
+        src/WebBackForwardList.m
+        src/WebDataSource.m
         src/WebDownload.m
+        src/WebFrame.m
+        src/WebFrameView.m
         src/WebHistory.m
         src/WebHistoryItem.m
         src/WebPolicyDelegate.m
+        src/WebResource.m
         src/WebScriptObject.m
         src/WKCustomProtocolLoader.m
         src/WKCustomProtocol.m

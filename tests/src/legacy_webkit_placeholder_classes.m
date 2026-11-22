@@ -68,7 +68,20 @@ int main(void)
 		expectClass("DOMHTMLScriptElement", "DOMHTMLElement");
 		expectClass("DOMHTMLTextAreaElement", "DOMHTMLElement");
 
+		expectClass("WebArchive", "NSObject");
+		expectClass("WebBackForwardList", "NSObject");
+		expectClass("WebDataSource", "NSObject");
+		expectClass("WebFrame", "NSObject");
+		expectClass("WebFrameView", "NSView");
+		expectClass("WebResource", "NSObject");
+
 		expectUnimplementedSelectorIsStubbed("DOMCharacterData");
+		expectUnimplementedSelectorIsStubbed("WebArchive");
+		expectUnimplementedSelectorIsStubbed("WebBackForwardList");
+		expectUnimplementedSelectorIsStubbed("WebDataSource");
+		expectUnimplementedSelectorIsStubbed("WebFrame");
+		expectUnimplementedSelectorIsStubbed("WebFrameView");
+		expectUnimplementedSelectorIsStubbed("WebResource");
 	}
 	if (failures == 0)
 		printf("OK\n");
