@@ -321,13 +321,17 @@ extern "C" int darling_fexcore_signal_preempt(int* sig, void* raw_info, void* uc
     return FEX_SIGNAL_FOR_GUEST;
   }
 
-  // Generated code and the dispatcher between blocks hold no host locks. Anywhere else the thread is in host
-  // code that may (malloc in a host library, a mutex in mldr), and a guest handler would need the same ones
-  // to compile its blocks: it runs when the syscall that led there returns.
-  if (g_ctx->IsAddressInCodeBuffer(thread, pc) || (pc >= config.DispatcherBegin && pc < config.DispatcherEnd)) {
-    return FEX_SIGNAL_FOR_GUEST;
+  // Inside a syscall (InSyscallInfo is set for the whole of the dispatcher's syscall call) the thread is in
+  // host code that may hold host locks (malloc in a host library, a mutex in mldr) a guest handler would need
+  // to compile its blocks: the handler runs when that syscall returns. Elsewhere the thread is in generated
+  // code, the dispatcher, or a FEXCore helper called from generated code (x87 arithmetic, for one), and takes
+  // it now as FEX's own frontend does: FEXCore holds its locks only inside the sections that defer signals
+  // (ScopedDeferredSignalWithMutex), deferred above.
+  const bool emulating = g_ctx->IsAddressInCodeBuffer(thread, pc) || (pc >= config.DispatcherBegin && pc < config.DispatcherEnd);
+  if (!emulating && frame->InSyscallInfo != 0) {
+    return FEX_SIGNAL_AT_SYSCALL_RETURN;
   }
-  return FEX_SIGNAL_AT_SYSCALL_RETURN;
+  return FEX_SIGNAL_FOR_GUEST;
 }
 
 extern "C" int darling_fexcore_signal_deliver(int sig, const void* raw_info, void* ucontext, const fex_guest_sigaction* action,
