@@ -5,7 +5,7 @@
 #include <OpenGL/glext.h>
 #include "gl_exports.h"
 
-#define GL_EXPORT_COUNT 2963
+#define GL_EXPORT_COUNT 3190
 
 /* The host function behind each export (filled in on first use). */
 void *gl_real_functions[GL_EXPORT_COUNT];
@@ -2974,6 +2974,233 @@ const char *const gl_export_names[GL_EXPORT_COUNT] = {
     "glReplacementCodeuiTexCoord2fNormal3fVertex3fvSUN",
     "glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fSUN",
     "glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fvSUN",
+    "glActiveShaderProgramEXT",
+    "glAlphaFuncQCOM",
+    "glBeginQueryEXT",
+    "glBindFragDataLocationIndexedEXT",
+    "glBindFramebufferOES",
+    "glBindProgramPipelineEXT",
+    "glBindRenderbufferOES",
+    "glBindTransformFeedbackEXT",
+    "glBindVertexArrayOES",
+    "glBlendEquationOES",
+    "glBlendEquationSeparateOES",
+    "glBlendEquationSeparateiEXT",
+    "glBlendEquationSeparateiOES",
+    "glBlendEquationiEXT",
+    "glBlendEquationiOES",
+    "glBlendFuncSeparateOES",
+    "glBlendFuncSeparateiEXT",
+    "glBlendFuncSeparateiOES",
+    "glBlendFunciEXT",
+    "glBlendFunciOES",
+    "glBlitFramebufferANGLE",
+    "glBlitFramebufferNV",
+    "glBufferStorageEXT",
+    "glCheckFramebufferStatusOES",
+    "glClearTexImageEXT",
+    "glClearTexSubImageEXT",
+    "glClientWaitSyncAPPLE",
+    "glClipControlEXT",
+    "glColorMaskiEXT",
+    "glColorMaskiOES",
+    "glCompressedTexImage3DNV",
+    "glCompressedTexImage3DOES",
+    "glCompressedTexSubImage3DNV",
+    "glCompressedTexSubImage3DOES",
+    "glCopyBufferSubDataNV",
+    "glCopyImageSubDataEXT",
+    "glCopyImageSubDataOES",
+    "glCopyTexSubImage3DNV",
+    "glCopyTexSubImage3DOES",
+    "glCreateShaderProgramvEXT",
+    "glDebugMessageCallbackKHR",
+    "glDebugMessageCallbackOES",
+    "glDebugMessageControlKHR",
+    "glDebugMessageControlOES",
+    "glDebugMessageInsertKHR",
+    "glDebugMessageInsertOES",
+    "glDeleteFramebuffersOES",
+    "glDeleteProgramPipelinesEXT",
+    "glDeleteQueriesEXT",
+    "glDeleteRenderbuffersOES",
+    "glDeleteSyncAPPLE",
+    "glDeleteTransformFeedbacksEXT",
+    "glDeleteVertexArraysOES",
+    "glDisableiEXT",
+    "glDisableiNV",
+    "glDisableiOES",
+    "glDrawArraysInstancedANGLE",
+    "glDrawArraysInstancedBaseInstanceEXT",
+    "glDrawArraysInstancedNV",
+    "glDrawBuffersEXT",
+    "glDrawBuffersNV",
+    "glDrawElementsBaseVertexEXT",
+    "glDrawElementsBaseVertexOES",
+    "glDrawElementsInstancedANGLE",
+    "glDrawElementsInstancedBaseInstanceEXT",
+    "glDrawElementsInstancedBaseVertexBaseInstanceEXT",
+    "glDrawElementsInstancedBaseVertexEXT",
+    "glDrawElementsInstancedBaseVertexOES",
+    "glDrawElementsInstancedNV",
+    "glDrawRangeElementsBaseVertexEXT",
+    "glDrawRangeElementsBaseVertexOES",
+    "glDrawTransformFeedbackEXT",
+    "glDrawTransformFeedbackInstancedEXT",
+    "glEnableiEXT",
+    "glEnableiNV",
+    "glEnableiOES",
+    "glEndQueryEXT",
+    "glFenceSyncAPPLE",
+    "glFlushMappedBufferRangeEXT",
+    "glFramebufferRenderbufferOES",
+    "glFramebufferTexture2DOES",
+    "glFramebufferTexture3DOES",
+    "glFramebufferTextureLayerNV",
+    "glFramebufferTextureOES",
+    "glGenFramebuffersOES",
+    "glGenProgramPipelinesEXT",
+    "glGenQueriesEXT",
+    "glGenRenderbuffersOES",
+    "glGenTransformFeedbacksEXT",
+    "glGenVertexArraysOES",
+    "glGenerateMipmapOES",
+    "glGetBufferPointervOES",
+    "glGetCompressedTexImageNV",
+    "glGetDebugMessageLogKHR",
+    "glGetDebugMessageLogOES",
+    "glGetFloati_vNV",
+    "glGetFloati_vOES",
+    "glGetFragDataIndexEXT",
+    "glGetFramebufferAttachmentParameterivOES",
+    "glGetGraphicsResetStatusEXT",
+    "glGetGraphicsResetStatusKHR",
+    "glGetInteger64vAPPLE",
+    "glGetIntegeri_vEXT",
+    "glGetNamedBufferParameteri64vEXT",
+    "glGetObjectLabelKHR",
+    "glGetObjectLabelOES",
+    "glGetObjectPtrLabelKHR",
+    "glGetObjectPtrLabelOES",
+    "glGetPointervKHR",
+    "glGetPointervOES",
+    "glGetProgramBinaryOES",
+    "glGetProgramPipelineInfoLogEXT",
+    "glGetProgramPipelineivEXT",
+    "glGetProgramResourceLocationIndexEXT",
+    "glGetQueryObjectivEXT",
+    "glGetQueryObjectui64vNV",
+    "glGetQueryObjectuivEXT",
+    "glGetQueryivEXT",
+    "glGetRenderbufferParameterivOES",
+    "glGetSamplerParameterIivEXT",
+    "glGetSamplerParameterIivOES",
+    "glGetSamplerParameterIuivEXT",
+    "glGetSamplerParameterIuivOES",
+    "glGetSyncivAPPLE",
+    "glGetTexGenfvOES",
+    "glGetTexGenivOES",
+    "glGetTexImageNV",
+    "glGetTexLevelParameterfvNV",
+    "glGetTexLevelParameterivNV",
+    "glGetTexParameterIivOES",
+    "glGetTexParameterIuivOES",
+    "glGetnUniformfvEXT",
+    "glGetnUniformfvKHR",
+    "glGetnUniformivEXT",
+    "glGetnUniformivKHR",
+    "glGetnUniformuivKHR",
+    "glIsEnablediEXT",
+    "glIsEnablediNV",
+    "glIsEnablediOES",
+    "glIsFramebufferOES",
+    "glIsProgramPipelineEXT",
+    "glIsQueryEXT",
+    "glIsRenderbufferOES",
+    "glIsSyncAPPLE",
+    "glIsTransformFeedbackEXT",
+    "glIsVertexArrayOES",
+    "glMapBufferOES",
+    "glMapBufferRangeEXT",
+    "glMinSampleShadingOES",
+    "glMultiDrawArraysIndirectEXT",
+    "glMultiDrawElementsBaseVertexEXT",
+    "glMultiDrawElementsIndirectEXT",
+    "glObjectLabelKHR",
+    "glObjectLabelOES",
+    "glObjectPtrLabelKHR",
+    "glObjectPtrLabelOES",
+    "glPatchParameterfvEXT",
+    "glPatchParameterfvNV",
+    "glPatchParameteriEXT",
+    "glPatchParameteriNV",
+    "glPatchParameteriOES",
+    "glPauseTransformFeedbackEXT",
+    "glPolygonModeNV",
+    "glPopDebugGroupKHR",
+    "glPopDebugGroupOES",
+    "glProgramBinaryOES",
+    "glPushDebugGroupKHR",
+    "glPushDebugGroupOES",
+    "glQueryCounterEXT",
+    "glQueryCounterNV",
+    "glReadBufferNV",
+    "glReadnPixelsEXT",
+    "glReadnPixelsKHR",
+    "glRenderbufferStorageMultisampleANGLE",
+    "glRenderbufferStorageMultisampleAPPLE",
+    "glRenderbufferStorageMultisampleIMG",
+    "glRenderbufferStorageMultisampleNV",
+    "glRenderbufferStorageOES",
+    "glResumeTransformFeedbackEXT",
+    "glSamplerParameterIivEXT",
+    "glSamplerParameterIivOES",
+    "glSamplerParameterIuivEXT",
+    "glSamplerParameterIuivOES",
+    "glScissorArrayvNV",
+    "glScissorArrayvOES",
+    "glScissorIndexedNV",
+    "glScissorIndexedOES",
+    "glScissorIndexedvNV",
+    "glScissorIndexedvOES",
+    "glTexBufferOES",
+    "glTexBufferRangeEXT",
+    "glTexBufferRangeOES",
+    "glTexGenfOES",
+    "glTexGenfvOES",
+    "glTexGeniOES",
+    "glTexGenivOES",
+    "glTexImage3DNV",
+    "glTexImage3DOES",
+    "glTexParameterIivOES",
+    "glTexParameterIuivOES",
+    "glTexStorage1DEXT",
+    "glTexStorage2DEXT",
+    "glTexStorage3DEXT",
+    "glTexStorage3DMultisampleOES",
+    "glTexSubImage3DNV",
+    "glTexSubImage3DOES",
+    "glTextureViewEXT",
+    "glTextureViewOES",
+    "glUniformMatrix2x3fvNV",
+    "glUniformMatrix2x4fvNV",
+    "glUniformMatrix3x2fvNV",
+    "glUniformMatrix3x4fvNV",
+    "glUniformMatrix4x2fvNV",
+    "glUniformMatrix4x3fvNV",
+    "glUnmapBufferOES",
+    "glUseProgramStagesEXT",
+    "glValidateProgramPipelineEXT",
+    "glVertexAttribDivisorANGLE",
+    "glVertexAttribDivisorEXT",
+    "glVertexAttribDivisorNV",
+    "glViewportArrayvNV",
+    "glViewportArrayvOES",
+    "glViewportIndexedfNV",
+    "glViewportIndexedfOES",
+    "glViewportIndexedfvNV",
+    "glViewportIndexedfvOES",
+    "glWaitSyncAPPLE",
 };
 
 void glClearIndex(GLfloat a0) {
@@ -26839,6 +27066,1845 @@ void glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fvSUN(const GLuint *a0, 
     if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
         return;
     ((void (*)(const GLuint *, const GLfloat *, const GLfloat *, const GLfloat *, const GLfloat *)) GL_REAL(2962))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glActiveShaderProgramEXT(GLuint a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLuint)) GL_REAL(2963))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glAlphaFuncQCOM(GLenum a0, GLclampf a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLclampf)) GL_REAL(2964))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBeginQueryEXT(GLenum a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint)) GL_REAL(2965))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBindFragDataLocationIndexedEXT(GLuint a0, GLuint a1, GLuint a2, const GLchar *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLuint, GLuint, const GLchar *)) GL_REAL(2966))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBindFramebufferOES(GLenum a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint)) GL_REAL(2967))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBindProgramPipelineEXT(GLuint a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint)) GL_REAL(2968))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBindRenderbufferOES(GLenum a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint)) GL_REAL(2969))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBindTransformFeedbackEXT(GLenum a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint)) GL_REAL(2970))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBindVertexArrayOES(GLuint a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint)) GL_REAL(2971))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBlendEquationOES(GLenum a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum)) GL_REAL(2972))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBlendEquationSeparateOES(GLenum a0, GLenum a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum)) GL_REAL(2973))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBlendEquationSeparateiEXT(GLuint a0, GLenum a1, GLenum a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLenum)) GL_REAL(2974))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBlendEquationSeparateiOES(GLuint a0, GLenum a1, GLenum a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLenum)) GL_REAL(2975))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBlendEquationiEXT(GLuint a0, GLenum a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum)) GL_REAL(2976))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBlendEquationiOES(GLuint a0, GLenum a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum)) GL_REAL(2977))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBlendFuncSeparateOES(GLenum a0, GLenum a1, GLenum a2, GLenum a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLenum, GLenum)) GL_REAL(2978))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBlendFuncSeparateiEXT(GLuint a0, GLenum a1, GLenum a2, GLenum a3, GLenum a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLenum, GLenum, GLenum)) GL_REAL(2979))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBlendFuncSeparateiOES(GLuint a0, GLenum a1, GLenum a2, GLenum a3, GLenum a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLenum, GLenum, GLenum)) GL_REAL(2980))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBlendFunciEXT(GLuint a0, GLenum a1, GLenum a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLenum)) GL_REAL(2981))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBlendFunciOES(GLuint a0, GLenum a1, GLenum a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLenum)) GL_REAL(2982))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBlitFramebufferANGLE(GLint a0, GLint a1, GLint a2, GLint a3, GLint a4, GLint a5, GLint a6, GLint a7, GLbitfield a8, GLenum a9) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLbitfield, GLenum)) GL_REAL(2983))(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBlitFramebufferNV(GLint a0, GLint a1, GLint a2, GLint a3, GLint a4, GLint a5, GLint a6, GLint a7, GLbitfield a8, GLenum a9) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLbitfield, GLenum)) GL_REAL(2984))(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glBufferStorageEXT(GLenum a0, GLsizeiptr a1, const void *a2, GLbitfield a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizeiptr, const void *, GLbitfield)) GL_REAL(2985))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+GLenum glCheckFramebufferStatusOES(GLenum a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLenum) 0;
+    GLenum result = ((GLenum (*)(GLenum)) GL_REAL(2986))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+void glClearTexImageEXT(GLuint a0, GLint a1, GLenum a2, GLenum a3, const void *a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLint, GLenum, GLenum, const void *)) GL_REAL(2987))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glClearTexSubImageEXT(GLuint a0, GLint a1, GLint a2, GLint a3, GLint a4, GLsizei a5, GLsizei a6, GLsizei a7, GLenum a8, GLenum a9, const void *a10) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLenum, const void *)) GL_REAL(2988))(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+GLenum glClientWaitSyncAPPLE(GLsync a0, GLbitfield a1, GLuint64 a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLenum) 0;
+    GLenum result = ((GLenum (*)(GLsync, GLbitfield, GLuint64)) GL_REAL(2989))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+void glClipControlEXT(GLenum a0, GLenum a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum)) GL_REAL(2990))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glColorMaskiEXT(GLuint a0, GLboolean a1, GLboolean a2, GLboolean a3, GLboolean a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLboolean, GLboolean, GLboolean, GLboolean)) GL_REAL(2991))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glColorMaskiOES(GLuint a0, GLboolean a1, GLboolean a2, GLboolean a3, GLboolean a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLboolean, GLboolean, GLboolean, GLboolean)) GL_REAL(2992))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glCompressedTexImage3DNV(GLenum a0, GLint a1, GLenum a2, GLsizei a3, GLsizei a4, GLsizei a5, GLint a6, GLsizei a7, const GLvoid *a8) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLenum, GLsizei, GLsizei, GLsizei, GLint, GLsizei, const GLvoid *)) GL_REAL(2993))(a0, a1, a2, a3, a4, a5, a6, a7, a8);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glCompressedTexImage3DOES(GLenum a0, GLint a1, GLenum a2, GLsizei a3, GLsizei a4, GLsizei a5, GLint a6, GLsizei a7, const GLvoid *a8) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLenum, GLsizei, GLsizei, GLsizei, GLint, GLsizei, const GLvoid *)) GL_REAL(2994))(a0, a1, a2, a3, a4, a5, a6, a7, a8);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glCompressedTexSubImage3DNV(GLenum a0, GLint a1, GLint a2, GLint a3, GLint a4, GLsizei a5, GLsizei a6, GLsizei a7, GLenum a8, GLsizei a9, const GLvoid *a10) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLsizei, const GLvoid *)) GL_REAL(2995))(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glCompressedTexSubImage3DOES(GLenum a0, GLint a1, GLint a2, GLint a3, GLint a4, GLsizei a5, GLsizei a6, GLsizei a7, GLenum a8, GLsizei a9, const GLvoid *a10) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLsizei, const GLvoid *)) GL_REAL(2996))(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glCopyBufferSubDataNV(GLenum a0, GLenum a1, GLintptr a2, GLintptr a3, GLsizeiptr a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLintptr, GLintptr, GLsizeiptr)) GL_REAL(2997))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glCopyImageSubDataEXT(GLuint a0, GLenum a1, GLint a2, GLint a3, GLint a4, GLint a5, GLuint a6, GLenum a7, GLint a8, GLint a9, GLint a10, GLint a11, GLsizei a12, GLsizei a13, GLsizei a14) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLint, GLint, GLint, GLint, GLuint, GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei)) GL_REAL(2998))(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glCopyImageSubDataOES(GLuint a0, GLenum a1, GLint a2, GLint a3, GLint a4, GLint a5, GLuint a6, GLenum a7, GLint a8, GLint a9, GLint a10, GLint a11, GLsizei a12, GLsizei a13, GLsizei a14) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLint, GLint, GLint, GLint, GLuint, GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei)) GL_REAL(2999))(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glCopyTexSubImage3DNV(GLenum a0, GLint a1, GLint a2, GLint a3, GLint a4, GLint a5, GLint a6, GLsizei a7, GLsizei a8) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLint, GLint, GLint, GLint, GLint, GLsizei, GLsizei)) GL_REAL(3000))(a0, a1, a2, a3, a4, a5, a6, a7, a8);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glCopyTexSubImage3DOES(GLenum a0, GLint a1, GLint a2, GLint a3, GLint a4, GLint a5, GLint a6, GLsizei a7, GLsizei a8) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLint, GLint, GLint, GLint, GLint, GLsizei, GLsizei)) GL_REAL(3001))(a0, a1, a2, a3, a4, a5, a6, a7, a8);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+GLuint glCreateShaderProgramvEXT(GLenum a0, GLsizei a1, const GLchar *const*a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLuint) 0;
+    GLuint result = ((GLuint (*)(GLenum, GLsizei, const GLchar *const*)) GL_REAL(3002))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+void glDebugMessageCallbackKHR(GLDEBUGPROC a0, const void *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLDEBUGPROC, const void *)) GL_REAL(3003))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDebugMessageCallbackOES(GLDEBUGPROC a0, const void *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLDEBUGPROC, const void *)) GL_REAL(3004))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDebugMessageControlKHR(GLenum a0, GLenum a1, GLenum a2, GLsizei a3, const GLuint *a4, GLboolean a5) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLenum, GLsizei, const GLuint *, GLboolean)) GL_REAL(3005))(a0, a1, a2, a3, a4, a5);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDebugMessageControlOES(GLenum a0, GLenum a1, GLenum a2, GLsizei a3, const GLuint *a4, GLboolean a5) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLenum, GLsizei, const GLuint *, GLboolean)) GL_REAL(3006))(a0, a1, a2, a3, a4, a5);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDebugMessageInsertKHR(GLenum a0, GLenum a1, GLuint a2, GLenum a3, GLsizei a4, const GLchar *a5) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar *)) GL_REAL(3007))(a0, a1, a2, a3, a4, a5);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDebugMessageInsertOES(GLenum a0, GLenum a1, GLuint a2, GLenum a3, GLsizei a4, const GLchar *a5) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar *)) GL_REAL(3008))(a0, a1, a2, a3, a4, a5);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDeleteFramebuffersOES(GLsizei a0, const GLuint *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsizei, const GLuint *)) GL_REAL(3009))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDeleteProgramPipelinesEXT(GLsizei a0, const GLuint *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsizei, const GLuint *)) GL_REAL(3010))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDeleteQueriesEXT(GLsizei a0, const GLuint *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsizei, const GLuint *)) GL_REAL(3011))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDeleteRenderbuffersOES(GLsizei a0, const GLuint *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsizei, const GLuint *)) GL_REAL(3012))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDeleteSyncAPPLE(GLsync a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsync)) GL_REAL(3013))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDeleteTransformFeedbacksEXT(GLsizei a0, const GLuint *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsizei, const GLuint *)) GL_REAL(3014))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDeleteVertexArraysOES(GLsizei a0, const GLuint *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsizei, const GLuint *)) GL_REAL(3015))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDisableiEXT(GLenum a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint)) GL_REAL(3016))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDisableiNV(GLenum a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint)) GL_REAL(3017))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDisableiOES(GLenum a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint)) GL_REAL(3018))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawArraysInstancedANGLE(GLenum a0, GLint a1, GLsizei a2, GLsizei a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLsizei, GLsizei)) GL_REAL(3019))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawArraysInstancedBaseInstanceEXT(GLenum a0, GLint a1, GLsizei a2, GLsizei a3, GLuint a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLsizei, GLsizei, GLuint)) GL_REAL(3020))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawArraysInstancedNV(GLenum a0, GLint a1, GLsizei a2, GLsizei a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLsizei, GLsizei)) GL_REAL(3021))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawBuffersEXT(GLsizei a0, const GLenum *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsizei, const GLenum *)) GL_REAL(3022))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawBuffersNV(GLsizei a0, const GLenum *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsizei, const GLenum *)) GL_REAL(3023))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawElementsBaseVertexEXT(GLenum a0, GLsizei a1, GLenum a2, const void *a3, GLint a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizei, GLenum, const void *, GLint)) GL_REAL(3024))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawElementsBaseVertexOES(GLenum a0, GLsizei a1, GLenum a2, const void *a3, GLint a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizei, GLenum, const void *, GLint)) GL_REAL(3025))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawElementsInstancedANGLE(GLenum a0, GLsizei a1, GLenum a2, const void *a3, GLsizei a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizei, GLenum, const void *, GLsizei)) GL_REAL(3026))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawElementsInstancedBaseInstanceEXT(GLenum a0, GLsizei a1, GLenum a2, const void *a3, GLsizei a4, GLuint a5) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizei, GLenum, const void *, GLsizei, GLuint)) GL_REAL(3027))(a0, a1, a2, a3, a4, a5);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawElementsInstancedBaseVertexBaseInstanceEXT(GLenum a0, GLsizei a1, GLenum a2, const void *a3, GLsizei a4, GLint a5, GLuint a6) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizei, GLenum, const void *, GLsizei, GLint, GLuint)) GL_REAL(3028))(a0, a1, a2, a3, a4, a5, a6);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawElementsInstancedBaseVertexEXT(GLenum a0, GLsizei a1, GLenum a2, const void *a3, GLsizei a4, GLint a5) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizei, GLenum, const void *, GLsizei, GLint)) GL_REAL(3029))(a0, a1, a2, a3, a4, a5);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawElementsInstancedBaseVertexOES(GLenum a0, GLsizei a1, GLenum a2, const void *a3, GLsizei a4, GLint a5) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizei, GLenum, const void *, GLsizei, GLint)) GL_REAL(3030))(a0, a1, a2, a3, a4, a5);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawElementsInstancedNV(GLenum a0, GLsizei a1, GLenum a2, const void *a3, GLsizei a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizei, GLenum, const void *, GLsizei)) GL_REAL(3031))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawRangeElementsBaseVertexEXT(GLenum a0, GLuint a1, GLuint a2, GLsizei a3, GLenum a4, const void *a5, GLint a6) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint, GLuint, GLsizei, GLenum, const void *, GLint)) GL_REAL(3032))(a0, a1, a2, a3, a4, a5, a6);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawRangeElementsBaseVertexOES(GLenum a0, GLuint a1, GLuint a2, GLsizei a3, GLenum a4, const void *a5, GLint a6) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint, GLuint, GLsizei, GLenum, const void *, GLint)) GL_REAL(3033))(a0, a1, a2, a3, a4, a5, a6);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawTransformFeedbackEXT(GLenum a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint)) GL_REAL(3034))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glDrawTransformFeedbackInstancedEXT(GLenum a0, GLuint a1, GLsizei a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint, GLsizei)) GL_REAL(3035))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glEnableiEXT(GLenum a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint)) GL_REAL(3036))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glEnableiNV(GLenum a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint)) GL_REAL(3037))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glEnableiOES(GLenum a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint)) GL_REAL(3038))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glEndQueryEXT(GLenum a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum)) GL_REAL(3039))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+GLsync glFenceSyncAPPLE(GLenum a0, GLbitfield a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLsync) 0;
+    GLsync result = ((GLsync (*)(GLenum, GLbitfield)) GL_REAL(3040))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+void glFlushMappedBufferRangeEXT(GLenum a0, GLintptr a1, GLsizeiptr a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLintptr, GLsizeiptr)) GL_REAL(3041))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glFramebufferRenderbufferOES(GLenum a0, GLenum a1, GLenum a2, GLuint a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLenum, GLuint)) GL_REAL(3042))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glFramebufferTexture2DOES(GLenum a0, GLenum a1, GLenum a2, GLuint a3, GLint a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLenum, GLuint, GLint)) GL_REAL(3043))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glFramebufferTexture3DOES(GLenum a0, GLenum a1, GLenum a2, GLuint a3, GLint a4, GLint a5) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLenum, GLuint, GLint, GLint)) GL_REAL(3044))(a0, a1, a2, a3, a4, a5);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glFramebufferTextureLayerNV(GLenum a0, GLenum a1, GLuint a2, GLint a3, GLint a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLuint, GLint, GLint)) GL_REAL(3045))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glFramebufferTextureOES(GLenum a0, GLenum a1, GLuint a2, GLint a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLuint, GLint)) GL_REAL(3046))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGenFramebuffersOES(GLsizei a0, GLuint *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsizei, GLuint *)) GL_REAL(3047))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGenProgramPipelinesEXT(GLsizei a0, GLuint *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsizei, GLuint *)) GL_REAL(3048))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGenQueriesEXT(GLsizei a0, GLuint *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsizei, GLuint *)) GL_REAL(3049))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGenRenderbuffersOES(GLsizei a0, GLuint *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsizei, GLuint *)) GL_REAL(3050))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGenTransformFeedbacksEXT(GLsizei a0, GLuint *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsizei, GLuint *)) GL_REAL(3051))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGenVertexArraysOES(GLsizei a0, GLuint *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsizei, GLuint *)) GL_REAL(3052))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGenerateMipmapOES(GLenum a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum)) GL_REAL(3053))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetBufferPointervOES(GLenum a0, GLenum a1, void **a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, void **)) GL_REAL(3054))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetCompressedTexImageNV(GLenum a0, GLint a1, GLvoid *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLvoid *)) GL_REAL(3055))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+GLuint glGetDebugMessageLogKHR(GLuint a0, GLsizei a1, GLenum *a2, GLenum *a3, GLuint *a4, GLenum *a5, GLsizei *a6, GLchar *a7) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLuint) 0;
+    GLuint result = ((GLuint (*)(GLuint, GLsizei, GLenum *, GLenum *, GLuint *, GLenum *, GLsizei *, GLchar *)) GL_REAL(3056))(a0, a1, a2, a3, a4, a5, a6, a7);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+GLuint glGetDebugMessageLogOES(GLuint a0, GLsizei a1, GLenum *a2, GLenum *a3, GLuint *a4, GLenum *a5, GLsizei *a6, GLchar *a7) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLuint) 0;
+    GLuint result = ((GLuint (*)(GLuint, GLsizei, GLenum *, GLenum *, GLuint *, GLenum *, GLsizei *, GLchar *)) GL_REAL(3057))(a0, a1, a2, a3, a4, a5, a6, a7);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+void glGetFloati_vNV(GLenum a0, GLuint a1, GLfloat *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint, GLfloat *)) GL_REAL(3058))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetFloati_vOES(GLenum a0, GLuint a1, GLfloat *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint, GLfloat *)) GL_REAL(3059))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+GLint glGetFragDataIndexEXT(GLuint a0, const GLchar *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLint) 0;
+    GLint result = ((GLint (*)(GLuint, const GLchar *)) GL_REAL(3060))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+void glGetFramebufferAttachmentParameterivOES(GLenum a0, GLenum a1, GLenum a2, GLint *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLenum, GLint *)) GL_REAL(3061))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+GLenum glGetGraphicsResetStatusEXT(void) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLenum) 0;
+    GLenum result = ((GLenum (*)(void)) GL_REAL(3062))();
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+GLenum glGetGraphicsResetStatusKHR(void) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLenum) 0;
+    GLenum result = ((GLenum (*)(void)) GL_REAL(3063))();
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+void glGetInteger64vAPPLE(GLenum a0, GLint64 *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint64 *)) GL_REAL(3064))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetIntegeri_vEXT(GLenum a0, GLuint a1, GLint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint, GLint *)) GL_REAL(3065))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetNamedBufferParameteri64vEXT(GLuint a0, GLenum a1, GLint64 *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLint64 *)) GL_REAL(3066))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetObjectLabelKHR(GLenum a0, GLuint a1, GLsizei a2, GLsizei *a3, GLchar *a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint, GLsizei, GLsizei *, GLchar *)) GL_REAL(3067))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetObjectLabelOES(GLenum a0, GLuint a1, GLsizei a2, GLsizei *a3, GLchar *a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint, GLsizei, GLsizei *, GLchar *)) GL_REAL(3068))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetObjectPtrLabelKHR(const void *a0, GLsizei a1, GLsizei *a2, GLchar *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(const void *, GLsizei, GLsizei *, GLchar *)) GL_REAL(3069))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetObjectPtrLabelOES(const void *a0, GLsizei a1, GLsizei *a2, GLchar *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(const void *, GLsizei, GLsizei *, GLchar *)) GL_REAL(3070))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetPointervKHR(GLenum a0, GLvoid **a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLvoid **)) GL_REAL(3071))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetPointervOES(GLenum a0, GLvoid **a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLvoid **)) GL_REAL(3072))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetProgramBinaryOES(GLuint a0, GLsizei a1, GLsizei *a2, GLenum *a3, void *a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLsizei, GLsizei *, GLenum *, void *)) GL_REAL(3073))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetProgramPipelineInfoLogEXT(GLuint a0, GLsizei a1, GLsizei *a2, GLchar *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLsizei, GLsizei *, GLchar *)) GL_REAL(3074))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetProgramPipelineivEXT(GLuint a0, GLenum a1, GLint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLint *)) GL_REAL(3075))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+GLint glGetProgramResourceLocationIndexEXT(GLuint a0, GLenum a1, const GLchar *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLint) 0;
+    GLint result = ((GLint (*)(GLuint, GLenum, const GLchar *)) GL_REAL(3076))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+void glGetQueryObjectivEXT(GLuint a0, GLenum a1, GLint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLint *)) GL_REAL(3077))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetQueryObjectui64vNV(GLuint a0, GLenum a1, GLuint64 *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLuint64 *)) GL_REAL(3078))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetQueryObjectuivEXT(GLuint a0, GLenum a1, GLuint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLuint *)) GL_REAL(3079))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetQueryivEXT(GLenum a0, GLenum a1, GLint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLint *)) GL_REAL(3080))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetRenderbufferParameterivOES(GLenum a0, GLenum a1, GLint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLint *)) GL_REAL(3081))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetSamplerParameterIivEXT(GLuint a0, GLenum a1, GLint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLint *)) GL_REAL(3082))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetSamplerParameterIivOES(GLuint a0, GLenum a1, GLint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLint *)) GL_REAL(3083))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetSamplerParameterIuivEXT(GLuint a0, GLenum a1, GLuint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLuint *)) GL_REAL(3084))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetSamplerParameterIuivOES(GLuint a0, GLenum a1, GLuint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLuint *)) GL_REAL(3085))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetSyncivAPPLE(GLsync a0, GLenum a1, GLsizei a2, GLsizei *a3, GLint *a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsync, GLenum, GLsizei, GLsizei *, GLint *)) GL_REAL(3086))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetTexGenfvOES(GLenum a0, GLenum a1, GLfloat *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLfloat *)) GL_REAL(3087))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetTexGenivOES(GLenum a0, GLenum a1, GLint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLint *)) GL_REAL(3088))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetTexImageNV(GLenum a0, GLint a1, GLenum a2, GLenum a3, GLvoid *a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLenum, GLenum, GLvoid *)) GL_REAL(3089))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetTexLevelParameterfvNV(GLenum a0, GLint a1, GLenum a2, GLfloat *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLenum, GLfloat *)) GL_REAL(3090))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetTexLevelParameterivNV(GLenum a0, GLint a1, GLenum a2, GLint *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLenum, GLint *)) GL_REAL(3091))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetTexParameterIivOES(GLenum a0, GLenum a1, GLint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLint *)) GL_REAL(3092))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetTexParameterIuivOES(GLenum a0, GLenum a1, GLuint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLuint *)) GL_REAL(3093))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetnUniformfvEXT(GLuint a0, GLint a1, GLsizei a2, GLfloat *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLint, GLsizei, GLfloat *)) GL_REAL(3094))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetnUniformfvKHR(GLuint a0, GLint a1, GLsizei a2, GLfloat *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLint, GLsizei, GLfloat *)) GL_REAL(3095))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetnUniformivEXT(GLuint a0, GLint a1, GLsizei a2, GLint *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLint, GLsizei, GLint *)) GL_REAL(3096))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetnUniformivKHR(GLuint a0, GLint a1, GLsizei a2, GLint *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLint, GLsizei, GLint *)) GL_REAL(3097))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glGetnUniformuivKHR(GLuint a0, GLint a1, GLsizei a2, GLuint *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLint, GLsizei, GLuint *)) GL_REAL(3098))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+GLboolean glIsEnablediEXT(GLenum a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLboolean) 0;
+    GLboolean result = ((GLboolean (*)(GLenum, GLuint)) GL_REAL(3099))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+GLboolean glIsEnablediNV(GLenum a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLboolean) 0;
+    GLboolean result = ((GLboolean (*)(GLenum, GLuint)) GL_REAL(3100))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+GLboolean glIsEnablediOES(GLenum a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLboolean) 0;
+    GLboolean result = ((GLboolean (*)(GLenum, GLuint)) GL_REAL(3101))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+GLboolean glIsFramebufferOES(GLuint a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLboolean) 0;
+    GLboolean result = ((GLboolean (*)(GLuint)) GL_REAL(3102))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+GLboolean glIsProgramPipelineEXT(GLuint a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLboolean) 0;
+    GLboolean result = ((GLboolean (*)(GLuint)) GL_REAL(3103))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+GLboolean glIsQueryEXT(GLuint a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLboolean) 0;
+    GLboolean result = ((GLboolean (*)(GLuint)) GL_REAL(3104))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+GLboolean glIsRenderbufferOES(GLuint a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLboolean) 0;
+    GLboolean result = ((GLboolean (*)(GLuint)) GL_REAL(3105))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+GLboolean glIsSyncAPPLE(GLsync a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLboolean) 0;
+    GLboolean result = ((GLboolean (*)(GLsync)) GL_REAL(3106))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+GLboolean glIsTransformFeedbackEXT(GLuint a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLboolean) 0;
+    GLboolean result = ((GLboolean (*)(GLuint)) GL_REAL(3107))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+GLboolean glIsVertexArrayOES(GLuint a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLboolean) 0;
+    GLboolean result = ((GLboolean (*)(GLuint)) GL_REAL(3108))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+void * glMapBufferOES(GLenum a0, GLenum a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (void *) 0;
+    void * result = ((void * (*)(GLenum, GLenum)) GL_REAL(3109))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+void * glMapBufferRangeEXT(GLenum a0, GLintptr a1, GLsizeiptr a2, GLbitfield a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (void *) 0;
+    void * result = ((void * (*)(GLenum, GLintptr, GLsizeiptr, GLbitfield)) GL_REAL(3110))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+void glMinSampleShadingOES(GLfloat a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLfloat)) GL_REAL(3111))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glMultiDrawArraysIndirectEXT(GLenum a0, const void *a1, GLsizei a2, GLsizei a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, const void *, GLsizei, GLsizei)) GL_REAL(3112))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glMultiDrawElementsBaseVertexEXT(GLenum a0, const GLsizei *a1, GLenum a2, const void *const*a3, GLsizei a4, const GLint *a5) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, const GLsizei *, GLenum, const void *const*, GLsizei, const GLint *)) GL_REAL(3113))(a0, a1, a2, a3, a4, a5);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glMultiDrawElementsIndirectEXT(GLenum a0, GLenum a1, const void *a2, GLsizei a3, GLsizei a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, const void *, GLsizei, GLsizei)) GL_REAL(3114))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glObjectLabelKHR(GLenum a0, GLuint a1, GLsizei a2, const GLchar *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint, GLsizei, const GLchar *)) GL_REAL(3115))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glObjectLabelOES(GLenum a0, GLuint a1, GLsizei a2, const GLchar *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint, GLsizei, const GLchar *)) GL_REAL(3116))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glObjectPtrLabelKHR(const void *a0, GLsizei a1, const GLchar *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(const void *, GLsizei, const GLchar *)) GL_REAL(3117))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glObjectPtrLabelOES(const void *a0, GLsizei a1, const GLchar *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(const void *, GLsizei, const GLchar *)) GL_REAL(3118))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glPatchParameterfvEXT(GLenum a0, const GLfloat *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, const GLfloat *)) GL_REAL(3119))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glPatchParameterfvNV(GLenum a0, const GLfloat *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, const GLfloat *)) GL_REAL(3120))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glPatchParameteriEXT(GLenum a0, GLint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint)) GL_REAL(3121))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glPatchParameteriNV(GLenum a0, GLint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint)) GL_REAL(3122))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glPatchParameteriOES(GLenum a0, GLint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint)) GL_REAL(3123))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glPauseTransformFeedbackEXT(void) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(void)) GL_REAL(3124))();
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glPolygonModeNV(GLenum a0, GLenum a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum)) GL_REAL(3125))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glPopDebugGroupKHR(void) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(void)) GL_REAL(3126))();
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glPopDebugGroupOES(void) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(void)) GL_REAL(3127))();
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glProgramBinaryOES(GLuint a0, GLenum a1, const void *a2, GLsizei a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, const void *, GLsizei)) GL_REAL(3128))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glPushDebugGroupKHR(GLenum a0, GLuint a1, GLsizei a2, const GLchar *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint, GLsizei, const GLchar *)) GL_REAL(3129))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glPushDebugGroupOES(GLenum a0, GLuint a1, GLsizei a2, const GLchar *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLuint, GLsizei, const GLchar *)) GL_REAL(3130))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glQueryCounterEXT(GLuint a0, GLenum a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum)) GL_REAL(3131))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glQueryCounterNV(GLuint a0, GLenum a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum)) GL_REAL(3132))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glReadBufferNV(GLenum a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum)) GL_REAL(3133))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glReadnPixelsEXT(GLint a0, GLint a1, GLsizei a2, GLsizei a3, GLenum a4, GLenum a5, GLsizei a6, void *a7) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, GLsizei, void *)) GL_REAL(3134))(a0, a1, a2, a3, a4, a5, a6, a7);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glReadnPixelsKHR(GLint a0, GLint a1, GLsizei a2, GLsizei a3, GLenum a4, GLenum a5, GLsizei a6, void *a7) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, GLsizei, void *)) GL_REAL(3135))(a0, a1, a2, a3, a4, a5, a6, a7);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glRenderbufferStorageMultisampleANGLE(GLenum a0, GLsizei a1, GLenum a2, GLsizei a3, GLsizei a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizei, GLenum, GLsizei, GLsizei)) GL_REAL(3136))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glRenderbufferStorageMultisampleAPPLE(GLenum a0, GLsizei a1, GLenum a2, GLsizei a3, GLsizei a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizei, GLenum, GLsizei, GLsizei)) GL_REAL(3137))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glRenderbufferStorageMultisampleIMG(GLenum a0, GLsizei a1, GLenum a2, GLsizei a3, GLsizei a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizei, GLenum, GLsizei, GLsizei)) GL_REAL(3138))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glRenderbufferStorageMultisampleNV(GLenum a0, GLsizei a1, GLenum a2, GLsizei a3, GLsizei a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizei, GLenum, GLsizei, GLsizei)) GL_REAL(3139))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glRenderbufferStorageOES(GLenum a0, GLenum a1, GLsizei a2, GLsizei a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLsizei, GLsizei)) GL_REAL(3140))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glResumeTransformFeedbackEXT(void) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(void)) GL_REAL(3141))();
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glSamplerParameterIivEXT(GLuint a0, GLenum a1, const GLint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, const GLint *)) GL_REAL(3142))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glSamplerParameterIivOES(GLuint a0, GLenum a1, const GLint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, const GLint *)) GL_REAL(3143))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glSamplerParameterIuivEXT(GLuint a0, GLenum a1, const GLuint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, const GLuint *)) GL_REAL(3144))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glSamplerParameterIuivOES(GLuint a0, GLenum a1, const GLuint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, const GLuint *)) GL_REAL(3145))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glScissorArrayvNV(GLuint a0, GLsizei a1, const GLint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLsizei, const GLint *)) GL_REAL(3146))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glScissorArrayvOES(GLuint a0, GLsizei a1, const GLint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLsizei, const GLint *)) GL_REAL(3147))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glScissorIndexedNV(GLuint a0, GLint a1, GLint a2, GLsizei a3, GLsizei a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLint, GLint, GLsizei, GLsizei)) GL_REAL(3148))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glScissorIndexedOES(GLuint a0, GLint a1, GLint a2, GLsizei a3, GLsizei a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLint, GLint, GLsizei, GLsizei)) GL_REAL(3149))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glScissorIndexedvNV(GLuint a0, const GLint *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, const GLint *)) GL_REAL(3150))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glScissorIndexedvOES(GLuint a0, const GLint *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, const GLint *)) GL_REAL(3151))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexBufferOES(GLenum a0, GLenum a1, GLuint a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLuint)) GL_REAL(3152))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexBufferRangeEXT(GLenum a0, GLenum a1, GLuint a2, GLintptr a3, GLsizeiptr a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLuint, GLintptr, GLsizeiptr)) GL_REAL(3153))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexBufferRangeOES(GLenum a0, GLenum a1, GLuint a2, GLintptr a3, GLsizeiptr a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLuint, GLintptr, GLsizeiptr)) GL_REAL(3154))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexGenfOES(GLenum a0, GLenum a1, GLfloat a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLfloat)) GL_REAL(3155))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexGenfvOES(GLenum a0, GLenum a1, const GLfloat *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, const GLfloat *)) GL_REAL(3156))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexGeniOES(GLenum a0, GLenum a1, GLint a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, GLint)) GL_REAL(3157))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexGenivOES(GLenum a0, GLenum a1, const GLint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, const GLint *)) GL_REAL(3158))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexImage3DNV(GLenum a0, GLint a1, GLint a2, GLsizei a3, GLsizei a4, GLsizei a5, GLint a6, GLenum a7, GLenum a8, const GLvoid *a9) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLint, GLsizei, GLsizei, GLsizei, GLint, GLenum, GLenum, const GLvoid *)) GL_REAL(3159))(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexImage3DOES(GLenum a0, GLint a1, GLint a2, GLsizei a3, GLsizei a4, GLsizei a5, GLint a6, GLenum a7, GLenum a8, const GLvoid *a9) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLint, GLsizei, GLsizei, GLsizei, GLint, GLenum, GLenum, const GLvoid *)) GL_REAL(3160))(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexParameterIivOES(GLenum a0, GLenum a1, const GLint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, const GLint *)) GL_REAL(3161))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexParameterIuivOES(GLenum a0, GLenum a1, const GLuint *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLenum, const GLuint *)) GL_REAL(3162))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexStorage1DEXT(GLenum a0, GLsizei a1, GLenum a2, GLsizei a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizei, GLenum, GLsizei)) GL_REAL(3163))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexStorage2DEXT(GLenum a0, GLsizei a1, GLenum a2, GLsizei a3, GLsizei a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizei, GLenum, GLsizei, GLsizei)) GL_REAL(3164))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexStorage3DEXT(GLenum a0, GLsizei a1, GLenum a2, GLsizei a3, GLsizei a4, GLsizei a5) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizei, GLenum, GLsizei, GLsizei, GLsizei)) GL_REAL(3165))(a0, a1, a2, a3, a4, a5);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexStorage3DMultisampleOES(GLenum a0, GLsizei a1, GLenum a2, GLsizei a3, GLsizei a4, GLsizei a5, GLboolean a6) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLsizei, GLenum, GLsizei, GLsizei, GLsizei, GLboolean)) GL_REAL(3166))(a0, a1, a2, a3, a4, a5, a6);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexSubImage3DNV(GLenum a0, GLint a1, GLint a2, GLint a3, GLint a4, GLsizei a5, GLsizei a6, GLsizei a7, GLenum a8, GLenum a9, const GLvoid *a10) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLenum, const GLvoid *)) GL_REAL(3167))(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTexSubImage3DOES(GLenum a0, GLint a1, GLint a2, GLint a3, GLint a4, GLsizei a5, GLsizei a6, GLsizei a7, GLenum a8, GLenum a9, const GLvoid *a10) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLenum, const GLvoid *)) GL_REAL(3168))(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTextureViewEXT(GLuint a0, GLenum a1, GLuint a2, GLenum a3, GLuint a4, GLuint a5, GLuint a6, GLuint a7) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLuint, GLenum, GLuint, GLuint, GLuint, GLuint)) GL_REAL(3169))(a0, a1, a2, a3, a4, a5, a6, a7);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glTextureViewOES(GLuint a0, GLenum a1, GLuint a2, GLenum a3, GLuint a4, GLuint a5, GLuint a6, GLuint a7) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLenum, GLuint, GLenum, GLuint, GLuint, GLuint, GLuint)) GL_REAL(3170))(a0, a1, a2, a3, a4, a5, a6, a7);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glUniformMatrix2x3fvNV(GLint a0, GLsizei a1, GLboolean a2, const GLfloat *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLint, GLsizei, GLboolean, const GLfloat *)) GL_REAL(3171))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glUniformMatrix2x4fvNV(GLint a0, GLsizei a1, GLboolean a2, const GLfloat *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLint, GLsizei, GLboolean, const GLfloat *)) GL_REAL(3172))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glUniformMatrix3x2fvNV(GLint a0, GLsizei a1, GLboolean a2, const GLfloat *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLint, GLsizei, GLboolean, const GLfloat *)) GL_REAL(3173))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glUniformMatrix3x4fvNV(GLint a0, GLsizei a1, GLboolean a2, const GLfloat *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLint, GLsizei, GLboolean, const GLfloat *)) GL_REAL(3174))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glUniformMatrix4x2fvNV(GLint a0, GLsizei a1, GLboolean a2, const GLfloat *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLint, GLsizei, GLboolean, const GLfloat *)) GL_REAL(3175))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glUniformMatrix4x3fvNV(GLint a0, GLsizei a1, GLboolean a2, const GLfloat *a3) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLint, GLsizei, GLboolean, const GLfloat *)) GL_REAL(3176))(a0, a1, a2, a3);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+GLboolean glUnmapBufferOES(GLenum a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return (GLboolean) 0;
+    GLboolean result = ((GLboolean (*)(GLenum)) GL_REAL(3177))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+    return result;
+}
+void glUseProgramStagesEXT(GLuint a0, GLbitfield a1, GLuint a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLbitfield, GLuint)) GL_REAL(3178))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glValidateProgramPipelineEXT(GLuint a0) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint)) GL_REAL(3179))(a0);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glVertexAttribDivisorANGLE(GLuint a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLuint)) GL_REAL(3180))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glVertexAttribDivisorEXT(GLuint a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLuint)) GL_REAL(3181))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glVertexAttribDivisorNV(GLuint a0, GLuint a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLuint)) GL_REAL(3182))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glViewportArrayvNV(GLuint a0, GLsizei a1, const GLfloat *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLsizei, const GLfloat *)) GL_REAL(3183))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glViewportArrayvOES(GLuint a0, GLsizei a1, const GLfloat *a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLsizei, const GLfloat *)) GL_REAL(3184))(a0, a1, a2);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glViewportIndexedfNV(GLuint a0, GLfloat a1, GLfloat a2, GLfloat a3, GLfloat a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLfloat, GLfloat, GLfloat, GLfloat)) GL_REAL(3185))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glViewportIndexedfOES(GLuint a0, GLfloat a1, GLfloat a2, GLfloat a3, GLfloat a4) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, GLfloat, GLfloat, GLfloat, GLfloat)) GL_REAL(3186))(a0, a1, a2, a3, a4);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glViewportIndexedfvNV(GLuint a0, const GLfloat *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, const GLfloat *)) GL_REAL(3187))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glViewportIndexedfvOES(GLuint a0, const GLfloat *a1) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLuint, const GLfloat *)) GL_REAL(3188))(a0, a1);
+    if (__builtin_expect(acquired == 2, 0))
+        gl_release_transient();
+}
+void glWaitSyncAPPLE(GLsync a0, GLbitfield a1, GLuint64 a2) {
+    int acquired = 1;
+    if (__builtin_expect(!GL_BOUND_HERE(), 0) && !(acquired = gl_acquire_binding()))
+        return;
+    ((void (*)(GLsync, GLbitfield, GLuint64)) GL_REAL(3189))(a0, a1, a2);
     if (__builtin_expect(acquired == 2, 0))
         gl_release_transient();
 }

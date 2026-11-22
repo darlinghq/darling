@@ -23,6 +23,13 @@ void gl_release_transient(void);
 // then does nothing, as OpenGL calls without a context do on macOS.
 int gl_acquire_binding(void);  // 0: no binding, 1: held, 2: held for this call only
 
+// The entry points of gen/generate-gl-trampolines.py: the host function of
+// index, after the calling thread was given the binding of its current context
+// (kept, as no call is left to give it up after).
+void *gl_trampoline_target(unsigned index);
+extern const char *const gl_trampoline_names[];
+extern void *gl_trampoline_functions[];
+
 extern void *gl_real_functions[];
 void *gl_resolve_real(unsigned index);
 #define GL_REAL(index) (gl_real_functions[index] != NULL ? gl_real_functions[index] : gl_resolve_real(index))

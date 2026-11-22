@@ -28,6 +28,7 @@ add_framework(OpenGL
     SOURCES
         OpenGL.c
         gl_exports.c
+        gl_trampolines.c
 
     DEPENDENCIES
         system
