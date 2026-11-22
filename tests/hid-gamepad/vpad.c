@@ -22,8 +22,9 @@ int main(int argc,char**argv){
  const char*kind=argc>1?argv[1]:"xbox";
  struct uinput_setup us; memset(&us,0,sizeof us); us.id.bustype=BUS_USB;
  ioctl(fd,UI_SET_EVBIT,EV_KEY); ioctl(fd,UI_SET_EVBIT,EV_ABS);
- if(!strcmp(kind,"xbox")){
+ if(!strcmp(kind,"xbox")||!strcmp(kind,"xboxbt")){
   strcpy(us.name,"Vpad Xbox One Controller"); us.id.vendor=0x045e; us.id.product=0x02ea; us.id.version=0x0408;
+  if(!strcmp(kind,"xboxbt")){ strcpy(us.name,"Xbox Wireless Controller"); us.id.product=0x02fd; us.id.version=0x0903; us.id.bustype=BUS_BLUETOOTH; }
   int keys[]={BTN_A,BTN_B,BTN_X,BTN_Y,BTN_TL,BTN_TR,BTN_SELECT,BTN_START,BTN_MODE,BTN_THUMBL,BTN_THUMBR};
   for(unsigned i=0;i<sizeof keys/sizeof*keys;i++) ioctl(fd,UI_SET_KEYBIT,keys[i]);
   int axes[]={ABS_X,ABS_Y,ABS_RX,ABS_RY,ABS_Z,ABS_RZ,ABS_HAT0X,ABS_HAT0Y};

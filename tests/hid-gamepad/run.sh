@@ -1,7 +1,7 @@
 #!/bin/bash
 # Runs the guest test hid_gamepad_manager against a virtual game controller.
 #
-# usage: run-hid.sh <guest test binary> <xbox|ds4>
+# usage: run-hid.sh <guest test binary> <xbox|xboxbt|ds4>
 #
 # The test (inside Darling) prints "SYNC: <tag>" lines and waits for the file
 # <controldir>/go-<tag>; this script (on the host) creates the virtual
@@ -30,9 +30,9 @@ while kill -0 $TP 2>/dev/null; do
 		plug) "$VPAD" "$KIND" < "$FIFO" > "$CT/vpad.out" 2>&1 & VP=$!; sleep 1;;
 		press) ev "key 0x130 1"; ev sync;;
 		release) ev "key 0x130 0"; ev sync;;
-		stick) [ "$KIND" = xbox ] && ev "abs 0 32767" || ev "abs 0 255"; ev sync;;
-		stick-low) [ "$KIND" = xbox ] && ev "abs 0 -32768" || ev "abs 0 0"; ev sync;;
-		trigger) [ "$KIND" = xbox ] && ev "abs 2 1023" || ev "abs 5 255"; ev sync;;
+		stick) case $KIND in xbox*) ev "abs 0 32767";; *) ev "abs 0 255";; esac; ev sync;;
+		stick-low) case $KIND in xbox*) ev "abs 0 -32768";; *) ev "abs 0 0";; esac; ev sync;;
+		trigger) case $KIND in xbox*) ev "abs 2 1023";; *) ev "abs 5 255";; esac; ev sync;;
 		hat-up) ev "abs 0x11 -1"; ev sync;;
 		hat-upright) ev "abs 0x10 1"; ev sync;;
 		hat-left) ev "abs 0x11 0"; ev "abs 0x10 -1"; ev sync;;
