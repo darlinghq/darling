@@ -17,6 +17,7 @@
 #include <sys/epoll.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include "fex/fex_bridge.h"
 
@@ -27,6 +28,39 @@ static void check(int ok, const char* what)
 	printf("%s: %s\n", ok ? "PASS" : "FAIL", what);
 	if (!ok)
 		failures++;
+}
+
+// The fake guest functions of these tests lie in [0x4000000, 0x7000000). A host function that is handed
+// one instead of a thunk must report it rather than call it natively, which would crash the test.
+static bool is_fake_guest_fn(uint64_t fn)
+{
+	return fn >= 0x4000000 && fn < 0x7000000;
+}
+
+// Runs fn in a child process; true if the child died of SIGABRT after writing `message` to stderr.
+static bool aborts_with(void (*fn)(void), const char* message)
+{
+	int err[2];
+	if (pipe(err) != 0)
+		return false;
+	fflush(stdout);
+	pid_t pid = fork();
+	if (pid == 0) {
+		dup2(err[1], 2);
+		fn();
+		_exit(0);
+	}
+	close(err[1]);
+	char msg[512] = "";
+	size_t len = 0;
+	ssize_t n;
+	while (len < sizeof(msg) - 1 && (n = read(err[0], msg + len, sizeof(msg) - 1 - len)) > 0)
+		len += (size_t)n;
+	msg[len] = '\0';
+	close(err[0]);
+	int status = 0;
+	waitpid(pid, &status, 0);
+	return WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT && strstr(msg, message) != NULL;
 }
 
 // Each bridge stub is "mov r10, rcx" (3 bytes), then "mov eax, <number>".
@@ -390,6 +424,8 @@ static uint64_t host_png_set_read_fn(uint64_t png, uint64_t io, uint64_t cb)
 	(void)png;
 	(void)io;
 	g_host_png_cb = cb;
+	if (is_fake_guest_fn(cb))
+		return 0xbad0bad0u;
 	return ((uint64_t (*)(uint64_t, uint64_t))cb)(5, 6);
 }
 
@@ -410,6 +446,72 @@ static void test_host_callback_thunks(void)
 
 	void* other = fex_dlsym_wrap_if_func((void*)host_png_set_read_fn, "png_set_read_fn");
 	check(other == stub, "the same host function keeps one stub");
+}
+
+static uint64_t g_host_kept_cb = 0;
+static uint64_t host_png_set_error_fn(uint64_t png, uint64_t error_ptr, uint64_t error_fn, uint64_t warning_fn)
+{
+	(void)png;
+	(void)error_ptr;
+	(void)warning_fn;
+	g_host_kept_cb = error_fn;
+	return 0;
+}
+
+// The host thunk a fake host function receives for `guest_fn` (png_set_error_fn: arguments 2 and 3).
+static uint64_t thunk_for(void* stub, uint64_t guest_fn)
+{
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rax = stub_syscall_nr(stub);
+	st.rdx = guest_fn;
+	fex_linux_syscall_dispatch(&st);
+	return g_host_kept_cb;
+}
+
+// A process may hand many distinct guest functions to host libraries over its life, and a library may
+// call each of them at any later time, so every one keeps its own thunk.
+static void test_many_callback_thunks(void)
+{
+	void* stub = fex_dlsym_wrap_if_func((void*)host_png_set_error_fn, "png_set_error_fn");
+	enum { N = 600 }; // more than one page of thunks with 4 KB and 16 KB pages
+	static uint64_t thunks[N];
+	bool distinct = true;
+	for (int i = 0; i < N; i++) {
+		thunks[i] = thunk_for(stub, 0x6000000 + 0x40 * (uint64_t)i);
+		for (int j = 0; j < i && distinct; j++)
+			distinct = thunks[j] != thunks[i];
+	}
+	check(distinct && thunks[0] != 0, "600 distinct guest callbacks get 600 distinct host thunks");
+	check(thunk_for(stub, 0x6000000 + 0x40 * 17) == thunks[17], "the same guest callback keeps its thunk");
+	check(write_faults((volatile uint8_t*)(uintptr_t)thunks[N - 1]), "the thunk pages are W^X (writes fault)");
+
+	bool routed = true;
+	for (int i = 0; i < N && routed; i += 37) {
+		if (is_fake_guest_fn(thunks[i])) {
+			routed = false;
+			break;
+		}
+		last_cb_args_fn = 0;
+		uint64_t ret = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))(uintptr_t)thunks[i])(
+			i, 2, 3, 4, 5, 6);
+		routed = ret == 0x88 && last_cb_args_fn == 0x6000000 + 0x40 * (uint64_t)i &&
+			last_cb_args[0] == (uint64_t)i && last_cb_args[5] == 6;
+	}
+	check(routed, "each thunk runs its own guest function with the six integer arguments it is called with");
+}
+
+static void exhaust_callback_thunks(void)
+{
+	void* stub = fex_dlsym_wrap_if_func((void*)host_png_set_error_fn, "png_set_error_fn");
+	for (uint64_t i = 0; i < 0x10000; i++)
+		thunk_for(stub, 0x6100000 + 0x10 * i);
+}
+
+static void test_callback_thunk_limit(void)
+{
+	check(aborts_with(exhaust_callback_thunks, "distinct guest functions were handed to host libraries"),
+		"running out of host callback thunks stops the process and says why");
 }
 
 static uint64_t g_xlib_handler = 0xaaaa00;
@@ -1001,6 +1103,8 @@ int main(void)
 	test_elfcalls_trampolines();
 	test_dlsym_wrapping();
 	test_host_callback_thunks();
+	test_many_callback_thunks();
+	test_callback_thunk_limit();
 	test_xlib_handler_restore();
 	test_signal_mask_filter();
 	test_wayland_dispatcher();

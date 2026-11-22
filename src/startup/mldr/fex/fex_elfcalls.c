@@ -260,51 +260,114 @@ static int host_x_io_error_handler(void* display)
 }
 
 // Host library functions that take function pointers other than Xlib's error handlers. The guest's
-// pointer is replaced by one of a small pool of host functions, each bound to one guest function, that
-// run it under FEX with the six integer arguments they are called with.
-#define FEX_CALLBACK_SLOTS 16
+// pointer is replaced by a host thunk bound to that guest function, which runs it under FEX with the
+// first six integer arguments it is called with. Arguments after the sixth and floating point
+// arguments are not forwarded, and a floating point return value is lost: functions whose callbacks
+// need them are listed in g_callback_unsupported instead.
+//
+// A library may keep a callback for as long as it likes (libwayland until the proxy dies, libtiff until
+// TIFFClose), and nothing tells the bridge when it lets go, so a thunk stays bound to its guest function
+// for the life of the process. The same guest function always gets the same thunk, so the number of
+// thunks is bounded by the number of distinct guest functions handed to host libraries, which is small
+// and fixed by the guest's code. The thunks are generated a page at a time, up to FEX_CALLBACK_MAX.
+//
+// Each thunk is 32 bytes of aarch64 code: "movz x6, #slot; ldr x16, entry; br x16; nop; .quad entry".
+// x6 is the seventh integer argument register, which no forwarded argument uses, so the common entry
+// receives the slot as an ordinary seventh argument.
+#if !defined(__aarch64__)
+#error "the host callback thunks are aarch64 code"
+#endif
 
-static uintptr_t g_callback_guest_fn[FEX_CALLBACK_SLOTS];
+#define FEX_CALLBACK_MAX 8192u
+#define FEX_CALLBACK_THUNK_SIZE 32u
+_Static_assert(FEX_CALLBACK_MAX <= 0x10000, "a thunk's slot must fit the 16-bit immediate of movz");
+
+static uintptr_t g_callback_guest_fn[FEX_CALLBACK_MAX];
+// Open-addressing index from guest function to slot + 1 (0 = empty), never more than half full.
+#define FEX_CALLBACK_INDEX_SIZE (2 * FEX_CALLBACK_MAX)
+static uint16_t g_callback_index[FEX_CALLBACK_INDEX_SIZE];
+static uint32_t g_callback_count = 0;
+static uint32_t g_callback_ready = 0; // thunks [0, ready) are written and executable
+static uint8_t* g_callback_area = NULL;
 static pthread_mutex_t g_callback_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-#define FEX_CALLBACK_THUNK(n) \
-	static uint64_t host_callback_thunk_##n(uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, uint64_t a5) \
-	{ \
-		const uint64_t args[6] = {a0, a1, a2, a3, a4, a5}; \
-		return fex_invoke_guest_callback_args(g_callback_guest_fn[n], args); \
-	}
-FEX_CALLBACK_THUNK(0) FEX_CALLBACK_THUNK(1) FEX_CALLBACK_THUNK(2) FEX_CALLBACK_THUNK(3)
-FEX_CALLBACK_THUNK(4) FEX_CALLBACK_THUNK(5) FEX_CALLBACK_THUNK(6) FEX_CALLBACK_THUNK(7)
-FEX_CALLBACK_THUNK(8) FEX_CALLBACK_THUNK(9) FEX_CALLBACK_THUNK(10) FEX_CALLBACK_THUNK(11)
-FEX_CALLBACK_THUNK(12) FEX_CALLBACK_THUNK(13) FEX_CALLBACK_THUNK(14) FEX_CALLBACK_THUNK(15)
+static uint64_t host_callback_entry(uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4,
+	uint64_t a5, uint64_t slot)
+{
+	const uint64_t args[6] = {a0, a1, a2, a3, a4, a5};
+	uintptr_t guest_fn = __atomic_load_n(&g_callback_guest_fn[slot], __ATOMIC_ACQUIRE);
+	return fex_invoke_guest_callback_args(guest_fn, args);
+}
 
-typedef uint64_t (*host_callback_fn)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
-static const host_callback_fn g_callback_thunks[FEX_CALLBACK_SLOTS] = {
-	host_callback_thunk_0, host_callback_thunk_1, host_callback_thunk_2, host_callback_thunk_3,
-	host_callback_thunk_4, host_callback_thunk_5, host_callback_thunk_6, host_callback_thunk_7,
-	host_callback_thunk_8, host_callback_thunk_9, host_callback_thunk_10, host_callback_thunk_11,
-	host_callback_thunk_12, host_callback_thunk_13, host_callback_thunk_14, host_callback_thunk_15,
-};
+static void write_aarch64_callback_thunk(uint8_t* dst, uint32_t slot)
+{
+	const uint32_t code[4] = {
+		0xd2800006u | (slot << 5), // movz x6, #slot
+		0x58000070u,               // ldr x16, [pc + 12]
+		0xd61f0200u,               // br x16
+		0xd503201fu,               // nop
+	};
+	const uint64_t entry = (uint64_t)(uintptr_t)host_callback_entry;
+	memcpy(dst, code, sizeof(code));
+	memcpy(dst + sizeof(code), &entry, sizeof(entry));
+	memset(dst + sizeof(code) + sizeof(entry), 0, FEX_CALLBACK_THUNK_SIZE - sizeof(code) - sizeof(entry));
+}
+
+// Makes thunk `slot` executable, writing the page that holds it. Called with g_callback_mutex held.
+static void ensure_callback_thunk(uint32_t slot)
+{
+	size_t page_sz = (size_t)sysconf(_SC_PAGESIZE);
+	if (!g_callback_area) {
+		// The whole range is reserved up front so that the thunks keep fixed addresses.
+		g_callback_area = mmap(NULL, FEX_CALLBACK_MAX * FEX_CALLBACK_THUNK_SIZE, PROT_NONE,
+			MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+		if (g_callback_area == MAP_FAILED) {
+			fprintf(stderr, "mldr/fex: failed to reserve the host callback thunks: %s\n", strerror(errno));
+			abort();
+		}
+	}
+	while (slot >= g_callback_ready) {
+		uint8_t* page = g_callback_area + (size_t)g_callback_ready * FEX_CALLBACK_THUNK_SIZE;
+		uint32_t per_page = (uint32_t)(page_sz / FEX_CALLBACK_THUNK_SIZE);
+		if (mprotect(page, page_sz, PROT_READ | PROT_WRITE) != 0) {
+			fprintf(stderr, "mldr/fex: failed to make host callback thunks writable: %s\n", strerror(errno));
+			abort();
+		}
+		for (uint32_t i = 0; i < per_page; i++)
+			write_aarch64_callback_thunk(page + i * FEX_CALLBACK_THUNK_SIZE, g_callback_ready + i);
+		if (mprotect(page, page_sz, PROT_READ | PROT_EXEC) != 0) {
+			fprintf(stderr, "mldr/fex: failed to make host callback thunks executable: %s\n", strerror(errno));
+			abort();
+		}
+		__builtin___clear_cache((char*)page, (char*)page + page_sz);
+		g_callback_ready += per_page;
+	}
+}
 
 // The host function that stands for a guest function pointer (the same one for the same guest function).
 static uint64_t host_callback_for(uint64_t guest_fn)
 {
 	if (guest_fn == 0)
 		return 0;
-	uint64_t host = 0;
 	pthread_mutex_lock(&g_callback_mutex);
-	for (int i = 0; i < FEX_CALLBACK_SLOTS; i++) {
-		if (g_callback_guest_fn[i] == guest_fn || g_callback_guest_fn[i] == 0) {
-			g_callback_guest_fn[i] = guest_fn;
-			host = (uint64_t)(uintptr_t)g_callback_thunks[i];
-			break;
+	uint32_t h = (uint32_t)((guest_fn * 0x9e3779b97f4a7c15ull) >> 32) % FEX_CALLBACK_INDEX_SIZE;
+	while (g_callback_index[h] != 0 && g_callback_guest_fn[g_callback_index[h] - 1] != guest_fn)
+		h = (h + 1) % FEX_CALLBACK_INDEX_SIZE;
+	uint32_t slot = g_callback_index[h] ? g_callback_index[h] - 1u : g_callback_count;
+	if (slot == g_callback_count) {
+		if (g_callback_count == FEX_CALLBACK_MAX) {
+			pthread_mutex_unlock(&g_callback_mutex);
+			fprintf(stderr, "mldr/fex: more than %u distinct guest functions were handed to host libraries\n",
+				FEX_CALLBACK_MAX);
+			abort();
 		}
+		ensure_callback_thunk(slot);
+		__atomic_store_n(&g_callback_guest_fn[slot], (uintptr_t)guest_fn, __ATOMIC_RELEASE);
+		g_callback_index[h] = (uint16_t)(slot + 1);
+		g_callback_count++;
 	}
+	uint64_t host = (uint64_t)(uintptr_t)(g_callback_area + (size_t)slot * FEX_CALLBACK_THUNK_SIZE);
 	pthread_mutex_unlock(&g_callback_mutex);
-	if (host == 0) {
-		fprintf(stderr, "mldr/fex: out of host callback thunks (%d)\n", FEX_CALLBACK_SLOTS);
-		abort();
-	}
 	return host;
 }
 
