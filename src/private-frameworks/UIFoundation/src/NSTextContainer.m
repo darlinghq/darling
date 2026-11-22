@@ -108,6 +108,12 @@ static NSString *const _NSTextContainerViewFrameDidChangeNotification =
     return _layoutManager;
 }
 
+// The layout manager is unretained: it calls this when it goes away or drops the container, so no dangling pointer is left.
+- (void) _darlingDetachFromLayoutManager: (NSLayoutManager *) layoutManager {
+    if (_layoutManager == layoutManager)
+        _layoutManager = nil;
+}
+
 - (CGFloat) lineFragmentPadding {
     return _lineFragmentPadding;
 }
