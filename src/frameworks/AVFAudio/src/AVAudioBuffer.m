@@ -22,6 +22,32 @@
 
 @implementation AVAudioBuffer
 
+- (AVAudioFormat*)format
+{
+	return _format;
+}
+
+- (const AudioBufferList*)audioBufferList
+{
+	return _audioBufferList;
+}
+
+// GUESS: the audioBufferList page says the mDataByteSize fields express the frame length and the
+// mutableAudioBufferList page says they express the frame capacity. They cannot both hold for one list, so both
+// properties return the one list, with the frame length (the PCM buffer's frameLength page says changing
+// frameLength updates mDataByteSize "and vice versa").
+- (AudioBufferList*)mutableAudioBufferList
+{
+	return _audioBufferList;
+}
+
+- (void)dealloc
+{
+	[_format release];
+	[super dealloc];
+}
+
+// Methods of the real class that are not implemented yet still have to be accepted.
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
     return AVAudioStubSignature(aSelector);
