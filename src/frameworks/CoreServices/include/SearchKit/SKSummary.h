@@ -39,6 +39,15 @@ CFIndex SKSummaryGetParagraphCount(SKSummaryRef summary) API_AVAILABLE(macos(10.
 CFStringRef SKSummaryCopySentenceAtIndex(SKSummaryRef summary, CFIndex i) API_AVAILABLE(macos(10.4));
 CFStringRef SKSummaryCopyParagraphAtIndex(SKSummaryRef summary, CFIndex i) API_AVAILABLE(macos(10.4));
 
+CFStringRef SKSummaryCopySentenceSummaryString(SKSummaryRef summary, CFIndex numSentences) API_AVAILABLE(macos(10.4));
+CFStringRef SKSummaryCopyParagraphSummaryString(SKSummaryRef summary, CFIndex numParagraphs) API_AVAILABLE(macos(10.4));
+
+CFIndex SKSummaryGetSentenceSummaryInfo(SKSummaryRef summary, CFIndex numSentencesInSummary,
+	CFIndex *outRankOrderOfSentences, CFIndex *outSentenceIndexOfSentences,
+	CFIndex *outParagraphIndexOfSentences) API_AVAILABLE(macos(10.4));
+CFIndex SKSummaryGetParagraphSummaryInfo(SKSummaryRef summary, CFIndex numParagraphsInSummary,
+	CFIndex *outRankOrderOfParagraphs, CFIndex *outParagraphIndexOfParagraphs) API_AVAILABLE(macos(10.4));
+
 #ifdef __cplusplus
 }
 #endif

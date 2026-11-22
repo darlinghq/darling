@@ -190,3 +190,79 @@ CFStringRef SKSummaryCopyParagraphAtIndex(SKSummaryRef summary, CFIndex i)
 		return NULL;
 	return CFStringCreateWithSubstring(NULL, summary->string, summary->paragraphs[i]);
 }
+
+// GUESS: the ranking algorithm is not public. As a placeholder the summary of N units is the first
+// N units in document order, so the unit at index i has rank i + 1 (the pages give rank 1 to the most
+// important unit). The pages state "at most" N, so N is capped at the number of units; a negative N
+// is treated as 0.
+static CFIndex clampSummarySize(CFIndex requested, CFIndex available)
+{
+	if (requested < 0)
+		return 0;
+	return requested < available ? requested : available;
+}
+
+// GUESS: the pages do not say how the chosen units are joined into the string. The text from the
+// start of the first chosen unit to the end of the last one is returned, so the original text between
+// the units is kept. No units gives an empty string.
+static CFStringRef copySummaryString(SKSummaryRef summary, const CFRange *units, CFIndex count, CFIndex requested)
+{
+	CFIndex size = clampSummarySize(requested, count);
+	CFRange range = CFRangeMake(0, 0);
+	if (size > 0)
+		range = CFRangeMake(units[0].location, units[size - 1].location + units[size - 1].length - units[0].location);
+	return CFStringCreateWithSubstring(NULL, summary->string, range);
+}
+
+CFStringRef SKSummaryCopySentenceSummaryString(SKSummaryRef summary, CFIndex numSentences)
+{
+	if (!isSummary(summary))
+		return NULL;
+	return copySummaryString(summary, summary->sentences, summary->sentenceCount, numSentences);
+}
+
+CFStringRef SKSummaryCopyParagraphSummaryString(SKSummaryRef summary, CFIndex numParagraphs)
+{
+	if (!isSummary(summary))
+		return NULL;
+	return copySummaryString(summary, summary->paragraphs, summary->paragraphCount, numParagraphs);
+}
+
+// GUESS: a NULL or non-summary argument gives 0, as for the counts.
+CFIndex SKSummaryGetSentenceSummaryInfo(SKSummaryRef summary, CFIndex numSentencesInSummary,
+	CFIndex *outRankOrderOfSentences, CFIndex *outSentenceIndexOfSentences, CFIndex *outParagraphIndexOfSentences)
+{
+	if (!isSummary(summary))
+		return 0;
+
+	CFIndex size = clampSummarySize(numSentencesInSummary, summary->sentenceCount);
+	CFIndex paragraph = 0;
+	for (CFIndex i = 0; i < size; i++) {
+		while (paragraph + 1 < summary->paragraphCount
+				&& summary->paragraphs[paragraph + 1].location <= summary->sentences[i].location)
+			paragraph++;
+		if (outRankOrderOfSentences != NULL)
+			outRankOrderOfSentences[i] = i + 1;
+		if (outSentenceIndexOfSentences != NULL)
+			outSentenceIndexOfSentences[i] = i;
+		if (outParagraphIndexOfSentences != NULL)
+			outParagraphIndexOfSentences[i] = paragraph;
+	}
+	return size;
+}
+
+CFIndex SKSummaryGetParagraphSummaryInfo(SKSummaryRef summary, CFIndex numParagraphsInSummary,
+	CFIndex *outRankOrderOfParagraphs, CFIndex *outParagraphIndexOfParagraphs)
+{
+	if (!isSummary(summary))
+		return 0;
+
+	CFIndex size = clampSummarySize(numParagraphsInSummary, summary->paragraphCount);
+	for (CFIndex i = 0; i < size; i++) {
+		if (outRankOrderOfParagraphs != NULL)
+			outRankOrderOfParagraphs[i] = i + 1;
+		if (outParagraphIndexOfParagraphs != NULL)
+			outParagraphIndexOfParagraphs[i] = i;
+	}
+	return size;
+}
