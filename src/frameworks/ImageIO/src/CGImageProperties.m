@@ -81,3 +81,14 @@ const CFStringRef kCGImagePropertyTIFFCopyright = CFSTR("Copyright");
 const CFStringRef kCGImagePropertyTIFFDocumentName = CFSTR("DocumentName");
 const CFStringRef kCGImagePropertyTIFFImageDescription = CFSTR("ImageDescription");
 const CFStringRef kCGImagePropertyMakerAppleDictionary = CFSTR("{MakerApple}");
+
+// The documentation names these keys but not their strings, so every value
+// below is a GUESS derived from the naming convention of the constants above
+// (a dictionary key is the key name without its kCGImageProperty<Dictionary>
+// prefix, a dictionary is "{Name}") and is pending confirmation on a real Mac.
+// Test: tests/src/imageio_property_keys.c
+const CFStringRef kCGImagePropertyExifDateTimeDigitized = CFSTR("DateTimeDigitized"); // GUESS
+const CFStringRef kCGImagePropertyIPTCDateCreated = CFSTR("DateCreated"); // GUESS
+const CFStringRef kCGImagePropertyIPTCDigitalCreationDate = CFSTR("DigitalCreationDate"); // GUESS
+const CFStringRef kCGImagePropertyRawDictionary = CFSTR("{Raw}"); // GUESS
+const CFStringRef kCGImagePropertyTIFFDateTime = CFSTR("DateTime"); // GUESS
