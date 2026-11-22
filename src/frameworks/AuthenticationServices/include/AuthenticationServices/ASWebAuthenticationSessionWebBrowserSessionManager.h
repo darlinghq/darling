@@ -19,6 +19,17 @@
 
 #include <Foundation/Foundation.h>
 
+#include <AuthenticationServices/ASWebAuthenticationSessionWebBrowserSessionHandling.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+// https://developer.apple.com/documentation/authenticationservices/aswebauthenticationsessionwebbrowsersessionmanager
 @interface ASWebAuthenticationSessionWebBrowserSessionManager : NSObject
 
+@property (class, nonatomic, readonly) ASWebAuthenticationSessionWebBrowserSessionManager *sharedManager;
+@property (nonatomic) id<ASWebAuthenticationSessionWebBrowserSessionHandling> sessionHandler;
+@property (nonatomic, readonly) BOOL wasLaunchedByAuthenticationServices;
+
 @end
+
+NS_ASSUME_NONNULL_END
