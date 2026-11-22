@@ -444,3 +444,17 @@ OSErr AESend(const AppleEvent* theAppleEvent, AppleEvent* reply, AESendMode send
 {
 	return (OSErr) AESendMessage(theAppleEvent, reply, sendMode, timeOutInTicks);
 }
+
+// Darling has no Automation consent system: Apple events are delivered by launchservicesd and
+// AESendMessage never asks whether the sender may automate the target. So the permission cannot be
+// determined here, and the function reports that it is not implemented instead of claiming a decision.
+// GUESS: the public page gives only the declaration and availability, not the results. unimpErr for any
+// target and paramErr for a NULL target are placeholders, and askUserIfNeeded is ignored because nothing
+// can be asked. Maintainers may prefer noErr ("Darling does not restrict Apple events").
+OSStatus AEDeterminePermissionToAutomateTarget(const AEAddressDesc* target, AEEventClass theAEEventClass,
+	AEEventID theAEEventID, Boolean askUserIfNeeded)
+{
+	if (target == NULL)
+		return paramErr;
+	return unimpErr;
+}
