@@ -1236,14 +1236,10 @@ int connectToShellspawn(void)
 		exit(1);
 	}
 
-	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+	// The launcher waits only for the socket file to appear, and shellspawn
+	// creates it before it listens.
+	sockfd = launcherConnectUnixSocket(&addr, 10000);
 	if (sockfd == -1)
-	{
-		fprintf(stderr, "Error creating a unix domain socket: %s\n", strerror(errno));
-		exit(1);
-	}
-
-	if (connect(sockfd, (struct sockaddr*) &addr, sizeof(addr)) == -1)
 	{
 		fprintf(stderr, "Error connecting to shellspawn in the container (%s" SHELLSPAWN_SOCKPATH "): %s\n", prefix, strerror(errno));
 		exit(1);

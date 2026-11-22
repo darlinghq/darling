@@ -24,6 +24,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <stddef.h>
 #include <sys/types.h>
 
+struct sockaddr_un;
+
 enum launcher_prefix_check
 {
 	LAUNCHER_PREFIX_OK = 0,
@@ -64,5 +66,11 @@ bool launcherSocketPath(char* out, size_t size, const char* prefix, const char* 
 // The result is short whatever the directory's own path is, so a socket in a
 // prefix of any length can be reached through sun_path.
 bool launcherDirSocketPath(char* out, size_t size, int dirfd, const char* suffix);
+
+// Connects a new stream socket to the Unix socket at addr. A server binds its
+// socket file before it listens, and a connection in between is refused, so a
+// refusal is retried until waitMs milliseconds have passed. Returns the
+// connected descriptor, or -1 with errno set.
+int launcherConnectUnixSocket(const struct sockaddr_un* addr, unsigned int waitMs);
 
 #endif

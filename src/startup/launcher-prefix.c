@@ -17,10 +17,14 @@ You should have received a copy of the GNU General Public License
 along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
+#include <time.h>
+#include <unistd.h>
 #include "launcher-prefix.h"
 
 // The launcher's limit since before the socket paths were bounded.
@@ -110,4 +114,31 @@ bool launcherDirSocketPath(char* out, size_t size, int dirfd, const char* suffix
 
 	snprintf(dir, sizeof(dir), "/proc/self/fd/%d", dirfd);
 	return launcherSocketPath(out, size, dir, suffix);
+}
+
+int launcherConnectUnixSocket(const struct sockaddr_un* addr, unsigned int waitMs)
+{
+	const struct timespec pause = { .tv_sec = 0, .tv_nsec = 20 * 1000 * 1000 };
+	unsigned int waited = 0;
+
+	for (;;)
+	{
+		int sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+		if (sockfd == -1)
+			return -1;
+
+		if (connect(sockfd, (const struct sockaddr*) addr, sizeof(*addr)) == 0)
+			return sockfd;
+
+		int err = errno;
+		close(sockfd);
+		if (err != ECONNREFUSED || waited >= waitMs)
+		{
+			errno = err;
+			return -1;
+		}
+
+		nanosleep(&pause, NULL);
+		waited += 20;
+	}
 }
