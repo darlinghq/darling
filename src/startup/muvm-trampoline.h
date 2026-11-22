@@ -53,6 +53,29 @@ bool darling_muvm_needed(long page_size, enum darling_target_slice slice);
 // console to a terminal; a redirected descriptor would silently lose output.
 bool darling_muvm_stdio_ok(int stdin_fd, int stdout_fd, int stderr_fd);
 
+// Stock muvm forwards only the host's X11 display. A muvm that serves the host's
+// Wayland compositor in the guest (it starts wl-cross-domain-proxy under the
+// host's WAYLAND_DISPLAY name) makes AppKit's Wayland backend usable, and AppKit
+// prefers that backend whenever the guest has a WAYLAND_DISPLAY and falls back to
+// X11 otherwise, so the host's DISPLAY is left to muvm as it always was.
+
+// True when muvm would serve this WAYLAND_DISPLAY in the guest: a plain socket
+// name, not empty, not a path, not "." or "..". NULL (unset) is not.
+bool darling_wayland_display_is_plain(const char* wayland_display);
+
+// True when the muvm found through path_env (a PATH value, may be NULL) can
+// forward Wayland: wl-cross-domain-proxy is in that path, and so is a
+// muvm-guest that names the proxy (a stock muvm-guest never does). muvm finds
+// both through PATH too. Reads files, runs and starts nothing.
+bool darling_muvm_wayland_capable(const char* path_env);
+
+// Whether the guest gets the host's Wayland session: a plain WAYLAND_DISPLAY
+// (NULL when unset) and a muvm that probe says is capable. The probe, usually
+// darling_muvm_wayland_capable, is not called without a plain name, so an X11
+// only host never reads muvm-guest.
+bool darling_muvm_wayland_wanted(const char* wayland_display, const char* path_env,
+	bool (*probe)(const char* path_env));
+
 // Re-executes this launcher under muvm, with the launcher path made absolute,
 // argv[target_index] replaced by target_path, the arguments before the target
 // kept as they are, and the variables muvm needs forwarded with -e. Must be

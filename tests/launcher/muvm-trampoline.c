@@ -526,6 +526,122 @@ static void test_reexec(void)
 	unsetenv("GDK_SCALE");
 }
 
+static int g_probeCalls;
+static bool g_probeAnswer;
+
+static bool fakeProbe(const char* path_env)
+{
+	(void) path_env;
+	g_probeCalls++;
+	return g_probeAnswer;
+}
+
+static void test_wayland_wanted(void)
+{
+	check(darling_wayland_display_is_plain("wayland-0"), "a socket name is plain");
+	check(!darling_wayland_display_is_plain(NULL), "unset is not plain");
+	check(!darling_wayland_display_is_plain(""), "empty is not plain");
+	check(!darling_wayland_display_is_plain("/run/user/1000/wayland-0"), "a path is not plain");
+	check(!darling_wayland_display_is_plain("a/b"), "a name with a slash is not plain");
+	check(!darling_wayland_display_is_plain(".") && !darling_wayland_display_is_plain(".."),
+		"dot names are not plain");
+
+	g_probeAnswer = true;
+	g_probeCalls = 0;
+	check(darling_muvm_wayland_wanted("wayland-1", "/bin", fakeProbe) && g_probeCalls == 1,
+		"a session and a capable muvm give Wayland");
+	g_probeAnswer = false;
+	g_probeCalls = 0;
+	check(!darling_muvm_wayland_wanted("wayland-1", "/bin", fakeProbe) && g_probeCalls == 1,
+		"a stock muvm is left alone");
+
+	g_probeAnswer = true;
+	g_probeCalls = 0;
+	check(!darling_muvm_wayland_wanted(NULL, "/bin", fakeProbe) && g_probeCalls == 0,
+		"an X11 only host does not run the probe");
+	check(!darling_muvm_wayland_wanted("", "/bin", fakeProbe) && g_probeCalls == 0,
+		"an empty WAYLAND_DISPLAY does not run the probe");
+	check(!darling_muvm_wayland_wanted("/run/user/1/wayland-1", "/bin", fakeProbe) && g_probeCalls == 0,
+		"a path as WAYLAND_DISPLAY, which muvm does not serve, does not run the probe");
+}
+
+// A file of size bytes of filler with text written at offset, executable or not.
+static void writeFile(const char* path, size_t size, size_t offset, const char* text, mode_t mode)
+{
+	FILE* file = fopen(path, "w");
+	size_t length = text != NULL ? strlen(text) : 0;
+
+	if (file == NULL)
+		return;
+	for (size_t at = 0; at < size; at++)
+	{
+		size_t into = at - offset;
+		fputc(text != NULL && at >= offset && into < length ? text[into] : 'x', file);
+	}
+	fclose(file);
+	chmod(path, mode);
+}
+
+static void makeMuvmDirectory(const char* name, const char* guestText, size_t guestOffset, bool proxy)
+{
+	char directory[PATH_MAX], path[PATH_MAX];
+
+	snprintf(directory, sizeof(directory), "%s/%s", g_directory, name);
+	mkdir(directory, 0755);
+	snprintf(path, sizeof(path), "%s/muvm-guest", directory);
+	writeFile(path, 70000, guestOffset, guestText, 0755);
+	if (proxy)
+	{
+		snprintf(path, sizeof(path), "%s/wl-cross-domain-proxy", directory);
+		writeFile(path, 16, 0, NULL, 0755);
+	}
+}
+
+static void test_wayland_capable(void)
+{
+	char patched[PATH_MAX], stock[PATH_MAX], noProxy[PATH_MAX], straddle[PATH_MAX], both[PATH_MAX];
+	char path[PATH_MAX * 2];
+	char notExecutable[PATH_MAX];
+
+	// The proxy's name sits well inside the patched guest, across the 64 KB
+	// read boundary in "straddle", and nowhere in the stock one.
+	makeMuvmDirectory("patched", "wl-cross-domain-proxy", 1000, true);
+	makeMuvmDirectory("stock", NULL, 0, true);
+	makeMuvmDirectory("noproxy", "wl-cross-domain-proxy", 1000, false);
+	makeMuvmDirectory("straddle", "wl-cross-domain-proxy", 65536 - 7, true);
+	makeMuvmDirectory("tail", "wl-cross-domain-proxy", 70000 - 21, true);
+	makeMuvmDirectory("partial", "wl-cross-domain-proxy-", 70000 - 12, true);
+	snprintf(patched, sizeof(patched), "%s/patched", g_directory);
+	snprintf(stock, sizeof(stock), "%s/stock", g_directory);
+	snprintf(noProxy, sizeof(noProxy), "%s/noproxy", g_directory);
+	snprintf(straddle, sizeof(straddle), "%s/straddle", g_directory);
+
+	check(darling_muvm_wayland_capable(patched), "a muvm-guest that names the proxy, with the proxy, is capable");
+	check(!darling_muvm_wayland_capable(stock), "a stock muvm-guest is not capable even with the proxy installed");
+	check(!darling_muvm_wayland_capable(noProxy), "a patched muvm-guest without the proxy is not capable");
+	check(darling_muvm_wayland_capable(straddle), "a name across the read boundary is found");
+	snprintf(both, sizeof(both), "%s/tail", g_directory);
+	check(darling_muvm_wayland_capable(both), "a name at the very end of the file is found");
+	snprintf(both, sizeof(both), "%s/partial", g_directory);
+	check(!darling_muvm_wayland_capable(both), "half a name at the end of the file is not found");
+
+	snprintf(path, sizeof(path), "%s:%s", stock, patched);
+	check(!darling_muvm_wayland_capable(path), "the first muvm-guest in PATH is the one muvm runs");
+	snprintf(path, sizeof(path), "%s:%s", patched, stock);
+	check(darling_muvm_wayland_capable(path), "the first muvm-guest in PATH is the patched one");
+	snprintf(path, sizeof(path), "%s:%s", noProxy, patched);
+	check(darling_muvm_wayland_capable(path), "the proxy is found anywhere in PATH");
+	snprintf(path, sizeof(path), "/nonexistent::%s", patched);
+	check(darling_muvm_wayland_capable(path), "an empty or missing PATH element is skipped");
+	check(!darling_muvm_wayland_capable(NULL), "no PATH is not capable");
+	check(!darling_muvm_wayland_capable(""), "an empty PATH is not capable");
+
+	snprintf(notExecutable, sizeof(notExecutable), "%s/patched/muvm-guest", g_directory);
+	chmod(notExecutable, 0644);
+	check(!darling_muvm_wayland_capable(patched), "a muvm-guest that cannot run is not capable");
+	chmod(notExecutable, 0755);
+}
+
 int main(void)
 {
 	char template[] = "/tmp/darling-muvm-trampoline-XXXXXX";
@@ -543,6 +659,8 @@ int main(void)
 	test_needed_matrix();
 	test_stdio();
 	test_reexec();
+	test_wayland_wanted();
+	test_wayland_capable();
 
 	if (g_failures != 0)
 	{

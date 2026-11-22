@@ -336,6 +336,129 @@ static size_t countForwardedVariables(void)
 	return count;
 }
 
+bool darling_wayland_display_is_plain(const char* wayland_display)
+{
+	return wayland_display != NULL && wayland_display[0] != '\0'
+		&& strchr(wayland_display, '/') == NULL
+		&& strcmp(wayland_display, ".") != 0 && strcmp(wayland_display, "..") != 0;
+}
+
+// The first executable regular file called program in a PATH value, as muvm
+// searches. Returns a malloc'ed path or NULL.
+static char* findInPath(const char* path_env, const char* program)
+{
+	size_t program_length = strlen(program);
+	const char* start = path_env;
+
+	while (start != NULL && *start != '\0')
+	{
+		const char* end = strchr(start, ':');
+		size_t directory_length = end != NULL ? (size_t)(end - start) : strlen(start);
+		struct stat st;
+		char* candidate;
+
+		// An empty element is the current directory in a shell, and muvm joins
+		// it the same way, so it is searched as ".".
+		candidate = malloc(directory_length + program_length + 3);
+		if (candidate == NULL)
+			return NULL;
+		if (directory_length == 0)
+			snprintf(candidate, directory_length + program_length + 3, "./%s", program);
+		else
+			snprintf(candidate, directory_length + program_length + 3, "%.*s/%s",
+				(int) directory_length, start, program);
+
+		if (stat(candidate, &st) == 0 && S_ISREG(st.st_mode) && access(candidate, X_OK) == 0)
+			return candidate;
+
+		free(candidate);
+		start = end != NULL ? end + 1 : NULL;
+	}
+
+	return NULL;
+}
+
+// Whether the file contains needle, read in blocks that overlap by one needle
+// less a byte so a match across a block boundary is found.
+static bool fileContains(const char* path, const char* needle)
+{
+	static const size_t kBlock = 1 << 16;
+	size_t needle_length = strlen(needle);
+	size_t kept = 0;
+	bool found = false;
+	uint8_t* buffer;
+	int fd;
+
+	fd = open(path, O_RDONLY | O_CLOEXEC);
+	if (fd < 0)
+		return false;
+
+	buffer = malloc(kBlock + needle_length);
+	if (buffer == NULL)
+	{
+		close(fd);
+		return false;
+	}
+
+	for (;;)
+	{
+		ssize_t got = read(fd, buffer + kept, kBlock);
+		size_t total;
+
+		if (got < 0 && errno == EINTR)
+			continue;
+		if (got <= 0)
+			break;
+
+		total = kept + (size_t) got;
+		for (size_t at = 0; at + needle_length <= total; at++)
+		{
+			if (buffer[at] == (uint8_t) needle[0] && memcmp(buffer + at, needle, needle_length) == 0)
+			{
+				found = true;
+				break;
+			}
+		}
+		if (found)
+			break;
+
+		kept = needle_length - 1 < total ? needle_length - 1 : total;
+		memmove(buffer, buffer + total - kept, kept);
+	}
+
+	free(buffer);
+	close(fd);
+	return found;
+}
+
+// The program muvm starts in the guest to serve the host's compositor.
+#define WAYLAND_PROXY "wl-cross-domain-proxy"
+
+bool darling_muvm_wayland_capable(const char* path_env)
+{
+	char* proxy = findInPath(path_env, WAYLAND_PROXY);
+	char* guest;
+	bool capable;
+
+	if (proxy == NULL)
+		return false;
+	free(proxy);
+
+	guest = findInPath(path_env, "muvm-guest");
+	if (guest == NULL)
+		return false;
+
+	capable = fileContains(guest, WAYLAND_PROXY);
+	free(guest);
+	return capable;
+}
+
+bool darling_muvm_wayland_wanted(const char* wayland_display, const char* path_env,
+	bool (*probe)(const char* path_env))
+{
+	return darling_wayland_display_is_plain(wayland_display) && probe(path_env);
+}
+
 bool darling_reexec_under_muvm(char* const argv[], size_t target_index, const char* target_path)
 {
 	static char launcher[4096];
