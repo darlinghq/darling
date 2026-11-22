@@ -795,11 +795,26 @@ static void test_signal_masks(uint64_t guest_handler, uint64_t saved_mask)
 	struct fex_x86_64_state st = guest_syscall_state(15, 0, 0, 0);
 	check(st.frame_restored == 1 && guest_blocked() == winch && raw_blocked_mask() == winch,
 		"returning from a handler run at a syscall return restores the frame's set and its registers");
+	g_fake_return_answer = -EFAULT;
+	st = guest_syscall_state(15, 0, 0, 0);
+	check(st.frame_restored == 0 && st.signal_request && st.signal_request->sig == SIGSEGV,
+		"an unreadable frame raises SIGSEGV for the guest");
+	g_fake_return_answer = 1;
 
-	// The JIT's own signals: the guest can block them, and reads them back as blocked.
+	// The JIT's own signals: the guest can block them (it reads them back), and one sent while blocked waits.
 	set_guest_mask_to(FEX_SIGBIT(SIGTRAP));
 	check(guest_blocked() == FEX_SIGBIT(SIGTRAP) && !(raw_blocked_mask() & FEX_SIGBIT(SIGTRAP)),
 		"a blocked SIGTRAP reads back as blocked and stays open on the host");
+	guest_sigaction(SIGTRAP, guest_handler, 0, 0, NULL);
+	before = g_fake_deliveries;
+	raise_on_this_thread(SIGTRAP);
+	check(g_fake_deliveries == before, "a SIGTRAP the guest blocks does not run its handler");
+	st = guest_syscall_state(39 /* getpid */, 0, 0, 0);
+	check(st.signal_request == NULL, "nor at a syscall return while it stays blocked");
+	uint64_t trap = FEX_SIGBIT(SIGTRAP);
+	st = guest_syscall_state(14, SIG_UNBLOCK, (uint64_t)(uintptr_t)&trap, 0);
+	check(st.signal_request && st.signal_request->sig == SIGTRAP, "unblocking it runs the handler as that syscall returns");
+	guest_sigaction(SIGTRAP, 0, 0, 0, NULL);
 	set_guest_mask_to(saved_mask);
 }
 

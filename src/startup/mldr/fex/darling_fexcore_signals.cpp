@@ -212,6 +212,31 @@ void signals_init(FEXCore::Context::Context* ctx, bool supports_avx, bool suppor
   g_ctx = ctx;
 }
 
+void deliver_at_syscall_return(FEXCore::Core::InternalThreadState* thread, const fex_signal_request* request) {
+  auto* frame = thread->CurrentFrame;
+  siginfo_t info;
+  static_assert(sizeof(info) == sizeof(request->info));
+  memcpy(&info, request->info, sizeof(info));
+
+  int32_t stack_flags = 0;
+  const uint64_t sp = signal_stack_pointer(frame->State.gregs[FEXCore::X86State::REG_RSP], &request->action, &request->altstack, &stack_flags);
+  const FrameRequest frame_request {
+    .sig = request->sig,
+    .info = &info,
+    .host_ucontext = nullptr,
+    .altstack = &request->altstack,
+    .stack_flags = stack_flags,
+    .guest_sp = sp,
+    .restorer = (request->action.flags & FEX_GUEST_SA_RESTORER) ? request->action.restorer : 0,
+    .old_mask = request->old_mask,
+    .eflags = g_ctx->ReconstructCompactedEFLAGS(thread, false, nullptr, 0),
+    .supports_avx = g_supports_avx,
+  };
+  // No host context to keep: the frame's registers are all rt_sigreturn needs (a null backup address).
+  const uint64_t entry_sp = setup_x64_frame(g_ctx, thread, frame->State.rip, false, nullptr, frame_request);
+  enter_handler(frame->State, request->action.handler, entry_sp);
+}
+
 } // namespace darling_fex
 
 using namespace darling_fex;
@@ -371,11 +396,23 @@ extern "C" int darling_fexcore_signal_return(uint64_t* guest_mask) {
     return -EFAULT;
   }
   if (backup != 0) {
-    // The trap's host handler puts the interrupted context back.
+    // The handler interrupted emulated code: the trap's host handler puts that context back.
     using ReturnTrap = void (*)();
     reinterpret_cast<ReturnTrap>(g_delegator.GetConfig().SignalHandlerReturnAddressRT)();
     __builtin_unreachable();
   }
 
-  return -EFAULT;
+  // A handler that ran at a syscall return: its frame's registers are the whole state to go back to.
+  X64::xstate xstate;
+  const uint64_t fp_at = reinterpret_cast<uint64_t>(uc.uc_mcontext.fpregs);
+  if (fp_at) {
+    memset(&xstate, 0, sizeof(xstate));
+    if (!read_guest(&xstate, fp_at, g_supports_avx ? sizeof(X64::xstate) : sizeof(X64::_libc_fpstate))) {
+      return -EFAULT;
+    }
+    uc.uc_mcontext.fpregs = &xstate.fpstate;
+  }
+  restore_x64_registers(g_ctx, thread, &uc, g_supports_avx);
+  *guest_mask = uc.uc_sigmask.val[0];
+  return 1;
 }

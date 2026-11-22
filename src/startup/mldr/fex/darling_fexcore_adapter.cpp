@@ -106,26 +106,40 @@ public:
   void HandleSyscall(FEXCore::Core::CpuStateFrame* Frame) override {
     struct fex_x86_64_state guest{};
     fex_state_to_darling(CTX, t_thread_state, Frame->State, &guest);
+    const uint64_t nr = guest.rax;
 
     if (t_syscall_cb) {
       t_syscall_cb(&guest);
     }
 
-    Frame->State.gregs[FEXCore::X86State::REG_RAX] = guest.rax;
-    Frame->State.gs_cached = guest.gs_base;
-    Frame->State.fs_cached = guest.fs_base;
-    for (int i = 0; i < 16; i++) {
-      Frame->State.xmm.sse.data[i][0] = guest.xmm[i][0];
-      Frame->State.xmm.sse.data[i][1] = guest.xmm[i][1];
+    // rt_sigreturn of a handler that ran at a syscall return already put the frame's registers in place.
+    if (!guest.frame_restored) {
+      Frame->State.gregs[FEXCore::X86State::REG_RAX] = guest.rax;
+      Frame->State.gs_cached = guest.gs_base;
+      Frame->State.fs_cached = guest.fs_base;
+      for (int i = 0; i < 16; i++) {
+        Frame->State.xmm.sse.data[i][0] = guest.xmm[i][0];
+        Frame->State.xmm.sse.data[i][1] = guest.xmm[i][1];
+      }
     }
 
     if (guest.unwind_thread && t_exit_jmp) {
       longjmp(*t_exit_jmp, 1);
     }
 
-    // FEX's HLE handler contract: step over the 2-byte syscall instruction before
-    // re-entering the dispatcher (LinuxSyscalls/Syscalls.cpp:909).
-    Frame->State.rip += 2;
+    if (!guest.frame_restored) {
+      if (guest.signal_request && guest.signal_request->restart_syscall) {
+        // As Linux restarts an interrupted syscall: the handler returns to the syscall instruction.
+        Frame->State.gregs[FEXCore::X86State::REG_RAX] = nr;
+      } else {
+        // FEX's HLE handler contract: step over the 2-byte syscall instruction before
+        // re-entering the dispatcher (LinuxSyscalls/Syscalls.cpp:909).
+        Frame->State.rip += 2;
+      }
+    }
+    if (guest.signal_request) {
+      darling_fex::deliver_at_syscall_return(t_thread_state, guest.signal_request);
+    }
   }
 
   FEXCore::HLE::ExecutableRangeInfo QueryGuestExecutableRange(

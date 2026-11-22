@@ -436,9 +436,15 @@ static bool is_thread_fault(int sig, const siginfo_t* info)
 
 // The guest's blocked set as its rt_sigprocmask sees it: the host's, plus the JIT's signals the guest
 // blocks (the host blocks those only for mldr's own purposes, as while a thread starts). The host never blocks those (a fault in generated code with its signal blocked would kill the
-// process instead of being handled).
+// process instead of being handled); one that arrives while the guest blocks it is held (t_pending).
 static __thread uint64_t t_guest_blocked_jit_signals;
 
+// Signals for this thread's guest code that wait for a syscall return: the thread was in host code, which
+// may hold host locks a guest handler needs (malloc, for one), or the guest blocks the signal. Only one of
+// each signal is kept, as Linux does for the standard ones (real-time ones are not queued here).
+static __thread uint64_t t_pending;
+static __thread siginfo_t t_pending_info[GUEST_NSIG];
+static __thread struct fex_signal_request t_request;
 
 static uint64_t unblockable(uint64_t mask)
 {
@@ -464,6 +470,12 @@ static void set_guest_mask(uint64_t mask)
 	t_guest_blocked_jit_signals = mask & FEX_JIT_SIGNALS;
 	uint64_t host = unblockable(mask) & ~FEX_JIT_SIGNALS;
 	raw_host_syscall(SYS_rt_sigprocmask, SIG_SETMASK, (long)(uintptr_t)&host, 0, sizeof(host), 0, 0);
+}
+
+static void pend_signal(int sig, const siginfo_t* info)
+{
+	t_pending_info[sig] = *info;
+	__atomic_fetch_or(&t_pending, FEX_SIGBIT(sig), __ATOMIC_RELAXED);
 }
 
 // The guest's disposition is the default: let the host kernel apply it to the process. `ucontext` is the
@@ -539,6 +551,10 @@ static void deliver_now(int sig, siginfo_t* info, void* ucontext)
 		take_default_action(sig, ucontext);
 		return;
 	}
+	if (mask & FEX_SIGBIT(sig)) {
+		pend_signal(sig, info);
+		return;
+	}
 	if (action.handler == GUEST_SIG_IGN)
 		return;
 	if (action.handler == GUEST_SIG_DFL) {
@@ -588,6 +604,47 @@ static void fex_host_signal_handler(int sig, siginfo_t* info, void* ucontext)
 	}
 	}
 	errno = saved_errno;
+}
+
+// At a syscall return: picks a pending signal the guest does not block and asks for its handler to run as
+// the syscall returns (state->signal_request). Returns false when there is none to run.
+static bool take_pending_signal(struct fex_x86_64_state* state)
+{
+	for (;;) {
+		uint64_t deliverable = __atomic_load_n(&t_pending, __ATOMIC_RELAXED) & ~guest_mask();
+		if (!deliverable)
+			return false;
+		int sig = __builtin_ctzll(deliverable) + 1;
+
+		// A host handler may write the same slot meanwhile.
+		uint64_t all = ~0ULL & ~FEX_JIT_SIGNALS, old = 0;
+		raw_host_syscall(SYS_rt_sigprocmask, SIG_BLOCK, (long)(uintptr_t)&all, (long)(uintptr_t)&old, sizeof(all), 0, 0);
+		siginfo_t info = t_pending_info[sig];
+		__atomic_fetch_and(&t_pending, ~FEX_SIGBIT(sig), __ATOMIC_RELAXED);
+		raw_host_syscall(SYS_rt_sigprocmask, SIG_SETMASK, (long)(uintptr_t)&old, 0, sizeof(old), 0, 0);
+
+		pthread_mutex_lock(&g_guest_sigactions_lock);
+		struct fex_guest_sigaction action = load_guest_action(sig);
+		if (action.handler > GUEST_SIG_IGN)
+			reset_after_one_delivery(sig, &action);
+		pthread_mutex_unlock(&g_guest_sigactions_lock);
+		if (action.handler == GUEST_SIG_IGN)
+			continue;
+		if (action.handler == GUEST_SIG_DFL) {
+			take_default_action(sig, NULL);
+			continue;
+		}
+
+		memset(&t_request, 0, sizeof(t_request));
+		t_request.sig = sig;
+		t_request.old_mask = guest_mask();
+		t_request.action = action;
+		t_request.altstack = t_guest_altstack;
+		memcpy(t_request.info, &info, sizeof(t_request.info));
+		set_guest_mask(handler_mask(sig, &action, t_request.old_mask));
+		state->signal_request = &t_request;
+		return true;
+	}
 }
 
 static long install_host_handler(int sig, uint64_t guest_flags)
@@ -683,6 +740,19 @@ static long guest_rt_sigprocmask(long how, uintptr_t new_set, uintptr_t old_set,
 	if (old_set)
 		return fex_copy_to_guest((void*)old_set, &old, sizeof(old));
 	return 0;
+}
+
+// The host's pending set, and the signals waiting here for the guest.
+static long guest_rt_sigpending(uintptr_t set, long sigsetsize)
+{
+	if (sigsetsize != sizeof(uint64_t))
+		return -EINVAL;
+	uint64_t pending = 0;
+	long ret = raw_host_syscall(SYS_rt_sigpending, (long)(uintptr_t)&pending, sizeof(pending), 0, 0, 0, 0);
+	if (ret != 0)
+		return ret;
+	pending |= __atomic_load_n(&t_pending, __ATOMIC_RELAXED);
+	return fex_copy_to_guest((void*)set, &pending, sizeof(pending));
 }
 
 // Each guest thread's alternate signal stack, as Linux keeps it; `guest_sp` is the caller's stack pointer.
@@ -805,12 +875,19 @@ static long dispatch_syscall(struct fex_x86_64_state* state)
 				ret = 0;
 			} else {
 				// An unreadable frame: the kernel answers with SIGSEGV.
-				take_default_action(SIGSEGV, NULL);
+				siginfo_t info;
+				memset(&info, 0, sizeof(info));
+				info.si_signo = SIGSEGV;
+				info.si_code = SI_KERNEL;
+				pend_signal(SIGSEGV, &info);
 				ret = restored;
 			}
 			break;
 		}
 
+		case 127: // rt_sigpending
+			ret = guest_rt_sigpending((uintptr_t)a1, a2);
+			break;
 
 		case 131: // sigaltstack
 			ret = guest_sigaltstack((uintptr_t)a1, (uintptr_t)a2, state->rsp);
@@ -1035,5 +1112,8 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 	if (t_held_signals)
 		release_held_signals();
 
-	return dispatch_syscall(state);
+	long ret = dispatch_syscall(state);
+	if (!state->unwind_thread)
+		take_pending_signal(state);
+	return ret;
 }
