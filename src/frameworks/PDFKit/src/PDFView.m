@@ -21,11 +21,12 @@
 #import <Foundation/NSRaise.h>
 #import <darling-stub-forwarding.h>
 
-// GUESS: the documentation gives no string values for these notification names; the values
-// are the symbol names, as for the other framework notifications in Darling.
-NSNotificationName const PDFViewDocumentChangedNotification = @"PDFViewDocumentChangedNotification";
-NSNotificationName const PDFViewPageChangedNotification = @"PDFViewPageChangedNotification";
-NSNotificationName const PDFViewSelectionChangedNotification = @"PDFViewSelectionChangedNotification";
+// The documentation gives no string values for these notification names. They are the strings macOS
+// 26.7.3 and 10.14.4 report for these constants (black-box observation); they do not follow the
+// symbol names. Test: tests/src/pdfkit_constants.m
+NSNotificationName const PDFViewDocumentChangedNotification = @"PDFViewChangedDocument";
+NSNotificationName const PDFViewPageChangedNotification = @"PDFViewChangedPage";
+NSNotificationName const PDFViewSelectionChangedNotification = @"PDFViewSelectionChanged";
 
 @implementation PDFView
 

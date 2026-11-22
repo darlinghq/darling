@@ -22,8 +22,8 @@
 #import <AppKit/NSColor.h>
 #import <darling-stub-forwarding.h>
 
-// GUESS: the documentation gives no string value for this notification name; the value is the
-// symbol name, as for the other framework notifications in Darling.
+// The documentation gives no string value for this notification name; macOS 26.7.3 and 10.14.4 report
+// the symbol name (black-box observation). Test: tests/src/pdfkit_constants.m
 NSString * const PDFThumbnailViewDocumentEditedNotification = @"PDFThumbnailViewDocumentEditedNotification";
 
 @implementation PDFThumbnailView

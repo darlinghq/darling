@@ -3,12 +3,14 @@
 //
 // PDFKit exports notification names, document attributes, document write options, annotation keys
 // and annotation subtypes as NSString constants, and kPDFDestinationUnspecifiedValue as a CGFloat.
-// The documentation gives no string values, so this test pins none: it checks that every constant
-// exists, is a non-empty NSString, and that the constants of one group are pairwise distinct
-// (they are used as dictionary keys and notification names, so a collision would be a bug).
+// The documentation gives no string values, so the test pins the values macOS 26.7.3 and 10.14.4
+// report (black-box observation; the four write options exist only on 26.7.3, whose values are used),
+// and checks that every constant is a non-empty NSString and that the constants of one group are
+// pairwise distinct (they are used as dictionary keys and notification names).
 // Prints OK, or the failures with a non-zero exit status.
 #import <Foundation/Foundation.h>
 #import <PDFKit/PDFKit.h>
+#include <float.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -30,9 +32,44 @@ static int failures;
 	} \
 } while (0)
 
+#define CHECK_VALUE(constant, expected) do { \
+	NSString *actual_ = (constant); \
+	if (![actual_ isEqualToString:(expected)]) { \
+		printf("FAIL: %s is \"%s\", expected \"%s\"\n", #constant, [actual_ UTF8String] ?: "(nil)", [(expected) UTF8String]); \
+		failures++; \
+	} \
+} while (0)
+
 int main(void)
 {
 	@autoreleasepool {
+		CHECK_VALUE(PDFDocumentDidBeginFindNotification, @"PDFDidBeginDocumentFind");
+		CHECK_VALUE(PDFDocumentDidBeginPageFindNotification, @"PDFDidBeginPageFind");
+		CHECK_VALUE(PDFDocumentDidEndFindNotification, @"PDFDidEndDocumentFind");
+		CHECK_VALUE(PDFDocumentDidEndPageFindNotification, @"PDFDidEndPageFind");
+		CHECK_VALUE(PDFDocumentDidUnlockNotification, @"PDFDocumentDidUnlock");
+		CHECK_VALUE(PDFThumbnailViewDocumentEditedNotification, @"PDFThumbnailViewDocumentEditedNotification");
+		CHECK_VALUE(PDFViewDocumentChangedNotification, @"PDFViewChangedDocument");
+		CHECK_VALUE(PDFViewPageChangedNotification, @"PDFViewChangedPage");
+		CHECK_VALUE(PDFViewSelectionChangedNotification, @"PDFViewSelectionChanged");
+		CHECK_VALUE(PDFDocumentCreatorAttribute, @"Creator");
+		CHECK_VALUE(PDFDocumentSubjectAttribute, @"Subject");
+		CHECK_VALUE(PDFDocumentModificationDateAttribute, @"ModDate");
+		CHECK_VALUE(PDFDocumentBurnInAnnotationsOption, @"PDFDocumentBurnInAnnotationsOption");
+		CHECK_VALUE(PDFDocumentOptimizeImagesForScreenOption, @"PDFDocumentOptimizeImagesForScreenOption");
+		CHECK_VALUE(PDFDocumentSaveImagesAsJPEGOption, @"PDFDocumentSaveImagesAsJPEGOption");
+		CHECK_VALUE(PDFDocumentSaveTextFromOCROption, @"PDFDocumentSaveTextFromOCROption");
+		CHECK_VALUE(PDFAnnotationKeyBorder, @"/Border");
+		CHECK_VALUE(PDFAnnotationKeyColor, @"/C");
+		CHECK_VALUE(PDFAnnotationKeyDefaultAppearance, @"/DA");
+		CHECK_VALUE(PDFAnnotationKeyPage, @"/P");
+		CHECK_VALUE(PDFAnnotationKeyParent, @"/Parent");
+		CHECK_VALUE(PDFAnnotationKeyPopup, @"/Popup");
+		CHECK_VALUE(PDFAnnotationKeySubtype, @"/Subtype");
+		CHECK_VALUE(PDFAnnotationSubtypeHighlight, @"/Highlight");
+		CHECK_VALUE(PDFAnnotationSubtypeStrikeOut, @"/StrikeOut");
+		CHECK_VALUE(PDFAnnotationSubtypeUnderline, @"/Underline");
+
 		// Notification names share one namespace, so they are checked as one group.
 		NSMutableSet *notifications = [NSMutableSet set];
 		CHECK_STRING(notifications, PDFDocumentDidBeginFindNotification);
@@ -74,10 +111,9 @@ int main(void)
 		CHECK_STRING(annotationSubtypes, PDFAnnotationSubtypeStrikeOut);
 		CHECK_STRING(annotationSubtypes, PDFAnnotationSubtypeUnderline);
 
-		// The value is not documented, so none is pinned. It stands for "no x or y", so it must be a
-		// number and must not be zero, which is a real coordinate.
+		// The value is not documented; macOS reports FLT_MAX stored as a CGFloat, not CGFLOAT_MAX.
 		double unspecified = (double)kPDFDestinationUnspecifiedValue;
-		CHECK(isfinite(unspecified) && unspecified != 0, "kPDFDestinationUnspecifiedValue is not finite and non-zero");
+		CHECK(isfinite(unspecified) && unspecified == (double)FLT_MAX, "kPDFDestinationUnspecifiedValue is not FLT_MAX");
 	}
 	if (failures) {
 		printf("%d failure(s)\n", failures);

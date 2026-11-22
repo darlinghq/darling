@@ -25,28 +25,29 @@ PDFDocumentAttribute const PDFDocumentCreationDateAttribute = @"CreationDate";
 PDFDocumentAttribute const PDFDocumentKeywordsAttribute = @"Keywords";
 PDFDocumentAttribute const PDFDocumentTitleAttribute = @"Title";
 
-// GUESS: the documentation gives no string values for these three attributes; the values follow
-// the existing attributes above (symbol name without the PDFDocument prefix and Attribute suffix).
-// The PDF Info dictionary key for the modification date in ISO 32000 is ModDate; that spelling
-// is the alternative if the symbol-name form turns out wrong.
+// The documentation gives no string values for these three attributes. They are the PDF Info
+// dictionary key names (Creator, Subject and, as in ISO 32000, ModDate), as macOS 26.7.3 and
+// 10.14.4 report (black-box observation). Test: tests/src/pdfkit_constants.m
 PDFDocumentAttribute const PDFDocumentCreatorAttribute = @"Creator";
-PDFDocumentAttribute const PDFDocumentModificationDateAttribute = @"ModificationDate";
+PDFDocumentAttribute const PDFDocumentModificationDateAttribute = @"ModDate";
 PDFDocumentAttribute const PDFDocumentSubjectAttribute = @"Subject";
 
-// GUESS: the documentation gives no string values for these write options; the values are the
-// symbol name without the PDFDocument prefix and Option suffix, as for the attributes above.
-PDFDocumentWriteOption const PDFDocumentBurnInAnnotationsOption = @"BurnInAnnotations";
-PDFDocumentWriteOption const PDFDocumentOptimizeImagesForScreenOption = @"OptimizeImagesForScreen";
-PDFDocumentWriteOption const PDFDocumentSaveImagesAsJPEGOption = @"SaveImagesAsJPEG";
-PDFDocumentWriteOption const PDFDocumentSaveTextFromOCROption = @"SaveTextFromOCR";
+// The documentation gives no string values for these write options. macOS 26.7.3 reports the symbol
+// name as the value, like the other PDFDocument options (black-box observation); the constants are
+// absent on 10.14.4 and are provided here regardless. Test: tests/src/pdfkit_constants.m
+PDFDocumentWriteOption const PDFDocumentBurnInAnnotationsOption = @"PDFDocumentBurnInAnnotationsOption";
+PDFDocumentWriteOption const PDFDocumentOptimizeImagesForScreenOption = @"PDFDocumentOptimizeImagesForScreenOption";
+PDFDocumentWriteOption const PDFDocumentSaveImagesAsJPEGOption = @"PDFDocumentSaveImagesAsJPEGOption";
+PDFDocumentWriteOption const PDFDocumentSaveTextFromOCROption = @"PDFDocumentSaveTextFromOCROption";
 
-// GUESS: the documentation gives no string values for these notification names; the values
-// are the symbol names, as for the other framework notifications in Darling.
-NSNotificationName const PDFDocumentDidBeginFindNotification = @"PDFDocumentDidBeginFindNotification";
-NSNotificationName const PDFDocumentDidBeginPageFindNotification = @"PDFDocumentDidBeginPageFindNotification";
-NSNotificationName const PDFDocumentDidEndFindNotification = @"PDFDocumentDidEndFindNotification";
-NSNotificationName const PDFDocumentDidEndPageFindNotification = @"PDFDocumentDidEndPageFindNotification";
-NSNotificationName const PDFDocumentDidUnlockNotification = @"PDFDocumentDidUnlockNotification";
+// The documentation gives no string values for these notification names. They are the strings macOS
+// 26.7.3 and 10.14.4 report for these constants (black-box observation); they do not follow the
+// symbol names. Test: tests/src/pdfkit_constants.m
+NSNotificationName const PDFDocumentDidBeginFindNotification = @"PDFDidBeginDocumentFind";
+NSNotificationName const PDFDocumentDidBeginPageFindNotification = @"PDFDidBeginPageFind";
+NSNotificationName const PDFDocumentDidEndFindNotification = @"PDFDidEndDocumentFind";
+NSNotificationName const PDFDocumentDidEndPageFindNotification = @"PDFDidEndPageFind";
+NSNotificationName const PDFDocumentDidUnlockNotification = @"PDFDocumentDidUnlock";
 
 @implementation PDFDocument
 

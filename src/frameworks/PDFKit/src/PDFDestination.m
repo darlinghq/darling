@@ -21,9 +21,9 @@
 #import <darling-stub-forwarding.h>
 #include <float.h>
 
-// GUESS: the documentation says only that this is the value used when a destination's x or y is
-// unimportant, and does not state it. FLT_MAX is used because no real page coordinate takes it and
-// it fits CGFloat on both widths; CGFLOAT_MAX is an equally valid GUESS.
+// The documentation says only that this is the value used when a destination's x or y is
+// unimportant, and does not state it. macOS 26.7.3 and 10.14.4 report FLT_MAX stored as a CGFloat
+// (not CGFLOAT_MAX) (black-box observation). Test: tests/src/pdfkit_constants.m
 const CGFloat kPDFDestinationUnspecifiedValue = FLT_MAX;
 
 @implementation PDFDestination
