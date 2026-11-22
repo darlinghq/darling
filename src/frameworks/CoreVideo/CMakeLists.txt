@@ -27,6 +27,7 @@ add_framework(CoreVideo
 	    src/CVMetalTexture.c
 	    src/CVOpenGLTextureCache.c
 	    src/CVOpenGLESTextureCache.c
+	    src/CVHostTime.c
         src/CVDisplayLink.mm
 
     DEPENDENCIES
