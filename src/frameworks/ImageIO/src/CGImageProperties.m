@@ -82,13 +82,14 @@ const CFStringRef kCGImagePropertyTIFFDocumentName = CFSTR("DocumentName");
 const CFStringRef kCGImagePropertyTIFFImageDescription = CFSTR("ImageDescription");
 const CFStringRef kCGImagePropertyMakerAppleDictionary = CFSTR("{MakerApple}");
 
-// The documentation names these keys but not their strings, so every value
-// below is a GUESS derived from the naming convention of the constants above
-// (a dictionary key is the key name without its kCGImageProperty<Dictionary>
-// prefix, a dictionary is "{Name}") and is pending confirmation on a real Mac.
+// The documentation names these keys but not their strings. The values follow
+// the naming convention of the constants above (a dictionary key is the key
+// name without its kCGImageProperty<Dictionary> prefix, a dictionary is
+// "{Name}") and were confirmed by printing the constants through the public
+// API on macOS 26.7.3 and 10.14.4 (black-box observation).
 // Test: tests/src/imageio_property_keys.c
-const CFStringRef kCGImagePropertyExifDateTimeDigitized = CFSTR("DateTimeDigitized"); // GUESS
-const CFStringRef kCGImagePropertyIPTCDateCreated = CFSTR("DateCreated"); // GUESS
-const CFStringRef kCGImagePropertyIPTCDigitalCreationDate = CFSTR("DigitalCreationDate"); // GUESS
-const CFStringRef kCGImagePropertyRawDictionary = CFSTR("{Raw}"); // GUESS
-const CFStringRef kCGImagePropertyTIFFDateTime = CFSTR("DateTime"); // GUESS
+const CFStringRef kCGImagePropertyExifDateTimeDigitized = CFSTR("DateTimeDigitized");
+const CFStringRef kCGImagePropertyIPTCDateCreated = CFSTR("DateCreated");
+const CFStringRef kCGImagePropertyIPTCDigitalCreationDate = CFSTR("DigitalCreationDate");
+const CFStringRef kCGImagePropertyRawDictionary = CFSTR("{Raw}");
+const CFStringRef kCGImagePropertyTIFFDateTime = CFSTR("DateTime");

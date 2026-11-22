@@ -5,8 +5,9 @@
 // kCGImagePropertyIPTCDigitalCreationDate, kCGImagePropertyRawDictionary and
 // kCGImagePropertyTIFFDateTime. Each must be a non-NULL CFString, and the keys
 // that share a dictionary must be pairwise distinct. The string values are not
-// documented and are not pinned. Prints OK, or the failures with a non-zero
-// exit status.
+// documented; they are pinned to what macOS 26.7.3 and 10.14.4 report for the
+// same constants (black-box observation). Prints OK, or the failures with a
+// non-zero exit status.
 #include <ImageIO/ImageIO.h>
 #include <stdio.h>
 
@@ -28,7 +29,22 @@ static void distinct(const char *group, const CFStringRef *keys, const char *con
     }
 }
 
+#define IS_VALUE(name, expected) \
+    do { \
+        CFStringRef expectedString = CFSTR(expected); \
+        if ((name) == NULL || !CFEqual((name), expectedString)) { \
+            printf("FAIL: %s is not \"%s\"\n", #name, expected); \
+            failures++; \
+        } \
+    } while (0)
+
 int main(void) {
+    IS_VALUE(kCGImagePropertyExifDateTimeDigitized, "DateTimeDigitized");
+    IS_VALUE(kCGImagePropertyIPTCDateCreated, "DateCreated");
+    IS_VALUE(kCGImagePropertyIPTCDigitalCreationDate, "DigitalCreationDate");
+    IS_VALUE(kCGImagePropertyRawDictionary, "{Raw}");
+    IS_VALUE(kCGImagePropertyTIFFDateTime, "DateTime");
+
     IS_STRING(kCGImagePropertyExifDateTimeDigitized);
     IS_STRING(kCGImagePropertyIPTCDateCreated);
     IS_STRING(kCGImagePropertyIPTCDigitalCreationDate);
