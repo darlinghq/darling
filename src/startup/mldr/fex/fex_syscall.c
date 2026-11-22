@@ -471,6 +471,49 @@ static long guest_rt_sigprocmask(long how, uintptr_t new_set, uintptr_t old_set,
 	return 0;
 }
 
+#define GUEST_MINSIGSTKSZ 2048
+
+// The guest's alternate signal stack, per thread. The host's belongs to the FEXCore shim, which runs its
+// signal handlers on it.
+static __thread struct fex_guest_stack t_guest_altstack = { .flags = FEX_GUEST_SS_DISABLE };
+
+// Each guest thread's alternate signal stack, as Linux keeps it; `guest_sp` is the caller's stack pointer.
+static long guest_sigaltstack(uintptr_t new_stack, uintptr_t old_stack, uint64_t guest_sp)
+{
+	struct fex_guest_stack* current = &t_guest_altstack;
+	bool on_stack = !(current->flags & FEX_GUEST_SS_DISABLE)
+		&& guest_sp > current->sp && guest_sp - current->sp <= current->size;
+	struct fex_guest_stack old = *current;
+	old.flags = on_stack ? FEX_GUEST_SS_ONSTACK : (current->flags & FEX_GUEST_SS_DISABLE);
+
+	if (new_stack) {
+		struct fex_guest_stack requested;
+		long rc = fex_copy_from_guest(&requested, (const void*)new_stack, sizeof(requested));
+		if (rc != 0)
+			return rc;
+		if (on_stack)
+			return -EPERM;
+		// SS_AUTODISARM is not implemented.
+		int mode = requested.flags;
+		if (mode != 0 && mode != FEX_GUEST_SS_ONSTACK && mode != FEX_GUEST_SS_DISABLE)
+			return -EINVAL;
+		if (mode == FEX_GUEST_SS_DISABLE) {
+			memset(current, 0, sizeof(*current));
+			current->flags = FEX_GUEST_SS_DISABLE;
+		} else {
+			if (requested.size < GUEST_MINSIGSTKSZ)
+				return -ENOMEM;
+			current->sp = requested.sp;
+			current->size = requested.size;
+			current->flags = 0;
+		}
+	}
+
+	if (old_stack)
+		return fex_copy_to_guest((void*)old_stack, &old, sizeof(old));
+	return 0;
+}
+
 // x86_64 and arm64 Linux number four of the open flags differently. The guest uses the x86_64 values.
 #define X86_O_DIRECT     0040000L
 #define X86_O_LARGEFILE  0100000L
@@ -542,6 +585,10 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 
 		case 14: // rt_sigprocmask
 			ret = guest_rt_sigprocmask(a1, (uintptr_t)a2, (uintptr_t)a3, a4);
+			break;
+
+		case 131: // sigaltstack
+			ret = guest_sigaltstack((uintptr_t)a1, (uintptr_t)a2, state->rsp);
 			break;
 
 		case 158: // arch_prctl
