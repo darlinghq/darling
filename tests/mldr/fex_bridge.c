@@ -490,6 +490,50 @@ static void test_signal_mask_filter(void)
 	pthread_sigmask(SIG_SETMASK, &before, NULL);
 }
 
+// libwayland-client calls the dispatcher of a proxy for every event of it, as
+// dispatcher(implementation, proxy, opcode, message, arguments). The dispatcher is a guest function.
+static uint64_t g_wl_seen_dispatcher = 0;
+static int host_wl_proxy_add_dispatcher(void* proxy, uint64_t dispatcher, const void* implementation, void* data)
+{
+	(void)proxy;
+	(void)implementation;
+	(void)data;
+	g_wl_seen_dispatcher = dispatcher;
+	return 0;
+}
+
+static void test_wayland_dispatcher(void)
+{
+	void* stub = fex_dlsym_wrap_if_func((void*)host_wl_proxy_add_dispatcher, "wl_proxy_add_dispatcher");
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rax = stub_syscall_nr(stub);
+	st.rdi = 0x7f0000a000;
+	st.rsi = 0x5000200;
+	st.rdx = 0x1111;
+	st.r10 = 0x2222;
+	fex_linux_syscall_dispatch(&st);
+	bool replaced = g_wl_seen_dispatcher != 0 && g_wl_seen_dispatcher != 0x5000200;
+	check(replaced, "libwayland is given a host function in place of the guest's dispatcher");
+	if (!replaced)
+		return; // calling the guest's pointer natively would crash and lose the report
+
+	// What libwayland does for an event: call the dispatcher with the implementation, proxy, opcode, message, arguments.
+	last_cb_args_fn = 0;
+	uint64_t ret = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))(uintptr_t)g_wl_seen_dispatcher)(
+		0x1111, 0x7f0000a000, 3, 0xaaaa, 0xbbbb);
+	check(last_cb_args_fn == 0x5000200 && ret == 0x88, "an event runs the guest dispatcher under FEX");
+	check(last_cb_args[0] == 0x1111 && last_cb_args[1] == 0x7f0000a000 && last_cb_args[2] == 3 &&
+	      last_cb_args[3] == 0xaaaa && last_cb_args[4] == 0xbbbb,
+		"the guest dispatcher gets the implementation, proxy, opcode, message and arguments");
+
+	// A dispatcher the guest removes stays removed.
+	st.rax = stub_syscall_nr(stub);
+	st.rsi = 0;
+	fex_linux_syscall_dispatch(&st);
+	check(g_wl_seen_dispatcher == 0, "a NULL dispatcher stays NULL");
+}
+
 static void test_syscall_translations(void)
 {
 	struct fex_x86_64_state st;
@@ -959,6 +1003,7 @@ int main(void)
 	test_host_callback_thunks();
 	test_xlib_handler_restore();
 	test_signal_mask_filter();
+	test_wayland_dispatcher();
 	test_syscall_translations();
 	test_safe_memory_access();
 	return failures ? 1 : 0;

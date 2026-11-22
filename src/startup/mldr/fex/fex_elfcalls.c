@@ -327,6 +327,9 @@ static const struct { const char* name; unsigned mask; } g_callback_args[] = {
 	// between the guest and the host; they are replaced by a function that ignores the message.
 	{ "TIFFSetErrorHandler", FEX_CALLBACK_IGNORE | 0x1 }, { "TIFFSetWarningHandler", FEX_CALLBACK_IGNORE | 0x1 },
 	{ "TIFFSetErrorHandlerExt", FEX_CALLBACK_IGNORE | 0x1 }, { "TIFFSetWarningHandlerExt", FEX_CALLBACK_IGNORE | 0x1 },
+	// wl_proxy_add_dispatcher(proxy, dispatcher, implementation, data): libwayland-client calls the dispatcher
+	// as dispatcher(implementation, proxy, opcode, message, arguments) for every event of the proxy.
+	{ "wl_proxy_add_dispatcher", 0x2 },
 };
 
 long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
