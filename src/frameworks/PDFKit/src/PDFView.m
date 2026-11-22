@@ -21,6 +21,12 @@
 #import <Foundation/NSRaise.h>
 #import <darling-stub-forwarding.h>
 
+// GUESS: the documentation gives no string values for these notification names; the values
+// are the symbol names, as for the other framework notifications in Darling.
+NSNotificationName const PDFViewDocumentChangedNotification = @"PDFViewDocumentChangedNotification";
+NSNotificationName const PDFViewPageChangedNotification = @"PDFViewPageChangedNotification";
+NSNotificationName const PDFViewSelectionChangedNotification = @"PDFViewSelectionChangedNotification";
+
 @implementation PDFView
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

@@ -17,7 +17,10 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import <PDFKit/PDFKitExport.h>
 #include <Foundation/Foundation.h>
+
+PDFKIT_EXPORT NSString * const PDFThumbnailViewDocumentEditedNotification;
 
 @interface PDFThumbnailView : NSObject
 

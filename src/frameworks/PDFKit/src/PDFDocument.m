@@ -25,6 +25,29 @@ PDFDocumentAttribute const PDFDocumentCreationDateAttribute = @"CreationDate";
 PDFDocumentAttribute const PDFDocumentKeywordsAttribute = @"Keywords";
 PDFDocumentAttribute const PDFDocumentTitleAttribute = @"Title";
 
+// GUESS: the documentation gives no string values for these three attributes; the values follow
+// the existing attributes above (symbol name without the PDFDocument prefix and Attribute suffix).
+// The PDF Info dictionary key for the modification date in ISO 32000 is ModDate; that spelling
+// is the alternative if the symbol-name form turns out wrong.
+PDFDocumentAttribute const PDFDocumentCreatorAttribute = @"Creator";
+PDFDocumentAttribute const PDFDocumentModificationDateAttribute = @"ModificationDate";
+PDFDocumentAttribute const PDFDocumentSubjectAttribute = @"Subject";
+
+// GUESS: the documentation gives no string values for these write options; the values are the
+// symbol name without the PDFDocument prefix and Option suffix, as for the attributes above.
+PDFDocumentWriteOption const PDFDocumentBurnInAnnotationsOption = @"BurnInAnnotations";
+PDFDocumentWriteOption const PDFDocumentOptimizeImagesForScreenOption = @"OptimizeImagesForScreen";
+PDFDocumentWriteOption const PDFDocumentSaveImagesAsJPEGOption = @"SaveImagesAsJPEG";
+PDFDocumentWriteOption const PDFDocumentSaveTextFromOCROption = @"SaveTextFromOCR";
+
+// GUESS: the documentation gives no string values for these notification names; the values
+// are the symbol names, as for the other framework notifications in Darling.
+NSNotificationName const PDFDocumentDidBeginFindNotification = @"PDFDocumentDidBeginFindNotification";
+NSNotificationName const PDFDocumentDidBeginPageFindNotification = @"PDFDocumentDidBeginPageFindNotification";
+NSNotificationName const PDFDocumentDidEndFindNotification = @"PDFDocumentDidEndFindNotification";
+NSNotificationName const PDFDocumentDidEndPageFindNotification = @"PDFDocumentDidEndPageFindNotification";
+NSNotificationName const PDFDocumentDidUnlockNotification = @"PDFDocumentDidUnlockNotification";
+
 @implementation PDFDocument
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
