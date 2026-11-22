@@ -9,6 +9,11 @@
  * values (callback, GetValue, input report callback, report bytes); LEDs
  * through IOHIDDeviceSetValue and IOHIDDeviceSetReport (synchronous and with
  * a callback), GetReport of the output report and the errors of bad reports.
+ * The completion callbacks of IOHIDDeviceSetReportWithCallback and
+ * IOHIDDeviceGetReportWithCallback (once, on the run loop or the dispatch queue
+ * the device is scheduled with, with the result, the report and its length;
+ * none for a call that fails) and of the asynchronous report calls of the
+ * IOHIDDeviceInterface plug-in interface.
  * Mode "mouse": matched as Mouse and as Pointer; buttons, X, Y, wheel and AC
  * Pan elements (relative) and their values.
  * Modes "xboxff", "ds4ff" and "ds4usbff": a game controller with force feedback has the
@@ -31,6 +36,9 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOKitLib.h>
 #include <IOKit/hid/IOHIDLib.h>
+#include <IOKit/IOCFPlugIn.h>
+#include <dispatch/dispatch.h>
+#include <pthread.h>
 
 static int failures;
 static const char *ctl;
@@ -195,12 +203,42 @@ static void report_cb(void *ctx, IOReturn r, void *sender, IOHIDReportType type,
 	report_cb_count++;
 }
 
+/* What the completion callback of a report call with a callback got */
 static int async_done;
 static IOReturn async_result = -1;
+static void *async_ctx, *async_sender;
+static IOHIDReportType async_type;
+static uint32_t async_id;
+static uint8_t *async_report;
+static CFIndex async_length;
 static void async_cb(void *ctx, IOReturn r, void *sender, IOHIDReportType type, uint32_t id, uint8_t *report, CFIndex length)
 {
 	async_result = r;
+	async_ctx = ctx;
+	async_sender = sender;
+	async_type = type;
+	async_id = id;
+	async_report = report;
+	async_length = length;
 	async_done++;
+}
+
+static void async_reset(void)
+{
+	async_done = 0;
+	async_result = -1;
+	async_ctx = async_sender = NULL;
+	async_report = NULL;
+	async_length = -1;
+}
+
+/* Waits for the first completion, then for a while to see that no second one follows */
+static int async_once(void)
+{
+	for (int i = 0; i < 100 && async_done == 0; i++)
+		spin(0.05);
+	spin(0.3);
+	return async_done == 1;
 }
 
 /* The host's view of the device: the lines of vpad.log */
@@ -254,6 +292,136 @@ static int led_state_is(int expected)
 	}
 	return 0;
 }
+
+/* The asynchronous report calls of the IOHIDDeviceInterface plug-in interface: the callback gets the
+ * target, the result, the refcon, the sender and the length */
+static int old_done;
+static IOReturn old_result = -1;
+static void *old_target, *old_refcon;
+static uint32_t old_size;
+static void old_cb(void *target, IOReturn result, void *refcon, void *sender, uint32_t size)
+{
+	old_result = result;
+	old_target = target;
+	old_refcon = refcon;
+	old_size = size;
+	old_done++;
+}
+
+static int old_once(void)
+{
+	for (int i = 0; i < 100 && old_done == 0; i++)
+		spin(0.05);
+	spin(0.3);
+	return old_done == 1;
+}
+
+static void test_obsolete_interface(IOHIDDeviceRef dev)
+{
+	IOCFPlugInInterface **plug = NULL;
+	IOHIDDeviceInterface122 **hid = NULL;
+	SInt32 score;
+	static int ta, tb;
+
+	IOReturn r = IOCreatePlugInInterfaceForService(IOHIDDeviceGetService(dev), kIOHIDDeviceUserClientTypeID,
+		kIOCFPlugInInterfaceID, &plug, &score);
+	expect("the IOHIDDeviceInterface plug-in loads", r == kIOReturnSuccess && plug);
+	if (!plug)
+		return;
+	HRESULT hr = (*plug)->QueryInterface(plug, CFUUIDGetUUIDBytes(kIOHIDDeviceInterfaceID122), (LPVOID *) &hid);
+	IODestroyPlugInInterface(plug);
+	expect("the IOHIDDeviceInterface122 is available", hr == S_OK && hid);
+	if (!hid)
+		return;
+	expect("the old interface opens", (*hid)->open(hid, 0) == kIOReturnSuccess);
+
+	CFRunLoopSourceRef src = NULL;
+	expect("the old interface has an async event source", (*hid)->createAsyncEventSource(hid, &src) == kIOReturnSuccess && src);
+	if (src)
+		CFRunLoopAddSource(CFRunLoopGetCurrent(), src, kCFRunLoopDefaultMode);
+
+	uint8_t leds = 0x01;
+	old_done = 0;
+	r = (*hid)->setReport(hid, kIOHIDReportTypeOutput, 0, &leds, 1, 5000, old_cb, &ta, &tb);
+	expect("IOHIDDeviceInterface setReport with a callback is accepted", r == kIOReturnSuccess);
+	expect("IOHIDDeviceInterface setReport: the callback is called once", old_once());
+	expect("IOHIDDeviceInterface setReport: success, target, refcon and length 1",
+		old_result == kIOReturnSuccess && old_target == &ta && old_refcon == &tb && old_size == 1);
+	expect("host got Num Lock from the old interface", led_state_is(0x01));
+
+	uint8_t got[4] = { 0xff };
+	uint32_t size = sizeof got;
+	old_done = 0;
+	r = (*hid)->getReport(hid, kIOHIDReportTypeOutput, 0, got, &size, 5000, old_cb, &ta, &tb);
+	expect("IOHIDDeviceInterface getReport with a callback is accepted", r == kIOReturnSuccess);
+	expect("IOHIDDeviceInterface getReport: the callback is called once", old_once());
+	expect("IOHIDDeviceInterface getReport: success, target, refcon and length 1, the LED state in the buffer",
+		old_result == kIOReturnSuccess && old_target == &ta && old_refcon == &tb && old_size == 1 && got[0] == 0x01);
+
+	uint8_t bad[2] = { 1, 1 };
+	old_done = 0;
+	r = (*hid)->setReport(hid, kIOHIDReportTypeOutput, 0, bad, 2, 5000, old_cb, &ta, &tb);
+	spin(0.5);
+	expect("IOHIDDeviceInterface setReport of a bad report fails without a callback", r == kIOReturnBadArgument && old_done == 0);
+
+	if (src)
+	{
+		CFRunLoopRemoveSource(CFRunLoopGetCurrent(), src, kCFRunLoopDefaultMode);
+		CFRelease(src);
+	}
+	(*hid)->close(hid);
+	(*hid)->Release(hid);
+}
+
+/* The completion of a device scheduled with a dispatch queue comes on that queue */
+static const char queue_key;
+static int queue_done;
+static void queue_cb(void *ctx, IOReturn r, void *sender, IOHIDReportType type, uint32_t id, uint8_t *report, CFIndex length)
+{
+	async_cb(ctx, r, sender, type, id, report, length);
+	queue_done = dispatch_get_specific(&queue_key) == &queue_key && !pthread_main_np();
+}
+
+static void test_dispatch_queue(void)
+{
+	dispatch_queue_t q = dispatch_queue_create("hid-test-queue", DISPATCH_QUEUE_SERIAL);
+	dispatch_queue_set_specific(q, &queue_key, (void *) &queue_key, NULL);
+
+	IOHIDManagerRef mgr = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+	int page = kHIDPage_GenericDesktop, usage = kHIDUsage_GD_Keyboard;
+	CFMutableDictionaryRef d = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	CFNumberRef p = CFNumberCreate(NULL, kCFNumberIntType, &page), u = CFNumberCreate(NULL, kCFNumberIntType, &usage);
+	CFDictionarySetValue(d, CFSTR(kIOHIDDeviceUsagePageKey), p);
+	CFDictionarySetValue(d, CFSTR(kIOHIDDeviceUsageKey), u);
+	IOHIDManagerSetDeviceMatching(mgr, d);
+	CFRelease(p);
+	CFRelease(u);
+	CFRelease(d);
+	IOHIDManagerSetDispatchQueue(mgr, q);
+	IOHIDManagerActivate(mgr);
+	expect("the dispatch queue manager opens", IOHIDManagerOpen(mgr, kIOHIDOptionsTypeNone) == kIOReturnSuccess);
+	for (int i = 0; i < 100 && device_count(mgr) == 0; i++)
+		usleep(50000);
+	IOHIDDeviceRef dev = first_device(mgr);
+	expect("the dispatch queue manager has the keyboard", dev != NULL);
+	if (dev)
+	{
+		static uint8_t leds = 0x03;
+		static int token;
+		async_reset();
+		queue_done = 0;
+		IOReturn r = IOHIDDeviceSetReportWithCallback(dev, kIOHIDReportTypeOutput, 0, &leds, 1, 5.0, queue_cb, &token);
+		expect("SetReportWithCallback on a dispatch queue device is accepted", r == kIOReturnSuccess);
+		for (int i = 0; i < 100 && async_done == 0; i++)
+			usleep(50000);
+		usleep(300000);
+		expect("the callback is called once, on the queue", async_done == 1 && queue_done);
+		expect("the queue callback got success, the context and length 1", async_result == kIOReturnSuccess && async_ctx == &token && async_length == 1);
+		expect("host got Num Lock and Caps Lock from the queue report", led_state_is(0x03));
+	}
+	IOHIDManagerCancel(mgr);
+}
+
 
 static void test_keyboard(void)
 {
@@ -350,12 +518,54 @@ static void test_keyboard(void)
 	expect("padding bits are not LEDs", IOHIDDeviceSetReport(dev, kIOHIDReportTypeOutput, 0, &leds, 1) == kIOReturnSuccess);
 	expect("host got all LEDs off", led_state_is(0x00));
 
-	/* With a callback: the call is accepted and sets the LEDs (the completion is not delivered, see the
-	 * notes of the change) */
+	/* With a callback: the call returns at once, the callback comes later from the run loop, once */
+	static int token;
 	leds = 0x02;
-	r = IOHIDDeviceSetReportWithCallback(dev, kIOHIDReportTypeOutput, 0, &leds, 1, 5.0, async_cb, NULL);
+	async_reset();
+	r = IOHIDDeviceSetReportWithCallback(dev, kIOHIDReportTypeOutput, 0, &leds, 1, 5.0, async_cb, &token);
 	expect("SetReportWithCallback is accepted", r == kIOReturnSuccess);
+	expect("the callback is not called from inside the call", async_done == 0);
+	expect("SetReportWithCallback: the callback is called once", async_once());
+	expect("SetReportWithCallback: result is success", async_result == kIOReturnSuccess);
+	expect("SetReportWithCallback: the context is the caller's", async_ctx == &token);
+	expect("SetReportWithCallback: the sender is the device", async_sender == (void *) dev);
+	expect("SetReportWithCallback: type Output, report ID 0", async_type == kIOHIDReportTypeOutput && async_id == 0);
+	expect("SetReportWithCallback: the report and its length are the caller's", async_report == &leds && async_length == 1);
 	expect("host got Caps Lock from the report with a callback", led_state_is(0x02));
+
+	uint8_t buf[4] = { 0xff };
+	length = sizeof buf;
+	async_reset();
+	r = IOHIDDeviceGetReportWithCallback(dev, kIOHIDReportTypeOutput, 0, buf, &length, 5.0, async_cb, &token);
+	expect("GetReportWithCallback is accepted", r == kIOReturnSuccess);
+	expect("GetReportWithCallback: the callback is called once", async_once());
+	expect("GetReportWithCallback: result is success", async_result == kIOReturnSuccess);
+	expect("GetReportWithCallback: the context is the caller's", async_ctx == &token);
+	expect("GetReportWithCallback: the sender is the device", async_sender == (void *) dev);
+	expect("GetReportWithCallback: type Output, report ID 0", async_type == kIOHIDReportTypeOutput && async_id == 0);
+	expect("GetReportWithCallback: the report is the caller's buffer with the LED state", async_report == buf && buf[0] == 0x02);
+	expect("GetReportWithCallback: the length is 1", async_length == 1);
+
+	/* A timeout is for a call that does not complete in time; these complete at once */
+	leds = 0x04;
+	async_reset();
+	r = IOHIDDeviceSetReportWithCallback(dev, kIOHIDReportTypeOutput, 0, &leds, 1, 0.001, async_cb, &token);
+	expect("SetReportWithCallback with a very short timeout is accepted", r == kIOReturnSuccess);
+	expect("a short timeout does not fail a call that completes at once", async_once() && async_result == kIOReturnSuccess);
+	expect("host got Scroll Lock from the short-timeout report", led_state_is(0x04));
+
+	/* A call that fails returns the error and never calls back */
+	uint8_t bad[2] = { 1, 1 };
+	async_reset();
+	r = IOHIDDeviceSetReportWithCallback(dev, kIOHIDReportTypeOutput, 0, bad, 2, 5.0, async_cb, &token);
+	expect("SetReportWithCallback of a 2-byte LED report is refused", r == kIOReturnBadArgument);
+	length = sizeof buf;
+	r = IOHIDDeviceGetReportWithCallback(dev, kIOHIDReportTypeOutput, 7, buf, &length, 5.0, async_cb, &token);
+	expect("GetReportWithCallback of an unknown report is refused", r != kIOReturnSuccess);
+	spin(0.5);
+	expect("no callback for a call that failed", async_done == 0);
+
+	test_obsolete_interface(dev);
 
 	/* Errors */
 	uint8_t two[2] = { 1, 1 };
@@ -370,6 +580,7 @@ static void test_keyboard(void)
 	}));
 
 	CFRelease(elems);
+	test_dispatch_queue();
 	sync_point("unplug");
 	for (int i = 0; i < 200 && device_count(kbd) != 0; i++)
 		spin(0.05);
