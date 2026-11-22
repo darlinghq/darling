@@ -24,6 +24,8 @@ add_framework(BackgroundAssets
         src/BAConstants.m
         src/BADownload.m
         src/BAURLDownload.m
+        src/BAAppExtensionInfo.m
+        src/BADownloadManager.m
 
     DEPENDENCIES
         system
