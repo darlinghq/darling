@@ -23,8 +23,9 @@
 NSString *const AVAssetExportPresetHighestQuality = @"AVAssetExportPresetHighestQuality";
 NSString *const AVAssetExportPresetMediumQuality = @"AVAssetExportPresetMediumQuality";
 NSString *const AVAssetExportPresetLowQuality = @"AVAssetExportPresetLowQuality";
-// GUESS: the documentation gives no string value for this preset; the value is the symbol name,
-// as for all three presets above.
+// The documentation gives no string value for this preset; macOS 26.7.3 and 10.14.4 report the symbol
+// name, as for the three presets above (black-box observation).
+// Test: tests/src/avfoundation_constants.m
 NSString *const AVAssetExportPresetAppleM4A = @"AVAssetExportPresetAppleM4A";
 NSString *const AVCaptureDeviceWasConnectedNotification = @"AVCaptureDeviceWasConnectedNotification";
 NSString *const AVCaptureDeviceWasDisconnectedNotification = @"AVCaptureDeviceWasDisconnectedNotification";
@@ -106,12 +107,10 @@ const AVMediaType AVMediaTypeAudio = @"soun";
 const AVMediaType AVMediaTypeMuxed = @"muxx";
 const AVMediaType AVMediaTypeVideo = @"vide";
 
-// GUESS, the least supported value of this change's guesses: no public source gives the string. The
-// nearest siblings in the same AVMediaFormat.h family use short codes (AVMediaTypeAudio is "soun",
-// AVMediaTypeVideo "vide", AVMetadataID3MetadataKeyUserURL "WXXX"), which suggests a short code, but
-// guessing a code would be invention. The symbol name is only a placeholder, to be replaced by a
-// value printed on a real Mac.
-const AVMetadataKeySpace AVMetadataKeySpaceCommon = @"AVMetadataKeySpaceCommon";
+// The documentation gives no string value for this key space. macOS 26.7.3 and 10.14.4 report the
+// four-character code "comn", like the sibling key spaces (black-box observation; the symbol name is
+// not the value). Test: tests/src/avfoundation_constants.m
+const AVMetadataKeySpace AVMetadataKeySpaceCommon = @"comn";
 
 const AVMetadataKey AVMetadataCommonKeyAlbumName = @"albumName";
 const AVMetadataKey AVMetadataCommonKeyArtist = @"artist";

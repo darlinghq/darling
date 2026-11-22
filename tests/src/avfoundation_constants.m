@@ -2,10 +2,11 @@
 // Copyright (C) 2026 Darling developers
 //
 // AVAssetExportPresetAppleM4A and AVMetadataKeySpaceCommon are exported NSString constants. The
-// documentation gives no string values, so this test pins none: it checks that each constant
-// exists, is a non-empty NSString and differs from its documented siblings (the other export
-// presets; the metadata keys, since the only metadata key space declared is AVMetadataKeySpaceCommon
-// and a key space string equal to a key would be a mistake).
+// documentation gives no string values, so this test pins the values macOS 26.7.3 and 10.14.4
+// report (black-box observation: the preset's symbol name and the four-character code "comn"),
+// and checks that each constant is a non-empty NSString that differs from its documented siblings
+// (the other export presets; the metadata keys, since a key space string equal to a key would be a
+// mistake).
 // Prints OK, or the failures with a non-zero exit status.
 #import <AVFoundation/AVFoundation.h>
 #import <Foundation/Foundation.h>
@@ -44,6 +45,14 @@ int main(void)
 			AVMetadataCommonKeyTitle,
 			AVMetadataID3MetadataKeyUserURL,
 		]);
+		if (![AVAssetExportPresetAppleM4A isEqualToString:@"AVAssetExportPresetAppleM4A"]) {
+			printf("FAIL: AVAssetExportPresetAppleM4A is '%s'\n", [AVAssetExportPresetAppleM4A UTF8String]);
+			g_failures++;
+		}
+		if (![AVMetadataKeySpaceCommon isEqualToString:@"comn"]) {
+			printf("FAIL: AVMetadataKeySpaceCommon is '%s', expected 'comn'\n", [AVMetadataKeySpaceCommon UTF8String]);
+			g_failures++;
+		}
 	}
 	printf(g_failures ? "FAILED\n" : "OK\n");
 	return g_failures ? 1 : 0;
