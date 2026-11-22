@@ -20,6 +20,7 @@
 #import <AppKit/AppKit.h>
 
 @class FinderIconViewController;
+@class FinderListViewController;
 
 typedef NS_ENUM(NSInteger, FinderViewStyle) {
     FinderViewStyleIcons,
@@ -103,6 +104,8 @@ typedef NS_ENUM(NSInteger, FinderViewStyle) {
 
 // The icon view's controller, shown in the icon view style
 @property (readonly) FinderIconViewController *iconViewController;
+// The list view's, shown in the list view style
+@property (readonly) FinderListViewController *listViewController;
 
 // Called with an item the user opened (double-clicked, or clicked in the sidebar).
 @property (copy) void (^openItem)(NSURL *item);

@@ -1,4 +1,4 @@
-// CFLAGS: -framework Foundation -framework AppKit -fobjc-arc -Isrc/Finder src/Finder/FinderSidebarController.m
+// CFLAGS: -framework Foundation -framework AppKit -fobjc-arc -Isrc/Finder src/Finder/FinderSidebarController.m src/Finder/FinderDrop.m src/Finder/FinderFileOperation.m
 // Copyright (C) 2026 Lubos Dolezel
 //
 // A Finder window's sidebar (src/Finder/FinderSidebarController), in process: its Favorites (the folders that exist)

@@ -18,6 +18,7 @@
  */
 
 #import <AppKit/AppKit.h>
+#import "FinderFileOperation.h"
 
 // A Finder window's list view: an outline view with the columns Name (icon and name), Date Modified, Size and Kind
 // (identifiers name, modified, size, kind). Folders expand in place; clicking a column header sorts by it.
@@ -41,5 +42,12 @@
 // calls renameItem with the name typed; renaming is up to whoever set it.
 - (void)beginEditingItem:(NSURL *)item;
 @property (copy) void (^renameItem)(NSURL *item, NSString *name);
+
+// The folder shown: a drop on a file's row, or outside a folder's rows, goes there
+@property (copy) NSURL *folderURL;
+
+// Called with the items dropped, the folder they go into and how; carrying it out is up to whoever set it. Rows are
+// dragged as their items' file URLs, and file URLs are taken from other applications too.
+@property (copy) void (^dropItems)(NSArray<NSURL *> *items, NSURL *folder, FinderTransferKind kind);
 
 @end

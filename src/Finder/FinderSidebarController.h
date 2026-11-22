@@ -18,11 +18,23 @@
  */
 
 #import <AppKit/AppKit.h>
+#import "FinderFileOperation.h"
 
 // A Finder window's sidebar. Favorites: Applications, the home folder, and Desktop, Documents and Downloads when they
 // exist. Locations: the mounted volumes that are browsable, kept up to date as volumes are mounted and unmounted;
 // ejectable ones have an eject button.
 @interface FinderSidebarController : NSViewController <NSOutlineViewDataSource, NSOutlineViewDelegate>
+
+// The standard favourites
+- (instancetype)init;
+// The favourites given instead (tests)
+- (instancetype)initWithFavorites:(NSArray<NSURL *> *)favorites;
+
+@property (readonly) NSOutlineView *outlineView;
+
+// Called with the items dropped on an item, the folder they go into and how; carrying it out is up to whoever set it.
+// Drops go on items only: not on section titles, nor between items.
+@property (copy) void (^dropItems)(NSArray<NSURL *> *items, NSURL *folder, FinderTransferKind kind);
 
 // @[@"Favorites", @"Locations"]
 @property (readonly) NSArray<NSString *> *sectionTitles;

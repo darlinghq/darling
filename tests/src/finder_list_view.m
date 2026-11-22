@@ -1,4 +1,4 @@
-// CFLAGS: -framework Foundation -framework AppKit -fobjc-arc -Isrc/Finder src/Finder/FinderDirectory.m src/Finder/FinderDSStore.m src/Finder/FinderFolderStyle.m src/Finder/FinderFreeformLayout.m src/Finder/FinderListViewController.m
+// CFLAGS: -framework Foundation -framework AppKit -fobjc-arc -Isrc/Finder src/Finder/FinderDirectory.m src/Finder/FinderDSStore.m src/Finder/FinderFolderStyle.m src/Finder/FinderFreeformLayout.m src/Finder/FinderListViewController.m src/Finder/FinderDrop.m src/Finder/FinderFileOperation.m
 // ARGS: "$(mktemp -d)/l"
 // Copyright (C) 2026 Lubos Dolezel
 //

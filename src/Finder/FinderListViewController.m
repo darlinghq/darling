@@ -18,6 +18,7 @@
  */
 
 #import "FinderListViewController.h"
+#import "FinderDrop.h"
 #import "FinderDirectory.h"
 
 static const CGFloat FinderListIconSize = 16;
@@ -163,6 +164,10 @@ static const CGFloat FinderListIconSize = 16;
     _outlineView.doubleAction = @selector(openClickedRow:);
     _outlineView.dataSource = self;
     _outlineView.delegate = self;
+    [_outlineView registerForDraggedTypes:@[ NSPasteboardTypeFileURL ]];
+    NSDragOperation offered = NSDragOperationCopy | NSDragOperationMove | NSDragOperationGeneric;
+    [_outlineView setDraggingSourceOperationMask:offered forLocal:YES];
+    [_outlineView setDraggingSourceOperationMask:offered forLocal:NO];
 
     scroll.documentView = _outlineView;
     self.view = scroll;
@@ -380,6 +385,53 @@ static const CGFloat FinderListIconSize = 16;
 {
     if ([[column identifier] isEqual:@"name"])
         [cell setRepresentedObject:item];
+}
+
+#pragma mark Drag and drop
+
+- (id<NSPasteboardWriting>)outlineView:(NSOutlineView *)outlineView pasteboardWriterForItem:(id)item
+{
+    return [item isKindOfClass:[NSURL class]] ? item : nil;
+}
+
+// The folder a drop goes into: a folder's (or a symlink to one) for a drop on its row or between its children;
+// otherwise the window's. The outline view shows the drop on that folder's row, or on the whole view.
+- (NSURL *)folderForDropOnItem:(id)item index:(NSInteger)index outlineView:(NSOutlineView *)outlineView retarget:(BOOL)retarget
+{
+    NSURL *folder = [item isKindOfClass:[NSURL class]] ? FinderDropFolderForItem(item) : nil;
+    if (folder == nil) {
+        if (retarget && (item != nil || index != NSOutlineViewDropOnItemIndex))
+            [outlineView setDropItem:nil dropChildIndex:NSOutlineViewDropOnItemIndex];
+        return self.folderURL;
+    }
+    if (retarget && index != NSOutlineViewDropOnItemIndex)
+        [outlineView setDropItem:item dropChildIndex:NSOutlineViewDropOnItemIndex];
+    return folder;
+}
+
+- (NSDragOperation)outlineView:(NSOutlineView *)outlineView
+                  validateDrop:(id<NSDraggingInfo>)info
+                  proposedItem:(id)item
+            proposedChildIndex:(NSInteger)index
+{
+    NSArray<NSURL *> *items = FinderDraggedFileURLs([info draggingPasteboard]);
+    if (items == nil)
+        return NSDragOperationNone;
+    NSURL *folder = [self folderForDropOnItem:item index:index outlineView:outlineView retarget:YES];
+    return FinderDropOperation(items, folder, [info draggingSourceOperationMask]);
+}
+
+- (BOOL)outlineView:(NSOutlineView *)outlineView acceptDrop:(id<NSDraggingInfo>)info item:(id)item childIndex:(NSInteger)index
+{
+    NSArray<NSURL *> *items = FinderDraggedFileURLs([info draggingPasteboard]);
+    if (items == nil)
+        return NO;
+    NSURL *folder = [self folderForDropOnItem:item index:index outlineView:outlineView retarget:NO];
+    NSDragOperation operation = FinderDropOperation(items, folder, [info draggingSourceOperationMask]);
+    if (operation == NSDragOperationNone || self.dropItems == nil)
+        return NO;
+    self.dropItems(items, folder, FinderTransferKindForDropOperation(operation));
+    return YES;
 }
 
 @end

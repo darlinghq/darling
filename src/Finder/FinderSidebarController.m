@@ -18,6 +18,7 @@
  */
 
 #import "FinderSidebarController.h"
+#import "FinderDrop.h"
 
 static const CGFloat FinderSidebarIconSize = 16;
 
@@ -32,12 +33,20 @@ static const CGFloat FinderSidebarIconSize = 16;
 
 - (instancetype)init
 {
+    return [self initWithFavorites:nil];
+}
+
+- (instancetype)initWithFavorites:(NSArray<NSURL *> *)favorites
+{
     self = [super initWithNibName:nil bundle:nil];
     if (self != nil) {
         _sectionTitles = @[ @"Favorites", @"Locations" ];
         _volumeNames = [NSMutableDictionary dictionary];
         _ejectable = [NSMutableSet set];
-        [self loadFavorites];
+        if (favorites != nil)
+            _favorites = [favorites copy];
+        else
+            [self loadFavorites];
         [self loadLocations];
         NSNotificationCenter *center = [[NSWorkspace sharedWorkspace] notificationCenter];
         for (NSNotificationName name in @[ NSWorkspaceDidMountNotification, NSWorkspaceDidUnmountNotification,
@@ -179,6 +188,7 @@ static const CGFloat FinderSidebarIconSize = 16;
     _outlineView.indentationPerLevel = 8;
     _outlineView.dataSource = self;
     _outlineView.delegate = self;
+    [_outlineView registerForDraggedTypes:@[ NSPasteboardTypeFileURL ]];
     [_outlineView sizeLastColumnToFit];
 
     scroll.documentView = _outlineView;
@@ -313,6 +323,38 @@ static const CGFloat FinderSidebarIconSize = 16;
     id item = [_outlineView itemAtRow:[_outlineView selectedRow]];
     if ([item isKindOfClass:[NSURL class]] && _showFolder != nil)
         _showFolder(item);
+}
+
+#pragma mark Drops
+
+- (NSOutlineView *)outlineView
+{
+    (void) self.view;
+    return _outlineView;
+}
+
+- (NSDragOperation)outlineView:(NSOutlineView *)outlineView
+                  validateDrop:(id<NSDraggingInfo>)info
+                  proposedItem:(id)item
+            proposedChildIndex:(NSInteger)index
+{
+    NSArray<NSURL *> *items = FinderDraggedFileURLs([info draggingPasteboard]);
+    if (items == nil || index != NSOutlineViewDropOnItemIndex || ![item isKindOfClass:[NSURL class]])
+        return NSDragOperationNone;
+    return FinderDropOperation(items, FinderDropFolderForItem(item), [info draggingSourceOperationMask]);
+}
+
+- (BOOL)outlineView:(NSOutlineView *)outlineView acceptDrop:(id<NSDraggingInfo>)info item:(id)item childIndex:(NSInteger)index
+{
+    NSArray<NSURL *> *items = FinderDraggedFileURLs([info draggingPasteboard]);
+    if (items == nil || index != NSOutlineViewDropOnItemIndex || ![item isKindOfClass:[NSURL class]])
+        return NO;
+    NSURL *folder = FinderDropFolderForItem(item);
+    NSDragOperation operation = FinderDropOperation(items, folder, [info draggingSourceOperationMask]);
+    if (operation == NSDragOperationNone || self.dropItems == nil)
+        return NO;
+    self.dropItems(items, folder, FinderTransferKindForDropOperation(operation));
+    return YES;
 }
 
 @end
