@@ -62,6 +62,12 @@ int main(void)
 		expectClass("DOMHTMLImageElement", "DOMHTMLElement");
 		expectClass("DOMHTMLInputElement", "DOMHTMLElement");
 
+		expectClass("DOMHTMLLinkElement", "DOMHTMLElement");
+		expectClass("DOMHTMLMetaElement", "DOMHTMLElement");
+		expectClass("DOMHTMLOptionElement", "DOMHTMLElement");
+		expectClass("DOMHTMLScriptElement", "DOMHTMLElement");
+		expectClass("DOMHTMLTextAreaElement", "DOMHTMLElement");
+
 		expectUnimplementedSelectorIsStubbed("DOMCharacterData");
 	}
 	if (failures == 0)

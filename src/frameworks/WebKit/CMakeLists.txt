@@ -57,6 +57,11 @@ add_framework(WebKit
         src/DOMHTMLHeadingElement.m
         src/DOMHTMLImageElement.m
         src/DOMHTMLInputElement.m
+        src/DOMHTMLLinkElement.m
+        src/DOMHTMLMetaElement.m
+        src/DOMHTMLOptionElement.m
+        src/DOMHTMLScriptElement.m
+        src/DOMHTMLTextAreaElement.m
         src/DOMNode.m
         src/DOMObject.m
         src/DOMRange.m
