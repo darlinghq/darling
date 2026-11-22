@@ -137,9 +137,8 @@ enum darling_target_slice darling_target_slice_arch(const char* path, const uint
 	if (!path || !path[0])
 		return DARLING_TARGET_SLICE_NONE;
 
-	// The launcher is root at this point and the path comes from the user, so a
-	// redirect to a FIFO must not block it and anything but a regular file is
-	// left for mldr to reject.
+	// The path comes from the user, so a redirect to a FIFO must not block the
+	// launcher and anything but a regular file is left for mldr to reject.
 	fd = open(path, O_RDONLY | O_CLOEXEC | O_NONBLOCK);
 	if (fd < 0)
 		return DARLING_TARGET_SLICE_NONE;

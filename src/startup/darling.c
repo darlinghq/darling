@@ -200,13 +200,17 @@ static void relaunchUnderMuvm(char** argv)
 	if (argv[index] == NULL)
 		return;
 
+	// The path and the file behind it are the user's, so they are resolved and read
+	// with the user's own ids; as root they would reveal files the user cannot reach.
+	useInvokingIds();
 	// A path that does not resolve is left for the code below to report.
 	path = realpath(argv[index], NULL);
+	darling_read_mldr_bprefs(bprefs);
+	slice = path != NULL ? darling_target_slice_arch(path, bprefs) : DARLING_TARGET_SLICE_NONE;
+	restoreRootIds();
 	if (path == NULL)
 		return;
 
-	darling_read_mldr_bprefs(bprefs);
-	slice = darling_target_slice_arch(path, bprefs);
 	pageSize = (size_t) sysconf(_SC_PAGESIZE);
 
 	if (!darling_muvm_needed((long) pageSize, slice))
