@@ -98,6 +98,18 @@ vImage_Error vImageBufferFill_ARGB8888(
     vImage_Flags flags
 );
 
+vImage_Error vImageConvert_Planar16FtoPlanarF(
+    const vImage_Buffer *src,
+    const vImage_Buffer *dest,
+    vImage_Flags flags
+);
+
+vImage_Error vImageConvert_PlanarFtoPlanar16F(
+    const vImage_Buffer *src,
+    const vImage_Buffer *dest,
+    vImage_Flags flags
+);
+
 vImage_Error vImageBuffer_InitWithCGImage(
     vImage_Buffer *buf,
     const vImage_CGImageFormat *format,
