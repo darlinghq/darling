@@ -2,9 +2,9 @@
 // Copyright (C) 2026 Darling developers
 //
 // kCIInputIntensityKey is an exported NSString constant. The documentation gives no string value,
-// so this test pins none: it checks that the constant exists, is a non-empty NSString and differs
-// from the other CIFilter input keys (they are used as dictionary keys, so a collision would be a
-// bug).
+// so this test pins the value macOS 26.7.3 and 10.14.4 report, "inputIntensity" (black-box
+// observation), and checks that the constant differs from the other CIFilter input keys (they are
+// used as dictionary keys, so a collision would be a bug).
 // Prints OK, or the failures with a non-zero exit status.
 #import <CoreImage/CoreImage.h>
 #import <Foundation/Foundation.h>
@@ -19,6 +19,10 @@ int main(void)
 			printf("FAIL: kCIInputIntensityKey is nil, not an NSString or empty\n");
 			failures++;
 		} else {
+			if (![value isEqualToString:@"inputIntensity"]) {
+				printf("FAIL: kCIInputIntensityKey is '%s', expected 'inputIntensity'\n", [value UTF8String]);
+				failures++;
+			}
 			NSArray<NSString *> *siblings = @[
 				kCIInputAngleKey,
 				kCIInputBackgroundImageKey,
