@@ -75,3 +75,16 @@ registers an entry with the same flags as `lib/binfmt.d/darling.conf` in a binfm
 namespace (Linux 6.7 or later, no root, nothing registered on the host) and checks that the kernel passes what the
 launcher assumes; it exits with 77 when the system does not allow that. The unit test is built at -O0 and -O2
 because an optimizing build reuses stack space that a buffer of the launcher's `main` had left.
+
+Manual check on a real host (not part of the automated tests; registers an entry system-wide and needs root):
+
+```sh
+# an installed Darling: lib/binfmt.d/darling.conf names <prefix>/bin/darling, setuid root, as the interpreter
+sudo systemctl restart systemd-binfmt     # or: sudo systemd-binfmt /usr/lib/binfmt.d/darling.conf
+cat /proc/sys/fs/binfmt_misc/Mach-O-64-bit   # interpreter .../bin/darling, flags: O
+./some_macos_binary arg1 "arg 2"           # the same as: darling exec ./some_macos_binary arg1 "arg 2"
+# remove an entry again: echo -1 | sudo tee /proc/sys/fs/binfmt_misc/Mach-O-64-bit
+```
+
+The fat Mach-O entry matches the magic `0xCAFEBABE`, which Java class files share: an executable `.class` file now
+starts the launcher and fails there.
