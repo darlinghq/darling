@@ -2,10 +2,11 @@
 // Copyright (C) 2026 Darling developers
 //
 // AEDeterminePermissionToAutomateTarget and GetIconRefFromFileInfo are placeholders. The expected values
-// below are the placeholder's own choices (GUESS: the public pages give only the declarations and
-// availability, not the results) and have not been observed on a Mac. The automation function returns
-// paramErr for a NULL target and unimpErr otherwise, whatever askUserIfNeeded says. The icon function
-// returns unimpErr, sets *outIconRef to NULL and *outLabel to 0, and tolerates NULL output pointers.
+// below are the placeholder's own choices (the public pages give only the declarations and availability,
+// not the results) and were not observed on a Mac. Darling enforces no Automation consent, so the
+// automation function returns noErr (permitted) for any target, whatever askUserIfNeeded says, and
+// paramErr for a NULL target. The icon function returns unimpErr, sets *outIconRef to NULL and *outLabel
+// to 0, and tolerates NULL output pointers.
 // Prints OK, or the failures with a non-zero exit status.
 #include <CoreServices/CoreServices.h>
 #include <stdbool.h>
@@ -26,10 +27,10 @@ int main(void)
 	OSErr err = AECreateDesc(typeApplicationBundleID, bundleID, sizeof(bundleID) - 1, &target);
 	CHECK(err == noErr, "could not create the target address");
 
-	CHECK(AEDeterminePermissionToAutomateTarget(&target, typeWildCard, typeWildCard, false) == unimpErr,
-		"automation permission, no prompt: not unimpErr");
-	CHECK(AEDeterminePermissionToAutomateTarget(&target, kCoreEventClass, kAEOpenApplication, true) == unimpErr,
-		"automation permission, may prompt: not unimpErr");
+	CHECK(AEDeterminePermissionToAutomateTarget(&target, typeWildCard, typeWildCard, false) == noErr,
+		"automation permission, no prompt: not noErr");
+	CHECK(AEDeterminePermissionToAutomateTarget(&target, kCoreEventClass, kAEOpenApplication, true) == noErr,
+		"automation permission, may prompt: not noErr");
 	CHECK(AEDeterminePermissionToAutomateTarget(NULL, typeWildCard, typeWildCard, false) == paramErr,
 		"automation permission, NULL target: not paramErr");
 	AEDisposeDesc(&target);
