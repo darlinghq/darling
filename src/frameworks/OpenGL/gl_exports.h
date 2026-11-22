@@ -6,6 +6,11 @@
 
 #include <stddef.h>
 
+// The wrapper of the host's libGL, which holds the real functions (OpenGL.framework re-exports
+// it). Never the public libGL.dylib in the framework's Libraries directory: that library
+// re-exports this framework, so a lookup there would end in the framework's own entry points.
+#define GL_HOST_LIBRARY "/usr/lib/native/libGL.dylib"
+
 // The context whose host binding the calling thread holds, or NULL. Only the
 // thread itself changes it (when it binds, or gives its binding up).
 extern __thread void *gl_tls_bound;

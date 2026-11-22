@@ -1512,10 +1512,11 @@ static void gli_missing(void) {}
 
 // The host's OpenGL library (the wrapper this framework re-exports): where the
 // real functions live, as the framework's own gl* exports have the same names.
+// It is not the public libGL.dylib, which re-exports this framework.
 static void *gl_native_handle(void) {
     static void *handle;
     if (handle == NULL)
-        handle = dlopen("/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib", RTLD_LAZY);
+        handle = dlopen(GL_HOST_LIBRARY, RTLD_LAZY);
     return handle;
 }
 
@@ -2317,7 +2318,7 @@ CGL_HOST_GL_FUNCTIONS(CGL_HOST_GL_DECLARE)
 #undef CGL_HOST_GL_DECLARE
 
 // The library this framework re-exports the host's GL functions from.
-#define CGL_HOST_GL_LIBRARY "/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib"
+#define CGL_HOST_GL_LIBRARY GL_HOST_LIBRARY
 
 static void load_host_gl(void) {
     void *library = dlopen(CGL_HOST_GL_LIBRARY, RTLD_LAZY | RTLD_LOCAL);
