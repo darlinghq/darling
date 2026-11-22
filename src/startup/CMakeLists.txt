@@ -89,6 +89,11 @@ add_executable(launcher_ids_test ${CMAKE_SOURCE_DIR}/tests/launcher/ids.c launch
 target_include_directories(launcher_ids_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME launcher_ids COMMAND launcher_ids_test)
 
+# how the launcher reads an invocation by a binfmt_misc entry for a Mach-O file
+add_executable(launcher_binfmt_test ${CMAKE_SOURCE_DIR}/tests/launcher/binfmt.c launcher-binfmt.c)
+target_include_directories(launcher_binfmt_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME launcher_binfmt COMMAND launcher_binfmt_test)
+
 # what the setuid launcher passes to darlingserver
 add_executable(launcher_env_test ${CMAKE_SOURCE_DIR}/tests/launcher/env.c launcher-env.c)
 target_include_directories(launcher_env_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
