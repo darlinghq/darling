@@ -74,6 +74,7 @@ if (COMPONENT_dev_gui_stubs_common)
 	# AVFAudio has to come first: AVFoundation re-exports it only if the target already exists.
 	add_subdirectory(AVFAudio)
 	add_subdirectory(AVFoundation)
+	add_subdirectory(BackgroundAssets)
 	add_subdirectory(Contacts)
 	add_subdirectory(CoreMedia)
 	add_subdirectory(DiskArbitration)
