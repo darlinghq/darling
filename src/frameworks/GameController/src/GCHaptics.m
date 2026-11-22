@@ -29,3 +29,34 @@ GCHapticsLocality const GCHapticsLocalityLeftTrigger = @"Left Trigger";
 GCHapticsLocality const GCHapticsLocalityRightTrigger = @"Right Trigger";
 
 const float GCHapticDurationInfinite = 1e6f;
+
+@implementation GCDeviceHaptics {
+	NSSet<GCHapticsLocality> *_supportedLocalities;
+}
+
+- (instancetype)init
+{
+	self = [super init];
+	if (!self)
+		return nil;
+	_supportedLocalities = [[NSSet alloc] initWithObjects:GCHapticsLocalityDefault, GCHapticsLocalityAll, GCHapticsLocalityHandles, nil];
+	return self;
+}
+
+- (void)dealloc
+{
+	[_supportedLocalities release];
+	[super dealloc];
+}
+
+- (NSSet<GCHapticsLocality> *)supportedLocalities
+{
+	return _supportedLocalities;
+}
+
+- (CHHapticEngine *)createEngineWithLocality:(GCHapticsLocality)locality
+{
+	return nil;
+}
+
+@end

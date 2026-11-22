@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,28 +19,66 @@
 */
 
 #import <GameController/GCMicroGamepad.h>
-#import <darling-stub-forwarding.h>
+#import <GameController/GCController.h>
+#import "GCInputInternal.h"
 
-@implementation GCMicroGamepad
+@implementation GCMicroGamepad {
+	GCController *_controller;
+	GCMicroGamepadValueChangedHandler _valueChangedHandler;
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+	GCControllerDirectionPad *_dpad;
+	GCControllerButtonInput *_buttonA;
+	GCControllerButtonInput *_buttonX;
+	GCControllerButtonInput *_buttonMenu;
+
+	BOOL _reportsAbsoluteDpadValues;
+	BOOL _allowsRotation;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+@synthesize valueChangedHandler = _valueChangedHandler;
+@synthesize reportsAbsoluteDpadValues = _reportsAbsoluteDpadValues;
+@synthesize allowsRotation = _allowsRotation;
+
+- (instancetype)init
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+	return [self initWithController:nil];
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (instancetype)initWithController:(GCController *)controller
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+	self = [super initWithDevice:controller];
+	if (!self)
+		return nil;
+
+	_controller = controller;
+
+	_dpad = [[GCControllerDirectionPad alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputDirectionPad]];
+	_buttonA = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputButtonA]];
+	_buttonX = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputButtonX]];
+	_buttonMenu = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputButtonMenu]];
+
+	[self _registerDpad:_dpad key:GCInputDirectionPad];
+	[self _registerButton:_buttonA key:GCInputButtonA];
+	[self _registerButton:_buttonX key:GCInputButtonX];
+	[self _registerButton:_buttonMenu key:GCInputButtonMenu];
+
+	return self;
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (void)dealloc
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+	[_dpad release];
+	[_buttonA release];
+	[_buttonX release];
+	[_buttonMenu release];
+	[_valueChangedHandler release];
+	[super dealloc];
 }
+
+- (GCController *)controller { return _controller; }
+- (GCControllerDirectionPad *)dpad { return _dpad; }
+- (GCControllerButtonInput *)buttonA { return _buttonA; }
+- (GCControllerButtonInput *)buttonX { return _buttonX; }
+- (GCControllerButtonInput *)buttonMenu { return _buttonMenu; }
 
 @end

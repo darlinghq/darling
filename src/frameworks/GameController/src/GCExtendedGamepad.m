@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,28 +19,130 @@
 */
 
 #import <GameController/GCExtendedGamepad.h>
-#import <darling-stub-forwarding.h>
+#import <GameController/GCController.h>
+#import "GCInputInternal.h"
 
-@implementation GCExtendedGamepad
+@implementation GCExtendedGamepad {
+	GCController *_controller;
+	GCExtendedGamepadValueChangedHandler _valueChangedHandler;
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+	GCControllerDirectionPad *_dpad;
+	GCControllerButtonInput *_buttonA;
+	GCControllerButtonInput *_buttonB;
+	GCControllerButtonInput *_buttonX;
+	GCControllerButtonInput *_buttonY;
+	GCControllerButtonInput *_buttonMenu;
+	GCControllerButtonInput *_buttonOptions;
+	GCControllerButtonInput *_buttonHome;
+
+	GCControllerDirectionPad *_leftThumbstick;
+	GCControllerDirectionPad *_rightThumbstick;
+
+	GCControllerButtonInput *_leftShoulder;
+	GCControllerButtonInput *_rightShoulder;
+	GCControllerButtonInput *_leftTrigger;
+	GCControllerButtonInput *_rightTrigger;
+
+	GCControllerButtonInput *_leftThumbstickButton;
+	GCControllerButtonInput *_rightThumbstickButton;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+@synthesize valueChangedHandler = _valueChangedHandler;
+
+- (instancetype)init
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+	return [self initWithController:nil];
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (instancetype)initWithController:(GCController *)controller
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+	self = [super initWithDevice:controller];
+	if (!self)
+		return nil;
+
+	_controller = controller;
+
+	_dpad = [[GCControllerDirectionPad alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputDirectionPad]];
+	_buttonA = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputButtonA]];
+	_buttonB = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputButtonB]];
+	_buttonX = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputButtonX]];
+	_buttonY = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputButtonY]];
+	_buttonMenu = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputButtonMenu]];
+	_buttonOptions = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputButtonOptions]];
+	_buttonHome = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputButtonHome]];
+
+	_leftThumbstick = [[GCControllerDirectionPad alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputLeftThumbstick]];
+	_rightThumbstick = [[GCControllerDirectionPad alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputRightThumbstick]];
+
+	_leftShoulder = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputLeftShoulder]];
+	_rightShoulder = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputRightShoulder]];
+	_leftTrigger = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputLeftTrigger]];
+	_rightTrigger = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputRightTrigger]];
+
+	_leftThumbstickButton = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputLeftThumbstickButton]];
+	_rightThumbstickButton = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputRightThumbstickButton]];
+
+	[self _registerDpad:_dpad key:GCInputDirectionPad];
+	[self _registerButton:_buttonA key:GCInputButtonA];
+	[self _registerButton:_buttonB key:GCInputButtonB];
+	[self _registerButton:_buttonX key:GCInputButtonX];
+	[self _registerButton:_buttonY key:GCInputButtonY];
+	[self _registerButton:_buttonMenu key:GCInputButtonMenu];
+	[self _registerButton:_buttonOptions key:GCInputButtonOptions];
+	[self _registerButton:_buttonHome key:GCInputButtonHome];
+
+	[self _registerDpad:_leftThumbstick key:GCInputLeftThumbstick];
+	[self _registerDpad:_rightThumbstick key:GCInputRightThumbstick];
+
+	[self _registerButton:_leftShoulder key:GCInputLeftShoulder];
+	[self _registerButton:_rightShoulder key:GCInputRightShoulder];
+	[self _registerButton:_leftTrigger key:GCInputLeftTrigger];
+	[self _registerButton:_rightTrigger key:GCInputRightTrigger];
+
+	[self _registerButton:_leftThumbstickButton key:GCInputLeftThumbstickButton];
+	[self _registerButton:_rightThumbstickButton key:GCInputRightThumbstickButton];
+
+	return self;
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (void)dealloc
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+	[_dpad release];
+	[_buttonA release];
+	[_buttonB release];
+	[_buttonX release];
+	[_buttonY release];
+	[_buttonMenu release];
+	[_buttonOptions release];
+	[_buttonHome release];
+	[_leftThumbstick release];
+	[_rightThumbstick release];
+	[_leftShoulder release];
+	[_rightShoulder release];
+	[_leftTrigger release];
+	[_rightTrigger release];
+	[_leftThumbstickButton release];
+	[_rightThumbstickButton release];
+	[_valueChangedHandler release];
+	[super dealloc];
 }
+
+- (GCController *)controller { return _controller; }
+- (GCControllerDirectionPad *)dpad { return _dpad; }
+- (GCControllerButtonInput *)buttonA { return _buttonA; }
+- (GCControllerButtonInput *)buttonB { return _buttonB; }
+- (GCControllerButtonInput *)buttonX { return _buttonX; }
+- (GCControllerButtonInput *)buttonY { return _buttonY; }
+- (GCControllerButtonInput *)buttonMenu { return _buttonMenu; }
+- (GCControllerButtonInput *)buttonOptions { return _buttonOptions; }
+- (GCControllerButtonInput *)buttonHome { return _buttonHome; }
+- (GCControllerDirectionPad *)leftThumbstick { return _leftThumbstick; }
+- (GCControllerDirectionPad *)rightThumbstick { return _rightThumbstick; }
+- (GCControllerButtonInput *)leftShoulder { return _leftShoulder; }
+- (GCControllerButtonInput *)rightShoulder { return _rightShoulder; }
+- (GCControllerButtonInput *)leftTrigger { return _leftTrigger; }
+- (GCControllerButtonInput *)rightTrigger { return _rightTrigger; }
+- (GCControllerButtonInput *)leftThumbstickButton { return _leftThumbstickButton; }
+- (GCControllerButtonInput *)rightThumbstickButton { return _rightThumbstickButton; }
 
 @end
