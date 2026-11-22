@@ -7,7 +7,6 @@
 #include <FEXCore/Debug/InternalThreadState.h>
 #include <FEXCore/HLE/SyscallHandler.h>
 #include <FEXCore/Utils/Allocator.h>
-#include <FEXCore/Utils/ArchHelpers/Arm64.h>
 #include <FEXCore/Utils/LogManager.h>
 
 #include "Common/HostFeatures.h"
@@ -248,38 +247,6 @@ static HostThreadEmulator* host_thread_emulator() {
   return emu;
 }
 
-// x86 allows unaligned locked and ordered accesses. FEX's generated code uses half-barrier atomics
-// for them, which fault with BUS_ADRALN on an address that is not naturally aligned. FEXCore patches
-// the access in place (HandleUnalignedAccess, with the half-barrier type FEX uses by default). A fault
-// that is not in generated code, or that cannot be patched, is delivered as it would have been without
-// this handler.
-#if defined(__aarch64__)
-static struct sigaction g_previous_sigbus;
-
-static void sigbus_handler(int, siginfo_t* info, void* context) {
-  auto* uc = static_cast<ucontext_t*>(context);
-  const uintptr_t pc = uc->uc_mcontext.pc;
-  FEXCore::Core::InternalThreadState* thread = t_thread_state;
-  if (thread && info->si_code == BUS_ADRALN && g_ctx && g_ctx->IsAddressInCodeBuffer(thread, pc)) {
-    const auto patched = FEXCore::ArchHelpers::Arm64::HandleUnalignedAccess(
-        thread, FEXCore::ArchHelpers::Arm64::UnalignedHandlerType::HalfBarrier, pc, reinterpret_cast<uint64_t*>(&uc->uc_mcontext.regs[0]));
-    if (patched) {
-      uc->uc_mcontext.pc = pc + *patched;
-      return;
-    }
-  }
-  sigaction(SIGBUS, &g_previous_sigbus, nullptr);
-}
-
-static void install_sigbus_handler() {
-  struct sigaction action {};
-  action.sa_sigaction = sigbus_handler;
-  action.sa_flags = SA_SIGINFO;
-  sigemptyset(&action.sa_mask);
-  sigaction(SIGBUS, &action, &g_previous_sigbus);
-}
-#endif
-
 static void init_fex_context() {
   LogMan::Throw::InstallHandler([](const char* msg) {
     std::fprintf(stderr, "[FEXCore/assert] %s\n", msg);
@@ -330,10 +297,6 @@ static void init_fex_context() {
     std::fprintf(stderr, "[mldr/fex] fatal: FEXCore::Context::InitCore() failed\n");
     std::abort();
   }
-
-#if defined(__aarch64__)
-  install_sigbus_handler();
-#endif
   darling_fex::host_signal_stacks_init();
   darling_fex::signals_init(g_ctx.get(), features.SupportsAVX(), features.SupportsSVE256());
 }
