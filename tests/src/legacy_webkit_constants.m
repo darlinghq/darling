@@ -2,9 +2,11 @@
 // Copyright (C) 2026 Lubos Dolezel
 //
 // Legacy WebKit element and action keys, WebHistoryItem, MobileAsset's download size attribute and
-// the RTTUtilities settings. Expected strings are the values macOS reports.
+// the RTTUtilities settings. Expected strings are the values macOS reports, except WebElementImageURLKey
+// and the WebHistory notification names, which come from the public WebKit source release.
 #import <Foundation/Foundation.h>
 #import <WebKit/WebKit.h>
+#import <WebKit/WebHistory.h>
 #import <WebKit/WebHistoryItem.h>
 #import <MobileAsset/ASAsset.h>
 #import <RTTUtilities/RTTUtilities.h>
@@ -29,6 +31,11 @@ int main(void)
 		EXPECT(WebElementFrameKey, @"WebElementFrame");
 		EXPECT(WebElementImageKey, @"WebElementImage");
 		EXPECT(WebElementIsSelectedKey, @"WebElementIsSelected");
+		EXPECT(WebElementImageURLKey, @"WebElementImageURL");
+		EXPECT(WebHistoryItemsAddedNotification, @"WebHistoryItemsAddedNotification");
+		EXPECT(WebHistoryItemsRemovedNotification, @"WebHistoryItemsRemovedNotification");
+		EXPECT(WebHistoryAllItemsRemovedNotification, @"WebHistoryAllItemsRemovedNotification");
+		EXPECT(WebHistoryLoadedNotification, @"WebHistoryLoadedNotification");
 		EXPECT(WebElementLinkLabelKey, @"WebElementLinkLabel");
 		EXPECT(WebElementLinkTargetFrameKey, @"WebElementTargetFrame");
 		EXPECT(WebElementLinkTitleKey, @"WebElementLinkTitle");
