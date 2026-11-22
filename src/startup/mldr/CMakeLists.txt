@@ -265,6 +265,7 @@ if (WITH_FEXCORE)
 
 	add_library(darling-fexcore SHARED
 		fex/darling_fexcore_adapter.cpp
+		fex/darling_fexcore_sigframe.cpp
 		${FEXCORE_SOURCE_DIR}/FEXCore/Source/Utils/AllocatorHooks.cpp
 		${FEXCORE_SOURCE_DIR}/Source/Common/HostFeatures.cpp
 		${FEXCORE_SOURCE_DIR}/Source/Common/CPUInfo.cpp
