@@ -325,6 +325,12 @@ if (WITH_FEXCORE)
 		-Wl,--end-group
 		${FEXCORE_FMT_LIBRARY} ${FEXCORE_XXHASH_LIBRARY} -lpthread -ldl -lm -lrt)
 
+	add_executable(mldr_fex_sigframe_layout_test ${CMAKE_SOURCE_DIR}/tests/mldr/fex_sigframe_layout.cpp)
+	target_include_directories(mldr_fex_sigframe_layout_test PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR} ${FEXCORE_SOURCE_DIR}/Source ${FEXCORE_SOURCE_DIR}/FEXCore/include)
+	target_compile_options(mldr_fex_sigframe_layout_test PRIVATE -std=gnu++20)
+	add_test(NAME mldr_fex_sigframe_layout COMMAND mldr_fex_sigframe_layout_test)
+
 	install(TARGETS darling-fexcore DESTINATION libexec/darling/lib)
 	install(FILES ${CMAKE_SOURCE_DIR}/THIRD-PARTY-NOTICES.md
 		DESTINATION libexec/darling/usr/share/licenses/darling-fexcore)

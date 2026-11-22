@@ -103,6 +103,14 @@ else
 	failed+=(mldr_fexcore_paths_test)
 fi
 
+# the x86_64 signal frame layout of the FEXCore shim: needs FEX's source tree (headers only)
+if [ -n "${FEXCORE_SOURCE_DIR:-}" ]; then
+	run_test mldr_fex_sigframe_layout_test "$cxx" -std=gnu++20 -g -O2 "-I$root/src/startup/mldr" \
+		"-I$FEXCORE_SOURCE_DIR/Source" "-I$FEXCORE_SOURCE_DIR/FEXCore/include" "$root/tests/mldr/fex_sigframe_layout.cpp"
+else
+	echo "== mldr_fex_sigframe_layout_test: skipped (set FEXCORE_SOURCE_DIR to a FEX source tree to run it)"
+fi
+
 # launcher tests: test source, then the launcher sources it checks (src/startup)
 launcher_test() {
 	local name=$1 test_src=$2
