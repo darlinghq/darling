@@ -501,6 +501,34 @@ static uint64_t handler_mask(int sig, const struct fex_guest_sigaction* action, 
 	return unblockable(blocked);
 }
 
+// No guest code runs on this thread yet (a guest thread still starting) or at all (a thread of a host
+// library): hold the signal here, blocked. A signal sent to this thread stays pending on it; one sent to the
+// process goes back to the process, so that the kernel picks another thread. The thread's first guest
+// syscall unblocks what was held (release_held_signals). Queueing with the original siginfo is refused for
+// some senders on a thread other than the main one; then only the signal number survives.
+static __thread uint64_t t_held_signals;
+
+static void hold_signal(int sig, siginfo_t* info, void* ucontext)
+{
+	set_host_context_mask(ucontext, host_context_mask(ucontext) | FEX_SIGBIT(sig));
+	t_held_signals |= FEX_SIGBIT(sig);
+	long pid = raw_host_syscall(SYS_getpid, 0, 0, 0, 0, 0, 0);
+	if (info->si_code == SI_TKILL) {
+		long tid = raw_host_syscall(SYS_gettid, 0, 0, 0, 0, 0, 0);
+		if (raw_host_syscall(SYS_rt_tgsigqueueinfo, pid, tid, sig, (long)(uintptr_t)info, 0, 0) != 0)
+			raw_host_syscall(SYS_tgkill, pid, tid, sig, 0, 0, 0);
+	} else if (raw_host_syscall(SYS_rt_sigqueueinfo, pid, sig, (long)(uintptr_t)info, 0, 0, 0) != 0) {
+		raw_host_syscall(SYS_kill, pid, sig, 0, 0, 0, 0);
+	}
+}
+
+static void release_held_signals(void)
+{
+	uint64_t held = t_held_signals;
+	t_held_signals = 0;
+	raw_host_syscall(SYS_rt_sigprocmask, SIG_UNBLOCK, (long)(uintptr_t)&held, 0, sizeof(held), 0, 0);
+}
+
 // The guest thread on this host thread is in emulated code: run its handler now.
 static void deliver_now(int sig, siginfo_t* info, void* ucontext)
 {
@@ -522,6 +550,8 @@ static void deliver_now(int sig, siginfo_t* info, void* ucontext)
 	if (g_signal_deliver(sig, info, ucontext, &action, &altstack, mask) != FEX_SIGNAL_DELIVERED) {
 		if (fault)
 			take_default_action(sig, ucontext);
+		else
+			hold_signal(sig, info, ucontext);
 		return;
 	}
 	uint64_t blocked = handler_mask(sig, &action, mask);
@@ -552,6 +582,8 @@ static void fex_host_signal_handler(int sig, siginfo_t* info, void* ucontext)
 		struct fex_guest_sigaction action = load_guest_action(sig);
 		if (is_thread_fault(sig, info) || action.handler == GUEST_SIG_DFL)
 			take_default_action(sig, ucontext);
+		else if (action.handler != GUEST_SIG_IGN)
+			hold_signal(sig, info, ucontext);
 		break;
 	}
 	}
@@ -999,6 +1031,9 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 {
 	if (!state)
 		return -EINVAL;
+
+	if (t_held_signals)
+		release_held_signals();
 
 	return dispatch_syscall(state);
 }
