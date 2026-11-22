@@ -90,8 +90,43 @@ extern "C" size_t fexcore_candidate_paths(char* buf, size_t buf_size, size_t max
 
 	add_candidate(INSTALL_PREFIX "/libexec/darling/lib/libdarling-fexcore.so",
 		buf, buf_size, &used, &count, max_paths, out);
-	add_candidate("libFEXCore.so", buf, buf_size, &used, &count, max_paths, out);
+	// Last resort: the dynamic loader's own search path, for a distribution that installs
+	// the shim outside Darling's prefix. The name is the shim's, not FEX's: a stock
+	// libFEXCore.so lacks darling_fexcore_run_thread and could never be used.
+	add_candidate("libdarling-fexcore.so", buf, buf_size, &used, &count, max_paths, out);
 	return count;
+}
+
+// Writes the fatal message printed when no candidate could be used. It has to say what
+// to install or set: the shim is not part of FEX and not part of a default Darling build.
+extern "C" size_t fexcore_not_found_message(char* buf, size_t buf_size, const char* override_path)
+{
+	if (!buf || buf_size == 0) {
+		return 0;
+	}
+	int written;
+	if (override_path && override_path[0]) {
+		written = snprintf(buf, buf_size,
+			"[mldr/fex] fatal: DARLING_FEXCORE_LIB=%s cannot be used; cannot execute an x86_64 Mach-O "
+			"binary on aarch64. Fix the path or unset DARLING_FEXCORE_LIB to search the installed locations.\n",
+			override_path);
+	} else {
+		written = snprintf(buf, buf_size,
+			"[mldr/fex] fatal: no usable libdarling-fexcore.so; cannot execute an x86_64 Mach-O "
+			"binary on aarch64. Lines above tagged \"found but unusable\" name a shim that exists "
+			"but could not be used (a missing dependency such as libfmt, or a shim that predates "
+			"the fork hooks).\n"
+			"[mldr/fex] Install a Darling package that ships the FEXCore shim, build Darling with "
+			"-DWITH_FEXCORE=ON (see src/startup/mldr/CMakeLists.txt), or set DARLING_FEXCORE_LIB to "
+			"the shim's path.\n"
+			"[mldr/fex] A stock FEX libFEXCore.so is not enough: mldr needs the "
+			"darling_fexcore_run_thread entry point that only the shim exports.\n");
+	}
+	if (written < 0) {
+		buf[0] = '\0';
+		return 0;
+	}
+	return static_cast<size_t>(written) < buf_size ? static_cast<size_t>(written) : buf_size - 1;
 }
 
 enum candidate_state {
@@ -150,13 +185,20 @@ static void init_fexcore_runtime(void)
 	if (!g_run_thread_fn) {
 		for (size_t i = 0; i < count; i++) {
 			if (results[i].state == CANDIDATE_LOAD_FAILED) {
-				fprintf(stderr, "[mldr/fex] cannot load %s: %s\n", paths[i], results[i].reason);
+				// A candidate that exists but does not load (say, a missing libfmt) is not
+				// routine, unlike an absent one, so it gets a distinct tag.
+				bool exists = strchr(paths[i], '/') && access(paths[i], F_OK) == 0;
+				fprintf(stderr, exists ? "[mldr/fex] found but unusable %s: %s\n"
+						       : "[mldr/fex] cannot load %s: %s\n",
+					paths[i], results[i].reason);
 			} else if (results[i].state == CANDIDATE_SYMBOL_MISSING) {
-				fprintf(stderr, "[mldr/fex] cannot use %s: %s\n", paths[i], results[i].reason);
+				fprintf(stderr, "[mldr/fex] found but unusable %s: %s\n", paths[i], results[i].reason);
 			}
 		}
-		fprintf(stderr,
-			"[mldr/fex] fatal: no FEXCore library found; cannot execute an x86_64 Mach-O binary on aarch64\n");
+		char message[FEXCORE_PATH_MAX + 1024];
+		if (fexcore_not_found_message(message, sizeof(message), getenv("DARLING_FEXCORE_LIB")) > 0) {
+			fputs(message, stderr);
+		}
 		exit(1);
 	}
 

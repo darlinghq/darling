@@ -14,6 +14,8 @@
 size_t fexcore_candidate_paths(char* buf, size_t buf_size, size_t max_paths,
 	const char** out, const char* self_exe);
 
+size_t fexcore_not_found_message(char* buf, size_t buf_size, const char* override_path);
+
 static const char* installed_fexcore = INSTALL_PREFIX "/libexec/darling/lib/libdarling-fexcore.so";
 
 static int failures = 0;
@@ -71,8 +73,8 @@ static void test_discovery_order(void)
 		"the lib directory above the usr/libexec install is tried second");
 	check(count > 2 && strcmp(out[2], installed_fexcore) == 0,
 		"configure-time install prefix is tried third");
-	check(count > 3 && strcmp(out[3], "libFEXCore.so") == 0,
-		"the dynamic loader's search path is the last resort");
+	check(count > 3 && strcmp(out[3], "libdarling-fexcore.so") == 0,
+		"the dynamic loader's search path is the last resort, under the shim's own name");
 
 	printf("first candidate: %s\n", count > 0 ? out[0] : "(none)");
 	printf("install prefix candidate: %s\n", installed_fexcore);
@@ -113,7 +115,7 @@ static void test_unknown_self_exe(void)
 	check(count == 2, "without a self path only the install prefix and loader search remain");
 	check(count > 0 && strcmp(out[0], installed_fexcore) == 0,
 		"install prefix comes first without a self path");
-	check(count > 1 && strcmp(out[1], "libFEXCore.so") == 0,
+	check(count > 1 && strcmp(out[1], "libdarling-fexcore.so") == 0,
 		"loader search path stays last without a self path");
 }
 
@@ -145,6 +147,57 @@ static void test_bad_arguments(void)
 	check(count == 0, "a zero candidate limit yields no candidates");
 }
 
+// A stock FEX libFEXCore.so has no darling_fexcore_run_thread, so offering it would
+// only produce a misleading "symbol not found" after a successful dlopen.
+static void test_stock_fexcore_never_a_candidate(void)
+{
+	const char* out[MAX_CANDIDATES];
+	size_t count;
+	int stock = 0;
+
+	unsetenv("DARLING_FEXCORE_LIB");
+	count = discover("/opt/darling/libexec/darling/bin/mldr", BUFFER_SIZE, MAX_CANDIDATES, out);
+	for (size_t i = 0; i < count; i++) {
+		const char* name = strrchr(out[i], '/');
+		name = name ? name + 1 : out[i];
+		if (strcmp(name, "libFEXCore.so") == 0)
+			stock = 1;
+	}
+	check(count > 0 && !stock, "libFEXCore.so is not among the candidates");
+}
+
+static void test_not_found_message(void)
+{
+	char buf[2048];
+	size_t len;
+
+	len = fexcore_not_found_message(buf, sizeof(buf), NULL);
+	check(len > 0 && len == strlen(buf), "the not-found message reports its length");
+	check(strstr(buf, "no usable libdarling-fexcore.so") != NULL,
+		"the headline covers a shim that was found but failed to load");
+	check(strstr(buf, "found but unusable") != NULL, "the message explains the per-candidate tag");
+	check(strstr(buf, "-DWITH_FEXCORE=ON") != NULL, "the message says how to build the shim");
+	check(strstr(buf, "DARLING_FEXCORE_LIB") != NULL, "the message names the override variable");
+	check(strstr(buf, "Darling package") != NULL, "the message points at installing a package");
+	check(strstr(buf, "darling_fexcore_run_thread") != NULL && strstr(buf, "stock FEX") != NULL,
+		"the message says a stock libFEXCore.so is not enough");
+	check(len > 0 && buf[len - 1] == '\n', "the message ends with a newline");
+
+	len = fexcore_not_found_message(buf, sizeof(buf), "");
+	check(strstr(buf, "no usable") != NULL, "an empty override is treated as unset");
+
+	len = fexcore_not_found_message(buf, sizeof(buf), "/opt/x/libdarling-fexcore.so");
+	check(strstr(buf, "DARLING_FEXCORE_LIB=/opt/x/libdarling-fexcore.so") != NULL,
+		"a failing override is echoed back");
+	check(strstr(buf, "unset DARLING_FEXCORE_LIB") != NULL, "the message offers unsetting a bad override");
+	check(len > 0 && len == strlen(buf), "the override message reports its length");
+
+	len = fexcore_not_found_message(buf, 16, NULL);
+	check(len == 15 && strlen(buf) == 15, "a small buffer is truncated, not overrun");
+	check(fexcore_not_found_message(NULL, 16, NULL) == 0, "a null buffer yields nothing");
+	check(fexcore_not_found_message(buf, 0, NULL) == 0, "a zero-size buffer yields nothing");
+}
+
 static void test_no_environment_dependence(void)
 {
 	const char* out[MAX_CANDIDATES];
@@ -166,6 +219,8 @@ int main(void)
 	test_capacity_limits();
 	test_bad_arguments();
 	test_no_environment_dependence();
+	test_stock_fexcore_never_a_candidate();
+	test_not_found_message();
 
 	if (failures) {
 		printf("%d check(s) failed\n", failures);
