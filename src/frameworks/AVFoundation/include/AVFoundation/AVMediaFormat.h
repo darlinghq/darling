@@ -19,3 +19,4 @@ extern const AVMediaType AVMediaTypeVideo;
 
 extern const AVFileType AVFileTypeMPEG4;
 extern const AVFileType AVFileTypeQuickTimeMovie;
+extern AVFileType const AVFileTypeAppleM4A;
