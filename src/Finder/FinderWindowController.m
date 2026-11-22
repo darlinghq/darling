@@ -75,6 +75,9 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
         _icons = [[FinderIconViewController alloc] init];
         _icons.openItem = open;
         _icons.renameItem = rename;
+        _icons.dropItems = ^(NSArray<NSURL *> *items, NSURL *folder, FinderTransferKind kind) {
+            [[FinderOperationQueue sharedQueue] transferItems:items to:folder kind:kind window:weakSelf.window];
+        };
         _list = [[FinderListViewController alloc] init];
         _list.openItem = open;
         _list.renameItem = rename;
@@ -211,6 +214,7 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
         return NO;
     }
     _folderURL = url;
+    _icons.folderURL = url;
     _directory = directory;
     _style = [FinderFolderStyle styleForFolder:url];
     self.window.title = [FinderDirectory displayNameForURL:_folderURL];
@@ -299,6 +303,11 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
         [_list selectItems:items];
     else
         [_icons selectItems:items];
+}
+
+- (FinderIconViewController *)iconViewController
+{
+    return _icons;
 }
 
 - (NSArray<NSURL *> *)selectedItems

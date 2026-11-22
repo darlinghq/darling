@@ -18,6 +18,7 @@
  */
 
 #import "FinderIconViewController.h"
+#import "FinderDrop.h"
 #import "FinderDirectory.h"
 #import "FinderFolderStyle.h"
 #import "FinderFreeformLayout.h"
@@ -302,6 +303,10 @@ static NSImage *FinderBackgroundImage(NSURL *url)
     [_collectionView registerClass:[FinderIconItem class] forItemWithIdentifier:FinderIconItemIdentifier];
     _collectionView.dataSource = self;
     _collectionView.delegate = self;
+    [_collectionView registerForDraggedTypes:@[ NSPasteboardTypeFileURL ]];
+    NSDragOperation offered = NSDragOperationCopy | NSDragOperationMove | NSDragOperationGeneric;
+    [_collectionView setDraggingSourceOperationMask:offered forLocal:YES];
+    [_collectionView setDraggingSourceOperationMask:offered forLocal:NO];
 
     __weak FinderIconViewController *weakSelf = self;
     _collectionView.doubleClicked = ^(NSIndexPath *path) {
@@ -504,6 +509,61 @@ static NSImage *FinderBackgroundImage(NSURL *url)
     item.look = _look;
     item.representedObject = _items[indexPath.item];
     return item;
+}
+
+#pragma mark Drag and drop
+
+- (BOOL)collectionView:(NSCollectionView *)collectionView
+    canDragItemsAtIndexPaths:(NSSet<NSIndexPath *> *)indexPaths
+                   withEvent:(NSEvent *)event
+{
+    return YES;
+}
+
+- (id<NSPasteboardWriting>)collectionView:(NSCollectionView *)collectionView pasteboardWriterForItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    return (NSUInteger) indexPath.item < [_items count] ? _items[indexPath.item] : nil;
+}
+
+// The folder a proposed drop goes into: a folder item's for a drop on it; otherwise the window's, as a drop before
+// the index (a drop with no index path is never performed)
+- (NSURL *)folderForDropAtIndexPath:(NSIndexPath *)path operation:(NSCollectionViewDropOperation *)operation
+{
+    if (*operation == NSCollectionViewDropOn && path != nil && (NSUInteger) path.item < [_items count]) {
+        NSURL *folder = FinderDropFolderForItem(_items[path.item]);
+        if (folder != nil)
+            return folder;
+    }
+    *operation = NSCollectionViewDropBefore;
+    return self.folderURL;
+}
+
+- (NSDragOperation)collectionView:(NSCollectionView *)collectionView
+                     validateDrop:(id<NSDraggingInfo>)draggingInfo
+                proposedIndexPath:(NSIndexPath **)proposedDropIndexPath
+                    dropOperation:(NSCollectionViewDropOperation *)proposedDropOperation
+{
+    NSArray<NSURL *> *items = FinderDraggedFileURLs([draggingInfo draggingPasteboard]);
+    if (items == nil)
+        return NSDragOperationNone;
+    NSURL *folder = [self folderForDropAtIndexPath:*proposedDropIndexPath operation:proposedDropOperation];
+    return FinderDropOperation(items, folder, [draggingInfo draggingSourceOperationMask]);
+}
+
+- (BOOL)collectionView:(NSCollectionView *)collectionView
+            acceptDrop:(id<NSDraggingInfo>)draggingInfo
+             indexPath:(NSIndexPath *)indexPath
+         dropOperation:(NSCollectionViewDropOperation)dropOperation
+{
+    NSArray<NSURL *> *items = FinderDraggedFileURLs([draggingInfo draggingPasteboard]);
+    if (items == nil)
+        return NO;
+    NSURL *folder = [self folderForDropAtIndexPath:indexPath operation:&dropOperation];
+    NSDragOperation operation = FinderDropOperation(items, folder, [draggingInfo draggingSourceOperationMask]);
+    if (operation == NSDragOperationNone || self.dropItems == nil)
+        return NO;
+    self.dropItems(items, folder, FinderTransferKindForDropOperation(operation));
+    return YES;
 }
 
 @end

@@ -12,6 +12,7 @@ set(Finder_sources
 	main.m
 	FinderAppDelegate.m
 	FinderDirectory.m
+	FinderDrop.m
 	FinderDSStore.m
 	FinderFileOperation.m
 	FinderFolderStyle.m

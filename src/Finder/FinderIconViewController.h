@@ -18,6 +18,7 @@
  */
 
 #import <AppKit/AppKit.h>
+#import "FinderFileOperation.h"
 
 @class FinderFolderStyle;
 
@@ -51,5 +52,12 @@
 // name again; renaming is up to whoever set renameItem.
 - (void)beginEditingItem:(NSURL *)item;
 @property (copy) void (^renameItem)(NSURL *item, NSString *name);
+
+// The folder shown: a drop on the background, or on an item that takes none, goes there
+@property (copy) NSURL *folderURL;
+
+// Called with the items dropped, the folder they go into and how; carrying it out is up to whoever set it. Items are
+// dragged as their file URLs, and file URLs are taken from other applications too.
+@property (copy) void (^dropItems)(NSArray<NSURL *> *items, NSURL *folder, FinderTransferKind kind);
 
 @end

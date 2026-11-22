@@ -1,4 +1,4 @@
-// CFLAGS: -framework Foundation -framework AppKit -framework ImageIO -fobjc-arc -Isrc/Finder src/Finder/FinderAppDelegate.m src/Finder/FinderDirectory.m src/Finder/FinderDSStore.m src/Finder/FinderFolderStyle.m src/Finder/FinderFreeformLayout.m src/Finder/FinderIconViewController.m src/Finder/FinderListViewController.m src/Finder/FinderSidebarController.m src/Finder/FinderWindowController.m src/Finder/FinderInfoPanelController.m src/Finder/FinderFileOperation.m src/Finder/FinderItemActions.m src/Finder/FinderOperationQueue.m
+// CFLAGS: -framework Foundation -framework AppKit -framework ImageIO -fobjc-arc -Isrc/Finder src/Finder/FinderAppDelegate.m src/Finder/FinderDirectory.m src/Finder/FinderDSStore.m src/Finder/FinderFolderStyle.m src/Finder/FinderFreeformLayout.m src/Finder/FinderDrop.m src/Finder/FinderIconViewController.m src/Finder/FinderListViewController.m src/Finder/FinderSidebarController.m src/Finder/FinderWindowController.m src/Finder/FinderInfoPanelController.m src/Finder/FinderFileOperation.m src/Finder/FinderItemActions.m src/Finder/FinderOperationQueue.m
 // ARGS: "$(mktemp -d)/r"
 // Copyright (C) 2026 Lubos Dolezel
 //

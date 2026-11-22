@@ -19,6 +19,8 @@
 
 #import <AppKit/AppKit.h>
 
+@class FinderIconViewController;
+
 typedef NS_ENUM(NSInteger, FinderViewStyle) {
     FinderViewStyleIcons,
     FinderViewStyleList,
@@ -98,6 +100,9 @@ typedef NS_ENUM(NSInteger, FinderViewStyle) {
 - (void)beginRenamingItem:(NSURL *)item;
 // The item being renamed; nil when none is
 @property (readonly) NSURL *renamingItem;
+
+// The icon view's controller, shown in the icon view style
+@property (readonly) FinderIconViewController *iconViewController;
 
 // Called with an item the user opened (double-clicked, or clicked in the sidebar).
 @property (copy) void (^openItem)(NSURL *item);

@@ -123,6 +123,24 @@ static const CGFloat FinderGridInset = 12, FinderGridSpacing = 8, FinderContentM
     return [self attributesForItem:indexPath.item];
 }
 
+// A drop goes on the item under the point; anywhere else, after the last item. Gaps take no room, as items aren't
+// placed in an order a drop could go between.
+- (NSCollectionViewLayoutAttributes *)layoutAttributesForDropTargetAtPoint:(NSPoint)point
+{
+    for (NSUInteger i = 0; i < [_frames count]; i++) {
+        if (NSPointInRect(point, [_frames[i] rectValue]))
+            return [self attributesForItem:i];
+    }
+    return [self layoutAttributesForInterItemGapBeforeIndexPath:[NSIndexPath indexPathForItem:[_frames count] inSection:0]];
+}
+
+- (NSCollectionViewLayoutAttributes *)layoutAttributesForInterItemGapBeforeIndexPath:(NSIndexPath *)indexPath
+{
+    NSCollectionViewLayoutAttributes *gap = [NSCollectionViewLayoutAttributes layoutAttributesForInterItemGapBeforeIndexPath:indexPath];
+    gap.frame = NSZeroRect;
+    return gap;
+}
+
 // The grid of unplaced items, and the content's minimum size, follow the visible width and height
 - (BOOL)shouldInvalidateLayoutForBoundsChange:(NSRect)newBounds
 {
