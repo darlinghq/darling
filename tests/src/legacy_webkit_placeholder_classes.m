@@ -75,6 +75,8 @@ int main(void)
 		expectClass("WebFrameView", "NSView");
 		expectClass("WebResource", "NSObject");
 
+		expectClass("WKFindConfiguration", "NSObject");
+
 		expectUnimplementedSelectorIsStubbed("DOMCharacterData");
 		expectUnimplementedSelectorIsStubbed("WebArchive");
 		expectUnimplementedSelectorIsStubbed("WebBackForwardList");
@@ -82,6 +84,7 @@ int main(void)
 		expectUnimplementedSelectorIsStubbed("WebFrame");
 		expectUnimplementedSelectorIsStubbed("WebFrameView");
 		expectUnimplementedSelectorIsStubbed("WebResource");
+		expectUnimplementedSelectorIsStubbed("WKFindConfiguration");
 	}
 	if (failures == 0)
 		printf("OK\n");

@@ -118,6 +118,7 @@ add_framework(WebKit
         src/WKDOMText.m
         src/WKDOMTextIterator.m
         src/WKError.m
+        src/WKFindConfiguration.m
         src/WKFrameInfo.m
         src/WKFullKeyboardAccessWatcher.m
         src/WKFullScreenWindowController.m
