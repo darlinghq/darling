@@ -1,0 +1,1 @@
+for v in plain ubiq; do mkdir -p probe0350-$v.app/Contents/MacOS && clang -O0 -fobjc-arc -framework Cocoa -o probe0350-$v.app/Contents/MacOS/probe0350 probe.m && cp Info-$v.plist probe0350-$v.app/Contents/Info.plist || exit 1; done
