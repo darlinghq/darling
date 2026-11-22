@@ -23,6 +23,24 @@
 
 PDFKIT_EXPORT const CGFloat kPDFDestinationUnspecifiedValue;
 
+@class PDFPage;
+
+NS_ASSUME_NONNULL_BEGIN
+
+// A position on a PDF page, given in page space (72 points per inch, origin at the page's lower-left corner).
 @interface PDFDestination : NSObject
+{
+@private
+	PDFPage* _page; // a weak reference, see PDFDestination.m
+	CGPoint _point;
+}
+
+- (instancetype)initWithPage:(PDFPage*)page atPoint:(CGPoint)point;
+
+// The page is a weak reference in PDFKit's interface, so it is nil once the page is gone.
+@property (nonatomic, readonly, nullable) PDFPage* page;
+@property (nonatomic, readonly) CGPoint point;
 
 @end
+
+NS_ASSUME_NONNULL_END
