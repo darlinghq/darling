@@ -17,7 +17,9 @@
 #include <sys/epoll.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/wait.h>
+#include <ucontext.h>
 #include <unistd.h>
 #include "fex/fex_bridge.h"
 
@@ -592,6 +594,361 @@ static void test_signal_mask_filter(void)
 	st.r10 = 8;
 	fex_linux_syscall_dispatch(&st);
 	pthread_sigmask(SIG_SETMASK, &before, NULL);
+}
+
+// The shim's side of signal delivery, faked: what mldr hands it and what it answers.
+static int g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+static int g_fake_deliveries = 0;
+static int g_fake_delivered_sig = 0;
+static struct fex_guest_sigaction g_fake_delivered_action;
+static struct fex_guest_stack g_fake_delivered_stack;
+static uint64_t g_fake_delivered_old_mask;
+static uint64_t g_fake_returned_mask;
+static int g_fake_return_answer = 1;
+
+static int fake_signal_preempt(int* sig, void* info, void* ucontext, uint64_t* guest_mask)
+{
+	(void)sig;
+	(void)info;
+	(void)ucontext;
+	if (g_fake_preempt_answer == FEX_SIGNAL_RETURNED) {
+		// As the shim does: the host context gets the frame's set, less the JIT's signals.
+		*guest_mask = g_fake_returned_mask;
+		uint64_t host = g_fake_returned_mask & ~FEX_JIT_SIGNALS;
+		memcpy(&((ucontext_t*)ucontext)->uc_sigmask, &host, sizeof(host));
+	}
+	return g_fake_preempt_answer;
+}
+
+static int fake_signal_deliver(int sig, const void* info, void* ucontext,
+	const struct fex_guest_sigaction* action, const struct fex_guest_stack* altstack, uint64_t old_mask)
+{
+	(void)info;
+	(void)ucontext;
+	g_fake_deliveries++;
+	g_fake_delivered_sig = sig;
+	g_fake_delivered_action = *action;
+	g_fake_delivered_stack = *altstack;
+	g_fake_delivered_old_mask = old_mask;
+	return FEX_SIGNAL_DELIVERED;
+}
+
+static int fake_signal_return(uint64_t* guest_mask)
+{
+	*guest_mask = g_fake_returned_mask;
+	return g_fake_return_answer;
+}
+
+static long guest_syscall(uint64_t nr, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, uint64_t rsp)
+{
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rax = nr;
+	st.rdi = a1;
+	st.rsi = a2;
+	st.rdx = a3;
+	st.r10 = a4;
+	st.rsp = rsp;
+	return fex_linux_syscall_dispatch(&st);
+}
+
+static long guest_sigaction(int sig, uint64_t handler, uint64_t flags, uint64_t mask, struct fex_guest_sigaction* old)
+{
+	struct fex_guest_sigaction act = { .handler = handler, .flags = flags | FEX_GUEST_SA_RESTORER, .restorer = 0x5000, .mask = mask };
+	return guest_syscall(13, sig, (uint64_t)(uintptr_t)&act, (uint64_t)(uintptr_t)old, 8, 0);
+}
+
+static uint64_t raw_blocked_mask(void)
+{
+	uint64_t mask = 0;
+	syscall(SYS_rt_sigprocmask, SIG_BLOCK, NULL, &mask, 8);
+	return mask;
+}
+
+// The signals pending on this thread alone, not on the process.
+static uint64_t thread_pending_mask(void)
+{
+	char line[256];
+	uint64_t mask = 0;
+	FILE* f = fopen("/proc/thread-self/status", "r");
+	while (f && fgets(line, sizeof(line), f)) {
+		if (strncmp(line, "SigPnd:", 7) == 0)
+			mask = strtoull(line + 7, NULL, 16);
+	}
+	if (f)
+		fclose(f);
+	return mask;
+}
+
+static void raise_on_this_thread(int sig)
+{
+	syscall(SYS_tgkill, getpid(), gettid(), sig);
+}
+
+// Sets the blocked set the way the guest does, so mldr's view of it follows.
+static void set_guest_mask_to(uint64_t mask)
+{
+	guest_syscall(14, SIG_SETMASK, (uint64_t)(uintptr_t)&mask, 0, 8, 0);
+}
+
+static volatile int g_fresh_go;
+static volatile pid_t g_fresh_tid;
+
+static void* fresh_thread_main(void* arg)
+{
+	if (arg) {
+		// As mldr starts a guest thread: all blocked while guest code already runs (a callback), then the
+		// thread's own mask restored by mldr, not by the guest.
+		sigset_t all, mine;
+		sigfillset(&all);
+		pthread_sigmask(SIG_SETMASK, &all, &mine);
+		// The guest saves and puts back its blocked set meanwhile, as Darling's runtime does around a call.
+		uint64_t block = 0x7fffffff, saved = 0;
+		guest_syscall(14, SIG_BLOCK, (uint64_t)(uintptr_t)&block, (uint64_t)(uintptr_t)&saved, 8, 0);
+		guest_syscall(14, SIG_SETMASK, (uint64_t)(uintptr_t)&saved, 0, 8, 0);
+		pthread_sigmask(SIG_SETMASK, &mine, NULL);
+	}
+	g_fresh_tid = gettid();
+	while (g_fresh_go)
+		usleep(1000);
+	return NULL;
+}
+
+// A thread that never made a guest syscall: its first signal arrives in the host handler, where the host's
+// blocked set is the handler's own; the guest's set is the interrupted one.
+static void test_fresh_thread(uint64_t guest_handler, uint64_t saved_mask)
+{
+	set_guest_mask_to(0);
+	guest_sigaction(SIGUSR1, guest_handler, 0, 0, NULL);
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+	for (int mldr_start = 0; mldr_start < 2; mldr_start++) {
+		g_fresh_go = 1;
+		g_fresh_tid = 0;
+		pthread_t t;
+		pthread_create(&t, NULL, fresh_thread_main, mldr_start ? (void*)&t : NULL);
+		while (!g_fresh_tid)
+			usleep(1000);
+		int before = g_fake_deliveries;
+		syscall(SYS_tgkill, getpid(), g_fresh_tid, SIGUSR1);
+		for (int i = 0; i < 1000 && g_fake_deliveries == before; i++)
+			usleep(1000);
+		check(g_fake_deliveries == before + 1 && g_fake_delivered_sig == SIGUSR1 && !(g_fake_delivered_old_mask & FEX_JIT_SIGNALS),
+			mldr_start ? "a thread whose mask mldr restored after guest code ran gets its signals"
+				   : "a thread's first signal, before any guest syscall of it, is delivered");
+		g_fresh_go = 0;
+		pthread_join(t, NULL);
+	}
+	set_guest_mask_to(saved_mask);
+}
+
+static uint64_t guest_blocked(void)
+{
+	uint64_t old = 0;
+	guest_syscall(14, SIG_BLOCK, 0, (uint64_t)(uintptr_t)&old, 8, 0);
+	return old;
+}
+
+static struct fex_x86_64_state guest_syscall_state(uint64_t nr, uint64_t a1, uint64_t a2, uint64_t a3)
+{
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rax = nr;
+	st.rdi = a1;
+	st.rsi = a2;
+	st.rdx = a3;
+	st.r10 = 8;
+	fex_linux_syscall_dispatch(&st);
+	return st;
+}
+
+// The blocked set a handler runs with is exactly Linux's: the interrupted set, sa_mask, and the signal
+// itself unless SA_NODEFER; rt_sigreturn puts back the set in the frame, as the handler left it.
+static void test_signal_masks(uint64_t guest_handler, uint64_t saved_mask)
+{
+	const uint64_t winch = FEX_SIGBIT(SIGWINCH), usr1 = FEX_SIGBIT(SIGUSR1), usr2 = FEX_SIGBIT(SIGUSR2);
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+	guest_sigaction(SIGUSR1, guest_handler, 0, usr2, NULL);
+	set_guest_mask_to(winch);
+	int before = g_fake_deliveries;
+	raise_on_this_thread(SIGUSR1);
+	check(g_fake_deliveries == before + 1 && g_fake_delivered_old_mask == winch,
+		"the frame keeps the blocked set the signal interrupted");
+	check(guest_blocked() == (winch | usr2 | usr1) && raw_blocked_mask() == (winch | usr2 | usr1),
+		"a handler runs with exactly the interrupted set, sa_mask and the signal blocked");
+
+	set_guest_mask_to(winch);
+	guest_sigaction(SIGUSR1, guest_handler, FEX_GUEST_SA_NODEFER, usr2, NULL);
+	raise_on_this_thread(SIGUSR1);
+	check(guest_blocked() == (winch | usr2), "SA_NODEFER: the interrupted set and sa_mask only");
+
+	// A handler that returns through rt_sigreturn, after editing uc_sigmask in its frame.
+	const uint64_t edited = FEX_SIGBIT(SIGHUP) | FEX_SIGBIT(SIGTRAP);
+	g_fake_returned_mask = edited;
+	g_fake_preempt_answer = FEX_SIGNAL_RETURNED;
+	raise_on_this_thread(SIGUSR1);
+	check(guest_blocked() == edited, "returning from a handler that interrupted emulated code restores the frame's set");
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+
+	set_guest_mask_to(0);
+	g_fake_return_answer = 1;
+	g_fake_returned_mask = winch;
+	struct fex_x86_64_state st = guest_syscall_state(15, 0, 0, 0);
+	check(st.frame_restored == 1 && guest_blocked() == winch && raw_blocked_mask() == winch,
+		"returning from a handler run at a syscall return restores the frame's set and its registers");
+
+	// The JIT's own signals: the guest can block them, and reads them back as blocked.
+	set_guest_mask_to(FEX_SIGBIT(SIGTRAP));
+	check(guest_blocked() == FEX_SIGBIT(SIGTRAP) && !(raw_blocked_mask() & FEX_SIGBIT(SIGTRAP)),
+		"a blocked SIGTRAP reads back as blocked and stays open on the host");
+	set_guest_mask_to(saved_mask);
+}
+
+static void test_guest_signal_delivery(void)
+{
+	const uint64_t guest_handler = 0x123400;
+	uint64_t saved_mask = raw_blocked_mask();
+
+	check(guest_sigaction(SIGUSR1, guest_handler, 0, 0, NULL) == -ENOSYS,
+		"a guest handler cannot be installed before the shim's delivery hooks are known");
+	check(guest_syscall(15, 0, 0, 0, 0, 0) == -ENOSYS, "rt_sigreturn without the shim fails");
+
+	struct sigaction jit_saved[NSIG];
+	for (int sig = 1; sig < NSIG; sig++) {
+		if (FEX_JIT_SIGNALS & FEX_SIGBIT(sig))
+			sigaction(sig, NULL, &jit_saved[sig]);
+	}
+	uint64_t s33_saved[4];
+	syscall(SYS_rt_sigaction, 33, NULL, s33_saved, 8);
+
+	fex_signals_set_hooks(fake_signal_preempt, fake_signal_deliver, fake_signal_return);
+	struct sigaction host;
+	sigaction(SIGSEGV, NULL, &host);
+	check((host.sa_flags & SA_SIGINFO) && (host.sa_flags & SA_ONSTACK) && host.sa_sigaction != NULL,
+		"the hooks put the host handler on the JIT's signals");
+	struct sigaction jit_host = host;
+
+	check(guest_sigaction(SIGSEGV, guest_handler, 0, 0, NULL) == 0, "a guest SIGSEGV handler is accepted");
+	struct sigaction after;
+	sigaction(SIGSEGV, NULL, &after);
+	check(after.sa_sigaction == host.sa_sigaction, "a guest SIGSEGV handler leaves the host's in place");
+
+	// A handler, with SIGUSR2 in its mask.
+	check(guest_sigaction(SIGUSR1, guest_handler, FEX_GUEST_SA_RESTART, FEX_SIGBIT(SIGUSR2), NULL) == 0,
+		"a guest SIGUSR1 handler is installed");
+	sigaction(SIGUSR1, NULL, &host);
+	check((host.sa_flags & SA_SIGINFO) && (host.sa_flags & SA_RESTART) && (host.sa_flags & SA_ONSTACK),
+		"the host handler keeps the guest's SA_RESTART and runs on the signal stack");
+	raise_on_this_thread(SIGUSR1);
+	check(g_fake_deliveries == 1 && g_fake_delivered_sig == SIGUSR1 && g_fake_delivered_action.handler == guest_handler
+		&& g_fake_delivered_action.restorer == 0x5000, "a signal on a guest thread is delivered with the guest's action");
+	uint64_t during = raw_blocked_mask();
+	check((during & FEX_SIGBIT(SIGUSR1)) && (during & FEX_SIGBIT(SIGUSR2)) && !(during & FEX_JIT_SIGNALS),
+		"the handler runs with the signal and its sa_mask blocked, and the JIT's signals open");
+	set_guest_mask_to(saved_mask);
+
+	check(guest_sigaction(SIGUSR1, guest_handler, FEX_GUEST_SA_NODEFER, FEX_SIGBIT(SIGUSR2), NULL) == 0,
+		"an SA_NODEFER handler is installed");
+	raise_on_this_thread(SIGUSR1);
+	during = raw_blocked_mask();
+	check(g_fake_deliveries == 2 && !(during & FEX_SIGBIT(SIGUSR1)) && (during & FEX_SIGBIT(SIGUSR2)),
+		"SA_NODEFER leaves the signal itself unblocked");
+	set_guest_mask_to(saved_mask);
+
+	check(guest_sigaction(SIGUSR1, guest_handler, FEX_GUEST_SA_RESETHAND, 0, NULL) == 0,
+		"an SA_RESETHAND handler is installed");
+	raise_on_this_thread(SIGUSR1);
+	struct fex_guest_sigaction old;
+	memset(&old, 0xff, sizeof(old));
+	guest_syscall(13, SIGUSR1, 0, (uint64_t)(uintptr_t)&old, 8, 0);
+	sigaction(SIGUSR1, NULL, &host);
+	check(g_fake_deliveries == 3 && old.handler == 0 && host.sa_handler == SIG_DFL,
+		"SA_RESETHAND puts the default action back after one delivery");
+	set_guest_mask_to(saved_mask);
+
+	check(guest_sigaction(SIGUSR1, 1 /* SIG_IGN */, 0, 0, NULL) == 0, "the guest can ignore SIGUSR1");
+	sigaction(SIGUSR1, NULL, &host);
+	raise_on_this_thread(SIGUSR1);
+	check(host.sa_handler == SIG_IGN && g_fake_deliveries == 3, "an ignored signal is ignored by the host kernel");
+
+	// The signals glibc reserves (32, 33: darlingserver's interrupts) reach the guest too.
+	check(guest_sigaction(33, guest_handler, FEX_GUEST_SA_RESTART, 0, NULL) == 0, "a guest handler for signal 33 is installed");
+	raise_on_this_thread(33);
+	check(g_fake_deliveries == 4 && g_fake_delivered_sig == 33, "signal 33 is delivered to the guest");
+	set_guest_mask_to(saved_mask);
+	uint64_t block33 = FEX_SIGBIT(33);
+	check(guest_syscall(14, SIG_BLOCK, (uint64_t)(uintptr_t)&block33, 0, 8, 0) == 0 && (raw_blocked_mask() & block33),
+		"the guest can block signal 33");
+	set_guest_mask_to(saved_mask);
+
+	g_fake_preempt_answer = FEX_SIGNAL_CONSUMED;
+	raise_on_this_thread(33);
+	check(g_fake_deliveries == 4 && !(raw_blocked_mask() & block33),
+		"a signal the shim consumed is neither delivered nor passed on");
+
+	// No guest code on this thread yet: the signal is held here, blocked, until the thread's first guest
+	// syscall. One sent to the process goes back to the process; one sent to the thread stays on it.
+	g_fake_preempt_answer = FEX_SIGNAL_NO_GUEST_THREAD;
+	check(guest_sigaction(SIGUSR2, guest_handler, 0, 0, NULL) == 0, "a guest SIGUSR2 handler is installed");
+	kill(getpid(), SIGUSR2);
+	raise_on_this_thread(33);
+	sigset_t pending;
+	sigpending(&pending);
+	check(g_fake_deliveries == 4 && sigismember(&pending, SIGUSR2) == 1 && (raw_blocked_mask() & FEX_SIGBIT(SIGUSR2)),
+		"a signal sent to the process, on a thread without guest code, goes back to the process");
+	check(thread_pending_mask() & FEX_SIGBIT(33) && (raw_blocked_mask() & FEX_SIGBIT(33)),
+		"a signal sent to a thread without guest code stays pending on it");
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+	guest_syscall(39 /* getpid */, 0, 0, 0, 0, 0);
+	check(g_fake_deliveries == 6, "the thread's first guest syscall lets the held signals in");
+	set_guest_mask_to(saved_mask);
+
+	// The alternate signal stack is the guest's own, per thread.
+	static uint8_t alt[16384];
+	struct fex_guest_stack ss = { .sp = (uint64_t)(uintptr_t)alt, .flags = 0, .size = sizeof(alt) };
+	struct fex_guest_stack oss;
+	memset(&oss, 0, sizeof(oss));
+	uint64_t outside = (uint64_t)(uintptr_t)&oss;
+	check(guest_syscall(131, (uint64_t)(uintptr_t)&ss, (uint64_t)(uintptr_t)&oss, 0, 0, outside) == 0
+		&& oss.flags == FEX_GUEST_SS_DISABLE, "a thread starts without an alternate stack");
+	stack_t host_stack;
+	sigaltstack(NULL, &host_stack);
+	check(host_stack.ss_sp != alt, "the guest's alternate stack is not given to the host");
+	check(guest_syscall(131, 0, (uint64_t)(uintptr_t)&oss, 0, 0, outside) == 0 && oss.sp == ss.sp && oss.size == ss.size
+		&& oss.flags == 0, "the alternate stack reads back");
+	uint64_t inside = (uint64_t)(uintptr_t)alt + 100;
+	check(guest_syscall(131, 0, (uint64_t)(uintptr_t)&oss, 0, 0, inside) == 0 && oss.flags == FEX_GUEST_SS_ONSTACK,
+		"SS_ONSTACK is reported when running on it");
+	check(guest_syscall(131, (uint64_t)(uintptr_t)&ss, 0, 0, 0, inside) == -EPERM, "it cannot be changed while in use");
+	struct fex_guest_stack small = { .sp = (uint64_t)(uintptr_t)alt, .flags = 0, .size = 1024 };
+	check(guest_syscall(131, (uint64_t)(uintptr_t)&small, 0, 0, 0, outside) == -ENOMEM, "a stack below MINSIGSTKSZ is refused");
+	struct fex_guest_stack autodisarm = { .sp = (uint64_t)(uintptr_t)alt, .flags = (int32_t)(1U << 31), .size = sizeof(alt) };
+	check(guest_syscall(131, (uint64_t)(uintptr_t)&autodisarm, 0, 0, 0, outside) == -EINVAL, "SS_AUTODISARM is refused");
+
+	check(guest_sigaction(SIGUSR1, guest_handler, FEX_GUEST_SA_ONSTACK, 0, NULL) == 0, "an SA_ONSTACK handler is installed");
+	raise_on_this_thread(SIGUSR1);
+	check(g_fake_deliveries == 7 && g_fake_delivered_stack.sp == ss.sp && g_fake_delivered_stack.size == ss.size
+		&& (g_fake_delivered_action.flags & FEX_GUEST_SA_ONSTACK), "delivery is given the thread's alternate stack");
+	set_guest_mask_to(saved_mask);
+
+	struct fex_guest_stack off = { .flags = FEX_GUEST_SS_DISABLE };
+	guest_syscall(131, (uint64_t)(uintptr_t)&off, 0, 0, 0, outside);
+	check(guest_syscall(131, 0, (uint64_t)(uintptr_t)&oss, 0, 0, outside) == 0 && oss.flags == FEX_GUEST_SS_DISABLE,
+		"SS_DISABLE turns it off");
+
+	test_fresh_thread(guest_handler, saved_mask);
+	test_signal_masks(guest_handler, saved_mask);
+
+	guest_sigaction(SIGUSR1, 0, 0, 0, NULL);
+	guest_sigaction(SIGUSR2, 0, 0, 0, NULL);
+	guest_sigaction(SIGSEGV, 0, 0, 0, NULL);
+	sigaction(SIGSEGV, NULL, &after);
+	check(after.sa_sigaction == jit_host.sa_sigaction && (after.sa_flags & SA_SIGINFO),
+		"a guest SIG_DFL for SIGSEGV leaves the host's handler in place");
+	syscall(SYS_rt_sigaction, 33, s33_saved, NULL, 8);
+	for (int sig = 1; sig < NSIG; sig++) {
+		if (FEX_JIT_SIGNALS & FEX_SIGBIT(sig))
+			sigaction(sig, &jit_saved[sig], NULL);
+	}
 }
 
 // libwayland-client calls the dispatcher of a proxy for every event of it, as
@@ -1326,5 +1683,6 @@ int main(void)
 	test_xim_callbacks();
 	test_syscall_translations();
 	test_safe_memory_access();
+	test_guest_signal_delivery();
 	return failures ? 1 : 0;
 }
