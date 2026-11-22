@@ -1,0 +1,1 @@
+clang -O0 -fobjc-arc -framework Foundation -framework AppKit -o probe probe.m
