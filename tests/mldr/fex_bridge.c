@@ -818,6 +818,77 @@ static void test_signal_masks(uint64_t guest_handler, uint64_t saved_mask)
 	set_guest_mask_to(saved_mask);
 }
 
+static pthread_mutex_t g_host_lock = PTHREAD_MUTEX_INITIALIZER;
+
+// A guest handler would need what host code holds (a lock, malloc): a signal landing in host code waits for
+// the syscall that led there to return.
+static void test_held_until_syscall_return(uint64_t guest_handler, uint64_t saved_mask)
+{
+	guest_sigaction(SIGUSR1, guest_handler, 0, FEX_SIGBIT(SIGUSR2), NULL);
+	set_guest_mask_to(FEX_SIGBIT(SIGWINCH));
+	g_fake_preempt_answer = FEX_SIGNAL_AT_SYSCALL_RETURN;
+	int before = g_fake_deliveries;
+
+	pthread_mutex_lock(&g_host_lock); // the host function the signal interrupts holds a lock
+	raise_on_this_thread(SIGUSR1);
+	check(g_fake_deliveries == before, "a signal in host code does not run the guest handler there");
+	pthread_mutex_unlock(&g_host_lock);
+
+	struct fex_x86_64_state st = guest_syscall_state(39 /* getpid */, 0, 0, 0);
+	const struct fex_signal_request* req = st.signal_request;
+	check(req && req->sig == SIGUSR1 && req->action.handler == guest_handler && req->old_mask == FEX_SIGBIT(SIGWINCH)
+		&& !req->restart_syscall && (long)st.rax == getpid(), "the handler runs as the next syscall returns, after its result");
+	check(guest_blocked() == (FEX_SIGBIT(SIGWINCH) | FEX_SIGBIT(SIGUSR2) | FEX_SIGBIT(SIGUSR1)),
+		"and with the blocked set Linux gives it");
+	st = guest_syscall_state(39, 0, 0, 0);
+	check(st.signal_request == NULL, "it runs once");
+
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+	set_guest_mask_to(saved_mask);
+}
+
+struct interrupter {
+	pid_t tid;
+	int sig;
+};
+
+static void* interrupt_later(void* arg)
+{
+	struct interrupter* it = arg;
+	usleep(200 * 1000);
+	syscall(SYS_tgkill, getpid(), it->tid, it->sig);
+	return NULL;
+}
+
+// A guest syscall blocked in the host kernel: the signal interrupts it, and with SA_RESTART the handler
+// returns to the syscall instruction (Linux restarts it), without it the guest sees EINTR.
+static void test_syscall_restart(uint64_t guest_handler, uint64_t saved_mask)
+{
+	g_fake_preempt_answer = FEX_SIGNAL_AT_SYSCALL_RETURN;
+	set_guest_mask_to(0);
+	for (int restart = 1; restart >= 0; restart--) {
+		guest_sigaction(SIGUSR1, guest_handler, restart ? FEX_GUEST_SA_RESTART : 0, 0, NULL);
+		int fds[2];
+		if (pipe(fds) != 0)
+			abort();
+		char byte;
+		struct interrupter it = { gettid(), SIGUSR1 };
+		pthread_t t;
+		pthread_create(&t, NULL, interrupt_later, &it);
+		struct fex_x86_64_state st = guest_syscall_state(0 /* read */, fds[0], (uint64_t)(uintptr_t)&byte, 1);
+		pthread_join(t, NULL);
+		const struct fex_signal_request* req = st.signal_request;
+		check(req && req->sig == SIGUSR1 && (long)st.rax == -EINTR && req->restart_syscall == restart,
+			restart ? "SA_RESTART: a blocked read is interrupted and made again after the handler"
+				: "without SA_RESTART: a blocked read returns EINTR after the handler");
+		close(fds[0]);
+		close(fds[1]);
+		set_guest_mask_to(0);
+	}
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+	set_guest_mask_to(saved_mask);
+}
+
 static void test_guest_signal_delivery(void)
 {
 	const uint64_t guest_handler = 0x123400;
@@ -952,6 +1023,8 @@ static void test_guest_signal_delivery(void)
 
 	test_fresh_thread(guest_handler, saved_mask);
 	test_signal_masks(guest_handler, saved_mask);
+	test_held_until_syscall_return(guest_handler, saved_mask);
+	test_syscall_restart(guest_handler, saved_mask);
 
 	guest_sigaction(SIGUSR1, 0, 0, 0, NULL);
 	guest_sigaction(SIGUSR2, 0, 0, 0, NULL);

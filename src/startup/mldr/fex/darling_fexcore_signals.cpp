@@ -321,7 +321,13 @@ extern "C" int darling_fexcore_signal_preempt(int* sig, void* raw_info, void* uc
     return FEX_SIGNAL_FOR_GUEST;
   }
 
-  return FEX_SIGNAL_FOR_GUEST;
+  // Generated code and the dispatcher between blocks hold no host locks. Anywhere else the thread is in host
+  // code that may (malloc in a host library, a mutex in mldr), and a guest handler would need the same ones
+  // to compile its blocks: it runs when the syscall that led there returns.
+  if (g_ctx->IsAddressInCodeBuffer(thread, pc) || (pc >= config.DispatcherBegin && pc < config.DispatcherEnd)) {
+    return FEX_SIGNAL_FOR_GUEST;
+  }
+  return FEX_SIGNAL_AT_SYSCALL_RETURN;
 }
 
 extern "C" int darling_fexcore_signal_deliver(int sig, const void* raw_info, void* ucontext, const fex_guest_sigaction* action,

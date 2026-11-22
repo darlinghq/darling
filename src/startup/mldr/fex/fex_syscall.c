@@ -84,28 +84,36 @@ uint64_t fex_get_current_thread_gs_base(void)
 	return t_current_gs_base;
 }
 
+#if defined(__aarch64__)
+// Every host syscall mldr makes for the guest enters the kernel at fex_host_svc_insn, so a host handler can
+// tell that a thread is at the kernel entry of a guest syscall (hold_for_syscall_return).
+long fex_host_svc(long a1, long a2, long a3, long a4, long a5, long a6, long nr);
+__asm__(
+	".text\n"
+	".p2align 2\n"
+	".globl fex_host_svc\n"
+	".hidden fex_host_svc\n"
+	".type fex_host_svc, %function\n"
+	"fex_host_svc:\n"
+	"	mov x8, x6\n"
+	".globl fex_host_svc_insn\n"
+	".hidden fex_host_svc_insn\n"
+	"fex_host_svc_insn:\n"
+	"	svc #0\n"
+	"	ret\n"
+	".size fex_host_svc, .-fex_host_svc\n");
+#endif
+
 static long raw_host_syscall(long nr, long a1, long a2, long a3, long a4, long a5, long a6)
 {
 #if defined(__aarch64__)
-	register long x8 asm("x8") = nr;
-	register long x0 asm("x0") = a1;
-	register long x1 asm("x1") = a2;
-	register long x2 asm("x2") = a3;
-	register long x3 asm("x3") = a4;
-	register long x4 asm("x4") = a5;
-	register long x5 asm("x5") = a6;
-	__asm__ volatile(
-		"svc #0"
-		: "+r"(x0)
-		: "r"(x1), "r"(x2), "r"(x3), "r"(x4), "r"(x5), "r"(x8)
-		: "memory", "cc"
-	);
-	return x0;
+	return fex_host_svc(a1, a2, a3, a4, a5, a6, nr);
 #else
 	long ret = syscall(nr, a1, a2, a3, a4, a5, a6);
 	return (ret == -1) ? -errno : ret;
 #endif
 }
+
 struct arm64_kernel_stat {
 	uint64_t st_dev;
 	uint64_t st_ino;
@@ -445,6 +453,9 @@ static __thread uint64_t t_guest_blocked_jit_signals;
 static __thread uint64_t t_pending;
 static __thread siginfo_t t_pending_info[GUEST_NSIG];
 static __thread struct fex_signal_request t_request;
+// The thread is in fex_host_svc for a guest syscall, and a signal turned that into EINTR to be restarted.
+static __thread bool t_in_guest_syscall;
+static __thread bool t_restart_syscall;
 
 static uint64_t unblockable(uint64_t mask)
 {
@@ -580,6 +591,31 @@ static void deliver_now(int sig, siginfo_t* info, void* ucontext)
 extern const char fex_host_svc_insn[];
 #endif
 
+// The guest thread is in host code: the handler runs when its syscall returns. If the thread is at the
+// kernel entry of a guest syscall (about to make it, or rewound by the kernel to restart it), the syscall
+// returns EINTR now and is made again after the handler, as Linux does with a signal that arrives there.
+static void hold_for_syscall_return(int sig, siginfo_t* info, void* ucontext)
+{
+	struct fex_guest_sigaction action = load_guest_action(sig);
+	uint64_t mask = guest_mask_in_handler(ucontext);
+	if (action.handler == GUEST_SIG_IGN && !(mask & FEX_SIGBIT(sig)))
+		return;
+	if (action.handler == GUEST_SIG_DFL && !(mask & FEX_SIGBIT(sig))) {
+		take_default_action(sig, ucontext);
+		return;
+	}
+	pend_signal(sig, info);
+#if defined(__aarch64__)
+	ucontext_t* uc = ucontext;
+	uintptr_t pc = (uintptr_t)uc->uc_mcontext.pc;
+	if (t_in_guest_syscall && (pc == (uintptr_t)fex_host_svc || pc == (uintptr_t)fex_host_svc_insn)) {
+		uc->uc_mcontext.regs[0] = (uint64_t)-EINTR;
+		uc->uc_mcontext.pc = (uintptr_t)fex_host_svc_insn + 4;
+		t_restart_syscall = true;
+	}
+#endif
+}
+
 static void fex_host_signal_handler(int sig, siginfo_t* info, void* ucontext)
 {
 	int saved_errno = errno;
@@ -593,6 +629,9 @@ static void fex_host_signal_handler(int sig, siginfo_t* info, void* ucontext)
 		break;
 	case FEX_SIGNAL_FOR_GUEST:
 		deliver_now(sig, info, ucontext);
+		break;
+	case FEX_SIGNAL_AT_SYSCALL_RETURN:
+		hold_for_syscall_return(sig, info, ucontext);
 		break;
 	default: {
 		struct fex_guest_sigaction action = load_guest_action(sig);
@@ -853,6 +892,7 @@ static long dispatch_syscall(struct fex_x86_64_state* state)
 	long a6 = (long)state->r9;
 	long ret = -ENOSYS;
 
+	t_in_guest_syscall = true;
 	switch (nr) {
 		case 13: // rt_sigaction
 			ret = guest_rt_sigaction(a1, (uintptr_t)a2, (uintptr_t)a3, a4);
@@ -1112,8 +1152,22 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 	if (t_held_signals)
 		release_held_signals();
 
-	long ret = dispatch_syscall(state);
-	if (!state->unwind_thread)
-		take_pending_signal(state);
-	return ret;
+	const struct fex_x86_64_state entry = *state;
+	for (;;) {
+		t_restart_syscall = false;
+		long ret = dispatch_syscall(state);
+		t_in_guest_syscall = false;
+		bool restart = t_restart_syscall && ret == -EINTR;
+		t_restart_syscall = false;
+		if (state->unwind_thread)
+			return ret;
+		if (take_pending_signal(state)) {
+			t_request.restart_syscall = restart && !state->frame_restored;
+			return ret;
+		}
+		if (!restart)
+			return ret;
+		// Only signals without a handler interrupted it: the syscall goes on, as it would on Linux.
+		*state = entry;
+	}
 }
