@@ -1,3 +1,4 @@
+// CFLAGS: -framework ImageIO -framework CoreFoundation
 // Copyright (C) 2026 Darling developers
 //
 // ImageIO property keys that the documentation lists without their strings:
