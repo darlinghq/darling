@@ -20,18 +20,27 @@
 #include <ColorSync/ColorSync.h>
 #include <CoreFoundation/CFRuntime.h>
 #include <dispatch/dispatch.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "ICCProfile.h"
 
 struct __ColorSyncProfile
 {
 	CFRuntimeBase base;
 	CFDataRef data;
+	CFURLRef url;
 };
 
 static void ColorSyncProfileFinalize(CFTypeRef cf)
 {
-	CFRelease(((struct __ColorSyncProfile*) cf)->data);
+	struct __ColorSyncProfile* profile = (struct __ColorSyncProfile*) cf;
+	CFRelease(profile->data);
+	if (profile->url)
+		CFRelease(profile->url);
 }
 
 static const CFRuntimeClass ColorSyncProfileClass = {
@@ -180,4 +189,120 @@ CFArrayRef ColorSyncProfileCopyTagSignatures(ColorSyncProfileRef prof)
 	}
 	free(indices);
 	return signatures;
+}
+
+static void setPOSIXError(CFErrorRef* error, int code)
+{
+	if (error)
+		*error = CFErrorCreate(kCFAllocatorDefault, kCFErrorDomainPOSIX, code, NULL);
+}
+
+// The bytes of the file at a file URL. On failure NULL, and the error, if wanted, is a POSIX error for the
+// failed call. GUESS: the pages do not say which URLs are read or how a read fails. Only file URLs are read,
+// and a failure to read has the POSIX domain and the errno value.
+static CFDataRef copyFileData(CFURLRef url, CFErrorRef* error)
+{
+	char path[PATH_MAX];
+	CFStringRef scheme = CFURLCopyScheme(url);
+	const bool isFile = scheme && CFStringCompare(scheme, CFSTR("file"), kCFCompareCaseInsensitive) == kCFCompareEqualTo;
+	if (scheme)
+		CFRelease(scheme);
+	if (!isFile || !CFURLGetFileSystemRepresentation(url, true, (UInt8*) path, sizeof path))
+	{
+		setInvalidDataError(error);
+		return NULL;
+	}
+
+	const int fd = open(path, O_RDONLY);
+	if (fd < 0)
+	{
+		setPOSIXError(error, errno);
+		return NULL;
+	}
+
+	// A profile is at most 4 GiB (its size field is 32 bits), so a larger file is not read.
+	struct stat st;
+	int failure = 0;
+	if (fstat(fd, &st) < 0)
+		failure = errno;
+	else if (!S_ISREG(st.st_mode))
+		failure = EINVAL;
+	else if (st.st_size > UINT32_MAX)
+		failure = EFBIG;
+	if (failure)
+	{
+		setPOSIXError(error, failure);
+		close(fd);
+		return NULL;
+	}
+
+	// Read at most the size seen by fstat, so a file that grows meanwhile cannot make the read run on.
+	CFMutableDataRef data = CFDataCreateMutable(kCFAllocatorDefault, 0);
+	if (!data)
+	{
+		setPOSIXError(error, ENOMEM);
+		close(fd);
+		return NULL;
+	}
+
+	uint8_t chunk[16384];
+	off_t remaining = st.st_size;
+	while (remaining > 0)
+	{
+		const ssize_t got = read(fd, chunk, remaining < (off_t) sizeof chunk ? (size_t) remaining : sizeof chunk);
+		if (got < 0 && errno == EINTR)
+			continue;
+		if (got < 0)
+		{
+			setPOSIXError(error, errno);
+			CFRelease(data);
+			data = NULL;
+			break;
+		}
+		if (got == 0)
+			break; // the file shrank; what was read is what the profile is made from
+		CFDataAppendBytes(data, chunk, got);
+		remaining -= got;
+	}
+	close(fd);
+	return data;
+}
+
+// GUESS: a NULL URL, a URL that is not a file URL and data that is not a profile fail like ColorSyncProfileCreate
+// does. The profile keeps the URL as given, which ColorSyncProfileGetURL returns.
+ColorSyncProfileRef ColorSyncProfileCreateWithURL(CFURLRef url, CFErrorRef* error)
+{
+	if (error)
+		*error = NULL;
+
+	CFDataRef data = url ? copyFileData(url, error) : NULL;
+	if (!data)
+	{
+		if (!url)
+			setInvalidDataError(error);
+		return NULL;
+	}
+
+	ColorSyncProfileRef prof = ColorSyncProfileCreate(data, error);
+	CFRelease(data);
+	if (prof)
+		((struct __ColorSyncProfile*) prof)->url = CFRetain(url);
+	return prof;
+}
+
+// GUESS: a profile that was not created from a URL has none; NULL and the invalid-data error then, as for a NULL
+// or non-profile argument. The page says only that NULL means failure.
+// The URL belongs to the profile (the page is a "Get": no reference is added).
+CFURLRef ColorSyncProfileGetURL(ColorSyncProfileRef prof, CFErrorRef* error)
+{
+	if (error)
+		*error = NULL;
+
+	const struct __ColorSyncProfile* profile = profileOrNull(prof);
+	if (!profile || !profile->url)
+	{
+		setInvalidDataError(error);
+		return NULL;
+	}
+	return profile->url;
 }
