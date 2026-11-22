@@ -26,16 +26,17 @@ NS_ASSUME_NONNULL_BEGIN
 
 extern NSErrorDomain const QLThumbnailErrorDomain API_AVAILABLE(macos(10.15));
 
-// The documentation lists the cases, in no stated order, and gives no numeric values.
-// GUESS: values 0 to 5 in the order generationFailed, savingToURLFailed, requestInvalid,
-// requestCancelled, noCachedThumbnail, noCloudThumbnail.
+// The documentation lists the cases, in no stated order, and gives no numeric values. The values are
+// the ones the headers of macOS 26.7.3 declare for these cases (the numbering is the same ABI on
+// 10.15 and later), confirmed by printing them through the public API (black-box observation).
+// Test: tests/src/quicklookthumbnailing_placeholder.m
 typedef NS_ERROR_ENUM(QLThumbnailErrorDomain, QLThumbnailError) {
     QLThumbnailErrorGenerationFailed = 0,
     QLThumbnailErrorSavingToURLFailed = 1,
-    QLThumbnailErrorRequestInvalid = 2,
-    QLThumbnailErrorRequestCancelled = 3,
-    QLThumbnailErrorNoCachedThumbnail = 4,
-    QLThumbnailErrorNoCloudThumbnail = 5,
+    QLThumbnailErrorNoCachedThumbnail = 2,
+    QLThumbnailErrorNoCloudThumbnail = 3,
+    QLThumbnailErrorRequestInvalid = 4,
+    QLThumbnailErrorRequestCancelled = 5,
 } API_AVAILABLE(macos(10.15));
 
 NS_ASSUME_NONNULL_END

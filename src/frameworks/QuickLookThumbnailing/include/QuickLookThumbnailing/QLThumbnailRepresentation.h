@@ -25,8 +25,9 @@
 
 @class NSImage;
 
-// The documentation gives the cases but not their numeric values.
-// GUESS: the values follow the order in which the documentation lists the cases, starting at 0.
+// The documentation gives the cases but not their numeric values. They are 0, 1 and 2 in the order
+// the documentation lists the cases, as macOS 26.7.3 reports (black-box observation).
+// Test: tests/src/quicklookthumbnailing_placeholder.m
 typedef NS_ENUM(NSInteger, QLThumbnailRepresentationType) {
     QLThumbnailRepresentationTypeIcon = 0,
     QLThumbnailRepresentationTypeLowQualityThumbnail = 1,

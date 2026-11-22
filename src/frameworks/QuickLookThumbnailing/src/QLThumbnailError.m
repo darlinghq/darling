@@ -19,5 +19,6 @@
 
 #import <QuickLookThumbnailing/QLThumbnailError.h>
 
-// GUESS: the documentation gives the symbol but not its string value; the symbol name is used.
+// The documentation gives the symbol but not its string value; macOS 26.7.3 reports the symbol name
+// (black-box observation). Test: tests/src/quicklookthumbnailing_placeholder.m
 NSErrorDomain const QLThumbnailErrorDomain = @"QLThumbnailErrorDomain";

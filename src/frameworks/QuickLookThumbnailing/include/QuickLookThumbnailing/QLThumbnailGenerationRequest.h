@@ -24,8 +24,9 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <UniformTypeIdentifiers/UTType.h>
 
-// The documentation names the members, including "all", but gives no numeric values.
-// GUESS: one bit per member in the documented order (icon, low quality, thumbnail); All is the union.
+// The documentation names the members, including "all", but gives no numeric values. One bit per
+// member in the documented order (icon, low quality, thumbnail), All the union: the values macOS
+// 26.7.3 reports (black-box observation). Test: tests/src/quicklookthumbnailing_placeholder.m
 typedef NS_OPTIONS(NSUInteger, QLThumbnailGenerationRequestRepresentationTypes) {
     QLThumbnailGenerationRequestRepresentationTypeIcon = 1 << 0,
     QLThumbnailGenerationRequestRepresentationTypeLowQualityThumbnail = 1 << 1,

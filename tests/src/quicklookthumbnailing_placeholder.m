@@ -101,6 +101,22 @@ int main(void)
 		QLThumbnailGenerationRequest *bare = makeRequest(@"/tmp/quicklookthumbnailing-placeholder", QLThumbnailGenerationRequestRepresentationTypeIcon);
 		CHECK(bare.contentType != nil, "contentType is nil for a file without an extension");
 
+		// The numeric values and the domain string are the ones macOS 26.7.3 reports (black-box
+		// observation); the enums are ABI, so a different number would change what callers compare.
+		CHECK(QLThumbnailErrorGenerationFailed == 0, "QLThumbnailErrorGenerationFailed is not 0");
+		CHECK(QLThumbnailErrorSavingToURLFailed == 1, "QLThumbnailErrorSavingToURLFailed is not 1");
+		CHECK(QLThumbnailErrorNoCachedThumbnail == 2, "QLThumbnailErrorNoCachedThumbnail is not 2");
+		CHECK(QLThumbnailErrorNoCloudThumbnail == 3, "QLThumbnailErrorNoCloudThumbnail is not 3");
+		CHECK(QLThumbnailErrorRequestInvalid == 4, "QLThumbnailErrorRequestInvalid is not 4");
+		CHECK(QLThumbnailErrorRequestCancelled == 5, "QLThumbnailErrorRequestCancelled is not 5");
+		CHECK(QLThumbnailRepresentationTypeIcon == 0 && QLThumbnailRepresentationTypeLowQualityThumbnail == 1 &&
+		      QLThumbnailRepresentationTypeThumbnail == 2, "QLThumbnailRepresentationType values are not 0, 1, 2");
+		CHECK(QLThumbnailGenerationRequestRepresentationTypeIcon == 1 &&
+		      QLThumbnailGenerationRequestRepresentationTypeLowQualityThumbnail == 2 &&
+		      QLThumbnailGenerationRequestRepresentationTypeThumbnail == 4 &&
+		      QLThumbnailGenerationRequestRepresentationTypeAll == 7, "request representation types are not 1, 2, 4, 7");
+		CHECK([QLThumbnailErrorDomain isEqualToString:@"QLThumbnailErrorDomain"], "QLThumbnailErrorDomain string");
+
 		QLThumbnailGenerator *generator = [QLThumbnailGenerator sharedGenerator];
 		CHECK(generator != nil, "sharedGenerator is nil");
 		CHECK(generator == [QLThumbnailGenerator sharedGenerator], "sharedGenerator is not a singleton");
