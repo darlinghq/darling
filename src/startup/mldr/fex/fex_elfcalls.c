@@ -197,6 +197,7 @@ darling_thread_create_callbacks_t fex_wrap_guest_thread_callbacks(darling_thread
 }
 
 struct fex_unsupported_callback { const char* name; unsigned mask; const char* reason; };
+struct fex_callback_struct { const char* name; unsigned arg; unsigned words; unsigned fields; };
 // What the bridge does to the arguments of one host function, decided from its name when it is wrapped
 // so that a call does no name lookups.
 enum fex_x_handler { FEX_X_HANDLER_NONE, FEX_X_ERROR_HANDLER, FEX_X_IO_ERROR_HANDLER };
@@ -204,6 +205,7 @@ struct fex_callback_rules {
 	enum fex_x_handler x_handler;
 	unsigned args; // the g_callback_args mask, 0 if the function has no entry
 	const struct fex_unsupported_callback* unsupported; // its g_callback_unsupported entry, if any
+	const struct fex_callback_struct* callback_struct; // its g_callback_structs entry, if any
 };
 static struct fex_callback_rules g_dlsym_rules[DARLING_FEX_DLSYM_MAX_SLOTS];
 static struct fex_callback_rules callback_rules_for(const char* name);
@@ -422,9 +424,21 @@ static const struct fex_unsupported_callback g_callback_unsupported[] = {
 	{ "glDebugMessageCallbackKHR", 0x1, "its callback takes seven arguments" },
 };
 
+// Host functions that take a pointer to a struct holding guest function pointers (bit i of `fields` = the
+// i-th 8-byte word of the struct is one). The library reads these structs only while the function
+// runs, so it is handed a copy, on the bridge's stack, with the function pointers replaced by thunks;
+// the guest's struct is left alone, since guest code may read it or call through it.
+#define FEX_CALLBACK_STRUCT_MAX_WORDS 8
+_Static_assert(FEX_CALLBACK_STRUCT_MAX_WORDS <= 32, "fields is a 32-bit mask");
+static const struct fex_callback_struct g_callback_structs[] = {
+	// FT_Outline_Decompose(outline, funcs, user): FT_Outline_Funcs is
+	// { move_to, line_to, conic_to, cubic_to, int shift, FT_Pos delta }, six words.
+	{ "FT_Outline_Decompose", 1, 6, 0xf },
+};
+
 static struct fex_callback_rules callback_rules_for(const char* name)
 {
-	struct fex_callback_rules r = { FEX_X_HANDLER_NONE, 0, NULL };
+	struct fex_callback_rules r = { FEX_X_HANDLER_NONE, 0, NULL, NULL };
 	if (!name)
 		return r;
 	if (strcmp(name, "XSetErrorHandler") == 0)
@@ -437,12 +451,23 @@ static struct fex_callback_rules callback_rules_for(const char* name)
 	for (size_t i = 0; i < sizeof(g_callback_unsupported) / sizeof(g_callback_unsupported[0]); i++)
 		if (strcmp(name, g_callback_unsupported[i].name) == 0)
 			r.unsupported = &g_callback_unsupported[i];
+	for (size_t i = 0; i < sizeof(g_callback_structs) / sizeof(g_callback_structs[0]); i++) {
+		if (strcmp(name, g_callback_structs[i].name) != 0)
+			continue;
+		if (g_callback_structs[i].words > FEX_CALLBACK_STRUCT_MAX_WORDS) {
+			fprintf(stderr, "mldr/fex: the callback struct of %s is larger than the bridge's copy\n", name);
+			abort();
+		}
+		r.callback_struct = &g_callback_structs[i];
+	}
 	return r;
 }
 
 // Replaces the guest function pointers among the arguments of a host function (args[i] is its i-th
-// integer argument) by host thunks, as its rules say.
-static void translate_guest_callbacks(const struct fex_callback_rules* rules, uint64_t* args[], int nargs)
+// integer argument) by host thunks, as its rules say. `struct_copy` must stay valid until the host
+// function returns.
+static void translate_guest_callbacks(const struct fex_callback_rules* rules, uint64_t* args[], int nargs,
+	uint64_t* struct_copy)
 {
 	bool ignore = (rules->args & FEX_CALLBACK_IGNORE) != 0;
 	for (int a = 0; a < nargs && a < 31; a++)
@@ -456,6 +481,17 @@ static void translate_guest_callbacks(const struct fex_callback_rules* rules, ui
 			abort();
 		}
 	}
+	const struct fex_callback_struct* cs = rules->callback_struct;
+	if (cs) {
+		uint64_t* arg = args[cs->arg];
+		// A pointer the bridge cannot read is passed on as is: the library then fails on it as it would natively.
+		if (*arg != 0 && fex_copy_from_guest(struct_copy, (const void*)(uintptr_t)*arg, cs->words * sizeof(uint64_t)) == 0) {
+			for (unsigned w = 0; w < cs->words; w++)
+				if (cs->fields & (1u << w))
+					struct_copy[w] = host_callback_for(struct_copy[w]);
+			*arg = (uint64_t)(uintptr_t)struct_copy;
+		}
+	}
 }
 
 long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
@@ -465,7 +501,7 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 
 	pthread_mutex_lock(&g_dlsym_mutex);
 	void* target = (slot < g_dlsym_count) ? g_dlsym_targets[slot] : NULL;
-	const struct fex_callback_rules rules = target ? g_dlsym_rules[slot] : (struct fex_callback_rules){ FEX_X_HANDLER_NONE, 0, NULL };
+	const struct fex_callback_rules rules = target ? g_dlsym_rules[slot] : (struct fex_callback_rules){ FEX_X_HANDLER_NONE, 0, NULL, NULL };
 	pthread_mutex_unlock(&g_dlsym_mutex);
 
 	if (!target)
@@ -505,11 +541,13 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 		for (int i = 0; i < FEX_STACK_ARG_WORDS; i++)
 			st[i] = sp[1 + i];
 	}
+	// Holds the host copy of a struct of callbacks until the host function returns.
+	uint64_t struct_copy[FEX_CALLBACK_STRUCT_MAX_WORDS];
 	if (!guest_handler) {
 		uint64_t* args[6 + FEX_STACK_ARG_WORDS] = {&state->rdi, &state->rsi, &state->rdx, &state->r10, &state->r8, &state->r9};
 		for (int w = 0; w < FEX_STACK_ARG_WORDS; w++)
 			args[6 + w] = &st[w];
-		translate_guest_callbacks(&rules, args, 6 + FEX_STACK_ARG_WORDS);
+		translate_guest_callbacks(&rules, args, 6 + FEX_STACK_ARG_WORDS, struct_copy);
 	}
 	uint64_t s0 = st[0], s1 = st[1];
 

@@ -700,6 +700,52 @@ static void test_callback_arguments(void)
 		"a later read by giflib runs the guest read function");
 }
 
+// FT_Outline_Funcs, as FreeType declares it.
+struct fake_outline_funcs {
+	uint64_t move_to, line_to, conic_to, cubic_to;
+	int shift;
+	long delta;
+};
+
+static int g_outline_shift = -1;
+static long g_outline_delta = -1;
+static uint64_t g_outline_funcs_ptr = 0;
+// FreeType walks the outline and calls move_to(to, user), ..., cubic_to(c1, c2, to, user) while it runs.
+static uint64_t host_FT_Outline_Decompose(uint64_t outline, uint64_t funcs, uint64_t user)
+{
+	(void)outline;
+	const struct fake_outline_funcs* f = (const struct fake_outline_funcs*)(uintptr_t)funcs;
+	g_outline_funcs_ptr = funcs;
+	if (!f)
+		return 0;
+	g_outline_shift = f->shift;
+	g_outline_delta = f->delta;
+	if (is_fake_guest_fn(f->move_to) || is_fake_guest_fn(f->cubic_to))
+		return GOT_GUEST_FN;
+	((uint64_t (*)(uint64_t, uint64_t))(uintptr_t)f->move_to)(0x7f00011000, user);
+	return ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))(uintptr_t)f->cubic_to)(1, 2, 3, user);
+}
+
+// A struct of guest callbacks passed by pointer reaches the library as a copy holding host thunks.
+static void test_callback_struct(void)
+{
+	void* stub = fex_dlsym_wrap_if_func((void*)host_FT_Outline_Decompose, "FT_Outline_Decompose");
+	struct fake_outline_funcs guest = {0x5400000, 0x5400100, 0x5400200, 0x5400300, 6, -42};
+	last_cb_args_fn = 0;
+	uint64_t ret = call_stub(stub, 0x7f00012000, (uint64_t)(uintptr_t)&guest, 0x7f00013000, 0);
+	check(g_outline_funcs_ptr != 0 && g_outline_funcs_ptr != (uint64_t)(uintptr_t)&guest,
+		"FT_Outline_Decompose gets a copy of the guest's FT_Outline_Funcs");
+	check(g_outline_shift == 6 && g_outline_delta == -42, "the copy keeps the struct's other fields");
+	check(ret == 0x88 && last_cb_args_fn == 0x5400300 && last_cb_args[0] == 1 && last_cb_args[2] == 3 &&
+	      last_cb_args[3] == 0x7f00013000,
+		"FreeType's calls through the copy run the guest's callbacks");
+	check(guest.move_to == 0x5400000 && guest.cubic_to == 0x5400300, "the guest's own struct is left alone");
+
+	g_outline_funcs_ptr = 1;
+	call_stub(stub, 0x7f00012000, 0, 0, 0);
+	check(g_outline_funcs_ptr == 0, "a NULL struct pointer reaches the library as NULL");
+}
+
 static uint64_t g_debug_callback_seen = 1;
 static uint64_t host_glDebugMessageCallback(uint64_t callback, uint64_t user_param)
 {
@@ -1200,6 +1246,7 @@ int main(void)
 	test_wayland_dispatcher();
 	test_callback_arguments();
 	test_unsupported_callback();
+	test_callback_struct();
 	test_syscall_translations();
 	test_safe_memory_access();
 	return failures ? 1 : 0;
