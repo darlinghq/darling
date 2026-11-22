@@ -232,12 +232,25 @@ static NSImage *FinderBackgroundImage(NSURL *url)
 
 @end
 
-// Tells the controller about double clicks, which the collection view leaves to its items.
+// Tells the controller about double clicks, which the collection view leaves to its items; Return (without modifier
+// keys) asks for Rename, as in the Finder.
 @interface FinderIconCollectionView : NSCollectionView
 @property (copy) void (^doubleClicked)(NSIndexPath *path);
 @end
 
 @implementation FinderIconCollectionView
+
+- (void)keyDown:(NSEvent *)event
+{
+    NSString *characters = [event charactersIgnoringModifiers];
+    NSEventModifierFlags modifiers = [event modifierFlags] & (NSEventModifierFlagCommand | NSEventModifierFlagOption
+                                                              | NSEventModifierFlagControl | NSEventModifierFlagShift);
+    if (modifiers == 0 && ([characters isEqual:@"\r"] || [characters isEqual:@"\003"])) {
+        [NSApp sendAction:@selector(rename:) to:nil from:self];
+        return;
+    }
+    [super keyDown:event];
+}
 
 - (void)mouseDown:(NSEvent *)event
 {
@@ -256,6 +269,8 @@ static NSImage *FinderBackgroundImage(NSURL *url)
     NSCollectionViewFlowLayout *_flowLayout;
     FinderFolderStyle *_style;
     FinderIconLook _look;
+    NSURL *_editingItem;
+    NSTextField *_editingField;
 }
 
 // The collection view can outlive this controller (its window does)
@@ -399,6 +414,80 @@ static NSImage *FinderBackgroundImage(NSURL *url)
     for (NSURL *url in urls)
         [result addObject:[NSURL fileURLWithPath:[[url URLByStandardizingPath] path]]];
     return result;
+}
+
+#pragma mark Editing a label
+
+- (void)beginEditingItem:(NSURL *)url
+{
+    [self finishEditingWithName:nil];
+    NSUInteger index = [[self standardized:_items] indexOfObject:[[self standardized:@[ url ]] firstObject]];
+    if (index == NSNotFound)
+        return;
+    NSIndexPath *path = [NSIndexPath indexPathForItem:index inSection:0];
+    [self.collectionView scrollToItemsAtIndexPaths:[NSSet setWithObject:path]
+                                    scrollPosition:NSCollectionViewScrollPositionNearestHorizontalEdge];
+    // Items are made by the next layout pass; one that was just reloaded may not be there yet
+    [self.collectionView layoutSubtreeIfNeeded];
+    NSTextField *field = [self.collectionView itemAtIndexPath:path].textField;
+    if (field == nil || field.window == nil)
+        return;
+    _editingItem = _items[index];
+    _editingField = field;
+    NSString *name = [_editingItem lastPathComponent];
+    field.stringValue = name;
+    field.editable = YES;
+    field.selectable = YES;
+    field.drawsBackground = YES;
+    field.backgroundColor = [NSColor textBackgroundColor];
+    field.delegate = self;
+    [field.window makeFirstResponder:field];
+
+    // The name without its extension; all of a folder's
+    BOOL directory = NO;
+    [[NSFileManager defaultManager] fileExistsAtPath:[_editingItem path] isDirectory:&directory];
+    NSString *extension = [name pathExtension];
+    NSUInteger length = directory || [extension length] == 0 ? [name length] : [name length] - [extension length] - 1;
+    [[field currentEditor] setSelectedRange:NSMakeRange(0, length)];
+}
+
+// Ends the edit: the label shows the item's name again, and renameItem hears what was typed (nil: cancelled)
+- (void)finishEditingWithName:(NSString *)name
+{
+    NSURL *item = _editingItem;
+    NSTextField *field = _editingField;
+    if (item == nil)
+        return;
+    _editingItem = nil;
+    _editingField = nil;
+    field.delegate = nil;
+    field.editable = NO;
+    field.selectable = NO;
+    field.drawsBackground = NO;
+    [field abortEditing];
+    field.stringValue = [FinderDirectory displayNameForURL:item];
+    // The collection view gets the keys back, unless the edit ended because something else took them
+    id responder = [field.window firstResponder];
+    if (responder == nil || responder == field.window || responder == field
+        || ([responder isKindOfClass:[NSText class]] && [(NSText *) responder delegate] == (id) field))
+        [field.window makeFirstResponder:self.collectionView];
+    if (_renameItem != nil)
+        _renameItem(item, name);
+}
+
+- (void)controlTextDidEndEditing:(NSNotification *)notification
+{
+    if (notification.object != _editingField)
+        return;
+    [self finishEditingWithName:_editingField.stringValue];
+}
+
+- (BOOL)control:(NSControl *)control textView:(NSTextView *)textView doCommandBySelector:(SEL)selector
+{
+    if (control != _editingField || selector != @selector(cancelOperation:))
+        return NO;
+    [self finishEditingWithName:nil];
+    return YES;
 }
 
 #pragma mark NSCollectionViewDataSource

@@ -23,7 +23,7 @@
 
 // A Finder window's icon view: the folder's items in a collection view with a flow layout, each a 64-point icon with
 // its name below in up to two lines; or, for a folder with a style, as the style says.
-@interface FinderIconViewController : NSViewController <NSCollectionViewDataSource, NSCollectionViewDelegate>
+@interface FinderIconViewController : NSViewController <NSCollectionViewDataSource, NSCollectionViewDelegate, NSTextFieldDelegate>
 
 @property (readonly) NSCollectionView *collectionView;
 
@@ -45,5 +45,11 @@
 
 // Called with the item when one is double-clicked.
 @property (copy) void (^openItem)(NSURL *item);
+
+// Edits the item's label in place, its file name in it with the name before the extension selected. Return or ending
+// the edit otherwise calls renameItem with the name typed; Escape calls it with nil. The label then shows the item's
+// name again; renaming is up to whoever set renameItem.
+- (void)beginEditingItem:(NSURL *)item;
+@property (copy) void (^renameItem)(NSURL *item, NSString *name);
 
 @end

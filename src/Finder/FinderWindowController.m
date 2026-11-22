@@ -21,7 +21,9 @@
 #import "FinderDirectory.h"
 #import "FinderFolderStyle.h"
 #import "FinderIconViewController.h"
+#import "FinderItemActions.h"
 #import "FinderListViewController.h"
+#import "FinderOperationQueue.h"
 #import "FinderSidebarController.h"
 #import <CoreServices/CoreServices.h>
 
@@ -43,6 +45,7 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
     NSSegmentedControl *_historyControl;
     NSMutableArray<NSURL *> *_back;
     NSMutableArray<NSURL *> *_forward;
+    BOOL _reloadPending;
 }
 
 - (instancetype)initWithFolderURL:(NSURL *)folder
@@ -65,10 +68,15 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
                 controller.openItem(item);
         };
 
+        void (^rename)(NSURL *, NSString *) = ^(NSURL *item, NSString *name) {
+            [weakSelf finishRenaming:item to:name];
+        };
         _icons = [[FinderIconViewController alloc] init];
         _icons.openItem = open;
+        _icons.renameItem = rename;
         _list = [[FinderListViewController alloc] init];
         _list.openItem = open;
+        _list.renameItem = rename;
         _sidebar = [[FinderSidebarController alloc] init];
         _sidebar.showFolder = open;
 
@@ -216,12 +224,20 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
     return YES;
 }
 
+// Keeps the selection of the items still there. While an item is renamed, the reload waits for the end of it.
 - (void)reloadFolder
 {
+    if (_renamingItem != nil) {
+        _reloadPending = YES;
+        return;
+    }
+    _reloadPending = NO;
+    NSArray<NSURL *> *selected = self.selectedItems;
     if (![_directory reload:NULL])
         return;
     _icons.items = _directory.items;
     _list.items = _directory.items;
+    [self selectItems:selected];
 }
 
 #pragma mark Watching the folder
@@ -255,6 +271,8 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
     BOOL directory = NO;
     if (![[NSFileManager defaultManager] fileExistsAtPath:[_folderURL path] isDirectory:&directory] || !directory)
         [self close];
+    else
+        [self reloadFolder];
 }
 
 - (void)windowWillClose:(NSNotification *)notification
@@ -386,6 +404,156 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
     self.viewStyle = sender.selectedSegment == 1 ? FinderViewStyleList : FinderViewStyleIcons;
 }
 
+#pragma mark File operations
+
+// Nothing can be made, renamed or removed in it
+- (BOOL)folderIsReadOnly
+{
+    NSNumber *readOnly = nil;
+    [_folderURL getResourceValue:&readOnly forKey:NSURLVolumeIsReadOnlyKey error:NULL];
+    return [readOnly boolValue] || ![[NSFileManager defaultManager] isWritableFileAtPath:[_folderURL path]];
+}
+
+// The file URLs on the general pasteboard, those that still exist
+- (NSArray<NSURL *> *)pasteboardItems
+{
+    NSArray<NSURL *> *urls = [[NSPasteboard generalPasteboard] readObjectsForClasses:@[ [NSURL class] ]
+                                                                             options:@{ NSPasteboardURLReadingFileURLsOnlyKey : @YES }];
+    NSMutableArray<NSURL *> *items = [NSMutableArray array];
+    for (NSURL *url in urls) {
+        if ([url isFileURL] && [[NSFileManager defaultManager] fileExistsAtPath:[url path]])
+            [items addObject:url];
+    }
+    return items;
+}
+
+- (void)showAlertWithError:(NSError *)error
+{
+    NSAlert *alert = [[NSAlert alloc] init];
+    alert.alertStyle = NSAlertStyleWarning;
+    alert.messageText = [error localizedDescription] ?: @"";
+    alert.informativeText = [error localizedRecoverySuggestion] ?: @"";
+    [alert addButtonWithTitle:@"OK"];
+    [[FinderOperationQueue sharedQueue] runAlert:alert];
+}
+
+- (IBAction)copy:(id)sender
+{
+    NSArray<NSURL *> *items = self.selectedItems;
+    if ([items count] == 0)
+        return;
+    NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
+    [pasteboard clearContents];
+    [pasteboard writeObjects:items];
+}
+
+- (void)pasteAs:(FinderTransferKind)kind
+{
+    NSArray<NSURL *> *items = [self pasteboardItems];
+    if ([items count] == 0 || [self folderIsReadOnly])
+        return;
+    [[FinderOperationQueue sharedQueue] transferItems:items to:_folderURL kind:kind window:self.window];
+}
+
+- (IBAction)paste:(id)sender
+{
+    [self pasteAs:FinderTransferCopy];
+}
+
+- (IBAction)moveItemHere:(id)sender
+{
+    [self pasteAs:FinderTransferMove];
+}
+
+- (IBAction)selectAll:(id)sender
+{
+    [self selectItems:_directory.items];
+}
+
+- (IBAction)newFolder:(id)sender
+{
+    if ([self folderIsReadOnly])
+        return;
+    NSError *error = nil;
+    NSURL *folder = [FinderItemActions createFolderIn:_folderURL error:&error];
+    if (folder == nil) {
+        [self showAlertWithError:error];
+        return;
+    }
+    [self reloadFolder];
+    [self beginRenamingItem:folder];
+}
+
+- (IBAction)rename:(id)sender
+{
+    NSArray<NSURL *> *items = self.selectedItems;
+    if ([items count] == 1)
+        [self beginRenamingItem:items[0]];
+}
+
+- (void)beginRenamingItem:(NSURL *)item
+{
+    if ([self folderIsReadOnly])
+        return;
+    [self selectItems:@[ item ]];
+    _renamingItem = item;
+    if (_viewStyle == FinderViewStyleList)
+        [_list beginEditingItem:item];
+    else
+        [_icons beginEditingItem:item];
+}
+
+// The view's edit ended with name (nil: cancelled): the item is renamed if the name may be used and, for a new
+// extension, the user agrees
+- (void)finishRenaming:(NSURL *)item to:(NSString *)name
+{
+    _renamingItem = nil;
+    NSURL *renamed = nil;
+    if (name != nil && ![name isEqual:[item lastPathComponent]]) {
+        NSError *problem = [FinderItemActions problemWithName:name forItem:item];
+        NSString *from = nil, *to = nil;
+        if (problem != nil) {
+            [self showAlertWithError:problem];
+        } else if ([FinderItemActions name:name changesExtensionOf:item from:&from to:&to] && ![self agreeToExtension:to from:from]) {
+            // kept as it was
+        } else {
+            NSError *error = nil;
+            renamed = [FinderItemActions renameItem:item to:name error:&error];
+            if (renamed == nil)
+                [self showAlertWithError:error];
+        }
+    }
+    if (renamed != nil || _reloadPending)
+        [self reloadFolder];
+    if (renamed != nil)
+        [self selectItems:@[ renamed ]];
+}
+
+- (BOOL)agreeToExtension:(NSString *)to from:(NSString *)from
+{
+    NSAlert *alert = [[NSAlert alloc] init];
+    alert.alertStyle = NSAlertStyleWarning;
+    alert.messageText = [NSString stringWithFormat:@"Are you sure you want to change the extension from “.%@” to “.%@”?", from, to];
+    alert.informativeText = [NSString stringWithFormat:@"If you make this change, your document may open in a different application."];
+    [alert addButtonWithTitle:[NSString stringWithFormat:@"Keep .%@", from]];
+    [alert addButtonWithTitle:[NSString stringWithFormat:@"Use .%@", to]];
+    return [[FinderOperationQueue sharedQueue] runAlert:alert] == 1;
+}
+
+- (IBAction)moveToTrash:(id)sender
+{
+    NSArray<NSURL *> *items = self.selectedItems;
+    if ([items count] == 0 || [self folderIsReadOnly])
+        return;
+    __weak FinderWindowController *weakSelf = self;
+    [FinderItemActions trashItems:items completion:^(NSDictionary<NSURL *, NSURL *> *trashed, NSError *error) {
+        FinderWindowController *controller = weakSelf;
+        if (error != nil)
+            [controller showAlertWithError:error];
+        [controller reloadFolder];
+    }];
+}
+
 #pragma mark Eject
 
 // The volume this window's folder is on, if it can be ejected
@@ -426,8 +594,16 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
         return self.canGoForward;
     if (item.action == @selector(goToEnclosingFolder:))
         return ![[_folderURL path] isEqual:@"/"];
-    if (item.action == @selector(openSelection:))
+    if (item.action == @selector(openSelection:) || item.action == @selector(copy:))
         return [self.selectedItems count] > 0;
+    if (item.action == @selector(paste:) || item.action == @selector(moveItemHere:))
+        return ![self folderIsReadOnly] && [[self pasteboardItems] count] > 0;
+    if (item.action == @selector(newFolder:))
+        return ![self folderIsReadOnly];
+    if (item.action == @selector(rename:))
+        return [self.selectedItems count] == 1 && ![self folderIsReadOnly];
+    if (item.action == @selector(moveToTrash:))
+        return [self.selectedItems count] > 0 && ![self folderIsReadOnly];
     if (item.action == @selector(toggleToolbar:))
         item.title = self.window.toolbar.visible ? @"Hide Toolbar" : @"Show Toolbar";
     if (item.action == @selector(toggleSidebar:))

@@ -37,4 +37,9 @@
 // Called with the item when a row is double-clicked.
 @property (copy) void (^openItem)(NSURL *item);
 
+// Edits the item's name in its row, the file name in it with the name before the extension selected. Ending the edit
+// calls renameItem with the name typed; renaming is up to whoever set it.
+- (void)beginEditingItem:(NSURL *)item;
+@property (copy) void (^renameItem)(NSURL *item, NSString *name);
+
 @end

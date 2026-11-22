@@ -249,11 +249,29 @@ static NSString *FinderFolderKey(NSURL *url)
     [[main addItemWithTitle:@"Finder" action:NULL keyEquivalent:@""] setSubmenu:finder];
 
     NSMenu *file = [[NSMenu alloc] initWithTitle:@"File"];
+    NSMenuItem *newFolder = [file addItemWithTitle:@"New Folder" action:@selector(newFolder:) keyEquivalent:@"n"];
+    newFolder.keyEquivalentModifierMask = NSEventModifierFlagShift | NSEventModifierFlagCommand;
     [file addItemWithTitle:@"Open" action:@selector(openSelection:) keyEquivalent:@"o"];
     [file addItemWithTitle:@"Close Window" action:@selector(performClose:) keyEquivalent:@"w"];
     [file addItem:[NSMenuItem separatorItem]];
+    [file addItemWithTitle:@"Get Info" action:@selector(getInfo:) keyEquivalent:@"i"];
+    [file addItemWithTitle:@"Rename" action:@selector(rename:) keyEquivalent:@""];
+    [file addItem:[NSMenuItem separatorItem]];
+    [file addItemWithTitle:@"Move to Trash" action:@selector(moveToTrash:)
+             keyEquivalent:[NSString stringWithFormat:@"%C", (unichar) NSBackspaceCharacter]];
+    [file addItem:[NSMenuItem separatorItem]];
     [file addItemWithTitle:@"Eject" action:@selector(eject:) keyEquivalent:@"e"];
     [[main addItemWithTitle:@"File" action:NULL keyEquivalent:@""] setSubmenu:file];
+
+    NSMenu *edit = [[NSMenu alloc] initWithTitle:@"Edit"];
+    [edit addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
+    [edit addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
+    // Paste's alternate: Option shows it in its place
+    NSMenuItem *move = [edit addItemWithTitle:@"Move Item Here" action:@selector(moveItemHere:) keyEquivalent:@"v"];
+    move.keyEquivalentModifierMask = NSEventModifierFlagOption | NSEventModifierFlagCommand;
+    move.alternate = YES;
+    [edit addItemWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
+    [[main addItemWithTitle:@"Edit" action:NULL keyEquivalent:@""] setSubmenu:edit];
 
     NSMenu *view = [[NSMenu alloc] initWithTitle:@"View"];
     [view addItemWithTitle:@"as Icons" action:@selector(showAsIcons:) keyEquivalent:@"1"];

@@ -42,6 +42,9 @@
 // The operation's progress panel; nil until it is shown, and after it closed.
 - (NSPanel *)progressPanelForOperation:(FinderFileOperation *)operation;
 
+// Runs an alert (or hands it to alertResponder); the index of the button pressed, 0 for the first.
+- (NSInteger)runAlert:(NSAlert *)alert;
+
 // Answers alerts instead of the user (tests): given the alert, returns the index of the button to press and whether to
 // tick its suppression button. nil, the default, runs the alert.
 @property (copy) NSInteger (^alertResponder)(NSAlert *alert, BOOL *suppress);

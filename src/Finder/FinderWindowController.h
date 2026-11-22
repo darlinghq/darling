@@ -76,6 +76,27 @@ typedef NS_ENUM(NSInteger, FinderViewStyle) {
 // File > Eject (Command-E): ejects the volume the window's folder is on; enabled when it can be ejected
 - (IBAction)eject:(id)sender;
 
+// Edit > Copy (Command-C): the selected items' file URLs onto the general pasteboard
+- (IBAction)copy:(id)sender;
+// Edit > Paste (Command-V): copies the pasteboard's items (those that still exist) into the window's folder
+- (IBAction)paste:(id)sender;
+// Edit > Move Item Here (Option-Command-V): moves them there
+- (IBAction)moveItemHere:(id)sender;
+- (IBAction)selectAll:(id)sender;
+
+// File > New Folder (Shift-Command-N): "untitled folder" in the window's folder, selected and being renamed
+- (IBAction)newFolder:(id)sender;
+// File > Rename, and Return: renames the one selected item in place
+- (IBAction)rename:(id)sender;
+// File > Move to Trash (Command-Delete)
+- (IBAction)moveToTrash:(id)sender;
+
+// Starts renaming the item in place, in the view shown. A name the Finder doesn't allow is refused with an alert;
+// changing a file's extension asks first.
+- (void)beginRenamingItem:(NSURL *)item;
+// The item being renamed; nil when none is
+@property (readonly) NSURL *renamingItem;
+
 // Called with an item the user opened (double-clicked, or clicked in the sidebar).
 @property (copy) void (^openItem)(NSURL *item);
 

@@ -74,7 +74,28 @@ static const CGFloat FinderListIconSize = 16;
 
 @end
 
+// Return (without modifier keys) asks for Rename, as in the Finder
+@interface FinderOutlineView : NSOutlineView
+@end
+
+@implementation FinderOutlineView
+
+- (void)keyDown:(NSEvent *)event
+{
+    NSString *characters = [event charactersIgnoringModifiers];
+    NSEventModifierFlags modifiers = [event modifierFlags] & (NSEventModifierFlagCommand | NSEventModifierFlagOption
+                                                              | NSEventModifierFlagControl | NSEventModifierFlagShift);
+    if (modifiers == 0 && ([characters isEqual:@"\r"] || [characters isEqual:@"\003"])) {
+        [NSApp sendAction:@selector(rename:) to:nil from:self];
+        return;
+    }
+    [super keyDown:event];
+}
+
+@end
+
 @implementation FinderListViewController {
+    NSURL *_editingItem;
     NSOutlineView *_outlineView;
     NSMutableDictionary<NSString *, NSArray<NSURL *> *> *_children;
     NSMutableDictionary<NSString *, FinderListEntry *> *_entries;
@@ -121,10 +142,12 @@ static const CGFloat FinderListIconSize = 16;
     scroll.hasHorizontalScroller = YES;
     scroll.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
-    _outlineView = [[NSOutlineView alloc] initWithFrame:[scroll bounds]];
+    _outlineView = [[FinderOutlineView alloc] initWithFrame:[scroll bounds]];
     NSTableColumn *name = [self columnWithIdentifier:@"name" title:@"Name" width:300];
     FinderNameCell *nameCell = [[FinderNameCell alloc] initTextCell:@""];
     nameCell.lineBreakMode = NSLineBreakByTruncatingMiddle;
+    // Renaming edits it; the column is editable only while that runs, so clicks don't start an edit
+    nameCell.editable = YES;
     name.dataCell = nameCell;
     [_outlineView addTableColumn:name];
     [_outlineView addTableColumn:[self columnWithIdentifier:@"modified" title:@"Date Modified" width:180]];
@@ -288,7 +311,54 @@ static const CGFloat FinderListIconSize = 16;
                                                              countStyle:NSByteCountFormatterCountStyleFile];
     if ([identifier isEqual:@"kind"])
         return entry.kind;
+    // The item being renamed shows its file name
+    if (_editingItem != nil && [item isEqual:_editingItem])
+        return [item lastPathComponent];
     return entry.name;
+}
+
+- (void)outlineView:(NSOutlineView *)outlineView setObjectValue:(id)value forTableColumn:(NSTableColumn *)column byItem:(id)item
+{
+    NSURL *editing = _editingItem;
+    if (editing == nil || ![item isEqual:editing] || ![[column identifier] isEqual:@"name"])
+        return;
+    _editingItem = nil;
+    if (_renameItem != nil)
+        _renameItem(editing, [value isKindOfClass:[NSString class]] ? value : [value description]);
+}
+
+#pragma mark Editing a name
+
+- (void)beginEditingItem:(NSURL *)url
+{
+    NSInteger row = -1;
+    NSString *wanted = [[url URLByStandardizingPath] path];
+    for (NSInteger r = 0; r < [self.outlineView numberOfRows] && row < 0; r++)
+        if ([[[[self.outlineView itemAtRow:r] URLByStandardizingPath] path] isEqual:wanted])
+            row = r;
+    if (row < 0)
+        return;
+    NSURL *item = [self.outlineView itemAtRow:row];
+    NSInteger column = [self.outlineView columnWithIdentifier:@"name"];
+    NSTableColumn *nameColumn = [self.outlineView tableColumnWithIdentifier:@"name"];
+    _editingItem = item;
+    [self.outlineView selectRowIndexes:[NSIndexSet indexSetWithIndex:row] byExtendingSelection:NO];
+    [self.outlineView scrollRowToVisible:row];
+    // Editable only for this edit, so that clicks don't start one
+    nameColumn.editable = YES;
+    [self.outlineView editColumn:column row:row withEvent:nil select:YES];
+    nameColumn.editable = NO;
+
+    NSString *name = [item lastPathComponent];
+    NSString *extension = [name pathExtension];
+    NSUInteger length = [self entryForURL:item].folder || [extension length] == 0 ? [name length]
+                                                                                 : [name length] - [extension length] - 1;
+    [[self.outlineView currentEditor] setSelectedRange:NSMakeRange(0, length)];
+}
+
+- (BOOL)outlineView:(NSOutlineView *)outlineView shouldEditTableColumn:(NSTableColumn *)column item:(id)item
+{
+    return _editingItem != nil && [item isEqual:_editingItem];
 }
 
 - (void)outlineView:(NSOutlineView *)outlineView sortDescriptorsDidChange:(NSArray<NSSortDescriptor *> *)old

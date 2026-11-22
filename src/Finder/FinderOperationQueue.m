@@ -140,8 +140,8 @@ static NSTextField *FinderLabel(NSString *text, NSRect frame)
     return [[_panels objectForKey: operation] panel];
 }
 
-// The index of the button pressed. Alerts are app-modal, also for a transfer asked for in a window: the engine waits
-// for the answer, which a sheet would give only later.
+// Alerts are app-modal, also for a transfer asked for in a window: the engine waits for the answer, which a sheet
+// would give only later.
 - (NSInteger)runAlert:(NSAlert *)alert
 {
     if (self.alertResponder) {
