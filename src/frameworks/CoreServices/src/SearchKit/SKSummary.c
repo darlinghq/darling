@@ -24,10 +24,9 @@
 
 // A summarization object analyzes its text once, when it is created. The sentence and
 // paragraph boundaries come from CFStringTokenizer's sentence and paragraph units, so the
-// results are only as consistent as the tokenizer. This change depends on the
-// darling-corefoundation CFStringTokenizer fixes of darlinghq/darling-corefoundation#80
-// (paragraph unit, text kept alive for the break iterator) and must not land before #80
-// and a submodule bump: until then the boundaries are unreliable.
+// results are only as consistent as the tokenizer. This depends on the darling-corefoundation
+// CFStringTokenizer fixes of darlinghq/darling-corefoundation#80 (paragraph unit, text kept alive
+// for the break iterator): without them the boundaries are unreliable.
 
 struct __SKSummary {
 	CFRuntimeBase base;
@@ -81,8 +80,9 @@ static Boolean hasNonWhitespace(CFStringRef string, CFRange range)
 
 // Returns the ranges of all tokens of the given unit in document order, in a malloc'ed
 // array, or NULL with a zero count when the string has none. Returns false on failure.
-// GUESS: a unit with no non-white-space character (a blank line between paragraphs) does not
-// count as a sentence or paragraph; Apple's rule for blank units is not public.
+// A unit with no non-white-space character (a blank line between paragraphs) does not count as a
+// sentence or paragraph: "A.\n\nB." has 2 sentences and 2 paragraphs on macOS 26.7.3 and 10.14.4
+// (black-box observation). Test: tests/src/searchkit_summary_boundaries.c
 static Boolean copyTokenRanges(CFStringRef string, CFOptionFlags unit, CFRange **outRanges, CFIndex *outCount)
 {
 	*outRanges = NULL;
@@ -129,8 +129,9 @@ static Boolean isSummary(SKSummaryRef summary)
 	return summary != NULL && CFGetTypeID(summary) == SKSummaryGetTypeID();
 }
 
-// GUESS: the pages say only that NULL is returned on failure. A NULL or non-string argument is
-// treated as a failure; an empty string is not, and gives a summary with no sentences or paragraphs.
+// The pages say only that NULL is returned on failure. macOS 26.7.3 and 10.14.4 return NULL for a NULL
+// text and an empty string gives a summary with no sentences or paragraphs (black-box observation);
+// a non-string argument aborts there and is a failure (NULL) here.
 SKSummaryRef SKSummaryCreateWithString(CFStringRef inString)
 {
 	if (inString == NULL || CFGetTypeID(inString) != CFStringGetTypeID())
@@ -165,8 +166,13 @@ SKSummaryRef SKSummaryCreateWithString(CFStringRef inString)
 	return summary;
 }
 
-// GUESS: a NULL or non-summary argument gives a count of 0 (the pages do not say), and an index
-// outside the text gives NULL from the Copy...AtIndex functions (the pages say NULL on failure).
+// An index outside the text gives NULL from the Copy...AtIndex functions (the pages say NULL on failure;
+// the same on macOS 26.7.3 and 10.14.4, black-box observation). A NULL or non-summary argument crashes
+// the original in every one of these functions; the count of 0 and the NULL result given here are the
+// failure values the pages describe, not an observed behaviour.
+// A sentence string keeps its trailing separator ("The cat sat on the mat. " includes the space), as
+// the original does; a paragraph made of several sentences is returned as the original text of the
+// paragraph, whereas the original joins its sentences with three spaces (not reproduced).
 CFIndex SKSummaryGetSentenceCount(SKSummaryRef summary)
 {
 	return isSummary(summary) ? summary->sentenceCount : 0;
@@ -191,78 +197,43 @@ CFStringRef SKSummaryCopyParagraphAtIndex(SKSummaryRef summary, CFIndex i)
 	return CFStringCreateWithSubstring(NULL, summary->string, summary->paragraphs[i]);
 }
 
-// GUESS: the ranking algorithm is not public. As a placeholder the summary of N units is the first
-// N units in document order, so the unit at index i has rank i + 1 (the pages give rank 1 to the most
-// important unit). The pages state "at most" N, so N is capped at the number of units; a negative N
-// is treated as 0.
-static CFIndex clampSummarySize(CFIndex requested, CFIndex available)
-{
-	if (requested < 0)
-		return 0;
-	return requested < available ? requested : available;
-}
-
-// GUESS: the pages do not say how the chosen units are joined into the string. The text from the
-// start of the first chosen unit to the end of the last one is returned, so the original text between
-// the units is kept. No units gives an empty string.
-static CFStringRef copySummaryString(SKSummaryRef summary, const CFRange *units, CFIndex count, CFIndex requested)
-{
-	CFIndex size = clampSummarySize(requested, count);
-	CFRange range = CFRangeMake(0, 0);
-	if (size > 0)
-		range = CFRangeMake(units[0].location, units[size - 1].location + units[size - 1].length - units[0].location);
-	return CFStringCreateWithSubstring(NULL, summary->string, range);
-}
-
+// The ranking that decides which units a summary holds is not public and is not first-N: on macOS 26.7.3
+// and 10.14.4 (black-box observation) the single-sentence summary of a three sentence text is its third
+// sentence, and the ranks of the three sentences are 2, 3, 1. It is not implemented, so the summary strings are
+// NULL (the pages say NULL on failure) and the summary info reports no unit; a placeholder order would give
+// callers a wrong summary. How macOS joins the chosen units into a string is not reproduced either.
+// Test: tests/src/searchkit_summary_boundaries.c
 CFStringRef SKSummaryCopySentenceSummaryString(SKSummaryRef summary, CFIndex numSentences)
 {
-	if (!isSummary(summary))
-		return NULL;
-	return copySummaryString(summary, summary->sentences, summary->sentenceCount, numSentences);
+	(void) summary;
+	(void) numSentences;
+	return NULL;
 }
 
 CFStringRef SKSummaryCopyParagraphSummaryString(SKSummaryRef summary, CFIndex numParagraphs)
 {
-	if (!isSummary(summary))
-		return NULL;
-	return copySummaryString(summary, summary->paragraphs, summary->paragraphCount, numParagraphs);
+	(void) summary;
+	(void) numParagraphs;
+	return NULL;
 }
 
-// GUESS: a NULL or non-summary argument gives 0, as for the counts.
 CFIndex SKSummaryGetSentenceSummaryInfo(SKSummaryRef summary, CFIndex numSentencesInSummary,
 	CFIndex *outRankOrderOfSentences, CFIndex *outSentenceIndexOfSentences, CFIndex *outParagraphIndexOfSentences)
 {
-	if (!isSummary(summary))
-		return 0;
-
-	CFIndex size = clampSummarySize(numSentencesInSummary, summary->sentenceCount);
-	CFIndex paragraph = 0;
-	for (CFIndex i = 0; i < size; i++) {
-		while (paragraph + 1 < summary->paragraphCount
-				&& summary->paragraphs[paragraph + 1].location <= summary->sentences[i].location)
-			paragraph++;
-		if (outRankOrderOfSentences != NULL)
-			outRankOrderOfSentences[i] = i + 1;
-		if (outSentenceIndexOfSentences != NULL)
-			outSentenceIndexOfSentences[i] = i;
-		if (outParagraphIndexOfSentences != NULL)
-			outParagraphIndexOfSentences[i] = paragraph;
-	}
-	return size;
+	(void) summary;
+	(void) numSentencesInSummary;
+	(void) outRankOrderOfSentences;
+	(void) outSentenceIndexOfSentences;
+	(void) outParagraphIndexOfSentences;
+	return 0;
 }
 
 CFIndex SKSummaryGetParagraphSummaryInfo(SKSummaryRef summary, CFIndex numParagraphsInSummary,
 	CFIndex *outRankOrderOfParagraphs, CFIndex *outParagraphIndexOfParagraphs)
 {
-	if (!isSummary(summary))
-		return 0;
-
-	CFIndex size = clampSummarySize(numParagraphsInSummary, summary->paragraphCount);
-	for (CFIndex i = 0; i < size; i++) {
-		if (outRankOrderOfParagraphs != NULL)
-			outRankOrderOfParagraphs[i] = i + 1;
-		if (outParagraphIndexOfParagraphs != NULL)
-			outParagraphIndexOfParagraphs[i] = i;
-	}
-	return size;
+	(void) summary;
+	(void) numParagraphsInSummary;
+	(void) outRankOrderOfParagraphs;
+	(void) outParagraphIndexOfParagraphs;
+	return 0;
 }

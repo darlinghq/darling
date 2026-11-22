@@ -9,11 +9,11 @@
 // the boundaries are in searchkit_summary_basic.c.
 //
 // The text is "One. Two.\nThree.": a line feed ends a paragraph and a sentence, so it has three sentences
-// and two paragraphs. Whether a unit includes its trailing white space is not documented, so units are
-// compared by prefix and by what they do not contain, except for the last unit, which ends at the end of the
-// text. The ranking that chooses the summary is not public, so only the documented properties of the summary
-// info are checked (a permutation of the ranks 1..N, valid and distinct unit indexes, the paragraph that
-// contains each sentence), and the summary strings are checked for size, not for which units they hold.
+// and two paragraphs. The ranking that chooses the summary is not public and is not first-N (macOS 26.7.3
+// and 10.14.4 return the third sentence for a one sentence summary of a three sentence text), so the summary
+// strings and the summary info are not implemented and are checked to report nothing. The sentence units
+// are pinned to what macOS reports for the same texts (black-box observation): they keep their trailing
+// separators, and a blank line between paragraphs is not a unit.
 // Prints OK, or the failures with a non-zero exit status.
 #include <CoreServices/CoreServices.h>
 #include <stdio.h>
@@ -35,19 +35,6 @@ static Boolean contains(CFStringRef string, CFStringRef needle)
 static Boolean equals(CFStringRef string, CFStringRef expected)
 {
 	return string != NULL && CFStringCompare(string, expected, 0) == kCFCompareEqualTo;
-}
-
-// The summary of the first N units: for the sentence summaries the check is on size and on the text staying
-// inside the original, so a mutation that returns the whole text or nothing fails.
-static void checkSummaryString(CFStringRef string, CFIndex units, CFStringRef text, const char *name)
-{
-	CFIndex total = CFStringGetLength(text);
-	if (units == 0) {
-		CHECK(string != NULL && CFStringGetLength(string) == 0, name);
-		return;
-	}
-	CHECK(string != NULL && CFStringGetLength(string) > 0 && CFStringGetLength(string) <= total
-		&& CFStringFind(text, string, 0).location != kCFNotFound, name);
 }
 
 int main(void)
@@ -72,10 +59,6 @@ int main(void)
 		CHECK(hasPrefix(first, CFSTR("One.")), "the summary text follows a later change of the original (sentence 0)");
 		if (first != NULL)
 			CFRelease(first);
-		CFStringRef all = SKSummaryCopySentenceSummaryString(copied, 3);
-		CHECK(equals(all, text), "the summary text follows a later change of the original (summary string)");
-		if (all != NULL)
-			CFRelease(all);
 		CFRelease(copied);
 	}
 	CFRelease(mutableText);
@@ -103,92 +86,22 @@ int main(void)
 	if (paragraph0 != NULL) CFRelease(paragraph0);
 	if (paragraph1 != NULL) CFRelease(paragraph1);
 
-	// Summary strings hold at most the requested number of units and stay inside the text.
-	for (CFIndex n = 0; n <= 4; n++) {
-		CFIndex units = n < 3 ? n : 3;
-		CFStringRef summaryString = SKSummaryCopySentenceSummaryString(summary, n);
-		checkSummaryString(summaryString, units, text, "sentence summary string");
-		if (n == 1)
-			CHECK(!contains(summaryString, CFSTR("Two")) && !contains(summaryString, CFSTR("Three")),
-				"a one sentence summary holds more than one sentence");
-		if (n >= 3)
-			CHECK(equals(summaryString, text), "a summary of all or more sentences is not the whole text");
-		if (summaryString != NULL)
-			CFRelease(summaryString);
-
-		units = n < 2 ? n : 2;
-		CFStringRef paragraphString = SKSummaryCopyParagraphSummaryString(summary, n);
-		checkSummaryString(paragraphString, units, text, "paragraph summary string");
-		if (n == 1)
-			CHECK(!contains(paragraphString, CFSTR("Three")), "a one paragraph summary holds the second paragraph");
-		if (n >= 2)
-			CHECK(equals(paragraphString, text), "a summary of all or more paragraphs is not the whole text");
-		if (paragraphString != NULL)
-			CFRelease(paragraphString);
+	// Summary strings and summary info are not implemented (the ranking is unknown): NULL and no unit, for
+	// every number of units, negative and larger than the text included.
+	for (CFIndex n = -1; n <= 4; n++) {
+		CFIndex ranks[4] = {0}, sentences[4] = {0}, paragraphs[4] = {0};
+		CHECK(SKSummaryCopySentenceSummaryString(summary, n) == NULL, "sentence summary string is not NULL");
+		CHECK(SKSummaryCopyParagraphSummaryString(summary, n) == NULL, "paragraph summary string is not NULL");
+		CHECK(SKSummaryGetSentenceSummaryInfo(summary, n, ranks, sentences, paragraphs) == 0, "sentence summary info is not 0");
+		CHECK(SKSummaryGetParagraphSummaryInfo(summary, n, ranks, paragraphs) == 0, "paragraph summary info is not 0");
+		CHECK(SKSummaryGetSentenceSummaryInfo(summary, n, NULL, NULL, NULL) == 0, "sentence summary info with NULL arrays is not 0");
+		CHECK(SKSummaryGetParagraphSummaryInfo(summary, n, NULL, NULL) == 0, "paragraph summary info with NULL arrays is not 0");
 	}
-
-	// Sentence summary info: the return value is the number of sentences in the summary (at most the
-	// request), the ranks are 1..N, the sentence indexes are distinct and valid, and the paragraph
-	// index is the paragraph that contains the sentence (sentences 0 and 1 are in paragraph 0, 2 in 1).
-	for (CFIndex n = 1; n <= 4; n++) {
-		CFIndex expected = n < 3 ? n : 3;
-		CFIndex ranks[4] = {0}, sentences[4] = {-1, -1, -1, -1}, paragraphs[4] = {-1, -1, -1, -1};
-		CFIndex returned = SKSummaryGetSentenceSummaryInfo(summary, n, ranks, sentences, paragraphs);
-		CHECK(returned == expected, "sentence summary info: wrong number of sentences");
-		Boolean seenRank[5] = {false}, seenSentence[3] = {false};
-		for (CFIndex i = 0; i < returned && i < 3; i++) {
-			CHECK(ranks[i] >= 1 && ranks[i] <= returned && !seenRank[ranks[i]], "sentence summary info: rank is not part of 1..N");
-			if (ranks[i] >= 1 && ranks[i] <= 4)
-				seenRank[ranks[i]] = true;
-			CHECK(sentences[i] >= 0 && sentences[i] < 3 && !seenSentence[sentences[i]], "sentence summary info: sentence index is invalid or repeated");
-			if (sentences[i] >= 0 && sentences[i] < 3) {
-				seenSentence[sentences[i]] = true;
-				CHECK(paragraphs[i] == (sentences[i] < 2 ? 0 : 1), "sentence summary info: wrong paragraph for the sentence");
-			}
-		}
-	}
-	// Each output array may be NULL.
-	CHECK(SKSummaryGetSentenceSummaryInfo(summary, 2, NULL, NULL, NULL) == 2, "sentence summary info with NULL arrays: wrong number");
-	{
-		CFIndex sentences[2] = {-1, -1};
-		CHECK(SKSummaryGetSentenceSummaryInfo(summary, 2, NULL, sentences, NULL) == 2 && sentences[0] != -1 && sentences[1] != -1,
-			"sentence summary info with only the index array: index array not filled");
-	}
-
-	// Paragraph summary info: the same for paragraphs.
-	for (CFIndex n = 1; n <= 3; n++) {
-		CFIndex expected = n < 2 ? n : 2;
-		CFIndex ranks[3] = {0}, paragraphs[3] = {-1, -1, -1};
-		CFIndex returned = SKSummaryGetParagraphSummaryInfo(summary, n, ranks, paragraphs);
-		CHECK(returned == expected, "paragraph summary info: wrong number of paragraphs");
-		Boolean seenRank[4] = {false}, seenParagraph[2] = {false};
-		for (CFIndex i = 0; i < returned && i < 2; i++) {
-			CHECK(ranks[i] >= 1 && ranks[i] <= returned && !seenRank[ranks[i]], "paragraph summary info: rank is not part of 1..N");
-			if (ranks[i] >= 1 && ranks[i] <= 3)
-				seenRank[ranks[i]] = true;
-			CHECK(paragraphs[i] >= 0 && paragraphs[i] < 2 && !seenParagraph[paragraphs[i]], "paragraph summary info: paragraph index is invalid or repeated");
-			if (paragraphs[i] >= 0 && paragraphs[i] < 2)
-				seenParagraph[paragraphs[i]] = true;
-		}
-	}
-	CHECK(SKSummaryGetParagraphSummaryInfo(summary, 2, NULL, NULL) == 2, "paragraph summary info with NULL arrays: wrong number");
-
-	// A negative number of units behaves as 0 (GUESS, the pages do not say).
-	CFStringRef negative = SKSummaryCopySentenceSummaryString(summary, -1);
-	CHECK(negative != NULL && CFStringGetLength(negative) == 0, "negative N: sentence summary is not empty");
-	if (negative != NULL)
-		CFRelease(negative);
-	negative = SKSummaryCopyParagraphSummaryString(summary, -1);
-	CHECK(negative != NULL && CFStringGetLength(negative) == 0, "negative N: paragraph summary is not empty");
-	if (negative != NULL)
-		CFRelease(negative);
-	CHECK(SKSummaryGetSentenceSummaryInfo(summary, -1, NULL, NULL, NULL) == 0, "negative N: sentence summary info is not 0");
-	CHECK(SKSummaryGetParagraphSummaryInfo(summary, -1, NULL, NULL) == 0, "negative N: paragraph summary info is not 0");
 
 	CFRelease(summary);
 
 	// A unit with only white space, such as the blank line between two paragraphs, is not a sentence or a
-	// paragraph (GUESS, the rule for blank units is not public): "A.\n\nB." has 2 sentences and 2 paragraphs.
+	// paragraph: "A.\n\nB." has 2 sentences and 2 paragraphs on macOS 26.7.3 and 10.14.4.
 	CFStringRef blankText = CFSTR("A.\n\nB.");
 	SKSummaryRef blank = SKSummaryCreateWithString(blankText);
 	if (blank == NULL) {
@@ -210,6 +123,44 @@ int main(void)
 	if (blankParagraph0 != NULL) CFRelease(blankParagraph0);
 	if (blankParagraph1 != NULL) CFRelease(blankParagraph1);
 	CFRelease(blank);
+
+	// Texts and results observed on macOS 26.7.3 and 10.14.4: sentences keep their trailing separators.
+	SKSummaryRef three = SKSummaryCreateWithString(CFSTR("The cat sat on the mat. Dogs bark loudly at night. The cat then slept all day long in the warm sun."));
+	CHECK(three != NULL && SKSummaryGetSentenceCount(three) == 3 && SKSummaryGetParagraphCount(three) == 1, "three sentences: counts are not 3 and 1");
+	if (three != NULL) {
+		CFStringRef sentence = SKSummaryCopySentenceAtIndex(three, 0);
+		CHECK(equals(sentence, CFSTR("The cat sat on the mat. ")), "three sentences: sentence 0 lost its trailing space");
+		if (sentence != NULL) CFRelease(sentence);
+		sentence = SKSummaryCopySentenceAtIndex(three, 1);
+		CHECK(equals(sentence, CFSTR("Dogs bark loudly at night. ")), "three sentences: sentence 1 lost its trailing space");
+		if (sentence != NULL) CFRelease(sentence);
+		sentence = SKSummaryCopySentenceAtIndex(three, 2);
+		CHECK(equals(sentence, CFSTR("The cat then slept all day long in the warm sun.")), "three sentences: sentence 2");
+		if (sentence != NULL) CFRelease(sentence);
+		CFRelease(three);
+	}
+	SKSummaryRef paras = SKSummaryCreateWithString(CFSTR("First paragraph is here. It has two sentences.\n\nSecond paragraph is short.\n\nThird paragraph, the longest of them all, talks about cats and dogs and mats at length."));
+	CHECK(paras != NULL && SKSummaryGetSentenceCount(paras) == 4 && SKSummaryGetParagraphCount(paras) == 3, "three paragraphs: counts are not 4 and 3");
+	if (paras != NULL) {
+		CFStringRef sentence = SKSummaryCopySentenceAtIndex(paras, 1);
+		CHECK(equals(sentence, CFSTR("It has two sentences.\n")), "three paragraphs: sentence 1 lost its trailing line feed");
+		if (sentence != NULL) CFRelease(sentence);
+		sentence = SKSummaryCopySentenceAtIndex(paras, 2);
+		CHECK(equals(sentence, CFSTR("Second paragraph is short.\n")), "three paragraphs: sentence 2 lost its trailing line feed");
+		if (sentence != NULL) CFRelease(sentence);
+		CFStringRef paragraph = SKSummaryCopyParagraphAtIndex(paras, 1);
+		CHECK(equals(paragraph, CFSTR("Second paragraph is short.\n")), "three paragraphs: paragraph 1");
+		if (paragraph != NULL) CFRelease(paragraph);
+		CFRelease(paras);
+	}
+	SKSummaryRef one = SKSummaryCreateWithString(CFSTR("Cats purr."));
+	CHECK(one != NULL && SKSummaryGetSentenceCount(one) == 1 && SKSummaryGetParagraphCount(one) == 1, "one sentence: counts are not 1 and 1");
+	if (one != NULL) {
+		CFStringRef sentence = SKSummaryCopySentenceAtIndex(one, 0);
+		CHECK(equals(sentence, CFSTR("Cats purr.")), "one sentence: sentence 0");
+		if (sentence != NULL) CFRelease(sentence);
+		CFRelease(one);
+	}
 
 	if (failures == 0)
 		printf("OK\n");

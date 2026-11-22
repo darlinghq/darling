@@ -26,7 +26,8 @@ int main(void)
 	// Create returns NULL for a missing text.
 	CHECK(SKSummaryCreateWithString(NULL) == NULL, "create with NULL text is not NULL");
 
-	// An empty text is not a failure (a GUESS, the pages say only NULL on failure) and has nothing in it.
+	// An empty text is not a failure and has nothing in it (macOS 26.7.3 and 10.14.4: a summary with 0 sentences
+	// and 0 paragraphs, index -1 and 0 give NULL).
 	SKSummaryRef empty = SKSummaryCreateWithString(CFSTR(""));
 	CHECK(empty != NULL, "create with an empty text returned NULL");
 	if (empty != NULL) {
@@ -57,8 +58,8 @@ int main(void)
 		if (paragraphsString != NULL)
 			CFRelease(paragraphsString);
 
-		// A negative number of units behaves as 0: the summary strings are empty (GUESS, the pages do not say)
-		// and no unit is in the summary info.
+		// Summary strings and summary info are not implemented (the ranking is not known), also for a
+		// negative number of units; no unit is in the summary info.
 		CFStringRef negative = SKSummaryCopySentenceSummaryString(empty, -1);
 		CHECK(negative == NULL || CFStringGetLength(negative) == 0, "negative N: sentence summary is not empty");
 		if (negative != NULL)
@@ -85,7 +86,8 @@ int main(void)
 		CFRelease(empty);
 	}
 
-	// A NULL summary has no sentences or paragraphs (a GUESS, the pages do not say) and must not crash.
+	// A NULL summary has no sentences or paragraphs and must not crash. The original crashes for a NULL
+	// summary; the failure values here are chosen, not observed.
 	CHECK(SKSummaryGetSentenceCount(NULL) == 0, "NULL summary: sentence count is not 0");
 	CHECK(SKSummaryGetParagraphCount(NULL) == 0, "NULL summary: paragraph count is not 0");
 	CHECK(SKSummaryCopySentenceAtIndex(NULL, 0) == NULL, "NULL summary: sentence 0 exists");
