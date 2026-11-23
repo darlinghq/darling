@@ -70,10 +70,11 @@ static OSStatus statusForBadTimebase(CMTimebaseRef timebase)
 	return timebase == NULL ? kCMTimebaseError_MissingRequiredParameter : kCMTimebaseError_InvalidParameter;
 }
 
-/* The time times a factor, rounded to the nearest unit of its timescale, or of a nanosecond when the
-   timescale is coarser, so that a duration in whole seconds can be scaled by a fraction. A factor of 1 returns
-   the time as it is: a product through a Float64 would lose the low bits of a value above 2^53. */
-static CMTime scaledByRate(CMTime time, Float64 factor)
+/* The time times a factor (or divided by it), rounded to the nearest unit of its timescale, or of a
+   nanosecond when the timescale is coarser, so that a duration in whole seconds can be scaled by a fraction.
+   A factor of 1 returns the time as it is: a product through a Float64 would lose the low bits of a value
+   above 2^53. */
+static CMTime scaledByRate(CMTime time, Float64 factor, Boolean divide)
 {
 	if (!CMTIME_IS_NUMERIC(time) || factor == 1.0)
 		return time;
@@ -81,7 +82,7 @@ static CMTime scaledByRate(CMTime time, Float64 factor)
 		time = CMTimeConvertScale(time, 1000000000, kCMTimeRoundingMethod_RoundHalfAwayFromZero);
 	if (!CMTIME_IS_NUMERIC(time))
 		return time;
-	Float64 product = (Float64)time.value * factor;
+	Float64 product = divide ? (Float64)time.value / factor : (Float64)time.value * factor;
 	if (product >= 9223372036854775808.0)
 		return kCMTimePositiveInfinity;
 	if (product <= -9223372036854775808.0)
@@ -97,7 +98,7 @@ static CMTime scaledByRate(CMTime time, Float64 factor)
    that is coarser), halves away from zero; the documentation does not say how a fractional rate is applied. */
 static CMTime timeAtMasterTime(CMTime anchorTime, CMTime anchorMasterTime, Float64 rate, CMTime masterNow)
 {
-	return CMTimeAdd(anchorTime, scaledByRate(CMTimeSubtract(masterNow, anchorMasterTime), rate));
+	return CMTimeAdd(anchorTime, scaledByRate(CMTimeSubtract(masterNow, anchorMasterTime), rate, false));
 }
 
 struct timebaseState {
@@ -345,4 +346,109 @@ OSStatus CMTimebaseSetRate(CMTimebaseRef timebase, Float64 rate)
 	}
 	pthread_mutex_unlock(&object->lock);
 	return CMTIME_IS_NUMERIC(time) ? noErr : kCMTimebaseError_InvalidParameter;
+}
+
+#pragma mark - Synchronising clocks and timebases
+
+/* The time of a clock or timebase when the clock at the root of the chain of masters reads rootTime. */
+static CMTime timeAtRootTime(CFTypeRef object, CMTime rootTime)
+{
+	struct OpaqueCMTimebase *timebase = asTimebase(object);
+	if (timebase == NULL)
+		return isClock(object) ? rootTime : kCMTimeInvalid;
+	struct timebaseState state = stateOf(timebase);
+	if (state.rate == 0.0)
+		return state.anchorTime;
+	return timeAtMasterTime(state.anchorTime, state.anchorMasterTime, state.rate, timeAtRootTime(timebase->master, rootTime));
+}
+
+/* The time of the root clock at which a clock or timebase reads time: the reverse of timeAtRootTime. GUESS: a
+   stopped timebase passes through no root times, so its time has none and the result is an invalid time. */
+static CMTime rootTimeAtTime(CFTypeRef object, CMTime time)
+{
+	struct OpaqueCMTimebase *timebase = asTimebase(object);
+	if (timebase == NULL)
+		return isClock(object) ? time : kCMTimeInvalid;
+	struct timebaseState state = stateOf(timebase);
+	if (state.rate == 0.0)
+		return kCMTimeInvalid;
+	CMTime masterTime = CMTimeAdd(state.anchorMasterTime, scaledByRate(CMTimeSubtract(time, state.anchorTime), state.rate, true));
+	return rootTimeAtTime(timebase->master, masterTime);
+}
+
+static Boolean isClockOrTimebase(CFTypeRef object)
+{
+	return isClock(object) || asTimebase(object) != NULL;
+}
+
+static CFTypeRef rootClockOf(CFTypeRef object)
+{
+	return asTimebase(object) != NULL ? ultimateMasterClock((CMTimebaseRef)object) : object;
+}
+
+CMTime CMSyncConvertTime(CMTime time, CMClockOrTimebaseRef fromClockOrTimebase, CMClockOrTimebaseRef toClockOrTimebase)
+{
+	/* GUESS: the documentation lists no error result; an object that is neither a clock nor a timebase gives
+	   an invalid time. A time that is not numeric (invalid, infinite, indefinite) is returned as it is. */
+	if (!isClockOrTimebase(fromClockOrTimebase) || !isClockOrTimebase(toClockOrTimebase))
+		return kCMTimeInvalid;
+	if (!CMTIME_IS_NUMERIC(time) || fromClockOrTimebase == toClockOrTimebase)
+		return time;
+	/* The only clock is the host time clock, so the two always have a common master and the conversion is made
+	   purely from the rates and anchors, through the time of that clock. */
+	CMTime rootTime = rootTimeAtTime(fromClockOrTimebase, time);
+	return CMTIME_IS_NUMERIC(rootTime) ? timeAtRootTime(toClockOrTimebase, rootTime) : kCMTimeInvalid;
+}
+
+/* The rate of a relative to b: the ratio of their rates relative to the common root clock. */
+static Float64 relativeRate(CFTypeRef a, CFTypeRef b)
+{
+	Float64 rateOfA = asTimebase(a) != NULL ? CMTimebaseGetEffectiveRate((CMTimebaseRef)a) : 1.0;
+	Float64 rateOfB = asTimebase(b) != NULL ? CMTimebaseGetEffectiveRate((CMTimebaseRef)b) : 1.0;
+	/* The rate of anything moving relative to a stopped timebase is a NaN, as documented. GUESS: so is that of
+	   a stopped timebase relative to a stopped one. */
+	return rateOfB == 0.0 ? NAN : rateOfA / rateOfB;
+}
+
+Float64 CMSyncGetRelativeRate(CMClockOrTimebaseRef ofClockOrTimebase, CMClockOrTimebaseRef relativeToClockOrTimebase)
+{
+	/* GUESS: the documentation lists no error result; a NaN, which is also the documented result for a
+	   stopped timebase, stands for an object that is neither a clock nor a timebase. */
+	if (!isClockOrTimebase(ofClockOrTimebase) || !isClockOrTimebase(relativeToClockOrTimebase))
+		return NAN;
+	return relativeRate(ofClockOrTimebase, relativeToClockOrTimebase);
+}
+
+OSStatus CMSyncGetRelativeRateAndAnchorTime(CMClockOrTimebaseRef ofClockOrTimebase, CMClockOrTimebaseRef relativeToClockOrTimebase,
+	Float64 *outRelativeRate, CMTime *outOfClockOrTimebaseAnchorTime, CMTime *outRelativeToClockOrTimebaseAnchorTime)
+{
+	/* GUESS: the kCMSyncError_ codes are used by their names: NULL is MissingRequiredParameter, an object that
+	   is neither a clock nor a timebase, or a root clock with no time, is InvalidParameter. */
+	if (ofClockOrTimebase == NULL || relativeToClockOrTimebase == NULL)
+		return kCMSyncError_MissingRequiredParameter;
+	if (!isClockOrTimebase(ofClockOrTimebase) || !isClockOrTimebase(relativeToClockOrTimebase))
+		return kCMSyncError_InvalidParameter;
+	/* GUESS: the documentation does not say which times are the anchors "at which the relative rate went into
+	   effect". The time of the root clock now is used as that instant, so each anchor is the time of its clock
+	   or timebase at it; the rejected alternative is the time of the last change of rate or time in either
+	   chain, which a timebase does not record. */
+	CMTime rootNow = CMClockGetTime((CMClockRef)rootClockOf(ofClockOrTimebase));
+	if (!CMTIME_IS_NUMERIC(rootNow))
+		return kCMSyncError_InvalidParameter;
+	if (outRelativeRate != NULL)
+		*outRelativeRate = relativeRate(ofClockOrTimebase, relativeToClockOrTimebase);
+	if (outOfClockOrTimebaseAnchorTime != NULL)
+		*outOfClockOrTimebaseAnchorTime = timeAtRootTime(ofClockOrTimebase, rootNow);
+	if (outRelativeToClockOrTimebaseAnchorTime != NULL)
+		*outRelativeToClockOrTimebaseAnchorTime = timeAtRootTime(relativeToClockOrTimebase, rootNow);
+	return noErr;
+}
+
+Boolean CMSyncMightDrift(CMClockOrTimebaseRef clockOrTimebase1, CMClockOrTimebaseRef clockOrTimebase2)
+{
+	/* Two timebases can drift when the clocks at their roots can. The host time clock is the only clock, so
+	   they never can. GUESS: an object that is neither a clock nor a timebase gives false too. */
+	(void)clockOrTimebase1;
+	(void)clockOrTimebase2;
+	return false;
 }

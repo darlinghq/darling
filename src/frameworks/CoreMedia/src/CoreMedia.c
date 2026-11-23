@@ -1016,26 +1016,6 @@ void* CMSwapHostEndianTimeCodeDescriptionToBig(void) {
     return NULL;
 }
 
-void* CMSyncConvertTime(void) {
-    if (verbose) puts("STUB: CMSyncConvertTime called");
-    return NULL;
-}
-
-void* CMSyncGetRelativeRate(void) {
-    if (verbose) puts("STUB: CMSyncGetRelativeRate called");
-    return NULL;
-}
-
-void* CMSyncGetRelativeRateAndAnchorTime(void) {
-    if (verbose) puts("STUB: CMSyncGetRelativeRateAndAnchorTime called");
-    return NULL;
-}
-
-void* CMSyncMightDrift(void) {
-    if (verbose) puts("STUB: CMSyncMightDrift called");
-    return NULL;
-}
-
 void* CMTextFormatDescriptionCopyAsBigEndianTextDescriptionBlockBuffer(void) {
     if (verbose) puts("STUB: CMTextFormatDescriptionCopyAsBigEndianTextDescriptionBlockBuffer called");
     return NULL;

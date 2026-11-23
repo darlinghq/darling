@@ -24,9 +24,9 @@
 #include <CoreMedia/CMBase.h>
 #include <CoreMedia/CMTime.h>
 
-// Clocks and timebases: the types. Of their functions only the host time clock ones and the timebase ones
-// for creating, time and rate are declared and implemented here; the rest are still the generated
-// declarations in CoreMedia.h.
+// Clocks and timebases: the types. Of their functions only the host time clock ones, the timebase ones for
+// creating, time and rate, and the sync functions are declared and implemented here; the rest are still the
+// generated declarations in CoreMedia.h.
 typedef struct CF_BRIDGED_TYPE(id) OpaqueCMClock *CMClockRef;
 typedef struct CF_BRIDGED_TYPE(id) OpaqueCMTimebase *CMTimebaseRef;
 typedef CFTypeRef CMClockOrTimebaseRef;
@@ -51,6 +51,14 @@ enum {
 	kCMTimebaseError_AllocationFailed = -12750,
 	kCMTimebaseError_TimerIntervalTooShort = -12751,
 	kCMTimebaseError_ReadOnly = -12757,
+};
+
+// CMSync error codes
+enum {
+	kCMSyncError_MissingRequiredParameter = -12752,
+	kCMSyncError_InvalidParameter = -12753,
+	kCMSyncError_AllocationFailed = -12754,
+	kCMSyncError_RateMustBeNonZero = -12755,
 };
 
 // A timebase is a timeline under the control of the caller: it runs at a rate relative to its master, a clock
@@ -91,6 +99,15 @@ CM_EXPORT Float64 CMTimebaseGetRate(CMTimebaseRef timebase);
 CM_EXPORT Float64 CMTimebaseGetEffectiveRate(CMTimebaseRef timebase);
 CM_EXPORT OSStatus CMTimebaseSetRate(CMTimebaseRef timebase, Float64 rate);
 CM_EXPORT OSStatus CMTimebaseSetRateAndAnchorTime(CMTimebaseRef timebase, Float64 rate, CMTime timebaseTime, CMTime immediateMasterTime);
+
+// Relations between clocks and timebases. The rate of a moving timebase relative to a stopped one is a NaN.
+CM_EXPORT Float64 CMSyncGetRelativeRate(CMClockOrTimebaseRef ofClockOrTimebase, CMClockOrTimebaseRef relativeToClockOrTimebase);
+CM_EXPORT OSStatus CMSyncGetRelativeRateAndAnchorTime(CMClockOrTimebaseRef ofClockOrTimebase, CMClockOrTimebaseRef relativeToClockOrTimebase,
+	Float64 *outRelativeRate, CMTime *outOfClockOrTimebaseAnchorTime, CMTime *outRelativeToClockOrTimebaseAnchorTime);
+// Converts a time of one clock or timebase to a time of another.
+CM_EXPORT CMTime CMSyncConvertTime(CMTime time, CMClockOrTimebaseRef fromClockOrTimebase, CMClockOrTimebaseRef toClockOrTimebase);
+// Whether one can drift relative to the other.
+CM_EXPORT Boolean CMSyncMightDrift(CMClockOrTimebaseRef clockOrTimebase1, CMClockOrTimebaseRef clockOrTimebase2);
 
 CF_IMPLICIT_BRIDGING_DISABLED
 
