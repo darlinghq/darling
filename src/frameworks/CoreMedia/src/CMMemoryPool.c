@@ -124,7 +124,7 @@ static void *poolAllocate(CFIndex size, CFOptionFlags hint, void *info)
 		return NULL;
 	size_t needed = (size_t)size + kHeaderSize;
 	pthread_mutex_lock(&state->lock);
-	/* GUESS: the block is a whole number of pages, as documented for the pool, and stays so after the pool is
+	/* The block is a whole number of pages, as documented for the pool, and stays so after the pool is
 	   invalidated. */
 	size_t blockSize = (needed + state->pageSize - 1) / state->pageSize * state->pageSize;
 	char *block = NULL;
@@ -210,10 +210,9 @@ static struct OpaqueCMMemoryPool *asMemoryPool(CMMemoryPoolRef pool)
 	return pool != NULL && CFGetTypeID(pool) == CMMemoryPool_GetTypeID() ? (struct OpaqueCMMemoryPool *)pool : NULL;
 }
 
-/* GUESS: the string value of the option key. The public documentation names the key but gives no value, and no
-   public header does either, so this string is Darling's own choice and is not claimed to be Apple's; clients
-   use the symbol, not its value. */
-const CFStringRef kCMMemoryPoolOption_AgeOutPeriod = CFSTR("DarlingCMMemoryPoolAgeOutPeriod");
+/* The string value of the option key is the one macOS 26.7.3 and 10.14.4 give the public symbol (read from the
+   symbol in a probe program; tests/src/coremedia_memorypool.c checks it). */
+const CFStringRef kCMMemoryPoolOption_AgeOutPeriod = CFSTR("FigMemoryPool_AgeOutPeriod");
 
 /* The age-out period in nanoseconds from the options, or the documented default. GUESS: an option that is not
    a number, is negative or is not finite is ignored, and a very long period is capped; the documentation says

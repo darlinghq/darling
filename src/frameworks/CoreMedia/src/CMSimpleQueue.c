@@ -83,8 +83,8 @@ OSStatus CMSimpleQueueCreate(CFAllocatorRef allocator, int32_t capacity, CMSimpl
 
 OSStatus CMSimpleQueueEnqueue(CMSimpleQueueRef queueRef, const void *element)
 {
-	/* GUESS: the documentation lists no code for an object that is not a queue; the argument is then out of
-	   range. */
+	/* The documentation lists no code for an object that is not a queue (macOS crashes on it); the argument is
+	   then out of range here. */
 	if (queueRef == NULL || element == NULL)
 		return kCMSimpleQueueError_RequiredParameterMissing;
 	struct opaqueCMSimpleQueue *queue = asSimpleQueue(queueRef);

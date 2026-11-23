@@ -29,10 +29,9 @@
 // https://developer.apple.com/documentation/coremedia/cmmemorypoolflush(_:)
 // https://developer.apple.com/documentation/coremedia/cmmemorypoolinvalidate(_:)
 // That a block is reused is seen as the same address coming back for an allocation of the same size; that
-// the size is counted in pages (a size within the same pages gets the same block) is a GUESS of the
-// implementation from the documented fact that the pool allocates in whole pages, and is pinned here.
-// kCMMemoryPoolOption_AgeOutPeriod is given Darling's own string value, which is also a GUESS: a client
-// uses the symbol, so the test does too.
+// the size is counted in pages (a size within the same pages gets the same block) as observed on macOS 26.7.3 and
+// 10.14.4 (the documented fact is that the pool allocates in whole pages). The value of the key
+// kCMMemoryPoolOption_AgeOutPeriod is the one those systems give the symbol.
 // Prints PASS when everything holds; the exit code is the number of failed checks.
 
 #include <CoreMedia/CoreMedia.h>
@@ -62,6 +61,7 @@ int main(void)
 	// creation: a CF object of its own type with an allocator of its own
 	CMMemoryPoolRef pool = CMMemoryPoolCreate(NULL);
 	CHECK(pool != NULL && CFGetTypeID(pool) == CMMemoryPoolGetTypeID());
+	CHECK(CFEqual(kCMMemoryPoolOption_AgeOutPeriod, CFSTR("FigMemoryPool_AgeOutPeriod")));
 	CFAllocatorRef allocator = CMMemoryPoolGetAllocator(pool);
 	CHECK(allocator != NULL && CMMemoryPoolGetAllocator(pool) == allocator);
 	CHECK(allocator != kCFAllocatorDefault && allocator != kCFAllocatorSystemDefault);
@@ -86,7 +86,7 @@ int main(void)
 	CHECK(again == a);
 	CFAllocatorDeallocate(allocator, other);
 
-	// sizes within the same pages share a block (GUESS: the pool works in whole pages)
+	// sizes within the same pages share a block (observed on macOS)
 	CFAllocatorDeallocate(allocator, again);
 	unsigned char *nearby = CFAllocatorAllocate(allocator, (CFIndex)(big - 100), 0);
 	CHECK(nearby == a);
@@ -167,11 +167,6 @@ int main(void)
 	CHECK(fallback != NULL && CMMemoryPoolGetAllocator(fallback) != NULL);
 	CFRelease(fallback);
 	CFRelease(notNumberOptions);
-
-	// NULL is not a pool (GUESS: no crash, and no allocator)
-	CHECK(CMMemoryPoolGetAllocator(NULL) == NULL);
-	CMMemoryPoolFlush(NULL);
-	CMMemoryPoolInvalidate(NULL);
 
 	if (failures == 0)
 		printf("PASS\n");

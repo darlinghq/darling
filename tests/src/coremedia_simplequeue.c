@@ -28,9 +28,8 @@
 // https://developer.apple.com/documentation/coremedia/cmsimplequeueenqueue(_:element:)
 // https://developer.apple.com/documentation/coremedia/cmsimplequeuedequeue(_:)
 // https://developer.apple.com/documentation/coremedia/cmsimplequeuereset(_:)
-// The error codes are those of the public header. A capacity of 0 giving RequiredParameterMissing, and an
-// object that is not a queue giving ParameterOutOfRange, are GUESS choices of the implementation, pinned
-// here. Prints PASS when everything holds; the exit code is the number of failed checks.
+// The error codes are those of the public header; a capacity of 0 giving RequiredParameterMissing is what macOS
+// 26.7.3 and 10.14.4 do. Prints PASS when everything holds; the exit code is the number of failed checks.
 
 #include <CoreMedia/CoreMedia.h>
 #include <pthread.h>
@@ -142,16 +141,12 @@ int main(void)
 	CHECK(CMSimpleQueueEnqueue(one, (const void *)8) == noErr && CMSimpleQueueGetHead(one) == (const void *)8);
 	CFRelease(one);
 
-	// NULL and objects that are not a queue: the documented results are 0, NULL and the status codes of
-	// the header (GUESS for an object that is not a queue)
+	// NULL: the documented results are 0, NULL and the status codes of the header (as observed on macOS 26.7.3 and
+	// 10.14.4; an object that is not a queue crashes there and is not tested)
 	CHECK(CMSimpleQueueEnqueue(NULL, (const void *)1) == kCMSimpleQueueError_RequiredParameterMissing);
 	CHECK(CMSimpleQueueDequeue(NULL) == NULL && CMSimpleQueueGetHead(NULL) == NULL);
 	CHECK(CMSimpleQueueReset(NULL) == kCMSimpleQueueError_RequiredParameterMissing);
 	CHECK(CMSimpleQueueGetCapacity(NULL) == 0 && CMSimpleQueueGetCount(NULL) == 0 && CMSimpleQueueGetFullness(NULL) == 0.0f);
-	CMSimpleQueueRef notAQueue = (CMSimpleQueueRef)CFSTR("no");
-	CHECK(CMSimpleQueueEnqueue(notAQueue, (const void *)1) == kCMSimpleQueueError_ParameterOutOfRange);
-	CHECK(CMSimpleQueueReset(notAQueue) == kCMSimpleQueueError_ParameterOutOfRange);
-	CHECK(CMSimpleQueueDequeue(notAQueue) == NULL && CMSimpleQueueGetCapacity(notAQueue) == 0);
 	CFRelease(queue);
 
 	// one thread enqueues and one dequeues, on a queue much smaller than the number of elements: every element
