@@ -12,7 +12,7 @@
 # DARLING_BUILD_MACHO=OFF, and the Mach-O part is noarch, with the i386, x86_64 and arm64 slices. The x86-64
 # build makes it (only that host has the 32-bit libraries for the i386 slices) and the aarch64 build skips it;
 # the noarch packages go into the aarch64 repository too, which is what lets an aarch64 host run x86_64
-# programs (FEX). Both builds need the same commit (DARLING_COMMIT_DATE) and %{?dist}: darling-core requires
+# programs (FEX). Both builds need the same commit (DARLING_COMMIT_DATE) and %%{?dist}: darling-core requires
 # darling-core-native at its exact version and release. `--with macho` or `--without macho` overrides the
 # default, `--define 'darling_archs ...'` the slices (`--with macho` off x86_64 needs one without i386).
 %ifarch x86_64

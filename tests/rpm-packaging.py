@@ -57,6 +57,39 @@ class SpecText(unittest.TestCase):
         self.assertRegex(repo, r'(?m)^baseurl=.*/RPMS/\$basearch$')
         self.assertRegex(repo, r'(?m)^baseurl=.*/RPMS/noarch$')
 
+    # The RPM packages are meant to be built the way the Debian ones are (debian/rules, debian/control): the
+    # same components in the same packages, the same slices, the same CMake switches for the Mach-O part.
+    @staticmethod
+    def debian_list(name):
+        rules = (ROOT / 'debian/rules').read_text()
+        body = re.search(r'^%s = \\\n((?:\t.*\n)+)' % name, rules, re.M).group(1)
+        return body.replace('\\', ' ').split()
+
+    def test_components_and_packages_match_debian(self):
+        # The first entry is core_native, which Debian builds in its own tree (debian/rules, -arch targets).
+        # Debian's cli_dev component is the darling-cli-devenv package, which has a spec of its own here.
+        self.assertEqual(self.components[1:], [c for c in self.debian_list('DARLING_COMPONENTS') if c != 'cli_dev'])
+        self.assertEqual(self.suffixes[1:], [c for c in self.debian_list('PACKAGE_SUFFIXES') if c != 'cli-devenv'])
+
+    def test_slices_and_cmake_switches_match_debian(self):
+        rules = (ROOT / 'debian/rules').read_text()
+        deb_archs = re.search(r'^DARLING_DEB_ARCHS \?= (\S+)$', rules, re.M).group(1)
+        spec_archs = re.search(r'%\{!\?darling_archs:%global darling_archs (\S+)\}', self.text).group(1)
+        self.assertEqual(spec_archs, deb_archs)
+        for switch in ('-DJSC_UNIFIED_BUILD=ON', '-DDARLING_SWIFT_WMO=ON', '-DDEBIAN_PACKAGING=ON'):
+            self.assertIn(switch, rules)
+            self.assertIn(switch, self.text)
+
+    def test_noarch_packages_are_the_debian_architecture_all_packages(self):
+        control = (ROOT / 'debian/control').read_text()
+        arch_all = set()
+        for stanza in control.split('\n\n'):
+            package = re.search(r'^Package: (\S+)$', stanza, re.M)
+            if package and re.search(r'^Architecture: all$', stanza, re.M):
+                arch_all.add(package.group(1))
+        # the two meta packages stay per architecture in the RPM spec, darling-cli-devenv has its own spec
+        self.assertEqual(arch_all - {'darling', 'darling-extra', 'darling-cli-devenv'}, NOARCH_PACKAGES)
+
 
 class SpecParsed(unittest.TestCase):
     def rpmspec(self, target, *args):
