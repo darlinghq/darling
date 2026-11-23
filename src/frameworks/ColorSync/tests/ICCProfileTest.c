@@ -181,6 +181,64 @@ int main(void)
 	bad[36] = 'x';
 	expect(!ICCProfileValidate(bad, length), "wrong file signature");
 
+	// The header in host byte order (ICCHeaderSwapFields). Each field is read back with memcpy as the host number it is.
+	uint8_t fileHeader[ICC_HEADER_SIZE], hostHeader[ICC_HEADER_SIZE], again[ICC_HEADER_SIZE];
+	memset(fileHeader, 0, sizeof fileHeader);
+	put32(fileHeader + 0, 0x11223344u);
+	put32(fileHeader + 4, SIG('A', 'B', 'C', 'D'));
+	put32(fileHeader + 8, 0x04300000u);
+	put32(fileHeader + 12, SIG('m', 'n', 't', 'r'));
+	put32(fileHeader + 16, SIG('R', 'G', 'B', ' '));
+	put32(fileHeader + 20, SIG('X', 'Y', 'Z', ' '));
+	const uint16_t dateFields[6] = { 2026, 11, 23, 14, 30, 59 };
+	for (int i = 0; i < 6; i++)
+	{
+		fileHeader[24 + i * 2] = dateFields[i] >> 8;
+		fileHeader[25 + i * 2] = (uint8_t) dateFields[i];
+	}
+	put32(fileHeader + 36, SIG('a', 'c', 's', 'p'));
+	put32(fileHeader + 40, SIG('A', 'P', 'P', 'L'));
+	put32(fileHeader + 44, 3);
+	put32(fileHeader + 48, 0x01020304u);
+	put32(fileHeader + 52, 0x05060708u);
+	put32(fileHeader + 56, 0x0a0b0c0du);
+	put32(fileHeader + 60, 0x0e0f1011u);
+	put32(fileHeader + 64, 1);
+	put32(fileHeader + 68, 0x0000f6d6u);
+	put32(fileHeader + 72, 0x00010000u);
+	put32(fileHeader + 76, 0x0000d32du);
+	put32(fileHeader + 80, SIG('Z', 'Z', 'Z', 'Z'));
+	for (int i = 0; i < 16; i++)
+		fileHeader[84 + i] = (uint8_t) (0xa0 + i);
+	for (int i = 0; i < 28; i++)
+		fileHeader[100 + i] = (uint8_t) (0xc0 + i);
+
+	ICCHeaderSwapFields(fileHeader, hostHeader);
+	static const struct { int offset; uint32_t value; } words[] = {
+		{ 0, 0x11223344u }, { 4, SIG('A', 'B', 'C', 'D') }, { 8, 0x04300000u }, { 12, SIG('m', 'n', 't', 'r') },
+		{ 16, SIG('R', 'G', 'B', ' ') }, { 20, SIG('X', 'Y', 'Z', ' ') }, { 36, SIG('a', 'c', 's', 'p') },
+		{ 40, SIG('A', 'P', 'P', 'L') }, { 44, 3 }, { 48, 0x01020304u }, { 52, 0x05060708u }, { 64, 1 },
+		{ 68, 0x0000f6d6u }, { 72, 0x00010000u }, { 76, 0x0000d32du }, { 80, SIG('Z', 'Z', 'Z', 'Z') },
+	};
+	for (size_t i = 0; i < sizeof words / sizeof words[0]; i++)
+	{
+		uint32_t word;
+		memcpy(&word, hostHeader + words[i].offset, 4);
+		expect(word == words[i].value, "32-bit header field in host order");
+	}
+	for (int i = 0; i < 6; i++)
+	{
+		uint16_t field;
+		memcpy(&field, hostHeader + 24 + i * 2, 2);
+		expect(field == dateFields[i], "date and time field in host order");
+	}
+	uint32_t attributes[2];
+	memcpy(attributes, hostHeader + 56, 8);
+	expect(attributes[0] == 0x0a0b0c0du && attributes[1] == 0x0e0f1011u, "device attributes in host order as two 32-bit numbers");
+	expect(memcmp(hostHeader + 84, fileHeader + 84, 44) == 0, "Profile ID and reserved bytes are not swapped");
+	ICCHeaderSwapFields(hostHeader, again);
+	expect(memcmp(again, fileHeader, ICC_HEADER_SIZE) == 0, "swapping twice gives back the file header");
+
 	// A buffer of exactly the profile's size, so a read past the tag table is an address sanitizer error.
 	uint8_t* exact = malloc(length);
 	memcpy(exact, profile, length);

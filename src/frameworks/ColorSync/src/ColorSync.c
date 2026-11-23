@@ -293,12 +293,6 @@ void* ColorSyncProfileCopyASCIIDescriptionString(void)
     return NULL;
 }
 
-void* ColorSyncProfileCopyHeader(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCopyHeader called");
-    return NULL;
-}
-
 void* ColorSyncProfileCopyLocalizedDescriptionString(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileCopyLocalizedDescriptionString called");
@@ -332,12 +326,6 @@ void* ColorSyncProfileCreateLink(void)
 void* ColorSyncProfileCreateMutable(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileCreateMutable called");
-    return NULL;
-}
-
-void* ColorSyncProfileCreateMutableCopy(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCreateMutableCopy called");
     return NULL;
 }
 
@@ -422,12 +410,6 @@ void* ColorSyncProfileRemoveTag(void)
 void* ColorSyncProfileSetDescriptionTag(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileSetDescriptionTag called");
-    return NULL;
-}
-
-void* ColorSyncProfileSetHeader(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileSetHeader called");
     return NULL;
 }
 
