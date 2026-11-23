@@ -478,6 +478,13 @@ static __thread siginfo_t t_pending_info[GUEST_NSIG];
 static __thread struct fex_signal_request t_request;
 // A signal turned the guest's syscall into EINTR at its kernel entry; the syscall is to be made again.
 static __thread bool t_restart_syscall;
+// A signal ended a wait with a temporary blocked set (rt_sigsuspend, pselect6, ppoll, epoll_pwait): as on
+// Linux, its handler runs with that set, and the caller's comes back when the handler returns.
+static __thread bool t_wait_interrupted;
+static __thread uint64_t t_wait_mask;
+// What is left of an interrupted epoll_pwait's timeout in ms, for when it is made again (-1: nothing to
+// update). The kernel updates ppoll's and pselect6's in memory, but epoll_pwait's is a value.
+static __thread long t_wait_timeout_left = -1;
 
 static uint64_t unblockable(uint64_t mask)
 {
@@ -512,7 +519,8 @@ static void pend_signal(int sig, const siginfo_t* info)
 }
 
 // The guest's disposition is the default: let the host kernel apply it to the process. `ucontext` is the
-// host handler's context, or null outside one (the signal is not blocked on the host then).
+// host handler's context, or null outside one (the signal is not blocked on the host then, unless a wait's
+// temporary set let it in: the wait, made again with that set, lets the kernel apply the action).
 static void take_default_action(int sig, void* ucontext)
 {
 	if (signal_ignored_by_default(sig))
@@ -704,12 +712,16 @@ void fex_signals_after_fork_child(void)
 
 static bool take_pending_signal(struct fex_x86_64_state* state)
 {
+	bool waited = t_wait_interrupted;
+	t_wait_interrupted = false;
 	for (;;) {
 		// The common case costs no syscall.
 		if (!__atomic_load_n(&t_pending, __ATOMIC_RELAXED))
 			return false;
+		uint64_t old_mask = guest_mask();
+		uint64_t blocked = waited ? t_wait_mask : old_mask;
 		siginfo_t info;
-		int sig = take_kept_signal(~guest_mask(), &info);
+		int sig = take_kept_signal(~blocked, &info);
 		if (!sig)
 			return false;
 
@@ -727,11 +739,11 @@ static bool take_pending_signal(struct fex_x86_64_state* state)
 
 		memset(&t_request, 0, sizeof(t_request));
 		t_request.sig = sig;
-		t_request.old_mask = guest_mask();
+		t_request.old_mask = old_mask;
 		t_request.action = action;
 		t_request.altstack = t_guest_altstack;
 		memcpy(t_request.info, &info, sizeof(t_request.info));
-		set_guest_mask(handler_mask(sig, &action, t_request.old_mask));
+		set_guest_mask(handler_mask(sig, &action, blocked));
 		state->signal_request = &t_request;
 		return true;
 	}
@@ -843,6 +855,36 @@ static long guest_rt_sigpending(uintptr_t set, long sigsetsize)
 		return ret;
 	pending |= __atomic_load_n(&t_pending, __ATOMIC_RELAXED);
 	return fex_copy_to_guest((void*)set, &pending, sizeof(pending));
+}
+
+static long read_guest_sigset(uintptr_t set, long sigsetsize, uint64_t* mask)
+{
+	if (sigsetsize != sizeof(uint64_t))
+		return -EINVAL;
+	return fex_copy_from_guest(mask, (const void*)set, sizeof(*mask));
+}
+
+// Makes the host syscall `nr`, which waits with a temporary blocked set: the guest's is `wait`, and the
+// host's version of it goes to `*host_mask`, where `args` point. A signal kept here that `wait` lets in ends
+// the wait at once, as a pending one does on Linux. Everything stays blocked on the host until the kernel
+// installs the wait's set, so that no signal can be kept here unseen in between.
+static long guest_masked_wait(long nr, const long args[6], uint64_t wait, uint64_t* host_mask)
+{
+	uint64_t old = guest_mask();
+	uint64_t all = ~0ULL;
+	raw_host_syscall(SYS_rt_sigprocmask, SIG_SETMASK, (long)(uintptr_t)&all, 0, sizeof(all), 0, 0);
+	wait = unblockable(wait);
+	t_guest_blocked_jit_signals = wait & FEX_JIT_SIGNALS;
+	*host_mask = wait & ~FEX_JIT_SIGNALS;
+	long ret = -EINTR;
+	if (!(__atomic_load_n(&t_pending, __ATOMIC_RELAXED) & ~wait))
+		ret = guest_host_syscall(nr, args[0], args[1], args[2], args[3], args[4], args[5]);
+	set_guest_mask(old);
+	if (ret == -EINTR) {
+		t_wait_interrupted = true;
+		t_wait_mask = wait;
+	}
+	return ret;
 }
 
 // Each guest thread's alternate signal stack, as Linux keeps it; `guest_sp` is the caller's stack pointer.
@@ -995,6 +1037,44 @@ static long dispatch_syscall(struct fex_x86_64_state* state)
 		case 127: // rt_sigpending
 			ret = guest_rt_sigpending((uintptr_t)a1, a2);
 			break;
+
+		case 130: { // rt_sigsuspend(mask, sigsetsize)
+			uint64_t wait, host_mask;
+			ret = read_guest_sigset((uintptr_t)a1, a2, &wait);
+			if (ret == 0)
+				ret = guest_masked_wait(SYS_rt_sigsuspend, (long[6]){ (long)(uintptr_t)&host_mask, 8 }, wait, &host_mask);
+			break;
+		}
+
+		case 270: { // pselect6: the last argument points to { mask, sigsetsize }
+			uint64_t data[2] = { 0, 0 };
+			if (a6)
+				ret = fex_copy_from_guest(data, (const void*)(uintptr_t)a6, sizeof(data));
+			if (a6 && ret != 0)
+				break;
+			if (!data[0]) {
+				ret = guest_host_syscall(SYS_pselect6, a1, a2, a3, a4, a5, a6);
+				break;
+			}
+			uint64_t wait, host_mask;
+			ret = read_guest_sigset((uintptr_t)data[0], (long)data[1], &wait);
+			uint64_t host_data[2] = { (uint64_t)(uintptr_t)&host_mask, 8 };
+			if (ret == 0)
+				ret = guest_masked_wait(SYS_pselect6, (long[6]){ a1, a2, a3, a4, a5, (long)(uintptr_t)host_data }, wait, &host_mask);
+			break;
+		}
+
+		case 271: { // ppoll(fds, nfds, timeout, mask, sigsetsize)
+			if (!a4) {
+				ret = guest_host_syscall(SYS_ppoll, a1, a2, a3, 0, a5, 0);
+				break;
+			}
+			uint64_t wait, host_mask;
+			ret = read_guest_sigset((uintptr_t)a4, a5, &wait);
+			if (ret == 0)
+				ret = guest_masked_wait(SYS_ppoll, (long[6]){ a1, a2, a3, (long)(uintptr_t)&host_mask, 8 }, wait, &host_mask);
+			break;
+		}
 
 		case 131: // sigaltstack
 			ret = guest_sigaltstack((uintptr_t)a1, (uintptr_t)a2, state->rsp);
@@ -1162,10 +1242,23 @@ static long dispatch_syscall(struct fex_x86_64_state* state)
 					break;
 				}
 			}
-			long sigmask_arg = (nr == 281) ? a5 : 0;
-			long sigsetsize_arg = (nr == 281) ? a6 : (long)sizeof(sigset_t);
-			ret = guest_host_syscall(22, a1, (long)(uintptr_t)host_evs, maxevents,
-				a4, sigmask_arg, sigsetsize_arg);
+			if (nr == 281 && a5) {
+				uint64_t wait, host_mask;
+				ret = read_guest_sigset((uintptr_t)a5, a6, &wait);
+				struct timespec start, end;
+				clock_gettime(CLOCK_MONOTONIC, &start);
+				if (ret == 0)
+					ret = guest_masked_wait(22, (long[6]){ a1, (long)(uintptr_t)host_evs, maxevents, a4,
+						(long)(uintptr_t)&host_mask, 8 }, wait, &host_mask);
+				clock_gettime(CLOCK_MONOTONIC, &end);
+				if (t_wait_interrupted && (int)a4 >= 0) {
+					long long elapsed_ns = (end.tv_sec - start.tv_sec) * 1000000000LL + (end.tv_nsec - start.tv_nsec);
+					long long left_ns = (long long)(int)a4 * 1000000LL - elapsed_ns;
+					t_wait_timeout_left = left_ns > 0 ? (long)(left_ns / 1000000LL) : 0;
+				}
+			} else {
+				ret = guest_host_syscall(22, a1, (long)(uintptr_t)host_evs, maxevents, a4, 0, 8);
+			}
 			if (ret > 0) {
 				struct x86_64_epoll_event stack_guest_evs[64];
 				struct x86_64_epoll_event* guest_evs = stack_guest_evs;
@@ -1219,21 +1312,29 @@ long fex_linux_syscall_dispatch(struct fex_x86_64_state* state)
 	if (t_held_signals)
 		release_held_signals();
 
-	const struct fex_x86_64_state entry = *state;
+	struct fex_x86_64_state entry = *state;
 	for (;;) {
 		t_restart_syscall = false;
+		t_wait_interrupted = false;
+		t_wait_timeout_left = -1;
 		long ret = dispatch_syscall(state);
 		bool restart = t_restart_syscall && ret == -EINTR;
+		// A wait ended by a signal returns EINTR after its handler, never made again.
+		bool waited = t_wait_interrupted;
 		t_restart_syscall = false;
-		if (state->unwind_thread)
-			return ret;
-		if (take_pending_signal(state)) {
-			t_request.restart_syscall = restart && !state->frame_restored;
+		if (state->unwind_thread) {
+			t_wait_interrupted = false;
 			return ret;
 		}
-		if (!restart)
+		if (take_pending_signal(state)) {
+			t_request.restart_syscall = restart && !waited && !state->frame_restored;
+			return ret;
+		}
+		if (!restart && !waited)
 			return ret;
 		// Only signals without a handler interrupted it: the syscall goes on, as it would on Linux.
+		if (waited && t_wait_timeout_left >= 0)
+			entry.r10 = (uint64_t)t_wait_timeout_left;
 		*state = entry;
 	}
 }

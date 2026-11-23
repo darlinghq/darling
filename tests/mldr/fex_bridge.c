@@ -988,6 +988,125 @@ static void test_kept_signals(uint64_t guest_handler, uint64_t saved_mask)
 	set_guest_mask_to(saved_mask);
 }
 
+static struct fex_x86_64_state guest_syscall_state6(uint64_t nr, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4,
+	uint64_t a5, uint64_t a6)
+{
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rax = nr;
+	st.rdi = a1;
+	st.rsi = a2;
+	st.rdx = a3;
+	st.r10 = a4;
+	st.r8 = a5;
+	st.r9 = a6;
+	fex_linux_syscall_dispatch(&st);
+	return st;
+}
+
+// The signal a wait with a temporary blocked set let in runs its handler before the wait returns EINTR, with
+// that set (plus sa_mask and the signal) blocked; the caller's set comes back with the handler's rt_sigreturn.
+static void check_wait_delivery(struct fex_x86_64_state st, int sig, uint64_t caller, uint64_t wait, uint64_t sa_mask,
+	const char* what)
+{
+	const struct fex_signal_request* req = st.signal_request;
+	check(req && req->sig == sig && (long)st.rax == -EINTR && !req->restart_syscall && req->old_mask == caller
+		&& guest_blocked() == (wait | sa_mask | FEX_SIGBIT(sig)), what);
+	g_fake_return_answer = 1;
+	g_fake_returned_mask = req ? req->old_mask : caller;
+	guest_syscall_state(15, 0, 0, 0);
+	check(guest_blocked() == caller, "and the handler's return puts the caller's set back");
+}
+
+static void test_masked_waits(uint64_t guest_handler, uint64_t saved_mask)
+{
+	const uint64_t usr1 = FEX_SIGBIT(SIGUSR1), usr2 = FEX_SIGBIT(SIGUSR2), winch = FEX_SIGBIT(SIGWINCH);
+	const uint64_t none = 0;
+	guest_sigaction(SIGUSR1, guest_handler, 0, usr2, NULL);
+	g_fake_preempt_answer = FEX_SIGNAL_AT_SYSCALL_RETURN;
+
+	// sigsuspend with the signal already pending: blocked by the caller, let in by the wait.
+	set_guest_mask_to(usr1);
+	raise_on_this_thread(SIGUSR1);
+	struct fex_x86_64_state st = guest_syscall_state6(130, (uint64_t)(uintptr_t)&winch, 8, 0, 0, 0, 0);
+	check_wait_delivery(st, SIGUSR1, usr1, winch, usr2, "sigsuspend takes a pending signal it lets in: handler first, then EINTR");
+
+	// Woken by another thread.
+	struct interrupter it = { gettid(), SIGUSR1 };
+	pthread_t t;
+	pthread_create(&t, NULL, interrupt_later, &it);
+	st = guest_syscall_state6(130, (uint64_t)(uintptr_t)&none, 8, 0, 0, 0, 0);
+	pthread_join(t, NULL);
+	check_wait_delivery(st, SIGUSR1, usr1, 0, usr2, "sigsuspend woken by a signal runs its handler before it returns");
+
+	// A JIT signal kept here while the guest blocks it ends the wait at once.
+	guest_sigaction(SIGTRAP, guest_handler, 0, 0, NULL);
+	set_guest_mask_to(FEX_SIGBIT(SIGTRAP) | usr1);
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+	raise_on_this_thread(SIGTRAP);
+	g_fake_preempt_answer = FEX_SIGNAL_AT_SYSCALL_RETURN;
+	st = guest_syscall_state6(130, (uint64_t)(uintptr_t)&usr1, 8, 0, 0, 0, 0);
+	check_wait_delivery(st, SIGTRAP, FEX_SIGBIT(SIGTRAP) | usr1, usr1, 0, "sigsuspend takes a signal kept for the guest");
+
+	// Only an ignored one ended it: sigsuspend waits on, until a signal with a handler comes.
+	guest_sigaction(SIGTRAP, 1 /* SIG_IGN */, 0, 0, NULL);
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+	raise_on_this_thread(SIGTRAP);
+	g_fake_preempt_answer = FEX_SIGNAL_AT_SYSCALL_RETURN;
+	pthread_create(&t, NULL, interrupt_later, &it);
+	st = guest_syscall_state6(130, (uint64_t)(uintptr_t)&none, 8, 0, 0, 0, 0);
+	pthread_join(t, NULL);
+	check_wait_delivery(st, SIGUSR1, FEX_SIGBIT(SIGTRAP) | usr1, 0, usr2, "an ignored signal does not end sigsuspend");
+	guest_sigaction(SIGTRAP, 0, 0, 0, NULL);
+	check(guest_syscall_state6(130, (uint64_t)(uintptr_t)&none, 4, 0, 0, 0, 0).rax == (uint64_t)-EINVAL,
+		"sigsuspend checks the set's size");
+
+	// ppoll and pselect6 with a set: the same.
+	set_guest_mask_to(usr1);
+	struct timespec second = { 1, 0 };
+	raise_on_this_thread(SIGUSR1);
+	st = guest_syscall_state6(271, 0, 0, (uint64_t)(uintptr_t)&second, (uint64_t)(uintptr_t)&none, 8, 0);
+	check_wait_delivery(st, SIGUSR1, usr1, 0, usr2, "ppoll with a set lets the signal in and runs its handler");
+	raise_on_this_thread(SIGUSR1);
+	uint64_t data[2] = { (uint64_t)(uintptr_t)&none, 8 };
+	st = guest_syscall_state6(270, 0, 0, 0, 0, (uint64_t)(uintptr_t)&second, (uint64_t)(uintptr_t)data);
+	check_wait_delivery(st, SIGUSR1, usr1, 0, usr2, "pselect6 with a set lets the signal in and runs its handler");
+
+	// epoll_pwait made again after an ignored signal ended it waits only for what is left of its timeout.
+	guest_sigaction(SIGTRAP, 1 /* SIG_IGN */, 0, 0, NULL);
+	int ep = epoll_create1(0);
+	char events[64];
+	struct interrupter trap = { gettid(), SIGTRAP };
+	struct timespec t0, t1;
+	clock_gettime(CLOCK_MONOTONIC, &t0);
+	pthread_create(&t, NULL, interrupt_later, &trap);
+	st = guest_syscall_state6(281, ep, (uint64_t)(uintptr_t)events, 4, 400, (uint64_t)(uintptr_t)&none, 8);
+	pthread_join(t, NULL);
+	clock_gettime(CLOCK_MONOTONIC, &t1);
+	long ms = (t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000;
+	check(st.rax == 0 && st.signal_request == NULL && ms >= 380 && ms < 520,
+		"epoll_pwait made again after an ignored signal keeps its total timeout");
+	close(ep);
+	guest_sigaction(SIGTRAP, 0, 0, 0, NULL);
+
+	// A wait that ends without a signal leaves one the caller blocks pending.
+	guest_sigaction(SIGUSR2, guest_handler, 0, 0, NULL);
+	set_guest_mask_to(usr2);
+	raise_on_this_thread(SIGUSR2);
+	struct timespec zero = { 0, 0 };
+	st = guest_syscall_state6(271, 0, 0, (uint64_t)(uintptr_t)&zero, (uint64_t)(uintptr_t)&usr2, 8, 0);
+	uint64_t pending = 0;
+	guest_syscall(127, (uint64_t)(uintptr_t)&pending, 8, 0, 0, 0);
+	check(st.rax == 0 && st.signal_request == NULL && (pending & usr2) && guest_blocked() == usr2,
+		"a wait whose set blocks the signal leaves it pending");
+	st = guest_syscall_state6(128, (uint64_t)(uintptr_t)&usr2, 0, (uint64_t)(uintptr_t)&zero, 8, 0, 0);
+	check((long)st.rax == SIGUSR2, "(drained)");
+	guest_sigaction(SIGUSR2, 0, 0, 0, NULL);
+
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+	set_guest_mask_to(saved_mask);
+}
+
 static void test_guest_signal_delivery(void)
 {
 	const uint64_t guest_handler = 0x123400;
@@ -1126,6 +1245,7 @@ static void test_guest_signal_delivery(void)
 	test_syscall_restart(guest_handler, saved_mask);
 	test_guest_syscall_entry(guest_handler, saved_mask);
 	test_kept_signals(guest_handler, saved_mask);
+	test_masked_waits(guest_handler, saved_mask);
 
 	guest_sigaction(SIGUSR1, 0, 0, 0, NULL);
 	guest_sigaction(SIGUSR2, 0, 0, 0, NULL);
