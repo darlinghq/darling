@@ -8,10 +8,11 @@
 
 // kCGImageDestinationImageMaxPixelSize, a CFNumber in the per-image properties of CGImageDestinationAddImage and
 // AddImageFromSource. Apple documents it as: if present, the destination rescales the image to fit within the maximum width
-// and height; if absent, the native size is kept. The expectations on rounding, the one-pixel minimum, ignoring a value that
-// is not a number of at least 1, reading the key from the per-image properties and not from the destination's options, and
-// failing the destination when the image cannot be scaled are the choices this implementation makes where the documentation
-// is silent.
+// and height; if absent, the native size is kept. The other expectations are observations of macOS 26.7.3 and 10.14.4 (see
+// CGImageDestination.m): the longer side becomes the limit (an image is enlarged as well as reduced), the other side is
+// truncated with a minimum of one pixel, the value must be a number of at least 1, the key is read from the per-image
+// properties and not from the destination's options. Failing the destination when the image cannot be scaled is the choice
+// of this implementation, where macOS gives no answer.
 //   clang -framework CoreFoundation -framework ImageIO -framework CoreGraphics tests/imageio-destination-max-pixel-size.c -o /tmp/imageio-destination-max-pixel-size
 // Exits non-zero on failure.
 #define EXPECT(cond, msg) do { if (!(cond)) { printf("FAIL: %s\n", msg); failures++; } } while (0)
@@ -92,13 +93,17 @@ int main(void) {
     back = roundTrip(image, NULL, NULL, NULL);
     EXPECT(SIZE_IS(back, 40, 20), "without the key the image keeps its size");
     back = roundTrip(image, NULL, intLimit(100), NULL);
-    EXPECT(SIZE_IS(back, 40, 20), "a limit above the image's size adds it unchanged");
+    EXPECT(SIZE_IS(back, 100, 50), "a limit above the image's size enlarges it: 40x20 at 100 is 100x50");
+    back = roundTrip(image, NULL, intLimit(41), NULL);
+    EXPECT(SIZE_IS(back, 41, 20), "40x20 at a limit of 41 is 41x20: the longer side is the limit, the other side is truncated");
+    back = roundTrip(NULL, source, intLimit(100), NULL);
+    EXPECT(SIZE_IS(back, 100, 50), "AddImageFromSource enlarges as well: 40x20 at 100 is 100x50");
     back = roundTrip(image, NULL, intLimit(40), NULL);
     EXPECT(SIZE_IS(back, 40, 20), "a limit equal to the longer side adds it unchanged");
     back = roundTrip(image, NULL, intLimit(1), NULL);
     EXPECT(SIZE_IS(back, 1, 1), "the smaller side never drops below one pixel");
 
-    // A tall image: the height alone exceeds the limit. Rounding keeps the larger side at the limit: 40x20 at 7 is 7x4 (3.5 rounds up).
+    // A tall image: the height is the longer side.
     CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
     CGContextRef context = CGBitmapContextCreate(NULL, 20, 40, 8, 0, space, kCGImageAlphaPremultipliedLast);
     CGContextDrawImage(context, CGRectMake(0, 0, 20, 40), image);
@@ -107,9 +112,9 @@ int main(void) {
     CGColorSpaceRelease(space);
     EXPECT(SIZE_IS(roundTrip(tall, NULL, intLimit(30), NULL), 15, 30), "a 20x40 image with a limit of 30 is written as 15x30 (the height is the longer side)");
     EXPECT(SIZE_IS(roundTrip(tall, NULL, intLimit(40), NULL), 20, 40), "a 20x40 image with a limit of 40 is unchanged");
-    EXPECT(SIZE_IS(roundTrip(image, NULL, intLimit(7), NULL), 7, 4), "40x20 at a limit of 7 is 7x4: the shorter side rounds to nearest");
+    EXPECT(SIZE_IS(roundTrip(image, NULL, intLimit(7), NULL), 7, 3), "40x20 at a limit of 7 is 7x3: the shorter side is truncated (3.5)");
 
-    EXPECT(SIZE_IS(roundTrip(tall, NULL, intLimit(7), NULL), 4, 7), "20x40 at a limit of 7 is 4x7: the shorter side rounds to nearest");
+    EXPECT(SIZE_IS(roundTrip(tall, NULL, intLimit(7), NULL), 3, 7), "20x40 at a limit of 7 is 3x7: the shorter side is truncated (3.5)");
     CGColorSpaceRef rowSpace = CGColorSpaceCreateDeviceRGB();
     CGContextRef rowContext = CGBitmapContextCreate(NULL, 40, 1, 8, 0, rowSpace, kCGImageAlphaPremultipliedLast);
     CGImageRef row = CGBitmapContextCreateImage(rowContext);
@@ -129,18 +134,25 @@ int main(void) {
     CFNumberRef number = CFNumberCreate(NULL, kCFNumberDoubleType, &real);
     back = roundTrip(image, NULL, limitDictionary(number), NULL);
     EXPECT(SIZE_IS(back, 10, 5), "a floating point limit counts");
+    double fraction = 10.5;
+    CFNumberRef fractional = CFNumberCreate(NULL, kCFNumberDoubleType, &fraction);
+    EXPECT(SIZE_IS(roundTrip(image, NULL, limitDictionary(fractional), NULL), 10, 5), "a limit of 10.5 is 10 (truncated)");
+    double belowOne = 0.5;
+    CFNumberRef small = CFNumberCreate(NULL, kCFNumberDoubleType, &belowOne);
+    EXPECT(SIZE_IS(roundTrip(image, NULL, limitDictionary(small), NULL), 40, 20), "a limit below 1 is ignored");
     EXPECT(SIZE_IS(roundTrip(image, NULL, intLimit(0), NULL), 40, 20), "a limit of 0 is ignored");
     EXPECT(SIZE_IS(roundTrip(image, NULL, intLimit(-5), NULL), 40, 20), "a negative limit is ignored");
     EXPECT(SIZE_IS(roundTrip(image, NULL, limitDictionary(CFSTR("10")), NULL), 40, 20), "a limit that is not a number is ignored");
+    EXPECT(SIZE_IS(roundTrip(image, NULL, limitDictionary(kCFBooleanTrue), NULL), 40, 20), "a boolean is not a limit");
 
     // Read from the per-image properties, not from the options of the destination.
     EXPECT(SIZE_IS(roundTrip(image, NULL, NULL, intLimit(10)), 40, 20), "the key in the destination's options (not the per-image properties) has no effect");
 
-    // A limit no image reaches (1e30, +infinity) is a limit that is never exceeded: the image is added unchanged. NaN is ignored.
-    double huge[] = { 1e30, INFINITY, NAN };
-    for (int i = 0; i < 3; i++) {
+    // A limit of 1e10 or more, infinity and NaN leave the image alone (macOS 26.7.3 and 10.14.4; 2^31 is the cutoff used here).
+    double huge[] = { 1e10, 1e30, INFINITY, NAN };
+    for (int i = 0; i < 4; i++) {
         CFNumberRef n = CFNumberCreate(NULL, kCFNumberDoubleType, &huge[i]);
-        EXPECT(SIZE_IS(roundTrip(image, NULL, limitDictionary(n), NULL), 40, 20), "a limit of 1e30, infinity or NaN leaves the image unchanged (no undefined cast)");
+        EXPECT(SIZE_IS(roundTrip(image, NULL, limitDictionary(n), NULL), 40, 20), "a limit of 1e10 or more, infinity or NaN leaves the image unchanged (no undefined cast)");
         CFRelease(n);
     }
 

@@ -22,37 +22,50 @@ const CFStringRef kCGImageDestinationBackgroundColor=(CFStringRef)@"kCGImageDest
 //
 // kCGImageDestinationImageMaxPixelSize is a CFNumber that Apple documents (ImageIO, kCGImageDestinationImageMaxPixelSize)
 // as: if present, the destination rescales the image to fit within the maximum width and height; if absent, the native size
-// is kept. CGImageDestinationAddImage and AddImageFromSource scale an image down to fit (aspect ratio kept) and add an
-// image that already fits unchanged.
-// Not covered by the documentation, chosen conservatively: the key is read from the per-image properties of those two
-// calls and not from the options of the destination; the scaled dimensions round to nearest with a minimum of one pixel
-// (as CGImageSourceCreateThumbnailAtIndex does); the scaled copy is a device RGB bitmap; a value that is not a number of at
-// least 1 is ignored; an image that cannot be scaled is not added at full size and Finalize returns false.
+// is kept. Observed on macOS 26.7.3 and 10.14.4 (x86_64 and i386), where the documentation is silent, and followed here:
+//  - the image is scaled so that its longer side is exactly the limit, so a limit above the image's size enlarges it (a 40x20
+//    image at 100 is written as 100x50), and an image whose longer side is the limit is added unchanged;
+//  - the other side is the exact proportion truncated, with a minimum of one pixel (40x20 at 7 is 7x3, 40x1 at 10 is 10x1);
+//  - CGImageDestinationAddImageFromSource does the same as AddImage (10.14.4; 26.7.3 only reduces there and rounds the
+//    other side to nearest, which is not followed);
+//  - the key is read from the per-image properties of those two calls, not from the options of CGImageDestinationCreate...
+//    and not from CGImageDestinationSetProperties; every format of the destination honours it;
+//  - the value is a number: a double is truncated to an integer (10.5 is 10), and a number below 1, a NaN, and a number from
+//    about 1e10 up (the cutoff is not known; 2^31 is used here) leave the image alone; a string and a boolean are ignored
+//    (26.7.3 reads a numeric string and a boolean as numbers, which is not followed because 10.14.4 ignores them).
+// Chosen where macOS gives no answer: the scaled copy is a device RGB bitmap, and an image that cannot be scaled (the bitmap
+// cannot be allocated) is not added at full size and Finalize returns false.
 // Test: tests/imageio-destination-max-pixel-size.c
 // OptimizeColorForSharing and PreserveGainMap are accepted and have no effect yet.
 const CFStringRef kCGImageDestinationImageMaxPixelSize = CFSTR("kCGImageDestinationImageMaxPixelSize");
 const CFStringRef kCGImageDestinationOptimizeColorForSharing = CFSTR("kCGImageDestinationOptimizeColorForSharing");
 const CFStringRef kCGImageDestinationPreserveGainMap = CFSTR("kCGImageDestinationPreserveGainMap");
 
-// The limit the properties hold under kCGImageDestinationImageMaxPixelSize: a number of at least 1, else 0 (no limit).
+// The limit the properties hold under kCGImageDestinationImageMaxPixelSize: a number of at least 1 (truncated) and below
+// 2^31, else 0 (no limit).
 static size_t maxPixelSizeLimit(CFDictionaryRef properties) {
    CFTypeRef value=properties!=NULL?CFDictionaryGetValue(properties,kCGImageDestinationImageMaxPixelSize):NULL;
    double requested=0;
-   if (value==NULL || CFGetTypeID(value)!=CFNumberGetTypeID() || !CFNumberGetValue((CFNumberRef)value,kCFNumberDoubleType,&requested) || !(requested>=1)) {
+   if (value==NULL || CFGetTypeID(value)!=CFNumberGetTypeID() || !CFNumberGetValue((CFNumberRef)value,kCFNumberDoubleType,&requested) || !(requested>=1) || !(requested<2147483648.0)) {
       return 0;
    }
-   // A value beyond what a size_t holds (1e30, +infinity) is clamped to a limit no image reaches, so the cast is defined.
-   const double largest=(double)(SIZE_MAX>>12);
-   return (size_t)(requested<largest?requested:largest);
+   return (size_t)requested;
 }
 
-// A new RGBA copy of `image` whose longer side is `limit` pixels, aspect ratio kept. The caller has checked that a side
-// exceeds `limit`. NULL when the bitmap cannot be made (the bitmap allocation can also raise).
+static size_t longerSide(O2ImageRef image) {
+   const size_t width=O2ImageGetWidth(image),height=O2ImageGetHeight(image);
+   return width>height?width:height;
+}
+
+// A new RGBA copy of `image` whose longer side is `limit` pixels, aspect ratio kept, the other side truncated to at least one
+// pixel. The caller has checked that the longer side is not `limit` already. NULL when the bitmap cannot be made (the bitmap
+// allocation can also raise).
 static O2ImageRef createImageWithin(O2ImageRef image,size_t limit) {
    size_t width=O2ImageGetWidth(image),height=O2ImageGetHeight(image);
-   double scale=(double)limit/(double)(width>height?width:height);
-   width=(size_t)fmax(1,lround(width*scale));
-   height=(size_t)fmax(1,lround(height*scale));
+   const size_t longer=longerSide(image);
+   // One division of an exact product, so a proportion that is a whole number comes out whole.
+   width=width==longer?limit:(size_t)fmax(1,floor((double)width*(double)limit/(double)longer));
+   height=height==longer?limit:(size_t)fmax(1,floor((double)height*(double)limit/(double)longer));
    O2ColorSpaceRef colorSpace=O2ColorSpaceCreateDeviceRGB();
    O2ContextRef context=O2BitmapContextCreate(NULL,width,height,8,width*4,colorSpace,kO2ImageAlphaPremultipliedLast|kO2BitmapByteOrder32Big);
    O2ColorSpaceRelease(colorSpace);
@@ -92,7 +105,7 @@ void CGImageDestinationSetProperties(CGImageDestinationRef self,CFDictionaryRef 
 
 void CGImageDestinationAddImage(CGImageDestinationRef self,CGImageRef image,CFDictionaryRef properties) {
    size_t limit=maxPixelSizeLimit(properties);
-   if (limit!=0 && image!=NULL && (O2ImageGetWidth((O2ImageRef)image)>limit || O2ImageGetHeight((O2ImageRef)image)>limit)) {
+   if (limit!=0 && image!=NULL && longerSide((O2ImageRef)image)!=limit) {
       O2ImageRef scaled=NULL;
       @try {
          scaled=createImageWithin((O2ImageRef)image,limit);
