@@ -307,7 +307,7 @@ static void identity_init(dserver_platform_identity_t* identity)
 
 // Fills in the keys the domain sets. Keys of other components that share the
 // domain (the GPU and display keys) are left alone.
-static bool identity_from_domain(CFDictionaryRef domain, dserver_platform_identity_t* identity, char* why, size_t whySize)
+static bool identity_from_domain(CFDictionaryRef domain, dserver_platform_identity_t* identity, char* override_ios_version, size_t override_len, char* why, size_t whySize)
 {
 	for (size_t i = 0; i < ARRAY_SIZE(kIdentityStrings); i++)
 	{
@@ -327,6 +327,69 @@ static bool identity_from_domain(CFDictionaryRef domain, dserver_platform_identi
 
 		memcpy((char*) identity + kIdentityStrings[i].offset, buffer, length);
 		identity->present |= kIdentityStrings[i].bit;
+	}
+
+	CFTypeRef valProductVer = lookup(domain, "OSProductVersion");
+	CFTypeRef valBuildVer = lookup(domain, "OSVersion");
+	CFTypeRef valRelease = lookup(domain, "OSRelease");
+	CFTypeRef valIOSSupport = lookup(domain, "OSiOSSupportVersion");
+
+	int versionKeyCount = (valProductVer != NULL) + (valBuildVer != NULL) + (valRelease != NULL);
+	if (versionKeyCount != 0 && versionKeyCount != 3)
+	{
+		snprintf(why, whySize, "OSProductVersion, OSVersion, and OSRelease must all be specified together");
+		return false;
+	}
+
+	if (versionKeyCount == 3)
+	{
+		char productVer[DSERVER_PLATFORM_IDENTITY_STRING_MAX];
+		char buildVer[DSERVER_PLATFORM_IDENTITY_STRING_MAX];
+		char release[DSERVER_PLATFORM_IDENTITY_STRING_MAX];
+		size_t len;
+
+		if (!copy_string(valProductVer, kCFStringEncodingASCII, productVer, sizeof(productVer), &len)
+			|| !prefsd_is_valid_os_product_version(productVer, len))
+		{
+			snprintf(why, whySize, "OSProductVersion must be a valid version string (e.g. 12.6.8)");
+			return false;
+		}
+
+		if (!copy_string(valBuildVer, kCFStringEncodingASCII, buildVer, sizeof(buildVer), &len)
+			|| !prefsd_is_valid_os_version(buildVer, len))
+		{
+			snprintf(why, whySize, "OSVersion must be a valid build string (e.g. 21G725)");
+			return false;
+		}
+
+		if (!copy_string(valRelease, kCFStringEncodingASCII, release, sizeof(release), &len)
+			|| !prefsd_is_valid_os_release(release, len))
+		{
+			snprintf(why, whySize, "OSRelease must be a valid Darwin release string (e.g. 21.6.0)");
+			return false;
+		}
+
+		memcpy(identity->os_product_version, productVer, strlen(productVer));
+		memcpy(identity->os_version, buildVer, strlen(buildVer));
+		memcpy(identity->os_release, release, strlen(release));
+
+		identity->present |= DSERVER_PLATFORM_IDENTITY_HAS_OS_PRODUCT_VERSION
+			| DSERVER_PLATFORM_IDENTITY_HAS_OS_VERSION
+			| DSERVER_PLATFORM_IDENTITY_HAS_OS_RELEASE;
+	}
+
+	if (valIOSSupport != NULL)
+	{
+		char iosSupport[64];
+		size_t len;
+		if (!copy_string(valIOSSupport, kCFStringEncodingASCII, iosSupport, sizeof(iosSupport), &len)
+			|| !prefsd_is_valid_ios_support_version(iosSupport, len))
+		{
+			snprintf(why, whySize, "OSiOSSupportVersion must be a valid version string or \"none\"");
+			return false;
+		}
+		if (override_ios_version != NULL && override_len > 0)
+			snprintf(override_ios_version, override_len, "%s", iosSupport);
 	}
 
 	for (size_t i = 0; i < ARRAY_SIZE(kIdentityUUIDs); i++)
@@ -503,11 +566,13 @@ static bool config_from_domain(CFDictionaryRef domain, dserver_system_config_t* 
 // Builds what a domain asks for. Any problem with the file or a value is
 // described in `why`, and the result is then the defaults for the whole
 // domain, so a half-valid file never takes effect partially.
-static void read_identity(dserver_platform_identity_t* identity, char* why, size_t whySize)
+static void read_identity(dserver_platform_identity_t* identity, char* override_ios_version, size_t override_len, char* why, size_t whySize)
 {
 	CFDictionaryRef domain;
 
 	why[0] = '\0';
+	if (override_ios_version != NULL && override_len > 0)
+		override_ios_version[0] = '\0';
 	identity_init(identity);
 
 	enum domain_state state = load_domain(PLATFORM_DOMAIN, &domain, why, whySize);
@@ -515,10 +580,12 @@ static void read_identity(dserver_platform_identity_t* identity, char* why, size
 		return;
 
 	char problem[256] = "";
-	if (!identity_from_domain(domain, identity, problem, sizeof(problem)))
+	if (!identity_from_domain(domain, identity, override_ios_version, override_len, problem, sizeof(problem)))
 	{
 		snprintf(why, whySize, PREFERENCES_DIRECTORY "/" PLATFORM_DOMAIN ".plist: %s", problem);
 		identity_init(identity);
+		if (override_ios_version != NULL && override_len > 0)
+			override_ios_version[0] = '\0';
 	}
 	CFRelease(domain);
 }
@@ -566,6 +633,181 @@ static bool push_identity(const dserver_platform_identity_t* identity)
 		return false;
 	}
 	prefsd_log(OS_LOG_TYPE_DEFAULT, "using the default platform identity");
+	return true;
+}
+
+#ifndef DARLING_DEFAULT_OS_PRODUCT_VERSION
+#define DARLING_DEFAULT_OS_PRODUCT_VERSION "26.4"
+#endif
+#ifndef DARLING_DEFAULT_OS_BUILD_VERSION
+#define DARLING_DEFAULT_OS_BUILD_VERSION "25E246"
+#endif
+#ifndef DARLING_DEFAULT_KERNEL_RELEASE
+#define DARLING_DEFAULT_KERNEL_RELEASE "25.4.0"
+#endif
+
+static bool write_file_atomic(const char* path, const char* content, size_t len)
+{
+	char tmp[512];
+	snprintf(tmp, sizeof(tmp), "%s.tmp.%d", path, getpid());
+
+	int fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+	if (fd < 0)
+	{
+		prefsd_log(OS_LOG_TYPE_ERROR, "failed to create %s: %s", tmp, strerror(errno));
+		return false;
+	}
+
+	size_t written = 0;
+	while (written < len)
+	{
+		ssize_t n = write(fd, content + written, len - written);
+		if (n < 0)
+		{
+			if (errno == EINTR)
+				continue;
+			prefsd_log(OS_LOG_TYPE_ERROR, "failed to write %s: %s", tmp, strerror(errno));
+			close(fd);
+			unlink(tmp);
+			return false;
+		}
+		written += n;
+	}
+
+	if (close(fd) != 0)
+	{
+		prefsd_log(OS_LOG_TYPE_ERROR, "failed to close %s: %s", tmp, strerror(errno));
+		unlink(tmp);
+		return false;
+	}
+
+	if (rename(tmp, path) != 0)
+	{
+		prefsd_log(OS_LOG_TYPE_ERROR, "failed to rename %s to %s: %s", tmp, path, strerror(errno));
+		unlink(tmp);
+		return false;
+	}
+
+	return true;
+}
+
+static bool write_plist_file(const char* path, CFDictionaryRef dict)
+{
+	CFDataRef xmlData = CFPropertyListCreateData(kCFAllocatorDefault, (CFPropertyListRef) dict, kCFPropertyListXMLFormat_v1_0, 0, NULL);
+	if (xmlData == NULL)
+	{
+		prefsd_log(OS_LOG_TYPE_ERROR, "failed to serialize plist for %s", path);
+		return false;
+	}
+
+	bool ok = write_file_atomic(path, (const char*) CFDataGetBytePtr(xmlData), (size_t) CFDataGetLength(xmlData));
+	CFRelease(xmlData);
+	return ok;
+}
+
+static bool sync_system_version_plists(const dserver_platform_identity_t* identity, const char* override_ios_version)
+{
+	const char* product_version = (identity->present & DSERVER_PLATFORM_IDENTITY_HAS_OS_PRODUCT_VERSION)
+		? identity->os_product_version : DARLING_DEFAULT_OS_PRODUCT_VERSION;
+	const char* build_version = (identity->present & DSERVER_PLATFORM_IDENTITY_HAS_OS_VERSION)
+		? identity->os_version : DARLING_DEFAULT_OS_BUILD_VERSION;
+
+	const char* product_name = prefsd_product_name_for_version(product_version);
+
+	char ios_support[64];
+	bool has_ios_support = prefsd_compute_ios_support_version(product_version, override_ios_version, ios_support, sizeof(ios_support));
+
+	mkdir("/System", 0755);
+	mkdir("/System/Library", 0755);
+	mkdir("/System/Library/CoreServices", 0755);
+
+	CFStringRef cfBuild = CFStringCreateWithCString(kCFAllocatorDefault, build_version, kCFStringEncodingUTF8);
+	CFStringRef cfProduct = CFStringCreateWithCString(kCFAllocatorDefault, product_version, kCFStringEncodingUTF8);
+	CFStringRef cfName = CFStringCreateWithCString(kCFAllocatorDefault, product_name, kCFStringEncodingUTF8);
+	CFStringRef cfCopyright = CFSTR("2012-2023 Lubos Dolezel");
+
+	// 1. SystemVersion.plist
+	CFMutableDictionaryRef sysVerDict = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
+		&kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	if (sysVerDict == NULL)
+	{
+		CFRelease(cfBuild);
+		CFRelease(cfProduct);
+		CFRelease(cfName);
+		return false;
+	}
+
+	CFDictionarySetValue(sysVerDict, CFSTR("ProductBuildVersion"), cfBuild);
+	CFDictionarySetValue(sysVerDict, CFSTR("ProductCopyright"), cfCopyright);
+	CFDictionarySetValue(sysVerDict, CFSTR("ProductName"), cfName);
+	CFDictionarySetValue(sysVerDict, CFSTR("ProductUserVisibleVersion"), cfProduct);
+	CFDictionarySetValue(sysVerDict, CFSTR("ProductVersion"), cfProduct);
+	if (has_ios_support)
+	{
+		CFStringRef cfIOS = CFStringCreateWithCString(kCFAllocatorDefault, ios_support, kCFStringEncodingUTF8);
+		CFDictionarySetValue(sysVerDict, CFSTR("iOSSupportVersion"), cfIOS);
+		CFRelease(cfIOS);
+	}
+
+	bool ok = write_plist_file("/System/Library/CoreServices/SystemVersion.plist", sysVerDict);
+	CFRelease(sysVerDict);
+	CFRelease(cfName);
+
+	if (!ok)
+	{
+		CFRelease(cfBuild);
+		CFRelease(cfProduct);
+		return false;
+	}
+
+	// 2. SystemVersionCompat.plist (only for macOS 11+)
+	if (prefsd_should_have_system_version_compat(product_version))
+	{
+		CFMutableDictionaryRef compatDict = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
+			&kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+		if (compatDict == NULL)
+		{
+			CFRelease(cfBuild);
+			CFRelease(cfProduct);
+			return false;
+		}
+
+		CFStringRef cfCompatVer = CFSTR("10.16");
+		CFStringRef cfCompatName = CFSTR("Mac OS X");
+
+		CFDictionarySetValue(compatDict, CFSTR("ProductBuildVersion"), cfBuild);
+		CFDictionarySetValue(compatDict, CFSTR("ProductCopyright"), cfCopyright);
+		CFDictionarySetValue(compatDict, CFSTR("ProductName"), cfCompatName);
+		CFDictionarySetValue(compatDict, CFSTR("ProductUserVisibleVersion"), cfCompatVer);
+		CFDictionarySetValue(compatDict, CFSTR("ProductVersion"), cfCompatVer);
+		if (has_ios_support)
+		{
+			CFStringRef cfIOS = CFStringCreateWithCString(kCFAllocatorDefault, ios_support, kCFStringEncodingUTF8);
+			CFDictionarySetValue(compatDict, CFSTR("iOSSupportVersion"), cfIOS);
+			CFRelease(cfIOS);
+		}
+
+		ok = write_plist_file("/System/Library/CoreServices/SystemVersionCompat.plist", compatDict);
+		CFRelease(compatDict);
+		if (!ok)
+		{
+			CFRelease(cfBuild);
+			CFRelease(cfProduct);
+			return false;
+		}
+	}
+	else
+	{
+		// SystemVersionCompat.plist didn't exist before macOS 11.
+		unlink("/System/Library/CoreServices/SystemVersionCompat.plist");
+	}
+
+	CFRelease(cfBuild);
+	CFRelease(cfProduct);
+
+	prefsd_log(OS_LOG_TYPE_DEFAULT, "synchronized SystemVersion.plist%s (version=%s build=%s)",
+		prefsd_should_have_system_version_compat(product_version) ? " and SystemVersionCompat.plist" : "",
+		product_version, build_version);
 	return true;
 }
 
@@ -629,6 +871,12 @@ static void identity_normalize(const dserver_platform_identity_t* in, dserver_pl
 		if (in->present & kIdentityData[i].bit)
 			memcpy((uint8_t*) out + kIdentityData[i].offset, (const uint8_t*) in + kIdentityData[i].offset, kIdentityData[i].length);
 	}
+	if (in->present & DSERVER_PLATFORM_IDENTITY_HAS_OS_PRODUCT_VERSION)
+		memcpy(out->os_product_version, in->os_product_version, strnlen(in->os_product_version, sizeof(out->os_product_version) - 1));
+	if (in->present & DSERVER_PLATFORM_IDENTITY_HAS_OS_VERSION)
+		memcpy(out->os_version, in->os_version, strnlen(in->os_version, sizeof(out->os_version) - 1));
+	if (in->present & DSERVER_PLATFORM_IDENTITY_HAS_OS_RELEASE)
+		memcpy(out->os_release, in->os_release, strnlen(in->os_release, sizeof(out->os_release) - 1));
 	if (in->present & DSERVER_PLATFORM_IDENTITY_HAS_MEMORY_SIZE)
 		out->memory_size = in->memory_size;
 }
@@ -690,11 +938,12 @@ static bool push_round(struct prefsd_state* state, bool* changed)
 {
 	dserver_platform_identity_t identity;
 	dserver_system_config_t config;
+	char override_ios_version[64] = "";
 	char identityProblem[512];
 	char configProblem[512];
 	bool ok = true;
 
-	read_identity(&identity, identityProblem, sizeof(identityProblem));
+	read_identity(&identity, override_ios_version, sizeof(override_ios_version), identityProblem, sizeof(identityProblem));
 	read_config(&config, configProblem, sizeof(configProblem));
 
 	bool identityChanged = !state->haveIdentity || memcmp(&identity, &state->identity, sizeof(identity)) != 0;
@@ -706,7 +955,14 @@ static bool push_round(struct prefsd_state* state, bool* changed)
 	{
 		if (identityProblem[0] != '\0')
 			prefsd_log(OS_LOG_TYPE_ERROR, "%s; using the default platform identity", identityProblem);
-		ok = push_identity(&identity) && ok;
+		if (push_identity(&identity))
+		{
+			sync_system_version_plists(&identity, override_ios_version);
+		}
+		else
+		{
+			ok = false;
+		}
 		state->identity = identity;
 		state->haveIdentity = true;
 	}

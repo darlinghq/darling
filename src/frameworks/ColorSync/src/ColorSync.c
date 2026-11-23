@@ -287,21 +287,9 @@ void* ColorSyncNxMLUTGetTypeID(void)
     return NULL;
 }
 
-void* ColorSyncProfileContainsTag(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileContainsTag called");
-    return NULL;
-}
-
 void* ColorSyncProfileCopyASCIIDescriptionString(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileCopyASCIIDescriptionString called");
-    return NULL;
-}
-
-void* ColorSyncProfileCopyData(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCopyData called");
     return NULL;
 }
 
@@ -326,24 +314,6 @@ void* ColorSyncProfileCopyLocalizedDescriptionString(void)
 void* ColorSyncProfileCopyLocalizedStringDictionary(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileCopyLocalizedStringDictionary called");
-    return NULL;
-}
-
-void* ColorSyncProfileCopyTag(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCopyTag called");
-    return NULL;
-}
-
-void* ColorSyncProfileCopyTagSignatures(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCopyTagSignatures called");
-    return NULL;
-}
-
-void* ColorSyncProfileCreate(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCreate called");
     return NULL;
 }
 
@@ -395,12 +365,6 @@ void* ColorSyncProfileCreateWithName(void)
     return NULL;
 }
 
-void* ColorSyncProfileCreateWithURL(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCreateWithURL called");
-    return NULL;
-}
-
 void* ColorSyncProfileEstimateGamma(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileEstimateGamma called");
@@ -434,18 +398,6 @@ void* ColorSyncProfileGetDisplayTransferFormulaFromVCGT(void)
 void* ColorSyncProfileGetMD5(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileGetMD5 called");
-    return NULL;
-}
-
-void* ColorSyncProfileGetTypeID(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileGetTypeID called");
-    return NULL;
-}
-
-void* ColorSyncProfileGetURL(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileGetURL called");
     return NULL;
 }
 

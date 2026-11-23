@@ -40,7 +40,9 @@ set(CMAKE_C_USE_LINKER_INFORMATION FALSE)
 # these projects are always built
 #
 
-set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
+# What this first part installs runs on Linux (darlingserver, the launcher, mldr, the developer
+# ld): it goes to the install component core_native, which is packaged per host architecture.
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core_native")
 
 #add_subdirectory(external/xcbuild)
 add_subdirectory(bsdln)
@@ -141,6 +143,8 @@ add_executable(rtsig \"${CMAKE_CURRENT_SOURCE_DIR}/startup/rtsig.c\")
 			-DCMAKE_CXX_COMPILER=${HOST_CXX}
 			-DCMAKE_BUILD_TYPE=Release
 			-DAPPLE_TARGET_TRIPLET_PRIMARY=${APPLE_TARGET_TRIPLET_PRIMARY}
+			-DAPPLE_ARCH_PRIMARY=${APPLE_ARCH_PRIMARY}
+			"-DDARLING_ARCHS=${DARLING_ARCHS}"
 			-DTARGET_ARM64=${TARGET_ARM64}
 			-DTARGET_x86_64=${TARGET_x86_64}
 			-DTARGET_i386=${TARGET_i386}
@@ -250,6 +254,13 @@ include_directories(${CMAKE_SOURCE_DIR}/basic-headers)
 
 add_subdirectory(external/bootstrap_cmds)
 
+# The rest is the Mach-O part of Darling, which is the same for every host architecture.
+# DARLING_BUILD_MACHO=OFF builds and installs only the Linux part above.
+if (NOT DARLING_BUILD_MACHO)
+	return()
+endif()
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
+
 add_definitions(
 	-D__APPLE__
 	-D__DYNAMIC__
@@ -286,11 +297,17 @@ add_definitions(-target ${APPLE_TARGET_TRIPLET_PRIMARY})
 # for Darwin triples -march leaves "-target-cpu apple-m1" in place, and the CPU's
 # features still apply. Hand-written assembly is left alone: it states its own
 # instructions (and may check for them at run time), the CPU only gates what the
-# assembler accepts.
+# assembler accepts. With other slices next to arm64 the option goes to the arm64
+# compile only (-Xarch_arm64), so the Intel slices keep their own CPU.
 if (TARGET_ARM64)
 	set(DARLING_ARM64_CPU "generic" CACHE STRING "Baseline -mcpu for compiled arm64 Mach-O code")
+	if (DARLING_ARCHS STREQUAL "arm64")
+		set(_darling_arm64_cpu_flag "-mcpu=${DARLING_ARM64_CPU}")
+	else()
+		set(_darling_arm64_cpu_flag "-Xarch_arm64 -mcpu=${DARLING_ARM64_CPU}")
+	endif()
 	foreach(lang C CXX OBJC OBJCXX)
-		set(CMAKE_${lang}_FLAGS "${CMAKE_${lang}_FLAGS} -mcpu=${DARLING_ARM64_CPU}")
+		set(CMAKE_${lang}_FLAGS "${CMAKE_${lang}_FLAGS} ${_darling_arm64_cpu_flag}")
 	endforeach()
 endif()
 
@@ -564,10 +581,15 @@ if (COMPONENT_gui)
 
 	add_subdirectory(external/cocotron)
 
+	# /System/Library/Fonts
+	add_subdirectory(fonts)
+
 	add_subdirectory(CoreAudio)
 	add_subdirectory(external/cups)
 	add_subdirectory(pboard)
 	add_subdirectory(distnoted)
+	add_subdirectory(settingsd)
+	add_subdirectory(locationd)
 
 	# /Applications
 	add_subdirectory(external/TextEdit)
@@ -618,6 +640,8 @@ endif()
 
 # not a core component, but we always add it regardless of the components that are enabled;
 # it has its own component checks to determine which libraries to generate wrappers for.
+# the shared loader of the dbus wrapper (see native); static, so it has no components
+add_subdirectory(libdarlingdbus)
 add_subdirectory(native)
 
 # has its own component checks

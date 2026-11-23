@@ -177,6 +177,9 @@ struct GetVolParmsInfoBuffer {
 typedef struct GetVolParmsInfoBuffer GetVolParmsInfoBuffer;
 #pragma pack(pop)
 
+// Fills as much of the buffer as bufferSize allows with the volume's parameters.
+OSStatus FSGetVolumeParms(FSVolumeRefNum volume, GetVolParmsInfoBuffer* buffer, ByteCount bufferSize);
+
 // Volume attribute bits of GetVolParmsInfoBuffer.vMAttrib.
 enum {
 	bLimitFCBs = 31,

@@ -72,6 +72,28 @@
 		</dict>
 		<dict>
 			<key>description</key>
+			<string>Output unit without a device, rendered by pulling its output bus</string>
+			<key>factoryFunction</key>
+			<string>GenericOutputAUFactory</string>
+			<key>manufacturer</key>
+			<string>appl</string>
+			<key>name</key>
+			<string>Darling: GenericOutput</string>
+			<key>sandboxSafe</key>
+			<true/>
+			<key>subtype</key>
+			<string>genr</string>
+			<key>tags</key>
+			<array>
+				<string>Output</string>
+			</array>
+			<key>type</key>
+			<string>auou</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>description</key>
 			<string>Generic format converter</string>
 			<key>factoryFunction</key>
 			<string>AUConverterUnitFactory</string>

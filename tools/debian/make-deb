@@ -9,14 +9,30 @@ UPSTREAM_VERSION=0.1.${DATE}~${DISTRO}
 VERSION=${UPSTREAM_VERSION}-1
 EDITOR=true NAME="Darling build server" EMAIL=${DEB_EMAIL:-noreply@darlinghq.org} dch -u low -v ${VERSION} --create --distribution ${DISTRO} --package darling "Daily build"
 
-if [ "$1" = "--dsc" ]; then
+# --arch-only: only darling-core-native, the parts that run on Linux, for this host's architecture
+# --indep-only: only the architecture-independent packages (the Mach-O part)
+# Without an option, both.
+case "$1" in
+--dsc)
     ARG='-S -d'
     if [ -e "../darling_${UPSTREAM_VERSION}.orig.tar.xz" ]; then
         rm ../darling_${UPSTREAM_VERSION}.orig.tar.xz
     fi
     tar -cJf ../darling_${UPSTREAM_VERSION}.orig.tar.xz .
-else
+    ;;
+--arch-only)
+    ARG='-B'
+    ;;
+--indep-only)
+    ARG='-A'
+    ;;
+"")
     ARG='-b'
-fi
+    ;;
+*)
+    echo "usage: $0 [--dsc | --arch-only | --indep-only]" >&2
+    exit 2
+    ;;
+esac
 
 debuild --preserve-envvar 'CCACHE_*' --no-lintian -us -uc ${ARG}

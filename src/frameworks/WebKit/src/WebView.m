@@ -1,6 +1,7 @@
 #import <WebKit/WebView.h>
 
 NSString *WebElementImageKey = @"WebElementImage";
+NSString *WebElementImageURLKey = @"WebElementImageURL";
 NSString *WebElementLinkLabelKey = @"WebElementLinkLabel";
 NSString *WebElementLinkTargetFrameKey = @"WebElementTargetFrame";
 NSString *WebElementLinkTitleKey = @"WebElementLinkTitle";

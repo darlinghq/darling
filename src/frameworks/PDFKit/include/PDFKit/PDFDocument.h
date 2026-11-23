@@ -21,11 +21,26 @@
 #import <Foundation/Foundation.h>
 
 typedef NSString *PDFDocumentAttribute;
+typedef NSString *PDFDocumentWriteOption;
 
 PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentAuthorAttribute;
 PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentCreationDateAttribute;
+PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentCreatorAttribute;
 PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentKeywordsAttribute;
+PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentModificationDateAttribute;
+PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentSubjectAttribute;
 PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentTitleAttribute;
+
+PDFKIT_EXPORT PDFDocumentWriteOption const PDFDocumentBurnInAnnotationsOption;
+PDFKIT_EXPORT PDFDocumentWriteOption const PDFDocumentOptimizeImagesForScreenOption;
+PDFKIT_EXPORT PDFDocumentWriteOption const PDFDocumentSaveImagesAsJPEGOption;
+PDFKIT_EXPORT PDFDocumentWriteOption const PDFDocumentSaveTextFromOCROption;
+
+PDFKIT_EXPORT NSNotificationName const PDFDocumentDidBeginFindNotification;
+PDFKIT_EXPORT NSNotificationName const PDFDocumentDidBeginPageFindNotification;
+PDFKIT_EXPORT NSNotificationName const PDFDocumentDidEndFindNotification;
+PDFKIT_EXPORT NSNotificationName const PDFDocumentDidEndPageFindNotification;
+PDFKIT_EXPORT NSNotificationName const PDFDocumentDidUnlockNotification;
 
 @interface PDFDocument : NSObject
 

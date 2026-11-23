@@ -22,12 +22,36 @@
 #include <Foundation/Foundation.h>
 #include <QTKit/QTKitDefines.h>
 
+@class QTMovie;
+
 // Legacy ObjC ABI (i386): instance size must stay 0x74, Apple's (NSView's 0x50
 // plus 0x24 of Apple's own state, which we don't keep). An application's
 // subclass puts its ivars right after it. Don't add ivars here.
 @interface QTMovieView : NSView {
     NS_LEGACY_IVAR_PAD(_QTMovieViewReserved, 0x24)
 }
+
+- (QTMovie *)movie;
+- (void)setMovie:(QTMovie *)movie;
+
+- (void)play:(id)sender;
+- (void)pause:(id)sender;
+- (void)gotoBeginning:(id)sender;
+- (void)gotoEnd:(id)sender;
+- (void)stepForward:(id)sender;
+- (void)stepBackward:(id)sender;
+- (void)gotoPosterTime:(id)sender;
+
+- (BOOL)isControllerVisible;
+- (void)setControllerVisible:(BOOL)visible;
+- (BOOL)preservesAspectRatio;
+- (void)setPreservesAspectRatio:(BOOL)preserves;
+- (NSColor *)fillColor;
+- (void)setFillColor:(NSColor *)fillColor;
+- (NSRect)movieBounds;
+
+- (BOOL)isEditable;
+- (void)setEditable:(BOOL)editable;
 
 @end
 

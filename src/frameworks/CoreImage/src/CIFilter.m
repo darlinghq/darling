@@ -31,6 +31,10 @@ NSString * const kCIInputContrastKey = @"inputContrast";
 NSString * const kCIInputEVKey = @"inputEV";
 NSString * const kCIInputExtentKey = @"inputExtent";
 NSString * const kCIInputImageKey = @"inputImage";
+// The documentation gives no string value for this key. The value follows every other input key in
+// this file ("input" plus the key name without the kCIInput prefix and Key suffix); macOS 26.7.3 and
+// 10.14.4 report the same string (black-box observation). Test: tests/src/coreimage_input_intensity_key.m
+NSString * const kCIInputIntensityKey = @"inputIntensity";
 NSString * const kCIInputSaturationKey = @"inputSaturation";
 NSString *const kCIInputRadiusKey = @"inputRadius";
 NSString * const kCIOutputImageKey = @"outputImage";

@@ -50,6 +50,13 @@ VT_EXPORT OSStatus VTCompressionSessionEncodeFrame(VTCompressionSessionRef sessi
 VT_EXPORT OSStatus VTCompressionSessionCompleteFrames(VTCompressionSessionRef session,
 	CMTime completeUntilPresentationTimeStamp);
 
+#if __BLOCKS__
+typedef void (^VTCompressionOutputHandler)(OSStatus status, VTEncodeInfoFlags infoFlags, CMSampleBufferRef sampleBuffer);
+VT_EXPORT OSStatus VTCompressionSessionEncodeFrameWithOutputHandler(VTCompressionSessionRef session,
+	CVImageBufferRef imageBuffer, CMTime presentationTimeStamp, CMTime duration, CFDictionaryRef frameProperties,
+	VTEncodeInfoFlags *infoFlagsOut, VTCompressionOutputHandler outputHandler);
+#endif
+
 CF_IMPLICIT_BRIDGING_DISABLED
 
 #endif

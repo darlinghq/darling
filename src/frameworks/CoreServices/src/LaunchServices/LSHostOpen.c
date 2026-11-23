@@ -31,8 +31,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "LSHostOpen.h"
 #include "LSHostOpenBus.h"
+#include <darling_dbus.h>
 #include <CarbonCore/MacErrors.h>
-#include <dlfcn.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <os/log.h>
@@ -40,8 +40,6 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#define DBUS_WRAPPER_PATH "/usr/lib/native/libdbus.dylib"
 
 static struct ls_host_dbus host_dbus;
 static Boolean host_dbus_ready;
@@ -51,31 +49,27 @@ static void load_host_dbus(void)
 {
 #if defined(__x86_64__)
 	struct ls_host_dbus api;
-	void* lib = dlopen(DBUS_WRAPPER_PATH, RTLD_NOW | RTLD_LOCAL);
+	const struct darling_dbus* shared = darling_dbus_get(0);
 
-	if (lib == NULL)
+	if (shared == NULL)
 		return;
 
 	memset(&api, 0, sizeof(api));
-#define BIND(field, name) \
-	if ((*(void**) &api.field = dlsym(lib, name)) == NULL) \
-		goto fail;
-	BIND(connection_open_private, "dbus_connection_open_private");
-	BIND(bus_register, "dbus_bus_register");
-	BIND(connection_close, "dbus_connection_close");
-	BIND(connection_unref, "dbus_connection_unref");
-	BIND(message_new_method_call, "dbus_message_new_method_call");
-	BIND(message_iter_init_append, "dbus_message_iter_init_append");
-	BIND(message_iter_append_basic, "dbus_message_iter_append_basic");
-	BIND(message_iter_open_container, "dbus_message_iter_open_container");
-	BIND(message_iter_close_container, "dbus_message_iter_close_container");
-	BIND(connection_send_with_reply_and_block, "dbus_connection_send_with_reply_and_block");
-	BIND(message_unref, "dbus_message_unref");
-	BIND(error_init, "dbus_error_init");
-	BIND(error_free, "dbus_error_free");
-	BIND(address_escape_value, "dbus_address_escape_value");
-	BIND(free, "dbus_free");
-#undef BIND
+	api.connection_open_private = shared->connection_open_private;
+	api.bus_register = shared->bus_register;
+	api.connection_close = shared->connection_close;
+	api.connection_unref = shared->connection_unref;
+	api.message_new_method_call = shared->message_new_method_call;
+	api.message_iter_init_append = shared->message_iter_init_append;
+	api.message_iter_append_basic = shared->message_iter_append_basic;
+	api.message_iter_open_container = shared->message_iter_open_container;
+	api.message_iter_close_container = shared->message_iter_close_container;
+	api.connection_send_with_reply_and_block = shared->connection_send_with_reply_and_block;
+	api.message_unref = shared->message_unref;
+	api.error_init = shared->error_init;
+	api.error_free = shared->error_free;
+	api.address_escape_value = shared->address_escape_value;
+	api.free = shared->free;
 	/*
 	 * The guest's environment: DBUS_SESSION_BUS_ADDRESS and XDG_RUNTIME_DIR
 	 * arrive from the host unchanged. A guest process can set them, but only a
@@ -86,10 +80,6 @@ static void load_host_dbus(void)
 
 	host_dbus = api;
 	host_dbus_ready = TRUE;
-	return;
-
-fail:
-	dlclose(lib);
 #endif
 }
 

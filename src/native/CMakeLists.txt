@@ -5,6 +5,7 @@ find_package(PkgConfig QUIET)
 
 # libdbus is used by CLI-side components too: LaunchServices and usernoted
 # (both in cli_gui_common) and iokitd talk to the host through this wrapper.
+# Components load it through the shared loader in src/libdarlingdbus.
 if (COMPONENT_cli OR COMPONENT_dev_gui_common OR COMPONENT_iokitd)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_gui_common")
 
@@ -45,6 +46,9 @@ if (COMPONENT_gui)
 	endif()
 
 	wrap_elf(cairo libcairo.so)
-	wrap_elf(GL libGL.so "System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries")
+	# The host's libGL, behind OpenGL.framework: not at the public path of libGL.dylib,
+	# which is a thin library re-exporting the framework (src/frameworks/OpenGL), so that
+	# a caller that looks GL functions up there gets the framework's own entry points.
+	wrap_elf(GL libGL.so)
 	wrap_elf(GLU libGLU.so "System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries")
 endif()

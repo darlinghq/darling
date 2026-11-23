@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +18,20 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CoreMedia/CMTime.h>
+#import <CoreVideo/CVPixelBuffer.h>
+#import <AVFoundation/AVPlayerItemOutput.h>
 
-@interface AVPlayerItemVideoOutput : NSObject
+@class AVPlayerItemVideoOutputInternal;
+
+@interface AVPlayerItemVideoOutput : AVPlayerItemOutput {
+@private
+    AVPlayerItemVideoOutputInternal *_videoOutputInternal;
+}
+
+- (instancetype)initWithPixelBufferAttributes:(NSDictionary<NSString *, id> *)pixelBufferAttributes;
+- (BOOL)hasNewPixelBufferForItemTime:(CMTime)itemTime;
+- (CVPixelBufferRef)copyPixelBufferForItemTime:(CMTime)itemTime itemTimeForDisplay:(CMTime *)outItemTimeForDisplay CF_RETURNS_RETAINED;
 
 @end

@@ -1,5 +1,19 @@
 #!/usr/bin/make -f
 
+# Darling is built twice, once for each kind of binary package:
+#
+# - The architecture-independent packages (Architecture: all, the -indep targets) hold the Mach-O
+#   part of Darling, which is the same whichever host it is built on. Its binaries have the slices
+#   of DARLING_DEB_ARCHS. It is built in debbuild and installed component by component.
+# - darling-core-native (the -arch targets) holds the parts that run on Linux, built for the host
+#   architecture with DARLING_BUILD_MACHO=OFF in debbuild-native (install component core_native).
+#
+# dpkg-buildpackage -b builds both, -A only the first and -B only the second.
+
+DARLING_DEB_ARCHS ?= i386;x86_64;arm64
+
+CMAKE_COMMON = -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DDEBIAN_PACKAGING=ON
+
 INDICES = 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
 
 DARLING_COMPONENTS = \
@@ -49,27 +63,44 @@ PACKAGE_SUFFIXES = \
 %:
 	dh $@ --builddirectory=debbuild
 
-override_dh_auto_configure:
+override_dh_auto_configure-indep:
 	mkdir debbuild -p
-	cd debbuild && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DDEBIAN_PACKAGING=ON -DJSC_UNIFIED_BUILD=ON -DDARLING_SWIFT_WMO=ON
+	cd debbuild && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. $(CMAKE_COMMON) -DJSC_UNIFIED_BUILD=ON -DDARLING_SWIFT_WMO=ON "-DDARLING_ARCHS=$(DARLING_DEB_ARCHS)"
 
-override_dh_auto_build:
+override_dh_auto_configure-arch:
+	mkdir debbuild-native -p
+	cd debbuild-native && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. $(CMAKE_COMMON) -DDARLING_BUILD_MACHO=OFF
+
+override_dh_auto_build-indep:
 	cd debbuild && $(MAKE) -j$(shell nproc)
 
-override_dh_auto_install:
+override_dh_auto_build-arch:
+	cd debbuild-native && $(MAKE) -j$(shell nproc)
+
+override_dh_auto_test-arch:
+	dh_auto_test --builddirectory=debbuild-native
+
+override_dh_auto_install-indep:
 	set -e; cd debbuild; $(foreach INDEX,$(INDICES), \
 		DESTDIR=../debian/tmp/$(word $(INDEX),$(PACKAGE_SUFFIXES)) cmake -DCOMPONENT=$(word $(INDEX),$(DARLING_COMPONENTS)) -P cmake_install.cmake ; \
 	)
 
-override_dh_makeshlibs:
+override_dh_auto_install-arch:
+	cd debbuild-native && DESTDIR=../debian/tmp/core-native cmake -DCOMPONENT=core_native -P cmake_install.cmake
+
+# The host libraries the Mach-O binaries load through their ELF wrappers ($(macho:Depends))
+override_dh_makeshlibs-indep:
 	dh_makeshlibs
 	set -e; $(foreach INDEX,$(INDICES), \
 		tools/debian/make-shlibdeps $(word $(INDEX),$(PACKAGE_SUFFIXES)) ; \
 	)
 
+override_dh_makeshlibs-arch:
+	dh_makeshlibs
+
 override_dh_clean:
 	dh_clean -X.orig -X.bak -X~
-	rm -rf debbuild
+	rm -rf debbuild debbuild-native
 
 override_dh_fixperms:
 	dh_fixperms -Xusr/bin/darling -Xusr/bin/darlingserver -Xusr/libexec/darling/usr/libexec/darling/mldr -Xusr/libexec/darling/usr/libexec/darling/mldr32

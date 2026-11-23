@@ -4,8 +4,9 @@
 # found by swift_toolchain.cmake, cross-compiling for macOS: swiftc compiles the sources against Darling's
 # source-tree SDK, and the object is linked by Darling's ld64 like any other Darling dylib.
 #
-# The slice built is the one this build produces for every other Darling library (APPLE_ARCH_64BIT: x86_64, or
-# arm64 when TARGET_ARM64 is on).
+# The overlays have the 64-bit slices of DARLING_ARCHS (the Swift runtime has no 32-bit slice). Each slice is
+# compiled on its own, against that architecture's stdlib interfaces and with its own module directory
+# (${DARLING_SWIFT_MODULE_DIR}/<arch>), and the objects of the slices are joined with lipo before the link.
 #
 # add_darling_swift_library(<Module>
 #     SOURCES <swift sources>
@@ -22,7 +23,7 @@
 #     [FRAMEWORK])
 #
 # creates the target swift<Module> (libswift<Module>.dylib, install name /usr/lib/swift/libswift<Module>.dylib)
-# and the module <Module>.swiftmodule in ${DARLING_SWIFT_MODULE_DIR} for overlays that import it.
+# and the module <Module>.swiftmodule in ${DARLING_SWIFT_MODULE_DIR}/<arch> for overlays that import it.
 #
 # With FRAMEWORK the library is the binary of a framework instead (Combine): it is built as
 # <Module>.framework/Versions/A/<Module> in the current binary directory, has the install name
@@ -83,18 +84,59 @@ function(_darling_swift_resource_dir out)
 	set(${out} "${dir}" PARENT_SCOPE)
 endfunction()
 
-# _darling_swift_compile(<Module> <out var for the objects>
+# The slices the overlays are built for
+function(_darling_swift_archs out)
+	set(${out} ${DARLING_ARCHS_64BIT} PARENT_SCOPE)
+endfunction()
+
+# _darling_swift_fat_objects(<name> <out var> <prefix> <arch>...)
+#
+# Joins the objects of the slices, given in the caller's variables <prefix>_<arch> (the same number of objects for
+# every slice, in the same order), into fat objects with lipo. With one slice its objects are used as they are.
+function(_darling_swift_fat_objects name out_var prefix)
+	set(archs ${ARGN})
+	list(LENGTH archs arch_count)
+	list(GET archs 0 first_arch)
+	if (arch_count EQUAL 1)
+		set(${out_var} ${${prefix}_${first_arch}} PARENT_SCOPE)
+		return()
+	endif()
+	set(fat_dir "${CMAKE_CURRENT_BINARY_DIR}/swift-objects/${name}.fat")
+	file(MAKE_DIRECTORY "${fat_dir}")
+	set(lipo "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/lipo")
+	list(LENGTH ${prefix}_${first_arch} object_count)
+	math(EXPR last "${object_count} - 1")
+	set(fat_objects)
+	foreach(index RANGE ${last})
+		set(inputs)
+		foreach(arch IN LISTS archs)
+			list(GET ${prefix}_${arch} ${index} object)
+			list(APPEND inputs "${object}")
+		endforeach()
+		set(fat "${fat_dir}/${index}.o")
+		add_custom_command(
+			OUTPUT "${fat}"
+			COMMAND "${lipo}" -create ${inputs} -output "${fat}"
+			DEPENDS ${inputs} lipo
+			VERBATIM
+		)
+		list(APPEND fat_objects "${fat}")
+	endforeach()
+	set(${out_var} ${fat_objects} PARENT_SCOPE)
+endfunction()
+
+# _darling_swift_compile(<name> <out var for the objects>
 #     OBJECT <object path used by the whole-module job> SOURCES <abs paths> COMMON <swiftc flags> MODULE <swiftmodule>
 #     DEPENDS <files> COMMENT <text>)
 #
 # Adds the command that compiles the sources and emits the module. Whole-module: one object (OBJECT); parallel: one
-# object per source in <binary dir>/swift-objects/<Module>/, listed in the out variable.
-function(_darling_swift_compile module out_var)
+# object per source in <binary dir>/swift-objects/<name>/, listed in the out variable. <name> is <Module>.<arch>.
+function(_darling_swift_compile name out_var)
 	cmake_parse_arguments(C "" "OBJECT;MODULE;COMMENT" "SOURCES;COMMON;DEPENDS" ${ARGN})
 	list(LENGTH C_SOURCES source_count)
 	if (NOT DARLING_SWIFT_WMO AND DARLING_SWIFT_JOBS GREATER 1 AND NOT source_count LESS DARLING_SWIFT_PARALLEL_MIN_SOURCES)
-		set(object_dir "${CMAKE_CURRENT_BINARY_DIR}/swift-objects/${module}")
-		set(map "${CMAKE_CURRENT_BINARY_DIR}/swift-${module}-output-file-map.json")
+		set(object_dir "${CMAKE_CURRENT_BINARY_DIR}/swift-objects/${name}")
+		set(map "${CMAKE_CURRENT_BINARY_DIR}/swift-${name}-output-file-map.json")
 		set(objects)
 		set(entries)
 		set(index 0)
@@ -142,29 +184,35 @@ function(add_darling_swift_object module)
 		return()
 	endif()
 	_darling_swift_resource_dir(resource_dir)
-	file(MAKE_DIRECTORY "${DARLING_SWIFT_MODULE_DIR}" "${DARLING_SWIFT_MODULE_CACHE}")
-	set(obj "${CMAKE_CURRENT_BINARY_DIR}/${module}.swift.o")
-	set(swiftmodule "${DARLING_SWIFT_MODULE_DIR}/${module}.swiftmodule")
-	set(module_deps)
-	foreach(dep IN LISTS SWIFTOBJ_MODULES)
-		list(APPEND module_deps "${DARLING_SWIFT_MODULE_DIR}/${dep}.swiftmodule")
-	endforeach()
+	file(MAKE_DIRECTORY "${DARLING_SWIFT_MODULE_CACHE}")
 	set(sources)
 	foreach(src IN LISTS SWIFTOBJ_SOURCES)
 		get_filename_component(src "${src}" ABSOLUTE)
 		list(APPEND sources "${src}")
 	endforeach()
-	_darling_swift_compile("${module}" objects
-		OBJECT "${obj}" MODULE "${swiftmodule}" SOURCES ${sources} DEPENDS ${module_deps}
-		COMMON
-			-target "${APPLE_ARCH_64BIT}-apple-macosx${DARLING_SWIFT_DEPLOYMENT_TARGET}"
-			-sdk "${DARLING_SWIFT_SDK}" -resource-dir "${resource_dir}"
-			-I "${DARLING_SWIFT_STDLIB_MODULES}" -I "${DARLING_SWIFT_MODULE_DIR}"
-			-module-cache-path "${DARLING_SWIFT_MODULE_CACHE}"
-			-swift-version 5 -module-name "${module}" -parse-as-library -O
-			${DARLING_SWIFT_SDK_SUBFRAMEWORKS}
-			${SWIFTOBJ_FLAGS}
-		COMMENT "Compiling the Swift module ${module} for ${APPLE_ARCH_64BIT}")
+	_darling_swift_archs(swift_archs)
+	foreach(arch IN LISTS swift_archs)
+		set(module_dir "${DARLING_SWIFT_MODULE_DIR}/${arch}")
+		file(MAKE_DIRECTORY "${module_dir}")
+		set(module_deps)
+		foreach(dep IN LISTS SWIFTOBJ_MODULES)
+			list(APPEND module_deps "${module_dir}/${dep}.swiftmodule")
+		endforeach()
+		_darling_swift_compile("${module}.${arch}" objects_${arch}
+			OBJECT "${CMAKE_CURRENT_BINARY_DIR}/${module}.${arch}.swift.o"
+			MODULE "${module_dir}/${module}.swiftmodule" SOURCES ${sources} DEPENDS ${module_deps}
+			COMMON
+				-target "${arch}-apple-macosx${DARLING_SWIFT_DEPLOYMENT_TARGET}"
+				-sdk "${DARLING_SWIFT_SDK}" -resource-dir "${resource_dir}"
+				-I "${DARLING_SWIFT_STDLIB_MODULES}" -I "${module_dir}"
+				-module-cache-path "${DARLING_SWIFT_MODULE_CACHE}"
+				-swift-version 5 -module-name "${module}" -parse-as-library -O
+				${DARLING_SWIFT_SDK_SUBFRAMEWORKS}
+				${SWIFTOBJ_FLAGS}
+			COMMENT "Compiling the Swift module ${module} for ${arch}")
+		set_source_files_properties(${objects_${arch}} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
+	endforeach()
+	_darling_swift_fat_objects("${module}" objects objects ${swift_archs})
 	set_source_files_properties(${objects} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
 	set(${module}_OBJECT ${objects} PARENT_SCOPE)
 endfunction()
@@ -186,17 +234,9 @@ function(add_darling_swift_library module)
 	endif()
 
 	_darling_swift_resource_dir(resource_dir)
-	file(MAKE_DIRECTORY "${DARLING_SWIFT_MODULE_DIR}" "${DARLING_SWIFT_MODULE_CACHE}")
+	file(MAKE_DIRECTORY "${DARLING_SWIFT_MODULE_CACHE}")
 
-	set(target "${APPLE_ARCH_64BIT}-apple-macosx${DARLING_SWIFT_DEPLOYMENT_TARGET}")
-	set(obj "${CMAKE_CURRENT_BINARY_DIR}/swift${module}.swift.o")
-	set(swiftmodule "${DARLING_SWIFT_MODULE_DIR}/${module}.swiftmodule")
-
-	set(module_deps)
 	set(module_libs)
-	foreach(dep IN LISTS SWIFTLIB_MODULES SWIFTLIB_WEAK_MODULES)
-		list(APPEND module_deps "${DARLING_SWIFT_MODULE_DIR}/${dep}.swiftmodule")
-	endforeach()
 	foreach(dep IN LISTS SWIFTLIB_MODULES)
 		# Modules from add_darling_swift_object have no dylib of their own.
 		if (TARGET swift${dep})
@@ -213,18 +253,31 @@ function(add_darling_swift_library module)
 	# Library evolution matches Apple's overlays, so binaries built against the macOS SDK use the same access
 	# patterns. The platform-neutral SwiftStdlib availability names are what the overlay sources use for the
 	# stdlib's release versions.
-	_darling_swift_compile("${module}" objects
-		OBJECT "${obj}" MODULE "${swiftmodule}" SOURCES ${sources} DEPENDS ${module_deps}
-		COMMON
-			-target "${target}" -sdk "${DARLING_SWIFT_SDK}" -resource-dir "${resource_dir}"
-			-I "${DARLING_SWIFT_STDLIB_MODULES}" -I "${DARLING_SWIFT_MODULE_DIR}"
-			-module-cache-path "${DARLING_SWIFT_MODULE_CACHE}"
-			-swift-version 5 -module-name "${module}" -module-link-name "swift${module}" -autolink-force-load
-			-enable-library-evolution -parse-as-library -O
-			-define-availability "SwiftStdlib 5.7:macOS 13.0"
-			${DARLING_SWIFT_SDK_SUBFRAMEWORKS}
-			${SWIFTLIB_FLAGS}
-		COMMENT "Compiling the Swift overlay ${module} for ${APPLE_ARCH_64BIT}")
+	_darling_swift_archs(swift_archs)
+	foreach(arch IN LISTS swift_archs)
+		set(module_dir "${DARLING_SWIFT_MODULE_DIR}/${arch}")
+		file(MAKE_DIRECTORY "${module_dir}")
+		set(module_deps)
+		foreach(dep IN LISTS SWIFTLIB_MODULES SWIFTLIB_WEAK_MODULES)
+			list(APPEND module_deps "${module_dir}/${dep}.swiftmodule")
+		endforeach()
+		_darling_swift_compile("${module}.${arch}" objects_${arch}
+			OBJECT "${CMAKE_CURRENT_BINARY_DIR}/swift${module}.${arch}.swift.o"
+			MODULE "${module_dir}/${module}.swiftmodule" SOURCES ${sources} DEPENDS ${module_deps}
+			COMMON
+				-target "${arch}-apple-macosx${DARLING_SWIFT_DEPLOYMENT_TARGET}"
+				-sdk "${DARLING_SWIFT_SDK}" -resource-dir "${resource_dir}"
+				-I "${DARLING_SWIFT_STDLIB_MODULES}" -I "${module_dir}"
+				-module-cache-path "${DARLING_SWIFT_MODULE_CACHE}"
+				-swift-version 5 -module-name "${module}" -module-link-name "swift${module}" -autolink-force-load
+				-enable-library-evolution -parse-as-library -O
+				-define-availability "SwiftStdlib 5.7:macOS 13.0"
+				${DARLING_SWIFT_SDK_SUBFRAMEWORKS}
+				${SWIFTLIB_FLAGS}
+			COMMENT "Compiling the Swift overlay ${module} for ${arch}")
+		set_source_files_properties(${objects_${arch}} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
+	endforeach()
+	_darling_swift_fat_objects("swift${module}" objects objects ${swift_archs})
 	set_source_files_properties(${objects} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
 
 	if (SWIFTLIB_INSTALL_NAME)
@@ -234,7 +287,7 @@ function(add_darling_swift_library module)
 	else()
 		set(DYLIB_INSTALL_NAME "/usr/lib/swift/libswift${module}.dylib")
 	endif()
-	set(DARLING_LIB_64BIT_ONLY TRUE)
+	set(DARLING_LIB_ARCHS ${swift_archs})
 
 	add_darling_library(swift${module} SHARED ${objects} ${SWIFTLIB_OBJECTS} ${SWIFTLIB_NATIVE_SOURCES})
 	if (SWIFTLIB_LINK_FLAGS)

@@ -38,7 +38,9 @@ set(sources
 	Utility/AFToolsCommon.cpp
 )
 
-add_library(AudioFileTools_util OBJECT ${sources})
+# Linked into the executables below, so built for their slices
+darling_executable_archs(AudioFileTools_archs)
+add_darling_object_library(AudioFileTools_util ARCHS ${AudioFileTools_archs} SOURCES ${sources})
 
 add_darling_executable(afplay afplay.cpp $<TARGET_OBJECTS:AudioFileTools_util>)
 target_link_libraries(afplay system AudioToolbox cxx CoreServices CoreAudio)

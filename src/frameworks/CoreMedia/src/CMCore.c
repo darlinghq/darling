@@ -18,13 +18,15 @@
 */
 
 /*
- * Format descriptions, block buffers and sample buffers as CF objects.
+ * Format descriptions, block buffers, sample buffers and the host time clock as CF objects.
  */
 
 #include <CoreMedia/CoreMedia.h>
+#include "CMAttachmentStore.h"
 #include <CoreFoundation/CFRuntime.h>
 #include <CoreVideo/CoreVideo.h>
 #include <dispatch/dispatch.h>
+#include <mach/mach_time.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -294,6 +296,7 @@ struct OpaqueCMBlockBuffer {
 	Boolean hasSource;
 	size_t offset;
 	size_t dataLength;
+	CMAttachmentStore bearerAttachments;
 };
 
 static void blockBufferFinalize(CFTypeRef cf)
@@ -309,6 +312,7 @@ static void blockBufferFinalize(CFTypeRef cf)
 	}
 	if (buffer->blockAllocator != NULL)
 		CFRelease(buffer->blockAllocator);
+	CMAttachmentStoreRelease(&buffer->bearerAttachments);
 }
 
 CM_CLASS(CMBlockBuffer_, "CMBlockBuffer", .finalize = blockBufferFinalize)
@@ -452,6 +456,7 @@ struct opaqueCMSampleBuffer {
 	Boolean dataReady;
 	CMSampleBufferMakeDataReadyCallback makeDataReady;
 	void *makeDataReadyRefcon;
+	CMAttachmentStore bearerAttachments;
 };
 
 static void sampleBufferFinalize(CFTypeRef cf)
@@ -467,6 +472,7 @@ static void sampleBufferFinalize(CFTypeRef cf)
 		CFRelease(sbuf->attachments);
 	free(sbuf->timing);
 	free(sbuf->sizes);
+	CMAttachmentStoreRelease(&sbuf->bearerAttachments);
 }
 
 CM_CLASS(CMSampleBuffer_, "CMSampleBuffer", .finalize = sampleBufferFinalize)
@@ -683,4 +689,143 @@ OSStatus CMSampleBufferCallForEachSample(CMSampleBufferRef sbuf,
 		offset += size;
 	}
 	return noErr;
+}
+
+#pragma mark - Clocks
+
+/* The host time clock is the only clock: it reads mach_absolute_time and reports it with a large integer
+   timescale. GUESS: the documentation gives nanoseconds only as an example ("e.g."), without saying which
+   timescale it is; one billion is that example. */
+#define kHostClockTimeScale 1000000000
+
+struct OpaqueCMClock {
+	CFRuntimeBase base;
+};
+
+CM_CLASS(CMClock_, "CMClock")
+
+CFTypeID CMClockGetTypeID(void) { return CMClock_GetTypeID(); }
+
+CMClockRef CMClockGetHostTimeClock(void)
+{
+	static CMClockRef hostClock;
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{ hostClock = CM_NEW(CMClockRef, CMClock_, kCFAllocatorSystemDefault); });
+	return hostClock;
+}
+
+static Boolean hostTimebase(mach_timebase_info_data_t *info)
+{
+	return mach_timebase_info(info) == KERN_SUCCESS && info->numer != 0 && info->denom != 0;
+}
+
+/* a * b / c rounded to the nearest integer, without a 128-bit type (the i386 slice has none). Returns false
+   when c is 0 or the result does not fit 64 bits. The host time conversions round to the nearest unit, halves
+   away from zero (observed on macOS 26.7.3 and 10.14.4 with positive and, on magnitudes, negative times). */
+static Boolean mulDivRounded(uint64_t a, uint64_t b, uint64_t c, uint64_t *result)
+{
+	if (c == 0)
+		return false;
+	uint64_t a0 = a & 0xffffffffu, a1 = a >> 32, b0 = b & 0xffffffffu, b1 = b >> 32;
+	uint64_t p00 = a0 * b0, p01 = a0 * b1, p10 = a1 * b0, p11 = a1 * b1;
+	uint64_t mid = (p00 >> 32) + (p01 & 0xffffffffu) + (p10 & 0xffffffffu);
+	uint64_t lo = (p00 & 0xffffffffu) | (mid << 32);
+	uint64_t hi = p11 + (p01 >> 32) + (p10 >> 32) + (mid >> 32);
+
+	/* binary long division of hi:lo by c; the running remainder can need a 65th bit */
+	uint64_t quotientHigh = 0, quotientLow = 0, remainder = 0;
+	for (int bit = 127; bit >= 0; bit--) {
+		Boolean carry = (remainder >> 63) != 0;
+		remainder = (remainder << 1) | (((bit >= 64 ? hi : lo) >> (bit & 63)) & 1);
+		Boolean subtract = carry || remainder >= c;
+		if (subtract)
+			remainder -= c;
+		if (bit >= 64)
+			quotientHigh |= (uint64_t)subtract << (bit - 64);
+		else
+			quotientLow |= (uint64_t)subtract << bit;
+	}
+	if (quotientHigh != 0)
+		return false;
+	if (remainder >= c - remainder) {
+		if (quotientLow == UINT64_MAX)
+			return false;
+		quotientLow++;
+	}
+	*result = quotientLow;
+	return true;
+}
+
+CMTime CMClockMakeHostTimeFromSystemUnits(uint64_t hostTime)
+{
+	mach_timebase_info_data_t info;
+	uint64_t ns;
+	/* GUESS: the documentation does not cover a failing timebase query (mach_timebase_info does not fail in
+	   practice); the time is then invalid. */
+	if (!hostTimebase(&info))
+		return kCMTimeInvalid;
+	/* nanoseconds per tick are numer / denom. GUESS: a nanosecond count that needs more than 64 bits is not
+	   representable; the documentation does not say what the conversion returns then, so it gives an invalid
+	   time. */
+	if (!mulDivRounded(hostTime, info.numer, info.denom, &ns))
+		return kCMTimeInvalid;
+	/* QUIRK: a nanosecond count above INT64_MAX is not rejected: the value wraps to a negative one, as the
+	   64-bit value of a CMTime is signed. Observed on macOS 26.7.3 and 10.14.4 (x86_64 and i386) with a 1:1
+	   timebase, for UINT64_MAX (value -1) and 2^63 (value INT64_MIN) (tier 2, black-box probe
+	   mac-probes/cristim/batch7a/hosttime.c and hosttime2.c).
+	   Test: tests/src/coremedia_clock.c, "host time above INT64_MAX wraps (quirk)". */
+	return CMTimeMake((int64_t)ns, kHostClockTimeScale);
+}
+
+uint64_t CMClockConvertHostTimeToSystemUnits(CMTime hostTime)
+{
+	mach_timebase_info_data_t info;
+	uint64_t ticks;
+	/* An invalid, infinite or indefinite time gives 0, and so does a zero timescale, a failing timebase
+	   query or ticks that need more than 64 bits (macOS 26.7.3 and 10.14.4 give 0 for the time cases; the
+	   other two are GUESS: the documentation does not cover them). */
+	if (!hostTimebase(&info) || (hostTime.flags & (kCMTimeFlags_Valid | kCMTimeFlags_ImpliedValueFlagsMask)) != kCMTimeFlags_Valid
+			|| hostTime.timescale == 0)
+		return 0;
+	/* ticks = value / timescale seconds * 1e9 ns/s * denom / numer ticks/ns, on magnitudes, rounded to the
+	   nearest tick with halves away from zero (observed for positive and negative times). */
+	const Boolean negative = (hostTime.value < 0) != (hostTime.timescale < 0);
+	const uint64_t magnitude = hostTime.value < 0 ? 0 - (uint64_t)hostTime.value : (uint64_t)hostTime.value;
+	const uint64_t scale = hostTime.timescale < 0 ? 0 - (uint64_t)(int64_t)hostTime.timescale : (uint64_t)hostTime.timescale;
+	if (!mulDivRounded(magnitude, 1000000000ull * info.denom, scale * info.numer, &ticks))
+		return 0;
+	/* QUIRK: a negative time is not rejected: its tick count is negated modulo 2^64 (-5 ns gives
+	   2^64 - 5 with a 1:1 timebase), which also covers a negative timescale. Observed on macOS 26.7.3 and
+	   10.14.4 (x86_64 and i386) (tier 2, black-box probe mac-probes/cristim/batch7a/hosttime2.c).
+	   Test: tests/src/coremedia_clock.c, "negative host time wraps (quirk)". */
+	return negative ? 0 - ticks : ticks;
+}
+
+CMTime CMClockGetTime(CMClockRef clock)
+{
+	/* GUESS: the documentation does not say what a NULL or foreign clock gives; an invalid time. */
+	if (clock == NULL || CFGetTypeID(clock) != CMClock_GetTypeID())
+		return kCMTimeInvalid;
+	return CMClockMakeHostTimeFromSystemUnits(mach_absolute_time());
+}
+
+#pragma mark - Attachment bearers
+
+CMAttachmentStore *CMCoreGetAttachmentStore(CFTypeRef object)
+{
+	CFTypeID type = CFGetTypeID(object);
+	if (type == CMSampleBuffer_GetTypeID())
+		return &((struct opaqueCMSampleBuffer *)object)->bearerAttachments;
+	if (type == CMBlockBuffer_GetTypeID())
+		return &((struct OpaqueCMBlockBuffer *)object)->bearerAttachments;
+	return NULL;
+}
+
+void CMAttachmentStoreRelease(CMAttachmentStore *store)
+{
+	if (store->propagating != NULL)
+		CFRelease(store->propagating);
+	if (store->local != NULL)
+		CFRelease(store->local);
+	store->propagating = store->local = NULL;
 }

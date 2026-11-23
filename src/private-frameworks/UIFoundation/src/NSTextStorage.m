@@ -50,7 +50,10 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     return self;
 }
 
+static void updateDelegateObservation(NSTextStorage *self, id delegate, BOOL add);
+
 - (void) dealloc {
+    updateDelegateObservation(self, _delegate, NO);
     [_layoutManagers release];
     NS_EXTRA_FREE(NSTextStorage, self);
     [super dealloc];
@@ -64,11 +67,11 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     return _layoutManagers;
 }
 
-- (int) changeInLength {
+- (NSInteger) changeInLength {
     return _changeInLength;
 }
 
-- (unsigned) editedMask {
+- (NSTextStorageEditActions) editedMask {
     return _editedMask;
 }
 
@@ -76,8 +79,33 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     return NS_EXTRA(NSTextStorage, self)->_editedRange;
 }
 
+// The delegate observes the two notifications posted by -processEditing, for the methods it implements.
+static void updateDelegateObservation(NSTextStorage *self, id delegate, BOOL add) {
+    NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+
+    if (delegate == nil)
+        return;
+    if (!add) {
+        [center removeObserver: delegate name: NSTextStorageWillProcessEditingNotification object: self];
+        [center removeObserver: delegate name: NSTextStorageDidProcessEditingNotification object: self];
+        return;
+    }
+    if ([delegate respondsToSelector: @selector(textStorageWillProcessEditing:)])
+        [center addObserver: delegate
+                   selector: @selector(textStorageWillProcessEditing:)
+                       name: NSTextStorageWillProcessEditingNotification
+                     object: self];
+    if ([delegate respondsToSelector: @selector(textStorageDidProcessEditing:)])
+        [center addObserver: delegate
+                   selector: @selector(textStorageDidProcessEditing:)
+                       name: NSTextStorageDidProcessEditingNotification
+                     object: self];
+}
+
 - (void) setDelegate: delegate {
+    updateDelegateObservation(self, _delegate, NO);
     _delegate = delegate;
+    updateDelegateObservation(self, _delegate, YES);
 }
 
 - (void) addLayoutManager: (NSLayoutManager *) layoutManager {
@@ -123,17 +151,7 @@ NSString *const NSTextStorageDidProcessEditingNotification =
 }
 
 - (void) processEditing {
-    int i, count;
-
-    if ([_delegate respondsToSelector: @selector
-                   (textStorageWillProcessEditing:)]) {
-        NSNotification *note = [NSNotification
-                notificationWithName:
-                        NSTextStorageWillProcessEditingNotification
-                              object: self
-                            userInfo: nil];
-        [_delegate textStorageWillProcessEditing: note];
-    }
+    NSUInteger i, count;
 
     [[NSNotificationCenter defaultCenter]
             postNotificationName: NSTextStorageWillProcessEditingNotification
@@ -143,15 +161,6 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     // by AppKit; without AppKit loaded the attributes are left as they are.
     if ([self respondsToSelector: @selector(fixAttributesInRange:)])
         [self fixAttributesInRange: NS_EXTRA(NSTextStorage, self)->_editedRange];
-
-    if ([_delegate
-                respondsToSelector: @selector(textStorageDidProcessEditing:)]) {
-        NSNotification *note = [NSNotification
-                notificationWithName: NSTextStorageDidProcessEditingNotification
-                              object: self
-                            userInfo: nil];
-        [_delegate textStorageDidProcessEditing: note];
-    }
 
     [[NSNotificationCenter defaultCenter]
             postNotificationName: NSTextStorageDidProcessEditingNotification
@@ -169,9 +178,9 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     }
 }
 
-- (void) edited: (unsigned) editedMask
+- (void) edited: (NSTextStorageEditActions) editedMask
                  range: (NSRange) range
-        changeInLength: (int) delta
+        changeInLength: (NSInteger) delta
 {
 
     if (_beginEditing == 0) {

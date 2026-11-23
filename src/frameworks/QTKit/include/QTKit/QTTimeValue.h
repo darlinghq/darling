@@ -18,7 +18,23 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <QTKit/QTTime.h>
+#include <QTKit/QTTimeRange.h>
 
 @interface QTTimeValue : NSObject
 
+@end
+
+@interface NSValue (NSValueQTTimeExtensions)
++ (NSValue *)valueWithQTTime:(QTTime)time;
+- (QTTime)QTTimeValue;
++ (NSValue *)valueWithQTTimeRange:(QTTimeRange)range;
+- (QTTimeRange)QTTimeRangeValue;
+@end
+
+@interface NSCoder (NSCoderQTTimeExtensions)
+- (void)encodeQTTime:(QTTime)time forKey:(NSString *)key;
+- (QTTime)decodeQTTimeForKey:(NSString *)key;
+- (void)encodeQTTimeRange:(QTTimeRange)range forKey:(NSString *)key;
+- (QTTimeRange)decodeQTTimeRangeForKey:(NSString *)key;
 @end

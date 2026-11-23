@@ -76,3 +76,8 @@ IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFCopyright;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFDocumentName;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFImageDescription;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyMakerAppleDictionary;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyExifDateTimeDigitized;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyIPTCDateCreated;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyIPTCDigitalCreationDate;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyRawDictionary;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFDateTime;

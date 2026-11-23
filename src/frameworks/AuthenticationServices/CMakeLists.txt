@@ -128,3 +128,11 @@ add_framework(AuthenticationServices
 		Foundation
 		AppKit
 )
+
+# These two sources use ARC for the weak `delegate` and the retained `sessionHandler`; the rest of the
+# framework is not built with it.
+set_source_files_properties(
+	src/ASWebAuthenticationSessionRequest.m
+	src/ASWebAuthenticationSessionWebBrowserSessionManager.m
+	PROPERTIES COMPILE_FLAGS "-fobjc-arc"
+)

@@ -27,6 +27,7 @@ extern NSString *const kCIInputContrastKey;
 extern NSString *const kCIInputEVKey;
 extern NSString *const kCIInputExtentKey;
 extern NSString *const kCIInputImageKey;
+extern NSString *const kCIInputIntensityKey;
 extern NSString *const kCIInputSaturationKey;
 extern NSString *const kCIInputRadiusKey;
 extern NSString *const kCIOutputImageKey;

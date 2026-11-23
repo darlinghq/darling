@@ -1,6 +1,9 @@
 #import <Foundation/Foundation.h>
 
 typedef NSString *AVMetadataKey;
+typedef NSString *AVMetadataKeySpace;
+
+extern const AVMetadataKeySpace AVMetadataKeySpaceCommon;
 
 extern const AVMetadataKey AVMetadataCommonKeyAlbumName;
 extern const AVMetadataKey AVMetadataCommonKeyArtist;

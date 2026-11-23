@@ -52,6 +52,121 @@ static void throwFFMPEGError(int errnum, const char* function)
 	throw std::runtime_error(ss.str());
 }
 
+// Finds the decoder specific information in an MPEG-4 ES descriptor (ISO/IEC 14496-1): an
+// ES_Descriptor holds a DecoderConfigDescriptor, which holds the DecoderSpecificInfo.
+static bool findDecoderSpecificInfo(const uint8_t* p, size_t size, const uint8_t** out, size_t* outSize)
+{
+	while (size >= 2)
+	{
+		const uint8_t tag = *p++;
+		size--;
+		size_t length = 0;
+		unsigned lengthBytes = 0;
+		uint8_t b;
+		do
+		{
+			if (!size || lengthBytes == 4)
+				return false;
+			b = *p++;
+			size--;
+			lengthBytes++;
+			length = (length << 7) | (b & 0x7f);
+		} while (b & 0x80);
+		if (length > size)
+			return false;
+
+		size_t skip = 0;
+		if (tag == 0x03) // ES_ID, flags, and what the flags announce
+		{
+			if (length < 3)
+				return false;
+			const uint8_t flags = p[2];
+			skip = 3;
+			if (flags & 0x80)
+				skip += 2;
+			if (flags & 0x40)
+			{
+				if (skip >= length)
+					return false;
+				skip += 1 + p[skip];
+			}
+			if (flags & 0x20)
+				skip += 2;
+		}
+		else if (tag == 0x04) // object type, stream type, buffer size, bit rates
+			skip = 13;
+		else if (tag == 0x05)
+		{
+			*out = p;
+			*outSize = length;
+			return true;
+		}
+		else
+		{
+			p += length;
+			size -= length;
+			continue;
+		}
+
+		if (skip > length)
+			return false;
+		if (findDecoderSpecificInfo(p + skip, length - skip, out, outSize))
+			return true;
+		p += length;
+		size -= length;
+	}
+	return false;
+}
+
+// Reduces the magic cookie of a compressed format to the configuration its FFmpeg decoder takes.
+// AAC cookies are ES descriptors (optionally preceded by the version and flags of the esds box)
+// around the AudioSpecificConfig; FLAC cookies are the "fLaC" marker and metadata blocks around the
+// STREAMINFO. Other cookies already are the codec's own configuration.
+static void unwrapMagicCookie(AudioFormatID format, const uint8_t*& data, size_t& size)
+{
+	switch (format)
+	{
+		case kAudioFormatMPEG4AAC:
+		case kAudioFormatMPEG4AAC_HE:
+		case kAudioFormatMPEG4AAC_LD:
+		case kAudioFormatMPEG4AAC_ELD:
+		case kAudioFormatMPEG4AAC_ELD_SBR:
+		case kAudioFormatMPEG4AAC_ELD_V2:
+		case kAudioFormatMPEG4AAC_HE_V2:
+		case kAudioFormatMPEG4AAC_Spatial:
+		{
+			const uint8_t* start = data;
+			size_t length = size;
+			if (length >= 4 && start[0] == 0 && start[1] == 0 && start[2] == 0 && start[3] == 0)
+			{
+				start += 4;
+				length -= 4;
+			}
+			if (length && start[0] == 0x03)
+			{
+				const uint8_t* info;
+				size_t infoSize;
+				if (findDecoderSpecificInfo(start, length, &info, &infoSize))
+				{
+					data = info;
+					size = infoSize;
+				}
+			}
+			break;
+		}
+		case kAudioFormatFLAC:
+			// "fLaC", a metadata block header (4 bytes), then the STREAMINFO block
+			if (size >= 8 + 34 && memcmp(data, "fLaC", 4) == 0)
+			{
+				data += 8;
+				size = 34;
+			}
+			break;
+		default:
+			break;
+	}
+}
+
 AudioConverter::AudioConverter(const AudioStreamBasicDescription* inSourceFormat, const AudioStreamBasicDescription* inDestinationFormat)
     : m_sourceFormat(*inSourceFormat), m_destinationFormat(*inDestinationFormat), m_decoder(nullptr), m_encoder(nullptr)
 {
@@ -68,7 +183,8 @@ void AudioConverter::flush()
 		return;
 	}
 
-	avcodec_flush_buffers(m_decoder);
+	if (!m_decoderNeedsCookie)
+		avcodec_flush_buffers(m_decoder);
 	// Encoders without state of their own, like PCM, don't support this and complain about it
 	if (m_encoderInitialized && (m_encoder->codec->capabilities & AV_CODEC_CAP_ENCODER_FLUSH))
 		avcodec_flush_buffers(m_encoder);
@@ -155,7 +271,15 @@ OSStatus AudioConverter::create(const AudioStreamBasicDescription* inSourceForma
 		cIn->sample_rate = inSourceFormat->mSampleRate;
 	}
 	
-	if (avcodec_open2((*out)->m_decoder, codecIn, nullptr) < 0)
+	// The decoder of Apple Lossless cannot open without the configuration of the stream, which a client
+	// sets as the magic cookie after creating the converter
+	const bool cookieRequired = inSourceFormat->mFormatID == kAudioFormatAppleLossless;
+
+	if (cookieRequired)
+	{
+		(*out)->m_decoderNeedsCookie = true;
+	}
+	else if (avcodec_open2((*out)->m_decoder, codecIn, nullptr) < 0)
 	{
 		delete *out;
         *out = nullptr;
@@ -288,14 +412,26 @@ OSStatus AudioConverter::setProperty(AudioConverterPropertyID inPropertyID, UInt
 		{
 			// The decoder only reads this when opened, so it needs to be opened again
 			const AVCodec* codec = m_codecIn;
+			if (!codec)
+				return kAudioConverterErr_PropertyNotSupported;
 			AVCodecContext* decoder = avcodec_alloc_context3(codec);
 
 			if (!decoder)
 				return kAudioConverterErr_UnspecifiedError;
 
-			decoder->extradata = static_cast<uint8_t*>(av_mallocz(inPropertyDataSize + AV_INPUT_BUFFER_PADDING_SIZE));
-			decoder->extradata_size = inPropertyDataSize;
-			memcpy(decoder->extradata, inPropertyData, inPropertyDataSize);
+			// The cookie of a format is wrapped differently from the codec's own configuration
+			const uint8_t* config = static_cast<const uint8_t*>(inPropertyData);
+			size_t configSize = inPropertyDataSize;
+			unwrapMagicCookie(m_sourceFormat.mFormatID, config, configSize);
+
+			decoder->extradata = static_cast<uint8_t*>(av_mallocz(configSize + AV_INPUT_BUFFER_PADDING_SIZE));
+			if (!decoder->extradata)
+			{
+				avcodec_free_context(&decoder);
+				return kAudioConverterErr_UnspecifiedError;
+			}
+			decoder->extradata_size = configSize;
+			memcpy(decoder->extradata, config, configSize);
 
 			if (avcodec_open2(decoder, codec, nullptr) < 0)
 			{
@@ -305,6 +441,7 @@ OSStatus AudioConverter::setProperty(AudioConverterPropertyID inPropertyID, UInt
 
 			avcodec_free_context(&m_decoder);
 			m_decoder = decoder;
+			m_decoderNeedsCookie = false;
 			return noErr;
 		}
 		case kAudioConverterInputChannelLayout:
@@ -453,6 +590,9 @@ OSStatus AudioConverter::fillComplex(AudioConverterComplexInputDataProc dataProc
 
 	if (m_pcm)
 		return m_pcm->fillComplex(AudioConverterRef(this), dataProc, opaque, ioOutputDataPacketSize, outOutputData, outPacketDescription);
+
+	if (m_decoderNeedsCookie)
+		return kAudioConverterErr_UnspecifiedError;
 
 	if (ioOutputDataPacketSize && m_destinationFormat.mBytesPerPacket && outOutputData->mNumberBuffers == 1)
 	{
@@ -920,6 +1060,10 @@ enum AVCodecID AudioConverter::CACodecToAV(const AudioStreamBasicDescription* de
 		case kAudioFormatAC3:
 		case kAudioFormat60958AC3: // TODO: is this correct?
 			return AV_CODEC_ID_AC3;
+		case kAudioFormatEnhancedAC3:
+			return AV_CODEC_ID_EAC3;
+		case kAudioFormatOpus:
+			return AV_CODEC_ID_OPUS;
 		case kAudioFormatAppleIMA4:
 			return AV_CODEC_ID_ADPCM_IMA_DK4; // TODO: is this correct?
 		case kAudioFormatMPEG4AAC:

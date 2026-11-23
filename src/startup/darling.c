@@ -264,6 +264,7 @@ int main(int argc, char ** argv)
 	ensureSystemAccounts();
 	ensureZoneinfoLink();
 	ensureGlobalPreferences();
+	ensureSharedTmpModes();
 
 	// The container's programs have the guest's HOME, so the PulseAudio client library cannot find the
 	// host user's server by itself on a host without XDG_RUNTIME_DIR. Name the host's locations for it.
@@ -1839,6 +1840,14 @@ void setupPrefix()
 		createDir(path);
 	}
 
+	// the shared temporary directories are world-writable with the sticky bit, as on macOS
+	strcpy(path + plen, "/var/tmp");
+	if (chmod(path, 01777) != 0)
+	{
+		fprintf(stderr, "Cannot set the permissions of %s: %s\n", path, strerror(errno));
+		exit(1);
+	}
+
 	// create passwd, master.passwd, and group
 
 	passwd_entry = getpwuid(g_originalUid);
@@ -2092,6 +2101,19 @@ void ensureGlobalPreferences()
 	if (launcherSeedGlobalPreferences(path, &locale) == LAUNCHER_GLOBAL_PREFS_ERROR)
 		fprintf(stderr, "Cannot write the default locale to %s: %s\n", path, strerror(errno));
 
+	restoreRootIds();
+}
+
+// The shared temporary directories are 01777 on macOS (every user may create files there, only the
+// owner may delete them). Directories the prefix made earlier with 0755 are repaired when no
+// container is running, where a change made from outside is not seen reliably.
+void ensureSharedTmpModes()
+{
+	if (getInitProcess() != 0)
+		return;
+
+	useInvokingIds();
+	launcherEnsureSharedTmpModes(prefix, geteuid());
 	restoreRootIds();
 }
 

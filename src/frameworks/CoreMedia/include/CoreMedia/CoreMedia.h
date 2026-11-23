@@ -28,6 +28,7 @@
 #include <CoreMedia/CMBlockBuffer.h>
 #include <CoreMedia/CMSampleBuffer.h>
 #include <CoreMedia/CMSync.h>
+#include <CoreMedia/CMAttachment.h>
 
 void* AudioToolbox_AudioConverterDispose(void);
 void* AudioToolbox_AudioConverterGetProperty(void);
@@ -119,25 +120,18 @@ void* CMByteStreamCreateWritableForBlockBuffer(void);
 void* CMByteStreamGetCMBaseObject(void);
 void* CMByteStreamGetClassID(void);
 void* CMByteStreamWriteBlockBuffer(void);
-void* CMClockConvertHostTimeToSystemUnits(void);
 void* CMClockGetAnchorTime(void);
-void* CMClockGetHostTimeClock(void);
-void* CMClockGetTime(void);
-void* CMClockGetTypeID(void);
 void* CMClockInvalidate(void);
-void* CMClockMakeHostTimeFromSystemUnits(void);
 void* CMClockMightDrift(void);
 void* CMClosedCaptionFormatDescriptionCopyAsBigEndianClosedCaptionDescriptionBlockBuffer(void);
 void* CMClosedCaptionFormatDescriptionCreateFromBigEndianClosedCaptionDescriptionBlockBuffer(void);
 void* CMClosedCaptionFormatDescriptionCreateFromBigEndianClosedCaptionDescriptionData(void);
-void* CMCopyDictionaryOfAttachments(void);
 void* CMCreateContiguousBlockBufferFromStream(void);
 void* CMDerivedObjectCreate(void);
 void* CMDoesBigEndianSoundDescriptionRequireLegacyCBRSampleTableLayout(void);
 void* CMFormatDescriptionCreate(void);
 void* CMFormatDescriptionEqualIgnoringExtensionKeys(void);
 void* CMFormatDescriptionGetWidestColorPropertiesFromFormatDescriptions(void);
-void* CMGetAttachment(void);
 void* CMHapticFormatDescriptionCopyAsBigEndianHapticDescriptionBlockBuffer(void);
 void* CMHapticFormatDescriptionCreateFromBigEndianHapticDescriptionBlockBuffer(void);
 void* CMHapticFormatDescriptionCreateFromBigEndianHapticDescriptionData(void);
@@ -177,9 +171,6 @@ void* CMNotificationCenterPostNotification(void);
 void* CMNotificationCenterRegisterForBarrierSupport(void);
 void* CMNotificationCenterRemoveListener(void);
 void* CMNotificationCenterUnregisterForBarrierSupport(void);
-void* CMPropagateAttachments(void);
-void* CMRemoveAllAttachments(void);
-void* CMRemoveAttachment(void);
 void* CMSampleBufferCallBlockForEachSample(void);
 void* CMSampleBufferCopyPCMDataIntoAudioBufferList(void);
 void* CMSampleBufferCopySampleBufferForRange(void);
@@ -208,8 +199,6 @@ void* CMSampleBufferSetInvalidateCallback(void);
 void* CMSampleBufferSetInvalidateHandler(void);
 void* CMSampleBufferSetOutputPresentationTimeStamp(void);
 void* CMSampleBufferTrackDataReadiness(void);
-void* CMSetAttachment(void);
-void* CMSetAttachments(void);
 void* CMSimpleQueueCreate(void);
 void* CMSimpleQueueDequeue(void);
 void* CMSimpleQueueEnqueue(void);

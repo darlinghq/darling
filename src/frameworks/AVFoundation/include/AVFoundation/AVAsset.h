@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,10 +18,35 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CoreMedia/CMBase.h>
+#import <CoreMedia/CMTime.h>
+#import <CoreMedia/CMTimeRange.h>
+#import <CoreGraphics/CGGeometry.h>
+#import <AVFoundation/AVAsynchronousKeyValueLoading.h>
+#import <AVFoundation/AVMediaFormat.h>
+
+@class AVAssetTrack;
+@class AVAssetInternal;
 
 extern NSString *const AVURLAssetPreferPreciseDurationAndTimingKey;
 
-@interface AVAsset : NSObject
+@interface AVAsset : NSObject <AVAsynchronousKeyValueLoading> {
+@private
+    AVAssetInternal *_asset;
+}
+
++ (instancetype)assetWithURL:(NSURL *)URL;
+
+@property (nonatomic, readonly) CMTime duration;
+@property (nonatomic, readonly) float preferredRate;
+@property (nonatomic, readonly) float preferredVolume;
+@property (nonatomic, readonly) CGSize naturalSize;
+@property (nonatomic, readonly, getter=isPlayable) BOOL playable;
+@property (nonatomic, readonly) NSArray<AVAssetTrack *> *tracks;
+
+- (NSArray<AVAssetTrack *> *)tracksWithMediaType:(AVMediaType)mediaType;
+- (NSArray<AVAssetTrack *> *)tracksWithMediaCharacteristic:(NSString *)mediaCharacteristic;
+- (AVAssetTrack *)trackWithTrackID:(CMPersistentTrackID)trackID;
 
 @end

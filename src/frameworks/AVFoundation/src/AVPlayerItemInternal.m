@@ -22,6 +22,14 @@
 
 @implementation AVPlayerItemInternal
 
+- (void)dealloc
+{
+    [asset release];
+    [error release];
+    [outputs release];
+    [super dealloc];
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
 }

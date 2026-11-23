@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Darling developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,32 +18,69 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef _CoreLocation_CLLocationManager_H_
+#define _CoreLocation_CLLocationManager_H_
 
-@protocol CLLocationManagerDelegate;
+#import <Foundation/Foundation.h>
+#import <CoreLocation/CLLocation.h>
+#import <CoreLocation/CLError.h>
+
+@class CLLocationManager;
 
 typedef NS_ENUM(int, CLAuthorizationStatus) {
 	kCLAuthorizationStatusNotDetermined = 0,
-	kCLAuthorizationStatusRestricted = 1,
-	kCLAuthorizationStatusDenied = 2,
-	kCLAuthorizationStatusAuthorizedAlways = 3,
-	kCLAuthorizationStatusAuthorizedWhenInUse = 4,
+	kCLAuthorizationStatusRestricted,
+	kCLAuthorizationStatusDenied,
+	kCLAuthorizationStatusAuthorizedAlways,
+	kCLAuthorizationStatusAuthorizedWhenInUse,
 	kCLAuthorizationStatusAuthorized = kCLAuthorizationStatusAuthorizedAlways,
 };
 
+typedef NS_ENUM(NSInteger, CLAccuracyAuthorization) {
+	CLAccuracyAuthorizationFullAccuracy = 0,
+	CLAccuracyAuthorizationReducedAccuracy = 1,
+};
+
+@protocol CLLocationManagerDelegate <NSObject>
+@optional
+- (void)locationManager:(CLLocationManager *)manager didUpdateToLocation:(CLLocation *)newLocation fromLocation:(CLLocation *)oldLocation;
+- (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray<CLLocation *> *)locations;
+- (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error;
+- (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status;
+- (void)locationManagerDidChangeAuthorization:(CLLocationManager *)manager;
+@end
+
 @interface CLLocationManager : NSObject
 {
+@private
 	id<CLLocationManagerDelegate> _delegate;
+	CLLocationDistance _distanceFilter;
+	CLLocationAccuracy _desiredAccuracy;
+	CLAuthorizationStatus _authorizationStatus;
+	CLAccuracyAuthorization _accuracyAuthorization;
+	id _clientToken;
 }
 
 // Not retained, like other Cocoa delegates.
 @property (nonatomic, assign) id<CLLocationManagerDelegate> delegate;
+@property (nonatomic, assign) CLLocationDistance distanceFilter;
+@property (nonatomic, assign) CLLocationAccuracy desiredAccuracy;
+@property (readonly, nonatomic, copy) CLLocation *location;
 
-/* There is no location service here: location services are reported as disabled
- * and the authorization status as Restricted (as AVCaptureDevice does for
- * capture that cannot work), so callers take their no-access path. */
+@property (nonatomic, readonly) CLAuthorizationStatus authorizationStatus;
+@property (nonatomic, readonly) CLAccuracyAuthorization accuracyAuthorization;
+@property (readonly, nonatomic) BOOL locationServicesEnabled;
+
 + (CLAuthorizationStatus)authorizationStatus;
 + (BOOL)locationServicesEnabled;
-- (CLAuthorizationStatus)authorizationStatus;
+
+- (void)requestWhenInUseAuthorization;
+- (void)requestAlwaysAuthorization;
+
+- (void)startUpdatingLocation;
+- (void)stopUpdatingLocation;
+- (void)requestLocation;
 
 @end
+
+#endif

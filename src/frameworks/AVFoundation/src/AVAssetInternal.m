@@ -22,6 +22,14 @@
 
 @implementation AVAssetInternal
 
+- (void)dealloc
+{
+    [URL release];
+    [options release];
+    [tracks release];
+    [super dealloc];
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
 }
