@@ -1031,11 +1031,6 @@ void* CMSyncGetRelativeRateAndAnchorTime(void) {
     return NULL;
 }
 
-void* CMSyncGetTime(void) {
-    if (verbose) puts("STUB: CMSyncGetTime called");
-    return NULL;
-}
-
 void* CMSyncMightDrift(void) {
     if (verbose) puts("STUB: CMSyncMightDrift called");
     return NULL;
@@ -1231,93 +1226,13 @@ void* CMTimebaseAddTimerDispatchSource(void) {
     return NULL;
 }
 
-void* CMTimebaseCopyMaster(void) {
-    if (verbose) puts("STUB: CMTimebaseCopyMaster called");
-    return NULL;
-}
-
-void* CMTimebaseCopyMasterClock(void) {
-    if (verbose) puts("STUB: CMTimebaseCopyMasterClock called");
-    return NULL;
-}
-
-void* CMTimebaseCopyMasterTimebase(void) {
-    if (verbose) puts("STUB: CMTimebaseCopyMasterTimebase called");
-    return NULL;
-}
-
-void* CMTimebaseCopyUltimateMasterClock(void) {
-    if (verbose) puts("STUB: CMTimebaseCopyUltimateMasterClock called");
-    return NULL;
-}
-
 void* CMTimebaseCreateReadOnlyTimebase(void) {
     if (verbose) puts("STUB: CMTimebaseCreateReadOnlyTimebase called");
     return NULL;
 }
 
-void* CMTimebaseCreateWithMasterClock(void) {
-    if (verbose) puts("STUB: CMTimebaseCreateWithMasterClock called");
-    return NULL;
-}
-
-void* CMTimebaseCreateWithMasterTimebase(void) {
-    if (verbose) puts("STUB: CMTimebaseCreateWithMasterTimebase called");
-    return NULL;
-}
-
-void* CMTimebaseGetEffectiveRate(void) {
-    if (verbose) puts("STUB: CMTimebaseGetEffectiveRate called");
-    return NULL;
-}
-
-void* CMTimebaseGetMaster(void) {
-    if (verbose) puts("STUB: CMTimebaseGetMaster called");
-    return NULL;
-}
-
-void* CMTimebaseGetMasterClock(void) {
-    if (verbose) puts("STUB: CMTimebaseGetMasterClock called");
-    return NULL;
-}
-
-void* CMTimebaseGetMasterTimebase(void) {
-    if (verbose) puts("STUB: CMTimebaseGetMasterTimebase called");
-    return NULL;
-}
-
-void* CMTimebaseGetRate(void) {
-    if (verbose) puts("STUB: CMTimebaseGetRate called");
-    return NULL;
-}
-
-void* CMTimebaseGetTime(void) {
-    if (verbose) puts("STUB: CMTimebaseGetTime called");
-    return NULL;
-}
-
-void* CMTimebaseGetTimeAndRate(void) {
-    if (verbose) puts("STUB: CMTimebaseGetTimeAndRate called");
-    return NULL;
-}
-
 void* CMTimebaseGetTimeClampedAboveAnchorTime(void) {
     if (verbose) puts("STUB: CMTimebaseGetTimeClampedAboveAnchorTime called");
-    return NULL;
-}
-
-void* CMTimebaseGetTimeWithTimeScale(void) {
-    if (verbose) puts("STUB: CMTimebaseGetTimeWithTimeScale called");
-    return NULL;
-}
-
-void* CMTimebaseGetTypeID(void) {
-    if (verbose) puts("STUB: CMTimebaseGetTypeID called");
-    return NULL;
-}
-
-void* CMTimebaseGetUltimateMasterClock(void) {
-    if (verbose) puts("STUB: CMTimebaseGetUltimateMasterClock called");
     return NULL;
 }
 
@@ -1336,11 +1251,6 @@ void* CMTimebaseRemoveTimerDispatchSource(void) {
     return NULL;
 }
 
-void* CMTimebaseSetAnchorTime(void) {
-    if (verbose) puts("STUB: CMTimebaseSetAnchorTime called");
-    return NULL;
-}
-
 void* CMTimebaseSetMasterClock(void) {
     if (verbose) puts("STUB: CMTimebaseSetMasterClock called");
     return NULL;
@@ -1351,23 +1261,8 @@ void* CMTimebaseSetMasterTimebase(void) {
     return NULL;
 }
 
-void* CMTimebaseSetRate(void) {
-    if (verbose) puts("STUB: CMTimebaseSetRate called");
-    return NULL;
-}
-
-void* CMTimebaseSetRateAndAnchorTime(void) {
-    if (verbose) puts("STUB: CMTimebaseSetRateAndAnchorTime called");
-    return NULL;
-}
-
 void* CMTimebaseSetRateAndAnchorTimeWithFlags(void) {
     if (verbose) puts("STUB: CMTimebaseSetRateAndAnchorTimeWithFlags called");
-    return NULL;
-}
-
-void* CMTimebaseSetTime(void) {
-    if (verbose) puts("STUB: CMTimebaseSetTime called");
     return NULL;
 }
 
