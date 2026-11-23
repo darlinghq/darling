@@ -31,6 +31,8 @@ set(audiotoolbox_sources
 	MusicDevice.cpp
 	MusicSequence.cpp
 	MusicTrack.cpp
+	MusicTrackProperties.cpp
+	MusicTrackEditing.cpp
 	MusicEventIterator.cpp
 	AudioToolbox.cpp
 	AudioHardwareService.cpp

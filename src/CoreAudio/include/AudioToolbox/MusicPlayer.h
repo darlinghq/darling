@@ -225,7 +225,51 @@ extern OSStatus
 MusicTrackNewMIDINoteEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, const MIDINoteMessage *inMessage);
 
 extern OSStatus
+MusicTrackNewMIDIChannelEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, const MIDIChannelMessage *inMessage);
+
+extern OSStatus
+MusicTrackNewMIDIRawDataEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, const MIDIRawData *inRawData);
+
+extern OSStatus
+MusicTrackNewExtendedNoteEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, const ExtendedNoteOnEvent *inInfo);
+
+extern OSStatus
+MusicTrackNewParameterEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, const ParameterEvent *inInfo);
+
+extern OSStatus
 MusicTrackNewExtendedTempoEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, Float64 inBPM);
+
+extern OSStatus
+MusicTrackNewMetaEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, const MIDIMetaEvent *inMetaEvent);
+
+extern OSStatus
+MusicTrackNewUserEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, const MusicEventUserData *inUserData);
+
+extern OSStatus
+MusicTrackNewAUPresetEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, const AUPresetEvent *inPresetEvent);
+
+extern OSStatus
+MusicTrackMoveEvents(MusicTrack inTrack, MusicTimeStamp inStartTime, MusicTimeStamp inEndTime, MusicTimeStamp inMoveTime);
+
+extern OSStatus
+MusicTrackClear(MusicTrack inTrack, MusicTimeStamp inStartTime, MusicTimeStamp inEndTime);
+
+extern OSStatus
+MusicTrackCut(MusicTrack inTrack, MusicTimeStamp inStartTime, MusicTimeStamp inEndTime);
+
+extern OSStatus
+MusicTrackCopyInsert(MusicTrack inSourceTrack, MusicTimeStamp inSourceStartTime, MusicTimeStamp inSourceEndTime,
+	MusicTrack inDestTrack, MusicTimeStamp inDestInsertTime);
+
+extern OSStatus
+MusicTrackMerge(MusicTrack inSourceTrack, MusicTimeStamp inSourceStartTime, MusicTimeStamp inSourceEndTime,
+	MusicTrack inDestTrack, MusicTimeStamp inDestInsertTime);
+
+extern OSStatus
+MusicTrackSetProperty(MusicTrack inTrack, UInt32 inPropertyID, void *inData, UInt32 inLength);
+
+extern OSStatus
+MusicTrackGetProperty(MusicTrack inTrack, UInt32 inPropertyID, void *outData, UInt32 *ioLength);
 
 // Music event iterators
 
@@ -250,6 +294,15 @@ MusicEventIteratorGetEventInfo(MusicEventIterator inIterator,
 	MusicEventType *outEventType,
 	const void **outEventData,
 	UInt32 *outEventDataSize);
+
+extern OSStatus
+MusicEventIteratorSetEventInfo(MusicEventIterator inIterator, MusicEventType inEventType, const void *inEventData);
+
+extern OSStatus
+MusicEventIteratorSetEventTime(MusicEventIterator inIterator, MusicTimeStamp inTimeStamp);
+
+extern OSStatus
+MusicEventIteratorDeleteEvent(MusicEventIterator inIterator);
 
 extern OSStatus
 MusicEventIteratorHasPreviousEvent(MusicEventIterator inIterator, Boolean *outHasPrevEvent);

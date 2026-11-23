@@ -168,3 +168,68 @@ OSStatus MusicEventIteratorHasCurrentEvent(MusicEventIterator inIterator, Boolea
 	*outHasCurEvent = inIterator->index < inIterator->track->events.size();
 	return noErr;
 }
+
+OSStatus MusicEventIteratorSetEventInfo(MusicEventIterator inIterator, MusicEventType inEventType, const void* inEventData)
+{
+	if (!inIterator || !inEventData)
+		return kAudio_ParamError;
+
+	std::lock_guard<std::mutex> guard(musicimpl::lock());
+	std::vector<MusicEvent>& events = inIterator->track->events;
+
+	// GUESS: with no event at the iterator, the code is kAudioToolboxErr_EndOfTrack, as for GetEventInfo.
+	if (inIterator->index >= events.size())
+		return kAudioToolboxErr_EndOfTrack;
+
+	// The new type and data replace the old ones; the time stamp and the position stay.
+	try
+	{
+		std::vector<UInt8> data;
+		OSStatus status = musicimpl::makeEventData(inEventType, inEventData, data);
+		if (status != noErr)
+			return status;
+		events[inIterator->index] = MusicEvent(events[inIterator->index].time, inEventType, std::move(data));
+	}
+	catch (const std::bad_alloc&)
+	{
+		return kAudio_MemFullError;
+	}
+	return noErr;
+}
+
+OSStatus MusicEventIteratorSetEventTime(MusicEventIterator inIterator, MusicTimeStamp inTimeStamp)
+{
+	// GUESS: a time below zero or not a number is kAudio_ParamError, as when an event is added.
+	if (!inIterator || !std::isfinite(inTimeStamp) || inTimeStamp < 0)
+		return kAudio_ParamError;
+
+	std::lock_guard<std::mutex> guard(musicimpl::lock());
+	std::vector<MusicEvent>& events = inIterator->track->events;
+
+	if (inIterator->index >= events.size())
+		return kAudioToolboxErr_EndOfTrack;
+
+	// The iterator keeps pointing at the same event, which has moved to its new place. GUESS: among
+	// events with the new time it goes last, as a newly added event does.
+	MusicEvent event = std::move(events[inIterator->index]);
+	events.erase(events.begin() + inIterator->index);
+	event.time = inTimeStamp;
+	inIterator->index = musicimpl::insertEvent(inIterator->track, std::move(event));
+	return noErr;
+}
+
+OSStatus MusicEventIteratorDeleteEvent(MusicEventIterator inIterator)
+{
+	if (!inIterator)
+		return kAudio_ParamError;
+
+	std::lock_guard<std::mutex> guard(musicimpl::lock());
+	std::vector<MusicEvent>& events = inIterator->track->events;
+
+	if (inIterator->index >= events.size())
+		return kAudioToolboxErr_EndOfTrack;
+
+	// The iterator then points at the event that followed, or beyond the last event.
+	events.erase(events.begin() + inIterator->index);
+	return noErr;
+}
