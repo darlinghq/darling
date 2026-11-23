@@ -29,13 +29,26 @@ const CGFloat kPDFDestinationUnspecifiedValue = FLT_MAX;
 
 @implementation PDFDestination
 
-// The page declares page as a weak reference, so the destination does not own its page and the reference is
-// cleared when the page is freed. The runtime's weak reference functions are used, as the instance variable is not
-// compiled as a __weak one.
-// GUESS: the page says only that initialisation returns nil if the object cannot be initialised. A nil page is
-// accepted, since a weak page can become nil and the -compareToDestination: page covers a destination without one.
+// The page is a weak reference in PDFKit's interface, so the destination does not own its page and the reference is
+// cleared when the page is freed (observed on macOS 26.7.3 and 10.14.4: the page's reference count is not raised and
+// page is nil after the page is released). The runtime's weak reference functions are used, as the instance variable
+// is not compiled as a __weak one.
+// Observed on both: initialising without a page returns nil, and a plain -init gives a destination whose point is
+// unspecified in both coordinates.
+- (instancetype)init
+{
+    if ((self = [super init]))
+        _point = CGPointMake(kPDFDestinationUnspecifiedValue, kPDFDestinationUnspecifiedValue);
+    return self;
+}
+
 - (instancetype)initWithPage:(PDFPage*)page atPoint:(CGPoint)point
 {
+    if (page == nil)
+    {
+        [self release];
+        return nil;
+    }
     if ((self = [super init]))
     {
         objc_storeWeak(&_page, page);
