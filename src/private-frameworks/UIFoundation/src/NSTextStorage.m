@@ -30,6 +30,10 @@ NSString *const NSTextStorageDidProcessEditingNotification =
 
 @implementation NSTextStorage
 
++ (BOOL) supportsSecureCoding {
+    return YES;
+}
+
 + allocWithZone: (NSZone *) zone {
     if (self == [NSTextStorage class])
         return NSAllocateObject([NSTextStorage_concrete class], 0, NULL);
