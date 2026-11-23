@@ -866,11 +866,17 @@ static void jpeg_set_manager_view(uint64_t methods, unsigned count, bool host)
 		fex_copy_to_guest((void*)(uintptr_t)methods, view, count * sizeof(uint64_t));
 }
 
+// The object a jpeg_CreateCompress or jpeg_CreateDecompress call on this thread is initialising: its fields
+// are not set until the call returns, though libjpeg may call its error manager before then. A guest error_exit
+// that longjmps out of the call leaves it set; that object can only be used again after another create call,
+// which replaces it.
+static __thread uint64_t t_jpeg_creating = 0;
+
 // Puts the managers of the libjpeg object `object` in one view.
 static void jpeg_set_managers(uint64_t object, bool host)
 {
 	uint64_t fields[6];
-	if (fex_copy_from_guest(fields, (const void*)(uintptr_t)object, sizeof(fields)) != 0)
+	if (object == t_jpeg_creating || fex_copy_from_guest(fields, (const void*)(uintptr_t)object, sizeof(fields)) != 0)
 		return;
 	jpeg_set_manager_view(fields[2], 1, host);
 	// jpeg_destroy frees the memory manager and what it allocated, and clears mem.
@@ -1284,7 +1290,9 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 	}
 	uint64_t s0 = st[0], s1 = st[1];
 	const uint64_t jpeg_err = rules.jpeg == FEX_JPEG_OBJECT ? jpeg_enter_host_view(state->rdi) : 0;
-	if (jpeg_err && !rules.jpeg_creates)
+	if (rules.jpeg_creates)
+		t_jpeg_creating = state->rdi;
+	if (jpeg_err)
 		jpeg_set_managers(state->rdi, true);
 
 #if defined(__aarch64__)
@@ -1349,6 +1357,8 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 		else
 			*host_native = x0;
 	}
+	if (rules.jpeg_creates)
+		t_jpeg_creating = 0;
 	if (jpeg_err) {
 		jpeg_set_managers(state->rdi, false);
 		jpeg_leave_host_view(jpeg_err);

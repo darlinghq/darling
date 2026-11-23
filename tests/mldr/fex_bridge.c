@@ -2480,11 +2480,13 @@ static struct fake_jpeg_source_mgr g_host_source_mgr;  // what jpeg_mem_src allo
 
 static struct fake_jpeg_object* jpeg_object(uint64_t object) { return (struct fake_jpeg_object*)(uintptr_t)object; }
 
+// A version libjpeg does not know is reported through error_exit before the object is initialised.
 static uint64_t host_jpeg_CreateDecompress(uint64_t object, uint64_t version, uint64_t size)
 {
-	(void)version;
 	(void)size;
 	struct fake_jpeg_object* o = jpeg_object(object);
+	if (version != 62)
+		((void (*)(uint64_t))(uintptr_t)jpeg_err_of(object)->method[JPEG_ERROR_EXIT])(object);
 	*o = (struct fake_jpeg_object){ .err = o->err, .mem = (uint64_t)(uintptr_t)&g_host_memory_mgr, .is_decompressor = 1 };
 	g_host_memory_mgr.method[0] = (uint64_t)(uintptr_t)host_jpeg_alloc_small;
 	for (int m = 1; m < 11; m++)
@@ -2575,6 +2577,15 @@ static void guest_manager_method(uintptr_t fn, const uint64_t args[6])
 		g_guest_manager_calls_in_guest_view++;
 }
 
+static const uint64_t* g_word_watched;
+static uint64_t g_word_seen;
+static void guest_reads_watched_word(uint64_t arg0, uint64_t arg1)
+{
+	(void)arg0;
+	(void)arg1;
+	g_word_seen = *g_word_watched;
+}
+
 extern unsigned fex_jpeg_word_cache_misses;
 
 static void test_jpeg_managers(void)
@@ -2596,6 +2607,20 @@ static void test_jpeg_managers(void)
 		.progress = (uint64_t)(uintptr_t)&stale, .src = (uint64_t)(uintptr_t)&stale };
 	call_stub(create, object, 62, sizeof(*cinfo), 0);
 	check(stale.progress_monitor == 0x5600900, "jpeg_CreateDecompress does not touch what its object held before");
+	// Nor does a guest error_exit libjpeg calls from inside jpeg_CreateDecompress.
+	struct fake_jpeg_error_mgr err_copy = g_managers_err;
+	g_managers_err.method[JPEG_ERROR_EXIT] = GUEST_ERROR_EXIT;
+	struct fake_jpeg_progress_mgr stale_host = {(uint64_t)(uintptr_t)host_jpeg_mem_other, 0, 0, 0, 0};
+	*cinfo = (struct fake_jpeg_object){ .err = (uint64_t)(uintptr_t)&g_managers_err, .mem = (uint64_t)(uintptr_t)&stale_host,
+		.progress = (uint64_t)(uintptr_t)&stale_host, .src = (uint64_t)(uintptr_t)&stale_host };
+	last_cb_fn = 0;
+	g_word_watched = &stale_host.progress_monitor;
+	guest_callback_body = guest_reads_watched_word;
+	call_stub(create, object, 61, sizeof(*cinfo), 0);
+	guest_callback_body = NULL;
+	check(last_cb_fn == GUEST_ERROR_EXIT && g_word_seen == (uint64_t)(uintptr_t)host_jpeg_mem_other,
+		"a guest error_exit during jpeg_CreateDecompress leaves what the object held before alone");
+	g_managers_err = err_copy;
 	bool stubs = cinfo->mem == (uint64_t)(uintptr_t)&g_host_memory_mgr;
 	for (int m = 0; stubs && m < 11; m++)
 		stubs = is_guest_stub(g_host_memory_mgr.method[m]);
