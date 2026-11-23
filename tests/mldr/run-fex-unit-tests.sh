@@ -135,6 +135,14 @@ launcher_test server server.c launcher-server.c
 launcher_test prefix_state prefix-state.c
 launcher_test profile_prefix profile-prefix.c
 
+# launcher-path.c includes darling-config.h, which CMake's configure_file makes from
+# src/include/darling-config.h.in; fill in the same values the package build does (prefix /usr)
+mkdir -p "$out/include"
+sed -e 's|\${CMAKE_INSTALL_PREFIX}|/usr|g' -e 's|\${CMAKE_INSTALL_LIBDIR}|lib|g' -e 's|@[A-Z_]*@||g' \
+	-e 's|^#cmakedefine \(.*\)|/* #undef \1 */|' "$root/src/include/darling-config.h.in" > "$out/include/darling-config.h"
+run_test launcher_path_test "$cc" "${cflags[@]}" "-I$out/include" "$root/tests/launcher/path.c" "$root/src/startup/launcher-path.c"
+covered+=(tests/launcher/path.c)
+
 # A test added to CMake must be added here too, or it would silently go unrun on arm64. The lists
 # are read from CMake and an empty result is an error, so a moved or reworded file cannot make
 # the guard pass vacuously. Not guarded: the compile flags and the mldr source lists.
