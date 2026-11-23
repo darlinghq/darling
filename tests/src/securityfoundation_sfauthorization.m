@@ -55,7 +55,8 @@ int main(void)
 		CHECK(AuthorizationCopyRights([a authorizationRef], noRights, kAuthorizationEmptyEnvironment, kAuthorizationFlagDefaults, NULL) == errAuthorizationSuccess);
 		NSError *error = nil;
 		CHECK([a obtainWithRights:NULL flags:kAuthorizationFlagDefaults environment:kAuthorizationEmptyEnvironment authorizedRights:NULL error:&error]);
-		CHECK(error == nil);
+		// observed on macOS 26.7.3 and 10.14.4: the error is set on success too, with code 0
+		CHECK(error != nil && [[error domain] isEqualToString:NSOSStatusErrorDomain] && [error code] == errAuthorizationSuccess);
 		AuthorizationRights *granted = NULL;
 		CHECK([a obtainWithRights:NULL flags:kAuthorizationFlagDefaults environment:kAuthorizationEmptyEnvironment authorizedRights:&granted error:NULL]);
 		if (granted != NULL)
@@ -83,6 +84,11 @@ int main(void)
 
 		// invalidating one object does not touch another one
 		[a invalidateCredentials];
+		// observed on both Macs: the invalidated object has no reference and its obtain methods fail with errAuthorizationInvalidRef
+		CHECK([a authorizationRef] == NULL);
+		error = nil;
+		CHECK(![a obtainWithRights:NULL flags:kAuthorizationFlagDefaults environment:kAuthorizationEmptyEnvironment authorizedRights:NULL error:&error]);
+		CHECK(error != nil && [error code] == errAuthorizationInvalidRef);
 		CHECK(AuthorizationCopyRights([b authorizationRef], noRights, kAuthorizationEmptyEnvironment, kAuthorizationFlagDefaults, NULL) == errAuthorizationSuccess);
 		CHECK([[SFAuthorization authorization] authorizationRef] != NULL);
 
