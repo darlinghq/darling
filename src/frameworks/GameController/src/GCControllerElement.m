@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,28 +19,49 @@
 */
 
 #import <GameController/GCControllerElement.h>
-#import <darling-stub-forwarding.h>
+#import "GCInputInternal.h"
 
-@implementation GCControllerElement
-
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+@implementation GCControllerElement {
+	GCControllerElement *_collection;
+	BOOL _analog;
+	NSSet<NSString *> *_aliases;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (instancetype)init
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+	return [self initWithCollection:nil isAnalog:NO aliases:[NSSet set]];
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (instancetype)initWithCollection:(GCControllerElement *)collection isAnalog:(BOOL)analog aliases:(NSSet<NSString *> *)aliases
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+	self = [super init];
+	if (!self)
+		return nil;
+	_collection = collection; // un-retained weak reference
+	_analog = analog;
+	_aliases = [aliases copy];
+	return self;
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (void)dealloc
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+	[_aliases release];
+	[super dealloc];
+}
+
+- (GCControllerElement *)collection
+{
+	return _collection;
+}
+
+- (BOOL)isAnalog
+{
+	return _analog;
+}
+
+- (NSSet<NSString *> *)aliases
+{
+	return _aliases ? _aliases : [NSSet set];
 }
 
 @end

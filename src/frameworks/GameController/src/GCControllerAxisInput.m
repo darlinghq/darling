@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,28 +19,53 @@
 */
 
 #import <GameController/GCControllerAxisInput.h>
-#import <darling-stub-forwarding.h>
+#import "GCInputInternal.h"
+#import <math.h>
 
-@implementation GCControllerAxisInput
-
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+@implementation GCControllerAxisInput {
+	float _value;
+	GCControllerAxisValueChangedHandler _valueChangedHandler;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+@synthesize valueChangedHandler = _valueChangedHandler;
+
+- (void)dealloc
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+	[_valueChangedHandler release];
+	[super dealloc];
 }
 
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+- (float)value
 {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+	return _value;
 }
 
-+ (void)forwardInvocation:(NSInvocation *)anInvocation
+- (void)setValue:(float)value
 {
-    DarlingStubForwardInvocation(self, anInvocation);
+	_value = fmaxf(-1.0f, fminf(1.0f, value));
+}
+
+- (void)_setValue:(float)value handlerQueue:(dispatch_queue_t)queue profileHandler:(void (^)(GCControllerElement *))profileHandler
+{
+	float clamped = fmaxf(-1.0f, fminf(1.0f, value));
+	if (clamped == _value)
+		return;
+
+	_value = clamped;
+
+	GCControllerAxisValueChangedHandler vh = [_valueChangedHandler copy];
+	void (^phCopy)(GCControllerElement *) = [profileHandler copy];
+
+	dispatch_queue_t targetQueue = queue ? queue : dispatch_get_main_queue();
+	dispatch_async(targetQueue, ^{
+		if (vh)
+			vh(self, clamped);
+		if (phCopy)
+			phCopy(self);
+
+		[vh release];
+		[phCopy release];
+	});
 }
 
 @end

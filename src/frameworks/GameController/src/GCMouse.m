@@ -18,86 +18,147 @@
 */
 
 #import <GameController/GCMouse.h>
+#import <GameController/GCProductCategories.h>
+#import <GameController/_GCControllerManager.h>
+#import "GCInputInternal.h"
+#include <IOKit/IOKitLib.h>
 
 NSString *const GCMouseDidConnectNotification = @"GCMouseDidConnectNotification";
 NSString *const GCMouseDidDisconnectNotification = @"GCMouseDidDisconnectNotification";
+NSString *const GCMouseDidBecomeCurrentNotification = @"GCMouseDidBecomeCurrentNotification";
+NSString *const GCMouseDidStopBeingCurrentNotification = @"GCMouseDidStopBeingCurrentNotification";
 
-@implementation GCMouseInput
+@implementation GCMouseInput {
+	GCDeviceButtonInput *_leftButton;
+	GCDeviceButtonInput *_rightButton;
+	GCDeviceButtonInput *_middleButton;
+	GCDeviceDirectionPad *_scroll;
+}
 
 @synthesize mouseMovedHandler = _mouseMovedHandler;
+
+- (instancetype)initWithMouse:(GCMouse *)mouse
+{
+	self = [super initWithDevice:mouse];
+	if (!self)
+		return nil;
+	_leftButton = [[GCDeviceButtonInput alloc] init];
+	_rightButton = [[GCDeviceButtonInput alloc] init];
+	_middleButton = [[GCDeviceButtonInput alloc] init];
+	_scroll = [[GCDeviceDirectionPad alloc] init];
+	return self;
+}
 
 - (void)dealloc
 {
 	[_mouseMovedHandler release];
+	[_leftButton release];
+	[_rightButton release];
+	[_middleButton release];
+	[_scroll release];
 	[super dealloc];
 }
 
-- (GCDeviceButtonInput *)leftButton
-{
-	return nil;
-}
-
-- (GCDeviceButtonInput *)rightButton
-{
-	return nil;
-}
-
-- (GCDeviceButtonInput *)middleButton
-{
-	return nil;
-}
-
-- (NSArray *)auxiliaryButtons
-{
-	return nil;
-}
-
-- (GCDeviceDirectionPad *)scroll
-{
-	return nil;
-}
+- (GCDeviceButtonInput *)leftButton { return _leftButton; }
+- (GCDeviceButtonInput *)rightButton { return _rightButton; }
+- (GCDeviceButtonInput *)middleButton { return _middleButton; }
+- (NSArray *)auxiliaryButtons { return @[]; }
+- (GCDeviceDirectionPad *)scroll { return _scroll; }
 
 @end
 
-@implementation GCMouse
+@implementation GCMouse {
+	io_service_t _service;
+	NSString *_vendorName;
+	GCMouseInput *_mouseInput;
+	dispatch_queue_t _handlerQueue;
+}
+
+- (instancetype)init
+{
+	return [self initWithService:0];
+}
+
+- (instancetype)initWithService:(io_service_t)service
+{
+	self = [super init];
+	if (!self)
+		return nil;
+
+	_service = service;
+	if (_service)
+		IOObjectRetain(_service);
+
+	_handlerQueue = dispatch_get_main_queue();
+	_mouseInput = [[GCMouseInput alloc] initWithMouse:self];
+
+	NSString *name = @"Mouse";
+	if (_service) {
+		CFTypeRef prop = IORegistryEntryCreateCFProperty(_service, CFSTR("Product"), NULL, 0);
+		if (prop && CFGetTypeID(prop) == CFStringGetTypeID()) {
+			name = [NSString stringWithString:(__bridge NSString *)prop];
+		}
+		if (prop) CFRelease(prop);
+	}
+	_vendorName = [name copy];
+
+	return self;
+}
+
+- (void)dealloc
+{
+	if (_service)
+		IOObjectRelease(_service);
+	[_vendorName release];
+	[_mouseInput release];
+	[super dealloc];
+}
+
+- (io_service_t)service { return _service; }
 
 + (NSArray<GCMouse *> *)mice
 {
-	return @[];
+	return [[_GCControllerManager sharedInstance] mice];
 }
 
 + (GCMouse *)current
 {
-	return nil;
+	return [[_GCControllerManager sharedInstance] currentMouse];
 }
 
 - (GCMouseInput *)mouseInput
 {
-	return nil;
+	return _mouseInput;
+}
+
+- (GCPhysicalInputProfile *)physicalInputProfile
+{
+	return _mouseInput;
 }
 
 - (NSString *)vendorName
 {
-	return nil;
+	return _vendorName;
 }
 
 - (NSString *)productCategory
 {
-	return @"Mouse";
+	return GCProductCategoryMouse;
 }
 
 - (BOOL)isAttachedToDevice
 {
-	return NO;
+	return YES;
 }
 
 - (dispatch_queue_t)handlerQueue
 {
-	return dispatch_get_main_queue();
+	return _handlerQueue;
 }
 
 - (void)setHandlerQueue:(dispatch_queue_t)queue
 {
+	_handlerQueue = queue ? queue : dispatch_get_main_queue();
 }
 
 @end

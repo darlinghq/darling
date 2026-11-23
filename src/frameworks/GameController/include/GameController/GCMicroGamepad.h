@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,18 +18,37 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef _GCMicroGamepad_H_
+#define _GCMicroGamepad_H_
 
+#import <Foundation/Foundation.h>
+#import <GameController/GCPhysicalInputProfile.h>
 #import <GameController/GCControllerButtonInput.h>
 #import <GameController/GCControllerDirectionPad.h>
 
-@interface GCMicroGamepad : NSObject
+@class GCController;
 
-@property(readonly) GCControllerDirectionPad *dpad;
-@property(readonly) GCControllerButtonInput *buttonA;
-@property(readonly) GCControllerButtonInput *buttonX;
-@property(readonly) GCControllerButtonInput *buttonMenu;
-@property(nonatomic) BOOL allowsRotation;
-@property(nonatomic) BOOL reportsAbsoluteDpadValues;
+NS_ASSUME_NONNULL_BEGIN
+
+@class GCMicroGamepad;
+
+typedef void (^GCMicroGamepadValueChangedHandler)(GCMicroGamepad *gamepad, GCControllerElement *element);
+
+@interface GCMicroGamepad : GCPhysicalInputProfile
+
+@property (nonatomic, readonly, weak, nullable) GCController *controller;
+@property (nonatomic, copy, nullable) GCMicroGamepadValueChangedHandler valueChangedHandler;
+
+@property (nonatomic, readonly, strong) GCControllerDirectionPad *dpad;
+@property (nonatomic, readonly, strong) GCControllerButtonInput *buttonA;
+@property (nonatomic, readonly, strong) GCControllerButtonInput *buttonX;
+@property (nonatomic, readonly, strong) GCControllerButtonInput *buttonMenu;
+
+@property (nonatomic) BOOL reportsAbsoluteDpadValues;
+@property (nonatomic) BOOL allowsRotation;
 
 @end
+
+NS_ASSUME_NONNULL_END
+
+#endif
