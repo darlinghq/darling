@@ -227,6 +227,39 @@ MusicTrackNewMIDINoteEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, const
 extern OSStatus
 MusicTrackNewExtendedTempoEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, Float64 inBPM);
 
+// Music event iterators
+
+extern OSStatus
+NewMusicEventIterator(MusicTrack inTrack, MusicEventIterator *outIterator);
+
+extern OSStatus
+DisposeMusicEventIterator(MusicEventIterator inIterator);
+
+extern OSStatus
+MusicEventIteratorSeek(MusicEventIterator inIterator, MusicTimeStamp inTimeStamp);
+
+extern OSStatus
+MusicEventIteratorNextEvent(MusicEventIterator inIterator);
+
+extern OSStatus
+MusicEventIteratorPreviousEvent(MusicEventIterator inIterator);
+
+extern OSStatus
+MusicEventIteratorGetEventInfo(MusicEventIterator inIterator,
+	MusicTimeStamp *outTimeStamp,
+	MusicEventType *outEventType,
+	const void **outEventData,
+	UInt32 *outEventDataSize);
+
+extern OSStatus
+MusicEventIteratorHasPreviousEvent(MusicEventIterator inIterator, Boolean *outHasPrevEvent);
+
+extern OSStatus
+MusicEventIteratorHasNextEvent(MusicEventIterator inIterator, Boolean *outHasNextEvent);
+
+extern OSStatus
+MusicEventIteratorHasCurrentEvent(MusicEventIterator inIterator, Boolean *outHasCurEvent);
+
 #ifdef __cplusplus
 }
 #endif
