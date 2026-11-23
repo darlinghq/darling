@@ -48,14 +48,13 @@
 	self = [super initWithCollection:collection isAnalog:analog aliases:aliases];
 	if (!self)
 		return nil;
-
-	_xAxis = [[GCControllerAxisInput alloc] initWithCollection:self isAnalog:analog aliases:[NSSet set]];
-	_yAxis = [[GCControllerAxisInput alloc] initWithCollection:self isAnalog:analog aliases:[NSSet set]];
-	_up = [[GCControllerButtonInput alloc] initWithCollection:self isAnalog:analog aliases:[NSSet set]];
-	_down = [[GCControllerButtonInput alloc] initWithCollection:self isAnalog:analog aliases:[NSSet set]];
-	_left = [[GCControllerButtonInput alloc] initWithCollection:self isAnalog:analog aliases:[NSSet set]];
-	_right = [[GCControllerButtonInput alloc] initWithCollection:self isAnalog:analog aliases:[NSSet set]];
-
+	// the children of a pad are analog whatever the pad is
+	_xAxis = [[GCControllerAxisInput alloc] initWithCollection:self isAnalog:YES aliases:[NSSet set]];
+	_yAxis = [[GCControllerAxisInput alloc] initWithCollection:self isAnalog:YES aliases:[NSSet set]];
+	_up = [[GCControllerButtonInput alloc] initWithCollection:self isAnalog:YES aliases:[NSSet set]];
+	_down = [[GCControllerButtonInput alloc] initWithCollection:self isAnalog:YES aliases:[NSSet set]];
+	_left = [[GCControllerButtonInput alloc] initWithCollection:self isAnalog:YES aliases:[NSSet set]];
+	_right = [[GCControllerButtonInput alloc] initWithCollection:self isAnalog:YES aliases:[NSSet set]];
 	return self;
 }
 
@@ -78,19 +77,38 @@
 - (GCControllerButtonInput *)left { return _left; }
 - (GCControllerButtonInput *)right { return _right; }
 
+- (void)_assignAliasesForKey:(NSString *)key
+{
+	[self _setAliases:[NSSet setWithObject:key]];
+	[_xAxis _setAliases:[NSSet setWithObject:[key stringByAppendingString:@" X Axis"]]];
+	[_yAxis _setAliases:[NSSet setWithObject:[key stringByAppendingString:@" Y Axis"]]];
+	[_up _setAliases:[NSSet setWithObject:[key stringByAppendingString:@" Up"]]];
+	[_down _setAliases:[NSSet setWithObject:[key stringByAppendingString:@" Down"]]];
+	[_left _setAliases:[NSSet setWithObject:[key stringByAppendingString:@" Left"]]];
+	[_right _setAliases:[NSSet setWithObject:[key stringByAppendingString:@" Right"]]];
+}
+
 - (void)setValueForXAxis:(float)xAxis yAxis:(float)yAxis
 {
-	[self _setXAxis:xAxis yAxis:yAxis handlerQueue:dispatch_get_main_queue() profileHandler:nil];
+	if (![self _allowsPublicWrites])
+		return;
+	[self _setXAxis:xAxis yAxis:yAxis handlerQueue:[self _handlerQueue] profileHandler:nil];
+}
+
+- (void)_copyStateFromElement:(GCControllerElement *)element
+{
+	if ([element isKindOfClass:[GCControllerDirectionPad class]])
+		[self setValueForXAxis:[[(GCControllerDirectionPad *)element xAxis] value] yAxis:[[(GCControllerDirectionPad *)element yAxis] value]];
 }
 
 - (void)_setXAxis:(float)x yAxis:(float)y handlerQueue:(dispatch_queue_t)queue profileHandler:(void (^)(GCControllerElement *))profileHandler
 {
-	float cx = fmaxf(-1.0f, fminf(1.0f, x));
-	float cy = fmaxf(-1.0f, fminf(1.0f, y));
-
+	float cx = isnan(x) ? 0.0f : fmaxf(-1.0f, fminf(1.0f, x));
+	float cy = isnan(y) ? 0.0f : fmaxf(-1.0f, fminf(1.0f, y));
 	if (cx == _xAxis.value && cy == _yAxis.value)
 		return;
-
+	if (profileHandler)
+		[[self _profile] _noteEvent];
 	// every element of the pad reports its own change through its handlers
 	[_xAxis _setValue:cx handlerQueue:queue profileHandler:nil];
 	[_yAxis _setValue:cy handlerQueue:queue profileHandler:nil];
@@ -101,21 +119,18 @@
 
 	GCControllerDirectionPadValueChangedHandler vh = [_valueChangedHandler copy];
 	void (^phCopy)(GCControllerElement *) = [profileHandler copy];
-
 	dispatch_queue_t targetQueue = queue ? queue : dispatch_get_main_queue();
 	dispatch_async(targetQueue, ^{
 		if (vh)
 			vh(self, cx, cy);
 		if (phCopy)
 			phCopy(self);
-
 		[vh release];
 		[phCopy release];
 	});
 }
 
 @end
-
 #else
 #import <GameController/GCControllerDirectionPad.h>
 #import <darling-stub-forwarding.h>

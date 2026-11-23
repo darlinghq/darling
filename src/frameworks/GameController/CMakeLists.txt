@@ -41,6 +41,14 @@ add_framework(GameController
         src/GCDualShockGamepad.m
         src/GCDualSenseGamepad.m
         src/GCKeyboard.m
+        src/GCKeys.m
+        src/GCInputNames.m
+        src/GCElementSpecs.m
+        src/GCTypes.m
+        src/GCDeviceCursor.m
+        src/GCControllerTouchpad.m
+        src/GCDualSenseAdaptiveTrigger.m
+        src/GCDirectionalGamepad.m
         src/GCDeviceLight.m
         src/GCDeviceBattery.m
         src/GCProductCategories.m
@@ -70,4 +78,5 @@ add_framework(GameController
         objc
         Foundation
         IOKit
+        AppKit
 )

@@ -24,12 +24,11 @@
 #ifdef __LP64__
 #import <GameController/GCExtendedGamepad.h>
 #import <GameController/GCController.h>
+#import <GameController/GCExtendedGamepadSnapshot.h>
 #import "GCInputInternal.h"
 
 @implementation GCExtendedGamepad {
-	GCController *_controller;
 	GCExtendedGamepadValueChangedHandler _valueChangedHandler;
-
 	GCControllerDirectionPad *_dpad;
 	GCControllerButtonInput *_buttonA;
 	GCControllerButtonInput *_buttonB;
@@ -38,20 +37,27 @@
 	GCControllerButtonInput *_buttonMenu;
 	GCControllerButtonInput *_buttonOptions;
 	GCControllerButtonInput *_buttonHome;
-
 	GCControllerDirectionPad *_leftThumbstick;
 	GCControllerDirectionPad *_rightThumbstick;
-
 	GCControllerButtonInput *_leftShoulder;
 	GCControllerButtonInput *_rightShoulder;
 	GCControllerButtonInput *_leftTrigger;
 	GCControllerButtonInput *_rightTrigger;
-
 	GCControllerButtonInput *_leftThumbstickButton;
 	GCControllerButtonInput *_rightThumbstickButton;
 }
 
 @synthesize valueChangedHandler = _valueChangedHandler;
+
+static GCControllerButtonInput *GCNewButton(NSString *alias)
+{
+	return [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:alias]];
+}
+
+static GCControllerDirectionPad *GCNewPad(NSString *alias)
+{
+	return [[GCControllerDirectionPad alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:alias]];
+}
 
 - (instancetype)init
 {
@@ -60,32 +66,30 @@
 
 - (instancetype)initWithController:(GCController *)controller
 {
+	return [self initWithController:controller style:GCProfileStyleGeneric];
+}
+
+- (instancetype)initWithController:(GCController *)controller style:(GCProfileStyle)style
+{
 	self = [super initWithDevice:controller];
 	if (!self)
 		return nil;
-
-	_controller = controller;
-
-	_dpad = [[GCControllerDirectionPad alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputDirectionPad]];
-	_buttonA = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputButtonA]];
-	_buttonB = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputButtonB]];
-	_buttonX = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputButtonX]];
-	_buttonY = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputButtonY]];
-	_buttonMenu = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputButtonMenu]];
-	_buttonOptions = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputButtonOptions]];
-	_buttonHome = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputButtonHome]];
-
-	_leftThumbstick = [[GCControllerDirectionPad alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputLeftThumbstick]];
-	_rightThumbstick = [[GCControllerDirectionPad alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputRightThumbstick]];
-
-	_leftShoulder = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputLeftShoulder]];
-	_rightShoulder = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputRightShoulder]];
-	_leftTrigger = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputLeftTrigger]];
-	_rightTrigger = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputRightTrigger]];
-
-	_leftThumbstickButton = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputLeftThumbstickButton]];
-	_rightThumbstickButton = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputRightThumbstickButton]];
-
+	_dpad = GCNewPad(GCInputDirectionPad);
+	_buttonA = GCNewButton(GCInputButtonA);
+	_buttonB = GCNewButton(GCInputButtonB);
+	_buttonX = GCNewButton(GCInputButtonX);
+	_buttonY = GCNewButton(GCInputButtonY);
+	_buttonMenu = GCNewButton(GCInputButtonMenu);
+	_buttonOptions = GCNewButton(GCInputButtonOptions);
+	_buttonHome = GCNewButton(GCInputButtonHome);
+	_leftThumbstick = GCNewPad(GCInputLeftThumbstick);
+	_rightThumbstick = GCNewPad(GCInputRightThumbstick);
+	_leftShoulder = GCNewButton(GCInputLeftShoulder);
+	_rightShoulder = GCNewButton(GCInputRightShoulder);
+	_leftTrigger = GCNewButton(GCInputLeftTrigger);
+	_rightTrigger = GCNewButton(GCInputRightTrigger);
+	_leftThumbstickButton = GCNewButton(GCInputLeftThumbstickButton);
+	_rightThumbstickButton = GCNewButton(GCInputRightThumbstickButton);
 	[self _registerDpad:_dpad key:GCInputDirectionPad];
 	[self _registerButton:_buttonA key:GCInputButtonA];
 	[self _registerButton:_buttonB key:GCInputButtonB];
@@ -94,18 +98,32 @@
 	[self _registerButton:_buttonMenu key:GCInputButtonMenu];
 	[self _registerButton:_buttonOptions key:GCInputButtonOptions];
 	[self _registerButton:_buttonHome key:GCInputButtonHome];
-
 	[self _registerDpad:_leftThumbstick key:GCInputLeftThumbstick];
 	[self _registerDpad:_rightThumbstick key:GCInputRightThumbstick];
-
 	[self _registerButton:_leftShoulder key:GCInputLeftShoulder];
 	[self _registerButton:_rightShoulder key:GCInputRightShoulder];
 	[self _registerButton:_leftTrigger key:GCInputLeftTrigger];
 	[self _registerButton:_rightTrigger key:GCInputRightTrigger];
-
 	[self _registerButton:_leftThumbstickButton key:GCInputLeftThumbstickButton];
 	[self _registerButton:_rightThumbstickButton key:GCInputRightThumbstickButton];
-
+	if (style != GCProfileStyleDualSense) {
+		// bumpers and the four back buttons; the back buttons are also the paddles of an Xbox controller
+		NSString *backNames[4] = { GCInputBackRightButton(0), GCInputBackRightButton(1), GCInputBackLeftButton(0), GCInputBackLeftButton(1) };
+		NSString *paddleNames[4] = { GCInputXboxPaddleOne, GCInputXboxPaddleTwo, GCInputXboxPaddleThree, GCInputXboxPaddleFour };
+		for (int i = 0; i < 4; i++) {
+			GCControllerButtonInput *back = GCNewButton(backNames[i]);
+			[self _registerButton:back key:backNames[i]];
+			[self _registerAlias:paddleNames[i] forElement:back];
+			[back release];
+		}
+		GCControllerButtonInput *leftBumper = GCNewButton(GCInputLeftBumper);
+		GCControllerButtonInput *rightBumper = GCNewButton(GCInputRightBumper);
+		[self _registerButton:leftBumper key:GCInputLeftBumper];
+		[self _registerButton:rightBumper key:GCInputRightBumper];
+		[leftBumper release];
+		[rightBumper release];
+	}
+	[self _applyStyle:style];
 	return self;
 }
 
@@ -131,7 +149,7 @@
 	[super dealloc];
 }
 
-- (GCController *)controller { return _controller; }
+- (GCController *)controller { return (GCController *)[self device]; }
 - (GCControllerDirectionPad *)dpad { return _dpad; }
 - (GCControllerButtonInput *)buttonA { return _buttonA; }
 - (GCControllerButtonInput *)buttonB { return _buttonB; }
@@ -149,8 +167,17 @@
 - (GCControllerButtonInput *)leftThumbstickButton { return _leftThumbstickButton; }
 - (GCControllerButtonInput *)rightThumbstickButton { return _rightThumbstickButton; }
 
-@end
+- (GCExtendedGamepadSnapshot *)saveSnapshot
+{
+	return [[[GCExtendedGamepadSnapshot alloc] initWithSnapshotData:GCExtendedGamepadStateData(self)] autorelease];
+}
 
+- (void)setStateFromExtendedGamepad:(GCExtendedGamepad *)extendedGamepad
+{
+	[self setStateFromPhysicalInput:extendedGamepad];
+}
+
+@end
 #else
 #import <GameController/GCExtendedGamepad.h>
 #import <darling-stub-forwarding.h>

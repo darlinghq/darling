@@ -29,3 +29,7 @@ NSString *const GCProductCategoryKeyboard = @"Keyboard";
 NSString *const GCProductCategoryControlCenterRemote = @"Control Center Remote";
 NSString *const GCProductCategorySiriRemote1stGen = @"Siri Remote (1st Generation)";
 NSString *const GCProductCategoryCoalescedRemote = @"Coalesced Remote";
+NSString *const GCProductCategorySiriRemote2ndGen = @"Siri Remote (2nd Generation)";
+NSString *const GCProductCategoryUniversalElectronicsRemote = @"Universal Electronics Remote";
+NSString *const GCProductCategoryArcadeStick = @"Arcade Stick";
+NSString *const GCProductCategorySpatialController = @"Spatial Controller";

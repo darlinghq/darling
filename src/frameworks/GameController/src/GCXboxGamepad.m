@@ -25,50 +25,36 @@
 #import "GCInputInternal.h"
 
 @implementation GCXboxGamepad {
-	GCControllerButtonInput *_paddleButton1;
-	GCControllerButtonInput *_paddleButton2;
-	GCControllerButtonInput *_paddleButton3;
-	GCControllerButtonInput *_paddleButton4;
 	GCControllerButtonInput *_buttonShare;
 }
 
 - (instancetype)initWithController:(GCController *)controller
 {
-	self = [super initWithController:controller];
+	self = [super initWithController:controller style:GCProfileStyleXbox];
 	if (!self)
 		return nil;
-
-	_paddleButton1 = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputXboxPaddleOne]];
-	_paddleButton2 = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputXboxPaddleTwo]];
-	_paddleButton3 = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputXboxPaddleThree]];
-	_paddleButton4 = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputXboxPaddleFour]];
-	_buttonShare = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputButtonShare]];
-
-	[self _registerButton:_paddleButton1 key:GCInputXboxPaddleOne];
-	[self _registerButton:_paddleButton2 key:GCInputXboxPaddleTwo];
-	[self _registerButton:_paddleButton3 key:GCInputXboxPaddleThree];
-	[self _registerButton:_paddleButton4 key:GCInputXboxPaddleFour];
-	[self _registerButton:_buttonShare key:GCInputButtonShare];
-
+	// a profile without a controller has no share button; one with a controller is assumed to have it
+	if (controller) {
+		_buttonShare = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputButtonShare]];
+		[self _registerButton:_buttonShare key:GCInputButtonShare];
+	}
 	return self;
 }
 
 - (void)dealloc
 {
-	[_paddleButton1 release];
-	[_paddleButton2 release];
-	[_paddleButton3 release];
-	[_paddleButton4 release];
 	[_buttonShare release];
 	[super dealloc];
 }
 
-- (GCControllerButtonInput *)paddleButton1 { return _paddleButton1; }
-- (GCControllerButtonInput *)paddleButton2 { return _paddleButton2; }
-- (GCControllerButtonInput *)paddleButton3 { return _paddleButton3; }
-- (GCControllerButtonInput *)paddleButton4 { return _paddleButton4; }
+// The paddles are the back buttons of the profile (Paddle 1 and 2 on the right, 3 and 4 on the left);
+// a profile that belongs to no controller answers nil for them, as macOS does.
+- (GCControllerButtonInput *)_paddleNamed:(NSString *)name { return [self controller] ? self.buttons[name] : nil; }
+- (GCControllerButtonInput *)paddleButton1 { return [self _paddleNamed:GCInputXboxPaddleOne]; }
+- (GCControllerButtonInput *)paddleButton2 { return [self _paddleNamed:GCInputXboxPaddleTwo]; }
+- (GCControllerButtonInput *)paddleButton3 { return [self _paddleNamed:GCInputXboxPaddleThree]; }
+- (GCControllerButtonInput *)paddleButton4 { return [self _paddleNamed:GCInputXboxPaddleFour]; }
 - (GCControllerButtonInput *)buttonShare { return _buttonShare; }
 
 @end
-
 #endif /* __LP64__ */

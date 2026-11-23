@@ -24,17 +24,15 @@
 #ifdef __LP64__
 #import <GameController/GCMicroGamepad.h>
 #import <GameController/GCController.h>
+#import <GameController/GCMicroGamepadSnapshot.h>
 #import "GCInputInternal.h"
 
 @implementation GCMicroGamepad {
-	GCController *_controller;
 	GCMicroGamepadValueChangedHandler _valueChangedHandler;
-
 	GCControllerDirectionPad *_dpad;
 	GCControllerButtonInput *_buttonA;
 	GCControllerButtonInput *_buttonX;
 	GCControllerButtonInput *_buttonMenu;
-
 	BOOL _reportsAbsoluteDpadValues;
 	BOOL _allowsRotation;
 }
@@ -53,19 +51,15 @@
 	self = [super initWithDevice:controller];
 	if (!self)
 		return nil;
-
-	_controller = controller;
-
-	_dpad = [[GCControllerDirectionPad alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputDirectionPad]];
-	_buttonA = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputButtonA]];
-	_buttonX = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputButtonX]];
+	_dpad = [[GCControllerDirectionPad alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputDirectionPad]];
+	_buttonA = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputButtonA]];
+	_buttonX = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputButtonX]];
 	_buttonMenu = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputButtonMenu]];
-
 	[self _registerDpad:_dpad key:GCInputDirectionPad];
 	[self _registerButton:_buttonA key:GCInputButtonA];
 	[self _registerButton:_buttonX key:GCInputButtonX];
 	[self _registerButton:_buttonMenu key:GCInputButtonMenu];
-
+	[self _applyStyle:GCProfileStyleMicro];
 	return self;
 }
 
@@ -79,14 +73,23 @@
 	[super dealloc];
 }
 
-- (GCController *)controller { return _controller; }
+- (GCController *)controller { return (GCController *)[self device]; }
 - (GCControllerDirectionPad *)dpad { return _dpad; }
 - (GCControllerButtonInput *)buttonA { return _buttonA; }
 - (GCControllerButtonInput *)buttonX { return _buttonX; }
 - (GCControllerButtonInput *)buttonMenu { return _buttonMenu; }
 
-@end
+- (GCMicroGamepadSnapshot *)saveSnapshot
+{
+	return [[[GCMicroGamepadSnapshot alloc] initWithSnapshotData:GCMicroGamepadStateData(self)] autorelease];
+}
 
+- (void)setStateFromMicroGamepad:(GCMicroGamepad *)microGamepad
+{
+	[self setStateFromPhysicalInput:microGamepad];
+}
+
+@end
 #else
 #import <GameController/GCMicroGamepad.h>
 #import <darling-stub-forwarding.h>

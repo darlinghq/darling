@@ -33,6 +33,11 @@
 
 @synthesize valueChangedHandler = _valueChangedHandler;
 
+- (instancetype)init
+{
+	return [self initWithCollection:nil isAnalog:NO aliases:[NSSet set]];
+}
+
 - (void)dealloc
 {
 	[_valueChangedHandler release];
@@ -46,34 +51,39 @@
 
 - (void)setValue:(float)value
 {
-	_value = fmaxf(-1.0f, fminf(1.0f, value));
+	if (![self _allowsPublicWrites])
+		return;
+	[self _setValue:value handlerQueue:[self _handlerQueue] profileHandler:nil];
+}
+
+- (void)_copyStateFromElement:(GCControllerElement *)element
+{
+	if ([element isKindOfClass:[GCControllerAxisInput class]])
+		[self setValue:[(GCControllerAxisInput *)element value]];
 }
 
 - (void)_setValue:(float)value handlerQueue:(dispatch_queue_t)queue profileHandler:(void (^)(GCControllerElement *))profileHandler
 {
-	float clamped = fmaxf(-1.0f, fminf(1.0f, value));
+	float clamped = isnan(value) ? 0.0f : fmaxf(-1.0f, fminf(1.0f, value));
 	if (clamped == _value)
 		return;
-
 	_value = clamped;
-
+	if (profileHandler)
+		[[self _profile] _noteEvent];
 	GCControllerAxisValueChangedHandler vh = [_valueChangedHandler copy];
 	void (^phCopy)(GCControllerElement *) = [profileHandler copy];
-
 	dispatch_queue_t targetQueue = queue ? queue : dispatch_get_main_queue();
 	dispatch_async(targetQueue, ^{
 		if (vh)
 			vh(self, clamped);
 		if (phCopy)
 			phCopy(self);
-
 		[vh release];
 		[phCopy release];
 	});
 }
 
 @end
-
 #else
 #import <GameController/GCControllerAxisInput.h>
 #import <darling-stub-forwarding.h>

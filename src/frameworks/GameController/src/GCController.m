@@ -31,6 +31,8 @@
 #import <GameController/GCDeviceLight.h>
 #import <GameController/GCDeviceBattery.h>
 #import <GameController/GCDeviceHaptics.h>
+#import <GameController/GCGamepad.h>
+#import <GameController/GCMotion.h>
 #import <GameController/_GCControllerManager.h>
 #import "GCInputInternal.h"
 
@@ -52,6 +54,9 @@
 	GCDeviceHaptics *_haptics;
 
 	BOOL _isPlayStation;
+	BOOL _isSnapshot;
+	GCMotion *_motion;
+	void (^_controllerPausedHandler)(GCController *);
 }
 
 - (instancetype)initWithHIDDevice:(IOHIDDeviceRef)device;
@@ -71,6 +76,32 @@
 {
 	NSArray<GCController *> *all = [self controllers];
 	return [all firstObject];
+}
+
+static BOOL gShouldMonitorBackgroundEvents;
+
++ (BOOL)shouldMonitorBackgroundEvents
+{
+	@synchronized (self) {
+		return gShouldMonitorBackgroundEvents;
+	}
+}
+
++ (void)setShouldMonitorBackgroundEvents:(BOOL)monitor
+{
+	@synchronized (self) {
+		gShouldMonitorBackgroundEvents = monitor;
+	}
+}
+
++ (GCController *)controllerWithExtendedGamepad
+{
+	return [[[self alloc] _initSnapshotWithExtendedGamepad:YES] autorelease];
+}
+
++ (GCController *)controllerWithMicroGamepad
+{
+	return [[[self alloc] _initSnapshotWithExtendedGamepad:NO] autorelease];
 }
 
 + (BOOL)supportsHIDDevice:(IOHIDDeviceRef)device
@@ -179,8 +210,38 @@
 	return self;
 }
 
+- (instancetype)_initSnapshotWithExtendedGamepad:(BOOL)extended
+{
+	self = [super init];
+	if (!self)
+		return nil;
+	_isSnapshot = YES;
+	// QUIRK: a controller created with +controllerWithExtendedGamepad/MicroGamepad has player index 1
+	// (0), not Unset like the controllers of devices; observed on macOS 26.7.3 (tier 2). Test:
+	// gamecontroller_public_api, "snapshot: no battery, light, haptics; has motion; player index 0".
+	_playerIndex = GCControllerPlayerIndex1;
+	_handlerQueue = dispatch_get_main_queue();
+	if (extended) {
+		_vendorName = [@"ExtendedGamepad" copy];
+		_productCategory = [GCProductCategoryMFi retain];
+		_extendedGamepad = [[GCExtendedGamepad alloc] initWithController:self];
+		_motion = [[GCMotion alloc] initWithController:self attitudeAndRotationRate:NO];
+	} else {
+		_vendorName = [@"MicroGamepad" copy];
+		// the remote of a micro gamepad has no constant of its own
+		_productCategory = [@"Siri Remote" copy];
+		_microGamepad = [[GCMicroGamepad alloc] initWithController:self];
+		_motion = [[GCMotion alloc] initWithController:self attitudeAndRotationRate:YES];
+	}
+	return self;
+}
+
 - (void)dealloc
 {
+	[_extendedGamepad _clearDevice];
+	[_microGamepad _clearDevice];
+	[_motion release];
+	[_controllerPausedHandler release];
 	if (_hidDevice)
 		CFRelease(_hidDevice);
 	[_vendorName release];
@@ -206,14 +267,39 @@
 }
 
 - (GCExtendedGamepad *)extendedGamepad { return _extendedGamepad; }
-- (GCMicroGamepad *)microGamepad { return _microGamepad; }
-- (GCPhysicalInputProfile *)physicalInputProfile { return _extendedGamepad; }
+
+// QUIRK: on a controller created with +controllerWithExtendedGamepad, -microGamepad answers the extended
+// profile object itself, as -gamepad does on every controller that has an extended profile; macOS 26
+// answers that way (black-box observation, tier 2). Test: gamecontroller_public_api, "snapshot profiles".
+- (GCMicroGamepad *)microGamepad { return _isSnapshot && _extendedGamepad ? (GCMicroGamepad *)_extendedGamepad : _microGamepad; }
+- (GCGamepad *)gamepad { return (GCGamepad *)_extendedGamepad; }
+- (GCPhysicalInputProfile *)physicalInputProfile { return _extendedGamepad ? _extendedGamepad : _microGamepad; }
+- (GCMotion *)motion { return _motion; }
+// The live input of the new input API (GCControllerLiveInput) is not implemented.
+- (GCControllerLiveInput *)input { return nil; }
+- (void (^)(GCController *))controllerPausedHandler { return _controllerPausedHandler; }
+- (void)setControllerPausedHandler:(void (^)(GCController *))handler
+{
+	if (handler != _controllerPausedHandler) {
+		[_controllerPausedHandler release];
+		_controllerPausedHandler = [handler copy];
+	}
+}
+- (BOOL)isSnapshot { return _isSnapshot; }
+
+- (GCController *)capture
+{
+	GCController *copy = [[[GCController alloc] _initSnapshotWithExtendedGamepad:_extendedGamepad != nil] autorelease];
+	GCPhysicalInputProfile *profile = copy.physicalInputProfile;
+	[profile _forceStateFromPhysicalInput:self.physicalInputProfile];
+	return copy;
+}
 
 - (GCDeviceBattery *)battery { return _battery; }
 - (GCDeviceLight *)light { return _light; }
 - (GCDeviceHaptics *)haptics { return _haptics; }
 
-- (BOOL)isAttachedToDevice { return YES; }
+- (BOOL)isAttachedToDevice { return !_isSnapshot; }
 
 - (void)handleHIDValue:(IOHIDValueRef)value
 {

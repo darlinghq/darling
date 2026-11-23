@@ -64,46 +64,61 @@
 
 - (void)setValue:(float)value
 {
-	_value = fmaxf(0.0f, fminf(1.0f, value));
-	_pressed = (_value > 0.0f);
-	_touched = (_value > 0.0f);
+	if (![self _allowsPublicWrites])
+		return;
+	[self _setValue:value handlerQueue:[self _handlerQueue] profileHandler:nil];
 }
 
+- (void)_copyStateFromElement:(GCControllerElement *)element
+{
+	if ([element isKindOfClass:[GCControllerButtonInput class]])
+		[self setValue:[(GCControllerButtonInput *)element value]];
+}
+
+// Sets the value and calls the handlers on the queue: the value handler first, then the touched
+// handler and the pressed handler for the states that changed. The profile handler, if any, runs last.
 - (void)_setValue:(float)value handlerQueue:(dispatch_queue_t)queue profileHandler:(void (^)(GCControllerElement *))profileHandler
 {
-	float clamped = fmaxf(0.0f, fminf(1.0f, value));
-	BOOL newPressed = (clamped > 0.0f);
+	float clamped = isnan(value) ? 0.0f : fmaxf(0.0f, fminf(1.0f, value));
+	BOOL newPressed = (clamped >= GC_PRESS_THRESHOLD);
+	BOOL newTouched = (clamped > 0.0f);
 	BOOL pressedChanged = (newPressed != _pressed);
+	BOOL touchedChanged = (newTouched != _touched);
 	BOOL valueChanged = (clamped != _value);
 
-	if (!valueChanged && !pressedChanged)
+	if (!valueChanged && !pressedChanged && !touchedChanged)
 		return;
 
 	_value = clamped;
 	_pressed = newPressed;
-	_touched = (clamped > 0.0f);
+	_touched = newTouched;
+	if (profileHandler)
+		[[self _profile] _noteEvent];
 
 	GCControllerButtonValueChangedHandler vh = [_valueChangedHandler copy];
 	GCControllerButtonValueChangedHandler ph = [_pressedChangedHandler copy];
+	GCControllerButtonTouchedChangedHandler th = [_touchedChangedHandler copy];
 	void (^phCopy)(GCControllerElement *) = [profileHandler copy];
 
 	dispatch_queue_t targetQueue = queue ? queue : dispatch_get_main_queue();
 	dispatch_async(targetQueue, ^{
-		if (vh)
+		if (vh && valueChanged)
 			vh(self, clamped, newPressed);
-		if (pressedChanged && ph)
+		if (th && touchedChanged)
+			th(self, clamped, newPressed, newTouched);
+		if (ph && pressedChanged)
 			ph(self, clamped, newPressed);
 		if (phCopy)
 			phCopy(self);
 
 		[vh release];
 		[ph release];
+		[th release];
 		[phCopy release];
 	});
 }
 
 @end
-
 #else
 #import <GameController/GCControllerButtonInput.h>
 #import <darling-stub-forwarding.h>
