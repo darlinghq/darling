@@ -19,7 +19,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 // Music track properties (MusicPlayer.h): MusicTrackSetProperty and MusicTrackGetProperty.
 //
-// Property values are read and written by reference and have a fixed size. The properties are
+// Property values are read and written by reference and have a fixed size (which macOS does not check against the one
+// the caller passes, and neither does this). The properties are
 // stored on the track; nothing plays yet, so they have no effect other than being read back
 // (and the track length, which follows the events).
 
@@ -58,15 +59,6 @@ bool isTempoTrack(const OpaqueMusicTrack* track)
 	return track->sequence && track == &track->sequence->tempoTrack;
 }
 
-template <typename T>
-bool takeValue(const void* data, UInt32 length, T& value)
-{
-	if (length != sizeof(T))
-		return false;
-	std::memcpy(&value, data, sizeof(T));
-	return true;
-}
-
 }
 
 MusicTimeStamp musicimpl::trackLength(const OpaqueMusicTrack* track)
@@ -79,10 +71,12 @@ MusicTimeStamp musicimpl::trackLength(const OpaqueMusicTrack* track)
 
 OSStatus MusicTrackSetProperty(MusicTrack inTrack, UInt32 inPropertyID, void* inData, UInt32 inLength)
 {
-	// GUESS: a NULL value, a size that is not the size of the property, an unknown property and a
-	// value that makes no sense (a negative or non-finite loop duration or length, a non-finite
-	// offset, a negative loop count) are all kAudio_ParamError; the documentation says only that
-	// properties have fixed sizes. A negative offset is accepted: it moves the track earlier.
+	// QUIRK: the size that is passed is not looked at: each property has its own size, whatever the caller
+	// says (observed on macOS 26.7.3 and 10.14.4, tier 2; test: tests/src/audiotoolbox_music_track_properties.c,
+	// "sizes"). Values are checked as little as there: the offset may be anything, a loop duration only
+	// not negative, and a track length not negative. The mute, solo and automation flags keep one bit of
+	// truth.
+	(void)inLength;
 	if (!inTrack || !inData)
 		return kAudio_ParamError;
 
@@ -93,47 +87,33 @@ OSStatus MusicTrackSetProperty(MusicTrack inTrack, UInt32 inPropertyID, void* in
 		case kSequenceTrackProperty_LoopInfo:
 		{
 			MusicTrackLoopInfo loop;
-			if (!takeValue(inData, inLength, loop) || !std::isfinite(loop.loopDuration) || loop.loopDuration < 0 || loop.numberOfLoops < 0)
+			std::memcpy(&loop, inData, sizeof(loop));
+			if (loop.loopDuration < 0)
 				return kAudio_ParamError;
 			inTrack->loop = loop;
 			return noErr;
 		}
 		case kSequenceTrackProperty_OffsetTime:
-		{
-			MusicTimeStamp offset;
-			if (!takeValue(inData, inLength, offset) || !std::isfinite(offset))
-				return kAudio_ParamError;
-			inTrack->offsetTime = offset;
+			std::memcpy(&inTrack->offsetTime, inData, sizeof(inTrack->offsetTime));
 			return noErr;
-		}
 		case kSequenceTrackProperty_MuteStatus:
-		{
-			Boolean muted;
-			if (!takeValue(inData, inLength, muted))
-				return kAudio_ParamError;
-			inTrack->muted = muted != 0;
+			inTrack->muted = *static_cast<const Boolean*>(inData) != 0;
 			return noErr;
-		}
 		case kSequenceTrackProperty_SoloStatus:
-		{
-			Boolean soloed;
-			if (!takeValue(inData, inLength, soloed))
-				return kAudio_ParamError;
-			inTrack->soloed = soloed != 0;
+			inTrack->soloed = *static_cast<const Boolean*>(inData) != 0;
 			return noErr;
-		}
 		case kSequenceTrackProperty_AutomatedParameters:
 		{
 			UInt32 automated;
-			if (!takeValue(inData, inLength, automated))
-				return kAudio_ParamError;
-			inTrack->automatedParameters = automated;
+			std::memcpy(&automated, inData, sizeof(automated));
+			inTrack->automatedParameters = automated != 0;
 			return noErr;
 		}
 		case kSequenceTrackProperty_TrackLength:
 		{
 			MusicTimeStamp length;
-			if (!takeValue(inData, inLength, length) || !std::isfinite(length) || length < 0)
+			std::memcpy(&length, inData, sizeof(length));
+			if (length < 0)
 				return kAudio_ParamError;
 			inTrack->hasLength = true;
 			inTrack->length = length;
@@ -147,7 +127,7 @@ OSStatus MusicTrackSetProperty(MusicTrack inTrack, UInt32 inPropertyID, void* in
 
 OSStatus MusicTrackGetProperty(MusicTrack inTrack, UInt32 inPropertyID, void* outData, UInt32* ioLength)
 {
-	if (!inTrack || !ioLength)
+	if (!inTrack)
 		return kAudio_ParamError;
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
@@ -191,8 +171,8 @@ OSStatus MusicTrackGetProperty(MusicTrack inTrack, UInt32 inPropertyID, void* ou
 			size = sizeof(value.time);
 			break;
 		case kSequenceTrackProperty_TimeResolution:
-			// The documentation says the value is only valid on the tempo track. GUESS: on any other
-			// track this is kAudio_ParamError.
+			// The documentation says the value is only valid on the tempo track; on any other track this is
+			// kAudio_ParamError (observed on macOS 26.7.3 and 10.14.4).
 			if (!isTempoTrack(inTrack))
 				return kAudio_ParamError;
 			value.resolution = inTrack->sequence->timeResolution;
@@ -202,14 +182,12 @@ OSStatus MusicTrackGetProperty(MusicTrack inTrack, UInt32 inPropertyID, void* ou
 			return kAudio_ParamError;
 	}
 
-	// With no buffer only the size is reported. GUESS: a buffer smaller than the value is
-	// kAudio_ParamError and nothing is copied.
+	// QUIRK: the length passed in is not looked at and may be NULL: the value is copied whole when there is
+	// a buffer, and the length, when there is one, is set to the size of the value (observed on macOS 26.7.3
+	// and 10.14.4, tier 2; test: tests/src/audiotoolbox_music_track_properties.c, "sizes").
 	if (outData)
-	{
-		if (*ioLength < size)
-			return kAudio_ParamError;
 		std::memcpy(outData, &value, size);
-	}
-	*ioLength = size;
+	if (ioLength)
+		*ioLength = size;
 	return noErr;
 }

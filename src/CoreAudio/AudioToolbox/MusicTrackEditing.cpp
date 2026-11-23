@@ -21,13 +21,19 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 // in a range of time.
 //
 // A range is [start, end): an event at the start is in it, an event at the end is not, except that
-// kMusicTimeStamp_EndOfTrack as the end selects every event from the start on, the last one
-// included. The documentation requires the start to be less than the end.
+// kMusicTimeStamp_EndOfTrack (the largest double) as the end selects every event from the start on.
+// What is not documented follows macOS 26.7.3 and 10.14.4 (tests/src/audiotoolbox_music_track_editing.c):
+// a start that is not a number or is below zero, or after the end, is kAudio_ParamError; a range that is
+// empty (start equal to end) does nothing for Move, Clear and Cut and is kAudio_ParamError for CopyInsert and
+// Merge, which also refuse a range that holds no events. A move may put events below zero or at a time that
+// is not a number. Copy and Merge are given as much of the end of track as the end says: the length of the
+// range is the end minus the start.
 
 #include <AudioToolbox/MusicPlayer.h>
 #include <CarbonCore/MacErrors.h>
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <new>
 #include "MusicSequenceImpl.h"
 
@@ -36,15 +42,18 @@ namespace
 
 bool validRange(MusicTimeStamp start, MusicTimeStamp end)
 {
-	// GUESS: a range whose start is not less than its end, that holds a time that is not a number,
-	// or that starts before zero (no event is there, and a cut would move events below zero) is
-	// kAudio_ParamError; the documentation says only that the start must be less than the end.
-	return !std::isnan(start) && !std::isnan(end) && start >= 0 && start < end;
+	return !std::isnan(start) && !std::isnan(end) && start >= 0 && !(start > end);
 }
 
 bool inRange(const MusicEvent& event, MusicTimeStamp start, MusicTimeStamp end)
 {
-	return event.time >= start && (end == kMusicTimeStamp_EndOfTrack || event.time < end);
+	return event.time >= start && event.time < end;
+}
+
+// An event at the very end of the range is in it when the range reaches the end of the track.
+bool inRangeToEnd(const MusicEvent& event, MusicTimeStamp start, MusicTimeStamp end)
+{
+	return end == kMusicTimeStamp_EndOfTrack ? event.time >= start : inRange(event, start, end);
 }
 
 // The events of the track in the range, as copies.
@@ -53,55 +62,56 @@ std::vector<MusicEvent> copyRange(const OpaqueMusicTrack* track, MusicTimeStamp 
 	std::vector<MusicEvent> copies;
 	for (const MusicEvent& event : track->events)
 	{
-		if (inRange(event, start, end))
+		if (inRangeToEnd(event, start, end))
 			copies.push_back(event);
 	}
 	return copies;
 }
 
-// Puts copies of the events in a track; an event of the range start goes to the insertion time.
+bool eventBefore(const MusicEvent& a, const MusicEvent& b)
+{
+	return musicimpl::timeBefore(a.time, b.time);
+}
+
+// Puts copies of the events in a track, before the events that already have the same time; an event
+// at the range start goes to the insertion time. The copies keep their order among themselves.
 void placeCopies(OpaqueMusicTrack* dest, std::vector<MusicEvent>& copies, MusicTimeStamp rangeStart, MusicTimeStamp insertTime)
 {
 	for (MusicEvent& copy : copies)
-	{
 		copy.time = copy.time - rangeStart + insertTime;
-		musicimpl::insertEvent(dest, std::move(copy));
-	}
+	std::stable_sort(copies.begin(), copies.end(), eventBefore);
+	std::vector<MusicEvent> merged;
+	merged.reserve(dest->events.size() + copies.size());
+	std::merge(std::make_move_iterator(copies.begin()), std::make_move_iterator(copies.end()),
+		std::make_move_iterator(dest->events.begin()), std::make_move_iterator(dest->events.end()),
+		std::back_inserter(merged), eventBefore);
+	dest->events = std::move(merged);
 }
 
 void eraseRange(OpaqueMusicTrack* track, MusicTimeStamp start, MusicTimeStamp end)
 {
 	std::vector<MusicEvent>& events = track->events;
 	events.erase(std::remove_if(events.begin(), events.end(),
-		[&](const MusicEvent& e) { return inRange(e, start, end); }), events.end());
+		[&](const MusicEvent& e) { return inRangeToEnd(e, start, end); }), events.end());
 }
 
 }
 
 OSStatus MusicTrackMoveEvents(MusicTrack inTrack, MusicTimeStamp inStartTime, MusicTimeStamp inEndTime, MusicTimeStamp inMoveTime)
 {
-	if (!inTrack || !validRange(inStartTime, inEndTime) || !std::isfinite(inMoveTime))
+	if (!inTrack || !validRange(inStartTime, inEndTime))
 		return kAudio_ParamError;
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 
-	// GUESS: a move that would put an event before time zero is kAudio_ParamError and moves nothing;
-	// the alternative was to clamp such events to zero.
-	for (const MusicEvent& event : inTrack->events)
-	{
-		if (inRange(event, inStartTime, inEndTime) && event.time + inMoveTime < 0)
-			return kAudio_ParamError;
-	}
-
 	for (MusicEvent& event : inTrack->events)
 	{
-		if (inRange(event, inStartTime, inEndTime))
+		if (inRangeToEnd(event, inStartTime, inEndTime))
 			event.time += inMoveTime;
 	}
 
-	// GUESS: events that end up with the same time stay in the order they had before the move.
-	std::stable_sort(inTrack->events.begin(), inTrack->events.end(),
-		[](const MusicEvent& a, const MusicEvent& b) { return a.time < b.time; });
+	// Events that end up with the same time stay in the order they had before the move.
+	std::stable_sort(inTrack->events.begin(), inTrack->events.end(), eventBefore);
 	return noErr;
 }
 
@@ -138,30 +148,24 @@ OSStatus MusicTrackCut(MusicTrack inTrack, MusicTimeStamp inStartTime, MusicTime
 OSStatus MusicTrackCopyInsert(MusicTrack inSourceTrack, MusicTimeStamp inSourceStartTime, MusicTimeStamp inSourceEndTime,
 	MusicTrack inDestTrack, MusicTimeStamp inDestInsertTime)
 {
-	// GUESS: an insertion time below zero or not finite is kAudio_ParamError, like the time stamp of
-	// a new event.
-	if (!inSourceTrack || !inDestTrack || !validRange(inSourceStartTime, inSourceEndTime) ||
-		!std::isfinite(inDestInsertTime) || inDestInsertTime < 0)
+	// The insertion time must be a number and not below zero; the range must be a range (start before end).
+	if (!inSourceTrack || !inDestTrack || !validRange(inSourceStartTime, inSourceEndTime) || inSourceStartTime == inSourceEndTime ||
+		!(inDestInsertTime >= 0))
 		return kAudio_ParamError;
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 
-	// GUESS: with kMusicTimeStamp_EndOfTrack as the end, the length of the range is the length of
-	// the source track minus the start; it is 0 when the range holds only events at the end of the
-	// track, which are copied all the same, as a merge copies them. The alternative was the time of
-	// the last event.
-	const MusicTimeStamp rangeLength = inSourceEndTime == kMusicTimeStamp_EndOfTrack
-		? musicimpl::trackLength(inSourceTrack) - inSourceStartTime
-		: inSourceEndTime - inSourceStartTime;
-
 	try
 	{
-		// Copied before the destination changes, as the two tracks may be the same one.
+		// Copied before the destination changes, as the two tracks may be the same one. A range with no
+		// events in it is kAudio_ParamError.
 		std::vector<MusicEvent> copies = copyRange(inSourceTrack, inSourceStartTime, inSourceEndTime);
-		if (copies.empty() && !(rangeLength > 0))
-			return noErr;
+		if (copies.empty())
+			return kAudio_ParamError;
 
-		// The events at and after the insertion time move later to make room.
+		// The events at and after the insertion time move later to make room, by the length of the range
+		// (with kMusicTimeStamp_EndOfTrack as the end that is as much as a double holds).
+		const MusicTimeStamp rangeLength = inSourceEndTime - inSourceStartTime;
 		for (MusicEvent& event : inDestTrack->events)
 		{
 			if (event.time >= inDestInsertTime)
@@ -179,16 +183,18 @@ OSStatus MusicTrackCopyInsert(MusicTrack inSourceTrack, MusicTimeStamp inSourceS
 OSStatus MusicTrackMerge(MusicTrack inSourceTrack, MusicTimeStamp inSourceStartTime, MusicTimeStamp inSourceEndTime,
 	MusicTrack inDestTrack, MusicTimeStamp inDestInsertTime)
 {
-	if (!inSourceTrack || !inDestTrack || !validRange(inSourceStartTime, inSourceEndTime) ||
-		!std::isfinite(inDestInsertTime) || inDestInsertTime < 0)
+	// As for CopyInsert, except that any insertion time is accepted, below zero or not a number too.
+	if (!inSourceTrack || !inDestTrack || !validRange(inSourceStartTime, inSourceEndTime) || inSourceStartTime == inSourceEndTime)
 		return kAudio_ParamError;
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 	try
 	{
-		// The events already in the destination stay where they are. GUESS: a copied event with the same
-		// time as one of them goes after it.
+		// The events already in the destination stay where they are; a copied event goes before the
+		// events that have its time.
 		std::vector<MusicEvent> copies = copyRange(inSourceTrack, inSourceStartTime, inSourceEndTime);
+		if (copies.empty())
+			return kAudio_ParamError;
 		placeCopies(inDestTrack, copies, inSourceStartTime, inDestInsertTime);
 	}
 	catch (const std::bad_alloc&)

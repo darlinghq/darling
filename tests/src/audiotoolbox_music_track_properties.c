@@ -2,11 +2,11 @@
 //
 // MusicTrackSetProperty and MusicTrackGetProperty (MusicPlayer.h). Property values are read and
 // written by reference and have fixed sizes; a Get without a buffer reports the size. Defaults:
-// looping off, offset 0, not muted, not soloed, no automated parameters; the time resolution of
+// one loop repetition of no duration, offset 0, not muted, not soloed, no automated parameters; the time resolution of
 // the tempo track is 480 for a sequence made by hand. The track length is the end of the last
 // event (a note lasts for its duration) or the length set on the track, whichever is greater. A
-// check marked GUESS pins a result the documentation leaves open (the code for a refused property,
-// size or value); it was not observed on macOS.
+// what the documentation leaves open (the code for a refused property, size or value, the size that
+// is passed in) is what macOS 26.7.3 and 10.14.4 do, observed with these checks.
 #include <AudioToolbox/AudioToolbox.h>
 #include <math.h>
 #include <stdio.h>
@@ -56,7 +56,8 @@ int main(void)
 	// Defaults.
 	MusicTrackLoopInfo loop = { 9, 9 };
 	CHECK(getValue(track, kSequenceTrackProperty_LoopInfo, &loop, sizeof(loop)) == noErr);
-	CHECK(loop.loopDuration == 0 && loop.numberOfLoops == 0);
+	// the default loop is no loop duration and one repetition (observed on macOS 26.7.3 and 10.14.4)
+	CHECK(loop.loopDuration == 0 && loop.numberOfLoops == 1);
 	MusicTimeStamp offset = 9;
 	CHECK(getValue(track, kSequenceTrackProperty_OffsetTime, &offset, sizeof(offset)) == noErr && offset == 0);
 	Boolean flag = 9;
@@ -69,7 +70,7 @@ int main(void)
 	SInt16 resolution = 0;
 	CHECK(getValue(tempo, kSequenceTrackProperty_TimeResolution, &resolution, sizeof(resolution)) == noErr);
 	CHECK(resolution == 480);
-	// Valid on the tempo track only; GUESS: another track gives kAudio_ParamError.
+	// Valid on the tempo track only; another track gives kAudio_ParamError (observed on macOS).
 	CHECK(getValue(track, kSequenceTrackProperty_TimeResolution, &resolution, sizeof(resolution)) == kAudio_ParamError);
 
 	// Values round-trip, and each track has its own.
@@ -129,36 +130,58 @@ int main(void)
 	CHECK(MusicTrackNewMIDIChannelEvent(other, 9.0, &channel) == noErr);
 	CHECK(trackLength(other) == 9.0);
 
-	// Refused: a size that is not the property's, an unknown property, a read only one, values that
-	// make no sense, NULL arguments, and a buffer that is too small. GUESS: all kAudio_ParamError.
-	CHECK(MusicTrackSetProperty(track, kSequenceTrackProperty_OffsetTime, &offset, 4) == kAudio_ParamError);
-	CHECK(MusicTrackSetProperty(track, kSequenceTrackProperty_MuteStatus, &flag, 2) == kAudio_ParamError);
+	// QUIRK test: the length that is passed to Set and Get is not looked at, each property has the size it has
+	// (observed on macOS 26.7.3 and 10.14.4): a Set with another size works, a Get with a small length (or none)
+	// returns the whole value and the length of the property
+	offset = 2.5;
+	CHECK(MusicTrackSetProperty(track, kSequenceTrackProperty_OffsetTime, &offset, 4) == noErr);
+	flag = 1;
+	CHECK(MusicTrackSetProperty(track, kSequenceTrackProperty_MuteStatus, &flag, 2) == noErr);
+	offset = 7;
+	length = 4;
+	CHECK(MusicTrackGetProperty(track, kSequenceTrackProperty_OffsetTime, &offset, &length) == noErr);
+	CHECK(offset == 2.5 && length == sizeof(MusicTimeStamp));
+	offset = 7;
+	CHECK(MusicTrackGetProperty(track, kSequenceTrackProperty_OffsetTime, &offset, NULL) == noErr);
+	CHECK(offset == 2.5);
+
+	// Refused: an unknown property, a read only one, NULL arguments, a negative loop duration or track length.
+	// Everything else is accepted: an offset that is not a number or is below zero, a negative number of loops.
 	CHECK(MusicTrackSetProperty(track, 99, &flag, sizeof(flag)) == kAudio_ParamError);
 	resolution = 96;
 	CHECK(MusicTrackSetProperty(tempo, kSequenceTrackProperty_TimeResolution, &resolution, sizeof(resolution)) == kAudio_ParamError);
 	CHECK(getValue(tempo, kSequenceTrackProperty_TimeResolution, &resolution, sizeof(resolution)) == noErr && resolution == 480);
 	offset = NAN;
-	CHECK(MusicTrackSetProperty(track, kSequenceTrackProperty_OffsetTime, &offset, sizeof(offset)) == kAudio_ParamError);
-	// GUESS: a negative offset is accepted.
+	CHECK(MusicTrackSetProperty(track, kSequenceTrackProperty_OffsetTime, &offset, sizeof(offset)) == noErr);
+	CHECK(getValue(track, kSequenceTrackProperty_OffsetTime, &offset, sizeof(offset)) == noErr && isnan(offset));
 	offset = -1.0;
 	CHECK(MusicTrackSetProperty(track, kSequenceTrackProperty_OffsetTime, &offset, sizeof(offset)) == noErr);
 	CHECK(getValue(track, kSequenceTrackProperty_OffsetTime, &offset, sizeof(offset)) == noErr && offset == -1.0);
 	offset = 1.5;
 	CHECK(MusicTrackSetProperty(track, kSequenceTrackProperty_OffsetTime, &offset, sizeof(offset)) == noErr);
+	loop.loopDuration = 3.0; loop.numberOfLoops = 2;
+	CHECK(MusicTrackSetProperty(track, kSequenceTrackProperty_LoopInfo, &loop, sizeof(loop)) == noErr);
 	loop.loopDuration = -1.0; loop.numberOfLoops = 1;
 	CHECK(MusicTrackSetProperty(track, kSequenceTrackProperty_LoopInfo, &loop, sizeof(loop)) == kAudio_ParamError);
+	CHECK(getValue(track, kSequenceTrackProperty_LoopInfo, &gotLoop, sizeof(gotLoop)) == noErr);
+	CHECK(gotLoop.loopDuration == 3.0 && gotLoop.numberOfLoops == 2);
 	loop.loopDuration = 1.0; loop.numberOfLoops = -1;
-	CHECK(MusicTrackSetProperty(track, kSequenceTrackProperty_LoopInfo, &loop, sizeof(loop)) == kAudio_ParamError);
+	CHECK(MusicTrackSetProperty(track, kSequenceTrackProperty_LoopInfo, &loop, sizeof(loop)) == noErr);
 	set = -1.0;
 	CHECK(MusicTrackSetProperty(track, kSequenceTrackProperty_TrackLength, &set, sizeof(set)) == kAudio_ParamError);
+	// the flags are booleans
+	flag = 7;
+	CHECK(MusicTrackSetProperty(track, kSequenceTrackProperty_MuteStatus, &flag, sizeof(flag)) == noErr);
+	flag = 0;
+	CHECK(getValue(track, kSequenceTrackProperty_MuteStatus, &flag, sizeof(flag)) == noErr && flag == 1);
+	automated = 0xFFFFFFFF;
+	CHECK(MusicTrackSetProperty(track, kSequenceTrackProperty_AutomatedParameters, &automated, sizeof(automated)) == noErr);
+	automated = 0;
+	CHECK(getValue(track, kSequenceTrackProperty_AutomatedParameters, &automated, sizeof(automated)) == noErr && automated == 1);
 	CHECK(MusicTrackSetProperty(track, kSequenceTrackProperty_OffsetTime, NULL, sizeof(offset)) == kAudio_ParamError);
 	CHECK(MusicTrackSetProperty(NULL, kSequenceTrackProperty_OffsetTime, &offset, sizeof(offset)) == kAudio_ParamError);
 	CHECK(MusicTrackGetProperty(track, 99, NULL, &length) == kAudio_ParamError);
-	length = 4;
-	offset = 7;
-	CHECK(MusicTrackGetProperty(track, kSequenceTrackProperty_OffsetTime, &offset, &length) == kAudio_ParamError);
-	CHECK(offset == 7);
-	CHECK(MusicTrackGetProperty(track, kSequenceTrackProperty_OffsetTime, &offset, NULL) == kAudio_ParamError);
+	CHECK(MusicTrackGetProperty(NULL, kSequenceTrackProperty_OffsetTime, &offset, &length) == kAudio_ParamError);
 
 	CHECK(DisposeMusicSequence(seq) == noErr);
 
