@@ -406,6 +406,12 @@ AU_HOOK_ACCESSORS(AUImplementorDisplayNameWithLengthCallback, implementorDisplay
 
 @implementation AUParameterTree
 
+// Restated next to this class's own -initWithCoder:; a secure unarchiver refuses a class whose
+// decoding initializer comes from below its +supportsSecureCoding.
++ (BOOL) supportsSecureCoding {
+	return YES;
+}
+
 - (instancetype) initWithChildren: (NSArray *) children {
 	self = [super initWithIdentifier: @"" displayName: @"" children: children];
 	if (self && ![self indexParameters]) {
