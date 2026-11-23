@@ -20,6 +20,7 @@
 #import <PDFKit/PDFDestination.h>
 #import <darling-stub-forwarding.h>
 #include <float.h>
+#import <objc/runtime.h>
 
 // The documentation says only that this is the value used when a destination's x or y is
 // unimportant, and does not state it. macOS 26.7.3 and 10.14.4 report FLT_MAX stored as a CGFloat
@@ -27,6 +28,50 @@
 const CGFloat kPDFDestinationUnspecifiedValue = FLT_MAX;
 
 @implementation PDFDestination
+
+// The page is a weak reference in PDFKit's interface, so the destination does not own its page and the reference is
+// cleared when the page is freed (observed on macOS 26.7.3 and 10.14.4: the page's reference count is not raised and
+// page is nil after the page is released). The runtime's weak reference functions are used, as the instance variable
+// is not compiled as a __weak one.
+// Observed on both: initialising without a page returns nil, and a plain -init gives a destination whose point is
+// unspecified in both coordinates.
+- (instancetype)init
+{
+    if ((self = [super init]))
+        _point = CGPointMake(kPDFDestinationUnspecifiedValue, kPDFDestinationUnspecifiedValue);
+    return self;
+}
+
+- (instancetype)initWithPage:(PDFPage*)page atPoint:(CGPoint)point
+{
+    if (page == nil)
+    {
+        [self release];
+        return nil;
+    }
+    if ((self = [super init]))
+    {
+        objc_storeWeak(&_page, page);
+        _point = point;
+    }
+    return self;
+}
+
+- (void)dealloc
+{
+    objc_storeWeak(&_page, nil);
+    [super dealloc];
+}
+
+- (PDFPage*)page
+{
+    return objc_loadWeak(&_page);
+}
+
+- (CGPoint)point
+{
+    return _point;
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {

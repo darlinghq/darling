@@ -20,18 +20,27 @@
 #include <ColorSync/ColorSync.h>
 #include <CoreFoundation/CFRuntime.h>
 #include <dispatch/dispatch.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "ICCProfile.h"
 
 struct __ColorSyncProfile
 {
 	CFRuntimeBase base;
 	CFDataRef data;
+	CFURLRef url;
 };
 
 static void ColorSyncProfileFinalize(CFTypeRef cf)
 {
-	CFRelease(((struct __ColorSyncProfile*) cf)->data);
+	struct __ColorSyncProfile* profile = (struct __ColorSyncProfile*) cf;
+	CFRelease(profile->data);
+	if (profile->url)
+		CFRelease(profile->url);
 }
 
 static const CFRuntimeClass ColorSyncProfileClass = {
@@ -180,4 +189,90 @@ CFArrayRef ColorSyncProfileCopyTagSignatures(ColorSyncProfileRef prof)
 	}
 	free(indices);
 	return signatures;
+}
+
+// The bytes of the file at a file URL, or NULL when the URL is not a file URL or the file cannot be read in full:
+// missing, unreadable, not a regular file, or larger than a profile can be (its size field is 32 bits).
+static CFDataRef copyFileData(CFURLRef url)
+{
+	char path[PATH_MAX];
+	CFStringRef scheme = CFURLCopyScheme(url);
+	const bool isFile = scheme && CFStringCompare(scheme, CFSTR("file"), kCFCompareCaseInsensitive) == kCFCompareEqualTo;
+	if (scheme)
+		CFRelease(scheme);
+	if (!isFile || !CFURLGetFileSystemRepresentation(url, true, (UInt8*) path, sizeof path))
+		return NULL;
+
+	const int fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return NULL;
+
+	struct stat st;
+	if (fstat(fd, &st) < 0 || !S_ISREG(st.st_mode) || st.st_size > UINT32_MAX)
+	{
+		close(fd);
+		return NULL;
+	}
+
+	// Read at most the size seen by fstat, so a file that grows meanwhile cannot make the read run on.
+	CFMutableDataRef data = CFDataCreateMutable(kCFAllocatorDefault, 0);
+	if (!data)
+	{
+		close(fd);
+		return NULL;
+	}
+
+	uint8_t chunk[16384];
+	off_t remaining = st.st_size;
+	while (remaining > 0)
+	{
+		const ssize_t got = read(fd, chunk, remaining < (off_t) sizeof chunk ? (size_t) remaining : sizeof chunk);
+		if (got < 0 && errno == EINTR)
+			continue;
+		if (got < 0)
+		{
+			CFRelease(data);
+			data = NULL;
+			break;
+		}
+		if (got == 0)
+			break; // the file shrank; what was read is what the profile is made from
+		CFDataAppendBytes(data, chunk, got);
+		remaining -= got;
+	}
+	close(fd);
+	return data;
+}
+
+// Observed on macOS 26.7.3 and 10.14.4 (probe, tests/src/colorsync_profile_url.c): every failure, whether the URL is
+// NULL, not a file URL, missing, unreadable, a directory or not a profile, returns NULL and leaves the error NULL;
+// the error is only cleared. The profile keeps the URL as given (a relative URL stays relative).
+ColorSyncProfileRef ColorSyncProfileCreateWithURL(CFURLRef url, CFErrorRef* error)
+{
+	if (error)
+		*error = NULL;
+	if (!url)
+		return NULL;
+
+	CFDataRef data = copyFileData(url);
+	if (!data)
+		return NULL;
+
+	ColorSyncProfileRef prof = ColorSyncProfileCreate(data, NULL);
+	CFRelease(data);
+	if (prof)
+		((struct __ColorSyncProfile*) prof)->url = CFRetain(url);
+	return prof;
+}
+
+// Observed on macOS 26.7.3 and 10.14.4: a profile that was not created from a URL, a NULL argument and an argument
+// that is not a profile all give NULL with the error left NULL. The URL belongs to the profile (a "Get" function adds
+// no reference) and is returned even after the file is gone.
+CFURLRef ColorSyncProfileGetURL(ColorSyncProfileRef prof, CFErrorRef* error)
+{
+	if (error)
+		*error = NULL;
+
+	const struct __ColorSyncProfile* profile = profileOrNull(prof);
+	return profile ? profile->url : NULL;
 }
