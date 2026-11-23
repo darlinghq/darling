@@ -15,7 +15,9 @@
 // exactly the bundle's certificates as PEM blocks (the throw-away CAs below are in
 // OpenSSL's own PEM layout, which the tool's encoder must reproduce), that an
 // unchanged bundle writes nothing, that the shipped file comes back only over a
-// file the tool wrote, and that a failed write leaves the old file whole. The
+// file the tool wrote, that with a host bundle the file is replaced only when it
+// is missing, written by the tool or the shipped one (a hand-edited file is left
+// alone), and that a failed write leaves the old file whole. The
 // certificates are throw-away self-signed test
 // CAs (EC P-256, valid until 2126, generated with OpenSSL; no private key is
 // kept); the expected index hashes were computed independently with Python over
@@ -429,6 +431,27 @@ int main(int argc, char** argv)
 	write_file(g_certpem, kForeign, "", "");
 	CHECK(run_tool(false, g_missing) == 0);
 	CHECK(file_is(g_certpem, kForeign, ""));
+
+	// 8b2. with a host bundle, a cert.pem that is neither missing, nor written by the
+	// tool, nor the shipped one (the foreign file, and the shipped file with a line
+	// added by hand) is left alone too; the shipped file itself and a missing file
+	// are replaced by the host's certificates
+	CHECK(run_tool(false, g_bundle) == 0);
+	CHECK(file_is(g_certpem, kForeign, ""));
+	write_file(g_certpem, kShippedHeader, kCA3, kForeign);
+	CHECK(run_tool(true, g_bundle) == 0);
+	{
+		char edited[4096];
+
+		snprintf(edited, sizeof(edited), "%s%s", kCA3, kForeign);
+		CHECK(file_is(g_certpem, kShippedHeader, edited));
+	}
+	write_file(g_certpem, kShippedHeader, kCA3, "");
+	CHECK(run_tool(false, g_bundle) == 0);
+	CHECK(cert_pem_is(g_certpem, kCA1, NULL));
+	unlink(g_certpem);
+	CHECK(run_tool(false, g_bundle) == 0);
+	CHECK(cert_pem_is(g_certpem, kCA1, NULL));
 
 	// 8c. no host bundle, a file the tool wrote, but no shipped copy: the file stays
 	// whole (nothing is replaced by an empty one)

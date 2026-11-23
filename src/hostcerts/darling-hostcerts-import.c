@@ -29,7 +29,10 @@
 //      too and not the 2021 bundle that Darling ships. The shipped file is kept
 //      in /usr/libexec/darling-hostcerts like the shipped anchors, and comes back
 //      when the host bundle is gone, but only over a file that this tool wrote (it
-//      starts with a comment line that says so).
+//      starts with a comment line that says so). The file is only ever replaced
+//      when it is missing, was written by this tool, or is byte for byte the
+//      shipped one; a cert.pem that someone edited by hand is left alone (and the
+//      fact is logged).
 //
 // Only the index and table are replaced; the other files of the bundle (EV roots,
 // block lists, ...) stay as shipped. cert.pem is generated from the parsed
@@ -866,6 +869,31 @@ static bool cert_pem_is_generated(const char* path)
 	return generated;
 }
 
+// True when cert.pem may be replaced by the tool: it does not exist, it was written
+// by this tool, or it is exactly the file that Darling ships. Anything else was put
+// there or edited by someone, and is not touched.
+static bool cert_pem_is_replaceable(const char* path, const char* shippedDirectory)
+{
+	struct stat st;
+	char shippedPath[1024];
+	CFDataRef shipped;
+	bool same = false;
+
+	if (lstat(path, &st) != 0)
+		return errno == ENOENT;
+	if (cert_pem_is_generated(path))
+		return true;
+
+	snprintf(shippedPath, sizeof(shippedPath), "%s/%s", shippedDirectory, CERT_PEM_NAME);
+	shipped = read_file(shippedPath, false);
+	if (shipped != NULL)
+	{
+		same = file_has_content(path, shipped);
+		CFRelease(shipped);
+	}
+	return same;
+}
+
 // Writes cert.pem unless it already has exactly this content. Returns true when
 // the file was written; *failed is set when the write failed (the old file is then
 // still in place, whole).
@@ -889,7 +917,8 @@ static bool write_cert_pem(const char* path, CFDataRef content, bool force, bool
 }
 
 // Makes the guest's cert.pem follow the host: with a host bundle it holds exactly
-// that bundle's certificates; without one the cert.pem that Darling ships (a copy in
+// that bundle's certificates (unless the file was edited by hand, see
+// cert_pem_is_replaceable); without one the cert.pem that Darling ships (a copy in
 // the shipped directory) comes back, but only over a file this tool generated.
 // Failures are logged and the old file stays.
 static void refresh_cert_pem(const char* path, const char* shippedDirectory, const anchors_t* anchors, bool host, const char* usedPath, bool force)
@@ -900,6 +929,11 @@ static void refresh_cert_pem(const char* path, const char* shippedDirectory, con
 
 	if (host)
 	{
+		if (!cert_pem_is_replaceable(path, shippedDirectory))
+		{
+			hc_log(OS_LOG_TYPE_DEFAULT, "%s was not written by this tool and differs from the shipped file; it is left as it is", path);
+			return;
+		}
 		content = build_cert_pem(anchors, &used);
 		if (content == NULL)
 		{
