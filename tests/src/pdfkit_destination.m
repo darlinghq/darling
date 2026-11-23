@@ -5,8 +5,9 @@
 // (https://developer.apple.com/documentation/pdfkit/pdfdestination): init(page:at:) takes the page and the
 // point, page and point return them, and kPDFDestinationUnspecifiedValue is the x or y value to give when
 // the position is unimportant (the constant itself is pinned in pdfkit_constants.m).
-// The page property is weak (the pages declare it so), so a destination does not retain its page. The case marked
-// GUESS pins a choice the pages leave open (see PDFDestination.m): a destination can be made without a page.
+// The page property is weak (the pages declare it so), so a destination does not retain its page. The last two cases
+// pin observations of macOS 26.7.3 and 10.14.4 that the pages leave open (see PDFDestination.m): a destination cannot be
+// made without a page, and a plain -init has an unspecified point.
 // Prints PASS, or the failures with a non-zero exit status.
 #import <Foundation/Foundation.h>
 #import <PDFKit/PDFKit.h>
@@ -57,14 +58,17 @@ int main(void)
 		CHECK(kept.point.x == 5 && kept.point.y == 6);
 		[kept release];
 
-		// GUESS: a destination can be made without a page.
+		// Initialising without a page returns nil.
 		PDFPage* none = nil;
 		PDFDestination* orphan = [[PDFDestination alloc] initWithPage:none atPoint:CGPointMake(1, 2)];
-		CHECK(orphan != nil);
-		CHECK(pageIs(orphan, nil));
-		CHECK(orphan.point.x == 1 && orphan.point.y == 2);
+		CHECK(orphan == nil);
 
-		[orphan release];
+		// A plain -init gives an unspecified point.
+		PDFDestination* plain = [[PDFDestination alloc] init];
+		CHECK(plain != nil);
+		CHECK(plain.point.x == kPDFDestinationUnspecifiedValue && plain.point.y == kPDFDestinationUnspecifiedValue);
+		CHECK(pageIs(plain, nil));
+		[plain release];
 	}
 
 	if (g_failures == 0)
