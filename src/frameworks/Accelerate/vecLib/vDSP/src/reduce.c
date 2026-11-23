@@ -92,20 +92,16 @@ void NAME(const T* __A, vDSP_Stride __IA, T* __C, vDSP_Length __N) \
 // The mean of signed squares, sum(A[n] * |A[n]|) / N. The vDSP_mvessq abstract and output-parameter text call
 // the result the mean of "signed squares", and the vDSP_svs page defines the signed square sum as
 // C[0] = sum(A[n] * |A[n]|) (see VDSP_SVS above); that is the meaning used. The mvessq page's example prints 0
-// for -8, -4, -2, 0, 2, 4, 8, which rules out a mean of plain squares (24) but does not by itself pick the
-// signed reading; only the discussion sentence says "squares".
-// The vDSP_mvessqD page, and only that page, says N equal to zero gives -infinity. This applies it to both
-// precisions.
-// GUESS: low confidence. The -infinity rests on the __N text of the D page, whose parameter block looks like
-// boilerplate from another function; the single-precision page is silent about N equal to zero.
+// for -8, -4, -2, 0, 2, 4, 8, which rules out a mean of plain squares (24); macOS 26.7.3 and 10.14.4 return
+// the signed mean for non-symmetric vectors, strided input and negative strides (see the test).
+//
+// QUIRK: N equal to zero gives NaN (0 / 0), not the -infinity that the vDSP_mvessqD page states for it. Observed
+// on macOS 26.7.3 and 10.14.4 (x86_64 and i386), single and double precision (tier 2, black-box probe
+// mac-probes/cristim/batch7a/mvessq.c). It needs no code: the plain division gives it.
+// Test: vDSPTest.c, "mvessq empty is NaN (quirk)".
 #define VDSP_MVESSQ(NAME, T, ABS) \
 void NAME(const T* __A, vDSP_Stride __IA, T* __C, vDSP_Length __N) \
 { \
-	if (__N == 0) \
-	{ \
-		*__C = -INFINITY; \
-		return; \
-	} \
 	T sum = 0; \
 	for (vDSP_Length n = 0; n < __N; n++) \
 	{ \

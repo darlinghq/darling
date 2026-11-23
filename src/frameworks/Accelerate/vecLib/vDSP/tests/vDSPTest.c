@@ -263,12 +263,16 @@ static void testReductions(void)
 	expectNear(c, 5.5, 1e-6, "mvessq signed", 0);
 	vDSP_mvessq(skew, 2, &c, 2);
 	expectNear(c, 5, 1e-6, "mvessq stride", 0);
-	// The vDSP_mvessqD page says N equal to zero gives -infinity.
+	// A negative stride walks backwards from the pointer given (macOS 26.7.3 and 10.14.4 agree).
+	vDSP_mvessq(skew + 3, -1, &c, 4);
+	expectNear(c, 5.5, 1e-6, "mvessq negative stride", 0);
+	// QUIRK test: N equal to zero is NaN on macOS 26.7.3 and 10.14.4, not the -infinity the vDSP_mvessqD page
+	// states (see reduce.c).
 	c = 0;
 	vDSP_mvessq(skew, 1, &c, 0);
-	if (!isinf(c) || c > 0)
+	if (!isnan(c))
 	{
-		printf("FAIL mvessq empty: got %g\n", c);
+		printf("FAIL mvessq empty is NaN (quirk): got %g\n", c);
 		g_failures++;
 	}
 
@@ -307,9 +311,9 @@ static void testReductions(void)
 	expectNear(r, (1 - 4 + 9 - 16) / 4.0, 1e-12, "mvessqD", 0);
 	r = 0;
 	vDSP_mvessqD(f, 1, &r, 0);
-	if (!isinf(r) || r > 0)
+	if (!isnan(r))
 	{
-		printf("FAIL mvessqD empty: got %g\n", r);
+		printf("FAIL mvessqD empty is NaN (quirk): got %g\n", r);
 		g_failures++;
 	}
 	vDSP_dotprD(e, 1, e, 1, &r, 6);
