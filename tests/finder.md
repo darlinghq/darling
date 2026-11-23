@@ -67,6 +67,48 @@ In-process tests, in the guest (`build/tmp/helpers/src-test.sh <mode> <file>`; e
 
   It passes unchanged on both Macs.
 
+File operations (plan 7c):
+- `tests/src/finder_file_operation.m <new directory> [<disk image>]` (no display): the copy and move engine. Copies
+  of files and trees (symbolic links copied as links), moves, the conflict choices (Replace, Keep Both, Stop, Apply to
+  All), names that differ only in normalization, "copy" names in the item's own folder, transfers refused up front (a
+  folder into itself, a Replace of the source's own ancestor), failures and cancelling (nothing left at the final
+  name, no staged item), and the default kind across volumes. It passes unchanged on both Macs.
+- `tests/src/finder_operation_ui.m` (needs a display): the operation queue. No panel for a quick copy; a long one's
+  progress panel (text, a rising indicator, Stop leaving nothing behind); the conflict alert (text, buttons, "Apply
+  to All" for several items); alerts for a refused and a failed transfer. It passes unchanged on both Macs.
+- `tests/src/finder_item_actions.m <new directory> [<disk image>]`: new folders ("untitled folder", "untitled folder
+  2"), the rules for a new name (not empty, no `:` or `/`, no leading `.`, not another item's, also in another
+  normalization; a case-only change is allowed), the extension question (asked only when both names have an
+  extension and they differ), renaming, and Trash through `NSWorkspace`. It passes unchanged on both Macs except Trash
+  on a read-only image, checked in Darling only (over ssh, macOS 26.7.3's `recycleURLs:` never completes for it and
+  10.14.4's aborts without a window server).
+- `tests/src/finder_commands.m <new directory> [<disk image>]` (needs a display): a window's commands. Copy, Paste and
+  Move Item Here through the general pasteboard; Paste disabled without file URLs; New Folder, which starts renaming;
+  renaming in the icon and the list view (commit, refusal with an alert, the extension question, cancelling); Move to
+  Trash; what is enabled with nothing selected and in a read-only folder. It passes unchanged on 26.7.3; on 10.14.4,
+  where the ssh session can't write any pasteboard, the copy and paste cases are skipped.
+- `tests/src/finder_get_info.m` (needs a display): the Get Info panel. Title, name, kind, size ("<formatted> (<n>
+  bytes)"), where and modified for a file; "Calculating…", then "<formatted> for <n> items" for a folder; one panel
+  per item; closing releases it. It passes unchanged on both Macs.
+- `tests/src/finder_drop.m <new directory> [<disk image>]` (needs a display): drops in the icon view. Which items take
+  drops (folders, symbolic links to folders), the operation (Option copies, Command moves, otherwise a move within a
+  volume and a copy across; nothing onto a read-only volume, into a dragged folder, or a move onto the items' own
+  folder), where a drop on another item or a gap goes (the window's folder), and the dragged item's file URL. The
+  dragging system isn't driven: a stand-in `NSDraggingInfo` holds the pasteboard. It passes on 26.7.3; 10.14.4 skips
+  the pasteboard cases.
+- `tests/src/finder_list_drop.m <new directory> [<disk image>]` (needs a display): drops in the list view, through
+  the outline view's dragging-destination methods at points over its rows (a folder's row, a file's row, below the
+  rows, between an expanded folder's children; text refused), the dragged row's file URL, and the sidebar's data
+  source (a favourite takes drops; a section title, a gap or a read-only volume doesn't). It passes on 26.7.3;
+  10.14.4 skips it (no pasteboard).
+
+AppKit fixes these needed, each with a test in `src/external/cocotron/tests` that passes unchanged on both Macs:
+`NSCell` editable/selectable coupling and editable new table columns (`appkit-cell-editable-selectable.m`,
+`appkit-tableview-edit-column.m`); a collection view drop retargeted to a nil index path isn't performed
+(`appkit-collection-view-drag.m`); table and outline drag and drop with pasteboard writers
+(`appkit-tableview-drag.m`, `appkit-outlineview-drag.m`); a label passing a press up the responder chain
+(`appkit-textfield-label-mouse-down.m`).
+
 The harness, `tests/finder.sh`, runs Finder through LaunchServices (`open` in the guest) on X11 or Wayland, like
 `tests/disk-image-mounter.sh` (same environment; see the header of the script):
 
@@ -91,6 +133,18 @@ The harness, `tests/finder.sh`, runs Finder through LaunchServices (`open` in th
 | styled window | `open styled-test.dmg`: a window "Styled Test" within 60 s, its client area 640 wide and 400 to 440 high; the background picture shows (#2F6F9F within 8 per channel 20 points in from the bottom left; light at (320, 200), where the picture has a band) |
 | styled hidden item | `tests/src/finder_ls.m` on the attached volume lists `Styled App.app` and `Applications`, and not the invisible `Hidden Notes.txt`, `.background` or `.DS_Store` |
 | unreadable | a folder that can't be read gives an alert and no window; after the alert Finder quits (skipped when the guest runs as root) |
+| option-drag copies within a volume | Option-dragging `a` onto the folder `F` in the same window copies it (`a` stays); a plain drag of `b.txt` onto `F` moves it |
+| drop on a folder link | Option-dragging a bundle (files and a symbolic link inside) onto `Install`, a symbolic link to `dest2`, copies it there (`diff -r` matches, the source stays) |
+| install from a disk image | dragging `Styled App.app` from the styled window of `styled-test.dmg` into a window of `dest` copies it (another volume; `diff -r` matches in the guest); the image then detaches |
+| progress | Option-dragging a 4 GiB file (written past the page cache, so the copy reads the disk) onto a folder shows a window titled Copy within 3 s; its Stop closes it and leaves no file. Skipped if the copy is over before the window's 1 s delay |
+| paste | Command-A and Command-C in one window, Command-V in another, copies the item |
+| new folder and rename | Shift-Command-N, typing `Neu` and Return make the folder `Neu` |
+| trash | Command-A and Command-Delete move an item to `~/.Trash` (the item is in a folder the guest makes on the home folder's volume) |
+
+The drag cases place the windows (`xdotool windowmove`, `swaymsg move position`) and find an 800-point window's icons
+by the order of their names: the first icon row is 452 points up from the window's bottom edge, item *i* 263 + 115·*i*
+points from its left edge (measured up from the bottom, as Wayland windows have the menu bar on top). On Wayland they
+need `VIRTUAL_POINTER` (see the header of the script); Option is held with `wtype -M alt` for the whole drag.
 
 ## Notes
 
@@ -151,6 +205,11 @@ The harness, `tests/finder.sh`, runs Finder through LaunchServices (`open` in th
   then the toolbar item's target (the window's controller) was gone, and Finder crashed. AppKit now validates a
   toolbar only while its window is shown (`appkit-toolbar-closed-window-validation.m`).
 - The kind strings are LaunchServices' type descriptions ("plain text", where macOS says "Plain Text Document").
+- Open: Move to Trash fails, with an alert, for an item on `/Volumes/SystemRoot` (the host's file system), which has no
+  Trash in Darling; macOS would offer to delete the item immediately on a volume without one. Items on the home
+  folder's volume go to `~/.Trash`.
+- Conflict and error alerts of copies and moves are app-modal, not sheets on the window the operation came from: the
+  engine waits for the answer (plan 7c, Task 2).
 
 ## Observed on macOS
 

@@ -4,7 +4,9 @@
 # Needs DARLING_SKILLS (a darling-skills checkout), DARLING_ROOT (the installed tree), and a display of your own,
 # exported before the Darling container starts (it keeps the environment it started with; run `darling shutdown`
 # first): X11 with DISPLAY (and xdotool), or Wayland with WAYLAND_DISPLAY, XDG_RUNTIME_DIR, SWAYSOCK and
-# DARLING_APPKIT_BACKEND=wayland (and swaymsg, wtype). The test types keys into Finder's windows.
+# DARLING_APPKIT_BACKEND=wayland (and swaymsg, wtype). The test types keys into Finder's windows and drags its items
+# with the pointer: on Wayland, set VIRTUAL_POINTER to a build of src/external/cocotron/tests/wayland-virtual-pointer.c
+# (the drags are skipped without it).
 # Prints PASS/FAIL lines and exits non-zero if anything failed.
 set -u
 
@@ -13,7 +15,8 @@ work=$(mktemp -d)
 gw="/Volumes/SystemRoot$work"
 failures=0
 kb=
-trap 'kill $kb 2>/dev/null; chmod -R u+rwx "$work" 2>/dev/null; rm -rf "$work"' EXIT
+vp=
+trap 'kill $kb $vp 2>/dev/null; chmod -R u+rwx "$work" 2>/dev/null; rm -rf "$work"' EXIT
 
 pass() { echo "PASS: $1"; }
 fail() { echo "FAIL: $1"; failures=$((failures + 1)); }
@@ -104,6 +107,7 @@ key() { # <key>: to the window window() found, once it has had time to become ke
 		swaymsg -q "[con_id=$WID] focus"
 		sleep 0.5
 		case $1 in
+			cmd+shift+*) wtype -M logo -M shift -k "${1#cmd+shift+}" -m shift -m logo ;;
 			cmd+*) wtype -M logo -k "${1#cmd+}" -m logo ;;
 			*) wtype -k "$1" ;;
 		esac
@@ -151,6 +155,96 @@ build() { # <program> <source> [<guest-cc arguments>...]
 		|| { fail "$program does not build"; return 1; }
 }
 
+# Pointer drags. X11 uses xdotool; Wayland the virtual pointer of cocotron's tests/wayland-virtual-pointer.c, built
+# and named in $VIRTUAL_POINTER (a headless sway has no pointer of its own); without it the drag cases are skipped.
+pointer_ok=1
+if [ $display = wayland ]; then
+	if [ -n "${VIRTUAL_POINTER:-}" ] && mkfifo "$work/pointer.in"; then
+		"$VIRTUAL_POINTER" <"$work/pointer.in" >"$work/pointer.out" 2>&1 &
+		vp=$!
+		exec 3>"$work/pointer.in"
+		for ((i = 0; i < 50; i++)); do grep -q '^READY' "$work/pointer.out" && break; sleep 0.1; done
+		grep -q '^READY' "$work/pointer.out" || pointer_ok=0
+	else
+		pointer_ok=0
+	fi
+fi
+pointer() { # <command line>: to the virtual pointer, waiting for its answer
+	local n i
+	n=$(grep -c . "$work/pointer.out")
+	echo "$1" >&3
+	for ((i = 0; i < 100; i++)); do [ "$(grep -c . "$work/pointer.out")" -gt "$n" ] && break; sleep 0.1; done
+}
+at() { # <x> <y>: the screen point <x> from the left edge of the window window() found and <y> up from its bottom
+	local fx fy fh
+	if [ $display = x11 ]; then
+		eval "$(xdotool getwindowgeometry --shell "$WID")"
+		fx=$X fy=$Y fh=$HEIGHT
+	else
+		read -r fx fy fh <<<"$(swaymsg -t get_tree | python3 -I -c '
+import json, sys
+want = int(sys.argv[1])
+def walk(n):
+    if n.get("id") == want:
+        print(n["rect"]["x"], n["rect"]["y"], n["rect"]["height"])
+    for c in n.get("nodes", []) + n.get("floating_nodes", []):
+        walk(c)
+walk(json.load(sys.stdin))' "$WID")"
+	fi
+	echo "$((fx + $1)) $((fy + fh - $2))"
+}
+place() { # <x> <y>: moves the window window() found so that its top left is at that point of the screen
+	if [ $display = x11 ]; then xdotool windowmove --sync "$WID" "$1" "$2"; else swaymsg -q "[con_id=$WID] move position $1 $2"; fi
+	sleep 1
+}
+press() { # <x> <y>: a click at that point of the screen
+	if [ $display = x11 ]; then xdotool mousemove "$1" "$2" click 1; else pointer "$1 $2"; fi
+	sleep 1
+}
+drag() { # <x> <y> <x> <y> [option]: a drag between two points of the screen, holding Option if asked
+	local held=
+	if [ $display = x11 ]; then
+		[ -n "${5:-}" ] && xdotool keydown alt
+		xdotool mousemove "$1" "$2"
+		sleep 0.3
+		xdotool mousedown 1
+		for ((i = 1; i <= 10; i++)); do
+			xdotool mousemove $(($1 + ($3 - $1) * i / 10)) $(($2 + ($4 - $2) * i / 10))
+			sleep 0.1
+		done
+		sleep 0.5
+		xdotool mouseup 1
+		[ -n "${5:-}" ] && xdotool keyup alt
+	else
+		if [ -n "${5:-}" ]; then
+			# Held for the whole drag, then released (a wtype that is killed leaves Option held)
+			wtype -M alt -s 4000 -m alt &
+			held=$!
+			sleep 0.5
+		fi
+		pointer "drag $1 $2 $(($3 - $1)) $(($4 - $2))"
+		[ -n "$held" ] && wait $held
+	fi
+	sleep 2
+}
+typed() { # <text>: typed into the window window() found
+	if [ $display = x11 ]; then xdotool type "$1"; else wtype "$1"; fi
+	sleep 1
+}
+waitfor() { # <seconds> <path>...: until every path exists (on the host side); 0 if they do
+	local i p ok
+	for ((i = 0; i < $1; i++)); do
+		ok=1
+		for p in "${@:2}"; do [ -e "$p" ] || ok=0; done
+		[ $ok = 1 ] && return 0
+		sleep 1
+	done
+	return 1
+}
+# Where a window's items are, from its left edge and up from its bottom: an 800-point window's first icon row
+item_x() { echo $((263 + 115 * $1)); }
+item_up=452
+
 # The folders
 mkdir -p "$work/F/sub" "$work/G"
 touch "$work/F/one.txt" "$work/F/two.txt" "$work/G/three.txt"
@@ -160,7 +254,8 @@ cp "$here/fixtures/unmount-test.dmg" "$work/"
 # Finder runs without HOME when LaunchServices launches it, so its home folder is the user database's
 guest whoami "id -u; awk -F: -v u=\$(id -u) '\$3 == u { print \$6 }' /etc/passwd"
 guest_uid=$(head -1 "$work/whoami.out")
-home_name=$(basename "$(sed -n 2p "$work/whoami.out")")
+guest_home=$(sed -n 2p "$work/whoami.out")
+home_name=$(basename "$guest_home")
 quit_finder
 detach_all
 
@@ -488,6 +583,167 @@ else
 	else
 		fail "unreadable: $all windows, $n titled locked"
 	fi
+fi
+quit_finder
+
+
+# File operations (see finder.md). Windows are opened at known places; an 800-point window's icons are found by the
+# order of their names.
+if [ $pointer_ok = 0 ]; then
+	skip "file operations by drag: no pointer (set VIRTUAL_POINTER to a built tests/wayland-virtual-pointer.c)"
+else
+
+# option-drag copies within a volume: Option-dragging a onto F copies it, a plain drag of b.txt moves it
+mkdir -p "$work/O/F"
+echo a >"$work/O/a"
+echo b >"$work/O/b.txt"
+guest open-o "open '$gw/O'"
+if window O 30; then
+	place 60 60
+	sleep 1
+	read -r fx fy <<<"$(at "$(item_x 2)" $item_up)"
+	read -r sx sy <<<"$(at "$(item_x 0)" $item_up)"
+	drag $sx $sy $fx $fy option
+	waitfor 15 "$work/O/F/a"
+	read -r sx sy <<<"$(at "$(item_x 1)" $item_up)"
+	drag $sx $sy $fx $fy
+	waitfor 15 "$work/O/F/b.txt"
+	if [ ! -e "$work/O/F/a" ] || [ ! -e "$work/O/a" ]; then
+		fail "option-drag copies within a volume: F/a $([ -e "$work/O/F/a" ] && echo is there || echo missing), a $([ -e "$work/O/a" ] && echo remains || echo went)"
+	elif [ ! -e "$work/O/F/b.txt" ] || [ -e "$work/O/b.txt" ]; then
+		fail "option-drag copies within a volume: a plain drag: F/b.txt $([ -e "$work/O/F/b.txt" ] && echo is there || echo missing), b.txt $([ -e "$work/O/b.txt" ] && echo remains || echo went)"
+	else
+		pass "option-drag copies within a volume"
+	fi
+else
+	fail "option-drag copies within a volume: no window: $(outputs open-o)"
+fi
+quit_finder
+
+# drop on a folder link: Option-dragging a bundle onto a symbolic link to a folder copies it into that folder
+mkdir -p "$work/kit/Kit.bundle/Contents/Resources" "$work/dest2"
+echo plist >"$work/kit/Kit.bundle/Contents/Info.plist"
+echo data >"$work/kit/Kit.bundle/Contents/Resources/data"
+ln -s Info.plist "$work/kit/Kit.bundle/Contents/link"
+ln -s ../dest2 "$work/kit/Install"
+guest open-kit "open '$gw/kit'"
+if window kit 30; then
+	place 60 60
+	read -r sx sy <<<"$(at "$(item_x 1)" $item_up)"
+	read -r tx ty <<<"$(at "$(item_x 0)" $item_up)"
+	drag $sx $sy $tx $ty option
+	waitfor 15 "$work/dest2/Kit.bundle/Contents/link"
+	sleep 1
+	if diff -r --no-dereference "$work/kit/Kit.bundle" "$work/dest2/Kit.bundle" >"$work/kit.diff" 2>&1 && [ -d "$work/kit/Kit.bundle" ]; then
+		pass "drop on a folder link"
+	else
+		fail "drop on a folder link: $(ls "$work/dest2" | tr '\n' ' ') $(head -3 "$work/kit.diff" | tr '\n' '|')"
+	fi
+else
+	fail "drop on a folder link: no window: $(outputs open-kit)"
+fi
+quit_finder
+
+# install from a disk image: the application dragged from the image's styled window into another window is copied
+mkdir -p "$work/dest"
+guest open-dest "open '$gw/dest'"
+guest open-styled2 "open '$gw/styled-test.dmg'"
+if window dest 30 && place 1060 60 && read -r tx ty <<<"$(at 500 200)" && window "Styled Test" 60; then
+	place 60 60
+	# Styled App.app is at (160, 200) of the 640x400 window, from its top left
+	read -r sx sy <<<"$(at 160 200)"
+	drag $sx $sy $tx $ty
+	waitfor 20 "$work/dest/Styled App.app/Contents/Info.plist"
+	sleep 2
+	guest diff-styled "diff -r '$styled/Styled App.app' '$gw/dest/Styled App.app'"
+	if [ "$(rc diff-styled)" = 0 ]; then
+		guest detach-styled2 "hdiutil detach '$styled'"
+		if [ "$(rc detach-styled2)" = 0 ]; then pass "install from a disk image"; else fail "install from a disk image: eject: $(outputs detach-styled2)"; fi
+	else
+		fail "install from a disk image: $(ls "$work/dest" | tr '\n' ' ') $(outputs diff-styled)"
+	fi
+else
+	fail "install from a disk image: no windows: $(outputs open-dest) $(outputs open-styled2), windows: $(windows '')"
+fi
+quit_finder
+guest detach-styled3 "hdiutil detach -quiet '$styled'; true"
+
+# progress: copying a large file shows a Copy window; its Stop ends the copy and leaves no file. The file (4 GiB,
+# written past the page cache) is read from the disk, so the copy outlasts the window's delay (1 s); where the copy is
+# over before the window could show, the case is skipped
+mkdir -p "$work/Big/T"
+dd if=/dev/zero of="$work/Big/huge" bs=8M count=512 oflag=direct status=none
+guest open-big "open '$gw/Big'"
+if window Big 30; then
+	place 60 60
+	read -r sx sy <<<"$(at "$(item_x 0)" $item_up)"
+	read -r tx ty <<<"$(at "$(item_x 1)" $item_up)"
+	drag $sx $sy $tx $ty option
+	if window Copy 3; then
+		read -r bx by <<<"$(at 385 54)"
+		press $bx $by
+		window_gone Copy 15
+		sleep 3
+		if [ -e "$work/Big/T/huge" ]; then
+			fail "progress: after Stop, T/huge is there ($(stat -c %s "$work/Big/T/huge") bytes)"
+		elif [ "$(windows Copy)" != 0 ]; then
+			fail "progress: the Copy window stays after Stop"
+		else
+			pass "progress"
+		fi
+	elif [ "$(stat -c %s "$work/Big/T/huge" 2>/dev/null)" = $((4 << 30)) ]; then
+		skip "progress: the copy was over in less than the Copy window's delay"
+	else
+		fail "progress: no Copy window within 3 s of the drop (T/huge: $(stat -c %s "$work/Big/T/huge" 2>/dev/null) bytes)"
+	fi
+else
+	fail "progress: no window: $(outputs open-big)"
+fi
+quit_finder
+rm -f "$work/Big/huge" "$work/Big/T/huge"
+fi
+
+# paste: Command-C in one window, Command-V in another, copies the item
+mkdir -p "$work/C" "$work/V"
+echo p >"$work/C/p"
+guest open-cv "open '$gw/C'; open '$gw/V'"
+if window C 30 && window V 10; then
+	window C 1
+	key cmd+a
+	key cmd+c
+	window V 1
+	key cmd+v
+	if waitfor 15 "$work/V/p" && [ -e "$work/C/p" ]; then pass "paste"; else fail "paste: V has: $(ls "$work/V" | tr '\n' ' ')"; fi
+else
+	fail "paste: no windows: $(outputs open-cv)"
+fi
+
+# new folder and rename: Shift-Command-N, then typing a name and Return, makes a folder of that name
+if window V 5; then
+	key cmd+shift+n
+	typed Neu
+	key Return
+	if waitfor 10 "$work/V/Neu" && [ -d "$work/V/Neu" ]; then pass "new folder and rename"; else fail "new folder and rename: V has: $(ls "$work/V" | tr '\n' '|')"; fi
+else
+	fail "new folder and rename: no window V"
+fi
+quit_finder
+
+# trash: Command-Delete moves the selected item to the Trash in the home folder. The item is in a folder the guest
+# makes on the home folder's volume (/Volumes/SystemRoot, the host's file system, has no Trash)
+gone="gone $$ $RANDOM"
+guest make-r "d=\$(mktemp -d) && mkdir \"\$d/R\" && echo r >\"\$d/R/$gone\" && echo \"\$d/R\""
+r=$(cat "$work/make-r.out")
+guest open-r "open '$r'"
+if [ "$(rc make-r)" != 0 ]; then
+	fail "trash: the folder can't be made: $(outputs make-r)"
+elif window R 30; then
+	key cmd+a
+	key cmd+BackSpace
+	guest trash "for i in \$(seq 15); do [ -e \"$guest_home/.Trash/$gone\" ] && break; sleep 1; done; ls -d \"$guest_home/.Trash/$gone\" && ! [ -e \"$r/$gone\" ]"
+	if [ "$(rc trash)" = 0 ]; then pass "trash"; else fail "trash: $(outputs trash)"; fi
+else
+	fail "trash: no window: $(outputs open-r)"
 fi
 quit_finder
 
