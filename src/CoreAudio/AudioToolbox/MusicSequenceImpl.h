@@ -125,6 +125,9 @@ struct OpaqueMusicSequence
 
 	OpaqueMusicTrack tempoTrack;
 
+	// What a beat of the sequence means (MusicSequenceType); beats by default.
+	MusicSequenceType type = kMusicSequenceType_Beats;
+
 	// The ticks per quarter note of a file made from the sequence: 480 for a sequence made by hand.
 	SInt16 timeResolution = 480;
 	std::vector<std::unique_ptr<OpaqueMusicTrack>> tracks;

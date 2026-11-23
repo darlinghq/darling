@@ -216,6 +216,35 @@ MusicSequenceGetTrackIndex(MusicSequence inSequence, MusicTrack inTrack, UInt32 
 extern OSStatus
 MusicSequenceGetTempoTrack(MusicSequence inSequence, MusicTrack *outTrack);
 
+extern OSStatus
+MusicSequenceSetSequenceType(MusicSequence inSequence, MusicSequenceType inType);
+
+extern OSStatus
+MusicSequenceGetSequenceType(MusicSequence inSequence, MusicSequenceType *outType);
+
+extern OSStatus
+MusicSequenceGetSecondsForBeats(MusicSequence inSequence, MusicTimeStamp inBeats, Float64 *outSeconds);
+
+extern OSStatus
+MusicSequenceGetBeatsForSeconds(MusicSequence inSequence, Float64 inSeconds, MusicTimeStamp *outBeats);
+
+// The 16 bit division field of a MIDI file header for a SMPTE time base: the frame rate as a
+// negative number in the high byte (a positive rate is negated) and the ticks per frame in the low
+// bits.
+CF_INLINE SInt16
+MusicSequenceSetSMPTEResolution(SignedByte fps, Byte ticks)
+{
+	SInt16 frames = fps < 0 ? fps : -fps;
+	return (SInt16)(frames * 256 + ticks);
+}
+
+CF_INLINE void
+MusicSequenceGetSMPTEResolution(SInt16 inRes, SignedByte *fps, Byte *ticks)
+{
+	*fps = (SignedByte)(inRes >> 8);
+	*ticks = (Byte)(inRes & 0x7F);
+}
+
 // Music tracks
 
 extern OSStatus
