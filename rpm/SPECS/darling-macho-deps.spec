@@ -20,6 +20,8 @@ Source0:        %{name}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  bash
+# two scripts and an attribute file
+BuildArch:      noarch
 
 %description
 An RPM dependency generator for Mach-O files, used by Darling to generate ELF dependencies for the library it builds
