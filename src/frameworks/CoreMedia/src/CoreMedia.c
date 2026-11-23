@@ -891,46 +891,6 @@ void* CMSampleBufferTrackDataReadiness(void) {
     return NULL;
 }
 
-void* CMSimpleQueueCreate(void) {
-    if (verbose) puts("STUB: CMSimpleQueueCreate called");
-    return NULL;
-}
-
-void* CMSimpleQueueDequeue(void) {
-    if (verbose) puts("STUB: CMSimpleQueueDequeue called");
-    return NULL;
-}
-
-void* CMSimpleQueueEnqueue(void) {
-    if (verbose) puts("STUB: CMSimpleQueueEnqueue called");
-    return NULL;
-}
-
-void* CMSimpleQueueGetCapacity(void) {
-    if (verbose) puts("STUB: CMSimpleQueueGetCapacity called");
-    return NULL;
-}
-
-void* CMSimpleQueueGetCount(void) {
-    if (verbose) puts("STUB: CMSimpleQueueGetCount called");
-    return NULL;
-}
-
-void* CMSimpleQueueGetHead(void) {
-    if (verbose) puts("STUB: CMSimpleQueueGetHead called");
-    return NULL;
-}
-
-void* CMSimpleQueueGetTypeID(void) {
-    if (verbose) puts("STUB: CMSimpleQueueGetTypeID called");
-    return NULL;
-}
-
-void* CMSimpleQueueReset(void) {
-    if (verbose) puts("STUB: CMSimpleQueueReset called");
-    return NULL;
-}
-
 void* CMSwapBigEndianClosedCaptionDescriptionToHost(void) {
     if (verbose) puts("STUB: CMSwapBigEndianClosedCaptionDescriptionToHost called");
     return NULL;
