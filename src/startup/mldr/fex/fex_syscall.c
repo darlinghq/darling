@@ -126,6 +126,39 @@ __asm__(
 	"	svc #0\n"
 	"	ret\n"
 	".size fex_guest_svc, .-fex_guest_svc\n");
+
+// Sets the guest's blocked set, then execve. A signal let in after the rt_sigprocmask counts as arriving at
+// the guest syscall's entry and ends it with EINTR, instead of being kept here and lost with the image.
+long fex_guest_exec_svc(long path, long argv, long envp, const uint64_t* mask);
+__asm__(
+	".text\n"
+	".p2align 2\n"
+	".globl fex_guest_exec_svc\n"
+	".hidden fex_guest_exec_svc\n"
+	".type fex_guest_exec_svc, %function\n"
+	"fex_guest_exec_svc:\n"
+	"	mov x9, x0\n"
+	"	mov x10, x1\n"
+	"	mov x11, x2\n"
+	"	mov x0, #2\n" // SIG_SETMASK
+	"	mov x1, x3\n"
+	"	mov x2, #0\n"
+	"	mov x3, #8\n"
+	"	mov x8, #135\n" // rt_sigprocmask
+	"	svc #0\n"
+	".globl fex_guest_exec_entry\n"
+	".hidden fex_guest_exec_entry\n"
+	"fex_guest_exec_entry:\n"
+	"	mov x0, x9\n"
+	"	mov x1, x10\n"
+	"	mov x2, x11\n"
+	"	mov x8, #221\n" // execve
+	".globl fex_guest_exec_insn\n"
+	".hidden fex_guest_exec_insn\n"
+	"fex_guest_exec_insn:\n"
+	"	svc #0\n"
+	"	ret\n"
+	".size fex_guest_exec_svc, .-fex_guest_exec_svc\n");
 #endif
 
 static long guest_host_syscall(long nr, long a1, long a2, long a3, long a4, long a5, long a6)
@@ -625,12 +658,24 @@ static void deliver_now(int sig, siginfo_t* info, void* ucontext)
 
 #if defined(__aarch64__)
 extern const char fex_guest_svc_insn[];
+extern const char fex_guest_exec_entry[];
+extern const char fex_guest_exec_insn[];
+
+// Where a guest syscall interrupted at its kernel entry returns EINTR from, or null when `pc` is not there.
+static const char* guest_syscall_entry_return(const void* pc)
+{
+	if (pc == (const void*)fex_guest_svc || pc == (const void*)fex_guest_svc_insn)
+		return fex_guest_svc_insn + 4;
+	if ((const char*)pc >= fex_guest_exec_entry && (const char*)pc <= fex_guest_exec_insn)
+		return fex_guest_exec_insn + 4;
+	return NULL;
+}
 #endif
 
 bool fex_at_guest_syscall_entry(const void* pc)
 {
 #if defined(__aarch64__)
-	return pc == (const void*)fex_guest_svc || pc == (const void*)fex_guest_svc_insn;
+	return guest_syscall_entry_return(pc) != NULL;
 #else
 	(void)pc;
 	return false;
@@ -655,9 +700,10 @@ static void hold_for_syscall_return(int sig, siginfo_t* info, void* ucontext)
 		return; // a JIT signal the guest blocks: it waits for the guest to unblock it
 #if defined(__aarch64__)
 	ucontext_t* uc = ucontext;
-	if (fex_at_guest_syscall_entry((const void*)(uintptr_t)uc->uc_mcontext.pc)) {
+	const char* entry_return = guest_syscall_entry_return((const void*)(uintptr_t)uc->uc_mcontext.pc);
+	if (entry_return) {
 		uc->uc_mcontext.regs[0] = (uint64_t)-EINTR;
-		uc->uc_mcontext.pc = (uintptr_t)fex_guest_svc_insn + 4;
+		uc->uc_mcontext.pc = (uintptr_t)entry_return;
 		t_restart_syscall = true;
 	}
 #endif
@@ -942,6 +988,30 @@ static long guest_masked_wait(long nr, const long args[6], uint64_t wait, uint64
 	return ret;
 }
 
+// Pending signals survive execve: kept ones the guest blocks go back to the kernel, and those it can take
+// run first. Everything stays blocked meanwhile, so a signal arriving now waits in the kernel, not here.
+static long guest_execve(long path, long argv, long envp)
+{
+	uint64_t blocked = guest_mask();
+	uint64_t host = unblockable(blocked) & ~FEX_JIT_SIGNALS;
+	uint64_t all = ~0ULL;
+	raw_host_syscall(SYS_rt_sigprocmask, SIG_SETMASK, (long)(uintptr_t)&all, 0, sizeof(all), 0, 0);
+	if (__atomic_load_n(&t_pending, __ATOMIC_RELAXED) & ~blocked) {
+		raw_host_syscall(SYS_rt_sigprocmask, SIG_SETMASK, (long)(uintptr_t)&host, 0, sizeof(host), 0, 0);
+		t_restart_syscall = true;
+		return -EINTR;
+	}
+	long pid = raw_host_syscall(SYS_getpid, 0, 0, 0, 0, 0, 0);
+	long tid = raw_host_syscall(SYS_gettid, 0, 0, 0, 0, 0, 0);
+	siginfo_t info;
+	int sig;
+	while ((sig = take_kept_signal(blocked & ~FEX_JIT_SIGNALS, &info)) != 0) {
+		if (raw_host_syscall(SYS_rt_tgsigqueueinfo, pid, tid, sig, (long)(uintptr_t)&info, 0, 0) != 0)
+			raw_host_syscall(SYS_tgkill, pid, tid, sig, 0, 0, 0);
+	}
+	return fex_guest_exec_svc(path, argv, envp, &host);
+}
+
 // Each guest thread's alternate signal stack, as Linux keeps it; `guest_sp` is the caller's stack pointer.
 static long guest_sigaltstack(uintptr_t new_stack, uintptr_t old_stack, uint64_t guest_sp)
 {
@@ -1130,6 +1200,10 @@ static long dispatch_syscall(struct fex_x86_64_state* state)
 				ret = guest_masked_wait(SYS_ppoll, (long[6]){ a1, a2, a3, (long)(uintptr_t)&host_mask, 8 }, wait, &host_mask);
 			break;
 		}
+
+		case 59: // execve
+			ret = guest_execve(a1, a2, a3);
+			break;
 
 		case 131: // sigaltstack
 			ret = guest_sigaltstack((uintptr_t)a1, (uintptr_t)a2, state->rsp);

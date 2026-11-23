@@ -1270,6 +1270,100 @@ static void test_nested_delivery(uint64_t guest_handler, uint64_t saved_mask)
 	set_guest_mask_to(saved_mask);
 }
 
+// Run by the exec test in the image it executes: exits 0 if SIGUSR1 is pending on this thread and blocked.
+static const char kReportEnv[] = "FEX_BRIDGE_TEST_REPORT_USR1";
+static int report_usr1_after_exec(void)
+{
+	char line[256];
+	uint64_t pending = 0, blocked = 0;
+	FILE* f = fopen("/proc/thread-self/status", "r");
+	while (f && fgets(line, sizeof(line), f)) {
+		if (strncmp(line, "SigPnd:", 7) == 0)
+			pending = strtoull(line + 7, NULL, 16);
+		if (strncmp(line, "SigBlk:", 7) == 0)
+			blocked = strtoull(line + 7, NULL, 16);
+	}
+	return (pending & blocked & FEX_SIGBIT(SIGUSR1)) ? 0 : 1;
+}
+
+// SIGUSR1 kept for the guest, which blocks it: it came while the thread was in host code and the guest
+// blocked it before the syscall returned.
+static void keep_blocked_usr1(void)
+{
+	const uint64_t usr1 = FEX_SIGBIT(SIGUSR1);
+	set_guest_mask_to(0);
+	raise_on_this_thread(SIGUSR1);
+	guest_syscall_state(14, SIG_BLOCK, (uint64_t)(uintptr_t)&usr1, 0);
+}
+
+// Pending signals and the blocked set survive execve (POSIX): one kept here goes back to the kernel first,
+// and one the guest can take runs its handler before execve is made.
+static void test_exec_keeps_signals(uint64_t guest_handler, uint64_t saved_mask)
+{
+	const uint64_t usr1 = FEX_SIGBIT(SIGUSR1);
+	guest_sigaction(SIGUSR1, guest_handler, 0, 0, NULL);
+	g_fake_preempt_answer = FEX_SIGNAL_AT_SYSCALL_RETURN;
+
+	keep_blocked_usr1();
+	uint64_t pending = 0;
+	guest_syscall(127, (uint64_t)(uintptr_t)&pending, 8, 0, 0, 0);
+	check((pending & usr1) && !(thread_pending_mask() & usr1), "(a blocked SIGUSR1 kept for the guest)");
+	struct fex_x86_64_state st = guest_syscall_state(59, (uint64_t)(uintptr_t)"/nonexistent/fex-bridge", 0, 0);
+	pending = 0;
+	guest_syscall(127, (uint64_t)(uintptr_t)&pending, 8, 0, 0, 0);
+	check((long)st.rax == -ENOENT && !st.signal_request && (thread_pending_mask() & usr1) && (pending & usr1),
+		"execve gives a kept signal the guest blocks back to the kernel, still pending for the guest");
+	siginfo_t info;
+	struct timespec zero = { 0, 0 };
+	st = guest_syscall_state6(128, (uint64_t)(uintptr_t)&usr1, (uint64_t)(uintptr_t)&info, (uint64_t)(uintptr_t)&zero, 8, 0, 0);
+	check((long)st.rax == SIGUSR1 && info.si_code == SI_TKILL && info.si_pid == getpid(), "with its siginfo");
+
+	set_guest_mask_to(0);
+	raise_on_this_thread(SIGUSR1);
+	st = guest_syscall_state(59, (uint64_t)(uintptr_t)"/nonexistent/fex-bridge", 0, 0);
+	check((long)st.rax == -EINTR && st.signal_request && st.signal_request->sig == SIGUSR1 && st.signal_request->restart_syscall,
+		"a kept signal the guest can take runs its handler first, and execve is made again after it");
+	set_guest_mask_to(0);
+
+	// A signal that came while execve held every signal on the host comes in when execve's entry puts the
+	// guest's set back: it ends execve with EINTR there instead of being kept and lost with the image.
+	extern const char fex_guest_exec_entry[], fex_guest_exec_insn[];
+	extern long fex_guest_exec_svc(long path, long argv, long envp, const uint64_t* mask);
+	check(fex_at_guest_syscall_entry(fex_guest_exec_entry) && fex_at_guest_syscall_entry(fex_guest_exec_insn)
+		&& !fex_at_guest_syscall_entry((const char*)fex_guest_exec_svc), "execve's entry starts once the guest's set is back");
+	uint64_t all = ~0ULL, guest_set = 0;
+	syscall(SYS_rt_sigprocmask, SIG_SETMASK, &all, NULL, 8);
+	raise_on_this_thread(SIGUSR1);
+	long ret = fex_guest_exec_svc((long)(uintptr_t)"/nonexistent/fex-bridge", 0, 0, &guest_set);
+	st = guest_syscall_state(39 /* getpid */, 0, 0, 0);
+	check(ret == -EINTR && st.signal_request && st.signal_request->sig == SIGUSR1,
+		"a signal waiting on the host ends execve at its entry, and its handler runs");
+	set_guest_mask_to(0);
+
+	pid_t child = fork();
+	if (child == 0) {
+		keep_blocked_usr1();
+		char self[4096];
+		ssize_t n = readlink("/proc/self/exe", self, sizeof(self) - 1);
+		if (n <= 0)
+			_exit(3);
+		self[n] = 0;
+		char* argv[] = { self, NULL };
+		char env[64];
+		snprintf(env, sizeof(env), "%s=1", kReportEnv);
+		char* envp[] = { env, NULL };
+		guest_syscall_state(59, (uint64_t)(uintptr_t)self, (uint64_t)(uintptr_t)argv, (uint64_t)(uintptr_t)envp);
+		_exit(2);
+	}
+	int status = 0;
+	waitpid(child, &status, 0);
+	check(WIFEXITED(status) && WEXITSTATUS(status) == 0, "the executed image has the signal pending and blocked");
+
+	guest_sigaction(SIGUSR1, 0, 0, 0, NULL);
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+	set_guest_mask_to(saved_mask);
+}
+
 static void test_guest_signal_delivery(void)
 {
 	const uint64_t guest_handler = 0x123400;
@@ -1411,6 +1505,7 @@ static void test_guest_signal_delivery(void)
 	test_masked_waits(guest_handler, saved_mask);
 	test_nested_delivery(guest_handler, saved_mask);
 	test_requests_after_thread_exit(guest_handler, saved_mask);
+	test_exec_keeps_signals(guest_handler, saved_mask);
 
 	guest_sigaction(SIGUSR1, 0, 0, 0, NULL);
 	guest_sigaction(SIGUSR2, 0, 0, 0, NULL);
@@ -2665,6 +2760,8 @@ static void test_abi_check(void)
 
 int main(void)
 {
+	if (getenv(kReportEnv))
+		return report_usr1_after_exec();
 	test_elfcalls_trampolines();
 	test_dlsym_wrapping();
 	test_host_callback_thunks();
