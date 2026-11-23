@@ -33,7 +33,9 @@
  * is also watched by a kqueue in another process. Each variant is checked
  * with plain kevent() (EV_ADD alone, EV_DISPATCH with a manual re-arm
  * after every datagram, and EV_DISABLE then EV_ENABLE) and with a
- * dispatch read source whose handler reads one datagram per call.
+ * dispatch read source whose handler reads one datagram per call. On the
+ * first two variants the registration is also made while another thread is
+ * already blocked in kevent() on the same kqueue.
  *
  * Runs on macOS and in Darling; prints PASS and exits 0. Every wait is
  * bounded, so a lost event fails the test with FAIL lines instead of
@@ -42,6 +44,7 @@
 #include <dispatch/dispatch.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -275,6 +278,65 @@ static void check_kevent(const struct dgram *d, enum arm_style style, const char
 	close(kq);
 }
 
+/*
+ * Another thread is already waiting on the kqueue when the readable
+ * descriptor is registered, as when an event loop thread sits in kevent()
+ * and a different thread resumes a source. The registration must wake the
+ * waiter with the event. Repeated, since a lost event depends on timing.
+ */
+#define RACE_ROUNDS 200
+
+struct waiter {
+	int kq;
+	int rx;
+	int n;
+	struct kevent out;
+};
+
+static void *waiter_main(void *arg)
+{
+	struct waiter *w = arg;
+	struct timespec ts = {WAIT_SECONDS, 0};
+
+	memset(&w->out, 0, sizeof(w->out));
+	w->n = kevent(w->kq, NULL, 0, &w->out, 1, &ts);
+	return NULL;
+}
+
+static void check_registration_while_waiting(const struct dgram *d, enum arm_style style, const char *vname)
+{
+	for (int round = 0; round < RACE_ROUNDS; round++) {
+		struct waiter w = { .kq = kqueue(), .rx = d->rx };
+		struct kevent ch;
+		pthread_t th;
+
+		CHECK(w.kq >= 0, "%s: kqueue: %s", vname, strerror(errno));
+		CHECK(send_datagram(d, round) > 0, "%s: send: %s", vname, strerror(errno));
+		pthread_create(&th, NULL, waiter_main, &w);
+		/* Vary how long the waiter has been blocked: 0 to about 1 ms. */
+		usleep((round % 8) * 150);
+
+		EV_SET(&ch, d->rx, EVFILT_READ,
+				style == ARM_DISPATCH_REARM ? EV_ADD | EV_ENABLE | EV_DISPATCH
+				: style == ARM_ADD_ONLY ? EV_ADD : EV_ADD | EV_DISABLE, 0, 0, NULL);
+		CHECK(kevent(w.kq, &ch, 1, NULL, 0, NULL) == 0, "%s: add: %s", vname, strerror(errno));
+		if (style == ARM_DISABLE_ENABLE) {
+			EV_SET(&ch, d->rx, EVFILT_READ, EV_ENABLE, 0, 0, NULL);
+			CHECK(kevent(w.kq, &ch, 1, NULL, 0, NULL) == 0, "%s: enable: %s", vname, strerror(errno));
+		}
+		pthread_join(th, NULL);
+
+		if (w.n != 1 || w.out.filter != EVFILT_READ || (int)w.out.ident != d->rx) {
+			CHECK(0, "%s/%s: round %d: waiter got %d events instead of the readable descriptor",
+					vname, arm_name[style], round, w.n);
+			close(w.kq);
+			return;
+		}
+		CHECK(read_one(d->rx), "%s/%s: round %d: nothing to read", vname, arm_name[style], round);
+		close(w.kq);
+	}
+}
+
 static void refill(struct dgram *d)
 {
 	d->queued = 0;
@@ -340,6 +402,10 @@ int main(void)
 			refill(&d);
 		}
 		check_source(&d, vname);
+		if (v == VARIANT_SOCKETPAIR || v == VARIANT_BOUND) {
+			for (int s = 0; s < ARM_STYLE_COUNT; s++)
+				check_registration_while_waiting(&d, (enum arm_style)s, vname);
+		}
 		teardown(&d);
 	}
 
