@@ -213,6 +213,7 @@ struct fex_callback_rules {
 	bool returns_function; // it returns a host function named by its first argument (g_proc_address_lookups)
 	enum fex_jpeg_rule jpeg;
 	bool jpeg_method; // one of the methods jpeg_std_error puts in an error manager
+	bool jpeg_creates; // it initialises the libjpeg object, whose fields other than err are not set before it runs
 	const struct fex_kept_struct* kept_struct; // its g_kept_struct_args layout, if any
 	unsigned kept_struct_arg; // which argument points to that struct
 	unsigned kept_struct_back; // its g_kept_struct_back_args mask, 0 if none
@@ -220,9 +221,11 @@ struct fex_callback_rules {
 // What a host thunk does to the arguments a host library calls it with, before the guest function runs:
 // `struct_args` may point to a host copy made for a kept struct (they get the guest's struct back), and
 // `host_fn_args` are host function pointers, which the guest can only call through a bridge stub that
-// follows the rules of the host function name `host_fn_rules`.
-struct fex_thunk_rules { unsigned struct_args; unsigned host_fn_args; const char* host_fn_rules; };
+// follows the rules of the host function name `host_fn_rules`. `jpeg_object`: the first argument is a
+// libjpeg object, and the guest function runs with the guest view of its managers in place.
+struct fex_thunk_rules { unsigned struct_args; unsigned host_fn_args; const char* host_fn_rules; bool jpeg_object; };
 static void translate_thunk_args(const struct fex_thunk_rules* rules, uint64_t args[6]);
+static uint64_t jpeg_run_guest_fn(uint64_t guest_fn, uint64_t args[6]);
 static struct fex_callback_rules g_dlsym_rules[DARLING_FEX_DLSYM_MAX_SLOTS];
 static struct fex_callback_rules callback_rules_for(const char* name);
 static void* wrap_host_function(void* host_sym, const char* symbol_name, const struct fex_callback_rules* rules);
@@ -338,6 +341,8 @@ static uint64_t host_callback_entry(uint64_t a0, uint64_t a1, uint64_t a2, uint6
 	uint64_t args[6] = {a0, a1, a2, a3, a4, a5};
 	uintptr_t guest_fn = __atomic_load_n(&g_callback_guest_fn[slot], __ATOMIC_ACQUIRE);
 	const struct fex_thunk_rules* rules = __atomic_load_n(&g_callback_thunk_rules[slot], __ATOMIC_ACQUIRE);
+	if (rules && rules->jpeg_object)
+		return jpeg_run_guest_fn(guest_fn, args);
 	if (rules)
 		translate_thunk_args(rules, args);
 	return fex_invoke_guest_callback_args(guest_fn, args);
@@ -675,34 +680,60 @@ static void jpeg_leave_host_view(uint64_t err)
 	pthread_mutex_unlock(&g_jpeg_mutex);
 }
 
-// libjpeg calls a guest method: run it with the guest view in place, as guest code expects to find it.
-static void jpeg_run_guest_method(unsigned method, uint64_t object, uint64_t arg)
+static void jpeg_set_managers(uint64_t object, bool host);
+
+// libjpeg calls a guest function whose first argument is a libjpeg object: run it with the guest view of
+// the object's error manager and other managers in place, as guest code expects to find them. `method` is
+// the error manager method it is, or FEX_JPEG_METHODS for another guest function, `guest_fn`.
+static uint64_t jpeg_run_guest(unsigned method, uint64_t guest_fn, uint64_t args[6])
 {
+	const uint64_t object = args[0];
 	uint64_t err = jpeg_error_mgr_of(object);
 	pthread_mutex_lock(&g_jpeg_mutex);
 	struct fex_jpeg_host_view* v = err ? jpeg_host_view_of(err) : NULL;
-	if (!v) {
+	if (!v && method < FEX_JPEG_METHODS) {
 		pthread_mutex_unlock(&g_jpeg_mutex);
 		fprintf(stderr, "mldr/fex: libjpeg called the %s method of an error manager it was not given\n",
 			g_jpeg_method_names[method]);
 		abort();
 	}
-	jpeg_check_owner(v);
-	const struct fex_jpeg_host_view saved = *v;
-	v->err = 0;
-	fex_copy_to_guest((void*)(uintptr_t)err, saved.guest, sizeof(saved.guest));
+	struct fex_jpeg_host_view saved = { 0 };
+	if (v) {
+		jpeg_check_owner(v);
+		saved = *v;
+		v->err = 0;
+		fex_copy_to_guest((void*)(uintptr_t)err, saved.guest, sizeof(saved.guest));
+	}
 	pthread_mutex_unlock(&g_jpeg_mutex);
+	jpeg_set_managers(object, false);
 
-	fex_invoke_guest_callback((uintptr_t)saved.guest[method], object, arg);
+	uint64_t ret = method < FEX_JPEG_METHODS
+		? fex_invoke_guest_callback((uintptr_t)saved.guest[method], object, args[1])
+		: fex_invoke_guest_callback_args((uintptr_t)guest_fn, args);
 
 	// It returned (error_exit longjmps past libjpeg instead, leaving the guest view in place). The guest
 	// may have changed its methods meanwhile.
-	uint64_t guest[FEX_JPEG_METHODS];
-	if (fex_copy_from_guest(guest, (const void*)(uintptr_t)err, sizeof(guest)) != 0)
-		memcpy(guest, saved.guest, sizeof(guest));
-	pthread_mutex_lock(&g_jpeg_mutex);
-	jpeg_set_host_view(NULL, err, guest, saved.depth);
-	pthread_mutex_unlock(&g_jpeg_mutex);
+	jpeg_set_managers(object, true);
+	if (v) {
+		uint64_t guest[FEX_JPEG_METHODS];
+		if (fex_copy_from_guest(guest, (const void*)(uintptr_t)err, sizeof(guest)) != 0)
+			memcpy(guest, saved.guest, sizeof(guest));
+		pthread_mutex_lock(&g_jpeg_mutex);
+		jpeg_set_host_view(NULL, err, guest, saved.depth);
+		pthread_mutex_unlock(&g_jpeg_mutex);
+	}
+	return ret;
+}
+
+static uint64_t jpeg_run_guest_fn(uint64_t guest_fn, uint64_t args[6])
+{
+	return jpeg_run_guest(FEX_JPEG_METHODS, guest_fn, args);
+}
+
+static void jpeg_run_guest_method(unsigned method, uint64_t object, uint64_t arg)
+{
+	uint64_t args[6] = { object, arg };
+	jpeg_run_guest(method, 0, args);
 }
 
 static void jpeg_host_method_0(uint64_t object) { jpeg_run_guest_method(0, object, 0); }
@@ -722,6 +753,118 @@ static void jpeg_wrap_std_error(uint64_t err)
 			words[m] = (uint64_t)(uintptr_t)wrap_host_function((void*)(uintptr_t)words[m], g_jpeg_method_names[m],
 				&g_jpeg_method_rules);
 	fex_copy_to_guest((void*)(uintptr_t)err, words, sizeof(words));
+}
+
+// The other managers of a libjpeg object. It starts with jpeg_common_fields { err, mem, progress, client_data,
+// boolean is_decompressor, int global_state }, then a decompress object has its source manager (src) and a
+// compress object its destination manager (dest). The memory manager starts with eleven methods, the progress
+// manager with progress_monitor, and the source (destination) manager has two data words then five (three)
+// methods; every method takes the object as first argument. libjpeg allocates the memory manager and fills it,
+// jpeg_mem_src, jpeg_stdio_dest and the like allocate and fill a source or destination manager, and a guest
+// may provide its own source, destination and progress managers, allocating them with the memory manager.
+// Like error managers, these words hold guest-callable functions while guest code runs and host-callable ones
+// while a libjpeg function runs, but nothing is recorded: what a word is tells which view it is in. A stub
+// stands for its host function, a thunk for its guest function, and an address inside a host ELF object is
+// host code; anything else is a guest function. This assumes a host method lies in a host ELF object, as
+// libjpeg's own methods do: host code in anonymous memory would be taken for a guest function.
+#define FEX_JPEG_MEMORY_METHODS 11
+static const struct fex_thunk_rules g_jpeg_callback_rules = { .jpeg_object = true };
+static const struct fex_callback_rules g_jpeg_manager_method_rules = { .jpeg = FEX_JPEG_OBJECT };
+static uint64_t host_callback_with_rules(uint64_t guest_fn, const struct fex_thunk_rules* rules);
+static uint64_t guest_fn_of_thunk(uint64_t host);
+
+// libjpeg calls run once per scanline or two, so the two views of each word are memoised. They depend on the
+// word alone and never change (stubs and thunks live as long as the process, a host function keeps its stub,
+// a guest function its thunk), and both views of a word are made when it is first seen, so every entry is
+// final: one per distinct method, keyed by either view. Entries are published with a release store of the
+// key and read without a lock; a full cache only means the views are worked out again.
+#define FEX_JPEG_WORD_CACHE 512
+struct fex_jpeg_word_views { uint64_t word, host, guest; };
+static struct fex_jpeg_word_views g_jpeg_word_cache[FEX_JPEG_WORD_CACHE];
+static unsigned g_jpeg_word_cache_count = 0;
+static pthread_mutex_t g_jpeg_word_cache_mutex = PTHREAD_MUTEX_INITIALIZER;
+unsigned fex_jpeg_word_cache_misses = 0; // for the tests
+
+static const struct fex_jpeg_word_views* jpeg_cached_views(uint64_t word, struct fex_jpeg_word_views** free_slot)
+{
+	uint32_t h = (uint32_t)((word * 0x9e3779b97f4a7c15ull) >> 32) % FEX_JPEG_WORD_CACHE;
+	for (unsigned n = 0; n < FEX_JPEG_WORD_CACHE; n++, h = (h + 1) % FEX_JPEG_WORD_CACHE) {
+		uint64_t key = __atomic_load_n(&g_jpeg_word_cache[h].word, __ATOMIC_ACQUIRE);
+		if (key == word)
+			return &g_jpeg_word_cache[h];
+		if (key == 0) {
+			if (free_slot)
+				*free_slot = &g_jpeg_word_cache[h];
+			return NULL;
+		}
+	}
+	return NULL;
+}
+
+static void jpeg_cache_views(uint64_t word, uint64_t host, uint64_t guest)
+{
+	pthread_mutex_lock(&g_jpeg_word_cache_mutex);
+	struct fex_jpeg_word_views* slot = NULL;
+	// Kept at most half full, so probes stay short.
+	if (g_jpeg_word_cache_count < FEX_JPEG_WORD_CACHE / 2 && !jpeg_cached_views(word, &slot) && slot) {
+		slot->host = host;
+		slot->guest = guest;
+		__atomic_store_n(&slot->word, word, __ATOMIC_RELEASE);
+		g_jpeg_word_cache_count++;
+	}
+	pthread_mutex_unlock(&g_jpeg_word_cache_mutex);
+}
+
+static uint64_t jpeg_manager_word(uint64_t word, bool host)
+{
+	if (word == 0)
+		return 0;
+	const struct fex_jpeg_word_views* cached = jpeg_cached_views(word, NULL);
+	if (cached)
+		return host ? cached->host : cached->guest;
+	__atomic_fetch_add(&fex_jpeg_word_cache_misses, 1, __ATOMIC_RELAXED);
+	uint64_t host_view = word, guest_view = word;
+	const uint64_t stub_target = host_function_of_stub(word, NULL);
+	const uint64_t thunk_guest = stub_target ? 0 : guest_fn_of_thunk(word);
+	Dl_info info;
+	if (stub_target)
+		host_view = stub_target;
+	else if (thunk_guest)
+		guest_view = thunk_guest;
+	else if (dladdr((void*)(uintptr_t)word, &info) != 0)
+		guest_view = (uint64_t)(uintptr_t)wrap_host_function((void*)(uintptr_t)word, "libjpeg manager method",
+			&g_jpeg_manager_method_rules);
+	else
+		host_view = host_callback_with_rules(word, &g_jpeg_callback_rules);
+	jpeg_cache_views(host_view, host_view, guest_view);
+	jpeg_cache_views(guest_view, host_view, guest_view);
+	return host ? host_view : guest_view;
+}
+
+static void jpeg_set_manager_view(uint64_t methods, unsigned count, bool host)
+{
+	uint64_t words[FEX_JPEG_MEMORY_METHODS], view[FEX_JPEG_MEMORY_METHODS];
+	if (methods == 0 || fex_copy_from_guest(words, (const void*)(uintptr_t)methods, count * sizeof(uint64_t)) != 0)
+		return;
+	for (unsigned i = 0; i < count; i++)
+		view[i] = jpeg_manager_word(words[i], host);
+	if (memcmp(words, view, count * sizeof(uint64_t)) != 0)
+		fex_copy_to_guest((void*)(uintptr_t)methods, view, count * sizeof(uint64_t));
+}
+
+// Puts the managers of the libjpeg object `object` in one view.
+static void jpeg_set_managers(uint64_t object, bool host)
+{
+	uint64_t fields[6];
+	if (fex_copy_from_guest(fields, (const void*)(uintptr_t)object, sizeof(fields)) != 0)
+		return;
+	jpeg_set_manager_view(fields[2], 1, host);
+	// jpeg_destroy frees the memory manager and what it allocated, and clears mem.
+	if (fields[1] == 0)
+		return;
+	jpeg_set_manager_view(fields[1], FEX_JPEG_MEMORY_METHODS, host);
+	const bool is_decompressor = (uint32_t)fields[4] != 0;
+	jpeg_set_manager_view(fields[5] ? fields[5] + 2 * sizeof(uint64_t) : 0, is_decompressor ? 5 : 3, host);
 }
 
 // libpulse (pulse/*.h): which arguments of each function taking a callback are function pointers. libpulse
@@ -831,7 +974,7 @@ static pthread_mutex_t g_kept_copy_mutex = PTHREAD_MUTEX_INITIALIZER;
 static uint64_t host_callback_with_rules(uint64_t guest_fn, const struct fex_thunk_rules* rules)
 {
 	uint64_t host = host_callback_for(guest_fn);
-	if (host && (rules->struct_args || rules->host_fn_args)) {
+	if (host && (rules->struct_args || rules->host_fn_args || rules->jpeg_object)) {
 		size_t slot = (size_t)(host - (uint64_t)(uintptr_t)g_callback_area) / FEX_CALLBACK_THUNK_SIZE;
 		const struct fex_thunk_rules* none = NULL;
 		__atomic_compare_exchange_n(&g_callback_thunk_rules[slot], &none, rules, false, __ATOMIC_RELEASE,
@@ -969,6 +1112,7 @@ static struct fex_callback_rules callback_rules_for(const char* name)
 		r.jpeg = FEX_JPEG_STD_ERROR;
 	else if (strncmp(name, "jpeg_", 5) == 0)
 		r.jpeg = FEX_JPEG_OBJECT;
+	r.jpeg_creates = strcmp(name, "jpeg_CreateCompress") == 0 || strcmp(name, "jpeg_CreateDecompress") == 0;
 	for (size_t i = 0; i < sizeof(g_pa_callback_args) / sizeof(g_pa_callback_args[0]); i++)
 		if (strcmp(name, g_pa_callback_args[i].name) == 0)
 			r.args |= g_pa_callback_args[i].mask;
@@ -1090,6 +1234,8 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 	}
 	uint64_t s0 = st[0], s1 = st[1];
 	const uint64_t jpeg_err = rules.jpeg == FEX_JPEG_OBJECT ? jpeg_enter_host_view(state->rdi) : 0;
+	if (jpeg_err && !rules.jpeg_creates)
+		jpeg_set_managers(state->rdi, true);
 
 #if defined(__aarch64__)
 	double v0, v1, v2, v3, v4, v5, v6, v7;
@@ -1153,8 +1299,10 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 		else
 			*host_native = x0;
 	}
-	if (jpeg_err)
+	if (jpeg_err) {
+		jpeg_set_managers(state->rdi, false);
 		jpeg_leave_host_view(jpeg_err);
+	}
 	if (rules.jpeg == FEX_JPEG_STD_ERROR)
 		jpeg_wrap_std_error(state->rdi);
 	if (rules.returns_function && x0 != 0)

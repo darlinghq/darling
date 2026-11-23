@@ -93,11 +93,14 @@ uint64_t fex_invoke_guest_callback(uintptr_t guest_fn, uint64_t arg0, uint64_t a
 
 static uintptr_t last_cb_args_fn = 0;
 static uint64_t last_cb_args[6];
+static void (*guest_callback_args_body)(uintptr_t guest_fn, const uint64_t args[6]) = NULL;
 
 uint64_t fex_invoke_guest_callback_args(uintptr_t guest_fn, const uint64_t args[6])
 {
 	last_cb_args_fn = guest_fn;
 	memcpy(last_cb_args, args, sizeof(last_cb_args));
+	if (guest_callback_args_body)
+		guest_callback_args_body(guest_fn, args);
 	return 0x88;
 }
 
@@ -2046,15 +2049,18 @@ static void test_proc_address_lookup(void)
 		"a looked-up function keeps the callback rules of its name");
 }
 
-// libjpeg fakes. An error manager starts with five methods; a libjpeg object starts with its err pointer.
+// libjpeg fakes. An error manager starts with five methods; a libjpeg object starts with jpeg_common_fields,
+// then its source or destination manager.
 struct fake_jpeg_error_mgr {
 	uint64_t method[5]; // error_exit, emit_message, output_message, format_message, reset_error_mgr
 	int64_t msg_code;
 	uint64_t guest_extension; // what a guest keeps after the struct (Onyx2D: its jmp_buf)
 };
 struct fake_jpeg_object {
-	uint64_t err;
-	uint64_t state;
+	uint64_t err, mem, progress, client_data;
+	uint32_t is_decompressor;
+	int32_t global_state;
+	uint64_t src;
 };
 enum { JPEG_ERROR_EXIT, JPEG_EMIT, JPEG_OUTPUT, JPEG_FORMAT, JPEG_RESET };
 
@@ -2276,6 +2282,192 @@ static void test_jpeg_error_manager(void)
 	struct fake_jpeg_object unset = {0, 0};
 	call_stub(quality, (uint64_t)(uintptr_t)&unset, 0, 0, 0);
 	check(unset.err == 0, "an object whose err pointer is NULL is left alone");
+}
+
+// A libjpeg object's memory, progress and source managers.
+struct fake_jpeg_memory_mgr { uint64_t method[11]; };
+struct fake_jpeg_progress_mgr { uint64_t progress_monitor; long pass_counter, pass_limit; int completed, total; };
+struct fake_jpeg_source_mgr { uint64_t next_input_byte, bytes_in_buffer, method[5]; };
+enum { JPEG_INIT_SOURCE, JPEG_FILL_INPUT, JPEG_SKIP_INPUT, JPEG_RESYNC, JPEG_TERM_SOURCE };
+
+static uint64_t host_jpeg_alloc_small(uint64_t object, uint64_t pool, uint64_t size)
+{
+	(void)object;
+	(void)pool;
+	return (uint64_t)(uintptr_t)calloc(1, size);
+}
+static uint64_t host_jpeg_free_pool(uint64_t object, uint64_t pool) { (void)object; return pool; }
+static uint64_t host_jpeg_resync_to_restart(uint64_t object, uint64_t desired) { (void)object; return desired; }
+static uint64_t host_jpeg_mem_fill(uint64_t object) { (void)object; return 0x31; }
+static uint64_t host_jpeg_mem_other(uint64_t object) { (void)object; return 0; }
+
+static struct fake_jpeg_memory_mgr g_host_memory_mgr; // what libjpeg allocates for an object
+static struct fake_jpeg_source_mgr g_host_source_mgr;  // what jpeg_mem_src allocates
+
+static struct fake_jpeg_object* jpeg_object(uint64_t object) { return (struct fake_jpeg_object*)(uintptr_t)object; }
+
+static uint64_t host_jpeg_CreateDecompress(uint64_t object, uint64_t version, uint64_t size)
+{
+	(void)version;
+	(void)size;
+	struct fake_jpeg_object* o = jpeg_object(object);
+	*o = (struct fake_jpeg_object){ .err = o->err, .mem = (uint64_t)(uintptr_t)&g_host_memory_mgr, .is_decompressor = 1 };
+	g_host_memory_mgr.method[0] = (uint64_t)(uintptr_t)host_jpeg_alloc_small;
+	for (int m = 1; m < 11; m++)
+		g_host_memory_mgr.method[m] = (uint64_t)(uintptr_t)host_jpeg_free_pool;
+	return 0;
+}
+
+// Like libjpeg's, it fails if the object's source manager is its own but holds other methods.
+static uint64_t host_jpeg_mem_src(uint64_t object, uint64_t buffer, uint64_t size)
+{
+	struct fake_jpeg_object* o = jpeg_object(object);
+	if (o->src == (uint64_t)(uintptr_t)&g_host_source_mgr &&
+	    g_host_source_mgr.method[JPEG_INIT_SOURCE] != (uint64_t)(uintptr_t)host_jpeg_mem_other)
+		return GOT_GUEST_FN;
+	o->src = (uint64_t)(uintptr_t)&g_host_source_mgr;
+	g_host_source_mgr = (struct fake_jpeg_source_mgr){ buffer, size, {
+		(uint64_t)(uintptr_t)host_jpeg_mem_other, (uint64_t)(uintptr_t)host_jpeg_mem_fill,
+		(uint64_t)(uintptr_t)host_jpeg_mem_other, (uint64_t)(uintptr_t)host_jpeg_resync_to_restart,
+		(uint64_t)(uintptr_t)host_jpeg_mem_other } };
+	return 0;
+}
+
+// What libjpeg found in the managers while it ran.
+static bool g_jpeg_managers_host_view;
+static uint64_t g_jpeg_seen_resync, g_jpeg_seen_fill;
+static uint64_t host_jpeg_read_scanlines(uint64_t object, uint64_t scanlines, uint64_t max_lines)
+{
+	(void)scanlines;
+	(void)max_lines;
+	const struct fake_jpeg_object* o = jpeg_object(object);
+	const struct fake_jpeg_progress_mgr* p = (const struct fake_jpeg_progress_mgr*)(uintptr_t)o->progress;
+	const struct fake_jpeg_source_mgr* src = (const struct fake_jpeg_source_mgr*)(uintptr_t)o->src;
+	const struct fake_jpeg_memory_mgr* mem = (const struct fake_jpeg_memory_mgr*)(uintptr_t)o->mem;
+	g_jpeg_managers_host_view = !p || host_callable(p->progress_monitor);
+	for (int m = 0; m < 5; m++)
+		g_jpeg_managers_host_view &= host_callable(src->method[m]);
+	for (int m = 0; m < 11; m++)
+		g_jpeg_managers_host_view &= host_callable(mem->method[m]);
+	g_jpeg_seen_resync = src->method[JPEG_RESYNC];
+	g_jpeg_seen_fill = src->method[JPEG_FILL_INPUT];
+	if (!g_jpeg_managers_host_view)
+		return GOT_GUEST_FN;
+	if (p)
+		((void (*)(uint64_t))(uintptr_t)p->progress_monitor)(object);
+	return ((uint64_t (*)(uint64_t))(uintptr_t)src->method[JPEG_FILL_INPUT])(object);
+}
+
+// jpeg_destroy frees the memory manager and what it allocated (here the source manager's memory is reused).
+static uint64_t host_jpeg_destroy_decompress(uint64_t object)
+{
+	jpeg_object(object)->mem = 0;
+	for (int m = 0; m < 5; m++)
+		g_host_source_mgr.method[m] = (uint64_t)(uintptr_t)host_jpeg_destroy_decompress;
+	return 0;
+}
+
+#define GUEST_PROGRESS 0x5600100u
+#define GUEST_INIT_SOURCE 0x5600200u
+#define GUEST_FILL_INPUT 0x5600300u
+#define GUEST_SKIP_INPUT 0x5600400u
+#define GUEST_TERM_SOURCE 0x5600500u
+static struct fake_jpeg_error_mgr g_managers_err;
+static struct fake_jpeg_object g_managers_cinfo;
+static uint64_t g_guest_resync_stub;
+static unsigned g_guest_manager_calls, g_guest_manager_calls_in_guest_view;
+
+static bool jpeg_guest_view_of_managers(void)
+{
+	const struct fake_jpeg_object* o = &g_managers_cinfo;
+	const struct fake_jpeg_progress_mgr* p = (const struct fake_jpeg_progress_mgr*)(uintptr_t)o->progress;
+	const struct fake_jpeg_source_mgr* src = (const struct fake_jpeg_source_mgr*)(uintptr_t)o->src;
+	const struct fake_jpeg_memory_mgr* mem = (const struct fake_jpeg_memory_mgr*)(uintptr_t)o->mem;
+	bool ok = p->progress_monitor == GUEST_PROGRESS && src->method[JPEG_INIT_SOURCE] == GUEST_INIT_SOURCE &&
+		src->method[JPEG_FILL_INPUT] == GUEST_FILL_INPUT && src->method[JPEG_SKIP_INPUT] == GUEST_SKIP_INPUT &&
+		src->method[JPEG_RESYNC] == g_guest_resync_stub && src->method[JPEG_TERM_SOURCE] == GUEST_TERM_SOURCE;
+	for (int m = 0; m < 11; m++)
+		ok &= is_guest_stub(mem->method[m]);
+	for (int m = 0; m < 5; m++)
+		ok &= is_guest_stub(g_managers_err.method[m]);
+	return ok;
+}
+
+static void guest_manager_method(uintptr_t fn, const uint64_t args[6])
+{
+	g_guest_manager_calls++;
+	if (args[0] == (uint64_t)(uintptr_t)&g_managers_cinfo && (fn == GUEST_PROGRESS || fn == GUEST_FILL_INPUT) &&
+	    jpeg_guest_view_of_managers())
+		g_guest_manager_calls_in_guest_view++;
+}
+
+extern unsigned fex_jpeg_word_cache_misses;
+
+static void test_jpeg_managers(void)
+{
+	void* std_error = fex_dlsym_wrap_if_func((void*)host_jpeg_std_error, "jpeg_std_error");
+	void* create = fex_dlsym_wrap_if_func((void*)host_jpeg_CreateDecompress, "jpeg_CreateDecompress");
+	void* mem_src = fex_dlsym_wrap_if_func((void*)host_jpeg_mem_src, "jpeg_mem_src");
+	void* read_scanlines = fex_dlsym_wrap_if_func((void*)host_jpeg_read_scanlines, "jpeg_read_scanlines");
+	void* destroy = fex_dlsym_wrap_if_func((void*)host_jpeg_destroy_decompress, "jpeg_destroy_decompress");
+	g_guest_resync_stub = (uint64_t)(uintptr_t)fex_dlsym_wrap_if_func((void*)host_jpeg_resync_to_restart,
+		"jpeg_resync_to_restart");
+	struct fake_jpeg_object* cinfo = &g_managers_cinfo;
+	const uint64_t object = (uint64_t)(uintptr_t)cinfo;
+
+	// The object is uninitialised memory until jpeg_CreateDecompress has run.
+	call_stub(std_error, (uint64_t)(uintptr_t)&g_managers_err, 0, 0, 0);
+	struct fake_jpeg_progress_mgr stale = {0x5600900, 0, 0, 0, 0};
+	*cinfo = (struct fake_jpeg_object){ .err = (uint64_t)(uintptr_t)&g_managers_err, .mem = 0x5600a00,
+		.progress = (uint64_t)(uintptr_t)&stale, .src = (uint64_t)(uintptr_t)&stale };
+	call_stub(create, object, 62, sizeof(*cinfo), 0);
+	check(stale.progress_monitor == 0x5600900, "jpeg_CreateDecompress does not touch what its object held before");
+	bool stubs = cinfo->mem == (uint64_t)(uintptr_t)&g_host_memory_mgr;
+	for (int m = 0; stubs && m < 11; m++)
+		stubs = is_guest_stub(g_host_memory_mgr.method[m]);
+	check(stubs, "the guest finds guest-callable stubs in the memory manager libjpeg made");
+
+	// A source manager and a progress manager of the guest's own.
+	struct fake_jpeg_progress_mgr progress = {GUEST_PROGRESS, 0, 0, 0, 0};
+	struct fake_jpeg_source_mgr src = {0, 0, {GUEST_INIT_SOURCE, GUEST_FILL_INPUT, GUEST_SKIP_INPUT, g_guest_resync_stub,
+		GUEST_TERM_SOURCE}};
+	cinfo->progress = (uint64_t)(uintptr_t)&progress;
+	cinfo->src = (uint64_t)(uintptr_t)&src;
+	g_guest_manager_calls = g_guest_manager_calls_in_guest_view = 0;
+	guest_callback_args_body = guest_manager_method;
+	uint64_t ret = call_stub(read_scanlines, object, 0x7f00030000, 1, 0);
+	guest_callback_args_body = NULL;
+	check(g_jpeg_managers_host_view && g_jpeg_seen_resync == (uint64_t)(uintptr_t)host_jpeg_resync_to_restart,
+		"libjpeg finds host-callable methods in the managers, and its own function for a stub");
+	check(ret == 0x88 && g_guest_manager_calls == 2 && last_cb_args_fn == GUEST_FILL_INPUT && last_cb_args[0] == object,
+		"libjpeg's calls of progress_monitor and fill_input_buffer run the guest's functions with the object");
+	check(g_guest_manager_calls_in_guest_view == 2,
+		"the guest's methods run with the guest view of the error, memory, progress and source managers");
+	check(jpeg_guest_view_of_managers(), "after the call the managers hold the guest's functions and stubs again");
+
+	// A source manager libjpeg fills with its own methods.
+	cinfo->src = 0;
+	call_stub(mem_src, object, 0x7f00031000, 64, 0);
+	stubs = cinfo->src == (uint64_t)(uintptr_t)&g_host_source_mgr;
+	for (int m = 0; stubs && m < 5; m++)
+		stubs = is_guest_stub(g_host_source_mgr.method[m]);
+	check(stubs && call_stub(mem_src, object, 0x7f00031000, 64, 0) == 0,
+		"jpeg_mem_src leaves stubs for the guest and finds its own methods when called again");
+	ret = call_stub(read_scanlines, object, 0x7f00030000, 1, 0);
+	check(ret == 0x31 && g_jpeg_seen_fill == (uint64_t)(uintptr_t)host_jpeg_mem_fill,
+		"libjpeg calls the methods of its source manager natively");
+	const unsigned misses = fex_jpeg_word_cache_misses;
+	for (int i = 0; i < 3; i++)
+		ret = call_stub(read_scanlines, object, 0x7f00030000, 1, 0);
+	check(ret == 0x31 && fex_jpeg_word_cache_misses == misses,
+		"later libjpeg calls find the views of every manager word in the cache");
+
+	call_stub(destroy, object, 0, 0, 0);
+	bool untouched = true;
+	for (int m = 0; m < 5; m++)
+		untouched &= g_host_source_mgr.method[m] == (uint64_t)(uintptr_t)host_jpeg_destroy_decompress;
+	check(untouched && progress.progress_monitor == GUEST_PROGRESS,
+		"after jpeg_destroy only the guest's own progress manager is written");
 }
 
 static void test_syscall_translations(void)
@@ -2823,6 +3015,7 @@ int main(void)
 	test_callback_struct();
 	test_proc_address_lookup();
 	test_jpeg_error_manager();
+	test_jpeg_managers();
 	test_xim_callbacks();
 	test_left_callbacks();
 	test_pa_mainloop_api();
