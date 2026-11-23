@@ -163,13 +163,124 @@ int main(void)
 	CHECK(CMTimebaseGetTimeAndRate(timebase, &snapshotTime, NULL) == noErr);
 	CHECK(CMTimebaseGetTimeAndRate(timebase, NULL, NULL) == noErr);
 
+	// a child of a stopped parent gives exact arithmetic: at rate 1 no value is lost above 2^53, and a fractional
+	// rate rounds to the nearest unit with halves away from zero (GUESS: the documentation does not say)
+	CMTimebaseRef frozenParent = NULL, exact = NULL;
+	CHECK(CMTimebaseCreateWithMasterClock(kCFAllocatorDefault, host, &frozenParent) == noErr);
+	CHECK(CMTimebaseSetTime(frozenParent, CMTimeMake(10000000000000000, 1000000000)) == noErr);
+	CHECK(CMTimebaseCreateWithMasterTimebase(kCFAllocatorDefault, frozenParent, &exact) == noErr);
+	CHECK(CMTimebaseSetRateAndAnchorTime(exact, 1.0, kCMTimeZero, CMTimeMake(10000000000000000 - 9007199254740993, 1000000000)) == noErr);
+	CMTime big = CMTimebaseGetTime(exact);
+	CHECK(big.value == 9007199254740993 && big.timescale == 1000000000);
+	CHECK(CMTimebaseSetRateAndAnchorTime(exact, 0.5, kCMTimeZero, CMTimeMake(10000000000000000 - 1000000001, 1000000000)) == noErr);
+	CMTime half = CMTimebaseGetTime(exact);
+	CHECK(half.value == 500000001 && half.timescale == 1000000000 && (half.flags & kCMTimeFlags_HasBeenRounded));
+	CHECK(CMTimebaseSetRateAndAnchorTime(exact, -0.5, kCMTimeZero, CMTimeMake(10000000000000000 - 1000000001, 1000000000)) == noErr);
+	CHECK(CMTimebaseGetTime(exact).value == -500000001);
+	CHECK(CMTimebaseSetRateAndAnchorTime(exact, 0.25, CMTimeMake(1, 1), CMTimeMake(10000000000000000 - 4000000000, 1000000000)) == noErr);
+	CMTime quarter = CMTimebaseGetTime(exact);
+	CHECK(CMTimeCompare(quarter, CMTimeMake(2, 1)) == 0 && !(quarter.flags & kCMTimeFlags_HasBeenRounded));
+	// a duration in whole seconds is still scaled to the nanosecond: a third of 1 s
+	CHECK(CMTimebaseSetTime(frozenParent, CMTimeMake(1, 1)) == noErr);
+	CHECK(CMTimebaseSetRateAndAnchorTime(exact, 1.0 / 3.0, kCMTimeZero, kCMTimeZero) == noErr);
+	CMTime aThird = CMTimebaseGetTime(exact);
+	CHECK(aThird.value == 333333333 && aThird.timescale == 1000000000);
+	CHECK(CMTimebaseSetTime(frozenParent, CMTimeMake(10, 1)) == noErr);
+	CHECK(CMTimebaseSetRateAndAnchorTime(exact, 0.5, kCMTimeZero, kCMTimeZero) == noErr);
+	CHECK(CMTimeCompare(CMTimebaseGetTime(exact), CMTimeMake(5, 1)) == 0);
+	CFRelease(exact);
+	CFRelease(frozenParent);
+
 	// the time in a given timescale: 5.5 s in whole seconds, by the requested rounding
 	CHECK(CMTimebaseGetTimeWithTimeScale(timebase, 1, kCMTimeRoundingMethod_RoundTowardZero).value == 5);
 	CHECK(CMTimebaseGetTimeWithTimeScale(timebase, 1, kCMTimeRoundingMethod_RoundAwayFromZero).value == 6);
 	CHECK(CMTimebaseGetTimeWithTimeScale(timebase, 1000, kCMTimeRoundingMethod_Default).value == 5500);
 	CHECK(!CMTIME_IS_VALID(CMTimebaseGetTimeWithTimeScale(timebase, 0, kCMTimeRoundingMethod_Default)));
 
-	CFRelease(timebase);
+	// a timebase of a timebase: the effective rate is the product, the masters are as created, and a parent
+	// that is stopped stops its child
+	CMTimebaseRef parent = timebase, child = NULL;
+	CHECK(CMTimebaseSetRate(parent, 2.0) == noErr);
+	CHECK(CMTimebaseCreateWithMasterTimebase(kCFAllocatorDefault, parent, &child) == noErr && child != NULL);
+	CHECK(CMTimebaseSetRate(child, 3.0) == noErr);
+	CHECK(CMTimebaseGetRate(child) == 3.0 && CMTimebaseGetEffectiveRate(child) == 6.0);
+	CHECK(CMTimebaseGetMasterTimebase(child) == parent && CMTimebaseGetMasterClock(child) == NULL);
+	CHECK(CMTimebaseGetMaster(child) == parent);
+	CMTimebaseRef copiedParent = CMTimebaseCopyMasterTimebase(child);
+	CHECK(copiedParent == parent);
+	CFRelease(copiedParent);
+	CHECK(CMTimebaseCopyMasterClock(child) == NULL);
+	CHECK(CMTimebaseGetUltimateMasterClock(child) == host);
+	CMClockRef ultimateOfChild = CMTimebaseCopyUltimateMasterClock(child);
+	CHECK(ultimateOfChild == host);
+	CFRelease(ultimateOfChild);
+	CMTimebaseRef viaSourceTimebase = NULL;
+	CHECK(CMTimebaseCreateWithSourceTimebase(kCFAllocatorDefault, parent, &viaSourceTimebase) == noErr);
+	CMTimebaseRef copiedSource = CMTimebaseCopySourceTimebase(viaSourceTimebase);
+	CHECK(copiedSource == parent);
+	CFRelease(copiedSource);
+	CFRelease(viaSourceTimebase);
+	// a timebase keeps its master alive: the only other reference to the master is dropped
+	CMTimebaseRef shortLived = NULL, dependent = NULL;
+	CHECK(CMTimebaseCreateWithMasterClock(kCFAllocatorDefault, host, &shortLived) == noErr);
+	CHECK(CMTimebaseCreateWithMasterTimebase(kCFAllocatorDefault, shortLived, &dependent) == noErr);
+	CFRelease(shortLived);
+	CMTimebaseRef survivor = CMTimebaseCopyMasterTimebase(dependent);
+	CHECK(survivor == shortLived && CFGetTypeID(survivor) == CMTimebaseGetTypeID());
+	CHECK(CMTimeCompare(CMTimebaseGetTime(survivor), kCMTimeZero) == 0);
+	CFRelease(survivor);
+	CFRelease(dependent);
+	CHECK(CMTimebaseSetRate(child, 1.0) == noErr);
+	CHECK(CMTimebaseSetRate(parent, 0.0) == noErr);
+	CHECK(CMTimebaseGetEffectiveRate(child) == 0.0);
+	CMTime parentStopped = CMTimebaseGetTime(parent);
+	sleepMilliseconds(20);
+	CHECK(CMTimeCompare(CMTimebaseGetTime(parent), parentStopped) == 0);
+	// a child at rate 1 of a parent that stands still stays where it is
+	CHECK(CMTimebaseSetTime(child, CMTimeMake(7, 1)) == noErr);
+	sleepMilliseconds(20);
+	CHECK(CMTimeCompare(CMTimebaseGetTime(child), CMTimeMake(7, 1)) == 0);
+
+	// CMSyncGetTime reads a clock or a timebase
+	CHECK(CMTIME_IS_NUMERIC(CMSyncGetTime(host)));
+	CHECK(CMTimeCompare(CMSyncGetTime(child), CMTimebaseGetTime(child)) == 0);
+
+	// errors (GUESS: the codes are chosen by the names): NULL, an object of the wrong type, arguments that
+	// cannot be used
+	CMTimebaseRef created = NULL;
+	CHECK(CMTimebaseCreateWithMasterClock(kCFAllocatorDefault, NULL, &created) == kCMTimebaseError_MissingRequiredParameter);
+	CHECK(CMTimebaseCreateWithMasterClock(kCFAllocatorDefault, host, NULL) == kCMTimebaseError_MissingRequiredParameter);
+	CHECK(CMTimebaseCreateWithMasterClock(kCFAllocatorDefault, (CMClockRef)parent, &created) == kCMTimebaseError_InvalidParameter);
+	CHECK(CMTimebaseCreateWithMasterTimebase(kCFAllocatorDefault, (CMTimebaseRef)host, &created) == kCMTimebaseError_InvalidParameter);
+	CHECK(CMTimebaseCreateWithMasterTimebase(kCFAllocatorDefault, NULL, &created) == kCMTimebaseError_MissingRequiredParameter);
+	CHECK(created == NULL);
+	CHECK(CMTimebaseSetTime(NULL, kCMTimeZero) == kCMTimebaseError_MissingRequiredParameter);
+	CHECK(CMTimebaseSetRate(NULL, 1.0) == kCMTimebaseError_MissingRequiredParameter);
+	CHECK(CMTimebaseSetTime((CMTimebaseRef)host, kCMTimeZero) == kCMTimebaseError_InvalidParameter);
+	CHECK(CMTimebaseSetRate((CMTimebaseRef)CFSTR("no"), 1.0) == kCMTimebaseError_InvalidParameter);
+	CHECK(CMTimebaseSetAnchorTime(NULL, kCMTimeZero, kCMTimeZero) == kCMTimebaseError_MissingRequiredParameter);
+	CHECK(CMTimebaseSetRateAndAnchorTime(NULL, 1.0, kCMTimeZero, kCMTimeZero) == kCMTimebaseError_MissingRequiredParameter);
+	CHECK(CMTimebaseGetTimeAndRate(NULL, &snapshotTime, &snapshotRate) == kCMTimebaseError_MissingRequiredParameter);
+	CHECK(CMTimebaseGetTimeAndRate((CMTimebaseRef)host, &snapshotTime, &snapshotRate) == kCMTimebaseError_InvalidParameter);
+	CHECK(CMTimebaseSetRate(child, NAN) == kCMTimebaseError_InvalidParameter);
+	CHECK(CMTimebaseSetRate(child, INFINITY) == kCMTimebaseError_InvalidParameter);
+	CHECK(CMTimebaseSetTime(child, kCMTimeInvalid) == kCMTimebaseError_InvalidParameter);
+	CHECK(CMTimebaseSetTime(child, kCMTimePositiveInfinity) == kCMTimebaseError_InvalidParameter);
+	CHECK(CMTimebaseSetTime(child, kCMTimeIndefinite) == kCMTimebaseError_InvalidParameter);
+	CHECK(CMTimebaseSetRateAndAnchorTime(child, NAN, kCMTimeZero, kCMTimeZero) == kCMTimebaseError_InvalidParameter);
+	CHECK(CMTimebaseSetAnchorTime(child, kCMTimeZero, kCMTimeInvalid) == kCMTimebaseError_InvalidParameter);
+	// a failed setter leaves the timebase as it was
+	CHECK(CMTimebaseGetRate(child) == 1.0 && CMTimeCompare(CMTimebaseGetTime(child), CMTimeMake(7, 1)) == 0);
+	// the getters of an argument that is not a timebase
+	CHECK(!CMTIME_IS_VALID(CMTimebaseGetTime(NULL)));
+	CHECK(!CMTIME_IS_VALID(CMTimebaseGetTime((CMTimebaseRef)host)));
+	CHECK(!CMTIME_IS_VALID(CMSyncGetTime(NULL)));
+	CHECK(CMTimebaseGetRate(NULL) == 0.0 && CMTimebaseGetEffectiveRate(NULL) == 0.0);
+	CHECK(CMTimebaseCopyMaster(NULL) == NULL && CMTimebaseGetMaster(NULL) == NULL);
+	CHECK(CMTimebaseCopyUltimateMasterClock(NULL) == NULL && CMTimebaseCopyMasterTimebase(NULL) == NULL);
+
+	CFRelease(child);
+	CFRelease(parent);
 	if (failures == 0)
 		printf("PASS\n");
 	return failures;
