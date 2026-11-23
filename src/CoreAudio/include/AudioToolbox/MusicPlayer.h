@@ -249,6 +249,23 @@ extern OSStatus
 MusicTrackNewAUPresetEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, const AUPresetEvent *inPresetEvent);
 
 extern OSStatus
+MusicTrackMoveEvents(MusicTrack inTrack, MusicTimeStamp inStartTime, MusicTimeStamp inEndTime, MusicTimeStamp inMoveTime);
+
+extern OSStatus
+MusicTrackClear(MusicTrack inTrack, MusicTimeStamp inStartTime, MusicTimeStamp inEndTime);
+
+extern OSStatus
+MusicTrackCut(MusicTrack inTrack, MusicTimeStamp inStartTime, MusicTimeStamp inEndTime);
+
+extern OSStatus
+MusicTrackCopyInsert(MusicTrack inSourceTrack, MusicTimeStamp inSourceStartTime, MusicTimeStamp inSourceEndTime,
+	MusicTrack inDestTrack, MusicTimeStamp inDestInsertTime);
+
+extern OSStatus
+MusicTrackMerge(MusicTrack inSourceTrack, MusicTimeStamp inSourceStartTime, MusicTimeStamp inSourceEndTime,
+	MusicTrack inDestTrack, MusicTimeStamp inDestInsertTime);
+
+extern OSStatus
 MusicTrackSetProperty(MusicTrack inTrack, UInt32 inPropertyID, void *inData, UInt32 inLength);
 
 extern OSStatus
