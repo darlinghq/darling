@@ -2049,6 +2049,93 @@ static void test_unsupported_callback(void)
 		"a guest callback the bridge cannot run stops the process and says why");
 }
 
+// libavformat keeps the I/O callbacks of avio_alloc_context; seek, the seventh argument, comes on the stack.
+static uint64_t g_avio_fns[3];
+static uint64_t host_avio_alloc_context(uint64_t buffer, uint64_t size, uint64_t write_flag, uint64_t opaque,
+	uint64_t read_packet, uint64_t write_packet, uint64_t seek)
+{
+	(void)buffer;
+	(void)size;
+	(void)write_flag;
+	(void)opaque;
+	const uint64_t fns[3] = {read_packet, write_packet, seek};
+	memcpy(g_avio_fns, fns, sizeof(fns));
+	return 0x7f00050000;
+}
+
+static uint64_t g_one_callback = 0;
+static uint64_t host_take_first(uint64_t cb, uint64_t data) { (void)data; g_one_callback = cb; return 0; }
+static uint64_t host_take_second(uint64_t a0, uint64_t cb, uint64_t data) { (void)a0; (void)data; g_one_callback = cb; return 0; }
+// One fake per name: the bridge keeps one stub, and one name, per host function.
+static uint64_t host_glDebugMessageCallbackAMD(uint64_t cb, uint64_t d) { return host_take_first(cb, d); }
+static uint64_t host_eglDebugMessageControlKHR(uint64_t cb, uint64_t d) { return host_take_first(cb, d); }
+static uint64_t host_wl_log_set_handler_client(uint64_t cb, uint64_t d) { return host_take_first(cb, d); }
+static uint64_t host_XAddConnectionWatch(uint64_t a, uint64_t cb, uint64_t d) { return host_take_second(a, cb, d); }
+static uint64_t host_XRemoveConnectionWatch(uint64_t a, uint64_t cb, uint64_t d) { return host_take_second(a, cb, d); }
+static uint64_t host_xkb_context_set_log_fn(uint64_t a, uint64_t cb, uint64_t d) { return host_take_second(a, cb, d); }
+
+static void test_more_host_callbacks(void)
+{
+	void* avio = fex_dlsym_wrap_if_func((void*)host_avio_alloc_context, "avio_alloc_context");
+	uint64_t guest_stack[4] = {0x7f00051000 /* return address */, 0x5800300 /* seek */, 0, 0};
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rax = stub_syscall_nr(avio);
+	st.rdi = 0x7f00052000;
+	st.rsi = 4096;
+	st.r10 = 0x7f00053000;
+	st.r8 = 0x5800100;
+	st.r9 = 0x5800200;
+	st.rsp = (uint64_t)(uintptr_t)guest_stack;
+	fex_linux_syscall_dispatch(&st);
+	bool thunks = st.rax == 0x7f00050000;
+	for (int i = 0; i < 3; i++)
+		thunks &= g_avio_fns[i] != 0 && !is_fake_guest_fn(g_avio_fns[i]);
+	check(thunks, "avio_alloc_context gets thunks for read_packet, write_packet and the seek on the stack");
+	last_cb_args_fn = 0;
+	if (thunks)
+		((uint64_t (*)(uint64_t, uint64_t, uint64_t))(uintptr_t)g_avio_fns[2])(0x7f00053000, 4096, 1);
+	check(last_cb_args_fn == 0x5800300 && last_cb_args[0] == 0x7f00053000 && last_cb_args[1] == 4096 && last_cb_args[2] == 1,
+		"libavformat's seek runs the guest's function with opaque, offset and whence");
+
+	const struct { void* fn; const char* name; int arg; } plain[] = {
+		{ (void*)host_glDebugMessageCallbackAMD, "glDebugMessageCallbackAMD", 0 },
+		{ (void*)host_eglDebugMessageControlKHR, "eglDebugMessageControlKHR", 0 },
+		{ (void*)host_XAddConnectionWatch, "XAddConnectionWatch", 1 },
+	};
+	for (size_t i = 0; i < sizeof(plain) / sizeof(plain[0]); i++) {
+		void* stub = fex_dlsym_wrap_if_func(plain[i].fn, plain[i].name);
+		g_one_callback = 0;
+		call_stub(stub, plain[i].arg ? 0x7f00054000 : 0x5800400 + i, plain[i].arg ? 0x5800400 + i : 0, 0, 0);
+		last_cb_args_fn = 0;
+		if (g_one_callback && !is_fake_guest_fn(g_one_callback))
+			((uint64_t (*)(uint64_t))(uintptr_t)g_one_callback)(0x31);
+		char what[128];
+		snprintf(what, sizeof(what), "%s gets a thunk that runs the guest's callback", plain[i].name);
+		check(last_cb_args_fn == 0x5800400 + i && last_cb_args[0] == 0x31, what);
+	}
+	uint64_t watch = g_one_callback;
+	void* remove = fex_dlsym_wrap_if_func((void*)host_XRemoveConnectionWatch, "XRemoveConnectionWatch");
+	call_stub(remove, 0x7f00054000, 0x5800402, 0, 0);
+	check(g_one_callback == watch, "XRemoveConnectionWatch gets the thunk XAddConnectionWatch got");
+
+	const struct { void* fn; const char* name; int arg; } ignored[] = {
+		{ (void*)host_wl_log_set_handler_client, "wl_log_set_handler_client", 0 },
+		{ (void*)host_xkb_context_set_log_fn, "xkb_context_set_log_fn", 1 },
+	};
+	for (size_t i = 0; i < sizeof(ignored) / sizeof(ignored[0]); i++) {
+		void* stub = fex_dlsym_wrap_if_func(ignored[i].fn, ignored[i].name);
+		g_one_callback = 0;
+		call_stub(stub, ignored[i].arg ? 0x7f00055000 : 0x5800500, ignored[i].arg ? 0x5800500 : 0, 0, 0);
+		last_cb_args_fn = 0;
+		if (g_one_callback && !is_fake_guest_fn(g_one_callback))
+			((uint64_t (*)(uint64_t))(uintptr_t)g_one_callback)(0x31);
+		char what[128];
+		snprintf(what, sizeof(what), "%s gets a host function that ignores the va_list message", ignored[i].name);
+		check(g_one_callback != 0 && !is_fake_guest_fn(g_one_callback) && last_cb_args_fn == 0, what);
+	}
+}
+
 static float g_clear_color[4];
 static void host_glClearColor(float r, float g, float b, float a)
 {
@@ -3146,6 +3233,7 @@ int main(void)
 	test_wayland_dispatcher();
 	test_callback_arguments();
 	test_unsupported_callback();
+	test_more_host_callbacks();
 	test_callback_struct();
 	test_proc_address_lookup();
 	test_jpeg_error_manager();

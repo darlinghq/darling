@@ -447,6 +447,19 @@ static const struct { const char* name; unsigned mask; } g_callback_args[] = {
 	{ "XIfEvent", 0x4 }, { "XCheckIfEvent", 0x4 }, { "XPeekIfEvent", 0x4 },
 	// DGifOpen(user_data, read_fn, error): giflib reads the file through read_fn until DGifCloseFile.
 	{ "DGifOpen", 0x2 },
+	// avio_alloc_context(buffer, size, write_flag, opaque, read_packet, write_packet, seek): libavformat calls
+	// read_packet(opaque, buf, size), write_packet(opaque, buf, size) and seek(opaque, offset, whence) until
+	// avio_context_free. seek is the seventh argument, on the guest's stack.
+	{ "avio_alloc_context", 0x70 },
+	// GLDEBUGPROCAMD(id, category, severity, length, message, user_param) and EGLDEBUGPROCKHR(error, command,
+	// type, thread_label, object_label, message) take six arguments.
+	{ "glDebugMessageCallbackAMD", 0x1 }, { "eglDebugMessageControlKHR", 0x1 },
+	// XAddConnectionWatch(display, callback, client_data): Xlib calls callback(display, client_data, fd, opening,
+	// watch_data) for each internal connection; XRemoveConnectionWatch finds it by the same (thunk) pointer.
+	{ "XAddConnectionWatch", 0x2 }, { "XRemoveConnectionWatch", 0x2 },
+	// Log handlers with a va_list parameter, ignored like libtiff's: xkb_context_set_log_fn(context, fn) and
+	// wl_log_set_handler_client(fn).
+	{ "xkb_context_set_log_fn", FEX_CALLBACK_IGNORE | 0x2 }, { "wl_log_set_handler_client", FEX_CALLBACK_IGNORE | 0x1 },
 };
 
 // Host functions whose callbacks a thunk cannot run: their callbacks take more than six integer
