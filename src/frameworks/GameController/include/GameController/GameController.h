@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,7 +18,6 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #ifndef _GameController_H_
 #define _GameController_H_
 
@@ -26,7 +26,12 @@
 #import <GameController/CBCentralManagerDelegate.h>
 #import <GameController/CBPeripheralDelegate.h>
 #import <GameController/DigitizerValueChangedDelegate.h>
+#import <GameController/GCDevice.h>
+#import <GameController/GCDeviceBattery.h>
 #import <GameController/GCDeviceHaptics.h>
+#import <GameController/GCDeviceLight.h>
+#import <GameController/GCProductCategories.h>
+#import <GameController/GCInputNames.h>
 #import <GameController/GCNamedProfile.h>
 #import <GameController/GameControllerClientProtocol.h>
 #import <GameController/GameControllerDaemon.h>
@@ -49,6 +54,11 @@
 #import <GameController/_GCGamepad.h>
 #import <GameController/GCExtendedGamepad.h>
 #import <GameController/_GCExtendedGamepad.h>
+#import <GameController/GCXboxGamepad.h>
+#import <GameController/GCDualShockGamepad.h>
+#import <GameController/GCDualSenseGamepad.h>
+#import <GameController/GCKeyboard.h>
+#import <GameController/GCKeyboardInput.h>
 #import <GameController/GCControllerSFDelegate.h>
 #import <GameController/GCControllerMBDelegate.h>
 #import <GameController/GCControllerCBDelegate.h>

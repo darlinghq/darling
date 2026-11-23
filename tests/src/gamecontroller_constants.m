@@ -34,7 +34,9 @@ int main(void)
 
 		NSArray *controllers = [GCController controllers];
 		CHECK(controllers != nil);
-		CHECK([controllers count] == 0);
+		/* empty with no controller attached; a real controller may be attached to the machine */
+		for (id c in controllers)
+			CHECK([c isKindOfClass:[GCController class]]);
 	}
 
 	if (g_failures == 0)
