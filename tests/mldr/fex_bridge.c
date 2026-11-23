@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include <setjmp.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -1720,6 +1721,49 @@ static bool guest_view_of(const struct fake_jpeg_error_mgr* err)
 		is_guest_stub(err->method[JPEG_RESET]);
 }
 
+static jmp_buf g_host_longjmp_target;
+// Leaves libjpeg by a longjmp in host code (as a signal handler's siglongjmp would), not through error_exit.
+static uint64_t host_jpeg_abort_decompress(uint64_t object)
+{
+	(void)object;
+	longjmp(g_host_longjmp_target, 1);
+}
+
+static sem_t g_jpeg_inside, g_jpeg_release;
+static uint64_t host_jpeg_start_decompress(uint64_t object)
+{
+	(void)object;
+	sem_post(&g_jpeg_inside);
+	sem_wait(&g_jpeg_release);
+	return 1;
+}
+
+static uint64_t g_shared_object;
+static void* decode_on_thread(void* stub)
+{
+	call_stub(stub, g_shared_object, 0, 0, 0);
+	return NULL;
+}
+
+// Two threads decoding with one error manager at once.
+static void share_error_manager_between_threads(void)
+{
+	void* std_error = fex_dlsym_wrap_if_func((void*)host_jpeg_std_error, "jpeg_std_error");
+	void* start = fex_dlsym_wrap_if_func((void*)host_jpeg_start_decompress, "jpeg_start_decompress");
+	void* read_header = fex_dlsym_wrap_if_func((void*)host_jpeg_read_header, "jpeg_read_header");
+	static struct fake_jpeg_error_mgr shared;
+	call_stub(std_error, (uint64_t)(uintptr_t)&shared, 0, 0, 0);
+	static struct fake_jpeg_object a, b;
+	a.err = b.err = (uint64_t)(uintptr_t)&shared;
+	g_shared_object = (uint64_t)(uintptr_t)&a;
+	sem_init(&g_jpeg_inside, 0, 0);
+	sem_init(&g_jpeg_release, 0, 0);
+	pthread_t t;
+	pthread_create(&t, NULL, decode_on_thread, start);
+	sem_wait(&g_jpeg_inside);
+	call_stub(read_header, (uint64_t)(uintptr_t)&b, 1, 0, 0);
+}
+
 static void test_jpeg_error_manager(void)
 {
 	void* std_error = fex_dlsym_wrap_if_func((void*)host_jpeg_std_error, "jpeg_std_error");
@@ -1767,6 +1811,22 @@ static void test_jpeg_error_manager(void)
 	check(ret == 1 && g_jpeg_host_view_ok && guest_view_of(&g_guest_err),
 		"the error manager works for later libjpeg calls after a longjmp out of error_exit");
 	guest_callback_body = NULL;
+
+	// A libjpeg call left without the bridge seeing it, then a new error manager at the same address.
+	void* abort_decompress = fex_dlsym_wrap_if_func((void*)host_jpeg_abort_decompress, "jpeg_abort_decompress");
+	if (setjmp(g_host_longjmp_target) == 0)
+		call_stub(abort_decompress, (uint64_t)(uintptr_t)&cinfo, 0, 0, 0);
+	memset(&g_guest_err, 0, sizeof(g_guest_err));
+	call_stub(std_error, (uint64_t)(uintptr_t)&g_guest_err, 0, 0, 0);
+	g_guest_err.method[JPEG_ERROR_EXIT] = GUEST_ERROR_EXIT;
+	guest_callback_body = guest_error_exit_returns;
+	g_jpeg_host_view_ok = 0;
+	ret = call_stub(read_header, (uint64_t)(uintptr_t)&cinfo, 1, 0, 0);
+	guest_callback_body = NULL;
+	check(ret == 1 && g_jpeg_host_view_ok && guest_view_of(&g_guest_err),
+		"an error manager at the address of one whose libjpeg call was left unseen gets the host view");
+	check(aborts_with(share_error_manager_between_threads, "a libjpeg error manager is used by two threads at once"),
+		"one error manager used by two threads at once stops the process and says why");
 
 	check(call_stub(quality, 75, 0, 0, 0) == 150, "a jpeg_* function whose first argument is not an object is called as is");
 	uint64_t not_a_manager[5] = {0x5500100, 0x5500200, 7, 8, 9};

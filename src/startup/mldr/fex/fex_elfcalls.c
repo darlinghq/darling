@@ -519,9 +519,17 @@ static const char* const g_jpeg_method_names[FEX_JPEG_METHODS] = {
 };
 static const struct fex_callback_rules g_jpeg_method_rules = { .jpeg = FEX_JPEG_OBJECT, .jpeg_method = true };
 
-// An error manager in the host view, with the guest's five words. Nested libjpeg calls on one manager
-// share an entry; there is one per libjpeg call running on some thread, so a few entries suffice.
-struct fex_jpeg_host_view { uint64_t err; uint64_t guest[FEX_JPEG_METHODS]; unsigned depth; };
+// An error manager in the host view: the guest's five words, the host words written in their place, and
+// the thread whose libjpeg calls it is for. Nested libjpeg calls on one manager share an entry; there is
+// one per manager a thread is decoding with, so a few entries suffice. One manager used by two threads at
+// once is not supported (the words can hold only one view): the process stops when it is seen.
+struct fex_jpeg_host_view {
+	uint64_t err;
+	uint64_t guest[FEX_JPEG_METHODS];
+	uint64_t host[FEX_JPEG_METHODS];
+	unsigned depth;
+	pid_t owner;
+};
 #define FEX_JPEG_MAX_HOST_VIEWS 64
 static struct fex_jpeg_host_view g_jpeg_host_views[FEX_JPEG_MAX_HOST_VIEWS];
 static pthread_mutex_t g_jpeg_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -569,23 +577,45 @@ static void* const g_jpeg_host_methods[FEX_JPEG_METHODS] = {
 	(void*)jpeg_host_method_3, (void*)jpeg_host_method_4,
 };
 
-// Puts `err` in the host view: a stub becomes its host function, a guest function the host method that
-// runs it. Called with g_jpeg_mutex held.
-static void jpeg_set_host_view(uint64_t err, const uint64_t guest[FEX_JPEG_METHODS], unsigned depth)
+// Whether a view is still in place: the manager's words are the host words it wrote. A libjpeg call left
+// by another way than a guest method (a signal handler's siglongjmp) leaves a view that is not.
+static bool jpeg_host_view_live(const struct fex_jpeg_host_view* v)
 {
-	struct fex_jpeg_host_view* v = jpeg_host_view_of(0);
+	uint64_t words[FEX_JPEG_METHODS];
+	return fex_copy_from_guest(words, (const void*)(uintptr_t)v->err, sizeof(words)) == 0 &&
+		memcmp(words, v->host, sizeof(words)) == 0;
+}
+
+// Puts `err` in the host view: a stub becomes its host function, a guest function the host method that
+// runs it. `v` is the entry to use, or NULL for a free one. Called with g_jpeg_mutex held.
+static void jpeg_set_host_view(struct fex_jpeg_host_view* v, uint64_t err, const uint64_t guest[FEX_JPEG_METHODS],
+	unsigned depth)
+{
+	for (unsigned i = 0; !v && i < FEX_JPEG_MAX_HOST_VIEWS; i++)
+		if (g_jpeg_host_views[i].err == 0 || !jpeg_host_view_live(&g_jpeg_host_views[i]))
+			v = &g_jpeg_host_views[i];
 	if (!v) {
 		fprintf(stderr, "mldr/fex: more than %u libjpeg calls at once\n", FEX_JPEG_MAX_HOST_VIEWS);
 		abort();
 	}
-	uint64_t host[FEX_JPEG_METHODS];
+	*v = (struct fex_jpeg_host_view){ .err = err, .depth = depth, .owner = gettid() };
+	memcpy(v->guest, guest, sizeof(v->guest));
 	for (unsigned m = 0; m < FEX_JPEG_METHODS; m++) {
 		uint64_t stub_target = guest[m] ? host_function_of_stub(guest[m], NULL) : 0;
-		host[m] = !guest[m] ? 0 : stub_target ? stub_target : (uint64_t)(uintptr_t)g_jpeg_host_methods[m];
+		v->host[m] = !guest[m] ? 0 : stub_target ? stub_target : (uint64_t)(uintptr_t)g_jpeg_host_methods[m];
 	}
-	*v = (struct fex_jpeg_host_view){ err, { 0 }, depth };
-	memcpy(v->guest, guest, sizeof(v->guest));
-	fex_copy_to_guest((void*)(uintptr_t)err, host, sizeof(host));
+	fex_copy_to_guest((void*)(uintptr_t)err, v->host, sizeof(v->host));
+}
+
+// Called with g_jpeg_mutex held, for a view the calling thread is about to use.
+static void jpeg_check_owner(const struct fex_jpeg_host_view* v)
+{
+	if (v->owner != gettid()) {
+		pthread_mutex_unlock(&g_jpeg_mutex);
+		fprintf(stderr, "mldr/fex: a libjpeg error manager is used by two threads at once, which the FEX bridge "
+			"does not support\n");
+		abort();
+	}
 }
 
 // Switches the error manager of the libjpeg object `object` to the host view; returns the manager to
@@ -599,7 +629,8 @@ static uint64_t jpeg_enter_host_view(uint64_t object)
 		return 0;
 	pthread_mutex_lock(&g_jpeg_mutex);
 	struct fex_jpeg_host_view* v = jpeg_host_view_of(err);
-	if (v) {
+	if (v && memcmp(guest, v->host, sizeof(guest)) == 0) {
+		jpeg_check_owner(v);
 		v->depth++;
 	} else {
 		bool is_error_mgr = false;
@@ -607,10 +638,14 @@ static uint64_t jpeg_enter_host_view(uint64_t object)
 			struct fex_callback_rules rules;
 			is_error_mgr = guest[m] && host_function_of_stub(guest[m], &rules) && rules.jpeg_method;
 		}
-		if (!is_error_mgr)
+		// A view whose words are gone is stale (see jpeg_host_view_live): this call starts afresh.
+		if (!is_error_mgr) {
+			if (v)
+				v->err = 0;
 			err = 0;
-		else
-			jpeg_set_host_view(err, guest, 1);
+		} else {
+			jpeg_set_host_view(v, err, guest, 1);
+		}
 	}
 	pthread_mutex_unlock(&g_jpeg_mutex);
 	return err;
@@ -620,7 +655,7 @@ static void jpeg_leave_host_view(uint64_t err)
 {
 	pthread_mutex_lock(&g_jpeg_mutex);
 	struct fex_jpeg_host_view* v = jpeg_host_view_of(err);
-	if (v && --v->depth == 0) {
+	if (v && v->owner == gettid() && --v->depth == 0) {
 		fex_copy_to_guest((void*)(uintptr_t)err, v->guest, sizeof(v->guest));
 		v->err = 0;
 	}
@@ -639,6 +674,7 @@ static void jpeg_run_guest_method(unsigned method, uint64_t object, uint64_t arg
 			g_jpeg_method_names[method]);
 		abort();
 	}
+	jpeg_check_owner(v);
 	const struct fex_jpeg_host_view saved = *v;
 	v->err = 0;
 	fex_copy_to_guest((void*)(uintptr_t)err, saved.guest, sizeof(saved.guest));
@@ -652,7 +688,7 @@ static void jpeg_run_guest_method(unsigned method, uint64_t object, uint64_t arg
 	if (fex_copy_from_guest(guest, (const void*)(uintptr_t)err, sizeof(guest)) != 0)
 		memcpy(guest, saved.guest, sizeof(guest));
 	pthread_mutex_lock(&g_jpeg_mutex);
-	jpeg_set_host_view(err, guest, saved.depth);
+	jpeg_set_host_view(NULL, err, guest, saved.depth);
 	pthread_mutex_unlock(&g_jpeg_mutex);
 }
 
