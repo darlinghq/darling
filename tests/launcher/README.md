@@ -47,3 +47,14 @@ cc -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -Isrc/startup tests/launcher/locale.c 
 
 covers the mapping from `LANGUAGE`, `LC_ALL`, `LC_MESSAGES`, `LC_TIME` and `LANG` to the `AppleLocale` and `AppleLanguages` a new prefix gets in its
 `/Library/Preferences/.GlobalPreferences.plist`, and that existing values there are never changed.
+
+## Host paths in the guest
+
+```sh
+cc -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -Isrc/startup -Ibuild/src/include tests/launcher/path.c src/startup/launcher-path.c -o build/launcher-path-test
+build/launcher-path-test
+```
+
+covers how `darling open <file>...` and `darling <program-path>` name a host file in the guest: its real path (relative
+paths, `.`/`..` and symbolic links resolved, names kept byte for byte) under `/Volumes/SystemRoot`, `/` as
+`/Volumes/SystemRoot` itself, and `ENOENT` for a missing file or a dangling link.
