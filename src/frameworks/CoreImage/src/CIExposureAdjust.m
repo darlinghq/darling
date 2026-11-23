@@ -21,12 +21,7 @@
 #import <CoreImage/CIImage.h>
 #import <darling-stub-forwarding.h>
 
-@implementation CIExposureAdjust {
-    // The input parameters (inputImage, inputEV) are instance variables named "input...", which is how
-    // CIFilter finds them for archiving. https://developer.apple.com/documentation/coreimage/ciexposureadjust
-    CIImage *inputImage;
-    NSNumber *inputEV;
-}
+@implementation CIExposureAdjust
 
 // The filter reference gives inputEV a default of 0.50 and no default for inputImage, which
 // -[CIFilter setDefaults] documents as left unchanged.

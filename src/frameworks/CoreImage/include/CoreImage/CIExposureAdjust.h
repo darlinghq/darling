@@ -20,6 +20,16 @@
 #include <Foundation/Foundation.h>
 #import <CoreImage/CIFilter.h>
 
-@interface CIExposureAdjust : CIFilter
+@class CIImage;
+
+@interface CIExposureAdjust : CIFilter {
+@private
+    // The input parameters (inputImage, inputEV): instance variables named "input...", which is how
+    // CIFilter finds them for archiving. Declared here because the 32-bit slice uses the fragile
+    // Objective-C ABI, where instance variables cannot be declared in the @implementation.
+    // https://developer.apple.com/documentation/coreimage/ciexposureadjust
+    CIImage *inputImage;
+    NSNumber *inputEV;
+}
 
 @end
