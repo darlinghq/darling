@@ -11,7 +11,8 @@
 //  - extrapolateTimeFromAnchor: fills in the missing one of the receiver's host time and sample time from an
 //    anchor with both valid, and gives nil unless the anchor has both and the receiver has a sample rate and
 //    at least one valid time.
-// Cases marked GUESS pin choices the pages leave open (see AVAudioTime.m).
+// Expectations that go beyond the pages are observations of macOS 26.7.3 and 10.14.4 (see AVAudioTime.m; marked QUIRK where
+// they are undocumented behaviour).
 // Prints PASS, or the failures with a non-zero exit status.
 #import <AVFAudio/AVFAudio.h>
 #import <CoreAudio/HostTime.h>
@@ -45,14 +46,14 @@ static void testInitializers(void)
 	CHECK(!host.sampleTimeValid);
 	CHECK((host.audioTimeStamp.mFlags & kAudioTimeStampHostTimeValid) && !(host.audioTimeStamp.mFlags & kAudioTimeStampSampleTimeValid));
 	CHECK(host.audioTimeStamp.mHostTime == 123456);
-	// GUESS: the host-time-only initializer gives no sample rate, so it reads 0, and an invalid field reads 0.
+	// The host-time-only initializer gives no sample rate, so it reads 0, and its fields that were not given read 0.
 	CHECK(host.sampleRate == 0 && host.sampleTime == 0);
 
 	AVAudioTime* samples = [AVAudioTime timeWithSampleTime:-480 atRate:48000];
 	CHECK(samples != nil);
 	CHECK(samples.sampleTimeValid && samples.sampleTime == -480 && samples.sampleRate == 48000);
 	CHECK(!samples.hostTimeValid);
-	CHECK(samples.hostTime == 0); // GUESS: an invalid field reads 0.
+	CHECK(samples.hostTime == 0); // not given
 	CHECK(samples.audioTimeStamp.mSampleTime == -480.0);
 	CHECK((samples.audioTimeStamp.mFlags & kAudioTimeStampSampleTimeValid) && !(samples.audioTimeStamp.mFlags & kAudioTimeStampHostTimeValid));
 
@@ -84,24 +85,34 @@ static void testAudioTimeStamp(void)
 	CHECK(t.sampleTimeValid && t.sampleTime == 1000 && t.sampleRate == 22050);
 	AudioTimeStamp back = t.audioTimeStamp;
 	CHECK(back.mFlags == ts.mFlags && back.mHostTime == 5000 && back.mSampleTime == 1000.0);
-	// GUESS: the fields of the time stamp beyond the two times are kept as given.
+	// The fields of the time stamp beyond the two times are kept as given.
 	CHECK(back.mRateScalar == 1.5);
 
-	// Only the fields the flags mark are valid.
+	// The flags say which fields are valid; a field whose flag is clear is kept as it was given and reads back.
 	ts.mFlags = kAudioTimeStampSampleTimeValid;
 	t = [AVAudioTime timeWithAudioTimeStamp:&ts sampleRate:22050];
 	CHECK(t.sampleTimeValid && !t.hostTimeValid);
-	CHECK(t.sampleTime == 1000 && t.hostTime == 0); // GUESS: the field of a clear flag reads 0.
+	CHECK(t.sampleTime == 1000 && t.hostTime == 5000);
 	ts.mFlags = kAudioTimeStampHostTimeValid;
 	t = [AVAudioTime timeWithAudioTimeStamp:&ts sampleRate:22050];
-	CHECK(t.hostTimeValid && !t.sampleTimeValid && t.hostTime == 5000 && t.sampleRate == 22050);
+	CHECK(t.hostTimeValid && !t.sampleTimeValid && t.hostTime == 5000 && t.sampleRate == 22050 && t.sampleTime == 1000);
 	ts.mFlags = kAudioTimeStampNothingValid;
 	t = [AVAudioTime timeWithAudioTimeStamp:&ts sampleRate:22050];
 	CHECK(t != nil && !t.hostTimeValid && !t.sampleTimeValid);
 
-	// GUESS: a NULL time stamp gives nil (the page declares a non-optional pointer).
-	const AudioTimeStamp* noStamp = NULL;
-	CHECK([AVAudioTime timeWithAudioTimeStamp:noStamp sampleRate:44100] == nil);
+	// QUIRK: the sample time of a time stamp becomes an integer by truncation, and a NaN or a number out of range reads
+	// as the smallest integer.
+	ts.mFlags = kAudioTimeStampSampleTimeValid;
+	static const struct { double sampleTime; int64_t expected; } positions[] = {
+		{ 3.7, 3 }, { -3.7, -3 }, { 0.5, 0 }, { -0.5, 0 }, { 4503599627370497.5, 4503599627370497 },
+		{ 1e30, INT64_MIN }, { -1e30, INT64_MIN }, { 9.3e18, INT64_MIN }, { NAN, INT64_MIN }, { INFINITY, INT64_MIN }, { -INFINITY, INT64_MIN },
+	};
+	for (size_t i = 0; i < sizeof positions / sizeof positions[0]; i++)
+	{
+		ts.mSampleTime = positions[i].sampleTime;
+		t = [AVAudioTime timeWithAudioTimeStamp:&ts sampleRate:44100];
+		CHECK(t.sampleTime == positions[i].expected);
+	}
 }
 
 static void testHostTimeConversion(void)
@@ -123,12 +134,19 @@ static void testHostTimeConversion(void)
 	// The host time is the mach_absolute_time clock: a time from now is a positive number of seconds.
 	CHECK([AVAudioTime secondsForHostTime:AudioGetCurrentHostTime()] > 0.0);
 
-	// GUESS: a negative or NaN number of seconds gives 0, and one beyond 64 bits of nanoseconds is limited to
-	// UINT64_MAX nanoseconds before the conversion (this only checks that the limit is passed to CoreAudio's
-	// conversion, which wraps for some timebases).
-	CHECK([AVAudioTime hostTimeForSeconds:-1.0] == 0);
-	CHECK([AVAudioTime hostTimeForSeconds:NAN] == 0);
-	CHECK([AVAudioTime hostTimeForSeconds:1e300] == AudioConvertNanosToHostTime(UINT64_MAX));
+	// QUIRK: the number of nanoseconds is truncated (1.6 ns is 1), a negative one wraps, NaN and minus infinity give 2^63, and
+	// 2^64 and more, and infinity, give 0 (macOS 10.14.4; see nanosFromDouble in AVAudioTime.m).
+	CHECK([AVAudioTime hostTimeForSeconds:1.6e-9] == AudioConvertNanosToHostTime(1));
+	CHECK([AVAudioTime hostTimeForSeconds:2.5e-9] == AudioConvertNanosToHostTime(2));
+	CHECK([AVAudioTime hostTimeForSeconds:5e-10] == 0);
+	CHECK([AVAudioTime hostTimeForSeconds:-1.0] == AudioConvertNanosToHostTime(UINT64_MAX - 999999999ull));
+	CHECK([AVAudioTime hostTimeForSeconds:-1e-9] == AudioConvertNanosToHostTime(UINT64_MAX));
+	CHECK([AVAudioTime hostTimeForSeconds:1.8e10] == AudioConvertNanosToHostTime(18000000000000000000ull));
+	CHECK([AVAudioTime hostTimeForSeconds:1.9e10] == 0);
+	CHECK([AVAudioTime hostTimeForSeconds:1e300] == 0);
+	CHECK([AVAudioTime hostTimeForSeconds:INFINITY] == 0);
+	CHECK([AVAudioTime hostTimeForSeconds:-INFINITY] == AudioConvertNanosToHostTime(0x8000000000000000ull));
+	CHECK([AVAudioTime hostTimeForSeconds:NAN] == AudioConvertNanosToHostTime(0x8000000000000000ull));
 }
 
 static void testExtrapolateRefusals(void)
@@ -150,7 +168,7 @@ static void testExtrapolateRefusals(void)
 	AVAudioTime* empty = [AVAudioTime timeWithAudioTimeStamp:&none sampleRate:48000];
 	CHECK([empty extrapolateTimeFromAnchor:anchor] == nil); // no valid time
 	AVAudioTime* noRate = [AVAudioTime timeWithSampleTime:48000 atRate:0];
-	CHECK([noRate extrapolateTimeFromAnchor:anchor] == nil); // GUESS: a rate of 0 is no rate
+	CHECK([noRate extrapolateTimeFromAnchor:anchor] == nil); // a rate of 0 is no rate
 }
 
 static void testExtrapolateFromSampleTime(void)
@@ -173,18 +191,68 @@ static void testExtrapolateFromSampleTime(void)
 	full = [[AVAudioTime timeWithSampleTime:1000 atRate:48000] extrapolateTimeFromAnchor:anchor];
 	CHECK(full != nil && full.hostTime == base);
 
-	// GUESS: the pages do not cover an anchor at another rate than the receiver's. The anchor's sample time is
-	// converted to the receiver's rate, so a distance of one second at 44100 from an anchor at 48000 is one second.
+	// The anchor's own sample rate is not used: the distance in frames is counted in the receiver's rate. From an anchor at
+	// sample 48000, the sample 44100 at 44100 Hz is 3900 frames, 0.0884 s, before it (observed on macOS 26.7.3 and 10.14.4).
 	AVAudioTime* anchorSecond = [AVAudioTime timeWithHostTime:base sampleTime:48000 atRate:48000];
 	full = [[AVAudioTime timeWithSampleTime:44100 atRate:44100] extrapolateTimeFromAnchor:anchorSecond];
-	CHECK(full != nil && near(full.hostTime, base, 2) && full.sampleRate == 44100 && full.sampleTime == 44100);
+	CHECK(full != nil && near(full.hostTime, base - (uint64_t) (second * 3900.0 / 44100.0), 2) && full.sampleRate == 44100 && full.sampleTime == 44100);
 	full = [[AVAudioTime timeWithSampleTime:66150 atRate:44100] extrapolateTimeFromAnchor:anchorSecond];
-	CHECK(full != nil && near(full.hostTime, base + second / 2, 2));
+	CHECK(full != nil && near(full.hostTime, base + (uint64_t) (second * 18150.0 / 44100.0), 2));
 	full = [[AVAudioTime timeWithSampleTime:144000 atRate:96000] extrapolateTimeFromAnchor:anchorSecond];
-	CHECK(full != nil && near(full.hostTime, base + second / 2, 2));
+	CHECK(full != nil && near(full.hostTime, base + second, 2));
+	// An anchor without a sample rate works the same, and so does a negative rate (the division it is).
+	AVAudioTime* anchorNoRate = [AVAudioTime timeWithHostTime:base sampleTime:1000 atRate:0];
+	full = [[AVAudioTime timeWithSampleTime:49000 atRate:48000] extrapolateTimeFromAnchor:anchorNoRate];
+	CHECK(full != nil && near(full.hostTime, base + second, 2));
+	full = [[AVAudioTime timeWithSampleTime:48000 atRate:-48000] extrapolateTimeFromAnchor:anchor];
+	CHECK(full != nil && near(full.hostTime, base - (uint64_t) (second * 47000.0 / 48000.0), 2));
 
-	// GUESS: a time before the start of the host clock cannot be represented and gives nil.
-	CHECK([[AVAudioTime timeWithSampleTime:-48000 * 1000 atRate:48000] extrapolateTimeFromAnchor:anchor] == nil);
+	// QUIRK: a time before the start of the host clock wraps (as an unsigned number) and is not refused (macOS 26.7.3, 10.14.4).
+	full = [[AVAudioTime timeWithSampleTime:-48000 * 1000 atRate:48000] extrapolateTimeFromAnchor:anchor];
+	CHECK(full != nil && near(full.hostTime, base - [AVAudioTime hostTimeForSeconds:1000.0208333333], 4) && full.hostTime > base);
+}
+
+// A rate scalar scales the extrapolation: the receiver's if it has one, else the anchor's. The result keeps it, with its flag.
+static void testExtrapolateRateScalar(void)
+{
+	uint64_t second = [AVAudioTime hostTimeForSeconds:1.0];
+	uint64_t base = 50 * second;
+	AudioTimeStamp as;
+	memset(&as, 0, sizeof(as));
+	as.mHostTime = base;
+	as.mSampleTime = 1000;
+	as.mRateScalar = 2.0;
+	as.mWordClockTime = 99;
+	as.mFlags = kAudioTimeStampHostTimeValid | kAudioTimeStampSampleTimeValid | kAudioTimeStampRateScalarValid | kAudioTimeStampWordClockTimeValid;
+	AVAudioTime* scaled = [AVAudioTime timeWithAudioTimeStamp:&as sampleRate:48000];
+
+	// Sample to host: one second of frames is two seconds of host time at a scalar of 2.
+	AVAudioTime* full = [[AVAudioTime timeWithSampleTime:49000 atRate:48000] extrapolateTimeFromAnchor:scaled];
+	CHECK(full != nil && near(full.hostTime, base + 2 * second, 4) && full.sampleTime == 49000);
+	CHECK(full.audioTimeStamp.mRateScalar == 2.0 && (full.audioTimeStamp.mFlags & kAudioTimeStampRateScalarValid));
+	CHECK(!(full.audioTimeStamp.mFlags & kAudioTimeStampWordClockTimeValid) && full.audioTimeStamp.mWordClockTime == 0);
+
+	// Host to sample: one second of host time is half a second of frames.
+	AudioTimeStamp ts;
+	memset(&ts, 0, sizeof(ts));
+	ts.mHostTime = base + second;
+	ts.mFlags = kAudioTimeStampHostTimeValid;
+	full = [[AVAudioTime timeWithAudioTimeStamp:&ts sampleRate:48000] extrapolateTimeFromAnchor:scaled];
+	CHECK(full != nil && llabs(full.sampleTime - (1000 + 24000)) <= 1 && full.audioTimeStamp.mRateScalar == 2.0);
+
+	// The receiver's own scalar wins.
+	memset(&ts, 0, sizeof(ts));
+	ts.mSampleTime = 49000;
+	ts.mRateScalar = 3.0;
+	ts.mFlags = kAudioTimeStampSampleTimeValid | kAudioTimeStampRateScalarValid;
+	full = [[AVAudioTime timeWithAudioTimeStamp:&ts sampleRate:48000] extrapolateTimeFromAnchor:scaled];
+	CHECK(full != nil && near(full.hostTime, base + 3 * second, 4) && full.audioTimeStamp.mRateScalar == 3.0);
+
+	// A scalar whose flag is clear is not used.
+	as.mFlags = kAudioTimeStampHostTimeValid | kAudioTimeStampSampleTimeValid;
+	AVAudioTime* unflagged = [AVAudioTime timeWithAudioTimeStamp:&as sampleRate:48000];
+	full = [[AVAudioTime timeWithSampleTime:49000 atRate:48000] extrapolateTimeFromAnchor:unflagged];
+	CHECK(full != nil && near(full.hostTime, base + second, 4) && !(full.audioTimeStamp.mFlags & kAudioTimeStampRateScalarValid));
 }
 
 static void testExtrapolateFromHostTime(void)
@@ -210,22 +278,35 @@ static void testExtrapolateFromHostTime(void)
 	full = [[AVAudioTime timeWithAudioTimeStamp:&ts sampleRate:48000] extrapolateTimeFromAnchor:anchor];
 	CHECK(full != nil && llabs(full.sampleTime - (1000 - 48000)) <= 1);
 
-	// The sample time rounds to the nearest frame (GUESS): 0.75 frame at 48000 after the anchor is frame 1001,
-	// which truncation would not give. 15625 ns is exactly 0.75 frame.
+	// The sample time rounds to the nearest frame, halves to even: 0.75 frame at 48000 after the anchor is frame 1001, which
+	// truncation would not give; 1.5 frames after is 1002 and 1.5 before is 998 (observed on macOS 26.7.3 and 10.14.4).
+	// 15625 ns is exactly 0.75 frame.
 	ts.mHostTime = base + AudioConvertNanosToHostTime(15625);
 	full = [[AVAudioTime timeWithAudioTimeStamp:&ts sampleRate:48000] extrapolateTimeFromAnchor:anchor];
 	CHECK(full != nil && full.sampleTime == 1001);
+	ts.mHostTime = base + AudioConvertNanosToHostTime(31250);
+	full = [[AVAudioTime timeWithAudioTimeStamp:&ts sampleRate:48000] extrapolateTimeFromAnchor:anchor];
+	CHECK(full != nil && full.sampleTime == 1002);
+	ts.mHostTime = base - AudioConvertNanosToHostTime(31250);
+	full = [[AVAudioTime timeWithAudioTimeStamp:&ts sampleRate:48000] extrapolateTimeFromAnchor:anchor];
+	CHECK(full != nil && full.sampleTime == 998);
 
-	// The result carries the receiver's rate. GUESS: the anchor's sample time is converted to it (see above).
+	// The result carries the receiver's rate; the anchor's sample time (48000 here) is counted in the receiver's rate, not
+	// converted to it (observed on macOS 26.7.3 and 10.14.4).
 	AVAudioTime* anchorSecond = [AVAudioTime timeWithHostTime:base sampleTime:48000 atRate:48000];
 	ts.mHostTime = base + second;
 	full = [[AVAudioTime timeWithAudioTimeStamp:&ts sampleRate:44100] extrapolateTimeFromAnchor:anchorSecond];
-	CHECK(full != nil && llabs(full.sampleTime - (44100 + 44100)) <= 1 && full.sampleRate == 44100);
+	CHECK(full != nil && llabs(full.sampleTime - (48000 + 44100)) <= 1 && full.sampleRate == 44100);
 	ts.mHostTime = base;
 	full = [[AVAudioTime timeWithAudioTimeStamp:&ts sampleRate:44100] extrapolateTimeFromAnchor:anchorSecond];
-	CHECK(full != nil && llabs(full.sampleTime - 44100) <= 1);
+	CHECK(full != nil && llabs(full.sampleTime - 48000) <= 1);
 
-	// GUESS: a receiver with both times valid is returned as an equal time.
+	// A host time more than 2^63 ticks above the anchor's counts as before it (a signed difference).
+	ts.mHostTime = UINT64_MAX;
+	full = [[AVAudioTime timeWithAudioTimeStamp:&ts sampleRate:48000] extrapolateTimeFromAnchor:anchor];
+	CHECK(full != nil && full.sampleTime < 1000);
+
+	// A receiver with both times valid is returned as an equal time (a new object).
 	AVAudioTime* complete = [AVAudioTime timeWithHostTime:base + 5 sampleTime:77 atRate:48000];
 	full = [complete extrapolateTimeFromAnchor:anchor];
 	CHECK(full != nil && full.hostTime == base + 5 && full.sampleTime == 77 && full.sampleRate == 48000);
@@ -240,6 +321,7 @@ int main(void)
 		testHostTimeConversion();
 		testExtrapolateRefusals();
 		testExtrapolateFromSampleTime();
+		testExtrapolateRateScalar();
 		testExtrapolateFromHostTime();
 	}
 
