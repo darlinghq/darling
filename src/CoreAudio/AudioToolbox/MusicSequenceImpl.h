@@ -142,6 +142,11 @@ inline std::mutex& lock()
 	return m;
 }
 
+// The seconds at a position of the sequence in beats, and the position at a number of seconds,
+// through the tempo map. The tempo of the first tempo event also holds before zero.
+Float64 secondsForBeats(const OpaqueMusicSequence* sequence, MusicTimeStamp beats);
+MusicTimeStamp beatsForSeconds(const OpaqueMusicSequence* sequence, Float64 seconds);
+
 // Inserts an event into the track, after the events that have the same time, and returns its
 // position.
 size_t insertEvent(OpaqueMusicTrack* track, MusicEvent&& event);

@@ -120,6 +120,39 @@ OSStatus MusicSequenceGetSequenceType(MusicSequence inSequence, MusicSequenceTyp
 	return noErr;
 }
 
+Float64 musicimpl::secondsForBeats(const OpaqueMusicSequence* sequence, MusicTimeStamp beats)
+{
+	const std::vector<TempoPoint> map = tempoMap(sequence);
+	if (beats < 0)
+		return beats / map.front().beatsPerSecond;
+
+	Float64 seconds = 0;
+	for (size_t i = 0; i < map.size() && map[i].time < beats; i++)
+	{
+		// The last tempo holds for ever.
+		MusicTimeStamp end = i + 1 < map.size() ? std::min(map[i + 1].time, beats) : beats;
+		seconds += (end - map[i].time) / map[i].beatsPerSecond;
+	}
+	return seconds;
+}
+
+MusicTimeStamp musicimpl::beatsForSeconds(const OpaqueMusicSequence* sequence, Float64 seconds)
+{
+	const std::vector<TempoPoint> map = tempoMap(sequence);
+	if (seconds < 0)
+		return seconds * map.front().beatsPerSecond;
+
+	Float64 remaining = seconds;
+	for (size_t i = 0; i < map.size(); i++)
+	{
+		const Float64 length = i + 1 < map.size() ? (map[i + 1].time - map[i].time) / map[i].beatsPerSecond : INFINITY;
+		if (remaining <= length)
+			return map[i].time + remaining * map[i].beatsPerSecond;
+		remaining -= length;
+	}
+	return 0;
+}
+
 OSStatus MusicSequenceGetSecondsForBeats(MusicSequence inSequence, MusicTimeStamp inBeats, Float64* outSeconds)
 {
 	// GUESS: a time below zero or not finite is kAudio_ParamError, like a time stamp of an event.
@@ -129,15 +162,7 @@ OSStatus MusicSequenceGetSecondsForBeats(MusicSequence inSequence, MusicTimeStam
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 	try
 	{
-		const std::vector<TempoPoint> map = tempoMap(inSequence);
-		Float64 seconds = 0;
-		for (size_t i = 0; i < map.size() && map[i].time < inBeats; i++)
-		{
-			// The last tempo holds for ever.
-			MusicTimeStamp end = i + 1 < map.size() ? std::min(map[i + 1].time, inBeats) : inBeats;
-			seconds += (end - map[i].time) / map[i].beatsPerSecond;
-		}
-		*outSeconds = seconds;
+		*outSeconds = musicimpl::secondsForBeats(inSequence, inBeats);
 	}
 	catch (const std::bad_alloc&)
 	{
@@ -154,21 +179,7 @@ OSStatus MusicSequenceGetBeatsForSeconds(MusicSequence inSequence, Float64 inSec
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 	try
 	{
-		const std::vector<TempoPoint> map = tempoMap(inSequence);
-		Float64 remaining = inSeconds;
-		MusicTimeStamp beats = 0;
-		for (size_t i = 0; i < map.size(); i++)
-		{
-			const MusicTimeStamp start = map[i].time;
-			const Float64 length = i + 1 < map.size() ? (map[i + 1].time - start) / map[i].beatsPerSecond : INFINITY;
-			if (remaining <= length)
-			{
-				beats = start + remaining * map[i].beatsPerSecond;
-				break;
-			}
-			remaining -= length;
-		}
-		*outBeats = beats;
+		*outBeats = musicimpl::beatsForSeconds(inSequence, inSeconds);
 	}
 	catch (const std::bad_alloc&)
 	{
