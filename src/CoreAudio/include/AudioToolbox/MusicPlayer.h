@@ -273,6 +273,15 @@ MusicEventIteratorGetEventInfo(MusicEventIterator inIterator,
 	UInt32 *outEventDataSize);
 
 extern OSStatus
+MusicEventIteratorSetEventInfo(MusicEventIterator inIterator, MusicEventType inEventType, const void *inEventData);
+
+extern OSStatus
+MusicEventIteratorSetEventTime(MusicEventIterator inIterator, MusicTimeStamp inTimeStamp);
+
+extern OSStatus
+MusicEventIteratorDeleteEvent(MusicEventIterator inIterator);
+
+extern OSStatus
 MusicEventIteratorHasPreviousEvent(MusicEventIterator inIterator, Boolean *outHasPrevEvent);
 
 extern OSStatus
