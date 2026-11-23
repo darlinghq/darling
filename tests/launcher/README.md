@@ -20,6 +20,14 @@ prefix mutations:
 python3 tests/launcher/test-missing-init.py src/startup/darling.c --run
 ```
 
+The stale pid file harness compiles the launcher's `findInitProcess()` and checks
+that a darlingserver that exited but was not reaped (a zombie) counts as no
+server and its pid file is removed:
+
+```sh
+python3 tests/launcher/stale-init-pid.py src/startup
+```
+
 ## Modes
 
 ```sh

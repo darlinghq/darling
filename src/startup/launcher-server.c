@@ -679,18 +679,25 @@ int launcherFindOrphanedInit(const char* procPath, const char* prefix, uid_t uid
 	return result;
 }
 
-// The parent of the process whose /proc/PID/stat contents are given. The name field is in
-// parentheses and may hold spaces and parentheses, so the fields after it start after the last one.
-static bool parentFromStat(const char* stat, pid_t* parent)
+// The state and the parent of the process whose /proc/PID/stat contents are given. The name field is
+// in parentheses and may hold spaces and parentheses, so the fields after it start after the last one.
+static bool parseStat(const char* stat, char* state, pid_t* parent)
 {
 	const char* end = strrchr(stat, ')');
-	char state;
 	int ppid;
 
-	if (end == NULL || sscanf(end + 1, " %c %d", &state, &ppid) != 2 || ppid < 0)
+	if (end == NULL || sscanf(end + 1, " %c %d", state, &ppid) != 2 || ppid < 0)
 		return false;
 	*parent = (pid_t) ppid;
 	return true;
+}
+
+bool launcherStatHasExited(const char* stat)
+{
+	char state;
+	pid_t parent;
+
+	return parseStat(stat, &state, &parent) && (state == 'Z' || state == 'X');
 }
 
 int launcherCollectDescendants(const char* procPath, pid_t root, pid_t* out, size_t max)
@@ -713,6 +720,7 @@ int launcherCollectDescendants(const char* procPath, pid_t root, pid_t* out, siz
 		long pid = strtol(ent->d_name, &endptr, 10);
 		char path[64], buffer[1024];
 		pid_t parent;
+		char state;
 		int fd;
 		ssize_t got;
 
@@ -727,7 +735,7 @@ int launcherCollectDescendants(const char* procPath, pid_t root, pid_t* out, siz
 		if (got <= 0)
 			continue;
 		buffer[got] = '\0';
-		if (!parentFromStat(buffer, &parent))
+		if (!parseStat(buffer, &state, &parent))
 			continue;
 
 		if (count == capacity)
