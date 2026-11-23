@@ -248,6 +248,12 @@ MusicTrackNewUserEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, const Mus
 extern OSStatus
 MusicTrackNewAUPresetEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, const AUPresetEvent *inPresetEvent);
 
+extern OSStatus
+MusicTrackSetProperty(MusicTrack inTrack, UInt32 inPropertyID, void *inData, UInt32 inLength);
+
+extern OSStatus
+MusicTrackGetProperty(MusicTrack inTrack, UInt32 inPropertyID, void *outData, UInt32 *ioLength);
+
 // Music event iterators
 
 extern OSStatus

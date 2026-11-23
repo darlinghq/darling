@@ -98,6 +98,15 @@ struct OpaqueMusicTrack
 {
 	OpaqueMusicSequence* sequence = nullptr;
 
+	// The track properties of MusicTrackSetProperty. The length is only used when it was set.
+	MusicTrackLoopInfo loop = { 0, 0 };
+	MusicTimeStamp offsetTime = 0;
+	Boolean muted = false;
+	Boolean soloed = false;
+	UInt32 automatedParameters = 0;
+	bool hasLength = false;
+	MusicTimeStamp length = 0;
+
 	// In time order; events with the same time are in the order they were added.
 	std::vector<MusicEvent> events;
 };
@@ -115,6 +124,9 @@ struct OpaqueMusicSequence
 	OpaqueMusicSequence();
 
 	OpaqueMusicTrack tempoTrack;
+
+	// The ticks per quarter note of a file made from the sequence: 480 for a sequence made by hand.
+	SInt16 timeResolution = 480;
 	std::vector<std::unique_ptr<OpaqueMusicTrack>> tracks;
 };
 
@@ -130,6 +142,10 @@ inline std::mutex& lock()
 // Inserts an event into the track, after the events that have the same time, and returns its
 // position.
 size_t insertEvent(OpaqueMusicTrack* track, MusicEvent&& event);
+
+// The length of a track: the end of its last event (a note lasts for its duration), or the length
+// set on the track if that is greater.
+MusicTimeStamp trackLength(const OpaqueMusicTrack* track);
 
 // Validates an event of the given type and copies its structure, including the bytes that follow
 // a variable length one, into out. The result is kAudioToolboxErr_InvalidEventType for a type
