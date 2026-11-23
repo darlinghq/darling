@@ -1862,6 +1862,93 @@ static void test_pa_callback_args(void)
 	check(g_pa_seen_cb != 0 && !is_fake_guest_fn(g_pa_seen_cb), "pa_stream_write gets a thunk for free_cb");
 }
 
+static uint64_t g_pa_signal_api = 0, g_pa_signal_destroy = 0;
+static uint64_t host_pa_signal_init(uint64_t api)
+{
+	g_pa_signal_api = api;
+	return 0;
+}
+// libpulse calls a signal callback as callback(api, e, sig, userdata), with the api pa_signal_init got.
+static uint64_t host_pa_signal_new(uint64_t sig, uint64_t cb, uint64_t userdata)
+{
+	if (is_fake_guest_fn(cb))
+		return GOT_GUEST_FN;
+	((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))(uintptr_t)cb)(g_pa_signal_api, 0x7f00040000, sig, userdata);
+	return 0x7f00040000;
+}
+static uint64_t host_pa_signal_set_destroy(uint64_t e, uint64_t cb)
+{
+	(void)e;
+	g_pa_signal_destroy = cb;
+	return 0;
+}
+// pa_mainloop_api_once(m, callback, userdata) ends up calling callback(m, userdata) with the api it was given.
+static uint64_t g_pa_once_api = 0;
+static uint64_t host_pa_mainloop_api_once(uint64_t api, uint64_t cb, uint64_t userdata)
+{
+	g_pa_once_api = api;
+	if (is_fake_guest_fn(cb))
+		return GOT_GUEST_FN;
+	((void (*)(uint64_t, uint64_t))(uintptr_t)cb)(api, userdata);
+	return 0;
+}
+static uint64_t host_pa_ext_device_restore_save_formats(uint64_t c, uint64_t type, uint64_t idx, uint64_t n,
+	uint64_t formats, uint64_t cb)
+{
+	(void)c;
+	(void)type;
+	(void)idx;
+	(void)n;
+	(void)formats;
+	g_pa_seen_cb = cb;
+	return 0;
+}
+
+// The callbacks of pulse/mainloop-signal.h and pa_mainloop_api_once get the guest's own pa_mainloop_api.
+static void test_pa_api_callbacks(void)
+{
+	struct fake_pa_mainloop_api guest = {
+		0x7f00041000, 0x5700100, 0x5700200, 0x5700300, 0x5700400, 0x5700500, 0x5700600, 0x5700700,
+		0x5700800, 0x5700900, 0x5700a00, 0x5700b00, 0x5700c00, 0,
+	};
+	const uint64_t guest_api = (uint64_t)(uintptr_t)&guest;
+	void* init = fex_dlsym_wrap_if_func((void*)host_pa_signal_init, "pa_signal_init");
+	call_stub(init, guest_api, 0, 0, 0);
+	check(g_pa_signal_api != 0 && g_pa_signal_api != guest_api && !is_fake_guest_fn(((const uint64_t*)(uintptr_t)g_pa_signal_api)[1]),
+		"pa_signal_init keeps a host copy of the guest's pa_mainloop_api");
+
+	void* signal_new = fex_dlsym_wrap_if_func((void*)host_pa_signal_new, "pa_signal_new");
+	last_cb_args_fn = 0;
+	uint64_t ret = call_stub(signal_new, 15, 0x5700d00, 0x7f00042000, 0);
+	check(ret == 0x7f00040000 && last_cb_args_fn == 0x5700d00 && last_cb_args[0] == guest_api &&
+	      last_cb_args[1] == 0x7f00040000 && last_cb_args[2] == 15 && last_cb_args[3] == 0x7f00042000,
+		"a signal callback runs the guest's function with the guest's pa_mainloop_api");
+	void* set_destroy = fex_dlsym_wrap_if_func((void*)host_pa_signal_set_destroy, "pa_signal_set_destroy");
+	call_stub(set_destroy, 0x7f00040000, 0x5700e00, 0, 0);
+	last_cb_args_fn = 0;
+	if (!is_fake_guest_fn(g_pa_signal_destroy) && g_pa_signal_destroy)
+		((void (*)(uint64_t, uint64_t, uint64_t))(uintptr_t)g_pa_signal_destroy)(g_pa_signal_api, 0x7f00040000, 0x7f00042000);
+	check(last_cb_args_fn == 0x5700e00 && last_cb_args[0] == guest_api && last_cb_args[2] == 0x7f00042000,
+		"pa_signal_set_destroy gets a thunk that gives the guest its own pa_mainloop_api");
+
+	void* once = fex_dlsym_wrap_if_func((void*)host_pa_mainloop_api_once, "pa_mainloop_api_once");
+	last_cb_args_fn = 0;
+	ret = call_stub(once, guest_api, 0x5700f00, 0x7f00043000, 0);
+	check(ret == 0 && g_pa_once_api == g_pa_signal_api && g_pa_once_api != guest_api && last_cb_args_fn == 0x5700f00 && last_cb_args[0] == guest_api &&
+	      last_cb_args[1] == 0x7f00043000,
+		"pa_mainloop_api_once uses the host copy and runs the guest callback with the guest's api");
+
+	void* save = fex_dlsym_wrap_if_func((void*)host_pa_ext_device_restore_save_formats, "pa_ext_device_restore_save_formats");
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rax = stub_syscall_nr(save);
+	st.rdi = 0x7f00028000;
+	st.r9 = 0x5701000;
+	g_pa_seen_cb = 0;
+	fex_linux_syscall_dispatch(&st);
+	check(g_pa_seen_cb != 0 && !is_fake_guest_fn(g_pa_seen_cb), "an ext-device-restore operation gets a thunk for its callback");
+}
+
 static uint64_t g_xim_values[4];
 // What libX11 keeps of XVaCreateNestedList(0, name1, value1, name2, value2, NULL): the values.
 static uint64_t host_XVaCreateNestedList(uint64_t unused, uint64_t n1, uint64_t v1, uint64_t n2, uint64_t v2, uint64_t end)
@@ -2470,6 +2557,53 @@ static void test_jpeg_managers(void)
 		"after jpeg_destroy only the guest's own progress manager is written");
 }
 
+static uint64_t g_jpeg_marker_routine = 0;
+static uint64_t host_jpeg_set_marker_processor(uint64_t object, uint64_t marker_code, uint64_t routine)
+{
+	(void)object;
+	(void)marker_code;
+	g_jpeg_marker_routine = routine;
+	return 0;
+}
+// Reads a marker that has a processor: libjpeg calls it with the object while the error manager is in its host view.
+static uint64_t g_jpeg_marker_err_host_view;
+static uint64_t host_jpeg_consume_input(uint64_t object)
+{
+	const struct fake_jpeg_error_mgr* err = jpeg_err_of(object);
+	g_jpeg_marker_err_host_view = host_callable(err->method[JPEG_ERROR_EXIT]);
+	if (is_fake_guest_fn(g_jpeg_marker_routine))
+		return GOT_GUEST_FN;
+	return ((uint64_t (*)(uint64_t))(uintptr_t)g_jpeg_marker_routine)(object);
+}
+
+#define GUEST_MARKER_PROCESSOR 0x5600600u
+static bool g_marker_saw_guest_err;
+static void guest_marker_processor(uintptr_t fn, const uint64_t args[6])
+{
+	g_marker_saw_guest_err = fn == GUEST_MARKER_PROCESSOR && args[0] == (uint64_t)(uintptr_t)&g_managers_cinfo;
+	for (int m = 0; m < 5; m++)
+		g_marker_saw_guest_err &= is_guest_stub(g_managers_err.method[m]);
+}
+
+static void test_jpeg_marker_processor(void)
+{
+	void* std_error = fex_dlsym_wrap_if_func((void*)host_jpeg_std_error, "jpeg_std_error");
+	void* set_marker = fex_dlsym_wrap_if_func((void*)host_jpeg_set_marker_processor, "jpeg_set_marker_processor");
+	void* consume = fex_dlsym_wrap_if_func((void*)host_jpeg_consume_input, "jpeg_consume_input");
+	call_stub(std_error, (uint64_t)(uintptr_t)&g_managers_err, 0, 0, 0);
+	g_managers_cinfo = (struct fake_jpeg_object){ .err = (uint64_t)(uintptr_t)&g_managers_err, .is_decompressor = 1 };
+	const uint64_t object = (uint64_t)(uintptr_t)&g_managers_cinfo;
+	call_stub(set_marker, object, 0xe1, GUEST_MARKER_PROCESSOR, 0);
+	check(g_jpeg_marker_routine != 0 && !is_fake_guest_fn(g_jpeg_marker_routine),
+		"jpeg_set_marker_processor gets a thunk for the guest's routine");
+	g_marker_saw_guest_err = false;
+	guest_callback_args_body = guest_marker_processor;
+	uint64_t ret = call_stub(consume, object, 0, 0, 0);
+	guest_callback_args_body = NULL;
+	check(ret == 0x88 && g_jpeg_marker_err_host_view && g_marker_saw_guest_err,
+		"libjpeg's call of the marker processor runs the guest routine with the guest view of the error manager");
+}
+
 static void test_syscall_translations(void)
 {
 	struct fex_x86_64_state st;
@@ -3016,10 +3150,12 @@ int main(void)
 	test_proc_address_lookup();
 	test_jpeg_error_manager();
 	test_jpeg_managers();
+	test_jpeg_marker_processor();
 	test_xim_callbacks();
 	test_left_callbacks();
 	test_pa_mainloop_api();
 	test_pa_callback_args();
+	test_pa_api_callbacks();
 	test_syscall_translations();
 	test_safe_memory_access();
 	test_guest_signal_delivery();

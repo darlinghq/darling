@@ -217,6 +217,7 @@ struct fex_callback_rules {
 	const struct fex_kept_struct* kept_struct; // its g_kept_struct_args layout, if any
 	unsigned kept_struct_arg; // which argument points to that struct
 	unsigned kept_struct_back; // its g_kept_struct_back_args mask, 0 if none
+	const struct fex_thunk_rules* args_rules; // the thunks of `args` apply these (g_callback_args_with_rules), if any
 };
 // What a host thunk does to the arguments a host library calls it with, before the guest function runs:
 // `struct_args` may point to a host copy made for a kept struct (they get the guest's struct back), and
@@ -925,6 +926,21 @@ static const struct { const char* name; unsigned mask; } g_pa_callback_args[] = 
 	// pulse/scache.h
 	{ "pa_context_play_sample", 0x10 }, { "pa_context_play_sample_with_proplist", 0x20 },
 	{ "pa_context_remove_sample", 0x4 },
+	// pulse/ext-device-manager.h
+	{ "pa_ext_device_manager_delete", 0x4 }, { "pa_ext_device_manager_enable_role_device_priority_routing", 0x4 },
+	{ "pa_ext_device_manager_read", 0x2 }, { "pa_ext_device_manager_reorder_devices_for_role", 0x8 },
+	{ "pa_ext_device_manager_set_device_description", 0x8 }, { "pa_ext_device_manager_set_subscribe_cb", 0x2 },
+	{ "pa_ext_device_manager_subscribe", 0x4 }, { "pa_ext_device_manager_test", 0x2 },
+	// pulse/ext-device-restore.h
+	{ "pa_ext_device_restore_read_formats", 0x8 }, { "pa_ext_device_restore_read_formats_all", 0x2 },
+	{ "pa_ext_device_restore_save_formats", 0x20 }, { "pa_ext_device_restore_set_subscribe_cb", 0x2 },
+	{ "pa_ext_device_restore_subscribe", 0x4 }, { "pa_ext_device_restore_test", 0x2 },
+	// pulse/ext-stream-restore.h
+	{ "pa_ext_stream_restore_delete", 0x4 }, { "pa_ext_stream_restore_read", 0x2 },
+	{ "pa_ext_stream_restore_set_subscribe_cb", 0x2 }, { "pa_ext_stream_restore_subscribe", 0x4 },
+	{ "pa_ext_stream_restore_test", 0x2 }, { "pa_ext_stream_restore_write", 0x20 },
+	// pulse/mainloop.h, pulse/thread-mainloop.h: poll_func(ufds, nfds, timeout, userdata), callback(m, userdata).
+	{ "pa_mainloop_set_poll_func", 0x2 }, { "pa_threaded_mainloop_once_unlocked", 0x2 },
 };
 
 // Structs of guest function pointers that a host library keeps and calls through after the function that
@@ -955,10 +971,24 @@ static const struct fex_kept_struct g_pa_mainloop_api = { 14, 0x3ffe, g_pa_mainl
 // Host functions that keep the struct their argument `arg` points to.
 static const struct { const char* name; unsigned arg; const struct fex_kept_struct* layout; } g_kept_struct_args[] = {
 	{ "pa_context_new", 0, &g_pa_mainloop_api }, { "pa_context_new_with_proplist", 0, &g_pa_mainloop_api },
+	// pa_mainloop_api_once adds a defer event through the api; pa_signal_init keeps the api until pa_signal_done.
+	{ "pa_mainloop_api_once", 0, &g_pa_mainloop_api }, { "pa_signal_init", 0, &g_pa_mainloop_api },
 };
 // Host functions the guest calls with a kept struct in the arguments of the mask: they get its host copy.
 static const struct { const char* name; unsigned mask; } g_kept_struct_back_args[] = {
 	{ FEX_PA_EVENT_CALLBACK, 0x1 },
+};
+
+// Host functions whose function pointer arguments (the mask) are called with arguments the thunk translates
+// as `rules` say, before the guest function runs.
+static const struct fex_thunk_rules g_pa_api_first_rules = { 0x1, 0, NULL }; // the pa_mainloop_api comes first
+static const struct { const char* name; unsigned mask; const struct fex_thunk_rules* rules; } g_callback_args_with_rules[] = {
+	// jpeg_set_marker_processor(cinfo, marker_code, routine): libjpeg calls routine(cinfo) as it reads that marker.
+	{ "jpeg_set_marker_processor", 0x4, &g_jpeg_callback_rules },
+	// pulse/mainloop-api.h, pulse/mainloop-signal.h: callback(api, userdata), callback(api, e, sig, userdata) and
+	// destroy(api, e, userdata) get the pa_mainloop_api the main loop was given (a kept struct, below).
+	{ "pa_mainloop_api_once", 0x2, &g_pa_api_first_rules }, { "pa_signal_new", 0x2, &g_pa_api_first_rules },
+	{ "pa_signal_set_destroy", 0x2, &g_pa_api_first_rules },
 };
 
 struct fex_kept_copy {
@@ -1116,6 +1146,12 @@ static struct fex_callback_rules callback_rules_for(const char* name)
 	for (size_t i = 0; i < sizeof(g_pa_callback_args) / sizeof(g_pa_callback_args[0]); i++)
 		if (strcmp(name, g_pa_callback_args[i].name) == 0)
 			r.args |= g_pa_callback_args[i].mask;
+	for (size_t i = 0; i < sizeof(g_callback_args_with_rules) / sizeof(g_callback_args_with_rules[0]); i++) {
+		if (strcmp(name, g_callback_args_with_rules[i].name) == 0) {
+			r.args |= g_callback_args_with_rules[i].mask;
+			r.args_rules = g_callback_args_with_rules[i].rules;
+		}
+	}
 	kept_struct_rules_for(name, &r);
 	return r;
 }
@@ -1129,7 +1165,8 @@ static void translate_guest_callbacks(const struct fex_callback_rules* rules, ui
 	bool ignore = (rules->args & FEX_CALLBACK_IGNORE) != 0;
 	for (int a = 0; a < nargs && a < 31; a++)
 		if (rules->args & (1u << a))
-			*args[a] = (*args[a] && ignore) ? (uint64_t)(uintptr_t)host_callback_ignore : host_callback_for(*args[a]);
+			*args[a] = (*args[a] && ignore) ? (uint64_t)(uintptr_t)host_callback_ignore
+				: rules->args_rules ? host_callback_with_rules(*args[a], rules->args_rules) : host_callback_for(*args[a]);
 	const struct fex_unsupported_callback* u = rules->unsupported;
 	for (int a = 0; u && a < nargs && a < 31; a++) {
 		if ((u->mask & (1u << a)) && *args[a] != 0) {
