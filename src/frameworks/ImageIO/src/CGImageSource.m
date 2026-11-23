@@ -212,14 +212,14 @@ CFDictionaryRef CGImageSourceCopyAuxiliaryDataInfoAtIndex(CGImageSourceRef isrc,
 }
 
 // The types the Onyx2D decoders behind O2ImageSource can read. macOS lists 62;
-// all of these six are among them. The gap is the formats we cannot decode.
+// all of these are among them. The gap is the formats we cannot decode.
 // Test: tests/src/imageio_source_queries.c reads each type back from data.
 CFArrayRef CGImageSourceCopyTypeIdentifiers(void)
 {
     const void *types[] = {
         CFSTR("public.png"), CFSTR("public.tiff"), CFSTR("public.jpeg"),
         CFSTR("com.microsoft.bmp"), CFSTR("com.compuserve.gif"), CFSTR("com.apple.icns"),
-        CFSTR("com.adobe.photoshop-image")
+        CFSTR("com.adobe.photoshop-image"), CFSTR("org.khronos.astc")
     };
     return CFArrayCreate(NULL, types, sizeof types / sizeof types[0], &kCFTypeArrayCallBacks);
 }
@@ -227,9 +227,7 @@ CFArrayRef CGImageSourceCopyTypeIdentifiers(void)
 // There are no incremental sources here, so a source that exists was created
 // from complete data of a recognised type. macOS reports complete (0) for a PNG
 // source and kCGImageStatusInvalidData (-4) for NULL (observed on macOS 26.7.3).
-// A source that holds no image (its data did not decode, so its count is 0) is
-// reported as invalid data too; that part is not observed (GUESS I7).
 CGImageSourceStatus CGImageSourceGetStatus(CGImageSourceRef isrc)
 {
-    return isrc != NULL && [(O2ImageSource *)isrc count] > 0 ? kCGImageStatusComplete : kCGImageStatusInvalidData;
+    return isrc != NULL ? kCGImageStatusComplete : kCGImageStatusInvalidData;
 }
