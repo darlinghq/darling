@@ -180,6 +180,10 @@ OSStatus _HIRemoveEventPollProc(HIEventPollProc proc, void* info)
 
 void _HIRunEventPollProcs(EventQueueRef queue)
 {
+	// The window system events of CoreGraphics come first: they arrived before whatever the poll
+	// functions find
+	_HIDrainEventStream(queue);
+
 	// Without any poll function, which is the usual case, this takes the lock once
 	pthread_mutex_lock(&g_pollLock);
 	size_t count = g_pollProcCount;
@@ -213,6 +217,7 @@ static OSStatus waitForEvent(Boolean (*match)(EventRef, void*), void* info, bool
 		mode = kCFRunLoopDefaultMode;
 	else if (!CFEqual(mode, kCFRunLoopDefaultMode))
 		CFRunLoopAddSource(loop->runLoop, loop->wakeSource, mode);
+	_HIEventStreamWillWait(loop, mode);
 
 	if (outEvent)
 		*outEvent = NULL;
