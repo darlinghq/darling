@@ -359,6 +359,14 @@ install(DIRECTORY DESTINATION libexec/darling/private)
 install(DIRECTORY DESTINATION libexec/darling/private/etc)
 install(DIRECTORY DESTINATION libexec/darling/private/var)
 install(DIRECTORY DESTINATION libexec/darling/private/tmp)
+install(DIRECTORY DESTINATION libexec/darling/private/var/tmp)
+# As on macOS, the shared temporary directories are world-writable with the sticky bit (the install
+# command has no way to name the sticky bit, so it is set afterwards).
+install(CODE "
+	foreach (tmpdir private/tmp private/var/tmp)
+		execute_process(COMMAND chmod 1777 \"\$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/libexec/darling/\${tmpdir}\")
+	endforeach ()
+")
 InstallSymlink(private/etc ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc)
 InstallSymlink(private/var ${CMAKE_INSTALL_PREFIX}/libexec/darling/var)
 

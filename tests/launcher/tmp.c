@@ -146,6 +146,44 @@ int main(void)
 	CHECK(!launcherLinkPrefixTmp(file, cache));
 	CHECK(!launcherLinkPrefixTmp(prefix, "relative"));
 
+	// the shared temporary directories of a prefix made with 0755 are set to 01777 (sticky, world-writable)
+	{
+		char p[512];
+
+		dir("sticky", 0700);
+		dir("sticky/private", 0755);
+		dir("sticky/private/tmp", 0755);
+		dir("sticky/private/var", 0755);
+		dir("sticky/var", 0755);
+		dir("sticky/var/tmp", 0755);
+		at(p, sizeof(p), "sticky");
+		CHECK(launcherEnsureSharedTmpModes(p, me) == 2);       // private/var/tmp does not exist
+		at(p, sizeof(p), "sticky/private/tmp");
+		CHECK(stat(p, &st) == 0 && (st.st_mode & 07777) == 01777);
+		at(p, sizeof(p), "sticky/var/tmp");
+		CHECK(stat(p, &st) == 0 && (st.st_mode & 07777) == 01777);
+		at(p, sizeof(p), "sticky/private");
+		CHECK(stat(p, &st) == 0 && (st.st_mode & 07777) == 0755);  // nothing else is touched
+		at(p, sizeof(p), "sticky");
+		CHECK(launcherEnsureSharedTmpModes(p, me) == 0);       // already right
+		CHECK(launcherEnsureSharedTmpModes(p, me + 1) == 0);   // not the user's: left alone
+		dir("sticky/private/var/tmp", 0755);
+		CHECK(launcherEnsureSharedTmpModes(p, me) == 1);
+		at(p, sizeof(p), "sticky/private/var/tmp");
+		CHECK(stat(p, &st) == 0 && (st.st_mode & 07777) == 01777);
+
+		// links are not followed: a link as tmp, and a link in place of private
+		dir("linky", 0700);
+		dir("linky/private", 0755);
+		link_("../../outside", "linky/private/tmp");
+		link_("../outside", "linky/var");
+		at(p, sizeof(p), "linky");
+		CHECK(launcherEnsureSharedTmpModes(p, me) == 0);
+		at(p, sizeof(p), "outside");
+		CHECK(stat(p, &st) == 0 && (st.st_mode & 07777) == 0700);
+		CHECK(launcherEnsureSharedTmpModes("/nonexistent-prefix", me) == 0);
+	}
+
 	chdir("/");
 	nftw(base, removeEntry, 16, FTW_DEPTH | FTW_PHYS);
 	if (g_failures == 0)

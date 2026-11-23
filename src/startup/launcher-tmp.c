@@ -125,3 +125,44 @@ done:
 	close(privateFd);
 	return ok;
 }
+
+static bool openPrefixDirNoFollow(int* fd, const char* rel)
+{
+	char copy[PATH_MAX];
+	char* saveptr = NULL;
+
+	if (snprintf(copy, sizeof(copy), "%s", rel) >= (int) sizeof(copy))
+		return false;
+	for (char* part = strtok_r(copy, "/", &saveptr); part != NULL; part = strtok_r(NULL, "/", &saveptr))
+	{
+		int next = openat(*fd, part, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+
+		close(*fd);
+		*fd = next;
+		if (next < 0)
+			return false;
+	}
+	return true;
+}
+
+int launcherEnsureSharedTmpModes(const char* prefix, uid_t uid)
+{
+	static const char* const dirs[] = { "private/tmp", "private/var/tmp", "var/tmp" };
+	int changed = 0;
+
+	for (size_t i = 0; i < sizeof(dirs) / sizeof(dirs[0]); i++)
+	{
+		struct stat st;
+		int fd = open(prefix, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+
+		if (fd < 0)
+			return changed;
+		if (!openPrefixDirNoFollow(&fd, dirs[i]))
+			continue;
+		if (fstat(fd, &st) == 0 && st.st_uid == uid && (st.st_mode & 07777) != 01777
+			&& fchmod(fd, 01777) == 0)
+			changed++;
+		close(fd);
+	}
+	return changed;
+}
