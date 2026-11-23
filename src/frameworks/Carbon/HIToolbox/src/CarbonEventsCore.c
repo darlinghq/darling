@@ -18,62 +18,71 @@
 */
 
 #include <HIToolbox/CarbonEventsCore.h>
+#include "HIToolboxInternal.h"
+#include <CoreGraphics/CGEvent.h>
+#include <CoreGraphics/CGEventSource.h>
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <pthread.h>
+// The Carbon modifier bits (the bits above the low byte of EventModifiers) that correspond to the CGEventFlags
+UInt32 _HIModifiersFromCGEventFlags(CGEventFlags flags)
+{
+    UInt32 modifiers = 0;
 
-static int verbose = 0;
-
-__attribute__((constructor))
-static void initme(void) {
-    verbose = getenv("STUB_VERBOSE") != NULL;
+    if (flags & kCGEventFlagMaskCommand)
+        modifiers |= 1 << 8;     // cmdKey
+    if (flags & kCGEventFlagMaskShift)
+        modifiers |= 1 << 9;     // shiftKey
+    if (flags & kCGEventFlagMaskAlphaShift)
+        modifiers |= 1 << 10;    // alphaLock
+    if (flags & kCGEventFlagMaskAlternate)
+        modifiers |= 1 << 11;    // optionKey
+    if (flags & kCGEventFlagMaskControl)
+        modifiers |= 1 << 12;    // controlKey
+    return modifiers;
 }
 
-// Event queues are only identities here: nothing can be posted to one.
-struct OpaqueEventQueueRef
+UInt32 GetCurrentKeyModifiers(void)
 {
-    int unused;
-};
-
-static struct OpaqueEventQueueRef g_mainQueue;
-
-EventQueueRef GetMainEventQueue(void)
-{
-    return &g_mainQueue;
+    return _HIModifiersFromCGEventFlags(CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState));
 }
 
-// Every thread has an event queue of its own; the main thread's is the main queue.
-EventQueueRef GetCurrentEventQueue(void)
+// The modifiers of the event being dispatched if it comes from a CGEvent, else the ones now
+UInt32 GetCurrentEventKeyModifiers(void)
 {
-    static _Thread_local struct OpaqueEventQueueRef threadQueue;
+    EventRef current = GetCurrentEvent();
+    CGEventRef cgEvent = current ? CopyEventCGEvent(current) : NULL;
 
-    return pthread_main_np() ? &g_mainQueue : &threadQueue;
+    if (cgEvent)
+    {
+        UInt32 modifiers = _HIModifiersFromCGEventFlags(CGEventGetFlags(cgEvent));
+        CFRelease(cgEvent);
+        return modifiers;
+    }
+    return GetCurrentKeyModifiers();
 }
 
-// The event being dispatched by an event loop of the calling thread. No event loop dispatches
-// events here, and an event sent with SendEventToEventTarget() is not reported either.
-EventRef GetCurrentEvent(void)
+// One bit for each mouse button that is down, the primary button in the lowest bit
+UInt32 GetCurrentButtonState(void)
 {
-    return NULL;
+    UInt32 buttons = 0;
+
+    for (int button = 0; button < 8; button++)
+    {
+        if (CGEventSourceButtonState(kCGEventSourceStateCombinedSessionState, (CGMouseButton) button))
+            buttons |= 1u << button;
+    }
+    return buttons;
 }
 
-OSStatus PostEventToQueue(EventQueueRef a, EventRef b, EventPriority c)
+UInt32 GetCurrentEventButtonState(void)
 {
-    if (verbose) puts("STUB: PostEventToQueue called");
-	return 0;
+    return GetCurrentButtonState();
 }
 
-OSStatus ReceiveNextEvent(ItemCount a, const EventTypeSpec* b, EventTimeout c, Boolean d, EventRef* e)
+EventTime GetCurrentEventTime(void)
 {
-    if (verbose) puts("STUB: ReceiveNextEvent called");
-	return 0;
-}
+    EventRef current = GetCurrentEvent();
 
-UInt32 GetCurrentKeyModifiers()
-{
-    if (verbose) puts("STUB: GetCurrentKeyModifiers called");
-    return (UInt32) 0;
+    return current ? GetEventTime(current) : _HICurrentTime();
 }
 
 // Darling has no system symbolic hot keys, so no event ever matches one.

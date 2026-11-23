@@ -21,6 +21,8 @@ add_framework(HIToolbox
 		src/Keyboards.cpp
 		src/Events.cpp
 		src/CarbonEventsCore.c
+		src/CarbonEventQueue.c
+		src/CarbonEventLoop.c
 		src/CarbonEvents.c
 		src/CarbonEventTargets.c
 		src/MacApplication.cpp

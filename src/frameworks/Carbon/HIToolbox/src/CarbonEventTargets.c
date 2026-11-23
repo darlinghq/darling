@@ -33,6 +33,7 @@
 #include <CarbonCore/MacErrors.h>
 #include <AE/AEDataModel.h>
 #include <CoreGraphics/CGEvent.h>
+#include <CoreGraphics/CGEventSource.h>
 
 #include <mach/mach_time.h>
 #include <pthread.h>
@@ -49,16 +50,6 @@ struct EventParameter
 	char data[];
 };
 
-struct OpaqueEventRef
-{
-	atomic_uint retainCount;
-	OSType eventClass;
-	UInt32 kind;
-	EventTime time;
-	EventAttributes attributes;
-	struct EventParameter* parameters;
-	CGEventRef cgEvent;   // for the events made from a CGEvent
-};
 
 struct EventHandlerEntry
 {
@@ -94,8 +85,14 @@ static struct EventHandlerEntry g_standardRawEventHandler = {
 	NULL, NULL, _HIStandardRawEventHandler, NULL, g_standardRawEventTypes, 1, false
 };
 
+// The standard handler of the application target: the quit command ends the application event loop
+static EventTypeSpec g_standardApplicationTypes[1] = { { kEventClassCommand, kEventCommandProcess } };
+static struct EventHandlerEntry g_standardApplicationHandler = {
+	NULL, NULL, _HIStandardApplicationHandler, NULL, g_standardApplicationTypes, 1, false
+};
+
 static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
-static struct EventTarget g_applicationTarget = { NULL, NULL };
+static struct EventTarget g_applicationTarget = { &g_standardApplicationHandler, NULL };
 static struct EventTarget g_dispatcherTarget = { &g_standardRawEventHandler, &g_applicationTarget };
 // The event monitor target: handlers installed on it only observe events sent to it.
 static struct EventTarget g_monitorTarget = { NULL, NULL };
@@ -105,7 +102,30 @@ static struct EventTarget g_monitorTarget = { NULL, NULL };
 static int g_dispatchDepth;
 static struct EventHandlerEntry* g_removedHandlers;
 
+// The event of the event loop dispatch that is running on the thread, see GetCurrentEvent()
+static _Thread_local EventRef g_currentEvent;
+
+EventRef _HISetCurrentEvent(EventRef event)
+{
+	EventRef previous = g_currentEvent;
+
+	g_currentEvent = event;
+	return previous;
+}
+
+EventRef GetCurrentEvent(void)
+{
+	return g_currentEvent;
+}
+
+EventTime _HICurrentTime(void);
+
 static EventTime currentTime(void)
+{
+	return _HICurrentTime();
+}
+
+EventTime _HICurrentTime(void)
 {
 	static mach_timebase_info_data_t timebase;
 
@@ -148,16 +168,75 @@ OSStatus CreateEvent(CFAllocatorRef inAllocator, OSType inClassID, UInt32 inKind
 	return noErr;
 }
 
+// The Carbon class and kind of a CGEvent type. Events of the mouse and keyboard classes are what
+// Carbon handlers of the mouse and keyboard classes expect; the others keep the raw class.
+void _HIClassAndKindForCGEventType(CGEventType type, OSType* outClass, UInt32* outKind)
+{
+	// QUIRK: mouse, scroll wheel and keyboard CGEvents give events of the 'mous' and 'keyb'
+	// classes (with the kinds of the documented Carbon mouse and raw keyboard events), and not
+	// the raw class that every other type gives. Not documented for this function. Evidence:
+	// black-box observation on macOS 26.7.3 (tier 2, mac-probes/937-p-events.m; the same
+	// observation is pinned in tests/src/carbon_event_additions.c).
+	// Test: test_quirk_cgevent_classes in tests/src/carbon_event_additions.c
+	*outClass = kHIEventClassRaw;
+	*outKind = (UInt32) type;
+
+	switch (type)
+	{
+		case kCGEventLeftMouseDown:
+		case kCGEventRightMouseDown:
+		case kCGEventOtherMouseDown:
+			*outClass = kEventClassMouse;
+			*outKind = kEventMouseDown;
+			break;
+		case kCGEventLeftMouseUp:
+		case kCGEventRightMouseUp:
+		case kCGEventOtherMouseUp:
+			*outClass = kEventClassMouse;
+			*outKind = kEventMouseUp;
+			break;
+		case kCGEventMouseMoved:
+			*outClass = kEventClassMouse;
+			*outKind = kEventMouseMoved;
+			break;
+		case kCGEventLeftMouseDragged:
+		case kCGEventRightMouseDragged:
+		case kCGEventOtherMouseDragged:
+			*outClass = kEventClassMouse;
+			*outKind = kEventMouseDragged;
+			break;
+		case kCGEventScrollWheel:
+			*outClass = kEventClassMouse;
+			*outKind = kEventMouseWheelMoved;
+			break;
+		case kCGEventKeyDown:
+			*outClass = kEventClassKeyboard;
+			*outKind = kEventRawKeyDown;
+			break;
+		case kCGEventKeyUp:
+			*outClass = kEventClassKeyboard;
+			*outKind = kEventRawKeyUp;
+			break;
+		case kCGEventFlagsChanged:
+			*outClass = kEventClassKeyboard;
+			*outKind = kEventRawKeyModifiersChanged;
+			break;
+		default:
+			break;
+	}
+}
+
 OSStatus CreateEventWithCGEvent(CFAllocatorRef inAllocator, CGEventRef inEvent, EventAttributes inAttributes, EventRef* outEvent)
 {
 	if (!inEvent || !outEvent)
 		return paramErr;
 
-	// Events made from a CGEvent are of the raw event class; the kind is the CGEvent's type (as
-	// observed on macOS 26.7.3: a system-defined event gives class 'cgs ' and kind 14, tier 2,
-	// mac-probes/v443-systemdefined-carbon-event.m).
+	OSType eventClass;
+	UInt32 kind;
+	_HIClassAndKindForCGEventType(CGEventGetType(inEvent), &eventClass, &kind);
+
 	EventTime time = (double) CGEventGetTimestamp(inEvent) / 1e9;
-	OSStatus status = CreateEvent(inAllocator, kHIEventClassRaw, (UInt32) CGEventGetType(inEvent), time, inAttributes, outEvent);
+	OSStatus status = CreateEvent(inAllocator, eventClass, kind, time, inAttributes, outEvent);
 
 	if (status == noErr)
 		(*outEvent)->cgEvent = (CGEventRef) CFRetain(inEvent);
@@ -307,31 +386,144 @@ OSStatus SetEventParameter(EventRef inEvent, EventParamName inName, EventParamTy
 	return noErr;
 }
 
+static struct EventParameter* findParameter(EventRef inEvent, EventParamName inName)
+{
+	struct EventParameter* parameter = inEvent->parameters;
+
+	while (parameter && parameter->name != inName)
+		parameter = parameter->next;
+	return parameter;
+}
+
+bool _HICopyEventParameter(EventRef inEvent, EventParamName inName, EventParamType* outType, ByteCount* outSize, void* outData, ByteCount dataCapacity)
+{
+	struct EventParameter* parameter = findParameter(inEvent, inName);
+
+	if (!parameter)
+		return false;
+	*outType = parameter->type;
+	*outSize = parameter->size;
+	if (outData)
+		memcpy(outData, parameter->data, dataCapacity < parameter->size ? dataCapacity : parameter->size);
+	return true;
+}
+
+// The left and right button events name their button by their type; the others, and the events
+// that no button caused, by the button number field
+static EventMouseButton mouseButtonOfCGEvent(CGEventRef cgEvent)
+{
+	switch (CGEventGetType(cgEvent))
+	{
+		case kCGEventLeftMouseDown:
+		case kCGEventLeftMouseUp:
+		case kCGEventLeftMouseDragged:
+			return kEventMouseButtonPrimary;
+		case kCGEventRightMouseDown:
+		case kCGEventRightMouseUp:
+		case kCGEventRightMouseDragged:
+			return kEventMouseButtonSecondary;
+		default:
+			return (EventMouseButton) (CGEventGetIntegerValueField(cgEvent, kCGMouseEventButtonNumber) + 1);
+	}
+}
+
+// The parameters a mouse event gets from its CGEvent: where it happened, the click count, the
+// button and the modifiers; a raw keyboard event: the key code and the modifiers. They are worked out when asked for, so that an event costs nothing
+// for the parameters nobody reads.
+bool _HICopyCGEventParameter(EventRef inEvent, EventParamName inName, EventParamType* outType, ByteCount* outSize, void* outData, ByteCount dataCapacity)
+{
+	union { HIPoint point; UInt32 count; EventMouseButton button; UInt32 modifiers; } value;
+
+	if (!inEvent->cgEvent || (inEvent->eventClass != kEventClassMouse && inEvent->eventClass != kEventClassKeyboard))
+		return false;
+
+	// The raw keyboard events have the key code and the modifiers only
+	if (inEvent->eventClass == kEventClassKeyboard && inName != kEventParamKeyCode && inName != kEventParamKeyModifiers)
+		return false;
+
+	switch (inName)
+	{
+		case kEventParamKeyCode:
+			if (inEvent->eventClass != kEventClassKeyboard)
+				return false;
+			value.count = (UInt32) CGEventGetIntegerValueField(inEvent->cgEvent, kCGKeyboardEventKeycode);
+			*outType = typeUInt32;
+			*outSize = sizeof(value.count);
+			break;
+		case kEventParamMouseLocation:
+		{
+			if (inEvent->eventClass != kEventClassMouse)
+				return false;
+			CGPoint location = CGEventGetLocation(inEvent->cgEvent);
+			value.point.x = location.x;
+			value.point.y = location.y;
+			*outType = typeHIPoint;
+			*outSize = sizeof(value.point);
+			break;
+		}
+		case kEventParamClickCount:
+			if (inEvent->eventClass != kEventClassMouse)
+				return false;
+			value.count = (UInt32) CGEventGetIntegerValueField(inEvent->cgEvent, kCGMouseEventClickState);
+			*outType = typeUInt32;
+			*outSize = sizeof(value.count);
+			break;
+		case kEventParamMouseButton:
+			if (inEvent->eventClass != kEventClassMouse)
+				return false;
+			value.button = mouseButtonOfCGEvent(inEvent->cgEvent);
+			*outType = typeMouseButton;
+			*outSize = sizeof(value.button);
+			break;
+		case kEventParamKeyModifiers:
+			value.modifiers = _HIModifiersFromCGEventFlags(CGEventGetFlags(inEvent->cgEvent));
+			*outType = typeUInt32;
+			*outSize = sizeof(value.modifiers);
+			break;
+		default:
+			return false;
+	}
+	if (outData)
+		memcpy(outData, &value, dataCapacity < *outSize ? dataCapacity : *outSize);
+	return true;
+}
+
 OSStatus GetEventParameter(EventRef inEvent, EventParamName inName, EventParamType inDesiredType, EventParamType* outActualType, ByteCount inBufferSize, ByteCount* outActualSize, void* outData)
 {
 	if (!inEvent)
 		return paramErr;
 
-	struct EventParameter* parameter = inEvent->parameters;
-	while (parameter && parameter->name != inName)
-		parameter = parameter->next;
-	if (!parameter)
+	EventParamType type;
+	ByteCount size;
+	char derived[sizeof(HIPoint)];
+	struct EventParameter* parameter = findParameter(inEvent, inName);
+	const void* data;
+
+	if (parameter)
+	{
+		type = parameter->type;
+		size = parameter->size;
+		data = parameter->data;
+	}
+	else if (_HICopyCGEventParameter(inEvent, inName, &type, &size, derived, sizeof(derived)))
+		data = derived;
+	else
 		return eventParameterNotFoundErr;
 
 	if (outActualType)
-		*outActualType = parameter->type;
+		*outActualType = type;
 	if (outActualSize)
-		*outActualSize = parameter->size;
+		*outActualSize = size;
 
 	// The parameter is only given out as the type it was stored as. A wildcard desired
 	// type is not accepted.
-	if (inDesiredType != parameter->type)
+	if (inDesiredType != type)
 		return inDesiredType == '****' ? paramErr : errAECoercionFail;
 
 	// A buffer that is too small gets the beginning of the value; the actual size says
 	// how much there is. Without a buffer only the size is returned.
 	if (outData)
-		memcpy(outData, parameter->data, inBufferSize < parameter->size ? inBufferSize : parameter->size);
+		memcpy(outData, data, inBufferSize < size ? inBufferSize : size);
 	return noErr;
 }
 
@@ -629,7 +821,20 @@ static OSStatus sendEvent(EventRef inEvent, EventTargetRef inTarget, OptionBits 
 		first = target->handlers;
 		pthread_mutex_unlock(&g_lock);
 
+		// QUIRK: the handlers of the application target see an event made from a CGEvent as the
+		// current event (GetCurrentEvent()); those of the dispatcher target, and the handlers of
+		// any event without a CGEvent, see none. Not documented. Evidence: black-box observation on
+		// macOS 26.7.3 (tier 2, mac-probes/937-q-events.m for the dispatch of a Cocoa
+		// application; the same observation for SendEventToEventTarget() is pinned in
+		// tests/src/carbon_application_event_loop.c).
+		// Test: test_quirk_current_event_at_application_target in tests/src/carbon_application_event_loop.c
+		EventRef previousCurrent = NULL;
+		bool setCurrent = target == &g_applicationTarget && inEvent->cgEvent != NULL;
+		if (setCurrent)
+			previousCurrent = _HISetCurrentEvent(inEvent);
 		result = dispatchFrom(target, first, inEvent, (inOptions & kEventTargetSendToAllHandlers) != 0);
+		if (setCurrent)
+			_HISetCurrentEvent(previousCurrent);
 		if (result != eventNotHandledErr && result != eventPassToNextTargetErr)
 			break;
 		if (inOptions & kEventTargetDontPropagate)
