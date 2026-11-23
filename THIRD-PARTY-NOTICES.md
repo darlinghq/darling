@@ -44,3 +44,25 @@ that is part of this repository itself and not under the GNU GPL 3.0 is listed h
   copied here.
 - Use: test inputs of the ASTC decoder and of `tests/src/imageio_astc_source.c`; not linked into or
   installed with any Darling program.
+
+## swift-crypto and what it vendors, `src/external/swift-crypto`
+
+`CryptoKit.framework` is compiled from a checkout of apple/swift-crypto (the submodule) by the overlay in
+darling-swift (`overlays/CryptoKit`). The submodule holds the pristine upstream files; the build changes a copy of
+the Swift files as `overlays/CryptoKit/DARLING-CHANGES.md` lists. The licence texts are `LICENSE.txt` and `NOTICE.txt`
+at the top level of the submodule; the table of components and their evidence is `overlays/CryptoKit/NOTICE.md` in
+darling-swift.
+
+- swift-crypto 5.1.2, commit `3280a5f72874d2f73bf25551bbb64f524c76d834`, <https://github.com/apple/swift-crypto>.
+  Licence: Apache-2.0. Copyright: the SwiftCrypto Project (`NOTICE.txt`).
+- BoringSSL as vendored by swift-crypto (`Sources/CCryptoBoringSSL`), commit
+  `0226f30467f540a3f62ef48d453f93927da199b6`. Licence: Apache-2.0; the OpenSSL-derived files carry the OpenSSL
+  Project Authors' Apache-2.0 header. It includes assembly generated from Perl scripts that carry the same
+  header. Two files say they adapt public-domain SUPERCOP code.
+- fiat-crypto as used by BoringSSL (`third_party/fiat`). Licence: Apache-2.0, per BoringSSL's
+  `third_party/fiat/LICENSE` at the commit above.
+- XKCP (`Sources/CXKCP`). Licence: CC0-1.0 for 13 of its 17 sources. `FIPS202-opt64/brg_endian.h` is Copyright
+  (c) 1998-2008 Brian Gladman, Worcester, UK, under a BSD-style licence whose clause 2 requires binary
+  distributions to include its notice; the full text is quoted in `overlays/CryptoKit/NOTICE.md`.
+- Use: linked into the built `CryptoKit.framework`. Whether the licence texts and `NOTICE.txt` are installed with
+  the framework, as the Helvetica Neue entry above does, is an open question for the maintainers.
