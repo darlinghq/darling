@@ -11,6 +11,7 @@
 // see THIRD-PARTY-NOTICES.md.
 
 #include "darling_fexcore_signals.h"
+#include "fex_callback_frames.h"
 
 #include <FEXCore/Core/CoreState.h>
 #include <FEXCore/Core/X86Enums.h>
@@ -32,6 +33,8 @@ namespace X64 = FEXCore::x86_64;
 
 namespace darling_fex {
 namespace {
+
+void note_handler_return(uint64_t guest_sp);
 
 class DarlingSignalDelegator final : public FEXCore::SignalDelegator {
 public:
@@ -145,6 +148,7 @@ bool restore_interrupted_frame(FEXCore::Core::InternalThreadState* thread, HostT
   }
 
   --frame->SignalHandlerRefCounter;
+  note_handler_return(frame->State.gregs[FEXCore::X86State::REG_RSP]);
   if (hs->deferred_count != 0) {
     mprotect(thread->InterruptFaultPage, sizeof(thread->InterruptFaultPage), PROT_NONE);
   }
@@ -167,6 +171,16 @@ void defer_signal(FEXCore::Core::InternalThreadState* thread, HostThreadSignals*
   mprotect(thread->InterruptFaultPage, sizeof(thread->InterruptFaultPage), PROT_NONE);
 }
 
+// The guest alternate stack a running handler of this thread was put on (SS_DISABLE when none is).
+thread_local fex_guest_stack t_handler_altstack = {0, FEX_GUEST_SS_DISABLE, 0, 0};
+
+// rt_sigreturn put back `guest_sp`: off the alternate stack, no handler of this thread runs on it any more.
+void note_handler_return(uint64_t guest_sp) {
+  if (!fex_on_guest_stack(&t_handler_altstack, guest_sp)) {
+    t_handler_altstack = {0, FEX_GUEST_SS_DISABLE, 0, 0};
+  }
+}
+
 // Linux's get_sigframe: skip the red zone, switch to the alternate stack if asked and not already on it.
 uint64_t signal_stack_pointer(uint64_t guest_sp, const fex_guest_sigaction* action, const fex_guest_stack* altstack, int32_t* stack_flags) {
   guest_sp -= kRedZone;
@@ -174,6 +188,7 @@ uint64_t signal_stack_pointer(uint64_t guest_sp, const fex_guest_sigaction* acti
   const bool on_altstack = enabled && guest_sp > altstack->sp && guest_sp - altstack->sp <= altstack->size;
   *stack_flags = !enabled ? FEX_GUEST_SS_DISABLE : on_altstack ? FEX_GUEST_SS_ONSTACK : 0;
   if ((action->flags & FEX_GUEST_SA_ONSTACK) && enabled && !on_altstack) {
+    t_handler_altstack = *altstack;
     return altstack->sp + altstack->size;
   }
   return guest_sp;
@@ -200,6 +215,10 @@ void enter_handler(FEXCore::Core::CPUState& state, uint64_t handler, uint64_t gu
 }
 
 } // namespace
+
+const fex_guest_stack* handler_altstack() {
+  return &t_handler_altstack;
+}
 
 FEXCore::SignalDelegator* signal_delegator(uintptr_t thunk_callback_ret) {
   g_delegator.thunk_callback_ret = thunk_callback_ret;
@@ -423,6 +442,7 @@ extern "C" int darling_fexcore_signal_return(uint64_t* guest_mask) {
     uc.uc_mcontext.fpregs = &xstate.fpstate;
   }
   restore_x64_registers(g_ctx, thread, &uc, g_supports_avx);
+  note_handler_return(state.gregs[FEXCore::X86State::REG_RSP]);
   *guest_mask = uc.uc_sigmask.val[0];
   return 1;
 }

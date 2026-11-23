@@ -22,6 +22,7 @@
 #include <ucontext.h>
 #include <unistd.h>
 #include "fex/fex_bridge.h"
+#include "fex/fex_callback_frames.h"
 
 static int failures = 0;
 
@@ -1658,6 +1659,61 @@ static void test_syscall_translations(void)
 		"x86_64 clone3(435) returns -ENOSYS and updates rax");
 }
 
+// Fake guest stacks for fex_left_callback: one mapping per 16 MB.
+static bool fake_same_stack(uint64_t a, uint64_t b)
+{
+	return a >> 24 == b >> 24;
+}
+
+// Which callbacks a guest left, from its stack pointer: two callbacks nested on a thread stack in
+// [0x10000000, 0x11000000), an outer one at 0x10f00000 and an inner one at 0x10e00000.
+static void test_left_callbacks(void)
+{
+	const struct fex_callback_frame outer = {0x10f00000, 0, 0, NULL};
+	const struct fex_callback_frame inner = {0x10e00000, 0, 0, &outer};
+	const struct fex_guest_stack no_altstack = {0, FEX_GUEST_SS_DISABLE, 0, 0};
+	const struct fex_guest_stack altstack_high = {0x12000000, 0, 0, 0x10000};
+	const struct fex_guest_stack altstack_on_thread = {0x10e80000, 0, 0, 0x10000};
+	const struct {
+		uint64_t rsp;
+		const struct fex_guest_stack* altstack;
+		const struct fex_callback_frame* left;
+		const char* what;
+	} cases[] = {
+		{0x10dfff00, &no_altstack, NULL, "the guest runs inside the inner callback"},
+		{0x10e00000 - 16, &no_altstack, NULL, "the inner callback's first instruction"},
+		{0x10e00000, &no_altstack, &inner, "a longjmp to the inner callback's host call level"},
+		{0x10e80000, &no_altstack, &inner, "a longjmp into the outer callback's body"},
+		{0x10f00000, &no_altstack, &outer, "a longjmp to the outer callback's host call level"},
+		{0x10f80000, &no_altstack, &outer, "a longjmp further out on the same stack"},
+		{0x11800000, &no_altstack, NULL, "a higher stack the callback switched to"},
+		{0x12008000, &altstack_high, NULL, "a handler on the alternate stack"},
+		{0x10e88000, &altstack_on_thread, NULL, "a handler on an alternate stack inside the thread's stack"},
+	};
+	bool all = true;
+	for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		const struct fex_callback_frame* got = fex_left_callback(&inner, cases[i].rsp, cases[i].altstack, fake_same_stack);
+		if (got != cases[i].left) {
+			printf("  wrong callback for %s\n", cases[i].what);
+			all = false;
+		}
+	}
+	check(all, "fex_left_callback picks the outermost callback left, and none for other stacks and handlers");
+
+	// A host call made from the alternate stack: a longjmp back to it is still a longjmp.
+	const struct fex_callback_frame on_alt = {0x12008000, 0, 0, NULL};
+	check(fex_left_callback(&on_alt, 0x12008000, &altstack_high, fake_same_stack) == &on_alt,
+		"a callback whose host call ran on the alternate stack is left by a longjmp to it");
+	// A callback on its own known stack: only that range counts, whatever same_stack says.
+	const struct fex_callback_frame detached = {0x20ff0000, 0x20f80000, 0x21000000, NULL};
+	check(fex_left_callback(&detached, 0x20ff8000, &no_altstack, fake_same_stack) == &detached &&
+	      fex_left_callback(&detached, 0x21000000, &no_altstack, fake_same_stack) == NULL,
+		"a callback on the callback stack is left only for an address on that stack");
+	check(fex_returned_callback(&inner, 0x10f00000) == &outer && fex_returned_callback(&inner, 0x10e00000) == &inner &&
+	      fex_returned_callback(&inner, 0x10e80000) == NULL,
+		"fex_returned_callback finds the callback whose host call has the stack pointer of a return");
+}
+
 static void test_safe_memory_access(void)
 {
 	// 1. Direct fex_copy_to_guest and fex_copy_from_guest tests
@@ -1990,6 +2046,7 @@ int main(void)
 	test_unsupported_callback();
 	test_callback_struct();
 	test_xim_callbacks();
+	test_left_callbacks();
 	test_syscall_translations();
 	test_safe_memory_access();
 	test_guest_signal_delivery();

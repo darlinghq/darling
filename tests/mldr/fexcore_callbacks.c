@@ -46,6 +46,7 @@ enum {
 	NR_CALL_CLOBBER,      // runs clobber() as a callback
 	NR_CALL_DEEP,         // rax = deep(rdi), run as a callback
 	NR_ARM_TIMER,         // arms a 200 ms SIGALRM
+	NR_CALL_ESCAPE,       // runs escape() as a callback, which jumps out of it without returning
 };
 
 // Guest memory must be below 47 bits, where an x86_64 process can address it.
@@ -70,6 +71,12 @@ static uint64_t* g_tsd;             // a gs base: gs:[8] holds 0x5eed
 static uint8_t* g_code;
 static uintptr_t g_fn_add, g_fn_nested, g_fn_unwinding, g_fn_alignment, g_fn_gs, g_fn_clobber, g_fn_deep;
 static uintptr_t g_fn_keeps_registers, g_outer_entry, g_many_entry, g_spin_entry;
+static uintptr_t g_fn_escape, g_escape_entry;
+// The guest's "jmp_buf" for escape() (stack pointer, resume address) and its count of escapes.
+static uint64_t* g_escape_slots;
+enum { ESCAPE_RSP, ESCAPE_RIP, ESCAPE_COUNT };
+#define ESCAPES 2000
+static int g_escape_callbacks_returned = 0;
 
 static uint8_t* emit(uint8_t* p, const void* bytes, size_t n)
 {
@@ -220,6 +227,43 @@ static void build_guest_code(void)
 	p = emit_syscall(p, NR_ARM_TIMER);
 	p = EMIT(p, 0xeb, 0xfe);
 
+	// escape: a longjmp out of the callback: mov rsp, [slot]; jmp [slot + 8]
+	g_escape_slots = saved + 32;
+	g_fn_escape = (uintptr_t)p;
+	p = EMIT(p, 0x48, 0x8b, 0x24, 0x25);
+	p = emit_imm32(p, (uint32_t)(uintptr_t)&g_escape_slots[ESCAPE_RSP]);
+	p = EMIT(p, 0xff, 0x24, 0x25);
+	p = emit_imm32(p, (uint32_t)(uintptr_t)&g_escape_slots[ESCAPE_RIP]);
+
+	// Guest thread: ESCAPES times "setjmp", then a host call whose callback longjmps back; then a host call
+	// whose callback returns, push its result, exit.
+	g_escape_entry = (uintptr_t)p;
+	uint8_t* loop = p;
+	p = EMIT(p, 0x48, 0x89, 0x24, 0x25);              // mov [slot], rsp
+	p = emit_imm32(p, (uint32_t)(uintptr_t)&g_escape_slots[ESCAPE_RSP]);
+	p = EMIT(p, 0x48, 0x8d, 0x05);                    // lea rax, [rip + resume]
+	uint8_t* resume_rel = p;
+	p = emit_imm32(p, 0);
+	uint8_t* after_lea = p;
+	p = EMIT(p, 0x48, 0x89, 0x04, 0x25);              // mov [slot + 8], rax
+	p = emit_imm32(p, (uint32_t)(uintptr_t)&g_escape_slots[ESCAPE_RIP]);
+	p = emit_syscall(p, NR_CALL_ESCAPE);
+	p = EMIT(p, 0x68, 0xad, 0x0b, 0x00, 0x00);        // push 0xbad: only if the host call returned
+	uint32_t rel = (uint32_t)(p - after_lea);
+	memcpy(resume_rel, &rel, sizeof(rel));
+	p = EMIT(p, 0x48, 0xff, 0x04, 0x25);              // resume: inc qword [count]
+	p = emit_imm32(p, (uint32_t)(uintptr_t)&g_escape_slots[ESCAPE_COUNT]);
+	p = EMIT(p, 0x48, 0x81, 0x3c, 0x25);              // cmp qword [count], ESCAPES
+	p = emit_imm32(p, (uint32_t)(uintptr_t)&g_escape_slots[ESCAPE_COUNT]);
+	p = emit_imm32(p, ESCAPES);
+	p = EMIT(p, 0x0f, 0x82);                          // jb loop
+	rel = (uint32_t)(loop - (p + 4));
+	p = emit_imm32(p, rel);
+	p = EMIT(p, 0xbf, 0x09, 0x00, 0x00, 0x00);        // mov edi, 9
+	p = emit_syscall(p, NR_CALL_ADD);
+	p = EMIT(p, 0x50);
+	p = emit_syscall(p, NR_EXIT);
+
 	mprotect(g_code, 4096, PROT_READ | PROT_EXEC);
 	__builtin___clear_cache((char*)g_code, (char*)g_code + 4096);
 }
@@ -277,6 +321,11 @@ static long guest_syscall(struct fex_x86_64_state* state)
 		case NR_CALL_DEEP:
 			state->rax = callback(g_fn_deep, state->rdi, 0, state->gs_base);
 			break;
+		case NR_CALL_ESCAPE:
+			callback(g_fn_escape, 0, 0, state->gs_base);
+			g_escape_callbacks_returned++;
+			state->rax = 0;
+			break;
 		case NR_ARM_TIMER: {
 			struct itimerval it = {{0, 0}, {0, 200000}};
 			state->rax = (uint64_t)setitimer(ITIMER_REAL, &it, NULL);
@@ -319,6 +368,25 @@ static void test_callbacks_nested_in_guest_thread(void)
 	check(registers_kept(g_saved_outer),
 		"a callback that clobbers registers and flags leaves the guest thread's values intact");
 	check(st.rsp == top - 6 * 8, "callbacks leave the guest thread's stack pointer intact");
+}
+
+// A guest that longjmps out of a callback (as libjpeg's error_exit protocol has it) leaves the host call
+// that ran it; its next host call must run at its own level, not nested in the dead host frames.
+static void test_callback_left_by_longjmp(void)
+{
+	uint8_t* stack = map_low(1 << 20, 0x38000000, PROT_READ | PROT_WRITE);
+	const uintptr_t top = (uintptr_t)stack + (1 << 20) - 8;
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rip = g_escape_entry;
+	st.rsp = top;
+	st.rflags = 0x202;
+	run_thread(&st, guest_syscall);
+
+	check(g_escape_slots[ESCAPE_COUNT] == ESCAPES, "a guest longjmp out of a callback resumes the guest at its target");
+	check(g_escape_callbacks_returned == 0, "the host call whose callback was left never returns");
+	check(st.rsp == top - 8 && *(const uint64_t*)(uintptr_t)st.rsp == 1009,
+		"host calls and callbacks work after thousands of callbacks were left by longjmp");
 }
 
 static void test_callbacks_without_guest_thread(void)
@@ -498,6 +566,7 @@ int main(int argc, char** argv)
 	test_callbacks_nested_in_guest_thread();
 	test_concurrent_threads();
 	test_thread_exit_releases_emulator();
+	test_callback_left_by_longjmp();
 	// mldr never returns from main with FEX loaded (it ends with _exit), and the shim's static
 	// destructors fail when run at exit, so leave the same way.
 	fflush(stdout);

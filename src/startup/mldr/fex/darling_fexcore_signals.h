@@ -72,6 +72,9 @@ struct FrameRequest {
 uint64_t setup_x64_frame(FEXCore::Context::Context* ctx, FEXCore::Core::InternalThreadState* thread, uint64_t original_rip,
                          bool fault_to_top, const void* backup_address, const FrameRequest& req);
 
+// The guest alternate stack a running handler of this thread was put on (flags SS_DISABLE when none is).
+const fex_guest_stack* handler_altstack();
+
 // Runs the handler `request` names when the current syscall returns: called from the shim's syscall handler
 // after the syscall's result is in the thread's state.
 void deliver_at_syscall_return(FEXCore::Core::InternalThreadState* thread, const fex_signal_request* request);

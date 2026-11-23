@@ -25,12 +25,33 @@
 
 #include "darling_fexcore_signals.h"
 #include "fex_bridge.h"
+#include "fex_callback_frames.h"
 
 namespace {
 
 thread_local fex_syscall_cb_t t_syscall_cb = nullptr;
 thread_local jmp_buf* t_exit_jmp = nullptr;
 thread_local FEXCore::Core::InternalThreadState* t_thread_state = nullptr;
+
+// A guest may leave a callback without returning from it: a guest longjmp (libjpeg's error_exit protocol,
+// for one) to a frame of the code that made the host call. The host frames of that call (the host library,
+// the callback's dispatcher) are then dead. At the guest's next syscall the thread goes back to the syscall
+// handler of that host call, with the guest's state as it is, and the syscall runs there; if instead an
+// outer callback returns, its own dispatcher return is taken (fex_callback_frames.h decides which).
+struct NestedCallback {
+  fex_callback_frame frame; // first: t_callbacks is walked as a fex_callback_frame list
+  jmp_buf* caller_resume; // that host call's syscall handler, null for a callback with no guest code below it
+  jmp_buf* exit_env;      // the dispatcher return of this callback
+  uint64_t saved_callret_sp;
+  uint64_t saved_in_syscall;
+  uint32_t saved_handler_refs;
+  fex_syscall_cb_t prev_cb;
+  jmp_buf* prev_exit_jmp;
+};
+thread_local NestedCallback* t_callbacks = nullptr;
+thread_local jmp_buf* t_syscall_resume = nullptr;
+// setjmp value of a callback's exit_env when a callback nested in it returned in its place.
+constexpr int kReturnedFromNested = 2;
 
 // Guest code that FEX's callback entry pushes as the return address of a guest callback: the
 // FEX-reserved instruction 0F 3E, which returns from HandleCallback to the host caller.
@@ -98,19 +119,80 @@ static void darling_to_fex_state(
   }
 }
 
+// Whether guest stack address b lies on the stack that holds a: the same mapping, and within the largest
+// stack the bridge expects (two guest stacks mapped next to each other merge into one mapping, so a
+// coroutine stack right above the thread's stack is still taken for it: a documented limit).
+constexpr uint64_t kMaxGuestStack = 64ull << 20;
+static bool same_guest_stack(uint64_t a, uint64_t b) {
+  if (b - a > kMaxGuestStack) {
+    return false;
+  }
+  FILE* maps = std::fopen("/proc/self/maps", "re");
+  if (!maps) {
+    return false;
+  }
+  bool same = false;
+  unsigned long lo, hi;
+  char line[512];
+  while (std::fgets(line, sizeof(line), maps)) {
+    if (std::sscanf(line, "%lx-%lx", &lo, &hi) == 2 && a >= lo && a < hi) {
+      same = b < hi;
+      break;
+    }
+  }
+  std::fclose(maps);
+  return same;
+}
+
+// Called as a syscall starts: if the guest left callbacks (fex_left_callback), the syscall restarts in the
+// syscall handler of the outermost one's host call, with the thread state of that host call put back.
+static void leave_abandoned_callbacks(FEXCore::Core::CpuStateFrame* frame) {
+  const uint64_t rsp = frame->State.gregs[FEXCore::X86State::REG_RSP];
+  if (!t_callbacks || rsp < t_callbacks->frame.caller_rsp) {
+    return;
+  }
+  auto* left = reinterpret_cast<NestedCallback*>(const_cast<fex_callback_frame*>(
+      fex_left_callback(&t_callbacks->frame, rsp, darling_fex::handler_altstack(), same_guest_stack)));
+  if (!left) {
+    return;
+  }
+  if (!left->caller_resume) {
+    std::fprintf(stderr, "[mldr/fex] fatal: a guest callback with no guest caller was left without returning\n");
+    std::abort();
+  }
+  frame->State.callret_sp = left->saved_callret_sp;
+  frame->InSyscallInfo = left->saved_in_syscall;
+  frame->SignalHandlerRefCounter = left->saved_handler_refs;
+  t_syscall_cb = left->prev_cb;
+  t_exit_jmp = left->prev_exit_jmp;
+  t_callbacks = reinterpret_cast<NestedCallback*>(const_cast<fex_callback_frame*>(left->frame.outer));
+  longjmp(*left->caller_resume, 1);
+}
+
 class DarlingSyscallHandler final : public FEXCore::HLE::SyscallHandler {
 public:
   explicit DarlingSyscallHandler(FEXCore::Context::Context* ctx)
     : CTX(ctx) {}
 
   void HandleSyscall(FEXCore::Core::CpuStateFrame* Frame) override {
+    leave_abandoned_callbacks(Frame);
+
     struct fex_x86_64_state guest{};
     fex_state_to_darling(CTX, t_thread_state, Frame->State, &guest);
     const uint64_t nr = guest.rax;
 
+    jmp_buf resume;
+    jmp_buf* const prev_resume = t_syscall_resume;
+    if (setjmp(resume) != 0) {
+      // A callback of this host call was left: run the syscall the guest has made since, from here.
+      t_syscall_resume = prev_resume;
+      return;
+    }
+    t_syscall_resume = &resume;
     if (t_syscall_cb) {
       t_syscall_cb(&guest);
     }
+    t_syscall_resume = prev_resume;
 
     // rt_sigreturn of a handler that ran at a syscall return already put the frame's registers in place.
     if (!guest.frame_restored) {
@@ -375,6 +457,7 @@ extern "C" int darling_fexcore_run_callback(
   std::call_once(g_ctx_once, init_fex_context);
 
   FEXCore::Core::InternalThreadState* thread = t_thread_state;
+  uint64_t stack_lo = 0, stack_hi = 0; // the guest stack, when it is the callback stack
   if (!thread) {
     HostThreadEmulator* emu = host_thread_emulator();
     if (!emu) {
@@ -401,6 +484,8 @@ extern "C" int darling_fexcore_run_callback(
     sp = (sp & ~uintptr_t(15)) - sizeof(uint64_t);
     thread->CurrentFrame->State.gregs[FEXCore::X86State::REG_RSP] = sp;
     reset_callret_sp(emu);
+    stack_lo = reinterpret_cast<uint64_t>(emu->callback_stack);
+    stack_hi = stack_lo + kCallbackStackSize;
   } else if (thread->CurrentFrame->InSyscallInfo == 0) {
     // The guest's saved RSP is only current while it is stopped in a syscall, e.g. not from a signal handler.
     std::fprintf(stderr, "[mldr/fex] fatal: guest callback on a thread running guest code outside a host call\n");
@@ -433,6 +518,13 @@ extern "C" int darling_fexcore_run_callback(
   FEXCore::Core::InternalThreadState* prev_thread = t_thread_state;
 
   jmp_buf exit_env{};
+  NestedCallback record {
+    {cpu.gregs[FEXCore::X86State::REG_RSP], stack_lo, stack_hi, t_callbacks ? &t_callbacks->frame : nullptr},
+    prev_thread ? t_syscall_resume : nullptr, &exit_env, saved_callret_sp, saved_in_syscall,
+    frame->SignalHandlerRefCounter, prev_cb, prev_jmp,
+  };
+  jmp_buf* const prev_resume = t_syscall_resume;
+  t_callbacks = &record;
   t_syscall_cb = syscall_cb;
   t_exit_jmp = &exit_env;
   t_thread_state = thread;
@@ -443,8 +535,24 @@ extern "C" int darling_fexcore_run_callback(
     std::abort();
   }
 
-  if (setjmp(exit_env) == 0) {
+  const int how = setjmp(exit_env);
+  if (how == 0) {
     g_ctx->HandleCallback(thread, state->rip);
+    const uint64_t rsp = cpu.gregs[FEXCore::X86State::REG_RSP];
+    if (rsp != record.frame.caller_rsp) {
+      // The guest left this callback for an outer one's frames and returned from that one: the dispatcher
+      // return just taken is that callback's.
+      auto* returned = reinterpret_cast<NestedCallback*>(const_cast<fex_callback_frame*>(
+          fex_returned_callback(record.frame.outer, rsp)));
+      if (!returned) {
+        std::fprintf(stderr, "[mldr/fex] fatal: a guest callback returned with a stack pointer no host call had\n");
+        std::abort();
+      }
+      longjmp(*returned->exit_env, kReturnedFromNested);
+    }
+  } else if (how == kReturnedFromNested) {
+    // One dispatcher return ran for this callback and the ones left inside it.
+    frame->SignalHandlerRefCounter = record.saved_handler_refs;
   } else {
     // The guest thread is terminating and was unwound out of the callback, so the callback return that
     // balances the entry's count of nested JIT frames never ran.
@@ -469,6 +577,8 @@ extern "C" int darling_fexcore_run_callback(
   t_syscall_cb = prev_cb;
   t_exit_jmp = prev_jmp;
   t_thread_state = prev_thread;
+  t_callbacks = reinterpret_cast<NestedCallback*>(const_cast<fex_callback_frame*>(record.frame.outer));
+  t_syscall_resume = prev_resume;
   return 0;
 }
 
