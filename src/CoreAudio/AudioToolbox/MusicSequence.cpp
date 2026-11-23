@@ -64,6 +64,12 @@ OSStatus DisposeMusicSequence(MusicSequence inSequence)
 		return kAudio_ParamError;
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
+
+	// A sequence cannot be disposed while a player has it. GUESS: the code is
+	// kAudioToolboxErr_InvalidPlayerState; the documentation says only that it cannot be done.
+	if (inSequence->playerCount > 0)
+		return kAudioToolboxErr_InvalidPlayerState;
+
 	delete inSequence;
 	return noErr;
 }

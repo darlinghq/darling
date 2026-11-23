@@ -190,6 +190,50 @@ typedef struct MusicTrackLoopInfo
 	SInt32 numberOfLoops;
 } MusicTrackLoopInfo;
 
+// Music players
+
+extern OSStatus
+NewMusicPlayer(MusicPlayer *outPlayer);
+
+extern OSStatus
+DisposeMusicPlayer(MusicPlayer inPlayer);
+
+extern OSStatus
+MusicPlayerSetSequence(MusicPlayer inPlayer, MusicSequence inSequence);
+
+extern OSStatus
+MusicPlayerGetSequence(MusicPlayer inPlayer, MusicSequence *outSequence);
+
+extern OSStatus
+MusicPlayerSetTime(MusicPlayer inPlayer, MusicTimeStamp inTime);
+
+extern OSStatus
+MusicPlayerGetTime(MusicPlayer inPlayer, MusicTimeStamp *outTime);
+
+extern OSStatus
+MusicPlayerGetHostTimeForBeats(MusicPlayer inPlayer, MusicTimeStamp inBeats, UInt64 *outHostTime);
+
+extern OSStatus
+MusicPlayerGetBeatsForHostTime(MusicPlayer inPlayer, UInt64 inHostTime, MusicTimeStamp *outBeats);
+
+extern OSStatus
+MusicPlayerPreroll(MusicPlayer inPlayer);
+
+extern OSStatus
+MusicPlayerStart(MusicPlayer inPlayer);
+
+extern OSStatus
+MusicPlayerStop(MusicPlayer inPlayer);
+
+extern OSStatus
+MusicPlayerIsPlaying(MusicPlayer inPlayer, Boolean *outIsPlaying);
+
+extern OSStatus
+MusicPlayerSetPlayRateScalar(MusicPlayer inPlayer, Float64 inScaleRate);
+
+extern OSStatus
+MusicPlayerGetPlayRateScalar(MusicPlayer inPlayer, Float64 *outScaleRate);
+
 // Music sequences
 
 extern OSStatus
@@ -215,6 +259,35 @@ MusicSequenceGetTrackIndex(MusicSequence inSequence, MusicTrack inTrack, UInt32 
 
 extern OSStatus
 MusicSequenceGetTempoTrack(MusicSequence inSequence, MusicTrack *outTrack);
+
+extern OSStatus
+MusicSequenceSetSequenceType(MusicSequence inSequence, MusicSequenceType inType);
+
+extern OSStatus
+MusicSequenceGetSequenceType(MusicSequence inSequence, MusicSequenceType *outType);
+
+extern OSStatus
+MusicSequenceGetSecondsForBeats(MusicSequence inSequence, MusicTimeStamp inBeats, Float64 *outSeconds);
+
+extern OSStatus
+MusicSequenceGetBeatsForSeconds(MusicSequence inSequence, Float64 inSeconds, MusicTimeStamp *outBeats);
+
+// The 16 bit division field of a MIDI file header for a SMPTE time base: the frame rate as a
+// negative number in the high byte (a positive rate is negated) and the ticks per frame in the low
+// bits.
+CF_INLINE SInt16
+MusicSequenceSetSMPTEResolution(SignedByte fps, Byte ticks)
+{
+	SInt16 frames = fps < 0 ? fps : -fps;
+	return (SInt16)(frames * 256 + ticks);
+}
+
+CF_INLINE void
+MusicSequenceGetSMPTEResolution(SInt16 inRes, SignedByte *fps, Byte *ticks)
+{
+	*fps = (SignedByte)(inRes >> 8);
+	*ticks = (Byte)(inRes & 0x7F);
+}
 
 // Music tracks
 
