@@ -41,6 +41,13 @@ typedef struct ICCTag {
 // header or the tag data is checked.
 bool ICCProfileValidate(const uint8_t* data, size_t length);
 
+// Writes to outDigest the Profile ID of ICC.1:2022, 7.2.18: the MD5 digest of the first `size` bytes of the data, where
+// `size` is the profile size field, with the profile flags (bytes 44 to 47), the rendering intent (64 to 67) and the
+// Profile ID field (84 to 99) taken as zero. Returns false, and writes nothing, if the size field is below 100 or
+// above `length`: the digest cannot be defined then (see the GUESS on ColorSyncProfileGetMD5).
+// Requires data that ICCProfileValidate accepted.
+bool ICCProfileComputeID(const uint8_t* data, size_t length, uint8_t outDigest[16]);
+
 // The remaining functions require data that ICCProfileValidate accepted.
 uint32_t ICCProfileTagCount(const uint8_t* data);
 ICCTag ICCProfileTagAt(const uint8_t* data, uint32_t index);
