@@ -365,12 +365,6 @@ void* ColorSyncProfileCreateWithName(void)
     return NULL;
 }
 
-void* ColorSyncProfileCreateWithURL(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCreateWithURL called");
-    return NULL;
-}
-
 void* ColorSyncProfileEstimateGamma(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileEstimateGamma called");
@@ -404,12 +398,6 @@ void* ColorSyncProfileGetDisplayTransferFormulaFromVCGT(void)
 void* ColorSyncProfileGetMD5(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileGetMD5 called");
-    return NULL;
-}
-
-void* ColorSyncProfileGetURL(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileGetURL called");
     return NULL;
 }
 
