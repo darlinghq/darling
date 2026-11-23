@@ -79,5 +79,6 @@ add_framework(AVFAudio
 		objc
 		Foundation
 		CoreFoundation
+		CoreAudio
 		AudioToolbox
 )
