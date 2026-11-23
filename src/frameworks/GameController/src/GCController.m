@@ -18,6 +18,10 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+// The implementation is 64-bit only, like GameController on macOS (its 32-bit
+// Objective-C ABI cannot hold instance variables declared in the @implementation
+// and the framework is x86_64 and arm64 only there); the 32-bit slice keeps the stub.
+#ifdef __LP64__
 #import <GameController/GCController.h>
 #import <GameController/GCExtendedGamepad.h>
 #import <GameController/GCXboxGamepad.h>
@@ -431,3 +435,68 @@
 }
 
 @end
+
+#else
+#import <GameController/GCController.h>
+#import <GameController/GCMicroGamepad.h>
+#import <GameController/GCPhysicalInputProfile.h>
+#import <darling-stub-forwarding.h>
+
+@implementation GCController
+
++ (NSArray *)controllers {
+	return @[];
+}
+
+- (GCExtendedGamepad *)extendedGamepad {
+	return nil;
+}
+
+- (GCMicroGamepad *)microGamepad {
+	return nil;
+}
+
+- (GCPhysicalInputProfile *)physicalInputProfile {
+	return nil;
+}
+
+- (NSString *)vendorName {
+	return nil;
+}
+
+- (NSString *)productCategory {
+	return @"";
+}
+
+- (GCControllerPlayerIndex)playerIndex {
+	return GCControllerPlayerIndexUnset;
+}
+
+- (void)setPlayerIndex:(GCControllerPlayerIndex)playerIndex {
+}
+
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    DarlingStubForwardInvocation(self, anInvocation);
+}
+
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [super methodSignatureForSelector:aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
++ (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    // Class methods that are not implemented are accepted, ignored and answer zero.
+    void *result = NULL;
+    [anInvocation setReturnValue:&result];
+}
+
+@end
+
+#endif /* __LP64__ */

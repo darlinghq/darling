@@ -17,6 +17,10 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+// The implementation is 64-bit only, like GameController on macOS (its 32-bit
+// Objective-C ABI cannot hold instance variables declared in the @implementation
+// and the framework is x86_64 and arm64 only there); the 32-bit slice keeps the stub.
+#ifdef __LP64__
 #import <GameController/GCMouse.h>
 #import <GameController/GCProductCategories.h>
 #import <GameController/_GCControllerManager.h>
@@ -162,3 +166,91 @@ NSString *const GCMouseDidStopBeingCurrentNotification = @"GCMouseDidStopBeingCu
 }
 
 @end
+
+#else
+#import <GameController/GCMouse.h>
+
+NSString *const GCMouseDidConnectNotification = @"GCMouseDidConnectNotification";
+NSString *const GCMouseDidDisconnectNotification = @"GCMouseDidDisconnectNotification";
+
+@implementation GCMouseInput
+
+@synthesize mouseMovedHandler = _mouseMovedHandler;
+
+- (void)dealloc
+{
+	[_mouseMovedHandler release];
+	[super dealloc];
+}
+
+- (GCDeviceButtonInput *)leftButton
+{
+	return nil;
+}
+
+- (GCDeviceButtonInput *)rightButton
+{
+	return nil;
+}
+
+- (GCDeviceButtonInput *)middleButton
+{
+	return nil;
+}
+
+- (NSArray *)auxiliaryButtons
+{
+	return nil;
+}
+
+- (GCDeviceDirectionPad *)scroll
+{
+	return nil;
+}
+
+@end
+
+@implementation GCMouse
+
++ (NSArray<GCMouse *> *)mice
+{
+	return @[];
+}
+
++ (GCMouse *)current
+{
+	return nil;
+}
+
+- (GCMouseInput *)mouseInput
+{
+	return nil;
+}
+
+- (NSString *)vendorName
+{
+	return nil;
+}
+
+- (NSString *)productCategory
+{
+	return @"Mouse";
+}
+
+- (BOOL)isAttachedToDevice
+{
+	return NO;
+}
+
+- (dispatch_queue_t)handlerQueue
+{
+	return dispatch_get_main_queue();
+}
+
+- (void)setHandlerQueue:(dispatch_queue_t)queue
+{
+}
+
+@end
+
+#endif /* __LP64__ */

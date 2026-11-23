@@ -18,6 +18,10 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+// The implementation is 64-bit only, like GameController on macOS (its 32-bit
+// Objective-C ABI cannot hold instance variables declared in the @implementation
+// and the framework is x86_64 and arm64 only there); the 32-bit slice keeps the stub.
+#ifdef __LP64__
 #import <GameController/GCControllerButtonInput.h>
 #import "GCInputInternal.h"
 #import <math.h>
@@ -99,3 +103,33 @@
 }
 
 @end
+
+#else
+#import <GameController/GCControllerButtonInput.h>
+#import <darling-stub-forwarding.h>
+
+@implementation GCControllerButtonInput
+
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    DarlingStubForwardInvocation(self, anInvocation);
+}
+
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
++ (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    DarlingStubForwardInvocation(self, anInvocation);
+}
+
+@end
+
+#endif /* __LP64__ */
