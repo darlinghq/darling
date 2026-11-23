@@ -190,6 +190,44 @@ typedef struct MusicTrackLoopInfo
 	SInt32 numberOfLoops;
 } MusicTrackLoopInfo;
 
+// Music players
+
+extern OSStatus
+NewMusicPlayer(MusicPlayer *outPlayer);
+
+extern OSStatus
+DisposeMusicPlayer(MusicPlayer inPlayer);
+
+extern OSStatus
+MusicPlayerSetSequence(MusicPlayer inPlayer, MusicSequence inSequence);
+
+extern OSStatus
+MusicPlayerGetSequence(MusicPlayer inPlayer, MusicSequence *outSequence);
+
+extern OSStatus
+MusicPlayerSetTime(MusicPlayer inPlayer, MusicTimeStamp inTime);
+
+extern OSStatus
+MusicPlayerGetTime(MusicPlayer inPlayer, MusicTimeStamp *outTime);
+
+extern OSStatus
+MusicPlayerPreroll(MusicPlayer inPlayer);
+
+extern OSStatus
+MusicPlayerStart(MusicPlayer inPlayer);
+
+extern OSStatus
+MusicPlayerStop(MusicPlayer inPlayer);
+
+extern OSStatus
+MusicPlayerIsPlaying(MusicPlayer inPlayer, Boolean *outIsPlaying);
+
+extern OSStatus
+MusicPlayerSetPlayRateScalar(MusicPlayer inPlayer, Float64 inScaleRate);
+
+extern OSStatus
+MusicPlayerGetPlayRateScalar(MusicPlayer inPlayer, Float64 *outScaleRate);
+
 // Music sequences
 
 extern OSStatus

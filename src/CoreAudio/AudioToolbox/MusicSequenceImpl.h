@@ -125,12 +125,27 @@ struct OpaqueMusicSequence
 
 	OpaqueMusicTrack tempoTrack;
 
+	// The number of players that have the sequence set; it cannot be disposed while there is one.
+	int playerCount = 0;
+
 	// What a beat of the sequence means (MusicSequenceType); beats by default.
 	MusicSequenceType type = kMusicSequenceType_Beats;
 
 	// The ticks per quarter note of a file made from the sequence: 480 for a sequence made by hand.
 	SInt16 timeResolution = 480;
 	std::vector<std::unique_ptr<OpaqueMusicTrack>> tracks;
+};
+
+// A player: the sequence it plays and a position in beats. A stopped player stays at its position.
+// A playing one advances from the anchor, the host time at which the position was last set: the
+// position is where the sequence is after the seconds that passed since then, scaled by the rate.
+struct OpaqueMusicPlayer
+{
+	OpaqueMusicSequence* sequence = nullptr;
+	bool playing = false;
+	MusicTimeStamp time = 0;
+	UInt64 anchorHostTime = 0;
+	Float64 rate = 1.0;
 };
 
 namespace musicimpl

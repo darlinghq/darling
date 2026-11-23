@@ -34,6 +34,7 @@ set(audiotoolbox_sources
 	MusicTrackProperties.cpp
 	MusicTrackEditing.cpp
 	MusicSequenceTime.cpp
+	MusicPlayer.cpp
 	MusicEventIterator.cpp
 	AudioToolbox.cpp
 	AudioHardwareService.cpp
