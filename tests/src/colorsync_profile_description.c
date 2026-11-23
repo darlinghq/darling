@@ -8,8 +8,10 @@
 // textDescriptionType, whose 7-bit ASCII part ICC.1:2022, 10.20.3 uses for the description (ICC.1:2001-04, 6.5.17).
 // The profiles are hand-built from the layout in ICC.1:2022, 7.2, 7.3 and 10.15, so they hold no vendor data.
 // The locale is read from the test's own CFLocaleCopyCurrent() and the records are built around it, so the test holds
-// for any locale. GUESS items pinned here: the current locale means CFLocaleCopyCurrent(), a profile without a
-// readable 'desc' tag gives NULL, and so does a NULL or non-profile argument.
+// for any locale. The expectations marked QUIRK are observations of macOS 26.7.3 and 10.14.4 (see ICCProfile.c and
+// ColorSyncProfile.c): a record for English (United States) wins over the locale's record, the Unicode part of a
+// textDescriptionType wins over its ASCII part, and a profile without a readable 'desc' tag gives a fixed text, not NULL.
+// The current locale is taken to be CFLocaleCopyCurrent(); a NULL or non-profile argument gives NULL.
 #include <ColorSync/ColorSync.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <signal.h>
@@ -134,7 +136,13 @@ int main(void)
 		}
 	}
 
-	// An older profile: a textDescriptionType with its ASCII string, then a Unicode part that is not used.
+	// QUIRK: a record for English (United States) wins over the locale's own record, in every locale.
+	const Record english[] = { { "zz", "ZZ", "First" }, { hasLanguage ? language : "zz", hasCountry ? country : "ZZ", "Locale" }, { "en", "US", "English" } };
+	ColorSyncProfileRef withEnglish = profileWithRecords(english, 3);
+	CHECK(withEnglish != NULL && descriptionIs(withEnglish, "English"));
+	CFRelease(withEnglish);
+
+	// An older profile: a textDescriptionType with its ASCII string, then a Unicode part.
 	uint8_t old[64] = { 0 };
 	memcpy(old, "desc", 4);
 	put32(old + 8, 6);
@@ -152,20 +160,27 @@ int main(void)
 	memcpy(bytes + tableEnd, old, 40);
 	CFDataRef oldData = CFDataCreate(NULL, bytes, tableEnd + 40);
 	ColorSyncProfileRef oldProfile = ColorSyncProfileCreate(oldData, NULL);
-	CHECK(oldProfile != NULL && descriptionIs(oldProfile, "Plain"));
+	// QUIRK: the Unicode string wins over the ASCII string when it has characters.
+	CHECK(oldProfile != NULL && descriptionIs(oldProfile, "Hi"));
 	CFRelease(oldData);
+	put32(bytes + tableEnd + 22, 0); // no Unicode characters: the ASCII string
+	oldData = CFDataCreate(NULL, bytes, tableEnd + 40);
+	ColorSyncProfileRef asciiOnly = ColorSyncProfileCreate(oldData, NULL);
+	CHECK(asciiOnly != NULL && descriptionIs(asciiOnly, "Plain"));
+	CFRelease(oldData);
+	CFRelease(asciiOnly);
 
-	// GUESS: no description, or an unreadable one, gives NULL.
+	// QUIRK: no description, or an unreadable one, gives a fixed text, not NULL.
 	memcpy(bytes + 132, "wtpt", 4);
 	CFDataRef noDesc = CFDataCreate(NULL, bytes, tableEnd + 40);
 	ColorSyncProfileRef without = ColorSyncProfileCreate(noDesc, NULL);
-	CHECK(without != NULL && ColorSyncProfileCopyDescriptionString(without) == NULL);
+	CHECK(without != NULL && descriptionIs(without, "This profile has no description tag"));
 	CFRelease(noDesc);
 	memcpy(bytes + 132, "desc", 4);
 	memcpy(bytes + tableEnd, "text", 4);
 	CFDataRef wrongType = CFDataCreate(NULL, bytes, tableEnd + 40);
 	ColorSyncProfileRef odd = ColorSyncProfileCreate(wrongType, NULL);
-	CHECK(odd != NULL && ColorSyncProfileCopyDescriptionString(odd) == NULL);
+	CHECK(odd != NULL && descriptionIs(odd, "This profile has a bad description tag"));
 	CFRelease(wrongType);
 
 	CHECK(ColorSyncProfileCopyDescriptionString(NULL) == NULL);

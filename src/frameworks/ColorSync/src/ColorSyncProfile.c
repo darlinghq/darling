@@ -30,6 +30,8 @@
 #include "ICCBuilder.h"
 #include "ICCProfile.h"
 
+#define SIG(a, b, c, d) (((uint32_t) (a) << 24) | ((uint32_t) (b) << 16) | ((uint32_t) (c) << 8) | (uint32_t) (d))
+
 struct __ColorSyncProfile
 {
 	CFRuntimeBase base;
@@ -103,13 +105,16 @@ ColorSyncProfileRef ColorSyncProfileCreate(CFDataRef data, CFErrorRef* error)
 	return (ColorSyncProfileRef) profile;
 }
 
-// GUESS: the page says only that a predefined name makes a profile and NULL means failure. The names are the
-// kColorSync...Profile constants. The pages give no profile data, so the profile is built from the public definition of
-// the colour space (see ICCBuilder.h): its colorants, curve and description text are not those of any other
-// implementation, and the profile is a new object on each call. Only sRGB, Adobe RGB (1998), ITU-R BT.2020 and
-// the generic gray gamma 2.2 have such a definition. The generic Lab, XYZ and CMYK names, and any other string, a NULL
-// name and a non-string give NULL; the Lab and XYZ profiles have no public definition as profile data, and the CMYK
-// one needs a measured device table.
+// The page says only that a predefined name makes a profile and NULL means failure. The names are the kColorSync...Profile
+// constants. The pages give no profile data, so the profile is built from the public definition of the colour space (see
+// ICCBuilder.h): its colorants, curve and description text are not those of any other implementation. Only sRGB, Adobe RGB
+// (1998), ITU-R BT.2020 and the generic gray gamma 2.2 have such a definition. The generic Lab, XYZ and CMYK names, which
+// macOS has profiles for, give NULL here, like any other string, a NULL name and a non-string: the Lab and XYZ profiles have
+// no public definition as profile data, and the CMYK one needs a measured device table.
+//
+// QUIRK: each name gives the same profile object on every call (the caller owns a reference to it, as with other Create
+// functions). Evidence: black-box observation on macOS 26.7.3 (x86_64) and 10.14.4 (x86_64 and i386), tier 2: two calls with
+// one name return the same pointer. Test: tests/src/colorsync_profile_name.c, "the same object".
 ColorSyncProfileRef ColorSyncProfileCreateWithName(CFStringRef name)
 {
 	static const struct { CFStringRef* name; ICCNamedProfile which; } names[] = {
@@ -118,6 +123,8 @@ ColorSyncProfileRef ColorSyncProfileCreateWithName(CFStringRef name)
 		{ &kColorSyncITUR2020Profile, ICCNamedITUR2020 },
 		{ &kColorSyncGenericGrayGamma22Profile, ICCNamedGrayGamma22 },
 	};
+	static ColorSyncProfileRef cache[sizeof names / sizeof names[0]];
+	static dispatch_once_t once[sizeof names / sizeof names[0]];
 	if (!name || CFGetTypeID(name) != CFStringGetTypeID())
 		return NULL;
 
@@ -125,18 +132,20 @@ ColorSyncProfileRef ColorSyncProfileCreateWithName(CFStringRef name)
 	{
 		if (!CFEqual(name, *names[i].name))
 			continue;
-		const ICCDisplayProfileSpec spec = ICCNamedProfileSpec(names[i].which);
-		size_t length;
-		uint8_t* bytes = ICCBuildDisplayProfile(&spec, &length);
-		if (!bytes)
-			return NULL;
-		CFDataRef data = CFDataCreate(kCFAllocatorDefault, bytes, (CFIndex) length);
-		free(bytes);
-		if (!data)
-			return NULL;
-		ColorSyncProfileRef profile = ColorSyncProfileCreate(data, NULL);
-		CFRelease(data);
-		return profile;
+		dispatch_once(&once[i], ^{
+			const ICCDisplayProfileSpec spec = ICCNamedProfileSpec(names[i].which);
+			size_t length;
+			uint8_t* bytes = ICCBuildDisplayProfile(&spec, &length);
+			if (!bytes)
+				return;
+			CFDataRef data = CFDataCreate(kCFAllocatorDefault, bytes, (CFIndex) length);
+			free(bytes);
+			if (!data)
+				return;
+			cache[i] = ColorSyncProfileCreate(data, NULL);
+			CFRelease(data);
+		});
+		return cache[i] ? (ColorSyncProfileRef) CFRetain(cache[i]) : NULL;
 	}
 	return NULL;
 }
@@ -156,14 +165,10 @@ CFDataRef ColorSyncProfileCopyData(ColorSyncProfileRef prof, CFErrorRef* error)
 	return CFRetain(profile->data);
 }
 
-// GUESS: the page says the digest is "calculated as defined by the ICC specification" (ICC.1:2022, 7.2.18): MD5 over "the
-// entire profile, whose length is given by the size field", with the flags, rendering intent and Profile ID header
-// fields zero. So the digest covers the number of bytes the size field gives, not all the bytes held (bytes after the
-// profile do not count). ColorSyncProfileCreate accepts a profile whose size field is wrong; if the field is below
-// 100 (the fields that are zeroed end there) or above the bytes held, no digest is defined and the result is the zero
-// digest, which the page defines as the failure result. Rejected alternative: hash all bytes held. A Profile ID
-// already stored in the header is not returned: the digest is always computed. A NULL or non-profile argument also
-// gives zeros.
+// The page says the digest is "calculated as defined by the ICC specification" (ICC.1:2022, 7.2.18): MD5 over the profile with
+// the flags, rendering intent and Profile ID header fields zero. The digest is always computed: a Profile ID already stored in
+// the header is not returned. It covers every byte held (see the QUIRK on ICCProfileComputeID for the size field). A NULL or
+// non-profile argument gives the zero digest, which the page defines as the failure result (macOS 26.7.3 and 10.14.4, observed).
 ColorSyncMD5 ColorSyncProfileGetMD5(ColorSyncProfileRef prof)
 {
 	ColorSyncMD5 md5;
@@ -226,11 +231,17 @@ static bool twoLetterCode(CFTypeRef value, char out[3])
 		CFStringGetCString(value, out, 3, kCFStringEncodingASCII);
 }
 
-// GUESS: the page says only "the localized description string ... localized to the current locale". The description is
-// the profile's 'desc' tag; of its records the one for the language and country of CFLocaleCopyCurrent() is chosen,
-// else the first of the same language, else the first (ICC.1:2022, 10.15). The tag of an older profile has one
-// string, and its 7-bit ASCII part is used, as in 10.20.3 of that edition. A profile with no 'desc' tag or a
-// description that cannot be read gives NULL (the page does not say); a NULL or non-profile argument too.
+// The page says "the localized description string ... localized to the current locale". The description is the profile's
+// 'desc' tag; of its records the one for English (United States) is chosen if there is one, else the one for the language
+// and country of CFLocaleCopyCurrent(), else the first of the same language, else the first (ICC.1:2022, 10.15; see the QUIRK
+// in ICCProfile.c). The tag of an older profile has one string, and its 7-bit ASCII part is used, as in 10.20.3 of that
+// edition. A NULL or non-profile argument gives NULL.
+//
+// QUIRK: a profile without a 'desc' tag, and one whose description cannot be read (an unknown tag type, a text that runs
+// past the tag, no records or an empty text), give a fixed English text instead of NULL: "This profile has no description tag"
+// and "This profile has a bad description tag". Evidence: black-box observation on macOS 26.7.3 (x86_64) and 10.14.4 (x86_64
+// and i386), tier 2, of hand-built profiles. Whether the texts are localized is not known.
+// Test: tests/src/colorsync_profile_description.c, "no description tag" and "bad description tag".
 CFStringRef ColorSyncProfileCopyDescriptionString(ColorSyncProfileRef prof)
 {
 	const struct __ColorSyncProfile* profile = profileOrNull(prof);
@@ -247,9 +258,12 @@ CFStringRef ColorSyncProfileCopyDescriptionString(ColorSyncProfileRef prof)
 		CFRelease(locale);
 	}
 
+	ICCTag descriptionTag;
+	if (!ICCProfileFindTag(CFDataGetBytePtr(profile->data), SIG('d', 'e', 's', 'c'), &descriptionTag))
+		return CFSTR("This profile has no description tag");
 	ICCText text;
-	if (!ICCProfileFindDescription(CFDataGetBytePtr(profile->data), hasLanguage ? language : NULL, hasCountry ? country : NULL, &text))
-		return NULL;
+	if (!ICCProfileFindDescription(CFDataGetBytePtr(profile->data), hasLanguage ? language : NULL, hasCountry ? country : NULL, &text) || text.length == 0)
+		return CFSTR("This profile has a bad description tag");
 	return CFStringCreateWithBytes(kCFAllocatorDefault, text.bytes, (CFIndex) text.length,
 		text.isUTF16BE ? kCFStringEncodingUTF16BE : kCFStringEncodingISOLatin1, false);
 }
@@ -285,11 +299,9 @@ CFArrayRef ColorSyncProfileCopyTagSignatures(ColorSyncProfileRef prof)
 	return signatures;
 }
 
-// GUESS: the page says only "matrix-based". It is taken to be a profile with the six tags that ICC.1:2022, 8.3.3 and 8.4.3
-// require of a three-component matrix-based profile, whether or not it also has AToB tables (the same sections let it
-// have them) and whatever its colour space and PCS (the header is not looked at, though 8.3.3 and 8.4.3 say only PCSXYZ can
-// be used with matrix/TRC models). A profile that is not matrix-based, such
-// as a LUT-only or gray one, and a NULL or non-profile argument give false.
+// The page says only "matrix-based". The rule is that of ICCProfileHasMatrixTRC (see the QUIRK in ICCProfile.c: the colour
+// space, the six tags of an RGB profile or kTRC of a gray one, and no AToB table). A NULL or non-profile argument gives
+// false (macOS 26.7.3, observed).
 bool ColorSyncProfileIsMatrixBased(ColorSyncProfileRef prof)
 {
 	const struct __ColorSyncProfile* profile = profileOrNull(prof);
@@ -382,8 +394,9 @@ CFURLRef ColorSyncProfileGetURL(ColorSyncProfileRef prof, CFErrorRef* error)
 	return profile ? profile->url : NULL;
 }
 
-// GUESS: the page says only that the result is a mutable copy of the profile's data. The copy has no URL (GetURL
-// gives NULL, as for a profile made from data), and a NULL or non-profile argument gives NULL.
+// The page says only that the result is a mutable copy of the profile's data. The copy is a new object with the same data
+// and no URL (GetURL gives NULL, as for a profile made from data); a copy of a mutable profile is mutable too, and a NULL
+// or non-profile argument gives NULL (macOS 26.7.3 and 10.14.4, observed).
 ColorSyncMutableProfileRef ColorSyncProfileCreateMutableCopy(ColorSyncProfileRef prof)
 {
 	const struct __ColorSyncProfile* source = profileOrNull(prof);
@@ -395,14 +408,13 @@ ColorSyncMutableProfileRef ColorSyncProfileCreateMutableCopy(ColorSyncProfileRef
 	return copy;
 }
 
-// GUESS: the page says the header is "in host endianness" and does not list the fields. It is taken to be the C struct
-// that the public CMICCProfile.h of the MacOSX10.1.5 SDK declares as CM2Header and CM4Header (github.com/phracker/MacOSX-SDKs):
-// each field a number of its type, swapped on its own. So the 32-bit words are swapped (signatures too, so 'RGB ' is
-// 0x52474220 on a little-endian host), the date and time is six 16-bit numbers (CMDateTime), and the device attributes
-// are two 32-bit words (`UInt32 deviceAttributes[2]`, one for device vendors and one for ICC), not one 64-bit number;
-// the Profile ID and the reserved bytes are bytes. That the call means that struct is the guess. Not chosen: keeping
-// the signatures as bytes, or one 64-bit swap of the attributes. See ICCHeaderSwapFields. A NULL or non-profile
-// argument gives NULL, which the page says is the failure result.
+// The page says the header is "in host endianness" and does not list the fields. Observed on macOS 26.7.3 and 10.14.4 (x86_64):
+// each field of the header is a number of its type, swapped on its own, as in the C struct that the public CMICCProfile.h of
+// the MacOSX10.1.5 SDK declares as CM2Header and CM4Header (github.com/phracker/MacOSX-SDKs). So the 32-bit words are
+// swapped (signatures too, so 'RGB ' is 0x52474220 on a little-endian host), the date and time is six 16-bit numbers
+// (CMDateTime), and the device attributes are two 32-bit words (`UInt32 deviceAttributes[2]`), not one 64-bit number;
+// the Profile ID and the reserved bytes are bytes. See ICCHeaderSwapFields. A NULL or non-profile argument gives NULL, which
+// the page says is the failure result.
 CFDataRef ColorSyncProfileCopyHeader(ColorSyncProfileRef prof)
 {
 	const struct __ColorSyncProfile* profile = profileOrNull(prof);
@@ -413,11 +425,12 @@ CFDataRef ColorSyncProfileCopyHeader(ColorSyncProfileRef prof)
 	return CFDataCreate(kCFAllocatorDefault, header, sizeof header);
 }
 
-// GUESS: the function has no result, so every failure is silent and leaves the profile as it was: a profile that is not
-// mutable, a NULL or non-profile argument, a NULL header, or a header that is not 128 bytes. The header, taken in the
-// layout of CopyHeader, is stored as given: no field is checked or recomputed, so a header without the file signature
-// 'acsp', or with another size, gives data that ColorSyncProfileCreate would reject or that disagrees with its size field.
-// Like other mutable CoreFoundation objects, a mutable profile is not safe to change from several threads at once.
+// The function has no result. Observed on macOS 26.7.3 and 10.14.4: a profile that is not mutable, a NULL profile, a non-profile
+// and a header that is not 128 bytes leave the profile as it was, without a result. The header, taken in the layout of
+// CopyHeader, is stored as given: no field is checked or recomputed, so a header without the file signature 'acsp', or
+// with another size, gives data that ColorSyncProfileCreate would reject or that disagrees with its size field. A NULL
+// header crashes on macOS; here it is ignored too. Like other mutable CoreFoundation objects, a mutable profile is not safe
+// to change from several threads at once.
 void ColorSyncProfileSetHeader(ColorSyncMutableProfileRef prof, CFDataRef header)
 {
 	struct __ColorSyncProfile* profile = (struct __ColorSyncProfile*) profileOrNull(prof);

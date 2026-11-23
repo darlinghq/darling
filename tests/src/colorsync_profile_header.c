@@ -7,10 +7,10 @@
 // https://developer.apple.com/documentation/colorsync/colorsyncprofilecreatemutablecopy(_:)).
 // The profile is hand-built from the layout in ICC.1:2022, 7.2 and 7.3 (https://www.color.org/specification/ICC.1-2022-05.pdf),
 // whose numbers are big-endian, so it holds no vendor data.
-// GUESS items pinned here, because the pages do not say which fields "host endianness" covers: the 32-bit words
-// (signatures too), the six 16-bit date and time numbers and the two 32-bit device attributes words are numbers in host order,
-// the Profile ID and reserved bytes are bytes; and SetHeader ignores a profile that is not mutable, a NULL argument
-// and a header that is not 128 bytes.
+// Observed on macOS 26.7.3 and 10.14.4 (x86_64), where the pages do not say which fields "host endianness" covers: the
+// 32-bit words (signatures too), the six 16-bit date and time numbers and the two 32-bit device attributes words are
+// numbers in host order, the Profile ID and reserved bytes are bytes; and SetHeader ignores a profile that is not mutable,
+// a NULL profile and a header that is not 128 bytes. (SetHeader with a NULL header crashes on macOS: not called here.)
 #include <ColorSync/ColorSync.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <signal.h>
@@ -162,13 +162,12 @@ int main(void)
 	CFDataRef original = ColorSyncProfileCopyData(profile, NULL);
 	CHECK(dataEquals(original, bytes, length)); // nor did the profile it was copied from
 
-	// GUESS: ignored without a result.
+	// Ignored without a result.
 	ColorSyncProfileSetHeader((ColorSyncMutableProfileRef) profile, editedHeader); // not mutable
 	CFDataRef unchanged = ColorSyncProfileCopyData(profile, NULL);
 	CHECK(dataEquals(unchanged, bytes, length));
 	CFDataRef shortHeader = CFDataCreate(NULL, edited, 127);
 	ColorSyncProfileSetHeader(mutableCopy, shortHeader);
-	ColorSyncProfileSetHeader(mutableCopy, NULL);
 	ColorSyncProfileSetHeader(NULL, editedHeader);
 	CFDataRef stillAfter = ColorSyncProfileCopyHeader(mutableCopy);
 	CHECK(dataEquals(stillAfter, edited, 128));

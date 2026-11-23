@@ -6,8 +6,9 @@
 // with the red, green and blue matrix columns (rXYZ, gXYZ, bXYZ) and tone reproduction curves (rTRC, gTRC, bTRC), and
 // let it have AToB tables as well.
 // The profiles are hand-built from the layout in ICC.1:2022, 7.2 and 7.3, so they hold no vendor data.
-// GUESS items pinned here: the check is the presence of the six tags, regardless of AToB tables and of the colour
-// space and PCS in the header (which these profiles leave zero), and a NULL or non-profile argument gives false.
+// The expectations are observations of macOS 26.7.3 (the QUIRK on ICCProfileHasMatrixTRC; the function is not in 10.14.4):
+// an RGB profile with the six tags, or a gray profile with kTRC, is matrix-based unless it also has an A2B0, A2B1 or A2B2 table;
+// any other colour space is not; a NULL or non-profile argument gives false.
 #include <ColorSync/ColorSync.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <signal.h>
@@ -80,27 +81,39 @@ int main(void)
 		CFRelease(partial);
 	}
 
-	// GUESS: AToB tables beside the six tags, and a colour space other than RGB, make no difference.
+	// QUIRK: an AToB table beside the six tags makes the profile not matrix-based; other tables do not; and so does a
+	// colour space other than RGB.
 	const char* const withLut[] = { "rXYZ", "gXYZ", "bXYZ", "rTRC", "gTRC", "bTRC", "A2B0" };
 	ColorSyncProfileRef lut = makeProfile("RGB ", withLut, 7);
-	CHECK(lut != NULL && ColorSyncProfileIsMatrixBased(lut));
+	CHECK(lut != NULL && !ColorSyncProfileIsMatrixBased(lut));
+	const char* const withB2A[] = { "rXYZ", "gXYZ", "bXYZ", "rTRC", "gTRC", "bTRC", "B2A0" };
+	ColorSyncProfileRef backTable = makeProfile("RGB ", withB2A, 7);
+	CHECK(backTable != NULL && ColorSyncProfileIsMatrixBased(backTable));
 	ColorSyncProfileRef otherSpace = makeProfile("Lab ", six, 6);
-	CHECK(otherSpace != NULL && ColorSyncProfileIsMatrixBased(otherSpace));
+	CHECK(otherSpace != NULL && !ColorSyncProfileIsMatrixBased(otherSpace));
 
-	// Profiles of other models.
+	// Profiles of other models, and gray profiles with kTRC.
 	const char* const lutOnly[] = { "wtpt", "A2B0", "B2A0" };
 	ColorSyncProfileRef table = makeProfile("RGB ", lutOnly, 3);
 	CHECK(table != NULL && !ColorSyncProfileIsMatrixBased(table));
 	const char* const gray[] = { "wtpt", "kTRC" };
 	ColorSyncProfileRef grayProfile = makeProfile("GRAY", gray, 2);
-	CHECK(grayProfile != NULL && !ColorSyncProfileIsMatrixBased(grayProfile));
+	CHECK(grayProfile != NULL && ColorSyncProfileIsMatrixBased(grayProfile));
+	const char* const grayLut[] = { "kTRC", "A2B0" };
+	ColorSyncProfileRef grayTable = makeProfile("GRAY", grayLut, 2);
+	CHECK(grayTable != NULL && !ColorSyncProfileIsMatrixBased(grayTable));
+	const char* const trcOnly[] = { "kTRC" };
+	ColorSyncProfileRef rgbGrayCurve = makeProfile("RGB ", trcOnly, 1);
+	CHECK(rgbGrayCurve != NULL && !ColorSyncProfileIsMatrixBased(rgbGrayCurve));
 
-	// GUESS: failure is false.
 	CHECK(!ColorSyncProfileIsMatrixBased(NULL));
 	CHECK(!ColorSyncProfileIsMatrixBased((ColorSyncProfileRef) CFSTR("not a profile")));
 
 	CFRelease(matrix);
 	CFRelease(lut);
+	CFRelease(backTable);
+	CFRelease(grayTable);
+	CFRelease(rgbGrayCurve);
 	CFRelease(otherSpace);
 	CFRelease(table);
 	CFRelease(grayProfile);

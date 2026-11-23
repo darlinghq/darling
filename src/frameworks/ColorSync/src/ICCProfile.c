@@ -102,14 +102,22 @@ bool ICCProfileValidate(const uint8_t* data, size_t length)
 	return true;
 }
 
+// QUIRK: the digest covers every byte held, not only the number of bytes the size field gives, and the size field never
+// makes the digest fail. ICC.1:2022, 7.2.18 defines it over "the entire profile, whose length is given by the size field";
+// ColorSyncProfileCreate accepts a profile whose size field is wrong or whose data has bytes after the profile. Evidence:
+// black-box observation of ColorSyncProfileGetMD5, tier 2: macOS 10.14.4 (x86_64 and i386) hashes all the bytes held for
+// a size field of 160 or 100 or 99 or 0 or above the data, and with a trailing byte; 26.7.3 (x86_64) does the same when the
+// size field is above the data but hashes only the size field's bytes when it is within the data (and gives other digests
+// for a size field of 99, 100 or 0). Where they differ the widest behaviour, Mojave's, is followed. Neither gives the zero
+// digest for these inputs.
+// Test: ICCProfileTest.c, "profile ID covers all bytes held"; tests/src/colorsync_profile_md5.c.
 bool ICCProfileComputeID(const uint8_t* data, size_t length, uint8_t outDigest[16])
 {
 	static const struct { size_t start, end; } zeroed[] = { { 44, 48 }, { 64, 68 }, { 84, 100 } };
 	static const uint8_t zeros[16];
 
-	// 7.2.18: the entire profile, whose length is given by the size field. The zeroed fields end at byte 100.
-	const size_t size = readBigEndian32(data);
-	if (size < 100 || size > length)
+	// The zeroed fields end at byte 100.
+	if (length < 100)
 		return false;
 
 	MD5Context context;
@@ -121,7 +129,7 @@ bool ICCProfileComputeID(const uint8_t* data, size_t length, uint8_t outDigest[1
 		MD5ContextUpdate(&context, zeros, zeroed[i].end - zeroed[i].start);
 		position = zeroed[i].end;
 	}
-	MD5ContextUpdate(&context, data + position, size - position);
+	MD5ContextUpdate(&context, data + position, length - position);
 	MD5ContextFinal(&context, outDigest);
 	return true;
 }
@@ -148,15 +156,43 @@ bool ICCProfileFindTag(const uint8_t* data, uint32_t signature, ICCTag* outTag)
 
 #define SIG(a, b, c, d) (((uint32_t) (a) << 24) | ((uint32_t) (b) << 16) | ((uint32_t) (c) << 8) | (uint32_t) (d))
 
+// QUIRK: whether a profile is matrix-based depends on its colour space and on its AToB tables. ColorSyncProfileIsMatrixBased
+// is true for an 'RGB ' profile with all six of rXYZ, gXYZ, bXYZ, rTRC, gTRC, bTRC and for a 'GRAY' profile with kTRC, and
+// false when the profile also has an A2B0, A2B1 or A2B2 tag (other tags, such as B2A0, D2B0 or gamt, do not matter) and for any
+// other colour space, whatever the profile class, version or PCS. Evidence: black-box observation on macOS 26.7.3 (x86_64),
+// tier 2, of hand-built profiles; the function is not in macOS 10.14.4.
+// Test: ICCProfileTest.c, "matrix profile"; tests/src/colorsync_profile_matrix_based.c.
 bool ICCProfileHasMatrixTRC(const uint8_t* data)
 {
-	static const uint32_t required[] = {
+	static const uint32_t rgbRequired[] = {
 		SIG('r', 'X', 'Y', 'Z'), SIG('g', 'X', 'Y', 'Z'), SIG('b', 'X', 'Y', 'Z'),
 		SIG('r', 'T', 'R', 'C'), SIG('g', 'T', 'R', 'C'), SIG('b', 'T', 'R', 'C'),
 	};
+	static const uint32_t grayRequired[] = { SIG('k', 'T', 'R', 'C') };
+	static const uint32_t forbidden[] = { SIG('A', '2', 'B', '0'), SIG('A', '2', 'B', '1'), SIG('A', '2', 'B', '2') };
+
+	const uint32_t colorSpace = readBigEndian32(data + 16);
+	const uint32_t* required;
+	size_t requiredCount;
+	if (colorSpace == SIG('R', 'G', 'B', ' '))
+	{
+		required = rgbRequired;
+		requiredCount = sizeof rgbRequired / sizeof rgbRequired[0];
+	}
+	else if (colorSpace == SIG('G', 'R', 'A', 'Y'))
+	{
+		required = grayRequired;
+		requiredCount = sizeof grayRequired / sizeof grayRequired[0];
+	}
+	else
+		return false;
+
 	ICCTag tag;
-	for (size_t i = 0; i < sizeof required / sizeof required[0]; i++)
+	for (size_t i = 0; i < requiredCount; i++)
 		if (!ICCProfileFindTag(data, required[i], &tag))
+			return false;
+	for (size_t i = 0; i < sizeof forbidden / sizeof forbidden[0]; i++)
+		if (ICCProfileFindTag(data, forbidden[i], &tag))
 			return false;
 	return true;
 }
@@ -222,6 +258,14 @@ static bool findMultiLocalizedText(const uint8_t* tag, size_t size, const char* 
 	if (count == 0 || recordSize < 12 || (size - 16) / recordSize < count)
 		return false;
 
+	// QUIRK: a record for English (United States) is chosen whenever there is one, before the record for the locale's
+	// language and country. ICC.1:2022, 10.15 asks for the record of the desired language and country. Evidence:
+	// black-box observation of ColorSyncProfileCopyDescriptionString, tier 2, on macOS 26.7.3 (x86_64, locales en_US, en_GB,
+	// en_AU, fr_FR, fr_CA, fr_CH, de_DE, de_CH, ja_JP, es_ES, es_US, pt_BR, zh_TW) and 10.14.4 (x86_64 and i386, the same
+	// locales): with enUS among the records the result is enUS in every locale. Without it, the locale's language and
+	// country, else the first record of the language, else the first record, as before (macOS chooses arbitrarily among
+	// several records of a language that is not the locale's, and 10.14.4 i386 differs from x86_64 there).
+	// Test: ICCProfileTest.c, "English (United States) record wins".
 	const uint8_t* chosen = tag + 16;
 	int bestRank = 0;
 	for (uint32_t i = 0; i < count; i++)
@@ -229,7 +273,8 @@ static bool findMultiLocalizedText(const uint8_t* tag, size_t size, const char* 
 		const uint8_t* record = tag + 16 + (size_t) i * recordSize;
 		const bool sameLanguage = language && record[0] == (uint8_t) language[0] && record[1] == (uint8_t) language[1];
 		const bool sameCountry = country && record[2] == (uint8_t) country[0] && record[3] == (uint8_t) country[1];
-		const int rank = sameLanguage ? (sameCountry ? 2 : 1) : 0;
+		const bool englishUS = memcmp(record, "enUS", 4) == 0;
+		const int rank = englishUS ? 3 : (sameLanguage ? (sameCountry ? 2 : 1) : 0);
 		if (rank > bestRank)
 		{
 			bestRank = rank;
@@ -250,8 +295,16 @@ static bool findMultiLocalizedText(const uint8_t* tag, size_t size, const char* 
 	return true;
 }
 
-// textDescriptionType, ICC.1:2001-04, 6.5.17: 8 bytes of type and zero, the count of the ASCII string with its null,
-// then the string. The Unicode and ScriptCode strings that follow are not read.
+// textDescriptionType, ICC.1:2001-04, 6.5.17: 8 bytes of type and zero, the count of the ASCII string with its null, then the
+// string; then the Unicode language code (4 bytes), the count of UCS-2 characters with their null (4 bytes) and the
+// characters (big-endian); the ScriptCode part that follows is not read.
+//
+// QUIRK: the Unicode string is the description when it has characters, and the ASCII string only when it has none. ICC.1:2022,
+// 10.20.3 takes the 7-bit ASCII part. Evidence: black-box observation of ColorSyncProfileCopyDescriptionString, tier 2, on
+// macOS 26.7.3 (x86_64) and 10.14.4 (x86_64 and i386): a tag with the ASCII string "Plain" and the Unicode string "Hi" reads
+// "Hi", a tag with an empty ASCII string and the Unicode string "Hi" reads "Hi", and one with an empty Unicode part reads the
+// ASCII string; the profile version does not matter.
+// Test: ICCProfileTest.c, "Unicode part of a textDescriptionType wins"; tests/src/colorsync_profile_description.c.
 static bool findPlainText(const uint8_t* tag, size_t size, ICCText* outText)
 {
 	if (size < 12)
@@ -259,6 +312,26 @@ static bool findPlainText(const uint8_t* tag, size_t size, ICCText* outText)
 	const size_t count = readBigEndian32(tag + 8);
 	if (count > size - 12)
 		return false;
+
+	const size_t unicodeStart = 12 + count; // the language code, then the count
+	if (size - unicodeStart >= 8)
+	{
+		const size_t characters = readBigEndian32(tag + unicodeStart + 4);
+		if (characters > 1 && characters <= (size - unicodeStart - 8) / 2)
+		{
+			size_t length = characters * 2;
+			while (length >= 2 && tag[unicodeStart + 8 + length - 2] == 0 && tag[unicodeStart + 8 + length - 1] == 0)
+				length -= 2;
+			if (length > 0)
+			{
+				outText->bytes = tag + unicodeStart + 8;
+				outText->length = length;
+				outText->isUTF16BE = true;
+				return true;
+			}
+		}
+	}
+
 	size_t length = 0;
 	while (length < count && tag[12 + length] != 0)
 		length++;

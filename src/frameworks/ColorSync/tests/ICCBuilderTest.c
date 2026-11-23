@@ -162,10 +162,10 @@ int main(void)
 	expectColorant(bt2020, SIG('g', 'X', 'Y', 'Z'), 10857, 44259, 1965, "BT.2020 green colorant");
 	expectColorant(bt2020, SIG('b', 'X', 'Y', 'Z'), 8195, 2989, 52222, "BT.2020 blue colorant");
 	expect(findTag(bt2020, SIG('b', 'T', 'R', 'C'), &tag), "BT.2020 curve");
-	static const int32_t bt2020Parameters[5] = { 145636, 59616, 5920, 14564, 5324 };
+	static const int32_t bt2020Parameters[5] = { 145636, 59616, 5920, 14564, 5308 };
 	for (int i = 0; i < 5; i++)
 		expect(getFixed(bt2020 + tag.offset + 12 + 4 * i) == bt2020Parameters[i], "BT.2020 curve parameter");
-	expect(fabs(evaluateCurve(bt2020, tag, 1.0) - 1.0) < 1e-3 && fabs(evaluateCurve(bt2020, tag, 0.0812428) - evaluateCurve(bt2020, tag, 0.0812427)) < 1e-4, "BT.2020 curve ends and knee");
+	expect(fabs(evaluateCurve(bt2020, tag, 1.0) - 1.0) < 1e-3 && fabs(evaluateCurve(bt2020, tag, 0.081) - evaluateCurve(bt2020, tag, 0.081 - 1e-9)) < 1e-4, "BT.2020 curve ends and knee");
 	free(bt2020);
 
 	// Gray: no colorants, one curve, gamma 2.2.

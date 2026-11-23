@@ -58,7 +58,7 @@ uint8_t* ICCBuildDisplayProfile(const ICCDisplayProfileSpec* spec, size_t* outLe
 // ICCNamedAdobeRGB1998: Adobe's "Adobe RGB (1998) Color Image Encoding" (May 2005), whose primaries and D65 white are
 //   as listed there and whose curve is a pure power of 563/256 (2.19921875);
 // ICCNamedITUR2020: Recommendation ITU-R BT.2020, its primaries and D65 white, and the inverse of its transfer function
-//   with the 12-bit constants (alpha 1.09929682680944, beta 0.018053968510807) so that the two segments meet;
+//   with the 12-bit alpha (1.09929682680944) and the knee at 0.081 (see ICCBuilder.c);
 // ICCNamedGrayGamma22: a gray response with a power of 2.2 and the PCS white point.
 typedef enum ICCNamedProfile {
 	ICCNamedSRGB,

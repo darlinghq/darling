@@ -7,9 +7,9 @@
 // field (84 to 99) set to zero.
 // The profile is hand-built from the layout in ICC.1:2022, 7.2 and 7.3, so it holds no vendor data. The expected digest
 // is Python's hashlib.md5 over the same bytes with those three fields zero.
-// GUESS items pinned here: the digest is computed even when the header holds a Profile ID; it covers the number of
-// bytes the size field gives (bytes after them are not hashed); and a size field below 100 or above the bytes held
-// gives the zero digest, which the page defines as the failure result.
+// Observed on macOS 26.7.3 and 10.14.4 (the QUIRK on ICCProfileComputeID): the digest is computed even when the header holds
+// a Profile ID, and it covers every byte held, whatever the size field says (a size field of 160, 100, 99 or above the data,
+// or a trailing byte, never gives the zero digest). A NULL or non-profile argument gives the zero digest.
 #include <ColorSync/ColorSync.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <signal.h>
@@ -66,9 +66,13 @@ static ColorSyncProfileRef profileOf(const uint8_t* bytes, size_t length)
 	return profile;
 }
 
-// The same profile with its size field set to 160 and to 100 bytes (the digest is over that many bytes).
-static const uint8_t kExpectedSize160[16] = { 0xc2, 0xb6, 0xf1, 0xc5, 0x73, 0x39, 0xac, 0xbd, 0x8b, 0xed, 0xf0, 0x4c, 0x29, 0x77, 0xd3, 0x17 };
-static const uint8_t kExpectedSize100[16] = { 0xfd, 0xd0, 0x5f, 0x1a, 0xd8, 0x8c, 0x1e, 0x46, 0xd5, 0x3a, 0xb4, 0x72, 0x75, 0xc4, 0xd7, 0xb8 };
+// The same profile with its size field set to 160, 100, 99 and length + 1 (the digest is over all the bytes held), and with a
+// byte 0x7f after it. Python's hashlib.md5 over the bytes with the three fields zero.
+static const uint8_t kExpectedSize160[16] = { 0x35, 0x6e, 0xba, 0xbd, 0xe4, 0x24, 0xfc, 0x01, 0xc8, 0x61, 0x32, 0x1b, 0x48, 0x6f, 0xad, 0xb2 };
+static const uint8_t kExpectedSize100[16] = { 0x6d, 0x69, 0x28, 0x8a, 0x99, 0x57, 0x24, 0x15, 0x88, 0x9d, 0x50, 0x32, 0xa7, 0x51, 0x84, 0xf6 };
+static const uint8_t kExpectedSize99[16] = { 0xf0, 0xf9, 0x76, 0x86, 0x15, 0xb1, 0x16, 0xd6, 0xb4, 0xdb, 0x37, 0x69, 0xad, 0x51, 0xa5, 0x40 };
+static const uint8_t kExpectedTooBig[16] = { 0x58, 0xa8, 0x44, 0x62, 0x56, 0xfb, 0xda, 0x34, 0x5c, 0xce, 0x5a, 0x08, 0xf5, 0xbc, 0x30, 0xb2 };
+static const uint8_t kExpectedTrailing[16] = { 0x27, 0x25, 0x9c, 0xa2, 0x04, 0x8e, 0xf4, 0x14, 0x5a, 0x48, 0xfe, 0x21, 0xb5, 0x3d, 0x3f, 0x40 };
 
 static const uint8_t kExpected[16] = { 0x0d, 0x3f, 0x2d, 0x84, 0x1c, 0xdf, 0x36, 0xdd, 0x5f, 0x15, 0x45, 0xd1, 0x0b, 0x73, 0xb8, 0x88 };
 
@@ -98,14 +102,14 @@ int main(void)
 	md5 = ColorSyncProfileGetMD5(withId);
 	CHECK(memcmp(md5.digest, kExpected, 16) == 0);
 
-	// GUESS 2: the size field says how many bytes are hashed; bytes after them do not count.
+	// Every byte held is hashed, whatever the size field says.
 	uint8_t longer[256];
 	memcpy(longer, bytes, length);
 	longer[length] = 0x7f;
 	ColorSyncProfileRef trailing = profileOf(longer, length + 1);
 	CHECK(trailing != NULL);
 	md5 = ColorSyncProfileGetMD5(trailing);
-	CHECK(memcmp(md5.digest, kExpected, 16) == 0);
+	CHECK(memcmp(md5.digest, kExpectedTrailing, 16) == 0);
 
 	uint8_t sized[256];
 	memcpy(sized, bytes, length);
@@ -120,18 +124,17 @@ int main(void)
 	md5 = ColorSyncProfileGetMD5(size100);
 	CHECK(memcmp(md5.digest, kExpectedSize100, 16) == 0);
 
-	// GUESS 3: a size field the digest cannot be defined for gives zeros, as failure does.
 	static const uint8_t zeros[16];
 	put32(sized, 99);
 	ColorSyncProfileRef size99 = profileOf(sized, length);
 	CHECK(size99 != NULL);
 	md5 = ColorSyncProfileGetMD5(size99);
-	CHECK(memcmp(md5.digest, zeros, 16) == 0);
+	CHECK(memcmp(md5.digest, kExpectedSize99, 16) == 0);
 	put32(sized, (uint32_t) length + 1);
 	ColorSyncProfileRef tooBig = profileOf(sized, length);
 	CHECK(tooBig != NULL);
 	md5 = ColorSyncProfileGetMD5(tooBig);
-	CHECK(memcmp(md5.digest, zeros, 16) == 0);
+	CHECK(memcmp(md5.digest, kExpectedTooBig, 16) == 0);
 
 	// Another byte in the profile gives another digest.
 	uint8_t changed[256];

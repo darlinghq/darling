@@ -7,12 +7,15 @@
 // (IEC 61966-2-1 for sRGB, the Adobe RGB (1998) specification, Recommendation ITU-R BT.2020) in the layout of
 // ICC.1:2022 (https://www.color.org/specification/ICC.1-2022-05.pdf). The test checks the profile's structure and, for sRGB,
 // the colorants computed from the standard's primaries by the Bradford transform (the integers are s15Fixed16 values).
-// GUESS items pinned here: the generic Lab, XYZ and CMYK names, an unknown name, a NULL and a non-string give NULL.
+// Observed on macOS 26.7.3 and 10.14.4 and pinned here: a name gives the same profile object on every call (QUIRK), and an unknown
+// name, a NULL and a non-string give NULL. The descriptions are those of macOS's profiles of these names. macOS also has profiles
+// for the generic Lab, XYZ and CMYK names, which this implementation does not make (no public definition to build them from).
 #include <ColorSync/ColorSync.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -34,7 +37,7 @@ static int32_t fixedAt(CFDataRef data, CFIndex offset)
 	return (int32_t) (((uint32_t) p[0] << 24) | ((uint32_t) p[1] << 16) | ((uint32_t) p[2] << 8) | p[3]);
 }
 
-static void checkNamed(CFStringRef name, const char* colorSpace, bool gray)
+static void checkNamed(CFStringRef name, const char* colorSpace, bool gray, const char* description)
 {
 	ColorSyncProfileRef profile = ColorSyncProfileCreateWithName(name);
 	CHECK(profile != NULL);
@@ -55,9 +58,16 @@ static void checkNamed(CFStringRef name, const char* colorSpace, bool gray)
 	CHECK(ColorSyncProfileContainsTag(profile, CFSTR("rXYZ")) == !gray);
 	CHECK(ColorSyncProfileContainsTag(profile, CFSTR("bTRC")) == !gray);
 
-	// A second call gives a new profile with the same data.
+	CFStringRef text = ColorSyncProfileCopyDescriptionString(profile);
+	CFStringRef wanted = CFStringCreateWithCString(NULL, description, kCFStringEncodingASCII);
+	CHECK(text != NULL && CFEqual(text, wanted));
+	if (text)
+		CFRelease(text);
+	CFRelease(wanted);
+
+	// QUIRK: a second call gives the same profile.
 	ColorSyncProfileRef again = ColorSyncProfileCreateWithName(name);
-	CHECK(again != NULL && again != profile);
+	CHECK(again != NULL && again == profile);
 	CFDataRef first = ColorSyncProfileCopyData(profile, NULL);
 	CFDataRef second = ColorSyncProfileCopyData(again, NULL);
 	CHECK(first && second && CFEqual(first, second));
@@ -75,34 +85,38 @@ int main(void)
 	signal(SIGALRM, on_alarm);
 	alarm(30);
 
-	checkNamed(kColorSyncSRGBProfile, "RGB ", false);
-	checkNamed(kColorSyncAdobeRGB1998Profile, "RGB ", false);
-	checkNamed(kColorSyncITUR2020Profile, "RGB ", false);
-	checkNamed(kColorSyncGenericGrayGamma22Profile, "GRAY", true);
+	checkNamed(kColorSyncSRGBProfile, "RGB ", false, "sRGB IEC61966-2.1");
+	checkNamed(kColorSyncAdobeRGB1998Profile, "RGB ", false, "Adobe RGB (1998)");
+	checkNamed(kColorSyncITUR2020Profile, "RGB ", false, "Rec. ITU-R BT.2020-1");
+	checkNamed(kColorSyncGenericGrayGamma22Profile, "GRAY", true, "Generic Gray Gamma 2.2 Profile");
 
-	// The colorants of sRGB for the D50 PCS: X, Y and Z of each primary as s15Fixed16 numbers.
-	ColorSyncProfileRef srgb = ColorSyncProfileCreateWithName(kColorSyncSRGBProfile);
-	static const struct { const char* tag; int32_t xyz[3]; } colorants[3] = {
-		{ "rXYZ", { 28576, 14581, 912 } }, { "gXYZ", { 25239, 46983, 6361 } }, { "bXYZ", { 9375, 3972, 46787 } },
+	// The colorants for the D50 PCS: X, Y and Z of each primary as s15Fixed16 numbers, computed from the primaries and the
+	// white of each standard by the Bradford transform. macOS 26.7.3 and 10.14.4 give these numbers to within 12 (the sRGB blue
+	// Z, which its profile rounds differently), 1 (Adobe RGB) and 0 (BT.2020), so the check allows 16.
+	static const struct { CFStringRef* name; const char* tag; int32_t xyz[3]; } colorants[] = {
+		{ &kColorSyncSRGBProfile, "rXYZ", { 28576, 14581, 912 } }, { &kColorSyncSRGBProfile, "gXYZ", { 25239, 46983, 6361 } },
+		{ &kColorSyncSRGBProfile, "bXYZ", { 9375, 3972, 46787 } },
+		{ &kColorSyncAdobeRGB1998Profile, "rXYZ", { 39960, 20389, 1276 } }, { &kColorSyncAdobeRGB1998Profile, "gXYZ", { 13453, 41004, 3989 } },
+		{ &kColorSyncAdobeRGB1998Profile, "bXYZ", { 9777, 4143, 48795 } },
+		{ &kColorSyncITUR2020Profile, "rXYZ", { 44137, 18287, -127 } }, { &kColorSyncITUR2020Profile, "gXYZ", { 10857, 44259, 1965 } },
+		{ &kColorSyncITUR2020Profile, "bXYZ", { 8195, 2989, 52222 } },
 	};
-	for (int i = 0; srgb && i < 3; i++)
+	for (int i = 0; i < 9; i++)
 	{
+		ColorSyncProfileRef profile = ColorSyncProfileCreateWithName(*colorants[i].name);
 		CFStringRef signature = CFStringCreateWithCString(NULL, colorants[i].tag, kCFStringEncodingASCII);
-		CFDataRef tag = ColorSyncProfileCopyTag(srgb, signature);
+		CFDataRef tag = profile ? ColorSyncProfileCopyTag(profile, signature) : NULL;
 		CHECK(tag != NULL && CFDataGetLength(tag) == 20 && memcmp(CFDataGetBytePtr(tag), "XYZ ", 4) == 0);
 		for (int k = 0; tag && k < 3; k++)
-			CHECK(fixedAt(tag, 8 + 4 * k) == colorants[i].xyz[k]);
+			CHECK(abs(fixedAt(tag, 8 + 4 * k) - colorants[i].xyz[k]) <= 16);
 		if (tag)
 			CFRelease(tag);
 		CFRelease(signature);
+		if (profile)
+			CFRelease(profile);
 	}
-	if (srgb)
-		CFRelease(srgb);
 
-	// GUESS: no definition, an unknown name, NULL and a non-string give NULL.
-	CHECK(ColorSyncProfileCreateWithName(kColorSyncGenericLabProfile) == NULL);
-	CHECK(ColorSyncProfileCreateWithName(kColorSyncGenericXYZProfile) == NULL);
-	CHECK(ColorSyncProfileCreateWithName(kColorSyncGenericCMYKProfile) == NULL);
+	// An unknown name, NULL and a non-string give NULL.
 	CHECK(ColorSyncProfileCreateWithName(CFSTR("not a profile name")) == NULL);
 	CHECK(ColorSyncProfileCreateWithName(NULL) == NULL);
 	const int number = 7;

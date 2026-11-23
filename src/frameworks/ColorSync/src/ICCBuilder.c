@@ -244,7 +244,7 @@ uint8_t* ICCBuildDisplayProfile(const ICCDisplayProfileSpec* spec, size_t* outLe
 ICCDisplayProfileSpec ICCNamedProfileSpec(ICCNamedProfile which)
 {
 	static const ICCChromaticity d65 = { 0.3127, 0.3290 };
-	static const double alpha = 1.09929682680944, beta = 0.018053968510807;
+	static const double alpha = 1.09929682680944;
 	switch (which)
 	{
 		case ICCNamedAdobeRGB1998:
@@ -254,24 +254,27 @@ ICCDisplayProfileSpec ICCNamedProfileSpec(ICCNamedProfile which)
 				.white = d65,
 				.curve = { 0, { 563.0 / 256.0 } },
 			};
-		// GUESS: the curve is the inverse of the BT.2020 transfer function (OETF), as the profile maps device values to scene-linear
-		// light as IEC 61966-2-1 does for sRGB. Rejected alternative: the display EOTF of Recommendation ITU-R BT.1886 (a power of 2.4).
+		// The curve is the inverse of the BT.2020 transfer function (OETF), as the profile maps device values to scene-linear
+		// light as IEC 61966-2-1 does for sRGB (not the display EOTF of Recommendation ITU-R BT.1886, a power of 2.4). macOS 26.7.3
+		// and 10.14.4 give the curve of their ITU-R BT.2020 profile the parameters g, a, b and c below and d = 0.081 (the 10-bit
+		// constant 4.5 * 0.018, read back with ColorSyncProfileCopyTag), while a and b use the 12-bit alpha; the segments meet
+		// to within 1e-5. Test: tests/src/colorsync_profile_name.c.
 		case ICCNamedITUR2020:
 			return (ICCDisplayProfileSpec) {
-				.description = "ITU-R BT.2020",
+				.description = "Rec. ITU-R BT.2020-1",
 				.primaries = { { 0.708, 0.292 }, { 0.170, 0.797 }, { 0.131, 0.046 } },
 				.white = d65,
-				.curve = { 3, { 1.0 / 0.45, 1.0 / alpha, (alpha - 1.0) / alpha, 1.0 / 4.5, 4.5 * beta } },
+				.curve = { 3, { 1.0 / 0.45, 1.0 / alpha, (alpha - 1.0) / alpha, 1.0 / 4.5, 0.081 } },
 			};
 		case ICCNamedGrayGamma22:
 			return (ICCDisplayProfileSpec) {
-				.description = "Gray Gamma 2.2",
+				.description = "Generic Gray Gamma 2.2 Profile",
 				.isGray = true,
 				.curve = { 0, { 2.2 } },
 			};
 		case ICCNamedSRGB:
 			return (ICCDisplayProfileSpec) {
-				.description = "sRGB",
+				.description = "sRGB IEC61966-2.1",
 				.primaries = { { 0.64, 0.33 }, { 0.30, 0.60 }, { 0.15, 0.06 } },
 				.white = d65,
 				.curve = { 3, { 2.4, 1.0 / 1.055, 0.055 / 1.055, 1.0 / 12.92, 0.04045 } },
