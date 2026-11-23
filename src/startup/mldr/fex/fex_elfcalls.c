@@ -711,6 +711,66 @@ static void jpeg_wrap_std_error(uint64_t err)
 	fex_copy_to_guest((void*)(uintptr_t)err, words, sizeof(words));
 }
 
+// libpulse (pulse/*.h): which arguments of each function taking a callback are function pointers. libpulse
+// keeps state and notify callbacks until they are replaced and calls operation callbacks when the server
+// answers, from the context's main loop. pa_free_cb_t is the free_cb of pa_stream_write.
+static const struct { const char* name; unsigned mask; } g_pa_callback_args[] = {
+	// pulse/context.h
+	{ "pa_context_drain", 0x2 }, { "pa_context_exit_daemon", 0x2 }, { "pa_context_proplist_remove", 0x4 },
+	{ "pa_context_proplist_update", 0x8 }, { "pa_context_rttime_new", 0x4 }, { "pa_context_set_default_sink", 0x4 },
+	{ "pa_context_set_default_source", 0x4 }, { "pa_context_set_event_callback", 0x2 },
+	{ "pa_context_set_name", 0x4 }, { "pa_context_set_state_callback", 0x2 },
+	// pulse/subscribe.h
+	{ "pa_context_set_subscribe_callback", 0x2 }, { "pa_context_subscribe", 0x4 },
+	// pulse/operation.h
+	{ "pa_operation_set_state_callback", 0x2 },
+	// pulse/stream.h
+	{ "pa_stream_cork", 0x4 }, { "pa_stream_drain", 0x2 }, { "pa_stream_flush", 0x2 }, { "pa_stream_prebuf", 0x2 },
+	{ "pa_stream_proplist_remove", 0x4 }, { "pa_stream_proplist_update", 0x8 }, { "pa_stream_set_buffer_attr", 0x4 },
+	{ "pa_stream_set_buffer_attr_callback", 0x2 }, { "pa_stream_set_event_callback", 0x2 },
+	{ "pa_stream_set_latency_update_callback", 0x2 }, { "pa_stream_set_moved_callback", 0x2 },
+	{ "pa_stream_set_name", 0x4 }, { "pa_stream_set_overflow_callback", 0x2 }, { "pa_stream_set_read_callback", 0x2 },
+	{ "pa_stream_set_started_callback", 0x2 }, { "pa_stream_set_state_callback", 0x2 },
+	{ "pa_stream_set_suspended_callback", 0x2 }, { "pa_stream_set_underflow_callback", 0x2 },
+	{ "pa_stream_set_write_callback", 0x2 }, { "pa_stream_trigger", 0x2 }, { "pa_stream_update_sample_rate", 0x4 },
+	{ "pa_stream_update_timing_info", 0x2 }, { "pa_stream_write", 0x8 }, { "pa_stream_write_ext_free", 0x8 },
+	// pulse/introspect.h
+	{ "pa_context_add_autoload", 0x20 }, { "pa_context_get_autoload_info_by_index", 0x4 },
+	{ "pa_context_get_autoload_info_by_name", 0x8 }, { "pa_context_get_autoload_info_list", 0x2 },
+	{ "pa_context_get_card_info_by_index", 0x4 }, { "pa_context_get_card_info_by_name", 0x4 },
+	{ "pa_context_get_card_info_list", 0x2 }, { "pa_context_get_client_info", 0x4 },
+	{ "pa_context_get_client_info_list", 0x2 }, { "pa_context_get_module_info", 0x4 },
+	{ "pa_context_get_module_info_list", 0x2 }, { "pa_context_get_sample_info_by_index", 0x4 },
+	{ "pa_context_get_sample_info_by_name", 0x4 }, { "pa_context_get_sample_info_list", 0x2 },
+	{ "pa_context_get_server_info", 0x2 }, { "pa_context_get_sink_info_by_index", 0x4 },
+	{ "pa_context_get_sink_info_by_name", 0x4 }, { "pa_context_get_sink_info_list", 0x2 },
+	{ "pa_context_get_sink_input_info", 0x4 }, { "pa_context_get_sink_input_info_list", 0x2 },
+	{ "pa_context_get_source_info_by_index", 0x4 }, { "pa_context_get_source_info_by_name", 0x4 },
+	{ "pa_context_get_source_info_list", 0x2 }, { "pa_context_get_source_output_info", 0x4 },
+	{ "pa_context_get_source_output_info_list", 0x2 }, { "pa_context_kill_client", 0x4 },
+	{ "pa_context_kill_sink_input", 0x4 }, { "pa_context_kill_source_output", 0x4 },
+	{ "pa_context_load_module", 0x8 }, { "pa_context_move_sink_input_by_index", 0x8 },
+	{ "pa_context_move_sink_input_by_name", 0x8 }, { "pa_context_move_source_output_by_index", 0x8 },
+	{ "pa_context_move_source_output_by_name", 0x8 }, { "pa_context_remove_autoload_by_index", 0x4 },
+	{ "pa_context_remove_autoload_by_name", 0x8 }, { "pa_context_send_message_to_object", 0x10 },
+	{ "pa_context_set_card_profile_by_index", 0x8 }, { "pa_context_set_card_profile_by_name", 0x8 },
+	{ "pa_context_set_port_latency_offset", 0x10 }, { "pa_context_set_sink_input_mute", 0x8 },
+	{ "pa_context_set_sink_input_volume", 0x8 }, { "pa_context_set_sink_mute_by_index", 0x8 },
+	{ "pa_context_set_sink_mute_by_name", 0x8 }, { "pa_context_set_sink_port_by_index", 0x8 },
+	{ "pa_context_set_sink_port_by_name", 0x8 }, { "pa_context_set_sink_volume_by_index", 0x8 },
+	{ "pa_context_set_sink_volume_by_name", 0x8 }, { "pa_context_set_source_mute_by_index", 0x8 },
+	{ "pa_context_set_source_mute_by_name", 0x8 }, { "pa_context_set_source_output_mute", 0x8 },
+	{ "pa_context_set_source_output_volume", 0x8 }, { "pa_context_set_source_port_by_index", 0x8 },
+	{ "pa_context_set_source_port_by_name", 0x8 }, { "pa_context_set_source_volume_by_index", 0x8 },
+	{ "pa_context_set_source_volume_by_name", 0x8 }, { "pa_context_stat", 0x2 },
+	{ "pa_context_suspend_sink_by_index", 0x8 }, { "pa_context_suspend_sink_by_name", 0x8 },
+	{ "pa_context_suspend_source_by_index", 0x8 }, { "pa_context_suspend_source_by_name", 0x8 },
+	{ "pa_context_unload_module", 0x4 },
+	// pulse/scache.h
+	{ "pa_context_play_sample", 0x10 }, { "pa_context_play_sample_with_proplist", 0x20 },
+	{ "pa_context_remove_sample", 0x4 },
+};
+
 static struct fex_callback_rules callback_rules_for(const char* name)
 {
 	struct fex_callback_rules r = { FEX_X_HANDLER_NONE, 0, NULL, NULL, 0 };
@@ -745,6 +805,9 @@ static struct fex_callback_rules callback_rules_for(const char* name)
 		r.jpeg = FEX_JPEG_STD_ERROR;
 	else if (strncmp(name, "jpeg_", 5) == 0)
 		r.jpeg = FEX_JPEG_OBJECT;
+	for (size_t i = 0; i < sizeof(g_pa_callback_args) / sizeof(g_pa_callback_args[0]); i++)
+		if (strcmp(name, g_pa_callback_args[i].name) == 0)
+			r.args |= g_pa_callback_args[i].mask;
 	return r;
 }
 

@@ -1420,6 +1420,34 @@ static void test_callback_struct(void)
 	check(g_outline_funcs_ptr == 0, "a NULL struct pointer reaches the library as NULL");
 }
 
+static uint64_t g_pa_seen_cb = 0;
+static uint64_t host_pa_context_set_state_callback(uint64_t c, uint64_t cb, uint64_t userdata)
+{
+	(void)c;
+	(void)userdata;
+	g_pa_seen_cb = cb;
+	return 0;
+}
+static uint64_t host_pa_stream_write(uint64_t s, uint64_t data, uint64_t nbytes, uint64_t free_cb)
+{
+	(void)s;
+	(void)data;
+	(void)nbytes;
+	g_pa_seen_cb = free_cb;
+	return 0;
+}
+
+// Plain libpulse callbacks become thunks, as listed from pulse/*.h.
+static void test_pa_callback_args(void)
+{
+	void* stub = fex_dlsym_wrap_if_func((void*)host_pa_context_set_state_callback, "pa_context_set_state_callback");
+	call_stub(stub, 0x7f00028000, 0x5500f00, 0x7f00029000, 0);
+	check(g_pa_seen_cb != 0 && !is_fake_guest_fn(g_pa_seen_cb), "pa_context_set_state_callback gets a thunk");
+	stub = fex_dlsym_wrap_if_func((void*)host_pa_stream_write, "pa_stream_write");
+	call_stub(stub, 0x7f00028000, 0x7f00029000, 64, 0x5501000);
+	check(g_pa_seen_cb != 0 && !is_fake_guest_fn(g_pa_seen_cb), "pa_stream_write gets a thunk for free_cb");
+}
+
 static uint64_t g_xim_values[4];
 // What libX11 keeps of XVaCreateNestedList(0, name1, value1, name2, value2, NULL): the values.
 static uint64_t host_XVaCreateNestedList(uint64_t unused, uint64_t n1, uint64_t v1, uint64_t n2, uint64_t v2, uint64_t end)
@@ -2373,6 +2401,7 @@ int main(void)
 	test_jpeg_error_manager();
 	test_xim_callbacks();
 	test_left_callbacks();
+	test_pa_callback_args();
 	test_syscall_translations();
 	test_safe_memory_access();
 	test_guest_signal_delivery();
