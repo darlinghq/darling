@@ -1,18 +1,70 @@
 #import <ImageIO/CGImageDestination.h>
 #import <Onyx2D/O2ImageDestination.h>
 #import <Onyx2D/O2ImageSource.h>
+#import <Onyx2D/O2BitmapContext.h>
+#import <Onyx2D/O2ColorSpace.h>
+#import <Onyx2D/O2Context.h>
+#import <Onyx2D/O2Image.h>
 
 #include <CoreFoundation/CoreFoundation.h>
+#include <math.h>
+#include <objc/runtime.h>
+#include <stdint.h>
+
+// Set on a destination (associated object) when an image could not be added; Finalize then fails.
+static char ImageIOFailureKey;
 
 const CFStringRef kCGImageDestinationLossyCompressionQuality=(CFStringRef)@"kCGImageDestinationLossyCompressionQuality";
 const CFStringRef kCGImageDestinationBackgroundColor=(CFStringRef)@"kCGImageDestinationBackgroundColor";
 
-// Each value is the constant's own name (read on macOS 26.7.3). The destination
-// accepts these options and does not act on them yet.
+// Each value is the constant's own name (read on macOS 26.7.3).
 // Test: tests/src/imageio_property_names.c
+//
+// kCGImageDestinationImageMaxPixelSize is a CFNumber that Apple documents (ImageIO, kCGImageDestinationImageMaxPixelSize)
+// as: if present, the destination rescales the image to fit within the maximum width and height; if absent, the native size
+// is kept. CGImageDestinationAddImage and AddImageFromSource scale an image down to fit (aspect ratio kept) and add an
+// image that already fits unchanged.
+// Not covered by the documentation, chosen conservatively: the key is read from the per-image properties of those two
+// calls and not from the options of the destination; the scaled dimensions round to nearest with a minimum of one pixel
+// (as CGImageSourceCreateThumbnailAtIndex does); the scaled copy is a device RGB bitmap; a value that is not a number of at
+// least 1 is ignored; an image that cannot be scaled is not added at full size and Finalize returns false.
+// Test: tests/imageio-destination-max-pixel-size.c
+// OptimizeColorForSharing and PreserveGainMap are accepted and have no effect yet.
 const CFStringRef kCGImageDestinationImageMaxPixelSize = CFSTR("kCGImageDestinationImageMaxPixelSize");
 const CFStringRef kCGImageDestinationOptimizeColorForSharing = CFSTR("kCGImageDestinationOptimizeColorForSharing");
 const CFStringRef kCGImageDestinationPreserveGainMap = CFSTR("kCGImageDestinationPreserveGainMap");
+
+// The limit the properties hold under kCGImageDestinationImageMaxPixelSize: a number of at least 1, else 0 (no limit).
+static size_t maxPixelSizeLimit(CFDictionaryRef properties) {
+   CFTypeRef value=properties!=NULL?CFDictionaryGetValue(properties,kCGImageDestinationImageMaxPixelSize):NULL;
+   double requested=0;
+   if (value==NULL || CFGetTypeID(value)!=CFNumberGetTypeID() || !CFNumberGetValue((CFNumberRef)value,kCFNumberDoubleType,&requested) || !(requested>=1)) {
+      return 0;
+   }
+   // A value beyond what a size_t holds (1e30, +infinity) is clamped to a limit no image reaches, so the cast is defined.
+   const double largest=(double)(SIZE_MAX>>12);
+   return (size_t)(requested<largest?requested:largest);
+}
+
+// A new RGBA copy of `image` whose longer side is `limit` pixels, aspect ratio kept. The caller has checked that a side
+// exceeds `limit`. NULL when the bitmap cannot be made (the bitmap allocation can also raise).
+static O2ImageRef createImageWithin(O2ImageRef image,size_t limit) {
+   size_t width=O2ImageGetWidth(image),height=O2ImageGetHeight(image);
+   double scale=(double)limit/(double)(width>height?width:height);
+   width=(size_t)fmax(1,lround(width*scale));
+   height=(size_t)fmax(1,lround(height*scale));
+   O2ColorSpaceRef colorSpace=O2ColorSpaceCreateDeviceRGB();
+   O2ContextRef context=O2BitmapContextCreate(NULL,width,height,8,width*4,colorSpace,kO2ImageAlphaPremultipliedLast|kO2BitmapByteOrder32Big);
+   O2ColorSpaceRelease(colorSpace);
+   O2ImageRef result=NULL;
+   if (context!=NULL) {
+      O2ContextSetInterpolationQuality(context,kO2InterpolationHigh);
+      O2ContextDrawImage(context,O2RectMake(0,0,width,height),image);
+      result=O2BitmapContextCreateImage(context);
+      O2ContextRelease(context);
+   }
+   return result;
+}
 
 CFTypeID CGImageDestinationGetTypeID(void) {
    return O2ImageDestinationGetTypeID();
@@ -39,15 +91,41 @@ void CGImageDestinationSetProperties(CGImageDestinationRef self,CFDictionaryRef 
 }
 
 void CGImageDestinationAddImage(CGImageDestinationRef self,CGImageRef image,CFDictionaryRef properties) {
+   size_t limit=maxPixelSizeLimit(properties);
+   if (limit!=0 && image!=NULL && (O2ImageGetWidth((O2ImageRef)image)>limit || O2ImageGetHeight((O2ImageRef)image)>limit)) {
+      O2ImageRef scaled=NULL;
+      @try {
+         scaled=createImageWithin((O2ImageRef)image,limit);
+      } @catch (NSException *exception) {
+         scaled=NULL;
+      }
+      if (scaled==NULL) {
+         // Never fall back to the full-size image: the caller asked for a bounded one.
+         objc_setAssociatedObject((id)self,&ImageIOFailureKey,(id)kCFBooleanTrue,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+         return;
+      }
+      O2ImageDestinationAddImage((O2ImageDestinationRef)self,scaled,properties);
+      O2ImageRelease(scaled);
+      return;
+   }
    O2ImageDestinationAddImage((O2ImageDestinationRef)self,(O2ImageRef)image,properties);
 }
 
 void CGImageDestinationAddImageFromSource(CGImageDestinationRef self,CGImageSourceRef imageSource,size_t index,CFDictionaryRef properties) {
+   if (maxPixelSizeLimit(properties)!=0) {
+      O2ImageRef image=O2ImageSourceCreateImageAtIndex((O2ImageSourceRef)imageSource,index,NULL);
+      CGImageDestinationAddImage(self,(CGImageRef)image,properties);
+      O2ImageRelease(image);
+      return;
+   }
    O2ImageDestinationAddImageFromSource((O2ImageDestinationRef)self,(O2ImageSourceRef)imageSource,index,properties);
 }
 
 
 bool CGImageDestinationFinalize(CGImageDestinationRef self) {
+   if (objc_getAssociatedObject((id)self,&ImageIOFailureKey)!=nil) {
+      return false;
+   }
    return O2ImageDestinationFinalize((O2ImageDestinationRef)self);
 }
 
