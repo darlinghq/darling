@@ -65,6 +65,11 @@ ICCTag ICCProfileTagAt(const uint8_t* data, uint32_t index);
 // Finds the last tag with the signature.
 bool ICCProfileFindTag(const uint8_t* data, uint32_t signature, ICCTag* outTag);
 
+// True if the profile has all six tags of a three-component matrix-based profile (ICC.1:2022, 8.3.3 and 8.4.3):
+// the red, green and blue matrix columns (rXYZ, gXYZ, bXYZ) and tone reproduction curves (rTRC, gTRC, bTRC).
+// Other tags, such as an AToB0 table, do not matter. Requires data that ICCProfileValidate accepted.
+bool ICCProfileHasMatrixTRC(const uint8_t* data);
+
 // Writes to outIndices the table index of the first entry of each distinct signature, in table order, and the
 // number written to outCount. outIndices has room for ICCProfileTagCount entries. Takes O(n log n) time.
 // Returns false if memory runs out.

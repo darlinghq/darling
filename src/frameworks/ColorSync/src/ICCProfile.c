@@ -146,6 +146,21 @@ bool ICCProfileFindTag(const uint8_t* data, uint32_t signature, ICCTag* outTag)
 	return false;
 }
 
+#define SIG(a, b, c, d) (((uint32_t) (a) << 24) | ((uint32_t) (b) << 16) | ((uint32_t) (c) << 8) | (uint32_t) (d))
+
+bool ICCProfileHasMatrixTRC(const uint8_t* data)
+{
+	static const uint32_t required[] = {
+		SIG('r', 'X', 'Y', 'Z'), SIG('g', 'X', 'Y', 'Z'), SIG('b', 'X', 'Y', 'Z'),
+		SIG('r', 'T', 'R', 'C'), SIG('g', 'T', 'R', 'C'), SIG('b', 'T', 'R', 'C'),
+	};
+	ICCTag tag;
+	for (size_t i = 0; i < sizeof required / sizeof required[0]; i++)
+		if (!ICCProfileFindTag(data, required[i], &tag))
+			return false;
+	return true;
+}
+
 typedef struct SignatureEntry {
 	uint32_t signature;
 	uint32_t index;

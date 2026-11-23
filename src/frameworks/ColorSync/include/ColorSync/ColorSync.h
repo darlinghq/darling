@@ -147,6 +147,7 @@ bool ColorSyncProfileContainsTag(ColorSyncProfileRef prof, CFStringRef signature
 CFDataRef ColorSyncProfileCopyTag(ColorSyncProfileRef prof, CFStringRef signature);
 CFStringRef ColorSyncProfileCopyDescriptionString(ColorSyncProfileRef prof);
 CFArrayRef ColorSyncProfileCopyTagSignatures(ColorSyncProfileRef prof);
+bool ColorSyncProfileIsMatrixBased(ColorSyncProfileRef prof);
 ColorSyncProfileRef ColorSyncProfileCreateWithURL(CFURLRef url, CFErrorRef* error);
 CFURLRef ColorSyncProfileGetURL(ColorSyncProfileRef prof, CFErrorRef* error);
 ColorSyncMutableProfileRef ColorSyncProfileCreateMutableCopy(ColorSyncProfileRef prof);

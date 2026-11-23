@@ -246,6 +246,17 @@ CFArrayRef ColorSyncProfileCopyTagSignatures(ColorSyncProfileRef prof)
 	return signatures;
 }
 
+// GUESS: the page says only "matrix-based". It is taken to be a profile with the six tags that ICC.1:2022, 8.3.3 and 8.4.3
+// require of a three-component matrix-based profile, whether or not it also has AToB tables (the same sections let it
+// have them) and whatever its colour space and PCS (the header is not looked at, though 8.3.3 and 8.4.3 say only PCSXYZ can
+// be used with matrix/TRC models). A profile that is not matrix-based, such
+// as a LUT-only or gray one, and a NULL or non-profile argument give false.
+bool ColorSyncProfileIsMatrixBased(ColorSyncProfileRef prof)
+{
+	const struct __ColorSyncProfile* profile = profileOrNull(prof);
+	return profile && ICCProfileHasMatrixTRC(CFDataGetBytePtr(profile->data));
+}
+
 // The bytes of the file at a file URL, or NULL when the URL is not a file URL or the file cannot be read in full:
 // missing, unreadable, not a regular file, or larger than a profile can be (its size field is 32 bits).
 static CFDataRef copyFileData(CFURLRef url)
