@@ -248,6 +248,9 @@ if (ADHOC_CODESIGN AND TARGET darlingserver_dc_codesign)
 	add_subdirectory(${CMAKE_SOURCE_DIR}/tests/adhoc-sign ${CMAKE_CURRENT_BINARY_DIR}/adhoc-sign-tests)
 endif()
 
+# host tests of the ASTC decoder (src/libtexturecodec): plain C, they need no Darling build
+add_subdirectory(${CMAKE_SOURCE_DIR}/src/libtexturecodec/tests ${CMAKE_CURRENT_BINARY_DIR}/texturecodec-tests)
+
 add_subdirectory(startup)
 
 include_directories(${CMAKE_SOURCE_DIR}/basic-headers)
