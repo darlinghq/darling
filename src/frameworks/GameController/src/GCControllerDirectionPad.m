@@ -91,18 +91,13 @@
 	if (cx == _xAxis.value && cy == _yAxis.value)
 		return;
 
-	[_xAxis setValue:cx];
-	[_yAxis setValue:cy];
-
-	float upVal = (cy > 0.0f) ? cy : 0.0f;
-	float downVal = (cy < 0.0f) ? -cy : 0.0f;
-	[_up setValue:upVal];
-	[_down setValue:downVal];
-
-	float rightVal = (cx > 0.0f) ? cx : 0.0f;
-	float leftVal = (cx < 0.0f) ? -cx : 0.0f;
-	[_right setValue:rightVal];
-	[_left setValue:leftVal];
+	// every element of the pad reports its own change through its handlers
+	[_xAxis _setValue:cx handlerQueue:queue profileHandler:nil];
+	[_yAxis _setValue:cy handlerQueue:queue profileHandler:nil];
+	[_up _setValue:(cy > 0.0f) ? cy : 0.0f handlerQueue:queue profileHandler:nil];
+	[_down _setValue:(cy < 0.0f) ? -cy : 0.0f handlerQueue:queue profileHandler:nil];
+	[_right _setValue:(cx > 0.0f) ? cx : 0.0f handlerQueue:queue profileHandler:nil];
+	[_left _setValue:(cx < 0.0f) ? -cx : 0.0f handlerQueue:queue profileHandler:nil];
 
 	GCControllerDirectionPadValueChangedHandler vh = [_valueChangedHandler copy];
 	void (^phCopy)(GCControllerElement *) = [profileHandler copy];

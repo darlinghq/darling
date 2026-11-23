@@ -25,7 +25,8 @@
 #import <GameController/GCProductCategories.h>
 #import <GameController/_GCControllerManager.h>
 #import "GCInputInternal.h"
-#include <IOKit/IOKitLib.h>
+#include <IOKit/hid/IOHIDLib.h>
+#include <IOKit/hid/IOHIDUsageTables.h>
 
 NSString *const GCMouseDidConnectNotification = @"GCMouseDidConnectNotification";
 NSString *const GCMouseDidDisconnectNotification = @"GCMouseDidDisconnectNotification";
@@ -36,12 +37,13 @@ NSString *const GCMouseDidStopBeingCurrentNotification = @"GCMouseDidStopBeingCu
 	GCDeviceButtonInput *_leftButton;
 	GCDeviceButtonInput *_rightButton;
 	GCDeviceButtonInput *_middleButton;
+	NSArray<GCDeviceButtonInput *> *_auxiliaryButtons;
 	GCDeviceDirectionPad *_scroll;
 }
 
 @synthesize mouseMovedHandler = _mouseMovedHandler;
 
-- (instancetype)initWithMouse:(GCMouse *)mouse
+- (instancetype)initWithMouse:(GCMouse *)mouse auxiliaryButtonCount:(NSUInteger)auxiliaryCount
 {
 	self = [super initWithDevice:mouse];
 	if (!self)
@@ -49,6 +51,10 @@ NSString *const GCMouseDidStopBeingCurrentNotification = @"GCMouseDidStopBeingCu
 	_leftButton = [[GCDeviceButtonInput alloc] init];
 	_rightButton = [[GCDeviceButtonInput alloc] init];
 	_middleButton = [[GCDeviceButtonInput alloc] init];
+	NSMutableArray *aux = [NSMutableArray array];
+	for (NSUInteger i = 0; i < auxiliaryCount; i++)
+		[aux addObject:[[[GCDeviceButtonInput alloc] init] autorelease]];
+	_auxiliaryButtons = [aux copy];
 	_scroll = [[GCDeviceDirectionPad alloc] init];
 	return self;
 }
@@ -59,6 +65,7 @@ NSString *const GCMouseDidStopBeingCurrentNotification = @"GCMouseDidStopBeingCu
 	[_leftButton release];
 	[_rightButton release];
 	[_middleButton release];
+	[_auxiliaryButtons release];
 	[_scroll release];
 	[super dealloc];
 }
@@ -66,59 +73,64 @@ NSString *const GCMouseDidStopBeingCurrentNotification = @"GCMouseDidStopBeingCu
 - (GCDeviceButtonInput *)leftButton { return _leftButton; }
 - (GCDeviceButtonInput *)rightButton { return _rightButton; }
 - (GCDeviceButtonInput *)middleButton { return _middleButton; }
-- (NSArray *)auxiliaryButtons { return @[]; }
+- (NSArray *)auxiliaryButtons { return _auxiliaryButtons; }
 - (GCDeviceDirectionPad *)scroll { return _scroll; }
 
 @end
 
 @implementation GCMouse {
-	io_service_t _service;
 	NSString *_vendorName;
 	GCMouseInput *_mouseInput;
 	dispatch_queue_t _handlerQueue;
+	float _pendingDeltaX;
+	float _pendingDeltaY;
+	BOOL _movePending;
 }
 
 - (instancetype)init
 {
-	return [self initWithService:0];
+	return [self initWithHIDDevice:NULL];
 }
 
-- (instancetype)initWithService:(io_service_t)service
+- (instancetype)initWithHIDDevice:(IOHIDDeviceRef)device
 {
 	self = [super init];
 	if (!self)
 		return nil;
 
-	_service = service;
-	if (_service)
-		IOObjectRetain(_service);
-
 	_handlerQueue = dispatch_get_main_queue();
-	_mouseInput = [[GCMouseInput alloc] initWithMouse:self];
 
 	NSString *name = @"Mouse";
-	if (_service) {
-		CFTypeRef prop = IORegistryEntryCreateCFProperty(_service, CFSTR("Product"), NULL, 0);
-		if (prop && CFGetTypeID(prop) == CFStringGetTypeID()) {
+	NSUInteger auxiliary = 0;
+	if (device) {
+		CFTypeRef prop = IOHIDDeviceGetProperty(device, CFSTR(kIOHIDProductKey));
+		if (prop && CFGetTypeID(prop) == CFStringGetTypeID())
 			name = [NSString stringWithString:(__bridge NSString *)prop];
+
+		// buttons 1 .. 3 are the left, right and middle buttons, the others are auxiliary
+		NSDictionary *match = @{ (id)CFSTR(kIOHIDElementUsagePageKey): @(kHIDPage_Button) };
+		CFArrayRef buttons = IOHIDDeviceCopyMatchingElements(device, (__bridge CFDictionaryRef)match, kIOHIDOptionsTypeNone);
+		if (buttons) {
+			for (CFIndex i = 0; i < CFArrayGetCount(buttons); i++) {
+				IOHIDElementRef e = (IOHIDElementRef)CFArrayGetValueAtIndex(buttons, i);
+				if (IOHIDElementGetUsage(e) > 3 + auxiliary)
+					auxiliary = IOHIDElementGetUsage(e) - 3;
+			}
+			CFRelease(buttons);
 		}
-		if (prop) CFRelease(prop);
 	}
 	_vendorName = [name copy];
+	_mouseInput = [[GCMouseInput alloc] initWithMouse:self auxiliaryButtonCount:auxiliary];
 
 	return self;
 }
 
 - (void)dealloc
 {
-	if (_service)
-		IOObjectRelease(_service);
 	[_vendorName release];
 	[_mouseInput release];
 	[super dealloc];
 }
-
-- (io_service_t)service { return _service; }
 
 + (NSArray<GCMouse *> *)mice
 {
@@ -157,12 +169,78 @@ NSString *const GCMouseDidStopBeingCurrentNotification = @"GCMouseDidStopBeingCu
 
 - (dispatch_queue_t)handlerQueue
 {
-	return _handlerQueue;
+	@synchronized (self) {
+		return _handlerQueue;
+	}
 }
 
 - (void)setHandlerQueue:(dispatch_queue_t)queue
 {
-	_handlerQueue = queue ? queue : dispatch_get_main_queue();
+	@synchronized (self) {
+		_handlerQueue = queue ? queue : dispatch_get_main_queue();
+	}
+}
+
+// Sends the movement of one input report to the handler on the handler queue, as one call.
+- (void)_addMotionX:(float)dx y:(float)dy
+{
+	dispatch_queue_t queue;
+	@synchronized (self) {
+		_pendingDeltaX += dx;
+		_pendingDeltaY += dy;
+		if (_movePending)
+			return;
+		_movePending = YES;
+		queue = _handlerQueue;
+	}
+	dispatch_async(queue, ^{
+		float x, y;
+		@synchronized (self) {
+			x = _pendingDeltaX;
+			y = _pendingDeltaY;
+			_pendingDeltaX = _pendingDeltaY = 0;
+			_movePending = NO;
+		}
+		GCMouseMoved handler = [[_mouseInput mouseMovedHandler] copy];
+		if (handler)
+			handler(_mouseInput, x, y);
+		[handler release];
+	});
+}
+
+- (void)handleHIDValue:(IOHIDValueRef)value
+{
+	IOHIDElementRef element = IOHIDValueGetElement(value);
+	uint32_t page = IOHIDElementGetUsagePage(element);
+	uint32_t usage = IOHIDElementGetUsage(element);
+	CFIndex v = IOHIDValueGetIntegerValue(value);
+	dispatch_queue_t queue = [self handlerQueue];
+	GCMouseInput *input = _mouseInput;
+
+	if (page == kHIDPage_Button) {
+		GCDeviceButtonInput *button = nil;
+		if (usage == 1)
+			button = [input leftButton];
+		else if (usage == 2)
+			button = [input rightButton];
+		else if (usage == 3)
+			button = [input middleButton];
+		else if (usage > 3 && usage - 4 < [[input auxiliaryButtons] count])
+			button = [input auxiliaryButtons][usage - 4];
+		if (!button)
+			return;
+		[button _setValue:(v != 0 ? 1.0f : 0.0f) handlerQueue:queue profileHandler:^(GCControllerElement *e) {
+			void (^handler)(GCPhysicalInputProfile *, GCControllerElement *) = [input valueDidChangeHandler];
+			if (handler)
+				handler(input, e);
+		}];
+	} else if (page == kHIDPage_GenericDesktop && usage == kHIDUsage_GD_X) {
+		[self _addMotionX:(float)v y:0.0f];
+	} else if (page == kHIDPage_GenericDesktop && usage == kHIDUsage_GD_Y) {
+		// Deltas are passed on as the HID reports them (positive Y is down); the orientation macOS uses
+		// is not documented and has not been confirmed on a Mac with a mouse.
+		[self _addMotionX:0.0f y:(float)v];
+	}
 }
 
 @end

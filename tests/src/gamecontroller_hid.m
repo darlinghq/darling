@@ -63,8 +63,8 @@ int main(int argc, char *argv[])
 			check("GCMouse current is non-nil when mice exist", [GCMouse current] != nil);
 		}
 
+		/* macOS answers nil without a keyboard; the keyboard itself is tested by gamecontroller_kbd_mouse */
 		GCKeyboard *keyboard = [GCKeyboard coalescedKeyboard];
-		check("GCKeyboard coalescedKeyboard returns instance", keyboard != nil);
 		if (keyboard) {
 			check("GCKeyboard keyboardInput returns input", [keyboard keyboardInput] != nil);
 		}
@@ -152,6 +152,11 @@ int main(int argc, char *argv[])
 			stickXValue = xValue;
 		};
 
+		__block float stickAxisValue = 0.0f;
+		leftStick.xAxis.valueChangedHandler = ^(GCControllerAxisInput *axis, float value) {
+			stickAxisValue = value;
+		};
+
 		__block float triggerValue = 0.0f;
 		leftTrigger.valueChangedHandler = ^(GCControllerButtonInput *button, float value, BOOL pressed) {
 			triggerValue = value;
@@ -186,6 +191,9 @@ int main(int argc, char *argv[])
 		for (int i = 0; i < 100 && [[leftStick xAxis] value] < 0.5f; i++)
 			spin(0.05);
 		check("Stick right: leftThumbstick xAxis > 0.8", [[leftStick xAxis] value] > 0.8f);
+		for (int i = 0; i < 100 && stickAxisValue < 0.5f; i++)
+			spin(0.05);
+		check("Stick right: leftThumbstick.xAxis valueChangedHandler called", stickAxisValue > 0.8f);
 
 		// 8. Stick Low (Left)
 		sync_point("stick-low");
@@ -205,6 +213,9 @@ int main(int argc, char *argv[])
 		for (int i = 0; i < 100 && ![[dpad up] isPressed]; i++)
 			spin(0.05);
 		check("Hat up: dpad up isPressed", [[dpad up] isPressed]);
+		for (int i = 0; i < 100 && !dpadUpPressed; i++)
+			spin(0.05);
+		check("Hat up: dpad.up valueChangedHandler called with pressed", dpadUpPressed);
 
 		// 10b. Hat Up-Right
 		sync_point("hat-upright");

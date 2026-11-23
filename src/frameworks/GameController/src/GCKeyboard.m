@@ -23,16 +23,14 @@
 #ifdef __LP64__
 #import <GameController/GCKeyboard.h>
 #import <GameController/GCKeyboardInput.h>
+#import <GameController/GCProductCategories.h>
 #import <GameController/_GCControllerManager.h>
 #import "GCInputInternal.h"
+#include <IOKit/hid/IOHIDLib.h>
+#include <IOKit/hid/IOHIDUsageTables.h>
 
 NSString *const GCKeyboardDidConnectNotification = @"GCKeyboardDidConnectNotification";
 NSString *const GCKeyboardDidDisconnectNotification = @"GCKeyboardDidDisconnectNotification";
-
-@interface _GCControllerManager (KeyboardAccess)
-+ (_GCControllerManager *)sharedInstance;
-- (GCKeyboard *)coalescedKeyboard;
-@end
 
 @implementation GCKeyboardInput {
 	NSMutableDictionary<NSNumber *, GCDeviceButtonInput *> *_buttonsByKeyCode;
@@ -59,9 +57,11 @@ NSString *const GCKeyboardDidDisconnectNotification = @"GCKeyboardDidDisconnectN
 
 - (BOOL)isAnyKeyPressed
 {
-	for (GCDeviceButtonInput *btn in [_buttonsByKeyCode allValues]) {
-		if (btn.isPressed)
-			return YES;
+	@synchronized (self) {
+		for (GCDeviceButtonInput *btn in [_buttonsByKeyCode allValues]) {
+			if (btn.isPressed)
+				return YES;
+		}
 	}
 	return NO;
 }
@@ -69,12 +69,14 @@ NSString *const GCKeyboardDidDisconnectNotification = @"GCKeyboardDidDisconnectN
 - (GCDeviceButtonInput *)buttonForKeyCode:(GCKeyCode)code
 {
 	NSNumber *key = @(code);
-	GCDeviceButtonInput *btn = _buttonsByKeyCode[key];
-	if (!btn) {
-		btn = [[[GCDeviceButtonInput alloc] init] autorelease];
-		_buttonsByKeyCode[key] = btn;
+	@synchronized (self) {
+		GCDeviceButtonInput *btn = _buttonsByKeyCode[key];
+		if (!btn) {
+			btn = [[[GCDeviceButtonInput alloc] init] autorelease];
+			_buttonsByKeyCode[key] = btn;
+		}
+		return btn;
 	}
-	return btn;
 }
 
 @end
@@ -127,12 +129,41 @@ NSString *const GCKeyboardDidDisconnectNotification = @"GCKeyboardDidDisconnectN
 
 - (dispatch_queue_t)handlerQueue
 {
-	return _handlerQueue;
+	@synchronized (self) {
+		return _handlerQueue;
+	}
 }
 
 - (void)setHandlerQueue:(dispatch_queue_t)queue
 {
-	_handlerQueue = queue ? queue : dispatch_get_main_queue();
+	@synchronized (self) {
+		_handlerQueue = queue ? queue : dispatch_get_main_queue();
+	}
+}
+
+// A key code is the usage of the key on the Keyboard/Keypad page. Usages below 4 are the
+// error states of the report (roll over, POST fail, undefined), not keys.
+- (void)handleHIDValue:(IOHIDValueRef)value
+{
+	IOHIDElementRef element = IOHIDValueGetElement(value);
+	if (IOHIDElementGetUsagePage(element) != kHIDPage_KeyboardOrKeypad)
+		return;
+	uint32_t usage = IOHIDElementGetUsage(element);
+	if (usage < kHIDUsage_KeyboardA || usage > kHIDUsage_KeyboardRightGUI)
+		return;
+
+	BOOL pressed = IOHIDValueGetIntegerValue(value) != 0;
+	GCKeyboardInput *input = _keyboardInput;
+	GCDeviceButtonInput *button = [input buttonForKeyCode:(GCKeyCode)usage];
+	[button _setValue:(pressed ? 1.0f : 0.0f) handlerQueue:[self handlerQueue] profileHandler:^(GCControllerElement *e) {
+		GCKeyboardValueChangedHandler keyHandler = [[input keyChangedHandler] copy];
+		if (keyHandler)
+			keyHandler(input, (GCDeviceButtonInput *)e, (GCKeyCode)usage, pressed);
+		[keyHandler release];
+		void (^handler)(GCPhysicalInputProfile *, GCControllerElement *) = [input valueDidChangeHandler];
+		if (handler)
+			handler(input, e);
+	}];
 }
 
 @end

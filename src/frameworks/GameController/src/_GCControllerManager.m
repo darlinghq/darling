@@ -27,7 +27,6 @@
 #import <GameController/GCMouse.h>
 #import <GameController/GCKeyboard.h>
 
-#include <IOKit/IOKitLib.h>
 #include <IOKit/hid/IOHIDLib.h>
 #include <IOKit/hid/IOHIDUsageTables.h>
 
@@ -38,31 +37,32 @@
 @end
 
 @interface GCMouse ()
-- (instancetype)initWithService:(io_service_t)service;
-- (io_service_t)service;
+- (instancetype)initWithHIDDevice:(IOHIDDeviceRef)device;
+- (void)handleHIDValue:(IOHIDValueRef)value;
+@end
+
+@interface GCKeyboard ()
+- (void)handleHIDValue:(IOHIDValueRef)value;
 @end
 
 @interface _GCControllerManager () {
-	IOHIDManagerRef _hidManager;
+	IOHIDManagerRef _hidManager;       // game controllers
+	IOHIDManagerRef _inputManager;     // keyboards and mice
 	NSMutableArray<GCController *> *_controllers;
 	NSMapTable *_deviceToController;
 
 	NSMutableArray<GCMouse *> *_mice;
+	NSMapTable *_deviceToMouse;
 	GCMouse *_currentMouse;
 	GCKeyboard *_coalescedKeyboard;
-	NSMutableSet<NSNumber *> *_keyboardServices;
-
-	IONotificationPortRef _notifyPort;
-	io_iterator_t _matchedIter;
-	io_iterator_t _terminatedIter;
+	NSCountedSet *_keyboardDevices;
 }
 
 - (void)addControllerForHIDDevice:(IOHIDDeviceRef)device;
 - (void)removeControllerForHIDDevice:(IOHIDDeviceRef)device;
+- (void)addInputDevice:(IOHIDDeviceRef)device;
+- (void)removeInputDevice:(IOHIDDeviceRef)device;
 - (void)handleInputValue:(IOHIDValueRef)value forDevice:(IOHIDDeviceRef)device;
-
-- (void)serviceMatched:(io_iterator_t)iter;
-- (void)serviceTerminated:(io_iterator_t)iter;
 
 @end
 
@@ -78,6 +78,18 @@ static void _deviceRemovalCallback(void *context, IOReturn result, void *sender,
 	[mgr removeControllerForHIDDevice:device];
 }
 
+static void _inputDeviceMatchingCallback(void *context, IOReturn result, void *sender, IOHIDDeviceRef device)
+{
+	_GCControllerManager *mgr = (__bridge _GCControllerManager *)context;
+	[mgr addInputDevice:device];
+}
+
+static void _inputDeviceRemovalCallback(void *context, IOReturn result, void *sender, IOHIDDeviceRef device)
+{
+	_GCControllerManager *mgr = (__bridge _GCControllerManager *)context;
+	[mgr removeInputDevice:device];
+}
+
 static void _inputValueCallback(void *context, IOReturn result, void *sender, IOHIDValueRef value)
 {
 	_GCControllerManager *mgr = (__bridge _GCControllerManager *)context;
@@ -85,16 +97,13 @@ static void _inputValueCallback(void *context, IOReturn result, void *sender, IO
 	[mgr handleInputValue:value forDevice:device];
 }
 
-static void _serviceMatchedCallback(void *context, io_iterator_t iterator)
+static void _postOnMainQueue(NSString *name, id object)
 {
-	_GCControllerManager *mgr = (__bridge _GCControllerManager *)context;
-	[mgr serviceMatched:iterator];
-}
-
-static void _serviceTerminatedCallback(void *context, io_iterator_t iterator)
-{
-	_GCControllerManager *mgr = (__bridge _GCControllerManager *)context;
-	[mgr serviceTerminated:iterator];
+	[object retain];
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[[NSNotificationCenter defaultCenter] postNotificationName:name object:object];
+		[object release];
+	});
 }
 
 @implementation _GCControllerManager
@@ -120,10 +129,13 @@ static void _serviceTerminatedCallback(void *context, io_iterator_t iterator)
 												  valueOptions:NSPointerFunctionsStrongMemory
 													  capacity:4];
 	_mice = [[NSMutableArray alloc] init];
-	_keyboardServices = [[NSMutableSet alloc] init];
+	_deviceToMouse = [[NSMapTable alloc] initWithKeyOptions:NSPointerFunctionsOpaqueMemory | NSPointerFunctionsObjectPointerPersonality
+											   valueOptions:NSPointerFunctionsStrongMemory
+												   capacity:4];
+	_keyboardDevices = [[NSCountedSet alloc] init];
 
 	[self _setupHIDManager];
-	[self _setupServiceNotifications];
+	[self _setupInputManager];
 
 	return self;
 }
@@ -134,58 +146,55 @@ static void _serviceTerminatedCallback(void *context, io_iterator_t iterator)
 		IOHIDManagerClose(_hidManager, kIOHIDOptionsTypeNone);
 		CFRelease(_hidManager);
 	}
-	if (_notifyPort) {
-		IONotificationPortDestroy(_notifyPort);
-	}
-	if (_matchedIter) {
-		IOObjectRelease(_matchedIter);
-	}
-	if (_terminatedIter) {
-		IOObjectRelease(_terminatedIter);
+	if (_inputManager) {
+		IOHIDManagerClose(_inputManager, kIOHIDOptionsTypeNone);
+		CFRelease(_inputManager);
 	}
 	[_controllers release];
 	[_deviceToController release];
 	[_mice release];
+	[_deviceToMouse release];
 	[_currentMouse release];
 	[_coalescedKeyboard release];
-	[_keyboardServices release];
+	[_keyboardDevices release];
 	[super dealloc];
+}
+
+static NSDictionary *_matchingForUsage(int page, int usage)
+{
+	return @{
+		(id)CFSTR(kIOHIDDeviceUsagePageKey): @(page),
+		(id)CFSTR(kIOHIDDeviceUsageKey): @(usage)
+	};
+}
+
+// Creates a manager for the matching dictionaries, delivering on the main run loop in all common modes
+// (so that input keeps flowing while a menu or a modal panel runs the loop in another mode).
+- (IOHIDManagerRef)_newManagerMatching:(NSArray *)matching
+							  matched:(IOHIDDeviceCallback)matched
+							  removed:(IOHIDDeviceCallback)removed
+{
+	IOHIDManagerRef manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDManagerOptionNone);
+	if (!manager)
+		return NULL;
+
+	IOHIDManagerSetDeviceMatchingMultiple(manager, (__bridge CFArrayRef)matching);
+	IOHIDManagerRegisterDeviceMatchingCallback(manager, matched, (__bridge void *)self);
+	IOHIDManagerRegisterDeviceRemovalCallback(manager, removed, (__bridge void *)self);
+	IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), kCFRunLoopCommonModes);
+	IOHIDManagerOpen(manager, kIOHIDOptionsTypeNone);
+	return manager;
 }
 
 - (void)_setupHIDManager
 {
-	_hidManager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDManagerOptionNone);
-	if (!_hidManager) {
+	_hidManager = [self _newManagerMatching:@[
+		_matchingForUsage(kHIDPage_GenericDesktop, kHIDUsage_GD_Joystick),
+		_matchingForUsage(kHIDPage_GenericDesktop, kHIDUsage_GD_GamePad),
+		_matchingForUsage(kHIDPage_GenericDesktop, kHIDUsage_GD_MultiAxisController)
+	] matched:_deviceMatchingCallback removed:_deviceRemovalCallback];
+	if (!_hidManager)
 		return;
-	}
-
-	NSArray *matching = @[
-		@{
-			(id)CFSTR(kIOHIDDeviceUsagePageKey): @(kHIDPage_GenericDesktop),
-			(id)CFSTR(kIOHIDDeviceUsageKey): @(kHIDUsage_GD_Joystick)
-		},
-		@{
-			(id)CFSTR(kIOHIDDeviceUsagePageKey): @(kHIDPage_GenericDesktop),
-			(id)CFSTR(kIOHIDDeviceUsageKey): @(kHIDUsage_GD_GamePad)
-		},
-		@{
-			(id)CFSTR(kIOHIDDeviceUsagePageKey): @(kHIDPage_GenericDesktop),
-			(id)CFSTR(kIOHIDDeviceUsageKey): @(kHIDUsage_GD_MultiAxisController)
-		}
-	];
-
-	IOHIDManagerSetDeviceMatchingMultiple(_hidManager, (__bridge CFArrayRef)matching);
-	IOHIDManagerRegisterDeviceMatchingCallback(_hidManager, _deviceMatchingCallback, (__bridge void *)self);
-	IOHIDManagerRegisterDeviceRemovalCallback(_hidManager, _deviceRemovalCallback, (__bridge void *)self);
-
-	CFRunLoopRef runLoop = CFRunLoopGetMain();
-	if (!runLoop)
-		runLoop = CFRunLoopGetCurrent();
-	if (runLoop) {
-		IOHIDManagerScheduleWithRunLoop(_hidManager, runLoop, kCFRunLoopDefaultMode);
-	}
-
-	IOHIDManagerOpen(_hidManager, kIOHIDOptionsTypeNone);
 
 	CFSetRef devices = IOHIDManagerCopyDevices(_hidManager);
 	if (devices) {
@@ -202,132 +211,90 @@ static void _serviceTerminatedCallback(void *context, io_iterator_t iterator)
 	}
 }
 
-- (void)_setupServiceNotifications
+- (void)_setupInputManager
 {
-	_notifyPort = IONotificationPortCreate(kIOMasterPortDefault);
-	if (!_notifyPort)
+	_inputManager = [self _newManagerMatching:@[
+		_matchingForUsage(kHIDPage_GenericDesktop, kHIDUsage_GD_Keyboard),
+		_matchingForUsage(kHIDPage_GenericDesktop, kHIDUsage_GD_Mouse)
+	] matched:_inputDeviceMatchingCallback removed:_inputDeviceRemovalCallback];
+	if (!_inputManager)
 		return;
 
-	CFRunLoopSourceRef source = IONotificationPortGetRunLoopSource(_notifyPort);
-	if (source) {
-		CFRunLoopRef runLoop = CFRunLoopGetMain();
-		if (!runLoop)
-			runLoop = CFRunLoopGetCurrent();
-		if (runLoop) {
-			CFRunLoopAddSource(runLoop, source, kCFRunLoopDefaultMode);
+	CFSetRef devices = IOHIDManagerCopyDevices(_inputManager);
+	if (devices) {
+		CFIndex count = CFSetGetCount(devices);
+		const void **devs = (const void **)malloc(sizeof(void *) * count);
+		if (devs) {
+			CFSetGetValues(devices, devs);
+			for (CFIndex i = 0; i < count; i++) {
+				[self addInputDevice:(IOHIDDeviceRef)devs[i]];
+			}
+			free(devs);
 		}
-	}
-
-	CFMutableDictionaryRef matchDict = IOServiceMatching("IOHIDDevice");
-	if (matchDict) {
-		IOServiceAddMatchingNotification(_notifyPort,
-										 kIOMatchedNotification,
-										 matchDict,
-										 _serviceMatchedCallback,
-										 (__bridge void *)self,
-										 &_matchedIter);
-		if (_matchedIter) {
-			[self serviceMatched:_matchedIter];
-		}
-	}
-
-	CFMutableDictionaryRef termDict = IOServiceMatching("IOHIDDevice");
-	if (termDict) {
-		IOServiceAddMatchingNotification(_notifyPort,
-										 kIOTerminatedNotification,
-										 termDict,
-										 _serviceTerminatedCallback,
-										 (__bridge void *)self,
-										 &_terminatedIter);
-		if (_terminatedIter) {
-			[self serviceTerminated:_terminatedIter];
-		}
+		CFRelease(devices);
 	}
 }
 
-- (void)serviceMatched:(io_iterator_t)iterator
+- (void)addInputDevice:(IOHIDDeviceRef)device
 {
-	io_service_t service;
-	while ((service = IOIteratorNext(iterator))) {
-		CFTypeRef pageRef = IORegistryEntryCreateCFProperty(service, CFSTR("PrimaryUsagePage"), NULL, 0);
-		CFTypeRef usageRef = IORegistryEntryCreateCFProperty(service, CFSTR("PrimaryUsage"), NULL, 0);
-		int page = 0, usage = 0;
+	if (!device)
+		return;
 
-		if (pageRef && CFGetTypeID(pageRef) == CFNumberGetTypeID())
-			CFNumberGetValue((CFNumberRef)pageRef, kCFNumberIntType, &page);
-		if (usageRef && CFGetTypeID(usageRef) == CFNumberGetTypeID())
-			CFNumberGetValue((CFNumberRef)usageRef, kCFNumberIntType, &usage);
+	BOOL isKeyboard = IOHIDDeviceConformsTo(device, kHIDPage_GenericDesktop, kHIDUsage_GD_Keyboard);
+	BOOL isMouse = IOHIDDeviceConformsTo(device, kHIDPage_GenericDesktop, kHIDUsage_GD_Mouse);
+	if (!isKeyboard && !isMouse)
+		return;
 
-		if (pageRef) CFRelease(pageRef);
-		if (usageRef) CFRelease(usageRef);
+	@synchronized (self) {
+		if ([_deviceToMouse objectForKey:(__bridge id)device] || [_keyboardDevices containsObject:(__bridge id)device])
+			return;
 
-		if (page == 1) {
-			if (usage == 2) {
-				// Mouse service
-				GCMouse *mouse = [[[GCMouse alloc] initWithService:service] autorelease];
-				[_mice addObject:mouse];
-				if (!_currentMouse)
-					_currentMouse = [mouse retain];
-
-				dispatch_async(dispatch_get_main_queue(), ^{
-					[[NSNotificationCenter defaultCenter] postNotificationName:GCMouseDidConnectNotification object:mouse];
-				});
-			} else if (usage == 6) {
-				// Keyboard service
-				[_keyboardServices addObject:@(service)];
-				if (!_coalescedKeyboard) {
-					_coalescedKeyboard = [[GCKeyboard alloc] init];
-					GCKeyboard *kb = _coalescedKeyboard;
-					dispatch_async(dispatch_get_main_queue(), ^{
-						[[NSNotificationCenter defaultCenter] postNotificationName:GCKeyboardDidConnectNotification object:kb];
-					});
-				}
+		if (isMouse) {
+			GCMouse *mouse = [[[GCMouse alloc] initWithHIDDevice:device] autorelease];
+			[_mice addObject:mouse];
+			[_deviceToMouse setObject:mouse forKey:(__bridge id)device];
+			if (!_currentMouse)
+				_currentMouse = [mouse retain];
+			_postOnMainQueue(GCMouseDidConnectNotification, mouse);
+		} else {
+			[_keyboardDevices addObject:(__bridge id)device];
+			if (!_coalescedKeyboard) {
+				_coalescedKeyboard = [[GCKeyboard alloc] init];
+				_postOnMainQueue(GCKeyboardDidConnectNotification, _coalescedKeyboard);
 			}
 		}
-		IOObjectRelease(service);
 	}
+
+	IOHIDDeviceRegisterInputValueCallback(device, _inputValueCallback, (__bridge void *)self);
+	IOHIDDeviceScheduleWithRunLoop(device, CFRunLoopGetMain(), kCFRunLoopCommonModes);
 }
 
-- (void)serviceTerminated:(io_iterator_t)iterator
+- (void)removeInputDevice:(IOHIDDeviceRef)device
 {
-	io_service_t service;
-	while ((service = IOIteratorNext(iterator))) {
-		// Check if mouse
-		GCMouse *foundMouse = nil;
-		for (GCMouse *m in _mice) {
-			if ([m service] == service) {
-				foundMouse = m;
-				break;
-			}
-		}
-		if (foundMouse) {
-			[foundMouse retain];
-			[_mice removeObject:foundMouse];
-			if (_currentMouse == foundMouse) {
+	if (!device)
+		return;
+
+	IOHIDDeviceRegisterInputValueCallback(device, NULL, NULL);
+	IOHIDDeviceUnscheduleFromRunLoop(device, CFRunLoopGetMain(), kCFRunLoopCommonModes);
+
+	@synchronized (self) {
+		GCMouse *mouse = [[[_deviceToMouse objectForKey:(__bridge id)device] retain] autorelease];
+		if (mouse) {
+			[_mice removeObject:mouse];
+			[_deviceToMouse removeObjectForKey:(__bridge id)device];
+			if (_currentMouse == mouse) {
 				[_currentMouse release];
 				_currentMouse = [[_mice firstObject] retain];
 			}
-			dispatch_async(dispatch_get_main_queue(), ^{
-				[[NSNotificationCenter defaultCenter] postNotificationName:GCMouseDidDisconnectNotification object:foundMouse];
-				[foundMouse release];
-			});
-		}
-
-		// Check if keyboard
-		NSNumber *svcNum = @(service);
-		if ([_keyboardServices containsObject:svcNum]) {
-			[_keyboardServices removeObject:svcNum];
-			if ([_keyboardServices count] == 0 && _coalescedKeyboard) {
-				GCKeyboard *kb = [_coalescedKeyboard retain];
-				[_coalescedKeyboard release];
+			_postOnMainQueue(GCMouseDidDisconnectNotification, mouse);
+		} else if ([_keyboardDevices containsObject:(__bridge id)device]) {
+			[_keyboardDevices removeObject:(__bridge id)device];
+			if ([_keyboardDevices count] == 0 && _coalescedKeyboard) {
+				GCKeyboard *keyboard = [_coalescedKeyboard autorelease];
 				_coalescedKeyboard = nil;
-				dispatch_async(dispatch_get_main_queue(), ^{
-					[[NSNotificationCenter defaultCenter] postNotificationName:GCKeyboardDidDisconnectNotification object:kb];
-					[kb release];
-				});
+				_postOnMainQueue(GCKeyboardDidDisconnectNotification, keyboard);
 			}
 		}
-		IOObjectRelease(service);
 	}
 }
 
@@ -336,29 +303,23 @@ static void _serviceTerminatedCallback(void *context, io_iterator_t iterator)
 	if (!device)
 		return;
 
-	if ([_deviceToController objectForKey:(__bridge id)device]) {
-		return;
+	GCController *controller = nil;
+	@synchronized (self) {
+		if ([_deviceToController objectForKey:(__bridge id)device])
+			return;
+
+		if (![GCController supportsHIDDevice:device])
+			return;
+
+		controller = [[[GCController alloc] initWithHIDDevice:device] autorelease];
+		[_controllers addObject:controller];
+		[_deviceToController setObject:controller forKey:(__bridge id)device];
 	}
-
-	BOOL supported = [GCController supportsHIDDevice:device];
-	if (!supported)
-		return;
-
-	GCController *controller = [[[GCController alloc] initWithHIDDevice:device] autorelease];
-	[_controllers addObject:controller];
-	[_deviceToController setObject:controller forKey:(__bridge id)device];
 
 	IOHIDDeviceRegisterInputValueCallback(device, _inputValueCallback, (__bridge void *)self);
-	CFRunLoopRef runLoop = CFRunLoopGetMain();
-	if (!runLoop)
-		runLoop = CFRunLoopGetCurrent();
-	if (runLoop) {
-		IOHIDDeviceScheduleWithRunLoop(device, runLoop, kCFRunLoopDefaultMode);
-	}
+	IOHIDDeviceScheduleWithRunLoop(device, CFRunLoopGetMain(), kCFRunLoopCommonModes);
 
-	dispatch_async(dispatch_get_main_queue(), ^{
-		[[NSNotificationCenter defaultCenter] postNotificationName:GCControllerDidConnectNotification object:controller];
-	});
+	_postOnMainQueue(GCControllerDidConnectNotification, controller);
 }
 
 - (void)removeControllerForHIDDevice:(IOHIDDeviceRef)device
@@ -366,54 +327,86 @@ static void _serviceTerminatedCallback(void *context, io_iterator_t iterator)
 	if (!device)
 		return;
 
-	GCController *controller = [_deviceToController objectForKey:(__bridge id)device];
-	if (!controller)
-		return;
-
-	IOHIDDeviceRegisterInputValueCallback(device, NULL, NULL);
-	CFRunLoopRef runLoop = CFRunLoopGetMain();
-	if (!runLoop)
-		runLoop = CFRunLoopGetCurrent();
-	if (runLoop) {
-		IOHIDDeviceUnscheduleFromRunLoop(device, runLoop, kCFRunLoopDefaultMode);
+	GCController *controller = nil;
+	@synchronized (self) {
+		controller = [[[_deviceToController objectForKey:(__bridge id)device] retain] autorelease];
+		if (!controller)
+			return;
+		[_controllers removeObject:controller];
+		[_deviceToController removeObjectForKey:(__bridge id)device];
 	}
 
-	[controller retain];
-	[_controllers removeObject:controller];
-	[_deviceToController removeObjectForKey:(__bridge id)device];
+	IOHIDDeviceRegisterInputValueCallback(device, NULL, NULL);
+	IOHIDDeviceUnscheduleFromRunLoop(device, CFRunLoopGetMain(), kCFRunLoopCommonModes);
 
-	dispatch_async(dispatch_get_main_queue(), ^{
-		[[NSNotificationCenter defaultCenter] postNotificationName:GCControllerDidDisconnectNotification object:controller];
-		[controller release];
-	});
+	_postOnMainQueue(GCControllerDidDisconnectNotification, controller);
 }
 
 - (void)handleInputValue:(IOHIDValueRef)value forDevice:(IOHIDDeviceRef)device
 {
-	GCController *controller = [_deviceToController objectForKey:(__bridge id)device];
+	GCController *controller = nil;
+	GCMouse *mouse = nil;
+	GCKeyboard *keyboard = nil;
+	@synchronized (self) {
+		controller = [[[_deviceToController objectForKey:(__bridge id)device] retain] autorelease];
+		mouse = [[[_deviceToMouse objectForKey:(__bridge id)device] retain] autorelease];
+		if ([_keyboardDevices containsObject:(__bridge id)device])
+			keyboard = [[_coalescedKeyboard retain] autorelease];
+	}
+
 	if (controller) {
 		[controller handleHIDValue:value];
+	} else if (mouse) {
+		[self _makeCurrent:mouse];
+		[mouse handleHIDValue:value];
+	} else if (keyboard) {
+		[keyboard handleHIDValue:value];
 	}
+}
+
+// The current mouse is the one that most recently produced input.
+- (void)_makeCurrent:(GCMouse *)mouse
+{
+	GCMouse *previous = nil;
+	@synchronized (self) {
+		if (_currentMouse == mouse)
+			return;
+		previous = _currentMouse;
+		_currentMouse = [mouse retain];
+	}
+	if (previous) {
+		_postOnMainQueue(GCMouseDidStopBeingCurrentNotification, previous);
+		[previous release];
+	}
+	_postOnMainQueue(GCMouseDidBecomeCurrentNotification, mouse);
 }
 
 - (NSArray<GCController *> *)controllers
 {
-	return [NSArray arrayWithArray:_controllers];
+	@synchronized (self) {
+		return [NSArray arrayWithArray:_controllers];
+	}
 }
 
 - (NSArray<GCMouse *> *)mice
 {
-	return [NSArray arrayWithArray:_mice];
+	@synchronized (self) {
+		return [NSArray arrayWithArray:_mice];
+	}
 }
 
 - (GCMouse *)currentMouse
 {
-	return _currentMouse;
+	@synchronized (self) {
+		return [[_currentMouse retain] autorelease];
+	}
 }
 
 - (GCKeyboard *)coalescedKeyboard
 {
-	return _coalescedKeyboard;
+	@synchronized (self) {
+		return [[_coalescedKeyboard retain] autorelease];
+	}
 }
 
 @end

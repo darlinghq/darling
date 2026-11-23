@@ -26,3 +26,6 @@ NSString *const GCProductCategoryXboxOne = @"Xbox One";
 NSString *const GCProductCategoryHID = @"HID";
 NSString *const GCProductCategoryMouse = @"Mouse";
 NSString *const GCProductCategoryKeyboard = @"Keyboard";
+NSString *const GCProductCategoryControlCenterRemote = @"Control Center Remote";
+NSString *const GCProductCategorySiriRemote1stGen = @"Siri Remote (1st Generation)";
+NSString *const GCProductCategoryCoalescedRemote = @"Coalesced Remote";

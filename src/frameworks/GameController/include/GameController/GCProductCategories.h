@@ -29,5 +29,8 @@ extern NSString *const GCProductCategoryXboxOne;
 extern NSString *const GCProductCategoryHID;
 extern NSString *const GCProductCategoryMouse;
 extern NSString *const GCProductCategoryKeyboard;
+extern NSString *const GCProductCategoryControlCenterRemote;
+extern NSString *const GCProductCategorySiriRemote1stGen;
+extern NSString *const GCProductCategoryCoalescedRemote;
 
 #endif

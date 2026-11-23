@@ -173,27 +173,8 @@
 
 	_microGamepad = [[GCMicroGamepad alloc] initWithController:self];
 
-	// Check if device reports battery / light / haptics
-	if (device) {
-		CFTypeRef batRef = IOHIDDeviceGetProperty(device, CFSTR("BatteryPercent"));
-		if (!batRef)
-			batRef = IOHIDDeviceGetProperty(device, CFSTR("Battery"));
-		if (batRef && CFGetTypeID(batRef) == CFNumberGetTypeID()) {
-			int levelVal = 0;
-			CFNumberGetValue((CFNumberRef)batRef, kCFNumberIntType, &levelVal);
-			_battery = [[GCDeviceBattery alloc] initWithLevel:((float)levelVal / 100.0f) batteryState:GCDeviceBatteryStateDischarging];
-		}
-
-		CFTypeRef lightRef = IOHIDDeviceGetProperty(device, CFSTR("Light"));
-		if (lightRef) {
-			_light = [[GCDeviceLight alloc] initWithColor:[[[GCColor alloc] initWithRed:0.0f green:0.0f blue:1.0f] autorelease]];
-		}
-
-		CFTypeRef ffRef = IOHIDDeviceGetProperty(device, CFSTR("ForceFeedback"));
-		if (ffRef) {
-			_haptics = [[GCDeviceHaptics alloc] init];
-		}
-	}
+	// No battery, light or haptics objects: the HID services publish none of the properties they would
+	// be made from, and macOS answers nil for a device without them.
 
 	return self;
 }
