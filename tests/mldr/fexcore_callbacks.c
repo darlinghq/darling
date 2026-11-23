@@ -47,6 +47,10 @@ enum {
 	NR_CALL_DEEP,         // rax = deep(rdi), run as a callback
 	NR_ARM_TIMER,         // arms a 200 ms SIGALRM
 	NR_CALL_ESCAPE,       // runs escape() as a callback, which jumps out of it without returning
+	NR_CALL_RELAY,        // runs relay() as a callback, whose host call runs escape()
+	NR_CALL_RESUMING,     // rax = resuming(), run as a callback, which escape() jumps back into
+	NR_CALL_RETURNING,    // rax = returning(), run as a callback, which escape() jumps back into
+	NR_CALL_SWITCH,       // rax = switching(), run as a callback, which moves to a higher stack
 };
 
 // Guest memory must be below 47 bits, where an x86_64 process can address it.
@@ -71,12 +75,17 @@ static uint64_t* g_tsd;             // a gs base: gs:[8] holds 0x5eed
 static uint8_t* g_code;
 static uintptr_t g_fn_add, g_fn_nested, g_fn_unwinding, g_fn_alignment, g_fn_gs, g_fn_clobber, g_fn_deep;
 static uintptr_t g_fn_keeps_registers, g_outer_entry, g_many_entry, g_spin_entry;
-static uintptr_t g_fn_escape, g_escape_entry;
-// The guest's "jmp_buf" for escape() (stack pointer, resume address) and its count of escapes.
+static uintptr_t g_nested_escape_entry;
+static uintptr_t g_fn_escape, g_escape_entry, g_fn_relay, g_fn_resuming, g_fn_returning, g_fn_switch;
+// The guest's "jmp_buf" for escape() (stack pointer, resume address), its count of escapes and the stack
+// pointer switching() keeps while it runs on the higher stack.
 static uint64_t* g_escape_slots;
-enum { ESCAPE_RSP, ESCAPE_RIP, ESCAPE_COUNT };
-#define ESCAPES 2000
-static int g_escape_callbacks_returned = 0;
+enum { ESCAPE_RSP, ESCAPE_RIP, ESCAPE_COUNT, SWITCH_RSP };
+// Each callback left without the bridge putting the call-return stack pointer back would leak 16 bytes of
+// FEX's call-return stack, which has 1 MB below its start: this many overflow it.
+#define ESCAPES 70000
+#define HIGH_STACK_ADDR 0x3f000000
+static int g_escape_callbacks_returned = 0, g_relay_callbacks_returned = 0;
 
 static uint8_t* emit(uint8_t* p, const void* bytes, size_t n)
 {
@@ -138,6 +147,25 @@ static uint8_t* emit_clobber_check(uint8_t* p, uint64_t* out)
 	return emit_imm32(p, (uint32_t)(uintptr_t)&out[SAVED_XMM6]);
 }
 
+// "setjmp" for escape(): mov [slot], rsp; lea rax, [rip + resume]; mov [slot + 8], rax. *resume_at is
+// patched with the resume address by set_resume.
+static uint8_t* emit_setjmp(uint8_t* p, uint8_t** resume_at)
+{
+	p = EMIT(p, 0x48, 0x89, 0x24, 0x25);
+	p = emit_imm32(p, (uint32_t)(uintptr_t)&g_escape_slots[ESCAPE_RSP]);
+	p = EMIT(p, 0x48, 0x8d, 0x05);
+	*resume_at = p;
+	p = emit_imm32(p, 0);
+	p = EMIT(p, 0x48, 0x89, 0x04, 0x25);
+	return emit_imm32(p, (uint32_t)(uintptr_t)&g_escape_slots[ESCAPE_RIP]);
+}
+
+static void set_resume(uint8_t* resume_at, const uint8_t* target)
+{
+	uint32_t rel = (uint32_t)(target - (resume_at + 4));
+	memcpy(resume_at, &rel, sizeof(rel));
+}
+
 static void build_guest_code(void)
 {
 	g_code = map_low(4096, CODE_ADDR, PROT_READ | PROT_WRITE);
@@ -146,6 +174,7 @@ static void build_guest_code(void)
 	g_saved_detached = saved + 16;
 	g_tsd = (uint64_t*)map_low(4096, 0x40000000, PROT_READ | PROT_WRITE);
 	g_tsd[1] = 0x5eed;
+	map_low(1 << 16, HIGH_STACK_ADDR, PROT_READ | PROT_WRITE);
 	uint8_t* p = g_code;
 
 	g_fn_add = (uintptr_t)p;                          // rax = rdi + rsi
@@ -235,32 +264,74 @@ static void build_guest_code(void)
 	p = EMIT(p, 0xff, 0x24, 0x25);
 	p = emit_imm32(p, (uint32_t)(uintptr_t)&g_escape_slots[ESCAPE_RIP]);
 
-	// Guest thread: ESCAPES times "setjmp", then a host call whose callback longjmps back; then a host call
-	// whose callback returns, push its result, exit.
+	// relay: a callback whose host call runs escape(), which jumps past both
+	g_fn_relay = (uintptr_t)p;
+	p = emit_syscall(p, NR_CALL_ESCAPE);
+	p = EMIT(p, 0xc3);
+
+	// Guest thread: ESCAPES times "setjmp", then a host call whose callback longjmps back; then the same
+	// two callbacks deep (relay); then a host call whose callback returns: push its result, exit.
 	g_escape_entry = (uintptr_t)p;
 	uint8_t* loop = p;
-	p = EMIT(p, 0x48, 0x89, 0x24, 0x25);              // mov [slot], rsp
-	p = emit_imm32(p, (uint32_t)(uintptr_t)&g_escape_slots[ESCAPE_RSP]);
-	p = EMIT(p, 0x48, 0x8d, 0x05);                    // lea rax, [rip + resume]
-	uint8_t* resume_rel = p;
-	p = emit_imm32(p, 0);
-	uint8_t* after_lea = p;
-	p = EMIT(p, 0x48, 0x89, 0x04, 0x25);              // mov [slot + 8], rax
-	p = emit_imm32(p, (uint32_t)(uintptr_t)&g_escape_slots[ESCAPE_RIP]);
+	uint8_t* resume_at;
+	p = emit_setjmp(p, &resume_at);
 	p = emit_syscall(p, NR_CALL_ESCAPE);
 	p = EMIT(p, 0x68, 0xad, 0x0b, 0x00, 0x00);        // push 0xbad: only if the host call returned
-	uint32_t rel = (uint32_t)(p - after_lea);
-	memcpy(resume_rel, &rel, sizeof(rel));
-	p = EMIT(p, 0x48, 0xff, 0x04, 0x25);              // resume: inc qword [count]
+	set_resume(resume_at, p);
+	p = EMIT(p, 0x48, 0xff, 0x04, 0x25);              // inc qword [count]
 	p = emit_imm32(p, (uint32_t)(uintptr_t)&g_escape_slots[ESCAPE_COUNT]);
 	p = EMIT(p, 0x48, 0x81, 0x3c, 0x25);              // cmp qword [count], ESCAPES
 	p = emit_imm32(p, (uint32_t)(uintptr_t)&g_escape_slots[ESCAPE_COUNT]);
 	p = emit_imm32(p, ESCAPES);
 	p = EMIT(p, 0x0f, 0x82);                          // jb loop
-	rel = (uint32_t)(loop - (p + 4));
-	p = emit_imm32(p, rel);
+	p = emit_imm32(p, (uint32_t)(loop - (p + 4)));
+	p = emit_setjmp(p, &resume_at);
+	p = emit_syscall(p, NR_CALL_RELAY);
+	p = EMIT(p, 0x68, 0xad, 0x0b, 0x00, 0x00);
+	set_resume(resume_at, p);
 	p = EMIT(p, 0xbf, 0x09, 0x00, 0x00, 0x00);        // mov edi, 9
 	p = emit_syscall(p, NR_CALL_ADD);
+	p = EMIT(p, 0x50);
+	p = emit_syscall(p, NR_EXIT);
+
+	// resuming: escape() jumps back into it from its host call; it then makes a host call and returns
+	// rax = add(5, 100).
+	g_fn_resuming = (uintptr_t)p;
+	p = emit_setjmp(p, &resume_at);
+	p = emit_syscall(p, NR_CALL_ESCAPE);
+	p = EMIT(p, 0x68, 0xad, 0x0b, 0x00, 0x00);
+	set_resume(resume_at, p);
+	p = EMIT(p, 0xbf, 0x05, 0x00, 0x00, 0x00);
+	p = emit_syscall(p, NR_ADD_100);
+	p = EMIT(p, 0xc3);
+
+	// returning: the same, but it returns 0x1234 at once, with no host call after the escape.
+	g_fn_returning = (uintptr_t)p;
+	p = emit_setjmp(p, &resume_at);
+	p = emit_syscall(p, NR_CALL_ESCAPE);
+	p = EMIT(p, 0x68, 0xad, 0x0b, 0x00, 0x00);
+	set_resume(resume_at, p);
+	p = EMIT(p, 0xb8, 0x34, 0x12, 0x00, 0x00, 0xc3);  // mov eax, 0x1234; ret
+
+	// switching: runs a host call (rax = add(7, 100)) on a stack mapped above every other, then goes back.
+	g_fn_switch = (uintptr_t)p;
+	p = EMIT(p, 0x48, 0x89, 0x24, 0x25);              // mov [slot], rsp
+	p = emit_imm32(p, (uint32_t)(uintptr_t)&g_escape_slots[SWITCH_RSP]);
+	p = EMIT(p, 0xbc);                                // mov esp, top of the high stack
+	p = emit_imm32(p, HIGH_STACK_ADDR + (1 << 16) - 16);
+	p = EMIT(p, 0xbf, 0x07, 0x00, 0x00, 0x00);
+	p = emit_syscall(p, NR_ADD_100);
+	p = EMIT(p, 0x48, 0x8b, 0x24, 0x25);              // mov rsp, [slot]
+	p = emit_imm32(p, (uint32_t)(uintptr_t)&g_escape_slots[SWITCH_RSP]);
+	p = EMIT(p, 0xc3);
+
+	// Guest thread for the nested cases: push resuming(), returning() and switching() run as callbacks.
+	g_nested_escape_entry = (uintptr_t)p;
+	p = emit_syscall(p, NR_CALL_RESUMING);
+	p = EMIT(p, 0x50);
+	p = emit_syscall(p, NR_CALL_RETURNING);
+	p = EMIT(p, 0x50);
+	p = emit_syscall(p, NR_CALL_SWITCH);
 	p = EMIT(p, 0x50);
 	p = emit_syscall(p, NR_EXIT);
 
@@ -326,6 +397,20 @@ static long guest_syscall(struct fex_x86_64_state* state)
 			g_escape_callbacks_returned++;
 			state->rax = 0;
 			break;
+		case NR_CALL_RELAY:
+			callback(g_fn_relay, 0, 0, state->gs_base);
+			g_relay_callbacks_returned++;
+			state->rax = 0;
+			break;
+		case NR_CALL_RESUMING:
+			state->rax = callback(g_fn_resuming, 0, 0, state->gs_base);
+			break;
+		case NR_CALL_RETURNING:
+			state->rax = callback(g_fn_returning, 0, 0, state->gs_base);
+			break;
+		case NR_CALL_SWITCH:
+			state->rax = callback(g_fn_switch, 0, 0, state->gs_base);
+			break;
 		case NR_ARM_TIMER: {
 			struct itimerval it = {{0, 0}, {0, 200000}};
 			state->rax = (uint64_t)setitimer(ITIMER_REAL, &it, NULL);
@@ -384,9 +469,34 @@ static void test_callback_left_by_longjmp(void)
 	run_thread(&st, guest_syscall);
 
 	check(g_escape_slots[ESCAPE_COUNT] == ESCAPES, "a guest longjmp out of a callback resumes the guest at its target");
-	check(g_escape_callbacks_returned == 0, "the host call whose callback was left never returns");
+	check(g_escape_callbacks_returned == 0 && g_relay_callbacks_returned == 0,
+		"the host calls whose callbacks were left, one or two deep, never return");
 	check(st.rsp == top - 8 && *(const uint64_t*)(uintptr_t)st.rsp == 1009,
 		"host calls and callbacks work after thousands of callbacks were left by longjmp");
+}
+
+// Callbacks left for the body of an outer callback, which then makes a host call or simply returns, and a
+// callback that runs on a stack above the host call's, which has left nothing.
+static void test_callbacks_left_inside_callbacks(void)
+{
+	uint8_t* stack = map_low(1 << 20, 0x34000000, PROT_READ | PROT_WRITE);
+	const uintptr_t top = (uintptr_t)stack + (1 << 20) - 8;
+	g_escape_callbacks_returned = 0;
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rip = g_nested_escape_entry;
+	st.rsp = top;
+	st.rflags = 0x202;
+	run_thread(&st, guest_syscall);
+
+	const uint64_t* pushed = (const uint64_t*)(uintptr_t)st.rsp;
+	check(st.rsp == top - 24 && pushed[2] == 105,
+		"a callback a nested callback longjmped back into makes host calls and returns its result");
+	check(pushed[1] == 0x1234, "a callback a nested callback longjmped back into can return without a host call");
+	check(g_escape_callbacks_returned == 0, "the host calls of the callbacks left inside a callback never return");
+	check(pushed[0] == 107, "a callback that makes a host call from a higher stack has not left anything");
+	check(callback(g_fn_switch, 0, 0, 0) == 107,
+		"a callback on a host thread without guest code can make a host call from a higher stack");
 }
 
 static void test_callbacks_without_guest_thread(void)
@@ -567,6 +677,7 @@ int main(int argc, char** argv)
 	test_concurrent_threads();
 	test_thread_exit_releases_emulator();
 	test_callback_left_by_longjmp();
+	test_callbacks_left_inside_callbacks();
 	// mldr never returns from main with FEX loaded (it ends with _exit), and the shim's static
 	// destructors fail when run at exit, so leave the same way.
 	fflush(stdout);
