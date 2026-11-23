@@ -25,7 +25,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <zlib.h>
 #include <LaunchServices/UTType.h>
 
-#define DATABASE_VERSION 2
+#define DATABASE_VERSION 3
 
 static FMDatabase* g_database;
 // Every registration write must participate in the caller's transaction.
@@ -231,7 +231,7 @@ static FSEventStreamRef g_eventStream;
 	}
 	else
 	{
-		// Support for obsolete CFBundleTypeExtensions and CFBundleTypeMIMETypes
+		// Support for obsolete CFBundleTypeExtensions, CFBundleTypeOSTypes and CFBundleTypeMIMETypes
 		NSArray<NSString*>* extensions = dict[@"CFBundleTypeExtensions"];
 
 		if (extensions)
@@ -242,6 +242,18 @@ static FSEventStreamRef g_eventStream;
 					continue;
 
 				LS_UPDATE(@"insert into app_doc_extension (doc, extension) values (?,?)", appDocId, extension);
+			}
+		}
+
+		NSArray<NSString*>* osTypes = dict[@"CFBundleTypeOSTypes"];
+		if (osTypes)
+		{
+			for (NSString* osType in osTypes)
+			{
+				if (![osType isKindOfClass: [NSString class]])
+					continue;
+
+				LS_UPDATE(@"insert into app_doc_ostype (doc, ostype) values (?,?)", appDocId, osType);
 			}
 		}
 
@@ -526,8 +538,10 @@ static FSEventStreamRef g_eventStream;
 
 +(void)watchForBundles
 {
+	// File-level events: the callback looks for bundles' Info.plist files. Without the flag a stream reports
+	// only the directories that changed, with no item flags.
 	g_eventStream = FSEventStreamCreate(NULL, fsEventCallback, NULL, (CFArrayRef) MONITORED_DIRECTORIES,
-		kFSEventStreamEventIdSinceNow, 1, kFSEventStreamCreateFlagUseCFTypes);
+		kFSEventStreamEventIdSinceNow, 1, kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagFileEvents);
 
 	FSEventStreamSetDispatchQueue(g_eventStream, g_serverQueue);
 	FSEventStreamStart(g_eventStream);
@@ -588,6 +602,36 @@ static void upgradeDBSchemaTo2(void)
 	}
 }
 
+// Version 3 records CFBundleTypeOSTypes of document types (Finder declares folders and volumes with
+// them). Clearing the checksums makes the next scan register every bundle again, which fills it in.
+static void upgradeDBSchemaTo3(void)
+{
+	char* errorMessage = NULL;
+
+	sqlite3_exec(g_database.sqliteHandle,
+		"BEGIN;"
+		"CREATE TABLE `app_doc_ostype` ("
+		"	`id` INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"	`doc` INTEGER,"
+		"	`ostype` TEXT,"
+		"	FOREIGN KEY(`doc`) REFERENCES `app_doc`(`id`) ON DELETE CASCADE"
+		");"
+		"CREATE INDEX `app_doc_ostype_doc_index` ON `app_doc_ostype`(`doc`);"
+		"CREATE INDEX `app_doc_ostype_index` ON `app_doc_ostype`(`ostype`);"
+		"UPDATE `bundle` SET `checksum` = 0;"
+		"UPDATE `globals` SET `value` = '3' WHERE `key` = 'version';"
+		"COMMIT;",
+		NULL, NULL, &errorMessage);
+
+	if (errorMessage != NULL)
+	{
+		NSLog(@"launchservicesd: upgradeDBSchemaTo3 error: %s\n", errorMessage);
+		sqlite3_free(errorMessage);
+		sqlite3_exec(g_database.sqliteHandle, "ROLLBACK;", NULL, NULL, NULL);
+		exit(1);
+	}
+}
+
 static void setupDBSchema(void)
 {
 	FMResultSet* rs = [g_database executeQuery:@"select value from `globals` where key = ?", @"version"];
@@ -601,6 +645,8 @@ static void setupDBSchema(void)
 		[rs close];
 		if (version < 2)
 			upgradeDBSchemaTo2();
+		if (version < 3)
+			upgradeDBSchemaTo3();
 		else if (version != DATABASE_VERSION)
 		{
 			// TODO: This is where we'll do DB schema updates or possibly just delete everything and index from scratch

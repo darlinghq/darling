@@ -16,3 +16,15 @@ that is part of this repository itself and not under the GNU GPL 3.0 is listed h
   renamed derivative that is installed as `/System/Library/Fonts/HelveticaNeue.ttc` in the prefix,
   with the licence texts and `src/fonts/HelveticaNeue-NOTICE.txt` under
   `usr/share/licenses/darling-helvetica-neue`.
+
+## Adwaita icon theme, `src/Finder/Finder.iconset` and `src/DiskImageMounter/DiskImageMounter.iconset`
+
+- Copyright the GNOME Project, <https://www.gnome.org>.
+- Source: adwaita-icon-theme 51.0, <https://gitlab.gnome.org/GNOME/adwaita-icon-theme>; the icons
+  `places/folder` (Finder) and `devices/drive-removable-media` (DiskImageMounter), rendered with
+  `rsvg-convert` at each size of the iconset.
+- Licence: GNU LGPL version 3, or Creative Commons Attribution-Share Alike 3.0 United States
+  (`src/Finder/COPYING.Adwaita`, `src/DiskImageMounter/COPYING.Adwaita`).
+- Use: the build makes each application's `.icns` from its iconset, installed in the application
+  bundle in the prefix; DiskImageMounter's images are also installed on the host in the hicolor icon
+  theme as `org.darlinghq.Darling.DiskImageMounter.png`.

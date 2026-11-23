@@ -49,6 +49,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "launcher-ids.h"
 #include "launcher-locale.h"
 #include "launcher-mode.h"
+#include "launcher-path.h"
 #include "launcher-prefix.h"
 #include "launcher-pulse.h"
 #include "launcher-server.h"
@@ -543,7 +544,12 @@ int main(int argc, char ** argv)
 	if (!resolveProgramArgument(argc, argv))
 		return 1;
 
-	if (strcmp(argv[1], "shell") == 0)
+	if (strcmp(argv[1], "open") == 0)
+	{
+		// The guest's open(1) (argv[1] is "open"), on the files resolveProgramArgument() named in the guest
+		spawnBinary("/usr/bin/open", (const char**) &argv[1]);
+	}
+	else if (strcmp(argv[1], "shell") == 0)
 	{
 		// Spawn the shell
 		if (argc > 2)
@@ -605,14 +611,37 @@ static void refuseContainerOfAnotherMode(pid_t pid)
 }
 
 // For "darling exec <program>" and "darling <program>", replaces the program argument with the guest
-// path of the file it names on the host. Prints why and returns false if there is none. Nothing to do
-// for "darling shell", or when it was done already.
+// path of the file it names on the host, and for "darling open <file>..." every file argument. Prints why
+// and returns false if one names no file. Nothing to do for "darling shell", or when it was done already.
 static bool resolveProgramArgument(int argc, char** argv)
 {
 	static bool resolved = false;
 
 	if (resolved || strcmp(argv[1], "shell") == 0)
 		return true;
+
+	if (strcmp(argv[1], "open") == 0)
+	{
+		if (argc <= 2)
+		{
+			fprintf(stderr, "Usage: darling open <file>...\n");
+			return false;
+		}
+		for (int i = 2; i < argc; i++)
+		{
+			char* guestPath = launcherGuestPath(argv[i], g_workingDirectory);
+
+			if (guestPath == NULL)
+			{
+				// as the guest's open(1) words it
+				fprintf(stderr, "The file %s does not exist.\n", argv[i]);
+				return false;
+			}
+			argv[i] = guestPath;
+		}
+		resolved = true;
+		return true;
+	}
 
 	bool doExec = strcmp(argv[1], "exec") == 0;
 	int argvIndex = doExec ? 2 : 1;
@@ -623,19 +652,13 @@ static bool resolveProgramArgument(int argc, char** argv)
 		return false;
 	}
 
-	char *fullPath;
-	char *path = realpath(argv[argvIndex], NULL);
+	char *fullPath = launcherGuestPath(argv[argvIndex], g_workingDirectory);
 
-	if (path == NULL)
+	if (fullPath == NULL)
 	{
 		printf("'%s' is not a supported command or a file.\n", argv[argvIndex]);
 		return false;
 	}
-
-	fullPath = malloc(strlen(SYSTEM_ROOT) + strlen(path) + 1);
-	strcpy(fullPath, SYSTEM_ROOT);
-	strcat(fullPath, path);
-	free(path);
 
 	argv[argvIndex] = fullPath;
 	resolved = true;
@@ -1340,8 +1363,10 @@ void showHelp(const char* argv0)
 	fprintf(stderr, "\t%s <program-path> [arguments...]\n", argv0);
 	fprintf(stderr, "\t%s shell [arguments...]\n", argv0);
 	fprintf(stderr, "\t%s exec <program-path> [arguments...]\n", argv0);
+	fprintf(stderr, "\t%s open <file>...\n", argv0);
 	fprintf(stderr, "\t%s shutdown\n", argv0);
 	fprintf(stderr, "\n");
+	fprintf(stderr, "'open' opens files of the host in Darling, as open(1) does there.\n\n");
 	fprintf(stderr, "Environment variables:\n"
 		"DPREFIX - specifies the location of Darling prefix as an absolute path, defaults to ~/.darling\n"
 		"DARLING_PROFILE - selects an isolated named prefix at ~/.darling.<name>\n");

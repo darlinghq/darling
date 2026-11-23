@@ -41,6 +41,14 @@ int main(void)
 	check("plain-text does not conform to public.image", !UTTypeConformsTo(CFSTR("public.plain-text"), CFSTR("public.image")));
 	check("public.data does not conform to public.plain-text", !UTTypeConformsTo(CFSTR("public.data"), CFSTR("public.plain-text")));
 
+	// Disk images, as macOS 26.7.3 declares them: public.disk-image conforms to public.archive, and
+	// com.apple.disk-image to public.archive, public.data and public.disk-image.
+	check("public.disk-image conforms to public.archive", UTTypeConformsTo(CFSTR("public.disk-image"), CFSTR("public.archive")));
+	check("public.disk-image does not conform to public.data", !UTTypeConformsTo(CFSTR("public.disk-image"), CFSTR("public.data")));
+	check("com.apple.disk-image conforms to public.data", UTTypeConformsTo(CFSTR("com.apple.disk-image"), CFSTR("public.data")));
+	check("com.apple.disk-image conforms to public.disk-image", UTTypeConformsTo(CFSTR("com.apple.disk-image"), CFSTR("public.disk-image")));
+	check("com.apple.disk-image conforms to public.archive", UTTypeConformsTo(CFSTR("com.apple.disk-image"), CFSTR("public.archive")));
+
 	CFStringRef uti = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, CFSTR("txt"), CFSTR("public.data"));
 	check("txt conforming to public.data resolves to public.plain-text", uti != NULL && CFEqual(uti, CFSTR("public.plain-text")));
 	if (uti != NULL)

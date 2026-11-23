@@ -441,6 +441,8 @@ if (COMPONENT_cli)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli")
 
 	add_subdirectory(external/darling-dmg)
+	add_subdirectory(DiskImageMounter)
+	add_subdirectory(Finder)
 	add_subdirectory(external/bomutils)
 	add_subdirectory(external/libutil)
 	add_subdirectory(xtrace)

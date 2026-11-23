@@ -9,6 +9,9 @@
 //   - open-documents ('odoc'): application:openFiles: with all documents in one call (no untitled
 //     document), then applicationDidFinishLaunching: with the key = 0 and no current event.
 //   - documents named in argv are opened first, and the later 'oapp' then opens no untitled document.
+//   - a delegate that implements application:openURLs: gets the documents of 'odoc' there, as file URLs,
+//     and application:openFile: and application:openFiles: are not called (NSApplicationDelegate
+//     documentation); a document named in argv still goes to application:openFiles: (macOS 26.7.3).
 // Opening an application that is running sends it 'rapp' (applicationShouldHandleReopen:...), and a
 // document sent to it arrives as 'odoc' in the same process.
 // The sequences are the ones observed on macOS (10.14.4 and 26.7.3).
@@ -32,6 +35,7 @@ extern char **environ;
 
 #define ID_FILES @"org.darlinghq.test.doclaunch.openfiles"
 #define ID_FILE  @"org.darlinghq.test.doclaunch.openfile"
+#define ID_URLS  @"org.darlinghq.test.doclaunch.openurls"
 
 static int g_failures = 0;
 #define CHECK(cond) do { if (!(cond)) { printf("FAIL %d: %s\n", __LINE__, #cond); g_failures++; } } while (0)
@@ -127,13 +131,33 @@ static NSString *CurrentEvent(void)
 }
 @end
 
+@interface URLDocApp : DocApp
+@end
+
+@implementation URLDocApp
+// openFiles: (inherited) and openFile: are implemented too, and must not be called.
+- (BOOL)application:(NSApplication *)app openFile:(NSString *)file
+{
+	[self log:@"openFile"];
+	return YES;
+}
+- (void)application:(NSApplication *)app openURLs:(NSArray<NSURL *> *)urls
+{
+	[self log:[NSString stringWithFormat:@"openURLs %lu", (unsigned long) [urls count]]];
+	for (NSURL *url in urls)
+		AppendLog(self.bundleID, [NSString stringWithFormat:@"file %@%@", [url isFileURL] ? @"" : @"(not a file URL) ",
+			[url lastPathComponent]]);
+}
+@end
+
 static int RunApp(NSString *bundleID, int argc, char **argv)
 {
 	@autoreleasepool {
 		AppendLog(bundleID, [NSString stringWithFormat:@"pid %d", (int) getpid()]);
 		NSApplication *app = [NSApplication sharedApplication];
 		[app setActivationPolicy:NSApplicationActivationPolicyAccessory];
-		DocApp *delegate = [bundleID isEqualToString:ID_FILE] ? [[SingleDocApp alloc] init] : [[DocApp alloc] init];
+		DocApp *delegate = [bundleID isEqualToString:ID_FILE] ? [[SingleDocApp alloc] init]
+			: [bundleID isEqualToString:ID_URLS] ? [[URLDocApp alloc] init] : [[DocApp alloc] init];
 		delegate.bundleID = bundleID;
 		[app setDelegate:delegate];
 		// As a program built on NSApplicationMain: a file named in argv is opened first.
@@ -263,8 +287,8 @@ static void Scenario(NSString *root, NSString *exe, NSString *bundleID, NSString
 	NSString *doc1 = MakeDoc(root, [@"one." stringByAppendingString:extension]);
 	NSString *doc2 = MakeDoc(root, [@"two." stringByAppendingString:extension]);
 	NSString *doc3 = MakeDoc(root, [@"three." stringByAppendingString:extension]);
-	NSString *open1 = batch ? @"openFiles 1" : @"openFile";
-	NSString *openN = batch ? @"openFiles 2" : @"openFile";
+	NSString *open1 = batch ? [how stringByAppendingString:@" 1"] : how;
+	NSString *openN = batch ? [how stringByAppendingString:@" 2"] : how;
 	NSString *no = @" [current event nil]";
 	NSString *sOpenFiles1 = [open1 stringByAppendingString:@" [current event aevt/odoc]"];
 	NSString *willFinish = [@"willFinishLaunching" stringByAppendingString:no];
@@ -331,7 +355,10 @@ static void Scenario(NSString *root, NSString *exe, NSString *bundleID, NSString
 	CHECK(WaitForLog(bundleID, @"didFinishLaunching", 20));
 	log = ReadLog(bundleID);
 	printf("%s direct launch with argv document:\n%s", [how UTF8String], [log UTF8String]);
-	NSRange opened = [log rangeOfString:[open1 stringByAppendingString:no]];
+	// A document named in argv goes to application:openFiles: even when application:openURLs: is implemented
+	// (observed on macOS 26.7.3).
+	NSString *argvOpen = [how isEqualToString:@"openURLs"] ? @"openFiles 1" : open1;
+	NSRange opened = [log rangeOfString:[argvOpen stringByAppendingString:no]];
 	NSRange finished = [log rangeOfString:@"didFinishLaunching default=1 [current event aevt/oapp]"];
 	CHECK(opened.location != NSNotFound && finished.location != NSNotFound && opened.location < finished.location);
 	CHECK([log rangeOfString:@"shouldOpenUntitledFile"].location == NSNotFound);
@@ -355,7 +382,7 @@ int main(int argc, char **argv)
 	setvbuf(stdout, NULL, _IONBF, 0);
 	@autoreleasepool {
 		NSString *bid = [[NSBundle mainBundle] bundleIdentifier];
-		if ([bid isEqualToString:ID_FILES] || [bid isEqualToString:ID_FILE])
+		if ([bid isEqualToString:ID_FILES] || [bid isEqualToString:ID_FILE] || [bid isEqualToString:ID_URLS])
 			return RunApp(bid, argc, argv);
 
 		char path[4096];
@@ -370,6 +397,7 @@ int main(int argc, char **argv)
 		NSString *root = [NSString stringWithUTF8String:mkdtemp(tmpl)];
 		Scenario(root, exe, ID_FILES, @"dlgdoca", @"openFiles", YES);
 		Scenario(root, exe, ID_FILE, @"dlgdocb", @"openFile", NO);
+		Scenario(root, exe, ID_URLS, @"dlgdocc", @"openURLs", YES);
 		rmdir(tmpl);
 		printf(g_failures ? "FAILED (%d)\n" : "PASSED\n", g_failures);
 	}

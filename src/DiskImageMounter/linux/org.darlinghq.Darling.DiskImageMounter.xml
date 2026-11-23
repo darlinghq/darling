@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The type DiskImageMounter opens, for desktops whose shared-mime-info does not define it. Where it is defined
+     already (freedesktop.org's database does), this adds nothing new: the same comment and the same pattern. -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-apple-diskimage">
+    <comment>Apple disk image</comment>
+    <glob pattern="*.dmg"/>
+  </mime-type>
+</mime-info>

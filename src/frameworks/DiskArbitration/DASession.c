@@ -5,11 +5,8 @@
 #include <CoreFoundation/CFRuntime.h>
 #include <CoreFoundation/CFBase.h>
 
-struct _DASession
-{
-  CFRuntimeBase _parent;
-  const CFArrayCallBacks *_callBacks;
-};
+#include "DAPrivate.h"
+#include "DAProtocol.h"
 
 static CFTypeID _kDASessionTypeID = 0;
 
@@ -39,11 +36,12 @@ DASessionInitialize (void)
 	_kDASessionTypeID = _CFRuntimeRegisterClass (&DASessionClass);
 }
 
-#define DASESSION_SIZE sizeof(struct _DASession) - sizeof(CFRuntimeBase)
+#define DASESSION_SIZE sizeof(struct __DASession) - sizeof(CFRuntimeBase)
 
 static void
 DASessionFinalize (CFTypeRef cf)
 {
+	_DASessionDisconnect((DASessionRef) cf);
 }
 
 static Boolean
@@ -77,25 +75,11 @@ DASessionRef DASessionCreate(CFAllocatorRef allocator)
 	
 	new = (DASessionRef) _CFRuntimeCreateInstance (allocator, _kDASessionTypeID,
 												DASESSION_SIZE, 0);
-	
+	if (new == NULL)
+		return NULL;
+
+	_DASessionConnect(new);
 	return new;
-}
-
-void DASessionScheduleWithRunLoop(DASessionRef session,
-		CFRunLoopRef runLoop, CFStringRef runLoopMode)
-{
-	
-}
-
-void DASessionUnscheduleFromRunLoop(DASessionRef session,
-		CFRunLoopRef runLoop, CFStringRef runLoopMode)
-{
-	
-}
-
-void DASessionSetDispatchQueue(DASessionRef session, dispatch_queue_t queue)
-{
-	
 }
 
 struct _DAApprovalSession
@@ -184,28 +168,9 @@ void DAApprovalSessionUnscheduleFromRunLoop(DAApprovalSessionRef session,
 	
 }
 
-/* Callback registration is accepted and ignored: no disk events are delivered. */
-void DARegisterDiskAppearedCallback(DASessionRef session, CFDictionaryRef match, DADiskAppearedCallback callback, void *context)
-{
-}
-
-void DARegisterDiskDescriptionChangedCallback(DASessionRef session, CFDictionaryRef match, CFArrayRef watch, DADiskDescriptionChangedCallback callback, void *context)
-{
-}
-
-void DARegisterDiskDisappearedCallback(DASessionRef session, CFDictionaryRef match, DADiskDisappearedCallback callback, void *context)
-{
-}
-
+/* Mount approval and peek callbacks are accepted and never called: Darling's DiskArbitration mounts nothing and
+   has no probing phase. */
 void DARegisterDiskMountApprovalCallback(DASessionRef session, CFDictionaryRef match, DADiskMountApprovalCallback callback, void *context)
-{
-}
-
-void DARegisterDiskUnmountApprovalCallback(DASessionRef session, CFDictionaryRef match, DADiskUnmountApprovalCallback callback, void *context)
-{
-}
-
-void DARegisterDiskEjectApprovalCallback(DASessionRef session, CFDictionaryRef match, DADiskEjectApprovalCallback callback, void *context)
 {
 }
 
@@ -213,10 +178,3 @@ void DARegisterDiskPeekCallback(DASessionRef session, CFDictionaryRef match, CFI
 {
 }
 
-void DAUnregisterCallback(DASessionRef session, void *callback, void *context)
-{
-}
-
-void DAUnregisterApprovalCallback(DASessionRef session, void *callback, void *context)
-{
-}
