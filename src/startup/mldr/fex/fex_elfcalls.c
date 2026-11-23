@@ -201,6 +201,9 @@ struct fex_callback_struct { const char* name; unsigned arg; unsigned words; uns
 // What the bridge does to the arguments of one host function, decided from its name when it is wrapped
 // so that a call does no name lookups.
 enum fex_x_handler { FEX_X_HANDLER_NONE, FEX_X_ERROR_HANDLER, FEX_X_IO_ERROR_HANDLER };
+// FEX_JPEG_OBJECT: the first argument is a libjpeg object (j_common_ptr), whose error manager the library
+// may call into; FEX_JPEG_STD_ERROR: jpeg_std_error, which fills an error manager with host methods.
+enum fex_jpeg_rule { FEX_JPEG_NONE, FEX_JPEG_OBJECT, FEX_JPEG_STD_ERROR };
 struct fex_callback_rules {
 	enum fex_x_handler x_handler;
 	unsigned args; // the g_callback_args mask, 0 if the function has no entry
@@ -208,9 +211,12 @@ struct fex_callback_rules {
 	const struct fex_callback_struct* callback_struct; // its g_callback_structs entry, if any
 	unsigned xim_list; // first argument of its g_xim_value_lists (name, value) list, 0 if none
 	bool returns_function; // it returns a host function named by its first argument (g_proc_address_lookups)
+	enum fex_jpeg_rule jpeg;
+	bool jpeg_method; // one of the methods jpeg_std_error puts in an error manager
 };
 static struct fex_callback_rules g_dlsym_rules[DARLING_FEX_DLSYM_MAX_SLOTS];
 static struct fex_callback_rules callback_rules_for(const char* name);
+static void* wrap_host_function(void* host_sym, const char* symbol_name, const struct fex_callback_rules* rules);
 
 void* fex_dlsym_wrap_if_func(void* host_sym, const char* symbol_name)
 {
@@ -224,6 +230,14 @@ void* fex_dlsym_wrap_if_func(void* host_sym, const char* symbol_name)
 			return host_sym;
 	}
 
+	const struct fex_callback_rules rules = callback_rules_for(symbol_name);
+	return wrap_host_function(host_sym, symbol_name, &rules);
+}
+
+// The guest stub of a host function, with the rules a call through it follows (the first rules a host
+// function is wrapped with stay its rules).
+static void* wrap_host_function(void* host_sym, const char* symbol_name, const struct fex_callback_rules* rules)
+{
 	pthread_once(&g_dlsym_init_once, init_dlsym_stubs);
 
 	pthread_mutex_lock(&g_dlsym_mutex);
@@ -244,7 +258,7 @@ void* fex_dlsym_wrap_if_func(void* host_sym, const char* symbol_name)
 
 	uint32_t slot = g_dlsym_count++;
 	g_dlsym_targets[slot] = host_sym;
-	g_dlsym_rules[slot] = callback_rules_for(symbol_name);
+	g_dlsym_rules[slot] = *rules;
 	g_dlsym_names[slot] = symbol_name ? strdup(symbol_name) : NULL;
 	if (symbol_name && !g_dlsym_names[slot]) {
 		pthread_mutex_unlock(&g_dlsym_mutex);
@@ -490,6 +504,177 @@ static const char* const g_proc_address_lookups[] = {
 	"eglGetProcAddress",
 };
 
+// libjpeg error managers. jpeg_std_error fills the guest's struct jpeg_error_mgr with five host methods,
+// error_exit(cinfo), emit_message(cinfo, level), output_message(cinfo), format_message(cinfo, buffer) and
+// reset_error_mgr(cinfo), and a guest usually replaces error_exit with its own function, which longjmps
+// out instead of returning. Guest code calls these methods through cinfo->err, and so does libjpeg, from
+// any function that takes a libjpeg object (whose first field is its err pointer). Both sides read the
+// same five words of guest memory, so they hold guest-callable functions (stubs for host methods) while
+// guest code runs, and host-callable ones while a libjpeg function runs: a call whose first argument is
+// a libjpeg object switches its error manager to the host view, and back when it returns, and a guest
+// method runs with the guest view in place.
+#define FEX_JPEG_METHODS 5
+static const char* const g_jpeg_method_names[FEX_JPEG_METHODS] = {
+	"error_exit", "emit_message", "output_message", "format_message", "reset_error_mgr",
+};
+static const struct fex_callback_rules g_jpeg_method_rules = { .jpeg = FEX_JPEG_OBJECT, .jpeg_method = true };
+
+// An error manager in the host view, with the guest's five words. Nested libjpeg calls on one manager
+// share an entry; there is one per libjpeg call running on some thread, so a few entries suffice.
+struct fex_jpeg_host_view { uint64_t err; uint64_t guest[FEX_JPEG_METHODS]; unsigned depth; };
+#define FEX_JPEG_MAX_HOST_VIEWS 64
+static struct fex_jpeg_host_view g_jpeg_host_views[FEX_JPEG_MAX_HOST_VIEWS];
+static pthread_mutex_t g_jpeg_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// The host function behind one of the bridge's guest stubs, or 0 if `fn` is not a stub.
+static uint64_t host_function_of_stub(uint64_t fn, struct fex_callback_rules* rules)
+{
+	uint64_t host = 0;
+	pthread_mutex_lock(&g_dlsym_mutex);
+	uintptr_t base = (uintptr_t)g_dlsym_stub_area;
+	if (base && fn >= base && (fn - base) % FEX_STUB_SIZE == 0 && (fn - base) / FEX_STUB_SIZE < g_dlsym_count) {
+		uint32_t slot = (uint32_t)((fn - base) / FEX_STUB_SIZE);
+		host = (uint64_t)(uintptr_t)g_dlsym_targets[slot];
+		if (rules)
+			*rules = g_dlsym_rules[slot];
+	}
+	pthread_mutex_unlock(&g_dlsym_mutex);
+	return host;
+}
+
+static uint64_t jpeg_error_mgr_of(uint64_t object)
+{
+	uint64_t err = 0;
+	if (object == 0 || fex_copy_from_guest(&err, (const void*)(uintptr_t)object, sizeof(err)) != 0)
+		return 0;
+	return err;
+}
+
+// Called with g_jpeg_mutex held.
+static struct fex_jpeg_host_view* jpeg_host_view_of(uint64_t err)
+{
+	for (unsigned i = 0; i < FEX_JPEG_MAX_HOST_VIEWS; i++)
+		if (g_jpeg_host_views[i].err == err)
+			return &g_jpeg_host_views[i];
+	return NULL;
+}
+
+static void jpeg_host_method_0(uint64_t object);
+static void jpeg_host_method_1(uint64_t object, uint64_t arg);
+static void jpeg_host_method_2(uint64_t object);
+static void jpeg_host_method_3(uint64_t object, uint64_t arg);
+static void jpeg_host_method_4(uint64_t object);
+static void* const g_jpeg_host_methods[FEX_JPEG_METHODS] = {
+	(void*)jpeg_host_method_0, (void*)jpeg_host_method_1, (void*)jpeg_host_method_2,
+	(void*)jpeg_host_method_3, (void*)jpeg_host_method_4,
+};
+
+// Puts `err` in the host view: a stub becomes its host function, a guest function the host method that
+// runs it. Called with g_jpeg_mutex held.
+static void jpeg_set_host_view(uint64_t err, const uint64_t guest[FEX_JPEG_METHODS], unsigned depth)
+{
+	struct fex_jpeg_host_view* v = jpeg_host_view_of(0);
+	if (!v) {
+		fprintf(stderr, "mldr/fex: more than %u libjpeg calls at once\n", FEX_JPEG_MAX_HOST_VIEWS);
+		abort();
+	}
+	uint64_t host[FEX_JPEG_METHODS];
+	for (unsigned m = 0; m < FEX_JPEG_METHODS; m++) {
+		uint64_t stub_target = guest[m] ? host_function_of_stub(guest[m], NULL) : 0;
+		host[m] = !guest[m] ? 0 : stub_target ? stub_target : (uint64_t)(uintptr_t)g_jpeg_host_methods[m];
+	}
+	*v = (struct fex_jpeg_host_view){ err, { 0 }, depth };
+	memcpy(v->guest, guest, sizeof(v->guest));
+	fex_copy_to_guest((void*)(uintptr_t)err, host, sizeof(host));
+}
+
+// Switches the error manager of the libjpeg object `object` to the host view; returns the manager to
+// switch back, or 0. Memory whose words include no libjpeg method stub is not an error manager (a
+// function named jpeg_* whose first argument is something else, an err pointer not set yet) and is left alone.
+static uint64_t jpeg_enter_host_view(uint64_t object)
+{
+	uint64_t err = jpeg_error_mgr_of(object);
+	uint64_t guest[FEX_JPEG_METHODS];
+	if (err == 0 || fex_copy_from_guest(guest, (const void*)(uintptr_t)err, sizeof(guest)) != 0)
+		return 0;
+	pthread_mutex_lock(&g_jpeg_mutex);
+	struct fex_jpeg_host_view* v = jpeg_host_view_of(err);
+	if (v) {
+		v->depth++;
+	} else {
+		bool is_error_mgr = false;
+		for (unsigned m = 0; m < FEX_JPEG_METHODS && !is_error_mgr; m++) {
+			struct fex_callback_rules rules;
+			is_error_mgr = guest[m] && host_function_of_stub(guest[m], &rules) && rules.jpeg_method;
+		}
+		if (!is_error_mgr)
+			err = 0;
+		else
+			jpeg_set_host_view(err, guest, 1);
+	}
+	pthread_mutex_unlock(&g_jpeg_mutex);
+	return err;
+}
+
+static void jpeg_leave_host_view(uint64_t err)
+{
+	pthread_mutex_lock(&g_jpeg_mutex);
+	struct fex_jpeg_host_view* v = jpeg_host_view_of(err);
+	if (v && --v->depth == 0) {
+		fex_copy_to_guest((void*)(uintptr_t)err, v->guest, sizeof(v->guest));
+		v->err = 0;
+	}
+	pthread_mutex_unlock(&g_jpeg_mutex);
+}
+
+// libjpeg calls a guest method: run it with the guest view in place, as guest code expects to find it.
+static void jpeg_run_guest_method(unsigned method, uint64_t object, uint64_t arg)
+{
+	uint64_t err = jpeg_error_mgr_of(object);
+	pthread_mutex_lock(&g_jpeg_mutex);
+	struct fex_jpeg_host_view* v = err ? jpeg_host_view_of(err) : NULL;
+	if (!v) {
+		pthread_mutex_unlock(&g_jpeg_mutex);
+		fprintf(stderr, "mldr/fex: libjpeg called the %s method of an error manager it was not given\n",
+			g_jpeg_method_names[method]);
+		abort();
+	}
+	const struct fex_jpeg_host_view saved = *v;
+	v->err = 0;
+	fex_copy_to_guest((void*)(uintptr_t)err, saved.guest, sizeof(saved.guest));
+	pthread_mutex_unlock(&g_jpeg_mutex);
+
+	fex_invoke_guest_callback((uintptr_t)saved.guest[method], object, arg);
+
+	// It returned (error_exit longjmps past libjpeg instead, leaving the guest view in place). The guest
+	// may have changed its methods meanwhile.
+	uint64_t guest[FEX_JPEG_METHODS];
+	if (fex_copy_from_guest(guest, (const void*)(uintptr_t)err, sizeof(guest)) != 0)
+		memcpy(guest, saved.guest, sizeof(guest));
+	pthread_mutex_lock(&g_jpeg_mutex);
+	jpeg_set_host_view(err, guest, saved.depth);
+	pthread_mutex_unlock(&g_jpeg_mutex);
+}
+
+static void jpeg_host_method_0(uint64_t object) { jpeg_run_guest_method(0, object, 0); }
+static void jpeg_host_method_1(uint64_t object, uint64_t arg) { jpeg_run_guest_method(1, object, arg); }
+static void jpeg_host_method_2(uint64_t object) { jpeg_run_guest_method(2, object, 0); }
+static void jpeg_host_method_3(uint64_t object, uint64_t arg) { jpeg_run_guest_method(3, object, arg); }
+static void jpeg_host_method_4(uint64_t object) { jpeg_run_guest_method(4, object, 0); }
+
+// After jpeg_std_error(err): the host methods it stored become guest stubs.
+static void jpeg_wrap_std_error(uint64_t err)
+{
+	uint64_t words[FEX_JPEG_METHODS];
+	if (err == 0 || fex_copy_from_guest(words, (const void*)(uintptr_t)err, sizeof(words)) != 0)
+		return;
+	for (unsigned m = 0; m < FEX_JPEG_METHODS; m++)
+		if (words[m] && !host_function_of_stub(words[m], NULL))
+			words[m] = (uint64_t)(uintptr_t)wrap_host_function((void*)(uintptr_t)words[m], g_jpeg_method_names[m],
+				&g_jpeg_method_rules);
+	fex_copy_to_guest((void*)(uintptr_t)err, words, sizeof(words));
+}
+
 static struct fex_callback_rules callback_rules_for(const char* name)
 {
 	struct fex_callback_rules r = { FEX_X_HANDLER_NONE, 0, NULL, NULL, 0 };
@@ -520,6 +705,10 @@ static struct fex_callback_rules callback_rules_for(const char* name)
 	for (size_t i = 0; i < sizeof(g_proc_address_lookups) / sizeof(g_proc_address_lookups[0]); i++)
 		if (strcmp(name, g_proc_address_lookups[i]) == 0)
 			r.returns_function = true;
+	if (strcmp(name, "jpeg_std_error") == 0)
+		r.jpeg = FEX_JPEG_STD_ERROR;
+	else if (strncmp(name, "jpeg_", 5) == 0)
+		r.jpeg = FEX_JPEG_OBJECT;
 	return r;
 }
 
@@ -631,6 +820,7 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 		translate_guest_callbacks(&rules, args, 6 + FEX_STACK_ARG_WORDS, struct_copy);
 	}
 	uint64_t s0 = st[0], s1 = st[1];
+	const uint64_t jpeg_err = rules.jpeg == FEX_JPEG_OBJECT ? jpeg_enter_host_view(state->rdi) : 0;
 
 #if defined(__aarch64__)
 	double v0, v1, v2, v3, v4, v5, v6, v7;
@@ -694,6 +884,10 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 		else
 			*host_native = x0;
 	}
+	if (jpeg_err)
+		jpeg_leave_host_view(jpeg_err);
+	if (rules.jpeg == FEX_JPEG_STD_ERROR)
+		jpeg_wrap_std_error(state->rdi);
 	if (rules.returns_function && x0 != 0)
 		x0 = (uint64_t)(uintptr_t)fex_dlsym_wrap_if_func((void*)(uintptr_t)x0, (const char*)(uintptr_t)state->rdi);
 	state->rax = x0;

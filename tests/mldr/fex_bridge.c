@@ -77,12 +77,16 @@ static uint64_t stub_syscall_nr(void* stub)
 static uintptr_t last_cb_fn = 0;
 static uint64_t last_cb_arg0 = 0;
 static uint64_t last_cb_arg1 = 0;
+// What a test's fake guest function does while it runs.
+static void (*guest_callback_body)(uint64_t arg0, uint64_t arg1) = NULL;
 
 uint64_t fex_invoke_guest_callback(uintptr_t guest_fn, uint64_t arg0, uint64_t arg1)
 {
 	last_cb_fn = guest_fn;
 	last_cb_arg0 = arg0;
 	last_cb_arg1 = arg1;
+	if (guest_callback_body)
+		guest_callback_body(arg0, arg1);
 	return 0x77;
 }
 
@@ -1602,6 +1606,179 @@ static void test_proc_address_lookup(void)
 		"a looked-up function keeps the callback rules of its name");
 }
 
+// libjpeg fakes. An error manager starts with five methods; a libjpeg object starts with its err pointer.
+struct fake_jpeg_error_mgr {
+	uint64_t method[5]; // error_exit, emit_message, output_message, format_message, reset_error_mgr
+	int64_t msg_code;
+	uint64_t guest_extension; // what a guest keeps after the struct (Onyx2D: its jmp_buf)
+};
+struct fake_jpeg_object {
+	uint64_t err;
+	uint64_t state;
+};
+enum { JPEG_ERROR_EXIT, JPEG_EMIT, JPEG_OUTPUT, JPEG_FORMAT, JPEG_RESET };
+
+static bool is_guest_stub(uint64_t fn)
+{
+	static const uint8_t stub_start[3] = {0x49, 0x89, 0xca};
+	return fn >= 0x10000 && memcmp((const void*)(uintptr_t)fn, stub_start, sizeof(stub_start)) == 0;
+}
+
+// A method host code may call natively: neither a fake guest function nor a guest stub.
+static bool host_callable(uint64_t fn)
+{
+	return fn != 0 && !is_fake_guest_fn(fn) && !is_guest_stub(fn);
+}
+
+static const struct fake_jpeg_error_mgr* jpeg_err_of(uint64_t object)
+{
+	return (const struct fake_jpeg_error_mgr*)(uintptr_t)((const struct fake_jpeg_object*)(uintptr_t)object)->err;
+}
+
+static char g_jpeg_formatted[32];
+static void host_jpeg_format_message(uint64_t object, char* buffer)
+{
+	(void)object;
+	strcpy(buffer, "corrupt data");
+}
+
+static int g_jpeg_outputs = 0;
+static void host_jpeg_output_message(uint64_t object)
+{
+	const struct fake_jpeg_error_mgr* err = jpeg_err_of(object);
+	g_jpeg_outputs++;
+	if (!host_callable(err->method[JPEG_FORMAT]))
+		return;
+	((void (*)(uint64_t, char*))(uintptr_t)err->method[JPEG_FORMAT])(object, g_jpeg_formatted);
+}
+
+static void host_jpeg_error_exit(uint64_t object) { host_jpeg_output_message(object); }
+static void host_jpeg_emit_message(uint64_t object, int level) { (void)object; (void)level; }
+static void host_jpeg_reset_error_mgr(uint64_t object) { (void)object; }
+
+static uint64_t host_jpeg_std_error(uint64_t err)
+{
+	struct fake_jpeg_error_mgr* e = (struct fake_jpeg_error_mgr*)(uintptr_t)err;
+	e->method[JPEG_ERROR_EXIT] = (uint64_t)(uintptr_t)host_jpeg_error_exit;
+	e->method[JPEG_EMIT] = (uint64_t)(uintptr_t)host_jpeg_emit_message;
+	e->method[JPEG_OUTPUT] = (uint64_t)(uintptr_t)host_jpeg_output_message;
+	e->method[JPEG_FORMAT] = (uint64_t)(uintptr_t)host_jpeg_format_message;
+	e->method[JPEG_RESET] = (uint64_t)(uintptr_t)host_jpeg_reset_error_mgr;
+	e->msg_code = 0;
+	return err;
+}
+
+// Reads a header that turns out corrupt: reports the error through err->error_exit, as libjpeg does.
+static uint64_t g_jpeg_host_view_ok;
+static uint64_t host_jpeg_read_header(uint64_t object, uint64_t require_image)
+{
+	(void)require_image;
+	const struct fake_jpeg_error_mgr* err = jpeg_err_of(object);
+	g_jpeg_host_view_ok = 1;
+	for (int m = 0; m < 5; m++)
+		g_jpeg_host_view_ok &= host_callable(err->method[m]);
+	if (!g_jpeg_host_view_ok)
+		return GOT_GUEST_FN;
+	((struct fake_jpeg_error_mgr*)err)->msg_code = 42;
+	((void (*)(uint64_t))(uintptr_t)err->method[JPEG_ERROR_EXIT])(object);
+	for (int m = 0; m < 5; m++)
+		g_jpeg_host_view_ok &= host_callable(err->method[m]);
+	return 1;
+}
+
+static uint64_t host_jpeg_quality_scaling(uint64_t quality)
+{
+	return quality * 2;
+}
+
+#define GUEST_ERROR_EXIT 0x5500000u
+static struct fake_jpeg_error_mgr g_guest_err;
+static bool g_guest_view_in_error_exit;
+static uint64_t g_guest_saw_msg_code;
+static jmp_buf g_guest_longjmp_target;
+
+// The guest's error_exit sees its own view of the manager: its function and stubs, and the fields libjpeg set.
+static void guest_error_exit_returns(uint64_t object, uint64_t arg)
+{
+	(void)arg;
+	const struct fake_jpeg_error_mgr* err = jpeg_err_of(object);
+	g_guest_view_in_error_exit = err == &g_guest_err && err->method[JPEG_ERROR_EXIT] == GUEST_ERROR_EXIT &&
+		is_guest_stub(err->method[JPEG_OUTPUT]) && is_guest_stub(err->method[JPEG_FORMAT]);
+	g_guest_saw_msg_code = (uint64_t)err->msg_code;
+}
+
+static void guest_error_exit_longjmps(uint64_t object, uint64_t arg)
+{
+	guest_error_exit_returns(object, arg);
+	longjmp(g_guest_longjmp_target, 1);
+}
+
+static bool guest_view_of(const struct fake_jpeg_error_mgr* err)
+{
+	return err->method[JPEG_ERROR_EXIT] == GUEST_ERROR_EXIT && is_guest_stub(err->method[JPEG_EMIT]) &&
+		is_guest_stub(err->method[JPEG_OUTPUT]) && is_guest_stub(err->method[JPEG_FORMAT]) &&
+		is_guest_stub(err->method[JPEG_RESET]);
+}
+
+static void test_jpeg_error_manager(void)
+{
+	void* std_error = fex_dlsym_wrap_if_func((void*)host_jpeg_std_error, "jpeg_std_error");
+	void* read_header = fex_dlsym_wrap_if_func((void*)host_jpeg_read_header, "jpeg_read_header");
+	void* quality = fex_dlsym_wrap_if_func((void*)host_jpeg_quality_scaling, "jpeg_quality_scaling");
+
+	memset(&g_guest_err, 0, sizeof(g_guest_err));
+	call_stub(std_error, (uint64_t)(uintptr_t)&g_guest_err, 0, 0, 0);
+	bool all_stubs = true;
+	for (int m = 0; m < 5; m++)
+		all_stubs &= is_guest_stub(g_guest_err.method[m]);
+	check(all_stubs, "jpeg_std_error leaves guest-callable stubs for its host methods in the guest's struct");
+
+	struct fake_jpeg_object cinfo = {(uint64_t)(uintptr_t)&g_guest_err, 0};
+	g_jpeg_outputs = 0;
+	g_jpeg_formatted[0] = '\0';
+	call_stub((void*)(uintptr_t)g_guest_err.method[JPEG_OUTPUT], (uint64_t)(uintptr_t)&cinfo, 0, 0, 0);
+	check(g_jpeg_outputs == 1 && strcmp(g_jpeg_formatted, "corrupt data") == 0,
+		"a guest call of output_message runs the host method, which calls format_message natively");
+
+	g_guest_err.method[JPEG_ERROR_EXIT] = GUEST_ERROR_EXIT;
+	g_guest_err.guest_extension = 0x1234;
+	guest_callback_body = guest_error_exit_returns;
+	g_guest_view_in_error_exit = false;
+	last_cb_fn = 0;
+	uint64_t ret = call_stub(read_header, (uint64_t)(uintptr_t)&cinfo, 1, 0, 0);
+	check(ret == 1 && g_jpeg_host_view_ok, "libjpeg finds host-callable methods in the error manager while it runs");
+	check(last_cb_fn == GUEST_ERROR_EXIT && last_cb_arg0 == (uint64_t)(uintptr_t)&cinfo,
+		"libjpeg's call of error_exit runs the guest's function with the object");
+	check(g_guest_view_in_error_exit && g_guest_saw_msg_code == 42,
+		"the guest's error_exit sees its own struct, with the guest's methods and libjpeg's fields");
+	check(guest_view_of(&g_guest_err) && g_guest_err.guest_extension == 0x1234 && cinfo.err == (uint64_t)(uintptr_t)&g_guest_err,
+		"after the call the guest's error manager holds the guest's methods again");
+
+	// Onyx2D's error_exit longjmps out of libjpeg; the manager must be back in the guest view all the same.
+	guest_callback_body = guest_error_exit_longjmps;
+	g_guest_view_in_error_exit = false;
+	if (setjmp(g_guest_longjmp_target) == 0)
+		call_stub(read_header, (uint64_t)(uintptr_t)&cinfo, 1, 0, 0);
+	check(g_guest_view_in_error_exit && guest_view_of(&g_guest_err),
+		"a guest error_exit that longjmps out of libjpeg leaves the guest view in place");
+	guest_callback_body = guest_error_exit_returns;
+	g_jpeg_host_view_ok = 0;
+	ret = call_stub(read_header, (uint64_t)(uintptr_t)&cinfo, 1, 0, 0);
+	check(ret == 1 && g_jpeg_host_view_ok && guest_view_of(&g_guest_err),
+		"the error manager works for later libjpeg calls after a longjmp out of error_exit");
+	guest_callback_body = NULL;
+
+	check(call_stub(quality, 75, 0, 0, 0) == 150, "a jpeg_* function whose first argument is not an object is called as is");
+	uint64_t not_a_manager[5] = {0x5500100, 0x5500200, 7, 8, 9};
+	struct fake_jpeg_object foreign = {(uint64_t)(uintptr_t)not_a_manager, 0};
+	check(call_stub(read_header, (uint64_t)(uintptr_t)&foreign, 1, 0, 0) == GOT_GUEST_FN && not_a_manager[0] == 0x5500100 &&
+	      not_a_manager[4] == 9,
+		"memory that jpeg_std_error did not fill is not treated as an error manager");
+	struct fake_jpeg_object unset = {0, 0};
+	call_stub(quality, (uint64_t)(uintptr_t)&unset, 0, 0, 0);
+	check(unset.err == 0, "an object whose err pointer is NULL is left alone");
+}
+
 static void test_syscall_translations(void)
 {
 	struct fex_x86_64_state st;
@@ -2133,6 +2310,7 @@ int main(void)
 	test_unsupported_callback();
 	test_callback_struct();
 	test_proc_address_lookup();
+	test_jpeg_error_manager();
 	test_xim_callbacks();
 	test_left_callbacks();
 	test_syscall_translations();
