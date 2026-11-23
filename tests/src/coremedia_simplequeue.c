@@ -33,12 +33,40 @@
 // here. Prints PASS when everything holds; the exit code is the number of failed checks.
 
 #include <CoreMedia/CoreMedia.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 
 static int failures;
 
 #define CHECK(cond) do { if (!(cond)) { failures++; printf("FAIL line %d: %s\n", __LINE__, #cond); } } while (0)
+
+#define kElements 200000
+
+static CMSimpleQueueRef sharedQueue;
+static int consumerFailed;
+
+static void *producer(void *unused)
+{
+	for (uintptr_t next = 1; next <= kElements; next++)
+		while (CMSimpleQueueEnqueue(sharedQueue, (const void *)next) != noErr)
+			;
+	return NULL;
+}
+
+static void *consumer(void *unused)
+{
+	for (uintptr_t expected = 1; expected <= kElements; expected++) {
+		const void *element;
+		while ((element = CMSimpleQueueDequeue(sharedQueue)) == NULL)
+			;
+		if ((uintptr_t)element != expected) {
+			consumerFailed = 1;
+			return NULL;
+		}
+	}
+	return NULL;
+}
 
 int main(void)
 {
@@ -114,7 +142,29 @@ int main(void)
 	CHECK(CMSimpleQueueEnqueue(one, (const void *)8) == noErr && CMSimpleQueueGetHead(one) == (const void *)8);
 	CFRelease(one);
 
+	// NULL and objects that are not a queue: the documented results are 0, NULL and the status codes of
+	// the header (GUESS for an object that is not a queue)
+	CHECK(CMSimpleQueueEnqueue(NULL, (const void *)1) == kCMSimpleQueueError_RequiredParameterMissing);
+	CHECK(CMSimpleQueueDequeue(NULL) == NULL && CMSimpleQueueGetHead(NULL) == NULL);
+	CHECK(CMSimpleQueueReset(NULL) == kCMSimpleQueueError_RequiredParameterMissing);
+	CHECK(CMSimpleQueueGetCapacity(NULL) == 0 && CMSimpleQueueGetCount(NULL) == 0 && CMSimpleQueueGetFullness(NULL) == 0.0f);
+	CMSimpleQueueRef notAQueue = (CMSimpleQueueRef)CFSTR("no");
+	CHECK(CMSimpleQueueEnqueue(notAQueue, (const void *)1) == kCMSimpleQueueError_ParameterOutOfRange);
+	CHECK(CMSimpleQueueReset(notAQueue) == kCMSimpleQueueError_ParameterOutOfRange);
+	CHECK(CMSimpleQueueDequeue(notAQueue) == NULL && CMSimpleQueueGetCapacity(notAQueue) == 0);
 	CFRelease(queue);
+
+	// one thread enqueues and one dequeues, on a queue much smaller than the number of elements: every element
+	// arrives, in order
+	CHECK(CMSimpleQueueCreate(kCFAllocatorDefault, 16, &sharedQueue) == noErr);
+	pthread_t writer, reader;
+	CHECK(pthread_create(&reader, NULL, consumer, NULL) == 0);
+	CHECK(pthread_create(&writer, NULL, producer, NULL) == 0);
+	pthread_join(writer, NULL);
+	pthread_join(reader, NULL);
+	CHECK(!consumerFailed);
+	CHECK(CMSimpleQueueGetCount(sharedQueue) == 0);
+	CFRelease(sharedQueue);
 
 	if (failures == 0)
 		printf("PASS\n");
