@@ -359,12 +359,6 @@ void* ColorSyncProfileCreateWithDisplayID(void)
     return NULL;
 }
 
-void* ColorSyncProfileCreateWithName(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCreateWithName called");
-    return NULL;
-}
-
 void* ColorSyncProfileEstimateGamma(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileEstimateGamma called");
