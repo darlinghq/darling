@@ -27,12 +27,15 @@ URL:            https://www.darlinghq.org/
 Source0:        %{name}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-BuildRequires:  cmake clang bison flex python2 glibc-devel(x86-64) glibc-devel(x86-32)
+BuildRequires:  cmake clang bison flex python2 glibc-devel%{_isa}
 BuildRequires:  fuse-devel systemd-devel
-BuildRequires:  cairo-devel freetype-devel(x86-64) fontconfig-devel(x86-64)
-BuildRequires:  freetype-devel(x86-32) fontconfig-devel(x86-32) make
-BuildRequires:  libjpeg-turbo-devel(x86-64) libtiff-devel(x86-64)
+BuildRequires:  cairo-devel freetype-devel%{_isa} fontconfig-devel%{_isa} make
+BuildRequires:  libjpeg-turbo-devel%{_isa} libtiff-devel%{_isa}
+%ifarch x86_64
+# the i386 slices, which only an x86-64 host builds by default, link against the 32-bit host libraries
+BuildRequires:  glibc-devel(x86-32) freetype-devel(x86-32) fontconfig-devel(x86-32)
 BuildRequires:  libjpeg-turbo-devel(x86-32)
+%endif
 BuildRequires:  libglvnd-devel mesa-libGL-devel mesa-libEGL-devel
 BuildRequires:  libxml2-devel elfutils-libelf-devel
 BuildRequires:  libbsd-devel
@@ -56,10 +59,19 @@ Extra components for Darling that are not part of a typical ("stock") installati
 %package core
 Summary:    Darling core components
 Group:      Utility
-Requires:   xdg-user-dirs
+Requires:   darling-core-native = %{version}-%{release} xdg-user-dirs
 
 %description core
 Core components of Darling
+
+%package core-native
+Summary:    Darling components that run on Linux
+Group:      Utility
+
+%description core-native
+The parts of Darling built for the host architecture: the darling launcher
+(installed setuid root), darpath, darling-coredump, darlingserver, the Mach-O
+loader (mldr) and the binfmt_misc configuration.
 
 %package system
 Summary:    Darling system components
@@ -213,19 +225,24 @@ GUI stub components of Darling
 pushd build
 	# Release is broken https://github.com/darlinghq/darling/issues/331
 	#          -DCMAKE_BUILD_TYPE=Release \
+	# `rpmbuild --define 'darling_archs i386;x86_64;arm64'` sets the Mach-O slices; by default CMake builds
+	# the ones the host runs (i386 and x86_64 on x86-64, arm64 on aarch64)
 	CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" \
 	%{__cmake} -DCMAKE_INSTALL_PREFIX=%{_prefix} \
 	           -DOpenGL_GL_PREFERENCE=GLVND \
 	           -DDEBIAN_PACKAGING=ON \
 	           -DJSC_UNIFIED_BUILD=ON \
 	           -DDARLING_SWIFT_WMO=ON \
+	           %{?darling_archs:"-DDARLING_ARCHS=%{darling_archs}"} \
 	           ..
 	%{make_build} -j `nproc`
 popd
 
 %install
 [ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
+# core_native is what runs on Linux (launcher, mldr, darlingserver, binfmt.d); it is built in the same tree
 DARLING_COMPONENTS=(
+	core_native
 	core
 	system
 	cli
@@ -247,6 +264,7 @@ DARLING_COMPONENTS=(
 	gui_stubs
 )
 PACKAGE_SUFFIXES=(
+	core-native
 	core
 	system
 	cli
@@ -268,7 +286,7 @@ PACKAGE_SUFFIXES=(
 	gui-stubs
 )
 pushd build
-	for index in {0..18}; do
+	for index in "${!PACKAGE_SUFFIXES[@]}"; do
 		rm -rf tmp/${PACKAGE_SUFFIXES[index]}
 		DESTDIR=tmp/${PACKAGE_SUFFIXES[index]} %{__cmake} -DCOMPONENT=${DARLING_COMPONENTS[index]} -P cmake_install.cmake
 		find tmp/${PACKAGE_SUFFIXES[index]} \( ! -type d -o -type d -empty \) -printf '"/%%P"\n' > files.${PACKAGE_SUFFIXES[index]}.txt
@@ -288,6 +306,7 @@ popd
 
 %files extra
 
+%files core-native -f build/files.core-native.txt
 %files core -f build/files.core.txt
 %files system -f build/files.system.txt
 %files cli -f build/files.cli.txt
