@@ -2,7 +2,7 @@
 # Builds and runs, with plain clang and no CMake, the host unit tests that the amd64 CI job never
 # compiles: the FEX bridge tests (registered in src/startup/mldr/CMakeLists.txt on aarch64 hosts
 # only) and the launcher tests (src/startup/CMakeLists.txt). Neither needs FEX, the submodules or
-# a Darling build, so this runs on any aarch64 machine with clang and clang++.
+# a Darling build, so this runs on any aarch64 machine with clang, clang++ and python3.
 #
 #   tests/mldr/run-fex-unit-tests.sh [BUILD_DIR]
 #
@@ -109,6 +109,16 @@ if [ -n "${FEXCORE_SOURCE_DIR:-}" ]; then
 		"-I$FEXCORE_SOURCE_DIR/Source" "-I$FEXCORE_SOURCE_DIR/FEXCore/include" "$root/tests/mldr/fex_sigframe_layout.cpp"
 else
 	echo "== mldr_fex_sigframe_layout_test: skipped (set FEXCORE_SOURCE_DIR to a FEX source tree to run it)"
+fi
+
+# the validation of tests/mldr/build-fexcore-shim.py (needs python3, not FEX)
+echo "== build_fexcore_shim_check_test"
+if "$root/tests/mldr/test-build-fexcore-shim.sh" > "$out/build_fexcore_shim_check.log" 2>&1; then
+	passed=$((passed + 1))
+else
+	cat "$out/build_fexcore_shim_check.log"
+	echo "FAIL build_fexcore_shim_check_test"
+	failed+=(build_fexcore_shim_check_test)
 fi
 
 # launcher tests: test source, then the launcher sources it checks (src/startup)
