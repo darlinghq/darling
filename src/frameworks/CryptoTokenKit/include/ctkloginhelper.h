@@ -38,4 +38,13 @@ CFDictionaryRef TKCopyAvailableTokensInfo(uid_t uid, CFDictionaryRef hints);
 int TKPerformLogin(uid_t uid, CFStringRef token_id, CFDataRef pubkey_hash, CFStringRef pin, CFStringRef kerberos_principal, CFErrorRef* error);
 OSStatus TKAddSecureToken(CFStringRef username, CFStringRef pwd, CFStringRef tokenID, CFDataRef wrapPubKeyHash);
 
+// Smartcard login settings. The numeric value of the constant is not
+// documented; nothing in Darling depends on it.
+typedef enum {
+	kTKEnforceSmartcard = 1,
+} TKSmartcardSetting;
+
+// Value of a smartcard login setting; 0 means the setting is off.
+int TKGetSmartcardSetting(TKSmartcardSetting setting);
+
 #endif // _CRYPTOTOKENKIT_CTKLOGINHELPER_H_
