@@ -26,6 +26,7 @@
 #include <CoreMedia/CMTimeRange.h>
 #include <CoreMedia/CMFormatDescription.h>
 #include <CoreMedia/CMBlockBuffer.h>
+#include <CoreMedia/CMSimpleQueue.h>
 #include <CoreMedia/CMSampleBuffer.h>
 #include <CoreMedia/CMSync.h>
 #include <CoreMedia/CMAttachment.h>
@@ -199,14 +200,6 @@ void* CMSampleBufferSetInvalidateCallback(void);
 void* CMSampleBufferSetInvalidateHandler(void);
 void* CMSampleBufferSetOutputPresentationTimeStamp(void);
 void* CMSampleBufferTrackDataReadiness(void);
-void* CMSimpleQueueCreate(void);
-void* CMSimpleQueueDequeue(void);
-void* CMSimpleQueueEnqueue(void);
-void* CMSimpleQueueGetCapacity(void);
-void* CMSimpleQueueGetCount(void);
-void* CMSimpleQueueGetHead(void);
-void* CMSimpleQueueGetTypeID(void);
-void* CMSimpleQueueReset(void);
 void* CMSwapBigEndianClosedCaptionDescriptionToHost(void);
 void* CMSwapBigEndianHapticDescriptionToHost(void);
 void* CMSwapBigEndianImageDescriptionToHost(void);
