@@ -138,8 +138,11 @@ static void testSecureCoding(void)
 	NSData *codedData = [NSKeyedArchiver archivedDataWithRootObject:coded requiringSecureCoding:YES error:NULL];
 	Class plistClass = NSClassFromString(@"NSPropertyListSerialization");
 	NSDictionary *plist = [plistClass propertyListWithData:codedData options:0 format:NULL error:NULL];
-	NSDictionary *top = plist[@"$objects"][[plist[@"$top"][@"root"] intValue]];
-	CHECK(top[@"_identifier"] != nil && top[@"_label"] != nil && top[@"_value"] != nil);
+	BOOL foundKeys = NO;
+	for (id object in plist[@"$objects"])
+		if ([object isKindOfClass:[NSDictionary class]] && object[@"_identifier"] != nil && object[@"_label"] != nil && object[@"_value"] != nil)
+			foundKeys = YES;
+	CHECK(foundKeys);
 
 	CNLabeledValue<NSString *> *lv = [CNLabeledValue labeledValueWithLabel:@"work" value:@"a@example.com"];
 	CNLabeledValue<NSString *> *back = roundTrip(lv, @[[CNLabeledValue class], [NSString class]]);

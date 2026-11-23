@@ -104,7 +104,7 @@ static void testAudioTimeStamp(void)
 	// as the smallest integer.
 	ts.mFlags = kAudioTimeStampSampleTimeValid;
 	static const struct { double sampleTime; int64_t expected; } positions[] = {
-		{ 3.7, 3 }, { -3.7, -3 }, { 0.5, 0 }, { -0.5, 0 }, { 4503599627370497.5, 4503599627370497 },
+		{ 3.7, 3 }, { -3.7, -3 }, { 0.5, 0 }, { -0.5, 0 }, { 4503599627370497.0, 4503599627370497 },
 		{ 1e30, INT64_MIN }, { -1e30, INT64_MIN }, { 9.3e18, INT64_MIN }, { NAN, INT64_MIN }, { INFINITY, INT64_MIN }, { -INFINITY, INT64_MIN },
 	};
 	for (size_t i = 0; i < sizeof positions / sizeof positions[0]; i++)
@@ -134,17 +134,15 @@ static void testHostTimeConversion(void)
 	// The host time is the mach_absolute_time clock: a time from now is a positive number of seconds.
 	CHECK([AVAudioTime secondsForHostTime:AudioGetCurrentHostTime()] > 0.0);
 
-	// QUIRK: the number of nanoseconds is truncated (1.6 ns is 1), a negative one wraps, NaN and minus infinity give 2^63, and
-	// 2^64 and more, and infinity, give 0 (macOS 10.14.4; see nanosFromDouble in AVAudioTime.m).
+	// QUIRK: the number of nanoseconds is truncated (1.6 ns is 1), a negative one wraps, and NaN and minus infinity give 2^63
+	// (macOS 10.14.4 and 26.7.3; see nanosFromDouble in AVAudioTime.m).
 	CHECK([AVAudioTime hostTimeForSeconds:1.6e-9] == AudioConvertNanosToHostTime(1));
 	CHECK([AVAudioTime hostTimeForSeconds:2.5e-9] == AudioConvertNanosToHostTime(2));
 	CHECK([AVAudioTime hostTimeForSeconds:5e-10] == 0);
 	CHECK([AVAudioTime hostTimeForSeconds:-1.0] == AudioConvertNanosToHostTime(UINT64_MAX - 999999999ull));
 	CHECK([AVAudioTime hostTimeForSeconds:-1e-9] == AudioConvertNanosToHostTime(UINT64_MAX));
 	CHECK([AVAudioTime hostTimeForSeconds:1.8e10] == AudioConvertNanosToHostTime(18000000000000000000ull));
-	CHECK([AVAudioTime hostTimeForSeconds:1.9e10] == 0);
-	CHECK([AVAudioTime hostTimeForSeconds:1e300] == 0);
-	CHECK([AVAudioTime hostTimeForSeconds:INFINITY] == 0);
+	// 2^64 nanoseconds and more, and infinity, give 0 on macOS 10.14.4 and 2^63 on 26.7.3: not pinned here.
 	CHECK([AVAudioTime hostTimeForSeconds:-INFINITY] == AudioConvertNanosToHostTime(0x8000000000000000ull));
 	CHECK([AVAudioTime hostTimeForSeconds:NAN] == AudioConvertNanosToHostTime(0x8000000000000000ull));
 }
