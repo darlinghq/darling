@@ -475,7 +475,13 @@ static __thread uint64_t t_guest_blocked_jit_signals;
 // each signal is kept, as Linux does for the standard ones (real-time ones are not queued here).
 static __thread uint64_t t_pending;
 static __thread siginfo_t t_pending_info[GUEST_NSIG];
+// Outermost frame first, at most one per signal number. Only the common first one is in TLS, which every
+// thread's stack pays for; the rest are allocated when a thread first needs them.
+#define GUEST_MAX_REQUESTS (GUEST_NSIG - 1)
 static __thread struct fex_signal_request t_request;
+static __thread struct fex_signal_request* t_more_requests;
+static pthread_key_t g_more_requests_key;
+static pthread_once_t g_more_requests_once = PTHREAD_ONCE_INIT;
 // A signal turned the guest's syscall into EINTR at its kernel entry; the syscall is to be made again.
 static __thread bool t_restart_syscall;
 // A signal ended a wait with a temporary blocked set (rt_sigsuspend, pselect6, ppoll, epoll_pwait): as on
@@ -686,8 +692,6 @@ static void fex_host_signal_handler(int sig, siginfo_t* info, void* ucontext)
 	errno = saved_errno;
 }
 
-// At a syscall return: picks a pending signal the guest does not block and asks for its handler to run as
-// the syscall returns (state->signal_request). Returns false when there is none to run.
 // Takes one of `set` from the signals kept here, if any; outside a signal handler.
 static int take_kept_signal(uint64_t set, siginfo_t* info)
 {
@@ -710,20 +714,53 @@ void fex_signals_after_fork_child(void)
 	t_restart_syscall = false;
 }
 
+// A destructor of another key that runs later may still take signals and allocate the block again.
+static void free_more_requests(void* block)
+{
+	free(block);
+	t_more_requests = NULL;
+}
+
+static void make_more_requests_key(void)
+{
+	pthread_key_create(&g_more_requests_key, free_more_requests);
+}
+
+// The `i`th handler request of this thread; outside a signal handler.
+static struct fex_signal_request* request_slot(size_t i)
+{
+	if (i == 0)
+		return &t_request;
+	if (!t_more_requests) {
+		pthread_once(&g_more_requests_once, make_more_requests_key);
+		t_more_requests = calloc(GUEST_MAX_REQUESTS - 1, sizeof(*t_more_requests));
+		if (!t_more_requests) {
+			fprintf(stderr, "[mldr/fex] fatal: out of memory for nested signal frames\n");
+			abort();
+		}
+		pthread_setspecific(g_more_requests_key, t_more_requests);
+	}
+	return &t_more_requests[i - 1];
+}
+
+// Linux takes every signal it can before returning to user mode, each frame on top of the last, so the last
+// taken runs first; a wait's set lets in the first, and the caller's comes back with the outermost frame.
 static bool take_pending_signal(struct fex_x86_64_state* state)
 {
 	bool waited = t_wait_interrupted;
 	t_wait_interrupted = false;
-	for (;;) {
-		// The common case costs no syscall.
-		if (!__atomic_load_n(&t_pending, __ATOMIC_RELAXED))
-			return false;
-		uint64_t old_mask = guest_mask();
-		uint64_t blocked = waited ? t_wait_mask : old_mask;
+	// The common case costs no syscall.
+	if (!__atomic_load_n(&t_pending, __ATOMIC_RELAXED))
+		return false;
+	uint64_t old_mask = guest_mask();
+	uint64_t blocked = waited ? t_wait_mask : old_mask;
+	struct fex_signal_request* outer = NULL;
+	size_t taken = 0;
+	while (taken < GUEST_MAX_REQUESTS) {
 		siginfo_t info;
 		int sig = take_kept_signal(~blocked, &info);
 		if (!sig)
-			return false;
+			break;
 
 		pthread_mutex_lock(&g_guest_sigactions_lock);
 		struct fex_guest_sigaction action = load_guest_action(sig);
@@ -737,16 +774,24 @@ static bool take_pending_signal(struct fex_x86_64_state* state)
 			continue;
 		}
 
-		memset(&t_request, 0, sizeof(t_request));
-		t_request.sig = sig;
-		t_request.old_mask = old_mask;
-		t_request.action = action;
-		t_request.altstack = t_guest_altstack;
-		memcpy(t_request.info, &info, sizeof(t_request.info));
-		set_guest_mask(handler_mask(sig, &action, blocked));
-		state->signal_request = &t_request;
-		return true;
+		struct fex_signal_request* request = request_slot(taken++);
+		memset(request, 0, sizeof(*request));
+		request->sig = sig;
+		request->old_mask = old_mask;
+		request->action = action;
+		request->altstack = t_guest_altstack;
+		memcpy(request->info, &info, sizeof(request->info));
+		if (outer)
+			outer->nested = request;
+		else
+			state->signal_request = request;
+		outer = request;
+		blocked = old_mask = handler_mask(sig, &action, blocked);
 	}
+	if (!outer)
+		return false;
+	set_guest_mask(blocked);
+	return true;
 }
 
 static long install_host_handler(int sig, uint64_t guest_flags)
@@ -759,6 +804,11 @@ static long install_host_handler(int sig, uint64_t guest_flags)
 		.mask = ~FEX_JIT_SIGNALS,
 	};
 	return host_rt_sigaction(sig, &act);
+}
+
+bool fex_bridge_abi_matches(fex_abi_version_fn_t shim_version)
+{
+	return shim_version && shim_version() == FEX_BRIDGE_ABI_VERSION;
 }
 
 void fex_signals_set_hooks(fex_signal_preempt_fn_t preempt, fex_signal_deliver_fn_t deliver,
@@ -879,6 +929,11 @@ static long guest_masked_wait(long nr, const long args[6], uint64_t wait, uint64
 	long ret = -EINTR;
 	if (!(__atomic_load_n(&t_pending, __ATOMIC_RELAXED) & ~wait))
 		ret = guest_host_syscall(nr, args[0], args[1], args[2], args[3], args[4], args[5]);
+	if (ret == -EINTR) {
+		// The host handler blocks everything, so the kernel ended the wait after one signal: let the others
+		// the wait admits reach it too, so that each gets a frame before the wait returns, as on Linux.
+		raw_host_syscall(SYS_rt_sigprocmask, SIG_SETMASK, (long)(uintptr_t)host_mask, 0, sizeof(*host_mask), 0, 0);
+	}
 	set_guest_mask(old);
 	if (ret == -EINTR) {
 		t_wait_interrupted = true;

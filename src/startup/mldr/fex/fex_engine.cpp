@@ -179,6 +179,11 @@ static void init_fexcore_runtime(void)
 			dlclose(handle);
 			continue;
 		}
+		if (!fex_bridge_abi_matches(reinterpret_cast<fex_abi_version_fn_t>(dlsym(handle, "darling_fexcore_abi_version")))) {
+			fprintf(stderr, "[mldr/fex] fatal: %s: shim and mldr are from different builds (mldr needs bridge ABI %u)\n",
+				paths[i], FEX_BRIDGE_ABI_VERSION);
+			abort();
+		}
 		g_run_thread_fn = reinterpret_cast<darling_fexcore_run_thread_fn>(sym);
 		g_run_callback_fn = reinterpret_cast<darling_fexcore_run_thread_fn>(callback_sym);
 		fex_elfcalls_set_fork_hooks(

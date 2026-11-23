@@ -1113,6 +1113,163 @@ static void test_masked_waits(uint64_t guest_handler, uint64_t saved_mask)
 	set_guest_mask_to(saved_mask);
 }
 
+// Returns from the handler `req` describes, as its rt_sigreturn would; the blocked set comes back from its frame.
+static void return_from_handler(const struct fex_signal_request* req)
+{
+	g_fake_return_answer = 1;
+	g_fake_returned_mask = req->old_mask;
+	guest_syscall_state(15, 0, 0, 0);
+}
+
+// Kept SIGUSR1 and SIGUSR2 taken by one sigsuspend: the request of the inner frame (allocated on demand).
+static const struct fex_signal_request* nest_two_signals(void)
+{
+	const uint64_t both = FEX_SIGBIT(SIGUSR1) | FEX_SIGBIT(SIGUSR2), none = 0;
+	set_guest_mask_to(both);
+	raise_on_this_thread(SIGUSR2);
+	raise_on_this_thread(SIGUSR1);
+	struct fex_x86_64_state st = guest_syscall_state6(130, (uint64_t)(uintptr_t)&none, 8, 0, 0, 0, 0);
+	const struct fex_signal_request* inner = st.signal_request ? st.signal_request->nested : NULL;
+	if (inner)
+		return_from_handler(inner);
+	if (st.signal_request)
+		return_from_handler(st.signal_request);
+	return inner;
+}
+
+// mldr's block of extra requests: one per signal number (64) but the first.
+#define MORE_REQUESTS_SIZE (63 * sizeof(struct fex_signal_request))
+static const struct fex_signal_request* g_exited_inner;
+static bool g_reused_block_untouched;
+static pthread_key_t g_late_key;
+
+// Runs after mldr's own destructor freed the thread's extra requests (keys are destroyed in creation order).
+static void late_destructor(void* unused)
+{
+	(void)unused;
+	unsigned char* block = malloc(MORE_REQUESTS_SIZE);
+	memset(block, 0xAB, MORE_REQUESTS_SIZE);
+	nest_two_signals();
+	bool untouched = (const void*)block == (const void*)g_exited_inner;
+	for (size_t i = 0; untouched && i < MORE_REQUESTS_SIZE; i++)
+		untouched = block[i] == 0xAB;
+	g_reused_block_untouched = untouched;
+	free(block);
+}
+
+static void* nest_then_exit(void* unused)
+{
+	(void)unused;
+	g_exited_inner = nest_two_signals();
+	pthread_setspecific(g_late_key, (void*)1);
+	return NULL;
+}
+
+// A thread's extra requests are freed when it exits; signals taken by a destructor that runs later get new
+// ones, never the freed block (here reused by malloc and filled with a pattern).
+static void test_requests_after_thread_exit(uint64_t guest_handler, uint64_t saved_mask)
+{
+	guest_sigaction(SIGUSR1, guest_handler, 0, 0, NULL);
+	guest_sigaction(SIGUSR2, guest_handler, 0, 0, NULL);
+	g_fake_preempt_answer = FEX_SIGNAL_AT_SYSCALL_RETURN;
+	pthread_key_create(&g_late_key, late_destructor);
+	pthread_t t;
+	pthread_create(&t, NULL, nest_then_exit, NULL);
+	pthread_join(t, NULL);
+	check(g_exited_inner && g_reused_block_untouched,
+		"signals taken after a thread's requests were freed do not write the freed block");
+	pthread_key_delete(g_late_key);
+	guest_sigaction(SIGUSR1, 0, 0, 0, NULL);
+	guest_sigaction(SIGUSR2, 0, 0, 0, NULL);
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+	set_guest_mask_to(saved_mask);
+}
+
+// Several signals the guest can take at one syscall return all get a frame before it returns, as on Linux:
+// lowest number first, each frame on top of the one before, saving the set the handler below runs with.
+static void test_nested_delivery(uint64_t guest_handler, uint64_t saved_mask)
+{
+	const uint64_t usr1 = FEX_SIGBIT(SIGUSR1), usr2 = FEX_SIGBIT(SIGUSR2), winch = FEX_SIGBIT(SIGWINCH);
+	const uint64_t both = usr1 | usr2, none = 0;
+	guest_sigaction(SIGUSR1, guest_handler, 0, winch, NULL);
+	guest_sigaction(SIGUSR2, guest_handler + 0x10, 0, 0, NULL);
+	g_fake_preempt_answer = FEX_SIGNAL_AT_SYSCALL_RETURN;
+
+	// The classic idiom: block both, both arrive, sigsuspend with nothing blocked.
+	set_guest_mask_to(both);
+	raise_on_this_thread(SIGUSR2);
+	raise_on_this_thread(SIGUSR1);
+	struct fex_x86_64_state st = guest_syscall_state6(130, (uint64_t)(uintptr_t)&none, 8, 0, 0, 0, 0);
+	const struct fex_signal_request* outer = st.signal_request;
+	const struct fex_signal_request* inner = outer ? outer->nested : NULL;
+	check((long)st.rax == -EINTR && outer && outer->sig == SIGUSR1 && outer->old_mask == both && !outer->restart_syscall
+		&& inner && inner->sig == SIGUSR2 && inner->action.handler == guest_handler + 0x10 && !inner->nested
+		&& inner->old_mask == (winch | usr1), "sigsuspend runs both handlers before it returns: SIGUSR2's frame on SIGUSR1's");
+	check(guest_blocked() == (winch | usr1 | usr2), "the innermost handler runs with both sets and both signals blocked");
+	if (inner) {
+		return_from_handler(inner);
+		check(guest_blocked() == (winch | usr1), "its return enters SIGUSR1's handler with the set it runs with");
+	}
+	if (outer) {
+		return_from_handler(outer);
+		check(guest_blocked() == both, "and the caller's set comes back with the last return");
+	}
+	uint64_t pending = 0;
+	guest_syscall(127, (uint64_t)(uintptr_t)&pending, 8, 0, 0, 0);
+	check(!(pending & both), "nothing is left pending");
+
+	// ppoll with a set: the same.
+	raise_on_this_thread(SIGUSR2);
+	raise_on_this_thread(SIGUSR1);
+	struct timespec second = { 1, 0 };
+	st = guest_syscall_state6(271, 0, 0, (uint64_t)(uintptr_t)&second, (uint64_t)(uintptr_t)&none, 8, 0);
+	outer = st.signal_request;
+	check((long)st.rax == -EINTR && outer && outer->sig == SIGUSR1 && outer->nested && outer->nested->sig == SIGUSR2,
+		"ppoll with a set runs both handlers before it returns");
+	if (outer && outer->nested)
+		return_from_handler(outer->nested);
+	if (outer)
+		return_from_handler(outer);
+
+	// A handler whose sa_mask blocks the other signal: that one waits for the caller to unblock it.
+	guest_sigaction(SIGUSR1, guest_handler, 0, usr2, NULL);
+	raise_on_this_thread(SIGUSR2);
+	raise_on_this_thread(SIGUSR1);
+	st = guest_syscall_state6(130, (uint64_t)(uintptr_t)&none, 8, 0, 0, 0, 0);
+	outer = st.signal_request;
+	check(outer && outer->sig == SIGUSR1 && !outer->nested, "a signal the first handler's sa_mask blocks gets no frame");
+	if (outer)
+		return_from_handler(outer);
+	pending = 0;
+	guest_syscall(127, (uint64_t)(uintptr_t)&pending, 8, 0, 0, 0);
+	check((pending & usr2) && guest_blocked() == both, "it stays pending under the caller's set");
+	st = guest_syscall_state(14, SIG_UNBLOCK, (uint64_t)(uintptr_t)&usr2, 0);
+	check(st.signal_request && st.signal_request->sig == SIGUSR2 && !st.signal_request->nested,
+		"and runs once unblocked");
+	if (st.signal_request)
+		return_from_handler(st.signal_request);
+
+	// Unblocking two at once: both run as rt_sigprocmask returns.
+	guest_sigaction(SIGUSR1, guest_handler, 0, 0, NULL);
+	set_guest_mask_to(both);
+	raise_on_this_thread(SIGUSR1);
+	raise_on_this_thread(SIGUSR2);
+	st = guest_syscall_state(14, SIG_UNBLOCK, (uint64_t)(uintptr_t)&both, 0);
+	outer = st.signal_request;
+	check(st.rax == 0 && outer && outer->sig == SIGUSR1 && outer->old_mask == 0 && outer->nested
+		&& outer->nested->sig == SIGUSR2 && outer->nested->old_mask == usr1 && guest_blocked() == both,
+		"unblocking two pending signals nests both frames");
+	if (outer && outer->nested)
+		return_from_handler(outer->nested);
+	if (outer)
+		return_from_handler(outer);
+
+	guest_sigaction(SIGUSR1, 0, 0, 0, NULL);
+	guest_sigaction(SIGUSR2, 0, 0, 0, NULL);
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+	set_guest_mask_to(saved_mask);
+}
+
 static void test_guest_signal_delivery(void)
 {
 	const uint64_t guest_handler = 0x123400;
@@ -1252,6 +1409,8 @@ static void test_guest_signal_delivery(void)
 	test_guest_syscall_entry(guest_handler, saved_mask);
 	test_kept_signals(guest_handler, saved_mask);
 	test_masked_waits(guest_handler, saved_mask);
+	test_nested_delivery(guest_handler, saved_mask);
+	test_requests_after_thread_exit(guest_handler, saved_mask);
 
 	guest_sigaction(SIGUSR1, 0, 0, 0, NULL);
 	guest_sigaction(SIGUSR2, 0, 0, 0, NULL);
@@ -2493,6 +2652,17 @@ static void test_safe_memory_access(void)
 	}
 }
 
+static uint32_t shim_of_this_build(void) { return FEX_BRIDGE_ABI_VERSION; }
+static uint32_t shim_of_another_build(void) { return FEX_BRIDGE_ABI_VERSION - 1; }
+
+// mldr loads only a shim built with the same bridge structs.
+static void test_abi_check(void)
+{
+	check(fex_bridge_abi_matches(shim_of_this_build), "a shim of this build is accepted");
+	check(!fex_bridge_abi_matches(shim_of_another_build), "a shim of another bridge ABI is refused");
+	check(!fex_bridge_abi_matches(NULL), "a shim without a version is refused");
+}
+
 int main(void)
 {
 	test_elfcalls_trampolines();
@@ -2515,5 +2685,6 @@ int main(void)
 	test_syscall_translations();
 	test_safe_memory_access();
 	test_guest_signal_delivery();
+	test_abi_check();
 	return failures ? 1 : 0;
 }

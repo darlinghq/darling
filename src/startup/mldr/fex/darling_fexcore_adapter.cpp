@@ -219,8 +219,9 @@ public:
         Frame->State.rip += 2;
       }
     }
-    if (guest.signal_request) {
-      darling_fex::deliver_at_syscall_return(t_thread_state, guest.signal_request);
+    // Each frame goes on top of the one before, saving that handler's entry registers.
+    for (auto* request = guest.signal_request; request; request = request->nested) {
+      darling_fex::deliver_at_syscall_return(t_thread_state, request);
     }
   }
 
@@ -580,6 +581,10 @@ extern "C" int darling_fexcore_run_callback(
   t_callbacks = reinterpret_cast<NestedCallback*>(const_cast<fex_callback_frame*>(record.frame.outer));
   t_syscall_resume = prev_resume;
   return 0;
+}
+
+extern "C" uint32_t darling_fexcore_abi_version(void) {
+  return FEX_BRIDGE_ABI_VERSION;
 }
 
 extern "C" void darling_fexcore_lock_before_fork(void) {

@@ -16,6 +16,10 @@ extern "C" {
 #define DARLING_FEX_DLSYM_SYSCALL_BASE       0x44420000U
 #define DARLING_FEX_DLSYM_MAX_SLOTS          2048U
 
+// mldr and the shim share the structs and calls below and are loaded from separate files: the shim exports
+// this number (darling_fexcore_abi_version) and mldr refuses a shim with another. Bump it on any change.
+#define FEX_BRIDGE_ABI_VERSION               2U
+
 struct fex_x86_64_state {
 	uint64_t rax;
 	uint64_t rcx;
@@ -107,7 +111,22 @@ struct fex_signal_request {
 	struct fex_guest_sigaction action;
 	struct fex_guest_stack altstack;
 	uint8_t info[128];       // siginfo_t
+	// The handler whose frame goes on top of this one's, so it runs first (null for the last).
+	const struct fex_signal_request* nested;
 };
+#ifdef __cplusplus
+#define FEX_BRIDGE_ABI_ASSERT(e) static_assert(e, "a changed fex_signal_request needs a new FEX_BRIDGE_ABI_VERSION")
+#else
+#define FEX_BRIDGE_ABI_ASSERT(e) _Static_assert(e, "a changed fex_signal_request needs a new FEX_BRIDGE_ABI_VERSION")
+#endif
+FEX_BRIDGE_ABI_ASSERT(sizeof(struct fex_signal_request) == 208);
+FEX_BRIDGE_ABI_ASSERT(offsetof(struct fex_signal_request, sig) == 0);
+FEX_BRIDGE_ABI_ASSERT(offsetof(struct fex_signal_request, restart_syscall) == 4);
+FEX_BRIDGE_ABI_ASSERT(offsetof(struct fex_signal_request, old_mask) == 8);
+FEX_BRIDGE_ABI_ASSERT(offsetof(struct fex_signal_request, action) == 16);
+FEX_BRIDGE_ABI_ASSERT(offsetof(struct fex_signal_request, altstack) == 48);
+FEX_BRIDGE_ABI_ASSERT(offsetof(struct fex_signal_request, info) == 72);
+FEX_BRIDGE_ABI_ASSERT(offsetof(struct fex_signal_request, nested) == 200);
 
 // `info` is the host siginfo_t and `ucontext` the host ucontext_t of the host signal handler. preempt sets
 // `guest_mask` to the blocked set a returning handler's frame holds when it answers FEX_SIGNAL_RETURNED.
@@ -123,6 +142,12 @@ int darling_fexcore_signal_preempt(int* sig, void* info, void* ucontext, uint64_
 int darling_fexcore_signal_deliver(int sig, const void* info, void* ucontext,
 	const struct fex_guest_sigaction* action, const struct fex_guest_stack* altstack, uint64_t old_mask);
 int darling_fexcore_signal_return(uint64_t* guest_mask);
+
+typedef uint32_t (*fex_abi_version_fn_t)(void);
+uint32_t darling_fexcore_abi_version(void);
+// Whether a shim whose darling_fexcore_abi_version is `shim_version` (null: it has none) was built with this
+// mldr's FEX_BRIDGE_ABI_VERSION.
+bool fex_bridge_abi_matches(fex_abi_version_fn_t shim_version);
 
 void fex_signals_set_hooks(fex_signal_preempt_fn_t preempt, fex_signal_deliver_fn_t deliver,
 	fex_signal_return_fn_t sigreturn);
