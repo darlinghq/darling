@@ -511,38 +511,13 @@ void* CMByteStreamWriteBlockBuffer(void) {
     return NULL;
 }
 
-void* CMClockConvertHostTimeToSystemUnits(void) {
-    if (verbose) puts("STUB: CMClockConvertHostTimeToSystemUnits called");
-    return NULL;
-}
-
 void* CMClockGetAnchorTime(void) {
     if (verbose) puts("STUB: CMClockGetAnchorTime called");
     return NULL;
 }
 
-void* CMClockGetHostTimeClock(void) {
-    if (verbose) puts("STUB: CMClockGetHostTimeClock called");
-    return NULL;
-}
-
-void* CMClockGetTime(void) {
-    if (verbose) puts("STUB: CMClockGetTime called");
-    return NULL;
-}
-
-void* CMClockGetTypeID(void) {
-    if (verbose) puts("STUB: CMClockGetTypeID called");
-    return NULL;
-}
-
 void* CMClockInvalidate(void) {
     if (verbose) puts("STUB: CMClockInvalidate called");
-    return NULL;
-}
-
-void* CMClockMakeHostTimeFromSystemUnits(void) {
-    if (verbose) puts("STUB: CMClockMakeHostTimeFromSystemUnits called");
     return NULL;
 }
 
