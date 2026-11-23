@@ -423,12 +423,22 @@ static NSImage *FinderBackgroundImage(NSURL *url)
 
 #pragma mark Editing a label
 
-- (void)beginEditingItem:(NSURL *)url
+- (BOOL)isEditing
+{
+    return _editingItem != nil;
+}
+
+- (void)cancelEditing
+{
+    [self finishEditingWithName:nil];
+}
+
+- (BOOL)beginEditingItem:(NSURL *)url
 {
     [self finishEditingWithName:nil];
     NSUInteger index = [[self standardized:_items] indexOfObject:[[self standardized:@[ url ]] firstObject]];
     if (index == NSNotFound)
-        return;
+        return NO;
     NSIndexPath *path = [NSIndexPath indexPathForItem:index inSection:0];
     [self.collectionView scrollToItemsAtIndexPaths:[NSSet setWithObject:path]
                                     scrollPosition:NSCollectionViewScrollPositionNearestHorizontalEdge];
@@ -436,7 +446,7 @@ static NSImage *FinderBackgroundImage(NSURL *url)
     [self.collectionView layoutSubtreeIfNeeded];
     NSTextField *field = [self.collectionView itemAtIndexPath:path].textField;
     if (field == nil || field.window == nil)
-        return;
+        return NO;
     _editingItem = _items[index];
     _editingField = field;
     NSString *name = [_editingItem lastPathComponent];
@@ -454,6 +464,7 @@ static NSImage *FinderBackgroundImage(NSURL *url)
     NSString *extension = [name pathExtension];
     NSUInteger length = directory || [extension length] == 0 ? [name length] : [name length] - [extension length] - 1;
     [[field currentEditor] setSelectedRange:NSMakeRange(0, length)];
+    return YES;
 }
 
 // Ends the edit: the label shows the item's name again, and renameItem hears what was typed (nil: cancelled)

@@ -38,9 +38,15 @@
 // Called with the item when a row is double-clicked.
 @property (copy) void (^openItem)(NSURL *item);
 
-// Edits the item's name in its row, the file name in it with the name before the extension selected. Ending the edit
-// calls renameItem with the name typed; renaming is up to whoever set it.
-- (void)beginEditingItem:(NSURL *)item;
+// Edits the item's name in its row, the file name in it with the name before the extension selected; NO if the item
+// isn't shown. Ending the edit calls renameItem with the name typed; renaming is up to whoever set it. An edit the
+// table ends without a name (aborted) calls nothing: editing is then NO.
+- (BOOL)beginEditingItem:(NSURL *)item;
+@property (readonly, getter=isEditing) BOOL editing;
+// Ends an edit without renaming: renameItem is called with nil. Setting the items does it too.
+- (void)cancelEditing;
+// The folder's items again, after a change: expanded folders still there stay expanded, the scroll position stays.
+- (void)reloadItems:(NSArray<NSURL *> *)items;
 @property (copy) void (^renameItem)(NSURL *item, NSString *name);
 
 // The folder shown: a drop on a file's row, or outside a folder's rows, goes there

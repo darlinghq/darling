@@ -28,6 +28,33 @@
 // At most this often, plus a last call when the operation ends
 static const CFTimeInterval FinderProgressInterval = 0.05;
 
+NSString *FinderStagedName(NSString *name)
+{
+    NSMutableString *prefix = [NSMutableString string];
+    __block NSUInteger bytes = 0;
+    [name enumerateSubstringsInRange: NSMakeRange(0, [name length])
+                             options: NSStringEnumerationByComposedCharacterSequences
+                          usingBlock: ^(NSString *character, NSRange range, NSRange enclosing, BOOL *stop) {
+        bytes += [character lengthOfBytesUsingEncoding: NSUTF8StringEncoding];
+        if (bytes > 64)
+            *stop = YES;
+        else
+            [prefix appendString: character];
+    }];
+    return [NSString stringWithFormat: @".%@.finder-%08x", prefix, arc4random_uniform(UINT32_MAX)];
+}
+
+// A volume's root (a symlink to one is not)
+static BOOL FinderIsVolume(NSURL *url)
+{
+    NSNumber *isVolume = nil;
+    struct stat st;
+    if (lstat([url fileSystemRepresentation], &st) != 0 || S_ISLNK(st.st_mode))
+        return NO;
+    [[url URLByStandardizingPath] getResourceValue: &isVolume forKey: NSURLIsVolumeKey error: NULL];
+    return [isVolume boolValue];
+}
+
 static BOOL FinderExists(NSString *path)
 {
     struct stat st;
@@ -238,9 +265,9 @@ static NSURL *FinderNumberedURL(NSURL *item, NSURL *folder, NSString *word)
     if (volume == nil)
         return FinderTransferCopy;
     for (NSURL *item in items) {
-        // The item's own volume, not its target's: a symlink moves with its folder
+        // The item's own volume, not its target's: a symlink moves with its folder. A volume itself is copied
         id itemVolume = [self volumeOf: [item URLByDeletingLastPathComponent]];
-        if (![volume isEqual: itemVolume])
+        if (![volume isEqual: itemVolume] || FinderIsVolume(item))
             return FinderTransferCopy;
     }
     return FinderTransferMove;
@@ -338,8 +365,7 @@ static int FinderCopyCallback(int what, int stage, copyfile_state_t state, const
 - (NSURL *)stagedURLForItem:(NSURL *)item inFolder:(NSURL *)folder
 {
     for (;;) {
-        NSString *name = [NSString stringWithFormat: @".%@.finder-%08x", [item lastPathComponent], arc4random_uniform(UINT32_MAX)];
-        NSURL *url = [folder URLByAppendingPathComponent: name];
+        NSURL *url = [folder URLByAppendingPathComponent: FinderStagedName([item lastPathComponent])];
         if (!FinderExists([url path]))
             return url;
     }
@@ -395,12 +421,12 @@ static int FinderCopyCallback(int what, int stage, copyfile_state_t state, const
     if (refusal)
         return refusal;
 
-    // A move out of a read-only volume can only copy
+    // A move out of a read-only volume, or of a volume itself, can only copy
     if (kind == FinderTransferMove) {
         for (NSURL *item in _items) {
             NSNumber *readOnly = nil;
             [[item URLByDeletingLastPathComponent] getResourceValue: &readOnly forKey: NSURLVolumeIsReadOnlyKey error: NULL];
-            if ([readOnly boolValue]) {
+            if ([readOnly boolValue] || FinderIsVolume(item)) {
                 kind = FinderTransferCopy;
                 @synchronized (self) {
                     _kind = kind;
@@ -477,14 +503,20 @@ static int FinderCopyCallback(int what, int stage, copyfile_state_t state, const
             NSURL *staged = [self stagedURLForItem: item inFolder: _destination];
             if ((error = [self copyItem: item to: staged]))
                 return error;
-            if (replaced && ![fm removeItemAtURL: replaced error: &error]) {
+            // The replaced item goes aside, and is removed only once the copy has its name
+            NSURL *aside = replaced ? [self stagedURLForItem: replaced inFolder: _destination] : nil;
+            if (aside && ![fm moveItemAtURL: replaced toURL: aside error: &error]) {
                 [fm removeItemAtURL: staged error: NULL];
                 return FinderError(error.code, replaced, nil, error);
             }
             if (![fm moveItemAtURL: staged toURL: target error: &error]) {
+                if (aside)
+                    [fm moveItemAtURL: aside toURL: replaced error: NULL];
                 [fm removeItemAtURL: staged error: NULL];
                 return FinderError(error.code, item, nil, error);
             }
+            if (aside)
+                [fm removeItemAtURL: aside error: NULL];
             // A move across volumes: the source goes once its copy is in place
             if (kind == FinderTransferMove && ![fm removeItemAtURL: item error: &error]) {
                 [results addObject: target];

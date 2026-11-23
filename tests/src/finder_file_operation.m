@@ -339,6 +339,42 @@ int main(int argc, char **argv)
             chmod([no fileSystemRepresentation], 0644);
         }
 
+        // Replace of an item that can't be wholly removed: the new item takes its place, nothing is lost (the old one
+        // is set aside before the new one goes in)
+        if (geteuid() == 0)
+            skip(@"replace of an undeletable item: root deletes anything");
+        else {
+            NSURL *newP = folder(@"src/repl/P");
+            file(@"src/repl/P/new", @"new");
+            NSURL *dstRepl = folder(@"dstRepl");
+            NSURL *oldLocked = folder(@"dstRepl/P/locked");
+            file(@"dstRepl/P/locked/keep", @"keep");
+            file(@"dstRepl/P/old", @"old");
+            chmod([oldLocked fileSystemRepresentation], 0555);
+            r = run(op(FinderTransferCopy, @[ newP ], dstRepl), FinderConflictReplace, NO);
+            NSURL *target = [dstRepl URLByAppendingPathComponent: @"P"];
+            expect(r.error == nil && [contents([target URLByAppendingPathComponent: @"new"]) isEqual: @"new"],
+                   [NSString stringWithFormat: @"replace of an undeletable item: the new item is in place (%@)", r.error]);
+            NSArray<NSString *> *aside = staged(dstRepl);
+            BOOL kept = NO;
+            for (NSString *name in aside)
+                kept |= [contents([[dstRepl URLByAppendingPathComponent: name] URLByAppendingPathComponent: @"locked/keep"]) isEqual: @"keep"];
+            expect(kept, @"replace of an undeletable item: what couldn't be deleted is still there, set aside");
+            for (NSString *name in aside)
+                chmod([[[dstRepl URLByAppendingPathComponent: name] URLByAppendingPathComponent: @"locked"] fileSystemRepresentation], 0755);
+        }
+
+        // a name of 255 bytes (the longest a file system takes) copies, and replaces
+        NSString *longName = [[@"" stringByPaddingToLength: 251 withString: @"n" startingAtIndex: 0] stringByAppendingString: @".txt"];
+        NSURL *longFile = file([@"src/" stringByAppendingString: longName], @"long");
+        NSURL *dstLong = folder(@"dstLong");
+        r = run(op(FinderTransferCopy, @[ longFile ], dstLong), FinderConflictStop, NO);
+        expect(r.error == nil && [contents([dstLong URLByAppendingPathComponent: longName]) isEqual: @"long"],
+               [NSString stringWithFormat: @"a 255-byte name copies (%@)", r.error]);
+        r = run(op(FinderTransferCopy, @[ longFile ], dstLong), FinderConflictReplace, NO);
+        expect(r.error == nil && r.conflicts == 1 && [contents([dstLong URLByAppendingPathComponent: longName]) isEqual: @"long"],
+               [NSString stringWithFormat: @"a 255-byte name replaces (%@)", r.error]);
+
         // cancel during a large file
         NSURL *big = path(@"src/big");
         [[NSMutableData dataWithLength: 64 << 20] writeToURL: big atomically: NO];
@@ -376,6 +412,9 @@ int main(int argc, char **argv)
             if (volume) {
                 expect([FinderFileOperation defaultKindForItems: @[ a ] destination: volume] == FinderTransferCopy,
                        @"default kind: Copy to another volume");
+                // A volume itself is copied, never moved: not even to the volume holding its mount point
+                expect([FinderFileOperation defaultKindForItems: @[ volume ] destination: dst] == FinderTransferCopy,
+                       @"default kind: a volume is copied");
                 NSURL *inImage = nil;
                 for (NSURL *item in [fm contentsOfDirectoryAtURL: volume includingPropertiesForKeys: nil
                                                          options: NSDirectoryEnumerationSkipsHiddenFiles error: NULL])

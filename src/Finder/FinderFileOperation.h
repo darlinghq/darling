@@ -31,12 +31,17 @@ typedef NS_ENUM(NSInteger, FinderConflictChoice) {
 };
 
 // Copies or moves items into a folder, off the main thread.
-// - Every copy is made under a hidden name in the destination (".<name>.finder-<random>") and given its name only
-//   once complete, so stopping, a failure or a Replace never leaves part of an item, nor loses the item replaced.
+// - Every copy is made under a hidden name in the destination (FinderStagedName) and given its name only once
+//   complete, so stopping or a failure never leaves part of an item. A Replace sets the item replaced aside under
+//   such a name, and removes it only once the new item has its name (back in its place if that fails).
 // - A move within a volume renames; a move across volumes copies, then removes the source; a move out of a read-only
-//   volume is a copy.
+//   volume, or of a volume itself, is a copy.
 // - An item copied into its own folder is named "<name> copy"; one moved into its own folder stays where it is.
 // - A name taken in the destination is a conflict, answered by resolveConflict.
+// A hidden name in the destination that stands for name while an item is staged: ".<name>.finder-<random>", with
+// name cut to its first 64 bytes (whole characters), so it fits whatever name the file system takes
+NSString *FinderStagedName(NSString *name);
+
 @interface FinderFileOperation : NSObject
 
 - (instancetype)initWithKind:(FinderTransferKind)kind items:(NSArray<NSURL *> *)items destination:(NSURL *)folder;

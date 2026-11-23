@@ -46,6 +46,7 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
     NSSegmentedControl *_historyControl;
     NSMutableArray<NSURL *> *_back;
     NSMutableArray<NSURL *> *_forward;
+    NSURL *_renamingItem;
     BOOL _reloadPending;
 }
 
@@ -216,6 +217,9 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
         [[FinderWindowController alertForFolder:url error:error] beginSheetModalForWindow:self.window completionHandler:nil];
         return NO;
     }
+    // A rename in progress ends unfinished
+    [_list cancelEditing];
+    [_icons cancelEditing];
     _folderURL = url;
     _icons.folderURL = url;
     _list.folderURL = url;
@@ -236,7 +240,7 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
 // Keeps the selection of the items still there. While an item is renamed, the reload waits for the end of it.
 - (void)reloadFolder
 {
-    if (_renamingItem != nil) {
+    if (self.renamingItem != nil) {
         _reloadPending = YES;
         return;
     }
@@ -245,7 +249,7 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
     if (![_directory reload:NULL])
         return;
     _icons.items = _directory.items;
-    _list.items = _directory.items;
+    [_list reloadItems:_directory.items];
     [self selectItems:selected];
 }
 
@@ -515,11 +519,16 @@ static void FinderFolderEvents(ConstFSEventStreamRef stream, void *info, size_t 
     if ([self folderIsReadOnly])
         return;
     [self selectItems:@[ item ]];
-    _renamingItem = item;
-    if (_viewStyle == FinderViewStyleList)
-        [_list beginEditingItem:item];
-    else
-        [_icons beginEditingItem:item];
+    BOOL started = _viewStyle == FinderViewStyleList ? [_list beginEditingItem:item] : [_icons beginEditingItem:item];
+    _renamingItem = started ? item : nil;
+}
+
+// The item being renamed, while its view still edits it (a table can end an edit by itself)
+- (NSURL *)renamingItem
+{
+    if (_renamingItem != nil && !_list.editing && !_icons.editing)
+        _renamingItem = nil;
+    return _renamingItem;
 }
 
 // The view's edit ended with name (nil: cancelled): the item is renamed if the name may be used and, for a new

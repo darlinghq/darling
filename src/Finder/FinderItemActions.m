@@ -119,8 +119,7 @@ static BOOL FinderIsDirectory(NSURL *url)
     // another name, since renaming an item to itself changes nothing
     struct stat st;
     if (lstat([target fileSystemRepresentation], &st) == 0) {
-        NSURL *staged = [folder URLByAppendingPathComponent:
-                                    [NSString stringWithFormat: @".%@.finder-%08x", name, arc4random_uniform(UINT32_MAX)]];
+        NSURL *staged = [folder URLByAppendingPathComponent: FinderStagedName(name)];
         if (![fm moveItemAtURL: item toURL: staged error: error])
             return nil;
         if (![fm moveItemAtURL: staged toURL: target error: error]) {

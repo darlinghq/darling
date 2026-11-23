@@ -181,11 +181,40 @@ static const CGFloat FinderListIconSize = 16;
 
 - (void)setItems:(NSArray<NSURL *> *)items
 {
+    [self cancelEditing];
     [_children removeAllObjects];
     [_entries removeAllObjects];
     _items = [self sorted:items];
     [self.outlineView reloadData];
     [self.outlineView deselectAll:nil];
+}
+
+- (void)reloadItems:(NSArray<NSURL *> *)items
+{
+    // Expanded folders, parents before their children, and where the view is scrolled to
+    NSMutableArray<NSString *> *expanded = [NSMutableArray array];
+    for (NSInteger row = 0; row < [self.outlineView numberOfRows]; row++) {
+        id item = [self.outlineView itemAtRow:row];
+        if ([self.outlineView isItemExpanded:item])
+            [expanded addObject:[[item URLByStandardizingPath] path]];
+    }
+    NSClipView *clip = [[self.outlineView enclosingScrollView] contentView];
+    NSPoint scrolled = [clip bounds].origin;
+
+    self.items = items;
+    for (NSString *path in expanded) {
+        for (NSInteger row = 0; row < [self.outlineView numberOfRows]; row++) {
+            id item = [self.outlineView itemAtRow:row];
+            if ([[[item URLByStandardizingPath] path] isEqual:path]) {
+                [self.outlineView expandItem:item];
+                break;
+            }
+        }
+    }
+    if (clip != nil) {
+        [clip scrollToPoint:scrolled];
+        [[self.outlineView enclosingScrollView] reflectScrolledClipView:clip];
+    }
 }
 
 #pragma mark Entries and sorting
@@ -334,15 +363,35 @@ static const CGFloat FinderListIconSize = 16;
 
 #pragma mark Editing a name
 
-- (void)beginEditingItem:(NSURL *)url
+- (BOOL)isEditing
 {
+    // The table may have ended the edit itself
+    if (_editingItem != nil && [self.outlineView editedRow] < 0)
+        _editingItem = nil;
+    return _editingItem != nil;
+}
+
+- (void)cancelEditing
+{
+    NSURL *editing = _editingItem;
+    if (editing == nil)
+        return;
+    _editingItem = nil;
+    [self.outlineView abortEditing];
+    if (_renameItem != nil)
+        _renameItem(editing, nil);
+}
+
+- (BOOL)beginEditingItem:(NSURL *)url
+{
+    [self cancelEditing];
     NSInteger row = -1;
     NSString *wanted = [[url URLByStandardizingPath] path];
     for (NSInteger r = 0; r < [self.outlineView numberOfRows] && row < 0; r++)
         if ([[[[self.outlineView itemAtRow:r] URLByStandardizingPath] path] isEqual:wanted])
             row = r;
     if (row < 0)
-        return;
+        return NO;
     NSURL *item = [self.outlineView itemAtRow:row];
     NSInteger column = [self.outlineView columnWithIdentifier:@"name"];
     NSTableColumn *nameColumn = [self.outlineView tableColumnWithIdentifier:@"name"];
@@ -359,6 +408,11 @@ static const CGFloat FinderListIconSize = 16;
     NSUInteger length = [self entryForURL:item].folder || [extension length] == 0 ? [name length]
                                                                                  : [name length] - [extension length] - 1;
     [[self.outlineView currentEditor] setSelectedRange:NSMakeRange(0, length)];
+    if ([self.outlineView editedRow] < 0) {
+        _editingItem = nil;
+        return NO;
+    }
+    return YES;
 }
 
 - (BOOL)outlineView:(NSOutlineView *)outlineView shouldEditTableColumn:(NSTableColumn *)column item:(id)item

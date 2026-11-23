@@ -49,8 +49,11 @@
 
 // Edits the item's label in place, its file name in it with the name before the extension selected. Return or ending
 // the edit otherwise calls renameItem with the name typed; Escape calls it with nil. The label then shows the item's
-// name again; renaming is up to whoever set renameItem.
-- (void)beginEditingItem:(NSURL *)item;
+// name again; renaming is up to whoever set renameItem. NO if the item has no label to edit.
+- (BOOL)beginEditingItem:(NSURL *)item;
+@property (readonly, getter=isEditing) BOOL editing;
+// Ends an edit without renaming: renameItem is called with nil.
+- (void)cancelEditing;
 @property (copy) void (^renameItem)(NSURL *item, NSString *name);
 
 // The folder shown: a drop on the background, or on an item that takes none, goes there

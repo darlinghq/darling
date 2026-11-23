@@ -11,6 +11,7 @@
 // Usage: finder_commands <new directory> [<disk image>]; with the image (tests/fixtures/unmount-test.dmg) it attaches
 // and detaches it with hdiutil. Prints PASS/FAIL/SKIP lines; exits 1 on a failure.
 #import <AppKit/AppKit.h>
+#import "FinderListViewController.h"
 #import "FinderWindowController.h"
 #import "FinderInfoPanelController.h"
 #import "FinderOperationQueue.h"
@@ -265,6 +266,47 @@ int main(int argc, char **argv)
         typeAndReturn(first, @"e");
         expect(spinUntil(^BOOL { return exists([one URLByAppendingPathComponent: @"e"]); }, 5) && !exists(b),
                @"list view: b is now e");
+
+        // An edit that ends without a name (the table aborts it) or never starts leaves the window reloading
+        NSOutlineView *outline = first.listViewController.outlineView;
+        [first beginRenamingItem: d];
+        expect([first.renamingItem isEqual: d], @"list view: renaming d starts");
+        [outline abortEditing];
+        spin();
+        expect(first.renamingItem == nil, @"list view: an aborted edit is no rename");
+        file(@"one/fresh1");
+        expect(spinUntil(^BOOL { return [shown(first) containsObject: @"fresh1"]; }, 10),
+               @"list view: after an aborted edit, the window still reloads");
+        [first beginRenamingItem: [one URLByAppendingPathComponent: @"not there"]];
+        expect(first.renamingItem == nil, @"renaming an item that isn't shown doesn't start");
+        [first beginRenamingItem: d];
+        [first showFolder: two];
+        spin();
+        expect(first.renamingItem == nil && exists(d), @"list view: going to another folder ends the rename, d stays");
+        file(@"two/fresh2");
+        expect(spinUntil(^BOOL { return [shown(first) containsObject: @"fresh2"]; }, 10),
+               @"list view: the other folder's window reloads");
+        [first showFolder: one];
+        spin();
+
+        // A reload keeps expanded folders expanded
+        NSURL *neu = [one URLByAppendingPathComponent: @"Neu"];
+        file(@"one/Neu/inner");
+        spin();
+        NSURL *neuRow = nil;
+        for (NSInteger row = 0; row < outline.numberOfRows; row++)
+            if ([[[outline itemAtRow: row] lastPathComponent] isEqual: @"Neu"])
+                neuRow = [outline itemAtRow: row];
+        [outline expandItem: neuRow];
+        file(@"one/fresh3");
+        expect(spinUntil(^BOOL { return [shown(first) containsObject: @"fresh3"]; }, 10), @"list view: fresh3 is shown");
+        BOOL expanded = NO, innerShown = NO;
+        for (NSInteger row = 0; row < outline.numberOfRows; row++) {
+            if ([[[[outline itemAtRow: row] URLByStandardizingPath] path] isEqual: [[neu URLByStandardizingPath] path]])
+                expanded = [outline isItemExpanded: [outline itemAtRow: row]];
+            innerShown |= [[[outline itemAtRow: row] lastPathComponent] isEqual: @"inner"];
+        }
+        expect(expanded && innerShown, @"list view: a reload keeps Neu expanded");
         first.viewStyle = FinderViewStyleIcons;
         spin();
 
