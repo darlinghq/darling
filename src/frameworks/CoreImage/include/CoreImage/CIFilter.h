@@ -60,7 +60,9 @@ extern NSString *const kCICategoryGradient;
 extern NSString *const kCICategoryReduction;
 extern NSString *const kCICategoryTransition;
 
-@interface CIFilter : NSObject
+@interface CIFilter : NSObject <NSSecureCoding>
+
+@property (nonatomic, readonly) NSArray<NSString *> *inputKeys;
 
 - (void) setDefaults;
 

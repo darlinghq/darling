@@ -18,7 +18,8 @@
 */
 
 #include <Foundation/Foundation.h>
+#import <CoreImage/CIFilter.h>
 
-@interface CIExposureAdjust : NSObject
+@interface CIExposureAdjust : CIFilter
 
 @end
