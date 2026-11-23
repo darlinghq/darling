@@ -190,6 +190,37 @@ typedef struct MusicTrackLoopInfo
 	SInt32 numberOfLoops;
 } MusicTrackLoopInfo;
 
+// Music sequences
+
+extern OSStatus
+NewMusicSequence(MusicSequence *outSequence);
+
+extern OSStatus
+DisposeMusicSequence(MusicSequence inSequence);
+
+extern OSStatus
+MusicSequenceNewTrack(MusicSequence inSequence, MusicTrack *outTrack);
+
+extern OSStatus
+MusicSequenceDisposeTrack(MusicSequence inSequence, MusicTrack inTrack);
+
+extern OSStatus
+MusicSequenceGetTrackCount(MusicSequence inSequence, UInt32 *outNumberOfTracks);
+
+extern OSStatus
+MusicSequenceGetIndTrack(MusicSequence inSequence, UInt32 inTrackIndex, MusicTrack *outTrack);
+
+extern OSStatus
+MusicSequenceGetTrackIndex(MusicSequence inSequence, MusicTrack inTrack, UInt32 *outTrackIndex);
+
+extern OSStatus
+MusicSequenceGetTempoTrack(MusicSequence inSequence, MusicTrack *outTrack);
+
+// Music tracks
+
+extern OSStatus
+MusicTrackGetSequence(MusicTrack inTrack, MusicSequence *outSequence);
+
 #ifdef __cplusplus
 }
 #endif

@@ -29,6 +29,7 @@ set(audiotoolbox_sources
 	ExtendedAudioFile.cpp
 	AudioFormat.cpp
 	MusicDevice.cpp
+	MusicSequence.cpp
 	AudioToolbox.cpp
 	AudioHardwareService.cpp
 	AUParameters.m
