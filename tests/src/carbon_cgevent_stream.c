@@ -222,6 +222,64 @@ static void testCoalescing(void)
 	}
 	CHECK(apart == 3);
 
+	// Moves merge only with the move at the end of the queue: a click between two moves keeps its
+	// place, and every move keeps its position. Moves, click, moves: two moves come out, with the
+	// deltas of the moves before the click and after it added up separately.
+	drain();
+	CGEventRef seq[5];
+	seq[0] = mouse(kCGEventMouseMoved, 10, 10, kCGMouseButtonLeft);
+	seq[1] = mouse(kCGEventMouseMoved, 20, 10, kCGMouseButtonLeft);
+	seq[2] = mouse(kCGEventLeftMouseDown, 20, 10, kCGMouseButtonLeft);
+	seq[3] = mouse(kCGEventMouseMoved, 30, 10, kCGMouseButtonLeft);
+	seq[4] = mouse(kCGEventMouseMoved, 40, 10, kCGMouseButtonLeft);
+	for (int i = 0; i < 5; i++)
+	{
+		if (i != 2)
+		{
+			CGEventSetIntegerValueField(seq[i], kCGMouseEventDeltaX, i + 1);
+			CGEventSetIntegerValueField(seq[i], kCGMouseEventDeltaY, 1);
+		}
+		post(seq[i]);
+	}
+	static const UInt32 kinds[3] = { kEventMouseMoved, kEventMouseDown, kEventMouseMoved };
+	static const double xs[3] = { 20, 20, 40 };
+	static const int dxs[3] = { 3, 0, 9 };
+	static const int dys[3] = { 2, 0, 2 };
+	int seen = 0;
+	while ((event = next(seen == 0 ? 2.0 : 0.0)) != NULL)
+	{
+		HIPoint point = { 0, 0 };
+		CGEventRef cg = CopyEventCGEvent(event);
+
+		if (seen < 3)
+		{
+			CHECK(GetEventClass(event) == kEventClassMouse && GetEventKind(event) == kinds[seen]);
+			CHECK(GetEventParameter(event, kEventParamMouseLocation, typeHIPoint, NULL, sizeof(point), NULL, &point) == noErr && point.x == xs[seen]);
+			CHECK(cg != NULL && CGEventGetIntegerValueField(cg, kCGMouseEventDeltaX) == dxs[seen] && CGEventGetIntegerValueField(cg, kCGMouseEventDeltaY) == dys[seen]);
+		}
+		if (cg)
+			CFRelease(cg);
+		ReleaseEvent(event);
+		seen++;
+	}
+	CHECK(seen == 3);
+
+	// With a different kind of event last, an older move is not touched either: move, key, move
+	post(mouse(kCGEventMouseMoved, 1, 0, kCGMouseButtonLeft));
+	post(CGEventCreateKeyboardEvent(NULL, 2, true));
+	post(mouse(kCGEventMouseMoved, 2, 0, kCGMouseButtonLeft));
+	seen = 0;
+	while ((event = next(seen == 0 ? 2.0 : 0.0)) != NULL)
+	{
+		if (seen == 0 || seen == 2)
+			CHECK(GetEventClass(event) == kEventClassMouse && GetEventKind(event) == kEventMouseMoved);
+		else
+			CHECK(GetEventClass(event) == kEventClassKeyboard);
+		seen++;
+		ReleaseEvent(event);
+	}
+	CHECK(seen == 3);
+
 	CHECK(IsMouseCoalescingEnabled());
 	CHECK(SetMouseCoalescingEnabled(false, &old) == noErr && old);
 	CHECK(!IsMouseCoalescingEnabled());

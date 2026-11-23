@@ -131,15 +131,13 @@ static OSStatus postEvent(EventQueueRef queue, EventRef event, int list, bool co
 	if (coalesce && atomic_load(&g_mouseCoalescing) && event->eventClass == kEventClassMouse
 		&& (event->kind == kEventMouseMoved || event->kind == kEventMouseDragged))
 	{
-		// A queued event of the same kind for the same window is out of date
-		EventRef previous = NULL;
-		for (EventRef current = queue->head[list]; current; previous = current, current = current->queueNext)
+		// The event at the end of the list is out of date if it is of the same kind for the same
+		// window. Only the last event can be replaced: a click that was queued after an older
+		// move must not end up before the move, which comes later.
+		EventRef current = queue->tail[list];
+		if (current && current->eventClass == event->eventClass && current->kind == event->kind
+			&& sameMotionTarget(current, event))
 		{
-			if (current->eventClass != event->eventClass || current->kind != event->kind)
-				continue;
-			if (!sameMotionTarget(current, event))
-				continue;
-
 			// The deltas of a mouse event count from the previous one the application gets
 			if (current->cgEvent && event->cgEvent)
 			{
@@ -149,9 +147,12 @@ static OSStatus postEvent(EventQueueRef queue, EventRef event, int list, bool co
 					CGEventGetIntegerValueField(event->cgEvent, kCGMouseEventDeltaY) + CGEventGetIntegerValueField(current->cgEvent, kCGMouseEventDeltaY));
 			}
 
+			// The list is singly linked: find the event before the last one
+			EventRef previous = NULL;
+			for (EventRef walk = queue->head[list]; walk != current; walk = walk->queueNext)
+				previous = walk;
 			unlinkEvent(queue, list, previous, current);
 			ReleaseEvent(current);
-			break;
 		}
 	}
 	event->queuePriority = list;
