@@ -27,11 +27,20 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "darling-config.h"
 #include "launcher-path.h"
 
-char* launcherGuestPath(const char* hostPath)
+char* launcherGuestPath(const char* hostPath, const char* workingDirectory)
 {
-	char* real = realpath(hostPath, NULL);
+	char* absolute = NULL;
+	char* real;
 	char* guest;
 
+	if (hostPath[0] != '/')
+	{
+		if (asprintf(&absolute, "%s/%s", workingDirectory, hostPath) < 0)
+			return NULL;
+		hostPath = absolute;
+	}
+	real = realpath(hostPath, NULL);
+	free(absolute);
 	if (real == NULL)
 		return NULL;
 	if (asprintf(&guest, "%s%s", SYSTEM_ROOT, strcmp(real, "/") == 0 ? "" : real) < 0)

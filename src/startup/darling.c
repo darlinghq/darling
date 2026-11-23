@@ -628,7 +628,7 @@ static bool resolveProgramArgument(int argc, char** argv)
 		}
 		for (int i = 2; i < argc; i++)
 		{
-			char* guestPath = launcherGuestPath(argv[i]);
+			char* guestPath = launcherGuestPath(argv[i], g_workingDirectory);
 
 			if (guestPath == NULL)
 			{
@@ -651,7 +651,7 @@ static bool resolveProgramArgument(int argc, char** argv)
 		return false;
 	}
 
-	char *fullPath = launcherGuestPath(argv[argvIndex]);
+	char *fullPath = launcherGuestPath(argv[argvIndex], g_workingDirectory);
 
 	if (fullPath == NULL)
 	{

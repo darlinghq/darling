@@ -19,7 +19,7 @@ static char base[PATH_MAX];
 static void expectPath(const char* hostPath, const char* realRel, const char* what)
 {
 	char want[PATH_MAX * 2];
-	char* got = launcherGuestPath(hostPath);
+	char* got = launcherGuestPath(hostPath, base);
 
 	snprintf(want, sizeof(want), "/Volumes/SystemRoot%s%s%s", base, realRel[0] ? "/" : "", realRel);
 	if (got == NULL || strcmp(got, want) != 0)
@@ -35,7 +35,7 @@ static void expectPath(const char* hostPath, const char* realRel, const char* wh
 static void expectMissing(const char* hostPath, const char* what)
 {
 	errno = 0;
-	char* got = launcherGuestPath(hostPath);
+	char* got = launcherGuestPath(hostPath, base);
 	if (got != NULL || errno != ENOENT)
 	{
 		printf("FAIL: %s: got %s, errno %d\n", what, got ? got : "NULL", errno);
@@ -92,7 +92,7 @@ int main(void)
 	for (int i = 0; i < 3; i++)
 		expectPath(odd[i], odd[i], "a name kept byte for byte");
 
-	char* root = launcherGuestPath("/");
+	char* root = launcherGuestPath("/", base);
 	if (root == NULL || strcmp(root, "/Volumes/SystemRoot") != 0)
 	{
 		printf("FAIL: / is /Volumes/SystemRoot: got %s\n", root ? root : "NULL");
@@ -102,6 +102,11 @@ int main(void)
 		printf("PASS: / is /Volumes/SystemRoot\n");
 	free(root);
 
+	// relative to the working directory given, not the process's (the root mode's launcher has joined the
+	// container's mount namespace by then, which moved it to /)
+	if (chdir("/") != 0) { perror("/"); return 2; }
+	expectPath("a.dmg", "a.dmg", "a relative path is taken from the given working directory");
+	expectPath("sub/../link.dmg", "a.dmg", "so is one with .. and a link");
 	expectMissing("missing.dmg", "a missing file is ENOENT");
 	expectMissing("dangling.dmg", "a dangling link is ENOENT");
 
