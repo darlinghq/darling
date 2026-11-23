@@ -26,9 +26,9 @@
 // https://developer.apple.com/documentation/coremedia/cmclockmightdrift(_:otherclock:)
 // https://developer.apple.com/documentation/coremedia/cmclockinvalidate(_:)
 // The error codes are those of the public CMSync.h. The behaviour the documentation leaves open (the reference
-// clock of the host time clock, the status of invalid arguments, what invalidating the singleton does) is
-// pinned as the GUESS choices of the implementation. Prints PASS when everything holds; the exit code is the
-// number of failed checks.
+// clock of the host time clock, the status of NULL arguments, drifting against another object) is what macOS
+// 26.7.3 and 10.14.4 do, observed with the same checks; invalidating the singleton host time clock crashes
+// there and is not tested. Prints PASS when everything holds; the exit code is the number of failed checks.
 
 #include <CoreMedia/CoreMedia.h>
 #include <stdio.h>
@@ -49,7 +49,7 @@ int main(void)
 	CHECK(kCMClockError_UnsupportedOperation == -12756);
 
 	// the anchor time: the clock's time, in step with CMClockGetTime, and the same reading from the reference
-	// clock (GUESS: the host time clock is its own reference clock)
+	// clock (the host time clock is its own reference clock, as on macOS)
 	CMTime before = CMClockGetTime(clock);
 	CHECK(CMClockGetAnchorTime(clock, &clockTime, &referenceTime) == noErr);
 	CMTime after = CMClockGetTime(clock);
@@ -57,32 +57,29 @@ int main(void)
 	CHECK(CMTimeCompare(before, clockTime) <= 0 && CMTimeCompare(clockTime, after) <= 0);
 	CHECK(CMTimeCompare(clockTime, referenceTime) == 0);
 
-	// missing arguments, and an object that is not a clock (GUESS: the statuses are chosen by the names)
+	// A missing clock is MissingRequiredParameter; the two outputs are optional (all of this was observed on macOS
+	// 26.7.3 and 10.14.4)
 	CHECK(CMClockGetAnchorTime(NULL, &clockTime, &referenceTime) == kCMClockError_MissingRequiredParameter);
-	CHECK(CMClockGetAnchorTime(clock, NULL, &referenceTime) == kCMClockError_MissingRequiredParameter);
-	CHECK(CMClockGetAnchorTime(clock, &clockTime, NULL) == kCMClockError_MissingRequiredParameter);
-	CHECK(CMClockGetAnchorTime((CMClockRef)CFSTR("not a clock"), &clockTime, &referenceTime) == kCMClockError_InvalidParameter);
+	CMTime onlyClock = kCMTimeInvalid, onlyReference = kCMTimeInvalid;
+	CHECK(CMClockGetAnchorTime(clock, &onlyClock, NULL) == noErr && CMTIME_IS_NUMERIC(onlyClock));
+	CHECK(CMClockGetAnchorTime(clock, NULL, &onlyReference) == noErr && CMTIME_IS_NUMERIC(onlyReference));
+	CHECK(CMClockGetAnchorTime(clock, NULL, NULL) == noErr);
 
-	// the host time clock is the only clock, so it cannot drift against itself (GUESS)
+	// the host time clock is the only clock, so it cannot drift against itself
 	CHECK(!CMClockMightDrift(clock, clock));
 	CHECK(!CMClockMightDrift(clock, CMClockGetHostTimeClock()));
-	CHECK(!CMClockMightDrift(NULL, clock));
-	CHECK(!CMClockMightDrift(clock, (CMClockRef)CFSTR("not a clock")));
+	// QUIRK test: any other object counts as another clock, which may drift (macOS 26.7.3 and 10.14.4 x86_64
+	// say 1; the 10.14.4 i386 slice crashes, so it is not run there)
+#ifndef __i386__
+	CHECK(CMClockMightDrift(clock, (CMClockRef)CFSTR("not a clock")));
+#endif
 
-	// invalidating NULL or an object that is not a clock does nothing
+	// invalidating NULL or an object that is not a clock does nothing, and the host time clock keeps working
+	// (invalidating the host time clock itself crashes macOS, so that is not tested)
 	CMClockInvalidate(NULL);
 	CMClockInvalidate((CMClockRef)CFSTR("not a clock"));
 	CHECK(CMTIME_IS_NUMERIC(CMClockGetTime(clock)));
-
-	// GUESS: invalidating the singleton host time clock, which has no owner, is ignored: it keeps working,
-	// and so does everything built on it
-	CMClockInvalidate(clock);
-	CMClockInvalidate(clock);
 	CHECK(CMClockGetHostTimeClock() == clock);
-	CHECK(CMTIME_IS_NUMERIC(CMClockGetTime(clock)));
-	CHECK(CMClockGetAnchorTime(clock, &clockTime, &referenceTime) == noErr);
-	CHECK(CMTIME_IS_NUMERIC(clockTime) && CMTimeCompare(clockTime, referenceTime) == 0);
-	CHECK(!CMClockMightDrift(clock, clock));
 
 	if (failures == 0)
 		printf("PASS\n");

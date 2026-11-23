@@ -28,9 +28,10 @@
 // https://developer.apple.com/documentation/coremedia/cmsyncconverttime(_:from:to:)
 // https://developer.apple.com/documentation/coremedia/cmsyncmightdrift(_:_:)
 // The cases the documentation leaves open (stopped against stopped, converting a time of a stopped timebase,
-// the anchor times, the codes of invalid arguments) are pinned as the GUESS choices of the implementation.
-// The error codes are those of the public CMSync.h. Prints PASS when everything holds; the exit code is the
-// number of failed checks.
+// the anchor times, times that are not numeric, NULL arguments) are what macOS 26.7.3 and 10.14.4 do, observed
+// with the same checks (objects that are neither clocks nor timebases crash there and are not tested). The error
+// codes are those of the public CMSync.h. Prints PASS when everything holds; the exit code is the number of
+// failed checks.
 
 #include <CoreMedia/CoreMedia.h>
 #include <math.h>
@@ -69,6 +70,7 @@ int main(void)
 	CMTimebaseRef b = newTimebase(host, 0.5, CMTimeMake(50, 1), r0);
 	CMTimebaseRef c = newTimebase(a, 3.0, kCMTimeZero, CMTimeMake(100, 1));
 	CMTimebaseRef s = newTimebase(host, 0.0, CMTimeMake(9, 1), r0);
+	CMTimebaseRef s2 = newTimebase(host, 0.0, CMTimeMake(4, 1), r0);
 
 	// relative rates: ratios of the effective rates, a clock having rate 1
 	CHECK(CMSyncGetRelativeRate(host, host) == 1.0);
@@ -87,30 +89,52 @@ int main(void)
 	CHECK(isnan(CMSyncGetRelativeRate(host, s)));
 	CHECK(CMSyncGetRelativeRate(s, a) == 0.0);
 	CHECK(CMSyncGetRelativeRate(s, host) == 0.0 && CMTimebaseGetEffectiveRate(s) == 0.0);
-	// GUESS: a stopped timebase relative to a stopped one is a NaN too
-	CHECK(isnan(CMSyncGetRelativeRate(s, s)));
-	// GUESS: an argument that is neither a clock nor a timebase gives a NaN
+	// a stopped timebase relative to another stopped one is a NaN too, relative to itself it is 1
+	CHECK(isnan(CMSyncGetRelativeRate(s, s2)));
+	CHECK(CMSyncGetRelativeRate(s, s) == 1.0 && CMSyncGetRelativeRate(a, a) == 1.0 && CMSyncGetRelativeRate(host, host) == 1.0);
 	CHECK(isnan(CMSyncGetRelativeRate(NULL, host)));
-	CHECK(isnan(CMSyncGetRelativeRate(a, CFSTR("no"))));
+	CHECK(isnan(CMSyncGetRelativeRate(host, NULL)));
 
-	// rate and anchor times: the rate, and each object's time at one instant of the host clock
+	// rate and anchor times. QUIRK test (the choice of the two instants is not documented): when the second
+	// object is a clock, the anchors are the first one's own anchor and the time of the clock at that instant;
+	// otherwise the instant at which the second reads zero: the time of the first then, and zero. Observed on
+	// macOS 26.7.3 and 10.14.4 (26.7.3 also uses the anchor of a timebase for its master timebase; 10.14.4 does
+	// not, and that is followed).
 	Float64 rate = -1.0;
 	CMTime ofAnchor = kCMTimeInvalid, relativeToAnchor = kCMTimeInvalid;
+	CHECK(CMSyncGetRelativeRateAndAnchorTime(a, host, &rate, &ofAnchor, &relativeToAnchor) == noErr);
+	CHECK(rate == 2.0 && equalTime(ofAnchor, CMTimeMake(100, 1)) && equalTime(relativeToAnchor, r0));
+	CHECK(CMSyncGetRelativeRateAndAnchorTime(c, a, &rate, &ofAnchor, &relativeToAnchor) == noErr && rate == 3.0);
+	CHECK(CMSyncGetRelativeRateAndAnchorTime(c, host, &rate, &ofAnchor, &relativeToAnchor) == noErr);
+	CHECK(rate == 6.0 && equalTime(ofAnchor, kCMTimeZero) && equalTime(relativeToAnchor, r0));
 	CHECK(CMSyncGetRelativeRateAndAnchorTime(a, b, &rate, &ofAnchor, &relativeToAnchor) == noErr);
-	CHECK(rate == 4.0);
-	// at a host time h, A reads 100 + 2 (h - r0) and B reads 50 + 0.5 (h - r0): A's anchor time fixes h
-	Float64 sinceR0 = (CMTimeGetSeconds(ofAnchor) - 100.0) / 2.0;
-	CHECK(sinceR0 >= 0.0 && sinceR0 < 5.0);
-	CHECK(fabs(CMTimeGetSeconds(relativeToAnchor) - (50.0 + 0.5 * sinceR0)) < 1.0e-6);
+	CHECK(rate == 4.0 && equalTime(ofAnchor, CMTimeMake(-100, 1)) && equalTime(relativeToAnchor, kCMTimeZero));
+	CHECK(CMSyncGetRelativeRateAndAnchorTime(b, a, &rate, &ofAnchor, &relativeToAnchor) == noErr);
+	CHECK(rate == 0.25 && equalTime(ofAnchor, CMTimeMake(25, 1)) && equalTime(relativeToAnchor, kCMTimeZero));
+	CHECK(CMSyncGetRelativeRateAndAnchorTime(host, a, &rate, &ofAnchor, &relativeToAnchor) == noErr);
+	CHECK(rate == 0.5 && equalTime(ofAnchor, CMTimeSubtract(r0, CMTimeMake(50, 1))) && equalTime(relativeToAnchor, kCMTimeZero));
+	CHECK(CMSyncGetRelativeRateAndAnchorTime(c, b, &rate, &ofAnchor, &relativeToAnchor) == noErr);
+	CHECK(rate == 12.0 && equalTime(ofAnchor, CMTimeMake(-600, 1)) && equalTime(relativeToAnchor, kCMTimeZero));
+	CHECK(CMSyncGetRelativeRateAndAnchorTime(a, a, &rate, &ofAnchor, &relativeToAnchor) == noErr);
+	CHECK(rate == 1.0 && equalTime(ofAnchor, kCMTimeZero) && equalTime(relativeToAnchor, kCMTimeZero));
+	CHECK(CMSyncGetRelativeRateAndAnchorTime(host, host, &rate, &ofAnchor, &relativeToAnchor) == noErr);
+	CHECK(rate == 1.0 && equalTime(ofAnchor, kCMTimeZero) && equalTime(relativeToAnchor, kCMTimeZero));
+	// a stopped first object: its fixed time, and the same rules for the second
+	CHECK(CMSyncGetRelativeRateAndAnchorTime(s, a, &rate, &ofAnchor, &relativeToAnchor) == noErr);
+	CHECK(rate == 0.0 && equalTime(ofAnchor, CMTimeMake(9, 1)) && equalTime(relativeToAnchor, kCMTimeZero));
+	CHECK(CMSyncGetRelativeRateAndAnchorTime(s, host, &rate, &ofAnchor, &relativeToAnchor) == noErr);
+	CHECK(rate == 0.0 && equalTime(ofAnchor, CMTimeMake(9, 1)) && equalTime(relativeToAnchor, r0));
+	// relative to a stopped timebase: RateMustBeNonZero, and the outputs are not written
+	rate = -77.0; ofAnchor = relativeToAnchor = kCMTimeInvalid;
+	CHECK(CMSyncGetRelativeRateAndAnchorTime(a, s, &rate, &ofAnchor, &relativeToAnchor) == kCMSyncError_RateMustBeNonZero);
+	CHECK(CMSyncGetRelativeRateAndAnchorTime(host, s, &rate, &ofAnchor, &relativeToAnchor) == kCMSyncError_RateMustBeNonZero);
+	CHECK(CMSyncGetRelativeRateAndAnchorTime(s, s2, &rate, &ofAnchor, &relativeToAnchor) == kCMSyncError_RateMustBeNonZero);
+	CHECK(rate == -77.0 && !CMTIME_IS_VALID(ofAnchor) && !CMTIME_IS_VALID(relativeToAnchor));
+	// every output is optional; NULL objects are MissingRequiredParameter
 	CHECK(CMSyncGetRelativeRateAndAnchorTime(a, b, NULL, NULL, NULL) == noErr);
 	CHECK(CMSyncGetRelativeRateAndAnchorTime(a, b, &rate, NULL, NULL) == noErr && rate == 4.0);
-	CHECK(CMSyncGetRelativeRateAndAnchorTime(host, host, &rate, &ofAnchor, &relativeToAnchor) == noErr);
-	CHECK(rate == 1.0 && CMTimeCompare(ofAnchor, relativeToAnchor) == 0 && CMTIME_IS_NUMERIC(ofAnchor));
-	CHECK(CMSyncGetRelativeRateAndAnchorTime(a, s, &rate, &ofAnchor, &relativeToAnchor) == noErr);
-	CHECK(isnan(rate) && equalTime(relativeToAnchor, CMTimeMake(9, 1)));
 	CHECK(CMSyncGetRelativeRateAndAnchorTime(NULL, b, &rate, &ofAnchor, &relativeToAnchor) == kCMSyncError_MissingRequiredParameter);
 	CHECK(CMSyncGetRelativeRateAndAnchorTime(a, NULL, &rate, &ofAnchor, &relativeToAnchor) == kCMSyncError_MissingRequiredParameter);
-	CHECK(CMSyncGetRelativeRateAndAnchorTime(a, CFSTR("no"), &rate, &ofAnchor, &relativeToAnchor) == kCMSyncError_InvalidParameter);
 
 	// conversions: A reads 110 s when the host reads r0 + 5 s, and the other way round
 	CMTime hostPlus5 = CMTimeAdd(r0, CMTimeMake(5, 1));
@@ -130,7 +154,7 @@ int main(void)
 	// the same object, and a clock to itself, leave the time as it is
 	CHECK(equalTime(CMSyncConvertTime(CMTimeMake(7, 1), a, a), CMTimeMake(7, 1)));
 	CHECK(equalTime(CMSyncConvertTime(hostPlus5, host, host), hostPlus5));
-	// to a stopped timebase the time is its fixed time; GUESS: from one it has no time, so the result is invalid
+	// to a stopped timebase the time is its fixed time; from one it has no time, so the result is invalid (the same object excepted)
 	CHECK(equalTime(CMSyncConvertTime(hostPlus5, host, s), CMTimeMake(9, 1)));
 	CHECK(equalTime(CMSyncConvertTime(CMTimeMake(110, 1), a, s), CMTimeMake(9, 1)));
 	CHECK(!CMTIME_IS_VALID(CMSyncConvertTime(CMTimeMake(9, 1), s, host)));
@@ -138,25 +162,31 @@ int main(void)
 	CMTimebaseRef otherStopped = newTimebase(host, 0.0, CMTimeMake(4, 1), r0);
 	CHECK(!CMTIME_IS_VALID(CMSyncConvertTime(CMTimeMake(9, 1), s, otherStopped)));
 	CFRelease(otherStopped);
-	// GUESS: a time that is not numeric is returned as it is; an object that is not a clock or a timebase
-	// gives an invalid time
-	CHECK(CMTIME_IS_POSITIVE_INFINITY(CMSyncConvertTime(kCMTimePositiveInfinity, a, host)));
-	CHECK(CMTIME_IS_INDEFINITE(CMSyncConvertTime(kCMTimeIndefinite, a, b)));
+	// QUIRK test: a time that is not numeric (invalid, infinite, indefinite) converts to an invalid time, even to the
+	// same object, and so does a NULL object; observed on macOS 26.7.3 and 10.14.4
+	CHECK(!CMTIME_IS_VALID(CMSyncConvertTime(kCMTimePositiveInfinity, a, host)));
+	CHECK(!CMTIME_IS_VALID(CMSyncConvertTime(kCMTimeIndefinite, a, b)));
+	CHECK(!CMTIME_IS_VALID(CMSyncConvertTime(kCMTimeNegativeInfinity, host, host)));
 	CHECK(!CMTIME_IS_VALID(CMSyncConvertTime(kCMTimeInvalid, a, b)));
 	CHECK(!CMTIME_IS_VALID(CMSyncConvertTime(CMTimeMake(1, 1), NULL, a)));
-	CHECK(!CMTIME_IS_VALID(CMSyncConvertTime(CMTimeMake(1, 1), a, CFSTR("no"))));
+	CHECK(!CMTIME_IS_VALID(CMSyncConvertTime(CMTimeMake(1, 1), a, NULL)));
+	CHECK(!CMTIME_IS_VALID(CMSyncConvertTime(CMTimeMake(1, 1), NULL, NULL)));
 
-	// the host time clock is the only clock: nothing drifts relative to anything (GUESS for the arguments
-	// that are not a clock or a timebase)
+	// the host time clock is the only clock: nothing drifts relative to anything. QUIRK test: a NULL argument
+	// (either) drifts, observed on macOS 26.7.3 and 10.14.4
 	CHECK(!CMSyncMightDrift(host, host));
 	CHECK(!CMSyncMightDrift(a, b));
 	CHECK(!CMSyncMightDrift(c, host));
-	CHECK(!CMSyncMightDrift(NULL, a));
+	CHECK(!CMSyncMightDrift(s, s2));
+	CHECK(CMSyncMightDrift(NULL, a));
+	CHECK(CMSyncMightDrift(a, NULL));
+	CHECK(CMSyncMightDrift(NULL, NULL));
 
 	CFRelease(c);
 	CFRelease(a);
 	CFRelease(b);
 	CFRelease(s);
+	CFRelease(s2);
 	if (failures == 0)
 		printf("PASS\n");
 	return failures;

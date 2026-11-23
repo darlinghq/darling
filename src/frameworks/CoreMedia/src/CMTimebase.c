@@ -70,32 +70,42 @@ static OSStatus statusForBadTimebase(CMTimebaseRef timebase)
 	return timebase == NULL ? kCMTimebaseError_MissingRequiredParameter : kCMTimebaseError_InvalidParameter;
 }
 
-/* The time times a factor (or divided by it), rounded to the nearest unit of its timescale, or of a
-   nanosecond when the timescale is coarser, so that a duration in whole seconds can be scaled by a fraction.
-   A factor of 1 returns the time as it is: a product through a Float64 would lose the low bits of a value
-   above 2^53. */
+/* The time times a factor (or divided by it). Observed on macOS 26.7.3 and 10.14.4 (tests/src/coremedia_timebase.c):
+   a whole-number factor multiplies the value and keeps the timescale (3/2 s at rate 2 is 6/2); any other factor
+   converts the time to nanoseconds first when its timescale is coarser (rounding halves away from zero) and
+   rounds the product to a whole nanosecond the same way. The arithmetic goes through a Float64, so a value above
+   2^53 loses its low bits, as it does there. A rate that is not a number gives an invalid time, an infinite one
+   an infinite time. The result of the timebase functions carries no HasBeenRounded flag. */
 static CMTime scaledByRate(CMTime time, Float64 factor, Boolean divide)
 {
-	if (!CMTIME_IS_NUMERIC(time) || factor == 1.0)
+	if (!CMTIME_IS_NUMERIC(time))
 		return time;
+	if (!divide && factor == trunc(factor) && fabs(factor) < 2147483648.0) {
+		int64_t product;
+		if (!__builtin_mul_overflow(time.value, (int64_t)factor, &product)) {
+			time.value = product;
+			return time;
+		}
+	}
 	if (time.timescale < 1000000000)
 		time = CMTimeConvertScale(time, 1000000000, kCMTimeRoundingMethod_RoundHalfAwayFromZero);
 	if (!CMTIME_IS_NUMERIC(time))
 		return time;
 	Float64 product = divide ? (Float64)time.value / factor : (Float64)time.value * factor;
+	if (isnan(product))
+		return kCMTimeInvalid;
 	if (product >= 9223372036854775808.0)
 		return kCMTimePositiveInfinity;
 	if (product <= -9223372036854775808.0)
 		return kCMTimeNegativeInfinity;
 	time.value = llround(product);
-	if ((Float64)time.value != product)
+	if (divide && (Float64)time.value != product)
 		time.flags |= kCMTimeFlags_HasBeenRounded;
 	return time;
 }
 
-/* The time of a timebase with the given anchor and rate when its master reads masterNow. GUESS: the time
-   that has passed is scaled by the rate and rounded to the nearest unit of its timescale (a nanosecond if
-   that is coarser), halves away from zero; the documentation does not say how a fractional rate is applied. */
+/* The time of a timebase with the given anchor and rate when its master reads masterNow: the anchor time plus
+   the time that has passed on the master, scaled by the rate. */
 static CMTime timeAtMasterTime(CMTime anchorTime, CMTime anchorMasterTime, Float64 rate, CMTime masterNow)
 {
 	return CMTimeAdd(anchorTime, scaledByRate(CMTimeSubtract(masterNow, anchorMasterTime), rate, false));
@@ -237,7 +247,11 @@ CMTime CMTimebaseGetTime(CMTimebaseRef timebase)
 
 CMTime CMTimebaseGetTimeWithTimeScale(CMTimebaseRef timebase, CMTimeScale timescale, CMTimeRoundingMethod method)
 {
-	return CMTimeConvertScale(CMTimebaseGetTime(timebase), timescale, method);
+	/* QUIRK: a timescale of 0 gives the time in the timescale it has (CMTimeConvertScale gives an invalid time
+	   for it); a negative one gives an invalid time. Evidence: black-box observation on macOS 26.7.3 and
+	   10.14.4, tier 2. Test: tests/src/coremedia_timebase.c, "timescale 0". */
+	CMTime time = CMTimebaseGetTime(timebase);
+	return timescale == 0 ? time : CMTimeConvertScale(time, timescale, method);
 }
 
 OSStatus CMTimebaseGetTimeAndRate(CMTimebaseRef timebase, CMTime *timeOut, Float64 *rateOut)
@@ -253,12 +267,11 @@ OSStatus CMTimebaseGetTimeAndRate(CMTimebaseRef timebase, CMTime *timeOut, Float
 	return noErr;
 }
 
-/* Sets the anchor and the rate in one step. GUESS: a time that is not numeric, or a rate that is not finite,
-   is InvalidParameter; the documentation does not say. */
+/* Sets the anchor and the rate in one step. Nothing is checked: macOS stores a rate that is not a number or is
+   infinite and times that are not numeric, and the time of the timebase is then invalid or infinite
+   (black-box observation on 26.7.3 and 10.14.4, tests/src/coremedia_timebase.c). */
 static OSStatus setAnchor(struct OpaqueCMTimebase *timebase, const Float64 *rate, CMTime time, CMTime masterTime)
 {
-	if (!CMTIME_IS_NUMERIC(time) || !CMTIME_IS_NUMERIC(masterTime) || (rate != NULL && !isfinite(*rate)))
-		return kCMTimebaseError_InvalidParameter;
 	pthread_mutex_lock(&timebase->lock);
 	timebase->anchorTime = time;
 	timebase->anchorMasterTime = masterTime;
@@ -289,6 +302,11 @@ OSStatus CMTimebaseSetTime(CMTimebaseRef timebase, CMTime time)
 	struct OpaqueCMTimebase *object = asTimebase(timebase);
 	if (object == NULL)
 		return statusForBadTimebase(timebase);
+	/* QUIRK: a time that is not numeric (invalid, infinite, indefinite) gives MissingRequiredParameter and
+	   changes nothing. Evidence: black-box observation on macOS 26.7.3 and 10.14.4, tier 2. Test:
+	   tests/src/coremedia_timebase.c, "SetTime with a non-numeric time". */
+	if (!CMTIME_IS_NUMERIC(time))
+		return kCMTimebaseError_MissingRequiredParameter;
 	CMTime now;
 	OSStatus status = masterNow(object, &now);
 	return status != noErr ? status : setAnchor(object, NULL, time, now);
@@ -319,6 +337,11 @@ OSStatus CMTimebaseSetRateAndAnchorTime(CMTimebaseRef timebase, Float64 rate, CM
 	struct OpaqueCMTimebase *object = asTimebase(timebase);
 	if (object == NULL)
 		return statusForBadTimebase(timebase);
+	/* QUIRK: a master time that is not valid (a flag-less time) gives InvalidParameter and changes nothing.
+	   Evidence: black-box observation on macOS 26.7.3 and 10.14.4, tier 2. Test: tests/src/coremedia_timebase.c,
+	   "SetRateAndAnchorTime with an invalid master time". */
+	if (!CMTIME_IS_VALID(immediateMasterTime))
+		return kCMTimebaseError_InvalidParameter;
 	return setAnchor(object, &rate, timebaseTime, immediateMasterTime);
 }
 
@@ -330,8 +353,6 @@ OSStatus CMTimebaseSetRate(CMTimebaseRef timebase, Float64 rate)
 	struct OpaqueCMTimebase *object = asTimebase(timebase);
 	if (object == NULL)
 		return statusForBadTimebase(timebase);
-	if (!isfinite(rate))
-		return kCMTimebaseError_InvalidParameter;
 	CMTime now;
 	OSStatus status = masterNow(object, &now);
 	if (status != noErr)
@@ -339,13 +360,11 @@ OSStatus CMTimebaseSetRate(CMTimebaseRef timebase, Float64 rate)
 	pthread_mutex_lock(&object->lock);
 	CMTime time = object->rate == 0.0 ? object->anchorTime
 		: timeAtMasterTime(object->anchorTime, object->anchorMasterTime, object->rate, now);
-	if (CMTIME_IS_NUMERIC(time)) {
-		object->anchorTime = time;
-		object->anchorMasterTime = now;
-		object->rate = rate;
-	}
+	object->anchorTime = time;
+	object->anchorMasterTime = now;
+	object->rate = rate;
 	pthread_mutex_unlock(&object->lock);
-	return CMTIME_IS_NUMERIC(time) ? noErr : kCMTimebaseError_InvalidParameter;
+	return noErr;
 }
 
 #pragma mark - Synchronising clocks and timebases
@@ -381,18 +400,15 @@ static Boolean isClockOrTimebase(CFTypeRef object)
 	return isClock(object) || asTimebase(object) != NULL;
 }
 
-static CFTypeRef rootClockOf(CFTypeRef object)
-{
-	return asTimebase(object) != NULL ? ultimateMasterClock((CMTimebaseRef)object) : object;
-}
-
 CMTime CMSyncConvertTime(CMTime time, CMClockOrTimebaseRef fromClockOrTimebase, CMClockOrTimebaseRef toClockOrTimebase)
 {
-	/* GUESS: the documentation lists no error result; an object that is neither a clock nor a timebase gives
-	   an invalid time. A time that is not numeric (invalid, infinite, indefinite) is returned as it is. */
-	if (!isClockOrTimebase(fromClockOrTimebase) || !isClockOrTimebase(toClockOrTimebase))
+	/* Observed on macOS 26.7.3 and 10.14.4 (tests/src/coremedia_sync.c): NULL objects and a time that is not
+	   numeric (invalid, infinite, indefinite) give an invalid time; the same object leaves the time as it is;
+	   from a stopped timebase there is no time on the other side, to one the result is its fixed time. An
+	   object that is neither a clock nor a timebase crashes macOS and gives an invalid time here. */
+	if (!isClockOrTimebase(fromClockOrTimebase) || !isClockOrTimebase(toClockOrTimebase) || !CMTIME_IS_NUMERIC(time))
 		return kCMTimeInvalid;
-	if (!CMTIME_IS_NUMERIC(time) || fromClockOrTimebase == toClockOrTimebase)
+	if (fromClockOrTimebase == toClockOrTimebase)
 		return time;
 	/* The only clock is the host time clock, so the two always have a common master and the conversion is made
 	   purely from the rates and anchors, through the time of that clock. */
@@ -403,17 +419,19 @@ CMTime CMSyncConvertTime(CMTime time, CMClockOrTimebaseRef fromClockOrTimebase, 
 /* The rate of a relative to b: the ratio of their rates relative to the common root clock. */
 static Float64 relativeRate(CFTypeRef a, CFTypeRef b)
 {
+	if (a == b)
+		return 1.0;
 	Float64 rateOfA = asTimebase(a) != NULL ? CMTimebaseGetEffectiveRate((CMTimebaseRef)a) : 1.0;
 	Float64 rateOfB = asTimebase(b) != NULL ? CMTimebaseGetEffectiveRate((CMTimebaseRef)b) : 1.0;
-	/* The rate of anything moving relative to a stopped timebase is a NaN, as documented. GUESS: so is that of
-	   a stopped timebase relative to a stopped one. */
+	/* The rate of anything moving relative to a stopped timebase is a NaN, as documented; that of a stopped
+	   one relative to another stopped one is too (black-box observation on macOS, tests/src/coremedia_sync.c). */
 	return rateOfB == 0.0 ? NAN : rateOfA / rateOfB;
 }
 
 Float64 CMSyncGetRelativeRate(CMClockOrTimebaseRef ofClockOrTimebase, CMClockOrTimebaseRef relativeToClockOrTimebase)
 {
-	/* GUESS: the documentation lists no error result; a NaN, which is also the documented result for a
-	   stopped timebase, stands for an object that is neither a clock nor a timebase. */
+	/* NULL gives a NaN on macOS (tests/src/coremedia_sync.c); so does an object that is neither a clock nor a
+	   timebase here, where macOS crashes. */
 	if (!isClockOrTimebase(ofClockOrTimebase) || !isClockOrTimebase(relativeToClockOrTimebase))
 		return NAN;
 	return relativeRate(ofClockOrTimebase, relativeToClockOrTimebase);
@@ -422,33 +440,50 @@ Float64 CMSyncGetRelativeRate(CMClockOrTimebaseRef ofClockOrTimebase, CMClockOrT
 OSStatus CMSyncGetRelativeRateAndAnchorTime(CMClockOrTimebaseRef ofClockOrTimebase, CMClockOrTimebaseRef relativeToClockOrTimebase,
 	Float64 *outRelativeRate, CMTime *outOfClockOrTimebaseAnchorTime, CMTime *outRelativeToClockOrTimebaseAnchorTime)
 {
-	/* GUESS: the kCMSyncError_ codes are used by their names: NULL is MissingRequiredParameter, an object that
-	   is neither a clock nor a timebase, or a root clock with no time, is InvalidParameter. */
 	if (ofClockOrTimebase == NULL || relativeToClockOrTimebase == NULL)
 		return kCMSyncError_MissingRequiredParameter;
 	if (!isClockOrTimebase(ofClockOrTimebase) || !isClockOrTimebase(relativeToClockOrTimebase))
 		return kCMSyncError_InvalidParameter;
-	/* GUESS: the documentation does not say which times are the anchors "at which the relative rate went into
-	   effect". The time of the root clock now is used as that instant, so each anchor is the time of its clock
-	   or timebase at it; the rejected alternative is the time of the last change of rate or time in either
-	   chain, which a timebase does not record. */
-	CMTime rootNow = CMClockGetTime((CMClockRef)rootClockOf(ofClockOrTimebase));
-	if (!CMTIME_IS_NUMERIC(rootNow))
-		return kCMSyncError_InvalidParameter;
+	Float64 rate = 1.0;
+	CMTime ofAnchor = kCMTimeZero, relativeToAnchor = kCMTimeZero;
+	if (ofClockOrTimebase != relativeToClockOrTimebase) {
+		/* The rate relative to a timebase that stands still cannot be given: kCMSyncError_RateMustBeNonZero.
+		   Outputs are left alone then. */
+		Float64 relativeToRate = asTimebase(relativeToClockOrTimebase) != NULL
+			? CMTimebaseGetEffectiveRate((CMTimebaseRef)relativeToClockOrTimebase) : 1.0;
+		if (relativeToRate == 0.0)
+			return kCMSyncError_RateMustBeNonZero;
+		rate = relativeRate(ofClockOrTimebase, relativeToClockOrTimebase);
+		/* QUIRK: which instant the two anchor times belong to is not documented. Black-box observation on macOS
+		   26.7.3 and 10.14.4 (tier 2, tests/src/coremedia_sync.c): when the second object is a clock the anchors
+		   are the anchor of the first and the time of the clock at that instant; otherwise the instant at which
+		   the second object reads zero: the time of the first then, and zero. The same object is zero and
+		   zero. (26.7.3 also takes the anchor of the first when the second is its master timebase, and 10.14.4
+		   does not; the older behaviour is followed.) */
+		struct OpaqueCMTimebase *of = asTimebase(ofClockOrTimebase);
+		if (of != NULL && isClock(relativeToClockOrTimebase)) {
+			struct timebaseState state = stateOf(of);
+			ofAnchor = state.anchorTime;
+			CMTime rootTime = rootTimeAtTime(of->master, state.anchorMasterTime);
+			relativeToAnchor = CMTIME_IS_NUMERIC(rootTime) ? timeAtRootTime(relativeToClockOrTimebase, rootTime) : kCMTimeInvalid;
+		} else {
+			ofAnchor = CMSyncConvertTime(kCMTimeZero, relativeToClockOrTimebase, ofClockOrTimebase);
+		}
+	}
 	if (outRelativeRate != NULL)
-		*outRelativeRate = relativeRate(ofClockOrTimebase, relativeToClockOrTimebase);
+		*outRelativeRate = rate;
 	if (outOfClockOrTimebaseAnchorTime != NULL)
-		*outOfClockOrTimebaseAnchorTime = timeAtRootTime(ofClockOrTimebase, rootNow);
+		*outOfClockOrTimebaseAnchorTime = ofAnchor;
 	if (outRelativeToClockOrTimebaseAnchorTime != NULL)
-		*outRelativeToClockOrTimebaseAnchorTime = timeAtRootTime(relativeToClockOrTimebase, rootNow);
+		*outRelativeToClockOrTimebaseAnchorTime = relativeToAnchor;
 	return noErr;
 }
 
 Boolean CMSyncMightDrift(CMClockOrTimebaseRef clockOrTimebase1, CMClockOrTimebaseRef clockOrTimebase2)
 {
 	/* Two timebases can drift when the clocks at their roots can. The host time clock is the only clock, so
-	   they never can. GUESS: an object that is neither a clock nor a timebase gives false too. */
-	(void)clockOrTimebase1;
-	(void)clockOrTimebase2;
-	return false;
+	   they never can. QUIRK: NULL for either argument gives true. Evidence: black-box observation on macOS
+	   26.7.3 and 10.14.4, tier 2 (CMSyncMightDrift(NULL, timebase) and (NULL, NULL) are 1, timebases against
+	   each other and the clock 0). Test: tests/src/coremedia_sync.c, "CMSyncMightDrift with NULL". */
+	return clockOrTimebase1 == NULL || clockOrTimebase2 == NULL;
 }

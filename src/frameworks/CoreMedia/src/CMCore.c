@@ -797,40 +797,42 @@ CMTime CMClockGetTime(CMClockRef clock)
 
 OSStatus CMClockGetAnchorTime(CMClockRef clock, CMTime *clockTimeOut, CMTime *referenceClockTimeOut)
 {
-	/* GUESS: the documentation lists no results. The kCMClockError_ names are used by their meaning: a missing
-	   argument is MissingRequiredParameter, an object that is not a clock is InvalidParameter. */
-	if (clock == NULL || clockTimeOut == NULL || referenceClockTimeOut == NULL)
+	/* The clock must be given, and be a clock; both outputs are optional. Observed on macOS 26.7.3 and 10.14.4
+	   (tests/src/coremedia_clock_invalidate.c): NULL is MissingRequiredParameter, a non-clock InvalidParameter,
+	   and a NULL output is simply not written. */
+	if (clock == NULL)
 		return kCMClockError_MissingRequiredParameter;
 	if (CFGetTypeID(clock) != CMClock_GetTypeID())
 		return kCMClockError_InvalidParameter;
 	CMTime now = CMClockMakeHostTimeFromSystemUnits(mach_absolute_time());
 	if (!CMTIME_IS_VALID(now))
 		return kCMClockError_UnsupportedOperation;
-	/* GUESS: the documentation does not say what the reference clock of the host time clock is. The host time
-	   clock is described as the clock that stands for host time itself, so it is taken to be its own reference
-	   clock and both times are the same reading. The rejected alternative is a reference clock of some other kind, which this
-	   framework has no way to create. */
-	*clockTimeOut = now;
-	*referenceClockTimeOut = now;
+	/* The host time clock is its own reference clock: both outputs are the same reading (observed on macOS
+	   26.7.3 and 10.14.4, tests/src/coremedia_clock_invalidate.c). */
+	if (clockTimeOut != NULL)
+		*clockTimeOut = now;
+	if (referenceClockTimeOut != NULL)
+		*referenceClockTimeOut = now;
 	return noErr;
 }
 
 Boolean CMClockMightDrift(CMClockRef clock, CMClockRef otherClock)
 {
-	/* GUESS: the host time clock is the only kind of clock, so two clocks are always the same clock, which
-	   cannot drift against itself. The documentation defines no result for NULL or foreign arguments; they
-	   give false too. */
-	(void)clock;
-	(void)otherClock;
-	return false;
+	/* QUIRK: true whenever the two arguments are not the same object, whatever they are (a CFString passed
+	   as the second clock gives true), false for the same object. The host time clock is the only clock, so
+	   it never drifts against itself. Evidence: black-box observation on macOS 26.7.3 and 10.14.4, tier 2
+	   (a clock against itself 0, against another object 1, NULL against NULL 0; NULL against a clock crashes
+	   there and is true here). Test: tests/src/coremedia_clock_invalidate.c, clock_might_drift_other_object. */
+	return clock != otherClock;
 }
 
 void CMClockInvalidate(CMClockRef clock)
 {
-	/* GUESS: the documentation says that invalidating makes a clock fail from then on, that only the owner of
-	   a clock should do it, and nothing about the singleton host time clock, which has no client owner. The
-	   call is ignored: invalidating the one clock every timebase in the process depends on would break all of
-	   them for good. The rejected alternative is to take the documentation literally and stop the singleton. */
+	/* The documentation says that invalidating makes a clock fail from then on, and that only the owner of a
+	   clock should do it. The host time clock is a singleton with no client owner, and macOS crashes when it
+	   is invalidated (observed on 26.7.3 and 10.14.4), so there is no behaviour to follow; the call is ignored
+	   here, because every timebase in the process depends on that clock. NULL and other objects are ignored on
+	   macOS too. */
 	(void)clock;
 }
 
