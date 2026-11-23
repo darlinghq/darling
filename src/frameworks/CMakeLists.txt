@@ -18,14 +18,9 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 
 	# secd (part of Security, which is built for CLI as well) links CoreData.
 	# When Cocotron's CoreData is not being built, use the stub instead.
-	if (COMPONENT_gui)
-		set(NO_INSTALL_ARG NO_INSTALL)
-		set(STUB_SUFFIX "_stub")
-	else()
-		set(NO_INSTALL_ARG "")
-		set(STUB_SUFFIX "")
+	if (NOT COMPONENT_gui)
+		add_subdirectory(dev-stubs/CoreData)
 	endif()
-	add_subdirectory(dev-stubs/CoreData)
 
 	# these are also stubs, but they're needed for Security
 	add_subdirectory(Accounts)
@@ -204,6 +199,10 @@ if ((COMPONENT_cli_dev AND NOT COMPONENT_gui) OR COMPONENT_cli_dev_gui_stubs)
 	add_subdirectory(dev-stubs/AppKit)
 	add_subdirectory(dev-stubs/AudioToolbox)
 	add_subdirectory(dev-stubs/Cocoa)
+	# without the GUI components, the CoreData stub is built for secd in cli_gui_common instead
+	if (COMPONENT_gui)
+		add_subdirectory(dev-stubs/CoreData)
+	endif()
 	add_subdirectory(dev-stubs/CoreGraphics)
 	add_subdirectory(dev-stubs/CoreText)
 	add_subdirectory(dev-stubs/ImageIO)
