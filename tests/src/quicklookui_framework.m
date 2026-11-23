@@ -15,6 +15,9 @@ static int g_failures = 0;
 
 #define CHECK(cond) do { if (!(cond)) { printf("FAIL %d: %s\n", __LINE__, #cond); g_failures++; } } while (0)
 
+// The 32-bit Objective-C runtime has no OBJC_CLASS_$_ symbols to look up (no dlsym-able class symbol is found for
+// these classes in Quartz or QuickLookUI on macOS 10.14 i386), so only the 64-bit slice checks them.
+#ifndef __i386__
 static void checkClassSymbol(void *quickLookUI, void *quartz, const char *symbol)
 {
 	void *direct = dlsym(quickLookUI, symbol);
@@ -23,6 +26,7 @@ static void checkClassSymbol(void *quickLookUI, void *quartz, const char *symbol
 	CHECK(viaQuartz != NULL);
 	CHECK(direct == viaQuartz);
 }
+#endif
 
 int main(void)
 {
@@ -31,10 +35,12 @@ int main(void)
 		void *quartz = dlopen("/System/Library/Frameworks/Quartz.framework/Versions/A/Quartz", RTLD_NOW | RTLD_FIRST);
 		CHECK(quickLookUI != NULL);
 		CHECK(quartz != NULL);
+#ifndef __i386__
 		if (quickLookUI != NULL && quartz != NULL) {
 			checkClassSymbol(quickLookUI, quartz, "OBJC_CLASS_$_QLPreviewView");
 			checkClassSymbol(quickLookUI, quartz, "OBJC_CLASS_$_QLPreviewPanel");
 		}
+#endif
 
 		Class view = NSClassFromString(@"QLPreviewView");
 		Class panel = NSClassFromString(@"QLPreviewPanel");
