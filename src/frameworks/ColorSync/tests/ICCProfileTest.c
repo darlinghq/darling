@@ -108,6 +108,37 @@ int main(void)
 	expect(!ICCProfileValidate(NULL, 0), "null data");
 	expect(!ICCProfileValidate(profile, 131), "shorter than header and tag count");
 
+	// A matrix-based profile has rXYZ, gXYZ, bXYZ, rTRC, gTRC and bTRC (ICC.1:2022, 8.3.3 and 8.4.3). Six
+	// 4-byte tags and an optional seventh ('A2B0') follow the table.
+	static const char* const matrixSignatures[7] = { "rXYZ", "gXYZ", "bXYZ", "rTRC", "gTRC", "bTRC", "A2B0" };
+	uint8_t matrix[256];
+	for (uint32_t extra = 0; extra < 2; extra++)
+	{
+		const uint32_t count = 6 + extra;
+		const uint32_t end = ICC_HEADER_SIZE + 4 + count * 12 + count * 4;
+		memset(matrix, 0, sizeof matrix);
+		put32(matrix, end);
+		put32(matrix + 36, SIG('a', 'c', 's', 'p'));
+		put32(matrix + 128, count);
+		for (uint32_t i = 0; i < count; i++)
+		{
+			memcpy(matrix + 132 + i * 12, matrixSignatures[i], 4);
+			put32(matrix + 136 + i * 12, ICC_HEADER_SIZE + 4 + count * 12 + i * 4);
+			put32(matrix + 140 + i * 12, 4);
+		}
+		expect(ICCProfileValidate(matrix, end), "matrix profile validates");
+		expect(ICCProfileHasMatrixTRC(matrix), extra ? "matrix profile with an AToB0 table" : "matrix profile");
+		for (uint32_t missing = 0; missing < 6; missing++)
+		{
+			uint8_t partial[256];
+			memcpy(partial, matrix, sizeof partial);
+			partial[132 + missing * 12] = 'Q'; // another signature in its place
+			expect(!ICCProfileHasMatrixTRC(partial), "matrix profile without one of its six tags");
+		}
+	}
+	expect(!ICCProfileHasMatrixTRC(profile), "profile with other tags only");
+	expect(!ICCProfileHasMatrixTRC(empty), "profile without tags");
+
 	// Cut-off tag tables, in buffers of exactly the stated size so a read past the end is a sanitizer error.
 	uint8_t* cut = malloc(132);
 	memcpy(cut, profile, 132);
