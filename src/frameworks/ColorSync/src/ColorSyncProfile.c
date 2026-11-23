@@ -27,6 +27,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "ICCBuilder.h"
 #include "ICCProfile.h"
 
 struct __ColorSyncProfile
@@ -100,6 +101,44 @@ ColorSyncProfileRef ColorSyncProfileCreate(CFDataRef data, CFErrorRef* error)
 
 	profile->data = copy;
 	return (ColorSyncProfileRef) profile;
+}
+
+// GUESS: the page says only that a predefined name makes a profile and NULL means failure. The names are the
+// kColorSync...Profile constants. The pages give no profile data, so the profile is built from the public definition of
+// the colour space (see ICCBuilder.h): its colorants, curve and description text are not those of any other
+// implementation, and the profile is a new object on each call. Only sRGB, Adobe RGB (1998), ITU-R BT.2020 and
+// the generic gray gamma 2.2 have such a definition. The generic Lab, XYZ and CMYK names, and any other string, a NULL
+// name and a non-string give NULL; the Lab and XYZ profiles have no public definition as profile data, and the CMYK
+// one needs a measured device table.
+ColorSyncProfileRef ColorSyncProfileCreateWithName(CFStringRef name)
+{
+	static const struct { CFStringRef* name; ICCNamedProfile which; } names[] = {
+		{ &kColorSyncSRGBProfile, ICCNamedSRGB },
+		{ &kColorSyncAdobeRGB1998Profile, ICCNamedAdobeRGB1998 },
+		{ &kColorSyncITUR2020Profile, ICCNamedITUR2020 },
+		{ &kColorSyncGenericGrayGamma22Profile, ICCNamedGrayGamma22 },
+	};
+	if (!name || CFGetTypeID(name) != CFStringGetTypeID())
+		return NULL;
+
+	for (size_t i = 0; i < sizeof names / sizeof names[0]; i++)
+	{
+		if (!CFEqual(name, *names[i].name))
+			continue;
+		const ICCDisplayProfileSpec spec = ICCNamedProfileSpec(names[i].which);
+		size_t length;
+		uint8_t* bytes = ICCBuildDisplayProfile(&spec, &length);
+		if (!bytes)
+			return NULL;
+		CFDataRef data = CFDataCreate(kCFAllocatorDefault, bytes, (CFIndex) length);
+		free(bytes);
+		if (!data)
+			return NULL;
+		ColorSyncProfileRef profile = ColorSyncProfileCreate(data, NULL);
+		CFRelease(data);
+		return profile;
+	}
+	return NULL;
 }
 
 // GUESS: a NULL or non-profile argument fails with NULL and the same error as invalid data; the page does not say.

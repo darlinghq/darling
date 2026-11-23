@@ -79,7 +79,6 @@ void* ColorSyncProfileCreateLink(void);
 void* ColorSyncProfileCreateMutable(void);
 void* ColorSyncProfileCreateSanitizedCopy(void);
 void* ColorSyncProfileCreateWithDisplayID(void);
-void* ColorSyncProfileCreateWithName(void);
 void* ColorSyncProfileEstimateGamma(void);
 void* ColorSyncProfileEstimateGammaWithDisplayID(void);
 void* ColorSyncProfileFromCMProfile(void);
@@ -143,6 +142,7 @@ ColorSyncMD5 ColorSyncProfileGetMD5(ColorSyncProfileRef prof);
 
 ColorSyncProfileRef ColorSyncProfileCreate(CFDataRef data, CFErrorRef* error);
 CFDataRef ColorSyncProfileCopyData(ColorSyncProfileRef prof, CFErrorRef* error);
+ColorSyncProfileRef ColorSyncProfileCreateWithName(CFStringRef name);
 bool ColorSyncProfileContainsTag(ColorSyncProfileRef prof, CFStringRef signature);
 CFDataRef ColorSyncProfileCopyTag(ColorSyncProfileRef prof, CFStringRef signature);
 CFStringRef ColorSyncProfileCopyDescriptionString(ColorSyncProfileRef prof);
