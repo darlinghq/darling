@@ -1,6 +1,8 @@
 /*
  This file is part of Darling.
 
+ Copyright (C) 2026 Lubos Dolezel
+
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
@@ -23,17 +25,38 @@
 #import <GameController/GCControllerButtonInput.h>
 #import <GameController/GCControllerDirectionPad.h>
 
-/* Apple's public documentation declares these as type aliases of the GCController* classes. */
+@protocol GCDevice;
+@class GCControllerElement;
+
+typedef GCControllerElement GCDeviceElement;
 typedef GCControllerButtonInput GCDeviceButtonInput;
 typedef GCControllerAxisInput GCDeviceAxisInput;
 typedef GCControllerDirectionPad GCDeviceDirectionPad;
 
+NS_ASSUME_NONNULL_BEGIN
+
 @interface GCPhysicalInputProfile : NSObject
 
-@property(readonly) NSDictionary<NSString *, GCDeviceButtonInput *> *buttons;
-@property(readonly) NSDictionary<NSString *, GCDeviceAxisInput *> *axes;
-@property(readonly) NSDictionary<NSString *, GCDeviceDirectionPad *> *dpads;
+@property (nonatomic, readonly, weak, nullable) id<GCDevice> device;
+@property (atomic, readonly) NSTimeInterval lastEventTimestamp;
+@property (nonatomic, readonly) BOOL hasRemappedElements;
+
+@property (nonatomic, copy, nullable) void (^valueDidChangeHandler)(__kindof GCPhysicalInputProfile *profile, GCControllerElement *element);
+
+@property (nonatomic, readonly, strong) NSDictionary<NSString *, GCDeviceElement *> *elements;
+@property (nonatomic, readonly, strong) NSDictionary<NSString *, GCDeviceButtonInput *> *buttons;
+@property (nonatomic, readonly, strong) NSDictionary<NSString *, GCDeviceAxisInput *> *axes;
+@property (nonatomic, readonly, strong) NSDictionary<NSString *, GCDeviceDirectionPad *> *dpads;
+
+@property (nonatomic, readonly, strong) NSSet<GCDeviceElement *> *allElements;
+@property (nonatomic, readonly, strong) NSSet<GCDeviceButtonInput *> *allButtons;
+@property (nonatomic, readonly, strong) NSSet<GCDeviceAxisInput *> *allAxes;
+@property (nonatomic, readonly, strong) NSSet<GCDeviceDirectionPad *> *allDpads;
+
+- (nullable __kindof GCDeviceElement *)objectForKeyedSubscript:(NSString *)key;
 
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif

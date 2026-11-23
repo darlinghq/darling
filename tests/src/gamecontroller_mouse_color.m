@@ -31,9 +31,10 @@ int main(void)
 		CHECK_STR(GCInputDualShockTouchpadButton, @"Touchpad Button");
 
 		NSArray *mice = [GCMouse mice];
-		CHECK(mice != nil && [mice count] == 0);
-		CHECK([GCMouse current] == nil);
-		CHECK([[GCController controllers] count] == 0);
+		/* real devices may be attached: with no mouse there is no current mouse, with one there is */
+		CHECK(mice != nil);
+		CHECK(([mice count] == 0) == ([GCMouse current] == nil));
+		CHECK([GCController controllers] != nil);
 
 		GCColor *color = [[GCColor alloc] initWithRed:0.25f green:0.5f blue:0.75f];
 		CHECK(color != nil);

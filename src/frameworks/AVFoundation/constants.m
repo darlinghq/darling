@@ -93,6 +93,7 @@ const NSErrorDomain AVFoundationErrorDomain = @"AVFoundationErrorDomain";
 
 const AVFileType AVFileTypeMPEG4 = @"public.mpeg-4";
 const AVFileType AVFileTypeQuickTimeMovie = @"com.apple.quicktime-movie";
+const AVFileType AVFileTypeAppleM4A = @"com.apple.m4a-audio";
 
 const AVAudioTimePitchAlgorithm AVAudioTimePitchAlgorithmTimeDomain = @"TimeDomain";
 const AVAudioTimePitchAlgorithm AVAudioTimePitchAlgorithmSpectral = @"Spectral";

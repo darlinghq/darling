@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,19 +18,37 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef _GCControllerDirectionPad_H_
+#define _GCControllerDirectionPad_H_
 
+#import <Foundation/Foundation.h>
 #import <GameController/GCControllerElement.h>
-#import <GameController/GCControllerAxisInput.h>
-#import <GameController/GCControllerButtonInput.h>
+
+@class GCControllerAxisInput;
+@class GCControllerButtonInput;
+
+NS_ASSUME_NONNULL_BEGIN
+
+@class GCControllerDirectionPad;
+
+typedef void (^GCControllerDirectionPadValueChangedHandler)(GCControllerDirectionPad *dpad, float xValue, float yValue);
 
 @interface GCControllerDirectionPad : GCControllerElement
 
-@property(readonly) GCControllerAxisInput *xAxis;
-@property(readonly) GCControllerAxisInput *yAxis;
-@property(readonly) GCControllerButtonInput *up;
-@property(readonly) GCControllerButtonInput *down;
-@property(readonly) GCControllerButtonInput *left;
-@property(readonly) GCControllerButtonInput *right;
+@property (nonatomic, copy, nullable) GCControllerDirectionPadValueChangedHandler valueChangedHandler;
+
+@property (nonatomic, readonly) GCControllerAxisInput *xAxis;
+@property (nonatomic, readonly) GCControllerAxisInput *yAxis;
+
+@property (nonatomic, readonly) GCControllerButtonInput *up;
+@property (nonatomic, readonly) GCControllerButtonInput *down;
+@property (nonatomic, readonly) GCControllerButtonInput *left;
+@property (nonatomic, readonly) GCControllerButtonInput *right;
+
+- (void)setValueForXAxis:(float)xAxis yAxis:(float)yAxis;
 
 @end
+
+NS_ASSUME_NONNULL_END
+
+#endif

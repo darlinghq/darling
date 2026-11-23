@@ -37,6 +37,13 @@ add_framework(GameController
         src/_GCGamepad.m
         src/GCExtendedGamepad.m
         src/_GCExtendedGamepad.m
+        src/GCXboxGamepad.m
+        src/GCDualShockGamepad.m
+        src/GCDualSenseGamepad.m
+        src/GCKeyboard.m
+        src/GCDeviceLight.m
+        src/GCDeviceBattery.m
+        src/GCProductCategories.m
         src/GCControllerSFDelegate.m
         src/GCControllerMBDelegate.m
         src/GCControllerCBDelegate.m
@@ -62,4 +69,5 @@ add_framework(GameController
         system
         objc
         Foundation
+        IOKit
 )
