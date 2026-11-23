@@ -586,31 +586,6 @@ void* CMHapticFormatDescriptionCreateFromBigEndianHapticDescriptionData(void) {
     return NULL;
 }
 
-void* CMMemoryPoolCreate(void) {
-    if (verbose) puts("STUB: CMMemoryPoolCreate called");
-    return NULL;
-}
-
-void* CMMemoryPoolFlush(void) {
-    if (verbose) puts("STUB: CMMemoryPoolFlush called");
-    return NULL;
-}
-
-void* CMMemoryPoolGetAllocator(void) {
-    if (verbose) puts("STUB: CMMemoryPoolGetAllocator called");
-    return NULL;
-}
-
-void* CMMemoryPoolGetTypeID(void) {
-    if (verbose) puts("STUB: CMMemoryPoolGetTypeID called");
-    return NULL;
-}
-
-void* CMMemoryPoolInvalidate(void) {
-    if (verbose) puts("STUB: CMMemoryPoolInvalidate called");
-    return NULL;
-}
-
 void* CMMetadataCreateIdentifierForKeyAndKeySpace(void) {
     if (verbose) puts("STUB: CMMetadataCreateIdentifierForKeyAndKeySpace called");
     return NULL;

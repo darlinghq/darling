@@ -24,6 +24,7 @@ add_framework(CoreMedia
         src/CMSampleBuffer.c
         src/CMCore.c
         src/CMAttachment.c
+        src/CMMemoryPool.c
 
     DEPENDENCIES
         system
