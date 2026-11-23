@@ -27,6 +27,7 @@
 #import <GameController/GCControllerDirectionPad.h>
 
 @class GCController;
+@class GCExtendedGamepadSnapshot;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -58,6 +59,12 @@ typedef void (^GCExtendedGamepadValueChangedHandler)(GCExtendedGamepad *gamepad,
 
 @property (nonatomic, readonly, nullable) GCControllerButtonInput *leftThumbstickButton;
 @property (nonatomic, readonly, nullable) GCControllerButtonInput *rightThumbstickButton;
+
+/* Deprecated by +[GCController controllerWithExtendedGamepad] on macOS: a snapshot of the state. */
+- (GCExtendedGamepadSnapshot *)saveSnapshot;
+
+/* Copies the state of another gamepad; has no effect on the profile of a real device. */
+- (void)setStateFromExtendedGamepad:(GCExtendedGamepad *)extendedGamepad;
 
 @end
 

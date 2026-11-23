@@ -32,18 +32,21 @@
 
 - (instancetype)initWithController:(GCController *)controller
 {
-	self = [super initWithController:controller];
+	return [self initWithController:controller style:GCProfileStyleDualShock];
+}
+
+- (instancetype)initWithController:(GCController *)controller style:(GCProfileStyle)style
+{
+	self = [super initWithController:controller style:style];
 	if (!self)
 		return nil;
-
 	_touchpadButton = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputDualShockTouchpadButton]];
 	_touchpadPrimary = [[GCControllerDirectionPad alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputDualShockTouchpadOne]];
 	_touchpadSecondary = [[GCControllerDirectionPad alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputDualShockTouchpadTwo]];
-
 	[self _registerButton:_touchpadButton key:GCInputDualShockTouchpadButton];
 	[self _registerDpad:_touchpadPrimary key:GCInputDualShockTouchpadOne];
 	[self _registerDpad:_touchpadSecondary key:GCInputDualShockTouchpadTwo];
-
+	[self _applyStyle:style];
 	return self;
 }
 
@@ -60,5 +63,4 @@
 - (GCControllerDirectionPad *)touchpadSecondary { return _touchpadSecondary; }
 
 @end
-
 #endif /* __LP64__ */

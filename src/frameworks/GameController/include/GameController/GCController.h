@@ -32,6 +32,9 @@
 @class GCDeviceLight;
 @class GCDeviceBattery;
 @class GCDeviceHaptics;
+@class GCGamepad;
+@class GCMotion;
+@class GCControllerLiveInput;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -57,11 +60,20 @@ typedef NS_ENUM(NSInteger, GCControllerPlayerIndex) {
 + (void)startWirelessControllerDiscoveryWithCompletionHandler:(nullable void (^)(void))completionHandler;
 + (void)stopWirelessControllerDiscovery;
 
+/* Whether the application receives controller input while it is not the frontmost one. */
+@property (class, nonatomic, readwrite) BOOL shouldMonitorBackgroundEvents;
+
+/* Controllers the application creates; they are snapshots, not attached to a device, and their profiles
+ * and elements accept writes. */
++ (GCController *)controllerWithExtendedGamepad;
++ (GCController *)controllerWithMicroGamepad;
+
 @property (nonatomic, strong, null_resettable) dispatch_queue_t handlerQueue;
 @property (nonatomic, readonly, copy, nullable) NSString *vendorName;
 @property (nonatomic, readonly) NSString *productCategory;
 @property (nonatomic) GCControllerPlayerIndex playerIndex;
 
+@property (nonatomic, strong, readonly, nullable) GCGamepad *gamepad;
 @property (nonatomic, strong, readonly, nullable) GCExtendedGamepad *extendedGamepad;
 @property (nonatomic, strong, readonly, nullable) GCMicroGamepad *microGamepad;
 @property (nonatomic, strong, readonly, nullable) GCPhysicalInputProfile *physicalInputProfile;
@@ -70,7 +82,14 @@ typedef NS_ENUM(NSInteger, GCControllerPlayerIndex) {
 @property (nonatomic, retain, readonly, nullable) GCDeviceLight *light;
 @property (nonatomic, retain, readonly, nullable) GCDeviceHaptics *haptics;
 
+@property (nonatomic, retain, readonly, nullable) GCMotion *motion;
+@property (nonatomic, strong, readonly, nullable) GCControllerLiveInput *input;
+@property (nonatomic, copy, nullable) void (^controllerPausedHandler)(GCController *controller);
 @property (readonly, getter=isAttachedToDevice) BOOL attachedToDevice;
+@property (nonatomic, readonly, getter=isSnapshot) BOOL snapshot;
+
+/* A new snapshot controller with a copy of the current state of the profiles. */
+- (GCController *)capture;
 
 @end
 

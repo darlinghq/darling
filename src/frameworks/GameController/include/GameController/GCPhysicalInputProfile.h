@@ -27,11 +27,13 @@
 
 @protocol GCDevice;
 @class GCControllerElement;
+@class GCControllerTouchpad;
 
 typedef GCControllerElement GCDeviceElement;
 typedef GCControllerButtonInput GCDeviceButtonInput;
 typedef GCControllerAxisInput GCDeviceAxisInput;
 typedef GCControllerDirectionPad GCDeviceDirectionPad;
+typedef GCControllerTouchpad GCDeviceTouchpad;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -48,12 +50,25 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly, strong) NSDictionary<NSString *, GCDeviceAxisInput *> *axes;
 @property (nonatomic, readonly, strong) NSDictionary<NSString *, GCDeviceDirectionPad *> *dpads;
 
+@property (nonatomic, readonly, strong) NSDictionary<NSString *, GCDeviceTouchpad *> *touchpads;
 @property (nonatomic, readonly, strong) NSSet<GCDeviceElement *> *allElements;
 @property (nonatomic, readonly, strong) NSSet<GCDeviceButtonInput *> *allButtons;
 @property (nonatomic, readonly, strong) NSSet<GCDeviceAxisInput *> *allAxes;
 @property (nonatomic, readonly, strong) NSSet<GCDeviceDirectionPad *> *allDpads;
+@property (nonatomic, readonly, strong) NSSet<GCDeviceTouchpad *> *allTouchpads;
 
 - (nullable __kindof GCDeviceElement *)objectForKeyedSubscript:(NSString *)key;
+
+/* A copy of the current state in a new, writable profile of the same class that belongs to no device. */
+- (instancetype)capture;
+
+/* Copies the state of another profile into this one, unless this profile belongs to a real device. */
+- (void)setStateFromPhysicalInput:(GCPhysicalInputProfile *)physicalInput;
+
+/* The element alias a physical input name maps to, and the names mapped to an alias (identity here:
+ * there is no user remapping). */
+- (NSString *)mappedElementAliasForPhysicalInputName:(NSString *)inputName;
+- (NSSet<NSString *> *)mappedPhysicalInputNamesForElementAlias:(NSString *)elementAlias;
 
 @end
 

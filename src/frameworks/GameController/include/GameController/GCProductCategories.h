@@ -32,5 +32,9 @@ extern NSString *const GCProductCategoryKeyboard;
 extern NSString *const GCProductCategoryControlCenterRemote;
 extern NSString *const GCProductCategorySiriRemote1stGen;
 extern NSString *const GCProductCategoryCoalescedRemote;
+extern NSString *const GCProductCategorySiriRemote2ndGen;
+extern NSString *const GCProductCategoryUniversalElectronicsRemote;
+extern NSString *const GCProductCategoryArcadeStick;
+extern NSString *const GCProductCategorySpatialController;
 
 #endif

@@ -22,29 +22,74 @@
 
 #import <Foundation/Foundation.h>
 
-extern NSString *const GCInputButtonA;
-extern NSString *const GCInputButtonB;
-extern NSString *const GCInputButtonX;
-extern NSString *const GCInputButtonY;
-extern NSString *const GCInputButtonMenu;
-extern NSString *const GCInputButtonOptions;
-extern NSString *const GCInputButtonHome;
-extern NSString *const GCInputButtonShare;
-extern NSString *const GCInputLeftShoulder;
-extern NSString *const GCInputRightShoulder;
-extern NSString *const GCInputLeftTrigger;
-extern NSString *const GCInputRightTrigger;
-extern NSString *const GCInputLeftThumbstick;
-extern NSString *const GCInputDirectionPad;
-extern NSString *const GCInputLeftThumbstickButton;
-extern NSString *const GCInputRightThumbstick;
-extern NSString *const GCInputRightThumbstickButton;
-extern NSString *const GCInputXboxPaddleOne;
-extern NSString *const GCInputXboxPaddleTwo;
-extern NSString *const GCInputXboxPaddleThree;
-extern NSString *const GCInputXboxPaddleFour;
-extern NSString *const GCInputDualShockTouchpadOne;
-extern NSString *const GCInputDualShockTouchpadTwo;
-extern NSString *const GCInputDualShockTouchpadButton;
+NS_ASSUME_NONNULL_BEGIN
+
+/* Marker protocols that give the names of the different element kinds distinct types. */
+__attribute__((objc_non_runtime_protocol)) NS_REFINED_FOR_SWIFT
+@protocol GCPhysicalInputElementName
+@end
+__attribute__((objc_non_runtime_protocol)) NS_REFINED_FOR_SWIFT
+@protocol GCButtonElementName <GCPhysicalInputElementName>
+@end
+__attribute__((objc_non_runtime_protocol)) NS_REFINED_FOR_SWIFT
+@protocol GCAxisElementName <GCPhysicalInputElementName>
+@end
+__attribute__((objc_non_runtime_protocol)) NS_REFINED_FOR_SWIFT
+@protocol GCSwitchElementName <GCPhysicalInputElementName>
+@end
+__attribute__((objc_non_runtime_protocol)) NS_REFINED_FOR_SWIFT
+@protocol GCDirectionPadElementName <GCPhysicalInputElementName>
+@end
+
+typedef NSString<GCPhysicalInputElementName> *const GCInputElementName NS_REFINED_FOR_SWIFT NS_TYPED_EXTENSIBLE_ENUM;
+typedef NSString<GCButtonElementName> *const GCInputButtonName NS_REFINED_FOR_SWIFT NS_TYPED_EXTENSIBLE_ENUM;
+typedef NSString<GCAxisElementName> *const GCInputAxisName NS_REFINED_FOR_SWIFT NS_TYPED_EXTENSIBLE_ENUM;
+typedef NSString<GCSwitchElementName> *const GCInputSwitchName NS_REFINED_FOR_SWIFT NS_TYPED_EXTENSIBLE_ENUM;
+typedef NSString<GCDirectionPadElementName> *const GCInputDirectionPadName NS_REFINED_FOR_SWIFT NS_TYPED_EXTENSIBLE_ENUM;
+
+extern GCInputButtonName GCInputButtonA;
+extern GCInputButtonName GCInputButtonB;
+extern GCInputButtonName GCInputButtonX;
+extern GCInputButtonName GCInputButtonY;
+extern GCInputDirectionPadName GCInputDirectionPad;
+extern GCInputDirectionPadName GCInputThumbstick;
+extern GCInputDirectionPadName GCInputLeftThumbstick;
+extern GCInputDirectionPadName GCInputRightThumbstick;
+extern GCInputButtonName GCInputThumbstickButton;
+extern GCInputButtonName GCInputLeftThumbstickButton;
+extern GCInputButtonName GCInputRightThumbstickButton;
+extern GCInputButtonName GCInputGripButton;
+extern GCInputButtonName GCInputLeftShoulder;
+extern GCInputButtonName GCInputRightShoulder;
+extern GCInputButtonName GCInputLeftBumper;
+extern GCInputButtonName GCInputRightBumper;
+extern GCInputButtonName GCInputTrigger;
+extern GCInputButtonName GCInputLeftTrigger;
+extern GCInputButtonName GCInputRightTrigger;
+extern GCInputButtonName GCInputLeftSideButton;
+extern GCInputButtonName GCInputRightSideButton;
+extern GCInputButtonName GCInputBackLeftButton(NSInteger position);
+extern GCInputButtonName GCInputBackRightButton(NSInteger position);
+extern GCInputButtonName GCInputButtonHome;
+extern GCInputButtonName GCInputButtonMenu;
+extern GCInputButtonName GCInputButtonOptions;
+extern GCInputButtonName GCInputButtonShare;
+extern GCInputButtonName GCInputXboxPaddleOne;
+extern GCInputButtonName GCInputXboxPaddleTwo;
+extern GCInputButtonName GCInputXboxPaddleThree;
+extern GCInputButtonName GCInputXboxPaddleFour;
+extern GCInputDirectionPadName GCInputDualShockTouchpadOne;
+extern GCInputDirectionPadName GCInputDualShockTouchpadTwo;
+extern GCInputButtonName GCInputDualShockTouchpadButton;
+extern GCInputAxisName GCInputSteeringWheel;
+extern GCInputElementName GCInputShifter;
+extern GCInputButtonName GCInputPedalAccelerator;
+extern GCInputButtonName GCInputPedalBrake;
+extern GCInputButtonName GCInputPedalClutch;
+extern GCInputButtonName GCInputLeftPaddle;
+extern GCInputButtonName GCInputRightPaddle;
+extern GCInputButtonName GCInputArcadeButtonName(NSInteger row, NSInteger column);
+
+NS_ASSUME_NONNULL_END
 
 #endif

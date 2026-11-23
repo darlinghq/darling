@@ -53,66 +53,6 @@ void* GCControllerManagerInitXPC(void)
     return NULL;
 }
 
-void* GCExtendedGamepadSnapShotDataV100FromNSData(void)
-{
-    if (verbose) puts("STUB: GCExtendedGamepadSnapShotDataV100FromNSData called");
-    return NULL;
-}
-
-void* GCExtendedGamepadSnapshotDataFromNSData(void)
-{
-    if (verbose) puts("STUB: GCExtendedGamepadSnapshotDataFromNSData called");
-    return NULL;
-}
-
-void* GCGamepadSnapShotDataV100FromNSData(void)
-{
-    if (verbose) puts("STUB: GCGamepadSnapShotDataV100FromNSData called");
-    return NULL;
-}
-
-void* GCMicroGamepadSnapShotDataV100FromNSData(void)
-{
-    if (verbose) puts("STUB: GCMicroGamepadSnapShotDataV100FromNSData called");
-    return NULL;
-}
-
-void* GCMicroGamepadSnapshotDataFromNSData(void)
-{
-    if (verbose) puts("STUB: GCMicroGamepadSnapshotDataFromNSData called");
-    return NULL;
-}
-
-void* NSDataFromGCExtendedGamepadSnapShotDataV100(void)
-{
-    if (verbose) puts("STUB: NSDataFromGCExtendedGamepadSnapShotDataV100 called");
-    return NULL;
-}
-
-void* NSDataFromGCExtendedGamepadSnapshotData(void)
-{
-    if (verbose) puts("STUB: NSDataFromGCExtendedGamepadSnapshotData called");
-    return NULL;
-}
-
-void* NSDataFromGCGamepadSnapShotDataV100(void)
-{
-    if (verbose) puts("STUB: NSDataFromGCGamepadSnapShotDataV100 called");
-    return NULL;
-}
-
-void* NSDataFromGCMicroGamepadSnapShotDataV100(void)
-{
-    if (verbose) puts("STUB: NSDataFromGCMicroGamepadSnapShotDataV100 called");
-    return NULL;
-}
-
-void* NSDataFromGCMicroGamepadSnapshotData(void)
-{
-    if (verbose) puts("STUB: NSDataFromGCMicroGamepadSnapshotData called");
-    return NULL;
-}
-
 void* _GCHIDEventCallback(void)
 {
     if (verbose) puts("STUB: _GCHIDEventCallback called");

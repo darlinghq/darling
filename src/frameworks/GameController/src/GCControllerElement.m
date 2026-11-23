@@ -23,17 +23,25 @@
 // and the framework is x86_64 and arm64 only there); the 32-bit slice keeps the stub.
 #ifdef __LP64__
 #import <GameController/GCControllerElement.h>
+#import <GameController/GCController.h>
 #import "GCInputInternal.h"
 
 @implementation GCControllerElement {
 	GCControllerElement *_collection;
+	GCPhysicalInputProfile *_profile;
 	BOOL _analog;
+	BOOL _boundToSystemGesture;
+	GCSystemGestureState _preferredSystemGestureState;
 	NSSet<NSString *> *_aliases;
+	NSString *_sfSymbolsName;
+	NSString *_localizedName;
+	NSString *_unmappedSfSymbolsName;
+	NSString *_unmappedLocalizedName;
 }
 
 - (instancetype)init
 {
-	return [self initWithCollection:nil isAnalog:NO aliases:[NSSet set]];
+	return [self initWithCollection:nil isAnalog:YES aliases:[NSSet set]];
 }
 
 - (instancetype)initWithCollection:(GCControllerElement *)collection isAnalog:(BOOL)analog aliases:(NSSet<NSString *> *)aliases
@@ -50,6 +58,10 @@
 - (void)dealloc
 {
 	[_aliases release];
+	[_sfSymbolsName release];
+	[_localizedName release];
+	[_unmappedSfSymbolsName release];
+	[_unmappedLocalizedName release];
 	[super dealloc];
 }
 
@@ -68,8 +80,111 @@
 	return _aliases ? _aliases : [NSSet set];
 }
 
-@end
+- (BOOL)isBoundToSystemGesture
+{
+	return _boundToSystemGesture;
+}
 
+- (GCSystemGestureState)preferredSystemGestureState
+{
+	return _preferredSystemGestureState;
+}
+
+- (void)setPreferredSystemGestureState:(GCSystemGestureState)state
+{
+	_preferredSystemGestureState = state;
+}
+
+// The four names are independent: setting one does not change the others.
+- (NSString *)sfSymbolsName { return _sfSymbolsName; }
+- (NSString *)localizedName { return _localizedName; }
+- (NSString *)unmappedSfSymbolsName { return _unmappedSfSymbolsName; }
+- (NSString *)unmappedLocalizedName { return _unmappedLocalizedName; }
+
+- (void)setSfSymbolsName:(NSString *)name
+{
+	if (name != _sfSymbolsName) {
+		[_sfSymbolsName release];
+		_sfSymbolsName = [name retain];
+	}
+}
+
+- (void)setLocalizedName:(NSString *)name
+{
+	if (name != _localizedName) {
+		[_localizedName release];
+		_localizedName = [name retain];
+	}
+}
+
+- (void)setUnmappedSfSymbolsName:(NSString *)name
+{
+	if (name != _unmappedSfSymbolsName) {
+		[_unmappedSfSymbolsName release];
+		_unmappedSfSymbolsName = [name retain];
+	}
+}
+
+- (void)setUnmappedLocalizedName:(NSString *)name
+{
+	if (name != _unmappedLocalizedName) {
+		[_unmappedLocalizedName release];
+		_unmappedLocalizedName = [name retain];
+	}
+}
+
+- (void)_setAnalog:(BOOL)analog
+{
+	_analog = analog;
+}
+
+- (void)_setAliases:(NSSet<NSString *> *)aliases
+{
+	if (aliases != _aliases) {
+		[_aliases release];
+		_aliases = [aliases copy];
+	}
+}
+
+- (void)_setBoundToSystemGesture:(BOOL)bound
+{
+	_boundToSystemGesture = bound;
+}
+
+- (void)_setProfile:(GCPhysicalInputProfile *)profile
+{
+	_profile = profile; // un-retained: the profile owns its elements
+}
+
+- (GCPhysicalInputProfile *)_profile
+{
+	return _profile ? _profile : [_collection _profile];
+}
+
+// The public setters of the values (-setValue: and friends) write only to elements of a profile that
+// belongs to a controller created by the application, or to no device at all; the elements of a real
+// device are updated by the device alone.
+- (BOOL)_allowsPublicWrites
+{
+	id<GCDevice> device = [[self _profile] device];
+	if (!device)
+		return YES;
+	if ([device isKindOfClass:[GCController class]])
+		return [(GCController *)device isSnapshot];
+	return NO;
+}
+
+- (dispatch_queue_t)_handlerQueue
+{
+	GCPhysicalInputProfile *profile = [self _profile];
+	return profile ? [profile _handlerQueue] : dispatch_get_main_queue();
+}
+
+- (void)_copyStateFromElement:(GCControllerElement *)element
+{
+}
+
+@end
 #else
 #import <GameController/GCControllerElement.h>
 #import <darling-stub-forwarding.h>

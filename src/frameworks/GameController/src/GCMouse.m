@@ -38,24 +38,40 @@ NSString *const GCMouseDidStopBeingCurrentNotification = @"GCMouseDidStopBeingCu
 	GCDeviceButtonInput *_rightButton;
 	GCDeviceButtonInput *_middleButton;
 	NSArray<GCDeviceButtonInput *> *_auxiliaryButtons;
-	GCDeviceDirectionPad *_scroll;
+	GCDeviceCursor *_scroll;
 }
 
 @synthesize mouseMovedHandler = _mouseMovedHandler;
+
+- (instancetype)init
+{
+	return [self initWithMouse:nil auxiliaryButtonCount:0];
+}
 
 - (instancetype)initWithMouse:(GCMouse *)mouse auxiliaryButtonCount:(NSUInteger)auxiliaryCount
 {
 	self = [super initWithDevice:mouse];
 	if (!self)
 		return nil;
-	_leftButton = [[GCDeviceButtonInput alloc] init];
-	_rightButton = [[GCDeviceButtonInput alloc] init];
-	_middleButton = [[GCDeviceButtonInput alloc] init];
+	_leftButton = [[GCDeviceButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:@"Left Button"]];
+	// the other buttons exist only for a mouse that has them: a profile without a mouse has none
+	if (mouse) {
+		_rightButton = [[GCDeviceButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:@"Right Button"]];
+		_middleButton = [[GCDeviceButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:@"Middle Button"]];
+	}
 	NSMutableArray *aux = [NSMutableArray array];
 	for (NSUInteger i = 0; i < auxiliaryCount; i++)
-		[aux addObject:[[[GCDeviceButtonInput alloc] init] autorelease]];
-	_auxiliaryButtons = [aux copy];
-	_scroll = [[GCDeviceDirectionPad alloc] init];
+		[aux addObject:[[[GCDeviceButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet set]] autorelease]];
+	_auxiliaryButtons = auxiliaryCount ? [aux copy] : nil;
+	_scroll = [[GCDeviceCursor alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:@"Scroll"]];
+	// "Left Button" and "Scroll" are the names macOS lists for a mouse profile; the names of the
+	// right and middle button follow the same pattern (inference, not observed on a device).
+	[self _registerButton:_leftButton key:@"Left Button"];
+	if (mouse) {
+		[self _registerButton:_rightButton key:@"Right Button"];
+		[self _registerButton:_middleButton key:@"Middle Button"];
+	}
+	[self _registerDpad:_scroll key:@"Scroll"];
 	return self;
 }
 
@@ -74,7 +90,7 @@ NSString *const GCMouseDidStopBeingCurrentNotification = @"GCMouseDidStopBeingCu
 - (GCDeviceButtonInput *)rightButton { return _rightButton; }
 - (GCDeviceButtonInput *)middleButton { return _middleButton; }
 - (NSArray *)auxiliaryButtons { return _auxiliaryButtons; }
-- (GCDeviceDirectionPad *)scroll { return _scroll; }
+- (GCDeviceCursor *)scroll { return _scroll; }
 
 @end
 

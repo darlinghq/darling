@@ -22,10 +22,12 @@
 
 #import <Foundation/Foundation.h>
 #import <GameController/GCPhysicalInputProfile.h>
+#import <GameController/GCKeyCodes.h>
+#import <GameController/GCKeyNames.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-typedef NSInteger GCKeyCode;
+
 
 @class GCKeyboardInput;
 

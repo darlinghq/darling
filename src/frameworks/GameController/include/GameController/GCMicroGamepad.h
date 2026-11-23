@@ -27,8 +27,15 @@
 #import <GameController/GCControllerDirectionPad.h>
 
 @class GCController;
+@class GCMicroGamepadSnapshot;
 
 NS_ASSUME_NONNULL_BEGIN
+
+/* Names of the elements of a micro gamepad. */
+extern NSString *const GCInputMicroGamepadDpad;
+extern NSString *const GCInputMicroGamepadButtonA;
+extern NSString *const GCInputMicroGamepadButtonX;
+extern NSString *const GCInputMicroGamepadButtonMenu;
 
 @class GCMicroGamepad;
 
@@ -46,6 +53,9 @@ typedef void (^GCMicroGamepadValueChangedHandler)(GCMicroGamepad *gamepad, GCCon
 
 @property (nonatomic) BOOL reportsAbsoluteDpadValues;
 @property (nonatomic) BOOL allowsRotation;
+
+- (GCMicroGamepadSnapshot *)saveSnapshot;
+- (void)setStateFromMicroGamepad:(GCMicroGamepad *)microGamepad;
 
 @end
 

@@ -23,6 +23,7 @@
 #import <Foundation/Foundation.h>
 #import <GameController/GCDevice.h>
 #import <GameController/GCPhysicalInputProfile.h>
+#import <GameController/GCDeviceCursor.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -47,7 +48,7 @@ typedef void (^GCMouseMoved)(GCMouseInput *mouse, float deltaX, float deltaY);
 @property(readonly, nullable) GCDeviceButtonInput *rightButton;
 @property(readonly, nullable) GCDeviceButtonInput *middleButton;
 @property(readonly, nullable) NSArray<GCDeviceButtonInput *> *auxiliaryButtons;
-@property(readonly) GCDeviceDirectionPad *scroll;
+@property(readonly) GCDeviceCursor *scroll;
 
 @end
 

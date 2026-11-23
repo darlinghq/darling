@@ -20,11 +20,18 @@
 #ifndef _GCDualSenseGamepad_H_
 #define _GCDualSenseGamepad_H_
 
-#import <GameController/GCDualShockGamepad.h>
+#import <GameController/GCExtendedGamepad.h>
+#import <GameController/GCDualSenseAdaptiveTrigger.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface GCDualSenseGamepad : GCDualShockGamepad
+@interface GCDualSenseGamepad : GCExtendedGamepad
+
+@property (nonatomic, readonly) GCControllerButtonInput *touchpadButton;
+@property (nonatomic, readonly) GCControllerDirectionPad *touchpadPrimary;
+@property (nonatomic, readonly) GCControllerDirectionPad *touchpadSecondary;
+@property (nonatomic, readonly) GCDualSenseAdaptiveTrigger *leftTrigger;
+@property (nonatomic, readonly) GCDualSenseAdaptiveTrigger *rightTrigger;
 
 @end
 

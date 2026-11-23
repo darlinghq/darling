@@ -39,12 +39,25 @@ NSString *const GCKeyboardDidDisconnectNotification = @"GCKeyboardDidDisconnectN
 
 @synthesize keyChangedHandler = _keyChangedHandler;
 
+- (instancetype)init
+{
+	return [self initWithKeyboard:nil];
+}
+
+// Every key exists from the start, listed under its name; its key code is the usage on the keyboard page.
 - (instancetype)initWithKeyboard:(GCKeyboard *)keyboard
 {
 	self = [super initWithDevice:keyboard];
 	if (!self)
 		return nil;
 	_buttonsByKeyCode = [[NSMutableDictionary alloc] init];
+	for (size_t i = 0; i < GCKeyTableCount; i++) {
+		NSString *name = *GCKeyTable[i].name;
+		GCControllerButtonInput *button = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:name]];
+		[self _registerButton:button key:name];
+		_buttonsByKeyCode[@(GCKeyTable[i].code)] = button;
+		[button release];
+	}
 	return self;
 }
 
@@ -57,26 +70,17 @@ NSString *const GCKeyboardDidDisconnectNotification = @"GCKeyboardDidDisconnectN
 
 - (BOOL)isAnyKeyPressed
 {
-	@synchronized (self) {
-		for (GCDeviceButtonInput *btn in [_buttonsByKeyCode allValues]) {
-			if (btn.isPressed)
-				return YES;
-		}
+	for (GCDeviceButtonInput *btn in [_buttonsByKeyCode allValues]) {
+		if (btn.isPressed)
+			return YES;
 	}
 	return NO;
 }
 
 - (GCDeviceButtonInput *)buttonForKeyCode:(GCKeyCode)code
 {
-	NSNumber *key = @(code);
-	@synchronized (self) {
-		GCDeviceButtonInput *btn = _buttonsByKeyCode[key];
-		if (!btn) {
-			btn = [[[GCDeviceButtonInput alloc] init] autorelease];
-			_buttonsByKeyCode[key] = btn;
-		}
-		return btn;
-	}
+	// the set of keys never changes after creation
+	return _buttonsByKeyCode[@(code)];
 }
 
 @end

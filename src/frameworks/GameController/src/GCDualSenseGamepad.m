@@ -22,9 +22,51 @@
 // and the framework is x86_64 and arm64 only there); the 32-bit slice keeps the stub.
 #ifdef __LP64__
 #import <GameController/GCDualSenseGamepad.h>
+#import "GCInputInternal.h"
 
-@implementation GCDualSenseGamepad
+@implementation GCDualSenseGamepad {
+	GCControllerButtonInput *_touchpadButton;
+	GCControllerDirectionPad *_touchpadPrimary;
+	GCControllerDirectionPad *_touchpadSecondary;
+	GCDualSenseAdaptiveTrigger *_leftTrigger;
+	GCDualSenseAdaptiveTrigger *_rightTrigger;
+}
+
+- (instancetype)initWithController:(GCController *)controller
+{
+	self = [super initWithController:controller style:GCProfileStyleDualSense];
+	if (!self)
+		return nil;
+	_touchpadButton = [[GCControllerButtonInput alloc] initWithCollection:nil isAnalog:NO aliases:[NSSet setWithObject:GCInputDualShockTouchpadButton]];
+	_touchpadPrimary = [[GCControllerDirectionPad alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputDualShockTouchpadOne]];
+	_touchpadSecondary = [[GCControllerDirectionPad alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputDualShockTouchpadTwo]];
+	[self _registerButton:_touchpadButton key:GCInputDualShockTouchpadButton];
+	[self _registerDpad:_touchpadPrimary key:GCInputDualShockTouchpadOne];
+	[self _registerDpad:_touchpadSecondary key:GCInputDualShockTouchpadTwo];
+	// The triggers of the profile are replaced by adaptive triggers.
+	_leftTrigger = [[GCDualSenseAdaptiveTrigger alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputLeftTrigger]];
+	_rightTrigger = [[GCDualSenseAdaptiveTrigger alloc] initWithCollection:nil isAnalog:YES aliases:[NSSet setWithObject:GCInputRightTrigger]];
+	[self _registerButton:_leftTrigger key:GCInputLeftTrigger];
+	[self _registerButton:_rightTrigger key:GCInputRightTrigger];
+	[self _applyStyle:GCProfileStyleDualSense];
+	return self;
+}
+
+- (void)dealloc
+{
+	[_touchpadButton release];
+	[_touchpadPrimary release];
+	[_touchpadSecondary release];
+	[_leftTrigger release];
+	[_rightTrigger release];
+	[super dealloc];
+}
+
+- (GCControllerButtonInput *)touchpadButton { return _touchpadButton; }
+- (GCControllerDirectionPad *)touchpadPrimary { return _touchpadPrimary; }
+- (GCControllerDirectionPad *)touchpadSecondary { return _touchpadSecondary; }
+- (GCDualSenseAdaptiveTrigger *)leftTrigger { return _leftTrigger; }
+- (GCDualSenseAdaptiveTrigger *)rightTrigger { return _rightTrigger; }
 
 @end
-
 #endif /* __LP64__ */
