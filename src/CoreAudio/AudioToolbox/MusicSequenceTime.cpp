@@ -20,12 +20,12 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 // The time of a music sequence (MusicPlayer.h): the sequence type and the conversion between beats
 // and seconds through the tempo map.
 //
-// The tempo map is the tempo events (kMusicEventType_ExtendedTempo) of the tempo track; other
-// events in that track are ignored. A tempo holds from its time until the next tempo event, so of
-// two at the same time the later one holds. With
-// the sequence type "beats" a tempo is in beats per minute. With "seconds" the documentation says
-// the tempo is 60 and a beat is a second, and with "samples" that it is a sample rate and a beat a
-// sample. Both follow from reading the tempo as beats per minute and as beats per second.
+// The tempo map is the tempo events (kMusicEventType_ExtendedTempo) of the tempo track, in beats per
+// minute; other events in that track are ignored. A tempo holds from its time until the next tempo
+// event, so of two at the same time the later one holds, and the first tempo also holds before its time
+// (120 when there is none). The sequence type does not change any of this: on macOS 26.7.3 and 10.14.4 the
+// conversions of a "seconds" or "samples" sequence read the tempo events as beats per minute too
+// (tests/src/audiotoolbox_music_sequence_time.c); the type only decides which tempo events can be added.
 
 #include <AudioToolbox/MusicPlayer.h>
 #include <CarbonCore/MacErrors.h>
@@ -45,23 +45,14 @@ struct TempoPoint
 	Float64 beatsPerSecond;
 };
 
-Float64 beatsPerSecond(MusicSequenceType type, Float64 tempo)
+Float64 beatsPerSecond(Float64 tempo)
 {
-	return type == kMusicSequenceType_Samples ? tempo : tempo / 60.0;
+	return tempo / 60.0;
 }
 
-// GUESS: the tempo before the first tempo event, and in a sequence without one, is the 120 beats
-// per minute the documentation gives for a new sequence; a "seconds" sequence has 60 (a beat is a
-// second) and a "samples" sequence 44100 (the documentation's own example of a sample rate).
-Float64 defaultTempo(MusicSequenceType type)
-{
-	switch (type)
-	{
-		case kMusicSequenceType_Seconds: return 60.0;
-		case kMusicSequenceType_Samples: return 44100.0;
-		default: return 120.0;
-	}
-}
+// The tempo before the first tempo event, and in a sequence without one, is the 120 beats per minute the
+// documentation gives for a new sequence, for every sequence type (observed on macOS).
+const Float64 kDefaultTempo = 120.0;
 
 std::vector<TempoPoint> tempoMap(const OpaqueMusicSequence* sequence)
 {
@@ -72,10 +63,10 @@ std::vector<TempoPoint> tempoMap(const OpaqueMusicSequence* sequence)
 			continue;
 		ExtendedTempoEvent tempo;
 		std::memcpy(&tempo, event.data.data(), sizeof(tempo));
-		map.push_back({ event.time, beatsPerSecond(sequence->type, tempo.bpm) });
+		map.push_back({ event.time, beatsPerSecond(tempo.bpm) });
 	}
 	if (map.empty() || map.front().time > 0)
-		map.insert(map.begin(), { 0.0, beatsPerSecond(sequence->type, defaultTempo(sequence->type)) });
+		map.insert(map.begin(), { 0.0, beatsPerSecond(kDefaultTempo) });
 	return map;
 }
 
@@ -88,22 +79,17 @@ OSStatus MusicSequenceSetSequenceType(MusicSequence inSequence, MusicSequenceTyp
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 
-	switch (inType)
+	// QUIRK: seconds and samples are refused while the tempo track has a tempo event
+	// (kAudioToolboxErr_InvalidSequenceType); any other value, one that is none of the three types
+	// too, is accepted and kept. Evidence: black-box observation on macOS 26.7.3 and 10.14.4, tier 2.
+	// Test: tests/src/audiotoolbox_music_sequence_time.c, "sequence types".
+	if (inType == kMusicSequenceType_Seconds || inType == kMusicSequenceType_Samples)
 	{
-		case kMusicSequenceType_Beats:
-			break;
-		case kMusicSequenceType_Seconds:
-		case kMusicSequenceType_Samples:
-			// Only while the sequence has no tempo events. GUESS: the code for refusing is
-			// kAudioToolboxErr_InvalidSequenceType, as for a type that is none of the three.
-			for (const MusicEvent& event : inSequence->tempoTrack.events)
-			{
-				if (event.type == kMusicEventType_ExtendedTempo)
-					return kAudioToolboxErr_InvalidSequenceType;
-			}
-			break;
-		default:
-			return kAudioToolboxErr_InvalidSequenceType;
+		for (const MusicEvent& event : inSequence->tempoTrack.events)
+		{
+			if (event.type == kMusicEventType_ExtendedTempo)
+				return kAudioToolboxErr_InvalidSequenceType;
+		}
 	}
 
 	inSequence->type = inType;
@@ -122,6 +108,8 @@ OSStatus MusicSequenceGetSequenceType(MusicSequence inSequence, MusicSequenceTyp
 
 Float64 musicimpl::secondsForBeats(const OpaqueMusicSequence* sequence, MusicTimeStamp beats)
 {
+	if (std::isnan(beats))
+		return beats;
 	const std::vector<TempoPoint> map = tempoMap(sequence);
 	if (beats < 0)
 		return beats / map.front().beatsPerSecond;
@@ -138,6 +126,8 @@ Float64 musicimpl::secondsForBeats(const OpaqueMusicSequence* sequence, MusicTim
 
 MusicTimeStamp musicimpl::beatsForSeconds(const OpaqueMusicSequence* sequence, Float64 seconds)
 {
+	if (std::isnan(seconds))
+		return seconds;
 	const std::vector<TempoPoint> map = tempoMap(sequence);
 	if (seconds < 0)
 		return seconds * map.front().beatsPerSecond;
@@ -155,8 +145,9 @@ MusicTimeStamp musicimpl::beatsForSeconds(const OpaqueMusicSequence* sequence, F
 
 OSStatus MusicSequenceGetSecondsForBeats(MusicSequence inSequence, MusicTimeStamp inBeats, Float64* outSeconds)
 {
-	// GUESS: a time below zero or not finite is kAudio_ParamError, like a time stamp of an event.
-	if (!inSequence || !outSeconds || !std::isfinite(inBeats) || inBeats < 0)
+	// A time below zero is kAudio_ParamError and leaves the output alone; one that is not a number or is
+	// infinite is converted like any other (the result is then not a number or infinite), as on macOS.
+	if (!inSequence || !outSeconds || inBeats < 0)
 		return kAudio_ParamError;
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
@@ -173,7 +164,7 @@ OSStatus MusicSequenceGetSecondsForBeats(MusicSequence inSequence, MusicTimeStam
 
 OSStatus MusicSequenceGetBeatsForSeconds(MusicSequence inSequence, Float64 inSeconds, MusicTimeStamp* outBeats)
 {
-	if (!inSequence || !outBeats || !std::isfinite(inSeconds) || inSeconds < 0)
+	if (!inSequence || !outBeats || inSeconds < 0)
 		return kAudio_ParamError;
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());

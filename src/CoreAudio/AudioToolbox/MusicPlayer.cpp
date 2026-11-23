@@ -102,8 +102,8 @@ OSStatus MusicPlayerSetSequence(MusicPlayer inPlayer, MusicSequence inSequence)
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 
-	// A sequence cannot be set while the player is playing. GUESS: the code is
-	// kAudioToolboxErr_InvalidPlayerState. A NULL sequence removes the sequence (the header allows it).
+	// A sequence cannot be set while the player is playing: kAudioToolboxErr_InvalidPlayerState (observed on
+	// macOS 26.7.3). A NULL sequence removes the sequence (the header allows it).
 	if (inPlayer->playing)
 		return kAudioToolboxErr_InvalidPlayerState;
 
@@ -112,6 +112,9 @@ OSStatus MusicPlayerSetSequence(MusicPlayer inPlayer, MusicSequence inSequence)
 	inPlayer->sequence = inSequence;
 	if (inSequence)
 		inSequence->playerCount++;
+	// QUIRK: setting a sequence, or none, puts the time back to zero. Evidence: black-box observation on
+	// macOS 26.7.3, tier 2. Test: tests/src/audiotoolbox_music_player.c, "setting a sequence".
+	inPlayer->time = 0;
 	return noErr;
 }
 
@@ -129,9 +132,8 @@ OSStatus MusicPlayerGetSequence(MusicPlayer inPlayer, MusicSequence* outSequence
 
 OSStatus MusicPlayerSetTime(MusicPlayer inPlayer, MusicTimeStamp inTime)
 {
-	// The time is not range checked. GUESS: a time that is not a number is kAudio_ParamError; a
-	// time below zero is accepted.
-	if (!inPlayer || std::isnan(inTime))
+	// The time is not range checked: a time below zero or not a number is accepted (observed on macOS 26.7.3).
+	if (!inPlayer)
 		return kAudio_ParamError;
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
@@ -155,8 +157,8 @@ OSStatus MusicPlayerPreroll(MusicPlayer inPlayer)
 	if (!inPlayer)
 		return kAudio_ParamError;
 
-	// There is nothing to prepare, as nothing is rendered. GUESS: a player with no sequence is
-	// kAudioToolboxErr_NoSequence.
+	// There is nothing to prepare, as nothing is rendered. A player with no sequence is
+	// kAudioToolboxErr_NoSequence (observed on macOS 26.7.3 and 10.14.4).
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 	if (!inPlayer->sequence)
 		return kAudioToolboxErr_NoSequence;
@@ -170,8 +172,9 @@ OSStatus MusicPlayerStart(MusicPlayer inPlayer)
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 
-	// GUESS: a player with no sequence is kAudioToolboxErr_NoSequence, and starting a player that is
-	// already playing is noErr and changes nothing.
+	// A player with no sequence is kAudioToolboxErr_NoSequence (observed on macOS 26.7.3 and 10.14.4); starting a
+	// player that is already playing is noErr and changes nothing (observed on 26.7.3). macOS also fails when
+	// the destinations of the sequence cannot be started (no audio output), which cannot happen here.
 	if (!inPlayer->sequence)
 		return kAudioToolboxErr_NoSequence;
 	if (inPlayer->playing)
@@ -188,6 +191,9 @@ OSStatus MusicPlayerStop(MusicPlayer inPlayer)
 		return kAudio_ParamError;
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
+	// A player with no sequence is kAudioToolboxErr_NoSequence here too (observed on macOS 26.7.3 and 10.14.4).
+	if (!inPlayer->sequence)
+		return kAudioToolboxErr_NoSequence;
 	if (!inPlayer->playing)
 		return noErr;
 
@@ -207,8 +213,9 @@ OSStatus MusicPlayerIsPlaying(MusicPlayer inPlayer, Boolean* outIsPlaying)
 
 OSStatus MusicPlayerSetPlayRateScalar(MusicPlayer inPlayer, Float64 inScaleRate)
 {
-	// The rate must be greater than zero. GUESS: the code for refusing it is kAudio_ParamError.
-	if (!inPlayer || !(inScaleRate > 0) || !std::isfinite(inScaleRate))
+	// The rate must be greater than zero (not zero, not negative, not a number): kAudio_ParamError otherwise
+	// (observed on macOS 26.7.3); an infinite rate is accepted there.
+	if (!inPlayer || !(inScaleRate > 0))
 		return kAudio_ParamError;
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
@@ -229,16 +236,15 @@ OSStatus MusicPlayerGetPlayRateScalar(MusicPlayer inPlayer, Float64* outScaleRat
 
 OSStatus MusicPlayerGetHostTimeForBeats(MusicPlayer inPlayer, MusicTimeStamp inBeats, UInt64* outHostTime)
 {
-	if (!inPlayer || !outHostTime || std::isnan(inBeats))
+	if (!inPlayer || !outHostTime)
 		return kAudio_ParamError;
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 
 	// Only a playing player has a host time for a beat, and none for a beat before the beat it started
-	// at. GUESS: the codes are kAudioToolboxErr_InvalidPlayerState for a player that is not playing and
-	// kAudio_ParamError for a beat before the start. GUESS: the start moves when the time or the rate of
-	// a playing player is set, so beats that already played before that are before the start; the
-	// documentation speaks only of "the starting beat". The alternative was to keep the first start.
+	// at: kAudioToolboxErr_InvalidPlayerState for a player that is not playing and kAudio_ParamError for a beat
+	// before the start (observed on macOS 26.7.3, which moves the start when the time or the rate of a playing
+	// player is set).
 	if (!inPlayer->playing)
 		return kAudioToolboxErr_InvalidPlayerState;
 	if (inBeats < inPlayer->time)
@@ -247,12 +253,14 @@ OSStatus MusicPlayerGetHostTimeForBeats(MusicPlayer inPlayer, MusicTimeStamp inB
 	return guarded([&]() -> OSStatus {
 		const Float64 seconds = (musicimpl::secondsForBeats(inPlayer->sequence, inBeats)
 			- musicimpl::secondsForBeats(inPlayer->sequence, inPlayer->time)) / inPlayer->rate;
-		// GUESS: a beat so far ahead that its host time is not a number or does not fit (it is cast to 64 bits
-		// below) is kAudio_ParamError.
+		// QUIRK: a beat whose host time is not a number or does not fit in 64 bits (infinity, NaN, 1e15 beats) is
+		// not refused: the number of ticks since the start is then -2^63 as an x86 conversion gives it, and the
+		// host time is the start plus that. Evidence: black-box observation on macOS 26.7.3 x86_64, tier 2.
+		// Test: tests/src/audiotoolbox_music_player_host_time.c, "beats that do not fit".
 		const Float64 ticks = seconds * AudioGetHostClockFrequency();
-		if (!(ticks < 9.0e18))
-			return kAudio_ParamError;
-		*outHostTime = inPlayer->anchorHostTime + static_cast<UInt64>(ticks);
+		const UInt64 offset = (ticks >= -9223372036854775808.0 && ticks < 9223372036854775808.0)
+			? static_cast<UInt64>(static_cast<SInt64>(ticks)) : 0x8000000000000000ull;
+		*outHostTime = inPlayer->anchorHostTime + offset;
 		return noErr;
 	});
 }
