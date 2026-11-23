@@ -160,6 +160,41 @@ CFDataRef ColorSyncProfileCopyTag(ColorSyncProfileRef prof, CFStringRef signatur
 	return CFDataCreate(kCFAllocatorDefault, bytes + tag.offset, tag.size);
 }
 
+// The two characters of a language or country code (ISO 639-1, ISO 3166-1) in the locale value, or false.
+static bool twoLetterCode(CFTypeRef value, char out[3])
+{
+	return value && CFGetTypeID(value) == CFStringGetTypeID() && CFStringGetLength(value) == 2 &&
+		CFStringGetCString(value, out, 3, kCFStringEncodingASCII);
+}
+
+// GUESS: the page says only "the localized description string ... localized to the current locale". The description is
+// the profile's 'desc' tag; of its records the one for the language and country of CFLocaleCopyCurrent() is chosen,
+// else the first of the same language, else the first (ICC.1:2022, 10.15). The tag of an older profile has one
+// string, and its 7-bit ASCII part is used, as in 10.20.3 of that edition. A profile with no 'desc' tag or a
+// description that cannot be read gives NULL (the page does not say); a NULL or non-profile argument too.
+CFStringRef ColorSyncProfileCopyDescriptionString(ColorSyncProfileRef prof)
+{
+	const struct __ColorSyncProfile* profile = profileOrNull(prof);
+	if (!profile)
+		return NULL;
+
+	char language[3], country[3];
+	bool hasLanguage = false, hasCountry = false;
+	CFLocaleRef locale = CFLocaleCopyCurrent();
+	if (locale)
+	{
+		hasLanguage = twoLetterCode(CFLocaleGetValue(locale, kCFLocaleLanguageCode), language);
+		hasCountry = twoLetterCode(CFLocaleGetValue(locale, kCFLocaleCountryCode), country);
+		CFRelease(locale);
+	}
+
+	ICCText text;
+	if (!ICCProfileFindDescription(CFDataGetBytePtr(profile->data), hasLanguage ? language : NULL, hasCountry ? country : NULL, &text))
+		return NULL;
+	return CFStringCreateWithBytes(kCFAllocatorDefault, text.bytes, (CFIndex) text.length,
+		text.isUTF16BE ? kCFStringEncodingUTF16BE : kCFStringEncodingISOLatin1, false);
+}
+
 // GUESS: the signatures come in tag table order (the original's order for distinct signatures looked hash-based
 // on macOS 26.7.3, so it is not reproduced), and a signature that repeats (invalid under ICC.1:2022, 7.3.1)
 // is listed once, at its first position. The page says neither.

@@ -293,12 +293,6 @@ void* ColorSyncProfileCopyASCIIDescriptionString(void)
     return NULL;
 }
 
-void* ColorSyncProfileCopyDescriptionString(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCopyDescriptionString called");
-    return NULL;
-}
-
 void* ColorSyncProfileCopyHeader(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileCopyHeader called");
