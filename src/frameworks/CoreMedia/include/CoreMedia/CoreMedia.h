@@ -30,6 +30,7 @@
 #include <CoreMedia/CMSampleBuffer.h>
 #include <CoreMedia/CMSync.h>
 #include <CoreMedia/CMAttachment.h>
+#include <CoreMedia/CMMemoryPool.h>
 
 void* AudioToolbox_AudioConverterDispose(void);
 void* AudioToolbox_AudioConverterGetProperty(void);
@@ -133,11 +134,6 @@ void* CMFormatDescriptionGetWidestColorPropertiesFromFormatDescriptions(void);
 void* CMHapticFormatDescriptionCopyAsBigEndianHapticDescriptionBlockBuffer(void);
 void* CMHapticFormatDescriptionCreateFromBigEndianHapticDescriptionBlockBuffer(void);
 void* CMHapticFormatDescriptionCreateFromBigEndianHapticDescriptionData(void);
-void* CMMemoryPoolCreate(void);
-void* CMMemoryPoolFlush(void);
-void* CMMemoryPoolGetAllocator(void);
-void* CMMemoryPoolGetTypeID(void);
-void* CMMemoryPoolInvalidate(void);
 void* CMMetadataCreateIdentifierForKeyAndKeySpace(void);
 void* CMMetadataCreateKeyFromIdentifier(void);
 void* CMMetadataCreateKeyFromIdentifierAsCFData(void);

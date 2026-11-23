@@ -26,6 +26,7 @@ add_framework(CoreMedia
         src/CMAttachment.c
         src/CMTimebase.c
         src/CMSimpleQueue.c
+        src/CMMemoryPool.c
 
     DEPENDENCIES
         system
