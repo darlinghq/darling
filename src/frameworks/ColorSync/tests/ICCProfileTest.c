@@ -49,6 +49,66 @@ static size_t buildProfile(uint8_t* out)
 	return tableEnd + 12;
 }
 
+// A profile whose only tag is 'desc', holding `blob` right after the tag table.
+static size_t buildWithDescription(uint8_t* out, const uint8_t* blob, size_t blobLength)
+{
+	const uint32_t tableEnd = ICC_HEADER_SIZE + 4 + 12;
+	memset(out, 0, tableEnd);
+	put32(out, (uint32_t) (tableEnd + blobLength));
+	put32(out + 36, SIG('a', 'c', 's', 'p'));
+	put32(out + 128, 1);
+	put32(out + 132, SIG('d', 'e', 's', 'c'));
+	put32(out + 136, tableEnd);
+	put32(out + 140, (uint32_t) blobLength);
+	memcpy(out + tableEnd, blob, blobLength);
+	return tableEnd + blobLength;
+}
+
+typedef struct DescriptionRecord {
+	const char* language;
+	const char* country;
+	const char* text; // ASCII, stored as UTF-16BE
+} DescriptionRecord;
+
+// A multiLocalizedUnicodeType (ICC.1:2022, 10.15) with the records in the order given.
+static size_t buildMultiLocalized(uint8_t* out, const DescriptionRecord* records, uint32_t count)
+{
+	size_t stringOffset = 16 + (size_t) count * 12;
+	memset(out, 0, 512);
+	memcpy(out, "mluc", 4);
+	put32(out + 8, count);
+	put32(out + 12, 12);
+	for (uint32_t i = 0; i < count; i++)
+	{
+		uint8_t* record = out + 16 + i * 12;
+		const size_t length = strlen(records[i].text) * 2;
+		memcpy(record, records[i].language, 2);
+		memcpy(record + 2, records[i].country, 2);
+		put32(record + 4, (uint32_t) length);
+		put32(record + 8, (uint32_t) stringOffset);
+		for (size_t c = 0; c < length / 2; c++)
+			out[stringOffset + c * 2 + 1] = (uint8_t) records[i].text[c];
+		stringOffset += length;
+	}
+	return stringOffset;
+}
+
+// The text found for the locale, as ASCII in a static buffer; "" and false if none.
+static bool descriptionText(const uint8_t* profile, const char* language, const char* country, char* out, bool* isUTF16)
+{
+	ICCText text;
+	out[0] = 0;
+	if (!ICCProfileFindDescription(profile, language, country, &text))
+		return false;
+	*isUTF16 = text.isUTF16BE;
+	const size_t step = text.isUTF16BE ? 2 : 1;
+	size_t n = 0;
+	for (size_t i = 0; i < text.length; i += step)
+		out[n++] = (char) text.bytes[i + step - 1];
+	out[n] = 0;
+	return true;
+}
+
 int main(void)
 {
 	uint8_t profile[256];
@@ -160,6 +220,78 @@ int main(void)
 	expect(ICCProfileValidate(bad, length), "header size larger than the data is accepted");
 	put32(bad, 10);
 	expect(ICCProfileValidate(bad, length), "header size smaller than the data is accepted");
+
+	// The profile description (ICC.1:2022, 10.15, 9.2.43; ICC.1:2001-04, 6.5.17).
+	uint8_t blob[512], withDesc[1024];
+	char text[64];
+	bool isUTF16 = false;
+	const DescriptionRecord several[] = { { "fr", "FR", "Bonjour" }, { "en", "GB", "Hello GB" }, { "en", "US", "Hello US" }, { "de", "DE", "Hallo" } };
+	size_t blobLength = buildMultiLocalized(blob, several, 4);
+	const size_t withDescLength = buildWithDescription(withDesc, blob, blobLength);
+	expect(ICCProfileValidate(withDesc, withDescLength), "profile with a multi-localized description validates");
+	expect(descriptionText(withDesc, "en", "US", text, &isUTF16) && isUTF16 && strcmp(text, "Hello US") == 0, "same language and country");
+	expect(descriptionText(withDesc, "en", "GB", text, &isUTF16) && strcmp(text, "Hello GB") == 0, "same language and country, earlier record");
+	expect(descriptionText(withDesc, "de", "AT", text, &isUTF16) && strcmp(text, "Hallo") == 0, "same language, other country");
+	expect(descriptionText(withDesc, "en", "AU", text, &isUTF16) && strcmp(text, "Hello GB") == 0, "same language: the first of them");
+	expect(descriptionText(withDesc, "en", NULL, text, &isUTF16) && strcmp(text, "Hello GB") == 0, "language only");
+	expect(descriptionText(withDesc, "ja", "JP", text, &isUTF16) && strcmp(text, "Bonjour") == 0, "no matching record: the first");
+	expect(descriptionText(withDesc, NULL, NULL, text, &isUTF16) && strcmp(text, "Bonjour") == 0, "no preference: the first");
+	expect(descriptionText(withDesc, NULL, "US", text, &isUTF16) && strcmp(text, "Bonjour") == 0, "a country without a language is no preference");
+	expect(descriptionText(withDesc, "ru", "US", text, &isUTF16) && strcmp(text, "Bonjour") == 0, "a country of another language does not match");
+
+	// A null character at the end of a string is not part of it; an empty string is empty.
+	const DescriptionRecord terminated[] = { { "en", "US", "Hi" } };
+	blobLength = buildMultiLocalized(blob, terminated, 1);
+	put32(blob + 16 + 4, 6); // three characters: "Hi" and a null
+	buildWithDescription(withDesc, blob, blobLength + 2);
+	expect(descriptionText(withDesc, "en", "US", text, &isUTF16) && strcmp(text, "Hi") == 0, "trailing null character dropped");
+	put32(blob + 16 + 4, 5); // "Hi" and half a character
+	blob[blobLength] = 'x';
+	buildWithDescription(withDesc, blob, blobLength + 1);
+	ICCText halfCharacter;
+	expect(ICCProfileFindDescription(withDesc, "en", "US", &halfCharacter) && halfCharacter.length == 4, "half a character at the end dropped");
+	put32(blob + 16 + 4, 0);
+	buildWithDescription(withDesc, blob, blobLength);
+	expect(descriptionText(withDesc, "en", "US", text, &isUTF16) && text[0] == 0, "empty string");
+
+	// Damaged multi-localized tags.
+	blobLength = buildMultiLocalized(blob, several, 4);
+	put32(blob + 16 + 4 + 12 * 3, 4000); // last record: string longer than the tag
+	buildWithDescription(withDesc, blob, blobLength);
+	expect(descriptionText(withDesc, "de", "DE", text, &isUTF16) == false, "chosen string runs past the tag");
+	expect(descriptionText(withDesc, "fr", "FR", text, &isUTF16) && strcmp(text, "Bonjour") == 0, "another record of that tag still reads");
+	blobLength = buildMultiLocalized(blob, several, 4);
+	put32(blob + 8, 0);
+	buildWithDescription(withDesc, blob, blobLength);
+	expect(!descriptionText(withDesc, "en", "US", text, &isUTF16), "no records");
+	put32(blob + 8, 1000);
+	buildWithDescription(withDesc, blob, blobLength);
+	expect(!descriptionText(withDesc, "en", "US", text, &isUTF16), "more records than the tag holds");
+	put32(blob + 8, 4);
+	put32(blob + 12, 11);
+	buildWithDescription(withDesc, blob, blobLength);
+	expect(!descriptionText(withDesc, "en", "US", text, &isUTF16), "record size below 12");
+	expect(!ICCProfileFindDescription(profile, "en", "US", &(ICCText) { 0 }), "profile without a description tag");
+	buildWithDescription(withDesc, blob, 6);
+	expect(!descriptionText(withDesc, "en", "US", text, &isUTF16), "tag shorter than its header");
+
+	// textDescriptionType: the ASCII string, with the Unicode and ScriptCode parts after it ignored.
+	uint8_t old[128] = { 0 };
+	memcpy(old, "desc", 4);
+	put32(old + 8, 6);
+	memcpy(old + 12, "Plain", 6);
+	put32(old + 18, 0x656e5553); // Unicode language code
+	put32(old + 22, 3); // Unicode count: "Hi" and a null
+	memcpy(old + 26, "\0H\0i\0\0", 6);
+	buildWithDescription(withDesc, old, 40);
+	expect(descriptionText(withDesc, "en", "US", text, &isUTF16) && !isUTF16 && strcmp(text, "Plain") == 0, "ASCII part of a textDescriptionType");
+	put32(old + 8, 1000);
+	buildWithDescription(withDesc, old, 40);
+	expect(!descriptionText(withDesc, "en", "US", text, &isUTF16), "ASCII count past the tag");
+	memcpy(old, "text", 4);
+	put32(old + 8, 6);
+	buildWithDescription(withDesc, old, 40);
+	expect(!descriptionText(withDesc, "en", "US", text, &isUTF16), "description of a type that is not understood");
 
 	if (g_failures)
 	{

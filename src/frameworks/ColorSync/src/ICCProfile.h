@@ -53,4 +53,19 @@ bool ICCProfileFindTag(const uint8_t* data, uint32_t signature, ICCTag* outTag);
 // Returns false if memory runs out.
 bool ICCProfileFirstTagIndices(const uint8_t* data, uint32_t* outIndices, uint32_t* outCount);
 
+// The profile description (the 'desc' tag) as characters still in the profile's own encoding.
+typedef struct ICCText {
+	const uint8_t* bytes; // inside the profile data
+	size_t length; // in bytes, without the terminating null (a null character, if present, is not counted)
+	bool isUTF16BE; // otherwise one byte per character, in ISO Latin 1 (ICC.1:2001-04 says 7-bit ASCII)
+} ICCText;
+
+// Finds the description in a multiLocalizedUnicodeType tag (ICC.1:2022, 9.2.43 and 10.15) or in the textDescriptionType
+// tag of older profiles (ICC.1:2001-04, 6.5.17). language and country are the two letters of ISO 639-1 and ISO 3166-1
+// of the wanted locale, or NULL. For a multiLocalizedUnicodeType the record of the same language and country is
+// used, else the first of the same language, else the first record (10.15); a textDescriptionType has one string.
+// Returns false if the profile has no description, of a type that is not understood, or one that runs past its tag.
+// Requires data that ICCProfileValidate accepted.
+bool ICCProfileFindDescription(const uint8_t* data, const char* language, const char* country, ICCText* outText);
+
 #endif

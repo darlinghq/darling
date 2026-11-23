@@ -135,3 +135,75 @@ bool ICCProfileFirstTagIndices(const uint8_t* data, uint32_t* outIndices, uint32
 	free(isFirst);
 	return true;
 }
+
+// multiLocalizedUnicodeType, ICC.1:2022, 10.15: 16 bytes of type, count and record size, then records of language (2),
+// country (2), string length (4) and string offset from the start of the tag (4).
+static bool findMultiLocalizedText(const uint8_t* tag, size_t size, const char* language, const char* country, ICCText* outText)
+{
+	if (size < 16)
+		return false;
+	const uint32_t count = readBigEndian32(tag + 8);
+	const uint32_t recordSize = readBigEndian32(tag + 12);
+	if (count == 0 || recordSize < 12 || (size - 16) / recordSize < count)
+		return false;
+
+	const uint8_t* chosen = tag + 16;
+	int bestRank = 0;
+	for (uint32_t i = 0; i < count; i++)
+	{
+		const uint8_t* record = tag + 16 + (size_t) i * recordSize;
+		const bool sameLanguage = language && record[0] == (uint8_t) language[0] && record[1] == (uint8_t) language[1];
+		const bool sameCountry = country && record[2] == (uint8_t) country[0] && record[3] == (uint8_t) country[1];
+		const int rank = sameLanguage ? (sameCountry ? 2 : 1) : 0;
+		if (rank > bestRank)
+		{
+			bestRank = rank;
+			chosen = record;
+		}
+	}
+
+	size_t length = readBigEndian32(chosen + 4);
+	const size_t offset = readBigEndian32(chosen + 8);
+	if (offset > size || length > size - offset)
+		return false;
+	length &= ~(size_t) 1;
+	while (length >= 2 && tag[offset + length - 2] == 0 && tag[offset + length - 1] == 0)
+		length -= 2;
+	outText->bytes = tag + offset;
+	outText->length = length;
+	outText->isUTF16BE = true;
+	return true;
+}
+
+// textDescriptionType, ICC.1:2001-04, 6.5.17: 8 bytes of type and zero, the count of the ASCII string with its null,
+// then the string. The Unicode and ScriptCode strings that follow are not read.
+static bool findPlainText(const uint8_t* tag, size_t size, ICCText* outText)
+{
+	if (size < 12)
+		return false;
+	const size_t count = readBigEndian32(tag + 8);
+	if (count > size - 12)
+		return false;
+	size_t length = 0;
+	while (length < count && tag[12 + length] != 0)
+		length++;
+	outText->bytes = tag + 12;
+	outText->length = length;
+	outText->isUTF16BE = false;
+	return true;
+}
+
+bool ICCProfileFindDescription(const uint8_t* data, const char* language, const char* country, ICCText* outText)
+{
+	ICCTag descTag;
+	if (!ICCProfileFindTag(data, 0x64657363u /* 'desc' */, &descTag) || descTag.size < 4)
+		return false;
+
+	const uint8_t* tag = data + descTag.offset;
+	const uint32_t type = readBigEndian32(tag);
+	if (type == 0x6d6c7563u /* 'mluc' */)
+		return findMultiLocalizedText(tag, descTag.size, language, country, outText);
+	if (type == 0x64657363u /* 'desc' */)
+		return findPlainText(tag, descTag.size, outText);
+	return false;
+}
