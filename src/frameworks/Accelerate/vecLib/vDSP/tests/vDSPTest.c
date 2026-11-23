@@ -253,6 +253,29 @@ static void testReductions(void)
 	vDSP_rmsqv(stats, 1, &c, 7);
 	expectNear(c, 4.899, 1e-3, "rmsqv", 0);
 
+	// vDSP_mvessq page example: the mean of signed squares of this vector is 0, where measqv above gives 24.
+	// https://developer.apple.com/documentation/accelerate/vdsp_mvessq
+	vDSP_mvessq(stats, 1, &c, 7);
+	expectNear(c, 0, 1e-6, "mvessq", 0);
+	const float skew[] = { 1, -2, 3, 4 };
+	// (1 - 4 + 9 + 16) / 4, with every other element when the stride is 2: (1 + 9) / 2.
+	vDSP_mvessq(skew, 1, &c, 4);
+	expectNear(c, 5.5, 1e-6, "mvessq signed", 0);
+	vDSP_mvessq(skew, 2, &c, 2);
+	expectNear(c, 5, 1e-6, "mvessq stride", 0);
+	// A negative stride walks backwards from the pointer given (macOS 26.7.3 and 10.14.4 agree).
+	vDSP_mvessq(skew + 3, -1, &c, 4);
+	expectNear(c, 5.5, 1e-6, "mvessq negative stride", 0);
+	// QUIRK test: N equal to zero is NaN on macOS 26.7.3 and 10.14.4, not the -infinity the vDSP_mvessqD page
+	// states (see reduce.c).
+	c = 0;
+	vDSP_mvessq(skew, 1, &c, 0);
+	if (!isnan(c))
+	{
+		printf("FAIL mvessq empty is NaN (quirk): got %g\n", c);
+		g_failures++;
+	}
+
 	const float dotA[] = { 1, 2, 3, 4 }, dotB[] = { 5, 6, 7, 8 };
 	vDSP_dotpr(dotA, 1, dotB, 1, &c, 4);
 	expectNear(c, 70, 1e-5, "dotpr", 0);
@@ -283,6 +306,16 @@ static void testReductions(void)
 	expectNear(r, 91.0 / 6, 1e-12, "measqvD", 0);
 	vDSP_rmsqvD(e, 1, &r, 6);
 	expectNear(r, sqrt(91.0 / 6), 1e-12, "rmsqvD", 0);
+	const double f[] = { 1, -2, 3, -4 };
+	vDSP_mvessqD(f, 1, &r, 4);
+	expectNear(r, (1 - 4 + 9 - 16) / 4.0, 1e-12, "mvessqD", 0);
+	r = 0;
+	vDSP_mvessqD(f, 1, &r, 0);
+	if (!isnan(r))
+	{
+		printf("FAIL mvessqD empty is NaN (quirk): got %g\n", r);
+		g_failures++;
+	}
 	vDSP_dotprD(e, 1, e, 1, &r, 6);
 	expectNear(r, 91, 1e-12, "dotprD", 0);
 }

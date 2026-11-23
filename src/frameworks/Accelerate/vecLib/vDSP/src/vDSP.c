@@ -971,17 +971,21 @@ void* vDSP_mtransD(void)
     return NULL;
 }
 
+/*
 void* vDSP_mvessq(void)
 {
     if (verbose) puts("STUB: vDSP_mvessq called");
     return NULL;
 }
+*/
 
+/*
 void* vDSP_mvessqD(void)
 {
     if (verbose) puts("STUB: vDSP_mvessqD called");
     return NULL;
 }
+*/
 
 void* vDSP_normalize(void)
 {

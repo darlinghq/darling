@@ -24,10 +24,25 @@
 #include <CoreMedia/CMBase.h>
 #include <CoreMedia/CMTime.h>
 
-// Clocks and timebases: the types. Their functions are still the generated declarations in
-// CoreMedia.h.
+// Clocks and timebases: the types. Of their functions only the host time clock ones are declared and
+// implemented here; the rest are still the generated declarations in CoreMedia.h.
 typedef struct CF_BRIDGED_TYPE(id) OpaqueCMClock *CMClockRef;
 typedef struct CF_BRIDGED_TYPE(id) OpaqueCMTimebase *CMTimebaseRef;
 typedef CFTypeRef CMClockOrTimebaseRef;
+
+CF_IMPLICIT_BRIDGING_ENABLED
+
+CM_EXPORT CFTypeID CMClockGetTypeID(void);
+
+// The singleton clock of the host time, which is mach_absolute_time. It is not retained for the caller.
+CM_EXPORT CMClockRef CMClockGetHostTimeClock(void);
+
+CM_EXPORT CMTime CMClockGetTime(CMClockRef clock);
+
+// A scale conversion between a CMTime and the native units of the host time (mach_absolute_time ticks).
+CM_EXPORT uint64_t CMClockConvertHostTimeToSystemUnits(CMTime hostTime);
+CM_EXPORT CMTime CMClockMakeHostTimeFromSystemUnits(uint64_t hostTime);
+
+CF_IMPLICIT_BRIDGING_DISABLED
 
 #endif
