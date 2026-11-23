@@ -130,27 +130,21 @@ static void** createChannelPointers(AVAudioFormat* format, AudioBufferList* list
 			&& bufferList->mBuffers[i].mDataByteSize == bufferList->mBuffers[0].mDataByteSize;
 
 	AudioBufferList* working = NULL;
-	AudioBufferList* original = NULL;
 	if (valid)
 	{
 		const size_t size = offsetof(AudioBufferList, mBuffers) + (size_t) bufferList->mNumberBuffers * sizeof(AudioBuffer);
 		working = malloc(size);
-		original = malloc(size);
-		valid = working && original;
+		valid = working != NULL;
 		if (valid)
-		{
 			memcpy(working, bufferList, size);
-			memcpy(original, bufferList, size);
-		}
 	}
 
 	if (valid && (self = [super init]))
 	{
 		_format = [format retain];
-		// The buffer may change mDataByteSize when its frame length is set, so the deallocator gets the
-		// list as it was given.
+		// The buffer works on a copy of the list: setting the frame length changes the copy's mDataByteSize,
+		// never the caller's list.
 		_audioBufferList = working;
-		_originalBufferList = original;
 		_deallocator = [deallocator copy];
 		// GUESS: the capacity is the byte size divided by the bytes per frame, truncated, and the frame length
 		// starts equal to it because mDataByteSize is left as given. The pages do not say either.
@@ -160,7 +154,6 @@ static void** createChannelPointers(AVAudioFormat* format, AudioBufferList* list
 	}
 
 	free(working);
-	free(original);
 	[self release];
 	return nil;
 }
@@ -175,10 +168,15 @@ static void** createChannelPointers(AVAudioFormat* format, AudioBufferList* list
 	// GUESS: without a deallocator the caller's samples are left alone; the page does not say what happens.
 	else if (_deallocator)
 	{
-		_deallocator(_originalBufferList);
+		// QUIRK: the deallocator gets a list that is not the one the caller passed in, and whose mDataByteSize is
+		// the current frame length in bytes, not the size originally given. Observed on macOS 26.7.3 (x86_64):
+		// a 64-byte buffer whose frameLength was set to 3 frames of 4 bytes hands the deallocator 12 bytes, a
+		// buffer whose frameLength was untouched hands it 64, and the data pointers are the caller's (tier 2,
+		// black-box probe mac-probes/cristim/batch7a/avpcm2.m; macOS 10.14.4 has no such initializer).
+		// Test: tests/src/avfaudio_pcm_buffer.m, "deallocator list carries the frame length (quirk)".
+		_deallocator(_audioBufferList);
 	}
 	[_deallocator release];
-	free(_originalBufferList);
 	free(_audioBufferList);
 	free(_channelData);
 	[super dealloc];

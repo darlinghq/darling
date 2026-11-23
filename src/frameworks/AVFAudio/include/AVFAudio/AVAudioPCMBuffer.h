@@ -32,7 +32,6 @@ NS_ASSUME_NONNULL_BEGIN
 @private
 	AVAudioFrameCount _frameCapacity;
 	void** _channelData;
-	AudioBufferList* _originalBufferList;
 	void (^_deallocator)(const AudioBufferList*);
 	BOOL _ownsSamples;
 }

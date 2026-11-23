@@ -13,7 +13,7 @@
 //    not interleaved and into one buffer, spaced by stride samples, when it is;
 //  - init(pcmFormat:bufferListNoCopy:deallocator:) returns nil for a zero-byte frame, no buffers, a NULL
 //    data pointer, a zero or unequal byte size, or a buffer count that does not match the format, and
-//    calls the deallocator with an identical list when the buffer deallocates.
+//    calls the deallocator when the buffer deallocates.
 // Cases marked GUESS pin choices the pages leave open (see AVAudioPCMBuffer.m): a new buffer has frame
 // length zero, and a frame length above the capacity raises NSInvalidArgumentException.
 // Prints PASS, or the failures with a non-zero exit status.
@@ -45,8 +45,12 @@ static void testStandardFormat(void)
 	const AudioBufferList* list = buffer.audioBufferList;
 	CHECK(list != NULL);
 	CHECK(list->mNumberBuffers == 2);
-	// GUESS: the mutable list is the same list (the two pages disagree on what mDataByteSize expresses).
-	CHECK(buffer.mutableAudioBufferList == list);
+	// QUIRK test, mutable list is a separate, refreshed list (macOS 26.7.3 and 10.14.4): another list than
+	// audioBufferList with equal contents, the same pointer on every access.
+	CHECK(buffer.mutableAudioBufferList != NULL && buffer.mutableAudioBufferList != list);
+	CHECK(buffer.mutableAudioBufferList == buffer.mutableAudioBufferList);
+	CHECK(buffer.mutableAudioBufferList->mNumberBuffers == 2);
+	CHECK(buffer.mutableAudioBufferList->mBuffers[0].mData == list->mBuffers[0].mData);
 	CHECK(list->mBuffers[0].mNumberChannels == 1 && list->mBuffers[1].mNumberChannels == 1);
 	CHECK(list->mBuffers[0].mData != NULL && list->mBuffers[1].mData != NULL);
 	CHECK(list->mBuffers[0].mData != list->mBuffers[1].mData);
@@ -60,10 +64,13 @@ static void testStandardFormat(void)
 	CHECK(list->mBuffers[0].mDataByteSize == 40 * sizeof(float));
 	CHECK(list->mBuffers[1].mDataByteSize == 40 * sizeof(float));
 
-	// "vice versa": a change to mDataByteSize is the frame length.
+	// The mutable list follows the frame length, and a byte size written into it is not taken up (quirk).
+	CHECK(buffer.mutableAudioBufferList->mBuffers[0].mDataByteSize == 40 * sizeof(float));
 	buffer.mutableAudioBufferList->mBuffers[0].mDataByteSize = 10 * sizeof(float);
 	buffer.mutableAudioBufferList->mBuffers[1].mDataByteSize = 10 * sizeof(float);
-	CHECK(buffer.frameLength == 10);
+	CHECK(buffer.frameLength == 40);
+	CHECK(buffer.audioBufferList->mBuffers[0].mDataByteSize == 40 * sizeof(float));
+	CHECK(buffer.mutableAudioBufferList->mBuffers[0].mDataByteSize == 40 * sizeof(float));
 
 	buffer.frameLength = 100;
 	CHECK(buffer.frameLength == 100);
@@ -210,16 +217,19 @@ static void testBufferListNoCopy(void)
 		CHECK(buffer.audioBufferList->mNumberBuffers == 2);
 		CHECK(buffer.frameLength == 64);
 
-		// Shortening the frame length changes the byte size the buffer reports, not the one handed back.
+		// Shortening the frame length changes the byte size the buffer reports, not the caller's list.
 		buffer.frameLength = 16;
 		CHECK(buffer.audioBufferList->mBuffers[0].mDataByteSize == 16 * sizeof(float));
+		CHECK(list->mBuffers[0].mDataByteSize == 64 * sizeof(float));
 		CHECK(calls == 0);
 		[buffer release];
 	}
 
 	CHECK(calls == 1);
 	CHECK(seenBuffers == 2);
-	CHECK(seenSize0 == 64 * sizeof(float) && seenSize1 == 64 * sizeof(float));
+	// QUIRK test, deallocator list carries the frame length (macOS 26.7.3): the list handed to the deallocator
+	// has the buffer's current frame length in bytes, not the size originally given.
+	CHECK(seenSize0 == 16 * sizeof(float) && seenSize1 == 16 * sizeof(float));
 	CHECK(seenData0 == data0 && seenData1 == data1);
 	freeList(list);
 
