@@ -70,18 +70,31 @@ int astc_parse_block_mode(uint32_t bm, astc_block *b)
 	return 0;
 }
 
-static astc_kind parse_void(const uint8_t *blk, astc_block *b)
+/* QUIRK (DTC_COMPAT only): a void-extent block with D = 0 is a constant colour
+ * block whatever its reserved bits 10 and 11 and its extent coordinates hold.
+ * The specification (23.22, 23.23) calls cleared reserved bits and a low
+ * coordinate that is not below the high one illegal, but macOS ImageIO decodes
+ * such blocks as the colour, for all 176 random LDR void-extent blocks tried
+ * on macOS 26.7.3 and on 10.14.4. A void-extent block with D = 1 (HDR) stays an
+ * error in LDR mode. Evidence: black-box observation through CGImageSource,
+ * tier 2 (vd-upstream cristim-mac-evidence.md, section 16).
+ * Test: test_void_extent_compat in tests/test_astc_block.c. */
+static astc_kind parse_void(const uint8_t *blk, astc_block *b, int compat)
 {
 	uint32_t c[4], i, ones = 0;
 
-	if (get_bits(blk, 10, 2) != 3 || get_bits(blk, 9, 1))
+	if (get_bits(blk, 9, 1))
 		return ASTC_BLOCK_ERROR;
-	for (i = 0; i < 4; i++) {
-		c[i] = get_bits(blk, 12 + 13 * i, 13);
-		ones += c[i] == 0x1FFF;
+	if (!compat) {
+		if (get_bits(blk, 10, 2) != 3)
+			return ASTC_BLOCK_ERROR;
+		for (i = 0; i < 4; i++) {
+			c[i] = get_bits(blk, 12 + 13 * i, 13);
+			ones += c[i] == 0x1FFF;
+		}
+		if (ones != 4 && (c[0] >= c[1] || c[2] >= c[3]))
+			return ASTC_BLOCK_ERROR;
 	}
-	if (ones != 4 && (c[0] >= c[1] || c[2] >= c[3]))
-		return ASTC_BLOCK_ERROR;
 	for (i = 0; i < 4; i++)
 		b->color[i] = (uint16_t)get_bits(blk, 64 + 16 * i, 16);
 	return ASTC_BLOCK_VOID;
@@ -160,10 +173,16 @@ static astc_kind parse_normal(const uint8_t *blk, uint32_t bw, uint32_t bh,
 	return ASTC_BLOCK_NORMAL;
 }
 
+astc_kind astc_parse_block_ex(const uint8_t blk[16], uint32_t bw, uint32_t bh,
+			      astc_block *b, int compat)
+{
+	b->kind = (get_bits(blk, 0, 9) == 0x1FC) ? parse_void(blk, b, compat)
+						 : parse_normal(blk, bw, bh, b);
+	return b->kind;
+}
+
 astc_kind astc_parse_block(const uint8_t blk[16], uint32_t bw, uint32_t bh,
 			   astc_block *b)
 {
-	b->kind = (get_bits(blk, 0, 9) == 0x1FC) ? parse_void(blk, b)
-						 : parse_normal(blk, bw, bh, b);
-	return b->kind;
+	return astc_parse_block_ex(blk, bw, bh, b, 0);
 }

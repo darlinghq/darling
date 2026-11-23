@@ -58,3 +58,15 @@ committed with a notice (`tests/vectors/NOTICE`, `tests/vectors-random/NOTICE`).
 Apache-2.0 section 4 requires the licence text to be shipped with output of this kind is an
 open question for the maintainers (`maintainer-question.md`, item 13). No copyright year or
 holder is claimed for the files here beyond what this document records about the tool.
+
+## Observation of macOS (black box)
+
+The ImageIO hook and the DTC_COMPAT mode follow what macOS 26.7.3 and 10.14.4 give for `.astc` data
+through the public ImageIO functions (`CGImageSourceCreateWithData`, `CGImageSourceCopyTypeIdentifiers`,
+`CGImageSourceGetType`, `CGImageSourceGetStatus`, `CGImageSourceCopyPropertiesAtIndex`,
+`CGImageSourceCreateImageAtIndex`, and the properties of the image they return): type identifier,
+pixel format, properties, error behaviour, size limits, the 8-bit values of void-extent colours and the
+classification of void-extent blocks. The inputs were the committed vectors, synthetic malformed files
+and random blocks of the committed random vectors; only the observable results were recorded
+(vd-upstream cristim-mac-evidence.md, section 16). No Apple SDK file, header, man page or binary was
+read or disassembled for this, and the decoder was not changed to follow anything but those results.

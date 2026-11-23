@@ -65,8 +65,19 @@ DTC_API dtc_status dtc_astc_file_parse(const uint8_t *data, size_t len,
 DTC_API dtc_status dtc_astc_file_parse_2d(const uint8_t *data, size_t len,
 				  dtc_astc_header *out);
 
+/* Decode modes, the `srgb` argument of the decoders is a mask of these.
+ * DTC_SRGB: sRGB operation mode (see below). DTC_COMPAT: the behaviour of macOS
+ * ImageIO where it parts from the specification text, for callers that stand
+ * behind ImageIO: a void-extent block with D = 0 is a constant colour block
+ * whatever its reserved bits and extent hold (the specification calls cleared
+ * reserved bits and a low extent coordinate not below the high one illegal),
+ * and its 16-bit colour is rounded to 8 bits instead of cut to its top byte.
+ * Everything else is unchanged by it. 0 and 1 mean what they always did. */
+#define DTC_SRGB 1
+#define DTC_COMPAT 2
+
 /* Decodes one 128-bit block into block_w * block_h RGBA8 texels in raster
- * order. srgb != 0 selects sRGB operation mode: RGB bytes are the stored
+ * order. srgb & DTC_SRGB selects sRGB operation mode: RGB bytes are the stored
  * sRGB-encoded values (no transfer function is applied), alpha is straight
  * and linear. *error_block is set to 1 when the block was illegal and every
  * affected texel is opaque magenta. It is also set when only some texels got

@@ -62,6 +62,11 @@ typedef struct astc_block {
 astc_kind astc_parse_block(const uint8_t blk[16], uint32_t bw, uint32_t bh,
 			   astc_block *b);
 
+/* astc_parse_block with the DTC_COMPAT behaviour for void-extent blocks when
+ * `compat` is non-zero (see texturecodec.h). */
+astc_kind astc_parse_block_ex(const uint8_t blk[16], uint32_t bw, uint32_t bh,
+			      astc_block *b, int compat);
+
 /* Block-mode field (11 bits) to weight grid, dual flag and weight range.
  * Returns 0, or -1 for the reserved modes. Void-extent must be excluded by
  * the caller. */

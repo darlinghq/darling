@@ -120,6 +120,42 @@ static void test_void_extent(void)
 	}
 }
 
+/* DTC_COMPAT (see void_component): a void-extent colour is rounded to 8 bits, not
+ * cut to its top byte: 0xC000 gives 0xBF, 0x8000 gives 0x80, 0xFFFF gives 0xFF,
+ * 0x0080 gives 0x00 and 0x0081 gives 0x01 (the values macOS ImageIO gives; the top
+ * byte rule gives 0xC0, 0x80, 0xFF, 0x00 and 0x00). A block with its reserved bits
+ * cleared is the same constant colour block. */
+static void test_void_extent_compat(void)
+{
+	uint8_t blk[16], out[16 * 4];
+	int err = 1, mode;
+
+	void_block(blk);
+	put(blk, 64, 16, 0xFFFF);
+	put(blk, 80, 16, 0x8000);
+	put(blk, 96, 16, 0x0080);
+	put(blk, 112, 16, 0xC000);
+	for (mode = DTC_COMPAT; mode <= (DTC_COMPAT | DTC_SRGB); mode++) {
+		CHECK_EQ(dtc_astc_decode_block(blk, 4, 4, mode, out, &err), DTC_OK);
+		CHECK_EQ(err, 0);
+		CHECK_EQ(out[0], 0xFF);
+		CHECK_EQ(out[1], 0x80);
+		CHECK_EQ(out[2], 0x00);
+		CHECK_EQ(out[3], 0xBF);
+	}
+	CHECK_EQ(dtc_astc_decode_block(blk, 4, 4, DTC_SRGB, out, &err), DTC_OK);
+	CHECK_EQ(out[3], 0xC0);	/* without DTC_COMPAT the top byte */
+	put(blk, 96, 16, 0x0081);
+	put(blk, 10, 2, 0);	/* reserved bits cleared */
+	CHECK_EQ(dtc_astc_decode_block(blk, 4, 4, DTC_COMPAT | DTC_SRGB, out, &err), DTC_OK);
+	CHECK_EQ(err, 0);
+	CHECK_EQ(out[2], 0x01);
+	CHECK_EQ(out[60], 0xFF);
+	CHECK_EQ(out[63], 0xBF);
+	CHECK_EQ(dtc_astc_decode_block(blk, 4, 4, DTC_SRGB, out, &err), DTC_OK);
+	CHECK_EQ(err, 1);	/* the specification's reading */
+}
+
 static int all_magenta(const uint8_t *out, int n)
 {
 	int i;
@@ -230,6 +266,7 @@ int main(void)
 	test_dual_plane_alpha();
 	test_dual_plane_green();
 	test_void_extent();
+	test_void_extent_compat();
 	test_error_blocks();
 	test_hdr_partition_is_error_only_there();
 	test_infill_stays_in_grid();

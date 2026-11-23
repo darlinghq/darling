@@ -271,6 +271,34 @@ static void test_void_extent(void)
 	CHECK_EQ(astc_parse_block(blk, 4, 4, &b), ASTC_BLOCK_ERROR);
 }
 
+/* DTC_COMPAT (see parse_void): the extent and the reserved bits of a void-extent
+ * block with D = 0 are not checked, as on macOS; D = 1 stays an error. */
+static void test_void_extent_compat(void)
+{
+	uint8_t blk[16];
+	astc_block b;
+
+	void_block(blk);
+	put(blk, 25, 13, 10);	/* min s == max s */
+	put(blk, 12, 13, 10);
+	CHECK_EQ(astc_parse_block_ex(blk, 4, 4, &b, 0), ASTC_BLOCK_ERROR);
+	CHECK_EQ(astc_parse_block_ex(blk, 4, 4, &b, 1), ASTC_BLOCK_VOID);
+	CHECK_EQ(b.color[3], 0xDEF0);
+	put(blk, 12, 13, 30);	/* min s > max s */
+	CHECK_EQ(astc_parse_block_ex(blk, 4, 4, &b, 1), ASTC_BLOCK_VOID);
+	void_block(blk);
+	put(blk, 10, 1, 0);	/* reserved bit 10 cleared */
+	CHECK_EQ(astc_parse_block_ex(blk, 4, 4, &b, 0), ASTC_BLOCK_ERROR);
+	CHECK_EQ(astc_parse_block_ex(blk, 4, 4, &b, 1), ASTC_BLOCK_VOID);
+	void_block(blk);
+	put(blk, 11, 1, 0);	/* reserved bit 11 cleared */
+	CHECK_EQ(astc_parse_block_ex(blk, 4, 4, &b, 0), ASTC_BLOCK_ERROR);
+	CHECK_EQ(astc_parse_block_ex(blk, 4, 4, &b, 1), ASTC_BLOCK_VOID);
+	void_block(blk);
+	put(blk, 9, 1, 1);	/* HDR void extent in LDR mode */
+	CHECK_EQ(astc_parse_block_ex(blk, 4, 4, &b, 1), ASTC_BLOCK_ERROR);
+}
+
 int main(void)
 {
 	test_block_mode_bijection();
@@ -281,5 +309,6 @@ int main(void)
 	test_multi_partition_dual_plane();
 	test_illegal_blocks();
 	test_void_extent();
+	test_void_extent_compat();
 	CHECK_DONE();
 }

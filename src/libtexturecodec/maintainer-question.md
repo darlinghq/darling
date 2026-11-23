@@ -107,3 +107,21 @@ them; each is a GUESS item (I1 to I7 in `GUESS.tsv`) and is one small edit to ch
    source with count 0, and `CGImageSourceGetStatus` now reports invalid data for every source
    whose count is 0 (it said complete for any existing source). That also applies to the other
    formats. Is a status derived from the count right, or should only the ASTC source differ?
+
+## Resolved by observation of macOS (batch 11d)
+
+The ImageIO items 1 to 4 and 8 are settled by black-box runs on macOS 26.7.3 and 10.14.4
+(cristim-mac-evidence.md, section 16; GUESS.tsv I1 to I7 say what each now is):
+
+- type identifier org.khronos.astc, listed by CGImageSourceCopyTypeIdentifiers (item 1);
+- an illegal block anywhere gives an image of the right size that draws nothing, not NULL (item 2);
+- a side of 1048576 or more gives no image, nothing else limits the size (item 3); the 16384 and
+  2^26 caps are gone;
+- sRGB colour space, straight alpha, RGBA8 (item 4);
+- every ASTC source has count 1 and status complete; the status function is unchanged (item 8).
+
+Decoder items 1 (void extent validation) and the 8-bit conversion of a void-extent colour follow
+macOS in the DTC_COMPAT mode that ImageIO uses (GUESS.tsv G4); the strict reading stays the default
+of the library and is what the astcenc vectors check. Not settled: item 7 and decoder item 14 (the
+licence identifier), items 13, 15 and 16 (the vectors' notice, Python tools, patents), item 5 (hook
+location).

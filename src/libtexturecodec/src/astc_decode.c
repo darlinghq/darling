@@ -70,6 +70,19 @@ static uint32_t infill(const uint8_t *g, uint32_t gw, uint32_t gh,
 		grid_weight(g, n, v0 + gw + 1) * w11 + 8) >> 4;
 }
 
+/* A 16-bit void-extent component as 8 bits, DTC_COMPAT: the nearest of 255
+ * steps over the full range, which is (v * 255 + 32767) / 65535 for every v,
+ * not the top 8 bits. macOS ImageIO gives 0xBF for 0xC000 and 0x80 for 0x8000
+ * (the top byte gives 0xC0 for the first).
+ * QUIRK: the specification says nothing about this step. Evidence: black-box
+ * observation through CGImageSource on macOS 26.7.3 and 10.14.4, tier 2
+ * (vd-upstream cristim-mac-evidence.md, section 16).
+ * Test: test_void_extent_compat in tests/test_astc_decode.c. */
+static uint8_t void_component(uint32_t v, int compat)
+{
+	return (uint8_t)(compat ? (v + 128) / 257 : v >> 8);
+}
+
 /* One colour component: expand both 8-bit endpoints to 16 bits, blend, keep
  * the top 8 bits (spec 23.18.1). */
 static uint8_t blend(uint32_t c0, uint32_t c1, uint32_t i, int srgb)
@@ -140,15 +153,17 @@ dtc_status dtc_astc_decode_block(const uint8_t block[16], uint32_t block_w,
 	astc_block b;
 	uint8_t px[4];
 	uint32_t texels, i;
-	int err = 0;
+	int err = 0, compat = (srgb & DTC_COMPAT) != 0;
+
+	srgb &= DTC_SRGB;
 
 	if (!block || !rgba_out || !dtc_astc_footprint_valid(block_w, block_h))
 		return DTC_E_ARG;
 	texels = block_w * block_h;
-	switch (astc_parse_block(block, block_w, block_h, &b)) {
+	switch (astc_parse_block_ex(block, block_w, block_h, &b, compat)) {
 	case ASTC_BLOCK_VOID:
 		for (i = 0; i < 4; i++)
-			px[i] = (uint8_t)(b.color[i] >> 8);
+			px[i] = void_component(b.color[i], compat);
 		fill(rgba_out, texels, px);
 		break;
 	case ASTC_BLOCK_NORMAL:
