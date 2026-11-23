@@ -51,7 +51,9 @@ here blocks the decoder; each default is easy to change.
     28 files with a hash (about 230 KB), with a `NOTICE`. The source images are ours.
     The astcenc binary is Apache-2.0 and was used as a black box (no source read), but the
     outputs are data derived from it. Is the notice enough, or should we regenerate the
-    blobs from our own encoder later?
+    blobs from our own encoder later? In particular: does Apache-2.0 section 4 require the
+    licence text of the tool to be shipped with output of this kind? The notices do not copy
+    it and claim no copyright year or holder for the files.
 14. Licence identifier [G19]. Sources carry `GPL-3.0-only`. Should it be `or-later`?
 15. Python in the repository. The vector generators are Python 3 (standard library only)
     and need an astcenc release binary; the tests themselves need only a C compiler. Is a
