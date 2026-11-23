@@ -21,6 +21,10 @@ on:
     - 'tests/mldr/fex_bridge.c'
     - 'tests/mldr/fexcore_paths.c'
     - 'tests/mldr/run-fex-unit-tests.sh'
+    - 'tests/mldr/test-build-fexcore-shim.sh'
+    - 'tests/mldr/build-fexcore-shim.py'
+    - 'src/startup/mldr/fex/FEX_VERSION'
+    - 'THIRD-PARTY-NOTICES.md'
     - 'tests/launcher/**'
     - '.github/workflows/fex-unit-tests.yaml'
   push:
@@ -39,6 +43,10 @@ on:
     - 'tests/mldr/fex_bridge.c'
     - 'tests/mldr/fexcore_paths.c'
     - 'tests/mldr/run-fex-unit-tests.sh'
+    - 'tests/mldr/test-build-fexcore-shim.sh'
+    - 'tests/mldr/build-fexcore-shim.py'
+    - 'src/startup/mldr/fex/FEX_VERSION'
+    - 'THIRD-PARTY-NOTICES.md'
     - 'tests/launcher/**'
     - '.github/workflows/fex-unit-tests.yaml'
 
