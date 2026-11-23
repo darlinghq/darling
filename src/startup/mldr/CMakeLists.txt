@@ -22,6 +22,7 @@ set(mldr_sources
 	image_protection.c
 	interpreter_path.c
 	fat_slice.c
+	exec_target.c
 	exec_policy.c
 	commpage.c
 	elfcalls/elfcalls.c
@@ -98,6 +99,10 @@ add_test(NAME mldr_interpreter_path COMMAND mldr_interpreter_path_test)
 add_executable(mldr_fat_slice_test ${CMAKE_SOURCE_DIR}/tests/mldr/fat_slice.c fat_slice.c)
 target_include_directories(mldr_fat_slice_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME mldr_fat_slice COMMAND mldr_fat_slice_test)
+
+add_executable(mldr_exec_target_test ${CMAKE_SOURCE_DIR}/tests/mldr/exec_target.c exec_target.c)
+target_include_directories(mldr_exec_target_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME mldr_exec_target COMMAND mldr_exec_target_test)
 
 add_executable(mldr_thread_stack_test ${CMAKE_SOURCE_DIR}/tests/mldr/thread_stack.c elfcalls/thread_stack.c)
 target_include_directories(mldr_thread_stack_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/elfcalls)
