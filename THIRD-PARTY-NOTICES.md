@@ -28,3 +28,16 @@ that is part of this repository itself and not under the GNU GPL 3.0 is listed h
 - Use: the build makes each application's `.icns` from its iconset, installed in the application
   bundle in the prefix; DiskImageMounter's images are also installed on the host in the hicolor icon
   theme as `org.darlinghq.Darling.DiskImageMounter.png`.
+
+## ASTC reference vectors, `src/libtexturecodec/tests/vectors` and `vectors-random`
+
+- Copyright (c) 2011-2026 Arm Limited.
+- Source: the `.astc` and `.rgba` files are data produced by running the unmodified astcenc 5.7.1
+  release binary, <https://github.com/ARM-software/astc-encoder>, on synthetic images and blocks
+  made by the scripts in `src/libtexturecodec/tools` (no third-party image content). Its source
+  code was not read and none of its code or binary is in this repository. The release zip and the
+  binary are identified by URL and sha256 in `src/libtexturecodec/PROVENANCE.md`.
+- Licence: Apache License 2.0, the licence of the tool, as the files themselves are not
+  separately licensed (`tests/vectors/NOTICE`, `tests/vectors-random/NOTICE`).
+- Use: test inputs of the ASTC decoder and of `tests/src/imageio_astc_source.c`; not linked into
+  or installed with any Darling program.
