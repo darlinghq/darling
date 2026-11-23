@@ -226,3 +226,54 @@ OSStatus MusicPlayerGetPlayRateScalar(MusicPlayer inPlayer, Float64* outScaleRat
 	*outScaleRate = inPlayer->rate;
 	return noErr;
 }
+
+OSStatus MusicPlayerGetHostTimeForBeats(MusicPlayer inPlayer, MusicTimeStamp inBeats, UInt64* outHostTime)
+{
+	if (!inPlayer || !outHostTime || std::isnan(inBeats))
+		return kAudio_ParamError;
+
+	std::lock_guard<std::mutex> guard(musicimpl::lock());
+
+	// Only a playing player has a host time for a beat, and none for a beat before the beat it started
+	// at. GUESS: the codes are kAudioToolboxErr_InvalidPlayerState for a player that is not playing and
+	// kAudio_ParamError for a beat before the start. GUESS: the start moves when the time or the rate of
+	// a playing player is set, so beats that already played before that are before the start; the
+	// documentation speaks only of "the starting beat". The alternative was to keep the first start.
+	if (!inPlayer->playing)
+		return kAudioToolboxErr_InvalidPlayerState;
+	if (inBeats < inPlayer->time)
+		return kAudio_ParamError;
+
+	return guarded([&]() -> OSStatus {
+		const Float64 seconds = (musicimpl::secondsForBeats(inPlayer->sequence, inBeats)
+			- musicimpl::secondsForBeats(inPlayer->sequence, inPlayer->time)) / inPlayer->rate;
+		// GUESS: a beat so far ahead that its host time is not a number or does not fit (it is cast to 64 bits
+		// below) is kAudio_ParamError.
+		const Float64 ticks = seconds * AudioGetHostClockFrequency();
+		if (!(ticks < 9.0e18))
+			return kAudio_ParamError;
+		*outHostTime = inPlayer->anchorHostTime + static_cast<UInt64>(ticks);
+		return noErr;
+	});
+}
+
+OSStatus MusicPlayerGetBeatsForHostTime(MusicPlayer inPlayer, UInt64 inHostTime, MusicTimeStamp* outBeats)
+{
+	if (!inPlayer || !outBeats)
+		return kAudio_ParamError;
+
+	std::lock_guard<std::mutex> guard(musicimpl::lock());
+
+	// As for the host time of a beat, with kAudio_ParamError for a host time before the start.
+	if (!inPlayer->playing)
+		return kAudioToolboxErr_InvalidPlayerState;
+	if (inHostTime < inPlayer->anchorHostTime)
+		return kAudio_ParamError;
+
+	return guarded([&] {
+		const Float64 elapsed = (inHostTime - inPlayer->anchorHostTime) / AudioGetHostClockFrequency();
+		*outBeats = musicimpl::beatsForSeconds(inPlayer->sequence,
+			musicimpl::secondsForBeats(inPlayer->sequence, inPlayer->time) + elapsed * inPlayer->rate);
+		return noErr;
+	});
+}

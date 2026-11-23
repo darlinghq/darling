@@ -211,6 +211,12 @@ extern OSStatus
 MusicPlayerGetTime(MusicPlayer inPlayer, MusicTimeStamp *outTime);
 
 extern OSStatus
+MusicPlayerGetHostTimeForBeats(MusicPlayer inPlayer, MusicTimeStamp inBeats, UInt64 *outHostTime);
+
+extern OSStatus
+MusicPlayerGetBeatsForHostTime(MusicPlayer inPlayer, UInt64 inHostTime, MusicTimeStamp *outBeats);
+
+extern OSStatus
 MusicPlayerPreroll(MusicPlayer inPlayer);
 
 extern OSStatus
