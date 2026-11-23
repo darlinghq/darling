@@ -207,6 +207,7 @@ struct fex_callback_rules {
 	const struct fex_unsupported_callback* unsupported; // its g_callback_unsupported entry, if any
 	const struct fex_callback_struct* callback_struct; // its g_callback_structs entry, if any
 	unsigned xim_list; // first argument of its g_xim_value_lists (name, value) list, 0 if none
+	bool returns_function; // it returns a host function named by its first argument (g_proc_address_lookups)
 };
 static struct fex_callback_rules g_dlsym_rules[DARLING_FEX_DLSYM_MAX_SLOTS];
 static struct fex_callback_rules callback_rules_for(const char* name);
@@ -482,6 +483,13 @@ static uint64_t host_xim_callback_for(uint64_t guest_struct)
 	return (uint64_t)(uintptr_t)c;
 }
 
+// Host functions that return a host function named by their first argument. The guest calls what they
+// return, so it gets the bridge's stub for that function, with the callback rules of its name.
+static const char* const g_proc_address_lookups[] = {
+	// Callers: OpenGL.framework (OpenGL.c), IOSurface (gpubuffer.c) and OpenGLES (EAGLContext.m).
+	"eglGetProcAddress",
+};
+
 static struct fex_callback_rules callback_rules_for(const char* name)
 {
 	struct fex_callback_rules r = { FEX_X_HANDLER_NONE, 0, NULL, NULL, 0 };
@@ -509,6 +517,9 @@ static struct fex_callback_rules callback_rules_for(const char* name)
 	for (size_t i = 0; i < sizeof(g_xim_value_lists) / sizeof(g_xim_value_lists[0]); i++)
 		if (strcmp(name, g_xim_value_lists[i].name) == 0)
 			r.xim_list = g_xim_value_lists[i].first;
+	for (size_t i = 0; i < sizeof(g_proc_address_lookups) / sizeof(g_proc_address_lookups[0]); i++)
+		if (strcmp(name, g_proc_address_lookups[i]) == 0)
+			r.returns_function = true;
 	return r;
 }
 
@@ -683,6 +694,8 @@ long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
 		else
 			*host_native = x0;
 	}
+	if (rules.returns_function && x0 != 0)
+		x0 = (uint64_t)(uintptr_t)fex_dlsym_wrap_if_func((void*)(uintptr_t)x0, (const char*)(uintptr_t)state->rdi);
 	state->rax = x0;
 	state->rdx = x1;
 	v0 = d0;

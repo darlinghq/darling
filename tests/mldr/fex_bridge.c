@@ -1515,6 +1515,93 @@ static void test_unsupported_callback(void)
 		"a guest callback the bridge cannot run stops the process and says why");
 }
 
+static float g_clear_color[4];
+static void host_glClearColor(float r, float g, float b, float a)
+{
+	g_clear_color[0] = r;
+	g_clear_color[1] = g;
+	g_clear_color[2] = b;
+	g_clear_color[3] = a;
+}
+
+static double host_glHalf(double d)
+{
+	return d / 2;
+}
+
+static uint64_t host_glDebugMessageCallbackKHR(uint64_t callback, uint64_t user_param)
+{
+	(void)callback;
+	(void)user_param;
+	return 0;
+}
+
+static void* host_eglGetProcAddress(const char* name)
+{
+	if (strcmp(name, "glClearColor") == 0)
+		return (void*)host_glClearColor;
+	if (strcmp(name, "glHalf") == 0)
+		return (void*)host_glHalf;
+	if (strcmp(name, "glDebugMessageCallbackKHR") == 0)
+		return (void*)host_glDebugMessageCallbackKHR;
+	return NULL;
+}
+
+// Calls a stub with one integer argument and floating point arguments in xmm0..; returns xmm0's low 8 bytes.
+static uint64_t call_stub_xmm(void* stub, uint64_t a0, const uint64_t* xmm, int nxmm)
+{
+	struct fex_x86_64_state st;
+	memset(&st, 0, sizeof(st));
+	st.rax = stub_syscall_nr(stub);
+	st.rdi = a0;
+	for (int i = 0; i < nxmm; i++)
+		st.xmm[i][0] = xmm[i];
+	fex_linux_syscall_dispatch(&st);
+	return st.xmm[0][0];
+}
+
+static uint64_t float_bits(float f)
+{
+	uint32_t u;
+	memcpy(&u, &f, sizeof(u));
+	return u;
+}
+
+static void set_guest_khr_debug_callback(void)
+{
+	void* lookup = fex_dlsym_wrap_if_func((void*)host_eglGetProcAddress, "eglGetProcAddress");
+	void* fn = (void*)(uintptr_t)call_stub(lookup, (uint64_t)(uintptr_t)"glDebugMessageCallbackKHR", 0, 0, 0);
+	call_stub(fn, 0x5300100, 0, 0, 0);
+}
+
+// eglGetProcAddress returns host functions, which the guest calls: it gets stubs, with the rules of the name.
+static void test_proc_address_lookup(void)
+{
+	void* lookup = fex_dlsym_wrap_if_func((void*)host_eglGetProcAddress, "eglGetProcAddress");
+	uint64_t clear = call_stub(lookup, (uint64_t)(uintptr_t)"glClearColor", 0, 0, 0);
+	check(clear != 0 && clear != (uint64_t)(uintptr_t)host_glClearColor &&
+	      stub_syscall_nr((void*)(uintptr_t)clear) == stub_syscall_nr(fex_dlsym_wrap_if_func((void*)host_glClearColor, "x")),
+		"eglGetProcAddress gives the guest the stub of the host function");
+	check(call_stub(lookup, (uint64_t)(uintptr_t)"glClearColor", 0, 0, 0) == clear,
+		"looking a function up twice gives the same stub");
+	check(call_stub(lookup, (uint64_t)(uintptr_t)"glNoSuchFunction", 0, 0, 0) == 0, "a failed lookup stays NULL");
+
+	const uint64_t colors[4] = {float_bits(0.25f), float_bits(0.5f), float_bits(0.75f), float_bits(1.0f)};
+	call_stub_xmm((void*)(uintptr_t)clear, 0, colors, 4);
+	check(g_clear_color[0] == 0.25f && g_clear_color[1] == 0.5f && g_clear_color[2] == 0.75f && g_clear_color[3] == 1.0f,
+		"a looked-up function gets its float arguments");
+	void* half = (void*)(uintptr_t)call_stub(lookup, (uint64_t)(uintptr_t)"glHalf", 0, 0, 0);
+	double in = 3.0, out = 0;
+	uint64_t in_bits, out_bits;
+	memcpy(&in_bits, &in, sizeof(in));
+	out_bits = call_stub_xmm(half, 0, &in_bits, 1);
+	memcpy(&out, &out_bits, sizeof(out));
+	check(out == 1.5, "a looked-up function returns a double in xmm0");
+
+	check(aborts_with(set_guest_khr_debug_callback, "glDebugMessageCallbackKHR was given a guest callback"),
+		"a looked-up function keeps the callback rules of its name");
+}
+
 static void test_syscall_translations(void)
 {
 	struct fex_x86_64_state st;
@@ -2045,6 +2132,7 @@ int main(void)
 	test_callback_arguments();
 	test_unsupported_callback();
 	test_callback_struct();
+	test_proc_address_lookup();
 	test_xim_callbacks();
 	test_left_callbacks();
 	test_syscall_translations();
