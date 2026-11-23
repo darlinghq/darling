@@ -5,6 +5,8 @@
 #import <Onyx2D/O2ColorSpace.h>
 #import <Onyx2D/O2Context.h>
 #import <Onyx2D/O2Image.h>
+#import <Onyx2D/O2DataProvider.h>
+#import "ImageIOASTC.h"
 #include <math.h>
 #include <string.h>
 
@@ -31,12 +33,29 @@ const CFStringRef kCGImageAuxiliaryDataInfoDataDescription = CFSTR("kCGImageAuxi
 @interface _O2ImageSource : O2ImageSource
 @end
 
+// The formats ImageIO decodes itself (ASTC) are tried first; everything else goes to the Onyx2D
+// decoders, as before. The magic numbers do not overlap, so the order only saves work.
+static O2ImageSourceRef newImageSource(O2DataProviderRef provider, CFDictionaryRef options) {
+	O2ImageSourceRef source = ImageIOASTCSourceCreate(provider, options);
+	if (source != nil)
+		return source;
+	return [O2ImageSource newImageSourceWithDataProvider:provider options:options];
+}
+
 CGImageSourceRef CGImageSourceCreateWithData(CFDataRef data,CFDictionaryRef options) {
-	return (CGImageSourceRef)[O2ImageSource newImageSourceWithData:data options:options];
+	O2DataProviderRef provider = O2DataProviderCreateWithCFData(data);
+	O2ImageSourceRef source = newImageSource(provider, options);
+	O2DataProviderRelease(provider);
+	return (CGImageSourceRef)source;
 }
 
 CGImageSourceRef CGImageSourceCreateWithURL(CFURLRef url,CFDictionaryRef options) {
-	return (CGImageSourceRef)[O2ImageSource newImageSourceWithURL:(NSURL *)url options:options];
+	O2DataProviderRef provider = [[O2DataProvider alloc] initWithURL:(NSURL *)url];
+	if (provider == nil)
+		return NULL;
+	O2ImageSourceRef source = newImageSource(provider, options);
+	O2DataProviderRelease(provider);
+	return (CGImageSourceRef)source;
 }
 
 size_t CGImageSourceGetCount(CGImageSourceRef self) {
