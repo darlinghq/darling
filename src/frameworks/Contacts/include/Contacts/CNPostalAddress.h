@@ -17,8 +17,32 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef CONTACTS_CNPOSTALADDRESS_H
+#define CONTACTS_CNPOSTALADDRESS_H
 
-@interface CNPostalAddress : NSObject
+#import <Foundation/Foundation.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+// An immutable postal address. The parts that an address does not have read as empty strings.
+API_AVAILABLE(macos(10.11))
+@interface CNPostalAddress : NSObject <NSCopying, NSMutableCopying, NSSecureCoding>
+
+// A street address of several lines is delimited with "\n".
+@property (readonly, copy, NS_NONATOMIC_IOSONLY) NSString *street;
+@property (readonly, copy, NS_NONATOMIC_IOSONLY) NSString *subLocality API_AVAILABLE(macos(10.12.4));
+@property (readonly, copy, NS_NONATOMIC_IOSONLY) NSString *city;
+@property (readonly, copy, NS_NONATOMIC_IOSONLY) NSString *subAdministrativeArea API_AVAILABLE(macos(10.12.4));
+@property (readonly, copy, NS_NONATOMIC_IOSONLY) NSString *state;
+@property (readonly, copy, NS_NONATOMIC_IOSONLY) NSString *postalCode;
+@property (readonly, copy, NS_NONATOMIC_IOSONLY) NSString *country;
+// ISO 3166-1 alpha-2.
+@property (readonly, copy, NS_NONATOMIC_IOSONLY) NSString *ISOCountryCode;
+
++ (NSString *)localizedStringForKey:(NSString *)key;
 
 @end
+
+NS_ASSUME_NONNULL_END
+
+#endif
