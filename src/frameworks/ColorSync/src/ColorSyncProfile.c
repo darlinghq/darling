@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include "ICCProfile.h"
@@ -114,6 +115,24 @@ CFDataRef ColorSyncProfileCopyData(ColorSyncProfileRef prof, CFErrorRef* error)
 		return NULL;
 	}
 	return CFRetain(profile->data);
+}
+
+// GUESS: the page says the digest is "calculated as defined by the ICC specification" (ICC.1:2022, 7.2.18): MD5 over "the
+// entire profile, whose length is given by the size field", with the flags, rendering intent and Profile ID header
+// fields zero. So the digest covers the number of bytes the size field gives, not all the bytes held (bytes after the
+// profile do not count). ColorSyncProfileCreate accepts a profile whose size field is wrong; if the field is below
+// 100 (the fields that are zeroed end there) or above the bytes held, no digest is defined and the result is the zero
+// digest, which the page defines as the failure result. Rejected alternative: hash all bytes held. A Profile ID
+// already stored in the header is not returned: the digest is always computed. A NULL or non-profile argument also
+// gives zeros.
+ColorSyncMD5 ColorSyncProfileGetMD5(ColorSyncProfileRef prof)
+{
+	ColorSyncMD5 md5;
+	memset(&md5, 0, sizeof md5);
+	const struct __ColorSyncProfile* profile = profileOrNull(prof);
+	if (profile && !ICCProfileComputeID(CFDataGetBytePtr(profile->data), (size_t) CFDataGetLength(profile->data), md5.digest))
+		memset(&md5, 0, sizeof md5);
+	return md5;
 }
 
 // GUESS: a tag signature is taken to be the four characters of its ICC signature, such as "desc". The

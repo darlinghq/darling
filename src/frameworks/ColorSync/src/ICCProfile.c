@@ -18,6 +18,7 @@
 */
 
 #include "ICCProfile.h"
+#include "MD5.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -98,6 +99,30 @@ bool ICCProfileValidate(const uint8_t* data, size_t length)
 		if (tag.offset < dataStart || tag.offset > length || tag.size > length - tag.offset)
 			return false;
 	}
+	return true;
+}
+
+bool ICCProfileComputeID(const uint8_t* data, size_t length, uint8_t outDigest[16])
+{
+	static const struct { size_t start, end; } zeroed[] = { { 44, 48 }, { 64, 68 }, { 84, 100 } };
+	static const uint8_t zeros[16];
+
+	// 7.2.18: the entire profile, whose length is given by the size field. The zeroed fields end at byte 100.
+	const size_t size = readBigEndian32(data);
+	if (size < 100 || size > length)
+		return false;
+
+	MD5Context context;
+	MD5ContextInit(&context);
+	size_t position = 0;
+	for (size_t i = 0; i < sizeof zeroed / sizeof zeroed[0]; i++)
+	{
+		MD5ContextUpdate(&context, data + position, zeroed[i].start - position);
+		MD5ContextUpdate(&context, zeros, zeroed[i].end - zeroed[i].start);
+		position = zeroed[i].end;
+	}
+	MD5ContextUpdate(&context, data + position, size - position);
+	MD5ContextFinal(&context, outDigest);
 	return true;
 }
 

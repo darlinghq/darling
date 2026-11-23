@@ -1,5 +1,5 @@
 // Native test: compile with the ICC layout code and run on the host.
-//   cc -I src tests/ICCProfileTest.c src/ICCProfile.c -o ICCProfileTest
+//   cc -I src tests/ICCProfileTest.c src/ICCProfile.c src/MD5.c -o ICCProfileTest
 // Also run it with -fsanitize=address,undefined: the checks on the tag count and offsets guard reads past the end.
 // The profiles are built by hand from the layout in ICC.1:2022, 7.2 and 7.3
 // (https://www.color.org/specification/ICC.1-2022-05.pdf), so they contain no vendor data.
@@ -163,6 +163,57 @@ int main(void)
 	expect(clock() - start < 2 * CLOCKS_PER_SEC, "hostile profile is handled in linear time");
 	free(hostileIndices);
 	free(hostile);
+
+	// The Profile ID (ICC.1:2022, 7.2.18) is the MD5 digest of the profile, as long as its size field says, with the flags
+	// (44 to 47), the rendering intent (64 to 67) and the ID field (84 to 99) zeroed. The expected digests are Python's
+	// hashlib.md5 over the same bytes (those fields are zero already).
+	uint8_t digest[16];
+	char hex[33];
+	expect(ICCProfileComputeID(profile, length, digest), "profile ID of a valid profile");
+	for (int i = 0; i < 16; i++)
+		snprintf(hex + i * 2, 3, "%02x", digest[i]);
+	expect(strcmp(hex, "537ca42b81eb6c480db1bacbfb538365") == 0, "profile ID of a profile with those fields zero");
+
+	uint8_t filled[256];
+	uint8_t other[16];
+	memcpy(filled, profile, length);
+	memset(filled + 44, 0xff, 4);
+	memset(filled + 64, 0x55, 4);
+	memset(filled + 84, 0xaa, 16);
+	expect(ICCProfileComputeID(filled, length, other) && memcmp(digest, other, 16) == 0, "flags, rendering intent and ID field do not change the profile ID");
+	for (size_t byte = 4; byte < length; byte++) // the size field itself, bytes 0 to 3, is tested below
+	{
+		const bool excluded = (byte >= 44 && byte < 48) || (byte >= 64 && byte < 68) || (byte >= 84 && byte < 100);
+		memcpy(filled, profile, length);
+		filled[byte] ^= 1;
+		if (!ICCProfileComputeID(filled, length, other) || (memcmp(digest, other, 16) != 0) == excluded)
+		{
+			printf("FAIL profile ID: flipping byte %zu %s the digest\n", byte, excluded ? "changed" : "did not change");
+			g_failures++;
+		}
+	}
+
+	// The size field says how many bytes are hashed: bytes after them do not count; a field that is too small or larger
+	// than the data gives no digest.
+	memcpy(filled, profile, length);
+	memset(filled + length, 0x7f, 8);
+	expect(ICCProfileComputeID(filled, length + 8, other) && memcmp(digest, other, 16) == 0, "bytes after the profile are not hashed");
+	memcpy(filled, profile, length);
+	put32(filled, 160);
+	expect(ICCProfileComputeID(filled, length, other), "size field below the data length");
+	for (int i = 0; i < 16; i++)
+		snprintf(hex + i * 2, 3, "%02x", other[i]);
+	expect(strcmp(hex, "cfaedaca4ba5dde8fdc04107a22308a5") == 0, "profile ID over the size field's 160 bytes");
+	put32(filled, 100);
+	expect(ICCProfileComputeID(filled, length, other), "size field 100");
+	for (int i = 0; i < 16; i++)
+		snprintf(hex + i * 2, 3, "%02x", other[i]);
+	expect(strcmp(hex, "77ca5b922205f7faf9da3e87525818ec") == 0, "profile ID over the size field's 100 bytes");
+	memset(other, 0x33, 16);
+	put32(filled, 99);
+	expect(!ICCProfileComputeID(filled, length, other) && other[0] == 0x33, "size field 99");
+	put32(filled, (uint32_t) length + 1);
+	expect(!ICCProfileComputeID(filled, length, other), "size field larger than the data");
 
 	// Invalid inputs.
 	expect(!ICCProfileValidate(NULL, 0), "null data");

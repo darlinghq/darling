@@ -85,7 +85,6 @@ void* ColorSyncProfileEstimateGammaWithDisplayID(void);
 void* ColorSyncProfileFromCMProfile(void);
 void* ColorSyncProfileGetData(void);
 void* ColorSyncProfileGetDisplayTransferFormulaFromVCGT(void);
-void* ColorSyncProfileGetMD5(void);
 void* ColorSyncProfileInstall(void);
 void* ColorSyncProfileIsWideGamut(void);
 void* ColorSyncProfileProducesMatrixTransform(void);
@@ -131,6 +130,17 @@ typedef struct __ColorSyncProfile* ColorSyncProfileRef;
 typedef struct __ColorSyncProfile* ColorSyncMutableProfileRef;
 
 CFTypeID ColorSyncProfileGetTypeID(void);
+
+// As the public ColorSyncProfile.h of the MacOSX10.15 SDK declares them (github.com/phracker/MacOSX-SDKs): the length is
+// 16 and the digest type is an unnamed struct of that many bytes.
+#define COLORSYNC_MD5_LENGTH 16
+
+typedef struct {
+	uint8_t digest[COLORSYNC_MD5_LENGTH];
+} ColorSyncMD5;
+
+ColorSyncMD5 ColorSyncProfileGetMD5(ColorSyncProfileRef prof);
+
 ColorSyncProfileRef ColorSyncProfileCreate(CFDataRef data, CFErrorRef* error);
 CFDataRef ColorSyncProfileCopyData(ColorSyncProfileRef prof, CFErrorRef* error);
 bool ColorSyncProfileContainsTag(ColorSyncProfileRef prof, CFStringRef signature);

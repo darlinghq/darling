@@ -377,12 +377,6 @@ void* ColorSyncProfileGetDisplayTransferFormulaFromVCGT(void)
     return NULL;
 }
 
-void* ColorSyncProfileGetMD5(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileGetMD5 called");
-    return NULL;
-}
-
 void* ColorSyncProfileInstall(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileInstall called");
