@@ -8,7 +8,7 @@
 //  - CNMutablePostalAddress is a subclass whose parts can be set; "to remove properties when saving a mutable
 //    postal address, set string properties to empty values";
 //  - the classes conform to NSCopying, NSMutableCopying, NSSecureCoding, Equatable and Hashable.
-// Cases marked GUESS pin choices the pages leave open (see CNPostalAddress.m).
+// Expectations that go beyond the pages are observations of macOS 26.7.3 and 10.14.4 (see CNPostalAddress.m).
 // Prints PASS, or the failures with a non-zero exit status.
 #import <Foundation/Foundation.h>
 #import <Contacts/Contacts.h>
@@ -42,7 +42,7 @@ static BOOL samePartsAs(CNPostalAddress *a, CNPostalAddress *b)
 
 static void testParts(void)
 {
-	// GUESS: a new address has an empty string for every part.
+	// A new address has an empty string for every part.
 	CNMutablePostalAddress *empty = [[[CNMutablePostalAddress alloc] init] autorelease];
 	CHECK([empty.street length] == 0 && [empty.subLocality length] == 0 && [empty.city length] == 0);
 	CHECK([empty.subAdministrativeArea length] == 0 && [empty.state length] == 0 && [empty.postalCode length] == 0);
@@ -63,7 +63,7 @@ static void testParts(void)
 	[source appendString:@"-Mitte"];
 	CHECK([address.city isEqualToString:@"Berlin"]);
 
-	// Setting a part to an empty string removes it; GUESS: nil is stored as an empty string.
+	// Setting a part to an empty string removes it; nil is stored as an empty string (observed).
 	address.state = @"";
 	CHECK([address.state length] == 0);
 	id none = nil;
@@ -104,7 +104,8 @@ static void testEquality(void)
 	CHECK([a isEqual:b] && a.hash == b.hash);
 	CHECK([a isEqual:a]);
 	CHECK(![a isEqual:nil] && ![a isEqual:@"1 Infinite Loop"]);
-	// GUESS: a mutable address with the same parts equals an immutable one.
+	// A mutable address with the same parts equals an immutable one (macOS 26.7.3; 10.14.4 finds the mutable one unequal to the
+	// immutable one but not the other way round, which is not followed).
 	CNMutablePostalAddress *m = sampleAddress();
 	CHECK([m isEqual:a] && [a isEqual:m] && m.hash == a.hash);
 
@@ -141,8 +142,16 @@ static void testSecureCoding(void)
 
 static void testLocalizedKey(void)
 {
-	// GUESS: there is no catalogue of localized names yet, so a key comes back as it is.
-	CHECK([[CNPostalAddress localizedStringForKey:@"street"] isEqualToString:@"street"]);
+	// The English names macOS 26.7.3 gives (the locale is not consulted), and nil for another key.
+	CHECK([[CNPostalAddress localizedStringForKey:@"street"] isEqualToString:@"Street"]);
+	CHECK([[CNPostalAddress localizedStringForKey:@"subLocality"] isEqualToString:@"District"]);
+	CHECK([[CNPostalAddress localizedStringForKey:@"city"] isEqualToString:@"City"]);
+	CHECK([[CNPostalAddress localizedStringForKey:@"subAdministrativeArea"] isEqualToString:@"County"]);
+	CHECK([[CNPostalAddress localizedStringForKey:@"state"] isEqualToString:@"State"]);
+	CHECK([[CNPostalAddress localizedStringForKey:@"postalCode"] isEqualToString:@"ZIP"]);
+	CHECK([[CNPostalAddress localizedStringForKey:@"country"] isEqualToString:@"Country"]);
+	CHECK([[CNPostalAddress localizedStringForKey:@"ISOCountryCode"] isEqualToString:@"Country code"]);
+	CHECK([CNPostalAddress localizedStringForKey:@"bogus"] == nil);
 }
 
 int main(void)

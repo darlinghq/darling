@@ -9,7 +9,7 @@
 //    (and the part that is not set);
 //  - localizedStringForLabel: returns a custom label as it is;
 //  - the class conforms to NSCopying, NSSecureCoding, Equatable and Hashable.
-// Cases marked GUESS pin choices the pages leave open (see CNLabeledValue.m).
+// Expectations that go beyond the pages are observations of macOS 26.7.3 and 10.14.4 (see CNLabeledValue.m).
 // Prints PASS, or the failures with a non-zero exit status.
 #import <Foundation/Foundation.h>
 #import <Contacts/Contacts.h>
@@ -42,16 +42,43 @@ static void testCreate(void)
 	CNLabeledValue<NSString *> *noLabel = [[[CNLabeledValue alloc] initWithLabel:nil value:@"b"] autorelease];
 	CHECK(noLabel != nil && noLabel.label == nil && [noLabel.value isEqualToString:@"b"]);
 
-	// GUESS: the identifier is a UUID string.
+	// The identifier is a UUID string.
 	CHECK(lv.identifier != nil && [[[NSUUID alloc] initWithUUIDString:lv.identifier] autorelease] != nil);
 	// Every new labeled value has its own identifier.
 	CNLabeledValue<NSString *> *again = [CNLabeledValue labeledValueWithLabel:@"work" value:@"a@example.com"];
 	CHECK(![lv.identifier isEqualToString:again.identifier]);
 
-	// GUESS: a nil value is not rejected and reads nil.
+	// A nil value raises CNPropertyInvalidTypeException (macOS 10.14.4; 26.7.3 accepts it, which is not followed), and so does
+	// setting one; -init and +new raise NSInternalInconsistencyException (both macOS versions).
 	id none = nil;
-	CNLabeledValue *nilValue = [CNLabeledValue labeledValueWithLabel:@"x" value:none];
-	CHECK(nilValue != nil && nilValue.value == nil);
+	@try
+	{
+		[CNLabeledValue labeledValueWithLabel:@"x" value:none];
+		CHECK(NO);
+	}
+	@catch (NSException *exception)
+	{
+		CHECK([exception.name isEqualToString:@"CNPropertyInvalidTypeException"]);
+		CHECK([exception.reason isEqualToString:@"Labeled values require a nonnull value, but a null value was presented."]);
+	}
+	@try
+	{
+		[lv labeledValueBySettingValue:none];
+		CHECK(NO);
+	}
+	@catch (NSException *exception)
+	{
+		CHECK([exception.name isEqualToString:@"CNPropertyInvalidTypeException"]);
+	}
+	@try
+	{
+		[[CNLabeledValue alloc] performSelector:@selector(init)];
+		CHECK(NO);
+	}
+	@catch (NSException *exception)
+	{
+		CHECK([exception.name isEqualToString:NSInternalInconsistencyException]);
+	}
 }
 
 static void testSetting(void)
@@ -97,7 +124,7 @@ static void testEquality(void)
 	CHECK(![[lv labeledValueBySettingValue:@"two"] isEqual:lv]);
 	CHECK(![[lv labeledValueBySettingLabel:nil] isEqual:lv]);
 
-	// GUESS: the identifier takes part in equality.
+	// The identifier takes part in equality (macOS 26.7.3 and 10.14.4).
 	CNLabeledValue<NSString *> *other = [CNLabeledValue labeledValueWithLabel:@"home" value:@"one"];
 	CHECK(![other isEqual:lv]);
 }
@@ -105,6 +132,13 @@ static void testEquality(void)
 static void testSecureCoding(void)
 {
 	CHECK([CNLabeledValue supportsSecureCoding]);
+
+	// The keys of the archive are those macOS writes (observed on 26.7.3 and 10.14.4).
+	CNLabeledValue<NSString *> *coded = [CNLabeledValue labeledValueWithLabel:@"work" value:@"a@example.com"];
+	NSData *codedData = [NSKeyedArchiver archivedDataWithRootObject:coded requiringSecureCoding:YES error:NULL];
+	NSDictionary *plist = [NSPropertyListSerialization propertyListWithData:codedData options:0 format:NULL error:NULL];
+	NSDictionary *top = plist[@"$objects"][[plist[@"$top"][@"root"] intValue]];
+	CHECK(top[@"_identifier"] != nil && top[@"_label"] != nil && top[@"_value"] != nil);
 
 	CNLabeledValue<NSString *> *lv = [CNLabeledValue labeledValueWithLabel:@"work" value:@"a@example.com"];
 	CNLabeledValue<NSString *> *back = roundTrip(lv, @[[CNLabeledValue class], [NSString class]]);
@@ -116,12 +150,6 @@ static void testSecureCoding(void)
 	CNLabeledValue<NSString *> *noLabel = [CNLabeledValue labeledValueWithLabel:nil value:@"x"];
 	CNLabeledValue<NSString *> *backNoLabel = roundTrip(noLabel, @[[CNLabeledValue class], [NSString class]]);
 	CHECK(backNoLabel != nil && backNoLabel.label == nil && [backNoLabel isEqual:noLabel]);
-
-	// GUESS: a labeled value made with a nil value (see testCreate) archives and unarchives to the same.
-	id none = nil;
-	CNLabeledValue *nilValue = [CNLabeledValue labeledValueWithLabel:@"x" value:none];
-	CNLabeledValue *backNil = roundTrip(nilValue, @[[CNLabeledValue class], [NSString class]]);
-	CHECK(backNil != nil && backNil.value == nil && [backNil isEqual:nilValue]);
 
 	// A value of another documented type (CNContact.dates holds date components).
 	NSDateComponents *anniversary = [[[NSDateComponents alloc] init] autorelease];

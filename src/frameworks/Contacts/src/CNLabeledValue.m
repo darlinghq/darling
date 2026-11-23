@@ -30,10 +30,19 @@
 // keeps the forwarding stub, and the public header declares no instance variables.
 #if __LP64__
 
-// The coder keys are Darling's own: the pages do not give the keys of an archive made by macOS.
-static NSString * const kIdentifierKey = @"identifier";
-static NSString * const kLabelKey = @"label";
-static NSString * const kValueKey = @"value";
+// The coder keys are those of an archive made by macOS 26.7.3 and 10.14.4 (read back through NSKeyedArchiver; macOS also writes
+// keys for properties this class does not have yet, which are ignored when decoding).
+static NSString * const kIdentifierKey = @"_identifier";
+static NSString * const kLabelKey = @"_label";
+static NSString * const kValueKey = @"_value";
+
+// The exception macOS 10.14.4 raises for a labeled value without a value (observed; macOS 26.7.3 accepts a nil value, which is
+// not followed here because a value is declared non-optional and 10.14.4 is the strictest).
+static void requireValue(id value)
+{
+	if (value == nil)
+		[NSException raise:@"CNPropertyInvalidTypeException" format:@"Labeled values require a nonnull value, but a null value was presented."];
+}
 
 static BOOL sameObject(id a, id b)
 {
@@ -50,17 +59,24 @@ static BOOL sameObject(id a, id b)
 @synthesize label = _label;
 @synthesize value = _value;
 
+// The designated initializer, with the parts as they are (a value of nil is refused; the parts are copied by the callers that
+// take them from outside).
+- (instancetype)initWithIdentifier:(NSString *)identifier label:(NSString *)label value:(id)value
+{
+	requireValue(value);
+	if ((self = [super init]))
+	{
+		_identifier = [identifier retain];
+		_label = [label retain];
+		_value = [value retain];
+	}
+	return self;
+}
+
 // A labeled value of the receiver's class with the given parts; the parts are retained as they are.
 static CNLabeledValue *makeLabeledValue(Class cls, NSString *identifier, NSString *label, id value)
 {
-	CNLabeledValue *result = [[cls alloc] init];
-	if (result != nil)
-	{
-		result->_identifier = [identifier retain];
-		result->_label = [label retain];
-		result->_value = [value retain];
-	}
-	return [result autorelease];
+	return [[[cls alloc] initWithIdentifier:identifier label:label value:value] autorelease];
 }
 
 + (instancetype)labeledValueWithLabel:(NSString *)label value:(id)value
@@ -68,18 +84,18 @@ static CNLabeledValue *makeLabeledValue(Class cls, NSString *identifier, NSStrin
 	return [[[self alloc] initWithLabel:label value:value] autorelease];
 }
 
+// macOS raises NSInternalInconsistencyException for -init and +new (26.7.3 and 10.14.4, observed).
+- (instancetype)init
+{
+	[self release];
+	[NSException raise:NSInternalInconsistencyException format:@"-[CNLabeledValue init]: initializer unavailable; use -[CNLabeledValue initWithLabel:value:] instead"];
+	return nil;
+}
+
 - (instancetype)initWithLabel:(NSString *)label value:(id)value
 {
-	if ((self = [super init]))
-	{
-		// GUESS: the pages call the identifier unique and persistable but give no format; a UUID string.
-		_identifier = [[[NSUUID UUID] UUIDString] retain];
-		_label = [label copy];
-		// GUESS: a nil value is not rejected (the pages declare a non-optional value but do not say what
-		// happens otherwise); the value reads nil.
-		_value = [value copyWithZone:nil];
-	}
-	return self;
+	// The identifier is a UUID string (macOS 26.7.3 and 10.14.4, observed).
+	return [self initWithIdentifier:[[NSUUID UUID] UUIDString] label:[[label copy] autorelease] value:[[value copyWithZone:nil] autorelease]];
 }
 
 - (instancetype)labeledValueBySettingLabel:(NSString *)label
@@ -89,18 +105,21 @@ static CNLabeledValue *makeLabeledValue(Class cls, NSString *identifier, NSStrin
 
 - (instancetype)labeledValueBySettingValue:(id)value
 {
+	requireValue(value);
 	return makeLabeledValue([self class], _identifier, _label, [[value copyWithZone:nil] autorelease]);
 }
 
 - (instancetype)labeledValueBySettingLabel:(NSString *)label value:(id)value
 {
+	requireValue(value);
 	return makeLabeledValue([self class], _identifier, [[label copy] autorelease], [[value copyWithZone:nil] autorelease]);
 }
 
 + (NSString *)localizedStringForLabel:(NSString *)label
 {
-	// A custom label comes back as it is. GUESS: the label constants of the framework are not defined
-	// yet, so none can be recognised and localized; every label comes back as it is.
+	// A custom label comes back as it is. The label constants of the framework (CNLabelHome and the others) are not defined
+	// yet, so none can be recognised; macOS turns them into a localized word ("_$!<Home>!$_" is "home"), here every label
+	// comes back as it is.
 	return label;
 }
 
@@ -118,9 +137,8 @@ static CNLabeledValue *makeLabeledValue(Class cls, NSString *identifier, NSStrin
 	return [self retain];
 }
 
-// GUESS: two labeled values are equal when identifier, label and value are all equal (the pages list
-// Equatable and Hashable and say no more). Rejected alternative: ignoring the identifier, which would make two
-// separate entries of a contact with the same label and value equal.
+// Two labeled values are equal when identifier, label and value are all equal (observed on macOS 26.7.3 and 10.14.4: two
+// labeled values made with the same label and value are not equal, and a label or value that differs makes them unequal).
 - (BOOL)isEqual:(id)object
 {
 	if (object == self)
@@ -134,6 +152,12 @@ static CNLabeledValue *makeLabeledValue(Class cls, NSString *identifier, NSStrin
 - (NSUInteger)hash
 {
 	return [_identifier hash] ^ ([_label hash] * 31) ^ ([_value hash] * 961);
+}
+
+// The text of macOS 10.14.4: the class, the address and the three parts (nil prints as "(nil)").
+- (NSString *)description
+{
+	return [NSString stringWithFormat:@"<%@: %p: identifier=%@, label=%@, value=%@>", [self class], self, _identifier, _label ?: @"(nil)", _value ?: @"(nil)"];
 }
 
 + (BOOL)supportsSecureCoding
@@ -158,9 +182,9 @@ static CNLabeledValue *makeLabeledValue(Class cls, NSString *identifier, NSStrin
 		_identifier = [[coder decodeObjectOfClass:[NSString class] forKey:kIdentifierKey] copy];
 		_label = [[coder decodeObjectOfClass:[NSString class] forKey:kLabelKey] copy];
 		_value = [[coder decodeObjectOfClasses:valueClasses forKey:kValueKey] retain];
-		// An archive without an identifier is not one this class wrote. A missing value is read as nil, as
-		// initWithLabel:value: accepts one (GUESS 2 there). Darling's NSCoder has no failWithError:.
-		if (_identifier == nil)
+		// An archive without an identifier or without a value is not one this class wrote. Darling's NSCoder has no
+		// failWithError:.
+		if (_identifier == nil || _value == nil)
 		{
 			[self release];
 			return nil;

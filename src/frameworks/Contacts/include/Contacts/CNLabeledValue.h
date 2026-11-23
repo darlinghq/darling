@@ -34,6 +34,9 @@ API_AVAILABLE(macos(10.11))
 @property (readonly, nullable, copy, NS_NONATOMIC_IOSONLY) NSString *label;
 @property (readonly, copy, NS_NONATOMIC_IOSONLY) ValueType value;
 
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
 + (instancetype)labeledValueWithLabel:(nullable NSString *)label value:(ValueType)value;
 - (instancetype)initWithLabel:(nullable NSString *)label value:(ValueType)value;
 

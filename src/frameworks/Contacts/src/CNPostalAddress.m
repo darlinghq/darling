@@ -28,8 +28,7 @@
 // declare no instance variables.
 #if __LP64__
 
-// The coder keys are Darling's own: the pages do not give the keys of an archive made by macOS. They are
-// the names of the properties.
+// The coder keys are those of an archive made by macOS 26.7.3 and 10.14.4: the names of the instance variables.
 
 @implementation CNPostalAddress
 
@@ -58,8 +57,8 @@ static void copyParts(CNPostalAddress *destination, CNPostalAddress *source)
 {
 	if ((self = [super init]))
 	{
-		// GUESS: a new address has empty strings: every part is declared non-nil and the pages say an empty
-		// string means a part is not set.
+		// A new address has empty strings (observed on macOS 26.7.3 and 10.14.4): every part is declared non-nil and the pages
+		// say an empty string means a part is not set.
 		CNPostalAddressSetPart(&_street, nil);
 		CNPostalAddressSetPart(&_subLocality, nil);
 		CNPostalAddressSetPart(&_city, nil);
@@ -87,8 +86,17 @@ static void copyParts(CNPostalAddress *destination, CNPostalAddress *source)
 
 + (NSString *)localizedStringForKey:(NSString *)key
 {
-	// GUESS: Darling has no catalogue of the localized property names yet, so the key comes back as it is.
-	return key;
+	// The English names that macOS 26.7.3 gives (the locale is not consulted here: Darling has no catalogue of translated
+	// names), and nil for a key that is not one of the eight parts. Test: tests/src/contacts_postal_address.m.
+	static NSDictionary *names;
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{
+		names = [@{
+			@"street": @"Street", @"subLocality": @"District", @"city": @"City", @"subAdministrativeArea": @"County",
+			@"state": @"State", @"postalCode": @"ZIP", @"country": @"Country", @"ISOCountryCode": @"Country code",
+		} retain];
+	});
+	return key ? names[key] : nil;
 }
 
 // A copy of a mutable address is an immutable one, as for the other Foundation classes that come in both
@@ -109,8 +117,8 @@ static void copyParts(CNPostalAddress *destination, CNPostalAddress *source)
 	return result;
 }
 
-// GUESS: two addresses are equal when all eight parts are equal, whether or not either is mutable (the pages
-// list Equatable and Hashable and say no more).
+// Two addresses are equal when all eight parts are equal, whether or not either is mutable. macOS 26.7.3 does the same;
+// 10.14.4 finds a mutable address unequal to an immutable one with the same parts, but not the other way round, which is not followed.
 - (BOOL)isEqual:(id)object
 {
 	if (object == self)
@@ -126,6 +134,13 @@ static void copyParts(CNPostalAddress *destination, CNPostalAddress *source)
 		[_postalCode isEqualToString:other->_postalCode] &&
 		[_country isEqualToString:other->_country] &&
 		[_ISOCountryCode isEqualToString:other->_ISOCountryCode];
+}
+
+// The text of macOS 10.14.4 and 26.7.3 (the ISO country code is printed as "countryCode").
+- (NSString *)description
+{
+	return [NSString stringWithFormat:@"<%@: %p: street=%@, subLocality=%@, city=%@, subAdministrativeArea=%@, state=%@, postalCode=%@, country=%@, countryCode=%@>",
+		[self class], self, _street, _subLocality, _city, _subAdministrativeArea, _state, _postalCode, _country, _ISOCountryCode];
 }
 
 - (NSUInteger)hash
@@ -147,14 +162,14 @@ static void copyParts(CNPostalAddress *destination, CNPostalAddress *source)
 
 - (void)encodeWithCoder:(NSCoder *)coder
 {
-	[coder encodeObject:_street forKey:@"street"];
-	[coder encodeObject:_subLocality forKey:@"subLocality"];
-	[coder encodeObject:_city forKey:@"city"];
-	[coder encodeObject:_subAdministrativeArea forKey:@"subAdministrativeArea"];
-	[coder encodeObject:_state forKey:@"state"];
-	[coder encodeObject:_postalCode forKey:@"postalCode"];
-	[coder encodeObject:_country forKey:@"country"];
-	[coder encodeObject:_ISOCountryCode forKey:@"ISOCountryCode"];
+	[coder encodeObject:_street forKey:@"_street"];
+	[coder encodeObject:_subLocality forKey:@"_subLocality"];
+	[coder encodeObject:_city forKey:@"_city"];
+	[coder encodeObject:_subAdministrativeArea forKey:@"_subAdministrativeArea"];
+	[coder encodeObject:_state forKey:@"_state"];
+	[coder encodeObject:_postalCode forKey:@"_postalCode"];
+	[coder encodeObject:_country forKey:@"_country"];
+	[coder encodeObject:_ISOCountryCode forKey:@"_ISOCountryCode"];
 }
 
 - (instancetype)initWithCoder:(NSCoder *)coder
@@ -162,14 +177,14 @@ static void copyParts(CNPostalAddress *destination, CNPostalAddress *source)
 	if ((self = [super init]))
 	{
 		// A part missing from the archive is empty.
-		CNPostalAddressSetPart(&_street, [coder decodeObjectOfClass:[NSString class] forKey:@"street"]);
-		CNPostalAddressSetPart(&_subLocality, [coder decodeObjectOfClass:[NSString class] forKey:@"subLocality"]);
-		CNPostalAddressSetPart(&_city, [coder decodeObjectOfClass:[NSString class] forKey:@"city"]);
-		CNPostalAddressSetPart(&_subAdministrativeArea, [coder decodeObjectOfClass:[NSString class] forKey:@"subAdministrativeArea"]);
-		CNPostalAddressSetPart(&_state, [coder decodeObjectOfClass:[NSString class] forKey:@"state"]);
-		CNPostalAddressSetPart(&_postalCode, [coder decodeObjectOfClass:[NSString class] forKey:@"postalCode"]);
-		CNPostalAddressSetPart(&_country, [coder decodeObjectOfClass:[NSString class] forKey:@"country"]);
-		CNPostalAddressSetPart(&_ISOCountryCode, [coder decodeObjectOfClass:[NSString class] forKey:@"ISOCountryCode"]);
+		CNPostalAddressSetPart(&_street, [coder decodeObjectOfClass:[NSString class] forKey:@"_street"]);
+		CNPostalAddressSetPart(&_subLocality, [coder decodeObjectOfClass:[NSString class] forKey:@"_subLocality"]);
+		CNPostalAddressSetPart(&_city, [coder decodeObjectOfClass:[NSString class] forKey:@"_city"]);
+		CNPostalAddressSetPart(&_subAdministrativeArea, [coder decodeObjectOfClass:[NSString class] forKey:@"_subAdministrativeArea"]);
+		CNPostalAddressSetPart(&_state, [coder decodeObjectOfClass:[NSString class] forKey:@"_state"]);
+		CNPostalAddressSetPart(&_postalCode, [coder decodeObjectOfClass:[NSString class] forKey:@"_postalCode"]);
+		CNPostalAddressSetPart(&_country, [coder decodeObjectOfClass:[NSString class] forKey:@"_country"]);
+		CNPostalAddressSetPart(&_ISOCountryCode, [coder decodeObjectOfClass:[NSString class] forKey:@"_ISOCountryCode"]);
 	}
 	return self;
 }

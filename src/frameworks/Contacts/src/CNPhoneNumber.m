@@ -25,7 +25,7 @@
 // keeps the forwarding stub, and the public header declares no instance variables.
 #if __LP64__
 
-// The coder key is Darling's own: the pages do not give the key of an archive made by macOS.
+// The coder key is that of an archive made by macOS 26.7.3 and 10.14.4 (which also writes a nil countryCode).
 static NSString * const kStringValueKey = @"stringValue";
 
 @implementation CNPhoneNumber {
@@ -54,9 +54,8 @@ static NSString * const kStringValueKey = @"stringValue";
 	return self;
 }
 
-// GUESS: the pages mark -init and +new deprecated and do not say what they give. A phone number needs a
-// string, and initWithStringValue: gives nil for none, so -init gives nil too (and so does +new). Rejected
-// alternative: an object with an empty string.
+// The pages mark -init and +new deprecated and do not say what they give. macOS 26.7.3 and 10.14.4 give nil for both (observed),
+// as initWithStringValue: does for no string.
 - (instancetype)init
 {
 	[self release];
@@ -92,6 +91,12 @@ static NSString * const kStringValueKey = @"stringValue";
 - (NSUInteger)hash
 {
 	return [_stringValue hash];
+}
+
+// The text of macOS 10.14.4 and 26.7.3; the initial country code is not kept, so it always reads (nil).
+- (NSString *)description
+{
+	return [NSString stringWithFormat:@"<%@: %p: stringValue=%@, initialCountryCode=(nil)>", [self class], self, _stringValue];
 }
 
 + (BOOL)supportsSecureCoding

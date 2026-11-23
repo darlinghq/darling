@@ -43,7 +43,7 @@
 @end
 
 // Stores a copy of a part of a postal address in its slot. The header declares every part non-nil and the
-// pages say an empty string means "not set", so GUESS: a nil part is stored as an empty string.
+// pages say an empty string means "not set"; macOS stores a nil part as an empty string (observed on 26.7.3 and 10.14.4).
 static inline void CNPostalAddressSetPart(NSString **slot, NSString *value)
 {
 	NSString *copy = [(value ?: @"") copy];

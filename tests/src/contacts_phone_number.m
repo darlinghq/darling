@@ -8,7 +8,7 @@
 //  - stringValue gives the string back;
 //  - the class conforms to NSCopying, NSSecureCoding, Equatable and Hashable;
 //  - init and new are deprecated.
-// Cases marked GUESS pin choices the pages leave open (see CNPhoneNumber.m).
+// Expectations that go beyond the pages are observations of macOS 26.7.3 and 10.14.4 (see CNPhoneNumber.m).
 // Prints PASS, or the failures with a non-zero exit status.
 #import <Foundation/Foundation.h>
 #import <Contacts/Contacts.h>
@@ -44,7 +44,7 @@ static void testDeprecated(void)
 {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-	// GUESS: a phone number needs a string, so the deprecated init and new give nil.
+	// The deprecated init and new give nil (observed).
 	CHECK([[CNPhoneNumber alloc] init] == nil);
 	CHECK([CNPhoneNumber new] == nil);
 #pragma clang diagnostic pop
