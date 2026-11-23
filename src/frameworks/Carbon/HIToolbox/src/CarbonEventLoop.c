@@ -262,6 +262,52 @@ OSStatus _HIReceiveNextEventMatching(HIEventMatchProc match, void* info, CFStrin
 	return waitForEvent(match, info, false, runLoopMode, timeout, pull, outEvent);
 }
 
+// One run of the run loop between two looks at the queue (kHIReceiveNextEventSinglePass)
+static OSStatus waitOnce(Boolean (*match)(EventRef, void*), void* info, bool pure, CFStringRef mode, EventTimeout timeout, Boolean pull, EventRef* outEvent)
+{
+	struct OpaqueEventLoopRef* loop = _HIEventLoopForCurrentThread();
+
+	if (!mode)
+		mode = kCFRunLoopDefaultMode;
+	else if (!CFEqual(mode, kCFRunLoopDefaultMode))
+		CFRunLoopAddSource(loop->runLoop, loop->wakeSource, mode);
+	_HIEventStreamWillWait(loop, mode);
+
+	*outEvent = NULL;
+
+	// The run loop runs even when an event is waiting, without blocking then, so that its timers
+	// and sources are not held up by a stream of events
+	_HIRunEventPollProcs(&loop->queue);
+	bool waiting = _HIQueueTakeMatching(&loop->queue, match, info, pure, false) != NULL;
+	CFTimeInterval limit = 0;
+	if (!waiting && !atomic_load(&loop->quitRequested))
+		limit = timeout < 0 ? 1e9 : timeout;
+	CFRunLoopRunInMode(mode, limit, true);
+
+	_HIRunEventPollProcs(&loop->queue);
+	EventRef event = _HIQueueTakeMatching(&loop->queue, match, info, pure, pull);
+	if (event)
+	{
+		*outEvent = event;
+		return noErr;
+	}
+	if (atomic_exchange(&loop->quitRequested, false))
+		return eventLoopQuitErr;
+	return eventLoopTimedOutErr;
+}
+
+OSStatus _HIReceiveNextEventMatchingWithOptions(HIEventMatchProc match, void* info, CFStringRef runLoopMode, EventTimeout timeout, OptionBits options, EventRef* outEvent)
+{
+	if (!outEvent)
+		return paramErr;
+
+	bool pure = (options & kHIReceiveNextEventFilterIsPure) != 0;
+	Boolean pull = (options & kHIReceiveNextEventPull) != 0;
+	if (options & kHIReceiveNextEventSinglePass)
+		return waitOnce(match, info, pure, runLoopMode, timeout, pull, outEvent);
+	return waitForEvent(match, info, pure, runLoopMode, timeout, pull, outEvent);
+}
+
 OSStatus ReceiveNextEvent(ItemCount inNumTypes, const EventTypeSpec* inList, EventTimeout inTimeout, Boolean inPullEvent, EventRef* outEvent)
 {
 	if (!outEvent || (inNumTypes != 0 && !inList))

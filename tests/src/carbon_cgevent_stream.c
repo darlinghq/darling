@@ -4,7 +4,7 @@
 // the Carbon event loop. A thread that waits in ReceiveNextEvent, RunCurrentEventLoop or
 // RunApplicationEventLoop reads what CGEventPost() posted, from any thread, after the event taps
 // have seen it, and finds it in the main queue as a Carbon event of the right class, kind and
-// parameters; mouse moves coalesce; the handlers of the application target run in
+// parameters; mouse moves coalesce (adding up their deltas); the handlers of the application target run in
 // RunApplicationEventLoop. Also, HIToolbox sits on CoreGraphics and does not depend on AppKit.
 //
 // Darling's behaviour: on macOS the posting of events needs the accessibility permission, and an
@@ -22,6 +22,7 @@
 void RunApplicationEventLoop(void);
 void QuitApplicationEventLoop(void);
 OSStatus SetMouseCoalescingEnabled(Boolean inNewState, Boolean* outOldState);
+Boolean IsMouseCoalescingEnabled(void);
 
 static int failures;
 #define CHECK(c) do { if (!(c)) { printf("FAIL: %s (line %d)\n", #c, __LINE__); failures++; } } while (0)
@@ -185,7 +186,45 @@ static void testCoalescing(void)
 		ReleaseEvent(event);
 	CHECK(next(0.0) == NULL);
 
+	// The event that is kept has the deltas of the ones it replaced
+	for (int i = 1; i <= 3; i++)
+	{
+		CGEventRef move = mouse(kCGEventMouseMoved, 10 * i, 0, kCGMouseButtonLeft);
+		CGEventSetIntegerValueField(move, kCGMouseEventDeltaX, i);
+		CGEventSetIntegerValueField(move, kCGMouseEventDeltaY, -1);
+		post(move);
+	}
+	event = next(2.0);
+	CHECK(event != NULL && GetEventKind(event) == kEventMouseMoved);
+	if (event)
+	{
+		CGEventRef cg = CopyEventCGEvent(event);
+		CHECK(cg != NULL && CGEventGetIntegerValueField(cg, kCGMouseEventDeltaX) == 6 && CGEventGetIntegerValueField(cg, kCGMouseEventDeltaY) == -3);
+		if (cg)
+			CFRelease(cg);
+		ReleaseEvent(event);
+	}
+	CHECK(next(0.0) == NULL);
+
+	// Moves over different windows, and moves and drags, stay apart
+	CGEventRef over = mouse(kCGEventMouseMoved, 1, 0, kCGMouseButtonLeft);
+	CGEventSetIntegerValueField(over, kCGMouseEventWindowUnderMousePointer, 11);
+	post(over);
+	over = mouse(kCGEventMouseMoved, 2, 0, kCGMouseButtonLeft);
+	CGEventSetIntegerValueField(over, kCGMouseEventWindowUnderMousePointer, 12);
+	post(over);
+	post(mouse(kCGEventLeftMouseDragged, 3, 0, kCGMouseButtonLeft));
+	int apart = 0;
+	while ((event = next(apart == 0 ? 2.0 : 0.0)) != NULL)
+	{
+		apart++;
+		ReleaseEvent(event);
+	}
+	CHECK(apart == 3);
+
+	CHECK(IsMouseCoalescingEnabled());
 	CHECK(SetMouseCoalescingEnabled(false, &old) == noErr && old);
+	CHECK(!IsMouseCoalescingEnabled());
 	for (int i = 1; i <= 5; i++)
 		post(mouse(kCGEventMouseMoved, i, 0, kCGMouseButtonLeft));
 	int count = 0;
