@@ -6,11 +6,14 @@
 #include <stdint.h>
 
 /* Public entry points stay visible although the library builds with
- * -fvisibility=hidden. */
+ * -fvisibility=hidden. A build that links the library into another image
+ * and must not export the entry points from it defines DTC_API to nothing. */
+#ifndef DTC_API
 #if defined(__GNUC__)
 #define DTC_API __attribute__((visibility("default")))
 #else
 #define DTC_API
+#endif
 #endif
 
 #ifdef __cplusplus
