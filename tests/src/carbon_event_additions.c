@@ -33,8 +33,127 @@ static OSStatus passHandler(EventHandlerCallRef call, EventRef event, void *user
 
 enum { kClass = 'test', kKindA = 7, kKindB = 8 };
 
+static EventRef fromCGEvent(CGEventRef cg)
+{
+	EventRef event = NULL;
+
+	CHECK(CreateEventWithCGEvent(NULL, cg, kEventAttributeNone, &event) == noErr);
+	CHECK(event != NULL);
+	// The event keeps the CGEvent it was made from
+	CGEventRef back = event ? CopyEventCGEvent(event) : NULL;
+	CHECK(back == cg);
+	if (back)
+		CFRelease(back);
+	return event;
+}
+
+static void expectClassAndKind(const char* what, CGEventRef cg, OSType eventClass, UInt32 kind)
+{
+	EventRef event = fromCGEvent(cg);
+
+	if (event && (GetEventClass(event) != eventClass || GetEventKind(event) != kind))
+		printf("FAIL: %s is %08x/%u\n", what, (unsigned) GetEventClass(event), (unsigned) GetEventKind(event));
+	CHECK(event && GetEventClass(event) == eventClass && GetEventKind(event) == kind);
+	if (event)
+		ReleaseEvent(event);
+}
+
+// QUIRK (test_quirk_cgevent_classes): CreateEventWithCGEvent gives the mouse and keyboard classes
+// for input events, and the raw class 'cgs ' with the CGEvent type as the kind for the others.
+// Observed on macOS 26.7.3.
+static void test_quirk_cgevent_classes(void)
+{
+	CGPoint where = CGPointMake(10, 20);
+	CGEventRef cg;
+
+	cg = CGEventCreateMouseEvent(NULL, kCGEventLeftMouseDown, where, kCGMouseButtonLeft);
+	expectClassAndKind("left mouse down", cg, 'mous', 1);
+	CGEventSetIntegerValueField(cg, kCGMouseEventClickState, 2);
+	CGEventSetFlags(cg, kCGEventFlagMaskShift);
+
+	// The mouse events have their location, click count, button and modifiers
+	EventRef mouse = fromCGEvent(cg);
+	HIPoint point = { 0, 0 };
+	UInt32 clicks = 0, modifiers = 99;
+	EventMouseButton button = 0;
+	EventParamType type = 0;
+	CHECK(GetEventParameter(mouse, 'mloc', 'hipt', &type, sizeof(point), NULL, &point) == noErr);
+	CHECK(point.x == 10 && point.y == 20);
+	CHECK(GetEventParameter(mouse, 'ccnt', 'magn', NULL, sizeof(clicks), NULL, &clicks) == noErr);
+	CHECK(clicks == 2);
+	CHECK(GetEventParameter(mouse, 'mbtn', 'mbtn', NULL, sizeof(button), NULL, &button) == noErr);
+	CHECK(button == 1);
+	CHECK(GetEventParameter(mouse, 'kmod', 'magn', NULL, sizeof(modifiers), NULL, &modifiers) == noErr);
+	CHECK(modifiers == 0x200);   // shiftKey
+	// A parameter the application sets is the one it gets
+	UInt32 two = 77;
+	CHECK(SetEventParameter(mouse, 'ccnt', 'magn', sizeof(two), &two) == noErr);
+	CHECK(GetEventParameter(mouse, 'ccnt', 'magn', NULL, sizeof(clicks), NULL, &clicks) == noErr);
+	CHECK(clicks == 77);
+	ReleaseEvent(mouse);
+	CFRelease(cg);
+
+	cg = CGEventCreateMouseEvent(NULL, kCGEventMouseMoved, where, kCGMouseButtonLeft);
+	expectClassAndKind("mouse moved", cg, 'mous', 5);
+	CFRelease(cg);
+	cg = CGEventCreateMouseEvent(NULL, kCGEventLeftMouseUp, where, kCGMouseButtonLeft);
+	expectClassAndKind("left mouse up", cg, 'mous', 2);
+	CFRelease(cg);
+	cg = CGEventCreateMouseEvent(NULL, kCGEventLeftMouseDragged, where, kCGMouseButtonLeft);
+	expectClassAndKind("left mouse dragged", cg, 'mous', 6);
+	CFRelease(cg);
+	cg = CGEventCreateMouseEvent(NULL, kCGEventRightMouseDown, where, kCGMouseButtonRight);
+	expectClassAndKind("right mouse down", cg, 'mous', 1);
+	mouse = fromCGEvent(cg);
+	CHECK(GetEventParameter(mouse, 'mbtn', 'mbtn', NULL, sizeof(button), NULL, &button) == noErr);
+	CHECK(button == 2);
+	ReleaseEvent(mouse);
+	CFRelease(cg);
+	cg = CGEventCreateMouseEvent(NULL, kCGEventOtherMouseDown, where, kCGMouseButtonCenter);
+	CGEventSetIntegerValueField(cg, kCGMouseEventButtonNumber, 2);
+	expectClassAndKind("other mouse down", cg, 'mous', 1);
+	mouse = fromCGEvent(cg);
+	CHECK(GetEventParameter(mouse, 'mbtn', 'mbtn', NULL, sizeof(button), NULL, &button) == noErr);
+	CHECK(button == 3);
+	ReleaseEvent(mouse);
+	CFRelease(cg);
+	cg = CGEventCreateScrollWheelEvent(NULL, kCGScrollEventUnitLine, 1, 1);
+	expectClassAndKind("scroll wheel", cg, 'mous', 10);
+	CFRelease(cg);
+
+	// The keyboard events have the key code and the modifiers, and no Unicode text
+	cg = CGEventCreateKeyboardEvent(NULL, 0, true);
+	CGEventSetIntegerValueField(cg, kCGKeyboardEventKeycode, 5);
+	CGEventSetFlags(cg, kCGEventFlagMaskCommand);
+	expectClassAndKind("key down", cg, 'keyb', 1);
+	EventRef key = fromCGEvent(cg);
+	UInt32 code = 0;
+	UniChar text[4];
+	CHECK(GetEventParameter(key, 'kcod', 'magn', NULL, sizeof(code), NULL, &code) == noErr);
+	CHECK(code == 5);
+	CHECK(GetEventParameter(key, 'kmod', 'magn', NULL, sizeof(modifiers), NULL, &modifiers) == noErr);
+	CHECK(modifiers == 0x100);   // cmdKey
+	CHECK(GetEventParameter(key, 'kuni', 'utxt', NULL, sizeof(text), NULL, text) == eventParameterNotFoundErr);
+	// The mouse parameters are not on a key event
+	CHECK(GetEventParameter(key, 'mloc', 'hipt', NULL, sizeof(point), NULL, &point) == eventParameterNotFoundErr);
+	ReleaseEvent(key);
+	CGEventSetType(cg, kCGEventFlagsChanged);
+	expectClassAndKind("flags changed", cg, 'keyb', 4);
+	CFRelease(cg);
+
+	// Types with no Carbon class of their own: the raw class, the CGEvent type as the kind
+	cg = CGEventCreate(NULL);
+	CGEventSetType(cg, (CGEventType) 14);
+	expectClassAndKind("system defined", cg, 'cgs ', 14);
+	CGEventSetType(cg, (CGEventType) 15);
+	expectClassAndKind("application defined", cg, 'cgs ', 15);
+	CFRelease(cg);
+}
+
 int main(void)
 {
+	test_quirk_cgevent_classes();
+
 	// The event queues: the main thread's current queue is the main queue
 	CHECK(GetMainEventQueue() != NULL);
 	CHECK(GetCurrentEventQueue() == GetMainEventQueue());
