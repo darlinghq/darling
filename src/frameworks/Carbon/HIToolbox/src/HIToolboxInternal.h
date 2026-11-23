@@ -100,6 +100,15 @@ struct OpaqueEventLoopRef* _HIMainEventLoop(void);
 void _HIWakeEventLoop(struct OpaqueEventLoopRef* loop);
 void _HIRunEventPollProcs(EventQueueRef queue);
 
+// The event stream of CoreGraphics (CarbonEventStream.c). The thread that waits for events in the
+// main event loop is its reader: _HIEventStreamWillWait() registers it before the first wait, and
+// _HIDrainEventStream() moves the events that have arrived into the queue, in the order they came.
+void _HIEventStreamWillWait(struct OpaqueEventLoopRef* loop, CFStringRef mode);
+void _HIDrainEventStream(EventQueueRef queue);
+// Posts an event at standard priority, coalescing mouse moves, from the thread that owns the
+// queue and is about to look into it: nothing needs to be woken.
+OSStatus _HIPostEventFromWaitingThread(EventQueueRef queue, EventRef event);
+
 // Takes the first event of the queue that match accepts. With pull, the event leaves the queue
 // and the queue's reference to it becomes the caller's; without, it stays and nothing is
 // retained. A filter that is only a function of the event (it uses no event queue function)

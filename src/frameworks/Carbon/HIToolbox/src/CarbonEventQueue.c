@@ -97,7 +97,7 @@ static bool removeEvent(EventQueueRef queue, EventRef event)
 	return removed;
 }
 
-static OSStatus postEvent(EventQueueRef queue, EventRef event, int list, bool coalesce)
+static OSStatus postEvent(EventQueueRef queue, EventRef event, int list, bool coalesce, bool wake)
 {
 	if (!queue || !event)
 		return paramErr;
@@ -152,7 +152,8 @@ static OSStatus postEvent(EventQueueRef queue, EventRef event, int list, bool co
 	queue->count++;
 	pthread_mutex_unlock(&queue->lock);
 
-	_HIWakeEventLoop(queue->loop);
+	if (wake)
+		_HIWakeEventLoop(queue->loop);
 	return noErr;
 }
 
@@ -173,7 +174,7 @@ OSStatus PostEventToQueue(EventQueueRef inQueue, EventRef inEvent, EventPriority
 
 	if (list < 0)
 		return paramErr;
-	return postEvent(inQueue, inEvent, list, false);
+	return postEvent(inQueue, inEvent, list, false, true);
 }
 
 OSStatus _HIPostEventToQueueCoalescing(EventQueueRef queue, EventRef event, EventPriority priority)
@@ -182,12 +183,17 @@ OSStatus _HIPostEventToQueueCoalescing(EventQueueRef queue, EventRef event, Even
 
 	if (list < 0)
 		return paramErr;
-	return postEvent(queue, event, list, true);
+	return postEvent(queue, event, list, true, true);
+}
+
+OSStatus _HIPostEventFromWaitingThread(EventQueueRef queue, EventRef event)
+{
+	return postEvent(queue, event, listForPriority(kEventPriorityStandard), true, false);
 }
 
 OSStatus _HIPostEventToQueueAtHead(EventQueueRef queue, EventRef event)
 {
-	return postEvent(queue, event, kListHead, false);
+	return postEvent(queue, event, kListHead, false, true);
 }
 
 OSStatus RemoveEventFromQueue(EventQueueRef inQueue, EventRef inEvent)

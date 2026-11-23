@@ -23,6 +23,7 @@ add_framework(HIToolbox
 		src/CarbonEventsCore.c
 		src/CarbonEventQueue.c
 		src/CarbonEventLoop.c
+		src/CarbonEventStream.c
 		src/CarbonEvents.c
 		src/CarbonEventTargets.c
 		src/MacApplication.cpp
