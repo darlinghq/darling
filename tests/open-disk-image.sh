@@ -114,12 +114,22 @@ else
 	fail "eject: no window"
 fi
 
-# two files: both are opened, each in its window
-host two open "$work/unmount-test.dmg" "$work/rel"
-if [ "$(cat "$work/two.rc")" = 0 ] && window "Unmount Test" 60 && window rel 30; then
-	pass "two files"
+# two images: the entry launched on two images at once (as a file manager does for a selection) mounts both, the one
+# with a licence agreement after it is agreed to, and each volume gets its window
+setsid -w gio launch "$work/$id.desktop" "$image" "$work/unmount-test.dmg" </dev/null >"$work/launch2.out" 2>&1 &
+app=DiskImageMounter
+if window "$(basename "$image")" 60; then
+	key Return
+	app=Finder
+	if window "Styled Test" 60 && window "Unmount Test" 60 && [ "$(mounts "$styled")" = 1 ] \
+		&& [ "$(mounts "/Volumes/Unmount Test")" = 1 ]; then
+		pass "two images"
+	else
+		fail "two images: windows: $(windows ''), mounts $(mounts "$styled") $(mounts "/Volumes/Unmount Test")"
+	fi
 else
-	fail "two files: rc $(cat "$work/two.rc") $(cat "$work/two.err"), windows: $(windows '')"
+	app=Finder
+	fail "two images: no licence window; launch: $(tr '\n' '|' <"$work/launch2.out"), windows: $(windows '')"
 fi
 
 # command line: a relative path; a symbolic link to an attached image (opened again, not attached again); a missing

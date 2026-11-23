@@ -24,6 +24,7 @@ ID = "org.darlinghq.Darling.DiskImageMounter"
 TYPE = "application/x-apple-diskimage"
 SIZES = (16, 32, 128, 256, 512)
 FREEDESKTOP = Path("/usr/share/mime/packages/freedesktop.org.xml")
+HAVE_MIME = shutil.which("update-mime-database") is not None
 
 
 def desktop_exec_args(value):
@@ -110,11 +111,12 @@ class DesktopIntegration(unittest.TestCase):
         self.assertEqual(keys.get("Icon"), ID)
         self.assertEqual(desktop_exec_args(keys.get("Exec", "")), [PREFIX + "/bin/darling", "open", "%F"])
 
+    @unittest.skipUnless(HAVE_MIME, "no update-mime-database (shared-mime-info)")
     def test_mime_alone(self):
         globs = (self.scratch_mime(False) / "globs2").read_text()
         self.assertIn(f":{TYPE}:*.dmg", globs)
 
-    @unittest.skipUnless(FREEDESKTOP.is_file(), "no freedesktop.org.xml on this host")
+    @unittest.skipUnless(HAVE_MIME and FREEDESKTOP.is_file(), "no shared-mime-info on this host")
     def test_mime_with_freedesktop(self):
         mime = self.scratch_mime(True)
         lines = [line for line in (mime / "globs2").read_text().splitlines() if line.endswith(":*.dmg")]
@@ -124,7 +126,8 @@ class DesktopIntegration(unittest.TestCase):
         self.assertEqual(lines, [l for l in lines if l.split(":")[1] == TYPE], lines)
         self.assertIn('xml:lang="de"', (mime / "application" / "x-apple-diskimage.xml").read_text())
 
-    @unittest.skipUnless(shutil.which("gio") and shutil.which("update-desktop-database"), "no gio")
+    @unittest.skipUnless(HAVE_MIME and shutil.which("gio") and shutil.which("update-desktop-database"),
+                         "no gio, update-desktop-database or update-mime-database")
     def test_handler(self):
         mime = self.scratch_mime(False)
         share = mime.parent
