@@ -5,9 +5,10 @@
 // points at the first event at or after a time, and kMusicTimeStamp_EndOfTrack positions the
 // iterator just beyond the last event, from where MusicEventIteratorPreviousEvent backs up to the
 // last event; stepping from the last event goes beyond it; the previous event of the first event
-// is an error and leaves the iterator unchanged. The track keeps a copy of an added event. Checks
-// marked GUESS pin result codes and orders that the documentation leaves open; they were not
-// observed on macOS.
+// is an error and leaves the iterator unchanged. The track keeps a copy of an added event. The result
+// codes and orders that the documentation leaves open, and the arguments that are accepted although they
+// make little sense (a time below zero, a tempo of 0), are what macOS 26.7.3 and 10.14.4 do, observed with
+// these checks.
 #include <AudioToolbox/AudioToolbox.h>
 #include <math.h>
 #include <stdio.h>
@@ -38,10 +39,10 @@ int main(void)
 	CHECK(!has(MusicEventIteratorHasNextEvent, it));
 	CHECK(!has(MusicEventIteratorHasPreviousEvent, it));
 	CHECK(MusicEventIteratorGetEventInfo(it, NULL, NULL, NULL, NULL) != noErr);
-	// GUESS: past the last event the code is kAudioToolboxErr_EndOfTrack.
+	// Past the last event the code is kAudioToolboxErr_EndOfTrack (observed on macOS 26.7.3 and 10.14.4).
 	CHECK(MusicEventIteratorGetEventInfo(it, NULL, NULL, NULL, NULL) == kAudioToolboxErr_EndOfTrack);
 	CHECK(MusicEventIteratorNextEvent(it) == kAudioToolboxErr_EndOfTrack);
-	// GUESS: stepping back from the first position is kAudioToolboxErr_StartOfTrack.
+	// Stepping back from the first position is kAudioToolboxErr_StartOfTrack (observed on macOS).
 	CHECK(MusicEventIteratorPreviousEvent(it) == kAudioToolboxErr_StartOfTrack);
 	CHECK(DisposeMusicEventIterator(it) == noErr);
 
@@ -50,11 +51,15 @@ int main(void)
 	MIDINoteMessage n0 = { 0, 60, 100, 5, 1.0f };
 	MIDINoteMessage n1a = { 2, 64, 80, 0, 0.5f };
 	MIDINoteMessage n1b = { 3, 65, 70, 0, 0.25f };
+	MIDINoteMessage nh = { 4, 66, 60, 0, 0.75f };
 	CHECK(MusicTrackNewMIDINoteEvent(track, 2.0, &n2) == noErr);
 	CHECK(MusicTrackNewMIDINoteEvent(track, 0.0, &n0) == noErr);
 	CHECK(MusicTrackNewMIDINoteEvent(track, 1.0, &n1a) == noErr);
-	CHECK(MusicTrackNewExtendedTempoEvent(track, 0.5, 90.0) == noErr);
+	CHECK(MusicTrackNewMIDINoteEvent(track, 0.5, &nh) == noErr);
 	CHECK(MusicTrackNewMIDINoteEvent(track, 1.0, &n1b) == noErr);
+	// QUIRK test: a tempo event is only for the tempo track, any other track gives
+	// kAudioToolboxErr_IllegalTrackDestination (observed on macOS 26.7.3 and 10.14.4)
+	CHECK(MusicTrackNewExtendedTempoEvent(track, 0.5, 90.0) == kAudioToolboxErr_IllegalTrackDestination);
 
 	// The track keeps a copy of what was passed.
 	n0.note = 1;
@@ -72,13 +77,13 @@ int main(void)
 		CHECK(MusicEventIteratorNextEvent(it) == noErr);
 	}
 	CHECK(n == 5);
-	// Time order; GUESS: events with the same time are in the order they were added.
+	// Time order; events with the same time are in the order they were added (observed on macOS).
 	CHECK(times[0] == 0.0 && times[1] == 0.5 && times[2] == 1.0 && times[3] == 1.0 && times[4] == 2.0);
-	CHECK(types[0] == kMusicEventType_MIDINoteMessage && types[1] == kMusicEventType_ExtendedTempo);
-	CHECK(sizes[0] == sizeof(MIDINoteMessage) && sizes[1] == sizeof(ExtendedTempoEvent));
+	CHECK(types[0] == kMusicEventType_MIDINoteMessage && types[1] == kMusicEventType_MIDINoteMessage);
+	CHECK(sizes[0] == sizeof(MIDINoteMessage) && sizes[1] == sizeof(MIDINoteMessage));
 	CHECK(((const MIDINoteMessage*) data[0])->note == 60);
 	CHECK(((const MIDINoteMessage*) data[0])->releaseVelocity == 5);
-	CHECK(((const ExtendedTempoEvent*) data[1])->bpm == 90.0);
+	CHECK(((const MIDINoteMessage*) data[1])->note == 66);
 	CHECK(((const MIDINoteMessage*) data[2])->channel == 2);
 	CHECK(((const MIDINoteMessage*) data[3])->channel == 3);
 	CHECK(((const MIDINoteMessage*) data[4])->duration == 2.0f);
@@ -101,12 +106,14 @@ int main(void)
 	CHECK(MusicEventIteratorSeek(it, 0.75) == noErr);
 	CHECK(MusicEventIteratorGetEventInfo(it, &t, NULL, NULL, NULL) == noErr && t == 1.0);
 	CHECK(MusicEventIteratorSeek(it, 0.25) == noErr);
-	CHECK(MusicEventIteratorGetEventInfo(it, &t, &types[0], NULL, NULL) == noErr && t == 0.5);
-	CHECK(types[0] == kMusicEventType_ExtendedTempo);
+	CHECK(MusicEventIteratorGetEventInfo(it, &t, &types[0], &data[0], NULL) == noErr && t == 0.5);
+	CHECK(((const MIDINoteMessage*) data[0])->note == 66);
 	CHECK(MusicEventIteratorSeek(it, 2.5) == noErr);
 	CHECK(!has(MusicEventIteratorHasCurrentEvent, it));
-	// GUESS: a time that is not a number is kAudio_ParamError.
-	CHECK(MusicEventIteratorSeek(it, NAN) == kAudio_ParamError);
+	// QUIRK test: a time that is not a number is accepted and goes to the first event (observed on macOS
+	// 26.7.3 and 10.14.4)
+	CHECK(MusicEventIteratorSeek(it, NAN) == noErr);
+	CHECK(MusicEventIteratorGetEventInfo(it, &t, NULL, NULL, NULL) == noErr && t == 0.0);
 
 	// Backwards from the end of the track, as the documentation shows.
 	CHECK(MusicEventIteratorSeek(it, kMusicTimeStamp_EndOfTrack) == noErr);
@@ -136,27 +143,34 @@ int main(void)
 	CHECK(!has(MusicEventIteratorHasCurrentEvent, it));
 	CHECK(DisposeMusicEventIterator(it) == noErr);
 
-	// The tempo track takes events like any track.
+	// The tempo track takes tempo events and, like any track, other events.
 	MusicTrack tempo = NULL;
 	CHECK(MusicSequenceGetTempoTrack(seq, &tempo) == noErr);
 	CHECK(MusicTrackNewExtendedTempoEvent(tempo, 0.0, 140.0) == noErr);
+	CHECK(MusicTrackNewMIDINoteEvent(tempo, 0.0, &n1a) == noErr);
 	CHECK(NewMusicEventIterator(tempo, &it) == noErr);
 	CHECK(has(MusicEventIteratorHasCurrentEvent, it));
+	CHECK(MusicEventIteratorGetEventInfo(it, &t, &types[0], &data[0], &sizes[0]) == noErr);
+	CHECK(t == 0.0 && types[0] == kMusicEventType_ExtendedTempo && sizes[0] == sizeof(ExtendedTempoEvent));
+	CHECK(((const ExtendedTempoEvent*) data[0])->bpm == 140.0);
 	CHECK(DisposeMusicEventIterator(it) == noErr);
 
-	// Time stamps below zero and tempos that are not positive are refused.
-	// GUESS: the code is kAudio_ParamError.
-	CHECK(MusicTrackNewMIDINoteEvent(track, -1.0, &n1a) == kAudio_ParamError);
-	CHECK(MusicTrackNewMIDINoteEvent(track, NAN, &n1a) == kAudio_ParamError);
-	CHECK(MusicTrackNewExtendedTempoEvent(track, 1.0, 0.0) == kAudio_ParamError);
-	CHECK(MusicTrackNewExtendedTempoEvent(track, 1.0, -120.0) == kAudio_ParamError);
+	// Time stamps below zero or not a number, and tempos that are zero, negative or not a number, are not
+	// refused: macOS 26.7.3 and 10.14.4 accept them (a track of its own takes the first two: there they are not
+	// kept in the order of the others)
+	MusicTrack odd = NULL;
+	CHECK(MusicSequenceNewTrack(seq, &odd) == noErr);
+	CHECK(MusicTrackNewMIDINoteEvent(odd, -1.0, &n1a) == noErr);
+	CHECK(MusicTrackNewMIDINoteEvent(odd, NAN, &n1a) == noErr);
+	CHECK(MusicTrackNewExtendedTempoEvent(tempo, 1.0, 0.0) == noErr);
+	CHECK(MusicTrackNewExtendedTempoEvent(tempo, 2.0, -120.0) == noErr);
 	CHECK(MusicTrackNewMIDINoteEvent(track, 1.0, NULL) == kAudio_ParamError);
 	CHECK(MusicTrackNewMIDINoteEvent(NULL, 1.0, &n1a) == kAudio_ParamError);
 	CHECK(NewMusicEventIterator(NULL, &it) == kAudio_ParamError);
 	CHECK(NewMusicEventIterator(track, NULL) == kAudio_ParamError);
 	CHECK(DisposeMusicEventIterator(NULL) == kAudio_ParamError);
 
-	// Refused events were not added.
+	// Refused events were not added
 	CHECK(NewMusicEventIterator(track, &it) == noErr);
 	CHECK(MusicEventIteratorSeek(it, kMusicTimeStamp_EndOfTrack) == noErr);
 	int count = 0;

@@ -34,9 +34,35 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 size_t musicimpl::insertEvent(OpaqueMusicTrack* track, MusicEvent&& event)
 {
 	auto pos = std::upper_bound(track->events.begin(), track->events.end(), event.time,
-		[](MusicTimeStamp time, const MusicEvent& e) { return time < e.time; });
+		[](MusicTimeStamp time, const MusicEvent& e) { return musicimpl::timeBefore(time, e.time); });
 	pos = track->events.insert(pos, std::move(event));
 	return static_cast<size_t>(pos - track->events.begin());
+}
+
+size_t musicimpl::moveEvent(OpaqueMusicTrack* track, size_t index, MusicTimeStamp time)
+{
+	// QUIRK: an event that is moved to a time that has events already goes before them when it moves
+	// to a later time (or the same one) and after them when it moves to an earlier one; the other events
+	// keep their order. Evidence: black-box observation on macOS 26.7.3 and 10.14.4, tier 2. Test:
+	// tests/src/audiotoolbox_music_event_types.c, "SetEventTime ties".
+	std::vector<MusicEvent>& events = track->events;
+	MusicEvent event = std::move(events[index]);
+	events.erase(events.begin() + index);
+	const bool earlier = musicimpl::timeBefore(time, event.time);
+	event.time = time;
+	size_t pos = index;
+	if (earlier)
+	{
+		while (pos > 0 && musicimpl::timeBefore(time, events[pos - 1].time))
+			pos--;
+	}
+	else
+	{
+		while (pos < events.size() && musicimpl::timeBefore(events[pos].time, time))
+			pos++;
+	}
+	events.insert(events.begin() + pos, std::move(event));
+	return pos;
 }
 
 namespace
@@ -73,17 +99,13 @@ OSStatus musicimpl::makeEventData(MusicEventType type, const void* event, std::v
 			return noErr;
 		case kMusicEventType_ExtendedTempo:
 		{
-			// GUESS: a tempo that is zero, negative or not a number cannot describe a rate of beats, so it is
-			// kAudio_ParamError. The documentation does not name a valid range.
-			const Float64 bpm = static_cast<const ExtendedTempoEvent*>(event)->bpm;
-			if (!(bpm > 0) || !std::isfinite(bpm))
-				return kAudio_ParamError;
+			// Any tempo is stored (macOS stores zero, negative and non-finite ones too; observed on 26.7.3 and 10.14.4).
 			out.assign(static_cast<const UInt8*>(event), static_cast<const UInt8*>(event) + sizeof(ExtendedTempoEvent));
 			return noErr;
 		}
 		case kMusicEventType_AUPreset:
 		{
-			// GUESS: an AU preset event without a property list is kAudio_ParamError, as it names nothing.
+			// An AU preset event without a property list is kAudio_ParamError (observed on macOS 26.7.3).
 			if (!static_cast<const AUPresetEvent*>(event)->preset)
 				return kAudio_ParamError;
 			out.assign(static_cast<const UInt8*>(event), static_cast<const UInt8*>(event) + sizeof(AUPresetEvent));
@@ -103,19 +125,27 @@ OSStatus musicimpl::makeEventData(MusicEventType type, const void* event, std::v
 			return noErr;
 		case kMusicEventType_ExtendedNote:
 		{
-			// extendedParams.argCount counts the pitch and the velocity, so it is at least 2 and the
-			// controls that follow number argCount - 2 (MusicDevice.h).
+			// extendedParams.argCount counts the pitch and the velocity, so the controls that follow number
+			// argCount - 2 (MusicDevice.h), and the caller's structure holds at least that much, and
+			// at least a whole ExtendedNoteOnEvent.
+			//
+			// QUIRK: the size of the event that is stored (and reported by MusicEventIteratorGetEventInfo) is 28
+			// bytes plus 4 for each argument, for every argCount from 0 to 6 (36 for the pitch and velocity
+			// alone, where sizeof(ExtendedNoteOnEvent) is 32, 44 for two controls, where the structure the
+			// caller made is 40); the bytes past what the caller's structure holds are zero. Evidence:
+			// black-box observation on macOS 26.7.3 and 10.14.4 x86_64, tier 2. Test:
+			// tests/src/audiotoolbox_music_event_types.c, "stored size of an extended note".
 			const ExtendedNoteOnEvent* note = static_cast<const ExtendedNoteOnEvent*>(event);
 			const UInt32 argCount = note->extendedParams.argCount;
-			if (argCount < 2)
+			if (argCount > (0xFFFFFFFFu - 28) / 8)
 				return kAudio_ParamError;
+			const size_t stored = 28 + static_cast<size_t>(argCount) * 4;
 			const size_t header = offsetof(ExtendedNoteOnEvent, extendedParams) + offsetof(MusicDeviceNoteParams, mControls);
-			if (!copyVariable(header, argCount - 2, sizeof(NoteParamsControlValue), event, out))
-				return kAudio_ParamError;
-			// GUESS: the stored structure is never smaller than ExtendedNoteOnEvent, so a client may
-			// always read it as one; the unused part is zero. The alternative was the exact size.
-			if (out.size() < sizeof(ExtendedNoteOnEvent))
-				out.resize(sizeof(ExtendedNoteOnEvent), 0);
+			const size_t held = std::max(sizeof(ExtendedNoteOnEvent),
+				header + (argCount > 2 ? static_cast<size_t>(argCount - 2) * sizeof(NoteParamsControlValue) : 0));
+			const UInt8* bytes = static_cast<const UInt8*>(event);
+			out.assign(bytes, bytes + std::min(stored, held));
+			out.resize(stored, 0);
 			return noErr;
 		}
 		default:
@@ -126,22 +156,35 @@ OSStatus musicimpl::makeEventData(MusicEventType type, const void* event, std::v
 namespace
 {
 
-// The documentation says only that a time stamp should not be less than zero, not what happens
-// otherwise. GUESS: a negative or non-finite time stamp is kAudio_ParamError; the alternative
-// was to store the event anyway.
-bool validTimeStamp(MusicTimeStamp time)
-{
-	return std::isfinite(time) && time >= 0;
-}
-
 OSStatus addEvent(MusicTrack track, MusicTimeStamp time, MusicEventType type, const void* event)
 {
-	if (!track || !validTimeStamp(time))
+	// The documentation says only that a time stamp should not be less than zero; a negative time, or
+	// one that is not a number, is stored all the same (macOS 26.7.3 and 10.14.4 do so).
+	if (!track)
 		return kAudio_ParamError;
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 	try
 	{
+		if (type == kMusicEventType_ExtendedTempo)
+		{
+			// QUIRK: a tempo event goes into the tempo track only: any other track gives
+			// kAudioToolboxErr_IllegalTrackDestination; and in a sequence that is not of type beats, the tempo
+			// track takes one tempo event only: a second one gives kAudioToolboxErr_InvalidSequenceType.
+			// Evidence: black-box observation on macOS 26.7.3 and 10.14.4, tier 2. Test:
+			// tests/src/audiotoolbox_music_event_iterator.c, "tempo events", and
+			// tests/src/audiotoolbox_music_sequence_time.c.
+			if (!track->sequence || track != &track->sequence->tempoTrack)
+				return kAudioToolboxErr_IllegalTrackDestination;
+			if (track->sequence->type != kMusicSequenceType_Beats)
+			{
+				for (const MusicEvent& e : track->events)
+				{
+					if (e.type == kMusicEventType_ExtendedTempo)
+						return kAudioToolboxErr_InvalidSequenceType;
+				}
+			}
+		}
 		std::vector<UInt8> data;
 		OSStatus status = musicimpl::makeEventData(type, event, data);
 		if (status != noErr)

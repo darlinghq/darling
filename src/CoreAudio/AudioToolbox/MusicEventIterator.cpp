@@ -59,8 +59,7 @@ OSStatus DisposeMusicEventIterator(MusicEventIterator inIterator)
 
 OSStatus MusicEventIteratorSeek(MusicEventIterator inIterator, MusicTimeStamp inTimeStamp)
 {
-	// GUESS: a time that is not a number is kAudio_ParamError; the documentation does not cover it.
-	if (!inIterator || std::isnan(inTimeStamp))
+	if (!inIterator)
 		return kAudio_ParamError;
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
@@ -72,10 +71,18 @@ OSStatus MusicEventIteratorSeek(MusicEventIterator inIterator, MusicTimeStamp in
 		return noErr;
 	}
 
+	// QUIRK: a time that is not a number is not refused: the iterator goes to the first event (observed on
+	// macOS 26.7.3 and 10.14.4, tier 2; test: tests/src/audiotoolbox_music_event_iterator.c, "seek to NaN").
+	if (std::isnan(inTimeStamp))
+	{
+		inIterator->index = 0;
+		return noErr;
+	}
+
 	// The first event at the time, or else the first event after it; with several events at that
 	// time, the first of them.
 	auto pos = std::lower_bound(events.begin(), events.end(), inTimeStamp,
-		[](const MusicEvent& e, MusicTimeStamp time) { return e.time < time; });
+		[](const MusicEvent& e, MusicTimeStamp time) { return musicimpl::timeBefore(e.time, time); });
 	inIterator->index = static_cast<size_t>(pos - events.begin());
 	return noErr;
 }
@@ -87,9 +94,8 @@ OSStatus MusicEventIteratorNextEvent(MusicEventIterator inIterator)
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 
-	// Moving forward from the last event goes beyond it. GUESS: moving forward from beyond the last
-	// event is kAudioToolboxErr_EndOfTrack and leaves the iterator where it is; the documentation
-	// does not cover it. The alternative was noErr.
+	// Moving forward from the last event goes beyond it. Moving forward from beyond the last event is
+	// kAudioToolboxErr_EndOfTrack and leaves the iterator where it is (observed on macOS 26.7.3 and 10.14.4).
 	if (inIterator->index >= inIterator->track->events.size())
 		return kAudioToolboxErr_EndOfTrack;
 
@@ -104,8 +110,8 @@ OSStatus MusicEventIteratorPreviousEvent(MusicEventIterator inIterator)
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 
-	// At the first event the iterator stays and the call fails. GUESS: the code is
-	// kAudioToolboxErr_StartOfTrack; the documentation says only "an error".
+	// At the first event the iterator stays and the call fails with kAudioToolboxErr_StartOfTrack (observed on
+	// macOS 26.7.3 and 10.14.4).
 	if (inIterator->index == 0)
 		return kAudioToolboxErr_StartOfTrack;
 
@@ -122,8 +128,8 @@ OSStatus MusicEventIteratorGetEventInfo(MusicEventIterator inIterator, MusicTime
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 	const std::vector<MusicEvent>& events = inIterator->track->events;
 
-	// GUESS: there is no event to describe beyond the last event; the code is
-	// kAudioToolboxErr_EndOfTrack. The documentation does not cover it.
+	// There is no event to describe beyond the last event: kAudioToolboxErr_EndOfTrack, and the outputs are not
+	// written (observed on macOS 26.7.3 and 10.14.4).
 	if (inIterator->index >= events.size())
 		return kAudioToolboxErr_EndOfTrack;
 
@@ -177,7 +183,7 @@ OSStatus MusicEventIteratorSetEventInfo(MusicEventIterator inIterator, MusicEven
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 	std::vector<MusicEvent>& events = inIterator->track->events;
 
-	// GUESS: with no event at the iterator, the code is kAudioToolboxErr_EndOfTrack, as for GetEventInfo.
+	// With no event at the iterator, the code is kAudioToolboxErr_EndOfTrack, as for GetEventInfo (observed).
 	if (inIterator->index >= events.size())
 		return kAudioToolboxErr_EndOfTrack;
 
@@ -199,22 +205,21 @@ OSStatus MusicEventIteratorSetEventInfo(MusicEventIterator inIterator, MusicEven
 
 OSStatus MusicEventIteratorSetEventTime(MusicEventIterator inIterator, MusicTimeStamp inTimeStamp)
 {
-	// GUESS: a time below zero or not a number is kAudio_ParamError, as when an event is added.
-	if (!inIterator || !std::isfinite(inTimeStamp) || inTimeStamp < 0)
+	if (!inIterator)
 		return kAudio_ParamError;
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 	std::vector<MusicEvent>& events = inIterator->track->events;
 
+	// QUIRK: with no current event the call does nothing and returns noErr (the other editing call that
+	// needs an event, SetEventInfo, gives kAudioToolboxErr_EndOfTrack). A time below zero or not a number is
+	// accepted. The iterator keeps its position, which after the move may hold another event. Evidence:
+	// black-box observation on macOS 26.7.3 and 10.14.4, tier 2. Test:
+	// tests/src/audiotoolbox_music_event_types.c, "SetEventTime".
 	if (inIterator->index >= events.size())
-		return kAudioToolboxErr_EndOfTrack;
+		return noErr;
 
-	// The iterator keeps pointing at the same event, which has moved to its new place. GUESS: among
-	// events with the new time it goes last, as a newly added event does.
-	MusicEvent event = std::move(events[inIterator->index]);
-	events.erase(events.begin() + inIterator->index);
-	event.time = inTimeStamp;
-	inIterator->index = musicimpl::insertEvent(inIterator->track, std::move(event));
+	musicimpl::moveEvent(inIterator->track, inIterator->index, inTimeStamp);
 	return noErr;
 }
 
@@ -226,8 +231,10 @@ OSStatus MusicEventIteratorDeleteEvent(MusicEventIterator inIterator)
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 	std::vector<MusicEvent>& events = inIterator->track->events;
 
+	// QUIRK: with no current event the call does nothing and returns noErr (observed on macOS 26.7.3 and
+	// 10.14.4, tier 2; test: tests/src/audiotoolbox_music_event_types.c, "DeleteEvent").
 	if (inIterator->index >= events.size())
-		return kAudioToolboxErr_EndOfTrack;
+		return noErr;
 
 	// The iterator then points at the event that followed, or beyond the last event.
 	events.erase(events.begin() + inIterator->index);

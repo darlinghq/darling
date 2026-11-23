@@ -5,9 +5,9 @@
 // stamp; the variable length ones (MIDIRawData, MIDIMetaEvent, MusicEventUserData and
 // ExtendedNoteOnEvent, whose MusicDeviceNoteParams carry argCount - 2 controls) are stored with
 // their bytes. SetEventInfo changes type and data but not the time; SetEventTime moves the event
-// and the iterator stays on it; DeleteEvent leaves the iterator at the next event, or beyond the
-// last. Checks marked GUESS pin results and sizes that the documentation leaves open; they were
-// not observed on macOS.
+// and the iterator keeps its place; DeleteEvent leaves the iterator at the next event, or beyond the
+// last. Results, sizes and orders that the documentation leaves open are what macOS 26.7.3 and
+// 10.14.4 do, observed with these checks.
 #include <AudioToolbox/AudioToolbox.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -77,8 +77,8 @@ int main(void)
 	CFDictionaryRef dict = CFDictionaryCreate(NULL, (const void**) keys, (const void**) values, 1,
 		&kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 	AUPresetEvent preset = { kAudioUnitScope_Global, 0, dict };
-	// GUESS: the track keeps the property list of an AU preset event alive (it retains it), so the
-	// caller may release its own reference. The documentation does not say.
+	// The track keeps the property list of an AU preset event alive (it retains it), so the caller may release
+	// its own reference (observed on macOS 26.7.3 and 10.14.4).
 	CFIndex retainsBefore = CFGetRetainCount(dict);
 	CHECK(MusicTrackNewAUPresetEvent(track, 7.0, &preset) == noErr);
 	CHECK(CFGetRetainCount(dict) == retainsBefore + 1);
@@ -122,7 +122,9 @@ int main(void)
 	CHECK(MusicEventIteratorNextEvent(it) == noErr);
 	info(it, &t, &type, &data, &size);
 	CHECK(t == 5.0 && type == kMusicEventType_ExtendedNote);
-	CHECK(size == noteSize);
+	// QUIRK test: the stored size of an extended note is 28 bytes and 4 for each argument (argCount is 4 here: 44,
+	// where the structure made above is 40 bytes); observed on macOS 26.7.3 and 10.14.4
+	CHECK(noteSize == 40 && size == 28 + 4 * 4);
 	const ExtendedNoteOnEvent* gotNote = data;
 	CHECK(gotNote->instrumentID == 3 && gotNote->groupID == 2 && gotNote->duration == 1.5f);
 	CHECK(gotNote->extendedParams.argCount == 4 && gotNote->extendedParams.mPitch == 60.5f);
@@ -131,8 +133,9 @@ int main(void)
 	CHECK(MusicEventIteratorNextEvent(it) == noErr);
 	info(it, &t, &type, &data, &size);
 	CHECK(t == 6.0 && type == kMusicEventType_ExtendedNote);
-	// GUESS: the stored structure is never smaller than ExtendedNoteOnEvent.
-	CHECK(size == sizeof(ExtendedNoteOnEvent));
+	// QUIRK test: with only a pitch and a velocity (argCount 2) the stored size is 36, more than
+	// sizeof(ExtendedNoteOnEvent), which is 32
+	CHECK(size == 36 && sizeof(ExtendedNoteOnEvent) == 32);
 	CHECK(((const ExtendedNoteOnEvent*) data)->extendedParams.argCount == 2);
 	CHECK(((const ExtendedNoteOnEvent*) data)->extendedParams.mPitch == 64);
 
@@ -149,13 +152,28 @@ int main(void)
 
 	// Structures that cannot be stored.
 	CHECK(MusicTrackNewMIDIRawDataEvent(track, 8.0, NULL) == kAudio_ParamError);
-	// GUESS: an extended note with fewer than the two arguments of pitch and velocity, and an AU preset
-	// without a property list, are kAudio_ParamError.
-	plain.extendedParams.argCount = 1;
-	CHECK(MusicTrackNewExtendedNoteEvent(track, 8.0, &plain) == kAudio_ParamError);
 	AUPresetEvent noPreset = { kAudioUnitScope_Global, 0, NULL };
 	CHECK(MusicTrackNewAUPresetEvent(track, 8.0, &noPreset) == kAudio_ParamError);
-	CHECK(MusicTrackNewUserEvent(track, -1.0, user) == kAudio_ParamError);
+
+	// What macOS 26.7.3 and 10.14.4 accept: an extended note with fewer than the two arguments of pitch and
+	// velocity (the stored size is 28 + 4 argCount), and a time stamp below zero. A track of its own takes them,
+	// as an event with a time stamp below zero is not kept in the order of the others there.
+	MusicTrack scratch = NULL, below = NULL;
+	CHECK(MusicSequenceNewTrack(seq, &scratch) == noErr && MusicSequenceNewTrack(seq, &below) == noErr);
+	for (UInt32 args = 0; args < 2; args++)
+	{
+		plain.extendedParams.argCount = args;
+		CHECK(MusicTrackNewExtendedNoteEvent(scratch, 8.0 + args, &plain) == noErr);
+	}
+	CHECK(MusicTrackNewUserEvent(below, -1.0, user) == noErr);
+	MusicEventIterator scratchIt = NULL;
+	CHECK(NewMusicEventIterator(scratch, &scratchIt) == noErr);
+	info(scratchIt, NULL, NULL, NULL, &size);
+	CHECK(size == 28);
+	CHECK(MusicEventIteratorNextEvent(scratchIt) == noErr);
+	info(scratchIt, NULL, NULL, NULL, &size);
+	CHECK(size == 32);
+	CHECK(DisposeMusicEventIterator(scratchIt) == noErr);
 
 	// SetEventInfo: the type and the data change, the time and the position stay.
 	CHECK(MusicEventIteratorSeek(it, 1.0) == noErr);
@@ -164,53 +182,75 @@ int main(void)
 	info(it, &t, &type, &data, &size);
 	CHECK(t == 1.0 && type == kMusicEventType_MIDINoteMessage && size == sizeof(MIDINoteMessage));
 	CHECK(((const MIDINoteMessage*) data)->note == 72);
-	// Back to a variable length type, and a tempo.
+	// Back to a variable length type.
 	CHECK(MusicEventIteratorSetEventInfo(it, kMusicEventType_User, user) == noErr);
 	info(it, &t, &type, &data, &size);
 	CHECK(type == kMusicEventType_User && size == offsetof(MusicEventUserData, data) + 2);
-	// A type without an event structure, and bad data, leave the event as it was.
+	// A type without an event structure leaves the event as it was.
 	CHECK(MusicEventIteratorSetEventInfo(it, kMusicEventType_NULL, &newNote) == kAudioToolboxErr_InvalidEventType);
 	CHECK(MusicEventIteratorSetEventInfo(it, 77, &newNote) == kAudioToolboxErr_InvalidEventType);
-	CHECK(MusicEventIteratorSetEventInfo(it, kMusicEventType_User, NULL) == kAudio_ParamError);
 	info(it, &t, &type, NULL, NULL);
 	CHECK(t == 1.0 && type == kMusicEventType_User);
 
-	// SetEventTime: the iterator stays on the event, which moves to its new place.
+	// SetEventTime: the event moves to its new place and the iterator keeps its position, which then holds
+	// another event. Now the events are the user event at 1, the raw data at 2, the meta event at 3, the
+	// channel message at 0, the user event at 4, ...
 	CHECK(MusicEventIteratorSeek(it, 0.0) == noErr);
 	CHECK(MusicEventIteratorSetEventTime(it, 3.5) == noErr);
 	info(it, &t, &type, NULL, NULL);
-	CHECK(t == 3.5 && type == kMusicEventType_MIDIChannelMessage);
-	Boolean b = 0;
-	CHECK(MusicEventIteratorHasPreviousEvent(it, &b) == noErr && b == 1);
-	CHECK(MusicEventIteratorPreviousEvent(it) == noErr);
-	info(it, &t, NULL, NULL, NULL);
-	CHECK(t == 3.0);
-	CHECK(MusicEventIteratorSeek(it, 0.0) == noErr);
+	CHECK(t == 1.0 && type == kMusicEventType_User);
+	Boolean b = 1;
+	CHECK(MusicEventIteratorHasPreviousEvent(it, &b) == noErr && b == 0);
+	CHECK(MusicEventIteratorSeek(it, 3.5) == noErr);
 	info(it, &t, &type, NULL, NULL);
-	CHECK(t == 1.0);
-	CHECK(MusicEventIteratorSetEventTime(it, -0.5) == kAudio_ParamError);
-	// GUESS: moved onto the time of another event, it goes after the events already there.
+	CHECK(t == 3.5 && type == kMusicEventType_MIDIChannelMessage);
+	// QUIRK test: moved to an earlier time that other events have, the event goes after them: the channel message
+	// to 2, where the raw data is; observed on macOS 26.7.3 and 10.14.4
 	CHECK(MusicEventIteratorSetEventTime(it, 2.0) == noErr);
-	CHECK(MusicEventIteratorGetEventInfo(it, &t, &type, NULL, NULL) == noErr);
-	CHECK(t == 2.0 && type == kMusicEventType_User);
+	info(it, &t, &type, NULL, NULL);
+	CHECK(t == 3.0 && type == kMusicEventType_Meta);
 	CHECK(MusicEventIteratorPreviousEvent(it) == noErr);
-	info(it, NULL, &type, NULL, NULL);
-	CHECK(type == kMusicEventType_MIDIRawData);
+	info(it, &t, &type, NULL, NULL);
+	CHECK(t == 2.0 && type == kMusicEventType_MIDIChannelMessage);
+	CHECK(MusicEventIteratorPreviousEvent(it) == noErr);
+	info(it, &t, &type, NULL, NULL);
+	CHECK(t == 2.0 && type == kMusicEventType_MIDIRawData);
+	// QUIRK test: moved to a later time (or the same one) that other events have, it goes before them: the user
+	// event at 1 to 2
+	CHECK(MusicEventIteratorSeek(it, 1.0) == noErr);
+	CHECK(MusicEventIteratorSetEventTime(it, 2.0) == noErr);
+	info(it, &t, &type, NULL, NULL);
+	CHECK(t == 2.0 && type == kMusicEventType_User);
+	CHECK(MusicEventIteratorNextEvent(it) == noErr);
+	info(it, &t, &type, NULL, NULL);
+	CHECK(t == 2.0 && type == kMusicEventType_MIDIRawData);
+	CHECK(MusicEventIteratorNextEvent(it) == noErr);
+	info(it, &t, &type, NULL, NULL);
+	CHECK(t == 2.0 && type == kMusicEventType_MIDIChannelMessage);
+	// A time below zero is accepted (and sorts before the others here)
+	CHECK(MusicEventIteratorSeek(it, 0.0) == noErr);
+	CHECK(MusicEventIteratorSetEventTime(it, -0.5) == noErr);
+	MusicEventIterator front = NULL;
+	CHECK(NewMusicEventIterator(track, &front) == noErr);
+	info(front, &t, &type, NULL, NULL);
+	CHECK(t == -0.5);
+	CHECK(DisposeMusicEventIterator(front) == noErr);
 
 	// DeleteEvent: the iterator then points at the next event.
 	CHECK(MusicEventIteratorSeek(it, 3.0) == noErr);
 	CHECK(MusicEventIteratorDeleteEvent(it) == noErr);
 	info(it, &t, &type, NULL, NULL);
-	CHECK(t == 3.5 && type == kMusicEventType_MIDIChannelMessage);
+	CHECK(t == 4.0 && type == kMusicEventType_User);
 	// Deleting the last event leaves the iterator beyond the track's events.
 	CHECK(MusicEventIteratorSeek(it, 7.0) == noErr);
 	CHECK(MusicEventIteratorDeleteEvent(it) == noErr);
 	CHECK(CFGetRetainCount(dict) == retainsBefore);
 	b = 1;
 	CHECK(MusicEventIteratorHasCurrentEvent(it, &b) == noErr && b == 0);
-	// GUESS: with no current event the editing functions give kAudioToolboxErr_EndOfTrack.
-	CHECK(MusicEventIteratorDeleteEvent(it) == kAudioToolboxErr_EndOfTrack);
-	CHECK(MusicEventIteratorSetEventTime(it, 1.0) == kAudioToolboxErr_EndOfTrack);
+	// QUIRK test: with no current event DeleteEvent and SetEventTime do nothing and return noErr, SetEventInfo
+	// gives kAudioToolboxErr_EndOfTrack (observed on macOS 26.7.3 and 10.14.4)
+	CHECK(MusicEventIteratorDeleteEvent(it) == noErr);
+	CHECK(MusicEventIteratorSetEventTime(it, 1.0) == noErr);
 	CHECK(MusicEventIteratorSetEventInfo(it, kMusicEventType_MIDINoteMessage, &newNote) == kAudioToolboxErr_EndOfTrack);
 	CHECK(MusicEventIteratorDeleteEvent(NULL) == kAudio_ParamError);
 

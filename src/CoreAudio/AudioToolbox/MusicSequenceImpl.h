@@ -95,7 +95,7 @@ private:
 };
 
 // Where a track sends its events: an audio unit node of the graph of the sequence, or a MIDI
-// endpoint. A track has none until one is set.
+// endpoint. A track that has none set reports the node kAUNodeInvalid (-1) as its destination.
 enum class MusicDestination { none, node, endpoint };
 
 struct OpaqueMusicTrack
@@ -103,11 +103,11 @@ struct OpaqueMusicTrack
 	OpaqueMusicSequence* sequence = nullptr;
 
 	MusicDestination destination = MusicDestination::none;
-	AUNode destinationNode = 0;
+	AUNode destinationNode = -1;
 	MIDIEndpointRef destinationEndpoint = 0;
 
 	// The track properties of MusicTrackSetProperty. The length is only used when it was set.
-	MusicTrackLoopInfo loop = { 0, 0 };
+	MusicTrackLoopInfo loop = { 0, 1 };
 	MusicTimeStamp offsetTime = 0;
 	Boolean muted = false;
 	Boolean soloed = false;
@@ -136,12 +136,14 @@ struct OpaqueMusicSequence
 	// The number of players that have the sequence set; it cannot be disposed while there is one.
 	int playerCount = 0;
 
-	// The graph set by the client (not owned), and the callback for user events with its data.
+	// The graph set by the client (not owned), or the default graph made on demand (owned, see
+	// musicimpl::graphOf), and the callback for user events with its data.
 	AUGraph graph = nullptr;
+	bool graphOwned = false;
 	MusicSequenceUserCallback userCallback = nullptr;
 	void* userCallbackData = nullptr;
 
-	// What a beat of the sequence means (MusicSequenceType); beats by default.
+	// The sequence type; beats by default. Any value that was set is kept.
 	MusicSequenceType type = kMusicSequenceType_Beats;
 
 	// The ticks per quarter note of a file made from the sequence: 480 for a sequence made by hand.
@@ -175,9 +177,28 @@ inline std::mutex& lock()
 Float64 secondsForBeats(const OpaqueMusicSequence* sequence, MusicTimeStamp beats);
 MusicTimeStamp beatsForSeconds(const OpaqueMusicSequence* sequence, Float64 seconds);
 
+// The order of the events of a track: by time, with a time that is not a number after all others.
+inline bool timeBefore(MusicTimeStamp a, MusicTimeStamp b)
+{
+	if (b != b)
+		return a == a;
+	return a < b;
+}
+
 // Inserts an event into the track, after the events that have the same time, and returns its
 // position.
 size_t insertEvent(OpaqueMusicTrack* track, MusicEvent&& event);
+
+// Gives the event at index a new time and puts it where that time belongs: when the time is not
+// earlier, before the events that have it, otherwise after them. Returns its new position.
+size_t moveEvent(OpaqueMusicTrack* track, size_t index, MusicTimeStamp time);
+
+// The graph of the sequence: the one set by the client, or else the default graph (a music device,
+// a dynamics processor and the default output, made when first needed and owned by the sequence).
+OSStatus graphOf(OpaqueMusicSequence* sequence, AUGraph* outGraph);
+
+// Whether the node is a member of the graph of the sequence.
+bool nodeInGraph(OpaqueMusicSequence* sequence, AUNode node);
 
 // The length of a track: the end of its last event (a note lasts for its duration), or the length
 // set on the track if that is greater.

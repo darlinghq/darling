@@ -3,8 +3,8 @@
 // MusicSequence and its tracks (MusicPlayer.h). A new sequence has only a tempo track, which the
 // track count and the track accessors leave out. New tracks are appended; an index out of range,
 // or a track that is not part of the sequence, is an error; removing a track renumbers the tracks
-// after it. The result code for a track that is not in the sequence is not documented (a check
-// marked GUESS pins the code Darling chose; it was not observed on macOS).
+// after it. The result codes for an index out of range and for a track that is not in the sequence are
+// what macOS 26.7.3 and 10.14.4 give, observed with these checks.
 #include <AudioToolbox/AudioToolbox.h>
 #include <stdio.h>
 
@@ -26,7 +26,8 @@ int main(void)
 	CHECK(MusicSequenceGetTrackCount(seq, &count) == noErr);
 	CHECK(count == 0);
 	MusicTrack track = NULL;
-	CHECK(MusicSequenceGetIndTrack(seq, 0, &track) == kAudio_ParamError);
+	// An index that is out of range is kAudioToolboxErr_TrackIndexError (observed on macOS 26.7.3 and 10.14.4)
+	CHECK(MusicSequenceGetIndTrack(seq, 0, &track) == kAudioToolboxErr_TrackIndexError);
 
 	MusicTrack tempo = NULL;
 	CHECK(MusicSequenceGetTempoTrack(seq, &tempo) == noErr);
@@ -50,7 +51,7 @@ int main(void)
 	CHECK(MusicSequenceGetIndTrack(seq, 0, &got) == noErr && got == a);
 	CHECK(MusicSequenceGetIndTrack(seq, 1, &got) == noErr && got == b);
 	CHECK(MusicSequenceGetIndTrack(seq, 2, &got) == noErr && got == c);
-	CHECK(MusicSequenceGetIndTrack(seq, 3, &got) == kAudio_ParamError);
+	CHECK(MusicSequenceGetIndTrack(seq, 3, &got) == kAudioToolboxErr_TrackIndexError);
 
 	UInt32 index = 99;
 	CHECK(MusicSequenceGetTrackIndex(seq, a, &index) == noErr && index == 0);
@@ -68,10 +69,10 @@ int main(void)
 	index = 77;
 	CHECK(MusicSequenceGetTrackIndex(seq, foreign, &index) != noErr);
 	CHECK(index == 77);
-	// GUESS: the code is kAudioToolboxErr_TrackNotFound (the documentation says only "an error").
+	// The code is kAudioToolboxErr_TrackNotFound (the documentation says only "an error"; observed on macOS)
 	CHECK(MusicSequenceGetTrackIndex(seq, foreign, &index) == kAudioToolboxErr_TrackNotFound);
 	// The tempo track is not one of the tracks that the index refers to.
-	CHECK(MusicSequenceGetTrackIndex(seq, tempo, &index) != noErr);
+	CHECK(MusicSequenceGetTrackIndex(seq, tempo, &index) == kAudioToolboxErr_TrackNotFound);
 
 	// Removing a track renumbers the ones after it.
 	CHECK(MusicSequenceDisposeTrack(seq, b) == noErr);
@@ -81,8 +82,8 @@ int main(void)
 	CHECK(MusicSequenceGetTrackIndex(seq, c, &index) == noErr && index == 1);
 
 	// A track cannot be removed from a sequence it is not in, and the tempo track cannot be removed.
-	CHECK(MusicSequenceDisposeTrack(seq, foreign) != noErr);
-	CHECK(MusicSequenceDisposeTrack(seq, tempo) != noErr);
+	CHECK(MusicSequenceDisposeTrack(seq, foreign) == kAudio_ParamError);
+	CHECK(MusicSequenceDisposeTrack(seq, tempo) == kAudio_ParamError);
 	CHECK(MusicSequenceGetTrackCount(seq, &count) == noErr && count == 2);
 	CHECK(MusicSequenceGetTrackCount(other, &count) == noErr && count == 1);
 

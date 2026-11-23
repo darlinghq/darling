@@ -65,11 +65,14 @@ OSStatus DisposeMusicSequence(MusicSequence inSequence)
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 
-	// A sequence cannot be disposed while a player has it. GUESS: the code is
-	// kAudioToolboxErr_InvalidPlayerState; the documentation says only that it cannot be done.
+	// A sequence cannot be disposed while a player has it: kAudioToolboxErr_CannotDoInCurrentContext
+	// (observed on macOS 26.7.3, tests/src/audiotoolbox_music_player.c).
 	if (inSequence->playerCount > 0)
-		return kAudioToolboxErr_InvalidPlayerState;
+		return kAudioToolboxErr_CannotDoInCurrentContext;
 
+	// The default graph belongs to the sequence; a graph the client set does not.
+	if (inSequence->graph && inSequence->graphOwned)
+		DisposeAUGraph(inSequence->graph);
 	delete inSequence;
 	return noErr;
 }
@@ -100,13 +103,10 @@ OSStatus MusicSequenceDisposeTrack(MusicSequence inSequence, MusicTrack inTrack)
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 
 	auto it = findTrack(inSequence, inTrack);
+	// A track that is not in the sequence, or the tempo track, which cannot be removed: kAudio_ParamError
+	// (observed on macOS 26.7.3 and 10.14.4, tests/src/audiotoolbox_music_sequence_tracks.c).
 	if (it == inSequence->tracks.end())
-	{
-		// GUESS: the documentation names no result for a track that is not in the sequence, or for the
-		// tempo track, which cannot be removed. kAudioToolboxErr_TrackNotFound is the code the
-		// header names for a missing track. The alternative was kAudio_ParamError.
-		return kAudioToolboxErr_TrackNotFound;
-	}
+		return kAudio_ParamError;
 
 	inSequence->tracks.erase(it);
 	return noErr;
@@ -129,9 +129,10 @@ OSStatus MusicSequenceGetIndTrack(MusicSequence inSequence, UInt32 inTrackIndex,
 
 	std::lock_guard<std::mutex> guard(musicimpl::lock());
 
-	// An index outside 0 .. track count - 1 is kAudio_ParamError, as the header documents.
+	// An index outside 0 .. track count - 1 is kAudioToolboxErr_TrackIndexError (observed on macOS 26.7.3
+	// and 10.14.4, tests/src/audiotoolbox_music_sequence_tracks.c).
 	if (inTrackIndex >= inSequence->tracks.size())
-		return kAudio_ParamError;
+		return kAudioToolboxErr_TrackIndexError;
 
 	*outTrack = inSequence->tracks[inTrackIndex].get();
 	return noErr;
@@ -147,7 +148,8 @@ OSStatus MusicSequenceGetTrackIndex(MusicSequence inSequence, MusicTrack inTrack
 	auto it = findTrack(inSequence, inTrack);
 	if (it == inSequence->tracks.end())
 	{
-		// GUESS: "an error" is all the documentation says; see MusicSequenceDisposeTrack.
+		// A track that is not one of the tracks (the tempo track is not) is kAudioToolboxErr_TrackNotFound,
+		// observed on macOS 26.7.3 and 10.14.4.
 		return kAudioToolboxErr_TrackNotFound;
 	}
 
