@@ -108,6 +108,8 @@ void vDSP_measqv(const float* __A, vDSP_Stride __IA, float* __C, vDSP_Length __N
 void vDSP_measqvD(const double* __A, vDSP_Stride __IA, double* __C, vDSP_Length __N);
 void vDSP_rmsqv(const float* __A, vDSP_Stride __IA, float* __C, vDSP_Length __N);
 void vDSP_rmsqvD(const double* __A, vDSP_Stride __IA, double* __C, vDSP_Length __N);
+void vDSP_mvessq(const float* __A, vDSP_Stride __IA, float* __C, vDSP_Length __N);
+void vDSP_mvessqD(const double* __A, vDSP_Stride __IA, double* __C, vDSP_Length __N);
 void vDSP_dotpr(const float* __A, vDSP_Stride __IA, const float* __B, vDSP_Stride __IB, float* __C, vDSP_Length __N);
 void vDSP_dotprD(const double* __A, vDSP_Stride __IA, const double* __B, vDSP_Stride __IB, double* __C, vDSP_Length __N);
 void vDSP_ctoz(const DSPComplex* __C, vDSP_Stride __IC, const DSPSplitComplex* __Z, vDSP_Stride __IZ, vDSP_Length __N);
@@ -250,8 +252,6 @@ void* vDSP_mmul(void);
 void* vDSP_mmulD(void);
 void* vDSP_mtrans(void);
 void* vDSP_mtransD(void);
-void* vDSP_mvessq(void);
-void* vDSP_mvessqD(void);
 void* vDSP_normalize(void);
 void* vDSP_normalizeD(void);
 void* vDSP_nzcros(void);
