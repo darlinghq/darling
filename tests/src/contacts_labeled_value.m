@@ -136,7 +136,8 @@ static void testSecureCoding(void)
 	// The keys of the archive are those macOS writes (observed on 26.7.3 and 10.14.4).
 	CNLabeledValue<NSString *> *coded = [CNLabeledValue labeledValueWithLabel:@"work" value:@"a@example.com"];
 	NSData *codedData = [NSKeyedArchiver archivedDataWithRootObject:coded requiringSecureCoding:YES error:NULL];
-	NSDictionary *plist = [NSPropertyListSerialization propertyListWithData:codedData options:0 format:NULL error:NULL];
+	Class plistClass = NSClassFromString(@"NSPropertyListSerialization");
+	NSDictionary *plist = [plistClass propertyListWithData:codedData options:0 format:NULL error:NULL];
 	NSDictionary *top = plist[@"$objects"][[plist[@"$top"][@"root"] intValue]];
 	CHECK(top[@"_identifier"] != nil && top[@"_label"] != nil && top[@"_value"] != nil);
 
