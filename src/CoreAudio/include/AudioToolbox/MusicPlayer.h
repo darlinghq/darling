@@ -221,6 +221,12 @@ MusicSequenceGetTempoTrack(MusicSequence inSequence, MusicTrack *outTrack);
 extern OSStatus
 MusicTrackGetSequence(MusicTrack inTrack, MusicSequence *outSequence);
 
+extern OSStatus
+MusicTrackNewMIDINoteEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, const MIDINoteMessage *inMessage);
+
+extern OSStatus
+MusicTrackNewExtendedTempoEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, Float64 inBPM);
+
 #ifdef __cplusplus
 }
 #endif

@@ -21,8 +21,10 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define MUSICSEQUENCEIMPL_H
 
 #include <AudioToolbox/MusicPlayer.h>
+#include <cstring>
 #include <memory>
 #include <mutex>
+#include <utility>
 #include <vector>
 
 // The data model behind MusicSequence, MusicTrack, MusicEventIterator and MusicPlayer. A
@@ -31,9 +33,75 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 struct OpaqueMusicSequence;
 
+// One event of a track. The data is the event structure in the form MusicEventIteratorGetEventInfo
+// hands out (for example a MIDINoteMessage, or a MIDIRawData followed by its bytes). The property
+// list of an AUPreset event is retained for as long as the event lives.
+class MusicEvent
+{
+public:
+	MusicEvent(MusicTimeStamp time, MusicEventType type, const void* data, size_t size)
+		: time(time), type(type), data(static_cast<const UInt8*>(data), static_cast<const UInt8*>(data) + size)
+	{
+		retainPreset();
+	}
+
+	MusicEvent(const MusicEvent& other) : time(other.time), type(other.type), data(other.data)
+	{
+		retainPreset();
+	}
+
+	MusicEvent(MusicEvent&& other) noexcept : time(other.time), type(other.type), data(std::move(other.data))
+	{
+		other.type = kMusicEventType_NULL;
+	}
+
+	MusicEvent& operator=(MusicEvent other) noexcept
+	{
+		std::swap(time, other.time);
+		std::swap(type, other.type);
+		data.swap(other.data);
+		return *this;
+	}
+
+	~MusicEvent()
+	{
+		if (type == kMusicEventType_AUPreset && preset())
+			CFRelease(preset());
+	}
+
+	MusicTimeStamp time;
+	MusicEventType type;
+	std::vector<UInt8> data;
+
+private:
+	CFPropertyListRef preset() const
+	{
+		AUPresetEvent event;
+		std::memcpy(&event, data.data(), sizeof(event));
+		return event.preset;
+	}
+
+	void retainPreset() const
+	{
+		if (type == kMusicEventType_AUPreset && preset())
+			CFRetain(preset());
+	}
+};
+
 struct OpaqueMusicTrack
 {
 	OpaqueMusicSequence* sequence = nullptr;
+
+	// In time order; events with the same time are in the order they were added.
+	std::vector<MusicEvent> events;
+};
+
+// A position among the events of one track: index is the position of the current event, and the
+// number of events when the iterator is beyond the last one.
+struct OpaqueMusicEventIterator
+{
+	OpaqueMusicTrack* track = nullptr;
+	size_t index = 0;
 };
 
 struct OpaqueMusicSequence
@@ -52,6 +120,9 @@ inline std::mutex& lock()
 	static std::mutex m;
 	return m;
 }
+
+// Inserts an event into the track, after the events that have the same time.
+void insertEvent(OpaqueMusicTrack* track, MusicEvent&& event);
 
 }
 

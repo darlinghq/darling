@@ -30,6 +30,7 @@ set(audiotoolbox_sources
 	AudioFormat.cpp
 	MusicDevice.cpp
 	MusicSequence.cpp
+	MusicTrack.cpp
 	AudioToolbox.cpp
 	AudioHardwareService.cpp
 	AUParameters.m
