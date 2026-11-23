@@ -642,6 +642,8 @@ endif()
 # it has its own component checks to determine which libraries to generate wrappers for.
 # the shared loader of the dbus wrapper (see native); static, so it has no components
 add_subdirectory(libdarlingdbus)
+# the texture decoder of ImageIO; static, so it has no components
+add_subdirectory(libtexturecodec)
 add_subdirectory(native)
 
 # has its own component checks
