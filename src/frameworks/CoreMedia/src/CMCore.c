@@ -23,27 +23,13 @@
 
 #include <CoreMedia/CoreMedia.h>
 #include "CMAttachmentStore.h"
+#include "CMClass.h"
 #include <CoreFoundation/CFRuntime.h>
 #include <CoreVideo/CoreVideo.h>
 #include <dispatch/dispatch.h>
 #include <mach/mach_time.h>
 #include <string.h>
 #include <stdlib.h>
-
-#pragma mark - CF classes
-
-#define CM_CLASS(name, cname, ...) \
-	static CFTypeID name##TypeID = _kCFRuntimeNotATypeID; \
-	static const CFRuntimeClass name##Class = { .version = 0, .className = cname, __VA_ARGS__ }; \
-	static CFTypeID name##GetTypeID(void) \
-	{ \
-		static dispatch_once_t once; \
-		dispatch_once(&once, ^{ name##TypeID = _CFRuntimeRegisterClass(&name##Class); }); \
-		return name##TypeID; \
-	}
-
-#define CM_NEW(type, name, allocator) \
-	((type)_CFRuntimeCreateInstance(allocator, name##GetTypeID(), sizeof(*(type)NULL) - sizeof(CFRuntimeBase), NULL))
 
 #pragma mark - Format descriptions
 
@@ -807,6 +793,47 @@ CMTime CMClockGetTime(CMClockRef clock)
 	if (clock == NULL || CFGetTypeID(clock) != CMClock_GetTypeID())
 		return kCMTimeInvalid;
 	return CMClockMakeHostTimeFromSystemUnits(mach_absolute_time());
+}
+
+OSStatus CMClockGetAnchorTime(CMClockRef clock, CMTime *clockTimeOut, CMTime *referenceClockTimeOut)
+{
+	/* The clock must be given, and be a clock; both outputs are optional. Observed on macOS 26.7.3 and 10.14.4
+	   (tests/src/coremedia_clock_invalidate.c): NULL is MissingRequiredParameter, a non-clock InvalidParameter,
+	   and a NULL output is simply not written. */
+	if (clock == NULL)
+		return kCMClockError_MissingRequiredParameter;
+	if (CFGetTypeID(clock) != CMClock_GetTypeID())
+		return kCMClockError_InvalidParameter;
+	CMTime now = CMClockMakeHostTimeFromSystemUnits(mach_absolute_time());
+	if (!CMTIME_IS_VALID(now))
+		return kCMClockError_UnsupportedOperation;
+	/* The host time clock is its own reference clock: both outputs are the same reading (observed on macOS
+	   26.7.3 and 10.14.4, tests/src/coremedia_clock_invalidate.c). */
+	if (clockTimeOut != NULL)
+		*clockTimeOut = now;
+	if (referenceClockTimeOut != NULL)
+		*referenceClockTimeOut = now;
+	return noErr;
+}
+
+Boolean CMClockMightDrift(CMClockRef clock, CMClockRef otherClock)
+{
+	/* QUIRK: true whenever the two arguments are not the same object, whatever they are (a CFString passed
+	   as the second clock gives true), false for the same object. The host time clock is the only clock, so
+	   it never drifts against itself. Evidence: black-box observation on macOS 26.7.3 and 10.14.4, tier 2
+	   (a clock against itself 0, against another object 1, NULL against NULL 0; NULL against a clock crashes
+	   there and is true here). Test: tests/src/coremedia_clock_invalidate.c, clock_might_drift_other_object. */
+	return clock != otherClock;
+}
+
+void CMClockInvalidate(CMClockRef clock)
+{
+	/* The documentation says that invalidating makes a clock fail from then on, and that only the owner of a
+	   clock should do it. The host time clock is a singleton with no client owner, and macOS crashes when it
+	   is invalidated (observed on 26.7.3 and 10.14.4), so there is no behaviour to follow; the call is ignored
+	   here, because every timebase in the process depends on that clock. NULL and other objects are ignored on
+	   macOS too. */
+	(void)clock;
 }
 
 #pragma mark - Attachment bearers
