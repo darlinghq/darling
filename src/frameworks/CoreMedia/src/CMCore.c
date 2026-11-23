@@ -23,27 +23,13 @@
 
 #include <CoreMedia/CoreMedia.h>
 #include "CMAttachmentStore.h"
+#include "CMClass.h"
 #include <CoreFoundation/CFRuntime.h>
 #include <CoreVideo/CoreVideo.h>
 #include <dispatch/dispatch.h>
 #include <mach/mach_time.h>
 #include <string.h>
 #include <stdlib.h>
-
-#pragma mark - CF classes
-
-#define CM_CLASS(name, cname, ...) \
-	static CFTypeID name##TypeID = _kCFRuntimeNotATypeID; \
-	static const CFRuntimeClass name##Class = { .version = 0, .className = cname, __VA_ARGS__ }; \
-	static CFTypeID name##GetTypeID(void) \
-	{ \
-		static dispatch_once_t once; \
-		dispatch_once(&once, ^{ name##TypeID = _CFRuntimeRegisterClass(&name##Class); }); \
-		return name##TypeID; \
-	}
-
-#define CM_NEW(type, name, allocator) \
-	((type)_CFRuntimeCreateInstance(allocator, name##GetTypeID(), sizeof(*(type)NULL) - sizeof(CFRuntimeBase), NULL))
 
 #pragma mark - Format descriptions
 
