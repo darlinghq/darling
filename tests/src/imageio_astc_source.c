@@ -8,11 +8,12 @@
 // them, so what is pinned here is the contract of src/frameworks/ImageIO/src/ImageIOASTC.m, which
 // follows the Khronos Data Format Specification 1.4.0 (section 23) and the container description
 // of ARM's astc-encoder (Docs/FileFormat.md); none of it is observed on macOS (GUESS items I1 to
-// I6 in src/libtexturecodec/GUESS.tsv):
+// I7 in src/libtexturecodec/GUESS.tsv):
 //  - the image is RGBA8, sRGB colour space, straight alpha, as the decoder returns it;
 //  - the source has no type identifier and CGImageSourceCopyTypeIdentifiers does not list one;
-//  - truncated data, data over the size limits, an illegal block, a 3D file and a bad magic number
-//    give no image (or no source, when the header is not an .astc header).
+//  - truncated data, data over the size limits, an illegal block, a 3D file and a bad footprint give
+//    a source with no image (count 0, status invalid data); data without the magic number gives no
+//    source (it goes on to the Onyx2D decoders).
 // Expected pixels: the committed vectors in src/libtexturecodec/tests/vectors (each a .astc file
 // and the .rgba decoded from it by astcenc 5.7.1, see the NOTICE there), and one block built from
 // the specification's void-extent layout (section 23.22), whose colour is its own expectation.
@@ -195,7 +196,8 @@ static void checkVoidBlock(void) {
     CFRelease(data);
 }
 
-// Each case is bytes, whether a source exists for them and whether it makes an image.
+// Each case is bytes, whether a source exists for them and whether it makes an image. A source
+// without an image has count 0 and reports invalid data; one with an image has count 1 and is complete.
 static void checkCase(const char *what, const uint8_t *bytes, size_t length, bool sourceExists, bool imageExists) {
     CFDataRef data = CFDataCreate(NULL, bytes, length);
     CGImageSourceRef source = CGImageSourceCreateWithData(data, NULL);
@@ -204,6 +206,14 @@ static void checkCase(const char *what, const uint8_t *bytes, size_t length, boo
         failures++;
     }
     if (source != NULL) {
+        if (CGImageSourceGetCount(source) != (imageExists ? 1 : 0)) {
+            printf("FAIL: %s: count is %zu\n", what, CGImageSourceGetCount(source));
+            failures++;
+        }
+        if (CGImageSourceGetStatus(source) != (imageExists ? kCGImageStatusComplete : kCGImageStatusInvalidData)) {
+            printf("FAIL: %s: status is %d\n", what, (int)CGImageSourceGetStatus(source));
+            failures++;
+        }
         CGImageRef image = CGImageSourceCreateImageAtIndex(source, 0, NULL);
         if ((image != NULL) != imageExists) {
             printf("FAIL: %s: image %s\n", what, image != NULL ? "was made" : "is NULL");
@@ -259,18 +269,23 @@ static void checkCases(void) {
     // and at the limits (16384 wide: 4096 blocks): an image
     checkFile("at the width limit (control)", 4, 4, 16384, 4, true, true);
 
-    // not an .astc header at all: no source
+    // the magic number with a header that is not a 2D one with a legal footprint: a source with no
+    // image (count 0, invalid data), as for the other refusals
+    putHeader(file, 4, 4, 1, 4, 4, 1);
+    checkCase("magic number only", file, 4, true, false);
+    checkCase("shorter than a header", file, 15, true, false);
+    putHeader(file, 7, 7, 1, 4, 4, 1);
+    checkCase("footprint not in the specification", file, 32, true, false);
+    putHeader(file, 4, 4, 1, 0, 4, 1);
+    checkCase("zero width", file, 32, true, false);
+    putHeader(file, 4, 4, 4, 4, 4, 4);
+    checkCase("3D image", file, 32, true, false);
+
+    // not an .astc file at all (no magic number): no source, the Onyx2D decoders do not know it either
     putHeader(file, 4, 4, 1, 4, 4, 1);
     file[0] ^= 1;
     checkCase("bad magic", file, 32, false, false);
-    putHeader(file, 4, 4, 1, 4, 4, 1);
-    checkCase("shorter than a header", file, 15, false, false);
-    putHeader(file, 7, 7, 1, 4, 4, 1);
-    checkCase("footprint not in the specification", file, 32, false, false);
-    putHeader(file, 4, 4, 1, 0, 4, 1);
-    checkCase("zero width", file, 32, false, false);
-    putHeader(file, 4, 4, 4, 4, 4, 4);
-    checkCase("3D image", file, 32, false, false);
+    checkCase("three bytes", file, 3, false, false);
 }
 
 int main(int argc, char **argv) {

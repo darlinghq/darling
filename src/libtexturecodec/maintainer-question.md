@@ -76,12 +76,12 @@ here blocks the decoder; each default is easy to change.
 
 The hook decodes a `.astc` file to an RGBA8 CGImage with `dtc_astc_decode_ex`. The choices
 below were made because neither the decoder nor the public ImageIO documentation settles
-them; each is a GUESS item (I1 to I6 in `GUESS.tsv`) and is one small edit to change.
+them; each is a GUESS item (I1 to I7 in `GUESS.tsv`) and is one small edit to change.
 
 1. Type identifier [I3, design Q3]. No public source names a uniform type identifier for
    ASTC, so none is used: `CGImageSourceGetType` returns NULL and the type is not in
    `CGImageSourceCopyTypeIdentifiers`. A human with a Mac can print the real value through
-   public calls; until then data is recognised by magic number and header only. Does the
+   public calls; until then data is recognised by its magic number only. Does the
    NULL type cause trouble for callers that expect a string?
 2. Error blocks [I4, decoder item 9]. An image with any error block yields NULL, never a
    partly magenta image. Is "fail the whole image" right, or should a threshold or the
@@ -101,3 +101,7 @@ them; each is a GUESS item (I1 to I6 in `GUESS.tsv`) and is one small edit to ch
    the expected shape for an internal library, or should the build also check the export list?
 7. Licence identifier [G19]. The decoder files say `GPL-3.0-only`, the new Darling-side files
    `GPL-3.0-or-later` (the repository's usual choice). One of the two should win.
+8. Status of an undecodable file [I7]. A file with the magic number that does not decode is a
+   source with count 0, and `CGImageSourceGetStatus` now reports invalid data for every source
+   whose count is 0 (it said complete for any existing source). That also applies to the other
+   formats. Is a status derived from the count right, or should only the ASTC source differ?

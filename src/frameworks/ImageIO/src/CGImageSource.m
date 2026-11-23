@@ -227,7 +227,9 @@ CFArrayRef CGImageSourceCopyTypeIdentifiers(void)
 // There are no incremental sources here, so a source that exists was created
 // from complete data of a recognised type. macOS reports complete (0) for a PNG
 // source and kCGImageStatusInvalidData (-4) for NULL (observed on macOS 26.7.3).
+// A source that holds no image (its data did not decode, so its count is 0) is
+// reported as invalid data too; that part is not observed (GUESS I7).
 CGImageSourceStatus CGImageSourceGetStatus(CGImageSourceRef isrc)
 {
-    return isrc != NULL ? kCGImageStatusComplete : kCGImageStatusInvalidData;
+    return isrc != NULL && [(O2ImageSource *)isrc count] > 0 ? kCGImageStatusComplete : kCGImageStatusInvalidData;
 }

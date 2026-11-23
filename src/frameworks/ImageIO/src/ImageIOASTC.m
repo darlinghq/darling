@@ -5,17 +5,21 @@
 // to an RGBA8 image, on top of libtexturecodec. Only 2D images in the LDR profile are decoded.
 //
 // What the public ImageIO documentation does not settle is decided here, conservatively, and listed
-// in src/libtexturecodec/GUESS.tsv (ids I1 to I6) and maintainer-question.md:
+// in src/libtexturecodec/GUESS.tsv (ids I1 to I7) and maintainer-question.md:
 //  - the container carries no transfer function, so the stored RGB values are taken as sRGB-encoded
 //    and the image has the sRGB colour space; alpha is stored straight (not premultiplied);
 //  - no uniform type identifier for the format is documented, so the source reports none (NULL from
 //    CGImageSourceGetType) and the type is not in CGImageSourceCopyTypeIdentifiers; the data is
-//    recognised by its magic number and header;
+//    recognised by its magic number alone, so that other data goes on to the Onyx2D decoders;
 //  - a texture that decoded with any illegal block (the specification's error colour, which an
 //    encoder never writes, and which an HDR image decoded as LDR produces) yields no image;
 //  - an image above kMaxDimension on a side or kMaxPixels in total yields no image;
 //  - truncated data (fewer blocks than the header needs) yields no image, checked before anything is
-//    allocated, so a header cannot make this allocate more than the data it comes with justifies.
+//    allocated, so a header cannot make this allocate more than the data it comes with justifies;
+//  - data that has the magic number but is refused for any of these reasons (or has a header that
+//    is not a 2D one with a legal footprint) is a source with no image: its count is 0, as for the
+//    PSD source, so CGImageSourceGetStatus reports invalid data for it. Data without the magic
+//    number is not an ASTC source at all and goes on to the Onyx2D decoders.
 // Test: tests/src/imageio_astc_source.c
 
 #import "ImageIOASTC.h"
@@ -25,6 +29,7 @@
 #import <Onyx2D/O2Image.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <texturecodec/texturecodec.h>
 
 enum {
@@ -42,13 +47,14 @@ enum {
 
 @implementation _ImageIOASTCSource
 
-+ (BOOL) isPresentInDataProvider: (O2DataProvider *) provider {
-    uint8_t head[DTC_ASTC_FILE_HEADER_SIZE];
-    NSInteger size = [provider getBytes: head range: NSMakeRange(0, sizeof head)];
-    dtc_astc_header header;
+// The magic number of the .astc container, bytes 0 to 3 of its header.
+static const uint8_t kMagic[4] = { 0x13, 0xAB, 0xA1, 0x5C };
 
-    return size == (NSInteger) sizeof head &&
-           dtc_astc_file_parse_2d(head, sizeof head, &header) == DTC_OK;
++ (BOOL) isPresentInDataProvider: (O2DataProvider *) provider {
+    uint8_t head[sizeof kMagic];
+    NSInteger size = [provider getBytes: head range: NSMakeRange(0, sizeof head)];
+
+    return size == (NSInteger) sizeof head && memcmp(head, kMagic, sizeof head) == 0;
 }
 
 - (id) initWithDataProvider: (O2DataProvider *) provider
@@ -100,7 +106,8 @@ enum {
                                                   length: width * height * 4
                                             freeWhenDone: YES];
     O2DataProviderRef provider = O2DataProviderCreateWithCFData((CFDataRef) bitmap);
-    // The O2 and CG colour space names are the same strings.
+    // The O2 and CG colour space names are the same strings. kO2ColorSpaceSRGB is not declared
+    // in an Onyx2D header, so the name is spelled out.
     O2ColorSpaceRef colorSpace = O2ColorSpaceCreateWithName(CFSTR("kCGColorSpaceSRGB"));
     O2Image *result = [[O2Image alloc] initWithWidth: width
                                               height: height
@@ -127,31 +134,35 @@ enum {
     return NULL;
 }
 
+- (void) parseIfNeeded {
+    if (!_decoded) {
+        _decoded = YES;
+        _image = [self newImage];
+    }
+}
+
 - (NSUInteger) count {
-    return 1;
+    [self parseIfNeeded];
+    return _image != nil ? 1 : 0;
 }
 
 - (CFDictionaryRef) copyPropertiesAtIndex: (NSUInteger) index
                                   options: (CFDictionaryRef) options
 {
-    dtc_astc_header header;
-
-    if (index != 0 || dtc_astc_file_parse_2d([_data bytes], [_data length], &header) != DTC_OK)
+    [self parseIfNeeded];
+    if (index != 0 || _image == nil)
         return NULL;
     return (CFDictionaryRef) [[NSDictionary alloc] initWithObjectsAndKeys:
-        [NSNumber numberWithUnsignedInt: header.width], kO2ImagePropertyPixelWidth,
-        [NSNumber numberWithUnsignedInt: header.height], kO2ImagePropertyPixelHeight, nil];
+        [NSNumber numberWithUnsignedLong: O2ImageGetWidth(_image)], kO2ImagePropertyPixelWidth,
+        [NSNumber numberWithUnsignedLong: O2ImageGetHeight(_image)], kO2ImagePropertyPixelHeight, nil];
 }
 
 - (O2Image *) createImageAtIndex: (NSUInteger) index
                          options: (CFDictionaryRef) options
 {
+    [self parseIfNeeded];
     if (index != 0)
         return nil;
-    if (!_decoded) {
-        _decoded = YES;
-        _image = [self newImage];
-    }
     return [_image retain];
 }
 
