@@ -18,9 +18,14 @@
 */
 
 #import <CoreImage/CIFilter.h>
+#import <CoreImage/CIColor.h>
 #import <CoreImage/CIImage.h>
+#import <CoreImage/CIVector.h>
 
 #import <Foundation/NSString.h>
+#import <objc/runtime.h>
+#include <stdlib.h>
+#include <string.h>
 #import <darling-stub-forwarding.h>
 
 NSString * const kCIInputAngleKey = @"inputAngle";
@@ -75,7 +80,90 @@ NSString * const kCICategoryGradient = @"CICategoryGradient";
 NSString * const kCICategoryReduction = @"CICategoryReduction";
 NSString * const kCICategoryTransition = @"CICategoryTransition";
 
+// An input parameter of a filter is an object instance variable whose name starts with "input", the
+// convention the documentation gives for CIFilter subclasses.
+static BOOL isInputParameter(Ivar ivar)
+{
+    const char *name = ivar_getName(ivar);
+    const char *type = ivar_getTypeEncoding(ivar);
+    return name != NULL && strncmp(name, "input", 5) == 0 && type != NULL && type[0] == '@' && type[1] != '?';
+}
+
 @implementation CIFilter
+
+// Source: https://developer.apple.com/documentation/coreimage/cifilter-swift.class (the class conforms
+// to NSSecureCoding and "automatically manages input parameters when archiving, copying, and
+// deallocating filters"; subclasses keep them in instance variables prefixed with "input").
++ (BOOL) supportsSecureCoding {
+    return YES;
+}
+
+- (NSArray<NSString *> *) inputKeys {
+    NSMutableArray<Class> *chain = [NSMutableArray array];
+    for (Class cls = [self class]; cls != Nil && cls != [CIFilter class]; cls = class_getSuperclass(cls)) {
+        [chain insertObject: cls atIndex: 0];
+    }
+    NSMutableArray<NSString *> *keys = [NSMutableArray array];
+    for (Class cls in chain) {
+        unsigned int count = 0;
+        Ivar *ivars = class_copyIvarList(cls, &count);
+        for (unsigned int i = 0; i < count; i++) {
+            if (isInputParameter(ivars[i])) {
+                [keys addObject: [NSString stringWithUTF8String: ivar_getName(ivars[i])]];
+            }
+        }
+        free(ivars);
+    }
+    return keys;
+}
+
+// GUESS: the documentation does not describe the archive layout. Each parameter that has a value is
+// stored under its own key; a parameter without a value is not stored.
+- (void) encodeWithCoder: (NSCoder *) coder {
+    for (NSString *key in [self inputKeys]) {
+        id value = [self valueForKey: key];
+        if (value != nil) {
+            [coder encodeObject: value forKey: key];
+        }
+    }
+}
+
+// KNOWN LIMITATION: the layout of an archive written by macOS was NOT observed, so it is a GUESS
+// (see -encodeWithCoder:). Values stored under different keys are dropped: the filter decodes with its
+// parameters unset. The NSLog below reports it only when none of the keys are present; a partial
+// mismatch is not reported. Decoding applies no defaults, because the
+// documentation says a new filter's parameters are undefined on macOS until -setDefaults.
+// The value classes are the ones the filter reference lists for parameters
+// (https://developer.apple.com/library/archive/documentation/GraphicsImaging/Reference/CoreImageFilterReference/index.html);
+// only a secure coder enforces them. A coder that is not keyed raises, as NSCoder does.
+- (instancetype) initWithCoder: (NSCoder *) coder {
+    if ((self = [super init])) {
+        NSSet *valueClasses = [NSSet setWithObjects: [NSNumber class], [NSString class], [NSData class],
+            [NSValue class], [NSAffineTransform class], [CIImage class], [CIVector class], [CIColor class], nil];
+        NSArray<NSString *> *keys = [self inputKeys];
+        BOOL anyKeyStored = NO;
+        for (NSString *key in keys) {
+            anyKeyStored = anyKeyStored || [coder containsValueForKey: key];
+            id value = [coder decodeObjectOfClasses: valueClasses forKey: key];
+            if (value != nil) {
+                [self setValue: value forKey: key];
+            }
+        }
+        if ([keys count] > 0 && !anyKeyStored) {
+            NSLog(@"CIFilter initWithCoder: %@: archive holds none of the expected input keys, parameters left unset", [self class]);
+        }
+    }
+    return self;
+}
+
+// Documented: the CIFilter implementation clears the input parameters, so subclasses must not release
+// their input instance variables.
+- (void) dealloc {
+    for (NSString *key in [self inputKeys]) {
+        [self setValue: nil forKey: key];
+    }
+    [super dealloc];
+}
 
 /* No attributes and no input parameters, so there are no defaults to restore. Apple
    documents this as setting the default value of every input parameter, which with no
