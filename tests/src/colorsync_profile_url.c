@@ -7,11 +7,11 @@
 // on failure, and the error is optional.
 // The profile is hand-built from the layout in ICC.1:2022, 7.2 and 7.3 (128-byte header with the 'acsp'
 // signature, a tag count and 12-byte tag table entries), so it holds no vendor data.
-// Cases marked GUESS pin choices the pages leave open (see ColorSyncProfile.c): only file URLs are read,
-// a profile made from data has no URL, and the errors have the domains and codes the test checks.
+// The checks pin observations of macOS 26.7.3 and 10.14.4 (identical on both) that the pages leave open: a
+// failure of any kind returns NULL and leaves the error NULL, only file URLs are read, the URL is kept as given,
+// and a profile made from data has no URL.
 #include <ColorSync/ColorSync.h>
 #include <CoreFoundation/CoreFoundation.h>
-#include <errno.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -54,13 +54,6 @@ static size_t buildProfile(uint8_t* out, const char* signature)
 	return tableEnd + 4;
 }
 
-// True if the error has the domain and code. The pages do not describe the errors; see the GUESS items in
-// ColorSyncProfile.c.
-static int errorIs(CFErrorRef error, CFStringRef domain, CFIndex code)
-{
-	return error && CFEqual(CFErrorGetDomain(error), domain) && CFErrorGetCode(error) == code;
-}
-
 static CFURLRef writeFile(const char* path, const uint8_t* bytes, size_t length)
 {
 	FILE* f = fopen(path, "wb");
@@ -79,10 +72,12 @@ int main(void)
 
 	char dir[] = "/tmp/colorsync-url-XXXXXX";
 	CHECK(mkdtemp(dir) != NULL);
-	char good[256], bad[256], missing[256];
+	char good[256], bad[256], missing[256], shortPath[256], emptyPath[256];
 	snprintf(good, sizeof good, "%s/good.icc", dir);
 	snprintf(bad, sizeof bad, "%s/bad.icc", dir);
 	snprintf(missing, sizeof missing, "%s/missing.icc", dir);
+	snprintf(shortPath, sizeof shortPath, "%s/short.icc", dir);
+	snprintf(emptyPath, sizeof emptyPath, "%s/empty.icc", dir);
 
 	uint8_t bytes[256], notProfile[256];
 	const size_t length = buildProfile(bytes, "acsp");
@@ -118,59 +113,58 @@ int main(void)
 		CFRelease(profile);
 	}
 
-	// A file that is not a profile, and a file that does not exist, give NULL and an error.
-	// GUESS: the first is the invalid-data error (OSStatus -50), the second a POSIX error with errno ENOENT.
-	error = NULL;
-	CHECK(ColorSyncProfileCreateWithURL(badURL, &error) == NULL);
-	CHECK(errorIs(error, kCFErrorDomainOSStatus, -50));
-	if (error)
-		CFRelease(error);
-	error = NULL;
-	CHECK(ColorSyncProfileCreateWithURL(missingURL, &error) == NULL);
-	CHECK(errorIs(error, kCFErrorDomainPOSIX, ENOENT));
-	if (error)
-		CFRelease(error);
-	CHECK(ColorSyncProfileCreateWithURL(missingURL, NULL) == NULL);
-
-	// GUESS: a NULL URL and a URL that is not a file URL fail with the invalid-data error.
-	error = NULL;
-	CHECK(ColorSyncProfileCreateWithURL(NULL, &error) == NULL);
-	CHECK(errorIs(error, kCFErrorDomainOSStatus, -50));
-	if (error)
-		CFRelease(error);
+	// Every failure returns NULL and leaves the error NULL: a file that is not a profile, a missing file, an empty
+	// or short file, a NULL URL, a URL that is not a file URL and a directory.
+	CFURLRef shortURL = writeFile(shortPath, bytes, 10);
+	CFURLRef emptyURL = writeFile(emptyPath, bytes, 0);
 	CFURLRef web = CFURLCreateWithString(NULL, CFSTR("http://localhost:1/profile.icc"), NULL);
-	error = NULL;
-	CHECK(ColorSyncProfileCreateWithURL(web, &error) == NULL);
-	CHECK(errorIs(error, kCFErrorDomainOSStatus, -50));
-	if (error)
-		CFRelease(error);
-	CFRelease(web);
-
-	// GUESS: a directory is not read: a POSIX error with EINVAL.
 	CFURLRef dirURL = CFURLCreateFromFileSystemRepresentation(NULL, (const UInt8*) dir, (CFIndex) strlen(dir), true);
-	error = NULL;
-	CHECK(ColorSyncProfileCreateWithURL(dirURL, &error) == NULL);
-	CHECK(errorIs(error, kCFErrorDomainPOSIX, EINVAL));
-	if (error)
-		CFRelease(error);
+	CFURLRef failing[] = { badURL, missingURL, shortURL, emptyURL, NULL, web, dirURL };
+	for (size_t i = 0; i < sizeof failing / sizeof failing[0]; i++)
+	{
+		error = (CFErrorRef) 1;
+		CHECK(ColorSyncProfileCreateWithURL(failing[i], &error) == NULL);
+		CHECK(error == NULL);
+		CHECK(ColorSyncProfileCreateWithURL(failing[i], NULL) == NULL);
+	}
+	CFRelease(shortURL);
+	CFRelease(emptyURL);
+	CFRelease(web);
 	CFRelease(dirURL);
 
-	// GUESS: a profile made from data has no URL.
+	// A URL with a base URL is resolved to read the file, and the profile keeps the URL as given.
+	CFURLRef base = CFURLCreateFromFileSystemRepresentation(NULL, (const UInt8*) dir, (CFIndex) strlen(dir), true);
+	CFURLRef relative = CFURLCreateWithString(NULL, CFSTR("good.icc"), base);
+	profile = ColorSyncProfileCreateWithURL(relative, NULL);
+	CHECK(profile != NULL);
+	if (profile)
+	{
+		CFURLRef url = ColorSyncProfileGetURL(profile, NULL);
+		CHECK(url != NULL && CFEqual(url, relative));
+		CFRelease(profile);
+	}
+	CFRelease(relative);
+	CFRelease(base);
+
+	// A profile made from data has no URL; a NULL argument and an argument that is not a profile give NULL as well.
 	CFDataRef data = CFDataCreate(NULL, bytes, (CFIndex) length);
 	ColorSyncProfileRef fromData = ColorSyncProfileCreate(data, NULL);
 	CHECK(fromData != NULL);
-	error = NULL;
+	error = (CFErrorRef) 1;
 	CHECK(fromData && ColorSyncProfileGetURL(fromData, &error) == NULL);
-	CHECK(errorIs(error, kCFErrorDomainOSStatus, -50));
-	if (error)
-		CFRelease(error);
+	CHECK(error == NULL);
 	CHECK(fromData && ColorSyncProfileGetURL(fromData, NULL) == NULL);
 	if (fromData)
 		CFRelease(fromData);
 	CFRelease(data);
-	CHECK(ColorSyncProfileGetURL(NULL, NULL) == NULL);
+	error = (CFErrorRef) 1;
+	CHECK(ColorSyncProfileGetURL(NULL, &error) == NULL);
+	CHECK(error == NULL);
+	CHECK(ColorSyncProfileGetURL((ColorSyncProfileRef) CFSTR("not a profile"), NULL) == NULL);
 
 	unlink(good);
+	unlink(shortPath);
+	unlink(emptyPath);
 	unlink(bad);
 	rmdir(dir);
 	CFRelease(goodURL);
