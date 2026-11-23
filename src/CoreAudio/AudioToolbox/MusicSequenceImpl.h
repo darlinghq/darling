@@ -45,6 +45,12 @@ public:
 		retainPreset();
 	}
 
+	MusicEvent(MusicTimeStamp time, MusicEventType type, std::vector<UInt8>&& data)
+		: time(time), type(type), data(std::move(data))
+	{
+		retainPreset();
+	}
+
 	MusicEvent(const MusicEvent& other) : time(other.time), type(other.type), data(other.data)
 	{
 		retainPreset();
@@ -121,8 +127,14 @@ inline std::mutex& lock()
 	return m;
 }
 
-// Inserts an event into the track, after the events that have the same time.
-void insertEvent(OpaqueMusicTrack* track, MusicEvent&& event);
+// Inserts an event into the track, after the events that have the same time, and returns its
+// position.
+size_t insertEvent(OpaqueMusicTrack* track, MusicEvent&& event);
+
+// Validates an event of the given type and copies its structure, including the bytes that follow
+// a variable length one, into out. The result is kAudioToolboxErr_InvalidEventType for a type
+// that has no event structure and kAudio_ParamError for a structure that cannot be stored.
+OSStatus makeEventData(MusicEventType type, const void* event, std::vector<UInt8>& out);
 
 }
 
