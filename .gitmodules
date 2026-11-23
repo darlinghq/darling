@@ -480,6 +480,7 @@
 [submodule "src/external/swift-crypto"]
 	path = src/external/swift-crypto
 	url = ../swift-crypto.git
+	branch = release/5.1
 [submodule "src/external/swift-cmark"]
 	path = src/external/swift-cmark
 	url = ../swift-cmark.git
