@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 # Copyright (C) 2026 Lubos Dolezel
 """Builds styled-test.dmg, a disk image whose window Finder styles (tests/finder.sh, "styled window"). Runs on macOS
-(it needs hdiutil and xattr). Usage: make-styled-fixture.py <out.dmg>
+(it needs hdiutil and xattr). Usage: make-styled-fixture.py <out.dmg> [--license <resources.xml>]
+
+With --license, the licence agreement resources of make-sla-fixture.py's output are embedded with
+`hdiutil udifrez` (styled-sla-test.dmg, tests/open-disk-image.sh).
 
 The volume "Styled Test" holds:
 - "Styled App.app", an application bundle with only Contents/Info.plist (CFBundlePackageType APPL);
@@ -48,9 +51,10 @@ def background():
 
 
 def main():
-    if len(sys.argv) != 2:
-        sys.exit("usage: make-styled-fixture.py <out.dmg>")
+    if len(sys.argv) not in (2, 4) or (len(sys.argv) == 4 and sys.argv[2] != "--license"):
+        sys.exit("usage: make-styled-fixture.py <out.dmg> [--license <resources.xml>]")
     out = os.path.abspath(sys.argv[1])
+    license_xml = os.path.abspath(sys.argv[3]) if len(sys.argv) == 4 else None
     with tempfile.TemporaryDirectory() as work:
         root = os.path.join(work, "Styled Test")
         os.makedirs(os.path.join(root, "Styled App.app", "Contents"))
@@ -73,6 +77,8 @@ def main():
             os.remove(out)
         subprocess.run(["hdiutil", "create", "-quiet", "-fs", "HFS+", "-volname", "Styled Test", "-srcfolder", root,
                         "-format", "UDZO", out], check=True)
+        if license_xml:
+            subprocess.run(["hdiutil", "udifrez", out, "-xml", license_xml], check=True)
 
 
 if __name__ == "__main__":

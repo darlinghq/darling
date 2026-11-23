@@ -23,6 +23,7 @@ it into a copy of `fixtures/unmount-test.dmg` (the command is deprecated but wor
 | `sla-one.dmg` | `5000 one` | English only |
 | `sla-rtf.dmg` | `5000 rtf` | English only, the agreement as `RTF ` (`{\rtf1\ansi SLA TEST AGREEMENT {\b bold}\par}`) |
 | `sla-nostrings.dmg` | `5000 nostrings` | the three languages of `sla-test.dmg` without their `STR#` resources |
+| `styled-sla-test.dmg` | `5000 one` | English only, embedded into the styled image of `make-styled-fixture.py` (volume "Styled Test") by `make-styled-fixture.py styled-sla-test.dmg --license <xml>`; `open-disk-image.sh` |
 
 The resource layout follows public descriptions of the UDIF licence resources: `LPic` 5000 holds the default
 language and a table of (region code, resource ID - 5000, two-byte flag); per language a `TEXT` (or `RTF `) with
