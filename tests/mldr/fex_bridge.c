@@ -1420,6 +1420,39 @@ static void test_callback_struct(void)
 	check(g_outline_funcs_ptr == 0, "a NULL struct pointer reaches the library as NULL");
 }
 
+// pa_mainloop_api as libpulse declares it: userdata, then thirteen function pointers.
+struct fake_pa_mainloop_api {
+	uint64_t userdata;
+	uint64_t io_new, io_enable, io_free, io_set_destroy;
+	uint64_t time_new, time_restart, time_free, time_set_destroy;
+	uint64_t defer_new, defer_enable, defer_free, defer_set_destroy;
+	uint64_t quit;
+};
+
+static uint64_t g_pa_api_seen = 0;
+// libpulse keeps the main loop it is given for the life of the context.
+static uint64_t host_pa_context_new(uint64_t api, uint64_t name)
+{
+	(void)name;
+	g_pa_api_seen = api;
+	return 0x7f00020000;
+}
+static uint64_t host_pa_context_new_with_proplist(uint64_t api, uint64_t name, uint64_t proplist)
+{
+	(void)name;
+	(void)proplist;
+	g_pa_api_seen = api;
+	return 0x7f00021000;
+}
+
+// A libpulse callback the guest's main loop calls: io(api, event, fd, events, userdata).
+static uint64_t g_pa_io_cb_args[5];
+static void host_pa_io_cb(uint64_t api, uint64_t e, uint64_t fd, uint64_t events, uint64_t userdata)
+{
+	const uint64_t a[5] = {api, e, fd, events, userdata};
+	memcpy(g_pa_io_cb_args, a, sizeof(a));
+}
+
 static uint64_t g_pa_seen_cb = 0;
 static uint64_t host_pa_context_set_state_callback(uint64_t c, uint64_t cb, uint64_t userdata)
 {
@@ -1435,6 +1468,82 @@ static uint64_t host_pa_stream_write(uint64_t s, uint64_t data, uint64_t nbytes,
 	(void)nbytes;
 	g_pa_seen_cb = free_cb;
 	return 0;
+}
+
+static uint64_t call_pa_api(uint64_t api, size_t word, uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+	uint64_t fn = ((const uint64_t*)(uintptr_t)api)[word];
+	return ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))(uintptr_t)fn)(a0, a1, a2, a3, a4);
+}
+
+static void test_pa_mainloop_api(void)
+{
+	void* new_stub = fex_dlsym_wrap_if_func((void*)host_pa_context_new_with_proplist, "pa_context_new_with_proplist");
+	struct fake_pa_mainloop_api guest = {
+		0x7f00022000, 0x5500100, 0x5500200, 0x5500300, 0x5500400, 0x5500500, 0x5500600, 0x5500700,
+		0x5500800, 0x5500900, 0x5500a00, 0x5500b00, 0x5500c00, 0,
+	};
+	const uint64_t guest_api = (uint64_t)(uintptr_t)&guest;
+	call_stub(new_stub, guest_api, 0x7f00023000, 0x7f00024000, 0);
+	const uint64_t copy = g_pa_api_seen;
+	const struct fake_pa_mainloop_api* c = (const struct fake_pa_mainloop_api*)(uintptr_t)copy;
+	bool thunks = copy != 0 && copy != guest_api;
+	for (size_t w = 1; thunks && w < 13; w++)
+		thunks = !is_fake_guest_fn(((const uint64_t*)c)[w]) && ((const uint64_t*)c)[w] != 0;
+	check(thunks, "pa_context_new_with_proplist keeps a host copy of the guest's pa_mainloop_api with thunks");
+	check(thunks && c->userdata == guest.userdata && c->quit == 0, "the copy keeps userdata and a NULL quit");
+	check(guest.io_new == 0x5500100, "the guest's own pa_mainloop_api is left alone");
+
+	void* plain_stub = fex_dlsym_wrap_if_func((void*)host_pa_context_new, "pa_context_new");
+	g_pa_api_seen = 0;
+	call_stub(plain_stub, guest_api, 0x7f00023000, 0, 0);
+	check(g_pa_api_seen == copy, "pa_context_new with the same main loop gets the same copy");
+	if (!thunks)
+		return;
+
+	// libpulse adds an io event: the guest's io_new gets its own struct and a stub it can call for the callback.
+	last_cb_args_fn = 0;
+	call_pa_api(copy, 1, copy, 7, 1, (uint64_t)(uintptr_t)host_pa_io_cb, 0x7f00025000);
+	uint64_t cb_stub = last_cb_args[3];
+	check(last_cb_args_fn == 0x5500100 && last_cb_args[0] == guest_api && last_cb_args[1] == 7 &&
+	      last_cb_args[2] == 1 && last_cb_args[4] == 0x7f00025000,
+		"io_new runs the guest function with the guest's pa_mainloop_api");
+	bool is_stub = cb_stub != (uint64_t)(uintptr_t)host_pa_io_cb &&
+		(stub_syscall_nr((void*)(uintptr_t)cb_stub) & 0xffff0000u) == DARLING_FEX_DLSYM_SYSCALL_BASE;
+	check(is_stub, "the guest gets a bridge stub for libpulse's io callback");
+	if (is_stub) {
+		struct fex_x86_64_state st;
+		memset(&st, 0, sizeof(st));
+		st.rax = stub_syscall_nr((void*)(uintptr_t)cb_stub);
+		st.rdi = guest_api;
+		st.rsi = 0x7f00026000;
+		st.rdx = 7;
+		st.r10 = 4;
+		st.r8 = 0x7f00025000;
+		fex_linux_syscall_dispatch(&st);
+		check(g_pa_io_cb_args[0] == copy && g_pa_io_cb_args[1] == 0x7f00026000 && g_pa_io_cb_args[2] == 7 &&
+		      g_pa_io_cb_args[3] == 4 && g_pa_io_cb_args[4] == 0x7f00025000,
+			"the guest's call of that stub reaches libpulse's callback with the host copy");
+	}
+
+	// A callback libpulse got from the guest (pa_context_rttime_new) reaches the guest's time_new as the guest's function.
+	uint64_t guest_timer_cb_thunk = thunk_for(fex_dlsym_wrap_if_func((void*)host_png_set_error_fn, "png_set_error_fn"), 0x5500d00);
+	last_cb_args_fn = 0;
+	call_pa_api(copy, 5, copy, 0x7f00027000, guest_timer_cb_thunk, 0x7f00025000, 0);
+	check(last_cb_args_fn == 0x5500500 && last_cb_args[0] == guest_api && last_cb_args[2] == 0x5500d00,
+		"time_new gets the guest function behind a thunk");
+
+	last_cb_args_fn = 0;
+	call_pa_api(copy, 2, 0x7f00026000, 4, 0, 0, 0);
+	check(last_cb_args_fn == 0x5500200 && last_cb_args[0] == 0x7f00026000 && last_cb_args[1] == 4,
+		"io_enable passes its arguments as is");
+
+	// A main loop freed and reallocated at the same address gets its new functions in the same copy.
+	guest.io_free = 0x5500e00;
+	call_stub(plain_stub, guest_api, 0x7f00023000, 0, 0);
+	last_cb_args_fn = 0;
+	call_pa_api(copy, 3, 0x7f00026000, 0, 0, 0, 0);
+	check(g_pa_api_seen == copy && last_cb_args_fn == 0x5500e00, "handing the struct over again updates its copy");
 }
 
 // Plain libpulse callbacks become thunks, as listed from pulse/*.h.
@@ -2401,6 +2510,7 @@ int main(void)
 	test_jpeg_error_manager();
 	test_xim_callbacks();
 	test_left_callbacks();
+	test_pa_mainloop_api();
 	test_pa_callback_args();
 	test_syscall_translations();
 	test_safe_memory_access();

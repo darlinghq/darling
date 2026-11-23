@@ -213,7 +213,16 @@ struct fex_callback_rules {
 	bool returns_function; // it returns a host function named by its first argument (g_proc_address_lookups)
 	enum fex_jpeg_rule jpeg;
 	bool jpeg_method; // one of the methods jpeg_std_error puts in an error manager
+	const struct fex_kept_struct* kept_struct; // its g_kept_struct_args layout, if any
+	unsigned kept_struct_arg; // which argument points to that struct
+	unsigned kept_struct_back; // its g_kept_struct_back_args mask, 0 if none
 };
+// What a host thunk does to the arguments a host library calls it with, before the guest function runs:
+// `struct_args` may point to a host copy made for a kept struct (they get the guest's struct back), and
+// `host_fn_args` are host function pointers, which the guest can only call through a bridge stub that
+// follows the rules of the host function name `host_fn_rules`.
+struct fex_thunk_rules { unsigned struct_args; unsigned host_fn_args; const char* host_fn_rules; };
+static void translate_thunk_args(const struct fex_thunk_rules* rules, uint64_t args[6]);
 static struct fex_callback_rules g_dlsym_rules[DARLING_FEX_DLSYM_MAX_SLOTS];
 static struct fex_callback_rules callback_rules_for(const char* name);
 static void* wrap_host_function(void* host_sym, const char* symbol_name, const struct fex_callback_rules* rules);
@@ -314,6 +323,7 @@ static int host_x_io_error_handler(void* display)
 _Static_assert(FEX_CALLBACK_MAX <= 0x10000, "a thunk's slot must fit the 16-bit immediate of movz");
 
 static uintptr_t g_callback_guest_fn[FEX_CALLBACK_MAX];
+static const struct fex_thunk_rules* g_callback_thunk_rules[FEX_CALLBACK_MAX]; // NULL: arguments pass as is
 // Open-addressing index from guest function to slot + 1 (0 = empty), never more than half full.
 #define FEX_CALLBACK_INDEX_SIZE (2 * FEX_CALLBACK_MAX)
 static uint16_t g_callback_index[FEX_CALLBACK_INDEX_SIZE];
@@ -325,8 +335,11 @@ static pthread_mutex_t g_callback_mutex = PTHREAD_MUTEX_INITIALIZER;
 static uint64_t host_callback_entry(uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4,
 	uint64_t a5, uint64_t slot)
 {
-	const uint64_t args[6] = {a0, a1, a2, a3, a4, a5};
+	uint64_t args[6] = {a0, a1, a2, a3, a4, a5};
 	uintptr_t guest_fn = __atomic_load_n(&g_callback_guest_fn[slot], __ATOMIC_ACQUIRE);
+	const struct fex_thunk_rules* rules = __atomic_load_n(&g_callback_thunk_rules[slot], __ATOMIC_ACQUIRE);
+	if (rules)
+		translate_thunk_args(rules, args);
 	return fex_invoke_guest_callback_args(guest_fn, args);
 }
 
@@ -771,6 +784,157 @@ static const struct { const char* name; unsigned mask; } g_pa_callback_args[] = 
 	{ "pa_context_remove_sample", 0x4 },
 };
 
+// Structs of guest function pointers that a host library keeps and calls through after the function that
+// was given them returns, as libpulse does with the pa_mainloop_api of pa_context_new for the whole life
+// of the context. The library gets a host copy whose function pointers are thunks. The bridge does not see
+// the library let go (a context lives as long as the last reference to it, which streams and operations
+// also hold), so a copy is kept for the life of the process: one per guest struct, as many as the guest
+// has main loops. Each call that hands over the struct rewrites its copy, so a guest struct freed and
+// reallocated at the same address gets the new functions. A guest function in two places keeps the thunk
+// rules of the first.
+#define FEX_KEPT_STRUCT_MAX_WORDS 16
+struct fex_kept_struct { unsigned words; unsigned fields; const struct fex_thunk_rules* field_rules; };
+
+// The callbacks libpulse hands to the main loop functions all take the pa_mainloop_api as first argument.
+#define FEX_PA_EVENT_CALLBACK "libpulse main loop event callback"
+// pa_mainloop_api (pulse/mainloop-api.h) is { userdata, io_new, io_enable, io_free, io_set_destroy, time_new,
+// time_restart, time_free, time_set_destroy, defer_new, defer_enable, defer_free, defer_set_destroy, quit }.
+static const struct fex_thunk_rules g_pa_mainloop_api_rules[14] = {
+	[1] = { 0x1, 0x8, FEX_PA_EVENT_CALLBACK }, // io_new(a, fd, events, cb, userdata)
+	[4] = { 0, 0x2, FEX_PA_EVENT_CALLBACK },   // io_set_destroy(e, cb)
+	[5] = { 0x1, 0x4, FEX_PA_EVENT_CALLBACK }, // time_new(a, tv, cb, userdata)
+	[8] = { 0, 0x2, FEX_PA_EVENT_CALLBACK },   // time_set_destroy(e, cb)
+	[9] = { 0x1, 0x2, FEX_PA_EVENT_CALLBACK }, // defer_new(a, cb, userdata)
+	[12] = { 0, 0x2, FEX_PA_EVENT_CALLBACK },  // defer_set_destroy(e, cb)
+	[13] = { 0x1, 0, NULL },                    // quit(a, retval)
+};
+static const struct fex_kept_struct g_pa_mainloop_api = { 14, 0x3ffe, g_pa_mainloop_api_rules };
+// Host functions that keep the struct their argument `arg` points to.
+static const struct { const char* name; unsigned arg; const struct fex_kept_struct* layout; } g_kept_struct_args[] = {
+	{ "pa_context_new", 0, &g_pa_mainloop_api }, { "pa_context_new_with_proplist", 0, &g_pa_mainloop_api },
+};
+// Host functions the guest calls with a kept struct in the arguments of the mask: they get its host copy.
+static const struct { const char* name; unsigned mask; } g_kept_struct_back_args[] = {
+	{ FEX_PA_EVENT_CALLBACK, 0x1 },
+};
+
+struct fex_kept_copy {
+	uint64_t guest;
+	const struct fex_kept_struct* layout;
+	struct fex_kept_copy* next;
+	uint64_t words[FEX_KEPT_STRUCT_MAX_WORDS];
+};
+static struct fex_kept_copy* g_kept_copies = NULL; // pushed under the mutex, read without it, never freed
+static pthread_mutex_t g_kept_copy_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// A thunk for guest_fn that applies `rules` to its arguments.
+static uint64_t host_callback_with_rules(uint64_t guest_fn, const struct fex_thunk_rules* rules)
+{
+	uint64_t host = host_callback_for(guest_fn);
+	if (host && (rules->struct_args || rules->host_fn_args)) {
+		size_t slot = (size_t)(host - (uint64_t)(uintptr_t)g_callback_area) / FEX_CALLBACK_THUNK_SIZE;
+		const struct fex_thunk_rules* none = NULL;
+		__atomic_compare_exchange_n(&g_callback_thunk_rules[slot], &none, rules, false, __ATOMIC_RELEASE,
+			__ATOMIC_RELAXED);
+	}
+	return host;
+}
+
+static uint64_t kept_copy_for(uint64_t guest, const struct fex_kept_struct* layout)
+{
+	uint64_t words[FEX_KEPT_STRUCT_MAX_WORDS];
+	// A pointer the bridge cannot read is passed on as is: the library then fails on it as it would natively.
+	if (guest == 0 || fex_copy_from_guest(words, (const void*)(uintptr_t)guest, layout->words * sizeof(uint64_t)) != 0)
+		return guest;
+	for (unsigned w = 0; w < layout->words; w++)
+		if (layout->fields & (1u << w))
+			words[w] = host_callback_with_rules(words[w], &layout->field_rules[w]);
+	pthread_mutex_lock(&g_kept_copy_mutex);
+	struct fex_kept_copy* c = g_kept_copies;
+	while (c && (c->guest != guest || c->layout != layout))
+		c = c->next;
+	if (!c) {
+		c = calloc(1, sizeof(*c));
+		if (!c) {
+			pthread_mutex_unlock(&g_kept_copy_mutex);
+			fprintf(stderr, "mldr/fex: out of memory copying a struct of callbacks\n");
+			abort();
+		}
+		c->guest = guest;
+		c->layout = layout;
+		c->next = g_kept_copies;
+		for (unsigned w = 0; w < layout->words; w++)
+			c->words[w] = words[w];
+		__atomic_store_n(&g_kept_copies, c, __ATOMIC_RELEASE);
+	} else {
+		for (unsigned w = 0; w < layout->words; w++)
+			__atomic_store_n(&c->words[w], words[w], __ATOMIC_RELAXED);
+	}
+	pthread_mutex_unlock(&g_kept_copy_mutex);
+	return (uint64_t)(uintptr_t)c->words;
+}
+
+// The host copy of a guest struct (`value` itself if it has none), and the other way around.
+static uint64_t kept_copy_of(uint64_t value)
+{
+	for (struct fex_kept_copy* c = __atomic_load_n(&g_kept_copies, __ATOMIC_ACQUIRE); c; c = c->next)
+		if (c->guest == value)
+			return (uint64_t)(uintptr_t)c->words;
+	return value;
+}
+
+static uint64_t guest_struct_of(uint64_t value)
+{
+	for (struct fex_kept_copy* c = __atomic_load_n(&g_kept_copies, __ATOMIC_ACQUIRE); c; c = c->next)
+		if ((uint64_t)(uintptr_t)c->words == value)
+			return c->guest;
+	return value;
+}
+
+// The guest function behind a host thunk, 0 if `host` is not one.
+static uint64_t guest_fn_of_thunk(uint64_t host)
+{
+	uint64_t guest = 0;
+	pthread_mutex_lock(&g_callback_mutex);
+	uint64_t base = (uint64_t)(uintptr_t)g_callback_area;
+	if (base && host >= base && host < base + (uint64_t)g_callback_count * FEX_CALLBACK_THUNK_SIZE &&
+	    (host - base) % FEX_CALLBACK_THUNK_SIZE == 0)
+		guest = g_callback_guest_fn[(host - base) / FEX_CALLBACK_THUNK_SIZE];
+	pthread_mutex_unlock(&g_callback_mutex);
+	return guest;
+}
+
+static void translate_thunk_args(const struct fex_thunk_rules* rules, uint64_t args[6])
+{
+	for (int a = 0; a < 6; a++) {
+		if (rules->struct_args & (1u << a))
+			args[a] = guest_struct_of(args[a]);
+		if ((rules->host_fn_args & (1u << a)) && args[a] != 0) {
+			// A thunk the library got from the guest earlier stands for a guest function: the guest calls it directly.
+			uint64_t guest = guest_fn_of_thunk(args[a]);
+			args[a] = guest ? guest : (uint64_t)(uintptr_t)fex_dlsym_wrap_if_func((void*)(uintptr_t)args[a],
+				rules->host_fn_rules);
+		}
+	}
+}
+
+static void kept_struct_rules_for(const char* name, struct fex_callback_rules* r)
+{
+	for (size_t i = 0; i < sizeof(g_kept_struct_args) / sizeof(g_kept_struct_args[0]); i++) {
+		if (strcmp(name, g_kept_struct_args[i].name) != 0)
+			continue;
+		if (g_kept_struct_args[i].layout->words > FEX_KEPT_STRUCT_MAX_WORDS) {
+			fprintf(stderr, "mldr/fex: the kept callback struct of %s is larger than the bridge's copy\n", name);
+			abort();
+		}
+		r->kept_struct = g_kept_struct_args[i].layout;
+		r->kept_struct_arg = g_kept_struct_args[i].arg;
+	}
+	for (size_t i = 0; i < sizeof(g_kept_struct_back_args) / sizeof(g_kept_struct_back_args[0]); i++)
+		if (strcmp(name, g_kept_struct_back_args[i].name) == 0)
+			r->kept_struct_back = g_kept_struct_back_args[i].mask;
+}
+
 static struct fex_callback_rules callback_rules_for(const char* name)
 {
 	struct fex_callback_rules r = { FEX_X_HANDLER_NONE, 0, NULL, NULL, 0 };
@@ -808,6 +972,7 @@ static struct fex_callback_rules callback_rules_for(const char* name)
 	for (size_t i = 0; i < sizeof(g_pa_callback_args) / sizeof(g_pa_callback_args[0]); i++)
 		if (strcmp(name, g_pa_callback_args[i].name) == 0)
 			r.args |= g_pa_callback_args[i].mask;
+	kept_struct_rules_for(name, &r);
 	return r;
 }
 
@@ -861,6 +1026,11 @@ static void translate_guest_callbacks(const struct fex_callback_rules* rules, ui
 			abort();
 		}
 	}
+	for (int a = 0; rules->kept_struct_back && a < nargs && a < 31; a++)
+		if (rules->kept_struct_back & (1u << a))
+			*args[a] = kept_copy_of(*args[a]);
+	if (rules->kept_struct)
+		*args[rules->kept_struct_arg] = kept_copy_for(*args[rules->kept_struct_arg], rules->kept_struct);
 }
 
 long fex_dlsym_dispatch(uint32_t slot, struct fex_x86_64_state* state)
