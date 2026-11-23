@@ -1,8 +1,9 @@
 # libtexturecodec (ASTC LDR decoder)
 
 Plain C99, no dependencies beyond libc. Working names `libtexturecodec`, prefix `dtc_`;
-the maintainers may rename them. This directory is the codec layer of the ASTC design
-note; it is not wired into any build of Darling and has no ImageIO hook.
+the maintainers may rename them. This directory is the codec layer below ImageIO:
+`CMakeLists.txt` builds it as the static library `darling_texturecodec`, which ImageIO
+links (`src/frameworks/ImageIO/src/ImageIOASTC.m`) and which exports no symbol.
 
 ## What it does
 
@@ -35,10 +36,14 @@ the dimensions, the payload starts at `DTC_ASTC_FILE_HEADER_SIZE`). `rgba_out` m
 - HDR endpoint modes and HDR decode modes. In LDR mode texels that use HDR endpoint
   modes get the error colour, as the specification requires.
 - 3D block footprints and 3D images (rejected with `DTC_E_UNSUPPORTED`).
-- BCn decoding, KTX1/KTX2 containers, and the ImageIO / CGImageSource hook. Those are
-  later steps of the design.
+- BCn decoding and KTX1/KTX2 containers, and writing ASTC through
+  CGImageDestination. Those are later steps of the design.
 
 ## Build and test
+
+In the Darling tree the tests are registered with ctest (`tests/CMakeLists.txt`, built with
+the build machine's compiler: `ctest -R texturecodec` from the build directory). On their
+own, from this directory:
 
     make          # build/libdtc.a (GNU make reads GNUmakefile)
     make test     # unit tests and reference vectors

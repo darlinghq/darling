@@ -71,3 +71,33 @@ here blocks the decoder; each default is easy to change.
   argument and truncation handling, and the infill index guard.
 - Not built or run: i386 and arm64-Mach-O slices, Darling's own toolchain. Only a native
   aarch64 Linux build with gcc and clang was run.
+
+## ImageIO hook (src/frameworks/ImageIO/src/ImageIOASTC.m)
+
+The hook decodes a `.astc` file to an RGBA8 CGImage with `dtc_astc_decode_ex`. The choices
+below were made because neither the decoder nor the public ImageIO documentation settles
+them; each is a GUESS item (I1 to I6 in `GUESS.tsv`) and is one small edit to change.
+
+1. Type identifier [I3, design Q3]. No public source names a uniform type identifier for
+   ASTC, so none is used: `CGImageSourceGetType` returns NULL and the type is not in
+   `CGImageSourceCopyTypeIdentifiers`. A human with a Mac can print the real value through
+   public calls; until then data is recognised by magic number and header only. Does the
+   NULL type cause trouble for callers that expect a string?
+2. Error blocks [I4, decoder item 9]. An image with any error block yields NULL, never a
+   partly magenta image. Is "fail the whole image" right, or should a threshold or the
+   magenta image be preferred?
+3. Limits [I5, decoder item 10]. At most 16384 texels per side and 2^26 texels in total,
+   and the payload must hold every block the header asks for, all checked before
+   allocating. Different numbers?
+4. Colour space and alpha [I1, I2, decoder item 7]. sRGB colour space, straight alpha,
+   RGBA8. To be probed on a Mac by a human; the tests state it as this implementation's
+   contract, not as observed macOS behaviour.
+5. Where the hook sits [design 4.5, Q5]. `CGImageSource.m` asks the ASTC source first and
+   falls back to the Onyx2D decoders unchanged, because the Onyx2D decoder list is closed and
+   lives in the darling-cocotron submodule. Alternative: a new `O2ImageSource_ASTC` in
+   darling-cocotron plus a submodule bump. The first keeps the change in one repository.
+6. Public symbols. The static library hides every `dtc_` symbol (`DTC_API` is defined empty
+   for it and its users in `CMakeLists.txt`), so ImageIO's export list is unchanged. Is that
+   the expected shape for an internal library, or should the build also check the export list?
+7. Licence identifier [G19]. The decoder files say `GPL-3.0-only`, the new Darling-side files
+   `GPL-3.0-or-later` (the repository's usual choice). One of the two should win.
