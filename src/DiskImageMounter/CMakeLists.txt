@@ -36,3 +36,21 @@ add_dependencies(DiskImageMounter DiskImageMounter_icons)
 install(TARGETS DiskImageMounter DESTINATION ${DiskImageMounter_contents}/MacOS COMPONENT gui)
 install(FILES Info.plist ${CMAKE_CURRENT_BINARY_DIR}/PkgInfo DESTINATION ${DiskImageMounter_contents} COMPONENT gui)
 install(FILES ${DiskImageMounter_icns} DESTINATION ${DiskImageMounter_contents}/Resources COMPONENT gui)
+
+# The files that let a Linux desktop open disk images with Darling (tests/desktop-integration.py)
+find_package(Python3 QUIET COMPONENTS Interpreter)
+if (Python3_Interpreter_FOUND)
+	add_test(NAME desktop_integration
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/desktop-integration.py ${CMAKE_BINARY_DIR} ${CMAKE_INSTALL_PREFIX})
+endif()
+
+# The Linux desktop: a desktop entry that opens disk images with "darling open", the MIME type it declares and its
+# icon (hicolor theme, the iconset's 1x images)
+set(DiskImageMounter_desktop_id org.darlinghq.Darling.DiskImageMounter)
+configure_file(linux/${DiskImageMounter_desktop_id}.desktop.in ${CMAKE_CURRENT_BINARY_DIR}/${DiskImageMounter_desktop_id}.desktop @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${DiskImageMounter_desktop_id}.desktop DESTINATION share/applications COMPONENT gui)
+install(FILES linux/${DiskImageMounter_desktop_id}.xml DESTINATION share/mime/packages COMPONENT gui)
+foreach(size 16 32 128 256 512)
+	install(FILES DiskImageMounter.iconset/icon_${size}x${size}.png DESTINATION share/icons/hicolor/${size}x${size}/apps
+		RENAME ${DiskImageMounter_desktop_id}.png COMPONENT gui)
+endforeach()
