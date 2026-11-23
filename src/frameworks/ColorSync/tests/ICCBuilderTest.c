@@ -1,5 +1,5 @@
 // Native test: compile with the ICC layout and builder code and run on the host.
-//   cc -I src tests/ICCBuilderTest.c src/ICCBuilder.c src/ICCProfile.c -lm -o ICCBuilderTest
+//   cc -I src -I tests/host tests/ICCBuilderTest.c src/ICCBuilder.c src/ICCProfile.c -lcrypto -lm -o ICCBuilderTest
 // Also run it with -fsanitize=address,undefined.
 // The profiles are checked against the layout of ICC.1:2022 (https://www.color.org/specification/ICC.1-2022-05.pdf) and
 // against the definitions of the colour spaces: the colorants are the primaries and D65 white adapted to D50 with the

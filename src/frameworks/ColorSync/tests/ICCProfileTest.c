@@ -1,5 +1,5 @@
 // Native test: compile with the ICC layout code and run on the host.
-//   cc -I src tests/ICCProfileTest.c src/ICCProfile.c src/MD5.c -o ICCProfileTest
+//   cc -I src -I tests/host tests/ICCProfileTest.c src/ICCProfile.c -lcrypto -o ICCProfileTest
 // Also run it with -fsanitize=address,undefined: the checks on the tag count and offsets guard reads past the end.
 // The profiles are built by hand from the layout in ICC.1:2022, 7.2 and 7.3
 // (https://www.color.org/specification/ICC.1-2022-05.pdf), so they contain no vendor data.

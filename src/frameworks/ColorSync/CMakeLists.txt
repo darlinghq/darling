@@ -22,7 +22,6 @@ add_framework(ColorSync
         src/ColorSyncProfile.c
         src/ICCBuilder.c
         src/ICCProfile.c
-        src/MD5.c
 
     DEPENDENCIES
         CoreFoundation

@@ -18,7 +18,7 @@
 */
 
 #include "ICCProfile.h"
-#include "MD5.h"
+#include <CommonCrypto/CommonDigest.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -102,6 +102,18 @@ bool ICCProfileValidate(const uint8_t* data, size_t length)
 	return true;
 }
 
+static void ICCDigestUpdate(CC_MD5_CTX* context, const uint8_t* bytes, size_t length)
+{
+	// CC_MD5_Update takes a 32-bit length.
+	while (length > 0)
+	{
+		CC_LONG chunk = length > 0x40000000 ? 0x40000000 : (CC_LONG) length;
+		CC_MD5_Update(context, bytes, chunk);
+		bytes += chunk;
+		length -= chunk;
+	}
+}
+
 // QUIRK: the digest covers every byte held, not only the number of bytes the size field gives, and the size field never
 // makes the digest fail. ICC.1:2022, 7.2.18 defines it over "the entire profile, whose length is given by the size field";
 // ColorSyncProfileCreate accepts a profile whose size field is wrong or whose data has bytes after the profile. Evidence:
@@ -120,17 +132,17 @@ bool ICCProfileComputeID(const uint8_t* data, size_t length, uint8_t outDigest[1
 	if (length < 100)
 		return false;
 
-	MD5Context context;
-	MD5ContextInit(&context);
+	CC_MD5_CTX context;
+	CC_MD5_Init(&context);
 	size_t position = 0;
 	for (size_t i = 0; i < sizeof zeroed / sizeof zeroed[0]; i++)
 	{
-		MD5ContextUpdate(&context, data + position, zeroed[i].start - position);
-		MD5ContextUpdate(&context, zeros, zeroed[i].end - zeroed[i].start);
+		ICCDigestUpdate(&context, data + position, zeroed[i].start - position);
+		ICCDigestUpdate(&context, zeros, zeroed[i].end - zeroed[i].start);
 		position = zeroed[i].end;
 	}
-	MD5ContextUpdate(&context, data + position, length - position);
-	MD5ContextFinal(&context, outDigest);
+	ICCDigestUpdate(&context, data + position, length - position);
+	CC_MD5_Final(outDigest, &context);
 	return true;
 }
 
