@@ -9,6 +9,10 @@
 #include <AudioToolbox/AUGraph.h>
 #include <float.h>
 
+// A MIDI endpoint is a number. CoreMIDI declares the same type; Darling's MIDIServices.h does not
+// declare it yet, and a second typedef of the same type is allowed.
+typedef UInt32 MIDIEndpointRef;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -154,8 +158,8 @@ typedef void (*MusicSequenceUserCallback)(void *inClientData,
 	MusicTimeStamp inStartSliceBeat,
 	MusicTimeStamp inEndSliceBeat);
 
-// Result codes of the music sequencing functions. The last one is reported when a track has no
-// destination.
+// Result codes of the music sequencing functions. The SDK header lists the last one, which is not
+// in the same numeric range, with the others; its name says it is for a track with no destination.
 CF_ENUM(OSStatus)
 {
 	kAudioToolboxErr_InvalidSequenceType = -10846,
@@ -289,6 +293,18 @@ MusicSequenceGetSMPTEResolution(SInt16 inRes, SignedByte *fps, Byte *ticks)
 	*ticks = (Byte)(inRes & 0x7F);
 }
 
+extern OSStatus
+MusicSequenceSetAUGraph(MusicSequence inSequence, AUGraph inGraph);
+
+extern OSStatus
+MusicSequenceGetAUGraph(MusicSequence inSequence, AUGraph *outGraph);
+
+extern OSStatus
+MusicSequenceSetMIDIEndpoint(MusicSequence inSequence, MIDIEndpointRef inEndpoint);
+
+extern OSStatus
+MusicSequenceSetUserCallback(MusicSequence inSequence, MusicSequenceUserCallback inCallback, void *inClientData);
+
 // Music tracks
 
 extern OSStatus
@@ -320,6 +336,18 @@ MusicTrackNewUserEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, const Mus
 
 extern OSStatus
 MusicTrackNewAUPresetEvent(MusicTrack inTrack, MusicTimeStamp inTimeStamp, const AUPresetEvent *inPresetEvent);
+
+extern OSStatus
+MusicTrackSetDestNode(MusicTrack inTrack, AUNode inNode);
+
+extern OSStatus
+MusicTrackSetDestMIDIEndpoint(MusicTrack inTrack, MIDIEndpointRef inEndpoint);
+
+extern OSStatus
+MusicTrackGetDestNode(MusicTrack inTrack, AUNode *outNode);
+
+extern OSStatus
+MusicTrackGetDestMIDIEndpoint(MusicTrack inTrack, MIDIEndpointRef *outEndpoint);
 
 extern OSStatus
 MusicTrackMoveEvents(MusicTrack inTrack, MusicTimeStamp inStartTime, MusicTimeStamp inEndTime, MusicTimeStamp inMoveTime);
