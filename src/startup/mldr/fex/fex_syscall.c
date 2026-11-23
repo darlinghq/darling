@@ -553,6 +553,10 @@ static void set_guest_mask(uint64_t mask)
 
 static void pend_signal(int sig, const siginfo_t* info)
 {
+	// One already kept stays as it is, with its siginfo: Linux drops a standard signal sent while one is
+	// pending. (A real-time one it would queue; the later ones are lost here.)
+	if (__atomic_load_n(&t_pending, __ATOMIC_RELAXED) & FEX_SIGBIT(sig))
+		return;
 	t_pending_info[sig] = *info;
 	__atomic_fetch_or(&t_pending, FEX_SIGBIT(sig), __ATOMIC_RELAXED);
 }

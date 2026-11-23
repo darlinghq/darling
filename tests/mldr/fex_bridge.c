@@ -1270,6 +1270,30 @@ static void test_nested_delivery(uint64_t guest_handler, uint64_t saved_mask)
 	set_guest_mask_to(saved_mask);
 }
 
+// A second instance of a signal kept for the guest is dropped, and the first one's siginfo is the one the
+// handler gets, as Linux does for a standard signal sent while one is pending.
+static void test_second_instance_dropped(uint64_t guest_handler, uint64_t saved_mask)
+{
+	guest_sigaction(SIGUSR1, guest_handler, 0, 0, NULL);
+	set_guest_mask_to(0);
+	g_fake_preempt_answer = FEX_SIGNAL_AT_SYSCALL_RETURN;
+	pthread_sigqueue(pthread_self(), SIGUSR1, (union sigval){ .sival_int = 1 });
+	pthread_sigqueue(pthread_self(), SIGUSR1, (union sigval){ .sival_int = 2 });
+	struct fex_x86_64_state st = guest_syscall_state(39 /* getpid */, 0, 0, 0);
+	siginfo_t info;
+	memset(&info, 0, sizeof(info));
+	if (st.signal_request)
+		memcpy(&info, st.signal_request->info, sizeof(info));
+	check(st.signal_request && st.signal_request->sig == SIGUSR1 && !st.signal_request->nested
+		&& info.si_code == SI_QUEUE && info.si_value.sival_int == 1, "a second SIGUSR1 kept for the guest keeps the first one's siginfo");
+	set_guest_mask_to(0);
+	st = guest_syscall_state(39, 0, 0, 0);
+	check(st.signal_request == NULL, "and runs one handler");
+	guest_sigaction(SIGUSR1, 0, 0, 0, NULL);
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+	set_guest_mask_to(saved_mask);
+}
+
 // Run by the exec test in the image it executes: exits 0 if SIGUSR1 is pending on this thread and blocked.
 static const char kReportEnv[] = "FEX_BRIDGE_TEST_REPORT_USR1";
 static int report_usr1_after_exec(void)
@@ -1506,6 +1530,7 @@ static void test_guest_signal_delivery(void)
 	test_nested_delivery(guest_handler, saved_mask);
 	test_requests_after_thread_exit(guest_handler, saved_mask);
 	test_exec_keeps_signals(guest_handler, saved_mask);
+	test_second_instance_dropped(guest_handler, saved_mask);
 
 	guest_sigaction(SIGUSR1, 0, 0, 0, NULL);
 	guest_sigaction(SIGUSR2, 0, 0, 0, NULL);
