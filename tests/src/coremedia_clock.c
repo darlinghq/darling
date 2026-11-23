@@ -1,4 +1,4 @@
-// CFLAGS: -framework CoreMedia -framework CoreFoundation
+// CFLAGS: -framework CoreMedia -framework CoreVideo -framework CoreFoundation
 /*
  This file is part of Darling.
 
@@ -31,6 +31,7 @@
 // code is the number of failed checks.
 
 #include <CoreMedia/CoreMedia.h>
+#include <CoreVideo/CoreVideo.h>
 #include <mach/mach_time.h>
 #include <math.h>
 #include <stdint.h>
@@ -63,6 +64,16 @@ int main(void)
 	CHECK(now.timescale >= 1000000);
 	uint64_t ticks = CMClockConvertHostTimeToSystemUnits(now);
 	CHECK(before <= ticks && ticks <= after);
+
+	// the host time of CoreVideo is the same clock: the clock's time, converted back to ticks, lies between two
+	// CVGetCurrentHostTime reads, and one second of CVGetHostClockFrequency ticks is one second of clock time
+	uint64_t cvBefore = CVGetCurrentHostTime();
+	CMTime sample = CMClockGetTime(clock);
+	uint64_t cvAfter = CVGetCurrentHostTime();
+	uint64_t sampleTicks = CMClockConvertHostTimeToSystemUnits(sample);
+	CHECK(cvBefore <= sampleTicks && sampleTicks <= cvAfter);
+	CMTime oneSecond = CMClockMakeHostTimeFromSystemUnits((uint64_t)CVGetHostClockFrequency());
+	CHECK(fabs(CMTimeGetSeconds(oneSecond) - 1.0) < 1.0e-6);
 
 	// it advances, and by about the elapsed monotonic time
 	struct timespec t0, t1, pause = { 0, 20 * 1000 * 1000 };
@@ -100,17 +111,56 @@ int main(void)
 	uint64_t three = CMClockConvertHostTimeToSystemUnits(CMTimeMake(3 * 600, 600));
 	CHECK(fabs((double)three - 3.0 * ticksPerSecond) <= 1.0);
 
-	// the rounding is a GUESS (to the nearest tick, halves up); with one nanosecond per tick, half a tick is a
-	// time of (2k + 1) / 2e9 seconds
+	// the rounding is to the nearest tick, halves away from zero (observed on macOS 26.7.3 and 10.14.4); with
+	// one nanosecond per tick, half a tick is a time of (2k + 1) / 2e9 seconds
 	if (info.numer == 1 && info.denom == 1) {
 		CHECK(CMClockConvertHostTimeToSystemUnits(CMTimeMake(5, 2000000000)) == 3);
 		CHECK(CMClockConvertHostTimeToSystemUnits(CMTimeMake(4, 2000000000)) == 2);
 		CHECK(CMClockConvertHostTimeToSystemUnits(CMTimeMake(3, 2000000000)) == 2);
+		CHECK(CMClockConvertHostTimeToSystemUnits(CMTimeMake(1, 2000000000)) == 1);
+		CHECK(CMClockConvertHostTimeToSystemUnits(CMTimeMake(1, 3)) == 333333333);
+		// negative times round the same way (see the quirk test below)
+		CHECK((int64_t)CMClockConvertHostTimeToSystemUnits(CMTimeMake(-1, 2000000000)) == -1);
+		CHECK((int64_t)CMClockConvertHostTimeToSystemUnits(CMTimeMake(-3, 2000000000)) == -2);
+		CHECK((int64_t)CMClockConvertHostTimeToSystemUnits(CMTimeMake(-5, 2000000000)) == -3);
 	}
 
-	// input the documentation does not cover gives a defined answer: 0 for a negative time, and for an infinity
-	// even with a valid timescale and a value that would otherwise convert
-	CHECK(CMClockConvertHostTimeToSystemUnits(CMTimeMake(-5, 1000000000)) == 0);
+	// QUIRK test, host time above INT64_MAX wraps: the nanosecond value of a host time that is not below 2^63
+	// is not rejected but wraps to a negative one (macOS 26.7.3 and 10.14.4, 1:1 timebase).
+	if (info.numer == 1 && info.denom == 1) {
+		CMTime wrapped = CMClockMakeHostTimeFromSystemUnits(UINT64_MAX);
+		CHECK(CMTIME_IS_VALID(wrapped) && wrapped.value == -1 && wrapped.timescale == 1000000000);
+		wrapped = CMClockMakeHostTimeFromSystemUnits(1ull << 63);
+		CHECK(CMTIME_IS_VALID(wrapped) && wrapped.value == INT64_MIN);
+		wrapped = CMClockMakeHostTimeFromSystemUnits((uint64_t)INT64_MAX);
+		CHECK(CMTIME_IS_VALID(wrapped) && wrapped.value == INT64_MAX);
+		CHECK(CMClockConvertHostTimeToSystemUnits(CMTimeMake(INT64_MAX, 1000000000)) == (uint64_t)INT64_MAX);
+		// no 64-bit tick count holds INT64_MAX seconds
+		CHECK(CMClockConvertHostTimeToSystemUnits(CMTimeMake(INT64_MAX, 1)) == 0);
+	}
+
+	// QUIRK test, negative host time wraps: a negative time is not rejected; its tick count is negated modulo
+	// 2^64, also for a negative timescale (macOS 26.7.3 and 10.14.4, 1:1 timebase).
+	if (info.numer == 1 && info.denom == 1) {
+		CHECK(CMClockConvertHostTimeToSystemUnits(CMTimeMake(-5, 1000000000)) == (uint64_t)0 - 5);
+		CHECK(CMClockConvertHostTimeToSystemUnits(CMTimeMake(-1, 1)) == (uint64_t)0 - 1000000000);
+		CMTime negScale = CMTimeMake(5, 1000000000);
+		negScale.timescale = -1000000000;
+		CHECK(CMClockConvertHostTimeToSystemUnits(negScale) == (uint64_t)0 - 5);
+	}
+
+	// a flag that only says the value was rounded does not make the time invalid, and the epoch is ignored
+	CMTime rounded = CMTimeMake(5, 1000000000);
+	rounded.flags |= kCMTimeFlags_HasBeenRounded;
+	rounded.epoch = 7;
+	CHECK(CMClockConvertHostTimeToSystemUnits(rounded) == CMClockConvertHostTimeToSystemUnits(CMTimeMake(5, 1000000000)));
+	CHECK(CMClockConvertHostTimeToSystemUnits(rounded) != 0);
+
+	// an infinity, even with a valid timescale and a value that would otherwise convert, a zero timescale and
+	// an invalid time give 0
+	CMTime zeroScale = CMTimeMake(5, 1000000000);
+	zeroScale.timescale = 0;
+	CHECK(CMClockConvertHostTimeToSystemUnits(zeroScale) == 0);
 	CHECK(CMClockConvertHostTimeToSystemUnits(kCMTimeNegativeInfinity) == 0);
 	CMTime infinite = CMTimeMake(5, 1000);
 	infinite.flags |= kCMTimeFlags_PositiveInfinity;
