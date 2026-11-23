@@ -31,6 +31,14 @@ typedef struct CF_BRIDGED_TYPE(id) OpaqueCMClock *CMClockRef;
 typedef struct CF_BRIDGED_TYPE(id) OpaqueCMTimebase *CMTimebaseRef;
 typedef CFTypeRef CMClockOrTimebaseRef;
 
+// CMClock error codes
+enum {
+	kCMClockError_MissingRequiredParameter = -12745,
+	kCMClockError_InvalidParameter = -12746,
+	kCMClockError_AllocationFailed = -12747,
+	kCMClockError_UnsupportedOperation = -12756,
+};
+
 CF_IMPLICIT_BRIDGING_ENABLED
 
 CM_EXPORT CFTypeID CMClockGetTypeID(void);
@@ -39,6 +47,16 @@ CM_EXPORT CFTypeID CMClockGetTypeID(void);
 CM_EXPORT CMClockRef CMClockGetHostTimeClock(void);
 
 CM_EXPORT CMTime CMClockGetTime(CMClockRef clock);
+
+// Returns the clock's time and the matching time of its reference clock, which for the host time clock is the
+// host time clock itself.
+CM_EXPORT OSStatus CMClockGetAnchorTime(CMClockRef clock, CMTime *clockTimeOut, CMTime *referenceClockTimeOut);
+
+// Whether two clocks can drift relative to each other.
+CM_EXPORT Boolean CMClockMightDrift(CMClockRef clock, CMClockRef otherClock);
+
+// Stops a clock that its owner is done with. The host time clock has no owner, so this has no effect on it.
+CM_EXPORT void CMClockInvalidate(CMClockRef clock);
 
 // A scale conversion between a CMTime and the native units of the host time (mach_absolute_time ticks).
 CM_EXPORT uint64_t CMClockConvertHostTimeToSystemUnits(CMTime hostTime);
