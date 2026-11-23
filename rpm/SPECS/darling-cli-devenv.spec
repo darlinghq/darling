@@ -24,6 +24,8 @@ Source0:        %{name}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  bash
+# the Mach-O files it holds are the same on every host (see darling.spec)
+BuildArch:      noarch
 
 Requires:       darling-cli darling-python2 darling-ruby darling-perl darling-cli-devenv-gui-common darling-cli-devenv-gui-stubs-common darling-iosurface
 Conflicts:      darling-gui darling-gui-stubs
