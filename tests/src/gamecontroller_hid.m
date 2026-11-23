@@ -84,6 +84,9 @@ int main(int argc, char *argv[])
 			queue:[NSOperationQueue mainQueue]
 			usingBlock:^(NSNotification *note) {
 				GCController *c = [note object];
+				// the virtual devices are named Vpad ...; a real controller may be attached too
+				if (![[c vendorName] hasPrefix:@"Vpad"])
+					return;
 				printf("Received GCControllerDidConnectNotification: %p, category: %s\n",
 				       c, [[c productCategory] UTF8String] ?: "(null)");
 				connectedController = [c retain];
@@ -100,9 +103,9 @@ int main(int argc, char *argv[])
 
 		if (!connectedController) {
 			// Check if it appears in controllers array anyway
-			NSArray<GCController *> *current = [GCController controllers];
-			if ([current count] > initialCount) {
-				connectedController = [[current lastObject] retain];
+			for (GCController *c in [GCController controllers]) {
+				if ([[c vendorName] hasPrefix:@"Vpad"])
+					connectedController = [c retain];
 			}
 		}
 
