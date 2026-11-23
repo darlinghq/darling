@@ -511,21 +511,6 @@ void* CMByteStreamWriteBlockBuffer(void) {
     return NULL;
 }
 
-void* CMClockGetAnchorTime(void) {
-    if (verbose) puts("STUB: CMClockGetAnchorTime called");
-    return NULL;
-}
-
-void* CMClockInvalidate(void) {
-    if (verbose) puts("STUB: CMClockInvalidate called");
-    return NULL;
-}
-
-void* CMClockMightDrift(void) {
-    if (verbose) puts("STUB: CMClockMightDrift called");
-    return NULL;
-}
-
 void* CMClosedCaptionFormatDescriptionCopyAsBigEndianClosedCaptionDescriptionBlockBuffer(void) {
     if (verbose) puts("STUB: CMClosedCaptionFormatDescriptionCopyAsBigEndianClosedCaptionDescriptionBlockBuffer called");
     return NULL;

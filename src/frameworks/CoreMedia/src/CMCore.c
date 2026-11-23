@@ -809,6 +809,45 @@ CMTime CMClockGetTime(CMClockRef clock)
 	return CMClockMakeHostTimeFromSystemUnits(mach_absolute_time());
 }
 
+OSStatus CMClockGetAnchorTime(CMClockRef clock, CMTime *clockTimeOut, CMTime *referenceClockTimeOut)
+{
+	/* GUESS: the documentation lists no results. The kCMClockError_ names are used by their meaning: a missing
+	   argument is MissingRequiredParameter, an object that is not a clock is InvalidParameter. */
+	if (clock == NULL || clockTimeOut == NULL || referenceClockTimeOut == NULL)
+		return kCMClockError_MissingRequiredParameter;
+	if (CFGetTypeID(clock) != CMClock_GetTypeID())
+		return kCMClockError_InvalidParameter;
+	CMTime now = CMClockMakeHostTimeFromSystemUnits(mach_absolute_time());
+	if (!CMTIME_IS_VALID(now))
+		return kCMClockError_UnsupportedOperation;
+	/* GUESS: the documentation does not say what the reference clock of the host time clock is. The host time
+	   clock is described as the clock that stands for host time itself, so it is taken to be its own reference
+	   clock and both times are the same reading. The rejected alternative is a reference clock of some other kind, which this
+	   framework has no way to create. */
+	*clockTimeOut = now;
+	*referenceClockTimeOut = now;
+	return noErr;
+}
+
+Boolean CMClockMightDrift(CMClockRef clock, CMClockRef otherClock)
+{
+	/* GUESS: the host time clock is the only kind of clock, so two clocks are always the same clock, which
+	   cannot drift against itself. The documentation defines no result for NULL or foreign arguments; they
+	   give false too. */
+	(void)clock;
+	(void)otherClock;
+	return false;
+}
+
+void CMClockInvalidate(CMClockRef clock)
+{
+	/* GUESS: the documentation says that invalidating makes a clock fail from then on, that only the owner of
+	   a clock should do it, and nothing about the singleton host time clock, which has no client owner. The
+	   call is ignored: invalidating the one clock every timebase in the process depends on would break all of
+	   them for good. The rejected alternative is to take the documentation literally and stop the singleton. */
+	(void)clock;
+}
+
 #pragma mark - Attachment bearers
 
 CMAttachmentStore *CMCoreGetAttachmentStore(CFTypeRef object)
