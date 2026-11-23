@@ -216,6 +216,23 @@ static void checkCase(const char *what, const uint8_t *bytes, size_t length, boo
     CFRelease(data);
 }
 
+// An image of w x h texels in blocks of bw x bh, every block the same void-extent block, as a file.
+static void checkFile(const char *what, int bw, int bh, uint32_t w, uint32_t h, bool sourceExists, bool imageExists) {
+    size_t blocks = (size_t)((w + bw - 1) / bw) * ((h + bh - 1) / bh);
+    size_t length = 16 + blocks * 16;
+    uint8_t *file = malloc(length);
+    if (file == NULL) {
+        printf("FAIL: %s: out of memory\n", what);
+        failures++;
+        return;
+    }
+    putHeader(file, bw, bh, 1, w, h, 1);
+    for (size_t i = 0; i < blocks; i++)
+        putVoidBlock(file + 16 + i * 16, 0x1000, 0x2000, 0x3000, 0xFFFF);
+    checkCase(what, file, length, sourceExists, imageExists);
+    free(file);
+}
+
 static void checkCases(void) {
     uint8_t file[16 + 16 * 4];
     memset(file, 0, sizeof file);
@@ -234,12 +251,13 @@ static void checkCases(void) {
     memset(file + 64, 0, 16);
     checkCase("an illegal block", file, sizeof file, true, false);
 
-    // over the limits: 16385 texels wide, 16384 x 16384 in total; the data is a single block, so
-    // these also show that nothing is allocated for the size the header claims
-    putHeader(file, 4, 4, 1, 16385, 4, 1);
-    checkCase("too wide", file, 32, true, false);
-    putHeader(file, 12, 12, 1, 16384, 16384, 1);
-    checkCase("too many pixels", file, 32, true, false);
+    // over the limits, each with all the blocks its header asks for, so that the size limits are
+    // what refuses it and not the block count: 16385 texels wide (4097 blocks), and 8193 x 8193
+    // texels, which is 2^26 + 16385 texels (683 x 683 blocks of 12 x 12, about 7.5 MB)
+    checkFile("too wide", 4, 4, 16385, 4, true, false);
+    checkFile("too many pixels", 12, 12, 8193, 8193, true, false);
+    // and at the limits (16384 wide: 4096 blocks): an image
+    checkFile("at the width limit (control)", 4, 4, 16384, 4, true, true);
 
     // not an .astc header at all: no source
     putHeader(file, 4, 4, 1, 4, 4, 1);
