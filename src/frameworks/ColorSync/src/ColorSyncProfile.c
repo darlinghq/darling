@@ -33,6 +33,7 @@ struct __ColorSyncProfile
 	CFRuntimeBase base;
 	CFDataRef data;
 	CFURLRef url;
+	bool isMutable;
 };
 
 static void ColorSyncProfileFinalize(CFTypeRef cf)
@@ -310,4 +311,61 @@ CFURLRef ColorSyncProfileGetURL(ColorSyncProfileRef prof, CFErrorRef* error)
 
 	const struct __ColorSyncProfile* profile = profileOrNull(prof);
 	return profile ? profile->url : NULL;
+}
+
+// GUESS: the page says only that the result is a mutable copy of the profile's data. The copy has no URL (GetURL
+// gives NULL, as for a profile made from data), and a NULL or non-profile argument gives NULL.
+ColorSyncMutableProfileRef ColorSyncProfileCreateMutableCopy(ColorSyncProfileRef prof)
+{
+	const struct __ColorSyncProfile* source = profileOrNull(prof);
+	if (!source)
+		return NULL;
+	ColorSyncProfileRef copy = ColorSyncProfileCreate(source->data, NULL);
+	if (copy)
+		((struct __ColorSyncProfile*) copy)->isMutable = true;
+	return copy;
+}
+
+// GUESS: the page says the header is "in host endianness" and does not list the fields. It is taken to be the C struct
+// that the public CMICCProfile.h of the MacOSX10.1.5 SDK declares as CM2Header and CM4Header (github.com/phracker/MacOSX-SDKs):
+// each field a number of its type, swapped on its own. So the 32-bit words are swapped (signatures too, so 'RGB ' is
+// 0x52474220 on a little-endian host), the date and time is six 16-bit numbers (CMDateTime), and the device attributes
+// are two 32-bit words (`UInt32 deviceAttributes[2]`, one for device vendors and one for ICC), not one 64-bit number;
+// the Profile ID and the reserved bytes are bytes. That the call means that struct is the guess. Not chosen: keeping
+// the signatures as bytes, or one 64-bit swap of the attributes. See ICCHeaderSwapFields. A NULL or non-profile
+// argument gives NULL, which the page says is the failure result.
+CFDataRef ColorSyncProfileCopyHeader(ColorSyncProfileRef prof)
+{
+	const struct __ColorSyncProfile* profile = profileOrNull(prof);
+	if (!profile)
+		return NULL;
+	uint8_t header[ICC_HEADER_SIZE];
+	ICCHeaderSwapFields(CFDataGetBytePtr(profile->data), header);
+	return CFDataCreate(kCFAllocatorDefault, header, sizeof header);
+}
+
+// GUESS: the function has no result, so every failure is silent and leaves the profile as it was: a profile that is not
+// mutable, a NULL or non-profile argument, a NULL header, or a header that is not 128 bytes. The header, taken in the
+// layout of CopyHeader, is stored as given: no field is checked or recomputed, so a header without the file signature
+// 'acsp', or with another size, gives data that ColorSyncProfileCreate would reject or that disagrees with its size field.
+// Like other mutable CoreFoundation objects, a mutable profile is not safe to change from several threads at once.
+void ColorSyncProfileSetHeader(ColorSyncMutableProfileRef prof, CFDataRef header)
+{
+	struct __ColorSyncProfile* profile = (struct __ColorSyncProfile*) profileOrNull(prof);
+	if (!profile || !profile->isMutable || !header || CFDataGetLength(header) != ICC_HEADER_SIZE)
+		return;
+
+	const CFIndex length = CFDataGetLength(profile->data);
+	CFMutableDataRef updated = CFDataCreateMutableCopy(kCFAllocatorDefault, length, profile->data);
+	if (!updated)
+		return;
+	ICCHeaderSwapFields(CFDataGetBytePtr(header), CFDataGetMutableBytePtr(updated));
+
+	// An immutable copy, as in ColorSyncProfileCreate: data returned earlier by CopyData must not change under its holder.
+	CFDataRef frozen = CFDataCreateCopy(kCFAllocatorDefault, updated);
+	CFRelease(updated);
+	if (!frozen)
+		return;
+	CFRelease(profile->data);
+	profile->data = frozen;
 }
