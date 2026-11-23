@@ -117,40 +117,37 @@ static BOOL isInputParameter(Ivar ivar)
     return keys;
 }
 
-// GUESS: the documentation does not describe the archive layout. Each parameter that has a value is
-// stored under its own key; a parameter without a value is not stored.
+// QUIRK: each input parameter that has a value is archived under its name with the prefix "CI_" (for example
+// "CI_inputEV"); a parameter without a value is not stored. The archive layout is not documented. Evidence:
+// black-box observation of a keyed archive of a CIExposureAdjust on macOS 26.7.3 and 10.14.4 (tier 2).
+// Test: coreimage_filter_coding ("archive keys").
+static NSString *archiveKey(NSString *parameter) {
+    return [@"CI_" stringByAppendingString: parameter];
+}
+
 - (void) encodeWithCoder: (NSCoder *) coder {
     for (NSString *key in [self inputKeys]) {
         id value = [self valueForKey: key];
         if (value != nil) {
-            [coder encodeObject: value forKey: key];
+            [coder encodeObject: value forKey: archiveKey(key)];
         }
     }
 }
 
-// KNOWN LIMITATION: the layout of an archive written by macOS was NOT observed, so it is a GUESS
-// (see -encodeWithCoder:). Values stored under different keys are dropped: the filter decodes with its
-// parameters unset. The NSLog below reports it only when none of the keys are present; a partial
-// mismatch is not reported. Decoding applies no defaults, because the
-// documentation says a new filter's parameters are undefined on macOS until -setDefaults.
-// The value classes are the ones the filter reference lists for parameters
+// Decoding applies no defaults, a parameter that is not in the archive stays without a value (as on macOS 10.14
+// and 26: the default of a new filter is only applied by -setDefaults). The value classes are the ones the
+// filter reference lists for parameters
 // (https://developer.apple.com/library/archive/documentation/GraphicsImaging/Reference/CoreImageFilterReference/index.html);
 // only a secure coder enforces them. A coder that is not keyed raises, as NSCoder does.
 - (instancetype) initWithCoder: (NSCoder *) coder {
     if ((self = [super init])) {
         NSSet *valueClasses = [NSSet setWithObjects: [NSNumber class], [NSString class], [NSData class],
             [NSValue class], [NSAffineTransform class], [CIImage class], [CIVector class], [CIColor class], nil];
-        NSArray<NSString *> *keys = [self inputKeys];
-        BOOL anyKeyStored = NO;
-        for (NSString *key in keys) {
-            anyKeyStored = anyKeyStored || [coder containsValueForKey: key];
-            id value = [coder decodeObjectOfClasses: valueClasses forKey: key];
+        for (NSString *key in [self inputKeys]) {
+            id value = [coder decodeObjectOfClasses: valueClasses forKey: archiveKey(key)];
             if (value != nil) {
                 [self setValue: value forKey: key];
             }
-        }
-        if ([keys count] > 0 && !anyKeyStored) {
-            NSLog(@"CIFilter initWithCoder: %@: archive holds none of the expected input keys, parameters left unset", [self class]);
         }
     }
     return self;
