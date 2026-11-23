@@ -191,16 +191,9 @@ CFArrayRef ColorSyncProfileCopyTagSignatures(ColorSyncProfileRef prof)
 	return signatures;
 }
 
-static void setPOSIXError(CFErrorRef* error, int code)
-{
-	if (error)
-		*error = CFErrorCreate(kCFAllocatorDefault, kCFErrorDomainPOSIX, code, NULL);
-}
-
-// The bytes of the file at a file URL. On failure NULL, and the error, if wanted, is a POSIX error for the
-// failed call. GUESS: the pages do not say which URLs are read or how a read fails. Only file URLs are read,
-// and a failure to read has the POSIX domain and the errno value.
-static CFDataRef copyFileData(CFURLRef url, CFErrorRef* error)
+// The bytes of the file at a file URL, or NULL when the URL is not a file URL or the file cannot be read in full:
+// missing, unreadable, not a regular file, or larger than a profile can be (its size field is 32 bits).
+static CFDataRef copyFileData(CFURLRef url)
 {
 	char path[PATH_MAX];
 	CFStringRef scheme = CFURLCopyScheme(url);
@@ -208,30 +201,15 @@ static CFDataRef copyFileData(CFURLRef url, CFErrorRef* error)
 	if (scheme)
 		CFRelease(scheme);
 	if (!isFile || !CFURLGetFileSystemRepresentation(url, true, (UInt8*) path, sizeof path))
-	{
-		setInvalidDataError(error);
 		return NULL;
-	}
 
 	const int fd = open(path, O_RDONLY);
 	if (fd < 0)
-	{
-		setPOSIXError(error, errno);
 		return NULL;
-	}
 
-	// A profile is at most 4 GiB (its size field is 32 bits), so a larger file is not read.
 	struct stat st;
-	int failure = 0;
-	if (fstat(fd, &st) < 0)
-		failure = errno;
-	else if (!S_ISREG(st.st_mode))
-		failure = EINVAL;
-	else if (st.st_size > UINT32_MAX)
-		failure = EFBIG;
-	if (failure)
+	if (fstat(fd, &st) < 0 || !S_ISREG(st.st_mode) || st.st_size > UINT32_MAX)
 	{
-		setPOSIXError(error, failure);
 		close(fd);
 		return NULL;
 	}
@@ -240,7 +218,6 @@ static CFDataRef copyFileData(CFURLRef url, CFErrorRef* error)
 	CFMutableDataRef data = CFDataCreateMutable(kCFAllocatorDefault, 0);
 	if (!data)
 	{
-		setPOSIXError(error, ENOMEM);
 		close(fd);
 		return NULL;
 	}
@@ -254,7 +231,6 @@ static CFDataRef copyFileData(CFURLRef url, CFErrorRef* error)
 			continue;
 		if (got < 0)
 		{
-			setPOSIXError(error, errno);
 			CFRelease(data);
 			data = NULL;
 			break;
@@ -268,41 +244,35 @@ static CFDataRef copyFileData(CFURLRef url, CFErrorRef* error)
 	return data;
 }
 
-// GUESS: a NULL URL, a URL that is not a file URL and data that is not a profile fail like ColorSyncProfileCreate
-// does. The profile keeps the URL as given, which ColorSyncProfileGetURL returns.
+// Observed on macOS 26.7.3 and 10.14.4 (probe, tests/src/colorsync_profile_url.c): every failure, whether the URL is
+// NULL, not a file URL, missing, unreadable, a directory or not a profile, returns NULL and leaves the error NULL;
+// the error is only cleared. The profile keeps the URL as given (a relative URL stays relative).
 ColorSyncProfileRef ColorSyncProfileCreateWithURL(CFURLRef url, CFErrorRef* error)
 {
 	if (error)
 		*error = NULL;
-
-	CFDataRef data = url ? copyFileData(url, error) : NULL;
-	if (!data)
-	{
-		if (!url)
-			setInvalidDataError(error);
+	if (!url)
 		return NULL;
-	}
 
-	ColorSyncProfileRef prof = ColorSyncProfileCreate(data, error);
+	CFDataRef data = copyFileData(url);
+	if (!data)
+		return NULL;
+
+	ColorSyncProfileRef prof = ColorSyncProfileCreate(data, NULL);
 	CFRelease(data);
 	if (prof)
 		((struct __ColorSyncProfile*) prof)->url = CFRetain(url);
 	return prof;
 }
 
-// GUESS: a profile that was not created from a URL has none; NULL and the invalid-data error then, as for a NULL
-// or non-profile argument. The page says only that NULL means failure.
-// The URL belongs to the profile (the page is a "Get": no reference is added).
+// Observed on macOS 26.7.3 and 10.14.4: a profile that was not created from a URL, a NULL argument and an argument
+// that is not a profile all give NULL with the error left NULL. The URL belongs to the profile (a "Get" function adds
+// no reference) and is returned even after the file is gone.
 CFURLRef ColorSyncProfileGetURL(ColorSyncProfileRef prof, CFErrorRef* error)
 {
 	if (error)
 		*error = NULL;
 
 	const struct __ColorSyncProfile* profile = profileOrNull(prof);
-	if (!profile || !profile->url)
-	{
-		setInvalidDataError(error);
-		return NULL;
-	}
-	return profile->url;
+	return profile ? profile->url : NULL;
 }
