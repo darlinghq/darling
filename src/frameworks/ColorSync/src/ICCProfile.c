@@ -19,6 +19,7 @@
 
 #include "ICCProfile.h"
 #include <stdlib.h>
+#include <string.h>
 
 #define ICC_FILE_SIGNATURE_OFFSET 36
 #define ICC_FILE_SIGNATURE 0x61637370u // 'acsp'
@@ -27,6 +28,40 @@
 static uint32_t readBigEndian32(const uint8_t* p)
 {
 	return ((uint32_t) p[0] << 24) | ((uint32_t) p[1] << 16) | ((uint32_t) p[2] << 8) | p[3];
+}
+
+static void reverseBytes(uint8_t* p, size_t count)
+{
+	for (size_t i = 0; i < count / 2; i++)
+	{
+		const uint8_t t = p[i];
+		p[i] = p[count - 1 - i];
+		p[count - 1 - i] = t;
+	}
+}
+
+static bool hostIsLittleEndian(void)
+{
+	const uint16_t one = 1;
+	uint8_t first;
+	memcpy(&first, &one, 1);
+	return first == 1;
+}
+
+void ICCHeaderSwapFields(const uint8_t in[ICC_HEADER_SIZE], uint8_t out[ICC_HEADER_SIZE])
+{
+	static const struct { uint8_t offset, width; } fields[] = {
+		{ 0, 4 }, { 4, 4 }, { 8, 4 }, { 12, 4 }, { 16, 4 }, { 20, 4 },
+		{ 24, 2 }, { 26, 2 }, { 28, 2 }, { 30, 2 }, { 32, 2 }, { 34, 2 },
+		{ 36, 4 }, { 40, 4 }, { 44, 4 }, { 48, 4 }, { 52, 4 },
+		{ 56, 4 }, { 60, 4 },
+		{ 64, 4 }, { 68, 4 }, { 72, 4 }, { 76, 4 }, { 80, 4 },
+	};
+	memcpy(out, in, ICC_HEADER_SIZE);
+	if (!hostIsLittleEndian())
+		return;
+	for (size_t i = 0; i < sizeof fields / sizeof fields[0]; i++)
+		reverseBytes(out + fields[i].offset, fields[i].width);
 }
 
 uint32_t ICCProfileTagCount(const uint8_t* data)

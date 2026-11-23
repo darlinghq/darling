@@ -37,6 +37,16 @@ typedef struct ICCTag {
 	uint32_t size;
 } ICCTag;
 
+// Converts the 128-byte header between the layout of the file (all numbers big-endian, ICC.1:2022, 7.2) and one in
+// host byte order, in either direction (the conversion is its own inverse; on a big-endian host it copies). Each
+// field is swapped as the number it is: the size, the CMM, version, class, colour space and PCS words, the file
+// signature, platform, flags, manufacturer and model words, the rendering intent, the three 32-bit numbers of the
+// illuminant and the creator word as 32-bit numbers, so a signature such as 'RGB ' is the number 0x52474220 in
+// host order; the six numbers of the date and time as 16-bit numbers; the device attributes (bytes 56 to 63) as two
+// 32-bit numbers, each on its own (CM2Header declares `UInt32 deviceAttributes[2]`, see ColorSyncProfile.c). The Profile ID (84 to 99) and the reserved bytes (100 to 127) are bytes and stay as they are.
+// `in` and `out` hold 128 bytes each and must not overlap.
+void ICCHeaderSwapFields(const uint8_t in[ICC_HEADER_SIZE], uint8_t out[ICC_HEADER_SIZE]);
+
 // True if the bytes have the 'acsp' file signature at byte 36 and a tag table with every tag's offset and size inside the data and past the table. Nothing else in the
 // header or the tag data is checked.
 bool ICCProfileValidate(const uint8_t* data, size_t length);
