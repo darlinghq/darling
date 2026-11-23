@@ -12,6 +12,7 @@
 #include <AudioToolbox/AudioUnit.h>
 #include <AudioToolbox/ExtendedAudioFile.h>
 #include <AudioToolbox/MusicDevice.h>
+#include <AudioToolbox/MusicPlayer.h>
 #include <AudioToolbox/AudioCodec.h>
 #include <AudioToolbox/AudioHardwareService.h>
 #include <AudioToolbox/AUParameters.h>
