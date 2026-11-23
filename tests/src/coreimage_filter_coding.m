@@ -67,8 +67,25 @@ static id unarchive(NSData *data, BOOL secure) {
     return result;
 }
 
+// QUIRK test: the keys of the archived parameters have the prefix "CI_", as observed on macOS 26.7.3 and 10.14.4
+// (an archive of a CIExposureAdjust holds CI_inputEV); the parameters are stored in the dictionary of the filter.
+static void checkArchiveKeys(void) {
+    CodingTestFilter *filter = [[[CodingTestFilter alloc] init] autorelease];
+    [filter setValue: @2.5 forKey: @"inputAmount"];
+    NSData *data = archive(filter, NO);
+    NSDictionary *plist = [NSPropertyListSerialization propertyListWithData: data options: 0 format: NULL error: NULL];
+    NSArray *objects = [plist objectForKey: @"$objects"];
+    NSDictionary *root = [objects count] > 1 ? [objects objectAtIndex: 1] : nil;
+    CHECK([root isKindOfClass: [NSDictionary class]], "archive keys: the archive has a root dictionary");
+    CHECK([root objectForKey: @"CI_inputAmount"] != nil, "archive keys: a parameter with a value is stored as CI_<name>");
+    CHECK([root objectForKey: @"inputAmount"] == nil, "archive keys: the bare name is not used");
+    CHECK([root objectForKey: @"CI_inputLabel"] == nil, "archive keys: a parameter without a value is not stored");
+}
+
 int main(void) {
     @autoreleasepool {
+        checkArchiveKeys();
+
         // the documented class conformance
         CHECK([CIFilter conformsToProtocol: @protocol(NSSecureCoding)], "CIFilter conforms to NSSecureCoding");
         CHECK([CIFilter conformsToProtocol: @protocol(NSCoding)], "CIFilter conforms to NSCoding");
@@ -90,10 +107,20 @@ int main(void) {
 
             // the filter reference lists NSAffineTransform as a parameter class (inputTransform)
             NSAffineTransform *transform = [NSAffineTransform transform];
+            // scaled as well: this Foundation's keyed archive of a translation-only transform loses the translation
             [transform translateXBy: 3 yBy: 4];
+            [transform scaleXBy: 2 yBy: 5];
             [filter setValue: transform forKey: @"inputTransform"];
             decoded = unarchive(archive(filter, secure), secure);
-            CHECK([[decoded valueForKey: @"inputTransform"] isEqual: transform], "an NSAffineTransform parameter is decoded");
+            // compared by matrix
+            NSAffineTransformStruct want = [transform transformStruct], got = {0};
+            id decodedTransform = [decoded valueForKey: @"inputTransform"];
+            CHECK([decodedTransform isKindOfClass: [NSAffineTransform class]], "an NSAffineTransform parameter is decoded");
+            if ([decodedTransform isKindOfClass: [NSAffineTransform class]]) {
+                got = [decodedTransform transformStruct];
+            }
+            CHECK(got.m11 == want.m11 && got.m12 == want.m12 && got.m21 == want.m21 && got.m22 == want.m22 &&
+                  got.tX == want.tX && got.tY == want.tY, "the decoded NSAffineTransform has the archived matrix");
             [filter setValue: nil forKey: @"inputTransform"];
 
             // parameters without a value are not stored, and an archive without any still decodes

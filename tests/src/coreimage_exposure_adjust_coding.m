@@ -7,7 +7,7 @@
 // that have no default unchanged), https://developer.apple.com/documentation/coreimage/ciexposureadjust
 // (the parameters are inputImage and inputEV) and the filter reference
 // https://developer.apple.com/library/archive/documentation/GraphicsImaging/Reference/CoreImageFilterReference/index.html
-// (inputEV is an NSNumber with the default 0.50). The archive layout is not documented, so the tests
+// (inputEV is an NSNumber; its default is 0, as observed on macOS 26.7.3 and 10.14.4, although the page says 0.50). The archive layout is not documented, so the tests
 // only use archives written by this implementation. The class is looked up by name because on macOS
 // CIExposureAdjust is a protocol in the public headers.
 // Prints OK, or the failures with a non-zero exit status.
@@ -76,7 +76,7 @@ int main(void) {
             CHECK([decoded isMemberOfClass: filterClass], "a filter without parameters decodes");
             CHECK([decoded valueForKey: kCIInputEVKey] == nil, "decoding applies no defaults");
             [decoded setDefaults];
-            CHECK([[decoded valueForKey: kCIInputEVKey] isEqual: @0.5], "-setDefaults gives inputEV its default of 0.5");
+            CHECK([[decoded valueForKey: kCIInputEVKey] isEqual: @0], "-setDefaults gives inputEV its default of 0");
             CHECK([decoded valueForKey: kCIInputImageKey] == nil, "-setDefaults has no default for inputImage");
         }
 
@@ -86,7 +86,7 @@ int main(void) {
         [other setValue: image forKey: kCIInputImageKey];
         [other setValue: @-3 forKey: kCIInputEVKey];
         [other setDefaults];
-        CHECK([[other valueForKey: kCIInputEVKey] isEqual: @0.5], "-setDefaults replaces a set inputEV");
+        CHECK([[other valueForKey: kCIInputEVKey] isEqual: @0], "-setDefaults replaces a set inputEV");
         CHECK([other valueForKey: kCIInputImageKey] == image, "-setDefaults leaves inputImage unchanged");
     }
     printf(failures ? "FAILED\n" : "OK\n");
