@@ -69,13 +69,11 @@
 - (BOOL)obtainWithRights:(const AuthorizationRights *)rights flags:(AuthorizationFlags)flags environment:(const AuthorizationEnvironment *)environment authorizedRights:(AuthorizationRights **)authorizedRights error:(NSError **)error
 {
     OSStatus status = AuthorizationCopyRights(_authorization, rights, environment, flags, authorizedRights);
-    if (status == errAuthorizationSuccess)
-        return YES;
-    // GUESS: the documentation says the error holds "the result code returned by the method" without
-    // naming a domain; the OSStatus domain is the one Foundation provides for such codes.
+    // Observed on macOS 26.7.3 and 10.14.4 (probe, tests/src/securityfoundation_sfauthorization.m): the error holds the
+    // result code in NSOSStatusErrorDomain for every call, also when it succeeds (code 0, noErr).
     if (error != NULL)
         *error = [NSError errorWithDomain:NSOSStatusErrorDomain code:status userInfo:nil];
-    return NO;
+    return status == errAuthorizationSuccess;
 }
 
 - (BOOL)obtainWithRight:(AuthorizationString)rightName flags:(AuthorizationFlags)flags error:(NSError **)error
@@ -88,9 +86,8 @@
 - (void)invalidateCredentials
 {
     // Freeing with kAuthorizationFlagDestroyRights is how Authorization Services keeps the rights obtained
-    // through a reference from being preserved. GUESS: the documentation does not say whether the object
-    // can be used afterwards; it keeps no reference, so the obtain methods then fail and
-    // authorizationRef is NULL.
+    // through a reference from being preserved. Observed on macOS 26.7.3 and 10.14.4: afterwards authorizationRef is
+    // NULL, the obtain methods fail with errAuthorizationInvalidRef, and invalidating again is harmless.
     if (_authorization != NULL) {
         AuthorizationFree(_authorization, kAuthorizationFlagDestroyRights);
         _authorization = NULL;
