@@ -1994,6 +1994,61 @@ static void addMissingAccounts(enum accountFile type, const char* name)
 	fclose(file);
 }
 
+// macOS puts the administrator accounts in the group admin (gid 80), and the account created at
+// setup is one. Authorization Services rules ask for that group, so a prefix gets the group with
+// the prefix owner (and root) as members. A prefix that already has a group of that name or id
+// keeps it as it is.
+static void ensureAdminGroup(void)
+{
+	char path[4096];
+	struct stat st;
+	FILE* file;
+	char* line = NULL;
+	size_t lineCapacity = 0;
+	bool found = false;
+	bool endsWithNewline = true;
+	struct passwd* owner = getpwuid(g_originalUid);
+
+	if (!owner)
+		return;
+
+	snprintf(path, sizeof(path), "%s/private/etc/group", prefix);
+
+	// Older prefixes may link this file to the host's own database, which must not be modified.
+	if (lstat(path, &st) != 0 || !S_ISREG(st.st_mode))
+		return;
+
+	file = fopen(path, "r+");
+	if (!file)
+		return;
+
+	while (getline(&line, &lineCapacity, file) != -1)
+	{
+		size_t len = strlen(line);
+		char* gid = strchr(line, ':');
+
+		endsWithNewline = len > 0 && line[len - 1] == '\n';
+
+		if (line[0] == '#')
+			continue;
+		if (strncmp(line, "admin:", 6) == 0)
+			found = true;
+		else if (gid && (gid = strchr(gid + 1, ':')) != NULL && strtoul(gid + 1, NULL, 10) == 80)
+			found = true;
+	}
+	free(line);
+
+	if (!found)
+	{
+		fseek(file, 0, SEEK_END);
+		if (!endsWithNewline)
+			fputc('\n', file);
+		fprintf(file, "admin:*:80:root,%s\n", owner->pw_name);
+	}
+
+	fclose(file);
+}
+
 void ensureSystemAccounts()
 {
 	// The account files belong to the user who owns the prefix.
@@ -2002,6 +2057,7 @@ void ensureSystemAccounts()
 	addMissingAccounts(ACCOUNT_FILE_PASSWD, "passwd");
 	addMissingAccounts(ACCOUNT_FILE_MASTER_PASSWD, "master.passwd");
 	addMissingAccounts(ACCOUNT_FILE_GROUP, "group");
+	ensureAdminGroup();
 
 	restoreRootIds();
 }
