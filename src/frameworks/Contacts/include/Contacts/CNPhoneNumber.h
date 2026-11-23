@@ -17,8 +17,28 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef CONTACTS_CNPHONENUMBER_H
+#define CONTACTS_CNPHONENUMBER_H
 
-@interface CNPhoneNumber : NSObject
+#import <Foundation/Foundation.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+// An immutable phone number.
+API_AVAILABLE(macos(10.11))
+@interface CNPhoneNumber : NSObject <NSCopying, NSSecureCoding>
+
+// Both give nil for a nil string.
++ (nullable instancetype)phoneNumberWithStringValue:(NSString *)stringValue;
+- (nullable instancetype)initWithStringValue:(NSString *)string;
+
+- (null_unspecified instancetype)init API_DEPRECATED("Use initWithStringValue:", macos(10.11, 10.13));
++ (null_unspecified instancetype)new API_DEPRECATED("Use phoneNumberWithStringValue:", macos(10.11, 10.13));
+
+@property (readonly, copy, NS_NONATOMIC_IOSONLY) NSString *stringValue;
 
 @end
+
+NS_ASSUME_NONNULL_END
+
+#endif
