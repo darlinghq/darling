@@ -94,9 +94,17 @@ private:
 	}
 };
 
+// Where a track sends its events: an audio unit node of the graph of the sequence, or a MIDI
+// endpoint. A track has none until one is set.
+enum class MusicDestination { none, node, endpoint };
+
 struct OpaqueMusicTrack
 {
 	OpaqueMusicSequence* sequence = nullptr;
+
+	MusicDestination destination = MusicDestination::none;
+	AUNode destinationNode = 0;
+	MIDIEndpointRef destinationEndpoint = 0;
 
 	// The track properties of MusicTrackSetProperty. The length is only used when it was set.
 	MusicTrackLoopInfo loop = { 0, 0 };
@@ -127,6 +135,11 @@ struct OpaqueMusicSequence
 
 	// The number of players that have the sequence set; it cannot be disposed while there is one.
 	int playerCount = 0;
+
+	// The graph set by the client (not owned), and the callback for user events with its data.
+	AUGraph graph = nullptr;
+	MusicSequenceUserCallback userCallback = nullptr;
+	void* userCallbackData = nullptr;
 
 	// What a beat of the sequence means (MusicSequenceType); beats by default.
 	MusicSequenceType type = kMusicSequenceType_Beats;
