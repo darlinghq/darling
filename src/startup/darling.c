@@ -167,6 +167,15 @@ static void waitForProcessExit(int handle, pid_t pid)
 		usleep(10000);
 }
 
+// darlingserver has printed why it stopped, if it knew; this names the point the container got to.
+static void reportServerExit(const char* when, int status)
+{
+	if (WIFSIGNALED(status))
+		fprintf(stderr, "darlingserver was killed by signal %d %s\n", WTERMSIG(status), when);
+	else
+		fprintf(stderr, "darlingserver exited with status %d %s\n", WEXITSTATUS(status), when);
+}
+
 // Whether the process has any effective or permitted capability. A failure to tell counts as having one.
 static bool hasCapabilities(void)
 {
@@ -585,20 +594,26 @@ int main(int argc, char ** argv)
 		pidInit = spawnInitProcess();
 		putInitPid(pidInit);
 		
-		// Wait until shellspawn starts. The socket is in the user's prefix, so
-		// look for it with the user's ids: access() would check with the real
-		// uid, which is 0.
+		// Look for shellspawn's socket with the user's ids (access() checks the real uid, 0); nothing
+		// in the container can run without the server, so its exit ends the wait.
+		int serverStatus;
 		useInvokingIds();
-		bool started = false;
-		for (int i = 0; i < 60 && !started; i++)
-		{
-			started = faccessat(AT_FDCWD, socketPath, F_OK, AT_EACCESS) == 0;
-			if (!started)
-				sleep(1);
-		}
+		enum launcher_socket_wait waited = launcherWaitForServerSocket(socketPath, pidInit, 60 * 1000, &serverStatus);
+		int waitError = errno;
 		restoreRootIds();
 
-		if (!started)
+		if (waited == LAUNCHER_SOCKET_SERVER_EXITED)
+		{
+			reportServerExit("before shellspawn started in the container", serverStatus);
+			fprintf(stderr, "A launchd of this container may still be running; run 'darling shutdown' before trying again.\n");
+			return 1;
+		}
+		if (waited == LAUNCHER_SOCKET_WAIT_FAILED)
+		{
+			fprintf(stderr, "Cannot wait for darlingserver: %s\n", strerror(waitError));
+			return 1;
+		}
+		if (waited != LAUNCHER_SOCKET_READY)
 		{
 			fprintf(stderr, "Timed out waiting for shellspawn in container\n");
 			return 1;
@@ -1613,8 +1628,15 @@ pid_t spawnInitProcess(void)
 	{
 		// The server exits with EX_UNAVAILABLE if it cannot assemble the prefix in the selected filesystem mode
 		int status;
-		if (waitpid(pid, &status, 0) == pid && WIFEXITED(status) && WEXITSTATUS(status) == EX_UNAVAILABLE && chooseFsMode())
+		if (waitpid(pid, &status, 0) != pid)
+		{
+			fprintf(stderr, "Cannot wait for darlingserver: %s\n", strerror(errno));
+			exit(1);
+		}
+		if (WIFEXITED(status) && WEXITSTATUS(status) == EX_UNAVAILABLE && chooseFsMode())
 			return spawnInitProcess();
+		reportServerExit("while setting up the prefix", status);
+		exit(1);
 	}
 
 	/*

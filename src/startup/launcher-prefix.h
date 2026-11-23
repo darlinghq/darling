@@ -73,4 +73,19 @@ bool launcherDirSocketPath(char* out, size_t size, int dirfd, const char* suffix
 // connected descriptor, or -1 with errno set.
 int launcherConnectUnixSocket(const struct sockaddr_un* addr, unsigned int waitMs);
 
+enum launcher_socket_wait
+{
+	LAUNCHER_SOCKET_READY,
+	// The server exited (and was reaped) first: the socket will never come.
+	LAUNCHER_SOCKET_SERVER_EXITED,
+	LAUNCHER_SOCKET_TIMED_OUT,
+	// waitpid() failed (server is not a child of the caller); errno is set.
+	LAUNCHER_SOCKET_WAIT_FAILED,
+};
+
+// Waits up to waitMs milliseconds for a file at path, as faccessat() with
+// AT_EACCESS sees it, while server, a child of the caller, is running. On
+// LAUNCHER_SOCKET_SERVER_EXITED *status holds the server's wait status.
+enum launcher_socket_wait launcherWaitForServerSocket(const char* path, pid_t server, unsigned int waitMs, int* status);
+
 #endif

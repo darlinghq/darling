@@ -18,11 +18,13 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 #include "launcher-prefix.h"
@@ -140,5 +142,30 @@ int launcherConnectUnixSocket(const struct sockaddr_un* addr, unsigned int waitM
 
 		nanosleep(&pause, NULL);
 		waited += 20;
+	}
+}
+
+enum launcher_socket_wait launcherWaitForServerSocket(const char* path, pid_t server, unsigned int waitMs, int* status)
+{
+	const struct timespec pause = { .tv_sec = 0, .tv_nsec = 50 * 1000 * 1000 };
+	unsigned int waited = 0;
+
+	for (;;)
+	{
+		if (faccessat(AT_FDCWD, path, F_OK, AT_EACCESS) == 0)
+			return LAUNCHER_SOCKET_READY;
+		pid_t reaped;
+		do
+			reaped = waitpid(server, status, WNOHANG);
+		while (reaped < 0 && errno == EINTR);
+		if (reaped == server)
+			return LAUNCHER_SOCKET_SERVER_EXITED;
+		if (reaped < 0)
+			return LAUNCHER_SOCKET_WAIT_FAILED;
+		if (waited >= waitMs)
+			return LAUNCHER_SOCKET_TIMED_OUT;
+
+		nanosleep(&pause, NULL);
+		waited += 50;
 	}
 }

@@ -66,10 +66,18 @@ int unlink(const char *path) { (void)path; ++unlinks; return 0; }
 static void setupWorkdir(void) { ++setups; }
 static pid_t spawnInitProcess(void) { ++spawns; return 8002; }
 static void putInitPid(pid_t pid) { (void)pid; ++pid_writes; }
-int faccessat(int fd, const char *path, int mode, int flags) {
-    (void)fd; (void)path; (void)mode; (void)flags; return 0;
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+enum launcher_socket_wait { LAUNCHER_SOCKET_READY, LAUNCHER_SOCKET_SERVER_EXITED, LAUNCHER_SOCKET_TIMED_OUT, LAUNCHER_SOCKET_WAIT_FAILED };
+static enum launcher_socket_wait wait_result;
+static enum launcher_socket_wait launcherWaitForServerSocket(const char *path, pid_t server, unsigned int ms, int *status) {
+    (void)path; (void)server; (void)ms; *status = 0;
+    if (wait_result == LAUNCHER_SOCKET_WAIT_FAILED) errno = ECHILD;
+    return wait_result;
 }
-unsigned int sleep(unsigned int seconds) { (void)seconds; return 0; }
+static int server_exit_reports;
+static void reportServerExit(const char *when, int status) { (void)when; (void)status; ++server_exit_reports; }
 static int startup(pid_t pidInit) {
 """
 tail = r"""
@@ -86,6 +94,24 @@ static int check(const char *label, int scan, pid_t live, int expected_rc, int e
         passed ? "PASS" : "FAIL", label, rc, unlinks, setups, spawns, pid_writes);
     return !passed;
 }
+// How startup() ends after the socket wait: rc 1 and a message for every outcome but READY.
+static int check_wait(const char *label, enum launcher_socket_wait result, int expected_reports, const char *message) {
+    char *text = NULL;
+    size_t length = 0;
+    FILE *saved = stderr;
+    orphan_result = 0; scan_result = 0; detected_server = 0;
+    wait_result = result; server_exit_reports = 0;
+    stderr = open_memstream(&text, &length);
+    int rc = startup(0);
+    fclose(stderr);
+    stderr = saved;
+    int passed = rc == (message ? 1 : 0) && server_exit_reports == expected_reports
+        && (message ? strstr(text, message) != NULL : length == 0);
+    printf("%s %s rc=%d reports=%d stderr=%s", passed ? "PASS" : "FAIL", label, rc, server_exit_reports, length ? text : "(none)\n");
+    free(text);
+    wait_result = LAUNCHER_SOCKET_READY;
+    return !passed;
+}
 int main(void) {
     int failed = 0;
     failed += check("missing-or-invalid-pidfile/live-server", 1, 8001, 1, 0);
@@ -100,6 +126,10 @@ int main(void) {
     printf("%s orphaned-container rc=%d mutations=%d\n",
         rc == expected_rc && mutations == 0 ? "PASS" : "FAIL", rc, mutations);
     failed += !(rc == expected_rc && mutations == 0);
+    failed += check_wait("server-exited-before-socket", LAUNCHER_SOCKET_SERVER_EXITED, 1, "darling shutdown");
+    failed += check_wait("socket-timed-out", LAUNCHER_SOCKET_TIMED_OUT, 0, "Timed out waiting for shellspawn");
+    failed += check_wait("server-wait-failed", LAUNCHER_SOCKET_WAIT_FAILED, 0, "Cannot wait for darlingserver");
+    failed += check_wait("socket-ready", LAUNCHER_SOCKET_READY, 0, NULL);
     return failed ? 1 : 0;
 }
 """
