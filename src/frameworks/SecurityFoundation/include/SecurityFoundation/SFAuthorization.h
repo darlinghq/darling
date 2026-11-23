@@ -17,8 +17,32 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef _SFAUTHORIZATION_H_
+#define _SFAUTHORIZATION_H_
 
-@interface SFAuthorization : NSObject
+#include <Foundation/Foundation.h>
+#include <Security/Authorization.h>
+
+// An Objective-C interface to some of the functions of Authorization Services. It owns an
+// AuthorizationRef, created when the object is initialised and freed when it is deallocated.
+@interface SFAuthorization : NSObject {
+@private
+	AuthorizationRef _authorization;
+}
+
++ (id)authorization;
++ (id)authorizationWithFlags:(AuthorizationFlags)flags rights:(const AuthorizationRights *)rights environment:(const AuthorizationEnvironment *)environment;
+
+- (id)init;
+- (id)initWithFlags:(AuthorizationFlags)flags rights:(const AuthorizationRights *)rights environment:(const AuthorizationEnvironment *)environment;
+
+- (AuthorizationRef)authorizationRef;
+
+- (BOOL)obtainWithRights:(const AuthorizationRights *)rights flags:(AuthorizationFlags)flags environment:(const AuthorizationEnvironment *)environment authorizedRights:(AuthorizationRights **)authorizedRights error:(NSError **)error;
+- (BOOL)obtainWithRight:(AuthorizationString)rightName flags:(AuthorizationFlags)flags error:(NSError **)error;
+
+- (void)invalidateCredentials;
 
 @end
+
+#endif
