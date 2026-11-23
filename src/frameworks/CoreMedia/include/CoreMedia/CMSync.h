@@ -25,7 +25,7 @@
 #include <CoreMedia/CMTime.h>
 
 // Clocks and timebases: the types. Of their functions only the host time clock ones and the timebase ones
-// for creating and for the masters are declared and implemented here; the rest are still the generated
+// for creating, time and rate are declared and implemented here; the rest are still the generated
 // declarations in CoreMedia.h.
 typedef struct CF_BRIDGED_TYPE(id) OpaqueCMClock *CMClockRef;
 typedef struct CF_BRIDGED_TYPE(id) OpaqueCMTimebase *CMTimebaseRef;
@@ -75,6 +75,22 @@ CM_EXPORT CMTimebaseRef CMTimebaseCopySourceTimebase(CMTimebaseRef timebase);
 CM_EXPORT CMClockRef CMTimebaseCopySourceClock(CMTimebaseRef timebase);
 CM_EXPORT CMClockOrTimebaseRef CMTimebaseCopySource(CMTimebaseRef timebase);
 CM_EXPORT CMClockRef CMTimebaseCopyUltimateSourceClock(CMTimebaseRef timebase);
+
+// The time of a clock or of a timebase, whichever the object is.
+CM_EXPORT CMTime CMSyncGetTime(CMClockOrTimebaseRef clockOrTimebase);
+
+CM_EXPORT CMTime CMTimebaseGetTime(CMTimebaseRef timebase);
+CM_EXPORT CMTime CMTimebaseGetTimeWithTimeScale(CMTimebaseRef timebase, CMTimeScale timescale, CMTimeRoundingMethod method);
+CM_EXPORT OSStatus CMTimebaseGetTimeAndRate(CMTimebaseRef timebase, CMTime *timeOut, Float64 *rateOut);
+CM_EXPORT OSStatus CMTimebaseSetTime(CMTimebaseRef timebase, CMTime time);
+// Sets the time of the timebase at a given time of its master; its time is interpolated from there.
+CM_EXPORT OSStatus CMTimebaseSetAnchorTime(CMTimebaseRef timebase, CMTime timebaseTime, CMTime immediateMasterTime);
+
+// The rate is relative to the master; the effective rate also includes the rates of all its master timebases.
+CM_EXPORT Float64 CMTimebaseGetRate(CMTimebaseRef timebase);
+CM_EXPORT Float64 CMTimebaseGetEffectiveRate(CMTimebaseRef timebase);
+CM_EXPORT OSStatus CMTimebaseSetRate(CMTimebaseRef timebase, Float64 rate);
+CM_EXPORT OSStatus CMTimebaseSetRateAndAnchorTime(CMTimebaseRef timebase, Float64 rate, CMTime timebaseTime, CMTime immediateMasterTime);
 
 CF_IMPLICIT_BRIDGING_DISABLED
 
