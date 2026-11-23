@@ -51,11 +51,11 @@ static AVAudioFramePosition framePosition(double sampleTime)
 static uint64_t nanosFromDouble(double nanos)
 {
 	if (nanos != nanos)
-		return 0x1p63;
+		return (uint64_t) 0x1p63;
 	if (nanos < 0x1p63)
-		return nanos >= -0x1p63 ? (uint64_t) (int64_t) nanos : 0x1p63;
+		return nanos >= -0x1p63 ? (uint64_t) (int64_t) nanos : (uint64_t) 0x1p63;
 	const double rest = nanos - 0x1p63;
-	return rest < 0x1p63 ? ((uint64_t) (int64_t) rest ^ (uint64_t) 0x1p63) : 0;
+	return rest < 0x1p63 ? ((uint64_t) (int64_t) rest ^ (uint64_t) 0x1p63) : (uint64_t) 0;
 }
 
 @implementation AVAudioTime

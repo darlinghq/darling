@@ -164,11 +164,11 @@ int main(void) {
         pid_t child = fork();
         if (child == 0) {
             const size_t giant = (size_t)1 << 40;
-            CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, NULL, (size_t)1 << 42, NULL);
+            CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, NULL, (size_t)1 << 62, NULL);
             CGColorSpaceRef rgb = CGColorSpaceCreateDeviceRGB();
-            CGImageRef huge = CGImageCreate(giant, 1, 8, 32, giant * 4, rgb, kCGImageAlphaPremultipliedLast, provider, NULL, false, kCGRenderingIntentDefault);
+            CGImageRef huge = CGImageCreate(giant, (size_t)1 << 20, 8, 32, giant * 4, rgb, kCGImageAlphaPremultipliedLast, provider, NULL, false, kCGRenderingIntentDefault);
             if (huge == NULL) _exit(100);
-            int64_t limit = (int64_t)1 << 39;
+            int64_t limit = (int64_t)1 << 30; // scaled: 2^30 x 2^10 pixels, 4 TB
             CFNumberRef n = CFNumberCreate(NULL, kCFNumberSInt64Type, &limit);
             CFMutableDataRef out = CFDataCreateMutable(NULL, 0);
             CGImageDestinationRef d = CGImageDestinationCreateWithData(out, CFSTR("public.png"), 1, NULL);
@@ -180,7 +180,7 @@ int main(void) {
         }
         int status = 0;
         waitpid(child, &status, 0);
-        EXPECT(WIFEXITED(status) && WEXITSTATUS(status) < 100, "a 2^40 x 1 image can be described without allocating its pixels, and the scaling then runs to its end (no crash)");
+        EXPECT(WIFEXITED(status) && WEXITSTATUS(status) < 100, "a 2^40 x 2^20 image can be described without allocating its pixels, and the scaling then runs to its end (no crash)");
         int code = WIFEXITED(status) ? WEXITSTATUS(status) : 0;
         EXPECT(code & 1, "an image that cannot be scaled fails the destination instead of being added at full size");
         EXPECT(code & 2, "nothing is written for it");

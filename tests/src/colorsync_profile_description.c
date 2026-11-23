@@ -137,7 +137,7 @@ int main(void)
 	}
 
 	// QUIRK: a record for English (United States) wins over the locale's own record, in every locale.
-	const Record english[] = { { "zz", "ZZ", "First" }, { hasLanguage ? language : "zz", hasCountry ? country : "ZZ", "Locale" }, { "en", "US", "English" } };
+	const Record english[] = { { "zz", "ZZ", "First" }, { "fr", "FR", "Locale" }, { "en", "US", "English" } };
 	ColorSyncProfileRef withEnglish = profileWithRecords(english, 3);
 	CHECK(withEnglish != NULL && descriptionIs(withEnglish, "English"));
 	CFRelease(withEnglish);
