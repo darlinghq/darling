@@ -71,8 +71,11 @@ static NSString *const _NSTextContainerViewFrameDidChangeNotification =
     return self;
 }
 
+// The container of -init is practically unlimited, 10000000 points either way, and tracks neither the width
+// nor the height of its text view (macOS 26.7.3 and 10.14.4, black-box, tier 2).
+// Test: tests/text-container-tracking-defaults.m, appkit-textview-default-container.m in darling-cocotron
 - init {
-    return [self initWithContainerSize: NSZeroSize];
+    return [self initWithContainerSize: NSMakeSize(10000000, 10000000)];
 }
 
 - (void) dealloc {
