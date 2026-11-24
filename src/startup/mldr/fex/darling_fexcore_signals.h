@@ -63,14 +63,16 @@ struct FrameRequest {
   uint64_t old_mask;       // the guest's blocked set when the signal came
   uint32_t eflags;
   bool supports_avx;
+  size_t backup_size;      // bytes of saved host context kept in the frame (0 for a handler run at a syscall return)
 };
 
 // Writes the frame below req.guest_sp and points the guest's argument registers at it. Returns the stack
 // pointer for handler entry (Linux's alignment: 8 modulo 16).
 // `original_rip` is where the handler returns to; `fault_to_top` says the signal is a guest exception the
-// generated code raised. `backup_address` (null for a handler run at a syscall return) is kept in the frame.
+// generated code raised. `backup` (null for a handler run at a syscall return) is req.backup_size bytes of the
+// saved host context, which the frame keeps.
 uint64_t setup_x64_frame(FEXCore::Context::Context* ctx, FEXCore::Core::InternalThreadState* thread, uint64_t original_rip,
-                         bool fault_to_top, const void* backup_address, const FrameRequest& req);
+                         bool fault_to_top, const void* backup, const FrameRequest& req);
 
 // The guest alternate stack a running handler of this thread was put on (flags SS_DISABLE when none is).
 const fex_guest_stack* handler_altstack();

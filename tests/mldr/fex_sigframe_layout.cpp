@@ -59,6 +59,26 @@ int main() {
       below &= l.fpstate + fp_size <= top;
     }
   }
+  // The saved host context rides in the frame (a handler left by longjmp never runs rt_sigreturn, so a copy on
+  // the host stack would be lost): inside the frame, 16-byte aligned, clear of the siginfo and the fp state.
+  constexpr uint64_t kSaved = 2192; // size of the shim's SignalBackup; any size must fit
+  bool in_frame = true, same_without = true, found = true;
+  for (uint64_t top = 0x7fff0000; top < 0x7fff0000 + 256; top += 8) {
+    for (bool avx : {false, true}) {
+      for (uint64_t size : {uint64_t(16), kSaved, uint64_t(4104)}) {
+        const X64FrameLayout l = x64_frame_layout(top, avx, size);
+        in_frame &= l.backup_data % 16 == 0 && l.backup_data >= l.backup + 8 && l.backup_data + size <= l.fpstate &&
+                    l.entry_sp % 16 == 8 && l.fpstate + (avx ? sizeof(X64::xstate) : sizeof(X64::_libc_fpstate)) <= top;
+        found &= backup_data_at(l.entry_sp) == l.backup_data;
+      }
+      const X64FrameLayout none = x64_frame_layout(top, avx);
+      same_without &= none.entry_sp == x64_frame_layout(top, avx, 0).entry_sp && none.backup_data + 8 <= none.fpstate;
+    }
+  }
+  check(in_frame, "the saved host context lies inside the frame, aligned, below the fp state");
+  check(found, "rt_sigreturn finds the saved host context from the handler's stack pointer");
+  check(same_without, "a frame without a saved host context keeps the plain layout");
+
   check(aligned, "rsp is 8 modulo 16 at handler entry and the fp state is 64-byte aligned");
   check(ordered, "the frame is laid out in order below the fp state");
   check(below, "nothing is written above the given stack pointer");

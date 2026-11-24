@@ -1,9 +1,9 @@
 // Delivery of host signals to x86_64 guest handlers.
 //
-// The mechanism is FEX's: the host handler, on the host signal stack, saves the interrupted host context
-// below the interrupted stack pointer, builds an x86_64 rt_sigframe on the guest stack and points the host
-// context at the dispatcher, so that returning from the host handler runs the guest handler as ordinary
-// emulated code on the interrupted host stack. The guest handler comes back through rt_sigreturn, which
+// The mechanism is FEX's: the host handler, on the host signal stack, builds an x86_64 rt_sigframe on the
+// guest stack and points the host context at the dispatcher, so that returning from the host handler runs the
+// guest handler as ordinary emulated code on the interrupted host stack. The interrupted host context is kept
+// in that rt_sigframe (FEX keeps it on the host stack, where a handler left by longjmp strands it). The guest handler comes back through rt_sigreturn, which
 // traps at the dispatcher's signal return address, and that trap puts the saved host context back. Nothing
 // here calls guest code from a signal handler.
 //
@@ -50,8 +50,8 @@ FEXCore::Context::Context* g_ctx = nullptr;
 bool g_supports_avx = false;
 bool g_supports_sve256 = false;
 
-// Saved on the host stack below the interrupted stack pointer while a guest handler runs; the guest frame
-// keeps its address.
+// The interrupted host context, kept in the guest's signal frame while a guest handler runs. A guest that
+// leaves the handler with longjmp never runs rt_sigreturn, and the frame goes with the guest stack pointer.
 constexpr uint64_t kBackupMagic = 0x44617273'6967626bULL;
 struct SignalBackup {
   HostCtx::ContextBackup host;
@@ -124,15 +124,16 @@ bool restore_interrupted_frame(FEXCore::Core::InternalThreadState* thread, HostT
   const uint64_t guest_sp = frame->State.gregs[FEXCore::X86State::REG_RSP];
   // darling_fexcore_signal_return read this frame with read_guest before it trapped.
   const auto* guest_uc = reinterpret_cast<const X64::ucontext_t*>(guest_sp);
-  auto* backup = *reinterpret_cast<SignalBackup* const*>(guest_sp - kFrameUContext + kFrameBackup);
-
-  // The backup lives on this thread's host stack above the dispatcher that ran the handler.
-  const uintptr_t host_sp = HostCtx::GetSp(ucontext);
-  const uintptr_t at = reinterpret_cast<uintptr_t>(backup);
-  if (at < host_sp || at - host_sp > 64 * 1024 * 1024 || (at & 15) != 0 || backup->magic != kBackupMagic) {
+  // The frame the handler returned through holds the context its signal interrupted, where its entry put it.
+  auto* in_frame = reinterpret_cast<SignalBackup*>(backup_data_at(guest_sp - kFrameUContext));
+  if (*reinterpret_cast<SignalBackup* const*>(guest_sp - kFrameUContext + kFrameBackup) != in_frame || in_frame->magic != kBackupMagic) {
     return false;
   }
-  backup->magic = 0;
+  in_frame->magic = 0;
+  // Work on a copy: the handler's stack is the guest's to write.
+  SignalBackup saved;
+  memcpy(&saved, in_frame, sizeof(saved));
+  SignalBackup* backup = &saved;
 
   HostCtx::RestoreContext(ucontext, &backup->host);
   memcpy(&frame->State, &backup->host.GuestState, sizeof(frame->State));
@@ -250,6 +251,7 @@ void deliver_at_syscall_return(FEXCore::Core::InternalThreadState* thread, const
     .old_mask = request->old_mask,
     .eflags = g_ctx->ReconstructCompactedEFLAGS(thread, false, nullptr, 0),
     .supports_avx = g_supports_avx,
+    .backup_size = 0,
   };
   // No host context to keep: the frame's registers are all rt_sigreturn needs (a null backup address).
   const uint64_t entry_sp = setup_x64_frame(g_ctx, thread, frame->State.rip, false, nullptr, frame_request);
@@ -363,33 +365,33 @@ extern "C" int darling_fexcore_signal_deliver(int sig, const void* raw_info, voi
   }
   auto* frame = thread->CurrentFrame;
 
-  // The host handler runs on the signal stack, so the interrupted stack below its pointer is free: keep the
-  // interrupted host context there and run the guest handler's dispatcher below it.
-  uintptr_t host_sp = FEXCore::AlignDown(HostCtx::GetSp(ucontext) - sizeof(SignalBackup), 16);
-  auto* backup = reinterpret_cast<SignalBackup*>(host_sp);
-  HostCtx::BackupContext(ucontext, &backup->host);
-  backup->magic = kBackupMagic;
-  backup->saved_errno = errno;
-  backup->host.Signal = sig;
-  backup->host.Flags = 0;
-  memcpy(&backup->host.GuestState, &frame->State, sizeof(frame->State));
-  backup->host.FaultToTopAndGeneratedException = frame->SynchronousFaultData.FaultToTopAndGeneratedException;
+  // The host handler runs on the signal stack, so the interrupted stack below its pointer is free for the
+  // dispatcher that runs the guest handler. The interrupted context goes in the guest's signal frame, so
+  // that a handler left by longjmp does not strand it on the host stack.
+  SignalBackup backup;
+  HostCtx::BackupContext(ucontext, &backup.host);
+  backup.magic = kBackupMagic;
+  backup.saved_errno = errno;
+  backup.host.Signal = sig;
+  backup.host.Flags = 0;
+  memcpy(&backup.host.GuestState, &frame->State, sizeof(frame->State));
+  backup.host.FaultToTopAndGeneratedException = frame->SynchronousFaultData.FaultToTopAndGeneratedException;
   frame->SynchronousFaultData.FaultToTopAndGeneratedException = false;
-  HostCtx::SetSp(ucontext, host_sp);
+  HostCtx::SetSp(ucontext, FEXCore::AlignDown(HostCtx::GetSp(ucontext), 16));
   ++frame->SignalHandlerRefCounter;
 
-  if (g_ctx->IsAddressInCodeBuffer(thread, backup->host.PrevPC)) {
+  if (g_ctx->IsAddressInCodeBuffer(thread, backup.host.PrevPC)) {
     // Interrupted in generated code: the guest registers are partly in host registers.
     spill_static_registers(thread, ucontext, frame->InSyscallInfo & 0xFFFF);
-    backup->host.Flags |= HostCtx::ContextFlags::CONTEXT_FLAG_INJIT;
+    backup.host.Flags |= HostCtx::ContextFlags::CONTEXT_FLAG_INJIT;
   }
   // The handler runs as plain generated code: a signal nested in it must spill every static register.
-  backup->host.InSyscallInfo = frame->InSyscallInfo;
+  backup.host.InSyscallInfo = frame->InSyscallInfo;
   frame->InSyscallInfo = 0;
 
   int32_t stack_flags = 0;
   const uint64_t guest_sp = signal_stack_pointer(frame->State.gregs[FEXCore::X86State::REG_RSP], action, altstack, &stack_flags);
-  backup->host.OriginalRIP = frame->State.rip;
+  backup.host.OriginalRIP = frame->State.rip;
   const FrameRequest request {
     .sig = sig,
     .info = info,
@@ -401,9 +403,10 @@ extern "C" int darling_fexcore_signal_deliver(int sig, const void* raw_info, voi
     .old_mask = old_mask,
     .eflags = g_ctx->ReconstructCompactedEFLAGS(thread, false, nullptr, 0),
     .supports_avx = g_supports_avx,
+    .backup_size = sizeof(backup),
   };
   const uint64_t entry_sp =
-    setup_x64_frame(g_ctx, thread, backup->host.OriginalRIP, backup->host.FaultToTopAndGeneratedException, backup, request);
+    setup_x64_frame(g_ctx, thread, backup.host.OriginalRIP, backup.host.FaultToTopAndGeneratedException, &backup, request);
   enter_handler(frame->State, action->handler, entry_sp);
 
   resume_in_dispatcher(frame, ucontext);

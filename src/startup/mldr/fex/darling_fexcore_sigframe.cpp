@@ -55,11 +55,11 @@ void set_xstate_info(X64::xstate* xstate, bool avx) {
 } // namespace
 
 uint64_t setup_x64_frame(FEXCore::Context::Context* ctx, FEXCore::Core::InternalThreadState* thread, uint64_t original_rip,
-                         bool fault_to_top, const void* backup_address, const FrameRequest& req) {
+                         bool fault_to_top, const void* backup, const FrameRequest& req) {
   auto* frame = thread->CurrentFrame;
   auto& state = frame->State;
 
-  const X64FrameLayout layout = x64_frame_layout(req.guest_sp, req.supports_avx);
+  const X64FrameLayout layout = x64_frame_layout(req.guest_sp, req.supports_avx, req.backup_size);
   const uint64_t sp = layout.entry_sp;
   auto* xstate = reinterpret_cast<X64::xstate*>(layout.fpstate);
   auto* uc = reinterpret_cast<X64::ucontext_t*>(layout.ucontext);
@@ -67,7 +67,10 @@ uint64_t setup_x64_frame(FEXCore::Context::Context* ctx, FEXCore::Core::Internal
   memset(xstate, 0, req.supports_avx ? sizeof(X64::xstate) : sizeof(X64::_libc_fpstate));
   memset(reinterpret_cast<void*>(sp), 0, kFrameSize);
   *reinterpret_cast<uint64_t*>(sp) = req.restorer;
-  *reinterpret_cast<uint64_t*>(layout.backup) = reinterpret_cast<uint64_t>(backup_address);
+  if (backup) {
+    memcpy(reinterpret_cast<void*>(layout.backup_data), backup, req.backup_size);
+    *reinterpret_cast<uint64_t*>(layout.backup) = layout.backup_data;
+  }
 
   uc->uc_flags = X64::UC_FP_XSTATE | X64::UC_SIGCONTEXT_SS | X64::UC_STRICT_RESTORE_SS;
   uc->uc_mcontext.fpregs = &xstate->fpstate;
