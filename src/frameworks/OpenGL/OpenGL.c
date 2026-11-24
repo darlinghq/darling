@@ -578,9 +578,13 @@ static EGLBoolean choose_registered_config(EGLDisplay dpy, EGLConfig *out_config
 // default display is Mesa's software rasterizer, although the GPU is there and
 // the surfaceless platform reaches it. A hardware display is therefore
 // preferred: a display on a software device is only taken when no candidate
-// is a hardware one.
+// is a hardware one. A context that needs window surfaces (a fullscreen
+// pixel format) cannot use a surfaceless display; it keeps the first display
+// that opens, the window system's.
 static EGLDisplay default_display = EGL_NO_DISPLAY;
 static EGLConfig default_config;
+static EGLDisplay window_display = EGL_NO_DISPLAY;
+static EGLConfig window_config;
 
 static int softwareEGLDevice(EGLDisplay display);
 
@@ -597,6 +601,10 @@ static void open_default_display(void) {
             continue;
         if (!choose_config(candidates[i], EGL_PBUFFER_BIT, 0, &candidate_config, NULL))
             continue;
+        if (window_display == EGL_NO_DISPLAY) {
+            window_display = candidates[i];
+            window_config = candidate_config;
+        }
         if (softwareEGLDevice(candidates[i])) {
             if (software_display == EGL_NO_DISPLAY) {
                 software_display = candidates[i];
@@ -612,9 +620,13 @@ static void open_default_display(void) {
     default_config = software_config;
 }
 
-static EGLDisplay get_default_display(EGLConfig *out_config) {
+static EGLDisplay get_default_display(EGLConfig *out_config, int needs_windows) {
     static pthread_once_t once = PTHREAD_ONCE_INIT;
     pthread_once(&once, open_default_display);
+    if (needs_windows && window_display != EGL_NO_DISPLAY) {
+        *out_config = window_config;
+        return window_display;
+    }
     *out_config = default_config;
     return default_display;
 }
@@ -2008,7 +2020,10 @@ static CGLError createContext(CGLPixelFormatObj pixelFormat, CGLContextObj share
         owner_config = window->config;
     }
     if (owner == EGL_NO_DISPLAY) {
-        owner = get_default_display(&owner_config);
+        GLint fullscreen = 0;
+        int needs_windows = pixelFormat
+            && CGLDescribePixelFormat(pixelFormat, 0, kCGLPFAFullScreen, &fullscreen) == kCGLNoError && fullscreen;
+        owner = get_default_display(&owner_config, needs_windows);
         if (owner == EGL_NO_DISPLAY)
             return kCGLBadConnection;
     }
