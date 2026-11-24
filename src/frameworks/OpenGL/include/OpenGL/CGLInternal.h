@@ -44,6 +44,10 @@ CGL_EXPORT CGLError CGLSetDrawableRefreshRate(CGLContextObj context, uint32_t mi
 CGL_EXPORT CGLError CGLCreateContextForWindow(CGLWindowRef window, CGLContextObj *result);
 CGL_EXPORT CGLError CGLContextMakeCurrentAndAttachToWindow(CGLContextObj context, CGLWindowRef window);
 CGLError CGLSetSurface(CGLContextObj gl, CGSConnectionID cid, CGSWindowID wid, CGSSurfaceID sid);
+// The window server connection, window and surface ids of the context's drawable; zeros when
+// it has none. NULL output pointers are skipped. Private in macOS, but real applications use it
+// together with CGSGetSurfaceBounds() and CGSGetWindowBounds().
+CGLError CGLGetSurface(CGLContextObj gl, CGSConnectionID *cid, CGSWindowID *wid, CGSSurfaceID *sid);
 
 // Copies level 0 of the texture last specified from ioSurface with
 // CGLTexImageIOSurface2D back into the surface plane, in that call's format
