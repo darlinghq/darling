@@ -32,7 +32,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <ctype.h>
 #include <iostream>
-#include <dlfcn.h>
+#include <CoreGraphics/CoreGraphicsPrivate.h>
 
 #define STUB() // TODO
 #ifndef PATH_MAX
@@ -135,13 +135,9 @@ OSErr GetFrontProcess(ProcessSerialNumber* psn)
 		return paramErr;
 
 	// CoreGraphics (the window system layer) knows the process that really has the focus where
-	// the display server tells (X11) or where processes report it (Wayland). It is a private
-	// entry point, looked up at run time, like _CGSActivateProcess below.
-	typedef int32_t (*FrontProcessFunction)(pid_t* pid);
-	static const FrontProcessFunction frontProcess =
-		(FrontProcessFunction) dlsym(RTLD_DEFAULT, "_CGSGetFrontProcess");
+	// the display server tells (X11) or where processes report it (Wayland).
 	pid_t front = 0;
-	if (frontProcess && frontProcess(&front) == 0 /* kCGErrorSuccess */ && processExists(front))
+	if (_CGSGetFrontProcess(&front) == kCGErrorSuccess && processExists(front))
 	{
 		if (GetProcessForPID(front, psn) == noErr)
 			return noErr;
@@ -369,36 +365,19 @@ OSErr SetFrontProcessWithOptions(const ProcessSerialNumber* psn, OptionBits opts
 	// connected to the window system (a command-line tool) is not rejected.
 	// Test: tests/front-process (cases errors: the background-only target answers -606).
 	static const OSErr kProcessCannotBeFront = -606;
-	const int kPolicyRegular = 0, kPolicyProhibited = 2; // NSApplicationActivationPolicy
 
-	// The activation policy of the target is published by the process through CoreGraphics (the
-	// window system layer knows what kind of application each of its clients is).
-	typedef int32_t (*PolicyFunction)(pid_t pid, int* policy);
-	static const PolicyFunction processPolicy = (PolicyFunction) dlsym(RTLD_DEFAULT, "_CGSGetProcessActivationPolicy");
-	int policy = -1;
-	if (!processPolicy || processPolicy(pid, &policy) != 0 /* kCGErrorSuccess */)
-		policy = -1;
-	if (policy == kPolicyProhibited)
+	// CoreGraphics (the window system layer) keeps the front process, the menu bar owner and the
+	// activation policy each application published (what kind of application a process is, so
+	// whether it is refused). It changes the front process and, for a regular application, the
+	// menu bar owner when the call returns, then asks the window system to move the input focus to
+	// the process' windows. The focus is a request: the window manager or compositor decides, so
+	// only a bad argument or a prohibited process is an error.
+	CGError cgError = _CGSRequestFrontApplication(
+		pid, (opts & kSetFrontProcessFrontWindowOnly) ? kCGSRequestFrontProcessFrontWindowOnly : 0);
+	if (cgError == kCGErrorInvalidOperation)
 		return kProcessCannotBeFront;
-
-	// CoreGraphics (the window system layer) keeps the front process and the menu bar owner, and
-	// changes them when the call returns (a regular application becomes the menu bar owner, an
-	// agent does not), then asks the window system to move the input focus to the process' windows.
-	// The focus is a request: the window manager or compositor decides, so only a bad argument is
-	// an error. CoreGraphics' entry point is private, looked up at run time, so that an older
-	// CoreGraphics simply does nothing.
-	typedef int32_t (*RequestFrontFunction)(pid_t pid, uint32_t options);
-	static const RequestFrontFunction requestFront =
-		(RequestFrontFunction) dlsym(RTLD_DEFAULT, "_CGSRequestFrontProcess");
-	const uint32_t kFrontWindowOnly = 1; // kCGSRequestFrontProcessFrontWindowOnly
-	const uint32_t kMenuBarOwner = 2; // kCGSRequestFrontProcessMenuBarOwner
-	if (requestFront)
-	{
-		uint32_t flags = ((opts & kSetFrontProcessFrontWindowOnly) ? kFrontWindowOnly : 0) | (policy == kPolicyRegular ? kMenuBarOwner : 0);
-		int32_t cgError = requestFront(pid, flags);
-		if (cgError == 1001) // kCGErrorIllegalArgument
-			return paramErr;
-	}
+	if (cgError == kCGErrorIllegalArgument)
+		return paramErr;
 
 	g_frontPID.store(pid);
 	return noErr;
@@ -452,6 +431,15 @@ OSStatus TransformProcessType(const ProcessSerialNumber* psn, UInt32 type)
 	CFTypeRef asn = _LSASNCreateWithPid(nullptr, pid);
 	OSStatus status = _LSSetApplicationInformationItem(kLSDefaultSessionID, asn, _kLSApplicationTypeKey, newType, nullptr);
 	CFRelease(asn);
+
+	// Becoming a foreground application concerns the window system too: it goes through
+	// CPSEnableForegroundOperation (as on macOS), which publishes the process as a regular
+	// application of the window system. Only the calling process can do that for itself.
+	if (status == noErr && type == kProcessTransformToForegroundApplication && pid == getpid())
+	{
+		CPSProcessSerNum self = { 0, (uint32_t) pid };
+		CPSEnableForegroundOperation(&self, 0, 0, 0, 0);
+	}
 	return status;
 }
 

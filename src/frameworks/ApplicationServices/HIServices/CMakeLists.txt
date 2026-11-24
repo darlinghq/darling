@@ -21,7 +21,6 @@ add_framework(HIServices
         src/Pasteboard.c
         src/HIShape.c
         src/Processes.cpp
-        src/CPS.cpp
 
     DEPENDENCIES
 	    CoreFoundation
