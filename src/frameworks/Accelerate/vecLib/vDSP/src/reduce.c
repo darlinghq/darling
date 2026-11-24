@@ -89,6 +89,28 @@ void NAME(const T* __A, vDSP_Stride __IA, T* __C, vDSP_Length __N) \
 	*__C = SQRT(sum / (T) __N); \
 }
 
+// The mean of signed squares, sum(A[n] * |A[n]|) / N. The vDSP_mvessq abstract and output-parameter text call
+// the result the mean of "signed squares", and the vDSP_svs page defines the signed square sum as
+// C[0] = sum(A[n] * |A[n]|) (see VDSP_SVS above); that is the meaning used. The mvessq page's example prints 0
+// for -8, -4, -2, 0, 2, 4, 8, which rules out a mean of plain squares (24); macOS 26.7.3 and 10.14.4 return
+// the signed mean for non-symmetric vectors, strided input and negative strides (see the test).
+//
+// QUIRK: N equal to zero gives NaN (0 / 0), not the -infinity that the vDSP_mvessqD page states for it. Observed
+// on macOS 26.7.3 and 10.14.4 (x86_64 and i386), single and double precision (tier 2, black-box probe
+// mac-probes/cristim/batch7a/mvessq.c). It needs no code: the plain division gives it.
+// Test: vDSPTest.c, "mvessq empty is NaN (quirk)".
+#define VDSP_MVESSQ(NAME, T, ABS) \
+void NAME(const T* __A, vDSP_Stride __IA, T* __C, vDSP_Length __N) \
+{ \
+	T sum = 0; \
+	for (vDSP_Length n = 0; n < __N; n++) \
+	{ \
+		const T a = __A[(long) n * __IA]; \
+		sum += a * ABS(a); \
+	} \
+	*__C = sum / (T) __N; \
+}
+
 // C[0] = sum(A[n] * B[n])
 #define VDSP_DOTPR(NAME, T) \
 void NAME(const T* __A, vDSP_Stride __IA, const T* __B, vDSP_Stride __IB, T* __C, vDSP_Length __N) \
@@ -105,6 +127,8 @@ VDSP_SVEMG(vDSP_svemg, float, fabsf)
 VDSP_SVEMG(vDSP_svemgD, double, fabs)
 VDSP_SVS(vDSP_svs, float, fabsf)
 VDSP_SVS(vDSP_svsD, double, fabs)
+VDSP_MVESSQ(vDSP_mvessq, float, fabsf)
+VDSP_MVESSQ(vDSP_mvessqD, double, fabs)
 VDSP_MEANV(vDSP_meanv, float)
 VDSP_MEANV(vDSP_meanvD, double)
 VDSP_MEASQV(vDSP_measqv, float)

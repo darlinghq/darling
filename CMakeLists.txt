@@ -282,6 +282,10 @@ if (Python3_Interpreter_FOUND)
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/debian-packaging.py)
 	# debian-packaging.py exits with 77 when debhelper is not installed
 	set_tests_properties(debian_packaging PROPERTIES SKIP_RETURN_CODE 77)
+	add_test(NAME rpm_packaging
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/rpm-packaging.py)
+	# rpm-packaging.py exits with 77 when rpmspec is not installed
+	set_tests_properties(rpm_packaging PROPERTIES SKIP_RETURN_CODE 77)
 	add_test(NAME target_conditionals
 		COMMAND sh ${CMAKE_SOURCE_DIR}/tests/headers/target-conditionals.sh ${CMAKE_SOURCE_DIR})
 endif()
@@ -359,6 +363,14 @@ install(DIRECTORY DESTINATION libexec/darling/private)
 install(DIRECTORY DESTINATION libexec/darling/private/etc)
 install(DIRECTORY DESTINATION libexec/darling/private/var)
 install(DIRECTORY DESTINATION libexec/darling/private/tmp)
+install(DIRECTORY DESTINATION libexec/darling/private/var/tmp)
+# As on macOS, the shared temporary directories are world-writable with the sticky bit (the install
+# command has no way to name the sticky bit, so it is set afterwards).
+install(CODE "
+	foreach (tmpdir private/tmp private/var/tmp)
+		execute_process(COMMAND chmod 1777 \"\$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/libexec/darling/\${tmpdir}\")
+	endforeach ()
+")
 InstallSymlink(private/etc ${CMAKE_INSTALL_PREFIX}/libexec/darling/etc)
 InstallSymlink(private/var ${CMAKE_INSTALL_PREFIX}/libexec/darling/var)
 

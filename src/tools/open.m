@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (header || reveal || readStdin)
+	if (header || readStdin)
 	{
 		fprintf(stderr, "This operation is not implemented yet. Sorry.\n");
 		return EXIT_FAILURE;
@@ -177,6 +177,26 @@ int main(int argc, char *argv[])
 		
 		filenames = [NSArray arrayWithObjects: urls count: count];
 		free(urls);
+	}
+
+	// -R: the files are revealed in the Finder instead of being opened; if one doesn't exist, nothing is revealed
+	if (reveal)
+	{
+		if ([filenames count] == 0)
+		{
+			usage();
+			return EXIT_FAILURE;
+		}
+		for (NSURL* url in filenames)
+		{
+			if (![url isFileURL] || ![[NSFileManager defaultManager] fileExistsAtPath: [url path]])
+			{
+				fprintf(stderr, "The file %s does not exist.\n", [[url isFileURL] ? [url path] : [url absoluteString] UTF8String]);
+				return EXIT_FAILURE;
+			}
+		}
+		[[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs: filenames];
+		return EXIT_SUCCESS;
 	}
 
 	OSStatus result = noErr;
@@ -274,6 +294,6 @@ static void usage(void)
 		"      -g, --background      Do not bring the application to the front.\n"
 		"      -j, --hide            Start the application hidden.\n"
 		"      --args                Pass all following arguments to the application instead of opening them.\n"
-		"Not supported yet: -f, -R (--reveal), -h (--header) and -s.\n"
+		"Not supported yet: -f, -h (--header) and -s.\n"
 		"Accepted but without effect: -F (--fresh), -W (--wait-apps).\n");
 }

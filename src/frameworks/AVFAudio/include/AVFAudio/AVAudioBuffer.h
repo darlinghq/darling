@@ -17,8 +17,34 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef AVFAUDIO_AVAUDIOBUFFER_H
+#define AVFAUDIO_AVAUDIOBUFFER_H
 
+#import <Foundation/Foundation.h>
+#import <CoreAudio/CoreAudioTypes.h>
+#import <AVFAudio/AVAudioFormat.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+// Audio samples together with the AVAudioFormat that describes them. PCM samples are held by the subclass AVAudioPCMBuffer.
 @interface AVAudioBuffer : NSObject
+{
+@protected
+	AVAudioFormat* _format;
+	AudioBufferList* _audioBufferList;
+	AudioBufferList* _mutableAudioBufferList;
+}
+
+@property (nonatomic, readonly) AVAudioFormat* format;
+
+// The AudioBufferList behind the buffer, for Core Audio and Audio Toolbox calls. Callers may change the samples but not
+// the structure. mDataByteSize is the current frame length in bytes, for both properties; the mutable list is a separate
+// list that is brought up to date on every access, see AVAudioBuffer.m.
+@property (nonatomic, readonly) const AudioBufferList* audioBufferList;
+@property (nonatomic, readonly) AudioBufferList* mutableAudioBufferList;
 
 @end
+
+NS_ASSUME_NONNULL_END
+
+#endif

@@ -11,3 +11,7 @@ int TKPerformLogin(uid_t uid, CFStringRef token_id, CFDataRef pubkey_hash, CFStr
 OSStatus TKAddSecureToken(CFStringRef username, CFStringRef pwd, CFStringRef tokenID, CFDataRef wrapPubKeyHash) {
 	return -1;
 }
+// Smartcard login cannot be configured in Darling, so no setting is ever on.
+int TKGetSmartcardSetting(TKSmartcardSetting setting) {
+	return 0;
+}

@@ -28,7 +28,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sqlite3.h>
-#import <Foundation/NSString.h>
+#import <Foundation/Foundation.h>
 #import <fmdb/FMDatabaseQueue.h>
 
 __attribute__((visibility("hidden")))
@@ -335,6 +335,49 @@ CFURLRef LSCopyDefaultApplicationURLForURL(CFURLRef inURL, LSRolesMask inRoleMas
 	}
 }
 
+// The applications whose document types claim a type (the three ? are its identifier): by LSItemContentTypes, or,
+// for document types declared the older way, by one of the type's OSType tags in CFBundleTypeOSTypes (how Finder
+// declares folders and volumes) or one of its filename-extension tags in CFBundleTypeExtensions. %@ is the role
+// filter. Within a rank, the bundle registered first comes first (Finder stays the default for folders on macOS
+// 26.7.3 when another application claims public.folder). Tested by tests/launchservices-folder-handler.py.
+static NSString* const kDirectoryTypeHandlerQuery = @"select path, AD.rank from bundle INNER JOIN app_doc AD on AD.bundle=bundle.id"
+	@" where bundle.package_type='APPL' and ("
+	@"EXISTS (SELECT * FROM app_doc_uti AU WHERE AU.doc=AD.id AND AU.uti = ? COLLATE NOCASE)"
+	@" OR EXISTS (SELECT * FROM app_doc_ostype AO JOIN uti_tag UT ON UT.tag = 'com.apple.ostype' AND UT.value = AO.ostype"
+	@" JOIN uti ON uti.id = UT.uti WHERE AO.doc=AD.id AND uti.type_identifier = ?)"
+	@" OR EXISTS (SELECT * FROM app_doc_extension AE JOIN uti_tag UT ON UT.tag = 'public.filename-extension'"
+	@" AND UT.value = AE.extension JOIN uti ON uti.id = UT.uti WHERE AE.doc=AD.id AND uti.type_identifier = ?))%@"
+	@" order by case when AD.rank='Owner' then 1 when AD.rank='Default' then 2 when AD.rank='Alternate' then 3"
+	@" else 5 end asc, bundle.id asc";
+
+// The application for a directory of the given type: one that claims that type itself. Claims of the types it
+// conforms to do not count: on macOS 26.7.3 an application claiming public.item or public.directory is no
+// candidate for a folder, and one claiming public.folder none for a volume (tests/volumes.md).
+static NSString* copyApplicationForDirectoryType(NSString* type, LSRolesMask inRoleMask)
+{
+	FMDatabaseQueue* dq = getDatabaseQueue();
+	if (dq == nil)
+		return nil;
+
+	NSString* roles = inRoleMask != kLSRolesAll
+		? [NSString stringWithFormat: @" and AD.role IN (%@)", roleSQLArray(inRoleMask)] : @"";
+	NSString* query = [NSString stringWithFormat: kDirectoryTypeHandlerQuery, roles];
+	__block NSString* found = nil;
+
+	[dq inDatabase:^(FMDatabase* db) {
+		FMResultSet* rs = [db executeQuery: query, type, type, type];
+		// Registrations of bundles that were removed stay in the database; skip them.
+		while (found == nil && [rs next])
+		{
+			NSString* path = [rs stringForColumn: @"path"];
+			if (bundleIsPresent(path))
+				found = [path copy];
+		}
+		[rs close];
+	}];
+	return found;
+}
+
 OSStatus LSGetApplicationForURL(CFURLRef inURL, LSRolesMask inRoleMask, FSRef *outAppRef, CFURLRef *outAppURL)
 {
 	/* Web and mail links are opened by the host desktop, not by an application
@@ -383,7 +426,31 @@ OSStatus LSGetApplicationForURL(CFURLRef inURL, LSRolesMask inRoleMask, FSRef *o
 		}
 	}
 
-	NSString* extension = [(NSURL*) inURL pathExtension];
+	// A directory other than an application opens with the application that claims its type (Finder, for folders
+	// and volumes). A folder or volume nobody claims has no application; a package type nobody claims by type is
+	// still looked up by its extension.
+	NSURL* url = (NSURL*) inURL;
+	NSNumber* isDirectory = nil;
+	NSString* type = nil;
+	if ([url isFileURL] && [url getResourceValue: &isDirectory forKey: NSURLIsDirectoryKey error: NULL]
+		&& [isDirectory boolValue] && [url getResourceValue: &type forKey: NSURLTypeIdentifierKey error: NULL]
+		&& type != nil && !UTTypeConformsTo((CFStringRef) type, kUTTypeApplication))
+	{
+		NSString* path = copyApplicationForDirectoryType(type, inRoleMask);
+		if (path != nil)
+		{
+			if (outAppURL)
+				*outAppURL = (CFURLRef) [[NSURL alloc] initFileURLWithPath: path isDirectory: YES];
+			if (outAppRef)
+				FSPathMakeRef((const UInt8*) [path fileSystemRepresentation], outAppRef, NULL);
+			[path release];
+			return noErr;
+		}
+		if (UTTypeConformsTo((CFStringRef) type, kUTTypeFolder))
+			return kLSApplicationNotFoundErr;
+	}
+
+	NSString* extension = [url pathExtension];
 	return LSGetApplicationForInfo(kLSUnknownType, kLSUnknownCreator, (CFStringRef) extension, inRoleMask, outAppRef, outAppURL);
 }
 

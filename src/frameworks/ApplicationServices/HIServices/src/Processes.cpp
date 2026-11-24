@@ -360,18 +360,42 @@ OSErr SetFrontProcessWithOptions(const ProcessSerialNumber* psn, OptionBits opts
 	if (err != noErr)
 		return err;
 
-	// CoreGraphics (the window system layer) activates the process' windows: it asks the display
-	// server directly where it can, and otherwise the process itself. It is a private entry
-	// point, looked up at run time, so that an older CoreGraphics simply does nothing. The
-	// request is a request: the window manager or compositor decides, so only a bad argument
-	// is an error.
-	typedef int32_t (*ActivateProcessFunction)(pid_t pid, uint32_t options);
-	static const ActivateProcessFunction activate =
-		(ActivateProcessFunction) dlsym(RTLD_DEFAULT, "_CGSActivateProcess");
-	const uint32_t kFrontWindowOnly = 1; // kCGSActivateProcessFrontWindowOnly
-	if (activate)
+	// QUIRK: an application of the window system that is prohibited from being in the foreground
+	// (a bundle with LSBackgroundOnly, or a program outside any bundle) cannot be made the front
+	// process: the call fails with -606 and nothing changes.
+	// Not documented. Evidence: black-box observation on macOS 10.14.4 and 26.7.3 (tier 2),
+	// mac-probes/front-process (the target an LSBackgroundOnly application; the same call to an
+	// LSUIElement application succeeds and makes it the front process). A process that never
+	// connected to the window system (a command-line tool) is not rejected.
+	// Test: tests/front-process (cases errors: the background-only target answers -606).
+	static const OSErr kProcessCannotBeFront = -606;
+	const int kPolicyRegular = 0, kPolicyProhibited = 2; // NSApplicationActivationPolicy
+
+	// The activation policy of the target is published by the process through CoreGraphics (the
+	// window system layer knows what kind of application each of its clients is).
+	typedef int32_t (*PolicyFunction)(pid_t pid, int* policy);
+	static const PolicyFunction processPolicy = (PolicyFunction) dlsym(RTLD_DEFAULT, "_CGSGetProcessActivationPolicy");
+	int policy = -1;
+	if (!processPolicy || processPolicy(pid, &policy) != 0 /* kCGErrorSuccess */)
+		policy = -1;
+	if (policy == kPolicyProhibited)
+		return kProcessCannotBeFront;
+
+	// CoreGraphics (the window system layer) keeps the front process and the menu bar owner, and
+	// changes them when the call returns (a regular application becomes the menu bar owner, an
+	// agent does not), then asks the window system to move the input focus to the process' windows.
+	// The focus is a request: the window manager or compositor decides, so only a bad argument is
+	// an error. CoreGraphics' entry point is private, looked up at run time, so that an older
+	// CoreGraphics simply does nothing.
+	typedef int32_t (*RequestFrontFunction)(pid_t pid, uint32_t options);
+	static const RequestFrontFunction requestFront =
+		(RequestFrontFunction) dlsym(RTLD_DEFAULT, "_CGSRequestFrontProcess");
+	const uint32_t kFrontWindowOnly = 1; // kCGSRequestFrontProcessFrontWindowOnly
+	const uint32_t kMenuBarOwner = 2; // kCGSRequestFrontProcessMenuBarOwner
+	if (requestFront)
 	{
-		int32_t cgError = activate(pid, (opts & kSetFrontProcessFrontWindowOnly) ? kFrontWindowOnly : 0);
+		uint32_t flags = ((opts & kSetFrontProcessFrontWindowOnly) ? kFrontWindowOnly : 0) | (policy == kPolicyRegular ? kMenuBarOwner : 0);
+		int32_t cgError = requestFront(pid, flags);
 		if (cgError == 1001) // kCGErrorIllegalArgument
 			return paramErr;
 	}

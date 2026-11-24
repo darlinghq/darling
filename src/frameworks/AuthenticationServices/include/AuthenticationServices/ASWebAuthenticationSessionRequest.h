@@ -19,6 +19,23 @@
 
 #include <Foundation/Foundation.h>
 
-@interface ASWebAuthenticationSessionRequest : NSObject
+NS_ASSUME_NONNULL_BEGIN
+
+@protocol ASWebAuthenticationSessionRequestDelegate;
+
+// https://developer.apple.com/documentation/authenticationservices/aswebauthenticationsessionrequest
+@interface ASWebAuthenticationSessionRequest : NSObject <NSCopying, NSSecureCoding>
+
+@property (nonatomic, readonly) NSURL *URL;
+@property (nonatomic, readonly) NSUUID *UUID;
+@property (nonatomic, readonly) BOOL shouldUseEphemeralSession;
+@property (nonatomic, readonly, nullable) NSDictionary<NSString *, NSString *> *additionalHeaderFields;
+@property (nonatomic, copy, readonly, nullable) NSString *callbackURLScheme;
+@property (nonatomic, weak, nullable) id<ASWebAuthenticationSessionRequestDelegate> delegate;
+
+- (void)completeWithCallbackURL:(NSURL *)url;
+- (void)cancelWithError:(NSError *)error;
 
 @end
+
+NS_ASSUME_NONNULL_END

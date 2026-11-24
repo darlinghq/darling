@@ -37,4 +37,14 @@ extern GCHapticsLocality const GCHapticsLocalityRightTrigger;
 // A haptic event of this duration lasts until it is stopped.
 extern const float GCHapticDurationInfinite;
 
+@class CHHapticEngine;
+
+@interface GCDeviceHaptics : NSObject
+
+@property (copy, readonly) NSSet<GCHapticsLocality> *supportedLocalities;
+
+- (nullable CHHapticEngine *)createEngineWithLocality:(GCHapticsLocality)locality;
+
+@end
+
 #endif

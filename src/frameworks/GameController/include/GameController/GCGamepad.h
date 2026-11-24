@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,38 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef _GCGamepad_H_
+#define _GCGamepad_H_
 
-@interface GCGamepad : NSObject
+#import <Foundation/Foundation.h>
+#import <GameController/GCPhysicalInputProfile.h>
+
+@class GCController;
+@class GCGamepad;
+@class GCGamepadSnapshot;
+
+NS_ASSUME_NONNULL_BEGIN
+
+typedef void (^GCGamepadValueChangedHandler)(GCGamepad *gamepad, GCControllerElement *element);
+
+/* The original gamepad profile; GCExtendedGamepad replaces it. */
+@interface GCGamepad : GCPhysicalInputProfile
+
+@property (nonatomic, readonly, weak) GCController *controller;
+@property (nonatomic, copy, nullable) GCGamepadValueChangedHandler valueChangedHandler;
+
+- (GCGamepadSnapshot *)saveSnapshot;
+
+@property (nonatomic, readonly) GCControllerDirectionPad *dpad;
+@property (nonatomic, readonly) GCControllerButtonInput *buttonA;
+@property (nonatomic, readonly) GCControllerButtonInput *buttonB;
+@property (nonatomic, readonly) GCControllerButtonInput *buttonX;
+@property (nonatomic, readonly) GCControllerButtonInput *buttonY;
+@property (nonatomic, readonly) GCControllerButtonInput *leftShoulder;
+@property (nonatomic, readonly) GCControllerButtonInput *rightShoulder;
 
 @end
+
+NS_ASSUME_NONNULL_END
+
+#endif

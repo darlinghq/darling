@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2021 Lubos Dolezel
+ Copyright (C) 2021-2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,17 +18,55 @@
 */
 
 #import <AppKit/NSCollectionViewLayoutInvalidationContext.h>
+#import "NSCollectionViewLayoutPrivate.h"
 
 @implementation NSCollectionViewLayoutInvalidationContext
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+- (void) dealloc {
+    [_invalidatedItemIndexPaths release];
+    [super dealloc];
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
-{
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+- (BOOL) invalidateEverything {
+    return _invalidateEverything;
+}
+
+- (BOOL) invalidateDataSourceCounts {
+    return _invalidateDataSourceCounts;
+}
+
+- (void) _setInvalidateEverything: (BOOL) invalidate {
+    _invalidateEverything = invalidate;
+}
+
+- (void) _setInvalidateDataSourceCounts: (BOOL) invalidate {
+    _invalidateDataSourceCounts = invalidate;
+}
+
+- (void) invalidateItemsAtIndexPaths: (NSSet<NSIndexPath *> *) indexPaths {
+    if (_invalidatedItemIndexPaths == nil)
+        _invalidatedItemIndexPaths = [[NSMutableSet alloc] init];
+    [_invalidatedItemIndexPaths unionSet: indexPaths];
+}
+
+- (NSSet<NSIndexPath *> *) invalidatedItemIndexPaths {
+    return [[_invalidatedItemIndexPaths copy] autorelease];
+}
+
+- (NSPoint) contentOffsetAdjustment {
+    return _contentOffsetAdjustment;
+}
+
+- (void) setContentOffsetAdjustment: (NSPoint) adjustment {
+    _contentOffsetAdjustment = adjustment;
+}
+
+- (NSSize) contentSizeAdjustment {
+    return _contentSizeAdjustment;
+}
+
+- (void) setContentSizeAdjustment: (NSSize) adjustment {
+    _contentSizeAdjustment = adjustment;
 }
 
 @end

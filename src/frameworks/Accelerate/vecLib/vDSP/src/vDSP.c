@@ -827,17 +827,21 @@ void* vDSP_maxvD(void)
 }
 */
 
+/*
 void* vDSP_maxvi(void)
 {
     if (verbose) puts("STUB: vDSP_maxvi called");
     return NULL;
 }
+*/
 
+/*
 void* vDSP_maxviD(void)
 {
     if (verbose) puts("STUB: vDSP_maxviD called");
     return NULL;
 }
+*/
 
 void* vDSP_meamgv(void)
 {
@@ -923,17 +927,21 @@ void* vDSP_minvD(void)
 }
 */
 
+/*
 void* vDSP_minvi(void)
 {
     if (verbose) puts("STUB: vDSP_minvi called");
     return NULL;
 }
+*/
 
+/*
 void* vDSP_minviD(void)
 {
     if (verbose) puts("STUB: vDSP_minviD called");
     return NULL;
 }
+*/
 
 void* vDSP_mmov(void)
 {
@@ -971,17 +979,21 @@ void* vDSP_mtransD(void)
     return NULL;
 }
 
+/*
 void* vDSP_mvessq(void)
 {
     if (verbose) puts("STUB: vDSP_mvessq called");
     return NULL;
 }
+*/
 
+/*
 void* vDSP_mvessqD(void)
 {
     if (verbose) puts("STUB: vDSP_mvessqD called");
     return NULL;
 }
+*/
 
 void* vDSP_normalize(void)
 {

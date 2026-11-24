@@ -50,4 +50,13 @@ const char* launcherChooseTmpDir(const char* tmpdirEnv, const char* buildDefault
 // alone and false is returned. Nothing outside the prefix's own private directory is touched.
 bool launcherLinkPrefixTmp(const char* prefix, const char* dir);
 
+// The shared temporary directories of the guest (/private/tmp, /private/var/tmp and /var/tmp) are
+// world-writable with the sticky bit (01777) on macOS, so that every user can create files there but
+// only delete their own. A prefix made by an older launcher or install has copies of them that are
+// 0755, which stops a process from writing there. Sets the mode 01777 on each of those that exists in
+// the prefix as a real directory (no link is followed, so an Android link to the host's temporary
+// directory is left alone) and is owned by uid. Returns the number of directories changed. Meant for
+// a prefix with no running container.
+int launcherEnsureSharedTmpModes(const char* prefix, uid_t uid);
+
 #endif

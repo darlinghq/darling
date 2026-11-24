@@ -204,12 +204,16 @@ function(add_darling_object_library name)
 
 	add_library(${name} OBJECT ${files})
 	add_dependencies(${name} lipo)
-	set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/")
+	# Set through COMPILE_OPTIONS rather than COMPILE_FLAGS: a caller that sets COMPILE_FLAGS on the
+	# library afterwards (for a -D, say) replaces that property, which would silently drop the
+	# slices and leave an object file for the default slice only.
+	target_compile_options(${name} PRIVATE "SHELL:-B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/")
 
 	_darling_select_archs(object_archs "${OBJECT_LIB_32BIT_ONLY}" "${OBJECT_LIB_64BIT_ONLY}" "${OBJECT_LIB_ARCHS}")
 	if (NOT object_archs)
 		message(FATAL_ERROR "add_darling_object_library(${name}): none of the requested slices is enabled (DARLING_ARCHS: ${DARLING_ARCHS})")
 	endif ()
-	darling_arch_flags(object_arch_flags ${object_archs})
-	set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " ${object_arch_flags}")
+	foreach (arch IN LISTS object_archs)
+		target_compile_options(${name} PRIVATE "SHELL:-arch ${arch}")
+	endforeach ()
 endfunction(add_darling_object_library)

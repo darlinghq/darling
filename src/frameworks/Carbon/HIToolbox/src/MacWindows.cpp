@@ -63,15 +63,18 @@ void closeDisplay()
 
 OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rect, WindowRef* newWindow)
 {
+	if (!newWindow)
+		return paramErr;
+
+	*newWindow = 0;
+
+	if (!rect || rect->right < rect->left || rect->bottom < rect->top)
+		return paramErr;
+
 #ifndef NO_X11
 	Window win;
 	Display* dpy;
 	int blackColor, whiteColor;
-
-	*newWindow = 0;
-
-	if (rect->right < rect->left || rect->bottom < rect->top)
-		return paramErr;
 
 	dpy = Darling::Carbon::getDisplay();
 	blackColor = BlackPixel(dpy, DefaultScreen(dpy));
@@ -85,8 +88,12 @@ OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rec
 		return paramErr;
 
 	*newWindow = win;
-#endif
 	return noErr;
+#else
+	// No window backend is compiled in: report the failure instead of
+	// returning noErr without a window.
+	return unimpErr;
+#endif
 }
 
 void DisposeWindow(WindowRef wnd)

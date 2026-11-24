@@ -18,6 +18,12 @@
 */
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSString.h>
+
+extern NSString *WebHistoryItemsAddedNotification;
+extern NSString *WebHistoryItemsRemovedNotification;
+extern NSString *WebHistoryAllItemsRemovedNotification;
+extern NSString *WebHistoryLoadedNotification;
 
 @interface WebHistory : NSObject
 @end

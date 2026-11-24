@@ -108,7 +108,7 @@ pipeline {
 				sh 'mkdir out-rpm'
 
 				dir('out-rpm') {
-					sh 'mv ${HOME}/rpmbuild/RPMS/x86_64/*.rpm ./'
+					sh 'mv ${HOME}/rpmbuild/RPMS/*/*.rpm ./'
 				}
 
 				archiveArtifacts artifacts: 'out-rpm/**/*', fingerprint: true

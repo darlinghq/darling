@@ -34,6 +34,7 @@
 #include <sys/stat.h>
 #include <uuid/uuid.h>
 #include "LSDProtocol.h"
+#include "LSDeliver.h"
 
 static void get_main_executable_info(CFURLRef appURL, CFStringRef *exec, CFStringRef *bundleName);
 static Boolean is_file_url(CFURLRef url);
@@ -136,6 +137,22 @@ static Boolean is_file_url(CFURLRef url)
 /* Largest wait for a running application to take an Apple event (60 ticks per second). */
 #define APP_READY_TIMEOUT_TICKS (60 * 15)
 
+static pid_t find_running_instance(const char *bundleID);
+
+pid_t _LSFindRunningApplication(CFURLRef appURL)
+{
+	CFBundleRef bundle = CFBundleCreate(kCFAllocatorDefault, appURL);
+	CFStringRef identifier = bundle != NULL ? CFBundleGetIdentifier(bundle) : NULL;
+	char bundleID[512];
+	pid_t pid = 0;
+
+	if (identifier != NULL && CFStringGetCString(identifier, bundleID, sizeof(bundleID), kCFStringEncodingUTF8))
+		pid = find_running_instance(bundleID);
+	if (bundle != NULL)
+		CFRelease(bundle);
+	return pid;
+}
+
 /* The running process of an application that can receive Apple events, or 0. */
 static pid_t find_running_instance(const char *bundleID)
 {
@@ -199,6 +216,23 @@ static OSStatus send_event(AppleEvent *event, pid_t pid, AEEventID eventID, Bool
 	return status;
 }
 
+/*
+ * QUIRK: the events LaunchServices delivers to an application carry an 'aapd' parameter that is true: documents
+ * opened in an application (kAEOpenDocuments), at launch or while it runs; an application opened again while it runs
+ * (kAEReopenApplication); and the initial event of LSOpenApplication, at launch or while it runs. The kAEOpenApplication
+ * of a plain launch does not. Not documented. Evidence: black-box observation on macOS 26.7.3 (tier 2), with open -a,
+ * LSOpenFromURLSpec and LSOpenApplication, recorded in darling's tests/volumes.md. URLs (kAEGetURL) were not observed
+ * and are left without it.
+ * Test: launchservices_open_application.m (the 'aapd' in each expected event).
+ */
+#define keyLaunchServicesDelivered 'aapd'
+
+static OSStatus mark_delivered(AppleEvent *event)
+{
+	Boolean yes = true;
+	return AEPutParamPtr(event, keyLaunchServicesDelivered, typeBoolean, &yes, sizeof(yes));
+}
+
 /* Tells a running application it was opened again, with a kAEReopenApplication event. */
 static OSStatus send_reopen_event(pid_t pid)
 {
@@ -213,8 +247,40 @@ static OSStatus send_reopen_event(pid_t pid)
 	AEDisposeDesc(&target);
 	if (status != noErr)
 		return status;
-	status = send_event(&event, pid, kAEReopenApplication, false);
+	status = mark_delivered(&event);
+	if (status == noErr)
+		status = send_event(&event, pid, kAEReopenApplication, false);
 	AEDisposeDesc(&event);
+	return status;
+}
+
+OSStatus _LSDeliverReopenEvent(pid_t pid)
+{
+	return send_reopen_event(pid);
+}
+
+OSStatus _LSDeliverEvent(const AppleEvent *event, pid_t pid, Boolean justLaunched)
+{
+	AppleEvent copy;
+	SInt32 targetPid = pid;
+	AEEventID eventID = 0;
+	DescType type;
+	Size size;
+	OSStatus status;
+
+	if (event == NULL)
+		return paramErr;
+	status = AEDuplicateDesc(event, &copy);
+	if (status != noErr)
+		return status;
+	status = AEPutAttributePtr(&copy, keyAddressAttr, typeKernelProcessID, &targetPid, sizeof(targetPid));
+	if (status == noErr)
+		status = AEGetAttributePtr(&copy, keyEventIDAttr, typeType, &type, &eventID, sizeof(eventID), &size);
+	if (status == noErr)
+		status = mark_delivered(&copy);
+	if (status == noErr)
+		status = send_event(&copy, pid, eventID, justLaunched);
+	AEDisposeDesc(&copy);
 	return status;
 }
 
@@ -302,6 +368,8 @@ static OSStatus send_documents_event(pid_t pid, CFArrayRef urls, Boolean print, 
 	if (status == noErr)
 		status = AEPutParamDesc(&event, keyDirectObject, &list);
 	AEDisposeDesc(&list);
+	if (status == noErr)
+		status = mark_delivered(&event);
 	if (status == noErr)
 		status = send_event(&event, pid, print ? kAEPrintDocuments : kAEOpenDocuments, queue);
 	AEDisposeDesc(&event);

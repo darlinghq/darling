@@ -22,6 +22,11 @@
 #import <Foundation/NSInvocation.h>
 #import <darling-stub-forwarding.h>
 
+NSString *WebHistoryItemsAddedNotification = @"WebHistoryItemsAddedNotification";
+NSString *WebHistoryItemsRemovedNotification = @"WebHistoryItemsRemovedNotification";
+NSString *WebHistoryAllItemsRemovedNotification = @"WebHistoryAllItemsRemovedNotification";
+NSString *WebHistoryLoadedNotification = @"WebHistoryLoadedNotification";
+
 @implementation WebHistory
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

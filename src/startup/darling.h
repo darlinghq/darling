@@ -74,6 +74,7 @@ void checkPrefixOwner(void);
 void ensureSystemAccounts(void);
 void ensureZoneinfoLink(void);
 void ensureGlobalPreferences(void);
+void ensureSharedTmpModes(void);
 
 int isModuleLoaded(void);
 
