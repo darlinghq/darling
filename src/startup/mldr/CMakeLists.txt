@@ -292,8 +292,10 @@ if (WITH_FEXCORE)
 		${FEXCORE_SOURCE_DIR}/External/zydis/include
 		${FEXCORE_SOURCE_DIR}/External/fmt/include)
 
+	# No -fno-exceptions: range-v3 (via HostFeatures.cpp) has unconditional `throw`s in templates,
+	# which the CI clang rejects at definition time when exceptions are off; FEX builds these with them on.
 	target_compile_options(darling-fexcore PRIVATE
-		-O2 -std=gnu++20 -fPIC -fno-strict-aliasing -fwrapv -ffunction-sections -fno-exceptions
+		-O2 -std=gnu++20 -fPIC -fno-strict-aliasing -fwrapv -ffunction-sections
 		-DARCHITECTURE_arm64=1
 		-DFEXCORE_HAS_PRESERVE_ALL_ATTR=1
 		"-DFEXCORE_PRESERVE_ALL_ATTR=__attribute__((preserve_all))"
