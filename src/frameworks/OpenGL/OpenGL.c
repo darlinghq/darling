@@ -642,6 +642,14 @@ struct _CGLContextObject {
     CGSConnectionID fullscreen_connection;
     CGSWindowID fullscreen_window;
     EGLSurface fullscreen_surface;
+    // The ids CGLSetSurface was given for the drawable, with the EGL surface it
+    // made from them. They describe the drawable only while egl_surface is still
+    // that surface (any other way of attaching or clearing the drawable changes
+    // it). Guarded by lock.
+    EGLSurface set_surface;
+    CGSConnectionID set_surface_connection;
+    CGSWindowID set_surface_window;
+    CGSSurfaceID set_surface_id;
     // EGL has no function for getting the current swap interval,
     // so we need to save the last set value. The default is 0.
     // This is the application's value; a paced context never gives it to EGL.
@@ -883,7 +891,13 @@ CGLError CGLSetSurface(CGLContextObj gl, CGSConnectionID cid, CGSWindowID wid, C
         return kCGLBadWindow;
 
     EGLSurface surf = p_eglCreateWindowSurface(gl->egl_display, gl->egl_config, window, NULL);
+    pthread_mutex_lock(&gl->lock);
     atomic_store_explicit(&gl->egl_surface, surf, memory_order_release);
+    gl->set_surface = surf;
+    gl->set_surface_connection = cid;
+    gl->set_surface_window = wid;
+    gl->set_surface_id = sid;
+    pthread_mutex_unlock(&gl->lock);
     if (surf == EGL_NO_SURFACE)
         return kCGLBadState;
     return kCGLNoError;
@@ -1042,6 +1056,67 @@ CGL_EXPORT void CGLDestroyWindow(CGLWindowRef ref) {
     pthread_mutex_unlock(&g_windowsMutex);
     p_eglDestroySurface(window->display, window->surface);
     free(window);
+}
+
+// The native window handle that the context's current EGL surface was made
+// for, when that surface belongs to a CGLWindowRef; NULL otherwise.
+static void *nativeWindowOfSurface(EGLSurface surface) {
+    void *native = NULL;
+    pthread_mutex_lock(&g_windowsMutex);
+    for (struct _CGLWindow *window = g_windows; window != NULL; window = window->next) {
+        if (window->surface == surface) {
+            native = window->native_window;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&g_windowsMutex);
+    return native;
+}
+
+// The window server ids of the context's drawable: those it was given with
+// CGLSetSurface, or those of the AppKit view's window surface for a context
+// attached to one through its CGLWindowRef (CoreGraphics keeps that
+// registry). A context with no drawable of either kind reports zeros and no
+// error.
+//
+// QUIRK: the ids of a context without a drawable are 0, 0, 0 and the call
+// succeeds. Not documented. Evidence: black-box observation on macOS 26.7.3
+// (tier 2). A NULL context gives kCGLBadContext and leaves the outputs
+// untouched. Test: cgl_get_surface (cgl_get_surface_no_drawable and
+// cgl_get_surface_null_context checks).
+CGLError CGLGetSurface(CGLContextObj gl, CGSConnectionID *cid, CGSWindowID *wid, CGSSurfaceID *sid)
+{
+    if (!gl)
+        return kCGLBadContext;
+
+    CGSConnectionID connection = 0;
+    CGSWindowID window = 0;
+    CGSSurfaceID surface = 0;
+
+    EGLSurface current = atomic_load_explicit(&gl->egl_surface, memory_order_acquire);
+    if (current != EGL_NO_SURFACE) {
+        pthread_mutex_lock(&gl->lock);
+        int set_here = gl->set_surface == current;
+        if (set_here) {
+            connection = gl->set_surface_connection;
+            window = gl->set_surface_window;
+            surface = gl->set_surface_id;
+        }
+        pthread_mutex_unlock(&gl->lock);
+        if (!set_here) {
+            void *native = nativeWindowOfSurface(current);
+            if (native != NULL)
+                _CGSWindowSurfaceForNativeWindow(native, &connection, &window, &surface);
+        }
+    }
+
+    if (cid)
+        *cid = connection;
+    if (wid)
+        *wid = window;
+    if (sid)
+        *sid = surface;
+    return kCGLNoError;
 }
 
 CGL_EXPORT CGLError CGLContextMakeCurrentAndAttachToWindow(CGLContextObj context, CGLWindowRef window) {
@@ -2050,6 +2125,7 @@ static CGLError createContext(CGLPixelFormatObj pixelFormat, CGLContextObj share
     context->fullscreen_connection = 0;
     context->fullscreen_window = 0;
     context->fullscreen_surface = EGL_NO_SURFACE;
+    context->set_surface = EGL_NO_SURFACE;
     context->swap_interval = interval;
     context->paced = paced;
     context->pacer.period_ns = cgl_period_ns_from_millihertz(0);
