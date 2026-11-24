@@ -570,29 +570,63 @@ static EGLBoolean choose_registered_config(EGLDisplay dpy, EGLConfig *out_config
 // display, such as an offscreen renderer, gets EGL's default display, whose
 // platform EGL picks, or a surfaceless display if that cannot be opened.
 // Its contexts render into pbuffers or framebuffer objects.
+//
+// What the default display is depends on the process' environment: in a
+// session with a window system (DISPLAY or WAYLAND_DISPLAY set) EGL's default
+// platform is that window system, and on a host whose GPU the window system's
+// Mesa cannot drive (an X server or compositor on the NVIDIA driver) the
+// default display is Mesa's software rasterizer, although the GPU is there and
+// the surfaceless platform reaches it. A hardware display is therefore
+// preferred: a display on a software device is only taken when no candidate
+// is a hardware one. A context that needs window surfaces (a fullscreen
+// pixel format) cannot use a surfaceless display; it keeps the first display
+// that opens, the window system's.
 static EGLDisplay default_display = EGL_NO_DISPLAY;
 static EGLConfig default_config;
+static EGLDisplay window_display = EGL_NO_DISPLAY;
+static EGLConfig window_config;
+
+static int softwareEGLDevice(EGLDisplay display);
 
 static void open_default_display(void) {
     EGLDisplay candidates[] = {
         p_eglGetDisplay(EGL_DEFAULT_DISPLAY),
         p_eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA, EGL_DEFAULT_DISPLAY, NULL),
     };
+    EGLDisplay software_display = EGL_NO_DISPLAY;
+    EGLConfig software_config = NULL;
     for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); i++) {
         EGLConfig candidate_config;
         if (candidates[i] == EGL_NO_DISPLAY || !p_eglInitialize(candidates[i], NULL, NULL))
             continue;
         if (!choose_config(candidates[i], EGL_PBUFFER_BIT, 0, &candidate_config, NULL))
             continue;
+        if (window_display == EGL_NO_DISPLAY) {
+            window_display = candidates[i];
+            window_config = candidate_config;
+        }
+        if (softwareEGLDevice(candidates[i])) {
+            if (software_display == EGL_NO_DISPLAY) {
+                software_display = candidates[i];
+                software_config = candidate_config;
+            }
+            continue;
+        }
         default_display = candidates[i];
         default_config = candidate_config;
         return;
     }
+    default_display = software_display;
+    default_config = software_config;
 }
 
-static EGLDisplay get_default_display(EGLConfig *out_config) {
+static EGLDisplay get_default_display(EGLConfig *out_config, int needs_windows) {
     static pthread_once_t once = PTHREAD_ONCE_INIT;
     pthread_once(&once, open_default_display);
+    if (needs_windows && window_display != EGL_NO_DISPLAY) {
+        *out_config = window_config;
+        return window_display;
+    }
     *out_config = default_config;
     return default_display;
 }
@@ -2061,7 +2095,10 @@ static CGLError createContext(CGLPixelFormatObj pixelFormat, CGLContextObj share
         owner_config = window->config;
     }
     if (owner == EGL_NO_DISPLAY) {
-        owner = get_default_display(&owner_config);
+        GLint fullscreen = 0;
+        int needs_windows = pixelFormat
+            && CGLDescribePixelFormat(pixelFormat, 0, kCGLPFAFullScreen, &fullscreen) == kCGLNoError && fullscreen;
+        owner = get_default_display(&owner_config, needs_windows);
         if (owner == EGL_NO_DISPLAY)
             return kCGLBadConnection;
     }
