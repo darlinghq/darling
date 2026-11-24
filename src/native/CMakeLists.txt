@@ -25,6 +25,7 @@ if (COMPONENT_gui)
 	wrap_elf(X11 libX11.so)
 	wrap_elf(Xext libXext.so)
 	wrap_elf(XRandR libXrandr.so)
+	wrap_elf(Xi libXi.so)
 	wrap_elf(Xcursor libXcursor.so)
 	wrap_elf(xkbfile libxkbfile.so)
 
