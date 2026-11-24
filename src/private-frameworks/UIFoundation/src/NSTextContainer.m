@@ -60,7 +60,9 @@ static NSString *const _NSTextContainerViewFrameDidChangeNotification =
     return self;
 }
 
-- initWithContainerSize: (NSSize) size {
+// initWithSize: is the documented designated initializer (macOS 10.11); the older
+// initWithContainerSize: and -init go through it.
+- initWithSize: (NSSize) size {
     _size = size;
     _textView = nil;
     _layoutManager = nil;
@@ -71,8 +73,12 @@ static NSString *const _NSTextContainerViewFrameDidChangeNotification =
     return self;
 }
 
+- initWithContainerSize: (NSSize) size {
+    return [self initWithSize: size];
+}
+
 - init {
-    self = [self initWithContainerSize: NSZeroSize];
+    self = [self initWithSize: NSZeroSize];
     NS_EXTRA(NSTextContainer, self)->_widthTracksTextView = NO;
     NS_EXTRA(NSTextContainer, self)->_heightTracksTextView = NO;
     return self;
@@ -85,6 +91,19 @@ static NSString *const _NSTextContainerViewFrameDidChangeNotification =
 }
 - (NSSize) containerSize {
     return _size;
+}
+
+// size and setSize: are the documented spellings of containerSize and setContainerSize:. GUESS: the
+// setter goes through the older one, because the framework's own resize paths (text view tracking,
+// NSTextView, NSStringDrawer, NSViewTemplate) call setContainerSize:; a subclass that overrides
+// either name then sees one call from -setSize:, but a subclass that overrides only setSize: is
+// not reached by those internal resizes.
+- (NSSize) size {
+    return [self containerSize];
+}
+
+- (void) setSize: (NSSize) size {
+    [self setContainerSize: size];
 }
 
 - (NSTextView *) textView {
