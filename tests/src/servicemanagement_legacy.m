@@ -277,7 +277,7 @@ static void checkBless(void)
 static void checkLoginItem(void)
 {
 	unlink(ITEM_MARKER);
-	NSString *record = @"/Library/LaunchDaemons/org.darlinghq.loginitem." ITEM_ID ".plist";
+	NSString *record = [NSHomeDirectory() stringByAppendingPathComponent: @"Library/LaunchAgents/org.darlinghq.loginitem." ITEM_ID ".plist"];
 	CHECK(SMLoginItemSetEnabled(CFSTR(ITEM_ID), true));
 	CHECK([[NSFileManager defaultManager] fileExistsAtPath: record]);
 	BOOL started = waitFor(^BOOL { return access(ITEM_MARKER, F_OK) == 0; }, 30);

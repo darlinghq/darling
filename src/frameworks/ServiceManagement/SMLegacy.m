@@ -23,7 +23,7 @@
 // Darling runs a single launchd per container, as the user who started the container. Its "system"
 // and "user" domains are the same launchd, so both domain constants reach it and the privileged
 // helpers' daemon plists in /Library/LaunchDaemons are loaded by it at every container start, like
-// the other daemons there.
+// the other daemons there; the LaunchAgents directories are loaded at that time as well.
 //
 // Darling policy: authorization is not enforced. Any AuthorizationRef, including NULL, is accepted,
 // and neither SMPrivilegedExecutables nor SMAuthorizedClients is checked as a code requirement.
@@ -389,12 +389,18 @@ Boolean SMJobBless(CFStringRef domain, CFStringRef executableLabel, Authorizatio
 
 // ---- SMLoginItemSetEnabled ----
 
-// The registration of an enabled login item: a job in /Library/LaunchDaemons that opens the helper app.
-// Darling has no login session and its launchd loads no per-user agents, but it loads this directory when
-// the container starts, which is when a login item has to start again; a prefix belongs to one user.
+// The registration of an enabled login item: a per-user LaunchAgent in ~/Library/LaunchAgents of the
+// container's user that opens the helper app. Darling has no login session, but its launchd loads the
+// user's LaunchAgents when the container starts, which is when a login item has to start again.
+static NSString *SMLoginItemLabel(NSString *identifier)
+{
+	return [@"org.darlinghq.loginitem." stringByAppendingString: identifier];
+}
+
 static NSString *SMLoginItemRecordPath(NSString *identifier)
 {
-	return [@"/Library/LaunchDaemons" stringByAppendingPathComponent: [NSString stringWithFormat: @"org.darlinghq.loginitem.%@.plist", identifier]];
+	NSString *directory = [NSHomeDirectory() stringByAppendingPathComponent: @"Library/LaunchAgents"];
+	return [directory stringByAppendingPathComponent: [SMLoginItemLabel(identifier) stringByAppendingPathExtension: @"plist"]];
 }
 
 static NSBundle *SMFindLoginItem(NSString *identifier)
@@ -436,12 +442,14 @@ Boolean SMLoginItemSetEnabled(CFStringRef identifier, Boolean enabled)
 	NSString *recordPath = SMLoginItemRecordPath(name);
 	if (!enabled) {
 		[[NSFileManager defaultManager] removeItemAtPath: recordPath error: NULL];
+		// An agent loaded when the container started is still known to launchd.
+		SMJobRemove(kSMDomainUserLaunchd, (CFStringRef) SMLoginItemLabel(name), NULL, false, NULL);
 		SMTerminateProcessesRunning([item executablePath]);
 		return true;
 	}
 
 	NSDictionary *record = [NSDictionary dictionaryWithObjectsAndKeys:
-		[@"org.darlinghq.loginitem." stringByAppendingString: name], @LAUNCH_JOBKEY_LABEL,
+		SMLoginItemLabel(name), @LAUNCH_JOBKEY_LABEL,
 		[NSArray arrayWithObjects: @"/usr/bin/open", @"-g", [item bundlePath], nil], @LAUNCH_JOBKEY_PROGRAMARGUMENTS,
 		[NSNumber numberWithBool: YES], @LAUNCH_JOBKEY_RUNATLOAD,
 		nil];
