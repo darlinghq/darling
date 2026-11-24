@@ -123,4 +123,12 @@ bool _HICopyEventParameter(EventRef event, EventParamName name, EventParamType* 
 struct HIEventTypeList { ItemCount count; const EventTypeSpec* types; };
 Boolean _HIMatchesEventTypes(EventRef event, void* typeList);   // typeList: struct HIEventTypeList*, count 0 matches everything
 
+// Starts the delivery of the application events about the front process (kEventAppFrontSwitched,
+// kEventAppActivated, kEventAppDeactivated) to the application target. Once per process, any thread.
+void _HIObserveFrontProcess(void);
+
+// The application target without starting the front process events (for them, which run inside
+// their own start).
+EventTargetRef _HIApplicationEventTarget(void);
+
 #endif

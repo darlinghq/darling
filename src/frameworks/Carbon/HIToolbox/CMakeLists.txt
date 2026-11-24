@@ -26,6 +26,7 @@ add_framework(HIToolbox
 		src/CarbonEventStream.c
 		src/CarbonEvents.c
 		src/CarbonEventTargets.c
+		src/CarbonApplicationEvents.c
 		src/MacApplication.cpp
 		src/MacWindows.cpp
 		src/TextInputSources.mm
