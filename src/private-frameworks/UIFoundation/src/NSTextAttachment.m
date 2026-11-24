@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 @end
 
 static NSMutableDictionary *viewProviderClasses;
+static NSMutableDictionary *attachmentClasses;
 
 @implementation NSTextAttachment
 #if __OBJC2__
@@ -44,6 +45,24 @@ static NSMutableDictionary *viewProviderClasses;
 
 + (BOOL) supportsSecureCoding {
     return YES;
+}
+
++ (Class) textAttachmentClassForFileType: (NSString *) fileType {
+    @synchronized([NSTextAttachment class]) {
+        return [attachmentClasses objectForKey: fileType];
+    }
+}
+
++ (void) registerTextAttachmentClass: (Class) attachmentClass forFileType: (NSString *) fileType {
+    // GUESS: rejecting a class that is not a text attachment is not documented.
+    if (![attachmentClass isSubclassOfClass: [NSTextAttachment class]])
+        [NSException raise: NSInvalidArgumentException
+                    format: @"%@ is not a subclass of NSTextAttachment", attachmentClass];
+    @synchronized([NSTextAttachment class]) {
+        if (attachmentClasses == nil)
+            attachmentClasses = [[NSMutableDictionary alloc] init];
+        [attachmentClasses setObject: attachmentClass forKey: fileType];
+    }
 }
 
 + (Class) textAttachmentViewProviderClassForFileType: (NSString *) fileType {
