@@ -121,15 +121,26 @@ static void checkErrorTable(void)
 {
 	CFErrorRef error = NULL;
 	CHECK(!SMJobBless(kSMDomainSystemLaunchd, CFSTR(UNLISTED_LABEL), NULL, &error));
-	CHECK(error && CFErrorGetCode(error) == 4 && [(NSString *) CFErrorGetDomain(error) isEqualToString: @"CFErrorDomainLaunchd"]);
-	if (error) CFRelease(error);
-	error = NULL;
-	CHECK(!SMJobBless(kSMDomainUserLaunchd, CFSTR(UNLISTED_LABEL), NULL, &error));
-	CHECK(error && CFErrorGetCode(error) == 4 && [(NSString *) CFErrorGetDomain(error) isEqualToString: @"CFErrorDomainLaunchd"]);
+	// macOS reports 4 (NULL AuthorizationRef) or 2 (reference without the right) before it looks at the
+	// label; Darling never enforces authorization, so the codes of the structural refusals are a
+	// choice without Mac evidence: kSMErrorJobNotFound for a label the app does not list, and
+	// kSMErrorInternalFailure for a domain other than the system one.
+	CHECK(error && CFErrorGetCode(error) == kSMErrorJobNotFound && [(NSString *) CFErrorGetDomain(error) isEqualToString: @"CFErrorDomainLaunchd"]);
 	if (error) CFRelease(error);
 	error = NULL;
 	CHECK(!SMJobBless(kSMDomainUserLaunchd, CFSTR(HELPER_LABEL), NULL, &error));
-	CHECK(error && CFErrorGetCode(error) == 4);
+	CHECK(error && CFErrorGetCode(error) == kSMErrorInternalFailure && [(NSString *) CFErrorGetDomain(error) isEqualToString: @"CFErrorDomainLaunchd"]);
+	if (error) CFRelease(error);
+	error = NULL;
+	CHECK(!SMJobBless(CFSTR("bogus"), CFSTR(HELPER_LABEL), NULL, &error));
+	CHECK(error && CFErrorGetCode(error) == kSMErrorInternalFailure);
+	if (error) CFRelease(error);
+
+	// Observed on macOS 26.7.3 and 10.14.4: a job without a Label fails with code 10 of CFErrorDomainLaunchd.
+	error = NULL;
+	NSDictionary *unlabeled = @{ @"ProgramArguments": @[@"/bin/sleep", @"60"] };
+	CHECK(!SMJobSubmit(kSMDomainUserLaunchd, (CFDictionaryRef) unlabeled, NULL, &error));
+	CHECK(error && CFErrorGetCode(error) == 10 && [(NSString *) CFErrorGetDomain(error) isEqualToString: @"CFErrorDomainLaunchd"]);
 	if (error) CFRelease(error);
 
 	error = NULL;
@@ -150,8 +161,9 @@ static void checkJobs(void)
 	CHECK(!error);
 	if (error) { CFRelease(error); error = NULL; }
 
-	CHECK(!SMJobSubmit(kSMDomainUserLaunchd, (CFDictionaryRef) job, NULL, &error));
-	CHECK(error != NULL);
+	// Observed on macOS: submitting the same label again succeeds.
+	CHECK(SMJobSubmit(kSMDomainUserLaunchd, (CFDictionaryRef) job, NULL, &error));
+	CHECK(!error);
 	if (error) { CFRelease(error); error = NULL; }
 
 	CFDictionaryRef copy = SMJobCopyDictionary(kSMDomainUserLaunchd, CFSTR(JOB_LABEL));
@@ -169,11 +181,16 @@ static void checkJobs(void)
 	CHECK(found);
 	if (all) CFRelease(all);
 
+	// Observed on macOS: a domain string that is not one of the two constants behaves as the user domain.
 	CFDictionaryRef bogus = SMJobCopyDictionary(CFSTR("bogus"), CFSTR(JOB_LABEL));
-	CHECK(bogus == NULL);
-	CHECK(!SMJobSubmit(CFSTR("bogus"), (CFDictionaryRef) job, NULL, &error));
-	CHECK(error != NULL);
+	CHECK(bogus != NULL);
+	if (bogus) CFRelease(bogus);
+	CHECK(SMJobSubmit(CFSTR("bogus"), (CFDictionaryRef) job, NULL, &error));
+	CHECK(!error);
 	if (error) { CFRelease(error); error = NULL; }
+	CFArrayRef bogusAll = SMCopyAllJobDictionaries(CFSTR("bogus"));
+	CHECK(bogusAll != NULL);
+	if (bogusAll) CFRelease(bogusAll);
 
 	CHECK(SMJobRemove(kSMDomainUserLaunchd, CFSTR(JOB_LABEL), NULL, true, &error));
 	CHECK(!error);

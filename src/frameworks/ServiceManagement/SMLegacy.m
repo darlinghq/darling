@@ -28,7 +28,8 @@
 // Darling policy: authorization is not enforced. Any AuthorizationRef, including NULL, is accepted,
 // and neither SMPrivilegedExecutables nor SMAuthorizedClients is checked as a code requirement.
 // What is still checked is structure: the label must be listed in the app's SMPrivilegedExecutables
-// and the helper must exist and carry its embedded property lists.
+// and the helper must exist and carry its embedded property lists. macOS reports error codes 2 and 4
+// of CFErrorDomainLaunchd for a missing or insufficient authorization; these never occur here.
 
 #import <ServiceManagement/ServiceManagement.h>
 #import <CoreServices/CoreServices.h>
@@ -49,18 +50,9 @@ static void SMLegacyFail(CFErrorRef *outError, CFIndex code, NSString *descripti
 	*outError = CFErrorCreate(NULL, (CFStringRef) SMLegacyErrorDomain, code, (CFDictionaryRef) userInfo);
 }
 
-static BOOL SMIsKnownDomain(CFStringRef domain)
-{
-	return domain && (CFEqual(domain, kSMDomainSystemLaunchd) || CFEqual(domain, kSMDomainUserLaunchd));
-}
-
-static BOOL SMCheckDomain(CFStringRef domain, CFErrorRef *outError)
-{
-	if (SMIsKnownDomain(domain))
-		return YES;
-	SMLegacyFail(outError, kSMErrorInternalFailure, @"Unknown launchd domain");
-	return NO;
-}
+// The domain argument of SMJobSubmit, SMJobRemove, SMJobCopyDictionary and SMCopyAllJobDictionaries is
+// not interpreted: Darling has one launchd, and macOS treats a domain string it does not know as the
+// user domain, so every value reaches the same launchd.
 
 // Waits (bounded) until launchd no longer knows the job.
 static void SMWaitForJobGone(NSString *label)
@@ -93,7 +85,8 @@ static BOOL SMSubmitJob(NSDictionary *job, CFErrorRef *outError)
 	if (![label isKindOfClass: [NSString class]] || !data) {
 		if (data)
 			launch_data_free(data);
-		SMLegacyFail(outError, EINVAL, @"The job dictionary has no Label or holds a value launchd cannot represent");
+		// Code 10 (kSMErrorInvalidPlist) for a job without a Label, as observed on macOS.
+		SMLegacyFail(outError, kSMErrorInvalidPlist, @"The job dictionary has no Label or holds a value launchd cannot represent");
 		return NO;
 	}
 	int ipcErrno;
@@ -102,7 +95,8 @@ static BOOL SMSubmitJob(NSDictionary *job, CFErrorRef *outError)
 		SMLegacyFail(outError, ipcErrno ?: kSMErrorServiceUnavailable, @"Unable to reach launchd");
 		return NO;
 	}
-	if (result != 0) {
+	// Submitting a label that is already loaded succeeds, as on macOS; the loaded job is kept.
+	if (result != 0 && result != EEXIST) {
 		SMLegacyFail(outError, result, [NSString stringWithFormat: @"launchd refused %@: %s", label, strerror(result)]);
 		return NO;
 	}
@@ -111,8 +105,6 @@ static BOOL SMSubmitJob(NSDictionary *job, CFErrorRef *outError)
 
 CFDictionaryRef SMJobCopyDictionary(CFStringRef domain, CFStringRef jobLabel)
 {
-	if (!SMIsKnownDomain(domain))
-		return NULL;
 	int ipcErrno;
 	launch_data_t reply = NULL;
 	if (SMLaunchRequestWithReply(LAUNCH_KEY_GETJOB, launch_data_new_string([(NSString *) jobLabel UTF8String]), &ipcErrno, &reply) != 0)
@@ -124,8 +116,6 @@ CFDictionaryRef SMJobCopyDictionary(CFStringRef domain, CFStringRef jobLabel)
 
 CFArrayRef SMCopyAllJobDictionaries(CFStringRef domain)
 {
-	if (!SMIsKnownDomain(domain))
-		return NULL;
 	int ipcErrno;
 	launch_data_t reply = NULL;
 	if (SMLaunchRequestWithReply(LAUNCH_KEY_GETJOBS, NULL, &ipcErrno, &reply) != 0)
@@ -146,8 +136,6 @@ Boolean SMJobSubmit(CFStringRef domain, CFDictionaryRef job, AuthorizationRef au
 {
 	if (outError)
 		*outError = NULL;
-	if (!SMCheckDomain(domain, outError))
-		return false;
 	return SMSubmitJob((NSDictionary *) job, outError);
 }
 
@@ -155,8 +143,6 @@ Boolean SMJobRemove(CFStringRef domain, CFStringRef jobLabel, AuthorizationRef a
 {
 	if (outError)
 		*outError = NULL;
-	if (!SMCheckDomain(domain, outError))
-		return false;
 	int ipcErrno;
 	int result = SMRemoveJob((NSString *) jobLabel, wait, NULL, &ipcErrno);
 	if (result == -1) {
@@ -326,13 +312,24 @@ Boolean SMJobBless(CFStringRef domain, CFStringRef executableLabel, Authorizatio
 	NSString *label = (NSString *) executableLabel;
 	NSFileManager *manager = [NSFileManager defaultManager];
 
-	// A label the app does not list as a privileged executable, or a domain other than the system
-	// one, is refused with code 4 of the launchd error domain, as on macOS.
+	// Structural refusals. Without an administrator's rights macOS refuses SMJobBless before it looks at
+	// the label or the domain (code 4 for a NULL AuthorizationRef, code 2 for a reference without the
+	// right), and Darling never enforces authorization, so what macOS reports once authorized could not
+	// be observed. The codes below are a choice from SMErrors.h without evidence: a domain other than the
+	// system one is an internal failure (2), a label that is not a key of SMPrivilegedExecutables is
+	// kSMErrorJobNotFound, and a listed helper missing from the bundle is kSMErrorToolNotValid.
 	NSDictionary *listed = [[[NSBundle mainBundle] infoDictionary] objectForKey: @"SMPrivilegedExecutables"];
 	NSString *helperPath = [[[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent: @"Contents/Library/LaunchServices"] stringByAppendingPathComponent: label];
-	if (!domain || !CFEqual(domain, kSMDomainSystemLaunchd) || ![label length] || ![listed isKindOfClass: [NSDictionary class]] ||
-			![listed objectForKey: label] || ![manager fileExistsAtPath: helperPath]) {
-		SMLegacyFail(outError, 4, [NSString stringWithFormat: @"%@ is not a privileged executable of this application", label]);
+	if (!domain || !CFEqual(domain, kSMDomainSystemLaunchd)) {
+		SMLegacyFail(outError, kSMErrorInternalFailure, @"SMJobBless only installs into the system launchd domain");
+		return false;
+	}
+	if (![label length] || ![listed isKindOfClass: [NSDictionary class]] || ![listed objectForKey: label]) {
+		SMLegacyFail(outError, kSMErrorJobNotFound, [NSString stringWithFormat: @"%@ is not a privileged executable of this application", label]);
+		return false;
+	}
+	if (![manager fileExistsAtPath: helperPath]) {
+		SMLegacyFail(outError, kSMErrorToolNotValid, [NSString stringWithFormat: @"%@ is missing from the application bundle", helperPath]);
 		return false;
 	}
 
