@@ -58,6 +58,24 @@ enum {
 	kEventCommandProcess = 1,
 };
 
+// The application class: events about the front process, which are sent to the application target
+// of every process that uses Carbon events.
+enum {
+	kEventClassApplication = 'appl',
+};
+
+enum {
+	kEventAppActivated = 1,
+	kEventAppDeactivated = 2,
+	kEventAppFrontSwitched = 7,
+};
+
+// kEventParamProcessID of kEventAppFrontSwitched: the ProcessSerialNumber of the new front process
+enum {
+	kEventParamProcessID = 'psn ',
+	typeProcessSerialNumber = 'psn ',
+};
+
 enum {
 	kEventParamMouseLocation = 'mloc',
 	kEventParamMouseButton = 'mbtn',

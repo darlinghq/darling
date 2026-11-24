@@ -134,8 +134,15 @@ EventTime _HICurrentTime(void)
 	return (double) mach_absolute_time() * timebase.numer / timebase.denom / 1e9;
 }
 
+EventTargetRef _HIApplicationEventTarget(void)
+{
+	return &g_applicationTarget;
+}
+
 EventTargetRef GetApplicationEventTarget(void)
 {
+	// A process that uses the application target gets the events about the front process.
+	_HIObserveFrontProcess();
 	return &g_applicationTarget;
 }
 

@@ -50,6 +50,9 @@ enum {
 };
 
 EventTargetRef GetApplicationEventTarget(void);
+
+#define InstallApplicationEventHandler(handler, numTypes, typeList, userData, outHandlerRef) \
+	InstallEventHandler(GetApplicationEventTarget(), (handler), (numTypes), (typeList), (userData), (outHandlerRef))
 EventTargetRef GetEventDispatcherTarget(void);
 EventTargetRef GetEventMonitorTarget(void);
 
