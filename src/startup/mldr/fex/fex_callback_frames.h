@@ -52,4 +52,23 @@ static inline const struct fex_callback_frame* fex_returned_callback(const struc
 	return NULL;
 }
 
+// FEXCore's call-return stack holds a guest call's return target for the matching `ret`; the generated code
+// moves its pointer down for every call and up for every ret, and a mismatching entry only costs the slower
+// lookup. A guest that leaves calls without returning from them (longjmp out of a signal handler, for one)
+// leaves the pointer lower by the depth it left, every time, until it runs off the guard page below the
+// mapping. The pointer is a hint, so it may be set to the start of the mapping at any point where the guest
+// is in a syscall (the generated code reloads it afterwards).
+static inline uint64_t fex_callret_start(uint64_t base, uint64_t size)
+{
+	return base + size / 4; // FEX's own choice for a new thread: room below for calls, above for returns
+}
+
+// `sp` as the guest's next syscall should leave it: unchanged while it is further than a sixteenth of the
+// mapping from either end, otherwise back at the start.
+static inline uint64_t fex_callret_resync(uint64_t sp, uint64_t base, uint64_t size)
+{
+	const uint64_t margin = size / 16;
+	return sp >= base + margin && sp <= base + size - margin ? sp : fex_callret_start(base, size);
+}
+
 #endif // _MLDR_FEX_CALLBACK_FRAMES_H_

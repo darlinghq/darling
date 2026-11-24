@@ -2915,6 +2915,36 @@ static void test_left_callbacks(void)
 		"fex_returned_callback finds the callback whose host call has the stack pointer of a return");
 }
 
+// A longjmp out of a signal handler leaves the call-return hint stack pointer lower by the handler's call
+// depth, 10000 times over; it must be put back before it reaches the guard page under the mapping.
+static void test_callret_resync(void)
+{
+	const uint64_t base = 0x400000000ull, size = 0x400000;
+	const uint64_t start = fex_callret_start(base, size);
+	check(start == base + 0x100000, "the call-return stack starts a quarter into its mapping, as FEX starts a thread");
+	check(fex_callret_resync(start, base, size) == start && fex_callret_resync(start - 0x80000, base, size) == start - 0x80000 &&
+	      fex_callret_resync(base + size - 0x80000, base, size) == base + size - 0x80000,
+		"a pointer in the middle of the mapping is left alone");
+	check(fex_callret_resync(base + 0x3ff0, base, size) == start && fex_callret_resync(base + size - 0x10, base, size) == start,
+		"a pointer near either end goes back to the start");
+
+	// 143 bytes of call depth left per signal (a handler chain of nine calls): FEX's pointer reaches the guard page
+	// after about 7300 signals; with the check at every syscall it never does.
+	uint64_t sp = start, unchecked = start, resets = 0;
+	bool unchecked_overran = false, checked_overran = false;
+	for (int i = 0; i < 10000; i++) {
+		unchecked -= 144;
+		sp -= 144;
+		unchecked_overran |= unchecked < base;
+		checked_overran |= sp < base;
+		const uint64_t after = fex_callret_resync(sp, base, size);
+		resets += after != sp;
+		sp = after;
+	}
+	check(unchecked_overran && !checked_overran && resets > 0 && sp >= base && sp <= base + size,
+		"10000 abandoned handler chains overrun the call-return stack without the resync and never with it");
+}
+
 static void test_safe_memory_access(void)
 {
 	// 1. Direct fex_copy_to_guest and fex_copy_from_guest tests
@@ -3270,6 +3300,7 @@ int main(void)
 	test_pa_callback_args();
 	test_pa_api_callbacks();
 	test_syscall_translations();
+	test_callret_resync();
 	test_safe_memory_access();
 	test_guest_signal_delivery();
 	test_abi_check();

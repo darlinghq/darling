@@ -176,6 +176,8 @@ public:
 
   void HandleSyscall(FEXCore::Core::CpuStateFrame* Frame) override {
     leave_abandoned_callbacks(Frame);
+    Frame->State.callret_sp = fex_callret_resync(Frame->State.callret_sp, reinterpret_cast<uint64_t>(t_thread_state->CallRetStackBase),
+                                                 FEXCore::Core::InternalThreadState::CALLRET_STACK_SIZE);
 
     struct fex_x86_64_state guest{};
     fex_state_to_darling(CTX, t_thread_state, Frame->State, &guest);
@@ -267,8 +269,8 @@ thread_local HostThreadEmulator* t_emulator = nullptr;
 
 static void reset_callret_sp(HostThreadEmulator* emu) {
   // The quarter-in start is FEX's default (LinuxSyscalls/ThreadManager.cpp), leaving room for underflows.
-  emu->thread->CurrentFrame->State.callret_sp =
-      reinterpret_cast<uint64_t>(emu->thread->CallRetStackBase) + FEXCore::Core::InternalThreadState::CALLRET_STACK_SIZE / 4;
+  emu->thread->CurrentFrame->State.callret_sp = fex_callret_start(
+      reinterpret_cast<uint64_t>(emu->thread->CallRetStackBase), FEXCore::Core::InternalThreadState::CALLRET_STACK_SIZE);
 }
 
 static void destroy_host_thread_emulator(void* p) {
