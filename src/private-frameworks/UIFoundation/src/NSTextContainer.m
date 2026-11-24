@@ -66,16 +66,16 @@ static NSString *const _NSTextContainerViewFrameDidChangeNotification =
     _layoutManager = nil;
     _lineFragmentPadding = NSTextContainerDefaultLineFragmentPadding;
     NS_EXTRA(NSTextContainer, self)->_maximumNumberOfLines = 0;
-    NS_EXTRA(NSTextContainer, self)->_widthTracksTextView = YES;
-    NS_EXTRA(NSTextContainer, self)->_heightTracksTextView = YES;
-    return self;
-}
-
-- init {
-    self = [self initWithContainerSize: NSZeroSize];
     NS_EXTRA(NSTextContainer, self)->_widthTracksTextView = NO;
     NS_EXTRA(NSTextContainer, self)->_heightTracksTextView = NO;
     return self;
+}
+
+// The container of -init is practically unlimited, 10000000 points either way, and tracks neither the width
+// nor the height of its text view (macOS 26.7.3 and 10.14.4, black-box, tier 2).
+// Test: tests/text-container-tracking-defaults.m, appkit-textview-default-container.m in darling-cocotron
+- init {
+    return [self initWithContainerSize: NSMakeSize(10000000, 10000000)];
 }
 
 - (void) dealloc {
