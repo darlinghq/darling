@@ -9717,6 +9717,14 @@ jobmgr_find_by_name(jobmgr_t jm, const char *where)
 	if (jmi == NULL && strcasecmp(where, VPROCMGR_SESSION_BACKGROUND) == 0) {
 		jmi = root_jobmgr;
 	}
+
+	/* The same goes for Aqua: agents limited to it, as loaded from the
+	 * LaunchAgents directories when the container starts, run in the system
+	 * session.
+	 */
+	if (jmi == NULL && strcasecmp(where, VPROCMGR_SESSION_AQUA) == 0) {
+		jmi = root_jobmgr;
+	}
 #endif
 
 jm_found:

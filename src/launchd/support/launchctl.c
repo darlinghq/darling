@@ -1038,6 +1038,69 @@ limitloadtohardware_iterator(launch_data_t val, const char *key, void *ctx)
 	}
 }
 
+#ifdef DARLING
+/* The session types the container's launchd stands in for: it is the System
+ * session itself, and there is no separate loginwindow, Aqua or Background
+ * session below it. LoginWindow and StandardIO stay unhosted. */
+static bool
+darling_session_is_hosted(const char *name)
+{
+	return strcasecmp(name, "System") == 0 || strcasecmp(name, "Aqua") == 0 || strcasecmp(name, "Background") == 0;
+}
+
+/* The home directory of the user the container runs as. Jobs started by
+ * launchd report uid 0 and have no HOME, so they cannot tell from themselves
+ * whose agents to load. The prefix's account database holds root and the one
+ * account of the host user that started the container (created by the
+ * launcher, a uid of 500 or more like any login account, unlike the
+ * service accounts below it); a caller that is not root is that user itself. NULL when there
+ * is none. */
+static const char *
+darling_container_user_home(void)
+{
+	static char home[PATH_MAX];
+	static int state;
+
+	if (state == 0) {
+		state = -1;
+		const char *dir = NULL;
+		struct passwd *pw;
+		if (getuid() != 0 && (pw = getpwuid(getuid())) != NULL) {
+			dir = pw->pw_dir;
+		} else {
+			uid_t lowest = (uid_t)-1;
+			setpwent();
+			while ((pw = getpwent()) != NULL) {
+				if (pw->pw_uid >= 500 && pw->pw_uid < lowest && pw->pw_dir && pw->pw_dir[0] == '/') {
+					lowest = pw->pw_uid;
+					if (strlcpy(home, pw->pw_dir, sizeof(home)) < sizeof(home)) {
+						dir = home;
+					}
+				}
+			}
+			endpwent();
+		}
+		if (dir == home) {
+			state = 1;
+		} else if (dir && dir[0] == '/' && strlcpy(home, dir, sizeof(home)) < sizeof(home)) {
+			state = 1;
+		}
+	}
+	return state > 0 ? home : NULL;
+}
+
+/* True when "launchctl load" is bootstrapping the user's agents (-S Aqua) or
+ * is run from within the container's own session without a session type. */
+static bool
+darling_in_container_session(struct load_unload_state *lus)
+{
+	if (lus->session_type) {
+		return darling_session_is_hosted(lus->session_type);
+	}
+	return strcasecmp(_launchctl_managername, "System") == 0;
+}
+#endif
+
 void
 readfile(const char *what, struct load_unload_state *lus)
 {
@@ -1180,6 +1243,34 @@ readfile(const char *what, struct load_unload_state *lus)
 		default:
 			break;
 		}
+
+#ifdef DARLING
+		if (skipjob && darling_in_container_session(lus)) {
+			/* The container's only launchd is the System, Background and Aqua
+			 * session at once (see jobmgr_find_by_name). A job limited to
+			 * any of them belongs here; the matching name replaces the
+			 * list, which launchd expects to be a single string. */
+			const char *hosted = NULL;
+			if (launch_data_get_type(tmpa) == LAUNCH_DATA_STRING) {
+				if (darling_session_is_hosted(launch_data_get_string(tmpa))) {
+					hosted = launch_data_get_string(tmpa);
+				}
+			} else if (launch_data_get_type(tmpa) == LAUNCH_DATA_ARRAY) {
+				c = launch_data_array_get_count(tmpa);
+				for (i = 0; i < c && !hosted; i++) {
+					tmps = launch_data_array_get_index(tmpa, i);
+					if (launch_data_get_type(tmps) == LAUNCH_DATA_STRING && darling_session_is_hosted(launch_data_get_string(tmps))) {
+						hosted = launch_data_get_string(tmps);
+					}
+				}
+			}
+			if (hosted) {
+				skipjob = false;
+				tmpa = launch_data_new_string(hosted);
+				launch_data_dict_insert(thejob, tmpa, LAUNCH_JOBKEY_LIMITLOADTOSESSIONTYPE);
+			}
+		}
+#endif
 
 		if (skipjob) {
 			goto out_bad;
@@ -2512,6 +2603,20 @@ system_specific_bootstrap(bool sflag)
 
 	(void)posix_assumes_zero(load_and_unload_cmd(load_launchd_items_cnt, load_launchd_items));
 
+#ifdef DARLING
+	/* Darling has one launchd per container and no login session, so the
+	 * user's agents (/System/Library, /Library and ~/Library LaunchAgents)
+	 * are loaded here, right after the daemons, as they would be when the
+	 * user's session starts. Nothing found to load is not an error. */
+	char *load_agents[] = { "load", "-S", "Aqua", "-D", "all", NULL };
+	if (is_safeboot()) {
+		load_agents[4] = "system";
+	}
+	optind = 1;
+	optreset = 1;
+	(void)load_and_unload_cmd(5, load_agents);
+#endif
+
 #ifndef DARLING
 	/* See <rdar://problem/5066316>. */
 	if (!_launchctl_apple_internal) {
@@ -2769,6 +2874,20 @@ load_and_unload_cmd(int argc, char *const argv[])
 
 		bool should_glob = true;
 
+#ifdef DARLING
+		/* The user domain's "~" is the container user's home, not the
+		 * home of the uid 0 that launchd's jobs run as. */
+		char darling_user_path[PATH_MAX * 2];
+		const char *glob_path = nspath;
+		if (nspath[0] == '~') {
+			const char *home = darling_container_user_home();
+			if (!home || snprintf(darling_user_path, sizeof(darling_user_path), "%s%s", home, nspath + 1) >= (int)sizeof(darling_user_path)) {
+				continue;
+			}
+			glob_path = darling_user_path;
+		}
+#endif
+
 #if TARGET_OS_EMBEDDED
 		if (require_jobs_from_cache()) {
 			CFDictionaryRef cache = GetPropertyListFromCache();
@@ -2796,7 +2915,11 @@ load_and_unload_cmd(int argc, char *const argv[])
 		if (should_glob) {
 			glob_t g;
 
+			#ifdef DARLING
+			if (glob(glob_path, GLOB_TILDE|GLOB_NOSORT, NULL, &g) == 0) {
+#else
 			if (glob(nspath, GLOB_TILDE|GLOB_NOSORT, NULL, &g) == 0) {
+#endif
 				for (i = 0; i < g.gl_pathc; i++) {
 					readpath(g.gl_pathv[i], &lus);
 				}
