@@ -151,6 +151,10 @@ if (Python3_Interpreter_FOUND)
 	add_test(NAME launcher_missing_init
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/launcher/test-missing-init.py
 			${CMAKE_SOURCE_DIR}/src/startup/darling.c --run)
+	# a darlingserver that exited but was not reaped is no server
+	add_test(NAME launcher_stale_init_pid
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/launcher/stale-init-pid.py
+			${CMAKE_SOURCE_DIR}/src/startup)
 endif()
 # shellspawn's accept loop, with shellspawn.c built for the host as it is and
 # accept, usleep, perror and fork replaced through the linker. shellspawn.c

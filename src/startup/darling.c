@@ -2208,6 +2208,26 @@ static pid_t findInitProcess(void)
 		return 0;
 	}
 
+	// A server that has exited remains a zombie until its parent reaps it, and a
+	// zombie passes the other checks here. Once the launcher that started it has
+	// exited, that parent is init, which in a container started without one may
+	// never reap it.
+	snprintf(procBuf, sizeof(procBuf), "/proc/%d/stat", pid);
+	fp = fopen(procBuf, "r");
+	if (fp != NULL)
+	{
+		char record[1024];
+		size_t length = fread(record, 1, sizeof(record) - 1, fp);
+
+		fclose(fp);
+		record[length] = '\0';
+		if (launcherStatHasExited(record))
+		{
+			unlink(pidPath);
+			return 0;
+		}
+	}
+
 	// Is it actually an init process?
 	snprintf(procBuf, sizeof(procBuf), "/proc/%d/comm", pid);
 	fp = fopen(procBuf, "r");
