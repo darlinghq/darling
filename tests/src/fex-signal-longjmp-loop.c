@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <setjmp.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +26,7 @@ static int failed;
 static volatile char* prot_none;   // reading it raises SIGSEGV
 static volatile char* beyond_eof;  // reading it raises SIGBUS
 static sigjmp_buf env;
+static jmp_buf raw_env;
 static volatile sig_atomic_t segv_runs, bus_runs, depth_max;
 static volatile int depth;
 
@@ -148,6 +150,64 @@ static int recursive(void)
 	return segv_runs == 3 * ROUNDS && depth_max == 3 ? 0 : 2;
 }
 
+// Handlers that leave without any syscall (no signal mask to restore), so that nothing else brings the emulator
+// into the kernel between the abandoned calls and the next signal. SA_NODEFER keeps the signal deliverable.
+static void segv_leave_raw(int sig, siginfo_t* si, void* uc)
+{
+	(void)sig; (void)si; (void)uc;
+	segv_runs++;
+	_longjmp(raw_env, 1);
+}
+
+static void segv_leave_nomask(int sig, siginfo_t* si, void* uc)
+{
+	(void)sig; (void)si; (void)uc;
+	segv_runs++;
+	siglongjmp(env, 1);
+}
+
+static volatile sig_atomic_t usr1_blocked;
+static void probe_nodefer(int sig, siginfo_t* si, void* uc)
+{
+	(void)sig; (void)si; (void)uc;
+	sigset_t now;
+	sigprocmask(SIG_BLOCK, NULL, &now);
+	usr1_blocked = sigismember(&now, SIGUSR1);
+}
+
+static bool nodefer_honoured(void)
+{
+	install(SIGUSR1, probe_nodefer, SA_NODEFER);
+	raise(SIGUSR1);
+	return !usr1_blocked;
+}
+
+static int raw_longjmp(void)
+{
+	segv_runs = 0;
+	install(SIGSEGV, segv_leave_raw, SA_NODEFER);
+	for (int i = 0; i < ROUNDS; i++) {
+		if (_setjmp(raw_env) == 0) {
+			(void)*prot_none;
+			return 1;
+		}
+	}
+	return segv_runs == ROUNDS ? 0 : 2;
+}
+
+static int nomask_siglongjmp(void)
+{
+	segv_runs = 0;
+	install(SIGSEGV, segv_leave_nomask, SA_NODEFER);
+	for (int i = 0; i < ROUNDS; i++) {
+		if (sigsetjmp(env, 0) == 0) {
+			(void)*prot_none;
+			return 1;
+		}
+	}
+	return segv_runs == ROUNDS ? 0 : 2;
+}
+
 // After all the longjmps a handler that returns normally still works (the saved context is the right one).
 static volatile sig_atomic_t fixed_runs;
 static void segv_fix(int sig, siginfo_t* si, void* uc)
@@ -190,6 +250,12 @@ int main(void)
 	run_variant("10000 SIGSEGV handlers on the alternate stack left by siglongjmp", on_altstack);
 	run_variant("10000 SIGSEGV handlers that take a SIGBUS and leave from it", nested);
 	run_variant("10000 recursive (3 deep) handlers left from the innermost", recursive);
+	if (nodefer_honoured()) {
+		run_variant("10000 handlers left by _longjmp, no syscall anywhere in the loop", raw_longjmp);
+		run_variant("10000 handlers left by sigsetjmp(env, 0)/siglongjmp, no syscall anywhere in the loop", nomask_siglongjmp);
+	} else {
+		printf("SKIP: SA_NODEFER is not honoured by this libsystem_kernel, so a handler left without a syscall cannot take the next fault\n");
+	}
 	run_variant("a handler that returns still works after the longjmps", returns_after);
 	printf(failed ? "SUMMARY: FAIL\n" : "SUMMARY: all passed\n");
 	return failed;

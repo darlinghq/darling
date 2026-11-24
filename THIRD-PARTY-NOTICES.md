@@ -77,7 +77,9 @@ darling-swift.
   saved around a guest handler, signal deferral), `darling_fexcore_sigstack.cpp` (the per-thread host
   signal stack that a handler finds its thread from, after `SignalDelegator::RegisterTLSState`) and
   `darling_fexcore_adapter.cpp` (the call-return stack and GDT setup of a new thread, after
-  `Source/Tools/LinuxEmulation/LinuxSyscalls/ThreadManager.cpp`).
+  `Source/Tools/LinuxEmulation/LinuxSyscalls/ThreadManager.cpp`). The reset of the call-return stack
+  pointer when it faults on a guard page, in `darling_fexcore_signals.cpp` and `fex_signal_checks.h`, is
+  after `SyscallHandler::HandleSegfault` in `Source/Tools/LinuxEmulation/LinuxSyscalls/SyscallsSMCTracking.cpp`.
 - Compiled into the shim from the FEX tree it is built against, unmodified: FEXCore's static libraries,
   `FEXCore/Source/Utils/AllocatorHooks.cpp`, `Source/Common/HostFeatures.cpp`, `Source/Common/CPUInfo.cpp`,
   `Source/Common/Linux/LinuxVersion.cpp`, and the headers `Source/Tools/LinuxEmulation/ArchHelpers/MContext.h`

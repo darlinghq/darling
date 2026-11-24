@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include "fex/fex_bridge.h"
 #include "fex/fex_callback_frames.h"
+#include "fex/fex_signal_checks.h"
 
 static int failures = 0;
 
@@ -2915,34 +2916,34 @@ static void test_left_callbacks(void)
 		"fex_returned_callback finds the callback whose host call has the stack pointer of a return");
 }
 
-// A longjmp out of a signal handler leaves the call-return hint stack pointer lower by the handler's call
-// depth, 10000 times over; it must be put back before it reaches the guard page under the mapping.
-static void test_callret_resync(void)
+// A longjmp out of a signal handler leaves the call-return stack pointer lower by the handler's call depth, every
+// time; the guard page it finally reaches is answered by putting the pointer back at the start.
+static void test_callret_fault(void)
 {
-	const uint64_t base = 0x400000000ull, size = 0x400000;
+	const uint64_t base = 0x400000000ull, size = 0x400000, guard = 0x4000;
 	const uint64_t start = fex_callret_start(base, size);
 	check(start == base + 0x100000, "the call-return stack starts a quarter into its mapping, as FEX starts a thread");
-	check(fex_callret_resync(start, base, size) == start && fex_callret_resync(start - 0x80000, base, size) == start - 0x80000 &&
-	      fex_callret_resync(base + size - 0x80000, base, size) == base + size - 0x80000,
-		"a pointer in the middle of the mapping is left alone");
-	check(fex_callret_resync(base + 0x3ff0, base, size) == start && fex_callret_resync(base + size - 0x10, base, size) == start,
-		"a pointer near either end goes back to the start");
+	check(fex_callret_fault(base - 16, base, size, guard) && fex_callret_fault(base - guard, base, size, guard) &&
+	      fex_callret_fault(base + size, base, size, guard) && fex_callret_fault(base + size + guard - 1, base, size, guard),
+		"a fault in either guard page is the call-return pointer leaving its mapping");
+	check(!fex_callret_fault(base - guard - 1, base, size, guard) && !fex_callret_fault(base + size + guard, base, size, guard) &&
+	      !fex_callret_fault(0x7fff00000000ull, base, size, guard) && !fex_callret_fault(0, base, size, guard),
+		"a fault anywhere else is not");
 
-	// 143 bytes of call depth left per signal (a handler chain of nine calls): FEX's pointer reaches the guard page
-	// after about 7300 signals; with the check at every syscall it never does.
-	uint64_t sp = start, unchecked = start, resets = 0;
-	bool unchecked_overran = false, checked_overran = false;
+	// Nine calls (144 bytes) abandoned per signal: the pointer reaches the guard page after about 7300 signals.
+	uint64_t sp = start, plain = start, faults = 0;
+	bool plain_overran = false;
 	for (int i = 0; i < 10000; i++) {
-		unchecked -= 144;
+		plain -= 144;
+		plain_overran |= plain - 16 < base;
 		sp -= 144;
-		unchecked_overran |= unchecked < base;
-		checked_overran |= sp < base;
-		const uint64_t after = fex_callret_resync(sp, base, size);
-		resets += after != sp;
-		sp = after;
+		if (fex_callret_fault(sp - 16, base, size, guard) && sp - 16 < base) {
+			sp = start;
+			faults++;
+		}
 	}
-	check(unchecked_overran && !checked_overran && resets > 0 && sp >= base && sp <= base + size,
-		"10000 abandoned handler chains overrun the call-return stack without the resync and never with it");
+	check(plain_overran && faults > 0 && sp >= base && sp < base + size,
+		"10000 abandoned handler chains overrun the call-return stack, and never do once the fault resets the pointer");
 }
 
 static void test_safe_memory_access(void)
@@ -3300,7 +3301,7 @@ int main(void)
 	test_pa_callback_args();
 	test_pa_api_callbacks();
 	test_syscall_translations();
-	test_callret_resync();
+	test_callret_fault();
 	test_safe_memory_access();
 	test_guest_signal_delivery();
 	test_abi_check();

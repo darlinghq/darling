@@ -26,6 +26,7 @@
 #include "darling_fexcore_signals.h"
 #include "fex_bridge.h"
 #include "fex_callback_frames.h"
+#include "fex_signal_checks.h"
 
 namespace {
 
@@ -176,8 +177,6 @@ public:
 
   void HandleSyscall(FEXCore::Core::CpuStateFrame* Frame) override {
     leave_abandoned_callbacks(Frame);
-    Frame->State.callret_sp = fex_callret_resync(Frame->State.callret_sp, reinterpret_cast<uint64_t>(t_thread_state->CallRetStackBase),
-                                                 FEXCore::Core::InternalThreadState::CALLRET_STACK_SIZE);
 
     struct fex_x86_64_state guest{};
     fex_state_to_darling(CTX, t_thread_state, Frame->State, &guest);

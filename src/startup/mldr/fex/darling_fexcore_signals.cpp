@@ -12,6 +12,7 @@
 
 #include "darling_fexcore_signals.h"
 #include "fex_callback_frames.h"
+#include "fex_signal_checks.h"
 
 #include <FEXCore/Core/CoreState.h>
 #include <FEXCore/Core/X86Enums.h>
@@ -53,6 +54,10 @@ bool g_supports_sve256 = false;
 // The interrupted host context, kept in the guest's signal frame while a guest handler runs. A guest that
 // leaves the handler with longjmp never runs rt_sigreturn, and the frame goes with the guest stack pointer.
 constexpr uint64_t kBackupMagic = 0x44617273'6967626bULL;
+size_t g_host_page_size = 0;
+// FEX's REG_CALLRET_SP (Arm64Emitter.h).
+constexpr uint32_t kCallRetSpReg = 25;
+
 struct SignalBackup {
   HostCtx::ContextBackup host;
   uint64_t magic;
@@ -230,6 +235,7 @@ void signals_init(FEXCore::Context::Context* ctx, bool supports_avx, bool suppor
   g_supports_avx = supports_avx;
   g_supports_sve256 = supports_sve256;
   g_ctx = ctx;
+  g_host_page_size = static_cast<size_t>(sysconf(_SC_PAGESIZE));
 }
 
 void deliver_at_syscall_return(FEXCore::Core::InternalThreadState* thread, const fex_signal_request* request) {
@@ -286,6 +292,18 @@ extern "C" int darling_fexcore_signal_preempt(int* sig, void* raw_info, void* uc
     info->si_code = SI_KERNEL;
     *sig = SIGSEGV;
     return FEX_SIGNAL_FOR_GUEST;
+  }
+
+  // The call-return stack pointer ran into a guard page, as calls the guest left by longjmp pile up. The
+  // entries are hints for the ret target: start again at the default place and run the access again. This is
+  // FEX's answer too (SyscallsSMCTracking.cpp, HandleSegfault).
+  const uint64_t callret_base = reinterpret_cast<uintptr_t>(thread->CallRetStackBase);
+  const uint64_t callret_size = FEXCore::Core::InternalThreadState::CALLRET_STACK_SIZE;
+  const bool in_emulator = g_ctx->IsAddressInCodeBuffer(thread, pc) || (pc >= config.DispatcherBegin && pc < config.DispatcherEnd);
+  if (*sig == SIGSEGV && info->si_code == SEGV_ACCERR && in_emulator &&
+      fex_callret_fault(reinterpret_cast<uintptr_t>(info->si_addr), callret_base, callret_size, g_host_page_size)) {
+    HostCtx::SetArmReg(ucontext, kCallRetSpReg, fex_callret_start(callret_base, callret_size));
+    return FEX_SIGNAL_CONSUMED;
   }
 
   // x86 allows unaligned locked and ordered accesses; the generated half-barrier atomics fault on them, and
@@ -348,7 +366,7 @@ extern "C" int darling_fexcore_signal_preempt(int* sig, void* raw_info, void* uc
   // code, the dispatcher, or a FEXCore helper called from generated code (x87 arithmetic, for one), and takes
   // it now as FEX's own frontend does: FEXCore holds its locks only inside the sections that defer signals
   // (ScopedDeferredSignalWithMutex), deferred above.
-  const bool emulating = g_ctx->IsAddressInCodeBuffer(thread, pc) || (pc >= config.DispatcherBegin && pc < config.DispatcherEnd);
+  const bool emulating = in_emulator;
   if (!emulating && frame->InSyscallInfo != 0) {
     return FEX_SIGNAL_AT_SYSCALL_RETURN;
   }
