@@ -185,6 +185,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/native/libX11.dylib:${CMAKE_BINARY_DIR}/src/native/libX11.dylib \
 -Wl,-dylib_file,/usr/lib/native/libXcursor.dylib:${CMAKE_BINARY_DIR}/src/native/libXcursor.dylib \
 -Wl,-dylib_file,/usr/lib/native/libXext.dylib:${CMAKE_BINARY_DIR}/src/native/libXext.dylib \
+-Wl,-dylib_file,/usr/lib/native/libXi.dylib:${CMAKE_BINARY_DIR}/src/native/libXi.dylib \
 -Wl,-dylib_file,/usr/lib/native/libxkbfile.dylib:${CMAKE_BINARY_DIR}/src/native/libxkbfile.dylib \
 -Wl,-dylib_file,/usr/lib/native/libXRandR.dylib:${CMAKE_BINARY_DIR}/src/native/libXRandR.dylib")
 
