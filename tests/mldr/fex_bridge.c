@@ -1532,6 +1532,29 @@ static void test_guest_signal_delivery(void)
 	test_exec_keeps_signals(guest_handler, saved_mask);
 	test_second_instance_dropped(guest_handler, saved_mask);
 
+	// SIGBUS stays the host's whatever happens to one: an unaligned access the shim patches, a fault for the
+	// guest's SA_RESETHAND handler, then more patched accesses. Only the guest's action is reset.
+	struct sigaction bus_host;
+	sigaction(SIGBUS, NULL, &bus_host);
+	check(guest_sigaction(SIGBUS, guest_handler, FEX_GUEST_SA_RESETHAND, 0, NULL) == 0, "a guest SA_RESETHAND SIGBUS handler is accepted");
+	int bus_before = g_fake_deliveries;
+	g_fake_preempt_answer = FEX_SIGNAL_CONSUMED;
+	raise_on_this_thread(SIGBUS);
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+	raise_on_this_thread(SIGBUS);
+	set_guest_mask_to(saved_mask);
+	g_fake_preempt_answer = FEX_SIGNAL_CONSUMED;
+	raise_on_this_thread(SIGBUS);
+	raise_on_this_thread(SIGBUS);
+	g_fake_preempt_answer = FEX_SIGNAL_FOR_GUEST;
+	memset(&old, 0xff, sizeof(old));
+	guest_syscall(13, SIGBUS, 0, (uint64_t)(uintptr_t)&old, 8, 0);
+	sigaction(SIGBUS, NULL, &after);
+	check(g_fake_deliveries == bus_before + 1 && g_fake_delivered_sig == SIGBUS && old.handler == 0,
+		"a SIGBUS for an SA_RESETHAND guest handler runs it once and resets the guest's action");
+	check(after.sa_sigaction == bus_host.sa_sigaction && (after.sa_flags & SA_SIGINFO),
+		"the host's SIGBUS handler stays installed across patched and delivered faults");
+
 	guest_sigaction(SIGUSR1, 0, 0, 0, NULL);
 	guest_sigaction(SIGUSR2, 0, 0, 0, NULL);
 	guest_sigaction(SIGSEGV, 0, 0, 0, NULL);
