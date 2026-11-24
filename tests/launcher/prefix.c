@@ -1,13 +1,17 @@
 // Host-side test of the setuid launcher's prefix path checks
 // (src/startup/launcher-prefix.c).
+#include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/un.h>
+#include <sys/wait.h>
 #include "../../src/shellspawn/shellspawn.h"
 #include "launcher-prefix.h"
 
@@ -178,6 +182,148 @@ static void test_dir_socket_path(void)
 	CHECK(addr.sun_path[0] == '\0');
 }
 
+static long elapsedMs(const struct timespec* start)
+{
+	struct timespec now;
+
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return (now.tv_sec - start->tv_sec) * 1000 + (now.tv_nsec - start->tv_nsec) / 1000000;
+}
+
+// A server that has bound its socket file but not yet called listen() refuses
+// connections; shellspawn is in that state for a moment after the launcher
+// sees the file.
+static void test_connect_before_listen(void)
+{
+	char dir[] = "/tmp/launcher-connect-XXXXXX";
+	struct sockaddr_un addr;
+	struct timespec start;
+	int server, client, status;
+	pid_t child;
+
+	CHECK(mkdtemp(dir) != NULL);
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s/s.sock", dir);
+
+	// Nothing there: fails at once, without waiting.
+	clock_gettime(CLOCK_MONOTONIC, &start);
+	errno = 0;
+	CHECK(launcherConnectUnixSocket(&addr, 2000) == -1);
+	CHECK(errno == ENOENT);
+	CHECK(elapsedMs(&start) < 500);
+
+	server = socket(AF_UNIX, SOCK_STREAM, 0);
+	CHECK(server >= 0);
+	CHECK(bind(server, (struct sockaddr*) &addr, sizeof(addr)) == 0);
+
+	// Bound and never listening: refused once the wait is over.
+	clock_gettime(CLOCK_MONOTONIC, &start);
+	errno = 0;
+	CHECK(launcherConnectUnixSocket(&addr, 100) == -1);
+	CHECK(errno == ECONNREFUSED);
+	CHECK(elapsedMs(&start) >= 100);
+
+	// Bound now, listening a little later: connects.
+	child = fork();
+	CHECK(child >= 0);
+	if (child == 0)
+	{
+		usleep(200 * 1000);
+		_exit(listen(server, 1) == 0 ? 0 : 1);
+	}
+	client = launcherConnectUnixSocket(&addr, 5000);
+	CHECK(client >= 0);
+	CHECK(waitpid(child, &status, 0) == child && WIFEXITED(status) && WEXITSTATUS(status) == 0);
+
+	if (client >= 0)
+		close(client);
+	close(server);
+	unlink(addr.sun_path);
+	rmdir(dir);
+}
+
+// The launcher waits for shellspawn's socket file while darlingserver, its
+// child, runs. A server that exits first (a prefix it could not assemble, a
+// crash) means the socket never comes: the wait has to end then, not after the
+// whole timeout.
+static void test_wait_for_server_socket(void)
+{
+	char dir[] = "/tmp/launcher-wait-XXXXXX";
+	char path[64];
+	struct timespec start;
+	int status = 0;
+	pid_t child;
+
+	CHECK(mkdtemp(dir) != NULL);
+	snprintf(path, sizeof(path), "%s/s.sock", dir);
+
+	// The server exits without creating the socket.
+	child = fork();
+	CHECK(child >= 0);
+	if (child == 0)
+	{
+		usleep(100 * 1000);
+		_exit(3);
+	}
+	clock_gettime(CLOCK_MONOTONIC, &start);
+	CHECK(launcherWaitForServerSocket(path, child, 20000, &status) == LAUNCHER_SOCKET_SERVER_EXITED);
+	CHECK(WIFEXITED(status) && WEXITSTATUS(status) == 3);
+	CHECK(elapsedMs(&start) < 5000);
+
+	// The server is killed by a signal.
+	child = fork();
+	CHECK(child >= 0);
+	if (child == 0)
+	{
+		pause();
+		_exit(0);
+	}
+	CHECK(kill(child, SIGKILL) == 0);
+	CHECK(launcherWaitForServerSocket(path, child, 20000, &status) == LAUNCHER_SOCKET_SERVER_EXITED);
+	CHECK(WIFSIGNALED(status) && WTERMSIG(status) == SIGKILL);
+
+	// The socket file appears while the server keeps running.
+	child = fork();
+	CHECK(child >= 0);
+	if (child == 0)
+	{
+		usleep(200 * 1000);
+		int fd = open(path, O_CREAT | O_WRONLY, 0600);
+		if (fd >= 0)
+			close(fd);
+		pause();
+		_exit(0);
+	}
+	CHECK(launcherWaitForServerSocket(path, child, 20000, &status) == LAUNCHER_SOCKET_READY);
+	kill(child, SIGKILL);
+	waitpid(child, &status, 0);
+	unlink(path);
+
+	// Neither: the wait ends after its time.
+	child = fork();
+	CHECK(child >= 0);
+	if (child == 0)
+	{
+		pause();
+		_exit(0);
+	}
+	clock_gettime(CLOCK_MONOTONIC, &start);
+	CHECK(launcherWaitForServerSocket(path, child, 300, &status) == LAUNCHER_SOCKET_TIMED_OUT);
+	CHECK(elapsedMs(&start) >= 300);
+	kill(child, SIGKILL);
+	waitpid(child, &status, 0);
+
+	// A server that is not the caller's child cannot be waited for: an error at once, not a timeout.
+	clock_gettime(CLOCK_MONOTONIC, &start);
+	errno = 0;
+	CHECK(launcherWaitForServerSocket(path, getppid(), 20000, &status) == LAUNCHER_SOCKET_WAIT_FAILED);
+	CHECK(errno == ECHILD);
+	CHECK(elapsedMs(&start) < 5000);
+
+	rmdir(dir);
+}
+
 int main(void)
 {
 	test_max_length();
@@ -186,6 +332,8 @@ int main(void)
 	test_private_group();
 	test_socket_path();
 	test_dir_socket_path();
+	test_connect_before_listen();
+	test_wait_for_server_socket();
 
 	if (g_failures)
 	{

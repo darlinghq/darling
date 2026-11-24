@@ -1,0 +1,119 @@
+name: FEXCore shim (arm64)
+
+# Nothing else in CI compiles the FEXCore shim: the amd64 DEB job never sets WITH_FEXCORE and
+# fex-unit-tests.yaml has no FEX. This builds FEXCore at the commit pinned in
+# src/startup/mldr/fex/FEX_VERSION, compiles and links libdarling-fexcore.so from the same target
+# definition the package build uses (WITH_FEXCORE in src/startup/mldr/CMakeLists.txt), and runs the
+# tests that need FEX's sources, such as the x86_64 signal frame layout test. Darling itself is not
+# configured, so no submodule of this repository is checked out.
+#
+# Bumping FEX_VERSION means the shim was verified against that FEX: change it in its own commit.
+
+on:
+  pull_request:
+    paths:
+    - 'src/startup/mldr/fex/**'
+    - 'src/startup/mldr/include/**'
+    - 'src/startup/mldr/CMakeLists.txt'
+    - 'tests/mldr/fex_sigframe_layout.cpp'
+    - 'tests/mldr/build-fex-for-shim.sh'
+    - 'tests/mldr/build-fexcore-shim.py'
+    - 'tests/mldr/test-build-fexcore-shim.sh'
+    - 'THIRD-PARTY-NOTICES.md'
+    - 'tests/mldr/run-fex-unit-tests.sh'
+    - '.github/workflows/fex-shim.yaml'
+  push:
+    branches: [master]
+    paths:
+    - 'src/startup/mldr/fex/**'
+    - 'src/startup/mldr/include/**'
+    - 'src/startup/mldr/CMakeLists.txt'
+    - 'tests/mldr/fex_sigframe_layout.cpp'
+    - 'tests/mldr/build-fex-for-shim.sh'
+    - 'tests/mldr/build-fexcore-shim.py'
+    - 'tests/mldr/test-build-fexcore-shim.sh'
+    - 'THIRD-PARTY-NOTICES.md'
+    - 'tests/mldr/run-fex-unit-tests.sh'
+    - '.github/workflows/fex-shim.yaml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+
+permissions:
+  contents: read
+
+env:
+  # Absolute and fixed: FEX's CMakeCache.txt records these paths, so a cached build tree only
+  # works at the path it was built at. actions/checkout cannot write outside the workspace.
+  FEX_SOURCE_DIR: ${{ github.workspace }}/fex-src
+  FEX_BUILD_DIR: ${{ github.workspace }}/fex-build
+
+jobs:
+  fex-shim:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+    - name: Checkout Darling
+      uses: actions/checkout@v4
+      with:
+        submodules: false
+
+    - name: Read the pinned FEX commit
+      id: pin
+      run: |
+        sha=$(tr -d '[:space:]' < src/startup/mldr/fex/FEX_VERSION)
+        if ! [[ $sha =~ ^[0-9a-f]{40}$ ]]; then
+          echo "::error::src/startup/mldr/fex/FEX_VERSION must hold a 40 digit commit id, not '$sha'"
+          exit 1
+        fi
+        echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+    - name: Install build dependencies
+      run: sudo apt-get update && sudo apt-get install --no-install-recommends -y clang cmake ninja-build python3 libxxhash-dev
+
+    # The archives are cached, so the key names the compiler that built them.
+    - name: Identify the compiler
+      id: compiler
+      run: echo "id=$(clang++ --version | sha256sum | cut -c1-12)" >> "$GITHUB_OUTPUT"
+
+    - name: Checkout FEX
+      uses: actions/checkout@v4
+      with:
+        repository: FEX-Emu/FEX
+        ref: ${{ steps.pin.outputs.sha }}
+        path: fex-src
+        submodules: false
+
+    # Only what FEXCore's configure and the shim's includes need; the rest (test binaries, thunks'
+    # headers, tracy, jemalloc) is large and unused. fmt is built from its submodule.
+    - name: Checkout FEX submodules
+      working-directory: ${{ env.FEX_SOURCE_DIR }}
+      run: git submodule update --init --depth 1 External/fmt External/range-v3 External/unordered_dense Source/Common/cpp-optparse
+
+    - name: Restore the FEX build
+      id: cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ env.FEX_BUILD_DIR }}
+        key: fex-build-${{ runner.arch }}-${{ steps.compiler.outputs.id }}-${{ steps.pin.outputs.sha }}-${{ hashFiles('tests/mldr/build-fex-for-shim.sh') }}
+
+    - name: Build FEXCore
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: tests/mldr/build-fex-for-shim.sh "$FEX_SOURCE_DIR" "$FEX_BUILD_DIR"
+
+    - name: Save the FEX build
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ env.FEX_BUILD_DIR }}
+        key: ${{ steps.cache.outputs.cache-primary-key }}
+
+    - name: Build libdarling-fexcore.so
+      run: |
+        export FEXCORE_SOURCE_DIR=$FEX_SOURCE_DIR FEXCORE_BUILD_DIR=$FEX_BUILD_DIR
+        tests/mldr/build-fexcore-shim.py "$RUNNER_TEMP/shim"
+
+    - name: Run the tests that need FEX sources
+      run: FEXCORE_SOURCE_DIR=$FEX_SOURCE_DIR tests/mldr/run-fex-unit-tests.sh

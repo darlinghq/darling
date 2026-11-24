@@ -60,6 +60,17 @@ PACKAGE_SUFFIXES = \
 	cli-devenv-gui-stubs-common \
 	gui-stubs
 
+# Optional x86_64 emulation on arm64 (the FEXCore shim, built from a FEX checkout that is
+# not part of this repository). Off by default, so default package contents are unchanged.
+# To enable it, export DARLING_WITH_FEXCORE=1 and FEXCORE_SOURCE_DIR (and FEXCORE_BUILD_DIR if
+# it is not <source>/build); tools/debian/make-deb passes these through debuild. The build
+# then also needs libfmt-dev and libxxhash-dev. The shim is installed next to mldr, by the darling-core-native package.
+# muvm is recommended there because 16 KB-page hosts run x86_64 programs inside it.
+ifeq ($(DARLING_WITH_FEXCORE),1)
+FEXCORE_CMAKE_ARGS = -DWITH_FEXCORE=ON
+DARLING_RECOMMENDS = muvm
+endif
+
 %:
 	dh $@ --builddirectory=debbuild
 
@@ -69,7 +80,7 @@ override_dh_auto_configure-indep:
 
 override_dh_auto_configure-arch:
 	mkdir debbuild-native -p
-	cd debbuild-native && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. $(CMAKE_COMMON) -DDARLING_BUILD_MACHO=OFF
+	cd debbuild-native && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. $(CMAKE_COMMON) -DDARLING_BUILD_MACHO=OFF $(FEXCORE_CMAKE_ARGS)
 
 override_dh_auto_build-indep:
 	cd debbuild && $(MAKE) -j$(shell nproc)
@@ -97,6 +108,9 @@ override_dh_makeshlibs-indep:
 
 override_dh_makeshlibs-arch:
 	dh_makeshlibs
+
+override_dh_gencontrol:
+	dh_gencontrol -- -Vdarling:Recommends="$(DARLING_RECOMMENDS)"
 
 override_dh_clean:
 	dh_clean -X.orig -X.bak -X~

@@ -9,3 +9,8 @@ Copyright (C) The GNOME Project: the Finder and DiskImageMounter icon images, fr
 The fonts in src/fonts/nimbus-sans and the HelveticaNeue.ttc built from them:
 Copyright 2014 by (URW)++ Design & Development, GNU Affero General Public License version 3 with
 the font embedding exception stated in src/fonts/nimbus-sans/LICENSE; see THIRD-PARTY-NOTICES.md.
+
+The x86_64 emulation shim libdarling-fexcore.so (built with -DWITH_FEXCORE=ON) contains FEX:
+Copyright (c) 2019 Ryan Houdek, MIT License; it links FEX's bundled cephes (BSD) and Berkeley SoftFloat 3e
+(BSD 3-clause). See THIRD-PARTY-NOTICES.md; the licence texts are installed with the shim under
+usr/share/licenses/darling-fexcore in the Darling prefix.

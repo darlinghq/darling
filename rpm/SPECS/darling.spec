@@ -24,6 +24,11 @@
 %{!?darling_archs:%global darling_archs i386;x86_64;arm64}
 %endif
 
+# Optional x86_64 emulation on aarch64: rpmbuild --with fexcore, with FEXCORE_SOURCE_DIR (and
+# FEXCORE_BUILD_DIR if it is not <source>/build) exported to point at a built FEX checkout.
+# Off by default, which leaves the package contents and dependencies unchanged.
+%bcond_with fexcore
+
 # explicitly ignore all the bogus dependencies that the auto-scanner finds in `/usr/libexec/darling`
 #
 # note that we *don't* want to simply use `__requires_exclude_from` to exclude `/usr/libexec/darling` from scanning,
@@ -60,6 +65,9 @@ BuildRequires:  libbsd-devel
 BuildRequires:  ffmpeg-devel pulseaudio-libs-devel openssl-devel giflib-devel
 BuildRequires:  libXrandr-devel libXi-devel libXcursor-devel libxkbfile-devel dbus-devel mesa-libGLU-devel
 BuildRequires:  vulkan-headers llvm-devel libcap-devel bash vulkan-loader-devel
+%if %{with fexcore}
+BuildRequires:  fmt-devel xxhash-devel
+%endif
 
 Requires: darling-cli darling-python2 darling-ruby darling-perl darling-gui darling-gui-stubs darling-pyobjc
 
@@ -77,6 +85,10 @@ Extra components for Darling that are not part of a typical ("stock") installati
 %package core-native
 Summary:    Darling components that run on Linux
 Group:      Utility
+%if %{with fexcore}
+# 16 KB-page hosts run x86_64 programs inside muvm.
+Recommends: muvm
+%endif
 
 %description core-native
 The parts of Darling built for the host architecture: the darling launcher
@@ -275,6 +287,7 @@ pushd build
 %else
 	           -DDARLING_BUILD_MACHO=OFF \
 %endif
+	           %{?with_fexcore:-DWITH_FEXCORE=ON} \
 	           ..
 	%{make_build} -j `nproc`
 popd

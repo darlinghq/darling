@@ -1,3 +1,6 @@
-:Mach-O-64-bit:M::\xcf\xfa\xed\xfe::@CMAKE_INSTALL_PREFIX@/libexec/darling/bin/mldr:P
-:Mach-O-32-bit:M::\xce\xfa\xed\xfe::@CMAKE_INSTALL_PREFIX@/libexec/darling/bin/mldr32:P
-:Fat-Mach-O:M::\xca\xfe\xba\xbe::@CMAKE_INSTALL_PREFIX@/libexec/darling/bin/mldr:P
+# Run a Mach-O file from a host shell through the Darling launcher. O: the kernel hands the launcher an
+# open descriptor of the file, which is how it knows it was started here. Not C: the launcher keeps its
+# own credentials (setuid root), the file's mode bits are never used. See src/startup/launcher-binfmt.h.
+:Mach-O-64-bit:M::\xcf\xfa\xed\xfe::@CMAKE_INSTALL_PREFIX@/bin/darling:O
+:Mach-O-32-bit:M::\xce\xfa\xed\xfe::@CMAKE_INSTALL_PREFIX@/bin/darling:O
+:Fat-Mach-O:M::\xca\xfe\xba\xbe::@CMAKE_INSTALL_PREFIX@/bin/darling:O

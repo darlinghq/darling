@@ -28,6 +28,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/stat.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <sched.h>
 #include <sys/poll.h>
 #include <sys/syscall.h>
@@ -45,6 +46,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "../shellspawn/shellspawn.h"
 #include "darling.h"
 #include "darling-config.h"
+#include "launcher-binfmt.h"
 #include "launcher-env.h"
 #include "launcher-ids.h"
 #include "launcher-locale.h"
@@ -54,6 +56,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "launcher-pulse.h"
 #include "launcher-server.h"
 #include "launcher-tmp.h"
+#include "muvm-trampoline.h"
 #include "prefix-state.h"
 #include "profile-prefix.h"
 
@@ -164,6 +167,15 @@ static void waitForProcessExit(int handle, pid_t pid)
 		usleep(10000);
 }
 
+// darlingserver has printed why it stopped, if it knew; this names the point the container got to.
+static void reportServerExit(const char* when, int status)
+{
+	if (WIFSIGNALED(status))
+		fprintf(stderr, "darlingserver was killed by signal %d %s\n", WTERMSIG(status), when);
+	else
+		fprintf(stderr, "darlingserver exited with status %d %s\n", WEXITSTATUS(status), when);
+}
+
 // Whether the process has any effective or permitted capability. A failure to tell counts as having one.
 static bool hasCapabilities(void)
 {
@@ -175,6 +187,75 @@ static bool hasCapabilities(void)
 	return (data[0].effective | data[1].effective | data[0].permitted | data[1].permitted) != 0;
 }
 
+#if defined(__aarch64__)
+// FEXCore assumes 4 KB pages, so on a host with larger pages an x86_64 Mach-O is
+// run under muvm's guest instead. That has to happen before any prefix work, so
+// the whole run takes place where the program can be loaded. Everything else,
+// including every file this cannot make sense of, falls through unchanged.
+static void relaunchUnderMuvm(char** argv)
+{
+	const char* which;
+	uint32_t bprefs[4];
+	enum darling_target_slice slice;
+	size_t pageSize, index;
+	char* path;
+
+	if (argv[1] == NULL || argv[1][0] == '-')
+		return;
+	if (strcmp(argv[1], "shell") == 0 || strcmp(argv[1], "shutdown") == 0)
+		return;
+
+	index = strcmp(argv[1], "exec") == 0 ? 2 : 1;
+	if (argv[index] == NULL)
+		return;
+
+	// The path and the file behind it are the user's, so they are resolved and read
+	// with the user's own ids; as root they would reveal files the user cannot reach.
+	useInvokingIds();
+	// A path that does not resolve is left for the code below to report.
+	path = realpath(argv[index], NULL);
+	darling_read_mldr_bprefs(bprefs);
+	slice = path != NULL ? darling_target_slice_arch(path, bprefs) : DARLING_TARGET_SLICE_NONE;
+	restoreRootIds();
+	if (path == NULL)
+		return;
+
+	pageSize = (size_t) sysconf(_SC_PAGESIZE);
+
+	if (!darling_muvm_needed((long) pageSize, slice))
+	{
+		free(path);
+		return;
+	}
+
+	// muvm routes its guest's console to a terminal only, so a redirected run
+	// would lose the program's output entirely rather than part of it.
+	if (!darling_muvm_stdio_ok(STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO))
+	{
+		which = !isatty(STDIN_FILENO) ? "standard input"
+			: !isatty(STDOUT_FILENO) ? "standard output" : "standard error";
+		fprintf(stderr,
+			"An x86_64 program needs muvm on this host, and muvm shows a program's output only on a terminal: %s is not one.\n",
+			which);
+		exit(1);
+	}
+
+	// execve keeps the saved set-uid, so the drop has to be final before anything
+	// named on PATH is run; this is how the rest of the launcher drops it too.
+	dropPrivileges();
+
+	// The probe reads files named on PATH, so it runs only with the user's own
+	// privileges.
+	darling_reexec_under_muvm(argv, index, path,
+		darling_muvm_wayland_wanted(getenv("WAYLAND_DISPLAY"), getenv("PATH"), darling_muvm_wayland_capable));
+
+	fprintf(stderr,
+		"Cannot run muvm: %s\nAn x86_64 program cannot be loaded on this host's %zu-byte pages; install muvm and put it on PATH.\n",
+		strerror(errno), pageSize);
+	exit(1);
+}
+#endif
+
 int main(int argc, char ** argv)
 {
 	pid_t pidInit;
@@ -183,6 +264,27 @@ int main(int argc, char ** argv)
 	{
 		showHelp(argv[0]);
 		return 1;
+	}
+
+	// Started by a binfmt_misc entry for a Mach-O file: the rest of the launcher sees the
+	// "exec" form of the command (see launcher-binfmt.h).
+	int execFd = launcherBinfmtExecFd();
+	if (execFd >= 0)
+	{
+		char program[4096];
+		char** execArgv = NULL;
+		bool known = launcherBinfmtProgramPath(execFd, program, sizeof(program));
+
+		close(execFd);
+		if (known)
+			execArgv = launcherBinfmtExecArgv(argc, argv, program);
+		if (execArgv == NULL)
+		{
+			fprintf(stderr, "Cannot tell which file to run: it is not on a file system, was removed, or its path is too long.\n");
+			return 1;
+		}
+		argv = execArgv;
+		argc++;
 	}
 
 	// Whether the launcher has root's power decides the mode; the environment only chooses
@@ -200,8 +302,6 @@ int main(int argc, char ** argv)
 		missingSetuidRoot();
 		return 1;
 	}
-	unsetenv("DARLING_NONROOT");
-	unsetenv("DARLING_ROOTLESS");
 
 	{
 		char exePath[4096], installPrefix[4096];
@@ -234,6 +334,12 @@ int main(int argc, char ** argv)
 		fprintf(stderr, "Cannot switch to root ids: %s\n", strerror(errno));
 		return 1;
 	}
+
+#if defined(__aarch64__)
+	relaunchUnderMuvm(argv);
+#endif
+	unsetenv("DARLING_NONROOT");
+	unsetenv("DARLING_ROOTLESS");
 
 	enum darling_prefix_error prefixError;
 	prefix = darlingSelectPrefix(getenv("DPREFIX"), getenv("DARLING_PROFILE"),
@@ -488,20 +594,26 @@ int main(int argc, char ** argv)
 		pidInit = spawnInitProcess();
 		putInitPid(pidInit);
 		
-		// Wait until shellspawn starts. The socket is in the user's prefix, so
-		// look for it with the user's ids: access() would check with the real
-		// uid, which is 0.
+		// Look for shellspawn's socket with the user's ids (access() checks the real uid, 0); nothing
+		// in the container can run without the server, so its exit ends the wait.
+		int serverStatus;
 		useInvokingIds();
-		bool started = false;
-		for (int i = 0; i < 60 && !started; i++)
-		{
-			started = faccessat(AT_FDCWD, socketPath, F_OK, AT_EACCESS) == 0;
-			if (!started)
-				sleep(1);
-		}
+		enum launcher_socket_wait waited = launcherWaitForServerSocket(socketPath, pidInit, 60 * 1000, &serverStatus);
+		int waitError = errno;
 		restoreRootIds();
 
-		if (!started)
+		if (waited == LAUNCHER_SOCKET_SERVER_EXITED)
+		{
+			reportServerExit("before shellspawn started in the container", serverStatus);
+			fprintf(stderr, "A launchd of this container may still be running; run 'darling shutdown' before trying again.\n");
+			return 1;
+		}
+		if (waited == LAUNCHER_SOCKET_WAIT_FAILED)
+		{
+			fprintf(stderr, "Cannot wait for darlingserver: %s\n", strerror(waitError));
+			return 1;
+		}
+		if (waited != LAUNCHER_SOCKET_READY)
 		{
 			fprintf(stderr, "Timed out waiting for shellspawn in container\n");
 			return 1;
@@ -1143,14 +1255,10 @@ int connectToShellspawn(void)
 		exit(1);
 	}
 
-	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+	// The launcher waits only for the socket file to appear, and shellspawn
+	// creates it before it listens.
+	sockfd = launcherConnectUnixSocket(&addr, 10000);
 	if (sockfd == -1)
-	{
-		fprintf(stderr, "Error creating a unix domain socket: %s\n", strerror(errno));
-		exit(1);
-	}
-
-	if (connect(sockfd, (struct sockaddr*) &addr, sizeof(addr)) == -1)
 	{
 		fprintf(stderr, "Error connecting to shellspawn in the container (%s" SHELLSPAWN_SOCKPATH "): %s\n", prefix, strerror(errno));
 		exit(1);
@@ -1520,8 +1628,15 @@ pid_t spawnInitProcess(void)
 	{
 		// The server exits with EX_UNAVAILABLE if it cannot assemble the prefix in the selected filesystem mode
 		int status;
-		if (waitpid(pid, &status, 0) == pid && WIFEXITED(status) && WEXITSTATUS(status) == EX_UNAVAILABLE && chooseFsMode())
+		if (waitpid(pid, &status, 0) != pid)
+		{
+			fprintf(stderr, "Cannot wait for darlingserver: %s\n", strerror(errno));
+			exit(1);
+		}
+		if (WIFEXITED(status) && WEXITSTATUS(status) == EX_UNAVAILABLE && chooseFsMode())
 			return spawnInitProcess();
+		reportServerExit("while setting up the prefix", status);
+		exit(1);
 	}
 
 	/*

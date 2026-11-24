@@ -66,3 +66,33 @@ build/launcher-path-test
 covers how `darling open <file>...` and `darling <program-path>` name a host file in the guest: its real path (relative
 paths, `.`/`..` and symbolic links resolved, names kept byte for byte) under `/Volumes/SystemRoot`, `/` as
 `/Volumes/SystemRoot` itself, and `ENOENT` for a missing file or a dangling link.
+
+## Running a Mach-O file by name (binfmt_misc)
+
+```sh
+for opt in -O0 -O2; do
+	cc -std=gnu11 $opt -Wall -Wextra -D_GNU_SOURCE -Isrc/startup tests/launcher/binfmt.c src/startup/launcher-binfmt.c -o /tmp/binfmt-test
+	/tmp/binfmt-test
+done
+tests/launcher/binfmt-kernel.sh
+```
+
+The first covers how the launcher turns the arguments the kernel builds for its binfmt_misc entry
+(`<interpreter> <path> <arguments...>`, descriptor in `AT_EXECFD`) into the `darling exec` form. The second
+registers an entry with the same flags as `lib/binfmt.d/darling.conf` in a binfmt_misc mount of a private user
+namespace (Linux 6.7 or later, no root, nothing registered on the host) and checks that the kernel passes what the
+launcher assumes; it exits with 77 when the system does not allow that. The unit test is built at -O0 and -O2
+because an optimizing build reuses stack space that a buffer of the launcher's `main` had left.
+
+Manual check on a real host (not part of the automated tests; registers an entry system-wide and needs root):
+
+```sh
+# an installed Darling: lib/binfmt.d/darling.conf names <prefix>/bin/darling, setuid root, as the interpreter
+sudo systemctl restart systemd-binfmt     # or: sudo systemd-binfmt /usr/lib/binfmt.d/darling.conf
+cat /proc/sys/fs/binfmt_misc/Mach-O-64-bit   # interpreter .../bin/darling, flags: O
+./some_macos_binary arg1 "arg 2"           # the same as: darling exec ./some_macos_binary arg1 "arg 2"
+# remove an entry again: echo -1 | sudo tee /proc/sys/fs/binfmt_misc/Mach-O-64-bit
+```
+
+The fat Mach-O entry matches the magic `0xCAFEBABE`, which Java class files share: an executable `.class` file now
+starts the launcher and fails there.

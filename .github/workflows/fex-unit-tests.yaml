@@ -1,0 +1,75 @@
+name: FEX bridge and launcher tests (arm64)
+
+# The Darling CI job builds on amd64 only, so the FEX bridge tests (registered on
+# aarch64 hosts only) and the sources they cover never get compiled there. This
+# builds and runs them with plain clang on an arm64 runner; no submodules, no
+# FEX, no Darling build. tests/mldr/run-fex-unit-tests.sh holds the commands.
+
+on:
+  pull_request:
+    paths:
+    - 'src/startup/mldr/fex/**'
+    - 'src/startup/mldr/elfcalls/**'
+    - 'src/startup/mldr/include/**'
+    - 'src/startup/mldr/loader.h'
+    - 'src/startup/mldr/CMakeLists.txt'
+    - 'src/startup/*.c'
+    - 'src/shellspawn/**'
+    - 'src/startup/*.h'
+    - 'src/startup/CMakeLists.txt'
+    - 'CMakeLists.txt'
+    - 'tests/mldr/fex_bridge.c'
+    - 'tests/mldr/fexcore_paths.c'
+    - 'tests/mldr/run-fex-unit-tests.sh'
+    - 'tests/mldr/test-build-fexcore-shim.sh'
+    - 'tests/mldr/build-fexcore-shim.py'
+    - 'src/startup/mldr/fex/FEX_VERSION'
+    - 'THIRD-PARTY-NOTICES.md'
+    - 'tests/launcher/**'
+    - '.github/workflows/fex-unit-tests.yaml'
+  push:
+    branches: [master]
+    paths:
+    - 'src/startup/mldr/fex/**'
+    - 'src/startup/mldr/elfcalls/**'
+    - 'src/startup/mldr/include/**'
+    - 'src/startup/mldr/loader.h'
+    - 'src/startup/mldr/CMakeLists.txt'
+    - 'src/startup/*.c'
+    - 'src/shellspawn/**'
+    - 'src/startup/*.h'
+    - 'src/startup/CMakeLists.txt'
+    - 'CMakeLists.txt'
+    - 'tests/mldr/fex_bridge.c'
+    - 'tests/mldr/fexcore_paths.c'
+    - 'tests/mldr/run-fex-unit-tests.sh'
+    - 'tests/mldr/test-build-fexcore-shim.sh'
+    - 'tests/mldr/build-fexcore-shim.py'
+    - 'src/startup/mldr/fex/FEX_VERSION'
+    - 'THIRD-PARTY-NOTICES.md'
+    - 'tests/launcher/**'
+    - '.github/workflows/fex-unit-tests.yaml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+
+permissions:
+  contents: read
+
+jobs:
+  fex-unit-tests:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 15
+    steps:
+    # No submodules: the tests need only files of this repository.
+    - name: Checkout Darling
+      uses: actions/checkout@v4
+      with:
+        submodules: false
+
+    - name: Install clang
+      run: sudo apt-get update && sudo apt-get install --no-install-recommends -y clang
+
+    - name: Build and run the tests
+      run: tests/mldr/run-fex-unit-tests.sh

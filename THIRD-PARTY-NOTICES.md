@@ -66,3 +66,40 @@ darling-swift.
   distributions to include its notice; the full text is quoted in `overlays/CryptoKit/NOTICE.md`.
 - Use: linked into the built `CryptoKit.framework`. Whether the licence texts and `NOTICE.txt` are installed with
   the framework, as the Helvetica Neue entry above does, is an open question for the maintainers.
+
+## FEX, `src/startup/mldr/fex/darling_fexcore_*` and the `libdarling-fexcore.so` shim
+
+- Copyright (c) 2019 Ryan Houdek <Sonicadvance1@gmail.com>.
+- Source: <https://github.com/FEX-Emu/FEX>, commit 8e95a994a.
+- Adapted into this repository: `darling_fexcore_signals.cpp` and `darling_fexcore_sigframe.cpp` (from
+  `Source/Tools/LinuxEmulation/LinuxSyscalls/SignalDelegator.cpp` and
+  `SignalDelegator/GuestFramesManagement.cpp`: guest signal frame setup and restore, the host context
+  saved around a guest handler, signal deferral), `darling_fexcore_sigstack.cpp` (the per-thread host
+  signal stack that a handler finds its thread from, after `SignalDelegator::RegisterTLSState`) and
+  `darling_fexcore_adapter.cpp` (the call-return stack and GDT setup of a new thread, after
+  `Source/Tools/LinuxEmulation/LinuxSyscalls/ThreadManager.cpp`). The reset of the call-return stack
+  pointer when it faults on a guard page, in `darling_fexcore_signals.cpp` and `fex_signal_checks.h`, is
+  after `SyscallHandler::HandleSegfault` in `Source/Tools/LinuxEmulation/LinuxSyscalls/SyscallsSMCTracking.cpp`.
+- Compiled into the shim from the FEX tree it is built against, unmodified: FEXCore's static libraries,
+  `FEXCore/Source/Utils/AllocatorHooks.cpp`, `Source/Common/HostFeatures.cpp`, `Source/Common/CPUInfo.cpp`,
+  `Source/Common/Linux/LinuxVersion.cpp`, and the headers `Source/Tools/LinuxEmulation/ArchHelpers/MContext.h`
+  and `UContext.h`. FEXCore links FEX's bundled cephes (BSD, `External/cephes/LICENSE`) and Berkeley
+  SoftFloat 3e (BSD 3-clause, notice in its source files).
+- Shipped: a build with `-DWITH_FEXCORE=ON` installs this file, FEX's `LICENSE` and cephes' `LICENSE`
+  under `usr/share/licenses/darling-fexcore` in the Darling prefix, next to the shim's package contents.
+- Licence: MIT:
+
+  > Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+  > associated documentation files (the "Software"), to deal in the Software without restriction,
+  > including without limitation the rights to use, copy, modify, merge, publish, distribute,
+  > sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+  > furnished to do so, subject to the following conditions:
+  >
+  > The above copyright notice and this permission notice shall be included in all copies or
+  > substantial portions of the Software.
+  >
+  > THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+  > NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  > NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES
+  > OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  > CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

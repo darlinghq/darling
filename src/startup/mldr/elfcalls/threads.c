@@ -36,6 +36,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <limits.h>
 
 #include "dthreads.h"
+#include "../loader.h"
+#if defined(__aarch64__)
+#include "../fex/fex_bridge.h"
+extern struct load_results mldr_load_results;
+#endif
 #include "thread_stack.h"
 #if defined(__aarch64__)
 #include <stddef.h>
@@ -210,6 +215,10 @@ static void* darling_thread_entry(void* p)
 	}
 
 	// guard the new RPC FD
+#if defined(__aarch64__)
+	if (mldr_load_results.emulated_x86_64)
+		fex_set_current_thread_gs_base((uint64_t)(uintptr_t)&dthread->tsd[0]);
+#endif
 	args.callbacks->rpc_guard(new_rpc_fd);
 
 	// the socket is ready; assign it now
@@ -290,6 +299,18 @@ static void* darling_thread_entry(void* p)
 		[stack_ptr] "r"(stack_ptr)
 	);
 #elif defined(__aarch64__)
+	if (mldr_load_results.emulated_x86_64) {
+		fex_start_darling_thread(
+			args.pth,
+			args.port,
+			arg3,
+			args.arg1,
+			args.arg2,
+			args.arg3,
+			(uintptr_t)args.entry_point,
+			(uintptr_t)stack_ptr,
+			(uintptr_t)&dthread->tsd[0]);
+	}
 	asm volatile(
 		// Zero out the frame pointer.
 		"mov x29, #0\n"
