@@ -387,12 +387,6 @@ Boolean SMJobBless(CFStringRef domain, CFStringRef executableLabel, Authorizatio
 		SMLegacyFail(outError, ipcErrno ?: kSMErrorServiceUnavailable, @"Unable to reach launchd");
 		return false;
 	}
-	// launchd goes on handling the removed job's Mach ports for a moment after the job is gone, and
-	// that can take a service of a job of the same name submitted at once with it: a client looking
-	// the name up then gets no answer. Observed with a helper that had been running; 20 ms were
-	// enough, so allow 100 ms. The race belongs to launchd, not to this call.
-	if (replaced)
-		usleep(100000);
 	return SMSubmitJob(job, outError);
 }
 
