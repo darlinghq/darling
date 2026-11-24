@@ -2946,6 +2946,36 @@ static void test_callret_fault(void)
 		"10000 abandoned handler chains overrun the call-return stack, and never do once the fault resets the pointer");
 }
 
+static void test_signal_frame_checks(void)
+{
+	const uint64_t at = 0x7ffff000, sp = 0x10000000, secret = 0x1122334455667788ull;
+	// The saved context of this frame, from this process, with a host stack pointer above the current one.
+	check(fex_backup_check(true, at, at, secret, secret, at - 8, at - 8, sp + 0x1000, sp) == FEX_BACKUP_OK &&
+	      fex_backup_check(true, at, at, secret, secret, at - 8, at - 8, sp, sp) == FEX_BACKUP_OK,
+		"the context saved for a frame is accepted");
+	check(fex_backup_check(false, 0, 0, 0, secret, 0, 0, 0, 0) == FEX_BACKUP_UNREADABLE,
+		"a frame or context at an unmapped address is refused");
+	check(fex_backup_check(true, at + 16, at, secret, secret, at - 8, at - 8, sp, sp) == FEX_BACKUP_BAD_SLOT,
+		"a frame pointing its context elsewhere is refused");
+	check(fex_backup_check(true, at, at, 0x446172736967626bull, secret, at - 8, at - 8, sp, sp) == FEX_BACKUP_BAD_COOKIE &&
+	      fex_backup_check(true, at, at, 0, secret, at - 8, at - 8, sp, sp) == FEX_BACKUP_BAD_COOKIE,
+		"a forged or already used context is refused");
+	check(fex_backup_check(true, at, at, secret, secret, at - 0x2000, at - 8, sp, sp) == FEX_BACKUP_BAD_FRAME,
+		"a context saved for another frame (a stale one copied or moved) is refused");
+	check(fex_backup_check(true, at, at, secret, secret, at - 8, at - 8, sp - 1, sp) == FEX_BACKUP_BAD_SP &&
+	      fex_backup_check(true, at, at, secret, secret, at - 8, at - 8, sp + (65ull << 20), sp) == FEX_BACKUP_BAD_SP,
+		"a host stack pointer below or far above the current one is refused");
+
+	// 4 KB frame: it fits an alternate stack of 8 KB, and not one of 2 KB (the smallest the shim accepts).
+	const struct fex_guest_stack big = {0x20000000, 0, 0, 0x2000}, small = {0x20000000, 0, 0, 0x800}, none = {0, FEX_GUEST_SS_DISABLE, 0, 0};
+	check(fex_frame_fits(0x20000000 + 0x2000 - 0x1000, 0x20000000 + 0x2000, &big) &&
+	      !fex_frame_fits(0x20000000 + 0x800 - 0x1000, 0x20000000 + 0x800, &small) &&
+	      !fex_frame_fits(0x20000000 + 0x2000 - 0x2100, 0x20000000 + 0x2000, &big),
+		"a frame running out of the alternate stack is refused");
+	check(fex_frame_fits(0x10000000, 0x10001000, &big) && fex_frame_fits(0x10000000, 0x10001000, &none),
+		"a frame on another stack is left to the write to check");
+}
+
 static void test_safe_memory_access(void)
 {
 	// 1. Direct fex_copy_to_guest and fex_copy_from_guest tests
@@ -3302,6 +3332,7 @@ int main(void)
 	test_pa_api_callbacks();
 	test_syscall_translations();
 	test_callret_fault();
+	test_signal_frame_checks();
 	test_safe_memory_access();
 	test_guest_signal_delivery();
 	test_abi_check();

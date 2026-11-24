@@ -1,11 +1,11 @@
 // Delivery of host signals to x86_64 guest handlers.
 //
 // The mechanism is FEX's: the host handler, on the host signal stack, builds an x86_64 rt_sigframe on the
-// guest stack and points the host context at the dispatcher, so that returning from the host handler runs the
-// guest handler as ordinary emulated code on the interrupted host stack. The interrupted host context is kept
-// in that rt_sigframe (FEX keeps it on the host stack, where a handler left by longjmp strands it). The guest handler comes back through rt_sigreturn, which
-// traps at the dispatcher's signal return address, and that trap puts the saved host context back. Nothing
-// here calls guest code from a signal handler.
+// guest stack and points the host context at the dispatcher, so that returning from the host handler runs
+// the guest handler as ordinary emulated code on the interrupted host stack. The interrupted host context
+// is kept in that rt_sigframe (FEX keeps it on the host stack, where a handler left by longjmp strands it).
+// The guest handler comes back through rt_sigreturn, which traps at the dispatcher's signal return address,
+// and that trap puts the saved host context back. Nothing here calls guest code from a signal handler.
 //
 // Adapted from FEX (commit 8e95a994a, SignalDelegator.cpp), Copyright (c) 2019 Ryan Houdek, MIT License;
 // see THIRD-PARTY-NOTICES.md.
@@ -20,10 +20,12 @@
 #include <FEXCore/Utils/MathUtils.h>
 
 #include <cerrno>
+#include <cstdio>
 #include <csignal>
 #include <cstdint>
 #include <cstring>
 #include <sys/mman.h>
+#include <sys/random.h>
 #include <sys/syscall.h>
 #include <sys/uio.h>
 #include <ucontext.h>
@@ -53,16 +55,15 @@ bool g_supports_sve256 = false;
 
 // The interrupted host context, kept in the guest's signal frame while a guest handler runs. A guest that
 // leaves the handler with longjmp never runs rt_sigreturn, and the frame goes with the guest stack pointer.
-constexpr uint64_t kBackupMagic = 0x44617273'6967626bULL;
+struct SignalBackup {
+  HostCtx::ContextBackup host;
+  uint64_t cookie; // g_backup_cookie while the context is live; the guest cannot know it
+  int saved_errno;
+};
+uint64_t g_backup_cookie = 0;
 size_t g_host_page_size = 0;
 // FEX's REG_CALLRET_SP (Arm64Emitter.h).
 constexpr uint32_t kCallRetSpReg = 25;
-
-struct SignalBackup {
-  HostCtx::ContextBackup host;
-  uint64_t magic;
-  int saved_errno;
-};
 
 HostThreadSignals* current_host_signals(void* ucontext) {
   return g_ctx ? host_signals_in_handler(ucontext) : nullptr;
@@ -122,6 +123,28 @@ bool read_guest(void* dst, uint64_t guest_addr, size_t len) {
   return process_vm_readv(getpid(), &local, 1, &remote, 1, 0) == static_cast<ssize_t>(len);
 }
 
+// The same for writing: false when any of the bytes cannot be written.
+bool write_guest(uint64_t guest_addr, const void* src, size_t len) {
+  struct iovec local = {const_cast<void*>(src), len};
+  struct iovec remote = {reinterpret_cast<void*>(guest_addr), len};
+  return process_vm_writev(getpid(), &local, 1, &remote, 1, 0) == static_cast<ssize_t>(len);
+}
+
+// Linux's answer to a signal frame that does not fit the alternate stack: the process dies by SIGSEGV.
+[[noreturn]] void die_without_frame() {
+  static const char kWhy[] = "[mldr/fex] fatal: the signal frame does not fit the alternate stack\n";
+  (void)!write(STDERR_FILENO, kWhy, sizeof(kWhy) - 1);
+  struct sigaction dfl {};
+  dfl.sa_handler = SIG_DFL;
+  sigaction(SIGSEGV, &dfl, nullptr);
+  sigset_t segv;
+  sigemptyset(&segv);
+  sigaddset(&segv, SIGSEGV);
+  pthread_sigmask(SIG_UNBLOCK, &segv, nullptr);
+  syscall(SYS_tgkill, getpid(), gettid(), SIGSEGV);
+  abort();
+}
+
 // rt_sigreturn of a handler that interrupted emulated code: the trap at the dispatcher's return address
 // brings the thread here, in a host handler; put the interrupted host context back.
 bool restore_interrupted_frame(FEXCore::Core::InternalThreadState* thread, HostThreadSignals* hs, void* ucontext, uint64_t* guest_mask) {
@@ -129,15 +152,24 @@ bool restore_interrupted_frame(FEXCore::Core::InternalThreadState* thread, HostT
   const uint64_t guest_sp = frame->State.gregs[FEXCore::X86State::REG_RSP];
   // darling_fexcore_signal_return read this frame with read_guest before it trapped.
   const auto* guest_uc = reinterpret_cast<const X64::ucontext_t*>(guest_sp);
-  // The frame the handler returned through holds the context its signal interrupted, where its entry put it.
-  auto* in_frame = reinterpret_cast<SignalBackup*>(backup_data_at(guest_sp - kFrameUContext));
-  if (*reinterpret_cast<SignalBackup* const*>(guest_sp - kFrameUContext + kFrameBackup) != in_frame || in_frame->magic != kBackupMagic) {
+
+  // The frame sits in memory the guest writes: take a copy first, and accept only the context this process
+  // saved for this very frame, from a host stack pointer the thread can be running below.
+  const uint64_t frame_at = guest_sp - kFrameUContext;
+  const uint64_t data_at = backup_data_at(frame_at);
+  uint64_t slot = 0;
+  SignalBackup saved;
+  memset(&saved, 0, sizeof(saved));
+  const bool readable = read_guest(&slot, frame_at + kFrameBackup, sizeof(slot)) && read_guest(&saved, data_at, sizeof(saved));
+  if (fex_backup_check(readable, slot, data_at, saved.cookie, g_backup_cookie, saved.host.UContextLocation, guest_sp,
+                       saved.host.PrevSP, HostCtx::GetSp(ucontext)) != FEX_BACKUP_OK) {
     return false;
   }
-  in_frame->magic = 0;
-  // Work on a copy: the handler's stack is the guest's to write.
-  SignalBackup saved;
-  memcpy(&saved, in_frame, sizeof(saved));
+  // A frame is used once.
+  const uint64_t used = 0;
+  if (!write_guest(data_at + (reinterpret_cast<uintptr_t>(&saved.cookie) - reinterpret_cast<uintptr_t>(&saved)), &used, sizeof(used))) {
+    return false;
+  }
   SignalBackup* backup = &saved;
 
   HostCtx::RestoreContext(ucontext, &backup->host);
@@ -236,6 +268,13 @@ void signals_init(FEXCore::Context::Context* ctx, bool supports_avx, bool suppor
   g_supports_sve256 = supports_sve256;
   g_ctx = ctx;
   g_host_page_size = static_cast<size_t>(sysconf(_SC_PAGESIZE));
+  // Without a secret the saved contexts in guest frames could be forged: no signal may be delivered then.
+  do {
+    if (getrandom(&g_backup_cookie, sizeof(g_backup_cookie), 0) != static_cast<ssize_t>(sizeof(g_backup_cookie))) {
+      fprintf(stderr, "[mldr/fex] fatal: no random numbers for the signal frame cookie\n");
+      abort();
+    }
+  } while (g_backup_cookie == 0);
 }
 
 void deliver_at_syscall_return(FEXCore::Core::InternalThreadState* thread, const fex_signal_request* request) {
@@ -259,6 +298,9 @@ void deliver_at_syscall_return(FEXCore::Core::InternalThreadState* thread, const
     .supports_avx = g_supports_avx,
     .backup_size = 0,
   };
+  if (!fex_frame_fits(x64_frame_layout(sp, g_supports_avx).entry_sp, sp, &request->altstack)) {
+    die_without_frame();
+  }
   // No host context to keep: the frame's registers are all rt_sigreturn needs (a null backup address).
   const uint64_t entry_sp = setup_x64_frame(g_ctx, thread, frame->State.rip, false, nullptr, frame_request);
   enter_handler(frame->State, request->action.handler, entry_sp);
@@ -388,7 +430,7 @@ extern "C" int darling_fexcore_signal_deliver(int sig, const void* raw_info, voi
   // that a handler left by longjmp does not strand it on the host stack.
   SignalBackup backup;
   HostCtx::BackupContext(ucontext, &backup.host);
-  backup.magic = kBackupMagic;
+  backup.cookie = g_backup_cookie;
   backup.saved_errno = errno;
   backup.host.Signal = sig;
   backup.host.Flags = 0;
@@ -410,6 +452,11 @@ extern "C" int darling_fexcore_signal_deliver(int sig, const void* raw_info, voi
   int32_t stack_flags = 0;
   const uint64_t guest_sp = signal_stack_pointer(frame->State.gregs[FEXCore::X86State::REG_RSP], action, altstack, &stack_flags);
   backup.host.OriginalRIP = frame->State.rip;
+  const X64FrameLayout layout = x64_frame_layout(guest_sp, g_supports_avx, sizeof(backup));
+  if (!fex_frame_fits(layout.entry_sp, guest_sp, altstack)) {
+    die_without_frame();
+  }
+  backup.host.UContextLocation = layout.ucontext;
   const FrameRequest request {
     .sig = sig,
     .info = info,
