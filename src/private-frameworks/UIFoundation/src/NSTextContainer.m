@@ -66,16 +66,13 @@ static NSString *const _NSTextContainerViewFrameDidChangeNotification =
     _layoutManager = nil;
     _lineFragmentPadding = NSTextContainerDefaultLineFragmentPadding;
     NS_EXTRA(NSTextContainer, self)->_maximumNumberOfLines = 0;
-    NS_EXTRA(NSTextContainer, self)->_widthTracksTextView = YES;
-    NS_EXTRA(NSTextContainer, self)->_heightTracksTextView = YES;
+    NS_EXTRA(NSTextContainer, self)->_widthTracksTextView = NO;
+    NS_EXTRA(NSTextContainer, self)->_heightTracksTextView = NO;
     return self;
 }
 
 - init {
-    self = [self initWithContainerSize: NSZeroSize];
-    NS_EXTRA(NSTextContainer, self)->_widthTracksTextView = NO;
-    NS_EXTRA(NSTextContainer, self)->_heightTracksTextView = NO;
-    return self;
+    return [self initWithContainerSize: NSZeroSize];
 }
 
 - (void) dealloc {
