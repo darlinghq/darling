@@ -1,5 +1,5 @@
 CREATE TABLE `globals` (`key` TEXT PRIMARY KEY, `value` TEXT);
-INSERT INTO `globals` (`key`, `value`) VALUES ('version', '2');
+INSERT INTO `globals` (`key`, `value`) VALUES ('version', '3');
 
 CREATE TABLE `bundle` (
 	`id` INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -93,6 +93,16 @@ CREATE TABLE `app_doc_mime` (
 );
 CREATE INDEX `app_doc_mime_doc_index` ON `app_doc_mime`(`doc`);
 CREATE INDEX `app_doc_mime_index` ON `app_doc_mime`(`mime`);
+
+-- obsolete CFBundleTypeOSTypes
+CREATE TABLE `app_doc_ostype` (
+	`id` INTEGER PRIMARY KEY AUTOINCREMENT,
+	`doc` INTEGER,
+	`ostype` TEXT,
+	FOREIGN KEY(`doc`) REFERENCES `app_doc`(`id`) ON DELETE CASCADE
+);
+CREATE INDEX `app_doc_ostype_doc_index` ON `app_doc_ostype`(`doc`);
+CREATE INDEX `app_doc_ostype_index` ON `app_doc_ostype`(`ostype`);
 
 -- obsolete CFBundleTypeExtensions
 CREATE TABLE `app_doc_extension` (

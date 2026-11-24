@@ -26,6 +26,7 @@
 static int failures;
 static const char *ctl;
 static int is_xbox;
+static int is_bluetooth; /* the Xbox One controller of the Bluetooth kind (xboxbt) */
 /* The layout the controller publishes: an Xbox One controller (standard layout: A is button 1, the
  * hat is 1..8, sticks 16 bits, triggers Brake and Accelerator) or a DualShock 4 (Cross is button 2,
  * the hat is 0..7, sticks 8 bits, triggers Rx and Ry) */
@@ -41,7 +42,12 @@ static void check(const char *what, int cond)
 
 static void spin(double seconds)
 {
+	CFAbsoluteTime end = CFAbsoluteTimeGetCurrent() + seconds;
+
+	/* The run loop returns at once when it has no source to wait for; the time must still pass */
 	CFRunLoopRunInMode(kCFRunLoopDefaultMode, seconds, false);
+	while (CFAbsoluteTimeGetCurrent() < end)
+		usleep(5000);
 }
 
 static void sync_point(const char *tag)
@@ -192,7 +198,8 @@ int main(int argc, char **argv)
 	if (argc < 3)
 		return 2;
 	ctl = argv[1];
-	is_xbox = strcmp(argv[2], "xbox") == 0;
+	is_xbox = strncmp(argv[2], "xbox", 4) == 0;
+	is_bluetooth = strcmp(argv[2], "xboxbt") == 0 || !is_xbox;
 	btn_usage = is_xbox ? 1 : 2;      /* the key BTN_SOUTH */
 	hat_lo = is_xbox ? 1 : 0;
 	hat_hi = hat_lo + 7;
@@ -232,12 +239,15 @@ int main(int argc, char **argv)
 	/* Properties */
 	{
 		int v; char s[128];
-		check("Product", string_prop(dev, CFSTR(kIOHIDProductKey), s, sizeof s) && strstr(s, is_xbox ? "Xbox One" : "Wireless Controller"));
+		check("Product", string_prop(dev, CFSTR(kIOHIDProductKey), s, sizeof s) &&
+		    strstr(s, !is_xbox ? "Wireless Controller" : is_bluetooth ? "Xbox Wireless Controller" : "Xbox One"));
+		/* Manufacturer comes from the USB string descriptor; a virtual (uinput) controller has none, so it is not checked */
 		check("Manufacturer is absent or a string", IOHIDDeviceGetProperty(dev, CFSTR(kIOHIDManufacturerKey)) == NULL || string_prop(dev, CFSTR(kIOHIDManufacturerKey), s, sizeof s));
+		check("CountryCode is 0", num_prop(dev, CFSTR(kIOHIDCountryCodeKey), &v) && v == 0);
 		check("VendorID", num_prop(dev, CFSTR(kIOHIDVendorIDKey), &v) && v == (is_xbox ? 0x045e : 0x054c));
-		check("ProductID", num_prop(dev, CFSTR(kIOHIDProductIDKey), &v) && v == (is_xbox ? 0x02ea : 0x09cc));
-		check("VersionNumber", num_prop(dev, CFSTR(kIOHIDVersionNumberKey), &v) && v == (is_xbox ? 0x0408 : 0x8111));
-		check("Transport", string_prop(dev, CFSTR(kIOHIDTransportKey), s, sizeof s) && !strcmp(s, is_xbox ? "USB" : "Bluetooth"));
+		check("ProductID", num_prop(dev, CFSTR(kIOHIDProductIDKey), &v) && v == (!is_xbox ? 0x09cc : is_bluetooth ? 0x02fd : 0x02ea));
+		check("VersionNumber", num_prop(dev, CFSTR(kIOHIDVersionNumberKey), &v) && v == (!is_xbox ? 0x8111 : is_bluetooth ? 0x0903 : 0x0408));
+		check("Transport", string_prop(dev, CFSTR(kIOHIDTransportKey), s, sizeof s) && !strcmp(s, is_bluetooth ? "Bluetooth" : "USB"));
 		check("PrimaryUsagePage is GenericDesktop", num_prop(dev, CFSTR(kIOHIDPrimaryUsagePageKey), &v) && v == kHIDPage_GenericDesktop);
 		check("PrimaryUsage is GamePad", num_prop(dev, CFSTR(kIOHIDPrimaryUsageKey), &v) && v == kHIDUsage_GD_GamePad);
 		check("LocationID is a number", num_prop(dev, CFSTR(kIOHIDLocationIDKey), &v));

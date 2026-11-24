@@ -1,7 +1,7 @@
 // Copyright (C) 2026 Lubos Dolezel
 //
-// Native test: compile with the vImage sources it covers and run on the host.
-//   cc -I include tests/vImageTest.c src/Accelerate.c -lm -o vImageTest
+// Guest test of the 8-bit ARGB functions of vImage. Build it for the guest with the guest cross-compiler:
+//   guest-cc.sh -o vImageTest tests/vImageTest.c -framework Accelerate -framework CoreGraphics -framework CoreFoundation
 // Error codes and flag values are those of Apple's vImage_Types.h. The scaling
 // expectations follow bilinear sampling at pixel centres, edge pixels repeated.
 #include <Accelerate/Accelerate.h>
@@ -129,9 +129,9 @@ static void testUnimplemented(void)
 	CHECK(vImagePermuteChannels_ARGB8888(&b, &b, map, 0) == kvImageUnsupportedConversion);
 	CHECK(vImageUnpremultiplyData_ARGB8888(&b, &b, 0) == kvImageUnsupportedConversion);
 
+	// vImageBuffer_InitWithCGImage is implemented (see vImageConverterTest.c); without a format or an image it has nothing to read
 	vImage_Buffer out = makeBuffer(pixels, 5, 5, 20);
-	CHECK(vImageBuffer_InitWithCGImage(&out, NULL, NULL, NULL, 0) == kvImageUnsupportedConversion);
-	CHECK(out.data == NULL && out.width == 0 && out.height == 0 && out.rowBytes == 0);
+	CHECK(vImageBuffer_InitWithCGImage(&out, NULL, NULL, NULL, 0) == kvImageNullPointerArgument);
 	CHECK(vImageBuffer_InitWithCGImage(NULL, NULL, NULL, NULL, 0) == kvImageNullPointerArgument);
 }
 

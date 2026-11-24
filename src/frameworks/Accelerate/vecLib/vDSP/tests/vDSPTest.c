@@ -253,6 +253,29 @@ static void testReductions(void)
 	vDSP_rmsqv(stats, 1, &c, 7);
 	expectNear(c, 4.899, 1e-3, "rmsqv", 0);
 
+	// vDSP_mvessq page example: the mean of signed squares of this vector is 0, where measqv above gives 24.
+	// https://developer.apple.com/documentation/accelerate/vdsp_mvessq
+	vDSP_mvessq(stats, 1, &c, 7);
+	expectNear(c, 0, 1e-6, "mvessq", 0);
+	const float skew[] = { 1, -2, 3, 4 };
+	// (1 - 4 + 9 + 16) / 4, with every other element when the stride is 2: (1 + 9) / 2.
+	vDSP_mvessq(skew, 1, &c, 4);
+	expectNear(c, 5.5, 1e-6, "mvessq signed", 0);
+	vDSP_mvessq(skew, 2, &c, 2);
+	expectNear(c, 5, 1e-6, "mvessq stride", 0);
+	// A negative stride walks backwards from the pointer given (macOS 26.7.3 and 10.14.4 agree).
+	vDSP_mvessq(skew + 3, -1, &c, 4);
+	expectNear(c, 5.5, 1e-6, "mvessq negative stride", 0);
+	// QUIRK test: N equal to zero is NaN on macOS 26.7.3 and 10.14.4, not the -infinity the vDSP_mvessqD page
+	// states (see reduce.c).
+	c = 0;
+	vDSP_mvessq(skew, 1, &c, 0);
+	if (!isnan(c))
+	{
+		printf("FAIL mvessq empty is NaN (quirk): got %g\n", c);
+		g_failures++;
+	}
+
 	const float dotA[] = { 1, 2, 3, 4 }, dotB[] = { 5, 6, 7, 8 };
 	vDSP_dotpr(dotA, 1, dotB, 1, &c, 4);
 	expectNear(c, 70, 1e-5, "dotpr", 0);
@@ -283,6 +306,16 @@ static void testReductions(void)
 	expectNear(r, 91.0 / 6, 1e-12, "measqvD", 0);
 	vDSP_rmsqvD(e, 1, &r, 6);
 	expectNear(r, sqrt(91.0 / 6), 1e-12, "rmsqvD", 0);
+	const double f[] = { 1, -2, 3, -4 };
+	vDSP_mvessqD(f, 1, &r, 4);
+	expectNear(r, (1 - 4 + 9 - 16) / 4.0, 1e-12, "mvessqD", 0);
+	r = 0;
+	vDSP_mvessqD(f, 1, &r, 0);
+	if (!isnan(r))
+	{
+		printf("FAIL mvessqD empty is NaN (quirk): got %g\n", r);
+		g_failures++;
+	}
 	vDSP_dotprD(e, 1, e, 1, &r, 6);
 	expectNear(r, 91, 1e-12, "dotprD", 0);
 }
@@ -411,11 +444,142 @@ static void testFFT(vDSP_Length setupLog2, vDSP_Length log2n, vDSP_Stride stride
 	vDSP_destroy_fftsetup(setup);
 }
 
+// vDSP_maxvi, vDSP_minvi and the double-precision pair.
+// https://developer.apple.com/documentation/accelerate/vdsp_maxvi
+// The pages give the stride 1 example (max 3.6 index 2; min -4.3 index 5) and the empty result (C is -infinity or
+// infinity, I is 0). The stride and tie cases follow the public vDSP.h (macOS 10.15 SDK) sentence quoted in
+// extrema.c; the negative stride and NaN cases pin GUESS choices made there.
+static void expectIndex(vDSP_Length actual, vDSP_Length expected, const char* what)
+{
+	if (actual != expected)
+	{
+		printf("FAIL %s: index %lu, expected %lu\n", what, (unsigned long) actual, (unsigned long) expected);
+		g_failures++;
+	}
+}
+
+static void testExtremaIndex(void)
+{
+	const float a[] = { -1.5f, 2.25f, 3.6f, 0.2f, -0.1f, -4.3f };
+	const double d[] = { -1.5, 2.25, 3.6, 0.2, -0.1, -4.3 };
+	float c;
+	double r;
+	vDSP_Length i;
+
+	vDSP_maxvi(a, 1, &c, &i, 6);
+	expectNear(c, 3.6, 1e-6, "maxvi", 0);
+	expectIndex(i, 2, "maxvi");
+	vDSP_minvi(a, 1, &c, &i, 6);
+	expectNear(c, -4.3, 1e-6, "minvi", 0);
+	expectIndex(i, 5, "minvi");
+	vDSP_maxviD(d, 1, &r, &i, 6);
+	expectNear(r, 3.6, 1e-12, "maxviD", 0);
+	expectIndex(i, 2, "maxviD");
+	vDSP_minviD(d, 1, &r, &i, 6);
+	expectNear(r, -4.3, 1e-12, "minviD", 0);
+	expectIndex(i, 5, "minviD");
+
+	// N equal to zero: -infinity or infinity and an index of 0, and A is not read.
+	c = 0;
+	i = 99;
+	vDSP_maxvi(NULL, 1, &c, &i, 0);
+	if (!isinf(c) || c > 0)
+	{
+		printf("FAIL maxvi empty: got %g\n", c);
+		g_failures++;
+	}
+	expectIndex(i, 0, "maxvi empty");
+	c = 0;
+	i = 99;
+	vDSP_minvi(NULL, 1, &c, &i, 0);
+	if (!isinf(c) || c < 0)
+	{
+		printf("FAIL minvi empty: got %g\n", c);
+		g_failures++;
+	}
+	expectIndex(i, 0, "minvi empty");
+	r = 0;
+	i = 99;
+	vDSP_maxviD(NULL, 1, &r, &i, 0);
+	if (!isinf(r) || r > 0)
+	{
+		printf("FAIL maxviD empty: got %g\n", r);
+		g_failures++;
+	}
+	expectIndex(i, 0, "maxviD empty");
+	r = 0;
+	i = 99;
+	vDSP_minviD(NULL, 1, &r, &i, 0);
+	if (!isinf(r) || r < 0)
+	{
+		printf("FAIL minviD empty: got %g\n", r);
+		g_failures++;
+	}
+	expectIndex(i, 0, "minviD empty");
+
+	// Stride: every other element is -1.5, 3.6, -0.1, so the maximum 3.6 is element 1 of the strided vector, at
+	// offset 1 * 2 of A. The public vDSP.h (macOS 10.15 SDK) gives I as the smallest offset i*IA of an element equal
+	// to C, so I counts elements of A, not of the strided vector.
+	vDSP_maxvi(a, 2, &c, &i, 3);
+	expectNear(c, 3.6, 1e-6, "maxvi stride", 0);
+	expectIndex(i, 2, "maxvi stride");
+	// Every third element is -1.5, 0.2: the minimum -1.5 is at offset 0, and (double precision) the maximum 0.2 is
+	// at offset 3.
+	vDSP_minvi(a, 3, &c, &i, 2);
+	expectNear(c, -1.5, 1e-6, "minvi stride", 0);
+	expectIndex(i, 0, "minvi stride");
+	vDSP_maxviD(d, 3, &r, &i, 2);
+	expectNear(r, 0.2, 1e-12, "maxviD stride", 0);
+	expectIndex(i, 3, "maxviD stride");
+	// GUESS (negative stride): it walks backwards from the pointer given, and I is the wrapped (vDSP_Length) (n * IA)
+	// since an unsigned index cannot hold the negative offset; the header does not cover it. Here -4.3, -0.1, 0.2 are
+	// read first (offset 0), and 3.6 is element 3 of six read from a + 5 (offset -3, wrapped).
+	vDSP_minviD(d + 5, -1, &r, &i, 3);
+	expectNear(r, -4.3, 1e-12, "minviD negative stride", 0);
+	expectIndex(i, 0, "minviD negative stride");
+	vDSP_maxvi(a + 5, -1, &c, &i, 6);
+	expectNear(c, 3.6, 1e-6, "maxvi negative stride", 0);
+	expectIndex(i, (vDSP_Length) -3L, "maxvi negative stride");
+
+	// Ties: the first occurrence is reported (the smallest offset i*IA, per the public vDSP.h).
+	const float ties[] = { 1, 5, 2, 5, 1, 0, 0 };
+	vDSP_maxvi(ties, 1, &c, &i, 7);
+	expectNear(c, 5, 0, "maxvi tie", 0);
+	expectIndex(i, 1, "maxvi tie");
+	vDSP_minvi(ties, 1, &c, &i, 7);
+	expectNear(c, 0, 0, "minvi tie", 0);
+	expectIndex(i, 5, "minvi tie");
+	const double tiesD[] = { 1, 5, 2, 5, 1, 0, 0 };
+	vDSP_maxviD(tiesD, 1, &r, &i, 7);
+	expectIndex(i, 1, "maxviD tie");
+	vDSP_minviD(tiesD, 1, &r, &i, 7);
+	expectIndex(i, 5, "minviD tie");
+
+	// GUESS (NaN): a NaN is skipped, wherever it sits; only NaNs gives -infinity or infinity and an index of 0.
+	const float withNaN[] = { NAN, 1, NAN, 4, 2 };
+	vDSP_maxvi(withNaN, 1, &c, &i, 5);
+	expectNear(c, 4, 0, "maxvi nan", 0);
+	expectIndex(i, 3, "maxvi nan");
+	vDSP_minvi(withNaN, 1, &c, &i, 5);
+	expectNear(c, 1, 0, "minvi nan", 0);
+	expectIndex(i, 1, "minvi nan");
+	const float onlyNaN[] = { NAN, NAN };
+	i = 99;
+	vDSP_maxvi(onlyNaN, 1, &c, &i, 2);
+	if (!isinf(c) || c > 0)
+	{
+		printf("FAIL maxvi only NaN: got %g\n", c);
+		g_failures++;
+	}
+	expectIndex(i, 0, "maxvi only NaN");
+}
+
 int main(void)
 {
 	testArithmetic();
 	testRealVectorOps();
 	testReductions();
+	testExtremaIndex();
 	testConvolution();
 	testDeq22();
 	testComplex();

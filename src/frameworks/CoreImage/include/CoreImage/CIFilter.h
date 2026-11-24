@@ -27,6 +27,7 @@ extern NSString *const kCIInputContrastKey;
 extern NSString *const kCIInputEVKey;
 extern NSString *const kCIInputExtentKey;
 extern NSString *const kCIInputImageKey;
+extern NSString *const kCIInputIntensityKey;
 extern NSString *const kCIInputSaturationKey;
 extern NSString *const kCIInputRadiusKey;
 extern NSString *const kCIOutputImageKey;
@@ -59,7 +60,9 @@ extern NSString *const kCICategoryGradient;
 extern NSString *const kCICategoryReduction;
 extern NSString *const kCICategoryTransition;
 
-@interface CIFilter : NSObject
+@interface CIFilter : NSObject <NSSecureCoding>
+
+@property (nonatomic, readonly) NSArray<NSString *> *inputKeys;
 
 - (void) setDefaults;
 

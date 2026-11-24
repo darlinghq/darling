@@ -18,7 +18,15 @@
 */
 
 #include <Foundation/Foundation.h>
+#import <CoreImage/CIFilter.h>
 
-@interface CIExposureAdjust : NSObject
+@class CIImage;
+
+// The input parameters are instance variables named "input...", which is how CIFilter finds them.
+@interface CIExposureAdjust : CIFilter {
+@private
+    CIImage *inputImage;
+    NSNumber *inputEV;
+}
 
 @end

@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,25 +18,56 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef _GCExtendedGamepad_H_
+#define _GCExtendedGamepad_H_
 
+#import <Foundation/Foundation.h>
+#import <GameController/GCPhysicalInputProfile.h>
 #import <GameController/GCControllerButtonInput.h>
 #import <GameController/GCControllerDirectionPad.h>
 
-@interface GCExtendedGamepad : NSObject
+@class GCController;
+@class GCExtendedGamepadSnapshot;
 
-@property(readonly) GCControllerButtonInput *buttonA;
-@property(readonly) GCControllerButtonInput *buttonB;
-@property(readonly) GCControllerButtonInput *buttonX;
-@property(readonly) GCControllerButtonInput *buttonY;
-@property(readonly) GCControllerButtonInput *buttonMenu;
-@property(readonly, nullable) GCControllerButtonInput *buttonOptions;
-@property(readonly) GCControllerDirectionPad *dpad;
-@property(readonly) GCControllerDirectionPad *leftThumbstick;
-@property(readonly) GCControllerDirectionPad *rightThumbstick;
-@property(readonly) GCControllerButtonInput *leftShoulder;
-@property(readonly) GCControllerButtonInput *rightShoulder;
-@property(readonly) GCControllerButtonInput *leftTrigger;
-@property(readonly) GCControllerButtonInput *rightTrigger;
+NS_ASSUME_NONNULL_BEGIN
+
+@class GCExtendedGamepad;
+
+typedef void (^GCExtendedGamepadValueChangedHandler)(GCExtendedGamepad *gamepad, GCControllerElement *element);
+
+@interface GCExtendedGamepad : GCPhysicalInputProfile
+
+@property (nonatomic, readonly, weak, nullable) GCController *controller;
+@property (nonatomic, copy, nullable) GCExtendedGamepadValueChangedHandler valueChangedHandler;
+
+@property (nonatomic, readonly) GCControllerDirectionPad *dpad;
+@property (nonatomic, readonly) GCControllerButtonInput *buttonA;
+@property (nonatomic, readonly) GCControllerButtonInput *buttonB;
+@property (nonatomic, readonly) GCControllerButtonInput *buttonX;
+@property (nonatomic, readonly) GCControllerButtonInput *buttonY;
+@property (nonatomic, readonly) GCControllerButtonInput *buttonMenu;
+@property (nonatomic, readonly, nullable) GCControllerButtonInput *buttonOptions;
+@property (nonatomic, readonly, nullable) GCControllerButtonInput *buttonHome;
+
+@property (nonatomic, readonly) GCControllerDirectionPad *leftThumbstick;
+@property (nonatomic, readonly) GCControllerDirectionPad *rightThumbstick;
+
+@property (nonatomic, readonly) GCControllerButtonInput *leftShoulder;
+@property (nonatomic, readonly) GCControllerButtonInput *rightShoulder;
+@property (nonatomic, readonly) GCControllerButtonInput *leftTrigger;
+@property (nonatomic, readonly) GCControllerButtonInput *rightTrigger;
+
+@property (nonatomic, readonly, nullable) GCControllerButtonInput *leftThumbstickButton;
+@property (nonatomic, readonly, nullable) GCControllerButtonInput *rightThumbstickButton;
+
+/* Deprecated by +[GCController controllerWithExtendedGamepad] on macOS: a snapshot of the state. */
+- (GCExtendedGamepadSnapshot *)saveSnapshot;
+
+/* Copies the state of another gamepad; has no effect on the profile of a real device. */
+- (void)setStateFromExtendedGamepad:(GCExtendedGamepad *)extendedGamepad;
 
 @end
+
+NS_ASSUME_NONNULL_END
+
+#endif

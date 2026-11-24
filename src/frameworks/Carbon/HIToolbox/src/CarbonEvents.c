@@ -30,8 +30,11 @@
 // window server SPI of CoreGraphics (CGSSetHotKeyWithExclusion, CGSRemoveHotKey), which the
 // X11 backend implements by grabbing the key on the root window, so a hot key works
 // wherever the keyboard focus is. The presses and releases come back as system-defined events
-// in the application's event queue (subtype 6 and 9, data1 the uid of the hot key); NSApplication
-// sends them, as Carbon raw events, to the event dispatcher target, whose standard handler (below)
+// in the application's event queue (subtype 6 and 9, data1 the uid of the hot key). In an application
+// without AppKit, CoreGraphics puts them in its event stream, from which the event loop of
+// HIToolbox queues them (CarbonEventStream.c) and RunApplicationEventLoop dispatches them; NSApplication
+// still takes them from CoreGraphics itself and sends them, as Carbon raw events, to the event
+// dispatcher target. The standard handler of that target (below)
 // sends a kEventHotKeyPressed / kEventHotKeyReleased event to the target given at registration.
 //
 // Only one registration of a key code and modifiers combination can exist in a process.

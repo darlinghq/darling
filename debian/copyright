@@ -2,6 +2,9 @@ Copyright (C) 2012-2023 Darling developers
 Copyright (C) 1999-2017 Apple, Inc.
 Copyright (C) 1989-2005 Free Software Foundation, Inc.
 
+Copyright (C) The GNOME Project: the Finder and DiskImageMounter icon images, from the Adwaita icon
+  theme, under the GNU LGPL v3 or CC-BY-SA 3.0 United States (see src/Finder/COPYING.Adwaita,
+  src/DiskImageMounter/COPYING.Adwaita and THIRD-PARTY-NOTICES.md)
 
 The fonts in src/fonts/nimbus-sans and the HelveticaNeue.ttc built from them:
 Copyright 2014 by (URW)++ Design & Development, GNU Affero General Public License version 3 with

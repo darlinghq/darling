@@ -50,12 +50,18 @@ enum {
 };
 
 EventTargetRef GetApplicationEventTarget(void);
+
+#define InstallApplicationEventHandler(handler, numTypes, typeList, userData, outHandlerRef) \
+	InstallEventHandler(GetApplicationEventTarget(), (handler), (numTypes), (typeList), (userData), (outHandlerRef))
 EventTargetRef GetEventDispatcherTarget(void);
 EventTargetRef GetEventMonitorTarget(void);
 
 OSStatus ProcessHICommand(const HICommand * a);
 
+// Runs the event loop of the application: events of the main queue are sent to the event
+// dispatcher target until QuitApplicationEventLoop() is called or a quit command is handled.
 void RunApplicationEventLoop(void);
+void QuitApplicationEventLoop(void);
 
 OSStatus RegisterEventHotKey(UInt32 inHotKeyCode, UInt32 inHotKeyModifiers, EventHotKeyID inHotKeyID, EventTargetRef inTarget, OptionBits inOptions, EventHotKeyRef *outRef);
 OSStatus UnregisterEventHotKey(EventHotKeyRef inHotKey);

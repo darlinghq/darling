@@ -110,6 +110,20 @@ Hello world
 
 Congratulations, you have just compiled and run your own Hello world application with Apple's toolchain.
 
+#### Opening files from the Linux desktop
+
+`darling open` opens files of the host in Darling, as `open` does inside it. A disk image is mounted by DiskImageMounter (after you accept its licence agreement, if it has one) and its window is shown in Finder:
+
+```sh
+$ darling open ~/Downloads/SomeApp.dmg
+```
+
+Darling installs a desktop entry for disk images, "Disk Image Mounter (Darling)", so that file managers offer it under "Open With". To make it what a double-click on a `.dmg` does:
+
+```sh
+$ xdg-mime default org.darlinghq.Darling.DiskImageMounter.desktop application/x-apple-diskimage
+```
+
 #### Working with XIP archives
 
 Xcode is now distributed in `.xip` files. These can be installed using `unxip`:

@@ -71,32 +71,24 @@ void* ColorSyncNxMLUTGetProperties(void);
 void* ColorSyncNxMLUTGetRange(void);
 void* ColorSyncNxMLUTGetTypeID(void);
 void* ColorSyncProfileCopyASCIIDescriptionString(void);
-void* ColorSyncProfileCopyDescriptionString(void);
-void* ColorSyncProfileCopyHeader(void);
 void* ColorSyncProfileCopyLocalizedDescriptionString(void);
 void* ColorSyncProfileCopyLocalizedStringDictionary(void);
 void* ColorSyncProfileCreateDeviceProfile(void);
 void* ColorSyncProfileCreateDisplayTransferTablesFromVCGT(void);
 void* ColorSyncProfileCreateLink(void);
 void* ColorSyncProfileCreateMutable(void);
-void* ColorSyncProfileCreateMutableCopy(void);
 void* ColorSyncProfileCreateSanitizedCopy(void);
 void* ColorSyncProfileCreateWithDisplayID(void);
-void* ColorSyncProfileCreateWithName(void);
-void* ColorSyncProfileCreateWithURL(void);
 void* ColorSyncProfileEstimateGamma(void);
 void* ColorSyncProfileEstimateGammaWithDisplayID(void);
 void* ColorSyncProfileFromCMProfile(void);
 void* ColorSyncProfileGetData(void);
 void* ColorSyncProfileGetDisplayTransferFormulaFromVCGT(void);
-void* ColorSyncProfileGetMD5(void);
-void* ColorSyncProfileGetURL(void);
 void* ColorSyncProfileInstall(void);
 void* ColorSyncProfileIsWideGamut(void);
 void* ColorSyncProfileProducesMatrixTransform(void);
 void* ColorSyncProfileRemoveTag(void);
 void* ColorSyncProfileSetDescriptionTag(void);
-void* ColorSyncProfileSetHeader(void);
 void* ColorSyncProfileSetLocalizedStringDictionary(void);
 void* ColorSyncProfileSetParametricTRCTag(void);
 void* ColorSyncProfileSetTag(void);
@@ -132,12 +124,35 @@ void* ColorSyncVerifySRGBData(void);
 // opaque struct.
 typedef struct __ColorSyncProfile* ColorSyncProfileRef;
 
+// The public ColorSyncProfile.h of the MacOSX10.15 SDK (github.com/phracker/MacOSX-SDKs) declares the mutable reference
+// as a pointer to the same struct as the profile reference, without the const: a mutable profile is a profile with a flag.
+typedef struct __ColorSyncProfile* ColorSyncMutableProfileRef;
+
 CFTypeID ColorSyncProfileGetTypeID(void);
+
+// As the public ColorSyncProfile.h of the MacOSX10.15 SDK declares them (github.com/phracker/MacOSX-SDKs): the length is
+// 16 and the digest type is an unnamed struct of that many bytes.
+#define COLORSYNC_MD5_LENGTH 16
+
+typedef struct {
+	uint8_t digest[COLORSYNC_MD5_LENGTH];
+} ColorSyncMD5;
+
+ColorSyncMD5 ColorSyncProfileGetMD5(ColorSyncProfileRef prof);
+
 ColorSyncProfileRef ColorSyncProfileCreate(CFDataRef data, CFErrorRef* error);
 CFDataRef ColorSyncProfileCopyData(ColorSyncProfileRef prof, CFErrorRef* error);
+ColorSyncProfileRef ColorSyncProfileCreateWithName(CFStringRef name);
 bool ColorSyncProfileContainsTag(ColorSyncProfileRef prof, CFStringRef signature);
 CFDataRef ColorSyncProfileCopyTag(ColorSyncProfileRef prof, CFStringRef signature);
+CFStringRef ColorSyncProfileCopyDescriptionString(ColorSyncProfileRef prof);
 CFArrayRef ColorSyncProfileCopyTagSignatures(ColorSyncProfileRef prof);
+bool ColorSyncProfileIsMatrixBased(ColorSyncProfileRef prof);
+ColorSyncProfileRef ColorSyncProfileCreateWithURL(CFURLRef url, CFErrorRef* error);
+CFURLRef ColorSyncProfileGetURL(ColorSyncProfileRef prof, CFErrorRef* error);
+ColorSyncMutableProfileRef ColorSyncProfileCreateMutableCopy(ColorSyncProfileRef prof);
+CFDataRef ColorSyncProfileCopyHeader(ColorSyncProfileRef prof);
+void ColorSyncProfileSetHeader(ColorSyncMutableProfileRef prof, CFDataRef header);
 
 CFUUIDRef ColorSyncCreateUUIDFromUInt32(unsigned int uuid);
 bool ColorSyncRegisterDevice(CFStringRef deviceClass, CFUUIDRef uuid, CFDictionaryRef info);

@@ -14,6 +14,8 @@
 #include <stdio.h>
 #include <unicode/unistr.h>
 #include <CoreServices/UniChar.h>
+#include "LSDeliver.h"
+#include <os/log.h>
 
 using namespace icu;
 
@@ -153,10 +155,10 @@ static OSStatus resolveApplicationExecutable(std::string& exePath)
 
 OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSerialNumber *outPSN)
 {
-	if (!appParams)
+	if (!appParams || !appParams->application)
 		return paramErr;
 
-	std::string exePath;
+	std::string exePath, bundlePath;
 	std::vector<std::string> argumentStorage;
 	std::vector<char*> argv;
 	std::unique_ptr<std::vector<char*>> envp;
@@ -166,9 +168,31 @@ OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSeri
 
 	if (!FSRefMakePath(appParams->application, exePath))
 		return fnfErr;
+	bundlePath = exePath;
 	rv = resolveApplicationExecutable(exePath);
 	if (rv != noErr)
 		return rv;
+
+	// A running instance of the application gets the initial event (or, without one, a reopen) instead of a launch.
+	if (!(appParams->flags & kLSLaunchNewInstance) && bundlePath != exePath)
+	{
+		CFURLRef bundleURL = CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault,
+			(const UInt8*) bundlePath.c_str(), bundlePath.size(), true);
+		pid_t running = bundleURL ? _LSFindRunningApplication(bundleURL) : 0;
+		if (bundleURL)
+			CFRelease(bundleURL);
+		if (running > 0)
+		{
+			rv = appParams->initialEvent ? _LSDeliverEvent(appParams->initialEvent, running, false)
+				: _LSDeliverReopenEvent(running);
+			if (rv == noErr && outPSN)
+			{
+				outPSN->highLongOfPSN = 0;
+				outPSN->lowLongOfPSN = running;
+			}
+			return rv;
+		}
+	}
 
 	if (appParams->argv != nullptr)
 	{
@@ -274,12 +298,23 @@ OSStatus LSOpenApplication(const LSApplicationParameters *appParams, ProcessSeri
 				rv = makeOSStatus(errno);
 			else if (count != 0)
 				rv = makeOSStatus(EIO);
-			else if (outPSN)
+			else
 			{
-				// Match HIServices GetProcessForPID, but do not publish a
-				// process identifier when the launch error pipe reports failure.
-				outPSN->highLongOfPSN = 0;
-				outPSN->lowLongOfPSN = pid;
+				// The initial event is the new process's first event.
+				if (appParams->initialEvent)
+				{
+					OSStatus delivered = _LSDeliverEvent(appParams->initialEvent, pid, true);
+					if (delivered != noErr)
+						os_log_error(OS_LOG_DEFAULT, "LaunchServices: could not deliver the initial event to process %d: %d",
+							(int) pid, (int) delivered);
+				}
+				if (outPSN)
+				{
+					// Match HIServices GetProcessForPID, but do not publish a
+					// process identifier when the launch error pipe reports failure.
+					outPSN->highLongOfPSN = 0;
+					outPSN->lowLongOfPSN = pid;
+				}
 			}
 			close(pipefds[0]);
 		}

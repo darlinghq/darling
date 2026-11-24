@@ -17,7 +17,23 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import <PDFKit/PDFKitExport.h>
 #include <Foundation/Foundation.h>
+
+typedef NSString * const PDFAnnotationKey;
+typedef NSString * const PDFAnnotationSubtype;
+
+PDFKIT_EXPORT PDFAnnotationKey PDFAnnotationKeyBorder;
+PDFKIT_EXPORT PDFAnnotationKey PDFAnnotationKeyColor;
+PDFKIT_EXPORT PDFAnnotationKey PDFAnnotationKeyDefaultAppearance;
+PDFKIT_EXPORT PDFAnnotationKey PDFAnnotationKeyPage;
+PDFKIT_EXPORT PDFAnnotationKey PDFAnnotationKeyParent;
+PDFKIT_EXPORT PDFAnnotationKey PDFAnnotationKeyPopup;
+PDFKIT_EXPORT PDFAnnotationKey PDFAnnotationKeySubtype;
+
+PDFKIT_EXPORT PDFAnnotationSubtype PDFAnnotationSubtypeHighlight;
+PDFKIT_EXPORT PDFAnnotationSubtype PDFAnnotationSubtypeStrikeOut;
+PDFKIT_EXPORT PDFAnnotationSubtype PDFAnnotationSubtypeUnderline;
 
 @interface PDFAnnotation : NSObject
 

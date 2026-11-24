@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -20,32 +21,10 @@
 #import <GameController/GCController.h>
 #import <GameController/_GCController.h>
 
-/* No controller hardware exists here, so these are never posted. They are defined
- * because dyld fails to load any binary importing an undefined symbol, which is a hard
- * launch failure for every game that watches for controller connections. */
-
 NSString *const GCControllerDidConnectNotification = @"GCControllerDidConnectNotification";
 NSString *const GCControllerDidDisconnectNotification = @"GCControllerDidDisconnectNotification";
-
-NSString *const GCInputButtonA = @"Button A";
-NSString *const GCInputButtonB = @"Button B";
-NSString *const GCInputButtonX = @"Button X";
-NSString *const GCInputButtonY = @"Button Y";
-NSString *const GCInputButtonMenu = @"Button Menu";
-NSString *const GCInputButtonOptions = @"Button Options";
-NSString *const GCInputLeftShoulder = @"Left Shoulder";
-NSString *const GCInputRightShoulder = @"Right Shoulder";
-NSString *const GCInputLeftTrigger = @"Left Trigger";
-NSString *const GCInputRightTrigger = @"Right Trigger";
-NSString *const GCInputLeftThumbstick = @"Left Thumbstick";
-NSString *const GCInputDirectionPad = @"Direction Pad";
-NSString *const GCInputLeftThumbstickButton = @"Left Thumbstick Button";
-NSString *const GCInputRightThumbstick = @"Right Thumbstick";
-NSString *const GCInputRightThumbstickButton = @"Right Thumbstick Button";
-NSString *const GCInputXboxPaddleOne = @"Paddle 1";
-NSString *const GCInputXboxPaddleTwo = @"Paddle 2";
-NSString *const GCInputXboxPaddleThree = @"Paddle 3";
-NSString *const GCInputXboxPaddleFour = @"Paddle 4";
-NSString *const GCInputDualShockTouchpadOne = @"Touchpad 1";
-NSString *const GCInputDualShockTouchpadTwo = @"Touchpad 2";
-NSString *const GCInputDualShockTouchpadButton = @"Touchpad Button";
+NSString *const GCControllerDidBecomeCurrentNotification = @"GCControllerDidBecomeCurrentNotification";
+NSString *const GCControllerDidStopBeingCurrentNotification = @"GCControllerDidStopBeingCurrentNotification";
+NSString *const GCControllerUserCustomizationsDidChangeNotification = @"GCControllerUserCustomizationsDidChangeNotification";
+NSString *const GCRacingWheelDidConnectNotification = @"GCRacingWheelDidConnectNotification";
+NSString *const GCRacingWheelDidDisconnectNotification = @"GCRacingWheelDidDisconnectNotification";

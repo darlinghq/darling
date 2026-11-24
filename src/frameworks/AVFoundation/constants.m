@@ -23,6 +23,10 @@
 NSString *const AVAssetExportPresetHighestQuality = @"AVAssetExportPresetHighestQuality";
 NSString *const AVAssetExportPresetMediumQuality = @"AVAssetExportPresetMediumQuality";
 NSString *const AVAssetExportPresetLowQuality = @"AVAssetExportPresetLowQuality";
+// The documentation gives no string value for this preset; macOS 26.7.3 and 10.14.4 report the symbol
+// name, as for the three presets above (black-box observation).
+// Test: tests/src/avfoundation_constants.m
+NSString *const AVAssetExportPresetAppleM4A = @"AVAssetExportPresetAppleM4A";
 NSString *const AVCaptureDeviceWasConnectedNotification = @"AVCaptureDeviceWasConnectedNotification";
 NSString *const AVCaptureDeviceWasDisconnectedNotification = @"AVCaptureDeviceWasDisconnectedNotification";
 NSString *const AVCaptureSessionDidStartRunningNotification = @"AVCaptureSessionDidStartRunningNotification";
@@ -89,6 +93,7 @@ const NSErrorDomain AVFoundationErrorDomain = @"AVFoundationErrorDomain";
 
 const AVFileType AVFileTypeMPEG4 = @"public.mpeg-4";
 const AVFileType AVFileTypeQuickTimeMovie = @"com.apple.quicktime-movie";
+const AVFileType AVFileTypeAppleM4A = @"com.apple.m4a-audio";
 
 const AVAudioTimePitchAlgorithm AVAudioTimePitchAlgorithmTimeDomain = @"TimeDomain";
 const AVAudioTimePitchAlgorithm AVAudioTimePitchAlgorithmSpectral = @"Spectral";
@@ -102,6 +107,11 @@ const AVLayerVideoGravity AVLayerVideoGravityResizeAspectFill = @"AVLayerVideoGr
 const AVMediaType AVMediaTypeAudio = @"soun";
 const AVMediaType AVMediaTypeMuxed = @"muxx";
 const AVMediaType AVMediaTypeVideo = @"vide";
+
+// The documentation gives no string value for this key space. macOS 26.7.3 and 10.14.4 report the
+// four-character code "comn", like the sibling key spaces (black-box observation; the symbol name is
+// not the value). Test: tests/src/avfoundation_constants.m
+const AVMetadataKeySpace AVMetadataKeySpaceCommon = @"comn";
 
 const AVMetadataKey AVMetadataCommonKeyAlbumName = @"albumName";
 const AVMetadataKey AVMetadataCommonKeyArtist = @"artist";

@@ -103,6 +103,10 @@ jobs:
         name: debs
         path: dist/
 
+    # dpkg refuses to install a package over another one's files
+    - name: Check that no two DEBs ship the same file unless they conflict
+      run: python3 tests/deb-file-overlaps.py dist/*.deb
+
   build-dsc:
     needs: approval
     if: ${{ !cancelled() && (needs.approval.result == 'success' || needs.approval.result == 'skipped') }}

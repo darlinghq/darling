@@ -126,7 +126,7 @@ typedef enum _CGLRendererProperty {
    kCGLRPMajorGLVersion      = 133,
 } CGLRendererProperty;
 
-typedef struct _CGLContextObj *CGLContextObj;
+typedef struct _CGLContextObject *CGLContextObj;
 typedef struct _CGLPixelFormatObj *CGLPixelFormatObj;
 typedef struct _CGLPBufferObj *CGLPBufferObj;
 typedef struct _CGLRendererInfoObj *CGLRendererInfoObj;

@@ -22,6 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 @implementation NSTextStorage_concrete
 
++ (BOOL) supportsSecureCoding {
+    return YES;
+}
+
 - initWithCoder: (NSCoder *) coder {
     [super initWithCoder: coder];
 

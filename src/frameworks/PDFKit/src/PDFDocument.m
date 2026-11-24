@@ -25,6 +25,30 @@ PDFDocumentAttribute const PDFDocumentCreationDateAttribute = @"CreationDate";
 PDFDocumentAttribute const PDFDocumentKeywordsAttribute = @"Keywords";
 PDFDocumentAttribute const PDFDocumentTitleAttribute = @"Title";
 
+// The documentation gives no string values for these three attributes. They are the PDF Info
+// dictionary key names (Creator, Subject and, as in ISO 32000, ModDate), as macOS 26.7.3 and
+// 10.14.4 report (black-box observation). Test: tests/src/pdfkit_constants.m
+PDFDocumentAttribute const PDFDocumentCreatorAttribute = @"Creator";
+PDFDocumentAttribute const PDFDocumentModificationDateAttribute = @"ModDate";
+PDFDocumentAttribute const PDFDocumentSubjectAttribute = @"Subject";
+
+// The documentation gives no string values for these write options. macOS 26.7.3 reports the symbol
+// name as the value, like the other PDFDocument options (black-box observation); the constants are
+// absent on 10.14.4 and are provided here regardless. Test: tests/src/pdfkit_constants.m
+PDFDocumentWriteOption const PDFDocumentBurnInAnnotationsOption = @"PDFDocumentBurnInAnnotationsOption";
+PDFDocumentWriteOption const PDFDocumentOptimizeImagesForScreenOption = @"PDFDocumentOptimizeImagesForScreenOption";
+PDFDocumentWriteOption const PDFDocumentSaveImagesAsJPEGOption = @"PDFDocumentSaveImagesAsJPEGOption";
+PDFDocumentWriteOption const PDFDocumentSaveTextFromOCROption = @"PDFDocumentSaveTextFromOCROption";
+
+// The documentation gives no string values for these notification names. They are the strings macOS
+// 26.7.3 and 10.14.4 report for these constants (black-box observation); they do not follow the
+// symbol names. Test: tests/src/pdfkit_constants.m
+NSNotificationName const PDFDocumentDidBeginFindNotification = @"PDFDidBeginDocumentFind";
+NSNotificationName const PDFDocumentDidBeginPageFindNotification = @"PDFDidBeginPageFind";
+NSNotificationName const PDFDocumentDidEndFindNotification = @"PDFDidEndDocumentFind";
+NSNotificationName const PDFDocumentDidEndPageFindNotification = @"PDFDidEndPageFind";
+NSNotificationName const PDFDocumentDidUnlockNotification = @"PDFDocumentDidUnlock";
+
 @implementation PDFDocument
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

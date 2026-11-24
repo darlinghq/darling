@@ -248,6 +248,9 @@ if (ADHOC_CODESIGN AND TARGET darlingserver_dc_codesign)
 	add_subdirectory(${CMAKE_SOURCE_DIR}/tests/adhoc-sign ${CMAKE_CURRENT_BINARY_DIR}/adhoc-sign-tests)
 endif()
 
+# host tests of the ASTC decoder (src/libtexturecodec): plain C, they need no Darling build
+add_subdirectory(${CMAKE_SOURCE_DIR}/src/libtexturecodec/tests ${CMAKE_CURRENT_BINARY_DIR}/texturecodec-tests)
+
 add_subdirectory(startup)
 
 include_directories(${CMAKE_SOURCE_DIR}/basic-headers)
@@ -441,6 +444,8 @@ if (COMPONENT_cli)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli")
 
 	add_subdirectory(external/darling-dmg)
+	add_subdirectory(DiskImageMounter)
+	add_subdirectory(Finder)
 	add_subdirectory(external/bomutils)
 	add_subdirectory(external/libutil)
 	add_subdirectory(xtrace)
@@ -640,6 +645,8 @@ endif()
 # it has its own component checks to determine which libraries to generate wrappers for.
 # the shared loader of the dbus wrapper (see native); static, so it has no components
 add_subdirectory(libdarlingdbus)
+# the texture decoder of ImageIO; static, so it has no components
+add_subdirectory(libtexturecodec)
 add_subdirectory(native)
 
 # has its own component checks

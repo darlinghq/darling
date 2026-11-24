@@ -48,14 +48,34 @@ add_framework(WebKit
         src/_WKWebsiteDataStore.m
         src/_WKWebsiteDataStoreConfiguration.m
         src/_WKWebsitePolicies.m
+        src/DOMCharacterData.m
+        src/DOMComment.m
         src/DOMElement.m
+        src/DOMHTMLAnchorElement.m
+        src/DOMHTMLAreaElement.m
+        src/DOMHTMLElement.m
+        src/DOMHTMLHeadingElement.m
+        src/DOMHTMLImageElement.m
+        src/DOMHTMLInputElement.m
+        src/DOMHTMLLinkElement.m
+        src/DOMHTMLMetaElement.m
+        src/DOMHTMLOptionElement.m
+        src/DOMHTMLScriptElement.m
+        src/DOMHTMLTextAreaElement.m
         src/DOMNode.m
         src/DOMObject.m
+        src/DOMRange.m
         src/WebView.m
+        src/WebArchive.m
+        src/WebBackForwardList.m
+        src/WebDataSource.m
         src/WebDownload.m
+        src/WebFrame.m
+        src/WebFrameView.m
         src/WebHistory.m
         src/WebHistoryItem.m
         src/WebPolicyDelegate.m
+        src/WebResource.m
         src/WebScriptObject.m
         src/WKCustomProtocolLoader.m
         src/WKCustomProtocol.m
@@ -98,6 +118,7 @@ add_framework(WebKit
         src/WKDOMText.m
         src/WKDOMTextIterator.m
         src/WKError.m
+        src/WKFindConfiguration.m
         src/WKFrameInfo.m
         src/WKFullKeyboardAccessWatcher.m
         src/WKFullScreenWindowController.m

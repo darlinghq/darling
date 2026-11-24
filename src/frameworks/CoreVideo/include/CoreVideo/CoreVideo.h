@@ -28,6 +28,7 @@
 #include <CoreVideo/CVBase.h>
 
 #include <CoreVideo/CVDisplayLink.h>
+#include <CoreVideo/CVHostTime.h>
 #include <CoreVideo/CVPixelBuffer.h>
 #include <CoreVideo/CVPixelBufferPool.h>
 #include <CoreVideo/CVMetalTexture.h>

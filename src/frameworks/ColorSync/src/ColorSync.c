@@ -293,18 +293,6 @@ void* ColorSyncProfileCopyASCIIDescriptionString(void)
     return NULL;
 }
 
-void* ColorSyncProfileCopyDescriptionString(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCopyDescriptionString called");
-    return NULL;
-}
-
-void* ColorSyncProfileCopyHeader(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCopyHeader called");
-    return NULL;
-}
-
 void* ColorSyncProfileCopyLocalizedDescriptionString(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileCopyLocalizedDescriptionString called");
@@ -341,12 +329,6 @@ void* ColorSyncProfileCreateMutable(void)
     return NULL;
 }
 
-void* ColorSyncProfileCreateMutableCopy(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCreateMutableCopy called");
-    return NULL;
-}
-
 void* ColorSyncProfileCreateSanitizedCopy(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileCreateSanitizedCopy called");
@@ -356,18 +338,6 @@ void* ColorSyncProfileCreateSanitizedCopy(void)
 void* ColorSyncProfileCreateWithDisplayID(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileCreateWithDisplayID called");
-    return NULL;
-}
-
-void* ColorSyncProfileCreateWithName(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCreateWithName called");
-    return NULL;
-}
-
-void* ColorSyncProfileCreateWithURL(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCreateWithURL called");
     return NULL;
 }
 
@@ -401,18 +371,6 @@ void* ColorSyncProfileGetDisplayTransferFormulaFromVCGT(void)
     return NULL;
 }
 
-void* ColorSyncProfileGetMD5(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileGetMD5 called");
-    return NULL;
-}
-
-void* ColorSyncProfileGetURL(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileGetURL called");
-    return NULL;
-}
-
 void* ColorSyncProfileInstall(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileInstall called");
@@ -440,12 +398,6 @@ void* ColorSyncProfileRemoveTag(void)
 void* ColorSyncProfileSetDescriptionTag(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileSetDescriptionTag called");
-    return NULL;
-}
-
-void* ColorSyncProfileSetHeader(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileSetHeader called");
     return NULL;
 }
 

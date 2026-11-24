@@ -17,7 +17,12 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import <PDFKit/PDFKitExport.h>
 #include <Foundation/Foundation.h>
+
+PDFKIT_EXPORT NSNotificationName const PDFViewDocumentChangedNotification;
+PDFKIT_EXPORT NSNotificationName const PDFViewPageChangedNotification;
+PDFKIT_EXPORT NSNotificationName const PDFViewSelectionChangedNotification;
 
 @interface PDFView : NSObject
 
