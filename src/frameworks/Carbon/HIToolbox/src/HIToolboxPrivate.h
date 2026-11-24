@@ -37,13 +37,37 @@ typedef Boolean (*HIEventMatchProc)(EventRef event, void* info);
 OSStatus _HIPostEventToQueueAtHead(EventQueueRef queue, EventRef event);
 
 // PostEventToQueue(), except that with mouse coalescing enabled (SetMouseCoalescingEnabled())
-// a queued mouse moved or dragged event of the same kind and for the same window is replaced
-// by this one. For the events that come from the window system.
+// a queued mouse moved or dragged event of the same kind and for the same window (for events made
+// from CGEvents: of the same CGEvent type and kCGMouseEventWindowUnderMousePointer) is replaced
+// by this one, which takes over its deltas. For the events that come from the window system.
 OSStatus _HIPostEventToQueueCoalescing(EventQueueRef queue, EventRef event, EventPriority priority);
 
 // ReceiveNextEvent() with an arbitrary filter (NULL matches every event) and the run loop mode
 // to wait in (NULL for the default mode).
 OSStatus _HIReceiveNextEventMatching(HIEventMatchProc match, void* info, CFStringRef runLoopMode, EventTimeout timeout, Boolean pull, EventRef* outEvent);
+
+// Options of _HIReceiveNextEventMatchingWithOptions()
+enum {
+	// The event leaves the queue and the caller owns it (ReceiveNextEvent's inPullEvent)
+	kHIReceiveNextEventPull = 1 << 0,
+	// The filter looks only at the event it is given and calls no event queue function, so it
+	// can run with the queue locked (no copy of the queue is made for it)
+	kHIReceiveNextEventFilterIsPure = 1 << 1,
+	// The run loop runs once, as -[NSRunLoop runMode:beforeDate:] does: without waiting when a
+	// matching event is queued, otherwise until a source of the mode was handled or the timeout
+	// is over; then the queue is looked at once more. eventLoopTimedOutErr when nothing matched.
+	kHIReceiveNextEventSinglePass = 1 << 2,
+};
+
+// _HIReceiveNextEventMatching() with options. With kHIReceiveNextEventSinglePass the caller
+// gets control back after every source the run loop handled, for the work it does between
+// waits.
+OSStatus _HIReceiveNextEventMatchingWithOptions(HIEventMatchProc match, void* info, CFStringRef runLoopMode, EventTimeout timeout, OptionBits options, EventRef* outEvent);
+
+// The main event loop starts to read the window system events of CoreGraphics (its event stream)
+// now, instead of at its first wait: what arrives before that wait is kept. For a framework that
+// connects to the window system before it waits for events. Any thread.
+void _HIBeginEventStreamReading(void);
 
 // Removes the events of the queue the filter matches (NULL: every event). Only the events in
 // front of beforeEvent are considered when it is not NULL and in the queue.

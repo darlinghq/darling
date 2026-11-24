@@ -28,6 +28,7 @@
 #include <HIToolbox/CarbonEventsCore.h>
 #include <HIToolbox/CarbonEvents.h>
 #include "HIToolboxInternal.h"
+#include "HIToolboxPrivate.h"
 #include <CoreGraphics/CoreGraphicsPrivate.h>
 
 static atomic_bool g_streamRegistered;
@@ -39,30 +40,40 @@ static void streamSourceFired(void* info)
 	// The signal only ends the wait; the events are read before the next look at the queue
 }
 
+// The main event loop becomes the reader of the stream: from now on the stream keeps the events,
+// also between two waits
+static void registerReader(struct OpaqueEventLoopRef* loop)
+{
+	if (atomic_load_explicit(&g_streamRegistered, memory_order_acquire))
+		return;
+
+	pthread_mutex_lock(&g_streamRegisterLock);
+	if (!atomic_load(&g_streamRegistered))
+	{
+		CFRunLoopSourceContext context = { .version = 0, .perform = streamSourceFired };
+
+		g_streamSource = CFRunLoopSourceCreate(NULL, 0, &context);
+		CFRunLoopAddSource(loop->runLoop, g_streamSource, kCFRunLoopCommonModes);
+		_CGSEventStreamSetReadySource(g_streamSource, loop->runLoop);
+		atomic_store_explicit(&g_streamRegistered, true, memory_order_release);
+	}
+	pthread_mutex_unlock(&g_streamRegisterLock);
+}
+
 void _HIEventStreamWillWait(struct OpaqueEventLoopRef* loop, CFStringRef mode)
 {
 	// Window system events are for the main thread
 	if (loop != _HIMainEventLoop() || !pthread_main_np())
 		return;
 
-	if (!atomic_load_explicit(&g_streamRegistered, memory_order_acquire))
-	{
-		pthread_mutex_lock(&g_streamRegisterLock);
-		if (!atomic_load(&g_streamRegistered))
-		{
-			CFRunLoopSourceContext context = { .version = 0, .perform = streamSourceFired };
-
-			g_streamSource = CFRunLoopSourceCreate(NULL, 0, &context);
-			CFRunLoopAddSource(loop->runLoop, g_streamSource, kCFRunLoopCommonModes);
-			// From now on the stream keeps the events, also between two waits
-			_CGSEventStreamSetReadySource(g_streamSource, loop->runLoop);
-			atomic_store_explicit(&g_streamRegistered, true, memory_order_release);
-		}
-		pthread_mutex_unlock(&g_streamRegisterLock);
-	}
-
+	registerReader(loop);
 	if (!CFEqual(mode, kCFRunLoopDefaultMode))
 		CFRunLoopAddSource(loop->runLoop, g_streamSource, mode);
+}
+
+void _HIBeginEventStreamReading(void)
+{
+	registerReader(_HIMainEventLoop());
 }
 
 void _HIDrainEventStream(EventQueueRef queue)

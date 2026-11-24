@@ -205,6 +205,7 @@ OSStatus FlushSpecificEventsFromQueue(EventQueueRef inQueue, EventComparatorUPP 
 EventRef FindSpecificEventInQueue(EventQueueRef inQueue, EventComparatorUPP inComparator, void* inCompareData);
 EventRef AcquireFirstMatchingEventInQueue(EventQueueRef inQueue, ItemCount inNumTypes, const EventTypeSpec* inList, OptionBits inOptions);
 OSStatus SetMouseCoalescingEnabled(Boolean inNewState, Boolean* outOldState);
+Boolean IsMouseCoalescingEnabled(void);
 EventComparatorUPP NewEventComparatorUPP(EventComparatorProcPtr userRoutine);
 void DisposeEventComparatorUPP(EventComparatorUPP userUPP);
 

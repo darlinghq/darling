@@ -97,6 +97,25 @@ static bool removeEvent(EventQueueRef queue, EventRef event)
 	return removed;
 }
 
+// Whether two mouse moved or dragged events are about the same window, and, for events made from
+// CGEvents, the same buttons: a left drag does not replace a right drag.
+static bool sameMotionTarget(EventRef a, EventRef b)
+{
+	if (a->cgEvent && b->cgEvent)
+	{
+		return CGEventGetType(a->cgEvent) == CGEventGetType(b->cgEvent)
+			&& CGEventGetIntegerValueField(a->cgEvent, kCGMouseEventWindowUnderMousePointer)
+				== CGEventGetIntegerValueField(b->cgEvent, kCGMouseEventWindowUnderMousePointer);
+	}
+
+	EventParamType typeA, typeB;
+	ByteCount sizeA = 0, sizeB = 0;
+	char windowA[16] = {0}, windowB[16] = {0};
+	bool hasA = _HICopyEventParameter(a, 'wind', &typeA, &sizeA, windowA, sizeof(windowA));
+	bool hasB = _HICopyEventParameter(b, 'wind', &typeB, &sizeB, windowB, sizeof(windowB));
+	return hasA == hasB && (!hasA || (sizeA == sizeB && memcmp(windowA, windowB, sizeA) == 0));
+}
+
 static OSStatus postEvent(EventQueueRef queue, EventRef event, int list, bool coalesce, bool wake)
 {
 	if (!queue || !event)
@@ -112,24 +131,28 @@ static OSStatus postEvent(EventQueueRef queue, EventRef event, int list, bool co
 	if (coalesce && atomic_load(&g_mouseCoalescing) && event->eventClass == kEventClassMouse
 		&& (event->kind == kEventMouseMoved || event->kind == kEventMouseDragged))
 	{
-		// A queued event of the same kind for the same window is out of date
-		EventRef previous = NULL;
-		for (EventRef current = queue->head[list]; current; previous = current, current = current->queueNext)
+		// The event at the end of the list is out of date if it is of the same kind for the same
+		// window. Only the last event can be replaced: a click that was queued after an older
+		// move must not end up before the move, which comes later.
+		EventRef current = queue->tail[list];
+		if (current && current->eventClass == event->eventClass && current->kind == event->kind
+			&& sameMotionTarget(current, event))
 		{
-			if (current->eventClass != event->eventClass || current->kind != event->kind)
-				continue;
+			// The deltas of a mouse event count from the previous one the application gets
+			if (current->cgEvent && event->cgEvent)
+			{
+				CGEventSetIntegerValueField(event->cgEvent, kCGMouseEventDeltaX,
+					CGEventGetIntegerValueField(event->cgEvent, kCGMouseEventDeltaX) + CGEventGetIntegerValueField(current->cgEvent, kCGMouseEventDeltaX));
+				CGEventSetIntegerValueField(event->cgEvent, kCGMouseEventDeltaY,
+					CGEventGetIntegerValueField(event->cgEvent, kCGMouseEventDeltaY) + CGEventGetIntegerValueField(current->cgEvent, kCGMouseEventDeltaY));
+			}
 
-			EventParamType typeA, typeB;
-			ByteCount sizeA = 0, sizeB = 0;
-			char windowA[16] = {0}, windowB[16] = {0};
-			bool hasA = _HICopyEventParameter(current, 'wind', &typeA, &sizeA, windowA, sizeof(windowA));
-			bool hasB = _HICopyEventParameter(event, 'wind', &typeB, &sizeB, windowB, sizeof(windowB));
-			if (hasA != hasB || (hasA && (sizeA != sizeB || memcmp(windowA, windowB, sizeA) != 0)))
-				continue;
-
+			// The list is singly linked: find the event before the last one
+			EventRef previous = NULL;
+			for (EventRef walk = queue->head[list]; walk != current; walk = walk->queueNext)
+				previous = walk;
 			unlinkEvent(queue, list, previous, current);
 			ReleaseEvent(current);
-			break;
 		}
 	}
 	event->queuePriority = list;
@@ -369,6 +392,11 @@ OSStatus SetMouseCoalescingEnabled(Boolean inNewState, Boolean* outOldState)
 	if (outOldState)
 		*outOldState = old;
 	return noErr;
+}
+
+Boolean IsMouseCoalescingEnabled(void)
+{
+	return atomic_load(&g_mouseCoalescing);
 }
 
 EventComparatorUPP NewEventComparatorUPP(EventComparatorProcPtr userRoutine)
