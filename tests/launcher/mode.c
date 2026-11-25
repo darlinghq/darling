@@ -208,12 +208,27 @@ static void testServerMode(void)
 	waitpid(child, NULL, 0);
 }
 
+static void testNextFsMode(void)
+{
+	// none recorded is the kernel's overlayfs: fuse-overlayfs next where it runs, else the copy
+	CHECK(strcmp(launcherNextFsMode(NULL, true), "fuse-overlayfs") == 0);
+	CHECK(strcmp(launcherNextFsMode(NULL, false), "copy") == 0);
+	CHECK(strcmp(launcherNextFsMode("overlayfs", true), "fuse-overlayfs") == 0);
+	CHECK(strcmp(launcherNextFsMode("overlayfs", false), "copy") == 0);
+	CHECK(strcmp(launcherNextFsMode("bogus", false), "copy") == 0);
+	CHECK(strcmp(launcherNextFsMode("fuse-overlayfs", true), "copy") == 0);
+	// nothing after the copy, so a failing copy cannot loop
+	CHECK(launcherNextFsMode("copy", true) == NULL);
+	CHECK(launcherNextFsMode("copy", false) == NULL);
+}
+
 int main(void)
 {
 	testPrivilege();
 	testSelect();
 	testPrefix();
 	testLoginName();
+	testNextFsMode();
 	testDescendants();
 	testServerMode();
 	if (g_failures == 0)
