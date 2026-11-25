@@ -31,6 +31,7 @@
 #include <HIToolbox/MacWindows.h>
 #include <HIToolbox/Events.h>
 #include <HIToolbox/CarbonEventsCore.h>
+#include <HIToolbox/Menus.h>
 
 #pragma pack(push, 2)
 
@@ -229,7 +230,7 @@ ControlPartCode TrackControl(ControlRef theControl, Point startPoint, ControlAct
 ControlPartCode TestControl(ControlRef theControl, Point testPoint);
 ControlPartCode FindControl(Point testPoint, WindowRef theWindow, ControlRef* theControl);
 #endif
-OSStatus FindControlUnderMouse(Point inWhere, WindowRef inWindow, ControlPartCode* outPart);
+ControlRef FindControlUnderMouse(Point inWhere, WindowRef inWindow, ControlPartCode* outPart);
 
 // Control action functions
 #ifndef __LP64__
@@ -245,6 +246,56 @@ OSStatus AutoEmbedControl(ControlRef inControl, WindowRef inWindow);
 OSStatus CountSubControls(ControlRef inControl, UInt16* outNumChildren);
 OSStatus GetIndexedSubControl(ControlRef inControl, UInt16 inIndex, ControlRef* outSubControl);
 OSStatus GetSuperControl(ControlRef inControl, ControlRef* outParent);
+
+
+// Content of bevel buttons and other controls that show an image
+typedef SInt16 ControlContentType;
+typedef struct ControlButtonContentInfo {
+	ControlContentType contentType;
+	union {
+		SInt16 resID;
+		Handle cIconHandle;
+		CGImageRef imageRef;
+		Handle iconSuite;
+		void* iconRef;
+		Handle picture;
+		Handle ICONHandle;
+	} u;
+} ControlButtonContentInfo;
+typedef ControlButtonContentInfo* ControlButtonContentInfoPtr;
+
+typedef UInt16 ControlSliderOrientation;
+enum {
+	kControlSliderPointsDownOrRight = 0,
+	kControlSliderPointsUpOrLeft = 1,
+	kControlSliderDoesNotPoint = 2,
+};
+
+// Creating the standard controls. A window is optional: a control made without one is embedded later.
+OSStatus CreateBevelButtonControl(WindowRef window, const Rect* boundsRect, CFStringRef title, UInt16 thickness, UInt16 behavior, ControlButtonContentInfoPtr info, SInt16 menuID, UInt16 menuBehavior, UInt16 menuPlacement, ControlRef* outControl);
+OSStatus CreatePushButtonControl(WindowRef window, const Rect* boundsRect, CFStringRef title, ControlRef* outControl);
+OSStatus CreateCheckBoxControl(WindowRef window, const Rect* boundsRect, CFStringRef title, SInt32 initialValue, Boolean autoToggle, ControlRef* outControl);
+OSStatus CreateRadioButtonControl(WindowRef window, const Rect* boundsRect, CFStringRef title, SInt32 initialValue, Boolean autoToggle, ControlRef* outControl);
+OSStatus CreateSliderControl(WindowRef window, const Rect* boundsRect, SInt32 value, SInt32 minimum, SInt32 maximum, ControlSliderOrientation orientation, UInt16 numTickMarks, Boolean liveTracking, ControlActionUPP liveTrackingProc, ControlRef* outControl);
+OSStatus CreateScrollBarControl(WindowRef window, const Rect* boundsRect, SInt32 value, SInt32 minimum, SInt32 maximum, SInt32 viewSize, Boolean liveTracking, ControlActionUPP liveTrackingProc, ControlRef* outControl);
+OSStatus CreateStaticTextControl(WindowRef window, const Rect* boundsRect, CFStringRef text, const ControlFontStyleRec* style, ControlRef* outControl);
+OSStatus CreateGroupBoxControl(WindowRef window, const Rect* boundsRect, CFStringRef title, Boolean primary, ControlRef* outControl);
+OSStatus CreateSeparatorControl(WindowRef window, const Rect* boundsRect, ControlRef* outControl);
+OSStatus CreateUserPaneControl(WindowRef window, const Rect* boundsRect, UInt32 features, ControlRef* outControl);
+OSStatus CreatePopupButtonControl(WindowRef window, const Rect* boundsRect, CFStringRef title, SInt16 menuID, Boolean variableWidth, SInt16 titleWidth, SInt16 titleJustification, UInt8 titleStyle, ControlRef* outControl);
+OSStatus CreateProgressBarControl(WindowRef window, const Rect* boundsRect, SInt32 value, SInt32 minimum, SInt32 maximum, Boolean indeterminate, ControlRef* outControl);
+
+// Command IDs and properties
+OSStatus SetControlCommandID(ControlRef inControl, UInt32 inCommandID);
+OSStatus GetControlCommandID(ControlRef inControl, UInt32* outCommandID);
+OSStatus SetControlProperty(ControlRef control, OSType propertyCreator, OSType propertyTag, ByteCount propertySize, const void* propertyData);
+OSStatus GetControlProperty(ControlRef control, OSType propertyCreator, OSType propertyTag, ByteCount bufferSize, ByteCount* actualSize, void* propertyBuffer);
+OSStatus RemoveControlProperty(ControlRef control, OSType propertyCreator, OSType propertyTag);
+
+// Bevel button menus
+OSStatus GetBevelButtonMenuRef(ControlRef inButton, MenuRef* outRef);
+SInt16 GetBevelButtonMenuValue(ControlRef inButton, MenuItemIndex* outValue);
+OSStatus SetBevelButtonMenuValue(ControlRef inButton, MenuItemIndex inValue);
 
 #ifdef __cplusplus
 }

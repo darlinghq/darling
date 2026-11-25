@@ -81,6 +81,23 @@ OSStatus HIViewConvertPoint(HIPoint* ioPoint, HIViewRef inSourceView, HIViewRef 
 OSStatus HIViewConvertRect(HIRect* ioRect, HIViewRef inSourceView, HIViewRef inDestView);
 OSStatus HIViewSimulateClick(HIViewRef inView, HIViewPartCode inPartToClick, OptionBits inModifiers, ControlPartCode* outPartClicked);
 
+OSStatus HIViewRender(HIViewRef inView);
+HIViewRef HIViewGetFirstSubview(HIViewRef inView);
+HIViewRef HIViewGetLastSubview(HIViewRef inView);
+HIViewRef HIViewGetNextView(HIViewRef inView);
+HIViewRef HIViewGetPreviousView(HIViewRef inView);
+OSStatus HIViewSetZOrder(HIViewRef inView, HIViewZOrderOp inOp, HIViewRef inOther);
+OSStatus HIViewGetSubviewHit(HIViewRef inView, const HIPoint* inPoint, Boolean inDeep, HIViewRef* outView);
+OSStatus HIViewClick(HIViewRef inView, EventRef inEvent);
+Boolean HIViewIsActive(HIViewRef inView, Boolean* outIsLatentActive);
+OSStatus HIViewSetActivated(HIViewRef inView, Boolean inSetActivated);
+OSStatus HIViewSetCommandID(HIViewRef inView, UInt32 inCommandID);
+OSStatus HIViewGetCommandID(HIViewRef inView, UInt32* outCommandID);
+OSStatus HIViewSetBoundsOrigin(HIViewRef inView, CGFloat inX, CGFloat inY);
+Boolean HIViewIsLatentVisible(HIViewRef inView);
+OSStatus HIViewSetDrawingEnabled(HIViewRef inView, Boolean inEnabled);
+Boolean HIViewIsDrawingEnabled(HIViewRef inView);
+
 #ifdef __cplusplus
 }
 #endif
