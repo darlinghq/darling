@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <CoreAudio/CoreAudio.h>
+#include <CoreFoundation/CoreFoundation.h>
 
 int main(void)
 {
