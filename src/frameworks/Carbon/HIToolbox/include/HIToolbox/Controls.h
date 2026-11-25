@@ -229,7 +229,7 @@ ControlPartCode TrackControl(ControlRef theControl, Point startPoint, ControlAct
 ControlPartCode TestControl(ControlRef theControl, Point testPoint);
 ControlPartCode FindControl(Point testPoint, WindowRef theWindow, ControlRef* theControl);
 #endif
-OSStatus FindControlUnderMouse(Point inWhere, WindowRef inWindow, ControlPartCode* outPart);
+ControlRef FindControlUnderMouse(Point inWhere, WindowRef inWindow, ControlPartCode* outPart);
 
 // Control action functions
 #ifndef __LP64__

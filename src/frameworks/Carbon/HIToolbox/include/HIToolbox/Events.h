@@ -199,6 +199,39 @@ Boolean IsCmdChar(const EventRecord* event, short test);
 // an accent followed by a character that does not combine with it) and the character in bits 0-7;
 // *state holds the dead-key state, 0 when no accent is pending.
 UInt32 KeyTranslate(const void* transData, UInt16 keycode, UInt32* state);
+// The character codes of the keys that do not produce a printable character
+enum {
+	kNullCharCode = 0,
+	kHomeCharCode = 1,
+	kEnterCharCode = 3,
+	kEndCharCode = 4,
+	kHelpCharCode = 5,
+	kBellCharCode = 7,
+	kBackspaceCharCode = 8,
+	kTabCharCode = 9,
+	kLineFeedCharCode = 10,
+	kVerticalTabCharCode = 11,
+	kPageUpCharCode = 11,
+	kFormFeedCharCode = 12,
+	kPageDownCharCode = 12,
+	kReturnCharCode = 13,
+	kFunctionKeyCharCode = 16,
+	kCommandCharCode = 17,
+	kCheckCharCode = 18,
+	kDiamondCharCode = 19,
+	kAppleLogoCharCode = 20,
+	kEscapeCharCode = 27,
+	kClearCharCode = 27,
+	kLeftArrowCharCode = 28,
+	kRightArrowCharCode = 29,
+	kUpArrowCharCode = 30,
+	kDownArrowCharCode = 31,
+	kSpaceCharCode = 32,
+	kDeleteCharCode = 127,
+	kBulletCharCode = 165,
+	kNonBreakingSpaceCharCode = 202
+};
+
 // Returns true if a Command-period or Escape is pending in the event queue.
 Boolean CheckEventQueueForUserCancel(void);
 
