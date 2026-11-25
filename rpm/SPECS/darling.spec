@@ -7,6 +7,8 @@
 	%define commit_date 0
 %endif
 %global _buildshell /bin/bash
+# rpm on Debian and Ubuntu has no CMake macros (Fedora's come with cmake-rpm-macros)
+%{!?__cmake:%global __cmake /usr/bin/cmake}
 
 # As in debian/rules, darling-core-native (what runs on Linux) is built for every architecture with
 # DARLING_BUILD_MACHO=OFF, and the Mach-O part is noarch, with the i386, x86_64 and arm64 slices. The x86-64
