@@ -29,6 +29,7 @@
 
 #include <HIToolbox/CarbonEventsCore.h>
 #include "HIToolboxInternal.h"
+#include "HIToolboxPrivate.h"
 #include <HIToolbox/CarbonEvents.h>
 #include <CarbonCore/MacErrors.h>
 #include <AE/AEDataModel.h>
@@ -66,6 +67,7 @@ struct EventTarget
 {
 	struct EventHandlerEntry* handlers;  // newest first
 	struct EventTarget* next;            // the target behind this one
+	struct EventTarget* dynamicNext;     // the targets made by _HICreateEventTarget(), and those waiting to be freed
 };
 
 // What EventHandlerCallRef points to while a handler runs
@@ -80,9 +82,16 @@ struct HandlerCall
 // The standard handlers of the event dispatcher target. They are the oldest handlers, so every
 // handler an application installs sees an event before them. They cannot be removed.
 extern OSStatus _HIStandardRawEventHandler(EventHandlerCallRef call, EventRef event, void* userData);
+// The standard handler of the events of the windows: the events for a window go to the window's target
+// (MacWindows.c). Behind the raw one, so every handler of the application sees an event before them.
+extern OSStatus _HIStandardWindowEventHandler(EventHandlerCallRef call, EventRef event, void* userData);
+extern const EventTypeSpec _HIStandardWindowEventTypes[];
+static struct EventHandlerEntry g_standardWindowEventHandler = {
+	NULL, NULL, _HIStandardWindowEventHandler, NULL, (EventTypeSpec*) _HIStandardWindowEventTypes, kHIStandardWindowEventTypeCount, false
+};
 static EventTypeSpec g_standardRawEventTypes[1] = { { kHIEventClassRaw, kHIEventRawSystemDefined } };
 static struct EventHandlerEntry g_standardRawEventHandler = {
-	NULL, NULL, _HIStandardRawEventHandler, NULL, g_standardRawEventTypes, 1, false
+	&g_standardWindowEventHandler, NULL, _HIStandardRawEventHandler, NULL, g_standardRawEventTypes, 1, false
 };
 
 // The standard handler of the application target: the quit command ends the application event loop
@@ -548,15 +557,107 @@ OSStatus InvokeEventHandlerUPP(EventHandlerCallRef inHandlerCallRef, EventRef in
 	return userUPP(inHandlerCallRef, inEvent, inUserData);
 }
 
+// The targets of the objects (windows): made and disposed of by them
+static struct EventTarget* g_dynamicTargets;
+static struct EventTarget* g_removedTargets;   // disposed of while a dispatch was running
+
+// The targets in a fixed order: the three of the process, then the made ones. NULL after the last one.
+// Called with g_lock held.
+static struct EventTarget* nthTarget(int index)
+{
+	switch (index)
+	{
+		case 0: return &g_applicationTarget;
+		case 1: return &g_dispatcherTarget;
+		case 2: return &g_monitorTarget;
+	}
+	struct EventTarget* target = g_dynamicTargets;
+	for (index -= 3; target && index > 0; index--)
+		target = target->dynamicNext;
+	return target;
+}
+
 static bool isTarget(EventTargetRef target)
 {
-	return target == &g_applicationTarget || target == &g_dispatcherTarget || target == &g_monitorTarget;
+	if (target == &g_applicationTarget || target == &g_dispatcherTarget || target == &g_monitorTarget)
+		return true;
+
+	bool found = false;
+	pthread_mutex_lock(&g_lock);
+	for (struct EventTarget* t = g_dynamicTargets; t; t = t->dynamicNext)
+	{
+		if (t == target)
+		{
+			found = true;
+			break;
+		}
+	}
+	pthread_mutex_unlock(&g_lock);
+	return found;
 }
 
 static void freeHandler(struct EventHandlerEntry* handler)
 {
 	free(handler->types);
 	free(handler);
+}
+
+// A target of its own, behind which the events go on to next
+EventTargetRef _HICreateEventTarget(EventTargetRef next)
+{
+	struct EventTarget* target = calloc(1, sizeof(*target));
+
+	if (!target)
+		return NULL;
+	target->next = next;
+	pthread_mutex_lock(&g_lock);
+	target->dynamicNext = g_dynamicTargets;
+	g_dynamicTargets = target;
+	pthread_mutex_unlock(&g_lock);
+	return target;
+}
+
+// Disposes of a target and its handlers. A dispatch that is running may still stand on them: they
+// are freed when the last dispatch is over.
+void _HIDestroyEventTarget(EventTargetRef inTarget)
+{
+	struct EventTarget* target = inTarget;
+
+	pthread_mutex_lock(&g_lock);
+	for (struct EventTarget** link = &g_dynamicTargets; *link; link = &(*link)->dynamicNext)
+	{
+		if (*link == target)
+		{
+			*link = target->dynamicNext;
+			break;
+		}
+	}
+
+	struct EventHandlerEntry* handler = target->handlers;
+	target->handlers = NULL;
+	while (handler)
+	{
+		struct EventHandlerEntry* next = handler->next;
+
+		if (g_dispatchDepth > 0)
+		{
+			handler->removed = true;
+			handler->target = (struct EventTarget*) g_removedHandlers;
+			g_removedHandlers = handler;
+		}
+		else
+			freeHandler(handler);
+		handler = next;
+	}
+
+	if (g_dispatchDepth > 0)
+	{
+		target->dynamicNext = g_removedTargets;
+		g_removedTargets = target;
+	}
+	else
+		free(target);
+	pthread_mutex_unlock(&g_lock);
 }
 
 OSStatus InstallEventHandler(EventTargetRef inTarget, EventHandlerUPP inHandler, ItemCount inNumTypes, const EventTypeSpec* inList, void* inUserData, EventHandlerRef* outRef)
@@ -618,10 +719,10 @@ OSStatus RemoveEventHandler(EventHandlerRef inHandlerRef)
 		return paramErr;
 
 	pthread_mutex_lock(&g_lock);
-	struct EventTarget* targets[3] = { &g_applicationTarget, &g_dispatcherTarget, &g_monitorTarget };
-	for (int i = 0; i < 3 && result != noErr; i++)
+	struct EventTarget* scanned;
+	for (int i = 0; result != noErr && (scanned = nthTarget(i)) != NULL; i++)
 	{
-		for (struct EventHandlerEntry** link = &targets[i]->handlers; *link; link = &(*link)->next)
+		for (struct EventHandlerEntry** link = &scanned->handlers; *link; link = &(*link)->next)
 		{
 			if (*link != handler)
 				continue;
@@ -648,11 +749,11 @@ OSStatus RemoveEventHandler(EventHandlerRef inHandlerRef)
 // Called with g_lock held.
 static struct EventHandlerEntry* findInstalledHandler(EventHandlerRef ref)
 {
-	struct EventTarget* targets[3] = { &g_applicationTarget, &g_dispatcherTarget, &g_monitorTarget };
+	struct EventTarget* scanned;
 
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; (scanned = nthTarget(i)) != NULL; i++)
 	{
-		for (struct EventHandlerEntry* handler = targets[i]->handlers; handler; handler = handler->next)
+		for (struct EventHandlerEntry* handler = scanned->handlers; handler; handler = handler->next)
 		{
 			if (handler == ref && !handler->removed)
 				return handler;
@@ -800,6 +901,12 @@ static void endDispatch(void)
 			struct EventHandlerEntry* handler = g_removedHandlers;
 			g_removedHandlers = (struct EventHandlerEntry*) handler->target;
 			freeHandler(handler);
+		}
+		while (g_removedTargets)
+		{
+			struct EventTarget* target = g_removedTargets;
+			g_removedTargets = target->dynamicNext;
+			free(target);
 		}
 	}
 	pthread_mutex_unlock(&g_lock);

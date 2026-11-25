@@ -28,7 +28,7 @@ add_framework(HIToolbox
 		src/CarbonEventTargets.c
 		src/CarbonApplicationEvents.c
 		src/MacApplication.cpp
-		src/MacWindows.cpp
+		src/MacWindows.c
 		src/TextInputSources.mm
 		src/TextServices.c
 		src/IBCarbonRuntime.c
@@ -42,6 +42,7 @@ add_framework(HIToolbox
 		CoreText
 		HIServices
 		CoreServices
+		QD
 		system
 		cxx
 )
