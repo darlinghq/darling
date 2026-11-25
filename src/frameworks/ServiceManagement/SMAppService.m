@@ -22,6 +22,7 @@
 // or approval UI, so a registration lasts until the container stops and never needs user approval.
 
 #import <ServiceManagement/ServiceManagement.h>
+#import "SMInternal.h"
 #import <CoreServices/CoreServices.h>
 #include <launch.h>
 #include <errno.h>
@@ -59,8 +60,7 @@ static BOOL SMFail(NSError **error, NSInteger code, int posixError, NSString *de
 	return NO;
 }
 
-// Returns NULL for values a launchd job dictionary cannot hold.
-static launch_data_t SMLaunchDataFromObject(id object)
+launch_data_t SMLaunchDataFromObject(id object)
 {
 	if ([object isKindOfClass: [NSString class]])
 		return launch_data_new_string([object UTF8String]);
@@ -101,16 +101,21 @@ static launch_data_t SMLaunchDataFromObject(id object)
 	return NULL;
 }
 
-// Sends { key: value } to launchd (taking ownership of value) and returns the reply's errno, or -1 with
-// *ipcErrno set when launchd could not be reached. A dictionary reply (GetJob) counts as success.
-static int SMLaunchRequest(const char *key, launch_data_t value, int *ipcErrno)
+int SMLaunchRequestWithReply(const char *key, launch_data_t value, int *ipcErrno, launch_data_t *replyOut)
 {
-	launch_data_t request = launch_data_alloc(LAUNCH_DATA_DICTIONARY);
-	launch_data_dict_insert(request, value, key);
+	launch_data_t request;
+	if (value) {
+		request = launch_data_alloc(LAUNCH_DATA_DICTIONARY);
+		launch_data_dict_insert(request, value, key);
+	} else {
+		request = launch_data_new_string(key);
+	}
 	errno = 0;
 	launch_data_t reply = launch_msg(request);
 	*ipcErrno = errno;
 	launch_data_free(request);
+	if (replyOut)
+		*replyOut = NULL;
 	if (!reply)
 		return -1;
 
@@ -119,8 +124,17 @@ static int SMLaunchRequest(const char *key, launch_data_t value, int *ipcErrno)
 		result = launch_data_get_errno(reply);
 	else if (launch_data_get_type(reply) != LAUNCH_DATA_DICTIONARY)
 		result = EINVAL;
+	if (replyOut && result == 0) {
+		*replyOut = reply;
+		return 0;
+	}
 	launch_data_free(reply);
 	return result;
+}
+
+int SMLaunchRequest(const char *key, launch_data_t value, int *ipcErrno)
+{
+	return SMLaunchRequestWithReply(key, value, ipcErrno, NULL);
 }
 
 static SMJobState SMJobStateForLabel(NSString *label)

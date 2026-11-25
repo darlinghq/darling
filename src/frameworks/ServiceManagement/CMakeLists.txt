@@ -20,6 +20,7 @@ add_framework(ServiceManagement
 	SOURCES
 	  ServiceManagement.c
 	  SMAppService.m
+	  SMLegacy.m
 
 	DEPENDENCIES
 		system
