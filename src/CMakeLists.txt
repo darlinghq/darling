@@ -599,6 +599,7 @@ if (COMPONENT_gui)
 	add_subdirectory(external/TextEdit)
 	add_subdirectory(external/Console)
 	add_subdirectory(SystemPreferences)
+	add_subdirectory(prefpanes)
 
 	# not currently used by anything we build
 	add_subdirectory(external/dbuskit)
