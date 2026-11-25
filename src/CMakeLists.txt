@@ -317,6 +317,7 @@ endif()
 include(darling_lib)
 include(darling_static_lib)
 include(darling_bundle)
+include(darling_prefpane)
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include)
 
@@ -598,6 +599,7 @@ if (COMPONENT_gui)
 	add_subdirectory(external/TextEdit)
 	add_subdirectory(external/Console)
 	add_subdirectory(SystemPreferences)
+	add_subdirectory(prefpanes)
 
 	# not currently used by anything we build
 	add_subdirectory(external/dbuskit)
