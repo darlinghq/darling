@@ -885,10 +885,10 @@ Boolean IsWindowVisible(WindowRef window)
 	return IsValidWindowPtr(window) && window->visible;
 }
 
-OSStatus SelectWindow(WindowRef window)
+void SelectWindow(WindowRef window)
 {
 	if (!IsValidWindowPtr(window))
-		return errInvalidWindowPtr;
+		return;
 
 	pthread_mutex_lock(&g_lock);
 	unlinkWindow(window);
@@ -898,7 +898,6 @@ OSStatus SelectWindow(WindowRef window)
 	if (window->visible)
 		CGSOrderWindow(connection(), window->cgsWindow, kCGSOrderAbove, 0);
 	activateWindow(window);
-	return noErr;
 }
 
 void BringToFront(WindowRef window)

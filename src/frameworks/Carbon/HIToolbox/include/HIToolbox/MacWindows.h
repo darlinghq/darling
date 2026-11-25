@@ -183,7 +183,7 @@ void HideWindow(WindowRef wnd);
 void ShowHide(WindowRef wnd, Boolean showFlag);
 Boolean IsWindowVisible(WindowRef wnd);
 
-OSStatus SelectWindow(WindowRef a);
+void SelectWindow(WindowRef a);
 void BringToFront(WindowRef window);
 void SendBehind(WindowRef window, WindowRef behindWindow);
 WindowRef FrontWindow(void);

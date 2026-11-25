@@ -594,7 +594,7 @@ int main(int argc, char** argv)
 	CHECK(FrontNonFloatingWindow() == doc);
 	CHECK(ActiveNonFloatingWindow() == doc);
 	CHECK(IsWindowActive(doc));
-	CHECK(SelectWindow(doc) == noErr);
+	SelectWindow(doc);
 	CHECK(FrontWindow() == pal);
 	CHECK(GetNextWindow(pal) == doc);
 
@@ -603,11 +603,11 @@ int main(int argc, char** argv)
 	listen(doc2);
 	g_counts[kEventWindowDeactivated] = 0;
 	ShowWindow(doc2);
-	CHECK(SelectWindow(doc2) == noErr);
+	SelectWindow(doc2);
 	CHECK(FrontNonFloatingWindow() == doc2);
 	CHECK(IsWindowActive(doc2) && !IsWindowActive(doc));
 	CHECK(g_counts[kEventWindowDeactivated] == 1);
-	CHECK(SelectWindow(doc) == noErr);
+	SelectWindow(doc);
 	CHECK(FrontNonFloatingWindow() == doc);
 	CHECK(IsWindowActive(doc) && !IsWindowActive(doc2));
 	DisposeWindow(doc2);
