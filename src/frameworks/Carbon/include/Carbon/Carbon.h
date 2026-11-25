@@ -49,5 +49,8 @@
 #include <HIToolbox/TextServices.h>
 
 #include <CarbonSound/CarbonSound.h>
+#include <CommonPanels/CommonPanels.h>
+#include <Print/Print.h>
+#include <NavigationServices/NavigationServices.h>
 
 #endif
