@@ -20,13 +20,14 @@
 // Windows from nibs. The nib reader gives the description of the IBCarbonWindow object with its
 // controls (see IBCarbonNib.h); making the window and the controls out of it is up to the Window
 // Manager and the Control Manager, through _HICreateWindowFromNibDescription(): the Window Manager makes
-// the window, the Control Manager (not there yet) will make its controls.
+// the window, the Control Manager makes its controls.
 
 #include <HIToolbox/IBCarbonRuntime.h>
 #include <HIToolbox/MacWindows.h>
 #include <stdio.h>
 #include <CarbonCore/MacErrors.h>
 #include "IBCarbonNib.h"
+#include "ControlsInternal.h"
 
 // The attributes of a nib window object: a boolean that is not in the nib is false
 static bool nibFlag(CFDictionaryRef description, CFStringRef key, bool absent)
@@ -102,6 +103,17 @@ OSStatus _HICreateWindowFromNibDescription(CFDictionaryRef description, WindowRe
 
 	if (title && CFGetTypeID(title) == CFStringGetTypeID())
 		SetWindowTitleWithCFString(window, title);
+
+	int brush;
+
+	if (nibInt(description, CFSTR("themeBrush"), &brush))
+		_HIWindowSetBackgroundBrush(window, (SInt16) brush);
+
+	// The controls of the window are those below its root control
+	CFDictionaryRef rootControl = CFDictionaryGetValue(description, CFSTR("rootControl"));
+
+	if (rootControl && CFGetTypeID(rootControl) == CFDictionaryGetTypeID())
+		_HICreateControlsFromNibDescription(rootControl, window);
 	*outWindow = window;
 	return noErr;
 }
