@@ -78,3 +78,15 @@ void UnionRect(const Rect *src1, const Rect *src2, Rect *dstRect) {
 	}
 	*dstRect = result;
 }
+
+#ifndef __LP64__
+void AddPt(Point src, Point *dst) {
+	dst->h += src.h;
+	dst->v += src.v;
+}
+
+void SubPt(Point src, Point *dst) {
+	dst->h -= src.h;
+	dst->v -= src.v;
+}
+#endif
