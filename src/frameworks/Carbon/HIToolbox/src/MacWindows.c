@@ -267,6 +267,14 @@ static void setActive(WindowRef window, bool active)
 	// has not been observed (no login session on the Mac that could run it).
 	// Test: test_quirk_activation_events in tests/src/carbon_windows.c
 	sendWindowEvent(window, active ? kEventWindowActivated : kEventWindowDeactivated, NULL);
+#ifndef __LP64__
+	// QUIRK: in the 32-bit API the event is sent only to a window that has the standard handler
+	// (kWindowStandardHandlerAttribute). Not documented. Evidence: black-box observation on Mojave 10.14.4
+	// i386 (tier 2, mj2.c: with and without the standard handler and the compositing attribute).
+	// Test: test_quirk_activation_events in tests/src/carbon_windows.c
+	if (!(window->attributes & kWindowStandardHandlerAttribute))
+		return;
+#endif
 	sendWindowEvent(window, active ? kEventWindowHandleActivate : kEventWindowHandleDeactivate, NULL);
 }
 
@@ -628,8 +636,9 @@ static WindowAttributes automaticAttributesOfClass(WindowClass cls)
 // black-box observation on macOS 26.7.3 x86_64 (tier 2, every class against every attribute,
 // mac-probes/carbon-windows/probe-attrs64.c) and on Mojave 10.14.4 x86_64 for the combinations of the
 // close box, the standard document attributes, the standard handler and ignore-clicks with compositing
-// (tier 2, probe-windows64.c, which got -5601 or no window server for each class); the 32-bit API is not
-// observed and gets the same rules except for the compositing.
+// (tier 2, probe-windows64.c, which got -5601 or no window server for each class); the 32-bit API got the
+// same attributes of the class on Mojave 10.14.4 i386 (tier 2, mj.c: every class against every attribute), and the
+// same rules except for the compositing.
 // Test: test_quirk_window_attributes_for_class in tests/src/carbon_windows.c
 static OSStatus checkAttributesOfClass(WindowClass cls, WindowAttributes attributes)
 {
@@ -652,6 +661,10 @@ static Rect frameOfClass(WindowClass cls, WindowAttributes attributes)
 		case kDocumentWindowClass:
 		case kMovableModalWindowClass:
 		case kMovableAlertWindowClass:
+			// A metal window has a border of 5 points on the other three sides (macOS 26.7.3 x86_64 and
+			// Mojave 10.14.4 i386, tier 2, mj.c and probe-attrs64.c)
+			if (attributes & kWindowMetalAttribute)
+				return (Rect) { 22, 5, 5, 5 };
 			return (Rect) { (attributes & kWindowNoTitleBarAttribute) ? 0 : 22, 0, 0, 0 };
 		case kFloatingWindowClass:
 		case kUtilityWindowClass:
@@ -669,6 +682,7 @@ static Rect frameOfClass(WindowClass cls, WindowAttributes attributes)
 
 static const EventTypeSpec kDefaultHandlerTypes[] = {
 	{ kEventClassWindow, kEventWindowUpdate },
+	{ kEventClassWindow, kEventWindowPaint },
 	{ kEventClassWindow, kEventWindowClose },
 	{ kEventClassWindow, kEventWindowDrawContent },
 	{ kEventClassWindow, kEventWindowClickContentRgn },
@@ -693,9 +707,7 @@ OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rec
 	status = checkAttributesOfClass(cls, attr);
 	if (status != noErr)
 		return status;
-#ifdef __LP64__
 	attr |= automaticAttributesOfClass(cls);
-#endif
 
 	if (!g_eventProcRegistered)
 	{
@@ -865,7 +877,20 @@ void ShowWindow(WindowRef window)
 	RectRgn(rect, &all);
 	UnionRgn(window->updateRegion, rect, window->updateRegion);
 	DisposeRgn(rect);
+#ifndef __LP64__
+	// QUIRK: a window that is shown in the 32-bit API is asked to paint with kEventWindowPaint, which the
+	// default handling answers with kEventWindowDrawContent; no kEventWindowUpdate comes (that is for the
+	// invalidation of a shown window). Not documented. Evidence: black-box observation on Mojave 10.14.4 i386
+	// (tier 2, mj.c).
+	// Test: test_quirk_window_events_32bit in tests/src/carbon_windows.c
+	if (!window->updatePending && !(window->attributes & kWindowNoUpdatesAttribute))
+	{
+		window->updatePending = true;
+		postWindowEvent(window, kEventWindowPaint, NULL);
+	}
+#else
 	scheduleUpdate(window);
+#endif
 	sendWindowEvent(window, kEventWindowShown, NULL);
 
 	// With no active window the window that appears is it
@@ -907,10 +932,10 @@ Boolean IsWindowVisible(WindowRef window)
 	return IsValidWindowPtr(window) && window->visible;
 }
 
-OSStatus SelectWindow(WindowRef window)
+void SelectWindow(WindowRef window)
 {
 	if (!IsValidWindowPtr(window))
-		return errInvalidWindowPtr;
+		return;
 
 	pthread_mutex_lock(&g_lock);
 	unlinkWindow(window);
@@ -920,7 +945,6 @@ OSStatus SelectWindow(WindowRef window)
 	if (window->visible)
 		CGSOrderWindow(connection(), window->cgsWindow, kCGSOrderAbove, 0);
 	activateWindow(window);
-	return noErr;
 }
 
 void BringToFront(WindowRef window)
@@ -1004,6 +1028,13 @@ WindowRef GetNextWindow(WindowRef window)
 
 Boolean IsWindowActive(WindowRef window)
 {
+#ifndef __LP64__
+	// QUIRK: a shown overlay window is active in the 32-bit API, without being the window that is active for the
+	// application. Not documented. Evidence: black-box observation on Mojave 10.14.4 i386 (tier 2, mj2.c).
+	// Test: test_quirk_overlay_window_active in tests/src/carbon_windows.c
+	if (IsValidWindowPtr(window) && window->windowClass == kOverlayWindowClass && window->visible)
+		return true;
+#endif
 	return IsValidWindowPtr(window) && window->active;
 }
 
@@ -1120,7 +1151,16 @@ OSStatus SetWindowProperty(WindowRef window, OSType propertyCreator, OSType prop
 		if (propertyBuffer)
 			memcpy(property->data, propertyBuffer, propertySize);
 		else
+		{
+#ifndef __LP64__
+			// QUIRK: in the 32-bit API the property has no data, and its size is 0, when the buffer is NULL.
+			// Not documented. Evidence: black-box observation on Mojave 10.14.4 i386 (tier 2, mj2.c).
+			// Test: test_quirk_window_property_edges in tests/src/carbon_windows.c
+			property->size = 0;
+#else
 			memset(property->data, 0, propertySize);
+#endif
+		}
 	}
 
 	// A property that is already there is replaced
@@ -1257,7 +1297,21 @@ OSStatus GetWindowBounds(WindowRef window, WindowRegionCode regionCode, Rect* gl
 			return noErr;
 		case kWindowTitleBarRgn:
 			if (!hasTitleBar(window))
+			{
+#ifndef __LP64__
+				// QUIRK: the title bar region of an alert or modal dialog window, which has no title bar, is an
+				// empty rectangle in the 32-bit API, not an error; the other classes without a title bar give
+				// errWindowRegionCodeInvalid (so does the 64-bit API of macOS 26.7.3). Not documented. Evidence:
+				// black-box observation on Mojave 10.14.4 i386 (tier 2, mj.c: every class).
+				// Test: test_quirk_window_structure_of_class in tests/src/carbon_windows.c
+				if (window->windowClass == kAlertWindowClass || window->windowClass == kModalWindowClass)
+				{
+					*globalBounds = (Rect) { 0, 0, 0, 0 };
+					return noErr;
+				}
+#endif
 				return errWindowRegionCodeInvalid;
+			}
 			*globalBounds = (Rect) { window->content.top - frame.top, window->content.left, window->content.top, window->content.right };
 			return noErr;
 		default:
@@ -1722,6 +1776,7 @@ static OSStatus windowDefaultHandler(EventHandlerCallRef call, EventRef event, v
 
 	switch (GetEventKind(event))
 	{
+		case kEventWindowPaint:
 		case kEventWindowUpdate:
 			window->updatePending = false;
 			if (window->compositing)
@@ -1896,6 +1951,7 @@ const EventTypeSpec _HIStandardWindowEventTypes[kHIStandardWindowEventTypeCount]
 	{ kEventClassKeyboard, kEventRawKeyUp },
 	{ kEventClassKeyboard, kEventRawKeyModifiersChanged },
 	{ kEventClassWindow, kEventWindowUpdate },
+	{ kEventClassWindow, kEventWindowPaint },
 	{ kEventClassWindow, kEventWindowDrawContent },
 	{ kEventClassWindow, kEventWindowClose },
 	{ kEventClassWindow, kEventWindowClosed },

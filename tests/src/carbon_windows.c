@@ -105,7 +105,7 @@ static OSStatus handler(EventHandlerCallRef call, EventRef event, void* userData
 }
 
 static const EventTypeSpec kTypes[] = {
-	{ kEventClassWindow, kEventWindowUpdate }, { kEventClassWindow, kEventWindowDrawContent },
+	{ kEventClassWindow, kEventWindowUpdate }, { kEventClassWindow, kEventWindowDrawContent }, { kEventClassWindow, kEventWindowPaint },
 	{ kEventClassWindow, kEventWindowActivated }, { kEventClassWindow, kEventWindowDeactivated },
 	{ kEventClassWindow, kEventWindowShowing }, { kEventClassWindow, kEventWindowShown },
 	{ kEventClassWindow, kEventWindowHiding }, { kEventClassWindow, kEventWindowHidden },
@@ -190,12 +190,21 @@ static void test_quirk_activation_events(void)
 	ShowWindow(w);
 	int showing = logIndexOf(kEventWindowShowing, 0), shown = logIndexOf(kEventWindowShown, 0);
 	int activated = logIndexOf(kEventWindowActivated, 0), handle = logIndexOf(kEventWindowHandleActivate, 0);
+#ifdef __LP64__
 	CHECK(showing >= 0 && shown > showing && activated > shown && handle == activated + 1);
+#else
+	// no standard handler: no kEventWindowHandleActivate (observed on Mojave 10.14.4 i386)
+	CHECK(showing >= 0 && shown > showing && activated > shown && handle < 0);
+#endif
 	g_eventCount = 0;
 	HideWindow(w);
 	int hiding = logIndexOf(kEventWindowHiding, 0), hidden = logIndexOf(kEventWindowHidden, 0);
 	int deactivated = logIndexOf(kEventWindowDeactivated, 0), handleDeactivate = logIndexOf(kEventWindowHandleDeactivate, 0);
+#ifdef __LP64__
 	CHECK(hiding >= 0 && hidden > hiding && deactivated > hidden && handleDeactivate == deactivated + 1);
+#else
+	CHECK(hiding >= 0 && hidden > hiding && deactivated > hidden && handleDeactivate < 0);
+#endif
 
 	// And disposing of the window closes it (QUIRK: DisposeWindow sends kEventWindowClosed)
 	g_eventCount = 0;
@@ -269,6 +278,9 @@ static void test_quirk_window_structure_of_class(void)
 	if (g_canPlace)
 		CHECK(structure.top == 72 && structure.left == 60);
 	DisposeWindow(w);
+	CHECK(CreateNewWindow(kDocumentWindowClass, kWindowMetalAttribute | COMP, &r, &w) == noErr);
+	CHECK(GetWindowBounds(w, kWindowStructureRgn, &structure) == noErr && structure.top == 78 && structure.left == 95 && structure.bottom == 205 && structure.right == 305);
+	DisposeWindow(w);
 	CHECK(CreateNewWindow(kFloatingWindowClass, COMP, &r, &w) == noErr);
 	CHECK(GetWindowBounds(w, kWindowStructureRgn, &structure) == noErr && structure.top == 88);
 	DisposeWindow(w);
@@ -278,6 +290,12 @@ static void test_quirk_window_structure_of_class(void)
 	DisposeWindow(w);
 	CHECK(CreateNewWindow(kAlertWindowClass, COMP, &r, &w) == noErr);
 	CHECK(GetWindowBounds(w, kWindowStructureRgn, &structure) == noErr && structure.top == 100);
+#ifdef __LP64__
+	CHECK(GetWindowBounds(w, kWindowTitleBarRgn, &structure) == errWindowRegionCodeInvalid);
+#else
+	// an empty rectangle for an alert (and a modal dialog) in the 32-bit API (observed on Mojave 10.14.4 i386)
+	CHECK(GetWindowBounds(w, kWindowTitleBarRgn, &structure) == noErr && structure.top == 0 && structure.bottom == 0 && structure.left == 0 && structure.right == 0);
+#endif
 	DisposeWindow(w);
 }
 
@@ -331,7 +349,13 @@ static void test_quirk_window_property_edges(void)
 	CHECK(actual == 4 && buffer[0] == 0xEF && buffer[1] == 0xBE && buffer[2] == 0xEE);
 	CHECK(GetWindowProperty(w, 'DARL', 'prop', 2, NULL, buffer) == paramErr);	// and nowhere to tell the size
 	CHECK(SetWindowProperty(w, 'DARL', 'zero', 4, NULL) == noErr);
+#ifdef __LP64__
 	CHECK(GetWindowProperty(w, 'DARL', 'zero', 4, &actual, buffer) == noErr && actual == 4 && buffer[0] == 0 && buffer[3] == 0);
+#else
+	// no data and no size in the 32-bit API (observed on Mojave 10.14.4 i386)
+	memset(buffer, 0xEE, sizeof(buffer));
+	CHECK(GetWindowProperty(w, 'DARL', 'zero', 4, &actual, buffer) == noErr && actual == 0 && buffer[0] == 0xEE);
+#endif
 	CHECK(RemoveWindowProperty(w, 'DARL', 'prop') == noErr);
 	CHECK(RemoveWindowProperty(w, 'DARL', 'prop') == noErr);	// not there any more
 	DisposeWindow(w);
@@ -412,7 +436,8 @@ int main(int argc, char** argv)
 	// the compositing attribute and the attribute of the class (QUIRK: see test_quirk_window_attributes_for_class)
 	CHECK(GetWindowAttributes(doc, &attrs) == noErr && attrs == (kWindowStandardDocumentAttributes | kWindowStandardHandlerAttribute | COMP | kWindowInWindowMenuAttribute));
 #else
-	CHECK(GetWindowAttributes(doc, &attrs) == noErr && attrs == (kWindowStandardDocumentAttributes | kWindowStandardHandlerAttribute));
+	// the attribute of the class too (observed on Mojave 10.14.4 i386)
+	CHECK(GetWindowAttributes(doc, &attrs) == noErr && attrs == (kWindowStandardDocumentAttributes | kWindowStandardHandlerAttribute | kWindowInWindowMenuAttribute));
 #endif
 
 	Rect content, structure, portBounds;
@@ -495,6 +520,8 @@ int main(int argc, char** argv)
 	CHECK(IsWindowActive(doc));
 #ifndef __LP64__
 	CHECK(g_counts[kEventWindowDrawContent] == 1);
+	// test_quirk_window_events_32bit: a shown window gets kEventWindowPaint, not kEventWindowUpdate (Mojave i386)
+	CHECK(g_counts[kEventWindowPaint] == 1 && g_counts[kEventWindowUpdate] == 0);
 
 	size_t width, height;
 	unsigned char* pixels = readWindowPixels(doc, &width, &height);
@@ -567,7 +594,7 @@ int main(int argc, char** argv)
 	CHECK(FrontNonFloatingWindow() == doc);
 	CHECK(ActiveNonFloatingWindow() == doc);
 	CHECK(IsWindowActive(doc));
-	CHECK(SelectWindow(doc) == noErr);
+	SelectWindow(doc);
 	CHECK(FrontWindow() == pal);
 	CHECK(GetNextWindow(pal) == doc);
 
@@ -576,11 +603,11 @@ int main(int argc, char** argv)
 	listen(doc2);
 	g_counts[kEventWindowDeactivated] = 0;
 	ShowWindow(doc2);
-	CHECK(SelectWindow(doc2) == noErr);
+	SelectWindow(doc2);
 	CHECK(FrontNonFloatingWindow() == doc2);
 	CHECK(IsWindowActive(doc2) && !IsWindowActive(doc));
 	CHECK(g_counts[kEventWindowDeactivated] == 1);
-	CHECK(SelectWindow(doc) == noErr);
+	SelectWindow(doc);
 	CHECK(FrontNonFloatingWindow() == doc);
 	CHECK(IsWindowActive(doc) && !IsWindowActive(doc2));
 	DisposeWindow(doc2);
@@ -592,7 +619,12 @@ int main(int argc, char** argv)
 	ShowWindow(over);
 	spin(300);
 	CHECK(IsWindowVisible(over));
+#ifdef __LP64__
 	CHECK(!IsWindowActive(over));
+#else
+	// test_quirk_overlay_window_active: it is active in the 32-bit API (observed on Mojave 10.14.4 i386)
+	CHECK(IsWindowActive(over));
+#endif
 	CHECK(FrontNonFloatingWindow() == doc);
 #ifndef __LP64__
 	{
