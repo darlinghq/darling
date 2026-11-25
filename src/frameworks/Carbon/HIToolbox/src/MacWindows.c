@@ -589,8 +589,9 @@ static WindowAttributes automaticAttributesOfClass(WindowClass cls)
 // black-box observation on macOS 26.7.3 x86_64 (tier 2, every class against every attribute,
 // mac-probes/carbon-windows/probe-attrs64.c) and on Mojave 10.14.4 x86_64 for the combinations of the
 // close box, the standard document attributes, the standard handler and ignore-clicks with compositing
-// (tier 2, probe-windows64.c, which got -5601 or no window server for each class); the 32-bit API is not
-// observed and gets the same rules except for the compositing.
+// (tier 2, probe-windows64.c, which got -5601 or no window server for each class); the 32-bit API got the
+// same attributes of the class on Mojave 10.14.4 i386 (tier 2, mj.c: every class against every attribute), and the
+// same rules except for the compositing.
 // Test: test_quirk_window_attributes_for_class in tests/src/carbon_windows.c
 static OSStatus checkAttributesOfClass(WindowClass cls, WindowAttributes attributes)
 {
@@ -652,9 +653,7 @@ OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rec
 	status = checkAttributesOfClass(cls, attr);
 	if (status != noErr)
 		return status;
-#ifdef __LP64__
 	attr |= automaticAttributesOfClass(cls);
-#endif
 
 	if (!g_eventProcRegistered)
 	{

@@ -412,7 +412,8 @@ int main(int argc, char** argv)
 	// the compositing attribute and the attribute of the class (QUIRK: see test_quirk_window_attributes_for_class)
 	CHECK(GetWindowAttributes(doc, &attrs) == noErr && attrs == (kWindowStandardDocumentAttributes | kWindowStandardHandlerAttribute | COMP | kWindowInWindowMenuAttribute));
 #else
-	CHECK(GetWindowAttributes(doc, &attrs) == noErr && attrs == (kWindowStandardDocumentAttributes | kWindowStandardHandlerAttribute));
+	// the attribute of the class too (observed on Mojave 10.14.4 i386)
+	CHECK(GetWindowAttributes(doc, &attrs) == noErr && attrs == (kWindowStandardDocumentAttributes | kWindowStandardHandlerAttribute | kWindowInWindowMenuAttribute));
 #endif
 
 	Rect content, structure, portBounds;
