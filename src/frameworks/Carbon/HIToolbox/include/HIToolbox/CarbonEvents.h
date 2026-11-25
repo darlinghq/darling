@@ -233,7 +233,6 @@ enum {
 	typeHIRect = 'hirc',
 	typeHIShapeRef = 'shap',
 	typeHISize = 'hisz',
-	typeMenuRef = 'menu',
 	typeQDPoint = 'QDpt',
 	typeQDRectangle = 'qdrt',
 	typeQDRgnHandle = 'rgnh',

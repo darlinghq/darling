@@ -27,6 +27,7 @@
 #include <HIToolbox/CarbonEventsCore.h>
 #include <HIToolbox/CarbonEvents.h>
 #include "HIToolboxInternal.h"
+#include "MenusInternal.h"
 #include "HIToolboxPrivate.h"
 #include <CarbonCore/MacErrors.h>
 
@@ -341,6 +342,12 @@ OSStatus _HIStandardApplicationHandler(EventHandlerCallRef call, EventRef event,
 {
 	HICommand command;
 
+	// Command-key equivalents of the menu bar and a click in the menu bar window, which no
+	// handler of the application took
+	if (event->eventClass == kEventClassKeyboard && (event->kind == kEventRawKeyDown || event->kind == kEventRawKeyRepeat))
+		return _HIHandleKeyEquivalent(event);
+	if (event->eventClass == kEventClassMouse && event->kind == kEventMouseDown)
+		return _HIHandleMenuBarMouseDown(event);
 	if (event->eventClass != kEventClassCommand || event->kind != kEventCommandProcess)
 		return eventNotHandledErr;
 	if (GetEventParameter(event, kEventParamDirectObject, typeHICommand, NULL, sizeof(command), NULL, &command) != noErr)

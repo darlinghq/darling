@@ -1406,14 +1406,14 @@ OSStatus _HIStandardWindowEventHandler(EventHandlerCallRef call, EventRef event,
 		if (GetEventParameter(event, kEventParamDirectObject, typeWindowRef, NULL, sizeof(window), NULL, &window) != noErr ||
 			!IsValidWindowPtr(window))
 			return eventNotHandledErr;
-		return SendEventToEventTarget(event, window->target);
+		return SendEventToEventTargetWithOptions(event, window->target, kEventTargetDontPropagate);
 	}
 
 	if (eventClass == kEventClassKeyboard)
 	{
 		if (!g_activeWindow)
 			return eventNotHandledErr;
-		return SendEventToEventTarget(event, g_activeWindow->target);
+		return SendEventToEventTargetWithOptions(event, g_activeWindow->target, kEventTargetDontPropagate);
 	}
 
 	// The mouse
@@ -1447,7 +1447,8 @@ OSStatus _HIStandardWindowEventHandler(EventHandlerCallRef call, EventRef event,
 	SetEventParameter(event, kEventParamWindowPartCode, typeWindowPartCode, sizeof(part), &part);
 	SetEventParameter(event, kEventParamWindowMouseLocation, typeHIPoint, sizeof(inWindow), &inWindow);
 
-	OSStatus result = SendEventToEventTarget(event, window->target);
+	// Only the window's own handlers: the application's come next in the dispatcher's chain
+	OSStatus result = SendEventToEventTargetWithOptions(event, window->target, kEventTargetDontPropagate);
 
 	if (result == eventNotHandledErr && kind == kEventMouseDown)
 	{
