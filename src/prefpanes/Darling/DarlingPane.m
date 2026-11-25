@@ -77,6 +77,154 @@ static const CGFloat kStatusHeight = 30;
 - (void)handleSystemPreferencesAnchor:(NSString *)anchor;
 @end
 
+#pragma mark Section icons
+
+// The icons of the section list are drawn here: a coloured rounded square with a white glyph, 18
+// points square, so they look the same on the grey and the accent highlight. (They are not
+// template images, which would need the highlight to invert them.)
+static const CGFloat kIconSize = 18;
+
+static NSBezierPath *RoundedRect(NSRect r, CGFloat radius)
+{
+    return [NSBezierPath bezierPathWithRoundedRect:r xRadius:radius yRadius:radius];
+}
+
+static void DrawGlyph(NSString *identifier)
+{
+    NSColor *white = [NSColor whiteColor];
+    [white setFill];
+    [white setStroke];
+    NSBezierPath *p;
+    if ([identifier isEqualToString:@"keyboard"]) {
+        // three rows of keys
+        for (int row = 0; row < 3; row++) {
+            for (int k = 0; k < 4; k++) {
+                CGFloat x = 3 + k * 3.25 + (row == 1 ? 1.2 : 0);
+                if (row == 2 && (k == 0 || k == 3))
+                    continue;
+                [[NSBezierPath bezierPathWithRect:NSMakeRect(x, 4.5 + row * 3.6, 2.2, 2.2)] fill];
+            }
+        }
+        [[NSBezierPath bezierPathWithRect:NSMakeRect(6, 4.5, 6, 2)] fill];
+    } else if ([identifier isEqualToString:@"display"]) {
+        p = RoundedRect(NSMakeRect(3, 6.5, 12, 8), 1.2);
+        [p setLineWidth:1.4];
+        [p stroke];
+        [[NSBezierPath bezierPathWithRect:NSMakeRect(6, 3.5, 6, 1.4)] fill];
+        [[NSBezierPath bezierPathWithRect:NSMakeRect(8.3, 4.8, 1.4, 1.7)] fill];
+    } else if ([identifier isEqualToString:@"files"]) {
+        p = [NSBezierPath bezierPath];
+        [p moveToPoint:NSMakePoint(3, 4)];
+        [p lineToPoint:NSMakePoint(3, 14)];
+        [p lineToPoint:NSMakePoint(7.5, 14)];
+        [p lineToPoint:NSMakePoint(9, 12)];
+        [p lineToPoint:NSMakePoint(15, 12)];
+        [p lineToPoint:NSMakePoint(15, 4)];
+        [p closePath];
+        [p fill];
+    } else if ([identifier isEqualToString:@"graphics"]) {
+        // a chip: a square with pins
+        [[NSBezierPath bezierPathWithRect:NSMakeRect(5.5, 5.5, 7, 7)] fill];
+        p = [NSBezierPath bezierPath];
+        [p setLineWidth:1.2];
+        for (int i = 0; i < 3; i++) {
+            CGFloat c = 6.8 + i * 2.2;
+            [p moveToPoint:NSMakePoint(c, 3.5)]; [p lineToPoint:NSMakePoint(c, 5.5)];
+            [p moveToPoint:NSMakePoint(c, 12.5)]; [p lineToPoint:NSMakePoint(c, 14.5)];
+            [p moveToPoint:NSMakePoint(3.5, c)]; [p lineToPoint:NSMakePoint(5.5, c)];
+            [p moveToPoint:NSMakePoint(12.5, c)]; [p lineToPoint:NSMakePoint(14.5, c)];
+        }
+        [p stroke];
+    } else if ([identifier isEqualToString:@"identity"]) {
+        // a card with a head and two lines
+        p = RoundedRect(NSMakeRect(2.5, 4.5, 13, 9), 1.5);
+        [p setLineWidth:1.2];
+        [p stroke];
+        [[NSBezierPath bezierPathWithOvalInRect:NSMakeRect(4.5, 8.2, 3.4, 3.4)] fill];
+        [[NSBezierPath bezierPathWithRect:NSMakeRect(9.5, 9.8, 4, 1.2)] fill];
+        [[NSBezierPath bezierPathWithRect:NSMakeRect(9.5, 7.4, 4, 1.2)] fill];
+    } else if ([identifier isEqualToString:@"security"]) {
+        // a padlock
+        p = [NSBezierPath bezierPath];
+        [p setLineWidth:1.5];
+        [p appendBezierPathWithArcWithCenter:NSMakePoint(9, 10.5) radius:3 startAngle:0 endAngle:180];
+        [p stroke];
+        [RoundedRect(NSMakeRect(4.5, 3.8, 9, 6.6), 1.2) fill];
+    } else if ([identifier isEqualToString:@"metal"]) {
+        // bars of a chart
+        [[NSBezierPath bezierPathWithRect:NSMakeRect(3.5, 4, 3, 5)] fill];
+        [[NSBezierPath bezierPathWithRect:NSMakeRect(7.5, 4, 3, 9)] fill];
+        [[NSBezierPath bezierPathWithRect:NSMakeRect(11.5, 4, 3, 7)] fill];
+    } else {
+        // applications: a grid of four squares
+        [RoundedRect(NSMakeRect(3.5, 3.5, 5, 5), 1) fill];
+        [RoundedRect(NSMakeRect(9.5, 3.5, 5, 5), 1) fill];
+        [RoundedRect(NSMakeRect(3.5, 9.5, 5, 5), 1) fill];
+        [RoundedRect(NSMakeRect(9.5, 9.5, 5, 5), 1) fill];
+    }
+}
+
+static NSImage *DrawIconForSection(NSString *identifier)
+{
+    NSDictionary *colors = @{
+        @"keyboard": [NSColor colorWithCalibratedRed:0.55 green:0.56 blue:0.60 alpha:1],
+        @"display": [NSColor colorWithCalibratedRed:0.22 green:0.47 blue:0.90 alpha:1],
+        @"files": [NSColor colorWithCalibratedRed:0.93 green:0.62 blue:0.13 alpha:1],
+        @"graphics": [NSColor colorWithCalibratedRed:0.20 green:0.62 blue:0.36 alpha:1],
+        @"identity": [NSColor colorWithCalibratedRed:0.55 green:0.35 blue:0.78 alpha:1],
+        @"security": [NSColor colorWithCalibratedRed:0.82 green:0.25 blue:0.25 alpha:1],
+        @"metal": [NSColor colorWithCalibratedRed:0.18 green:0.58 blue:0.66 alpha:1],
+        @"applications": [NSColor colorWithCalibratedRed:0.90 green:0.42 blue:0.20 alpha:1],
+    };
+    NSImage *image = [[NSImage alloc] initWithSize:NSMakeSize(kIconSize, kIconSize)];
+    [image lockFocus];
+    [colors[identifier] ?: [NSColor grayColor] setFill];
+    [RoundedRect(NSMakeRect(0.5, 0.5, kIconSize - 1, kIconSize - 1), 4) fill];
+    DrawGlyph(identifier);
+    [image unlockFocus];
+    return image;
+}
+
+static NSImage *IconForSection(NSString *identifier)
+{
+    static NSMutableDictionary *icons;
+    if (icons == nil)
+        icons = [NSMutableDictionary dictionary];
+    if (icons[identifier] == nil)
+        icons[identifier] = DrawIconForSection(identifier);
+    return icons[identifier];
+}
+
+// The cell of the list: the section's icon, then its title.
+@interface DPSidebarCell : NSTextFieldCell {
+    NSImage *_icon;
+}
+@end
+
+@implementation DPSidebarCell
+- (NSImage *)image { return _icon; }
+- (void)setImage:(NSImage *)image { _icon = image; }
+
+- (id)copyWithZone:(NSZone *)zone
+{
+    DPSidebarCell *copy = [super copyWithZone:zone];
+    copy->_icon = _icon;
+    return copy;
+}
+
+- (void)drawInteriorWithFrame:(NSRect)frame inView:(NSView *)view
+{
+    NSRect text = frame;
+    if (_icon != nil) {
+        NSRect icon = NSMakeRect(frame.origin.x + 6, frame.origin.y + floor((frame.size.height - kIconSize) / 2), kIconSize, kIconSize);
+        [_icon drawInRect:icon fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1 respectFlipped:YES hints:nil];
+        text.origin.x += 6 + kIconSize + 4;
+        text.size.width -= 6 + kIconSize + 4;
+    }
+    [super drawInteriorWithFrame:text inView:view];
+}
+@end
+
 @implementation DarlingPreferencePane
 
 #pragma mark Building the view
@@ -568,6 +716,7 @@ static BOOL ValuesEqual(id a, id b)
     NSTableColumn *column = [[NSTableColumn alloc] initWithIdentifier:@"section"];
     [column setWidth:kSidebarWidth - 4];
     [column setEditable:NO];
+    [column setDataCell:[[DPSidebarCell alloc] initTextCell:@""]];
     [_sidebar addTableColumn:column];
     [_sidebar setHeaderView:nil];
     [_sidebar setRowHeight:24];
@@ -646,6 +795,11 @@ static BOOL ValuesEqual(id a, id b)
 - (id)tableView:(NSTableView *)tableView objectValueForTableColumn:(NSTableColumn *)column row:(NSInteger)row
 {
     return [[DPSection allSections][row] title];
+}
+
+- (void)tableView:(NSTableView *)tableView willDisplayCell:(id)cell forTableColumn:(NSTableColumn *)column row:(NSInteger)row
+{
+    [cell setImage:IconForSection([[DPSection allSections][row] identifier])];
 }
 
 - (BOOL)tableView:(NSTableView *)tableView shouldEditTableColumn:(NSTableColumn *)column row:(NSInteger)row

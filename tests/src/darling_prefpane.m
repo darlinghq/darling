@@ -238,6 +238,19 @@ int main(int argc, char **argv)
 		for (NSInteger row = 0; row < [Sidebar() numberOfRows]; row++) [ids addObject:SectionTitleAtRow(row)];
 		CHECK([ids isEqualToArray:(@[ @"Keyboard", @"Display", @"Files", @"Graphics", @"Identity", @"Security", @"Metal", @"Applications" ])], "section order %s", [[ids description] UTF8String]);
 		CHECK([SelectedSection() isEqualToString:@"keyboard"] && Control(@"ControlKeyActsAsCommand", 0) != nil, "the first section is shown at the start");
+		// every row of the list has its own icon of the size of a source list's
+		NSMutableSet *icons = [NSMutableSet set];
+		BOOL iconsOK = YES;
+		for (NSInteger row = 0; row < [Sidebar() numberOfRows]; row++) {
+			NSTableColumn *column = [[Sidebar() tableColumns] objectAtIndex:0];
+			NSCell *cell = [column dataCellForRow:row];
+			[(id<NSTableViewDelegate>)[Sidebar() delegate] tableView:Sidebar() willDisplayCell:cell forTableColumn:column row:row];
+			NSImage *icon = [cell image];
+			NSData *tiff = [icon TIFFRepresentation];
+			if (icon == nil || [icon size].width < 16 || [icon size].width > 18 || [icon size].height < 16 || [icon size].height > 18 || [tiff length] == 0) iconsOK = NO;
+			else [icons addObject:tiff];
+		}
+		CHECK(iconsOK && [icons count] == 8, "each of the eight rows has an icon of 16 to 18 points, and they differ (%lu distinct)", (unsigned long)[icons count]);
 		// the user picks rows in the list
 		[Sidebar() selectRowIndexes:[NSIndexSet indexSetWithIndex:6] byExtendingSelection:NO];
 		Spin(0.3);
