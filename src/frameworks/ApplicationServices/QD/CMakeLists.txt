@@ -31,6 +31,5 @@ add_framework(QD
 	CarbonCore
 	CoreFoundation
 	CoreGraphics
-	CoreServices
         system
 )
