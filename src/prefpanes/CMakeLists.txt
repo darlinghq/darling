@@ -8,3 +8,4 @@ endif()
 
 add_subdirectory(Darling)
 add_subdirectory(General)
+add_subdirectory(Localization)
