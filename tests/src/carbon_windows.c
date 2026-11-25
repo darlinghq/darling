@@ -190,12 +190,21 @@ static void test_quirk_activation_events(void)
 	ShowWindow(w);
 	int showing = logIndexOf(kEventWindowShowing, 0), shown = logIndexOf(kEventWindowShown, 0);
 	int activated = logIndexOf(kEventWindowActivated, 0), handle = logIndexOf(kEventWindowHandleActivate, 0);
+#ifdef __LP64__
 	CHECK(showing >= 0 && shown > showing && activated > shown && handle == activated + 1);
+#else
+	// no standard handler: no kEventWindowHandleActivate (observed on Mojave 10.14.4 i386)
+	CHECK(showing >= 0 && shown > showing && activated > shown && handle < 0);
+#endif
 	g_eventCount = 0;
 	HideWindow(w);
 	int hiding = logIndexOf(kEventWindowHiding, 0), hidden = logIndexOf(kEventWindowHidden, 0);
 	int deactivated = logIndexOf(kEventWindowDeactivated, 0), handleDeactivate = logIndexOf(kEventWindowHandleDeactivate, 0);
+#ifdef __LP64__
 	CHECK(hiding >= 0 && hidden > hiding && deactivated > hidden && handleDeactivate == deactivated + 1);
+#else
+	CHECK(hiding >= 0 && hidden > hiding && deactivated > hidden && handleDeactivate < 0);
+#endif
 
 	// And disposing of the window closes it (QUIRK: DisposeWindow sends kEventWindowClosed)
 	g_eventCount = 0;

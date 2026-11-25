@@ -230,6 +230,14 @@ static void setActive(WindowRef window, bool active)
 	// has not been observed (no login session on the Mac that could run it).
 	// Test: test_quirk_activation_events in tests/src/carbon_windows.c
 	sendWindowEvent(window, active ? kEventWindowActivated : kEventWindowDeactivated, NULL);
+#ifndef __LP64__
+	// QUIRK: in the 32-bit API the event is sent only to a window that has the standard handler
+	// (kWindowStandardHandlerAttribute). Not documented. Evidence: black-box observation on Mojave 10.14.4
+	// i386 (tier 2, mj2.c: with and without the standard handler and the compositing attribute).
+	// Test: test_quirk_activation_events in tests/src/carbon_windows.c
+	if (!(window->attributes & kWindowStandardHandlerAttribute))
+		return;
+#endif
 	sendWindowEvent(window, active ? kEventWindowHandleActivate : kEventWindowHandleDeactivate, NULL);
 }
 
