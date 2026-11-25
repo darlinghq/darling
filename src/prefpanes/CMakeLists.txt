@@ -7,3 +7,4 @@ if (NOT COMPONENT_gui)
 endif()
 
 add_subdirectory(Darling)
+add_subdirectory(General)
