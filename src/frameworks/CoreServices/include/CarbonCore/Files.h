@@ -274,6 +274,28 @@ OSStatus FSMakeFSRefUnicode(const FSRef* parentRef, UniCharCount nameLength, con
 CFStringRef FSCreateStringFromHFSUniStr(CFAllocatorRef alloc, const HFSUniStr255* uniStr);
 OSStatus FSGetHFSUniStrFromString(CFStringRef theString, HFSUniStr255* theOutString);
 
+#if !__LP64__
+// The Finder information of a file
+#pragma pack(push, 2)
+struct FInfo {
+	OSType fdType;
+	OSType fdCreator;
+	UInt16 fdFlags;
+	Point fdLocation;
+	SInt16 fdFldr;
+};
+#pragma pack(pop)
+typedef struct FInfo FInfo;
+
+// The FSSpec calls of the 32-bit File Manager
+OSErr FSMakeFSSpec(FSVolumeRefNum vRefNum, SInt32 dirID, ConstStr255Param fileName, FSSpec* spec);
+OSStatus FSpMakeFSRef(const FSSpec* source, struct FSRef* newRef);
+OSErr FSpCreate(const FSSpec* spec, OSType creator, OSType fileType, ScriptCode scriptTag);
+OSErr FSpDelete(const FSSpec* spec);
+OSErr FSpGetFInfo(const FSSpec* spec, FInfo* fndrInfo);
+OSErr FSpSetFInfo(const FSSpec* spec, const FInfo* fndrInfo);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
