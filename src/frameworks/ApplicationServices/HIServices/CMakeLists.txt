@@ -22,6 +22,8 @@ add_framework(HIServices
         src/HIShape.c
         src/Processes.cpp
         src/CPS.cpp
+        src/UniversalAccess.c
+        src/AXTextMarker.c
 
     DEPENDENCIES
 	    CoreFoundation

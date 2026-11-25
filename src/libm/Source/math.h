@@ -32,6 +32,10 @@
 #error Unknown architecture
 #endif
 
+#include <sys/cdefs.h>
+
+__BEGIN_DECLS
+
 struct __float2 { float __sinval; float __cosval; };
 struct __double2 { double __sinval; double __cosval; };
 
@@ -42,5 +46,11 @@ extern struct __double2 __sincospi_stret(double v);
 
 extern float __exp10f(float);
 extern double __exp10(double);
+
+/* C23: rounds halfway cases to even, in any rounding direction */
+extern double roundeven(double);
+extern float roundevenf(float);
+
+__END_DECLS
 
 #endif /* __MATH_H__ */

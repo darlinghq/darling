@@ -10,7 +10,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #import <CoreFoundation/CFDictionary.h>
 #import <CoreFoundation/CFURL.h>
 
+// DARLING: SDK consumers get the struct tag macOS's SDK has, which code that
+// forward-declares the type relies on; Darling's own build keeps its own.
+#ifdef DARLING
 typedef struct CF_BRIDGED_TYPE(id) O2ImageSource *CGImageSourceRef;
+#else
+typedef struct CF_BRIDGED_TYPE(id) CGImageSource *CGImageSourceRef;
+#endif
 
 #import <CoreGraphics/CGImage.h>
 #import <CoreGraphics/CGDataProvider.h>
@@ -25,6 +31,7 @@ IMAGEIO_EXTERN const CFStringRef kCGImageSourceThumbnailMaxPixelSize;
 IMAGEIO_EXTERN const CFStringRef kCGImageSourceCreateThumbnailWithTransform;
 IMAGEIO_EXTERN const CFStringRef kCGImageSourceShouldCacheImmediately;
 IMAGEIO_EXTERN const CFStringRef kCGImageSourceTypeIdentifierHint;
+IMAGEIO_EXTERN const CFStringRef kCGImageSourceSubsampleFactor;
 
 IMAGEIO_EXTERN CGImageSourceRef CGImageSourceCreateWithData(CFDataRef data, CFDictionaryRef options);
 IMAGEIO_EXTERN CGImageSourceRef CGImageSourceCreateWithURL(CFURLRef url, CFDictionaryRef options);
@@ -60,5 +67,10 @@ typedef CF_ENUM(int32_t, CGImageSourceStatus) {
 
 IMAGEIO_EXTERN CFArrayRef CGImageSourceCopyTypeIdentifiers(void);
 IMAGEIO_EXTERN CGImageSourceStatus CGImageSourceGetStatus(CGImageSourceRef isrc);
+IMAGEIO_EXTERN CGImageSourceStatus CGImageSourceGetStatusAtIndex(CGImageSourceRef isrc, size_t index);
+IMAGEIO_EXTERN size_t CGImageSourceGetPrimaryImageIndex(CGImageSourceRef isrc);
+
+IMAGEIO_EXTERN CGImageSourceRef CGImageSourceCreateIncremental(CFDictionaryRef options);
+IMAGEIO_EXTERN void CGImageSourceUpdateData(CGImageSourceRef isrc, CFDataRef data, bool final);
 
 CF_IMPLICIT_BRIDGING_DISABLED

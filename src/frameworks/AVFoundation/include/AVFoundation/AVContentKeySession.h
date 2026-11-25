@@ -22,3 +22,9 @@
 @interface AVContentKeySession : NSObject
 
 @end
+
+// As in the macOS SDK, this header also declares the content key requests,
+// responses and recipients.
+#import <AVFoundation/AVContentKeyRecipient.h>
+#import <AVFoundation/AVContentKeyRequest.h>
+#import <AVFoundation/AVContentKeyResponse.h>

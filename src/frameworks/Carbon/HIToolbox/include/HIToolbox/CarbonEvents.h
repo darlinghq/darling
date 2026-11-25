@@ -35,6 +35,15 @@ typedef struct EventHotKeyID {
 } EventHotKeyID;
 typedef struct OpaqueEventHotKeyRef *EventHotKeyRef;
 
+// the parameters of keyboard events (kEventClassKeyboard)
+enum {
+	kEventParamKeyCode = 'kcod',         // typeUInt32: the virtual key code
+	kEventParamKeyMacCharCodes = 'kchr', // typeChar: the key's characters in the script's encoding
+	kEventParamKeyModifiers = 'kmod',    // typeUInt32: the modifier keys
+	kEventParamKeyUnicodes = 'kuni',     // typeUnicodeText: the key's characters
+	kEventParamKeyboardType = 'kbdt',    // typeUInt32: the keyboard's type
+};
+
 enum {
 	kEventHotKeyPressed = 5,
 	kEventHotKeyReleased = 6,

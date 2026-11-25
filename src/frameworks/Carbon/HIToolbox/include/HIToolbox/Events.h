@@ -98,6 +98,7 @@ enum {
   kVK_Space                     = 0x31,
   kVK_Delete                    = 0x33,
   kVK_Escape                    = 0x35,
+  kVK_RightCommand              = 0x36,
   kVK_Command                   = 0x37,
   kVK_Shift                     = 0x38,
   kVK_CapsLock                  = 0x39,
@@ -140,6 +141,20 @@ enum {
   kVK_RightArrow                = 0x7C,
   kVK_DownArrow                 = 0x7D,
   kVK_UpArrow                   = 0x7E
+};
+
+// keys found only on ISO keyboards
+enum {
+  kVK_ISO_Section               = 0x0A
+};
+
+// keys found only on JIS keyboards
+enum {
+  kVK_JIS_Yen                   = 0x5D,
+  kVK_JIS_Underscore            = 0x5E,
+  kVK_JIS_KeypadComma           = 0x5F,
+  kVK_JIS_Eisu                  = 0x66,
+  kVK_JIS_Kana                  = 0x68
 };
 
 typedef UInt16 EventModifiers;

@@ -24,8 +24,8 @@
 #include <VideoToolbox/VTBase.h>
 
 // Keys of the dictionaries returned by VTCopyVideoEncoderList.
-extern CFStringRef const kVTVideoEncoderList_CodecType;
-extern CFStringRef const kVTVideoEncoderList_EncoderName;
+VT_EXPORT CFStringRef const kVTVideoEncoderList_CodecType;
+VT_EXPORT CFStringRef const kVTVideoEncoderList_EncoderName;
 
 VT_EXPORT OSStatus VTCopyVideoEncoderList(CFDictionaryRef options, CFArrayRef *listOfVideoEncodersOut);
 

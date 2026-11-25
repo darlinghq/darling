@@ -317,3 +317,15 @@ OSStatus TECDisposeConverter(TECObjectRef conv)
 	return noErr;
 }
 
+// Darling has no tables of the encodings each region's web uses, so none are
+// available: the call reports the missing table, as the Text Encoding
+// Converter does for data it does not have, and callers use their default.
+OSStatus TECGetWebTextEncodings(RegionCode locale, TextEncoding *availableEncodings, ItemCount maxAvailableEncodings, ItemCount *actualAvailableEncodings)
+{
+	(void) locale;
+	(void) availableEncodings;
+	(void) maxAvailableEncodings;
+	if (actualAvailableEncodings != NULL)
+		*actualAvailableEncodings = 0;
+	return kTECMissingTableErr;
+}

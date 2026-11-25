@@ -4436,6 +4436,8 @@ struct cgl_renderer {
     uint64_t video_memory;
     GLint max_samples;
     GLint gl_major;
+    // the IORegistry entry ID of the renderer's GPU (0 for none)
+    uint64_t registry_id;
 };
 
 struct _CGLRendererInfoObj {
@@ -4495,6 +4497,33 @@ static uint64_t registryVideoMegabytes(void) {
     return megabytes;
 }
 
+// The IORegistry entry ID of the GPU: the IOAccelerator service that registryVideoMegabytes() takes
+// its figure from (the first one with a figure, else the first one). 0 if the registry has none.
+static uint64_t registryAcceleratorID(void) {
+    io_iterator_t iterator = IO_OBJECT_NULL;
+    if (IOServiceGetMatchingServices(kIOMasterPortDefault, IOServiceMatching("IOAccelerator"), &iterator) != KERN_SUCCESS)
+        return 0;
+    uint64_t first = 0, withFigure = 0;
+    CFStringRef key = CFStringCreateWithCString(NULL, "VRAM,totalMB", kCFStringEncodingUTF8);
+    io_registry_entry_t service;
+    while (withFigure == 0 && (service = IOIteratorNext(iterator)) != IO_OBJECT_NULL) {
+        uint64_t id = 0;
+        if (IORegistryEntryGetRegistryEntryID(service, &id) == KERN_SUCCESS) {
+            if (first == 0)
+                first = id;
+            CFTypeRef value = IORegistryEntryCreateCFProperty(service, key, NULL, 0);
+            if (value) {
+                withFigure = id;
+                CFRelease(value);
+            }
+        }
+        IOObjectRelease(service);
+    }
+    CFRelease(key);
+    IOObjectRelease(iterator);
+    return withFigure ? withFigure : first;
+}
+
 // Describes the renderer of the context that is current, which has the given display.
 static void describeCurrentRenderer(EGLDisplay egl_display, struct cgl_renderer *out) {
     const char *vendor = (const char *) host_glGetString(GL_VENDOR);
@@ -4535,6 +4564,7 @@ static void describeCurrentRenderer(EGLDisplay egl_display, struct cgl_renderer 
     out->video_memory = video_memory;
     out->max_samples = max_samples > 0 ? max_samples : 0;
     out->gl_major = major;
+    out->registry_id = accelerated ? registryAcceleratorID() : 0;
 }
 
 // Makes a context just to ask it, and puts back whatever was current. The answer for a display is kept:
@@ -4602,6 +4632,7 @@ CGLError CGLQueryRendererInfo(GLuint display_mask, CGLRendererInfoObj *rend, GLi
     info->renderers[1].video_memory = 0;
     info->renderers[1].max_samples = 0;
     info->renderers[1].gl_major = info->renderers[0].gl_major;
+    info->renderers[1].registry_id = 0;
     info->count = 2;
     // the renderer draws to whichever of the requested displays there are
     info->display_mask = display_mask;
@@ -4654,6 +4685,17 @@ CGLError CGLDescribeRenderer(CGLRendererInfoObj rend, GLint rend_num, CGLRendere
     case kCGLRPMaxSampleBuffers: *value = renderer->max_samples > 0; break;
     case kCGLRPMaxSamples: *value = renderer->max_samples; break;
     case kCGLRPMajorGLVersion: *value = renderer->gl_major; break;
+    case kCGLRPRegistryIDLow:
+    case kCGLRPRegistryIDHigh:
+        // The halves of the GPU's 64-bit IORegistry entry ID, as GLints. A renderer without a GPU
+        // (the software one) has no ID, and the property is refused for it; this is Darling's
+        // choice, not observed on macOS.
+        if (renderer->registry_id == 0) {
+            *value = 0;
+            return kCGLBadProperty;
+        }
+        *value = (GLint) (uint32_t) (prop == kCGLRPRegistryIDLow ? renderer->registry_id : renderer->registry_id >> 32);
+        break;
     default:
         *value = 0;
         return kCGLBadProperty;

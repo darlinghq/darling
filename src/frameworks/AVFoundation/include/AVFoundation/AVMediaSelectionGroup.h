@@ -22,3 +22,7 @@
 @interface AVMediaSelectionGroup : NSObject
 
 @end
+
+// As in the macOS SDK, this header also declares the options of a group.
+@class AVAssetTrack;
+#import <AVFoundation/AVMediaSelectionOption.h>

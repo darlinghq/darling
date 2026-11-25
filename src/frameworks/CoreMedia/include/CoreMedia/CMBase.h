@@ -41,6 +41,10 @@
 typedef signed long CMItemCount;
 typedef signed long CMItemIndex;
 typedef int32_t CMPersistentTrackID;
+
+// the version numbers of CoreMedia's callback structures and object classes
+typedef uint32_t CMStructVersion;
+typedef uint32_t CMBaseClassVersion;
 enum {
     kCMPersistentTrackID_Invalid = 0
 };

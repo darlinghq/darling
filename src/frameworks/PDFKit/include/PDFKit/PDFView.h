@@ -19,6 +19,14 @@
 
 #include <Foundation/Foundation.h>
 
+// How a PDF view lays out the pages of its document.
+typedef NS_ENUM(NSInteger, PDFDisplayMode) {
+    kPDFDisplaySinglePage = 0,
+    kPDFDisplaySinglePageContinuous = 1,
+    kPDFDisplayTwoUp = 2,
+    kPDFDisplayTwoUpContinuous = 3,
+};
+
 @interface PDFView : NSObject
 
 @end

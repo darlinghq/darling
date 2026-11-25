@@ -144,6 +144,15 @@ int main(void)
 	CFRelease(height);
 	CFRelease(format);
 
+	// 4:2:2 bi-planar: a full-size luma plane, and a CbCr plane at half width, full height
+	CHECK(kCVPixelFormatType_422YpCbCr8BiPlanarFullRange == '422f' && kCVPixelFormatType_422YpCbCr8BiPlanarVideoRange == '422v');
+	CHECK(CVPixelBufferCreate(NULL, 16, 6, kCVPixelFormatType_422YpCbCr8BiPlanarFullRange, NULL, &buffer) == kCVReturnSuccess);
+	CHECK(CVPixelBufferIsPlanar(buffer) && CVPixelBufferGetPlaneCount(buffer) == 2);
+	CHECK(CVPixelBufferGetWidthOfPlane(buffer, 0) == 16 && CVPixelBufferGetHeightOfPlane(buffer, 0) == 6);
+	CHECK(CVPixelBufferGetWidthOfPlane(buffer, 1) == 8 && CVPixelBufferGetHeightOfPlane(buffer, 1) == 6);
+	CHECK(CVPixelBufferGetBytesPerRowOfPlane(buffer, 1) >= 16);
+	CVPixelBufferRelease(buffer);
+
 	if (g_failures)
 	{
 		printf("%d failures\n", g_failures);

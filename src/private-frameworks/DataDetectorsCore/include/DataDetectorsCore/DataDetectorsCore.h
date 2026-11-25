@@ -23,6 +23,7 @@
 
 #import <Foundation/Foundation.h>
 
+#import <DataDetectorsCore/DDResult.h>
 #import <DataDetectorsCore/DDTypeCheckerDelegate.h>
 #import <DataDetectorsCore/DataDetectorsSourceAccessProtocol.h>
 #import <DataDetectorsCore/DDBindableRegexp.h>

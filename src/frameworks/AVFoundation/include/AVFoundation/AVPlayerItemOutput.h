@@ -28,3 +28,6 @@
 }
 
 @end
+
+// As in the macOS SDK, this header also declares the concrete outputs.
+#import <AVFoundation/AVPlayerItemVideoOutput.h>

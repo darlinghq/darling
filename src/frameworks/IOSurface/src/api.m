@@ -269,3 +269,20 @@ Boolean IOSurfaceAllowsPixelSizeCasting(IOSurfaceRef buffer)
 {
 	return [(IOSurface*)buffer allowsPixelSizeCasting];
 }
+
+// Moves the memory accounting of a surface to the task named by a task
+// identity token, under a memory ledger tag (default, network, media,
+// graphics, ...). Darling does not charge surfaces to per-task memory
+// ledgers, so there is no accounting to move and the call has no effect;
+// ownership does not change a surface's contents or lifetime. Rejecting a
+// NULL surface is Darling's own choice; the token and tag are not checked,
+// since which values macOS accepts is not documented.
+kern_return_t IOSurfaceSetOwnershipIdentity(IOSurfaceRef buffer, mach_port_t task_id_token, int newLedgerTag, uint32_t newLedgerOptions)
+{
+	(void)task_id_token;
+	(void)newLedgerTag;
+	(void)newLedgerOptions;
+	if (buffer == NULL)
+		return kIOReturnBadArgument;
+	return kIOReturnSuccess;
+}

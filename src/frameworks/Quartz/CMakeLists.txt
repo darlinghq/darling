@@ -13,6 +13,14 @@ add_subdirectory(ImageKit)
 add_subdirectory(QuartzComposer)
 add_subdirectory(QuartzFilters)
 
+# QuickLookUI is built into Quartz itself (see the sources below), but its
+# headers are a subframework of Quartz, as in the macOS SDK.
+generate_sdk_subframework(QuickLookUI
+	BASE_PATH ${quartz_sdk_path}
+	VERSION ${FRAMEWORK_VERSION}
+	HEADER "QuickLookUI/include/QuickLookUI"
+)
+
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")
 
@@ -32,6 +40,7 @@ add_framework(Quartz
 
 	SOURCES
 		src/Quartz.c
+		QuickLookUI/src/QLPreviewItem.m
 		QuickLookUI/src/QLPreviewPanel.m
 		QuickLookUI/src/QLPreviewView.m
 

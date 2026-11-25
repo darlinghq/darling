@@ -41,14 +41,7 @@ typedef NS_ENUM(NSInteger, CLAccuracyAuthorization) {
 	CLAccuracyAuthorizationReducedAccuracy = 1,
 };
 
-@protocol CLLocationManagerDelegate <NSObject>
-@optional
-- (void)locationManager:(CLLocationManager *)manager didUpdateToLocation:(CLLocation *)newLocation fromLocation:(CLLocation *)oldLocation;
-- (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray<CLLocation *> *)locations;
-- (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error;
-- (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status;
-- (void)locationManagerDidChangeAuthorization:(CLLocationManager *)manager;
-@end
+@protocol CLLocationManagerDelegate;
 
 @interface CLLocationManager : NSObject
 {
@@ -82,5 +75,8 @@ typedef NS_ENUM(NSInteger, CLAccuracyAuthorization) {
 - (void)requestLocation;
 
 @end
+
+// As in Apple's SDK, the delegate protocol has its own header.
+#import <CoreLocation/CLLocationManagerDelegate.h>
 
 #endif
