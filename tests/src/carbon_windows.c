@@ -105,7 +105,7 @@ static OSStatus handler(EventHandlerCallRef call, EventRef event, void* userData
 }
 
 static const EventTypeSpec kTypes[] = {
-	{ kEventClassWindow, kEventWindowUpdate }, { kEventClassWindow, kEventWindowDrawContent },
+	{ kEventClassWindow, kEventWindowUpdate }, { kEventClassWindow, kEventWindowDrawContent }, { kEventClassWindow, kEventWindowPaint },
 	{ kEventClassWindow, kEventWindowActivated }, { kEventClassWindow, kEventWindowDeactivated },
 	{ kEventClassWindow, kEventWindowShowing }, { kEventClassWindow, kEventWindowShown },
 	{ kEventClassWindow, kEventWindowHiding }, { kEventClassWindow, kEventWindowHidden },
@@ -520,6 +520,8 @@ int main(int argc, char** argv)
 	CHECK(IsWindowActive(doc));
 #ifndef __LP64__
 	CHECK(g_counts[kEventWindowDrawContent] == 1);
+	// test_quirk_window_events_32bit: a shown window gets kEventWindowPaint, not kEventWindowUpdate (Mojave i386)
+	CHECK(g_counts[kEventWindowPaint] == 1 && g_counts[kEventWindowUpdate] == 0);
 
 	size_t width, height;
 	unsigned char* pixels = readWindowPixels(doc, &width, &height);

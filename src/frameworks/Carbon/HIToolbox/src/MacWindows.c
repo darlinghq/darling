@@ -643,6 +643,7 @@ static Rect frameOfClass(WindowClass cls, WindowAttributes attributes)
 
 static const EventTypeSpec kDefaultHandlerTypes[] = {
 	{ kEventClassWindow, kEventWindowUpdate },
+	{ kEventClassWindow, kEventWindowPaint },
 	{ kEventClassWindow, kEventWindowClose },
 };
 
@@ -829,7 +830,20 @@ void ShowWindow(WindowRef window)
 	RectRgn(rect, &all);
 	UnionRgn(window->updateRegion, rect, window->updateRegion);
 	DisposeRgn(rect);
+#ifndef __LP64__
+	// QUIRK: a window that is shown in the 32-bit API is asked to paint with kEventWindowPaint, which the
+	// default handling answers with kEventWindowDrawContent; no kEventWindowUpdate comes (that is for the
+	// invalidation of a shown window). Not documented. Evidence: black-box observation on Mojave 10.14.4 i386
+	// (tier 2, mj.c).
+	// Test: test_quirk_window_events_32bit in tests/src/carbon_windows.c
+	if (!window->updatePending && !(window->attributes & kWindowNoUpdatesAttribute))
+	{
+		window->updatePending = true;
+		postWindowEvent(window, kEventWindowPaint, NULL);
+	}
+#else
 	scheduleUpdate(window);
+#endif
 	sendWindowEvent(window, kEventWindowShown, NULL);
 
 	// With no active window the window that appears is it
@@ -1424,6 +1438,7 @@ static OSStatus windowDefaultHandler(EventHandlerCallRef call, EventRef event, v
 
 	switch (GetEventKind(event))
 	{
+		case kEventWindowPaint:
 		case kEventWindowUpdate:
 			window->updatePending = false;
 #ifndef __LP64__
