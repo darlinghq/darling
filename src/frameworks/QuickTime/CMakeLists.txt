@@ -19,6 +19,7 @@ add_framework(QuickTime
 
     SOURCES
         src/QuickTime.c
+        src/qt_timeline.c
 
     DEPENDENCIES
         system
