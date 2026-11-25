@@ -785,6 +785,16 @@ OSErr FSSetForkPosition(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 posit
 	}
 }
 
+#if !__LP64__
+// SetFPos moves the same fork mark as FSSetForkPosition, with the same positioning rules and
+// QUIRKs. Inside Macintosh: Files, p. 2-95.
+// Test: tests/src/file_manager_setfpos.c
+OSErr SetFPos(FSIORefNum refNum, SInt16 posMode, SInt32 posOff)
+{
+	return FSSetForkPosition(refNum, (UInt16) posMode, posOff);
+}
+#endif
+
 // QUIRK: a read that begins before the start of the fork fails with posErr and moves the mark to
 // 0 (also for fsFromMark), one that begins after the end fails with eofErr and moves the mark to the
 // end; a read that reaches the end before requestCount bytes were read returns what was available
