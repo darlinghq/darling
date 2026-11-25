@@ -187,6 +187,14 @@ static DPSetting *Identity(NSString *key, NSString *title, NSString *help, NSStr
         ];
         [list addObject:section];
 
+        // Sound: the section builds its own view (DPSound.m) from the HAL
+        section = [[DPSection alloc] init];
+        section.identifier = @"sound";
+        section.title = NSLocalizedString(@"Sound", nil);
+        section.note = @"";
+        section.userSettings = @[];
+        [list addObject:section];
+
         // Platform identity
         section = [[DPSection alloc] init];
         section.identifier = @"identity";

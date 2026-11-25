@@ -10,13 +10,16 @@ add_darling_prefpane(DarlingPane
 		DarlingPane.m
 		DPSection.m
 		DPSetting.m
+		DPSound.m
 	LIBRARIES
 		AppKit
 		Foundation
+		AudioToolbox
+		CoreAudio
 		PreferencePanes
 		CoreFoundation
 		objc
 		system
 	ICONSET DarlingPane.iconset
 )
-set_source_files_properties(DarlingPane.m DPSection.m DPSetting.m PROPERTIES COMPILE_FLAGS -fobjc-arc)
+set_source_files_properties(DarlingPane.m DPSection.m DPSetting.m DPSound.m PROPERTIES COMPILE_FLAGS -fobjc-arc)
