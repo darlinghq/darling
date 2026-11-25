@@ -217,7 +217,8 @@ static int differing(const unsigned char* a, const unsigned char* b, size_t widt
 static volatile int g_menuEnded, g_menuBegan;
 static int g_hits[16], g_commandCount, g_draws, g_actionCalls, g_lastPart, g_actionParts[16];
 static UInt32 g_commands[16], g_commandAttributes[16];
-static int g_clicks[16], g_menuCommands;
+static int g_clicks[16], g_menuCommands, g_controlMenuCommands;
+static UInt32 g_controlMenuAttributes;
 
 #ifdef __LP64__
 #define SETVISIBLE(c, v) HIViewSetVisible((c), (v))
@@ -287,6 +288,19 @@ static OSStatus commandHandler(EventHandlerCallRef call, EventRef event, void* u
 		g_commandAttributes[g_commandCount++] = command.attributes;
 	}
 	return noErr;
+}
+
+// A command handler on the control with the menu: the command of a chosen item is sent to the control
+static OSStatus controlCommandHandler(EventHandlerCallRef call, EventRef event, void* userData)
+{
+	HICommand command;
+
+	if (GetEventParameter(event, kEventParamDirectObject, typeHICommand, NULL, sizeof(command), NULL, &command) == noErr)
+	{
+		g_controlMenuCommands++;
+		g_controlMenuAttributes = command.attributes;
+	}
+	return eventNotHandledErr;
 }
 
 static void actionProc(ControlRef control, ControlPartCode part)
@@ -964,6 +978,7 @@ int main(int argc, char** argv)
 
 	for (int i = 1; i <= 7; i++)
 		InstallControlEventHandler(g_controls[i], NewEventHandlerUPP(controlHandler), 3, types, (void*) (long) i, NULL);
+	InstallControlEventHandler(g_controls[kMenuButton], NewEventHandlerUPP(controlCommandHandler), 1, commandTypes, NULL, NULL);
 #ifndef __LP64__
 	SetControlAction(g_controls[kScroll], actionProc);
 #endif
@@ -1027,6 +1042,9 @@ int main(int argc, char** argv)
 		CHECK(g_menuChosen >= 1 && g_menuChosen <= 3);
 		CHECK_EQ(g_commands[0], 'mni0' + g_menuChosen);
 	}
+	// the command was sent to the control first (it is not only a command for the application)
+	CHECK_EQ(g_controlMenuCommands, 1);
+	CHECK_EQ(g_controlMenuAttributes, kHICommandFromMenu);
 
 	// A control that is disposed of with its window leaves the window
 	DisposeWindow(g_window);

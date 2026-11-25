@@ -2239,6 +2239,31 @@ static ControlPartCode trackButton(ControlRef c, CGPoint start, ControlPartCode 
 	return part;
 }
 
+// Sends the command of an item of the control's menu, as a command event from a menu, to the control
+static void sendMenuCommand(ControlRef c, MenuItemIndex item)
+{
+	struct HIMenuItemInfo info;
+	EventRef event;
+	HICommand hi;
+
+	if (item < 1 || item > _HIMenuItemCount(c->menu))
+		return;
+	_HIMenuGetItem(c->menu, item, &info);
+	if (info.command == 0)
+		return;
+	memset(&hi, 0, sizeof(hi));
+	hi.attributes = kHICommandFromMenu;
+	hi.commandID = info.command;
+	hi.menu.menuRef = c->menu;
+	hi.menu.menuItemIndex = item;
+	if (CreateEvent(NULL, kEventClassCommand, kEventCommandProcess, _HICurrentTime(), kEventAttributeNone, &event) == noErr)
+	{
+		SetEventParameter(event, kEventParamDirectObject, typeHICommand, sizeof(hi), &hi);
+		SendEventToEventTarget(event, c->target);
+		ReleaseEvent(event);
+	}
+}
+
 // Opens the pop-up menu of a control: the choice becomes its menu value
 static ControlPartCode trackMenu(ControlRef c, CGPoint start)
 {
@@ -2273,8 +2298,10 @@ static ControlPartCode trackMenu(ControlRef c, CGPoint start)
 			; // the menu's own checks are the value
 		changed(c);
 	}
-	// An item with a command makes its command event
-	_HIProcessMenuCommand(c->menu, item);
+	// An item with a command makes its command event, sent to the control: it travels from the control
+	// to its window and the application, so that a window that holds controls with menus handles their
+	// commands, also when it is not the window that has the focus (a palette)
+	sendMenuCommand(c, item);
 	return kControlMenuPart;
 }
 
