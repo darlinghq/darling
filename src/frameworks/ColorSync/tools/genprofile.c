@@ -19,7 +19,7 @@
 
 // Build-machine tool: writes the ICC profile of one of the named profiles of ICCBuilder.c to a file, so that the profile files
 // of the ColorSync profile folder hold the same bytes as ColorSyncProfileCreateWithName() returns.
-//   colorsync-genprofile genericrgb|genericgray <output file>
+//   genprofile genericrgb|genericgray <output file>
 
 #include "ICCBuilder.h"
 #include <stdio.h>

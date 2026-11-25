@@ -277,7 +277,7 @@ ICCDisplayProfileSpec ICCNamedProfileSpec(ICCNamedProfile which)
 		// below, the white is D65, the curve is a power of 1.8 (the profiles of macOS store it as the u8Fixed8 number 1.80078)
 		// and the colorants are the primaries adapted from D65 to D50 by the Bradford transform; the gray one is the same
 		// power on the neutral axis. The colorants of macOS follow from these chromaticities to within 1e-5 once its
-		// chromatic adaptation matrix is applied backwards. Test: tests/src/colorsync_profile_name.c.
+		// chromatic adaptation matrix is applied backwards. Test: tests/src/colorsync_generic_rgb.c.
 		case ICCNamedGenericRGB:
 			return (ICCDisplayProfileSpec) {
 				.description = "Generic RGB Profile",
