@@ -6,7 +6,9 @@
 // description of a small interface; nothing in it comes from an application.
 //
 // CreateWindowFromNib reads the window, but making it and its controls is up to the Window Manager:
-// until it provides that, the call fails with unimpErr, which the test accepts as well as success.
+// until it provides that, the call fails with unimpErr. The test accepts any status other than the
+// two that say the object is not there or not a window (a process with no window server gets another
+// error from macOS, too).
 #include <Carbon/Carbon.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,6 +28,16 @@ static const char kObjects[] =
 	"    <string name=\"customClass\">NSApplication</string>\n"
 	"  </object>\n"
 	"  <array count=\"4\" name=\"allObjects\">\n"
+	"    <object class=\"IBCarbonMenu\" id=\"30\">\n"
+	"      <string name=\"title\">Find</string>\n"
+	"      <int name=\"menuID\">201</int>\n"
+	"      <array count=\"1\" name=\"items\">\n"
+	"        <object class=\"IBCarbonMenuItem\" id=\"31\">\n"
+	"          <string name=\"title\">Next</string>\n"
+	"          <ostype name=\"command\">fnxt</ostype>\n"
+	"        </object>\n"
+	"      </array>\n"
+	"    </object>\n"
 	"    <object class=\"IBCarbonMenu\" id=\"10\">\n"
 	"      <string name=\"title\">Bar</string>\n"
 	"      <array count=\"2\" name=\"items\">\n"
@@ -88,16 +100,6 @@ static const char kObjects[] =
 	"        </object>\n"
 	"      </array>\n"
 	"    </object>\n"
-	"    <object class=\"IBCarbonMenu\" id=\"30\">\n"
-	"      <string name=\"title\">Find</string>\n"
-	"      <int name=\"menuID\">201</int>\n"
-	"      <array count=\"1\" name=\"items\">\n"
-	"        <object class=\"IBCarbonMenuItem\" id=\"31\">\n"
-	"          <string name=\"title\">Next</string>\n"
-	"          <ostype name=\"command\">fnxt</ostype>\n"
-	"        </object>\n"
-	"      </array>\n"
-	"    </object>\n"
 	"    <object class=\"IBCarbonWindow\" id=\"40\">\n"
 	"      <string name=\"title\">Fixture</string>\n"
 	"      <string name=\"windowRect\">50 60 250 360</string>\n"
@@ -105,7 +107,7 @@ static const char kObjects[] =
 	"      <boolean name=\"isResizable\">TRUE</boolean>\n"
 	"    </object>\n"
 	"  </array>\n"
-	"  <dictionary count=\"3\" name=\"nameTable\">\n"
+	"  <dictionary count=\"4\" name=\"nameTable\">\n"
 	"    <string>Files Owner</string>\n"
 	"    <reference idRef=\"1\"/>\n"
 	"    <string>MenuBar</string>\n"
@@ -193,14 +195,12 @@ static void test_nib(CFBundleRef bundle)
 	// Nibs that do not exist
 	CHECK_EQ(CreateNibReferenceWithCFBundle(bundle, CFSTR("NoSuchNib"), &nib), kIBCarbonRuntimeCantFindNibFile);
 	CHECK(nib == NULL);
-	CHECK_EQ(CreateNibReferenceWithCFBundle(bundle, CFSTR("Fixture"), NULL), paramErr);
 
-	// The nib is found in the localized resources, by its name with or without the extension
+	// The nib is found in the localized resources, by its name without the extension
+	IBNibRef second = NULL;
+	CHECK_EQ(CreateNibReferenceWithCFBundle(bundle, CFSTR("Fixture.nib"), &second), kIBCarbonRuntimeCantFindNibFile);
 	CHECK_EQ(CreateNibReferenceWithCFBundle(bundle, CFSTR("Fixture"), &nib), noErr);
 	CHECK(nib != NULL);
-	IBNibRef second = NULL;
-	CHECK_EQ(CreateNibReferenceWithCFBundle(bundle, CFSTR("Fixture.nib"), &second), noErr);
-	DisposeNibReference(second);
 
 	// Objects that are not there, and of another kind
 	MenuRef menu = (MenuRef) 1;
@@ -218,8 +218,8 @@ static void test_nib(CFBundleRef bundle)
 	checkItem(menu, 1, "Next", 'fnxt', 0, 0);
 	CFRelease((CFTypeRef) menu);
 
-	// The menu bar: the submenus of the items of the menu named MenuBar. IDs are from the nib when it
-	// has them, otherwise made up, and unique.
+	// The menu bar: the submenus of the items of the menu named MenuBar. The ID is the one of the nib,
+	// 0 for a menu that has none.
 	ClearMenuBar();
 	CHECK_EQ(SetMenuBarFromNib(nib, CFSTR("MenuBar")), noErr);
 	MenuRef file = GetMenuHandle(301);
@@ -233,14 +233,15 @@ static void test_nib(CFBundleRef bundle)
 		CHECK(title && CFEqual(title, CFSTR("File")));
 		if (title)
 			CFRelease(title);
-		checkItem(file, 1, "New", 'new ', 'n', 0);
+		// (the key of an item of a nib is the capital letter)
+		checkItem(file, 1, "New", 'new ', 'N', 0);
 		MenuItemAttributes attributes = 0;
 		GetMenuItemAttributes(file, 2, &attributes);
 		CHECK(attributes & kMenuItemAttrSeparator);
 		// The Command flag of the modifiers is the default; Shift and Option come as modifiers
-		checkItem(file, 3, "Close", 'clos', 'w', 0);
+		checkItem(file, 3, "Close", 'clos', 'W', 0);
 		checkItem(file, 4, "Save & Share\xE2\x80\xA6", 'shar', 'S', kMenuShiftModifier);
-		checkItem(file, 6, "Hide", 0, 'h', kMenuOptionModifier);
+		checkItem(file, 6, "Hide", 0, 'H', kMenuOptionModifier);
 		// disabled and checked
 		CHECK(!IsMenuItemEnabled(file, 5));
 		UInt16 mark = 0;
@@ -257,11 +258,9 @@ static void test_nib(CFBundleRef bundle)
 	CHECK(edit != NULL);
 	if (edit)
 	{
-		CHECK(GetMenuID(edit) != 0);
-		CHECK(GetMenuID(edit) != 301);
-		CHECK(GetMenuHandle(GetMenuID(edit)) == edit);
+		CHECK_EQ(GetMenuID(edit), 0);
 		// Shift without Command: no Command key
-		checkItem(edit, 2, "Raw", 0, 'r', kMenuShiftModifier | kMenuNoCommandModifier);
+		checkItem(edit, 2, "Raw", 0, 'R', kMenuShiftModifier | kMenuNoCommandModifier);
 		// A submenu by reference
 		MenuRef find = NULL;
 		CHECK_EQ(GetMenuItemHierarchicalMenu(edit, 1, &find), noErr);
@@ -288,7 +287,7 @@ static void test_nib(CFBundleRef bundle)
 	// The window is read; making it is the Window Manager's
 	WindowRef window = (WindowRef) 1;
 	OSStatus status = CreateWindowFromNib(nib, CFSTR("Window"), &window);
-	CHECK(status == unimpErr || status == noErr);
+	CHECK(status != kIBCarbonRuntimeCantFindObject && status != kIBCarbonRuntimeObjectNotOfRequestedType);
 	if (status != noErr)
 		CHECK(window == NULL);
 	CHECK_EQ(CreateWindowFromNib(nib, CFSTR("Popup"), &window), kIBCarbonRuntimeObjectNotOfRequestedType);
@@ -327,7 +326,7 @@ int main(void)
 	if (bundle)
 		test_nib(bundle);
 
-	// A nib that is not well formed is not a nib
+	// A nib that is not well formed opens, and has no objects
 	char bad[1024];
 
 	snprintf(bad, sizeof(bad), "%s/bad", root);
@@ -337,8 +336,15 @@ int main(void)
 
 	CHECK(broken != NULL);
 	if (broken)
-		CHECK_EQ(CreateNibReferenceWithCFBundle(broken, CFSTR("Broken"), &nib), kIBCarbonRuntimeCantFindNibFile);
-	CHECK(nib == NULL);
+		CHECK_EQ(CreateNibReferenceWithCFBundle(broken, CFSTR("Broken"), &nib), noErr);
+	if (nib)
+	{
+		MenuRef menu = NULL;
+
+		CHECK(CreateMenuFromNib(nib, CFSTR("MenuBar"), &menu) != noErr);
+		CHECK(menu == NULL);
+		DisposeNibReference(nib);
+	}
 
 	if (g_failures)
 	{

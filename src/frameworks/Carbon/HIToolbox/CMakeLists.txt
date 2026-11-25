@@ -32,6 +32,8 @@ add_framework(HIToolbox
 		src/TextInputSources.mm
 		src/TextServices.c
 		src/IBCarbonRuntime.c
+		src/IBCarbonNib.c
+		src/IBCarbonWindows.c
 		src/Menus.c
 		src/MenusClassic.c
 		src/MenuTracking.c
