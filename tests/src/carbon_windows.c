@@ -348,7 +348,13 @@ static void test_quirk_window_property_edges(void)
 	CHECK(actual == 4 && buffer[0] == 0xEF && buffer[1] == 0xBE && buffer[2] == 0xEE);
 	CHECK(GetWindowProperty(w, 'DARL', 'prop', 2, NULL, buffer) == paramErr);	// and nowhere to tell the size
 	CHECK(SetWindowProperty(w, 'DARL', 'zero', 4, NULL) == noErr);
+#ifdef __LP64__
 	CHECK(GetWindowProperty(w, 'DARL', 'zero', 4, &actual, buffer) == noErr && actual == 4 && buffer[0] == 0 && buffer[3] == 0);
+#else
+	// no data and no size in the 32-bit API (observed on Mojave 10.14.4 i386)
+	memset(buffer, 0xEE, sizeof(buffer));
+	CHECK(GetWindowProperty(w, 'DARL', 'zero', 4, &actual, buffer) == noErr && actual == 0 && buffer[0] == 0xEE);
+#endif
 	CHECK(RemoveWindowProperty(w, 'DARL', 'prop') == noErr);
 	CHECK(RemoveWindowProperty(w, 'DARL', 'prop') == noErr);	// not there any more
 	DisposeWindow(w);

@@ -1084,7 +1084,16 @@ OSStatus SetWindowProperty(WindowRef window, OSType propertyCreator, OSType prop
 		if (propertyBuffer)
 			memcpy(property->data, propertyBuffer, propertySize);
 		else
+		{
+#ifndef __LP64__
+			// QUIRK: in the 32-bit API the property has no data, and its size is 0, when the buffer is NULL.
+			// Not documented. Evidence: black-box observation on Mojave 10.14.4 i386 (tier 2, mj2.c).
+			// Test: test_quirk_window_property_edges in tests/src/carbon_windows.c
+			property->size = 0;
+#else
 			memset(property->data, 0, propertySize);
+#endif
+		}
 	}
 
 	// A property that is already there is replaced
