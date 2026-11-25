@@ -1,4 +1,5 @@
 #include <HIToolbox/MacWindows.h>
+#include <HIToolbox/CarbonEvents.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -174,7 +175,7 @@ OSStatus GetWindowBounds(WindowRef a, WindowRegionCode b, Rect * c)
 	return 0;
 }
 
-OSStatus GetWindowEventTarget(WindowRef a)
+EventTargetRef GetWindowEventTarget(WindowRef a)
 {
 	return 0;
 }
