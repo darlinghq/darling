@@ -284,12 +284,33 @@ static void test_nib(CFBundleRef bundle)
 	CHECK_EQ(CountMenuItems(root), 2);
 	CFRelease((CFTypeRef) root);
 
-	// The window is read; making it is the Window Manager's
+	// The window: its class, attributes, bounds and title come from the nib (this needs a window system)
 	WindowRef window = (WindowRef) 1;
 	OSStatus status = CreateWindowFromNib(nib, CFSTR("Window"), &window);
 	CHECK(status != kIBCarbonRuntimeCantFindObject && status != kIBCarbonRuntimeObjectNotOfRequestedType);
 	if (status != noErr)
 		CHECK(window == NULL);
+	else
+	{
+		WindowClass windowClass = 0;
+		WindowAttributes attributes = 0;
+		Rect content;
+		CFStringRef title = NULL;
+
+		CHECK_EQ(GetWindowClass(window, &windowClass), noErr);
+		CHECK_EQ(windowClass, kMovableAlertWindowClass);
+		CHECK_EQ(GetWindowAttributes(window, &attributes), noErr);
+		CHECK(attributes & kWindowResizableAttribute);
+		CHECK(!(attributes & kWindowCloseBoxAttribute));
+		CHECK_EQ(GetWindowBounds(window, kWindowContentRgn, &content), noErr);
+		CHECK(content.top == 50 && content.left == 60 && content.bottom == 250 && content.right == 360);
+		CHECK_EQ(CopyWindowTitleAsCFString(window, &title), noErr);
+		CHECK(title && CFStringCompare(title, CFSTR("Fixture"), 0) == kCFCompareEqualTo);
+		if (title)
+			CFRelease(title);
+		CHECK(!IsWindowVisible(window));
+		DisposeWindow(window);
+	}
 	CHECK_EQ(CreateWindowFromNib(nib, CFSTR("Popup"), &window), kIBCarbonRuntimeObjectNotOfRequestedType);
 	CHECK_EQ(CreateWindowFromNib(nib, CFSTR("Nope"), &window), kIBCarbonRuntimeCantFindObject);
 

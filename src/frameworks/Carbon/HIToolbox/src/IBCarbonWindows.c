@@ -19,17 +19,88 @@
 
 // Windows from nibs. The nib reader gives the description of the IBCarbonWindow object with its
 // controls (see IBCarbonNib.h); making the window and the controls out of it is up to the Window
-// Manager and the Control Manager, through _HICreateWindowFromNibDescription(), which fails here
-// until they provide it.
+// Manager and the Control Manager, through _HICreateWindowFromNibDescription(): the Window Manager makes
+// the window, the Control Manager (not there yet) will make its controls.
 
 #include <HIToolbox/IBCarbonRuntime.h>
+#include <HIToolbox/MacWindows.h>
+#include <stdio.h>
 #include <CarbonCore/MacErrors.h>
 #include "IBCarbonNib.h"
 
+// The attributes of a nib window object: a boolean that is not in the nib is false
+static bool nibFlag(CFDictionaryRef description, CFStringRef key, bool absent)
+{
+	CFTypeRef value = CFDictionaryGetValue(description, key);
+
+	return value && CFGetTypeID(value) == CFBooleanGetTypeID() ? CFBooleanGetValue(value) : absent;
+}
+
+static bool nibInt(CFDictionaryRef description, CFStringRef key, int* out)
+{
+	CFTypeRef value = CFDictionaryGetValue(description, key);
+
+	return value && CFGetTypeID(value) == CFNumberGetTypeID() && CFNumberGetValue(value, kCFNumberIntType, out);
+}
+
+// The window of the description: its class, attributes, bounds and title. The controls of the window
+// are made by the Control Manager.
 OSStatus _HICreateWindowFromNibDescription(CFDictionaryRef description, WindowRef* outWindow)
 {
 	*outWindow = NULL;
-	return unimpErr;
+
+	// "windowRect" is the content rectangle, "top left bottom right"
+	CFStringRef rectString = CFDictionaryGetValue(description, CFSTR("windowRect"));
+	char text[128];
+	int top, left, bottom, right;
+
+	if (!rectString || CFGetTypeID(rectString) != CFStringGetTypeID() ||
+		!CFStringGetCString(rectString, text, sizeof(text), kCFStringEncodingUTF8) ||
+		sscanf(text, "%d %d %d %d", &top, &left, &bottom, &right) != 4)
+		return paramErr;
+
+	int windowClass = kDocumentWindowClass;
+	nibInt(description, CFSTR("carbonWindowClass"), &windowClass);
+
+	WindowAttributes attributes = kWindowNoAttributes;
+
+	if (nibFlag(description, CFSTR("hasCloseBox"), false))
+		attributes |= kWindowCloseBoxAttribute;
+	if (nibFlag(description, CFSTR("hasCollapseBox"), false))
+		attributes |= kWindowCollapseBoxAttribute;
+	if (nibFlag(description, CFSTR("hasHorizontalZoom"), false))
+		attributes |= kWindowHorizontalZoomAttribute;
+	if (nibFlag(description, CFSTR("hasVerticalZoom"), false))
+		attributes |= kWindowVerticalZoomAttribute;
+	if (nibFlag(description, CFSTR("isResizable"), false))
+		attributes |= kWindowResizableAttribute;
+	if (nibFlag(description, CFSTR("liveResize"), false))
+		attributes |= kWindowLiveResizeAttribute;
+	if (nibFlag(description, CFSTR("hideOnSuspend"), false))
+		attributes |= kWindowHideOnSuspendAttribute;
+	if (nibFlag(description, CFSTR("hideOnFullScreen"), false))
+		attributes |= kWindowHideOnFullScreenAttribute;
+	if (!nibFlag(description, CFSTR("isConstrained"), true))
+		attributes |= kWindowNoConstrainAttribute;
+	if (!nibFlag(description, CFSTR("receiveUpdates"), true))
+		attributes |= kWindowNoUpdatesAttribute;
+	// The windows of a nib have the standard window handler unless the nib says otherwise
+	if (nibFlag(description, CFSTR("standardHandler"), true))
+		attributes |= kWindowStandardHandlerAttribute;
+
+	Rect bounds = { (short) top, (short) left, (short) bottom, (short) right };
+	WindowRef window;
+	OSStatus status = CreateNewWindow((WindowClass) windowClass, attributes, &bounds, &window);
+
+	if (status != noErr)
+		return status;
+
+	CFStringRef title = CFDictionaryGetValue(description, CFSTR("title"));
+
+	if (title && CFGetTypeID(title) == CFStringGetTypeID())
+		SetWindowTitleWithCFString(window, title);
+	*outWindow = window;
+	return noErr;
 }
 
 OSStatus CreateWindowFromNib(IBNibRef inNibRef, CFStringRef inName, WindowRef* outWindow)
