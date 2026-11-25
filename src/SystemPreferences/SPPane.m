@@ -48,6 +48,10 @@ static NSString * const kSearchKey = @"NSPrefPaneSearchParameters";
         label = [[path lastPathComponent] stringByDeletingPathExtension];
     _label = [label copy];
 
+    // the window title is the bundle's name; the label is for the grid (and may have line breaks)
+    id title = [_bundle objectForInfoDictionaryKey:@"CFBundleName"];
+    _title = [title isKindOfClass:[NSString class]] && [title length] != 0 ? [title copy] : _label;
+
     id keywords = [_bundle objectForInfoDictionaryKey:kSearchKey];
     _searchKeywords = [keywords isKindOfClass:[NSString class]] ? [keywords copy] : @"";
     return self;

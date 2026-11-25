@@ -29,6 +29,9 @@
 @property (readonly, copy) NSString *identifier;
 // The label under the icon: NSPrefPaneIconLabel, else the bundle name.
 @property (readonly, copy) NSString *label;
+// The title of the window while the pane is shown: the bundle's (localized) CFBundleName, as on macOS where
+// the grid shows the shorter NSPrefPaneIconLabel (which may span lines); the label when there is no name.
+@property (readonly, copy) NSString *title;
 @property (readonly, strong) NSBundle *bundle;
 // The icon from NSPrefPaneIconFile (or CFBundleIconFile); nil when the bundle
 // has none or the file cannot be read.
