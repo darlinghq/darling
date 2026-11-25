@@ -28,6 +28,7 @@ add_framework(QD
     	src/QDBridge.c
 
     DEPENDENCIES
+	CarbonCore
 	CoreFoundation
 	CoreGraphics
 	CoreServices
