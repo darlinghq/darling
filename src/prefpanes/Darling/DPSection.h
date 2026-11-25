@@ -19,18 +19,18 @@
 
 #import "DPSetting.h"
 
-// A group of settings, shown as one tab of the pane.
+// A group of settings, shown as one section of the pane.
 @interface DPSection : NSObject
-@property (copy) NSString *identifier;       // the anchor that selects the tab
-@property (copy) NSString *title;            // the tab's label
+@property (copy) NSString *identifier;       // the anchor that selects the section
+@property (copy) NSString *title;            // the section's title in the list
 @property (copy) NSString *note;             // when the settings take effect, shown above them
-// The user settings of a tab are written as they change; the system-wide ones are edited
+// The user settings of a section are written as they change; the system-wide ones are edited
 // first and written by Apply.
 @property (copy) NSArray<DPSetting *> *userSettings;
 @property (copy) NSArray<DPSetting *> *systemSettings;
 @property (copy) NSString *systemNote;       // shown above the system settings
 
-// All the sections, in tab order.
+// All the sections, in list order.
 + (NSArray<DPSection *> *)allSections;
 
 // The key of the setting that the legacy boolean DarlingInWindowMenuBar stands for
