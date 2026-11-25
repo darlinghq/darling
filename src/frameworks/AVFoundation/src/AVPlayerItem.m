@@ -54,6 +54,7 @@
 {
     for (AVPlayerItemOutput *output in [[_playerItem->outputs copy] autorelease])
         [self removeOutput:output];
+    [_playerItem->audioTimePitchAlgorithm release];
     [_playerItem release];
     [super dealloc];
 }
@@ -78,6 +79,33 @@
 - (CGSize)presentationSize { return [_playerItem->asset naturalSize]; }
 - (NSArray *)tracks { return [NSArray array]; }
 - (NSArray<AVPlayerItemOutput *> *)outputs { return [[_playerItem->outputs copy] autorelease]; }
+
+// QUIRK: any string is accepted and read back as given, also one that is not an algorithm; nil restores the
+// default, Spectral. The audio is processed with the algorithm the string names (an unknown one plays like
+// Spectral, the deprecated LowQualityZeroLatency like TimeDomain).
+// Not documented. Evidence: black-box observation on macOS 26.7.3 x86_64 and 10.14.4 (tier 2).
+// Test: tests/avplayer-playback.m, "audioTimePitchAlgorithm".
+- (AVAudioTimePitchAlgorithm)audioTimePitchAlgorithm
+{
+    NSString *value;
+    @synchronized (self) {
+        value = [[_playerItem->audioTimePitchAlgorithm retain] autorelease];
+    }
+    return value ?: AVAudioTimePitchAlgorithmSpectral;
+}
+
+- (void)setAudioTimePitchAlgorithm:(AVAudioTimePitchAlgorithm)algorithm
+{
+    @synchronized (self) {
+        if (_playerItem->audioTimePitchAlgorithm != algorithm && ![_playerItem->audioTimePitchAlgorithm isEqualToString:algorithm]) {
+            [_playerItem->audioTimePitchAlgorithm release];
+            _playerItem->audioTimePitchAlgorithm = [algorithm copy];
+        }
+    }
+    AVPlayer *player = _playerItem->player;
+    if (player)
+        [[player _internal] updateAudioTimePitchAlgorithm];
+}
 
 - (CMTime)currentTime
 {

@@ -5,6 +5,8 @@
 #import <Onyx2D/O2ColorSpace.h>
 #import <Onyx2D/O2Context.h>
 #import <Onyx2D/O2Image.h>
+#import <Onyx2D/O2DataProvider.h>
+#import "ImageIOASTC.h"
 #include <math.h>
 #include <pthread.h>
 #include <CarbonCore/MacErrors.h>
@@ -63,6 +65,22 @@ const CFStringRef kCGImageAuxiliaryDataInfoDataDescription = CFSTR("kCGImageAuxi
 @interface _O2ImageSource : O2ImageSource
 @end
 
+// The formats ImageIO decodes itself (ASTC) are tried first; everything else goes to the Onyx2D
+// decoders, as before. The magic numbers do not overlap, so the order only saves work.
+static O2ImageSourceRef newImageSource(O2DataProviderRef provider, CFDictionaryRef options) {
+	O2ImageSourceRef source = ImageIOASTCSourceCreate(provider, options);
+	if (source != nil)
+		return source;
+	return [O2ImageSource newImageSourceWithDataProvider:provider options:options];
+}
+
+static O2ImageSourceRef newImageSourceWithData(CFDataRef data, CFDictionaryRef options) {
+	O2DataProviderRef provider = O2DataProviderCreateWithCFData(data);
+	O2ImageSourceRef source = newImageSource(provider, options);
+	O2DataProviderRelease(provider);
+	return source;
+}
+
 // An incremental source (CGImageSourceCreateIncremental). It is given all the
 // data received so far each time, and decodes it with a source made from that
 // data; until then it has no images.
@@ -92,7 +110,7 @@ const CFStringRef kCGImageAuxiliaryDataInfoDataDescription = CFSTR("kCGImageAuxi
     if (_final)
         return; // the data was already complete
     O2ImageSource *decoder = data != NULL
-        ? allowedSource([O2ImageSource newImageSourceWithData: data options: (CFDictionaryRef) _options])
+        ? allowedSource(newImageSourceWithData(data, (CFDictionaryRef) _options))
         : nil;
     [_decoder release];
     _decoder = decoder;
@@ -141,11 +159,16 @@ void CGImageSourceUpdateData(CGImageSourceRef isrc, CFDataRef data, bool final) 
 }
 
 CGImageSourceRef CGImageSourceCreateWithData(CFDataRef data,CFDictionaryRef options) {
-	return (CGImageSourceRef)allowedSource([O2ImageSource newImageSourceWithData:data options:options]);
+	return (CGImageSourceRef)allowedSource(newImageSourceWithData(data, options));
 }
 
 CGImageSourceRef CGImageSourceCreateWithURL(CFURLRef url,CFDictionaryRef options) {
-	return (CGImageSourceRef)allowedSource([O2ImageSource newImageSourceWithURL:(NSURL *)url options:options]);
+	O2DataProviderRef provider = [[O2DataProvider alloc] initWithURL:(NSURL *)url];
+	if (provider == nil)
+		return NULL;
+	O2ImageSourceRef source = newImageSource(provider, options);
+	O2DataProviderRelease(provider);
+	return (CGImageSourceRef)allowedSource(source);
 }
 
 size_t CGImageSourceGetCount(CGImageSourceRef self) {
@@ -302,14 +325,14 @@ CFDictionaryRef CGImageSourceCopyAuxiliaryDataInfoAtIndex(CGImageSourceRef isrc,
 }
 
 // The types the Onyx2D decoders behind O2ImageSource can read. macOS lists 62;
-// all of these six are among them. The gap is the formats we cannot decode.
+// all of these are among them. The gap is the formats we cannot decode.
 // Test: tests/src/imageio_source_queries.c reads each type back from data.
 CFArrayRef CGImageSourceCopyTypeIdentifiers(void)
 {
     const void *types[] = {
         CFSTR("public.png"), CFSTR("public.tiff"), CFSTR("public.jpeg"),
         CFSTR("com.microsoft.bmp"), CFSTR("com.compuserve.gif"), CFSTR("com.apple.icns"),
-        CFSTR("com.adobe.photoshop-image")
+        CFSTR("com.adobe.photoshop-image"), CFSTR("org.khronos.astc")
     };
     return CFArrayCreate(NULL, types, sizeof types / sizeof types[0], &kCFTypeArrayCallBacks);
 }

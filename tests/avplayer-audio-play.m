@@ -7,7 +7,9 @@
 //   FRAME <value> <time>    the video frame (the brightness of its center pixel) changed from dark to bright or back
 //   ENDED <time>            AVPlayerItemDidPlayToEndTimeNotification
 //   DONE <player time>
-// Usage: avplayer-audio-play <file> [seconds=5 [rate=1 [volume=1 [muted=0 [seek-to=none]]]]]
+// Usage: avplayer-audio-play <file> [seconds=5 [rate=1 [volume=1 [muted=0 [seek-to=none [algorithm=default [rate-after=none [algorithm-after=none]]]]]]]]
+//   algorithm: Spectral, TimeDomain, Varispeed or LowQualityZeroLatency (AVPlayerItem.audioTimePitchAlgorithm), set before the player plays;
+//   rate-after, algorithm-after: a rate and an algorithm set 1.5 s after the start ("none" for no change).
 //   guest-cc.sh -a x86_64 -o avplayer-audio-play tests/avplayer-audio-play.m -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo
 #import <AVFoundation/AVFoundation.h>
 #import <CoreMedia/CoreMedia.h>
@@ -35,7 +37,7 @@ int main(int argc, char **argv)
 {
 	setvbuf(stdout, NULL, _IONBF, 0);
 	if (argc < 2) {
-		printf("usage: avplayer-audio-play <file> [seconds [rate [volume [muted [seek-to]]]]]\n");
+		printf("usage: avplayer-audio-play <file> [seconds [rate [volume [muted [seek-to [algorithm [rate-after [algorithm-after]]]]]]]]\n");
 		return 1;
 	}
 	@autoreleasepool {
@@ -45,6 +47,9 @@ int main(int argc, char **argv)
 		float volume = argc > 4 ? (float)atof(argv[4]) : 1;
 		BOOL muted = argc > 5 ? atoi(argv[5]) != 0 : NO;
 		double seekTo = argc > 6 ? atof(argv[6]) : -1;
+		NSString *algorithm = argc > 7 && strcmp(argv[7], "default") ? [NSString stringWithUTF8String:argv[7]] : nil;
+		double rateAfter = argc > 8 && strcmp(argv[8], "none") ? atof(argv[8]) : -1;
+		NSString *algorithmAfter = argc > 9 && strcmp(argv[9], "none") ? [NSString stringWithUTF8String:argv[9]] : nil;
 
 		AVURLAsset *asset = [AVURLAsset URLAssetWithURL:url options:nil];
 		AVPlayerItem *item = [AVPlayerItem playerItemWithAsset:asset];
@@ -54,6 +59,8 @@ int main(int argc, char **argv)
 				@{ (NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA) }] autorelease];
 			[item addOutput:output];
 		}
+		if (algorithm)
+			item.audioTimePitchAlgorithm = algorithm;
 		AVPlayer *player = [AVPlayer playerWithPlayerItem:item];
 		player.volume = volume;
 		player.muted = muted;
@@ -69,8 +76,18 @@ int main(int argc, char **argv)
 		}
 		printf("PLAY %.3f\n", wallSeconds());
 		player.rate = rate;
+		const double playedAt = wallSeconds();
+		__block BOOL changed = NO;
 		__block int lastBright = -1;
 		run(seconds, ^BOOL {
+			if (!changed && wallSeconds() - playedAt >= 1.5) {
+				changed = YES;
+				if (algorithmAfter)
+					item.audioTimePitchAlgorithm = algorithmAfter;
+				if (rateAfter > 0)
+					player.rate = (float)rateAfter;
+				printf("CHANGED %.3f\n", wallSeconds());
+			}
 			if (output) {
 				CVPixelBufferRef buffer = [output copyPixelBufferForItemTime:kCMTimeZero itemTimeForDisplay:NULL];
 				if (buffer) {

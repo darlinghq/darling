@@ -20,6 +20,7 @@
 #ifndef _LS_ICONSCORE_H
 #define _LS_ICONSCORE_H
 
+#include <os/availability.h>
 #include <CoreServices/CoreServices.h>
 #include <OSServices/OSServices.h>
 
@@ -28,9 +29,11 @@ extern "C" {
 #endif
 
 typedef struct OpaqueIconRef *IconRef;
+typedef UInt32 IconServicesUsageFlags;
 
 extern OSErr AcquireIconRef(IconRef theIconRef);
 extern OSErr GetIconRef(SInt16 vRefNum, OSType creator, OSType iconType, IconRef *theIconRef);
+extern OSStatus GetIconRefFromFileInfo(const FSRef *inRef, UniCharCount inFileNameLength, const UniChar *inFileName, FSCatalogInfoBitmap inWhichInfo, const FSCatalogInfo *inCatalogInfo, IconServicesUsageFlags inUsageFlags, IconRef *outIconRef, SInt16 *outLabel) API_DEPRECATED("", macos(10.1, 10.13));
 extern OSStatus GetIconRefFromIconFamilyPtr(const IconFamilyResource *inIconFamilyPtr, Size inSize, IconRef *outIconRef);
 extern OSStatus ReadIconFromFSRef(const FSRef *ref, IconFamilyHandle *iconFamily);
 extern OSErr ReleaseIconRef(IconRef theIconRef);

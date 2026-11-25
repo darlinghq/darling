@@ -6646,7 +6646,13 @@ machservice_setup(launch_data_t obj, const char *key, void *context)
 	struct machservice *ms;
 	mach_port_t p = MACH_PORT_NULL;
 
-	if (unlikely(ms = jobmgr_lookup_service(j->mgr, key, false, 0))) {
+	/* A job whose removal is pending (it was removed while its process was
+	 * still running) is no longer found by job_find(), so its label can be
+	 * submitted again. Its Mach services must not keep the new job from having
+	 * the same names: the new service is put in front of the old one in the
+	 * lookup table, and the old one disappears when the old process has exited.
+	 */
+	if (unlikely(ms = jobmgr_lookup_service(j->mgr, key, false, 0)) && !ms->job->removal_pending) {
 		job_log(j, LOG_WARNING, "Conflict with job: %s over Mach service: %s", ms->job->label, key);
 		return;
 	}
@@ -9725,6 +9731,14 @@ jobmgr_find_by_name(jobmgr_t jm, const char *where)
 	 * by "launchctl load -S Background", belong to the system session.
 	 */
 	if (jmi == NULL && strcasecmp(where, VPROCMGR_SESSION_BACKGROUND) == 0) {
+		jmi = root_jobmgr;
+	}
+
+	/* The same goes for Aqua: agents limited to it, as loaded from the
+	 * LaunchAgents directories when the container starts, run in the system
+	 * session.
+	 */
+	if (jmi == NULL && strcasecmp(where, VPROCMGR_SESSION_AQUA) == 0) {
 		jmi = root_jobmgr;
 	}
 #endif

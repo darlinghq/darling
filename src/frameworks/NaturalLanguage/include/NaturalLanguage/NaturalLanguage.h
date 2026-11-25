@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2026 Darling Developers
+ Copyright (C) 2026 Darling developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -22,5 +22,8 @@
 
 #import <NaturalLanguage/NLLanguage.h>
 #import <NaturalLanguage/NLTokenizer.h>
+#import <NaturalLanguage/NLTagger.h>
+#import <NaturalLanguage/NLLanguageRecognizer.h>
+#import <NaturalLanguage/NLEmbedding.h>
 
 #endif

@@ -1,6 +1,9 @@
 #import <Foundation/Foundation.h>
 
 typedef NSString *AVMetadataKey;
+typedef NSString *AVMetadataKeySpace;
+
+extern const AVMetadataKeySpace AVMetadataKeySpaceCommon;
 
 extern const AVMetadataKey AVMetadataCommonKeyAlbumName;
 extern const AVMetadataKey AVMetadataCommonKeyArtist;
@@ -19,3 +22,4 @@ extern const AVMediaType AVMediaTypeVideo;
 
 extern const AVFileType AVFileTypeMPEG4;
 extern const AVFileType AVFileTypeQuickTimeMovie;
+extern AVFileType const AVFileTypeAppleM4A;

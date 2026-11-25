@@ -1,2 +1,7 @@
 %__darling_magic      ^Mach-O.*$
-%__darling_requires   %{_rpmconfigdir}/darling-deps.req %{_builddir}/darling/build/src/buildtools/elfdep
+# The Mach-O files load host libraries through ELF wrappers (elfdep prints the soname). The 64-bit slices
+# need the 64-bit library, which is all an aarch64 host (the x86_64 slices run under FEX) has, so that is
+# the requirement. The i386 slice needs the 32-bit library, which only an x86-64 host can have: it is
+# recommended there and ignored where nothing provides it.
+%__darling_requires   %{_rpmconfigdir}/darling-deps.req 64 %{_builddir}/darling/build/src/buildtools/elfdep
+%__darling_recommends %{_rpmconfigdir}/darling-deps.req 32 %{_builddir}/darling/build/src/buildtools/elfdep

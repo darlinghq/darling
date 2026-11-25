@@ -1,6 +1,7 @@
 #ifndef AUDIOQUEUEOUTPUT_H
 #define	AUDIOQUEUEOUTPUT_H
 #include "AudioQueueBase.h"
+#include "TimePitch.h"
 #include <AudioToolbox/AudioComponent.h>
 #include <CoreAudio/AudioHardware.h>
 #include <AudioToolbox/AudioOutputUnit.h>
@@ -75,10 +76,16 @@ public:
 private:
 	static OSStatus renderCallback(void* refCon, AudioUnitRenderActionFlags* flags, const AudioTimeStamp* timeStamp,
 		UInt32 busNumber, UInt32 numberFrames, AudioBufferList* ioData);
-	OSStatus render(UInt32 numberFrames, AudioBufferList* ioData);
+	// `produced` (optional) receives the number of frames of the first buffer that carry audio.
+	OSStatus render(UInt32 numberFrames, AudioBufferList* ioData, UInt32* produced = nullptr);
+	// The time/pitch effect is on and changes the audio, or still holds some. Called with m_mutex held.
+	bool timePitchInUseLocked() const;
+	// Renders a block through the time/pitch effect; returns the frames that carry audio.
+	UInt32 renderTimePitchLocked(uint8_t* out, UInt32 want, std::vector<AudioQueueBufferRef>& finished);
+	void applyTimePitchLocked();
 	void destroyTap();
 	OSStatus renderTapped(UInt32 numberFrames, AudioBufferList* ioData);
-	void finishRender(std::vector<AudioQueueBufferRef>& finished, UInt32 numberFrames);
+	void finishRender(std::vector<AudioQueueBufferRef>& finished, UInt32 numberFrames, double speed = 1.0);
 	struct Tap;
 	OSStatus pullTapSource(Tap* tap, UInt32 inNumberFrames, AudioQueueProcessingTapFlags* outFlags,
 			UInt32* outNumberFrames, AudioBufferList* ioData);
@@ -155,7 +162,8 @@ private:
 	UInt64 m_entryRampLeft = 0;
 	float m_entryPan = 0.0f;
 	std::atomic<float> m_pan { 0.0f }; // the queue's own pan parameter
-	// Parameters the queue stores without acting on them (no time/pitch effect).
+	// The play rate and pitch (cents) are acted on by the time/pitch effect, when it is enabled;
+	// the volume ramp time is only stored.
 	float m_playRate = 1.0f, m_pitch = 0.0f, m_volumeRampTime = 0.0f;
 
 	bool m_metering = false;
@@ -163,6 +171,17 @@ private:
 	CFStringRef m_deviceUID = nullptr;
 	UInt32 m_decodeBufferFrames = 0;
 	UInt32 m_timePitchEnabled = 0, m_timePitchAlgorithm = kAudioQueueTimePitchAlgorithm_Spectral, m_timePitchBypass = 0;
+	// The time/pitch effect; created when it first has something to do.
+	std::unique_ptr<TimePitchProcessor> m_timePitch;
+	bool m_flushRequested = false;	// AudioQueueFlush was called and what was enqueued has not played out
+	bool m_primed = false;		// AudioQueuePrime was called, and AudioQueueReset has not been since
+	bool m_everStarted = false;
+	// Media time (in frames) that the frames rendered so far stand for: equals m_renderedFrames unless
+	// the effect changed the speed. The queue's timeline, and so AudioQueueGetCurrentTime, is in it.
+	double m_mediaRendered = 0.0;
+	double m_blockSpeed = 1.0;	// media frames per frame rendered in the block being rendered
+	std::vector<std::vector<float>> m_tpOut;
+	std::vector<uint8_t> m_tpBytes;
 	std::vector<uint8_t> m_channelLayout;
 	std::set<AudioQueueBufferRef> m_allocated;
 	bool m_running = false;

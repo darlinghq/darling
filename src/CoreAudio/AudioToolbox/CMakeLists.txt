@@ -13,6 +13,7 @@ set(audiotoolbox_sources
 	AudioConverter.cpp
 	AudioConverterImpl.cpp
 	PCMConverter.cpp
+	TimePitch.cpp
 	AudioFile.cpp
 	AudioQueueBase.cpp
 	AudioQueue.cpp
@@ -28,6 +29,14 @@ set(audiotoolbox_sources
 	ExtendedAudioFile.cpp
 	AudioFormat.cpp
 	MusicDevice.cpp
+	MusicSequence.cpp
+	MusicTrack.cpp
+	MusicTrackProperties.cpp
+	MusicTrackEditing.cpp
+	MusicSequenceTime.cpp
+	MusicPlayer.cpp
+	MusicDestination.cpp
+	MusicEventIterator.cpp
 	AudioToolbox.cpp
 	AudioHardwareService.cpp
 	AUParameters.m

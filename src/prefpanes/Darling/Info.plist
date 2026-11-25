@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>Darling</string>
+	<key>CFBundleGetInfoString</key>
+	<string>Darling Preference Pane</string>
+	<key>CFBundleIdentifier</key>
+	<string>org.darlinghq.preference.darling</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Darling System Preferences</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>NSPrefPaneIconFile</key>
+	<string>DarlingPane</string>
+	<key>NSPrefPaneIconLabel</key>
+	<string>Darling</string>
+	<key>NSPrefPaneSearchParameters</key>
+	<string>Darling keyboard command control display wayland x11 scale menu bar file chooser dialog portal graphics gpu metal dmabuf platform identity model serial security code signing certificates quit last window applications sound audio volume mute microphone speaker input output</string>
+	<key>NSPrincipalClass</key>
+	<string>DarlingPreferencePane</string>
+</dict>
+</plist>

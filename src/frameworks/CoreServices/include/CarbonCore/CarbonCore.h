@@ -35,6 +35,7 @@
 #include <CarbonCore/TextCommon.h>
 #include <CarbonCore/TextEncodingConverter.h>
 #include <CarbonCore/TextUtils.h>
+#include <CarbonCore/NumberFormatting.h>
 #include <CarbonCore/Timer.h>
 #include <CarbonCore/ToolUtils.h>
 #include <CarbonCore/UnicodeUtilities.h>

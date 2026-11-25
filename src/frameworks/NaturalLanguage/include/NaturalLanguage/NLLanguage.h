@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2026 Darling Developers
+ Copyright (C) 2026 Darling developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,10 +17,18 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef _NLLANGUAGE_H_
+#define _NLLANGUAGE_H_
+
 #import <Foundation/Foundation.h>
 
-// A language, named by its BCP 47 tag.
-typedef NSString *NLLanguage NS_TYPED_EXTENSIBLE_ENUM;
+NS_ASSUME_NONNULL_BEGIN
 
-FOUNDATION_EXPORT NLLanguage const NLLanguageUndetermined;
-FOUNDATION_EXPORT NLLanguage const NLLanguageEnglish;
+typedef NSString *NLLanguage API_AVAILABLE(macos(10.14));
+
+extern NLLanguage const NLLanguageEnglish API_AVAILABLE(macos(10.14));
+extern NLLanguage const NLLanguageUndetermined API_AVAILABLE(macos(10.14));
+
+NS_ASSUME_NONNULL_END
+
+#endif

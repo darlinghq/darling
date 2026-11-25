@@ -608,6 +608,34 @@ static void testUnplayableAudio(NSString *path)
 	CHECK([player rate] == 0, "and does not play");
 }
 
+// AVPlayerItem.audioTimePitchAlgorithm: Spectral by default, any string is kept as given, nil restores the default, the item
+// keeps its setting when a player takes it. (The sound at another rate is checked by tests/avplayer-audio-sink.py.)
+// The behaviour of strings that are no algorithm is a QUIRK observed on macOS 26.7.3 and 10.14.4 (see AVPlayerItem.m).
+static void testAudioTimePitchAlgorithm(NSString *path)
+{
+	AVPlayerItem *item = [AVPlayerItem playerItemWithURL:[NSURL fileURLWithPath:path]];
+	CHECK([item.audioTimePitchAlgorithm isEqualToString:AVAudioTimePitchAlgorithmSpectral], "audioTimePitchAlgorithm is Spectral by default (%s)", [item.audioTimePitchAlgorithm UTF8String]);
+	CHECK([AVAudioTimePitchAlgorithmSpectral isEqualToString:@"Spectral"] && [AVAudioTimePitchAlgorithmTimeDomain isEqualToString:@"TimeDomain"] &&
+	      [AVAudioTimePitchAlgorithmVarispeed isEqualToString:@"Varispeed"], "the algorithm constants");
+	NSArray *names = @[AVAudioTimePitchAlgorithmTimeDomain, AVAudioTimePitchAlgorithmVarispeed, AVAudioTimePitchAlgorithmSpectral, @"LowQualityZeroLatency"];
+	for (NSString *name in names) {
+		item.audioTimePitchAlgorithm = name;
+		CHECK([item.audioTimePitchAlgorithm isEqualToString:name], "audioTimePitchAlgorithm reads back %s", [name UTF8String]);
+	}
+	item.audioTimePitchAlgorithm = @"bogus";
+	CHECK([item.audioTimePitchAlgorithm isEqualToString:@"bogus"], "an unknown name is kept");
+	item.audioTimePitchAlgorithm = nil;
+	CHECK([item.audioTimePitchAlgorithm isEqualToString:AVAudioTimePitchAlgorithmSpectral], "nil restores Spectral (%s)", [item.audioTimePitchAlgorithm UTF8String]);
+	item.audioTimePitchAlgorithm = AVAudioTimePitchAlgorithmTimeDomain;
+	AVPlayer *player = [AVPlayer playerWithPlayerItem:item];
+	CHECK([item.audioTimePitchAlgorithm isEqualToString:AVAudioTimePitchAlgorithmTimeDomain], "the setting stays when a player takes the item");
+	item.audioTimePitchAlgorithm = AVAudioTimePitchAlgorithmSpectral;
+	CHECK([item.audioTimePitchAlgorithm isEqualToString:AVAudioTimePitchAlgorithmSpectral], "it can be changed with a player");
+	AVPlayerItem *other = [AVPlayerItem playerItemWithURL:[NSURL fileURLWithPath:path]];
+	[player replaceCurrentItemWithPlayerItem:other];
+	CHECK([other.audioTimePitchAlgorithm isEqualToString:AVAudioTimePitchAlgorithmSpectral], "a new item has the default");
+}
+
 int main(int argc, char **argv)
 {
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -640,6 +668,7 @@ int main(int argc, char **argv)
 		}
 		testBadAssets(NSTemporaryDirectory());
 		testLifetime(first);
+		testAudioTimePitchAlgorithm(first);
 	}
 	if (failures) {
 		printf("%d failure(s)\n", failures);

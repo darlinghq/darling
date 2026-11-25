@@ -1,0 +1,975 @@
+accum	void	GLenum op | GLfloat value
+alpha_func	void	GLenum func | GLclampf ref
+are_textures_resident	GLboolean	GLsizei n | const GLuint *textures | GLboolean *residences
+array_element	void	GLint i
+begin	void	GLenum mode
+bind_texture	void	GLenum target | GLuint texture
+bitmap	void	GLsizei width | GLsizei height | GLfloat xorig | GLfloat yorig | GLfloat xmove | GLfloat ymove | const GLubyte *bitmap
+blend_func	void	GLenum sfactor | GLenum dfactor
+call_list	void	GLuint list
+call_lists	void	GLsizei n | GLenum type | const GLvoid *lists
+clear	void	GLbitfield mask
+clear_accum	void	GLfloat red | GLfloat green | GLfloat blue | GLfloat alpha
+clear_color	void	GLclampf red | GLclampf green | GLclampf blue | GLclampf alpha
+clear_depth	void	GLclampd depth
+clear_index	void	GLfloat c
+clear_stencil	void	GLint s
+clip_plane	void	GLenum plane | const GLdouble *equation
+color3b	void	GLbyte red | GLbyte green | GLbyte blue
+color3bv	void	const GLbyte *v
+color3d	void	GLdouble red | GLdouble green | GLdouble blue
+color3dv	void	const GLdouble *v
+color3f	void	GLfloat red | GLfloat green | GLfloat blue
+color3fv	void	const GLfloat *v
+color3i	void	GLint red | GLint green | GLint blue
+color3iv	void	const GLint *v
+color3s	void	GLshort red | GLshort green | GLshort blue
+color3sv	void	const GLshort *v
+color3ub	void	GLubyte red | GLubyte green | GLubyte blue
+color3ubv	void	const GLubyte *v
+color3ui	void	GLuint red | GLuint green | GLuint blue
+color3uiv	void	const GLuint *v
+color3us	void	GLushort red | GLushort green | GLushort blue
+color3usv	void	const GLushort *v
+color4b	void	GLbyte red | GLbyte green | GLbyte blue | GLbyte alpha
+color4bv	void	const GLbyte *v
+color4d	void	GLdouble red | GLdouble green | GLdouble blue | GLdouble alpha
+color4dv	void	const GLdouble *v
+color4f	void	GLfloat red | GLfloat green | GLfloat blue | GLfloat alpha
+color4fv	void	const GLfloat *v
+color4i	void	GLint red | GLint green | GLint blue | GLint alpha
+color4iv	void	const GLint *v
+color4s	void	GLshort red | GLshort green | GLshort blue | GLshort alpha
+color4sv	void	const GLshort *v
+color4ub	void	GLubyte red | GLubyte green | GLubyte blue | GLubyte alpha
+color4ubv	void	const GLubyte *v
+color4ui	void	GLuint red | GLuint green | GLuint blue | GLuint alpha
+color4uiv	void	const GLuint *v
+color4us	void	GLushort red | GLushort green | GLushort blue | GLushort alpha
+color4usv	void	const GLushort *v
+color_mask	void	GLboolean red | GLboolean green | GLboolean blue | GLboolean alpha
+color_material	void	GLenum face | GLenum mode
+color_pointer	void	GLint size | GLenum type | GLsizei stride | const GLvoid *pointer
+copy_pixels	void	GLint x | GLint y | GLsizei width | GLsizei height | GLenum type
+copy_tex_image1D	void	GLenum target | GLint level | GLenum internalFormat | GLint x | GLint y | GLsizei width | GLint border
+copy_tex_image2D	void	GLenum target | GLint level | GLenum internalFormat | GLint x | GLint y | GLsizei width | GLsizei height | GLint border
+copy_tex_sub_image1D	void	GLenum target | GLint level | GLint xoffset | GLint x | GLint y | GLsizei width
+copy_tex_sub_image2D	void	GLenum target | GLint level | GLint xoffset | GLint yoffset | GLint x | GLint y | GLsizei width | GLsizei height
+cull_face	void	GLenum mode
+delete_lists	void	GLuint list | GLsizei range
+delete_textures	void	GLsizei n | const GLuint *textures
+depth_func	void	GLenum func
+depth_mask	void	GLboolean flag
+depth_range	void	GLclampd zNear | GLclampd zFar
+disable	void	GLenum cap
+disable_client_state	void	GLenum array
+draw_arrays	void	GLenum mode | GLint first | GLsizei count
+draw_buffer	void	GLenum mode
+draw_elements	void	GLenum mode | GLsizei count | GLenum type | const GLvoid *indices
+draw_pixels	void	GLsizei width | GLsizei height | GLenum format | GLenum type | const GLvoid *pixels
+edge_flag	void	GLboolean flag
+edge_flag_pointer	void	GLsizei stride | const GLvoid *pointer
+edge_flagv	void	const GLboolean *flag
+enable	void	GLenum cap
+enable_client_state	void	GLenum array
+end	void	
+end_list	void	
+eval_coord1d	void	GLdouble u
+eval_coord1dv	void	const GLdouble *u
+eval_coord1f	void	GLfloat u
+eval_coord1fv	void	const GLfloat *u
+eval_coord2d	void	GLdouble u | GLdouble v
+eval_coord2dv	void	const GLdouble *u
+eval_coord2f	void	GLfloat u | GLfloat v
+eval_coord2fv	void	const GLfloat *u
+eval_mesh1	void	GLenum mode | GLint i1 | GLint i2
+eval_mesh2	void	GLenum mode | GLint i1 | GLint i2 | GLint j1 | GLint j2
+eval_point1	void	GLint i
+eval_point2	void	GLint i | GLint j
+feedback_buffer	void	GLsizei size | GLenum type | GLfloat *buffer
+finish	void	
+flush	void	
+fogf	void	GLenum pname | GLfloat param
+fogfv	void	GLenum pname | const GLfloat *params
+fogi	void	GLenum pname | GLint param
+fogiv	void	GLenum pname | const GLint *params
+front_face	void	GLenum mode
+frustum	void	GLdouble left | GLdouble right | GLdouble bottom | GLdouble top | GLdouble zNear | GLdouble zFar
+gen_lists	GLuint	GLsizei range
+gen_textures	void	GLsizei n | GLuint *textures
+get_booleanv	void	GLenum pname | GLboolean *params
+get_clip_plane	void	GLenum plane | GLdouble *equation
+get_doublev	void	GLenum pname | GLdouble *params
+get_error	GLenum	
+get_floatv	void	GLenum pname | GLfloat *params
+get_integerv	void	GLenum pname | GLint *params
+get_lightfv	void	GLenum light | GLenum pname | GLfloat *params
+get_lightiv	void	GLenum light | GLenum pname | GLint *params
+get_mapdv	void	GLenum target | GLenum query | GLdouble *v
+get_mapfv	void	GLenum target | GLenum query | GLfloat *v
+get_mapiv	void	GLenum target | GLenum query | GLint *v
+get_materialfv	void	GLenum face | GLenum pname | GLfloat *params
+get_materialiv	void	GLenum face | GLenum pname | GLint *params
+get_pixel_mapfv	void	GLenum map | GLfloat *values
+get_pixel_mapuiv	void	GLenum map | GLuint *values
+get_pixel_mapusv	void	GLenum map | GLushort *values
+get_pointerv	void	GLenum pname | GLvoid **params
+get_polygon_stipple	void	GLubyte *mask
+get_string	const GLubyte*	GLenum name
+get_tex_envfv	void	GLenum target | GLenum pname | GLfloat *params
+get_tex_enviv	void	GLenum target | GLenum pname | GLint *params
+get_tex_gendv	void	GLenum coord | GLenum pname | GLdouble *params
+get_tex_genfv	void	GLenum coord | GLenum pname | GLfloat *params
+get_tex_geniv	void	GLenum coord | GLenum pname | GLint *params
+get_tex_image	void	GLenum target | GLint level | GLenum format | GLenum type | GLvoid *pixels
+get_tex_level_parameterfv	void	GLenum target | GLint level | GLenum pname | GLfloat *params
+get_tex_level_parameteriv	void	GLenum target | GLint level | GLenum pname | GLint *params
+get_tex_parameterfv	void	GLenum target | GLenum pname | GLfloat *params
+get_tex_parameteriv	void	GLenum target | GLenum pname | GLint *params
+hint	void	GLenum target | GLenum mode
+index_mask	void	GLuint mask
+index_pointer	void	GLenum type | GLsizei stride | const GLvoid *pointer
+indexd	void	GLdouble c
+indexdv	void	const GLdouble *c
+indexf	void	GLfloat c
+indexfv	void	const GLfloat *c
+indexi	void	GLint c
+indexiv	void	const GLint *c
+indexs	void	GLshort c
+indexsv	void	const GLshort *c
+indexub	void	GLubyte c
+indexubv	void	const GLubyte *c
+init_names	void	
+interleaved_arrays	void	GLenum format | GLsizei stride | const GLvoid *pointer
+is_enabled	GLboolean	GLenum cap
+is_list	GLboolean	GLuint list
+is_texture	GLboolean	GLuint texture
+light_modelf	void	GLenum pname | GLfloat param
+light_modelfv	void	GLenum pname | const GLfloat *params
+light_modeli	void	GLenum pname | GLint param
+light_modeliv	void	GLenum pname | const GLint *params
+lightf	void	GLenum light | GLenum pname | GLfloat param
+lightfv	void	GLenum light | GLenum pname | const GLfloat *params
+lighti	void	GLenum light | GLenum pname | GLint param
+lightiv	void	GLenum light | GLenum pname | const GLint *params
+line_stipple	void	GLint factor | GLushort pattern
+line_width	void	GLfloat width
+list_base	void	GLuint base
+load_identity	void	
+load_matrixd	void	const GLdouble *m
+load_matrixf	void	const GLfloat *m
+load_name	void	GLuint name
+logic_op	void	GLenum opcode
+map1d	void	GLenum target | GLdouble u1 | GLdouble u2 | GLint stride | GLint order | const GLdouble *points
+map1f	void	GLenum target | GLfloat u1 | GLfloat u2 | GLint stride | GLint order | const GLfloat *points
+map2d	void	GLenum target | GLdouble u1 | GLdouble u2 | GLint ustride | GLint uorder | GLdouble v1 | GLdouble v2 | GLint vstride | GLint vorder | const GLdouble *points
+map2f	void	GLenum target | GLfloat u1 | GLfloat u2 | GLint ustride | GLint uorder | GLfloat v1 | GLfloat v2 | GLint vstride | GLint vorder | const GLfloat *points
+map_grid1d	void	GLint un | GLdouble u1 | GLdouble u2
+map_grid1f	void	GLint un | GLfloat u1 | GLfloat u2
+map_grid2d	void	GLint un | GLdouble u1 | GLdouble u2 | GLint vn | GLdouble v1 | GLdouble v2
+map_grid2f	void	GLint un | GLfloat u1 | GLfloat u2 | GLint vn | GLfloat v1 | GLfloat v2
+materialf	void	GLenum face | GLenum pname | GLfloat param
+materialfv	void	GLenum face | GLenum pname | const GLfloat *params
+materiali	void	GLenum face | GLenum pname | GLint param
+materialiv	void	GLenum face | GLenum pname | const GLint *params
+matrix_mode	void	GLenum mode
+mult_matrixd	void	const GLdouble *m
+mult_matrixf	void	const GLfloat *m
+new_list	void	GLuint list | GLenum mode
+normal3b	void	GLbyte nx | GLbyte ny | GLbyte nz
+normal3bv	void	const GLbyte *v
+normal3d	void	GLdouble nx | GLdouble ny | GLdouble nz
+normal3dv	void	const GLdouble *v
+normal3f	void	GLfloat nx | GLfloat ny | GLfloat nz
+normal3fv	void	const GLfloat *v
+normal3i	void	GLint nx | GLint ny | GLint nz
+normal3iv	void	const GLint *v
+normal3s	void	GLshort nx | GLshort ny | GLshort nz
+normal3sv	void	const GLshort *v
+normal_pointer	void	GLenum type | GLsizei stride | const GLvoid *pointer
+ortho	void	GLdouble left | GLdouble right | GLdouble bottom | GLdouble top | GLdouble zNear | GLdouble zFar
+pass_through	void	GLfloat token
+pixel_mapfv	void	GLenum map | GLsizei mapsize | const GLfloat *values
+pixel_mapuiv	void	GLenum map | GLsizei mapsize | const GLuint *values
+pixel_mapusv	void	GLenum map | GLsizei mapsize | const GLushort *values
+pixel_storef	void	GLenum pname | GLfloat param
+pixel_storei	void	GLenum pname | GLint param
+pixel_transferf	void	GLenum pname | GLfloat param
+pixel_transferi	void	GLenum pname | GLint param
+pixel_zoom	void	GLfloat xfactor | GLfloat yfactor
+point_size	void	GLfloat size
+polygon_mode	void	GLenum face | GLenum mode
+polygon_offset	void	GLfloat factor | GLfloat units
+polygon_stipple	void	const GLubyte *mask
+pop_attrib	void	
+pop_client_attrib	void	
+pop_matrix	void	
+pop_name	void	
+prioritize_textures	void	GLsizei n | const GLuint *textures | const GLclampf *priorities
+push_attrib	void	GLbitfield mask
+push_client_attrib	void	GLbitfield mask
+push_matrix	void	
+push_name	void	GLuint name
+raster_pos2d	void	GLdouble x | GLdouble y
+raster_pos2dv	void	const GLdouble *v
+raster_pos2f	void	GLfloat x | GLfloat y
+raster_pos2fv	void	const GLfloat *v
+raster_pos2i	void	GLint x | GLint y
+raster_pos2iv	void	const GLint *v
+raster_pos2s	void	GLshort x | GLshort y
+raster_pos2sv	void	const GLshort *v
+raster_pos3d	void	GLdouble x | GLdouble y | GLdouble z
+raster_pos3dv	void	const GLdouble *v
+raster_pos3f	void	GLfloat x | GLfloat y | GLfloat z
+raster_pos3fv	void	const GLfloat *v
+raster_pos3i	void	GLint x | GLint y | GLint z
+raster_pos3iv	void	const GLint *v
+raster_pos3s	void	GLshort x | GLshort y | GLshort z
+raster_pos3sv	void	const GLshort *v
+raster_pos4d	void	GLdouble x | GLdouble y | GLdouble z | GLdouble w
+raster_pos4dv	void	const GLdouble *v
+raster_pos4f	void	GLfloat x | GLfloat y | GLfloat z | GLfloat w
+raster_pos4fv	void	const GLfloat *v
+raster_pos4i	void	GLint x | GLint y | GLint z | GLint w
+raster_pos4iv	void	const GLint *v
+raster_pos4s	void	GLshort x | GLshort y | GLshort z | GLshort w
+raster_pos4sv	void	const GLshort *v
+read_buffer	void	GLenum mode
+read_pixels	void	GLint x | GLint y | GLsizei width | GLsizei height | GLenum format | GLenum type | GLvoid *pixels
+rectd	void	GLdouble x1 | GLdouble y1 | GLdouble x2 | GLdouble y2
+rectdv	void	const GLdouble *v1 | const GLdouble *v2
+rectf	void	GLfloat x1 | GLfloat y1 | GLfloat x2 | GLfloat y2
+rectfv	void	const GLfloat *v1 | const GLfloat *v2
+recti	void	GLint x1 | GLint y1 | GLint x2 | GLint y2
+rectiv	void	const GLint *v1 | const GLint *v2
+rects	void	GLshort x1 | GLshort y1 | GLshort x2 | GLshort y2
+rectsv	void	const GLshort *v1 | const GLshort *v2
+render_mode	GLint	GLenum mode
+rotated	void	GLdouble angle | GLdouble x | GLdouble y | GLdouble z
+rotatef	void	GLfloat angle | GLfloat x | GLfloat y | GLfloat z
+scaled	void	GLdouble x | GLdouble y | GLdouble z
+scalef	void	GLfloat x | GLfloat y | GLfloat z
+scissor	void	GLint x | GLint y | GLsizei width | GLsizei height
+select_buffer	void	GLsizei size | GLuint *buffer
+shade_model	void	GLenum mode
+stencil_func	void	GLenum func | GLint ref | GLuint mask
+stencil_mask	void	GLuint mask
+stencil_op	void	GLenum fail | GLenum zfail | GLenum zpass
+tex_coord1d	void	GLdouble s
+tex_coord1dv	void	const GLdouble *v
+tex_coord1f	void	GLfloat s
+tex_coord1fv	void	const GLfloat *v
+tex_coord1i	void	GLint s
+tex_coord1iv	void	const GLint *v
+tex_coord1s	void	GLshort s
+tex_coord1sv	void	const GLshort *v
+tex_coord2d	void	GLdouble s | GLdouble t
+tex_coord2dv	void	const GLdouble *v
+tex_coord2f	void	GLfloat s | GLfloat t
+tex_coord2fv	void	const GLfloat *v
+tex_coord2i	void	GLint s | GLint t
+tex_coord2iv	void	const GLint *v
+tex_coord2s	void	GLshort s | GLshort t
+tex_coord2sv	void	const GLshort *v
+tex_coord3d	void	GLdouble s | GLdouble t | GLdouble r
+tex_coord3dv	void	const GLdouble *v
+tex_coord3f	void	GLfloat s | GLfloat t | GLfloat r
+tex_coord3fv	void	const GLfloat *v
+tex_coord3i	void	GLint s | GLint t | GLint r
+tex_coord3iv	void	const GLint *v
+tex_coord3s	void	GLshort s | GLshort t | GLshort r
+tex_coord3sv	void	const GLshort *v
+tex_coord4d	void	GLdouble s | GLdouble t | GLdouble r | GLdouble q
+tex_coord4dv	void	const GLdouble *v
+tex_coord4f	void	GLfloat s | GLfloat t | GLfloat r | GLfloat q
+tex_coord4fv	void	const GLfloat *v
+tex_coord4i	void	GLint s | GLint t | GLint r | GLint q
+tex_coord4iv	void	const GLint *v
+tex_coord4s	void	GLshort s | GLshort t | GLshort r | GLshort q
+tex_coord4sv	void	const GLshort *v
+tex_coord_pointer	void	GLint size | GLenum type | GLsizei stride | const GLvoid *pointer
+tex_envf	void	GLenum target | GLenum pname | GLfloat param
+tex_envfv	void	GLenum target | GLenum pname | const GLfloat *params
+tex_envi	void	GLenum target | GLenum pname | GLint param
+tex_enviv	void	GLenum target | GLenum pname | const GLint *params
+tex_gend	void	GLenum coord | GLenum pname | GLdouble param
+tex_gendv	void	GLenum coord | GLenum pname | const GLdouble *params
+tex_genf	void	GLenum coord | GLenum pname | GLfloat param
+tex_genfv	void	GLenum coord | GLenum pname | const GLfloat *params
+tex_geni	void	GLenum coord | GLenum pname | GLint param
+tex_geniv	void	GLenum coord | GLenum pname | const GLint *params
+tex_image1D	void	GLenum target | GLint level | GLenum internalformat | GLsizei width | GLint border | GLenum format | GLenum type | const GLvoid *pixels
+tex_image2D	void	GLenum target | GLint level | GLenum internalformat | GLsizei width | GLsizei height | GLint border | GLenum format | GLenum type | const GLvoid *pixels
+tex_parameterf	void	GLenum target | GLenum pname | GLfloat param
+tex_parameterfv	void	GLenum target | GLenum pname | const GLfloat *params
+tex_parameteri	void	GLenum target | GLenum pname | GLint param
+tex_parameteriv	void	GLenum target | GLenum pname | const GLint *params
+tex_sub_image1D	void	GLenum target | GLint level | GLint xoffset | GLsizei width | GLenum format | GLenum type | const GLvoid *pixels
+tex_sub_image2D	void	GLenum target | GLint level | GLint xoffset | GLint yoffset | GLsizei width | GLsizei height | GLenum format | GLenum type | const GLvoid *pixels
+translated	void	GLdouble x | GLdouble y | GLdouble z
+translatef	void	GLfloat x | GLfloat y | GLfloat z
+vertex2d	void	GLdouble x | GLdouble y
+vertex2dv	void	const GLdouble *v
+vertex2f	void	GLfloat x | GLfloat y
+vertex2fv	void	const GLfloat *v
+vertex2i	void	GLint x | GLint y
+vertex2iv	void	const GLint *v
+vertex2s	void	GLshort x | GLshort y
+vertex2sv	void	const GLshort *v
+vertex3d	void	GLdouble x | GLdouble y | GLdouble z
+vertex3dv	void	const GLdouble *v
+vertex3f	void	GLfloat x | GLfloat y | GLfloat z
+vertex3fv	void	const GLfloat *v
+vertex3i	void	GLint x | GLint y | GLint z
+vertex3iv	void	const GLint *v
+vertex3s	void	GLshort x | GLshort y | GLshort z
+vertex3sv	void	const GLshort *v
+vertex4d	void	GLdouble x | GLdouble y | GLdouble z | GLdouble w
+vertex4dv	void	const GLdouble *v
+vertex4f	void	GLfloat x | GLfloat y | GLfloat z | GLfloat w
+vertex4fv	void	const GLfloat *v
+vertex4i	void	GLint x | GLint y | GLint z | GLint w
+vertex4iv	void	const GLint *v
+vertex4s	void	GLshort x | GLshort y | GLshort z | GLshort w
+vertex4sv	void	const GLshort *v
+vertex_pointer	void	GLint size | GLenum type | GLsizei stride | const GLvoid *pointer
+viewport	void	GLint x | GLint y | GLsizei width | GLsizei height
+blend_func_separate	void	GLenum sfactorRGB | GLenum dfactorRGB | GLenum sfactorAlpha | GLenum dfactorAlpha
+blend_color	void	GLclampf red | GLclampf green | GLclampf blue | GLclampf alpha
+blend_equation	void	GLenum mode
+lock_arrays_EXT	void	GLint first | GLsizei count
+unlock_arrays_EXT	void	
+client_active_texture	void	GLenum target
+active_texture	void	GLenum target
+multi_tex_coord1d	void	GLenum target | GLdouble s
+multi_tex_coord1dv	void	GLenum target | const GLdouble *v
+multi_tex_coord1f	void	GLenum target | GLfloat s
+multi_tex_coord1fv	void	GLenum target | const GLfloat *v
+multi_tex_coord1i	void	GLenum target | GLint s
+multi_tex_coord1iv	void	GLenum target | const GLint *v
+multi_tex_coord1s	void	GLenum target | GLshort s
+multi_tex_coord1sv	void	GLenum target | const GLshort *v
+multi_tex_coord2d	void	GLenum target | GLdouble s | GLdouble t
+multi_tex_coord2dv	void	GLenum target | const GLdouble *v
+multi_tex_coord2f	void	GLenum target | GLfloat s | GLfloat t
+multi_tex_coord2fv	void	GLenum target | const GLfloat *v
+multi_tex_coord2i	void	GLenum target | GLint s | GLint t
+multi_tex_coord2iv	void	GLenum target | const GLint *v
+multi_tex_coord2s	void	GLenum target | GLshort s | GLshort t
+multi_tex_coord2sv	void	GLenum target | const GLshort *v
+multi_tex_coord3d	void	GLenum target | GLdouble s | GLdouble t | GLdouble r
+multi_tex_coord3dv	void	GLenum target | const GLdouble *v
+multi_tex_coord3f	void	GLenum target | GLfloat s | GLfloat t | GLfloat r
+multi_tex_coord3fv	void	GLenum target | const GLfloat *v
+multi_tex_coord3i	void	GLenum target | GLint s | GLint t | GLint r
+multi_tex_coord3iv	void	GLenum target | const GLint *v
+multi_tex_coord3s	void	GLenum target | GLshort s | GLshort t | GLshort r
+multi_tex_coord3sv	void	GLenum target | const GLshort *v
+multi_tex_coord4d	void	GLenum target | GLdouble s | GLdouble t | GLdouble r | GLdouble q
+multi_tex_coord4dv	void	GLenum target | const GLdouble *v
+multi_tex_coord4f	void	GLenum target | GLfloat s | GLfloat t | GLfloat r | GLfloat q
+multi_tex_coord4fv	void	GLenum target | const GLfloat *v
+multi_tex_coord4i	void	GLenum target | GLint s | GLint t | GLint r | GLint q
+multi_tex_coord4iv	void	GLenum target | const GLint *v
+multi_tex_coord4s	void	GLenum target | GLshort s | GLshort t | GLshort r | GLshort q
+multi_tex_coord4sv	void	GLenum target | const GLshort *v
+load_transpose_matrixd	void	const GLdouble *m
+load_transpose_matrixf	void	const GLfloat *m
+mult_transpose_matrixd	void	const GLdouble *m
+mult_transpose_matrixf	void	const GLfloat *m
+compressed_tex_image3D	void	GLenum target | GLint level | GLenum internalformat | GLsizei width | GLsizei height | GLsizei depth | GLint border | GLsizei imageSize | const GLvoid *data
+compressed_tex_image2D	void	GLenum target | GLint level | GLenum internalformat | GLsizei width | GLsizei height | GLint border | GLsizei imageSize | const GLvoid *data
+compressed_tex_image1D	void	GLenum target | GLint level | GLenum internalformat | GLsizei width | GLint border | GLsizei imageSize | const GLvoid *data
+compressed_tex_sub_image3D	void	GLenum target | GLint level | GLint xoffset | GLint yoffset | GLint zoffset | GLsizei width | GLsizei height | GLsizei depth | GLenum format | GLsizei imageSize | const GLvoid *data
+compressed_tex_sub_image2D	void	GLenum target | GLint level | GLint xoffset | GLint yoffset | GLsizei width | GLsizei height | GLenum format | GLsizei imageSize | const GLvoid *data
+compressed_tex_sub_image1D	void	GLenum target | GLint level | GLint xoffset | GLsizei width | GLenum format | GLsizei imageSize | const GLvoid *data
+get_compressed_tex_image	void	GLenum target | GLint level | GLvoid *img
+secondary_color3b	void	GLbyte red | GLbyte green | GLbyte blue
+secondary_color3bv	void	const GLbyte *v
+secondary_color3d	void	GLdouble red | GLdouble green | GLdouble blue
+secondary_color3dv	void	const GLdouble *v
+secondary_color3f	void	GLfloat red | GLfloat green | GLfloat blue
+secondary_color3fv	void	const GLfloat *v
+secondary_color3i	void	GLint red | GLint green | GLint blue
+secondary_color3iv	void	const GLint *v
+secondary_color3s	void	GLshort red | GLshort green | GLshort blue
+secondary_color3sv	void	const GLshort *v
+secondary_color3ub	void	GLubyte red | GLubyte green | GLubyte blue
+secondary_color3ubv	void	const GLubyte *v
+secondary_color3ui	void	GLuint red | GLuint green | GLuint blue
+secondary_color3uiv	void	const GLuint *v
+secondary_color3us	void	GLushort red | GLushort green | GLushort blue
+secondary_color3usv	void	const GLushort *v
+secondary_color_pointer	void	GLint size | GLenum type | GLsizei stride | const GLvoid *pointer
+vertex_array_range_EXT	void	GLsizei count | const GLvoid *pointer
+flush_vertex_array_range_EXT	void	GLsizei count | const GLvoid *pointer
+draw_range_elements	void	GLenum mode | GLuint start | GLuint end | GLsizei count | GLenum type | const GLvoid *indices
+color_table	void	GLenum target | GLenum internalformat | GLsizei width | GLenum format | GLenum type | const GLvoid *table
+color_table_parameterfv	void	GLenum target | GLenum pname | const GLfloat *params
+color_table_parameteriv	void	GLenum target | GLenum pname | const GLint *params
+copy_color_table	void	GLenum target | GLenum internalformat | GLint x | GLint y | GLsizei width
+get_color_table	void	GLenum target | GLenum format | GLenum type | GLvoid *table
+get_color_table_parameterfv	void	GLenum target | GLenum pname | GLfloat *params
+get_color_table_parameteriv	void	GLenum target | GLenum pname | GLint *params
+color_sub_table	void	GLenum target | GLsizei start | GLsizei count | GLenum format | GLenum type | const GLvoid *data
+copy_color_sub_table	void	GLenum target | GLsizei start | GLint x | GLint y | GLsizei width
+convolution_filter1D	void	GLenum target | GLenum internalformat | GLsizei width | GLenum format | GLenum type | const GLvoid *image
+convolution_filter2D	void	GLenum target | GLenum internalformat | GLsizei width | GLsizei height | GLenum format | GLenum type | const GLvoid *image
+convolution_parameterf	void	GLenum target | GLenum pname | GLfloat params
+convolution_parameterfv	void	GLenum target | GLenum pname | const GLfloat *params
+convolution_parameteri	void	GLenum target | GLenum pname | GLint params
+convolution_parameteriv	void	GLenum target | GLenum pname | const GLint *params
+copy_convolution_filter1D	void	GLenum target | GLenum internalformat | GLint x | GLint y | GLsizei width
+copy_convolution_filter2D	void	GLenum target | GLenum internalformat | GLint x | GLint y | GLsizei width | GLsizei height
+get_convolution_filter	void	GLenum target | GLenum format | GLenum type | GLvoid *image
+get_convolution_parameterfv	void	GLenum target | GLenum pname | GLfloat *params
+get_convolution_parameteriv	void	GLenum target | GLenum pname | GLint *params
+get_separable_filter	void	GLenum target | GLenum format | GLenum type | GLvoid *row | GLvoid *column | GLvoid *span
+separable_filter2D	void	GLenum target | GLenum internalformat | GLsizei width | GLsizei height | GLenum format | GLenum type | const GLvoid *row | const GLvoid *column
+get_histogram	void	GLenum target | GLboolean reset | GLenum format | GLenum type | GLvoid *values
+get_histogram_parameterfv	void	GLenum target | GLenum pname | GLfloat *params
+get_histogram_parameteriv	void	GLenum target | GLenum pname | GLint *params
+get_minmax	void	GLenum target | GLboolean reset | GLenum format | GLenum type | GLvoid *values
+get_minmax_parameterfv	void	GLenum target | GLenum pname | GLfloat *params
+get_minmax_parameteriv	void	GLenum target | GLenum pname | GLint *params
+histogram	void	GLenum target | GLsizei width | GLenum internalformat | GLboolean sink
+minmax	void	GLenum target | GLenum internalformat | GLboolean sink
+reset_histogram	void	GLenum target
+reset_minmax	void	GLenum target
+tex_image3D	void	GLenum target | GLint level | GLenum internalFormat | GLsizei width | GLsizei height | GLsizei depth | GLint border | GLenum format | GLenum type | const GLvoid *pixels
+tex_sub_image3D	void	GLenum target | GLint level | GLint xoffset | GLint yoffset | GLint zoffset | GLsizei width | GLsizei height | GLsizei depth | GLenum format | GLenum type | const GLvoid *pixels
+copy_tex_sub_image3D	void	GLenum target | GLint level | GLint xoffset | GLint yoffset | GLint zoffset | GLint x | GLint y | GLsizei width | GLsizei height
+get_uniform_indices	void	GLuint program | GLsizei uniformCount | const GLchar* const *uniformNames | GLuint* uniformIndices
+get_active_uniformsiv	void	GLuint program | GLsizei uniformCount | const GLuint* uniformIndices | GLenum pname | GLint* params
+get_active_uniform_name	void	GLuint program | GLuint uniformIndex | GLsizei bufSize | GLsizei* length | GLchar* uniformName
+get_uniform_block_index	GLuint	GLuint program | const GLchar* uniformBlockName
+get_active_uniform_blockiv	void	GLuint program | GLuint uniformBlockIndex | GLenum pname | GLint* params
+get_active_uniform_block_name	void	GLuint program | GLuint uniformBlockIndex | GLsizei bufSize | GLsizei* length | GLchar* uniformBlockName
+uniform_block_binding	void	GLuint program | GLuint uniformBlockIndex | GLuint uniformBlockBinding
+get_combiner_input_parameterfv_NV	void	GLenum stage | GLenum portion | GLenum variable | GLenum pname | GLfloat *params
+get_combiner_input_parameteriv_NV	void	GLenum stage | GLenum portion | GLenum variable | GLenum pname | GLint *params
+get_combiner_output_parameterfv_NV	void	GLenum stage | GLenum portion | GLenum pname | GLfloat *params
+get_combiner_output_parameteriv_NV	void	GLenum stage | GLenum portion | GLenum pname | GLint *params
+get_final_combiner_input_parameterfv_NV	void	GLenum variable | GLenum pname | GLfloat *params
+get_final_combiner_input_parameteriv_NV	void	GLenum variable | GLenum pname | GLint *params
+combiner_stage_parameterfv_NV	void	GLenum stage | GLenum pname | const GLfloat *params
+get_combiner_stage_parameterfv_NV	void	GLenum stage | GLenum pname | GLfloat *params
+texture_range_APPLE	void	GLenum target | GLsizei length | const GLvoid *pointer
+get_tex_parameter_pointerv_APPLE	void	GLenum target | GLenum pname | GLvoid **params
+blend_equation_separate_EXT	void	GLenum equationRGB | GLenum equationAlpha
+sample_coverage	void	GLclampf value | GLboolean invert
+sample_pass	void	GLenum mode
+pn_trianglesi_ATI	void	GLenum pname | GLint param
+pn_trianglesf_ATI	void	GLenum pname | GLfloat param
+gen_fences_APPLE	void	GLsizei n | GLuint *fences
+delete_fences_APPLE	void	GLsizei n | const GLuint *fences
+set_fence_APPLE	void	GLuint fence
+is_fence_APPLE	GLboolean	GLuint fence
+test_fence_APPLE	GLboolean	GLuint fence
+finish_fence_APPLE	void	GLuint fence
+test_object_APPLE	GLboolean	GLenum object | GLuint name
+finish_object_APPLE	void	GLenum object | GLuint name
+bind_program_ARB	void	GLenum target | GLuint program
+delete_programs_ARB	void	GLsizei n | const GLuint *programs
+gen_programs_ARB	void	GLsizei n | GLuint *programs
+is_program_ARB	GLboolean	GLuint program
+vertex_attrib1s_ARB	void	GLuint index | GLshort x
+vertex_attrib1f_ARB	void	GLuint index | GLfloat x
+vertex_attrib1d_ARB	void	GLuint index | GLdouble x
+vertex_attrib2s_ARB	void	GLuint index | GLshort x | GLshort y
+vertex_attrib2f_ARB	void	GLuint index | GLfloat x | GLfloat y
+vertex_attrib2d_ARB	void	GLuint index | GLdouble x | GLdouble y
+vertex_attrib3s_ARB	void	GLuint index | GLshort x | GLshort y | GLshort z
+vertex_attrib3f_ARB	void	GLuint index | GLfloat x | GLfloat y | GLfloat z
+vertex_attrib3d_ARB	void	GLuint index | GLdouble x | GLdouble y | GLdouble z
+vertex_attrib4s_ARB	void	GLuint index | GLshort x | GLshort y | GLshort z | GLshort w
+vertex_attrib4f_ARB	void	GLuint index | GLfloat x | GLfloat y | GLfloat z | GLfloat w
+vertex_attrib4d_ARB	void	GLuint index | GLdouble x | GLdouble y | GLdouble z | GLdouble w
+vertex_attrib4Nub_ARB	void	GLuint index | GLubyte x | GLubyte y | GLubyte z | GLubyte w
+vertex_attrib1sv_ARB	void	GLuint index | const GLshort *v
+vertex_attrib1fv_ARB	void	GLuint index | const GLfloat *v
+vertex_attrib1dv_ARB	void	GLuint index | const GLdouble *v
+vertex_attrib2sv_ARB	void	GLuint index | const GLshort *v
+vertex_attrib2fv_ARB	void	GLuint index | const GLfloat *v
+vertex_attrib2dv_ARB	void	GLuint index | const GLdouble *v
+vertex_attrib3sv_ARB	void	GLuint index | const GLshort *v
+vertex_attrib3fv_ARB	void	GLuint index | const GLfloat *v
+vertex_attrib3dv_ARB	void	GLuint index | const GLdouble *v
+vertex_attrib4bv_ARB	void	GLuint index | const GLbyte *v
+vertex_attrib4sv_ARB	void	GLuint index | const GLshort *v
+vertex_attrib4iv_ARB	void	GLuint index | const GLint *v
+vertex_attrib4ubv_ARB	void	GLuint index | const GLubyte *v
+vertex_attrib4usv_ARB	void	GLuint index | const GLushort *v
+vertex_attrib4uiv_ARB	void	GLuint index | const GLuint *v
+vertex_attrib4fv_ARB	void	GLuint index | const GLfloat *v
+vertex_attrib4dv_ARB	void	GLuint index | const GLdouble *v
+vertex_attrib4Nbv_ARB	void	GLuint index | const GLbyte *v
+vertex_attrib4Nsv_ARB	void	GLuint index | const GLshort *v
+vertex_attrib4Niv_ARB	void	GLuint index | const GLint *v
+vertex_attrib4Nubv_ARB	void	GLuint index | const GLubyte *v
+vertex_attrib4Nusv_ARB	void	GLuint index | const GLushort *v
+vertex_attrib4Nuiv_ARB	void	GLuint index | const GLuint *v
+vertex_attrib_pointer_ARB	void	GLuint index | GLint size | GLenum type | GLboolean normalized | GLsizei stride | const GLvoid *pointer
+enable_vertex_attrib_array_ARB	void	GLuint index
+disable_vertex_attrib_array_ARB	void	GLuint index
+get_vertex_attribdv_ARB	void	GLuint index | GLenum pname | GLdouble *params
+get_vertex_attribfv_ARB	void	GLuint index | GLenum pname | GLfloat *params
+get_vertex_attribiv_ARB	void	GLuint index | GLenum pname | GLint *params
+get_vertex_attrib_pointerv_ARB	void	GLuint index | GLenum pname | GLvoid **pointer
+program_env_parameter4d_ARB	void	GLenum target | GLuint index | GLdouble x | GLdouble y | GLdouble z | GLdouble w
+program_env_parameter4dv_ARB	void	GLenum target | GLuint index | const GLdouble *params
+program_env_parameter4f_ARB	void	GLenum target | GLuint index | GLfloat x | GLfloat y | GLfloat z | GLfloat w
+program_env_parameter4fv_ARB	void	GLenum target | GLuint index | const GLfloat *params
+program_local_parameter4d_ARB	void	GLenum target | GLuint index | GLdouble x | GLdouble y | GLdouble z | GLdouble w
+program_local_parameter4dv_ARB	void	GLenum target | GLuint index | const GLdouble *params
+program_local_parameter4f_ARB	void	GLenum target | GLuint index | GLfloat x | GLfloat y | GLfloat z | GLfloat w
+program_local_parameter4fv_ARB	void	GLenum target | GLuint index | const GLfloat *params
+get_program_env_parameterdv_ARB	void	GLenum target | GLuint index | GLdouble *params
+get_program_env_parameterfv_ARB	void	GLenum target | GLuint index | GLfloat *params
+get_program_local_parameterdv_ARB	void	GLenum target | GLuint index | GLdouble *params
+get_program_local_parameterfv_ARB	void	GLenum target | GLuint index | GLfloat *params
+program_string_ARB	void	GLenum target | GLenum format | GLsizei len | const GLvoid* string
+get_program_string_ARB	void	GLenum target | GLenum pname | GLvoid *string
+get_programiv_ARB	void	GLenum target | GLenum pname | GLint *params
+enable_vertex_attrib_ARB	void	GLuint index | GLenum pname
+disable_vertex_attrib_ARB	void	GLuint index | GLenum pname
+is_vertex_attrib_enabled_ARB	GLboolean	GLuint index | GLenum pname
+map_vertex_attrib1d_ARB	void	GLuint index | GLuint size | GLdouble u1 | GLdouble u2 | GLint stride | GLint order | const GLdouble *points
+map_vertex_attrib1f_ARB	void	GLuint index | GLuint size | GLfloat u1 | GLfloat u2 | GLint stride | GLint order | const GLfloat *points
+map_vertex_attrib2d_ARB	void	GLuint index | GLuint size | GLdouble u1 | GLdouble u2 | GLint ustride | GLint uorder | GLdouble v1 | GLdouble v2 | GLint vstride | GLint vorder | const GLdouble *points
+map_vertex_attrib2f_ARB	void	GLuint index | GLuint size | GLfloat u1 | GLfloat u2 | GLint ustride | GLint uorder | GLfloat v1 | GLfloat v2 | GLint vstride | GLint vorder | const GLfloat *points
+point_parameterf	void	GLenum pname | GLfloat param
+point_parameterfv	void	GLenum pname | const GLfloat *params
+point_parameteri	void	GLenum pname | GLint param
+point_parameteriv	void	GLenum pname | const GLint *params
+fog_coordf	void	GLfloat coord
+fog_coordfv	void	const GLfloat *coord
+fog_coordd	void	GLdouble coord
+fog_coorddv	void	const GLdouble *coord
+fog_coord_pointer	void	GLenum type | GLsizei stride | const GLvoid *pointer
+vertex_array_parameteri_EXT	void	GLenum pname | GLint param
+bind_vertex_array_EXT	void	GLuint id
+delete_vertex_arrays_EXT	void	GLsizei n | const GLuint *ids
+gen_vertex_arrays_EXT	void	GLsizei n | GLuint *ids
+is_vertex_array_EXT	GLboolean	GLuint id
+element_pointer_APPLE	void	GLenum type | const GLvoid *pointer
+draw_element_array_APPLE	void	GLenum mode | GLint first | GLsizei count
+draw_range_element_array_APPLE	void	GLenum mode | GLuint start | GLuint end | GLint first | GLsizei count
+weightbv_ARB	void	GLint size | const GLbyte *weights
+weightsv_ARB	void	GLint size | const GLshort *weights
+weightiv_ARB	void	GLint size | const GLint *weights
+weightfv_ARB	void	GLint size | const GLfloat *weights
+weightdv_ARB	void	GLint size | const GLdouble *weights
+weightubv_ARB	void	GLint size | const GLubyte *weights
+weightusv_ARB	void	GLint size | const GLushort *weights
+weightuiv_ARB	void	GLint size | const GLuint *weights
+weight_pointer_ARB	void	GLint size | GLenum type | GLsizei stride | const GLvoid *pointer
+vertex_blend_ARB	void	GLint count
+multi_draw_arrays	void	GLenum mode | const GLint *first | const GLsizei *count | GLsizei drawcount
+multi_draw_elements	void	GLenum mode | const GLsizei *count | GLenum type | const GLvoid* const *indices | GLsizei drawcount
+window_pos2d	void	GLdouble x | GLdouble y
+window_pos2dv	void	const GLdouble *v
+window_pos2f	void	GLfloat x | GLfloat y
+window_pos2fv	void	const GLfloat *v
+window_pos2i	void	GLint x | GLint y
+window_pos2iv	void	const GLint *v
+window_pos2s	void	GLshort x | GLshort y
+window_pos2sv	void	const GLshort *v
+window_pos3d	void	GLdouble x | GLdouble y | GLdouble z
+window_pos3dv	void	const GLdouble *v
+window_pos3f	void	GLfloat x | GLfloat y | GLfloat z
+window_pos3fv	void	const GLfloat *v
+window_pos3i	void	GLint x | GLint y | GLint z
+window_pos3iv	void	const GLint *v
+window_pos3s	void	GLshort x | GLshort y | GLshort z
+window_pos3sv	void	const GLshort *v
+active_stencil_face_EXT	void	GLenum face
+stencil_op_separate_ATI	void	GLenum face | GLenum sfail | GLenum dpfail | GLenum dppass
+stencil_func_separate_ATI	void	GLenum frontfunc | GLenum backfunc | GLint ref | GLuint mask
+flush_render_APPLE	void	
+finish_render_APPLE	void	
+swap_APPLE	void	
+delete_object_ARB	void	GLhandleARB obj
+get_handle_ARB	GLhandleARB	GLenum pname
+detach_object_ARB	void	GLhandleARB containerObj | GLhandleARB attachedObj
+create_shader_object_ARB	GLhandleARB	GLenum shaderType
+shader_source_ARB	void	GLhandleARB shaderObj | GLsizei count | const GLcharARB* const *string | const GLint *length
+compile_shader_ARB	void	GLhandleARB shaderObj
+create_program_object_ARB	GLhandleARB	
+attach_object_ARB	void	GLhandleARB containerObj | GLhandleARB obj
+link_program_ARB	void	GLhandleARB programObj
+use_program_object_ARB	void	GLhandleARB programObj
+validate_program_ARB	void	GLhandleARB programObj
+uniform1f_ARB	void	GLint location | GLfloat v0
+uniform2f_ARB	void	GLint location | GLfloat v0 | GLfloat v1
+uniform3f_ARB	void	GLint location | GLfloat v0 | GLfloat v1 | GLfloat v2
+uniform4f_ARB	void	GLint location | GLfloat v0 | GLfloat v1 | GLfloat v2 | GLfloat v3
+uniform1i_ARB	void	GLint location | GLint v0
+uniform2i_ARB	void	GLint location | GLint v0 | GLint v1
+uniform3i_ARB	void	GLint location | GLint v0 | GLint v1 | GLint v2
+uniform4i_ARB	void	GLint location | GLint v0 | GLint v1 | GLint v2 | GLint v3
+uniform1fv_ARB	void	GLint location | GLsizei count | const GLfloat *value
+uniform2fv_ARB	void	GLint location | GLsizei count | const GLfloat *value
+uniform3fv_ARB	void	GLint location | GLsizei count | const GLfloat *value
+uniform4fv_ARB	void	GLint location | GLsizei count | const GLfloat *value
+uniform1iv_ARB	void	GLint location | GLsizei count | const GLint *value
+uniform2iv_ARB	void	GLint location | GLsizei count | const GLint *value
+uniform3iv_ARB	void	GLint location | GLsizei count | const GLint *value
+uniform4iv_ARB	void	GLint location | GLsizei count | const GLint *value
+uniform_matrix2fv_ARB	void	GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+uniform_matrix3fv_ARB	void	GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+uniform_matrix4fv_ARB	void	GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+get_object_parameterfv_ARB	void	GLhandleARB obj | GLenum pname | GLfloat *params
+get_object_parameteriv_ARB	void	GLhandleARB obj | GLenum pname | GLint *params
+get_info_log_ARB	void	GLhandleARB obj | GLsizei maxLength | GLsizei *length | GLcharARB *infoLog
+get_attached_objects_ARB	void	GLhandleARB containerObj | GLsizei maxCount | GLsizei *count | GLhandleARB *obj
+get_uniform_location_ARB	GLint	GLhandleARB programObj | const GLcharARB *name
+get_active_uniform_ARB	void	GLhandleARB programObj | GLuint index | GLsizei maxLength | GLsizei *length | GLint *size | GLenum *type | GLcharARB *name
+get_uniformfv_ARB	void	GLhandleARB programObj | GLint location | GLfloat *params
+get_uniformiv_ARB	void	GLhandleARB programObj | GLint location | GLint *params
+get_shader_source_ARB	void	GLhandleARB obj | GLsizei maxLength | GLsizei *length | GLcharARB *source
+bind_attrib_location_ARB	void	GLhandleARB programObj | GLuint index | const GLcharARB *name
+get_active_attrib_ARB	void	GLhandleARB programObj | GLuint index | GLsizei maxLength | GLsizei *length | GLint *size | GLenum *type | GLcharARB *name
+get_attrib_location_ARB	GLint	GLhandleARB programObj | const GLcharARB *name
+clamp_color_ARB	void	GLenum target | GLenum clamp
+gen_queries	void	GLsizei n | GLuint *ids
+delete_queries	void	GLsizei n | const GLuint *ids
+is_query	GLboolean	GLuint id
+begin_query	void	GLenum target | GLuint id
+end_query	void	GLenum target
+get_queryiv	void	GLenum target | GLenum pname | GLint *params
+get_query_objectiv	void	GLuint id | GLenum pname | GLint *params
+get_query_objectuiv	void	GLuint id | GLenum pname | GLuint *params
+bind_buffer	void	GLenum target | GLuint buffer
+delete_buffers	void	GLsizei n | const GLuint *buffers
+gen_buffers	void	GLsizei n | GLuint *buffers
+is_buffer	GLboolean	GLuint buffer
+buffer_data	void	GLenum target | GLsizeiptrARB size | const GLvoid *data | GLenum usage
+buffer_sub_data	void	GLenum target | GLintptrARB offset | GLsizeiptrARB size | const GLvoid *data
+get_buffer_sub_data	void	GLenum target | GLintptrARB offset | GLsizeiptrARB size | GLvoid *data
+map_buffer	GLvoid *	GLenum target | GLenum access
+unmap_buffer	GLboolean	GLenum target
+get_buffer_parameteriv	void	GLenum target | GLenum pname | GLint *params
+get_buffer_pointerv	void	GLenum target | GLenum pname | GLvoid **params
+depth_bounds_EXT	void	GLclampd zmin | GLclampd zmax
+draw_buffers_ARB	void	GLsizei n | const GLenum *bufs
+is_shader	GLboolean	GLuint shader
+is_program	GLboolean	GLuint program
+get_shaderiv	void	GLuint shader | GLenum pname | GLint *params
+get_programiv	void	GLuint program | GLenum pname | GLint *params
+get_shader_info_log	void	GLuint shader | GLsizei bufSize | GLsizei *length | GLchar *infoLog
+get_program_info_log	void	GLuint program | GLsizei bufSize | GLsizei *length | GLchar *infoLog
+stencil_func_separate	void	GLenum face | GLenum func | GLint ref | GLuint mask
+stencil_mask_separate	void	GLenum face | GLuint mask
+multi_draw_element_array_APPLE	void	GLenum mode | const GLint *first | const GLsizei *count | GLsizei primcount
+multi_draw_range_element_array_APPLE	void	GLenum mode | GLuint start | GLuint end | const GLint *first | const GLsizei *count | GLsizei primcount
+is_renderbuffer_EXT	GLboolean	GLuint renderbuffer
+bind_renderbuffer_EXT	void	GLenum target | GLuint renderbuffer
+delete_renderbuffers_EXT	void	GLsizei n | const GLuint *renderbuffers
+gen_renderbuffers_EXT	void	GLsizei n | GLuint *renderbuffers
+renderbuffer_storage_EXT	void	GLenum target | GLenum internalformat | GLsizei width | GLsizei height
+get_renderbuffer_parameteriv_EXT	void	GLenum target | GLenum pname | GLint *params
+is_framebuffer_EXT	GLboolean	GLuint framebuffer
+bind_framebuffer_EXT	void	GLenum target | GLuint framebuffer
+delete_framebuffers_EXT	void	GLsizei n | const GLuint *framebuffers
+gen_framebuffers_EXT	void	GLsizei n | GLuint *framebuffers
+check_framebuffer_status_EXT	GLenum	GLenum target
+framebuffer_texture1D_EXT	void	GLenum target | GLenum attachment | GLenum textarget | GLuint texture | GLint level
+framebuffer_texture2D_EXT	void	GLenum target | GLenum attachment | GLenum textarget | GLuint texture | GLint level
+framebuffer_texture3D_EXT	void	GLenum target | GLenum attachment | GLenum textarget | GLuint texture | GLint level | GLint zoffset
+framebuffer_renderbuffer_EXT	void	GLenum target | GLenum attachment | GLenum renderbuffertarget | GLuint renderbuffer
+get_framebuffer_attachment_parameteriv_EXT	void	GLenum target | GLenum attachment | GLenum pname | GLint *params
+generate_mipmap_EXT	void	GLenum target
+buffer_parameteri_APPLE	void	GLenum target | GLenum pname | GLint param
+flush_mapped_buffer_range_APPLE	void	GLenum target | GLintptr offset | GLsizeiptr size
+program_env_parameters4fv_EXT	void	GLenum target | GLuint index | GLsizei count | const GLfloat *params
+program_local_parameters4fv_EXT	void	GLenum target | GLuint index | GLsizei count | const GLfloat *params
+object_purgeable_APPLE	GLenum	GLenum objectType | GLuint name | GLenum option
+object_unpurgeable_APPLE	GLenum	GLenum objectType | GLuint name | GLenum option
+get_object_parameteriv_APPLE	void	GLenum objectType | GLuint name | GLenum pname | GLint* params
+program_parameteri_EXT	void	GLuint program_name | GLenum pname | GLint value
+framebuffer_texture_EXT	void	GLenum target | GLenum attachment | GLuint texture | GLint level
+framebuffer_texture_layer_EXT	void	GLenum target | GLenum attachment | GLuint texture | GLint level | GLint layer
+framebuffer_texture_face_EXT	void	GLenum target | GLenum attachment | GLuint texture | GLint level | GLenum face
+bind_buffer_range_EXT	void	GLenum target | GLuint index | GLuint buffer | GLintptr offset | GLsizeiptr size
+bind_buffer_offset_EXT	void	GLenum target | GLuint index | GLuint buffer | GLintptr offset
+bind_buffer_base_EXT	void	GLenum target | GLuint index | GLuint buffer
+begin_transform_feedback_EXT	void	GLenum primitiveMode
+end_transform_feedback_EXT	void	
+transform_feedback_varyings_EXT	void	GLuint program | GLsizei count | const GLchar* const *varyings | GLenum bufferMode
+get_transform_feedback_varying_EXT	void	GLuint program | GLuint index | GLsizei bufSize | GLsizei *length | GLsizei *size | GLenum *type | GLchar *name
+get_integer_indexedv_EXT	void	GLenum param | GLuint index | GLint *values
+get_boolean_indexedv_EXT	void	GLenum param | GLuint index | GLboolean *values
+uniform_buffer_EXT	void	GLuint program | GLint location | GLuint buffer
+get_uniform_buffer_size_EXT	GLint	GLuint program | GLint location
+get_uniform_buffer_offset_EXT	GLintptr	GLuint program | GLint location
+clear_colorIi_EXT	void	GLint r | GLint g | GLint b | GLint a
+clear_colorIui_EXT	void	GLuint r | GLuint g | GLuint b | GLuint a
+tex_parameterIiv_EXT	void	GLenum target | GLenum pname | GLint *params
+tex_parameterIuiv_EXT	void	GLenum target | GLenum pname | GLuint *params
+get_tex_parameterIiv_EXT	void	GLenum target | GLenum pname | GLint *params
+get_tex_parameterIuiv_EXT	void	GLenum target | GLenum pname | GLuint *params
+vertex_attribI1i_EXT	void	GLuint index | GLint x
+vertex_attribI2i_EXT	void	GLuint index | GLint x | GLint y
+vertex_attribI3i_EXT	void	GLuint index | GLint x | GLint y | GLint z
+vertex_attribI4i_EXT	void	GLuint index | GLint x | GLint y | GLint z | GLint w
+vertex_attribI1ui_EXT	void	GLuint index | GLuint x
+vertex_attribI2ui_EXT	void	GLuint index | GLuint x | GLuint y
+vertex_attribI3ui_EXT	void	GLuint index | GLuint x | GLuint y | GLuint z
+vertex_attribI4ui_EXT	void	GLuint index | GLuint x | GLuint y | GLuint z | GLuint w
+vertex_attribI1iv_EXT	void	GLuint index | const GLint *v
+vertex_attribI2iv_EXT	void	GLuint index | const GLint *v
+vertex_attribI3iv_EXT	void	GLuint index | const GLint *v
+vertex_attribI4iv_EXT	void	GLuint index | const GLint *v
+vertex_attribI1uiv_EXT	void	GLuint index | const GLuint *v
+vertex_attribI2uiv_EXT	void	GLuint index | const GLuint *v
+vertex_attribI3uiv_EXT	void	GLuint index | const GLuint *v
+vertex_attribI4uiv_EXT	void	GLuint index | const GLuint *v
+vertex_attribI4bv_EXT	void	GLuint index | const GLbyte *v
+vertex_attribI4sv_EXT	void	GLuint index | const GLshort *v
+vertex_attribI4ubv_EXT	void	GLuint index | const GLubyte *v
+vertex_attribI4usv_EXT	void	GLuint index | const GLushort *v
+vertex_attribI_pointer_EXT	void	GLuint index | GLint size | GLenum type | GLsizei stride | const GLvoid *pointer
+get_vertex_attribIiv_EXT	void	GLuint index | GLenum pname | GLint *params
+get_vertex_attribIuiv_EXT	void	GLuint index | GLenum pname | GLuint *params
+uniform1ui_EXT	void	GLint location | GLuint v0
+uniform2ui_EXT	void	GLint location | GLuint v0 | GLuint v1
+uniform3ui_EXT	void	GLint location | GLuint v0 | GLuint v1 | GLuint v2
+uniform4ui_EXT	void	GLint location | GLuint v0 | GLuint v1 | GLuint v2 | GLuint v3
+uniform1uiv_EXT	void	GLint location | GLsizei count | const GLuint *value
+uniform2uiv_EXT	void	GLint location | GLsizei count | const GLuint *value
+uniform3uiv_EXT	void	GLint location | GLsizei count | const GLuint *value
+uniform4uiv_EXT	void	GLint location | GLsizei count | const GLuint *value
+get_uniformuiv_EXT	void	GLuint program | GLint location | GLuint *params
+bind_frag_data_location_EXT	void	GLuint program | GLuint colorNumber | const GLchar *name
+get_frag_data_location_EXT	GLint	GLuint program | const GLchar *name
+color_mask_indexed_EXT	void	GLuint index | GLboolean r | GLboolean g | GLboolean b | GLboolean a
+enable_indexed_EXT	void	GLenum target | GLuint index
+disable_indexed_EXT	void	GLenum target | GLuint index
+is_enabled_indexed_EXT	GLboolean	GLenum target | GLuint index
+uniform_matrix2x3fv	void	GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+uniform_matrix3x2fv	void	GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+uniform_matrix2x4fv	void	GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+uniform_matrix4x2fv	void	GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+uniform_matrix3x4fv	void	GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+uniform_matrix4x3fv	void	GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+blit_framebuffer_EXT	void	GLint srcX0 | GLint srcY0 | GLint srcX1 | GLint srcY1 | GLint dstX0 | GLint dstY0 | GLint dstX1 | GLint dstY1 | GLbitfield mask | GLenum filter
+renderbuffer_storage_multisample_EXT	void	GLenum target | GLsizei samples | GLenum internalformat | GLsizei width | GLsizei height
+begin_conditional_render_NV	void	GLuint id | GLenum mode
+end_conditional_render_NV	void	
+get_attached_shaders	void	GLuint program | GLsizei maxCount | GLsizei *count | GLuint *shaders
+provoking_vertex_EXT	void	GLenum mode
+vertex_attrib_divisor	void	GLuint index | GLuint divisor
+draw_arrays_instanced	void	GLenum mode | GLint first | GLsizei count | GLsizei instancecount
+draw_elements_instanced	void	GLenum mode | GLsizei count | GLenum type | const GLvoid *indices | GLsizei instancecount
+draw_elements_base_vertex	void	GLenum mode | GLsizei count | GLenum type | const GLvoid *indices | GLint base_vertex
+draw_range_elements_base_vertex	void	GLenum mode | GLuint start | GLuint end | GLsizei count | GLenum type | const GLvoid *indices | GLint base_vertex
+draw_elements_instanced_base_vertex	void	GLenum mode | GLsizei count | GLenum type | const GLvoid *indices | GLsizei instancecount | GLint base_vertex
+multi_draw_elements_base_vertex	void	GLenum mode | const GLsizei *count | GLenum type | const GLvoid* const *indices | GLsizei drawcount | const GLint *base_vertex
+bind_vertex_array_ARB	void	GLuint array
+delete_vertex_arrays_ARB	void	GLsizei n | const GLuint *arrays
+gen_vertex_arrays_ARB	void	GLsizei n | GLuint *arrays
+is_vertex_array_ARB	GLboolean	GLuint array
+point_size_pointer	void	GLenum type | GLsizei stride | const GLvoid *pointer
+vertex_point_sizef_APPLE	void	GLfloat size
+clear_bufferiv	void	GLenum buffer | GLint drawbuffer | const GLint *value
+clear_bufferuiv	void	GLenum buffer | GLint drawbuffer | const GLuint *value
+clear_bufferfv	void	GLenum buffer | GLint drawbuffer | const GLfloat *value
+clear_bufferfi	void	GLenum buffer | GLint drawbuffer | GLfloat depth | GLint stencil
+get_stringi	const GLubyte*	GLenum name | GLuint index
+fence_sync	GLsync	GLenum condition | GLbitfield flags
+is_sync	GLboolean	GLsync sync
+delete_sync	void	GLsync sync
+client_wait_sync	GLenum	GLsync sync | GLbitfield flags | GLuint64 timeout
+wait_sync	void	GLsync sync | GLbitfield flags | GLuint64 timeout
+get_integer64v_sync	void	GLenum pname | GLint64 *params
+get_synciv	void	GLsync sync | GLenum pname | GLsizei bufSize | GLsizei *length | GLint *values
+tex_image2D_multisample	void	GLenum target | GLsizei samples | GLint internalformat | GLsizei width | GLsizei height | GLboolean fixedsamplelocations
+tex_image3D_multisample	void	GLenum target | GLsizei samples | GLint internalformat | GLsizei width | GLsizei height | GLsizei depth | GLboolean fixedsamplelocations
+get_multisamplefv	void	GLenum pname | GLuint index | GLfloat *val
+sample_maski	void	GLuint index | GLbitfield mask
+tex_buffer	void	GLenum target | GLenum internalformat | GLuint buffer
+copy_buffer_sub_data	void	GLenum readtarget | GLenum writetarget | GLintptr readoffset | GLintptr writeoffset | GLsizeiptr size
+primitive_restart_index	void	GLuint index
+get_query_objecti64v	void	GLuint id | GLenum pname | GLint64EXT *params
+get_query_objectui64v	void	GLuint id | GLenum pname | GLuint64EXT *params
+map_buffer_range	GLvoid *	GLenum target | GLintptr offset | GLsizeiptr length | GLenum access
+flush_mapped_buffer_range	void	GLenum target | GLintptr offset | GLsizeiptr length
+query_counter	void	GLuint id | GLenum target
+get_integer64i_v	void	GLenum target | GLuint index | GLint64 *data
+get_buffer_parameteri64v	void	GLenum target | GLenum pname | GLint64 *params
+gen_samplers	void	GLsizei count | GLuint *samplers
+delete_samplers	void	GLsizei count | const GLuint *samplers
+is_sampler	GLboolean	GLuint sampler
+bind_sampler	void	GLuint unit | GLuint sampler
+sampler_parameteri	void	GLuint sampler | GLenum pname | GLint param
+sampler_parameteriv	void	GLuint sampler | GLenum pname | const GLint *param
+sampler_parameterf	void	GLuint sampler | GLenum pname | GLfloat param
+sampler_parameterfv	void	GLuint sampler | GLenum pname | const GLfloat *param
+sampler_parameterIiv	void	GLuint sampler | GLenum pname | const GLint *param
+sampler_parameterIuiv	void	GLuint sampler | GLenum pname | const GLuint *param
+get_sampler_parameteriv	void	GLuint sampler | GLenum pname | GLint *params
+get_sampler_parameterfv	void	GLuint sampler | GLenum pname | GLfloat *params
+get_sampler_parameterIiv	void	GLuint sampler | GLenum pname | GLint *params
+get_sampler_parameterIuiv	void	GLuint sampler | GLenum pname | GLuint *params
+label_object_EXT	void	GLenum type | GLuint object | GLsizei length | const GLchar *label
+get_object_label_EXT	void	GLenum type | GLuint object | GLsizei bufSize | GLsizei *length | GLchar *label
+insert_event_marker_EXT	void	GLsizei length | const GLchar *marker
+push_group_marker_EXT	void	GLsizei length | const GLchar *marker
+pop_group_marker_EXT	void	
+use_program_stages	void	GLuint pipeline | GLbitfield stages | GLuint program
+active_shader_program	void	GLuint pipeline | GLuint program
+create_shader_programv	GLuint	GLenum type | GLsizei count | const GLchar* const *strings
+bind_program_pipeline	void	GLuint pipeline
+delete_program_pipelines	void	GLsizei n | const GLuint *pipelines
+gen_program_pipelines	void	GLsizei n | GLuint *pipelines
+is_program_pipeline	GLboolean	GLuint pipeline
+get_program_pipelineiv	void	GLuint pipeline | GLenum pname | GLint *params
+validate_program_pipeline	void	GLuint pipeline
+get_program_pipeline_info_log	void	GLuint pipeline | GLsizei bufSize | GLsizei *length | GLchar *infoLog
+program_uniform1i	void	GLuint program | GLint location | GLint x
+program_uniform2i	void	GLuint program | GLint location | GLint x | GLint y
+program_uniform3i	void	GLuint program | GLint location | GLint x | GLint y | GLint z
+program_uniform4i	void	GLuint program | GLint location | GLint x | GLint y | GLint z | GLint w
+program_uniform1f	void	GLuint program | GLint location | GLfloat x
+program_uniform2f	void	GLuint program | GLint location | GLfloat x | GLfloat y
+program_uniform3f	void	GLuint program | GLint location | GLfloat x | GLfloat y | GLfloat z
+program_uniform4f	void	GLuint program | GLint location | GLfloat x | GLfloat y | GLfloat z | GLfloat w
+program_uniform1iv	void	GLuint program | GLint location | GLsizei count | const GLint *value
+program_uniform2iv	void	GLuint program | GLint location | GLsizei count | const GLint *value
+program_uniform3iv	void	GLuint program | GLint location | GLsizei count | const GLint *value
+program_uniform4iv	void	GLuint program | GLint location | GLsizei count | const GLint *value
+program_uniform1fv	void	GLuint program | GLint location | GLsizei count | const GLfloat *value
+program_uniform2fv	void	GLuint program | GLint location | GLsizei count | const GLfloat *value
+program_uniform3fv	void	GLuint program | GLint location | GLsizei count | const GLfloat *value
+program_uniform4fv	void	GLuint program | GLint location | GLsizei count | const GLfloat *value
+program_uniform_matrix2fv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+program_uniform_matrix3fv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+program_uniform_matrix4fv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+program_uniform1ui	void	GLuint program | GLint location | GLuint x
+program_uniform2ui	void	GLuint program | GLint location | GLuint x | GLuint y
+program_uniform3ui	void	GLuint program | GLint location | GLuint x | GLuint y | GLuint z
+program_uniform4ui	void	GLuint program | GLint location | GLuint x | GLuint y | GLuint z | GLuint w
+program_uniform1uiv	void	GLuint program | GLint location | GLsizei count | const GLuint *value
+program_uniform2uiv	void	GLuint program | GLint location | GLsizei count | const GLuint *value
+program_uniform3uiv	void	GLuint program | GLint location | GLsizei count | const GLuint *value
+program_uniform4uiv	void	GLuint program | GLint location | GLsizei count | const GLuint *value
+program_uniform_matrix2x3fv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+program_uniform_matrix3x2fv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+program_uniform_matrix2x4fv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+program_uniform_matrix4x2fv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+program_uniform_matrix3x4fv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+program_uniform_matrix4x3fv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLfloat *value
+bind_frag_data_location_indexed	void	GLuint program | GLuint colorNumber | GLuint index | const GLchar *name
+get_frag_data_index	GLint	GLuint program | const GLchar *name
+blend_func_i	void	GLuint buf | GLenum src | GLenum dst
+blend_func_separate_i	void	GLuint buf | GLenum srcRGB | GLenum dstRGB | GLenum srcAlpha | GLenum dstAlpha
+blend_equation_i	void	GLuint buf | GLenum mode
+blend_equation_separate_i	void	GLuint buf | GLenum modeRGB | GLenum modeAlpha
+named_string_ARB	void	GLenum type | GLint namelen | const GLchar *name | GLint stringlen | const GLchar *string
+delete_named_string_ARB	void	GLint namelen | const GLchar *name
+compile_shader_include_ARB	void	GLuint shader | GLsizei count | const GLchar* const *path | const GLint *length
+is_named_string_ARB	GLboolean	GLint namelen | const GLchar *name
+get_named_string_ARB	void	GLint namelen | const GLchar *name | GLsizei bufSize | GLint *stringlen | GLchar *string
+get_named_string_iv_ARB	void	GLint namelen | const GLchar *name | GLenum pname | GLint *params
+release_shader_compiler	void	
+shader_binary	void	GLint n | GLuint *shaders | GLenum binaryformat | const GLvoid *binary | GLint length
+get_shader_precision_format	void	GLenum shadertype | GLenum precisiontype | GLint *range | GLint *precision
+depth_rangef	void	GLclampf zNear | GLclampf zFar
+clear_depthf	void	GLclampf depth
+vertex_attribP1ui	void	GLuint index | GLenum type | GLboolean normalized | GLuint value
+vertex_attribP2ui	void	GLuint index | GLenum type | GLboolean normalized | GLuint value
+vertex_attribP3ui	void	GLuint index | GLenum type | GLboolean normalized | GLuint value
+vertex_attribP4ui	void	GLuint index | GLenum type | GLboolean normalized | GLuint value
+vertex_attribP1uiv	void	GLuint index | GLenum type | GLboolean normalized | const GLuint *value
+vertex_attribP2uiv	void	GLuint index | GLenum type | GLboolean normalized | const GLuint *value
+vertex_attribP3uiv	void	GLuint index | GLenum type | GLboolean normalized | const GLuint *value
+vertex_attribP4uiv	void	GLuint index | GLenum type | GLboolean normalized | const GLuint *value
+get_program_binary	void	GLuint program | GLsizei bufSize | GLsizei *length | GLenum *binaryFormat | GLvoid *binary
+program_binary	void	GLuint program | GLenum binaryFormat | const GLvoid *binary | GLsizei length
+min_sample_shading	void	GLclampf value
+viewport_arrayv	void	GLuint first | GLsizei count | const GLfloat * v
+viewport_indexedf	void	GLuint index | GLfloat x | GLfloat y | GLfloat w | GLfloat h
+viewport_indexedfv	void	GLuint index | const GLfloat * v
+scissor_arrayv	void	GLuint first | GLsizei count | const GLint * v
+scissor_indexed	void	GLuint index | GLint left | GLint bottom | GLsizei width | GLsizei height
+scissor_indexedv	void	GLuint index | const GLint * v
+depth_range_arrayv	void	GLuint first | GLsizei count | const GLclampd * v
+depth_range_indexed	void	GLuint index | GLclampd n | GLclampd f
+get_floati_v	void	GLenum target | GLuint index | GLfloat *data
+get_doublei_v	void	GLenum target | GLuint index | GLdouble *data
+draw_arrays_indirect	void	GLenum mode | const GLvoid *indirect
+draw_elements_indirect	void	GLenum mode | GLenum type | const GLvoid *indirect
+patch_parameteri	void	GLenum pname | GLint value
+patch_parameterfv	void	GLenum pname | const GLfloat* values
+bind_transform_feedback	void	GLenum target | GLuint name
+gen_transform_feedbacks	void	GLsizei n | GLuint* ids
+delete_transform_feedbacks	void	GLsizei n | const GLuint* ids
+pause_transform_feedback	void	
+resume_transform_feedback	void	
+is_transform_feedback	GLboolean	GLuint name
+draw_transform_feedback	void	GLenum mode | GLuint name
+begin_query_indexed	void	GLenum target | GLuint index | GLuint id
+end_query_indexed	void	GLenum target | GLuint index
+get_query_indexediv	void	GLenum target | GLuint index | GLenum pname | GLint *params
+draw_transform_feedback_stream	void	GLenum mode | GLuint name | GLuint stream
+program_uniform1d	void	GLuint program | GLint location | GLdouble x
+program_uniform2d	void	GLuint program | GLint location | GLdouble x | GLdouble y
+program_uniform3d	void	GLuint program | GLint location | GLdouble x | GLdouble y | GLdouble z
+program_uniform4d	void	GLuint program | GLint location | GLdouble x | GLdouble y | GLdouble z | GLdouble w
+program_uniform1dv	void	GLuint program | GLint location | GLsizei count | const GLdouble *value
+program_uniform2dv	void	GLuint program | GLint location | GLsizei count | const GLdouble *value
+program_uniform3dv	void	GLuint program | GLint location | GLsizei count | const GLdouble *value
+program_uniform4dv	void	GLuint program | GLint location | GLsizei count | const GLdouble *value
+program_uniform_matrix2dv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+program_uniform_matrix3dv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+program_uniform_matrix4dv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+program_uniform_matrix2x3dv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+program_uniform_matrix3x2dv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+program_uniform_matrix2x4dv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+program_uniform_matrix4x2dv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+program_uniform_matrix3x4dv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+program_uniform_matrix4x3dv	void	GLuint program | GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+uniform1d	void	GLint location | GLdouble x
+uniform2d	void	GLint location | GLdouble x | GLdouble y
+uniform3d	void	GLint location | GLdouble x | GLdouble y | GLdouble z
+uniform4d	void	GLint location | GLdouble x | GLdouble y | GLdouble z | GLdouble w
+uniform1dv	void	GLint location | GLsizei count | const GLdouble *value
+uniform2dv	void	GLint location | GLsizei count | const GLdouble *value
+uniform3dv	void	GLint location | GLsizei count | const GLdouble *value
+uniform4dv	void	GLint location | GLsizei count | const GLdouble *value
+uniform_matrix2dv	void	GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+uniform_matrix3dv	void	GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+uniform_matrix4dv	void	GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+uniform_matrix2x3dv	void	GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+uniform_matrix3x2dv	void	GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+uniform_matrix2x4dv	void	GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+uniform_matrix4x2dv	void	GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+uniform_matrix3x4dv	void	GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+uniform_matrix4x3dv	void	GLint location | GLsizei count | GLboolean transpose | const GLdouble *value
+get_uniformdv	void	GLuint program_obj | GLint location | GLdouble *params
+vertex_attribl1d	void	GLuint index | GLdouble x
+vertex_attribl2d	void	GLuint index | GLdouble x | GLdouble y
+vertex_attribl3d	void	GLuint index | GLdouble x | GLdouble y | GLdouble z
+vertex_attribl4d	void	GLuint index | GLdouble x | GLdouble y | GLdouble z | GLdouble w
+vertex_attribl1dv	void	GLuint index | const GLdouble *v
+vertex_attribl2dv	void	GLuint index | const GLdouble *v
+vertex_attribl3dv	void	GLuint index | const GLdouble *v
+vertex_attribl4dv	void	GLuint index | const GLdouble *v
+vertex_attrib_lpointer	void	GLuint index | GLint size | GLenum type | GLsizei stride | const void *pointer
+get_vertex_attrib_ldv	void	GLuint index | GLenum pname | GLdouble *params
+get_subroutine_uniform_location	GLint	GLuint program | GLenum shadertype | const GLchar *name
+get_subroutine_index	GLuint	GLuint program | GLenum shadertype | const GLchar *name
+get_active_subroutine_uniformiv	void	GLuint program | GLenum shadertype | GLuint index | GLenum pname | GLint *values
+get_active_subroutine_uniform_name	void	GLuint program | GLenum shadertype | GLuint index | GLsizei bufsize | GLsizei *length | GLchar *name
+get_active_subroutine_name	void	GLuint program | GLenum shadertype | GLuint index | GLsizei bufsize | GLsizei *length | GLchar *name
+uniform_subroutinesuiv	void	GLenum shadertype | GLsizei count | const GLuint *indices
+get_uniform_subroutineuiv	void	GLenum shadertype | GLint location | GLuint *params
+get_program_stageiv	void	GLuint program | GLenum shadertype | GLenum pname | GLint *values
+get_internal_formativ	void	GLenum target | GLenum internalformat | GLenum pname | GLsizei bufSize | GLint* params
+tex_storage1D	void	GLenum target | GLsizei levels | GLenum internalformat | GLsizei width
+tex_storage2D	void	GLenum target | GLsizei levels | GLenum internalformat | GLsizei width | GLsizei height
+tex_storage3D	void	GLenum target | GLsizei levels | GLenum internalformat | GLsizei width | GLsizei height | GLsizei depth
+label_object_with_responsible_process_APPLE	void	GLenum type | GLuint name | GLint pid
+texture_barrier_NV	void	
+multi_draw_elements_indirect_APPLE	void	GLenum mode | GLenum type | const GLvoid *indirect | GLsizei drawcount | GLsizei stride

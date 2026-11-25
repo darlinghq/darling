@@ -1,0 +1,1047 @@
+F	glAccum	accum	op,value	
+F	glAlphaFunc	alpha_func	func,ref	
+F	glAreTexturesResident	are_textures_resident	n,textures,residences	
+F	glArrayElement	array_element	i	
+F	glBegin	begin	mode	
+F	glBindTexture	bind_texture	target,texture	
+F	glBitmap	bitmap	width,height,xorig,yorig,xmove,ymove,bmap	
+F	glBlendFunc	blend_func	sfactor,dfactor	
+F	glCallList	call_list	list	
+F	glCallLists	call_lists	n,type,lists	
+F	glClear	clear	mask	
+F	glClearAccum	clear_accum	red,green,blue,alpha	
+F	glClearColor	clear_color	red,green,blue,alpha	
+F	glClearDepth	clear_depth	depth	
+F	glClearIndex	clear_index	c	
+F	glClearStencil	clear_stencil	s	
+F	glClipPlane	clip_plane	plane,equation	
+F	glColor3b	color3b	red,green,blue	
+F	glColor3bv	color3bv	v	
+F	glColor3d	color3d	red,green,blue	
+F	glColor3dv	color3dv	v	
+F	glColor3f	color3f	red,green,blue	
+F	glColor3fv	color3fv	v	
+F	glColor3i	color3i	red,green,blue	
+F	glColor3iv	color3iv	v	
+F	glColor3s	color3s	red,green,blue	
+F	glColor3sv	color3sv	v	
+F	glColor3ub	color3ub	red,green,blue	
+F	glColor3ubv	color3ubv	v	
+F	glColor3ui	color3ui	red,green,blue	
+F	glColor3uiv	color3uiv	v	
+F	glColor3us	color3us	red,green,blue	
+F	glColor3usv	color3usv	v	
+F	glColor4b	color4b	red,green,blue,alpha	
+F	glColor4bv	color4bv	v	
+F	glColor4d	color4d	red,green,blue,alpha	
+F	glColor4dv	color4dv	v	
+F	glColor4f	color4f	red,green,blue,alpha	
+F	glColor4fv	color4fv	v	
+F	glColor4i	color4i	red,green,blue,alpha	
+F	glColor4iv	color4iv	v	
+F	glColor4s	color4s	red,green,blue,alpha	
+F	glColor4sv	color4sv	v	
+F	glColor4ub	color4ub	red,green,blue,alpha	
+F	glColor4ubv	color4ubv	v	
+F	glColor4ui	color4ui	red,green,blue,alpha	
+F	glColor4uiv	color4uiv	v	
+F	glColor4us	color4us	red,green,blue,alpha	
+F	glColor4usv	color4usv	v	
+F	glColorMask	color_mask	red,green,blue,alpha	
+F	glColorMaterial	color_material	face,mode	
+F	glColorPointer	color_pointer	size,type,stride,pointer	
+F	glCopyPixels	copy_pixels	x,y,width,height,type	
+F	glCopyTexImage1D	copy_tex_image1D	target,level,internalFormat,x,y,width,border	
+F	glCopyTexImage2D	copy_tex_image2D	target,level,internalFormat,x,y,width,height,border	
+F	glCopyTexSubImage1D	copy_tex_sub_image1D	target,level,xoffset,x,y,width	
+F	glCopyTexSubImage2D	copy_tex_sub_image2D	target,level,xoffset,yoffset,x,y,width,height	
+F	glCullFace	cull_face	mode	
+F	glDeleteLists	delete_lists	list,range	
+F	glDeleteTextures	delete_textures	n,textures	
+F	glDepthFunc	depth_func	func	
+F	glDepthMask	depth_mask	flag	
+F	glDepthRange	depth_range	zNear,zFar	
+F	glDisable	disable	cap	
+F	glDisableClientState	disable_client_state	array	
+F	glDrawArrays	draw_arrays	mode,first,count	
+F	glDrawBuffer	draw_buffer	mode	
+F	glDrawElements	draw_elements	mode,count,type,indices	
+F	glDrawPixels	draw_pixels	width,height,format,type,pixels	
+F	glEdgeFlag	edge_flag	flag	
+F	glEdgeFlagPointer	edge_flag_pointer	stride,pointer	
+F	glEdgeFlagv	edge_flagv	flag	
+F	glEnable	enable	cap	
+F	glEnableClientState	enable_client_state	array	
+F	glEnd	end		
+F	glEndList	end_list		
+F	glEvalCoord1d	eval_coord1d	u	
+F	glEvalCoord1dv	eval_coord1dv	u	
+F	glEvalCoord1f	eval_coord1f	u	
+F	glEvalCoord1fv	eval_coord1fv	u	
+F	glEvalCoord2d	eval_coord2d	u,v	
+F	glEvalCoord2dv	eval_coord2dv	u	
+F	glEvalCoord2f	eval_coord2f	u,v	
+F	glEvalCoord2fv	eval_coord2fv	u	
+F	glEvalMesh1	eval_mesh1	mode,i1,i2	
+F	glEvalMesh2	eval_mesh2	mode,i1,i2,j1,j2	
+F	glEvalPoint1	eval_point1	i	
+F	glEvalPoint2	eval_point2	i,j	
+F	glFeedbackBuffer	feedback_buffer	size,type,buffer	
+F	glFinish	finish		
+F	glFlush	flush		
+F	glFogf	fogf	pname,param	
+F	glFogfv	fogfv	pname,params	
+F	glFogi	fogi	pname,param	
+F	glFogiv	fogiv	pname,params	
+F	glFrontFace	front_face	mode	
+F	glFrustum	frustum	left,right,bottom,top,zNear,zFar	
+F	glGenLists	gen_lists	range	
+F	glGenTextures	gen_textures	n,textures	
+F	glGetBooleanv	get_booleanv	pname,params	
+F	glGetClipPlane	get_clip_plane	plane,equation	
+F	glGetDoublev	get_doublev	pname,params	
+F	glGetError	get_error		
+F	glGetFloatv	get_floatv	pname,params	
+F	glGetIntegerv	get_integerv	pname,params	
+F	glGetLightfv	get_lightfv	light,pname,params	
+F	glGetLightiv	get_lightiv	light,pname,params	
+F	glGetMapdv	get_mapdv	target,query,v	
+F	glGetMapfv	get_mapfv	target,query,v	
+F	glGetMapiv	get_mapiv	target,query,v	
+F	glGetMaterialfv	get_materialfv	face,pname,params	
+F	glGetMaterialiv	get_materialiv	face,pname,params	
+F	glGetPixelMapfv	get_pixel_mapfv	map,values	
+F	glGetPixelMapuiv	get_pixel_mapuiv	map,values	
+F	glGetPixelMapusv	get_pixel_mapusv	map,values	
+F	glGetPointerv	get_pointerv	pname,params	
+F	glGetPolygonStipple	get_polygon_stipple	mask	
+F	glGetString	get_string	name	
+F	glGetTexEnvfv	get_tex_envfv	target,pname,params	
+F	glGetTexEnviv	get_tex_enviv	target,pname,params	
+F	glGetTexGendv	get_tex_gendv	coord,pname,params	
+F	glGetTexGenfv	get_tex_genfv	coord,pname,params	
+F	glGetTexGeniv	get_tex_geniv	coord,pname,params	
+F	glGetTexImage	get_tex_image	target,level,format,type,pixels	
+F	glGetTexLevelParameterfv	get_tex_level_parameterfv	target,level,pname,params	
+F	glGetTexLevelParameteriv	get_tex_level_parameteriv	target,level,pname,params	
+F	glGetTexParameterfv	get_tex_parameterfv	target,pname,params	
+F	glGetTexParameteriv	get_tex_parameteriv	target,pname,params	
+F	glHint	hint	target,mode	
+F	glIndexMask	index_mask	mask	
+F	glIndexPointer	index_pointer	type,stride,pointer	
+F	glIndexd	indexd	c	
+F	glIndexdv	indexdv	c	
+F	glIndexf	indexf	c	
+F	glIndexfv	indexfv	c	
+F	glIndexi	indexi	c	
+F	glIndexiv	indexiv	c	
+F	glIndexs	indexs	c	
+F	glIndexsv	indexsv	c	
+F	glIndexub	indexub	c	
+F	glIndexubv	indexubv	c	
+F	glInitNames	init_names		
+F	glInterleavedArrays	interleaved_arrays	format,stride,pointer	
+F	glIsEnabled	is_enabled	cap	
+F	glIsList	is_list	list	
+F	glIsTexture	is_texture	texture	
+F	glLightModelf	light_modelf	pname,param	
+F	glLightModelfv	light_modelfv	pname,params	
+F	glLightModeli	light_modeli	pname,param	
+F	glLightModeliv	light_modeliv	pname,params	
+F	glLightf	lightf	light,pname,param	
+F	glLightfv	lightfv	light,pname,params	
+F	glLighti	lighti	light,pname,param	
+F	glLightiv	lightiv	light,pname,params	
+F	glLineStipple	line_stipple	factor,pattern	
+F	glLineWidth	line_width	width	
+F	glListBase	list_base	base	
+F	glLoadIdentity	load_identity		
+F	glLoadMatrixd	load_matrixd	m	
+F	glLoadMatrixf	load_matrixf	m	
+F	glLoadName	load_name	name	
+F	glLogicOp	logic_op	opcode	
+F	glMap1d	map1d	target,u1,u2,stride,order,points	
+F	glMap1f	map1f	target,u1,u2,stride,order,points	
+F	glMap2d	map2d	target,u1,u2,ustride,uorder,v1,v2,vstride,vorder,points	
+F	glMap2f	map2f	target,u1,u2,ustride,uorder,v1,v2,vstride,vorder,points	
+F	glMapGrid1d	map_grid1d	un,u1,u2	
+F	glMapGrid1f	map_grid1f	un,u1,u2	
+F	glMapGrid2d	map_grid2d	un,u1,u2,vn,v1,v2	
+F	glMapGrid2f	map_grid2f	un,u1,u2,vn,v1,v2	
+F	glMaterialf	materialf	face,pname,param	
+F	glMaterialfv	materialfv	face,pname,params	
+F	glMateriali	materiali	face,pname,param	
+F	glMaterialiv	materialiv	face,pname,params	
+F	glMatrixMode	matrix_mode	mode	
+F	glMultMatrixd	mult_matrixd	m	
+F	glMultMatrixf	mult_matrixf	m	
+F	glNewList	new_list	list,mode	
+F	glNormal3b	normal3b	nx,ny,nz	
+F	glNormal3bv	normal3bv	v	
+F	glNormal3d	normal3d	nx,ny,nz	
+F	glNormal3dv	normal3dv	v	
+F	glNormal3f	normal3f	nx,ny,nz	
+F	glNormal3fv	normal3fv	v	
+F	glNormal3i	normal3i	nx,ny,nz	
+F	glNormal3iv	normal3iv	v	
+F	glNormal3s	normal3s	nx,ny,nz	
+F	glNormal3sv	normal3sv	v	
+F	glNormalPointer	normal_pointer	type,stride,pointer	
+F	glOrtho	ortho	left,right,bottom,top,zNear,zFar	
+F	glPassThrough	pass_through	token	
+F	glPixelMapfv	pixel_mapfv	map,mapsize,values	
+F	glPixelMapuiv	pixel_mapuiv	map,mapsize,values	
+F	glPixelMapusv	pixel_mapusv	map,mapsize,values	
+F	glPixelStoref	pixel_storef	pname,param	
+F	glPixelStorei	pixel_storei	pname,param	
+F	glPixelTransferf	pixel_transferf	pname,param	
+F	glPixelTransferi	pixel_transferi	pname,param	
+F	glPixelZoom	pixel_zoom	xfactor,yfactor	
+F	glPointSize	point_size	size	
+F	glPolygonMode	polygon_mode	face,mode	
+F	glPolygonOffset	polygon_offset	factor,units	
+F	glPolygonStipple	polygon_stipple	mask	
+F	glPopAttrib	pop_attrib		
+F	glPopClientAttrib	pop_client_attrib		
+F	glPopMatrix	pop_matrix		
+F	glPopName	pop_name		
+F	glPrioritizeTextures	prioritize_textures	n,textures,priorities	
+F	glPushAttrib	push_attrib	mask	
+F	glPushClientAttrib	push_client_attrib	mask	
+F	glPushMatrix	push_matrix		
+F	glPushName	push_name	name	
+F	glRasterPos2d	raster_pos2d	x,y	
+F	glRasterPos2dv	raster_pos2dv	v	
+F	glRasterPos2f	raster_pos2f	x,y	
+F	glRasterPos2fv	raster_pos2fv	v	
+F	glRasterPos2i	raster_pos2i	x,y	
+F	glRasterPos2iv	raster_pos2iv	v	
+F	glRasterPos2s	raster_pos2s	x,y	
+F	glRasterPos2sv	raster_pos2sv	v	
+F	glRasterPos3d	raster_pos3d	x,y,z	
+F	glRasterPos3dv	raster_pos3dv	v	
+F	glRasterPos3f	raster_pos3f	x,y,z	
+F	glRasterPos3fv	raster_pos3fv	v	
+F	glRasterPos3i	raster_pos3i	x,y,z	
+F	glRasterPos3iv	raster_pos3iv	v	
+F	glRasterPos3s	raster_pos3s	x,y,z	
+F	glRasterPos3sv	raster_pos3sv	v	
+F	glRasterPos4d	raster_pos4d	x,y,z,w	
+F	glRasterPos4dv	raster_pos4dv	v	
+F	glRasterPos4f	raster_pos4f	x,y,z,w	
+F	glRasterPos4fv	raster_pos4fv	v	
+F	glRasterPos4i	raster_pos4i	x,y,z,w	
+F	glRasterPos4iv	raster_pos4iv	v	
+F	glRasterPos4s	raster_pos4s	x,y,z,w	
+F	glRasterPos4sv	raster_pos4sv	v	
+F	glReadBuffer	read_buffer	mode	
+F	glReadPixels	read_pixels	x,y,width,height,format,type,pixels	
+F	glRectd	rectd	x1,y1,x2,y2	
+F	glRectdv	rectdv	v1,v2	
+F	glRectf	rectf	x1,y1,x2,y2	
+F	glRectfv	rectfv	v1,v2	
+F	glRecti	recti	x1,y1,x2,y2	
+F	glRectiv	rectiv	v1,v2	
+F	glRects	rects	x1,y1,x2,y2	
+F	glRectsv	rectsv	v1,v2	
+F	glRenderMode	render_mode	mode	
+F	glRotated	rotated	angle,x,y,z	
+F	glRotatef	rotatef	angle,x,y,z	
+F	glScaled	scaled	x,y,z	
+F	glScalef	scalef	x,y,z	
+F	glScissor	scissor	x,y,width,height	
+F	glSelectBuffer	select_buffer	size,buffer	
+F	glShadeModel	shade_model	mode	
+F	glStencilFunc	stencil_func	func,ref,mask	
+F	glStencilMask	stencil_mask	mask	
+F	glStencilOp	stencil_op	fail,zfail,zpass	
+F	glTexCoord1d	tex_coord1d	s	
+F	glTexCoord1dv	tex_coord1dv	v	
+F	glTexCoord1f	tex_coord1f	s	
+F	glTexCoord1fv	tex_coord1fv	v	
+F	glTexCoord1i	tex_coord1i	s	
+F	glTexCoord1iv	tex_coord1iv	v	
+F	glTexCoord1s	tex_coord1s	s	
+F	glTexCoord1sv	tex_coord1sv	v	
+F	glTexCoord2d	tex_coord2d	s,t	
+F	glTexCoord2dv	tex_coord2dv	v	
+F	glTexCoord2f	tex_coord2f	s,t	
+F	glTexCoord2fv	tex_coord2fv	v	
+F	glTexCoord2i	tex_coord2i	s,t	
+F	glTexCoord2iv	tex_coord2iv	v	
+F	glTexCoord2s	tex_coord2s	s,t	
+F	glTexCoord2sv	tex_coord2sv	v	
+F	glTexCoord3d	tex_coord3d	s,t,r	
+F	glTexCoord3dv	tex_coord3dv	v	
+F	glTexCoord3f	tex_coord3f	s,t,r	
+F	glTexCoord3fv	tex_coord3fv	v	
+F	glTexCoord3i	tex_coord3i	s,t,r	
+F	glTexCoord3iv	tex_coord3iv	v	
+F	glTexCoord3s	tex_coord3s	s,t,r	
+F	glTexCoord3sv	tex_coord3sv	v	
+F	glTexCoord4d	tex_coord4d	s,t,r,q	
+F	glTexCoord4dv	tex_coord4dv	v	
+F	glTexCoord4f	tex_coord4f	s,t,r,q	
+F	glTexCoord4fv	tex_coord4fv	v	
+F	glTexCoord4i	tex_coord4i	s,t,r,q	
+F	glTexCoord4iv	tex_coord4iv	v	
+F	glTexCoord4s	tex_coord4s	s,t,r,q	
+F	glTexCoord4sv	tex_coord4sv	v	
+F	glTexCoordPointer	tex_coord_pointer	size,type,stride,pointer	
+F	glTexEnvf	tex_envf	target,pname,param	
+F	glTexEnvfv	tex_envfv	target,pname,params	
+F	glTexEnvi	tex_envi	target,pname,param	
+F	glTexEnviv	tex_enviv	target,pname,params	
+F	glTexGend	tex_gend	coord,pname,param	
+F	glTexGendv	tex_gendv	coord,pname,params	
+F	glTexGenf	tex_genf	coord,pname,param	
+F	glTexGenfv	tex_genfv	coord,pname,params	
+F	glTexGeni	tex_geni	coord,pname,param	
+F	glTexGeniv	tex_geniv	coord,pname,params	
+F	glTexImage1D	tex_image1D	target,level,internalformat,width,border,format,type,pixels	
+F	glTexImage2D	tex_image2D	target,level,internalformat,width,height,border,format,type,pixels	
+F	glTexParameterf	tex_parameterf	target,pname,param	
+F	glTexParameterfv	tex_parameterfv	target,pname,params	
+F	glTexParameteri	tex_parameteri	target,pname,param	
+F	glTexParameteriv	tex_parameteriv	target,pname,params	
+F	glTexSubImage1D	tex_sub_image1D	target,level,xoffset,width,format,type,pixels	
+F	glTexSubImage2D	tex_sub_image2D	target,level,xoffset,yoffset,width,height,format,type,pixels	
+F	glTranslated	translated	x,y,z	
+F	glTranslatef	translatef	x,y,z	
+F	glVertex2d	vertex2d	x,y	
+F	glVertex2dv	vertex2dv	v	
+F	glVertex2f	vertex2f	x,y	
+F	glVertex2fv	vertex2fv	v	
+F	glVertex2i	vertex2i	x,y	
+F	glVertex2iv	vertex2iv	v	
+F	glVertex2s	vertex2s	x,y	
+F	glVertex2sv	vertex2sv	v	
+F	glVertex3d	vertex3d	x,y,z	
+F	glVertex3dv	vertex3dv	v	
+F	glVertex3f	vertex3f	x,y,z	
+F	glVertex3fv	vertex3fv	v	
+F	glVertex3i	vertex3i	x,y,z	
+F	glVertex3iv	vertex3iv	v	
+F	glVertex3s	vertex3s	x,y,z	
+F	glVertex3sv	vertex3sv	v	
+F	glVertex4d	vertex4d	x,y,z,w	
+F	glVertex4dv	vertex4dv	v	
+F	glVertex4f	vertex4f	x,y,z,w	
+F	glVertex4fv	vertex4fv	v	
+F	glVertex4i	vertex4i	x,y,z,w	
+F	glVertex4iv	vertex4iv	v	
+F	glVertex4s	vertex4s	x,y,z,w	
+F	glVertex4sv	vertex4sv	v	
+F	glVertexPointer	vertex_pointer	size,type,stride,pointer	
+F	glViewport	viewport	x,y,width,height	
+F	glBlendColor	blend_color	red,green,blue,alpha	
+F	glBlendEquation	blend_equation	mode	
+F	glDrawRangeElements	draw_range_elements	mode,start,end,count,type,indices	
+F	glTexImage3D	tex_image3D	target,level,internalformat,width,height,depth,border,format,type,data	
+F	glTexSubImage3D	tex_sub_image3D	target,level,xoffset,yoffset,zoffset,width,height,depth,format,type,pixels	
+F	glCopyTexSubImage3D	copy_tex_sub_image3D	target,level,xoffset,yoffset,zoffset,x,y,width,height	
+F	glColorTable	color_table	target,internalformat,width,format,type,table	
+F	glColorTableParameterfv	color_table_parameterfv	target,pname,params	
+F	glColorTableParameteriv	color_table_parameteriv	target,pname,params	
+F	glCopyColorTable	copy_color_table	target,internalformat,x,y,width	
+F	glGetColorTable	get_color_table	target,format,type,table	
+F	glGetColorTableParameterfv	get_color_table_parameterfv	target,pname,params	
+F	glGetColorTableParameteriv	get_color_table_parameteriv	target,pname,params	
+F	glColorSubTable	color_sub_table	target,start,count,format,type,data	
+F	glCopyColorSubTable	copy_color_sub_table	target,start,x,y,width	
+F	glConvolutionFilter1D	convolution_filter1D	target,internalformat,width,format,type,image	
+F	glConvolutionFilter2D	convolution_filter2D	target,internalformat,width,height,format,type,image	
+F	glConvolutionParameterf	convolution_parameterf	target,pname,param	
+F	glConvolutionParameterfv	convolution_parameterfv	target,pname,params	
+F	glConvolutionParameteri	convolution_parameteri	target,pname,param	
+F	glConvolutionParameteriv	convolution_parameteriv	target,pname,params	
+F	glCopyConvolutionFilter1D	copy_convolution_filter1D	target,internalformat,x,y,width	
+F	glCopyConvolutionFilter2D	copy_convolution_filter2D	target,internalformat,x,y,width,height	
+F	glGetConvolutionFilter	get_convolution_filter	target,format,type,image	
+F	glGetConvolutionParameterfv	get_convolution_parameterfv	target,pname,params	
+F	glGetConvolutionParameteriv	get_convolution_parameteriv	target,pname,params	
+F	glGetSeparableFilter	get_separable_filter	target,format,type,row,column,span	
+F	glSeparableFilter2D	separable_filter2D	target,internalformat,width,height,format,type,row,column	
+F	glGetHistogram	get_histogram	target,reset,format,type,values	
+F	glGetHistogramParameterfv	get_histogram_parameterfv	target,pname,params	
+F	glGetHistogramParameteriv	get_histogram_parameteriv	target,pname,params	
+F	glGetMinmax	get_minmax	target,reset,format,type,values	
+F	glGetMinmaxParameterfv	get_minmax_parameterfv	target,pname,params	
+F	glGetMinmaxParameteriv	get_minmax_parameteriv	target,pname,params	
+F	glHistogram	histogram	target,width,internalformat,sink	
+F	glMinmax	minmax	target,internalformat,sink	
+F	glResetHistogram	reset_histogram	target	
+F	glResetMinmax	reset_minmax	target	
+F	glClientActiveTexture	client_active_texture	target	
+F	glActiveTexture	active_texture	target	
+F	glMultiTexCoord1d	multi_tex_coord1d	target,s	
+F	glMultiTexCoord1dv	multi_tex_coord1dv	target,v	
+F	glMultiTexCoord1f	multi_tex_coord1f	target,s	
+F	glMultiTexCoord1fv	multi_tex_coord1fv	target,v	
+F	glMultiTexCoord1i	multi_tex_coord1i	target,s	
+F	glMultiTexCoord1iv	multi_tex_coord1iv	target,v	
+F	glMultiTexCoord1s	multi_tex_coord1s	target,s	
+F	glMultiTexCoord1sv	multi_tex_coord1sv	target,v	
+F	glMultiTexCoord2d	multi_tex_coord2d	target,s,t	
+F	glMultiTexCoord2dv	multi_tex_coord2dv	target,v	
+F	glMultiTexCoord2f	multi_tex_coord2f	target,s,t	
+F	glMultiTexCoord2fv	multi_tex_coord2fv	target,v	
+F	glMultiTexCoord2i	multi_tex_coord2i	target,s,t	
+F	glMultiTexCoord2iv	multi_tex_coord2iv	target,v	
+F	glMultiTexCoord2s	multi_tex_coord2s	target,s,t	
+F	glMultiTexCoord2sv	multi_tex_coord2sv	target,v	
+F	glMultiTexCoord3d	multi_tex_coord3d	target,s,t,r	
+F	glMultiTexCoord3dv	multi_tex_coord3dv	target,v	
+F	glMultiTexCoord3f	multi_tex_coord3f	target,s,t,r	
+F	glMultiTexCoord3fv	multi_tex_coord3fv	target,v	
+F	glMultiTexCoord3i	multi_tex_coord3i	target,s,t,r	
+F	glMultiTexCoord3iv	multi_tex_coord3iv	target,v	
+F	glMultiTexCoord3s	multi_tex_coord3s	target,s,t,r	
+F	glMultiTexCoord3sv	multi_tex_coord3sv	target,v	
+F	glMultiTexCoord4d	multi_tex_coord4d	target,s,t,r,q	
+F	glMultiTexCoord4dv	multi_tex_coord4dv	target,v	
+F	glMultiTexCoord4f	multi_tex_coord4f	target,s,t,r,q	
+F	glMultiTexCoord4fv	multi_tex_coord4fv	target,v	
+F	glMultiTexCoord4i	multi_tex_coord4i	target,s,t,r,q	
+F	glMultiTexCoord4iv	multi_tex_coord4iv	target,v	
+F	glMultiTexCoord4s	multi_tex_coord4s	target,s,t,r,q	
+F	glMultiTexCoord4sv	multi_tex_coord4sv	target,v	
+F	glSampleCoverage	sample_coverage	value,invert	
+F	glLoadTransposeMatrixf	load_transpose_matrixf	m	
+F	glLoadTransposeMatrixd	load_transpose_matrixd	m	
+F	glMultTransposeMatrixf	mult_transpose_matrixf	m	
+F	glMultTransposeMatrixd	mult_transpose_matrixd	m	
+F	glCompressedTexImage3D	compressed_tex_image3D	target,level,internalformat,width,height,depth,border,imageSize,data	
+F	glCompressedTexImage2D	compressed_tex_image2D	target,level,internalformat,width,height,border,imageSize,data	
+F	glCompressedTexImage1D	compressed_tex_image1D	target,level,internalformat,width,border,imageSize,data	
+F	glCompressedTexSubImage3D	compressed_tex_sub_image3D	target,level,xoffset,yoffset,zoffset,width,height,depth,format,imageSize,data	
+F	glCompressedTexSubImage2D	compressed_tex_sub_image2D	target,level,xoffset,yoffset,width,height,format,imageSize,data	
+F	glCompressedTexSubImage1D	compressed_tex_sub_image1D	target,level,xoffset,width,format,imageSize,data	
+F	glGetCompressedTexImage	get_compressed_tex_image	target,level,img	
+F	glFogCoordf	fog_coordf	coord	
+F	glFogCoordfv	fog_coordfv	coord	
+F	glFogCoordd	fog_coordd	coord	
+F	glFogCoorddv	fog_coorddv	coord	
+F	glFogCoordPointer	fog_coord_pointer	type,stride,pointer	
+F	glSecondaryColor3b	secondary_color3b	red,green,blue	
+F	glSecondaryColor3bv	secondary_color3bv	components	
+F	glSecondaryColor3d	secondary_color3d	red,green,blue	
+F	glSecondaryColor3dv	secondary_color3dv	components	
+F	glSecondaryColor3f	secondary_color3f	red,green,blue	
+F	glSecondaryColor3fv	secondary_color3fv	components	
+F	glSecondaryColor3i	secondary_color3i	red,green,blue	
+F	glSecondaryColor3iv	secondary_color3iv	components	
+F	glSecondaryColor3s	secondary_color3s	red,green,blue	
+F	glSecondaryColor3sv	secondary_color3sv	components	
+F	glSecondaryColor3ub	secondary_color3ub	red,green,blue	
+F	glSecondaryColor3ubv	secondary_color3ubv	components	
+F	glSecondaryColor3ui	secondary_color3ui	red,green,blue	
+F	glSecondaryColor3uiv	secondary_color3uiv	components	
+F	glSecondaryColor3us	secondary_color3us	red,green,blue	
+F	glSecondaryColor3usv	secondary_color3usv	components	
+F	glSecondaryColorPointer	secondary_color_pointer	size,type,stride,pointer	
+F	glPointParameterf	point_parameterf	pname,param	
+F	glPointParameterfv	point_parameterfv	pname,params	
+F	glPointParameteri	point_parameteri	pname,param	
+F	glPointParameteriv	point_parameteriv	pname,params	
+F	glBlendFuncSeparate	blend_func_separate	sfactorRGB,dfactorRGB,sfactorAlpha,dfactorAlpha	
+F	glMultiDrawArrays	multi_draw_arrays	mode,first,count,primcount	
+F	glMultiDrawElements	multi_draw_elements	mode,count,type,indices,primcount	
+F	glWindowPos2d	window_pos2d	x,y	
+F	glWindowPos2dv	window_pos2dv	v	
+F	glWindowPos2f	window_pos2f	x,y	
+F	glWindowPos2fv	window_pos2fv	v	
+F	glWindowPos2i	window_pos2i	x,y	
+F	glWindowPos2iv	window_pos2iv	v	
+F	glWindowPos2s	window_pos2s	x,y	
+F	glWindowPos2sv	window_pos2sv	v	
+F	glWindowPos3d	window_pos3d	x,y,z	
+F	glWindowPos3dv	window_pos3dv	v	
+F	glWindowPos3f	window_pos3f	x,y,z	
+F	glWindowPos3fv	window_pos3fv	v	
+F	glWindowPos3i	window_pos3i	x,y,z	
+F	glWindowPos3iv	window_pos3iv	v	
+F	glWindowPos3s	window_pos3s	x,y,z	
+F	glWindowPos3sv	window_pos3sv	v	
+F	glGenQueries	gen_queries	n,ids	
+F	glDeleteQueries	delete_queries	n,ids	
+F	glIsQuery	is_query	id	
+F	glBeginQuery	begin_query	target,id	
+F	glEndQuery	end_query	target	
+F	glGetQueryiv	get_queryiv	target,pname,params	
+F	glGetQueryObjectiv	get_query_objectiv	id,pname,params	
+F	glGetQueryObjectuiv	get_query_objectuiv	id,pname,params	
+F	glBindBuffer	bind_buffer	target,buffer	
+F	glDeleteBuffers	delete_buffers	n,buffers	
+F	glGenBuffers	gen_buffers	n,buffers	
+F	glIsBuffer	is_buffer	buffer	
+F	glBufferData	buffer_data	target,size,data,usage	
+F	glBufferSubData	buffer_sub_data	target,offset,size,data	
+F	glGetBufferSubData	get_buffer_sub_data	target,offset,size,data	
+F	glMapBuffer	map_buffer	target,access	
+F	glUnmapBuffer	unmap_buffer	target	
+F	glGetBufferParameteriv	get_buffer_parameteriv	target,pname,params	
+F	glGetBufferPointerv	get_buffer_pointerv	target,pname,params	
+F	glDrawBuffers	draw_buffers_ARB	n,bufs	
+F	glVertexAttrib1d	vertex_attrib1d_ARB	index,x	
+F	glVertexAttrib1dv	vertex_attrib1dv_ARB	index,v	
+F	glVertexAttrib1f	vertex_attrib1f_ARB	index,x	
+F	glVertexAttrib1fv	vertex_attrib1fv_ARB	index,v	
+F	glVertexAttrib1s	vertex_attrib1s_ARB	index,x	
+F	glVertexAttrib1sv	vertex_attrib1sv_ARB	index,v	
+F	glVertexAttrib2d	vertex_attrib2d_ARB	index,x,y	
+F	glVertexAttrib2dv	vertex_attrib2dv_ARB	index,v	
+F	glVertexAttrib2f	vertex_attrib2f_ARB	index,x,y	
+F	glVertexAttrib2fv	vertex_attrib2fv_ARB	index,v	
+F	glVertexAttrib2s	vertex_attrib2s_ARB	index,x,y	
+F	glVertexAttrib2sv	vertex_attrib2sv_ARB	index,v	
+F	glVertexAttrib3d	vertex_attrib3d_ARB	index,x,y,z	
+F	glVertexAttrib3dv	vertex_attrib3dv_ARB	index,v	
+F	glVertexAttrib3f	vertex_attrib3f_ARB	index,x,y,z	
+F	glVertexAttrib3fv	vertex_attrib3fv_ARB	index,v	
+F	glVertexAttrib3s	vertex_attrib3s_ARB	index,x,y,z	
+F	glVertexAttrib3sv	vertex_attrib3sv_ARB	index,v	
+F	glVertexAttrib4Nbv	vertex_attrib4Nbv_ARB	index,v	
+F	glVertexAttrib4Niv	vertex_attrib4Niv_ARB	index,v	
+F	glVertexAttrib4Nsv	vertex_attrib4Nsv_ARB	index,v	
+F	glVertexAttrib4Nub	vertex_attrib4Nub_ARB	index,x,y,z,w	
+F	glVertexAttrib4Nubv	vertex_attrib4Nubv_ARB	index,v	
+F	glVertexAttrib4Nuiv	vertex_attrib4Nuiv_ARB	index,v	
+F	glVertexAttrib4Nusv	vertex_attrib4Nusv_ARB	index,v	
+F	glVertexAttrib4bv	vertex_attrib4bv_ARB	index,v	
+F	glVertexAttrib4d	vertex_attrib4d_ARB	index,x,y,z,w	
+F	glVertexAttrib4dv	vertex_attrib4dv_ARB	index,v	
+F	glVertexAttrib4f	vertex_attrib4f_ARB	index,x,y,z,w	
+F	glVertexAttrib4fv	vertex_attrib4fv_ARB	index,v	
+F	glVertexAttrib4iv	vertex_attrib4iv_ARB	index,v	
+F	glVertexAttrib4s	vertex_attrib4s_ARB	index,x,y,z,w	
+F	glVertexAttrib4sv	vertex_attrib4sv_ARB	index,v	
+F	glVertexAttrib4ubv	vertex_attrib4ubv_ARB	index,v	
+F	glVertexAttrib4uiv	vertex_attrib4uiv_ARB	index,v	
+F	glVertexAttrib4usv	vertex_attrib4usv_ARB	index,v	
+F	glVertexAttribPointer	vertex_attrib_pointer_ARB	index,size,type,normalized,stride,pointer	
+F	glEnableVertexAttribArray	enable_vertex_attrib_array_ARB	index	
+F	glDisableVertexAttribArray	disable_vertex_attrib_array_ARB	index	
+F	glGetVertexAttribdv	get_vertex_attribdv_ARB	index,pname,params	
+F	glGetVertexAttribfv	get_vertex_attribfv_ARB	index,pname,params	
+F	glGetVertexAttribiv	get_vertex_attribiv_ARB	index,pname,params	
+F	glGetVertexAttribPointerv	get_vertex_attrib_pointerv_ARB	index,pname,pointer	
+F	glDeleteShader	delete_object_ARB	shader	
+F	glDetachShader	detach_object_ARB	program,shader	
+F	glCreateShader	create_shader_object_ARB	type	GLuint
+F	glShaderSource	shader_source_ARB	shader,count,string,length	
+F	glCompileShader	compile_shader_ARB	shader	
+F	glCreateProgram	create_program_object_ARB		GLuint
+F	glAttachShader	attach_object_ARB	program,shader	
+F	glLinkProgram	link_program_ARB	program	
+F	glUseProgram	use_program_object_ARB	program	
+F	glDeleteProgram	delete_object_ARB	program	
+F	glValidateProgram	validate_program_ARB	program	
+F	glUniform1f	uniform1f_ARB	location,v0	
+F	glUniform2f	uniform2f_ARB	location,v0,v1	
+F	glUniform3f	uniform3f_ARB	location,v0,v1,v2	
+F	glUniform4f	uniform4f_ARB	location,v0,v1,v2,v3	
+F	glUniform1i	uniform1i_ARB	location,v0	
+F	glUniform2i	uniform2i_ARB	location,v0,v1	
+F	glUniform3i	uniform3i_ARB	location,v0,v1,v2	
+F	glUniform4i	uniform4i_ARB	location,v0,v1,v2,v3	
+F	glUniform1fv	uniform1fv_ARB	location,count,value	
+F	glUniform2fv	uniform2fv_ARB	location,count,value	
+F	glUniform3fv	uniform3fv_ARB	location,count,value	
+F	glUniform4fv	uniform4fv_ARB	location,count,value	
+F	glUniform1iv	uniform1iv_ARB	location,count,value	
+F	glUniform2iv	uniform2iv_ARB	location,count,value	
+F	glUniform3iv	uniform3iv_ARB	location,count,value	
+F	glUniform4iv	uniform4iv_ARB	location,count,value	
+F	glUniformMatrix2fv	uniform_matrix2fv_ARB	location,count,transpose,value	
+F	glUniformMatrix3fv	uniform_matrix3fv_ARB	location,count,transpose,value	
+F	glUniformMatrix4fv	uniform_matrix4fv_ARB	location,count,transpose,value	
+F	glIsShader	is_shader	shader	
+F	glIsProgram	is_program	program	
+F	glGetShaderiv	get_shaderiv	shader,pname,params	
+F	glGetProgramiv	get_programiv	program,pname,params	
+F	glGetAttachedShaders	get_attached_shaders	program,maxCount,count,shaders	
+F	glGetShaderInfoLog	get_shader_info_log	shader,bufSize,length,infoLog	
+F	glGetProgramInfoLog	get_program_info_log	program,bufSize,length,infoLog	
+F	glGetUniformLocation	get_uniform_location_ARB	program,name	
+F	glGetActiveUniform	get_active_uniform_ARB	program,index,bufSize,length,size,type,name	
+F	glGetUniformfv	get_uniformfv_ARB	program,location,params	
+F	glGetUniformiv	get_uniformiv_ARB	program,location,params	
+F	glGetShaderSource	get_shader_source_ARB	shader,bufSize,length,source	
+F	glBindAttribLocation	bind_attrib_location_ARB	program,index,name	
+F	glGetActiveAttrib	get_active_attrib_ARB	program,index,bufSize,length,size,type,name	
+F	glGetAttribLocation	get_attrib_location_ARB	program,name	
+F	glStencilFuncSeparate	stencil_func_separate	face,func,ref,mask	
+F	glStencilOpSeparate	stencil_op_separate_ATI	face,fail,zfail,zpass	
+F	glStencilMaskSeparate	stencil_mask_separate	face,mask	
+A	glBlendEquationSeparate	glBlendEquationSeparateEXT		
+F	glUniformMatrix2x3fv	uniform_matrix2x3fv	location,count,transpose,value	
+F	glUniformMatrix3x2fv	uniform_matrix3x2fv	location,count,transpose,value	
+F	glUniformMatrix2x4fv	uniform_matrix2x4fv	location,count,transpose,value	
+F	glUniformMatrix4x2fv	uniform_matrix4x2fv	location,count,transpose,value	
+F	glUniformMatrix3x4fv	uniform_matrix3x4fv	location,count,transpose,value	
+F	glUniformMatrix4x3fv	uniform_matrix4x3fv	location,count,transpose,value	
+A	glColorMaski	glColorMaskIndexedEXT		
+A	glGetBooleani_v	glGetBooleanIndexedvEXT		
+A	glGetIntegeri_v	glGetIntegerIndexedvEXT		
+A	glEnablei	glEnableIndexedEXT		
+A	glDisablei	glDisableIndexedEXT		
+A	glIsEnabledi	glIsEnabledIndexedEXT		
+A	glBeginTransformFeedback	glBeginTransformFeedbackEXT		
+A	glEndTransformFeedback	glEndTransformFeedbackEXT		
+A	glBindBufferRange	glBindBufferRangeEXT		
+A	glBindBufferBase	glBindBufferBaseEXT		
+A	glTransformFeedbackVaryings	glTransformFeedbackVaryingsEXT		
+A	glGetTransformFeedbackVarying	glGetTransformFeedbackVaryingEXT		
+A	glClampColor	glClampColorARB		
+A	glBeginConditionalRender	glBeginConditionalRenderNV		
+A	glEndConditionalRender	glEndConditionalRenderNV		
+A	glVertexAttribIPointer	glVertexAttribIPointerEXT		
+A	glGetVertexAttribIiv	glGetVertexAttribIivEXT		
+A	glGetVertexAttribIuiv	glGetVertexAttribIuivEXT		
+A	glVertexAttribI1i	glVertexAttribI1iEXT		
+A	glVertexAttribI2i	glVertexAttribI2iEXT		
+A	glVertexAttribI3i	glVertexAttribI3iEXT		
+A	glVertexAttribI4i	glVertexAttribI4iEXT		
+A	glVertexAttribI1ui	glVertexAttribI1uiEXT		
+A	glVertexAttribI2ui	glVertexAttribI2uiEXT		
+A	glVertexAttribI3ui	glVertexAttribI3uiEXT		
+A	glVertexAttribI4ui	glVertexAttribI4uiEXT		
+A	glVertexAttribI1iv	glVertexAttribI1ivEXT		
+A	glVertexAttribI2iv	glVertexAttribI2ivEXT		
+A	glVertexAttribI3iv	glVertexAttribI3ivEXT		
+A	glVertexAttribI4iv	glVertexAttribI4ivEXT		
+A	glVertexAttribI1uiv	glVertexAttribI1uivEXT		
+A	glVertexAttribI2uiv	glVertexAttribI2uivEXT		
+A	glVertexAttribI3uiv	glVertexAttribI3uivEXT		
+A	glVertexAttribI4uiv	glVertexAttribI4uivEXT		
+A	glVertexAttribI4bv	glVertexAttribI4bvEXT		
+A	glVertexAttribI4sv	glVertexAttribI4svEXT		
+A	glVertexAttribI4ubv	glVertexAttribI4ubvEXT		
+A	glVertexAttribI4usv	glVertexAttribI4usvEXT		
+A	glGetUniformuiv	glGetUniformuivEXT		
+A	glBindFragDataLocation	glBindFragDataLocationEXT		
+A	glGetFragDataLocation	glGetFragDataLocationEXT		
+A	glUniform1ui	glUniform1uiEXT		
+A	glUniform2ui	glUniform2uiEXT		
+A	glUniform3ui	glUniform3uiEXT		
+A	glUniform4ui	glUniform4uiEXT		
+A	glUniform1uiv	glUniform1uivEXT		
+A	glUniform2uiv	glUniform2uivEXT		
+A	glUniform3uiv	glUniform3uivEXT		
+A	glUniform4uiv	glUniform4uivEXT		
+A	glTexParameterIiv	glTexParameterIivEXT		
+A	glTexParameterIuiv	glTexParameterIuivEXT		
+A	glGetTexParameterIiv	glGetTexParameterIivEXT		
+A	glGetTexParameterIuiv	glGetTexParameterIuivEXT		
+F	glClearBufferiv	clear_bufferiv	buffer,drawbuffer,value	
+F	glClearBufferuiv	clear_bufferuiv	buffer,drawbuffer,value	
+F	glClearBufferfv	clear_bufferfv	buffer,drawbuffer,value	
+F	glClearBufferfi	clear_bufferfi	buffer,drawbuffer,depth,stencil	
+F	glGetStringi	get_stringi	name,index	
+F	glBindProgramARB	bind_program_ARB	target,id	
+F	glDeleteProgramsARB	delete_programs_ARB	n,programs	
+F	glGenProgramsARB	gen_programs_ARB	n,programs	
+F	glIsProgramARB	is_program_ARB	id	
+F	glVertexAttrib1sARB	vertex_attrib1s_ARB	index,x	
+F	glVertexAttrib1fARB	vertex_attrib1f_ARB	index,x	
+F	glVertexAttrib1dARB	vertex_attrib1d_ARB	index,x	
+F	glVertexAttrib2sARB	vertex_attrib2s_ARB	index,x,y	
+F	glVertexAttrib2fARB	vertex_attrib2f_ARB	index,x,y	
+F	glVertexAttrib2dARB	vertex_attrib2d_ARB	index,x,y	
+F	glVertexAttrib3sARB	vertex_attrib3s_ARB	index,x,y,z	
+F	glVertexAttrib3fARB	vertex_attrib3f_ARB	index,x,y,z	
+F	glVertexAttrib3dARB	vertex_attrib3d_ARB	index,x,y,z	
+F	glVertexAttrib4sARB	vertex_attrib4s_ARB	index,x,y,z,w	
+F	glVertexAttrib4fARB	vertex_attrib4f_ARB	index,x,y,z,w	
+F	glVertexAttrib4dARB	vertex_attrib4d_ARB	index,x,y,z,w	
+F	glVertexAttrib4NubARB	vertex_attrib4Nub_ARB	index,x,y,z,w	
+F	glVertexAttrib1svARB	vertex_attrib1sv_ARB	index,addr	
+F	glVertexAttrib1fvARB	vertex_attrib1fv_ARB	index,addr	
+F	glVertexAttrib1dvARB	vertex_attrib1dv_ARB	index,addr	
+F	glVertexAttrib2svARB	vertex_attrib2sv_ARB	index,addr	
+F	glVertexAttrib2fvARB	vertex_attrib2fv_ARB	index,addr	
+F	glVertexAttrib2dvARB	vertex_attrib2dv_ARB	index,addr	
+F	glVertexAttrib3svARB	vertex_attrib3sv_ARB	index,addr	
+F	glVertexAttrib3fvARB	vertex_attrib3fv_ARB	index,addr	
+F	glVertexAttrib3dvARB	vertex_attrib3dv_ARB	index,addr	
+F	glVertexAttrib4bvARB	vertex_attrib4bv_ARB	index,addr	
+F	glVertexAttrib4ubvARB	vertex_attrib4ubv_ARB	index,addr	
+F	glVertexAttrib4svARB	vertex_attrib4sv_ARB	index,addr	
+F	glVertexAttrib4usvARB	vertex_attrib4usv_ARB	index,addr	
+F	glVertexAttrib4ivARB	vertex_attrib4iv_ARB	index,addr	
+F	glVertexAttrib4uivARB	vertex_attrib4uiv_ARB	index,addr	
+F	glVertexAttrib4fvARB	vertex_attrib4fv_ARB	index,addr	
+F	glVertexAttrib4dvARB	vertex_attrib4dv_ARB	index,addr	
+F	glVertexAttrib4NbvARB	vertex_attrib4Nbv_ARB	index,addr	
+F	glVertexAttrib4NubvARB	vertex_attrib4Nubv_ARB	index,addr	
+F	glVertexAttrib4NsvARB	vertex_attrib4Nsv_ARB	index,addr	
+F	glVertexAttrib4NusvARB	vertex_attrib4Nusv_ARB	index,addr	
+F	glVertexAttrib4NivARB	vertex_attrib4Niv_ARB	index,addr	
+F	glVertexAttrib4NuivARB	vertex_attrib4Nuiv_ARB	index,addr	
+F	glVertexAttribPointerARB	vertex_attrib_pointer_ARB	index,size,type,normalized,stride,addr	
+F	glEnableVertexAttribArrayARB	enable_vertex_attrib_array_ARB	index	
+F	glDisableVertexAttribArrayARB	disable_vertex_attrib_array_ARB	index	
+F	glGetVertexAttribdvARB	get_vertex_attribdv_ARB	index,pname,params	
+F	glGetVertexAttribfvARB	get_vertex_attribfv_ARB	index,pname,params	
+F	glGetVertexAttribivARB	get_vertex_attribiv_ARB	index,pname,params	
+F	glGetVertexAttribPointervARB	get_vertex_attrib_pointerv_ARB	index,pname,pointer	
+F	glProgramEnvParameter4dARB	program_env_parameter4d_ARB	target,index,x,y,z,w	
+F	glProgramEnvParameter4dvARB	program_env_parameter4dv_ARB	target,index,params	
+F	glProgramEnvParameter4fARB	program_env_parameter4f_ARB	target,index,x,y,z,w	
+F	glProgramEnvParameter4fvARB	program_env_parameter4fv_ARB	target,index,params	
+F	glProgramLocalParameter4dARB	program_local_parameter4d_ARB	target,index,x,y,z,w	
+F	glProgramLocalParameter4dvARB	program_local_parameter4dv_ARB	target,index,params	
+F	glProgramLocalParameter4fARB	program_local_parameter4f_ARB	target,index,x,y,z,w	
+F	glProgramLocalParameter4fvARB	program_local_parameter4fv_ARB	target,index,params	
+F	glGetProgramEnvParameterdvARB	get_program_env_parameterdv_ARB	target,index,params	
+F	glGetProgramEnvParameterfvARB	get_program_env_parameterfv_ARB	target,index,params	
+F	glGetProgramLocalParameterdvARB	get_program_local_parameterdv_ARB	target,index,params	
+F	glGetProgramLocalParameterfvARB	get_program_local_parameterfv_ARB	target,index,params	
+F	glProgramStringARB	program_string_ARB	target,format,length,string	
+F	glGetProgramStringARB	get_program_string_ARB	target,pname,string	
+F	glGetProgramivARB	get_programiv_ARB	target,pname,params	
+F	glProgramEnvParameters4fvEXT	program_env_parameters4fv_EXT	target,index,count,params	
+F	glProgramLocalParameters4fvEXT	program_local_parameters4fv_EXT	target,index,count,params	
+F	glWeightbvARB	weightbv_ARB	size,weights	
+F	glWeightsvARB	weightsv_ARB	size,weights	
+F	glWeightivARB	weightiv_ARB	size,weights	
+F	glWeightfvARB	weightfv_ARB	size,weights	
+F	glWeightdvARB	weightdv_ARB	size,weights	
+F	glWeightubvARB	weightubv_ARB	size,weights	
+F	glWeightusvARB	weightusv_ARB	size,weights	
+F	glWeightuivARB	weightuiv_ARB	size,weights	
+F	glWeightPointerARB	weight_pointer_ARB	size,type,stride,pointer	
+F	glVertexBlendARB	vertex_blend_ARB	count	
+A	glClientActiveTextureARB	glClientActiveTexture		
+A	glActiveTextureARB	glActiveTexture		
+A	glMultiTexCoord1dARB	glMultiTexCoord1d		
+A	glMultiTexCoord1dvARB	glMultiTexCoord1dv		
+A	glMultiTexCoord1fARB	glMultiTexCoord1f		
+A	glMultiTexCoord1fvARB	glMultiTexCoord1fv		
+A	glMultiTexCoord1iARB	glMultiTexCoord1i		
+A	glMultiTexCoord1ivARB	glMultiTexCoord1iv		
+A	glMultiTexCoord1sARB	glMultiTexCoord1s		
+A	glMultiTexCoord1svARB	glMultiTexCoord1sv		
+A	glMultiTexCoord2dARB	glMultiTexCoord2d		
+A	glMultiTexCoord2dvARB	glMultiTexCoord2dv		
+A	glMultiTexCoord2fARB	glMultiTexCoord2f		
+A	glMultiTexCoord2fvARB	glMultiTexCoord2fv		
+A	glMultiTexCoord2iARB	glMultiTexCoord2i		
+A	glMultiTexCoord2ivARB	glMultiTexCoord2iv		
+A	glMultiTexCoord2sARB	glMultiTexCoord2s		
+A	glMultiTexCoord2svARB	glMultiTexCoord2sv		
+A	glMultiTexCoord3dARB	glMultiTexCoord3d		
+A	glMultiTexCoord3dvARB	glMultiTexCoord3dv		
+A	glMultiTexCoord3fARB	glMultiTexCoord3f		
+A	glMultiTexCoord3fvARB	glMultiTexCoord3fv		
+A	glMultiTexCoord3iARB	glMultiTexCoord3i		
+A	glMultiTexCoord3ivARB	glMultiTexCoord3iv		
+A	glMultiTexCoord3sARB	glMultiTexCoord3s		
+A	glMultiTexCoord3svARB	glMultiTexCoord3sv		
+A	glMultiTexCoord4dARB	glMultiTexCoord4d		
+A	glMultiTexCoord4dvARB	glMultiTexCoord4dv		
+A	glMultiTexCoord4fARB	glMultiTexCoord4f		
+A	glMultiTexCoord4fvARB	glMultiTexCoord4fv		
+A	glMultiTexCoord4iARB	glMultiTexCoord4i		
+A	glMultiTexCoord4ivARB	glMultiTexCoord4iv		
+A	glMultiTexCoord4sARB	glMultiTexCoord4s		
+A	glMultiTexCoord4svARB	glMultiTexCoord4sv		
+A	glLoadTransposeMatrixfARB	glLoadTransposeMatrixf		
+A	glLoadTransposeMatrixdARB	glLoadTransposeMatrixd		
+A	glMultTransposeMatrixfARB	glMultTransposeMatrixf		
+A	glMultTransposeMatrixdARB	glMultTransposeMatrixd		
+A	glCompressedTexImage3DARB	glCompressedTexImage3D		
+A	glCompressedTexImage2DARB	glCompressedTexImage2D		
+A	glCompressedTexImage1DARB	glCompressedTexImage1D		
+A	glCompressedTexSubImage3DARB	glCompressedTexSubImage3D		
+A	glCompressedTexSubImage2DARB	glCompressedTexSubImage2D		
+A	glCompressedTexSubImage1DARB	glCompressedTexSubImage1D		
+A	glGetCompressedTexImageARB	glGetCompressedTexImage		
+A	glSampleCoverageARB	glSampleCoverage		
+A	glPointParameterfARB	glPointParameterf		
+A	glPointParameterfvARB	glPointParameterfv		
+A	glWindowPos2dARB	glWindowPos2d		
+A	glWindowPos2dvARB	glWindowPos2dv		
+A	glWindowPos2fARB	glWindowPos2f		
+A	glWindowPos2fvARB	glWindowPos2fv		
+A	glWindowPos2iARB	glWindowPos2i		
+A	glWindowPos2ivARB	glWindowPos2iv		
+A	glWindowPos2sARB	glWindowPos2s		
+A	glWindowPos2svARB	glWindowPos2sv		
+A	glWindowPos3dARB	glWindowPos3d		
+A	glWindowPos3dvARB	glWindowPos3dv		
+A	glWindowPos3fARB	glWindowPos3f		
+A	glWindowPos3fvARB	glWindowPos3fv		
+A	glWindowPos3iARB	glWindowPos3i		
+A	glWindowPos3ivARB	glWindowPos3iv		
+A	glWindowPos3sARB	glWindowPos3s		
+A	glWindowPos3svARB	glWindowPos3sv		
+A	glGenQueriesARB	glGenQueries		
+A	glDeleteQueriesARB	glDeleteQueries		
+A	glIsQueryARB	glIsQuery		
+A	glBeginQueryARB	glBeginQuery		
+A	glEndQueryARB	glEndQuery		
+A	glGetQueryivARB	glGetQueryiv		
+A	glGetQueryObjectivARB	glGetQueryObjectiv		
+A	glGetQueryObjectuivARB	glGetQueryObjectuiv		
+A	glBindBufferARB	glBindBuffer		
+A	glDeleteBuffersARB	glDeleteBuffers		
+A	glGenBuffersARB	glGenBuffers		
+A	glIsBufferARB	glIsBuffer		
+A	glBufferDataARB	glBufferData		
+A	glBufferSubDataARB	glBufferSubData		
+A	glGetBufferSubDataARB	glGetBufferSubData		
+A	glMapBufferARB	glMapBuffer		
+A	glUnmapBufferARB	glUnmapBuffer		
+A	glGetBufferParameterivARB	glGetBufferParameteriv		
+A	glGetBufferPointervARB	glGetBufferPointerv		
+F	glDeleteObjectARB	delete_object_ARB	obj	
+F	glGetHandleARB	get_handle_ARB	pname	
+F	glDetachObjectARB	detach_object_ARB	container,attached	
+F	glCreateShaderObjectARB	create_shader_object_ARB	shader	
+F	glShaderSourceARB	shader_source_ARB	shader,count,string,length	
+F	glCompileShaderARB	compile_shader_ARB	shader	
+F	glCreateProgramObjectARB	create_program_object_ARB		
+F	glAttachObjectARB	attach_object_ARB	container,object	
+F	glLinkProgramARB	link_program_ARB	program	
+F	glUseProgramObjectARB	use_program_object_ARB	program	
+F	glValidateProgramARB	validate_program_ARB	program	
+F	glUniform1fARB	uniform1f_ARB	location,v0	
+F	glUniform2fARB	uniform2f_ARB	location,v0,v1	
+F	glUniform3fARB	uniform3f_ARB	location,v0,v1,v2	
+F	glUniform4fARB	uniform4f_ARB	location,v0,v1,v2,v3	
+F	glUniform1iARB	uniform1i_ARB	location,v0	
+F	glUniform2iARB	uniform2i_ARB	location,v0,v1	
+F	glUniform3iARB	uniform3i_ARB	location,v0,v1,v2	
+F	glUniform4iARB	uniform4i_ARB	location,v0,v1,v2,v3	
+F	glUniform1fvARB	uniform1fv_ARB	location,count,value	
+F	glUniform2fvARB	uniform2fv_ARB	location,count,value	
+F	glUniform3fvARB	uniform3fv_ARB	location,count,value	
+F	glUniform4fvARB	uniform4fv_ARB	location,count,value	
+F	glUniform1ivARB	uniform1iv_ARB	location,count,value	
+F	glUniform2ivARB	uniform2iv_ARB	location,count,value	
+F	glUniform3ivARB	uniform3iv_ARB	location,count,value	
+F	glUniform4ivARB	uniform4iv_ARB	location,count,value	
+F	glUniformMatrix2fvARB	uniform_matrix2fv_ARB	location,count,transpose,value	
+F	glUniformMatrix3fvARB	uniform_matrix3fv_ARB	location,count,transpose,value	
+F	glUniformMatrix4fvARB	uniform_matrix4fv_ARB	location,count,transpose,value	
+F	glGetObjectParameterfvARB	get_object_parameterfv_ARB	obj,pname,params	
+F	glGetObjectParameterivARB	get_object_parameteriv_ARB	obj,pname,params	
+F	glGetInfoLogARB	get_info_log_ARB	obj,max,length,info	
+F	glGetAttachedObjectsARB	get_attached_objects_ARB	container,max,count,obj	
+F	glGetUniformLocationARB	get_uniform_location_ARB	program,name	
+F	glGetActiveUniformARB	get_active_uniform_ARB	program,index,max,length,size,type,name	
+F	glGetUniformfvARB	get_uniformfv_ARB	program,location,params	
+F	glGetUniformivARB	get_uniformiv_ARB	program,location,params	
+F	glGetShaderSourceARB	get_shader_source_ARB	obj,max,length,source	
+F	glBindAttribLocationARB	bind_attrib_location_ARB	program,index,name	
+F	glGetActiveAttribARB	get_active_attrib_ARB	program,index,max,length,size,type,name	
+F	glGetAttribLocationARB	get_attrib_location_ARB	program,name	
+F	glDrawBuffersARB	draw_buffers_ARB	n,bufs	
+F	glClampColorARB	clamp_color_ARB	target,clamp	
+F	glIsRenderbuffer	is_renderbuffer_EXT	renderbuffer	
+F	glBindRenderbuffer	bind_renderbuffer_EXT	target,renderbuffer	
+F	glDeleteRenderbuffers	delete_renderbuffers_EXT	n,renderbuffers	
+F	glGenRenderbuffers	gen_renderbuffers_EXT	n,renderbuffers	
+F	glRenderbufferStorage	renderbuffer_storage_EXT	target,internalformat,width,height	
+F	glGetRenderbufferParameteriv	get_renderbuffer_parameteriv_EXT	target,pname,params	
+F	glIsFramebuffer	is_framebuffer_EXT	framebuffer	
+F	glBindFramebuffer	bind_framebuffer_EXT	target,framebuffer	
+F	glDeleteFramebuffers	delete_framebuffers_EXT	n,framebuffers	
+F	glGenFramebuffers	gen_framebuffers_EXT	n,framebuffers	
+F	glCheckFramebufferStatus	check_framebuffer_status_EXT	target	
+F	glFramebufferTexture1D	framebuffer_texture1D_EXT	target,attachment,textarget,texture,level	
+F	glFramebufferTexture2D	framebuffer_texture2D_EXT	target,attachment,textarget,texture,level	
+F	glFramebufferTexture3D	framebuffer_texture3D_EXT	target,attachment,textarget,texture,level,zoffset	
+F	glFramebufferRenderbuffer	framebuffer_renderbuffer_EXT	target,attachment,renderbuffertarget,renderbuffer	
+F	glGetFramebufferAttachmentParameteriv	get_framebuffer_attachment_parameteriv_EXT	target,attachment,pname,params	
+F	glGenerateMipmap	generate_mipmap_EXT	target	
+F	glBlitFramebuffer	blit_framebuffer_EXT	srcX0,srcY0,srcX1,srcY1,dstX0,dstY0,dstX1,dstY1,mask,filter	
+F	glRenderbufferStorageMultisample	renderbuffer_storage_multisample_EXT	target,samples,internalformat,width,height	
+F	glFramebufferTextureLayer	framebuffer_texture_layer_EXT	target,attachment,texture,level,layer	
+F	glVertexAttribDivisorARB	vertex_attrib_divisor	index,divisor	
+F	glDrawArraysInstancedARB	draw_arrays_instanced	mode,first,count,primcount	
+F	glDrawElementsInstancedARB	draw_elements_instanced	mode,count,type,indices,primcount	
+F	glDrawElementsBaseVertex	draw_elements_base_vertex	mode,count,type,indices,basev	
+F	glDrawRangeElementsBaseVertex	draw_range_elements_base_vertex	mode,start,end,count,type,indices,basev	
+F	glDrawElementsInstancedBaseVertex	draw_elements_instanced_base_vertex	mode,count,type,indices,primcount,basev	
+F	glMultiDrawElementsBaseVertex	multi_draw_elements_base_vertex	mode,count,type,indices,primcount,basev	
+F	glFenceSync	fence_sync	condition,flags	
+F	glIsSync	is_sync	sync	
+F	glDeleteSync	delete_sync	sync	
+F	glClientWaitSync	client_wait_sync	sync,flags,timeout	
+F	glWaitSync	wait_sync	sync,flags,timeout	
+F	glGetInteger64v	get_integer64v_sync	pname,params	
+F	glGetSynciv	get_synciv	sync,pname,bufSize,length,values	
+F	glActiveStencilFaceEXT	active_stencil_face_EXT	face	
+F	glDepthBoundsEXT	depth_bounds_EXT	zmin,zmax	
+F	glBlendEquationSeparateEXT	blend_equation_separate_EXT	modeRGB,modeAlpha	
+A	glColorTableEXT	glColorTable		
+A	glColorSubTableEXT	glColorSubTable		
+A	glGetColorTableEXT	glGetColorTable		
+A	glGetColorTableParameterivEXT	glGetColorTableParameteriv		
+A	glGetColorTableParameterfvEXT	glGetColorTableParameterfv		
+A	glSecondaryColor3bEXT	glSecondaryColor3b		
+A	glSecondaryColor3bvEXT	glSecondaryColor3bv		
+A	glSecondaryColor3dEXT	glSecondaryColor3d		
+A	glSecondaryColor3dvEXT	glSecondaryColor3dv		
+A	glSecondaryColor3fEXT	glSecondaryColor3f		
+A	glSecondaryColor3fvEXT	glSecondaryColor3fv		
+A	glSecondaryColor3iEXT	glSecondaryColor3i		
+A	glSecondaryColor3ivEXT	glSecondaryColor3iv		
+A	glSecondaryColor3sEXT	glSecondaryColor3s		
+A	glSecondaryColor3svEXT	glSecondaryColor3sv		
+A	glSecondaryColor3ubEXT	glSecondaryColor3ub		
+A	glSecondaryColor3ubvEXT	glSecondaryColor3ubv		
+A	glSecondaryColor3uiEXT	glSecondaryColor3ui		
+A	glSecondaryColor3uivEXT	glSecondaryColor3uiv		
+A	glSecondaryColor3usEXT	glSecondaryColor3us		
+A	glSecondaryColor3usvEXT	glSecondaryColor3usv		
+A	glSecondaryColorPointerEXT	glSecondaryColorPointer		
+A	glFogCoordfEXT	glFogCoordf		
+A	glFogCoordfvEXT	glFogCoordfv		
+A	glFogCoorddEXT	glFogCoordd		
+A	glFogCoorddvEXT	glFogCoorddv		
+A	glFogCoordPointerEXT	glFogCoordPointer		
+A	glDrawRangeElementsEXT	glDrawRangeElements		
+A	glBlendFuncSeparateEXT	glBlendFuncSeparate		
+A	glMultiDrawArraysEXT	glMultiDrawArrays		
+A	glMultiDrawElementsEXT	glMultiDrawElements		
+A	glBlendColorEXT	glBlendColor		
+A	glBlendEquationEXT	glBlendEquation		
+F	glIsRenderbufferEXT	is_renderbuffer_EXT	renderbuffer	
+F	glBindRenderbufferEXT	bind_renderbuffer_EXT	target,renderbuffer	
+F	glDeleteRenderbuffersEXT	delete_renderbuffers_EXT	n,renderbuffers	
+F	glGenRenderbuffersEXT	gen_renderbuffers_EXT	n,renderbuffers	
+F	glRenderbufferStorageEXT	renderbuffer_storage_EXT	target,internalformat,width,height	
+F	glGetRenderbufferParameterivEXT	get_renderbuffer_parameteriv_EXT	target,pname,params	
+F	glIsFramebufferEXT	is_framebuffer_EXT	framebuffer	
+F	glBindFramebufferEXT	bind_framebuffer_EXT	target,framebuffer	
+F	glDeleteFramebuffersEXT	delete_framebuffers_EXT	n,framebuffers	
+F	glGenFramebuffersEXT	gen_framebuffers_EXT	n,framebuffers	
+F	glCheckFramebufferStatusEXT	check_framebuffer_status_EXT	target	
+F	glFramebufferTexture1DEXT	framebuffer_texture1D_EXT	target,attachment,textarget,texture,level	
+F	glFramebufferTexture2DEXT	framebuffer_texture2D_EXT	target,attachment,textarget,texture,level	
+F	glFramebufferTexture3DEXT	framebuffer_texture3D_EXT	target,attachment,textarget,texture,level,zoffset	
+F	glFramebufferRenderbufferEXT	framebuffer_renderbuffer_EXT	target,attachment,renderbuffertarget,renderbuffer	
+F	glGetFramebufferAttachmentParameterivEXT	get_framebuffer_attachment_parameteriv_EXT	target,attachment,pname,params	
+F	glGenerateMipmapEXT	generate_mipmap_EXT	target	
+F	glBlitFramebufferEXT	blit_framebuffer_EXT	srcX0,srcY0,srcX1,srcY1,dstX0,dstY0,dstX1,dstY1,mask,filter	
+F	glRenderbufferStorageMultisampleEXT	renderbuffer_storage_multisample_EXT	target,samples,internalformat,width,height	
+F	glProgramParameteriEXT	program_parameteri_EXT	program,pname,value	
+F	glFramebufferTextureEXT	framebuffer_texture_EXT	target,attachment,texture,level	
+F	glFramebufferTextureLayerEXT	framebuffer_texture_layer_EXT	target,attachment,texture,level,layer	
+F	glFramebufferTextureFaceEXT	framebuffer_texture_face_EXT	target,attachment,texture,level,face	
+F	glBindBufferRangeEXT	bind_buffer_range_EXT	target,index,buffer,offset,size	
+F	glBindBufferOffsetEXT	bind_buffer_offset_EXT	target,index,buffer,offset	
+F	glBindBufferBaseEXT	bind_buffer_base_EXT	target,index,buffer	
+F	glBeginTransformFeedbackEXT	begin_transform_feedback_EXT	primitiveMode	
+F	glEndTransformFeedbackEXT	end_transform_feedback_EXT		
+F	glTransformFeedbackVaryingsEXT	transform_feedback_varyings_EXT	program,count,varyings,bufferMode	
+F	glGetTransformFeedbackVaryingEXT	get_transform_feedback_varying_EXT	program,index,bufSize,length,size,type,name	
+F	glGetIntegerIndexedvEXT	get_integer_indexedv_EXT	param,index,values	
+F	glGetBooleanIndexedvEXT	get_boolean_indexedv_EXT	param,index,values	
+F	glUniformBufferEXT	uniform_buffer_EXT	program,location,buffer	
+F	glGetUniformBufferSizeEXT	get_uniform_buffer_size_EXT	program,location	
+F	glGetUniformOffsetEXT	get_uniform_buffer_offset_EXT	program,location	
+F	glClearColorIiEXT	clear_colorIi_EXT	r,g,b,a	
+F	glClearColorIuiEXT	clear_colorIui_EXT	r,g,b,a	
+F	glTexParameterIivEXT	tex_parameterIiv_EXT	target,pname,params	
+F	glTexParameterIuivEXT	tex_parameterIuiv_EXT	target,pname,params	
+F	glGetTexParameterIivEXT	get_tex_parameterIiv_EXT	target,pname,params	
+F	glGetTexParameterIuivEXT	get_tex_parameterIuiv_EXT	target,pname,params	
+F	glVertexAttribI1iEXT	vertex_attribI1i_EXT	index,x	
+F	glVertexAttribI2iEXT	vertex_attribI2i_EXT	index,x,y	
+F	glVertexAttribI3iEXT	vertex_attribI3i_EXT	index,x,y,z	
+F	glVertexAttribI4iEXT	vertex_attribI4i_EXT	index,x,y,z,w	
+F	glVertexAttribI1uiEXT	vertex_attribI1ui_EXT	index,x	
+F	glVertexAttribI2uiEXT	vertex_attribI2ui_EXT	index,x,y	
+F	glVertexAttribI3uiEXT	vertex_attribI3ui_EXT	index,x,y,z	
+F	glVertexAttribI4uiEXT	vertex_attribI4ui_EXT	index,x,y,z,w	
+F	glVertexAttribI1ivEXT	vertex_attribI1iv_EXT	index,v	
+F	glVertexAttribI2ivEXT	vertex_attribI2iv_EXT	index,v	
+F	glVertexAttribI3ivEXT	vertex_attribI3iv_EXT	index,v	
+F	glVertexAttribI4ivEXT	vertex_attribI4iv_EXT	index,v	
+F	glVertexAttribI1uivEXT	vertex_attribI1uiv_EXT	index,v	
+F	glVertexAttribI2uivEXT	vertex_attribI2uiv_EXT	index,v	
+F	glVertexAttribI3uivEXT	vertex_attribI3uiv_EXT	index,v	
+F	glVertexAttribI4uivEXT	vertex_attribI4uiv_EXT	index,v	
+F	glVertexAttribI4bvEXT	vertex_attribI4bv_EXT	index,v	
+F	glVertexAttribI4svEXT	vertex_attribI4sv_EXT	index,v	
+F	glVertexAttribI4ubvEXT	vertex_attribI4ubv_EXT	index,v	
+F	glVertexAttribI4usvEXT	vertex_attribI4usv_EXT	index,v	
+F	glVertexAttribIPointerEXT	vertex_attribI_pointer_EXT	index,size,type,stride,pointer	
+F	glGetVertexAttribIivEXT	get_vertex_attribIiv_EXT	index,pname,params	
+F	glGetVertexAttribIuivEXT	get_vertex_attribIuiv_EXT	index,pname,params	
+F	glUniform1uiEXT	uniform1ui_EXT	location,v0	
+F	glUniform2uiEXT	uniform2ui_EXT	location,v0,v1	
+F	glUniform3uiEXT	uniform3ui_EXT	location,v0,v1,v2	
+F	glUniform4uiEXT	uniform4ui_EXT	location,v0,v1,v2,v3	
+F	glUniform1uivEXT	uniform1uiv_EXT	location,count,value	
+F	glUniform2uivEXT	uniform2uiv_EXT	location,count,value	
+F	glUniform3uivEXT	uniform3uiv_EXT	location,count,value	
+F	glUniform4uivEXT	uniform4uiv_EXT	location,count,value	
+F	glGetUniformuivEXT	get_uniformuiv_EXT	program,location,params	
+F	glBindFragDataLocationEXT	bind_frag_data_location_EXT	program,colorNumber,name	
+F	glGetFragDataLocationEXT	get_frag_data_location_EXT	program,name	
+F	glColorMaskIndexedEXT	color_mask_indexed_EXT	index,r,g,b,a	
+F	glEnableIndexedEXT	enable_indexed_EXT	target,index	
+F	glDisableIndexedEXT	disable_indexed_EXT	target,index	
+F	glIsEnabledIndexedEXT	is_enabled_indexed_EXT	target,index	
+F	glProvokingVertex	provoking_vertex_EXT	mode	
+A	glProvokingVertexEXT	glProvokingVertex		
+F	glGetQueryObjecti64vEXT	get_query_objecti64v	id,pname,params	
+F	glGetQueryObjectui64vEXT	get_query_objectui64v	id,pname,params	
+F	glLabelObjectEXT	label_object_EXT	type,object,length,label	
+F	glGetObjectLabelEXT	get_object_label_EXT	type,object,bufSize,length,label	
+F	glInsertEventMarkerEXT	insert_event_marker_EXT	length,marker	
+F	glPushGroupMarkerEXT	push_group_marker_EXT	length,marker	
+F	glPopGroupMarkerEXT	pop_group_marker_EXT		
+F	glEnableVertexAttribAPPLE	enable_vertex_attrib_ARB	index,pname	
+F	glDisableVertexAttribAPPLE	disable_vertex_attrib_ARB	index,pname	
+F	glIsVertexAttribEnabledAPPLE	is_vertex_attrib_enabled_ARB	index,pname	
+F	glMapVertexAttrib1dAPPLE	map_vertex_attrib1d_ARB	index,size,u1,u2,stride,order,points	
+F	glMapVertexAttrib1fAPPLE	map_vertex_attrib1f_ARB	index,size,u1,u2,stride,order,points	
+F	glMapVertexAttrib2dAPPLE	map_vertex_attrib2d_ARB	index,size,u1,u2,ustride,uorder,v1,v2,vstride,vorder,points	
+F	glMapVertexAttrib2fAPPLE	map_vertex_attrib2f_ARB	index,size,u1,u2,ustride,uorder,v1,v2,vstride,vorder,points	
+F	glTextureRangeAPPLE	texture_range_APPLE	target,length,pointer	
+F	glGetTexParameterPointervAPPLE	get_tex_parameter_pointerv_APPLE	target,pname,params	
+F	glGenFencesAPPLE	gen_fences_APPLE	n,fences	
+F	glDeleteFencesAPPLE	delete_fences_APPLE	n,fences	
+F	glSetFenceAPPLE	set_fence_APPLE	fence	
+F	glIsFenceAPPLE	is_fence_APPLE	fence	
+F	glTestFenceAPPLE	test_fence_APPLE	fence	
+F	glFinishFenceAPPLE	finish_fence_APPLE	fence	
+F	glTestObjectAPPLE	test_object_APPLE	object,name	
+F	glFinishObjectAPPLE	finish_object_APPLE	object,name	
+F	glVertexArrayRangeAPPLE	vertex_array_range_EXT	length,pointer	
+F	glFlushVertexArrayRangeAPPLE	flush_vertex_array_range_EXT	length,pointer	
+F	glVertexArrayParameteriAPPLE	vertex_array_parameteri_EXT	pname,param	
+F	glBindVertexArrayAPPLE	bind_vertex_array_EXT	id	
+F	glDeleteVertexArraysAPPLE	delete_vertex_arrays_EXT	n,ids	
+F	glGenVertexArraysAPPLE	gen_vertex_arrays_EXT	n,ids	
+F	glIsVertexArrayAPPLE	is_vertex_array_EXT	id	
+F	glElementPointerAPPLE	element_pointer_APPLE	type,pointer	
+F	glDrawElementArrayAPPLE	draw_element_array_APPLE	mode,first,count	
+F	glDrawRangeElementArrayAPPLE	draw_range_element_array_APPLE	mode,start,end,first,count	
+F	glMultiDrawElementArrayAPPLE	multi_draw_element_array_APPLE	mode,first,count,primcount	
+F	glMultiDrawRangeElementArrayAPPLE	multi_draw_range_element_array_APPLE	mode,start,end,first,count,primcount	
+F	glFlushRenderAPPLE	flush_render_APPLE		
+F	glFinishRenderAPPLE	finish_render_APPLE		
+F	glSwapAPPLE	swap_APPLE		
+F	glBufferParameteriAPPLE	buffer_parameteri_APPLE	target,pname,param	
+F	glFlushMappedBufferRangeAPPLE	flush_mapped_buffer_range_APPLE	target,offset,size	
+F	glObjectPurgeableAPPLE	object_purgeable_APPLE	objectType,name,option	
+F	glObjectUnpurgeableAPPLE	object_unpurgeable_APPLE	objectType,name,option	
+F	glGetObjectParameterivAPPLE	get_object_parameteriv_APPLE	objectType,name,pname,params	
+F	glPointSizePointerAPPLE	point_size_pointer	type,stride,pointer	
+F	glVertexPointSizefAPPLE	vertex_point_sizef_APPLE	size	
+F	glStencilOpSeparateATI	stencil_op_separate_ATI	face,sfail,dpfail,dppass	
+F	glStencilFuncSeparateATI	stencil_func_separate_ATI	frontfunc,backfunc,ref,mask	
+A	glBlendEquationSeparateATI	glBlendEquationSeparateEXT		
+F	glPointParameteriNV	point_parameteri	pname,param	
+F	glPointParameterivNV	point_parameteriv	pname,params	
+F	glBeginConditionalRenderNV	begin_conditional_render_NV	id,mode	
+F	glEndConditionalRenderNV	end_conditional_render_NV		
+F	glTextureBarrierNV	texture_barrier_NV		

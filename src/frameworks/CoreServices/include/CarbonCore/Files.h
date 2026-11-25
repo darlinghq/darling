@@ -150,6 +150,12 @@ OSErr FSGetForkSize(FSIORefNum forkRefNum, SInt64* forkSize);
 OSErr FSCloseFork(FSIORefNum forkRefNum);
 
 OSErr FSReadFork(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 positionOffset, ByteCount requestCount, void* buffer, ByteCount* actualCount);
+OSErr FSWriteFork(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 positionOffset, ByteCount requestCount, const void* buffer, ByteCount* actualCount);
+OSErr FSSetForkSize(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 positionOffset);
+#if !__LP64__
+OSErr SetFPos(FSIORefNum refNum, SInt16 posMode, SInt32 posOff);
+#endif
+
 OSErr FSGetForkPosition(FSIORefNum forkRefNum, SInt64* position);
 OSErr FSSetForkPosition(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 positionOffset);
 

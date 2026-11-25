@@ -128,7 +128,7 @@ typedef enum _CGLRendererProperty {
    kCGLRPRegistryIDHigh      = 141, // upper 32 bits of it
 } CGLRendererProperty;
 
-typedef struct _CGLContextObj *CGLContextObj;
+typedef struct _CGLContextObject *CGLContextObj;
 typedef struct _CGLPixelFormatObj *CGLPixelFormatObj;
 typedef struct _CGLPBufferObj *CGLPBufferObj;
 typedef struct _CGLRendererInfoObj *CGLRendererInfoObj;

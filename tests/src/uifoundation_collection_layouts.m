@@ -68,6 +68,13 @@ static BOOL endsWith(const char *s, const char *suffix)
 static void checkFlow(const char *name, CGFloat width, NSSize itemSize, NSEdgeInsets inset, BOOL useDefaultSize,
                       NSArray *counts, const double (*expected)[4], size_t expectedCount, double height)
 {
+    // In a window, in a scroll view as high as the content expected, so every item is visible; items are made in the
+    // layout pass
+    NSWindow *window = [[[NSWindow alloc] initWithContentRect: NSMakeRect(0, 0, width, height)
+                                                    styleMask: NSWindowStyleMaskBorderless
+                                                      backing: NSBackingStoreBuffered
+                                                        defer: NO] autorelease];
+    NSScrollView *scroll = [[[NSScrollView alloc] initWithFrame: NSMakeRect(0, 0, width, height)] autorelease];
     NSCollectionView *view = [[[NSCollectionView alloc] initWithFrame: NSMakeRect(0, 0, width, 100)] autorelease];
     NSCollectionViewFlowLayout *layout = [[[NSCollectionViewFlowLayout alloc] init] autorelease];
     if (!useDefaultSize)
@@ -78,7 +85,10 @@ static void checkFlow(const char *name, CGFloat width, NSSize itemSize, NSEdgeIn
     FlowSource *source = [[[FlowSource alloc] init] autorelease];
     source->counts = counts;
     view.dataSource = source;
+    scroll.documentView = view;
+    [window.contentView addSubview: scroll];
     [view reloadData];
+    [view layoutSubtreeIfNeeded];
     NSSize size = useDefaultSize ? NSMakeSize(50, 50) : itemSize;
     for (size_t i = 0; i < expectedCount; i++) {
         NSIndexPath *path = [NSIndexPath indexPathForItem: (NSInteger) expected[i][1]
@@ -96,6 +106,7 @@ static void checkFlow(const char *name, CGFloat width, NSSize itemSize, NSEdgeIn
 int main(void)
 {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    [NSApplication sharedApplication];
 
     // Placement.
     const char *uifClasses[] = {"NSCollectionViewLayout", "NSCollectionViewFlowLayout",
@@ -131,26 +142,27 @@ int main(void)
     expect(path.item == 3 && path.section == 2 && [path length] == 2, "index path item/section");
 
     NSEdgeInsets none = {0, 0, 0, 0};
-    // 200 wide, 80x30 items, 10 point gaps: two per row, rows 40 apart.
+    // 200 wide, 80x30 items: two per row, the first at the left and the second at the right (as on macOS,
+    // tests/collection-view.md), rows 40 apart.
     {
-        const double e[][4] = {{0, 0, 0, 0}, {0, 1, 90, 0}, {0, 2, 0, 40}, {0, 4, 0, 80}};
+        const double e[][4] = {{0, 0, 0, 0}, {0, 1, 120, 0}, {0, 2, 0, 40}, {0, 4, 0, 80}};
         checkFlow("two columns", 200, NSMakeSize(80, 30), none, NO, [NSArray arrayWithObject: @5], e, 4, 110);
     }
     // Section insets (top 5, left 10, bottom 5, right 10): 180 usable, still two columns.
     {
         NSEdgeInsets inset = {5, 10, 5, 10};
-        const double e[][4] = {{0, 0, 10, 5}, {0, 1, 100, 5}, {0, 2, 10, 45}};
+        const double e[][4] = {{0, 0, 10, 5}, {0, 1, 110, 5}, {0, 2, 10, 45}};
         checkFlow("section insets", 200, NSMakeSize(80, 30), inset, NO, [NSArray arrayWithObject: @3], e, 3, 80);
     }
-    // One column at 120 wide, two sections.
+    // One column at 120 wide, centered, two sections.
     {
-        const double e[][4] = {{0, 0, 0, 0}, {0, 1, 0, 40}, {0, 2, 0, 80}, {1, 0, 0, 110}};
+        const double e[][4] = {{0, 0, 20, 0}, {0, 1, 20, 40}, {0, 2, 20, 80}, {1, 0, 20, 110}};
         checkFlow("two sections", 120, NSMakeSize(80, 30), none, NO, [NSArray arrayWithObjects: @3, @1, nil], e, 4,
                   140);
     }
-    // Default 50x50 items in 200 points: three columns, 60 apart.
+    // Default 50x50 items in 200 points: three columns, 75 apart.
     {
-        const double e[][4] = {{0, 0, 0, 0}, {0, 2, 120, 0}, {0, 3, 0, 60}};
+        const double e[][4] = {{0, 0, 0, 0}, {0, 2, 150, 0}, {0, 3, 0, 60}};
         checkFlow("default item size", 200, NSZeroSize, none, YES, [NSArray arrayWithObject: @4], e, 3, 110);
     }
 

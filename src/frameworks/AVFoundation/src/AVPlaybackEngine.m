@@ -454,6 +454,10 @@ typedef struct {
 	AudioSegment segments[AUDIO_SEGMENTS];
 	int segmentCount;
 	double lastRate;
+	bool timePitch;          // the queue's time/pitch effect plays the audio at the rate (else it is resampled here)
+	bool queueStarted;       // the queue was started and not stopped since (it may be paused)
+	AVPEAudioAlgorithm appliedAlgorithm;
+	double appliedQueueRate;
 	uint64_t seenHoldEpoch;
 	int64_t holdReference;
 	float appliedVolume;
@@ -493,6 +497,8 @@ struct AVPEEngine {
 	uint64_t holdEpoch;
 	int64_t holdStartWallUs;
 	float audioRate;        // the rate the audio is rendered at: the last one played
+	AVPEAudioAlgorithm audioAlgorithm;
+	bool algorithmChanged;
 	bool rateChanged;
 	int64_t rateChangeMediaUs;
 
@@ -970,6 +976,13 @@ static CFDataRef audio_magic_cookie(const AVCodecParameters *par)
 	return cookie;
 }
 
+static bool audio_set_algorithm(AudioState *audio, AVPEAudioAlgorithm algorithm)
+{
+	const UInt32 value = algorithm == AVPEAudioAlgorithmTimeDomain ? kAudioQueueTimePitchAlgorithm_TimeDomain
+		: algorithm == AVPEAudioAlgorithmVarispeed ? kAudioQueueTimePitchAlgorithm_Varispeed : kAudioQueueTimePitchAlgorithm_Spectral;
+	return AudioQueueSetProperty(audio->queue, kAudioQueueProperty_TimePitchAlgorithm, &value, sizeof(value)) == noErr;
+}
+
 static bool audio_open(AVPEEngine *engine)
 {
 	AudioState *audio = &engine->audio;
@@ -997,6 +1010,19 @@ static bool audio_open(AVPEEngine *engine)
 	}
 	if (AudioQueueNewOutput(&audio->output, audio_queue_buffer_done, engine, NULL, NULL, 0, &audio->queue) != noErr)
 		return false;
+	// The queue's time/pitch effect plays the audio at the rate (it must be enabled before the queue starts); a queue
+	// without it gets the audio resampled to the rate here, so that the pitch follows the rate.
+	{
+		const UInt32 enable = 1;
+		pthread_mutex_lock(&engine->lock);
+		audio->appliedAlgorithm = engine->audioAlgorithm;
+		engine->algorithmChanged = false;
+		pthread_mutex_unlock(&engine->lock);
+		if (AudioQueueSetProperty(audio->queue, kAudioQueueProperty_EnableTimePitch, &enable, sizeof(enable)) == noErr &&
+		    audio_set_algorithm(audio, audio->appliedAlgorithm))
+			audio->timePitch = true;
+		audio->appliedQueueRate = 1;
+	}
 	for (int i = 0; i < AUDIO_BUFFERS; i++) {
 		if (AudioQueueAllocateBuffer(audio->queue, audio->bufferFrames * audio->outBytesPerFrame, &audio->buffers[i]) != noErr)
 			return false;
@@ -1223,10 +1249,13 @@ static bool audio_produce(AVPEEngine *engine, int index, double rate)
 {
 	AudioState *audio = &engine->audio;
 	const UInt32 capacity = audio->bufferFrames;
-	// Limitation: the rate is applied by reading the decoded audio faster or slower with linear interpolation
-	// (varispeed), so the pitch follows the rate; AVFoundation's other time pitch algorithms keep the pitch.
+	// With the queue's time/pitch effect the audio is enqueued as it is (one source frame per frame) and the queue
+	// plays it at the rate, so its sample time is media time. Without the effect the rate is applied by reading
+	// the decoded audio faster or slower with linear interpolation, so the pitch follows the rate.
 	// Rates above 4 are silent.
 	const bool silent = rate > 4.0;
+	if (audio->timePitch)
+		rate = 1.0;
 	// Source frames the buffer consumes, and one more to interpolate with.
 	int64_t needed = (int64_t)(capacity * rate) + 2;
 
@@ -1376,6 +1405,9 @@ static void *audio_main(void *arg)
 		bool rateChanged = engine->rateChanged;
 		int64_t rateChangeUs = engine->rateChangeMediaUs;
 		engine->rateChanged = false;
+		const bool algorithmChanged = engine->algorithmChanged;
+		const AVPEAudioAlgorithm algorithm = engine->audioAlgorithm;
+		engine->algorithmChanged = false;
 		bool markerNext = engine->audioQueue.head && !engine->audioQueue.head->packet;
 		int freeIndex = -1;
 		for (int i = 0; i < AUDIO_BUFFERS; i++) {
@@ -1391,6 +1423,23 @@ static void *audio_main(void *arg)
 			audio->volumeApplied = true;
 		}
 
+		if (algorithmChanged && audio->timePitch && algorithm != audio->appliedAlgorithm) {
+			// The algorithm of a queue that was started cannot be changed: the queue stops, and the audio
+			// goes on from the clock position.
+			if (audio->queueStarted) {
+				AudioQueueStop(audio->queue, true);
+				audio->queueStarted = audio->running = false;
+				audio_clear_output(engine);
+			}
+			audio_set_algorithm(audio, algorithm);
+			audio->appliedAlgorithm = algorithm;
+			pthread_mutex_lock(&engine->lock);
+			const int64_t now = clock_now_locked(engine);
+			arm_audio_hold_locked(engine);
+			pthread_mutex_unlock(&engine->lock);
+			audio_restart_at(engine, now);
+		}
+
 		// Play and pause.
 		if (!playing)
 			audio->startFailed = false; // try again at the next play
@@ -1398,6 +1447,7 @@ static void *audio_main(void *arg)
 			const OSStatus startStatus = AudioQueueStart(audio->queue, NULL);
 			if (startStatus == noErr) {
 				audio->running = true;
+				audio->queueStarted = true;
 				if (audio->recovering) {
 					// The audio was missing while it failed to start: begin again from the clock position.
 					audio->recovering = false;
@@ -1428,8 +1478,15 @@ static void *audio_main(void *arg)
 		}
 		audio_sync_clock(engine);
 
-		if (rateChanged && rate != audio->lastRate)
+		if (audio->timePitch) {
+			// The queue applies the rate to what it holds: nothing is read again.
+			if (rate != audio->appliedQueueRate) {
+				AudioQueueSetParameter(audio->queue, kAudioQueueParam_PlayRate, (float)rate);
+				audio->appliedQueueRate = rate;
+			}
+		} else if (rateChanged && rate != audio->lastRate) {
 			audio_restart_at(engine, rateChangeUs);
+		}
 		audio->lastRate = rate;
 
 		if (audio->startFailed) {
@@ -1465,7 +1522,7 @@ static void *audio_main(void *arg)
 		for (int i = 0; i < AUDIO_BUFFERS; i++)
 			freeNow |= !audio->busy[i];
 		if (!engine->exiting && !(work && freeNow) && !(engine->audioQueue.head && !engine->audioQueue.head->packet) &&
-		    !(engine->rateChanged || engine->volumeDirty))
+		    !(engine->rateChanged || engine->volumeDirty || engine->algorithmChanged))
 			wait_locked(engine, 20000);
 		pthread_mutex_unlock(&engine->lock);
 	}
@@ -1726,6 +1783,17 @@ void AVPEEngineSetRate(AVPEEngine *engine, float rate)
 		}
 	}
 	pthread_cond_broadcast(&engine->wake);
+	pthread_mutex_unlock(&engine->lock);
+}
+
+void AVPEEngineSetAudioAlgorithm(AVPEEngine *engine, AVPEAudioAlgorithm algorithm)
+{
+	pthread_mutex_lock(&engine->lock);
+	if (engine->audioAlgorithm != algorithm) {
+		engine->audioAlgorithm = algorithm;
+		engine->algorithmChanged = true;
+		pthread_cond_broadcast(&engine->wake);
+	}
 	pthread_mutex_unlock(&engine->lock);
 }
 

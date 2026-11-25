@@ -34,6 +34,7 @@
 #include <HIToolbox/HITheme.h>
 #include <HIToolbox/HIObject.h>
 #include <HIToolbox/Lists.h>
+#include <HIToolbox/MacApplication.h>
 #include <HIToolbox/Menus.h>
 #include <HIToolbox/IBCarbonRuntime.h>
 #include <HIToolbox/Notification.h>

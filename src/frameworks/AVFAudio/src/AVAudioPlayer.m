@@ -95,6 +95,7 @@ typedef struct Core {
 	// Settings
 	float volume, pan, rate;
 	bool enableRate, metering;
+	bool timePitch;           // the queue's time/pitch effect applies the rate (set when a session starts)
 	NSInteger loops;
 	bool fading;
 	float fadeFrom, fadeTo;
@@ -333,6 +334,16 @@ static float APEffectiveRate(Core *c)
 	return c->enableRate ? APClamp(c->rate, 0.0f, 4.0f) : 1.0f;
 }
 
+// The play rate of the queue's time/pitch effect. The queue's sample time is the time of the sound at the normal rate.
+static void APApplyRate(Core *c)
+{
+	if (c->session && c->timePitch)
+	{
+		const float rate = APEffectiveRate(c);
+		AudioQueueSetParameter(c->queue, kAudioQueueParam_PlayRate, rate > 0 ? rate : 1.0f);
+	}
+}
+
 // Reads the next chunk of the file into source[], mixed to two channels. False at the end or on error.
 static bool APRead(Core *c)
 {
@@ -407,6 +418,8 @@ static bool APFill(Core *c, int index)
 	seg.sourceStart = c->sourceOrigin + c->sourcePosition;
 
 	const float rate = APEffectiveRate(c);
+	// With the queue's time/pitch effect the sound is enqueued as it is and the queue plays it at the rate.
+	const float step = c->timePitch && rate != 0 ? 1.0f : rate;
 
 	if (c->startDelay > 0 || rate == 0)
 	{
@@ -422,7 +435,7 @@ static bool APFill(Core *c, int index)
 	}
 	else
 	{
-		seg.sourceStep = rate;
+		seg.sourceStep = step;
 		bool atEnd = false;
 
 		while (k < capacity)
@@ -460,7 +473,7 @@ static bool APFill(Core *c, int index)
 				if (m > seg.peak[ch])
 					seg.peak[ch] = m;
 			}
-			c->sourcePosition += rate;
+			c->sourcePosition += step;
 			k++;
 		}
 
@@ -752,6 +765,13 @@ static bool APSessionStart(Core *c, double frame)
 		c->busy[i] = false;
 	}
 	AudioQueueAddPropertyListener(c->queue, kAudioQueueProperty_IsRunning, APRunningChanged, c);
+	// The rate is applied by the queue's time/pitch effect, which keeps the pitch (it has to be enabled before the
+	// queue is primed or started). Without it the sound is resampled to the rate here, so the pitch follows.
+	{
+		const UInt32 enable = 1, algorithm = kAudioQueueTimePitchAlgorithm_Spectral;
+		c->timePitch = AudioQueueSetProperty(c->queue, kAudioQueueProperty_EnableTimePitch, &enable, sizeof(enable)) == noErr &&
+			AudioQueueSetProperty(c->queue, kAudioQueueProperty_TimePitchAlgorithm, &algorithm, sizeof(algorithm)) == noErr;
+	}
 
 	c->session = true;
 	c->generation++;
@@ -773,6 +793,7 @@ static bool APSessionStart(Core *c, double frame)
 	c->sourcePosition = frame - (double) (SInt64) frame; // the fraction a rate change left
 	APApplyVolume(c);
 	APApplyPan(c);
+	APApplyRate(c);
 	APFillFree(c);
 
 	if (pthread_create(&c->worker, NULL, APWorker, c) != 0)
@@ -832,6 +853,18 @@ static void APReposition(Core *c, double frame)
 	APRestartSource(c, (SInt64) frame);
 	c->sourcePosition = frame - (double) (SInt64) frame;
 	APFillFree(c);
+}
+
+// Called with the lock held, after the effective rate changed from `before`. The queue plays what it holds at the new rate; a
+// sound that was queued as silence (rate 0) or as sound has to be read again when the rate becomes or stops being 0, and
+// without the time/pitch effect whatever was queued at the old rate.
+static void APRateChanged(Core *c, float before)
+{
+	if (!c->session)
+		return;
+	APApplyRate(c);
+	if (!c->timePitch || (before == 0) != (APEffectiveRate(c) == 0))
+		APReposition(c, APPosition(c));
 }
 
 @implementation AVAudioPlayer
@@ -1047,7 +1080,9 @@ static NSError *APError(OSStatus status)
 		// The sound starts after some silence; a time that has passed means now
 		c->restPosition = APPosition(c);
 		APSessionEnd(c);
-		c->startDelay = (int64_t) llround(wait * c->sampleRate);
+		// The delay is silence in the sound's own time, which the queue plays at the rate.
+		const float rate = APEffectiveRate(c);
+		c->startDelay = (int64_t) llround(wait * c->sampleRate * (rate > 0 ? rate : 1.0f));
 	}
 	pthread_mutex_unlock(&c->lock);
 	return [self play];
@@ -1252,9 +1287,10 @@ static void APRunningChanged(void *ctx, AudioQueueRef queue, AudioQueuePropertyI
 	Core *c = (Core *) _core;
 	pthread_mutex_lock(&c->lock);
 	const bool changed = c->enableRate != enableRate;
+	const float before = APEffectiveRate(c);
 	c->enableRate = enableRate;
-	if (changed && c->session)
-		APReposition(c, APPosition(c)); // what is queued was read at the old rate
+	if (changed)
+		APRateChanged(c, before);
 	pthread_mutex_unlock(&c->lock);
 }
 
@@ -1272,9 +1308,10 @@ static void APRunningChanged(void *ctx, AudioQueueRef queue, AudioQueuePropertyI
 	Core *c = (Core *) _core;
 	pthread_mutex_lock(&c->lock);
 	const bool changed = c->rate != rate && c->enableRate;
+	const float before = APEffectiveRate(c);
 	c->rate = rate;
-	if (changed && c->session)
-		APReposition(c, APPosition(c));
+	if (changed)
+		APRateChanged(c, before);
 	pthread_mutex_unlock(&c->lock);
 }
 

@@ -152,7 +152,21 @@
 			<key>UTTypeDescription</key>
 			<string>disk image</string>
 			<key>UTTypeConformsTo</key>
-			<array/>
+			<array>
+				<string>public.archive</string>
+			</array>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.apple.disk-image</string>
+			<key>UTTypeDescription</key>
+			<string>Apple disk image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.data</string>
+				<string>public.disk-image</string>
+			</array>
 		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
@@ -1996,6 +2010,11 @@
 			<array>
 				<string>public.directory</string>
 			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>com.apple.ostype</key>
+				<string>fold</string>
+			</dict>
 		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
@@ -2006,6 +2025,11 @@
 			<array>
 				<string>public.folder</string>
 			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>com.apple.ostype</key>
+				<string>disk</string>
+			</dict>
 		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>

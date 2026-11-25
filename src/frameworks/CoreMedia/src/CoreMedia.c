@@ -511,46 +511,6 @@ void* CMByteStreamWriteBlockBuffer(void) {
     return NULL;
 }
 
-void* CMClockConvertHostTimeToSystemUnits(void) {
-    if (verbose) puts("STUB: CMClockConvertHostTimeToSystemUnits called");
-    return NULL;
-}
-
-void* CMClockGetAnchorTime(void) {
-    if (verbose) puts("STUB: CMClockGetAnchorTime called");
-    return NULL;
-}
-
-void* CMClockGetHostTimeClock(void) {
-    if (verbose) puts("STUB: CMClockGetHostTimeClock called");
-    return NULL;
-}
-
-void* CMClockGetTime(void) {
-    if (verbose) puts("STUB: CMClockGetTime called");
-    return NULL;
-}
-
-void* CMClockGetTypeID(void) {
-    if (verbose) puts("STUB: CMClockGetTypeID called");
-    return NULL;
-}
-
-void* CMClockInvalidate(void) {
-    if (verbose) puts("STUB: CMClockInvalidate called");
-    return NULL;
-}
-
-void* CMClockMakeHostTimeFromSystemUnits(void) {
-    if (verbose) puts("STUB: CMClockMakeHostTimeFromSystemUnits called");
-    return NULL;
-}
-
-void* CMClockMightDrift(void) {
-    if (verbose) puts("STUB: CMClockMightDrift called");
-    return NULL;
-}
-
 void* CMClosedCaptionFormatDescriptionCopyAsBigEndianClosedCaptionDescriptionBlockBuffer(void) {
     if (verbose) puts("STUB: CMClosedCaptionFormatDescriptionCopyAsBigEndianClosedCaptionDescriptionBlockBuffer called");
     return NULL;
@@ -608,31 +568,6 @@ void* CMHapticFormatDescriptionCreateFromBigEndianHapticDescriptionBlockBuffer(v
 
 void* CMHapticFormatDescriptionCreateFromBigEndianHapticDescriptionData(void) {
     if (verbose) puts("STUB: CMHapticFormatDescriptionCreateFromBigEndianHapticDescriptionData called");
-    return NULL;
-}
-
-void* CMMemoryPoolCreate(void) {
-    if (verbose) puts("STUB: CMMemoryPoolCreate called");
-    return NULL;
-}
-
-void* CMMemoryPoolFlush(void) {
-    if (verbose) puts("STUB: CMMemoryPoolFlush called");
-    return NULL;
-}
-
-void* CMMemoryPoolGetAllocator(void) {
-    if (verbose) puts("STUB: CMMemoryPoolGetAllocator called");
-    return NULL;
-}
-
-void* CMMemoryPoolGetTypeID(void) {
-    if (verbose) puts("STUB: CMMemoryPoolGetTypeID called");
-    return NULL;
-}
-
-void* CMMemoryPoolInvalidate(void) {
-    if (verbose) puts("STUB: CMMemoryPoolInvalidate called");
     return NULL;
 }
 
@@ -931,46 +866,6 @@ void* CMSampleBufferTrackDataReadiness(void) {
     return NULL;
 }
 
-void* CMSimpleQueueCreate(void) {
-    if (verbose) puts("STUB: CMSimpleQueueCreate called");
-    return NULL;
-}
-
-void* CMSimpleQueueDequeue(void) {
-    if (verbose) puts("STUB: CMSimpleQueueDequeue called");
-    return NULL;
-}
-
-void* CMSimpleQueueEnqueue(void) {
-    if (verbose) puts("STUB: CMSimpleQueueEnqueue called");
-    return NULL;
-}
-
-void* CMSimpleQueueGetCapacity(void) {
-    if (verbose) puts("STUB: CMSimpleQueueGetCapacity called");
-    return NULL;
-}
-
-void* CMSimpleQueueGetCount(void) {
-    if (verbose) puts("STUB: CMSimpleQueueGetCount called");
-    return NULL;
-}
-
-void* CMSimpleQueueGetHead(void) {
-    if (verbose) puts("STUB: CMSimpleQueueGetHead called");
-    return NULL;
-}
-
-void* CMSimpleQueueGetTypeID(void) {
-    if (verbose) puts("STUB: CMSimpleQueueGetTypeID called");
-    return NULL;
-}
-
-void* CMSimpleQueueReset(void) {
-    if (verbose) puts("STUB: CMSimpleQueueReset called");
-    return NULL;
-}
-
 void* CMSwapBigEndianClosedCaptionDescriptionToHost(void) {
     if (verbose) puts("STUB: CMSwapBigEndianClosedCaptionDescriptionToHost called");
     return NULL;
@@ -1038,31 +933,6 @@ void* CMSwapHostEndianTextDescriptionToBig(void) {
 
 void* CMSwapHostEndianTimeCodeDescriptionToBig(void) {
     if (verbose) puts("STUB: CMSwapHostEndianTimeCodeDescriptionToBig called");
-    return NULL;
-}
-
-void* CMSyncConvertTime(void) {
-    if (verbose) puts("STUB: CMSyncConvertTime called");
-    return NULL;
-}
-
-void* CMSyncGetRelativeRate(void) {
-    if (verbose) puts("STUB: CMSyncGetRelativeRate called");
-    return NULL;
-}
-
-void* CMSyncGetRelativeRateAndAnchorTime(void) {
-    if (verbose) puts("STUB: CMSyncGetRelativeRateAndAnchorTime called");
-    return NULL;
-}
-
-void* CMSyncGetTime(void) {
-    if (verbose) puts("STUB: CMSyncGetTime called");
-    return NULL;
-}
-
-void* CMSyncMightDrift(void) {
-    if (verbose) puts("STUB: CMSyncMightDrift called");
     return NULL;
 }
 
@@ -1256,93 +1126,13 @@ void* CMTimebaseAddTimerDispatchSource(void) {
     return NULL;
 }
 
-void* CMTimebaseCopyMaster(void) {
-    if (verbose) puts("STUB: CMTimebaseCopyMaster called");
-    return NULL;
-}
-
-void* CMTimebaseCopyMasterClock(void) {
-    if (verbose) puts("STUB: CMTimebaseCopyMasterClock called");
-    return NULL;
-}
-
-void* CMTimebaseCopyMasterTimebase(void) {
-    if (verbose) puts("STUB: CMTimebaseCopyMasterTimebase called");
-    return NULL;
-}
-
-void* CMTimebaseCopyUltimateMasterClock(void) {
-    if (verbose) puts("STUB: CMTimebaseCopyUltimateMasterClock called");
-    return NULL;
-}
-
 void* CMTimebaseCreateReadOnlyTimebase(void) {
     if (verbose) puts("STUB: CMTimebaseCreateReadOnlyTimebase called");
     return NULL;
 }
 
-void* CMTimebaseCreateWithMasterClock(void) {
-    if (verbose) puts("STUB: CMTimebaseCreateWithMasterClock called");
-    return NULL;
-}
-
-void* CMTimebaseCreateWithMasterTimebase(void) {
-    if (verbose) puts("STUB: CMTimebaseCreateWithMasterTimebase called");
-    return NULL;
-}
-
-void* CMTimebaseGetEffectiveRate(void) {
-    if (verbose) puts("STUB: CMTimebaseGetEffectiveRate called");
-    return NULL;
-}
-
-void* CMTimebaseGetMaster(void) {
-    if (verbose) puts("STUB: CMTimebaseGetMaster called");
-    return NULL;
-}
-
-void* CMTimebaseGetMasterClock(void) {
-    if (verbose) puts("STUB: CMTimebaseGetMasterClock called");
-    return NULL;
-}
-
-void* CMTimebaseGetMasterTimebase(void) {
-    if (verbose) puts("STUB: CMTimebaseGetMasterTimebase called");
-    return NULL;
-}
-
-void* CMTimebaseGetRate(void) {
-    if (verbose) puts("STUB: CMTimebaseGetRate called");
-    return NULL;
-}
-
-void* CMTimebaseGetTime(void) {
-    if (verbose) puts("STUB: CMTimebaseGetTime called");
-    return NULL;
-}
-
-void* CMTimebaseGetTimeAndRate(void) {
-    if (verbose) puts("STUB: CMTimebaseGetTimeAndRate called");
-    return NULL;
-}
-
 void* CMTimebaseGetTimeClampedAboveAnchorTime(void) {
     if (verbose) puts("STUB: CMTimebaseGetTimeClampedAboveAnchorTime called");
-    return NULL;
-}
-
-void* CMTimebaseGetTimeWithTimeScale(void) {
-    if (verbose) puts("STUB: CMTimebaseGetTimeWithTimeScale called");
-    return NULL;
-}
-
-void* CMTimebaseGetTypeID(void) {
-    if (verbose) puts("STUB: CMTimebaseGetTypeID called");
-    return NULL;
-}
-
-void* CMTimebaseGetUltimateMasterClock(void) {
-    if (verbose) puts("STUB: CMTimebaseGetUltimateMasterClock called");
     return NULL;
 }
 
@@ -1361,11 +1151,6 @@ void* CMTimebaseRemoveTimerDispatchSource(void) {
     return NULL;
 }
 
-void* CMTimebaseSetAnchorTime(void) {
-    if (verbose) puts("STUB: CMTimebaseSetAnchorTime called");
-    return NULL;
-}
-
 void* CMTimebaseSetMasterClock(void) {
     if (verbose) puts("STUB: CMTimebaseSetMasterClock called");
     return NULL;
@@ -1376,23 +1161,8 @@ void* CMTimebaseSetMasterTimebase(void) {
     return NULL;
 }
 
-void* CMTimebaseSetRate(void) {
-    if (verbose) puts("STUB: CMTimebaseSetRate called");
-    return NULL;
-}
-
-void* CMTimebaseSetRateAndAnchorTime(void) {
-    if (verbose) puts("STUB: CMTimebaseSetRateAndAnchorTime called");
-    return NULL;
-}
-
 void* CMTimebaseSetRateAndAnchorTimeWithFlags(void) {
     if (verbose) puts("STUB: CMTimebaseSetRateAndAnchorTimeWithFlags called");
-    return NULL;
-}
-
-void* CMTimebaseSetTime(void) {
-    if (verbose) puts("STUB: CMTimebaseSetTime called");
     return NULL;
 }
 

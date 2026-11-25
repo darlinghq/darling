@@ -17,6 +17,10 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+// The implementation is 64-bit only, like GameController on macOS (its 32-bit
+// Objective-C ABI cannot hold instance variables declared in the @implementation
+// and the framework is x86_64 and arm64 only there); the 32-bit slice keeps the stub.
+#ifdef __LP64__
 #import <GameController/GCDeviceHaptics.h>
 
 GCHapticsLocality const GCHapticsLocalityDefault = @"Default";
@@ -29,3 +33,50 @@ GCHapticsLocality const GCHapticsLocalityLeftTrigger = @"Left Trigger";
 GCHapticsLocality const GCHapticsLocalityRightTrigger = @"Right Trigger";
 
 const float GCHapticDurationInfinite = 1e6f;
+
+@implementation GCDeviceHaptics {
+	NSSet<GCHapticsLocality> *_supportedLocalities;
+}
+
+- (instancetype)init
+{
+	self = [super init];
+	if (!self)
+		return nil;
+	_supportedLocalities = [[NSSet alloc] initWithObjects:GCHapticsLocalityDefault, GCHapticsLocalityAll, GCHapticsLocalityHandles, nil];
+	return self;
+}
+
+- (void)dealloc
+{
+	[_supportedLocalities release];
+	[super dealloc];
+}
+
+- (NSSet<GCHapticsLocality> *)supportedLocalities
+{
+	return _supportedLocalities;
+}
+
+- (CHHapticEngine *)createEngineWithLocality:(GCHapticsLocality)locality
+{
+	return nil;
+}
+
+@end
+
+#else
+#import <GameController/GCDeviceHaptics.h>
+
+GCHapticsLocality const GCHapticsLocalityDefault = @"Default";
+GCHapticsLocality const GCHapticsLocalityAll = @"All";
+GCHapticsLocality const GCHapticsLocalityHandles = @"Handles";
+GCHapticsLocality const GCHapticsLocalityLeftHandle = @"Left Handle";
+GCHapticsLocality const GCHapticsLocalityRightHandle = @"Right Handle";
+GCHapticsLocality const GCHapticsLocalityTriggers = @"Triggers";
+GCHapticsLocality const GCHapticsLocalityLeftTrigger = @"Left Trigger";
+GCHapticsLocality const GCHapticsLocalityRightTrigger = @"Right Trigger";
+
+const float GCHapticDurationInfinite = 1e6f;
+
+#endif /* __LP64__ */

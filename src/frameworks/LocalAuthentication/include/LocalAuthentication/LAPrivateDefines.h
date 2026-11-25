@@ -18,6 +18,7 @@ CF_EXTERN_C_BEGIN
 #define kTKErrorCodeBadParameter -659833
 #define kLAPolicyContinuityUnlock 255
 #define kLAOptionUserId 255
+#define kLACredentialTypeExtractablePasscode -4
 
 typedef void* (*LAFunctionCopyExternalizedContext)(void*);
 

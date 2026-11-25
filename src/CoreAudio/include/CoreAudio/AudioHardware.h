@@ -261,7 +261,7 @@ OSStatus AudioHardwareAddPropertyListener(AudioHardwarePropertyID inPropertyID,
 OSStatus AudioHardwareRemovePropertyListener(AudioHardwarePropertyID inPropertyID,
 		AudioHardwarePropertyListenerProc inProc);
 
-// the values of kAudioDevicePropertyTransportType: how a device is connected
+// The transport of a device (kAudioDevicePropertyTransportType)
 enum
 {
     kAudioDeviceTransportTypeUnknown = 0,
@@ -277,7 +277,7 @@ enum
     kAudioDeviceTransportTypeDisplayPort = 'dprt',
     kAudioDeviceTransportTypeAirPlay = 'airp',
     kAudioDeviceTransportTypeAVB = 'eavb',
-    kAudioDeviceTransportTypeThunderbolt = 'thun',
+    kAudioDeviceTransportTypeThunderbolt = 'thun'
 };
 
 #ifdef __cplusplus

@@ -21,13 +21,17 @@
 #define _GCMouse_H_
 
 #import <Foundation/Foundation.h>
+#import <GameController/GCDevice.h>
 #import <GameController/GCPhysicalInputProfile.h>
+#import <GameController/GCDeviceCursor.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
 /* Posted when a mouse is connected or disconnected; the object is the GCMouse. */
 extern NSString *const GCMouseDidConnectNotification;
 extern NSString *const GCMouseDidDisconnectNotification;
+extern NSString *const GCMouseDidBecomeCurrentNotification;
+extern NSString *const GCMouseDidStopBeingCurrentNotification;
 
 @class GCMouseInput;
 
@@ -44,22 +48,22 @@ typedef void (^GCMouseMoved)(GCMouseInput *mouse, float deltaX, float deltaY);
 @property(readonly, nullable) GCDeviceButtonInput *rightButton;
 @property(readonly, nullable) GCDeviceButtonInput *middleButton;
 @property(readonly, nullable) NSArray<GCDeviceButtonInput *> *auxiliaryButtons;
-@property(readonly) GCDeviceDirectionPad *scroll;
+@property(readonly) GCDeviceCursor *scroll;
 
 @end
 
-@interface GCMouse : NSObject
+@interface GCMouse : NSObject <GCDevice>
 
-/* All connected mice, and the one that most recently produced input. Darling does
- * not receive mice through this framework, so the list is empty and current is nil. */
+/* All connected mice, and the one that most recently produced input. */
 @property(class, readonly) NSArray<GCMouse *> *mice;
 @property(class, readonly, nullable) GCMouse *current;
 
 @property(readonly) GCMouseInput *mouseInput;
 @property(readonly, copy, nullable) NSString *vendorName;
-@property(readonly, copy) NSString *productCategory;
+@property(readonly) NSString *productCategory;
 @property(readonly, getter=isAttachedToDevice) BOOL attachedToDevice;
 @property(nonatomic, strong, null_resettable) dispatch_queue_t handlerQueue;
+@property(nonatomic, strong, readonly, nullable) GCPhysicalInputProfile *physicalInputProfile;
 
 @end
 

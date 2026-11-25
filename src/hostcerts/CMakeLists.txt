@@ -17,3 +17,10 @@ install(FILES
 	"${CMAKE_BINARY_DIR}/certs/Certificates.bundle/Contents/Resources/certsTable.data"
 	DESTINATION libexec/darling/usr/libexec/darling-hostcerts
 )
+
+# The same for /etc/ssl/cert.pem: libressl-3.3.6 installs it into the guest's
+# /private/etc/ssl, where the file written by the tool masks it, so the tool needs its own copy.
+install(FILES
+	"${CMAKE_SOURCE_DIR}/src/external/libressl-3.3.6/cert.pem"
+	DESTINATION libexec/darling/usr/libexec/darling-hostcerts
+)

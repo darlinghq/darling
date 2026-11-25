@@ -34,7 +34,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
-OSStatus Gestalt(uint32_t type, int* value);
+OSErr Gestalt(OSType selector, SInt32* response);
 
 #ifdef __cplusplus
 }

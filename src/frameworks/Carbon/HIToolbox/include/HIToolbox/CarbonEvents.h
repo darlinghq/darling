@@ -35,12 +35,9 @@ typedef struct EventHotKeyID {
 } EventHotKeyID;
 typedef struct OpaqueEventHotKeyRef *EventHotKeyRef;
 
-// the parameters of keyboard events (kEventClassKeyboard)
+// the parameters of keyboard events (kEventClassKeyboard); the key code, characters and
+// modifiers are in CarbonEventsCore.h
 enum {
-	kEventParamKeyCode = 'kcod',         // typeUInt32: the virtual key code
-	kEventParamKeyMacCharCodes = 'kchr', // typeChar: the key's characters in the script's encoding
-	kEventParamKeyModifiers = 'kmod',    // typeUInt32: the modifier keys
-	kEventParamKeyUnicodes = 'kuni',     // typeUnicodeText: the key's characters
 	kEventParamKeyboardType = 'kbdt',    // typeUInt32: the keyboard's type
 };
 
@@ -59,12 +56,18 @@ enum {
 };
 
 EventTargetRef GetApplicationEventTarget(void);
+
+#define InstallApplicationEventHandler(handler, numTypes, typeList, userData, outHandlerRef) \
+	InstallEventHandler(GetApplicationEventTarget(), (handler), (numTypes), (typeList), (userData), (outHandlerRef))
 EventTargetRef GetEventDispatcherTarget(void);
 EventTargetRef GetEventMonitorTarget(void);
 
 OSStatus ProcessHICommand(const HICommand * a);
 
+// Runs the event loop of the application: events of the main queue are sent to the event
+// dispatcher target until QuitApplicationEventLoop() is called or a quit command is handled.
 void RunApplicationEventLoop(void);
+void QuitApplicationEventLoop(void);
 
 OSStatus RegisterEventHotKey(UInt32 inHotKeyCode, UInt32 inHotKeyModifiers, EventHotKeyID inHotKeyID, EventTargetRef inTarget, OptionBits inOptions, EventHotKeyRef *outRef);
 OSStatus UnregisterEventHotKey(EventHotKeyRef inHotKey);

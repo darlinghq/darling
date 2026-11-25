@@ -17,8 +17,29 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#ifndef CONTACTS_CNMUTABLEPOSTALADDRESS_H
+#define CONTACTS_CNMUTABLEPOSTALADDRESS_H
 
-@interface CNMutablePostalAddress : NSObject
+#import <Contacts/CNPostalAddress.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+// A postal address whose parts can be changed. Not thread safe. To remove a part when the address is saved,
+// set it to an empty string.
+API_AVAILABLE(macos(10.11))
+@interface CNMutablePostalAddress : CNPostalAddress
+
+@property (copy, NS_NONATOMIC_IOSONLY) NSString *street;
+@property (copy, NS_NONATOMIC_IOSONLY) NSString *subLocality API_AVAILABLE(macos(10.12.4));
+@property (copy, NS_NONATOMIC_IOSONLY) NSString *city;
+@property (copy, NS_NONATOMIC_IOSONLY) NSString *subAdministrativeArea API_AVAILABLE(macos(10.12.4));
+@property (copy, NS_NONATOMIC_IOSONLY) NSString *state;
+@property (copy, NS_NONATOMIC_IOSONLY) NSString *postalCode;
+@property (copy, NS_NONATOMIC_IOSONLY) NSString *country;
+@property (copy, NS_NONATOMIC_IOSONLY) NSString *ISOCountryCode;
 
 @end
+
+NS_ASSUME_NONNULL_END
+
+#endif

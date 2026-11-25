@@ -23,8 +23,11 @@ add_framework(QD
     	src/QDRects.c
     	src/QDRegions.c
     	src/QDPorts.c
+    	src/QDPictures.c
+    	src/QDDrawing.c
 
     DEPENDENCIES
+	CarbonCore
 	CoreFoundation
 	CoreGraphics
         system

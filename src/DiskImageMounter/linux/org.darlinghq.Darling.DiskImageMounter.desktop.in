@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Disk Image Mounter (Darling)
+Comment=Open macOS disk images in Darling
+Exec="@CMAKE_INSTALL_PREFIX@/bin/darling" open %F
+Icon=org.darlinghq.Darling.DiskImageMounter
+MimeType=application/x-apple-diskimage;
+NoDisplay=true
+Terminal=false
+Categories=System;

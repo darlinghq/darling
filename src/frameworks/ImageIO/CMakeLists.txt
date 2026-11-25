@@ -21,6 +21,7 @@ add_framework(ImageIO
 	    src/CGImageDestination.m
 	    src/CGImageProperties.m
 	    src/CGImageSource.m
+	    src/ImageIOASTC.m
 
     DEPENDENCIES
         system
@@ -28,4 +29,5 @@ add_framework(ImageIO
         Foundation
 	    CoreFoundation
 	    Onyx2D # Should be independent?
+	    darling_texturecodec # the ASTC decoder, static and not exported
 )

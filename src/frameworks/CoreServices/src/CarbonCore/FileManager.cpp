@@ -785,6 +785,79 @@ OSErr FSSetForkPosition(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 posit
 	}
 }
 
+#if !__LP64__
+// SetFPos moves the same fork mark as FSSetForkPosition, with the same positioning rules and
+// QUIRKs. Inside Macintosh: Files, p. 2-95.
+// Test: tests/src/file_manager_setfpos.c
+OSErr SetFPos(FSIORefNum refNum, SInt16 posMode, SInt32 posOff)
+{
+	return FSSetForkPosition(refNum, (UInt16) posMode, posOff);
+}
+#endif
+
+// Writing to forks .
+// Data forks are written through their descriptor; writing at or past the end extends the fork.
+// In-memory resource forks are not written back, so writes to them fail with wrPermErr.
+// A target before the start fails with posErr and leaves the mark unchanged.
+
+OSErr FSWriteFork(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 positionOffset, ByteCount requestCount, const void* buffer, ByteCount* actualCount)
+{
+	if (actualCount)
+		*actualCount = 0;
+
+	std::lock_guard<std::mutex> lock(g_openForksLock);
+	auto it = g_openForks.find(forkRefNum);
+	if (it == g_openForks.end())
+		return fnOpnErr;
+	if (!buffer && requestCount > 0)
+		return paramErr;
+
+	OpenFork& fork = it->second;
+	if (fork.fd == -1)
+		return wrPermErr;
+	const SInt64 size = forkSize(fork);
+	if (size < 0)
+		return ioErr;
+
+	SInt64 start;
+	if (resolveForkPosition(forkMark(fork), size, positionMode, positionOffset, &start) == kForkPosBeforeStart)
+		return posErr;
+
+	ssize_t done = requestCount ? ::pwrite(fork.fd, buffer, requestCount, (off_t) start) : 0;
+	if (done < 0)
+		return errno == EBADF ? wrPermErr : (errno == ENOSPC ? dskFulErr : ioErr);
+	forkSetMark(fork, start + done);
+	if (actualCount)
+		*actualCount = (ByteCount) done;
+	return (ByteCount) done == requestCount ? noErr : dskFulErr;
+}
+
+// Sets the logical end of a data fork; a mark beyond the new end moves to it.
+OSErr FSSetForkSize(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 positionOffset)
+{
+	std::lock_guard<std::mutex> lock(g_openForksLock);
+	auto it = g_openForks.find(forkRefNum);
+	if (it == g_openForks.end())
+		return fnOpnErr;
+
+	OpenFork& fork = it->second;
+	if (fork.fd == -1)
+		return wrPermErr;
+	const SInt64 size = forkSize(fork);
+	if (size < 0)
+		return ioErr;
+
+	SInt64 target;
+	if (resolveForkPosition(forkMark(fork), size, positionMode, positionOffset, &target) == kForkPosBeforeStart)
+		return posErr;
+	const SInt64 mark = forkMark(fork);
+	if (::ftruncate(fork.fd, (off_t) target) != 0)
+		return errno == EBADF || errno == EINVAL ? wrPermErr : ioErr;
+	if (mark > target)
+		forkSetMark(fork, target);
+	return noErr;
+}
+
 // QUIRK: a read that begins before the start of the fork fails with posErr and moves the mark to
 // 0 (also for fsFromMark), one that begins after the end fails with eofErr and moves the mark to the
 // end; a read that reaches the end before requestCount bytes were read returns what was available

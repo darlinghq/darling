@@ -21,13 +21,22 @@ add_framework(HIToolbox
 		src/Keyboards.cpp
 		src/Events.cpp
 		src/CarbonEventsCore.c
+		src/CarbonEventQueue.c
+		src/CarbonEventLoop.c
+		src/CarbonEventStream.c
 		src/CarbonEvents.c
 		src/CarbonEventTargets.c
+		src/CarbonApplicationEvents.c
 		src/MacApplication.cpp
 		src/MacWindows.cpp
 		src/TextInputSources.mm
 		src/TextServices.c
 		src/IBCarbonRuntime.c
+		src/IBCarbonNib.c
+		src/IBCarbonWindows.c
+		src/Menus.c
+		src/MenusClassic.c
+		src/MenuTracking.c
 		src/HITheme.c
 		src/constants.c
 
@@ -38,6 +47,7 @@ add_framework(HIToolbox
 		CoreText
 		HIServices
 		CoreServices
+		OpenGL
 		system
 		cxx
 )
