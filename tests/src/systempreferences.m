@@ -215,6 +215,8 @@ int main(int argc, char **argv)
 		Open(@[ @"x-apple.systempreferences:com.apple.preference.dock" ]);
 		tail = WaitFor(mark, @"grid ", 30);
 		// (the panes that Darling installs, with their own groups, are among them and are left out here)
+		// (the label of the Language & Region pane has a line break in it, as the system pane's)
+		tail = [tail stringByReplacingOccurrencesOfString:@"Language\n& Region" withString:@"Language & Region"];
 		NSMutableArray *gridNames = [NSMutableArray array];
 		NSRange gridStart = [tail rangeOfString:@"grid "];
 		if (gridStart.location != NSNotFound) {
