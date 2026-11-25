@@ -1232,15 +1232,18 @@ OSStatus GetWindowBounds(WindowRef window, WindowRegionCode regionCode, Rect* gl
 			if (!hasTitleBar(window))
 			{
 #ifndef __LP64__
-				// QUIRK: the title bar region of a window that has no title bar is an empty rectangle in the
-				// 32-bit API, not an error (the 64-bit API of macOS 26.7.3 gives errWindowRegionCodeInvalid).
-				// Not documented. Evidence: black-box observation on Mojave 10.14.4 i386 (tier 2).
+				// QUIRK: the title bar region of an alert or modal dialog window, which has no title bar, is an
+				// empty rectangle in the 32-bit API, not an error; the other classes without a title bar give
+				// errWindowRegionCodeInvalid (so does the 64-bit API of macOS 26.7.3). Not documented. Evidence:
+				// black-box observation on Mojave 10.14.4 i386 (tier 2, mj.c: every class).
 				// Test: test_quirk_window_structure_of_class in tests/src/carbon_windows.c
-				*globalBounds = (Rect) { 0, 0, 0, 0 };
-				return noErr;
-#else
-				return errWindowRegionCodeInvalid;
+				if (window->windowClass == kAlertWindowClass || window->windowClass == kModalWindowClass)
+				{
+					*globalBounds = (Rect) { 0, 0, 0, 0 };
+					return noErr;
+				}
 #endif
+				return errWindowRegionCodeInvalid;
 			}
 			*globalBounds = (Rect) { window->content.top - frame.top, window->content.left, window->content.top, window->content.right };
 			return noErr;
