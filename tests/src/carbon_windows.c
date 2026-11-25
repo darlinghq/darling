@@ -197,7 +197,7 @@ static void test_quirk_activation_events(void)
 	int deactivated = logIndexOf(kEventWindowDeactivated, 0), handleDeactivate = logIndexOf(kEventWindowHandleDeactivate, 0);
 	CHECK(hiding >= 0 && hidden > hiding && deactivated > hidden && handleDeactivate == deactivated + 1);
 
-	// And disposing of the window closes it (test_quirk_dispose_sends_closed)
+	// And disposing of the window closes it (QUIRK: DisposeWindow sends kEventWindowClosed)
 	g_eventCount = 0;
 	DisposeWindow(w);
 	CHECK(logIndexOf(kEventWindowClosed, 0) >= 0);

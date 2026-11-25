@@ -766,7 +766,7 @@ void DisposeWindow(WindowRef window)
 
 	// QUIRK: disposing of a window sends it kEventWindowClosed. Not documented for DisposeWindow(). Evidence:
 	// black-box observation on macOS 26.7.3 x86_64 (tier 2, probe-windows64.c); Mojave not observed.
-	// Test: test_quirk_dispose_sends_closed in tests/src/carbon_windows.c
+	// Test: test_quirk_activation_events (the dispose check) in tests/src/carbon_windows.c
 	sendWindowEvent(window, kEventWindowClosed, NULL);
 
 	// With the window gone the one behind it is the active one
