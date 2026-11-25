@@ -6636,7 +6636,13 @@ machservice_setup(launch_data_t obj, const char *key, void *context)
 	struct machservice *ms;
 	mach_port_t p = MACH_PORT_NULL;
 
-	if (unlikely(ms = jobmgr_lookup_service(j->mgr, key, false, 0))) {
+	/* A job whose removal is pending (it was removed while its process was
+	 * still running) is no longer found by job_find(), so its label can be
+	 * submitted again. Its Mach services must not keep the new job from having
+	 * the same names: the new service is put in front of the old one in the
+	 * lookup table, and the old one disappears when the old process has exited.
+	 */
+	if (unlikely(ms = jobmgr_lookup_service(j->mgr, key, false, 0)) && !ms->job->removal_pending) {
 		job_log(j, LOG_WARNING, "Conflict with job: %s over Mach service: %s", ms->job->label, key);
 		return;
 	}
