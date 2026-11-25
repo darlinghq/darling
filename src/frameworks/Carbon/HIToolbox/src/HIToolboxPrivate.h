@@ -82,6 +82,12 @@ typedef void (*HIEventPollProc)(EventQueueRef queue, void* info);
 OSStatus _HIAddEventPollProc(HIEventPollProc proc, void* info);
 OSStatus _HIRemoveEventPollProc(HIEventPollProc proc, void* info);
 
+// An event target of a framework's object (a menu): it has handlers of its own, and the events
+// that none of them handles go on to the target behind it (the application target, usually).
+// _HIDestroyEventTarget() removes its handlers and the target itself.
+EventTargetRef _HICreateEventTarget(EventTargetRef next);
+void _HIDestroyEventTarget(EventTargetRef target);
+
 #ifdef __cplusplus
 }
 #endif
