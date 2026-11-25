@@ -21,8 +21,72 @@
 #include <QuickTime/QuickTime.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <CarbonCore/MacErrors.h>
+#include "qt_movie_internal.h"
 
 static int verbose = 0;
+
+/* Movie Toolbox state. All movies live in one process-wide list that is not
+ * thread-safe; EnterMoviesOnThread is not implemented. A Movie is the address
+ * of the handle_value field of its storage, so a Movie that is not in the
+ * list is rejected without being dereferenced. A freed address that malloc
+ * reuses for a new movie cannot be told apart from it. */
+struct MovieStorage {
+    struct MovieType *handle_value;
+    struct MovieType value;
+    struct MovieStorage *next;
+};
+
+static int movies_entered;
+static OSErr movies_error;
+static struct MovieStorage *movie_list;
+
+static struct MovieStorage **movie_slot(Movie movie)
+{
+    struct MovieStorage **slot = &movie_list;
+    while (*slot && &(*slot)->handle_value != movie)
+        slot = &(*slot)->next;
+    return slot;
+}
+
+static struct MovieStorage *movie_lookup(Movie movie)
+{
+    struct MovieStorage *storage;
+    if (!movies_entered) {
+        movies_error = movieToolboxUninitialized;
+        return NULL;
+    }
+    storage = *movie_slot(movie);
+    if (!storage) {
+        movies_error = invalidMovie;
+        return NULL;
+    }
+    return storage;
+}
+
+static Movie movie_new(TimeScale time_scale, TimeValue duration)
+{
+    struct MovieStorage *storage = calloc(1, sizeof(*storage));
+    if (!storage) {
+        movies_error = memFullErr;
+        return NULL;
+    }
+    if (qt_timeline_init(&storage->value.timeline, time_scale, duration) != 0) {
+        free(storage);
+        movies_error = paramErr;
+        return NULL;
+    }
+    storage->handle_value = &storage->value;
+    storage->next = movie_list;
+    movie_list = storage;
+    movies_error = noErr;
+    return &storage->handle_value;
+}
+
+static void movie_free(struct MovieStorage *storage)
+{
+    free(storage);
+}
 
 __attribute__((constructor))
 static void initme(void) {
@@ -2669,10 +2733,17 @@ void* DisposeMatte(void)
     return NULL;
 }
 
-void* DisposeMovie(void)
+void DisposeMovie(Movie theMovie)
 {
-    if (verbose) puts("STUB: DisposeMovie called");
-    return NULL;
+    struct MovieStorage **slot;
+    struct MovieStorage *storage;
+    if (!movie_lookup(theMovie))
+        return;
+    slot = movie_slot(theMovie);
+    storage = *slot;
+    *slot = storage->next;
+    movie_free(storage);
+    movies_error = noErr;
 }
 
 void* DisposeMovieController(void)
@@ -3419,10 +3490,12 @@ void* EndianVersionChunk_NtoB(void)
     return NULL;
 }
 
-void* EnterMovies(void)
+OSErr EnterMovies(void)
 {
-    if (verbose) puts("STUB: EnterMovies called");
-    return NULL;
+    /* Repeated calls keep the existing movies. */
+    movies_entered = 1;
+    movies_error = noErr;
+    return noErr;
 }
 
 void* EnterMoviesOnThread(void)
@@ -3449,10 +3522,15 @@ void* ExecuteCallBack(void)
     return NULL;
 }
 
-void* ExitMovies(void)
+void ExitMovies(void)
 {
-    if (verbose) puts("STUB: ExitMovies called");
-    return NULL;
+    while (movie_list) {
+        struct MovieStorage *storage = movie_list;
+        movie_list = storage->next;
+        movie_free(storage);
+    }
+    movies_entered = 0;
+    movies_error = noErr;
 }
 
 void* ExitMoviesOnThread(void)
@@ -4367,10 +4445,13 @@ void* GetMovieDisplayClipRgn(void)
     return NULL;
 }
 
-void* GetMovieDuration(void)
+TimeValue GetMovieDuration(Movie theMovie)
 {
-    if (verbose) puts("STUB: GetMovieDuration called");
-    return NULL;
+    struct MovieStorage *storage = movie_lookup(theMovie);
+    if (!storage)
+        return 0;
+    movies_error = noErr;
+    return storage->value.timeline.duration;
 }
 
 void* GetMovieEffectiveRate(void)
@@ -4553,10 +4634,18 @@ void* GetMovieThreadAttachState(void)
     return NULL;
 }
 
-void* GetMovieTime(void)
+TimeValue GetMovieTime(Movie theMovie, TimeRecord *currentTime)
 {
-    if (verbose) puts("STUB: GetMovieTime called");
-    return NULL;
+    struct MovieStorage *storage = movie_lookup(theMovie);
+    if (!storage)
+        return 0;
+    /* Time bases are not implemented, so no TimeRecord can be filled. */
+    if (currentTime) {
+        movies_error = unimpErr;
+        return 0;
+    }
+    movies_error = noErr;
+    return storage->value.timeline.position;
 }
 
 void* GetMovieTimeBase(void)
@@ -4565,10 +4654,13 @@ void* GetMovieTimeBase(void)
     return NULL;
 }
 
-void* GetMovieTimeScale(void)
+TimeScale GetMovieTimeScale(Movie theMovie)
 {
-    if (verbose) puts("STUB: GetMovieTimeScale called");
-    return NULL;
+    struct MovieStorage *storage = movie_lookup(theMovie);
+    if (!storage)
+        return 0;
+    movies_error = noErr;
+    return storage->value.timeline.scale;
 }
 
 void* GetMovieTrack(void)
@@ -4625,10 +4717,11 @@ void* GetMovieVolume(void)
     return NULL;
 }
 
-void* GetMoviesError(void)
+OSErr GetMoviesError(void)
 {
-    if (verbose) puts("STUB: GetMoviesError called");
-    return NULL;
+    OSErr error = movies_error;
+    movies_error = noErr;
+    return error;
 }
 
 void* GetMoviesStickyError(void)
@@ -12977,10 +13070,18 @@ void* NewMCActionNotificationUPP(void)
     return NULL;
 }
 
-void* NewMovie(void)
+Movie NewMovie(SInt32 flags)
 {
-    if (verbose) puts("STUB: NewMovie called");
-    return NULL;
+    if (!movies_entered) {
+        movies_error = movieToolboxUninitialized;
+        return NULL;
+    }
+    /* No active movie, data reference or playback is implemented. */
+    if (flags != 0) {
+        movies_error = unimpErr;
+        return NULL;
+    }
+    return movie_new(600, 0);
 }
 
 void* NewMovieController(void)
@@ -25175,10 +25276,17 @@ void* SetMovieTime(void)
     return NULL;
 }
 
-void* SetMovieTimeScale(void)
+void SetMovieTimeScale(Movie theMovie, TimeScale timeScale)
 {
-    if (verbose) puts("STUB: SetMovieTimeScale called");
-    return NULL;
+    struct MovieStorage *storage = movie_lookup(theMovie);
+    if (!storage)
+        return;
+    /* Converts the duration, the active segment and the current time. */
+    if (qt_timeline_rescale(&storage->value.timeline, timeScale) != 0) {
+        movies_error = paramErr;
+        return;
+    }
+    movies_error = noErr;
 }
 
 void* SetMovieTimeValue(void)
