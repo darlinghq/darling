@@ -305,6 +305,21 @@ OSStatus AUHAL::SetProperty(AudioUnitPropertyID inID, AudioUnitScope inScope, Au
 {
 	switch (inID)
 	{
+		case kAudioUnitProperty_RenderQuality:
+		{
+			if (inScope != kAudioUnitScope_Global)
+				return kAudioUnitErr_InvalidScope;
+			if (inElement != 0)
+				return kAudioUnitErr_InvalidElement;
+			if (!inData || inDataSize != sizeof(UInt32))
+				goto InvalidPropertyValue;
+			UInt32 quality;
+			memcpy(&quality, inData, sizeof(quality));
+			if (quality > kRenderQuality_Max)
+				goto InvalidPropertyValue;
+			m_renderQuality = quality;
+			return noErr;
+		}
 		case kAudioDevicePropertyBufferFrameSize:
 		{
 			// An input-only unit sizes its input device's IO cycle.
@@ -387,6 +402,16 @@ OSStatus AUHAL::GetPropertyInfo(AudioUnitPropertyID inID, AudioUnitScope inScope
 {
 	switch (inID)
 	{
+		case kAudioUnitProperty_RenderQuality:
+		{
+			if (inScope != kAudioUnitScope_Global)
+				return kAudioUnitErr_InvalidScope;
+			if (inElement != 0)
+				return kAudioUnitErr_InvalidElement;
+			outDataSize = sizeof(UInt32);
+			outWritable = true;
+			return noErr;
+		}
 		case kAudioDevicePropertyBufferFrameSize:
 		{
 			outDataSize = sizeof(UInt32);
@@ -431,6 +456,15 @@ OSStatus AUHAL::GetProperty(AudioUnitPropertyID inID, AudioUnitScope inScope, Au
 {
 	switch (inID)
 	{
+		case kAudioUnitProperty_RenderQuality:
+		{
+			if (inScope != kAudioUnitScope_Global)
+				return kAudioUnitErr_InvalidScope;
+			if (inElement != 0)
+				return kAudioUnitErr_InvalidElement;
+			memcpy(outData, &m_renderQuality, sizeof(m_renderQuality));
+			return noErr;
+		}
 		case kAudioDevicePropertyBufferFrameSize:
 		{
 			const bool input = m_enableInput && !m_enableOutput;
