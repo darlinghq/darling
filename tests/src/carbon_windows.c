@@ -15,7 +15,15 @@
 // The private way to the CoreGraphics window of a Carbon window, for reading its pixels back
 extern unsigned int _HIWindowGetCGSWindowID(WindowRef window);
 
+// Every 64-bit window is a compositing window
+#ifdef __LP64__
+#define COMP kWindowCompositingAttribute
+#else
+#define COMP 0
+#endif
+
 static int failures, checks;
+static int g_canPlace = 1;
 #define CHECK(x) do { ++checks; if (!(x)) { ++failures; printf("FAIL line=%d %s\n", __LINE__, #x); fflush(stdout); } } while (0)
 
 static void quitTimer(EventLoopTimerRef t, void* u) { QuitApplicationEventLoop(); }
@@ -142,29 +150,240 @@ static int pixelIs(const unsigned char* pixels, size_t width, size_t x, size_t y
 }
 #endif
 
+// ---- The behaviour of the Window Manager that its documentation does not give, observed on macOS 26.7.3
+// x86_64 (see the QUIRK: comments in MacWindows.c). The Mojave window system was not available to the probes.
+
+static int g_eventLog[64], g_eventCount;
+
+static OSStatus logHandler(EventHandlerCallRef call, EventRef event, void* userData)
+{
+	if (g_eventCount < 64)
+		g_eventLog[g_eventCount++] = (int) GetEventKind(event);
+	return eventNotHandledErr;
+}
+
+static const EventTypeSpec kLogTypes[] = {
+	{ kEventClassWindow, kEventWindowShowing }, { kEventClassWindow, kEventWindowShown },
+	{ kEventClassWindow, kEventWindowHiding }, { kEventClassWindow, kEventWindowHidden },
+	{ kEventClassWindow, kEventWindowActivated }, { kEventClassWindow, kEventWindowDeactivated },
+	{ kEventClassWindow, kEventWindowHandleActivate }, { kEventClassWindow, kEventWindowHandleDeactivate },
+	{ kEventClassWindow, kEventWindowBoundsChanging }, { kEventClassWindow, kEventWindowBoundsChanged },
+	{ kEventClassWindow, kEventWindowClosed },
+};
+
+static int logIndexOf(int kind, int from)
+{
+	for (int i = from; i < g_eventCount; i++)
+		if (g_eventLog[i] == kind)
+			return i;
+	return -1;
+}
+
+static void test_quirk_activation_events(void)
+{
+	WindowRef w;
+	Rect r = { 100, 100, 200, 300 };
+
+	CHECK(CreateNewWindow(kDocumentWindowClass, kWindowStandardDocumentAttributes | COMP, &r, &w) == noErr);
+	CHECK(InstallWindowEventHandler(w, logHandler, sizeof(kLogTypes) / sizeof(kLogTypes[0]), kLogTypes, NULL, NULL) == noErr);
+	g_eventCount = 0;
+	ShowWindow(w);
+	int showing = logIndexOf(kEventWindowShowing, 0), shown = logIndexOf(kEventWindowShown, 0);
+	int activated = logIndexOf(kEventWindowActivated, 0), handle = logIndexOf(kEventWindowHandleActivate, 0);
+	CHECK(showing >= 0 && shown > showing && activated > shown && handle == activated + 1);
+	g_eventCount = 0;
+	HideWindow(w);
+	int hiding = logIndexOf(kEventWindowHiding, 0), hidden = logIndexOf(kEventWindowHidden, 0);
+	int deactivated = logIndexOf(kEventWindowDeactivated, 0), handleDeactivate = logIndexOf(kEventWindowHandleDeactivate, 0);
+	CHECK(hiding >= 0 && hidden > hiding && deactivated > hidden && handleDeactivate == deactivated + 1);
+
+	// And disposing of the window closes it (test_quirk_dispose_sends_closed)
+	g_eventCount = 0;
+	DisposeWindow(w);
+	CHECK(logIndexOf(kEventWindowClosed, 0) >= 0);
+	CHECK(!IsValidWindowPtr(w));
+}
+
+static void test_quirk_bounds_changing_event(void)
+{
+	WindowRef w;
+	Rect r = { 100, 100, 200, 300 }, moved = { 110, 120, 230, 350 };
+
+	CHECK(CreateNewWindow(kDocumentWindowClass, kWindowStandardDocumentAttributes | COMP, &r, &w) == noErr);
+	CHECK(InstallWindowEventHandler(w, logHandler, sizeof(kLogTypes) / sizeof(kLogTypes[0]), kLogTypes, NULL, NULL) == noErr);
+	g_eventCount = 0;
+	CHECK(SetWindowBounds(w, kWindowContentRgn, &moved) == noErr);
+	int changing = logIndexOf(kEventWindowBoundsChanging, 0), changed = logIndexOf(kEventWindowBoundsChanged, 0);
+	CHECK(changing >= 0 && changed == changing + 1);
+	DisposeWindow(w);
+}
+
+static void test_quirk_window_attributes_for_class(void)
+{
+	Rect r = { 100, 100, 200, 300 };
+	WindowRef w = NULL;
+	WindowAttributes attrs;
+
+	// A class that has no frame takes no close box, ... ; the others take what a window of their kind has
+	CHECK(CreateNewWindow(kAlertWindowClass, kWindowCloseBoxAttribute | COMP, &r, &w) == errUnsupportedWindowAttributesForClass);
+	CHECK(w == NULL);
+	CHECK(CreateNewWindow(kPlainWindowClass, kWindowResizableAttribute | COMP, &r, &w) == errUnsupportedWindowAttributesForClass);
+	CHECK(CreateNewWindow(kOverlayWindowClass, kWindowStandardDocumentAttributes | COMP, &r, &w) == errUnsupportedWindowAttributesForClass);
+	CHECK(CreateNewWindow(kMovableModalWindowClass, kWindowStandardDocumentAttributes | COMP, &r, &w) == errUnsupportedWindowAttributesForClass);
+	CHECK(CreateNewWindow(kDocumentWindowClass, kWindowInWindowMenuAttribute | COMP, &r, &w) == noErr);
+	DisposeWindow(w);
+	CHECK(CreateNewWindow(kFloatingWindowClass, kWindowInWindowMenuAttribute | COMP, &r, &w) == errUnsupportedWindowAttributesForClass);
+	CHECK(CreateNewWindow(kMovableModalWindowClass, kWindowCloseBoxAttribute | COMP, &r, &w) == noErr);
+	DisposeWindow(w);
+	CHECK(CreateNewWindow(kAlertWindowClass, kWindowStandardHandlerAttribute | kWindowIgnoreClicksAttribute | COMP, &r, &w) == noErr);
+	DisposeWindow(w);
+#ifdef __LP64__
+	// A 64-bit window is a compositing window
+	CHECK(CreateNewWindow(kDocumentWindowClass, 0, &r, &w) == errUnsupportedWindowAttributesForClass);
+	CHECK(CreateNewWindow(kDocumentWindowClass, kWindowStandardDocumentAttributes, &r, &w) == errUnsupportedWindowAttributesForClass);
+	// and has the attributes of its class
+	CHECK(CreateNewWindow(kFloatingWindowClass, COMP, &r, &w) == noErr);
+	CHECK(GetWindowAttributes(w, &attrs) == noErr && attrs == (COMP | kWindowHideOnSuspendAttribute));
+	DisposeWindow(w);
+	CHECK(CreateNewWindow(kOverlayWindowClass, COMP, &r, &w) == noErr);
+	CHECK(GetWindowAttributes(w, &attrs) == noErr && attrs == (COMP | kWindowNoShadowAttribute));
+	DisposeWindow(w);
+#else
+	CHECK(CreateNewWindow(kDocumentWindowClass, 0, &r, &w) == noErr);
+	DisposeWindow(w);
+	(void) attrs;
+#endif
+}
+
+static void test_quirk_window_structure_of_class(void)
+{
+	Rect r = { 100, 100, 200, 300 }, structure;
+	WindowRef w;
+
+	CHECK(CreateNewWindow(kDocumentWindowClass, COMP, &r, &w) == noErr);
+	CHECK(GetWindowBounds(w, kWindowStructureRgn, &structure) == noErr && structure.top == 78 && structure.left == 100 && structure.bottom == 200 && structure.right == 300);
+	CHECK(GetWindowBounds(w, kWindowTitleBarRgn, &structure) == noErr && structure.top == 78 && structure.bottom == 100);
+	// setting the structure moves the content with it
+	CHECK(SetWindowBounds(w, kWindowStructureRgn, &(Rect) { 50, 60, 200, 300 }) == noErr);
+	CHECK(GetWindowBounds(w, kWindowContentRgn, &structure) == noErr && structure.bottom - structure.top == 128);
+	if (g_canPlace)
+		CHECK(structure.top == 72 && structure.left == 60);
+	DisposeWindow(w);
+	CHECK(CreateNewWindow(kFloatingWindowClass, COMP, &r, &w) == noErr);
+	CHECK(GetWindowBounds(w, kWindowStructureRgn, &structure) == noErr && structure.top == 88);
+	DisposeWindow(w);
+	CHECK(CreateNewWindow(kPlainWindowClass, COMP, &r, &w) == noErr);
+	CHECK(GetWindowBounds(w, kWindowStructureRgn, &structure) == noErr && structure.top == 99 && structure.left == 99 && structure.bottom == 201 && structure.right == 301);
+	CHECK(GetWindowBounds(w, kWindowTitleBarRgn, &structure) == errWindowRegionCodeInvalid);
+	DisposeWindow(w);
+	CHECK(CreateNewWindow(kAlertWindowClass, COMP, &r, &w) == noErr);
+	CHECK(GetWindowBounds(w, kWindowStructureRgn, &structure) == noErr && structure.top == 100);
+	DisposeWindow(w);
+}
+
+static void test_quirk_empty_window_rect(void)
+{
+	WindowRef w = NULL;
+	Rect empty = { 10, 10, 10, 10 }, turned = { 10, 30, 10, 20 }, got;
+
+	CHECK(CreateNewWindow(kDocumentWindowClass, COMP, &empty, &w) == noErr && w != NULL);
+	if (w)
+	{
+		CHECK(GetWindowBounds(w, kWindowContentRgn, &got) == noErr && EqualRect(&got, &empty));
+		DisposeWindow(w);
+	}
+	w = NULL;
+	CHECK(CreateNewWindow(kDocumentWindowClass, COMP, &turned, &w) == noErr && w != NULL);
+	if (w)
+		DisposeWindow(w);
+}
+
+static void test_quirk_null_window_title(void)
+{
+	WindowRef w;
+	CFStringRef title = NULL;
+
+	CHECK(CreateNewWindow(kDocumentWindowClass, COMP, &(Rect) { 100, 100, 200, 300 }, &w) == noErr);
+	// an untitled window has the empty title
+	CHECK(CopyWindowTitleAsCFString(w, &title) == noErr && title != NULL && CFStringGetLength(title) == 0);
+	if (title)
+		CFRelease(title);
+	CHECK(SetWindowTitleWithCFString(w, CFSTR("Title")) == noErr);
+	CHECK(SetWindowTitleWithCFString(w, NULL) == paramErr);
+	CHECK(CopyWindowTitleAsCFString(w, &title) == noErr && title && CFStringCompare(title, CFSTR("Title"), 0) == kCFCompareEqualTo);
+	if (title)
+		CFRelease(title);
+	DisposeWindow(w);
+}
+
+static void test_quirk_window_property_edges(void)
+{
+	WindowRef w;
+	unsigned char value[4] = { 0xEF, 0xBE, 0xAD, 0xDE }, buffer[4];
+	ByteCount actual = 99;
+
+	CHECK(CreateNewWindow(kDocumentWindowClass, COMP, &(Rect) { 100, 100, 200, 300 }, &w) == noErr);
+	CHECK(GetWindowProperty(w, 'DARL', 'none', sizeof(buffer), &actual, buffer) == errWindowPropertyNotFound);
+	CHECK(actual == 99);	// left alone
+	CHECK(SetWindowProperty(w, 'DARL', 'prop', sizeof(value), value) == noErr);
+	memset(buffer, 0xEE, sizeof(buffer));
+	CHECK(GetWindowProperty(w, 'DARL', 'prop', 2, &actual, buffer) == noErr);	// small buffer: the first bytes
+	CHECK(actual == 4 && buffer[0] == 0xEF && buffer[1] == 0xBE && buffer[2] == 0xEE);
+	CHECK(GetWindowProperty(w, 'DARL', 'prop', 2, NULL, buffer) == paramErr);	// and nowhere to tell the size
+	CHECK(SetWindowProperty(w, 'DARL', 'zero', 4, NULL) == noErr);
+	CHECK(GetWindowProperty(w, 'DARL', 'zero', 4, &actual, buffer) == noErr && actual == 4 && buffer[0] == 0 && buffer[3] == 0);
+	CHECK(RemoveWindowProperty(w, 'DARL', 'prop') == noErr);
+	CHECK(RemoveWindowProperty(w, 'DARL', 'prop') == noErr);	// not there any more
+	DisposeWindow(w);
+	// a window that is not there
+	CHECK(SetWindowProperty(NULL, 'DARL', 'prop', 4, value) == errInvalidWindowPtr);
+	CHECK(GetWindowProperty(NULL, 'DARL', 'prop', 4, NULL, buffer) == errInvalidWindowPtr);
+}
+
+static void test_quirk_get_window_bounds_null_window(void)
+{
+	Rect got;
+
+	CHECK(GetWindowBounds(NULL, kWindowContentRgn, &got) == paramErr);
+	CHECK(GetWindowClass(NULL, &(WindowClass) { 0 }) == errInvalidWindowPtr);
+}
+
+static void runQuirkTests(void)
+{
+	test_quirk_activation_events();
+	test_quirk_bounds_changing_event();
+	test_quirk_window_attributes_for_class();
+	test_quirk_window_structure_of_class();
+	test_quirk_empty_window_rect();
+	test_quirk_null_window_title();
+	test_quirk_window_property_edges();
+	test_quirk_get_window_bounds_null_window();
+}
+
 int main(int argc, char** argv)
 {
 	int interact = argc > 1 && strncmp(argv[1], "interact", 8) == 0;
 	// A window system that does not let a program place its windows (Wayland) keeps the place it gave
 	int canPlace = !(getenv("DARLING_APPKIT_BACKEND") && strcmp(getenv("DARLING_APPKIT_BACKEND"), "wayland") == 0);
+	g_canPlace = canPlace;
 	int closeByUser = argc > 1 && strcmp(argv[1], "interact") == 0;
 	Rect r = { 100, 100, 300, 400 };
 	WindowRef doc = NULL, pal = NULL, over = NULL, sentinel = (WindowRef) (uintptr_t) 0x1234, w;
 	OSStatus e;
 
 	printf("WINDOWS bits=%zu\n", sizeof(void*) * 8);
+	runQuirkTests();
 
 	// Arguments
 	w = sentinel;
 	CHECK(CreateNewWindow(kDocumentWindowClass, 0, NULL, &w) == paramErr);
 	CHECK(w == NULL);
 	CHECK(CreateNewWindow(kDocumentWindowClass, 0, &r, NULL) == paramErr);
-	Rect bad = { 10, 30, 10, 20 };
-	w = sentinel;
-	CHECK(CreateNewWindow(kDocumentWindowClass, 0, &bad, &w) == paramErr);
+		w = sentinel;
+	CHECK(CreateNewWindow(99, COMP, &r, &w) == errUnrecognizedWindowClass);
 	CHECK(w == NULL);
 	w = sentinel;
-	CHECK(CreateNewWindow(99, 0, &r, &w) == paramErr);
+	CHECK(CreateNewWindow(kAllWindowClasses, COMP, &r, &w) == errUnrecognizedWindowClass);
 	CHECK(!IsValidWindowPtr(NULL));
 	CHECK(!IsWindowVisible(NULL));
 	DisposeWindow(NULL);
@@ -173,7 +392,7 @@ int main(int argc, char** argv)
 	ShowHide(NULL, 1);
 
 	// A document window
-	e = CreateNewWindow(kDocumentWindowClass, kWindowStandardDocumentAttributes | kWindowStandardHandlerAttribute, &r, &doc);
+	e = CreateNewWindow(kDocumentWindowClass, kWindowStandardDocumentAttributes | kWindowStandardHandlerAttribute | COMP, &r, &doc);
 	CHECK(e == noErr);
 	CHECK(doc != NULL);
 	if (!doc)
@@ -189,7 +408,12 @@ int main(int argc, char** argv)
 	WindowClass cls = 0;
 	WindowAttributes attrs = 0;
 	CHECK(GetWindowClass(doc, &cls) == noErr && cls == kDocumentWindowClass);
+	#ifdef __LP64__
+	// the compositing attribute and the attribute of the class (QUIRK: see test_quirk_window_attributes_for_class)
+	CHECK(GetWindowAttributes(doc, &attrs) == noErr && attrs == (kWindowStandardDocumentAttributes | kWindowStandardHandlerAttribute | COMP | kWindowInWindowMenuAttribute));
+#else
 	CHECK(GetWindowAttributes(doc, &attrs) == noErr && attrs == (kWindowStandardDocumentAttributes | kWindowStandardHandlerAttribute));
+#endif
 
 	Rect content, structure, portBounds;
 	CHECK(GetWindowBounds(doc, kWindowContentRgn, &content) == noErr);
@@ -217,7 +441,7 @@ int main(int argc, char** argv)
 	CHECK(SetWindowProperty(doc, 'DARL', 'prop', sizeof(value), &value) == noErr);
 	CHECK(GetWindowProperty(doc, 'DARL', 'prop', sizeof(got), &actual, &got) == noErr && got == 0xDEADBEEF && actual == sizeof(got));
 	actual = 0;
-	CHECK(GetWindowProperty(doc, 'DARL', 'prop', sizeof(small), &actual, small) == buffersTooSmall);
+	CHECK(GetWindowProperty(doc, 'DARL', 'prop', sizeof(small), &actual, small) == noErr);	// QUIRK, see test_quirk_window_property_edges
 	CHECK(actual == sizeof(value));
 	CHECK(GetWindowPropertySize(doc, 'DARL', 'prop', &actual) == noErr && actual == sizeof(value));
 	value = 7;
@@ -225,7 +449,7 @@ int main(int argc, char** argv)
 	CHECK(GetWindowProperty(doc, 'DARL', 'prop', sizeof(got), NULL, &got) == noErr && got == 7);
 	CHECK(GetWindowProperty(doc, 'DARL', 'othr', sizeof(got), NULL, &got) == errWindowPropertyNotFound);
 	CHECK(RemoveWindowProperty(doc, 'DARL', 'prop') == noErr);
-	CHECK(RemoveWindowProperty(doc, 'DARL', 'prop') == errWindowPropertyNotFound);
+	CHECK(RemoveWindowProperty(doc, 'DARL', 'prop') == noErr);	// QUIRK, see test_quirk_window_property_edges
 
 #ifndef __LP64__
 	// Refcon
@@ -335,7 +559,7 @@ int main(int argc, char** argv)
 	spin(300);
 
 	// The classes: a floating window stays in front of the documents, without being the active window
-	CHECK(CreateNewWindow(kFloatingWindowClass, kWindowStandardFloatingAttributes, &(Rect) { 120, 500, 220, 600 }, &pal) == noErr);
+	CHECK(CreateNewWindow(kFloatingWindowClass, kWindowStandardFloatingAttributes | COMP, &(Rect) { 120, 500, 220, 600 }, &pal) == noErr);
 	listen(pal);
 	ShowWindow(pal);
 	spin(300);
@@ -348,7 +572,7 @@ int main(int argc, char** argv)
 	CHECK(GetNextWindow(pal) == doc);
 
 	WindowRef doc2 = NULL;
-	CHECK(CreateNewWindow(kDocumentWindowClass, kWindowStandardDocumentAttributes, &(Rect) { 150, 150, 350, 450 }, &doc2) == noErr);
+	CHECK(CreateNewWindow(kDocumentWindowClass, kWindowStandardDocumentAttributes | COMP, &(Rect) { 150, 150, 350, 450 }, &doc2) == noErr);
 	listen(doc2);
 	g_counts[kEventWindowDeactivated] = 0;
 	ShowWindow(doc2);
@@ -364,7 +588,7 @@ int main(int argc, char** argv)
 	CHECK(IsWindowActive(doc));
 
 	// An overlay window: shown over the others, transparent where nothing is drawn
-	CHECK(CreateNewWindow(kOverlayWindowClass, kWindowHideOnSuspendAttribute | kWindowIgnoreClicksAttribute, &(Rect) { 100, 100, 300, 400 }, &over) == noErr);
+	CHECK(CreateNewWindow(kOverlayWindowClass, kWindowHideOnSuspendAttribute | kWindowIgnoreClicksAttribute | COMP, &(Rect) { 100, 100, 300, 400 }, &over) == noErr);
 	ShowWindow(over);
 	spin(300);
 	CHECK(IsWindowVisible(over));
@@ -416,6 +640,8 @@ int main(int argc, char** argv)
 			CHECK(g_clickPoint.h >= content.left && g_clickPoint.h < content.right);
 			CHECK(g_clickPoint.v >= content.top && g_clickPoint.v < content.bottom);
 		}
+		// The windows disposed of so far also got kEventWindowClosed: count from here
+		g_closes = g_closed = 0;
 		printf("READY_CLOSE\n");
 		fflush(stdout);
 		if (closeByUser)

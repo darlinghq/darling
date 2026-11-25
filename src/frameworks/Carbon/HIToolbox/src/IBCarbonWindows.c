@@ -88,6 +88,9 @@ OSStatus _HICreateWindowFromNibDescription(CFDictionaryRef description, WindowRe
 	if (nibFlag(description, CFSTR("standardHandler"), true))
 		attributes |= kWindowStandardHandlerAttribute;
 
+#ifdef __LP64__
+	attributes |= kWindowCompositingAttribute;
+#endif
 	Rect bounds = { (short) top, (short) left, (short) bottom, (short) right };
 	WindowRef window;
 	OSStatus status = CreateNewWindow((WindowClass) windowClass, attributes, &bounds, &window);

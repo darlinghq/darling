@@ -43,6 +43,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/param.h>
 
 #ifndef __LP64__
 // The QuickDraw SPI for the ports of the windows (QDPorts.c)
@@ -223,7 +224,13 @@ static void setActive(WindowRef window, bool active)
 	if (window->active == active)
 		return;
 	window->active = active;
+	// QUIRK: kEventWindowActivated and kEventWindowDeactivated are followed by kEventWindowHandleActivate
+	// and kEventWindowHandleDeactivate for the window. Not documented in this order. Evidence: black-box
+	// observation on macOS 26.7.3 x86_64 (tier 2, mac-probes/carbon-windows/probe-windows64.c); Mojave
+	// has not been observed (no login session on the Mac that could run it).
+	// Test: test_quirk_activation_events in tests/src/carbon_windows.c
 	sendWindowEvent(window, active ? kEventWindowActivated : kEventWindowDeactivated, NULL);
+	sendWindowEvent(window, active ? kEventWindowHandleActivate : kEventWindowHandleDeactivate, NULL);
 }
 
 static bool canActivate(WindowRef window)
@@ -286,6 +293,16 @@ static void windowBoundsChanged(WindowRef window, const Rect* now, UInt32 flags)
 		flags |= kWindowBoundsChangeOriginChanged;
 
 	Rect newBounds = *now;
+	// QUIRK: kEventWindowBoundsChanging is sent before kEventWindowBoundsChanged when the bounds change. Not
+	// documented for a program's own bounds change. Evidence: black-box observation on macOS 26.7.3 x86_64
+	// (tier 2, mac-probes/carbon-windows/probe-windows64.c); Mojave not observed.
+	// Test: test_quirk_bounds_changing_event in tests/src/carbon_windows.c
+	sendWindowEvent(window, kEventWindowBoundsChanging, ^(EventRef event) {
+		SetEventParameter(event, kEventParamAttributes, typeUInt32, sizeof(flags), &flags);
+		SetEventParameter(event, kEventParamOriginalBounds, typeQDRectangle, sizeof(previous), &previous);
+		SetEventParameter(event, kEventParamPreviousBounds, typeQDRectangle, sizeof(previous), &previous);
+		SetEventParameter(event, kEventParamCurrentBounds, typeQDRectangle, sizeof(newBounds), &newBounds);
+	});
 	sendWindowEvent(window, kEventWindowBoundsChanged, ^(EventRef event) {
 		SetEventParameter(event, kEventParamAttributes, typeUInt32, sizeof(flags), &flags);
 		SetEventParameter(event, kEventParamOriginalBounds, typeQDRectangle, sizeof(previous), &previous);
@@ -495,7 +512,7 @@ static OSStatus styleOfWindow(WindowClass cls, WindowAttributes attributes, uint
 				kCGSWindowStyleNoFocus | kCGSWindowStyleIgnoresMouse | kCGSWindowStyleFloating;
 			break;
 		default:
-			return paramErr;
+			return errUnrecognizedWindowClass;
 	}
 
 	if (cls != kOverlayWindowClass && cls != kPlainWindowClass && cls != kAltPlainWindowClass && cls != kSimpleWindowClass &&
@@ -513,6 +530,104 @@ static OSStatus styleOfWindow(WindowClass cls, WindowAttributes attributes, uint
 	return noErr;
 }
 
+// The attributes that make the frame of a window: a class that has no such frame does not take them
+#define kFrameAttributes (kWindowCloseBoxAttribute | kWindowCollapseBoxAttribute | kWindowHorizontalZoomAttribute | \
+	kWindowVerticalZoomAttribute | kWindowResizableAttribute | kWindowInWindowMenuAttribute | kWindowMetalAttribute | \
+	kWindowNoTitleBarAttribute)
+
+// What a class takes of kFrameAttributes
+static WindowAttributes frameAttributesOfClass(WindowClass cls)
+{
+	switch (cls)
+	{
+		case kDocumentWindowClass:
+			return kFrameAttributes;
+		case kFloatingWindowClass:
+		case kUtilityWindowClass:
+			return kFrameAttributes & ~kWindowInWindowMenuAttribute;
+		case kMovableModalWindowClass:
+			return kWindowCloseBoxAttribute | kWindowHorizontalZoomAttribute | kWindowVerticalZoomAttribute |
+				kWindowResizableAttribute | kWindowMetalAttribute;
+		case kSheetWindowClass:
+			return kWindowResizableAttribute;
+		case kDrawerWindowClass:
+			return kWindowResizableAttribute | kWindowMetalAttribute;
+		default:
+			return 0;
+	}
+}
+
+// The attributes a window of the class has whether it was asked for them or not
+static WindowAttributes automaticAttributesOfClass(WindowClass cls)
+{
+	switch (cls)
+	{
+		case kDocumentWindowClass:
+			return kWindowInWindowMenuAttribute;
+		case kFloatingWindowClass:
+		case kHelpWindowClass:
+		case kToolbarWindowClass:
+			return kWindowHideOnSuspendAttribute;
+		case kUtilityWindowClass:
+			return kWindowHideOnSuspendAttribute | kWindowHideOnFullScreenAttribute | (1u << 14);
+		case kSheetWindowClass:
+		case kSheetAlertWindowClass:
+		case kDrawerWindowClass:
+			return kWindowDoesNotCycleAttribute;
+		case kOverlayWindowClass:
+			return kWindowNoShadowAttribute;
+		default:
+			return 0;
+	}
+}
+
+// QUIRK: CreateNewWindow() refuses attributes a class does not support (errUnsupportedWindowAttributesForClass):
+// for the classes that have no frame the close, collapse and zoom boxes, resizing and the other frame attributes,
+// and every 64-bit window has to be a compositing window. The windows also get attributes of their class
+// (a document window is in the window menu, a floating one hides on suspend, ...), which
+// GetWindowAttributes() reports. The documentation lists the attributes of each class only in part. Evidence:
+// black-box observation on macOS 26.7.3 x86_64 (tier 2, every class against every attribute,
+// mac-probes/carbon-windows/probe-attrs64.c) and on Mojave 10.14.4 x86_64 for the combinations of the
+// close box, the standard document attributes, the standard handler and ignore-clicks with compositing
+// (tier 2, probe-windows64.c, which got -5601 or no window server for each class); the 32-bit API is not
+// observed and gets the same rules except for the compositing.
+// Test: test_quirk_window_attributes_for_class in tests/src/carbon_windows.c
+static OSStatus checkAttributesOfClass(WindowClass cls, WindowAttributes attributes)
+{
+#ifdef __LP64__
+	if (!(attributes & kWindowCompositingAttribute))
+		return errUnsupportedWindowAttributesForClass;
+#endif
+	if ((attributes & kFrameAttributes) & ~frameAttributesOfClass(cls))
+		return errUnsupportedWindowAttributesForClass;
+	return noErr;
+}
+
+// The frame the window system draws around the content of a window of the class (structure region minus
+// content region). QUIRK: observed on macOS 26.7.3 (tier 2, probe-attrs64.c); Mojave not observed.
+// Test: test_quirk_window_structure_of_class in tests/src/carbon_windows.c
+static Rect frameOfClass(WindowClass cls, WindowAttributes attributes)
+{
+	switch (cls)
+	{
+		case kDocumentWindowClass:
+		case kMovableModalWindowClass:
+		case kMovableAlertWindowClass:
+			return (Rect) { (attributes & kWindowNoTitleBarAttribute) ? 0 : 22, 0, 0, 0 };
+		case kFloatingWindowClass:
+		case kUtilityWindowClass:
+			return (Rect) { (attributes & kWindowNoTitleBarAttribute) ? 0 : 12, 0, 0, 0 };
+		case kDrawerWindowClass:
+			return (Rect) { 11, 11, 11, 11 };
+		case kPlainWindowClass:
+			return (Rect) { 1, 1, 1, 1 };
+		case kAltPlainWindowClass:
+			return (Rect) { 1, 1, 3, 3 };
+		default:
+			return (Rect) { 0, 0, 0, 0 };
+	}
+}
+
 static const EventTypeSpec kDefaultHandlerTypes[] = {
 	{ kEventClassWindow, kEventWindowUpdate },
 	{ kEventClassWindow, kEventWindowClose },
@@ -525,7 +640,8 @@ OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rec
 
 	*newWindow = NULL;
 
-	if (!rect || rect->right <= rect->left || rect->bottom <= rect->top)
+	// A NULL rectangle crashes the system's own function: it is an error here
+	if (!rect)
 		return paramErr;
 
 	uint32_t style;
@@ -533,6 +649,12 @@ OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rec
 
 	if (status != noErr)
 		return status;
+	status = checkAttributesOfClass(cls, attr);
+	if (status != noErr)
+		return status;
+#ifdef __LP64__
+	attr |= automaticAttributesOfClass(cls);
+#endif
 
 	if (!g_eventProcRegistered)
 	{
@@ -540,7 +662,11 @@ OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rec
 		_CGSSetWindowEventProc(cgsWindowEvent, NULL);
 	}
 
-	CGRect frame = CGRectMake(rect->left, rect->top, rect->right - rect->left, rect->bottom - rect->top);
+	// QUIRK: a rectangle with no area (or turned around) makes a window, not an error. Not documented. Evidence:
+	// black-box observation on macOS 26.7.3 x86_64 (tier 2, probe-windows64.c); Mojave not observed (the window
+	// system was not available to it). The window system gets at least one pixel.
+	// Test: test_quirk_empty_window_rect in tests/src/carbon_windows.c
+	CGRect frame = CGRectMake(rect->left, rect->top, MAX(1, rect->right - rect->left), MAX(1, rect->bottom - rect->top));
 	CGSRegionRef region = NULL;
 	CGSWindowID wid = 0;
 
@@ -571,13 +697,15 @@ OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rec
 
 #ifndef __LP64__
 	// The window's port holds its pixels: transparent for an overlay, white otherwise
-	if (NewGWorld(&window->port, 0, &(Rect) { 0, 0, rect->bottom - rect->top, rect->right - rect->left }, NULL, NULL, 0) == noErr)
+	short portHeight = (short) frame.size.height, portWidth = (short) frame.size.width;
+
+	if (NewGWorld(&window->port, 0, &(Rect) { 0, 0, portHeight, portWidth }, NULL, NULL, 0) == noErr)
 	{
 		PixMapHandle pixMap = GetPortPixMap(window->port);
 
 		if (cls != kOverlayWindowClass && pixMap && LockPixels(pixMap))
 		{
-			memset(GetPixBaseAddr(pixMap), 0xFF, GetPixRowBytes(pixMap) * (rect->bottom - rect->top));
+			memset(GetPixBaseAddr(pixMap), 0xFF, GetPixRowBytes(pixMap) * portHeight);
 			UnlockPixels(pixMap);
 		}
 		QDPortSetGlobalOrigin(window->port, rect->left, rect->top);
@@ -635,6 +763,11 @@ void DisposeWindow(WindowRef window)
 		return;
 
 	HideWindow(window);
+
+	// QUIRK: disposing of a window sends it kEventWindowClosed. Not documented for DisposeWindow(). Evidence:
+	// black-box observation on macOS 26.7.3 x86_64 (tier 2, probe-windows64.c); Mojave not observed.
+	// Test: test_quirk_dispose_sends_closed in tests/src/carbon_windows.c
+	sendWindowEvent(window, kEventWindowClosed, NULL);
 
 	// With the window gone the one behind it is the active one
 	bool wasActive = window == g_activeWindow;
@@ -890,8 +1023,13 @@ OSStatus SetWindowTitleWithCFString(WindowRef window, CFStringRef title)
 {
 	if (!IsValidWindowPtr(window))
 		return errInvalidWindowPtr;
+	// QUIRK: a NULL title is an error that leaves the title as it was. Not documented. Evidence: black-box
+	// observation on macOS 26.7.3 x86_64 (tier 2, probe-windows64.c); Mojave not observed.
+	// Test: test_quirk_null_window_title in tests/src/carbon_windows.c
+	if (!title)
+		return paramErr;
 
-	CFStringRef copy = title ? CFStringCreateCopy(NULL, title) : NULL;
+	CFStringRef copy = CFStringCreateCopy(NULL, title);
 
 	if (window->title)
 		CFRelease(window->title);
@@ -920,9 +1058,9 @@ OSStatus SetWindowProperty(WindowRef window, OSType propertyCreator, OSType prop
 {
 	if (!IsValidWindowPtr(window))
 		return errInvalidWindowPtr;
-	if (propertySize && !propertyBuffer)
-		return paramErr;
-
+	// QUIRK: a property of a size with no buffer is accepted, and holds zeros. Not documented. Evidence:
+	// black-box observation on macOS 26.7.3 x86_64 (tier 2, probe-windows64.c); Mojave not observed.
+	// Test: test_quirk_window_property_edges in tests/src/carbon_windows.c
 	struct WindowProperty* property = malloc(sizeof(*property) + propertySize);
 
 	if (!property)
@@ -931,7 +1069,12 @@ OSStatus SetWindowProperty(WindowRef window, OSType propertyCreator, OSType prop
 	property->tag = propertyTag;
 	property->size = propertySize;
 	if (propertySize)
-		memcpy(property->data, propertyBuffer, propertySize);
+	{
+		if (propertyBuffer)
+			memcpy(property->data, propertyBuffer, propertySize);
+		else
+			memset(property->data, 0, propertySize);
+	}
 
 	// A property that is already there is replaced
 	for (struct WindowProperty** p = &window->properties; *p; p = &(*p)->next)
@@ -968,15 +1111,20 @@ OSStatus GetWindowProperty(WindowRef window, OSType propertyCreator, OSType prop
 
 	if (!property)
 		return errWindowPropertyNotFound;
+	// QUIRK: a buffer smaller than the property is not an error: it gets the first bytes of the property and
+	// actualSize the whole size, unless there is no actualSize to tell it with (paramErr). Not documented
+	// this way. Evidence: black-box observation on macOS 26.7.3 x86_64 (tier 2, probe-windows64.c); Mojave
+	// not observed.
+	// Test: test_quirk_window_property_edges in tests/src/carbon_windows.c
+	if (bufferSize < property->size && !actualSize)
+		return paramErr;
 	if (actualSize)
 		*actualSize = property->size;
-	if (bufferSize < property->size)
-		return buffersTooSmall;
 	if (property->size)
 	{
 		if (!propertyBuffer)
 			return paramErr;
-		memcpy(propertyBuffer, property->data, property->size);
+		memcpy(propertyBuffer, property->data, MIN(bufferSize, property->size));
 	}
 	return noErr;
 }
@@ -1011,15 +1159,16 @@ OSStatus RemoveWindowProperty(WindowRef window, OSType propertyCreator, OSType p
 			return noErr;
 		}
 	}
-	return errWindowPropertyNotFound;
+	// QUIRK: removing a property the window does not have is not an error. Evidence: black-box observation on
+	// macOS 26.7.3 x86_64 (tier 2, probe-windows64.c); Mojave not observed.
+	// Test: test_quirk_window_property_edges in tests/src/carbon_windows.c
+	return noErr;
 }
 
 #pragma mark Position and size
 
-// The structure region is the content with the title bar the window system adds; its height is
-// that of a standard title bar, and none for the windows that have no frame
-#define kTitleBarHeight 22
-
+// The structure region is the content with the frame the window system adds (frameOfClass()); the title
+// bar is its top part
 static bool hasTitleBar(WindowRef window)
 {
 	switch (window->windowClass)
@@ -1027,9 +1176,7 @@ static bool hasTitleBar(WindowRef window)
 		case kDocumentWindowClass:
 		case kFloatingWindowClass:
 		case kUtilityWindowClass:
-		case kModalWindowClass:
 		case kMovableModalWindowClass:
-		case kAlertWindowClass:
 		case kMovableAlertWindowClass:
 			return !(window->attributes & kWindowNoTitleBarAttribute);
 		default:
@@ -1039,10 +1186,17 @@ static bool hasTitleBar(WindowRef window)
 
 OSStatus GetWindowBounds(WindowRef window, WindowRegionCode regionCode, Rect* globalBounds)
 {
+	// QUIRK: a NULL window is paramErr here, not errInvalidWindowPtr. Evidence: black-box observation on
+	// macOS 26.7.3 x86_64 (tier 2, probe-windows64.c); Mojave not observed.
+	// Test: test_quirk_get_window_bounds_null_window in tests/src/carbon_windows.c
+	if (!window)
+		return paramErr;
 	if (!IsValidWindowPtr(window))
 		return errInvalidWindowPtr;
 	if (!globalBounds)
 		return paramErr;
+
+	Rect frame = frameOfClass(window->windowClass, window->attributes);
 
 	switch (regionCode)
 	{
@@ -1051,14 +1205,13 @@ OSStatus GetWindowBounds(WindowRef window, WindowRegionCode regionCode, Rect* gl
 			*globalBounds = window->content;
 			return noErr;
 		case kWindowStructureRgn:
-			*globalBounds = window->content;
-			if (hasTitleBar(window))
-				globalBounds->top -= kTitleBarHeight;
+			*globalBounds = (Rect) { window->content.top - frame.top, window->content.left - frame.left,
+				window->content.bottom + frame.bottom, window->content.right + frame.right };
 			return noErr;
 		case kWindowTitleBarRgn:
 			if (!hasTitleBar(window))
 				return errWindowRegionCodeInvalid;
-			*globalBounds = (Rect) { window->content.top - kTitleBarHeight, window->content.left, window->content.top, window->content.right };
+			*globalBounds = (Rect) { window->content.top - frame.top, window->content.left, window->content.top, window->content.right };
 			return noErr;
 		default:
 			return errWindowRegionCodeInvalid;
@@ -1120,9 +1273,12 @@ OSStatus SetWindowBounds(WindowRef window, WindowRegionCode regionCode, const Re
 		case kWindowGlobalPortRgn:
 			break;
 		case kWindowStructureRgn:
-			if (hasTitleBar(window))
-				content.top += kTitleBarHeight;
+		{
+			Rect frame = frameOfClass(window->windowClass, window->attributes);
+
+			content = (Rect) { content.top + frame.top, content.left + frame.left, content.bottom - frame.bottom, content.right - frame.right };
 			break;
+		}
 		default:
 			return errWindowRegionCodeInvalid;
 	}
@@ -1136,7 +1292,7 @@ OSStatus MoveWindowStructure(WindowRef window, SInt16 hGlobal, SInt16 vGlobal)
 
 	Rect content = window->content;
 
-	OffsetRect(&content, hGlobal - content.left, vGlobal + (hasTitleBar(window) ? kTitleBarHeight : 0) - content.top);
+	OffsetRect(&content, hGlobal - content.left, vGlobal + frameOfClass(window->windowClass, window->attributes).top - content.top);
 	return applyBounds(window, &content);
 }
 
@@ -1249,7 +1405,6 @@ static OSStatus windowDefaultHandler(EventHandlerCallRef call, EventRef event, v
 			// A window with the standard handler closes itself
 			if (window->attributes & kWindowStandardHandlerAttribute)
 			{
-				sendWindowEvent(window, kEventWindowClosed, NULL);
 				DisposeWindow(window);
 				return noErr;
 			}

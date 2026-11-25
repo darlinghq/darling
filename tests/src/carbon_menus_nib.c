@@ -103,7 +103,7 @@ static const char kObjects[] =
 	"    <object class=\"IBCarbonWindow\" id=\"40\">\n"
 	"      <string name=\"title\">Fixture</string>\n"
 	"      <string name=\"windowRect\">50 60 250 360</string>\n"
-	"      <int name=\"carbonWindowClass\">2</int>\n"
+	"      <int name=\"carbonWindowClass\">5</int>\n"
 	"      <boolean name=\"isResizable\">TRUE</boolean>\n"
 	"    </object>\n"
 	"  </array>\n"
@@ -298,7 +298,7 @@ static void test_nib(CFBundleRef bundle)
 		CFStringRef title = NULL;
 
 		CHECK_EQ(GetWindowClass(window, &windowClass), noErr);
-		CHECK_EQ(windowClass, kMovableAlertWindowClass);
+		CHECK_EQ(windowClass, kFloatingWindowClass);
 		CHECK_EQ(GetWindowAttributes(window, &attributes), noErr);
 		CHECK(attributes & kWindowResizableAttribute);
 		CHECK(!(attributes & kWindowCloseBoxAttribute));
