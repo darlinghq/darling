@@ -883,7 +883,9 @@ void ShowWindow(WindowRef window)
 	// invalidation of a shown window). Not documented. Evidence: black-box observation on Mojave 10.14.4 i386
 	// (tier 2, mj.c).
 	// Test: test_quirk_window_events_32bit in tests/src/carbon_windows.c
-	if (!window->updatePending && !(window->attributes & kWindowNoUpdatesAttribute))
+	if (window->attributes & kWindowNoUpdatesAttribute)
+		scheduleUpdate(window);
+	else if (!window->updatePending)
 	{
 		window->updatePending = true;
 		postWindowEvent(window, kEventWindowPaint, NULL);
