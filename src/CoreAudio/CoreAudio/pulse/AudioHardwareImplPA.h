@@ -72,6 +72,11 @@ public:
 	// All currently-known dynamically-discovered device AudioObjectIDs
 	// (does not include the 3 fixed role IDs +1/+2/+3).
 	std::vector<AudioObjectID> allDeviceIds() const;
+
+	// The device that PulseAudio's default sink (or source) is, or kAudioObjectUnknown when it is not known.
+	AudioObjectID defaultDeviceId(bool input);
+	// Makes the device the default sink (or source) of PulseAudio.
+	OSStatus setDefaultDevice(AudioObjectID device, bool input);
 protected:
 	AudioHardwareStream* createStream(AudioDeviceIOProc callback, void* clientData) override;
 	bool validateFormat(const AudioStreamBasicDescription* asbd) const override;

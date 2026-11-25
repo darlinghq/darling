@@ -50,6 +50,35 @@ static void paSourceVolumeCB(pa_context*, const pa_source_info* info, int eol, v
 		dispatch_semaphore_signal(query->done);
 }
 
+struct PAMuteQuery
+{
+	bool muted;
+	dispatch_semaphore_t done;
+};
+
+static void paSinkMuteCB(pa_context*, const pa_sink_info* info, int eol, void* userdata)
+{
+	PAMuteQuery* query = static_cast<PAMuteQuery*>(userdata);
+	if (info)
+		query->muted = info->mute != 0;
+	if (eol)
+		dispatch_semaphore_signal(query->done);
+}
+
+static void paSourceMuteCB(pa_context*, const pa_source_info* info, int eol, void* userdata)
+{
+	PAMuteQuery* query = static_cast<PAMuteQuery*>(userdata);
+	if (info)
+		query->muted = info->mute != 0;
+	if (eol)
+		dispatch_semaphore_signal(query->done);
+}
+
+static void paMuteSetCB(pa_context*, int, void* userdata)
+{
+	dispatch_semaphore_signal(static_cast<dispatch_semaphore_t>(userdata));
+}
+
 OSStatus AudioHardwareImplPADevice::getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 	const void* inQualifierData, UInt32* ioDataSize, void* outData)
 {
@@ -87,6 +116,48 @@ OSStatus AudioHardwareImplPADevice::getPropertyData(const AudioObjectPropertyAdd
 				}
 			}
 			*ioDataSize = sizeof(AudioBufferList);
+			return kAudioHardwareNoError;
+		}
+		case kAudioDevicePropertyMute:
+		{
+			// Only the side of the device that exists can be muted: an output of an output device.
+			if (inAddress->mScope != (m_isInput ? kAudioDevicePropertyScopeInput : kAudioDevicePropertyScopeOutput))
+				return kAudioHardwareUnknownPropertyError;
+			if (UInt32* v = static_cast<UInt32*>(outData); v && *ioDataSize >= sizeof(UInt32))
+			{
+				if (onPAQueue())
+				{
+					*v = 0;
+					*ioDataSize = sizeof(UInt32);
+					return kAudioHardwareNoError;
+				}
+
+				PAMuteQuery query = { false, dispatch_semaphore_create(0) };
+				PAMuteQuery* queryPtr = &query;
+				__block pa_operation* op = nullptr;
+				const char* name = m_paName.c_str();
+				const bool isInput = m_isInput;
+
+				getPAContext(^(pa_context* ctx) {
+					if (ctx)
+						op = isInput ? pa_context_get_source_info_by_name(ctx, name, paSourceMuteCB, queryPtr)
+						             : pa_context_get_sink_info_by_name(ctx, name, paSinkMuteCB, queryPtr);
+					if (!op)
+						dispatch_semaphore_signal(queryPtr->done);
+				});
+
+				dispatch_semaphore_wait(query.done, dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC));
+				syncPA(^{
+					if (op)
+					{
+						pa_operation_cancel(op);
+						pa_operation_unref(op);
+					}
+				});
+				dispatch_release(query.done);
+				*v = query.muted ? 1 : 0;
+			}
+			*ioDataSize = sizeof(UInt32);
 			return kAudioHardwareNoError;
 		}
 		case kAudioDevicePropertyVolumeScalar:
@@ -173,6 +244,41 @@ OSStatus AudioHardwareImplPADevice::setPropertyData(const AudioObjectPropertyAdd
 		});
 
 		notifyPropertyChanged(kAudioDevicePropertyVolumeScalar);
+		return kAudioHardwareNoError;
+	}
+
+	if (inAddress->mSelector == kAudioDevicePropertyMute)
+	{
+		if (inDataSize != sizeof(UInt32))
+			return kAudioHardwareBadPropertySizeError;
+		if (inAddress->mScope != (m_isInput ? kAudioDevicePropertyScopeInput : kAudioDevicePropertyScopeOutput))
+			return kAudioHardwareUnknownPropertyError;
+
+		const int mute = *static_cast<const UInt32*>(inData) != 0;
+		const char* name = m_paName.c_str();
+		const bool isInput = m_isInput;
+
+		// Waits until the server has applied it, so that reading the mute back gives the new state.
+		dispatch_semaphore_t done = dispatch_semaphore_create(0);
+		__block pa_operation* op = nullptr;
+		getPAContext(^(pa_context* ctx) {
+			if (ctx)
+				op = isInput ? pa_context_set_source_mute_by_name(ctx, name, mute, paMuteSetCB, done)
+				             : pa_context_set_sink_mute_by_name(ctx, name, mute, paMuteSetCB, done);
+			if (!op)
+				dispatch_semaphore_signal(done);
+		});
+		dispatch_semaphore_wait(done, dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC));
+		syncPA(^{
+			if (op)
+			{
+				pa_operation_cancel(op);
+				pa_operation_unref(op);
+			}
+		});
+		dispatch_release(done);
+
+		notifyPropertyChanged(kAudioDevicePropertyMute);
 		return kAudioHardwareNoError;
 	}
 
