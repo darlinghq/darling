@@ -89,6 +89,9 @@ OSStatus _HICreateWindowFromNibDescription(CFDictionaryRef description, WindowRe
 	if (nibFlag(description, CFSTR("standardHandler"), true))
 		attributes |= kWindowStandardHandlerAttribute;
 
+	// The windows of a nib are compositing windows when the nib says so; in 64-bit they all are
+	if (nibFlag(description, CFSTR("compositing"), false))
+		attributes |= kWindowCompositingAttribute;
 #ifdef __LP64__
 	attributes |= kWindowCompositingAttribute;
 #endif

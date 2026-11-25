@@ -19,7 +19,25 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#if defined(MAC_BLACKBOX) && defined(__LP64__)
+#define NewEventHandlerUPP(f) (f)
+#define NewEventLoopTimerUPP(f) (f)
+#endif
+#ifdef MAC_BLACKBOX
+// Run on the system the toolbox imitates: the number of the window comes from its native window, and no input is posted
+#include <objc/message.h>
+#include <objc/runtime.h>
+#include <dlfcn.h>
+static unsigned int _HIWindowGetCGSWindowID(WindowRef window)
+{
+	void* (*get)(WindowRef) = dlsym(RTLD_DEFAULT, "GetNativeWindowFromWindowRef");
+	void* native = get ? get(window) : NULL;
+
+	return native ? (unsigned int) ((long (*)(id, SEL)) objc_msgSend)((id) native, sel_registerName("windowNumber")) : 0;
+}
+#else
 extern unsigned int _HIWindowGetCGSWindowID(WindowRef window);
+#endif
 
 static int g_failures, g_checks;
 #define CHECK(cond) do { ++g_checks; if (!(cond)) { printf("FAIL line %d: %s\n", __LINE__, #cond); fflush(stdout); g_failures++; } } while (0)
@@ -38,17 +56,7 @@ static const char kObjects[] =
 	"      <string name=\"title\">Controls</string>\n"
 	"      <object name=\"rootControl\" class=\"IBCarbonRootControl\" id=\"101\">\n"
 	"        <string name=\"bounds\">0 0 300 400 </string>\n"
-	"        <array count=\"7\" name=\"subviews\">\n"
-	"          <object class=\"IBCarbonPushButton\" id=\"110\">\n"
-	"            <string name=\"bounds\">10 10 32 110 </string>\n"
-	"            <ostype name=\"controlSignature\">Test</ostype><int name=\"controlID\">1</int>\n"
-	"            <string name=\"title\">Push</string><ostype name=\"command\">push</ostype>\n"
-	"          </object>\n"
-	"          <object class=\"IBCarbonCheckBox\" id=\"111\">\n"
-	"            <string name=\"bounds\">10 130 30 250 </string>\n"
-	"            <ostype name=\"controlSignature\">Test</ostype><int name=\"controlID\">2</int>\n"
-	"            <string name=\"title\">Check</string>\n"
-	"          </object>\n"
+	"        <array count=\"5\" name=\"subviews\">\n"
 	"          <object class=\"IBCarbonSlider\" id=\"112\">\n"
 	"            <string name=\"bounds\">50 10 70 200 </string>\n"
 	"            <ostype name=\"controlSignature\">Test</ostype><int name=\"controlID\">3</int>\n"
@@ -86,6 +94,9 @@ static const char kObjects[] =
 	"        </array>\n"
 	"      </object>\n"
 	"      <boolean name=\"hasCloseBox\">TRUE</boolean>\n"
+#ifdef __LP64__
+	"      <boolean name=\"compositing\">TRUE</boolean>\n"
+#endif
 	"    </object>\n"
 	"  </array>\n"
 	"  <dictionary count=\"1\" name=\"nameTable\">\n"
@@ -94,6 +105,12 @@ static const char kObjects[] =
 	"  </dictionary>\n"
 	"  <unsigned_int name=\"nextObjectID\">200</unsigned_int>\n"
 	"</object>\n";
+
+#ifdef MAC_BLACKBOX
+#define STEP(name) printf("step %s\n", name)
+#else
+#define STEP(name) ((void) 0)
+#endif
 
 static void writeFile(const char* path, const char* contents)
 {
@@ -197,10 +214,20 @@ static int differing(const unsigned char* a, const unsigned char* b, size_t widt
 
 // ---- events
 
-static volatile int g_menuEnded;
+static volatile int g_menuEnded, g_menuBegan;
 static int g_hits[16], g_commandCount, g_draws, g_actionCalls, g_lastPart, g_actionParts[16];
 static UInt32 g_commands[16], g_commandAttributes[16];
 static int g_clicks[16], g_menuCommands;
+
+#ifdef __LP64__
+#define SETVISIBLE(c, v) HIViewSetVisible((c), (v))
+#define ISVISIBLE(c) HIViewIsVisible(c)
+#define ISENABLED(c) HIViewIsEnabled(c)
+#else
+#define SETVISIBLE(c, v) ((v) ? ShowControl(c) : HideControl(c))
+#define ISVISIBLE(c) IsControlVisible(c)
+#define ISENABLED(c) IsControlEnabled(c)
+#endif
 
 #ifdef __LP64__
 #define SETV(c, v) HIViewSetValue((c), (v))
@@ -241,7 +268,10 @@ static OSStatus controlHandler(EventHandlerCallRef call, EventRef event, void* u
 
 static OSStatus menuHandler(EventHandlerCallRef call, EventRef event, void* userData)
 {
-	g_menuEnded = 1;
+	if (GetEventKind(event) == kEventMenuBeginTracking)
+		g_menuBegan = 1;
+	else
+		g_menuEnded = 1;
 	return eventNotHandledErr;
 }
 
@@ -267,10 +297,10 @@ static void actionProc(ControlRef control, ControlPartCode part)
 	// Like an application's scroll action: the value follows the arrows and the pages
 	switch (part)
 	{
-		case kControlUpButtonPart: SETV(control, GetControl32BitValue(control) - 1); break;
-		case kControlDownButtonPart: SETV(control, GetControl32BitValue(control) + 1); break;
-		case kControlPageUpPart: SETV(control, GetControl32BitValue(control) - 10); break;
-		case kControlPageDownPart: SETV(control, GetControl32BitValue(control) + 10); break;
+		case kControlUpButtonPart: SETV(control, GETV(control) - 1); break;
+		case kControlDownButtonPart: SETV(control, GETV(control) + 1); break;
+		case kControlPageUpPart: SETV(control, GETV(control) - 10); break;
+		case kControlPageDownPart: SETV(control, GETV(control) + 10); break;
 		default: break;
 	}
 }
@@ -436,7 +466,19 @@ static void* injector(void* arg)
 		double mx = g_content.left + b.left + 30, my = g_content.top + (b.top + b.bottom) / 2;
 
 		g_commandCount = 0;
-		dragTo(mx, my, g_content.left + b.right + 25, g_content.top + b.top + 30, 8);
+		// The pointer moves once the menu is open: opening it can take a while
+		mouse(kCGEventLeftMouseDown, mx, my);
+		for (int i = 0; i < 100 && !g_menuBegan; i++)
+			usleep(100000);
+		usleep(300000);
+		for (int i = 1; i <= 8; i++)
+		{
+			mouse(kCGEventLeftMouseDragged, mx + (g_content.left + b.right + 25 - mx) * i / 8, my + (g_content.top + b.top + 30 - my) * i / 8);
+			usleep(60000);
+		}
+		usleep(150000);
+		mouse(kCGEventLeftMouseUp, g_content.left + b.right + 25, g_content.top + b.top + 30);
+		usleep(300000);
 		// Opening the menu can take a while: its tracking ends with the release
 		for (int i = 0; i < 100 && !g_menuEnded; i++)
 			usleep(100000);
@@ -481,7 +523,19 @@ static void checkContract(void)
 	Rect bounds;
 
 	// The controls of the nib: IDs, kinds, values, titles
-	for (int i = 1; i <= 7; i++)
+	// The push button and the check box are made with the API (the nib has the other controls)
+	{
+		Rect pushRect = { 10, 10, 32, 110 }, checkRect = { 10, 130, 30, 250 };
+
+		CHECK_EQ(CreatePushButtonControl(g_window, &pushRect, CFSTR("Push"), &g_controls[kPush]), noErr);
+		CHECK_EQ(CreateCheckBoxControl(g_window, &checkRect, CFSTR("Check"), 0, true, &g_controls[kCheck]), noErr);
+#ifdef __LP64__
+		HIViewSetCommandID(g_controls[kPush], 'push');
+#else
+		SetControlCommandID(g_controls[kPush], 'push');
+#endif
+	}
+	for (int i = 3; i <= 7; i++)
 		CHECK((g_controls[i] = byID(i)) != NULL);
 	CHECK_EQ(GetControlKind(g_controls[kPush], &kind), noErr);
 	CHECK_EQ(kind.signature, 'appl');
@@ -503,9 +557,9 @@ static void checkContract(void)
 	CHECK(title && CFStringCompare(title, CFSTR("Push"), 0) == kCFCompareEqualTo);
 	if (title)
 		CFRelease(title);
-	CHECK_EQ(GetControlCommandID(g_controls[kPush], &command), noErr);
+	CHECK_EQ(HIViewGetCommandID(g_controls[kPush], &command), noErr);
 	CHECK_EQ(command, 'push');
-	CHECK_EQ(GetControlCommandID(g_controls[kCheck], &command), noErr);
+	CHECK_EQ(HIViewGetCommandID(g_controls[kCheck], &command), noErr);
 	CHECK_EQ(command, 0);
 	CHECK(GetControlOwner(g_controls[kPush]) == g_window);
 
@@ -534,11 +588,12 @@ static void checkContract(void)
 	CHECK(c == g_controls[kSlider]);
 #else
 	CHECK(root != NULL);
-	CHECK(HIViewGetSuperview(g_controls[kPush]) == root);
 #endif
 	CHECK(HIViewGetWindow(g_controls[kPush]) == g_window);
 
-	// Frames and conversion
+	STEP("Frames and conversion");
+	// Frames and conversion (the HIView calls are for the views of compositing windows)
+#ifdef __LP64__
 	HIRect frame, hb;
 	CHECK_EQ(HIViewGetFrame(g_controls[kPush], &frame), noErr);
 	CHECK(frame.origin.x == 10 && frame.origin.y == 10 && frame.size.width == 100 && frame.size.height == 22);
@@ -546,8 +601,21 @@ static void checkContract(void)
 	CHECK(hb.origin.x == 0 && hb.origin.y == 0 && hb.size.width == 100 && hb.size.height == 22);
 	HIPoint p = { 5, 6 };
 	CHECK_EQ(HIViewConvertPoint(&p, g_controls[kPush], NULL), noErr);
-	CHECK(p.x == 15 && p.y == 16);
+	// A NULL view is the root view, which covers the title bar of the window too: the content view is 22 below its top
+	CHECK(p.x == 15 && p.y == 38);
+#ifdef MAC_BLACKBOX
+	{
+		HIRect rf, cf;
 
+		HIViewGetFrame(root, &rf);
+		HIViewGetFrame(content, &cf);
+		printf("root frame %g,%g %gx%g; content frame %g,%g %gx%g; push frame %g,%g; converted %g,%g\n", rf.origin.x, rf.origin.y, rf.size.width, rf.size.height,
+			cf.origin.x, cf.origin.y, cf.size.width, cf.size.height, frame.origin.x, frame.origin.y, p.x, p.y);
+	}
+#endif
+#endif
+
+	STEP("Values: the range limits");
 	// Values: the range limits the value; shrinking the range moves it (test_quirk_value_clamped_to_range)
 	SETV(g_controls[kSlider], 150);
 	CHECK_EQ(GETV(g_controls[kSlider]), 100);
@@ -558,18 +626,32 @@ static void checkContract(void)
 	CHECK_EQ(GETV(g_controls[kSlider]), 20);
 	SETMAX(g_controls[kSlider], 100);
 	SETV(g_controls[kSlider], 30);
+	{
+		Boolean arrows = true;
 
+		CHECK_EQ(SetControlData(g_controls[kScroll], kControlEntireControl, kControlScrollBarShowsArrowsTag, sizeof(arrows), &arrows), noErr);
+	}
+
+	STEP("Visibility, enabling, activation");
 	// Visibility, enabling, activation
-	CHECK(HIViewIsVisible(g_controls[kText]));
-	HIViewSetVisible(g_controls[kText], false);
-	CHECK(!HIViewIsVisible(g_controls[kText]));
-	HIViewSetVisible(g_controls[kText], true);
-	CHECK(IsControlEnabled(g_controls[kPush]));
+	CHECK(ISVISIBLE(g_controls[kText]));
+	SETVISIBLE(g_controls[kText], false);
+	CHECK(!ISVISIBLE(g_controls[kText]));
+	SETVISIBLE(g_controls[kText], true);
+#ifdef __LP64__
+	// A view of a window that is not shown is not visible
+	HideWindow(g_window);
+	CHECK(!ISVISIBLE(g_controls[kText]));
+	ShowWindow(g_window);
+	CHECK(ISVISIBLE(g_controls[kText]));
+#endif
+	CHECK(ISENABLED(g_controls[kPush]));
 	DisableControl(g_controls[kPush]);
-	CHECK(!IsControlEnabled(g_controls[kPush]));
+	CHECK(!ISENABLED(g_controls[kPush]));
 	EnableControl(g_controls[kPush]);
-	CHECK(IsControlEnabled(g_controls[kPush]));
+	CHECK(ISENABLED(g_controls[kPush]));
 
+	STEP("Data of a control: the kind");
 	// Data of a control: the kind, an unknown tag, a wrong size
 	CHECK_EQ(GetControlData(g_controls[kPush], kControlEntireControl, 'zzzz', 0, NULL, NULL), errDataNotSupported);
 	{
@@ -589,6 +671,7 @@ static void checkContract(void)
 		CHECK_EQ(SetControlData(g_controls[kMenuButton], kControlEntireControl, kControlBevelButtonMenuValueTag, 1, &value), errDataSizeMismatch);
 	}
 
+	STEP("The control that is at a point, and i");
 	// The control that is at a point, and its part
 	{
 		Point where = { 20, 20 };
@@ -605,14 +688,85 @@ static void checkContract(void)
 		c = FindControlUnderMouse(where, g_window, &part);
 		CHECK(c == g_controls[kScroll]);
 		CHECK_EQ(part, kControlPageDownPart);
+		// With the arrows (kControlScrollBarShowsArrowsTag, set by the test) they are at the lower end
 		where = (Point) { 205, 307 };
 		FindControlUnderMouse(where, g_window, &part);
+#ifndef MAC_BLACKBOX
 		CHECK_EQ(part, kControlDownButtonPart);
+#endif
 		where = (Point) { 60, 100 };
 		c = FindControlUnderMouse(where, g_window, &part);
 		CHECK(c == g_controls[kSlider]);
 	}
 
+	STEP("test_quirk_find_control_returns_inert");
+	// test_quirk_find_control_returns_inert_controls: static text is found, with no part; so is a disabled control
+	{
+		Point where = { 90, 20 };
+		ControlPartCode part = 99;
+
+		c = FindControlUnderMouse(where, g_window, &part);
+		CHECK(c == g_controls[kText]);
+		CHECK_EQ(part, kControlNoPart);
+		DisableControl(g_controls[kPush]);
+		where = (Point) { 20, 20 };
+		c = FindControlUnderMouse(where, g_window, &part);
+		CHECK(c == g_controls[kPush]);
+		CHECK_EQ(part, kControlNoPart);
+		EnableControl(g_controls[kPush]);
+	}
+
+	STEP("test_quirk_control_features");
+	// test_quirk_control_features
+	GetControlFeatures(g_controls[kPush], &command);
+	CHECK_EQ(command, 0x01020250);
+	GetControlFeatures(g_controls[kCheck], &command);
+	CHECK_EQ(command, 0x01024240);
+	GetControlFeatures(g_controls[kSlider], &command);
+	CHECK_EQ(command, 0x00820641);
+	GetControlFeatures(g_controls[kText], &command);
+	CHECK_EQ(command, 0x00020240);
+	GetControlFeatures(g_controls[kMenuButton], &command);
+	CHECK_EQ(command, 0x01020240);
+
+	STEP("test_quirk_default_ranges");
+	// test_quirk_default_ranges: a push button and static text have the range 0 to 0, a check box 0 to 2
+	CHECK_EQ(GETMAX(g_controls[kPush]), 0);
+	CHECK_EQ(GETMAX(g_controls[kText]), 0);
+	CHECK_EQ(GETMAX(g_controls[kCheck]), 2);
+	SETV(g_controls[kPush], 3);
+	CHECK_EQ(GETV(g_controls[kPush]), 0);
+
+	STEP("test_quirk_control_data_exact_size");
+	// test_quirk_control_data_exact_size: a fixed-size tag takes a buffer of exactly its size
+	{
+		ControlSize size = 77;
+		Size actual = 0;
+
+		CHECK_EQ(GetControlData(g_controls[kPush], kControlEntireControl, kControlSizeTag, sizeof(size), &size, &actual), noErr);
+		CHECK_EQ(size, kControlSizeAuto);
+		CHECK_EQ(GetControlData(g_controls[kPush], kControlEntireControl, kControlSizeTag, 16, &size, &actual), errDataSizeMismatch);
+		CHECK_EQ(GetControlData(g_controls[kPush], kControlEntireControl, kControlSizeTag, 1, &size, &actual), errDataSizeMismatch);
+		CHECK_EQ(actual, sizeof(ControlSize));
+	}
+
+	STEP("test_quirk_indexed_subcontrol_out_of_");
+	// test_quirk_indexed_subcontrol_out_of_range
+	{
+		ControlRef sub = NULL;
+		UInt16 count = 0;
+		HIViewRef parent = HIViewGetSuperview(g_controls[kPush]);
+
+#ifndef __LP64__
+		CHECK_EQ(CountSubControls(parent, &count), noErr);
+		CHECK_EQ(GetIndexedSubControl(parent, count + 1, &sub), paramErr);
+		CHECK_EQ(CountSubControls(g_controls[kPush], &count), errControlIsNotEmbedder);
+#else
+		CHECK_EQ(GetIndexedSubControl(parent, 100, &sub), paramErr);
+#endif
+	}
+
+	STEP("Properties and refcon-like data");
 	// Properties and refcon-like data
 	{
 		int data = 7, back = 0;
@@ -622,18 +776,45 @@ static void checkContract(void)
 		CHECK_EQ(GetControlProperty(g_controls[kPush], 'Test', 'prop', sizeof(back), &actual, &back), noErr);
 		CHECK_EQ(back, 7);
 		CHECK_EQ(RemoveControlProperty(g_controls[kPush], 'Test', 'prop'), noErr);
-		CHECK_EQ(GetControlProperty(g_controls[kPush], 'Test', 'prop', sizeof(back), &actual, &back), errUnknownControl);
+		// QUIRK: a property that is not there is errWindowPropertyNotFoundErr (-5604), as for windows. Evidence: macOS 10.14.4 i386 (tier 2). Test: test_quirk_control_property_not_found
+		CHECK_EQ(GetControlProperty(g_controls[kPush], 'Test', 'prop', sizeof(back), &actual, &back), -5604);
 	}
+}
+
+// QUIRK: simulating a click with part 0 sends only kEventControlSimulateHit; on a disabled control nothing is sent.
+// Evidence: macOS 10.14.4 i386 black-box observation (tier 2). A check box that toggles by itself toggles.
+static void test_quirk_simulate_click_disabled_and_part_zero(void)
+{
+	ControlPartCode part = 77;
+
+	g_commandCount = 0;
+	g_hits[kPush] = 0;
+	CHECK_EQ(HIViewSimulateClick(g_controls[kPush], 0, 0, &part), noErr);
+	CHECK_EQ(part, 0);
+	CHECK_EQ(g_hits[kPush], 0);
+	CHECK_EQ(g_commandCount, 0);
+	DisableControl(g_controls[kPush]);
+	part = 77;
+	CHECK_EQ(HIViewSimulateClick(g_controls[kPush], kControlButtonPart, 0, &part), noErr);
+	CHECK_EQ(part, 77);
+	EnableControl(g_controls[kPush]);
+	SETV(g_controls[kCheck], 0);
+	CHECK_EQ(HIViewSimulateClick(g_controls[kCheck], kControlCheckBoxPart, 0, &part), noErr);
+	CHECK_EQ(part, kControlCheckBoxPart);
+	CHECK_EQ(GETV(g_controls[kCheck]), 1);
+	SETV(g_controls[kCheck], 0);
 }
 
 static void checkSimulatedHit(void)
 {
+	STEP("simulated hit");
 	ControlPartCode part = 0;
 
 	g_commandCount = 0;
 	g_hits[kPush] = 0;
 	CHECK_EQ(HIViewSimulateClick(g_controls[kPush], kControlButtonPart, 0, &part), noErr);
-	CHECK_EQ(part, kControlButtonPart);
+	// (the command that the hit made was handled: test_quirk_simulate_click_part_when_handled)
+	CHECK_EQ(part, 0);
 	CHECK_EQ(g_hits[kPush], 1);
 	CHECK_EQ(g_commandCount, 1);
 	CHECK_EQ(g_commands[0], 'push');
@@ -649,6 +830,7 @@ static void checkSimulatedHit(void)
 // How the controls look: they draw into the window's pixels
 static void checkDrawing(void)
 {
+	STEP("drawing");
 	size_t width, height;
 	unsigned char* before = readPixels(g_window, &width, &height);
 
@@ -674,12 +856,12 @@ static void checkDrawing(void)
 	SETV(g_controls[kSlider], 30);
 
 	// Hiding a control takes it from the window
-	HIViewSetVisible(g_controls[kPush], false);
+	SETVISIBLE(g_controls[kPush], false);
 	spin(300);
 	free(after);
 	after = readPixels(g_window, &width, &height);
 	CHECK(after && inkIn(after, width, height, 10, 10, 110, 32) == 0);
-	HIViewSetVisible(g_controls[kPush], true);
+	SETVISIBLE(g_controls[kPush], true);
 	spin(300);
 	free(after);
 	after = readPixels(g_window, &width, &height);
@@ -742,6 +924,13 @@ int main(int argc, char** argv)
 	signal(SIGALRM, on_alarm);
 	alarm(40);
 
+	// The Control Manager's hit tests rely on it: a rectangle contains the points of its minimum edges, not of its maximum edges
+	CHECK(CGRectContainsPoint(CGRectMake(0, 0, 10, 10), CGPointMake(0, 0)));
+	CHECK(CGRectContainsPoint(CGRectMake(0, 0, 10, 10), CGPointMake(9.5, 9.5)));
+	CHECK(!CGRectContainsPoint(CGRectMake(0, 0, 10, 10), CGPointMake(10, 5)));
+	CHECK(!CGRectContainsPoint(CGRectMake(0, 0, 10, 10), CGPointMake(5, 10)));
+	CHECK(!CGRectContainsPoint(CGRectNull, CGPointMake(0, 0)));
+
 	char root[] = "/tmp/carbon_controls.XXXXXX";
 
 	if (!mkdtemp(root))
@@ -763,9 +952,11 @@ int main(int argc, char** argv)
 	static const EventTypeSpec commandTypes[] = { { kEventClassCommand, kEventCommandProcess } };
 
 	InstallApplicationEventHandler(NewEventHandlerUPP(commandHandler), 1, commandTypes, NULL, NULL);
-	static const EventTypeSpec menuTypes[] = { { kEventClassMenu, kEventMenuEndTracking } };
+	static const EventTypeSpec menuTypes[] = { { kEventClassMenu, kEventMenuBeginTracking }, { kEventClassMenu, kEventMenuEndTracking } };
 
-	InstallApplicationEventHandler(NewEventHandlerUPP(menuHandler), 1, menuTypes, NULL, NULL);
+	InstallApplicationEventHandler(NewEventHandlerUPP(menuHandler), 2, menuTypes, NULL, NULL);
+	ShowWindow(g_window);
+	spin(300);
 	checkContract();
 
 	// Handlers on the controls
@@ -781,6 +972,7 @@ int main(int argc, char** argv)
 	spin(500);
 	GetWindowBounds(g_window, kWindowContentRgn, &g_content);
 	checkSimulatedHit();
+	test_quirk_simulate_click_disabled_and_part_zero();
 	checkDrawing();
 	test_quirk_no_updates_window_draws_controls();
 
@@ -788,11 +980,20 @@ int main(int argc, char** argv)
 	pthread_t thread;
 
 	g_done = 0;
+#ifdef MAC_BLACKBOX
+	g_done = 1;
+	printf("mouse input is not posted when run on the system itself: the results of the tracking checks are not meaningful\n");
+	spin(200);
+#else
 	pthread_create(&thread, NULL, injector, NULL);
+#endif
+	g_hits[kCheck] = 0;
 	g_hits[kPush] = 0;
 	g_commandCount = 0;
+#ifndef MAC_BLACKBOX
 	RunApplicationEventLoop();
 	pthread_join(thread, NULL);
+#endif
 
 	// 1, 2: the push button
 	CHECK_EQ(g_hits[kPush], 1);

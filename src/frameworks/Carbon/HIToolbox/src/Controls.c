@@ -85,6 +85,7 @@ struct OpaqueControlRef
 
 	CGRect frame;          // in the bounds of the superview
 	CGPoint boundsOrigin;
+	CGFloat structureTop;   // root views: the height of what the window's frame has above the content (compositing windows)
 	bool visible;
 	bool enabled;
 	bool activated;
@@ -106,6 +107,7 @@ struct OpaqueControlRef
 	UInt16 ticks;           // slider
 	bool horizontal;        // slider
 	bool autoToggle;        // check boxes and radio buttons
+	bool showsArrows;       // scroll bars
 	bool primary;           // group box
 	bool indeterminate;     // progress bar
 	// bevel buttons
@@ -171,8 +173,9 @@ static ControlRef newControl(int cls, CGRect frame)
 	c->enabled = true;
 	c->activated = true;
 	c->drawingEnabled = true;
-	c->max = 1;
-	c->size = kControlSizeNormal;
+	// QUIRK: the size of a control that was not given one is kControlSizeAuto. Not documented. Evidence: black-box
+	// observation on macOS 10.14.4 i386 (tier 2). Test: test_quirk_control_data_exact_size (the size tag)
+	c->size = kControlSizeAuto;
 	c->target = _HICreateEventTarget(NULL);
 	if (!c->target)
 	{
@@ -207,6 +210,13 @@ static CGRect windowFrame(ControlRef c)
 		r.origin.x += p->frame.origin.x - p->boundsOrigin.x;
 		r.origin.y += p->frame.origin.y - p->boundsOrigin.y;
 	}
+	// The root view of a compositing window covers the frame of the window too (its title bar); the coordinates of the
+	// window's content start below it
+	ControlRef top = c;
+
+	while (top->parent)
+		top = top->parent;
+	r.origin.y -= top->structureTop;
 	return r;
 }
 
@@ -366,20 +376,24 @@ HIViewRef HIViewGetFirstSubview(HIViewRef inView)
 	return isView(inView) ? inView->lastChild : NULL;
 }
 
+#ifndef __LP64__
 HIViewRef HIViewGetLastSubview(HIViewRef inView)
 {
 	return isView(inView) ? inView->firstChild : NULL;
 }
+#endif
 
 HIViewRef HIViewGetNextView(HIViewRef inView)
 {
 	return isView(inView) ? inView->prev : NULL;
 }
 
+#ifndef __LP64__
 HIViewRef HIViewGetPreviousView(HIViewRef inView)
 {
 	return isView(inView) ? inView->next : NULL;
 }
+#endif
 
 OSStatus HIViewSetZOrder(HIViewRef inView, HIViewZOrderOp inOp, HIViewRef inOther)
 {
@@ -440,7 +454,11 @@ OSStatus CreateRootControl(WindowRef inWindow, ControlRef* outControl)
 		return errRootAlreadyExists;
 
 	CGRect content = _HIWindowGetContentRect(inWindow);
-	ControlRef root = newControl(kClassRoot, CGRectMake(0, 0, content.size.width, content.size.height));
+	CGFloat structureTop = _HIWindowIsCompositing(inWindow) ? _HIWindowStructureTop(inWindow) : 0;
+	ControlRef root = newControl(kClassRoot, CGRectMake(0, 0, content.size.width, content.size.height + structureTop));
+
+	if (root)
+		root->structureTop = structureTop;
 
 	if (!root)
 		return memFullErr;
@@ -466,7 +484,7 @@ void _HIControlsWindowCreated(WindowRef window)
 	if (CreateRootControl(window, &root) != noErr)
 		return;
 
-	ControlRef content = newControl(kClassUserPane, root->frame);
+	ControlRef content = newControl(kClassUserPane, CGRectMake(0, root->structureTop, root->frame.size.width, root->frame.size.height - root->structureTop));
 
 	if (!content)
 		return;
@@ -535,12 +553,12 @@ void _HIControlsWindowResized(WindowRef window, int width, int height)
 
 	if (!root)
 		return;
-	root->frame.size = CGSizeMake(width, height);
+	root->frame.size = CGSizeMake(width, height + root->structureTop);
 	// The content view of a compositing window follows
 	for (ControlRef c = root->firstChild; c; c = c->next)
 	{
 		if (c->id.signature == kHIViewWindowContentID.signature && c->id.id == kHIViewWindowContentID.id)
-			c->frame = root->frame;
+			c->frame = CGRectMake(0, root->structureTop, width, height);
 	}
 }
 
@@ -702,8 +720,14 @@ OSStatus HIViewConvertPoint(HIPoint* ioPoint, HIViewRef inSourceView, HIViewRef 
 	if ((inSourceView && !isView(inSourceView)) || (inDestView && !isView(inDestView)))
 		return paramErr;
 
-	// The window's content is the coordinate system of a view that is NULL
+	// A NULL view is the root view of the window (the coordinates start at the top of the window's frame)
 	CGPoint p = *ioPoint;
+	WindowRef window = inSourceView ? inSourceView->window : (inDestView ? inDestView->window : NULL);
+	ControlRef root = window ? _HIWindowGetRootControl(window) : NULL;
+	CGFloat rootTop = root ? root->structureTop : 0;
+
+	if (!inSourceView)
+		p.y -= rootTop;
 
 	if (inSourceView)
 	{
@@ -719,6 +743,8 @@ OSStatus HIViewConvertPoint(HIPoint* ioPoint, HIViewRef inSourceView, HIViewRef 
 		p.x -= f.origin.x - inDestView->boundsOrigin.x;
 		p.y -= f.origin.y - inDestView->boundsOrigin.y;
 	}
+	if (!inDestView)
+		p.y += rootTop;
 	*ioPoint = p;
 	return noErr;
 }
@@ -817,17 +843,13 @@ OSStatus HIViewSetVisible(HIViewRef inView, Boolean inVisible)
 
 Boolean HIViewIsVisible(HIViewRef inView)
 {
-	return isView(inView) && inView->visible;
-}
-
-Boolean HIViewIsLatentVisible(HIViewRef inView)
-{
-	return isView(inView) && latentVisible(inView);
+	// A view is visible when it and its superviews are and the window is shown
+	return isView(inView) && latentVisible(inView) && (!inView->window || _HIWindowIsShown(inView->window));
 }
 
 Boolean IsControlVisible(ControlRef inControl)
 {
-	return HIViewIsVisible(inControl);
+	return isControl(inControl) && inControl->visible;
 }
 
 #ifndef __LP64__
@@ -869,10 +891,12 @@ OSStatus DisableControl(ControlRef inControl)
 	return HIViewSetEnabled(inControl, false);
 }
 
+#ifndef __LP64__
 Boolean IsControlEnabled(ControlRef inControl)
 {
 	return HIViewIsEnabled(inControl);
 }
+#endif
 
 OSStatus HIViewSetActivated(HIViewRef inView, Boolean inSetActivated)
 {
@@ -993,15 +1017,17 @@ static void valueChanged(ControlRef c)
 	changed(c);
 }
 
-SInt32 GetControl32BitValue(ControlRef theControl)
-{
-	return isControl(theControl) ? theControl->value : 0;
-}
-
 SInt32 HIViewGetValue(HIViewRef inView)
 {
-	return GetControl32BitValue(inView);
+	return isControl(inView) ? inView->value : 0;
 }
+
+#ifndef __LP64__
+SInt32 GetControl32BitValue(ControlRef theControl)
+{
+	return HIViewGetValue(theControl);
+}
+#endif
 
 static SInt32 clampValue(ControlRef c, SInt32 v)
 {
@@ -1061,7 +1087,7 @@ OSStatus HIViewSetMaximum(HIViewRef inView, SInt32 inValue)
 
 SInt16 GetControlValue(ControlRef theControl)
 {
-	return (SInt16) GetControl32BitValue(theControl);
+	return (SInt16) HIViewGetValue(theControl);
 }
 
 void SetControlValue(ControlRef theControl, SInt16 newValue)
@@ -1121,6 +1147,7 @@ void SetControlReference(ControlRef theControl, SInt32 data)
 }
 #endif
 
+#ifndef __LP64__
 SInt32 GetControl32BitMinimum(ControlRef theControl)
 {
 	return HIViewGetMinimum(theControl);
@@ -1140,6 +1167,7 @@ void SetControl32BitMaximum(ControlRef theControl, SInt32 newMaximum)
 {
 	HIViewSetMaximum(theControl, newMaximum);
 }
+#endif
 
 // ------------------------------------------------------------------------------------------------
 // Title, command, properties, kind
@@ -1197,6 +1225,7 @@ OSStatus SetControlCommandID(ControlRef inControl, UInt32 inCommandID)
 	return noErr;
 }
 
+#ifndef __LP64__
 OSStatus GetControlCommandID(ControlRef inControl, UInt32* outCommandID)
 {
 	if (!isControl(inControl) || !outCommandID)
@@ -1204,6 +1233,7 @@ OSStatus GetControlCommandID(ControlRef inControl, UInt32* outCommandID)
 	*outCommandID = inControl->command;
 	return noErr;
 }
+#endif
 
 OSStatus HIViewSetCommandID(HIViewRef inView, UInt32 inCommandID)
 {
@@ -1212,7 +1242,10 @@ OSStatus HIViewSetCommandID(HIViewRef inView, UInt32 inCommandID)
 
 OSStatus HIViewGetCommandID(HIViewRef inView, UInt32* outCommandID)
 {
-	return GetControlCommandID(inView, outCommandID);
+	if (!isView(inView) || !outCommandID)
+		return paramErr;
+	*outCommandID = inView->command;
+	return noErr;
 }
 
 OSStatus SetControlProperty(ControlRef control, OSType creator, OSType tag, ByteCount size, const void* data)
@@ -1264,7 +1297,9 @@ OSStatus GetControlProperty(ControlRef control, OSType creator, OSType tag, Byte
 			return noErr;
 		}
 	}
-	return errUnknownControl;
+	// QUIRK: a property that is not there is errWindowPropertyNotFound, as for windows. Not documented. Evidence:
+	// black-box observation on macOS 10.14.4 i386 (tier 2). Test: test_quirk_control_property_not_found
+	return errWindowPropertyNotFound;
 }
 
 OSStatus RemoveControlProperty(ControlRef control, OSType creator, OSType tag)
@@ -1282,7 +1317,7 @@ OSStatus RemoveControlProperty(ControlRef control, OSType creator, OSType tag)
 			return noErr;
 		}
 	}
-	return errUnknownControl;
+	return errWindowPropertyNotFound;
 }
 
 static const struct { int cls; OSType kind; } kKinds[] = {
@@ -1308,20 +1343,27 @@ OSStatus GetControlKind(ControlRef inControl, ControlKind* outControlKind)
 	return errUnknownControl;
 }
 
+// QUIRK: the feature bits GetControlFeatures() reports for the standard controls are the ones of the system's
+// controls: push button 0x01020250, check box 0x01024240, radio button 0x01024a40, slider and scroll bar 0x00820641,
+// static text 0x00020240, bevel button 0x01020240; a user pane has the features it was made with and data access.
+// Not documented as a list. Evidence: black-box observation on macOS 10.14.4 i386 (tier 2, the probe of the Control
+// Manager, CHECK in test_quirk_control_features of tests/src/carbon_controls.c).
+// Test: test_quirk_control_features
 static UInt32 featuresOf(ControlRef c)
 {
 	switch (c->cls)
 	{
 		case kClassRoot: return kControlSupportsEmbedding;
-		case kClassUserPane: return c->features;
+		case kClassUserPane: return c->features | kControlSupportsDataAccess;
 		case kClassGroupBox: return kControlSupportsEmbedding | kControlSupportsDataAccess;
-		case kClassPushButton:
-		case kClassBevelButton:
-		case kClassPopupButton: return kControlSupportsDataAccess | kControlSupportsClickActivation;
-		case kClassCheckBox:
-		case kClassRadioButton: return kControlSupportsDataAccess | kControlAutoToggles | kControlSupportsClickActivation;
+		case kClassPushButton: return 0x01020250;
+		case kClassBevelButton: return 0x01020240;
+		case kClassPopupButton: return 0x01020240;
+		case kClassCheckBox: return 0x01024240;
+		case kClassRadioButton: return 0x01024a40;
 		case kClassSlider:
-		case kClassScrollBar: return kControlSupportsDataAccess | kControlHandlesTracking | kControlSupportsLiveFeedback | kControlSupportsClickActivation;
+		case kClassScrollBar: return 0x00820641;
+		case kClassStaticText: return 0x00020240;
 		default: return kControlSupportsDataAccess;
 	}
 }
@@ -1338,14 +1380,27 @@ OSStatus GetControlFeatures(ControlRef inControl, UInt32* outFeatures)
 // Embedding
 // ------------------------------------------------------------------------------------------------
 
+#ifndef __LP64__
 OSStatus EmbedControl(ControlRef inControl, ControlRef inContainer)
 {
 	if (!isControl(inControl) || !isControl(inContainer))
 		return paramErr;
 	if (!canEmbed(inContainer))
 		return errControlIsNotEmbedder;
-	return HIViewAddSubview(inContainer, inControl);
+
+	// The control stays where it is in the window: its frame is made relative to the container
+	CGRect window = windowFrame(inControl);
+	CGRect container = windowFrame(inContainer);
+	OSStatus status = HIViewAddSubview(inContainer, inControl);
+
+	if (status == noErr)
+	{
+		inControl->frame.origin.x = window.origin.x - container.origin.x + inContainer->boundsOrigin.x;
+		inControl->frame.origin.y = window.origin.y - container.origin.y + inContainer->boundsOrigin.y;
+	}
+	return status;
 }
+#endif
 
 // The view that holds the controls made in a window: the content view of a compositing window, the root otherwise
 static ControlRef embeddingRoot(WindowRef window)
@@ -1362,6 +1417,7 @@ static ControlRef embeddingRoot(WindowRef window)
 	return root;
 }
 
+#ifndef __LP64__
 OSStatus AutoEmbedControl(ControlRef inControl, WindowRef inWindow)
 {
 	if (!isControl(inControl))
@@ -1390,9 +1446,11 @@ OSStatus AutoEmbedControl(ControlRef inControl, WindowRef inWindow)
 			}
 		}
 	}
-	return HIViewAddSubview(container, inControl);
+	return EmbedControl(inControl, container);
 }
+#endif
 
+#ifndef __LP64__
 OSStatus CountSubControls(ControlRef inControl, UInt16* outNumChildren)
 {
 	if (!isControl(inControl) || !outNumChildren)
@@ -1407,6 +1465,7 @@ OSStatus CountSubControls(ControlRef inControl, UInt16* outNumChildren)
 	*outNumChildren = n;
 	return noErr;
 }
+#endif
 
 OSStatus GetIndexedSubControl(ControlRef inControl, UInt16 inIndex, ControlRef* outSubControl)
 {
@@ -1426,7 +1485,9 @@ OSStatus GetIndexedSubControl(ControlRef inControl, UInt16 inIndex, ControlRef* 
 			return noErr;
 		}
 	}
-	return errUnknownControl;
+	// QUIRK: an index with no control is paramErr. Not documented. Evidence: black-box observation on macOS 10.14.4
+	// i386 (tier 2). Test: test_quirk_indexed_subcontrol_out_of_range
+	return paramErr;
 }
 
 OSStatus GetSuperControl(ControlRef inControl, ControlRef* outParent)
@@ -1684,6 +1745,9 @@ static void trackInfoOf(ControlRef c, HIThemeTrackDrawInfo* info)
 		CGFloat thickness = horizontal ? bounds.size.height : bounds.size.width;
 
 		info->kind = thickness <= 12 ? kThemeScrollBarSmall : kThemeScrollBarMedium;
+		// The arrows of a scroll bar are hidden unless the control asks for them (kControlScrollBarShowsArrowsTag)
+		if (!c->showsArrows)
+			info->attributes |= kThemeTrackNoScrollBarArrows;
 		info->trackInfo.scrollbar.viewsize = c->viewSize;
 		switch (c->hilite)
 		{
@@ -1871,15 +1935,10 @@ void UpdateControls(WindowRef inWindow, RgnHandle inRegion)
 	drawControlsNow(root, rectFromQD(&box), NULL);
 }
 
-void DrawOneControl(ControlRef theControl)
+void Draw1Control(ControlRef theControl)
 {
 	if (isControl(theControl) && theControl->window && _HIWindowGetRootControl(theControl->window))
 		drawControlsNow(_HIWindowGetRootControl(theControl->window), windowFrame(theControl), theControl);
-}
-
-void Draw1Control(ControlRef theControl)
-{
-	DrawOneControl(theControl);
 }
 #endif
 
@@ -1977,22 +2036,21 @@ static ControlRef hitView(ControlRef c, CGPoint p, ControlPartCode* outPart, boo
 		if (found)
 			return found;
 	}
-	if (c->cls == kClassRoot)
+	if (c->cls == kClassRoot || (c->id.signature == kHIViewWindowContentID.signature && c->id.id == kHIViewWindowContentID.id))
 		return NULL;
 
 	ControlPartCode part;
 
 	hitTestControl(c, p, &part);
-	if (part == kControlNoPart)
-	{
-		// A control that does not use the click lets the one behind it have it; a view that is only an embedder is not a hit
-		return NULL;
-	}
+	// QUIRK: FindControlUnderMouse() returns the topmost visible control that contains the point also when the point
+	// is in no part of it (static text, a user pane: part 0), and a disabled control with the part 0. Not documented.
+	// Evidence: black-box observation on macOS 10.14.4 i386 (tier 2). Test: test_quirk_find_control_returns_inert_controls
 	if (outPart)
-		*outPart = c->enabled ? part : kControlDisabledPart;
+		*outPart = c->enabled ? part : kControlNoPart;
 	return c;
 }
 
+#ifndef __LP64__
 OSStatus HIViewGetSubviewHit(HIViewRef inView, const HIPoint* inPoint, Boolean inDeep, HIViewRef* outView)
 {
 	if (!isView(inView) || !inPoint || !outView)
@@ -2015,6 +2073,7 @@ OSStatus HIViewGetSubviewHit(HIViewRef inView, const HIPoint* inPoint, Boolean i
 	}
 	return noErr;
 }
+#endif
 
 OSStatus HIViewGetViewForMouseEvent(HIViewRef inView, EventRef inEvent, HIViewRef* outView)
 {
@@ -2086,17 +2145,19 @@ ControlPartCode TestControl(ControlRef theControl, Point testPoint)
 // Clicking and tracking
 // ------------------------------------------------------------------------------------------------
 
-static void sendHit(ControlRef c, ControlPartCode part, UInt32 modifiers)
+static OSStatus sendHit(ControlRef c, ControlPartCode part, UInt32 modifiers)
 {
 	EventRef event;
+	OSStatus status;
 
 	if (CreateEvent(NULL, kEventClassControl, kEventControlHit, _HICurrentTime(), kEventAttributeNone, &event) != noErr)
-		return;
+		return eventNotHandledErr;
 	SetEventParameter(event, kEventParamDirectObject, typeControlRef, sizeof(c), &c);
 	SetEventParameter(event, kEventParamControlPart, typeControlPartCode, sizeof(part), &part);
 	SetEventParameter(event, kEventParamKeyModifiers, typeUInt32, sizeof(modifiers), &modifiers);
-	SendEventToEventTarget(event, c->target);
+	status = SendEventToEventTarget(event, c->target);
 	ReleaseEvent(event);
+	return status;
 }
 
 // The mouse events of a tracking loop. Returns false when the event queue ended; kind is 0 for a timeout.
@@ -2175,20 +2236,6 @@ static ControlPartCode trackButton(ControlRef c, CGPoint start, ControlPartCode 
 	if (!inside)
 		return kControlNoPart;
 
-	if (c->cls == kClassCheckBox || c->cls == kClassRadioButton)
-	{
-		if (c->autoToggle)
-		{
-			if (c->cls == kClassRadioButton)
-				HIViewSetValue(c, c->value == 1 ? 0 : 1);
-			else
-				HIViewSetValue(c, c->value == 0 ? 1 : (c->value == 1 ? 0 : 0));
-		}
-	}
-	else if (c->cls == kClassBevelButton && (c->behavior & kControlBehaviorToggles))
-		HIViewSetValue(c, c->value ? 0 : 1);
-	else if (c->cls == kClassBevelButton && (c->behavior & kControlBehaviorSticky))
-		HIViewSetValue(c, 1);
 	return part;
 }
 
@@ -2519,6 +2566,17 @@ static OSStatus defaultTrack(ControlRef c, EventRef event)
 // What a hit does when no handler of the control took it: the command of the control is processed
 static OSStatus defaultHit(ControlRef c, EventRef event)
 {
+	// What the standard control does when it is hit: check boxes and radio buttons that toggle by themselves, and bevel
+	// buttons that toggle or stick, change their value
+	if ((c->cls == kClassCheckBox || c->cls == kClassRadioButton) && c->autoToggle)
+		// (a mixed check box becomes checked)
+		HIViewSetValue(c, c->value == 1 ? 0 : 1);
+	else if (c->cls == kClassBevelButton && !c->menu && (c->behavior & kControlBehaviorToggles))
+		HIViewSetValue(c, c->value ? 0 : 1);
+	else if (c->cls == kClassBevelButton && !c->menu && (c->behavior & kControlBehaviorSticky))
+		HIViewSetValue(c, 1);
+	OSStatus result = eventNotHandledErr;
+
 	if (c->command)
 	{
 		EventRef command;
@@ -2530,11 +2588,13 @@ static OSStatus defaultHit(ControlRef c, EventRef event)
 		if (CreateEvent(NULL, kEventClassCommand, kEventCommandProcess, _HICurrentTime(), kEventAttributeNone, &command) == noErr)
 		{
 			SetEventParameter(command, kEventParamDirectObject, typeHICommand, sizeof(hi), &hi);
-			SendEventToEventTarget(command, c->target);
+			// The hit is handled when the command it makes was
+			if (SendEventToEventTarget(command, c->target) == noErr)
+				result = noErr;
 			ReleaseEvent(command);
 		}
 	}
-	return noErr;
+	return result;
 }
 
 static OSStatus defaultSimulateHit(ControlRef c, EventRef event)
@@ -2544,8 +2604,9 @@ static OSStatus defaultSimulateHit(ControlRef c, EventRef event)
 
 	GetEventParameter(event, kEventParamControlPart, typeControlPartCode, NULL, sizeof(part), NULL, &part);
 	GetEventParameter(event, kEventParamKeyModifiers, typeUInt32, NULL, sizeof(modifiers), NULL, &modifiers);
-	sendHit(c, part, modifiers);
-	return noErr;
+	if (part != kControlNoPart)
+		return sendHit(c, part, modifiers);
+	return eventNotHandledErr;
 }
 
 static OSStatus controlHandler(EventHandlerCallRef call, EventRef event, void* userData)
@@ -2624,6 +2685,7 @@ ControlActionUPP GetControlAction(ControlRef theControl)
 }
 #endif
 
+#ifndef __LP64__
 OSStatus HIViewClick(HIViewRef inView, EventRef inEvent)
 {
 	if (!isView(inView) || !inEvent || !inView->window)
@@ -2638,18 +2700,22 @@ OSStatus HIViewClick(HIViewRef inView, EventRef inEvent)
 	clickControl(inView, CGPointMake(location.x, location.y), modifiers, NULL);
 	return noErr;
 }
+#endif
 
 OSStatus HIViewSimulateClick(HIViewRef inView, HIViewPartCode inPartToClick, OptionBits inModifiers, ControlPartCode* outPartClicked)
 {
 	if (!isView(inView))
 		return paramErr;
-	if (outPartClicked)
-		*outPartClicked = kControlNoPart;
+	// QUIRK: simulating a click on a disabled or hidden control sends no event and leaves the part untouched; part 0
+	// sends the kEventControlSimulateHit event, with part 0, and nothing follows. Not documented. Evidence: black-box
+	// observation on macOS 10.14.4 i386 (tier 2). Test: test_quirk_simulate_click_disabled_and_part_zero
 	if (!inView->enabled || !inView->visible)
 		return noErr;
+	if (outPartClicked)
+		*outPartClicked = kControlNoPart;
 
 	EventRef event;
-	ControlPartCode part = inPartToClick == kControlNoPart ? kControlButtonPart : inPartToClick;
+	ControlPartCode part = inPartToClick;
 	UInt32 modifiers = inModifiers;
 
 	if (CreateEvent(NULL, kEventClassControl, kEventControlSimulateHit, _HICurrentTime(), kEventAttributeNone, &event) != noErr)
@@ -2657,9 +2723,13 @@ OSStatus HIViewSimulateClick(HIViewRef inView, HIViewPartCode inPartToClick, Opt
 	SetEventParameter(event, kEventParamDirectObject, typeControlRef, sizeof(inView), &inView);
 	SetEventParameter(event, kEventParamControlPart, typeControlPartCode, sizeof(part), &part);
 	SetEventParameter(event, kEventParamKeyModifiers, typeUInt32, sizeof(modifiers), &modifiers);
-	SendEventToEventTarget(event, inView->target);
+	// QUIRK: the part that HIViewSimulateClick() reports is 0 when the hit was handled: by a handler of the control or
+	// because the command it makes was handled. A hit that nobody handled reports the part. Not documented. Evidence:
+	// black-box observation on macOS 10.14.4 i386 (tier 2). Test: test_quirk_simulate_click_part_when_handled
+	OSStatus result = SendEventToEventTarget(event, inView->target);
+
 	if (outPartClicked)
-		*outPartClicked = part;
+		*outPartClicked = result == noErr ? kControlNoPart : part;
 	ReleaseEvent(event);
 	return noErr;
 }
@@ -2675,7 +2745,7 @@ bool _HIControlsWindowClick(WindowRef window, Point local, UInt32 modifiers)
 	ControlPartCode part = kControlNoPart;
 	ControlRef c = hitView(root, CGPointMake(local.h, local.v), &part, true);
 
-	if (!c)
+	if (!c || part == kControlNoPart)
 		return false;
 	clickControl(c, CGPointMake(local.h, local.v), modifiers, NULL);
 	return true;
@@ -2691,7 +2761,9 @@ static OSStatus copyData(const void* source, Size size, Size bufferSize, void* b
 		*actual = size;
 	if (buffer)
 	{
-		if (bufferSize < size)
+		// QUIRK: the buffer of a tag of a fixed size must be of exactly that size, a larger one is as wrong as a smaller one.
+		// Not documented. Evidence: black-box observation on macOS 10.14.4 i386 (tier 2). Test: test_quirk_control_data_exact_size
+		if (bufferSize != size)
 			return errDataSizeMismatch;
 		memcpy(buffer, source, size);
 	}
@@ -2735,8 +2807,6 @@ OSStatus SetControlData(ControlRef inControl, ControlPartCode inPart, ResType in
 		case kClassBevelButton:
 			if (inTagName == kControlBevelButtonMenuValueTag)
 			{
-				if (!c->menu)
-					return errDataNotSupported;
 				if (inSize != sizeof(SInt16))
 					return errDataSizeMismatch;
 				c->menuValue = *(const SInt16*) inData;
@@ -2790,7 +2860,13 @@ OSStatus SetControlData(ControlRef inControl, ControlPartCode inPart, ResType in
 			break;
 		case kClassScrollBar:
 			if (inTagName == kControlScrollBarShowsArrowsTag)
+			{
+				if (inSize != sizeof(Boolean))
+					return errDataSizeMismatch;
+				c->showsArrows = *(const Boolean*) inData != 0;
+				changed(c);
 				return noErr;
+			}
 			break;
 		default:
 			break;
@@ -2825,12 +2901,20 @@ OSStatus GetControlData(ControlRef inControl, ControlPartCode inPart, ResType in
 	switch (c->cls)
 	{
 		case kClassBevelButton:
-			if (inTagName == kControlBevelButtonMenuValueTag && c->menu)
+			if (inTagName == kControlBevelButtonMenuValueTag)
 				return copyData(&c->menuValue, sizeof(SInt16), inBufferSize, inBuffer, outActualSize);
 			if (inTagName == kControlBevelButtonMenuRefTag && c->menu)
 				return copyData(&c->menu, sizeof(MenuRef), inBufferSize, inBuffer, outActualSize);
 			if (inTagName == kControlBevelButtonContentTag)
 				return copyData(&c->content, sizeof(ControlButtonContentInfo), inBufferSize, inBuffer, outActualSize);
+			break;
+		case kClassScrollBar:
+			if (inTagName == kControlScrollBarShowsArrowsTag)
+			{
+				Boolean shows = c->showsArrows;
+
+				return copyData(&shows, sizeof(shows), inBufferSize, inBuffer, outActualSize);
+			}
 			break;
 		case kClassStaticText:
 			if (inTagName == kControlStaticTextCFStringTag)
@@ -2860,10 +2944,12 @@ OSStatus GetControlData(ControlRef inControl, ControlPartCode inPart, ResType in
 	return errDataNotSupported;
 }
 
+#ifndef __LP64__
 OSStatus GetControlDataSize(ControlRef inControl, ControlPartCode inPart, ResType inTagName, Size* outMaxSize)
 {
 	return GetControlData(inControl, inPart, inTagName, 0, NULL, outMaxSize);
 }
+#endif
 
 // ------------------------------------------------------------------------------------------------
 // Creating
@@ -2925,7 +3011,7 @@ static void setTitle(ControlRef c, CFStringRef title)
 		c->title = CFStringCreateCopy(NULL, title);
 }
 
-OSStatus CreateBevelButtonControl(WindowRef window, const Rect* boundsRect, CFStringRef title, UInt16 thickness, UInt16 behavior, ControlButtonContentInfoPtr info, SInt16 menuID, UInt16 menuBehavior, UInt16 menuPlacement, ControlRef* outControl)
+static OSStatus createBevelButton(WindowRef window, const Rect* boundsRect, CFStringRef title, UInt16 thickness, UInt16 behavior, ControlButtonContentInfoPtr info, SInt16 menuID, UInt16 menuBehavior, UInt16 menuPlacement, ControlRef* outControl)
 {
 	ControlRef c;
 	OSStatus status;
@@ -2936,6 +3022,7 @@ OSStatus CreateBevelButtonControl(WindowRef window, const Rect* boundsRect, CFSt
 	if (status != noErr)
 		return status;
 	setTitle(c, title);
+	c->max = 2;
 	c->bevelThickness = thickness;
 	c->behavior = behavior;
 	c->menuBehavior = menuBehavior;
@@ -2986,12 +3073,12 @@ OSStatus CreateCheckBoxControl(WindowRef window, const Rect* boundsRect, CFStrin
 	return createToggle(kClassCheckBox, window, boundsRect, title, initialValue, autoToggle, outControl);
 }
 
-OSStatus CreateRadioButtonControl(WindowRef window, const Rect* boundsRect, CFStringRef title, SInt32 initialValue, Boolean autoToggle, ControlRef* outControl)
+static OSStatus createRadioButton(WindowRef window, const Rect* boundsRect, CFStringRef title, SInt32 initialValue, Boolean autoToggle, ControlRef* outControl)
 {
 	return createToggle(kClassRadioButton, window, boundsRect, title, initialValue, autoToggle, outControl);
 }
 
-OSStatus CreateSliderControl(WindowRef window, const Rect* boundsRect, SInt32 value, SInt32 minimum, SInt32 maximum, ControlSliderOrientation orientation, UInt16 numTickMarks, Boolean liveTracking, ControlActionUPP liveTrackingProc, ControlRef* outControl)
+static OSStatus createSlider(WindowRef window, const Rect* boundsRect, SInt32 value, SInt32 minimum, SInt32 maximum, ControlSliderOrientation orientation, UInt16 numTickMarks, Boolean liveTracking, ControlActionUPP liveTrackingProc, ControlRef* outControl)
 {
 	ControlRef c;
 	OSStatus status;
@@ -3011,7 +3098,7 @@ OSStatus CreateSliderControl(WindowRef window, const Rect* boundsRect, SInt32 va
 	return finishControl(window, c, boundsRect, outControl);
 }
 
-OSStatus CreateScrollBarControl(WindowRef window, const Rect* boundsRect, SInt32 value, SInt32 minimum, SInt32 maximum, SInt32 viewSize, Boolean liveTracking, ControlActionUPP liveTrackingProc, ControlRef* outControl)
+static OSStatus createScrollBar(WindowRef window, const Rect* boundsRect, SInt32 value, SInt32 minimum, SInt32 maximum, SInt32 viewSize, Boolean liveTracking, ControlActionUPP liveTrackingProc, ControlRef* outControl)
 {
 	ControlRef c;
 	OSStatus status;
@@ -3049,7 +3136,7 @@ OSStatus CreateStaticTextControl(WindowRef window, const Rect* boundsRect, CFStr
 	return finishControl(window, c, boundsRect, outControl);
 }
 
-OSStatus CreateGroupBoxControl(WindowRef window, const Rect* boundsRect, CFStringRef title, Boolean primary, ControlRef* outControl)
+static OSStatus createGroupBox(WindowRef window, const Rect* boundsRect, CFStringRef title, Boolean primary, ControlRef* outControl)
 {
 	ControlRef c;
 	OSStatus status;
@@ -3064,7 +3151,7 @@ OSStatus CreateGroupBoxControl(WindowRef window, const Rect* boundsRect, CFStrin
 	return finishControl(window, c, boundsRect, outControl);
 }
 
-OSStatus CreateSeparatorControl(WindowRef window, const Rect* boundsRect, ControlRef* outControl)
+static OSStatus createSeparator(WindowRef window, const Rect* boundsRect, ControlRef* outControl)
 {
 	ControlRef c;
 	OSStatus status;
@@ -3077,7 +3164,7 @@ OSStatus CreateSeparatorControl(WindowRef window, const Rect* boundsRect, Contro
 	return finishControl(window, c, boundsRect, outControl);
 }
 
-OSStatus CreateUserPaneControl(WindowRef window, const Rect* boundsRect, UInt32 features, ControlRef* outControl)
+static OSStatus createUserPane(WindowRef window, const Rect* boundsRect, UInt32 features, ControlRef* outControl)
 {
 	ControlRef c;
 	OSStatus status;
@@ -3091,7 +3178,7 @@ OSStatus CreateUserPaneControl(WindowRef window, const Rect* boundsRect, UInt32 
 	return finishControl(window, c, boundsRect, outControl);
 }
 
-OSStatus CreatePopupButtonControl(WindowRef window, const Rect* boundsRect, CFStringRef title, SInt16 menuID, Boolean variableWidth, SInt16 titleWidth, SInt16 titleJustification, UInt8 titleStyle, ControlRef* outControl)
+static OSStatus createPopupButton(WindowRef window, const Rect* boundsRect, CFStringRef title, SInt16 menuID, Boolean variableWidth, SInt16 titleWidth, SInt16 titleJustification, UInt8 titleStyle, ControlRef* outControl)
 {
 	ControlRef c;
 	OSStatus status;
@@ -3112,7 +3199,7 @@ OSStatus CreatePopupButtonControl(WindowRef window, const Rect* boundsRect, CFSt
 	return finishControl(window, c, boundsRect, outControl);
 }
 
-OSStatus CreateProgressBarControl(WindowRef window, const Rect* boundsRect, SInt32 value, SInt32 minimum, SInt32 maximum, Boolean indeterminate, ControlRef* outControl)
+static OSStatus createProgressBar(WindowRef window, const Rect* boundsRect, SInt32 value, SInt32 minimum, SInt32 maximum, Boolean indeterminate, ControlRef* outControl)
 {
 	ControlRef c;
 	OSStatus status;
@@ -3129,6 +3216,55 @@ OSStatus CreateProgressBarControl(WindowRef window, const Rect* boundsRect, SInt
 	return finishControl(window, c, boundsRect, outControl);
 }
 
+
+#ifndef __LP64__
+OSStatus CreateBevelButtonControl(WindowRef window, const Rect* boundsRect, CFStringRef title, UInt16 thickness, UInt16 behavior, ControlButtonContentInfoPtr info, SInt16 menuID, UInt16 menuBehavior, UInt16 menuPlacement, ControlRef* outControl)
+{
+	return createBevelButton(window, boundsRect, title, thickness, behavior, info, menuID, menuBehavior, menuPlacement, outControl);
+}
+
+OSStatus CreateGroupBoxControl(WindowRef window, const Rect* boundsRect, CFStringRef title, Boolean primary, ControlRef* outControl)
+{
+	return createGroupBox(window, boundsRect, title, primary, outControl);
+}
+
+OSStatus CreatePopupButtonControl(WindowRef window, const Rect* boundsRect, CFStringRef title, SInt16 menuID, Boolean variableWidth, SInt16 titleWidth, SInt16 titleJustification, UInt8 titleStyle, ControlRef* outControl)
+{
+	return createPopupButton(window, boundsRect, title, menuID, variableWidth, titleWidth, titleJustification, titleStyle, outControl);
+}
+
+OSStatus CreateProgressBarControl(WindowRef window, const Rect* boundsRect, SInt32 value, SInt32 minimum, SInt32 maximum, Boolean indeterminate, ControlRef* outControl)
+{
+	return createProgressBar(window, boundsRect, value, minimum, maximum, indeterminate, outControl);
+}
+
+OSStatus CreateRadioButtonControl(WindowRef window, const Rect* boundsRect, CFStringRef title, SInt32 initialValue, Boolean autoToggle, ControlRef* outControl)
+{
+	return createRadioButton(window, boundsRect, title, initialValue, autoToggle, outControl);
+}
+
+OSStatus CreateScrollBarControl(WindowRef window, const Rect* boundsRect, SInt32 value, SInt32 minimum, SInt32 maximum, SInt32 viewSize, Boolean liveTracking, ControlActionUPP liveTrackingProc, ControlRef* outControl)
+{
+	return createScrollBar(window, boundsRect, value, minimum, maximum, viewSize, liveTracking, liveTrackingProc, outControl);
+}
+
+OSStatus CreateSeparatorControl(WindowRef window, const Rect* boundsRect, ControlRef* outControl)
+{
+	return createSeparator(window, boundsRect, outControl);
+}
+
+OSStatus CreateSliderControl(WindowRef window, const Rect* boundsRect, SInt32 value, SInt32 minimum, SInt32 maximum, ControlSliderOrientation orientation, UInt16 numTickMarks, Boolean liveTracking, ControlActionUPP liveTrackingProc, ControlRef* outControl)
+{
+	return createSlider(window, boundsRect, value, minimum, maximum, orientation, numTickMarks, liveTracking, liveTrackingProc, outControl);
+}
+
+OSStatus CreateUserPaneControl(WindowRef window, const Rect* boundsRect, UInt32 features, ControlRef* outControl)
+{
+	return createUserPane(window, boundsRect, features, outControl);
+}
+
+#endif
+
 #ifndef __LP64__
 ControlRef NewControl(WindowRef owningWindow, const Rect* boundsRect, ConstStr255Param controlTitle, Boolean initiallyVisible, SInt16 initialValue, SInt16 minimumValue, SInt16 maximumValue, SInt16 procID, SInt32 controlReference)
 {
@@ -3139,11 +3275,11 @@ ControlRef NewControl(WindowRef owningWindow, const Rect* boundsRect, ConstStr25
 	if (!boundsRect)
 		return NULL;
 	if (procID >= kControlBevelButtonSmallBevelProc && procID < kControlBevelButtonSmallBevelProc + 8 && (procID & ~3) == 32)
-		status = CreateBevelButtonControl(owningWindow, boundsRect, title, procID & 3, 0, NULL, 0, 0, 0, &c);
+		status = createBevelButton(owningWindow, boundsRect, title, procID & 3, 0, NULL, 0, 0, 0, &c);
 	else if (procID >= kControlSliderProc && procID < kControlSliderProc + 8)
-		status = CreateSliderControl(owningWindow, boundsRect, initialValue, minimumValue, maximumValue, kControlSliderDoesNotPoint, 0, (procID & 1) != 0, NULL, &c);
+		status = createSlider(owningWindow, boundsRect, initialValue, minimumValue, maximumValue, kControlSliderDoesNotPoint, 0, (procID & 1) != 0, NULL, &c);
 	else if (procID >= kControlScrollBarProc && procID < kControlScrollBarProc + 8)
-		status = CreateScrollBarControl(owningWindow, boundsRect, initialValue, minimumValue, maximumValue, 0, (procID & 2) != 0, NULL, &c);
+		status = createScrollBar(owningWindow, boundsRect, initialValue, minimumValue, maximumValue, 0, (procID & 2) != 0, NULL, &c);
 	else if (procID >= kControlStaticTextProc && procID < kControlStaticTextProc + 8)
 		status = CreateStaticTextControl(owningWindow, boundsRect, title, NULL, &c);
 	else if (procID == kControlPushButtonProc)
@@ -3151,15 +3287,15 @@ ControlRef NewControl(WindowRef owningWindow, const Rect* boundsRect, ConstStr25
 	else if (procID == kControlCheckBoxProc)
 		status = CreateCheckBoxControl(owningWindow, boundsRect, title, initialValue, true, &c);
 	else if (procID == kControlRadioButtonProc)
-		status = CreateRadioButtonControl(owningWindow, boundsRect, title, initialValue, true, &c);
+		status = createRadioButton(owningWindow, boundsRect, title, initialValue, true, &c);
 	else if (procID >= kControlUserPaneProc && procID < kControlUserPaneProc + 8)
-		status = CreateUserPaneControl(owningWindow, boundsRect, kControlSupportsEmbedding, &c);
+		status = createUserPane(owningWindow, boundsRect, kControlSupportsEmbedding, &c);
 	else if (procID == kControlSeparatorLineProc)
-		status = CreateSeparatorControl(owningWindow, boundsRect, &c);
+		status = createSeparator(owningWindow, boundsRect, &c);
 	else if (procID >= kControlGroupBoxTextTitleProc && procID < kControlGroupBoxTextTitleProc + 8)
-		status = CreateGroupBoxControl(owningWindow, boundsRect, title, true, &c);
+		status = createGroupBox(owningWindow, boundsRect, title, true, &c);
 	else if (procID == kControlProgressBarProc)
-		status = CreateProgressBarControl(owningWindow, boundsRect, initialValue, minimumValue, maximumValue, false, &c);
+		status = createProgressBar(owningWindow, boundsRect, initialValue, minimumValue, maximumValue, false, &c);
 	if (title)
 		CFRelease(title);
 	if (status != noErr || !c)
@@ -3179,14 +3315,7 @@ ControlRef NewControl(WindowRef owningWindow, const Rect* boundsRect, ConstStr25
 
 // Bevel button menu accessors
 
-OSStatus GetBevelButtonMenuRef(ControlRef inButton, MenuRef* outRef)
-{
-	if (!isControl(inButton) || !outRef || inButton->cls != kClassBevelButton)
-		return paramErr;
-	*outRef = inButton->menu;
-	return inButton->menu ? noErr : errDataNotSupported;
-}
-
+#ifndef __LP64__
 SInt16 GetBevelButtonMenuValue(ControlRef inButton, MenuItemIndex* outValue)
 {
 	if (!isControl(inButton) || inButton->cls != kClassBevelButton || !outValue)
@@ -3194,7 +3323,9 @@ SInt16 GetBevelButtonMenuValue(ControlRef inButton, MenuItemIndex* outValue)
 	*outValue = (MenuItemIndex) inButton->menuValue;
 	return noErr;
 }
+#endif
 
+#ifndef __LP64__
 OSStatus SetBevelButtonMenuValue(ControlRef inButton, MenuItemIndex inValue)
 {
 	if (!isControl(inButton) || inButton->cls != kClassBevelButton)
@@ -3203,6 +3334,7 @@ OSStatus SetBevelButtonMenuValue(ControlRef inButton, MenuItemIndex inValue)
 	changed(inButton);
 	return noErr;
 }
+#endif
 
 // ------------------------------------------------------------------------------------------------
 // Controls from nibs
@@ -3268,7 +3400,7 @@ static OSStatus makeFromNib(CFDictionaryRef d, WindowRef window, ControlRef cont
 		content.u.resID = (SInt16) nibNumber(d, CFSTR("contentResID"), 0);
 		if (content.contentType == kControlContentTextOnly)
 			memset(&content.u, 0, sizeof(content.u));
-		if (CreateBevelButtonControl(NULL, &bounds, title, (UInt16) nibNumber(d, CFSTR("bevelThickness"), 1), behavior, &content, 0,
+		if (createBevelButton(NULL, &bounds, title, (UInt16) nibNumber(d, CFSTR("bevelThickness"), 1), behavior, &content, 0,
 			(UInt16) nibNumber(d, CFSTR("menuBehavior"), 0), (UInt16) nibNumber(d, CFSTR("menuPlacement"), 0), &c) != noErr)
 			return memFullErr;
 		if (menuDescription && CFGetTypeID(menuDescription) == CFDictionaryGetTypeID() && _HICreateMenuFromNibDescription(menuDescription, &menu) == noErr)
@@ -3283,13 +3415,13 @@ static OSStatus makeFromNib(CFDictionaryRef d, WindowRef window, ControlRef cont
 	{
 		SInt32 value = (SInt32) nibNumber(d, CFSTR("initialValue"), 50);
 
-		if (CreateSliderControl(NULL, &bounds, value, (SInt32) nibNumber(d, CFSTR("minimum"), 0), (SInt32) nibNumber(d, CFSTR("maximum"), 100),
+		if (createSlider(NULL, &bounds, value, (SInt32) nibNumber(d, CFSTR("minimum"), 0), (SInt32) nibNumber(d, CFSTR("maximum"), 100),
 			kControlSliderPointsDownOrRight, (UInt16) nibNumber(d, CFSTR("numTickMarks"), 0), nibBool(d, CFSTR("isLive")), NULL, &c) != noErr)
 			return memFullErr;
 	}
 	else if (classIs(d, CFSTR("IBCarbonScrollBar")))
 	{
-		if (CreateScrollBarControl(NULL, &bounds, (SInt32) nibNumber(d, CFSTR("initialValue"), 0), (SInt32) nibNumber(d, CFSTR("minimum"), 0),
+		if (createScrollBar(NULL, &bounds, (SInt32) nibNumber(d, CFSTR("initialValue"), 0), (SInt32) nibNumber(d, CFSTR("minimum"), 0),
 			(SInt32) nibNumber(d, CFSTR("maximum"), 100), (SInt32) nibNumber(d, CFSTR("viewSize"), 0), nibBool(d, CFSTR("isLive")), NULL, &c) != noErr)
 			return memFullErr;
 	}
@@ -3307,30 +3439,30 @@ static OSStatus makeFromNib(CFDictionaryRef d, WindowRef window, ControlRef cont
 	{
 		bool radio = classIs(d, CFSTR("IBCarbonRadioButton"));
 		SInt32 value = (SInt32) nibNumber(d, CFSTR("initialValue"), 0);
-		OSStatus status = radio ? CreateRadioButtonControl(NULL, &bounds, title, value, true, &c) : CreateCheckBoxControl(NULL, &bounds, title, value, true, &c);
+		OSStatus status = radio ? createRadioButton(NULL, &bounds, title, value, true, &c) : CreateCheckBoxControl(NULL, &bounds, title, value, true, &c);
 
 		if (status != noErr)
 			return memFullErr;
 	}
 	else if (classIs(d, CFSTR("IBCarbonGroupBox")))
 	{
-		if (CreateGroupBoxControl(NULL, &bounds, title, !nibBool(d, CFSTR("secondary")), &c) != noErr)
+		if (createGroupBox(NULL, &bounds, title, !nibBool(d, CFSTR("secondary")), &c) != noErr)
 			return memFullErr;
 	}
 	else if (classIs(d, CFSTR("IBCarbonSeparator")))
 	{
-		if (CreateSeparatorControl(NULL, &bounds, &c) != noErr)
+		if (createSeparator(NULL, &bounds, &c) != noErr)
 			return memFullErr;
 	}
 	else if (classIs(d, CFSTR("IBCarbonProgressBar")))
 	{
-		if (CreateProgressBarControl(NULL, &bounds, (SInt32) nibNumber(d, CFSTR("initialValue"), 0), (SInt32) nibNumber(d, CFSTR("minimum"), 0),
+		if (createProgressBar(NULL, &bounds, (SInt32) nibNumber(d, CFSTR("initialValue"), 0), (SInt32) nibNumber(d, CFSTR("minimum"), 0),
 			(SInt32) nibNumber(d, CFSTR("maximum"), 100), nibBool(d, CFSTR("indeterminate")), &c) != noErr)
 			return memFullErr;
 	}
 	else if (classIs(d, CFSTR("IBCarbonUserPane")) || classIs(d, CFSTR("IBCarbonView")))
 	{
-		if (CreateUserPaneControl(NULL, &bounds, kControlSupportsEmbedding, &c) != noErr)
+		if (createUserPane(NULL, &bounds, kControlSupportsEmbedding, &c) != noErr)
 			return memFullErr;
 	}
 	else

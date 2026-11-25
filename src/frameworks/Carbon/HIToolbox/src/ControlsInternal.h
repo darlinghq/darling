@@ -57,6 +57,8 @@ bool _HIWindowIsCompositing(WindowRef window);
 CGRect _HIWindowGetContentRect(WindowRef window);
 bool _HIWindowControlsActive(WindowRef window);
 bool _HIWindowIsShown(WindowRef window);
+// The height of what the frame of the window has above its content (the title bar)
+CGFloat _HIWindowStructureTop(WindowRef window);
 // The context that draws into the content of the window, flipped to the origin at the top left. NULL when
 // the window cannot be drawn into. _HIWindowEndDrawing() puts the part that was drawn on the screen.
 CGContextRef _HIWindowBeginDrawing(WindowRef window);

@@ -1456,6 +1456,11 @@ bool _HIWindowIsShown(WindowRef window)
 	return window->visible;
 }
 
+CGFloat _HIWindowStructureTop(WindowRef window)
+{
+	return frameOfClass(window->windowClass, window->attributes).top;
+}
+
 ControlRef _HIWindowGetRootControl(WindowRef window)
 {
 	return window->rootControl;
