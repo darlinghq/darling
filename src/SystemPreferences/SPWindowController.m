@@ -21,6 +21,12 @@
 #import "SPGridView.h"
 #import <PreferencePanes/PreferencePanes.h>
 
+// What a pane may implement to get the anchor of an x-apple.systempreferences URL
+// (see -showPane:anchor: in the header)
+@protocol SPAnchorPane <NSObject>
+- (void)handleSystemPreferencesAnchor:(NSString *)anchor;
+@end
+
 static const CGFloat kBarHeight = 44;
 static const CGFloat kMinimumWidth = 460;
 
@@ -35,6 +41,7 @@ static const CGFloat kMinimumWidth = 460;
 
     SPPane *_currentPane;
     NSPreferencePane *_currentController;
+    id _frameObserver;     // watches the main view of the shown pane for size changes
     NSMutableDictionary<NSString *, NSPreferencePane *> *_controllers;   // loaded panes by identifier
 
     // navigation history: pane identifiers, NSNull for the grid
@@ -172,6 +179,23 @@ static const CGFloat kMinimumWidth = 460;
     [self navigateToPane:pane recordHistory:YES completion:nil];
 }
 
+- (void)showPane:(SPPane *)pane anchor:(NSString *)anchor
+{
+    [self navigateToPane:pane recordHistory:YES completion:^{
+        [self deliverAnchor:anchor toPane:pane];
+    }];
+}
+
+// The anchor of an x-apple.systempreferences URL (the text after the question mark) goes to
+// the pane on show if it implements -handleSystemPreferencesAnchor:, see the header.
+- (void)deliverAnchor:(NSString *)anchor toPane:(SPPane *)pane
+{
+    if ([anchor length] == 0 || pane == nil || pane != _currentPane)
+        return;
+    if ([_currentController respondsToSelector:@selector(handleSystemPreferencesAnchor:)])
+        [(id<SPAnchorPane>)_currentController handleSystemPreferencesAnchor:anchor];
+}
+
 - (void)gridIconClicked:(SPGridView *)grid
 {
     [self showPane:grid.clickedPane];
@@ -184,6 +208,8 @@ static const CGFloat kMinimumWidth = 460;
         return;
     if (pane != nil && pane == _currentPane) {
         [_window makeKeyAndOrderFront:nil];
+        if (completion != nil)
+            completion();
         return;
     }
     if (pane == nil && _currentPane == nil) {
@@ -266,6 +292,7 @@ static const CGFloat kMinimumWidth = 460;
 - (void)leaveCurrentPane
 {
     NSPreferencePane *controller = _currentController;
+    [self stopFollowingMainView];
     if (controller != nil) {
         [controller willUnselect];
         [[controller mainView] removeFromSuperview];
@@ -288,6 +315,35 @@ static const CGFloat kMinimumWidth = 460;
     [_window setFrame:frame display:YES animate:NO];
     [_container setFrame:NSMakeRect(0, 0, size.width, size.height)];
     [_bar setFrame:NSMakeRect(0, size.height, size.width, kBarHeight)];
+}
+
+// The window follows the main view of the shown pane when the pane changes its size, as it
+// does when the pane is selected.
+- (void)followMainView:(NSView *)view
+{
+    [self stopFollowingMainView];
+    [view setPostsFrameChangedNotifications:YES];
+    __weak SPWindowController *weakSelf = self;
+    _frameObserver = [[NSNotificationCenter defaultCenter]
+        addObserverForName:NSViewFrameDidChangeNotification object:view queue:nil
+                usingBlock:^(NSNotification *n) { [weakSelf mainViewFrameChanged:[n object]]; }];
+}
+
+- (void)stopFollowingMainView
+{
+    if (_frameObserver != nil)
+        [[NSNotificationCenter defaultCenter] removeObserver:_frameObserver];
+    _frameObserver = nil;
+}
+
+- (void)mainViewFrameChanged:(NSView *)view
+{
+    if (_currentController == nil || [_currentController mainView] != view)
+        return;
+    NSSize size = [view frame].size;
+    CGFloat width = MAX(size.width, kMinimumWidth);
+    [self resizeContentTo:NSMakeSize(width, size.height)];
+    [view setFrameOrigin:NSMakePoint(floor((width - size.width) / 2), 0)];
 }
 
 - (void)enterGrid
@@ -344,6 +400,7 @@ static const CGFloat kMinimumWidth = 460;
     [view setFrameOrigin:NSMakePoint(floor((width - size.width) / 2), 0)];
     [view setAutoresizingMask:NSViewMinXMargin | NSViewMaxXMargin];
     [_container addSubview:view];
+    [self followMainView:view];
 
     _currentPane = pane;
     _currentController = controller;
