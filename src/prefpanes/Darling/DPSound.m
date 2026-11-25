@@ -106,8 +106,130 @@ static NSString *TransportName(AudioObjectID device)
     case kAudioDeviceTransportTypePCI: return @"PCI";
     case kAudioDeviceTransportTypeAirPlay: return @"AirPlay";
     case kAudioDeviceTransportTypeVirtual: return NSLocalizedString(@"Virtual", nil);
+    case kAudioDeviceTransportTypeAggregate: return NSLocalizedString(@"Aggregate", nil);
+    case kAudioDeviceTransportTypeThunderbolt: return @"Thunderbolt";
+    case kAudioDeviceTransportTypeAVB: return @"AVB";
     default: return @"";
     }
+}
+
+// The elements that carry a per-device property (volume or mute) on a side of a device: the master element if
+// it has the property, else the channels that have it, else none.
+static NSArray<NSNumber *> *ElementsWithProperty(AudioObjectID device, AudioObjectPropertySelector selector, AudioObjectPropertyScope scope)
+{
+    if (device == kAudioObjectUnknown)
+        return @[];
+    AudioObjectPropertyAddress address = { selector, scope, kAudioObjectPropertyElementMaster };
+    if (AudioObjectHasProperty(device, &address))
+        return @[ @(kAudioObjectPropertyElementMaster) ];
+    NSMutableArray *elements = [NSMutableArray array];
+    UInt32 channels = ChannelCount(device, scope);
+    for (UInt32 channel = 1; channel <= channels; channel++) {
+        address.mElement = channel;
+        if (AudioObjectHasProperty(device, &address))
+            [elements addObject:@(channel)];
+    }
+    return elements;
+}
+
+// The volume of a side of a device (the mean over its channels if there is no master volume) or NO if it has none.
+static BOOL GetVolume(AudioObjectID device, AudioObjectPropertyScope scope, Float32 *volume)
+{
+    NSArray<NSNumber *> *elements = ElementsWithProperty(device, kAudioDevicePropertyVolumeScalar, scope);
+    double sum = 0;
+    NSUInteger count = 0;
+    for (NSNumber *element in elements) {
+        AudioObjectPropertyAddress address = { kAudioDevicePropertyVolumeScalar, scope, [element unsignedIntValue] };
+        Float32 value = 0;
+        UInt32 size = sizeof(value);
+        if (AudioObjectGetPropertyData(device, &address, 0, NULL, &size, &value) == noErr) {
+            sum += value;
+            count++;
+        }
+    }
+    if (count == 0)
+        return NO;
+    *volume = (Float32)(sum / count);
+    return YES;
+}
+
+static void SetVolume(AudioObjectID device, AudioObjectPropertyScope scope, Float32 volume)
+{
+    for (NSNumber *element in ElementsWithProperty(device, kAudioDevicePropertyVolumeScalar, scope)) {
+        AudioObjectPropertyAddress address = { kAudioDevicePropertyVolumeScalar, scope, [element unsignedIntValue] };
+        AudioObjectSetPropertyData(device, &address, 0, NULL, sizeof(volume), &volume);
+    }
+}
+
+// A side of a device is muted when all the elements that have a mute are.
+static BOOL GetMute(AudioObjectID device, AudioObjectPropertyScope scope, BOOL *muted)
+{
+    NSArray<NSNumber *> *elements = ElementsWithProperty(device, kAudioDevicePropertyMute, scope);
+    BOOL all = YES, any = NO;
+    for (NSNumber *element in elements) {
+        AudioObjectPropertyAddress address = { kAudioDevicePropertyMute, scope, [element unsignedIntValue] };
+        UInt32 value = 0, size = sizeof(value);
+        if (AudioObjectGetPropertyData(device, &address, 0, NULL, &size, &value) == noErr) {
+            any = YES;
+            all = all && value != 0;
+        }
+    }
+    if (!any)
+        return NO;
+    *muted = all;
+    return YES;
+}
+
+static void SetMute(AudioObjectID device, AudioObjectPropertyScope scope, BOOL muted)
+{
+    UInt32 value = muted ? 1 : 0;
+    for (NSNumber *element in ElementsWithProperty(device, kAudioDevicePropertyMute, scope)) {
+        AudioObjectPropertyAddress address = { kAudioDevicePropertyMute, scope, [element unsignedIntValue] };
+        AudioObjectSetPropertyData(device, &address, 0, NULL, sizeof(value), &value);
+    }
+}
+
+static Float64 NominalRate(AudioObjectID device)
+{
+    AudioObjectPropertyAddress address = Address(kAudioDevicePropertyNominalSampleRate, kAudioObjectPropertyScopeGlobal);
+    Float64 rate = 0;
+    UInt32 size = sizeof(rate);
+    if (device == kAudioObjectUnknown || AudioObjectGetPropertyData(device, &address, 0, NULL, &size, &rate) != noErr)
+        return 0;
+    return rate;
+}
+
+// The rates a device can be set to, ascending. A range that is a single rate is that rate; a wider range stands for
+// the usual rates inside it.
+static NSArray<NSNumber *> *AvailableRates(AudioObjectID device)
+{
+    static const Float64 usual[] = { 8000, 11025, 16000, 22050, 32000, 44100, 48000, 88200, 96000, 176400, 192000, 352800, 384000 };
+    NSMutableSet *rates = [NSMutableSet set];
+    AudioObjectPropertyAddress address = Address(kAudioDevicePropertyAvailableNominalSampleRates, kAudioObjectPropertyScopeGlobal);
+    UInt32 size = 0;
+    if (device != kAudioObjectUnknown && AudioObjectGetPropertyDataSize(device, &address, 0, NULL, &size) == noErr && size >= sizeof(AudioValueRange)) {
+        AudioValueRange *ranges = malloc(size);
+        if (AudioObjectGetPropertyData(device, &address, 0, NULL, &size, ranges) == noErr) {
+            for (UInt32 i = 0; i < size / sizeof(AudioValueRange); i++) {
+                if (ranges[i].mMinimum == ranges[i].mMaximum)
+                    [rates addObject:@(ranges[i].mMinimum)];
+                else
+                    for (size_t j = 0; j < sizeof(usual) / sizeof(usual[0]); j++)
+                        if (usual[j] >= ranges[i].mMinimum && usual[j] <= ranges[i].mMaximum)
+                            [rates addObject:@(usual[j])];
+            }
+        }
+        free(ranges);
+    }
+    Float64 current = NominalRate(device);
+    if (current > 0)
+        [rates addObject:@(current)];
+    return [[rates allObjects] sortedArrayUsingSelector:@selector(compare:)];
+}
+
+static NSString *RateTitle(Float64 rate)
+{
+    return [NSString stringWithFormat:@"%g Hz", rate];
 }
 
 static AudioObjectID DefaultDevice(BOOL input)
@@ -137,17 +259,13 @@ static NSArray<NSDictionary *> *ListDevices(BOOL input)
             NSString *uid = StringProperty(device, kAudioDevicePropertyDeviceUID);
             if (channels == 0 || uid == nil || [uid hasPrefix:@"PulseAudio:"])
                 continue;
-            Float64 rate = 0;
-            AudioObjectPropertyAddress rateAddress = Address(kAudioDevicePropertyNominalSampleRate, kAudioObjectPropertyScopeGlobal);
-            UInt32 rateSize = sizeof(rate);
-            AudioObjectGetPropertyData(device, &rateAddress, 0, NULL, &rateSize, &rate);
             [devices addObject:@{
                 @"id": @(device),
                 @"uid": uid,
                 @"name": StringProperty(device, kAudioObjectPropertyName) ?: uid,
                 @"manufacturer": StringProperty(device, kAudioObjectPropertyManufacturer) ?: @"",
                 @"channels": @(channels),
-                @"rate": [NSString stringWithFormat:@"%g Hz", rate],
+                @"rate": RateTitle(NominalRate(device)),
                 @"transport": TransportName(device),
             }];
         }
@@ -156,15 +274,37 @@ static NSArray<NSDictionary *> *ListDevices(BOOL input)
     return devices;
 }
 
-static OSStatus DevicesChanged(AudioObjectID object, UInt32 count, const AudioObjectPropertyAddress *addresses, void *context);
+// The controls of one direction: the volume, mute and sample rate of its default device.
+@interface DPSoundDirection : NSObject
+@property (nonatomic) BOOL input;
+@property (nonatomic, strong) NSSlider *volume;
+@property (nonatomic, strong) NSButton *mute;
+@property (nonatomic, strong) NSPopUpButton *rate;
+@property (nonatomic, strong) NSDate *userChange;   // when the user last moved the volume or mute (see -isHeld)
+@property (nonatomic) AudioObjectID listenedDevice; // the device whose properties are listened to
+- (AudioObjectPropertyScope)scope;
+@end
+@implementation DPSoundDirection
+- (AudioObjectPropertyScope)scope { return _input ? kAudioObjectPropertyScopeInput : kAudioObjectPropertyScopeOutput; }
+@end
+
+// One registered block listener, kept to remove it again.
+@interface DPSoundListener : NSObject
+@property (nonatomic) AudioObjectID object;
+@property (nonatomic) AudioObjectPropertyAddress address;
+@property (nonatomic, copy) AudioObjectPropertyListenerBlock block;
+@end
+@implementation DPSoundListener
+@end
 
 #pragma mark Controller
 
 @interface DPSoundController () {
     NSTableView *_outputTable, *_inputTable;
     NSArray<NSDictionary *> *_outputs, *_inputs;
-    NSSlider *_volume;
-    NSButton *_mute, *_toneButton, *_inputButton;
+    DPSoundDirection *_out, *_in;
+    NSMutableArray<DPSoundListener *> *_listeners;
+    NSButton *_toneButton, *_inputButton;
     NSTextField *_toneStatus, *_levelLabel;
     DPLevelView *_level;
     BOOL _active, _reloading;
@@ -174,21 +314,9 @@ static OSStatus DevicesChanged(AudioObjectID object, UInt32 count, const AudioOb
     NSTimer *_meterTimer;
     double _peak;                 // written by the audio thread, read on the main thread
 }
-- (void)devicesChanged;
+- (void)propertiesChanged;
 - (void)notePeak:(double)peak;
 @end
-
-static const AudioObjectPropertySelector kListened[] = {
-    kAudioHardwarePropertyDevices, kAudioHardwarePropertyDefaultOutputDevice, kAudioHardwarePropertyDefaultInputDevice
-};
-
-static OSStatus DevicesChanged(AudioObjectID object, UInt32 count, const AudioObjectPropertyAddress *addresses, void *context)
-{
-    DPSoundController *controller = (__bridge DPSoundController *)context;
-    // the controller removes the listeners before it goes away (-deactivate), on the main thread
-    dispatch_async(dispatch_get_main_queue(), ^{ [controller devicesChanged]; });
-    return noErr;
-}
 
 @implementation DPSoundController
 
@@ -210,8 +338,8 @@ static NSTextField *Label(NSString *text, NSRect frame, NSFont *font, NSColor *c
 - (NSTableView *)addListWithKey:(NSString *)key toView:(NSView *)view y:(CGFloat)y width:(CGFloat)width
 {
     NSTableView *table = [[NSTableView alloc] initWithFrame:NSMakeRect(0, 0, width, 100)];
-    NSArray *columns = @[ @[ @"name", @"Name", @210 ], @[ @"manufacturer", @"Manufacturer", @110 ], @[ @"channels", @"Channels", @70 ],
-                          @[ @"rate", @"Sample rate", @90 ], @[ @"transport", @"Type", @80 ] ];
+    NSArray *columns = @[ @[ @"name", @"Name", @200 ], @[ @"manufacturer", @"Manufacturer", @110 ], @[ @"channels", @"Channels", @70 ],
+                          @[ @"rate", @"Sample rate", @90 ], @[ @"transport", @"Transport", @90 ] ];
     for (NSArray *spec in columns) {
         NSTableColumn *column = [[NSTableColumn alloc] initWithIdentifier:spec[0]];
         [[column headerCell] setStringValue:NSLocalizedString(spec[1], nil)];
@@ -236,11 +364,44 @@ static NSTextField *Label(NSString *text, NSRect frame, NSFont *font, NSColor *c
     return table;
 }
 
+// The volume slider, mute checkbox and sample rate popup of one direction, in a row at y.
+- (DPSoundDirection *)addControlsOfInput:(BOOL)input toView:(NSView *)view y:(CGFloat)y
+{
+    NSFont *regular = [NSFont systemFontOfSize:[NSFont systemFontSize]];
+    NSString *prefix = input ? @"SoundInput" : @"Sound";
+    DPSoundDirection *direction = [[DPSoundDirection alloc] init];
+    [direction setInput:input];
+    [view addSubview:Label(NSLocalizedString(@"Volume:", nil), NSMakeRect(kMargin, y + 3, 60, 17), regular, [NSColor blackColor], NSTextAlignmentRight)];
+    NSSlider *volume = [[NSSlider alloc] initWithFrame:NSMakeRect(kMargin + 68, y, 160, 22)];
+    [volume setMinValue:0];
+    [volume setMaxValue:1];
+    [volume setTarget:self];
+    [volume setAction:@selector(volumeChanged:)];
+    [volume setToolTip:[prefix stringByAppendingString:@"Volume"]];
+    [view addSubview:volume];
+    NSButton *mute = [[NSButton alloc] initWithFrame:NSMakeRect(kMargin + 238, y, 70, 22)];
+    [mute setButtonType:NSButtonTypeSwitch];
+    [mute setTitle:NSLocalizedString(@"Mute", nil)];
+    [mute setTarget:self];
+    [mute setAction:@selector(muteChanged:)];
+    [mute setToolTip:[prefix stringByAppendingString:@"Mute"]];
+    [view addSubview:mute];
+    [view addSubview:Label(NSLocalizedString(@"Sample rate:", nil), NSMakeRect(kMargin + 316, y + 3, 84, 17), regular, [NSColor blackColor], NSTextAlignmentRight)];
+    NSPopUpButton *rate = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(kMargin + 406, y - 2, 110, 26) pullsDown:NO];
+    [rate setTarget:self];
+    [rate setAction:@selector(rateChanged:)];
+    [rate setToolTip:input ? @"SoundInputRate" : @"SoundOutputRate"];
+    [view addSubview:rate];
+    [direction setVolume:volume];
+    [direction setMute:mute];
+    [direction setRate:rate];
+    return direction;
+}
+
 - (NSView *)viewWithWidth:(CGFloat)width
 {
     NSView *view = [[DPSoundFlippedView alloc] initWithFrame:NSMakeRect(0, 0, width, 100)];
     NSFont *small = [NSFont systemFontOfSize:[NSFont smallSystemFontSize]];
-    NSFont *regular = [NSFont systemFontOfSize:[NSFont systemFontSize]];
     NSFont *bold = [NSFont boldSystemFontOfSize:[NSFont systemFontSize]];
     CGFloat listWidth = width - 2 * kMargin;
     CGFloat y = 12;
@@ -256,39 +417,29 @@ static NSTextField *Label(NSString *text, NSRect frame, NSFont *font, NSColor *c
     _outputTable = [self addListWithKey:@"SoundOutputList" toView:view y:y width:listWidth];
     y += 126;
 
-    [view addSubview:Label(NSLocalizedString(@"Volume:", nil), NSMakeRect(kMargin, y + 3, 60, 17), regular, [NSColor blackColor], NSTextAlignmentRight)];
-    _volume = [[NSSlider alloc] initWithFrame:NSMakeRect(kMargin + 68, y, 220, 22)];
-    [_volume setMinValue:0];
-    [_volume setMaxValue:1];
-    [_volume setTarget:self];
-    [_volume setAction:@selector(volumeChanged:)];
-    [_volume setToolTip:@"SoundVolume"];
-    [view addSubview:_volume];
-    _mute = [[NSButton alloc] initWithFrame:NSMakeRect(kMargin + 300, y, 70, 22)];
-    [_mute setButtonType:NSButtonTypeSwitch];
-    [_mute setTitle:NSLocalizedString(@"Mute", nil)];
-    [_mute setTarget:self];
-    [_mute setAction:@selector(muteChanged:)];
-    [_mute setToolTip:@"SoundMute"];
-    [view addSubview:_mute];
-    _toneButton = [[NSButton alloc] initWithFrame:NSMakeRect(width - kMargin - 150, y - 2, 150, 26)];
+    _out = [self addControlsOfInput:NO toView:view y:y];
+    y += 30;
+    _toneButton = [[NSButton alloc] initWithFrame:NSMakeRect(kMargin, y - 2, 150, 26)];
     [_toneButton setBezelStyle:NSBezelStyleRounded];
     [_toneButton setTitle:NSLocalizedString(@"Play Test Tone", nil)];
     [_toneButton setTarget:self];
     [_toneButton setAction:@selector(playTone:)];
     [_toneButton setToolTip:@"SoundTestTone"];
     [view addSubview:_toneButton];
-    y += 30;
     _toneStatus = Label(NSLocalizedString(@"The tone plays on the left channel, then on the right one, on the selected output.", nil),
-                        NSMakeRect(kMargin, y, listWidth, 16), small, [NSColor grayColor], NSTextAlignmentLeft);
+                        NSMakeRect(kMargin + 160, y + 2, listWidth - 160, 32), small, [NSColor grayColor], NSTextAlignmentLeft);
+    [[_toneStatus cell] setWraps:YES];
     [_toneStatus setToolTip:@"SoundToneStatus"];
     [view addSubview:_toneStatus];
-    y += 34;
+    y += 36;
 
     [view addSubview:Label(NSLocalizedString(@"Input", nil), NSMakeRect(kMargin, y, 200, 18), bold, [NSColor blackColor], NSTextAlignmentLeft)];
     y += 22;
     _inputTable = [self addListWithKey:@"SoundInputList" toView:view y:y width:listWidth];
     y += 126;
+
+    _in = [self addControlsOfInput:YES toView:view y:y];
+    y += 30;
 
     _inputButton = [[NSButton alloc] initWithFrame:NSMakeRect(kMargin, y - 2, 90, 26)];
     [_inputButton setButtonType:NSButtonTypePushOnPushOff];
@@ -340,12 +491,6 @@ static NSTextField *Label(NSString *text, NSRect frame, NSFont *font, NSColor *c
     [self refreshVolume];
 }
 
-- (void)devicesChanged
-{
-    if (_active)
-        [self reload];
-}
-
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)table
 {
     return (NSInteger)[(table == _inputTable ? _inputs : _outputs) count];
@@ -387,49 +532,99 @@ static NSTextField *Label(NSString *text, NSRect frame, NSFont *font, NSColor *c
         [self selectRowOfDevice:DefaultDevice(input) inTable:table devices:devices];
         _reloading = NO;
     }
-    if (!input)
-        [self refreshVolume];
+    [self refreshVolume];
 }
 
-#pragma mark Volume
+#pragma mark Volume, mute and sample rate
 
-// The volume and mute belong to the default output device, which is the selected row.
+- (DPSoundDirection *)directionOfSender:(id)sender
+{
+    return (sender == [_in volume] || sender == [_in mute] || sender == [_in rate]) ? _in : _out;
+}
+
+// The user moved a control: until the server has answered, what it still reports must not move the control back.
+static const NSTimeInterval kHold = 0.4;
+
+- (BOOL)isHeld:(DPSoundDirection *)direction
+{
+    return [direction userChange] != nil && -[[direction userChange] timeIntervalSinceNow] < kHold;
+}
+
+// The controls belong to the default device of their direction, which is the selected row.
+- (void)refreshControlsOfDirection:(DPSoundDirection *)direction
+{
+    AudioObjectID device = DefaultDevice([direction input]);
+    AudioObjectPropertyScope scope = [direction scope];
+    Float32 volume = 0;
+    BOOL muted = NO;
+    BOOL hasVolume = GetVolume(device, scope, &volume), hasMute = GetMute(device, scope, &muted);
+    [[direction volume] setEnabled:hasVolume];
+    [[direction mute] setEnabled:hasMute];
+    if (hasVolume && ![self isHeld:direction])
+        [[direction volume] setDoubleValue:volume];
+    if (hasMute && ![self isHeld:direction])
+        [[direction mute] setState:muted ? NSControlStateValueOn : NSControlStateValueOff];
+    if (!hasVolume)
+        [[direction volume] setDoubleValue:0];
+    if (!hasMute)
+        [[direction mute] setState:NSControlStateValueOff];
+
+    NSPopUpButton *popup = [direction rate];
+    NSArray<NSNumber *> *rates = AvailableRates(device);
+    Float64 current = NominalRate(device);
+    NSMutableArray *shown = [NSMutableArray array];
+    for (NSMenuItem *item in [popup itemArray])
+        [shown addObject:[item representedObject]];
+    if (![shown isEqualToArray:rates]) {
+        [popup removeAllItems];
+        for (NSNumber *rate in rates) {
+            [popup addItemWithTitle:RateTitle([rate doubleValue])];
+            [[popup lastItem] setRepresentedObject:rate];
+        }
+    }
+    for (NSInteger i = 0; i < [popup numberOfItems]; i++)
+        if ([[[popup itemAtIndex:i] representedObject] doubleValue] == current)
+            [popup selectItemAtIndex:i];
+    AudioObjectPropertyAddress rateAddress = Address(kAudioDevicePropertyNominalSampleRate, kAudioObjectPropertyScopeGlobal);
+    Boolean settable = false;
+    BOOL canSet = device != kAudioObjectUnknown && AudioObjectIsPropertySettable(device, &rateAddress, &settable) == noErr && settable;
+    [popup setEnabled:canSet && [rates count] > 1];
+}
+
 - (void)refreshVolume
 {
-    AudioObjectID device = DefaultDevice(NO);
-    AudioObjectPropertyAddress volume = Address(kAudioDevicePropertyVolumeScalar, kAudioObjectPropertyScopeOutput);
-    AudioObjectPropertyAddress mute = Address(kAudioDevicePropertyMute, kAudioObjectPropertyScopeOutput);
-    BOOL hasVolume = device != kAudioObjectUnknown && AudioObjectHasProperty(device, &volume);
-    BOOL hasMute = device != kAudioObjectUnknown && AudioObjectHasProperty(device, &mute);
-    [_volume setEnabled:hasVolume];
-    [_mute setEnabled:hasMute];
-    if (hasVolume) {
-        Float32 value = 0;
-        UInt32 size = sizeof(value);
-        if (AudioObjectGetPropertyData(device, &volume, 0, NULL, &size, &value) == noErr)
-            [_volume setDoubleValue:value];
-    }
-    if (hasMute) {
-        UInt32 value = 0, size = sizeof(value);
-        if (AudioObjectGetPropertyData(device, &mute, 0, NULL, &size, &value) == noErr)
-            [_mute setState:value ? NSControlStateValueOn : NSControlStateValueOff];
-    }
+    [self refreshControlsOfDirection:_out];
+    [self refreshControlsOfDirection:_in];
 }
 
 - (void)volumeChanged:(id)sender
 {
-    AudioObjectID device = DefaultDevice(NO);
-    AudioObjectPropertyAddress volume = Address(kAudioDevicePropertyVolumeScalar, kAudioObjectPropertyScopeOutput);
-    Float32 value = (Float32)[_volume doubleValue];
-    AudioObjectSetPropertyData(device, &volume, 0, NULL, sizeof(value), &value);
+    DPSoundDirection *direction = [self directionOfSender:sender];
+    [direction setUserChange:[NSDate date]];
+    SetVolume(DefaultDevice([direction input]), [direction scope], (Float32)[[direction volume] doubleValue]);
 }
 
 - (void)muteChanged:(id)sender
 {
-    AudioObjectID device = DefaultDevice(NO);
-    AudioObjectPropertyAddress mute = Address(kAudioDevicePropertyMute, kAudioObjectPropertyScopeOutput);
-    UInt32 value = [_mute state] == NSControlStateValueOn ? 1 : 0;
-    AudioObjectSetPropertyData(device, &mute, 0, NULL, sizeof(value), &value);
+    DPSoundDirection *direction = [self directionOfSender:sender];
+    [direction setUserChange:[NSDate date]];
+    SetMute(DefaultDevice([direction input]), [direction scope], [[direction mute] state] == NSControlStateValueOn);
+}
+
+// Choosing a rate asks the device for it; the popup shows what the device then reports.
+- (void)rateChanged:(id)sender
+{
+    DPSoundDirection *direction = [self directionOfSender:sender];
+    AudioObjectID device = DefaultDevice([direction input]);
+    NSNumber *rate = [[[direction rate] selectedItem] representedObject];
+    if (rate != nil && device != kAudioObjectUnknown) {
+        if ([direction input])
+            [self stopInputTest];
+        AudioObjectPropertyAddress address = Address(kAudioDevicePropertyNominalSampleRate, kAudioObjectPropertyScopeGlobal);
+        Float64 value = [rate doubleValue];
+        AudioObjectSetPropertyData(device, &address, 0, NULL, sizeof(value), &value);
+    }
+    [self reload];
 }
 
 #pragma mark Output test
@@ -594,15 +789,71 @@ static void InputBuffer(void *context, AudioQueueRef queue, AudioQueueBufferRef 
 
 #pragma mark Listeners
 
+- (void)addListener:(AudioObjectID)object selector:(AudioObjectPropertySelector)selector scope:(AudioObjectPropertyScope)scope element:(AudioObjectPropertyElement)element
+{
+    DPSoundListener *listener = [[DPSoundListener alloc] init];
+    AudioObjectPropertyAddress address = { selector, scope, element };
+    __weak DPSoundController *weak = self;
+    [listener setObject:object];
+    [listener setAddress:address];
+    [listener setBlock:^(UInt32 count, const AudioObjectPropertyAddress *addresses) {
+        [weak propertiesChanged];
+    }];
+    if (AudioObjectAddPropertyListenerBlock(object, &address, dispatch_get_main_queue(), [listener block]) == noErr)
+        [_listeners addObject:listener];
+}
+
+// The system object tells when the devices or the defaults change; the default devices tell when their volume,
+// mute or sample rate change. The latter are listened to again whenever a default device changes.
+- (void)listenToDevice:(DPSoundDirection *)direction
+{
+    AudioObjectID device = DefaultDevice([direction input]);
+    AudioObjectPropertyScope scope = [direction scope];
+    [direction setListenedDevice:device];
+    if (device == kAudioObjectUnknown)
+        return;
+    [self addListener:device selector:kAudioDevicePropertyNominalSampleRate scope:kAudioObjectPropertyScopeGlobal element:kAudioObjectPropertyElementMaster];
+    for (NSNumber *selector in @[ @(kAudioDevicePropertyVolumeScalar), @(kAudioDevicePropertyMute) ])
+        for (NSNumber *element in [@[ @(kAudioObjectPropertyElementMaster) ] arrayByAddingObjectsFromArray:ElementsWithProperty(device, [selector unsignedIntValue], scope)])
+            [self addListener:device selector:[selector unsignedIntValue] scope:scope element:[element unsignedIntValue]];
+}
+
+- (void)removeListeners:(BOOL)all
+{
+    NSMutableArray *kept = [NSMutableArray array];
+    for (DPSoundListener *listener in _listeners) {
+        if (!all && [listener object] == kAudioObjectSystemObject) {
+            [kept addObject:listener];
+            continue;
+        }
+        AudioObjectPropertyAddress address = [listener address];
+        AudioObjectRemovePropertyListenerBlock([listener object], &address, dispatch_get_main_queue(), [listener block]);
+    }
+    _listeners = kept;
+}
+
+- (void)propertiesChanged
+{
+    if (!_active)
+        return;
+    if (DefaultDevice(NO) != [_out listenedDevice] || DefaultDevice(YES) != [_in listenedDevice]) {
+        [self removeListeners:NO];
+        [self listenToDevice:_out];
+        [self listenToDevice:_in];
+    }
+    [self reload];
+}
+
 - (void)activate
 {
     if (_active)
         return;
     _active = YES;
-    for (size_t i = 0; i < sizeof(kListened) / sizeof(kListened[0]); i++) {
-        AudioObjectPropertyAddress address = Address(kListened[i], kAudioObjectPropertyScopeGlobal);
-        AudioObjectAddPropertyListener(kAudioObjectSystemObject, &address, DevicesChanged, (__bridge void *)self);
-    }
+    _listeners = [NSMutableArray array];
+    for (NSNumber *selector in @[ @(kAudioHardwarePropertyDevices), @(kAudioHardwarePropertyDefaultOutputDevice), @(kAudioHardwarePropertyDefaultInputDevice) ])
+        [self addListener:kAudioObjectSystemObject selector:[selector unsignedIntValue] scope:kAudioObjectPropertyScopeGlobal element:kAudioObjectPropertyElementMaster];
+    [self listenToDevice:_out];
+    [self listenToDevice:_in];
     [self reload];
 }
 
@@ -611,10 +862,7 @@ static void InputBuffer(void *context, AudioQueueRef queue, AudioQueueBufferRef 
     if (!_active)
         return;
     _active = NO;
-    for (size_t i = 0; i < sizeof(kListened) / sizeof(kListened[0]); i++) {
-        AudioObjectPropertyAddress address = Address(kListened[i], kAudioObjectPropertyScopeGlobal);
-        AudioObjectRemovePropertyListener(kAudioObjectSystemObject, &address, DevicesChanged, (__bridge void *)self);
-    }
+    [self removeListeners:YES];
     [self stopTests];
 }
 
