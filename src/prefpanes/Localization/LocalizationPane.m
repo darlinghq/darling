@@ -88,7 +88,8 @@ static void StoreLocale(NSString *base, NSString *calendar)
 - (NSArray<NSString *> *)languageList
 {
     id stored = [PKPane preferenceForKey:kLanguages domain:nil currentHost:NO];
-    return [stored isKindOfClass:[NSArray class]] ? stored : @[];
+    // while the preference is not set, the languages the system falls back to are the list
+    return [stored isKindOfClass:[NSArray class]] ? stored : [NSLocale preferredLanguages];
 }
 
 - (void)writeLanguages:(NSArray<NSString *> *)list
