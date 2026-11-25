@@ -126,22 +126,30 @@ static NSView *Control(NSString *key, NSUInteger index)
 	return index < [found count] ? found[index] : nil;
 }
 
-static NSTabView *Tabs(void)
+// the list of sections on the left
+static NSTableView *Sidebar(void)
 {
 	NSMutableArray *queue = [NSMutableArray arrayWithObject:[gPane mainView]];
 	while ([queue count]) {
 		NSView *v = queue[0];
 		[queue removeObjectAtIndex:0];
-		if ([v isKindOfClass:[NSTabView class]])
-			return (NSTabView *)v;
+		if ([v isKindOfClass:[NSTableView class]])
+			return (NSTableView *)v;
 		[queue addObjectsFromArray:[v subviews]];
 	}
 	return nil;
 }
 
+static NSString *SectionTitleAtRow(NSInteger row)
+{
+	NSTableView *list = Sidebar();
+	return [[list dataSource] tableView:list objectValueForTableColumn:[[list tableColumns] objectAtIndex:0] row:row];
+}
+
+// the identifier (the lower-case title) of the section the list has selected
 static NSString *SelectedSection(void)
 {
-	return [[[Tabs() selectedTabViewItem] identifier] description];
+	return [SectionTitleAtRow([Sidebar() selectedRow]) lowercaseString];
 }
 
 static void Anchor(NSString *anchor)
@@ -225,25 +233,32 @@ int main(int argc, char **argv)
 		CHECK([gPane isSelected], "didSelect");
 
 		// sections and anchors
-		CHECK(Tabs() != nil && [[Tabs() tabViewItems] count] == 8, "eight tabs");
+		CHECK(Sidebar() != nil && [Sidebar() numberOfRows] == 8, "the list has eight sections");
 		NSMutableArray *ids = [NSMutableArray array];
-		for (NSTabViewItem *item in [Tabs() tabViewItems]) [ids addObject:[item identifier]];
-		CHECK([ids isEqualToArray:(@[ @"keyboard", @"display", @"files", @"graphics", @"identity", @"security", @"metal", @"applications" ])], "tab order %s", [[ids description] UTF8String]);
+		for (NSInteger row = 0; row < [Sidebar() numberOfRows]; row++) [ids addObject:SectionTitleAtRow(row)];
+		CHECK([ids isEqualToArray:(@[ @"Keyboard", @"Display", @"Files", @"Graphics", @"Identity", @"Security", @"Metal", @"Applications" ])], "section order %s", [[ids description] UTF8String]);
+		CHECK([SelectedSection() isEqualToString:@"keyboard"] && Control(@"ControlKeyActsAsCommand", 0) != nil, "the first section is shown at the start");
+		// the user picks rows in the list
+		[Sidebar() selectRowIndexes:[NSIndexSet indexSetWithIndex:6] byExtendingSelection:NO];
+		Spin(0.3);
+		CHECK([SelectedSection() isEqualToString:@"metal"] && Control(@"LogStatistics", 0) != nil && Control(@"ControlKeyActsAsCommand", 0) == nil, "selecting a row shows that section only");
+		[Sidebar() selectRowIndexes:[NSIndexSet indexSetWithIndex:0] byExtendingSelection:NO];
+		Spin(0.3);
 		Anchor(@"Security");
-		CHECK([SelectedSection() isEqualToString:@"security"], "anchor Security selects the security tab: %s", [SelectedSection() UTF8String]);
+		CHECK([SelectedSection() isEqualToString:@"security"], "anchor Security selects the security section: %s", [SelectedSection() UTF8String]);
 		Anchor(@"DesktopFileChooser");
-		CHECK([SelectedSection() isEqualToString:@"files"], "the key of a setting selects its tab: %s", [SelectedSection() UTF8String]);
+		CHECK([SelectedSection() isEqualToString:@"files"], "the key of a setting selects its section: %s", [SelectedSection() UTF8String]);
 		Anchor(@"Application lifecycle");
 		CHECK([SelectedSection() isEqualToString:@"applications"], "the issue's group name works: %s", [SelectedSection() UTF8String]);
 		Anchor(@"no-such-anchor");
-		CHECK([SelectedSection() isEqualToString:@"applications"], "an unknown anchor leaves the tab as it is");
+		CHECK([SelectedSection() isEqualToString:@"applications"], "an unknown anchor leaves the section as it is");
 
-		// the pane's height follows the tab (the host resizes its window to it)
+		// the pane's height follows the section (the host resizes its window to it)
 		Anchor(@"keyboard");
 		double keyboardHeight = [view frame].size.height;
 		Anchor(@"identity");
 		double identityHeight = [view frame].size.height;
-		CHECK(identityHeight > keyboardHeight + 100, "the main view is taller for the identity tab (%g) than for the keyboard tab (%g)", identityHeight, keyboardHeight);
+		CHECK(identityHeight > keyboardHeight + 100, "the main view is taller for the identity section (%g) than for the keyboard section (%g)", identityHeight, keyboardHeight);
 
 		// a boolean user setting: shows the documented default, writes, and removes the key for Default
 		Anchor(@"keyboard");

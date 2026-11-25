@@ -22,20 +22,23 @@
 #import "DPSection.h"
 
 // The Darling pane of System Preferences: the settings of Darling that are otherwise reached
-// with `defaults write`, grouped in tabs. A tab's controls read the settings through
+// with `defaults write`, grouped in sections. A section's controls read the settings through
 // CFPreferences and show the documented default while a key is not set; choosing "Default"
-// (or clearing a field) removes the key.
+// (or clearing a field) removes the key. A list of the sections on the left selects the one
+// shown on the right.
 //
 // User settings are written when the control changes. System-wide settings (the platform
 // identity, the security configuration and what Metal reports) are edited first and written
 // by Apply.
 
-static const CGFloat kPaneWidth = 640;
+static const CGFloat kSidebarWidth = 160;
+static const CGFloat kContentWidth = 620;
+static const CGFloat kPaneWidth = 10 + kSidebarWidth + 10 + kContentWidth;
 static const CGFloat kMargin = 16;
 static const CGFloat kLabelWidth = 220;
 static const CGFloat kControlX = 244;
 static const CGFloat kControlWidth = 250;
-static const CGFloat kHelpWidth = 360;
+static const CGFloat kHelpWidth = 350;
 static const CGFloat kStatusHeight = 30;
 
 @interface DPFlippedView : NSView
@@ -49,16 +52,20 @@ static const CGFloat kStatusHeight = 30;
 @property (strong) DPSetting *setting;
 @property (strong) NSControl *control;
 @property (strong) DPSection *section;
-@property BOOL perApplication;     // the setting of the application chosen in the Applications tab
+@property BOOL perApplication;     // the setting of the application chosen in the Applications section
 @end
 @implementation DPRow
 @end
 
-@interface DarlingPreferencePane : NSPreferencePane <NSTabViewDelegate, NSTextFieldDelegate> {
-    NSTabView *_tabs;
+@interface DarlingPreferencePane : NSPreferencePane <NSTableViewDataSource, NSTableViewDelegate, NSTextFieldDelegate> {
+    NSTableView *_sidebar;            // the list of sections, on the left
+    NSScrollView *_sidebarScroll;
+    NSView *_content;                 // holds the view of the selected section
+    NSMutableArray<NSView *> *_sectionViews;
+    NSInteger _selectedSection;
     NSTextField *_status;
     NSMutableArray<DPRow *> *_rows;
-    NSMutableArray<NSNumber *> *_contentHeights;       // by tab
+    NSMutableArray<NSNumber *> *_contentHeights;       // by section
     NSMutableDictionary<NSString *, NSMutableDictionary *> *_pending;   // section identifier -> key -> @[setting, value or NSNull]
     NSMutableDictionary<NSString *, NSButton *> *_applyButtons, *_revertButtons;
 
@@ -156,9 +163,9 @@ static CGFloat HeightOfText(NSString *text, NSFont *font, CGFloat width)
 
 - (NSView *)viewForSection:(DPSection *)section
 {
-    NSView *view = [[DPFlippedView alloc] initWithFrame:NSMakeRect(0, 0, kPaneWidth - 20, 100)];
+    NSView *view = [[DPFlippedView alloc] initWithFrame:NSMakeRect(0, 0, kContentWidth, 100)];
     CGFloat y = 12;
-    CGFloat fullWidth = kPaneWidth - 20 - 2 * kMargin;
+    CGFloat fullWidth = kContentWidth - 2 * kMargin;
     y = [self addCaption:section.note toView:view x:kMargin y:y width:fullWidth] + 14;
 
     for (DPSetting *setting in section.userSettings)
@@ -179,7 +186,7 @@ static CGFloat HeightOfText(NSString *text, NSFont *font, CGFloat width)
         for (DPSetting *setting in section.systemSettings)
             [self addRowForSetting:setting section:section perApplication:NO toView:view y:&y];
 
-        NSButton *apply = [[NSButton alloc] initWithFrame:NSMakeRect(kPaneWidth - 20 - kMargin - 90, y, 90, 26)];
+        NSButton *apply = [[NSButton alloc] initWithFrame:NSMakeRect(kContentWidth - kMargin - 90, y, 90, 26)];
         [apply setTitle:NSLocalizedString(@"Apply", nil)];
         [apply setBezelStyle:NSBezelStyleRounded];
         [apply setTarget:self];
@@ -189,7 +196,7 @@ static CGFloat HeightOfText(NSString *text, NSFont *font, CGFloat width)
         [view addSubview:apply];
         _applyButtons[section.identifier] = apply;
 
-        NSButton *revert = [[NSButton alloc] initWithFrame:NSMakeRect(kPaneWidth - 20 - kMargin - 90 - 100, y, 90, 26)];
+        NSButton *revert = [[NSButton alloc] initWithFrame:NSMakeRect(kContentWidth - kMargin - 90 - 100, y, 90, 26)];
         [revert setTitle:NSLocalizedString(@"Revert", nil)];
         [revert setBezelStyle:NSBezelStyleRounded];
         [revert setTarget:self];
@@ -201,11 +208,11 @@ static CGFloat HeightOfText(NSString *text, NSFont *font, CGFloat width)
         y += 26 + 12;
     }
 
-    [view setFrameSize:NSMakeSize(kPaneWidth - 20, y + 4)];
+    [view setFrameSize:NSMakeSize(kContentWidth, y + 4)];
     return view;
 }
 
-#pragma mark Applications tab
+#pragma mark Applications section
 
 static NSString *DisplayNameOfBundle(NSBundle *bundle, NSString *path)
 {
@@ -248,7 +255,7 @@ static NSString *DisplayNameOfBundle(NSBundle *bundle, NSString *path)
 - (void)addApplicationControlsToView:(NSView *)view section:(DPSection *)section y:(CGFloat *)yPointer
 {
     CGFloat y = *yPointer;
-    CGFloat fullWidth = kPaneWidth - 20 - 2 * kMargin;
+    CGFloat fullWidth = kContentWidth - 2 * kMargin;
     NSBox *line = [[NSBox alloc] initWithFrame:NSMakeRect(kMargin, y, fullWidth, 1)];
     [line setBoxType:NSBoxSeparator];
     [view addSubview:line];
@@ -542,24 +549,44 @@ static BOOL ValuesEqual(id a, id b)
 {
     _rows = [NSMutableArray array];
     _contentHeights = [NSMutableArray array];
+    _sectionViews = [NSMutableArray array];
     _pending = [NSMutableDictionary dictionary];
     _applyButtons = [NSMutableDictionary dictionary];
     _revertButtons = [NSMutableDictionary dictionary];
+    _selectedSection = -1;
 
     NSView *main = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, kPaneWidth, 400)];
-    _tabs = [[NSTabView alloc] initWithFrame:NSMakeRect(10, kStatusHeight, kPaneWidth - 20, 370)];
-    [_tabs setDelegate:self];
     for (DPSection *section in [DPSection allSections]) {
         _pending[section.identifier] = [NSMutableDictionary dictionary];
-        NSTabViewItem *item = [[NSTabViewItem alloc] initWithIdentifier:section.identifier];
-        [item setLabel:section.title];
-        NSView *content = [self viewForSection:section];
-        [item setView:content];
-        [_tabs addTabViewItem:item];
-        [_contentHeights addObject:@([content frame].size.height)];
+        NSView *view = [self viewForSection:section];
+        [_sectionViews addObject:view];
+        [_contentHeights addObject:@([view frame].size.height)];
     }
-    [_tabs setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-    [main addSubview:_tabs];
+
+    // the list of sections on the left
+    _sidebar = [[NSTableView alloc] initWithFrame:NSMakeRect(0, 0, kSidebarWidth, 200)];
+    NSTableColumn *column = [[NSTableColumn alloc] initWithIdentifier:@"section"];
+    [column setWidth:kSidebarWidth - 4];
+    [column setEditable:NO];
+    [_sidebar addTableColumn:column];
+    [_sidebar setHeaderView:nil];
+    [_sidebar setRowHeight:24];
+    [_sidebar setAllowsEmptySelection:NO];
+    [_sidebar setAllowsMultipleSelection:NO];
+    [_sidebar setSelectionHighlightStyle:NSTableViewSelectionHighlightStyleSourceList];
+    [_sidebar setDataSource:self];
+    [_sidebar setDelegate:self];
+    _sidebarScroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(10, kStatusHeight, kSidebarWidth, 360)];
+    [_sidebarScroll setDocumentView:_sidebar];
+    [_sidebarScroll setHasVerticalScroller:NO];
+    [_sidebarScroll setBorderType:NSBezelBorder];
+    [_sidebarScroll setAutoresizingMask:NSViewHeightSizable];
+    [main addSubview:_sidebarScroll];
+
+    // the selected section on the right
+    _content = [[NSView alloc] initWithFrame:NSMakeRect(10 + kSidebarWidth + 10, kStatusHeight, kContentWidth, 360)];
+    [_content setAutoresizingMask:NSViewHeightSizable];
+    [main addSubview:_content];
 
     _status = MakeLabel(@"", NSMakeRect(kMargin, 6, kPaneWidth - 2 * kMargin, 18),
                         [NSFont systemFontOfSize:[NSFont smallSystemFontSize]], [NSColor grayColor], NSTextAlignmentLeft);
@@ -568,7 +595,7 @@ static BOOL ValuesEqual(id a, id b)
 
     [self setMainView:main];
     [self refreshAll];
-    [self fitToSelectedTab];
+    [self selectSectionAtIndex:0];
     [self mainViewDidLoad];
     return main;
 }
@@ -578,37 +605,66 @@ static BOOL ValuesEqual(id a, id b)
     [self refreshAll];
 }
 
-// The pane is as tall as the selected tab needs; the host follows when this changes.
-- (void)fitToSelectedTab
+// Shows the section's view on the right. The pane is as tall as the section needs (but not
+// shorter than the list): the host follows when this changes.
+- (void)selectSectionAtIndex:(NSInteger)index
 {
-    NSInteger index = [_tabs indexOfTabViewItem:[_tabs selectedTabViewItem]];
-    if (index < 0 || index >= (NSInteger)[_contentHeights count])
+    if (index < 0 || index >= (NSInteger)[_sectionViews count])
         return;
-    CGFloat content = [_contentHeights[index] doubleValue];
-    // what the tab view adds around the content: the tabs and the border
-    NSRect frame = [_tabs frame];
-    CGFloat overhead = frame.size.height - [_tabs contentRect].size.height;
-    if (overhead < 20 || overhead > 80)
-        overhead = 46;
-    CGFloat height = MAX(content + overhead, 200) + kStatusHeight + 10;
+    if ([_sidebar selectedRow] != index) {
+        [_sidebar selectRowIndexes:[NSIndexSet indexSetWithIndex:index] byExtendingSelection:NO];
+        return;     // the selection change comes back here
+    }
+    if (_selectedSection == index)
+        return;
+    if (_selectedSection >= 0)
+        [_sectionViews[_selectedSection] removeFromSuperview];
+    _selectedSection = index;
+    [self say:@"" error:NO];
+
+    NSView *view = _sectionViews[index];
+    CGFloat contentHeight = [_contentHeights[index] doubleValue];
+    CGFloat listHeight = [_sidebar rowHeight] * [_sectionViews count] + 20;
+    CGFloat height = MAX(contentHeight, listHeight);
     NSView *main = [self mainView];
-    if (fabs([main frame].size.height - height) > 0.5)
-        [main setFrameSize:NSMakeSize(kPaneWidth, height)];
+    if (fabs([main frame].size.height - (height + kStatusHeight + 10)) > 0.5)
+        [main setFrameSize:NSMakeSize(kPaneWidth, height + kStatusHeight + 10)];
+    [_sidebarScroll setFrame:NSMakeRect(10, kStatusHeight, kSidebarWidth, height)];
+    [_content setFrame:NSMakeRect(10 + kSidebarWidth + 10, kStatusHeight, kContentWidth, height)];
+    // the section hangs from the top of the area
+    [view setFrame:NSMakeRect(0, height - contentHeight, kContentWidth, contentHeight)];
+    [_content addSubview:view];
 }
 
-- (void)tabView:(NSTabView *)tabView didSelectTabViewItem:(NSTabViewItem *)item
+#pragma mark Section list
+
+- (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView
 {
-    [self say:@"" error:NO];
-    [self fitToSelectedTab];
+    return (NSInteger)[[DPSection allSections] count];
+}
+
+- (id)tableView:(NSTableView *)tableView objectValueForTableColumn:(NSTableColumn *)column row:(NSInteger)row
+{
+    return [[DPSection allSections][row] title];
+}
+
+- (BOOL)tableView:(NSTableView *)tableView shouldEditTableColumn:(NSTableColumn *)column row:(NSInteger)row
+{
+    return NO;
+}
+
+- (void)tableViewSelectionDidChange:(NSNotification *)notification
+{
+    [self selectSectionAtIndex:[_sidebar selectedRow]];
 }
 
 #pragma mark Anchors
 
-// An anchor names a tab (as its identifier or title) or the key of a setting in it.
+// An anchor names a section (as its identifier or title) or the key of a setting in it.
 - (void)handleSystemPreferencesAnchor:(NSString *)anchor
 {
     NSString *wanted = [[anchor stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] lowercaseString];
-    if ([wanted length] == 0 || _tabs == nil)
+    if ([wanted length] == 0 || _sidebar == nil)
         return;
     NSMutableDictionary *aliases = [NSMutableDictionary dictionary];
     aliases[@"application lifecycle"] = @"applications";
@@ -628,11 +684,10 @@ static BOOL ValuesEqual(id a, id b)
     }
     if (target == nil)
         return;
-    NSInteger index = [_tabs indexOfTabViewItemWithIdentifier:target];
-    if (index != NSNotFound) {
-        [_tabs selectTabViewItemAtIndex:index];
-        [self fitToSelectedTab];
-    }
+    NSArray *sections = [DPSection allSections];
+    for (NSUInteger i = 0; i < [sections count]; i++)
+        if ([[sections[i] identifier] isEqualToString:target])
+            [self selectSectionAtIndex:(NSInteger)i];
 }
 
 @end
