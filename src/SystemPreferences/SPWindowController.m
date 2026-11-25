@@ -404,7 +404,7 @@ static const CGFloat kMinimumWidth = 460;
 
     _currentPane = pane;
     _currentController = controller;
-    [_window setTitle:pane.label];
+    [_window setTitle:pane.title];
     [controller didSelect];
 
     NSView *first = [controller firstKeyView];

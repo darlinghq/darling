@@ -209,6 +209,8 @@ int main(int argc, char **argv)
 		if (!bundle) return 1;
 		CHECK([[bundle bundleIdentifier] isEqualToString:@"org.darlinghq.preference.darling"], "identifier %s", [[bundle bundleIdentifier] UTF8String]);
 		CHECK([[bundle objectForInfoDictionaryKey:@"NSPrefPaneIconLabel"] isEqualToString:@"Darling"], "label");
+		// System Preferences shows the bundle name as the window title and the icon label in the grid
+		CHECK([[bundle objectForInfoDictionaryKey:@"CFBundleName"] isEqualToString:@"Darling System Preferences"], "the bundle name is the window title: %s", [[bundle objectForInfoDictionaryKey:@"CFBundleName"] UTF8String]);
 		NSString *icon = [bundle objectForInfoDictionaryKey:@"NSPrefPaneIconFile"];
 		NSImage *iconImage = icon ? [[NSImage alloc] initWithContentsOfFile:[bundle pathForResource:icon ofType:@"icns"]] : nil;
 		CHECK(iconImage != nil && [iconImage size].width > 0, "NSPrefPaneIconFile names an icon that loads");
@@ -233,10 +235,10 @@ int main(int argc, char **argv)
 		CHECK([gPane isSelected], "didSelect");
 
 		// sections and anchors
-		CHECK(Sidebar() != nil && [Sidebar() numberOfRows] == 8, "the list has eight sections");
+		CHECK(Sidebar() != nil && [Sidebar() numberOfRows] == 9, "the list has nine sections");
 		NSMutableArray *ids = [NSMutableArray array];
 		for (NSInteger row = 0; row < [Sidebar() numberOfRows]; row++) [ids addObject:SectionTitleAtRow(row)];
-		CHECK([ids isEqualToArray:(@[ @"Keyboard", @"Display", @"Files", @"Graphics", @"Identity", @"Security", @"Metal", @"Applications" ])], "section order %s", [[ids description] UTF8String]);
+		CHECK([ids isEqualToArray:(@[ @"Keyboard", @"Display", @"Files", @"Graphics", @"Sound", @"Identity", @"Security", @"Metal", @"Applications" ])], "section order %s", [[ids description] UTF8String]);
 		CHECK([SelectedSection() isEqualToString:@"keyboard"] && Control(@"ControlKeyActsAsCommand", 0) != nil, "the first section is shown at the start");
 		// every row of the list has its own icon of the size of a source list's
 		NSMutableSet *icons = [NSMutableSet set];
@@ -250,9 +252,9 @@ int main(int argc, char **argv)
 			if (icon == nil || [icon size].width < 16 || [icon size].width > 18 || [icon size].height < 16 || [icon size].height > 18 || [tiff length] == 0) iconsOK = NO;
 			else [icons addObject:tiff];
 		}
-		CHECK(iconsOK && [icons count] == 8, "each of the eight rows has an icon of 16 to 18 points, and they differ (%lu distinct)", (unsigned long)[icons count]);
+		CHECK(iconsOK && [icons count] == 9, "each of the nine rows has an icon of 16 to 18 points, and they differ (%lu distinct)", (unsigned long)[icons count]);
 		// the user picks rows in the list
-		[Sidebar() selectRowIndexes:[NSIndexSet indexSetWithIndex:6] byExtendingSelection:NO];
+		[Sidebar() selectRowIndexes:[NSIndexSet indexSetWithIndex:7] byExtendingSelection:NO];
 		Spin(0.3);
 		CHECK([SelectedSection() isEqualToString:@"metal"] && Control(@"LogStatistics", 0) != nil && Control(@"ControlKeyActsAsCommand", 0) == nil, "selecting a row shows that section only");
 		[Sidebar() selectRowIndexes:[NSIndexSet indexSetWithIndex:0] byExtendingSelection:NO];
@@ -261,6 +263,8 @@ int main(int argc, char **argv)
 		CHECK([SelectedSection() isEqualToString:@"security"], "anchor Security selects the security section: %s", [SelectedSection() UTF8String]);
 		Anchor(@"DesktopFileChooser");
 		CHECK([SelectedSection() isEqualToString:@"files"], "the key of a setting selects its section: %s", [SelectedSection() UTF8String]);
+		Anchor(@"sound");
+		CHECK([SelectedSection() isEqualToString:@"sound"] && Control(@"SoundOutputList", 0) != nil, "the sound anchor shows the Sound section");
 		Anchor(@"Application lifecycle");
 		CHECK([SelectedSection() isEqualToString:@"applications"], "the issue's group name works: %s", [SelectedSection() UTF8String]);
 		Anchor(@"no-such-anchor");

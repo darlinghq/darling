@@ -83,6 +83,8 @@ static NSString *MakePane(NSString *template, NSString *directory, NSString *nam
 	NSMutableDictionary *d = [NSMutableDictionary dictionaryWithContentsOfFile:plist];
 	d[@"CFBundleIdentifier"] = identifier;
 	d[@"NSPrefPaneIconLabel"] = label;
+	// the window shows the bundle name, the grid the icon label
+	d[@"CFBundleName"] = [label stringByAppendingString:@" Window"];
 	[d writeToFile:plist atomically:YES];
 	return dest;
 }
@@ -120,7 +122,7 @@ int main(int argc, char **argv)
 		CHECK(tail != nil, "didSelect with the main view in a window: %s", [LogText() UTF8String]);
 		if (tail) {
 			CHECK([tail rangeOfString:@"willSelect"].location < [tail rangeOfString:@"didSelect"].location, "willSelect comes first");
-			CHECK([tail rangeOfString:@"title=Test Dock"].location != NSNotFound, "window title is the pane's label: %s", [tail UTF8String]);
+			CHECK([tail rangeOfString:@"title=Test Dock Window"].location != NSNotFound, "window title is the pane's bundle name, not its icon label: %s", [tail UTF8String]);
 			CHECK([tail rangeOfString:@"mainView=480x270"].location != NSNotFound, "main view keeps its nib size");
 			CHECK([tail rangeOfString:@"selected=1"].location != NSNotFound, "isSelected is YES in didSelect");
 			CHECK([tail rangeOfString:@"key=set"].location != NSNotFound, "the nib's initialKeyView is available");
@@ -150,13 +152,13 @@ int main(int argc, char **argv)
 		SetMode(@"later");
 		mark = [LogText() length];
 		Open(@[ @"x-apple.systempreferences:org.darlinghq.test.zeta" ]);
-		NSString *after = WaitFor(mark, @"didSelect window=1 title=Zeta Pane", 20);
+		NSString *after = WaitFor(mark, @"didSelect window=1 title=Zeta Pane Window", 20);
 		CHECK(after != nil, "the pane that was asked for is shown after the delayed reply: %s", [LogText() UTF8String]);
 		if (after) {
 			NSUInteger r = [after rangeOfString:@"replyToShouldUnselect:1"].location;
 			NSUInteger w = [after rangeOfString:@"willUnselect"].location;
 			NSUInteger d = [after rangeOfString:@"didUnselect selected=0"].location;
-			NSUInteger s = [after rangeOfString:@"title=Zeta Pane"].location;
+			NSUInteger s = [after rangeOfString:@"title=Zeta Pane Window"].location;
 			CHECK(r != NSNotFound && w != NSNotFound && d != NSNotFound && r < w && w < d && d < s, "reply, willUnselect, didUnselect (not selected), then the new pane's didSelect: %s", [after UTF8String]);
 		}
 
@@ -174,7 +176,7 @@ int main(int argc, char **argv)
 		mark = [LogText() length];
 		Open(@[ @"x-apple.systempreferences:org.darlinghq.test.alpha?Fresh_Anchor" ]);
 		tail = WaitFor(mark, @"anchor Fresh_Anchor selected=1", 20);
-		CHECK(tail != nil && [tail rangeOfString:@"didSelect window=1 title=Alpha Pane"].location < [tail rangeOfString:@"anchor Fresh_Anchor"].location,
+		CHECK(tail != nil && [tail rangeOfString:@"didSelect window=1 title=Alpha Pane Window"].location < [tail rangeOfString:@"anchor Fresh_Anchor"].location,
 		      "a pane that the URL selects gets the anchor after its didSelect: %s", tail ? [tail UTF8String] : "(none)");
 		mark = [LogText() length];
 		Open(@[ @"x-apple.systempreferences:org.darlinghq.test.alpha" ]);
@@ -220,7 +222,7 @@ int main(int argc, char **argv)
 		// a .prefPane passed as a document
 		mark = [LogText() length];
 		Open(@[ doc ]);
-		tail = WaitFor(mark, @"didSelect window=1 title=Doc Pane", 20);
+		tail = WaitFor(mark, @"didSelect window=1 title=Doc Pane Window", 20);
 		CHECK(tail != nil, "open Foo.prefPane shows the pane: %s", [LogText() UTF8String]);
 
 		// the last pane shown is shown again at the next start
@@ -238,7 +240,7 @@ int main(int argc, char **argv)
 		SetMode(@"now");
 		mark = [LogText() length];
 		Open(@[ @"-a", @"System Preferences" ]);
-		tail = WaitFor(mark, @"didSelect window=1 title=Zeta Pane", 90);
+		tail = WaitFor(mark, @"didSelect window=1 title=Zeta Pane Window", 90);
 		CHECK(tail != nil, "a plain start shows the last pane: %s", [LogText() UTF8String]);
 		int pid2 = PidOf(LogText());
 		CHECK(pid2 != 0 && pid2 != pid, "a new process");

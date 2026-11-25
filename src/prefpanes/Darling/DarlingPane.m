@@ -20,6 +20,7 @@
 #import <Cocoa/Cocoa.h>
 #import <PreferencePanes/PreferencePanes.h>
 #import "DPSection.h"
+#import "DPSound.h"
 
 // The Darling pane of System Preferences: the settings of Darling that are otherwise reached
 // with `defaults write`, grouped in sections. A section's controls read the settings through
@@ -63,6 +64,7 @@ static const CGFloat kStatusHeight = 30;
     NSView *_content;                 // holds the view of the selected section
     NSMutableArray<NSView *> *_sectionViews;
     NSInteger _selectedSection;
+    DPSoundController *_sound;        // the Sound section
     NSTextField *_status;
     NSMutableArray<DPRow *> *_rows;
     NSMutableArray<NSNumber *> *_contentHeights;       // by section
@@ -150,6 +152,25 @@ static void DrawGlyph(NSString *identifier)
         [p appendBezierPathWithArcWithCenter:NSMakePoint(9, 10.5) radius:3 startAngle:0 endAngle:180];
         [p stroke];
         [RoundedRect(NSMakeRect(4.5, 3.8, 9, 6.6), 1.2) fill];
+    } else if ([identifier isEqualToString:@"sound"]) {
+        // a loudspeaker with two sound waves
+        p = [NSBezierPath bezierPath];
+        [p moveToPoint:NSMakePoint(3.5, 7)];
+        [p lineToPoint:NSMakePoint(6.5, 7)];
+        [p lineToPoint:NSMakePoint(10, 4)];
+        [p lineToPoint:NSMakePoint(10, 14)];
+        [p lineToPoint:NSMakePoint(6.5, 11)];
+        [p lineToPoint:NSMakePoint(3.5, 11)];
+        [p closePath];
+        [p fill];
+        p = [NSBezierPath bezierPath];
+        [p setLineWidth:1.2];
+        [p appendBezierPathWithArcWithCenter:NSMakePoint(10, 9) radius:3 startAngle:-45 endAngle:45];
+        [p stroke];
+        p = [NSBezierPath bezierPath];
+        [p setLineWidth:1.2];
+        [p appendBezierPathWithArcWithCenter:NSMakePoint(10, 9) radius:5.2 startAngle:-45 endAngle:45];
+        [p stroke];
     } else if ([identifier isEqualToString:@"metal"]) {
         // bars of a chart
         [[NSBezierPath bezierPathWithRect:NSMakeRect(3.5, 4, 3, 5)] fill];
@@ -173,6 +194,7 @@ static NSImage *DrawIconForSection(NSString *identifier)
         @"graphics": [NSColor colorWithCalibratedRed:0.20 green:0.62 blue:0.36 alpha:1],
         @"identity": [NSColor colorWithCalibratedRed:0.55 green:0.35 blue:0.78 alpha:1],
         @"security": [NSColor colorWithCalibratedRed:0.82 green:0.25 blue:0.25 alpha:1],
+        @"sound": [NSColor colorWithCalibratedRed:0.86 green:0.33 blue:0.55 alpha:1],
         @"metal": [NSColor colorWithCalibratedRed:0.18 green:0.58 blue:0.66 alpha:1],
         @"applications": [NSColor colorWithCalibratedRed:0.90 green:0.42 blue:0.20 alpha:1],
     };
@@ -311,6 +333,10 @@ static CGFloat HeightOfText(NSString *text, NSFont *font, CGFloat width)
 
 - (NSView *)viewForSection:(DPSection *)section
 {
+    if ([section.identifier isEqualToString:@"sound"]) {
+        _sound = [[DPSoundController alloc] init];
+        return [_sound viewWithWidth:kContentWidth];
+    }
     NSView *view = [[DPFlippedView alloc] initWithFrame:NSMakeRect(0, 0, kContentWidth, 100)];
     CGFloat y = 12;
     CGFloat fullWidth = kContentWidth - 2 * kMargin;
@@ -768,8 +794,10 @@ static BOOL ValuesEqual(id a, id b)
         return;
     if (_selectedSection >= 0)
         [_sectionViews[_selectedSection] removeFromSuperview];
+    [self sectionLeft:_selectedSection];
     _selectedSection = index;
     [self say:@"" error:NO];
+    [self sectionEntered:index];
 
     NSView *view = _sectionViews[index];
     CGFloat contentHeight = [_contentHeights[index] doubleValue];
@@ -783,6 +811,38 @@ static BOOL ValuesEqual(id a, id b)
     // the section hangs from the top of the area
     [view setFrame:NSMakeRect(0, height - contentHeight, kContentWidth, contentHeight)];
     [_content addSubview:view];
+}
+
+#pragma mark Sound
+
+static BOOL IsSoundSection(NSInteger index)
+{
+    NSArray *sections = [DPSection allSections];
+    return index >= 0 && index < (NSInteger)[sections count] && [[sections[index] identifier] isEqualToString:@"sound"];
+}
+
+// The Sound section listens to the devices while it is on show, and its tests stop when it is left.
+- (void)sectionEntered:(NSInteger)index
+{
+    if (IsSoundSection(index) && [self isSelected])
+        [_sound activate];
+}
+
+- (void)sectionLeft:(NSInteger)index
+{
+    if (IsSoundSection(index))
+        [_sound deactivate];
+}
+
+- (void)didSelect
+{
+    [super didSelect];
+    [self sectionEntered:_selectedSection];
+}
+
+- (void)willUnselect
+{
+    [self sectionLeft:_selectedSection];
 }
 
 #pragma mark Section list
