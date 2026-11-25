@@ -38,6 +38,14 @@
 - (void)showWindow;
 - (void)showAll;
 - (void)showPane:(SPPane *)pane;
+// Shows the pane, then hands it the anchor of an x-apple.systempreferences URL (the text after
+// the question mark). The public NSPreferencePane has no method for an anchor, so the host has a
+// convention of its own: a pane that implements
+//     - (void)handleSystemPreferencesAnchor:(NSString *)anchor;
+// is sent the percent-decoded anchor after didSelect, or while it is on show when the URL is
+// opened again. A pane without the method ignores the anchor. What an anchor names (a tab, a
+// list item) is up to the pane.
+- (void)showPane:(SPPane *)pane anchor:(NSString *)anchor;
 
 // Asks the shown pane whether it may go away (see above) and calls the block
 // with the answer; the block is called at once when no pane is shown.

@@ -160,6 +160,46 @@ int main(int argc, char **argv)
 			CHECK(r != NSNotFound && w != NSNotFound && d != NSNotFound && r < w && w < d && d < s, "reply, willUnselect, didUnselect (not selected), then the new pane's didSelect: %s", [after UTF8String]);
 		}
 
+		// the anchor of the URL goes to the pane (the host's -handleSystemPreferencesAnchor: convention):
+		// to a pane that is already on show, decoded, and to a pane that is selected by the same URL
+		SetMode(@"now");
+		mark = [LogText() length];
+		Open(@[ @"x-apple.systempreferences:org.darlinghq.test.zeta?Privacy_Camera" ]);
+		tail = WaitFor(mark, @"anchor Privacy_Camera selected=1", 20);
+		CHECK(tail != nil, "an anchor is delivered after didSelect: %s", [LogText() UTF8String]);
+		mark = [LogText() length];
+		Open(@[ @"x-apple.systempreferences:org.darlinghq.test.zeta?Privacy%20Mic" ]);
+		tail = WaitFor(mark, @"anchor Privacy Mic selected=1", 20);
+		CHECK(tail != nil, "an anchor reaches the pane on show again, percent-decoded: %s", [LogText() UTF8String]);
+		mark = [LogText() length];
+		Open(@[ @"x-apple.systempreferences:org.darlinghq.test.alpha?Fresh_Anchor" ]);
+		tail = WaitFor(mark, @"anchor Fresh_Anchor selected=1", 20);
+		CHECK(tail != nil && [tail rangeOfString:@"didSelect window=1 title=Alpha Pane"].location < [tail rangeOfString:@"anchor Fresh_Anchor"].location,
+		      "a pane that the URL selects gets the anchor after its didSelect: %s", tail ? [tail UTF8String] : "(none)");
+		mark = [LogText() length];
+		Open(@[ @"x-apple.systempreferences:org.darlinghq.test.alpha" ]);
+		CHECK(Absent(mark, @"anchor ", 3), "a URL without an anchor sends none");
+
+		// the window follows the pane's main view when the pane changes its height
+		SetMode(@"grow-on-select");
+		mark = [LogText() length];
+		Open(@[ @"x-apple.systempreferences:org.darlinghq.test.zeta" ]);
+		tail = WaitFor(mark, @"shrunk content=", 30);
+		CHECK(tail != nil, "the pane grows and shrinks: %s", [LogText() UTF8String]);
+		if (tail) {
+			double before = 0, grown = 0, shrunk = 0;
+			NSRange c = [tail rangeOfString:@"didSelect window=1"];
+			NSRange cc = [tail rangeOfString:@"content=" options:0 range:NSMakeRange(c.location, [tail length] - c.location)];
+			sscanf([[tail substringFromIndex:cc.location + 8] UTF8String], "%*lfx%lf", &before);
+			NSRange g = [tail rangeOfString:@"grown content="];
+			sscanf([[tail substringFromIndex:g.location + 14] UTF8String], "%lf", &grown);
+			NSRange sh = [tail rangeOfString:@"shrunk content="];
+			sscanf([[tail substringFromIndex:sh.location + 15] UTF8String], "%lf", &shrunk);
+			CHECK(grown == before + 130, "the window grew by the pane's 130 points (%g to %g)", before, grown);
+			CHECK(shrunk == before, "and shrank back (%g)", shrunk);
+		}
+		SetMode(@"now");
+
 		// help menu items a pane gives the host
 		SetMode(@"help-on-select");
 		mark = [LogText() length];
@@ -172,7 +212,9 @@ int main(int argc, char **argv)
 		mark = [LogText() length];
 		Open(@[ @"x-apple.systempreferences:com.apple.preference.dock" ]);
 		tail = WaitFor(mark, @"grid ", 30);
-		CHECK(tail != nil && [tail rangeOfString:@"grid Test Dock,Alpha Pane,Zeta Pane"].location != NSNotFound, "grid icons: first-group pane, then third-party panes by name: %s", tail ? [tail UTF8String] : "(none)");
+		// (Darling's own pane, when it is installed, is in the "system" group between them)
+		NSString *grid = [tail stringByReplacingOccurrencesOfString:@"grid Test Dock,Darling," withString:@"grid Test Dock,"];
+		CHECK(tail != nil && [grid rangeOfString:@"grid Test Dock,Alpha Pane,Zeta Pane"].location != NSNotFound, "grid icons: first-group pane, then third-party panes by name: %s", tail ? [tail UTF8String] : "(none)");
 		SetMode(@"now");
 
 		// a .prefPane passed as a document

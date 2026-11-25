@@ -25,6 +25,9 @@
 //   quit-on-select                   : -[NSApp terminate:] shortly after didSelect
 //   showall-on-select                : ask the host for the grid shortly after didSelect
 //   help-on-select                   : give the host two help menu items after didSelect
+//   grow-on-select                   : make the main view 130 points taller (then 130 shorter again)
+//                                      shortly after didSelect and log the window's content size
+// The pane implements the host's anchor convention, -handleSystemPreferencesAnchor:, and logs it.
 // After showall-on-select it describes the grid, after help-on-select the Help menu.
 #import <Cocoa/Cocoa.h>
 #import <PreferencePanes/PreferencePanes.h>
@@ -74,6 +77,19 @@
 			[[NSNotificationCenter defaultCenter] postNotificationName:NSPreferencePaneSwitchToPaneNotification object:nil];
 			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC), dispatch_get_main_queue(), ^{ [self describeGrid]; });
 		});
+	else if ([mode isEqualToString:@"grow-on-select"])
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC / 2), dispatch_get_main_queue(), ^{
+			NSView *v = [self mainView];
+			NSSize s = [v frame].size;
+			[v setFrameSize:NSMakeSize(s.width, s.height + 130)];
+			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC / 2), dispatch_get_main_queue(), ^{
+				[self note:[NSString stringWithFormat:@"grown content=%g", [[[v window] contentView] frame].size.height]];
+				[v setFrameSize:s];
+				dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC / 2), dispatch_get_main_queue(), ^{
+					[self note:[NSString stringWithFormat:@"shrunk content=%g", [[[v window] contentView] frame].size.height]];
+				});
+			});
+		});
 	else if ([mode isEqualToString:@"help-on-select"])
 		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC / 2), dispatch_get_main_queue(), ^{
 			[self updateHelpMenuWithArray:@[ @{ NSPrefPaneHelpMenuTitleKey: @"Test Help One", NSPrefPaneHelpMenuAnchorKey: @"one" },
@@ -83,6 +99,11 @@
 				[titles addObject:[item title]];
 			[self note:[NSString stringWithFormat:@"helpmenu %@", [titles componentsJoinedByString:@","]]];
 		});
+}
+
+- (void)handleSystemPreferencesAnchor:(NSString *)anchor
+{
+	[self note:[NSString stringWithFormat:@"anchor %@ selected=%d", anchor, [self isSelected]]];
 }
 
 - (NSPreferencePaneUnselectReply)shouldUnselect

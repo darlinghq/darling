@@ -91,12 +91,27 @@ static NSString * const kURLScheme = @"x-apple.systempreferences";
 #pragma mark Opening documents and URLs
 
 // x-apple.systempreferences:<pane identifier>[?<anchor>]; the anchor is a position
-// inside a pane and is not interpreted here
-static NSString *PaneIdentifierOfURL(NSURL *url)
+// inside a pane that the pane interprets (see -[SPWindowController showPane:anchor:])
+static NSString *RestOfURL(NSURL *url)
 {
     NSString *rest = [[url absoluteString] substringFromIndex:[kURLScheme length] + 1];
     if ([rest hasPrefix:@"//"])
         rest = [rest substringFromIndex:2];
+    return rest;
+}
+
+static NSString *AnchorOfURL(NSURL *url)
+{
+    NSString *rest = RestOfURL(url);
+    NSRange start = [rest rangeOfString:@"?"];
+    if (start.location == NSNotFound)
+        return nil;
+    return [[rest substringFromIndex:NSMaxRange(start)] stringByRemovingPercentEncoding];
+}
+
+static NSString *PaneIdentifierOfURL(NSURL *url)
+{
+    NSString *rest = RestOfURL(url);
     NSRange cut = [rest rangeOfCharacterFromSet:[NSCharacterSet characterSetWithCharactersInString:@"?#"]];
     if (cut.location != NSNotFound)
         rest = [rest substringToIndex:cut.location];
@@ -107,6 +122,7 @@ static NSString *PaneIdentifierOfURL(NSURL *url)
 {
     for (NSURL *url in urls) {
         SPPane *pane = nil;
+        NSString *anchor = nil;
         if ([url isFileURL]) {
             NSString *path = [[url URLByStandardizingPath] path];
             if (![[path pathExtension] isEqualToString:@"prefPane"])
@@ -122,13 +138,14 @@ static NSString *PaneIdentifierOfURL(NSURL *url)
                 continue;
             }
             pane = [_catalog paneWithIdentifier:identifier];
+            anchor = AnchorOfURL(url);
         } else {
             continue;
         }
         _opened = YES;
         // an unknown identifier leaves the window as it is
         if (pane != nil)
-            [_controller showPane:pane];
+            [_controller showPane:pane anchor:anchor];
         [_controller showWindow];
     }
 }
