@@ -1594,6 +1594,7 @@ const EventTypeSpec _HIStandardWindowEventTypes[kHIStandardWindowEventTypeCount]
 	{ kEventClassKeyboard, kEventRawKeyUp },
 	{ kEventClassKeyboard, kEventRawKeyModifiersChanged },
 	{ kEventClassWindow, kEventWindowUpdate },
+	{ kEventClassWindow, kEventWindowPaint },
 	{ kEventClassWindow, kEventWindowDrawContent },
 	{ kEventClassWindow, kEventWindowClose },
 	{ kEventClassWindow, kEventWindowClosed },

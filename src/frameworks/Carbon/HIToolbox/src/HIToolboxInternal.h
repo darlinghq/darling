@@ -134,7 +134,7 @@ void _HIObserveFrontProcess(void);
 EventTargetRef _HIApplicationEventTarget(void);
 
 // The event types of the standard handler of the windows (MacWindows.c)
-#define kHIStandardWindowEventTypeCount 18
+#define kHIStandardWindowEventTypeCount 19
 // The CoreGraphics window of a Carbon window (MacWindows.c)
 CGSWindowID _HIWindowGetCGSWindowID(WindowRef window);
 
