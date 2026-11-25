@@ -42,7 +42,7 @@ static int packedSystemVersion(int maj, int min, int patch)
 	return (packedMajor << 8) | ((min > 9 ? 9 : min) << 4) | (patch > 9 ? 9 : patch);
 }
 
-OSStatus Gestalt(uint32_t type, int* value)
+OSErr Gestalt(OSType type, SInt32* value)
 {
 	// No response pointer is not a supported call. macOS does not define
 	// what happens (it usually returns noErr but has been seen to fault);
