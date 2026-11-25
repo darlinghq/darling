@@ -269,6 +269,9 @@ static void test_quirk_window_structure_of_class(void)
 	if (g_canPlace)
 		CHECK(structure.top == 72 && structure.left == 60);
 	DisposeWindow(w);
+	CHECK(CreateNewWindow(kDocumentWindowClass, kWindowMetalAttribute | COMP, &r, &w) == noErr);
+	CHECK(GetWindowBounds(w, kWindowStructureRgn, &structure) == noErr && structure.top == 78 && structure.left == 95 && structure.bottom == 205 && structure.right == 305);
+	DisposeWindow(w);
 	CHECK(CreateNewWindow(kFloatingWindowClass, COMP, &r, &w) == noErr);
 	CHECK(GetWindowBounds(w, kWindowStructureRgn, &structure) == noErr && structure.top == 88);
 	DisposeWindow(w);

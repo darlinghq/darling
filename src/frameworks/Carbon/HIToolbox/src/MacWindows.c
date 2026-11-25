@@ -614,6 +614,10 @@ static Rect frameOfClass(WindowClass cls, WindowAttributes attributes)
 		case kDocumentWindowClass:
 		case kMovableModalWindowClass:
 		case kMovableAlertWindowClass:
+			// A metal window has a border of 5 points on the other three sides (macOS 26.7.3 x86_64 and
+			// Mojave 10.14.4 i386, tier 2, mj.c and probe-attrs64.c)
+			if (attributes & kWindowMetalAttribute)
+				return (Rect) { 22, 5, 5, 5 };
 			return (Rect) { (attributes & kWindowNoTitleBarAttribute) ? 0 : 22, 0, 0, 0 };
 		case kFloatingWindowClass:
 		case kUtilityWindowClass:
