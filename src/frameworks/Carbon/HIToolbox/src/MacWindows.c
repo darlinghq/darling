@@ -1209,7 +1209,18 @@ OSStatus GetWindowBounds(WindowRef window, WindowRegionCode regionCode, Rect* gl
 			return noErr;
 		case kWindowTitleBarRgn:
 			if (!hasTitleBar(window))
+			{
+#ifndef __LP64__
+				// QUIRK: the title bar region of a window that has no title bar is an empty rectangle in the
+				// 32-bit API, not an error (the 64-bit API of macOS 26.7.3 gives errWindowRegionCodeInvalid).
+				// Not documented. Evidence: black-box observation on Mojave 10.14.4 i386 (tier 2).
+				// Test: test_quirk_window_structure_of_class in tests/src/carbon_windows.c
+				*globalBounds = (Rect) { 0, 0, 0, 0 };
+				return noErr;
+#else
 				return errWindowRegionCodeInvalid;
+#endif
+			}
 			*globalBounds = (Rect) { window->content.top - frame.top, window->content.left, window->content.top, window->content.right };
 			return noErr;
 		default:

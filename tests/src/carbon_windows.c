@@ -274,7 +274,12 @@ static void test_quirk_window_structure_of_class(void)
 	DisposeWindow(w);
 	CHECK(CreateNewWindow(kPlainWindowClass, COMP, &r, &w) == noErr);
 	CHECK(GetWindowBounds(w, kWindowStructureRgn, &structure) == noErr && structure.top == 99 && structure.left == 99 && structure.bottom == 201 && structure.right == 301);
+#ifdef __LP64__
 	CHECK(GetWindowBounds(w, kWindowTitleBarRgn, &structure) == errWindowRegionCodeInvalid);
+#else
+	// an empty rectangle in the 32-bit API (observed on Mojave 10.14.4 i386)
+	CHECK(GetWindowBounds(w, kWindowTitleBarRgn, &structure) == noErr && structure.top == 0 && structure.bottom == 0 && structure.left == 0 && structure.right == 0);
+#endif
 	DisposeWindow(w);
 	CHECK(CreateNewWindow(kAlertWindowClass, COMP, &r, &w) == noErr);
 	CHECK(GetWindowBounds(w, kWindowStructureRgn, &structure) == noErr && structure.top == 100);
