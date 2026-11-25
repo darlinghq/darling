@@ -84,6 +84,8 @@ typedef NS_ENUM(NSInteger, PKKind) {
 // For the panes
 - (NSControl *)controlForIdentifier:(NSString *)identifier;
 - (void)refresh;
+// Updates only the text of the static items (a clock), leaving the other controls alone
+- (void)refreshStaticItems;
 // Writes a value of a preference that is not an item (nil removes it), as the items are written.
 + (void)setPreference:(id)value forKey:(NSString *)key domain:(NSString *)domain currentHost:(BOOL)currentHost;
 + (id)preferenceForKey:(NSString *)key domain:(NSString *)domain currentHost:(BOOL)currentHost;

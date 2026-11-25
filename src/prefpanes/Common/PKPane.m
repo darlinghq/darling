@@ -375,10 +375,24 @@ static CGFloat TextHeight(NSString *text, NSFont *font, CGFloat width)
                 [swatch setNeedsDisplay:YES];
             }
         } else if (item.kind == PKKindStatic && item.staticText != nil) {
-            [(NSTextField *)control setStringValue:item.staticText()];
+            NSString *text = item.staticText();
+            if (![[(NSTextField *)control stringValue] isEqualToString:text])
+                [(NSTextField *)control setStringValue:text];
         }
     }
     [self refreshCustomViews];
+}
+
+- (void)refreshStaticItems
+{
+    for (PKItem *item in _items) {
+        if (item.kind != PKKindStatic || item.staticText == nil)
+            continue;
+        NSTextField *field = (NSTextField *)_controls[item.identifier];
+        NSString *text = item.staticText();
+        if (![[field stringValue] isEqualToString:text])
+            [field setStringValue:text];
+    }
 }
 
 - (void)willSelect

@@ -58,8 +58,9 @@ static PKItem *ClockCheck(NSString *identifier, NSString *title, NSString *key, 
     [items addObject:[PKItem staticText:@"DateTimeZone" title:@"Time zone:" text:^NSString *{
         NSTimeZone *zone = [NSTimeZone systemTimeZone];
         NSInteger offset = [zone secondsFromGMT];
-        return [NSString stringWithFormat:@"%@ (GMT%+ld:%02ld, %@)", [zone name], (long)(offset / 3600), (long)(labs(offset) % 3600 / 60),
-                [zone abbreviation]];
+        NSString *abbreviation = [zone abbreviation];
+        NSString *offsetText = [NSString stringWithFormat:@"GMT%+ld:%02ld", (long)(offset / 3600), (long)(labs(offset) % 3600 / 60)];
+        return [NSString stringWithFormat:@"%@ (%@)", [zone name], abbreviation != nil ? [NSString stringWithFormat:@"%@, %@", offsetText, abbreviation] : offsetText];
     }]];
     [items addObject:[PKItem note:@"The date, time and time zone are those of the system that runs Darling; change them there."]];
 
@@ -94,7 +95,7 @@ static PKItem *ClockCheck(NSString *identifier, NSString *title, NSString *key, 
 
 - (void)tick:(NSTimer *)timer
 {
-    [self refresh];
+    [self refreshStaticItems];
 }
 
 - (void)itemDidChange:(PKItem *)item toValue:(id)value
