@@ -317,6 +317,7 @@ endif()
 include(darling_lib)
 include(darling_static_lib)
 include(darling_bundle)
+include(darling_prefpane)
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include)
 
