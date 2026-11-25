@@ -25,6 +25,7 @@ add_framework(QD
     	src/QDPorts.c
     	src/QDPictures.c
     	src/QDDrawing.c
+    	src/QDBridge.c
 
     DEPENDENCIES
 	CarbonCore

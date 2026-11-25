@@ -21,6 +21,7 @@
 #ifndef _Carbon_H_
 #define _Carbon_H_
 
+#include <ApplicationServices/ApplicationServices.h>
 #include <CarbonCore/MacErrors.h>
 #include "CoreServices/MacTypes.h"
 #include "CoreServices/FileManager.h"
@@ -30,6 +31,10 @@
 #include <HIToolbox/Dialogs.h>
 #include <HIToolbox/Drag.h>
 #include <HIToolbox/Appearance.h>
+#include <HIToolbox/MacWindows.h>
+#include <HIToolbox/Controls.h>
+#include <HIToolbox/ControlDefinitions.h>
+#include <HIToolbox/HIView.h>
 #include <HIToolbox/Events.h>
 #include <HIToolbox/HITheme.h>
 #include <HIToolbox/HIObject.h>
