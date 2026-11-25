@@ -85,6 +85,8 @@ TISInputSourceRef TISCopyCurrentKeyboardLayoutInputSource(void)
 
 void* TISGetInputSourceProperty(TISInputSourceRef inputSourceRef, CFStringRef key)
 {
+	if (!inputSourceRef || !key)
+		return NULL;
 	return (void*) CFDictionaryGetValue((CFDictionaryRef)inputSourceRef, key);
 }
 
