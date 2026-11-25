@@ -27,6 +27,7 @@ add_framework(QD
     	src/QDDrawing.c
 
     DEPENDENCIES
+	CarbonCore
 	CoreFoundation
 	CoreGraphics
         system
