@@ -163,11 +163,6 @@ enum {
 	kWindowActivationScopeAll = 2
 };
 
-// The positioning constants of the pre-Carbon Window Manager (the "where" of SetWindowBounds-style calls)
-enum {
-	kCenterOnMainScreen = 2
-};
-
 enum {
 	kFirstWindowOfClass = -1,
 	kLastWindowOfClass = 0
