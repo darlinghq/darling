@@ -982,6 +982,13 @@ WindowRef GetNextWindow(WindowRef window)
 
 Boolean IsWindowActive(WindowRef window)
 {
+#ifndef __LP64__
+	// QUIRK: a shown overlay window is active in the 32-bit API, without being the window that is active for the
+	// application. Not documented. Evidence: black-box observation on Mojave 10.14.4 i386 (tier 2, mj2.c).
+	// Test: test_quirk_overlay_window_active in tests/src/carbon_windows.c
+	if (IsValidWindowPtr(window) && window->windowClass == kOverlayWindowClass && window->visible)
+		return true;
+#endif
 	return IsValidWindowPtr(window) && window->active;
 }
 

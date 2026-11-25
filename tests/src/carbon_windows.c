@@ -619,7 +619,12 @@ int main(int argc, char** argv)
 	ShowWindow(over);
 	spin(300);
 	CHECK(IsWindowVisible(over));
+#ifdef __LP64__
 	CHECK(!IsWindowActive(over));
+#else
+	// test_quirk_overlay_window_active: it is active in the 32-bit API (observed on Mojave 10.14.4 i386)
+	CHECK(IsWindowActive(over));
+#endif
 	CHECK(FrontNonFloatingWindow() == doc);
 #ifndef __LP64__
 	{
