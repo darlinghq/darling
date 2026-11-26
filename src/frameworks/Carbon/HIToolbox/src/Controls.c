@@ -972,6 +972,13 @@ void HiliteControl(ControlRef theControl, ControlPartCode hiliteState)
 }
 #endif
 
+// The highlight that HiliteControl() or the tracking of a click set: kControlNoPart, a part, kControlInactivePart (255)
+// or kControlDisabledPart (254)
+ControlPartCode GetControlHilite(ControlRef inControl)
+{
+	return isControl(inControl) ? inControl->hilite : kControlNoPart;
+}
+
 OSStatus HIViewSetNeedsDisplay(HIViewRef inView, Boolean inNeedsDisplay)
 {
 	if (!isView(inView))

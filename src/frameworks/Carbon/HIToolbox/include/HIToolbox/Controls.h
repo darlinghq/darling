@@ -230,6 +230,7 @@ OSStatus DisableControl(ControlRef inControl);
 #ifndef __LP64__
 Boolean IsControlEnabled(ControlRef inControl);
 #endif
+ControlPartCode GetControlHilite(ControlRef inControl);
 #ifndef __LP64__
 void HiliteControl(ControlRef theControl, ControlPartCode hiliteState);
 void Draw1Control(ControlRef theControl);
