@@ -272,6 +272,9 @@ enable_testing()
 # Tests of the install and packaging scripts; they need no Darling build
 find_package(Python3 QUIET COMPONENTS Interpreter)
 if (Python3_Interpreter_FOUND)
+	add_test(NAME swift_toolchain
+		COMMAND ${CMAKE_COMMAND} -E env "CMAKE=${CMAKE_COMMAND}"
+			${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/swift-toolchain.py)
 	add_test(NAME install_symlink
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/install-symlink.py)
 	add_test(NAME android_layout
