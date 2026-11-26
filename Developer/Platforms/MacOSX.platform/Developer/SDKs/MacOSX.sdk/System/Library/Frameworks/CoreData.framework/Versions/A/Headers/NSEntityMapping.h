@@ -1,0 +1,1 @@
+../../../../../../../../../../../../../src/external/cocotron/CoreData/include/CoreData/NSEntityMapping.h
