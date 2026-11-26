@@ -11,7 +11,8 @@
 //  - encoding into a buffer that is too small returns 0;
 //  - invalid input decodes to 0 bytes;
 //  - an empty input encodes to a non-empty stream that decodes to nothing;
-//  - the LZFSE scratch sizes are not 0 and a scratch buffer of that size works.
+//  - the LZFSE scratch sizes are not 0 and a scratch buffer of that size works;
+//  - COMPRESSION_BROTLI has the macOS SDK's value.
 #include <compression.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -165,6 +166,10 @@ int main(void) {
     size_t encoded = compression_encode_buffer(out, sizeof out, in, n, scratch, COMPRESSION_LZFSE);
     CHECK(compression_decode_buffer(back, sizeof back, out, encoded, scratch, COMPRESSION_LZFSE) == n);
     free(scratch);
+
+    // The algorithm's value is the macOS SDK's, so callers built against it
+    // ask for the same algorithm.
+    CHECK(COMPRESSION_BROTLI == 0xB02);
 
     if (failures == 0)
         printf("PASS compression_buffer\n");

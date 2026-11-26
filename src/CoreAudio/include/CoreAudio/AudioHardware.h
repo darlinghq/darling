@@ -261,9 +261,23 @@ OSStatus AudioHardwareAddPropertyListener(AudioHardwarePropertyID inPropertyID,
 OSStatus AudioHardwareRemovePropertyListener(AudioHardwarePropertyID inPropertyID,
 		AudioHardwarePropertyListenerProc inProc);
 
+// The transport of a device (kAudioDevicePropertyTransportType)
 enum
 {
-    kAudioDeviceTransportTypeVirtual = 'virt'
+    kAudioDeviceTransportTypeUnknown = 0,
+    kAudioDeviceTransportTypeBuiltIn = 'bltn',
+    kAudioDeviceTransportTypeAggregate = 'grup',
+    kAudioDeviceTransportTypeVirtual = 'virt',
+    kAudioDeviceTransportTypePCI = 'pci ',
+    kAudioDeviceTransportTypeUSB = 'usb ',
+    kAudioDeviceTransportTypeFireWire = '1394',
+    kAudioDeviceTransportTypeBluetooth = 'blue',
+    kAudioDeviceTransportTypeBluetoothLE = 'blea',
+    kAudioDeviceTransportTypeHDMI = 'hdmi',
+    kAudioDeviceTransportTypeDisplayPort = 'dprt',
+    kAudioDeviceTransportTypeAirPlay = 'airp',
+    kAudioDeviceTransportTypeAVB = 'eavb',
+    kAudioDeviceTransportTypeThunderbolt = 'thun'
 };
 
 #ifdef __cplusplus

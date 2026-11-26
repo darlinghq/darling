@@ -23,6 +23,7 @@ add_framework(DataDetectorsCore
 
     SOURCES
         src/DataDetectorsCore.m
+        src/DDResult.c
         src/DDBindableRegexp.m
         src/DDBasicRegexp.m
         src/DDVariable.m

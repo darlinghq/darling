@@ -48,9 +48,19 @@ struct HFSUniStr255
 };
 typedef struct HFSUniStr255 HFSUniStr255;
 
+#if !__LP64__
+#pragma pack(push, 2)
+struct FSSpec {
+	SInt16 vRefNum;
+	SInt32 parID;
+	StrFileName name;
+};
+#pragma pack(pop)
+#else
 struct FSSpec {
 	char hidden[70];
 };
+#endif
 typedef struct FSSpec FSSpec;
 
 typedef struct FSSpec* FSSpecPtr;

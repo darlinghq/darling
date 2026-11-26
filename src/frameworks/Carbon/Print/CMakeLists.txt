@@ -19,7 +19,9 @@ add_framework(Print
 
 	SOURCES
 		src/Print.c
+		src/PMApplication.c
 
 	DEPENDENCIES
 		system
+		ApplicationServices
 )

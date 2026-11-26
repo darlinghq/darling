@@ -59,12 +59,17 @@ uint8_t* ICCBuildDisplayProfile(const ICCDisplayProfileSpec* spec, size_t* outLe
 //   as listed there and whose curve is a pure power of 563/256 (2.19921875);
 // ICCNamedITUR2020: Recommendation ITU-R BT.2020, its primaries and D65 white, and the inverse of its transfer function
 //   with the 12-bit alpha (1.09929682680944) and the knee at 0.081 (see ICCBuilder.c);
-// ICCNamedGrayGamma22: a gray response with a power of 2.2 and the PCS white point.
+// ICCNamedGrayGamma22: a gray response with a power of 2.2 and the PCS white point;
+// ICCNamedGenericRGB, ICCNamedGenericGray: the generic spaces of the platform, which no standard defines: the numbers come
+//   from black-box observation of macOS 26.7.3 and 10.14.4 through the public ColorSync and CoreGraphics API (see
+//   ICCBuilder.c).
 typedef enum ICCNamedProfile {
 	ICCNamedSRGB,
 	ICCNamedAdobeRGB1998,
 	ICCNamedITUR2020,
 	ICCNamedGrayGamma22,
+	ICCNamedGenericRGB,
+	ICCNamedGenericGray,
 } ICCNamedProfile;
 
 ICCDisplayProfileSpec ICCNamedProfileSpec(ICCNamedProfile which);

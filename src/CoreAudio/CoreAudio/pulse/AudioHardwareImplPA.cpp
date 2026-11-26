@@ -32,6 +32,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <condition_variable>
 #include <cstring>
 #include <chrono>
+#include <unistd.h>
 #include <string>
 #include <vector>
 
@@ -208,19 +209,21 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 		}
 		// BEGIN kAudioObjectSystemObject properties
 		case kAudioHardwarePropertyDefaultInputDevice: // returns AudioDeviceID
-			if (AudioDeviceID* devId = static_cast<AudioDeviceID*>(outData); devId && *ioDataSize >= sizeof(AudioDeviceID))
-			{
-				*devId = kAudioObjectSystemObject + 2;
-			}
-			*ioDataSize = sizeof(AudioDeviceID);
-			return kAudioHardwareNoError;
 		case kAudioHardwarePropertyDefaultOutputDevice: // returns AudioDeviceID
+		{
+			if (id() != kAudioObjectSystemObject)
+				break;
+			const bool input = inAddress->mSelector == kAudioHardwarePropertyDefaultInputDevice;
 			if (AudioDeviceID* devId = static_cast<AudioDeviceID*>(outData); devId && *ioDataSize >= sizeof(AudioDeviceID))
 			{
-				*devId = kAudioObjectSystemObject + 1;
+				// The device PulseAudio's default is; the objects that stand for the default itself are
+				// the answer only while the server's default is not one of the listed devices.
+				AudioObjectID known = defaultDeviceId(input);
+				*devId = known != kAudioObjectUnknown ? known : kAudioObjectSystemObject + (input ? 2 : 1);
 			}
 			*ioDataSize = sizeof(AudioDeviceID);
 			return kAudioHardwareNoError;
+		}
 		case kAudioHardwarePropertyDefaultSystemOutputDevice:
 			if (AudioDeviceID* devId = static_cast<AudioDeviceID*>(outData); devId && *ioDataSize >= sizeof(AudioDeviceID))
 			{
@@ -291,9 +294,147 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 	return AudioHardwareImpl::getPropertyData(inAddress, inQualifierDataSize, inQualifierData, ioDataSize, outData);
 }
 	
+struct PAServerQuery
+{
+	std::string defaultName;
+	bool input;
+	dispatch_semaphore_t done;
+};
+
+static void paServerInfoCB(pa_context*, const pa_server_info* info, void* userdata)
+{
+	PAServerQuery* query = static_cast<PAServerQuery*>(userdata);
+	if (info)
+	{
+		const char* name = query->input ? info->default_source_name : info->default_sink_name;
+		if (name)
+			query->defaultName = name;
+	}
+	dispatch_semaphore_signal(query->done);
+}
+
+AudioObjectID AudioHardwareImplPA::defaultDeviceId(bool input)
+{
+	refreshDeviceList();
+
+	PAServerQuery query = { std::string(), input, dispatch_semaphore_create(0) };
+	PAServerQuery* queryPtr = &query;
+	__block pa_operation* op = nullptr;
+
+	getPAContext(^(pa_context* ctx) {
+		if (ctx)
+			op = pa_context_get_server_info(ctx, paServerInfoCB, queryPtr);
+		if (!op)
+			dispatch_semaphore_signal(queryPtr->done);
+	});
+
+	// PulseAudio drops pending operations without calling back when the connection is lost.
+	dispatch_semaphore_wait(query.done, dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC));
+	// Nothing can write to query once this has run.
+	syncPA(^{
+		if (op)
+		{
+			pa_operation_cancel(op);
+			pa_operation_unref(op);
+		}
+	});
+	dispatch_release(query.done);
+
+	if (query.defaultName.empty())
+		return kAudioObjectUnknown;
+
+	for (AudioObjectID candidate : allDeviceIds())
+	{
+		if (registry().nameForId(candidate) != query.defaultName)
+			continue;
+		std::lock_guard<std::mutex> lock(PAGetObjectMapMutex());
+		auto& objects = PAGetObjectMap();
+		auto it = objects.find(candidate);
+		// a sink name is never also a source name, but a source can be the monitor of a sink, which is not listed
+		if (it != objects.end() && it->second->isInputDevice() == input)
+			return candidate;
+	}
+	return kAudioObjectUnknown;
+}
+
+static void paSuccessCB(pa_context*, int success, void* userdata)
+{
+	struct Result { bool ok; dispatch_semaphore_t done; };
+	Result* result = static_cast<Result*>(userdata);
+	result->ok = success != 0;
+	dispatch_semaphore_signal(result->done);
+}
+
+OSStatus AudioHardwareImplPA::setDefaultDevice(AudioObjectID device, bool input)
+{
+	// The objects that stand for the default follow it already.
+	if (device == kAudioObjectSystemObject + 1 || device == kAudioObjectSystemObject + 2)
+		return kAudioHardwareNoError;
+
+	std::string name;
+	{
+		std::lock_guard<std::mutex> lock(PAGetObjectMapMutex());
+		auto& objects = PAGetObjectMap();
+		auto it = objects.find(device);
+		if (device <= kAudioObjectSystemObject + 3 || it == objects.end())
+			return kAudioHardwareBadObjectError;
+		if (it->second->isInputDevice() != input)
+			return kAudioHardwareIllegalOperationError;
+		const AudioHardwareImplPA* paDevice = dynamic_cast<const AudioHardwareImplPA*>(it->second.get());
+		const char* paName = paDevice ? paDevice->paDeviceName() : nullptr;
+		if (!paName)
+			return kAudioHardwareBadObjectError;
+		name = paName;
+	}
+
+	struct Result { bool ok; dispatch_semaphore_t done; };
+	Result result = { false, dispatch_semaphore_create(0) };
+	Result* resultPtr = &result;
+	__block pa_operation* op = nullptr;
+
+	getPAContext(^(pa_context* ctx) {
+		if (ctx)
+			op = input ? pa_context_set_default_source(ctx, name.c_str(), paSuccessCB, resultPtr)
+			           : pa_context_set_default_sink(ctx, name.c_str(), paSuccessCB, resultPtr);
+		if (!op)
+			dispatch_semaphore_signal(resultPtr->done);
+	});
+
+	dispatch_semaphore_wait(result.done, dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC));
+	syncPA(^{
+		if (op)
+		{
+			pa_operation_cancel(op);
+			pa_operation_unref(op);
+		}
+	});
+	dispatch_release(result.done);
+	if (!result.ok)
+		return kAudioHardwareUnspecifiedError;
+
+	// The server may apply the change a moment after it has accepted it; the new default is
+	// in effect when this returns, as the callers of the HAL expect.
+	for (int i = 0; i < 40 && defaultDeviceId(input) != device; i++)
+		usleep(25000);
+	return kAudioHardwareNoError;
+}
+
 OSStatus AudioHardwareImplPA::setPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 	const void* inQualifierData, UInt32 inDataSize, const void* inData)
 {
+	if (id() == kAudioObjectSystemObject
+		&& (inAddress->mSelector == kAudioHardwarePropertyDefaultOutputDevice
+			|| inAddress->mSelector == kAudioHardwarePropertyDefaultInputDevice))
+	{
+		if (inDataSize != sizeof(AudioDeviceID) || !inData)
+			return kAudioHardwareBadPropertySizeError;
+		const bool input = inAddress->mSelector == kAudioHardwarePropertyDefaultInputDevice;
+		refreshDeviceList();
+		OSStatus status = setDefaultDevice(*static_cast<const AudioDeviceID*>(inData), input);
+		if (status == kAudioHardwareNoError)
+			notifyPropertyChanged(inAddress->mSelector);
+		return status;
+	}
 	return AudioHardwareImpl::setPropertyData(inAddress, inQualifierDataSize, inQualifierData, inDataSize, inData);
 }
 

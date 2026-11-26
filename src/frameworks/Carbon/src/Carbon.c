@@ -68,21 +68,9 @@ OSStatus GetStandardAlertDefaultParams(AlertStdCFStringAlertParamPtr a, UInt32 b
 	return 0;
 }
 
-void HideMenuBar(void)
-{
-    if (verbose) puts("STUB: HideMenuBar called");
-	
-}
-
 OSErr NMInstall(NMRecPtr a)
 {
     if (verbose) puts("STUB: NMInstall called");
-	return 0;
-}
-
-OSStatus ProcessHICommand(const HICommand * a)
-{
-    if (verbose) puts("STUB: ProcessHICommand called");
 	return 0;
 }
 
@@ -102,11 +90,6 @@ OSStatus SetEventMask(EventMask a)
 {
     if (verbose) puts("STUB: SetEventMask called");
 	return 0;
-}
-
-void ShowMenuBar(void)
-{
-    if (verbose) puts("STUB: ShowMenuBar called");
 }
 
 

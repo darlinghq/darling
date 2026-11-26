@@ -12,6 +12,12 @@ typedef struct OpaqueTSMDocumentID* TSMDocumentID;
 typedef OSType InterfaceTypeList[1];
 typedef OSType TSMDocumentPropertyTag;
 
+// Document properties with a meaning of their own
+enum {
+    // a CFArrayRef of the input sources the document may be typed with
+    kTSMDocumentEnabledInputSourcesPropertyTag = 'enis',
+};
+
 OSErr NewTSMDocument(short numOfInterface, InterfaceTypeList supportedInterfaces, TSMDocumentID* idocID, long refcon);
 OSErr DeleteTSMDocument(TSMDocumentID idocID);
 OSErr ActivateTSMDocument(TSMDocumentID idocID);

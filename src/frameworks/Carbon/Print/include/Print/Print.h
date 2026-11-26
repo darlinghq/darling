@@ -21,5 +21,7 @@
 #ifndef _Print_H_
 #define _Print_H_
 
+#include <Print/PMApplication.h>
+
 
 #endif

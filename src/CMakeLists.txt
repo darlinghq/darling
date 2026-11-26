@@ -317,6 +317,7 @@ endif()
 include(darling_lib)
 include(darling_static_lib)
 include(darling_bundle)
+include(darling_prefpane)
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include)
 
@@ -393,7 +394,7 @@ add_subdirectory(external/configd)
 add_subdirectory(external/libsystem)
 add_subdirectory(external/objc4/runtime)
 add_subdirectory(external/corefoundation)
-add_subdirectory(external/icu/icuSources)
+add_subdirectory(external/icu/darling)
 add_subdirectory(external/csu)
 add_subdirectory(external/libresolv)
 add_subdirectory(external/usertemplate)
@@ -597,6 +598,8 @@ if (COMPONENT_gui)
 	# /Applications
 	add_subdirectory(external/TextEdit)
 	add_subdirectory(external/Console)
+	add_subdirectory(SystemPreferences)
+	add_subdirectory(prefpanes)
 
 	# not currently used by anything we build
 	add_subdirectory(external/dbuskit)
@@ -702,17 +705,10 @@ if (COMPONENT_dev_gui_common)
 	add_subdirectory(external/metal)
 endif()
 
+# JavaScriptCore, and with the webkit component WebCore, WebKitLegacy and WebKit,
+# built by WebKit's own build (see external/WebKit/darling/CMakeLists.txt)
 if (COMPONENT_jsc OR COMPONENT_webkit)
-	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "jsc_webkit_common")
-
-	add_subdirectory(external/WTF)
-	add_subdirectory(external/bmalloc)
-endif()
-
-if (COMPONENT_jsc)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "jsc")
 
-	add_subdirectory(external/JavaScriptCore)
+	add_subdirectory(external/WebKit/darling)
 endif()
-
-#add_subdirectory(external/WebCore)

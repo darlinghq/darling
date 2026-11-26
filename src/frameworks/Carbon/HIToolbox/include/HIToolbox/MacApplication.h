@@ -29,7 +29,25 @@ extern "C" {
 typedef UInt32 SystemUIMode;
 typedef OptionBits SystemUIOptions;
 
+enum {
+	kUIModeNormal = 0,
+	kUIModeContentSuppressed = 1,
+	kUIModeContentHidden = 2,
+	kUIModeAllHidden = 3,
+	kUIModeAllSuppressed = 4,
+};
+
+enum {
+	kUIOptionAutoShowMenuBar = 1 << 0,
+	kUIOptionDisableAppleMenu = 1 << 2,
+	kUIOptionDisableProcessSwitch = 1 << 3,
+	kUIOptionDisableForceQuit = 1 << 4,
+	kUIOptionDisableSessionTerminate = 1 << 5,
+	kUIOptionDisableHide = 1 << 6,
+};
+
 extern OSStatus SetSystemUIMode(SystemUIMode inMode, SystemUIOptions inOptions);
+extern SystemUIMode GetSystemUIMode(SystemUIOptions* outOptions);
 
 #ifdef __cplusplus
 }

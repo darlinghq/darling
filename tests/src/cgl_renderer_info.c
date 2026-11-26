@@ -2,7 +2,8 @@
 //
 // CGLQueryRendererInfo() and CGLDescribeRenderer(): there is at least one
 // renderer; its ID, accelerated flag and video memory are described; the
-// error codes for a bad display mask, index, property and addresses; the
+// error codes for a bad display mask, index, property and addresses; an
+// accelerated renderer's GPU registry ID, and none for the software one; the
 // answers agree with the GL context an application gets; and querying does
 // not change the current context.
 //
@@ -110,6 +111,13 @@ int main(void)
 			CHECK(video / (1024 * 1024) == megabytes || video / (1024 * 1024) == megabytes - 1 || video / (1024 * 1024) == megabytes + 1);
 		else
 			CHECK(video == INT_MAX);
+		// an accelerated renderer names its GPU by its IORegistry entry ID, in two halves
+		if (accelerated) {
+			GLint low = 0, high = 0;
+			CHECK(CGLDescribeRenderer(info, i, kCGLRPRegistryIDLow, &low) == kCGLNoError);
+			CHECK(CGLDescribeRenderer(info, i, kCGLRPRegistryIDHigh, &high) == kCGLNoError);
+			CHECK(((uint64_t) (uint32_t) high << 32 | (uint32_t) low) != 0);
+		}
 		accelerated_seen += accelerated;
 	}
 
@@ -122,6 +130,9 @@ int main(void)
 		CHECK(accelerated == 0);
 		CHECK((id & kCGLRendererIDMatchingMask) == kCGLRendererGenericFloatID);
 		CHECK(megabytes == 0);
+		// it has no GPU, so no registry ID (Darling's choice, not observed on macOS)
+		GLint low = 0x5a5a;
+		CHECK(CGLDescribeRenderer(info, count - 1, kCGLRPRegistryIDLow, &low) == kCGLBadProperty);
 	}
 
 	// the renderer the context got is one of the renderers

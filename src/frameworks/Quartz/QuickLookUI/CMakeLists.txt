@@ -24,6 +24,7 @@ add_framework(QuickLookUI
 	VERSION ${FRAMEWORK_VERSION}
 
 	SOURCES
+		src/QLPreviewItem.m
 		src/QLPreviewPanel.m
 		src/QLPreviewView.m
 
