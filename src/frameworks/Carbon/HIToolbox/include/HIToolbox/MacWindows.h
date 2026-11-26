@@ -184,6 +184,9 @@ void ShowHide(WindowRef wnd, Boolean showFlag);
 Boolean IsWindowVisible(WindowRef wnd);
 
 void SelectWindow(WindowRef a);
+OSStatus CollapseWindow(WindowRef window, Boolean collapse);
+Boolean IsWindowCollapsed(WindowRef window);
+OSStatus CollapseAllWindows(Boolean collapse);
 void BringToFront(WindowRef window);
 void SendBehind(WindowRef window, WindowRef behindWindow);
 WindowRef FrontWindow(void);

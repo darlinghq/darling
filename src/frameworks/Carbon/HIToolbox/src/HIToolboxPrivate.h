@@ -90,6 +90,17 @@ void _HIDestroyEventTarget(EventTargetRef target);
 // Changes the target that an event target passes events on to (NULL: the application target)
 void _HISetEventTargetNext(EventTargetRef target, EventTargetRef next);
 
+// The standard commands of the Window menu and of the application menu (see Menus.c, MacWindows.c)
+#include <HIToolbox/MacWindows.h>
+OSStatus _HIWindowCommand(UInt32 command, WindowRef window);
+Boolean _HIWindowCommandEnabled(UInt32 command);
+// The visible windows that can be active, front to back, minimized ones included; the caller frees the array
+ItemCount _HICopyWindowList(WindowRef** outWindows);
+void _HIHideApplicationWindows(Boolean hide);
+void _HIObserveProcessCommands(void);
+// Sends the application the quit Apple event; without a handler for it the application event loop ends
+void _HIQuitApplication(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -41,6 +41,7 @@
 #include <CoreGraphics/CoreGraphicsPrivate.h>
 #include <CoreGraphics/CGSServerSPI.h>
 #include <AE/AEDataModel.h>
+#include <notify.h>
 #include <math.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -79,6 +80,10 @@ struct OpaqueWindowPtr
 	EventTargetRef target;
 	bool visible;
 	bool active;
+	bool collapsed;          // minimized: not on screen, still a window of the application
+	bool zoomed;             // in the standard state of ZoomWindow
+	bool appHidden;          // taken off the screen by Hide of the application
+	Rect userContent;        // the content area before the window was zoomed
 	bool updatePending;      // a kEventWindowUpdate is queued
 	bool inUpdate;
 	RgnHandle updateRegion;
@@ -308,7 +313,7 @@ static WindowRef frontActivatable(void)
 	pthread_mutex_lock(&g_lock);
 	for (struct OpaqueWindowPtr* w = g_windows; w; w = w->next)
 	{
-		if (w->visible && canActivate(w))
+		if (w->visible && !w->collapsed && canActivate(w))
 		{
 			found = w;
 			break;
@@ -700,6 +705,7 @@ static const EventTypeSpec kDefaultHandlerTypes[] = {
 	{ kEventClassWindow, kEventWindowUpdate },
 	{ kEventClassWindow, kEventWindowPaint },
 	{ kEventClassWindow, kEventWindowClose },
+	{ kEventClassCommand, kEventCommandProcess },
 	{ kEventClassWindow, kEventWindowDrawContent },
 	{ kEventClassWindow, kEventWindowClickContentRgn },
 };
@@ -730,6 +736,7 @@ OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rec
 		g_eventProcRegistered = true;
 		_CGSSetWindowEventProc(cgsWindowEvent, NULL);
 	}
+	_HIObserveProcessCommands();
 
 	// QUIRK: a rectangle with no area (or turned around) makes a window, not an error. Not documented. Evidence:
 	// black-box observation on macOS 26.7.3 x86_64 (tier 2, probe-windows64.c); Mojave not observed (the window
@@ -1011,7 +1018,7 @@ WindowRef FrontWindow(void)
 	pthread_mutex_lock(&g_lock);
 	for (struct OpaqueWindowPtr* w = g_windows; w; w = w->next)
 	{
-		if (w->visible)
+		if (w->visible && !w->collapsed)
 		{
 			found = w;
 			break;
@@ -1077,6 +1084,327 @@ OSStatus ActivateWindow(WindowRef window, Boolean inActivate)
 		setActive(window, false);
 	}
 	return noErr;
+}
+
+#pragma mark Collapsing, zooming, hiding and the standard window commands
+
+OSStatus CollapseWindow(WindowRef window, Boolean collapse)
+{
+	if (!IsValidWindowPtr(window))
+		return errInvalidWindowPtr;
+	if (window->collapsed == (bool) collapse)
+		return noErr;
+
+	window->collapsed = collapse;
+	if (window->visible && !window->appHidden)
+		CGSOrderWindow(connection(), window->cgsWindow, collapse ? kCGSOrderOut : kCGSOrderAbove, 0);
+	if (collapse)
+	{
+		// The window behind the minimized one becomes the active one
+		if (window == g_activeWindow)
+		{
+			g_activeWindow = NULL;
+			setActive(window, false);
+
+			WindowRef next = frontActivatable();
+			if (next)
+				activateWindow(next);
+		}
+	}
+	else
+		SelectWindow(window);
+	return noErr;
+}
+
+Boolean IsWindowCollapsed(WindowRef window)
+{
+	return IsValidWindowPtr(window) && window->collapsed;
+}
+
+// The windows that Minimize All, the window list and the cycling commands work on: the visible document-like
+// windows (those that can be active), front to back, minimized ones included
+ItemCount _HICopyWindowList(WindowRef** outWindows)
+{
+	ItemCount count = 0;
+
+	pthread_mutex_lock(&g_lock);
+	for (struct OpaqueWindowPtr* w = g_windows; w; w = w->next)
+		count += w->visible && canActivate(w);
+
+	WindowRef* list = malloc((count + 1) * sizeof(WindowRef));
+	ItemCount used = 0;
+
+	for (struct OpaqueWindowPtr* w = g_windows; list && w; w = w->next)
+	{
+		if (w->visible && canActivate(w))
+			list[used++] = w;
+	}
+	pthread_mutex_unlock(&g_lock);
+	*outWindows = list;
+	return list ? used : 0;
+}
+
+OSStatus CollapseAllWindows(Boolean collapse)
+{
+	WindowRef* list;
+	ItemCount count = _HICopyWindowList(&list);
+
+	for (ItemCount i = 0; i < count; i++)
+	{
+		if (!collapse || (list[i]->attributes & kWindowCollapseBoxAttribute))
+			CollapseWindow(list[i], collapse);
+	}
+	free(list);
+	return noErr;
+}
+
+// The standard state of a zoomed window is as much of the main display as the menu bar and the window frame
+// leave
+static void zoomWindow(WindowRef window)
+{
+	Rect bounds;
+
+	if (window->zoomed)
+		bounds = window->userContent;
+	else
+	{
+		CGRect screen = CGDisplayBounds(CGMainDisplayID());
+
+		window->userContent = window->content;
+		bounds.top = (short) (GetMBarHeight() + _HIWindowStructureTop(window) + 2);
+		bounds.left = 2;
+		bounds.bottom = (short) (screen.size.height - 2);
+		bounds.right = (short) (screen.size.width - 2);
+	}
+	window->zoomed = !window->zoomed;
+	SetWindowBounds(window, kWindowContentRgn, &bounds);
+}
+
+static bool canCollapse(WindowRef window)
+{
+	return window && (window->attributes & kWindowCollapseBoxAttribute) && !window->collapsed;
+}
+
+Boolean _HIWindowCommandEnabled(UInt32 command)
+{
+	WindowRef* list;
+	ItemCount count = _HICopyWindowList(&list);
+	bool enabled = false;
+
+	switch (command)
+	{
+		case kHICommandMinimizeWindow:
+			enabled = canCollapse(g_activeWindow);
+			break;
+		case kHICommandZoomWindow:
+			enabled = g_activeWindow && (g_activeWindow->attributes & kWindowFullZoomAttribute);
+			break;
+		case kHICommandMinimizeAll:
+			for (ItemCount i = 0; i < count; i++)
+				enabled = enabled || canCollapse(list[i]);
+			break;
+		case kHICommandRotateWindowsForward:
+		case kHICommandRotateWindowsBackward:
+			enabled = count > 1;
+			break;
+		default:
+			enabled = count > 0;
+			break;
+	}
+	free(list);
+	return enabled;
+}
+
+// Brings the windows of the application to the front, keeping their order
+static void bringAllToFront(void)
+{
+	WindowRef* list;
+	ItemCount count = _HICopyWindowList(&list);
+
+	for (ItemCount i = count; i > 0; i--)
+	{
+		if (!list[i - 1]->collapsed)
+			BringToFront(list[i - 1]);
+	}
+	free(list);
+
+	WindowRef front = frontActivatable();
+	if (front)
+		SelectWindow(front);
+}
+
+// Arrange in Front: the windows cascade from the top left corner of the main display, the front one on top
+static void arrangeInFront(void)
+{
+	WindowRef* list;
+	ItemCount count = _HICopyWindowList(&list);
+	SInt16 offset = 0;
+
+	for (ItemCount i = count; i > 0; i--)
+	{
+		WindowRef window = list[i - 1];
+
+		if (window->collapsed)
+			continue;
+		MoveWindowStructure(window, 10 + offset, (SInt16) (GetMBarHeight() + 10 + offset));
+		BringToFront(window);
+		offset += 22;
+	}
+	free(list);
+
+	WindowRef front = frontActivatable();
+	if (front)
+		SelectWindow(front);
+}
+
+static void cycleWindows(bool forward)
+{
+	WindowRef* list;
+	ItemCount count = _HICopyWindowList(&list);
+	WindowRef first = NULL, last = NULL;
+
+	for (ItemCount i = 0; i < count; i++)
+	{
+		if (list[i]->collapsed)
+			continue;
+		if (!first)
+			first = list[i];
+		last = list[i];
+	}
+	free(list);
+	if (first == last)
+		return;
+	if (forward)
+	{
+		// The front window goes to the back, the one behind it is the front now
+		SendBehind(first, NULL);
+		first = frontActivatable();
+		if (first)
+			SelectWindow(first);
+	}
+	else
+		SelectWindow(last);
+}
+
+// What the window and application targets do by default with the commands of the standard Window menu
+OSStatus _HIWindowCommand(UInt32 command, WindowRef window)
+{
+	WindowRef target = window && IsValidWindowPtr(window) ? window : g_activeWindow;
+
+	switch (command)
+	{
+		case kHICommandMinimizeWindow:
+			if (!canCollapse(target))
+				return eventNotHandledErr;
+			return CollapseWindow(target, true);
+		case kHICommandZoomWindow:
+			if (!target || !(target->attributes & kWindowFullZoomAttribute))
+				return eventNotHandledErr;
+			zoomWindow(target);
+			return noErr;
+		case kHICommandMinimizeAll:
+			return CollapseAllWindows(true);
+		case kHICommandBringAllToFront:
+			bringAllToFront();
+			return noErr;
+		case kHICommandArrangeInFront:
+			arrangeInFront();
+			return noErr;
+		case kHICommandRotateWindowsForward:
+			cycleWindows(true);
+			return noErr;
+		case kHICommandRotateWindowsBackward:
+			cycleWindows(false);
+			return noErr;
+		case kHICommandSelectWindow:
+			if (!target)
+				return eventNotHandledErr;
+			if (target->collapsed)
+				CollapseWindow(target, false);
+			else
+				SelectWindow(target);
+			return noErr;
+	}
+	return eventNotHandledErr;
+}
+
+// Hide and Show of the application: the windows leave the screen and come back in their order. They stay
+// visible windows as far as the Window Manager is concerned.
+void _HIHideApplicationWindows(Boolean hide)
+{
+	WindowRef* list;
+	ItemCount count = 0;
+
+	pthread_mutex_lock(&g_lock);
+	for (struct OpaqueWindowPtr* w = g_windows; w; w = w->next)
+		count++;
+	list = malloc((count + 1) * sizeof(WindowRef));
+	count = 0;
+	for (struct OpaqueWindowPtr* w = g_windows; list && w; w = w->next)
+		list[count++] = w;
+	pthread_mutex_unlock(&g_lock);
+	if (!list)
+		return;
+
+	// Back to front, so that showing the windows restores their stacking
+	for (ItemCount i = count; i > 0; i--)
+	{
+		WindowRef w = list[i - 1];
+
+		if (hide && w->visible && !w->appHidden)
+		{
+			w->appHidden = true;
+			CGSOrderWindow(connection(), w->cgsWindow, kCGSOrderOut, 0);
+		}
+		else if (!hide && w->appHidden)
+		{
+			w->appHidden = false;
+			if (w->visible && !w->collapsed)
+				CGSOrderWindow(connection(), w->cgsWindow, kCGSOrderAbove, 0);
+		}
+	}
+	free(list);
+	if (!hide)
+	{
+		WindowRef front = frontActivatable();
+		if (front)
+			activateWindow(front);
+	}
+}
+
+// Another process (ShowHideProcess() of the Process Manager) asks this application to hide, show or quit with
+// a libnotify notification named after this process, see _CGSSendProcessCommand(). The requests run on the main
+// queue, which the event loop's run loop serves.
+void _HIObserveProcessCommands(void)
+{
+	static dispatch_once_t once;
+
+	dispatch_once(&once, ^{
+		const struct { const char* prefix; int command; } commands[] = {
+			{ kCGSProcessHideNotificationPrefix, kCGSProcessCommandHide },
+			{ kCGSProcessUnhideNotificationPrefix, kCGSProcessCommandUnhide },
+			{ kCGSProcessQuitNotificationPrefix, kCGSProcessCommandQuit },
+		};
+
+		for (size_t i = 0; i < sizeof(commands) / sizeof(commands[0]); i++)
+		{
+			char name[96];
+			int token;
+			int command = commands[i].command;
+
+			snprintf(name, sizeof(name), "%s%d", commands[i].prefix, (int) getpid());
+			// The token stays registered for the life of the process
+			notify_register_dispatch(name, &token, dispatch_get_main_queue(), ^(int ignored) {
+				if (command == kCGSProcessCommandQuit)
+					_HIQuitApplication();
+				else
+				{
+					_HIHideApplicationWindows(command == kCGSProcessCommandHide);
+					_CGSSetProcessHidden(command == kCGSProcessCommandHide);
+				}
+			});
+		}
+	});
 }
 
 #pragma mark Class, attributes, title, refcon, properties
@@ -1792,6 +2120,19 @@ static OSStatus windowDefaultHandler(EventHandlerCallRef call, EventRef event, v
 
 	if (!IsValidWindowPtr(window))
 		return eventNotHandledErr;
+
+	// The commands that act on one window: minimize and zoom
+	if (GetEventClass(event) == kEventClassCommand)
+	{
+		HICommand command;
+
+		if (GetEventKind(event) != kEventCommandProcess ||
+			GetEventParameter(event, kEventParamDirectObject, typeHICommand, NULL, sizeof(command), NULL, &command) != noErr)
+			return eventNotHandledErr;
+		if (command.commandID != kHICommandMinimizeWindow && command.commandID != kHICommandZoomWindow)
+			return eventNotHandledErr;
+		return _HIWindowCommand(command.commandID, window);
+	}
 
 	switch (GetEventKind(event))
 	{
