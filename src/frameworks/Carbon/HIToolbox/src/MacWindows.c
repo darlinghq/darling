@@ -1602,6 +1602,8 @@ const EventTypeSpec _HIStandardWindowEventTypes[kHIStandardWindowEventTypeCount]
 	{ kEventClassWindow, kEventWindowBoundsChanged },
 	{ kEventClassWindow, kEventWindowShown },
 	{ kEventClassWindow, kEventWindowHidden },
+	{ kEventClassCommand, kEventCommandProcess },
+	{ kEventClassCommand, kEventCommandUpdateStatus },
 };
 
 OSStatus _HIStandardWindowEventHandler(EventHandlerCallRef call, EventRef event, void* userData)
@@ -1620,7 +1622,9 @@ OSStatus _HIStandardWindowEventHandler(EventHandlerCallRef call, EventRef event,
 		return SendEventToEventTargetWithOptions(event, window->target, kEventTargetDontPropagate);
 	}
 
-	if (eventClass == kEventClassKeyboard)
+	// Keys and commands (those of the menus, ProcessHICommand()) go to the user focus: the active window. The
+	// application's own handler gets a command that the window did not handle (or when there is no active window).
+	if (eventClass == kEventClassKeyboard || eventClass == kEventClassCommand)
 	{
 		if (!g_activeWindow)
 			return eventNotHandledErr;
