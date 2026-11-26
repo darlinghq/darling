@@ -58,6 +58,10 @@ typedef struct {
 - (NSRange) _currentGlyphRangeForTextContainer: (NSTextContainer *) container;
 @end
 
+@interface NSTextContainer (NSTextContainer_layoutManagerDetach)
+- (void) _darlingDetachFromLayoutManager: (NSLayoutManager *) layoutManager;
+@end
+
 @implementation NSLayoutManager
 
 static inline NSGlyphFragment *fragmentForGlyphRange(NSLayoutManager *self,
@@ -150,6 +154,8 @@ static inline NSGlyphFragment *fragmentAtGlyphIndex(NSLayoutManager *self,
 }
 
 - (void) dealloc {
+    for (NSTextContainer *container in _textContainers)
+        [container _darlingDetachFromLayoutManager: self];
     NSFreeRangeEntries(_rangeToTemporaryAttributes);
     _textStorage = nil;
     [_typesetter release];
@@ -367,6 +373,7 @@ static inline NSGlyphFragment *fragmentAtGlyphIndex(NSLayoutManager *self,
 }
 
 - (void) removeTextContainerAtIndex: (NSUInteger) index {
+    [[_textContainers objectAtIndex: index] _darlingDetachFromLayoutManager: self];
     [_textContainers removeObjectAtIndex: index];
 }
 
