@@ -31,6 +31,21 @@ int main()
 	registry.fire('vol ', [&](void*, void*) { firedCountVol++; });
 	assert(firedCountVol == 1); // only ctxB's listener remains
 
+	// A listener on one scope and element is called for that address and for wildcards only.
+	AudioHardwareListenerRegistry scoped;
+	scoped.add('volm', 'inpt', 1, (void*)proc1, &ctxA);
+	assert(scoped.empty() == false);
+	int hits = 0;
+	scoped.fire('volm', 'inpt', 1, [&](void*, void*) { hits++; });
+	scoped.fire('volm', 'outp', 1, [&](void*, void*) { hits += 10; });
+	scoped.fire('volm', 'inpt', 2, [&](void*, void*) { hits += 100; });
+	scoped.fire('volm', 0x2a2a2a2a, 0xffffffffu, [&](void*, void*) { hits += 1000; });
+	assert(hits == 1001);
+	scoped.remove('volm', (void*)proc1, &ctxA); // another scope and element: removes nothing
+	assert(scoped.empty() == false);
+	scoped.remove('volm', 'inpt', 1, (void*)proc1, &ctxA);
+	assert(scoped.empty());
+
 	printf("AudioHardwareListenerRegistryTest: OK\n");
 	return 0;
 }
