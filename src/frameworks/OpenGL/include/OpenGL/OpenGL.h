@@ -2,7 +2,8 @@
 #define _OPENGL_H_
 
 #ifdef __APPLE__ // __DARLING__
-#include <OpenGL/gl.h>
+// As on macOS, the OpenGL types without the OpenGL API, which is in gl.h.
+#include <OpenGL/gltypes.h>
 #else
 #include <GL/gl.h>
 #endif

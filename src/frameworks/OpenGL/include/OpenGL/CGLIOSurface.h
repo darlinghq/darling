@@ -22,7 +22,7 @@
 
 #include <OpenGL/CGLTypes.h>
 #ifdef __APPLE__ // __DARLING__
-#include <OpenGL/gl.h>
+#include <OpenGL/gltypes.h>
 #else
 #include <GL/gl.h>
 #endif
