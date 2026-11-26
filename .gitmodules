@@ -265,22 +265,6 @@
 [submodule "src/external/crontabs"]
 	path = src/external/crontabs
 	url = ../darling-crontabs.git
-[submodule "src/external/WTF"]
-	path = src/external/WTF
-	url = ../darling-WTF.git
-	branch = master
-[submodule "src/external/WebCore"]
-	path = src/external/WebCore
-	url = ../darling-WebCore.git
-	branch = master
-[submodule "src/external/JavaScriptCore"]
-	path = src/external/JavaScriptCore
-	url = ../darling-JavaScriptCore.git
-	branch = master
-[submodule "src/external/bmalloc"]
-	path = src/external/bmalloc
-	url = ../darling-bmalloc.git
-	branch = master
 [submodule "src/external/dtrace"]
 	path = src/external/dtrace
 	url = ../darling-dtrace.git
@@ -492,3 +476,10 @@
 [submodule "src/external/lsof"]
 	path = src/external/lsof
 	url = ../darling-lsof.git
+[submodule "src/external/WebKit"]
+	path = src/external/WebKit
+	url = ../darling-webkit.git
+	branch = master
+[submodule "src/external/brotli"]
+	path = src/external/brotli
+	url = ../brotli.git

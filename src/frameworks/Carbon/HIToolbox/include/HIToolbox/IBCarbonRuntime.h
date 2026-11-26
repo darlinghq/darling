@@ -19,7 +19,9 @@ enum {
 
 typedef struct OpaqueIBNibRef * IBNibRef;
 
+#if !__LP64__
 OSStatus CreateMenuBarFromNib(IBNibRef inNibRef, CFStringRef inName, Handle *outMenuBar);
+#endif
 OSStatus CreateMenuFromNib(IBNibRef inNibRef, CFStringRef inName, MenuRef *outMenuRef);
 OSStatus CreateNibReference(CFStringRef inNibName, IBNibRef *outNibRef);
 OSStatus CreateNibReferenceWithCFBundle(CFBundleRef inBundle, CFStringRef inNibName, IBNibRef *outNibRef);

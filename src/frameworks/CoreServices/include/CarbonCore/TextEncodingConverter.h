@@ -40,6 +40,9 @@ OSStatus TECGetTextEncodingFromInternetName(TextEncoding *encoding, ConstStr255P
 
 OSStatus TECDisposeConverter(TECObjectRef newEncodingConverter);
 
+// The encodings the web uses in a region, the preferred one first.
+OSStatus TECGetWebTextEncodings(RegionCode locale, TextEncoding *availableEncodings, ItemCount maxAvailableEncodings, ItemCount *actualAvailableEncodings);
+
 #ifdef __cplusplus
 }
 #endif

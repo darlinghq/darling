@@ -22,6 +22,7 @@
 #define _QD_H_
 
 #include <MacTypes.h>
+#include <CoreGraphics/CGContext.h>
 #include <CarbonCore/MacErrors.h>
 
 // The QuickDraw structures use 68K (2-byte) alignment.
@@ -138,6 +139,11 @@ void HideCursor(void);
 void ShowCursor(void);
 
 /* Rectangles. */
+#ifndef __LP64__
+/* Point arithmetic of QuickDraw (32-bit only): AddPt adds the first point to the second */
+void AddPt(Point src, Point *dst);
+void SubPt(Point src, Point *dst);
+#endif
 void SetRect(Rect *r, short left, short top, short right, short bottom);
 void OffsetRect(Rect *r, short dh, short dv);
 void InsetRect(Rect *r, short dh, short dv);
@@ -212,6 +218,16 @@ QDErr LockPortBits(GrafPtr port);
 QDErr UnlockPortBits(GrafPtr port);
 void QDFlushPortBuffer(CGrafPtr port, RgnHandle region);
 QDErr QDError(void);
+
+/* Quartz drawing into a port (32-bit only, as on macOS) */
+OSStatus QDBeginCGContext(CGrafPtr inPort, CGContextRef *outContext);
+OSStatus QDEndCGContext(CGrafPtr inPort, CGContextRef *inoutContext);
+
+/* Conversion between the port's local coordinates and the screen's global ones */
+void QDGlobalToLocalPoint(CGrafPtr port, Point *point);
+void QDLocalToGlobalPoint(CGrafPtr port, Point *point);
+void QDGlobalToLocalRect(CGrafPtr port, Rect *bounds);
+void QDLocalToGlobalRect(CGrafPtr port, Rect *bounds);
 #endif
 
 #ifdef __cplusplus

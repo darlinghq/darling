@@ -18,6 +18,8 @@
 */
 
 #include <Foundation/Foundation.h>
+// As in Apple's SDK, where it comes through the capture input header.
+#import <AVFoundation/AVCaptureDevice.h>
 
 typedef NSString *AVCaptureSessionPreset;
 

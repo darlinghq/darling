@@ -19,9 +19,71 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include <CarbonCore/TextUtils.h>
+#include <CarbonCore/NumberFormatting.h>
+#include <stdint.h>
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
+
+#if !__LP64__
+// Signed decimal Pascal string, no terminator; LONG_MIN is formatted through its magnitude.
+void NumToString(long theNum, Str255 theString)
+{
+	if (!theString)
+		return;
+
+	unsigned long magnitude = (unsigned long) theNum;
+	const bool negative = theNum < 0;
+	if (negative)
+		magnitude = 0ul - magnitude;
+
+	unsigned char digits[3 * sizeof(long) + 1];
+	unsigned count = 0;
+	do
+	{
+		digits[count++] = (unsigned char) ('0' + magnitude % 10);
+		magnitude /= 10;
+	}
+	while (magnitude);
+
+	unsigned out = 1;
+	theString[0] = (unsigned char) (count + negative);
+	if (negative)
+		theString[out++] = '-';
+	while (count)
+		theString[out++] = digits[--count];
+}
+
+// Roman rules: an optional leading sign, then each character contributes its low four bits as a
+// digit, with no validation; the value wraps modulo 2^32.
+void StringToNum(ConstStr255Param theString, long* theNum)
+{
+	if (!theNum)
+		return;
+	if (!theString)
+	{
+		*theNum = 0;
+		return;
+	}
+
+	uint32_t value = 0;
+	unsigned i = 1;
+	bool negative = false;
+	if (theString[0] && (theString[1] == '-' || theString[1] == '+'))
+	{
+		negative = theString[1] == '-';
+		i = 2;
+	}
+	for (; i <= theString[0]; i++)
+		value = value * 10u + (theString[i] & 15u);
+	if (negative)
+		value = 0u - value;
+
+	int32_t result;
+	std::memcpy(&result, &value, sizeof(result));
+	*theNum = (long) result;
+}
+#endif
 
 StringHandle NewString(const Str255 str)
 {

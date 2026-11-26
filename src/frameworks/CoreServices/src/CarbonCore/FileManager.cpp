@@ -53,6 +53,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 // Is the current user member of the specified group?
 static bool hasgid(gid_t gid);
 
+#if !__LP64__
+// Fills in the FSSpec of an item (the volume, the directory that holds it and its name)
+static void fsSpecForPath(const std::string& path, FSSpec* spec);
+#endif
+
 OSStatus FSPathMakeRef(const uint8_t* path, FSRef* fsref, Boolean* isDirectory)
 {
 	return FSPathMakeRefWithOptions(path, kFSPathMakeRefDoNotFollowLeafSymlink, fsref, isDirectory); 
@@ -783,6 +788,79 @@ OSErr FSSetForkPosition(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 posit
 			forkSetMark(fork, target);
 			return noErr;
 	}
+}
+
+#if !__LP64__
+// SetFPos moves the same fork mark as FSSetForkPosition, with the same positioning rules and
+// QUIRKs. Inside Macintosh: Files, p. 2-95.
+// Test: tests/src/file_manager_setfpos.c
+OSErr SetFPos(FSIORefNum refNum, SInt16 posMode, SInt32 posOff)
+{
+	return FSSetForkPosition(refNum, (UInt16) posMode, posOff);
+}
+#endif
+
+// Writing to forks .
+// Data forks are written through their descriptor; writing at or past the end extends the fork.
+// In-memory resource forks are not written back, so writes to them fail with wrPermErr.
+// A target before the start fails with posErr and leaves the mark unchanged.
+
+OSErr FSWriteFork(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 positionOffset, ByteCount requestCount, const void* buffer, ByteCount* actualCount)
+{
+	if (actualCount)
+		*actualCount = 0;
+
+	std::lock_guard<std::mutex> lock(g_openForksLock);
+	auto it = g_openForks.find(forkRefNum);
+	if (it == g_openForks.end())
+		return fnOpnErr;
+	if (!buffer && requestCount > 0)
+		return paramErr;
+
+	OpenFork& fork = it->second;
+	if (fork.fd == -1)
+		return wrPermErr;
+	const SInt64 size = forkSize(fork);
+	if (size < 0)
+		return ioErr;
+
+	SInt64 start;
+	if (resolveForkPosition(forkMark(fork), size, positionMode, positionOffset, &start) == kForkPosBeforeStart)
+		return posErr;
+
+	ssize_t done = requestCount ? ::pwrite(fork.fd, buffer, requestCount, (off_t) start) : 0;
+	if (done < 0)
+		return errno == EBADF ? wrPermErr : (errno == ENOSPC ? dskFulErr : ioErr);
+	forkSetMark(fork, start + done);
+	if (actualCount)
+		*actualCount = (ByteCount) done;
+	return (ByteCount) done == requestCount ? noErr : dskFulErr;
+}
+
+// Sets the logical end of a data fork; a mark beyond the new end moves to it.
+OSErr FSSetForkSize(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 positionOffset)
+{
+	std::lock_guard<std::mutex> lock(g_openForksLock);
+	auto it = g_openForks.find(forkRefNum);
+	if (it == g_openForks.end())
+		return fnOpnErr;
+
+	OpenFork& fork = it->second;
+	if (fork.fd == -1)
+		return wrPermErr;
+	const SInt64 size = forkSize(fork);
+	if (size < 0)
+		return ioErr;
+
+	SInt64 target;
+	if (resolveForkPosition(forkMark(fork), size, positionMode, positionOffset, &target) == kForkPosBeforeStart)
+		return posErr;
+	const SInt64 mark = forkMark(fork);
+	if (::ftruncate(fork.fd, (off_t) target) != 0)
+		return errno == EBADF || errno == EINVAL ? wrPermErr : ioErr;
+	if (mark > target)
+		forkSetMark(fork, target);
+	return noErr;
 }
 
 // QUIRK: a read that begins before the start of the fork fails with posErr and moves the mark to
@@ -1523,7 +1601,12 @@ extern "C" OSErr FSCreateFileUnicode(const FSRef* parentRef, UniCharCount nameLe
 	close(fd);
 
 	if (newSpec)
+	{
 		memset(newSpec, 0, sizeof(*newSpec));
+#if !__LP64__
+		fsSpecForPath(path, newSpec);
+#endif
+	}
 
 	FSRef created;
 	OSStatus status = FSPathMakeRef((const uint8_t*) path.c_str(), &created, nullptr);
@@ -1681,3 +1764,228 @@ extern "C" OSStatus FSMoveObjectToTrashSync(const FSRef* source, FSRef* target, 
 	CFRelease(cfName);
 	return status;
 }
+
+#if !__LP64__
+// FSSpec: the 32-bit File Manager's name for an item, the volume, the ID of the parent directory
+// and the name of the item. The name is the item's name in the file system, not an HFS name.
+
+static OSErr fsSpecError(int err)
+{
+	switch (err)
+	{
+		case ENOENT: return fnfErr;
+		case EACCES: case EPERM: return permErr;
+		case EROFS: return wPrErr;
+		case EEXIST: return dupFNErr;
+		default: return makeOSStatus(err);
+	}
+}
+
+static std::string fsSpecDirectory(SInt16 vRefNum, SInt32 dirID, bool* ok)
+{
+	std::string path;
+
+	*ok = true;
+	if (dirID == 0)
+	{
+		// The default directory
+		char cwd[PATH_MAX];
+		if (!getcwd(cwd, sizeof(cwd)))
+			*ok = false;
+		return cwd;
+	}
+	if (dirID == fsRtDirID)
+		return "/";
+	if (!dirNodeIDToPath(dirID, path))
+		*ok = false;
+	return path;
+}
+
+static bool fsSpecPath(const FSSpec* spec, std::string& path)
+{
+	bool ok;
+
+	if (!spec || spec->name[0] == 0 || spec->name[0] > sizeof(spec->name) - 1)
+		return false;
+	path = fsSpecDirectory(spec->vRefNum, spec->parID, &ok);
+	if (!ok)
+		return false;
+	if (path.empty() || path.back() != '/')
+		path += '/';
+	path.append((const char*) spec->name + 1, spec->name[0]);
+	return true;
+}
+
+static void fsSpecForPath(const std::string& path, FSSpec* spec)
+{
+	size_t slash = path.find_last_of('/');
+	std::string parent = (slash == std::string::npos || slash == 0) ? std::string("/") : path.substr(0, slash);
+	std::string leaf = path.substr(slash == std::string::npos ? 0 : slash + 1);
+	struct stat st;
+	uint32_t nodeID, parentID;
+
+	memset(spec, 0, sizeof(*spec));
+	if (::stat(parent.c_str(), &st) != 0 || leaf.size() > sizeof(spec->name) - 1)
+		return;
+	nodeIDsForPath(parent, st, &nodeID, &parentID);
+	spec->vRefNum = kBootVolumeRefNum;
+	spec->parID = parent == "/" ? fsRtDirID : (SInt32) nodeID;
+	spec->name[0] = (unsigned char) leaf.size();
+	memcpy(spec->name + 1, leaf.data(), leaf.size());
+}
+
+OSErr FSMakeFSSpec(FSVolumeRefNum vRefNum, SInt32 dirID, ConstStr255Param fileName, FSSpec* spec)
+{
+	bool ok;
+	std::string dir, path;
+	struct stat st;
+	size_t nameLength = fileName ? fileName[0] : 0;
+
+	if (!spec)
+		return paramErr;
+	memset(spec, 0, sizeof(*spec));
+	dir = fsSpecDirectory(vRefNum, dirID, &ok);
+	// QUIRK: a directory ID that names no directory gives fnfErr, not dirNFErr. Not documented. Evidence:
+	// black-box observation on macOS 10.14.4 i386 (tier 2).
+	// Test: tests/src/fsspec_calls.c (the call with directory ID 0x7fffff00)
+	if (!ok)
+		return fnfErr;
+	if (nameLength > 0 && fileName[1] == '/')
+		path.assign((const char*) fileName + 1, nameLength);	// a full path
+	else
+	{
+		path = dir;
+		if (nameLength > 0)
+		{
+			if (path.empty() || path.back() != '/')
+				path += '/';
+			path.append((const char*) fileName + 1, nameLength);
+		}
+	}
+	while (path.size() > 1 && path.back() == '/')
+		path.pop_back();
+
+	// The spec of an item names the item and the directory that holds it. The item may not exist
+	// yet, if its directory does (the spec is filled in and the result is fnfErr).
+	size_t slash = path.find_last_of('/');
+	std::string parent = (slash == std::string::npos || slash == 0) ? std::string("/") : path.substr(0, slash);
+	std::string leaf = path == "/" ? std::string() : path.substr(slash + 1);
+
+	if (::stat(parent.c_str(), &st) != 0 || !S_ISDIR(st.st_mode))
+		return dirNFErr;
+	if (leaf.size() > sizeof(spec->name) - 1)
+		return bdNamErr;
+
+	// Registers the node ID of the directory
+	uint32_t nodeID, parentID;
+	nodeIDsForPath(parent, st, &nodeID, &parentID);
+	spec->vRefNum = kBootVolumeRefNum;
+	spec->parID = parent == "/" ? fsRtDirID : (SInt32) nodeID;
+	spec->name[0] = (unsigned char) leaf.size();
+	memcpy(spec->name + 1, leaf.data(), leaf.size());
+	return ::lstat(path.c_str(), &st) == 0 ? noErr : fnfErr;
+}
+
+OSStatus FSpMakeFSRef(const FSSpec* source, FSRef* newRef)
+{
+	std::string path;
+
+	if (!newRef)
+		return paramErr;
+	if (!fsSpecPath(source, path))
+		return fnfErr;
+	return FSPathMakeRef((const uint8_t*) path.c_str(), newRef, nullptr);
+}
+
+OSErr FSpDelete(const FSSpec* spec)
+{
+	std::string path;
+	struct stat st;
+
+	if (!fsSpecPath(spec, path))
+		return fnfErr;
+	if (::lstat(path.c_str(), &st) != 0)
+		return fsSpecError(errno);
+	if (S_ISDIR(st.st_mode))
+	{
+		if (::rmdir(path.c_str()) != 0)
+			return errno == ENOTEMPTY ? fBsyErr : fsSpecError(errno);
+		return noErr;
+	}
+	return ::unlink(path.c_str()) == 0 ? noErr : fsSpecError(errno);
+}
+
+// The Finder information is kept in the extended attribute macOS keeps it in
+static const char kFinderInfoAttribute[] = "com.apple.FinderInfo";
+
+OSErr FSpGetFInfo(const FSSpec* spec, FInfo* fndrInfo)
+{
+	std::string path;
+	struct stat st;
+	uint8_t raw[32];
+
+	if (!fndrInfo)
+		return paramErr;
+	if (!fsSpecPath(spec, path))
+		return fnfErr;
+	if (::stat(path.c_str(), &st) != 0)
+		return fsSpecError(errno);
+	memset(raw, 0, sizeof(raw));
+	if (getxattr(path.c_str(), kFinderInfoAttribute, raw, sizeof(raw), 0, 0) < 0 && errno != ENOATTR)
+		return fsSpecError(errno);
+	memset(fndrInfo, 0, sizeof(*fndrInfo));
+	// The first 16 bytes of the Finder information of a file, big-endian: type, creator, flags, location, folder
+	fndrInfo->fdType = (raw[0] << 24) | (raw[1] << 16) | (raw[2] << 8) | raw[3];
+	fndrInfo->fdCreator = (raw[4] << 24) | (raw[5] << 16) | (raw[6] << 8) | raw[7];
+	fndrInfo->fdFlags = (raw[8] << 8) | raw[9];
+	fndrInfo->fdLocation.v = (SInt16) ((raw[10] << 8) | raw[11]);
+	fndrInfo->fdLocation.h = (SInt16) ((raw[12] << 8) | raw[13]);
+	fndrInfo->fdFldr = (SInt16) ((raw[14] << 8) | raw[15]);
+	return noErr;
+}
+
+OSErr FSpSetFInfo(const FSSpec* spec, const FInfo* fndrInfo)
+{
+	std::string path;
+	struct stat st;
+	uint8_t raw[32];
+
+	if (!fndrInfo)
+		return paramErr;
+	if (!fsSpecPath(spec, path))
+		return fnfErr;
+	if (::stat(path.c_str(), &st) != 0)
+		return fsSpecError(errno);
+	// The rest of the Finder information stays as it is
+	memset(raw, 0, sizeof(raw));
+	if (getxattr(path.c_str(), kFinderInfoAttribute, raw, sizeof(raw), 0, 0) < 0 && errno != ENOATTR)
+		return fsSpecError(errno);
+	raw[0] = fndrInfo->fdType >> 24; raw[1] = fndrInfo->fdType >> 16; raw[2] = fndrInfo->fdType >> 8; raw[3] = fndrInfo->fdType;
+	raw[4] = fndrInfo->fdCreator >> 24; raw[5] = fndrInfo->fdCreator >> 16; raw[6] = fndrInfo->fdCreator >> 8; raw[7] = fndrInfo->fdCreator;
+	raw[8] = fndrInfo->fdFlags >> 8; raw[9] = fndrInfo->fdFlags;
+	raw[10] = fndrInfo->fdLocation.v >> 8; raw[11] = fndrInfo->fdLocation.v;
+	raw[12] = fndrInfo->fdLocation.h >> 8; raw[13] = fndrInfo->fdLocation.h;
+	raw[14] = fndrInfo->fdFldr >> 8; raw[15] = fndrInfo->fdFldr;
+	if (setxattr(path.c_str(), kFinderInfoAttribute, raw, sizeof(raw), 0, 0) != 0)
+		return fsSpecError(errno);
+	return noErr;
+}
+
+OSErr FSpCreate(const FSSpec* spec, OSType creator, OSType fileType, ScriptCode scriptTag)
+{
+	std::string path;
+
+	if (!fsSpecPath(spec, path))
+		return dirNFErr;
+	int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0666);
+	if (fd < 0)
+		return errno == EEXIST ? dupFNErr : fsSpecError(errno);
+	::close(fd);
+
+	FInfo info;
+	memset(&info, 0, sizeof(info));
+	info.fdType = fileType;
+	info.fdCreator = creator;
+	return FSpSetFInfo(spec, &info);
+}
+#endif

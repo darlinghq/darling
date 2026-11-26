@@ -124,6 +124,8 @@ typedef enum _CGLRendererProperty {
    kCGLRPVideoMemoryMegabytes = 131,
    kCGLRPTextureMemoryMegabytes = 132,
    kCGLRPMajorGLVersion      = 133,
+   kCGLRPRegistryIDLow       = 140, // lower 32 bits of the renderer's IORegistry GPU ID
+   kCGLRPRegistryIDHigh      = 141, // upper 32 bits of it
 } CGLRendererProperty;
 
 typedef struct _CGLContextObject *CGLContextObj;

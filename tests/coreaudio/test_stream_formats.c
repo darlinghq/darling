@@ -3,9 +3,11 @@
 // tests/coreaudio/test_stream_formats.c
 // The available virtual and physical formats of the default output device's stream are
 // non-empty arrays of linear PCM ranged descriptions that include the current format, and
+// the stream's latency is a read-only frame count, and
 // kAudioOutputUnitProperty_IsRunning of an output unit is a read-only 0 before the unit
 // starts, 1 while it runs and 0 again after it stops.
-// Needs a PulseAudio sink: run it inside Darling. The program also passes on macOS 27.
+// Needs a PulseAudio sink: run it inside Darling. The program also passes on macOS 27
+// (the latency check was added later and has not been run there).
 #include <AudioUnit/AudioUnit.h>
 #include <CoreAudio/CoreAudio.h>
 #include <stdio.h>
@@ -81,6 +83,16 @@ int main(void)
 
 	checkAvailableFormats(streams[0], kAudioStreamPropertyAvailableVirtualFormats, kAudioStreamPropertyVirtualFormat);
 	checkAvailableFormats(streams[0], kAudioStreamPropertyAvailablePhysicalFormats, kAudioStreamPropertyPhysicalFormat);
+
+	// the stream's own latency: a read-only UInt32 count of frames
+	AudioObjectPropertyAddress latencyAddress = { kAudioStreamPropertyLatency, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
+	UInt32 latency = 0xffffffffu, latencySize = sizeof(latency);
+	Boolean latencySettable = true;
+	REQUIRE(AudioObjectHasProperty(streams[0], &latencyAddress));
+	CHECK(AudioObjectIsPropertySettable(streams[0], &latencyAddress, &latencySettable));
+	REQUIRE(!latencySettable);
+	CHECK(AudioObjectGetPropertyData(streams[0], &latencyAddress, 0, NULL, &latencySize, &latency));
+	REQUIRE(latencySize == sizeof(UInt32) && latency != 0xffffffffu);
 
 	AudioComponentDescription desc = { kAudioUnitType_Output, kAudioUnitSubType_DefaultOutput, kAudioUnitManufacturer_Apple, 0, 0 };
 	AudioComponent component = AudioComponentFindNext(NULL, &desc);

@@ -82,6 +82,25 @@ typedef void (*HIEventPollProc)(EventQueueRef queue, void* info);
 OSStatus _HIAddEventPollProc(HIEventPollProc proc, void* info);
 OSStatus _HIRemoveEventPollProc(HIEventPollProc proc, void* info);
 
+// An event target of a framework's object (a menu, a window): it has handlers of its own, and the events
+// that none of them handles go on to the target behind it (the application target, usually).
+// _HIDestroyEventTarget() removes its handlers and the target itself.
+EventTargetRef _HICreateEventTarget(EventTargetRef next);
+void _HIDestroyEventTarget(EventTargetRef target);
+// Changes the target that an event target passes events on to (NULL: the application target)
+void _HISetEventTargetNext(EventTargetRef target, EventTargetRef next);
+
+// The standard commands of the Window menu and of the application menu (see Menus.c, MacWindows.c)
+#include <HIToolbox/MacWindows.h>
+OSStatus _HIWindowCommand(UInt32 command, WindowRef window);
+Boolean _HIWindowCommandEnabled(UInt32 command);
+// The visible windows that can be active, front to back, minimized ones included; the caller frees the array
+ItemCount _HICopyWindowList(WindowRef** outWindows);
+void _HIHideApplicationWindows(Boolean hide);
+void _HIObserveProcessCommands(void);
+// Sends the application the quit Apple event; without a handler for it the application event loop ends
+void _HIQuitApplication(void);
+
 #ifdef __cplusplus
 }
 #endif

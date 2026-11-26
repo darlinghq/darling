@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>org.darlinghq.tests.smlegacy.helper</string>
+	<key>MachServices</key>
+	<dict>
+		<key>org.darlinghq.tests.smlegacy.helper</key>
+		<true/>
+		<key>org.darlinghq.tests.smlegacy.helper.raw</key>
+		<true/>
+	</dict>
+</dict>
+</plist>

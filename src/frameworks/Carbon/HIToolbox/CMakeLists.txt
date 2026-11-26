@@ -28,10 +28,17 @@ add_framework(HIToolbox
 		src/CarbonEventTargets.c
 		src/CarbonApplicationEvents.c
 		src/MacApplication.cpp
-		src/MacWindows.cpp
+		src/MacWindows.c
 		src/TextInputSources.mm
 		src/TextServices.c
 		src/IBCarbonRuntime.c
+		src/IBCarbonNib.c
+		src/IBCarbonWindows.c
+		src/Controls.c
+		src/Menus.c
+		src/MenusClassic.c
+		src/MenuTracking.c
+		src/MouseTracking.c
 		src/HITheme.c
 		src/constants.c
 
@@ -42,6 +49,8 @@ add_framework(HIToolbox
 		CoreText
 		HIServices
 		CoreServices
+		QD
+		OpenGL
 		system
 		cxx
 )

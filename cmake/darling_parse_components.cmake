@@ -23,7 +23,9 @@ function(darling_parse_components_get_deps COMPONENT)
 	elseif ("${COMPONENT}" STREQUAL "jsc")
 		set(COMPONENT_DEPS system PARENT_SCOPE)
 	elseif ("${COMPONENT}" STREQUAL "webkit")
-		set(COMPONENT_DEPS dev_gui_frameworks_common dev_gui_stubs_common PARENT_SCOPE)
+		# WebKit is built on JavaScriptCore and on the GUI frameworks (AppKit,
+		# CoreText, QuartzCore), not on their developer stubs
+		set(COMPONENT_DEPS jsc gui_frameworks dev_gui_stubs_common PARENT_SCOPE)
 	elseif ("${COMPONENT}" STREQUAL "iokitd")
 		set(COMPONENT_DEPS system PARENT_SCOPE)
 	elseif ("${COMPONENT}" STREQUAL "stock")

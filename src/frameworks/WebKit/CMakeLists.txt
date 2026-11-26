@@ -196,6 +196,14 @@ add_framework(WebKit
         AppKit
 )
 
+# The SDK's WebKit headers belong to the real WebKit (src/external/WebKit), which does not carry
+# the stub's private _WK* headers. Let <WebKit/...> resolve to the stub's own headers first when
+# the stub is what is being built.
+set(WEBKIT_STUB_INCLUDE "${CMAKE_CURRENT_BINARY_DIR}/stub-include")
+file(MAKE_DIRECTORY "${WEBKIT_STUB_INCLUDE}")
+file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/include/WebKit" "${WEBKIT_STUB_INCLUDE}/WebKit" SYMBOLIC)
+target_include_directories(WebKit BEFORE PRIVATE "${WEBKIT_STUB_INCLUDE}")
+
 # The web view classes are written with ARC.
 set_source_files_properties(
     src/WKNavigation.m

@@ -150,6 +150,12 @@ OSErr FSGetForkSize(FSIORefNum forkRefNum, SInt64* forkSize);
 OSErr FSCloseFork(FSIORefNum forkRefNum);
 
 OSErr FSReadFork(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 positionOffset, ByteCount requestCount, void* buffer, ByteCount* actualCount);
+OSErr FSWriteFork(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 positionOffset, ByteCount requestCount, const void* buffer, ByteCount* actualCount);
+OSErr FSSetForkSize(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 positionOffset);
+#if !__LP64__
+OSErr SetFPos(FSIORefNum refNum, SInt16 posMode, SInt32 posOff);
+#endif
+
 OSErr FSGetForkPosition(FSIORefNum forkRefNum, SInt64* position);
 OSErr FSSetForkPosition(FSIORefNum forkRefNum, UInt16 positionMode, SInt64 positionOffset);
 
@@ -267,6 +273,28 @@ OSStatus FSMakeFSRefUnicode(const FSRef* parentRef, UniCharCount nameLength, con
 	TextEncoding textEncodingHint, FSRef* newRef);
 CFStringRef FSCreateStringFromHFSUniStr(CFAllocatorRef alloc, const HFSUniStr255* uniStr);
 OSStatus FSGetHFSUniStrFromString(CFStringRef theString, HFSUniStr255* theOutString);
+
+#if !__LP64__
+// The Finder information of a file
+#pragma pack(push, 2)
+struct FInfo {
+	OSType fdType;
+	OSType fdCreator;
+	UInt16 fdFlags;
+	Point fdLocation;
+	SInt16 fdFldr;
+};
+#pragma pack(pop)
+typedef struct FInfo FInfo;
+
+// The FSSpec calls of the 32-bit File Manager
+OSErr FSMakeFSSpec(FSVolumeRefNum vRefNum, SInt32 dirID, ConstStr255Param fileName, FSSpec* spec);
+OSStatus FSpMakeFSRef(const FSSpec* source, struct FSRef* newRef);
+OSErr FSpCreate(const FSSpec* spec, OSType creator, OSType fileType, ScriptCode scriptTag);
+OSErr FSpDelete(const FSSpec* spec);
+OSErr FSpGetFInfo(const FSSpec* spec, FInfo* fndrInfo);
+OSErr FSpSetFInfo(const FSSpec* spec, const FInfo* fndrInfo);
+#endif
 
 #ifdef __cplusplus
 }

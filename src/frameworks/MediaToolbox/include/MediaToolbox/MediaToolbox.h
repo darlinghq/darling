@@ -21,6 +21,9 @@
 #ifndef _MediaToolbox_H_
 #define _MediaToolbox_H_
 
+// MediaToolbox is a C framework; its Objective-C classes are only visible to
+// Objective-C.
+#ifdef __OBJC__
 #import <Foundation/Foundation.h>
 
 #import <MediaToolbox/CALayerDelegate.h>
@@ -53,7 +56,13 @@
 #import <MediaToolbox/FigCDSCALayerOutputNodeLayer.h>
 #import <MediaToolbox/FigCPEFPAirPlaySession.h>
 #import <MediaToolbox/FigSubtitleWebVTTRegionCALayer.h>
+#endif
 
+#include <MediaToolbox/MTAudioProcessingTap.h>
+
+// The functions below are Darling's stubs, which macOS does not declare in
+// its SDK; their prototypes are for Darling's own build only.
+#ifdef DARLING
 void* AudioMentorDispose(void);
 void* AudioMentorInvalidate(void);
 void* AudioMentorNew(void);
@@ -1625,10 +1634,6 @@ void* FigWriteHLSfMP4SecurityInfoPlaceholderIncludingAtomHeader(void);
 void* FigiTunesMetadataGetOSTypeKeyToShortStringKeyMapping(void);
 void* IFFParseFileTypeAtom(void);
 void* IsReferenceMovie(void);
-void* MTAudioProcessingTapCreate(void);
-void* MTAudioProcessingTapGetSourceAudio(void);
-void* MTAudioProcessingTapGetStorage(void);
-void* MTAudioProcessingTapGetTypeID(void);
 void* MTCapabilityIsAvailable(void);
 void* MTConvertCaptionStyleDataFromCSSToCMTextMarkup(void);
 void* MTCopyImageDataForAssetAtURL(void);
@@ -1741,5 +1746,6 @@ void* VideoMentorSetProperty(void);
 void* VideoMentorSetThrottleForBackground(void);
 void* VideoMentorSetTimeRemapCallback(void);
 void* fpSupport_createDefaultGaplessDictionary(void);
+#endif // DARLING
 
 #endif
