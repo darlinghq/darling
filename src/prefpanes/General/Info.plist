@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>Appearance</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.apple.preference.general</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>General</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>NSPrefPaneIconFile</key>
+	<string>General</string>
+	<key>NSPrefPaneIconLabel</key>
+	<string>General</string>
+	<key>NSPrefPaneSearchParameters</key>
+	<string>General appearance dark light mode accent color highlight color sidebar icon size scroll bars default web browser recent items close windows quitting ask to keep changes font smoothing</string>
+	<key>NSPrincipalClass</key>
+	<string>GeneralPreferencePane</string>
+</dict>
+</plist>

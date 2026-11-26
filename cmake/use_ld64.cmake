@@ -56,7 +56,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/system/libsystem_malloc.dylib:${CMAKE_BINARY_DIR}/src/external/libmalloc/libsystem_malloc_firstpass.dylib \
 -Wl,-dylib_file,/usr/lib/system/libsystem_configuration.dylib:${CMAKE_BINARY_DIR}/src/external/configd/libsystem_configuration.dylib \
 -Wl,-dylib_file,/usr/lib/libobjc.A.dylib:${CMAKE_BINARY_DIR}/src/external/objc4/runtime/libobjc.A.dylib \
--Wl,-dylib_file,/usr/lib/libicucore.A.dylib:${CMAKE_BINARY_DIR}/src/external/icu/icuSources/libicucore.A.dylib \
+-Wl,-dylib_file,/usr/lib/libicucore.A.dylib:${CMAKE_BINARY_DIR}/src/external/icu/darling/libicucore.A.dylib \
 -Wl,-dylib_file,/usr/lib/libncurses.5.4.dylib:${CMAKE_BINARY_DIR}/src/external/ncurses/ncurses/ncurses/libncurses.5.4.dylib \
 -Wl,-dylib_file,/usr/lib/libDiagnosticMessagesClient.dylib:${CMAKE_BINARY_DIR}/src/libDiagnosticMessagesClient/libDiagnosticMessagesClient.dylib \
 -Wl,-dylib_file,/usr/lib/libSystem.B.dylib:${CMAKE_BINARY_DIR}/src/external/libsystem/libSystem.B.dylib \
@@ -156,6 +156,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/HIToolbox.framework/Versions/A/HIToolbox:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/HIToolbox/HIToolbox \
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/ImageCapture.framework/Versions/A/ImageCapture:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/ImageCapture/ImageCapture \
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/Ink.framework/Versions/A/Ink:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/Ink/Ink \
+-Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/NavigationServices.framework/Versions/A/NavigationServices:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/NavigationServices/NavigationServices \
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/OpenScripting.framework/Versions/A/OpenScripting:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/OpenScripting/OpenScripting \
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/Print.framework/Versions/A/Print:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/Print/Print \
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/SecurityHI.framework/Versions/A/SecurityHI:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/SecurityHI/SecurityHI \
@@ -185,6 +186,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/native/libX11.dylib:${CMAKE_BINARY_DIR}/src/native/libX11.dylib \
 -Wl,-dylib_file,/usr/lib/native/libXcursor.dylib:${CMAKE_BINARY_DIR}/src/native/libXcursor.dylib \
 -Wl,-dylib_file,/usr/lib/native/libXext.dylib:${CMAKE_BINARY_DIR}/src/native/libXext.dylib \
+-Wl,-dylib_file,/usr/lib/native/libXi.dylib:${CMAKE_BINARY_DIR}/src/native/libXi.dylib \
 -Wl,-dylib_file,/usr/lib/native/libxkbfile.dylib:${CMAKE_BINARY_DIR}/src/native/libxkbfile.dylib \
 -Wl,-dylib_file,/usr/lib/native/libXRandR.dylib:${CMAKE_BINARY_DIR}/src/native/libXRandR.dylib")
 

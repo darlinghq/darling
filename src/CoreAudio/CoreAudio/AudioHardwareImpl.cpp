@@ -146,6 +146,13 @@ OSStatus AudioHardwareImpl::isPropertySettable(const AudioObjectPropertyAddress*
 			return kAudioHardwareNoError;
 		case kAudioDevicePropertyVolumeScalar:
 		case kAudioDevicePropertyVolumeDecibels:
+		case kAudioDevicePropertyMute:
+			*outIsSettable = true;
+			return kAudioHardwareNoError;
+		case kAudioHardwarePropertyDefaultOutputDevice:
+		case kAudioHardwarePropertyDefaultInputDevice:
+			if (m_myId != kAudioObjectSystemObject)
+				break;
 			*outIsSettable = true;
 			return kAudioHardwareNoError;
 	}

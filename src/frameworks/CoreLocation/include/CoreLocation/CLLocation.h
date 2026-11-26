@@ -69,6 +69,16 @@ extern const CLLocationAccuracy kCLLocationAccuracyReduced;
 }
 #endif
 
+// The floor of a building a location is on (macOS 10.15).
+@interface CLFloor : NSObject <NSCopying, NSSecureCoding>
+{
+@private
+    NSInteger _level;
+}
+// The floor's number, 0 for the ground floor, negative below it.
+@property(readonly, nonatomic) NSInteger level;
+@end
+
 @interface CLLocation : NSObject <NSCopying, NSSecureCoding>
 {
 @private
@@ -102,6 +112,9 @@ extern const CLLocationAccuracy kCLLocationAccuracyReduced;
 @property(readonly, nonatomic) CLLocationDirection course;
 @property(readonly, nonatomic) CLLocationSpeed speed;
 @property(readonly, nonatomic, copy) NSDate *timestamp;
+// The floor of the building the location is on, or nil if that is unknown
+// (it always is: Darling has no indoor positioning).
+@property(readonly, nonatomic, copy) CLFloor *floor;
 
 - (CLLocationDistance)distanceFromLocation:(const CLLocation *)location;
 - (CLLocationDistance)getDistanceFrom:(const CLLocation *)location;

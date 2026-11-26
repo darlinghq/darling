@@ -7,6 +7,8 @@
 	%define commit_date 0
 %endif
 %global _buildshell /bin/bash
+# rpm on Debian and Ubuntu has no CMake macros (Fedora's come with cmake-rpm-macros)
+%{!?__cmake:%global __cmake /usr/bin/cmake}
 
 # As in debian/rules, darling-core-native (what runs on Linux) is built for every architecture with
 # DARLING_BUILD_MACHO=OFF, and the Mach-O part is noarch, with the i386, x86_64 and arm64 slices. The x86-64
@@ -60,6 +62,7 @@ BuildRequires:  libbsd-devel
 BuildRequires:  ffmpeg-devel pulseaudio-libs-devel openssl-devel giflib-devel
 BuildRequires:  libXrandr-devel libXi-devel libXcursor-devel libxkbfile-devel dbus-devel mesa-libGLU-devel
 BuildRequires:  vulkan-headers llvm-devel libcap-devel bash vulkan-loader-devel
+BuildRequires:  ruby perl gperf unifdef python3
 
 Requires: darling-cli darling-python2 darling-ruby darling-perl darling-gui darling-gui-stubs darling-pyobjc
 
@@ -210,20 +213,11 @@ Requires:   darling-core
 %description perl
 Perl built for use within Darling
 
-%package jsc-webkit-common
-Summary:    Darling JavaScriptCore and WebKit common components
-Group:      Utility
-BuildArch:  noarch
-Requires:   darling-system
-
-%description jsc-webkit-common
-Components of Darling that are shared between JavaScriptCore and WebKit
-
 %package jsc
 Summary:    JavaScriptCore for Darling
 Group:      Utility
 BuildArch:  noarch
-Requires:   darling-system darling-jsc-webkit-common
+Requires:   darling-system
 
 %description jsc
 JavaScriptCore built for use within Darling
@@ -269,7 +263,6 @@ pushd build
 	           -DOpenGL_GL_PREFERENCE=GLVND \
 	           -DDEBIAN_PACKAGING=ON \
 %if %{with macho}
-	           -DJSC_UNIFIED_BUILD=ON \
 	           -DDARLING_SWIFT_WMO=ON \
 	           "-DDARLING_ARCHS=%{darling_archs}" \
 %else
@@ -299,7 +292,6 @@ DARLING_COMPONENTS=(
 	pyobjc
 	ruby
 	perl
-	jsc_webkit_common
 	jsc
 	iosurface
 	cli_dev_gui_stubs_common
@@ -323,7 +315,6 @@ PACKAGE_SUFFIXES=(
 	pyobjc
 	ruby
 	perl
-	jsc-webkit-common
 	jsc
 	iosurface
 	cli-devenv-gui-stubs-common
@@ -370,7 +361,6 @@ popd
 %files pyobjc -f build/files.pyobjc.txt
 %files ruby -f build/files.ruby.txt
 %files perl -f build/files.perl.txt
-%files jsc-webkit-common -f build/files.jsc-webkit-common.txt
 %files jsc -f build/files.jsc.txt
 %files iosurface -f build/files.iosurface.txt
 %files cli-devenv-gui-stubs-common -f build/files.cli-devenv-gui-stubs-common.txt

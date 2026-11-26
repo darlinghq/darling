@@ -121,7 +121,14 @@
 #import <Network/NWAWDLibnetcoreTCPECNStatsReport.h>
 #endif
 
+// libnetwork's headers declare its C API without C++ linkage of their own
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include <nw/nw.h>
+#ifdef __cplusplus
+}
+#endif
 
 #ifdef __OBJC__
 // Conversions between NSData and dispatch data (copying); the results are +1 references.

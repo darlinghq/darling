@@ -23,8 +23,11 @@ if (COMPONENT_gui)
 	wrap_elf(EGL libEGL.so)
 	wrap_elf(fontconfig libfontconfig.so)
 	wrap_elf(X11 libX11.so)
+	# Gives the host library the UTF-8 character-type locale its input methods need.
+	target_sources(X11 PRIVATE x11-locale.c)
 	wrap_elf(Xext libXext.so)
 	wrap_elf(XRandR libXrandr.so)
+	wrap_elf(Xi libXi.so)
 	wrap_elf(Xcursor libXcursor.so)
 	wrap_elf(xkbfile libxkbfile.so)
 

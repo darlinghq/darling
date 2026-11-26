@@ -132,6 +132,10 @@ int sandbox_init_with_parameters(const char *profile, uint64_t flags, const char
 
 int sandbox_init_with_extensions(const char *profile, uint64_t flags, const char *const extensions[], char **errorbuf);
 
+/* Darling: the values of SANDBOX_FILTER_PREFERENCE_DOMAIN and the ones after
+ * SANDBOX_FILTER_DESCRIPTOR are those of WebKit's declarations of this SPI
+ * (WTF/wtf/spi/darwin/SandboxSPI.h). sandbox_check() does not look at the
+ * filter type, as nothing is enforced. */
 enum sandbox_filter_type {
 	SANDBOX_FILTER_NONE,
 	SANDBOX_FILTER_PATH,
@@ -140,6 +144,10 @@ enum sandbox_filter_type {
 	SANDBOX_FILTER_APPLEEVENT_DESTINATION,
 	SANDBOX_FILTER_RIGHT_NAME,
 	SANDBOX_FILTER_DESCRIPTOR,
+	SANDBOX_FILTER_PREFERENCE_DOMAIN = 6,
+	SANDBOX_FILTER_XPC_SERVICE_NAME = 12,
+	SANDBOX_FILTER_IOKIT_CONNECTION,
+	SANDBOX_FILTER_SYSCALL_NUMBER,
 };
 
 extern const enum sandbox_filter_type SANDBOX_CHECK_NO_REPORT __attribute__((weak_import));

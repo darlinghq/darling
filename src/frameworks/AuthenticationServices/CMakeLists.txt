@@ -97,7 +97,6 @@ add_framework(AuthenticationServices
 		src/ASWebAuthenticationSessionWebBrowserSessionManager.m
 		src/LAUIAuthenticationViewController+AuthenticationServicesExtras.m
 		src/NSBundle+ASNSBundleExtras.m
-		src/NSExtension+AuthenticationServicesExtras.m
 		src/NSImage+ASImageExtras.m
 		src/NSLayoutConstraint+ASNSLayoutConstraintExtras.m
 		src/NSPasteboard+AuthenticationServicesExtras.m

@@ -32,7 +32,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <ctype.h>
 #include <iostream>
-#include <dlfcn.h>
+#include <CoreGraphics/CoreGraphicsPrivate.h>
 
 #define STUB() // TODO
 #ifndef PATH_MAX
@@ -135,13 +135,9 @@ OSErr GetFrontProcess(ProcessSerialNumber* psn)
 		return paramErr;
 
 	// CoreGraphics (the window system layer) knows the process that really has the focus where
-	// the display server tells (X11) or where processes report it (Wayland). It is a private
-	// entry point, looked up at run time, like _CGSActivateProcess below.
-	typedef int32_t (*FrontProcessFunction)(pid_t* pid);
-	static const FrontProcessFunction frontProcess =
-		(FrontProcessFunction) dlsym(RTLD_DEFAULT, "_CGSGetFrontProcess");
+	// the display server tells (X11) or where processes report it (Wayland).
 	pid_t front = 0;
-	if (frontProcess && frontProcess(&front) == 0 /* kCGErrorSuccess */ && processExists(front))
+	if (_CGSGetFrontProcess(&front) == kCGErrorSuccess && processExists(front))
 	{
 		if (GetProcessForPID(front, psn) == noErr)
 			return noErr;
@@ -264,10 +260,15 @@ OSStatus GetProcessPID(const ProcessSerialNumber* psn, pid_t* pid)
 	return resolvePID(psn, pid);
 }
 
+// Whether the application of the process has not been hidden (ShowHideProcess()); the hidden state is the one
+// the application publishes through CoreGraphics. A process that does not exist is not visible.
 Boolean IsProcessVisible(const ProcessSerialNumber* psn)
 {
-	STUB();
-	return true;
+	pid_t pid;
+
+	if (!psn || resolvePID(psn, &pid) != noErr)
+		return false;
+	return !_CGSProcessIsHidden(pid);
 }
 
 OSErr KillProcess(const ProcessSerialNumber* psn)
@@ -360,30 +361,50 @@ OSErr SetFrontProcessWithOptions(const ProcessSerialNumber* psn, OptionBits opts
 	if (err != noErr)
 		return err;
 
-	// CoreGraphics (the window system layer) activates the process' windows: it asks the display
-	// server directly where it can, and otherwise the process itself. It is a private entry
-	// point, looked up at run time, so that an older CoreGraphics simply does nothing. The
-	// request is a request: the window manager or compositor decides, so only a bad argument
-	// is an error.
-	typedef int32_t (*ActivateProcessFunction)(pid_t pid, uint32_t options);
-	static const ActivateProcessFunction activate =
-		(ActivateProcessFunction) dlsym(RTLD_DEFAULT, "_CGSActivateProcess");
-	const uint32_t kFrontWindowOnly = 1; // kCGSActivateProcessFrontWindowOnly
-	if (activate)
-	{
-		int32_t cgError = activate(pid, (opts & kSetFrontProcessFrontWindowOnly) ? kFrontWindowOnly : 0);
-		if (cgError == 1001) // kCGErrorIllegalArgument
-			return paramErr;
-	}
+	// QUIRK: an application of the window system that is prohibited from being in the foreground
+	// (a bundle with LSBackgroundOnly, or a program outside any bundle) cannot be made the front
+	// process: the call fails with -606 and nothing changes.
+	// Not documented. Evidence: black-box observation on macOS 10.14.4 and 26.7.3 (tier 2),
+	// mac-probes/front-process (the target an LSBackgroundOnly application; the same call to an
+	// LSUIElement application succeeds and makes it the front process). A process that never
+	// connected to the window system (a command-line tool) is not rejected.
+	// Test: tests/front-process (cases errors: the background-only target answers -606).
+	static const OSErr kProcessCannotBeFront = -606;
+
+	// CoreGraphics (the window system layer) keeps the front process, the menu bar owner and the
+	// activation policy each application published (what kind of application a process is, so
+	// whether it is refused). It changes the front process and, for a regular application, the
+	// menu bar owner when the call returns, then asks the window system to move the input focus to
+	// the process' windows. The focus is a request: the window manager or compositor decides, so
+	// only a bad argument or a prohibited process is an error.
+	CGError cgError = _CGSRequestFrontApplication(
+		pid, (opts & kSetFrontProcessFrontWindowOnly) ? kCGSRequestFrontProcessFrontWindowOnly : 0);
+	if (cgError == kCGErrorInvalidOperation)
+		return kProcessCannotBeFront;
+	if (cgError == kCGErrorIllegalArgument)
+		return paramErr;
 
 	g_frontPID.store(pid);
 	return noErr;
 }
 
+// Asks the application of the process to hide or show its windows. The request is carried out by the
+// application, so success means the request was made. A process that is not an application of the window
+// system is procNotFound.
 OSErr ShowHideProcess(const ProcessSerialNumber* psn, Boolean visible)
 {
-	STUB();
-	return noErr;
+	pid_t pid;
+	OSErr err;
+
+	if (!psn)
+		return paramErr;
+	err = resolvePID(psn, &pid);
+	if (err != noErr)
+		return err;
+
+	CGError error = _CGSSendProcessCommand(pid, visible ? kCGSProcessCommandUnhide : kCGSProcessCommandHide);
+
+	return error == kCGErrorSuccess ? noErr : procNotFound;
 }
 
 OSStatus TransformProcessType(const ProcessSerialNumber* psn, UInt32 type)
@@ -428,6 +449,15 @@ OSStatus TransformProcessType(const ProcessSerialNumber* psn, UInt32 type)
 	CFTypeRef asn = _LSASNCreateWithPid(nullptr, pid);
 	OSStatus status = _LSSetApplicationInformationItem(kLSDefaultSessionID, asn, _kLSApplicationTypeKey, newType, nullptr);
 	CFRelease(asn);
+
+	// Becoming a foreground application concerns the window system too: it goes through
+	// CPSEnableForegroundOperation (as on macOS), which publishes the process as a regular
+	// application of the window system. Only the calling process can do that for itself.
+	if (status == noErr && type == kProcessTransformToForegroundApplication && pid == getpid())
+	{
+		CPSProcessSerNum self = { 0, (uint32_t) pid };
+		CPSEnableForegroundOperation(&self, 0, 0, 0, 0);
+	}
 	return status;
 }
 

@@ -22,23 +22,18 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+// The profile functions of the legacy API work on the ColorSync profile objects of the ColorSync
+// framework. A reference is one reference count of the object.
+extern CFTypeID ColorSyncProfileGetTypeID(void);
+extern CFTypeRef ColorSyncProfileCreate(CFDataRef data, CFErrorRef* error);
+extern CFTypeRef ColorSyncProfileCreateWithURL(CFURLRef url, CFErrorRef* error);
+
 static int verbose = 0;
+
 
 __attribute__((constructor))
 static void initme(void) {
     verbose = getenv("STUB_VERBOSE") != NULL;
-}
-
-void* CMCloneProfileRef(void)
-{
-    if (verbose) puts("STUB: CMCloneProfileRef called");
-    return NULL;
-}
-
-void* CMCloseProfile(void)
-{
-    if (verbose) puts("STUB: CMCloseProfile called");
-    return NULL;
 }
 
 void* CMConvertDoubleXYZToD50(void)
@@ -350,12 +345,6 @@ void* CMMatchFloatBitmap(void)
 void* CMNewProfile(void)
 {
     if (verbose) puts("STUB: CMNewProfile called");
-    return NULL;
-}
-
-void* CMOpenProfile(void)
-{
-    if (verbose) puts("STUB: CMOpenProfile called");
     return NULL;
 }
 
@@ -765,4 +754,69 @@ void* _CWColorWorldSetProperty(void)
 {
     if (verbose) puts("STUB: _CWColorWorldSetProperty called");
     return NULL;
+}
+
+static Boolean isProfile(const void* prof)
+{
+    return prof != NULL && CFGetTypeID(prof) == ColorSyncProfileGetTypeID();
+}
+
+// QUIRK: the open fails with fnfErr for a file that is not there, cmInvalidProfile (-4204) for
+// a location type that is not supported (and for closing something that is not a profile), and paramErr for a NULL argument; the reference is set to NULL
+// whenever the call fails. Undocumented. Evidence: black-box observation on macOS 10.14.4 i386 (tier 2).
+// Test: tests/src/colorsync_legacy_profiles.c
+OSErr CMOpenProfile(CMProfileRef* prof, const CMProfileLocation* theProfile)
+{
+    CFTypeRef profile = NULL;
+
+    if (prof == NULL || theProfile == NULL)
+        return paramErr;
+    *prof = NULL;
+
+    switch (theProfile->locType)
+    {
+        case cmPathBasedProfile:
+        {
+            CFURLRef url = CFURLCreateFromFileSystemRepresentation(NULL, (const UInt8*) theProfile->u.pathLoc.path,
+                strnlen(theProfile->u.pathLoc.path, sizeof(theProfile->u.pathLoc.path)), false);
+
+            if (url == NULL)
+                return fnfErr;
+            profile = ColorSyncProfileCreateWithURL(url, NULL);
+            CFRelease(url);
+            if (profile == NULL)
+                return fnfErr;
+            break;
+        }
+        case cmBufferBasedProfile:
+        {
+            CFDataRef data = CFDataCreate(NULL, theProfile->u.bufferLoc.buffer, theProfile->u.bufferLoc.size);
+
+            if (data == NULL)
+                return cmInvalidProfile;
+            profile = ColorSyncProfileCreate(data, NULL);
+            CFRelease(data);
+            if (profile == NULL)
+                return cmInvalidProfile;
+            break;
+        }
+        default:
+            return cmInvalidProfile;
+    }
+    *prof = (CMProfileRef) profile;
+    return noErr;
+}
+
+OSErr CMCloseProfile(CMProfileRef prof)
+{
+    if (!isProfile(prof))
+        return cmInvalidProfile;
+    CFRelease(prof);
+    return noErr;
+}
+
+void CMCloneProfileRef(CMProfileRef prof)
+{
+    if (isProfile(prof))
+        CFRetain(prof);
 }

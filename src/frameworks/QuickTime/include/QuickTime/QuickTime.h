@@ -21,6 +21,35 @@
 #ifndef _QuickTime_H_
 #define _QuickTime_H_
 
+#include <MacTypes.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Movie Toolbox functions implemented by Darling. Movies are in-memory
+ * objects of one process-wide, non-reentrant environment. Apple declares the
+ * long parameters and results below as 32 bits on i386; SInt32 keeps that
+ * width on x86_64. */
+typedef struct MovieType **Movie;
+
+OSErr EnterMovies(void);
+void ExitMovies(void);
+OSErr GetMoviesError(void);
+/* Only flags == 0 is supported. */
+Movie NewMovie(SInt32 flags);
+void DisposeMovie(Movie theMovie);
+TimeScale GetMovieTimeScale(Movie theMovie);
+/* Converts the duration, the active segment and the current time. */
+void SetMovieTimeScale(Movie theMovie, TimeScale timeScale);
+TimeValue GetMovieDuration(Movie theMovie);
+/* currentTime must be NULL: time bases are not implemented. */
+TimeValue GetMovieTime(Movie theMovie, TimeRecord *currentTime);
+
+#ifdef __cplusplus
+}
+#endif
+
 void* AbortPrePrerollMovie(void);
 void* AddCallBackToTimeBase(void);
 void* AddClonedTrackToMovie(void);
@@ -461,7 +490,6 @@ void* DisposeMCActionFilterUPP(void);
 void* DisposeMCActionFilterWithRefConUPP(void);
 void* DisposeMCActionNotificationUPP(void);
 void* DisposeMatte(void);
-void* DisposeMovie(void);
 void* DisposeMovieController(void);
 void* DisposeMovieDrawingCompleteUPP(void);
 void* DisposeMovieEditState(void);
@@ -586,12 +614,10 @@ void* EndianMatrixRecord_BtoN(void);
 void* EndianModifierTrackGraphicsModeRecord_BtoN(void);
 void* EndianSoundDataChunk_NtoB(void);
 void* EndianVersionChunk_NtoB(void);
-void* EnterMovies(void);
 void* EnterMoviesOnThread(void);
 void* EqualHandles(void);
 void* EqualMatrix(void);
 void* ExecuteCallBack(void);
-void* ExitMovies(void);
 void* ExitMoviesOnThread(void);
 void* ExtendMediaDecodeDurationToDisplayEndTime(void);
 void* FCompressImage(void);
@@ -744,7 +770,6 @@ void* GetMovieDataSize64(void);
 void* GetMovieDefaultDataRef(void);
 void* GetMovieDisplayBoundsRgn(void);
 void* GetMovieDisplayClipRgn(void);
-void* GetMovieDuration(void);
 void* GetMovieEffectiveRate(void);
 void* GetMovieGWorld(void);
 void* GetMovieIdleManager(void);
@@ -775,9 +800,7 @@ void* GetMovieSegmentDisplayBoundsRgn(void);
 void* GetMovieSelection(void);
 void* GetMovieStatus(void);
 void* GetMovieThreadAttachState(void);
-void* GetMovieTime(void);
 void* GetMovieTimeBase(void);
-void* GetMovieTimeScale(void);
 void* GetMovieTrack(void);
 void* GetMovieTrackCount(void);
 void* GetMovieUserData(void);
@@ -787,7 +810,6 @@ void* GetMovieVisualContrast(void);
 void* GetMovieVisualHue(void);
 void* GetMovieVisualSaturation(void);
 void* GetMovieVolume(void);
-void* GetMoviesError(void);
 void* GetMoviesStickyError(void);
 void* GetNamedComponentMessageParameter(void);
 void* GetNamedComponentMessageParameterInfo(void);
@@ -2179,7 +2201,6 @@ void* NewImageGWorld(void);
 void* NewMCActionFilterUPP(void);
 void* NewMCActionFilterWithRefConUPP(void);
 void* NewMCActionNotificationUPP(void);
-void* NewMovie(void);
 void* NewMovieController(void);
 void* NewMovieDrawingCompleteUPP(void);
 void* NewMovieEditState(void);
@@ -4212,7 +4233,6 @@ void* SetMoviePropertyAtom(void);
 void* SetMovieRate(void);
 void* SetMovieSelection(void);
 void* SetMovieTime(void);
-void* SetMovieTimeScale(void);
 void* SetMovieTimeValue(void);
 void* SetMovieUseTrackForTimeTableCallBack(void);
 void* SetMovieVideoOutput(void);

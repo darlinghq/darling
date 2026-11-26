@@ -34,6 +34,7 @@ enum {
 	kEventClassMouse = 'mous',
 	kEventClassKeyboard = 'keyb',
 	kEventClassCommand = 'cmds',
+	kEventClassMenu = 'menu',
 	kEventClassAppleEvent = 'eppc',
 };
 
@@ -56,6 +57,68 @@ enum {
 
 enum {
 	kEventCommandProcess = 1,
+	kEventCommandUpdateStatus = 2,
+};
+
+// Attributes of an HICommand
+enum {
+	kHICommandFromMenu = 1 << 0,
+	kHICommandFromControl = 1 << 1,
+	kHICommandFromWindow = 1 << 2,
+};
+
+// Kinds of the menu class
+enum {
+	kEventMenuBeginTracking = 1,
+	kEventMenuEndTracking = 2,
+	kEventMenuChangeTrackingMode = 3,
+	kEventMenuOpening = 4,
+	kEventMenuClosed = 5,
+	kEventMenuTargetItem = 6,
+	kEventMenuMatchKey = 7,
+	kEventMenuEnableItems = 8,
+	kEventMenuPopulate = 9,
+	kEventMenuDispose = 1001,
+};
+
+// The application class: events about the front process, which are sent to the application target
+// of every process that uses Carbon events.
+enum {
+	kEventClassApplication = 'appl',
+};
+
+enum {
+	kEventAppActivated = 1,
+	kEventAppDeactivated = 2,
+	kEventAppFrontSwitched = 7,
+};
+
+// kEventParamProcessID of kEventAppFrontSwitched: the ProcessSerialNumber of the new front process
+enum {
+	kEventParamProcessID = 'psn ',
+	typeProcessSerialNumber = 'psn ',
+};
+
+// Parameters of the menu events
+enum {
+	kEventParamMenuContext = 'mctx',
+	kEventParamMenuItemIndex = 'item',
+	kEventParamMenuCommand = 'mcmd',
+	kEventParamEnableMenuForKeyEvent = 'fork',
+	kEventParamMenuEventOptions = 'meop',
+	kEventParamMenuFirstOpen = '1sto',
+	kEventParamCurrentMenuTrackingMode = 'cmtm',
+	kEventParamNewMenuTrackingMode = 'nmtm',
+	typeMenuRef = 'menu',
+	typeMenuItemIndex = 'midx',
+	typeMenuCommand = 'mcmd',
+	typeMenuTrackingMode = 'mtmd',
+	typeMenuEventOptions = 'meop',
+};
+
+// The character a raw key event produced (Mac Roman), set by whoever posts the event
+enum {
+	kEventParamKeyMacCharCodes = 'kchr',
 };
 
 enum {
@@ -83,7 +146,39 @@ typedef UInt16 EventMouseButton;
 
 // The identifiers of the commands the event loop handles itself
 enum {
+	kHICommandOK = 'ok  ',
+	kHICommandCancel = 'not!',
 	kHICommandQuit = 'quit',
+	kHICommandUndo = 'undo',
+	kHICommandRedo = 'redo',
+	kHICommandCut = 'cut ',
+	kHICommandCopy = 'copy',
+	kHICommandPaste = 'past',
+	kHICommandClear = 'clea',
+	kHICommandSelectAll = 'sall',
+	kHICommandHide = 'hide',
+	kHICommandHideOthers = 'hido',
+	kHICommandShowAll = 'shal',
+	kHICommandPreferences = 'pref',
+	kHICommandZoomWindow = 'zoom',
+	kHICommandMinimizeWindow = 'mini',
+	kHICommandMinimizeAll = 'mina',
+	kHICommandArrangeInFront = 'frnt',
+	kHICommandBringAllToFront = 'bfrt',
+	kHICommandWindowListSeparator = 'wldv',
+	kHICommandWindowListTerminator = 'wlst',
+	kHICommandSelectWindow = 'swin',
+	kHICommandRotateWindowsForward = 'rotw',
+	kHICommandRotateWindowsBackward = 'rotb',
+	kHICommandAbout = 'abou',
+	kHICommandNew = 'new ',
+	kHICommandOpen = 'open',
+	kHICommandClose = 'clos',
+	kHICommandSave = 'save',
+	kHICommandSaveAs = 'svas',
+	kHICommandRevert = 'rvrt',
+	kHICommandPrint = 'prnt',
+	kHICommandPageSetup = 'page',
 };
 
 enum {
@@ -167,6 +262,27 @@ typedef struct HICommand {
 		MenuItemIndex menuItemIndex;
 	} menu;
 } HICommand;
+
+// The source of a command: the menu of a menu command, the control or the window of a command that
+// came from one (which of the fields is valid is told by the kHICommandFrom... attributes)
+typedef union HICommandExtended {
+	HICommand legacy;
+	struct {
+		UInt32 attributes;
+		UInt32 commandID;
+		union {
+			struct OpaqueControlRef* control;
+			struct OpaqueWindowPtr* window;
+			struct {
+				MenuRef menuRef;
+				MenuItemIndex menuItemIndex;
+			} menu;
+		} source;
+	};
+} HICommandExtended;
+
+// The number of elements of an array of EventTypeSpec
+#define GetEventTypeCount(t) (sizeof((t)) / sizeof(EventTypeSpec))
 typedef UInt32 KeyMap[4];
 
 

@@ -23,59 +23,67 @@
 #include <simd/vector_types.h>
 
 /*
- * simd_make_<type>N: build an N-element vector from scalars or from smaller
- * and larger vectors (larger vectors are truncated, smaller ones are
- * extended by the extra arguments).
+ * simd_make_<type>N: build an N-element vector from scalars and smaller
+ * vectors whose elements add up to N, or from a single scalar or vector of
+ * any size: a larger one is truncated, and a scalar or smaller one is
+ * extended with zeros.
  */
 
-#define SIMD_MAKE_FLOATING(T, S)                                              \
+#define SIMD_MAKE(T, S)                                                       \
 SIMD_FN simd_##T##2 simd_make_##T##2(S x, S y) { return (simd_##T##2){x, y}; }\
-SIMD_FN simd_##T##3 simd_make_##T##3(S x, S y, S z) {                          \
-    return (simd_##T##3){x, y, z};                                            \
-}                                                                             \
-SIMD_FN simd_##T##4 simd_make_##T##4(S x, S y, S z, S w) {                     \
-    return (simd_##T##4){x, y, z, w};                                         \
-}                                                                             \
+SIMD_FN simd_##T##2 simd_make_##T##2(S x) { return (simd_##T##2){x, 0}; }     \
+SIMD_FN simd_##T##2 simd_make_##T##2(simd_##T##2 v) { return v; }             \
 SIMD_FN simd_##T##2 simd_make_##T##2(simd_##T##3 v) { return v.xy; }          \
 SIMD_FN simd_##T##2 simd_make_##T##2(simd_##T##4 v) { return v.xy; }          \
-SIMD_FN simd_##T##3 simd_make_##T##3(simd_##T##2 v, S z) {                     \
+SIMD_FN simd_##T##3 simd_make_##T##3(S x, S y, S z) {                         \
+    return (simd_##T##3){x, y, z};                                            \
+}                                                                             \
+SIMD_FN simd_##T##3 simd_make_##T##3(simd_##T##2 v, S z) {                    \
     return (simd_##T##3){v.x, v.y, z};                                        \
 }                                                                             \
+SIMD_FN simd_##T##3 simd_make_##T##3(S x, simd_##T##2 v) {                    \
+    return (simd_##T##3){x, v.x, v.y};                                        \
+}                                                                             \
+SIMD_FN simd_##T##3 simd_make_##T##3(S x) { return (simd_##T##3){x, 0, 0}; }  \
+SIMD_FN simd_##T##3 simd_make_##T##3(simd_##T##2 v) {                         \
+    return (simd_##T##3){v.x, v.y, 0};                                        \
+}                                                                             \
+SIMD_FN simd_##T##3 simd_make_##T##3(simd_##T##3 v) { return v; }             \
 SIMD_FN simd_##T##3 simd_make_##T##3(simd_##T##4 v) { return v.xyz; }         \
-SIMD_FN simd_##T##4 simd_make_##T##4(simd_##T##2 v, S z, S w) {                \
+SIMD_FN simd_##T##4 simd_make_##T##4(S x, S y, S z, S w) {                    \
+    return (simd_##T##4){x, y, z, w};                                         \
+}                                                                             \
+SIMD_FN simd_##T##4 simd_make_##T##4(simd_##T##2 v, S z, S w) {               \
     return (simd_##T##4){v.x, v.y, z, w};                                     \
 }                                                                             \
-SIMD_FN simd_##T##4 simd_make_##T##4(simd_##T##2 a, simd_##T##2 b) {           \
+SIMD_FN simd_##T##4 simd_make_##T##4(S x, simd_##T##2 v, S w) {               \
+    return (simd_##T##4){x, v.x, v.y, w};                                     \
+}                                                                             \
+SIMD_FN simd_##T##4 simd_make_##T##4(S x, S y, simd_##T##2 v) {               \
+    return (simd_##T##4){x, y, v.x, v.y};                                     \
+}                                                                             \
+SIMD_FN simd_##T##4 simd_make_##T##4(simd_##T##2 a, simd_##T##2 b) {          \
     return (simd_##T##4){a.x, a.y, b.x, b.y};                                 \
 }                                                                             \
-SIMD_FN simd_##T##4 simd_make_##T##4(simd_##T##3 v, S w) {                     \
+SIMD_FN simd_##T##4 simd_make_##T##4(simd_##T##3 v, S w) {                    \
     return (simd_##T##4){v.x, v.y, v.z, w};                                   \
-}
-
-SIMD_MAKE_FLOATING(float, float)
-SIMD_MAKE_FLOATING(double, double)
-#undef SIMD_MAKE_FLOATING
-
-#define SIMD_MAKE_INTEGER(T, S)                                               \
-SIMD_FN simd_##T##2 simd_make_##T##2(S x, S y) { return (simd_##T##2){x, y}; }\
-SIMD_FN simd_##T##3 simd_make_##T##3(S x, S y, S z) {                          \
-    return (simd_##T##3){x, y, z};                                            \
 }                                                                             \
-SIMD_FN simd_##T##4 simd_make_##T##4(S x, S y, S z, S w) {                     \
-    return (simd_##T##4){x, y, z, w};                                         \
+SIMD_FN simd_##T##4 simd_make_##T##4(S x, simd_##T##3 v) {                    \
+    return (simd_##T##4){x, v.x, v.y, v.z};                                   \
 }                                                                             \
-SIMD_FN simd_##T##2 simd_make_##T##2(simd_##T##3 v) { return v.xy; }          \
-SIMD_FN simd_##T##2 simd_make_##T##2(simd_##T##4 v) { return v.xy; }          \
-SIMD_FN simd_##T##3 simd_make_##T##3(simd_##T##4 v) { return v.xyz; }         \
-SIMD_FN simd_##T##3 simd_make_##T##3(simd_##T##2 v, S z) {                     \
-    return (simd_##T##3){v.x, v.y, z};                                        \
+SIMD_FN simd_##T##4 simd_make_##T##4(S x) { return (simd_##T##4){x, 0, 0, 0}; }\
+SIMD_FN simd_##T##4 simd_make_##T##4(simd_##T##2 v) {                         \
+    return (simd_##T##4){v.x, v.y, 0, 0};                                     \
 }                                                                             \
-SIMD_FN simd_##T##4 simd_make_##T##4(simd_##T##3 v, S w) {                     \
-    return (simd_##T##4){v.x, v.y, v.z, w};                                   \
-}
+SIMD_FN simd_##T##4 simd_make_##T##4(simd_##T##3 v) {                         \
+    return (simd_##T##4){v.x, v.y, v.z, 0};                                   \
+}                                                                             \
+SIMD_FN simd_##T##4 simd_make_##T##4(simd_##T##4 v) { return v; }
 
-SIMD_MAKE_INTEGER(int, int)
-SIMD_MAKE_INTEGER(uint, unsigned int)
-#undef SIMD_MAKE_INTEGER
+SIMD_MAKE(float, float)
+SIMD_MAKE(double, double)
+SIMD_MAKE(int, int)
+SIMD_MAKE(uint, unsigned int)
+#undef SIMD_MAKE
 
 #endif

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>DateAndTime</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.apple.preference.datetime</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Date &amp; Time</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>NSPrefPaneIconFile</key>
+	<string>DateAndTime</string>
+	<key>NSPrefPaneIconLabel</key>
+	<string>Date &amp; Time</string>
+	<key>NSPrefPaneSearchParameters</key>
+	<string>Date Time clock time zone analog seconds menu bar 24-hour</string>
+	<key>NSPrincipalClass</key>
+	<string>DateTimePreferencePane</string>
+</dict>
+</plist>

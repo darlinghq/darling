@@ -1,9 +1,10 @@
 #import <Foundation/Foundation.h>
 #import <darling-stub-forwarding.h>
+#import "LSBundleProxy.h"
 
-// DUMMY
+// DUMMY beyond what LSBundleProxy provides: other messages are forwarded to stubs.
 
-@interface LSApplicationProxy : NSObject
+@interface LSApplicationProxy : LSBundleProxy
 @end
 
 @implementation LSApplicationProxy

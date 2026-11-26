@@ -19,8 +19,8 @@
 
 // Access to the instance variables of the AppKit text classes that UIFoundation
 // implements. On the 32-bit (fragile) Objective-C ABI AppKit's headers keep
-// the variables of NSGlyphInfo, NSParagraphStyle, NSTextAttachment,
-// NSTextBlock, NSTextTable, NSTextTableBlock and NSTypesetter in an extra-state
+// the variables of NSGlyphInfo, NSParagraphStyle, NSTextAlternatives, NSTextAttachment,
+// NSTextBlock, NSTextList, NSTextTable, NSTextTableBlock and NSTypesetter in an extra-state
 // structure (NS_EXTRA, see AppKit/AppKitIvarLayout.h) and say so by defining
 // _NS_HAS_EXTRA_IVARS_<class>. An AppKit that does not define it declares the
 // variables in the class itself, and they are read directly. UIF_EXTRA_<class>(obj)
@@ -31,8 +31,10 @@
 #import <AppKit/AppKitIvarLayout.h>
 #import <AppKit/NSGlyphInfo.h>
 #import <AppKit/NSParagraphStyle.h>
+#import <AppKit/NSTextAlternatives.h>
 #import <AppKit/NSTextAttachment.h>
 #import <AppKit/NSTextBlock.h>
+#import <AppKit/NSTextList.h>
 #import <AppKit/NSTextTable.h>
 #import <AppKit/NSTextTableBlock.h>
 #import <AppKit/NSTypesetter.h>
@@ -57,6 +59,12 @@
 #define UIF_EXTRA_DEALLOC_NSParagraphStyle
 #endif
 
+#ifdef _NS_HAS_EXTRA_IVARS_NSTextAlternatives
+#define UIF_EXTRA_NSTextAlternatives(obj) NS_EXTRA(NSTextAlternatives, obj)
+#else
+#define UIF_EXTRA_NSTextAlternatives(obj) ((NSTextAlternatives *) (obj))
+#endif
+
 #ifdef _NS_HAS_EXTRA_IVARS_NSTextAttachment
 #define UIF_EXTRA_NSTextAttachment(obj) NS_EXTRA(NSTextAttachment, obj)
 #define UIF_EXTRA_FREE_NSTextAttachment(obj) NS_EXTRA_FREE(NSTextAttachment, obj)
@@ -75,6 +83,12 @@
 #define UIF_EXTRA_NSTextBlock(obj) ((NSTextBlock *) (obj))
 #define UIF_EXTRA_FREE_NSTextBlock(obj) do { } while (0)
 #define UIF_EXTRA_DEALLOC_NSTextBlock
+#endif
+
+#ifdef _NS_HAS_EXTRA_IVARS_NSTextList
+#define UIF_EXTRA_NSTextList(obj) NS_EXTRA(NSTextList, obj)
+#else
+#define UIF_EXTRA_NSTextList(obj) ((NSTextList *) (obj))
 #endif
 
 #ifdef _NS_HAS_EXTRA_IVARS_NSTextTable
