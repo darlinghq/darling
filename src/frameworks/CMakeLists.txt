@@ -1,5 +1,11 @@
 project(frameworks)
 
+if (COMPONENT_core)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
+
+	add_subdirectory(System)
+endif()
+
 if (COMPONENT_system)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "system")
 
