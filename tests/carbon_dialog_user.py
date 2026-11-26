@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (C) 2026 Lubos Dolezel
 #
-# Runs the guest program carbon_navigation_put_file and acts as the user of its dialogs: the first dialog is
-# accepted (Return), the second is cancelled (Escape).
+# Runs a guest program that opens modal dialogs and acts as the user of them: when the program says that
+# dialog N is shown (the line "DIALOG_READY N"), a key is typed, Return to accept the dialog or Escape to cancel
+# it, as the list of keys says. The program ends the run with the line "PASS <its name>".
 #
-#   carbon_navigation_put_file.py MODE PROGRAM
+#   carbon_dialog_user.py MODE PROGRAM KEYS
 #
 # MODE
 #   x11       the X server in $DISPLAY (it needs a window manager and xdotool)
@@ -12,12 +13,14 @@
 #             private kwin_wayland --virtual --no-lockscreen); $KEYS_INJECTOR is the program that types for the
 #             user, as for carbon_key_events.sh: it takes a pause in milliseconds and evdev key codes with 1 or 0
 #             for press and release (virtual-keyboard-keys on sway, kwin-keys on KWin)
-# PROGRAM is carbon_navigation_put_file built for the guest (the host path). DARLING names the launcher
-# (default: darling).
+# PROGRAM is the guest program (the host path), KEYS for example Return,Escape: the key for dialog 1, 2, ...
+# DARLING names the launcher (default: darling).
 import os
 import subprocess
 import sys
 import time
+
+EVDEV = {"Return": 28, "Escape": 1}
 
 
 def wait_for(path, text, seconds):
@@ -39,12 +42,10 @@ def read(path):
         return ""
 
 
-EVDEV_RETURN, EVDEV_ESCAPE = 28, 1
-
-
 def main():
-    mode, program = sys.argv[1], sys.argv[2]
-    log = os.path.join(os.environ.get("TMPDIR", "/tmp"), "carbon-nav-%d.out" % os.getpid())
+    mode, program, keys = sys.argv[1], sys.argv[2], sys.argv[3].split(",")
+    name = os.path.basename(program).rsplit("-", 1)[0]
+    log = os.path.join(os.environ.get("TMPDIR", "/tmp"), "carbon-dialog-%d.out" % os.getpid())
     darling = os.environ.get("DARLING", "darling")
     if mode == "wayland":
         env = ["WAYLAND_DISPLAY=" + os.environ["WAYLAND_DISPLAY"], "DARLING_APPKIT_BACKEND=wayland"]
@@ -52,12 +53,13 @@ def main():
             env.append("XDG_RUNTIME_DIR=" + os.environ["XDG_RUNTIME_DIR"])
         injector = os.environ["KEYS_INJECTOR"]
 
-        def key(x11_name, code):
+        def key(x11_name):
+            code = EVDEV[x11_name]
             subprocess.run([injector, "100", "%d:1" % code, "%d:0" % code], timeout=30)
     elif mode == "x11":
         env = ["DISPLAY=" + os.environ["DISPLAY"]]
 
-        def key(x11_name, code):
+        def key(x11_name):
             subprocess.run(["xdotool", "key", x11_name], timeout=30)
     else:
         sys.exit("unknown mode " + mode)
@@ -66,15 +68,15 @@ def main():
                              ["/Volumes/SystemRoot" + os.path.abspath(program)], stdin=subprocess.DEVNULL,
                              stdout=open(log, "w"), stderr=subprocess.STDOUT)
     try:
-        for number, name, code in ((1, "Return", EVDEV_RETURN), (2, "Escape", EVDEV_ESCAPE)):
-            ok = wait_for(log, "NAV_READY %d" % number, 120)
-            print(("PASS: " if ok else "FAIL: ") + "the dialog %d is shown" % number)
+        for number, name_of_key in enumerate(keys, 1):
+            ok = wait_for(log, "DIALOG_READY %d" % number, 120)
+            print(("PASS: " if ok else "FAIL: ") + "dialog %d is shown" % number)
             if not ok:
                 failures += 1
                 break
             time.sleep(3)  # the window is up and has the keyboard focus
-            key(name, code)
-        ok = wait_for(log, "PASS carbon_navigation_put_file", 60)
+            key(name_of_key)
+        ok = wait_for(log, "PASS " + name, 60)
         print(("PASS: " if ok else "FAIL: ") + "the program reports that all of its checks passed")
         if not ok:
             failures += 1

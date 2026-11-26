@@ -2,7 +2,7 @@
 //
 // Navigation Services: the dialog that asks where to save a document (NavCreatePutFileDialog,
 // NavDialogRun). The program runs the dialog twice, as an application does from its Save As command, and
-// a harness (carbon_navigation_put_file.py) acts as the user: it accepts the first dialog and cancels the
+// a harness (carbon_dialog_user.py) acts as the user: it accepts the first dialog and cancels the
 // second. What is checked is what the documentation promises of the event procedure and the reply:
 //   - the event procedure gets kNavCBStart, then kNavCBUserAction, then kNavCBTerminate;
 //   - NavDialogRun returns at once (the dialog is not run inside the call) and a second call while the
@@ -16,7 +16,7 @@
 //   carbon_navigation_put_file
 //
 // Lines the harness reads:
-//   NAV_READY n       the dialog n (1: to be accepted, 2: to be cancelled) is shown
+//   DIALOG_READY n       the dialog n (1: to be accepted, 2: to be cancelled) is shown
 //   PASS carbon_navigation_put_file / FAIL ...
 //
 // Needs a window system (X11 or Wayland) and a host GL driver; 32-bit only (Navigation Services' dialogs
@@ -67,7 +67,7 @@ static void navEvent(NavEventCallbackMessage message, NavCBRecPtr parameters, vo
 		g_events[g_eventCount++] = (int) message;
 	if (message == kNavCBStart)
 	{
-		printf("NAV_READY %d\n", g_dialogNumber);
+		printf("DIALOG_READY %d\n", g_dialogNumber);
 		fflush(stdout);
 	}
 	else if (message == kNavCBUserAction)
