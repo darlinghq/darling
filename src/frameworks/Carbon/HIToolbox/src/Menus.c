@@ -98,6 +98,8 @@ struct OpaqueMenuRef
 	EventTargetRef target;
 	// The menu is part of the menu bar list
 	bool inBar;
+	// The standard Window menu (CreateStandardWindowMenu()): the window list is kept up to date when it opens
+	bool isWindowMenu;
 };
 
 static pthread_mutex_t g_menuLock;
@@ -1414,6 +1416,8 @@ OSStatus _HISendMenuEvent(UInt32 kind, MenuRef menu, MenuItemIndex item, bool fo
 	return result;
 }
 
+static void populateWindowMenu(MenuRef menu);
+
 // Brings the items of the menu up to date: handlers of kEventMenuEnableItems do it; without one,
 // every item with a command gets an update status command event. Items of a menu with
 // kMenuAttrAutoDisable that no handler answers for are disabled.
@@ -1423,6 +1427,8 @@ void _HIUpdateMenuItems(MenuRef menu, bool forKeyEvent)
 		return;
 
 	CFRetain((CFTypeRef) menu);
+	if (menu->isWindowMenu)
+		populateWindowMenu(menu);
 	if (_HISendMenuEvent(kEventMenuEnableItems, menu, 0, forKeyEvent, false) == eventNotHandledErr)
 	{
 		for (MenuItemIndex i = 1; i <= menu->count; i++)
@@ -1440,16 +1446,262 @@ void _HIUpdateMenuItems(MenuRef menu, bool forKeyEvent)
 	CFRelease((CFTypeRef) menu);
 }
 
+static MenuCommand systemItemCommand(MenuRef menu, MenuItemIndex item);
+
 OSStatus _HIProcessMenuCommand(MenuRef menu, MenuItemIndex item)
 {
 	MenuCommand command = 0;
 
+	// An item the system added to the application menu
+	if (isMenu(menu) && item > menu->count && (command = systemItemCommand(menu, item)) != 0)
+		return sendCommandEvent(kEventCommandProcess, command, menu, item, kHICommandFromMenu);
 	if (!isItem(menu, item))
 		return itemFailure(menu);
 	command = itemAt(menu, item)->command;
 	if (command == 0)
 		return eventNotHandledErr;
 	return sendCommandEvent(kEventCommandProcess, command, menu, item, kHICommandFromMenu);
+}
+
+// ---------------------------------------------------------------------------------------
+// The standard items of the application menu and the Window menu
+// ---------------------------------------------------------------------------------------
+
+// The application menu of a Carbon application has more than the program put in it: Services, Hide,
+// Hide Others, Show All and Quit are the system's (kHICommandHide, kHICommandHideOthers,
+// kHICommandShowAll, kHICommandQuit), and so is the standard Window menu's list of windows. They are
+// not items of the menu object: CountMenuItems() and the other item calls see only what the program
+// added, as the Menu Manager of Mojave shows (black-box observation, tier 2, macOS 10.14.4 i386: the
+// items of the Apple menu were the program's three, with the standard Window menu's list not in the
+// menu). The menu tracking shows them after the program's own items. A menu whose own items have the
+// command (a Quit item that the program added, for instance) does not get the system's.
+// Evidence for the content: Apple's Carbon porting guide, where a program that runs with the Aqua
+// menu layout drops its own Quit item and "the standard application event handler calls the default
+// Quit Apple event handler"; the Human Interface Guidelines' application menu.
+struct SystemItem
+{
+	const char* title;      // NULL for a separator
+	bool appName;           // "<title> <application name>"
+	MenuCommand command;
+	MenuItemAttributes attributes;
+	UInt8 modifiers;
+	UInt16 key;
+	int group;              // 1: left out when the menu has Hide, 2: left out when it has Quit, 3: needs an item before it
+	bool services;
+};
+
+static const struct SystemItem kSystemItems[] = {
+	{ NULL, false, 0, kMenuItemAttrSeparator | kMenuItemAttrDisabled, 0, 0, 3, false },
+	{ "Services", false, 0, 0, 0, 0, 0, true },
+	{ NULL, false, 0, kMenuItemAttrSeparator | kMenuItemAttrDisabled, 0, 0, 1, false },
+	{ "Hide", true, kHICommandHide, 0, 0, 'H', 1, false },
+	{ "Hide Others", false, kHICommandHideOthers, 0, kMenuOptionModifier, 'H', 1, false },
+	{ "Show All", false, kHICommandShowAll, 0, 0, 0, 1, false },
+	{ NULL, false, 0, kMenuItemAttrSeparator | kMenuItemAttrDisabled, 0, 0, 2, false },
+	{ "Quit", true, kHICommandQuit, 0, 0, 'Q', 2, false },
+};
+#define kSystemItemTotal (sizeof(kSystemItems) / sizeof(kSystemItems[0]))
+#define kAppleMenuID 128
+
+static CFStringRef applicationName(void)
+{
+	static CFStringRef name;
+	static dispatch_once_t once;
+
+	dispatch_once(&once, ^{
+		CFTypeRef value = CFBundleGetValueForInfoDictionaryKey(CFBundleGetMainBundle(), kCFBundleNameKey);
+
+		if (value && CFGetTypeID(value) == CFStringGetTypeID())
+			name = CFRetain(value);
+		else
+			name = CFStringCreateWithCString(NULL, getprogname(), kCFStringEncodingUTF8);
+	});
+	return name;
+}
+
+static CFStringRef systemItemTitle(const struct SystemItem* item)
+{
+	static CFStringRef titles[kSystemItemTotal];
+	static dispatch_once_t once;
+
+	dispatch_once(&once, ^{
+		for (size_t i = 0; i < kSystemItemTotal; i++)
+		{
+			if (!kSystemItems[i].title)
+				titles[i] = CFSTR("-");
+			else if (kSystemItems[i].appName)
+				titles[i] = CFStringCreateWithFormat(NULL, NULL, CFSTR("%s %@"), kSystemItems[i].title, applicationName());
+			else
+				titles[i] = CFStringCreateWithCString(NULL, kSystemItems[i].title, kCFStringEncodingUTF8);
+		}
+	});
+	return titles[item - kSystemItems];
+}
+
+static MenuRef servicesMenu(void)
+{
+	static MenuRef menu;
+	static dispatch_once_t once;
+
+	dispatch_once(&once, ^{
+		if (CreateNewMenu(0, 0, &menu) == noErr)
+			AppendMenuItemTextWithCFString(menu, CFSTR("No Services Apply"), kMenuItemAttrDisabled, 0, NULL);
+	});
+	return menu;
+}
+
+// The application menu is the one with the Apple menu's ID, or else the first of the menu bar
+static bool isApplicationMenu(MenuRef menu)
+{
+	MenuRef first = NULL, apple = NULL;
+
+	lockMenus();
+	for (ItemCount i = 0; i < g_insertedCount; i++)
+	{
+		if (!g_inserted[i].inBar)
+			continue;
+		if (!first)
+			first = g_inserted[i].menu;
+		if (!apple && g_inserted[i].menu->menuID == kAppleMenuID)
+			apple = g_inserted[i].menu;
+	}
+	unlockMenus();
+	return menu == (apple ? apple : first);
+}
+
+static ItemCount systemItemsOf(MenuRef menu, const struct SystemItem** out)
+{
+	if (!isApplicationMenu(menu))
+		return 0;
+
+	lockMenus();
+	bool hasHide = findCommand(menu, kHICommandHide, 1, NULL, NULL) == noErr;
+	bool hasQuit = findCommand(menu, kHICommandQuit, 1, NULL, NULL) == noErr;
+	ItemCount count = 0;
+
+	for (size_t i = 0; i < kSystemItemTotal; i++)
+	{
+		const struct SystemItem* item = &kSystemItems[i];
+
+		if ((item->group == 1 && hasHide) || (item->group == 2 && hasQuit) || (item->group == 3 && menu->count == 0))
+			continue;
+		if (out)
+			out[count] = item;
+		count++;
+	}
+	unlockMenus();
+	return count;
+}
+
+static MenuCommand systemItemCommand(MenuRef menu, MenuItemIndex item)
+{
+	const struct SystemItem* items[kSystemItemTotal];
+	ItemCount count = systemItemsOf(menu, items);
+	ItemCount wanted = item - menu->count;
+
+	return wanted >= 1 && wanted <= count ? items[wanted - 1]->command : 0;
+}
+
+// The standard Window menu, with the items and commands the Menu Manager of Mojave gives it (black-box
+// observation, tier 2, macOS 10.14.4 i386: the ten items below, in this order, with these commands,
+// key equivalents and attributes; the menu auto-disables its items). The window list goes between the two
+// hidden list markers, and is made when the menu opens.
+// Test: tests/src/carbon_standard_menus.c
+#define kStandardWindowMenuID (-21405)
+
+static const struct
+{
+	const char* title;
+	MenuCommand command;
+	MenuItemAttributes attributes;
+	UInt8 modifiers;
+	UInt16 key;
+} kWindowMenuItems[] = {
+	{ "Minimize", kHICommandMinimizeWindow, kMenuItemAttrDynamic, 0, 'M' },
+	{ "Minimize All", kHICommandMinimizeAll, kMenuItemAttrDynamic, kMenuOptionModifier, 'M' },
+	{ "Zoom", kHICommandZoomWindow, 0, 0, 0 },
+	{ "Cycle Through Windows", kHICommandRotateWindowsForward, kMenuItemAttrHidden, 0, 0 },
+	{ "Cycle Backward", kHICommandRotateWindowsBackward, kMenuItemAttrHidden, 0, 0 },
+	{ "", 0, kMenuItemAttrSeparator, 0, 0 },
+	{ "Bring All to Front", kHICommandBringAllToFront, kMenuItemAttrDynamic, 0, 0 },
+	{ "Arrange in Front", kHICommandArrangeInFront, kMenuItemAttrDynamic, kMenuOptionModifier, 0 },
+	{ "Window list separator", kHICommandWindowListSeparator, kMenuItemAttrHidden | kMenuItemAttrSeparator | kMenuItemAttrDisabled, 0, 0 },
+	{ "Window list terminator", kHICommandWindowListTerminator, kMenuItemAttrHidden | kMenuItemAttrSeparator | kMenuItemAttrDisabled, 0, 0 },
+};
+
+OSStatus CreateStandardWindowMenu(OptionBits inOptions, MenuRef* outMenu)
+{
+	if (!outMenu)
+		return paramErr;
+	*outMenu = NULL;
+
+	MenuRef menu = newMenu(kStandardWindowMenuID, kMenuAttrAutoDisable);
+
+	if (!menu)
+		return memFullErr;
+	menu->isWindowMenu = true;
+	SetMenuTitleWithCFString(menu, CFSTR("Window"));
+	for (size_t i = 0; i < sizeof(kWindowMenuItems) / sizeof(kWindowMenuItems[0]); i++)
+	{
+		MenuItemIndex index;
+		CFStringRef title = CFStringCreateWithCString(NULL, kWindowMenuItems[i].title, kCFStringEncodingUTF8);
+
+		insertItem(menu, menu->count, title, kWindowMenuItems[i].attributes, kWindowMenuItems[i].command, &index);
+		if (kWindowMenuItems[i].command && (kWindowMenuItems[i].attributes & kMenuItemAttrSeparator))
+			SetMenuItemTextWithCFString(menu, index, title);
+		CFRelease(title);
+		if (kWindowMenuItems[i].key)
+			SetMenuItemCommandKey(menu, index, false, kWindowMenuItems[i].key);
+		if (kWindowMenuItems[i].modifiers)
+			SetMenuItemModifiers(menu, index, kWindowMenuItems[i].modifiers);
+	}
+	*outMenu = menu;
+	return noErr;
+}
+
+// The windows of the application between the list markers: a separator and one item for each, with the
+// window as the item's property (the command of the item is kHICommandSelectWindow). The window
+// that is active has a check mark and a minimized one a diamond.
+static void populateWindowMenu(MenuRef menu)
+{
+	MenuItemIndex first = 0, last = 0;
+
+	for (MenuItemIndex i = 1; i <= menu->count; i++)
+	{
+		if (itemAt(menu, i)->command == kHICommandWindowListSeparator)
+			first = i;
+		else if (itemAt(menu, i)->command == kHICommandWindowListTerminator)
+			last = i;
+	}
+	if (!first || last <= first)
+		return;
+	if (last > first + 1)
+		DeleteMenuItems(menu, first + 1, last - first - 1);
+
+	WindowRef* windows;
+	ItemCount count = _HICopyWindowList(&windows);
+	ItemCount position = first;
+
+	if (count)
+		insertItem(menu, position++, CFSTR("-"), kMenuItemAttrSeparator, 0, NULL);
+	for (ItemCount i = 0; i < count; i++)
+	{
+		CFStringRef title = NULL;
+		MenuItemIndex index;
+
+		CopyWindowTitleAsCFString(windows[i], &title);
+		if (insertItem(menu, position++, title, 0, kHICommandSelectWindow, &index) == noErr)
+		{
+			SetMenuItemProperty(menu, index, 'dlng', 'wind', sizeof(WindowRef), &windows[i]);
+			if (IsWindowCollapsed(windows[i]))
+				SetItemMark(menu, index, 0x13);
+			else if (IsWindowActive(windows[i]))
+				SetItemMark(menu, index, 0x12);
+		}
+		if (title)
+			CFRelease(title);
+	}
+	free(windows);
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1617,7 +1869,41 @@ static bool matchKey(MenuRef start, const struct KeyEquivalentQuery* query, Menu
 	return matched;
 }
 
-Boolean IsMenuKeyEvent(MenuRef inStartMenu, EventRef inEvent, MenuEventOptions inOptions, MenuRef* outMenu, MenuItemIndex* outMenuItem)
+// The key equivalent of a system item, for the Command-key handling of the menu bar
+static bool systemKeyEquivalent(const struct KeyEquivalentQuery* query, MenuRef* outMenu, MenuItemIndex* outItem)
+{
+	MenuRef* menus;
+	ItemCount menuCount = _HICopyMenuBarMenus(&menus);
+	bool found = false;
+
+	for (ItemCount m = 0; m < menuCount; m++)
+	{
+		const struct SystemItem* items[kSystemItemTotal];
+		ItemCount count = found ? 0 : systemItemsOf(menus[m], items);
+
+		for (ItemCount i = 0; i < count; i++)
+		{
+			struct MenuItem probe;
+
+			memset(&probe, 0, sizeof(probe));
+			probe.commandKey = items[i]->key;
+			probe.modifiers = items[i]->modifiers;
+			if (items[i]->command && itemMatchesKey(&probe, query))
+			{
+				*outMenu = menus[m];
+				*outItem = (MenuItemIndex) (menus[m]->count + i + 1);
+				found = true;
+				break;
+			}
+		}
+	}
+	for (ItemCount m = 0; m < menuCount; m++)
+		CFRelease((CFTypeRef) menus[m]);
+	free(menus);
+	return found;
+}
+
+static bool makeKeyQuery(EventRef inEvent, struct KeyEquivalentQuery* outQuery)
 {
 	struct KeyEquivalentQuery query = { 0, { 0, 0 }, 0, false };
 	UInt32 value;
@@ -1642,6 +1928,16 @@ Boolean IsMenuKeyEvent(MenuRef inStartMenu, EventRef inEvent, MenuEventOptions i
 		query.characters[0] = characterOfKey(query.keyCode, false);
 		query.characters[1] = characterOfKey(query.keyCode, true);
 	}
+	*outQuery = query;
+	return true;
+}
+
+Boolean IsMenuKeyEvent(MenuRef inStartMenu, EventRef inEvent, MenuEventOptions inOptions, MenuRef* outMenu, MenuItemIndex* outMenuItem)
+{
+	struct KeyEquivalentQuery query;
+
+	if (!makeKeyQuery(inEvent, &query))
+		return false;
 	return matchKey(inStartMenu, &query, inOptions, outMenu, outMenuItem);
 }
 
@@ -1682,7 +1978,13 @@ OSStatus _HIHandleKeyEquivalent(EventRef event)
 	MenuItemIndex item = 0;
 
 	if (!IsMenuKeyEvent(NULL, event, 0, &menu, &item))
-		return eventNotHandledErr;
+	{
+		// The program's items come first, then the system's of the application menu
+		struct KeyEquivalentQuery query;
+
+		if (!makeKeyQuery(event, &query) || !systemKeyEquivalent(&query, &menu, &item))
+			return eventNotHandledErr;
+	}
 
 	CFRetain((CFTypeRef) menu);
 	MenuID hilited = menu->menuID;
@@ -1734,11 +2036,30 @@ bool _HIMenuContains(MenuRef menu, MenuRef inner)
 
 ItemCount _HIMenuItemCount(MenuRef menu)
 {
-	return menu->count;
+	return menu->count + systemItemsOf(menu, NULL);
 }
 
 void _HIMenuGetItem(MenuRef menu, MenuItemIndex index, struct HIMenuItemInfo* info)
 {
+	if (index > menu->count)
+	{
+		const struct SystemItem* items[kSystemItemTotal];
+		ItemCount count = systemItemsOf(menu, items);
+
+		if (index - menu->count <= count)
+		{
+			const struct SystemItem* system = items[index - menu->count - 1];
+
+			memset(info, 0, sizeof(*info));
+			info->title = systemItemTitle(system);
+			info->command = system->command;
+			info->attributes = system->attributes;
+			info->modifiers = system->modifiers;
+			info->commandKey = system->key;
+			info->submenu = system->services ? servicesMenu() : NULL;
+			return;
+		}
+	}
 	struct MenuItem* item = itemAt(menu, index);
 
 	info->title = item->title;
