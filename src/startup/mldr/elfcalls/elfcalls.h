@@ -76,15 +76,15 @@ struct elf_calls
 	// or a negative Linux errno
 	int (*native_fork)(void);
 
-	// First thing in a fork's child that does not go through the host libc:
-	// reinitialize mldr's locks before the child closes the parent's descriptors
-	// through the socket bitmap.
-	void (*postfork_child)(void);
-
 	// The Darwin RLIMIT_NOFILE soft and hard limits passed on by the Darling
 	// process that exec'd this one. Returns 0 and fills limits, or -1 if
 	// there are none (the Linux limit applies).
 	int (*inherited_nofile_limit)(unsigned int limits[2]);
+
+	// First thing in a fork's child that does not go through the host libc:
+	// reinitialize mldr's locks before the child closes the parent's descriptors
+	// through the socket bitmap.
+	void (*postfork_child)(void);
 };
 
 #endif

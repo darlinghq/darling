@@ -87,9 +87,8 @@ void commpage_setup(bool _64bit)
 	*kernel_page_shift = *user_page_shift = (uint8_t)__builtin_ctzl(sysconf(_SC_PAGESIZE));
 
 	my_caps = get_cpu_caps();
-	// the cache line size bits (kCache32/64/128) were never set. vImage (vImageBuffer_Init, also its copy in
-	// libCGInterfaces) aligns rowBytes to twice the cache line size read from here: with 0 every rowBytes came out 0,
-	// vImageCreateCGImageFromBuffer then mmap()ed 0 bytes and failed, and a default wallpaper app crashed creating its snapshot (Swift trap in vImage_Buffer.createCGImage). x86-64 lines are 64 bytes.
+	// the cache line size bit: libraries such as vImage align row sizes to twice the line size read from here,
+	// and with no bit set every aligned size comes out 0. x86-64 lines are 64 bytes.
 	my_caps |= kCache64;
 	if (*ncpus == 1)
 		my_caps |= kUP;

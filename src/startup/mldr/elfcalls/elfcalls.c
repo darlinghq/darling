@@ -133,10 +133,10 @@ void elfcalls_make(struct elf_calls* calls)
 
 	calls->dserver_get_process_lifetime_pipe = __dserver_get_process_lifetime_pipe;
 	calls->dserver_process_lifetime_pipe_refresh = __dserver_process_lifetime_pipe_refresh;
-	calls->postfork_child = __mldr_socket_bitmap_postfork_child;  // see elfcalls.h
 	calls->dserver_close_process_lifetime_pipe = __mldr_close_process_lifetime_pipe;
 
 	calls->native_fork = __mldr_native_fork;
 
 	calls->inherited_nofile_limit = __mldr_inherited_nofile_limit;
+	calls->postfork_child = __mldr_socket_bitmap_postfork_child;
 }
