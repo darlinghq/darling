@@ -20,6 +20,9 @@
 #import <MediaPlayer/MediaPlayer.h>
 #include <xpc/xpc.h>
 #include <dispatch/dispatch.h>
+#include <objc/message.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include "mediaremoted_protocol.h"
 
@@ -64,14 +67,32 @@ NSString *const MPNowPlayingInfoPropertyAssetURL = @"MPNowPlayingInfoPropertyAss
 - (instancetype) initWithCommand: (MPRemoteCommand *) command timestamp: (NSTimeInterval) timestamp positionTime: (NSTimeInterval) positionTime;
 @end
 
+@interface MPSkipIntervalCommandEvent ()
+- (instancetype) initWithCommand: (MPRemoteCommand *) command timestamp: (NSTimeInterval) timestamp interval: (NSTimeInterval) interval;
+@end
+
+// The client side of the now-playing service, mediaremoted. The now-playing
+// info and the remote command state of this process are sent to the service,
+// which presents them to the desktop; remote commands come back over the same
+// connection and are delivered to the targets registered with the command
+// center. Without the service, MediaPlayer keeps working in-process.
 @interface _MPMediaRemoteManager : NSObject {
     xpc_connection_t _connection;
     dispatch_queue_t _queue;
+    NSTimeInterval _infoTimestamp;
+    id _artwork;
+    NSString *_artworkURL;
+    NSString *_artworkPath;
+    unsigned _artworkSerial;
 }
 + (_MPMediaRemoteManager *) sharedManager;
-- (void) notifyStateChanged;
-- (void) notifyCommandsChanged;
+- (void) nowPlayingInfoChanged;
+- (void) playbackStateChanged;
+- (void) commandsChanged;
+- (void) removeArtworkFile;
 @end
+
+static void MPMediaRemoteAtExit(void);
 
 @implementation _MPMediaRemoteManager
 
@@ -80,6 +101,7 @@ NSString *const MPNowPlayingInfoPropertyAssetURL = @"MPNowPlayingInfoPropertyAss
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         mgr = [[_MPMediaRemoteManager alloc] init];
+        atexit(MPMediaRemoteAtExit);
     });
     return mgr;
 }
@@ -92,18 +114,11 @@ NSString *const MPNowPlayingInfoPropertyAssetURL = @"MPNowPlayingInfoPropertyAss
     return self;
 }
 
-- (void) dealloc {
-    if (_connection) {
-        xpc_connection_cancel(_connection);
-        xpc_release(_connection);
-    }
-    dispatch_release(_queue);
-    [super dealloc];
-}
-
-- (void) ensureConnection {
+// Only called on _queue. Returns YES when a new connection was made, in which
+// case the service knows nothing of this process yet.
+- (BOOL) ensureConnection {
     if (_connection)
-        return;
+        return NO;
 
     const char *serviceName = getenv(MEDIAREMOTED_SERVICE_ENV);
     if (!serviceName)
@@ -111,7 +126,7 @@ NSString *const MPNowPlayingInfoPropertyAssetURL = @"MPNowPlayingInfoPropertyAss
 
     _connection = xpc_connection_create_mach_service(serviceName, _queue, 0);
     if (!_connection)
-        return;
+        return NO;
 
     xpc_connection_set_event_handler(_connection, ^(xpc_object_t event) {
         if (xpc_get_type(event) == XPC_TYPE_DICTIONARY) {
@@ -119,13 +134,18 @@ NSString *const MPNowPlayingInfoPropertyAssetURL = @"MPNowPlayingInfoPropertyAss
             if (op && strcmp(op, MR_OP_INVOKE_COMMAND) == 0) {
                 const char *cmd = xpc_dictionary_get_string(event, MR_KEY_COMMAND);
                 double pos = xpc_dictionary_get_double(event, MR_KEY_POSITION_TIME);
-                double off = xpc_dictionary_get_double(event, MR_KEY_OFFSET_TIME);
-                [self handleRemoteCommand:cmd ? [NSString stringWithUTF8String:cmd] : @""
-                             positionTime:pos
-                               offsetTime:off];
+                double interval = xpc_dictionary_get_double(event, MR_KEY_INTERVAL);
+                if (cmd) {
+                    [self handleRemoteCommand:[NSString stringWithUTF8String:cmd]
+                                 positionTime:pos
+                                     interval:interval];
+                }
             }
         } else if (event == XPC_ERROR_CONNECTION_INVALID || event == XPC_ERROR_CONNECTION_INTERRUPTED) {
+            // The service went away; the next change connects again and
+            // resends everything.
             if (_connection) {
+                xpc_connection_cancel(_connection);
                 xpc_release(_connection);
                 _connection = NULL;
             }
@@ -134,218 +154,243 @@ NSString *const MPNowPlayingInfoPropertyAssetURL = @"MPNowPlayingInfoPropertyAss
 
     xpc_connection_resume(_connection);
 
-    // Initial checkin
     xpc_object_t checkin = xpc_dictionary_create(NULL, NULL, 0);
     xpc_dictionary_set_string(checkin, MR_KEY_OP, MR_OP_CHECKIN);
-    xpc_dictionary_set_string(checkin, MR_KEY_APP_NAME, [[[NSProcessInfo processInfo] processName] UTF8String]);
-    NSString *bundleId = [[NSBundle mainBundle] bundleIdentifier];
-    if (bundleId) {
-        xpc_dictionary_set_string(checkin, MR_KEY_BUNDLE_ID, [bundleId UTF8String]);
-    }
+    [self addIdentityToDictionary:checkin];
     xpc_connection_send_message(_connection, checkin);
     xpc_release(checkin);
+    return YES;
 }
 
-- (void) handleRemoteCommand: (NSString *) cmdName positionTime: (double) posTime offsetTime: (double) offTime {
+- (void) addIdentityToDictionary: (xpc_object_t) dict {
+    xpc_dictionary_set_string(dict, MR_KEY_APP_NAME, [[[NSProcessInfo processInfo] processName] UTF8String]);
+    NSString *bundleId = [[NSBundle mainBundle] bundleIdentifier];
+    if (bundleId)
+        xpc_dictionary_set_string(dict, MR_KEY_BUNDLE_ID, [bundleId UTF8String]);
+}
+
+// The remote command handlers run on the main thread.
+- (void) handleRemoteCommand: (NSString *) cmdName positionTime: (double) posTime interval: (double) interval {
     dispatch_async(dispatch_get_main_queue(), ^{
         MPRemoteCommandCenter *center = [MPRemoteCommandCenter sharedCommandCenter];
+        MPNowPlayingPlaybackState state = [MPNowPlayingInfoCenter defaultCenter].playbackState;
+        BOOL playing = (state == MPNowPlayingPlaybackStatePlaying);
         MPRemoteCommand *cmd = nil;
         MPRemoteCommandEvent *evt = nil;
+        NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
 
         if ([cmdName isEqualToString:@"play"]) {
-            cmd = center.playCommand;
-            if (!cmd.enabled || ![cmd hasTargets]) {
+            if ([self commandIsAvailable:center.playCommand])
+                cmd = center.playCommand;
+            else if (!playing && [self commandIsAvailable:center.togglePlayPauseCommand])
                 cmd = center.togglePlayPauseCommand;
-            }
         } else if ([cmdName isEqualToString:@"pause"]) {
-            cmd = center.pauseCommand;
-            if (!cmd.enabled || ![cmd hasTargets]) {
+            if ([self commandIsAvailable:center.pauseCommand])
+                cmd = center.pauseCommand;
+            else if (playing && [self commandIsAvailable:center.togglePlayPauseCommand])
                 cmd = center.togglePlayPauseCommand;
-            }
         } else if ([cmdName isEqualToString:@"togglePlayPause"]) {
-            cmd = center.togglePlayPauseCommand;
-            if (!cmd.enabled || ![cmd hasTargets]) {
-                if ([MPNowPlayingInfoCenter defaultCenter].playbackState == MPNowPlayingPlaybackStatePlaying)
-                    cmd = center.pauseCommand;
-                else
-                    cmd = center.playCommand;
-            }
+            if ([self commandIsAvailable:center.togglePlayPauseCommand])
+                cmd = center.togglePlayPauseCommand;
+            else
+                cmd = playing ? center.pauseCommand : center.playCommand;
         } else if ([cmdName isEqualToString:@"stop"]) {
             cmd = center.stopCommand;
         } else if ([cmdName isEqualToString:@"nextTrack"]) {
             cmd = center.nextTrackCommand;
         } else if ([cmdName isEqualToString:@"previousTrack"]) {
             cmd = center.previousTrackCommand;
-        } else if ([cmdName isEqualToString:@"skipForward"]) {
-            cmd = center.skipForwardCommand;
-        } else if ([cmdName isEqualToString:@"skipBackward"]) {
-            cmd = center.skipBackwardCommand;
-        } else if ([cmdName isEqualToString:@"changePlaybackPosition"] || [cmdName isEqualToString:@"setPosition"]) {
+        } else if ([cmdName isEqualToString:@"skipForward"] || [cmdName isEqualToString:@"skipBackward"]) {
+            cmd = [cmdName isEqualToString:@"skipForward"] ? center.skipForwardCommand : center.skipBackwardCommand;
+            evt = [[[MPSkipIntervalCommandEvent alloc] initWithCommand:cmd timestamp:now interval:interval] autorelease];
+        } else if ([cmdName isEqualToString:@"changePlaybackPosition"]) {
             cmd = center.changePlaybackPositionCommand;
-            evt = [[[MPChangePlaybackPositionCommandEvent alloc] initWithCommand:cmd
-                                                                       timestamp:[[NSDate date] timeIntervalSince1970]
-                                                                    positionTime:posTime] autorelease];
-        } else if ([cmdName isEqualToString:@"seek"]) {
-            if (offTime > 0 && center.skipForwardCommand.enabled && [center.skipForwardCommand hasTargets]) {
-                cmd = center.skipForwardCommand;
-            } else if (offTime < 0 && center.skipBackwardCommand.enabled && [center.skipBackwardCommand hasTargets]) {
-                cmd = center.skipBackwardCommand;
-            } else if (center.changePlaybackPositionCommand.enabled && [center.changePlaybackPositionCommand hasTargets]) {
-                cmd = center.changePlaybackPositionCommand;
-                double cur = [[MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] doubleValue];
-                double targetPos = cur + offTime;
-                if (targetPos < 0) targetPos = 0;
-                evt = [[[MPChangePlaybackPositionCommandEvent alloc] initWithCommand:cmd
-                                                                           timestamp:[[NSDate date] timeIntervalSince1970]
-                                                                        positionTime:targetPos] autorelease];
-            }
-        }
-
-        if (evt == nil && cmd != nil) {
-            evt = [[[MPRemoteCommandEvent alloc] initWithCommand:cmd
-                                                       timestamp:[[NSDate date] timeIntervalSince1970]] autorelease];
+            evt = [[[MPChangePlaybackPositionCommandEvent alloc] initWithCommand:cmd timestamp:now positionTime:posTime] autorelease];
         }
 
         if (cmd != nil) {
+            if (evt == nil)
+                evt = [[[MPRemoteCommandEvent alloc] initWithCommand:cmd timestamp:now] autorelease];
             [cmd invokeWithEvent:evt];
         }
     });
 }
 
-- (void) notifyStateChanged {
+- (BOOL) commandIsAvailable: (MPRemoteCommand *) cmd {
+    return cmd.enabled && [cmd hasTargets];
+}
+
+// Called from any thread, right after nowPlayingInfo was set. The time is the
+// one the elapsed playback time is relative to.
+- (void) nowPlayingInfoChanged {
+    @synchronized(self) {
+        _infoTimestamp = [[NSDate date] timeIntervalSince1970];
+    }
+    [self playbackStateChanged];
+}
+
+- (void) playbackStateChanged {
     dispatch_async(_queue, ^{
         [self ensureConnection];
-        if (!_connection)
-            return;
-
-        MPNowPlayingInfoCenter *center = [MPNowPlayingInfoCenter defaultCenter];
-        NSDictionary *info = center.nowPlayingInfo;
-
-        xpc_object_t dict = xpc_dictionary_create(NULL, NULL, 0);
-        xpc_dictionary_set_string(dict, MR_KEY_OP, MR_OP_UPDATE_STATE);
-        xpc_dictionary_set_string(dict, MR_KEY_APP_NAME, [[[NSProcessInfo processInfo] processName] UTF8String]);
-        NSString *bundleId = [[NSBundle mainBundle] bundleIdentifier];
-        if (bundleId) {
-            xpc_dictionary_set_string(dict, MR_KEY_BUNDLE_ID, [bundleId UTF8String]);
-        }
-        xpc_dictionary_set_uint64(dict, MR_KEY_PLAYBACK_STATE, center.playbackState);
-
-        if (info != nil) {
-            NSString *title = info[MPMediaItemPropertyTitle];
-            if (title) xpc_dictionary_set_string(dict, MR_KEY_TITLE, [title UTF8String]);
-
-            id artistObj = info[MPMediaItemPropertyArtist];
-            if ([artistObj isKindOfClass:[NSString class]]) {
-                xpc_dictionary_set_string(dict, MR_KEY_ARTIST, [artistObj UTF8String]);
-            } else if ([artistObj isKindOfClass:[NSArray class]] && [(NSArray *)artistObj count] > 0) {
-                xpc_dictionary_set_string(dict, MR_KEY_ARTIST, [[(NSArray *)artistObj componentsJoinedByString:@", "] UTF8String]);
-            }
-
-            NSString *album = info[MPMediaItemPropertyAlbumTitle];
-            if (album) xpc_dictionary_set_string(dict, MR_KEY_ALBUM, [album UTF8String]);
-
-            NSString *composer = info[MPMediaItemPropertyComposer];
-            if (composer) xpc_dictionary_set_string(dict, MR_KEY_COMPOSER, [composer UTF8String]);
-
-            NSString *genre = info[MPMediaItemPropertyGenre];
-            if (genre) xpc_dictionary_set_string(dict, MR_KEY_GENRE, [genre UTF8String]);
-
-            NSNumber *trackNum = info[MPMediaItemPropertyAlbumTrackNumber];
-            if (trackNum) xpc_dictionary_set_int64(dict, MR_KEY_ALBUM_TRACK_NUMBER, [trackNum intValue]);
-
-            NSNumber *discNum = info[MPMediaItemPropertyDiscNumber];
-            if (discNum) xpc_dictionary_set_int64(dict, MR_KEY_DISC_NUMBER, [discNum intValue]);
-
-            NSNumber *duration = info[MPMediaItemPropertyPlaybackDuration];
-            if (duration) xpc_dictionary_set_double(dict, MR_KEY_DURATION, [duration doubleValue]);
-
-            NSNumber *elapsed = info[MPNowPlayingInfoPropertyElapsedPlaybackTime];
-            if (elapsed) xpc_dictionary_set_double(dict, MR_KEY_ELAPSED_TIME, [elapsed doubleValue]);
-
-            NSNumber *rate = info[MPNowPlayingInfoPropertyPlaybackRate];
-            if (rate) xpc_dictionary_set_double(dict, MR_KEY_RATE, [rate doubleValue]);
-
-            // Artwork
-            id artObj = info[MPMediaItemPropertyArtwork];
-            if ([artObj isKindOfClass:[MPMediaItemArtwork class]]) {
-                MPMediaItemArtwork *art = (MPMediaItemArtwork *)artObj;
-                NSImage *img = [art imageWithSize:art.bounds.size];
-                if (img != nil) {
-                    NSData *png = nil;
-                    for (id rep in [img representations]) {
-                        if ([rep respondsToSelector:@selector(representationUsingType:properties:)]) {
-                            png = [rep representationUsingType:4 properties:@{}];
-                            if (png) break;
-                        }
-                    }
-                    if (!png && [img respondsToSelector:@selector(TIFFRepresentation)]) {
-                        NSData *tiff = [img TIFFRepresentation];
-                        Class repClass = NSClassFromString(@"NSBitmapImageRep");
-                        if (tiff && repClass) {
-                            id rep = [repClass imageRepWithData:tiff];
-                            if ([rep respondsToSelector:@selector(representationUsingType:properties:)]) {
-                                png = [rep representationUsingType:4 properties:@{}];
-                            }
-                        }
-                    }
-                    if (png) {
-                        NSString *tmpDir = [[NSFileManager defaultManager] fileExistsAtPath:@"/Volumes/SystemRoot/tmp"] ? @"/Volumes/SystemRoot/tmp" : @"/tmp";
-                        NSString *path = [NSString stringWithFormat:@"%@/darling_art_%d.png", tmpDir, getpid()];
-                        if ([png writeToFile:path atomically:YES]) {
-                            NSString *urlStr = [NSString stringWithFormat:@"file:///tmp/darling_art_%d.png", getpid()];
-                            xpc_dictionary_set_string(dict, MR_KEY_ARTWORK_URL, [urlStr UTF8String]);
-                        }
-                    }
-                }
-            } else if ([artObj isKindOfClass:[NSString class]]) {
-                xpc_dictionary_set_string(dict, MR_KEY_ARTWORK_URL, [(NSString *)artObj UTF8String]);
-            }
-        }
-
-        [self appendCommandsStateToDict:dict];
-
-        xpc_connection_send_message(_connection, dict);
-        xpc_release(dict);
+        if (_connection)
+            [self sendSnapshot];
     });
 }
 
-- (void) appendCommandsStateToDict: (xpc_object_t) dict {
+- (void) commandsChanged {
+    dispatch_async(_queue, ^{
+        if ([self ensureConnection]) {
+            [self sendSnapshot];
+        } else if (_connection) {
+            xpc_object_t dict = xpc_dictionary_create(NULL, NULL, 0);
+            xpc_dictionary_set_string(dict, MR_KEY_OP, MR_OP_UPDATE_COMMANDS);
+            xpc_dictionary_set_uint64(dict, MR_KEY_ENABLED_COMMANDS, [self enabledCommandsMask]);
+            xpc_connection_send_message(_connection, dict);
+            xpc_release(dict);
+        }
+    });
+}
+
+- (uint64_t) enabledCommandsMask {
     MPRemoteCommandCenter *center = [MPRemoteCommandCenter sharedCommandCenter];
     uint64_t mask = 0;
-    if (center.playCommand.enabled && [center.playCommand hasTargets]) mask |= MR_CMD_PLAY;
-    if (center.pauseCommand.enabled && [center.pauseCommand hasTargets]) mask |= MR_CMD_PAUSE;
-    if (center.stopCommand.enabled && [center.stopCommand hasTargets]) mask |= MR_CMD_STOP;
-    if (center.togglePlayPauseCommand.enabled && [center.togglePlayPauseCommand hasTargets]) mask |= MR_CMD_TOGGLE_PLAY_PAUSE;
-    if (center.nextTrackCommand.enabled && [center.nextTrackCommand hasTargets]) mask |= MR_CMD_NEXT_TRACK;
-    if (center.previousTrackCommand.enabled && [center.previousTrackCommand hasTargets]) mask |= MR_CMD_PREVIOUS_TRACK;
-    if (center.changePlaybackRateCommand.enabled && [center.changePlaybackRateCommand hasTargets]) mask |= MR_CMD_CHANGE_PLAYBACK_RATE;
-    if (center.changeRepeatModeCommand.enabled && [center.changeRepeatModeCommand hasTargets]) mask |= MR_CMD_CHANGE_REPEAT_MODE;
-    if (center.changeShuffleModeCommand.enabled && [center.changeShuffleModeCommand hasTargets]) mask |= MR_CMD_CHANGE_SHUFFLE_MODE;
-    if (center.skipForwardCommand.enabled && [center.skipForwardCommand hasTargets]) mask |= MR_CMD_SKIP_FORWARD;
-    if (center.skipBackwardCommand.enabled && [center.skipBackwardCommand hasTargets]) mask |= MR_CMD_SKIP_BACKWARD;
-    if (center.changePlaybackPositionCommand.enabled && [center.changePlaybackPositionCommand hasTargets]) mask |= MR_CMD_CHANGE_PLAYBACK_POSITION;
-    if (center.ratingCommand.enabled && [center.ratingCommand hasTargets]) mask |= MR_CMD_RATING;
-    if (center.likeCommand.enabled && [center.likeCommand hasTargets]) mask |= MR_CMD_LIKE;
-    if (center.dislikeCommand.enabled && [center.dislikeCommand hasTargets]) mask |= MR_CMD_DISLIKE;
-    if (center.bookmarkCommand.enabled && [center.bookmarkCommand hasTargets]) mask |= MR_CMD_BOOKMARK;
-    xpc_dictionary_set_uint64(dict, MR_KEY_ENABLED_COMMANDS, mask);
+#define ADD(cmd, bit) if ([self commandIsAvailable:center.cmd]) mask |= bit
+    ADD(playCommand, MR_CMD_PLAY);
+    ADD(pauseCommand, MR_CMD_PAUSE);
+    ADD(stopCommand, MR_CMD_STOP);
+    ADD(togglePlayPauseCommand, MR_CMD_TOGGLE_PLAY_PAUSE);
+    ADD(nextTrackCommand, MR_CMD_NEXT_TRACK);
+    ADD(previousTrackCommand, MR_CMD_PREVIOUS_TRACK);
+    ADD(changePlaybackRateCommand, MR_CMD_CHANGE_PLAYBACK_RATE);
+    ADD(changeRepeatModeCommand, MR_CMD_CHANGE_REPEAT_MODE);
+    ADD(changeShuffleModeCommand, MR_CMD_CHANGE_SHUFFLE_MODE);
+    ADD(skipForwardCommand, MR_CMD_SKIP_FORWARD);
+    ADD(skipBackwardCommand, MR_CMD_SKIP_BACKWARD);
+    ADD(changePlaybackPositionCommand, MR_CMD_CHANGE_PLAYBACK_POSITION);
+    ADD(ratingCommand, MR_CMD_RATING);
+    ADD(likeCommand, MR_CMD_LIKE);
+    ADD(dislikeCommand, MR_CMD_DISLIKE);
+    ADD(bookmarkCommand, MR_CMD_BOOKMARK);
+#undef ADD
+    return mask;
 }
 
-- (void) notifyCommandsChanged {
-    dispatch_async(_queue, ^{
-        [self ensureConnection];
-        if (!_connection)
-            return;
+// Only called on _queue, with a connection.
+- (void) sendSnapshot {
+    MPNowPlayingInfoCenter *center = [MPNowPlayingInfoCenter defaultCenter];
+    NSDictionary *info = center.nowPlayingInfo;
+    NSTimeInterval infoTimestamp;
+    @synchronized(self) {
+        infoTimestamp = _infoTimestamp;
+    }
 
-        xpc_object_t dict = xpc_dictionary_create(NULL, NULL, 0);
-        xpc_dictionary_set_string(dict, MR_KEY_OP, MR_OP_UPDATE_STATE);
-        [self appendCommandsStateToDict:dict];
-        xpc_connection_send_message(_connection, dict);
-        xpc_release(dict);
-    });
+    xpc_object_t dict = xpc_dictionary_create(NULL, NULL, 0);
+    xpc_dictionary_set_string(dict, MR_KEY_OP, MR_OP_UPDATE_STATE);
+    [self addIdentityToDictionary:dict];
+    xpc_dictionary_set_uint64(dict, MR_KEY_PLAYBACK_STATE, center.playbackState);
+    xpc_dictionary_set_bool(dict, MR_KEY_HAS_INFO, info != nil);
+    xpc_dictionary_set_double(dict, MR_KEY_INFO_TIMESTAMP, infoTimestamp);
+
+    id value;
+    if ([(value = info[MPMediaItemPropertyTitle]) isKindOfClass:[NSString class]])
+        xpc_dictionary_set_string(dict, MR_KEY_TITLE, [value UTF8String]);
+    if ([(value = info[MPMediaItemPropertyArtist]) isKindOfClass:[NSString class]])
+        xpc_dictionary_set_string(dict, MR_KEY_ARTIST, [value UTF8String]);
+    if ([(value = info[MPMediaItemPropertyAlbumTitle]) isKindOfClass:[NSString class]])
+        xpc_dictionary_set_string(dict, MR_KEY_ALBUM, [value UTF8String]);
+    if ([(value = info[MPMediaItemPropertyComposer]) isKindOfClass:[NSString class]])
+        xpc_dictionary_set_string(dict, MR_KEY_COMPOSER, [value UTF8String]);
+    if ([(value = info[MPMediaItemPropertyGenre]) isKindOfClass:[NSString class]])
+        xpc_dictionary_set_string(dict, MR_KEY_GENRE, [value UTF8String]);
+    if ([(value = info[MPMediaItemPropertyAlbumTrackNumber]) isKindOfClass:[NSNumber class]])
+        xpc_dictionary_set_int64(dict, MR_KEY_ALBUM_TRACK_NUMBER, [value integerValue]);
+    if ([(value = info[MPMediaItemPropertyDiscNumber]) isKindOfClass:[NSNumber class]])
+        xpc_dictionary_set_int64(dict, MR_KEY_DISC_NUMBER, [value integerValue]);
+    if ([(value = info[MPMediaItemPropertyPlaybackDuration]) isKindOfClass:[NSNumber class]])
+        xpc_dictionary_set_double(dict, MR_KEY_DURATION, [value doubleValue]);
+    if ([(value = info[MPNowPlayingInfoPropertyElapsedPlaybackTime]) isKindOfClass:[NSNumber class]])
+        xpc_dictionary_set_double(dict, MR_KEY_ELAPSED_TIME, [value doubleValue]);
+    if ([(value = info[MPNowPlayingInfoPropertyPlaybackRate]) isKindOfClass:[NSNumber class]])
+        xpc_dictionary_set_double(dict, MR_KEY_RATE, [value doubleValue]);
+
+    NSString *artworkURL = [self artworkURLForArtwork:info[MPMediaItemPropertyArtwork]];
+    if (artworkURL)
+        xpc_dictionary_set_string(dict, MR_KEY_ARTWORK_URL, [artworkURL UTF8String]);
+
+    xpc_dictionary_set_uint64(dict, MR_KEY_ENABLED_COMMANDS, [self enabledCommandsMask]);
+    xpc_connection_send_message(_connection, dict);
+    xpc_release(dict);
+}
+
+// The artwork is handed to the desktop as a PNG file on the host, which is
+// written once per artwork object and removed when the artwork goes away.
+// Only called on _queue.
+- (NSString *) artworkURLForArtwork: (id) artwork {
+    if (![artwork isKindOfClass:[MPMediaItemArtwork class]]) {
+        [self removeArtworkFile];
+        return nil;
+    }
+    if (artwork == _artwork)
+        return _artworkURL;
+
+    [self removeArtworkFile];
+    _artwork = [artwork retain];
+
+    MPMediaItemArtwork *art = (MPMediaItemArtwork *)artwork;
+    NSImage *img = [art imageWithSize:art.bounds.size];
+    if (img == nil)
+        return nil;
+
+    NSData *png = nil;
+    for (id rep in [img representations]) {
+        if ([rep respondsToSelector:@selector(representationUsingType:properties:)]) {
+            png = [rep representationUsingType:NSPNGFileType properties:@{}];
+            if (png)
+                break;
+        }
+    }
+    if (png == nil) {
+        NSData *tiff = [img TIFFRepresentation];
+        NSBitmapImageRep *rep = tiff ? [NSBitmapImageRep imageRepWithData:tiff] : nil;
+        png = [rep representationUsingType:NSPNGFileType properties:@{}];
+    }
+    if (png == nil)
+        return nil;
+
+    // The prefix sees the host's /tmp as /Volumes/SystemRoot/tmp; the desktop
+    // wants the host path.
+    NSString *hostTmp = @"/Volumes/SystemRoot/tmp";
+    BOOL isDirectory = NO;
+    if (![[NSFileManager defaultManager] fileExistsAtPath:hostTmp isDirectory:&isDirectory] || !isDirectory)
+        return nil;
+    NSString *name = [NSString stringWithFormat:@"darling_art_%d_%u.png", getpid(), ++_artworkSerial];
+    NSString *path = [hostTmp stringByAppendingPathComponent:name];
+    if (![png writeToFile:path atomically:YES])
+        return nil;
+
+    _artworkPath = [path retain];
+    _artworkURL = [[NSString stringWithFormat:@"file:///tmp/%@", name] retain];
+    return _artworkURL;
+}
+
+- (void) removeArtworkFile {
+    if (_artworkPath)
+        [[NSFileManager defaultManager] removeItemAtPath:_artworkPath error:NULL];
+    [_artworkPath release];
+    _artworkPath = nil;
+    [_artworkURL release];
+    _artworkURL = nil;
+    [_artwork release];
+    _artwork = nil;
 }
 
 @end
+
+// Removes the artwork file of this process when it exits; nothing else is
+// using the manager by then.
+static void MPMediaRemoteAtExit(void) {
+    [[_MPMediaRemoteManager sharedManager] removeArtworkFile];
+}
 
 @implementation MPMediaItemArtwork
 
@@ -410,7 +455,7 @@ NSString *const MPNowPlayingInfoPropertyAssetURL = @"MPNowPlayingInfoPropertyAss
             _nowPlayingInfo = [nowPlayingInfo copy];
         }
     }
-    [[_MPMediaRemoteManager sharedManager] notifyStateChanged];
+    [[_MPMediaRemoteManager sharedManager] nowPlayingInfoChanged];
 }
 
 - (MPNowPlayingPlaybackState) playbackState {
@@ -423,7 +468,7 @@ NSString *const MPNowPlayingInfoPropertyAssetURL = @"MPNowPlayingInfoPropertyAss
     @synchronized(self) {
         _playbackState = playbackState;
     }
-    [[_MPMediaRemoteManager sharedManager] notifyStateChanged];
+    [[_MPMediaRemoteManager sharedManager] playbackStateChanged];
 }
 
 - (void) dealloc {
@@ -479,7 +524,7 @@ NSString *const MPNowPlayingInfoPropertyAssetURL = @"MPNowPlayingInfoPropertyAss
             _enabled = enabled;
         }
     }
-    [[_MPMediaRemoteManager sharedManager] notifyCommandsChanged];
+    [[_MPMediaRemoteManager sharedManager] commandsChanged];
 }
 
 - (BOOL) hasTargets {
@@ -496,7 +541,7 @@ NSString *const MPNowPlayingInfoPropertyAssetURL = @"MPNowPlayingInfoPropertyAss
         [_targets addObject: entry];
     }
     [entry release];
-    [[_MPMediaRemoteManager sharedManager] notifyCommandsChanged];
+    [[_MPMediaRemoteManager sharedManager] commandsChanged];
 }
 
 - (id) addTargetWithHandler: (MPRemoteCommandHandlerStatus (^)(MPRemoteCommandEvent *event)) handler {
@@ -506,7 +551,7 @@ NSString *const MPNowPlayingInfoPropertyAssetURL = @"MPNowPlayingInfoPropertyAss
         [_targets addObject: entry];
     }
     id token = [entry autorelease];
-    [[_MPMediaRemoteManager sharedManager] notifyCommandsChanged];
+    [[_MPMediaRemoteManager sharedManager] commandsChanged];
     return token;
 }
 
@@ -522,7 +567,7 @@ NSString *const MPNowPlayingInfoPropertyAssetURL = @"MPNowPlayingInfoPropertyAss
         }];
         [_targets removeObjectsAtIndexes: remove];
     }
-    [[_MPMediaRemoteManager sharedManager] notifyCommandsChanged];
+    [[_MPMediaRemoteManager sharedManager] commandsChanged];
 }
 
 // A nil target removes every registered target; a handler token removes its
@@ -532,7 +577,7 @@ NSString *const MPNowPlayingInfoPropertyAssetURL = @"MPNowPlayingInfoPropertyAss
 }
 
 - (MPRemoteCommandHandlerStatus) invokeWithEvent: (MPRemoteCommandEvent *) event {
-    if (!_enabled) {
+    if (![self isEnabled]) {
         return MPRemoteCommandHandlerStatusCommandFailed;
     }
     NSArray *targets;
@@ -551,8 +596,12 @@ NSString *const MPNowPlayingInfoPropertyAssetURL = @"MPNowPlayingInfoPropertyAss
             else if (result != MPRemoteCommandHandlerStatusSuccess)
                 result = s;
         } else if ([entry->target respondsToSelector: entry->action]) {
-            [entry->target performSelector: entry->action withObject: event];
-            result = MPRemoteCommandHandlerStatusSuccess;
+            // The action returns an MPRemoteCommandHandlerStatus.
+            MPRemoteCommandHandlerStatus s = ((MPRemoteCommandHandlerStatus (*)(id, SEL, id)) objc_msgSend)(entry->target, entry->action, event);
+            if (s == MPRemoteCommandHandlerStatusSuccess)
+                result = MPRemoteCommandHandlerStatusSuccess;
+            else if (result != MPRemoteCommandHandlerStatusSuccess)
+                result = s;
         }
     }
     return result;
@@ -646,6 +695,20 @@ NSString *const MPNowPlayingInfoPropertyAssetURL = @"MPNowPlayingInfoPropertyAss
     self = [super initWithCommand: command timestamp: timestamp];
     if (self) {
         _positionTime = positionTime;
+    }
+    return self;
+}
+
+@end
+
+@implementation MPSkipIntervalCommandEvent
+
+@synthesize interval = _interval;
+
+- (instancetype) initWithCommand: (MPRemoteCommand *) command timestamp: (NSTimeInterval) timestamp interval: (NSTimeInterval) interval {
+    self = [super initWithCommand: command timestamp: timestamp];
+    if (self) {
+        _interval = interval;
     }
     return self;
 }
