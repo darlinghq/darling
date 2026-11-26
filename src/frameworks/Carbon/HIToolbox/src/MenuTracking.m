@@ -38,6 +38,7 @@
 #include <HIToolbox/MacApplication.h>
 #include <CoreGraphics/CoreGraphics.h>
 #include <CoreGraphics/CoreGraphicsPrivate.h>
+#import <CoreGraphics/CGSNativeConnection.h>
 #include <CoreText/CoreText.h>
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/CGLInternal.h>
@@ -71,10 +72,6 @@ struct MenuWindow
 static bool g_registered;
 // EGL_PLATFORM_WAYLAND_KHR
 enum { kEGLPlatformWayland = 0x31D8 };
-// The window system of the process' connection (CGSNativeConnectionKind of CGSNativeConnection.h, an
-// Objective-C header): 1 is X11, 2 is Wayland
-extern int _CGSNativeConnectionKind(void);
-enum { kNativeConnectionKindX11 = 1 };
 
 static void destroyMenuWindow(struct MenuWindow* win)
 {
@@ -121,7 +118,7 @@ static struct MenuWindow* createMenuWindow(CGRect frame, CGWindowLevel level)
 	win->width = (size_t) ceil(frame.size.width);
 	win->height = (size_t) ceil(frame.size.height);
 
-	bool x11 = _CGSNativeConnectionKind() == kNativeConnectionKindX11;
+	bool x11 = _CGSNativeConnectionKind() == CGSNativeConnectionKindX11;
 
 	if (!g_registered)
 	{
