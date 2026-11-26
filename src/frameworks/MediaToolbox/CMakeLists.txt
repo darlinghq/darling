@@ -19,6 +19,7 @@ add_framework(MediaToolbox
 
     SOURCES
         src/MediaToolbox.m
+        src/MTAudioProcessingTap.c
         src/FigCaptionLayerPrivate.m
         src/FigCaptionLayer.m
         src/FigCaptionRowLayer.m
@@ -52,4 +53,5 @@ add_framework(MediaToolbox
         system
         objc
         Foundation
+        CoreFoundation
 )

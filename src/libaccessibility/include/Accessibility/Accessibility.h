@@ -29,6 +29,10 @@
 #import <Accessibility/AXDefaultsObserverExecuteBlockNotificationAction.h>
 #import <Accessibility/AXSupportDefaultsObserver.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void* AXBeginListeningToUserDefaultsChanges(void);
 void* AXCPCopySharedResourcesPreferencesDomainForDomain(void);
 void* AXCPSharedResourcesDirectory(void);
@@ -111,6 +115,10 @@ void* _AXSEarpieceNoiseCancellationEnabled(void);
 void* _AXSEarpieceNoiseCancellationSetEnabled(void);
 void* _AXSEnhanceBackgroundContrastEnabled(void);
 void* _AXSEnhanceTextLegibilityEnabled(void);
+extern const CFStringRef kAXSEnhanceTextLegibilityChangedNotification;
+extern CFStringRef kAXInterfaceReduceMotionKey;
+extern CFStringRef kAXInterfaceIncreaseContrastKey;
+extern CFStringRef kAXInterfaceDifferentiateWithoutColorKey;
 void* _AXSEnhanceTextTrackingEnabled(void);
 void* _AXSExtendedKeyboardPredictionsEnabled(void);
 void* _AXSForcePreferenceUpdate(void);
@@ -362,5 +370,9 @@ void* _removePreference(void);
 void* _setNumberPreference(void);
 void* _setValuePreference(void);
 void* _updateAccessibilitySettings(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

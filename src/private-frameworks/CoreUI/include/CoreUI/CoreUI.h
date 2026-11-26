@@ -177,6 +177,7 @@
 #import <CoreUI/CUINamedRenditionInfo.h>
 #import <CoreUI/CUINamedMultisizeImage.h>
 #import <CoreUI/CUILayoutInformation.h>
+#import <CoreUI/CUIDrawOptions.h>
 
 void* CSIEqualMetrics(void);
 void* CUIBlendModeDescriptionFromCGBlendMode(void);

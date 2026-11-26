@@ -64,6 +64,7 @@ add_framework(DataDetectors
         src/DDHighlightButtonCell.m
         src/DDLargeTypeController.m
         src/DDActionContext.m
+        src/DDSecureActionContext.m
         src/DDEventController.m
         src/DDPopover.m
         src/DDDetectorManager2.m

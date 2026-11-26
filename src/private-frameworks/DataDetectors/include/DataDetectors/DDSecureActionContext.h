@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2021 Lubos Dolezel
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,12 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#include <DataDetectors/DDActionContext.h>
 
-@interface UNNotificationIcon : NSObject
+// The context of a data detector action whose details stay with the system rather than the
+// app. On macOS 26.7.3 it is a subclass of DDActionContext; WebKit checks objects against it
+// when it encodes them for IPC. Test: tests/datadetectors-secure-action-context.m in Darling's
+// main repository.
+@interface DDSecureActionContext : DDActionContext
 
 @end

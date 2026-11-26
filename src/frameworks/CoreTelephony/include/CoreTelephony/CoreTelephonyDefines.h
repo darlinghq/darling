@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2022 Darling Team
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,21 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
 
-@interface NSExtension (AuthenticationServicesExtras)
+#ifndef _CORETELEPHONY_DEFINES_H_
+#define _CORETELEPHONY_DEFINES_H_
 
-@end
+#include <Availability.h>
+
+// The declaration macros of CoreTelephony's headers.
+#ifdef __cplusplus
+#define CORETELEPHONY_EXTERN extern "C" __attribute__((visibility("default")))
+#else
+#define CORETELEPHONY_EXTERN extern __attribute__((visibility("default")))
+#endif
+
+#define CORETELEPHONY_EXTERN_CLASS __attribute__((visibility("default")))
+#define CORETELEPHONY_CLASS_AVAILABLE(version) __attribute__((visibility("default")))
+#define CORETELEPHONY_CLASS_DEPRECATED(...) __attribute__((visibility("default")))
+
+#endif

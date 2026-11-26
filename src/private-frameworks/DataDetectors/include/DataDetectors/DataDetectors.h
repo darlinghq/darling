@@ -73,6 +73,7 @@
 #import <DataDetectors/DDHighlightButtonCell.h>
 #import <DataDetectors/DDLargeTypeController.h>
 #import <DataDetectors/DDActionContext.h>
+#import <DataDetectors/DDSecureActionContext.h>
 #import <DataDetectors/DDEventController.h>
 #import <DataDetectors/DDPopover.h>
 #import <DataDetectors/DDDetectorManager2.h>

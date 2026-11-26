@@ -8,6 +8,8 @@
 #import <Onyx2D/O2DataProvider.h>
 #import "ImageIOASTC.h"
 #include <math.h>
+#include <pthread.h>
+#include <CarbonCore/MacErrors.h>
 #include <string.h>
 
 const CFStringRef kCGImageSourceCreateThumbnailFromImageAlways = CFSTR("kCGImageSourceCreateThumbnailFromImageAlways");
@@ -20,6 +22,36 @@ const CFStringRef kCGImageSourceShouldCache = CFSTR("kCGImageSourceShouldCache")
 const CFStringRef kCGImageSourceTypeIdentifierHint = CFSTR("kCGImageSourceTypeIdentifierHint");
 const CFStringRef kCGImageSourceShouldCacheImmediately = CFSTR("kCGImageSourceShouldCacheImmediately");
 const CFStringRef kCGImageSourceThumbnailMaxPixelSize = CFSTR("kCGImageSourceThumbnailMaxPixelSize");
+// Options the decoders here accept and ignore: they always decode at full size,
+// to their own pixel format, and in software. The values follow the other
+// options in being the constant's own name; for the private ones
+// (ShouldPreferRGB32, SkipMetadata, UseHardwareAcceleration) that is inferred
+// from their public siblings, not observed.
+const CFStringRef kCGImageSourceSubsampleFactor = CFSTR("kCGImageSourceSubsampleFactor");
+const CFStringRef kCGImageSourceShouldPreferRGB32 = CFSTR("kCGImageSourceShouldPreferRGB32");
+const CFStringRef kCGImageSourceSkipMetadata = CFSTR("kCGImageSourceSkipMetadata");
+const CFStringRef kCGImageSourceUseHardwareAcceleration = CFSTR("kCGImageSourceUseHardwareAcceleration");
+
+// The types CGImageSourceSetAllowableTypes limits decoding to; NULL allows all.
+static CFArrayRef allowableTypes;
+static pthread_mutex_t allowableTypesLock = PTHREAD_MUTEX_INITIALIZER;
+
+static BOOL typeIsAllowed(CFStringRef type) {
+    pthread_mutex_lock(&allowableTypesLock);
+    BOOL allowed = allowableTypes == NULL || (type != NULL &&
+        CFArrayContainsValue(allowableTypes, CFRangeMake(0, CFArrayGetCount(allowableTypes)), type));
+    pthread_mutex_unlock(&allowableTypesLock);
+    return allowed;
+}
+
+// A source for data of a type that is not allowed is no source.
+static O2ImageSource *allowedSource(O2ImageSource *source) {
+    if (source != nil && !typeIsAllowed([source type])) {
+        [source release];
+        return nil;
+    }
+    return source;
+}
 
 // Each value is the constant's own name (read on macOS 26.7.3).
 // Test: tests/src/imageio_property_names.c
@@ -42,11 +74,92 @@ static O2ImageSourceRef newImageSource(O2DataProviderRef provider, CFDictionaryR
 	return [O2ImageSource newImageSourceWithDataProvider:provider options:options];
 }
 
-CGImageSourceRef CGImageSourceCreateWithData(CFDataRef data,CFDictionaryRef options) {
+static O2ImageSourceRef newImageSourceWithData(CFDataRef data, CFDictionaryRef options) {
 	O2DataProviderRef provider = O2DataProviderCreateWithCFData(data);
 	O2ImageSourceRef source = newImageSource(provider, options);
 	O2DataProviderRelease(provider);
-	return (CGImageSourceRef)source;
+	return source;
+}
+
+// An incremental source (CGImageSourceCreateIncremental). It is given all the
+// data received so far each time, and decodes it with a source made from that
+// data; until then it has no images.
+@interface _CGIncrementalImageSource : O2ImageSource {
+    O2ImageSource *_decoder;
+    BOOL _final;
+}
+- (void) updateData: (CFDataRef) data final: (BOOL) final;
+- (CGImageSourceStatus) status;
+- (CGImageSourceStatus) statusAtIndex: (size_t) index;
+@end
+
+@implementation _CGIncrementalImageSource
+
+- initWithOptions: (CFDictionaryRef) options {
+    [super init];
+    _options = options != NULL ? [(NSDictionary *) options copy] : nil;
+    return self;
+}
+
+- (void) dealloc {
+    [_decoder release];
+    [super dealloc];
+}
+
+- (void) updateData: (CFDataRef) data final: (BOOL) final {
+    if (_final)
+        return; // the data was already complete
+    O2ImageSource *decoder = data != NULL
+        ? allowedSource(newImageSourceWithData(data, (CFDictionaryRef) _options))
+        : nil;
+    [_decoder release];
+    _decoder = decoder;
+    _final = final;
+}
+
+- (NSUInteger) count {
+    return _decoder != nil ? [_decoder count] : 0;
+}
+
+- (CFStringRef) type {
+    return _decoder != nil ? [_decoder type] : NULL;
+}
+
+- (CFDictionaryRef) copyPropertiesAtIndex: (NSUInteger) index options: (CFDictionaryRef) options {
+    return _decoder != nil ? [_decoder copyPropertiesAtIndex: index options: options] : NULL;
+}
+
+- (O2ImageRef) createImageAtIndex: (NSUInteger) index options: (CFDictionaryRef) options {
+    return _decoder != nil ? [_decoder createImageAtIndex: index options: options] : NULL;
+}
+
+- (CGImageSourceStatus) status {
+    if (_decoder == nil)
+        return _final ? kCGImageStatusUnknownType : kCGImageStatusReadingHeader;
+    if ([_decoder count] == 0)
+        return _final ? kCGImageStatusInvalidData : kCGImageStatusReadingHeader;
+    return _final ? kCGImageStatusComplete : kCGImageStatusIncomplete;
+}
+
+- (CGImageSourceStatus) statusAtIndex: (size_t) index {
+    if (_decoder == nil || index >= [_decoder count])
+        return _final ? kCGImageStatusInvalidData : kCGImageStatusReadingHeader;
+    return _final ? kCGImageStatusComplete : kCGImageStatusIncomplete;
+}
+
+@end
+
+CGImageSourceRef CGImageSourceCreateIncremental(CFDictionaryRef options) {
+    return (CGImageSourceRef)[[_CGIncrementalImageSource alloc] initWithOptions: options];
+}
+
+void CGImageSourceUpdateData(CGImageSourceRef isrc, CFDataRef data, bool final) {
+    if ([(id) isrc isKindOfClass: [_CGIncrementalImageSource class]])
+        [(_CGIncrementalImageSource *) isrc updateData: data final: final];
+}
+
+CGImageSourceRef CGImageSourceCreateWithData(CFDataRef data,CFDictionaryRef options) {
+	return (CGImageSourceRef)allowedSource(newImageSourceWithData(data, options));
 }
 
 CGImageSourceRef CGImageSourceCreateWithURL(CFURLRef url,CFDictionaryRef options) {
@@ -55,7 +168,7 @@ CGImageSourceRef CGImageSourceCreateWithURL(CFURLRef url,CFDictionaryRef options
 		return NULL;
 	O2ImageSourceRef source = newImageSource(provider, options);
 	O2DataProviderRelease(provider);
-	return (CGImageSourceRef)source;
+	return (CGImageSourceRef)allowedSource(source);
 }
 
 size_t CGImageSourceGetCount(CGImageSourceRef self) {
@@ -229,5 +342,74 @@ CFArrayRef CGImageSourceCopyTypeIdentifiers(void)
 // source and kCGImageStatusInvalidData (-4) for NULL (observed on macOS 26.7.3).
 CGImageSourceStatus CGImageSourceGetStatus(CGImageSourceRef isrc)
 {
-    return isrc != NULL ? kCGImageStatusComplete : kCGImageStatusInvalidData;
+    if (isrc == NULL)
+        return kCGImageStatusInvalidData;
+    if ([(id) isrc isKindOfClass: [_CGIncrementalImageSource class]])
+        return [(_CGIncrementalImageSource *) isrc status];
+    return kCGImageStatusComplete;
+}
+
+// A source made from complete data has each of its images complete.
+CGImageSourceStatus CGImageSourceGetStatusAtIndex(CGImageSourceRef isrc, size_t index)
+{
+    if (isrc == NULL)
+        return kCGImageStatusInvalidData;
+    if ([(id) isrc isKindOfClass: [_CGIncrementalImageSource class]])
+        return [(_CGIncrementalImageSource *) isrc statusAtIndex: index];
+    return index < [(O2ImageSource *) isrc count] ? kCGImageStatusComplete : kCGImageStatusInvalidData;
+}
+
+// Only HEIF files name a primary image, and there is no HEIF decoder here, so
+// it is always the first one.
+size_t CGImageSourceGetPrimaryImageIndex(CGImageSourceRef isrc)
+{
+    return 0;
+}
+
+// Private API that WebKit uses (declared by its ImageIOSPI.h).
+
+// The type of image the data holds, or NULL. The hint is for data no decoder
+// recognises, which none of them here has use for, and the last argument is
+// left alone. The type strings are constants, so the result needs no owner.
+CFStringRef CGImageSourceGetTypeWithData(CFDataRef data, CFStringRef hint, bool *unused)
+{
+    (void) hint;
+    (void) unused;
+    if (data == NULL)
+        return NULL;
+    O2ImageSource *source = [O2ImageSource newImageSourceWithData: data options: NULL];
+    CFStringRef type = [source type];
+    [source release];
+    return type;
+}
+
+// Limits the types later sources decode (an array of type identifiers); NULL
+// lifts the limit.
+OSStatus CGImageSourceSetAllowableTypes(CFArrayRef types)
+{
+    if (types != NULL && CFGetTypeID(types) != CFArrayGetTypeID())
+        return paramErr;
+    CFArrayRef copy = types != NULL ? CFArrayCreateCopy(NULL, types) : NULL;
+    pthread_mutex_lock(&allowableTypesLock);
+    CFArrayRef old = allowableTypes;
+    allowableTypes = copy;
+    pthread_mutex_unlock(&allowableTypesLock);
+    if (old != NULL)
+        CFRelease(old);
+    return noErr;
+}
+
+// Decoding is always in software, so there is no hardware decoding to turn
+// off.
+OSStatus CGImageSourceDisableHardwareDecoding(void)
+{
+    return noErr;
+}
+
+// Restricted decoding limits a process to the decoders deemed safest. All the
+// decoders here are of that kind already (none are hardware or plug-in based),
+// so nothing changes.
+OSStatus CGImageSourceEnableRestrictedDecoding(void)
+{
+    return noErr;
 }

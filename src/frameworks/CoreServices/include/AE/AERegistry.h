@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2022 Darling Team
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,15 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <AuthenticationServices/NSExtension+AuthenticationServicesExtras.h>
+#ifndef __AE_AEREGISTRY_H__
+#define __AE_AEREGISTRY_H__
 
-@implementation NSExtension (AuthenticationServicesExtras)
+#include <AE/AEDataModel.h>
 
-@end
+// Descriptor types of the standard Apple event suites
+enum {
+	// a LongDateTime (CarbonCore/DateTimeUtils.h)
+	typeLongDateTime = 'ldt ',
+};
+
+#endif

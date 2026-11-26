@@ -49,9 +49,9 @@ CMTime CMTimeRangeGetEnd(CMTimeRange range);
 CMTimeRange CMTimeRangeGetUnion(CMTimeRange range, CMTimeRange otherRange) CM_SWIFT_NAME(CMTimeRangeGetUnion(_:otherRange:));
 CMTimeRange CMTimeRangeGetIntersection(CMTimeRange range, CMTimeRange otherRange) CM_SWIFT_NAME(CMTimeRangeGetIntersection(_:otherRange:));
 
-bool CMTimeRangeEqual(CMTimeRange range1, CMTimeRange range2) CM_SWIFT_NAME(CMTimeRangeEqual(_:_:));
-bool CMTimeRangeContainsTime(CMTimeRange range, CMTime time) CM_SWIFT_NAME(CMTimeRangeContainsTime(_:time:));
-bool CMTimeRangeContainsTimeRange(CMTimeRange range, CMTimeRange otherRange) CM_SWIFT_NAME(CMTimeRangeContainsTimeRange(_:otherRange:));
+Boolean CMTimeRangeEqual(CMTimeRange range1, CMTimeRange range2) CM_SWIFT_NAME(CMTimeRangeEqual(_:_:));
+Boolean CMTimeRangeContainsTime(CMTimeRange range, CMTime time) CM_SWIFT_NAME(CMTimeRangeContainsTime(_:time:));
+Boolean CMTimeRangeContainsTimeRange(CMTimeRange range, CMTimeRange otherRange) CM_SWIFT_NAME(CMTimeRangeContainsTimeRange(_:otherRange:));
 
 CMTime CMTimeClampToRange(CMTime time, CMTimeRange range) CM_SWIFT_NAME(CMTimeClampToRange(_:range:));
 

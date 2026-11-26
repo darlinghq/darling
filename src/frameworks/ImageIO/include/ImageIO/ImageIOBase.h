@@ -21,7 +21,12 @@
 #ifndef _ImageIOBase_H_
 #define _ImageIOBase_H_
 
+// C linkage for C++ callers too; ImageIO is a C API.
+#ifdef __cplusplus
+#define IMAGEIO_EXTERN extern "C"
+#else
 #define IMAGEIO_EXTERN extern
+#endif
 
 #include <CoreFoundation/CoreFoundation.h>
 

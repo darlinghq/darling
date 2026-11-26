@@ -23,6 +23,7 @@ add_framework(LaunchServices
 		LaunchServices.c
 		LaunchServices.cpp
 		LSApplicationProxy.m
+		LSBundleProxy.m
 		LSApplicationWorkspace.m
 		LSRunning.m
 		constants.c
@@ -39,6 +40,7 @@ add_framework(LaunchServices
 		cxx
 		icucore
 		system
+		bsm.0
 		CarbonCore
 		AE
 		FMDB

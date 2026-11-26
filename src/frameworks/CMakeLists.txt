@@ -73,6 +73,7 @@ if (COMPONENT_dev_gui_stubs_common)
 	add_subdirectory(CoreMedia)
 	add_subdirectory(DiskArbitration)
 	add_subdirectory(GLKit)
+	add_subdirectory(LinkPresentation)
 	add_subdirectory(NaturalLanguage)
 	add_subdirectory(PubSub)
 	add_subdirectory(ScriptingBridge)
@@ -168,13 +169,9 @@ if (COMPONENT_gui_stubs)
 endif()
 
 # Xcode also needs WebKit, even on the CLI! it may be a weak dependency (i didn't check that),
-# but what we do is we build our stub if the `webkit` component isn't enabled.
-#
-# TODO: actually build WebKit. since we *only* have the stub right now, we compile it when either
-#       component is enabled.
-
-#if (COMPONENT_dev_gui_common AND NOT COMPONENT_webkit)
-if (COMPONENT_dev_gui_common OR COMPONENT_webkit)
+# but what we do is we build our stub if the `webkit` component isn't enabled. With it,
+# the real WebKit is built (see src/external/WebKit/darling).
+if (COMPONENT_dev_gui_common AND NOT COMPONENT_webkit)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_dev_gui_common")
 
 	# stub

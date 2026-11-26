@@ -29,6 +29,7 @@ set(libm_sources
 	Source/abs.c
 	Source/sincos.c
 	Source/exp10.c
+	Source/roundeven.c
 	Source/simd_invert.c
 	Source/simd_identity.c
 	#Source/nan.c
@@ -38,6 +39,9 @@ set(libm_sources
 set_source_files_properties(Source/sincos.c PROPERTIES COMPILE_FLAGS "-fno-builtin")
 # pow(10, x) is otherwise folded into __exp10, the very function being defined
 set_source_files_properties(Source/exp10.c PROPERTIES COMPILE_FLAGS "-fno-builtin")
+# without SSE4.1 the compiler expands round() and trunc() into arithmetic that
+# depends on the rounding direction; roundeven must not
+set_source_files_properties(Source/roundeven.c PROPERTIES COMPILE_FLAGS "-fno-builtin")
 
 # The sources of the Intel slices (i386, x86_64)
 set(libm_intel_sources

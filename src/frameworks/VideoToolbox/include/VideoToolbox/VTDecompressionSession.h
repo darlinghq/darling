@@ -95,6 +95,7 @@ VT_EXPORT OSStatus VTDecompressionSessionGetMinOutputPresentationTimeStampOfFram
 	VTDecompressionSessionRef session, CMTime *minPresentationTimeStampOut);
 
 VT_EXPORT Boolean VTIsHardwareDecodeSupported(CMVideoCodecType codecType);
+VT_EXPORT Boolean VTIsStereoMVHEVCDecodeSupported(void);
 VT_EXPORT void VTRegisterSupplementalVideoDecoderIfAvailable(CMVideoCodecType codecType);
 
 CF_IMPLICIT_BRIDGING_DISABLED
