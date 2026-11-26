@@ -339,8 +339,7 @@ static dbus_bool_t append_metadata_dict(const struct mediaremoted_dbus* api, DBu
 
 	// mpris:trackid: must be a valid D-Bus object path
 	const char* trackid_key = "mpris:trackid";
-	const char* trackid_val = (state != NULL && (state->title != NULL || state->duration_us > 0)) ?
-		"/org/mpris/MediaPlayer2/Track/1" : "/org/mpris/MediaPlayer2/TrackList/NoTrack";
+	const char* trackid_val = (state != NULL && state->track_id != NULL) ? state->track_id : MR_NO_TRACK_ID;
 	DBusMessageIter entry, variant;
 	if (api->message_iter_open_container(&meta, DBUS_TYPE_DICT_ENTRY, NULL, &entry))
 	{
@@ -430,9 +429,8 @@ int _MRHostDBusEmitPropertiesChanged(const struct mediaremoted_dbus* api,
 		double rate = (state && state->rate > 0.0) ? state->rate : 1.0;
 		append_variant_double(api, &dict, "Rate", rate);
 
-		int64_t pos = state ? state->position_us : 0;
-		append_variant_int64(api, &dict, "Position", pos);
-
+		// Position is not announced: it changes all the time, and a jump of
+		// it is announced with the Seeked signal.
 		append_variant_bool(api, &dict, "CanPlay", (state && state->can_play) ? TRUE : FALSE);
 		append_variant_bool(api, &dict, "CanPause", (state && state->can_pause) ? TRUE : FALSE);
 		append_variant_bool(api, &dict, "CanGoNext", (state && state->can_go_next) ? TRUE : FALSE);
@@ -490,6 +488,101 @@ int _MRHostDBusEmitSeeked(const struct mediaremoted_dbus* api,
 	return 0;
 }
 
+static void send_reply(const struct mediaremoted_dbus* api, DBusConnection* conn, DBusMessage* reply)
+{
+	if (reply == NULL)
+		return;
+	api->connection_send(conn, reply, NULL);
+	api->connection_flush(conn);
+	api->message_unref(reply);
+}
+
+static void send_error(const struct mediaremoted_dbus* api, DBusConnection* conn, DBusMessage* msg,
+	const char* name, const char* text)
+{
+	send_reply(api, conn, api->message_new_error(msg, name, text));
+}
+
+static const char* const s_root_properties[] = {
+	"CanQuit", "CanRaise", "HasTrackList", "Identity", "DesktopEntry",
+	"SupportedUriSchemes", "SupportedMimeTypes", NULL
+};
+
+static const char* const s_player_properties[] = {
+	"PlaybackStatus", "LoopStatus", "Rate", "Shuffle", "Metadata", "Volume", "Position",
+	"MinimumRate", "MaximumRate", "CanGoNext", "CanGoPrevious", "CanPlay", "CanPause",
+	"CanSeek", "CanControl", NULL
+};
+
+// The properties that a client may write: everything else is read-only.
+static const char* const s_writable_properties[] = { "LoopStatus", "Rate", "Shuffle", "Volume", NULL };
+
+static int name_in_list(const char* const* list, const char* name)
+{
+	for (; *list != NULL; list++)
+	{
+		if (strcmp(*list, name) == 0)
+			return 1;
+	}
+	return 0;
+}
+
+// 0 if the interface is not one of ours, else 1 (and *properties is its list)
+static int interface_properties(const char* iface, const char* const** properties)
+{
+	if (strcmp(iface, MPRIS_INTERFACE) == 0)
+		*properties = s_root_properties;
+	else if (strcmp(iface, MPRIS_PLAYER_INTERFACE) == 0)
+		*properties = s_player_properties;
+	else
+		return 0;
+	return 1;
+}
+
+static void handle_properties_set(const struct mediaremoted_dbus* api,
+	DBusConnection* conn,
+	DBusMessage* msg)
+{
+	DBusMessageIter it;
+	const char* iface = NULL;
+	const char* prop = NULL;
+	const char* const* properties;
+
+	if (!api->message_iter_init(msg, &it) || api->message_iter_get_arg_type(&it) != DBUS_TYPE_STRING)
+	{
+		send_error(api, conn, msg, "org.freedesktop.DBus.Error.InvalidArgs", "Expected an interface name");
+		return;
+	}
+	api->message_iter_get_basic(&it, &iface);
+	if (!api->message_iter_next(&it) || api->message_iter_get_arg_type(&it) != DBUS_TYPE_STRING)
+	{
+		send_error(api, conn, msg, "org.freedesktop.DBus.Error.InvalidArgs", "Expected a property name");
+		return;
+	}
+	api->message_iter_get_basic(&it, &prop);
+
+	if (!interface_properties(iface, &properties))
+	{
+		send_error(api, conn, msg, "org.freedesktop.DBus.Error.UnknownInterface", "Interface not supported");
+		return;
+	}
+	if (!name_in_list(properties, prop))
+	{
+		send_error(api, conn, msg, "org.freedesktop.DBus.Error.UnknownProperty", "No such property");
+		return;
+	}
+	if (!name_in_list(s_writable_properties, prop))
+	{
+		send_error(api, conn, msg, "org.freedesktop.DBus.Error.PropertyReadOnly", "The property is read-only");
+		return;
+	}
+
+	// The writable properties (loop status, rate, shuffle and volume) have no
+	// counterpart that MediaPlayer exposes to the desktop; MPRIS lets a player
+	// ignore such writes.
+	send_reply(api, conn, api->message_new_method_return(msg));
+}
+
 static void handle_properties_get(const struct mediaremoted_dbus* api,
 	DBusConnection* conn,
 	DBusMessage* msg,
@@ -499,12 +592,31 @@ static void handle_properties_get(const struct mediaremoted_dbus* api,
 	const char* iface = NULL;
 	const char* prop = NULL;
 
+	const char* const* properties;
+
 	if (!api->message_iter_init(msg, &it) || api->message_iter_get_arg_type(&it) != DBUS_TYPE_STRING)
+	{
+		send_error(api, conn, msg, "org.freedesktop.DBus.Error.InvalidArgs", "Expected an interface name");
 		return;
+	}
 	api->message_iter_get_basic(&it, &iface);
 	if (!api->message_iter_next(&it) || api->message_iter_get_arg_type(&it) != DBUS_TYPE_STRING)
+	{
+		send_error(api, conn, msg, "org.freedesktop.DBus.Error.InvalidArgs", "Expected a property name");
 		return;
+	}
 	api->message_iter_get_basic(&it, &prop);
+
+	if (!interface_properties(iface, &properties))
+	{
+		send_error(api, conn, msg, "org.freedesktop.DBus.Error.UnknownInterface", "Interface not supported");
+		return;
+	}
+	if (!name_in_list(properties, prop))
+	{
+		send_error(api, conn, msg, "org.freedesktop.DBus.Error.UnknownProperty", "No such property");
+		return;
+	}
 
 	DBusMessage* reply = api->message_new_method_return(msg);
 	if (reply == NULL)
@@ -551,6 +663,20 @@ static void handle_properties_get(const struct mediaremoted_dbus* api,
 			const char* ps = (state && state->playback_status) ? state->playback_status : "Stopped";
 			api->message_iter_open_container(&sub, DBUS_TYPE_VARIANT, "s", &v);
 			api->message_iter_append_basic(&v, DBUS_TYPE_STRING, &ps);
+			api->message_iter_close_container(&sub, &v);
+		}
+		else if (strcmp(prop, "LoopStatus") == 0)
+		{
+			const char* loop = "None";
+			api->message_iter_open_container(&sub, DBUS_TYPE_VARIANT, "s", &v);
+			api->message_iter_append_basic(&v, DBUS_TYPE_STRING, &loop);
+			api->message_iter_close_container(&sub, &v);
+		}
+		else if (strcmp(prop, "Shuffle") == 0)
+		{
+			dbus_bool_t b = FALSE;
+			api->message_iter_open_container(&sub, DBUS_TYPE_VARIANT, "b", &v);
+			api->message_iter_append_basic(&v, DBUS_TYPE_BOOLEAN, &b);
 			api->message_iter_close_container(&sub, &v);
 		}
 		else if (strcmp(prop, "Rate") == 0)
@@ -642,6 +768,13 @@ static void handle_properties_get_all(const struct mediaremoted_dbus* api,
 		api->message_iter_get_basic(&it, &iface);
 	}
 
+	const char* const* properties;
+	if (iface != NULL && !interface_properties(iface, &properties))
+	{
+		send_error(api, conn, msg, "org.freedesktop.DBus.Error.UnknownInterface", "Interface not supported");
+		return;
+	}
+
 	DBusMessage* reply = api->message_new_method_return(msg);
 	if (reply == NULL)
 		return;
@@ -672,6 +805,8 @@ static void handle_properties_get_all(const struct mediaremoted_dbus* api,
 			int64_t pos = state ? state->position_us : 0;
 			append_variant_int64(api, &dict, "Position", pos);
 
+			append_variant_string(api, &dict, "LoopStatus", "None");
+			append_variant_bool(api, &dict, "Shuffle", FALSE);
 			append_variant_double(api, &dict, "Volume", 1.0);
 			append_variant_double(api, &dict, "MinimumRate", 1.0);
 			append_variant_double(api, &dict, "MaximumRate", 1.0);
@@ -705,6 +840,158 @@ static void handle_properties_get_all(const struct mediaremoted_dbus* api,
 	api->message_unref(reply);
 }
 
+static void handle_player_method(const struct mediaremoted_dbus* api,
+	DBusConnection* conn,
+	DBusMessage* msg,
+	const char* member,
+	const struct mr_player_state* state,
+	MRCommandCallback command_cb,
+	void* context)
+{
+	static const struct { const char* member; const char* command; } simple[] = {
+		{ "Play", "play" },
+		{ "Pause", "pause" },
+		{ "PlayPause", "togglePlayPause" },
+		{ "Stop", "stop" },
+		{ "Next", "nextTrack" },
+		{ "Previous", "previousTrack" },
+	};
+
+	for (size_t i = 0; i < sizeof(simple) / sizeof(simple[0]); i++)
+	{
+		if (strcmp(member, simple[i].member) == 0)
+		{
+			send_reply(api, conn, api->message_new_method_return(msg));
+			if (command_cb)
+				command_cb(simple[i].command, 0.0, context);
+			return;
+		}
+	}
+
+	DBusMessageIter it;
+	if (strcmp(member, "Seek") == 0)
+	{
+		int64_t offset_us = 0;
+		if (!api->message_iter_init(msg, &it) || api->message_iter_get_arg_type(&it) != DBUS_TYPE_INT64)
+		{
+			send_error(api, conn, msg, "org.freedesktop.DBus.Error.InvalidArgs", "Expected an int64 offset");
+			return;
+		}
+		api->message_iter_get_basic(&it, &offset_us);
+		send_reply(api, conn, api->message_new_method_return(msg));
+		if (command_cb)
+			command_cb("seek", (double) offset_us / 1000000.0, context);
+	}
+	else if (strcmp(member, "SetPosition") == 0)
+	{
+		const char* track_id = NULL;
+		int64_t pos_us = 0;
+		if (!api->message_iter_init(msg, &it) || api->message_iter_get_arg_type(&it) != DBUS_TYPE_OBJECT_PATH)
+		{
+			send_error(api, conn, msg, "org.freedesktop.DBus.Error.InvalidArgs", "Expected a track id and a position");
+			return;
+		}
+		api->message_iter_get_basic(&it, &track_id);
+		if (!api->message_iter_next(&it) || api->message_iter_get_arg_type(&it) != DBUS_TYPE_INT64)
+		{
+			send_error(api, conn, msg, "org.freedesktop.DBus.Error.InvalidArgs", "Expected a track id and a position");
+			return;
+		}
+		api->message_iter_get_basic(&it, &pos_us);
+		send_reply(api, conn, api->message_new_method_return(msg));
+		// A position for a track other than the current one is ignored
+		const char* current = (state != NULL && state->track_id != NULL) ? state->track_id : MR_NO_TRACK_ID;
+		if (command_cb && strcmp(track_id, current) == 0 && strcmp(current, MR_NO_TRACK_ID) != 0)
+			command_cb("setPosition", (double) pos_us / 1000000.0, context);
+	}
+	else if (strcmp(member, "OpenUri") == 0)
+	{
+		// No player here opens URIs; MPRIS allows ignoring the call
+		send_reply(api, conn, api->message_new_method_return(msg));
+	}
+	else
+	{
+		send_error(api, conn, msg, "org.freedesktop.DBus.Error.UnknownMethod",
+			"Method does not exist on org.mpris.MediaPlayer2.Player");
+	}
+}
+
+static void handle_method_call(const struct mediaremoted_dbus* api,
+	DBusConnection* conn,
+	DBusMessage* msg,
+	const struct mr_player_state* state,
+	MRCommandCallback command_cb,
+	void* context)
+{
+	const char* path = api->message_get_path(msg);
+	const char* iface = api->message_get_interface(msg);
+	const char* member = api->message_get_member(msg);
+
+	if (member == NULL)
+		return;
+
+	// libdbus does not answer these itself for messages that are popped
+	if (iface != NULL && strcmp(iface, "org.freedesktop.DBus.Peer") == 0)
+	{
+		if (strcmp(member, "Ping") == 0)
+			send_reply(api, conn, api->message_new_method_return(msg));
+		else
+			send_error(api, conn, msg, "org.freedesktop.DBus.Error.UnknownMethod", "Method does not exist");
+		return;
+	}
+
+	if (path == NULL || strcmp(path, MPRIS_PATH) != 0)
+	{
+		send_error(api, conn, msg, "org.freedesktop.DBus.Error.UnknownObject", "No such object");
+		return;
+	}
+	if (iface == NULL)
+	{
+		send_error(api, conn, msg, "org.freedesktop.DBus.Error.UnknownMethod", "An interface is required");
+		return;
+	}
+
+	if (strcmp(iface, DBUS_INTROSPECT_INTERFACE) == 0 && strcmp(member, "Introspect") == 0)
+	{
+		DBusMessage* reply = api->message_new_method_return(msg);
+		if (reply != NULL)
+		{
+			DBusMessageIter it;
+			api->message_iter_init_append(reply, &it);
+			api->message_iter_append_basic(&it, DBUS_TYPE_STRING, &s_introspection_xml);
+			send_reply(api, conn, reply);
+		}
+	}
+	else if (strcmp(iface, DBUS_PROPERTIES_INTERFACE) == 0)
+	{
+		if (strcmp(member, "Get") == 0)
+			handle_properties_get(api, conn, msg, state);
+		else if (strcmp(member, "GetAll") == 0)
+			handle_properties_get_all(api, conn, msg, state);
+		else if (strcmp(member, "Set") == 0)
+			handle_properties_set(api, conn, msg);
+		else
+			send_error(api, conn, msg, "org.freedesktop.DBus.Error.UnknownMethod", "Method does not exist");
+	}
+	else if (strcmp(iface, MPRIS_INTERFACE) == 0)
+	{
+		// Raise and Quit: CanRaise and CanQuit are false, the calls do nothing
+		if (strcmp(member, "Raise") == 0 || strcmp(member, "Quit") == 0)
+			send_reply(api, conn, api->message_new_method_return(msg));
+		else
+			send_error(api, conn, msg, "org.freedesktop.DBus.Error.UnknownMethod",
+				"Method does not exist on org.mpris.MediaPlayer2");
+	}
+	else if (strcmp(iface, MPRIS_PLAYER_INTERFACE) == 0)
+	{
+		handle_player_method(api, conn, msg, member, state, command_cb, context);
+	}
+	else
+	{
+		send_error(api, conn, msg, "org.freedesktop.DBus.Error.UnknownInterface", "Interface not supported");
+	}
+}
+
 int _MRHostDBusProcessMessages(const struct mediaremoted_dbus* api,
 	DBusConnection* conn,
 	const struct mr_player_state* state,
@@ -718,237 +1005,15 @@ int _MRHostDBusProcessMessages(const struct mediaremoted_dbus* api,
 		return 0;
 
 	api->connection_read_write(conn, 0);
-
 	while ((msg = api->connection_pop_message(conn)) != NULL)
 	{
-		const char* path = api->message_get_path(msg);
-		const char* iface = api->message_get_interface(msg);
-		const char* member = api->message_get_member(msg);
-
-		if (path != NULL && strcmp(path, MPRIS_PATH) == 0 && iface != NULL && member != NULL)
+		// Signals (such as the bus announcing our names) need no answer
+		if (api->message_get_type(msg) == DBUS_MESSAGE_TYPE_METHOD_CALL)
 		{
-			if (strcmp(iface, DBUS_INTROSPECT_INTERFACE) == 0 && strcmp(member, "Introspect") == 0)
-			{
-				DBusMessage* reply = api->message_new_method_return(msg);
-				if (reply != NULL)
-				{
-					DBusMessageIter it;
-					api->message_iter_init_append(reply, &it);
-					api->message_iter_append_basic(&it, DBUS_TYPE_STRING, &s_introspection_xml);
-					api->connection_send(conn, reply, NULL);
-					api->connection_flush(conn);
-					api->message_unref(reply);
-				}
-				processed++;
-			}
-			else if (strcmp(iface, DBUS_PROPERTIES_INTERFACE) == 0)
-			{
-				if (strcmp(member, "Get") == 0)
-				{
-					handle_properties_get(api, conn, msg, state);
-					processed++;
-				}
-				else if (strcmp(member, "GetAll") == 0)
-				{
-					handle_properties_get_all(api, conn, msg, state);
-					processed++;
-				}
-				else if (strcmp(member, "Set") == 0)
-				{
-					DBusMessage* reply = api->message_new_method_return(msg);
-					if (reply != NULL)
-					{
-						api->connection_send(conn, reply, NULL);
-						api->connection_flush(conn);
-						api->message_unref(reply);
-					}
-					processed++;
-				}
-			}
-			else if (strcmp(iface, MPRIS_INTERFACE) == 0)
-			{
-				if (strcmp(member, "Raise") == 0 || strcmp(member, "Quit") == 0)
-				{
-					DBusMessage* reply = api->message_new_method_return(msg);
-					if (reply != NULL)
-					{
-						api->connection_send(conn, reply, NULL);
-						api->connection_flush(conn);
-						api->message_unref(reply);
-					}
-					processed++;
-				}
-				else
-				{
-					DBusMessage* reply = api->message_new_error(msg,
-						"org.freedesktop.DBus.Error.UnknownMethod",
-						"Method does not exist on org.mpris.MediaPlayer2");
-					if (reply != NULL)
-					{
-						api->connection_send(conn, reply, NULL);
-						api->connection_flush(conn);
-						api->message_unref(reply);
-					}
-					processed++;
-				}
-			}
-			else if (strcmp(iface, MPRIS_PLAYER_INTERFACE) == 0)
-			{
-				if (strcmp(member, "Play") == 0)
-				{
-					DBusMessage* reply = api->message_new_method_return(msg);
-					if (reply != NULL)
-					{
-						api->connection_send(conn, reply, NULL);
-						api->connection_flush(conn);
-						api->message_unref(reply);
-					}
-					if (command_cb) command_cb("play", 0.0, context);
-					processed++;
-				}
-				else if (strcmp(member, "Pause") == 0)
-				{
-					DBusMessage* reply = api->message_new_method_return(msg);
-					if (reply != NULL)
-					{
-						api->connection_send(conn, reply, NULL);
-						api->connection_flush(conn);
-						api->message_unref(reply);
-					}
-					if (command_cb) command_cb("pause", 0.0, context);
-					processed++;
-				}
-				else if (strcmp(member, "PlayPause") == 0)
-				{
-					DBusMessage* reply = api->message_new_method_return(msg);
-					if (reply != NULL)
-					{
-						api->connection_send(conn, reply, NULL);
-						api->connection_flush(conn);
-						api->message_unref(reply);
-					}
-					if (command_cb) command_cb("togglePlayPause", 0.0, context);
-					processed++;
-				}
-				else if (strcmp(member, "Stop") == 0)
-				{
-					DBusMessage* reply = api->message_new_method_return(msg);
-					if (reply != NULL)
-					{
-						api->connection_send(conn, reply, NULL);
-						api->connection_flush(conn);
-						api->message_unref(reply);
-					}
-					if (command_cb) command_cb("stop", 0.0, context);
-					processed++;
-				}
-				else if (strcmp(member, "Next") == 0)
-				{
-					DBusMessage* reply = api->message_new_method_return(msg);
-					if (reply != NULL)
-					{
-						api->connection_send(conn, reply, NULL);
-						api->connection_flush(conn);
-						api->message_unref(reply);
-					}
-					if (command_cb) command_cb("nextTrack", 0.0, context);
-					processed++;
-				}
-				else if (strcmp(member, "Previous") == 0)
-				{
-					DBusMessage* reply = api->message_new_method_return(msg);
-					if (reply != NULL)
-					{
-						api->connection_send(conn, reply, NULL);
-						api->connection_flush(conn);
-						api->message_unref(reply);
-					}
-					if (command_cb) command_cb("previousTrack", 0.0, context);
-					processed++;
-				}
-				else if (strcmp(member, "Seek") == 0)
-				{
-					DBusMessage* reply = api->message_new_method_return(msg);
-					if (reply != NULL)
-					{
-						api->connection_send(conn, reply, NULL);
-						api->connection_flush(conn);
-						api->message_unref(reply);
-					}
-					DBusMessageIter it;
-					int64_t offset_us = 0;
-					if (api->message_iter_init(msg, &it) && api->message_iter_get_arg_type(&it) == DBUS_TYPE_INT64)
-					{
-						api->message_iter_get_basic(&it, &offset_us);
-					}
-					if (command_cb) command_cb("seek", (double)offset_us / 1000000.0, context);
-					processed++;
-				}
-				else if (strcmp(member, "SetPosition") == 0)
-				{
-					DBusMessage* reply = api->message_new_method_return(msg);
-					if (reply != NULL)
-					{
-						api->connection_send(conn, reply, NULL);
-						api->connection_flush(conn);
-						api->message_unref(reply);
-					}
-					DBusMessageIter it;
-					const char* track_id = NULL;
-					int64_t pos_us = 0;
-					if (api->message_iter_init(msg, &it) && api->message_iter_get_arg_type(&it) == DBUS_TYPE_OBJECT_PATH)
-					{
-						api->message_iter_get_basic(&it, &track_id);
-						if (api->message_iter_next(&it) && api->message_iter_get_arg_type(&it) == DBUS_TYPE_INT64)
-						{
-							api->message_iter_get_basic(&it, &pos_us);
-						}
-					}
-					if (command_cb) command_cb("setPosition", (double)pos_us / 1000000.0, context);
-					processed++;
-				}
-				else if (strcmp(member, "OpenUri") == 0)
-				{
-					DBusMessage* reply = api->message_new_method_return(msg);
-					if (reply != NULL)
-					{
-						api->connection_send(conn, reply, NULL);
-						api->connection_flush(conn);
-						api->message_unref(reply);
-					}
-					processed++;
-				}
-				else
-				{
-					DBusMessage* reply = api->message_new_error(msg,
-						"org.freedesktop.DBus.Error.UnknownMethod",
-						"Method does not exist on org.mpris.MediaPlayer2.Player");
-					if (reply != NULL)
-					{
-						api->connection_send(conn, reply, NULL);
-						api->connection_flush(conn);
-						api->message_unref(reply);
-					}
-					processed++;
-				}
-			}
-			else
-			{
-				DBusMessage* reply = api->message_new_error(msg,
-					"org.freedesktop.DBus.Error.UnknownInterface",
-					"Interface not supported");
-				if (reply != NULL)
-				{
-					api->connection_send(conn, reply, NULL);
-					api->connection_flush(conn);
-					api->message_unref(reply);
-				}
-				processed++;
-			}
+			handle_method_call(api, conn, msg, state, command_cb, context);
+			processed++;
 		}
-
 		api->message_unref(msg);
 	}
-
 	return processed;
 }

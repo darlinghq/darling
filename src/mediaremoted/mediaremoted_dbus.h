@@ -83,6 +83,7 @@ struct mr_player_state
 	const char* identity;
 	const char* desktop_entry;
 	const char* playback_status; // "Playing", "Paused", "Stopped"
+	const char* track_id; // a D-Bus object path, MR_NO_TRACK_ID if there is no track
 	double rate;
 	int64_t position_us; // current calculated position in µs
 	int64_t duration_us; // track length in µs

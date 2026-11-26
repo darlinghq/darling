@@ -26,37 +26,45 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 // Operations from client to daemon
 #define MR_OP_CHECKIN "checkin"
+// A complete snapshot of the client's now-playing state: it replaces what the
+// daemon knows (a key that is absent means the value is not set), and it
+// carries the enabled-commands mask too.
 #define MR_OP_UPDATE_STATE "update-state"
+// Only the enabled-commands mask changed.
+#define MR_OP_UPDATE_COMMANDS "update-commands"
 
 // Operations from daemon to client
 #define MR_OP_INVOKE_COMMAND "invoke-command"
 
 // Keys
 #define MR_KEY_OP "op"
-#define MR_KEY_ERR "err"
 #define MR_KEY_BUNDLE_ID "bundle-id"
 #define MR_KEY_APP_NAME "app-name"
-#define MR_KEY_PLAYBACK_STATE "playback-state" // uint64
+#define MR_KEY_PLAYBACK_STATE "playback-state" // uint64, MPNowPlayingPlaybackState
+#define MR_KEY_HAS_INFO "has-info" // bool, the client's nowPlayingInfo is not nil
+#define MR_KEY_INFO_TIMESTAMP "info-timestamp" // double, seconds since 1970 when nowPlayingInfo was set
 #define MR_KEY_TITLE "title"
 #define MR_KEY_ARTIST "artist" // string
 #define MR_KEY_ALBUM "album"
-#define MR_KEY_ALBUM_TRACK_COUNT "album-track-count" // int64
 #define MR_KEY_ALBUM_TRACK_NUMBER "album-track-number" // int64
 #define MR_KEY_COMPOSER "composer" // string
-#define MR_KEY_DISC_COUNT "disc-count" // int64
 #define MR_KEY_DISC_NUMBER "disc-number" // int64
 #define MR_KEY_GENRE "genre" // string
 #define MR_KEY_DURATION "duration" // double (seconds)
-#define MR_KEY_ELAPSED_TIME "elapsed-time" // double (seconds)
+#define MR_KEY_ELAPSED_TIME "elapsed-time" // double (seconds), valid at info-timestamp
 #define MR_KEY_RATE "rate" // double
-#define MR_KEY_ARTWORK_URL "artwork-url" // string (e.g. file:///tmp/...)
+#define MR_KEY_ARTWORK_URL "artwork-url" // string, a file: URL on the host
 #define MR_KEY_ENABLED_COMMANDS "enabled-commands" // uint64 bitmask
 
-// Command invocation keys
-#define MR_KEY_COMMAND "command" // string: "play", "pause", "togglePlayPause", "stop", "nextTrack", "previousTrack", "skipForward", "skipBackward", "changePlaybackPosition"
-#define MR_KEY_POSITION_TIME "position-time" // double (seconds)
-#define MR_KEY_OFFSET_TIME "offset-time" // double (seconds)
-#define MR_KEY_STATUS "status" // int64 (MPRemoteCommandHandlerStatus)
+// Command invocation keys. Commands: "play", "pause", "togglePlayPause",
+// "stop", "nextTrack", "previousTrack", "skipForward", "skipBackward" and
+// "changePlaybackPosition".
+#define MR_KEY_COMMAND "command" // string
+#define MR_KEY_POSITION_TIME "position-time" // double (seconds), for changePlaybackPosition
+#define MR_KEY_INTERVAL "interval" // double (seconds), for skipForward and skipBackward
+
+// The MPRIS track id that stands for "no track"
+#define MR_NO_TRACK_ID "/org/mpris/MediaPlayer2/TrackList/NoTrack"
 
 // Command bitmask flags (which commands are enabled AND have targets)
 #define MR_CMD_PLAY                      (1ULL << 0)
