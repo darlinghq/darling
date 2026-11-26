@@ -267,21 +267,16 @@ int main(int argc, char ** argv)
 	ensureGlobalPreferences();
 	ensureSharedTmpModes();
 
-	// Services that live on the host are only visible in the guest when the
-	// launcher points their guest path at the host file. Do this before the
-	// server starts, so daemons and applications see the same set of links.
-	// A host without one of these files keeps its own guest path, if any.
+	// The host's Kerberos configuration is only visible in the guest when the launcher points the guest's
+	// /private/etc/krb5.conf at it. Do this before the server starts, so daemons and applications see the
+	// same file. A host without one keeps the guest's own file, if any. (The host sockets of CUPS and the
+	// Kerberos credential cache are linked by launchd jobs at boot: the container empties /var/run when it
+	// starts, so a link made here would not survive.)
 	if (getInitProcess() == 0)
 	{
 		bool krb5ConfigLinked;
 
 		useInvokingIds();
-		launcherLinkHostSocket(prefix, "/var/run/.heim_org.h5l.kcm-socket",
-			"/var/run/.heim_org.h5l.kcm-socket");
-		launcherLinkHostSocket(prefix, "/var/run/.heim_org.h5l.kcm-socket",
-			"/private/var/run/.heim_org.h5l.kcm-socket");
-		launcherLinkHostSocket(prefix, "/run/cups/cups.sock", "/private/var/run/cupsd");
-		launcherLinkHostSocket(prefix, "/run/cups/cups.sock", "/var/run/cupsd");
 		krb5ConfigLinked = launcherLinkHostKrb5Config(prefix, getenv("KRB5_CONFIG"));
 		restoreRootIds();
 
