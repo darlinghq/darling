@@ -21,6 +21,7 @@
 #import <darling-stub-forwarding.h>
 
 NSString *const CBCentralManagerScanOptionAllowDuplicatesKey = @"kCBScanOptionAllowDuplicates";
+NSString *const CBCentralManagerOptionShowPowerAlertKey = @"kCBAdvDataOptionShowPowerAlert";
 
 @implementation CBCentralManager
 

@@ -20,6 +20,14 @@
 #import <AuthenticationServices/ASAuthorization.h>
 #import <darling-stub-forwarding.h>
 
+NSString * const ASAuthorizationScopeEmail = @"email";
+
+@interface ASWebAuthenticationSessionCallback : NSObject
+@end
+
+@implementation ASWebAuthenticationSessionCallback
+@end
+
 @implementation ASAuthorization
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

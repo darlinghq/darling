@@ -19,7 +19,10 @@ add_framework(DeviceCheck
 
     SOURCES
         src/DeviceCheck.c
+        src/DCAppAttestService.m
 
     DEPENDENCIES
         system
+        objc
+        Foundation
 )
