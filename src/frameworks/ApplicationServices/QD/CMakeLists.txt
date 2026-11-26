@@ -31,5 +31,6 @@ add_framework(QD
 	CarbonCore
 	CoreFoundation
 	CoreGraphics
+	ImageIO
         system
 )
