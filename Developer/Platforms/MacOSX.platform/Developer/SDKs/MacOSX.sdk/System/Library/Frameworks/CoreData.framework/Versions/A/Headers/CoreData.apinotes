@@ -1,0 +1,67 @@
+# Copyright (C) 2026 Lubos Dolezel
+#
+# Swift API notes for CoreData: Swift names for the methods, initializers and enumerators that darling-cocotron's
+# CoreData headers declare.
+---
+Name: CoreData
+Classes:
+- Name: NSAtomicStore
+  Methods:
+  - Selector: 'objectIDForEntity:referenceObject:'
+    SwiftName: 'objectID(for:withReferenceObject:)'
+    MethodKind: Instance
+- Name: NSEntityDescription
+  Methods:
+  - Selector: 'entityForName:inManagedObjectContext:'
+    SwiftName: 'entity(forEntityName:in:)'
+    MethodKind: Class
+  - Selector: 'insertNewObjectForEntityForName:inManagedObjectContext:'
+    SwiftName: 'insertNewObject(forEntityName:into:)'
+    MethodKind: Class
+  - Selector: 'relationshipsWithDestinationEntity:'
+    SwiftName: 'relationships(forDestination:)'
+    MethodKind: Instance
+- Name: NSManagedObjectContext
+  Methods:
+  - Selector: 'performBlockAndWait:'
+    SwiftName: 'performAndWait(_:)'
+    MethodKind: Instance
+  - Selector: 'objectRegisteredForID:'
+    SwiftName: 'registeredObject(for:)'
+    MethodKind: Instance
+  - Selector: 'refreshObject:mergeChanges:'
+    SwiftName: 'refresh(_:mergeChanges:)'
+    MethodKind: Instance
+- Name: NSManagedObjectModel
+  Methods:
+  - Selector: 'entitiesForConfiguration:'
+    SwiftName: 'entities(forConfigurationName:)'
+    MethodKind: Instance
+  - Selector: 'setEntities:forConfiguration:'
+    SwiftName: 'setEntities(_:forConfigurationName:)'
+    MethodKind: Instance
+- Name: NSPersistentStore
+  Methods:
+  - Selector: 'setMetadata:forPersistentStoreWithURL:error:'
+    SwiftName: 'setMetadata(_:forPersistentStoreAt:)'
+    MethodKind: Class
+  - Selector: 'initWithPersistentStoreCoordinator:configurationName:URL:options:'
+    SwiftName: 'init(persistentStoreCoordinator:configurationName:at:options:)'
+    MethodKind: Instance
+- Name: NSPersistentStoreCoordinator
+  Methods:
+  - Selector: 'addPersistentStoreWithType:configuration:URL:options:error:'
+    SwiftName: 'addPersistentStore(ofType:configurationName:at:options:)'
+    MethodKind: Instance
+  - Selector: 'removePersistentStore:error:'
+    SwiftName: 'remove(_:)'
+    MethodKind: Instance
+  - Selector: 'metadataForPersistentStoreOfType:URL:error:'
+    SwiftName: 'metadataForPersistentStore(ofType:at:)'
+    MethodKind: Class
+  - Selector: 'setMetadata:forPersistentStoreOfType:URL:error:'
+    SwiftName: 'setMetadata(_:forPersistentStoreOfType:at:)'
+    MethodKind: Class
+Enumerators:
+- Name: NSManagedObjectResultType
+  SwiftName: managedObjectResultType
