@@ -1109,3 +1109,7 @@ CVReturn CVPixelBufferPoolCreatePixelBufferWithAuxAttributes(
 	(*pixelBufferOut)->pool = (CVPixelBufferPoolRef) CFRetain(pixelBufferPool);
 	return kCVReturnSuccess;
 }
+
+CGColorSpaceRef CVImageBufferGetColorSpace(CVImageBufferRef imageBuffer) {
+	return (CGColorSpaceRef) CVBufferGetAttachment(imageBuffer, kCVImageBufferCGColorSpaceKey, NULL);
+}

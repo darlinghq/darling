@@ -678,3 +678,47 @@ vImage_Error vImageBoxConvolve_ARGB8888(const vImage_Buffer *src, const vImage_B
     (void)tempBuffer;
     return kvImageNoError;
 }
+
+vImage_Error vImageConvert_ARGB1555toARGB8888(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags) {
+    (void)src; (void)dest; (void)flags;
+    return kvImageNoError;
+}
+
+vImage_Error vImageConvert_ARGB8888toARGB1555(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags) {
+    (void)src; (void)dest; (void)flags;
+    return kvImageNoError;
+}
+
+vImage_Error vImageConvert_BGRA8888toRGB565(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags) {
+    (void)src; (void)dest; (void)flags;
+    return kvImageNoError;
+}
+
+vImage_Error vImageConvert_Planar4toPlanar8(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags) {
+    (void)src; (void)dest; (void)flags;
+    return kvImageNoError;
+}
+
+vImage_Error vImageConvert_RGB565toARGB8888(const vImage_Buffer *src, const vImage_Buffer *dest, uint8_t alpha, vImage_Flags flags) {
+    (void)src; (void)dest; (void)alpha; (void)flags;
+    return kvImageNoError;
+}
+
+vImage_Error vImageConvert_RGB565toBGRA8888(const vImage_Buffer *src, const vImage_Buffer *dest, uint8_t alpha, vImage_Flags flags) {
+    (void)src; (void)dest; (void)alpha; (void)flags;
+    return kvImageNoError;
+}
+
+vImage_Error vImageConvert_RGBA8888toRGB565(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags) {
+    (void)src; (void)dest; (void)flags;
+    return kvImageNoError;
+}
+
+vImage_Error vImageConvolve_ARGB8888(const vImage_Buffer *src, const vImage_Buffer *dest, void *tempBuffer,
+                                     vImagePixelCount srcOffsetToROI_X, vImagePixelCount srcOffsetToROI_Y,
+                                     const int16_t *kernel, uint32_t kernel_height, uint32_t kernel_width,
+                                     int32_t divisor, const Pixel_8888 backgroundColor, vImage_Flags flags) {
+    (void)src; (void)dest; (void)tempBuffer; (void)srcOffsetToROI_X; (void)srcOffsetToROI_Y;
+    (void)kernel; (void)kernel_height; (void)kernel_width; (void)divisor; (void)backgroundColor; (void)flags;
+    return kvImageNoError;
+}
