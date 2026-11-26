@@ -43,6 +43,7 @@
 #include <OpenGL/CGLInternal.h>
 #include <OpenGL/gl.h>
 #include <AE/AEDataModel.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include "HIToolboxInternal.h"
@@ -643,6 +644,7 @@ struct Tracking
 	ItemCount titleCount;
 	MenuRef barSelected;     // the bar menu that is open
 	bool sticky;             // the mouse was released over a title: the menus stay open
+	bool popUp;              // PopUpMenuSelect(): the menu opened where a control or the program asked
 	bool done;
 	bool chosen;
 	MenuRef chosenMenu;
@@ -959,6 +961,11 @@ static Boolean trackingFilter(EventRef event, void* info)
 // (mouseDown), or the menus were started by the keyboard.
 static void runTracking(struct Tracking* tracking, bool mouseDown, CGPoint start)
 {
+	// Where the pointer was when the first mouse event came, and whether it moved since: a click that did
+	// not move the pointer is a click, not a drag
+	CGPoint first = CGPointZero;
+	bool haveFirst = false, moved = false;
+
 	_HISendMenuEvent(kEventMenuBeginTracking, tracking->root, 0, false, false);
 	trackPoint(tracking, start);
 
@@ -985,6 +992,16 @@ static void runTracking(struct Tracking* tracking, bool mouseDown, CGPoint start
 			{
 				CGPoint point = CGPointMake(location.x, location.y);
 
+				if (kind == kEventMouseMoved || kind == kEventMouseDragged || kind == kEventMouseUp)
+				{
+					if (!haveFirst)
+					{
+						first = point;
+						haveFirst = true;
+					}
+					else if (fabs(point.x - first.x) > 3 || fabs(point.y - first.y) > 3)
+						moved = true;
+				}
 				switch (kind)
 				{
 					case kEventMouseDown:
@@ -1009,6 +1026,15 @@ static void runTracking(struct Tracking* tracking, bool mouseDown, CGPoint start
 						if (titleAtPoint(tracking, point) != (ItemCount) -1 && !tracking->sticky && mouseDown)
 						{
 							// A click on a title leaves the menu open until the next click
+							tracking->sticky = true;
+							mouseDown = false;
+						}
+						else if (tracking->popUp && mouseDown && !moved && !tracking->sticky && tracking->depth > 0 &&
+							itemAtPoint(&tracking->levels[tracking->depth - 1], point) == 0 && titleAtPoint(tracking, point) == (ItemCount) -1)
+						{
+							// A quick click on what opened a pop-up menu (the pointer is not on one of its items and
+							// did not move) leaves the menu open until the next click, as a click on the title of a
+							// menu bar menu does
 							tracking->sticky = true;
 							mouseDown = false;
 						}
@@ -1098,6 +1124,7 @@ UInt32 PopUpMenuSelect(MenuRef menu, SInt16 top, SInt16 left, SInt16 popUpItem)
 	// The pointer is where the menu was asked to appear, usually; the click that opened the pop-up has
 	// been released when the user does not hold the button, hence the first release does not choose
 	tracking.sticky = false;
+	tracking.popUp = true;
 	runTracking(&tracking, true, CGPointMake(left, top));
 	return finishTracking(&tracking, false);
 }
