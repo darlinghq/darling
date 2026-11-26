@@ -53,6 +53,14 @@ enum {
 	kControlChasingArrowsProc = 112,
 };
 
+enum {
+	// The variants of the pop-up button (Appearance) and of the System 7 pop-up menu control (1008, popupMenuProc)
+	kControlPopupFixedWidthVariant = 1 << 0,
+	kControlPopupVariableWidthVariant = 1 << 1,
+	kControlPopupUseAddResMenuVariant = 1 << 2,
+	kControlPopupUseWFontVariant = 1 << 3,
+};
+
 // Bevel buttons
 enum {
 	kControlBevelButtonSmallBevel = 0,
