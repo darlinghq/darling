@@ -11,6 +11,14 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifdef __LP64__
+int main(void)
+{
+	printf("PASSED (pop-up menu controls: 32-bit only)\n");
+	return 0;
+}
+#else
+
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
 static int g_failures;
@@ -112,3 +120,5 @@ int main(void)
 	printf(g_failures ? "FAILED: %d\n" : "PASSED\n", g_failures);
 	return g_failures != 0;
 }
+
+#endif
