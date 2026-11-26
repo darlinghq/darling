@@ -90,7 +90,7 @@ static DPSetting *Identity(NSString *key, NSString *title, NSString *help, NSStr
         section = [[DPSection alloc] init];
         section.identifier = @"keyboard";
         section.title = NSLocalizedString(@"Keyboard", nil);
-        section.note = NSLocalizedString(@"Applications read these settings when they start: a change applies to applications started afterwards.", nil);
+        section.note = NSLocalizedString(@"Applications read these settings when they start: a change applies to applications started afterwards. The key repeat, the function keys and the keyboard navigation are in the Keyboard pane of System Preferences.", nil);
         section.userSettings = @[
             Bool(@"ControlKeyActsAsCommand", kAppKit, DPScopeUser,
                  NSLocalizedString(@"Control acts as Command", nil),
