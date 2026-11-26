@@ -335,4 +335,20 @@ void DrawPicture(QDPicHandle pic, const Rect *dstRect)
 	gQDError = play((const uint8_t *) *pic, (size_t) size, dstRect, &gLastSkippedText);
 }
 
+// OpenCPicture / ClosePicture: recording of the drawing done in the current port (QDRecord.inc in QDDrawing.c).
+PicHandle OpenCPicture(const OpenCPicParams *params)
+{
+	if (!params) { gQDError = paramErr; return NULL; }
+	if (params->version != -2) { gQDError = paramErr; return NULL; }   // the extended version 2 header is the only form
+	return (PicHandle) QDRecordOpen(&params->srcRect, params->hRes, params->vRes, params->version);
+}
+
+void ClosePicture(void)
+{
+	QDRecordClose();
+}
+
+// Count of drawing operations (text, regions, ...) left out of the last or current picture.
+unsigned QDPictureUnrecordedOps(void) { return QDRecordUnrecordedOps(); }
+
 #endif /* !__LP64__ */

@@ -233,13 +233,13 @@ void PenMode(short mode)
 void PenPat(const QDPattern *pat)
 {
 	struct QDPort *p = current();
-	if (p && pat) p->penPat = *pat;
+	if (p && pat) { p->penPat = *pat; QDRecordPenPat(p, pat); }
 }
 
 void BackPat(const QDPattern *pat)
 {
 	struct QDPort *p = current();
-	if (p && pat) p->bkPat = *pat;
+	if (p && pat) { p->bkPat = *pat; QDRecordUnrecorded(p); }   // BkPat is not recorded
 }
 
 void HidePen(void) { struct QDPort *p = current(); if (p) p->penVis--; }
@@ -261,8 +261,8 @@ void SetPenState(const QDPenState *s)
 	p->penLoc = s->pnLoc; p->penSize = s->pnSize; p->penMode = s->pnMode; p->penPat = s->pnPat;
 }
 
-void RGBForeColor(const RGBColor *c) { struct QDPort *p = current(); if (p && c) p->fgColor = *c; }
-void RGBBackColor(const RGBColor *c) { struct QDPort *p = current(); if (p && c) p->bkColor = *c; }
+void RGBForeColor(const RGBColor *c) { struct QDPort *p = current(); if (p && c) { p->fgColor = *c; QDRecordColor(p, true, c); } }
+void RGBBackColor(const RGBColor *c) { struct QDPort *p = current(); if (p && c) { p->bkColor = *c; QDRecordColor(p, false, c); } }
 void GetForeColor(RGBColor *c) { struct QDPort *p = current(); if (p && c) *c = p->fgColor; }
 void GetBackColor(RGBColor *c) { struct QDPort *p = current(); if (p && c) *c = p->bkColor; }
 
@@ -281,8 +281,8 @@ static RGBColor classic(long color)
 	}
 }
 
-void ForeColor(long color) { struct QDPort *p = current(); if (p) p->fgColor = classic(color); }
-void BackColor(long color) { struct QDPort *p = current(); if (p) p->bkColor = classic(color); }
+void ForeColor(long color) { struct QDPort *p = current(); if (p) { p->fgColor = classic(color); QDRecordColor(p, true, &p->fgColor); } }
+void BackColor(long color) { struct QDPort *p = current(); if (p) { p->bkColor = classic(color); QDRecordColor(p, false, &p->bkColor); } }
 
 // ---------------------------------------------------------------- text state
 
@@ -301,6 +301,7 @@ void ClipRect(const Rect *r)
 {
 	struct QDPort *p = current();
 	if (!p || !r) return;
+	QDRecordUnrecorded(p);   // clip changes are not recorded
 	if (p->clipRgn == NULL)
 		p->clipRgn = NewRgn();
 	RectRgn(p->clipRgn, r);
@@ -312,6 +313,7 @@ void SetClip(RgnHandle rgn)
 {
 	struct QDPort *p = current();
 	if (!p || !rgn) return;
+	QDRecordUnrecorded(p);
 	if (p->clipRgn == NULL)
 		p->clipRgn = NewRgn();
 	CopyRgn(rgn, p->clipRgn);
@@ -336,20 +338,21 @@ void GetClip(RgnHandle rgn)
 
 // ---------------------------------------------------------------- shapes
 
-void PaintRect(const Rect *r) { struct QDPort *p = current(); if (p && p->penVis >= 0) fill_rect(p, r, &p->penPat, p->penMode, p->fgColor, p->bkColor); }
-void EraseRect(const Rect *r) { struct QDPort *p = current(); if (p) fill_rect(p, r, &p->bkPat, kPatCopy, p->fgColor, p->bkColor); }
-void InvertRect(const Rect *r) { struct QDPort *p = current(); if (p) fill_rect(p, r, &kBlack, kPatXor, p->fgColor, p->bkColor); }
-void FillRect(const Rect *r, const QDPattern *pat) { struct QDPort *p = current(); if (p && pat) fill_rect(p, r, pat, kPatCopy, p->fgColor, p->bkColor); }
+void PaintRect(const Rect *r) { struct QDPort *p = current(); QDRecordRect(p, 0x31, r, NULL); if (p && p->penVis >= 0) fill_rect(p, r, &p->penPat, p->penMode, p->fgColor, p->bkColor); }
+void EraseRect(const Rect *r) { struct QDPort *p = current(); QDRecordRect(p, 0x32, r, NULL); if (p) fill_rect(p, r, &p->bkPat, kPatCopy, p->fgColor, p->bkColor); }
+void InvertRect(const Rect *r) { struct QDPort *p = current(); QDRecordRect(p, 0x33, r, NULL); if (p) fill_rect(p, r, &kBlack, kPatXor, p->fgColor, p->bkColor); }
+void FillRect(const Rect *r, const QDPattern *pat) { struct QDPort *p = current(); QDRecordRect(p, 0x34, r, pat); if (p && pat) fill_rect(p, r, pat, kPatCopy, p->fgColor, p->bkColor); }
 
 // The frame lies inside the rectangle, pen width on the sides and pen height on top and bottom.
 void FrameRect(const Rect *r)
 {
 	struct QDPort *p = current();
+	QDRecordRect(p, 0x30, r, NULL);
 	if (!p || !r || p->penVis < 0 || r->right <= r->left || r->bottom <= r->top) return;
 	short pw = p->penSize.h, ph = p->penSize.v;
 	if (pw <= 0 || ph <= 0) return;
 	if (r->right - r->left <= 2 * pw || r->bottom - r->top <= 2 * ph) {
-		PaintRect(r);
+		fill_rect(p, r, &p->penPat, p->penMode, p->fgColor, p->bkColor);
 		return;
 	}
 	Rect side;
@@ -368,6 +371,7 @@ void LineTo(short h, short v)
 	struct QDPort *p = current();
 	if (!p) return;
 	int x0 = p->penLoc.h, y0 = p->penLoc.v, x1 = h, y1 = v;
+	{ Point from = {(short) y0, (short) x0}, to = {v, h}; QDRecordLine(p, from, to); }
 	p->penLoc.h = h;
 	p->penLoc.v = v;
 	if (p->penVis < 0 || p->penSize.h <= 0 || p->penSize.v <= 0) return;
@@ -389,6 +393,7 @@ void FillRgn(RgnHandle rgn, const QDPattern *pat)
 {
 	struct QDPort *p = current();
 	if (!p || !rgn || !pat) return;
+	QDRecordUnrecorded(p);   // regions are not recorded (PaintRgn, EraseRgn come here)
 	Rect b, area;
 	GetRegionBounds(rgn, &b);
 	if (!SectRect(&b, &p->pixMap.bounds, &area)) return;
@@ -417,6 +422,7 @@ void ScrollRect(const Rect *r, short dh, short dv, RgnHandle updateRgn)
 	struct QDPort *p = current();
 	if (updateRgn) SetEmptyRgn(updateRgn);
 	if (!p || !r) return;
+	QDRecordUnrecorded(p);
 	Rect area;
 	if (!SectRect(r, &p->pixMap.bounds, &area)) return;
 	int w = area.right - area.left, h = area.bottom - area.top, bpp = p->pixMap.pixelSize / 8;
@@ -462,6 +468,7 @@ void SetCPixel(short h, short v, const RGBColor *c)
 {
 	struct QDPort *p = current();
 	if (!p || !c) return;
+	QDRecordUnrecorded(p);
 	uint8_t *a = pixel_at(p, h, v);
 	if (a && clipped_in(p, h, v)) store(p, a, *c);
 }
@@ -531,6 +538,7 @@ void FillCRect(const Rect *r, QDPixPatHandle pp)
 {
 	struct QDPort *p = current();
 	if (!p || !pp || !*pp || !(*pp)->solid) { gQDError = paramErr; return; }
+	QDRecordUnrecorded(p);
 	fill_rect(p, r, &kBlack, kPatCopy, (*pp)->color, p->bkColor);
 }
 
@@ -629,6 +637,7 @@ void CopyBits(const BitMap *srcBits, const BitMap *dstBits, const Rect *srcRect,
 		return;
 	}
 	gQDError = noErr;
+	QDRecordCopyBits(s, d, srcRect, dstRect, mode);
 	int sw = srcRect->right - srcRect->left, sh = srcRect->bottom - srcRect->top;
 	int dw = dstRect->right - dstRect->left, dh = dstRect->bottom - dstRect->top;
 	if (sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) return;
@@ -703,6 +712,13 @@ GWorldFlags UpdateGWorld(GWorldPtr *world, short depth, const Rect *bounds, CTab
 	*world = fresh;
 	gQDError = noErr;
 	return kReallocPix;
+}
+
+#include "QDRecord.inc"
+
+void QDRecordCopyBits(struct QDPort *s, struct QDPort *d, const Rect *src, const Rect *dst, short mode)
+{
+	if (recording(d) && s && src && dst) rec_copybits(s, src, dst, mode);
 }
 
 #endif /* !__LP64__ */
