@@ -480,3 +480,6 @@
 	path = src/external/WebKit
 	url = ../darling-webkit.git
 	branch = master
+[submodule "src/external/brotli"]
+	path = src/external/brotli
+	url = ../brotli.git
