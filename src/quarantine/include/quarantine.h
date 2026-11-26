@@ -86,6 +86,7 @@ typedef struct _qtn_proc_t* qtn_proc_t;
 // types are inferred from how callers use them, not from a published prototype.
 extern qtn_proc_t _qtn_proc_alloc(void);
 extern void _qtn_proc_free(qtn_proc_t proc);
+extern void _qtn_proc_init(qtn_proc_t proc);
 extern int _qtn_proc_init_with_self(qtn_proc_t proc);
 extern int _qtn_proc_init_with_data(qtn_proc_t proc, void* data, size_t data_len);
 extern int _qtn_proc_set_identifier(qtn_proc_t proc, const char* ident);

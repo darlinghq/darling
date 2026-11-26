@@ -81,21 +81,29 @@ struct HandlerCall
 // The standard handlers of the event dispatcher target. They are the oldest handlers, so every
 // handler an application installs sees an event before them. They cannot be removed.
 extern OSStatus _HIStandardRawEventHandler(EventHandlerCallRef call, EventRef event, void* userData);
+// The standard handler of the events of the windows: the events for a window go to the window's own
+// handlers (MacWindows.c). Behind the raw one, so every handler of the application sees an event before them.
+extern OSStatus _HIStandardWindowEventHandler(EventHandlerCallRef call, EventRef event, void* userData);
+extern const EventTypeSpec _HIStandardWindowEventTypes[];
+static struct EventHandlerEntry g_standardWindowEventHandler = {
+	NULL, NULL, _HIStandardWindowEventHandler, NULL, (EventTypeSpec*) _HIStandardWindowEventTypes, kHIStandardWindowEventTypeCount, false
+};
 static EventTypeSpec g_standardRawEventTypes[1] = { { kHIEventClassRaw, kHIEventRawSystemDefined } };
 static struct EventHandlerEntry g_standardRawEventHandler = {
-	NULL, NULL, _HIStandardRawEventHandler, NULL, g_standardRawEventTypes, 1, false
+	&g_standardWindowEventHandler, NULL, _HIStandardRawEventHandler, NULL, g_standardRawEventTypes, 1, false
 };
 
 // The standard handler of the application target: the quit command ends the application event loop, and
 // the menu bar's key equivalents and mouse clicks are handled
-static EventTypeSpec g_standardApplicationTypes[4] = {
+static EventTypeSpec g_standardApplicationTypes[5] = {
 	{ kEventClassCommand, kEventCommandProcess },
+	{ kEventClassCommand, kEventCommandUpdateStatus },
 	{ kEventClassKeyboard, kEventRawKeyDown },
 	{ kEventClassKeyboard, kEventRawKeyRepeat },
 	{ kEventClassMouse, kEventMouseDown },
 };
 static struct EventHandlerEntry g_standardApplicationHandler = {
-	NULL, NULL, _HIStandardApplicationHandler, NULL, g_standardApplicationTypes, 4, false
+	NULL, NULL, _HIStandardApplicationHandler, NULL, g_standardApplicationTypes, 5, false
 };
 
 static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -105,6 +113,8 @@ static struct EventTarget g_dispatcherTarget = { &g_standardRawEventHandler, &g_
 static struct EventTarget g_monitorTarget = { NULL, NULL, NULL };
 // The targets of the objects of the frameworks (menus, ...), see _HICreateEventTarget()
 static struct EventTarget* g_createdTargets;
+// Targets destroyed while a dispatch was running (it may stand on them), freed when it is over
+static struct EventTarget* g_destroyedTargets;
 
 // Handlers removed while an event is being dispatched stay allocated (a dispatch may still
 // hold a pointer to them) and are freed when no dispatch is running.
@@ -586,6 +596,15 @@ EventTargetRef _HICreateEventTarget(EventTargetRef next)
 	return target;
 }
 
+void _HISetEventTargetNext(EventTargetRef inTarget, EventTargetRef next)
+{
+	struct EventTarget* target = inTarget;
+
+	pthread_mutex_lock(&g_lock);
+	target->next = next ? next : (struct EventTarget*) GetApplicationEventTarget();
+	pthread_mutex_unlock(&g_lock);
+}
+
 void _HIDestroyEventTarget(EventTargetRef inTarget)
 {
 	struct EventTarget* target = inTarget;
@@ -616,9 +635,14 @@ void _HIDestroyEventTarget(EventTargetRef inTarget)
 			freeHandler(handler);
 		handler = following;
 	}
-	// A dispatch may still be standing on the target
+	// A dispatch may still be standing on the target (a window disposes of itself from its own handler)
 	if (g_dispatchDepth == 0)
 		free(target);
+	else
+	{
+		target->nextCreated = g_destroyedTargets;
+		g_destroyedTargets = target;
+	}
 	pthread_mutex_unlock(&g_lock);
 }
 
@@ -893,6 +917,12 @@ static void endDispatch(void)
 			struct EventHandlerEntry* handler = g_removedHandlers;
 			g_removedHandlers = (struct EventHandlerEntry*) handler->target;
 			freeHandler(handler);
+		}
+		while (g_destroyedTargets)
+		{
+			struct EventTarget* target = g_destroyedTargets;
+			g_destroyedTargets = target->nextCreated;
+			free(target);
 		}
 	}
 	pthread_mutex_unlock(&g_lock);

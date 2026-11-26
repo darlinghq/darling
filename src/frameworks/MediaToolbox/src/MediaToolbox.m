@@ -9455,30 +9455,6 @@ void* IsReferenceMovie(void)
     return NULL;
 }
 
-void* MTAudioProcessingTapCreate(void)
-{
-    if (verbose) puts("STUB: MTAudioProcessingTapCreate called");
-    return NULL;
-}
-
-void* MTAudioProcessingTapGetSourceAudio(void)
-{
-    if (verbose) puts("STUB: MTAudioProcessingTapGetSourceAudio called");
-    return NULL;
-}
-
-void* MTAudioProcessingTapGetStorage(void)
-{
-    if (verbose) puts("STUB: MTAudioProcessingTapGetStorage called");
-    return NULL;
-}
-
-void* MTAudioProcessingTapGetTypeID(void)
-{
-    if (verbose) puts("STUB: MTAudioProcessingTapGetTypeID called");
-    return NULL;
-}
-
 void* MTCapabilityIsAvailable(void)
 {
     if (verbose) puts("STUB: MTCapabilityIsAvailable called");

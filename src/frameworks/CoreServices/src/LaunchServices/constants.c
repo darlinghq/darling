@@ -7,6 +7,11 @@ const CFStringRef _kLSArchitecturei386Value = CFSTR("i386");
 const CFStringRef _kLSArchitecturex86_64Value = CFSTR("x86_64");
 const CFStringRef _kLSArchitectureUnknownValue = CFSTR("unknown");
 
+// The key of an application's option not to be relaunched at the next login.
+// The string was read from the exported constant on macOS 26.7.3 (black-box
+// observation).
+const CFStringRef _kLSPersistenceSuppressRelaunchAtLoginKey = CFSTR("LSPersistenceSuppressRelaunchAtLogin");
+
 const CFStringRef _kLSOpenOptionBackgroundLaunchKey = CFSTR("_kLSOpenOptionBackgroundLaunchKey");
 
 const CFStringRef _kLSPIDKey = CFSTR("LSPID");

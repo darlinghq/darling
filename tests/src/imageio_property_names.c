@@ -60,6 +60,12 @@ int main(void) {
     CHECK_NAME(kCGImageAuxiliaryDataTypeISOGainMap, "kCGImageAuxiliaryDataTypeISOGainMap");
     CHECK_NAME(kCGImageAuxiliaryDataInfoData, "kCGImageAuxiliaryDataInfoData");
     CHECK_NAME(kCGImageAuxiliaryDataInfoDataDescription, "kCGImageAuxiliaryDataInfoDataDescription");
+    // not read on macOS: the TIFF and Exif tag names, and the WebP dictionary
+    // named like the other format dictionaries
+    CHECK_NAME(kCGImagePropertyTIFFResolutionUnit, "ResolutionUnit");
+    CHECK_NAME(kCGImagePropertyExifPixelXDimension, "PixelXDimension");
+    CHECK_NAME(kCGImagePropertyExifPixelYDimension, "PixelYDimension");
+    CHECK_NAME(kCGImagePropertyWebPDictionary, "{WebP}");
     if (failures == 0)
         printf("PASS: ImageIO names\n");
     return failures ? 1 : 0;

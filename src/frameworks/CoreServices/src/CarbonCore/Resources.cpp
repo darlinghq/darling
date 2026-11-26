@@ -20,6 +20,8 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CarbonCore/Resources.h>
 #include <CoreServices/FileManager.h>
 #include <CoreFoundation/CFString.h>
+#include <CoreFoundation/CFBundle.h>
+#include <CoreFoundation/CFURL.h>
 #include <climits>
 #include <cerrno>
 #include <cstring>
@@ -29,6 +31,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <unordered_map>
 #include <mutex>
+#include <atomic>
 #include <limits>
 #include <set>
 #include <algorithm>
@@ -52,6 +55,75 @@ static OSErr g_lastError = noErr;
 
 static void clearCaches();
 
+// The resource file of an application bundle: the Resource Manager has it open, and current, from the start (an
+// application does not open its own 'name.rsrc' of the Resources directory). It is named after the executable, or
+// after the bundle's name. Opened when the first call that reads resources is made; a program that is not in a
+// bundle, or whose bundle has no such file, starts with no resource file open.
+static std::mutex g_appResourceFileLock;
+static std::atomic<bool> g_appResourceFileDone;
+static thread_local bool g_openingAppResourceFile;
+
+static void openAppResourceFile()
+{
+	CFBundleRef main = CFBundleGetMainBundle();
+	CFURLRef directory = main ? CFBundleCopyResourcesDirectoryURL(main) : nullptr;
+
+	if (!directory)
+		return;
+
+	static const CFStringRef keys[] = { CFSTR("CFBundleExecutable"), CFSTR("CFBundleName") };
+
+	for (CFStringRef key : keys)
+	{
+		CFTypeRef value = CFBundleGetValueForInfoDictionaryKey(main, key);
+
+		if (!value || CFGetTypeID(value) != CFStringGetTypeID() || CFStringGetLength((CFStringRef) value) == 0)
+			continue;
+
+		CFStringRef fileName = CFStringCreateWithFormat(nullptr, nullptr, CFSTR("%@.rsrc"), value);
+		CFURLRef url = CFURLCreateCopyAppendingPathComponent(nullptr, directory, fileName, false);
+		char path[PATH_MAX];
+		FSRef ref;
+		struct stat st;
+		bool opened = false;
+
+		if (url && CFURLGetFileSystemRepresentation(url, true, (UInt8*) path, sizeof(path)) && stat(path, &st) == 0 &&
+			S_ISREG(st.st_mode) && FSPathMakeRef((const UInt8*) path, &ref, nullptr) == noErr)
+		{
+			ResFileRefNum refNum = FSOpenResFile(&ref, fsRdPerm);
+
+			if (refNum != kResFileNotOpened)
+			{
+				UseResFile(refNum);
+				opened = true;
+			}
+		}
+		if (url)
+			CFRelease(url);
+		CFRelease(fileName);
+		if (opened)
+			break;
+	}
+	CFRelease(directory);
+}
+
+static void ensureAppResourceFile()
+{
+	// (the opening itself uses the calls that come here)
+	if (g_appResourceFileDone || g_openingAppResourceFile)
+		return;
+
+	std::unique_lock<std::mutex> l(g_appResourceFileLock);
+
+	if (!g_appResourceFileDone)
+	{
+		g_openingAppResourceFile = true;
+		openAppResourceFile();
+		g_openingAppResourceFile = false;
+		g_appResourceFileDone = true;
+	}
+}
+
 ResFileRefNum FSOpenResFile(const FSRef* ref, SInt8 permissions)
 {
 	HFSUniStr255 forkName;
@@ -68,6 +140,7 @@ ResFileRefNum FSOpenResFile(const FSRef* ref, SInt8 permissions)
 // Should return eofErr if given fork doesn't exist / is empty
 OSErr FSOpenResourceFile(const FSRef* ref, UniCharCount forkNameLength, const UniChar* forkName, SInt8 permissions, ResFileRefNum* refNum)
 {
+	ensureAppResourceFile();
 	bool resourceFork = false;
 
 	if (forkNameLength != 0)
@@ -260,6 +333,7 @@ ResFileRefNum HomeResFile(Handle resource)
 
 ResFileRefNum CurResFile(void)
 {
+	ensureAppResourceFile();
 	return g_currentResFile;
 }
 
@@ -326,6 +400,7 @@ static std::set<ResType>& allTypes()
 
 ResourceCount CountTypes(void)
 {
+	ensureAppResourceFile();
 	std::unique_lock<std::mutex> l(g_resourcesLock);
 	std::set<ResType>& resTypes = allTypes();
 
@@ -334,6 +409,7 @@ ResourceCount CountTypes(void)
 
 ResourceCount Count1Types(void)
 {
+	ensureAppResourceFile();
 	std::unique_lock<std::mutex> l(g_resourcesLock);
 
 	if (!g_currentResources)
@@ -569,6 +645,7 @@ static std::unordered_map<std::string,Resources::ResourceData*>& resourcesOfType
 
 ResourceCount CountResources(ResType type)
 {
+	ensureAppResourceFile();
 	std::unique_lock<std::mutex> l(g_resourcesLock);
 	auto& allRes = resourcesOfType(type);
 
@@ -577,6 +654,7 @@ ResourceCount CountResources(ResType type)
 
 ResourceCount Count1Resources(ResType type)
 {
+	ensureAppResourceFile();
 	std::unique_lock<std::mutex> l(g_resourcesLock);
 	
 	if (!g_currentResources)
@@ -596,6 +674,7 @@ ResourceCount Count1Resources(ResType type)
 
 Handle GetIndResource(ResType type, ResourceIndex index)
 {
+	ensureAppResourceFile();
 	std::unique_lock<std::mutex> l(g_resourcesLock);
 	auto& allRes = resourcesOfType(type);
 
@@ -610,6 +689,7 @@ Handle GetIndResource(ResType type, ResourceIndex index)
 
 Handle Get1IndResource(ResType type, ResourceIndex index)
 {
+	ensureAppResourceFile();
 	std::unique_lock<std::mutex> l(g_resourcesLock);
 
 	if (!g_currentResources)
@@ -638,6 +718,7 @@ Handle Get1IndResource(ResType type, ResourceIndex index)
 
 Handle GetResource(ResType type, ResID resId)
 {
+	ensureAppResourceFile();
 	std::unique_lock<std::mutex> l(g_resourcesLock);
 	auto& allRes = resourcesOfTypeMap(type);
 
@@ -653,6 +734,7 @@ Handle GetResource(ResType type, ResID resId)
 
 Handle Get1Resource(ResType type, ResID resId)
 {
+	ensureAppResourceFile();
 	std::unique_lock<std::mutex> l(g_resourcesLock);
 
 	if (!g_currentResources)
@@ -680,6 +762,7 @@ Handle Get1Resource(ResType type, ResID resId)
 
 Handle GetNamedResource(ResType type, ConstStr255Param name)
 {
+	ensureAppResourceFile();
 	std::unique_lock<std::mutex> l(g_resourcesLock);
 	auto& allRes = resourcesOfTypeNameMap(type);
 
@@ -697,6 +780,7 @@ Handle GetNamedResource(ResType type, ConstStr255Param name)
 
 Handle Get1NamedResource(ResType type, ConstStr255Param name)
 {
+	ensureAppResourceFile();
 	std::unique_lock<std::mutex> l(g_resourcesLock);
 
 	if (!g_currentResources)

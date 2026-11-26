@@ -145,4 +145,7 @@ add_framework(UIFoundation
         Foundation
         CoreFoundation
         CoreGraphics
+        # as on macOS, where UIFoundation links it (so every AppKit process has its NSLocale
+        # extensions, which WebKit uses)
+        InternationalSupport
 )

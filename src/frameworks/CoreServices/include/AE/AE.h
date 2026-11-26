@@ -3,6 +3,7 @@
 
 #include <AE/AEDataModel.h>
 #include <AE/AppleEvents.h>
+#include <AE/AERegistry.h>
 #include <stdarg.h>
 
 #ifdef __cplusplus

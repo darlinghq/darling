@@ -66,12 +66,15 @@ const char kSBXProfileNoWriteExceptTemporary[] = "no_write_except_temporary";
 
 const char kSBXProfilePureComputation[] = "pure_computation";
 
-const char APP_SANDBOX_IOKIT_CLIENT[] = "com.apple.app-sandbox.iokit-client";
-const char APP_SANDBOX_MACH[] = "com.apple.app-sandbox.mach";
-const char APP_SANDBOX_READ[] = "com.apple.app-sandbox.read";
-const char APP_SANDBOX_READ_WRITE[] = "com.apple.app-sandbox.read-write";
-const char IOS_SANDBOX_APPLICATION_GROUP[] = "com.apple.sandbox.application-group";
-const char IOS_SANDBOX_CONTAINER[] = "com.apple.sandbox.container";
+// The extension classes are pointers to the names, not arrays (callers declare
+// them as const char *const; observed on macOS 26.7.3, test:
+// tests/sandbox-extension-classes.c).
+const char *const APP_SANDBOX_IOKIT_CLIENT = "com.apple.app-sandbox.iokit-client";
+const char *const APP_SANDBOX_MACH = "com.apple.app-sandbox.mach";
+const char *const APP_SANDBOX_READ = "com.apple.app-sandbox.read";
+const char *const APP_SANDBOX_READ_WRITE = "com.apple.app-sandbox.read-write";
+const char *const IOS_SANDBOX_APPLICATION_GROUP = "com.apple.sandbox.application-group";
+const char *const IOS_SANDBOX_CONTAINER = "com.apple.sandbox.container";
 
 // Assuming these are 64-bit only because at least one has a value
 // that can't be stored in a 32-bit integer.
@@ -85,6 +88,14 @@ const uint64_t SANDBOX_EXTENSION_PREFIXMATCH = 0x0000000200000004;
 const uint64_t SANDBOX_EXTENSION_UNRESOLVED = 0x0000000100000001;
 
 #endif
+
+// A sandbox extension issued because the user chose the item. The value was
+// read from the exported constant on macOS 26.7.3 (black-box observation).
+const uint32_t SANDBOX_EXTENSION_USER_INTENT = 0x4000;
+
+// Identifies this build of the sandbox library, so that profiles compiled by
+// one build are not used with another (WebKit keys its cache of them on it).
+const char *const SANDBOX_BUILD_ID = "Darling";
 
 void sandbox_free_error(char *errorbuf)
 {

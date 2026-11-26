@@ -1,6 +1,7 @@
 #ifndef _CS_DEBUGGING_H
 #define _CS_DEBUGGING_H
 #include <CoreServices/MacTypes.h>
+#include <AssertMacros.h>
 
 #ifdef __cplusplus
 extern "C" {

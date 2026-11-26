@@ -95,12 +95,6 @@ void* DisposeCanCalibrateUPP(void)
     return NULL;
 }
 
-void* DisposeNColorChangedUPP(void)
-{
-    if (verbose) puts("STUB: DisposeNColorChangedUPP called");
-    return NULL;
-}
-
 void* FCAddCollection(void)
 {
     if (verbose) puts("STUB: FCAddCollection called");
@@ -197,21 +191,9 @@ void* InvokeCanCalibrateUPP(void)
     return NULL;
 }
 
-void* InvokeNColorChangedUPP(void)
-{
-    if (verbose) puts("STUB: InvokeNColorChangedUPP called");
-    return NULL;
-}
-
 void* LoadNSTypographyBundle(void)
 {
     if (verbose) puts("STUB: LoadNSTypographyBundle called");
-    return NULL;
-}
-
-void* NPickColor(void)
-{
-    if (verbose) puts("STUB: NPickColor called");
     return NULL;
 }
 
@@ -230,12 +212,6 @@ void* NewCalibrateUPP(void)
 void* NewCanCalibrateUPP(void)
 {
     if (verbose) puts("STUB: NewCanCalibrateUPP called");
-    return NULL;
-}
-
-void* NewNColorChangedUPP(void)
-{
-    if (verbose) puts("STUB: NewNColorChangedUPP called");
     return NULL;
 }
 
@@ -262,3 +238,32 @@ void* _SoftLinkingLoadBundleFromLocation(void)
     if (verbose) puts("STUB: _SoftLinkingLoadBundleFromLocation called");
     return NULL;
 }
+
+#ifndef __LP64__
+// There is no colour panel of the Carbon API to show yet: the picker is dismissed at once, as when the user
+// cancels it, so the colour of the caller stays as it was.
+OSErr NPickColor(NColorPickerInfo* theColorInfo)
+{
+    if (theColorInfo == NULL)
+        return paramErr;
+    theColorInfo->newColorChosen = false;
+    return noErr;
+}
+
+#undef NewNColorChangedUPP
+#undef DisposeNColorChangedUPP
+#undef InvokeNColorChangedUPP
+NColorChangedUPP NewNColorChangedUPP(NColorChangedProcPtr userRoutine)
+{
+    return userRoutine;
+}
+
+void DisposeNColorChangedUPP(NColorChangedUPP userUPP)
+{
+}
+
+void InvokeNColorChangedUPP(SRefCon userData, NPMColor* newColor, NColorChangedUPP userUPP)
+{
+    (*userUPP)(userData, newColor);
+}
+#endif

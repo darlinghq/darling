@@ -17,11 +17,5 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
-#import <AppKit/AppKitIvarLayout.h>
-
-@interface NSTextAlternatives : NSObject {
-    NS_LEGACY_IVAR_PAD(_NSTextAlternativesReserved, 12)
-}
-
-@end
+// The class is AppKit's public one; UIFoundation implements it.
+#import <AppKit/NSTextAlternatives.h>
