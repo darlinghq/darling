@@ -1418,6 +1418,12 @@ OSStatus _HISendMenuEvent(UInt32 kind, MenuRef menu, MenuItemIndex item, bool fo
 
 static void populateWindowMenu(MenuRef menu);
 
+void _HIMenuMakeWindowMenu(MenuRef menu)
+{
+	if (isMenu(menu))
+		menu->isWindowMenu = true;
+}
+
 // Brings the items of the menu up to date: handlers of kEventMenuEnableItems do it; without one,
 // every item with a command gets an update status command event. Items of a menu with
 // kMenuAttrAutoDisable that no handler answers for are disabled.
@@ -1664,26 +1670,32 @@ OSStatus CreateStandardWindowMenu(OptionBits inOptions, MenuRef* outMenu)
 // that is active has a check mark and a minimized one a diamond.
 static void populateWindowMenu(MenuRef menu)
 {
-	MenuItemIndex first = 0, last = 0;
+	MenuItemIndex first = 0;
 
+	// The list of the last time goes (its items have the window list property)
+	for (MenuItemIndex i = menu->count; i >= 1; i--)
+	{
+		if (findProperty(itemAt(menu, i), 'dlng', 'wlst'))
+			DeleteMenuItem(menu, i);
+	}
+	// It goes after the list marker of the standard menu, else at the end of the menu
 	for (MenuItemIndex i = 1; i <= menu->count; i++)
 	{
 		if (itemAt(menu, i)->command == kHICommandWindowListSeparator)
 			first = i;
-		else if (itemAt(menu, i)->command == kHICommandWindowListTerminator)
-			last = i;
 	}
-	if (!first || last <= first)
-		return;
-	if (last > first + 1)
-		DeleteMenuItems(menu, first + 1, last - first - 1);
 
 	WindowRef* windows;
 	ItemCount count = _HICopyWindowList(&windows);
-	ItemCount position = first;
+	ItemCount position = first ? first : menu->count;
 
 	if (count)
-		insertItem(menu, position++, CFSTR("-"), kMenuItemAttrSeparator, 0, NULL);
+	{
+		MenuItemIndex separator;
+
+		if (insertItem(menu, position++, CFSTR("-"), kMenuItemAttrSeparator, 0, &separator) == noErr)
+			SetMenuItemProperty(menu, separator, 'dlng', 'wlst', 0, NULL);
+	}
 	for (ItemCount i = 0; i < count; i++)
 	{
 		CFStringRef title = NULL;
@@ -1693,6 +1705,7 @@ static void populateWindowMenu(MenuRef menu)
 		if (insertItem(menu, position++, title, 0, kHICommandSelectWindow, &index) == noErr)
 		{
 			SetMenuItemProperty(menu, index, 'dlng', 'wind', sizeof(WindowRef), &windows[i]);
+			SetMenuItemProperty(menu, index, 'dlng', 'wlst', 0, NULL);
 			if (IsWindowCollapsed(windows[i]))
 				SetItemMark(menu, index, 0x13);
 			else if (IsWindowActive(windows[i]))

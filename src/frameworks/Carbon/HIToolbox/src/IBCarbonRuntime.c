@@ -190,10 +190,16 @@ static MenuRef createMenuFromDescription(CFDictionaryRef description, int depth)
 	SInt64 id = numberOf(description, CFSTR("menuID"), 0);
 
 	// A menu without an ID of its own has the ID 0
+	CFTypeRef menuName = CFDictionaryGetValue(description, CFSTR("name"));
+
 	if (CreateNewMenu((MenuID) id, 0, &menu) != noErr)
 		return NULL;
 	if (title)
 		SetMenuTitleWithCFString(menu, title);
+
+	// The Windows menu of the nib (named so by Interface Builder) gets the window list
+	if (menuName && CFGetTypeID(menuName) == CFStringGetTypeID() && CFEqual(menuName, CFSTR("_NSWindowsMenu")))
+		_HIMenuMakeWindowMenu(menu);
 
 	CFArrayRef items = CFDictionaryGetValue(description, CFSTR("items"));
 

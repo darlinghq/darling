@@ -78,6 +78,9 @@ void _HIMenuBarChanged(void);
 void _HIRedrawMenuBar(void);
 OSStatus _HIHandleMenuBarMouseDown(EventRef event);
 void _HIMenuChanged(MenuRef menu);
+// The menu is a Window menu: the list of the application's windows is kept at the end of it (or after the
+// list markers of the standard Window menu), made when the menu opens
+void _HIMenuMakeWindowMenu(MenuRef menu);
 
 #ifdef __cplusplus
 }
