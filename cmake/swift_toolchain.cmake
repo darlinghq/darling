@@ -70,6 +70,27 @@ else()
 		endif()
 	endif()
 
+	if (SWIFT_COMPILER)
+		get_filename_component(_swift_proxy "${SWIFT_COMPILER}" REALPATH)
+		get_filename_component(_swift_proxy_name "${_swift_proxy}" NAME)
+		if (_swift_proxy_name STREQUAL "swiftly")
+			# Swiftly's swiftc is a proxy, not a compiler in the selected toolchain.
+			# Resolve it before checking the compiler version and its resources.
+			execute_process(COMMAND "${_swift_proxy}" use --print-location
+				RESULT_VARIABLE _swiftly_rc OUTPUT_VARIABLE _swiftly_root
+				ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+			if (_swiftly_rc EQUAL 0 AND NOT "${_swiftly_root}" STREQUAL "")
+				set(SWIFT_COMPILER "${_swiftly_root}/usr/bin/swiftc")
+			else()
+				set(SWIFT_COMPILER "SWIFT_COMPILER-NOTFOUND")
+			endif()
+			unset(_swiftly_rc)
+			unset(_swiftly_root)
+		endif()
+		unset(_swift_proxy)
+		unset(_swift_proxy_name)
+	endif()
+
 	if (NOT SWIFT_COMPILER)
 		if (SWIFT_TOOLCHAIN)
 			_swift_toolchain_skip("no swiftc under SWIFT_TOOLCHAIN=${SWIFT_TOOLCHAIN}")
