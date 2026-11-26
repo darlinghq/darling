@@ -596,6 +596,15 @@ EventTargetRef _HICreateEventTarget(EventTargetRef next)
 	return target;
 }
 
+void _HISetEventTargetNext(EventTargetRef inTarget, EventTargetRef next)
+{
+	struct EventTarget* target = inTarget;
+
+	pthread_mutex_lock(&g_lock);
+	target->next = next ? next : (struct EventTarget*) GetApplicationEventTarget();
+	pthread_mutex_unlock(&g_lock);
+}
+
 void _HIDestroyEventTarget(EventTargetRef inTarget)
 {
 	struct EventTarget* target = inTarget;

@@ -213,6 +213,14 @@ static MenuRef createMenuFromDescription(CFDictionaryRef description, int depth)
 	return menu;
 }
 
+OSStatus _HICreateMenuFromNibDescription(CFDictionaryRef description, MenuRef* outMenu)
+{
+	if (!description || !outMenu || !isClass(description, CFSTR("IBCarbonMenu")))
+		return paramErr;
+	*outMenu = createMenuFromDescription(description, 0);
+	return *outMenu ? noErr : memFullErr;
+}
+
 static OSStatus copyMenuDescription(IBNibRef inNibRef, CFStringRef inName, CFDictionaryRef* outDescription)
 {
 	if (!inNibRef || !inName)

@@ -87,6 +87,8 @@ OSStatus _HIRemoveEventPollProc(HIEventPollProc proc, void* info);
 // _HIDestroyEventTarget() removes its handlers and the target itself.
 EventTargetRef _HICreateEventTarget(EventTargetRef next);
 void _HIDestroyEventTarget(EventTargetRef target);
+// Changes the target that an event target passes events on to (NULL: the application target)
+void _HISetEventTargetNext(EventTargetRef target, EventTargetRef next);
 
 // The standard commands of the Window menu and of the application menu (see Menus.c, MacWindows.c)
 #include <HIToolbox/MacWindows.h>

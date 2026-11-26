@@ -197,6 +197,7 @@ enum {
 	kEventParamControlParam = 'cprm',
 	kEventParamControlPart = 'cprt',
 	kEventParamControlPartBounds = 'cpbd',
+	kEventParamCGContextRef = 'cntx',
 	kEventParamControlRef = 'ctrl',
 	kEventParamControlRegion = 'crgn',
 	kEventParamControlResult = 'crsl',

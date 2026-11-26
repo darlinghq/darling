@@ -55,6 +55,12 @@ enum {
 
 // Bevel buttons
 enum {
+	kControlBevelButtonSmallBevel = 0,
+	kControlBevelButtonNormalBevel = 1,
+	kControlBevelButtonLargeBevel = 2,
+};
+
+enum {
 	kControlBevelButtonSmallBevelProc = 32,
 	kControlBevelButtonNormalBevelProc = 33,
 	kControlBevelButtonLargeBevelProc = 34,
@@ -96,6 +102,7 @@ enum {
 	kControlNoContent = 0,
 	kControlContentIconSuiteRes = 1,
 	kControlContentCIconRes = 2,
+	kControlContentPictRes = 3,
 	kControlContentPictHandle = 131,
 	kControlContentIconSuiteHandle = 129,
 	kControlContentCIconHandle = 130,

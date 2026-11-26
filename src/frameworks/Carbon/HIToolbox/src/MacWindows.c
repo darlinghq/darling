@@ -36,10 +36,13 @@
 #include <HIToolbox/Events.h>
 #include "HIToolboxInternal.h"
 #include "HIToolboxPrivate.h"
+#include "ControlsInternal.h"
+#include <HIToolbox/HITheme.h>
 #include <CoreGraphics/CoreGraphicsPrivate.h>
 #include <CoreGraphics/CGSServerSPI.h>
 #include <AE/AEDataModel.h>
 #include <notify.h>
+#include <math.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -85,6 +88,13 @@ struct OpaqueWindowPtr
 	bool inUpdate;
 	RgnHandle updateRegion;
 	CGrafPtr port;           // 32-bit
+	ControlRef rootControl;  // the Control Manager's root view
+	bool compositing;
+	bool hasBrush;           // the background is a theme brush
+	SInt16 brush;
+	CGRect controlsDirty;    // classic windows: what the controls changed in (window coordinates)
+	CGContextRef backing;    // 64-bit: the window's pixels
+	int backingWidth, backingHeight;
 	struct OpaqueWindowPtr* next;   // behind this one
 };
 
@@ -216,11 +226,37 @@ static void postWindowEvent(WindowRef window, UInt32 kind, void (^addParameters)
 }
 
 // Asks for the window's content to be drawn: one kEventWindowUpdate is queued however many parts are invalidated
+static void renderCompositing(WindowRef window);
+#ifndef __LP64__
+static void eraseUpdateRegion(WindowRef window);
+#endif
+
 static void scheduleUpdate(WindowRef window)
 {
-	if (window->updatePending || !window->visible || (window->attributes & kWindowNoUpdatesAttribute))
+	if (window->updatePending || !window->visible)
 		return;
 	window->updatePending = true;
+	if (window->attributes & kWindowNoUpdatesAttribute)
+	{
+		// A window that gets no update events is drawn by the toolbox: its background and its controls
+		CFRunLoopPerformBlock(CFRunLoopGetMain(), kCFRunLoopCommonModes, ^{
+			if (!IsValidWindowPtr(window))
+				return;
+			window->updatePending = false;
+			if (window->compositing)
+			{
+				renderCompositing(window);
+				return;
+			}
+#ifndef __LP64__
+			eraseUpdateRegion(window);
+			DrawControls(window);
+			SetEmptyRgn(window->updateRegion);
+#endif
+		});
+		CFRunLoopWakeUp(CFRunLoopGetMain());
+		return;
+	}
 	postWindowEvent(window, kEventWindowUpdate, NULL);
 }
 
@@ -229,6 +265,7 @@ static void setActive(WindowRef window, bool active)
 	if (window->active == active)
 		return;
 	window->active = active;
+	_HIControlsWindowActivationChanged(window);
 	// QUIRK: kEventWindowActivated and kEventWindowDeactivated are followed by kEventWindowHandleActivate
 	// and kEventWindowHandleDeactivate for the window. Not documented in this order. Evidence: black-box
 	// observation on macOS 26.7.3 x86_64 (tier 2, mac-probes/carbon-windows/probe-windows64.c); Mojave
@@ -305,6 +342,8 @@ static void windowBoundsChanged(WindowRef window, const Rect* now, UInt32 flags)
 	if (now->left != previous.left || now->top != previous.top)
 		flags |= kWindowBoundsChangeOriginChanged;
 
+	if (flags & kWindowBoundsChangeSizeChanged)
+		_HIControlsWindowResized(window, now->right - now->left, now->bottom - now->top);
 	Rect newBounds = *now;
 	// QUIRK: kEventWindowBoundsChanging is sent before kEventWindowBoundsChanged when the bounds change. Not
 	// documented for a program's own bounds change. Evidence: black-box observation on macOS 26.7.3 x86_64
@@ -651,6 +690,8 @@ static const EventTypeSpec kDefaultHandlerTypes[] = {
 	{ kEventClassWindow, kEventWindowPaint },
 	{ kEventClassWindow, kEventWindowClose },
 	{ kEventClassCommand, kEventCommandProcess },
+	{ kEventClassWindow, kEventWindowDrawContent },
+	{ kEventClassWindow, kEventWindowClickContentRgn },
 };
 
 OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rect, WindowRef* newWindow)
@@ -711,6 +752,8 @@ OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rec
 	window->content = *rect;
 	window->updateRegion = NewRgn();
 	window->target = _HICreateEventTarget(GetApplicationEventTarget());
+	window->compositing = (attr & kWindowCompositingAttribute) != 0;
+	window->controlsDirty = CGRectNull;
 
 	_CGSWindowSetStyle(connection(), wid, style);
 
@@ -739,12 +782,14 @@ OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rec
 	linkWindowInFront(window);
 	pthread_mutex_unlock(&g_lock);
 
+	_HIControlsWindowCreated(window);
 	*newWindow = window;
 	return noErr;
 }
 
 static void destroyWindow(WindowRef window)
 {
+	_HIControlsWindowDisposing(window);
 	pthread_mutex_lock(&g_lock);
 	unlinkWindow(window);
 	pthread_mutex_unlock(&g_lock);
@@ -767,6 +812,8 @@ static void destroyWindow(WindowRef window)
 		CFRelease(window->title);
 	if (window->updateRegion)
 		DisposeRgn(window->updateRegion);
+	if (window->backing)
+		CGContextRelease(window->backing);
 #ifndef __LP64__
 	if (window->port)
 		DisposeGWorld(window->port);
@@ -843,7 +890,9 @@ void ShowWindow(WindowRef window)
 	// invalidation of a shown window). Not documented. Evidence: black-box observation on Mojave 10.14.4 i386
 	// (tier 2, mj.c).
 	// Test: test_quirk_window_events_32bit in tests/src/carbon_windows.c
-	if (!window->updatePending && !(window->attributes & kWindowNoUpdatesAttribute))
+	if (window->attributes & kWindowNoUpdatesAttribute)
+		scheduleUpdate(window);
+	else if (!window->updatePending)
 	{
 		window->updatePending = true;
 		postWindowEvent(window, kEventWindowPaint, NULL);
@@ -1762,6 +1811,291 @@ EventTargetRef GetWindowEventTarget(WindowRef window)
 	return IsValidWindowPtr(window) ? window->target : NULL;
 }
 
+#pragma mark Drawing for the Control Manager
+
+static CGSize contentSize(WindowRef window)
+{
+	return CGSizeMake(window->content.right - window->content.left, window->content.bottom - window->content.top);
+}
+
+bool _HIWindowIsCompositing(WindowRef window)
+{
+	return window->compositing;
+}
+
+CGRect _HIWindowGetContentRect(WindowRef window)
+{
+	return CGRectMake(window->content.left, window->content.top, window->content.right - window->content.left,
+		window->content.bottom - window->content.top);
+}
+
+bool _HIWindowControlsActive(WindowRef window)
+{
+	// The floating windows of the active application show their controls as active
+	return window->active || isFloating(window);
+}
+
+bool _HIWindowIsShown(WindowRef window)
+{
+	return window->visible;
+}
+
+CGFloat _HIWindowStructureTop(WindowRef window)
+{
+	return frameOfClass(window->windowClass, window->attributes).top;
+}
+
+ControlRef _HIWindowGetRootControl(WindowRef window)
+{
+	return window->rootControl;
+}
+
+void _HIWindowSetRootControl(WindowRef window, ControlRef root)
+{
+	window->rootControl = root;
+}
+
+void _HIWindowSetBackgroundBrush(WindowRef window, SInt16 brush)
+{
+	window->hasBrush = true;
+	window->brush = brush;
+}
+
+void _HIWindowReleaseMouseGrab(void)
+{
+	g_mouseGrab = NULL;
+}
+
+CGColorRef _HIWindowCopyBackgroundColor(WindowRef window)
+{
+	CGColorRef color = NULL;
+
+	if (window->hasBrush)
+	{
+		if (HIThemeBrushCreateCGColor(window->brush, &color) == noErr)
+			return color;
+		return NULL;
+	}
+	if (!window->compositing || window->windowClass == kOverlayWindowClass)
+		return NULL;
+	// The standard backgrounds of the classes: white for documents, the utility brush for the floating ones
+	if (isFloating(window))
+		HIThemeBrushCreateCGColor(window->active ? kThemeBrushUtilityWindowBackgroundActive : kThemeBrushUtilityWindowBackgroundInactive, &color);
+	else if (window->windowClass == kAlertWindowClass || window->windowClass == kMovableAlertWindowClass ||
+		window->windowClass == kModalWindowClass || window->windowClass == kMovableModalWindowClass)
+		HIThemeBrushCreateCGColor(kThemeBrushDialogBackgroundActive, &color);
+	if (!color)
+	{
+		CGColorSpaceRef space = CGColorSpaceCreateDeviceGray();
+		CGFloat white[2] = { 1, 1 };
+
+		color = CGColorCreate(space, white);
+		CGColorSpaceRelease(space);
+	}
+	return color;
+}
+
+// The context that draws the window's pixels: its origin is the top left of the content
+CGContextRef _HIWindowBeginDrawing(WindowRef window)
+{
+	CGSize size = contentSize(window);
+	CGContextRef context = NULL;
+
+#ifndef __LP64__
+	if (!window->port || QDBeginCGContext(window->port, &context) != noErr)
+		return NULL;
+#else
+	int width = (int) size.width, height = (int) size.height;
+
+	if (width <= 0 || height <= 0)
+		return NULL;
+	if (!window->backing || window->backingWidth != width || window->backingHeight != height)
+	{
+		CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+
+		if (window->backing)
+			CGContextRelease(window->backing);
+		window->backing = CGBitmapContextCreate(NULL, width, height, 8, width * 4, space,
+			kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst);
+		CGColorSpaceRelease(space);
+		window->backingWidth = width;
+		window->backingHeight = height;
+		if (!window->backing)
+			return NULL;
+
+		// What was drawn is gone: everything is to be drawn again
+		Rect all = { 0, 0, (short) height, (short) width };
+		RgnHandle rect = NewRgn();
+
+		RectRgn(rect, &all);
+		UnionRgn(window->updateRegion, rect, window->updateRegion);
+		DisposeRgn(rect);
+	}
+	context = CGContextRetain(window->backing);
+#endif
+	CGContextSaveGState(context);
+	CGContextTranslateCTM(context, 0, size.height);
+	CGContextScaleCTM(context, 1, -1);
+	return context;
+}
+
+void _HIWindowEndDrawing(WindowRef window, CGContextRef context, CGRect drawn)
+{
+	CGContextRestoreGState(context);
+#ifndef __LP64__
+	QDEndCGContext(window->port, &context);
+#else
+	CGContextFlush(context);
+	if (window->backing && window->visible)
+	{
+		CGImageRef image = CGBitmapContextCreateImage(window->backing);
+
+		if (image)
+		{
+			CGRect part = CGRectIntersection(CGRectIntegral(drawn), CGRectMake(0, 0, window->backingWidth, window->backingHeight));
+
+			if (!CGRectIsNull(part))
+			{
+				CGImageRef piece = CGImageCreateWithImageInRect(image, part);
+
+				if (piece)
+				{
+					_CGSWindowDrawImage(connection(), window->cgsWindow, piece, part.origin);
+					CGImageRelease(piece);
+				}
+			}
+			CGImageRelease(image);
+		}
+	}
+	CGContextRelease(context);
+#endif
+}
+
+void _HIWindowInvalidateRect(WindowRef window, CGRect rect)
+{
+	if (!IsValidWindowPtr(window) || CGRectIsNull(rect) || CGRectIsEmpty(rect))
+		return;
+	if (window->compositing)
+	{
+		Rect box = { (short) floor(rect.origin.y), (short) floor(rect.origin.x),
+			(short) ceil(rect.origin.y + rect.size.height), (short) ceil(rect.origin.x + rect.size.width) };
+		RgnHandle region = NewRgn();
+
+		RectRgn(region, &box);
+		UnionRgn(window->updateRegion, region, window->updateRegion);
+		DisposeRgn(region);
+		scheduleUpdate(window);
+	}
+	else
+		window->controlsDirty = CGRectUnion(CGRectIsNull(window->controlsDirty) ? rect : window->controlsDirty, rect);
+}
+
+static void renderCompositing(WindowRef window)
+{
+	Rect box;
+
+	if (EmptyRgn(window->updateRegion))
+		return;
+	GetRegionBounds(window->updateRegion, &box);
+	SetEmptyRgn(window->updateRegion);
+
+	CGContextRef context = _HIWindowBeginDrawing(window);
+
+	if (!context)
+		return;
+
+	CGRect dirty = CGRectMake(box.left, box.top, box.right - box.left, box.bottom - box.top);
+	CGColorRef color = _HIWindowCopyBackgroundColor(window);
+
+	CGContextSaveGState(context);
+	CGContextClipToRect(context, dirty);
+	if (window->windowClass == kOverlayWindowClass || !color)
+		CGContextClearRect(context, dirty);
+	if (color)
+	{
+		CGContextSetFillColorWithColor(context, color);
+		CGContextFillRect(context, dirty);
+		CGColorRelease(color);
+	}
+	CGContextRestoreGState(context);
+	_HIControlsDrawWindow(window, context, dirty);
+	_HIWindowEndDrawing(window, context, dirty);
+}
+
+void _HIWindowRenderNow(WindowRef window)
+{
+	if (!IsValidWindowPtr(window) || !window->visible)
+		return;
+	if (window->compositing)
+	{
+		if (!window->inUpdate)
+			renderCompositing(window);
+		return;
+	}
+#ifndef __LP64__
+	if (CGRectIsNull(window->controlsDirty) || !window->rootControl)
+		return;
+
+	CGRect dirty = window->controlsDirty;
+	CGContextRef context = _HIWindowBeginDrawing(window);
+
+	window->controlsDirty = CGRectNull;
+	if (!context)
+		return;
+	// The controls erase what they draw over with the window's background
+	CGColorRef color = _HIWindowCopyBackgroundColor(window);
+
+	CGContextSaveGState(context);
+	CGContextClipToRect(context, dirty);
+	if (color)
+		CGContextSetFillColorWithColor(context, color);
+	else
+		CGContextSetRGBFillColor(context, 1, 1, 1, 1);
+	CGContextFillRect(context, dirty);
+	CGContextRestoreGState(context);
+	CGColorRelease(color);
+	_HIControlsDrawWindow(window, context, dirty);
+	_HIWindowEndDrawing(window, context, dirty);
+#endif
+}
+
+#ifndef __LP64__
+// A window with a background brush has its update region erased to it before the application draws
+static void eraseUpdateRegion(WindowRef window)
+{
+	if (!window->hasBrush || EmptyRgn(window->updateRegion))
+		return;
+
+	Rect box;
+	CGColorRef color = _HIWindowCopyBackgroundColor(window);
+	CGContextRef context;
+
+	GetRegionBounds(window->updateRegion, &box);
+	if (!color || !(context = _HIWindowBeginDrawing(window)))
+	{
+		CGColorRelease(color);
+		return;
+	}
+
+	CGRect dirty = CGRectMake(box.left, box.top, box.right - box.left, box.bottom - box.top);
+
+	CGContextSetFillColorWithColor(context, color);
+	CGContextFillRect(context, dirty);
+	CGColorRelease(color);
+	_HIWindowEndDrawing(window, context, dirty);
+}
+
+OSStatus SetThemeWindowBackground(WindowRef window, ThemeBrush brush, Boolean update)
+{
+	if (!IsValidWindowPtr(window))
+		return errInvalidWindowPtr;
+	_HIWindowSetBackgroundBrush(window, brush);
+	if (update)
+		_HIWindowInvalidateRect(window, CGRectMake(0, 0, contentSize(window).width, contentSize(window).height));
+	return noErr;
+}
+#endif
+
 // The default handling of events for which a window's handlers did nothing
 static OSStatus windowDefaultHandler(EventHandlerCallRef call, EventRef event, void* userData)
 {
@@ -1788,8 +2122,15 @@ static OSStatus windowDefaultHandler(EventHandlerCallRef call, EventRef event, v
 		case kEventWindowPaint:
 		case kEventWindowUpdate:
 			window->updatePending = false;
+			if (window->compositing)
+			{
+				// The views of the window draw it
+				renderCompositing(window);
+				return noErr;
+			}
 #ifndef __LP64__
 			BeginUpdate(window);
+			eraseUpdateRegion(window);
 #endif
 			// The drawing is asked of the handlers
 			sendWindowEvent(window, kEventWindowDrawContent, NULL);
@@ -1797,6 +2138,25 @@ static OSStatus windowDefaultHandler(EventHandlerCallRef call, EventRef event, v
 			EndUpdate(window);
 #endif
 			return noErr;
+		case kEventWindowDrawContent:
+			// What the handlers left to the standard handler: the controls of the window
+#ifndef __LP64__
+			DrawControls(window);
+#endif
+			return noErr;
+		case kEventWindowClickContentRgn:
+		{
+			Point global;
+			UInt32 modifiers = 0;
+
+			if (GetEventParameter(event, kEventParamMouseLocation, typeQDPoint, NULL, sizeof(global), NULL, &global) != noErr)
+				return eventNotHandledErr;
+			GetEventParameter(event, kEventParamKeyModifiers, typeUInt32, NULL, sizeof(modifiers), NULL, &modifiers);
+
+			Point local = { (short) (global.v - window->content.top), (short) (global.h - window->content.left) };
+
+			return _HIControlsWindowClick(window, local, modifiers) ? noErr : eventNotHandledErr;
+		}
 		case kEventWindowClose:
 			// A window with the standard handler closes itself
 			if (window->attributes & kWindowStandardHandlerAttribute)

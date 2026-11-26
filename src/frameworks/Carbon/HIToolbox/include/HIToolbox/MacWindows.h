@@ -243,6 +243,7 @@ CGrafPtr GetWindowPort(WindowRef a);
 WindowRef GetWindowFromPort(CGrafPtr port);
 void SetPortWindowPort(WindowRef window);
 void SetWRefCon(WindowRef window, long data);
+OSStatus SetThemeWindowBackground(WindowRef window, SInt16 brush, Boolean update);
 void BeginUpdate(WindowRef window);
 void EndUpdate(WindowRef window);
 #endif
