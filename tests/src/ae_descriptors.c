@@ -259,6 +259,28 @@ static void test_record_and_event(void)
 	AEDisposeDesc(&target);
 }
 
+// QUIRK: a list of exactly one item coerces to what the item coerces to; see AEDescriptors.c.
+static void test_quirk_one_item_list_coerces_to_its_item(void)
+{
+	FSRef root, back;
+	AEDescList list;
+	AEDesc coerced;
+
+	CHECK_ERR(FSPathMakeRef((const UInt8*) "/", &root, NULL), noErr);
+	CHECK_ERR(AECreateList(NULL, 0, false, &list), noErr);
+	CHECK_ERR(AECoerceDesc(&list, typeFSRef, &coerced), errAECoercionFail);
+	CHECK_ERR(AEPutPtr(&list, 1, typeFSRef, &root, sizeof(root)), noErr);
+	CHECK_ERR(AECoerceDesc(&list, typeFSRef, &coerced), noErr);
+	CHECK(coerced.descriptorType == typeFSRef);
+	CHECK(AEGetDescDataSize(&coerced) == sizeof(back));
+	CHECK_ERR(AEGetDescData(&coerced, &back, sizeof(back)), noErr);
+	CHECK(FSCompareFSRefs(&root, &back) == noErr);
+	AEDisposeDesc(&coerced);
+	CHECK_ERR(AEPutPtr(&list, 2, typeFSRef, &root, sizeof(root)), noErr);
+	CHECK_ERR(AECoerceDesc(&list, typeFSRef, &coerced), errAECoercionFail);
+	AEDisposeDesc(&list);
+}
+
 static void test_print(void)
 {
 	AEDesc desc;
@@ -276,6 +298,7 @@ int main(void)
 	test_coercions();
 	test_list_and_index_rules();
 	test_record_and_event();
+	test_quirk_one_item_list_coerces_to_its_item();
 	test_print();
 	if (g_failures == 0)
 		printf("PASS\n");
