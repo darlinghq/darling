@@ -156,6 +156,7 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/HIToolbox.framework/Versions/A/HIToolbox:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/HIToolbox/HIToolbox \
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/ImageCapture.framework/Versions/A/ImageCapture:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/ImageCapture/ImageCapture \
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/Ink.framework/Versions/A/Ink:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/Ink/Ink \
+-Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/NavigationServices.framework/Versions/A/NavigationServices:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/NavigationServices/NavigationServices \
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/OpenScripting.framework/Versions/A/OpenScripting:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/OpenScripting/OpenScripting \
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/Print.framework/Versions/A/Print:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/Print/Print \
 -Wl,-dylib_file,/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/SecurityHI.framework/Versions/A/SecurityHI:${CMAKE_BINARY_DIR}/src/frameworks/Carbon/SecurityHI/SecurityHI \

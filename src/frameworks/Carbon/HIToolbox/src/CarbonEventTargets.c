@@ -95,14 +95,15 @@ static struct EventHandlerEntry g_standardRawEventHandler = {
 
 // The standard handler of the application target: the quit command ends the application event loop, and
 // the menu bar's key equivalents and mouse clicks are handled
-static EventTypeSpec g_standardApplicationTypes[4] = {
+static EventTypeSpec g_standardApplicationTypes[5] = {
 	{ kEventClassCommand, kEventCommandProcess },
+	{ kEventClassCommand, kEventCommandUpdateStatus },
 	{ kEventClassKeyboard, kEventRawKeyDown },
 	{ kEventClassKeyboard, kEventRawKeyRepeat },
 	{ kEventClassMouse, kEventMouseDown },
 };
 static struct EventHandlerEntry g_standardApplicationHandler = {
-	NULL, NULL, _HIStandardApplicationHandler, NULL, g_standardApplicationTypes, 4, false
+	NULL, NULL, _HIStandardApplicationHandler, NULL, g_standardApplicationTypes, 5, false
 };
 
 static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -593,6 +594,15 @@ EventTargetRef _HICreateEventTarget(EventTargetRef next)
 	g_createdTargets = target;
 	pthread_mutex_unlock(&g_lock);
 	return target;
+}
+
+void _HISetEventTargetNext(EventTargetRef inTarget, EventTargetRef next)
+{
+	struct EventTarget* target = inTarget;
+
+	pthread_mutex_lock(&g_lock);
+	target->next = next ? next : (struct EventTarget*) GetApplicationEventTarget();
+	pthread_mutex_unlock(&g_lock);
 }
 
 void _HIDestroyEventTarget(EventTargetRef inTarget)

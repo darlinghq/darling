@@ -180,6 +180,11 @@ enum {
 // Menu objects. A MenuRef is a Core Foundation object: CFRetain and CFRelease keep it, and the
 // menu bar and the menus that have it as a submenu keep it as well.
 OSStatus CreateNewMenu(MenuID inMenuID, MenuAttributes inMenuAttributes, MenuRef* outMenuRef);
+
+enum {
+	kWindowMenuIncludeRotate = 1 << 0
+};
+OSStatus CreateStandardWindowMenu(OptionBits inOptions, MenuRef* outMenu);
 MenuRef GetMenuHandle(MenuID menuID);
 void InsertMenu(MenuRef theMenu, MenuID beforeID);
 void DeleteMenu(MenuID menuID);

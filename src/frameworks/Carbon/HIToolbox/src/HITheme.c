@@ -2496,3 +2496,12 @@ OSStatus HIThemeDrawTextBox(CFTypeRef inString, const HIRect *inBounds, HIThemeT
 	CFRelease(font);
 	return noErr;
 }
+
+// The cursor shapes of the theme (kThemeArrowCursor and the others) have no counterpart in CoreGraphics
+// to show a cursor shape yet; the cursor is checked and remembered only
+OSStatus SetThemeCursor(ThemeCursor inCursor)
+{
+	if (inCursor > kThemePoofCursor)
+		return themeBadCursorIndexErr;
+	return noErr;
+}

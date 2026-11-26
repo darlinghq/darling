@@ -48,6 +48,9 @@ add_custom_command(
 )
 add_custom_target(colorsync_profile_files ALL
     DEPENDS "${colorsync_gen_dir}/genericrgb.icc" "${colorsync_gen_dir}/genericgray.icc")
+# Building the framework target alone (ninja ColorSync) must also produce the files, or the install rules below fail on files that
+# were never generated and the profile folder is left without them.
+add_dependencies(ColorSync colorsync_profile_files)
 
 install(FILES "${colorsync_gen_dir}/genericrgb.icc"
     DESTINATION libexec/darling/System/Library/ColorSync/Profiles

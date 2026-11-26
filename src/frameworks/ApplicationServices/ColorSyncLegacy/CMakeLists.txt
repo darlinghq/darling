@@ -23,4 +23,7 @@ add_framework(ColorSyncLegacy
 
     DEPENDENCIES
         system
+        CoreFoundation
+        CoreServices
+        ColorSync
 )

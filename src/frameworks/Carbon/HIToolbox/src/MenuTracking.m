@@ -38,11 +38,13 @@
 #include <HIToolbox/MacApplication.h>
 #include <CoreGraphics/CoreGraphics.h>
 #include <CoreGraphics/CoreGraphicsPrivate.h>
+#import <CoreGraphics/CGSNativeConnection.h>
 #include <CoreText/CoreText.h>
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/CGLInternal.h>
 #include <OpenGL/gl.h>
 #include <AE/AEDataModel.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include "HIToolboxInternal.h"
@@ -70,10 +72,6 @@ struct MenuWindow
 static bool g_registered;
 // EGL_PLATFORM_WAYLAND_KHR
 enum { kEGLPlatformWayland = 0x31D8 };
-// The window system of the process' connection (CGSNativeConnectionKind of CGSNativeConnection.h, an
-// Objective-C header): 1 is X11, 2 is Wayland
-extern int _CGSNativeConnectionKind(void);
-enum { kNativeConnectionKindX11 = 1 };
 
 static void destroyMenuWindow(struct MenuWindow* win)
 {
@@ -120,7 +118,7 @@ static struct MenuWindow* createMenuWindow(CGRect frame, CGWindowLevel level)
 	win->width = (size_t) ceil(frame.size.width);
 	win->height = (size_t) ceil(frame.size.height);
 
-	bool x11 = _CGSNativeConnectionKind() == kNativeConnectionKindX11;
+	bool x11 = _CGSNativeConnectionKind() == CGSNativeConnectionKindX11;
 
 	if (!g_registered)
 	{
@@ -638,6 +636,7 @@ struct Tracking
 	ItemCount titleCount;
 	MenuRef barSelected;     // the bar menu that is open
 	bool sticky;             // the mouse was released over a title: the menus stay open
+	bool popUp;              // PopUpMenuSelect(): the menu opened where a control or the program asked
 	bool done;
 	bool chosen;
 	MenuRef chosenMenu;
@@ -954,6 +953,11 @@ static Boolean trackingFilter(EventRef event, void* info)
 // (mouseDown), or the menus were started by the keyboard.
 static void runTracking(struct Tracking* tracking, bool mouseDown, CGPoint start)
 {
+	// Where the pointer was when the first mouse event came, and whether it moved since: a click that did
+	// not move the pointer is a click, not a drag
+	CGPoint first = CGPointZero;
+	bool haveFirst = false, moved = false;
+
 	_HISendMenuEvent(kEventMenuBeginTracking, tracking->root, 0, false, false);
 	trackPoint(tracking, start);
 
@@ -980,6 +984,16 @@ static void runTracking(struct Tracking* tracking, bool mouseDown, CGPoint start
 			{
 				CGPoint point = CGPointMake(location.x, location.y);
 
+				if (kind == kEventMouseMoved || kind == kEventMouseDragged || kind == kEventMouseUp)
+				{
+					if (!haveFirst)
+					{
+						first = point;
+						haveFirst = true;
+					}
+					else if (fabs(point.x - first.x) > 3 || fabs(point.y - first.y) > 3)
+						moved = true;
+				}
 				switch (kind)
 				{
 					case kEventMouseDown:
@@ -1004,6 +1018,15 @@ static void runTracking(struct Tracking* tracking, bool mouseDown, CGPoint start
 						if (titleAtPoint(tracking, point) != (ItemCount) -1 && !tracking->sticky && mouseDown)
 						{
 							// A click on a title leaves the menu open until the next click
+							tracking->sticky = true;
+							mouseDown = false;
+						}
+						else if (tracking->popUp && mouseDown && !moved && !tracking->sticky && tracking->depth > 0 &&
+							itemAtPoint(&tracking->levels[tracking->depth - 1], point) == 0 && titleAtPoint(tracking, point) == (ItemCount) -1)
+						{
+							// A quick click on what opened a pop-up menu (the pointer is not on one of its items and
+							// did not move) leaves the menu open until the next click, as a click on the title of a
+							// menu bar menu does
 							tracking->sticky = true;
 							mouseDown = false;
 						}
@@ -1034,13 +1057,20 @@ static void runTracking(struct Tracking* tracking, bool mouseDown, CGPoint start
 	}
 }
 
-static UInt32 finishTracking(struct Tracking* tracking, bool highlightResult)
+// (outChosen, when given, gets the menu of the chosen item, retained: menus can share a menu ID)
+static UInt32 finishTracking(struct Tracking* tracking, bool highlightResult, MenuRef* outChosen)
 {
 	UInt32 choice = 0;
 	MenuRef chosenMenu = tracking->chosenMenu;
 	MenuID barMenuID = tracking->barSelected ? GetMenuID(tracking->barSelected) : 0;
 
 	closeLevels(tracking, 0);
+	if (outChosen)
+	{
+		*outChosen = tracking->chosen ? chosenMenu : NULL;
+		if (*outChosen)
+			CFRetain((CFTypeRef) *outChosen);
+	}
 	if (tracking->chosen)
 	{
 		choice = ((UInt32) (UInt16) GetMenuID(chosenMenu) << 16) | tracking->chosenItem;
@@ -1059,9 +1089,12 @@ static UInt32 finishTracking(struct Tracking* tracking, bool highlightResult)
 	return choice;
 }
 
-UInt32 MenuSelect(Point startPt)
+static UInt32 menuSelect(Point startPt, MenuRef* outChosen)
 {
 	struct Tracking tracking;
+
+	if (outChosen)
+		*outChosen = NULL;
 
 	memset(&tracking, 0, sizeof(tracking));
 	updateBarWindow(true);
@@ -1071,7 +1104,12 @@ UInt32 MenuSelect(Point startPt)
 	tracking.root = AcquireRootMenu();
 	tracking.titleCount = copyBarTitles(&tracking.titles);
 	runTracking(&tracking, true, CGPointMake(startPt.h, startPt.v));
-	return finishTracking(&tracking, true);
+	return finishTracking(&tracking, true, outChosen);
+}
+
+UInt32 MenuSelect(Point startPt)
+{
+	return menuSelect(startPt, NULL);
 }
 
 UInt32 PopUpMenuSelect(MenuRef menu, SInt16 top, SInt16 left, SInt16 popUpItem)
@@ -1093,8 +1131,9 @@ UInt32 PopUpMenuSelect(MenuRef menu, SInt16 top, SInt16 left, SInt16 popUpItem)
 	// The pointer is where the menu was asked to appear, usually; the click that opened the pop-up has
 	// been released when the user does not hold the button, hence the first release does not choose
 	tracking.sticky = false;
+	tracking.popUp = true;
 	runTracking(&tracking, true, CGPointMake(left, top));
-	return finishTracking(&tracking, false);
+	return finishTracking(&tracking, false, NULL);
 }
 
 OSStatus CancelMenuTracking(MenuRef inRootMenu, Boolean inImmediate, UInt32 inDismissalReason)
@@ -1137,15 +1176,14 @@ OSStatus _HIHandleMenuBarMouseDown(EventRef event)
 		return eventNotHandledErr;
 
 	Point point = { (short) location.y, (short) location.x };
-	UInt32 choice = MenuSelect(point);
+	MenuRef menu = NULL;
+	UInt32 choice = menuSelect(point, &menu);
 
-	if (choice)
-	{
-		MenuRef menu = GetMenuHandle((MenuID) (choice >> 16));
-
-		if (menu)
-			_HIProcessMenuCommand(menu, (MenuItemIndex) (choice & 0xffff));
-	}
+	// The menu is the one that was chosen from: its ID is not enough, menus may share one
+	if (choice && menu)
+		_HIProcessMenuCommand(menu, (MenuItemIndex) (choice & 0xffff));
+	if (menu)
+		CFRelease((CFTypeRef) menu);
 	HiliteMenu(0);
 	return noErr;
 }
