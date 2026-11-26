@@ -1605,6 +1605,62 @@ static bool bevelHasMenu(ControlRef c)
 	return c->cls == kClassBevelButton && c->menu != NULL;
 }
 
+#ifndef __LP64__
+// QuickDraw pictures: the 'PICT' resource GetPicture() reads and DrawPicture() plays into the current port (they are
+// QuickDraw calls that the public QuickDraw header of this tree does not declare yet; a picture handle is a Handle)
+Handle GetPicture(short pictureID);
+void DrawPicture(Handle picture, const Rect* dstRect);
+void GetPort(GrafPtr* port);
+void SetPort(GrafPtr port);
+RgnHandle NewRgn(void);
+void DisposeRgn(RgnHandle region);
+void ClipRect(const Rect* rect);
+void GetClip(RgnHandle region);
+void SetClip(RgnHandle region);
+
+// The picture of a bevel button (a resource, or a handle the application keeps), drawn at its own size in the middle
+// of the button, into the window's port
+static void drawBevelPicture(ControlRef c, CGRect rect)
+{
+	Handle picture = c->content.contentType == kControlContentPictRes ? GetPicture(c->content.u.resID) : c->content.u.picture;
+
+	if (!picture || !*picture || GetHandleSize(picture) < 10)
+		return;
+
+	// The picture's frame follows its size field: top, left, bottom and right, big endian
+	const SInt16* frame = (const SInt16*) ((const char*) *picture + 2);
+	int height = (int) (SInt16) CFSwapInt16BigToHost(frame[2]) - (int) (SInt16) CFSwapInt16BigToHost(frame[0]);
+	int width = (int) (SInt16) CFSwapInt16BigToHost(frame[3]) - (int) (SInt16) CFSwapInt16BigToHost(frame[1]);
+	CGRect where = windowFrame(c);
+	Rect dst;
+	GrafPtr saved = NULL, port = (GrafPtr) GetWindowPort(c->window);
+
+	if (width <= 0 || height <= 0 || !port)
+		return;
+	dst.left = (SInt16) (where.origin.x + rect.origin.x + (rect.size.width - width) / 2);
+	dst.top = (SInt16) (where.origin.y + rect.origin.y + (rect.size.height - height) / 2);
+	dst.right = dst.left + width;
+	dst.bottom = dst.top + height;
+	GetPort(&saved);
+	SetPort(port);
+
+	// A picture does not draw outside the button
+	RgnHandle clip = NewRgn();
+	Rect bounds;
+
+	GetClip(clip);
+	bounds.left = (SInt16) where.origin.x;
+	bounds.top = (SInt16) where.origin.y;
+	bounds.right = (SInt16) (where.origin.x + where.size.width);
+	bounds.bottom = (SInt16) (where.origin.y + where.size.height);
+	ClipRect(&bounds);
+	DrawPicture(picture, &dst);
+	SetClip(clip);
+	DisposeRgn(clip);
+	SetPort(saved);
+}
+#endif
+
 static void drawBevelContent(ControlRef c, CGContextRef ctx, CGRect rect, bool dim)
 {
 	if (c->content.contentType == kControlContentCGImageRef && c->content.u.imageRef)
@@ -1619,6 +1675,10 @@ static void drawBevelContent(ControlRef c, CGContextRef ctx, CGRect rect, bool d
 		CGContextDrawImage(ctx, to, image);
 		CGContextRestoreGState(ctx);
 	}
+#ifndef __LP64__
+	else if (c->window && (c->content.contentType == kControlContentPictRes || c->content.contentType == kControlContentPictHandle))
+		drawBevelPicture(c, rect);
+#endif
 	if (c->title)
 		drawString(ctx, c->title, rect, 0, c, dim);
 }
