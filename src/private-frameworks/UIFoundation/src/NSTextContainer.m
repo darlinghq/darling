@@ -93,11 +93,12 @@ static NSString *const _NSTextContainerViewFrameDidChangeNotification =
     return _size;
 }
 
-// size and setSize: are the documented spellings of containerSize and setContainerSize:. GUESS: the
-// setter goes through the older one, because the framework's own resize paths (text view tracking,
-// NSTextView, NSStringDrawer, NSViewTemplate) call setContainerSize:; a subclass that overrides
-// either name then sees one call from -setSize:, but a subclass that overrides only setSize: is
-// not reached by those internal resizes.
+// size and setSize: are the documented spellings of containerSize and setContainerSize:. On macOS 26.7.3 both
+// names read and write the same value, and the layout manager is told once per change whichever name sets it
+// (black-box, tier 2; test: tests/nstextcontainer-size.m). The setter goes through the older one because the
+// framework's own resize paths (text view tracking, NSTextView, NSStringDrawer, NSViewTemplate) call
+// setContainerSize:; a subclass that overrides either name then sees one call from -setSize:, but a subclass
+// that overrides only setSize: is not reached by those internal resizes.
 - (NSSize) size {
     return [self containerSize];
 }

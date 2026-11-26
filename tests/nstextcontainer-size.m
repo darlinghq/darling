@@ -3,7 +3,8 @@
 // (developer.apple.com/documentation/appkit/nstextcontainer/size, .../containersize, .../init(size:)).
 // The pages state: the size caps what the container hands back for a proposed line rectangle (non-positive values
 // meaning no cap is documented and is not tested here), and -initWithSize: is the designated initializer. They say
-// nothing about layout invalidation or about how the two spellings relate; checks resting on that are marked GUESS.
+// nothing about layout invalidation or about how the two spellings relate; checks resting on that are marked OBSERVED:
+// they hold on macOS 26.7.3 (black-box run of this file, tier 2).
 // No display needed. MRC. The calls go through a protocol so that the test compiles against headers without the
 // declarations and reports FAIL (instead of failing to build or raising) when the selectors are missing.
 #import <AppKit/AppKit.h>
@@ -18,7 +19,7 @@
 static int failures;
 #define CHECK(c) do { if (!(c)) { printf("FAIL line %d: %s\n", __LINE__, #c); failures++; } } while (0)
 
-// Counts the container's geometry-change messages to its layout manager. GUESS: the container sends
+// Counts the container's geometry-change messages to its layout manager. OBSERVED: the container sends
 // -textContainerChangedGeometry: when its size changes (the page does not say).
 static int geometryChanges;
 @interface CountingLayoutManager : NSLayoutManager
@@ -58,7 +59,7 @@ int main(void)
         // Documented: -initWithSize: sets the bounding size.
         NSTextContainer *tc = makeContainer(NSMakeSize(300, 1e7));
         CHECK(NSEqualSizes([(id<SizeNames>)tc size], NSMakeSize(300, 1e7)));
-        // GUESS: the older name reads the same value (same property under two names).
+        // OBSERVED: the older name reads the same value (same property under two names).
         CHECK(NSEqualSizes([tc containerSize], NSMakeSize(300, 1e7)));
 
         // Documented: size is read-write.
@@ -88,7 +89,7 @@ int main(void)
                                          remainingRect:&remaining];
         CHECK(fragment.size.width == 250);
 
-        // GUESS: a change of size makes the layout manager lay the text out again at the new width (the page is
+        // OBSERVED: a change of size makes the layout manager lay the text out again at the new width (the page is
         // silent on invalidation; a layout area that is the container's size can only be honoured that way).
         NSTextStorage *ts = [[[NSTextStorage alloc] initWithString:
             @"a fairly long line of text that needs to wrap when the container becomes narrow"] autorelease];
@@ -103,7 +104,7 @@ int main(void)
         [(id<SizeNames>)wrap setSize:NSMakeSize(2000, 1e7)];
         CHECK(usedHeight(lm, wrap) == wide);
 
-        // GUESS: whichever name sets the size, the layout manager is told once per change and both names read the new value.
+        // OBSERVED: whichever name sets the size, the layout manager is told once per change and both names read the new value.
         CountingLayoutManager *clm = [[[CountingLayoutManager alloc] init] autorelease];
         NSTextContainer *counted = makeContainer(NSMakeSize(100, 100));
         [clm addTextContainer:counted];
