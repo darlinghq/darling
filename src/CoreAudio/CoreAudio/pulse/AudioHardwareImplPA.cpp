@@ -28,6 +28,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <mutex>
 #include <thread>
+#include <atomic>
 #include <unordered_set>
 #include <condition_variable>
 #include <cstring>
@@ -70,6 +71,8 @@ void AudioHardwareImplPA::syncPA(void (^block)(void))
 
 OSStatus AudioHardwareImplPA::start(AudioDeviceIOProcID inProcID, AudioTimeStamp* ioRequestedStartTime, UInt32 inFlags)
 {
+	refreshFormat();
+
 	// Connect first, so that the queue exists: every change to m_streams happens on it.
 	// A mutex wouldn't do, as an IOProc calling stop() would wait for a start() in progress,
 	// which in turn needs the queue that the IOProc is blocking.
@@ -84,6 +87,8 @@ OSStatus AudioHardwareImplPA::start(AudioDeviceIOProcID inProcID, AudioTimeStamp
 	syncPA(^{
 		result = AudioHardwareImpl::start(inProcID, ioRequestedStartTime, inFlags);
 	});
+	if (result == noErr)
+		ioStateChanged();
 	return result;
 }
 
@@ -110,12 +115,84 @@ OSStatus AudioHardwareImplPA::stop(AudioDeviceIOProcID inProcID)
 		else
 			delete stream;
 	});
+	if (result == noErr)
+		ioStateChanged();
 	return result;
+}
+
+// The settings of the process that the system object keeps. Nothing but this process reads them:
+// the server has no use for them, so they are what the process last set.
+static std::atomic<UInt32> g_processIsMain{0}, g_sleepingIsAllowed{1}, g_unloadingIsAllowed{1}, g_hogModeIsAllowed{1},
+	g_processIsAudible{1}, g_powerHint{0}, g_mixStereoToMono{0};
+
+bool PAHogModeIsAllowed()
+{
+	return g_hogModeIsAllowed.load() != 0;
+}
+
+static std::atomic<UInt32>* systemSetting(AudioObjectPropertySelector selector)
+{
+	switch (selector)
+	{
+		case kAudioHardwarePropertyProcessIsMaster:
+		case kAudioHardwarePropertyProcessIsMain: return &g_processIsMain;
+		case kAudioHardwarePropertySleepingIsAllowed: return &g_sleepingIsAllowed;
+		case kAudioHardwarePropertyUnloadingIsAllowed: return &g_unloadingIsAllowed;
+		case kAudioHardwarePropertyHogModeIsAllowed: return &g_hogModeIsAllowed;
+		case kAudioHardwarePropertyProcessIsAudible: return &g_processIsAudible;
+		case kAudioHardwarePropertyPowerHint: return &g_powerHint;
+		case kAudioHardwarePropertyMixStereoToMono: return &g_mixStereoToMono;
+		default: return nullptr;
+	}
+}
+
+OSStatus AudioHardwareImplPA::isPropertySettable(const AudioObjectPropertyAddress* inAddress, Boolean* outIsSettable)
+{
+	if (id() == kAudioObjectSystemObject && systemSetting(inAddress->mSelector))
+	{
+		*outIsSettable = true;
+		return kAudioHardwareNoError;
+	}
+	return AudioHardwareImpl::isPropertySettable(inAddress, outIsSettable);
 }
 
 OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 	const void* inQualifierData, UInt32* ioDataSize, void* outData)
 {
+	if (id() == kAudioObjectSystemObject)
+	{
+		auto replyValue = [&](UInt32 value) {
+			if (outData)
+			{
+				if (*ioDataSize < sizeof(value))
+					return OSStatus(kAudioHardwareBadPropertySizeError);
+				*static_cast<UInt32*>(outData) = value;
+			}
+			*ioDataSize = sizeof(value);
+			return OSStatus(kAudioHardwareNoError);
+		};
+
+		switch (inAddress->mSelector)
+		{
+			case kAudioObjectPropertyClass:
+				return replyValue(kAudioSystemObjectClassID);
+			case kAudioObjectPropertyBaseClass:
+				return replyValue(kAudioObjectClassID);
+			case kAudioHardwarePropertyPlugInList:
+			case kAudioHardwarePropertyBoxList:
+			case kAudioHardwarePropertyClockDeviceList:
+			case kAudioHardwarePropertyTransportManagerList:
+				// There are no plug-ins, boxes, clock devices or transport managers behind the PulseAudio backend.
+				*ioDataSize = 0;
+				return kAudioHardwareNoError;
+			case kAudioHardwarePropertyUserSessionIsActiveOrHeadless:
+				return replyValue(1);
+			default:
+				if (std::atomic<UInt32>* setting = systemSetting(inAddress->mSelector))
+					return replyValue(setting->load());
+		}
+	}
+
 	switch (inAddress->mSelector)
 	{
 		case kAudioDevicePropertyStreams:
@@ -146,9 +223,13 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 				return kAudioHardwareBadPropertySizeError;
 			if (outData)
 			{
+				// The frames are those of the stream's rate; the property counts frames of the device's rate.
 				const UInt32 measured = m_measuredOutputLatency.load(std::memory_order_relaxed);
-				*static_cast<UInt32*>(outData) = measured ? measured
+				const UInt32 frames = measured ? measured
 					: AudioHardwareStreamPAOutput::queuedFrames(bufferSize() / asbd().mBytesPerFrame);
+				const Float64 streamRate = asbd().mSampleRate, deviceRate = nominalSampleRate();
+				*static_cast<UInt32*>(outData) = (streamRate > 0 && deviceRate > 0 && streamRate != deviceRate)
+					? UInt32(frames * deviceRate / streamRate + 0.5) : frames;
 			}
 			*ioDataSize = sizeof(UInt32);
 			return kAudioHardwareNoError;
@@ -170,41 +251,26 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 				|| !translation->mOutputData || translation->mOutputDataSize < sizeof(AudioDeviceID))
 				return kAudioHardwareBadPropertySizeError;
 
-			refreshDeviceList();
-
-			std::vector<AudioHardwareImpl*> devices;
-			{
-				std::lock_guard<std::mutex> lock(PAGetObjectMapMutex());
-				for (auto& object : PAGetObjectMap())
-				{
-					if (object.first != kAudioObjectSystemObject)
-						devices.push_back(object.second.get());
-				}
-			}
-
-			CFStringRef wanted = *static_cast<CFStringRef*>(translation->mInputData);
-			AudioDeviceID found = kAudioObjectUnknown;
-			const AudioObjectPropertyAddress uidAddress = { kAudioDevicePropertyDeviceUID, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
-
-			for (AudioHardwareImpl* device : devices)
-			{
-				CFStringRef uid = nullptr;
-				UInt32 size = sizeof(uid);
-				if (device->getPropertyData(&uidAddress, 0, nullptr, &size, &uid) == kAudioHardwareNoError && uid)
-				{
-					const bool match = CFEqual(uid, wanted);
-					CFRelease(uid);
-					if (match)
-					{
-						found = device->id();
-						break;
-					}
-				}
-			}
+			AudioDeviceID found = deviceForUID(*static_cast<CFStringRef*>(translation->mInputData));
 
 			*static_cast<AudioDeviceID*>(translation->mOutputData) = found;
 			translation->mOutputDataSize = sizeof(found);
 			*ioDataSize = sizeof(AudioValueTranslation);
+			return kAudioHardwareNoError;
+		}
+		case kAudioHardwarePropertyTranslateUIDToDevice:
+		{
+			// The qualifier is the UID string and the answer the device's object ID, which is unknown
+			// for a UID that no device has.
+			if (id() != kAudioObjectSystemObject)
+				break;
+			if (inQualifierDataSize != sizeof(CFStringRef) || !inQualifierData || !*static_cast<const CFStringRef*>(inQualifierData))
+				return kAudioHardwareBadPropertySizeError;
+			if (outData && *ioDataSize < sizeof(AudioObjectID))
+				return kAudioHardwareBadPropertySizeError;
+			if (outData)
+				*static_cast<AudioObjectID*>(outData) = deviceForUID(*static_cast<const CFStringRef*>(inQualifierData));
+			*ioDataSize = sizeof(AudioObjectID);
 			return kAudioHardwareNoError;
 		}
 		// BEGIN kAudioObjectSystemObject properties
@@ -311,6 +377,36 @@ static void paServerInfoCB(pa_context*, const pa_server_info* info, void* userda
 			query->defaultName = name;
 	}
 	dispatch_semaphore_signal(query->done);
+}
+
+AudioObjectID AudioHardwareImplPA::deviceForUID(CFStringRef wanted)
+{
+	refreshDeviceList();
+
+	std::vector<AudioHardwareImpl*> devices;
+	{
+		std::lock_guard<std::mutex> lock(PAGetObjectMapMutex());
+		for (auto& object : PAGetObjectMap())
+		{
+			if (object.first != kAudioObjectSystemObject)
+				devices.push_back(object.second.get());
+		}
+	}
+
+	const AudioObjectPropertyAddress uidAddress = { kAudioDevicePropertyDeviceUID, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
+	for (AudioHardwareImpl* device : devices)
+	{
+		CFStringRef uid = nullptr;
+		UInt32 size = sizeof(uid);
+		if (device->getPropertyData(&uidAddress, 0, nullptr, &size, &uid) == kAudioHardwareNoError && uid)
+		{
+			const bool match = CFEqual(uid, wanted);
+			CFRelease(uid);
+			if (match)
+				return device->id();
+		}
+	}
+	return kAudioObjectUnknown;
 }
 
 AudioObjectID AudioHardwareImplPA::defaultDeviceId(bool input)
@@ -422,6 +518,19 @@ OSStatus AudioHardwareImplPA::setDefaultDevice(AudioObjectID device, bool input)
 OSStatus AudioHardwareImplPA::setPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 	const void* inQualifierData, UInt32 inDataSize, const void* inData)
 {
+	if (id() == kAudioObjectSystemObject)
+	{
+		if (std::atomic<UInt32>* setting = systemSetting(inAddress->mSelector))
+		{
+			if (inDataSize != sizeof(UInt32) || !inData)
+				return kAudioHardwareBadPropertySizeError;
+			const UInt32 value = *static_cast<const UInt32*>(inData);
+			if (setting->exchange(value) != value)
+				notifyPropertyChanged(inAddress->mSelector);
+			return kAudioHardwareNoError;
+		}
+	}
+
 	if (id() == kAudioObjectSystemObject
 		&& (inAddress->mSelector == kAudioHardwarePropertyDefaultOutputDevice
 			|| inAddress->mSelector == kAudioHardwarePropertyDefaultInputDevice))
@@ -701,6 +810,25 @@ static void paSubscribeCB(pa_context* c, pa_subscription_event_type_t t, uint32_
 		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 			self->refreshDeviceList();
 			self->notifyPropertyChanged(kAudioHardwarePropertyDevices);
+		});
+	}
+	else if ((facility == PA_SUBSCRIPTION_EVENT_SINK || facility == PA_SUBSCRIPTION_EVENT_SOURCE) && type == PA_SUBSCRIPTION_EVENT_CHANGE)
+	{
+		// The volume, mute, port, rate or state of a device changed, possibly by another application.
+		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+			std::vector<AudioHardwareImplPADevice*> devices;
+			{
+				std::lock_guard<std::mutex> lock(PAGetObjectMapMutex());
+				for (auto& object : PAGetObjectMap())
+				{
+					AudioHardwareImplPADevice* device = dynamic_cast<AudioHardwareImplPADevice*>(object.second.get());
+					if (device && device->hasListeners())
+						devices.push_back(device);
+				}
+			}
+			// The objects of the map live on for as long as the process, so the pointers stay valid.
+			for (AudioHardwareImplPADevice* device : devices)
+				device->checkChanges();
 		});
 	}
 	else if (facility == PA_SUBSCRIPTION_EVENT_SERVER)

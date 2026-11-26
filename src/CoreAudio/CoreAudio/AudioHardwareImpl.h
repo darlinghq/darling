@@ -23,6 +23,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CoreFoundation/CFString.h>
 #include <map>
 #include <mutex>
+#include <vector>
 #include "AudioHardwareStream.h"
 #include "AudioHardwareListenerRegistry.h"
 
@@ -77,6 +78,15 @@ public:
 	// for this object, with a single-element address array matching real
 	// AudioObjectPropertyListenerProc semantics.
 	void notifyPropertyChanged(AudioObjectPropertySelector selector);
+	// The same for a property of one scope and element: only listeners on that address (or on a wildcard) are told.
+	void notifyPropertyChanged(AudioObjectPropertySelector selector, AudioObjectPropertyScope scope, AudioObjectPropertyElement element);
+	// Brings the stream format up to date with the device behind the object. Called before the format is read
+	// or a stream is made.
+	virtual void refreshFormat() {}
+	// The sample rates a stream of the device can be asked for, in ascending order.
+	virtual std::vector<Float64> availableSampleRates() { return { m_asbd.mSampleRate }; }
+	// The rate of the device clock (kAudioDevicePropertyNominalSampleRate).
+	virtual Float64 nominalSampleRate() { return m_asbd.mSampleRate; }
 private:
 	static OSStatus getPropertyCFString(CFStringRef str, UInt32* ioDataSize, void* outData);
 	static OSStatus getPropertyString(CFStringRef str, UInt32* ioDataSize, void* outData);

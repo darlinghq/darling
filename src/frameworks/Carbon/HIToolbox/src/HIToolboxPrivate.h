@@ -25,6 +25,7 @@
 // (a filter that is not a list of event types, a run loop mode, posting in front of the queue).
 
 #include <HIToolbox/CarbonEventsCore.h>
+#include <CoreGraphics/CGEvent.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,6 +69,16 @@ OSStatus _HIReceiveNextEventMatchingWithOptions(HIEventMatchProc match, void* in
 // now, instead of at its first wait: what arrives before that wait is kept. For a framework that
 // connects to the window system before it waits for events. Any thread.
 void _HIBeginEventStreamReading(void);
+
+// A framework above HIToolbox can take part in the reading of the stream: each event that
+// arrives is handed to its filter on the reading (main) thread, in the order of the stream, and
+// the filter passes on the events of the queue that come of it with emit: the event itself, none
+// (it is dropped) or others (a window system event that the framework turns into events of
+// another kind, such as a finger that moves the mouse). The filter may call emit only while it
+// runs. NULL removes the filter. Any thread.
+typedef void (*HIEventStreamEmitProc)(CGEventRef event, void* info);
+typedef void (*HIEventStreamFilterProc)(CGEventRef event, HIEventStreamEmitProc emit, void* info);
+void _HISetEventStreamFilter(HIEventStreamFilterProc filter);
 
 // Removes the events of the queue the filter matches (NULL: every event). Only the events in
 // front of beforeEvent are considered when it is not NULL and in the queue.

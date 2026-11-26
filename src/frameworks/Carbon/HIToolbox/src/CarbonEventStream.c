@@ -107,6 +107,30 @@ static void addKeyParameters(EventRef event, CGEventRef cgEvent)
 	SetEventParameter(event, kEventParamKeyboardType, typeUInt32, sizeof(keyboardType), &keyboardType);
 }
 
+static _Atomic(HIEventStreamFilterProc) g_streamFilter;
+
+void _HISetEventStreamFilter(HIEventStreamFilterProc filter)
+{
+	atomic_store(&g_streamFilter, filter);
+}
+
+static void postStreamEvent(CGEventRef cgEvent, void* info)
+{
+	EventQueueRef queue = info;
+	EventRef event = NULL;
+
+	if (CreateEventWithCGEvent(NULL, cgEvent, kEventAttributeNone, &event) == noErr)
+	{
+		// CreateEventWithCGEvent() gives a key event the key code and the modifiers only (see
+		// test_quirk_cgevent_classes); the raw key events of the event queue carry the documented
+		// text and keyboard type as well.
+		if (event->eventClass == kEventClassKeyboard && (event->kind == kEventRawKeyDown || event->kind == kEventRawKeyRepeat || event->kind == kEventRawKeyUp))
+			addKeyParameters(event, cgEvent);
+		_HIPostEventFromWaitingThread(queue, event);
+		ReleaseEvent(event);
+	}
+}
+
 void _HIDrainEventStream(EventQueueRef queue)
 {
 	if (!atomic_load_explicit(&g_streamRegistered, memory_order_acquire) || queue != &_HIMainEventLoop()->queue)
@@ -116,18 +140,12 @@ void _HIDrainEventStream(EventQueueRef queue)
 	CGEventRef cgEvent;
 	while ((cgEvent = _CGSEventStreamCopyNextEvent()) != NULL)
 	{
-		EventRef event = NULL;
+		HIEventStreamFilterProc filter = atomic_load(&g_streamFilter);
 
-		if (CreateEventWithCGEvent(NULL, cgEvent, kEventAttributeNone, &event) == noErr)
-		{
-			// CreateEventWithCGEvent() gives a key event the key code and the modifiers only (see
-			// test_quirk_cgevent_classes); the raw key events of the event queue carry the documented
-			// text and keyboard type as well.
-			if (event->eventClass == kEventClassKeyboard && (event->kind == kEventRawKeyDown || event->kind == kEventRawKeyRepeat || event->kind == kEventRawKeyUp))
-				addKeyParameters(event, cgEvent);
-			_HIPostEventFromWaitingThread(queue, event);
-			ReleaseEvent(event);
-		}
+		if (filter != NULL)
+			filter(cgEvent, postStreamEvent, queue);
+		else
+			postStreamEvent(cgEvent, queue);
 		CFRelease(cgEvent);
 	}
 }
