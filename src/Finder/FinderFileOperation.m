@@ -380,8 +380,11 @@ static int FinderCopyCallback(int what, int stage, copyfile_state_t state, const
     copyfile_state_t state = copyfile_state_alloc();
     copyfile_state_set(state, COPYFILE_STATE_STATUS_CB, (const void *) &FinderCopyCallback);
     copyfile_state_set(state, COPYFILE_STATE_STATUS_CTX, (__bridge const void *) self);
+    // Best-effort clone: libcopyfile falls back to an ordinary copy when the
+    // underlying filesystem cannot reflink, as Finder does on macOS.
     int result = copyfile([item fileSystemRepresentation], [staged fileSystemRepresentation], state,
-                          COPYFILE_ALL | COPYFILE_RECURSIVE | COPYFILE_NOFOLLOW_SRC | COPYFILE_EXCL);
+                          COPYFILE_ALL | COPYFILE_RECURSIVE | COPYFILE_NOFOLLOW_SRC | COPYFILE_EXCL |
+                          COPYFILE_CLONE);
     int saved = errno;
     copyfile_state_free(state);
     if (result == 0 && ![self isCancelled]) {

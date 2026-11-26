@@ -46,6 +46,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "darling.h"
 #include "darling-config.h"
 #include "launcher-env.h"
+#include "launcher-hostlink.h"
 #include "launcher-ids.h"
 #include "launcher-locale.h"
 #include "launcher-mode.h"
@@ -265,6 +266,25 @@ int main(int argc, char ** argv)
 	ensureZoneinfoLink();
 	ensureGlobalPreferences();
 	ensureSharedTmpModes();
+
+	// The host's Kerberos configuration is only visible in the guest when the launcher points the guest's
+	// /private/etc/krb5.conf at it. Do this before the server starts, so daemons and applications see the
+	// same file. A host without one keeps the guest's own file, if any. (The host sockets of CUPS and the
+	// Kerberos credential cache are linked by launchd jobs at boot: the container empties /var/run when it
+	// starts, so a link made here would not survive.)
+	if (getInitProcess() == 0)
+	{
+		bool krb5ConfigLinked;
+
+		useInvokingIds();
+		krb5ConfigLinked = launcherLinkHostKrb5Config(prefix, getenv("KRB5_CONFIG"));
+		restoreRootIds();
+
+		// $KRB5_CONFIG from the host names a host path, which is not the path
+		// guest programs should open. Name the mapped guest file instead.
+		if (krb5ConfigLinked)
+			setenv("KRB5_CONFIG", "/etc/krb5.conf", 1);
+	}
 
 	// The container's programs have the guest's HOME, so the PulseAudio client library cannot find the
 	// host user's server by itself on a host without XDG_RUNTIME_DIR. Name the host's locations for it.

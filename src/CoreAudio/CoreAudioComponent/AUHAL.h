@@ -79,6 +79,9 @@ protected:
 	AURenderCallbackStruct m_outputAvailableCb = { 0 };
 	bool m_enableOutput = true, m_enableInput = false;
 	bool m_running = false;
+	// kAudioUnitProperty_RenderQuality. The units of the macOS HAL output family use it for their format
+	// converter; this unit renders in the device format and keeps the value for clients only.
+	UInt32 m_renderQuality = kRenderQuality_Medium;
 
 	AudioDeviceID m_outputDevice, m_inputDevice;
 	AudioDeviceIOProcID m_outputProcID = 0, m_inputProcID = 0;
@@ -98,4 +101,3 @@ protected:
 };
 
 #endif
-
