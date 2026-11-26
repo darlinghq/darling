@@ -37,12 +37,6 @@ typedef struct EventHotKeyID {
 } EventHotKeyID;
 typedef struct OpaqueEventHotKeyRef *EventHotKeyRef;
 
-// the parameters of keyboard events (kEventClassKeyboard); the key code, characters and
-// modifiers are in CarbonEventsCore.h
-enum {
-	kEventParamKeyboardType = 'kbdt',    // typeUInt32: the keyboard's type
-};
-
 enum {
 	kEventHotKeyPressed = 5,
 	kEventHotKeyReleased = 6,
