@@ -307,17 +307,23 @@ OSStatus AUHAL::SetProperty(AudioUnitPropertyID inID, AudioUnitScope inScope, Au
 	{
 		case kAudioUnitProperty_RenderQuality:
 		{
+			// The value is kept for clients that read it back; this unit renders in the device format
+			// and has no converter it could apply it to. Like the macOS HAL output units, it accepts the
+			// property in the global scope on any element, and no other scope.
 			if (inScope != kAudioUnitScope_Global)
 				return kAudioUnitErr_InvalidScope;
-			if (inElement != 0)
-				return kAudioUnitErr_InvalidElement;
-			if (!inData || inDataSize != sizeof(UInt32))
+			if (!inData || inDataSize == 0)
+				return kAudio_ParamError;
+			if (inDataSize != sizeof(UInt32))
 				goto InvalidPropertyValue;
 			UInt32 quality;
 			memcpy(&quality, inData, sizeof(quality));
-			if (quality > kRenderQuality_Max)
-				goto InvalidPropertyValue;
-			m_renderQuality = quality;
+			// QUIRK: kRenderQuality_Max is 127, but the HAL output units store any value up to
+			// INT32_MAX, and a larger value (negative as a signed 32-bit number) puts the property
+			// back to its initial value instead of failing. Not documented. Evidence: black-box
+			// observation of AudioUnitSetProperty/GetProperty on macOS 26.7.3 and 10.14.4 (tier 2).
+			// Test: tests/src/auhal_render_quality.c (check_quirk_*)
+			m_renderQuality = quality > INT32_MAX ? kRenderQuality_Medium : quality;
 			return noErr;
 		}
 		case kAudioDevicePropertyBufferFrameSize:
@@ -406,8 +412,6 @@ OSStatus AUHAL::GetPropertyInfo(AudioUnitPropertyID inID, AudioUnitScope inScope
 		{
 			if (inScope != kAudioUnitScope_Global)
 				return kAudioUnitErr_InvalidScope;
-			if (inElement != 0)
-				return kAudioUnitErr_InvalidElement;
 			outDataSize = sizeof(UInt32);
 			outWritable = true;
 			return noErr;
@@ -460,8 +464,6 @@ OSStatus AUHAL::GetProperty(AudioUnitPropertyID inID, AudioUnitScope inScope, Au
 		{
 			if (inScope != kAudioUnitScope_Global)
 				return kAudioUnitErr_InvalidScope;
-			if (inElement != 0)
-				return kAudioUnitErr_InvalidElement;
 			memcpy(outData, &m_renderQuality, sizeof(m_renderQuality));
 			return noErr;
 		}
