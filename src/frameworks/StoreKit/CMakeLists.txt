@@ -48,6 +48,7 @@ add_framework(StoreKit
         src/SKProductDiscount.m
         src/SKReceiptRefreshRequest.m
         src/SKHandleInvalidReceiptRequest.m
+        src/StoreKitSwiftStubs.S
         src/SKServiceClient.m
         src/SKPaymentDiscountInternal.m
         src/SKPaymentDiscount.m
