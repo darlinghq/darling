@@ -12,6 +12,8 @@ generate_sdk_framework(BackgroundAssets
     HEADER "include/BackgroundAssets"
 )
 
+include_directories(include)
+
 add_framework(BackgroundAssets
     FAT
     CURRENT_VERSION
