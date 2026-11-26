@@ -30,6 +30,7 @@
 #include "HIToolboxInternal.h"
 #include "HIToolboxPrivate.h"
 #include <CoreGraphics/CoreGraphicsPrivate.h>
+#include <AE/AEDataModel.h>
 
 static atomic_bool g_streamRegistered;
 static pthread_mutex_t g_streamRegisterLock = PTHREAD_MUTEX_INITIALIZER;
@@ -76,6 +77,36 @@ void _HIBeginEventStreamReading(void)
 	registerReader(_HIMainEventLoop());
 }
 
+// The parameters of a raw key event of the window system, besides the key code and the modifiers that every
+// event made from a CGEvent has: the characters the key produced (the Mac Roman character and the Unicode
+// text) and the type of the keyboard. Their sources are the Unicode string and the keyboard type field of the
+// CGEvent, which CoreGraphics fills from the keyboard layout in use.
+static void addKeyParameters(EventRef event, CGEventRef cgEvent)
+{
+	UniChar text[16];
+	UniCharCount length = 0;
+
+	CGEventKeyboardGetUnicodeString(cgEvent, sizeof(text) / sizeof(text[0]), &length, text);
+	if (length > 0)
+	{
+		UInt8 macChar = 0;
+		CFStringRef string = CFStringCreateWithCharactersNoCopy(NULL, text, 1, kCFAllocatorNull);
+
+		// A character the Mac Roman encoding has no place for stays 0
+		if (string)
+		{
+			CFStringGetBytes(string, CFRangeMake(0, 1), kCFStringEncodingMacRoman, 0, false, &macChar, 1, NULL);
+			CFRelease(string);
+		}
+		SetEventParameter(event, kEventParamKeyMacCharCodes, typeChar, sizeof(macChar), &macChar);
+		SetEventParameter(event, kEventParamKeyUnicodes, typeUnicodeText, length * sizeof(UniChar), text);
+	}
+
+	UInt32 keyboardType = (UInt32) CGEventGetIntegerValueField(cgEvent, kCGKeyboardEventKeyboardType);
+
+	SetEventParameter(event, kEventParamKeyboardType, typeUInt32, sizeof(keyboardType), &keyboardType);
+}
+
 void _HIDrainEventStream(EventQueueRef queue)
 {
 	if (!atomic_load_explicit(&g_streamRegistered, memory_order_acquire) || queue != &_HIMainEventLoop()->queue)
@@ -89,6 +120,11 @@ void _HIDrainEventStream(EventQueueRef queue)
 
 		if (CreateEventWithCGEvent(NULL, cgEvent, kEventAttributeNone, &event) == noErr)
 		{
+			// CreateEventWithCGEvent() gives a key event the key code and the modifiers only (see
+			// test_quirk_cgevent_classes); the raw key events of the event queue carry the documented
+			// text and keyboard type as well.
+			if (event->eventClass == kEventClassKeyboard && (event->kind == kEventRawKeyDown || event->kind == kEventRawKeyRepeat || event->kind == kEventRawKeyUp))
+				addKeyParameters(event, cgEvent);
 			_HIPostEventFromWaitingThread(queue, event);
 			ReleaseEvent(event);
 		}

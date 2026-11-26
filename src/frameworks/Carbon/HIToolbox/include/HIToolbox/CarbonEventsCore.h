@@ -128,6 +128,7 @@ enum {
 	kEventParamKeyModifiers = 'kmod',
 	kEventParamKeyCode = 'kcod',
 	kEventParamKeyUnicodes = 'kuni',
+	kEventParamKeyboardType = 'kbdt',
 };
 
 enum {
