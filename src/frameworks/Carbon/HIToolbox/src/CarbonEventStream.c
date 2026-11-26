@@ -76,6 +76,25 @@ void _HIBeginEventStreamReading(void)
 	registerReader(_HIMainEventLoop());
 }
 
+static _Atomic(HIEventStreamFilterProc) g_streamFilter;
+
+void _HISetEventStreamFilter(HIEventStreamFilterProc filter)
+{
+	atomic_store(&g_streamFilter, filter);
+}
+
+static void postStreamEvent(CGEventRef cgEvent, void* info)
+{
+	EventQueueRef queue = info;
+	EventRef event = NULL;
+
+	if (CreateEventWithCGEvent(NULL, cgEvent, kEventAttributeNone, &event) == noErr)
+	{
+		_HIPostEventFromWaitingThread(queue, event);
+		ReleaseEvent(event);
+	}
+}
+
 void _HIDrainEventStream(EventQueueRef queue)
 {
 	if (!atomic_load_explicit(&g_streamRegistered, memory_order_acquire) || queue != &_HIMainEventLoop()->queue)
@@ -85,13 +104,12 @@ void _HIDrainEventStream(EventQueueRef queue)
 	CGEventRef cgEvent;
 	while ((cgEvent = _CGSEventStreamCopyNextEvent()) != NULL)
 	{
-		EventRef event = NULL;
+		HIEventStreamFilterProc filter = atomic_load(&g_streamFilter);
 
-		if (CreateEventWithCGEvent(NULL, cgEvent, kEventAttributeNone, &event) == noErr)
-		{
-			_HIPostEventFromWaitingThread(queue, event);
-			ReleaseEvent(event);
-		}
+		if (filter != NULL)
+			filter(cgEvent, postStreamEvent, queue);
+		else
+			postStreamEvent(cgEvent, queue);
 		CFRelease(cgEvent);
 	}
 }
