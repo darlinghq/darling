@@ -69,11 +69,14 @@ override_dh_auto_configure-arch:
 	mkdir debbuild-native -p
 	cd debbuild-native && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. $(CMAKE_COMMON) -DDARLING_BUILD_MACHO=OFF
 
+# The build flags of dpkg-buildflags are for Linux binaries: they are cleared for the configure step
+# above and, because subprojects such as WebKit configure their own builds while Darling builds,
+# for the build too (clang rejects some of them, such as -ffat-lto-objects, for Darwin targets).
 override_dh_auto_build-indep:
-	cd debbuild && $(MAKE) -j$(shell nproc)
+	cd debbuild && CFLAGS="" CXXFLAGS="" OBJCFLAGS="" OBJCXXFLAGS="" CPPFLAGS="" LDFLAGS="" $(MAKE) -j$(shell nproc)
 
 override_dh_auto_build-arch:
-	cd debbuild-native && $(MAKE) -j$(shell nproc)
+	cd debbuild-native && CFLAGS="" CXXFLAGS="" OBJCFLAGS="" OBJCXXFLAGS="" CPPFLAGS="" LDFLAGS="" $(MAKE) -j$(shell nproc)
 
 override_dh_auto_test-arch:
 	dh_auto_test --builddirectory=debbuild-native
