@@ -28,6 +28,8 @@
 #import <CoreBluetooth/BTDevicePicker.h>
 #import <CoreBluetooth/CBClassicPeer.h>
 #import <CoreBluetooth/CBCentralManager.h>
+#import <CoreBluetooth/CBCentralManagerDelegate.h>
+#import <CoreBluetooth/CBPeripheralDelegate.h>
 #import <CoreBluetooth/CBRFCOMMChannel.h>
 #import <CoreBluetooth/CBCharacteristic.h>
 #import <CoreBluetooth/CBMutableCharacteristic.h>
