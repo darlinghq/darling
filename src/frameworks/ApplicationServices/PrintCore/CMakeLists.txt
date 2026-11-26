@@ -21,9 +21,13 @@ add_framework(PrintCore
     SOURCES
         src/PrintCore.m
         src/PMInkChecker.m
+        src/PMSession.c
 
     DEPENDENCIES
         system
         objc
         Foundation
+        CoreFoundation
+        CoreGraphics
+        CoreServices
 )

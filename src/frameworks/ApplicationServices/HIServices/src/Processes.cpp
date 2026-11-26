@@ -260,10 +260,15 @@ OSStatus GetProcessPID(const ProcessSerialNumber* psn, pid_t* pid)
 	return resolvePID(psn, pid);
 }
 
+// Whether the application of the process has not been hidden (ShowHideProcess()); the hidden state is the one
+// the application publishes through CoreGraphics. A process that does not exist is not visible.
 Boolean IsProcessVisible(const ProcessSerialNumber* psn)
 {
-	STUB();
-	return true;
+	pid_t pid;
+
+	if (!psn || resolvePID(psn, &pid) != noErr)
+		return false;
+	return !_CGSProcessIsHidden(pid);
 }
 
 OSErr KillProcess(const ProcessSerialNumber* psn)
@@ -383,10 +388,23 @@ OSErr SetFrontProcessWithOptions(const ProcessSerialNumber* psn, OptionBits opts
 	return noErr;
 }
 
+// Asks the application of the process to hide or show its windows. The request is carried out by the
+// application, so success means the request was made. A process that is not an application of the window
+// system is procNotFound.
 OSErr ShowHideProcess(const ProcessSerialNumber* psn, Boolean visible)
 {
-	STUB();
-	return noErr;
+	pid_t pid;
+	OSErr err;
+
+	if (!psn)
+		return paramErr;
+	err = resolvePID(psn, &pid);
+	if (err != noErr)
+		return err;
+
+	CGError error = _CGSSendProcessCommand(pid, visible ? kCGSProcessCommandUnhide : kCGSProcessCommandHide);
+
+	return error == kCGErrorSuccess ? noErr : procNotFound;
 }
 
 OSStatus TransformProcessType(const ProcessSerialNumber* psn, UInt32 type)

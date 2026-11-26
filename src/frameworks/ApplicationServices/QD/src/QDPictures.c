@@ -6,7 +6,9 @@
 // Supported opcodes: the header and no-op records, comments, clip, colors, pen and pattern
 // state, rectangle and line drawing, and the pixel opcodes PackBitsRect, PackBitsRgn,
 // DirectBitsRect and DirectBitsRgn (1-8 bit indexed with a color table, 16 and 32 bit direct;
-// the region of the *Rgn forms is skipped). Text opcodes are skipped and counted, since this
+// the region of the *Rgn forms is skipped), and the QuickTime opcodes CompressedQuickTime and
+// UncompressedQuickTime for images that ImageIO decodes (TIFF, JPEG, PNG, GIF, BMP; the matrix
+// is taken as the identity, the matte and the mask are skipped). Text opcodes are skipped and counted, since this
 // QuickDraw draws no text. Any other opcode stops the playback with QDError set to
 // pictureDataErr; what was drawn before it stays drawn. Version 1 pictures are refused.
 // Reference: Imaging With QuickDraw, Appendix A.
@@ -15,6 +17,9 @@
 #include "QDPortPrivate.h"
 #include <CarbonCore/MacMemory.h>
 #include <CarbonCore/Resources.h>
+#include <CoreFoundation/CoreFoundation.h>
+#include <CoreGraphics/CoreGraphics.h>
+#include <ImageIO/ImageIO.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -188,6 +193,69 @@ static Boolean pixels(struct reader *r, unsigned op, struct QDPort *port, const 
 	return ok;
 }
 
+
+// The QuickTime picture opcodes 0x8200 (CompressedQuickTime) and 0x8201 (UncompressedQuickTime): a record with the
+// transformation matrix, an optional matte, the transfer mode, the source rectangle, the accuracy, a mask region and
+// then an image description followed by the image data. An image of a format ImageIO reads is drawn at the source
+// rectangle; any other codec (or damage) makes the picture unsupported.
+static Boolean quicktime_image(struct reader *r, struct QDPort *port, const struct mapping *m)
+{
+	uint32_t size = u32(r);
+	if (r->bad || (size_t) (r->end - r->p) < size) return false;
+	struct reader b = {r->p, r->p + size, false};
+	skip(r, size);
+	u16(&b);                    // version
+	skip(&b, 36);               // matrix
+	uint32_t matteSize = u32(&b);
+	skip(&b, 8);                // matte rectangle
+	u16(&b);                    // transfer mode
+	Rect src = rect(&b);
+	u32(&b);                    // accuracy
+	uint32_t maskSize = u32(&b);
+	skip(&b, matteSize);
+	skip(&b, maskSize);
+	uint32_t descriptionSize = u32(&b);
+	if (b.bad || descriptionSize < 46 || (size_t) (b.end - b.p) < descriptionSize - 4) return false;
+	const uint8_t *description = b.p - 4;
+	b.p = description + 44;
+	uint32_t dataSize = u32(&b);
+	b.p = description + descriptionSize;
+	size_t available = (size_t) (b.end - b.p);
+	if (dataSize == 0 || dataSize > available) dataSize = (uint32_t) available;
+
+	int width = src.right - src.left, height = src.bottom - src.top;
+	if (width <= 0 || height <= 0 || dataSize == 0) return false;
+
+	CFDataRef data = CFDataCreate(NULL, b.p, dataSize);
+	CGImageSourceRef source = data ? CGImageSourceCreateWithData(data, NULL) : NULL;
+	CGImageRef image = source ? CGImageSourceCreateImageAtIndex(source, 0, NULL) : NULL;
+	if (source) CFRelease(source);
+	if (data) CFRelease(data);
+	if (!image) return false;
+
+	GWorldPtr tmp = NULL;
+	Rect bounds;
+	SetRect(&bounds, 0, 0, width, height);
+	if (NewGWorld(&tmp, 32, &bounds, NULL, NULL, 0) != noErr) { CGImageRelease(image); return false; }
+	struct QDPort *t = PORT_FROM(tmp);
+	CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+	// the pixels of a port are 0xFF, red, green, blue in memory; the image is drawn over white
+	CGContextRef context = CGBitmapContextCreate(t->pixels, width, height, 8, t->rowBytes, space, kCGBitmapByteOrder32Big | kCGImageAlphaNoneSkipFirst);
+	CGColorSpaceRelease(space);
+	Boolean ok = context != NULL;
+	if (ok) {
+		CGContextSetRGBFillColor(context, 1, 1, 1, 1);
+		CGContextFillRect(context, CGRectMake(0, 0, width, height));
+		CGContextDrawImage(context, CGRectMake(0, 0, width, height), image);
+		CGContextRelease(context);
+		Rect target = map_rect(m, src), from = bounds;
+		CopyBits((const BitMap *) &t->pixMap, (const BitMap *) &port->pixMap, &from, &target, 0, NULL);
+	}
+	DisposeGWorld(tmp);
+	CGImageRelease(image);
+	return ok;
+}
+
 static QDErr play(const uint8_t *data, size_t size, const Rect *dstRect, unsigned *skippedText)
 {
 	struct QDPort *port = PORT_FROM(gCurrentPort);
@@ -205,6 +273,9 @@ static QDErr play(const uint8_t *data, size_t size, const Rect *dstRect, unsigne
 		if (r.bad) break;
 		switch (op) {
 			case 0x0000: case 0x001E: break;                        // NOP, DefHilite
+			case 0x001F: skip(&r, 6); break;                        // OpColor: the color of the blend modes
+			case 0x0010: skip(&r, 8); break;                        // TxRatio: the scale of the text, which is skipped
+			case 0x0006: case 0x000B: case 0x000E: case 0x000F: skip(&r, 4); break; // SpExtra, OvSize, the color constants: no effect on the playback
 			case 0x00FF: return noErr;                              // OpEndPic
 			case 0x0C00: skip(&r, 24); break;                      // HeaderOp
 			case 0x0001: { unsigned n = u16(&r); skip(&r, n - 2); break; } // Clip: the frame clips
@@ -235,6 +306,9 @@ static QDErr play(const uint8_t *data, size_t size, const Rect *dstRect, unsigne
 			case 0x00A1: { skip(&r, 2); unsigned n = u16(&r); skip(&r, n); break; } // LongComment
 			case 0x0098: case 0x0099: case 0x009A: case 0x009B:
 				if (!pixels(&r, op, port, &m)) return kQDPictUnsupportedOpcode;
+				break;
+			case 0x8200: case 0x8201:
+				if (!quicktime_image(&r, port, &m)) return kQDPictUnsupportedOpcode;
 				break;
 			default:
 				return kQDPictUnsupportedOpcode;

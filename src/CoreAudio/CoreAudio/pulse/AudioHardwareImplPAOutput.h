@@ -19,21 +19,16 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef AUDIOHARDWAREIMPLPAOUTPUT_H
 #define AUDIOHARDWAREIMPLPAOUTPUT_H
-#include "AudioHardwareImplPA.h"
+#include "AudioHardwareImplPADevice.h"
 
-class AudioHardwareImplPAOutput : public AudioHardwareImplPA
+// The output device that stands for whatever the server's default sink is.
+class AudioHardwareImplPAOutput : public AudioHardwareImplPADevice
 {
 public:
 	AudioHardwareImplPAOutput(AudioObjectID myId, const char* paRole = nullptr);
 
-	OSStatus getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
-		const void* inQualifierData, UInt32* ioDataSize, void* outData) override;
-	
-	OSStatus setPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
-		const void* inQualifierData, UInt32 inDataSize, const void* inData) override;
-protected:
-	AudioHardwareStream* createStream(AudioDeviceIOProc callback, void* clientData) override;
+	// The stream connects to the server's default.
+	const char* paDeviceName() const override { return nullptr; }
 };
 
 #endif
-

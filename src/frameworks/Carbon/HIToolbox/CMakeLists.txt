@@ -34,9 +34,11 @@ add_framework(HIToolbox
 		src/IBCarbonRuntime.c
 		src/IBCarbonNib.c
 		src/IBCarbonWindows.c
+		src/Controls.c
 		src/Menus.c
 		src/MenusClassic.c
-		src/MenuTracking.c
+		src/MenuTracking.m
+		src/MouseTracking.c
 		src/HITheme.c
 		src/constants.c
 

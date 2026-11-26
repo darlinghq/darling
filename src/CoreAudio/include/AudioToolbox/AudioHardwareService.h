@@ -8,6 +8,15 @@
 extern "C" {
 #endif
 
+// The volume and balance of a device as a whole, however many channels it has.
+enum
+{
+	kAudioHardwareServiceDeviceProperty_VirtualMainVolume = 'vmvc',
+	kAudioHardwareServiceDeviceProperty_VirtualMasterVolume = kAudioHardwareServiceDeviceProperty_VirtualMainVolume,
+	kAudioHardwareServiceDeviceProperty_VirtualMainBalance = 'vmbc',
+	kAudioHardwareServiceDeviceProperty_VirtualMasterBalance = kAudioHardwareServiceDeviceProperty_VirtualMainBalance
+};
+
 OSStatus AudioHardwareServiceGetPropertyData(AudioObjectID inObjectID, const AudioObjectPropertyAddress *inAddress, UInt32 inQualifierDataSize, const void *inQualifierData, UInt32 *ioDataSize, void *outData);
 Boolean AudioHardwareServiceHasProperty(AudioObjectID inObjectID, const AudioObjectPropertyAddress *inAddress);
 OSStatus AudioHardwareServiceIsPropertySettable(AudioObjectID inObjectID, const AudioObjectPropertyAddress *inAddress, Boolean *outIsSettable);
