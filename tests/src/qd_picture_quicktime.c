@@ -60,6 +60,7 @@ static Handle makePicture(const unsigned char *image, size_t imageSize, const ch
 	put16(&p, 0x0011); put16(&p, 0x02FF);                                              // version 2
 	put16(&p, 0x0C00); for (int i = 0; i < 12; i++) put16(&p, 0);                      // header
 	put16(&p, 0x001F); put16(&p, 0x8000); put16(&p, 0x8000); put16(&p, 0x8000);      // OpColor, as pictures made by QuickTime-aware tools have before the image
+	put16(&p, 0x0010); put16(&p, 30); put16(&p, 30); put16(&p, 217); put16(&p, 217);  // TxRatio
 	put16(&p, 0x8200);
 	put32(&p, (unsigned) (2 + 36 + 4 + 8 + 2 + 8 + 4 + 4 + kDescriptionSize + imageSize));
 	put16(&p, 0);                                                                      // version

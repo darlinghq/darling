@@ -274,6 +274,8 @@ static QDErr play(const uint8_t *data, size_t size, const Rect *dstRect, unsigne
 		switch (op) {
 			case 0x0000: case 0x001E: break;                        // NOP, DefHilite
 			case 0x001F: skip(&r, 6); break;                        // OpColor: the color of the blend modes
+			case 0x0010: skip(&r, 8); break;                        // TxRatio: the scale of the text, which is skipped
+			case 0x0006: case 0x000B: case 0x000E: case 0x000F: skip(&r, 4); break; // SpExtra, OvSize, the color constants: no effect on the playback
 			case 0x00FF: return noErr;                              // OpEndPic
 			case 0x0C00: skip(&r, 24); break;                      // HeaderOp
 			case 0x0001: { unsigned n = u16(&r); skip(&r, n - 2); break; } // Clip: the frame clips
