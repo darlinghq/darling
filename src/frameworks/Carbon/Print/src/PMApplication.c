@@ -41,24 +41,4 @@ OSStatus PMSessionEndPage(PMPrintSession printSession)
 	return PMSessionEndPageNoDialog(printSession);
 }
 
-// There is no print panel to show yet, so the dialogs are cancelled, which is what a user does that
-// dismisses them: the application does not print and keeps the objects as they were.
-OSStatus PMSessionPageSetupDialog(PMPrintSession printSession, PMPageFormat pageFormat, Boolean* accepted)
-{
-	if (PMSessionError(printSession) == kPMInvalidPrintSession)
-		return kPMInvalidPrintSession;
-	if (accepted)
-		*accepted = false;
-	return noErr;
-}
-
-OSStatus PMSessionPrintDialog(PMPrintSession printSession, PMPrintSettings printSettings, PMPageFormat constPageFormat, Boolean* accepted)
-{
-	if (PMSessionError(printSession) == kPMInvalidPrintSession)
-		return kPMInvalidPrintSession;
-	if (accepted)
-		*accepted = false;
-	return noErr;
-}
-
 #endif
