@@ -44,7 +44,6 @@ static NSString * const kDefaultMainNibName = @"Main";
 
 - (void)dealloc
 {
-	[_window release];
 	[_initialKeyView release];
 	[_firstKeyView release];
 	[_lastKeyView release];

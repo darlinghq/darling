@@ -220,6 +220,19 @@ int main(int argc, char **argv)
 			[gLog removeAllObjects];
 			NSView *v = [p loadMainView];
 			CHECK(v == nil && [LogString() hasSuffix:@"assignMainView mainViewDidLoad"], "assign override that sets nothing: %s", [LogString() UTF8String]);
+
+			{
+				NSWindow *hostWindow = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 200, 100)
+														   styleMask:NSWindowStyleMaskTitled
+															 backing:NSBackingStoreBuffered
+															   defer:NO];
+				NSUInteger rcBefore = [hostWindow retainCount];
+				LogPane *q = [[LogPane alloc] initWithBundle:mainBundle];
+				[q setValue:hostWindow forKey:@"_window"];
+				[q release];
+				CHECK([hostWindow retainCount] == rcBefore, "dealloc does not release non-retained _window");
+				[hostWindow release];
+			}
 		}
 
 		// selection state
