@@ -1,6 +1,7 @@
 # Copyright (C) 2026 Lubos Dolezel
 #
-# Swift API notes for CoreData: Swift names for methods, initializers and enumerators.
+# Swift API notes for CoreData: Swift names for the methods, initializers and enumerators that darling-cocotron's
+# CoreData headers declare.
 ---
 Name: CoreData
 Classes:
@@ -19,34 +20,6 @@ Classes:
     MethodKind: Class
   - Selector: 'relationshipsWithDestinationEntity:'
     SwiftName: 'relationships(forDestination:)'
-    MethodKind: Instance
-  - Selector: 'isKindOfEntity:'
-    SwiftName: 'isKindOf(entity:)'
-    MethodKind: Instance
-- Name: NSEntityMigrationPolicy
-  Methods:
-  - Selector: 'beginEntityMapping:manager:error:'
-    SwiftName: 'begin(_:with:)'
-    MethodKind: Instance
-  - Selector: 'createDestinationInstancesForSourceInstance:entityMapping:manager:error:'
-    SwiftName: 'createDestinationInstances(forSource:in:manager:)'
-    MethodKind: Instance
-  - Selector: 'endInstanceCreationForEntityMapping:manager:error:'
-    SwiftName: 'endInstanceCreation(forMapping:manager:)'
-    MethodKind: Instance
-  - Selector: 'createRelationshipsForDestinationInstance:entityMapping:manager:error:'
-    SwiftName: 'createRelationships(forDestination:in:manager:)'
-    MethodKind: Instance
-  - Selector: 'endRelationshipCreationForEntityMapping:manager:error:'
-    SwiftName: 'endRelationshipCreation(forMapping:manager:)'
-    MethodKind: Instance
-  - Selector: 'performCustomValidationForEntityMapping:manager:error:'
-    SwiftName: 'performCustomValidation(forMapping:manager:)'
-    MethodKind: Instance
-- Name: NSIncrementalStore
-  Methods:
-  - Selector: 'newObjectIDForEntity:referenceObject:'
-    SwiftName: 'newObjectID(for:referenceObject:)'
     MethodKind: Instance
 - Name: NSManagedObjectContext
   Methods:
@@ -67,39 +40,6 @@ Classes:
   - Selector: 'setEntities:forConfiguration:'
     SwiftName: 'setEntities(_:forConfigurationName:)'
     MethodKind: Instance
-  - Selector: 'isConfiguration:compatibleWithStoreMetadata:'
-    SwiftName: 'isConfiguration(withName:compatibleWithStoreMetadata:)'
-    MethodKind: Instance
-- Name: NSConstraintConflict
-  Methods:
-  - Selector: 'initWithConstraint:databaseObject:databaseSnapshot:conflictingObjects:conflictingSnapshots:'
-    SwiftName: 'init(constraint:database:databaseSnapshot:conflicting:conflictingSnapshots:)'
-    MethodKind: Instance
-- Name: NSMergePolicy
-  Methods:
-  - Selector: 'resolveConflicts:error:'
-    SwiftName: 'resolve(mergeConflicts:)'
-    MethodKind: Instance
-  - Selector: 'resolveOptimisticLockingVersionConflicts:error:'
-    SwiftName: 'resolve(optimisticLockingConflicts:)'
-    MethodKind: Instance
-  - Selector: 'resolveConstraintConflicts:error:'
-    SwiftName: 'resolve(constraintConflicts:)'
-    MethodKind: Instance
-- Name: NSMigrationManager
-  Methods:
-  - Selector: 'migrateStoreFromURL:type:options:withMappingModel:toDestinationURL:destinationType:destinationOptions:error:'
-    SwiftName: 'migrateStore(from:sourceType:options:with:toDestinationURL:destinationType:destinationOptions:)'
-    MethodKind: Instance
-  - Selector: 'associateSourceInstance:withDestinationInstance:forEntityMapping:'
-    SwiftName: 'associate(sourceInstance:withDestinationInstance:for:)'
-    MethodKind: Instance
-  - Selector: 'destinationInstancesForEntityMappingNamed:sourceInstances:'
-    SwiftName: 'destinationInstances(forEntityMappingName:sourceInstances:)'
-    MethodKind: Instance
-  - Selector: 'sourceInstancesForEntityMappingNamed:destinationInstances:'
-    SwiftName: 'sourceInstances(forEntityMappingName:destinationInstances:)'
-    MethodKind: Instance
 - Name: NSPersistentStore
   Methods:
   - Selector: 'setMetadata:forPersistentStoreWithURL:error:'
@@ -116,76 +56,12 @@ Classes:
   - Selector: 'removePersistentStore:error:'
     SwiftName: 'remove(_:)'
     MethodKind: Instance
-  - Selector: 'metadataForPersistentStoreOfType:URL:options:error:'
-    SwiftName: 'metadataForPersistentStore(ofType:at:options:)'
-    MethodKind: Class
-  - Selector: 'setMetadata:forPersistentStoreOfType:URL:options:error:'
-    SwiftName: 'setMetadata(_:forPersistentStoreOfType:at:options:)'
-    MethodKind: Class
   - Selector: 'metadataForPersistentStoreOfType:URL:error:'
     SwiftName: 'metadataForPersistentStore(ofType:at:)'
     MethodKind: Class
   - Selector: 'setMetadata:forPersistentStoreOfType:URL:error:'
     SwiftName: 'setMetadata(_:forPersistentStoreOfType:at:)'
     MethodKind: Class
-  - Selector: 'elementsDerivedFromExternalRecordURL:'
-    SwiftName: 'elementsDerived(fromExternalRecordAt:)'
-    MethodKind: Class
-  - Selector: 'importStoreWithIdentifier:fromExternalRecordsDirectory:toURL:options:withType:error:'
-    SwiftName: 'importStore(withIdentifier:fromExternalRecordsDirectoryAt:to:options:ofType:)'
-    MethodKind: Instance
-  - Selector: 'destroyPersistentStoreAtURL:withType:options:error:'
-    SwiftName: 'destroyPersistentStore(at:ofType:options:)'
-    MethodKind: Instance
-  - Selector: 'replacePersistentStoreAtURL:destinationOptions:withPersistentStoreFromURL:sourceOptions:storeType:error:'
-    SwiftName: 'replacePersistentStore(at:destinationOptions:withPersistentStoreFrom:sourceOptions:ofType:)'
-    MethodKind: Instance
-  - Selector: 'performBlockAndWait:'
-    SwiftName: 'performAndWait(_:)'
-    MethodKind: Instance
-- Name: NSSaveChangesRequest
-  Methods:
-  - Selector: 'initWithInsertedObjects:updatedObjects:deletedObjects:lockedObjects:'
-    SwiftName: 'init(inserted:updated:deleted:locked:)'
-    MethodKind: Instance
-Protocols:
-- Name: NSFetchedResultsControllerDelegate
-  Methods:
-  - Selector: 'controller:didChangeSection:atIndex:forChangeType:'
-    SwiftName: 'controller(_:didChange:atSectionIndex:for:)'
-    MethodKind: Instance
 Enumerators:
 - Name: NSManagedObjectResultType
   SwiftName: managedObjectResultType
-- Name: NSBinaryDataAttributeType
-  SwiftName: binaryDataAttributeType
-- Name: NSBooleanAttributeType
-  SwiftName: booleanAttributeType
-- Name: NSDateAttributeType
-  SwiftName: dateAttributeType
-- Name: NSDecimalAttributeType
-  SwiftName: decimalAttributeType
-- Name: NSDoubleAttributeType
-  SwiftName: doubleAttributeType
-- Name: NSFloatAttributeType
-  SwiftName: floatAttributeType
-- Name: NSInteger16AttributeType
-  SwiftName: integer16AttributeType
-- Name: NSInteger32AttributeType
-  SwiftName: integer32AttributeType
-- Name: NSInteger64AttributeType
-  SwiftName: integer64AttributeType
-- Name: NSObjectIDAttributeType
-  SwiftName: objectIDAttributeType
-- Name: NSStringAttributeType
-  SwiftName: stringAttributeType
-- Name: NSTransformableAttributeType
-  SwiftName: transformableAttributeType
-- Name: NSUndefinedAttributeType
-  SwiftName: undefinedAttributeType
-- Name: NSUUIDAttributeType
-  SwiftName: UUIDAttributeType
-- Name: NSURIAttributeType
-  SwiftName: URIAttributeType
-- Name: NSCompositeAttributeType
-  SwiftName: compositeAttributeType

@@ -26,7 +26,7 @@ C_MODULES = ['Darwin', 'Darwin.MacTypes', 'Darwin.os.lock', 'Dispatch', 'os.log'
              'os.activity', 'os.signpost', 'XPC', 'CommonCrypto']
 # Modules that need Foundation (and so the AE headers, see below).
 FOUNDATION_MODULES = ['CoreFoundation', 'Foundation', 'CoreGraphics', 'QuartzCore',
-                      'CoreText', 'AppKit', 'OpenGL']
+                      'CoreText', 'AppKit', 'OpenGL', 'CoreData']
 OBJC_MODULES = ['ObjectiveC']
 
 
@@ -102,6 +102,15 @@ class SdkModules(unittest.TestCase):
                 self.assertEqual(dump.returncode, 0, dump.stderr)
                 self.assertIn('SwiftNameAttr', dump.stdout)
                 self.assertIn('"%s"' % swift_name, dump.stdout)
+
+    def test_coredata_apinotes_apply(self):
+        code = '@import CoreData;\n'
+        dump = self.clang(code, '-I', str(AE_INCLUDE), '-D__swift__=60000', '-fapinotes-modules',
+                          '-Xclang', '-ast-dump', '-Xclang', '-ast-dump-filter',
+                          '-Xclang', 'NSManagedObjectResultType')
+        self.assertEqual(dump.returncode, 0, dump.stderr)
+        self.assertIn('SwiftNameAttr', dump.stdout)
+        self.assertIn('"managedObjectResultType"', dump.stdout)
 
     def test_darwin_umbrella_is_current(self):
         # Every header the generated Darwin umbrella includes must exist; a
