@@ -32,6 +32,12 @@ long BitXor(long v1, long v2);
 long BitNot(long v1);
 long BitShift(long value, short count);
 
+
+#ifndef __LP64__
+short HiWord(long value);
+short LoWord(long value);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
