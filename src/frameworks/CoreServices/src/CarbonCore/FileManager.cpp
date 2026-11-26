@@ -1989,3 +1989,53 @@ OSErr FSpCreate(const FSSpec* spec, OSType creator, OSType fileType, ScriptCode 
 	return FSpSetFInfo(spec, &info);
 }
 #endif
+
+#ifndef __LP64__
+#include <stdint.h>
+#include <CoreServices/FileManager.h>
+
+#ifdef __cplusplus
+extern "C"
+#endif
+OSErr FindFolder(
+    short volume,OSType folderType,
+    Boolean createFolder,
+    short* foundVolume,long* foundDirectory)
+{
+    if (!foundVolume || !foundDirectory)
+        return paramErr;
+
+    FSRef ref;
+
+    OSStatus err=FSFindFolder(
+        volume,folderType,createFolder,&ref);
+
+    if (err!=noErr)
+        return err>=-32768 && err<=32767
+            ? (OSErr)err : ioErr;
+
+    FSCatalogInfo info={0};
+
+    err=FSGetCatalogInfo(
+        &ref,
+        kFSCatInfoVolume |
+        kFSCatInfoNodeID |
+        kFSCatInfoNodeFlags,
+        &info,0,0,0);
+
+    if (err!=noErr)
+        return err>=-32768 && err<=32767
+            ? (OSErr)err : ioErr;
+
+    if (!(info.nodeFlags & kFSNodeIsDirectoryMask))
+        return dirNFErr;
+
+    *foundVolume=info.volume;
+
+    // Preserve the legacy 32-bit catalog identifier.
+    *foundDirectory=(long)(int32_t)info.nodeID;
+
+    return noErr;
+}
+
+#endif
