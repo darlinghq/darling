@@ -256,6 +256,27 @@ typedef struct HICommand {
 		MenuItemIndex menuItemIndex;
 	} menu;
 } HICommand;
+
+// The source of a command: the menu of a menu command, the control or the window of a command that
+// came from one (which of the fields is valid is told by the kHICommandFrom... attributes)
+typedef union HICommandExtended {
+	HICommand legacy;
+	struct {
+		UInt32 attributes;
+		UInt32 commandID;
+		union {
+			struct OpaqueControlRef* control;
+			struct OpaqueWindowPtr* window;
+			struct {
+				MenuRef menuRef;
+				MenuItemIndex menuItemIndex;
+			} menu;
+		} source;
+	};
+} HICommandExtended;
+
+// The number of elements of an array of EventTypeSpec
+#define GetEventTypeCount(t) (sizeof((t)) / sizeof(EventTypeSpec))
 typedef UInt32 KeyMap[4];
 
 

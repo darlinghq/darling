@@ -247,6 +247,8 @@ enum {
   kThemePoofCursor              = 22
 };
 typedef UInt32                          ThemeCursor;
+// Makes the cursor the one the pointer shows over the application
+OSStatus SetThemeCursor(ThemeCursor inCursor);
 enum {
   kThemeMenuBarNormal           = 0,
   kThemeMenuBarSelected         = 1,

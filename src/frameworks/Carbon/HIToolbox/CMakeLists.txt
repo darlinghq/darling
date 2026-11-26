@@ -37,6 +37,7 @@ add_framework(HIToolbox
 		src/Menus.c
 		src/MenusClassic.c
 		src/MenuTracking.c
+		src/MouseTracking.c
 		src/HITheme.c
 		src/constants.c
 
