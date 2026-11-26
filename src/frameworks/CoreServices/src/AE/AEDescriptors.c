@@ -423,6 +423,17 @@ static OSErr coerceDesc(const AEDesc* desc, DescType desiredType, AEDesc* result
 			result->descriptorType = desiredType;
 		return err;
 	}
+	if (storage != NULL && storage->kind == kAEKindList) {
+		// QUIRK: a list that holds exactly one item coerces to what that item coerces to (an empty list, or a
+		// list of several items, does not: errAECoercionFail). Not documented. Evidence: black-box observation
+		// on macOS 26.7.3 (tier 2): a list of one typeFSRef item coerced to typeFSRef, an empty list and a
+		// list of two items did not; Apple's public Carbon sample code coerces the selection of a Navigation
+		// Services reply, a list, to typeFSRef this way. Test: test_quirk_one_item_list_coerces_to_its_item in
+		// tests/src/ae_descriptors.c
+		if (storage->itemCount != 1)
+			return errAECoercionFail;
+		return coerceDesc(&storage->items[0].desc, desiredType, result);
+	}
 	if (storage == NULL || storage->kind != kAEKindData)
 		return errAECoercionFail;
 	return coerceData(desc->descriptorType, storage->bytes, storage->size, desiredType, result);

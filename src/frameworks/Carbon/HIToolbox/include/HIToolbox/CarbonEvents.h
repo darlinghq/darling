@@ -229,7 +229,6 @@ enum {
 	typeDragRef = 'drag',
 	typeEventRef = 'evrf',
 	typeEventTargetRef = 'etrg',
-	typeFSRef = 'fsrf',
 	typeGrafPtr = 'graf',
 	typeHIRect = 'hirc',
 	typeHIShapeRef = 'shap',
