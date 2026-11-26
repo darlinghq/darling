@@ -108,7 +108,8 @@ ColorSyncProfileRef ColorSyncProfileCreate(CFDataRef data, CFErrorRef* error)
 // The page says only that a predefined name makes a profile and NULL means failure. The names are the kColorSync...Profile
 // constants. The pages give no profile data, so the profile is built from the public definition of the colour space (see
 // ICCBuilder.h): its colorants, curve and description text are not those of any other implementation. Only sRGB, Adobe RGB
-// (1998), ITU-R BT.2020 and the generic gray gamma 2.2 have such a definition. The generic Lab, XYZ and CMYK names, which
+// (1998), ITU-R BT.2020 and the generic gray gamma 2.2 have such a definition, and the generic RGB and generic gray
+// ones are given by observed numbers (see ICCBuilder.c). The generic Lab, XYZ and CMYK names, which
 // macOS has profiles for, give NULL here, like any other string, a NULL name and a non-string: the Lab and XYZ profiles have
 // no public definition as profile data, and the CMYK one needs a measured device table.
 //
@@ -122,6 +123,8 @@ ColorSyncProfileRef ColorSyncProfileCreateWithName(CFStringRef name)
 		{ &kColorSyncAdobeRGB1998Profile, ICCNamedAdobeRGB1998 },
 		{ &kColorSyncITUR2020Profile, ICCNamedITUR2020 },
 		{ &kColorSyncGenericGrayGamma22Profile, ICCNamedGrayGamma22 },
+		{ &kColorSyncGenericRGBProfile, ICCNamedGenericRGB },
+		{ &kColorSyncGenericGrayProfile, ICCNamedGenericGray },
 	};
 	static ColorSyncProfileRef cache[sizeof names / sizeof names[0]];
 	static dispatch_once_t once[sizeof names / sizeof names[0]];

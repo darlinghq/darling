@@ -111,6 +111,7 @@ int main(void)
 {
 	const struct { ICCNamedProfile which; const char* name; } all[] = {
 		{ ICCNamedSRGB, "sRGB" }, { ICCNamedAdobeRGB1998, "Adobe RGB" }, { ICCNamedITUR2020, "BT.2020" }, { ICCNamedGrayGamma22, "gray" },
+		{ ICCNamedGenericRGB, "Generic RGB" }, { ICCNamedGenericGray, "Generic Gray" },
 	};
 	for (size_t i = 0; i < sizeof all / sizeof all[0]; i++)
 		checkProfile(all[i].which, all[i].name);
@@ -174,6 +175,20 @@ int main(void)
 	expect(ICCProfileTagCount(gray) == 4 && !findTag(gray, SIG('r', 'X', 'Y', 'Z'), &tag) && !findTag(gray, SIG('r', 'T', 'R', 'C'), &tag), "gray has no colorants");
 	expect(findTag(gray, SIG('k', 'T', 'R', 'C'), &tag) && tag.size == 16 && getFixed(gray + tag.offset + 12) == 144179, "gray gamma 2.2");
 	free(gray);
+
+	// Generic RGB (primaries 0.630/0.340, 0.295/0.605, 0.155/0.077, D65 white, a power of 1.8): the colorants for D50 are the
+	// primaries adapted with the linear Bradford transform, computed independently in Python. Generic Gray is a power of 1.8.
+	spec = ICCNamedProfileSpec(ICCNamedGenericRGB);
+	uint8_t* genericRGB = ICCBuildDisplayProfile(&spec, &length);
+	expectColorant(genericRGB, SIG('r', 'X', 'Y', 'Z'), 29771, 15853, 976, "Generic RGB red colorant");
+	expectColorant(genericRGB, SIG('g', 'X', 'Y', 'Z'), 23155, 44148, 5939, "Generic RGB green colorant");
+	expectColorant(genericRGB, SIG('b', 'X', 'Y', 'Z'), 10264, 5534, 47146, "Generic RGB blue colorant");
+	expect(findTag(genericRGB, SIG('b', 'T', 'R', 'C'), &tag) && tag.size == 16 && getFixed(genericRGB + tag.offset + 12) == 117965, "Generic RGB gamma 1.8");
+	free(genericRGB);
+	spec = ICCNamedProfileSpec(ICCNamedGenericGray);
+	uint8_t* genericGray = ICCBuildDisplayProfile(&spec, &length);
+	expect(ICCProfileTagCount(genericGray) == 4 && findTag(genericGray, SIG('k', 'T', 'R', 'C'), &tag) && tag.size == 16 && getFixed(genericGray + tag.offset + 12) == 117965, "Generic Gray gamma 1.8");
+	free(genericGray);
 
 	// The same input gives the same bytes, and bad input gives NULL.
 	spec = ICCNamedProfileSpec(ICCNamedSRGB);

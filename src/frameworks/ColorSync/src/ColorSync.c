@@ -621,6 +621,8 @@ void* ColorSyncProfileCreateFlexGTCLookupData(void)
     return NULL;
 }
 
+CFStringRef kColorSyncGenericGrayProfile        = CFSTR("com.apple.ColorSync.GenericGray");
+CFStringRef kColorSyncGenericRGBProfile         = CFSTR("com.apple.ColorSync.GenericRGB");
 CFStringRef kColorSyncGenericGrayGamma22Profile = CFSTR("com.apple.ColorSync.GenericGrayGamma2.2");
 CFStringRef kColorSyncGenericLabProfile         = CFSTR("com.apple.ColorSync.GenericLab");
 CFStringRef kColorSyncGenericXYZProfile         = CFSTR("com.apple.ColorSync.GenericXYZ");

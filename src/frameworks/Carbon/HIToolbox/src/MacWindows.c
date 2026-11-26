@@ -125,6 +125,22 @@ static int layerOfClass(WindowClass cls)
 	}
 }
 
+// The level the window system stacks a window of the class at: floating windows are in front of the
+// document windows, the windows of a modal class in front of those. The window system that has a say
+// in the stacking of windows (see CGSSetWindowLevel) takes these.
+static CGWindowLevel levelOfClass(WindowClass cls)
+{
+	switch (layerOfClass(cls))
+	{
+		case 1:
+			return kCGFloatingWindowLevel;
+		case 2:
+			return kCGModalPanelWindowLevel;
+		default:
+			return kCGNormalWindowLevel;
+	}
+}
+
 static bool isFloating(WindowRef window)
 {
 	return layerOfClass(window->windowClass) == 1;
@@ -706,6 +722,7 @@ OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rec
 	window->target = _HICreateEventTarget(GetApplicationEventTarget());
 
 	_CGSWindowSetStyle(connection(), wid, style);
+	CGSSetWindowLevel(connection(), wid, levelOfClass(cls));
 
 #ifndef __LP64__
 	// The window's port holds its pixels: transparent for an overlay, white otherwise

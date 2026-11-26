@@ -214,8 +214,19 @@ int main(int argc, char **argv)
 		mark = [LogText() length];
 		Open(@[ @"x-apple.systempreferences:com.apple.preference.dock" ]);
 		tail = WaitFor(mark, @"grid ", 30);
-		// (Darling's own pane, when it is installed, is in the "system" group between them)
-		NSString *grid = [tail stringByReplacingOccurrencesOfString:@"grid Test Dock,Darling," withString:@"grid Test Dock,"];
+		// (the panes that Darling installs, with their own groups, are among them and are left out here)
+		// (the label of the Language & Region pane has a line break in it, as the system pane's)
+		tail = [tail stringByReplacingOccurrencesOfString:@"Language\n& Region" withString:@"Language & Region"];
+		NSMutableArray *gridNames = [NSMutableArray array];
+		NSRange gridStart = [tail rangeOfString:@"grid "];
+		if (gridStart.location != NSNotFound) {
+			NSString *list = [[[tail substringFromIndex:NSMaxRange(gridStart)] componentsSeparatedByString:@"\n"] firstObject];
+			NSSet *installed = [NSSet setWithObjects:@"Darling", @"General", @"Language & Region", @"Keyboard", @"Date & Time", nil];
+			for (NSString *name in [list componentsSeparatedByString:@","])
+				if (![installed containsObject:name])
+					[gridNames addObject:name];
+		}
+		NSString *grid = [@"grid " stringByAppendingString:[gridNames componentsJoinedByString:@","]];
 		CHECK(tail != nil && [grid rangeOfString:@"grid Test Dock,Alpha Pane,Zeta Pane"].location != NSNotFound, "grid icons: first-group pane, then third-party panes by name: %s", tail ? [tail UTF8String] : "(none)");
 		SetMode(@"now");
 
