@@ -241,6 +241,24 @@ QDErr LockPortBits(GrafPtr port);
 QDErr UnlockPortBits(GrafPtr port);
 void QDFlushPortBuffer(CGrafPtr port, RgnHandle region);
 QDErr QDError(void);
+/* Text (32-bit only, as on macOS) */
+#pragma pack(push, 2)
+struct FontInfo {
+	short ascent;
+	short descent;
+	short widMax;
+	short leading;
+};
+#pragma pack(pop)
+typedef struct FontInfo FontInfo;
+void DrawText(const void *textBuf, short firstByte, short byteCount);
+void DrawString(ConstStr255Param s);
+void DrawChar(CharParameter ch);
+short TextWidth(const void *textBuf, short firstByte, short byteCount);
+short StringWidth(ConstStr255Param s);
+short CharWidth(CharParameter ch);
+void GetFontInfo(FontInfo *info);
+void GetFNum(ConstStr255Param name, short *familyID);
 
 /* Quartz drawing into a port (32-bit only, as on macOS) */
 OSStatus QDBeginCGContext(CGrafPtr inPort, CGContextRef *outContext);
