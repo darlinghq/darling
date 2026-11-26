@@ -294,6 +294,14 @@ static inline NSGlyphFragment *fragmentAtGlyphIndex(NSLayoutManager *self,
     _typesetter = typesetter;
 }
 
+- (float) hyphenationFactor {
+    return [_typesetter hyphenationFactor];
+}
+
+- (void) setHyphenationFactor: (float) factor {
+    [_typesetter setHyphenationFactor: factor];
+}
+
 - (void) setDelegate: delegate {
     _delegate = delegate;
 }
@@ -1261,7 +1269,8 @@ static NSRange paragraphsForInvalidation(NSTextStorage *storage, NSRange charRan
 
     [self validateGlyphsAndLayoutForContainer: container];
 
-    *fraction = 0;
+    if (fraction != NULL)
+        *fraction = 0;
 
     state = NSRangeEntryEnumerator(_glyphFragments);
 
@@ -1330,11 +1339,15 @@ static NSRange paragraphsForInvalidation(NSTextStorage *storage, NSRange charRan
 
                         if (point.x >= NSMinX(glyphRect) &&
                             point.x <= NSMaxX(glyphRect)) {
-                            *fraction = (point.x - glyphRect.origin.x) /
-                                        glyphRect.size.width;
-                            if (ltor == NO) {
-                                // Right-to-left is flipped horizontally
-                                *fraction = 1. - *fraction;
+                            if (fraction != NULL) {
+                                *fraction = glyphRect.size.width > 0
+                                                    ? (point.x - glyphRect.origin.x) /
+                                                              glyphRect.size.width
+                                                    : 0;
+                                if (ltor == NO) {
+                                    // Right-to-left is flipped horizontally
+                                    *fraction = 1. - *fraction;
+                                }
                             }
 #if DEBUG_glyphIndexForPoint_inTextContainer_fractionOfDistanceThroughGlyph
                             NSLog(@"found the glyph - returning: %u",
