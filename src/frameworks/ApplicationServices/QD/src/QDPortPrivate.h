@@ -48,6 +48,16 @@ extern QDErr gQDError;
 void QDPortInitState(struct QDPort *port);
 void QDPortDisposeState(struct QDPort *port);
 struct QDPort *QDPortFromPixMap(const void *bits);
+// Picture recording (QDRecord.inc): OpenCPicture / ClosePicture.
+void QDRecordColor(struct QDPort *p, Boolean fore, const RGBColor *c);
+void QDRecordRect(struct QDPort *p, unsigned op, const Rect *r, const QDPattern *pat);
+void QDRecordLine(struct QDPort *p, Point from, Point to);
+void QDRecordCopyBits(struct QDPort *s, struct QDPort *d, const Rect *src, const Rect *dst, short mode);
+void QDRecordUnrecorded(struct QDPort *p);
+void QDRecordPenPat(struct QDPort *p, const QDPattern *pat);
+Handle QDRecordOpen(const Rect *srcRect, Fixed hRes, Fixed vRes, short version);
+void QDRecordClose(void);
+unsigned QDRecordUnrecordedOps(void);
 Boolean QDPortIsLive(const struct QDPort *port);
 GDHandle GetMainDevice(void);
 void SetCPixel(short h, short v, const RGBColor *c);
