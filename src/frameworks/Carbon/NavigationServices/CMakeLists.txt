@@ -18,11 +18,13 @@ add_framework(NavigationServices
 	PARENT "Carbon"
 
 	SOURCES
-		src/Navigation.c
+		src/Navigation.m
 
 	DEPENDENCIES
 		system
 		CoreFoundation
 		CoreServices
+		Foundation
+		objc
 		HIToolbox
 )
