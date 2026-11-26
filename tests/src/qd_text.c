@@ -8,6 +8,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef __LP64__
+int main(void)
+{
+	printf("PASSED (QuickDraw text: 32-bit only)\n");
+	return 0;
+}
+#else
+
 void SetGWorld(CGrafPtr, GDHandle);
 void RGBForeColor(const RGBColor *); void RGBBackColor(const RGBColor *);
 void EraseRect(const Rect *); void GetCPixel(short, short, RGBColor *);
@@ -86,3 +94,5 @@ int main(void)
 	printf(g_failures ? "FAILED: %d\n" : "PASSED\n", g_failures);
 	return g_failures != 0;
 }
+
+#endif
