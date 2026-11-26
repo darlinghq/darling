@@ -203,7 +203,8 @@ class Sway:
             if node.get("type") in ("con", "floating_con") and node.get("name") and not node.get("nodes") \
                     and not node.get("floating_nodes"):
                 r = node["rect"]
-                found.append({"caption": node["name"], "x": r["x"], "y": r["y"], "w": r["width"], "h": r["height"]})
+                found.append({"caption": node["name"], "x": r["x"], "y": r["y"], "w": r["width"], "h": r["height"],
+                              "stack": len(found)})  # sway lists the floating windows from the back to the front
             for child in node.get("nodes", []):
                 walk(child, floating)
             for child in node.get("floating_nodes", []):
@@ -340,10 +341,8 @@ def main():
 
         if d and p:
             # The floating window is in front of the document window although it was shown first
-            # (sway does not keep a child in front of its parent: the windows are only checked to be there)
-            if mode != "sway":
-                check(p["stack"] > d["stack"], "the floating window is in front of the document window",
-                      "stack %s over %s" % (p["stack"], d["stack"]))
+            check(p["stack"] > d["stack"], "the floating window is in front of the document window",
+                  "stack %s over %s" % (p["stack"], d["stack"]))
             if mode.startswith("kwin"):
                 check(p["transientFor"] == "PlacementDoc", "the floating window is a child of the document window",
                       p["transientFor"])
