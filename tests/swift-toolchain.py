@@ -85,6 +85,39 @@ class SwiftToolchainTests(unittest.TestCase):
         # The installation path also contains a space.
         self.expect_selected(self.detect())
 
+    def test_swiftly_selection_is_resolved_on_reconfigure(self):
+        source = self.root / 'source'
+        source.mkdir()
+        build = self.root / 'build'
+        result = self.root / 'result.txt'
+        (source / 'CMakeLists.txt').write_text(
+            'cmake_minimum_required(VERSION 3.13)\n'
+            'project(swift_toolchain_fixture NONE)\n'
+            'include([=[' + str(MODULE) + ']=])\n'
+            'get_property(discovered CACHE SWIFT_COMPILER PROPERTY VALUE)\n'
+            'file(WRITE [=[' + str(result) + ']=] '
+            '"${SWIFT_TOOLCHAIN_FOUND}\n${SWIFT_COMPILER}\n'
+            '${SWIFT_TOOLCHAIN_USR}\n${SWIFT_TOOLCHAIN_VERSION}\n${discovered}\n")\n')
+        replacement = self.root / 'replacement toolchain'
+        shutil.copytree(self.toolchain, replacement)
+        env = dict(os.environ)
+        env.pop('SWIFT_TOOLCHAIN', None)
+        for toolchain, version in ((self.toolchain, '6.4.2'), (replacement, '6.4.3')):
+            with self.subTest(version=version):
+                self.toolchain = toolchain
+                self.compiler = toolchain / 'usr' / 'bin' / 'swiftc'
+                self.write_compiler(version)
+                self.write_proxy(str(toolchain))
+                run = subprocess.run(
+                    [CMAKE, '-S', str(source), '-B', str(build),
+                     '-DCMAKE_PROGRAM_PATH=' + str(self.bin)],
+                    cwd=self.root, env=env, text=True,
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                self.assertEqual(run.returncode, 0, run.stdout)
+                values = result.read_text().splitlines()
+                self.expect_selected(values[:4], version)
+                self.assertEqual(values[4:], [str(self.bin / 'swiftc')])
+
     def test_direct_compiler_search_is_preserved(self):
         self.write_proxy('', status=1)
         self.expect_selected(self.detect(search_path=self.compiler.parent))
