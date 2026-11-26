@@ -120,6 +120,8 @@ static const struct __CVFormat formats[] = {
 	{ 'yuvs', 0, { 2 }, { 1 }, { 1 } },
 	{ '420v', 2, { 1, 2 }, { 1, 2 }, { 1, 2 } },
 	{ '420f', 2, { 1, 2 }, { 1, 2 }, { 1, 2 } },
+	{ '422v', 2, { 1, 2 }, { 1, 2 }, { 1, 1 } },
+	{ '422f', 2, { 1, 2 }, { 1, 2 }, { 1, 1 } },
 	{ 'y420', 3, { 1, 1, 1 }, { 1, 2, 2 }, { 1, 2, 2 } },
 };
 
@@ -218,6 +220,14 @@ static void layoutFromSurface(struct __CVBuffer* buffer, const struct __CVFormat
 		buffer->planes[i].bytesPerRow = IOSurfaceGetBytesPerRowOfPlane(buffer->surface, i);
 		buffer->planes[i].offset = base ? (size_t) ((uint8_t*) IOSurfaceGetBaseAddressOfPlane(buffer->surface, i) - base) : 0;
 	}
+}
+
+// Darling has no hardware that stores compressed pixel formats, so none is available.
+// macOS 26.7.3 on x86_64 answers the same way (test corevideo-compressed-pixel-format.c).
+Boolean CVIsCompressedPixelFormatAvailable(OSType pixelFormatType)
+{
+	(void) pixelFormatType;
+	return false;
 }
 
 CVReturn CVPixelBufferCreate(CFAllocatorRef allocator, size_t width, size_t height, OSType pixelFormatType,
@@ -573,30 +583,64 @@ static CFMutableDictionaryRef attachmentDictionary(CVBufferRef buffer, CVAttachm
 	return *slot;
 }
 
-static void setAttachmentLocked(CVBufferRef buffer, CFStringRef key, CFTypeRef value, CVAttachmentMode mode)
+// The last release of an attachment value can run arbitrary code (a finalizer may call attachment functions
+// again), and the lock is not recursive. A value that leaves a dictionary is therefore kept alive in a
+// "graveyard" array and released only after the lock is dropped.
+static CFMutableArrayRef graveyardCreate(void)
+{
+	return CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+}
+
+static void graveyardBury(CFMutableArrayRef graveyard, CFTypeRef value)
+{
+	if (graveyard && value)
+		CFArrayAppendValue(graveyard, value);
+}
+
+static void graveyardEmpty(CFMutableArrayRef graveyard)
+{
+	if (graveyard)
+		CFRelease(graveyard);
+}
+
+static void removeValueLocked(CFMutableDictionaryRef dictionary, CFStringRef key, CFMutableArrayRef graveyard)
+{
+	if (!dictionary)
+		return;
+	graveyardBury(graveyard, CFDictionaryGetValue(dictionary, key));
+	CFDictionaryRemoveValue(dictionary, key);
+}
+
+static void setAttachmentLocked(CVBufferRef buffer, CFStringRef key, CFTypeRef value, CVAttachmentMode mode,
+	CFMutableArrayRef graveyard)
 {
 	CVAttachmentMode other = (mode == kCVAttachmentMode_ShouldPropagate)
 		? kCVAttachmentMode_ShouldNotPropagate : kCVAttachmentMode_ShouldPropagate;
-	CFMutableDictionaryRef otherDictionary = attachmentDictionary(buffer, other, false);
-	if (otherDictionary)
-		CFDictionaryRemoveValue(otherDictionary, key);
 
+	// The new value goes in first, so that a value the caller does not own (one returned by
+	// CVBufferGetAttachment, passed back in with the other mode) is retained before the old entry for the
+	// key is dropped.
 	CFMutableDictionaryRef dictionary = attachmentDictionary(buffer, mode, value != NULL);
-	if (dictionary == NULL)
-		return;
-	if (value)
-		CFDictionarySetValue(dictionary, key, value);
-	else
-		CFDictionaryRemoveValue(dictionary, key);
+	if (dictionary) {
+		if (value) {
+			graveyardBury(graveyard, CFDictionaryGetValue(dictionary, key));
+			CFDictionarySetValue(dictionary, key, value);
+		} else {
+			removeValueLocked(dictionary, key, graveyard);
+		}
+	}
+	removeValueLocked(attachmentDictionary(buffer, other, false), key, graveyard);
 }
 
 void CVBufferSetAttachment(CVBufferRef buffer, CFStringRef key, CFTypeRef value, CVAttachmentMode attachmentMode)
 {
 	if (!buffer || !key)
 		return;
+	CFMutableArrayRef graveyard = graveyardCreate();
 	pthread_mutex_lock(&attachmentLock);
-	setAttachmentLocked(buffer, key, value, attachmentMode);
+	setAttachmentLocked(buffer, key, value, attachmentMode, graveyard);
 	pthread_mutex_unlock(&attachmentLock);
+	graveyardEmpty(graveyard);
 }
 
 static CFTypeRef findAttachmentLocked(CVBufferRef buffer, CFStringRef key, CVAttachmentMode* attachmentMode)
@@ -638,24 +682,38 @@ void CVBufferRemoveAttachment(CVBufferRef buffer, CFStringRef key)
 {
 	if (!buffer || !key)
 		return;
+	CFMutableArrayRef graveyard = graveyardCreate();
 	pthread_mutex_lock(&attachmentLock);
-	if (buffer->propagatingAttachments)
-		CFDictionaryRemoveValue(buffer->propagatingAttachments, key);
-	if (buffer->localAttachments)
-		CFDictionaryRemoveValue(buffer->localAttachments, key);
+	removeValueLocked(buffer->propagatingAttachments, key, graveyard);
+	removeValueLocked(buffer->localAttachments, key, graveyard);
 	pthread_mutex_unlock(&attachmentLock);
+	graveyardEmpty(graveyard);
 }
 
 void CVBufferRemoveAllAttachments(CVBufferRef buffer)
 {
 	if (!buffer)
 		return;
+	CFMutableArrayRef graveyard = graveyardCreate();
 	pthread_mutex_lock(&attachmentLock);
-	if (buffer->propagatingAttachments)
-		CFDictionaryRemoveAllValues(buffer->propagatingAttachments);
-	if (buffer->localAttachments)
-		CFDictionaryRemoveAllValues(buffer->localAttachments);
+	CFMutableDictionaryRef dictionaries[2] = { buffer->propagatingAttachments, buffer->localAttachments };
+	for (int i = 0; i < 2; i++) {
+		if (!dictionaries[i])
+			continue;
+		CFIndex count = CFDictionaryGetCount(dictionaries[i]);
+		if (count > 0) {
+			const void** values = malloc((size_t) count * sizeof(*values));
+			if (values) {
+				CFDictionaryGetKeysAndValues(dictionaries[i], NULL, values);
+				for (CFIndex k = 0; k < count; k++)
+					graveyardBury(graveyard, values[k]);
+				free(values);
+			}
+		}
+		CFDictionaryRemoveAllValues(dictionaries[i]);
+	}
 	pthread_mutex_unlock(&attachmentLock);
+	graveyardEmpty(graveyard);
 }
 
 CFDictionaryRef CVBufferGetAttachments(CVBufferRef buffer, CVAttachmentMode attachmentMode)
@@ -687,17 +745,20 @@ CFDictionaryRef CVBufferCopyAttachments(CVBufferRef buffer, CVAttachmentMode att
 static void setAttachmentFromDictionary(const void* key, const void* value, void* context)
 {
 	void** args = (void**) context;
-	setAttachmentLocked((CVBufferRef) args[0], (CFStringRef) key, (CFTypeRef) value, *(CVAttachmentMode*) args[1]);
+	setAttachmentLocked((CVBufferRef) args[0], (CFStringRef) key, (CFTypeRef) value, *(CVAttachmentMode*) args[1],
+		(CFMutableArrayRef) args[2]);
 }
 
 void CVBufferSetAttachments(CVBufferRef buffer, CFDictionaryRef theAttachments, CVAttachmentMode attachmentMode)
 {
 	if (!buffer || !theAttachments)
 		return;
-	void* args[2] = { buffer, &attachmentMode };
+	CFMutableArrayRef graveyard = graveyardCreate();
+	void* args[3] = { buffer, &attachmentMode, graveyard };
 	pthread_mutex_lock(&attachmentLock);
 	CFDictionaryApplyFunction(theAttachments, setAttachmentFromDictionary, args);
 	pthread_mutex_unlock(&attachmentLock);
+	graveyardEmpty(graveyard);
 }
 
 void CVBufferPropagateAttachments(CVBufferRef sourceBuffer, CVBufferRef destinationBuffer)

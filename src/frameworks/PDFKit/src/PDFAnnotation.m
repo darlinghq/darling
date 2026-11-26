@@ -20,6 +20,23 @@
 #import <PDFKit/PDFAnnotation.h>
 #import <darling-stub-forwarding.h>
 
+// The documentation gives no string values for these annotation keys and subtypes. The values are
+// the ISO 32000 annotation dictionary key names (Border, C, DA, P, Parent, Popup, Subtype) and
+// subtype names (Highlight, StrikeOut, Underline) with a leading slash, as macOS 26.7.3 and
+// 10.14.4 report for these constants (black-box observation).
+// Test: tests/src/pdfkit_constants.m
+PDFAnnotationKey PDFAnnotationKeyBorder = @"/Border";
+PDFAnnotationKey PDFAnnotationKeyColor = @"/C";
+PDFAnnotationKey PDFAnnotationKeyDefaultAppearance = @"/DA";
+PDFAnnotationKey PDFAnnotationKeyPage = @"/P";
+PDFAnnotationKey PDFAnnotationKeyParent = @"/Parent";
+PDFAnnotationKey PDFAnnotationKeyPopup = @"/Popup";
+PDFAnnotationKey PDFAnnotationKeySubtype = @"/Subtype";
+
+PDFAnnotationSubtype PDFAnnotationSubtypeHighlight = @"/Highlight";
+PDFAnnotationSubtype PDFAnnotationSubtypeStrikeOut = @"/StrikeOut";
+PDFAnnotationSubtype PDFAnnotationSubtypeUnderline = @"/Underline";
+
 @implementation PDFAnnotation
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

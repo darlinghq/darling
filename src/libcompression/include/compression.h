@@ -23,6 +23,7 @@ typedef enum {
     COMPRESSION_LZMA    = 0x306,
     COMPRESSION_LZ4_RAW = 0x101,
     COMPRESSION_LZFSE    = 0x801,
+    COMPRESSION_BROTLI  = 0xB02, // macOS 12
 
 } compression_algorithm;
 

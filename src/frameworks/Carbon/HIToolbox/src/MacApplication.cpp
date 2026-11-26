@@ -18,11 +18,3 @@
 */
 
 #include <HIToolbox/MacApplication.h>
-#include <cstdio>
-
-OSStatus SetSystemUIMode(SystemUIMode inMode, SystemUIOptions inOptions)
-{
-    std::printf("STUB %s\n", __PRETTY_FUNCTION__);
-
-    return 0;
-}

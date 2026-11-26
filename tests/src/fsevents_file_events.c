@@ -273,8 +273,34 @@ static FSEventStreamRef create_lifecycle_stream(void)
 	return stream;
 }
 
+// The streams of the earlier checks remove their watches as they are torn down, which is not
+// done by the time they have been released (on a loaded host it takes a while). Waits until the
+// number of watches has stopped changing, so that the count taken afterwards is a base line.
+static void settle_inotify_watches(void)
+{
+	const CFAbsoluteTime deadline = CFAbsoluteTimeGetCurrent() + WAIT_SECONDS;
+	int last = -2;
+	CFAbsoluteTime changed = CFAbsoluteTimeGetCurrent();
+
+	while (CFAbsoluteTimeGetCurrent() < deadline)
+	{
+		const int watches = count_inotify_watches();
+		if (watches < 0)
+			return;
+		if (watches != last)
+		{
+			last = watches;
+			changed = CFAbsoluteTimeGetCurrent();
+		}
+		else if (CFAbsoluteTimeGetCurrent() - changed >= 1.0)
+			return;
+		CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, true);
+	}
+}
+
 static void check_stream_lifecycle(dispatch_queue_t queue)
 {
+	settle_inotify_watches();
 	const int baseFds = count_fds();
 	const int baseWatches = count_inotify_watches();
 	int created = 0;
@@ -309,7 +335,8 @@ static void check_stream_lifecycle(dispatch_queue_t queue)
 	// A delivery that is still in flight may keep a stream alive briefly.
 	CFAbsoluteTime deadline = CFAbsoluteTimeGetCurrent() + WAIT_SECONDS;
 	while ((__atomic_load_n(&g_contextReleases, __ATOMIC_SEQ_CST) != created
-			|| count_fds() > baseFds + FD_SLACK)
+			|| count_fds() > baseFds + FD_SLACK
+			|| (baseWatches >= 0 && count_inotify_watches() != baseWatches))
 		&& CFAbsoluteTimeGetCurrent() < deadline)
 	{
 		CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, true);

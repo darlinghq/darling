@@ -32,6 +32,9 @@ class PADispatchMainLoop;
 // A device's stream object has the ID kPAStreamObjectBase | <device ID>.
 static const AudioObjectID kPAStreamObjectBase = 0x44410000u;
 
+// Whether hardware may be taken for exclusive use by this process (kAudioHardwarePropertyHogModeIsAllowed).
+bool PAHogModeIsAllowed();
+
 // Defined in AudioHardware.cpp. Shared so AudioHardwareImplPA can add/remove
 // dynamically-discovered PulseAudio devices from the same object map used
 // to dispatch AudioObjectID-based CoreAudio calls.
@@ -72,7 +75,17 @@ public:
 	// All currently-known dynamically-discovered device AudioObjectIDs
 	// (does not include the 3 fixed role IDs +1/+2/+3).
 	std::vector<AudioObjectID> allDeviceIds() const;
+
+	// The device that PulseAudio's default sink (or source) is, or kAudioObjectUnknown when it is not known.
+	AudioObjectID defaultDeviceId(bool input);
+	// The device with the UID, or kAudioObjectUnknown.
+	AudioObjectID deviceForUID(CFStringRef uid);
+	// Makes the device the default sink (or source) of PulseAudio.
+	OSStatus setDefaultDevice(AudioObjectID device, bool input);
+	OSStatus isPropertySettable(const AudioObjectPropertyAddress* inAddress, Boolean* outIsSettable) override;
 protected:
+	// Called after IO of the device has started or stopped, from the thread that did it.
+	virtual void ioStateChanged() {}
 	AudioHardwareStream* createStream(AudioDeviceIOProc callback, void* clientData) override;
 	bool validateFormat(const AudioStreamBasicDescription* asbd) const override;
 private:

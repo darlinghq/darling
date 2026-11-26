@@ -42,6 +42,8 @@ enum
 	kAudioObjectPropertyScopeInput          = 'inpt',
 	kAudioObjectPropertyScopeOutput         = 'outp',
 	kAudioObjectPropertyScopePlayThrough    = 'ptru',
+	kAudioObjectPropertyScopeWildcard       = '****',
+	kAudioObjectPropertyElementWildcard     = 0xFFFFFFFFU,
 	kAudioObjectPropertyElementMaster       = 0,
 	kAudioObjectPropertyElementMain         = 0,
 };
@@ -88,14 +90,26 @@ enum
 };
 
 
+// The classes of the audio objects (kAudioObjectPropertyClass and kAudioObjectPropertyBaseClass).
+enum
+{
+    kAudioObjectClassID         = 'aobj',
+    kAudioSystemObjectClassID   = 'asys',
+    kAudioDeviceClassID         = 'adev',
+    kAudioStreamClassID         = 'astr'
+};
+
 typedef AudioObjectID AudioStreamID;
 enum {
+    kAudioStreamPropertyIsActive = 'sact',
     kAudioStreamPropertyDirection = 'sdir',
+    kAudioStreamPropertyStartingChannel = 'schn',
     kAudioStreamPropertyTerminalType = 'term',
     kAudioStreamPropertyVirtualFormat = 'sfmt',
     kAudioStreamPropertyPhysicalFormat = 'pft ',
     kAudioStreamPropertyAvailableVirtualFormats = 'sfma',
     kAudioStreamPropertyAvailablePhysicalFormats = 'pfta',
+    kAudioStreamPropertyLatency = 'ltnc',
 };
 
 // TODO: A lot more is missing

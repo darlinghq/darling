@@ -48,14 +48,34 @@ add_framework(WebKit
         src/_WKWebsiteDataStore.m
         src/_WKWebsiteDataStoreConfiguration.m
         src/_WKWebsitePolicies.m
+        src/DOMCharacterData.m
+        src/DOMComment.m
         src/DOMElement.m
+        src/DOMHTMLAnchorElement.m
+        src/DOMHTMLAreaElement.m
+        src/DOMHTMLElement.m
+        src/DOMHTMLHeadingElement.m
+        src/DOMHTMLImageElement.m
+        src/DOMHTMLInputElement.m
+        src/DOMHTMLLinkElement.m
+        src/DOMHTMLMetaElement.m
+        src/DOMHTMLOptionElement.m
+        src/DOMHTMLScriptElement.m
+        src/DOMHTMLTextAreaElement.m
         src/DOMNode.m
         src/DOMObject.m
+        src/DOMRange.m
         src/WebView.m
+        src/WebArchive.m
+        src/WebBackForwardList.m
+        src/WebDataSource.m
         src/WebDownload.m
+        src/WebFrame.m
+        src/WebFrameView.m
         src/WebHistory.m
         src/WebHistoryItem.m
         src/WebPolicyDelegate.m
+        src/WebResource.m
         src/WebScriptObject.m
         src/WKCustomProtocolLoader.m
         src/WKCustomProtocol.m
@@ -98,6 +118,7 @@ add_framework(WebKit
         src/WKDOMText.m
         src/WKDOMTextIterator.m
         src/WKError.m
+        src/WKFindConfiguration.m
         src/WKFrameInfo.m
         src/WKFullKeyboardAccessWatcher.m
         src/WKFullScreenWindowController.m
@@ -174,6 +195,14 @@ add_framework(WebKit
         CFNetwork
         AppKit
 )
+
+# The SDK's WebKit headers belong to the real WebKit (src/external/WebKit), which does not carry
+# the stub's private _WK* headers. Let <WebKit/...> resolve to the stub's own headers first when
+# the stub is what is being built.
+set(WEBKIT_STUB_INCLUDE "${CMAKE_CURRENT_BINARY_DIR}/stub-include")
+file(MAKE_DIRECTORY "${WEBKIT_STUB_INCLUDE}")
+file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/include/WebKit" "${WEBKIT_STUB_INCLUDE}/WebKit" SYMBOLIC)
+target_include_directories(WebKit BEFORE PRIVATE "${WEBKIT_STUB_INCLUDE}")
 
 # The web view classes are written with ARC.
 set_source_files_properties(

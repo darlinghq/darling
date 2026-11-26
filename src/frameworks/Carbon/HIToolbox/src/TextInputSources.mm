@@ -2,7 +2,6 @@
 #include <CoreFoundation/CFDictionary.h>
 #include <CoreFoundation/CFData.h>
 #include <os/lock.h>
-#include <dlfcn.h>
 #include <stdlib.h>
 #import <Foundation/Foundation.h>
 
@@ -23,12 +22,11 @@ TISInputSourceRef TISCopyCurrentKeyboardInputSource(void)
 
 // The keyboard layout belongs to the window-system backend in CoreGraphics (which sits below
 // HIToolbox): a dictionary with the "data" ('uchr'), "name" and "fullName" of the current layout,
-// or NULL when the backend has none or CoreGraphics does not provide it.
+// or NULL when the backend has none.
+extern "C" CFDictionaryRef _CGSCopyCurrentKeyboardLayoutInfo(void);
 static CFDictionaryRef copyBackendKeyboardLayout(void)
 {
-	typedef CFDictionaryRef (*CopyLayoutFn)(void);
-	static CopyLayoutFn copyLayout = (CopyLayoutFn) dlsym(RTLD_DEFAULT, "_CGSCopyCurrentKeyboardLayoutInfo");
-	return copyLayout ? copyLayout() : NULL;
+	return _CGSCopyCurrentKeyboardLayoutInfo();
 }
 
 TISInputSourceRef TISCopyCurrentKeyboardLayoutInputSource(void)
@@ -85,6 +83,8 @@ TISInputSourceRef TISCopyCurrentKeyboardLayoutInputSource(void)
 
 void* TISGetInputSourceProperty(TISInputSourceRef inputSourceRef, CFStringRef key)
 {
+	if (!inputSourceRef || !key)
+		return NULL;
 	return (void*) CFDictionaryGetValue((CFDictionaryRef)inputSourceRef, key);
 }
 

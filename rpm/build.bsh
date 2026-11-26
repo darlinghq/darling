@@ -2,32 +2,70 @@
 
 set -eu
 
+# the checkout to build; /src in the container (tests/rpm-packaging.py points it elsewhere)
+src="${DARLING_SRC:-/src}"
+
 mkdir -p $HOME/rpmbuild/SOURCES
 
-if [ -e "/src/rpm/SOURCES/darling.tar.gz" ]; then
-  ln -sf /src/rpm/SOURCES/darling.tar.gz $HOME/rpmbuild/SOURCES/
+if [ -e "$src/rpm/SOURCES/darling.tar.gz" ]; then
+  ln -sf "$src/rpm/SOURCES/darling.tar.gz" $HOME/rpmbuild/SOURCES/
 else
   # Preparing tarball
-  tar --transform "s|^\./|./darling/|" -cf $HOME/rpmbuild/SOURCES/darling.tar.gz -C /src --exclude=.git --exclude SOURCES --exclude SRPMS --exclude RPMS --exclude BUILD .
+  tar --transform "s|^\./|./darling/|" -cf $HOME/rpmbuild/SOURCES/darling.tar.gz -C "$src" --exclude=.git --exclude SOURCES --exclude SRPMS --exclude RPMS --exclude BUILD .
 fi
 
-if [ -e "/src/rpm/SOURCES/darling-macho-deps.tar.gz" ]; then
-  ln -sf /src/rpm/SOURCES/darling-macho-deps.tar.gz $HOME/rpmbuild/SOURCES/
+if [ -e "$src/rpm/SOURCES/darling-macho-deps.tar.gz" ]; then
+  ln -sf "$src/rpm/SOURCES/darling-macho-deps.tar.gz" $HOME/rpmbuild/SOURCES/
 else
-  tar --transform "s|^\./|darling-macho-deps/|" -cf $HOME/rpmbuild/SOURCES/darling-macho-deps.tar.gz -C /src/tools/rpm .
+  tar --transform "s|^\./|darling-macho-deps/|" -cf $HOME/rpmbuild/SOURCES/darling-macho-deps.tar.gz -C "$src/tools/rpm" .
 fi
 
-if (cd /src && git describe --tags HEAD); then
-  DARLING_COMMIT_DATE="$(cd /src; git describe --tags HEAD)"
+# The x86-64 and aarch64 builds of a release need the same version (darling.spec): build the same commit
+# or preset DARLING_COMMIT_DATE, as the date this falls back to differs from day to day.
+if [ -n "${DARLING_COMMIT_DATE:-}" ]; then
+  export DARLING_COMMIT_DATE
+elif (cd "$src" && git describe --tags HEAD); then
+  DARLING_COMMIT_DATE="$(cd "$src"; git describe --tags HEAD)"
   export DARLING_COMMIT_DATE="${DARLING_COMMIT_DATE//-/}"
 else
   # default to the current date
   export DARLING_COMMIT_DATE="$(printf '%(%Y%m%d)T\n' -1)"
 fi
 
-rpmbuild -bb /src/rpm/SPECS/darling-macho-deps.spec
-sudo rpm -U --force $HOME/rpmbuild/RPMS/x86_64/darling-macho-deps*.rpm
+# The Mach-O part is built where darling.spec declares darling-cli (x86-64, or `--with macho`). rpmspec
+# gets only the options that change what the spec declares: it rejects others such as --nodeps.
+spec_args=()
+args=("$@")
+for ((i = 0; i < ${#args[@]}; i++)); do
+  case "${args[i]}" in
+    --with|--without|--define|-D|--target)
+      spec_args+=("${args[i]}" "${args[i+1]-}")
+      i=$((i + 1))
+      ;;
+    --with=*|--without=*|--define=*|--target=*)
+      spec_args+=("${args[i]}")
+      ;;
+  esac
+done
 
-#spectool -g -R /src/rpm/SPECS/darling.spec
-rpmbuild -bb /src/rpm/SPECS/darling.spec
-rpmbuild -bb /src/rpm/SPECS/darling-cli-devenv.spec
+if ! packages="$(rpmspec -q --qf '%{name}\n' "${spec_args[@]}" "$src/rpm/SPECS/darling.spec")"; then
+  echo "build.bsh: rpmspec could not read $src/rpm/SPECS/darling.spec with: ${spec_args[*]}" >&2
+  exit 1
+fi
+if grep -qx darling-cli <<<"$packages"; then
+  macho=1
+else
+  macho=0
+fi
+
+if [ "$macho" = 1 ]; then
+  rpmbuild -bb "$@" "$src/rpm/SPECS/darling-macho-deps.spec"
+  sudo rpm -U --force $HOME/rpmbuild/RPMS/noarch/darling-macho-deps*.rpm
+fi
+
+#spectool -g -R "$src/rpm/SPECS/darling.spec"
+rpmbuild -bb "$@" "$src/rpm/SPECS/darling.spec"
+
+if [ "$macho" = 1 ]; then
+  rpmbuild -bb "$@" "$src/rpm/SPECS/darling-cli-devenv.spec"
+fi

@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 @end
 
 static NSMutableDictionary *viewProviderClasses;
+static NSMutableDictionary *attachmentClasses;
 
 @implementation NSTextAttachment
 #if __OBJC2__
@@ -44,6 +45,27 @@ static NSMutableDictionary *viewProviderClasses;
 
 + (BOOL) supportsSecureCoding {
     return YES;
+}
+
++ (Class) textAttachmentClassForFileType: (NSString *) fileType {
+    if (fileType == nil)
+        return Nil;
+    @synchronized([NSTextAttachment class]) {
+        return [attachmentClasses objectForKey: fileType];
+    }
+}
+
+// QUIRK: the class is not checked to be a subclass of NSTextAttachment: any class is stored and returned, and a Nil
+// class or a nil file type is ignored without raising. Not documented. Evidence: black-box run on macOS 26.7.3
+// (tier 2). Test: tests/nstextattachment-class-registry.m
++ (void) registerTextAttachmentClass: (Class) attachmentClass forFileType: (NSString *) fileType {
+    if (attachmentClass == Nil || fileType == nil)
+        return;
+    @synchronized([NSTextAttachment class]) {
+        if (attachmentClasses == nil)
+            attachmentClasses = [[NSMutableDictionary alloc] init];
+        [attachmentClasses setObject: attachmentClass forKey: fileType];
+    }
 }
 
 + (Class) textAttachmentViewProviderClassForFileType: (NSString *) fileType {

@@ -150,6 +150,115 @@ static void test_policies(void)
 	CHECK(policy == PREFSD_CODE_SIGNING_WARN);
 }
 
+static void test_version_formats(void)
+{
+	CHECK(prefsd_is_valid_os_product_version("26.4", 4));
+	CHECK(prefsd_is_valid_os_product_version("26.7.3", 6));
+	CHECK(prefsd_is_valid_os_product_version("12.6.8", 6));
+	CHECK(prefsd_is_valid_os_product_version("11.0", 4));
+	CHECK(prefsd_is_valid_os_product_version("10.15.7", 7));
+	CHECK(prefsd_is_valid_os_product_version("10.14", 5));
+
+	CHECK(!prefsd_is_valid_os_product_version("", 0));
+	CHECK(!prefsd_is_valid_os_product_version("<script>", 8));
+	CHECK(!prefsd_is_valid_os_product_version("12.6.8 ", 7));
+	CHECK(!prefsd_is_valid_os_product_version(" 12.6.8", 7));
+	CHECK(!prefsd_is_valid_os_product_version("12..6", 5));
+	CHECK(!prefsd_is_valid_os_product_version(".12", 3));
+	CHECK(!prefsd_is_valid_os_product_version("12.", 3));
+	CHECK(!prefsd_is_valid_os_product_version("abc", 3));
+	CHECK(!prefsd_is_valid_os_product_version("12.6.8.1", 8));
+
+	CHECK(prefsd_is_valid_os_version("25E246", 6));
+	CHECK(prefsd_is_valid_os_version("21G725", 6));
+	CHECK(prefsd_is_valid_os_version("19H2", 4));
+	CHECK(prefsd_is_valid_os_version("18G103", 6));
+
+	CHECK(!prefsd_is_valid_os_version("", 0));
+	CHECK(!prefsd_is_valid_os_version("<25E246>", 8));
+	CHECK(!prefsd_is_valid_os_version("25E246 ", 7));
+	CHECK(!prefsd_is_valid_os_version("25E 246", 7));
+	CHECK(!prefsd_is_valid_os_version("25E.246", 7));
+
+	CHECK(prefsd_is_valid_os_release("25.4.0", 6));
+	CHECK(prefsd_is_valid_os_release("21.6.0", 6));
+	CHECK(prefsd_is_valid_os_release("19.6.0", 6));
+	CHECK(prefsd_is_valid_os_release("21.6", 4));
+
+	CHECK(!prefsd_is_valid_os_release("", 0));
+	CHECK(!prefsd_is_valid_os_release("<21.6.0>", 8));
+	CHECK(!prefsd_is_valid_os_release("21.6.0 ", 7));
+	CHECK(!prefsd_is_valid_os_release("21..6", 5));
+	CHECK(!prefsd_is_valid_os_release("21.6.0-alpha", 12));
+
+	CHECK(prefsd_is_valid_ios_support_version("none", 4));
+	CHECK(prefsd_is_valid_ios_support_version("15.6", 4));
+	CHECK(prefsd_is_valid_ios_support_version("12.2", 4));
+	CHECK(!prefsd_is_valid_ios_support_version("", 0));
+	CHECK(!prefsd_is_valid_ios_support_version("<15.6>", 6));
+	CHECK(!prefsd_is_valid_ios_support_version("other", 5));
+}
+
+static void test_product_name_and_compat(void)
+{
+	CHECK(strcmp(prefsd_product_name_for_version("10.14.6"), "Mac OS X") == 0);
+	CHECK(strcmp(prefsd_product_name_for_version("10.15.7"), "Mac OS X") == 0);
+	CHECK(strcmp(prefsd_product_name_for_version("11.0"), "macOS") == 0);
+	CHECK(strcmp(prefsd_product_name_for_version("12.6.8"), "macOS") == 0);
+	CHECK(strcmp(prefsd_product_name_for_version("26.4"), "macOS") == 0);
+
+	CHECK(!prefsd_should_have_system_version_compat("10.14.6"));
+	CHECK(!prefsd_should_have_system_version_compat("10.15.7"));
+	CHECK(prefsd_should_have_system_version_compat("11.0"));
+	CHECK(prefsd_should_have_system_version_compat("12.6.8"));
+	CHECK(prefsd_should_have_system_version_compat("26.4"));
+}
+
+static void test_version_mapping(void)
+{
+	char ios[64];
+	char compat[64];
+
+	// macOS 26+: iOSSupportVersion matches macOS version (major.minor)
+	CHECK(prefsd_compute_ios_support_version("26.4", NULL, ios, sizeof(ios)));
+	CHECK(strcmp(ios, "26.4") == 0);
+	CHECK(prefsd_compute_ios_support_version("26.7.3", NULL, ios, sizeof(ios)));
+	CHECK(strcmp(ios, "26.7") == 0);
+	prefsd_compute_compat_product_version("26.4", compat, sizeof(compat));
+	CHECK(strcmp(compat, "10.16") == 0);
+
+	// macOS 11..15: (major + 3).minor
+	CHECK(prefsd_compute_ios_support_version("12.6.8", NULL, ios, sizeof(ios)));
+	CHECK(strcmp(ios, "15.6") == 0);
+	prefsd_compute_compat_product_version("12.6.8", compat, sizeof(compat));
+	CHECK(strcmp(compat, "10.16") == 0);
+
+	CHECK(prefsd_compute_ios_support_version("11.0", NULL, ios, sizeof(ios)));
+	CHECK(strcmp(ios, "14.0") == 0);
+
+	// macOS 10.15: 13.x
+	CHECK(prefsd_compute_ios_support_version("10.15.7", NULL, ios, sizeof(ios)));
+	CHECK(strcmp(ios, "13.4") == 0);
+	CHECK(prefsd_compute_ios_support_version("10.15.0", NULL, ios, sizeof(ios)));
+	CHECK(strcmp(ios, "13.0") == 0);
+
+	// macOS 10.14: 12.2
+	CHECK(prefsd_compute_ios_support_version("10.14.4", NULL, ios, sizeof(ios)));
+	CHECK(strcmp(ios, "12.2") == 0);
+	CHECK(prefsd_compute_ios_support_version("10.14.6", NULL, ios, sizeof(ios)));
+	CHECK(strcmp(ios, "12.2") == 0);
+
+	// macOS < 10.14: omitted
+	CHECK(!prefsd_compute_ios_support_version("10.13.6", NULL, ios, sizeof(ios)));
+	CHECK(!prefsd_compute_ios_support_version("10.12.0", NULL, ios, sizeof(ios)));
+	CHECK(!prefsd_compute_ios_support_version("10.9", NULL, ios, sizeof(ios)));
+
+	// Explicit override
+	CHECK(prefsd_compute_ios_support_version("12.6.8", "16.1", ios, sizeof(ios)));
+	CHECK(strcmp(ios, "16.1") == 0);
+	CHECK(!prefsd_compute_ios_support_version("12.6.8", "none", ios, sizeof(ios)));
+}
+
 int main(void)
 {
 	test_files();
@@ -157,6 +266,9 @@ int main(void)
 	test_uuids();
 	test_paths();
 	test_policies();
+	test_version_formats();
+	test_product_name_and_compat();
+	test_version_mapping();
 
 	if (g_failures != 0)
 	{

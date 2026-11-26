@@ -21,4 +21,7 @@
 
 @interface PDFSelection : NSObject
 
+// The text of the selection.
+@property (nonatomic, readonly) NSString *string;
+
 @end

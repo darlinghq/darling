@@ -84,6 +84,7 @@ enum : DescType {
 	typeEnumerated = 'enum',
 	typeKeyword = 'keyw',
 	typeFileURL = 'furl',
+	typeBookmarkData = 'bmrk',
 	typeApplicationBundleID = 'bund',
 	typeKernelProcessID = 'kpid',
 	typeAEList = 'list',

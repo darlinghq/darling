@@ -5,9 +5,11 @@ remove_sdk_framework(DiskArbitration)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostdinc")
 
 set(da_SRCS
+	DAClient.c
 	DADisk.c
 	DADissenter.c
 	DASession.c
+	DASessionEvents.c
 )
 
 set(DYLIB_COMPAT_VERSION "1.0.0")
@@ -31,3 +33,5 @@ add_framework(DiskArbitration
 		system
 		CoreFoundation
 )
+
+add_subdirectory(diskarbitrationd)

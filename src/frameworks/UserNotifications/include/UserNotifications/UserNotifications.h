@@ -46,9 +46,7 @@
 #import <UserNotifications/UNNotificationAction.h>
 #import <UserNotifications/UNTextInputNotificationAction.h>
 #import <UserNotifications/UNNotificationSettings.h>
-#import <UserNotifications/UNMutableNotificationSettings.h>
 #import <UserNotifications/UNNotificationAttachmentOptions.h>
-#import <UserNotifications/UNNotificationIcon.h>
 #import <UserNotifications/UNMovieNotificationAttachmentOptions.h>
 #import <UserNotifications/UNUserNotificationCenterDelegateConnectionListener.h>
 #import <UserNotifications/UNSecurityScopedURL.h>

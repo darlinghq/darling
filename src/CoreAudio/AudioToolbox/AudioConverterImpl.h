@@ -63,6 +63,7 @@ private:
 
 	SwrContext* m_resampler = nullptr;
 	UInt32 m_outBitRate = 128000;
+	bool m_decoderNeedsCookie = false;
 	bool m_encoderInitialized = false;
 	bool m_inputEnded = false;
 	bool m_encoderDraining = false;

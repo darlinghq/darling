@@ -15,6 +15,7 @@ add_framework(SearchKit
 	SOURCES
 		SKAnalysis.c
 		SKIndex.c
+		SKSummary.c
 	RESOURCES
 		Info.plist Info.plist
 

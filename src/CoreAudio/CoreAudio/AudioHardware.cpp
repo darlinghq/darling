@@ -24,6 +24,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "pulse/AudioHardwareImplPAInput.h"
 #include <CarbonCore/MacErrors.h>
 #include <dispatch/dispatch.h>
+#include <algorithm>
 #include <cstring>
 #include <memory>
 #include <mutex>
@@ -91,17 +92,34 @@ static OSStatus GetStreamPropertyData(AudioObjectID objID, const AudioObjectProp
 	if (!device)
 		return kAudioHardwareBadObjectError;
 
+	device->refreshFormat();
+
 	UInt32 value = 0;
-	AudioStreamRangedDescription ranged;
+	std::vector<AudioStreamRangedDescription> ranged;
 	const void* source = &value;
 	UInt32 required = sizeof(value);
 
 	switch (inAddress->mSelector)
 	{
+		case kAudioObjectPropertyClass:
+			value = kAudioStreamClassID;
+			break;
+		case kAudioObjectPropertyBaseClass:
+			value = kAudioObjectClassID;
+			break;
 		case kAudioStreamPropertyDirection:
 			value = device->isInputDevice() ? 1 : 0;
 			break;
 		case kAudioStreamPropertyTerminalType:
+			break;
+		case kAudioStreamPropertyStartingChannel:
+			value = 1;
+			break;
+		case kAudioStreamPropertyIsActive:
+			value = 1;
+			break;
+		case kAudioStreamPropertyLatency:
+			// The stream adds no latency of its own; the device's is kAudioDevicePropertyLatency.
 			break;
 		case kAudioStreamPropertyVirtualFormat:
 		case kAudioStreamPropertyPhysicalFormat:
@@ -110,13 +128,28 @@ static OSStatus GetStreamPropertyData(AudioObjectID objID, const AudioObjectProp
 			break;
 		case kAudioStreamPropertyAvailableVirtualFormats:
 		case kAudioStreamPropertyAvailablePhysicalFormats:
-			// The stream supports exactly the format of its device, at a single sample rate.
-			ranged.mFormat = device->asbd();
-			ranged.mSampleRateRange.mMinimum = ranged.mFormat.mSampleRate;
-			ranged.mSampleRateRange.mMaximum = ranged.mFormat.mSampleRate;
-			source = &ranged;
-			required = sizeof(ranged);
+		{
+			// The format of the device at each of the sample rates it offers. The current format is one of them
+			// even when it has a rate that the device does not list.
+			std::vector<Float64> rates = device->availableSampleRates();
+			const Float64 current = device->asbd().mSampleRate;
+			if (std::find(rates.begin(), rates.end(), current) == rates.end())
+			{
+				rates.push_back(current);
+				std::sort(rates.begin(), rates.end());
+			}
+			for (Float64 rate : rates)
+			{
+				AudioStreamRangedDescription entry = {};
+				entry.mFormat = device->asbd();
+				entry.mFormat.mSampleRate = rate;
+				entry.mSampleRateRange.mMinimum = entry.mSampleRateRange.mMaximum = rate;
+				ranged.push_back(entry);
+			}
+			source = ranged.data();
+			required = UInt32(ranged.size() * sizeof(AudioStreamRangedDescription));
 			break;
+		}
 		default:
 			return kAudioHardwareUnknownPropertyError;
 	}
@@ -128,6 +161,36 @@ static OSStatus GetStreamPropertyData(AudioObjectID objID, const AudioObjectProp
 		memcpy(outData, source, required);
 	}
 	*ioDataSize = required;
+	return kAudioHardwareNoError;
+}
+
+// Choosing the format of a stream chooses the format of the device that the stream belongs to.
+static OSStatus SetStreamPropertyData(AudioObjectID objID, const AudioObjectPropertyAddress* inAddress,
+		UInt32 inDataSize, const void* inData)
+{
+	AudioHardwareImpl* device = GetObject(objID & 0xffffu);
+	if (!device)
+		return kAudioHardwareBadObjectError;
+
+	if (inAddress->mSelector != kAudioStreamPropertyVirtualFormat && inAddress->mSelector != kAudioStreamPropertyPhysicalFormat)
+	{
+		UInt32 size = 0;
+		return GetStreamPropertyData(objID, inAddress, &size, nullptr) == kAudioHardwareNoError
+			? kAudioHardwareUnsupportedOperationError : kAudioHardwareUnknownPropertyError;
+	}
+	if (inDataSize != sizeof(AudioStreamBasicDescription) || !inData)
+		return kAudioHardwareBadPropertySizeError;
+
+	const AudioStreamBasicDescription* format = static_cast<const AudioStreamBasicDescription*>(inData);
+	AudioObjectPropertyAddress deviceAddress = { kAudioDevicePropertyStreamFormat, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
+	OSStatus status = device->setPropertyData(&deviceAddress, 0, nullptr, inDataSize, inData);
+	if (status != kAudioHardwareNoError)
+		return status;
+
+	// The device clock follows the rate of the stream.
+	deviceAddress.mSelector = kAudioDevicePropertyNominalSampleRate;
+	if (device->nominalSampleRate() != format->mSampleRate)
+		return device->setPropertyData(&deviceAddress, 0, nullptr, sizeof(Float64), &format->mSampleRate);
 	return kAudioHardwareNoError;
 }
 
@@ -169,7 +232,10 @@ OSStatus AudioObjectIsPropertySettable(AudioObjectID inObjectID,
 	{
 		UInt32 size = 0;
 		*outIsSettable = false;
-		return GetStreamPropertyData(inObjectID, inAddress, &size, nullptr);
+		OSStatus status = GetStreamPropertyData(inObjectID, inAddress, &size, nullptr);
+		*outIsSettable = status == kAudioHardwareNoError && (inAddress->mSelector == kAudioStreamPropertyVirtualFormat
+			|| inAddress->mSelector == kAudioStreamPropertyPhysicalFormat);
+		return status;
 	}
 
 	AudioHardwareImpl* obj = GetObject(inObjectID);
@@ -213,6 +279,8 @@ OSStatus AudioObjectSetPropertyData(AudioObjectID inObjectID,
 		const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 		const void* inQualifierData, UInt32 inDataSize, const void* inData)
 {
+	if (IsStreamObject(inObjectID))
+		return SetStreamPropertyData(inObjectID, inAddress, inDataSize, inData);
 	AudioHardwareImpl* obj = GetObject(inObjectID);
 	if (!obj)
 		return kAudioHardwareBadObjectError;

@@ -6,6 +6,38 @@ endif(COMMAND cmake_policy)
 include(use_ld64)
 include(CMakeParseArguments)
 include(dsym)
+include(architecture)
+
+# _darling_select_archs(<out-var> <32bit-only> <64bit-only> <archs>): the enabled slices, keeping
+# only the 32-bit or 64-bit ones when asked to and only those in <archs> when it is not empty.
+function(_darling_select_archs out only_32 only_64 archs)
+	set(filter "")
+	if (only_32)
+		list(APPEND filter 32BIT_ONLY)
+	endif ()
+	if (only_64)
+		list(APPEND filter 64BIT_ONLY)
+	endif ()
+	darling_archs(selected ${filter})
+	if (archs)
+		set(wanted ${selected})
+		set(selected "")
+		foreach (arch IN LISTS wanted)
+			if (arch IN_LIST archs)
+				list(APPEND selected ${arch})
+			endif ()
+		endforeach ()
+	endif ()
+	set(${out} "${selected}" PARENT_SCOPE)
+endfunction()
+
+# _darling_lib_archs(<out-var>): the slices add_darling_library() builds, from the variables a
+# caller may set around it: DARLING_LIB_ARCHS (a list of slices), DARLING_LIB_32BIT_ONLY and
+# DARLING_LIB_64BIT_ONLY. Without them, every enabled slice.
+function(_darling_lib_archs out)
+	_darling_select_archs(selected "${DARLING_LIB_32BIT_ONLY}" "${DARLING_LIB_64BIT_ONLY}" "${DARLING_LIB_ARCHS}")
+	set(${out} "${selected}" PARENT_SCOPE)
+endfunction()
 
 FUNCTION(add_darling_library name)
 	foreach(f IN LISTS ARGN)
@@ -44,14 +76,13 @@ FUNCTION(add_darling_library name)
 	set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS  " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/")
 	add_dependencies(${name} lipo)
 
-	if (BUILD_TARGET_64BIT AND NOT DARLING_LIB_32BIT_ONLY)
-		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS  " -arch ${APPLE_ARCH_64BIT}")
-		set_property(TARGET ${name} APPEND_STRING PROPERTY LINK_FLAGS " -arch ${APPLE_ARCH_64BIT}")
-	endif (BUILD_TARGET_64BIT AND NOT DARLING_LIB_32BIT_ONLY)
-	if (BUILD_TARGET_32BIT AND NOT DARLING_LIB_64BIT_ONLY)
-		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -arch ${APPLE_ARCH_32BIT}")
-		set_property(TARGET ${name} APPEND_STRING PROPERTY LINK_FLAGS " -arch ${APPLE_ARCH_32BIT}")
-	endif (BUILD_TARGET_32BIT AND NOT DARLING_LIB_64BIT_ONLY)
+	_darling_lib_archs(lib_archs)
+	if (NOT lib_archs)
+		message(FATAL_ERROR "add_darling_library(${name}): none of the requested slices is enabled (DARLING_ARCHS: ${DARLING_ARCHS})")
+	endif ()
+	darling_arch_flags(lib_arch_flags ${lib_archs})
+	set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " ${lib_arch_flags}")
+	set_property(TARGET ${name} APPEND_STRING PROPERTY LINK_FLAGS " ${lib_arch_flags}")
 
 	use_ld64(${name})
 
@@ -60,32 +91,16 @@ FUNCTION(add_darling_library name)
 	endif ((NOT NO_DSYM) AND (NOT ${name}_NO_DSYM))
 ENDFUNCTION(add_darling_library)
 
+# make_fat(<target>...): builds the targets for every enabled slice.
 FUNCTION(make_fat)
-	if (BUILD_TARGET_32BIT AND BUILD_TARGET_64BIT)
-		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-			COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch ${APPLE_ARCH_32BIT} -arch ${APPLE_ARCH_64BIT}")
-		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-			LINK_FLAGS " -arch ${APPLE_ARCH_32BIT} -arch ${APPLE_ARCH_64BIT}")
-		foreach(tgt ${ARGV})
-			add_dependencies(${tgt} lipo)
-		endforeach(tgt)
-	elseif (BUILD_TARGET_32BIT)
-		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-			COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch ${APPLE_ARCH_32BIT}")
-		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-			LINK_FLAGS " -arch ${APPLE_ARCH_32BIT}")
-		foreach(tgt ${ARGV})
-			add_dependencies(${tgt} lipo)
-		endforeach(tgt)
-	elseif (BUILD_TARGET_64BIT)
-		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-			COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ -arch ${APPLE_ARCH_64BIT}")
-		set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
-			LINK_FLAGS " -arch ${APPLE_ARCH_64BIT}")
-		foreach(tgt ${ARGV})
-			add_dependencies(${tgt} lipo)
-		endforeach(tgt)
-	endif (BUILD_TARGET_32BIT AND BUILD_TARGET_64BIT)
+	darling_arch_flags(fat_arch_flags ${DARLING_ARCHS})
+	set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
+		COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ ${fat_arch_flags}")
+	set_property(TARGET ${ARGV} APPEND_STRING PROPERTY
+		LINK_FLAGS " ${fat_arch_flags}")
+	foreach(tgt ${ARGV})
+		add_dependencies(${tgt} lipo)
+	endforeach(tgt)
 ENDFUNCTION(make_fat)
 
 # add_circular(name ...)
@@ -171,20 +186,34 @@ FUNCTION(add_circular name)
 	endif (CIRCULAR_FAT)
 ENDFUNCTION(add_circular)
 
+# add_darling_object_library(<name> [32BIT_ONLY | 64BIT_ONLY] <sources>...)
+# add_darling_object_library(<name> [32BIT_ONLY | 64BIT_ONLY] [ARCHS <arch>...] SOURCES <sources>...)
+#
+# An object library compiled for every enabled slice, or only for the enabled 32-bit or 64-bit
+# slices, or only for those of ARCHS that are enabled. The object files are fat when that is more
+# than one slice. With ARCHS the sources follow SOURCES.
 function(add_darling_object_library name)
-	cmake_parse_arguments(OBJECT_LIB "32BIT_ONLY;64BIT_ONLY" "" "" ${ARGN})
-	foreach(f IN LISTS OBJECT_LIB_UNPARSED_ARGUMENTS)
+	cmake_parse_arguments(OBJECT_LIB "32BIT_ONLY;64BIT_ONLY" "" "ARCHS;SOURCES" ${ARGN})
+	foreach(f IN LISTS OBJECT_LIB_UNPARSED_ARGUMENTS OBJECT_LIB_SOURCES)
 		set(files ${files} ${f})
 	endforeach(f)
 
+	if ("ARCHS" IN_LIST ARGN AND NOT OBJECT_LIB_ARCHS)
+		message(FATAL_ERROR "add_darling_object_library(${name}): ARCHS is given without any slice")
+	endif ()
+
 	add_library(${name} OBJECT ${files})
 	add_dependencies(${name} lipo)
-	set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/")
+	# Set through COMPILE_OPTIONS rather than COMPILE_FLAGS: a caller that sets COMPILE_FLAGS on the
+	# library afterwards (for a -D, say) replaces that property, which would silently drop the
+	# slices and leave an object file for the default slice only.
+	target_compile_options(${name} PRIVATE "SHELL:-B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/")
 
-	if (BUILD_TARGET_32BIT AND NOT OBJECT_LIB_64BIT_ONLY)
-		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -arch ${APPLE_ARCH_32BIT}")
-	endif (BUILD_TARGET_32BIT AND NOT OBJECT_LIB_64BIT_ONLY)
-	if (BUILD_TARGET_64BIT AND NOT OBJECT_LIB_32BIT_ONLY)
-		set_property(TARGET ${name} APPEND_STRING PROPERTY COMPILE_FLAGS " -arch ${APPLE_ARCH_64BIT}")
-	endif (BUILD_TARGET_64BIT AND NOT OBJECT_LIB_32BIT_ONLY)
+	_darling_select_archs(object_archs "${OBJECT_LIB_32BIT_ONLY}" "${OBJECT_LIB_64BIT_ONLY}" "${OBJECT_LIB_ARCHS}")
+	if (NOT object_archs)
+		message(FATAL_ERROR "add_darling_object_library(${name}): none of the requested slices is enabled (DARLING_ARCHS: ${DARLING_ARCHS})")
+	endif ()
+	foreach (arch IN LISTS object_archs)
+		target_compile_options(${name} PRIVATE "SHELL:-arch ${arch}")
+	endforeach ()
 endfunction(add_darling_object_library)

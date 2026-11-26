@@ -40,6 +40,10 @@
 #import <VideoToolbox/FigMetalTransferHelper.h>
 #endif
 
+// Stubs for private symbols, with placeholder signatures. They are only seen
+// by Darling's own build: a program built with the SDK that declares one of
+// them with its real signature would otherwise not compile.
+#ifdef DARLING
 void* COLOR_Y2R24(void);
 void* COLOR_Y2R32(void);
 void* COLOR_Y420uToUYVY_scalar(void);
@@ -57,7 +61,6 @@ void* VTCompressionSessionBeginPass(void);
 void* VTCompressionSessionCopyProperty(void);
 void* VTCompressionSessionCopySerializableProperties(void);
 void* VTCompressionSessionCopySupportedPropertyDictionary(void);
-void* VTCompressionSessionEncodeFrameWithOutputHandler(void);
 void* VTCompressionSessionEndPass(void);
 void* VTCompressionSessionGetTimeRangesForNextPass(void);
 void* VTCompressionSessionRelease(void);
@@ -70,7 +73,6 @@ void* VTCopyRenderIDArrayForIORegistryKey(void);
 void* VTCopySupportedPropertyDictionaryForEncoder(void);
 void* VTCopySupportedPropertyForVideoEncoderID(void);
 void* VTCopyTemporalFilterList(void);
-void* VTCopyVideoEncoderList(void);
 void* VTCreateCGImageFromCVPixelBuffer(void);
 void* VTCreateCGImageFromIOSurfaceAndAttributes(void);
 void* VTCreateDictionaryRepresentationForMovedRect(void);
@@ -81,15 +83,6 @@ void* VTDecoderSessionGetDestinationPixelBufferAttributes(void);
 void* VTDecoderSessionGetPixelBufferPool(void);
 void* VTDecoderSessionSetPixelBufferAttributes(void);
 void* VTDecoderSessionTrace(void);
-void* VTDecompressionSessionCopyProperty(void);
-void* VTDecompressionSessionCopySerializableProperties(void);
-void* VTDecompressionSessionCopySupportedPropertyDictionary(void);
-void* VTDecompressionSessionCreateWithOptions(void);
-void* VTDecompressionSessionDecodeFrameWithOutputHandler(void);
-void* VTDecompressionSessionGetMinAndMaxOutputPresentationTimeStampOfFramesBeingDecoded(void);
-void* VTDecompressionSessionGetMinOutputPresentationTimeStampOfFramesBeingDecoded(void);
-void* VTDecompressionSessionSetProperties(void);
-void* VTDecompressionSessionSetProperty(void);
 void* VTDistributedCompressionGetSegmentRanges(void);
 void* VTDistributedCompressionGetSegmentsToReencode(void);
 void* VTDistributedPreprocessingGetOverlap(void);
@@ -264,5 +257,6 @@ void* VTXPCMessageCopyVideoFormatDescription(void);
 void* VTXPCMessageSetCMSampleBuffer(void);
 void* VTXPCMessageSetCVPixelBuffer(void);
 void* VTXPCMessageSetVideoFormatDescription(void);
+#endif
 
 #endif

@@ -97,7 +97,6 @@ add_framework(AuthenticationServices
 		src/ASWebAuthenticationSessionWebBrowserSessionManager.m
 		src/LAUIAuthenticationViewController+AuthenticationServicesExtras.m
 		src/NSBundle+ASNSBundleExtras.m
-		src/NSExtension+AuthenticationServicesExtras.m
 		src/NSImage+ASImageExtras.m
 		src/NSLayoutConstraint+ASNSLayoutConstraintExtras.m
 		src/NSPasteboard+AuthenticationServicesExtras.m
@@ -127,4 +126,12 @@ add_framework(AuthenticationServices
 		objc
 		Foundation
 		AppKit
+)
+
+# These two sources use ARC for the weak `delegate` and the retained `sessionHandler`; the rest of the
+# framework is not built with it.
+set_source_files_properties(
+	src/ASWebAuthenticationSessionRequest.m
+	src/ASWebAuthenticationSessionWebBrowserSessionManager.m
+	PROPERTIES COMPILE_FLAGS "-fobjc-arc"
 )

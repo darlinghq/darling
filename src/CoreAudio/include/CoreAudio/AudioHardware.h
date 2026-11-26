@@ -52,6 +52,7 @@ enum
     kAudioHardwarePropertyClockDeviceList                       = 'clk#',
     kAudioHardwarePropertyTranslateUIDToClockDevice             = 'uidc',
     kAudioHardwarePropertyProcessIsMaster                       = 'mast',
+    kAudioHardwarePropertyProcessIsMain                         = 'main',
     kAudioHardwarePropertyIsInitingOrExiting                    = 'inot',
     kAudioHardwarePropertyUserIDChanged                         = 'euid',
     kAudioHardwarePropertyProcessIsAudible                      = 'pmut',
@@ -143,7 +144,11 @@ enum {
     kAudioDevicePropertyVolumeDecibels = 'vold',
     kAudioDevicePropertyVolumeDecibelsToScalar = 'db2v',
     kAudioDevicePropertyVolumeScalarToDecibels = 'v2db',
+    kAudioDevicePropertyVolumeRangeDecibels = 'vdb#',
     kAudioDevicePropertyMute = 'mute',
+    kAudioDevicePropertyDataSource = 'ssrc',
+    kAudioDevicePropertyDataSources = 'ssc#',
+    kAudioDevicePropertyJackIsConnected = 'jack',
 };
 
 typedef AudioObjectPropertySelector AudioHardwarePropertyID;
@@ -261,9 +266,23 @@ OSStatus AudioHardwareAddPropertyListener(AudioHardwarePropertyID inPropertyID,
 OSStatus AudioHardwareRemovePropertyListener(AudioHardwarePropertyID inPropertyID,
 		AudioHardwarePropertyListenerProc inProc);
 
+// The transport of a device (kAudioDevicePropertyTransportType)
 enum
 {
-    kAudioDeviceTransportTypeVirtual = 'virt'
+    kAudioDeviceTransportTypeUnknown = 0,
+    kAudioDeviceTransportTypeBuiltIn = 'bltn',
+    kAudioDeviceTransportTypeAggregate = 'grup',
+    kAudioDeviceTransportTypeVirtual = 'virt',
+    kAudioDeviceTransportTypePCI = 'pci ',
+    kAudioDeviceTransportTypeUSB = 'usb ',
+    kAudioDeviceTransportTypeFireWire = '1394',
+    kAudioDeviceTransportTypeBluetooth = 'blue',
+    kAudioDeviceTransportTypeBluetoothLE = 'blea',
+    kAudioDeviceTransportTypeHDMI = 'hdmi',
+    kAudioDeviceTransportTypeDisplayPort = 'dprt',
+    kAudioDeviceTransportTypeAirPlay = 'airp',
+    kAudioDeviceTransportTypeAVB = 'eavb',
+    kAudioDeviceTransportTypeThunderbolt = 'thun'
 };
 
 #ifdef __cplusplus

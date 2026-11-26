@@ -47,6 +47,8 @@ enum
 	kCVPixelFormatType_422YpCbCr_4A_8BiPlanar = 'a2vy',
 	kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange = '420v',
 	kCVPixelFormatType_420YpCbCr8BiPlanarFullRange  = '420f',
+	kCVPixelFormatType_422YpCbCr8BiPlanarVideoRange = '422v',
+	kCVPixelFormatType_422YpCbCr8BiPlanarFullRange  = '422f',
 	kCVPixelFormatType_422YpCbCr8_yuvs = 'yuvs',
 	kCVPixelFormatType_422YpCbCr8FullRange = 'yuvf',
 	kCVPixelFormatType_OneComponent8  = 'L008',
@@ -74,7 +76,29 @@ enum
 	kCVPixelFormatType_422YpCbCr10BiPlanarFullRange  = 'xf22',
 	kCVPixelFormatType_444YpCbCr10BiPlanarFullRange  = 'xf44',
 	kCVPixelFormatType_420YpCbCr8VideoRange_8A_TriPlanar   = 'v0a8',
+
+	/* lossless-compressed variants of the formats above (macOS 12) */
+	kCVPixelFormatType_Lossless_32BGRA                            = '&BGA',
+	kCVPixelFormatType_Lossless_64RGBAHalf                        = '&RhA',
+	kCVPixelFormatType_Lossless_420YpCbCr8BiPlanarVideoRange      = '&8v0',
+	kCVPixelFormatType_Lossless_420YpCbCr8BiPlanarFullRange       = '&8f0',
+	kCVPixelFormatType_Lossless_420YpCbCr10PackedBiPlanarVideoRange = '&xv0',
+	kCVPixelFormatType_Lossless_422YpCbCr10PackedBiPlanarVideoRange = '&xv2',
+	kCVPixelFormatType_Lossless_420YpCbCr10PackedBiPlanarFullRange  = '&xf0',
+	kCVPixelFormatType_Lossless_30RGBLE_8A_BiPlanar               = '&b38',
+	kCVPixelFormatType_Lossless_30RGBLEPackedWideGamut            = '&w3r',
+
+	/* lossy-compressed variants */
+	kCVPixelFormatType_Lossy_32BGRA                               = '-BGA',
+	kCVPixelFormatType_Lossy_420YpCbCr8BiPlanarVideoRange         = '-8v0',
+	kCVPixelFormatType_Lossy_420YpCbCr8BiPlanarFullRange          = '-8f0',
+	kCVPixelFormatType_Lossy_420YpCbCr10PackedBiPlanarVideoRange  = '-xv0',
+	kCVPixelFormatType_Lossy_422YpCbCr10PackedBiPlanarVideoRange  = '-xv2',
 };
+
+/* Whether the platform supports the given compressed pixel format; check this
+   before creating buffers in one of the formats above (macOS 12). */
+CV_EXPORT Boolean CVIsCompressedPixelFormatAvailable(OSType pixelFormatType);
 
 extern const CFStringRef kCVPixelBufferIOSurfacePropertiesKey;
 extern const CFStringRef kCVPixelBufferOpenGLCompatibilityKey;

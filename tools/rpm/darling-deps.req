@@ -1,5 +1,15 @@
 #!/usr/bin/sh
+# usage: darling-deps.req 64|32 <elfdep>, with the Mach-O files to scan on standard input
+# Prints the host library each file loads, as the dependency of a 64-bit or a 32-bit library.
+
+case "$1" in
+	64) suffix='()(64bit)' ;;
+	32) suffix='' ;;
+	*) echo "darling-deps.req: the first argument is 64 or 32, not '$1'" >&2; exit 2 ;;
+esac
 
 while read filename; do
-	"$1" "$filename"
+	"$2" "$filename" | while read soname; do
+		printf '%s%s\n' "$soname" "$suffix"
+	done
 done

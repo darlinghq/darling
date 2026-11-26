@@ -120,6 +120,7 @@
 #import <AuthenticationServices/ASWebAuthenticationSessionRequestClient.h>
 #import <AuthenticationServices/ASWebAuthenticationSessionRequestDelegate.h>
 #import <AuthenticationServices/ASWebAuthenticationSessionRequestServing.h>
+#import <AuthenticationServices/ASWebAuthenticationSessionWebBrowserSessionHandling.h>
 #import <AuthenticationServices/ASWebAuthenticationSessionWebBrowserSessionManager.h>
 #import <AuthenticationServices/AuthenticationServicesHelperProtocol.h>
 #import <AuthenticationServices/LAUIAuthenticationDelegate.h>
@@ -128,7 +129,6 @@
 #import <AuthenticationServices/NSAccessibilityElement.h>
 #import <AuthenticationServices/NSBundle+ASNSBundleExtras.h>
 #import <AuthenticationServices/NSControlTextEditingDelegate.h>
-#import <AuthenticationServices/NSExtension+AuthenticationServicesExtras.h>
 #import <AuthenticationServices/NSImage+ASImageExtras.h>
 #import <AuthenticationServices/NSLayoutConstraint+ASNSLayoutConstraintExtras.h>
 #import <AuthenticationServices/NSPasteboard+AuthenticationServicesExtras.h>

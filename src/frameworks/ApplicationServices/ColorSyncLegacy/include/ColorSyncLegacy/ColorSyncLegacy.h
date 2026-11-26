@@ -21,8 +21,61 @@
 #ifndef _ColorSyncLegacy_H_
 #define _ColorSyncLegacy_H_
 
-void* CMCloneProfileRef(void);
-void* CMCloseProfile(void);
+#include <CoreServices/CoreServices.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// The legacy ColorSync profile reference. It is a ColorSync profile (the reference of the
+// ColorSyncProfile calls of the ColorSync framework).
+typedef struct OpaqueCMProfileRef* CMProfileRef;
+
+#pragma pack(push, 2)
+enum {
+	cmNoProfileBase = 0,
+	cmFileBasedProfile = 1,
+	cmHandleBasedProfile = 2,
+	cmPtrBasedProfile = 3,
+	cmProcedureBasedProfile = 4,
+	cmPathBasedProfile = 5,
+	cmBufferBasedProfile = 6
+};
+
+struct CMFileLocation { FSSpec spec; };
+struct CMHandleLocation { Handle h; };
+struct CMPtrLocation { Ptr p; };
+struct CMPathLocation { char path[255]; };
+struct CMBufferLocation { void* buffer; UInt32 size; };
+typedef struct CMFileLocation CMFileLocation;
+typedef struct CMHandleLocation CMHandleLocation;
+typedef struct CMPtrLocation CMPtrLocation;
+typedef struct CMPathLocation CMPathLocation;
+typedef struct CMBufferLocation CMBufferLocation;
+
+union CMProfLoc {
+	CMFileLocation fileLoc;
+	CMHandleLocation handleLoc;
+	CMPtrLocation ptrLoc;
+	CMPathLocation pathLoc;
+	CMBufferLocation bufferLoc;
+};
+typedef union CMProfLoc CMProfLoc;
+
+struct CMProfileLocation {
+	short locType;
+	CMProfLoc u;
+};
+typedef struct CMProfileLocation CMProfileLocation;
+#pragma pack(pop)
+
+// Opens the profile at the location (a file given by its POSIX path, or the profile's data in
+// memory) and returns a reference that has to be closed with CMCloseProfile()
+OSErr CMOpenProfile(CMProfileRef* prof, const CMProfileLocation* theProfile);
+// Closes one reference of the profile. CMCloneProfileRef() adds one.
+OSErr CMCloseProfile(CMProfileRef prof);
+void CMCloneProfileRef(CMProfileRef prof);
+
 void* CMConvertDoubleXYZToD50(void);
 void* CMConvertRGBFloatBitmap(void);
 void* CMConvertXYZFloatBitmap(void);
@@ -75,7 +128,6 @@ void* CMLaunchControlPanel(void);
 void* CMMakeProfile(void);
 void* CMMatchFloatBitmap(void);
 void* CMNewProfile(void);
-void* CMOpenProfile(void);
 void* CMPostLegacyDeviceNotification(void);
 void* CMProfileCopyICCData(void);
 void* CMProfileElementExists(void);
@@ -144,5 +196,9 @@ void* _CMProfileGetProperty(void);
 void* _CMProfileSetProperty(void);
 void* _CWColorWorldGetProperty(void);
 void* _CWColorWorldSetProperty(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

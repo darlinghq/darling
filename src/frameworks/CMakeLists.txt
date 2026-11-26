@@ -18,14 +18,9 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 
 	# secd (part of Security, which is built for CLI as well) links CoreData.
 	# When Cocotron's CoreData is not being built, use the stub instead.
-	if (COMPONENT_gui)
-		set(NO_INSTALL_ARG NO_INSTALL)
-		set(STUB_SUFFIX "_stub")
-	else()
-		set(NO_INSTALL_ARG "")
-		set(STUB_SUFFIX "")
+	if (NOT COMPONENT_gui)
+		add_subdirectory(dev-stubs/CoreData)
 	endif()
-	add_subdirectory(dev-stubs/CoreData)
 
 	# these are also stubs, but they're needed for Security
 	add_subdirectory(Accounts)
@@ -78,12 +73,15 @@ if (COMPONENT_dev_gui_stubs_common)
 	add_subdirectory(CoreMedia)
 	add_subdirectory(DiskArbitration)
 	add_subdirectory(GLKit)
+	add_subdirectory(LinkPresentation)
+	add_subdirectory(NaturalLanguage)
 	add_subdirectory(PubSub)
 	add_subdirectory(ScriptingBridge)
 	add_subdirectory(SecurityInterface)
 	add_subdirectory(ServiceManagement)
 	add_subdirectory(Quartz)
 	add_subdirectory(QuickLook)
+	add_subdirectory(QuickLookThumbnailing)
 	add_subdirectory(SafariServices)
 	add_subdirectory(SceneKit)
 	add_subdirectory(SpriteKit)
@@ -153,6 +151,7 @@ if (COMPONENT_gui_stubs)
 	add_subdirectory(OpenAL)
 	add_subdirectory(OpenCL)
 	add_subdirectory(Photos)
+	add_subdirectory(PreferencePanes)
 	add_subdirectory(PDFKit)
 	add_subdirectory(OSAKit)
 	add_subdirectory(QTKit)
@@ -170,13 +169,9 @@ if (COMPONENT_gui_stubs)
 endif()
 
 # Xcode also needs WebKit, even on the CLI! it may be a weak dependency (i didn't check that),
-# but what we do is we build our stub if the `webkit` component isn't enabled.
-#
-# TODO: actually build WebKit. since we *only* have the stub right now, we compile it when either
-#       component is enabled.
-
-#if (COMPONENT_dev_gui_common AND NOT COMPONENT_webkit)
-if (COMPONENT_dev_gui_common OR COMPONENT_webkit)
+# but what we do is we build our stub if the `webkit` component isn't enabled. With it,
+# the real WebKit is built (see src/external/WebKit/darling).
+if (COMPONENT_dev_gui_common AND NOT COMPONENT_webkit)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_dev_gui_common")
 
 	# stub
@@ -202,6 +197,10 @@ if ((COMPONENT_cli_dev AND NOT COMPONENT_gui) OR COMPONENT_cli_dev_gui_stubs)
 	add_subdirectory(dev-stubs/AppKit)
 	add_subdirectory(dev-stubs/AudioToolbox)
 	add_subdirectory(dev-stubs/Cocoa)
+	# without the GUI components, the CoreData stub is built for secd in cli_gui_common instead
+	if (COMPONENT_gui)
+		add_subdirectory(dev-stubs/CoreData)
+	endif()
 	add_subdirectory(dev-stubs/CoreGraphics)
 	add_subdirectory(dev-stubs/CoreText)
 	add_subdirectory(dev-stubs/ImageIO)

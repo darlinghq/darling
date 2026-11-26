@@ -18,6 +18,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "AudioHardwareImpl.h"
+#include <algorithm>
 #include <typeinfo>
 #include <iostream>
 #include <cstring>
@@ -142,16 +143,25 @@ OSStatus AudioHardwareImpl::isPropertySettable(const AudioObjectPropertyAddress*
 			*outIsSettable = true;
 			return kAudioHardwareNoError;
 		case kAudioDevicePropertyBufferFrameSize:
+		case kAudioDevicePropertyBufferSize:
 			*outIsSettable = true;
 			return kAudioHardwareNoError;
 		case kAudioDevicePropertyVolumeScalar:
 		case kAudioDevicePropertyVolumeDecibels:
+		case kAudioDevicePropertyMute:
+			*outIsSettable = true;
+			return kAudioHardwareNoError;
+		case kAudioHardwarePropertyDefaultOutputDevice:
+		case kAudioHardwarePropertyDefaultInputDevice:
+			if (m_myId != kAudioObjectSystemObject)
+				break;
 			*outIsSettable = true;
 			return kAudioHardwareNoError;
 	}
 
+	// A property that exists and cannot be changed is not an error.
 	*outIsSettable = false;
-	return kAudioHardwareUnknownPropertyError;
+	return hasProperty(inAddress) ? kAudioHardwareNoError : kAudioHardwareUnknownPropertyError;
 }
 
 // Examples:
@@ -194,6 +204,31 @@ OSStatus AudioHardwareImpl::getPropertyData(const AudioObjectPropertyAddress* in
 			*ioDataSize = sizeof(UInt32);
 			return kAudioHardwareNoError;
 		}
+		case kAudioDevicePropertyBufferSize: // the same in bytes
+		{
+			if (!m_asbd.mBytesPerFrame)
+				return kAudioHardwareBadStreamError;
+			if (outData && *ioDataSize < sizeof(UInt32))
+				return kAudioHardwareBadPropertySizeError;
+			if (outData)
+				*static_cast<UInt32*>(outData) = m_bufferSize;
+			*ioDataSize = sizeof(UInt32);
+			return kAudioHardwareNoError;
+		}
+		case kAudioDevicePropertyBufferSizeRange:
+		{
+			if (!m_asbd.mBytesPerFrame)
+				return kAudioHardwareBadStreamError;
+			if (outData && *ioDataSize < sizeof(AudioValueRange))
+				return kAudioHardwareBadPropertySizeError;
+			if (AudioValueRange* range = static_cast<AudioValueRange*>(outData))
+			{
+				range->mMinimum = Float64(kMinBufferFrames) * m_asbd.mBytesPerFrame;
+				range->mMaximum = Float64(kMaxBufferFrames) * m_asbd.mBytesPerFrame;
+			}
+			*ioDataSize = sizeof(AudioValueRange);
+			return kAudioHardwareNoError;
+		}
 		case kAudioDevicePropertyBufferFrameSizeRange:
 		{
 			if (outData && *ioDataSize < sizeof(AudioValueRange))
@@ -230,21 +265,29 @@ OSStatus AudioHardwareImpl::getPropertyData(const AudioObjectPropertyAddress* in
 		case kAudioDevicePropertyDeviceName: // return char[]
 			return getPropertyString(m_name, ioDataSize, outData);
 		case kAudioDevicePropertyNominalSampleRate: // Float64
+		case kAudioDevicePropertyActualSampleRate:
 		{
-			if (Float64* flt = static_cast<Float64*>(outData); flt && *ioDataSize >= sizeof(Float64))
-				*flt = 44100;
-
+			if (outData && *ioDataSize < sizeof(Float64))
+				return kAudioHardwareBadPropertySizeError;
+			if (outData)
+				*static_cast<Float64*>(outData) = nominalSampleRate();
 			*ioDataSize = sizeof(Float64);
 			return kAudioHardwareNoError;
 		}
 		case kAudioDevicePropertyAvailableNominalSampleRates: // AudioValueRange[]
 		{
-			if (AudioValueRange* avr = static_cast<AudioValueRange*>(outData); avr && *ioDataSize >= sizeof(AudioValueRange)*1)
+			const std::vector<Float64> rates = availableSampleRates();
+			const UInt32 size = UInt32(rates.size() * sizeof(AudioValueRange));
+			if (AudioValueRange* ranges = static_cast<AudioValueRange*>(outData))
 			{
-				avr->mMinimum = 44100;
-				avr->mMaximum = 44100;
+				// Fewer ranges than there are is not an error, the caller gets what fits.
+				const UInt32 fit = std::min<UInt32>(UInt32(rates.size()), *ioDataSize / sizeof(AudioValueRange));
+				for (UInt32 i = 0; i < fit; i++)
+					ranges[i].mMinimum = ranges[i].mMaximum = rates[i];
+				*ioDataSize = fit * sizeof(AudioValueRange);
+				return kAudioHardwareNoError;
 			}
-			*ioDataSize = sizeof(AudioValueRange) * 1;
+			*ioDataSize = size;
 			return kAudioHardwareNoError;
 		}
 		case kAudioDevicePropertyDeviceIsAlive: // int
@@ -401,21 +444,26 @@ OSStatus AudioHardwareImpl::setPropertyData(const AudioObjectPropertyAddress* in
 OSStatus AudioHardwareImpl::addPropertyListener(const AudioObjectPropertyAddress* inAddress,
 	AudioObjectPropertyListenerProc inListener, void* inClientData)
 {
-	m_listeners.add(inAddress->mSelector, (void*)inListener, inClientData);
+	m_listeners.add(inAddress->mSelector, inAddress->mScope, inAddress->mElement, (void*)inListener, inClientData);
 	return kAudioHardwareNoError;
 }
 
 OSStatus AudioHardwareImpl::removePropertyListener(const AudioObjectPropertyAddress* inAddress,
 	AudioObjectPropertyListenerProc inListener, void* inClientData)
 {
-	m_listeners.remove(inAddress->mSelector, (void*)inListener, inClientData);
+	m_listeners.remove(inAddress->mSelector, inAddress->mScope, inAddress->mElement, (void*)inListener, inClientData);
 	return kAudioHardwareNoError;
 }
 
 void AudioHardwareImpl::notifyPropertyChanged(AudioObjectPropertySelector selector)
 {
-	AudioObjectPropertyAddress addr = { selector, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
-	m_listeners.fire(selector, [&](void* proc, void* ctx) {
+	notifyPropertyChanged(selector, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster);
+}
+
+void AudioHardwareImpl::notifyPropertyChanged(AudioObjectPropertySelector selector, AudioObjectPropertyScope scope, AudioObjectPropertyElement element)
+{
+	AudioObjectPropertyAddress addr = { selector, scope, element };
+	m_listeners.fire(selector, scope, element, [&](void* proc, void* ctx) {
 		reinterpret_cast<AudioObjectPropertyListenerProc>(proc)(m_myId, 1, &addr, ctx);
 	});
 }

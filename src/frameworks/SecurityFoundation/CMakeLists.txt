@@ -184,4 +184,5 @@ add_framework(SecurityFoundation
         system
         objc
         Foundation
+        Security
 )

@@ -22,6 +22,11 @@
 
 #include <Foundation/Foundation.h>
 
+// Counts of audio channels and frames, and a position in a stream of frames.
+typedef uint32_t AVAudioChannelCount;
+typedef uint32_t AVAudioFrameCount;
+typedef int64_t AVAudioFramePosition;
+
 // Index of an input or output bus of an audio node.
 typedef NSUInteger AVAudioNodeBus;
 

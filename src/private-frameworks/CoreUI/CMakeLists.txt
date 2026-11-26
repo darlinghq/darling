@@ -171,6 +171,7 @@ add_framework(CoreUI
         src/CUINamedRenditionInfo.m
         src/CUINamedMultisizeImage.m
         src/CUILayoutInformation.m
+        src/CUIDrawOptions.m
 
     DEPENDENCIES
         system

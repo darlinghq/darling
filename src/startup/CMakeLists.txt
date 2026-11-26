@@ -20,7 +20,7 @@ if (DARLING_ANDROID_HOST)
 	add_definitions(-DDARLING_ANDROID_HOST=1 -DDARLING_ANDROID_TMPDIR="${DARLING_ANDROID_TMPDIR}")
 endif()
 
-add_executable(darling darling.c launcher-env.c launcher-ids.c launcher-locale.c launcher-mode.c launcher-prefix.c launcher-pulse.c launcher-server.c launcher-tmp.c)
+add_executable(darling darling.c launcher-env.c launcher-hostlink.c launcher-ids.c launcher-locale.c launcher-mode.c launcher-prefix.c launcher-pulse.c launcher-server.c launcher-tmp.c launcher-path.c)
 
 # Bionic has forkpty() and openpty() in libc and no libutil
 if (NOT DARLING_ANDROID_HOST)
@@ -99,10 +99,21 @@ add_executable(launcher_locale_test ${CMAKE_SOURCE_DIR}/tests/launcher/locale.c 
 target_include_directories(launcher_locale_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME launcher_locale COMMAND launcher_locale_test)
 
+# conditional links from host sockets and Kerberos configuration into the prefix
+add_executable(launcher_hostlink_test ${CMAKE_SOURCE_DIR}/tests/launcher/hostlink.c launcher-hostlink.c)
+target_include_directories(launcher_hostlink_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME launcher_hostlink COMMAND launcher_hostlink_test)
+
 # how the launcher names the host's PulseAudio files for the guest
 add_executable(launcher_pulse_test ${CMAKE_SOURCE_DIR}/tests/launcher/pulse.c launcher-pulse.c)
 target_include_directories(launcher_pulse_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME launcher_pulse COMMAND launcher_pulse_test)
+
+# how a host file is named in the guest (darling open, program paths)
+add_executable(launcher_path_test ${CMAKE_SOURCE_DIR}/tests/launcher/path.c launcher-path.c)
+target_include_directories(launcher_path_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/src/include)
+add_test(NAME launcher_path COMMAND launcher_path_test)
+set_tests_properties(launcher_path PROPERTIES ENVIRONMENT TMPDIR=${CMAKE_CURRENT_BINARY_DIR})
 
 # the temporary directory choice and the link in the prefix
 add_executable(launcher_tmp_test ${CMAKE_SOURCE_DIR}/tests/launcher/tmp.c launcher-tmp.c)
@@ -145,6 +156,10 @@ if (Python3_Interpreter_FOUND)
 	add_test(NAME launcher_missing_init
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/launcher/test-missing-init.py
 			${CMAKE_SOURCE_DIR}/src/startup/darling.c --run)
+	# a darlingserver that exited but was not reaped is no server
+	add_test(NAME launcher_stale_init_pid
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/launcher/stale-init-pid.py
+			${CMAKE_SOURCE_DIR}/src/startup)
 endif()
 # shellspawn's accept loop, with shellspawn.c built for the host as it is and
 # accept, usleep, perror and fork replaced through the linker. shellspawn.c

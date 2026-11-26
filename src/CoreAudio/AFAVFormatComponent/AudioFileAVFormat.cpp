@@ -273,7 +273,10 @@ OSStatus AudioFileAVFormat::OpenFromDataSource()
 	SInt64 dataOffset = -1;
 	SInt64 dataEnd = -1;
 	UInt32 commonFrames = 0;
+	UInt32 lastFrames = 0;
+	SInt64 sumFrames = 0;
 	bool sameFrames = true;
+	bool fixedFrames = true; // all packets have the same length, except that the last may be shorter
 
 	const int streamIndex = (avformat_find_stream_info(input, nullptr) >= 0)
 		? av_find_best_stream(input, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0) : -1;
@@ -305,7 +308,14 @@ OSStatus AudioFileAVFormat::OpenFromDataSource()
 					if (packets.empty())
 						commonFrames = frames;
 					else if (frames != commonFrames)
+					{
 						sameFrames = false;
+						// Only the last packet of a stream may be short
+						if (frames > commonFrames || lastFrames != commonFrames)
+							fixedFrames = false;
+					}
+					lastFrames = frames;
+					sumFrames += frames;
 
 					dataEnd = packet->pos + packet->size;
 
@@ -329,7 +339,46 @@ OSStatus AudioFileAVFormat::OpenFromDataSource()
 
 			if (!format.mBytesPerPacket)
 			{
-				format.mFramesPerPacket = sameFrames ? commonFrames : 0;
+				format.mFramesPerPacket = (sameFrames || fixedFrames) ? commonFrames : 0;
+
+				// The lossless formats say in the format flags how wide their samples are (1: 16 bits, 2: 20, 3: 24, 4: 32)
+				if (format.mFormatID == kAudioFormatFLAC || format.mFormatID == kAudioFormatAppleLossless)
+				{
+					const int bits = stream->codecpar->bits_per_raw_sample ? stream->codecpar->bits_per_raw_sample : stream->codecpar->bits_per_coded_sample;
+					format.mFormatFlags = bits == 16 ? 1 : bits == 20 ? 2 : bits == 24 ? 3 : bits == 32 ? 4 : 0;
+				}
+
+				// AAC in an MPEG-4 file: what the decoder needs to warm up, and the length of the sound without it
+				m_hasTableInfo = false;
+				if (format.mFormatID == kAudioFormatMPEG4AAC && format.mFramesPerPacket && strstr(m_demuxer, "mov"))
+				{
+					const SInt64 total = SInt64(packets.size()) * format.mFramesPerPacket;
+					const SInt64 padding = stream->codecpar->initial_padding;
+					const SInt64 valid = stream->duration != AV_NOPTS_VALUE ? av_rescale_q(stream->duration, stream->time_base, frameBase) : 0;
+
+					if (padding > 0 && valid > 0 && padding + valid <= total)
+					{
+						// The file says (an edit list)
+						m_tableInfo.mPrimingFrames = SInt32(padding);
+						m_tableInfo.mNumberValidFrames = valid;
+					}
+					else
+					{
+						// The file says nothing: the decoder's delay is the usual 2112 frames
+						m_tableInfo.mPrimingFrames = SInt32(std::min<SInt64>(2112, total));
+						m_tableInfo.mNumberValidFrames = total - m_tableInfo.mPrimingFrames;
+					}
+					m_tableInfo.mRemainderFrames = SInt32(total - m_tableInfo.mPrimingFrames - m_tableInfo.mNumberValidFrames);
+					m_hasTableInfo = true;
+				}
+				else if (!sameFrames && format.mFramesPerPacket && sumFrames > 0 && format.mFormatID != kAudioFormatMPEG4AAC)
+				{
+					// A last packet that is shorter than the others: the padding after the sound
+					m_tableInfo.mPrimingFrames = 0;
+					m_tableInfo.mNumberValidFrames = sumFrames;
+					m_tableInfo.mRemainderFrames = SInt32(std::max<SInt64>(0, SInt64(packets.size()) * format.mFramesPerPacket - sumFrames));
+					m_hasTableInfo = true;
+				}
 
 				if (stream->codecpar->extradata_size > 0)
 					m_cookie.assign(stream->codecpar->extradata, stream->codecpar->extradata + stream->codecpar->extradata_size);
@@ -695,4 +744,41 @@ OSStatus AudioFileAVFormat::SetMagicCookieData(UInt32 inDataSize, const void* in
 	const uint8_t* bytes = static_cast<const uint8_t*>(inPropertyData);
 	m_cookie.assign(bytes, bytes + inDataSize);
 	return noErr;
+}
+
+OSStatus AudioFileAVFormat::GetPropertyInfo(AudioFilePropertyID inPropertyID, UInt32* outDataSize, UInt32* isWritable)
+{
+	if (inPropertyID != kAudioFilePropertyPacketTableInfo)
+		return AudioFileObject::GetPropertyInfo(inPropertyID, outDataSize, isWritable);
+	if (!m_hasTableInfo)
+		return kAudioFileUnsupportedPropertyError;
+
+	if (outDataSize)
+		*outDataSize = sizeof(AudioFilePacketTableInfo);
+	if (isWritable)
+		*isWritable = 0;
+	return noErr;
+}
+
+OSStatus AudioFileAVFormat::GetProperty(AudioFilePropertyID inPropertyID, UInt32* ioDataSize, void* outPropertyData)
+{
+	if (inPropertyID != kAudioFilePropertyPacketTableInfo)
+		return AudioFileObject::GetProperty(inPropertyID, ioDataSize, outPropertyData);
+	if (!m_hasTableInfo)
+		return kAudioFileUnsupportedPropertyError;
+	if (!ioDataSize || !outPropertyData || *ioDataSize != sizeof(AudioFilePacketTableInfo))
+		return kAudioFileBadPropertySizeError;
+
+	*static_cast<AudioFilePacketTableInfo*>(outPropertyData) = m_tableInfo;
+	return noErr;
+}
+
+OSStatus AudioFileAVFormat::GetEstimatedDuration(Float64* duration)
+{
+	if (m_hasTableInfo)
+	{
+		*duration = m_tableInfo.mNumberValidFrames / GetDataFormat().mSampleRate;
+		return noErr;
+	}
+	return AudioFileObject::GetEstimatedDuration(duration);
 }

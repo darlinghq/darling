@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +18,19 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+@class AVAsset;
+@class AVPlayer;
 
-@interface AVPlayerItemInternal : NSObject
+// Private state of the public class of the same name without "Internal".
+@interface AVPlayerItemInternal : NSObject {
+@public
+    AVAsset *asset;
+    int status;
+    NSError *error;
+    NSMutableArray *outputs;
+    NSString *audioTimePitchAlgorithm; // nil: the default
+    __unsafe_unretained AVPlayer *player; // the player the item was given to, if any
+}
 
 @end

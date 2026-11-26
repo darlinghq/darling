@@ -26,4 +26,35 @@
     return languages;
 }
 
+// The language code of a language identifier ("zh" for "zh-Hant", "en" for "en_US"), lowercased.
+static NSString *languageCode(NSString *language)
+{
+    NSRange separator = [language rangeOfCharacterFromSet: [NSCharacterSet characterSetWithCharactersInString: @"-_"]];
+    NSString *code = separator.location == NSNotFound ? language : [language substringToIndex: separator.location];
+    return [code lowercaseString];
+}
+
+// For each preferred language in turn, the available language that suits it best, as CFBundle
+// would choose a localization for it; a preferred language that no available language shares a
+// language code with matches nothing, rather than falling back as CFBundle does. A language is
+// listed once. Observed on macOS 26.7.3: "fr-CA" in (en, fr-CA, fr) gives (fr-CA), "en-AU" in
+// (en-US, en-GB) gives (en-GB), "ja" in (en, fr) gives an empty array, and (de, fr) in
+// (en, fr, de) gives (de, fr). Test: tests/nslocale-matched-languages.m.
++ (nonnull NSArray<NSString *> *)matchedLanguagesFromAvailableLanguages:(nonnull NSArray<NSString *> *)availableLanguages forPreferredLanguages:(nonnull NSArray<NSString *> *)preferredLanguages
+{
+    NSMutableArray<NSString *> *matched = [NSMutableArray array];
+    if ([availableLanguages count] == 0)
+        return matched;
+
+    for (NSString *preferred in preferredLanguages) {
+        CFArrayRef localizations = CFBundleCopyLocalizationsForPreferences((CFArrayRef)availableLanguages, (CFArrayRef)@[ preferred ]);
+        NSString *best = localizations != NULL && CFArrayGetCount(localizations) > 0 ? (NSString *)CFArrayGetValueAtIndex(localizations, 0) : nil;
+        if (best != nil && [languageCode(best) isEqualToString: languageCode(preferred)] && ![matched containsObject: best])
+            [matched addObject: best];
+        if (localizations != NULL)
+            CFRelease(localizations);
+    }
+    return matched;
+}
+
 @end

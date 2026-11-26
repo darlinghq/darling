@@ -33,12 +33,15 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
+// seconds since the start of 1904, local time
+typedef SInt64 LongDateTime;
+
 OSErr UCConvertUTCDateTimeToCFAbsoluteTime(const UTCDateTime* in, CFAbsoluteTime* out);
 OSErr UCConvertSecondsToCFAbsoluteTime(uint32_t seconds, CFAbsoluteTime* out);
-OSErr UCConvertLongDateTimeToCFAbsoluteTime(int64_t seconds, CFAbsoluteTime* out);
+OSErr UCConvertLongDateTimeToCFAbsoluteTime(LongDateTime seconds, CFAbsoluteTime* out);
 OSErr UCConvertCFAbsoluteTimeToUTCDateTime(CFAbsoluteTime in, UTCDateTimePtr out);
 OSErr UCConvertCFAbsoluteTimeToSeconds(CFAbsoluteTime in, uint32_t* out);
-OSErr UCConvertCFAbsoluteTimeToLongDateTime(CFAbsoluteTime in, int64_t* out);
+OSErr UCConvertCFAbsoluteTimeToLongDateTime(CFAbsoluteTime in, LongDateTime* out);
 
 // Seconds since 1.1.1904
 void GetDateTime(unsigned long* secs);

@@ -28,10 +28,12 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <mutex>
 #include <thread>
+#include <atomic>
 #include <unordered_set>
 #include <condition_variable>
 #include <cstring>
 #include <chrono>
+#include <unistd.h>
 #include <string>
 #include <vector>
 
@@ -69,6 +71,8 @@ void AudioHardwareImplPA::syncPA(void (^block)(void))
 
 OSStatus AudioHardwareImplPA::start(AudioDeviceIOProcID inProcID, AudioTimeStamp* ioRequestedStartTime, UInt32 inFlags)
 {
+	refreshFormat();
+
 	// Connect first, so that the queue exists: every change to m_streams happens on it.
 	// A mutex wouldn't do, as an IOProc calling stop() would wait for a start() in progress,
 	// which in turn needs the queue that the IOProc is blocking.
@@ -83,6 +87,8 @@ OSStatus AudioHardwareImplPA::start(AudioDeviceIOProcID inProcID, AudioTimeStamp
 	syncPA(^{
 		result = AudioHardwareImpl::start(inProcID, ioRequestedStartTime, inFlags);
 	});
+	if (result == noErr)
+		ioStateChanged();
 	return result;
 }
 
@@ -109,12 +115,84 @@ OSStatus AudioHardwareImplPA::stop(AudioDeviceIOProcID inProcID)
 		else
 			delete stream;
 	});
+	if (result == noErr)
+		ioStateChanged();
 	return result;
+}
+
+// The settings of the process that the system object keeps. Nothing but this process reads them:
+// the server has no use for them, so they are what the process last set.
+static std::atomic<UInt32> g_processIsMain{0}, g_sleepingIsAllowed{1}, g_unloadingIsAllowed{1}, g_hogModeIsAllowed{1},
+	g_processIsAudible{1}, g_powerHint{0}, g_mixStereoToMono{0};
+
+bool PAHogModeIsAllowed()
+{
+	return g_hogModeIsAllowed.load() != 0;
+}
+
+static std::atomic<UInt32>* systemSetting(AudioObjectPropertySelector selector)
+{
+	switch (selector)
+	{
+		case kAudioHardwarePropertyProcessIsMaster:
+		case kAudioHardwarePropertyProcessIsMain: return &g_processIsMain;
+		case kAudioHardwarePropertySleepingIsAllowed: return &g_sleepingIsAllowed;
+		case kAudioHardwarePropertyUnloadingIsAllowed: return &g_unloadingIsAllowed;
+		case kAudioHardwarePropertyHogModeIsAllowed: return &g_hogModeIsAllowed;
+		case kAudioHardwarePropertyProcessIsAudible: return &g_processIsAudible;
+		case kAudioHardwarePropertyPowerHint: return &g_powerHint;
+		case kAudioHardwarePropertyMixStereoToMono: return &g_mixStereoToMono;
+		default: return nullptr;
+	}
+}
+
+OSStatus AudioHardwareImplPA::isPropertySettable(const AudioObjectPropertyAddress* inAddress, Boolean* outIsSettable)
+{
+	if (id() == kAudioObjectSystemObject && systemSetting(inAddress->mSelector))
+	{
+		*outIsSettable = true;
+		return kAudioHardwareNoError;
+	}
+	return AudioHardwareImpl::isPropertySettable(inAddress, outIsSettable);
 }
 
 OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 	const void* inQualifierData, UInt32* ioDataSize, void* outData)
 {
+	if (id() == kAudioObjectSystemObject)
+	{
+		auto replyValue = [&](UInt32 value) {
+			if (outData)
+			{
+				if (*ioDataSize < sizeof(value))
+					return OSStatus(kAudioHardwareBadPropertySizeError);
+				*static_cast<UInt32*>(outData) = value;
+			}
+			*ioDataSize = sizeof(value);
+			return OSStatus(kAudioHardwareNoError);
+		};
+
+		switch (inAddress->mSelector)
+		{
+			case kAudioObjectPropertyClass:
+				return replyValue(kAudioSystemObjectClassID);
+			case kAudioObjectPropertyBaseClass:
+				return replyValue(kAudioObjectClassID);
+			case kAudioHardwarePropertyPlugInList:
+			case kAudioHardwarePropertyBoxList:
+			case kAudioHardwarePropertyClockDeviceList:
+			case kAudioHardwarePropertyTransportManagerList:
+				// There are no plug-ins, boxes, clock devices or transport managers behind the PulseAudio backend.
+				*ioDataSize = 0;
+				return kAudioHardwareNoError;
+			case kAudioHardwarePropertyUserSessionIsActiveOrHeadless:
+				return replyValue(1);
+			default:
+				if (std::atomic<UInt32>* setting = systemSetting(inAddress->mSelector))
+					return replyValue(setting->load());
+		}
+	}
+
 	switch (inAddress->mSelector)
 	{
 		case kAudioDevicePropertyStreams:
@@ -145,9 +223,13 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 				return kAudioHardwareBadPropertySizeError;
 			if (outData)
 			{
+				// The frames are those of the stream's rate; the property counts frames of the device's rate.
 				const UInt32 measured = m_measuredOutputLatency.load(std::memory_order_relaxed);
-				*static_cast<UInt32*>(outData) = measured ? measured
+				const UInt32 frames = measured ? measured
 					: AudioHardwareStreamPAOutput::queuedFrames(bufferSize() / asbd().mBytesPerFrame);
+				const Float64 streamRate = asbd().mSampleRate, deviceRate = nominalSampleRate();
+				*static_cast<UInt32*>(outData) = (streamRate > 0 && deviceRate > 0 && streamRate != deviceRate)
+					? UInt32(frames * deviceRate / streamRate + 0.5) : frames;
 			}
 			*ioDataSize = sizeof(UInt32);
 			return kAudioHardwareNoError;
@@ -169,58 +251,45 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 				|| !translation->mOutputData || translation->mOutputDataSize < sizeof(AudioDeviceID))
 				return kAudioHardwareBadPropertySizeError;
 
-			refreshDeviceList();
-
-			std::vector<AudioHardwareImpl*> devices;
-			{
-				std::lock_guard<std::mutex> lock(PAGetObjectMapMutex());
-				for (auto& object : PAGetObjectMap())
-				{
-					if (object.first != kAudioObjectSystemObject)
-						devices.push_back(object.second.get());
-				}
-			}
-
-			CFStringRef wanted = *static_cast<CFStringRef*>(translation->mInputData);
-			AudioDeviceID found = kAudioObjectUnknown;
-			const AudioObjectPropertyAddress uidAddress = { kAudioDevicePropertyDeviceUID, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
-
-			for (AudioHardwareImpl* device : devices)
-			{
-				CFStringRef uid = nullptr;
-				UInt32 size = sizeof(uid);
-				if (device->getPropertyData(&uidAddress, 0, nullptr, &size, &uid) == kAudioHardwareNoError && uid)
-				{
-					const bool match = CFEqual(uid, wanted);
-					CFRelease(uid);
-					if (match)
-					{
-						found = device->id();
-						break;
-					}
-				}
-			}
+			AudioDeviceID found = deviceForUID(*static_cast<CFStringRef*>(translation->mInputData));
 
 			*static_cast<AudioDeviceID*>(translation->mOutputData) = found;
 			translation->mOutputDataSize = sizeof(found);
 			*ioDataSize = sizeof(AudioValueTranslation);
 			return kAudioHardwareNoError;
 		}
+		case kAudioHardwarePropertyTranslateUIDToDevice:
+		{
+			// The qualifier is the UID string and the answer the device's object ID, which is unknown
+			// for a UID that no device has.
+			if (id() != kAudioObjectSystemObject)
+				break;
+			if (inQualifierDataSize != sizeof(CFStringRef) || !inQualifierData || !*static_cast<const CFStringRef*>(inQualifierData))
+				return kAudioHardwareBadPropertySizeError;
+			if (outData && *ioDataSize < sizeof(AudioObjectID))
+				return kAudioHardwareBadPropertySizeError;
+			if (outData)
+				*static_cast<AudioObjectID*>(outData) = deviceForUID(*static_cast<const CFStringRef*>(inQualifierData));
+			*ioDataSize = sizeof(AudioObjectID);
+			return kAudioHardwareNoError;
+		}
 		// BEGIN kAudioObjectSystemObject properties
 		case kAudioHardwarePropertyDefaultInputDevice: // returns AudioDeviceID
-			if (AudioDeviceID* devId = static_cast<AudioDeviceID*>(outData); devId && *ioDataSize >= sizeof(AudioDeviceID))
-			{
-				*devId = kAudioObjectSystemObject + 2;
-			}
-			*ioDataSize = sizeof(AudioDeviceID);
-			return kAudioHardwareNoError;
 		case kAudioHardwarePropertyDefaultOutputDevice: // returns AudioDeviceID
+		{
+			if (id() != kAudioObjectSystemObject)
+				break;
+			const bool input = inAddress->mSelector == kAudioHardwarePropertyDefaultInputDevice;
 			if (AudioDeviceID* devId = static_cast<AudioDeviceID*>(outData); devId && *ioDataSize >= sizeof(AudioDeviceID))
 			{
-				*devId = kAudioObjectSystemObject + 1;
+				// The device PulseAudio's default is; the objects that stand for the default itself are
+				// the answer only while the server's default is not one of the listed devices.
+				AudioObjectID known = defaultDeviceId(input);
+				*devId = known != kAudioObjectUnknown ? known : kAudioObjectSystemObject + (input ? 2 : 1);
 			}
 			*ioDataSize = sizeof(AudioDeviceID);
 			return kAudioHardwareNoError;
+		}
 		case kAudioHardwarePropertyDefaultSystemOutputDevice:
 			if (AudioDeviceID* devId = static_cast<AudioDeviceID*>(outData); devId && *ioDataSize >= sizeof(AudioDeviceID))
 			{
@@ -291,9 +360,190 @@ OSStatus AudioHardwareImplPA::getPropertyData(const AudioObjectPropertyAddress* 
 	return AudioHardwareImpl::getPropertyData(inAddress, inQualifierDataSize, inQualifierData, ioDataSize, outData);
 }
 	
+struct PAServerQuery
+{
+	std::string defaultName;
+	bool input;
+	dispatch_semaphore_t done;
+};
+
+static void paServerInfoCB(pa_context*, const pa_server_info* info, void* userdata)
+{
+	PAServerQuery* query = static_cast<PAServerQuery*>(userdata);
+	if (info)
+	{
+		const char* name = query->input ? info->default_source_name : info->default_sink_name;
+		if (name)
+			query->defaultName = name;
+	}
+	dispatch_semaphore_signal(query->done);
+}
+
+AudioObjectID AudioHardwareImplPA::deviceForUID(CFStringRef wanted)
+{
+	refreshDeviceList();
+
+	std::vector<AudioHardwareImpl*> devices;
+	{
+		std::lock_guard<std::mutex> lock(PAGetObjectMapMutex());
+		for (auto& object : PAGetObjectMap())
+		{
+			if (object.first != kAudioObjectSystemObject)
+				devices.push_back(object.second.get());
+		}
+	}
+
+	const AudioObjectPropertyAddress uidAddress = { kAudioDevicePropertyDeviceUID, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
+	for (AudioHardwareImpl* device : devices)
+	{
+		CFStringRef uid = nullptr;
+		UInt32 size = sizeof(uid);
+		if (device->getPropertyData(&uidAddress, 0, nullptr, &size, &uid) == kAudioHardwareNoError && uid)
+		{
+			const bool match = CFEqual(uid, wanted);
+			CFRelease(uid);
+			if (match)
+				return device->id();
+		}
+	}
+	return kAudioObjectUnknown;
+}
+
+AudioObjectID AudioHardwareImplPA::defaultDeviceId(bool input)
+{
+	refreshDeviceList();
+
+	PAServerQuery query = { std::string(), input, dispatch_semaphore_create(0) };
+	PAServerQuery* queryPtr = &query;
+	__block pa_operation* op = nullptr;
+
+	getPAContext(^(pa_context* ctx) {
+		if (ctx)
+			op = pa_context_get_server_info(ctx, paServerInfoCB, queryPtr);
+		if (!op)
+			dispatch_semaphore_signal(queryPtr->done);
+	});
+
+	// PulseAudio drops pending operations without calling back when the connection is lost.
+	dispatch_semaphore_wait(query.done, dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC));
+	// Nothing can write to query once this has run.
+	syncPA(^{
+		if (op)
+		{
+			pa_operation_cancel(op);
+			pa_operation_unref(op);
+		}
+	});
+	dispatch_release(query.done);
+
+	if (query.defaultName.empty())
+		return kAudioObjectUnknown;
+
+	for (AudioObjectID candidate : allDeviceIds())
+	{
+		if (registry().nameForId(candidate) != query.defaultName)
+			continue;
+		std::lock_guard<std::mutex> lock(PAGetObjectMapMutex());
+		auto& objects = PAGetObjectMap();
+		auto it = objects.find(candidate);
+		// a sink name is never also a source name, but a source can be the monitor of a sink, which is not listed
+		if (it != objects.end() && it->second->isInputDevice() == input)
+			return candidate;
+	}
+	return kAudioObjectUnknown;
+}
+
+static void paSuccessCB(pa_context*, int success, void* userdata)
+{
+	struct Result { bool ok; dispatch_semaphore_t done; };
+	Result* result = static_cast<Result*>(userdata);
+	result->ok = success != 0;
+	dispatch_semaphore_signal(result->done);
+}
+
+OSStatus AudioHardwareImplPA::setDefaultDevice(AudioObjectID device, bool input)
+{
+	// The objects that stand for the default follow it already.
+	if (device == kAudioObjectSystemObject + 1 || device == kAudioObjectSystemObject + 2)
+		return kAudioHardwareNoError;
+
+	std::string name;
+	{
+		std::lock_guard<std::mutex> lock(PAGetObjectMapMutex());
+		auto& objects = PAGetObjectMap();
+		auto it = objects.find(device);
+		if (device <= kAudioObjectSystemObject + 3 || it == objects.end())
+			return kAudioHardwareBadObjectError;
+		if (it->second->isInputDevice() != input)
+			return kAudioHardwareIllegalOperationError;
+		const AudioHardwareImplPA* paDevice = dynamic_cast<const AudioHardwareImplPA*>(it->second.get());
+		const char* paName = paDevice ? paDevice->paDeviceName() : nullptr;
+		if (!paName)
+			return kAudioHardwareBadObjectError;
+		name = paName;
+	}
+
+	struct Result { bool ok; dispatch_semaphore_t done; };
+	Result result = { false, dispatch_semaphore_create(0) };
+	Result* resultPtr = &result;
+	__block pa_operation* op = nullptr;
+
+	getPAContext(^(pa_context* ctx) {
+		if (ctx)
+			op = input ? pa_context_set_default_source(ctx, name.c_str(), paSuccessCB, resultPtr)
+			           : pa_context_set_default_sink(ctx, name.c_str(), paSuccessCB, resultPtr);
+		if (!op)
+			dispatch_semaphore_signal(resultPtr->done);
+	});
+
+	dispatch_semaphore_wait(result.done, dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC));
+	syncPA(^{
+		if (op)
+		{
+			pa_operation_cancel(op);
+			pa_operation_unref(op);
+		}
+	});
+	dispatch_release(result.done);
+	if (!result.ok)
+		return kAudioHardwareUnspecifiedError;
+
+	// The server may apply the change a moment after it has accepted it; the new default is
+	// in effect when this returns, as the callers of the HAL expect.
+	for (int i = 0; i < 40 && defaultDeviceId(input) != device; i++)
+		usleep(25000);
+	return kAudioHardwareNoError;
+}
+
 OSStatus AudioHardwareImplPA::setPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
 	const void* inQualifierData, UInt32 inDataSize, const void* inData)
 {
+	if (id() == kAudioObjectSystemObject)
+	{
+		if (std::atomic<UInt32>* setting = systemSetting(inAddress->mSelector))
+		{
+			if (inDataSize != sizeof(UInt32) || !inData)
+				return kAudioHardwareBadPropertySizeError;
+			const UInt32 value = *static_cast<const UInt32*>(inData);
+			if (setting->exchange(value) != value)
+				notifyPropertyChanged(inAddress->mSelector);
+			return kAudioHardwareNoError;
+		}
+	}
+
+	if (id() == kAudioObjectSystemObject
+		&& (inAddress->mSelector == kAudioHardwarePropertyDefaultOutputDevice
+			|| inAddress->mSelector == kAudioHardwarePropertyDefaultInputDevice))
+	{
+		if (inDataSize != sizeof(AudioDeviceID) || !inData)
+			return kAudioHardwareBadPropertySizeError;
+		const bool input = inAddress->mSelector == kAudioHardwarePropertyDefaultInputDevice;
+		refreshDeviceList();
+		OSStatus status = setDefaultDevice(*static_cast<const AudioDeviceID*>(inData), input);
+		if (status == kAudioHardwareNoError)
+			notifyPropertyChanged(inAddress->mSelector);
+		return status;
+	}
 	return AudioHardwareImpl::setPropertyData(inAddress, inQualifierDataSize, inQualifierData, inDataSize, inData);
 }
 
@@ -544,8 +794,14 @@ static void paSubscribeCB(pa_context* c, pa_subscription_event_type_t t, uint32_
 {
 	AudioHardwareImplPA* self = static_cast<AudioHardwareImplPA*>(userdata);
 	unsigned facility = t & PA_SUBSCRIPTION_EVENT_FACILITY_MASK;
+	unsigned type = t & PA_SUBSCRIPTION_EVENT_TYPE_MASK;
 
-	if (facility == PA_SUBSCRIPTION_EVENT_SINK || facility == PA_SUBSCRIPTION_EVENT_SOURCE)
+	// The list of devices changes when a device appears or disappears. PulseAudio also reports
+	// "change" for a sink or source whose state, volume or mute changed, which happens whenever a
+	// stream starts or stops; that leaves the list as it was, and announcing it makes applications
+	// that rebuild their output on a device list change restart it again and again.
+	if ((facility == PA_SUBSCRIPTION_EVENT_SINK || facility == PA_SUBSCRIPTION_EVENT_SOURCE) &&
+		(type == PA_SUBSCRIPTION_EVENT_NEW || type == PA_SUBSCRIPTION_EVENT_REMOVE))
 	{
 		// We're being called from within PADispatchMainLoop's GCD queue here
 		// (the same queue refreshDeviceList() needs to wait on), so calling
@@ -554,6 +810,25 @@ static void paSubscribeCB(pa_context* c, pa_subscription_event_type_t t, uint32_
 		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 			self->refreshDeviceList();
 			self->notifyPropertyChanged(kAudioHardwarePropertyDevices);
+		});
+	}
+	else if ((facility == PA_SUBSCRIPTION_EVENT_SINK || facility == PA_SUBSCRIPTION_EVENT_SOURCE) && type == PA_SUBSCRIPTION_EVENT_CHANGE)
+	{
+		// The volume, mute, port, rate or state of a device changed, possibly by another application.
+		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+			std::vector<AudioHardwareImplPADevice*> devices;
+			{
+				std::lock_guard<std::mutex> lock(PAGetObjectMapMutex());
+				for (auto& object : PAGetObjectMap())
+				{
+					AudioHardwareImplPADevice* device = dynamic_cast<AudioHardwareImplPADevice*>(object.second.get());
+					if (device && device->hasListeners())
+						devices.push_back(device);
+				}
+			}
+			// The objects of the map live on for as long as the process, so the pointers stay valid.
+			for (AudioHardwareImplPADevice* device : devices)
+				device->checkChanges();
 		});
 	}
 	else if (facility == PA_SUBSCRIPTION_EVENT_SERVER)

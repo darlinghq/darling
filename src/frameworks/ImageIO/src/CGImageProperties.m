@@ -66,6 +66,14 @@ const CFStringRef kCGImagePropertyGPSLongitudeRef = CFSTR("LongitudeRef");
 const CFStringRef kCGImagePropertyExifDateTimeOriginal = CFSTR("DateTimeOriginal");
 const CFStringRef kCGImagePropertyExifOffsetTimeOriginal = CFSTR("OffsetTimeOriginal");
 const CFStringRef kCGImagePropertyExifUserComment = CFSTR("UserComment");
+// The keys of the TIFF and Exif tags they hold (TIFF 6.0 tag ResolutionUnit,
+// Exif 2.3 tags PixelXDimension and PixelYDimension), and the WebP
+// dictionary, named like the other format dictionaries ("{GIF}", "{PNG}").
+// Inferred from that naming, not read on macOS.
+const CFStringRef kCGImagePropertyTIFFResolutionUnit = CFSTR("ResolutionUnit");
+const CFStringRef kCGImagePropertyExifPixelXDimension = CFSTR("PixelXDimension");
+const CFStringRef kCGImagePropertyExifPixelYDimension = CFSTR("PixelYDimension");
+const CFStringRef kCGImagePropertyWebPDictionary = CFSTR("{WebP}");
 const CFStringRef kCGImagePropertyHEICSDictionary = CFSTR("{HEICS}");
 const CFStringRef kCGImagePropertyHEICSDelayTime = CFSTR("DelayTime");
 const CFStringRef kCGImagePropertyHEICSUnclampedDelayTime = CFSTR("UnclampedDelayTime");
@@ -81,3 +89,15 @@ const CFStringRef kCGImagePropertyTIFFCopyright = CFSTR("Copyright");
 const CFStringRef kCGImagePropertyTIFFDocumentName = CFSTR("DocumentName");
 const CFStringRef kCGImagePropertyTIFFImageDescription = CFSTR("ImageDescription");
 const CFStringRef kCGImagePropertyMakerAppleDictionary = CFSTR("{MakerApple}");
+
+// The documentation names these keys but not their strings. The values follow
+// the naming convention of the constants above (a dictionary key is the key
+// name without its kCGImageProperty<Dictionary> prefix, a dictionary is
+// "{Name}") and were confirmed by printing the constants through the public
+// API on macOS 26.7.3 and 10.14.4 (black-box observation).
+// Test: tests/src/imageio_property_keys.c
+const CFStringRef kCGImagePropertyExifDateTimeDigitized = CFSTR("DateTimeDigitized");
+const CFStringRef kCGImagePropertyIPTCDateCreated = CFSTR("DateCreated");
+const CFStringRef kCGImagePropertyIPTCDigitalCreationDate = CFSTR("DigitalCreationDate");
+const CFStringRef kCGImagePropertyRawDictionary = CFSTR("{Raw}");
+const CFStringRef kCGImagePropertyTIFFDateTime = CFSTR("DateTime");

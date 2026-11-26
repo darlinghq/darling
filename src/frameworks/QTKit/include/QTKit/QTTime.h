@@ -21,6 +21,7 @@
 #define _QTTime_H_
 
 #include <Foundation/Foundation.h>
+#include <MacTypes.h>
 #include <QTKit/QTKitDefines.h>
 
 // Rational time: timeValue / timeScale seconds. QTTime is 24 bytes on x86_64
@@ -37,5 +38,18 @@ enum {
 
 QTKIT_EXTERN const QTTime QTZeroTime;
 QTKIT_EXTERN const QTTime QTIndefiniteTime;
+
+QTKIT_EXTERN QTTime QTMakeTime(long long timeValue, long timeScale);
+QTKIT_EXTERN QTTime QTMakeTimeScaled(QTTime time, long timeScale);
+QTKIT_EXTERN QTTime QTMakeTimeWithTimeInterval(NSTimeInterval timeInterval);
+QTKIT_EXTERN QTTime QTMakeTimeWithTimeRecord(TimeRecord timeRecord);
+QTKIT_EXTERN BOOL QTGetTimeInterval(QTTime time, NSTimeInterval *timeIntervalPtr);
+QTKIT_EXTERN TimeRecord QTGetTimeRecord(QTTime time);
+QTKIT_EXTERN NSComparisonResult QTTimeCompare(QTTime time, QTTime otherTime);
+QTKIT_EXTERN QTTime QTTimeIncrement(QTTime time, QTTime increment);
+QTKIT_EXTERN QTTime QTTimeDecrement(QTTime time, QTTime decrement);
+QTKIT_EXTERN BOOL QTTimeIsIndefinite(QTTime time);
+QTKIT_EXTERN NSString *QTStringFromTime(QTTime time);
+QTKIT_EXTERN QTTime QTTimeFromString(NSString *string);
 
 #endif

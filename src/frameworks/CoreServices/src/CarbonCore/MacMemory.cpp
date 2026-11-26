@@ -24,6 +24,34 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <cstdlib>
 #include <cstdio>
 #include <malloc/malloc.h>
+#include <mutex>
+#include <unordered_map>
+
+// The allocator rounds a block up (to 16 bytes), but GetPtrSize() and
+// GetHandleSize() report the size that was asked for, so the requested size of
+// every block made by this file is remembered here.
+static std::mutex g_blockSizesMutex;
+static std::unordered_map<const void*, long>& blockSizes()
+{
+	static std::unordered_map<const void*, long>* sizes = new std::unordered_map<const void*, long>;
+	return *sizes;
+}
+
+static void recordBlockSize(const void* p, long size)
+{
+	if (!p)
+		return;
+	std::lock_guard<std::mutex> guard(g_blockSizesMutex);
+	blockSizes()[p] = size;
+}
+
+static void forgetBlockSize(const void* p)
+{
+	if (!p)
+		return;
+	std::lock_guard<std::mutex> guard(g_blockSizesMutex);
+	blockSizes().erase(p);
+}
 
 void BlockMove(const void* src, void* dst, size_t count)
 {
@@ -57,16 +85,21 @@ void BlockZeroUncached(void* dst, size_t count)
 
 Ptr NewPtr(long len)
 {
-	return (Ptr) malloc(len);
+	Ptr p = (Ptr) malloc(len);
+	recordBlockSize(p, len);
+	return p;
 }
 
 Ptr NewPtrClear(long len)
 {
-	return (Ptr) calloc(1, len);
+	Ptr p = (Ptr) calloc(1, len ? len : 1);
+	recordBlockSize(p, len);
+	return p;
 }
 
 void DisposePtr(Ptr p)
 {
+	forgetBlockSize(p);
 	free(p);
 }
 
@@ -129,13 +162,24 @@ Handle NewEmptyHandle(void)
 
 long GetPtrSize(Ptr ptr)
 {
-	return malloc_size(ptr);
+	long allocated = (long) malloc_size(ptr);
+	{
+		std::lock_guard<std::mutex> guard(g_blockSizesMutex);
+		auto it = blockSizes().find(ptr);
+		// A block that was freed behind our back and reused is not trusted
+		if (it != blockSizes().end() && it->second <= allocated)
+			return it->second;
+	}
+	return allocated;
 }
 
 void SetPtrSize(Ptr ptr, long newSize)
 {
-	if (newSize < malloc_size(ptr))
+	if (newSize < GetPtrSize(ptr))
+	{
 		realloc(ptr, newSize); // Let's hope this never changes the ptr, but the whole SetPtrSize() call is idiotic
+		recordBlockSize(ptr, newSize);
+	}
 	else
 	{
 		// This is not possible with a non-relocatable block
@@ -153,7 +197,10 @@ void SetHandleSize(Handle h, long newSize)
 	}
 	else
 	{
-		*h = (Ptr) realloc(*h, newSize);
+		Ptr old = *h;
+		*h = (Ptr) realloc(old, newSize);
+		forgetBlockSize(old);
+		recordBlockSize(*h, newSize);
 	}
 }
 

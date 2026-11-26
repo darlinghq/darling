@@ -19,6 +19,17 @@
 
 #include <Foundation/Foundation.h>
 
-@protocol ASWebAuthenticationSessionRequestDelegate
+NS_ASSUME_NONNULL_BEGIN
+
+@class ASWebAuthenticationSessionRequest;
+
+// https://developer.apple.com/documentation/authenticationservices/aswebauthenticationsessionrequestdelegate
+@protocol ASWebAuthenticationSessionRequestDelegate <NSObject>
+
+@optional
+- (void)authenticationSessionRequest:(ASWebAuthenticationSessionRequest *)authenticationSessionRequest didCompleteWithCallbackURL:(NSURL *)callbackURL;
+- (void)authenticationSessionRequest:(ASWebAuthenticationSessionRequest *)authenticationSessionRequest didCancelWithError:(NSError *)error;
 
 @end
+
+NS_ASSUME_NONNULL_END

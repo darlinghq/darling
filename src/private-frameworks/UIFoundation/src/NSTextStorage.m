@@ -30,6 +30,10 @@ NSString *const NSTextStorageDidProcessEditingNotification =
 
 @implementation NSTextStorage
 
++ (BOOL) supportsSecureCoding {
+    return YES;
+}
+
 + allocWithZone: (NSZone *) zone {
     if (self == [NSTextStorage class])
         return NSAllocateObject([NSTextStorage_concrete class], 0, NULL);
@@ -50,7 +54,10 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     return self;
 }
 
+static void updateDelegateObservation(NSTextStorage *self, id delegate, BOOL add);
+
 - (void) dealloc {
+    updateDelegateObservation(self, _delegate, NO);
     [_layoutManagers release];
     NS_EXTRA_FREE(NSTextStorage, self);
     [super dealloc];
@@ -64,11 +71,11 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     return _layoutManagers;
 }
 
-- (int) changeInLength {
+- (NSInteger) changeInLength {
     return _changeInLength;
 }
 
-- (unsigned) editedMask {
+- (NSTextStorageEditActions) editedMask {
     return _editedMask;
 }
 
@@ -76,8 +83,33 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     return NS_EXTRA(NSTextStorage, self)->_editedRange;
 }
 
+// The delegate observes the two notifications posted by -processEditing, for the methods it implements.
+static void updateDelegateObservation(NSTextStorage *self, id delegate, BOOL add) {
+    NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+
+    if (delegate == nil)
+        return;
+    if (!add) {
+        [center removeObserver: delegate name: NSTextStorageWillProcessEditingNotification object: self];
+        [center removeObserver: delegate name: NSTextStorageDidProcessEditingNotification object: self];
+        return;
+    }
+    if ([delegate respondsToSelector: @selector(textStorageWillProcessEditing:)])
+        [center addObserver: delegate
+                   selector: @selector(textStorageWillProcessEditing:)
+                       name: NSTextStorageWillProcessEditingNotification
+                     object: self];
+    if ([delegate respondsToSelector: @selector(textStorageDidProcessEditing:)])
+        [center addObserver: delegate
+                   selector: @selector(textStorageDidProcessEditing:)
+                       name: NSTextStorageDidProcessEditingNotification
+                     object: self];
+}
+
 - (void) setDelegate: delegate {
+    updateDelegateObservation(self, _delegate, NO);
     _delegate = delegate;
+    updateDelegateObservation(self, _delegate, YES);
 }
 
 - (void) addLayoutManager: (NSLayoutManager *) layoutManager {
@@ -123,17 +155,7 @@ NSString *const NSTextStorageDidProcessEditingNotification =
 }
 
 - (void) processEditing {
-    int i, count;
-
-    if ([_delegate respondsToSelector: @selector
-                   (textStorageWillProcessEditing:)]) {
-        NSNotification *note = [NSNotification
-                notificationWithName:
-                        NSTextStorageWillProcessEditingNotification
-                              object: self
-                            userInfo: nil];
-        [_delegate textStorageWillProcessEditing: note];
-    }
+    NSUInteger i, count;
 
     [[NSNotificationCenter defaultCenter]
             postNotificationName: NSTextStorageWillProcessEditingNotification
@@ -143,15 +165,6 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     // by AppKit; without AppKit loaded the attributes are left as they are.
     if ([self respondsToSelector: @selector(fixAttributesInRange:)])
         [self fixAttributesInRange: NS_EXTRA(NSTextStorage, self)->_editedRange];
-
-    if ([_delegate
-                respondsToSelector: @selector(textStorageDidProcessEditing:)]) {
-        NSNotification *note = [NSNotification
-                notificationWithName: NSTextStorageDidProcessEditingNotification
-                              object: self
-                            userInfo: nil];
-        [_delegate textStorageDidProcessEditing: note];
-    }
 
     [[NSNotificationCenter defaultCenter]
             postNotificationName: NSTextStorageDidProcessEditingNotification
@@ -169,9 +182,9 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     }
 }
 
-- (void) edited: (unsigned) editedMask
+- (void) edited: (NSTextStorageEditActions) editedMask
                  range: (NSRange) range
-        changeInLength: (int) delta
+        changeInLength: (NSInteger) delta
 {
 
     if (_beginEditing == 0) {
@@ -200,9 +213,39 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     }
 }
 
+// QUIRK: reading font or foregroundColor gives the attribute's documented
+// default (Helvetica 12, black) when the first character has none, and nil
+// only when there are no characters. Not documented. Evidence: black-box
+// observation on macOS 26.7.3 (tier 2).
+// Test: tests/nstextstorage-font-foreground-color.m
+- (id) _firstCharacterAttribute: (NSString *) name default: (id) value {
+    if ([self length] == 0)
+        return nil;
+    id attribute = [self attribute: name atIndex: 0 effectiveRange: NULL];
+    return attribute != nil ? attribute : value;
+}
+
+// NSFont and NSColor are AppKit's, which sits above UIFoundation, so they are
+// looked up by name rather than linked to.
+- (NSFont *) font {
+    return [self _firstCharacterAttribute: NSFontAttributeName
+                                  default: [NSClassFromString(@"NSFont") fontWithName: @"Helvetica" size: 12]];
+}
+
 - (void) setFont: (NSFont *) font {
     [self addAttribute: NSFontAttributeName
                  value: font
+                 range: NSMakeRange(0, [self length])];
+}
+
+- (NSColor *) foregroundColor {
+    return [self _firstCharacterAttribute: NSForegroundColorAttributeName
+                                  default: [NSClassFromString(@"NSColor") blackColor]];
+}
+
+- (void) setForegroundColor: (NSColor *) color {
+    [self addAttribute: NSForegroundColorAttributeName
+                 value: color
                  range: NSMakeRange(0, [self length])];
 }
 

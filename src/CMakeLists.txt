@@ -40,7 +40,9 @@ set(CMAKE_C_USE_LINKER_INFORMATION FALSE)
 # these projects are always built
 #
 
-set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
+# What this first part installs runs on Linux (darlingserver, the launcher, mldr, the developer
+# ld): it goes to the install component core_native, which is packaged per host architecture.
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core_native")
 
 #add_subdirectory(external/xcbuild)
 add_subdirectory(bsdln)
@@ -141,6 +143,8 @@ add_executable(rtsig \"${CMAKE_CURRENT_SOURCE_DIR}/startup/rtsig.c\")
 			-DCMAKE_CXX_COMPILER=${HOST_CXX}
 			-DCMAKE_BUILD_TYPE=Release
 			-DAPPLE_TARGET_TRIPLET_PRIMARY=${APPLE_TARGET_TRIPLET_PRIMARY}
+			-DAPPLE_ARCH_PRIMARY=${APPLE_ARCH_PRIMARY}
+			"-DDARLING_ARCHS=${DARLING_ARCHS}"
 			-DTARGET_ARM64=${TARGET_ARM64}
 			-DTARGET_x86_64=${TARGET_x86_64}
 			-DTARGET_i386=${TARGET_i386}
@@ -244,11 +248,21 @@ if (ADHOC_CODESIGN AND TARGET darlingserver_dc_codesign)
 	add_subdirectory(${CMAKE_SOURCE_DIR}/tests/adhoc-sign ${CMAKE_CURRENT_BINARY_DIR}/adhoc-sign-tests)
 endif()
 
+# host tests of the ASTC decoder (src/libtexturecodec): plain C, they need no Darling build
+add_subdirectory(${CMAKE_SOURCE_DIR}/src/libtexturecodec/tests ${CMAKE_CURRENT_BINARY_DIR}/texturecodec-tests)
+
 add_subdirectory(startup)
 
 include_directories(${CMAKE_SOURCE_DIR}/basic-headers)
 
 add_subdirectory(external/bootstrap_cmds)
+
+# The rest is the Mach-O part of Darling, which is the same for every host architecture.
+# DARLING_BUILD_MACHO=OFF builds and installs only the Linux part above.
+if (NOT DARLING_BUILD_MACHO)
+	return()
+endif()
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
 
 add_definitions(
 	-D__APPLE__
@@ -286,17 +300,24 @@ add_definitions(-target ${APPLE_TARGET_TRIPLET_PRIMARY})
 # for Darwin triples -march leaves "-target-cpu apple-m1" in place, and the CPU's
 # features still apply. Hand-written assembly is left alone: it states its own
 # instructions (and may check for them at run time), the CPU only gates what the
-# assembler accepts.
+# assembler accepts. With other slices next to arm64 the option goes to the arm64
+# compile only (-Xarch_arm64), so the Intel slices keep their own CPU.
 if (TARGET_ARM64)
 	set(DARLING_ARM64_CPU "generic" CACHE STRING "Baseline -mcpu for compiled arm64 Mach-O code")
+	if (DARLING_ARCHS STREQUAL "arm64")
+		set(_darling_arm64_cpu_flag "-mcpu=${DARLING_ARM64_CPU}")
+	else()
+		set(_darling_arm64_cpu_flag "-Xarch_arm64 -mcpu=${DARLING_ARM64_CPU}")
+	endif()
 	foreach(lang C CXX OBJC OBJCXX)
-		set(CMAKE_${lang}_FLAGS "${CMAKE_${lang}_FLAGS} -mcpu=${DARLING_ARM64_CPU}")
+		set(CMAKE_${lang}_FLAGS "${CMAKE_${lang}_FLAGS} ${_darling_arm64_cpu_flag}")
 	endforeach()
 endif()
 
 include(darling_lib)
 include(darling_static_lib)
 include(darling_bundle)
+include(darling_prefpane)
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include)
 
@@ -373,7 +394,7 @@ add_subdirectory(external/configd)
 add_subdirectory(external/libsystem)
 add_subdirectory(external/objc4/runtime)
 add_subdirectory(external/corefoundation)
-add_subdirectory(external/icu/icuSources)
+add_subdirectory(external/icu/darling)
 add_subdirectory(external/csu)
 add_subdirectory(external/libresolv)
 add_subdirectory(external/usertemplate)
@@ -424,6 +445,8 @@ if (COMPONENT_cli)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli")
 
 	add_subdirectory(external/darling-dmg)
+	add_subdirectory(DiskImageMounter)
+	add_subdirectory(Finder)
 	add_subdirectory(external/bomutils)
 	add_subdirectory(external/libutil)
 	add_subdirectory(xtrace)
@@ -563,14 +586,21 @@ if (COMPONENT_gui)
 
 	add_subdirectory(external/cocotron)
 
+	# /System/Library/Fonts
+	add_subdirectory(fonts)
+
 	add_subdirectory(CoreAudio)
 	add_subdirectory(external/cups)
 	add_subdirectory(pboard)
 	add_subdirectory(distnoted)
+	add_subdirectory(settingsd)
+	add_subdirectory(locationd)
 
 	# /Applications
 	add_subdirectory(external/TextEdit)
 	add_subdirectory(external/Console)
+	add_subdirectory(SystemPreferences)
+	add_subdirectory(prefpanes)
 
 	# not currently used by anything we build
 	add_subdirectory(external/dbuskit)
@@ -617,6 +647,10 @@ endif()
 
 # not a core component, but we always add it regardless of the components that are enabled;
 # it has its own component checks to determine which libraries to generate wrappers for.
+# the shared loader of the dbus wrapper (see native); static, so it has no components
+add_subdirectory(libdarlingdbus)
+# the texture decoder of ImageIO; static, so it has no components
+add_subdirectory(libtexturecodec)
 add_subdirectory(native)
 
 # has its own component checks
@@ -672,17 +706,10 @@ if (COMPONENT_dev_gui_common)
 	add_subdirectory(external/metal)
 endif()
 
+# JavaScriptCore, and with the webkit component WebCore, WebKitLegacy and WebKit,
+# built by WebKit's own build (see external/WebKit/darling/CMakeLists.txt)
 if (COMPONENT_jsc OR COMPONENT_webkit)
-	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "jsc_webkit_common")
-
-	add_subdirectory(external/WTF)
-	add_subdirectory(external/bmalloc)
-endif()
-
-if (COMPONENT_jsc)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "jsc")
 
-	add_subdirectory(external/JavaScriptCore)
+	add_subdirectory(external/WebKit/darling)
 endif()
-
-#add_subdirectory(external/WebCore)

@@ -60,22 +60,28 @@ static NSString *const _NSTextContainerViewFrameDidChangeNotification =
     return self;
 }
 
-- initWithContainerSize: (NSSize) size {
+// initWithSize: is the documented designated initializer (macOS 10.11); the older
+// initWithContainerSize: and -init go through it.
+- initWithSize: (NSSize) size {
     _size = size;
     _textView = nil;
     _layoutManager = nil;
     _lineFragmentPadding = NSTextContainerDefaultLineFragmentPadding;
     NS_EXTRA(NSTextContainer, self)->_maximumNumberOfLines = 0;
-    NS_EXTRA(NSTextContainer, self)->_widthTracksTextView = YES;
-    NS_EXTRA(NSTextContainer, self)->_heightTracksTextView = YES;
-    return self;
-}
-
-- init {
-    self = [self initWithContainerSize: NSZeroSize];
     NS_EXTRA(NSTextContainer, self)->_widthTracksTextView = NO;
     NS_EXTRA(NSTextContainer, self)->_heightTracksTextView = NO;
     return self;
+}
+
+- initWithContainerSize: (NSSize) size {
+    return [self initWithSize: size];
+}
+
+// The container of -init is practically unlimited, 10000000 points either way, and tracks neither the width
+// nor the height of its text view (macOS 26.7.3 and 10.14.4, black-box, tier 2).
+// Test: tests/text-container-tracking-defaults.m, appkit-textview-default-container.m in darling-cocotron
+- init {
+    return [self initWithSize: NSMakeSize(10000000, 10000000)];
 }
 
 - (void) dealloc {
@@ -85,6 +91,20 @@ static NSString *const _NSTextContainerViewFrameDidChangeNotification =
 }
 - (NSSize) containerSize {
     return _size;
+}
+
+// size and setSize: are the documented spellings of containerSize and setContainerSize:. On macOS 26.7.3 both
+// names read and write the same value, and the layout manager is told once per change whichever name sets it
+// (black-box, tier 2; test: tests/nstextcontainer-size.m). The setter goes through the older one because the
+// framework's own resize paths (text view tracking, NSTextView, NSStringDrawer, NSViewTemplate) call
+// setContainerSize:; a subclass that overrides either name then sees one call from -setSize:, but a subclass
+// that overrides only setSize: is not reached by those internal resizes.
+- (NSSize) size {
+    return [self containerSize];
+}
+
+- (void) setSize: (NSSize) size {
+    [self setContainerSize: size];
 }
 
 - (NSTextView *) textView {
@@ -106,6 +126,12 @@ static NSString *const _NSTextContainerViewFrameDidChangeNotification =
 
 - (NSLayoutManager *) layoutManager {
     return _layoutManager;
+}
+
+// The layout manager is unretained: it calls this when it goes away or drops the container, so no dangling pointer is left.
+- (void) _darlingDetachFromLayoutManager: (NSLayoutManager *) layoutManager {
+    if (_layoutManager == layoutManager)
+        _layoutManager = nil;
 }
 
 - (CGFloat) lineFragmentPadding {

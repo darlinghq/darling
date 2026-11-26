@@ -340,6 +340,48 @@ static void test_orphaned_init_scan(void)
 	rmdir(procRoot);
 }
 
+static bool readStat(pid_t pid, char* buffer, size_t size)
+{
+	char path[64];
+	ssize_t length;
+	int fd;
+
+	snprintf(path, sizeof(path), "/proc/%d/stat", (int) pid);
+	fd = open(path, O_RDONLY | O_CLOEXEC);
+	if (fd < 0)
+		return false;
+	length = read(fd, buffer, size - 1);
+	close(fd);
+	if (length <= 0)
+		return false;
+	buffer[length] = '\0';
+	return true;
+}
+
+// A server that exited but was not reaped yet (a zombie) must not be taken for a running one.
+static void test_exited_server(void)
+{
+	char record[1024];
+	siginfo_t info;
+	pid_t pid = spawnChild(false, NULL);
+
+	CHECK(pid > 0);
+	if (pid <= 0)
+		return;
+	CHECK(readStat(pid, record, sizeof(record)) && !launcherStatHasExited(record));
+
+	kill(pid, SIGKILL);
+	// Wait for the exit but leave the child a zombie.
+	CHECK(waitid(P_PID, pid, &info, WEXITED | WNOWAIT) == 0);
+	CHECK(readStat(pid, record, sizeof(record)) && launcherStatHasExited(record));
+	waitpid(pid, NULL, 0);
+
+	CHECK(launcherStatHasExited("4242 (darlingserver) X 1 4242 4242 0 -1\n"));
+	CHECK(!launcherStatHasExited("4242 (a) Z b) S 1 4242 4242 0 -1\n"));
+	CHECK(!launcherStatHasExited("4242 (darlingserver\n"));
+	CHECK(!launcherStatHasExited(""));
+}
+
 int main(int argc, char** argv)
 {
 	if (argc == 4 && !strcmp(argv[2], "--hold"))
@@ -382,6 +424,7 @@ int main(int argc, char** argv)
 	test_root_effective_prefix_server();
 	test_orphaned_init_parsers();
 	test_orphaned_init_scan();
+	test_exited_server();
 
 	if (g_failures)
 	{

@@ -1,6 +1,7 @@
 project(CFOpenDirectory)
 
-remove_sdk_framework(CFOpenDirectory)
+# CFOpenDirectory is a subframework of OpenDirectory, and is added before it
+remove_sdk_framework(OpenDirectory)
 
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")

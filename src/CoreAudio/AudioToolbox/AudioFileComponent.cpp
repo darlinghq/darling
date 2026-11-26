@@ -21,6 +21,43 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CarbonCore/MacErrors.h>
 #include "ComponentDispatch.h"
 
+// The FSRef-based entry points, deprecated since macOS 10.6 in favour of the CFURL ones below. Each one
+// dispatches the selector the header names after it.
+// GUESS: no Proc typedef and no documentation text tie these three functions to their selectors. The mapping
+// follows the header's naming parallel with CreateURL and OpenURL; OpenFile to kAudioFileOpenSelect is the
+// least direct match.
+OSStatus
+AudioFileComponentCreate(
+	AudioFileComponent inComponent,
+	const struct FSRef *inParentRef,
+	CFStringRef inFileName,
+	const AudioStreamBasicDescription *inFormat,
+	UInt32 inFlags,
+	struct FSRef *outNewFileRef)
+{
+	return dispatchCall(inComponent, kAudioFileCreateSelect, inParentRef, inFileName, inFormat, inFlags, outNewFileRef);
+}
+
+OSStatus
+AudioFileComponentInitialize(
+	AudioFileComponent inComponent,
+	const struct FSRef *inFileRef,
+	const AudioStreamBasicDescription *inFormat,
+	UInt32 inFlags)
+{
+	return dispatchCall(inComponent, kAudioFileInitializeSelect, inFileRef, inFormat, inFlags);
+}
+
+OSStatus
+AudioFileComponentOpenFile(
+	AudioFileComponent inComponent,
+	const struct FSRef *inFileRef,
+	SInt8 inPermissions,
+	SInt16 inRefNum)
+{
+	return dispatchCall(inComponent, kAudioFileOpenSelect, inFileRef, inPermissions, inRefNum);
+}
+
 OSStatus
 AudioFileComponentCreateURL (
 	AudioFileComponent inComponent,

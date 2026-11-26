@@ -364,8 +364,35 @@ static Boolean isTypeCode(DescType type)
 	return type == typeType || type == typeEnumerated || type == typeKeyword;
 }
 
+// Bookmark data coerces to the file URL it resolves to.
+static OSErr coerceBookmarkToFileURL(const void* data, Size size, AEDesc* result)
+{
+	CFDataRef bookmark = CFDataCreate(kCFAllocatorDefault, data, size);
+	Boolean stale = false;
+	CFURLRef url = bookmark ? CFURLCreateByResolvingBookmarkData(kCFAllocatorDefault, bookmark, 0, NULL, NULL, &stale, NULL) : NULL;
+	OSErr err = errAECoercionFail;
+
+	if (url != NULL) {
+		CFStringRef string = CFURLGetString(url);
+		CFIndex length = CFStringGetMaximumSizeForEncoding(CFStringGetLength(string), kCFStringEncodingUTF8) + 1;
+		char* utf8 = malloc(length);
+		if (utf8 == NULL)
+			err = memFullErr;
+		else if (CFStringGetCString(string, utf8, length, kCFStringEncodingUTF8))
+			err = AECreateDesc(typeFileURL, utf8, strlen(utf8), result);
+		free(utf8);
+		CFRelease(url);
+	}
+	if (bookmark != NULL)
+		CFRelease(bookmark);
+	return err;
+}
+
 static OSErr coerceData(DescType fromType, const void* data, Size size, DescType toType, AEDesc* result)
 {
+	if (fromType == typeBookmarkData && toType == typeFileURL)
+		return coerceBookmarkToFileURL(data, size, result);
+
 	AENumber number;
 	if (readNumber(fromType, data, size, &number))
 		return writeNumber(&number, toType, result);

@@ -287,33 +287,9 @@ void* ColorSyncNxMLUTGetTypeID(void)
     return NULL;
 }
 
-void* ColorSyncProfileContainsTag(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileContainsTag called");
-    return NULL;
-}
-
 void* ColorSyncProfileCopyASCIIDescriptionString(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileCopyASCIIDescriptionString called");
-    return NULL;
-}
-
-void* ColorSyncProfileCopyData(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCopyData called");
-    return NULL;
-}
-
-void* ColorSyncProfileCopyDescriptionString(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCopyDescriptionString called");
-    return NULL;
-}
-
-void* ColorSyncProfileCopyHeader(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCopyHeader called");
     return NULL;
 }
 
@@ -326,24 +302,6 @@ void* ColorSyncProfileCopyLocalizedDescriptionString(void)
 void* ColorSyncProfileCopyLocalizedStringDictionary(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileCopyLocalizedStringDictionary called");
-    return NULL;
-}
-
-void* ColorSyncProfileCopyTag(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCopyTag called");
-    return NULL;
-}
-
-void* ColorSyncProfileCopyTagSignatures(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCopyTagSignatures called");
-    return NULL;
-}
-
-void* ColorSyncProfileCreate(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCreate called");
     return NULL;
 }
 
@@ -371,12 +329,6 @@ void* ColorSyncProfileCreateMutable(void)
     return NULL;
 }
 
-void* ColorSyncProfileCreateMutableCopy(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCreateMutableCopy called");
-    return NULL;
-}
-
 void* ColorSyncProfileCreateSanitizedCopy(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileCreateSanitizedCopy called");
@@ -386,18 +338,6 @@ void* ColorSyncProfileCreateSanitizedCopy(void)
 void* ColorSyncProfileCreateWithDisplayID(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileCreateWithDisplayID called");
-    return NULL;
-}
-
-void* ColorSyncProfileCreateWithName(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCreateWithName called");
-    return NULL;
-}
-
-void* ColorSyncProfileCreateWithURL(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileCreateWithURL called");
     return NULL;
 }
 
@@ -431,24 +371,6 @@ void* ColorSyncProfileGetDisplayTransferFormulaFromVCGT(void)
     return NULL;
 }
 
-void* ColorSyncProfileGetMD5(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileGetMD5 called");
-    return NULL;
-}
-
-void* ColorSyncProfileGetTypeID(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileGetTypeID called");
-    return NULL;
-}
-
-void* ColorSyncProfileGetURL(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileGetURL called");
-    return NULL;
-}
-
 void* ColorSyncProfileInstall(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileInstall called");
@@ -476,12 +398,6 @@ void* ColorSyncProfileRemoveTag(void)
 void* ColorSyncProfileSetDescriptionTag(void)
 {
     if (verbose) puts("STUB: ColorSyncProfileSetDescriptionTag called");
-    return NULL;
-}
-
-void* ColorSyncProfileSetHeader(void)
-{
-    if (verbose) puts("STUB: ColorSyncProfileSetHeader called");
     return NULL;
 }
 
@@ -705,6 +621,8 @@ void* ColorSyncProfileCreateFlexGTCLookupData(void)
     return NULL;
 }
 
+CFStringRef kColorSyncGenericGrayProfile        = CFSTR("com.apple.ColorSync.GenericGray");
+CFStringRef kColorSyncGenericRGBProfile         = CFSTR("com.apple.ColorSync.GenericRGB");
 CFStringRef kColorSyncGenericGrayGamma22Profile = CFSTR("com.apple.ColorSync.GenericGrayGamma2.2");
 CFStringRef kColorSyncGenericLabProfile         = CFSTR("com.apple.ColorSync.GenericLab");
 CFStringRef kColorSyncGenericXYZProfile         = CFSTR("com.apple.ColorSync.GenericXYZ");

@@ -22,7 +22,25 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+NSString *const CWErrorDomain = @"com.apple.coreWLAN.error";
+NSString *const kCWAssocKey8021XProfile = @"ASSOC_KEY_8021X_PROFILE";
+NSString *const kCWAssocKeyPassphrase = @"ASSOC_KEY_PASSPHRASE";
+NSString *const kCWBSSIDDidChangeNotification = @"com.apple.coreWLAN.notification.bssid.legacy";
+NSString *const kCWCountryCodeDidChangeNotification = @"com.apple.coreWLAN.notification.countryCode.legacy";
+NSString *const kCWErrorDomain = @"com.apple.coreWLAN.error";
+NSString *const kCWIBSSKeyChannel = @"IBSS_KEY_CHANNEL";
+NSString *const kCWIBSSKeyPassphrase = @"IBSS_KEY_PASSPHRASE";
+NSString *const kCWIBSSKeySSID = @"IBSS_KEY_SSID";
+NSString *const kCWLinkDidChangeNotification = @"com.apple.coreWLAN.notification.link.legacy";
+NSString *const kCWModeDidChangeNotification = @"com.apple.coreWLAN.notification.mode.legacy";
+NSString *const kCWPowerDidChangeNotification = @"com.apple.coreWLAN.notification.power.legacy";
+NSString *const kCWSSIDDidChangeNotification = @"com.apple.coreWLAN.notification.ssid.legacy";
+NSString *const kCWScanKeyBSSID = @"BSSID";
+NSString *const kCWScanKeyDwellTime = @"SCAN_DWELL_TIME";
 NSString *const kCWScanKeyMerge = @"SCAN_MERGE";
+NSString *const kCWScanKeyRestTime = @"SCAN_REST_TIME";
+NSString *const kCWScanKeySSID = @"SSID_STR";
+NSString *const kCWScanKeyScanType = @"SCAN_TYPE";
 
 static int verbose = 0;
 

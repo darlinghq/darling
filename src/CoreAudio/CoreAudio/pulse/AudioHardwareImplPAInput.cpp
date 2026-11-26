@@ -18,57 +18,10 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "AudioHardwareImplPAInput.h"
-#include "AudioHardwareStreamPAInput.h"
 
 AudioHardwareImplPAInput::AudioHardwareImplPAInput(AudioObjectID myId)
-: AudioHardwareImplPA(myId)
+: AudioHardwareImplPADevice(myId, "@DEFAULT_SOURCE@", "PulseAudio", true)
 {
+	CFRelease(m_uid);
 	m_uid = CFSTR("PulseAudio:Input");
-}
-
-OSStatus AudioHardwareImplPAInput::getPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
-	const void* inQualifierData, UInt32* ioDataSize, void* outData)
-{
-	if (inAddress->mSelector == kAudioDevicePropertyStreamConfiguration)
-	{
-		// A capture device has its channels on the input scope only. Reporting them on the
-		// output scope (copied from the output device) would make it look like a playback-only
-		// device with no input channels.
-		size_t size = sizeof(AudioBufferList);
-
-		if (inAddress->mScope == kAudioDevicePropertyScopeInput)
-			size += 1* sizeof(AudioBuffer);
-
-		// Number of returned buffers is the number of channels
-		if (AudioBufferList* abl = static_cast<AudioBufferList*>(outData); abl && *ioDataSize >= size)
-		{
-			if (inAddress->mScope == kAudioDevicePropertyScopeInput)
-			{
-				abl->mNumberBuffers = 1;
-				abl->mBuffers[0].mNumberChannels = 2;
-
-				// TODO: Is the below stuff ever used? How?
-				abl->mBuffers[0].mData = nullptr;
-				abl->mBuffers[0].mDataByteSize = 0;
-			}
-			else
-				abl->mNumberBuffers = 0;
-		}
-
-		*ioDataSize = size;
-		return kAudioHardwareNoError;
-	}
-
-	return AudioHardwareImplPA::getPropertyData(inAddress, inQualifierDataSize, inQualifierData, ioDataSize, outData);
-}
-
-OSStatus AudioHardwareImplPAInput::setPropertyData(const AudioObjectPropertyAddress* inAddress, UInt32 inQualifierDataSize,
-	const void* inQualifierData, UInt32 inDataSize, const void* inData)
-{
-	return AudioHardwareImplPA::setPropertyData(inAddress, inQualifierDataSize, inQualifierData, inDataSize, inData);
-}
-
-AudioHardwareStream* AudioHardwareImplPAInput::createStream(AudioDeviceIOProc callback, void* clientData)
-{
-	return new AudioHardwareStreamPAInput(this, callback, clientData);
 }

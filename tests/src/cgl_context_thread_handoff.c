@@ -13,8 +13,15 @@
 // loop, or take the context's lock itself while the render thread waits. A
 // render thread may also hold an application lock while it asks for the
 // context, with a main thread that returned to its run loop earlier and then
-// blocks on that lock: the render thread must get the context at once. Needs
-// an offscreen OpenGL context (a host EGL driver).
+// blocks on that lock: the render thread must get the context at once. The
+// main thread may also be inside nested CGLLockContext calls and a nested run
+// loop, with its context current, when another thread makes the context
+// current without locking it: that thread must still get the context (on
+// macOS at once, here once the main thread leaves the lock) and never see an
+// error. Last, the main thread locks, draws and unlocks the context over and
+// over while another thread repeatedly makes it current without locking:
+// every attempt of that thread must succeed, whichever way the two interleave.
+// Needs an offscreen OpenGL context (a host EGL driver).
 #include <CoreFoundation/CoreFoundation.h>
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/gl.h>
@@ -110,6 +117,53 @@ static void* locking_render_thread(void* arg)
 	return NULL;
 }
 
+// A thread that makes the context current without locking it, while the main
+// thread has the context current and locked (twice) and runs a nested run
+// loop.
+static volatile CGLError g_unlocked_error = (CGLError) -1;
+
+static void* unlocked_setcurrent_thread(void* arg)
+{
+	(void) arg;
+	// First contact: tells the framework that a second thread uses the
+	// context.
+	CHECK(CGLLockContext(g_context) == kCGLNoError);
+	CHECK(CGLUnlockContext(g_context) == kCGLNoError);
+	g_stage = 1;
+	while (g_stage < 2)
+		usleep(1000);
+	// Let the main thread get into its nested locks first.
+	usleep(100000);
+	CGLError error = CGLSetCurrentContext(g_context);
+	if (error == kCGLNoError) {
+		CHECK(glGetString(GL_VERSION) != NULL);
+		CGLSetCurrentContext(NULL);
+	}
+	g_unlocked_error = error;
+	g_done = 1;
+	return NULL;
+}
+
+// A thread that makes the context current again and again without locking it,
+// while the main thread keeps locking and unlocking it.
+static void* churn_thread(void* arg)
+{
+	(void) arg;
+	for (int i = 0; i < 400; i++) {
+		CGLError error = CGLSetCurrentContext(g_context);
+		if (error != kCGLNoError) {
+			printf("churn %d: CGLSetCurrentContext failed with %d\n", i, (int) error);
+			g_unlocked_error = error;
+			break;
+		}
+		CHECK(glGetString(GL_VERSION) != NULL);
+		CGLSetCurrentContext(NULL);
+		usleep(i % 3 ? 100 : 1000);
+	}
+	g_done = 1;
+	return NULL;
+}
+
 int main(void)
 {
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -126,7 +180,7 @@ int main(void)
 	// Main thread: set-up, then (1) only the run loop, (2) a long stretch of
 	// GL work before the run loop, (3) a CGLLockContext while the render
 	// thread already holds the lock and waits for the main thread.
-	for (int mode = 0; mode < 4; mode++) {
+	for (int mode = 0; mode < 6; mode++) {
 		g_done = 0;
 		CHECK(CGLCreateContext(format, NULL, &g_context) == kCGLNoError);
 		if (!g_context) {
@@ -164,6 +218,54 @@ int main(void)
 			CHECK(glGetString(GL_VERSION) != NULL);
 			CHECK(CGLFlushDrawable(g_context) == kCGLNoError);
 			CHECK(CGLUnlockContext(g_context) == kCGLNoError);
+			CGLSetCurrentContext(NULL);
+			CGLDestroyContext(g_context);
+			continue;
+		}
+		if (mode == 4) {
+			g_stage = 0;
+			pthread_create(&thread, NULL, unlocked_setcurrent_thread, NULL);
+			while (g_stage < 1)
+				CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, false);
+			for (int i = 0; i < 4; i++)
+				CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, false);
+			CHECK(CGLLockContext(g_context) == kCGLNoError);
+			CHECK(CGLSetCurrentContext(g_context) == kCGLNoError);
+			g_stage = 2;
+			usleep(300000);
+			CHECK(CGLLockContext(g_context) == kCGLNoError);
+			// A nested run loop inside the locks.
+			for (int i = 0; i < 4; i++)
+				CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, false);
+			CHECK(glGetString(GL_VERSION) != NULL);
+			CHECK(CGLUnlockContext(g_context) == kCGLNoError);
+			CHECK(CGLUnlockContext(g_context) == kCGLNoError);
+			while (!g_done)
+				CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, false);
+			pthread_join(thread, NULL);
+			if (g_unlocked_error != kCGLNoError)
+				printf("unlocked CGLSetCurrentContext failed with %d\n", (int) g_unlocked_error);
+			CHECK(g_unlocked_error == kCGLNoError);
+			// The main thread uses the context again.
+			CHECK(CGLSetCurrentContext(g_context) == kCGLNoError);
+			CHECK(CGLLockContext(g_context) == kCGLNoError);
+			CHECK(glGetString(GL_VERSION) != NULL);
+			CHECK(CGLUnlockContext(g_context) == kCGLNoError);
+			CGLSetCurrentContext(NULL);
+			CGLDestroyContext(g_context);
+			continue;
+		}
+		if (mode == 5) {
+			g_unlocked_error = kCGLNoError;
+			pthread_create(&thread, NULL, churn_thread, NULL);
+			while (!g_done) {
+				CHECK(CGLLockContext(g_context) == kCGLNoError);
+				CHECK(CGLGetCurrentContext() == g_context);
+				CHECK(CGLUnlockContext(g_context) == kCGLNoError);
+				usleep(50);
+			}
+			pthread_join(thread, NULL);
+			CHECK(g_unlocked_error == kCGLNoError);
 			CGLSetCurrentContext(NULL);
 			CGLDestroyContext(g_context);
 			continue;

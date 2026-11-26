@@ -46,9 +46,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "darling.h"
 #include "darling-config.h"
 #include "launcher-env.h"
+#include "launcher-hostlink.h"
 #include "launcher-ids.h"
 #include "launcher-locale.h"
 #include "launcher-mode.h"
+#include "launcher-path.h"
 #include "launcher-prefix.h"
 #include "launcher-pulse.h"
 #include "launcher-server.h"
@@ -263,6 +265,26 @@ int main(int argc, char ** argv)
 	ensureSystemAccounts();
 	ensureZoneinfoLink();
 	ensureGlobalPreferences();
+	ensureSharedTmpModes();
+
+	// The host's Kerberos configuration is only visible in the guest when the launcher points the guest's
+	// /private/etc/krb5.conf at it. Do this before the server starts, so daemons and applications see the
+	// same file. A host without one keeps the guest's own file, if any. (The host sockets of CUPS and the
+	// Kerberos credential cache are linked by launchd jobs at boot: the container empties /var/run when it
+	// starts, so a link made here would not survive.)
+	if (getInitProcess() == 0)
+	{
+		bool krb5ConfigLinked;
+
+		useInvokingIds();
+		krb5ConfigLinked = launcherLinkHostKrb5Config(prefix, getenv("KRB5_CONFIG"));
+		restoreRootIds();
+
+		// $KRB5_CONFIG from the host names a host path, which is not the path
+		// guest programs should open. Name the mapped guest file instead.
+		if (krb5ConfigLinked)
+			setenv("KRB5_CONFIG", "/etc/krb5.conf", 1);
+	}
 
 	// The container's programs have the guest's HOME, so the PulseAudio client library cannot find the
 	// host user's server by itself on a host without XDG_RUNTIME_DIR. Name the host's locations for it.
@@ -542,7 +564,12 @@ int main(int argc, char ** argv)
 	if (!resolveProgramArgument(argc, argv))
 		return 1;
 
-	if (strcmp(argv[1], "shell") == 0)
+	if (strcmp(argv[1], "open") == 0)
+	{
+		// The guest's open(1) (argv[1] is "open"), on the files resolveProgramArgument() named in the guest
+		spawnBinary("/usr/bin/open", (const char**) &argv[1]);
+	}
+	else if (strcmp(argv[1], "shell") == 0)
 	{
 		// Spawn the shell
 		if (argc > 2)
@@ -604,14 +631,37 @@ static void refuseContainerOfAnotherMode(pid_t pid)
 }
 
 // For "darling exec <program>" and "darling <program>", replaces the program argument with the guest
-// path of the file it names on the host. Prints why and returns false if there is none. Nothing to do
-// for "darling shell", or when it was done already.
+// path of the file it names on the host, and for "darling open <file>..." every file argument. Prints why
+// and returns false if one names no file. Nothing to do for "darling shell", or when it was done already.
 static bool resolveProgramArgument(int argc, char** argv)
 {
 	static bool resolved = false;
 
 	if (resolved || strcmp(argv[1], "shell") == 0)
 		return true;
+
+	if (strcmp(argv[1], "open") == 0)
+	{
+		if (argc <= 2)
+		{
+			fprintf(stderr, "Usage: darling open <file>...\n");
+			return false;
+		}
+		for (int i = 2; i < argc; i++)
+		{
+			char* guestPath = launcherGuestPath(argv[i], g_workingDirectory);
+
+			if (guestPath == NULL)
+			{
+				// as the guest's open(1) words it
+				fprintf(stderr, "The file %s does not exist.\n", argv[i]);
+				return false;
+			}
+			argv[i] = guestPath;
+		}
+		resolved = true;
+		return true;
+	}
 
 	bool doExec = strcmp(argv[1], "exec") == 0;
 	int argvIndex = doExec ? 2 : 1;
@@ -622,19 +672,13 @@ static bool resolveProgramArgument(int argc, char** argv)
 		return false;
 	}
 
-	char *fullPath;
-	char *path = realpath(argv[argvIndex], NULL);
+	char *fullPath = launcherGuestPath(argv[argvIndex], g_workingDirectory);
 
-	if (path == NULL)
+	if (fullPath == NULL)
 	{
 		printf("'%s' is not a supported command or a file.\n", argv[argvIndex]);
 		return false;
 	}
-
-	fullPath = malloc(strlen(SYSTEM_ROOT) + strlen(path) + 1);
-	strcpy(fullPath, SYSTEM_ROOT);
-	strcat(fullPath, path);
-	free(path);
 
 	argv[argvIndex] = fullPath;
 	resolved = true;
@@ -1339,8 +1383,10 @@ void showHelp(const char* argv0)
 	fprintf(stderr, "\t%s <program-path> [arguments...]\n", argv0);
 	fprintf(stderr, "\t%s shell [arguments...]\n", argv0);
 	fprintf(stderr, "\t%s exec <program-path> [arguments...]\n", argv0);
+	fprintf(stderr, "\t%s open <file>...\n", argv0);
 	fprintf(stderr, "\t%s shutdown\n", argv0);
 	fprintf(stderr, "\n");
+	fprintf(stderr, "'open' opens files of the host in Darling, as open(1) does there.\n\n");
 	fprintf(stderr, "Environment variables:\n"
 		"DPREFIX - specifies the location of Darling prefix as an absolute path, defaults to ~/.darling\n"
 		"DARLING_PROFILE - selects an isolated named prefix at ~/.darling.<name>\n");
@@ -1814,6 +1860,14 @@ void setupPrefix()
 		createDir(path);
 	}
 
+	// the shared temporary directories are world-writable with the sticky bit, as on macOS
+	strcpy(path + plen, "/var/tmp");
+	if (chmod(path, 01777) != 0)
+	{
+		fprintf(stderr, "Cannot set the permissions of %s: %s\n", path, strerror(errno));
+		exit(1);
+	}
+
 	// create passwd, master.passwd, and group
 
 	passwd_entry = getpwuid(g_originalUid);
@@ -1985,6 +2039,61 @@ static void addMissingAccounts(enum accountFile type, const char* name)
 	fclose(file);
 }
 
+// macOS puts the administrator accounts in the group admin (gid 80), and the account created at
+// setup is one. Authorization Services rules ask for that group, so a prefix gets the group with
+// the prefix owner (and root) as members. A prefix that already has a group of that name or id
+// keeps it as it is.
+static void ensureAdminGroup(void)
+{
+	char path[4096];
+	struct stat st;
+	FILE* file;
+	char* line = NULL;
+	size_t lineCapacity = 0;
+	bool found = false;
+	bool endsWithNewline = true;
+	struct passwd* owner = getpwuid(g_originalUid);
+
+	if (!owner)
+		return;
+
+	snprintf(path, sizeof(path), "%s/private/etc/group", prefix);
+
+	// Older prefixes may link this file to the host's own database, which must not be modified.
+	if (lstat(path, &st) != 0 || !S_ISREG(st.st_mode))
+		return;
+
+	file = fopen(path, "r+");
+	if (!file)
+		return;
+
+	while (getline(&line, &lineCapacity, file) != -1)
+	{
+		size_t len = strlen(line);
+		char* gid = strchr(line, ':');
+
+		endsWithNewline = len > 0 && line[len - 1] == '\n';
+
+		if (line[0] == '#')
+			continue;
+		if (strncmp(line, "admin:", 6) == 0)
+			found = true;
+		else if (gid && (gid = strchr(gid + 1, ':')) != NULL && strtoul(gid + 1, NULL, 10) == 80)
+			found = true;
+	}
+	free(line);
+
+	if (!found)
+	{
+		fseek(file, 0, SEEK_END);
+		if (!endsWithNewline)
+			fputc('\n', file);
+		fprintf(file, "admin:*:80:root,%s\n", owner->pw_name);
+	}
+
+	fclose(file);
+}
+
 void ensureSystemAccounts()
 {
 	// The account files belong to the user who owns the prefix.
@@ -1993,6 +2102,7 @@ void ensureSystemAccounts()
 	addMissingAccounts(ACCOUNT_FILE_PASSWD, "passwd");
 	addMissingAccounts(ACCOUNT_FILE_MASTER_PASSWD, "master.passwd");
 	addMissingAccounts(ACCOUNT_FILE_GROUP, "group");
+	ensureAdminGroup();
 
 	restoreRootIds();
 }
@@ -2070,6 +2180,19 @@ void ensureGlobalPreferences()
 	restoreRootIds();
 }
 
+// The shared temporary directories are 01777 on macOS (every user may create files there, only the
+// owner may delete them). Directories the prefix made earlier with 0755 are repaired when no
+// container is running, where a change made from outside is not seen reliably.
+void ensureSharedTmpModes()
+{
+	if (getInitProcess() != 0)
+		return;
+
+	useInvokingIds();
+	launcherEnsureSharedTmpModes(prefix, geteuid());
+	restoreRootIds();
+}
+
 static pid_t findInitProcess(void)
 {
 	const char pidFile[] = "/.init.pid";
@@ -2103,6 +2226,26 @@ static pid_t findInitProcess(void)
 	{
 		unlink(pidPath);
 		return 0;
+	}
+
+	// A server that has exited remains a zombie until its parent reaps it, and a
+	// zombie passes the other checks here. Once the launcher that started it has
+	// exited, that parent is init, which in a container started without one may
+	// never reap it.
+	snprintf(procBuf, sizeof(procBuf), "/proc/%d/stat", pid);
+	fp = fopen(procBuf, "r");
+	if (fp != NULL)
+	{
+		char record[1024];
+		size_t length = fread(record, 1, sizeof(record) - 1, fp);
+
+		fclose(fp);
+		record[length] = '\0';
+		if (launcherStatHasExited(record))
+		{
+			unlink(pidPath);
+			return 0;
+		}
 	}
 
 	// Is it actually an init process?

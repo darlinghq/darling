@@ -28,20 +28,10 @@ enum {
 	kQDBGRAPixelFormat = 0x42475241 // 'BGRA'
 };
 
-struct QDPort {
-	PixMap pixMap;
-	PixMapPtr pixMapPtr; // the master pointer PixMapHandle points at
-	Rect portRect;
-	Ptr pixels;
-	size_t length;
-	size_t rowBytes;
-	int lockCount;
-};
+#include "QDPortPrivate.h"
 
-#define PORT_FROM(p) ((struct QDPort *) (p))
-
-static GrafPtr gCurrentPort;
-static QDErr gQDError;
+GrafPtr gCurrentPort;
+QDErr gQDError;
 
 // The name of the notification QDFlushPortBuffer posts to the local
 // notification center, with the port as the object and, in the user info, the
@@ -99,6 +89,7 @@ QDErr NewGWorld(GWorldPtr *offscreenGWorld, short PixelDepth, const Rect *bounds
 	pm->pixelFormat = PixelDepth == 0 ? kQDBGRAPixelFormat : (OSType) pixelSize;
 	port->pixMapPtr = pm;
 
+	QDPortInitState(port);
 	*offscreenGWorld = (GWorldPtr) port;
 	return gQDError = noErr;
 }
@@ -109,6 +100,7 @@ void DisposeGWorld(GWorldPtr offscreenGWorld) {
 		return;
 	if (gCurrentPort == (GrafPtr) port)
 		gCurrentPort = NULL;
+	QDPortDisposeState(port);
 	free(port->pixels);
 	free(port);
 }

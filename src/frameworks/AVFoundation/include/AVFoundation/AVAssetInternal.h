@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2017 Lubos Dolezel
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,8 +18,19 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CoreMedia/CMTime.h>
+#import <CoreGraphics/CGGeometry.h>
 
-@interface AVAssetInternal : NSObject
+// Private state of the public class of the same name without "Internal".
+@interface AVAssetInternal : NSObject {
+@public
+    NSURL *URL;
+    NSDictionary *options;
+    CMTime duration;
+    CGSize naturalSize;
+    BOOL playable;
+    NSArray *tracks;
+}
 
 @end
