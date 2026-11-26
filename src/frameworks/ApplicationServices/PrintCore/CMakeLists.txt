@@ -22,6 +22,9 @@ add_framework(PrintCore
         src/PrintCore.m
         src/PMInkChecker.m
         src/PMSession.c
+        src/PMPaper.c
+        src/PMPageFormat.c
+        src/PMPrintSettings.c
 
     DEPENDENCIES
         system

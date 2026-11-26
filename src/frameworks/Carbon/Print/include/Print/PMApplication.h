@@ -35,6 +35,12 @@ OSStatus PMSessionBeginPage(PMPrintSession printSession, PMPageFormat pageFormat
 OSStatus PMSessionEndPage(PMPrintSession printSession);
 
 // The dialogs of the page format and of the print settings. *accepted is false when the user cancelled.
+// The dialogs are shown as sheets of the document window when the session is told to use sheets: they
+// return at once and the procedure is called with the result
+typedef void (*PMSheetDoneProcPtr)(PMPrintSession printSession, WindowRef documentWindow, Boolean accepted);
+typedef PMSheetDoneProcPtr PMSheetDoneUPP;
+OSStatus PMSessionUseSheets(PMPrintSession printSession, WindowRef documentWindow, PMSheetDoneUPP sheetDoneProc);
+
 OSStatus PMSessionPageSetupDialog(PMPrintSession printSession, PMPageFormat pageFormat, Boolean* accepted);
 OSStatus PMSessionPrintDialog(PMPrintSession printSession, PMPrintSettings printSettings, PMPageFormat constPageFormat, Boolean* accepted);
 #endif

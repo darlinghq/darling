@@ -20,8 +20,12 @@ add_framework(Print
 	SOURCES
 		src/Print.c
 		src/PMApplication.c
+		src/PMDialogs.m
 
 	DEPENDENCIES
 		system
+		objc
+		CoreFoundation
+		Foundation
 		ApplicationServices
 )

@@ -61,12 +61,37 @@ typedef UInt16 PMOrientation;
 enum {
 	kPMPortrait = 1,
 	kPMLandscape = 2,
-	kPMReversePortrait = 3
+	kPMReversePortrait = 3,
+	kPMReverseLandscape = 4
 };
 
 enum {
 	kPMPrintAllPages = -1
 };
+
+typedef UInt32 PMDuplexMode;
+enum {
+	kPMDuplexNone = 0x0001,
+	kPMDuplexNoTumble = 0x0002,
+	kPMDuplexTumble = 0x0003,
+	kPMSimplexTumble = 0x0004
+};
+
+typedef UInt32 PMDataFormat;
+enum {
+	kPMDataFormatXMLDefault = 0,
+	kPMDataFormatXMLMinimal = 1,
+	kPMDataFormatXMLCompressed = 2
+};
+
+// The unprintable area of a paper
+struct PMPaperMargins {
+	double top;
+	double left;
+	double bottom;
+	double right;
+};
+typedef struct PMPaperMargins PMPaperMargins;
 
 struct PMRect {
 	double top;

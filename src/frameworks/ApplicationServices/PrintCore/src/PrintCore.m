@@ -617,18 +617,6 @@ void* PMCopyPPDData(void)
     return NULL;
 }
 
-void* PMCopyPageFormat(void)
-{
-    if (verbose) puts("STUB: PMCopyPageFormat called");
-    return NULL;
-}
-
-void* PMCopyPrintSettings(void)
-{
-    if (verbose) puts("STUB: PMCopyPrintSettings called");
-    return NULL;
-}
-
 void* PMCopyUserDefaultPaperSize(void)
 {
     if (verbose) puts("STUB: PMCopyUserDefaultPaperSize called");
@@ -644,12 +632,6 @@ void* PMCreateCFArrayForPMObjects(void)
 void* PMCreateGenericPrinter(void)
 {
     if (verbose) puts("STUB: PMCreateGenericPrinter called");
-    return NULL;
-}
-
-void* PMCreatePageFormatWithPMPaper(void)
-{
-    if (verbose) puts("STUB: PMCreatePageFormatWithPMPaper called");
     return NULL;
 }
 
@@ -755,36 +737,6 @@ void* PMFlattenPrintSettingsToURL(void)
     return NULL;
 }
 
-void* PMGetCollate(void)
-{
-    if (verbose) puts("STUB: PMGetCollate called");
-    return NULL;
-}
-
-void* PMGetDuplex(void)
-{
-    if (verbose) puts("STUB: PMGetDuplex called");
-    return NULL;
-}
-
-void* PMGetPageFormatExtendedData(void)
-{
-    if (verbose) puts("STUB: PMGetPageFormatExtendedData called");
-    return NULL;
-}
-
-void* PMGetPageFormatPaper(void)
-{
-    if (verbose) puts("STUB: PMGetPageFormatPaper called");
-    return NULL;
-}
-
-void* PMGetPrintSettingsExtendedData(void)
-{
-    if (verbose) puts("STUB: PMGetPrintSettingsExtendedData called");
-    return NULL;
-}
-
 void* PMGetPrinterModel(void)
 {
     if (verbose) puts("STUB: PMGetPrinterModel called");
@@ -839,18 +791,6 @@ void* PMPageFormatComputeAdjustedRectsWithPrinter(void)
     return NULL;
 }
 
-void* PMPageFormatCreateDataRepresentation(void)
-{
-    if (verbose) puts("STUB: PMPageFormatCreateDataRepresentation called");
-    return NULL;
-}
-
-void* PMPageFormatCreateWithDataRepresentation(void)
-{
-    if (verbose) puts("STUB: PMPageFormatCreateWithDataRepresentation called");
-    return NULL;
-}
-
 void* PMPageFormatGetPrinterID(void)
 {
     if (verbose) puts("STUB: PMPageFormatGetPrinterID called");
@@ -869,12 +809,6 @@ void* PMPaperCopyUserPrefs(void)
     return NULL;
 }
 
-void* PMPaperCreateCustom(void)
-{
-    if (verbose) puts("STUB: PMPaperCreateCustom called");
-    return NULL;
-}
-
 void* PMPaperCreateFromPaperInfo(void)
 {
     if (verbose) puts("STUB: PMPaperCreateFromPaperInfo called");
@@ -887,63 +821,15 @@ void* PMPaperCreateInternal(void)
     return NULL;
 }
 
-void* PMPaperCreateLocalizedName(void)
-{
-    if (verbose) puts("STUB: PMPaperCreateLocalizedName called");
-    return NULL;
-}
-
 void* PMPaperCreatePMTicketRef(void)
 {
     if (verbose) puts("STUB: PMPaperCreatePMTicketRef called");
     return NULL;
 }
 
-void* PMPaperGetHeight(void)
-{
-    if (verbose) puts("STUB: PMPaperGetHeight called");
-    return NULL;
-}
-
-void* PMPaperGetID(void)
-{
-    if (verbose) puts("STUB: PMPaperGetID called");
-    return NULL;
-}
-
-void* PMPaperGetMargins(void)
-{
-    if (verbose) puts("STUB: PMPaperGetMargins called");
-    return NULL;
-}
-
 void* PMPaperGetName(void)
 {
     if (verbose) puts("STUB: PMPaperGetName called");
-    return NULL;
-}
-
-void* PMPaperGetPPDPaperName(void)
-{
-    if (verbose) puts("STUB: PMPaperGetPPDPaperName called");
-    return NULL;
-}
-
-void* PMPaperGetPrinterID(void)
-{
-    if (verbose) puts("STUB: PMPaperGetPrinterID called");
-    return NULL;
-}
-
-void* PMPaperGetWidth(void)
-{
-    if (verbose) puts("STUB: PMPaperGetWidth called");
-    return NULL;
-}
-
-void* PMPaperIsCustom(void)
-{
-    if (verbose) puts("STUB: PMPaperIsCustom called");
     return NULL;
 }
 
@@ -986,30 +872,6 @@ void* PMPrintSettingsCopyAsDictionary(void)
 void* PMPrintSettingsCopyKeys(void)
 {
     if (verbose) puts("STUB: PMPrintSettingsCopyKeys called");
-    return NULL;
-}
-
-void* PMPrintSettingsCreateDataRepresentation(void)
-{
-    if (verbose) puts("STUB: PMPrintSettingsCreateDataRepresentation called");
-    return NULL;
-}
-
-void* PMPrintSettingsCreateWithDataRepresentation(void)
-{
-    if (verbose) puts("STUB: PMPrintSettingsCreateWithDataRepresentation called");
-    return NULL;
-}
-
-void* PMPrintSettingsGetValue(void)
-{
-    if (verbose) puts("STUB: PMPrintSettingsGetValue called");
-    return NULL;
-}
-
-void* PMPrintSettingsSetValue(void)
-{
-    if (verbose) puts("STUB: PMPrintSettingsSetValue called");
     return NULL;
 }
 
@@ -1217,12 +1079,6 @@ void* PMPrinterGetDriverReleaseInfo(void)
     return NULL;
 }
 
-void* PMPrinterGetID(void)
-{
-    if (verbose) puts("STUB: PMPrinterGetID called");
-    return NULL;
-}
-
 void* PMPrinterGetIconData(void)
 {
     if (verbose) puts("STUB: PMPrinterGetIconData called");
@@ -1271,21 +1127,9 @@ void* PMPrinterGetMimeTypes(void)
     return NULL;
 }
 
-void* PMPrinterGetName(void)
-{
-    if (verbose) puts("STUB: PMPrinterGetName called");
-    return NULL;
-}
-
 void* PMPrinterGetOutputResolution(void)
 {
     if (verbose) puts("STUB: PMPrinterGetOutputResolution called");
-    return NULL;
-}
-
-void* PMPrinterGetPaperList(void)
-{
-    if (verbose) puts("STUB: PMPrinterGetPaperList called");
     return NULL;
 }
 
@@ -1334,12 +1178,6 @@ void* PMPrinterIsAllowed(void)
 void* PMPrinterIsClass(void)
 {
     if (verbose) puts("STUB: PMPrinterIsClass called");
-    return NULL;
-}
-
-void* PMPrinterIsDefault(void)
-{
-    if (verbose) puts("STUB: PMPrinterIsDefault called");
     return NULL;
 }
 
@@ -1625,33 +1463,9 @@ void* PMSessionCopyDefaultOutputIntentWithColorSyncProfiles(void)
     return NULL;
 }
 
-void* PMSessionCopyDestinationFormat(void)
-{
-    if (verbose) puts("STUB: PMSessionCopyDestinationFormat called");
-    return NULL;
-}
-
-void* PMSessionCopyDestinationLocation(void)
-{
-    if (verbose) puts("STUB: PMSessionCopyDestinationLocation called");
-    return NULL;
-}
-
 void* PMSessionCreateCurrentPrinterColorSpace(void)
 {
     if (verbose) puts("STUB: PMSessionCreateCurrentPrinterColorSpace called");
-    return NULL;
-}
-
-void* PMSessionCreatePageFormatList(void)
-{
-    if (verbose) puts("STUB: PMSessionCreatePageFormatList called");
-    return NULL;
-}
-
-void* PMSessionCreatePrinterList(void)
-{
-    if (verbose) puts("STUB: PMSessionCreatePrinterList called");
     return NULL;
 }
 
@@ -1694,18 +1508,6 @@ void* PMSessionGetColorMatchingMode2(void)
 void* PMSessionGetColorMatchingModeLock(void)
 {
     if (verbose) puts("STUB: PMSessionGetColorMatchingModeLock called");
-    return NULL;
-}
-
-void* PMSessionGetCurrentPrinter(void)
-{
-    if (verbose) puts("STUB: PMSessionGetCurrentPrinter called");
-    return NULL;
-}
-
-void* PMSessionGetDataFromSession(void)
-{
-    if (verbose) puts("STUB: PMSessionGetDataFromSession called");
     return NULL;
 }
 
@@ -1763,12 +1565,6 @@ void* PMSessionSetCurrentPMPrinter(void)
     return NULL;
 }
 
-void* PMSessionSetDataInSession(void)
-{
-    if (verbose) puts("STUB: PMSessionSetDataInSession called");
-    return NULL;
-}
-
 void* PMSessionSetDefaultButtonTitleCFString(void)
 {
     if (verbose) puts("STUB: PMSessionSetDefaultButtonTitleCFString called");
@@ -1799,33 +1595,9 @@ void* PMSessionSetPrintingDialogTitleCFString(void)
     return NULL;
 }
 
-void* PMSetCollate(void)
-{
-    if (verbose) puts("STUB: PMSetCollate called");
-    return NULL;
-}
-
 void* PMSetCopyCollate(void)
 {
     if (verbose) puts("STUB: PMSetCopyCollate called");
-    return NULL;
-}
-
-void* PMSetDuplex(void)
-{
-    if (verbose) puts("STUB: PMSetDuplex called");
-    return NULL;
-}
-
-void* PMSetPageFormatExtendedData(void)
-{
-    if (verbose) puts("STUB: PMSetPageFormatExtendedData called");
-    return NULL;
-}
-
-void* PMSetPrintSettingsExtendedData(void)
-{
-    if (verbose) puts("STUB: PMSetPrintSettingsExtendedData called");
     return NULL;
 }
 
