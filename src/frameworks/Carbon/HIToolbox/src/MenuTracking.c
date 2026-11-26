@@ -1039,13 +1039,20 @@ static void runTracking(struct Tracking* tracking, bool mouseDown, CGPoint start
 	}
 }
 
-static UInt32 finishTracking(struct Tracking* tracking, bool highlightResult)
+// (outChosen, when given, gets the menu of the chosen item, retained: menus can share a menu ID)
+static UInt32 finishTracking(struct Tracking* tracking, bool highlightResult, MenuRef* outChosen)
 {
 	UInt32 choice = 0;
 	MenuRef chosenMenu = tracking->chosenMenu;
 	MenuID barMenuID = tracking->barSelected ? GetMenuID(tracking->barSelected) : 0;
 
 	closeLevels(tracking, 0);
+	if (outChosen)
+	{
+		*outChosen = tracking->chosen ? chosenMenu : NULL;
+		if (*outChosen)
+			CFRetain((CFTypeRef) *outChosen);
+	}
 	if (tracking->chosen)
 	{
 		choice = ((UInt32) (UInt16) GetMenuID(chosenMenu) << 16) | tracking->chosenItem;
@@ -1064,9 +1071,12 @@ static UInt32 finishTracking(struct Tracking* tracking, bool highlightResult)
 	return choice;
 }
 
-UInt32 MenuSelect(Point startPt)
+static UInt32 menuSelect(Point startPt, MenuRef* outChosen)
 {
 	struct Tracking tracking;
+
+	if (outChosen)
+		*outChosen = NULL;
 
 	memset(&tracking, 0, sizeof(tracking));
 	updateBarWindow(true);
@@ -1076,7 +1086,12 @@ UInt32 MenuSelect(Point startPt)
 	tracking.root = AcquireRootMenu();
 	tracking.titleCount = copyBarTitles(&tracking.titles);
 	runTracking(&tracking, true, CGPointMake(startPt.h, startPt.v));
-	return finishTracking(&tracking, true);
+	return finishTracking(&tracking, true, outChosen);
+}
+
+UInt32 MenuSelect(Point startPt)
+{
+	return menuSelect(startPt, NULL);
 }
 
 UInt32 PopUpMenuSelect(MenuRef menu, SInt16 top, SInt16 left, SInt16 popUpItem)
@@ -1099,7 +1114,7 @@ UInt32 PopUpMenuSelect(MenuRef menu, SInt16 top, SInt16 left, SInt16 popUpItem)
 	// been released when the user does not hold the button, hence the first release does not choose
 	tracking.sticky = false;
 	runTracking(&tracking, true, CGPointMake(left, top));
-	return finishTracking(&tracking, false);
+	return finishTracking(&tracking, false, NULL);
 }
 
 OSStatus CancelMenuTracking(MenuRef inRootMenu, Boolean inImmediate, UInt32 inDismissalReason)
@@ -1142,15 +1157,14 @@ OSStatus _HIHandleMenuBarMouseDown(EventRef event)
 		return eventNotHandledErr;
 
 	Point point = { (short) location.y, (short) location.x };
-	UInt32 choice = MenuSelect(point);
+	MenuRef menu = NULL;
+	UInt32 choice = menuSelect(point, &menu);
 
-	if (choice)
-	{
-		MenuRef menu = GetMenuHandle((MenuID) (choice >> 16));
-
-		if (menu)
-			_HIProcessMenuCommand(menu, (MenuItemIndex) (choice & 0xffff));
-	}
+	// The menu is the one that was chosen from: its ID is not enough, menus may share one
+	if (choice && menu)
+		_HIProcessMenuCommand(menu, (MenuItemIndex) (choice & 0xffff));
+	if (menu)
+		CFRelease((CFTypeRef) menu);
 	HiliteMenu(0);
 	return noErr;
 }
