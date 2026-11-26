@@ -20,7 +20,7 @@ if (DARLING_ANDROID_HOST)
 	add_definitions(-DDARLING_ANDROID_HOST=1 -DDARLING_ANDROID_TMPDIR="${DARLING_ANDROID_TMPDIR}")
 endif()
 
-add_executable(darling darling.c launcher-env.c launcher-ids.c launcher-locale.c launcher-mode.c launcher-prefix.c launcher-pulse.c launcher-server.c launcher-tmp.c launcher-path.c)
+add_executable(darling darling.c launcher-env.c launcher-hostlink.c launcher-ids.c launcher-locale.c launcher-mode.c launcher-prefix.c launcher-pulse.c launcher-server.c launcher-tmp.c launcher-path.c)
 
 # Bionic has forkpty() and openpty() in libc and no libutil
 if (NOT DARLING_ANDROID_HOST)
@@ -98,6 +98,11 @@ add_test(NAME launcher_env COMMAND launcher_env_test)
 add_executable(launcher_locale_test ${CMAKE_SOURCE_DIR}/tests/launcher/locale.c launcher-locale.c)
 target_include_directories(launcher_locale_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME launcher_locale COMMAND launcher_locale_test)
+
+# conditional links from host sockets and Kerberos configuration into the prefix
+add_executable(launcher_hostlink_test ${CMAKE_SOURCE_DIR}/tests/launcher/hostlink.c launcher-hostlink.c)
+target_include_directories(launcher_hostlink_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME launcher_hostlink COMMAND launcher_hostlink_test)
 
 # how the launcher names the host's PulseAudio files for the guest
 add_executable(launcher_pulse_test ${CMAKE_SOURCE_DIR}/tests/launcher/pulse.c launcher-pulse.c)
