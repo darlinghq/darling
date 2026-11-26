@@ -35,6 +35,7 @@ add_framework(HIToolbox
 		src/IBCarbonNib.c
 		src/IBCarbonWindows.c
 		src/Controls.c
+		src/Dialogs.c
 		src/Menus.c
 		src/MenusClassic.c
 		src/MenuTracking.m
