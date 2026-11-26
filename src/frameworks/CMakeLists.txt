@@ -7,6 +7,7 @@ if (COMPONENT_system)
 	# which OpenDirectory.framework re-exports
 	add_subdirectory(OpenDirectory/CFOpenDirectory)
 	add_subdirectory(DirectoryServices)
+	add_subdirectory(System)
 endif()
 
 # this is mainly for frameworks that are required for Security,
