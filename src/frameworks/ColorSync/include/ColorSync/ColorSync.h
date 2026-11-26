@@ -173,6 +173,8 @@ void* ColorSyncProfileCreateWithURLAndOptions(void);
 void* ColorSyncProfileCopyFlexGTCInfo(void);
 void* ColorSyncProfileCreateFlexGTCLookupData(void);
 
+extern CFStringRef kColorSyncGenericGrayProfile;
+extern CFStringRef kColorSyncGenericRGBProfile;
 extern CFStringRef kColorSyncGenericGrayGamma22Profile;
 extern CFStringRef kColorSyncGenericLabProfile;
 extern CFStringRef kColorSyncGenericXYZProfile;

@@ -54,6 +54,7 @@ extern const CFStringRef _kLSArchitecturePowerPC64Value;
 extern const CFStringRef _kLSArchitecturei386Value;
 extern const CFStringRef _kLSArchitecturex86_64Value;
 extern const CFStringRef _kLSArchitectureUnknownValue;
+extern const CFStringRef _kLSPersistenceSuppressRelaunchAtLoginKey;
 
 extern const CFStringRef _kLSArchitectureKey;
 

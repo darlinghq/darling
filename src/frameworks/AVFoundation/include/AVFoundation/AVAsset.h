@@ -50,3 +50,6 @@ extern NSString *const AVURLAssetPreferPreciseDurationAndTimingKey;
 - (AVAssetTrack *)trackWithTrackID:(CMPersistentTrackID)trackID;
 
 @end
+
+// As in Apple's SDK, AVURLAsset comes with AVAsset.h.
+#import <AVFoundation/AVURLAsset.h>

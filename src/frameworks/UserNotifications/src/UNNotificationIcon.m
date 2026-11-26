@@ -17,7 +17,11 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <UserNotifications/UNNotificationIcon.h>
+#import <Foundation/Foundation.h>
+
+// A private class; the SDK's headers do not declare it.
+@interface UNNotificationIcon : NSObject
+@end
 #import <darling-stub-forwarding.h>
 
 @implementation UNNotificationIcon

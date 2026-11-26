@@ -66,17 +66,17 @@ CMTimeRange CMTimeRangeGetIntersection(CMTimeRange range, CMTimeRange otherRange
 	return CMTimeRangeMake(start, CMTimeSubtract(end, start));
 }
 
-bool CMTimeRangeEqual(CMTimeRange range1, CMTimeRange range2)
+Boolean CMTimeRangeEqual(CMTimeRange range1, CMTimeRange range2)
 {
 	return CMTimeCompare(range1.start, range2.start) == 0 && CMTimeCompare(range1.duration, range2.duration) == 0;
 }
 
-bool CMTimeRangeContainsTime(CMTimeRange range, CMTime time)
+Boolean CMTimeRangeContainsTime(CMTimeRange range, CMTime time)
 {
 	return CMTimeCompare(time, range.start) >= 0 && CMTimeCompare(time, CMTimeRangeGetEnd(range)) < 0;
 }
 
-bool CMTimeRangeContainsTimeRange(CMTimeRange range, CMTimeRange otherRange)
+Boolean CMTimeRangeContainsTimeRange(CMTimeRange range, CMTimeRange otherRange)
 {
 	// QUIRK: a range is considered to contain another one only if it contains
 	// the other range's start time, so the zero range does not contain

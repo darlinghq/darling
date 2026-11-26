@@ -21,6 +21,7 @@
 #ifndef _Carbon_H_
 #define _Carbon_H_
 
+#include <ApplicationServices/ApplicationServices.h>
 #include <CarbonCore/MacErrors.h>
 #include "CoreServices/MacTypes.h"
 #include "CoreServices/FileManager.h"
@@ -30,6 +31,10 @@
 #include <HIToolbox/Dialogs.h>
 #include <HIToolbox/Drag.h>
 #include <HIToolbox/Appearance.h>
+#include <HIToolbox/MacWindows.h>
+#include <HIToolbox/Controls.h>
+#include <HIToolbox/ControlDefinitions.h>
+#include <HIToolbox/HIView.h>
 #include <HIToolbox/Events.h>
 #include <HIToolbox/HITheme.h>
 #include <HIToolbox/HIObject.h>
@@ -42,7 +47,13 @@
 #include <HIToolbox/TextEdit.h>
 #include <HIToolbox/TextInputSources.h>
 #include <HIToolbox/TextServices.h>
+// Only OpenScripting's registry of AppleScript constants: the rest of
+// Darling's OpenScripting.h declares its functions with placeholder types.
+#include <OpenScripting/ASRegistry.h>
 
 #include <CarbonSound/CarbonSound.h>
+#include <CommonPanels/CommonPanels.h>
+#include <Print/Print.h>
+#include <NavigationServices/NavigationServices.h>
 
 #endif

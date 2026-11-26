@@ -21,5 +21,14 @@
 #ifndef _Quartz_H_
 #define _Quartz_H_
 
+// Quartz is the umbrella of these frameworks, whose APIs are Objective-C.
+#ifdef __OBJC__
+#import <ImageKit/ImageKit.h>
+#import <PDFKit/PDFKit.h>
+#import <QuartzComposer/QuartzComposer.h>
+#import <QuartzFilters/QuartzFilters.h>
+#import <QuickLookUI/QuickLookUI.h>
+#endif
+
 
 #endif

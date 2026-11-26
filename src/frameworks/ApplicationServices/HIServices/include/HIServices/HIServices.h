@@ -24,6 +24,8 @@
 #include "Processes.h"
 #include "Pasteboard.h"
 #include "HIShape.h"
+#include "Accessibility.h"
+#include "UniversalAccess.h"
 
 #ifdef __cplusplus
 extern "C" {

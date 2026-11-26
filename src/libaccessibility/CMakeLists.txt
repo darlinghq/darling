@@ -6,6 +6,7 @@ set(DYLIB_CURRENT_VERSION "1.0.0")
 
 add_darling_library(Accessibility SHARED
 	src/Accessibility.m
+	src/AccessibilityNotifications.c
 	src/AccessibilitySupportOverrides.m
 	src/AXDefaultsObserverPostDarwinNotificationAction.m
 	src/AXDefaultsObserverExecuteBlockNotificationAction.m

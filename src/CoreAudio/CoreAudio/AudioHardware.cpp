@@ -118,6 +118,9 @@ static OSStatus GetStreamPropertyData(AudioObjectID objID, const AudioObjectProp
 		case kAudioStreamPropertyIsActive:
 			value = 1;
 			break;
+		case kAudioStreamPropertyLatency:
+			// The stream adds no latency of its own; the device's is kAudioDevicePropertyLatency.
+			break;
 		case kAudioStreamPropertyVirtualFormat:
 		case kAudioStreamPropertyPhysicalFormat:
 			source = &device->asbd();

@@ -18,4 +18,5 @@
 */
 
 #include <OSServices/IconStorage.h>
+#include <OSServices/KeychainCore.h>
 #include <OSServices/Power.h>
