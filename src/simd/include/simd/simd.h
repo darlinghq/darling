@@ -19,10 +19,7 @@
 #ifndef SIMD_H
 #define SIMD_H
 
-#include <simd/vector_types.h>
-#include <simd/vector_make.h>
-#include <simd/common.h>
-#include <simd/geometry.h>
+#include <simd/vector.h>
 #include <simd/matrix_types.h>
 #include <simd/matrix.h>
 #include <simd/quaternion.h>
