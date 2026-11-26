@@ -22,7 +22,9 @@
 // "DarlingTestSink" (a null sink, uid darling-test-sink) and an input "DarlingTestSource" (a source, uid
 // darling-test-source) that carries a 440 Hz tone of amplitude 0.5 (or silence). The harness also records the
 // sink's monitor while the test runs, to check that the test tone is really played, and creates and removes a
-// second sink when the test asks for it with WAIT-NEW-SINK and WAIT-REMOVE-SINK on standard output.
+// second sink when the test asks for it with WAIT-NEW-SINK and WAIT-REMOVE-SINK on standard output. It also changes
+// the volume and mute of the sink and the source, and the default sink, from outside (EXT-... markers on standard
+// output), to see that the pane follows what happens to the devices while it is open.
 // usage: darling_prefpane_sound signal|silence [keep]
 //   keep: leave the test devices as the default devices (the harness reads PulseAudio's defaults then)
 #import <Cocoa/Cocoa.h>
@@ -107,6 +109,38 @@ static AudioObjectID DefaultDevice(BOOL input)
 	return d;
 }
 
+static Float32 HALVolume(AudioObjectID device, AudioObjectPropertyScope scope)
+{
+	AudioObjectPropertyAddress a = Addr(kAudioDevicePropertyVolumeScalar, scope);
+	Float32 v = -1;
+	UInt32 size = sizeof(v);
+	AudioObjectGetPropertyData(device, &a, 0, NULL, &size, &v);
+	return v;
+}
+
+static UInt32 HALMute(AudioObjectID device, AudioObjectPropertyScope scope)
+{
+	AudioObjectPropertyAddress a = Addr(kAudioDevicePropertyMute, scope);
+	UInt32 m = 9, size = sizeof(m);
+	AudioObjectGetPropertyData(device, &a, 0, NULL, &size, &m);
+	return m;
+}
+
+static Float64 HALRate(AudioObjectID device)
+{
+	AudioObjectPropertyAddress a = Addr(kAudioDevicePropertyNominalSampleRate, kAudioObjectPropertyScopeGlobal);
+	Float64 r = 0;
+	UInt32 size = sizeof(r);
+	AudioObjectGetPropertyData(device, &a, 0, NULL, &size, &r);
+	return r;
+}
+
+static void Marker(const char *name)
+{
+	printf("%s\n", name);
+	fflush(stdout);
+}
+
 static BOOL WaitUntil(BOOL (^condition)(void), double seconds)
 {
 	for (double waited = 0; waited < seconds; waited += 0.1) {
@@ -158,6 +192,10 @@ int main(int argc, char **argv)
 				standIns = YES;
 		CHECK(!standIns, "the objects that stand for the default device are not listed");
 
+		CHECK([Cell(inputs, sourceRow, @"channels") length] > 0 && [Cell(inputs, sourceRow, @"rate") hasSuffix:@"Hz"] && [Cell(inputs, sourceRow, @"transport") length] > 0,
+		      "an input row shows its channels, sample rate and transport: %s / %s / %s", [Cell(inputs, sourceRow, @"channels") UTF8String],
+		      [Cell(inputs, sourceRow, @"rate") UTF8String], [Cell(inputs, sourceRow, @"transport") UTF8String]);
+
 		// the default devices: the selected rows, and choosing a row makes it the default
 		Select(outputs, sinkRow);
 		CHECK([UIDOf(DefaultDevice(NO)) isEqualToString:@"darling-test-sink"], "choosing the sink makes it the default output: %s", [UIDOf(DefaultDevice(NO)) UTF8String]);
@@ -183,6 +221,34 @@ int main(int argc, char **argv)
 		      "a second instance of the pane shows the sink selected");
 		[second willUnselect];
 		[second didUnselect];
+
+		// the sample rate of the default devices: the popups offer the rates of the device and show its rate; choosing one sets it
+		NSPopUpButton *outRate = Control(@"SoundOutputRate"), *inRate = Control(@"SoundInputRate");
+		CHECK(outRate != nil && inRate != nil, "the Sound section has a sample rate popup for the output and for the input");
+		for (int side = 0; side < 2 && outRate != nil && inRate != nil; side++) {
+			NSPopUpButton *popup = side ? inRate : outRate;
+			AudioObjectID device = DefaultDevice(side ? YES : NO);
+			const char *name = side ? "input" : "output";
+			CHECK([popup isEnabled] && [popup numberOfItems] >= 2, "the %s rate popup is usable (%ld items)", name, (long)[popup numberOfItems]);
+			CHECK([popup itemWithTitle:@"44100 Hz"] != nil && [popup itemWithTitle:@"48000 Hz"] != nil, "the %s popup offers the usual rates", name);
+			Float64 before = HALRate(device);
+			NSString *beforeTitle = [NSString stringWithFormat:@"%g Hz", before];
+			CHECK([[popup titleOfSelectedItem] isEqualToString:beforeTitle], "the %s popup shows the rate of the device (%s, %g)", name, [[popup titleOfSelectedItem] UTF8String], before);
+			NSMenuItem *other = nil;
+			for (NSMenuItem *item in [popup itemArray])
+				if ([[item title] isEqualToString:(before == 48000 ? @"44100 Hz" : @"48000 Hz")])
+					other = item;
+			Float64 want = before == 48000 ? 44100 : 48000;
+			[popup selectItem:other];
+			[NSApp sendAction:[popup action] to:[popup target] from:popup];
+			CHECK(WaitUntil(^BOOL{ return HALRate(device) == want; }, 5), "choosing a rate in the %s popup sets the device rate (%g)", name, HALRate(device));
+			NSTableView *table = side ? inputs : outputs;
+			CHECK(WaitUntil(^BOOL{ return [Cell(table, [table selectedRow], @"rate") isEqualToString:[NSString stringWithFormat:@"%g Hz", want]]; }, 5),
+			      "and the list shows it (%s)", [Cell(table, [table selectedRow], @"rate") UTF8String]);
+			[popup selectItemWithTitle:[NSString stringWithFormat:@"%g Hz", before]];
+			[NSApp sendAction:[popup action] to:[popup target] from:popup];
+			CHECK(WaitUntil(^BOOL{ return HALRate(device) == before; }, 5), "choosing the old rate restores it (%g)", HALRate(device));
+		}
 
 		// volume and mute of the default output
 		NSSlider *volume = Control(@"SoundVolume");
@@ -246,10 +312,88 @@ int main(int argc, char **argv)
 			CHECK([level doubleValue] == 0, "round %d: stopping the test puts the meter at rest", round);
 		}
 
+		// volume and mute of the default input; they act on the signal that reaches the meter
+		NSSlider *inVolume = Control(@"SoundInputVolume");
+		NSButton *inMute = Control(@"SoundInputMute");
+		AudioObjectID source = DefaultDevice(YES);
+		CHECK(inVolume != nil && inMute != nil && [inVolume isEnabled] && [inMute isEnabled], "the input volume and mute controls are enabled for the source");
+		[inVolume setDoubleValue:0.5];
+		[NSApp sendAction:[inVolume action] to:[inVolume target] from:inVolume];
+		CHECK(WaitUntil(^BOOL{ return fabs(HALVolume(source, kAudioObjectPropertyScopeInput) - 0.5) < 0.02; }, 3), "the input volume slider sets the device input volume (%g)", HALVolume(source, kAudioObjectPropertyScopeInput));
+		if (!silence) {
+			[test setState:NSControlStateValueOn];
+			[NSApp sendAction:[test action] to:[test target] from:test];
+			double top = 0;
+			for (int i = 0; i < 30; i++) {
+				Spin(0.1);
+				top = MAX(top, [level doubleValue]);
+			}
+			CHECK(top > 0.02 && top < 0.3, "at half the input volume the meter reads less than before (%g)", top);
+			[inMute setState:NSControlStateValueOn];
+			[NSApp sendAction:[inMute action] to:[inMute target] from:inMute];
+			CHECK(WaitUntil(^BOOL{ return HALMute(source, kAudioObjectPropertyScopeInput) == 1; }, 3), "the input mute checkbox mutes the device (%u)", HALMute(source, kAudioObjectPropertyScopeInput));
+			Spin(0.7);
+			[level setDoubleValue:0];
+			top = 0;
+			for (int i = 0; i < 20; i++) {
+				Spin(0.1);
+				top = MAX(top, [level doubleValue]);
+			}
+			CHECK(top < 0.01, "a muted input reads nothing on the meter (%g)", top);
+			[test setState:NSControlStateValueOff];
+			[NSApp sendAction:[test action] to:[test target] from:test];
+			Spin(0.3);
+		} else {
+			[inMute setState:NSControlStateValueOn];
+			[NSApp sendAction:[inMute action] to:[inMute target] from:inMute];
+			CHECK(WaitUntil(^BOOL{ return HALMute(source, kAudioObjectPropertyScopeInput) == 1; }, 3), "the input mute checkbox mutes the device (%u)", HALMute(source, kAudioObjectPropertyScopeInput));
+		}
+		[inMute setState:NSControlStateValueOff];
+		[NSApp sendAction:[inMute action] to:[inMute target] from:inMute];
+		CHECK(WaitUntil(^BOOL{ return HALMute(source, kAudioObjectPropertyScopeInput) == 0; }, 3), "and unmutes it (%u)", HALMute(source, kAudioObjectPropertyScopeInput));
+		[inVolume setDoubleValue:1.0];
+		[NSApp sendAction:[inVolume action] to:[inVolume target] from:inVolume];
+		Spin(0.5);
+
+		// changes from outside: the sound server's volume and mute of the sink and the source reach the controls
+		AudioObjectID sinkDevice = DefaultDevice(NO);
+		Float32 outBefore = HALVolume(sinkDevice, kAudioObjectPropertyScopeOutput);
+		Marker("EXT-OUT-VOLUME");
+		CHECK(WaitUntil(^BOOL{ Float32 v = HALVolume(sinkDevice, kAudioObjectPropertyScopeOutput); return v < outBefore - 0.1 && fabs([volume doubleValue] - v) < 0.02; }, 10),
+		      "the output volume slider follows an outside change (slider %g, device %g, before %g)", [volume doubleValue], HALVolume(sinkDevice, kAudioObjectPropertyScopeOutput), outBefore);
+		Marker("EXT-OUT-MUTE");
+		CHECK(WaitUntil(^BOOL{ return [mute state] == NSControlStateValueOn; }, 10), "the output mute checkbox follows an outside mute");
+		Marker("EXT-OUT-UNMUTE");
+		CHECK(WaitUntil(^BOOL{ return [mute state] == NSControlStateValueOff; }, 10), "and an outside unmute");
+		Float32 inBefore = HALVolume(source, kAudioObjectPropertyScopeInput);
+		Marker("EXT-IN-VOLUME");
+		CHECK(WaitUntil(^BOOL{ Float32 v = HALVolume(source, kAudioObjectPropertyScopeInput); return v < inBefore - 0.1 && fabs([inVolume doubleValue] - v) < 0.02; }, 10),
+		      "the input volume slider follows an outside change (slider %g, device %g, before %g)", [inVolume doubleValue], HALVolume(source, kAudioObjectPropertyScopeInput), inBefore);
+		Marker("EXT-IN-MUTE");
+		CHECK(WaitUntil(^BOOL{ return [inMute state] == NSControlStateValueOn; }, 10), "the input mute checkbox follows an outside mute");
+		Marker("EXT-IN-UNMUTE");
+		CHECK(WaitUntil(^BOOL{ return [inMute state] == NSControlStateValueOff; }, 10), "and an outside unmute");
+		// put the volumes back
+		[volume setDoubleValue:outBefore];
+		[NSApp sendAction:[volume action] to:[volume target] from:volume];
+		[inVolume setDoubleValue:inBefore];
+		[NSApp sendAction:[inVolume action] to:[inVolume target] from:inVolume];
+		CHECK(WaitUntil(^BOOL{ return fabs(HALVolume(sinkDevice, kAudioObjectPropertyScopeOutput) - outBefore) < 0.02 && fabs(HALVolume(source, kAudioObjectPropertyScopeInput) - inBefore) < 0.02; }, 5),
+		      "the sliders put the volumes back");
+
 		// the list follows the devices: the harness adds a sink and removes it again
 		printf("WAIT-NEW-SINK\n");
 		fflush(stdout);
 		CHECK(WaitUntil(^BOOL{ return RowNamed(outputs, @"DarlingTestSink2") >= 0; }, 20), "a sink that appears is listed");
+		// the default changes from outside: the pane selects the new default and shows its controls
+		Marker("EXT-DEFAULT-SINK2");
+		CHECK(WaitUntil(^BOOL{ return [outputs selectedRow] >= 0 && [Cell(outputs, [outputs selectedRow], @"name") isEqualToString:@"DarlingTestSink2"]; }, 10),
+		      "the pane selects a default output that was changed from outside");
+		CHECK(WaitUntil(^BOOL{ return fabs([volume doubleValue] - HALVolume(DefaultDevice(NO), kAudioObjectPropertyScopeOutput)) < 0.02; }, 5),
+		      "and its volume slider shows the volume of the new default (%g)", [volume doubleValue]);
+		Marker("EXT-DEFAULT-SINK1");
+		CHECK(WaitUntil(^BOOL{ return [outputs selectedRow] >= 0 && [Cell(outputs, [outputs selectedRow], @"name") isEqualToString:@"DarlingTestSink"]; }, 10),
+		      "and selects the first sink again when that becomes the default");
 		printf("WAIT-REMOVE-SINK\n");
 		fflush(stdout);
 		CHECK(WaitUntil(^BOOL{ return RowNamed(outputs, @"DarlingTestSink2") < 0; }, 20), "and is dropped from the list when it goes away");
