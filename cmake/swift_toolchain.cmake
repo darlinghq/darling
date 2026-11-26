@@ -80,6 +80,7 @@ else()
 				RESULT_VARIABLE _swiftly_rc OUTPUT_VARIABLE _swiftly_root
 				ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
 			if (_swiftly_rc EQUAL 0 AND NOT "${_swiftly_root}" STREQUAL "")
+				# Keep the proxy in the cache so the selection is resolved again on reconfigure.
 				set(SWIFT_COMPILER "${_swiftly_root}/usr/bin/swiftc")
 			else()
 				set(SWIFT_COMPILER "SWIFT_COMPILER-NOTFOUND")
