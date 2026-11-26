@@ -1,7 +1,8 @@
 // Copyright (C) 2026 Lubos Dolezel
 // Behaviour probe for the front process (public API only).
 // usage: probe NAME LOGFILE MODE SCRIPT
-//   MODE   cocoa (NSApplication run loop) | carbon (RunApplicationEventLoop, no AppKit)
+//   MODE   cocoa (NSApplication run loop) | carbon (RunApplicationEventLoop, no AppKit) | carbonwin (carbon,
+//          with a Carbon window titled NAME, which is a window of CoreGraphics' window server)
 //   SCRIPT "T:action;T:action" with T in seconds from start, actions:
 //     front=NAME[,opts]  SetFrontProcess[WithOptions] to the process of the app NAME (test.vdfp.NAME)
 //     frontpsn=H:L[,opts] the same with a raw serial number (kNoProcess 0:0, kSystemProcess 0:1, kCurrentProcess 0:2)
@@ -16,6 +17,7 @@
 #import <Carbon/Carbon.h>
 #include <sys/time.h>
 #include <stdarg.h>
+#include <dlfcn.h>
 
 extern void RunApplicationEventLoop(void);
 extern void QuitApplicationEventLoop(void);
@@ -32,13 +34,31 @@ static void L(const char *fmt, ...) {
 
 static pid_t pidOfPSN(ProcessSerialNumber p) { pid_t pid = -1; if (GetProcessPID(&p, &pid) != noErr) return -1; return pid; }
 
+// CoreGraphics' own front process (GetFrontProcess() cannot say that no Darling process has the focus: it
+// answers with the calling process then, as there is no process serial number for another client).
+typedef int (*CGSGetFrontFn)(pid_t *);
+typedef void (*CGSObserverFn)(pid_t previous, pid_t current, void *info);
+static pid_t cgsFront(int *err) {
+    static CGSGetFrontFn fn;
+    pid_t p = 0;
+    if (!fn) fn = (CGSGetFrontFn)dlsym(RTLD_DEFAULT, "_CGSGetFrontProcess");
+    *err = fn ? fn(&p) : -1;
+    return p;
+}
+static void frontObserved(pid_t previous, pid_t current, void *info) { L("FRONTOBS previous=%d current=%d", previous, current); }
+static void watchCGSFront(void) {
+    void (*add)(CGSObserverFn, void *) = (void (*)(CGSObserverFn, void *))dlsym(RTLD_DEFAULT, "_CGSAddFrontProcessObserver");
+    if (add) add(frontObserved, NULL);
+}
+
 static void state(const char *tag) {
     ProcessSerialNumber f; OSErr e = GetFrontProcess(&f);
     pid_t fp = e == noErr ? pidOfPSN(f) : -2;
     NSRunningApplication *fa = nil, *mo = nil;
     if (g_cocoa) { fa = [[NSWorkspace sharedWorkspace] frontmostApplication]; mo = [[NSWorkspace sharedWorkspace] menuBarOwningApplication]; }
-    L("STATE %s getfront=%d(err %d) ws.front=%d ws.owner=%d self=%d", tag, fp, (int)e,
-      fa ? fa.processIdentifier : -1, mo ? mo.processIdentifier : -1, getpid());
+    int cgsErr; pid_t cgs = cgsFront(&cgsErr);
+    L("STATE %s getfront=%d(err %d) ws.front=%d ws.owner=%d self=%d cgsfront=%d(err %d)", tag, fp, (int)e,
+      fa ? fa.processIdentifier : -1, mo ? mo.processIdentifier : -1, getpid(), cgsErr == 0 ? cgs : 0, cgsErr);
 }
 
 static OSStatus carbonHandler(EventHandlerCallRef next, EventRef ev, void *ud) {
@@ -120,6 +140,24 @@ int main(int argc, char **argv) {
                 [[[NSWorkspace sharedWorkspace] notificationCenter] addObserver:o selector:@selector(n:) name:nm object:nil];
             static NSWindow *w; w = [[NSWindow alloc] initWithContentRect:NSMakeRect(100,100,200,100) styleMask:NSWindowStyleMaskTitled backing:NSBackingStoreBuffered defer:NO];
             w.title = g_name; [w makeKeyAndOrderFront:nil];
+        } else if (strcmp(argv[3], "carbonwin") == 0) {
+            L("START carbonwin");
+            Rect bounds = { 150, 400, 250, 600 };
+            WindowRef win = NULL;
+#ifdef __LP64__
+            // Every 64-bit Carbon window is a compositing window
+            WindowAttributes attrs = kWindowStandardDocumentAttributes | kWindowCompositingAttribute;
+#else
+            WindowAttributes attrs = kWindowStandardDocumentAttributes;
+#endif
+            OSStatus we = CreateNewWindow(kDocumentWindowClass, attrs, &bounds, &win);
+            if (we == noErr) {
+                CFStringRef title = CFStringCreateWithCString(NULL, argv[1], kCFStringEncodingUTF8);
+                SetWindowTitleWithCFString(win, title);
+                CFRelease(title);
+                ShowWindow(win);
+            }
+            L("WINDOW carbon window err=%d", (int)we);
         } else L("START carbon");
         static const EventTypeSpec specs[] = { {kEventClassApplication, kEventAppActivated}, {kEventClassApplication, kEventAppDeactivated},
                                                {kEventClassApplication, kEventAppFrontSwitched} };
@@ -149,6 +187,7 @@ int main(int argc, char **argv) {
             CFRunLoopTimerRef tm = CFRunLoopTimerCreateWithHandler(NULL, CFAbsoluteTimeGetCurrent() + t, 0, 0, 0, ^(CFRunLoopTimerRef x){ act(a); });
             CFRunLoopAddTimer(CFRunLoopGetMain(), tm, kCFRunLoopCommonModes);
         }
+        if (getenv("FRONT_PROBE_OBSERVE")) watchCGSFront();
         state("start");
         if (g_cocoa) [NSApp run]; else RunApplicationEventLoop();
         L("END");
