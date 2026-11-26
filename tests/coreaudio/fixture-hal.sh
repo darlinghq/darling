@@ -46,6 +46,16 @@ up() {
 		source_properties="device.description=HalMic"
 	load module-pipe-source source_name=darling-hal-line file="$PIPES/line" format=s16le rate=44100 channels=2 channel_map=front-left,front-right \
 		source_properties="device.description=HalLine"
+	# The sound server remembers the volume and mute of a device by its name and restores them when it is loaded
+	# again, so a test that changed them (test_hal_external) would hand its state to the next run.
+	for s in darling-hal-48k darling-hal-44k darling-hal-51 darling-hal-int darling-hal-soft; do
+		pactl set-sink-volume "$s" 100%
+		pactl set-sink-mute "$s" 0
+	done
+	for s in darling-hal-mic darling-hal-line; do
+		pactl set-source-volume "$s" 100%
+		pactl set-source-mute "$s" 0
+	done
 	echo "sinks=darling-hal-48k,darling-hal-44k,darling-hal-51,darling-hal-int,darling-hal-soft sources=darling-hal-mic,darling-hal-line"
 }
 
