@@ -153,6 +153,7 @@ enum {
 // Making and disposing of controls
 #ifndef __LP64__
 ControlRef NewControl(WindowRef owningWindow, const Rect* boundsRect, ConstStr255Param controlTitle, Boolean initiallyVisible, SInt16 initialValue, SInt16 minimumValue, SInt16 maximumValue, SInt16 procID, SInt32 controlReference);
+ControlRef GetNewControl(SInt16 resourceID, WindowRef owningWindow);
 void DisposeControl(ControlRef theControl);
 #endif
 OSStatus CreateRootControl(WindowRef inWindow, ControlRef* outControl);
