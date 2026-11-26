@@ -3,6 +3,7 @@
 // placing a descriptor must never replace one that is already open.
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include "socket_bitmap.h"
@@ -126,6 +127,74 @@ static int test_place_on_own_slot(void)
 	return 0;
 }
 
+// The bitmap is allocated whole on first use and never reallocated or freed afterwards: the child of a fork
+// releases the parent's descriptors through socket_bitmap_put() before the host's malloc locks are in a known
+// state, and a realloc() or free() there can wait forever for a lock another thread of the parent held at the fork.
+static int test_allocation_is_stable(void)
+{
+	socket_bitmap_t stable = {
+		.mutex = PTHREAD_MUTEX_INITIALIZER,
+		.highest = 255,
+	};
+	int fds[100];
+
+	fds[0] = socket_bitmap_get(&stable);
+	uint8_t* first = stable.bits;
+	if (first == NULL)
+	{
+		printf("FAIL: no bitmap after the first descriptor\n");
+		return 1;
+	}
+	for (int i = 1; i < 100; i++)
+		fds[i] = socket_bitmap_get(&stable);
+	if (stable.bits != first)
+	{
+		printf("FAIL: the bitmap moved while it grew\n");
+		return 1;
+	}
+	for (int i = 0; i < 100; i++)
+		socket_bitmap_put(&stable, fds[i]);
+	if (stable.bits != first)
+	{
+		printf("FAIL: the bitmap was reallocated or freed while it emptied\n");
+		return 1;
+	}
+	return 0;
+}
+
+// With no explicit top, the numbers count down from the soft descriptor limit, but never from above 16384:
+// the kernel sizes a process's descriptor table to its highest descriptor, and a limit of hundreds of thousands
+// made every process carry a table of megabytes.
+static int test_default_top_is_capped(void)
+{
+	struct rlimit saved, raised;
+	socket_bitmap_t fresh = {
+		.mutex = PTHREAD_MUTEX_INITIALIZER,
+		.highest = -1,
+	};
+
+	if (getrlimit(RLIMIT_NOFILE, &saved) != 0)
+	{
+		printf("FAIL: getrlimit\n");
+		return 1;
+	}
+	raised = saved;
+	raised.rlim_cur = saved.rlim_max == RLIM_INFINITY || saved.rlim_max > 100000 ? 100000 : saved.rlim_max;
+	if (raised.rlim_cur < 16384 || setrlimit(RLIMIT_NOFILE, &raised) != 0)
+	{
+		printf("skipped: the descriptor limit cannot be raised above 16384 here\n");
+		return 0;
+	}
+	int fd = socket_bitmap_get(&fresh);
+	setrlimit(RLIMIT_NOFILE, &saved);
+	if (fd != 16383)
+	{
+		printf("FAIL: the first descriptor with a limit of %llu is %d, not 16383\n", (unsigned long long) raised.rlim_cur, fd);
+		return 1;
+	}
+	return 0;
+}
+
 int main(void)
 {
 	int keepers[LONG_LIVED];
@@ -168,6 +237,10 @@ int main(void)
 	if (test_place() != 0)
 		return 1;
 	if (test_place_on_own_slot() != 0)
+		return 1;
+	if (test_allocation_is_stable() != 0)
+		return 1;
+	if (test_default_top_is_capped() != 0)
 		return 1;
 
 	printf("socket_bitmap: OK\n");
