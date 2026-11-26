@@ -40,6 +40,8 @@ extern "C" {
 	X(connection_open_private, DBusConnection*, (const char*, DBusError*)) \
 	X(bus_register, dbus_bool_t, (DBusConnection*, DBusError*)) \
 	X(bus_add_match, void, (DBusConnection*, const char*, DBusError*)) \
+	X(bus_request_name, int, (DBusConnection*, const char*, unsigned int, DBusError*)) \
+	X(bus_release_name, int, (DBusConnection*, const char*, DBusError*)) \
 	X(connection_close, void, (DBusConnection*)) \
 	X(connection_unref, void, (DBusConnection*)) \
 	X(connection_get_is_connected, dbus_bool_t, (DBusConnection*)) \
@@ -52,6 +54,7 @@ extern "C" {
 	X(message_new_method_call, DBusMessage*, (const char*, const char*, const char*, const char*)) \
 	X(message_new_method_return, DBusMessage*, (DBusMessage*)) \
 	X(message_new_error, DBusMessage*, (DBusMessage*, const char*, const char*)) \
+	X(message_new_signal, DBusMessage*, (const char*, const char*, const char*)) \
 	X(message_iter_init_append, void, (DBusMessage*, DBusMessageIter*)) \
 	X(message_iter_append_basic, dbus_bool_t, (DBusMessageIter*, int, const void*)) \
 	X(message_iter_open_container, dbus_bool_t, (DBusMessageIter*, int, const char*, DBusMessageIter*)) \
