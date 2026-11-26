@@ -26,4 +26,4 @@ add_framework(MediaPlayer
         Foundation
         AppKit
 )
-target_include_directories(MediaPlayer PRIVATE include)
+target_include_directories(MediaPlayer PRIVATE include ${CMAKE_SOURCE_DIR}/src/mediaremoted)

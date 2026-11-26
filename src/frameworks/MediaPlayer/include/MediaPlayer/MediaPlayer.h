@@ -185,6 +185,12 @@ MP_EXTERN NSString *const MPNowPlayingInfoPropertyAssetURL;
 @property(readonly) NSTimeInterval positionTime;
 @end
 
+@interface MPSkipIntervalCommandEvent : MPRemoteCommandEvent {
+    NSTimeInterval _interval;
+}
+@property(readonly) NSTimeInterval interval;
+@end
+
 @interface MPChangeRepeatModeCommandEvent : MPRemoteCommandEvent {
     MPRepeatType _repeatType;
     BOOL _preservesRepeatMode;

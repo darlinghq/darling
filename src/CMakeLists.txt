@@ -560,6 +560,7 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 	# launchd's event monitor; needs CoreServices (FSEvents)
 	add_subdirectory(eventmonitor)
 	add_subdirectory(usernoted)
+	add_subdirectory(mediaremoted)
 endif()
 
 if (COMPONENT_iokitd)
