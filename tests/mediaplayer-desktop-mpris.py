@@ -182,6 +182,25 @@ static DBusMessage *exchange_call(DBusConnection *client, DBusConnection *server
 	return NULL;
 }
 
+// Properties.Get / Set with the given interface and property; Set carries a variant boolean
+static DBusMessage *property_call(DBusConnection *client, DBusConnection *server, const char *method,
+                                  const char *iface, const char *prop, const struct mr_player_state *state)
+{
+	DBusMessage *req = dbus_message_new_method_call("org.mpris.MediaPlayer2.darling.TestMusic",
+		"/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties", method);
+	dbus_message_append_args(req, DBUS_TYPE_STRING, &iface, DBUS_TYPE_STRING, &prop, DBUS_TYPE_INVALID);
+	if (strcmp(method, "Set") == 0) {
+		DBusMessageIter it, v;
+		dbus_bool_t b = 0;
+		dbus_message_iter_init_append(req, &it);
+		// the first two arguments are already there; append the value after them
+		dbus_message_iter_open_container(&it, DBUS_TYPE_VARIANT, "b", &v);
+		dbus_message_iter_append_basic(&v, DBUS_TYPE_BOOLEAN, &b);
+		dbus_message_iter_close_container(&it, &v);
+	}
+	return exchange_call(client, server, req, state);
+}
+
 static void test_mpris_protocol(void)
 {
 	printf("--- Testing MPRIS 2 Server Protocol ---\n");
@@ -220,6 +239,7 @@ static void test_mpris_protocol(void)
 	state.track_number = 3;
 	state.disc_number = 1;
 	state.art_url = "file:///tmp/art.png";
+	state.track_id = "/org/mpris/MediaPlayer2/Track/1";
 
 	// 1. Introspection
 	DBusMessage *req = dbus_message_new_method_call(bus_name, "/org/mpris/MediaPlayer2",
@@ -329,15 +349,86 @@ static void test_mpris_protocol(void)
 		dbus_message_unref(reply);
 	}
 
-	// 10. Signals: PropertiesChanged
+	// 10. Properties: the writable ones are accepted, the read-only ones and the unknown ones are errors
+	reply = property_call(client_conn, server_conn, "Get", "org.mpris.MediaPlayer2.Player", "LoopStatus", &state);
+	CHECK(reply != NULL && dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_METHOD_RETURN);
+	if (reply) dbus_message_unref(reply);
+	reply = property_call(client_conn, server_conn, "Get", "org.mpris.MediaPlayer2.Player", "NoSuchProperty", &state);
+	CHECK(reply != NULL && dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR &&
+		strcmp(dbus_message_get_error_name(reply), "org.freedesktop.DBus.Error.UnknownProperty") == 0);
+	if (reply) dbus_message_unref(reply);
+	reply = property_call(client_conn, server_conn, "Get", "org.example.Other", "Identity", &state);
+	CHECK(reply != NULL && dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR &&
+		strcmp(dbus_message_get_error_name(reply), "org.freedesktop.DBus.Error.UnknownInterface") == 0);
+	if (reply) dbus_message_unref(reply);
+	reply = property_call(client_conn, server_conn, "Set", "org.mpris.MediaPlayer2.Player", "PlaybackStatus", &state);
+	CHECK(reply != NULL && dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR &&
+		strcmp(dbus_message_get_error_name(reply), "org.freedesktop.DBus.Error.PropertyReadOnly") == 0);
+	if (reply) dbus_message_unref(reply);
+	reply = property_call(client_conn, server_conn, "Set", "org.mpris.MediaPlayer2.Player", "Shuffle", &state);
+	CHECK(reply != NULL && dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_METHOD_RETURN);
+	if (reply) dbus_message_unref(reply);
+
+	// 11. SetPosition for another track than the current one is ignored
+	s_last_cmd[0] = '\0';
+	req = dbus_message_new_method_call(bus_name, "/org/mpris/MediaPlayer2",
+		"org.mpris.MediaPlayer2.Player", "SetPosition");
+	track_id = "/org/mpris/MediaPlayer2/Track/99";
+	dbus_message_append_args(req, DBUS_TYPE_OBJECT_PATH, &track_id, DBUS_TYPE_INT64, &target_pos_us, DBUS_TYPE_INVALID);
+	reply = exchange_call(client_conn, server_conn, req, &state);
+	CHECK(reply != NULL && dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_METHOD_RETURN);
+	CHECK(s_last_cmd[0] == '\0');
+	if (reply) dbus_message_unref(reply);
+
+	// 12. Calls that nothing implements get an error instead of no answer; Ping works
+	req = dbus_message_new_method_call(bus_name, "/org/mpris/Other", "org.mpris.MediaPlayer2.Player", "Play");
+	reply = exchange_call(client_conn, server_conn, req, &state);
+	CHECK(reply != NULL && dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR &&
+		strcmp(dbus_message_get_error_name(reply), "org.freedesktop.DBus.Error.UnknownObject") == 0);
+	if (reply) dbus_message_unref(reply);
+	req = dbus_message_new_method_call(bus_name, "/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Peer", "Ping");
+	reply = exchange_call(client_conn, server_conn, req, &state);
+	CHECK(reply != NULL && dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_METHOD_RETURN);
+	if (reply) dbus_message_unref(reply);
+
+	// 13. Signals: PropertiesChanged carries the metadata and the capabilities, not the position
+	dbus_bus_add_match(client_conn, "type='signal',path='/org/mpris/MediaPlayer2'", &err);
+	dbus_connection_flush(client_conn);
 	CHECK(_MRHostDBusEmitPropertiesChanged(&api, server_conn, &state) == 0);
-	dbus_connection_flush(server_conn);
-
-	// 11. Signals: Seeked
 	CHECK(_MRHostDBusEmitSeeked(&api, server_conn, 75000000) == 0);
-	dbus_connection_flush(server_conn);
+	int got_changed = 0, got_seeked = 0, changed_has_position = 0, changed_has_metadata = 0;
+	dbus_int64_t seeked_to = -1;
+	for (int i = 0; i < 100 && !(got_changed && got_seeked); i++) {
+		dbus_connection_read_write(client_conn, 10);
+		DBusMessage *sig;
+		while ((sig = dbus_connection_pop_message(client_conn)) != NULL) {
+			if (dbus_message_is_signal(sig, "org.freedesktop.DBus.Properties", "PropertiesChanged")) {
+				got_changed = 1;
+				DBusMessageIter it, dict, entry;
+				dbus_message_iter_init(sig, &it);
+				dbus_message_iter_next(&it);
+				dbus_message_iter_recurse(&it, &dict);
+				while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+					const char *key = NULL;
+					dbus_message_iter_recurse(&dict, &entry);
+					dbus_message_iter_get_basic(&entry, &key);
+					if (strcmp(key, "Position") == 0) changed_has_position = 1;
+					if (strcmp(key, "Metadata") == 0) changed_has_metadata = 1;
+					dbus_message_iter_next(&dict);
+				}
+			} else if (dbus_message_is_signal(sig, "org.mpris.MediaPlayer2.Player", "Seeked")) {
+				got_seeked = 1;
+				dbus_message_get_args(sig, &err, DBUS_TYPE_INT64, &seeked_to, DBUS_TYPE_INVALID);
+			}
+			dbus_message_unref(sig);
+		}
+	}
+	CHECK(got_changed);
+	CHECK(changed_has_metadata);
+	CHECK(!changed_has_position);
+	CHECK(got_seeked && seeked_to == 75000000);
 
-	// 10. Release Name
+	// Release the name
 	CHECK(_MRHostDBusReleaseName(&api, server_conn, bus_name) == 0);
 
 	// Cleanup
