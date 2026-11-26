@@ -240,14 +240,156 @@ void* _SoftLinkingLoadBundleFromLocation(void)
 }
 
 #ifndef __LP64__
-// There is no colour panel of the Carbon API to show yet: the picker is dismissed at once, as when the user
-// cancels it, so the colour of the caller stays as it was.
+
+#import <Foundation/Foundation.h>
+#import <objc/message.h>
+#include <dlfcn.h>
+
+// NPickColor() shows the colour panel of the application framework, which is not linked: the Carbon framework
+// loads it when a colour is first picked, as it does for Navigation Services. The panel is run as a modal
+// window with the buttons OK and Cancel in its accessory view. When the user accepts the dialog, the program
+// gets the colour that the panel has, as a 16 bit RGB colour, and newColorChosen says so.
+
+enum { kPanelAccepted = 1, kPanelCancelled = 0 };
+
+// The buttons of the accessory view send these
+@interface CarbonColorPickerButtons : NSObject
+- (void) accept: (id) sender;
+- (void) cancel: (id) sender;
+@end
+
+static void stopModal(NSInteger code)
+{
+	id app = ((id (*)(id, SEL)) objc_msgSend)(NSClassFromString(@"NSApplication"), @selector(sharedApplication));
+
+	((void (*)(id, SEL, NSInteger)) objc_msgSend)(app, @selector(stopModalWithCode:), code);
+}
+
+@implementation CarbonColorPickerButtons
+- (void) accept: (id) sender
+{
+	stopModal(kPanelAccepted);
+}
+
+- (void) cancel: (id) sender
+{
+	stopModal(kPanelCancelled);
+}
+@end
+
+static id newObject(NSString* className, CGRect frame)
+{
+	id object = ((id (*)(id, SEL)) objc_msgSend)(NSClassFromString(className), @selector(alloc));
+
+	return ((id (*)(id, SEL, CGRect)) objc_msgSend)(object, @selector(initWithFrame:), frame);
+}
+
+static id makeButton(NSString* title, CGRect frame, id target, SEL action, NSString* keyEquivalent)
+{
+	id button = newObject(@"NSButton", frame);
+
+	((void (*)(id, SEL, NSString*)) objc_msgSend)(button, @selector(setTitle:), title);
+	((void (*)(id, SEL, NSUInteger)) objc_msgSend)(button, @selector(setBezelStyle:), 1 /* NSRoundedBezelStyle */);
+	((void (*)(id, SEL, id)) objc_msgSend)(button, @selector(setTarget:), target);
+	((void (*)(id, SEL, SEL)) objc_msgSend)(button, @selector(setAction:), action);
+	((void (*)(id, SEL, NSString*)) objc_msgSend)(button, @selector(setKeyEquivalent:), keyEquivalent);
+	return [button autorelease];
+}
+
+static id makeColor(const RGBColor* rgb)
+{
+	return ((id (*)(id, SEL, CGFloat, CGFloat, CGFloat, CGFloat)) objc_msgSend)(NSClassFromString(@"NSColor"),
+		@selector(colorWithCalibratedRed:green:blue:alpha:), rgb->red / 65535.0f, rgb->green / 65535.0f,
+		rgb->blue / 65535.0f, 1.0f);
+}
+
+static UInt16 toComponent(CGFloat value)
+{
+	if (value <= 0)
+		return 0;
+	if (value >= 1)
+		return 65535;
+	return (UInt16) (value * 65535.0f + 0.5f);
+}
+
+// The colour the panel has, as the 16 bit RGB colour of the Color Picker
+static BOOL readColor(id color, RGBColor* rgb)
+{
+	CGFloat red = 0, green = 0, blue = 0, alpha = 0;
+
+	color = ((id (*)(id, SEL, NSString*)) objc_msgSend)(color, @selector(colorUsingColorSpaceName:), @"NSCalibratedRGBColorSpace");
+	if (!color)
+		return NO;
+	((void (*)(id, SEL, CGFloat*, CGFloat*, CGFloat*, CGFloat*)) objc_msgSend)(color,
+		@selector(getRed:green:blue:alpha:), &red, &green, &blue, &alpha);
+	rgb->red = toComponent(red);
+	rgb->green = toComponent(green);
+	rgb->blue = toComponent(blue);
+	return YES;
+}
+
+static BOOL runColorPanel(NColorPickerInfo* info)
+{
+	static dispatch_once_t once;
+	static BOOL loaded;
+	BOOL accepted = NO;
+
+	dispatch_once(&once, ^{
+		loaded = dlopen("/System/Library/Frameworks/AppKit.framework/AppKit", RTLD_LAZY | RTLD_GLOBAL) != NULL;
+	});
+	if (!loaded)
+		return NO;
+
+	@autoreleasepool
+	{
+		Class panelClass = NSClassFromString(@"NSColorPanel");
+		id app = ((id (*)(id, SEL)) objc_msgSend)(NSClassFromString(@"NSApplication"), @selector(sharedApplication));
+		id panel, accessory;
+		CarbonColorPickerButtons* buttons = [[CarbonColorPickerButtons alloc] init];
+		CFStringRef prompt = CFStringCreateWithPascalString(NULL, info->prompt, kCFStringEncodingMacRoman);
+
+		if (!panelClass || !app)
+			return NO;
+		panel = ((id (*)(id, SEL)) objc_msgSend)(panelClass, @selector(sharedColorPanel));
+		((void (*)(id, SEL, id)) objc_msgSend)(panel, @selector(setColor:), makeColor(&info->theColor.color.rgb));
+		if (prompt && CFStringGetLength(prompt) > 0)
+			((void (*)(id, SEL, NSString*)) objc_msgSend)(panel, @selector(setTitle:), (NSString*) prompt);
+		if (prompt)
+			CFRelease(prompt);
+
+		accessory = [newObject(@"NSView", CGRectMake(0, 0, 220, 40)) autorelease];
+		((void (*)(id, SEL, id)) objc_msgSend)(accessory, @selector(addSubview:),
+			makeButton(@"Cancel", CGRectMake(20, 8, 90, 24), buttons, @selector(cancel:), @"\033"));
+		((void (*)(id, SEL, id)) objc_msgSend)(accessory, @selector(addSubview:),
+			makeButton(@"OK", CGRectMake(120, 8, 90, 24), buttons, @selector(accept:), @"\r"));
+		((void (*)(id, SEL, id)) objc_msgSend)(panel, @selector(setAccessoryView:), accessory);
+		((void (*)(id, SEL, id)) objc_msgSend)(panel, @selector(makeKeyAndOrderFront:), nil);
+
+		if (((NSInteger (*)(id, SEL, id)) objc_msgSend)(app, @selector(runModalForWindow:), panel) == kPanelAccepted)
+		{
+			RGBColor rgb;
+			id color = ((id (*)(id, SEL)) objc_msgSend)(panel, @selector(color));
+
+			if (readColor(color, &rgb))
+			{
+				info->theColor.color.rgb = rgb;
+				accepted = YES;
+			}
+		}
+		((void (*)(id, SEL, id)) objc_msgSend)(panel, @selector(orderOut:), nil);
+		((void (*)(id, SEL, id)) objc_msgSend)(panel, @selector(setAccessoryView:), nil);
+		[buttons release];
+	}
+	return accepted;
+}
+
+// NPickColor() returns when the dialog is closed. Cancelling leaves the colour as it was.
 OSErr NPickColor(NColorPickerInfo* theColorInfo)
 {
-    if (theColorInfo == NULL)
-        return paramErr;
-    theColorInfo->newColorChosen = false;
-    return noErr;
+	if (theColorInfo == NULL)
+		return paramErr;
+	theColorInfo->newColorChosen = runColorPanel(theColorInfo);
+	return noErr;
 }
 
 #undef NewNColorChangedUPP
