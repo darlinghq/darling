@@ -24,6 +24,7 @@
 #include "PMInternal.h"
 #include <dispatch/dispatch.h>
 #include <string.h>
+#include <stddef.h>
 
 static CFTypeID g_typeIDs[5];
 static CFRuntimeClass g_paperClass, g_pageFormatClass, g_settingsClass, g_sessionClass, g_printerClass;
@@ -233,7 +234,10 @@ OSStatus PMPaperCreateCustom(PMPrinter printer, CFStringRef customPaperID, CFStr
 
 	if (!paperP)
 		return kPMInvalidParameter;
-	// The sizes are not checked; the margins are an option here (they are not on the system this follows)
+	// QUIRK: the sizes and the margins are not checked, and the margins are optional here (the system this follows
+	// takes the call without any margins to be an error that stops the program). Not documented. Evidence:
+	// black-box observation on macOS 10.14.4 and 26.7.3 (tier 2). Test: tests/src/carbon_print_objects.c
+	// (test_quirk_custom_paper_unchecked)
 	paper = newPaper(customPaperID, NULL, customPaperName, width, height, margins ? margins : &none, true);
 	*paperP = (PMPaper) paper;
 	return paper ? noErr : kPMGeneralError;

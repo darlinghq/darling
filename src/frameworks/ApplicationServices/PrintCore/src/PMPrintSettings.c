@@ -69,9 +69,10 @@ OSStatus PMSessionValidatePrintSettings(PMPrintSession printSession, PMPrintSett
 		return kPMInvalidPrintSettings;
 	if (changed)
 		*changed = false;
-	// No copies, or a first page after the last one, is a job that cannot be printed: the validation puts
-	// the values that a job has by default in their place. Evidence: black-box observation on macOS 10.14.4
-	// and 26.7.3 (tier 2).
+	// QUIRK: no copies, or a first page after the last one, is a job that cannot be printed, and the
+	// validation puts the values that a job has by default in their place (and reports a change); the calls
+	// that set them accept them. Not documented. Evidence: black-box observation on macOS 10.14.4 and 26.7.3
+	// (tier 2). Test: tests/src/carbon_print_objects.c (test_quirk_validate_print_settings)
 	if ((settings->keys & kPMKeyCopies) && settings->copies == 0)
 	{
 		settings->copies = 1;
@@ -90,7 +91,7 @@ OSStatus PMSessionValidatePrintSettings(PMPrintSession printSession, PMPrintSett
 	{
 		struct __PMPrintSettings defaults;
 
-		memset(&defaults, sizeof(defaults));
+		memset(&defaults, 0, sizeof(defaults));
 		resetSettings(&defaults);
 		if (missing & kPMKeyCopies) settings->copies = defaults.copies;
 		if (missing & kPMKeyFirstPage) settings->first = defaults.first;
@@ -146,8 +147,10 @@ OSStatus PMCopyPrintSettings(PMPrintSettings settingsSrc, PMPrintSettings settin
 	return noErr;
 }
 
-// The call fails when the settings do not have the key: the settings made by PMCreatePrintSettings have
-// none until the defaults of a session or a call of the application sets them
+// QUIRK: the call fails when the settings do not have the key, and sets the value to zero: the settings made
+// by PMCreatePrintSettings have none until the defaults of a session or a call of the application sets them.
+// Not documented. Evidence: black-box observation on macOS 10.14.4 and 26.7.3 (tier 2).
+// Test: tests/src/carbon_print_objects.c (test_quirk_settings_keys)
 static OSStatus keyedValue(PMPrintSettings printSettings, void* value, UInt32 key, size_t size, struct __PMPrintSettings** settings)
 {
 	*settings = PMAsSettings(printSettings);
@@ -173,8 +176,9 @@ OSStatus PMGetCopies(PMPrintSettings printSettings, UInt32* copies)
 	return status;
 }
 
-// The number of copies is not checked: none (and then the validation of the settings makes it one) and a
-// lot are valid
+// QUIRK: the number of copies is not checked: none (and then the validation of the settings makes it
+// one) and a lot are accepted. Not documented. Evidence: black-box observation on macOS 10.14.4 and 26.7.3
+// (tier 2). Test: tests/src/carbon_print_objects.c (test_quirk_validate_print_settings)
 OSStatus PMSetCopies(PMPrintSettings printSettings, UInt32 copies, Boolean lock)
 {
 	struct __PMPrintSettings* settings = PMAsSettings(printSettings);
@@ -218,7 +222,7 @@ static void effectiveRange(const struct __PMPrintSettings* settings, UInt32* min
 // with kPMValueOutOfRange; the page range stays as it was when it is set (PMSetPageRange does not move
 // the first and last page), and a first page after the last one is accepted (the validation of the
 // settings resets them). Not documented. Evidence: black-box observation on macOS 10.14.4 and 26.7.3
-// (tier 2). Test: tests/src/printcore_session.c (test_quirk_first_last_in_range)
+// (tier 2). Test: tests/src/printcore_session.c (test_quirk_first_last_in_range, in tests/src/carbon_print_objects.c)
 OSStatus PMSetFirstPage(PMPrintSettings printSettings, UInt32 first, Boolean lock)
 {
 	struct __PMPrintSettings* settings = PMAsSettings(printSettings);

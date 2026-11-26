@@ -31,6 +31,13 @@
 #include <dispatch/dispatch.h>
 #include <dlfcn.h>
 
+// What the panels and the print info are asked (their classes are not known here)
+@interface NSObject (PrintPanels)
++ (id) pageLayout;
++ (id) printPanel;
+- (NSMutableDictionary*) dictionary;
+@end
+
 // The key under which PMSessionUseSheets keeps the window and the procedure in the session
 #define kSheetKey CFSTR("com.apple.print.sheet")
 
