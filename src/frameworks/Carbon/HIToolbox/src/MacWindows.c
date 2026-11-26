@@ -37,6 +37,7 @@
 #include "HIToolboxInternal.h"
 #include "HIToolboxPrivate.h"
 #include "ControlsInternal.h"
+#include "MenusInternal.h"
 #include <HIToolbox/HITheme.h>
 #include <CoreGraphics/CoreGraphicsPrivate.h>
 #include <CoreGraphics/CGSServerSPI.h>
@@ -2324,6 +2325,13 @@ const EventTypeSpec _HIStandardWindowEventTypes[kHIStandardWindowEventTypeCount]
 	{ kEventClassCommand, kEventCommandUpdateStatus },
 };
 
+static bool keyHasCommandModifier(EventRef event)
+{
+	UInt32 modifiers = 0;
+
+	return GetEventParameter(event, kEventParamKeyModifiers, typeUInt32, NULL, sizeof(modifiers), NULL, &modifiers) == noErr && (modifiers & cmdKey);
+}
+
 OSStatus _HIStandardWindowEventHandler(EventHandlerCallRef call, EventRef event, void* userData)
 {
 	OSType eventClass = GetEventClass(event);
@@ -2344,6 +2352,22 @@ OSStatus _HIStandardWindowEventHandler(EventHandlerCallRef call, EventRef event,
 	// application's own handler gets a command that the window did not handle (or when there is no active window).
 	if (eventClass == kEventClassKeyboard || eventClass == kEventClassCommand)
 	{
+		// QUIRK: the menu bar's Command-key equivalents are matched before the key event goes to the active
+		// window: a window handler that takes every raw key down as handled (one that returns the status of
+		// its GetEventParameter call, for example) does not keep the menu commands from running. Not
+		// documented as such. Evidence: inference (tier 5; the maintainer approved inference-tier quirks for
+		// the Carbon work): a sample application published by the platform vendor has such a window handler
+		// and its Command-key menu items work on macOS; the documented IsMenuKeyEvent checks a key event for
+		// a menu key equivalent, which puts the check in the dispatch of the event. A black-box confirmation
+		// on macOS is still to be recorded.
+		// Test: test_quirk_menu_key_before_window in tests/src/carbon_key_events.c
+		if ((kind == kEventRawKeyDown || kind == kEventRawKeyRepeat) && keyHasCommandModifier(event))
+		{
+			OSStatus result = _HIHandleKeyEquivalent(event);
+
+			if (result != eventNotHandledErr)
+				return result;
+		}
 		if (!g_activeWindow)
 			return eventNotHandledErr;
 		return SendEventToEventTargetWithOptions(event, g_activeWindow->target, kEventTargetDontPropagate);
