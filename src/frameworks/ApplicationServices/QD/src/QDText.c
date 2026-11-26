@@ -130,7 +130,10 @@ void GetFontInfo(FontInfo *info)
 void DrawText(const void *text, short firstByte, short byteCount)
 {
 	struct QDPort *p = text_port();
-	if (!p || !text || byteCount <= 0 || p->penVis < 0)
+	if (!p || !text || byteCount <= 0)
+		return;
+	QDRecordUnrecorded(p);   // a picture being recorded has no text opcodes (QDRecord.inc): count the call as left out
+	if (p->penVis < 0)
 		return;
 	CGContextRef ctx = NULL;
 	if (QDBeginCGContext((CGrafPtr) gCurrentPort, &ctx) != noErr || !ctx)
