@@ -32,7 +32,6 @@ DARLING_COMPONENTS = \
 	pyobjc \
 	ruby \
 	perl \
-	jsc_webkit_common \
 	jsc \
 	iosurface \
 	cli_dev_gui_stubs_common \
@@ -54,7 +53,6 @@ PACKAGE_SUFFIXES = \
 	pyobjc \
 	ruby \
 	perl \
-	jsc-webkit-common \
 	jsc \
 	iosurface \
 	cli-devenv-gui-stubs-common \
@@ -65,7 +63,7 @@ PACKAGE_SUFFIXES = \
 
 override_dh_auto_configure-indep:
 	mkdir debbuild -p
-	cd debbuild && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. $(CMAKE_COMMON) -DJSC_UNIFIED_BUILD=ON -DDARLING_SWIFT_WMO=ON "-DDARLING_ARCHS=$(DARLING_DEB_ARCHS)"
+	cd debbuild && CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS="" cmake .. $(CMAKE_COMMON) -DDARLING_SWIFT_WMO=ON "-DDARLING_ARCHS=$(DARLING_DEB_ARCHS)"
 
 override_dh_auto_configure-arch:
 	mkdir debbuild-native -p

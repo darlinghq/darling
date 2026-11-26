@@ -20,6 +20,7 @@
 #ifndef _QUICKLOOKUI_H_
 #define _QUICKLOOKUI_H_
 
+#import <QuickLookUI/QLPreviewItem.h>
 #import <QuickLookUI/QLPreviewPanel.h>
 #import <QuickLookUI/QLPreviewView.h>
 

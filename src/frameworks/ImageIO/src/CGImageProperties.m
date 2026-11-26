@@ -66,6 +66,14 @@ const CFStringRef kCGImagePropertyGPSLongitudeRef = CFSTR("LongitudeRef");
 const CFStringRef kCGImagePropertyExifDateTimeOriginal = CFSTR("DateTimeOriginal");
 const CFStringRef kCGImagePropertyExifOffsetTimeOriginal = CFSTR("OffsetTimeOriginal");
 const CFStringRef kCGImagePropertyExifUserComment = CFSTR("UserComment");
+// The keys of the TIFF and Exif tags they hold (TIFF 6.0 tag ResolutionUnit,
+// Exif 2.3 tags PixelXDimension and PixelYDimension), and the WebP
+// dictionary, named like the other format dictionaries ("{GIF}", "{PNG}").
+// Inferred from that naming, not read on macOS.
+const CFStringRef kCGImagePropertyTIFFResolutionUnit = CFSTR("ResolutionUnit");
+const CFStringRef kCGImagePropertyExifPixelXDimension = CFSTR("PixelXDimension");
+const CFStringRef kCGImagePropertyExifPixelYDimension = CFSTR("PixelYDimension");
+const CFStringRef kCGImagePropertyWebPDictionary = CFSTR("{WebP}");
 const CFStringRef kCGImagePropertyHEICSDictionary = CFSTR("{HEICS}");
 const CFStringRef kCGImagePropertyHEICSDelayTime = CFSTR("DelayTime");
 const CFStringRef kCGImagePropertyHEICSUnclampedDelayTime = CFSTR("UnclampedDelayTime");

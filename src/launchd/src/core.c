@@ -877,6 +877,7 @@ void eliminate_double_reboot(void);
 
 #pragma mark Process Domain Forward Declarations
 static void job_domain_setup(job_t j);
+static int job_domain_add_services(job_t j, const char *servicesdir);
 static void job_domain_teardown(job_t j);
 static struct machservice *job_domain_lookup_service(job_t j, const char *name);
 
@@ -896,6 +897,7 @@ static int xpc_event_provider_set_state(job_t j, xpc_object_t request, xpc_objec
 
 #pragma mark XPC Process Forward Declarations
 static int xpc_process_set_jetsam_band(job_t j, xpc_object_t request, xpc_object_t *reply);
+static int xpc_process_add_services_directory(job_t j, xpc_object_t request, xpc_object_t *reply);
 static int xpc_process_set_jetsam_memory_limit(job_t j, xpc_object_t request, xpc_object_t *reply);
 
 // file local globals
@@ -6154,6 +6156,14 @@ job_useless(job_t j)
 	} else if (j->removal_pending) {
 		job_log(j, LOG_DEBUG, "Exited while removal was pending.");
 		return true;
+	} else if (j->dedicated_instance && j->domain_owner && j->start_time != 0) {
+		/* An instance of an application's XPC service ends with its process:
+		 * the connections to it become invalid, and a later lookup of the same
+		 * instance starts a new one (macOS 26.7.3; libxpc test
+		 * framework-xpc-instances.c).
+		 */
+		job_log(j, LOG_DEBUG, "Instance exited.");
+		return true;
 	} else if (j->shutdown_monitor) {
 		return false;
 	} else if (j->mgr->shutting_down && !j->mgr->parentmgr) {
@@ -10745,12 +10755,23 @@ job_domain_add_service(job_t owner, const char *servicesdir, const char *bundlen
 	sj->mach_uid = uid;
 
 	mach_port_t port = MACH_PORT_NULL;
-	if (!machservice_new(sj, ident, &port, false)) {
+	struct machservice *ms = machservice_new(sj, ident, &port, false);
+	if (!ms) {
 		job_remove(sj);
 		goto out;
 	}
+	// Declared by the bundle, like a MachServices entry of a job plist; a
+	// new instance of the job gets its own port for it.
+	ms->upfront = true;
 
-	job_log(sj, LOG_DEBUG, "Registered XPC service %s for PID %d", ident, owner->p);
+	/* A service that declares multiple instances runs a process for each
+	 * instance UUID that clients look it up with (BOOTSTRAP_SPECIFIC_INSTANCE),
+	 * as on macOS 26.7.3 (libxpc test framework-xpc-instances.c).
+	 */
+	xpc_object_t multiple = xpc_dictionary_get_value(svc, "_MultipleInstances");
+	sj->multiple_instances = multiple && xpc_get_type(multiple) == XPC_TYPE_BOOL && xpc_bool_get_value(multiple);
+
+	job_log(sj, LOG_DEBUG, "Registered XPC service %s for PID %d%s", ident, owner->p, sj->multiple_instances ? " (multiple instances)" : "");
 	(void)job_dispatch(sj, false);
 
 out:
@@ -10785,15 +10806,24 @@ job_domain_setup(job_t j)
 		return;
 	}
 
+	(void)job_domain_add_services(j, servicesdir);
+}
+
+/* Imports the XPC service bundles in a directory into the domain of the
+ * process of `j`. A service already in the domain is left as it is.
+ */
+static int
+job_domain_add_services(job_t j, const char *servicesdir)
+{
 	DIR *dir = opendir(servicesdir);
 	if (!dir) {
-		return;
+		return errno;
 	}
 
 	struct proc_bsdshortinfo proc;
 	if (proc_pidinfo(j->p, PROC_PIDT_SHORTBSDINFO, 1, &proc, PROC_PIDT_SHORTBSDINFO_SIZE) <= 0) {
 		(void)closedir(dir);
-		return;
+		return ESRCH;
 	}
 
 	struct dirent *de;
@@ -10804,6 +10834,7 @@ job_domain_setup(job_t j)
 		}
 	}
 	(void)closedir(dir);
+	return 0;
 }
 
 void
@@ -11729,6 +11760,38 @@ xpc_process_service_kill(job_t j, xpc_object_t request, xpc_object_t *reply)
 #endif
 }
 
+/* The XPC services of a bundle that a process has loaded, such as a framework
+ * with an XPCServices directory, join the domain of that process: libxpc sends
+ * the directory (XPC_PROCESS_ROUTINE_KEY_PATH) when it finds the bundle loaded.
+ */
+static int
+xpc_process_add_services_directory(job_t j, xpc_object_t request, xpc_object_t *reply)
+{
+	if (!j || j->p <= 0 || j->domain_owner) {
+		return EPERM;
+	}
+
+	const char *path = xpc_dictionary_get_string(request, XPC_PROCESS_ROUTINE_KEY_PATH);
+	if (!path || path[0] != '/') {
+		return EINVAL;
+	}
+
+	// The services of the process's own application come first.
+	job_domain_setup(j);
+	int error = job_domain_add_services(j, path);
+	if (error) {
+		return error;
+	}
+
+	xpc_object_t reply2 = xpc_dictionary_create_reply(request);
+	if (!reply2) {
+		return EINVAL;
+	}
+	xpc_dictionary_set_uint64(reply2, XPC_PROCESS_ROUTINE_KEY_ERROR, 0);
+	*reply = reply2;
+	return 0;
+}
+
 bool
 xpc_process_demux(mach_port_t p, xpc_object_t request, xpc_object_t *reply)
 {
@@ -11767,6 +11830,9 @@ xpc_process_demux(mach_port_t p, xpc_object_t request, xpc_object_t *reply)
 		break;
 	case XPC_PROCESS_SERVICE_KILL:
 		error = xpc_process_service_kill(j, request, reply);
+		break;
+	case XPC_PROCESS_ADD_SERVICES_DIRECTORY:
+		error = xpc_process_add_services_directory(j, request, reply);
 		break;
 	default:
 		job_log(j, LOG_ERR, "Bogus process opcode.");

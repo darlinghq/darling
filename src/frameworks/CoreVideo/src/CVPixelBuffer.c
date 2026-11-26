@@ -120,6 +120,8 @@ static const struct __CVFormat formats[] = {
 	{ 'yuvs', 0, { 2 }, { 1 }, { 1 } },
 	{ '420v', 2, { 1, 2 }, { 1, 2 }, { 1, 2 } },
 	{ '420f', 2, { 1, 2 }, { 1, 2 }, { 1, 2 } },
+	{ '422v', 2, { 1, 2 }, { 1, 2 }, { 1, 1 } },
+	{ '422f', 2, { 1, 2 }, { 1, 2 }, { 1, 1 } },
 	{ 'y420', 3, { 1, 1, 1 }, { 1, 2, 2 }, { 1, 2, 2 } },
 };
 
@@ -218,6 +220,14 @@ static void layoutFromSurface(struct __CVBuffer* buffer, const struct __CVFormat
 		buffer->planes[i].bytesPerRow = IOSurfaceGetBytesPerRowOfPlane(buffer->surface, i);
 		buffer->planes[i].offset = base ? (size_t) ((uint8_t*) IOSurfaceGetBaseAddressOfPlane(buffer->surface, i) - base) : 0;
 	}
+}
+
+// Darling has no hardware that stores compressed pixel formats, so none is available.
+// macOS 26.7.3 on x86_64 answers the same way (test corevideo-compressed-pixel-format.c).
+Boolean CVIsCompressedPixelFormatAvailable(OSType pixelFormatType)
+{
+	(void) pixelFormatType;
+	return false;
 }
 
 CVReturn CVPixelBufferCreate(CFAllocatorRef allocator, size_t width, size_t height, OSType pixelFormatType,

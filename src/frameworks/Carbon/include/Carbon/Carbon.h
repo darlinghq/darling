@@ -47,7 +47,13 @@
 #include <HIToolbox/TextEdit.h>
 #include <HIToolbox/TextInputSources.h>
 #include <HIToolbox/TextServices.h>
+// Only OpenScripting's registry of AppleScript constants: the rest of
+// Darling's OpenScripting.h declares its functions with placeholder types.
+#include <OpenScripting/ASRegistry.h>
 
 #include <CarbonSound/CarbonSound.h>
+#include <CommonPanels/CommonPanels.h>
+#include <Print/Print.h>
+#include <NavigationServices/NavigationServices.h>
 
 #endif

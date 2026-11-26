@@ -372,6 +372,14 @@ int _qtn_proc_init_with_self(qtn_proc_t proc)
 	return QTN_NOT_QUARANTINED;
 }
 
+// Resets the state to that of a fresh download: the download flag (0x0001) alone, whatever
+// was set before (observed on macOS 26.7.3). Test: tests/quarantine-proc-init.c.
+void _qtn_proc_init(qtn_proc_t proc)
+{
+	if (proc)
+		proc->flags = 0x0001; // the download flag
+}
+
 int _qtn_proc_init_with_data(qtn_proc_t proc, void* data, size_t data_len)
 {
 	return 0;

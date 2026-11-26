@@ -272,6 +272,25 @@ ICCDisplayProfileSpec ICCNamedProfileSpec(ICCNamedProfile which)
 				.isGray = true,
 				.curve = { 0, { 2.2 } },
 			};
+		// Generic RGB and Generic Gray: no standard defines them. Black-box observation (tier 2) of macOS 26.7.3 and 10.14.4
+		// (ColorSyncProfileCopyTag numbers, and CGColor conversions into sRGB and XYZ): the primaries are the chromaticities
+		// below, the white is D65, the curve is a power of 1.8 (the profiles of macOS store it as the u8Fixed8 number 1.80078)
+		// and the colorants are the primaries adapted from D65 to D50 by the Bradford transform; the gray one is the same
+		// power on the neutral axis. The colorants of macOS follow from these chromaticities to within 1e-5 once its
+		// chromatic adaptation matrix is applied backwards. Test: tests/src/colorsync_generic_rgb.c.
+		case ICCNamedGenericRGB:
+			return (ICCDisplayProfileSpec) {
+				.description = "Generic RGB Profile",
+				.primaries = { { 0.630, 0.340 }, { 0.295, 0.605 }, { 0.155, 0.077 } },
+				.white = d65,
+				.curve = { 0, { 1.8 } },
+			};
+		case ICCNamedGenericGray:
+			return (ICCDisplayProfileSpec) {
+				.description = "Generic Gray Profile",
+				.isGray = true,
+				.curve = { 0, { 1.8 } },
+			};
 		case ICCNamedSRGB:
 			return (ICCDisplayProfileSpec) {
 				.description = "sRGB IEC61966-2.1",

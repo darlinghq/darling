@@ -1538,6 +1538,12 @@ Boolean VTIsHardwareDecodeSupported(CMVideoCodecType codecType)
 	return false;
 }
 
+// Darling has no MV-HEVC decoder (test videotoolbox-stereo-mvhevc-decode.c).
+Boolean VTIsStereoMVHEVCDecodeSupported(void)
+{
+	return false;
+}
+
 #pragma mark - Pixel Transfer Stubs
 
 OSStatus VTPixelTransferSessionCreate(CFAllocatorRef allocator, VTPixelTransferSessionRef *pixelTransferSessionOut)

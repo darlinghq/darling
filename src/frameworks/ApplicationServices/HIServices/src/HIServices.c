@@ -136,57 +136,9 @@ void* AXSerializeCFType(void)
     return NULL;
 }
 
-void* AXTextMarkerCreate(void)
-{
-    if (verbose) puts("STUB: AXTextMarkerCreate called");
-    return NULL;
-}
-
-void* AXTextMarkerGetBytePtr(void)
-{
-    if (verbose) puts("STUB: AXTextMarkerGetBytePtr called");
-    return NULL;
-}
-
-void* AXTextMarkerGetLength(void)
-{
-    if (verbose) puts("STUB: AXTextMarkerGetLength called");
-    return NULL;
-}
-
-void* AXTextMarkerGetTypeID(void)
-{
-    if (verbose) puts("STUB: AXTextMarkerGetTypeID called");
-    return NULL;
-}
-
-void* AXTextMarkerRangeCopyEndMarker(void)
-{
-    if (verbose) puts("STUB: AXTextMarkerRangeCopyEndMarker called");
-    return NULL;
-}
-
-void* AXTextMarkerRangeCopyStartMarker(void)
-{
-    if (verbose) puts("STUB: AXTextMarkerRangeCopyStartMarker called");
-    return NULL;
-}
-
-void* AXTextMarkerRangeCreate(void)
-{
-    if (verbose) puts("STUB: AXTextMarkerRangeCreate called");
-    return NULL;
-}
-
 void* AXTextMarkerRangeCreateWithBytes(void)
 {
     if (verbose) puts("STUB: AXTextMarkerRangeCreateWithBytes called");
-    return NULL;
-}
-
-void* AXTextMarkerRangeGetTypeID(void)
-{
-    if (verbose) puts("STUB: AXTextMarkerRangeGetTypeID called");
     return NULL;
 }
 
@@ -2203,18 +2155,6 @@ void* TranslationPerformForFile(void)
 void* TranslationPerformForURL(void)
 {
     if (verbose) puts("STUB: TranslationPerformForURL called");
-    return NULL;
-}
-
-void* UAZoomChangeFocus(void)
-{
-    if (verbose) puts("STUB: UAZoomChangeFocus called");
-    return NULL;
-}
-
-void* UAZoomEnabled(void)
-{
-    if (verbose) puts("STUB: UAZoomEnabled called");
     return NULL;
 }
 

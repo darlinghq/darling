@@ -141,6 +141,22 @@ static int layerOfClass(WindowClass cls)
 	}
 }
 
+// The level the window system stacks a window of the class at: floating windows are in front of the
+// document windows, the windows of a modal class in front of those. The window system that has a say
+// in the stacking of windows (see CGSSetWindowLevel) takes these.
+static CGWindowLevel levelOfClass(WindowClass cls)
+{
+	switch (layerOfClass(cls))
+	{
+		case 1:
+			return kCGFloatingWindowLevel;
+		case 2:
+			return kCGModalPanelWindowLevel;
+		default:
+			return kCGNormalWindowLevel;
+	}
+}
+
 static bool isFloating(WindowRef window)
 {
 	return layerOfClass(window->windowClass) == 1;
@@ -757,6 +773,7 @@ OSStatus CreateNewWindow(WindowClass cls, WindowAttributes attr, const Rect* rec
 	window->controlsDirty = CGRectNull;
 
 	_CGSWindowSetStyle(connection(), wid, style);
+	CGSSetWindowLevel(connection(), wid, levelOfClass(cls));
 
 #ifndef __LP64__
 	// The window's port holds its pixels: transparent for an overlay, white otherwise
@@ -2304,6 +2321,8 @@ const EventTypeSpec _HIStandardWindowEventTypes[kHIStandardWindowEventTypeCount]
 	{ kEventClassWindow, kEventWindowBoundsChanged },
 	{ kEventClassWindow, kEventWindowShown },
 	{ kEventClassWindow, kEventWindowHidden },
+	{ kEventClassCommand, kEventCommandProcess },
+	{ kEventClassCommand, kEventCommandUpdateStatus },
 };
 
 static bool keyHasCommandModifier(EventRef event)
@@ -2329,7 +2348,9 @@ OSStatus _HIStandardWindowEventHandler(EventHandlerCallRef call, EventRef event,
 		return SendEventToEventTargetWithOptions(event, window->target, kEventTargetDontPropagate);
 	}
 
-	if (eventClass == kEventClassKeyboard)
+	// Keys and commands (those of the menus, ProcessHICommand()) go to the user focus: the active window. The
+	// application's own handler gets a command that the window did not handle (or when there is no active window).
+	if (eventClass == kEventClassKeyboard || eventClass == kEventClassCommand)
 	{
 		// QUIRK: the menu bar's Command-key equivalents are matched before the key event goes to the active
 		// window: a window handler that takes every raw key down as handled (one that returns the status of

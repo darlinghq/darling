@@ -98,6 +98,7 @@ enum {
   kVK_Space                     = 0x31,
   kVK_Delete                    = 0x33,
   kVK_Escape                    = 0x35,
+  kVK_RightCommand              = 0x36,
   kVK_Command                   = 0x37,
   kVK_Shift                     = 0x38,
   kVK_CapsLock                  = 0x39,
@@ -140,6 +141,20 @@ enum {
   kVK_RightArrow                = 0x7C,
   kVK_DownArrow                 = 0x7D,
   kVK_UpArrow                   = 0x7E
+};
+
+// keys found only on ISO keyboards
+enum {
+  kVK_ISO_Section               = 0x0A
+};
+
+// keys found only on JIS keyboards
+enum {
+  kVK_JIS_Yen                   = 0x5D,
+  kVK_JIS_Underscore            = 0x5E,
+  kVK_JIS_KeypadComma           = 0x5F,
+  kVK_JIS_Eisu                  = 0x66,
+  kVK_JIS_Kana                  = 0x68
 };
 
 typedef UInt16 EventModifiers;
@@ -199,6 +214,39 @@ Boolean IsCmdChar(const EventRecord* event, short test);
 // an accent followed by a character that does not combine with it) and the character in bits 0-7;
 // *state holds the dead-key state, 0 when no accent is pending.
 UInt32 KeyTranslate(const void* transData, UInt16 keycode, UInt32* state);
+// The character codes of the keys that do not produce a printable character
+enum {
+	kNullCharCode = 0,
+	kHomeCharCode = 1,
+	kEnterCharCode = 3,
+	kEndCharCode = 4,
+	kHelpCharCode = 5,
+	kBellCharCode = 7,
+	kBackspaceCharCode = 8,
+	kTabCharCode = 9,
+	kLineFeedCharCode = 10,
+	kVerticalTabCharCode = 11,
+	kPageUpCharCode = 11,
+	kFormFeedCharCode = 12,
+	kPageDownCharCode = 12,
+	kReturnCharCode = 13,
+	kFunctionKeyCharCode = 16,
+	kCommandCharCode = 17,
+	kCheckCharCode = 18,
+	kDiamondCharCode = 19,
+	kAppleLogoCharCode = 20,
+	kEscapeCharCode = 27,
+	kClearCharCode = 27,
+	kLeftArrowCharCode = 28,
+	kRightArrowCharCode = 29,
+	kUpArrowCharCode = 30,
+	kDownArrowCharCode = 31,
+	kSpaceCharCode = 32,
+	kDeleteCharCode = 127,
+	kBulletCharCode = 165,
+	kNonBreakingSpaceCharCode = 202
+};
+
 // Returns true if a Command-period or Escape is pending in the event queue.
 Boolean CheckEventQueueForUserCancel(void);
 
