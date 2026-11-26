@@ -2,7 +2,7 @@
 //
 // ModalDialog() with keys typed by a user: a harness (carbon_dialog_user.py) acts as the user and types Return into
 // the first dialog and Escape into the second. The documented contract (Dialog Manager): Return hits the default
-// item, Escape (and Command-period) the cancel item, and ModalDialog() returns the item hit. The dialog has an OK
+// item, Escape (and Command-period) the cancel item set with SetDialogCancelItem(), and ModalDialog() returns the item hit. The dialog has an OK
 // button (the default item, 1) and a Cancel button (2).
 //
 //   hitoolbox_dialog_modal_keys
@@ -85,7 +85,8 @@ static void runDialog(int number, DialogItemIndex expected)
 	CHECK(dialog != NULL);
 	if (!dialog)
 		return;
-	CHECK(GetDialogDefaultItem(dialog) == 1 && GetDialogCancelItem(dialog) == 2);
+	CHECK(GetDialogDefaultItem(dialog) == 1);
+	CHECK(SetDialogCancelItem(dialog, 2) == noErr);
 	ShowWindow(GetDialogWindow(dialog));
 	SelectWindow(GetDialogWindow(dialog));
 	printf("DIALOG_READY %d\n", number);
