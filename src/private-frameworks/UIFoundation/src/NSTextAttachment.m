@@ -48,16 +48,19 @@ static NSMutableDictionary *attachmentClasses;
 }
 
 + (Class) textAttachmentClassForFileType: (NSString *) fileType {
+    if (fileType == nil)
+        return Nil;
     @synchronized([NSTextAttachment class]) {
         return [attachmentClasses objectForKey: fileType];
     }
 }
 
+// QUIRK: the class is not checked to be a subclass of NSTextAttachment: any class is stored and returned, and a Nil
+// class or a nil file type is ignored without raising. Not documented. Evidence: black-box run on macOS 26.7.3
+// (tier 2). Test: tests/nstextattachment-class-registry.m
 + (void) registerTextAttachmentClass: (Class) attachmentClass forFileType: (NSString *) fileType {
-    // GUESS: rejecting a class that is not a text attachment is not documented.
-    if (![attachmentClass isSubclassOfClass: [NSTextAttachment class]])
-        [NSException raise: NSInvalidArgumentException
-                    format: @"%@ is not a subclass of NSTextAttachment", attachmentClass];
+    if (attachmentClass == Nil || fileType == nil)
+        return;
     @synchronized([NSTextAttachment class]) {
         if (attachmentClasses == nil)
             attachmentClasses = [[NSMutableDictionary alloc] init];
