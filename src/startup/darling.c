@@ -46,6 +46,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "darling.h"
 #include "darling-config.h"
 #include "launcher-env.h"
+#include "launcher-hostlink.h"
 #include "launcher-ids.h"
 #include "launcher-locale.h"
 #include "launcher-mode.h"
@@ -265,6 +266,30 @@ int main(int argc, char ** argv)
 	ensureZoneinfoLink();
 	ensureGlobalPreferences();
 	ensureSharedTmpModes();
+
+	// Services that live on the host are only visible in the guest when the
+	// launcher points their guest path at the host file. Do this before the
+	// server starts, so daemons and applications see the same set of links.
+	// A host without one of these files keeps its own guest path, if any.
+	if (getInitProcess() == 0)
+	{
+		bool krb5ConfigLinked;
+
+		useInvokingIds();
+		launcherLinkHostSocket(prefix, "/var/run/.heim_org.h5l.kcm-socket",
+			"/var/run/.heim_org.h5l.kcm-socket");
+		launcherLinkHostSocket(prefix, "/var/run/.heim_org.h5l.kcm-socket",
+			"/private/var/run/.heim_org.h5l.kcm-socket");
+		launcherLinkHostSocket(prefix, "/run/cups/cups.sock", "/private/var/run/cupsd");
+		launcherLinkHostSocket(prefix, "/run/cups/cups.sock", "/var/run/cupsd");
+		krb5ConfigLinked = launcherLinkHostKrb5Config(prefix, getenv("KRB5_CONFIG"));
+		restoreRootIds();
+
+		// $KRB5_CONFIG from the host names a host path, which is not the path
+		// guest programs should open. Name the mapped guest file instead.
+		if (krb5ConfigLinked)
+			setenv("KRB5_CONFIG", "/etc/krb5.conf", 1);
+	}
 
 	// The container's programs have the guest's HOME, so the PulseAudio client library cannot find the
 	// host user's server by itself on a host without XDG_RUNTIME_DIR. Name the host's locations for it.

@@ -63,6 +63,9 @@ static const char* const serverEnvAllowlist[] = {
 	"PULSE_SERVER",
 	"PULSE_RUNTIME_PATH",
 	"PULSE_COOKIE",
+	// Kerberos configuration selected by the launcher (or by the user) as a
+	// guest path; the file itself is read later with the user's ids.
+	"KRB5_CONFIG",
 };
 
 bool launcherEnvEntryIs(const char* entry, const char* name)

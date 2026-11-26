@@ -60,6 +60,7 @@ static char* g_userEnv[] = {
 	"PULSE_SERVER=unix:/run/user/1000/pulse/native",
 	"PULSE_RUNTIME_PATH=/tmp/pulse-abc",
 	"PULSE_COOKIE=/home/user/.config/pulse/cookie",
+	"KRB5_CONFIG=/home/user/krb5.conf",
 	"PULSE_SINK=evil",
 	"DISPLAYS=:1",
 	"DSERVER_WAIT4DEBUGGER=1",
@@ -119,8 +120,9 @@ static void test_restricted(void)
 	CHECK(indexOf(env, "PULSE_SERVER=unix:/run/user/1000/pulse/native") == 15);
 	CHECK(indexOf(env, "PULSE_RUNTIME_PATH=/tmp/pulse-abc") == 16);
 	CHECK(indexOf(env, "PULSE_COOKIE=/home/user/.config/pulse/cookie") == 17);
+	CHECK(indexOf(env, "KRB5_CONFIG=/home/user/krb5.conf") == 18);
 	CHECK(!hasName(env, "PULSE_SINK"));
-	CHECK(countOf(env) == 18);
+	CHECK(countOf(env) == 19);
 	CHECK(!hasName(env, "DISPLAYS"));
 
 	// In particular, none of these.
@@ -162,6 +164,7 @@ static void test_guest(void)
 	CHECK(launcherGuestMayGet("DYLD_LIBRARY_PATH=/usr/local/lib"));
 	CHECK(launcherGuestMayGet("LD_LIBRARY_PATHS=/x"));
 	CHECK(launcherGuestMayGet("MY_LD_PRELOAD=/x"));
+	CHECK(launcherGuestMayGet("KRB5_CONFIG=/etc/krb5.conf"));
 
 	CHECK(!launcherGuestMayGet("LD_LIBRARY_PATH=/home/user/lib"));
 	CHECK(!launcherGuestMayGet("LD_LIBRARY_PATH="));
