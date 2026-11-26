@@ -24,7 +24,6 @@
 #include <simd/packed.h>
 #include <simd/vector_make.h>
 #include <simd/logic.h>
-#include <simd/math.h>
 #include <simd/common.h>
 #include <simd/geometry.h>
 #include <simd/conversion.h>

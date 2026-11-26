@@ -22,68 +22,90 @@
 
 #include <simd/base.h>
 #include <simd/vector_types.h>
-#include <stdbool.h>
-
-#ifdef __cplusplus
-typedef bool simd_bool;
-#else
-typedef _Bool simd_bool;
-#endif
 
 /*
- * Logical and bitwise functions on vectors:
- * simd_all, simd_any, simd_select, simd_bitselect.
+ * Logical and bitwise functions on vectors (the documented simd contract):
+ *   simd_all(x)                 true if the high bit of every lane of an integer vector is set
+ *   simd_any(x)                 true if the high bit of any lane is set
+ *   simd_bitselect(x, y, mask)  for each bit, the bit of y where the mask bit is 1, else the bit of x
+ *   simd_select(x, y, mask)     for each lane of a float or double vector, the lane of y where the high
+ *                               bit of the integer mask lane is set, else the lane of x
  */
 
-#define SIMD_LOGIC_ALL_ANY(V, N)                                               \
-SIMD_FN simd_bool simd_all(V x) {                                              \
-    return __builtin_reduce_and(__builtin_convertvector(x < 0, V)) != 0;      \
-}                                                                              \
-SIMD_FN simd_bool simd_any(V x) {                                              \
-    return __builtin_reduce_or(__builtin_convertvector(x < 0, V)) != 0;       \
+#define SIMD_LOGIC_ALL_ANY(V, S, N)                                           \
+SIMD_FN simd_bool simd_all(V x) {                                             \
+    S s = (S)x;                                                               \
+    return __builtin_reduce_and(s < 0) != 0;                                  \
+}                                                                             \
+SIMD_FN simd_bool simd_any(V x) {                                             \
+    S s = (S)x;                                                               \
+    return __builtin_reduce_or(s < 0) != 0;                                   \
 }
 
-#define SIMD_LOGIC_FAMILY(NAME) \
-    SIMD_LOGIC_ALL_ANY(simd_##NAME##2, 2) \
-    SIMD_LOGIC_ALL_ANY(simd_##NAME##3, 3) \
-    SIMD_LOGIC_ALL_ANY(simd_##NAME##4, 4)
+#define SIMD_LOGIC_SIGNED(NAME, N) SIMD_LOGIC_ALL_ANY(simd_##NAME##N, simd_##NAME##N, N)
+#define SIMD_LOGIC_UNSIGNED(UNAME, NAME, N) SIMD_LOGIC_ALL_ANY(simd_##UNAME##N, simd_##NAME##N, N)
 
-SIMD_LOGIC_FAMILY(char)
-SIMD_LOGIC_FAMILY(short)
-SIMD_LOGIC_FAMILY(int)
-SIMD_LOGIC_FAMILY(long)
 
-#undef SIMD_LOGIC_FAMILY
+SIMD_LOGIC_SIGNED(char, 2) SIMD_LOGIC_SIGNED(char, 3) SIMD_LOGIC_SIGNED(char, 4) SIMD_LOGIC_SIGNED(char, 8)
+SIMD_LOGIC_SIGNED(char, 16) SIMD_LOGIC_SIGNED(char, 32) SIMD_LOGIC_SIGNED(char, 64)
+SIMD_LOGIC_UNSIGNED(uchar, char, 2) SIMD_LOGIC_UNSIGNED(uchar, char, 3) SIMD_LOGIC_UNSIGNED(uchar, char, 4)
+SIMD_LOGIC_UNSIGNED(uchar, char, 8) SIMD_LOGIC_UNSIGNED(uchar, char, 16) SIMD_LOGIC_UNSIGNED(uchar, char, 32)
+SIMD_LOGIC_UNSIGNED(uchar, char, 64)
+SIMD_LOGIC_SIGNED(short, 2) SIMD_LOGIC_SIGNED(short, 3) SIMD_LOGIC_SIGNED(short, 4) SIMD_LOGIC_SIGNED(short, 8)
+SIMD_LOGIC_SIGNED(short, 16) SIMD_LOGIC_SIGNED(short, 32)
+SIMD_LOGIC_UNSIGNED(ushort, short, 2) SIMD_LOGIC_UNSIGNED(ushort, short, 3) SIMD_LOGIC_UNSIGNED(ushort, short, 4)
+SIMD_LOGIC_UNSIGNED(ushort, short, 8) SIMD_LOGIC_UNSIGNED(ushort, short, 16) SIMD_LOGIC_UNSIGNED(ushort, short, 32)
+SIMD_LOGIC_SIGNED(int, 2) SIMD_LOGIC_SIGNED(int, 3) SIMD_LOGIC_SIGNED(int, 4) SIMD_LOGIC_SIGNED(int, 8)
+SIMD_LOGIC_SIGNED(int, 16)
+SIMD_LOGIC_UNSIGNED(uint, int, 2) SIMD_LOGIC_UNSIGNED(uint, int, 3) SIMD_LOGIC_UNSIGNED(uint, int, 4)
+SIMD_LOGIC_UNSIGNED(uint, int, 8) SIMD_LOGIC_UNSIGNED(uint, int, 16)
+SIMD_LOGIC_SIGNED(long, 2) SIMD_LOGIC_SIGNED(long, 3) SIMD_LOGIC_SIGNED(long, 4) SIMD_LOGIC_SIGNED(long, 8)
+SIMD_LOGIC_UNSIGNED(ulong, long, 2) SIMD_LOGIC_UNSIGNED(ulong, long, 3) SIMD_LOGIC_UNSIGNED(ulong, long, 4)
+SIMD_LOGIC_UNSIGNED(ulong, long, 8)
+
+#undef SIMD_LOGIC_UNSIGNED
+#undef SIMD_LOGIC_SIGNED
 #undef SIMD_LOGIC_ALL_ANY
 
+/* Integer vectors: x and y are the operands, mask picks bits of y. */
 #define SIMD_BITSELECT(V) \
-SIMD_FN V simd_bitselect(V mask, V a, V b) { return (a & mask) | (b & ~mask); }
+SIMD_FN V simd_bitselect(V x, V y, V mask) { return (x & ~mask) | (y & mask); }
 
-SIMD_BITSELECT(simd_char2)
-SIMD_BITSELECT(simd_char3)
-SIMD_BITSELECT(simd_char4)
-SIMD_BITSELECT(simd_uchar2)
-SIMD_BITSELECT(simd_uchar3)
-SIMD_BITSELECT(simd_uchar4)
-SIMD_BITSELECT(simd_short2)
-SIMD_BITSELECT(simd_short3)
-SIMD_BITSELECT(simd_short4)
-SIMD_BITSELECT(simd_ushort2)
-SIMD_BITSELECT(simd_ushort3)
-SIMD_BITSELECT(simd_ushort4)
-SIMD_BITSELECT(simd_int2)
-SIMD_BITSELECT(simd_int3)
-SIMD_BITSELECT(simd_int4)
-SIMD_BITSELECT(simd_uint2)
-SIMD_BITSELECT(simd_uint3)
-SIMD_BITSELECT(simd_uint4)
-SIMD_BITSELECT(simd_long2)
-SIMD_BITSELECT(simd_long3)
-SIMD_BITSELECT(simd_long4)
-SIMD_BITSELECT(simd_ulong2)
-SIMD_BITSELECT(simd_ulong3)
-SIMD_BITSELECT(simd_ulong4)
+#define SIMD_BITSELECT_SIZES(NAME) \
+    SIMD_BITSELECT(simd_##NAME##2) SIMD_BITSELECT(simd_##NAME##3) SIMD_BITSELECT(simd_##NAME##4) \
+    SIMD_BITSELECT(simd_##NAME##8)
 
+SIMD_BITSELECT_SIZES(char) SIMD_BITSELECT(simd_char16) SIMD_BITSELECT(simd_char32) SIMD_BITSELECT(simd_char64)
+SIMD_BITSELECT_SIZES(uchar) SIMD_BITSELECT(simd_uchar16) SIMD_BITSELECT(simd_uchar32) SIMD_BITSELECT(simd_uchar64)
+SIMD_BITSELECT_SIZES(short) SIMD_BITSELECT(simd_short16) SIMD_BITSELECT(simd_short32)
+SIMD_BITSELECT_SIZES(ushort) SIMD_BITSELECT(simd_ushort16) SIMD_BITSELECT(simd_ushort32)
+SIMD_BITSELECT_SIZES(int) SIMD_BITSELECT(simd_int16)
+SIMD_BITSELECT_SIZES(uint) SIMD_BITSELECT(simd_uint16)
+SIMD_BITSELECT_SIZES(long)
+SIMD_BITSELECT_SIZES(ulong)
+
+#undef SIMD_BITSELECT_SIZES
 #undef SIMD_BITSELECT
+
+/* Float and double vectors: the mask is an integer vector of the same lane width. */
+#define SIMD_SELECT(V, M, I) \
+SIMD_FN V simd_select(V x, V y, M mask) { \
+    return __builtin_bit_cast(V, simd_bitselect(__builtin_bit_cast(I, x), __builtin_bit_cast(I, y), (I)(mask < 0))); \
+}
+
+SIMD_SELECT(simd_float2, simd_int2, simd_int2)
+SIMD_SELECT(simd_float3, simd_int3, simd_int3)
+SIMD_SELECT(simd_float4, simd_int4, simd_int4)
+SIMD_SELECT(simd_float8, simd_int8, simd_int8)
+SIMD_SELECT(simd_float16, simd_int16, simd_int16)
+/* simd_long is a 64-bit lane type only where long is 64 bits wide. */
+#ifdef __LP64__
+SIMD_SELECT(simd_double2, simd_long2, simd_long2)
+SIMD_SELECT(simd_double3, simd_long3, simd_long3)
+SIMD_SELECT(simd_double4, simd_long4, simd_long4)
+SIMD_SELECT(simd_double8, simd_long8, simd_long8)
+#endif
+
+#undef SIMD_SELECT
 
 #endif
