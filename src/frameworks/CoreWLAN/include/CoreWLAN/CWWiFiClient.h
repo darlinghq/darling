@@ -19,6 +19,14 @@
 
 #include <Foundation/Foundation.h>
 
+@class CWInterface;
+
 @interface CWWiFiClient : NSObject
+
++ (instancetype)sharedWiFiClient;
++ (NSArray<NSString *> *)interfaceNames;
+- (nullable CWInterface *)interface;
+- (nullable CWInterface *)interfaceWithName:(nullable NSString *)interfaceName;
+- (nullable NSArray<CWInterface *> *)interfaces;
 
 @end

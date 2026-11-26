@@ -19,8 +19,29 @@
 
 #import <Foundation/Foundation.h>
 
+@class AVAudioFormat;
+@class AVAudioInputNode;
+@class AVAudioMixerNode;
+@class AVAudioNode;
+@class AVAudioOutputNode;
+
 extern NSString *const AVAudioEngineConfigurationChangeNotification;
 
 @interface AVAudioEngine : NSObject
+
+@property (nonatomic, readonly) AVAudioOutputNode *outputNode;
+@property (nonatomic, readonly) AVAudioInputNode *inputNode;
+@property (nonatomic, readonly) AVAudioMixerNode *mainMixerNode;
+@property (nonatomic, readonly, getter=isRunning) BOOL running;
+
+- (void)attachNode:(AVAudioNode *)node;
+- (void)detachNode:(AVAudioNode *)node;
+- (void)connect:(AVAudioNode *)node1 to:(AVAudioNode *)node2 format:(AVAudioFormat *)format;
+- (void)disconnectNodeInput:(AVAudioNode *)node;
+- (void)disconnectNodeOutput:(AVAudioNode *)node;
+- (BOOL)startAndReturnError:(NSError **)outError;
+- (void)pause;
+- (void)reset;
+- (void)stop;
 
 @end

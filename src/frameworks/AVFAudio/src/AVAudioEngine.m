@@ -18,11 +18,123 @@
 */
 
 #import <AVFAudio/AVAudioEngine.h>
+#import <AVFAudio/AVAudioInputNode.h>
+#import <AVFAudio/AVAudioMixerNode.h>
+#import <AVFAudio/AVAudioOutputNode.h>
 #import "AVFAudioStub.h"
 
 NSString *const AVAudioEngineConfigurationChangeNotification = @"AVAudioEngineConfigurationChangeNotification";
 
-@implementation AVAudioEngine
+@implementation AVAudioEngine {
+    AVAudioOutputNode *_outputNode;
+    AVAudioInputNode *_inputNode;
+    AVAudioMixerNode *_mainMixerNode;
+    NSMutableSet<AVAudioNode *> *_attachedNodes;
+    BOOL _running;
+}
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        _attachedNodes = [[NSMutableSet alloc] init];
+    }
+    return self;
+}
+
+- (void)dealloc
+{
+    [_outputNode release];
+    [_inputNode release];
+    [_mainMixerNode release];
+    [_attachedNodes release];
+    [super dealloc];
+}
+
+- (AVAudioOutputNode *)outputNode
+{
+    @synchronized (self) {
+        if (!_outputNode) {
+            _outputNode = [[AVAudioOutputNode alloc] init];
+        }
+        return _outputNode;
+    }
+}
+
+- (AVAudioInputNode *)inputNode
+{
+    @synchronized (self) {
+        if (!_inputNode) {
+            _inputNode = [[AVAudioInputNode alloc] init];
+        }
+        return _inputNode;
+    }
+}
+
+- (AVAudioMixerNode *)mainMixerNode
+{
+    @synchronized (self) {
+        if (!_mainMixerNode) {
+            _mainMixerNode = [[AVAudioMixerNode alloc] init];
+        }
+        return _mainMixerNode;
+    }
+}
+
+- (BOOL)isRunning
+{
+    return _running;
+}
+
+- (void)attachNode:(AVAudioNode *)node
+{
+    if (node) {
+        [_attachedNodes addObject:node];
+    }
+}
+
+- (void)detachNode:(AVAudioNode *)node
+{
+    if (node) {
+        [_attachedNodes removeObject:node];
+    }
+}
+
+- (void)connect:(AVAudioNode *)node1 to:(AVAudioNode *)node2 format:(AVAudioFormat *)format
+{
+}
+
+- (void)disconnectNodeInput:(AVAudioNode *)node
+{
+}
+
+- (void)disconnectNodeOutput:(AVAudioNode *)node
+{
+}
+
+- (BOOL)startAndReturnError:(NSError **)outError
+{
+    if (outError) {
+        *outError = nil;
+    }
+    _running = YES;
+    return YES;
+}
+
+- (void)pause
+{
+    _running = NO;
+}
+
+- (void)reset
+{
+    _running = NO;
+}
+
+- (void)stop
+{
+    _running = NO;
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {

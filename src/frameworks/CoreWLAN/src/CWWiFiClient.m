@@ -22,6 +22,36 @@
 
 @implementation CWWiFiClient
 
++ (instancetype)sharedWiFiClient
+{
+    static CWWiFiClient *shared = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        shared = [[self alloc] init];
+    });
+    return shared;
+}
+
++ (NSArray<NSString *> *)interfaceNames
+{
+    return @[];
+}
+
+- (CWInterface *)interface
+{
+    return nil;
+}
+
+- (CWInterface *)interfaceWithName:(NSString *)interfaceName
+{
+    return nil;
+}
+
+- (NSArray<CWInterface *> *)interfaces
+{
+    return @[];
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
