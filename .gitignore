@@ -85,7 +85,6 @@ debian/darling-cli-python-common/
 debian/darling-pyobjc/
 debian/darling-ruby/
 debian/darling-perl/
-debian/darling-jsc-webkit-common/
 debian/darling-jsc/
 debian/darling-iokitd-cli-devenv-gui-common/
 debian/darling-cli-devenv-gui-stubs-common/

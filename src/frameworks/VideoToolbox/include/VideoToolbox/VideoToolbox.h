@@ -40,6 +40,10 @@
 #import <VideoToolbox/FigMetalTransferHelper.h>
 #endif
 
+// Stubs for private symbols, with placeholder signatures. They are only seen
+// by Darling's own build: a program built with the SDK that declares one of
+// them with its real signature would otherwise not compile.
+#ifdef DARLING
 void* COLOR_Y2R24(void);
 void* COLOR_Y2R32(void);
 void* COLOR_Y420uToUYVY_scalar(void);
@@ -253,5 +257,6 @@ void* VTXPCMessageCopyVideoFormatDescription(void);
 void* VTXPCMessageSetCMSampleBuffer(void);
 void* VTXPCMessageSetCVPixelBuffer(void);
 void* VTXPCMessageSetVideoFormatDescription(void);
+#endif
 
 #endif

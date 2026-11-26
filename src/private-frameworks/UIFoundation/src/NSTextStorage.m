@@ -213,9 +213,39 @@ static void updateDelegateObservation(NSTextStorage *self, id delegate, BOOL add
     }
 }
 
+// QUIRK: reading font or foregroundColor gives the attribute's documented
+// default (Helvetica 12, black) when the first character has none, and nil
+// only when there are no characters. Not documented. Evidence: black-box
+// observation on macOS 26.7.3 (tier 2).
+// Test: tests/nstextstorage-font-foreground-color.m
+- (id) _firstCharacterAttribute: (NSString *) name default: (id) value {
+    if ([self length] == 0)
+        return nil;
+    id attribute = [self attribute: name atIndex: 0 effectiveRange: NULL];
+    return attribute != nil ? attribute : value;
+}
+
+// NSFont and NSColor are AppKit's, which sits above UIFoundation, so they are
+// looked up by name rather than linked to.
+- (NSFont *) font {
+    return [self _firstCharacterAttribute: NSFontAttributeName
+                                  default: [NSClassFromString(@"NSFont") fontWithName: @"Helvetica" size: 12]];
+}
+
 - (void) setFont: (NSFont *) font {
     [self addAttribute: NSFontAttributeName
                  value: font
+                 range: NSMakeRange(0, [self length])];
+}
+
+- (NSColor *) foregroundColor {
+    return [self _firstCharacterAttribute: NSForegroundColorAttributeName
+                                  default: [NSClassFromString(@"NSColor") blackColor]];
+}
+
+- (void) setForegroundColor: (NSColor *) color {
+    [self addAttribute: NSForegroundColorAttributeName
+                 value: color
                  range: NSMakeRange(0, [self length])];
 }
 

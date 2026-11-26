@@ -22,6 +22,7 @@
 #define _OpenScripting_H_
 
 #import <Foundation/Foundation.h>
+#include <OpenScripting/ASRegistry.h>
 
 
 void* ASCopySourceAttributes(void);

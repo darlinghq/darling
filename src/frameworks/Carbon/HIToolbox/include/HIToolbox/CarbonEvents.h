@@ -37,6 +37,12 @@ typedef struct EventHotKeyID {
 } EventHotKeyID;
 typedef struct OpaqueEventHotKeyRef *EventHotKeyRef;
 
+// the parameters of keyboard events (kEventClassKeyboard); the key code, characters and
+// modifiers are in CarbonEventsCore.h
+enum {
+	kEventParamKeyboardType = 'kbdt',    // typeUInt32: the keyboard's type
+};
+
 enum {
 	kEventHotKeyPressed = 5,
 	kEventHotKeyReleased = 6,
@@ -262,6 +268,30 @@ EventTargetRef GetControlEventTarget(ControlRef inControl);
 	InstallEventHandler(GetControlEventTarget(control), (handler), (numTypes), (typeList), (userData), (outHandlerRef))
 #define SendEventToWindow(event, window) SendEventToEventTarget((event), GetWindowEventTarget(window))
 #define SendEventToControl(event, control) SendEventToEventTarget((event), GetControlEventTarget(control))
+
+#ifndef __LP64__
+// Tracking the mouse (32-bit only)
+typedef UInt16 MouseTrackingResult;
+enum {
+	kMouseTrackingMouseDown = 1,
+	kMouseTrackingMouseUp = 2,
+	kMouseTrackingMouseExited = 3,
+	kMouseTrackingMouseEntered = 4,
+	kMouseTrackingMouseDragged = 5,
+	kMouseTrackingKeyModifiersChanged = 6,
+	kMouseTrackingUserCancelled = 7,
+	kMouseTrackingTimedOut = 8,
+	kMouseTrackingMouseMoved = 9,
+	kMouseTrackingClientEvent = 10,
+	kMouseTrackingScrollWheel = 11
+};
+enum {
+	kTrackMouseLocationOptionDontConsumeMouseUp = (1 << 0),
+	kTrackMouseLocationOptionIncludeScrollWheel = (1 << 3)
+};
+OSStatus TrackMouseLocation(GrafPtr inPort, Point* outPt, MouseTrackingResult* outResult);
+OSStatus TrackMouseLocationWithOptions(GrafPtr inPort, OptionBits inOptions, EventTimeout inTimeout, Point* outPt, UInt32* outModifiers, MouseTrackingResult* outResult);
+#endif
 
 OSStatus EnableSecureEventInput(void);
 OSStatus DisableSecureEventInput(void);

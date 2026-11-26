@@ -21,6 +21,7 @@ IMAGEIO_EXTERN const CFStringRef kCGImagePropertyExifDictionary;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFXResolution;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFYResolution;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFOrientation;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFResolutionUnit;
 
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyHasAlpha;
 
@@ -30,6 +31,7 @@ IMAGEIO_EXTERN const CFStringRef kCGImagePropertyPNGDictionary;
 
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFDelayTime;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFDictionary;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyWebPDictionary;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFLoopCount;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFUnclampedDelayTime;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGIFHasGlobalColorMap;
@@ -61,6 +63,8 @@ IMAGEIO_EXTERN const CFStringRef kCGImagePropertyGPSLongitudeRef;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyExifDateTimeOriginal;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyExifOffsetTimeOriginal;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyExifUserComment;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyExifPixelXDimension;
+IMAGEIO_EXTERN const CFStringRef kCGImagePropertyExifPixelYDimension;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyHEICSDictionary;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyHEICSDelayTime;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyHEICSUnclampedDelayTime;

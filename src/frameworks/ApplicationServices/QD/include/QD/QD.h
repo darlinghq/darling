@@ -139,6 +139,11 @@ void HideCursor(void);
 void ShowCursor(void);
 
 /* Rectangles. */
+#ifndef __LP64__
+/* Point arithmetic of QuickDraw (32-bit only): AddPt adds the first point to the second */
+void AddPt(Point src, Point *dst);
+void SubPt(Point src, Point *dst);
+#endif
 void SetRect(Rect *r, short left, short top, short right, short bottom);
 void OffsetRect(Rect *r, short dh, short dv);
 void InsetRect(Rect *r, short dh, short dv);

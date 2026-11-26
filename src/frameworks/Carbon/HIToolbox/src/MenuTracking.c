@@ -67,11 +67,13 @@ struct MenuWindow
 	GLuint texture;
 };
 
-// Whether the window system lets a client place its windows. Decided by the first window.
-static int g_placeable = -1;
 static bool g_registered;
 // EGL_PLATFORM_WAYLAND_KHR
 enum { kEGLPlatformWayland = 0x31D8 };
+// The window system of the process' connection (CGSNativeConnectionKind of CGSNativeConnection.h, an
+// Objective-C header): 1 is X11, 2 is Wayland
+extern int _CGSNativeConnectionKind(void);
+enum { kNativeConnectionKindX11 = 1 };
 
 static void destroyMenuWindow(struct MenuWindow* win)
 {
@@ -98,7 +100,11 @@ static void destroyMenuWindow(struct MenuWindow* win)
 	free(win);
 }
 
-static struct MenuWindow* createMenuWindow(CGRect frame)
+// The window of the menu bar (level) or of a menu. Which window system shows them follows from the
+// window level: a window system that lets a client place its windows takes the position as it is (X11, as
+// a window that no window manager decorates or places), the others place the window by what it is,
+// the menu bar along the top of the screen and a menu next to it (see -[CGSWindowWayland role]).
+static struct MenuWindow* createMenuWindow(CGRect frame, CGWindowLevel level)
 {
 	CGSConnectionID connection = CGSMainConnectionID();
 
@@ -114,39 +120,20 @@ static struct MenuWindow* createMenuWindow(CGRect frame)
 	win->width = (size_t) ceil(frame.size.width);
 	win->height = (size_t) ceil(frame.size.height);
 
-	if (g_placeable < 0)
-	{
-		// A window system that lets the client place its windows (X11) takes a move of a window
-		// that is not shown yet; one that does not (Wayland) refuses it
-		CGRect probeFrame = CGRectMake(0, 0, 1, 1);
-		CGSRegionRef region = NULL;
-		CGSWindowID probe = 0;
+	bool x11 = _CGSNativeConnectionKind() == kNativeConnectionKindX11;
 
-		g_placeable = 0;
-		if (CGSNewRegionWithRect(&probeFrame, &region) == kCGErrorSuccess)
-		{
-			if (CGSNewWindow(connection, 0, 0, 0, region, &probe) == kCGErrorSuccess)
-			{
-				CGPoint origin = CGPointMake(0, 0);
-
-				g_placeable = CGSMoveWindow(connection, probe, &origin) == kCGErrorSuccess ? 1 : 0;
-				CGSReleaseWindow(connection, probe);
-			}
-			CGSRegionRelease(region);
-		}
-	}
 	if (!g_registered)
 	{
 		// The GL layer has to be told which window system the connection is to. AppKit tells it when
 		// it is loaded; an application with no AppKit has nobody else to do it. The platforms are
 		// the EGL ones: X11 and Wayland.
 		g_registered = true;
-		if (g_placeable == 1)
+		if (x11)
 			CGLRegisterNativeDisplay(_CGSNativeDisplay(connection));
 		else
 			CGLRegisterNativeDisplayForPlatform(_CGSNativeDisplay(connection), kEGLPlatformWayland);
 	}
-	if (g_placeable == 1)
+	if (x11)
 	{
 		// A window that no window manager decorates or places
 		if (_CGSCreateDisplayOverlayWindow(connection, frame, &win->window, &win->native) != kCGErrorSuccess)
@@ -154,8 +141,9 @@ static struct MenuWindow* createMenuWindow(CGRect frame)
 			free(win);
 			return NULL;
 		}
+		CGSSetWindowLevel(connection, win->window, level);
 	}
-	if (g_placeable == 0)
+	else
 	{
 		CGSRegionRef region = NULL;
 		CGSSurfaceID surface = 0;
@@ -168,6 +156,13 @@ static struct MenuWindow* createMenuWindow(CGRect frame)
 		CGError error = CGSNewWindow(connection, 0, 0, 0, region, &win->window);
 
 		CGSRegionRelease(region);
+		// The level and the style decide what the window system makes of the window, so they are set
+		// before it is first used
+		if (error == kCGErrorSuccess)
+			error = CGSSetWindowLevel(connection, win->window, level);
+		if (error == kCGErrorSuccess)
+			error = _CGSWindowSetStyle(connection, win->window,
+				kCGSWindowStyleBorderless | kCGSWindowStyleNoFocus | kCGSWindowStyleUtility);
 		if (error == kCGErrorSuccess)
 			error = CGSAddSurface(connection, win->window, &surface);
 		if (error == kCGErrorSuccess)
@@ -587,7 +582,7 @@ static void updateBarWindow(bool create)
 			return;
 		CGRect display = mainDisplayBounds();
 
-		g_barWindow = createMenuWindow(CGRectMake(display.origin.x, display.origin.y, display.size.width, kBarHeight));
+		g_barWindow = createMenuWindow(CGRectMake(display.origin.x, display.origin.y, display.size.width, kBarHeight), kCGMainMenuWindowLevel);
 		if (!g_barWindow)
 			return;
 	}
@@ -706,7 +701,7 @@ static bool openLevel(struct Tracking* tracking, MenuRef menu, CGPoint origin, M
 	CGRect frame = clampToDisplay(CGRectMake(origin.x, origin.y, level->layout.width, level->layout.height));
 
 	level->origin = frame.origin;
-	level->window = createMenuWindow(frame);
+	level->window = createMenuWindow(frame, kCGPopUpMenuWindowLevel);
 	if (!level->window)
 	{
 		free(level->layout.items);
@@ -1039,13 +1034,20 @@ static void runTracking(struct Tracking* tracking, bool mouseDown, CGPoint start
 	}
 }
 
-static UInt32 finishTracking(struct Tracking* tracking, bool highlightResult)
+// (outChosen, when given, gets the menu of the chosen item, retained: menus can share a menu ID)
+static UInt32 finishTracking(struct Tracking* tracking, bool highlightResult, MenuRef* outChosen)
 {
 	UInt32 choice = 0;
 	MenuRef chosenMenu = tracking->chosenMenu;
 	MenuID barMenuID = tracking->barSelected ? GetMenuID(tracking->barSelected) : 0;
 
 	closeLevels(tracking, 0);
+	if (outChosen)
+	{
+		*outChosen = tracking->chosen ? chosenMenu : NULL;
+		if (*outChosen)
+			CFRetain((CFTypeRef) *outChosen);
+	}
 	if (tracking->chosen)
 	{
 		choice = ((UInt32) (UInt16) GetMenuID(chosenMenu) << 16) | tracking->chosenItem;
@@ -1064,9 +1066,12 @@ static UInt32 finishTracking(struct Tracking* tracking, bool highlightResult)
 	return choice;
 }
 
-UInt32 MenuSelect(Point startPt)
+static UInt32 menuSelect(Point startPt, MenuRef* outChosen)
 {
 	struct Tracking tracking;
+
+	if (outChosen)
+		*outChosen = NULL;
 
 	memset(&tracking, 0, sizeof(tracking));
 	updateBarWindow(true);
@@ -1076,7 +1081,12 @@ UInt32 MenuSelect(Point startPt)
 	tracking.root = AcquireRootMenu();
 	tracking.titleCount = copyBarTitles(&tracking.titles);
 	runTracking(&tracking, true, CGPointMake(startPt.h, startPt.v));
-	return finishTracking(&tracking, true);
+	return finishTracking(&tracking, true, outChosen);
+}
+
+UInt32 MenuSelect(Point startPt)
+{
+	return menuSelect(startPt, NULL);
 }
 
 UInt32 PopUpMenuSelect(MenuRef menu, SInt16 top, SInt16 left, SInt16 popUpItem)
@@ -1099,7 +1109,7 @@ UInt32 PopUpMenuSelect(MenuRef menu, SInt16 top, SInt16 left, SInt16 popUpItem)
 	// been released when the user does not hold the button, hence the first release does not choose
 	tracking.sticky = false;
 	runTracking(&tracking, true, CGPointMake(left, top));
-	return finishTracking(&tracking, false);
+	return finishTracking(&tracking, false, NULL);
 }
 
 OSStatus CancelMenuTracking(MenuRef inRootMenu, Boolean inImmediate, UInt32 inDismissalReason)
@@ -1142,15 +1152,14 @@ OSStatus _HIHandleMenuBarMouseDown(EventRef event)
 		return eventNotHandledErr;
 
 	Point point = { (short) location.y, (short) location.x };
-	UInt32 choice = MenuSelect(point);
+	MenuRef menu = NULL;
+	UInt32 choice = menuSelect(point, &menu);
 
-	if (choice)
-	{
-		MenuRef menu = GetMenuHandle((MenuID) (choice >> 16));
-
-		if (menu)
-			_HIProcessMenuCommand(menu, (MenuItemIndex) (choice & 0xffff));
-	}
+	// The menu is the one that was chosen from: its ID is not enough, menus may share one
+	if (choice && menu)
+		_HIProcessMenuCommand(menu, (MenuItemIndex) (choice & 0xffff));
+	if (menu)
+		CFRelease((CFTypeRef) menu);
 	HiliteMenu(0);
 	return noErr;
 }

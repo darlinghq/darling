@@ -7,6 +7,10 @@
 #include <stddef.h>
 
 #include <os/log.h>
+#include <stdbool.h>
+#include <sys/cdefs.h>
+
+__BEGIN_DECLS
 
 typedef uint64_t os_signpost_id_t;
 
@@ -14,8 +18,9 @@ typedef uint64_t os_signpost_id_t;
 #define OS_SIGNPOST_ID_NULL ((os_signpost_id_t)0)
 #define OS_SIGNPOST_ID_INVALID ((os_signpost_id_t)~0)
 
-os_signpost_id_t os_signpost_id_generate(os_log_t log);
-os_signpost_id_t os_signpost_id_make_with_pointer(os_log_t log, const void* ptr);
+OS_EXPORT os_signpost_id_t os_signpost_id_generate(os_log_t log);
+OS_EXPORT os_signpost_id_t os_signpost_id_make_with_pointer(os_log_t log, const void* ptr);
+OS_EXPORT bool os_signpost_enabled(os_log_t log);
 
 /* DARLING: named type and values as in the macOS SDK, so binaries and Swift overlays agree. */
 OS_ENUM(os_signpost_type, uint8_t,
@@ -29,5 +34,7 @@ OS_ENUM(os_signpost_type, uint8_t,
 #define os_signpost_interval_begin(log, interval_id, name, ...)
 #define os_signpost_event_emit(log, event_id, name, ...)
 #define os_signpost_interval_end(log, interval_id, name, ...)
+
+__END_DECLS
 
 #endif // _OS_SIGNPOST_H

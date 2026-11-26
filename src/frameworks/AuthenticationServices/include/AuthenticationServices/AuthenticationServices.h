@@ -129,7 +129,6 @@
 #import <AuthenticationServices/NSAccessibilityElement.h>
 #import <AuthenticationServices/NSBundle+ASNSBundleExtras.h>
 #import <AuthenticationServices/NSControlTextEditingDelegate.h>
-#import <AuthenticationServices/NSExtension+AuthenticationServicesExtras.h>
 #import <AuthenticationServices/NSImage+ASImageExtras.h>
 #import <AuthenticationServices/NSLayoutConstraint+ASNSLayoutConstraintExtras.h>
 #import <AuthenticationServices/NSPasteboard+AuthenticationServicesExtras.h>

@@ -119,6 +119,49 @@ static double vincentyDistance(double lat1, double lon1, double lat2, double lon
     return WGS84_B * A * (sigma - deltaSigma);
 }
 
+@implementation CLFloor
+
++ (BOOL)supportsSecureCoding
+{
+    return YES;
+}
+
+- (NSInteger)level
+{
+    return _level;
+}
+
+- (id)copyWithZone:(NSZone *)zone
+{
+    return [self retain];
+}
+
+- (BOOL)isEqual:(id)object
+{
+    return self == object || ([object isKindOfClass:[CLFloor class]] && ((CLFloor *)object).level == _level);
+}
+
+- (NSUInteger)hash
+{
+    return (NSUInteger)_level;
+}
+
+// The archive key is Darling's own.
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeInteger:_level forKey:@"CLFloorLevel"];
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super init];
+    if (self)
+        _level = [coder decodeIntegerForKey:@"CLFloorLevel"];
+    return self;
+}
+
+@end
+
 @implementation CLLocation
 
 @synthesize coordinate = _coordinate;
@@ -190,6 +233,12 @@ static double vincentyDistance(double lat1, double lon1, double lat2, double lon
 
     return vincentyDistance(_coordinate.latitude, _coordinate.longitude,
                             location.coordinate.latitude, location.coordinate.longitude);
+}
+
+- (CLFloor *)floor
+{
+    // Darling has no indoor positioning, so the floor is never known.
+    return nil;
 }
 
 - (id)copyWithZone:(NSZone *)zone

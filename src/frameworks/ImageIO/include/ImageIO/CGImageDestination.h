@@ -1,6 +1,12 @@
 #include <ImageIO/ImageIOBase.h>
 
+// DARLING: SDK consumers get the struct tag macOS's SDK has, which code that
+// forward-declares the type relies on; Darling's own build keeps its own.
+#ifdef DARLING
 typedef struct CF_BRIDGED_TYPE(id) O2ImageDestination *CGImageDestinationRef;
+#else
+typedef struct CF_BRIDGED_TYPE(id) CGImageDestination *CGImageDestinationRef;
+#endif
 
 typedef const struct CF_BRIDGED_TYPE(id) CGImageMetadata *CGImageMetadataRef;
 typedef struct CF_BRIDGED_TYPE(id) CGImageMetadata *CGMutableImageMetadataRef;

@@ -96,6 +96,7 @@ enum {
     kAudioStreamPropertyPhysicalFormat = 'pft ',
     kAudioStreamPropertyAvailableVirtualFormats = 'sfma',
     kAudioStreamPropertyAvailablePhysicalFormats = 'pfta',
+    kAudioStreamPropertyLatency = 'ltnc',
 };
 
 // TODO: A lot more is missing

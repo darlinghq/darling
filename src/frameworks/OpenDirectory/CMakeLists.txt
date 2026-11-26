@@ -1,8 +1,9 @@
 project(OpenDirectory)
 
-remove_sdk_framework(OpenDirectory)
-
-# CFOpenDirectory is added by src/frameworks/CMakeLists.txt with the system component
+# CFOpenDirectory is added by src/frameworks/CMakeLists.txt with the system component.
+# It is added first and clears OpenDirectory.framework from the SDK before
+# generating itself inside it, so the framework is not cleared here: that
+# would remove CFOpenDirectory's headers.
 
 set(DYLIB_COMPAT_VERSION "1.0.0")
 set(DYLIB_CURRENT_VERSION "1.0.0")

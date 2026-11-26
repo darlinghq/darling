@@ -21,7 +21,8 @@
 #ifndef _CommonPanels_H_
 #define _CommonPanels_H_
 
-#import <Foundation/Foundation.h>
+#include <CoreServices/CoreServices.h>
+#include <CommonPanels/ColorPicker.h>
 
 
 void* CCP_FontPanelClose(void);
@@ -35,7 +36,6 @@ void* Call_CommonCocoaPanels_NPickColor(void);
 void* DisposeCalibrateEventUPP(void);
 void* DisposeCalibrateUPP(void);
 void* DisposeCanCalibrateUPP(void);
-void* DisposeNColorChangedUPP(void);
 void* FCAddCollection(void);
 void* FCAddFontDescriptorToCollection(void);
 void* FCCopyCollectionNames(void);
@@ -52,13 +52,10 @@ void* GetHandleWinEventsUPP(void);
 void* InvokeCalibrateEventUPP(void);
 void* InvokeCalibrateUPP(void);
 void* InvokeCanCalibrateUPP(void);
-void* InvokeNColorChangedUPP(void);
 void* LoadNSTypographyBundle(void);
-void* NPickColor(void);
 void* NewCalibrateEventUPP(void);
 void* NewCalibrateUPP(void);
 void* NewCanCalibrateUPP(void);
-void* NewNColorChangedUPP(void);
 void* SetFontInfoForSelection(void);
 void* SoftLinkingGetFunctionPointerFromBundleInDirectory(void);
 void* UserWantsColorPanelFromCommonCocoaPanels(void);
