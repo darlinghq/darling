@@ -58,6 +58,8 @@ enum {
 enum {
 	kEventCommandProcess = 1,
 	kEventCommandUpdateStatus = 2,
+	// the name the command event had in the first Carbon
+	kEventProcessCommand = kEventCommandProcess,
 };
 
 // Attributes of an HICommand
@@ -135,6 +137,12 @@ enum {
 	typeHIPoint = 'hipt',
 	typeMouseButton = 'mbtn',
 	typeHICommand = 'hcmd',
+};
+
+// The parameter that carries the HICommand of a command event, as the first Carbon named it (the direct object of
+// the event is the parameter that holds it)
+enum {
+	kEventParamHICommand = 'hcmd',
 };
 
 // EventMouseButton
