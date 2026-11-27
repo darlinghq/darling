@@ -29,6 +29,7 @@ add_framework(ScreenCaptureKit
         Foundation
         CoreGraphics
         CoreMedia
+        CoreVideo
 )
 
 if (HAVE_PIPEWIRE)
