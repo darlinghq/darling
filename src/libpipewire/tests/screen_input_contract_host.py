@@ -12,7 +12,8 @@
 #
 # A full runtime test needs a Wayland ScreenCast portal, so this checks the
 # source-level contract and the layering: AVFoundation and ScreenCaptureKit
-# must reach the shared ScreenCast/PipeWire backend, not a private backend.
+# must reach ScreenCast/PipeWire through CoreGraphics CGDisplayStream, not by
+# calling the screen client from the higher-level frameworks.
 #
 # usage: python3 src/libpipewire/tests/screen_input_contract_host.py [REPO_ROOT]
 
@@ -43,6 +44,11 @@ failures = []
 
 def need(name, pattern, description):
     if re.search(pattern, text[name], re.MULTILINE) is None:
+        failures.append(f'{description} ({files[name]})')
+
+
+def forbid(name, pattern, description):
+    if re.search(pattern, text[name], re.MULTILINE) is not None:
         failures.append(f'{description} ({files[name]})')
 
 
@@ -77,12 +83,14 @@ need('session', r'DarlingScreenCaptureEngine alloc\]\s*\n\s*initWithOutput:',
 need('session', r'screenInput:\s*screenInput', 'session passes the screen input to its engine')
 need('session', r'\[engine stop\]', 'session stops capture engines')
 
-# The engine uses the shared ScreenCast/PipeWire backend and applies the
+# The engine reaches ScreenCast/PipeWire through CoreGraphics and applies the
 # documented screen-input properties to outgoing sample buffers.
-for symbol in ('darling_screen_capture_open', 'darling_screen_capture_start',
-               'darling_screen_capture_wait', 'darling_screen_capture_close',
-               'darling_screen_capture_convert_bgra_rect'):
-    need('backend', rf'\b{symbol}\s*\(', f'engine must use {symbol}')
+need('backend', r'CGDisplayStreamCreateWithDispatchQueue\s*\(',
+     'engine must create a CGDisplayStream')
+need('backend', r'CGDisplayStreamStart\s*\(', 'engine must start the CGDisplayStream')
+need('backend', r'CGDisplayStreamStop\s*\(', 'engine must stop the CGDisplayStream')
+for key in ('kCGDisplayStreamSourceRect', 'kCGDisplayStreamShowCursor'):
+    need('backend', rf'\b{key}\b', f'engine must set {key}')
 need('backend', r'CMSampleBufferCreateReadyWithImageBuffer\s*\(',
      'engine must emit CMSampleBuffers')
 need('backend', r'bottom-left origin', 'cropRect must use bottom-left screen coordinates')
@@ -91,11 +99,13 @@ for expression in (r'\[_screenInput scaleFactor\]',
                    r'\[_screenInput minFrameDuration\]',
                    r'\[_screenInput removesDuplicateFrames\]'):
     need('backend', expression, f'engine must apply {expression}')
+forbid('backend', r'\bdarling_screen_capture_\w+\s*\(',
+       'engine must not call the PipeWire screen client directly')
 
 need('av_cmake', r'target_link_libraries\(AVFoundation PRIVATE darling_pipewire_client\)',
-     'AVFoundation must link the shared PipeWire client')
-need('sckit_cmake', r'target_link_libraries\(ScreenCaptureKit PRIVATE darling_pipewire_client\)',
-     'ScreenCaptureKit must link the shared PipeWire client')
+     'AVFoundation must link the shared PipeWire client for its camera backend')
+forbid('sckit_cmake', r'target_link_libraries\(ScreenCaptureKit PRIVATE darling_pipewire_client\)',
+       'ScreenCaptureKit must not link the PipeWire client directly')
 
 # ScreenCaptureKit's documented stream-output contract.
 need('sckit_header', r'@protocol\s+SCStreamOutput', 'SCStreamOutput protocol')
@@ -105,8 +115,16 @@ need('sckit_header', r'@property[^;\n]*isCapturing', 'SCStream.isCapturing')
 for symbol in ('SCFrameStatus', 'SCStreamFrameInfo', 'SCContentFilter',
                'SCStreamConfiguration', 'SCDisplay', 'SCWindow'):
     need('sckit_header', rf'\b{symbol}\b', f'ScreenCaptureKit public type {symbol}')
-for symbol in ('darling_screen_capture_open', 'darling_screen_capture_convert_bgra_rect'):
-    need('sckit', rf'\b{symbol}\s*\(', f'ScreenCaptureKit must use {symbol}')
+need('sckit', r'CGDisplayStreamCreateWithDispatchQueue\s*\(',
+     'ScreenCaptureKit must create a CGDisplayStream')
+need('sckit', r'CVPixelBufferCreateWithIOSurface\s*\(',
+     'ScreenCaptureKit must wrap the delivered IOSurface')
+for key in ('kCGDisplayStreamSourceRect', 'kCGDisplayStreamDestinationRect',
+            'kCGDisplayStreamPreserveAspectRatio', 'kCGDisplayStreamMinimumFrameTime',
+            'kCGDisplayStreamQueueDepth', 'kCGDisplayStreamShowCursor'):
+    need('sckit', rf'\b{key}\b', f'ScreenCaptureKit must set {key}')
+forbid('sckit', r'\bdarling_screen_capture_\w+\s*\(',
+       'ScreenCaptureKit must not call the PipeWire screen client directly')
 
 if failures:
     for failure in failures:
