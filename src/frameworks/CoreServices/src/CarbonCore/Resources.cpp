@@ -90,9 +90,12 @@ static void openAppResourceFile()
 		if (url && CFURLGetFileSystemRepresentation(url, true, (UInt8*) path, sizeof(path)) && stat(path, &st) == 0 &&
 			S_ISREG(st.st_mode) && FSPathMakeRef((const UInt8*) path, &ref, nullptr) == noErr)
 		{
-			ResFileRefNum refNum = FSOpenResFile(&ref, fsRdPerm);
+			// 'name.rsrc' keeps its resources in the data fork
+			HFSUniStr255 dataFork;
+			FSGetDataForkName(&dataFork);
+			ResFileRefNum refNum = kResFileNotOpened;
 
-			if (refNum != kResFileNotOpened)
+			if (FSOpenResourceFile(&ref, dataFork.length, dataFork.unicode, fsRdPerm, &refNum) == noErr)
 			{
 				UseResFile(refNum);
 				opened = true;
@@ -124,16 +127,21 @@ static void ensureAppResourceFile()
 	}
 }
 
+// Like FSpOpenResFile, opens the resource fork (data-fork resource files are opened with
+// FSOpenResourceFile and the data fork name), makes the file the current resource file and
+// leaves the result in ResError().
 ResFileRefNum FSOpenResFile(const FSRef* ref, SInt8 permissions)
 {
 	HFSUniStr255 forkName;
-	FSGetDataForkName(&forkName);
+	FSGetResourceForkName(&forkName);
 
 	ResFileRefNum refNum;
 	OSErr err = FSOpenResourceFile(ref, forkName.length, forkName.unicode, permissions, &refNum);
 
+	g_lastError = err;
 	if (err != noErr)
 		return kResFileNotOpened;
+	UseResFile(refNum);
 	return refNum;
 }
 
@@ -582,6 +590,7 @@ static std::vector<Resources::ResourceData*>& resourcesOfType(ResType type)
 
 	if (resourcesOfTypeCacheType != type)
 	{
+		rv.clear();
 		for (auto const& [refNum, resources] : g_resources)
 		{
 			auto it = resources->data().find(type);
@@ -605,6 +614,7 @@ static std::unordered_map<ResID,Resources::ResourceData*>& resourcesOfTypeMap(Re
 
 	if (resourcesOfTypeMapCacheType != type)
 	{
+		rv.clear();
 		for (auto const& [refNum, resources] : g_resources)
 		{
 			auto it = resources->data().find(type);
@@ -626,8 +636,9 @@ static std::unordered_map<std::string,Resources::ResourceData*>& resourcesOfType
 {
 	std::unordered_map<std::string,Resources::ResourceData*>& rv = resourcesOfTypeNameMapCache;
 
-	if (resourcesOfTypeMapCacheType != type)
+	if (resourcesOfTypeNameMapCacheType != type)
 	{
+		rv.clear();
 		for (auto const& [refNum, resources] : g_resources)
 		{
 			auto it = resources->data().find(type);

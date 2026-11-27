@@ -36,6 +36,7 @@
 #include <HIToolbox/Menus.h>
 #include <CoreText/CoreText.h>
 #include <CarbonCore/MacErrors.h>
+#include <CarbonCore/Resources.h>
 #include "ControlsInternal.h"
 #include "HIToolboxInternal.h"
 #include "HIToolboxPrivate.h"
@@ -970,6 +971,13 @@ void HiliteControl(ControlRef theControl, ControlPartCode hiliteState)
 	HIViewSetHilite(theControl, hiliteState);
 }
 #endif
+
+// The highlight that HiliteControl() or the tracking of a click set: kControlNoPart, a part, kControlInactivePart (255)
+// or kControlDisabledPart (254)
+ControlPartCode GetControlHilite(ControlRef inControl)
+{
+	return isControl(inControl) ? inControl->hilite : kControlNoPart;
+}
 
 OSStatus HIViewSetNeedsDisplay(HIViewRef inView, Boolean inNeedsDisplay)
 {
@@ -3353,6 +3361,32 @@ OSStatus CreateUserPaneControl(WindowRef window, const Rect* boundsRect, UInt32 
 #endif
 
 #ifndef __LP64__
+// The pop-up menu control of NewControl and 'CNTL' resources (procID 1008, popupMenuProc, or 400,
+// kControlPopupButtonProc, plus the variant bits): the minimum is the menu's ID, the maximum the title's width, the
+// value the title's style. The menu is taken from the menu list, or read with GetMenu and put in the hierarchical
+// part of the list, as the pop-up CDEF does. The control's value is then the chosen item and its maximum the number
+// of items. (Macintosh Toolbox Essentials, 5-28.) The AddResMenu variant is not available (no AppendResMenu here).
+enum { kPopupMenuProc = 1008 };
+
+static ControlRef newPopupControl(WindowRef owningWindow, const Rect* boundsRect, CFStringRef title, Boolean initiallyVisible, SInt16 titleStyle, SInt16 menuID, SInt16 titleWidth, SInt16 procID, SInt32 controlReference)
+{
+	ControlRef c = NULL;
+
+	if (menuID != 0 && !GetMenuHandle(menuID))
+	{
+		MenuRef menu = GetMenu(menuID);
+
+		if (menu)
+			InsertMenu(menu, kInsertHierarchicalMenu);
+	}
+	if (createPopupButton(owningWindow, boundsRect, title, menuID, (procID & kControlPopupVariableWidthVariant) != 0, titleWidth, 0, (UInt8) titleStyle, &c) != noErr || !c)
+		return NULL;
+	c->refCon = controlReference;
+	if (!initiallyVisible)
+		HIViewSetVisible(c, false);
+	return c;
+}
+
 ControlRef NewControl(WindowRef owningWindow, const Rect* boundsRect, ConstStr255Param controlTitle, Boolean initiallyVisible, SInt16 initialValue, SInt16 minimumValue, SInt16 maximumValue, SInt16 procID, SInt32 controlReference)
 {
 	ControlRef c = NULL;
@@ -3361,6 +3395,8 @@ ControlRef NewControl(WindowRef owningWindow, const Rect* boundsRect, ConstStr25
 
 	if (!boundsRect)
 		return NULL;
+	if ((procID & ~15) == kControlPopupButtonProc || (procID & ~15) == kPopupMenuProc)
+		return newPopupControl(owningWindow, boundsRect, title, initiallyVisible, initialValue, minimumValue, maximumValue, procID, controlReference);
 	if (procID >= kControlBevelButtonSmallBevelProc && procID < kControlBevelButtonSmallBevelProc + 8 && (procID & ~3) == 32)
 		status = createBevelButton(owningWindow, boundsRect, title, procID & 3, 0, NULL, 0, 0, 0, &c);
 	else if (procID >= kControlSliderProc && procID < kControlSliderProc + 8)
@@ -3397,6 +3433,31 @@ ControlRef NewControl(WindowRef owningWindow, const Rect* boundsRect, ConstStr25
 	if (!initiallyVisible)
 		HIViewSetVisible(c, false);
 	return c;
+}
+
+// A control from a 'CNTL' resource: bounds, value, visibility, maximum, minimum, procID, reference constant and
+// title, made with NewControl. (Macintosh Toolbox Essentials, 5-115.)
+ControlRef GetNewControl(SInt16 resourceID, WindowRef owningWindow)
+{
+	Handle h = GetResource('CNTL', resourceID);
+
+	if (!h || !*h || GetHandleSize(h) < 23)
+		return NULL;
+
+	const UInt8* p = (const UInt8*) *h;
+	Size size = GetHandleSize(h);
+	if (p[22] > size - 23)
+		return NULL;
+
+	Rect bounds = { (SInt16) (p[0] << 8 | p[1]), (SInt16) (p[2] << 8 | p[3]), (SInt16) (p[4] << 8 | p[5]), (SInt16) (p[6] << 8 | p[7]) };
+	Str255 title;
+	memcpy(title, p + 22, (size_t) p[22] + 1);
+	SInt16 value = (SInt16) (p[8] << 8 | p[9]);
+	Boolean visible = p[10] != 0;
+	SInt16 max = (SInt16) (p[12] << 8 | p[13]), min = (SInt16) (p[14] << 8 | p[15]), procID = (SInt16) (p[16] << 8 | p[17]);
+	SInt32 refCon = (SInt32) ((UInt32) p[18] << 24 | (UInt32) p[19] << 16 | (UInt32) p[20] << 8 | p[21]);
+
+	return NewControl(owningWindow, &bounds, title, visible, value, min, max, procID, refCon);
 }
 #endif
 
