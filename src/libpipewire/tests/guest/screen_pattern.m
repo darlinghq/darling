@@ -12,7 +12,9 @@
 #import <CoreMedia/CoreMedia.h>
 #import <CoreVideo/CoreVideo.h>
 #import <CoreGraphics/CoreGraphics.h>
+#ifdef __LP64__
 #import <ScreenCaptureKit/ScreenCaptureKit.h>
+#endif
 #include <stdio.h>
 #include <string.h>
 
@@ -25,7 +27,7 @@ static int uniformRgb[3];
 
 static int near(int a, int b) { return abs(a - b) <= tol; }
 
-static void check(CVImageBufferRef img)
+static void checkImage(CVImageBufferRef img)
 {
     CVPixelBufferLockBaseAddress(img, kCVPixelBufferLock_ReadOnly);
     size_t w = CVPixelBufferGetWidth(img), h = CVPixelBufferGetHeight(img), bpr = CVPixelBufferGetBytesPerRow(img);
@@ -53,20 +55,26 @@ static void check(CVImageBufferRef img)
     if (ok) matched++;
 }
 
-@interface Sink : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate, SCStreamOutput>
+@interface Sink : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate
+#ifdef __LP64__
+, SCStreamOutput
+#endif
+>
 @end
 @implementation Sink
 - (void)captureOutput:(AVCaptureOutput *)o didOutputSampleBuffer:(CMSampleBufferRef)sb fromConnection:(AVCaptureConnection *)c
 {
     CVImageBufferRef img = CMSampleBufferGetImageBuffer(sb);
-    if (img) { frames++; check(img); }
+    if (img) { frames++; checkImage(img); }
 }
+#ifdef __LP64__
 - (void)stream:(SCStream *)s didOutputSampleBuffer:(CMSampleBufferRef)sb ofType:(SCStreamOutputType)t
 {
     if (t != SCStreamOutputTypeScreen) return;
     CVImageBufferRef img = CMSampleBufferGetImageBuffer(sb);
-    if (img) { frames++; check(img); }
+    if (img) { frames++; checkImage(img); }
 }
+#endif
 @end
 
 int main(int argc, char **argv)
@@ -80,6 +88,7 @@ int main(int argc, char **argv)
         CGDirectDisplayID d = CGMainDisplayID();
         CGRect b = CGDisplayBounds(d);
         printf("display %u %gx%g\n", d, b.size.width, b.size.height);
+#ifdef __LP64__
         if (sck) {
             dispatch_semaphore_t sem = dispatch_semaphore_create(0);
             __block SCShareableContent *content = nil; __block NSError *cerr = nil;
@@ -112,7 +121,9 @@ int main(int argc, char **argv)
             dispatch_semaphore_t s3 = dispatch_semaphore_create(0);
             [st stopCaptureWithCompletionHandler:^(NSError *e) { dispatch_semaphore_signal(s3); }];
             dispatch_semaphore_wait(s3, dispatch_time(DISPATCH_TIME_NOW, 10 * NSEC_PER_SEC));
-        } else {
+        } else
+#endif
+        {
             AVCaptureSession *s = [[AVCaptureSession alloc] init];
             AVCaptureScreenInput *in = [[AVCaptureScreenInput alloc] initWithDisplayID:d];
             AVCaptureVideoDataOutput *out = [[AVCaptureVideoDataOutput alloc] init];
