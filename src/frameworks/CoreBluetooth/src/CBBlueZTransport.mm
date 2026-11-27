@@ -338,19 +338,25 @@ void Transport::handleInterfacesAdded(DBusMessageIter *iter)
     api_->message_iter_get_basic(iter, &path);
     api_->message_iter_next(iter);
 
+    // The second argument is the dictionary of interfaces (a{sa{sv}}) of the new object.
+    if (api_->message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
+        return;
+    DBusMessageIter interfaces;
+    api_->message_iter_recurse(iter, &interfaces);
+
     ObjectRecord record;
     record.path = path != nullptr ? path : "";
-    while (api_->message_iter_get_arg_type(iter) == DBUS_TYPE_DICT_ENTRY)
+    while (api_->message_iter_get_arg_type(&interfaces) == DBUS_TYPE_DICT_ENTRY)
     {
         DBusMessageIter entry;
-        api_->message_iter_recurse(iter, &entry);
+        api_->message_iter_recurse(&interfaces, &entry);
         const char *interface = nullptr;
         api_->message_iter_get_basic(&entry, &interface);
         api_->message_iter_next(&entry);
         std::map<std::string, Value> properties;
         if (interface != nullptr && ReadProperties(api_, &entry, &properties))
             record.interfaces[interface] = properties;
-        api_->message_iter_next(iter);
+        api_->message_iter_next(&interfaces);
     }
 
     DeviceInfo device;
