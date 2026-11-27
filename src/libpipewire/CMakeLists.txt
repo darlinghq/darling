@@ -25,6 +25,10 @@ target_include_directories(darling_pipewire_client PUBLIC
 # -D_DARWIN_C_SOURCE otherwise hides those declarations from glibc.
 target_compile_definitions(darling_pipewire_client PRIVATE _GNU_SOURCE)
 
+# The client is linked statically into each framework that uses it; its functions are
+# not part of any framework's interface, so they are not exported from the dylibs.
+target_compile_options(darling_pipewire_client PRIVATE -fvisibility=hidden)
+
 target_link_libraries(darling_pipewire_client PUBLIC
 	darling_dbus_loader
 	pipewire
