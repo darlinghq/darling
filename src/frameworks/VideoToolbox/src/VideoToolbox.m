@@ -1335,3 +1335,63 @@ void* VTXPCMessageSetVideoFormatDescription(void)
     if (verbose) puts("STUB: VTXPCMessageSetVideoFormatDescription called");
     return NULL;
 }
+
+#import <Foundation/Foundation.h>
+#import <darling-stub-forwarding.h>
+
+@interface VTFrameProcessor : NSObject
+- (BOOL)startSessionWithConfiguration:(id)configuration error:(NSError **)error;
+- (BOOL)processWithParameters:(id)parameters error:(NSError **)error;
+- (void)endSession;
+@end
+
+@implementation VTFrameProcessor
+- (BOOL)startSessionWithConfiguration:(id)configuration error:(NSError **)error
+{
+    if (error)
+        *error = [NSError errorWithDomain:NSOSStatusErrorDomain code:-12900 userInfo:nil];
+    return NO;
+}
+- (BOOL)processWithParameters:(id)parameters error:(NSError **)error
+{
+    if (error)
+        *error = [NSError errorWithDomain:NSOSStatusErrorDomain code:-12900 userInfo:nil];
+    return NO;
+}
+- (void)endSession {}
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector { return [super methodSignatureForSelector:aSelector] ?: DarlingStubMethodSignature(aSelector); }
+- (void)forwardInvocation:(NSInvocation *)anInvocation { DarlingStubForwardInvocation(self, anInvocation); }
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector { return [super methodSignatureForSelector:aSelector] ?: DarlingStubMethodSignature(aSelector); }
++ (void)forwardInvocation:(NSInvocation *)anInvocation { DarlingStubForwardInvocation(self, anInvocation); }
+@end
+
+@interface VTFrameProcessorFrame : NSObject
+@end
+
+@implementation VTFrameProcessorFrame
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector { return [super methodSignatureForSelector:aSelector] ?: DarlingStubMethodSignature(aSelector); }
+- (void)forwardInvocation:(NSInvocation *)anInvocation { DarlingStubForwardInvocation(self, anInvocation); }
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector { return [super methodSignatureForSelector:aSelector] ?: DarlingStubMethodSignature(aSelector); }
++ (void)forwardInvocation:(NSInvocation *)anInvocation { DarlingStubForwardInvocation(self, anInvocation); }
+@end
+
+@interface VTTemporalNoiseFilterConfiguration : NSObject
+@end
+
+@implementation VTTemporalNoiseFilterConfiguration
++ (BOOL)isSupported { return NO; }
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector { return [super methodSignatureForSelector:aSelector] ?: DarlingStubMethodSignature(aSelector); }
+- (void)forwardInvocation:(NSInvocation *)anInvocation { DarlingStubForwardInvocation(self, anInvocation); }
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector { return [super methodSignatureForSelector:aSelector] ?: DarlingStubMethodSignature(aSelector); }
++ (void)forwardInvocation:(NSInvocation *)anInvocation { DarlingStubForwardInvocation(self, anInvocation); }
+@end
+
+@interface VTTemporalNoiseFilterParameters : NSObject
+@end
+
+@implementation VTTemporalNoiseFilterParameters
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector { return [super methodSignatureForSelector:aSelector] ?: DarlingStubMethodSignature(aSelector); }
+- (void)forwardInvocation:(NSInvocation *)anInvocation { DarlingStubForwardInvocation(self, anInvocation); }
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector { return [super methodSignatureForSelector:aSelector] ?: DarlingStubMethodSignature(aSelector); }
++ (void)forwardInvocation:(NSInvocation *)anInvocation { DarlingStubForwardInvocation(self, anInvocation); }
+@end
