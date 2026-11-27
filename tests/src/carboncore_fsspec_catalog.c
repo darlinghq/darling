@@ -75,6 +75,27 @@ int main(void)
     /* The spec is optional. */
     CHECK(FSGetCatalogInfo(&ref, 0, NULL, NULL, NULL, NULL) == noErr);
 
+    /* The root directory: the volume name under fsRtParID, as the volume reports it. */
+    {
+        FSRef root;
+        HFSUniStr255 volName;
+        FSVolumeRefNum vol;
+        FSSpec rootSpec;
+        unsigned i;
+
+        memset(&rootSpec, 0xaa, sizeof(rootSpec));
+        CHECK(FSPathMakeRef((const UInt8 *)"/", &root, NULL) == noErr);
+        CHECK(FSGetCatalogInfo(&root, 0, NULL, NULL, &rootSpec, NULL)
+              == noErr);
+        CHECK(FSGetVolumeInfo(kFSInvalidVolumeRefNum, 1, &vol,
+                              kFSVolInfoNone, NULL, &volName, NULL) == noErr);
+        CHECK(rootSpec.vRefNum == vol);
+        CHECK(rootSpec.parID == fsRtParID);
+        CHECK(rootSpec.name[0] == volName.length);
+        for (i = 0; i < volName.length && i < rootSpec.name[0]; i++)
+            CHECK(rootSpec.name[1 + i] == (unsigned char)volName.unicode[i]);
+    }
+
     unlink(path);
     printf("CARBONCORE_FSSPEC_CATALOG %s\n", failures ? "FAIL" : "PASS");
     return failures != 0;

@@ -1862,6 +1862,16 @@ static OSErr fsSpecForPath(const std::string& path, FSSpec* spec)
 	uint32_t nodeID, parentID;
 
 	memset(spec, 0, sizeof(*spec));
+	if (path == "/")
+	{
+		// The root directory of a volume is described by the volume's name, with fsRtParID as its parent.
+		const size_t length = strlen(kBootVolumeName);
+		spec->vRefNum = kBootVolumeRefNum;
+		spec->parID = fsRtParID;
+		spec->name[0] = (unsigned char) length;
+		memcpy(spec->name + 1, kBootVolumeName, length);
+		return noErr;
+	}
 	if (leaf.empty() || leaf.size() > sizeof(spec->name) - 1)
 		return bdNamErr;
 	if (::stat(parent.c_str(), &st) != 0 || !S_ISDIR(st.st_mode))
