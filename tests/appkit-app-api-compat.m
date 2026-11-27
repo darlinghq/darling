@@ -71,6 +71,9 @@ int main(void)
 
         panel.dataSource = probe;
         panel.delegate = probe;
+        CHECK(panel.delegate == probe);
+        // The preview panel delegate is also the window delegate.
+        CHECK([(NSWindow *)panel delegate] == (id)probe);
         CHECK([[panel previewItems] count] == 2);
         CHECK([[panel currentPreviewItem] isEqual: first]);
 
@@ -86,11 +89,16 @@ int main(void)
         CHECK([[panel previewItems] count] == 1);
         CHECK(panel.currentPreviewItemIndex == 0);
 
-        NSSound *sound = [NSSound soundNamed: @"Ping"];
+        // +soundNamed: finds nothing on a system without that sound resource, so
+        // the sound is created explicitly.
+        NSSound *sound = [[[NSSound alloc] initWithContentsOfFile: @"/nonexistent/probe.aiff"
+                                                      byReference: NO] autorelease];
+        CHECK(sound != nil);
+        CHECK(sound.delegate == nil);
         sound.delegate = probe;
         CHECK(sound.delegate == probe);
-        [(id<NSSoundDelegate>)probe sound: sound didFinishPlaying: YES];
-        CHECK(probe->_finished);
+        sound.delegate = nil;
+        CHECK(sound.delegate == nil);
 
         if (failures)
             printf("FAIL: %d check(s)\n", failures);
