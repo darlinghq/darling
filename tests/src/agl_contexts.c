@@ -186,7 +186,21 @@ static void fontLists(AGLContext ctx, int width, int height)
 	glRasterPos2i(20, 20);
 	glCallLists(1, GL_UNSIGNED_BYTE, "A");
 	glGetFloatv(GL_CURRENT_RASTER_POSITION, position);
-	CHECK(position[0] > 20.5f);
+	// A control list that moves the position by 10: a driver whose glBitmap does not move the raster position of a
+	// list (software rasterizer of Mesa on a Wayland display) is not asked for it of the glyph lists either
+	GLuint control = glGenLists(1);
+	GLfloat controlPosition[4];
+	glNewList(control, GL_COMPILE);
+	glBitmap(0, 0, 0, 0, 10, 0, NULL);
+	glEndList();
+	glRasterPos2i(20, 20);
+	glCallList(control);
+	glGetFloatv(GL_CURRENT_RASTER_POSITION, controlPosition);
+	if (controlPosition[0] > 29.5f)
+		CHECK(position[0] > 20.5f);
+	else
+		printf("SKIP: the driver does not move the raster position by glBitmap in a list\n");
+	glDeleteLists(control, 1);
 	glDeleteLists(base, 256);
 
 	CHECK(!aglUseFont(ctx, family, 0, 24, 0, 300, 1));

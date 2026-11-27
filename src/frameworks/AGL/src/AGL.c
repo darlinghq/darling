@@ -495,7 +495,8 @@ AGL_EXPORT GLboolean aglSetWindowRef(AGLContext ctx, WindowRef window)
 		return GL_FALSE;
 	}
 	if (!window) {
-		dropSurface(ctx);
+		// The surface stays until the context is given another or is destroyed: a drawable taken away from a
+		// context and a new one made after that fails on Wayland with the EGL of Mesa
 		CGLClearDrawable(ctx->cgl);
 		ctx->window = NULL;
 		ctx->drawable = NULL;
