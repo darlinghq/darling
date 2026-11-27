@@ -306,10 +306,6 @@ OSErr FSClose(FSIORefNum refNum);
 #endif
 
 
-#ifndef __LP64__
-OSErr FindFolder( short volume,OSType folderType, Boolean createFolder, short* foundVolume,long* foundDirectory);
-#endif
-
 #ifdef __cplusplus
 }
 #endif

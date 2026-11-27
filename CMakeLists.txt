@@ -291,6 +291,9 @@ if (Python3_Interpreter_FOUND)
 	set_tests_properties(rpm_packaging PROPERTIES SKIP_RETURN_CODE 77)
 	add_test(NAME target_conditionals
 		COMMAND sh ${CMAKE_SOURCE_DIR}/tests/headers/target-conditionals.sh ${CMAKE_SOURCE_DIR})
+	add_test(NAME carboncore_folders_header
+		COMMAND sh ${CMAKE_SOURCE_DIR}/tests/headers/carboncore-folders-header.sh
+			${CMAKE_SOURCE_DIR}/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk)
 endif()
 
 if (DEBIAN_PACKAGING)
