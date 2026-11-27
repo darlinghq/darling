@@ -271,7 +271,6 @@ int main(int argc, char **argv) {
 
             [sensor readValueForDescriptor: description];
             id descriptorValue = [h waitFor: @"descriptor-value"];
-            printf("descriptor value is a %s: %s\n", object_getClassName(descriptorValue), [[descriptorValue description] UTF8String]);
             expect([descriptorValue isEqual: @"Battery"], @"the user description descriptor reads as a string");
 
             [sensor writeValue: bytes("\x0a\x0b", 2) forCharacteristic: level type: CBCharacteristicWriteWithResponse];
@@ -286,7 +285,6 @@ int main(int argc, char **argv) {
 
             [sensor writeValue: bytes("\xde\xad", 2) forCharacteristic: level type: CBCharacteristicWriteWithResponse];
             NSError *refused = [h waitFor: @"write"];
-            printf("rejected write reports %s\n", [[refused description] UTF8String]);
             expect([refused isKindOfClass: [NSError class]] && [refused.domain isEqual: CBErrorDomain] &&
                        refused.code == CBErrorOperationNotSupported,
                    @"a write the peripheral rejects is reported as a CBError");
@@ -298,8 +296,7 @@ int main(int argc, char **argv) {
             expect([[h waitFor: @"value"] isEqual: bytes("\x07\x08", 2)], @"a notification delivers the new value");
             [sensor setNotifyValue: NO forCharacteristic: level];
             id off = [h waitFor: @"notify-state"];
-            printf("notify off reports %s, isNotifying %d\n", [[off description] UTF8String], (int) level.isNotifying);
-            expect([off boolValue] == NO, @"notifications are switched off");
+            expect([off boolValue] == NO && !level.isNotifying, @"notifications are switched off");
 
             [sensor readRSSI];
             expect([[h waitFor: @"rssi"] intValue] == -52, @"readRSSI reports the RSSI");
