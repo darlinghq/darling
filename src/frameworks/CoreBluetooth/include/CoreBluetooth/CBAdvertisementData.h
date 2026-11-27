@@ -25,3 +25,5 @@ extern NSString *const CBAdvertisementDataServiceDataKey;
 extern NSString *const CBAdvertisementDataServiceUUIDsKey;
 extern NSString *const CBAdvertisementDataOverflowServiceUUIDsKey;
 extern NSString *const CBAdvertisementDataTxPowerLevelKey;
+extern NSString *const CBAdvertisementDataIsConnectable;
+extern NSString *const CBAdvertisementDataSolicitedServiceUUIDsKey;

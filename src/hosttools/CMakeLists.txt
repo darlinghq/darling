@@ -22,6 +22,28 @@ target_include_directories(darling-coredump PRIVATE
 
 install(TARGETS darling-coredump DESTINATION bin)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(DBUS1 REQUIRED dbus-1)
+
+add_executable(corebluetooth_wire_test
+	tests/corebluetooth_wire.cpp
+	../frameworks/CoreBluetooth/src/bluez_wire.cpp
+	../libdarlingdbus/darling_dbus.c
+)
+
+set_target_properties(corebluetooth_wire_test PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+
+target_include_directories(corebluetooth_wire_test PRIVATE
+	../frameworks/CoreBluetooth/src
+	../libdarlingdbus/include
+	${DBUS1_INCLUDE_DIRS}
+)
+
+target_link_directories(corebluetooth_wire_test PRIVATE ${DBUS1_LIBRARY_DIRS})
+target_link_libraries(corebluetooth_wire_test PRIVATE ${DBUS1_LIBRARIES} ${CMAKE_DL_LIBS})
+
+add_test(NAME corebluetooth_wire COMMAND corebluetooth_wire_test)
+
 if (DARLING_COREDUMP_SANITIZE)
 	target_compile_options(darling-coredump PRIVATE
 		-fsanitize=address,undefined
