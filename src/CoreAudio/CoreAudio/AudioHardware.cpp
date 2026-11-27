@@ -22,6 +22,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "pulse/AudioHardwareImplPA.h"
 #include "pulse/AudioHardwareImplPAOutput.h"
 #include "pulse/AudioHardwareImplPAInput.h"
+#if HAVE_PIPEWIRE
+#include "pipewire/AudioHardwareImplPW.h"
+#include "pipewire/PWConfig.h"
+#include <pipe_client.h>
+#endif
 #include <CarbonCore/MacErrors.h>
 #include <dispatch/dispatch.h>
 #include <algorithm>
@@ -47,13 +52,38 @@ std::mutex& PAGetObjectMapMutex()
 	return *mutex;
 }
 
+// One backend per process. PipeWire is preferred when reachable: it supplies
+// the actual default sink/source, while the PulseAudio path remains the
+// fallback for hosts without a PipeWire server. Both backends expose the same
+// three default-device object IDs, so the choice is invisible to callers.
+static bool usePipeWire()
+{
+#if HAVE_PIPEWIRE
+	static dispatch_once_t once;
+	static bool available = false;
+	dispatch_once(&once, ^{ available = darling_pw_can_connect() != 0; });
+	return available;
+#else
+	return false;
+#endif
+}
+
 static void initObjects()
 {
 	static dispatch_once_t once;
 	dispatch_once(&once, ^{
 		auto& g_objects = PAGetObjectMap();
 
-		// TODO: Or ALSA
+#if HAVE_PIPEWIRE
+		if (usePipeWire())
+		{
+			g_objects.insert(std::make_pair(kAudioObjectSystemObject, std::make_unique<AudioHardwareImplPW>(kAudioObjectSystemObject)));
+			g_objects.insert(std::make_pair(kPWDefaultOutputObject, std::make_unique<AudioHardwareImplPWOutput>(kPWDefaultOutputObject)));
+			g_objects.insert(std::make_pair(kPWDefaultInputObject, std::make_unique<AudioHardwareImplPWInput>(kPWDefaultInputObject)));
+			g_objects.insert(std::make_pair(kPWSystemOutputObject, std::make_unique<AudioHardwareImplPWOutput>(kPWSystemOutputObject, "event")));
+			return;
+		}
+#endif
 		g_objects.insert(std::make_pair(kAudioObjectSystemObject, std::make_unique<AudioHardwareImplPA>(kAudioObjectSystemObject)));
 		g_objects.insert(std::make_pair(kAudioObjectSystemObject + 1, std::make_unique<AudioHardwareImplPAOutput>(kAudioObjectSystemObject + 1)));
 		g_objects.insert(std::make_pair(kAudioObjectSystemObject + 2, std::make_unique<AudioHardwareImplPAInput>(kAudioObjectSystemObject + 2)));
@@ -81,6 +111,10 @@ static AudioHardwareImpl* GetSystemObject()
 
 static bool IsStreamObject(AudioObjectID objID)
 {
+#if HAVE_PIPEWIRE
+	if (usePipeWire())
+		return PWIsStreamObject(objID, nullptr);
+#endif
 	return (objID & 0xffff0000u) == kPAStreamObjectBase;
 }
 

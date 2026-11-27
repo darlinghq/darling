@@ -18,9 +18,34 @@
 */
 
 #import <AVFoundation/AVCaptureConnection.h>
+#import "camera/DarlingCameraBackend.h"
+#import <objc/runtime.h>
 #import <darling-stub-forwarding.h>
 
 @implementation AVCaptureConnection
+
+- (BOOL)isEnabled
+{
+	id value = objc_getAssociatedObject(self, &kDarlingCameraEnabledKey);
+	return value ? [value boolValue] : YES;
+}
+
+- (void)setEnabled:(BOOL)enabled
+{
+	objc_setAssociatedObject(self, &kDarlingCameraEnabledKey,
+		[NSNumber numberWithBool: enabled], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (NSArray<AVCaptureInputPort *> *)videoPorts
+{
+	NSMutableArray *ports = [NSMutableArray array];
+	for (AVCaptureInputPort *port in objc_getAssociatedObject(self, &kDarlingCameraPortsKey))
+	{
+		if ([[port darling_mediaType] isEqualToString: AVMediaTypeVideo])
+			[ports addObject: port];
+	}
+	return ports;
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);

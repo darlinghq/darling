@@ -18,9 +18,16 @@
 */
 
 #import <AVFoundation/AVCaptureOutput.h>
+#import "camera/DarlingCameraBackend.h"
+#import <objc/runtime.h>
 #import <darling-stub-forwarding.h>
 
 @implementation AVCaptureOutput
+
+- (NSArray<AVCaptureConnection *> *)connections
+{
+	return objc_getAssociatedObject(self, &kDarlingCameraConnectionsKey) ?: [NSArray array];
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);

@@ -23,10 +23,8 @@
 #import <Foundation/Foundation.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <CoreMedia/CMTime.h>
-
-// Stub of ScreenCaptureKit. Darling has no screen capture service, so every
-// capture request completes with SCStreamErrorUserDeclined, the same result an
-// app gets on macOS when screen recording permission is denied.
+#import <CoreMedia/CMSampleBuffer.h>
+#import <CoreMedia/CMSync.h>
 
 extern NSString *const SCStreamErrorDomain;
 
@@ -67,6 +65,25 @@ typedef NS_ENUM(NSInteger, SCCaptureDynamicRange) {
 	SCCaptureDynamicRangeHDRCanonicalDisplay,
 };
 
+typedef NS_ENUM(NSInteger, SCFrameStatus) {
+	SCFrameStatusComplete,
+	SCFrameStatusIdle,
+	SCFrameStatusBlank,
+	SCFrameStatusStarted,
+	SCFrameStatusSuspended,
+	SCFrameStatusStopped,
+};
+
+typedef NSString *SCStreamFrameInfo;
+extern SCStreamFrameInfo const SCStreamFrameInfoStatus;
+extern SCStreamFrameInfo const SCStreamFrameInfoDisplayTime;
+extern SCStreamFrameInfo const SCStreamFrameInfoScaleFactor;
+extern SCStreamFrameInfo const SCStreamFrameInfoContentScale;
+extern SCStreamFrameInfo const SCStreamFrameInfoContentRect;
+extern SCStreamFrameInfo const SCStreamFrameInfoBoundingRect;
+extern SCStreamFrameInfo const SCStreamFrameInfoScreenRect;
+extern SCStreamFrameInfo const SCStreamFrameInfoDirtyRects;
+
 @interface SCRunningApplication : NSObject
 @property (readonly) NSString *bundleIdentifier;
 @property (readonly) NSString *applicationName;
@@ -104,9 +121,15 @@ typedef NS_ENUM(NSInteger, SCCaptureDynamicRange) {
 @property (readonly) SCShareableContentStyle style;
 @property (readonly) SCStreamType streamType;
 @property BOOL includeMenuBar;
+@property (readonly) NSArray<SCRunningApplication *> *includedApplications;
+@property (readonly) NSArray<SCDisplay *> *includedDisplays;
+@property (readonly) NSArray<SCWindow *> *includedWindows;
+@property BOOL cameraEnabled;
+@property BOOL microphoneEnabled;
 - (instancetype)initWithDesktopIndependentWindow:(SCWindow *)window;
 - (instancetype)initWithDisplay:(SCDisplay *)display excludingWindows:(NSArray<SCWindow *> *)excluded;
 - (instancetype)initWithDisplay:(SCDisplay *)display includingWindows:(NSArray<SCWindow *> *)included;
+- (instancetype)initWithDisplay:(SCDisplay *)display includingApplications:(NSArray<SCRunningApplication *> *)applications exceptingWindows:(NSArray<SCWindow *> *)exceptingWindows;
 - (instancetype)initWithDisplay:(SCDisplay *)display excludingApplications:(NSArray<SCRunningApplication *> *)applications exceptingWindows:(NSArray<SCWindow *> *)exceptingWindows;
 @end
 
@@ -150,6 +173,8 @@ typedef NS_ENUM(NSInteger, SCCaptureDynamicRange) {
 @end
 
 @protocol SCStreamOutput <NSObject>
+@optional
+- (void)stream:(SCStream *)stream didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer ofType:(SCStreamOutputType)type;
 @end
 
 @class SCRecordingOutput;
@@ -172,6 +197,8 @@ typedef NS_ENUM(NSInteger, SCCaptureDynamicRange) {
 @end
 
 @interface SCStream : NSObject
+@property (readonly, getter=isCapturing) BOOL capturing;
+@property (readonly) CMClockRef synchronizationClock;
 - (instancetype)initWithFilter:(SCContentFilter *)contentFilter configuration:(SCStreamConfiguration *)streamConfig delegate:(id<SCStreamDelegate>)delegate;
 - (BOOL)addStreamOutput:(id<SCStreamOutput>)output type:(SCStreamOutputType)type sampleHandlerQueue:(dispatch_queue_t)sampleHandlerQueue error:(NSError **)error;
 - (BOOL)removeStreamOutput:(id<SCStreamOutput>)output type:(SCStreamOutputType)type error:(NSError **)error;

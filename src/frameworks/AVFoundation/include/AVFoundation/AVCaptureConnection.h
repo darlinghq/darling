@@ -18,7 +18,11 @@
 */
 
 #include <Foundation/Foundation.h>
+#import <AVFoundation/AVCaptureInputPort.h>
 
 @interface AVCaptureConnection : NSObject
+
+@property(nonatomic, getter=isEnabled) BOOL enabled;
+@property(nonatomic, readonly) NSArray<AVCaptureInputPort *> *videoPorts;
 
 @end

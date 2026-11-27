@@ -17,8 +17,18 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <QuartzCore/CALayer.h>
+#import <AVFoundation/AVCaptureSession.h>
+#import <AVFoundation/AVCaptureConnection.h>
 
-@interface AVCaptureVideoPreviewLayer : NSObject
+@interface AVCaptureVideoPreviewLayer : CALayer
+
++ (instancetype)layerWithSession:(AVCaptureSession *)session;
+- (instancetype)initWithSession:(AVCaptureSession *)session;
+
+@property(nonatomic, retain) AVCaptureSession *session;
+@property(nonatomic, readonly) AVCaptureConnection *connection;
+@property(nonatomic, copy) NSString *videoGravity;
 
 @end

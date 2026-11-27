@@ -18,7 +18,13 @@
 */
 
 #include <Foundation/Foundation.h>
+#import <AVFoundation/AVCaptureInput.h>
+#import <AVFoundation/AVCaptureDevice.h>
 
-@interface AVCaptureDeviceInput : NSObject
+@interface AVCaptureDeviceInput : AVCaptureInput
+
++ (instancetype)deviceInputWithDevice:(AVCaptureDevice *)device error:(NSError **)error;
+
+@property(nonatomic, readonly) AVCaptureDevice *device;
 
 @end

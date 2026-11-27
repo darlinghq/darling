@@ -66,3 +66,11 @@ darling-swift.
   distributions to include its notice; the full text is quoted in `overlays/CryptoKit/NOTICE.md`.
 - Use: linked into the built `CryptoKit.framework`. Whether the licence texts and `NOTICE.txt` are installed with
   the framework, as the Helvetica Neue entry above does, is an open question for the maintainers.
+
+## PipeWire and libspa headers, host/runtime dependencies of optional PipeWire backend
+
+- What: The optional PipeWire camera/audio/screen-capture backend links at build/runtime against host-installed PipeWire/libspa libraries and uses their public headers during compilation (`libpipewire-0.3`, `spa-0.2`). No PipeWire/libspa source code is vendored in this repository.
+- Upstream: PipeWire, <https://gitlab.freedesktop.org/pipewire/pipewire>.
+- Licence: PipeWire is distributed under the MIT license; libspa headers/code in PipeWire are also MIT-licensed. Exact installed versions and license texts are provided by the host distribution packages used to build/run the backend.
+- Use: Optional backend integration only. Builds without PipeWire development/runtime libraries disable this backend. Distributions packaging Darling with PipeWire enabled should include the corresponding PipeWire/libspa copyright and license notices from their packages.
+- HDR note: HDR screen/camera capture negotiates PipeWire raw video formats/colorimetry (e.g. P010/PQ/BT2020) only when supported by the linked runtime (PipeWire >= 1.6 gate in code). No PipeWire source is vendored; behavior depends on host PipeWire/libspa and compositor/portal capabilities.

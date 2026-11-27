@@ -18,7 +18,10 @@
 */
 
 #include <Foundation/Foundation.h>
+#import <AVFoundation/AVCaptureConnection.h>
 
 @interface AVCaptureOutput : NSObject
+
+@property(nonatomic, readonly) NSArray<AVCaptureConnection *> *connections;
 
 @end
