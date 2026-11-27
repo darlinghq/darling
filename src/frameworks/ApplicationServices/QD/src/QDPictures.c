@@ -46,6 +46,9 @@ void TextSize(short);
 void TextMode(short);
 void TextFace(StyleParameter);
 
+// While a picture is measured (_QDPictureGetPixelDepth) the deepest pixel map that it holds is noted
+static __thread short gMeasuredDepth;
+
 struct reader { const uint8_t *p, *end; Boolean bad; };
 
 static unsigned u8(struct reader *r) { if (r->p + 1 > r->end) { r->bad = true; return 0; } return *r->p++; }
@@ -131,6 +134,8 @@ static Boolean pixels(struct reader *r, unsigned op, struct QDPort *port, const 
 			}
 		}
 	}
+	if (pixelSize > gMeasuredDepth)
+		gMeasuredDepth = (short) pixelSize;
 	Rect src = rect(r), dst = rect(r);
 	u16(r); // transfer mode: the picture is copied
 	if (op == 0x99 || op == 0x9B) skip(r, u16(r) - 2); // mask region
@@ -340,6 +345,34 @@ PicHandle OpenCPicture(const OpenCPicParams *params)
 void ClosePicture(void)
 {
 	QDRecordClose();
+}
+
+
+// Not an Apple API, and exported on purpose: the pixel depth of the deepest pixel map (bit map: 1) that a picture
+// draws, for the graphics importer of picture files, which reports it in its image description. 0 for a picture
+// with no pixel maps (it only draws shapes), or one that cannot be played.
+short _QDPictureGetPixelDepth(QDPicHandle pic)
+{
+	if (!pic || !*pic)
+		return 0;
+	Rect frame = (*pic)->picFrame;
+	short width = frame.right - frame.left, height = frame.bottom - frame.top;
+	if (width <= 0 || height <= 0 || width > 4096 || height > 4096)
+		return 0;
+	GWorldPtr scratch = NULL;
+	Rect bounds = { 0, 0, height, width };
+	if (NewGWorld(&scratch, 32, &bounds, NULL, NULL, 0) != noErr)
+		return 0;
+	GrafPtr saved = gCurrentPort;
+	QDErr savedError = gQDError;
+	gCurrentPort = (GrafPtr) scratch;
+	gMeasuredDepth = 0;
+	play((const uint8_t *) *pic, (size_t) GetHandleSize((Handle) pic), &bounds);
+	short depth = gMeasuredDepth;
+	gCurrentPort = saved;
+	gQDError = savedError;
+	DisposeGWorld(scratch);
+	return depth;
 }
 
 #endif /* !__LP64__ */
