@@ -326,8 +326,8 @@ int main(int argc, char **argv) {
 
 #else
 
-// The original CoreBluetooth is 64-bit only, so the framework's 32-bit slice keeps the stub forwarding that answers
-// unknown selectors: loading it, creating a manager and calling it must still not crash, and there is no powered adapter
+// The framework's 32-bit slice keeps the stub forwarding that answers unknown selectors (its legacy Objective-C
+// runtime cannot synthesize the properties of the implementation): loading it, creating a manager and calling it must still not crash, and there is no powered adapter
 // and no scan.
 int main(int argc, char **argv) {
     @autoreleasepool {

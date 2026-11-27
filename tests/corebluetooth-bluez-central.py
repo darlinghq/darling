@@ -7,8 +7,8 @@
 #
 # <bindir> holds the guest program built from tests/src/corebluetooth_central.m
 # as corebluetooth_central.<arch>, for each arch (default: x86_64 i386). The
-# 32-bit slice has no central role (the original is 64-bit only), so for i386
-# the program only checks that the framework loads.
+# 32-bit slice keeps the stubs (no central role), so for i386 the program only
+# checks that calling it does not crash.
 #
 # A private dbus-daemon plays the system bus and tests/corebluetooth-mock-bluez.py
 # plays org.bluez on it (Adapter1, Device1 and the Gatt* interfaces), so the

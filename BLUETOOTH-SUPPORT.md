@@ -28,8 +28,9 @@ callbacks to the queue supplied to `initWithDelegate:queue:`.
 
 The framework is built FAT. The BlueZ-backed implementations, which rely on the modern
 Objective-C runtime's property synthesis, are compiled into the x86_64 slice. The i386 slice
-keeps the generic stub-forwarding behavior used by the rest of the unimplemented framework;
-the original CoreBluetooth is 64-bit only as well. The bridge classes and the C++ helpers are
+keeps the generic stub-forwarding behavior used by the rest of the unimplemented framework,
+because the legacy Objective-C runtime of that slice cannot synthesize the properties the
+implementation uses. The bridge classes and the C++ helpers are
 internal: they are not exported from the framework.
 
 ## Host setup
