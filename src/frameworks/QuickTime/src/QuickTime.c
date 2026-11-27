@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <CarbonCore/MacErrors.h>
 #include "qt_movie_internal.h"
+#include "qt_mov_probe.h"
 
 static int verbose = 0;
 
@@ -13144,11 +13145,55 @@ void* NewMovieFromDataFork64(void)
     return NULL;
 }
 
+#if !__LP64__
+OSErr NewMovieFromDataRef(Movie *m, short flags, short *id,
+                          Handle dataRef, OSType dataRefType)
+{
+    const PointerDataRefRecord *record;
+    struct d4rl_qt_mov_header header;
+    int status;
+
+    if (m)
+        *m = NULL;
+    if (!movies_entered)
+        return movies_error = movieToolboxUninitialized;
+    if (!m)
+        return movies_error = paramErr;
+    if (flags != 0)
+        return movies_error = unimpErr;
+    if (dataRefType != PointerDataHandlerSubType)
+        return movies_error = cantFindHandler;
+    if (!dataRef || !*dataRef)
+        return movies_error = invalidDataRef;
+
+    record = (const PointerDataRefRecord *)*dataRef;
+    if (!record->data || record->dataLength <= 0)
+        return movies_error = invalidDataRef;
+
+    status = d4rl_qt_mov_probe(record->data,
+                              (size_t)record->dataLength, &header);
+    if (status == D4RL_QT_MOV_NO_MOVIE_HEADER)
+        return movies_error = noMovieFound;
+    if (status != D4RL_QT_MOV_OK)
+        return movies_error = badPublicMovieAtom;
+    if (header.duration > INT32_MAX)
+        return movies_error = invalidDuration;
+    if (header.has_tracks)
+        return movies_error = unimpErr;
+
+    /* No movie-resource ID is supplied by a pointer data reference. */
+    (void)id;
+    *m = movie_new((TimeScale)header.timescale,
+                   (TimeValue)header.duration);
+    return movies_error;
+}
+#else
 void* NewMovieFromDataRef(void)
 {
     if (verbose) puts("STUB: NewMovieFromDataRef called");
     return NULL;
 }
+#endif
 
 void* NewMovieFromFile(void)
 {

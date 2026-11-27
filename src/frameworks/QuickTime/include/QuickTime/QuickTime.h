@@ -33,6 +33,20 @@ extern "C" {
  * width on x86_64. */
 typedef struct MovieType **Movie;
 
+#if !__LP64__
+typedef struct PointerDataRefRecord {
+    void *data;
+    Size dataLength;
+} PointerDataRefRecord;
+
+typedef PointerDataRefRecord *PointerDataRefPtr;
+enum { PointerDataHandlerSubType = 0x70747220 };
+
+/* Pointer references to header-only movies; tracks are not supported yet. */
+OSErr NewMovieFromDataRef(Movie *m, short flags, short *id,
+                          Handle dataRef, OSType dataRefType);
+#endif
+
 OSErr EnterMovies(void);
 void ExitMovies(void);
 OSErr GetMoviesError(void);
@@ -2211,7 +2225,9 @@ void* NewMovieExportStageReachedCallbackUPP(void);
 void* NewMovieForDataRefFromHandle(void);
 void* NewMovieFromDataFork(void);
 void* NewMovieFromDataFork64(void);
+#if __LP64__
 void* NewMovieFromDataRef(void);
+#endif
 void* NewMovieFromFile(void);
 void* NewMovieFromHandle(void);
 void* NewMovieFromProperties(void);
