@@ -39,7 +39,8 @@
 #include <QD/QD.h>
 #endif
 
-CGSConnectionID CGSMainConnectionID(void);
+#include <CoreGraphics/CoreGraphicsPrivate.h>
+
 // The window server window behind a Carbon window (HIToolbox)
 CGSWindowID _HIWindowGetCGSWindowID(WindowRef window);
 
@@ -62,6 +63,8 @@ struct __AGLContextRec {
 	AGLPixelFormat format;
 	WindowRef window;
 	AGLDrawable drawable;
+	CGSWindowID surfaceWindow;   // the window server window and surface the context draws to, 0 for none
+	CGSSurfaceID surface;
 	GLboolean enabled[16];
 	GLint bufferRect[4];
 	GLint swapRect[4];
@@ -70,6 +73,9 @@ struct __AGLContextRec {
 struct __AGLRendererInfoRec {
 	int unused;
 };
+
+static void sizeSurface(AGLContext ctx);
+static void dropSurface(AGLContext ctx);
 
 // Attributes of the pixel format list: those that take a value
 static int formatAttributeTakesValue(GLint attribute)
@@ -380,6 +386,7 @@ AGL_EXPORT GLboolean aglDestroyContext(AGLContext ctx)
 		failed(AGL_BAD_CONTEXT);
 		return GL_FALSE;
 	}
+	dropSurface(ctx);
 	CGLDestroyContext(ctx->cgl);
 	CGLReleasePixelFormat(ctx->format->cgl);
 	free(ctx);
@@ -399,6 +406,7 @@ AGL_EXPORT GLboolean aglUpdateContext(AGLContext ctx)
 		failed(AGL_BAD_CONTEXT);
 		return GL_FALSE;
 	}
+	sizeSurface(ctx);
 	return CGLUpdateContext(ctx->cgl) == kCGLNoError;
 }
 
@@ -434,6 +442,27 @@ AGL_EXPORT GLboolean aglGetCGLContext(AGLContext ctx, void **cgl_ctx)
 	return GL_TRUE;
 }
 
+// The context draws to a surface of the window: a drawable of its own that covers the content of the window
+static void sizeSurface(AGLContext ctx)
+{
+	Rect content;
+
+	if (!ctx->surface || GetWindowBounds(ctx->window, kWindowContentRgn, &content) != noErr)
+		return;
+	CGSSetSurfaceBounds(CGSMainConnectionID(), ctx->surfaceWindow, ctx->surface,
+		CGRectMake(0, 0, content.right - content.left, content.bottom - content.top));
+}
+
+static void dropSurface(AGLContext ctx)
+{
+	if (ctx->surface) {
+		CGLClearDrawable(ctx->cgl);
+		CGSRemoveSurface(CGSMainConnectionID(), ctx->surfaceWindow, ctx->surface);
+	}
+	ctx->surface = 0;
+	ctx->surfaceWindow = 0;
+}
+
 AGL_EXPORT GLboolean aglSetWindowRef(AGLContext ctx, WindowRef window)
 {
 	if (!ctx) {
@@ -441,22 +470,35 @@ AGL_EXPORT GLboolean aglSetWindowRef(AGLContext ctx, WindowRef window)
 		return GL_FALSE;
 	}
 	if (!window) {
+		dropSurface(ctx);
 		CGLClearDrawable(ctx->cgl);
 		ctx->window = NULL;
 		ctx->drawable = NULL;
 		return GL_TRUE;
 	}
 	CGSWindowID wid = _HIWindowGetCGSWindowID(window);
+	CGSSurfaceID surface = 0;
 	if (!wid) {
 		failed(AGL_BAD_WINDOW);
 		return GL_FALSE;
 	}
-	if (CGLSetSurface(ctx->cgl, CGSMainConnectionID(), wid, 0) != kCGLNoError) {
+	if (CGSAddSurface(CGSMainConnectionID(), wid, &surface) != kCGErrorSuccess || !surface) {
 		failed(AGL_BAD_WINDOW);
 		return GL_FALSE;
 	}
+	if (CGLSetSurface(ctx->cgl, CGSMainConnectionID(), wid, surface) != kCGLNoError) {
+		CGSRemoveSurface(CGSMainConnectionID(), wid, surface);
+		failed(AGL_BAD_WINDOW);
+		return GL_FALSE;
+	}
+	// the surface of the window the context drew to before is not needed any more
+	if (ctx->surface)
+		CGSRemoveSurface(CGSMainConnectionID(), ctx->surfaceWindow, ctx->surface);
 	ctx->window = window;
 	ctx->drawable = NULL;
+	ctx->surfaceWindow = wid;
+	ctx->surface = surface;
+	sizeSurface(ctx);
 	return GL_TRUE;
 }
 
