@@ -287,18 +287,44 @@ static CGImageRef copyImage(const char *path)
 	return image;
 }
 
-// QuickTime describes a gray image by the depth 32 plus its bits per pixel (an 8-bit gray image is 40 deep)
-static SInt16 depthOfImage(CGImageRef image)
+// QuickTime describes a gray image by the depth 32 plus its bits per pixel (an 8-bit gray image is 40 deep), a color
+// image by 24, or 32 when it has an alpha channel, a palette image by 8. The file's own description of its pixels
+// tells which: the decoder may give a gray file as RGB.
+static SInt16 depthOfImage(const char *path, CGImageRef image)
 {
+	CFURLRef url = CFURLCreateFromFileSystemRepresentation(NULL, (const UInt8 *) path, (CFIndex) strlen(path), false);
+	CGImageSourceRef source = url ? CGImageSourceCreateWithURL(url, NULL) : NULL;
+	CFDictionaryRef properties = source ? CGImageSourceCopyPropertiesAtIndex(source, 0, NULL) : NULL;
+	SInt16 depth = 0;
+	if (properties) {
+		CFStringRef model = CFDictionaryGetValue(properties, kCGImagePropertyColorModel);
+		CFNumberRef bits = CFDictionaryGetValue(properties, kCGImagePropertyDepth);
+		CFBooleanRef alpha = CFDictionaryGetValue(properties, kCGImagePropertyHasAlpha);
+		int bitsPerComponent = 8;
+		if (bits)
+			CFNumberGetValue(bits, kCFNumberIntType, &bitsPerComponent);
+		if (model && CFEqual(model, kCGImagePropertyColorModelGray))
+			depth = (SInt16) (32 + (bitsPerComponent > 8 ? 16 : bitsPerComponent < 8 ? bitsPerComponent : 8));
+		else if (model && CFEqual(model, kCGImagePropertyColorModelRGB))
+			depth = alpha && CFBooleanGetValue(alpha) ? 32 : 24;
+	}
+	if (properties)
+		CFRelease(properties);
+	if (source)
+		CFRelease(source);
+	if (url)
+		CFRelease(url);
+	if (depth)
+		return depth;
+	// no description in the file: the decoded image's
 	CGColorSpaceRef space = CGImageGetColorSpace(image);
 	CGColorSpaceModel model = space ? CGColorSpaceGetModel(space) : kCGColorSpaceModelRGB;
-	size_t bits = CGImageGetBitsPerComponent(image);
 	if (model == kCGColorSpaceModelMonochrome)
-		return (SInt16) (32 + (bits > 8 ? 16 : 8));
+		return (SInt16) (32 + (CGImageGetBitsPerComponent(image) > 8 ? 16 : 8));
 	if (model == kCGColorSpaceModelIndexed)
 		return 8;
-	CGImageAlphaInfo alpha = CGImageGetAlphaInfo(image);
-	Boolean hasAlpha = alpha != kCGImageAlphaNone && alpha != kCGImageAlphaNoneSkipFirst && alpha != kCGImageAlphaNoneSkipLast;
+	CGImageAlphaInfo alphaInfo = CGImageGetAlphaInfo(image);
+	Boolean hasAlpha = alphaInfo != kCGImageAlphaNone && alphaInfo != kCGImageAlphaNoneSkipFirst && alphaInfo != kCGImageAlphaNoneSkipLast;
 	return hasAlpha ? 32 : 24;
 }
 
@@ -308,7 +334,7 @@ static Boolean imageDetails(const char *path, OSType type, struct Details *d)
 	if (!image)
 		return false;
 	SetRect(&d->natural, 0, 0, (short) CGImageGetWidth(image), (short) CGImageGetHeight(image));
-	d->depth = depthOfImage(image);
+	d->depth = depthOfImage(path, image);
 	switch (type) {
 		case 'JPEG': d->codec = 'jpeg'; d->name = "Photo - JPEG"; break;
 		case 'PNGf': d->codec = 'png '; d->name = "PNG"; break;
