@@ -35,9 +35,8 @@
 
 #define AGL_EXPORT __attribute__((visibility("default")))
 
-#ifndef __LP64__
-#include <QD/QD.h>
-#endif
+#include <CoreText/CoreText.h>
+#include <math.h>
 
 #include <CoreGraphics/CoreGraphicsPrivate.h>
 #include <pthread.h>
@@ -863,18 +862,43 @@ AGL_EXPORT GLboolean aglSurfaceTexture(AGLContext context, GLenum target, GLenum
 	return GL_FALSE;
 }
 
-#ifdef __LP64__
-AGL_EXPORT GLboolean aglUseFont(AGLContext ctx, GLint fontID, Style face, GLint size, GLint first, GLint count, GLint base)
+// Bitmap fonts: each character of the font family, face and size is drawn black on white by Core Text and kept as a
+// display list of one glBitmap, whose pixel is set when it is at least half covered, and which moves the raster
+// position by the advance of the character. The characters are the Mac OS Roman ones. A font family is a QuickDraw
+// family number, which only 32-bit processes have: the families it has no name for, and every family of a 64-bit
+// process other than 0, the system font, use the system font.
+static CTFontRef copyBitmapFont(GLint fontID, Style face, GLint size)
 {
-	(void) fontID; (void) face; (void) size; (void) first; (void) count; (void) base;
-	// the font numbers are QuickDraw's, which 64-bit processes do not have
-	failed(ctx ? AGL_BAD_VALUE : AGL_BAD_CONTEXT);
-	return GL_FALSE;
+	CTFontRef font = NULL;
+#ifndef __LP64__
+	Str255 pascalName;
+	GetFontName((short) fontID, pascalName);
+	if (pascalName[0]) {
+		CFStringRef name = CFStringCreateWithPascalString(NULL, pascalName, kCFStringEncodingMacRoman);
+		font = name ? CTFontCreateWithName(name, size, NULL) : NULL;
+		if (name)
+			CFRelease(name);
+	}
+#endif
+	if (!font)
+		font = CTFontCreateUIFontForLanguage(kCTFontUIFontSystem, size, NULL);
+	if (!font)
+		return NULL;
+	CTFontSymbolicTraits traits = 0;
+	if (face & 1)
+		traits |= kCTFontBoldTrait;
+	if (face & 2)
+		traits |= kCTFontItalicTrait;
+	if (traits) {
+		CTFontRef styled = CTFontCreateCopyWithSymbolicTraits(font, 0, NULL, traits, traits);
+		if (styled) {
+			CFRelease(font);
+			font = styled;
+		}
+	}
+	return font;
 }
-#else
-// Bitmap fonts: each character is drawn in black on white by QuickDraw into an off-screen graphics world, with the
-// font family, face and size of the arguments, and kept as a display list of one glBitmap. A pixel counts as set
-// when it is at least half covered.
+
 AGL_EXPORT GLboolean aglUseFont(AGLContext ctx, GLint fontID, Style face, GLint size, GLint first, GLint count, GLint base)
 {
 	if (!ctx) {
@@ -885,78 +909,76 @@ AGL_EXPORT GLboolean aglUseFont(AGLContext ctx, GLint fontID, Style face, GLint 
 		failed(AGL_BAD_VALUE);
 		return GL_FALSE;
 	}
-	CGrafPtr savedPort;
-	GDHandle savedDevice;
-	GetGWorld(&savedPort, &savedDevice);
-
-	// The glyph box: the font's ascent and descent high, as wide as the widest character
-	GWorldPtr world = NULL;
-	Rect bounds = { 0, 0, (short) (size * 3 + 8), (short) (size * 3 + 8) };
-	if (NewGWorld(&world, 32, &bounds, NULL, NULL, 0) != noErr || !world) {
+#ifdef __LP64__
+	if (fontID != 0) {
+		failed(AGL_BAD_VALUE);
+		return GL_FALSE;
+	}
+#endif
+	CTFontRef font = copyBitmapFont(fontID, face, size);
+	if (!font) {
 		failed(AGL_BAD_ALLOC);
 		return GL_FALSE;
 	}
-	SetGWorld(world, NULL);
-	TextFont((short) fontID);
-	TextSize((short) size);
-	TextFace(face);
-	FontInfo info;
-	GetFontInfo(&info);
-	short ascent = info.ascent, descent = info.descent;
-	PixMapHandle pixels = GetGWorldPixMap(world);
-	LockPixels(pixels);
-	const RGBColor black = { 0, 0, 0 }, white = { 0xFFFF, 0xFFFF, 0xFFFF };
+	size_t height = (size_t) ceil(CTFontGetAscent(font) + CTFontGetDescent(font)) + 1;
+	GLint descent = (GLint) ceil(CTFontGetDescent(font));
 	GLboolean ok = GL_TRUE;
 	CGLContextObj previous = CGLGetCurrentContext();
 	CGLSetCurrentContext(ctx->cgl);
-	GLint packAlignment, packLsb;
-	glGetIntegerv(GL_UNPACK_ALIGNMENT, &packAlignment);
-	glGetIntegerv(GL_UNPACK_LSB_FIRST, &packLsb);
+	GLint unpackAlignment, unpackLsb;
+	glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpackAlignment);
+	glGetIntegerv(GL_UNPACK_LSB_FIRST, &unpackLsb);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	glPixelStorei(GL_UNPACK_LSB_FIRST, GL_FALSE);
-	short height = ascent + descent;
+	CGColorSpaceRef gray = CGColorSpaceCreateDeviceGray();
 	for (GLint c = first; c < first + count && ok; c++) {
-		short width = CharWidth((CharParameter) c);
+		unsigned char byte = (unsigned char) c;
+		CFStringRef character = CFStringCreateWithBytes(NULL, &byte, 1, kCFStringEncodingMacRoman, false);
+		UniChar unicode = character && CFStringGetLength(character) > 0 ? CFStringGetCharacterAtIndex(character, 0) : 0;
+		CGGlyph glyph = 0;
+		if (character)
+			CFRelease(character);
+		if (unicode)
+			CTFontGetGlyphsForCharacters(font, &unicode, &glyph, 1);
+		CGSize advance = { 0, 0 };
+		if (glyph)
+			CTFontGetAdvancesForGlyphs(font, kCTFontOrientationHorizontal, &glyph, &advance, 1);
+		size_t width = (size_t) ceil(advance.width);
 		glNewList((GLuint) (base + c - first), GL_COMPILE);
-		if (width <= 0 || height <= 0 || width > bounds.right || height > bounds.bottom) {
-			glBitmap(0, 0, 0, 0, width > 0 ? width : 0, 0, NULL);
+		if (!glyph || width == 0) {
+			glBitmap(0, 0, 0, 0, (GLfloat) advance.width, 0, NULL);
 		} else {
-			RGBBackColor(&white);
-			RGBForeColor(&black);
-			Rect box = { 0, 0, height, width };
-			EraseRect(&box);
-			MoveTo(0, ascent);
-			DrawChar((CharParameter) c);
-			const unsigned char *base_addr = (const unsigned char *) GetPixBaseAddr(pixels);
-			long rowBytes = GetPixRowBytes(pixels);
-			long stride = (width + 7) / 8;
-			unsigned char *bitmap = calloc((size_t) stride * height, 1);
-			if (!bitmap) {
+			unsigned char *pixels = malloc(width * height);
+			size_t stride = (width + 7) / 8;
+			unsigned char *bitmap = calloc(stride * height, 1);
+			CGContextRef context = pixels ? CGBitmapContextCreate(pixels, width, height, 8, width, gray, kCGImageAlphaNone) : NULL;
+			if (!bitmap || !context) {
 				ok = GL_FALSE;
 			} else {
-				// OpenGL's first bitmap row is the bottom one
-				for (short y = 0; y < height; y++) {
-					const unsigned char *row = base_addr + rowBytes * (height - 1 - y);
-					for (short x = 0; x < width; x++) {
-						// the pixel is ARGB: the green channel is the coverage of black on white
-						if (row[x * 4 + 2] < 128)
+				CGPoint position = { 0, (CGFloat) descent };
+				memset(pixels, 0xFF, width * height);
+				CGContextSetGrayFillColor(context, 0, 1);
+				CTFontDrawGlyphs(font, &glyph, &position, 1, context);
+				// the first bitmap row of OpenGL is the bottom one, the last row of the pixels
+				for (size_t y = 0; y < height; y++)
+					for (size_t x = 0; x < width; x++)
+						if (pixels[(height - 1 - y) * width + x] < 128)
 							bitmap[stride * y + x / 8] |= (unsigned char) (0x80 >> (x % 8));
-					}
-				}
-				glBitmap(width, height, 0, descent, width, 0, bitmap);
-				free(bitmap);
+				glBitmap((GLsizei) width, (GLsizei) height, 0, (GLfloat) descent, (GLfloat) advance.width, 0, bitmap);
 			}
+			if (context)
+				CGContextRelease(context);
+			free(bitmap);
+			free(pixels);
 		}
 		glEndList();
 	}
-	glPixelStorei(GL_UNPACK_ALIGNMENT, packAlignment);
-	glPixelStorei(GL_UNPACK_LSB_FIRST, (GLboolean) packLsb);
+	CGColorSpaceRelease(gray);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, unpackAlignment);
+	glPixelStorei(GL_UNPACK_LSB_FIRST, (GLboolean) unpackLsb);
 	CGLSetCurrentContext(previous);
-	UnlockPixels(pixels);
-	SetGWorld(savedPort, savedDevice);
-	DisposeGWorld(world);
+	CFRelease(font);
 	if (!ok)
 		failed(AGL_BAD_ALLOC);
 	return ok;
 }
-#endif
