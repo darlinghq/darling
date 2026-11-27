@@ -6,6 +6,7 @@
 // is fnfErr and a NULL result is paramErr. On 32-bit the FindFolder adapter returns the volume and directory ID
 // of the same folder, with the same errors. Built with -fpascal-strings.
 #include <CoreServices/CoreServices.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +19,13 @@
 
 static int g_failures;
 #define CHECK(cond) do { if (!(cond)) { printf("FAIL line %d: %s\n", __LINE__, #cond); g_failures++; } } while (0)
+
+// FSRefMakePath gives the resolved path, which differs from a path through a symbolic link such as /tmp
+static int samePath(const char* a, const char* b)
+{
+	char ra[PATH_MAX], rb[PATH_MAX];
+	return realpath(a, ra) && realpath(b, rb) && strcmp(ra, rb) == 0;
+}
 
 static int isDirectory(const char* path)
 {
@@ -39,7 +47,7 @@ int main(void)
 	// An existing temporary folder
 	setenv("TMPDIR", root, 1);
 	CHECK(FSFindFolder(volumeOnSystemDisk, kTemporaryFolderType, false, &ref) == noErr);
-	CHECK(FSRefMakePath(&ref, (UInt8*) got, sizeof(got)) == noErr && strcmp(got, root) == 0);
+	CHECK(FSRefMakePath(&ref, (UInt8*) got, sizeof(got)) == noErr && samePath(got, root));
 
 	// A missing one is an error unless it is to be created
 	setenv("TMPDIR", missing, 1);
@@ -47,7 +55,7 @@ int main(void)
 	CHECK(!isDirectory(missing));
 	CHECK(FSFindFolder(volumeOnSystemDisk, kTemporaryFolderType, true, &ref) == noErr);
 	CHECK(isDirectory(missing));
-	CHECK(FSRefMakePath(&ref, (UInt8*) got, sizeof(got)) == noErr && strcmp(got, missing) == 0);
+	CHECK(FSRefMakePath(&ref, (UInt8*) got, sizeof(got)) == noErr && samePath(got, missing));
 
 	// A path that is not a folder
 	setenv("TMPDIR", file, 1);
@@ -64,7 +72,7 @@ int main(void)
 	CHECK(FSFindFolder(volumeOnSystemDisk, kDesktopFolderType, false, &ref) == fnfErr);
 	CHECK(FSFindFolder(volumeOnSystemDisk, kDesktopFolderType, true, &ref) == noErr);
 	CHECK(isDirectory(path));
-	CHECK(FSRefMakePath(&ref, (UInt8*) got, sizeof(got)) == noErr && strcmp(got, path) == 0);
+	CHECK(FSRefMakePath(&ref, (UInt8*) got, sizeof(got)) == noErr && samePath(got, path));
 	setenv("HOME", "", 1);
 	CHECK(FSFindFolder(volumeOnSystemDisk, kDesktopFolderType, false, &ref) == fnfErr);
 	setenv("HOME", root, 1);

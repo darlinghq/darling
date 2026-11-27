@@ -81,7 +81,7 @@
 
 - (instancetype)init {
     if ((self = [super init])) {
-        _standardFontFamily = [@"Helvetica" copy];
+        _standardFontFamily = [@"Times" copy];
         _fixedFontFamily = [@"Courier" copy];
         _defaultFontSize = 16;
         _defaultFixedFontSize = 13;
@@ -103,7 +103,7 @@
 
 - (NSString *)standardFontFamily { return _standardFontFamily; }
 - (void)setStandardFontFamily:(NSString *)family {
-    NSString *copy = [family copy] ?: [@"Helvetica" copy];
+    NSString *copy = [family copy] ?: [@"Times" copy];
     [_standardFontFamily release];
     _standardFontFamily = copy;
 }
