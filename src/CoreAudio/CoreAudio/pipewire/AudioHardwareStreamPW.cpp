@@ -102,6 +102,10 @@ void AudioHardwareStreamPW::stop()
 
 void AudioHardwareStreamPW::wake()
 {
+	{
+		std::lock_guard<std::mutex> lock(m_wakeMutex);
+		++m_pending;
+	}
 	m_wake.notify_all();
 }
 
@@ -166,31 +170,34 @@ void AudioHardwareStreamPW::pump()
 {
 	while (m_running.load(std::memory_order_relaxed))
 	{
-		bool didWork = false;
-		if (darling_pw_stream_lock(m_stream) == 0)
+		unsigned cycles;
+		{
+			// The wake-up is counted under the mutex, so one that arrives while
+			// the previous cycle is still being served is not lost. The timeout
+			// only bounds how long a stop request can go unnoticed.
+			std::unique_lock<std::mutex> lock(m_wakeMutex);
+			m_wake.wait_for(lock, std::chrono::milliseconds(kIdleWaitMilliseconds),
+				[this] { return m_pending > 0 || !running(); });
+			cycles = std::min<unsigned>(m_pending, kMaxBuffersPerWake);
+			m_pending -= cycles;
+		}
+
+		// Serve one buffer for each reported cycle: a hardware device calls the
+		// IOProc once per I/O cycle, and clients rely on that cadence.
+		if (cycles && darling_pw_stream_lock(m_stream) == 0)
 		{
 			if (darling_pw_stream_state(m_stream) == DARLING_PW_STATE_STREAMING)
 			{
-				for (int i = 0; i < kMaxBuffersPerWake && running(); ++i)
+				for (unsigned i = 0; i < cycles && running(); ++i)
 				{
 					darling_pw_buffer buffer{};
 					void* cookie = nullptr;
 					if (darling_pw_stream_dequeue(m_stream, &buffer, &cookie) <= 0)
 						break;
-					didWork = true;
 					processBuffer(buffer, cookie);
 				}
 			}
 			darling_pw_stream_unlock(m_stream);
-		}
-
-		if (!didWork && running())
-		{
-			// The shared client has no buffer-availability signal. Sleep for a
-			// short, bounded interval instead of spinning on dequeue().
-			std::unique_lock<std::mutex> lock(m_wakeMutex);
-			m_wake.wait_for(lock, std::chrono::milliseconds(kIdleWaitMilliseconds),
-				[this] { return !running(); });
 		}
 	}
 }

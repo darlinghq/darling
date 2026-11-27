@@ -25,8 +25,9 @@ struct darling_pw_stream;
 class AudioHardwareImplPW;
 
 // One HAL IOProc attached to one PipeWire stream. The shared PipeWire client
-// gives us buffer dequeue/queue operations but no process callback, so each
-// stream owns a pump thread that drains the buffers PipeWire makes available.
+// reports each graph cycle through the process event and leaves buffer
+// handling to us, so each stream owns a pump thread that serves one buffer per
+// reported cycle, which gives the IOProc the steady cadence of a hardware device.
 class AudioHardwareStreamPW : public AudioHardwareStream
 {
 public:
@@ -81,6 +82,8 @@ protected:
 	std::thread m_thread;
 	std::mutex m_wakeMutex;
 	std::condition_variable m_wake;
+	// Graph cycles that have announced a buffer and are not served yet.
+	unsigned m_pending = 0;
 };
 
 #endif /* AUDIOHARDWARESTREAMPW_H */
