@@ -259,20 +259,22 @@ OSStatus AudioHardwareImplPW::devicePropertyData(const AudioObjectPropertyAddres
 		}
 		case kAudioDevicePropertyVolumeScalar:
 		{
+			// m_volume is what the listeners were last told (or the local value without a
+			// server), so a read must not change it.
 			float linear;
 			int muted;
+			Float32 volume = m_volume.load(std::memory_order_relaxed);
 			if (auto* client = volumeClient(); client && darling_pw_volume_get(client, &linear, &muted) == 0)
-				m_volume.store(std::cbrt(std::min(std::max(linear, 0.f), 1.f)), std::memory_order_relaxed);
-			const Float32 volume = m_volume.load(std::memory_order_relaxed);
+				volume = std::cbrt(std::min(std::max(linear, 0.f), 1.f));
 			return reply(ioDataSize, outData, &volume, sizeof(volume));
 		}
 		case kAudioDevicePropertyMute:
 		{
 			float linear;
 			int muted;
+			UInt32 muted32 = m_mute.load(std::memory_order_relaxed);
 			if (auto* client = volumeClient(); client && darling_pw_volume_get(client, &linear, &muted) == 0)
-				m_mute.store(muted ? 1 : 0, std::memory_order_relaxed);
-			const UInt32 muted32 = m_mute.load(std::memory_order_relaxed);
+				muted32 = muted ? 1 : 0;
 			return reply(ioDataSize, outData, &muted32, sizeof(muted32));
 		}
 		case kAudioDevicePropertyDeviceIsRunningSomewhere:
