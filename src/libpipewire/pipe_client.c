@@ -546,11 +546,12 @@ static void on_process(void* data)
 		stream->events.process(stream->user_data);
 }
 
-static void on_state_changed(void* data, enum pw_stream_state state,
-	enum pw_stream_state old_state, const char* error)
+static void on_state_changed(void* data, enum pw_stream_state old_state,
+	enum pw_stream_state state, const char* error)
 {
 	struct darling_pw_stream* stream = data;
-	(void) old_state; (void) error;
+	(void) old_state;
+	(void) error;
 
 	stream->state = (int) state;
 	pw_thread_loop_signal(stream->loop, false);
