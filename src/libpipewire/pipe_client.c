@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 /* PipeWire's spa/utils/string.h uses the xlocale API in a static helper. The
@@ -354,7 +355,7 @@ static const struct spa_pod* build_audio_param(struct spa_pod_builder* builder,
 	else
 		info.flags = SPA_AUDIO_FLAG_UNPOSITIONED;
 
-	return spa_format_audio_raw_build(builder, SPA_PARAM_Format, &info);
+	return spa_format_audio_raw_build(builder, SPA_PARAM_EnumFormat, &info);
 }
 
 /* Offer several raw formats so PipeWire can fixate on one the source actually
@@ -412,7 +413,7 @@ static const struct spa_pod* build_video_param(struct spa_pod_builder* builder,
 	max_rate.num = config->framerate ? config->framerate * 4 : 120;
 	max_rate.denom = 1;
 
-	spa_pod_builder_push_object(builder, &frame, SPA_TYPE_OBJECT_Format, SPA_PARAM_Format);
+	spa_pod_builder_push_object(builder, &frame, SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat);
 	spa_pod_builder_add(builder,
 		SPA_FORMAT_mediaType, SPA_POD_Id(SPA_MEDIA_TYPE_video),
 		SPA_FORMAT_mediaSubtype, SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw),
@@ -744,17 +745,25 @@ void darling_pw_stream_unlock(struct darling_pw_stream* stream)
 
 int darling_pw_stream_wait(struct darling_pw_stream* stream, int timeout_ms)
 {
-	int i, seconds = (timeout_ms + 999) / 1000;
+	struct timespec deadline;
+	int result;
 
 	if (!stream)
 		return -EINVAL;
 	pw_thread_loop_lock(stream->loop);
-	for (i = 0; i < seconds && stream->state != (int) PW_STREAM_STATE_STREAMING
-		&& stream->state != (int) PW_STREAM_STATE_ERROR; i++)
-		pw_thread_loop_timed_wait(stream->loop, 1);
-	i = stream->state == (int) PW_STREAM_STATE_STREAMING ? 0 : -ETIMEDOUT;
+	/* Every state change signals the loop, so the wait has to run against one
+	 * deadline rather than counting wake-ups. */
+	pw_thread_loop_get_time(stream->loop, &deadline,
+		(int64_t) (timeout_ms > 0 ? timeout_ms : 0) * 1000000);
+	while (stream->state != (int) PW_STREAM_STATE_STREAMING
+		&& stream->state != (int) PW_STREAM_STATE_ERROR)
+	{
+		if (pw_thread_loop_timed_wait_full(stream->loop, &deadline) != 0)
+			break;
+	}
+	result = stream->state == (int) PW_STREAM_STATE_STREAMING ? 0 : -ETIMEDOUT;
 	pw_thread_loop_unlock(stream->loop);
-	return i;
+	return result;
 }
 
 int darling_pw_stream_set_active(struct darling_pw_stream* stream, int active)
