@@ -1,4 +1,5 @@
 project(ScreenCaptureKit)
+darling_use_pipewire()
 
 remove_sdk_framework(ScreenCaptureKit)
 
@@ -26,4 +27,11 @@ add_framework(ScreenCaptureKit
         system
         objc
         Foundation
+        CoreGraphics
+        CoreMedia
+        CoreVideo
 )
+
+if (HAVE_PIPEWIRE)
+    target_link_libraries(ScreenCaptureKit PRIVATE darling_pipewire_client)
+endif ()

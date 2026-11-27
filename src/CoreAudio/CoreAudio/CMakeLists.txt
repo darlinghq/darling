@@ -1,4 +1,5 @@
 project(CoreAudio)
+darling_use_pipewire()
 
 include_directories(BEFORE ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -25,6 +26,16 @@ set(coreaudio_sources
     pulse/PADispatchMainLoop.cpp
 )
 
+if (HAVE_PIPEWIRE)
+    list(APPEND coreaudio_sources
+        pipewire/AudioHardwareImplPW.cpp
+        pipewire/AudioHardwareStreamPW.cpp
+        pipewire/AudioHardwareStreamPWInput.cpp
+        pipewire/AudioHardwareStreamPWOutput.cpp
+        pipewire/PWConfig.cpp
+    )
+endif ()
+
 add_framework(CoreAudio
 	FAT
     CURRENT_VERSION
@@ -40,3 +51,16 @@ add_framework(CoreAudio
         Foundation
         pulse
 )
+
+if (HAVE_PIPEWIRE)
+    # The PipeWire backend is internal to CoreAudio, so its symbols are not exported.
+    set_source_files_properties(
+        pipewire/AudioHardwareImplPW.cpp
+        pipewire/AudioHardwareStreamPW.cpp
+        pipewire/AudioHardwareStreamPWInput.cpp
+        pipewire/AudioHardwareStreamPWOutput.cpp
+        pipewire/PWConfig.cpp
+        PROPERTIES COMPILE_OPTIONS "-fvisibility=hidden"
+    )
+    target_link_libraries(CoreAudio PRIVATE darling_pipewire_client)
+endif ()

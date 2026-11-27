@@ -18,7 +18,10 @@
 */
 
 #include <Foundation/Foundation.h>
+#import <AVFoundation/AVCaptureInputPort.h>
 
 @interface AVCaptureInput : NSObject
+
+@property(nonatomic, readonly) NSArray<AVCaptureInputPort *> *ports;
 
 @end

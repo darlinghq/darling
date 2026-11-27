@@ -1,4 +1,5 @@
 project(AVFoundation)
+darling_use_pipewire()
 
 remove_sdk_framework(AVFoundation)
 
@@ -343,6 +344,9 @@ add_framework(AVFoundation
         src/AVCaptureVideoDataOutputCallbackData.m
         src/AVCaptureVideoDataOutputInternal.m
         src/AVCaptureVideoDataOutput.m
+        src/camera/DarlingCameraBackend.m
+        src/camera/DarlingCameraFrame.c
+        src/screen/DarlingScreenCaptureBackend.m
         src/AVCaptureVideoPreviewLayerInternal.m
         src/AVCaptureVideoPreviewLayer.m
         src/AVSampleBufferAudioRendererInternal.m
@@ -547,6 +551,18 @@ add_framework(AVFoundation
         avcodec
         avutil
 )
+
+# The camera and screen capture backends are internal to AVFoundation, so their C functions are not exported.
+set_source_files_properties(
+    src/camera/DarlingCameraBackend.m
+    src/camera/DarlingCameraFrame.c
+    src/screen/DarlingScreenCaptureBackend.m
+    PROPERTIES COMPILE_OPTIONS "-fvisibility=hidden"
+)
+
+if (HAVE_PIPEWIRE)
+    target_link_libraries(AVFoundation PRIVATE darling_pipewire_client)
+endif ()
 
 # AVFAudio is a subframework of AVFoundation on Darwin, so a client that links only
 # AVFoundation still resolves the AVAudio classes. Games rely on this: Sky-Checkers

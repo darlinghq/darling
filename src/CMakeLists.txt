@@ -264,6 +264,8 @@ if (NOT DARLING_BUILD_MACHO)
 endif()
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
 
+include(PipeWire)
+
 add_definitions(
 	-D__APPLE__
 	-D__DYNAMIC__
@@ -339,6 +341,18 @@ include_directories(AFTER
 	${CMAKE_SOURCE_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/libxml2
 	${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include/libxml2
 )
+
+# These are static libraries and are added before the component subdirectories
+# so components can link against them as real CMake targets. They are added here,
+# after the Darwin compile flags above are set, so their objects use the SDK target.
+# the shared loader of the dbus wrapper (see native); it has no components
+add_subdirectory(libdarlingdbus)
+# static PipeWire client code used by CoreAudio, CoreGraphics, AVFoundation and ScreenCaptureKit
+if (HAVE_PIPEWIRE)
+	add_subdirectory(libpipewire)
+endif ()
+# the texture decoder of ImageIO; static, so it has no components
+add_subdirectory(libtexturecodec)
 
 # add the Mach-O build of libsimple now
 add_subdirectory(libsimple "${CMAKE_CURRENT_BINARY_DIR}/libsimple-darling")
@@ -645,12 +659,6 @@ endif()
 #add_subdirectory(VideoDecodeAcceleration)
 #add_subdirectory(external/glut)
 
-# not a core component, but we always add it regardless of the components that are enabled;
-# it has its own component checks to determine which libraries to generate wrappers for.
-# the shared loader of the dbus wrapper (see native); static, so it has no components
-add_subdirectory(libdarlingdbus)
-# the texture decoder of ImageIO; static, so it has no components
-add_subdirectory(libtexturecodec)
 add_subdirectory(native)
 
 # has its own component checks

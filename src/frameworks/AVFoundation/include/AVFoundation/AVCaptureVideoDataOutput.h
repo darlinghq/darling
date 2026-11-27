@@ -18,7 +18,24 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <dispatch/dispatch.h>
+#include <CoreMedia/CMSampleBuffer.h>
+#import <AVFoundation/AVCaptureOutput.h>
+#import <AVFoundation/AVCaptureConnection.h>
 
-@interface AVCaptureVideoDataOutput : NSObject
+@protocol AVCaptureVideoDataOutputSampleBufferDelegate <NSObject>
+@optional
+- (void)captureOutput:(AVCaptureOutput *)captureOutput didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection;
+- (void)captureOutput:(AVCaptureOutput *)captureOutput didDropSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection;
+@end
+
+@interface AVCaptureVideoDataOutput : AVCaptureOutput
+
+- (void)setSampleBufferDelegate:(id<AVCaptureVideoDataOutputSampleBufferDelegate>)sampleBufferDelegate queue:(dispatch_queue_t)sampleBufferDelegateQueue;
+
+@property(nonatomic, assign, readonly) id<AVCaptureVideoDataOutputSampleBufferDelegate> sampleBufferDelegate;
+@property(nonatomic, readonly) dispatch_queue_t sampleBufferDelegateQueue;
+@property(nonatomic, copy) NSDictionary<NSString *, id> *videoSettings;
+@property(nonatomic, getter=isAlwaysDiscardsLateVideoFrames) BOOL alwaysDiscardsLateVideoFrames;
 
 @end
