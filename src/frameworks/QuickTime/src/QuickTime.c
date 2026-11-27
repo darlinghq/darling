@@ -1443,12 +1443,6 @@ void* CompressSequenceFrame(void)
     return NULL;
 }
 
-void* ConcatMatrix(void)
-{
-    if (verbose) puts("STUB: ConcatMatrix called");
-    return NULL;
-}
-
 void* ControlDown(void)
 {
     if (verbose) puts("STUB: ControlDown called");
@@ -3971,18 +3965,6 @@ void* GetGraphicsImporterForDataRefWithFlags(void)
     return NULL;
 }
 
-void* GetGraphicsImporterForFile(void)
-{
-    if (verbose) puts("STUB: GetGraphicsImporterForFile called");
-    return NULL;
-}
-
-void* GetGraphicsImporterForFileWithFlags(void)
-{
-    if (verbose) puts("STUB: GetGraphicsImporterForFileWithFlags called");
-    return NULL;
-}
-
 void* GetHandleAtom(void)
 {
     if (verbose) puts("STUB: GetHandleAtom called");
@@ -5804,12 +5786,6 @@ void* GraphicsImportDoesDrawAllPixels(void)
     return NULL;
 }
 
-void* GraphicsImportDraw(void)
-{
-    if (verbose) puts("STUB: GraphicsImportDraw called");
-    return NULL;
-}
-
 void* GraphicsImportExportImageFile(void)
 {
     if (verbose) puts("STUB: GraphicsImportExportImageFile called");
@@ -5837,12 +5813,6 @@ void* GraphicsImportGetAsPicture(void)
 void* GraphicsImportGetBaseDataOffsetAndSize64(void)
 {
     if (verbose) puts("STUB: GraphicsImportGetBaseDataOffsetAndSize64 called");
-    return NULL;
-}
-
-void* GraphicsImportGetBoundsRect(void)
-{
-    if (verbose) puts("STUB: GraphicsImportGetBoundsRect called");
     return NULL;
 }
 
@@ -5954,12 +5924,6 @@ void* GraphicsImportGetFlags(void)
     return NULL;
 }
 
-void* GraphicsImportGetGWorld(void)
-{
-    if (verbose) puts("STUB: GraphicsImportGetGWorld called");
-    return NULL;
-}
-
 void* GraphicsImportGetGenericColorSyncProfile(void)
 {
     if (verbose) puts("STUB: GraphicsImportGetGenericColorSyncProfile called");
@@ -5978,12 +5942,6 @@ void* GraphicsImportGetImageCount(void)
     return NULL;
 }
 
-void* GraphicsImportGetImageDescription(void)
-{
-    if (verbose) puts("STUB: GraphicsImportGetImageDescription called");
-    return NULL;
-}
-
 void* GraphicsImportGetImageIndex(void)
 {
     if (verbose) puts("STUB: GraphicsImportGetImageIndex called");
@@ -5996,21 +5954,9 @@ void* GraphicsImportGetMIMETypeList(void)
     return NULL;
 }
 
-void* GraphicsImportGetMatrix(void)
-{
-    if (verbose) puts("STUB: GraphicsImportGetMatrix called");
-    return NULL;
-}
-
 void* GraphicsImportGetMetaData(void)
 {
     if (verbose) puts("STUB: GraphicsImportGetMetaData called");
-    return NULL;
-}
-
-void* GraphicsImportGetNaturalBounds(void)
-{
-    if (verbose) puts("STUB: GraphicsImportGetNaturalBounds called");
     return NULL;
 }
 
@@ -6029,12 +5975,6 @@ void* GraphicsImportGetPlaybackTimeHints(void)
 void* GraphicsImportGetProgressProc(void)
 {
     if (verbose) puts("STUB: GraphicsImportGetProgressProc called");
-    return NULL;
-}
-
-void* GraphicsImportGetQuality(void)
-{
-    if (verbose) puts("STUB: GraphicsImportGetQuality called");
     return NULL;
 }
 
@@ -6086,21 +6026,9 @@ void* GraphicsImportSaveAsQuickTimeImageFileToDataRef(void)
     return NULL;
 }
 
-void* GraphicsImportSetBoundsRect(void)
-{
-    if (verbose) puts("STUB: GraphicsImportSetBoundsRect called");
-    return NULL;
-}
-
 void* GraphicsImportSetClip(void)
 {
     if (verbose) puts("STUB: GraphicsImportSetClip called");
-    return NULL;
-}
-
-void* GraphicsImportSetDataFile(void)
-{
-    if (verbose) puts("STUB: GraphicsImportSetDataFile called");
     return NULL;
 }
 
@@ -6152,12 +6080,6 @@ void* GraphicsImportSetFlags(void)
     return NULL;
 }
 
-void* GraphicsImportSetGWorld(void)
-{
-    if (verbose) puts("STUB: GraphicsImportSetGWorld called");
-    return NULL;
-}
-
 void* GraphicsImportSetGraphicsMode(void)
 {
     if (verbose) puts("STUB: GraphicsImportSetGraphicsMode called");
@@ -6176,12 +6098,6 @@ void* GraphicsImportSetImageIndexToThumbnail(void)
     return NULL;
 }
 
-void* GraphicsImportSetMatrix(void)
-{
-    if (verbose) puts("STUB: GraphicsImportSetMatrix called");
-    return NULL;
-}
-
 void* GraphicsImportSetOverrideSourceColorSyncProfileRef(void)
 {
     if (verbose) puts("STUB: GraphicsImportSetOverrideSourceColorSyncProfileRef called");
@@ -6197,12 +6113,6 @@ void* GraphicsImportSetPlaybackTimeHints(void)
 void* GraphicsImportSetProgressProc(void)
 {
     if (verbose) puts("STUB: GraphicsImportSetProgressProc called");
-    return NULL;
-}
-
-void* GraphicsImportSetQuality(void)
-{
-    if (verbose) puts("STUB: GraphicsImportSetQuality called");
     return NULL;
 }
 
@@ -17212,12 +17122,6 @@ void* QTNewGWorld(void)
     return NULL;
 }
 
-void* QTNewGWorldFromPtr(void)
-{
-    if (verbose) puts("STUB: QTNewGWorldFromPtr called");
-    return NULL;
-}
-
 void* QTNewHandle(void)
 {
     if (verbose) puts("STUB: QTNewHandle called");
@@ -22816,12 +22720,6 @@ void* RTPRssmSetTimeScale(void)
     return NULL;
 }
 
-void* RectMatrix(void)
-{
-    if (verbose) puts("STUB: RectMatrix called");
-    return NULL;
-}
-
 void* ReleaseQuickTimePreferences(void)
 {
     if (verbose) puts("STUB: ReleaseQuickTimePreferences called");
@@ -24694,12 +24592,6 @@ void* SampleNumToMediaTime(void)
     return NULL;
 }
 
-void* ScaleMatrix(void)
-{
-    if (verbose) puts("STUB: ScaleMatrix called");
-    return NULL;
-}
-
 void* ScaleMovieSegment(void)
 {
     if (verbose) puts("STUB: ScaleMovieSegment called");
@@ -24943,12 +24835,6 @@ void* SetDSequenceTimeCode(void)
 void* SetDSequenceTransferMode(void)
 {
     if (verbose) puts("STUB: SetDSequenceTransferMode called");
-    return NULL;
-}
-
-void* SetIdentityMatrix(void)
-{
-    if (verbose) puts("STUB: SetIdentityMatrix called");
     return NULL;
 }
 
@@ -26198,12 +26084,6 @@ void* TransformRect(void)
 void* TransformRgn(void)
 {
     if (verbose) puts("STUB: TransformRgn called");
-    return NULL;
-}
-
-void* TranslateMatrix(void)
-{
-    if (verbose) puts("STUB: TranslateMatrix called");
     return NULL;
 }
 

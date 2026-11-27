@@ -20,7 +20,13 @@ add_framework(QuickTime
     SOURCES
         src/QuickTime.c
         src/qt_timeline.c
+        src/QTGraphicsImporter.c
 
     DEPENDENCIES
         system
+        CoreFoundation
+        CoreServices
+        CoreGraphics
+        ImageIO
+        ApplicationServices
 )
