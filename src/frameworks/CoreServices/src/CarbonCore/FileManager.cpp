@@ -432,6 +432,48 @@ static std::string extractXDGValue(const char* home, const std::string& line)
 }
 
 // TODO: Test this function!
+
+static OSStatus sh23LookupFolder(
+    const char* path,Boolean createFolder,FSRef* location)
+{
+    if (!path || !*path || !location)
+        return paramErr;
+
+    struct stat st;
+
+    if (stat(path,&st)!=0) {
+        int error=errno;
+
+        if (!createFolder || error!=ENOENT)
+            return makeOSStatus(error);
+
+        if (mkdir(path,0777)!=0 && errno!=EEXIST)
+            return makeOSStatus(errno);
+
+        if (stat(path,&st)!=0)
+            return makeOSStatus(errno);
+    }
+
+    if (!S_ISDIR(st.st_mode))
+        return dirNFErr;
+
+    FSRef candidate={};
+    Boolean directory=false;
+
+    OSStatus err=FSPathMakeRefWithOptions(
+        (const uint8_t*)path,0,&candidate,&directory);
+
+    if (err!=noErr)
+        return err;
+
+    if (!directory)
+        return dirNFErr;
+
+    *location=candidate;
+
+    return noErr;
+}
+
 OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, FSRef* location)
 {
 	if (folderType == kTemporaryFolderType)
@@ -441,12 +483,7 @@ OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, FSR
 		if (!tmpdir)
 			tmpdir = "/tmp";
 		
-		FSPathMakeRef((const uint8_t*) tmpdir, location, nullptr);
-		
-		if (createFolder && access(tmpdir, F_OK) != 0)
-			mkdir(tmpdir, 0777);
-		
-		return noErr;
+		return sh23LookupFolder(tmpdir,createFolder,location);
 	}
 	else if (folderType == kDesktopFolderType || folderType == kSystemDesktopFolderType)
 	{
@@ -455,7 +492,8 @@ OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, FSR
 		std::string line, desktop;
 		const char* home = getenv("HOME");
 		
-		desktop = home;
+		if (!home || !*home) return fnfErr;
+desktop = home;
 		desktop += "/Desktop";
 	
 		if (cfg.is_open())
@@ -473,12 +511,7 @@ OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, FSR
 			}
 		}
 		
-		FSPathMakeRef((const uint8_t*) desktop.c_str(), location, nullptr);
-		
-		if (createFolder && access(desktop.c_str(), F_OK) != 0)
-			mkdir(desktop.c_str(), 0777);
-		
-		return noErr;
+		return sh23LookupFolder(desktop.c_str(),createFolder,location);
 	}
 	else
 		return unimpErr;
