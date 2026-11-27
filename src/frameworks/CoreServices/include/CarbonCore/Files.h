@@ -33,6 +33,7 @@ enum {
 	fsRdPerm = 1,
 	fsWrPerm = 2,
 	fsRdWrPerm = 3,
+	fsRdWrShPerm = 4,
 	dsRdWrShPerm = 4,
 };
 
@@ -294,6 +295,14 @@ OSErr FSpCreate(const FSSpec* spec, OSType creator, OSType fileType, ScriptCode 
 OSErr FSpDelete(const FSSpec* spec);
 OSErr FSpGetFInfo(const FSSpec* spec, FInfo* fndrInfo);
 OSErr FSpSetFInfo(const FSSpec* spec, const FInfo* fndrInfo);
+OSErr FSpOpenDF(const FSSpec* spec, SInt8 permission, FSIORefNum* refNum);
+OSErr FSpOpenRF(const FSSpec* spec, SInt8 permission, FSIORefNum* refNum);
+OSErr FSRead(FSIORefNum refNum, long* count, void* buffPtr);
+OSErr FSWrite(FSIORefNum refNum, long* count, const void* buffPtr);
+OSErr GetEOF(FSIORefNum refNum, long* logEOF);
+OSErr SetEOF(FSIORefNum refNum, long logEOF);
+OSErr GetFPos(FSIORefNum refNum, long* filePos);
+OSErr FSClose(FSIORefNum refNum);
 #endif
 
 
