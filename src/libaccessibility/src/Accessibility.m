@@ -89,6 +89,17 @@ void* _AXDarkenSystemColors(void)
     return NULL;
 }
 
+int _AXGetClientForCurrentRequestUntrusted(void)
+{
+    if (verbose) puts("STUB: _AXGetClientForCurrentRequestUntrusted called");
+    return 0;
+}
+
+void _AXSetClientIdentificationOverride(int client)
+{
+    if (verbose) puts("STUB: _AXSetClientIdentificationOverride called");
+}
+
 void* _AXSAXInspectorEnabled(void)
 {
     if (verbose) puts("STUB: _AXSAXInspectorEnabled called");

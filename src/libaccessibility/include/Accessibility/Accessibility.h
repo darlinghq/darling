@@ -43,6 +43,8 @@ void* AXNSLocalizedStringForLocale(void);
 void* AXRetrieveSupportedAccessibilityLanguages(void);
 void* AXSAccessibilityUtilitiesPath(void);
 void* _AXDarkenSystemColors(void);
+int _AXGetClientForCurrentRequestUntrusted(void);
+void _AXSetClientIdentificationOverride(int client);
 void* _AXSAXInspectorEnabled(void);
 void* _AXSAXInspectorSetEnabled(void);
 void* _AXSAccessibilityBundlesPath(void);
