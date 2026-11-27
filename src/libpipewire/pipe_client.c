@@ -13,6 +13,7 @@
 
 #include <errno.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,6 +41,8 @@ extern locale_t uselocale(locale_t locale);
 #endif
 
 #include <pipewire/core.h>
+#include <pipewire/extensions/metadata.h>
+#include <pipewire/pipewire.h>
 #include <pipewire/keys.h>
 #include <pipewire/loop.h>
 #include <pipewire/node.h>
@@ -82,6 +85,7 @@ struct darling_pw_stream
 	struct pw_context* context;
 	struct pw_core* core;
 	struct pw_stream* stream;
+	struct spa_hook stream_listener;
 
 	struct darling_pw_stream_config config;
 	struct darling_pw_stream_events events;
@@ -330,6 +334,402 @@ fail_thread:
 	return result;
 }
 
+/* One connection owns the server's audio-node state for the whole process.
+ * Every field here is protected by the connection's thread loop, including
+ * accesses from the framework threads through get_state/set_state. */
+struct device_target
+{
+	struct pw_node* node;
+	struct spa_hook node_listener;
+	int node_listener_added;
+	uint32_t id;
+	struct darling_pw_device_state state;
+	int have_state;
+};
+
+struct device_manager
+{
+	struct pw_thread_loop* loop;
+	struct pw_context* context;
+	struct pw_core* core;
+	struct pw_registry* registry;
+	struct spa_hook core_listener;
+	struct spa_hook registry_listener;
+	struct pw_metadata* metadata;
+	uint32_t metadata_id;
+	struct spa_hook metadata_listener;
+	int metadata_listener_added;
+	struct device_target output;
+	struct device_target input;
+	int ready;
+};
+
+static struct device_manager g_devices;
+static pthread_once_t g_devices_once = PTHREAD_ONCE_INIT;
+
+static void bind_device(struct device_manager* manager, struct device_target* target,
+	uint32_t id);
+
+static void device_node_param(void* data, int seq, uint32_t id, uint32_t index,
+	uint32_t next, const struct spa_pod* param)
+{
+	struct device_target* target = data;
+	float volume;
+	bool mute;
+
+	(void) seq; (void) index; (void) next;
+	if (id != SPA_PARAM_Props || !param)
+		return;
+	volume = 1;
+	mute = false;
+	if (spa_pod_parse_object(param, SPA_TYPE_OBJECT_Props, NULL,
+			SPA_PROP_volume, SPA_POD_OPT_Float(&volume),
+			SPA_PROP_mute, SPA_POD_OPT_Bool(&mute), NULL) < 0)
+		return;
+	target->state.volume = volume < 0 ? 0 : volume > 1 ? 1 : volume;
+	target->state.mute = mute ? 1 : 0;
+	target->have_state = 1;
+	pw_thread_loop_signal(g_devices.loop, false);
+}
+
+static const struct pw_node_events device_node_events = {
+	.version = PW_VERSION_NODE_EVENTS,
+	.param = device_node_param,
+};
+
+static uint32_t metadata_node_id(const char* value)
+{
+	const char* digits;
+	const char* colon;
+	char* end;
+	unsigned long id;
+
+	if (!value)
+		return 0;
+	colon = strrchr(value, ':');
+	digits = colon ? colon + 1 : value;
+	errno = 0;
+	id = strtoul(digits, &end, 10);
+	if (errno || end == digits || *end != '\0' || id > UINT32_MAX)
+		return 0;
+	return (uint32_t) id;
+}
+
+static int device_metadata_property(void* data, uint32_t subject, const char* key,
+	const char* type, const char* value)
+{
+	struct device_manager* manager = data;
+	uint32_t id = metadata_node_id(value);
+
+	(void) subject; (void) type;
+	if (!key)
+		return 0;
+	if (strcmp(key, "default.audio.sink") == 0)
+		bind_device(manager, &manager->output, id);
+	else if (strcmp(key, "default.audio.source") == 0)
+		bind_device(manager, &manager->input, id);
+	return 0;
+}
+
+static const struct pw_metadata_events device_metadata_events = {
+	.version = PW_VERSION_METADATA_EVENTS,
+	.property = device_metadata_property,
+};
+
+static void bind_device(struct device_manager* manager, struct device_target* target,
+	uint32_t id)
+{
+	uint32_t ids[] = { SPA_PARAM_Props };
+
+	if (target->id == id && target->node)
+		return;
+	if (target->node)
+	{
+		if (target->node_listener_added)
+			spa_hook_remove(&target->node_listener);
+		pw_proxy_destroy((struct pw_proxy*) target->node);
+		target->node = NULL;
+		target->node_listener_added = 0;
+	}
+	target->id = id;
+	target->have_state = 0;
+	if (!id)
+		return;
+
+	target->node = pw_registry_bind(manager->registry, id, PW_TYPE_INTERFACE_Node,
+		PW_VERSION_NODE, 0);
+	if (!target->node)
+		return;
+	memset(&target->node_listener, 0, sizeof(target->node_listener));
+	pw_node_add_listener(target->node, &target->node_listener, &device_node_events, target);
+	target->node_listener_added = 1;
+	pw_node_subscribe_params(target->node, ids, 1);
+	pw_node_enum_params(target->node, 1, SPA_PARAM_Props, 0, 1, NULL);
+}
+
+static void device_registry_global(void* data, uint32_t id, uint32_t permissions,
+	const char* type, uint32_t version, const struct spa_dict* props)
+{
+	struct device_manager* manager = data;
+	struct device_target* target;
+	const char* media_class;
+	const char* name;
+
+	(void) permissions; (void) version;
+	if (!type || !props)
+		return;
+	if (strcmp(type, PW_TYPE_INTERFACE_Node) == 0)
+	{
+		media_class = dict_value(props, PW_KEY_MEDIA_CLASS);
+		if (media_class && strcmp(media_class, "Audio/Sink") == 0)
+			target = &manager->output;
+		else if (media_class && strcmp(media_class, "Audio/Source") == 0)
+			target = &manager->input;
+		else
+			return;
+		/* The default metadata wins; until it arrives, the first node of each
+		 * class is a usable fallback. */
+		if (target->id == 0 || (target->id == id && !target->node))
+			bind_device(manager, target, id);
+	}
+	else if (strcmp(type, PW_TYPE_INTERFACE_Metadata) == 0)
+	{
+		if (manager->metadata || manager->metadata_id)
+			return;
+		name = dict_value(props, PW_KEY_METADATA_NAME);
+		if (!name || strcmp(name, "default") != 0)
+			return;
+		manager->metadata_id = id;
+		manager->metadata = pw_registry_bind(manager->registry, id,
+			PW_TYPE_INTERFACE_Metadata, PW_VERSION_METADATA, 0);
+		if (!manager->metadata)
+		{
+			manager->metadata_id = 0;
+			return;
+		}
+		memset(&manager->metadata_listener, 0, sizeof(manager->metadata_listener));
+		pw_metadata_add_listener(manager->metadata, &manager->metadata_listener,
+			&device_metadata_events, manager);
+		manager->metadata_listener_added = 1;
+	}
+}
+
+static void device_registry_remove(void* data, uint32_t id)
+{
+	struct device_manager* manager = data;
+	struct device_target* targets[] = { &manager->output, &manager->input };
+	size_t i;
+
+	for (i = 0; i < sizeof(targets) / sizeof(targets[0]); i++)
+	{
+		struct device_target* target = targets[i];
+		if (target->id != id)
+			continue;
+		if (target->node)
+		{
+			if (target->node_listener_added)
+				spa_hook_remove(&target->node_listener);
+			pw_proxy_destroy((struct pw_proxy*) target->node);
+			target->node = NULL;
+			target->node_listener_added = 0;
+		}
+		target->id = 0;
+		target->have_state = 0;
+	}
+	if (manager->metadata && manager->metadata_id == id)
+	{
+		if (manager->metadata_listener_added)
+			spa_hook_remove(&manager->metadata_listener);
+		pw_proxy_destroy((struct pw_proxy*) manager->metadata);
+		manager->metadata = NULL;
+		manager->metadata_listener_added = 0;
+		manager->metadata_id = 0;
+	}
+}
+
+static void device_core_done(void* data, uint32_t id, int seq)
+{
+	struct device_manager* manager = data;
+	(void) id; (void) seq;
+	manager->ready = 1;
+	pw_thread_loop_signal(manager->loop, false);
+}
+
+static const struct pw_registry_events device_registry_events = {
+	.version = PW_VERSION_REGISTRY_EVENTS,
+	.global = device_registry_global,
+	.global_remove = device_registry_remove,
+};
+
+static const struct pw_core_events device_core_events = {
+	.version = PW_VERSION_CORE_EVENTS,
+	.done = device_core_done,
+};
+
+static void device_manager_init(void)
+{
+	struct device_manager* manager = &g_devices;
+	struct pw_thread_loop* loop;
+	struct pw_context* context;
+	struct pw_core* core;
+	struct pw_registry* registry;
+	int i, started = 0;
+
+	memset(manager, 0, sizeof(*manager));
+	ensure_pw_init();
+	loop = pw_thread_loop_new("darling-pipewire-devices", NULL);
+	if (!loop)
+		return;
+	context = pw_context_new(pw_thread_loop_get_loop(loop), NULL, 0);
+	if (!context)
+		goto fail_loop;
+	core = pw_context_connect(context, NULL, 0);
+	if (!core)
+		goto fail_context;
+	registry = pw_core_get_registry(core, PW_VERSION_REGISTRY, 0);
+	if (!registry)
+		goto fail_core;
+
+	manager->loop = loop;
+	manager->context = context;
+	manager->core = core;
+	manager->registry = registry;
+	memset(&manager->core_listener, 0, sizeof(manager->core_listener));
+	memset(&manager->registry_listener, 0, sizeof(manager->registry_listener));
+	pw_core_add_listener(core, &manager->core_listener, &device_core_events, manager);
+	pw_registry_add_listener(registry, &manager->registry_listener,
+		&device_registry_events, manager);
+
+	pw_thread_loop_lock(loop);
+	if (pw_thread_loop_start(loop) < 0)
+	{
+		pw_thread_loop_unlock(loop);
+		goto fail_registry;
+	}
+	started = 1;
+	pw_core_sync(core, PW_ID_CORE, 1);
+	for (i = 0; i < 3 && !manager->ready; i++)
+		pw_thread_loop_timed_wait(loop, 1);
+	pw_thread_loop_unlock(loop);
+	return;
+
+fail_registry:
+	spa_hook_remove(&manager->registry_listener);
+	spa_hook_remove(&manager->core_listener);
+	pw_proxy_destroy((struct pw_proxy*) registry);
+fail_core:
+	pw_core_disconnect(core);
+fail_context:
+	pw_context_destroy(context);
+fail_loop:
+	if (started)
+		pw_thread_loop_stop(loop);
+	pw_thread_loop_destroy(loop);
+	memset(manager, 0, sizeof(*manager));
+}
+
+static int ensure_devices(void)
+{
+	pthread_once(&g_devices_once, device_manager_init);
+	return g_devices.loop ? 0 : -ECONNREFUSED;
+}
+
+int darling_pw_device_get_state(int kind, struct darling_pw_device_state* out)
+{
+	struct device_target* target;
+	int result = ensure_devices();
+
+	if (!out || (kind != DARLING_PW_DEVICE_OUTPUT && kind != DARLING_PW_DEVICE_INPUT))
+		return -EINVAL;
+	if (result < 0)
+		return result;
+	target = kind == DARLING_PW_DEVICE_OUTPUT ? &g_devices.output : &g_devices.input;
+
+	pw_thread_loop_lock(g_devices.loop);
+	if (target->have_state)
+		*out = target->state;
+	else
+	{
+		out->volume = 1;
+		out->mute = 0;
+	}
+	pw_thread_loop_unlock(g_devices.loop);
+	return 0;
+}
+
+int darling_pw_device_set_state(int kind, const struct darling_pw_device_state* state)
+{
+	struct device_target* target;
+	struct pw_node* node;
+	struct spa_pod_builder builder;
+	struct spa_pod_frame frame;
+	const struct spa_pod* param;
+	float volume;
+	int mute;
+	int result = ensure_devices(), status;
+
+	if (!state || (kind != DARLING_PW_DEVICE_OUTPUT && kind != DARLING_PW_DEVICE_INPUT))
+		return -EINVAL;
+	if (result < 0)
+		return result;
+	target = kind == DARLING_PW_DEVICE_OUTPUT ? &g_devices.output : &g_devices.input;
+
+	pw_thread_loop_lock(g_devices.loop);
+	node = target->node;
+	if (!node)
+	{
+		pw_thread_loop_unlock(g_devices.loop);
+		return -ENODEV;
+	}
+	volume = state->volume < 0 ? 0 : state->volume > 1 ? 1 : state->volume;
+	mute = state->mute ? 1 : 0;
+	{
+		uint8_t area[128];
+		builder = SPA_POD_BUILDER_INIT(area, sizeof(area));
+		spa_pod_builder_push_object(&builder, &frame, SPA_TYPE_OBJECT_Props, SPA_PARAM_Props);
+		spa_pod_builder_add(&builder,
+			SPA_PROP_volume, SPA_POD_Float(volume),
+			SPA_PROP_mute, SPA_POD_Bool(mute != 0),
+			0);
+		param = (const struct spa_pod*) spa_pod_builder_pop(&builder, &frame);
+		status = param ? pw_node_set_param(node, SPA_PARAM_Props, 0, param) : -ENOMEM;
+	}
+	if (status >= 0)
+	{
+		target->state.volume = volume;
+		target->state.mute = mute;
+		target->have_state = 1;
+	}
+	pw_thread_loop_unlock(g_devices.loop);
+	return status;
+}
+
+static uint32_t audio_bytes_per_sample(enum darling_pw_audio_format format)
+{
+	switch (format)
+	{
+		case DARLING_PW_AUDIO_FORMAT_U8:
+		case DARLING_PW_AUDIO_FORMAT_S16: return format == DARLING_PW_AUDIO_FORMAT_U8 ? 1 : 2;
+		case DARLING_PW_AUDIO_FORMAT_S24: return 3;
+		case DARLING_PW_AUDIO_FORMAT_S32:
+		case DARLING_PW_AUDIO_FORMAT_F32: return 4;
+	}
+	return 4;
+}
+
+static uint32_t audio_format_of(enum darling_pw_audio_format format)
+{
+	switch (format)
+	{
+		case DARLING_PW_AUDIO_FORMAT_U8: return SPA_AUDIO_FORMAT_U8;
+		case DARLING_PW_AUDIO_FORMAT_S16: return SPA_AUDIO_FORMAT_S16;
+		case DARLING_PW_AUDIO_FORMAT_S24: return SPA_AUDIO_FORMAT_S24;
+		case DARLING_PW_AUDIO_FORMAT_S32: return SPA_AUDIO_FORMAT_S32;
+		case DARLING_PW_AUDIO_FORMAT_F32: return SPA_AUDIO_FORMAT_F32;
+	}
+	return SPA_AUDIO_FORMAT_F32;
+}
+
 static const struct spa_pod* build_audio_param(struct spa_pod_builder* builder,
 	const struct darling_pw_stream_config* config)
 {
@@ -337,7 +737,7 @@ static const struct spa_pod* build_audio_param(struct spa_pod_builder* builder,
 	uint32_t positions[2];
 
 	memset(&info, 0, sizeof(info));
-	info.format = SPA_AUDIO_FORMAT_F32;
+	info.format = audio_format_of(config->audio_format);
 	info.rate = config->rate ? config->rate : 44100;
 	info.channels = config->channels ? config->channels : 2;
 	if (info.channels == 1)
@@ -606,7 +1006,8 @@ int darling_pw_stream_create(const struct darling_pw_stream_config* config,
 	stream->state = (int) PW_STREAM_STATE_UNCONNECTED;
 	stream->format.framerate_denom = 1;
 	stream->bytes_per_frame = config->media == DARLING_PW_MEDIA_AUDIO
-		? (config->channels ? config->channels : 2) * sizeof(float) : 4;
+		? (config->channels ? config->channels : 2) * audio_bytes_per_sample(
+			config->audio_format) : 4;
 	pthread_mutex_init(&stream->format_mutex, NULL);
 
 	stream->loop = pw_thread_loop_new(config->name ? config->name : "darling-pipewire", NULL);
@@ -644,10 +1045,13 @@ int darling_pw_stream_create(const struct darling_pw_stream_config* config,
 	if (config->target_object && config->target_object[0] != '\0')
 		pw_properties_set(props, PW_KEY_TARGET_OBJECT, config->target_object);
 
-	stream->stream = pw_stream_new_simple(pw_thread_loop_get_loop(stream->loop),
-		name, props, &stream_events, stream);
+	/* Use the core connected above, not pw_stream_new_simple(): the latter
+	 * opens a second core and would silently ignore a portal fd. */
+	stream->stream = pw_stream_new(stream->core, name, props);
 	if (!stream->stream)
 		goto fail;
+	pw_stream_add_listener(stream->stream, &stream->stream_listener,
+		&stream_events, stream);
 
 	if (config->media == DARLING_PW_MEDIA_AUDIO)
 	{
@@ -692,7 +1096,10 @@ fail:
 	if (remote_fd >= 0)
 		close(remote_fd);
 	if (stream->stream)
+	{
+		spa_hook_remove(&stream->stream_listener);
 		pw_stream_destroy(stream->stream);
+	}
 	if (stream->core)
 		pw_core_disconnect(stream->core);
 	if (stream->context)
@@ -713,6 +1120,7 @@ void darling_pw_stream_destroy(struct darling_pw_stream* stream)
 		return;
 
 	pw_thread_loop_lock(stream->loop);
+	spa_hook_remove(&stream->stream_listener);
 	pw_stream_destroy(stream->stream);
 	pw_core_disconnect(stream->core);
 	pw_thread_loop_unlock(stream->loop);
@@ -741,16 +1149,22 @@ void darling_pw_stream_unlock(struct darling_pw_stream* stream)
 int darling_pw_stream_wait(struct darling_pw_stream* stream, int timeout_ms)
 {
 	int i, seconds = (timeout_ms + 999) / 1000;
+	int result;
 
 	if (!stream)
 		return -EINVAL;
 	pw_thread_loop_lock(stream->loop);
 	for (i = 0; i < seconds && stream->state != (int) PW_STREAM_STATE_STREAMING
+		&& stream->state != (int) PW_STREAM_STATE_PAUSED
 		&& stream->state != (int) PW_STREAM_STATE_ERROR; i++)
 		pw_thread_loop_timed_wait(stream->loop, 1);
-	i = stream->state == (int) PW_STREAM_STATE_STREAMING ? 0 : -ETIMEDOUT;
+	/* PAUSED means format negotiation succeeded and the graph linked the
+	 * node; it simply has not been made active yet. HAL streams activate it
+	 * as soon as their pump starts. */
+	result = stream->state == (int) PW_STREAM_STATE_STREAMING
+		|| stream->state == (int) PW_STREAM_STATE_PAUSED ? 0 : -ETIMEDOUT;
 	pw_thread_loop_unlock(stream->loop);
-	return i;
+	return result;
 }
 
 int darling_pw_stream_set_active(struct darling_pw_stream* stream, int active)

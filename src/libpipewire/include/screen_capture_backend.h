@@ -13,6 +13,7 @@
 #define DARLING_SCREEN_CAPTURE_BACKEND_H_
 
 #include <stddef.h>
+#include <darling_pipewire_export.h>
 #include <stdint.h>
 
 #include <pipe_client.h>
@@ -48,45 +49,45 @@ struct darling_screen_capture_callbacks
 
 /* Non-zero when a ScreenCast portal can be reached. This does not ask for
  * permission and does not report whether permission has been granted. */
-int darling_screen_capture_available(void);
+DARLING_PW_EXPORT int darling_screen_capture_available(void);
 
 /* True after this process has obtained a ScreenCast stream successfully. */
-int darling_screen_capture_permitted(void);
+DARLING_PW_EXPORT int darling_screen_capture_permitted(void);
 
 /* Runs one portal session to obtain the user's consent, then caches the
  * session for later streams. Returns 0 or a negative errno. */
-int darling_screen_capture_request_access(void);
+DARLING_PW_EXPORT int darling_screen_capture_request_access(void);
 
 /* Opens a stream for the display whose compositor-space rectangle best matches
  * x/y/width/height. Zero dimensions or an unknown rectangle mean "any". */
-int darling_screen_capture_open(int32_t x, int32_t y, uint32_t width, uint32_t height,
+DARLING_PW_EXPORT int darling_screen_capture_open(int32_t x, int32_t y, uint32_t width, uint32_t height,
 	int show_cursor, int allow_hdr,
 	const struct darling_screen_capture_callbacks* callbacks,
 	void* user_data, struct darling_screen_capture_stream** out);
-int darling_screen_capture_start(struct darling_screen_capture_stream* stream, int active);
-int darling_screen_capture_wait(struct darling_screen_capture_stream* stream, int timeout_ms);
-struct darling_pw_stream* darling_screen_capture_pipe(struct darling_screen_capture_stream* stream);
-void darling_screen_capture_close(struct darling_screen_capture_stream* stream);
+DARLING_PW_EXPORT int darling_screen_capture_start(struct darling_screen_capture_stream* stream, int active);
+DARLING_PW_EXPORT int darling_screen_capture_wait(struct darling_screen_capture_stream* stream, int timeout_ms);
+DARLING_PW_EXPORT struct darling_pw_stream* darling_screen_capture_pipe(struct darling_screen_capture_stream* stream);
+DARLING_PW_EXPORT void darling_screen_capture_close(struct darling_screen_capture_stream* stream);
 
 /* Converts a capture frame to BGRA with a nearest-neighbour scale. The source
  * rectangle is in frame coordinates; the destination rectangle is in the
  * caller's surface. Either rectangle may crop or scale the frame. Returns 0 on
  * success or a negative errno when the format is unsupported or an argument is
  * invalid. */
-int darling_screen_capture_convert_bgra_rect(const struct darling_screen_capture_frame* frame,
+DARLING_PW_EXPORT int darling_screen_capture_convert_bgra_rect(const struct darling_screen_capture_frame* frame,
 	uint8_t* destination, uint32_t destination_stride,
 	uint32_t surface_width, uint32_t surface_height,
 	int32_t source_x, int32_t source_y, uint32_t source_width, uint32_t source_height,
 	uint32_t destination_x, uint32_t destination_y,
 	uint32_t destination_width, uint32_t destination_height);
 
-int darling_screen_capture_convert_bgra(const struct darling_screen_capture_frame* frame,
+DARLING_PW_EXPORT int darling_screen_capture_convert_bgra(const struct darling_screen_capture_frame* frame,
 	uint8_t* destination, uint32_t destination_stride,
 	uint32_t destination_width, uint32_t destination_height);
 
 /* Returns non-zero when the linked PipeWire runtime is new enough and exposes
  * 10-bit HDR formats needed for HDR screen capture. */
-int darling_screen_capture_supports_hdr(void);
+DARLING_PW_EXPORT int darling_screen_capture_supports_hdr(void);
 
 #ifdef __cplusplus
 }

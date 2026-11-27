@@ -21,6 +21,7 @@
 #define DARLING_PIPEWIRE_CLIENT_H_
 
 #include <stddef.h>
+#include <darling_pipewire_export.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -33,6 +34,16 @@ enum darling_pw_media
 {
 	DARLING_PW_MEDIA_AUDIO = 0,
 	DARLING_PW_MEDIA_VIDEO = 1,
+};
+
+/* Linear PCM layouts the audio stream can negotiate directly. */
+enum darling_pw_audio_format
+{
+	DARLING_PW_AUDIO_FORMAT_U8 = 0,
+	DARLING_PW_AUDIO_FORMAT_S16 = 1,
+	DARLING_PW_AUDIO_FORMAT_S24 = 2,
+	DARLING_PW_AUDIO_FORMAT_S32 = 3,
+	DARLING_PW_AUDIO_FORMAT_F32 = 4,
 };
 
 enum darling_pw_video_format
@@ -66,6 +77,20 @@ struct darling_pw_video_source
 	char name[128];
 };
 
+/* The default audio node whose Props hold the server's volume and mute state. */
+enum
+{
+	DARLING_PW_DEVICE_OUTPUT = 0,
+	DARLING_PW_DEVICE_INPUT = 1,
+};
+
+struct darling_pw_device_state
+{
+	/* Linear gain in [0, 1]. */
+	float volume;
+	int mute;
+};
+
 struct darling_pw_stream_config
 {
 	enum darling_pw_media media;
@@ -80,9 +105,10 @@ struct darling_pw_stream_config
 	/* Portal stream target (PW_KEY_TARGET_OBJECT), for example the serial
 	 * from a ScreenCast stream. A portal fd may expose several streams. */
 	const char* target_object;
-	/* Audio: frames per second and channels. */
+	/* Audio: frames per second, channels and sample layout. */
 	uint32_t rate;
 	uint32_t channels;
+	enum darling_pw_audio_format audio_format;
 	/* Video: preferred dimensions and maximum framerate. Zero means "any". */
 	uint32_t width;
 	uint32_t height;
@@ -171,38 +197,45 @@ struct darling_pw_format
 
 /* PipeWire runtime version/capabilities. These read the linked libpipewire
  * version, so callers can gate optional features such as HDR screen capture. */
-int darling_pw_runtime_version(uint32_t* major, uint32_t* minor, uint32_t* micro);
-int darling_pw_runtime_supports_hdr(void);
+DARLING_PW_EXPORT int darling_pw_runtime_version(uint32_t* major, uint32_t* minor, uint32_t* micro);
+DARLING_PW_EXPORT int darling_pw_runtime_supports_hdr(void);
 
 /* Returns non-zero when a PipeWire server can be reached on the usual socket. */
-int darling_pw_can_connect(void);
+DARLING_PW_EXPORT int darling_pw_can_connect(void);
 
 /* Lists video capture nodes currently published by PipeWire. Returns the
  * number of sources found, or a negative errno on failure. */
-int darling_pw_enumerate_video_sources(struct darling_pw_video_source* out, uint32_t max);
+DARLING_PW_EXPORT int darling_pw_enumerate_video_sources(struct darling_pw_video_source* out, uint32_t max);
+
+/* Reads or changes the default node's server-side volume and mute. The client
+ * keeps no per-framework copy: all callers in the process see the same state. */
+DARLING_PW_EXPORT int darling_pw_device_get_state(int kind, struct darling_pw_device_state* out);
+DARLING_PW_EXPORT int darling_pw_device_set_state(int kind,
+	const struct darling_pw_device_state* state);
 
 /* remote_fd >= 0 is a Camera portal fd; on success the stream owns it. */
-int darling_pw_stream_create(const struct darling_pw_stream_config* config,
+DARLING_PW_EXPORT int darling_pw_stream_create(const struct darling_pw_stream_config* config,
 	int remote_fd, const struct darling_pw_stream_events* events, void* user_data,
 	struct darling_pw_stream** out);
-void darling_pw_stream_destroy(struct darling_pw_stream* stream);
+DARLING_PW_EXPORT void darling_pw_stream_destroy(struct darling_pw_stream* stream);
 
-int darling_pw_stream_lock(struct darling_pw_stream* stream);
-void darling_pw_stream_unlock(struct darling_pw_stream* stream);
-/* Waits for STREAMING or ERROR. Returns 0 on success, negative on error. */
-int darling_pw_stream_wait(struct darling_pw_stream* stream, int timeout_ms);
-int darling_pw_stream_set_active(struct darling_pw_stream* stream, int active);
-int darling_pw_stream_flush(struct darling_pw_stream* stream);
+DARLING_PW_EXPORT int darling_pw_stream_lock(struct darling_pw_stream* stream);
+DARLING_PW_EXPORT void darling_pw_stream_unlock(struct darling_pw_stream* stream);
+/* Waits for format negotiation and graph linkage. A paused stream is usable:
+ * the caller activates it when ready to process buffers. Returns 0 on success. */
+DARLING_PW_EXPORT int darling_pw_stream_wait(struct darling_pw_stream* stream, int timeout_ms);
+DARLING_PW_EXPORT int darling_pw_stream_set_active(struct darling_pw_stream* stream, int active);
+DARLING_PW_EXPORT int darling_pw_stream_flush(struct darling_pw_stream* stream);
 
 /* These must be called with the stream lock held, normally from process(). */
-int darling_pw_stream_dequeue(struct darling_pw_stream* stream,
+DARLING_PW_EXPORT int darling_pw_stream_dequeue(struct darling_pw_stream* stream,
 	struct darling_pw_buffer* out, void** cookie);
 /* used_bytes is bytes for video and frames multiplied by bytes-per-frame for audio. */
-int darling_pw_stream_queue(struct darling_pw_stream* stream, void* cookie, size_t used_bytes);
+DARLING_PW_EXPORT int darling_pw_stream_queue(struct darling_pw_stream* stream, void* cookie, size_t used_bytes);
 
-int darling_pw_stream_get_time(struct darling_pw_stream* stream, struct darling_pw_time* out);
-int darling_pw_stream_get_format(struct darling_pw_stream* stream, struct darling_pw_format* out);
-int darling_pw_stream_state(struct darling_pw_stream* stream);
+DARLING_PW_EXPORT int darling_pw_stream_get_time(struct darling_pw_stream* stream, struct darling_pw_time* out);
+DARLING_PW_EXPORT int darling_pw_stream_get_format(struct darling_pw_stream* stream, struct darling_pw_format* out);
+DARLING_PW_EXPORT int darling_pw_stream_state(struct darling_pw_stream* stream);
 
 /* PipeWire stream states, copied so callers need no PipeWire headers. */
 enum

@@ -13,6 +13,7 @@
 #define DARLING_SCREENCAST_PORTAL_H_
 
 #include <stdint.h>
+#include <darling_pipewire_export.h>
 
 #include <darling_dbus.h>
 
@@ -86,26 +87,26 @@ struct darling_screencast_stream
 struct darling_screencast_session;
 
 /* Reads the read-only properties used to choose legal SelectSources options. */
-int darling_screencast_portal_properties(const struct darling_screencast_portal_api* api,
+DARLING_PW_EXPORT int darling_screencast_portal_properties(const struct darling_screencast_portal_api* api,
 	uint32_t* source_types, uint32_t* cursor_modes, uint32_t* version);
 
 /* Runs CreateSession, SelectSources, Start and OpenPipeWireRemote. The session
  * owns the PipeWire remote fd and keeps the portal connection alive. */
-int darling_screencast_session_create(const struct darling_screencast_portal_api* api,
+DARLING_PW_EXPORT int darling_screencast_session_create(const struct darling_screencast_portal_api* api,
 	const struct darling_screencast_config* config, struct darling_screencast_session** out);
 
 /* Returns the PipeWire remote fd owned by the session, or -1. */
-int darling_screencast_session_fd(const struct darling_screencast_session* session);
+DARLING_PW_EXPORT int darling_screencast_session_fd(const struct darling_screencast_session* session);
 
 /* Returns the streams announced by Start(). The returned array is owned by the
  * session and stays valid until it is destroyed. */
-const struct darling_screencast_stream* darling_screencast_session_streams(
+DARLING_PW_EXPORT const struct darling_screencast_stream* darling_screencast_session_streams(
 	const struct darling_screencast_session* session, uint32_t* count);
 
 /* Calls Session.Close and releases all local resources. */
-void darling_screencast_session_destroy(struct darling_screencast_session* session);
+DARLING_PW_EXPORT void darling_screencast_session_destroy(struct darling_screencast_session* session);
 
-const char* darling_screencast_strerror(int result);
+DARLING_PW_EXPORT const char* darling_screencast_strerror(int result);
 
 #ifdef __cplusplus
 }

@@ -13,6 +13,7 @@
 #define DARLING_CAMERA_PORTAL_H_
 
 #include <darling_dbus.h>
+#include <darling_pipewire_export.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,13 +38,13 @@ enum
 };
 
 /* org.freedesktop.portal.Camera.IsCameraPresent */
-int darling_camera_portal_is_present(const struct darling_camera_portal_api* api);
+DARLING_PW_EXPORT int darling_camera_portal_is_present(const struct darling_camera_portal_api* api);
 /* org.freedesktop.portal.Camera.AccessCamera, including its Request.Response */
-int darling_camera_portal_request_access(const struct darling_camera_portal_api* api);
+DARLING_PW_EXPORT int darling_camera_portal_request_access(const struct darling_camera_portal_api* api);
 /* org.freedesktop.portal.Camera.OpenPipeWireRemote; the returned fd is owned by the caller. */
-int darling_camera_portal_open_remote(const struct darling_camera_portal_api* api, int* fd_out);
+DARLING_PW_EXPORT int darling_camera_portal_open_remote(const struct darling_camera_portal_api* api, int* fd_out);
 
-const char* darling_camera_portal_strerror(int result);
+DARLING_PW_EXPORT const char* darling_camera_portal_strerror(int result);
 
 #ifdef __cplusplus
 }
