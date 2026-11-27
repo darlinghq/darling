@@ -102,7 +102,8 @@ static struct QDPort *current(void)
 	return p;
 }
 
-// Private: the window manager records where a window port lies on the screen.
+// Not an Apple API, and exported on purpose: the Window Manager (HIToolbox, MacWindows.c) records where a window port
+// lies on the screen, which no public call of QuickDraw sets.
 void QDPortSetGlobalOrigin(CGrafPtr port, short h, short v)
 {
 	struct QDPort *p = PORT_FROM(port);

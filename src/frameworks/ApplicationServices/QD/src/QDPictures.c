@@ -8,8 +8,8 @@
 // DirectBitsRect and DirectBitsRgn (1-8 bit indexed with a color table, 16 and 32 bit direct;
 // the region of the *Rgn forms is skipped), and the QuickTime opcodes CompressedQuickTime and
 // UncompressedQuickTime for images that ImageIO decodes (TIFF, JPEG, PNG, GIF, BMP; the matrix
-// is taken as the identity, the matte and the mask are skipped). Text opcodes are skipped and counted, since this
-// QuickDraw draws no text. Any other opcode stops the playback with QDError set to
+// is taken as the identity, the matte and the mask are skipped). Text opcodes are skipped (playback draws no
+// text). Any other opcode stops the playback with QDError set to
 // pictureDataErr; what was drawn before it stays drawn. Version 1 pictures are refused.
 // Reference: Imaging With QuickDraw, Appendix A.
 #ifndef __LP64__
@@ -256,7 +256,7 @@ static Boolean quicktime_image(struct reader *r, struct QDPort *port, const stru
 	return ok;
 }
 
-static QDErr play(const uint8_t *data, size_t size, const Rect *dstRect, unsigned *skippedText)
+static QDErr play(const uint8_t *data, size_t size, const Rect *dstRect)
 {
 	struct QDPort *port = PORT_FROM(gCurrentPort);
 	if (!port || !QDPortIsLive(port)) return paramErr;
@@ -298,9 +298,9 @@ static QDErr play(const uint8_t *data, size_t size, const Rect *dstRect, unsigne
 			case 0x0032: { Rect x = map_rect(&m, rect(&r)); EraseRect(&x); break; }
 			case 0x0033: { Rect x = map_rect(&m, rect(&r)); InvertRect(&x); break; }
 			case 0x0034: { Rect x = map_rect(&m, rect(&r)); FillRect(&x, &fill); break; }
-			case 0x0028: skip(&r, 4); skip(&r, u8(&r)); ++*skippedText; break;  // LongText
-			case 0x0029: case 0x002A: skip(&r, 1); skip(&r, u8(&r)); ++*skippedText; break; // DHText, DVText
-			case 0x002B: skip(&r, 2); skip(&r, u8(&r)); ++*skippedText; break;  // DHDVText
+			case 0x0028: skip(&r, 4); skip(&r, u8(&r)); break;  // LongText
+			case 0x0029: case 0x002A: skip(&r, 1); skip(&r, u8(&r)); break; // DHText, DVText
+			case 0x002B: skip(&r, 2); skip(&r, u8(&r)); break;  // DHDVText
 			case 0x002C: { unsigned n = u16(&r); skip(&r, n); break; }        // fontName
 			case 0x00A0: skip(&r, 2); break;                                  // ShortComment
 			case 0x00A1: { skip(&r, 2); unsigned n = u16(&r); skip(&r, n); break; } // LongComment
@@ -317,11 +317,6 @@ static QDErr play(const uint8_t *data, size_t size, const Rect *dstRect, unsigne
 	return kQDPictUnsupportedOpcode;
 }
 
-static unsigned gLastSkippedText;
-
-// Text opcodes skipped by the last DrawPicture (diagnostic accessor, private).
-unsigned QDLastPictureSkippedText(void) { return gLastSkippedText; }
-
 QDPicHandle GetPicture(short pictureID)
 {
 	return (QDPicHandle) GetResource('PICT', pictureID);
@@ -329,10 +324,9 @@ QDPicHandle GetPicture(short pictureID)
 
 void DrawPicture(QDPicHandle pic, const Rect *dstRect)
 {
-	gLastSkippedText = 0;
 	if (!pic || !*pic || !dstRect) { gQDError = paramErr; return; }
 	Size size = GetHandleSize((Handle) pic);
-	gQDError = play((const uint8_t *) *pic, (size_t) size, dstRect, &gLastSkippedText);
+	gQDError = play((const uint8_t *) *pic, (size_t) size, dstRect);
 }
 
 // OpenCPicture / ClosePicture: recording of the drawing done in the current port (QDRecord.inc in QDDrawing.c).
