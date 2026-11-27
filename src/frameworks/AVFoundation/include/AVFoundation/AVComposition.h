@@ -17,8 +17,17 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <AVFoundation/AVAsset.h>
 
-@interface AVComposition : NSObject
+@class AVCompositionTrack;
+
+@interface AVComposition : AVAsset
+
+@property (nonatomic, readonly) CGSize naturalSize;
+
+- (AVCompositionTrack *)trackWithTrackID:(CMPersistentTrackID)trackID;
+- (NSArray<AVCompositionTrack *> *)tracksWithMediaType:(AVMediaType)mediaType;
+- (NSArray<AVCompositionTrack *> *)tracksWithMediaCharacteristic:(NSString *)mediaCharacteristic;
 
 @end

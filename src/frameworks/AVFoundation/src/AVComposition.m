@@ -18,9 +18,18 @@
 */
 
 #import <AVFoundation/AVComposition.h>
+#import "AVPlaybackPrivate.h"
 #import <darling-stub-forwarding.h>
 
 @implementation AVComposition
+
+@dynamic tracks;
+@dynamic naturalSize;
+
+- (id)copyWithZone:(NSZone *)zone
+{
+    return [self retain];
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
