@@ -26,11 +26,13 @@ add_framework(QD
     	src/QDPictures.c
     	src/QDDrawing.c
     	src/QDBridge.c
+    	src/QDText.c
 
     DEPENDENCIES
 	CarbonCore
 	CoreFoundation
 	CoreGraphics
+	CoreText
 	ImageIO
         system
 )
