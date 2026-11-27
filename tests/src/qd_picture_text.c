@@ -1,12 +1,14 @@
 // Copyright (C) 2026 Lubos Dolezel
 //
 // QuickDraw text while a picture is open (32-bit only): the picture has no text opcodes, so DrawString, DrawText and
-// DrawChar are counted by QDPictureUnrecordedOps() like the other drawing calls that are left out of a picture, and
-// nothing reaches the port, because the pen is hidden while a picture is recorded; the pen does not move. After
-// ClosePicture, text draws again.
+// DrawChar are not recorded in the picture (it has no text opcodes) and nothing reaches the port, because the pen is
+// hidden while a picture is recorded; the pen does not move. The picture holds the same bytes as one recorded without the
+// text calls, and playing it back draws the rectangle that was recorded but no text. After ClosePicture, text draws
+// again.
 #include <QD/QD.h>
 #include <CarbonCore/MacMemory.h>
 #include <stdio.h>
+#include <string.h>
 
 #ifdef __LP64__
 int main(void)
@@ -17,7 +19,7 @@ int main(void)
 #else
 
 typedef OpenCPicParams CPParams;
-unsigned QDPictureUnrecordedOps(void);
+void DrawPicture(PicHandle, const Rect *); void PaintRect(const Rect *);
 void SetGWorld(CGrafPtr, GDHandle);
 void RGBForeColor(const RGBColor *); void RGBBackColor(const RGBColor *);
 void EraseRect(const Rect *); void GetCPixel(short, short, RGBColor *);
@@ -47,18 +49,32 @@ int main(void)
 	TextFont(1); TextSize(12);
 
 	CPParams cp = {r, 0x00480000, 0x00480000, -2, 0, 0};
+	Rect mark; SetRect(&mark, 100, 2, 116, 10);
+	PicHandle plain = OpenCPicture(&cp);     // reference: only the rectangle
+	CHECK(plain != NULL);
+	PaintRect(&mark);
+	ClosePicture();
+
 	PicHandle pic = OpenCPicture(&cp);
 	CHECK(pic != NULL);
 	MoveTo(10, 25);
 	DrawString("\pHello");
 	DrawText("abc", 0, 3);
 	DrawChar(65);
+	PaintRect(&mark);
 	Point pen; GetPen(&pen);
 	CHECK(pen.h == 10 && pen.v == 25);
 	ClosePicture();
-	CHECK(QDPictureUnrecordedOps() == 3);
 	CHECK(inked(0, 0, 120, 40) == 0);
-	if (pic) DisposeHandle((Handle) pic);
+	if (!pic || !plain) return 1;
+	Size n = GetHandleSize((Handle) pic);
+	CHECK(n == GetHandleSize((Handle) plain) && memcmp(*pic, *plain, (size_t) n) == 0);   // no text opcodes
+
+	DrawPicture(pic, &r);
+	CHECK(inked(100, 2, 116, 10) == 16 * 8);   // the recorded rectangle
+	CHECK(inked(0, 0, 100, 40) == 0);          // and no text
+	DisposeHandle((Handle) pic); DisposeHandle((Handle) plain);
+	EraseRect(&r);
 
 	MoveTo(10, 25);
 	DrawString("\pHello");
