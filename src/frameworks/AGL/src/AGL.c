@@ -40,11 +40,36 @@
 #endif
 
 #include <CoreGraphics/CoreGraphicsPrivate.h>
+#include <pthread.h>
 
 // The window server window behind a Carbon window (HIToolbox)
 CGSWindowID _HIWindowGetCGSWindowID(WindowRef window);
 
 static __thread GLenum t_error = AGL_NO_ERROR;
+
+// EGL_PLATFORM_WAYLAND_KHR
+enum { kEGLPlatformWayland = 0x31D8 };
+
+// The window system of the process connection: CGSNativeConnectionKind of CoreGraphics (its header is Objective-C)
+enum { kConnectionKindX11 = 1 };
+extern int _CGSNativeConnectionKind(void);
+
+// The GL layer has to be told which window system the connection of the process is to, before the first context
+// is made: AppKit tells it when it is loaded, and a Carbon process has nobody else to do it.
+static pthread_once_t g_windowSystemRegistered = PTHREAD_ONCE_INIT;
+
+static void registerWindowSystem(void)
+{
+	CGSConnectionID connection = CGSMainConnectionID();
+	void *display = connection ? _CGSNativeDisplay(connection) : NULL;
+
+	if (!display)
+		return;
+	if (_CGSNativeConnectionKind() == kConnectionKindX11)
+		CGLRegisterNativeDisplay(display);
+	else
+		CGLRegisterNativeDisplayForPlatform(display, kEGLPlatformWayland);
+}
 
 static void failed(GLenum code) { t_error = code; }
 
@@ -165,6 +190,7 @@ AGL_EXPORT AGLPixelFormat aglChoosePixelFormat(const AGLDevice *gdevs, GLint nde
 {
 	(void) gdevs;
 	(void) ndev;
+	pthread_once(&g_windowSystemRegistered, registerWindowSystem);
 	AGLPixelFormat format = calloc(1, sizeof(*format));
 	if (!format) {
 		failed(AGL_BAD_ALLOC);
