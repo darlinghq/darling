@@ -1,5 +1,11 @@
 project(frameworks)
 
+if (COMPONENT_core)
+	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
+
+	add_subdirectory(System)
+endif()
+
 if (COMPONENT_system)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "system")
 
@@ -7,7 +13,6 @@ if (COMPONENT_system)
 	# which OpenDirectory.framework re-exports
 	add_subdirectory(OpenDirectory/CFOpenDirectory)
 	add_subdirectory(DirectoryServices)
-	add_subdirectory(System)
 endif()
 
 # this is mainly for frameworks that are required for Security,

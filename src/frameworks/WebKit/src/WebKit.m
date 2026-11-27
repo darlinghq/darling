@@ -19,38 +19,10 @@
 
 
 #include <WebKit/WebKit.h>
-#include <AppKit/NSView.h>
 #include <dispatch/dispatch.h>
 #include <stdlib.h>
 #include <stdio.h>
 #import <darling-stub-forwarding.h>
-
-@interface WebView : NSView
-@end
-
-@implementation WebView
-
-- (instancetype)initWithFrame:(NSRect)frameRect frameName:(NSString *)frameName groupName:(NSString *)groupName {
-    return [super initWithFrame:frameRect];
-}
-
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
-}
-
-- (void)forwardInvocation:(NSInvocation *)anInvocation {
-    DarlingStubForwardInvocation(self, anInvocation);
-}
-
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-    return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
-}
-
-+ (void)forwardInvocation:(NSInvocation *)anInvocation {
-    DarlingStubForwardInvocation(self, anInvocation);
-}
-
-@end
 
 @interface WebPreferences : NSObject {
     NSString *_standardFontFamily;
