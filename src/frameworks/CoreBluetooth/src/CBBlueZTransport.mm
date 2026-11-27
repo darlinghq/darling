@@ -893,11 +893,16 @@ bool Transport::writeValue(const std::string &path, const std::vector<uint8_t> &
 {
     const bool result = writeAttribute(path, kCharacteristic, value,
                                        withResponse ? "request" : "command", errorName);
-    Event event;
-    event.type = EventType::WriteCompleted;
-    event.path = path;
-    event.errorCode = result ? 0 : ErrorCodeForDBusName(errorName != nullptr ? *errorName : "");
-    emit(event);
+    // The delegate is told about the outcome of a write only for a write with response;
+    // a write without response has no confirmation to report.
+    if (withResponse)
+    {
+        Event event;
+        event.type = EventType::WriteCompleted;
+        event.path = path;
+        event.errorCode = result ? 0 : ErrorCodeForDBusName(errorName != nullptr ? *errorName : "");
+        emit(event);
+    }
     return result;
 }
 
@@ -922,12 +927,18 @@ bool Transport::setNotify(const std::string &path, bool enabled, std::string *er
         std::lock_guard<std::mutex> lock(mutex_);
         notifying_[path] = enabled;
     }
-    Event event;
-    event.type = EventType::NotificationStateChanged;
-    event.path = path;
-    event.flag = enabled && result;
-    event.errorCode = result ? 0 : ErrorCodeForDBusName(errorName != nullptr ? *errorName : "");
-    emit(event);
+    // BlueZ reports a successful change through the Notifying property, which is what tells
+    // the delegate; only a failure has to be reported from here, or the delegate would be
+    // told twice.
+    if (!result)
+    {
+        Event event;
+        event.type = EventType::NotificationStateChanged;
+        event.path = path;
+        event.flag = notifying_.count(path) != 0 && notifying_[path];
+        event.errorCode = ErrorCodeForDBusName(errorName != nullptr ? *errorName : "");
+        emit(event);
+    }
     return result;
 }
 

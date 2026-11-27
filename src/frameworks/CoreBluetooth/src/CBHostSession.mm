@@ -237,6 +237,30 @@ std::vector<uint8_t> BytesFromData(NSData *data)
     return std::vector<uint8_t>(bytes, bytes + [data length]);
 }
 
+// The value types the CBUUID descriptor constants document: the extended properties and the
+// client and server configuration are numbers, the user description is a string, everything
+// else stays the raw data.
+id DescriptorValueFromData(CBUUID *UUID, NSData *data)
+{
+    NSString *name = UUID.UUIDString;
+    if ([name isEqualToString:@"2901"])
+    {
+        NSString *text = [[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] autorelease];
+        return text != nil ? text : data;
+    }
+    if (([name isEqualToString:@"2900"] || [name isEqualToString:@"2902"] ||
+         [name isEqualToString:@"2903"]) && [data length] >= 1 && [data length] <= 2)
+    {
+        // ATT values are little endian
+        const uint8_t *bytes = static_cast<const uint8_t *>([data bytes]);
+        unsigned value = bytes[0];
+        if ([data length] == 2)
+            value |= static_cast<unsigned>(bytes[1]) << 8;
+        return [NSNumber numberWithUnsignedInt:value];
+    }
+    return data;
+}
+
 struct SessionState
 {
     cbbluez::Transport *transport = nullptr;
@@ -629,7 +653,7 @@ struct SessionState
         {
             CBDescriptor *descriptor = object;
             if (value != nil)
-                descriptor.value = value;
+                descriptor.value = DescriptorValueFromData(descriptor.UUID, value);
             id<CBPeripheralDelegate> delegate = descriptor.characteristic.service.peripheral.delegate;
             if ([delegate respondsToSelector:@selector(peripheral:didUpdateValueForDescriptor:error:)])
                 [delegate peripheral:descriptor.characteristic.service.peripheral
