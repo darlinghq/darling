@@ -22,6 +22,9 @@
 #define _QuickTime_H_
 
 #include <MacTypes.h>
+#if !__LP64__
+#include <CarbonCore/Files.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,6 +48,13 @@ void SetMovieTimeScale(Movie theMovie, TimeScale timeScale);
 TimeValue GetMovieDuration(Movie theMovie);
 /* currentTime must be NULL: time bases are not implemented. */
 TimeValue GetMovieTime(Movie theMovie, TimeRecord *currentTime);
+
+#if !__LP64__
+/* Read-only movie file access. */
+OSErr OpenMovieFile(const FSSpec *fileSpec, short *resRefNum, SInt8 permission);
+OSErr CloseMovieFile(short resRefNum);
+#endif
+
 
 #ifdef __cplusplus
 }
@@ -239,7 +249,9 @@ void* ClockTimeChanged(void);
 void* ClockUpdateSoundSamples64(void);
 void* ClockUpdateSoundSamplesAndTimeStamp(void);
 void* CloneRgn(void);
+#if __LP64__
 void* CloseMovieFile(void);
+#endif
 void* CloseMovieStorage(void);
 void* ClosedCaptionGetCCData(void);
 void* ClosedCaptionGetRawText(void);
@@ -2321,7 +2333,9 @@ void* NewVdigIntUPP(void);
 void* NewYUVPtrsUPP(void);
 void* OpenADataHandler(void);
 void* OpenADataHandler2(void);
+#if __LP64__
 void* OpenMovieFile(void);
+#endif
 void* OpenMovieFileUnicode(void);
 void* OpenMovieStorage(void);
 void* OpenPreviewComponentForFile(void);
