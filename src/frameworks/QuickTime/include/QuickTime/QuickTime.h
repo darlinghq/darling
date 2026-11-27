@@ -42,7 +42,17 @@ typedef struct PointerDataRefRecord {
 typedef PointerDataRefRecord *PointerDataRefPtr;
 enum { PointerDataHandlerSubType = 0x70747220 };
 
-/* Pointer references to header-only movies; tracks are not supported yet. */
+
+typedef struct TrackType **Track;
+typedef struct MediaType **Media;
+
+SInt32 GetMovieTrackCount(Movie movie);
+Track GetMovieIndTrack(Movie movie, SInt32 index);
+Media GetTrackMedia(Track track);
+TimeScale GetMediaTimeScale(Media media);
+SInt32 GetMediaSampleCount(Media media);
+
+/* Read-only pointer references; metadata only. */
 OSErr NewMovieFromDataRef(Movie *m, short flags, short *id,
                           Handle dataRef, OSType dataRefType);
 #endif
@@ -747,7 +757,9 @@ void* GetMediaPropertyAtom(void);
 void* GetMediaQuality(void);
 void* GetMediaSample(void);
 void* GetMediaSample2(void);
+#if __LP64__
 void* GetMediaSampleCount(void);
+#endif
 void* GetMediaSampleDescription(void);
 void* GetMediaSampleDescriptionCount(void);
 void* GetMediaSampleReference(void);
@@ -756,7 +768,9 @@ void* GetMediaSampleReferences64(void);
 void* GetMediaSeed(void);
 void* GetMediaShadowSync(void);
 void* GetMediaSyncSampleCount(void);
+#if __LP64__
 void* GetMediaTimeScale(void);
+#endif
 void* GetMediaTrack(void);
 void* GetMediaUserData(void);
 void* GetMovieActive(void);
@@ -788,7 +802,9 @@ void* GetMovieEffectiveRate(void);
 void* GetMovieGWorld(void);
 void* GetMovieIdleManager(void);
 void* GetMovieImporterForDataRef(void);
+#if __LP64__
 void* GetMovieIndTrack(void);
+#endif
 void* GetMovieIndTrackType(void);
 void* GetMovieLoadState(void);
 void* GetMovieMatrix(void);
@@ -816,7 +832,9 @@ void* GetMovieStatus(void);
 void* GetMovieThreadAttachState(void);
 void* GetMovieTimeBase(void);
 void* GetMovieTrack(void);
+#if __LP64__
 void* GetMovieTrackCount(void);
+#endif
 void* GetMovieUserData(void);
 void* GetMovieVisualBrightness(void);
 void* GetMovieVisualContext(void);
@@ -889,7 +907,9 @@ void* GetTrackLayer(void);
 void* GetTrackLoadSettings(void);
 void* GetTrackMatrix(void);
 void* GetTrackMatte(void);
+#if __LP64__
 void* GetTrackMedia(void);
+#endif
 void* GetTrackModificationTime(void);
 void* GetTrackMovie(void);
 void* GetTrackMovieBoundsRgn(void);

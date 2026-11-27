@@ -32,9 +32,30 @@ static int verbose = 0;
  * of the handle_value field of its storage, so a Movie that is not in the
  * list is rejected without being dereferenced. A freed address that malloc
  * reuses for a new movie cannot be told apart from it. */
+
+#if !__LP64__
+struct TrackType {
+    OSType handler;
+};
+struct MediaType {
+    TimeScale scale;
+    SInt32 samples;
+};
+struct MovieTrackStorage {
+    struct TrackType track;
+    struct MediaType media;
+    struct TrackType *track_handle;
+    struct MediaType *media_handle;
+};
+#endif
+
 struct MovieStorage {
     struct MovieType *handle_value;
     struct MovieType value;
+#if !__LP64__
+    struct MovieTrackStorage *tracks;
+    SInt32 track_count;
+#endif
     struct MovieStorage *next;
 };
 
@@ -84,10 +105,99 @@ static Movie movie_new(TimeScale time_scale, TimeValue duration)
     return &storage->handle_value;
 }
 
+
 static void movie_free(struct MovieStorage *storage)
 {
+#if !__LP64__
+    free(storage->tracks);
+#endif
     free(storage);
 }
+
+#if !__LP64__
+/* Match handles against live objects without dereferencing
+ * an unknown caller-provided address. */
+static struct MovieTrackStorage *track_lookup(
+    const void *handle, int media)
+{
+    if (!movies_entered) {
+        movies_error=movieToolboxUninitialized;
+        return NULL;
+    }
+
+    for (struct MovieStorage *s=movie_list;s;s=s->next) {
+        for (SInt32 i=0;i<s->track_count;++i) {
+            struct MovieTrackStorage *t=&s->tracks[i];
+            const void *key=media ?
+                (const void *)&t->media_handle :
+                (const void *)&t->track_handle;
+            if (key==handle)
+                return t;
+        }
+    }
+
+    movies_error=media ? invalidMedia : invalidTrack;
+    return NULL;
+}
+
+static OSErr build_tracks(const void *data,size_t length,
+                          struct MovieTrackStorage **out,
+                          SInt32 *count)
+{
+    size_t n=0;
+    *out=NULL;
+    *count=0;
+
+    if (d4rl_qt_mov_list_tracks(data,length,NULL,0,&n)!=0)
+        return badPublicMovieAtom;
+
+    if (!n)
+        return noErr;
+
+    if (n>INT32_MAX ||
+        n>SIZE_MAX/sizeof(struct MovieTrackStorage) ||
+        n>SIZE_MAX/sizeof(struct d4rl_qt_mov_track_info))
+        return memFullErr;
+
+    struct d4rl_qt_mov_track_info *infos=calloc(n,sizeof(*infos));
+    struct MovieTrackStorage *tracks=calloc(n,sizeof(*tracks));
+
+    if (!infos || !tracks) {
+        free(infos);
+        free(tracks);
+        return memFullErr;
+    }
+
+    size_t found=0;
+
+    if (d4rl_qt_mov_list_tracks(data,length,infos,n,&found)!=0 ||
+        found!=n) {
+        free(infos);
+        free(tracks);
+        return badPublicMovieAtom;
+    }
+
+    for (size_t i=0;i<n;++i) {
+        if (!infos[i].has_media) {
+            free(infos);
+            free(tracks);
+            return unimpErr;
+        }
+
+        tracks[i].track.handler=infos[i].handler;
+        tracks[i].track_handle=&tracks[i].track;
+        tracks[i].media.scale=(TimeScale)infos[i].media_time_scale;
+        tracks[i].media.samples=(SInt32)infos[i].sample_count;
+        tracks[i].media_handle=&tracks[i].media;
+    }
+
+    free(infos);
+    *out=tracks;
+    *count=(SInt32)n;
+    return noErr;
+}
+#endif
+
 
 __attribute__((constructor))
 static void initme(void) {
@@ -4224,11 +4334,21 @@ void* GetMediaSample2(void)
     return NULL;
 }
 
+#if !__LP64__
+SInt32 GetMediaSampleCount(Media media)
+{
+    struct MovieTrackStorage *t=track_lookup(media,1);
+    if (!t) return 0;
+    movies_error=noErr;
+    return t->media.samples;
+}
+#else
 void* GetMediaSampleCount(void)
 {
     if (verbose) puts("STUB: GetMediaSampleCount called");
     return NULL;
 }
+#endif
 
 void* GetMediaSampleDescription(void)
 {
@@ -4278,11 +4398,21 @@ void* GetMediaSyncSampleCount(void)
     return NULL;
 }
 
+#if !__LP64__
+TimeScale GetMediaTimeScale(Media media)
+{
+    struct MovieTrackStorage *t=track_lookup(media,1);
+    if (!t) return 0;
+    movies_error=noErr;
+    return t->media.scale;
+}
+#else
 void* GetMediaTimeScale(void)
 {
     if (verbose) puts("STUB: GetMediaTimeScale called");
     return NULL;
 }
+#endif
 
 void* GetMediaTrack(void)
 {
@@ -4479,11 +4609,25 @@ void* GetMovieImporterForDataRef(void)
     return NULL;
 }
 
+#if !__LP64__
+Track GetMovieIndTrack(Movie movie, SInt32 index)
+{
+    struct MovieStorage *s=movie_lookup(movie);
+    if (!s) return NULL;
+    if (index<1 || index>s->track_count) {
+        movies_error=badTrackIndex;
+        return NULL;
+    }
+    movies_error=noErr;
+    return &s->tracks[index-1].track_handle;
+}
+#else
 void* GetMovieIndTrack(void)
 {
     if (verbose) puts("STUB: GetMovieIndTrack called");
     return NULL;
 }
+#endif
 
 void* GetMovieIndTrackType(void)
 {
@@ -4670,11 +4814,21 @@ void* GetMovieTrack(void)
     return NULL;
 }
 
+#if !__LP64__
+SInt32 GetMovieTrackCount(Movie movie)
+{
+    struct MovieStorage *s=movie_lookup(movie);
+    if (!s) return 0;
+    movies_error=noErr;
+    return s->track_count;
+}
+#else
 void* GetMovieTrackCount(void)
 {
     if (verbose) puts("STUB: GetMovieTrackCount called");
     return NULL;
 }
+#endif
 
 void* GetMovieUserData(void)
 {
@@ -5115,11 +5269,21 @@ void* GetTrackMatte(void)
     return NULL;
 }
 
+#if !__LP64__
+Media GetTrackMedia(Track track)
+{
+    struct MovieTrackStorage *t=track_lookup(track,0);
+    if (!t) return NULL;
+    movies_error=noErr;
+    return &t->media_handle;
+}
+#else
 void* GetTrackMedia(void)
 {
     if (verbose) puts("STUB: GetTrackMedia called");
     return NULL;
 }
+#endif
 
 void* GetTrackModificationTime(void)
 {
@@ -13178,14 +13342,30 @@ OSErr NewMovieFromDataRef(Movie *m, short flags, short *id,
         return movies_error = badPublicMovieAtom;
     if (header.duration > INT32_MAX)
         return movies_error = invalidDuration;
-    if (header.has_tracks)
+    if (header.has_unsupported)
         return movies_error = unimpErr;
+
+    struct MovieTrackStorage *tracks=NULL;
+    SInt32 count=0;
+    OSErr error=build_tracks(record->data,
+                             (size_t)record->dataLength,
+                             &tracks,&count);
+    if (error!=noErr)
+        return movies_error=error;
 
     /* No movie-resource ID is supplied by a pointer data reference. */
     (void)id;
     *m = movie_new((TimeScale)header.timescale,
                    (TimeValue)header.duration);
-    return movies_error;
+    if (!*m) {
+        free(tracks);
+        return movies_error;
+    }
+
+    struct MovieStorage *storage=*movie_slot(*m);
+    storage->tracks=tracks;
+    storage->track_count=count;
+    return movies_error=noErr;
 }
 #else
 void* NewMovieFromDataRef(void)
