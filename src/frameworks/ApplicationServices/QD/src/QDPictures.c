@@ -26,8 +26,7 @@
 
 enum { kQDPictUnsupportedOpcode = -11005 /* pictureDataErr */ };
 
-typedef struct { SInt16 picSize; Rect picFrame; } QDPicture;
-typedef QDPicture **QDPicHandle;
+typedef PicHandle QDPicHandle;
 
 void PenSize(short, short);
 void PenMode(short);
@@ -317,12 +316,12 @@ static QDErr play(const uint8_t *data, size_t size, const Rect *dstRect)
 	return kQDPictUnsupportedOpcode;
 }
 
-QDPicHandle GetPicture(short pictureID)
+PicHandle GetPicture(short pictureID)
 {
-	return (QDPicHandle) GetResource('PICT', pictureID);
+	return (PicHandle) GetResource('PICT', pictureID);
 }
 
-void DrawPicture(QDPicHandle pic, const Rect *dstRect)
+void DrawPicture(PicHandle pic, const Rect *dstRect)
 {
 	if (!pic || !*pic || !dstRect) { gQDError = paramErr; return; }
 	Size size = GetHandleSize((Handle) pic);
