@@ -171,10 +171,15 @@ static void append_create_options(const struct darling_portal_api* api,
 	DBusConnection* connection, DBusMessageIter* args, const char* token, void* user_data)
 {
 	DBusMessageIter options;
+	char session_token[96];
 
 	(void) connection; (void) user_data;
+	/* CreateSession documents session_handle_token as the name the portal gives the
+	 * session; without it the portal frontend has no session name to create. */
+	snprintf(session_token, sizeof(session_token), "%s_session", token);
 	darling_portal_options_begin(api, args, &options);
 	darling_portal_options_add_string(api, &options, "handle_token", token);
+	darling_portal_options_add_string(api, &options, "session_handle_token", session_token);
 	darling_portal_options_end(api, args, &options);
 }
 
@@ -204,10 +209,15 @@ static void append_start_options(const struct darling_portal_api* api,
 	DBusConnection* connection, DBusMessageIter* args, const char* token, void* user_data)
 {
 	DBusMessageIter options;
+	char session_token[96];
 
 	(void) connection; (void) user_data;
+	/* CreateSession documents session_handle_token as the name the portal gives the
+	 * session; without it the portal frontend has no session name to create. */
+	snprintf(session_token, sizeof(session_token), "%s_session", token);
 	darling_portal_options_begin(api, args, &options);
 	darling_portal_options_add_string(api, &options, "handle_token", token);
+	darling_portal_options_add_string(api, &options, "session_handle_token", session_token);
 	darling_portal_options_end(api, args, &options);
 }
 
