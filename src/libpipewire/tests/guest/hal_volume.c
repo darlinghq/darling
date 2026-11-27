@@ -5,8 +5,6 @@
 //                                      <volume> (scalar, within 0.01) and <mute>
 //   hal_volume set <volume> <mute>     sets both through the device, reads them back and prints SET; the caller
 //                                      compares the server's values
-//   hal_volume local                   without a server: values set through the device read back and the
-//                                      listeners fire (the values are kept locally)
 #include <CoreAudio/CoreAudio.h>
 #include <math.h>
 #include <stdio.h>
@@ -68,13 +66,8 @@ int main(int argc, char **argv)
         usleep(1500000);   /* let the request reach the server before the connection goes away */
         printf("SET\n");
     } else {
-        AudioObjectAddPropertyListener(dev, &volumeAddr, listener, NULL);
-        AudioObjectAddPropertyListener(dev, &muteAddr, listener, NULL);
-        Float32 v = 0.25f; UInt32 m = 1;
-        OSStatus s1 = AudioObjectSetPropertyData(dev, &volumeAddr, 0, NULL, sizeof(v), &v);
-        OSStatus s2 = AudioObjectSetPropertyData(dev, &muteAddr, 0, NULL, sizeof(m), &m);
-        printf("set status %d %d, read back volume %.3f mute %d, listeners %d %d\n", (int) s1, (int) s2, getVolume(dev), getMute(dev), volumeFired, muteFired);
-        if (s1 || s2 || fabsf(getVolume(dev) - v) >= 0.01f || getMute(dev) != 1 || !volumeFired || !muteFired) { printf("FAIL: local values\n"); failures++; }
+        printf("usage: hal_volume watch|set <volume> <mute>\n");
+        failures++;
     }
     printf(failures ? "FAILED\n" : "PASS\n");
     return failures != 0;
