@@ -19,6 +19,7 @@
 */
 
 #import "AVPlaybackPrivate.h"
+#include <mach/mach_time.h>
 #import <darling-stub-forwarding.h>
 
 @implementation AVPlayerItemVideoOutput
@@ -32,6 +33,12 @@
 
 - (instancetype)initWithOutputSettings:(NSDictionary<NSString *, id> *)outputSettings
 {
+    // A nil dictionary selects the defaults; a dictionary naming nothing at all is rejected.
+    if (outputSettings != nil && [outputSettings count] == 0) {
+        [self release];
+        [NSException raise:NSInvalidArgumentException
+                    format:@"*** -[AVPlayerItemVideoOutput initWithOutputSettings:] Output settings dictionary does not contain any recognized keys"];
+    }
     return [self initWithPixelBufferAttributes:outputSettings];
 }
 
@@ -76,16 +83,40 @@
 {
 }
 
-- (CMTime)itemTimeForHostTime:(CFTimeInterval)hostTimeInSeconds
+// The item time shown at a host time (seconds on the host clock, as CACurrentMediaTime counts):
+// the player's current time advanced by the time left until then at the playback rate. Without
+// an item to play the time is invalid.
+- (CMTime)_itemTimeForHostSeconds:(double)hostSeconds
 {
     AVPlayer *player = _videoOutputInternal->item ? [_videoOutputInternal->item _internal]->player : nil;
-    return player ? [[player _internal] currentTime] : kCMTimeZero;
+    if (!player)
+        return kCMTimeInvalid;
+
+    static mach_timebase_info_data_t timebase;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ mach_timebase_info(&timebase); });
+    double now = (double)mach_absolute_time() * timebase.numer / timebase.denom / 1e9;
+
+    CMTime current = [player currentTime];
+    if (!CMTIME_IS_VALID(current))
+        return kCMTimeInvalid;
+    return CMTimeAdd(current, CMTimeMakeWithSeconds((hostSeconds - now) * [player rate], 1000000000));
+}
+
+- (CMTime)itemTimeForHostTime:(CFTimeInterval)hostTimeInSeconds
+{
+    return [self _itemTimeForHostSeconds:hostTimeInSeconds];
 }
 
 - (CMTime)itemTimeForCVTimeStamp:(CVTimeStamp)timestamp
 {
-    AVPlayer *player = _videoOutputInternal->item ? [_videoOutputInternal->item _internal]->player : nil;
-    return player ? [[player _internal] currentTime] : kCMTimeZero;
+    if (!(timestamp.flags & kCVTimeStampHostTimeValid))
+        return kCMTimeInvalid;
+    static mach_timebase_info_data_t timebase;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ mach_timebase_info(&timebase); });
+    double seconds = (double)timestamp.hostTime * timebase.numer / timebase.denom / 1e9;
+    return [self _itemTimeForHostSeconds:seconds];
 }
 
 - (void)_setItem:(AVPlayerItem *)item
