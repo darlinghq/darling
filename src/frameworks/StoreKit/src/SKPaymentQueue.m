@@ -22,6 +22,34 @@
 
 @implementation SKPaymentQueue
 
++ (instancetype)defaultQueue
+{
+    static SKPaymentQueue *queue = nil;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        queue = [[self alloc] init];
+    });
+    return queue;
+}
+
++ (BOOL)canMakePayments
+{
+    return NO;
+}
+
+- (NSArray *)transactions
+{
+    return @[];
+}
+
+- (void)addTransactionObserver:(id)observer
+{
+}
+
+- (void)removeTransactionObserver:(id)observer
+{
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
