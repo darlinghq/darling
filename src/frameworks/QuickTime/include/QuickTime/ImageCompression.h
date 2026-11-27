@@ -93,6 +93,7 @@ OSErr QTNewGWorldFromPtr(GWorldPtr *gw, OSType pixelFormat, const Rect *boundsRe
 	GDHandle aGDevice, GWorldFlags flags, void *baseAddr, long rowBytes);
 
 /* Graphics importers */
+typedef ComponentInstance GraphicsImportComponent;
 OSErr GetGraphicsImporterForFile(const FSSpec *theFile, ComponentInstance *gi);
 OSErr GetGraphicsImporterForFileWithFlags(const FSSpec *theFile, ComponentInstance *gi, UInt32 flags);
 ComponentResult GraphicsImportSetDataFile(ComponentInstance ci, const FSSpec *theFile);
