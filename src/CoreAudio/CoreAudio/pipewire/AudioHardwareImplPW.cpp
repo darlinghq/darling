@@ -34,6 +34,11 @@ constexpr AudioObjectPropertyAddress kDefaultOutputAddress = {
 	kAudioHardwarePropertyDefaultOutputDevice, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
 constexpr AudioObjectPropertyAddress kDefaultInputAddress = {
 	kAudioHardwarePropertyDefaultInputDevice, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
+
+int pwDeviceKind(bool input)
+{
+	return input ? DARLING_PW_DEVICE_INPUT : DARLING_PW_DEVICE_OUTPUT;
+}
 }
 
 bool AudioHardwareImplPW::uidFromCFString(CFStringRef string, std::string& out)
@@ -256,12 +261,18 @@ OSStatus AudioHardwareImplPW::devicePropertyData(const AudioObjectPropertyAddres
 		}
 		case kAudioDevicePropertyVolumeScalar:
 		{
-			const Float32 volume = m_volume.load(std::memory_order_relaxed);
+			darling_pw_device_state state{};
+			if (darling_pw_device_get_state(pwDeviceKind(m_input), &state) != 0)
+				state.volume = 1;
+			const Float32 volume = state.volume;
 			return reply(ioDataSize, outData, &volume, sizeof(volume));
 		}
 		case kAudioDevicePropertyMute:
 		{
-			const UInt32 muted = m_mute.load(std::memory_order_relaxed);
+			darling_pw_device_state state{};
+			if (darling_pw_device_get_state(pwDeviceKind(m_input), &state) != 0)
+				state.mute = 0;
+			const UInt32 muted = state.mute != 0;
 			return reply(ioDataSize, outData, &muted, sizeof(muted));
 		}
 		case kAudioDevicePropertyDeviceIsRunningSomewhere:
@@ -378,18 +389,38 @@ OSStatus AudioHardwareImplPW::setPropertyData(const AudioObjectPropertyAddress* 
 	switch (address->mSelector)
 	{
 		case kAudioDevicePropertyVolumeScalar:
+		{
 			if (!inData || dataSize != sizeof(Float32))
 				return kAudioHardwareBadPropertySizeError;
-			m_volume.store(std::min(std::max(*static_cast<const Float32*>(inData), 0.f), 1.f),
-				std::memory_order_relaxed);
+			darling_pw_device_state state{};
+			if (darling_pw_device_get_state(pwDeviceKind(m_input), &state) != 0)
+			{
+				state.volume = 1;
+				state.mute = 0;
+			}
+			const Float32 requested = *static_cast<const Float32*>(inData);
+			state.volume = std::min(std::max(requested, 0.f), 1.f);
+			if (darling_pw_device_set_state(pwDeviceKind(m_input), &state) != 0)
+				return kAudioHardwareBadDeviceError;
 			notifyPropertyChanged(kAudioDevicePropertyVolumeScalar);
 			return kAudioHardwareNoError;
+		}
 		case kAudioDevicePropertyMute:
+		{
 			if (!inData || dataSize != sizeof(UInt32))
 				return kAudioHardwareBadPropertySizeError;
-			m_mute.store(*static_cast<const UInt32*>(inData) ? 1 : 0, std::memory_order_relaxed);
+			darling_pw_device_state state{};
+			if (darling_pw_device_get_state(pwDeviceKind(m_input), &state) != 0)
+			{
+				state.volume = 1;
+				state.mute = 0;
+			}
+			state.mute = *static_cast<const UInt32*>(inData) ? 1 : 0;
+			if (darling_pw_device_set_state(pwDeviceKind(m_input), &state) != 0)
+				return kAudioHardwareBadDeviceError;
 			notifyPropertyChanged(kAudioDevicePropertyMute);
 			return kAudioHardwareNoError;
+		}
 		case kAudioDevicePropertyNominalSampleRate:
 			if (!inData || dataSize != sizeof(Float64))
 				return kAudioHardwareBadPropertySizeError;
@@ -467,11 +498,10 @@ AudioHardwareStream* AudioHardwareImplPW::createStream(AudioDeviceIOProc callbac
 
 bool AudioHardwareImplPW::validateFormat(const AudioStreamBasicDescription* format) const
 {
-	// The shared client negotiates interleaved native-endian float32. Other
-	// PCM layouts are converted by AudioConverter above the HAL.
-	return format && format->mFormatID == kAudioFormatLinearPCM
-		&& (format->mFormatFlags & kLinearPCMFormatFlagIsFloat)
-		&& !(format->mFormatFlags & kAudioFormatFlagIsNonInterleaved);
+	// The stream negotiates the same interleaved PCM layout the HAL reports,
+	// so an IOProc may write directly into the PipeWire buffer.
+	darling_pw_stream_config config;
+	return format && PWStreamConfigForASBD(*format, !m_input, role().c_str(), &config);
 }
 
 bool AudioHardwareImplPW::hasActiveStreams()

@@ -48,11 +48,48 @@ AudioObjectID PWDeviceForUID(const char* uid)
 	return kAudioObjectUnknown;
 }
 
+static bool AudioFormatForASBD(const AudioStreamBasicDescription& asbd,
+	darling_pw_audio_format* out)
+{
+	if (asbd.mFormatID != kAudioFormatLinearPCM
+		|| (asbd.mFormatFlags & kAudioFormatFlagIsNonInterleaved)
+		|| asbd.mFramesPerPacket != 1
+		|| asbd.mChannelsPerFrame == 0)
+		return false;
+
+	const UInt32 bits = asbd.mBitsPerChannel;
+	if (asbd.mFormatFlags & kAudioFormatFlagIsFloat)
+	{
+		if (bits != 32)
+			return false;
+		*out = DARLING_PW_AUDIO_FORMAT_F32;
+		return true;
+	}
+	if (!(asbd.mFormatFlags & kAudioFormatFlagIsSignedInteger))
+	{
+		if (bits != 8)
+			return false;
+		*out = DARLING_PW_AUDIO_FORMAT_U8;
+		return true;
+	}
+	switch (bits)
+	{
+		case 16: *out = DARLING_PW_AUDIO_FORMAT_S16; return true;
+		case 24: *out = DARLING_PW_AUDIO_FORMAT_S24; return true;
+		case 32: *out = DARLING_PW_AUDIO_FORMAT_S32; return true;
+		default: return false;
+	}
+}
+
 bool PWStreamConfigForASBD(const AudioStreamBasicDescription& asbd, bool capture,
 	const char* role, darling_pw_stream_config* out)
 {
 	if (!out || !asbd.mChannelsPerFrame || asbd.mSampleRate <= 0
 		|| asbd.mSampleRate > 0xffffffffULL)
+		return false;
+
+	darling_pw_audio_format format;
+	if (!AudioFormatForASBD(asbd, &format))
 		return false;
 
 	*out = darling_pw_stream_config{};
@@ -62,6 +99,7 @@ bool PWStreamConfigForASBD(const AudioStreamBasicDescription& asbd, bool capture
 	out->role = role ? role : (capture ? "capture" : "playback");
 	out->rate = static_cast<uint32_t>(asbd.mSampleRate);
 	out->channels = asbd.mChannelsPerFrame;
+	out->audio_format = format;
 	return true;
 }
 

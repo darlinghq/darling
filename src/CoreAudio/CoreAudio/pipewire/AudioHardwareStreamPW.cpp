@@ -68,7 +68,8 @@ AudioHardwareStreamPW::AudioHardwareStreamPW(AudioHardwareImplPW* hw,
 	// A stream may still be negotiating its format. Waiting here keeps the HAL
 	// from reporting a successful AudioDeviceStart() for a stream that cannot
 	// produce or consume data yet.
-	if (darling_pw_stream_wait(m_stream, 500) < 0)
+	if (darling_pw_stream_wait(m_stream, 500) < 0
+		|| darling_pw_stream_set_active(m_stream, 1) < 0)
 	{
 		darling_pw_stream_destroy(m_stream);
 		m_stream = nullptr;

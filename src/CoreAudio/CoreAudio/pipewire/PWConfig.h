@@ -36,9 +36,9 @@ const char* PWUIDForDevice(AudioObjectID deviceID);
 // The object ID of a device with this UID, or kAudioObjectUnknown.
 AudioObjectID PWDeviceForUID(const char* uid);
 
-// Fills a PipeWire audio stream configuration from the HAL's format. The
-// shared client always negotiates interleaved 32-bit float; rate and channel
-// count come from the ASBD. Returns false for an unusable format.
+// Fills a PipeWire audio stream configuration from the HAL's format, keeping
+// the interleaved PCM layout advertised by the stream. Returns false for an
+// unusable format.
 bool PWStreamConfigForASBD(const AudioStreamBasicDescription& asbd, bool capture,
 	const char* role, darling_pw_stream_config* out);
 

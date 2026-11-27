@@ -16,10 +16,9 @@ the Free Software Foundation, either version 3 of the License, or
 #include <atomic>
 #include <string>
 
-// The pipe_client.h API has no device introspection or mixing controls. The
-// HAL objects therefore describe roles (default output, input, system output)
-// and keep control values locally, which is enough for clients that use the
-// public property contract without opening a direct PipeWire connection.
+// The HAL objects describe roles (default output, input, system output) and
+// delegate volume/mute to the shared PipeWire client, which owns the server's
+// device state. Nothing in this class caches those controls locally.
 class AudioHardwareImplPW : public AudioHardwareImpl
 {
 public:
@@ -78,8 +77,6 @@ private:
 	Float64 m_nominalRate = 0;
 	std::atomic<uint32_t> m_latencyFrames{0};
 	std::atomic<uint64_t> m_sampleClock{0};
-	std::atomic<Float32> m_volume{1.0f};
-	std::atomic<UInt32> m_mute{0};
 };
 
 class AudioHardwareImplPWOutput : public AudioHardwareImplPW
