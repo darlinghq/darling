@@ -55,7 +55,7 @@ static bool hasgid(gid_t gid);
 
 #if !__LP64__
 // Fills in the FSSpec of an item (the volume, the directory that holds it and its name)
-static void fsSpecForPath(const std::string& path, FSSpec* spec);
+static OSErr fsSpecForPath(const std::string& path, FSSpec* spec);
 #endif
 
 OSStatus FSPathMakeRef(const uint8_t* path, FSRef* fsref, Boolean* isDirectory)
@@ -342,6 +342,10 @@ OSStatus FSGetCatalogInfo(const FSRef* ref, uint32_t infoBits, FSCatalogInfo* in
 			infoOut->accessDate = Darling::time_tToUTC(st.st_atime);
 	}
 
+#if !__LP64__
+	if (fsspec)
+		return fsSpecForPath(path, fsspec);
+#endif
 	return noErr;
 }
 
@@ -1849,7 +1853,7 @@ static bool fsSpecPath(const FSSpec* spec, std::string& path)
 	return true;
 }
 
-static void fsSpecForPath(const std::string& path, FSSpec* spec)
+static OSErr fsSpecForPath(const std::string& path, FSSpec* spec)
 {
 	size_t slash = path.find_last_of('/');
 	std::string parent = (slash == std::string::npos || slash == 0) ? std::string("/") : path.substr(0, slash);
@@ -1858,13 +1862,16 @@ static void fsSpecForPath(const std::string& path, FSSpec* spec)
 	uint32_t nodeID, parentID;
 
 	memset(spec, 0, sizeof(*spec));
-	if (::stat(parent.c_str(), &st) != 0 || leaf.size() > sizeof(spec->name) - 1)
-		return;
+	if (leaf.empty() || leaf.size() > sizeof(spec->name) - 1)
+		return bdNamErr;
+	if (::stat(parent.c_str(), &st) != 0 || !S_ISDIR(st.st_mode))
+		return dirNFErr;
 	nodeIDsForPath(parent, st, &nodeID, &parentID);
 	spec->vRefNum = kBootVolumeRefNum;
 	spec->parID = parent == "/" ? fsRtDirID : (SInt32) nodeID;
 	spec->name[0] = (unsigned char) leaf.size();
 	memcpy(spec->name + 1, leaf.data(), leaf.size());
+	return noErr;
 }
 
 OSErr FSMakeFSSpec(FSVolumeRefNum vRefNum, SInt32 dirID, ConstStr255Param fileName, FSSpec* spec)
