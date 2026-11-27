@@ -678,3 +678,257 @@ vImage_Error vImageBoxConvolve_ARGB8888(const vImage_Buffer *src, const vImage_B
     (void)tempBuffer;
     return kvImageNoError;
 }
+
+static inline uint8_t expand5to8(uint16_t v) {
+    return (uint8_t)((v * 255u + 15u) / 31u);
+}
+
+static inline uint8_t expand6to8(uint16_t v) {
+    return (uint8_t)((v * 255u + 31u) / 63u);
+}
+
+static inline uint16_t quantize8to5(uint8_t c) {
+    return (uint16_t)((c * 31u + 127u) / 255u);
+}
+
+static inline uint16_t quantize8to6(uint8_t c) {
+    return (uint16_t)((c * 63u + 127u) / 255u);
+}
+
+vImage_Error vImageConvert_ARGB1555toARGB8888(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags) {
+    int has_pixels;
+    vImage_Error error = check_planar_convert_buffers(src, dest, flags, &has_pixels);
+    if (error != kvImageNoError || !has_pixels) {
+        return error;
+    }
+
+    const uint8_t *src_row = (const uint8_t *)src->data;
+    uint8_t *dest_row = (uint8_t *)dest->data;
+    for (vImagePixelCount y = 0; y < dest->height; y++, src_row += src->rowBytes, dest_row += dest->rowBytes) {
+        for (vImagePixelCount x = 0; x < dest->width; x++) {
+            uint16_t p;
+            memcpy(&p, src_row + x * 2, sizeof(p));
+            uint8_t *out = dest_row + x * 4;
+            out[0] = (p & 0x8000u) ? 0xFFu : 0x00u;
+            out[1] = expand5to8((p >> 10) & 0x1Fu);
+            out[2] = expand5to8((p >> 5) & 0x1Fu);
+            out[3] = expand5to8(p & 0x1Fu);
+        }
+    }
+    return kvImageNoError;
+}
+
+vImage_Error vImageConvert_ARGB8888toARGB1555(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags) {
+    int has_pixels;
+    vImage_Error error = check_planar_convert_buffers(src, dest, flags, &has_pixels);
+    if (error != kvImageNoError || !has_pixels) {
+        return error;
+    }
+
+    const uint8_t *src_row = (const uint8_t *)src->data;
+    uint8_t *dest_row = (uint8_t *)dest->data;
+    for (vImagePixelCount y = 0; y < dest->height; y++, src_row += src->rowBytes, dest_row += dest->rowBytes) {
+        for (vImagePixelCount x = 0; x < dest->width; x++) {
+            const uint8_t *in = src_row + x * 4;
+            uint16_t a = (in[0] >= 128) ? 1u : 0u;
+            uint16_t r = quantize8to5(in[1]);
+            uint16_t g = quantize8to5(in[2]);
+            uint16_t b = quantize8to5(in[3]);
+            uint16_t p = (uint16_t)((a << 15) | (r << 10) | (g << 5) | b);
+            memcpy(dest_row + x * 2, &p, sizeof(p));
+        }
+    }
+    return kvImageNoError;
+}
+
+static vImage_Error convert_rgb565_to_8888(uint8_t alpha, const vImage_Buffer *src,
+                                           const vImage_Buffer *dest, vImage_Flags flags, int bgra) {
+    int has_pixels;
+    vImage_Error error = check_planar_convert_buffers(src, dest, flags, &has_pixels);
+    if (error != kvImageNoError || !has_pixels) {
+        return error;
+    }
+
+    const uint8_t *src_row = (const uint8_t *)src->data;
+    uint8_t *dest_row = (uint8_t *)dest->data;
+    for (vImagePixelCount y = 0; y < dest->height; y++, src_row += src->rowBytes, dest_row += dest->rowBytes) {
+        for (vImagePixelCount x = 0; x < dest->width; x++) {
+            uint16_t p;
+            memcpy(&p, src_row + x * 2, sizeof(p));
+            uint8_t r = expand5to8((p >> 11) & 0x1Fu);
+            uint8_t g = expand6to8((p >> 5) & 0x3Fu);
+            uint8_t b = expand5to8(p & 0x1Fu);
+            uint8_t *out = dest_row + x * 4;
+            if (bgra) {
+                out[0] = b; out[1] = g; out[2] = r; out[3] = alpha;
+            } else {
+                out[0] = alpha; out[1] = r; out[2] = g; out[3] = b;
+            }
+        }
+    }
+    return kvImageNoError;
+}
+
+vImage_Error vImageConvert_RGB565toARGB8888(uint8_t alpha, const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags) {
+    return convert_rgb565_to_8888(alpha, src, dest, flags, 0);
+}
+
+vImage_Error vImageConvert_RGB565toBGRA8888(uint8_t alpha, const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags) {
+    return convert_rgb565_to_8888(alpha, src, dest, flags, 1);
+}
+
+static vImage_Error convert_8888_to_rgb565(const vImage_Buffer *src, const vImage_Buffer *dest,
+                                           vImage_Flags flags, int bgra) {
+    int has_pixels;
+    vImage_Error error = check_planar_convert_buffers(src, dest, flags, &has_pixels);
+    if (error != kvImageNoError || !has_pixels) {
+        return error;
+    }
+
+    const uint8_t *src_row = (const uint8_t *)src->data;
+    uint8_t *dest_row = (uint8_t *)dest->data;
+    for (vImagePixelCount y = 0; y < dest->height; y++, src_row += src->rowBytes, dest_row += dest->rowBytes) {
+        for (vImagePixelCount x = 0; x < dest->width; x++) {
+            const uint8_t *in = src_row + x * 4;
+            uint8_t r = bgra ? in[2] : in[0];
+            uint8_t g = in[1];
+            uint8_t b = bgra ? in[0] : in[2];
+            uint16_t p = (uint16_t)((quantize8to5(r) << 11) |
+                                    (quantize8to6(g) << 5) |
+                                    quantize8to5(b));
+            memcpy(dest_row + x * 2, &p, sizeof(p));
+        }
+    }
+    return kvImageNoError;
+}
+
+vImage_Error vImageConvert_BGRA8888toRGB565(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags) {
+    return convert_8888_to_rgb565(src, dest, flags, 1);
+}
+
+vImage_Error vImageConvert_RGBA8888toRGB565(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags) {
+    return convert_8888_to_rgb565(src, dest, flags, 0);
+}
+
+vImage_Error vImageConvert_Planar4toPlanar8(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags) {
+    int has_pixels;
+    vImage_Error error = check_planar_convert_buffers(src, dest, flags, &has_pixels);
+    if (error != kvImageNoError || !has_pixels) {
+        return error;
+    }
+
+    const uint8_t *src_row = (const uint8_t *)src->data;
+    uint8_t *dest_row = (uint8_t *)dest->data;
+    for (vImagePixelCount y = 0; y < dest->height; y++, src_row += src->rowBytes, dest_row += dest->rowBytes) {
+        for (vImagePixelCount x = 0; x < dest->width; x++) {
+            uint8_t byte = src_row[x >> 1];
+            uint8_t nibble = (x & 1) ? (byte & 0x0Fu) : (byte >> 4);
+            dest_row[x] = (uint8_t)((nibble << 4) | nibble);
+        }
+    }
+    return kvImageNoError;
+}
+
+vImage_Error vImageConvolve_ARGB8888(const vImage_Buffer *src, const vImage_Buffer *dest, void *tempBuffer,
+                                     vImagePixelCount srcOffsetToROI_X, vImagePixelCount srcOffsetToROI_Y,
+                                     const int16_t *kernel, uint32_t kernel_height, uint32_t kernel_width,
+                                     int32_t divisor, const Pixel_8888 backgroundColor, vImage_Flags flags)
+{
+    (void)tempBuffer;
+    if (flags & kvImageGetTempBufferSize)
+        return 0;
+    if (src == NULL || dest == NULL || src->data == NULL || dest->data == NULL || kernel == NULL)
+        return kvImageNullPointerArgument;
+    if (!(kernel_height & 1) || !(kernel_width & 1))
+        return kvImageInvalidKernelSize;
+    vImage_Flags edge = flags & (kvImageCopyInPlace | kvImageBackgroundColorFill | kvImageEdgeExtend |
+                                 kvImageTruncateKernel);
+    if (edge == 0 || (edge & (edge - 1)) != 0)
+        return kvImageInvalidEdgeStyle;
+    if (srcOffsetToROI_X > src->width || srcOffsetToROI_Y > src->height ||
+        dest->width > src->width - srcOffsetToROI_X || dest->height > src->height - srcOffsetToROI_Y)
+        return kvImageBufferSizeMismatch;
+    if (dest->width == 0 || dest->height == 0)
+        return kvImageNoError;
+
+    int64_t total_sum = 0;
+    for (size_t i = 0; i < (size_t)kernel_height * kernel_width; i++)
+        total_sum += kernel[i];
+
+    int64_t div = (divisor != 0) ? divisor : (total_sum != 0 ? total_sum : 1);
+
+    size_t srcWidth = src->width, srcHeight = src->height, width = dest->width, height = dest->height;
+    if (width > SIZE_MAX / 4 / height)
+        return kvImageMemoryAllocationError;
+    uint8_t *roi = malloc(width * height * 4);
+    if (roi == NULL)
+        return kvImageMemoryAllocationError;
+
+    int32_t half_h = (int32_t)(kernel_height / 2);
+    int32_t half_w = (int32_t)(kernel_width / 2);
+
+    for (size_t y = 0; y < height; y++) {
+        for (size_t x = 0; x < width; x++) {
+            int64_t cx = (int64_t)(srcOffsetToROI_X + x);
+            int64_t cy = (int64_t)(srcOffsetToROI_Y + y);
+            const uint8_t *center = (const uint8_t *)src->data + cy * src->rowBytes + cx * 4;
+            uint8_t *out = roi + (y * width + x) * 4;
+
+            for (size_t c = 0; c < 4; c++) {
+                if (c == 0 && (flags & kvImageLeaveAlphaUnchanged)) {
+                    out[c] = center[c];
+                    continue;
+                }
+                int out_of_bounds = 0;
+                int64_t acc = 0;
+                int64_t trunc_div = 0;
+                for (uint32_t ky = 0; ky < kernel_height; ky++) {
+                    int64_t sy = cy + (int64_t)ky - half_h;
+                    for (uint32_t kx = 0; kx < kernel_width; kx++) {
+                        int64_t sx = cx + (int64_t)kx - half_w;
+                        int16_t k = kernel[(size_t)ky * kernel_width + kx];
+                        if (sx < 0 || sx >= (int64_t)srcWidth || sy < 0 || sy >= (int64_t)srcHeight) {
+                            out_of_bounds = 1;
+                            if (edge == kvImageEdgeExtend) {
+                                int64_t ex = sx < 0 ? 0 : (sx >= (int64_t)srcWidth ? (int64_t)srcWidth - 1 : sx);
+                                int64_t ey = sy < 0 ? 0 : (sy >= (int64_t)srcHeight ? (int64_t)srcHeight - 1 : sy);
+                                acc += (int64_t)k * ((const uint8_t *)src->data)[ey * src->rowBytes + ex * 4 + c];
+                            } else if (edge == kvImageBackgroundColorFill) {
+                                uint8_t bg = backgroundColor ? backgroundColor[c] : 0;
+                                acc += (int64_t)k * bg;
+                            }
+                        } else {
+                            acc += (int64_t)k * ((const uint8_t *)src->data)[sy * src->rowBytes + sx * 4 + c];
+                            trunc_div += k;
+                        }
+                    }
+                }
+                if (edge == kvImageCopyInPlace && out_of_bounds) {
+                    out[c] = center[c];
+                    continue;
+                }
+                int64_t num = acc;
+                int64_t d = div;
+                if (edge == kvImageTruncateKernel) {
+                    if (divisor == 0) {
+                        d = (trunc_div != 0) ? trunc_div : 1;
+                    } else if (total_sum != 0 && trunc_div != 0) {
+                        num = acc * total_sum;
+                        d = div * trunc_div;
+                    }
+                }
+                if (d < 0) {
+                    num = -num;
+                    d = -d;
+                }
+                int64_t val = (num >= 0) ? (num + d / 2) / d : (num - d / 2) / d;
+                out[c] = (uint8_t)(val < 0 ? 0 : (val > 255 ? 255 : val));
+            }
+        }
+    }
+
+    for (size_t y = 0; y < height; y++)
+        memcpy((uint8_t *)dest->data + y * dest->rowBytes, roi + y * width * 4, width * 4);
+    free(roi);
+    return kvImageNoError;
+}
