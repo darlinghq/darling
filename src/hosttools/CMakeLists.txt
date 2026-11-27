@@ -28,11 +28,10 @@ pkg_check_modules(DBUS1 REQUIRED dbus-1)
 add_executable(corebluetooth_wire_test
 	tests/corebluetooth_wire.cpp
 	../frameworks/CoreBluetooth/src/bluez_wire.cpp
+	../libdarlingdbus/darling_dbus.c
 )
 
-target_compile_options(corebluetooth_wire_test PRIVATE
-	-std=c++17
-)
+set_target_properties(corebluetooth_wire_test PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
 
 target_include_directories(corebluetooth_wire_test PRIVATE
 	../frameworks/CoreBluetooth/src
@@ -41,7 +40,7 @@ target_include_directories(corebluetooth_wire_test PRIVATE
 )
 
 target_link_directories(corebluetooth_wire_test PRIVATE ${DBUS1_LIBRARY_DIRS})
-target_link_libraries(corebluetooth_wire_test PRIVATE ${DBUS1_LIBRARIES})
+target_link_libraries(corebluetooth_wire_test PRIVATE ${DBUS1_LIBRARIES} ${CMAKE_DL_LIBS})
 
 add_test(NAME corebluetooth_wire COMMAND corebluetooth_wire_test)
 

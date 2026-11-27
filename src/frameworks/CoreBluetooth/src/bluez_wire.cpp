@@ -38,6 +38,16 @@ bool ReadBasic(const struct darling_dbus *api, DBusMessageIter *iter, Value *out
         out->stringValue = text != nullptr ? text : "";
         return true;
     }
+    case DBUS_TYPE_OBJECT_PATH:
+    {
+        // Device1.Adapter, GattService1.Device, GattCharacteristic1.Service and
+        // GattDescriptor1.Characteristic are object paths; they read like strings.
+        const char *text = nullptr;
+        api->message_iter_get_basic(iter, &text);
+        out->type = Value::Type::String;
+        out->stringValue = text != nullptr ? text : "";
+        return true;
+    }
     case DBUS_TYPE_UINT16:
         api->message_iter_get_basic(iter, &out->uint16Value);
         out->type = Value::Type::UInt16;
@@ -194,10 +204,12 @@ bool ReadProperties(const struct darling_dbus *api, DBusMessageIter *iter,
         api->message_iter_get_basic(&entry, &name);
         api->message_iter_next(&entry);
 
+        // BlueZ publishes properties of types that are not modelled here (for
+        // example Device1.Sets, a dictionary of dictionaries). Leaving one out
+        // must not make the whole object, or the whole reply, unreadable.
         Value value;
-        if (!ReadValue(api, &entry, &value))
-            return false;
-        (*out)[name != nullptr ? name : ""] = value;
+        if (ReadValue(api, &entry, &value))
+            (*out)[name != nullptr ? name : ""] = value;
         api->message_iter_next(&entries);
     }
     return true;

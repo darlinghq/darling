@@ -16,6 +16,11 @@
 
 #include "bluez_wire.h"
 
+// The checks below are asserts: keep them in every build type.
+#undef NDEBUG
+
+#include <darling_dbus.h>
+
 #include <cassert>
 #include <string>
 #include <vector>
@@ -89,6 +94,100 @@ void checkErrorMapping()
     assert(ErrorCodeForDBusName("org.bluez.Error.AuthenticationCanceled") == 7);
     assert(ErrorCodeForDBusName("org.bluez.Error.NotSupported") == 9);
 }
+
+// A GetManagedObjects reply as BlueZ sends it: a device (with its Adapter object
+// path, a property of a type the wire helpers do not model, and ordinary
+// properties) and a GATT service (with its Device object path). Reading it must
+// succeed, and the object paths must read as strings.
+void checkManagedObjectsReply()
+{
+    const struct darling_dbus *api = darling_dbus_get(DARLING_DBUS_HOST_FALLBACK);
+    assert(api != nullptr);
+
+    DBusMessage *reply = dbus_message_new(DBUS_MESSAGE_TYPE_METHOD_RETURN);
+    DBusMessageIter args, objects, object, interfaces, interface, properties, property, variant, array, entry;
+    dbus_message_iter_init_append(reply, &args);
+    dbus_message_iter_open_container(&args, DBUS_TYPE_ARRAY, "{oa{sa{sv}}}", &objects);
+
+    const char *const adapter = "/org/bluez/hci0";
+    const char *const devicePath = "/org/bluez/hci0/dev_AA_BB_CC_DD_EE_01";
+    const auto openProperty = [&](const char *key, const char *signature) {
+        dbus_message_iter_open_container(&properties, DBUS_TYPE_DICT_ENTRY, nullptr, &property);
+        dbus_message_iter_append_basic(&property, DBUS_TYPE_STRING, &key);
+        dbus_message_iter_open_container(&property, DBUS_TYPE_VARIANT, signature, &variant);
+    };
+    const auto closeProperty = [&]() {
+        dbus_message_iter_close_container(&property, &variant);
+        dbus_message_iter_close_container(&properties, &property);
+    };
+
+    // the device
+    const char *const deviceInterface = "org.bluez.Device1";
+    dbus_message_iter_open_container(&objects, DBUS_TYPE_DICT_ENTRY, nullptr, &object);
+    dbus_message_iter_append_basic(&object, DBUS_TYPE_OBJECT_PATH, &devicePath);
+    dbus_message_iter_open_container(&object, DBUS_TYPE_ARRAY, "{sa{sv}}", &interfaces);
+    dbus_message_iter_open_container(&interfaces, DBUS_TYPE_DICT_ENTRY, nullptr, &interface);
+    dbus_message_iter_append_basic(&interface, DBUS_TYPE_STRING, &deviceInterface);
+    dbus_message_iter_open_container(&interface, DBUS_TYPE_ARRAY, "{sv}", &properties);
+    openProperty("Adapter", "o");
+    dbus_message_iter_append_basic(&variant, DBUS_TYPE_OBJECT_PATH, &adapter);
+    closeProperty();
+    openProperty("Sets", "a{oa{sv}}");
+    dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY, "{oa{sv}}", &array);
+    dbus_message_iter_open_container(&array, DBUS_TYPE_DICT_ENTRY, nullptr, &entry);
+    dbus_message_iter_append_basic(&entry, DBUS_TYPE_OBJECT_PATH, &adapter);
+    DBusMessageIter inner;
+    dbus_message_iter_open_container(&entry, DBUS_TYPE_ARRAY, "{sv}", &inner);
+    dbus_message_iter_close_container(&entry, &inner);
+    dbus_message_iter_close_container(&array, &entry);
+    dbus_message_iter_close_container(&variant, &array);
+    closeProperty();
+    openProperty("Address", "s");
+    const char *const address = "AA:BB:CC:DD:EE:01";
+    dbus_message_iter_append_basic(&variant, DBUS_TYPE_STRING, &address);
+    closeProperty();
+    openProperty("RSSI", "n");
+    const dbus_int16_t rssi = -52;
+    dbus_message_iter_append_basic(&variant, DBUS_TYPE_INT16, &rssi);
+    closeProperty();
+    dbus_message_iter_close_container(&interface, &properties);
+    dbus_message_iter_close_container(&interfaces, &interface);
+    dbus_message_iter_close_container(&object, &interfaces);
+    dbus_message_iter_close_container(&objects, &object);
+
+    // a GATT service of the device
+    const char *const servicePath = "/org/bluez/hci0/dev_AA_BB_CC_DD_EE_01/service0010";
+    const char *const serviceInterface = "org.bluez.GattService1";
+    dbus_message_iter_open_container(&objects, DBUS_TYPE_DICT_ENTRY, nullptr, &object);
+    dbus_message_iter_append_basic(&object, DBUS_TYPE_OBJECT_PATH, &servicePath);
+    dbus_message_iter_open_container(&object, DBUS_TYPE_ARRAY, "{sa{sv}}", &interfaces);
+    dbus_message_iter_open_container(&interfaces, DBUS_TYPE_DICT_ENTRY, nullptr, &interface);
+    dbus_message_iter_append_basic(&interface, DBUS_TYPE_STRING, &serviceInterface);
+    dbus_message_iter_open_container(&interface, DBUS_TYPE_ARRAY, "{sv}", &properties);
+    openProperty("Device", "o");
+    dbus_message_iter_append_basic(&variant, DBUS_TYPE_OBJECT_PATH, &devicePath);
+    closeProperty();
+    dbus_message_iter_close_container(&interface, &properties);
+    dbus_message_iter_close_container(&interfaces, &interface);
+    dbus_message_iter_close_container(&object, &interfaces);
+    dbus_message_iter_close_container(&objects, &object);
+    dbus_message_iter_close_container(&args, &objects);
+
+    DBusMessageIter read;
+    assert(dbus_message_iter_init(reply, &read));
+    std::vector<ObjectRecord> records;
+    assert(ReadManagedObjects(api, &read, &records));
+    assert(records.size() == 2);
+    const auto &device = records[0].interfaces.at("org.bluez.Device1");
+    assert(device.at("Adapter").type == Value::Type::String);
+    assert(device.at("Adapter").stringValue == adapter);
+    assert(device.at("Address").stringValue == address);
+    assert(device.at("RSSI").int16Value == -52);
+    assert(device.count("Sets") == 0);
+    const auto &service = records[1].interfaces.at("org.bluez.GattService1");
+    assert(service.at("Device").stringValue == devicePath);
+    dbus_message_unref(reply);
+}
 } // namespace
 
 int main()
@@ -98,5 +197,6 @@ int main()
     checkPathPrefix();
     checkPeripheralIdentifier();
     checkErrorMapping();
+    checkManagedObjectsReply();
     return 0;
 }
