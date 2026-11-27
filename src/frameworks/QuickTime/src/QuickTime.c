@@ -152,7 +152,7 @@ static OSErr build_tracks(const void *data,size_t length,
     *out=NULL;
     *count=0;
 
-    if (d4rl_qt_mov_list_tracks(data,length,NULL,0,&n)!=0)
+    if (qt_mov_list_tracks(data,length,NULL,0,&n)!=0)
         return badPublicMovieAtom;
 
     if (!n)
@@ -160,10 +160,10 @@ static OSErr build_tracks(const void *data,size_t length,
 
     if (n>INT32_MAX ||
         n>SIZE_MAX/sizeof(struct MovieTrackStorage) ||
-        n>SIZE_MAX/sizeof(struct d4rl_qt_mov_track_info))
+        n>SIZE_MAX/sizeof(struct qt_mov_track_info))
         return memFullErr;
 
-    struct d4rl_qt_mov_track_info *infos=calloc(n,sizeof(*infos));
+    struct qt_mov_track_info *infos=calloc(n,sizeof(*infos));
     struct MovieTrackStorage *tracks=calloc(n,sizeof(*tracks));
 
     if (!infos || !tracks) {
@@ -174,7 +174,7 @@ static OSErr build_tracks(const void *data,size_t length,
 
     size_t found=0;
 
-    if (d4rl_qt_mov_list_tracks(data,length,infos,n,&found)!=0 ||
+    if (qt_mov_list_tracks(data,length,infos,n,&found)!=0 ||
         found!=n) {
         free(infos);
         free(tracks);
@@ -13329,7 +13329,7 @@ OSErr NewMovieFromDataRef(Movie *m, short flags, short *id,
                           Handle dataRef, OSType dataRefType)
 {
     const PointerDataRefRecord *record;
-    struct d4rl_qt_mov_header header;
+    struct qt_mov_header header;
     int status;
 
     if (m)
@@ -13349,11 +13349,11 @@ OSErr NewMovieFromDataRef(Movie *m, short flags, short *id,
     if (!record->data || record->dataLength <= 0)
         return movies_error = invalidDataRef;
 
-    status = d4rl_qt_mov_probe(record->data,
+    status = qt_mov_probe(record->data,
                               (size_t)record->dataLength, &header);
-    if (status == D4RL_QT_MOV_NO_MOVIE_HEADER)
+    if (status == QT_MOV_NO_MOVIE_HEADER)
         return movies_error = noMovieFound;
-    if (status != D4RL_QT_MOV_OK)
+    if (status != QT_MOV_OK)
         return movies_error = badPublicMovieAtom;
     if (header.duration > INT32_MAX)
         return movies_error = invalidDuration;

@@ -50,8 +50,8 @@ OSErr NewMovieFromFile(Movie *theMovie, short resRefNum,
                       short *resId, Str255 resName,
                       short newMovieFlags,
                       Boolean *dataRefWasChanged);
-enum { PointerDataHandlerSubType = 0x70747220 };
 
+enum { PointerDataHandlerSubType = 0x70747220 };
 
 typedef struct TrackType **Track;
 typedef struct MediaType **Media;
