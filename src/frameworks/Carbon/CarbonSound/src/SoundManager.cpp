@@ -35,6 +35,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <map>
 #include <memory>
 #include <mutex>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <thread>
@@ -684,3 +685,55 @@ OSErr SndChannelStatus(SndChannelPtr chan, short theLength, SCStatus* theStatus)
 	memcpy(theStatus, &status, std::min<size_t>(theLength, sizeof(status)));
 	return noErr;
 }
+
+#if !__LP64__
+
+// The alert sound: Darling has no sound of the user's choice to play, so the alert is a short falling two-note beep,
+// 8-bit mono at 22050 Hz, played on a channel of its own that a thread of the call disposes of when the sound is
+// over. A beep that is asked for while one is still sounding is not played again (alerts do not pile up). A system
+// with no output device has no beep, as on macOS. SysBeep's duration is not used.
+void SysBeep(short duration)
+{
+	static std::atomic<bool> beeping(false);
+
+	if (beeping.exchange(true))
+		return;
+	std::thread([]
+	{
+		const unsigned rate = 22050, frames = rate * 3 / 10;
+		const size_t size = sizeof(SoundHeader) + frames;
+		SoundHeader* header = static_cast<SoundHeader*>(calloc(1, size));
+		SndChannelPtr channel = nullptr;
+
+		if (!header)
+		{
+			beeping = false;
+			return;
+		}
+		header->samplePtr = nullptr;
+		header->length = frames;
+		header->sampleRate = rate << 16;
+		header->encode = stdSH;
+		header->baseFrequency = 60;
+		for (unsigned i = 0; i < frames; i++)
+		{
+			// two notes of 150 ms, 880 Hz and 660 Hz, each fading out
+			double t = (i % (frames / 2)) / double(rate), frequency = i < frames / 2 ? 880.0 : 660.0;
+			double level = 0.4 * (1.0 - double(i % (frames / 2)) / (frames / 2));
+			header->sampleArea[i] = static_cast<UInt8>(128 + 127 * level * sin(2 * M_PI * frequency * t));
+		}
+		if (SndNewChannel(&channel, sampledSynth, initMono, nullptr) == noErr)
+		{
+			SndCommand command = { bufferCmd, 0, static_cast<SInt32>(reinterpret_cast<intptr_t>(header)) };
+
+			if (SndDoCommand(channel, &command, false) == noErr)
+				SndDisposeChannel(channel, false); // false: after the queued sound
+			else
+				SndDisposeChannel(channel, true);
+		}
+		free(header);
+		beeping = false;
+	}).detach();
+}
+
+#endif
