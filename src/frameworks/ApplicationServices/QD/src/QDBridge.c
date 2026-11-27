@@ -27,7 +27,7 @@ static CGContextRef createPortContext(struct QDPort *port) {
 	CGContextRef context;
 	if (port->pixMap.pixelSize == 16) {
 		context = CGBitmapContextCreate(port->pixels, width, height, 5, port->rowBytes, space,
-				kCGBitmapByteOrder16Big | kCGImageAlphaNoneSkipFirst);
+				(port->pixMap.pixelFormat == 0x4C353535 ? kCGBitmapByteOrder16Little : kCGBitmapByteOrder16Big) | kCGImageAlphaNoneSkipFirst);
 	} else if (port->pixMap.pixelFormat == kBGRAPixelFormat) {
 		context = CGBitmapContextCreate(port->pixels, width, height, 8, port->rowBytes, space,
 				kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst);
