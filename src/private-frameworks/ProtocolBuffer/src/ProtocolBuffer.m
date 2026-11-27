@@ -41,11 +41,6 @@ void PBDataWriterRecallMark(PBDataWriter* writer, PBDataReaderMark* mark, uint32
     return;
 }
 
-void PBDataWriterWriteBOOLField(PBDataWriter* writer, BOOL boolean, uint32_t tag)
-{
-    if (verbose) puts("STUB: PBDataWriterWriteBOOLField called");
-    return;
-}
 
 void PBDataWriterWriteBareVarint(PBDataWriter* writer, void* value, uint32_t tag)
 {
@@ -53,77 +48,17 @@ void PBDataWriterWriteBareVarint(PBDataWriter* writer, void* value, uint32_t tag
     return;
 }
 
-void PBDataWriterWriteDataField(PBDataWriter* writer, NSData* value, uint32_t tag)
-{
-    if (verbose) puts("STUB: PBDataWriterWriteDataField called");
-    return;
-}
 
-void PBDataWriterWriteDoubleField(PBDataWriter* writer, double value, uint32_t tag)
-{
-    if (verbose) puts("STUB: PBDataWriterWriteDoubleField called");
-    return;
-}
 
-void PBDataWriterWriteFixed32Field(PBDataWriter* writer, int32_t value, uint32_t tag)
-{
-    if (verbose) puts("STUB: PBDataWriterWriteFixed32Field called");
-    return;
-}
 
-void PBDataWriterWriteFixed64Field(PBDataWriter* writer, int64_t value, uint32_t tag)
-{
-    if (verbose) puts("STUB: PBDataWriterWriteFixed64Field called");
-    return;
-}
 
-void PBDataWriterWriteFloatField(PBDataWriter* writer, float value, uint32_t tag)
-{
-    if (verbose) puts("STUB: PBDataWriterWriteFloatField called");
-    return;
-}
 
-void PBDataWriterWriteInt32Field(PBDataWriter* writer, int32_t value, uint32_t tag)
-{
-    if (verbose) puts("STUB: PBDataWriterWriteInt32Field called");
-    return;
-}
 
-void PBDataWriterWriteInt64Field(PBDataWriter* writer, int64_t value, uint32_t tag)
-{
-    if (verbose) puts("STUB: PBDataWriterWriteInt64Field called");
-    return;
-}
 
-void PBDataWriterWriteSfixed32Field(PBDataWriter* writer, int32_t value, uint32_t tag)
-{
-    if (verbose) puts("STUB: PBDataWriterWriteSfixed32Field called");
-    return;
-}
 
-void PBDataWriterWriteSfixed64Field(PBDataWriter* writer, int64_t value, uint32_t tag)
-{
-    if (verbose) puts("STUB: PBDataWriterWriteSfixed64Field called");
-    return;
-}
 
-void PBDataWriterWriteSint32Field(PBDataWriter* writer, int32_t value, uint32_t tag)
-{
-    if (verbose) puts("STUB: PBDataWriterWriteSint32Field called");
-    return;
-}
 
-void PBDataWriterWriteSint64Field(PBDataWriter* writer, int64_t value, uint32_t tag)
-{
-    if (verbose) puts("STUB: PBDataWriterWriteSint64Field called");
-    return;
-}
 
-void PBDataWriterWriteStringField(PBDataWriter* writer, NSString* string, uint32_t tag)
-{
-    if (verbose) puts("STUB: PBDataWriterWriteStringField called");
-    return;
-}
 
 void PBDataWriterWriteSubgroup(PBDataWriter* writer, void* group, uint32_t tag)
 {
@@ -131,23 +66,8 @@ void PBDataWriterWriteSubgroup(PBDataWriter* writer, void* group, uint32_t tag)
     return;
 }
 
-void PBDataWriterWriteSubmessage(PBDataWriter* writer, PBCodable* codable, uint32_t tag)
-{
-    if (verbose) puts("STUB: PBDataWriterWriteSubmessage called");
-    return;
-}
 
-void PBDataWriterWriteUint32Field(PBDataWriter* writer, uint32_t value, uint32_t tag)
-{
-    if (verbose) puts("STUB: PBDataWriterWriteUint32Field called");
-    return;
-}
 
-void PBDataWriterWriteUint64Field(PBDataWriter* writer, uint64_t value, uint32_t tag)
-{
-    if (verbose) puts("STUB: PBDataWriterWriteUint64Field called");
-    return;
-}
 
 void* PBHashBytes(void)
 {
@@ -155,11 +75,6 @@ void* PBHashBytes(void)
     return NULL;
 }
 
-BOOL PBReaderPlaceMark(PBDataReader* reader, PBDataReaderMark* mark)
-{
-    if (verbose) puts("STUB: PBReaderPlaceMark called");
-    return FALSE;
-}
 
 uint16_t PBReaderReadBigEndianFixed16(PBDataReader* reader)
 {
@@ -179,17 +94,7 @@ uint64_t PBReaderReadBigEndianFixed64(PBDataReader* reader)
     return 0;
 }
 
-NSData* PBReaderReadData(PBDataReader* reader)
-{
-    if (verbose) puts("STUB: PBReaderReadData called");
-    return NULL;
-}
 
-NSString* PBReaderReadString(PBDataReader* reader)
-{
-    if (verbose) puts("STUB: PBReaderReadString called");
-    return NULL;
-}
 
 void* PBReaderReadVarIntBuf(PBDataReader* reader)
 {
@@ -197,17 +102,7 @@ void* PBReaderReadVarIntBuf(PBDataReader* reader)
     return NULL;
 }
 
-void PBReaderRecallMark(PBDataReader* reader, PBDataReaderMark* mark)
-{
-    if (verbose) puts("STUB: PBReaderRecallMark called");
-    return;
-}
 
-BOOL PBReaderSkipValueWithTag(PBDataReader* reader, uint32_t tag, uint8_t type)
-{
-    if (verbose) puts("STUB: PBReaderSkipValueWithTag called");
-    return FALSE;
-}
 
 void* PBRepeatedBOOLAdd(void)
 {

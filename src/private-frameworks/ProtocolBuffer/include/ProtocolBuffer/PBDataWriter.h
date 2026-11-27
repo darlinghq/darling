@@ -19,11 +19,17 @@
 
 #include <Foundation/Foundation.h>
 
-typedef int PBDataReaderMark;
+#import <ProtocolBuffer/PBDataReader.h>
 
 @class PBCodable;
 
-@interface PBDataWriter : NSObject
+// Writes the Protocol Buffers wire format.
+@interface PBDataWriter : NSObject {
+@public
+	NSMutableData *_data;
+}
+
+@property (readonly) NSData *data;
 
 @end
 

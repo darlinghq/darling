@@ -17,10 +17,49 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
 #import <ProtocolBuffer/PBCodable.h>
 #import <darling-stub-forwarding.h>
 
 @implementation PBCodable
+
+- (id)initWithData:(NSData*)data
+{
+	self = [super init];
+	if (self != nil) {
+		PBDataReader* reader = [[PBDataReader alloc] initWithData: data];
+		BOOL ok = [self readFrom: reader];
+		[reader release];
+		if (!ok) {
+			[self release];
+			return nil;
+		}
+	}
+	return self;
+}
+
+- (BOOL)readFrom:(PBDataReader*)reader
+{
+	return YES;
+}
+
+- (void)writeTo:(PBDataWriter*)writer
+{
+}
+
+- (NSData*)data
+{
+	PBDataWriter* writer = [[PBDataWriter alloc] init];
+	[self writeTo: writer];
+	NSData* data = [[writer data] copy];
+	[writer release];
+	return [data autorelease];
+}
+
+- (NSDictionary*)dictionaryRepresentation
+{
+	return [NSDictionary dictionary];
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
