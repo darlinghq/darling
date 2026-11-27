@@ -2021,6 +2021,109 @@ OSErr FSpCreate(const FSSpec* spec, OSType creator, OSType fileType, ScriptCode 
 	info.fdCreator = creator;
 	return FSpSetFInfo(spec, &info);
 }
+
+// The classic file access calls: they open a file by FSSpec and read and write at its mark, on the same fork
+// references as FSOpenFork. The permission is that of the File Manager: fsCurPerm opens the fork for reading and
+// writing if the file allows it, and for reading otherwise; fsRdWrShPerm is read and write.
+// Reference: File Manager Reference (Inside Macintosh: Files).
+static OSErr openForkOfSpec(const FSSpec* spec, bool resourceFork, SInt8 permission, FSIORefNum* refNum)
+{
+	std::string path;
+	FSRef ref;
+	HFSUniStr255 forkName;
+
+	if (!refNum)
+		return paramErr;
+	*refNum = 0;
+	if (!fsSpecPath(spec, path))
+		return fnfErr;
+	OSStatus status = FSPathMakeRef((const uint8_t*) path.c_str(), &ref, nullptr);
+	if (status != noErr)
+		return (OSErr) status;
+	if (resourceFork)
+		FSGetResourceForkName(&forkName);
+	else
+		forkName.length = 0;
+	if (resourceFork)
+		permission = fsRdPerm; // the resource fork is held in memory and cannot be written back
+	if (permission == fsRdWrShPerm)
+		permission = fsRdWrPerm;
+	if (permission == fsCurPerm)
+	{
+		OSErr err = FSOpenFork(&ref, forkName.length, forkName.unicode, fsRdWrPerm, refNum);
+		if (err != noErr)
+			err = FSOpenFork(&ref, forkName.length, forkName.unicode, fsRdPerm, refNum);
+		return err;
+	}
+	return FSOpenFork(&ref, forkName.length, forkName.unicode, permission, refNum);
+}
+
+OSErr FSpOpenDF(const FSSpec* spec, SInt8 permission, FSIORefNum* refNum)
+{
+	return openForkOfSpec(spec, false, permission, refNum);
+}
+
+OSErr FSpOpenRF(const FSSpec* spec, SInt8 permission, FSIORefNum* refNum)
+{
+	return openForkOfSpec(spec, true, permission, refNum);
+}
+
+// Reads *count bytes at the mark and sets *count to the number read; reaching the end first is eofErr
+OSErr FSRead(FSIORefNum refNum, long* count, void* buffPtr)
+{
+	ByteCount actual = 0;
+
+	if (!count || *count < 0)
+		return paramErr;
+	OSErr err = FSReadFork(refNum, fsAtMark, 0, (ByteCount) *count, buffPtr, &actual);
+	*count = (long) actual;
+	return err;
+}
+
+OSErr FSWrite(FSIORefNum refNum, long* count, const void* buffPtr)
+{
+	ByteCount actual = 0;
+
+	if (!count || *count < 0)
+		return paramErr;
+	OSErr err = FSWriteFork(refNum, fsAtMark, 0, (ByteCount) *count, buffPtr, &actual);
+	*count = (long) actual;
+	return err;
+}
+
+OSErr GetEOF(FSIORefNum refNum, long* logEOF)
+{
+	SInt64 size;
+
+	if (!logEOF)
+		return paramErr;
+	OSErr err = FSGetForkSize(refNum, &size);
+	if (err == noErr)
+		*logEOF = (long) size;
+	return err;
+}
+
+OSErr SetEOF(FSIORefNum refNum, long logEOF)
+{
+	return FSSetForkSize(refNum, fsFromStart, logEOF);
+}
+
+OSErr GetFPos(FSIORefNum refNum, long* filePos)
+{
+	SInt64 position;
+
+	if (!filePos)
+		return paramErr;
+	OSErr err = FSGetForkPosition(refNum, &position);
+	if (err == noErr)
+		*filePos = (long) position;
+	return err;
+}
+
+OSErr FSClose(FSIORefNum refNum)
+{
+	return FSCloseFork(refNum);
+}
 #endif
 
 #ifndef __LP64__
