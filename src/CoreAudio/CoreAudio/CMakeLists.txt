@@ -1,4 +1,5 @@
 project(CoreAudio)
+darling_use_pipewire()
 
 include_directories(BEFORE ${CMAKE_CURRENT_BINARY_DIR})
 

@@ -1,4 +1,5 @@
 project(libpipewire)
+darling_use_pipewire()
 
 # Shared client code for the PipeWire audio backend, the Camera portal capture
 # path and ScreenCast-backed screen capture. PipeWire itself is a wrapped host

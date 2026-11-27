@@ -1,4 +1,5 @@
 project(ScreenCaptureKit)
+darling_use_pipewire()
 
 remove_sdk_framework(ScreenCaptureKit)
 
