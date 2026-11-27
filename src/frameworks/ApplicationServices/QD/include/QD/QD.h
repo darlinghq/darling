@@ -219,6 +219,7 @@ void ClosePicture(void);
 enum {
 	pixPurge = 1L << 0,
 	noNewDevice = 1L << 1,
+	kNativeEndianPixMap = 1L << 8,   /* 16 and 32 bit pixels in the byte order of the system (little-endian here) */
 	useTempMem = 1L << 2,
 	keepLocal = 1L << 3
 };
@@ -230,6 +231,7 @@ enum {
 	k16BE555PixelFormat = 0x00000010,
 	k32ARGBPixelFormat = 0x00000020,
 	k32BGRAPixelFormat = 0x42475241, /* 'BGRA' */
+	k16LE555PixelFormat = 0x4C353535, /* 'L555' */
 	k8IndexedGrayPixelFormat = 0x00000028 /* 8-bit gray, 0 is white */
 };
 QDErr NewGWorldFromPtr(GWorldPtr *offscreenGWorld, UInt32 PixelFormat, const Rect *boundsRect,

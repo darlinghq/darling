@@ -137,8 +137,8 @@ static void store(struct QDPort *p, uint8_t *a, RGBColor c)
 		a[0] = (uint8_t) (0xFF - (luminance(c) >> 8));
 	} else if (p->pixMap.pixelSize == 16) {
 		uint16_t v = (uint16_t) (((c.red >> 11) << 10) | ((c.green >> 11) << 5) | (c.blue >> 11));
-		a[0] = v >> 8;
-		a[1] = v & 0xFF;
+		if (p->pixMap.pixelFormat == 0x4C353535 /* L555 */) { a[1] = v >> 8; a[0] = v & 0xFF; }
+		else { a[0] = v >> 8; a[1] = v & 0xFF; }
 	} else if (p->pixMap.pixelFormat == 0x42475241 /* BGRA */) {
 		a[0] = c.blue >> 8; a[1] = c.green >> 8; a[2] = c.red >> 8; a[3] = 0xFF;
 	} else {
@@ -156,7 +156,7 @@ static RGBColor load(struct QDPort *p, const uint8_t *a)
 	if (p->pixMap.pixelSize == 8) {
 		c.red = c.green = c.blue = widen8((uint8_t) (0xFF - a[0]));
 	} else if (p->pixMap.pixelSize == 16) {
-		unsigned v = (unsigned) a[0] << 8 | a[1];
+		unsigned v = p->pixMap.pixelFormat == 0x4C353535 ? ((unsigned) a[1] << 8 | a[0]) : ((unsigned) a[0] << 8 | a[1]);
 		c.red = widen5(v >> 10); c.green = widen5(v >> 5); c.blue = widen5(v);
 	} else if (p->pixMap.pixelFormat == 0x42475241) {
 		c.red = widen8(a[2]); c.green = widen8(a[1]); c.blue = widen8(a[0]);

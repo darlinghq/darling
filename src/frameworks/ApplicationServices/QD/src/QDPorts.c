@@ -87,7 +87,15 @@ QDErr NewGWorld(GWorldPtr *offscreenGWorld, short PixelDepth, const Rect *bounds
 	pm->pixelSize = pixelSize;
 	pm->cmpCount = (PixelDepth == 24 || PixelDepth == 16) ? 3 : 4;
 	pm->cmpSize = pixelSize == 16 ? 5 : 8;
-	pm->pixelFormat = PixelDepth == 0 ? kQDBGRAPixelFormat : (OSType) pixelSize;
+	// By default the pixels are big-endian (the first byte of a 32-bit one is the alpha); kNativeEndianPixMap gives the
+	// byte order of the system, which is little-endian: BGRA and 'L555'.
+	Boolean native = (flags & kNativeEndianPixMap) != 0;
+	if (PixelDepth == 0 || (native && pixelSize == 32))
+		pm->pixelFormat = kQDBGRAPixelFormat;
+	else if (native && pixelSize == 16)
+		pm->pixelFormat = k16LE555PixelFormat;
+	else
+		pm->pixelFormat = (OSType) pixelSize;
 	port->pixMapPtr = pm;
 
 	QDPortInitState(port);
@@ -111,7 +119,7 @@ QDErr NewGWorldFromPtr(GWorldPtr *offscreenGWorld, UInt32 PixelFormat, const Rec
 	short pixelSize;
 	switch (PixelFormat) {
 		case k32ARGBPixelFormat: case k32BGRAPixelFormat: pixelSize = 32; break;
-		case k16BE555PixelFormat: pixelSize = 16; break;
+		case k16BE555PixelFormat: case k16LE555PixelFormat: pixelSize = 16; break;
 		case k8IndexedGrayPixelFormat: pixelSize = 8; break;
 		default: return gQDError = cDepthErr;
 	}
