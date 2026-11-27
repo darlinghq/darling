@@ -17,8 +17,24 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CoreGraphics/CGAffineTransform.h>
+#import <AVFoundation/AVCompositionTrack.h>
 
-@interface AVMutableCompositionTrack : NSObject
+@interface AVMutableCompositionTrack : AVCompositionTrack
+
+@property (nonatomic) CMTimeScale naturalTimeScale;
+@property (nonatomic, copy) NSString *languageCode;
+@property (nonatomic, copy) NSString *extendedLanguageTag;
+@property (nonatomic) CGAffineTransform preferredTransform;
+@property (nonatomic) float preferredVolume;
+
+- (BOOL)insertTimeRange:(CMTimeRange)timeRange
+                ofTrack:(AVAssetTrack *)track
+                 atTime:(CMTime)startTime
+                  error:(NSError **)outError;
+- (void)insertEmptyTimeRange:(CMTimeRange)timeRange;
+- (void)removeTimeRange:(CMTimeRange)timeRange;
+- (void)scaleTimeRange:(CMTimeRange)timeRange toDuration:(CMTime)duration;
 
 @end

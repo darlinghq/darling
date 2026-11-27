@@ -25,6 +25,7 @@
 - (void)dealloc
 {
     [mediaType release];
+    [formatDescriptions release];
     [super dealloc];
 }
 

@@ -34,6 +34,7 @@
     CGSize naturalSize;
     float nominalFrameRate;
     CMTimeRange timeRange;
+    NSArray *formatDescriptions;
 }
 
 @end

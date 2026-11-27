@@ -49,12 +49,14 @@ CGImageRef AVPlaybackCreateImageFromPixelBuffer(CVPixelBufferRef pixelBuffer);
 @end
 
 @interface AVAssetTrack (AVPlaybackPrivate)
+- (AVAssetTrackInternal *)_internal;
 - (instancetype)_initWithAsset:(AVAsset *)asset
                        trackID:(CMPersistentTrackID)trackID
                      mediaType:(AVMediaType)mediaType
                    naturalSize:(CGSize)naturalSize
               nominalFrameRate:(float)nominalFrameRate
-                     timeRange:(CMTimeRange)timeRange;
+                     timeRange:(CMTimeRange)timeRange
+            formatDescriptions:(NSArray *)formatDescriptions;
 @end
 
 @interface AVPlayerItem (AVPlaybackPrivate)

@@ -22,6 +22,11 @@
 
 @implementation AVCompositionTrack
 
+- (NSArray *)segments
+{
+    return [NSArray array];
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
 }
