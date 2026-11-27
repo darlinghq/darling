@@ -30,6 +30,11 @@
     return self;
 }
 
+- (instancetype)initWithOutputSettings:(NSDictionary<NSString *, id> *)outputSettings
+{
+    return [self initWithPixelBufferAttributes:outputSettings];
+}
+
 - (instancetype)init
 {
     return [self initWithPixelBufferAttributes:nil];
@@ -37,8 +42,50 @@
 
 - (void)dealloc
 {
+    if (_videoOutputInternal && _videoOutputInternal->delegateQueue) {
+        dispatch_release(_videoOutputInternal->delegateQueue);
+        _videoOutputInternal->delegateQueue = NULL;
+    }
     [_videoOutputInternal release];
     [super dealloc];
+}
+
+- (id<AVPlayerItemOutputPullDelegate>)delegate
+{
+    return _videoOutputInternal->delegate;
+}
+
+- (dispatch_queue_t)delegateQueue
+{
+    return _videoOutputInternal->delegateQueue;
+}
+
+- (void)setDelegate:(id<AVPlayerItemOutputPullDelegate>)delegate queue:(dispatch_queue_t)delegateQueue
+{
+    _videoOutputInternal->delegate = delegate;
+    if (_videoOutputInternal->delegateQueue != delegateQueue) {
+        if (_videoOutputInternal->delegateQueue)
+            dispatch_release(_videoOutputInternal->delegateQueue);
+        _videoOutputInternal->delegateQueue = delegateQueue;
+        if (_videoOutputInternal->delegateQueue)
+            dispatch_retain(_videoOutputInternal->delegateQueue);
+    }
+}
+
+- (void)requestNotificationOfMediaDataChangeWithAdvanceInterval:(NSTimeInterval)interval
+{
+}
+
+- (CMTime)itemTimeForHostTime:(CFTimeInterval)hostTimeInSeconds
+{
+    AVPlayer *player = _videoOutputInternal->item ? [_videoOutputInternal->item _internal]->player : nil;
+    return player ? [[player _internal] currentTime] : kCMTimeZero;
+}
+
+- (CMTime)itemTimeForCVTimeStamp:(CVTimeStamp)timestamp
+{
+    AVPlayer *player = _videoOutputInternal->item ? [_videoOutputInternal->item _internal]->player : nil;
+    return player ? [[player _internal] currentTime] : kCMTimeZero;
 }
 
 - (void)_setItem:(AVPlayerItem *)item
