@@ -21,12 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(HAVE_PIPEWIRE) && HAVE_PIPEWIRE
-#include <screen_capture_backend.h>
-#else
-/* Only the method declarations need the type in a build without PipeWire. */
-struct darling_screen_capture_frame;
-#endif
+#import <IOSurface/IOSurfaceRef.h>
 
 @implementation AVCaptureInputPort (DarlingScreen)
 
@@ -43,7 +38,7 @@ struct darling_screen_capture_frame;
 @end
 
 @interface DarlingScreenCaptureEngine ()
-- (void)captureFrame:(const struct darling_screen_capture_frame *)frame;
+- (void)captureSurface:(IOSurfaceRef)surface displayTime:(uint64_t)displayTime;
 - (void)deliverSample:(CMSampleBufferRef)sample dropped:(BOOL)dropped;
 - (void)finishDelayedSample;
 @end
@@ -100,56 +95,21 @@ static uint64_t DarlingScreenFrameHash(const uint8_t *data, size_t size)
 	return hash;
 }
 
-static int64_t DarlingScreenMinimumIntervalNs(CMTime duration)
+/* cropRect uses the documented bottom-left origin and is relative to the
+ * display's own coordinate space; CGDisplayStream rectangles use a top-left
+ * origin. An empty crop rectangle means the whole display. */
+static CGRect DarlingScreenSourceRect(CGRect displayBounds, CGRect cropRect)
 {
-	Float64 seconds = CMTimeGetSeconds(duration);
-
-	if (!(seconds > 0))
-		return 0;
-	return (int64_t) (seconds * 1000000000.0);
-}
-
-#if defined(HAVE_PIPEWIRE) && HAVE_PIPEWIRE
-/* cropRect uses the documented bottom-left origin; PipeWire frames use a
- * top-left origin. The crop is clipped to the frame before scaling. */
-static BOOL DarlingScreenCrop(const struct darling_screen_capture_frame *frame,
-	CGRect displayBounds, CGRect cropRect, int32_t *xOut, int32_t *yOut,
-	uint32_t *widthOut, uint32_t *heightOut)
-{
-	int64_t left, top, right, bottom;
+	CGRect local = CGRectMake(0, 0, displayBounds.size.width, displayBounds.size.height);
 
 	if (CGRectIsEmpty(cropRect))
-	{
-		*xOut = 0;
-		*yOut = 0;
-		*widthOut = frame->width;
-		*heightOut = frame->height;
-		return *widthOut != 0 && *heightOut != 0;
-	}
-
-	left = (int64_t) (cropRect.origin.x - displayBounds.origin.x);
-	top = (int64_t) frame->height
-		- (int64_t) (cropRect.origin.y - displayBounds.origin.y + cropRect.size.height);
-	right = left + (int64_t) cropRect.size.width;
-	bottom = top + (int64_t) cropRect.size.height;
-
-	if (left < 0) left = 0;
-	if (top < 0) top = 0;
-	if (right > frame->width) right = frame->width;
-	if (bottom > frame->height) bottom = frame->height;
-	if (right <= left || bottom <= top)
-		return NO;
-
-	*xOut = (int32_t) left;
-	*yOut = (int32_t) top;
-	*widthOut = (uint32_t) (right - left);
-	*heightOut = (uint32_t) (bottom - top);
-	return YES;
+		return local;
+	cropRect.origin.y = local.size.height - (cropRect.origin.y + cropRect.size.height);
+	return CGRectIntersection(cropRect, local);
 }
-#endif
 
 static CMSampleBufferRef DarlingScreenCreateSampleBuffer(
-	const uint8_t *bgra, uint32_t width, uint32_t height,
+	const uint8_t *bgra, uint32_t bgraStride, uint32_t width, uint32_t height,
 	int64_t ptsNs, int64_t durationNs, OSType pixelFormat)
 {
 	CVPixelBufferRef pixelBuffer = NULL;
@@ -157,7 +117,7 @@ static CMSampleBufferRef DarlingScreenCreateSampleBuffer(
 	CMSampleBufferRef sample = NULL;
 	CMSampleTimingInfo timing;
 	const uint8_t *srcPlanes[4] = { bgra, NULL, NULL, NULL };
-	uint32_t srcStrides[4] = { width * 4, 0, 0, 0 };
+	uint32_t srcStrides[4] = { bgraStride, 0, 0, 0 };
 	const uint8_t *dstPlanes[4] = { NULL, NULL, NULL, NULL };
 	uint32_t dstStrides[4] = { 0, 0, 0, 0 };
 	size_t planeCount, i;
@@ -210,11 +170,6 @@ static CMSampleBufferRef DarlingScreenCreateSampleBuffer(
 	return sample;
 }
 
-#if defined(HAVE_PIPEWIRE) && HAVE_PIPEWIRE
-static void DarlingScreenFrame(const struct darling_screen_capture_frame *frame, void *userData);
-static void DarlingScreenError(int error, void *userData);
-#endif
-
 @implementation DarlingScreenCaptureEngine
 
 - (instancetype)initWithOutput:(AVCaptureVideoDataOutput *)output
@@ -234,7 +189,6 @@ static void DarlingScreenError(int error, void *userData);
 	_screenInput = [screenInput retain];
 	atomic_store(&_running, false);
 	atomic_store(&_inFlight, 0);
-	_lastPtsNs = -1;
 	return self;
 }
 
@@ -250,104 +204,109 @@ static void DarlingScreenError(int error, void *userData);
 
 - (void)start
 {
-#if defined(HAVE_PIPEWIRE) && HAVE_PIPEWIRE
-	CGRect bounds = CGDisplayBounds([_screenInput darling_displayID]);
-	struct darling_screen_capture_callbacks callbacks;
-	int result;
+	CGDirectDisplayID display = [_screenInput darling_displayID];
+	CGRect bounds = CGDisplayBounds(display);
+	CGRect source = DarlingScreenSourceRect(bounds, [_screenInput cropRect]);
+	CGFloat scale = [_screenInput scaleFactor];
+	CMTime minDuration = [_screenInput minFrameDuration];
+	CGDisplayStreamRef displayStream;
+	NSMutableDictionary *properties;
+	CFDictionaryRef sourceDictionary;
+	dispatch_queue_t queue;
+	size_t width, height;
 
-	if (CGRectIsEmpty(bounds))
+	if (_displayStream || CGRectIsEmpty(bounds) || CGRectIsEmpty(source))
 		return;
-	memset(&callbacks, 0, sizeof(callbacks));
-	callbacks.frame = DarlingScreenFrame;
-	callbacks.error = DarlingScreenError;
-	result = darling_screen_capture_open((int32_t) bounds.origin.x, (int32_t) bounds.origin.y,
-		(uint32_t) bounds.size.width, (uint32_t) bounds.size.height,
-		[_screenInput capturesCursor], darling_screen_capture_supports_hdr() ? 1 : 0,
-		&callbacks, self, &_capture);
-	if (result != 0)
+	if (!(scale > 0))
+		scale = 1;
+	if (source.size.width * scale < 1 || source.size.height * scale < 1
+			|| source.size.width * scale > 16384 || source.size.height * scale > 16384)
 		return;
-	result = darling_screen_capture_start(_capture, 1);
-	if (result == 0)
-		result = darling_screen_capture_wait(_capture, 5000);
-	if (result != 0)
+	width = (size_t) (source.size.width * scale);
+	height = (size_t) (source.size.height * scale);
+
+	properties = [NSMutableDictionary dictionary];
+	sourceDictionary = CGRectCreateDictionaryRepresentation(source);
+	[properties setObject: (id) sourceDictionary forKey: (id) kCGDisplayStreamSourceRect];
+	CFRelease(sourceDictionary);
+	[properties setObject: [NSNumber numberWithBool: [_screenInput capturesCursor]]
+		forKey: (id) kCGDisplayStreamShowCursor];
+	if (CMTimeGetSeconds(minDuration) > 0)
+		[properties setObject: [NSNumber numberWithDouble: CMTimeGetSeconds(minDuration)]
+			forKey: (id) kCGDisplayStreamMinimumFrameTime];
+
+	queue = dispatch_queue_create("com.apple.AVFoundation.screen-capture", DISPATCH_QUEUE_SERIAL);
+	/* The handler keeps the engine alive until the stream reports Stopped. */
+	displayStream = CGDisplayStreamCreateWithDispatchQueue(display, width, height,
+		kCVPixelFormatType_32BGRA, (CFDictionaryRef) properties, queue,
+		^(CGDisplayStreamFrameStatus status, uint64_t displayTime, IOSurfaceRef surface,
+		  CGDisplayStreamUpdateRef update)
+		{
+			(void) update;
+			if (status == kCGDisplayStreamFrameStatusFrameComplete && surface)
+			{
+				@autoreleasepool
+				{
+					[self captureSurface: surface displayTime: displayTime];
+				}
+			}
+		});
+	dispatch_release(queue);
+	if (!displayStream)
+		return;
+	if (CGDisplayStreamStart(displayStream) != kCGErrorSuccess)
 	{
-		darling_screen_capture_close(_capture);
-		_capture = NULL;
+		CGDisplayStreamStop(displayStream);
+		CFRelease(displayStream);
 		return;
 	}
+	_displayStream = displayStream;
 	atomic_store(&_running, true);
-#endif
 }
 
 - (void)stop
 {
+	CGDisplayStreamRef displayStream = _displayStream;
+
 	atomic_store(&_running, false);
-#if defined(HAVE_PIPEWIRE) && HAVE_PIPEWIRE
-	if (_capture)
+	_displayStream = NULL;
+	if (displayStream)
 	{
-		darling_screen_capture_close(_capture);
-		_capture = NULL;
+		CGDisplayStreamStop(displayStream);
+		CFRelease(displayStream);
 	}
-#endif
 }
 
-- (void)captureFrame:(const struct darling_screen_capture_frame *)frame
+- (void)captureSurface:(IOSurfaceRef)surface displayTime:(uint64_t)displayTime
 {
-#if defined(HAVE_PIPEWIRE) && HAVE_PIPEWIRE
-	CGRect bounds = CGDisplayBounds([_screenInput darling_displayID]);
-	CGRect crop = [_screenInput cropRect];
-	CGFloat scale = [_screenInput scaleFactor];
-	int32_t sourceX = 0, sourceY = 0;
-	uint32_t sourceWidth = 0, sourceHeight = 0;
-	uint32_t width, height;
-	int64_t minIntervalNs, durationNs;
-	uint8_t *bgra;
+	uint32_t width = (uint32_t) IOSurfaceGetWidth(surface);
+	uint32_t height = (uint32_t) IOSurfaceGetHeight(surface);
+	CMTime minDuration = [_screenInput minFrameDuration];
+	int64_t durationNs = CMTimeGetSeconds(minDuration) > 0
+		? (int64_t) (CMTimeGetSeconds(minDuration) * 1000000000.0) : 33333333;
 	uint64_t hash;
 	CMSampleBufferRef sample;
 	OSType pixelFormat;
 
-	if (!atomic_load(&_running) || CGRectIsEmpty(bounds) || ![_connection isEnabled])
+	if (!atomic_load(&_running) || ![_connection isEnabled] || width == 0 || height == 0)
 		return;
-	if (!DarlingScreenCrop(frame, bounds, crop, &sourceX, &sourceY,
-			&sourceWidth, &sourceHeight))
+	if (IOSurfaceLock(surface, kIOSurfaceLockReadOnly, NULL) != 0)
 		return;
-	if (!(scale > 0))
-		scale = 1;
-	width = (uint32_t) (sourceWidth * scale);
-	height = (uint32_t) (sourceHeight * scale);
-	if (width == 0 || height == 0 || width > 16384 || height > 16384)
-		return;
-
-	minIntervalNs = DarlingScreenMinimumIntervalNs([_screenInput minFrameDuration]);
-	durationNs = minIntervalNs > 0 ? minIntervalNs : 33333333;
-	if (minIntervalNs > 0 && _lastPtsNs >= 0 && frame->pts_ns >= _lastPtsNs
-			&& frame->pts_ns - _lastPtsNs < minIntervalNs)
-		return;
-
-	bgra = (uint8_t *) malloc((size_t) width * height * 4);
-	if (!bgra)
-		return;
-	if (darling_screen_capture_convert_bgra_rect(frame, bgra, width * 4, width, height,
-			sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height) != 0)
+	hash = DarlingScreenFrameHash((const uint8_t *) IOSurfaceGetBaseAddress(surface),
+		IOSurfaceGetBytesPerRow(surface) * height);
+	if (![_screenInput removesDuplicateFrames] || !_hasLastFrameHash || hash != _lastFrameHash)
 	{
-		free(bgra);
-		return;
+		_lastFrameHash = hash;
+		_hasLastFrameHash = YES;
+		pixelFormat = DarlingScreenOutputFormat(_videoSettings);
+		sample = DarlingScreenCreateSampleBuffer(
+			(const uint8_t *) IOSurfaceGetBaseAddress(surface),
+			(uint32_t) IOSurfaceGetBytesPerRow(surface), width, height,
+			(int64_t) displayTime, durationNs, pixelFormat);
 	}
-
-	hash = DarlingScreenFrameHash(bgra, (size_t) width * height * 4);
-	if ([_screenInput removesDuplicateFrames] && _hasLastFrameHash && hash == _lastFrameHash)
-	{
-		free(bgra);
-		return;
-	}
-	_lastFrameHash = hash;
-	_hasLastFrameHash = YES;
-	_lastPtsNs = frame->pts_ns;
-
-	pixelFormat = DarlingScreenOutputFormat(_videoSettings);
-	sample = DarlingScreenCreateSampleBuffer(bgra, width, height,
-		frame->pts_ns, durationNs, pixelFormat);
-	free(bgra);
+	else
+		sample = NULL;
+	IOSurfaceUnlock(surface, kIOSurfaceLockReadOnly, NULL);
 	if (!sample)
 		return;
 
@@ -355,9 +314,6 @@ static void DarlingScreenError(int error, void *userData);
 		[self deliverSample: sample dropped: YES];
 	else
 		[self deliverSample: sample dropped: NO];
-#else
-	(void) frame;
-#endif
 }
 
 - (void)deliverSample:(CMSampleBufferRef)sample dropped:(BOOL)dropped
@@ -416,23 +372,3 @@ static void DarlingScreenError(int error, void *userData);
 }
 
 @end
-
-#if defined(HAVE_PIPEWIRE) && HAVE_PIPEWIRE
-static void DarlingScreenFrame(const struct darling_screen_capture_frame *frame, void *userData)
-{
-	DarlingScreenCaptureEngine *engine = (DarlingScreenCaptureEngine *) userData;
-
-	@autoreleasepool
-	{
-		[engine captureFrame: frame];
-	}
-}
-
-static void DarlingScreenError(int error, void *userData)
-{
-	(void) error;
-	(void) userData;
-	/* AVCaptureInput has no public error callback; stopRunning simply sees no
-	 * more frames, which matches the other capture input implementations. */
-}
-#endif

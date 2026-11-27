@@ -12,7 +12,8 @@
 #
 # A full runtime test needs a Wayland ScreenCast portal, so this checks the
 # source-level contract and the layering: AVFoundation and ScreenCaptureKit
-# must reach the shared ScreenCast/PipeWire backend, not a private backend.
+# must take their frames from CoreGraphics' CGDisplayStream (which owns the
+# ScreenCast/PipeWire backend), not open a private capture stream.
 #
 # usage: python3 src/libpipewire/tests/screen_input_contract_host.py [REPO_ROOT]
 
@@ -77,12 +78,13 @@ need('session', r'DarlingScreenCaptureEngine alloc\]\s*\n\s*initWithOutput:',
 need('session', r'screenInput:\s*screenInput', 'session passes the screen input to its engine')
 need('session', r'\[engine stop\]', 'session stops capture engines')
 
-# The engine uses the shared ScreenCast/PipeWire backend and applies the
-# documented screen-input properties to outgoing sample buffers.
-for symbol in ('darling_screen_capture_open', 'darling_screen_capture_start',
-               'darling_screen_capture_wait', 'darling_screen_capture_close',
-               'darling_screen_capture_convert_bgra_rect'):
+# The engine takes frames from CGDisplayStream and applies the documented
+# screen-input properties to outgoing sample buffers.
+for symbol in ('CGDisplayStreamCreateWithDispatchQueue', 'CGDisplayStreamStart',
+               'CGDisplayStreamStop'):
     need('backend', rf'\b{symbol}\s*\(', f'engine must use {symbol}')
+if re.search(r'darling_screen_capture', text['backend']):
+    failures.append('engine must not open its own screen capture stream')
 need('backend', r'CMSampleBufferCreateReadyWithImageBuffer\s*\(',
      'engine must emit CMSampleBuffers')
 need('backend', r'bottom-left origin', 'cropRect must use bottom-left screen coordinates')
@@ -94,8 +96,8 @@ for expression in (r'\[_screenInput scaleFactor\]',
 
 need('av_cmake', r'target_link_libraries\(AVFoundation PRIVATE darling_pipewire_client\)',
      'AVFoundation must link the shared PipeWire client')
-need('sckit_cmake', r'target_link_libraries\(ScreenCaptureKit PRIVATE darling_pipewire_client\)',
-     'ScreenCaptureKit must link the shared PipeWire client')
+if re.search(r'darling_pipewire_client', text['sckit_cmake']):
+    failures.append('ScreenCaptureKit must not link the PipeWire client directly')
 
 # ScreenCaptureKit's documented stream-output contract.
 need('sckit_header', r'@protocol\s+SCStreamOutput', 'SCStreamOutput protocol')
@@ -105,8 +107,11 @@ need('sckit_header', r'@property[^;\n]*isCapturing', 'SCStream.isCapturing')
 for symbol in ('SCFrameStatus', 'SCStreamFrameInfo', 'SCContentFilter',
                'SCStreamConfiguration', 'SCDisplay', 'SCWindow'):
     need('sckit_header', rf'\b{symbol}\b', f'ScreenCaptureKit public type {symbol}')
-for symbol in ('darling_screen_capture_open', 'darling_screen_capture_convert_bgra_rect'):
+for symbol in ('CGDisplayStreamCreateWithDispatchQueue', 'CGDisplayStreamStart',
+               'CGDisplayStreamStop'):
     need('sckit', rf'\b{symbol}\s*\(', f'ScreenCaptureKit must use {symbol}')
+if re.search(r'darling_screen_capture', text['sckit']):
+    failures.append('ScreenCaptureKit must not open its own screen capture stream')
 
 if failures:
     for failure in failures:
