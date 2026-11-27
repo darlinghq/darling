@@ -177,6 +177,70 @@ OSStatus NavDialogGetReply(NavDialogRef inDialog, NavReplyRecord* outReply);
 OSErr NavDisposeReply(NavReplyRecord* reply);
 OSStatus NavCompleteSave(const NavReplyRecord* reply, NavTranslationOptions howToTranslate);
 
+/* The dialogs of the first Navigation Services API: they run to the end and return the user's choice */
+struct NavTypeList {
+	OSType componentSignature;
+	SInt16 reserved;
+	SInt16 osTypeCount;
+	OSType osType[1];
+};
+typedef struct NavTypeList NavTypeList;
+typedef NavTypeList *NavTypeListPtr;
+typedef NavTypeListPtr *NavTypeListHandle;
+
+typedef struct OpaqueNavMenuItemSpecArray **NavMenuItemSpecArrayHandle;
+
+struct NavDialogOptions {
+	UInt16 version;
+	NavDialogOptionFlags dialogOptionFlags;
+	Point location;
+	Str255 clientName;
+	Str255 windowTitle;
+	Str255 actionButtonLabel;
+	Str255 cancelButtonLabel;
+	Str255 savedFileName;
+	Str255 message;
+	UInt32 preferenceKey;
+	NavMenuItemSpecArrayHandle popupExtension;
+	char reserved[16];
+};
+typedef struct NavDialogOptions NavDialogOptions;
+
+enum {
+	kNavDialogOptionsVersion = 0
+};
+
+typedef SInt16 NavFilterModes;
+typedef Boolean (*NavPreviewProcPtr)(NavCBRecPtr callBackParms, void *callBackUD);
+typedef Boolean (*NavObjectFilterProcPtr)(AEDesc *theItem, void *info, void *callBackUD, NavFilterModes filterMode);
+typedef NavPreviewProcPtr NavPreviewUPP;
+typedef NavObjectFilterProcPtr NavObjectFilterUPP;
+
+#define NewNavPreviewUPP(userRoutine) ((NavPreviewUPP) (userRoutine))
+#define DisposeNavPreviewUPP(userUPP)
+#define NewNavObjectFilterUPP(userRoutine) ((NavObjectFilterUPP) (userRoutine))
+#define DisposeNavObjectFilterUPP(userUPP)
+
+/* The defaults of the options of the dialogs below */
+OSErr NavGetDefaultDialogOptions(NavDialogOptions *dialogOptions);
+Boolean NavServicesAvailable(void);
+OSErr NavLoad(void);
+OSErr NavUnload(void);
+
+/* Ask the user for files to open (NavGetFile, NavChooseFile), a folder to choose (NavChooseFolder) and a name to
+   save a document under (NavPutFile). The result is userCanceledErr when the user cancels; the reply holds the
+   choice otherwise. */
+OSErr NavGetFile(const AEDesc *defaultLocation, NavReplyRecord *reply, const NavDialogOptions *dialogOptions,
+	NavEventUPP eventProc, NavPreviewUPP previewProc, NavObjectFilterUPP filterProc, NavTypeListHandle typeList,
+	void *callBackUD);
+OSErr NavChooseFile(const AEDesc *defaultLocation, NavReplyRecord *reply, const NavDialogOptions *dialogOptions,
+	NavEventUPP eventProc, NavPreviewUPP previewProc, NavObjectFilterUPP filterProc, NavTypeListHandle typeList,
+	void *callBackUD);
+OSErr NavChooseFolder(const AEDesc *defaultLocation, NavReplyRecord *reply, const NavDialogOptions *dialogOptions,
+	NavEventUPP eventProc, NavObjectFilterUPP filterProc, void *callBackUD);
+OSErr NavPutFile(const AEDesc *defaultLocation, NavReplyRecord *reply, const NavDialogOptions *dialogOptions,
+	NavEventUPP eventProc, OSType fileType, OSType fileCreator, void *callBackUD);
+
 #pragma pack(pop)
 
 #endif
