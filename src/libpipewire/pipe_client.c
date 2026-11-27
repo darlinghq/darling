@@ -132,8 +132,23 @@ static const struct pw_core_events probe_events = {
 	.remove_id = probe_removed,
 };
 
+/* libpipewire needs pw_init() before any loop or context is made; every entry point
+ * that starts one calls this first. */
+static pthread_once_t pw_init_once = PTHREAD_ONCE_INIT;
+
+static void pw_init_run(void)
+{
+	pw_init(NULL, NULL);
+}
+
+static void ensure_pw_init(void)
+{
+	pthread_once(&pw_init_once, pw_init_run);
+}
+
 int darling_pw_can_connect(void)
 {
+	ensure_pw_init();
 	struct pw_thread_loop* loop;
 	struct pw_context* context;
 	struct pw_core* core;
@@ -257,6 +272,7 @@ int darling_pw_enumerate_video_sources(struct darling_pw_video_source* out, uint
 
 	if (!out || !max)
 		return -EINVAL;
+	ensure_pw_init();
 
 	loop = pw_thread_loop_new("darling-pipewire-sources", NULL);
 	if (!loop)
@@ -566,6 +582,7 @@ int darling_pw_stream_create(const struct darling_pw_stream_config* config,
 		return -EINVAL;
 	}
 	*out = NULL;
+	ensure_pw_init();
 
 	stream = calloc(1, sizeof(*stream));
 	if (!stream)
