@@ -52,6 +52,8 @@ const CFStringRef kCMFormatDescriptionExtension_Depth = CFSTR("Depth");
 const CFStringRef kCMFormatDescriptionExtension_FormatName = CFSTR("FormatName");
 const CFStringRef kCMFormatDescriptionExtension_FullRangeVideo = CFSTR("FullRangeVideo");
 const CFStringRef kCMFormatDescriptionExtension_MasteringDisplayColorVolume = CFSTR("MasteringDisplayColorVolume");
+const CFStringRef kCMFormatDescriptionExtension_BitsPerComponent = CFSTR("BitsPerComponent");
+const CFStringRef kCMFormatDescriptionExtension_AmbientViewingEnvironment = CFSTR("AmbientViewingEnvironment");
 const CFStringRef kCMSampleAttachmentKey_IsDependedOnByOthers = CFSTR("IsDependedOnByOthers");
 
 static int verbose = 0;
