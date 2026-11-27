@@ -21,6 +21,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define AUDIOHARDWAREIMPL_H
 #include <CoreAudio/AudioHardware.h>
 #include <CoreFoundation/CFString.h>
+#include <atomic>
 #include <map>
 #include <mutex>
 #include <vector>
@@ -105,6 +106,8 @@ protected:
 	CFStringRef m_name = CFSTR("unknown"), m_uid = CFSTR("unknown"), m_manufacturer = CFSTR("unknown"), m_modelUid = CFSTR("unknown");
 	AudioStreamBasicDescription m_asbd = {};
 	AudioHardwareListenerRegistry m_listeners;
+	std::atomic<Float32> m_volumeScalar{1.0f};
+	std::atomic<UInt32> m_muted{0};
 };
 
 #endif /* AUDIOHARDWAREIMPL_H */
