@@ -10,7 +10,7 @@
 #include <stddef.h>
 
 #pragma pack(push, 2)
-typedef struct QDPattern { UInt8 pat[8]; } QDPattern;
+typedef Pattern QDPattern;
 #pragma pack(pop)
 
 struct QDPort {
@@ -18,6 +18,7 @@ struct QDPort {
 	PixMapPtr pixMapPtr; // the master pointer PixMapHandle points at
 	Rect portRect;
 	Ptr pixels;
+	Boolean ownsPixels;      // the port frees its pixels (not for those of NewGWorldFromPtr)
 	size_t length;
 	size_t rowBytes;
 	int lockCount;

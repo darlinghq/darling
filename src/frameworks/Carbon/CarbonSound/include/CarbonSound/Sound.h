@@ -192,6 +192,9 @@ OSErr SndDoCommand(SndChannelPtr chan, const SndCommand* cmd, Boolean noWait);
 OSErr SndDoImmediate(SndChannelPtr chan, const SndCommand* cmd);
 OSErr SndChannelStatus(SndChannelPtr chan, short theLength, SCStatus* theStatus);
 
+// Plays the alert sound and returns at once. The duration is not used.
+void SysBeep(short duration);
+
 #ifdef __cplusplus
 }
 #endif

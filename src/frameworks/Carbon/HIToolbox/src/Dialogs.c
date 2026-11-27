@@ -76,9 +76,7 @@ void InvokeUserItemUPP(DialogRef theDialog, DialogItemIndex itemNo, UserItemUPP 
 }
 
 #ifndef __LP64__
-// QuickDraw calls that the public QuickDraw header of this tree does not declare yet
-Handle GetPicture(short pictureID);
-void DrawPicture(Handle picture, const Rect* dstRect);
+// QuickDraw calls that the public QuickDraw header of this tree does not declare
 void GetPort(GrafPtr* port);
 void SetPort(GrafPtr port);
 RgnHandle NewRgn(void);
@@ -423,11 +421,11 @@ static void drawItems(Dialog* d, int only)
 			continue;
 		if (kindOf(item) == picItem)
 		{
-			Handle picture = GetPicture(item->resourceID);
+			Handle picture = (Handle) GetPicture(item->resourceID);
 
 			ClipRect(&item->bounds);
 			if (picture)
-				DrawPicture(picture, &item->bounds);
+				DrawPicture((PicHandle) picture, &item->bounds);
 			SetClip(clip);
 		}
 		else if (kindOf(item) == userItem && item->proc)

@@ -2,6 +2,7 @@
  This file is part of Darling.
 
  Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Darling Developers
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,6 +19,55 @@
 */
 
 #import <AppKit/AppKit.h>
+#import <QuickLookUI/QLPreviewItem.h>
 
-@interface QLPreviewPanel : NSPanel
+@class QLPreviewPanel;
+
+// Supplies the items shown by a Quick Look preview panel.
+@protocol QLPreviewPanelDataSource <NSObject>
+
+@required
+- (NSInteger) numberOfPreviewItemsInPreviewPanel: (QLPreviewPanel *) panel;
+- (id<QLPreviewItem>) previewPanel: (QLPreviewPanel *) panel
+                previewItemAtIndex: (NSInteger) index;
+
+@end
+
+// Controls preview panel ownership, key events and the animation origin.
+@protocol QLPreviewPanelDelegate <NSObject>
+
+@optional
+- (BOOL) acceptsPreviewPanelControl: (QLPreviewPanel *) panel;
+- (void) beginPreviewPanelControl: (QLPreviewPanel *) panel;
+- (void) endPreviewPanelControl: (QLPreviewPanel *) panel;
+- (BOOL) previewPanel: (QLPreviewPanel *) panel handleEvent: (NSEvent *) event;
+- (NSRect) previewPanel: (QLPreviewPanel *) panel
+sourceFrameOnScreenForPreviewItem: (id<QLPreviewItem>) item;
+
+@end
+
+@interface QLPreviewPanel : NSPanel {
+    // Declared here rather than in a class extension: the 32-bit runtime does
+    // not allow instance variables in extensions.
+    @private
+    id<QLPreviewPanelDataSource> _dataSource;
+    NSInteger _currentPreviewItemIndex;
+    NSArray<id<QLPreviewItem>> *_previewItems;
+}
+
+// There is one shared panel per process. It exists as soon as it is asked for
+// with +sharedPreviewPanel; +sharedPreviewPanelExists reports that without
+// creating it.
++ (QLPreviewPanel *) sharedPreviewPanel;
++ (BOOL) sharedPreviewPanelExists;
+
+@property(nonatomic, assign) id<QLPreviewPanelDataSource> dataSource;
+@property(nonatomic, assign) id<QLPreviewPanelDelegate> delegate;
+
+@property(nonatomic) NSInteger currentPreviewItemIndex;
+@property(nonatomic, readonly) id<QLPreviewItem> currentPreviewItem;
+
+- (void) reloadData;
+- (void) updateController;
+
 @end

@@ -58,6 +58,9 @@ EventTargetRef GetApplicationEventTarget(void);
 EventTargetRef GetEventDispatcherTarget(void);
 EventTargetRef GetEventMonitorTarget(void);
 
+// The event target of the user focus: the window that has it, or the application
+EventTargetRef GetUserFocusEventTarget(void);
+
 OSStatus ProcessHICommand(const HICommand * a);
 
 // Runs the event loop of the application: events of the main queue are sent to the event

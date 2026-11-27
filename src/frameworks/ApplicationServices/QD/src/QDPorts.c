@@ -65,6 +65,7 @@ QDErr NewGWorld(GWorldPtr *offscreenGWorld, short PixelDepth, const Rect *bounds
 		return gQDError = cNoMemErr;
 	port->length = rowBytes * height;
 	port->pixels = calloc(1, port->length);
+	port->ownsPixels = true;
 	if (port->pixels == NULL) {
 		free(port);
 		return gQDError = cNoMemErr;
@@ -86,7 +87,68 @@ QDErr NewGWorld(GWorldPtr *offscreenGWorld, short PixelDepth, const Rect *bounds
 	pm->pixelSize = pixelSize;
 	pm->cmpCount = (PixelDepth == 24 || PixelDepth == 16) ? 3 : 4;
 	pm->cmpSize = pixelSize == 16 ? 5 : 8;
-	pm->pixelFormat = PixelDepth == 0 ? kQDBGRAPixelFormat : (OSType) pixelSize;
+	// By default the pixels are big-endian (the first byte of a 32-bit one is the alpha); kNativeEndianPixMap gives the
+	// byte order of the system, which is little-endian: BGRA and 'L555'.
+	Boolean native = (flags & kNativeEndianPixMap) != 0;
+	if (PixelDepth == 0 || (native && pixelSize == 32))
+		pm->pixelFormat = kQDBGRAPixelFormat;
+	else if (native && pixelSize == 16)
+		pm->pixelFormat = k16LE555PixelFormat;
+	else
+		pm->pixelFormat = (OSType) pixelSize;
+	port->pixMapPtr = pm;
+
+	QDPortInitState(port);
+	*offscreenGWorld = (GWorldPtr) port;
+	return gQDError = noErr;
+}
+
+// A port over memory of the caller, which stays the caller's: the pixels are never freed, and nothing is cleared.
+// The formats are 32-bit ARGB (the alpha first in memory), 32-bit BGRA, 16-bit 1-5-5-5 big-endian and 8-bit
+// gray, in which 0 is white. Rows have the length rowBytes, which can be any length that holds a row; the buffer
+// has to hold the rows of the bounds. Other formats are cDepthErr. Drawing into an 8-bit gray port converts the
+// colors to luminance (QuickDraw drawing only: there is no Quartz context for such a port, see QDBeginCGContext).
+// Reference: QuickDraw's offscreen graphics worlds (QDOffscreen.h).
+QDErr NewGWorldFromPtr(GWorldPtr *offscreenGWorld, UInt32 PixelFormat, const Rect *boundsRect,
+		CTabHandle cTable, GDHandle aGDevice, GWorldFlags flags, Ptr newBuffer, SInt32 rowBytes) {
+	if (offscreenGWorld == NULL)
+		return gQDError = paramErr;
+	*offscreenGWorld = NULL;
+	if (boundsRect == NULL || EmptyRect(boundsRect) || newBuffer == NULL || rowBytes <= 0)
+		return gQDError = paramErr;
+	short pixelSize;
+	switch (PixelFormat) {
+		case k32ARGBPixelFormat: case k32BGRAPixelFormat: pixelSize = 32; break;
+		case k16BE555PixelFormat: case k16LE555PixelFormat: pixelSize = 16; break;
+		case k8IndexedGrayPixelFormat: pixelSize = 8; break;
+		default: return gQDError = cDepthErr;
+	}
+	size_t width = (size_t) (boundsRect->right - boundsRect->left);
+	size_t height = (size_t) (boundsRect->bottom - boundsRect->top);
+	if ((size_t) rowBytes < width * (pixelSize / 8))
+		return gQDError = paramErr;
+
+	struct QDPort *port = calloc(1, sizeof(struct QDPort));
+	if (port == NULL)
+		return gQDError = cNoMemErr;
+	port->length = (size_t) rowBytes * height;
+	port->pixels = newBuffer;
+	port->ownsPixels = false;
+	port->portRect = *boundsRect;
+
+	PixMap *pm = &port->pixMap;
+	pm->baseAddr = port->pixels;
+	pm->rowBytes = (short) (kQDRowBytesFlag | ((size_t) rowBytes & 0x3FFF));
+	port->rowBytes = (size_t) rowBytes;
+	pm->bounds = *boundsRect;
+	pm->pmVersion = 1;
+	pm->hRes = 72 << 16;
+	pm->vRes = 72 << 16;
+	pm->pixelType = pixelSize == 8 ? 0 : kQDRGBDirect;
+	pm->pixelSize = pixelSize;
+	pm->cmpCount = pixelSize == 8 ? 1 : (pixelSize == 16 ? 3 : 4);
+	pm->cmpSize = pixelSize == 16 ? 5 : 8;
+	pm->pixelFormat = PixelFormat;
 	port->pixMapPtr = pm;
 
 	QDPortInitState(port);
@@ -101,7 +163,8 @@ void DisposeGWorld(GWorldPtr offscreenGWorld) {
 	if (gCurrentPort == (GrafPtr) port)
 		gCurrentPort = NULL;
 	QDPortDisposeState(port);
-	free(port->pixels);
+	if (port->ownsPixels)
+		free(port->pixels);
 	free(port);
 }
 

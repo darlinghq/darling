@@ -43,12 +43,16 @@ Module.symvers
 !/tests/libm/**
 !/tests/mldr/
 !/tests/mldr/**
+!/tests/opencl/
+!/tests/opencl/**
 !/tests/opendirectory/
 !/tests/opendirectory/**
 !/tests/prefsd/
 !/tests/prefsd/**
 !/tests/shellspawn/
 !/tests/shellspawn/**
+!/tests/app-api-compat.py
+!/tests/appkit-app-api-compat.m
 
 # The suggested build folder
 build
