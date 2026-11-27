@@ -29,6 +29,19 @@ that is part of this repository itself and not under the GNU GPL 3.0 is listed h
   bundle in the prefix; DiskImageMounter's images are also installed on the host in the hicolor icon
   theme as `org.darlinghq.Darling.DiskImageMounter.png`.
 
+## Adwaita icon theme, `src/external/cocotron/AppKit/SystemSymbols` and `SystemImages`
+
+- Copyright the GNOME Project, <https://www.gnome.org>.
+- Source: adwaita-icon-theme, <https://gitlab.gnome.org/GNOME/adwaita-icon-theme>. The 55 SVG files
+  in `SystemSymbols` are unmodified copies of its symbolic icons; the PNG files in `SystemImages` are
+  icons of it rendered with `rsvg-convert` (the versions are listed in its `COPYING.Adwaita`).
+- Licence: GNU LGPL version 3, or Creative Commons Attribution-Share Alike 3.0 United States
+  (`COPYING.Adwaita` in each of the two directories).
+- Use: AppKit draws the system symbols (`NSImage` with a symbol name) that have no drawing of their
+  own from the SVG files, and uses the PNG files as the standard system images (folder, computer,
+  trash, generic document icons and so on). Both are installed in the AppKit framework resources
+  together with their `COPYING.Adwaita`.
+
 ## ASTC reference vectors, `src/libtexturecodec/tests/vectors` and `vectors-random`
 
 - What: test data that is output of the astcenc 5.7.1 release binary
