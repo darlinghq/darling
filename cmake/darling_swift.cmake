@@ -84,6 +84,18 @@ function(_darling_swift_resource_dir out)
 	set(${out} "${dir}" PARENT_SCOPE)
 endfunction()
 
+# Keep Swift backend code generation on the same ARM64 baseline as native code.
+function(_darling_swift_cpu_flags out)
+	set(flags)
+	if (TARGET_ARM64)
+		if (NOT DARLING_ARM64_CPU)
+			message(FATAL_ERROR "DARLING_ARM64_CPU must name the common ARM64 CPU baseline")
+		endif()
+		list(APPEND flags -target-cpu "${DARLING_ARM64_CPU}")
+	endif()
+	set(${out} "${flags}" PARENT_SCOPE)
+endfunction()
+
 # The slices the overlays are built for
 function(_darling_swift_archs out)
 	set(${out} ${DARLING_ARCHS_64BIT} PARENT_SCOPE)
@@ -184,6 +196,7 @@ function(add_darling_swift_object module)
 		return()
 	endif()
 	_darling_swift_resource_dir(resource_dir)
+	_darling_swift_cpu_flags(cpu_flags)
 	file(MAKE_DIRECTORY "${DARLING_SWIFT_MODULE_CACHE}")
 	set(sources)
 	foreach(src IN LISTS SWIFTOBJ_SOURCES)
@@ -208,6 +221,7 @@ function(add_darling_swift_object module)
 				-module-cache-path "${DARLING_SWIFT_MODULE_CACHE}"
 				-swift-version 5 -module-name "${module}" -parse-as-library -O
 				${DARLING_SWIFT_SDK_SUBFRAMEWORKS}
+				${cpu_flags}
 				${SWIFTOBJ_FLAGS}
 			COMMENT "Compiling the Swift module ${module} for ${arch}")
 		set_source_files_properties(${objects_${arch}} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
@@ -234,6 +248,7 @@ function(add_darling_swift_library module)
 	endif()
 
 	_darling_swift_resource_dir(resource_dir)
+	_darling_swift_cpu_flags(cpu_flags)
 	file(MAKE_DIRECTORY "${DARLING_SWIFT_MODULE_CACHE}")
 
 	set(module_libs)
@@ -273,6 +288,7 @@ function(add_darling_swift_library module)
 				-enable-library-evolution -parse-as-library -O
 				-define-availability "SwiftStdlib 5.7:macOS 13.0"
 				${DARLING_SWIFT_SDK_SUBFRAMEWORKS}
+				${cpu_flags}
 				${SWIFTLIB_FLAGS}
 			COMMENT "Compiling the Swift overlay ${module} for ${arch}")
 		set_source_files_properties(${objects_${arch}} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)

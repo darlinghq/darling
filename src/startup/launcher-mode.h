@@ -92,4 +92,13 @@ bool launcherInstallPrefix(enum launcher_mode mode, const char* compiledPrefix, 
 const char* launcherPickLoginName(const char* login, const char* userEnv, bool userEnvIsUid,
 	const char* lognameEnv, bool lognameEnvIsUid, const char* fallback);
 
+// The filesystem mode to try, without asking, after the prefix could not be assembled in
+// failed: the mode recorded in the prefix ("overlayfs", "fuse-overlayfs" or "copy"), or NULL
+// or anything else for none recorded, which is the kernel's overlayfs. The kernel's overlayfs
+// fails where the prefix's filesystem cannot be an upper layer (another overlay, as a
+// container's root file system is, or a network file system); fuse-overlayfs is next when it
+// can run here (fuseOverlayfsUsable: the tool is found and /dev/fuse can be opened), then the
+// copy, which works anywhere. Returns NULL after the copy: there is nothing left to try.
+const char* launcherNextFsMode(const char* failed, bool fuseOverlayfsUsable);
+
 #endif

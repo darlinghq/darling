@@ -80,6 +80,11 @@ struct elf_calls
 	// process that exec'd this one. Returns 0 and fills limits, or -1 if
 	// there are none (the Linux limit applies).
 	int (*inherited_nofile_limit)(unsigned int limits[2]);
+
+	// First thing in a fork's child that does not go through the host libc:
+	// reinitialize mldr's locks before the child closes the parent's descriptors
+	// through the socket bitmap.
+	void (*postfork_child)(void);
 };
 
 #endif

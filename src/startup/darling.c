@@ -1632,6 +1632,36 @@ static bool recordFsMode(const char* mode)
 	return true;
 }
 
+// The filesystem mode recorded in the prefix, read as the user (the file is theirs); false if none
+static bool readFsMode(char* out, size_t size)
+{
+	char* path = (char*) alloca(strlen(prefix) + sizeof(FSMODE_FILE));
+	struct stat st;
+	FILE* fp = NULL;
+	int fd;
+
+	strcpy(path, prefix);
+	strcat(path, FSMODE_FILE);
+
+	useInvokingIds();
+	fd = open(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
+	restoreRootIds();
+
+	if (fd >= 0 && fstat(fd, &st) == 0 && S_ISREG(st.st_mode))
+		fp = fdopen(fd, "r");
+	if (fp == NULL)
+	{
+		if (fd >= 0)
+			close(fd);
+		return false;
+	}
+	bool ok = fgets(out, size, fp) != NULL;
+	fclose(fp);
+	if (ok)
+		out[strcspn(out, "\r\n")] = '\0';
+	return ok;
+}
+
 int chooseFsMode(void)
 {
 	static const char* const modes[] = { "overlayfs", "fuse-overlayfs", "copy" };
@@ -1643,6 +1673,20 @@ int chooseFsMode(void)
 
 	if (!isatty(STDIN_FILENO))
 	{
+		// Nobody to ask: go on to the next mode that can work here, unless the mode was chosen in the
+		// environment, which the recorded one does not override (darlingserver reads it first).
+		if (getenv("DARLING_NOOVERLAYFS") == NULL)
+		{
+			char recorded[32];
+			bool fuseUsable = commandInPath("fuse-overlayfs") && access("/dev/fuse", R_OK | W_OK) == 0;
+			const char* next = launcherNextFsMode(readFsMode(recorded, sizeof(recorded)) ? recorded : NULL, fuseUsable);
+
+			if (next != NULL && recordFsMode(next))
+			{
+				fprintf(stderr, "Trying the '%s' mode instead (recorded in %s%s).\n\n", next, prefix, FSMODE_FILE);
+				return 1;
+			}
+		}
 		fprintf(stderr, "To select a different mode, write one of 'overlayfs', 'fuse-overlayfs' or 'copy' into %s%s\n", prefix, FSMODE_FILE);
 		exit(1);
 	}

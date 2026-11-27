@@ -73,6 +73,15 @@ bool launcherInstallPrefix(enum launcher_mode mode, const char* compiledPrefix, 
 	return true;
 }
 
+const char* launcherNextFsMode(const char* failed, bool fuseOverlayfsUsable)
+{
+	if (failed != NULL && strcmp(failed, "copy") == 0)
+		return NULL;
+	if (failed != NULL && strcmp(failed, "fuse-overlayfs") == 0)
+		return "copy";
+	return fuseOverlayfsUsable ? "fuse-overlayfs" : "copy";
+}
+
 const char* launcherPickLoginName(const char* login, const char* userEnv, bool userEnvIsUid,
 	const char* lognameEnv, bool lognameEnvIsUid, const char* fallback)
 {
