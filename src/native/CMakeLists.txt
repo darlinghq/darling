@@ -6,10 +6,14 @@ find_package(PkgConfig QUIET)
 # libdbus is used by CLI-side components too: LaunchServices and usernoted
 # (both in cli_gui_common) and iokitd talk to the host through this wrapper.
 # Components load it through the shared loader in src/libdarlingdbus.
+# OPTIONAL, because a host without libdbus-1 (a minimal server or cloud VM image) must still run them: the
+# wrapper opened the library on the first call and aborted when it was missing, so iokitd died at startup
+# and clients waited indefinitely for IOKit. darling_dbus_available() reports whether the host library
+# loaded; the loader and iokitd check it before calling anything.
 if (COMPONENT_cli OR COMPONENT_dev_gui_common OR COMPONENT_iokitd)
 	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "cli_gui_common")
 
-	wrap_elf(dbus libdbus-1.so)
+	wrap_elf(dbus libdbus-1.so OPTIONAL darling_dbus_available)
 endif()
 
 if (COMPONENT_gui)

@@ -61,6 +61,18 @@ int darling_dbus_load(const char* path, unsigned int flags, struct darling_dbus*
 {
 	void* lib = dlopen(path != NULL ? path : DARLING_DBUS_WRAPPER_PATH, RTLD_NOW | RTLD_LOCAL);
 
+	// The wrapper loads even when the host has no libdbus-1 (src/native: OPTIONAL); calling any of its
+	// functions then aborts the process, so a wrapper whose library is missing counts as not loaded.
+	if (lib != NULL)
+	{
+		int (*available)(void) = (int (*)(void)) dlsym(lib, "darling_dbus_available");
+		if (available != NULL && !available())
+		{
+			dlclose(lib);
+			lib = NULL;
+		}
+	}
+
 	if (lib == NULL && (flags & DARLING_DBUS_HOST_FALLBACK) != 0)
 		lib = open_host_library();
 	return load_from(lib, table);
