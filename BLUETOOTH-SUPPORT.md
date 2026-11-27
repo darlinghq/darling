@@ -1,6 +1,6 @@
 # Bluetooth support in Darling
 
-This branch adds a **CoreBluetooth central-role** implementation backed by the host's BlueZ
+CoreBluetooth's **central role** is implemented on top of the host's BlueZ
 daemon. It does not emulate a Bluetooth controller: the adapter managed by the host's
 `bluetoothd` is the source of devices and GATT data.
 
@@ -28,7 +28,9 @@ callbacks to the queue supplied to `initWithDelegate:queue:`.
 
 The framework is built FAT. The BlueZ-backed implementations, which rely on the modern
 Objective-C runtime's property synthesis, are compiled into the x86_64 slice. The i386 slice
-keeps the generic stub-forwarding behavior used by the rest of the unimplemented framework.
+keeps the generic stub-forwarding behavior used by the rest of the unimplemented framework;
+the original CoreBluetooth is 64-bit only as well. The bridge classes and the C++ helpers are
+internal: they are not exported from the framework.
 
 ## Host setup
 
@@ -100,6 +102,15 @@ peripheral identifier derivation, and BlueZ error name to `CBError` mapping. Run
 ```sh
 ctest --test-dir build -R corebluetooth_wire --output-on-failure
 ```
+
+`tests/corebluetooth-bluez-central.py` is the integration test. It starts a private D-Bus daemon
+that plays the system bus, `tests/corebluetooth-mock-bluez.py` as `org.bluez` on it (an adapter, two
+devices, a GATT service with a characteristic and a descriptor), and runs the guest program
+`tests/src/corebluetooth_central.m` with `DBUS_SYSTEM_BUS_ADDRESS` set to the private bus. It covers
+the manager state with a powered, an unpowered and a missing adapter and with no bus, a filtered
+scan, discovery, connecting, GATT discovery, reads, writes with and without response, notifications,
+RSSI, a failing connection and disconnecting, and checks the calls the mock received. It needs
+dbus-python and PyGObject on the host and does not touch the host's Bluetooth.
 
 ## Provenance
 

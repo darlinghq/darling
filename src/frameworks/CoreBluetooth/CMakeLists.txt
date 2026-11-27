@@ -17,6 +17,15 @@ pkg_check_modules(PC_DBUS REQUIRED dbus-1)
 include_directories(${CMAKE_SOURCE_DIR}/src/libdarlingdbus/include)
 include_directories(${PC_DBUS_INCLUDE_DIRS})
 
+# The BlueZ bridge is internal to the framework: its C++ namespace and the
+# bridge class must not become exported symbols of CoreBluetooth.
+set_source_files_properties(
+    src/bluez_wire.cpp
+    src/CBBlueZTransport.mm
+    src/CBHostSession.mm
+    PROPERTIES COMPILE_OPTIONS "-fvisibility=hidden"
+)
+
 generate_sdk_framework(CoreBluetooth
     VERSION ${FRAMEWORK_VERSION}
     HEADER "include/CoreBluetooth"

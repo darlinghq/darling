@@ -21,6 +21,7 @@
 
 // Bridges one CBCentralManager to the host's BlueZ D-Bus objects. Delegate
 // callbacks are always delivered on the manager's dispatch queue.
+__attribute__((visibility("hidden")))
 @interface CBHostSession : NSObject
 
 - (instancetype)initWithManager:(CBCentralManager *)manager queue:(dispatch_queue_t)queue;
