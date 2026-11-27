@@ -10,7 +10,7 @@
 #include <stddef.h>
 
 #pragma pack(push, 2)
-typedef struct QDPattern { UInt8 pat[8]; } QDPattern;
+typedef Pattern QDPattern;
 #pragma pack(pop)
 
 struct QDPort {

@@ -1614,10 +1614,7 @@ static bool bevelHasMenu(ControlRef c)
 }
 
 #ifndef __LP64__
-// QuickDraw pictures: the 'PICT' resource GetPicture() reads and DrawPicture() plays into the current port (they are
-// QuickDraw calls that the public QuickDraw header of this tree does not declare yet; a picture handle is a Handle)
-Handle GetPicture(short pictureID);
-void DrawPicture(Handle picture, const Rect* dstRect);
+// QuickDraw pictures: the 'PICT' resource GetPicture() reads and DrawPicture() plays into the current port
 void GetPort(GrafPtr* port);
 void SetPort(GrafPtr port);
 RgnHandle NewRgn(void);
@@ -1630,7 +1627,7 @@ void SetClip(RgnHandle region);
 // of the button, into the window's port
 static void drawBevelPicture(ControlRef c, CGRect rect)
 {
-	Handle picture = c->content.contentType == kControlContentPictRes ? GetPicture(c->content.u.resID) : c->content.u.picture;
+	Handle picture = c->content.contentType == kControlContentPictRes ? (Handle) GetPicture(c->content.u.resID) : c->content.u.picture;
 
 	if (!picture || !*picture || GetHandleSize(picture) < 10)
 		return;
@@ -1662,7 +1659,7 @@ static void drawBevelPicture(ControlRef c, CGRect rect)
 	bounds.right = (SInt16) (where.origin.x + where.size.width);
 	bounds.bottom = (SInt16) (where.origin.y + where.size.height);
 	ClipRect(&bounds);
-	DrawPicture(picture, &dst);
+	DrawPicture((PicHandle) picture, &dst);
 	SetClip(clip);
 	DisposeRgn(clip);
 	SetPort(saved);
