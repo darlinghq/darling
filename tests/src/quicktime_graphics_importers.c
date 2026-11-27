@@ -136,31 +136,38 @@ static void write_pict(const char *path, int width, int height)
 	DisposeHandle((Handle) picture);
 }
 
-// A picture file whose only drawing is a copy of a 16-bit pixel map
+// A picture file whose only drawing is an 8 by 8 pixel map of 16 bits per pixel (a version 2 picture with the
+// DirectBitsRect opcode, rows not packed), written byte by byte as the picture format of QuickDraw lays it out
+static unsigned char *put16(unsigned char *p, unsigned v) { *p++ = (unsigned char) (v >> 8); *p++ = (unsigned char) v; return p; }
+static unsigned char *put32(unsigned char *p, unsigned v) { return put16(put16(p, v >> 16), v & 0xFFFF); }
+static unsigned char *putRect(unsigned char *p, int t, int l, int b, int r) { return put16(put16(put16(put16(p, t), l), b), r); }
+
 static void write_pict16(const char *path)
 {
-	Rect frame = { 0, 0, 8, 8 };
-	OpenCPicParams params = { frame, 72 << 16, 72 << 16, -2, 0, 0 };
-	GWorldPtr source = NULL, target = NULL;
-	CGrafPtr savedPort;
-	GDHandle savedDevice;
-	NewGWorld(&source, 16, &frame, NULL, NULL, 0);
-	NewGWorld(&target, 32, &frame, NULL, NULL, 0);
-	GetGWorld(&savedPort, &savedDevice);
-	SetGWorld(target, NULL);
-	PicHandle picture = OpenCPicture(&params);
-	CopyBits(GetPortBitMapForCopyBits(source), GetPortBitMapForCopyBits(target), &frame, &frame, srcCopy, NULL);
-	ClosePicture();
-	SetGWorld(savedPort, savedDevice);
-	DisposeGWorld(source);
-	DisposeGWorld(target);
+	unsigned char data[512 + 400];
+	unsigned char *p = data + 512;
+	memset(data, 0, sizeof(data));
+	p = put16(p, 0);                       // size (not used)
+	p = putRect(p, 0, 0, 8, 8);            // frame
+	p = put16(p, 0x0011); p = put16(p, 0x02FF);
+	p = put16(p, 0x0C00);                  // HeaderOp
+	p = put16(p, 0xFFFE); p = put16(p, 0); // version -2
+	p = put32(p, 0x00480000); p = put32(p, 0x00480000);
+	p = putRect(p, 0, 0, 8, 8); p = put32(p, 0);
+	p = put16(p, 0x009A);                  // DirectBitsRect
+	p = put32(p, 0xFF);                    // base address
+	p = put16(p, 0x8000 | 16);             // row bytes
+	p = putRect(p, 0, 0, 8, 8);            // bounds
+	p = put16(p, 0); p = put16(p, 1); p = put32(p, 0); // pmVersion, packType (none), packSize
+	p = put32(p, 0x00480000); p = put32(p, 0x00480000);
+	p = put16(p, 16); p = put16(p, 16); p = put16(p, 3); p = put16(p, 5); // pixel type, 16 bits, 3 components of 5
+	p = put32(p, 0); p = put32(p, 0); p = put32(p, 0);
+	p = putRect(p, 0, 0, 8, 8); p = putRect(p, 0, 0, 8, 8); p = put16(p, 0); // source, destination, copy
+	p += 8 * 16;                           // the pixels: black
+	p = put16(p, 0x00FF);                  // OpEndPic
 	FILE *f = fopen(path, "wb");
-	char zeros[512];
-	memset(zeros, 0, sizeof(zeros));
-	fwrite(zeros, 1, sizeof(zeros), f);
-	fwrite(*picture, 1, (size_t) GetHandleSize((Handle) picture), f);
+	fwrite(data, 1, (size_t) (p - data), f);
 	fclose(f);
-	DisposeHandle((Handle) picture);
 }
 
 static void pixel32(const unsigned char *bits, long rowBytes, int h, int v, int *r, int *g, int *b, int *a)
