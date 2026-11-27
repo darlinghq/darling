@@ -17,7 +17,8 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <AuthenticationServices/ASAuthorization.h>
 
 @interface ASAuthorizationOpenIDRequest : NSObject
 

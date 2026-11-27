@@ -22,6 +22,9 @@
 #define _QuickTime_H_
 
 #include <MacTypes.h>
+#if !__LP64__
+#include <CarbonCore/Files.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,6 +35,37 @@ extern "C" {
  * long parameters and results below as 32 bits on i386; SInt32 keeps that
  * width on x86_64. */
 typedef struct MovieType **Movie;
+
+#if !__LP64__
+typedef struct PointerDataRefRecord {
+    void *data;
+    Size dataLength;
+} PointerDataRefRecord;
+
+typedef PointerDataRefRecord *PointerDataRefPtr;
+
+enum { movieInDataForkResID = -1 };
+
+OSErr NewMovieFromFile(Movie *theMovie, short resRefNum,
+                      short *resId, Str255 resName,
+                      short newMovieFlags,
+                      Boolean *dataRefWasChanged);
+
+enum { PointerDataHandlerSubType = 0x70747220 };
+
+typedef struct TrackType **Track;
+typedef struct MediaType **Media;
+
+SInt32 GetMovieTrackCount(Movie movie);
+Track GetMovieIndTrack(Movie movie, SInt32 index);
+Media GetTrackMedia(Track track);
+TimeScale GetMediaTimeScale(Media media);
+SInt32 GetMediaSampleCount(Media media);
+
+/* Read-only pointer references; metadata only. */
+OSErr NewMovieFromDataRef(Movie *m, short flags, short *id,
+                          Handle dataRef, OSType dataRefType);
+#endif
 
 OSErr EnterMovies(void);
 void ExitMovies(void);
@@ -45,6 +79,13 @@ void SetMovieTimeScale(Movie theMovie, TimeScale timeScale);
 TimeValue GetMovieDuration(Movie theMovie);
 /* currentTime must be NULL: time bases are not implemented. */
 TimeValue GetMovieTime(Movie theMovie, TimeRecord *currentTime);
+
+#if !__LP64__
+/* Read-only movie file access. */
+OSErr OpenMovieFile(const FSSpec *fileSpec, short *resRefNum, SInt8 permission);
+OSErr CloseMovieFile(short resRefNum);
+#endif
+
 
 #ifdef __cplusplus
 }
@@ -239,7 +280,9 @@ void* ClockTimeChanged(void);
 void* ClockUpdateSoundSamples64(void);
 void* ClockUpdateSoundSamplesAndTimeStamp(void);
 void* CloneRgn(void);
+#if __LP64__
 void* CloseMovieFile(void);
+#endif
 void* CloseMovieStorage(void);
 void* ClosedCaptionGetCCData(void);
 void* ClosedCaptionGetRawText(void);
@@ -733,7 +776,9 @@ void* GetMediaPropertyAtom(void);
 void* GetMediaQuality(void);
 void* GetMediaSample(void);
 void* GetMediaSample2(void);
+#if __LP64__
 void* GetMediaSampleCount(void);
+#endif
 void* GetMediaSampleDescription(void);
 void* GetMediaSampleDescriptionCount(void);
 void* GetMediaSampleReference(void);
@@ -742,7 +787,9 @@ void* GetMediaSampleReferences64(void);
 void* GetMediaSeed(void);
 void* GetMediaShadowSync(void);
 void* GetMediaSyncSampleCount(void);
+#if __LP64__
 void* GetMediaTimeScale(void);
+#endif
 void* GetMediaTrack(void);
 void* GetMediaUserData(void);
 void* GetMovieActive(void);
@@ -774,7 +821,9 @@ void* GetMovieEffectiveRate(void);
 void* GetMovieGWorld(void);
 void* GetMovieIdleManager(void);
 void* GetMovieImporterForDataRef(void);
+#if __LP64__
 void* GetMovieIndTrack(void);
+#endif
 void* GetMovieIndTrackType(void);
 void* GetMovieLoadState(void);
 void* GetMovieMatrix(void);
@@ -802,7 +851,9 @@ void* GetMovieStatus(void);
 void* GetMovieThreadAttachState(void);
 void* GetMovieTimeBase(void);
 void* GetMovieTrack(void);
+#if __LP64__
 void* GetMovieTrackCount(void);
+#endif
 void* GetMovieUserData(void);
 void* GetMovieVisualBrightness(void);
 void* GetMovieVisualContext(void);
@@ -875,7 +926,9 @@ void* GetTrackLayer(void);
 void* GetTrackLoadSettings(void);
 void* GetTrackMatrix(void);
 void* GetTrackMatte(void);
+#if __LP64__
 void* GetTrackMedia(void);
+#endif
 void* GetTrackModificationTime(void);
 void* GetTrackMovie(void);
 void* GetTrackMovieBoundsRgn(void);
@@ -2211,8 +2264,12 @@ void* NewMovieExportStageReachedCallbackUPP(void);
 void* NewMovieForDataRefFromHandle(void);
 void* NewMovieFromDataFork(void);
 void* NewMovieFromDataFork64(void);
+#if __LP64__
 void* NewMovieFromDataRef(void);
+#endif
+#if __LP64__
 void* NewMovieFromFile(void);
+#endif
 void* NewMovieFromHandle(void);
 void* NewMovieFromProperties(void);
 void* NewMovieFromScrap(void);
@@ -2321,7 +2378,9 @@ void* NewVdigIntUPP(void);
 void* NewYUVPtrsUPP(void);
 void* OpenADataHandler(void);
 void* OpenADataHandler2(void);
+#if __LP64__
 void* OpenMovieFile(void);
+#endif
 void* OpenMovieFileUnicode(void);
 void* OpenMovieStorage(void);
 void* OpenPreviewComponentForFile(void);
