@@ -49,6 +49,9 @@ OSStatus QDBeginCGContext(CGrafPtr inPort, CGContextRef *outContext) {
 	if (inPort == NULL || !QDPortIsLive(PORT_FROM(inPort)))
 		return paramErr;
 	struct QDPort *port = PORT_FROM(inPort);
+	// The 8-bit gray ports have no Quartz context: Quartz draws 0 as black, these ports have it white
+	if (port->pixMap.pixelSize == 8)
+		return cDepthErr;
 	CGContextRef context = createPortContext(port);
 	if (context == NULL)
 		return memFullErr;
@@ -123,7 +126,9 @@ OSStatus _QDResizePort(CGrafPtr inPort, short width, short height) {
 	if (pixels == NULL)
 		return memFullErr;
 
-	free(port->pixels);
+	if (port->ownsPixels)
+		free(port->pixels);
+	port->ownsPixels = true;
 	port->pixels = pixels;
 	port->length = rowBytes * (size_t) height;
 	port->rowBytes = rowBytes;
