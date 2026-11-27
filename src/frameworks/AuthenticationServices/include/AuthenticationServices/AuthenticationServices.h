@@ -38,6 +38,7 @@
 #import <AuthenticationServices/ASAuthorizationPasswordProvider.h>
 #import <AuthenticationServices/ASAuthorizationPasswordRequest.h>
 #import <AuthenticationServices/ASAuthorizationPlatformPublicKeyCredentialAssertion.h>
+#import <AuthenticationServices/ASWebAuthenticationSessionCallback.h>
 #import <AuthenticationServices/ASAuthorizationPlatformPublicKeyCredentialAssertionRequest.h>
 #import <AuthenticationServices/ASAuthorizationPlatformPublicKeyCredentialDescriptor.h>
 #import <AuthenticationServices/ASAuthorizationPlatformPublicKeyCredentialProvider.h>
