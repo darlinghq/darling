@@ -297,9 +297,15 @@ static void engineStarted(void *context)
     if ([asset isKindOfClass:[AVURLAsset class]])
         assetURL = [(AVURLAsset *)asset URL];
     else if ([asset isKindOfClass:[AVComposition class]])
-        assetURL = [asset _internal]->URL;
+        assetURL = [(AVComposition *)asset _playbackURL];
     if (assetURL && [asset isPlayable] && [assetURL isFileURL]) {
         AVPEMedia *media = AVPEMediaOpen([[assetURL path] fileSystemRepresentation]);
+        // A composition of one file plays that file: not when it holds only a part of it.
+        if (media && [asset isKindOfClass:[AVComposition class]]
+            && fabs(CMTimeGetSeconds([asset duration]) - AVPEMediaDurationUs(media) / 1e6) > 0.001) {
+            AVPEMediaClose(media);
+            media = NULL;
+        }
         if (media) {
             AVPECallbacks callbacks = { self, engineFrame, engineEnded, engineSeekDone, engineStarted };
             engine = AVPEEngineCreate(media, callbacks); // takes the media, also when it fails

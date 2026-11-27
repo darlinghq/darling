@@ -50,9 +50,9 @@
                 if (info->type == AVPETrackAudio)
                     type = AVMediaTypeAudio;
                 else if (info->type == AVPETrackTimecode)
-                    type = @"tmcd";
+                    type = AVMediaTypeTimecode;
                 else if (info->type == AVPETrackMetadata)
-                    type = @"meta";
+                    type = AVMediaTypeMetadata;
                 if (info->type == AVPETrackVideo) {
                     hasVideo = YES;
                     hasDecodableVideo |= info->decodable;

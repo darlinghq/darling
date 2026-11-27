@@ -19,10 +19,10 @@
 
 #import <Foundation/Foundation.h>
 #import <AVFoundation/AVAsset.h>
+#import <AVFoundation/AVCompositionTrack.h>
 
-@class AVCompositionTrack;
-
-@interface AVComposition : AVAsset
+// An asset made of stretches of other assets, in tracks of segments.
+@interface AVComposition : AVAsset <NSCopying, NSMutableCopying>
 
 @property (nonatomic, readonly) CGSize naturalSize;
 

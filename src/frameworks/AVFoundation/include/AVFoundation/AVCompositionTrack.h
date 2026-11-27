@@ -19,9 +19,15 @@
 
 #import <Foundation/Foundation.h>
 #import <AVFoundation/AVAssetTrack.h>
+#import <AVFoundation/AVCompositionTrackSegment.h>
 
-@interface AVCompositionTrack : AVAssetTrack
+@interface AVCompositionTrack : AVAssetTrack {
+@private
+    NSMutableArray *_segments;
+}
 
-@property (nonatomic, readonly, copy) NSArray *segments;
+@property (nonatomic, readonly, copy) NSArray<AVCompositionTrackSegment *> *segments;
+
+- (AVCompositionTrackSegment *)segmentForTrackTime:(CMTime)trackTime;
 
 @end

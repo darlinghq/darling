@@ -21,13 +21,21 @@
 #import <CoreGraphics/CGAffineTransform.h>
 #import <AVFoundation/AVCompositionTrack.h>
 
-@interface AVMutableCompositionTrack : AVCompositionTrack
+@interface AVMutableCompositionTrack : AVCompositionTrack {
+@private
+    CMTimeScale _naturalTimeScale;
+    NSString *_languageCode;
+    NSString *_extendedLanguageTag;
+    CGAffineTransform _preferredTransform;
+    float _preferredVolume;
+}
 
 @property (nonatomic) CMTimeScale naturalTimeScale;
 @property (nonatomic, copy) NSString *languageCode;
 @property (nonatomic, copy) NSString *extendedLanguageTag;
 @property (nonatomic) CGAffineTransform preferredTransform;
 @property (nonatomic) float preferredVolume;
+@property (nonatomic, copy) NSArray<AVCompositionTrackSegment *> *segments;
 
 - (BOOL)insertTimeRange:(CMTimeRange)timeRange
                 ofTrack:(AVAssetTrack *)track

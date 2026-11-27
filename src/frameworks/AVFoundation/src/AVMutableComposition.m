@@ -17,35 +17,33 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import "AVPlaybackPrivate.h"
 #import <AVFoundation/AVMutableComposition.h>
 #import <AVFoundation/AVMutableCompositionTrack.h>
 #import <AVFoundation/AVError.h>
-#import "AVPlaybackPrivate.h"
 #import <darling-stub-forwarding.h>
 
 @implementation AVMutableComposition
-
-@dynamic tracks;
 
 + (instancetype)composition
 {
     return [[[self alloc] init] autorelease];
 }
 
-- (instancetype)init
-{
-    if ((self = [super init])) {
-        AVAssetInternal *internal = [self _internal];
-        [internal->tracks release];
-        internal->tracks = [[NSMutableArray alloc] init];
-        internal->playable = YES;
-    }
-    return self;
-}
-
 - (void)setNaturalSize:(CGSize)naturalSize
 {
     [self _internal]->naturalSize = naturalSize;
+}
+
+// A snapshot of the composition: an immutable composition with copies of the tracks.
+- (id)copyWithZone:(NSZone *)zone
+{
+    return [self _copyWithClass:[AVComposition class]];
+}
+
+- (id)mutableCopyWithZone:(NSZone *)zone
+{
+    return [self _copyWithClass:[AVMutableComposition class]];
 }
 
 - (AVMutableCompositionTrack *)addMutableTrackWithMediaType:(AVMediaType)mediaType
@@ -54,21 +52,24 @@
     AVAssetInternal *internal = [self _internal];
     NSMutableArray *tracks = (NSMutableArray *)internal->tracks;
     CMPersistentTrackID trackID = preferredTrackID;
-    if (trackID == kCMPersistentTrackID_Invalid) {
-        CMPersistentTrackID maxID = 0;
-        for (AVAssetTrack *t in tracks) {
-            if ([t trackID] > maxID)
-                maxID = [t trackID];
-        }
-        trackID = maxID + 1;
+    BOOL taken = NO;
+    CMPersistentTrackID maxID = 0;
+    for (AVAssetTrack *t in tracks) {
+        if ([t trackID] == trackID)
+            taken = YES;
+        if ([t trackID] > maxID)
+            maxID = [t trackID];
     }
+    // An unavailable or unspecified identifier is replaced by an unused one.
+    if (trackID == kCMPersistentTrackID_Invalid || taken)
+        trackID = maxID + 1;
 
     AVMutableCompositionTrack *track = [[AVMutableCompositionTrack alloc] _initWithAsset:self
                                                                                   trackID:trackID
                                                                                 mediaType:mediaType
                                                                               naturalSize:CGSizeZero
                                                                          nominalFrameRate:0.0f
-                                                                                timeRange:kCMTimeRangeZero
+                                                                                timeRange:kCMTimeRangeInvalid
                                                                        formatDescriptions:nil];
     if (track) {
         [tracks addObject:track];
@@ -81,20 +82,25 @@
 {
     if (!track)
         return;
-    NSMutableArray *tracks = (NSMutableArray *)[self _internal]->tracks;
-    [tracks removeObject:track];
+    [(NSMutableArray *)[self _internal]->tracks removeObject:track];
+    [self _refreshDuration];
 }
 
+// A track the content of the given track can go into: one of the same media type.
 - (AVMutableCompositionTrack *)mutableTrackCompatibleWithTrack:(AVAssetTrack *)track
+{
+    return [self _mutableTrackCompatibleWithTrack:track excluding:nil];
+}
+
+- (AVMutableCompositionTrack *)_mutableTrackCompatibleWithTrack:(AVAssetTrack *)track excluding:(NSArray *)excluded
 {
     if (!track)
         return nil;
     NSString *mediaType = [track mediaType];
-    for (AVMutableCompositionTrack *candidate in [self tracks]) {
-        if ([candidate isKindOfClass:[AVMutableCompositionTrack class]] &&
-            [[candidate mediaType] isEqualToString:mediaType]) {
+    for (AVMutableCompositionTrack *candidate in [self _internal]->tracks) {
+        if ([candidate isKindOfClass:[AVMutableCompositionTrack class]] && ![excluded containsObject:candidate]
+            && [[candidate mediaType] isEqualToString:mediaType])
             return candidate;
-        }
     }
     return nil;
 }
@@ -106,16 +112,25 @@
 {
     if (outError)
         *outError = nil;
-    if (!asset)
-        return NO;
-
-    for (AVAssetTrack *srcTrack in [asset tracks]) {
-        AVMutableCompositionTrack *dstTrack = [self mutableTrackCompatibleWithTrack:srcTrack];
-        if (!dstTrack) {
-            dstTrack = [self addMutableTrackWithMediaType:[srcTrack mediaType]
-                                         preferredTrackID:kCMPersistentTrackID_Invalid];
+    if (!asset) {
+        if (outError) {
+            *outError = [NSError errorWithDomain:AVFoundationErrorDomain
+                                            code:-11800
+                                        userInfo:@{ NSLocalizedDescriptionKey: @"The operation could not be completed" }];
         }
-        if (![dstTrack insertTimeRange:timeRange ofTrack:srcTrack atTime:startTime error:outError])
+        return NO;
+    }
+
+    // Each track of the asset goes into its own track of the composition.
+    NSMutableArray *used = [NSMutableArray array];
+    for (AVAssetTrack *source in [asset tracks]) {
+        AVMutableCompositionTrack *destination = [self _mutableTrackCompatibleWithTrack:source excluding:used];
+        if (!destination) {
+            destination = [self addMutableTrackWithMediaType:[source mediaType]
+                                            preferredTrackID:kCMPersistentTrackID_Invalid];
+        }
+        [used addObject:destination];
+        if (![destination insertTimeRange:timeRange ofTrack:source atTime:startTime error:outError])
             return NO;
     }
     return YES;
@@ -123,28 +138,20 @@
 
 - (void)insertEmptyTimeRange:(CMTimeRange)timeRange
 {
-    AVAssetInternal *internal = [self _internal];
-    if (CMTIME_IS_VALID(timeRange.duration) && CMTimeCompare(timeRange.duration, kCMTimeZero) > 0)
-        internal->duration = CMTimeAdd(internal->duration, timeRange.duration);
+    for (AVMutableCompositionTrack *track in [self tracks])
+        [track insertEmptyTimeRange:timeRange];
 }
 
 - (void)removeTimeRange:(CMTimeRange)timeRange
 {
-    AVAssetInternal *internal = [self _internal];
-    if (CMTIME_IS_VALID(timeRange.duration) && CMTimeCompare(timeRange.duration, kCMTimeZero) > 0) {
-        CMTime sub = CMTimeSubtract(internal->duration, timeRange.duration);
-        internal->duration = CMTimeCompare(sub, kCMTimeZero) > 0 ? sub : kCMTimeZero;
-    }
+    for (AVMutableCompositionTrack *track in [self tracks])
+        [track removeTimeRange:timeRange];
 }
 
 - (void)scaleTimeRange:(CMTimeRange)timeRange toDuration:(CMTime)duration
 {
-    AVAssetInternal *internal = [self _internal];
-    if (CMTIME_IS_VALID(timeRange.duration) && CMTIME_IS_VALID(duration)) {
-        CMTime diff = CMTimeSubtract(duration, timeRange.duration);
-        CMTime updated = CMTimeAdd(internal->duration, diff);
-        internal->duration = CMTimeCompare(updated, kCMTimeZero) > 0 ? updated : kCMTimeZero;
-    }
+    for (AVMutableCompositionTrack *track in [self tracks])
+        [track scaleTimeRange:timeRange toDuration:duration];
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {

@@ -1058,16 +1058,6 @@ void* CMTimeMappingCopyDescription(void) {
     return NULL;
 }
 
-void* CMTimeMappingMake(void) {
-    if (verbose) puts("STUB: CMTimeMappingMake called");
-    return NULL;
-}
-
-void* CMTimeMappingMakeEmpty(void) {
-    if (verbose) puts("STUB: CMTimeMappingMakeEmpty called");
-    return NULL;
-}
-
 void* CMTimeMappingMakeFromDictionary(void) {
     if (verbose) puts("STUB: CMTimeMappingMakeFromDictionary called");
     return NULL;

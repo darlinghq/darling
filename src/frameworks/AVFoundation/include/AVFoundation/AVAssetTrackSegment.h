@@ -17,8 +17,16 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CoreMedia/CMTimeMapping.h>
 
-@interface AVAssetTrackSegment : NSObject
+// A mapping of a range of the source media to a range of track time, or an empty stretch of the track.
+@interface AVAssetTrackSegment : NSObject {
+@protected
+    CMTimeMapping _timeMapping;
+}
+
+@property (nonatomic, readonly) CMTimeMapping timeMapping;
+@property (nonatomic, readonly, getter=isEmpty) BOOL empty;
 
 @end

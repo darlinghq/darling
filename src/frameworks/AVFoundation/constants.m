@@ -113,6 +113,11 @@ const AVLayerVideoGravity AVLayerVideoGravityResizeAspectFill = @"AVLayerVideoGr
 const AVMediaType AVMediaTypeAudio = @"soun";
 const AVMediaType AVMediaTypeMuxed = @"muxx";
 const AVMediaType AVMediaTypeVideo = @"vide";
+const AVMediaType AVMediaTypeTimecode = @"tmcd";
+const AVMediaType AVMediaTypeMetadata = @"meta";
+
+NSString *const AVMediaCharacteristicVisual = @"AVMediaCharacteristicVisual";
+NSString *const AVMediaCharacteristicAudible = @"AVMediaCharacteristicAudible";
 
 // The documentation gives no string value for this key space. macOS 26.7.3 and 10.14.4 report the
 // four-character code "comn", like the sibling key spaces (black-box observation; the symbol name is

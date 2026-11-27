@@ -17,14 +17,50 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <AVFoundation/AVCompositionTrack.h>
+#import "AVPlaybackPrivate.h"
 #import <darling-stub-forwarding.h>
 
 @implementation AVCompositionTrack
 
-- (NSArray *)segments
+- (instancetype)_initWithAsset:(AVAsset *)asset
+                       trackID:(CMPersistentTrackID)trackID
+                     mediaType:(AVMediaType)mediaType
+                   naturalSize:(CGSize)naturalSize
+              nominalFrameRate:(float)nominalFrameRate
+                     timeRange:(CMTimeRange)timeRange
+            formatDescriptions:(NSArray *)formatDescriptions
 {
-    return [NSArray array];
+    if ((self = [super _initWithAsset:asset trackID:trackID mediaType:mediaType naturalSize:naturalSize
+                     nominalFrameRate:nominalFrameRate timeRange:timeRange formatDescriptions:formatDescriptions]))
+        _segments = [[NSMutableArray alloc] init];
+    return self;
+}
+
+- (void)dealloc
+{
+    [_segments release];
+    [super dealloc];
+}
+
+- (NSMutableArray *)_segmentStorage { return _segments; }
+
+- (NSArray *)segments { return [[_segments copy] autorelease]; }
+
+- (void)_refreshTimeRange
+{
+    AVCompositionTrackSegment *last = [_segments lastObject];
+    // A track without segments has no time range.
+    [self _internal]->timeRange = last ? CMTimeRangeMake(kCMTimeZero, CMTimeRangeGetEnd([last timeMapping].target))
+                                       : kCMTimeRangeInvalid;
+}
+
+- (AVCompositionTrackSegment *)segmentForTrackTime:(CMTime)trackTime
+{
+    for (AVCompositionTrackSegment *segment in _segments) {
+        if (CMTimeRangeContainsTime([segment timeMapping].target, trackTime))
+            return segment;
+    }
+    return nil;
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {

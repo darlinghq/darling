@@ -19,9 +19,7 @@
 
 #import <Foundation/Foundation.h>
 #import <AVFoundation/AVComposition.h>
-
-@class AVMutableCompositionTrack;
-@class AVAssetTrack;
+#import <AVFoundation/AVMutableCompositionTrack.h>
 
 @interface AVMutableComposition : AVComposition
 
@@ -33,6 +31,8 @@
                                            preferredTrackID:(CMPersistentTrackID)preferredTrackID;
 - (void)removeTrack:(AVCompositionTrack *)track;
 - (AVMutableCompositionTrack *)mutableTrackCompatibleWithTrack:(AVAssetTrack *)track;
+- (AVMutableCompositionTrack *)trackWithTrackID:(CMPersistentTrackID)trackID;
+- (NSArray<AVMutableCompositionTrack *> *)tracksWithMediaType:(AVMediaType)mediaType;
 
 - (BOOL)insertTimeRange:(CMTimeRange)timeRange
                 ofAsset:(AVAsset *)asset
