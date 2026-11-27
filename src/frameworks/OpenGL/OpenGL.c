@@ -688,6 +688,7 @@ struct _CGLContextObject {
     // so we need to save the last set value. The default is 0.
     // This is the application's value; a paced context never gives it to EGL.
     int swap_interval;
+    int surface_opacity;
     int paced;
     struct cgl_swap_pacer pacer;
     CGLPixelFormatObj pixel_format;
@@ -2164,6 +2165,7 @@ static CGLError createContext(CGLPixelFormatObj pixelFormat, CGLContextObj share
     context->fullscreen_surface = EGL_NO_SURFACE;
     context->set_surface = EGL_NO_SURFACE;
     context->swap_interval = interval;
+    context->surface_opacity = 1;
     context->paced = paced;
     context->pacer.period_ns = cgl_period_ns_from_millihertz(0);
     context->pacer.last_ns = 0;
@@ -4773,6 +4775,11 @@ CGLError CGLSetParameter(CGLContextObj context, CGLContextParameter parameter, c
             context->swap_interval = v;
         return success ? kCGLNoError : kCGLBadValue;
     }
+    if (parameter == kCGLCPSurfaceOpacity)
+    {
+        context->surface_opacity = (*value != 0) ? 1 : 0;
+        return kCGLNoError;
+    }
     // 280 and 284 size internal function caches of the original implementation
     // (set by SDL 1.2, among others); they have no observable effect here.
     if (parameter == 280 || parameter == 284)
@@ -4790,6 +4797,11 @@ CGLError CGLGetParameter(CGLContextObj context, CGLContextParameter parameter, G
     if (parameter == kCGLCPSwapInterval)
     {
         *value = context->swap_interval;
+        return kCGLNoError;
+    }
+    if (parameter == kCGLCPSurfaceOpacity)
+    {
+        *value = context->surface_opacity;
         return kCGLNoError;
     }
     fprintf(stderr, "CGLGetParameter unimplemented for parameter %d\n", parameter);
