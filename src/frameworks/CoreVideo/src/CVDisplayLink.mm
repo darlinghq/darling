@@ -563,6 +563,13 @@ CVReturn CVDisplayLinkStop(CVDisplayLinkRef displayLink)
 	return kCVReturnSuccess;
 }
 
+CVReturn CVDisplayLinkSetPaused(CVDisplayLinkRef displayLink, Boolean paused)
+{
+	if (!isValidLink(displayLink))
+		return kCVReturnInvalidArgument;
+	return paused ? CVDisplayLinkStop(displayLink) : CVDisplayLinkStart(displayLink);
+}
+
 Boolean CVDisplayLinkIsRunning(CVDisplayLinkRef displayLink)
 {
 	if (!isValidLink(displayLink))
