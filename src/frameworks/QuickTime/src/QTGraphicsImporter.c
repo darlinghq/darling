@@ -288,35 +288,63 @@ static CGImageRef copyImage(const char *path)
 }
 
 // QuickTime describes a gray image by the depth 32 plus its bits per pixel (an 8-bit gray image is 40 deep), a color
-// image by 24, or 32 when it has an alpha channel, a palette image by 8. The file's own description of its pixels
-// tells which: the decoder may give a gray file as RGB.
-static SInt16 depthOfImage(const char *path, CGImageRef image)
+// image by 24, or 32 when it has an alpha channel, a palette image by its bits per pixel. The importer reads that off
+// the file's own header (the image decoder may give a gray file as RGB): the frame header of a JPEG file and the
+// header chunk of a PNG file. For the other formats the decoded image tells.
+static SInt16 depthOfHeader(const char *path, OSType type)
 {
-	CFURLRef url = CFURLCreateFromFileSystemRepresentation(NULL, (const UInt8 *) path, (CFIndex) strlen(path), false);
-	CGImageSourceRef source = url ? CGImageSourceCreateWithURL(url, NULL) : NULL;
-	CFDictionaryRef properties = source ? CGImageSourceCopyPropertiesAtIndex(source, 0, NULL) : NULL;
-	SInt16 depth = 0;
-	if (properties) {
-		CFStringRef model = CFDictionaryGetValue(properties, kCGImagePropertyColorModel);
-		CFNumberRef bits = CFDictionaryGetValue(properties, kCGImagePropertyDepth);
-		CFBooleanRef alpha = CFDictionaryGetValue(properties, kCGImagePropertyHasAlpha);
-		int bitsPerComponent = 8;
-		if (bits)
-			CFNumberGetValue(bits, kCFNumberIntType, &bitsPerComponent);
-		if (model && CFEqual(model, kCGImagePropertyColorModelGray))
-			depth = (SInt16) (32 + (bitsPerComponent > 8 ? 16 : bitsPerComponent < 8 ? bitsPerComponent : 8));
-		else if (model && CFEqual(model, kCGImagePropertyColorModelRGB))
-			depth = alpha && CFBooleanGetValue(alpha) ? 32 : 24;
+	uint8_t b[64];
+	size_t n = 0;
+	if (!readFile(path, b, sizeof(b), &n))
+		return 0;
+	if (type == 'PNGf' && n >= 26 && memcmp(b + 12, "IHDR", 4) == 0) {
+		int bits = b[24], colorType = b[25];
+		switch (colorType) {
+			case 0: case 4: return (SInt16) (32 + (bits > 8 ? 16 : bits));
+			case 2: return 24;
+			case 3: return (SInt16) bits;
+			case 6: return 32;
+		}
+		return 0;
 	}
-	if (properties)
-		CFRelease(properties);
-	if (source)
-		CFRelease(source);
-	if (url)
-		CFRelease(url);
+	if (type == 'JPEG') {
+		FILE *f = fopen(path, "rb");
+		int c;
+		SInt16 depth = 0;
+		if (!f)
+			return 0;
+		fseek(f, 2, SEEK_SET);
+		// the markers, up to the frame header: precision, height, width, the number of components
+		while ((c = fgetc(f)) == 0xFF) {
+			int marker = fgetc(f), length;
+			uint8_t segment[8];
+			if (marker == EOF)
+				break;
+			length = (fgetc(f) << 8) | fgetc(f);
+			if (length < 2)
+				break;
+			if (marker >= 0xC0 && marker <= 0xCF && marker != 0xC4 && marker != 0xC8 && marker != 0xCC) {
+				if (length >= 8 && fread(segment, 1, 6, f) == 6) {
+					int precision = segment[0], components = segment[5];
+					depth = components == 1 ? (SInt16) (32 + (precision > 8 ? 16 : precision)) : components == 4 ? 32 : 24;
+				}
+				break;
+			}
+			fseek(f, length - 2, SEEK_CUR);
+		}
+		fclose(f);
+		return depth;
+	}
+	if (type == 'GIFf')
+		return 8;
+	return 0;
+}
+
+static SInt16 depthOfImage(const char *path, OSType type, CGImageRef image)
+{
+	SInt16 depth = depthOfHeader(path, type);
 	if (depth)
 		return depth;
-	// no description in the file: the decoded image's
 	CGColorSpaceRef space = CGImageGetColorSpace(image);
 	CGColorSpaceModel model = space ? CGColorSpaceGetModel(space) : kCGColorSpaceModelRGB;
 	if (model == kCGColorSpaceModelMonochrome)
@@ -334,7 +362,7 @@ static Boolean imageDetails(const char *path, OSType type, struct Details *d)
 	if (!image)
 		return false;
 	SetRect(&d->natural, 0, 0, (short) CGImageGetWidth(image), (short) CGImageGetHeight(image));
-	d->depth = depthOfImage(path, image);
+	d->depth = depthOfImage(path, type, image);
 	switch (type) {
 		case 'JPEG': d->codec = 'jpeg'; d->name = "Photo - JPEG"; break;
 		case 'PNGf': d->codec = 'png '; d->name = "PNG"; break;
