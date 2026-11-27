@@ -64,7 +64,7 @@ int darling_screen_capture_available(void)
 	struct darling_screencast_portal_api api = portal_api_for(PROBE_TIMEOUT_MS);
 	uint32_t sources = 0;
 
-	if (!api.dbus)
+	if (!api.dbus || !darling_pw_can_connect())
 		return 0;
 	return darling_screencast_portal_properties(&api, &sources, NULL, NULL)
 		== DARLING_SCREENCAST_OK && sources != 0;
@@ -111,6 +111,10 @@ static int ensure_portal_session(int show_cursor, int timeout_ms)
 	if (cache->session)
 		return 0;
 	if (!api.dbus)
+		return -ENODEV;
+	/* Without a PipeWire daemon there is nothing to capture into; do not put a
+	 * consent dialog in front of the user for a stream that cannot start. */
+	if (!darling_pw_can_connect())
 		return -ENODEV;
 
 	if (darling_screencast_portal_properties(&api, &source_types, &cursor_modes, NULL)
