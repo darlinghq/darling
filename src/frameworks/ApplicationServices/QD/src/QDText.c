@@ -45,6 +45,23 @@ void GetFNum(ConstStr255Param name, short *familyID)
 	}
 }
 
+// The name of a font family: the inverse of GetFNum. A family number that is not one of the known ones has no name:
+// the result is the empty string.
+void GetFontName(short familyID, Str255 name)
+{
+	if (!name)
+		return;
+	name[0] = 0;
+	for (size_t i = 0; i < sizeof(kFamilies) / sizeof(kFamilies[0]); i++) {
+		if (kFamilies[i].id == familyID) {
+			size_t n = strlen(kFamilies[i].name);
+			name[0] = (unsigned char) n;
+			memcpy(name + 1, kFamilies[i].name, n);
+			return;
+		}
+	}
+}
+
 static struct QDPort *text_port(void)
 {
 	struct QDPort *p = PORT_FROM(gCurrentPort);
