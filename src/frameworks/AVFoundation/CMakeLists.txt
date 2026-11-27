@@ -1,4 +1,5 @@
 project(AVFoundation)
+darling_use_pipewire()
 
 remove_sdk_framework(AVFoundation)
 

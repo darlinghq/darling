@@ -32,11 +32,19 @@ if (ENABLE_PIPEWIRE)
 
 	if (PIPEWIRE_INCLUDE_DIR AND PIPEWIRE_ELF_LIBRARY)
 		set(HAVE_PIPEWIRE 1)
-		include_directories(${PIPEWIRE_INCLUDE_DIR} ${PC_PIPEWIRE_INCLUDE_DIRS})
-		add_definitions(-DHAVE_PIPEWIRE=1)
 		wrap_elf(pipewire "${PIPEWIRE_ELF_LIBRARY}" OPTIONAL darling_pipewire_available)
 		message(STATUS "PipeWire backend: enabled (${PIPEWIRE_ELF_LIBRARY})")
 	else ()
 		message(STATUS "PipeWire backend: disabled (development files not found)")
 	endif ()
 endif ()
+
+# Components that use the PipeWire backends call this from their own directory: the
+# compile definition and the host include directories are scoped to them instead of
+# being added to every translation unit of the tree.
+macro(darling_use_pipewire)
+	if (HAVE_PIPEWIRE)
+		include_directories(${PIPEWIRE_INCLUDE_DIR} ${PC_PIPEWIRE_INCLUDE_DIRS})
+		add_compile_definitions(HAVE_PIPEWIRE=1)
+	endif ()
+endmacro()
