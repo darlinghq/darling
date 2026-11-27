@@ -41,9 +41,11 @@ extern locale_t uselocale(locale_t locale);
 #endif
 
 #include <pipewire/core.h>
+#include <pipewire/extensions/metadata.h>
 #include <pipewire/keys.h>
 #include <pipewire/loop.h>
 #include <pipewire/node.h>
+#include <pipewire/pipewire.h>
 #include <pipewire/properties.h>
 #include <pipewire/proxy.h>
 #include <pipewire/stream.h>
@@ -53,6 +55,7 @@ extern locale_t uselocale(locale_t locale);
 #include <spa/param/audio/format-utils.h>
 #include <spa/param/audio/raw.h>
 #include <spa/param/format-utils.h>
+#include <spa/param/param.h>
 #include <spa/param/props.h>
 #include <spa/param/video/format-utils.h>
 #include <spa/param/video/raw.h>
@@ -329,6 +332,380 @@ fail_context:
 fail_thread:
 	pw_thread_loop_destroy(loop);
 	return result;
+}
+
+struct darling_pw_audio_state
+{
+	struct pw_thread_loop* loop;
+	struct pw_context* context;
+	struct pw_core* core;
+	struct pw_registry* registry;
+	struct pw_metadata* metadata;
+	struct pw_node* node;
+	uint32_t node_id;
+	uint32_t metadata_id;
+	struct spa_hook core_hook, registry_hook, metadata_hook, node_hook;
+	enum darling_pw_audio_device device;
+	const char* metadata_key;
+	struct darling_pw_audio_state_events events;
+	void* user_data;
+	pthread_mutex_t mutex;
+	float volume;
+	int mute;
+	int pending_volume;
+	int pending_mute;
+	float desired_volume;
+	int desired_mute;
+};
+
+static const char* audio_metadata_key(enum darling_pw_audio_device device)
+{
+	return device == DARLING_PW_AUDIO_SOURCE
+		? "default.audio.source" : "default.audio.sink";
+}
+
+static void audio_notify(struct darling_pw_audio_state* state, float volume, int mute)
+{
+	if (state->events.changed)
+		state->events.changed(state->user_data, volume, mute);
+}
+
+static void audio_send_pending(struct darling_pw_audio_state* state)
+{
+	uint8_t buffer[512];
+	struct spa_pod_builder builder = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
+	struct spa_pod_frame frame;
+	int have_volume = 0, have_mute = 0;
+	float volume = 1;
+	int mute = 0;
+
+	if (!state->node)
+		return;
+	pthread_mutex_lock(&state->mutex);
+	if (state->pending_volume)
+	{
+		volume = state->desired_volume;
+		have_volume = 1;
+	}
+	if (state->pending_mute)
+	{
+		mute = state->desired_mute;
+		have_mute = 1;
+	}
+	pthread_mutex_unlock(&state->mutex);
+	if (!have_volume && !have_mute)
+		return;
+
+	spa_pod_builder_push_object(&builder, &frame, SPA_TYPE_OBJECT_Props, SPA_PARAM_Props);
+	if (have_volume)
+		spa_pod_builder_add(&builder, "p",
+			SPA_POD_Prop(SPA_PROP_volume, SPA_POD_Float(volume)), NULL);
+	if (have_mute)
+	{
+		bool value = mute ? true : false;
+		spa_pod_builder_add(&builder, "p",
+			SPA_POD_Prop(SPA_PROP_mute, SPA_POD_Bool(value)), NULL);
+	}
+	spa_pod_builder_pop(&builder, &frame);
+	pw_node_set_param(state->node, SPA_PARAM_Props, 0,
+		(const struct spa_pod*) buffer);
+}
+
+static void audio_node_param(void* data, int seq, uint32_t id, uint32_t index,
+	uint32_t next, const struct spa_pod* param)
+{
+	struct darling_pw_audio_state* state = data;
+	const struct spa_pod_object* object;
+	const struct spa_pod_prop* prop;
+	float volume;
+	bool mute;
+	int changed = 0;
+
+	(void) seq; (void) index; (void) next;
+	if (id != SPA_PARAM_Props || !param
+		|| !spa_pod_is_object_type(param, SPA_TYPE_OBJECT_Props))
+		return;
+	object = (const struct spa_pod_object*) param;
+	if (object->body.id != SPA_PARAM_Props)
+		return;
+
+	pthread_mutex_lock(&state->mutex);
+	prop = spa_pod_object_find_prop(object, NULL, SPA_PROP_volume);
+	if (prop && spa_pod_get_float(&prop->value, &volume) >= 0)
+	{
+		if (volume < 0) volume = 0;
+		if (volume > 1) volume = 1;
+		if (state->volume != volume)
+		{
+			state->volume = volume;
+			changed = 1;
+		}
+	}
+	prop = spa_pod_object_find_prop(object, NULL, SPA_PROP_mute);
+	if (prop && spa_pod_get_bool(&prop->value, &mute) >= 0)
+	{
+		if ((state->mute ? 1 : 0) != (mute ? 1 : 0))
+		{
+			state->mute = mute ? 1 : 0;
+			changed = 1;
+		}
+	}
+	volume = state->volume;
+	mute = state->mute ? 1 : 0;
+	pthread_mutex_unlock(&state->mutex);
+
+	if (changed)
+		audio_notify(state, volume, mute);
+}
+
+static const struct pw_node_events audio_node_events = {
+	.version = PW_VERSION_NODE_EVENTS,
+	.param = audio_node_param,
+};
+
+static void audio_bind_node(struct darling_pw_audio_state* state, uint32_t id)
+{
+	uint32_t param = SPA_PARAM_Props;
+
+	if (state->node_id == id && state->node)
+		return;
+	if (state->node)
+	{
+		spa_hook_remove(&state->node_hook);
+		pw_proxy_destroy((struct pw_proxy*) state->node);
+		state->node = NULL;
+	}
+	state->node_id = 0;
+	if (!id)
+		return;
+	state->node = pw_registry_bind(state->registry, id, PW_TYPE_INTERFACE_Node,
+		PW_VERSION_NODE, 0);
+	if (!state->node)
+		return;
+	state->node_id = id;
+	pw_node_add_listener(state->node, &state->node_hook, &audio_node_events, state);
+	/* Apply values requested before the default node was known first; then
+	 * subscribe so the server's current state can arrive. */
+	audio_send_pending(state);
+	pw_node_subscribe_params(state->node, &param, 1);
+	pw_node_enum_params(state->node, 1, param, 0, 1, NULL);
+}
+
+static int audio_metadata_property(void* data, uint32_t subject, const char* key,
+	const char* type, const char* value)
+{
+	struct darling_pw_audio_state* state = data;
+	char* end = NULL;
+	unsigned long id;
+
+	(void) type; (void) subject;
+	if (!key || strcmp(key, state->metadata_key) != 0)
+		return 0;
+	if (!value || !*value)
+	{
+		audio_bind_node(state, 0);
+		return 0;
+	}
+	id = strtoul(value, &end, 10);
+	if (end == value || *end != '\0' || id == 0)
+	{
+		audio_bind_node(state, 0);
+		return 0;
+	}
+	audio_bind_node(state, (uint32_t) id);
+	return 0;
+}
+
+static const struct pw_metadata_events audio_metadata_events = {
+	.version = PW_VERSION_METADATA_EVENTS,
+	.property = audio_metadata_property,
+};
+
+static void audio_registry_global(void* data, uint32_t id, uint32_t permissions,
+	const char* type, uint32_t version, const struct spa_dict* props)
+{
+	struct darling_pw_audio_state* state = data;
+	const char* name;
+
+	(void) permissions; (void) version;
+	if (!type || !props)
+		return;
+	if (strcmp(type, PW_TYPE_INTERFACE_Metadata) == 0)
+	{
+		name = dict_value(props, "metadata.name");
+		if (!name || strcmp(name, "default") != 0 || state->metadata)
+			return;
+		state->metadata = pw_registry_bind(state->registry, id,
+			PW_TYPE_INTERFACE_Metadata, PW_VERSION_METADATA, 0);
+		if (state->metadata)
+		{
+			state->metadata_id = id;
+			pw_metadata_add_listener(state->metadata, &state->metadata_hook,
+				&audio_metadata_events, state);
+		}
+	}
+}
+
+static void audio_registry_remove(void* data, uint32_t id)
+{
+	struct darling_pw_audio_state* state = data;
+
+	if (state->node && state->node_id == id)
+		audio_bind_node(state, 0);
+	if (state->metadata && state->metadata_id == id)
+	{
+		spa_hook_remove(&state->metadata_hook);
+		pw_proxy_destroy((struct pw_proxy*) state->metadata);
+		state->metadata = NULL;
+		state->metadata_id = 0;
+	}
+}
+
+static const struct pw_registry_events audio_registry_events = {
+	.version = PW_VERSION_REGISTRY_EVENTS,
+	.global = audio_registry_global,
+	.global_remove = audio_registry_remove,
+};
+
+int darling_pw_audio_state_create(enum darling_pw_audio_device device,
+	const struct darling_pw_audio_state_events* events, void* user_data,
+	struct darling_pw_audio_state** out)
+{
+	struct darling_pw_audio_state* state;
+
+	if (!out || (device != DARLING_PW_AUDIO_SINK && device != DARLING_PW_AUDIO_SOURCE))
+		return -EINVAL;
+	*out = NULL;
+	ensure_pw_init();
+
+	state = calloc(1, sizeof(*state));
+	if (!state)
+		return -ENOMEM;
+	state->device = device;
+	state->metadata_key = audio_metadata_key(device);
+	if (events)
+		state->events = *events;
+	state->user_data = user_data;
+	state->volume = 1;
+	state->mute = 0;
+	pthread_mutex_init(&state->mutex, NULL);
+
+	state->loop = pw_thread_loop_new("darling-pipewire-audio-state", NULL);
+	if (!state->loop)
+		goto fail_mutex;
+	state->context = pw_context_new(pw_thread_loop_get_loop(state->loop), NULL, 0);
+	if (!state->context)
+		goto fail_loop;
+	state->core = pw_context_connect(state->context, NULL, 0);
+	if (!state->core)
+		goto fail_context;
+	state->registry = pw_core_get_registry(state->core, PW_VERSION_REGISTRY, 0);
+	if (!state->registry)
+		goto fail_core;
+	if (pw_registry_add_listener(state->registry, &state->registry_hook,
+			&audio_registry_events, state) < 0)
+		goto fail_registry;
+
+	pw_thread_loop_lock(state->loop);
+	if (pw_thread_loop_start(state->loop) < 0)
+	{
+		pw_thread_loop_unlock(state->loop);
+		goto fail_registry;
+	}
+	pw_thread_loop_unlock(state->loop);
+	*out = state;
+	return 0;
+
+fail_registry:
+	spa_hook_remove(&state->registry_hook);
+	pw_proxy_destroy((struct pw_proxy*) state->registry);
+fail_core:
+	pw_core_disconnect(state->core);
+fail_context:
+	pw_context_destroy(state->context);
+fail_loop:
+	pw_thread_loop_destroy(state->loop);
+fail_mutex:
+	pthread_mutex_destroy(&state->mutex);
+	free(state);
+	return -ECONNREFUSED;
+}
+
+void darling_pw_audio_state_destroy(struct darling_pw_audio_state* state)
+{
+	if (!state)
+		return;
+	pw_thread_loop_lock(state->loop);
+	pw_thread_loop_stop(state->loop);
+	pw_thread_loop_unlock(state->loop);
+
+	if (state->node)
+	{
+		spa_hook_remove(&state->node_hook);
+		pw_proxy_destroy((struct pw_proxy*) state->node);
+	}
+	if (state->metadata)
+	{
+		spa_hook_remove(&state->metadata_hook);
+		pw_proxy_destroy((struct pw_proxy*) state->metadata);
+	}
+	spa_hook_remove(&state->registry_hook);
+	pw_proxy_destroy((struct pw_proxy*) state->registry);
+	pw_core_disconnect(state->core);
+	pw_context_destroy(state->context);
+	pw_thread_loop_destroy(state->loop);
+	pthread_mutex_destroy(&state->mutex);
+	free(state);
+}
+
+int darling_pw_audio_state_get(struct darling_pw_audio_state* state,
+	float* volume, int* mute)
+{
+	if (!state)
+		return -EINVAL;
+	pthread_mutex_lock(&state->mutex);
+	if (volume)
+		*volume = state->volume;
+	if (mute)
+		*mute = state->mute;
+	pthread_mutex_unlock(&state->mutex);
+	return 0;
+}
+
+static int audio_set(struct darling_pw_audio_state* state, float volume, int mute,
+	int change_volume, int change_mute)
+{
+	if (!state)
+		return -EINVAL;
+	if (change_volume && (!(volume >= 0) || volume > 1))
+		return -EINVAL;
+
+	pw_thread_loop_lock(state->loop);
+	pthread_mutex_lock(&state->mutex);
+	if (change_volume)
+	{
+		state->desired_volume = volume;
+		state->pending_volume = 1;
+	}
+	if (change_mute)
+	{
+		state->desired_mute = mute ? 1 : 0;
+		state->pending_mute = 1;
+	}
+	pthread_mutex_unlock(&state->mutex);
+	audio_send_pending(state);
+	pw_thread_loop_unlock(state->loop);
+	return 0;
+}
+
+int darling_pw_audio_state_set_volume(struct darling_pw_audio_state* state, float volume)
+{
+	return audio_set(state, volume, 0, 1, 0);
+}
+
+int darling_pw_audio_state_set_mute(struct darling_pw_audio_state* state, int mute)
+{
+	return audio_set(state, 0, mute, 0, 1);
 }
 
 static const struct spa_pod* build_audio_param(struct spa_pod_builder* builder,

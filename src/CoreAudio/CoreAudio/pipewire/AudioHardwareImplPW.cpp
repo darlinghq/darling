@@ -108,15 +108,36 @@ AudioHardwareImplPW::AudioHardwareImplPW(AudioObjectID myId, const char* name,
 {
 	m_name = CFStringCreateWithCString(nullptr, name ? name : "PipeWire", kCFStringEncodingUTF8);
 	m_uid = CFStringCreateWithCString(nullptr, uid ? uid : "PipeWire", kCFStringEncodingUTF8);
+
+	struct darling_pw_audio_state_events events = {};
+	events.version = 1;
+	events.changed = audioStateChanged;
+	darling_pw_audio_state_create(input ? DARLING_PW_AUDIO_SOURCE : DARLING_PW_AUDIO_SINK,
+		&events, this, &m_audioState);
 }
 
 AudioHardwareImplPW::~AudioHardwareImplPW()
 {
 	if (!m_system)
 	{
+		darling_pw_audio_state_destroy(m_audioState);
 		CFRelease(m_name);
 		CFRelease(m_uid);
 	}
+}
+
+void AudioHardwareImplPW::audioStateChanged(void* userData, float volume, int mute)
+{
+	auto* device = static_cast<AudioHardwareImplPW*>(userData);
+	const Float32 scalar = std::min(std::max(volume, 0.f), 1.f);
+	const UInt32 muted = mute ? 1 : 0;
+	const bool volumeChanged = device->m_volume.exchange(scalar) != scalar;
+	const bool muteChanged = device->m_mute.exchange(muted) != muted;
+
+	if (volumeChanged)
+		device->notifyPropertyChanged(kAudioDevicePropertyVolumeScalar);
+	if (muteChanged)
+		device->notifyPropertyChanged(kAudioDevicePropertyMute);
 }
 
 OSStatus AudioHardwareImplPW::translateUID(const AudioObjectPropertyAddress* address,
@@ -256,11 +277,20 @@ OSStatus AudioHardwareImplPW::devicePropertyData(const AudioObjectPropertyAddres
 		}
 		case kAudioDevicePropertyVolumeScalar:
 		{
+			float serverVolume;
+			if (m_audioState && darling_pw_audio_state_get(m_audioState,
+					&serverVolume, nullptr) == 0)
+				m_volume.store(std::min(std::max(serverVolume, 0.f), 1.f),
+					std::memory_order_relaxed);
 			const Float32 volume = m_volume.load(std::memory_order_relaxed);
 			return reply(ioDataSize, outData, &volume, sizeof(volume));
 		}
 		case kAudioDevicePropertyMute:
 		{
+			int serverMute;
+			if (m_audioState && darling_pw_audio_state_get(m_audioState,
+					nullptr, &serverMute) == 0)
+				m_mute.store(serverMute ? 1 : 0, std::memory_order_relaxed);
 			const UInt32 muted = m_mute.load(std::memory_order_relaxed);
 			return reply(ioDataSize, outData, &muted, sizeof(muted));
 		}
@@ -380,15 +410,18 @@ OSStatus AudioHardwareImplPW::setPropertyData(const AudioObjectPropertyAddress* 
 		case kAudioDevicePropertyVolumeScalar:
 			if (!inData || dataSize != sizeof(Float32))
 				return kAudioHardwareBadPropertySizeError;
-			m_volume.store(std::min(std::max(*static_cast<const Float32*>(inData), 0.f), 1.f),
-				std::memory_order_relaxed);
-			notifyPropertyChanged(kAudioDevicePropertyVolumeScalar);
+			if (!m_audioState || darling_pw_audio_state_set_volume(m_audioState,
+					std::min(std::max(*static_cast<const Float32*>(inData), 0.f), 1.f)) != 0)
+				return kAudioHardwareUnspecifiedError;
+			// The server's change event updates the cached value and notifies
+			// listeners after the change has actually been applied.
 			return kAudioHardwareNoError;
 		case kAudioDevicePropertyMute:
 			if (!inData || dataSize != sizeof(UInt32))
 				return kAudioHardwareBadPropertySizeError;
-			m_mute.store(*static_cast<const UInt32*>(inData) ? 1 : 0, std::memory_order_relaxed);
-			notifyPropertyChanged(kAudioDevicePropertyMute);
+			if (!m_audioState || darling_pw_audio_state_set_mute(m_audioState,
+					*static_cast<const UInt32*>(inData) ? 1 : 0) != 0)
+				return kAudioHardwareUnspecifiedError;
 			return kAudioHardwareNoError;
 		case kAudioDevicePropertyNominalSampleRate:
 			if (!inData || dataSize != sizeof(Float64))

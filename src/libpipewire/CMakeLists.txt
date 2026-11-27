@@ -50,4 +50,7 @@ if (Python3_Interpreter_FOUND)
 	add_test(NAME screen_input_contract_host
 		COMMAND ${Python3_EXECUTABLE}
 			${CMAKE_CURRENT_SOURCE_DIR}/tests/screen_input_contract_host.py ${CMAKE_SOURCE_DIR})
+	add_test(NAME audio_server_state_contract_host
+		COMMAND ${Python3_EXECUTABLE}
+			${CMAKE_CURRENT_SOURCE_DIR}/tests/audio_server_state_contract_host.py ${CMAKE_SOURCE_DIR})
 endif ()

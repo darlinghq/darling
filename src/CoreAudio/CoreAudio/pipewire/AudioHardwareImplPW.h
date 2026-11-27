@@ -16,10 +16,10 @@ the Free Software Foundation, either version 3 of the License, or
 #include <atomic>
 #include <string>
 
-// The pipe_client.h API has no device introspection or mixing controls. The
-// HAL objects therefore describe roles (default output, input, system output)
-// and keep control values locally, which is enough for clients that use the
-// public property contract without opening a direct PipeWire connection.
+// The HAL objects describe roles (default output, input, system output) and
+// read volume and mute from the PipeWire server's selected default node. The
+// atomics cache the last server value so property listeners can be notified
+// without querying the server again.
 class AudioHardwareImplPW : public AudioHardwareImpl
 {
 public:
@@ -64,6 +64,8 @@ private:
 		UInt32* ioDataSize, void* outData);
 	OSStatus setNominalRate(Float64 rate);
 
+	static void audioStateChanged(void* userData, float volume, int mute);
+
 	static std::atomic<UInt32>* systemSetting(AudioObjectPropertySelector selector);
 	static bool uidFromCFString(CFStringRef string, std::string& out);
 	static OSStatus reply(UInt32* ioDataSize, void* outData, const void* value, UInt32 size);
@@ -80,6 +82,7 @@ private:
 	std::atomic<uint64_t> m_sampleClock{0};
 	std::atomic<Float32> m_volume{1.0f};
 	std::atomic<UInt32> m_mute{0};
+	struct darling_pw_audio_state* m_audioState = nullptr;
 };
 
 class AudioHardwareImplPWOutput : public AudioHardwareImplPW

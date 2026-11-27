@@ -28,6 +28,21 @@ extern "C" {
 #endif
 
 struct darling_pw_stream;
+struct darling_pw_audio_state;
+
+enum darling_pw_audio_device
+{
+	DARLING_PW_AUDIO_SINK = 0,
+	DARLING_PW_AUDIO_SOURCE = 1,
+};
+
+/* Server-side volume and mute of the default audio node for one direction.
+ * Callbacks run on the PipeWire client thread. */
+struct darling_pw_audio_state_events
+{
+	uint32_t version;
+	void (*changed)(void* user_data, float volume, int mute);
+};
 
 enum darling_pw_media
 {
@@ -168,6 +183,21 @@ struct darling_pw_format
 	enum darling_pw_color_primaries primaries;
 	int hdr;
 };
+
+/* Tracks the volume and mute properties of the PipeWire node selected as the
+ * default sink or source in the server metadata. The monitor follows default
+ * device changes and reports server-originated changes through events. Values
+ * start at unity volume and unmuted until the server reports a state. */
+int darling_pw_audio_state_create(enum darling_pw_audio_device device,
+	const struct darling_pw_audio_state_events* events, void* user_data,
+	struct darling_pw_audio_state** out);
+void darling_pw_audio_state_destroy(struct darling_pw_audio_state* state);
+int darling_pw_audio_state_get(struct darling_pw_audio_state* state,
+	float* volume, int* mute);
+/* These ask the server to change the node and return when the request has been
+ * submitted; the reported value changes when the server acknowledges it. */
+int darling_pw_audio_state_set_volume(struct darling_pw_audio_state* state, float volume);
+int darling_pw_audio_state_set_mute(struct darling_pw_audio_state* state, int mute);
 
 /* PipeWire runtime version/capabilities. These read the linked libpipewire
  * version, so callers can gate optional features such as HDR screen capture. */

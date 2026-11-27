@@ -18,16 +18,13 @@
 */
 
 #import <ScreenCaptureKit/ScreenCaptureKit.h>
+#import <CoreGraphics/CGDisplayStream.h>
 #import <CoreVideo/CoreVideo.h>
+#import <IOSurface/IOSurfaceRef.h>
 
 #include <dispatch/dispatch.h>
-#include <errno.h>
 #include <math.h>
 #include <string.h>
-
-#if defined(HAVE_PIPEWIRE) && HAVE_PIPEWIRE
-#include <screen_capture_backend.h>
-#endif
 
 NSString *const SCStreamErrorDomain = @"com.apple.ScreenCaptureKit.SCStreamErrorDomain";
 
@@ -120,9 +117,8 @@ SCStreamFrameInfo const SCStreamFrameInfoDirtyRects = @"DirtyRects";
     id<SCStreamDelegate> _delegate;
     NSMutableArray *_outputs;
     BOOL _capturing;
-#if defined(HAVE_PIPEWIRE) && HAVE_PIPEWIRE
-    struct darling_screen_capture_stream *_capture;
-#endif
+    CGDisplayStreamRef _displayStream;
+    dispatch_queue_t _captureQueue;
 }
 - (NSError *)startCaptureSynchronously;
 - (void)stopCaptureSynchronously;
@@ -138,24 +134,10 @@ static NSError *SCMakeError(NSInteger code, NSString *description)
                                : nil];
 }
 
-static NSError *SCDeniedError(void)
-{
-    return SCMakeError(SCStreamErrorUserDeclined,
-        @"Screen recording was not permitted by the desktop portal.");
-}
-
 static NSError *SCUnavailableError(void)
 {
     return SCMakeError(SCStreamErrorUserDeclined,
         @"Screen capture is not available in this Darling build.");
-}
-
-static NSError *SCPortalError(int result)
-{
-    if (result == -EACCES)
-        return SCDeniedError();
-    return SCMakeError(SCStreamErrorFailedToStart,
-        [NSString stringWithFormat:@"The screen-cast stream could not be started (%d).", result]);
 }
 
 static void SCDispatchErrorCompletion(void (^handler)(NSError *), NSError *error)
@@ -635,8 +617,6 @@ static SCShareableContent *SCBuildContent(BOOL excludeDesktopWindows, BOOL onScr
 
 @end
 
-#if defined(HAVE_PIPEWIRE) && HAVE_PIPEWIRE
-
 static BOOL SCPixelFormatIsSupported(OSType format)
 {
     switch (format) {
@@ -650,26 +630,14 @@ static BOOL SCPixelFormatIsSupported(OSType format)
     }
 }
 
-static void SCSwizzleBGRA(uint8_t *row, uint32_t width, OSType format)
+static CGSize SCOutputSize(SCStreamConfiguration *configuration, CGRect source)
 {
-    for (uint32_t x = 0; x < width; x++) {
-        uint8_t *pixel = row + x * 4;
-        uint8_t blue = pixel[0], green = pixel[1], red = pixel[2], alpha = pixel[3];
+    CGFloat width = configuration.width > 0 ? configuration.width : source.size.width;
+    CGFloat height = configuration.height > 0 ? configuration.height : source.size.height;
 
-        switch (format) {
-            case kCVPixelFormatType_32RGBA:
-                pixel[0] = red; pixel[1] = green; pixel[2] = blue; pixel[3] = alpha;
-                break;
-            case kCVPixelFormatType_32ARGB:
-                pixel[0] = alpha; pixel[1] = red; pixel[2] = green; pixel[3] = blue;
-                break;
-            case kCVPixelFormatType_32ABGR:
-                pixel[0] = alpha; pixel[1] = blue; pixel[2] = green; pixel[3] = red;
-                break;
-            default:
-                break;
-        }
-    }
+    if (!(width > 0) || !(height > 0) || width > 16384 || height > 16384)
+        return CGSizeZero;
+    return CGSizeMake(width, height);
 }
 
 static CGRect SCFitRect(CGRect source, CGRect destination, BOOL preserveAspectRatio)
@@ -687,12 +655,14 @@ static CGRect SCFitRect(CGRect source, CGRect destination, BOOL preserveAspectRa
         destination.origin.y + (destination.size.height - height) / 2, width, height);
 }
 
-static CGRect SCSourceRect(SCStream *stream, CGRect *displayBounds)
+static CGRect SCSourceRect(SCStream *stream, CGRect *displayBounds,
+                           CGDirectDisplayID *displayIDOut)
 {
     SCContentFilter *filter = stream->_filter;
     SCStreamConfiguration *configuration = stream->_configuration;
     CGRect bounds = CGRectZero;
     CGRect source = [filter contentRect];
+    CGDirectDisplayID displayID = CGMainDisplayID();
 
     if (filter->_targetWindow != nil) {
         CGRect windowFrame = filter->_targetWindow.frame;
@@ -700,14 +670,15 @@ static CGRect SCSourceRect(SCStream *stream, CGRect *displayBounds)
         uint32_t count = 0;
 
         if (CGGetDisplaysWithRect(windowFrame, 32, displays, &count) == kCGErrorSuccess && count > 0)
-            bounds = CGDisplayBounds(displays[0]);
+            displayID = displays[0];
     } else if (filter->_targetDisplay != nil) {
-        bounds = CGDisplayBounds(filter->_targetDisplay.displayID);
-    } else {
-        bounds = CGDisplayBounds(CGMainDisplayID());
+        displayID = filter->_targetDisplay.displayID;
     }
+    bounds = CGDisplayBounds(displayID);
     if (CGRectIsEmpty(bounds)) {
         *displayBounds = CGRectZero;
+        if (displayIDOut != NULL)
+            *displayIDOut = displayID;
         return CGRectZero;
     }
 
@@ -721,17 +692,31 @@ static CGRect SCSourceRect(SCStream *stream, CGRect *displayBounds)
         source = CGRectZero;
 
     *displayBounds = bounds;
+    if (displayIDOut != NULL)
+        *displayIDOut = displayID;
     return source;
 }
 
-static CMSampleBufferRef SCCreateScreenSampleBuffer(SCStream *stream,
-                                                    const struct darling_screen_capture_frame *frame,
-                                                    CGRect source, CGRect displayBounds)
+static CGRect SCDestinationRect(SCStream *stream, CGRect source, CGSize outputSize)
 {
     SCStreamConfiguration *configuration = stream->_configuration;
-    SCStreamConfiguration *fallback = nil;
-    CGSize outputSize;
-    CGRect destination;
+    CGRect destination = CGRectMake(0, 0, outputSize.width, outputSize.height);
+
+    if (!CGRectIsEmpty(configuration.destinationRect))
+        destination = CGRectIntersection(configuration.destinationRect, destination);
+    else if (configuration.scalesToFit || configuration.preservesAspectRatio)
+        destination = SCFitRect(source, destination, configuration.preservesAspectRatio);
+    return CGRectIsNull(destination) ? CGRectZero : destination;
+}
+
+static CMSampleBufferRef SCCreateScreenSampleBuffer(SCStream *stream,
+                                                    IOSurfaceRef surface,
+                                                    CGDisplayStreamUpdateRef update,
+                                                    CGRect source,
+                                                    CGSize outputSize,
+                                                    uint64_t displayTime)
+{
+    SCStreamConfiguration *configuration = stream->_configuration;
     CVPixelBufferRef pixelBuffer = NULL;
     CMVideoFormatDescriptionRef description = NULL;
     CMSampleBufferRef sample = NULL;
@@ -741,53 +726,48 @@ static CMSampleBufferRef SCCreateScreenSampleBuffer(SCStream *stream,
     CFNumberRef number;
     double frameRate = 30;
     int64_t durationNs;
+    int64_t ptsNs = displayTime <= (uint64_t) INT64_MAX
+        ? (int64_t) displayTime : -1;
+    size_t width = (size_t) outputSize.width;
+    size_t height = (size_t) outputSize.height;
+    uint8_t *surfaceBase;
+    uint32_t surfaceStride, destinationStride;
+    uint8_t *destination;
+    const CGRect *rects;
+    size_t rectCount = 0;
 
-    if (CGRectIsEmpty(source) || frame->planes[0] == NULL)
+    if (CGRectIsEmpty(source) || surface == NULL
+            || IOSurfaceGetPixelFormat(surface) != configuration.pixelFormat)
         return NULL;
-
-    outputSize = CGSizeMake(configuration.width > 0 ? configuration.width : source.size.width,
-        configuration.height > 0 ? configuration.height : source.size.height);
-    if (outputSize.width <= 0 || outputSize.height <= 0)
+    if ((size_t) IOSurfaceGetWidth(surface) != width
+            || (size_t) IOSurfaceGetHeight(surface) != height)
         return NULL;
-
-    destination = CGRectMake(0, 0, outputSize.width, outputSize.height);
-    if (!CGRectIsEmpty(configuration.destinationRect))
-        destination = CGRectIntersection(configuration.destinationRect, destination);
-    else if (configuration.scalesToFit || configuration.preservesAspectRatio)
-        destination = SCFitRect(source, destination, configuration.preservesAspectRatio);
-    if (CGRectIsNull(destination) || CGRectIsEmpty(destination))
-        return NULL;
-
-    (void) fallback;
-    (void) displayBounds;
-    if (CVPixelBufferCreate(NULL, (size_t) outputSize.width, (size_t) outputSize.height,
-            configuration.pixelFormat, NULL, &pixelBuffer) != kCVReturnSuccess)
+    if (CVPixelBufferCreate(NULL, width, height, configuration.pixelFormat, NULL, &pixelBuffer)
+            != kCVReturnSuccess)
         return NULL;
     if (CVPixelBufferLockBaseAddress(pixelBuffer, 0) != kCVReturnSuccess) {
         CVPixelBufferRelease(pixelBuffer);
         return NULL;
     }
-
-    {
-        uint8_t *base = (uint8_t *) CVPixelBufferGetBaseAddress(pixelBuffer);
-        size_t stride = CVPixelBufferGetBytesPerRow(pixelBuffer);
-        int32_t sourceX = (int32_t) (source.origin.x - displayBounds.origin.x);
-        int32_t sourceY = (int32_t) (source.origin.y - displayBounds.origin.y);
-        uint32_t destinationX = (uint32_t) destination.origin.x;
-        uint32_t destinationY = (uint32_t) destination.origin.y;
-        uint32_t destinationWidth = (uint32_t) destination.size.width;
-        uint32_t destinationHeight = (uint32_t) destination.size.height;
-
-        memset(base, 0, stride * (size_t) outputSize.height);
-        if (darling_screen_capture_convert_bgra_rect(frame, base, (uint32_t) stride,
-                (uint32_t) outputSize.width, (uint32_t) outputSize.height,
-                sourceX, sourceY, (uint32_t) source.size.width, (uint32_t) source.size.height,
-                destinationX, destinationY, destinationWidth, destinationHeight) == 0) {
-            for (uint32_t y = 0; y < destinationHeight; y++)
-                SCSwizzleBGRA(base + (destinationY + y) * stride + destinationX * 4,
-                    destinationWidth, configuration.pixelFormat);
-        }
+    if (IOSurfaceLock(surface, kIOSurfaceLockReadOnly, NULL) != 0) {
+        CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
+        CVPixelBufferRelease(pixelBuffer);
+        return NULL;
     }
+
+    surfaceBase = (uint8_t *) IOSurfaceGetBaseAddress(surface);
+    surfaceStride = (uint32_t) IOSurfaceGetBytesPerRow(surface);
+    destination = (uint8_t *) CVPixelBufferGetBaseAddress(pixelBuffer);
+    destinationStride = (uint32_t) CVPixelBufferGetBytesPerRow(pixelBuffer);
+    if (surfaceStride < width * 4 || destinationStride < width * 4) {
+        IOSurfaceUnlock(surface, kIOSurfaceLockReadOnly, NULL);
+        CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
+        CVPixelBufferRelease(pixelBuffer);
+        return NULL;
+    }
+    for (size_t y = 0; y < height; y++)
+        memcpy(destination + y * destinationStride, surfaceBase + y * surfaceStride, width * 4);
+    IOSurfaceUnlock(surface, kIOSurfaceLockReadOnly, NULL);
     CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
 
     if (CMVideoFormatDescriptionCreateForImageBuffer(NULL, pixelBuffer, &description) != noErr) {
@@ -796,10 +776,9 @@ static CMSampleBufferRef SCCreateScreenSampleBuffer(SCStream *stream,
     }
 
     memset(&timing, 0, sizeof(timing));
-    timing.presentationTimeStamp = frame->pts_ns >= 0
-        ? CMTimeMake(frame->pts_ns, 1000000000)
-        : CMTimeConvertScale(CMClockGetTime(CMClockGetHostTimeClock()), 1000000000,
-            kCMTimeRoundingMethod_RoundHalfAwayFromZero);
+    timing.presentationTimeStamp = ptsNs >= 0
+        ? CMTimeMake(ptsNs, 1000000000)
+        : CMClockGetTime(CMClockGetHostTimeClock());
     if (CMTimeGetSeconds(configuration.minimumFrameInterval) > 0)
         frameRate = 1 / CMTimeGetSeconds(configuration.minimumFrameInterval);
     durationNs = (int64_t) (1000000000 / frameRate);
@@ -819,48 +798,75 @@ static CMSampleBufferRef SCCreateScreenSampleBuffer(SCStream *stream,
     attachments = CMSampleBufferGetSampleAttachmentsArray(sample, true);
     if (attachments != NULL && CFArrayGetCount(attachments) > 0) {
         attachment = (CFMutableDictionaryRef) CFArrayGetValueAtIndex(attachments, 0);
-        number = CFNumberCreate(NULL, kCFNumberSInt64Type, &frame->pts_ns);
+        number = CFNumberCreate(NULL, kCFNumberSInt64Type, &ptsNs);
         CFDictionarySetValue(attachment, (CFStringRef) SCStreamFrameInfoDisplayTime, number);
         CFRelease(number);
 
-        {
-            int64_t status = SCFrameStatusComplete;
-            number = CFNumberCreate(NULL, kCFNumberSInt64Type, &status);
-            CFDictionarySetValue(attachment, (CFStringRef) SCStreamFrameInfoStatus, number);
-            CFRelease(number);
-        }
+        number = CFNumberCreate(NULL, kCFNumberSInt64Type, &(int64_t){ SCFrameStatusComplete });
+        CFDictionarySetValue(attachment, (CFStringRef) SCStreamFrameInfoStatus, number);
+        CFRelease(number);
 
-        {
-            int64_t one = 1;
-            CFNumberRef scale = CFNumberCreate(NULL, kCFNumberSInt64Type, &one);
-            CFDictionarySetValue(attachment, (CFStringRef) SCStreamFrameInfoScaleFactor, scale);
-            CFDictionarySetValue(attachment, (CFStringRef) SCStreamFrameInfoContentScale, scale);
-            CFRelease(scale);
-        }
+        number = CFNumberCreate(NULL, kCFNumberSInt64Type, &(int64_t){ 1 });
+        CFDictionarySetValue(attachment, (CFStringRef) SCStreamFrameInfoScaleFactor, number);
+        CFDictionarySetValue(attachment, (CFStringRef) SCStreamFrameInfoContentScale, number);
+        CFRelease(number);
+
         CFDictionarySetValue(attachment, (CFStringRef) SCStreamFrameInfoContentRect,
-            [NSValue valueWithRect: source]);
+                             [NSValue valueWithRect: source]);
         CFDictionarySetValue(attachment, (CFStringRef) SCStreamFrameInfoBoundingRect,
-            [NSValue valueWithRect: source]);
+                             [NSValue valueWithRect: source]);
         CFDictionarySetValue(attachment, (CFStringRef) SCStreamFrameInfoScreenRect,
-            [NSValue valueWithRect: source]);
-        CFDictionarySetValue(attachment, (CFStringRef) SCStreamFrameInfoDirtyRects,
-            [NSArray arrayWithObject: [NSValue valueWithRect: source]]);
+                             [NSValue valueWithRect: source]);
+
+        rects = CGDisplayStreamUpdateGetRects(update, kCGDisplayStreamUpdateRefreshedRects, &rectCount);
+        if (rects != NULL && rectCount > 0) {
+            NSMutableArray *dirty = [NSMutableArray arrayWithCapacity: rectCount];
+            for (size_t i = 0; i < rectCount; i++)
+                [dirty addObject: [NSValue valueWithRect: rects[i]]];
+            CFDictionarySetValue(attachment, (CFStringRef) SCStreamFrameInfoDirtyRects, dirty);
+        } else {
+            CFDictionarySetValue(attachment, (CFStringRef) SCStreamFrameInfoDirtyRects,
+                                 [NSArray arrayWithObject: [NSValue valueWithRect: source]]);
+        }
     }
     return sample;
 }
 
-static void SCPipeWireFrame(const struct darling_screen_capture_frame *frame, void *userData)
+static void SCDispatchUnexpectedStopError(SCStream *stream)
 {
-    SCStream *stream = (SCStream *) userData;
+    [stream retain];
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        id<SCStreamDelegate> delegate = stream->_delegate;
+        if (delegate != nil && [delegate respondsToSelector: @selector(stream:didStopWithError:)])
+            [delegate stream: stream
+             didStopWithError: SCMakeError(SCStreamErrorFailedToStart,
+                 @"The display stream stopped unexpectedly.")];
+        [stream release];
+    });
+}
+
+static void SCDisplayFrame(SCStream *stream, CGDisplayStreamFrameStatus status,
+                           uint64_t displayTime, IOSurfaceRef surface,
+                           CGDisplayStreamUpdateRef update)
+{
     CGRect displayBounds = CGRectZero;
     CGRect source;
+    CGSize outputSize;
     CMSampleBufferRef sample;
     NSArray *outputs;
 
-    if (!__atomic_load_n(&stream->_capturing, __ATOMIC_ACQUIRE))
+    if (status == kCGDisplayStreamFrameStatusStopped) {
+        if (__atomic_exchange_n(&stream->_capturing, NO, __ATOMIC_ACQ_REL))
+            SCDispatchUnexpectedStopError(stream);
         return;
-    source = SCSourceRect(stream, &displayBounds);
-    sample = SCCreateScreenSampleBuffer(stream, frame, source, displayBounds);
+    }
+    if (!__atomic_load_n(&stream->_capturing, __ATOMIC_ACQUIRE)
+            || status != kCGDisplayStreamFrameStatusFrameComplete || surface == NULL)
+        return;
+
+    source = SCSourceRect(stream, &displayBounds, NULL);
+    outputSize = SCOutputSize(stream->_configuration, source);
+    sample = SCCreateScreenSampleBuffer(stream, surface, update, source, outputSize, displayTime);
     if (sample == NULL)
         return;
 
@@ -892,23 +898,6 @@ static void SCPipeWireFrame(const struct darling_screen_capture_frame *frame, vo
     [outputs release];
     CFRelease(sample);
 }
-
-static void SCPipeWireError(int error, void *userData)
-{
-    SCStream *stream = (SCStream *) userData;
-    NSError *nsError = SCPortalError(error);
-
-    __atomic_store_n(&stream->_capturing, NO, __ATOMIC_RELEASE);
-    [stream retain];
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        id<SCStreamDelegate> delegate = stream->_delegate;
-        if (delegate != nil && [delegate respondsToSelector: @selector(stream:didStopWithError:)])
-            [delegate stream: stream didStopWithError: nsError];
-        [stream release];
-    });
-}
-
-#endif
 
 @implementation SCStream
 
@@ -1093,76 +1082,117 @@ static void SCPipeWireError(int error, void *userData)
     });
 }
 
-#if defined(HAVE_PIPEWIRE) && HAVE_PIPEWIRE
 - (NSError *)startCaptureSynchronously
 {
     CGRect bounds = CGRectZero;
-    CGRect unusedSource;
-    struct darling_screen_capture_callbacks callbacks;
-    struct darling_screen_capture_stream *capture = NULL;
-    int result;
+    CGRect source;
+    CGSize outputSize;
+    CGRect destination;
+    CGDirectDisplayID displayID = CGMainDisplayID();
+    CFMutableDictionaryRef properties;
+    CGDisplayStreamRef stream;
+    SCStream *capturedStream = self;
+    double minimumFrameTime;
+    int64_t queueDepth;
+    CGError result;
 
     if (__atomic_load_n(&_capturing, __ATOMIC_ACQUIRE))
         return nil;
     if (_filter->_unsupportedFilter)
         return SCMakeError(SCStreamErrorFailedToStart,
-            @"This content filter cannot be enforced by the ScreenCast backend.");
+            @"This content filter cannot be enforced by the CoreGraphics display stream.");
     if (!SCPixelFormatIsSupported(_configuration.pixelFormat))
         return SCMakeError(SCStreamErrorFailedToStart,
             @"The requested pixel format is not supported by this backend.");
-    {
-        CGDirectDisplayID displayID = _filter->_targetDisplay != nil
-            ? _filter->_targetDisplay.displayID : CGMainDisplayID();
-        if (CGRectIsEmpty(CGDisplayBounds(displayID)))
-            return SCMakeError(SCStreamErrorFailedToStart, @"The requested display is not available.");
-    }
 
-    unusedSource = SCSourceRect(self, &bounds);
-    if (CGRectIsEmpty(bounds) || CGRectIsEmpty(unusedSource))
+    source = SCSourceRect(self, &bounds, &displayID);
+    outputSize = SCOutputSize(_configuration, source);
+    destination = SCDestinationRect(self, source, outputSize);
+    if (CGRectIsEmpty(bounds) || CGRectIsEmpty(source)
+            || CGSizeEqualToSize(outputSize, CGSizeZero) || CGRectIsEmpty(destination))
         return SCMakeError(SCStreamErrorFailedToStart, @"The requested content is not on a display.");
 
-    memset(&callbacks, 0, sizeof(callbacks));
-    callbacks.frame = SCPipeWireFrame;
-    callbacks.error = SCPipeWireError;
-    result = darling_screen_capture_open((int32_t) bounds.origin.x, (int32_t) bounds.origin.y,
-        (uint32_t) bounds.size.width, (uint32_t) bounds.size.height,
-        _configuration.showsCursor, darling_screen_capture_supports_hdr() ? 1 : 0,
-        &callbacks, self, &capture);
-    if (result != 0)
-        return SCPortalError(result);
-    result = darling_screen_capture_start(capture, 1);
-    if (result == 0)
-        result = darling_screen_capture_wait(capture, 5000);
-    if (result != 0) {
-        darling_screen_capture_close(capture);
-        return SCPortalError(result);
+    _captureQueue = dispatch_queue_create("com.darling.screencapturekit.display-stream",
+                                          DISPATCH_QUEUE_SERIAL);
+    if (_captureQueue == NULL)
+        return SCMakeError(SCStreamErrorFailedToStart, @"The capture queue could not be created.");
+
+    properties = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks,
+                                           &kCFTypeDictionaryValueCallBacks);
+    if (properties != NULL) {
+        CFNumberRef number;
+
+        CFDictionarySetValue(properties, kCGDisplayStreamSourceRect,
+                             [NSValue valueWithRect: source]);
+        CFDictionarySetValue(properties, kCGDisplayStreamDestinationRect,
+                             [NSValue valueWithRect: destination]);
+        CFDictionarySetValue(properties, kCGDisplayStreamPreserveAspectRatio,
+                             _configuration.preservesAspectRatio ? kCFBooleanTrue : kCFBooleanFalse);
+        CFDictionarySetValue(properties, kCGDisplayStreamShowCursor,
+                             _configuration.showsCursor ? kCFBooleanTrue : kCFBooleanFalse);
+
+        queueDepth = _configuration.queueDepth > 0 ? _configuration.queueDepth : 3;
+        number = CFNumberCreate(NULL, kCFNumberSInt64Type, &queueDepth);
+        if (number != NULL) {
+            CFDictionarySetValue(properties, kCGDisplayStreamQueueDepth, number);
+            CFRelease(number);
+        }
+        minimumFrameTime = CMTimeGetSeconds(_configuration.minimumFrameInterval);
+        if (minimumFrameTime > 0) {
+            number = CFNumberCreate(NULL, kCFNumberDoubleType, &minimumFrameTime);
+            if (number != NULL) {
+                CFDictionarySetValue(properties, kCGDisplayStreamMinimumFrameTime, number);
+                CFRelease(number);
+            }
+        }
     }
 
-    __atomic_store_n(&_capture, capture, __ATOMIC_RELEASE);
+    stream = CGDisplayStreamCreateWithDispatchQueue(displayID, (size_t) outputSize.width,
+        (size_t) outputSize.height, _configuration.pixelFormat, properties, _captureQueue,
+        ^(CGDisplayStreamFrameStatus status, uint64_t displayTime, IOSurfaceRef surface,
+          CGDisplayStreamUpdateRef update) {
+            @autoreleasepool {
+                SCDisplayFrame(capturedStream, status, displayTime, surface, update);
+            }
+        });
+    if (properties != NULL)
+        CFRelease(properties);
+    if (stream == NULL) {
+        dispatch_release(_captureQueue);
+        _captureQueue = NULL;
+        return SCMakeError(SCStreamErrorFailedToStart, @"The display stream could not be created.");
+    }
+
     __atomic_store_n(&_capturing, YES, __ATOMIC_RELEASE);
+    result = CGDisplayStreamStart(stream);
+    if (result != kCGErrorSuccess) {
+        __atomic_store_n(&_capturing, NO, __ATOMIC_RELEASE);
+        CFRelease(stream);
+        dispatch_release(_captureQueue);
+        _captureQueue = NULL;
+        return SCMakeError(SCStreamErrorFailedToStart,
+            [NSString stringWithFormat:@"The display stream could not be started (%d).", result]);
+    }
+    _displayStream = stream;
     return nil;
 }
 
 - (void)stopCaptureSynchronously
 {
-    struct darling_screen_capture_stream *capture =
-        __atomic_exchange_n(&_capture, NULL, __ATOMIC_ACQ_REL);
+    CGDisplayStreamRef stream;
 
     __atomic_store_n(&_capturing, NO, __ATOMIC_RELEASE);
-    if (capture != NULL)
-        darling_screen_capture_close(capture);
+    stream = _displayStream;
+    _displayStream = NULL;
+    if (stream != NULL) {
+        CGDisplayStreamStop(stream);
+        CFRelease(stream);
+    }
+    if (_captureQueue != NULL) {
+        dispatch_release(_captureQueue);
+        _captureQueue = NULL;
+    }
 }
-#else
-- (NSError *)startCaptureSynchronously
-{
-    return SCUnavailableError();
-}
-
-- (void)stopCaptureSynchronously
-{
-    __atomic_store_n(&_capturing, NO, __ATOMIC_RELEASE);
-}
-#endif
 
 - (BOOL)restartCaptureWithError:(NSError **)error
 {
