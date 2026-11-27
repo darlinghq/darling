@@ -6,6 +6,9 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
+#ifndef _IMAGEIO_CGIMAGEPROPERTIES_H_
+#define _IMAGEIO_CGIMAGEPROPERTIES_H_
+
 #include <ImageIO/ImageIOBase.h>
 #include <CoreFoundation/CoreFoundation.h>
 
@@ -14,6 +17,18 @@ IMAGEIO_EXTERN const CFStringRef kCGImagePropertyDPIHeight;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyPixelHeight;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyPixelWidth;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyOrientation;
+
+// Values stored under kCGImagePropertyOrientation (EXIF/TIFF orientation).
+typedef CF_ENUM(uint32_t, CGImagePropertyOrientation) {
+    kCGImagePropertyOrientationUp = 1,
+    kCGImagePropertyOrientationUpMirrored = 2,
+    kCGImagePropertyOrientationDown = 3,
+    kCGImagePropertyOrientationDownMirrored = 4,
+    kCGImagePropertyOrientationLeftMirrored = 5,
+    kCGImagePropertyOrientationRight = 6,
+    kCGImagePropertyOrientationRightMirrored = 7,
+    kCGImagePropertyOrientationLeft = 8,
+};
 
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFDictionary;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyExifDictionary;
@@ -85,3 +100,5 @@ IMAGEIO_EXTERN const CFStringRef kCGImagePropertyIPTCDateCreated;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyIPTCDigitalCreationDate;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyRawDictionary;
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFDateTime;
+
+#endif /* _IMAGEIO_CGIMAGEPROPERTIES_H_ */

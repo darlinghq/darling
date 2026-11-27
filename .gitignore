@@ -51,6 +51,8 @@ Module.symvers
 !/tests/prefsd/**
 !/tests/shellspawn/
 !/tests/shellspawn/**
+!/tests/app-api-compat.py
+!/tests/appkit-app-api-compat.m
 
 # The suggested build folder
 build

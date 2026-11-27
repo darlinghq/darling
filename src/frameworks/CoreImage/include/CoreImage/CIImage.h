@@ -19,6 +19,8 @@
 
 #include <Foundation/Foundation.h>
 #include <CoreGraphics/CoreGraphics.h>
+#include <CoreVideo/CVPixelBuffer.h>
+#include <ImageIO/CGImageProperties.h>
 
 typedef int CIFormat;
 
@@ -39,7 +41,11 @@ extern const CIFormat kCIFormatRGBAf;
 + (CIImage *) emptyImage;
 
 - initWithCGImage: (CGImageRef) cgImage;
+- initWithCVPixelBuffer: (CVPixelBufferRef) pixelBuffer;
 
 - (CGRect) extent;
+
+// Orientation values use the TIFF/EXIF numbering also used by ImageIO.
+- (CIImage *) imageByApplyingOrientation: (int) orientation;
 
 @end
