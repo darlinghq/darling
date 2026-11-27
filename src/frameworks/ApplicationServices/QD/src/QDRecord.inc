@@ -5,7 +5,7 @@
 // (RGBForeColor, RGBBackColor, ForeColor, BackColor), PnPat 0x09, PnSize 0x07, PnMode 0x08, Line 0x20,
 // frameRect..fillRect 0x30-0x34 (FillPat 0x0A before fillRect), and CopyBits into the port as DirectBitsRect 0x9A
 // (32-bit pixels, packType 4: PackBits component planes; packType 1 when rowBytes < 8).
-// Not recorded, and counted by QDPictureUnrecordedOps(): clip changes (ClipRect, SetClip), BackPat, regions (FillRgn,
+// Not recorded: clip changes (ClipRect, SetClip), BackPat, regions (FillRgn,
 // PaintRgn, EraseRgn), ScrollRect, SetCPixel, FillCRect, CopyBits wider than 4095 pixels. This QuickDraw draws no
 // text, ovals, arcs, round rectangles or polygons, so pictures contain none of them.
 #include <CarbonCore/MacMemory.h>
@@ -13,7 +13,6 @@
 static struct {
 	CGrafPtr port;          // port being recorded (NULL when no picture is open)
 	Handle pic;
-	unsigned unrecorded;
 	Boolean failed;
 } g_rec;
 
@@ -54,8 +53,6 @@ void QDRecordLine(struct QDPort *p, Point from, Point to)
 	rec_u16(0x0020); rec_u16((uint16_t) from.v); rec_u16((uint16_t) from.h); rec_u16((uint16_t) to.v); rec_u16((uint16_t) to.h);
 }
 
-void QDRecordUnrecorded(struct QDPort *p) { if (recording(p)) g_rec.unrecorded++; }
-
 void QDRecordPenPat(struct QDPort *p, const QDPattern *pat)
 {
 	if (!recording(p) || !pat) return;
@@ -86,7 +83,7 @@ static void rec_copybits(struct QDPort *s, const Rect *src, const Rect *dst, sho
 {
 	int w = src->right - src->left, h = src->bottom - src->top;
 	if (w <= 0 || h <= 0) return;
-	if ((size_t) w * 4 > 0x3FFF) { g_rec.unrecorded++; return; }   // rowBytes field holds 14 bits
+	if ((size_t) w * 4 > 0x3FFF) return;   // rowBytes field holds 14 bits
 	size_t rowBytes = (size_t) w * 4;
 	Boolean packed = rowBytes >= 8;
 	rec_u16(0x009A);
@@ -129,7 +126,7 @@ Handle QDRecordOpen(const Rect *srcRect, Fixed hRes, Fixed vRes, short version)
 	if (g_rec.port) { gQDError = paramErr; return NULL; }         // one picture open at a time
 	Handle h = NewHandle(0);
 	if (!h) { gQDError = cNoMemErr; return NULL; }
-	g_rec.port = (CGrafPtr) p; g_rec.pic = h; g_rec.unrecorded = 0; g_rec.failed = false;
+	g_rec.port = (CGrafPtr) p; g_rec.pic = h; g_rec.failed = false;
 	Rect frame = *srcRect;
 	if (version == -2 && hRes && hRes != 0x00480000) {           // picFrame is at 72 dpi
 		frame.right = (short) (frame.left + (int32_t) ((int64_t) (srcRect->right - srcRect->left) * 0x00480000 / hRes));
@@ -161,5 +158,3 @@ void QDRecordClose(void)
 	gQDError = g_rec.failed ? cNoMemErr : noErr;
 	g_rec.port = NULL;
 }
-
-unsigned QDRecordUnrecordedOps(void) { return g_rec.unrecorded; }

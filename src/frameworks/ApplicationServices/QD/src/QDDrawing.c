@@ -239,7 +239,7 @@ void PenPat(const QDPattern *pat)
 void BackPat(const QDPattern *pat)
 {
 	struct QDPort *p = current();
-	if (p && pat) { p->bkPat = *pat; QDRecordUnrecorded(p); }   // BkPat is not recorded
+	if (p && pat) p->bkPat = *pat;   // BkPat is not recorded in a picture
 }
 
 void HidePen(void) { struct QDPort *p = current(); if (p) p->penVis--; }
@@ -301,7 +301,6 @@ void ClipRect(const Rect *r)
 {
 	struct QDPort *p = current();
 	if (!p || !r) return;
-	QDRecordUnrecorded(p);   // clip changes are not recorded
 	if (p->clipRgn == NULL)
 		p->clipRgn = NewRgn();
 	RectRgn(p->clipRgn, r);
@@ -313,7 +312,6 @@ void SetClip(RgnHandle rgn)
 {
 	struct QDPort *p = current();
 	if (!p || !rgn) return;
-	QDRecordUnrecorded(p);
 	if (p->clipRgn == NULL)
 		p->clipRgn = NewRgn();
 	CopyRgn(rgn, p->clipRgn);
@@ -393,7 +391,6 @@ void FillRgn(RgnHandle rgn, const QDPattern *pat)
 {
 	struct QDPort *p = current();
 	if (!p || !rgn || !pat) return;
-	QDRecordUnrecorded(p);   // regions are not recorded (PaintRgn, EraseRgn come here)
 	Rect b, area;
 	GetRegionBounds(rgn, &b);
 	if (!SectRect(&b, &p->pixMap.bounds, &area)) return;
@@ -422,7 +419,6 @@ void ScrollRect(const Rect *r, short dh, short dv, RgnHandle updateRgn)
 	struct QDPort *p = current();
 	if (updateRgn) SetEmptyRgn(updateRgn);
 	if (!p || !r) return;
-	QDRecordUnrecorded(p);
 	Rect area;
 	if (!SectRect(r, &p->pixMap.bounds, &area)) return;
 	int w = area.right - area.left, h = area.bottom - area.top, bpp = p->pixMap.pixelSize / 8;
@@ -468,7 +464,6 @@ void SetCPixel(short h, short v, const RGBColor *c)
 {
 	struct QDPort *p = current();
 	if (!p || !c) return;
-	QDRecordUnrecorded(p);
 	uint8_t *a = pixel_at(p, h, v);
 	if (a && clipped_in(p, h, v)) store(p, a, *c);
 }
@@ -538,7 +533,6 @@ void FillCRect(const Rect *r, QDPixPatHandle pp)
 {
 	struct QDPort *p = current();
 	if (!p || !pp || !*pp || !(*pp)->solid) { gQDError = paramErr; return; }
-	QDRecordUnrecorded(p);
 	fill_rect(p, r, &kBlack, kPatCopy, (*pp)->color, p->bkColor);
 }
 
