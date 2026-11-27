@@ -755,6 +755,55 @@ done:
 	return result;
 }
 
+/* the largest entitlements plist that is embedded; real ones are a few KiB */
+#define MAX_ENTITLEMENTS_SIZE (1024u * 1024u)
+
+static bool is_space(uint8_t c) {
+	return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+}
+
+/*
+ * Whether data looks like an XML property list (the form `codesign --entitlements` embeds): text
+ * without NUL bytes that, after an optional UTF-8 byte order mark, an XML declaration and a
+ * DOCTYPE, starts with a <plist> element and ends with </plist>. It is not a full XML parse, but it
+ * keeps a wrong file (a binary, a binary plist, an empty or cut-off file) out of the signature.
+ */
+static bool looks_like_xml_plist(const uint8_t* data, size_t length) {
+	static const char end_tag[] = "</plist>";
+	size_t start = 0, end = length;
+
+	if (length == 0 || length > MAX_ENTITLEMENTS_SIZE || memchr(data, 0, length) != NULL) {
+		return false;
+	}
+	if (length >= 3 && data[0] == 0xef && data[1] == 0xbb && data[2] == 0xbf) {
+		start = 3;
+	}
+	while (start < end && is_space(data[start])) {
+		++start;
+	}
+	while (end > start && is_space(data[end - 1])) {
+		--end;
+	}
+
+	/* skip the XML declaration, comments and the DOCTYPE: the first element has to be <plist> */
+	while (end - start >= 2 && data[start] == '<' && (data[start + 1] == '?' || data[start + 1] == '!')) {
+		const uint8_t* close = memchr(data + start, '>', end - start);
+		if (close == NULL) {
+			return false;
+		}
+		start = (size_t)(close - data) + 1;
+		while (start < end && is_space(data[start])) {
+			++start;
+		}
+	}
+	if (end - start < 7 || memcmp(data + start, "<plist", 6) != 0 ||
+	    (data[start + 6] != '>' && !is_space(data[start + 6]))) {
+		return false;
+	}
+	return end - start >= sizeof(end_tag) - 1 &&
+	       memcmp(data + end - (sizeof(end_tag) - 1), end_tag, sizeof(end_tag) - 1) == 0;
+}
+
 int main(int argc, char** argv) {
 	const char* identifier = NULL;
 	int first = 1;
@@ -769,6 +818,12 @@ int main(int argc, char** argv) {
 			if (read_file(argv[first] + 15, &plist, &plist_stat) != 0) {
 				return 1;
 			}
+			if (!looks_like_xml_plist(plist.data, plist.length)) {
+				fprintf(stderr, "%s: %s is not an XML property list\n", progname, argv[first] + 15);
+				free(plist.data);
+				return 1;
+			}
+			free((void*)entitlements_plist);
 			entitlements_plist = plist.data;
 			entitlements_length = plist.length;
 		} else if (strcmp(argv[first], "--") == 0) {
