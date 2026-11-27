@@ -20,6 +20,7 @@
 #ifndef _DeviceCheck_H_
 #define _DeviceCheck_H_
 
+#import <DeviceCheck/DCError.h>
 #import <DeviceCheck/DCAppAttestService.h>
 
 #endif
