@@ -22,23 +22,34 @@
 #if __LP64__
 
 @implementation _SFKey {
-    NSData *_keyData;
+    // a buffer of the key's own, so that it can be cleared when the key goes away
+    NSMutableData *_keyData;
 }
 
 - (instancetype)initWithKeyData:(NSData *)data {
     self = [super init];
     if (self != nil)
-        _keyData = [data copy];
+        _keyData = [data mutableCopy];
     return self;
 }
 
 - (void)dealloc {
+    SFClearData(_keyData);
     [_keyData release];
     [super dealloc];
 }
 
+// A copy: the key's own buffer is cleared when the key is deallocated, while the caller may keep the data.
 - (NSData *)keyData {
-    return _keyData;
+    return [NSData dataWithData: _keyData];
+}
+
+- (const void *)keyBytes {
+    return [_keyData bytes];
+}
+
+- (size_t)keyLength {
+    return [_keyData length];
 }
 
 @end

@@ -19,12 +19,23 @@
 
 // The symmetric key and AES-GCM classes of SecurityFoundation share these initializers; they are
 // internal to the framework.
+#define __STDC_WANT_LIB_EXT1__ 1
+#include <string.h>
 #import <SecurityFoundation/_SFAESKey.h>
 #import <SecurityFoundation/_SFAuthenticatedCiphertext.h>
 
 @interface _SFKey ()
 - (instancetype)initWithKeyData:(NSData *)data;
+// the key material without a copy, for the operations of the framework
+@property (readonly, nonatomic) const void *keyBytes;
+@property (readonly, nonatomic) size_t keyLength;
 @end
+
+// Clears a buffer that held key material or plaintext, in a way the compiler may not drop.
+static inline void SFClearData(NSMutableData *data) {
+    if ([data length] != 0)
+        memset_s([data mutableBytes], [data length], 0, [data length]);
+}
 
 @interface _SFAESKeySpecifier ()
 @property (readonly, nonatomic) size_t keyLength;

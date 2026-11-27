@@ -56,8 +56,7 @@ static NSError *SFOperationError(NSString *description) {
 }
 
 - (SFAuthenticatedCiphertext *)encrypt:(NSData *)data withKey:(SFAESKey *)key additionalAuthenticatedData:(NSData *)aad error:(NSError **)error {
-    NSData *keyData = [key keyData];
-    if (data == nil || [keyData length] != [_keySpecifier keyLength]) {
+    if (data == nil || [key keyLength] != [_keySpecifier keyLength]) {
         if (error != NULL)
             *error = SFOperationError(@"the key does not fit the operation");
         return nil;
@@ -66,7 +65,7 @@ static NSError *SFOperationError(NSString *description) {
     uint8_t iv[SFGCMIVLength], tag[SFGCMTagLength];
     NSMutableData *ciphertext = [NSMutableData dataWithLength: [data length]];
     if (CCRandomGenerateBytes(iv, sizeof(iv)) != kCCSuccess ||
-        CCCryptorGCMOneshotEncrypt(kCCAlgorithmAES, [keyData bytes], [keyData length], iv, sizeof(iv),
+        CCCryptorGCMOneshotEncrypt(kCCAlgorithmAES, [key keyBytes], [key keyLength], iv, sizeof(iv),
                                    [aad bytes], [aad length], [data bytes], [data length],
                                    [ciphertext mutableBytes], tag, sizeof(tag)) != kCCSuccess) {
         if (error != NULL)
@@ -84,21 +83,22 @@ static NSError *SFOperationError(NSString *description) {
 }
 
 - (NSData *)decrypt:(SFAuthenticatedCiphertext *)ciphertext withKey:(SFAESKey *)key additionalAuthenticatedData:(NSData *)aad error:(NSError **)error {
-    NSData *keyData = [key keyData];
     NSData *encrypted = [ciphertext ciphertext];
     NSData *tag = [ciphertext authenticationCode];
     NSData *iv = [ciphertext initializationVector];
     if (encrypted == nil || [tag length] != SFGCMTagLength || [iv length] < SFGCMIVLength ||
-        [keyData length] != [_keySpecifier keyLength]) {
+        [key keyLength] != [_keySpecifier keyLength]) {
         if (error != NULL)
             *error = SFOperationError(@"the ciphertext or the key does not fit the operation");
         return nil;
     }
 
     NSMutableData *plaintext = [NSMutableData dataWithLength: [encrypted length]];
-    if (CCCryptorGCMOneshotDecrypt(kCCAlgorithmAES, [keyData bytes], [keyData length], [iv bytes], [iv length],
+    if (CCCryptorGCMOneshotDecrypt(kCCAlgorithmAES, [key keyBytes], [key keyLength], [iv bytes], [iv length],
                                    [aad bytes], [aad length], [encrypted bytes], [encrypted length],
                                    [plaintext mutableBytes], [tag bytes], [tag length]) != kCCSuccess) {
+        // nothing of data that failed authentication is kept
+        SFClearData(plaintext);
         if (error != NULL)
             *error = [NSError errorWithDomain: NSOSStatusErrorDomain code: -25293 /* errSecAuthFailed */
                                      userInfo: @{NSLocalizedDescriptionKey: @"the ciphertext failed authentication"}];
