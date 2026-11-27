@@ -226,7 +226,9 @@ static CMSampleBufferRef DarlingScreenCreateSampleBuffer(
 	height = (size_t) (source.size.height * scale);
 
 	properties = [NSMutableDictionary dictionary];
-	sourceDictionary = CGRectCreateDictionaryRepresentation(source);
+	/* The display stream takes the source rectangle in global display coordinates. */
+	sourceDictionary = CGRectCreateDictionaryRepresentation(
+		CGRectOffset(source, bounds.origin.x, bounds.origin.y));
 	[properties setObject: (id) sourceDictionary forKey: (id) kCGDisplayStreamSourceRect];
 	CFRelease(sourceDictionary);
 	[properties setObject: [NSNumber numberWithBool: [_screenInput capturesCursor]]

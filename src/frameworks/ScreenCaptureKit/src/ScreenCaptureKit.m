@@ -1088,11 +1088,9 @@ static void SCDisplayStreamStopped(SCStream *stream)
     if (outputSize.width < 1 || outputSize.height < 1)
         return SCMakeError(SCStreamErrorInvalidParameter, @"The output size is empty.");
 
-    /* CGDisplayStream rectangles are relative to the display. */
     properties = [NSMutableDictionary dictionary];
     {
-        CGRect local = CGRectOffset(source, -bounds.origin.x, -bounds.origin.y);
-        CFDictionaryRef dictionary = CGRectCreateDictionaryRepresentation(local);
+        CFDictionaryRef dictionary = CGRectCreateDictionaryRepresentation(source);
         [properties setObject: (id) dictionary forKey: (id) kCGDisplayStreamSourceRect];
         CFRelease(dictionary);
     }
