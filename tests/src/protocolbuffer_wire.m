@@ -5,7 +5,8 @@
 // way generated code is, with a varint, a string, data, a nested message, a
 // negative int32, a zigzag sint32 and a fixed32; the bytes the writer produces, the
 // message the reader gets back, a field the reader does not know (every wire
-// type, a group among them), and data that is cut off or malformed.
+// type, a group among them), an int64 and a double, groups nested too deeply, and data that
+// is cut off or malformed.
 //
 // Compile with the private header directory of ProtocolBuffer on the include path
 // and link against the installed framework. Prints PASS or FAIL lines.
@@ -14,6 +15,10 @@
 #import <ProtocolBuffer/PBConstants.h>
 #include <stdio.h>
 #include <string.h>
+
+// weak, so that the test reports a framework without them instead of failing to load
+extern int64_t PBReaderReadInt64(PBDataReader *reader) __attribute__((weak_import));
+extern double PBReaderReadDouble(PBDataReader *reader) __attribute__((weak_import));
 
 static int failures;
 static void expect(BOOL ok, NSString *what) {
@@ -101,6 +106,36 @@ static void expect(BOOL ok, NSString *what) {
 }
 @end
 
+@interface Wide : PBCodable {
+@public
+    int64_t big;
+    double real;
+}
+@end
+
+@implementation Wide
+- (BOOL)readFrom:(PBDataReader *)reader {
+    while (PBReaderHasMoreData(reader)) {
+        uint32_t tag = 0;
+        uint8_t type = 0;
+        PBReaderReadTag32AndType(reader, &tag, &type);
+        if (PBReaderHasError(reader))
+            break;
+        if (tag == 1)
+            big = PBReaderReadInt64(reader);
+        else if (tag == 2)
+            real = PBReaderReadDouble(reader);
+        else if (!PBReaderSkipValueWithTag(reader, tag, type))
+            return NO;
+    }
+    return !PBReaderHasError(reader);
+}
+- (void)writeTo:(PBDataWriter *)writer {
+    PBDataWriterWriteInt64Field(writer, big, 1);
+    PBDataWriterWriteDoubleField(writer, real, 2);
+}
+@end
+
 static NSData *bytes(const char *b, size_t n) { return [NSData dataWithBytes: b length: n]; }
 
 int main(void) {
@@ -142,6 +177,38 @@ int main(void) {
         expect([[Message alloc] initWithData: bytes("\x08\xff", 2)] == nil, @"a varint cut off is an error");
         expect([[Message alloc] initWithData: bytes("\x47\x01", 2)] == nil, @"an invalid wire type is an error");
         expect([[Message alloc] initWithData: [NSData data]] != nil, @"empty data is an empty message");
+
+        // an int64 and a double, as the writer writes them
+        Wide *w = [[Wide alloc] init];
+        w->big = -5000000000LL;
+        w->real = -1.5;
+        NSData *wide = [w data];
+        // 08 + varint of -5000000000 (ten bytes, two's complement) | 11 + -1.5 as little-endian IEEE 754 (bf f8 00 .. 00)
+        const char wideExpected[] = "\x08\x80\x9c\xe8\xaf\xed\xff\xff\xff\xff\x01\x11\x00\x00\x00\x00\x00\x00\xf8\xbf";
+        expect([wide isEqual: bytes(wideExpected, sizeof(wideExpected) - 1)], @"an int64 and a double are encoded as documented");
+        if (&PBReaderReadInt64 != NULL && &PBReaderReadDouble != NULL) {
+            Wide *wr = [[Wide alloc] initWithData: wide];
+            expect(wr != nil && wr->big == -5000000000LL && wr->real == -1.5, @"PBReaderReadInt64 and PBReaderReadDouble read them back");
+            expect([[Wide alloc] initWithData: bytes("\x11\x00\x00\x00", 4)] == nil, @"a double cut off is an error");
+        } else {
+            expect(NO, @"PBReaderReadInt64 and PBReaderReadDouble exist");
+        }
+
+        // groups nested more deeply than any real message are malformed data, not a recursion without bound
+        NSMutableData *deep = [NSMutableData data];
+        const int depth = 200000;
+        for (int i = 0; i < depth; i++)
+            [deep appendBytes: "\x5b" length: 1]; // start group, tag 11
+        for (int i = 0; i < depth; i++)
+            [deep appendBytes: "\x5c" length: 1]; // end group, tag 11
+        expect([[Message alloc] initWithData: deep] == nil, @"groups nested 200000 deep are refused");
+        NSMutableData *nested = [NSMutableData data];
+        for (int i = 0; i < 50; i++)
+            [nested appendBytes: "\x5b" length: 1];
+        for (int i = 0; i < 50; i++)
+            [nested appendBytes: "\x5c" length: 1];
+        expect([[Message alloc] initWithData: nested] != nil, @"groups nested 50 deep are skipped");
+        expect([[Message alloc] initWithData: bytes("\x5b\x64", 2)] == nil, @"a group ended with another tag is an error");
     }
     printf(failures ? "FAILED %d\n" : "ALL PASSED\n", failures);
     return failures != 0;
