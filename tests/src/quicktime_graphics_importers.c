@@ -136,6 +136,33 @@ static void write_pict(const char *path, int width, int height)
 	DisposeHandle((Handle) picture);
 }
 
+// A picture file whose only drawing is a copy of a 16-bit pixel map
+static void write_pict16(const char *path)
+{
+	Rect frame = { 0, 0, 8, 8 };
+	OpenCPicParams params = { frame, 72 << 16, 72 << 16, -2, 0, 0 };
+	GWorldPtr source = NULL, target = NULL;
+	CGrafPtr savedPort;
+	GDHandle savedDevice;
+	NewGWorld(&source, 16, &frame, NULL, NULL, 0);
+	NewGWorld(&target, 32, &frame, NULL, NULL, 0);
+	GetGWorld(&savedPort, &savedDevice);
+	SetGWorld(target, NULL);
+	PicHandle picture = OpenCPicture(&params);
+	CopyBits(GetPortBitMapForCopyBits(source), GetPortBitMapForCopyBits(target), &frame, &frame, srcCopy, NULL);
+	ClosePicture();
+	SetGWorld(savedPort, savedDevice);
+	DisposeGWorld(source);
+	DisposeGWorld(target);
+	FILE *f = fopen(path, "wb");
+	char zeros[512];
+	memset(zeros, 0, sizeof(zeros));
+	fwrite(zeros, 1, sizeof(zeros), f);
+	fwrite(*picture, 1, (size_t) GetHandleSize((Handle) picture), f);
+	fclose(f);
+	DisposeHandle((Handle) picture);
+}
+
 static void pixel32(const unsigned char *bits, long rowBytes, int h, int v, int *r, int *g, int *b, int *a)
 {
 	const unsigned char *p = bits + v * rowBytes + h * 4;
@@ -353,6 +380,27 @@ int main(void)
 	CHECK(r == 255 && g == 255 && b == 255);
 	DisposeGWorld(world);
 	free(pictBits);
+	CHECK(CloseComponent(importer) == noErr);
+
+	// the depth of a picture is that of its deepest pixel map: 16 for a 16-bit one, 32 for one of shapes
+	char pict16[512];
+	snprintf(pict16, sizeof(pict16), "%s/deep16.pct", g_dir);
+	write_pict16(pict16);
+	spec_of(pict16, &spec);
+	CHECK(GetGraphicsImporterForFile(&spec, &importer) == noErr && importer);
+	CHECK(GraphicsImportGetImageDescription(importer, &description) == noErr && description);
+	if (description) {
+		CHECK((**description).cType == 'PICT' && (**description).depth == 16);
+		DisposeHandle((Handle) description);
+	}
+	CHECK(CloseComponent(importer) == noErr);
+	spec_of(pict, &spec);
+	CHECK(GetGraphicsImporterForFile(&spec, &importer) == noErr && importer);
+	CHECK(GraphicsImportGetImageDescription(importer, &description) == noErr && description);
+	if (description) {
+		CHECK((**description).depth == 32);
+		DisposeHandle((Handle) description);
+	}
 	CHECK(CloseComponent(importer) == noErr);
 
 	// what is not an image, and what is not there
