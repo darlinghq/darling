@@ -14,6 +14,10 @@ extern NSString *WebActionElementKey;
 extern NSString *WebActionModifierFlagsKey;
 extern NSString *WebActionOriginalURLKey;
 
+@interface WebView : NSView
+- (instancetype)initWithFrame:(NSRect)frameRect frameName:(NSString *)frameName groupName:(NSString *)groupName;
+@end
+
 @interface WebHTMLView : NSObject
 @end
 

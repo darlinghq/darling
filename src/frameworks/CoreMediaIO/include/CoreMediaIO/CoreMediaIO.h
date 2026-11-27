@@ -22,6 +22,7 @@
 #define _CoreMediaIO_H_
 
 #import <Foundation/Foundation.h>
+#include <CoreMediaIO/CMIOHardware.h>
 
 
 void* CMIOAddAtExitListener(void);
@@ -103,14 +104,9 @@ void* CMIOMetadataCopyCommonAsDictionary(void);
 void* CMIOObjectAddPropertyListener(void);
 void* CMIOObjectAddPropertyListenerBlock(void);
 void* CMIOObjectCreate(void);
-void* CMIOObjectGetPropertyData(void);
-void* CMIOObjectGetPropertyDataSize(void);
-void* CMIOObjectHasProperty(void);
-void* CMIOObjectIsPropertySettable(void);
 void* CMIOObjectPropertiesChanged(void);
 void* CMIOObjectRemovePropertyListener(void);
 void* CMIOObjectRemovePropertyListenerBlock(void);
-void* CMIOObjectSetPropertyData(void);
 void* CMIOObjectShow(void);
 void* CMIOObjectsPublishedAndDied(void);
 void* CMIOOutputCoordinatorCheckOutputTimebaseRate(void);
