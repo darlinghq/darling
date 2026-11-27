@@ -524,6 +524,7 @@ AGL_EXPORT GLboolean aglSetWindowRef(AGLContext ctx, WindowRef window)
 	ctx->surfaceWindow = wid;
 	ctx->surface = surface;
 	sizeSurface(ctx);
+	CGSOrderSurface(CGSMainConnectionID(), wid, surface, 1, 0);
 	return GL_TRUE;
 }
 
