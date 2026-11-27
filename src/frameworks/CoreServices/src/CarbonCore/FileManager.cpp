@@ -431,9 +431,20 @@ static std::string extractXDGValue(const char* home, const std::string& line)
 	return std::string();
 }
 
-// TODO: Test this function!
+static OSErr fsSpecError(int err)
+{
+	switch (err)
+	{
+		case ENOENT: return fnfErr;
+		case EACCES: case EPERM: return permErr;
+		case EROFS: return wPrErr;
+		case EEXIST: return dupFNErr;
+		default: return makeOSStatus(err);
+	}
+}
 
-static OSStatus sh23LookupFolder(
+// Makes the FSRef of a folder path, creating the folder when asked and it is missing.
+static OSStatus folderRefAtPath(
     const char* path,Boolean createFolder,FSRef* location)
 {
     if (!path || !*path || !location)
@@ -445,13 +456,13 @@ static OSStatus sh23LookupFolder(
         int error=errno;
 
         if (!createFolder || error!=ENOENT)
-            return makeOSStatus(error);
+            return fsSpecError(error);
 
         if (mkdir(path,0777)!=0 && errno!=EEXIST)
-            return makeOSStatus(errno);
+            return fsSpecError(errno);
 
         if (stat(path,&st)!=0)
-            return makeOSStatus(errno);
+            return fsSpecError(errno);
     }
 
     if (!S_ISDIR(st.st_mode))
@@ -483,7 +494,7 @@ OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, FSR
 		if (!tmpdir)
 			tmpdir = "/tmp";
 		
-		return sh23LookupFolder(tmpdir,createFolder,location);
+		return folderRefAtPath(tmpdir,createFolder,location);
 	}
 	else if (folderType == kDesktopFolderType || folderType == kSystemDesktopFolderType)
 	{
@@ -492,8 +503,9 @@ OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, FSR
 		std::string line, desktop;
 		const char* home = getenv("HOME");
 		
-		if (!home || !*home) return fnfErr;
-desktop = home;
+		if (!home || !*home)
+			return fnfErr;
+		desktop = home;
 		desktop += "/Desktop";
 	
 		if (cfg.is_open())
@@ -511,7 +523,7 @@ desktop = home;
 			}
 		}
 		
-		return sh23LookupFolder(desktop.c_str(),createFolder,location);
+		return folderRefAtPath(desktop.c_str(),createFolder,location);
 	}
 	else
 		return unimpErr;
@@ -1801,18 +1813,6 @@ extern "C" OSStatus FSMoveObjectToTrashSync(const FSRef* source, FSRef* target, 
 #if !__LP64__
 // FSSpec: the 32-bit File Manager's name for an item, the volume, the ID of the parent directory
 // and the name of the item. The name is the item's name in the file system, not an HFS name.
-
-static OSErr fsSpecError(int err)
-{
-	switch (err)
-	{
-		case ENOENT: return fnfErr;
-		case EACCES: case EPERM: return permErr;
-		case EROFS: return wPrErr;
-		case EEXIST: return dupFNErr;
-		default: return makeOSStatus(err);
-	}
-}
 
 static std::string fsSpecDirectory(SInt16 vRefNum, SInt32 dirID, bool* ok)
 {
