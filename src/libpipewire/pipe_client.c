@@ -159,16 +159,10 @@ int darling_pw_can_connect(void)
 	loop = pw_thread_loop_new("darling-pipewire-probe", NULL);
 	if (!loop)
 		return 0;
-	if (pw_thread_loop_start(loop) < 0)
-	{
-		pw_thread_loop_destroy(loop);
-		return 0;
-	}
 
 	context = pw_context_new(pw_thread_loop_get_loop(loop), NULL, 0);
 	if (!context)
 	{
-		pw_thread_loop_stop(loop);
 		pw_thread_loop_destroy(loop);
 		return 0;
 	}
@@ -176,7 +170,6 @@ int darling_pw_can_connect(void)
 	if (!core)
 	{
 		pw_context_destroy(context);
-		pw_thread_loop_stop(loop);
 		pw_thread_loop_destroy(loop);
 		return 0;
 	}
@@ -186,17 +179,27 @@ int darling_pw_can_connect(void)
 	probe.connected = 0;
 	pw_core_add_listener(core, &listener, &probe_events, &probe);
 
+	/* The loop thread starts only after everything is set up, and is stopped again before
+	 * anything is torn down, so no libpipewire object is touched from two threads. */
 	pw_thread_loop_lock(loop);
+	if (pw_thread_loop_start(loop) < 0)
+	{
+		pw_thread_loop_unlock(loop);
+		pw_core_disconnect(core);
+		pw_context_destroy(context);
+		pw_thread_loop_destroy(loop);
+		return 0;
+	}
 	pw_core_sync(core, PW_ID_CORE, 1);
 	for (i = 0; i < 3 && !probe.done; i++)
 		pw_thread_loop_timed_wait(loop, 1);
 	connected = probe.connected;
-	spa_hook_remove(&listener);
 	pw_thread_loop_unlock(loop);
+	pw_thread_loop_stop(loop);
 
+	spa_hook_remove(&listener);
 	pw_core_disconnect(core);
 	pw_context_destroy(context);
-	pw_thread_loop_stop(loop);
 	pw_thread_loop_destroy(loop);
 	return connected;
 }
@@ -277,8 +280,6 @@ int darling_pw_enumerate_video_sources(struct darling_pw_video_source* out, uint
 	loop = pw_thread_loop_new("darling-pipewire-sources", NULL);
 	if (!loop)
 		return -ENOMEM;
-	if (pw_thread_loop_start(loop) < 0)
-		goto fail_loop;
 	context = pw_context_new(pw_thread_loop_get_loop(loop), NULL, 0);
 	if (!context)
 		goto fail_thread;
@@ -297,27 +298,34 @@ int darling_pw_enumerate_video_sources(struct darling_pw_video_source* out, uint
 	pw_registry_add_listener(registry, &registry_listener, &source_registry_events, &probe);
 
 	pw_thread_loop_lock(loop);
+	if (pw_thread_loop_start(loop) < 0)
+	{
+		pw_thread_loop_unlock(loop);
+		result = -ENOMEM;
+		goto fail_registry;
+	}
 	pw_core_sync(core, PW_ID_CORE, 1);
 	for (i = 0; i < 3 && !probe.done; i++)
 		pw_thread_loop_timed_wait(loop, 1);
+	pw_thread_loop_unlock(loop);
+	pw_thread_loop_stop(loop);
+	result = (int) probe.count;
+
+fail_registry:
 	spa_hook_remove(&registry_listener);
 	spa_hook_remove(&core_listener);
-	pw_thread_loop_unlock(loop);
 
 	/* Destroy the local proxy; newer PipeWire versions also expose a remote
 	 * registry.destroy method, but that is not what this cleanup needs. */
 	pw_proxy_destroy((struct pw_proxy*) registry);
 	pw_core_disconnect(core);
-	result = (int) probe.count;
+	goto fail_context;
 
 fail_core:
-	if (!registry)
-		pw_core_disconnect(core);
+	pw_core_disconnect(core);
 fail_context:
 	pw_context_destroy(context);
 fail_thread:
-	pw_thread_loop_stop(loop);
-fail_loop:
 	pw_thread_loop_destroy(loop);
 	return result;
 }
@@ -604,8 +612,6 @@ int darling_pw_stream_create(const struct darling_pw_stream_config* config,
 	stream->loop = pw_thread_loop_new(config->name ? config->name : "darling-pipewire", NULL);
 	if (!stream->loop)
 		goto fail;
-	if (pw_thread_loop_start(stream->loop) < 0)
-		goto fail;
 
 	stream->context = pw_context_new(pw_thread_loop_get_loop(stream->loop), NULL, 0);
 	if (!stream->context)
@@ -673,6 +679,10 @@ int darling_pw_stream_create(const struct darling_pw_stream_config* config,
 		config->capture ? PW_DIRECTION_INPUT : PW_DIRECTION_OUTPUT,
 		target_id ? target_id : PW_ID_ANY,
 		(enum pw_stream_flags) flags, params, n_params) < 0)
+		goto fail;
+
+	/* Started last: everything above ran before the loop thread existed. */
+	if (pw_thread_loop_start(stream->loop) < 0)
 		goto fail;
 
 	*out = stream;
