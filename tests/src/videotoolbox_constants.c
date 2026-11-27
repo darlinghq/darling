@@ -77,6 +77,16 @@ int main(void)
 	CHECK(kVTCompressionPropertyKey_MoreFramesAfterEnd, "MoreFramesAfterEnd");
 	CHECK(kVTCompressionPropertyKey_MoreFramesBeforeStart, "MoreFramesBeforeStart");
 	CHECK(kVTCompressionPropertyKey_MaxH264SliceBytes, "MaxH264SliceBytes");
+	CHECK(kVTCompressionPropertyKey_ConstantBitRate, "ConstantBitRate");
+	CHECK(kVTCompressionPropertyKey_SpatialAdaptiveQPLevel, "SpatialAdaptiveQPLevel");
+	CHECK(kVTCompressionPropertyKey_ContentLightLevelInfo, "ContentLightLevelInfo");
+
+	if (kVTQPModulationLevel_Default == -1 && kVTQPModulationLevel_Disable == 0) {
+		printf("PASS: spatial QP modulation levels\n");
+	} else {
+		printf("FAIL: spatial QP modulation levels\n");
+		failures++;
+	}
 
 	CHECK(kVTRotation_0, "Rotation0");
 	CHECK(kVTRotation_180, "Rotation180");
