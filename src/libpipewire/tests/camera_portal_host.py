@@ -5,6 +5,8 @@
 # usage: python3 src/libpipewire/tests/camera_portal_host.py [REPO_ROOT]
 
 import os
+import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -12,6 +14,18 @@ import tempfile
 
 root = sys.argv[1] if len(sys.argv) > 1 else os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+
+# The portal fd from OpenPipeWireRemote is only useful after AccessCamera has
+# been granted. Check the AVFoundation engine's documented call ordering even
+# when the D-Bus probe is skipped on a host without the portal tools.
+backend = pathlib.Path(root) / 'src/frameworks/AVFoundation/src/camera/DarlingCameraBackend.m'
+backend_text = backend.read_text(encoding='utf-8') if backend.is_file() else ''
+start = backend_text.find('- (void)start')
+ordering = backend_text[start:start + 400] if start >= 0 else ''
+if re.search(r'ensureCameraAccess\(\)', ordering) is None or \
+        re.search(r'DarlingCameraBackendOpenRemote\(', ordering) is None or \
+        ordering.index('ensureCameraAccess()') > ordering.index('DarlingCameraBackendOpenRemote('):
+    sys.exit('FAIL: the camera engine must request AccessCamera before OpenPipeWireRemote')
 
 for tool in ("cc", "pkg-config", "dbus-daemon"):
     if shutil.which(tool) is None:

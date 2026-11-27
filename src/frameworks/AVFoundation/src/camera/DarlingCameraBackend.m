@@ -49,18 +49,45 @@ BOOL DarlingCameraBackendCameraPresent(void)
 #endif
 }
 
-int DarlingCameraBackendRequestAccess(void)
+static int requestCameraAccessOnce(void)
 {
 #if defined(HAVE_PIPEWIRE) && HAVE_PIPEWIRE
+	static atomic_int accessState = 0; /* 0 unknown, 1 granted, -1 denied */
 	struct darling_camera_portal_api api;
+	int result = atomic_load(&accessState);
+	int cached = result;
+
+	if (cached == 1)
+		return DARLING_CAMERA_RESULT_OK;
+	if (cached == -1)
+		return DARLING_CAMERA_RESULT_DENIED;
 
 	if (!darling_pipewire_available())
 		return DARLING_CAMERA_RESULT_NOT_AVAILABLE;
 	api = cameraPortalAPI(15000);
-	return darling_camera_portal_request_access(&api);
+	result = darling_camera_portal_request_access(&api);
+	if (result == DARLING_CAMERA_RESULT_OK)
+		atomic_store(&accessState, 1);
+	else if (result == DARLING_CAMERA_RESULT_DENIED)
+		atomic_store(&accessState, -1);
+	return result;
 #else
 	return DARLING_CAMERA_RESULT_NOT_AVAILABLE;
 #endif
+}
+
+int DarlingCameraBackendRequestAccess(void)
+{
+	return requestCameraAccessOnce();
+}
+
+/* Starting a capture session is itself a request to use the camera. The portal
+ * requires AccessCamera before OpenPipeWireRemote; explicit
+ * requestAccessForMediaType: is still honored, but must not be a prerequisite
+ * for a session that an app starts without asking first. */
+static int ensureCameraAccess(void)
+{
+	return requestCameraAccessOnce();
 }
 
 int DarlingCameraBackendOpenRemote(int *fdOut)
@@ -455,6 +482,8 @@ static BOOL DarlingCameraBufferHasCompleteFrame(const struct darling_pw_buffer *
 	struct darling_pw_stream_events events;
 	int result;
 
+	if (ensureCameraAccess() != DARLING_CAMERA_RESULT_OK)
+		return;
 	if (DarlingCameraBackendOpenRemote(&m_remoteFd) != DARLING_CAMERA_RESULT_OK)
 		return;
 
@@ -483,7 +512,8 @@ static BOOL DarlingCameraBufferHasCompleteFrame(const struct darling_pw_buffer *
 	if (result != 0)
 		return;
 
-	if (darling_pw_stream_wait(m_stream, 2000) < 0)
+	if (darling_pw_stream_wait(m_stream, 2000) < 0
+		|| darling_pw_stream_set_active(m_stream, 1) < 0)
 	{
 		[self stop];
 		return;
