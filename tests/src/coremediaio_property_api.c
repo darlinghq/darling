@@ -32,13 +32,13 @@ int main(void)
 	CHECK(!CMIOObjectHasProperty(0, &allow));
 	CHECK(!CMIOObjectHasProperty(kCMIOObjectSystemObject, NULL));
 	CHECK(CMIOObjectIsPropertySettable(kCMIOObjectSystemObject, &allow, &settable) == noErr);
+	CHECK(settable);
 	CHECK(CMIOObjectIsPropertySettable(kCMIOObjectSystemObject, &allow, NULL)
 	      == kCMIOHardwareIllegalOperationError);
 	CHECK(CMIOObjectIsPropertySettable(kCMIOObjectSystemObject, NULL, &settable)
 	      == kCMIOHardwareUnknownPropertyError);
 	CHECK(CMIOObjectGetPropertyDataSize(kCMIOObjectSystemObject, &allow, 0, NULL, NULL)
 	      == kCMIOHardwareIllegalOperationError);
-	CHECK(settable);
 	CHECK(CMIOObjectIsPropertySettable(0, &allow, &settable) == kCMIOHardwareBadObjectError);
 	CHECK(CMIOObjectIsPropertySettable(kCMIOObjectSystemObject, &unknown, &settable)
 	      == kCMIOHardwareUnknownPropertyError);
