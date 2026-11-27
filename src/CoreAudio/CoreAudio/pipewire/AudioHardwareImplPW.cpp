@@ -447,6 +447,14 @@ darling_pw_volume* AudioHardwareImplPW::volumeClient()
 	darling_pw_volume* client = nullptr;
 	if (darling_pw_volume_open(m_input ? 0 : 1, &events, this, &client) != 0)
 		return nullptr;
+	// What the listeners are measured against: the values the server has now.
+	float linear;
+	int muted;
+	if (darling_pw_volume_get(client, &linear, &muted) == 0)
+	{
+		m_volume.store(std::cbrt(std::min(std::max(linear, 0.f), 1.f)), std::memory_order_relaxed);
+		m_mute.store(muted ? 1 : 0, std::memory_order_relaxed);
+	}
 	m_volumeClient.store(client);
 	return client;
 }
