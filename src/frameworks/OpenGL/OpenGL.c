@@ -1901,6 +1901,56 @@ CGLError CGLSetFullScreen(CGLContextObj ctx) {
     return setFullScreen(ctx, 1, 0);
 }
 
+// A pixel format that asks for no alpha channel gets, on Wayland, an EGL config without one: the buffers of such a
+// window are then XRGB, which the compositor shows opaque, where ARGB buffers with an alpha below one are blended
+// with what is behind the window (as a compositor that takes the alpha as premultiplied does). Other platforms
+// ignore the destination alpha of a window, and keep the registered config.
+static int attributes_want_alpha(const CGLPixelFormatAttribute *attrs) {
+    for (int i = 0; attrs[i] != 0; i++) {
+        if (attrs[i] == kCGLPFAAlphaSize)
+            return attrs[i + 1] > 0;
+        if (attribute_has_argument(attrs[i]))
+            i++;
+    }
+    return 0;
+}
+
+static EGLBoolean choose_opaque_config(EGLDisplay dpy, EGLConfig *out_config) {
+    EGLint const attrs[] = {
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_DEPTH_SIZE, 16,
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+        EGL_NONE
+    };
+    EGLint count = 0;
+    if (!p_eglChooseConfig(dpy, attrs, NULL, 0, &count) || count <= 0)
+        return EGL_FALSE;
+    EGLConfig *configs = calloc((size_t)count, sizeof(*configs));
+    if (!configs)
+        return EGL_FALSE;
+    EGLBoolean found = EGL_FALSE;
+    if (p_eglChooseConfig(dpy, attrs, configs, count, &count)) {
+        // one that also makes pbuffers (the surface of a context before it has a drawable) is better than a window-only one
+        for (int need_pbuffer = 1; need_pbuffer >= 0 && !found; need_pbuffer--) {
+            for (EGLint i = 0; i < count; i++) {
+                EGLint alpha = 1, surface_types = 0;
+                p_eglGetConfigAttrib(dpy, configs[i], EGL_ALPHA_SIZE, &alpha);
+                p_eglGetConfigAttrib(dpy, configs[i], EGL_SURFACE_TYPE, &surface_types);
+                if (alpha == 0 && (!need_pbuffer || (surface_types & EGL_PBUFFER_BIT))) {
+                    *out_config = configs[i];
+                    found = EGL_TRUE;
+                    break;
+                }
+            }
+        }
+    }
+    free(configs);
+    return found;
+}
+
 CGLError CGLChoosePixelFormat(
     const CGLPixelFormatAttribute *attrs,
     CGLPixelFormatObj *result,
@@ -1925,7 +1975,13 @@ CGLError CGLChoosePixelFormat(
     format->egl_config = config;
     format->swap_interval = default_swap_interval;
     format->paced = default_paced;
+    EGLenum platform_of_format = registered_platform;
     pthread_mutex_unlock(&registration_lock);
+    if (platform_of_format == EGL_PLATFORM_WAYLAND_KHR && format->egl_display != EGL_NO_DISPLAY && !attributes_want_alpha(attrs)) {
+        EGLConfig opaque;
+        if (choose_opaque_config(format->egl_display, &opaque))
+            format->egl_config = opaque;
+    }
     format->retain_count = 1;
     format->attributes = malloc(sizeof(CGLPixelFormatAttribute) * (count + 1));
     if (!format->attributes) {

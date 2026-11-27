@@ -9,6 +9,7 @@
 #include <AGL/agl.h>
 #include <OpenGL/gl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #ifdef __LP64__
@@ -237,6 +238,13 @@ int main(void)
 	if (shared)
 		CHECK(aglDestroyContext(shared));
 
+	// On Wayland a format with no alpha size gets a drawable with no alpha channel (shown opaque by every compositor)
+	if (getenv("WAYLAND_DISPLAY") != NULL && getenv("DISPLAY") == NULL) {
+		GLint alphaBits = -1;
+		CHECK(aglSetCurrentContext(ctx));
+		glGetIntegerv(GL_ALPHA_BITS, &alphaBits);
+		CHECK(alphaBits == 0);
+	}
 	draw(ctx, window, width, height);
 	options(ctx);
 #ifndef __LP64__
