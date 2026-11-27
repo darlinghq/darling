@@ -24,6 +24,7 @@
 #include <CarbonCore/MacErrors.h>
 #if !__LP64__
 #include <CarbonCore/Files.h>
+#include <CarbonCore/Resources.h>
 #endif
 #include "qt_movie_internal.h"
 #include "qt_mov_probe.h"
@@ -1341,11 +1342,22 @@ void* CloneRgn(void)
     return NULL;
 }
 
+#if !__LP64__
+OSErr CloseMovieFile(short resRefNum)
+{
+    /*
+     * CarbonCore's FSCloseFork accepts both data-fork
+     * references and Resource Manager file references.
+     */
+    return movies_error = FSCloseFork(resRefNum);
+}
+#else
 void* CloseMovieFile(void)
 {
     if (verbose) puts("STUB: CloseMovieFile called");
     return NULL;
 }
+#endif
 
 void* CloseMovieStorage(void)
 {
@@ -14105,11 +14117,63 @@ void* OpenADataHandler2(void)
     return NULL;
 }
 
+#if !__LP64__
+OSErr OpenMovieFile(const FSSpec *fileSpec,
+                    short *resRefNum, SInt8 permission)
+{
+    FSRef ref;
+    HFSUniStr255 resourceName;
+    ResFileRefNum resource;
+    FSIORefNum data;
+    OSErr err;
+
+    if (!movies_entered)
+        return movies_error = movieToolboxUninitialized;
+    if (!fileSpec || !resRefNum)
+        return movies_error = paramErr;
+
+    /* This initial implementation opens movies read-only. */
+    if (permission != fsRdPerm)
+        return movies_error = unimpErr;
+
+    err = FSpMakeFSRef(fileSpec, &ref);
+    if (err != noErr)
+        return movies_error = err;
+
+    err = FSGetResourceForkName(&resourceName);
+    if (err != noErr)
+        return movies_error = err;
+
+    /*
+     * The Movie Toolbox returns the resource-file reference
+     * for resource-fork movies, or the data-fork reference
+     * for single-fork movies.
+     */
+    err = FSOpenResourceFile(&ref, resourceName.length,
+                             resourceName.unicode,
+                             permission, &resource);
+    if (err == noErr) {
+        *resRefNum = resource;
+        return movies_error = noErr;
+    }
+
+    /* CarbonCore reports eofErr for a missing resource fork. */
+    if (err != eofErr)
+        return movies_error = err;
+
+    err = FSOpenFork(&ref, 0, NULL, permission, &data);
+    if (err == noErr)
+        *resRefNum = data;
+
+    return movies_error = err;
+}
+#else
 void* OpenMovieFile(void)
 {
     if (verbose) puts("STUB: OpenMovieFile called");
     return NULL;
 }
+#endif
 
 void* OpenMovieFileUnicode(void)
 {
