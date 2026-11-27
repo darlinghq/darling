@@ -105,4 +105,19 @@ VT_EXPORT CFStringRef const kVTCompressionPropertyKey_ProjectionKind;
 VT_EXPORT CFStringRef const kVTHDRMetadataInsertionMode_None;
 VT_EXPORT CFStringRef const kVTProjectionKind_Equirectangular;
 
+// CFNumber, bits per second. Valid only for encoders that support constant bit rate.
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_ConstantBitRate;
+
+// CFNumber, spatial QP adaptation level.
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_SpatialAdaptiveQPLevel;
+
+enum
+{
+	kVTQPModulationLevel_Default = -1,
+	kVTQPModulationLevel_Disable = 0,
+};
+
+// CFData, the content light level information from the format description.
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_ContentLightLevelInfo;
+
 #endif

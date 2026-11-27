@@ -39,6 +39,7 @@ SCStreamFrameInfo const SCStreamFrameInfoContentRect = @"ContentRect";
 SCStreamFrameInfo const SCStreamFrameInfoBoundingRect = @"BoundingRect";
 SCStreamFrameInfo const SCStreamFrameInfoScreenRect = @"ScreenRect";
 SCStreamFrameInfo const SCStreamFrameInfoDirtyRects = @"DirtyRects";
+SCStreamFrameInfo const SCStreamFrameInfoPresenterOverlayContentRect = @"PresenterOverlayContentRect";
 
 @interface SCRunningApplication ()
 @property (readwrite, copy) NSString *bundleIdentifier;
