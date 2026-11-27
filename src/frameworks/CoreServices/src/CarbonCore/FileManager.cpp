@@ -1838,12 +1838,36 @@ static std::string fsSpecDirectory(SInt16 vRefNum, SInt32 dirID, bool* ok)
 	return path;
 }
 
+static bool fsSpecIsRootName(ConstStr255Param name)
+{
+	const size_t length = strlen(kBootVolumeName);
+	return name[0] == length && memcmp(name + 1, kBootVolumeName, length) == 0;
+}
+
+// The root directory of a volume is described by the volume's name, with fsRtParID as its parent.
+static void fillRootFSSpec(FSSpec* spec)
+{
+	const size_t length = strlen(kBootVolumeName);
+
+	memset(spec, 0, sizeof(*spec));
+	spec->vRefNum = kBootVolumeRefNum;
+	spec->parID = fsRtParID;
+	spec->name[0] = (unsigned char) length;
+	memcpy(spec->name + 1, kBootVolumeName, length);
+}
+
 static bool fsSpecPath(const FSSpec* spec, std::string& path)
 {
 	bool ok;
 
 	if (!spec || spec->name[0] == 0 || spec->name[0] > sizeof(spec->name) - 1)
 		return false;
+	if (spec->parID == fsRtParID)
+	{
+		// The volume's name under fsRtParID names the root directory of the volume
+		path = "/";
+		return fsSpecIsRootName(spec->name);
+	}
 	path = fsSpecDirectory(spec->vRefNum, spec->parID, &ok);
 	if (!ok)
 		return false;
@@ -1864,12 +1888,7 @@ static OSErr fsSpecForPath(const std::string& path, FSSpec* spec)
 	memset(spec, 0, sizeof(*spec));
 	if (path == "/")
 	{
-		// The root directory of a volume is described by the volume's name, with fsRtParID as its parent.
-		const size_t length = strlen(kBootVolumeName);
-		spec->vRefNum = kBootVolumeRefNum;
-		spec->parID = fsRtParID;
-		spec->name[0] = (unsigned char) length;
-		memcpy(spec->name + 1, kBootVolumeName, length);
+		fillRootFSSpec(spec);
 		return noErr;
 	}
 	if (leaf.empty() || leaf.size() > sizeof(spec->name) - 1)
@@ -1894,6 +1913,16 @@ OSErr FSMakeFSSpec(FSVolumeRefNum vRefNum, SInt32 dirID, ConstStr255Param fileNa
 	if (!spec)
 		return paramErr;
 	memset(spec, 0, sizeof(*spec));
+	if (dirID == fsRtParID)
+	{
+		// The parent of the root directory is no directory: the only item it holds, by the volume's
+		// name, is the root directory. Any other name is a volume that does not exist (the same error
+		// PBMakeFSRefSync gives for this ID).
+		if (!fileName || !fsSpecIsRootName(fileName))
+			return nsvErr;
+		fillRootFSSpec(spec);
+		return noErr;
+	}
 	dir = fsSpecDirectory(vRefNum, dirID, &ok);
 	// QUIRK: a directory ID that names no directory gives fnfErr, not dirNFErr. Not documented. Evidence:
 	// black-box observation on macOS 10.14.4 i386 (tier 2).
@@ -1921,6 +1950,12 @@ OSErr FSMakeFSSpec(FSVolumeRefNum vRefNum, SInt32 dirID, ConstStr255Param fileNa
 	std::string parent = (slash == std::string::npos || slash == 0) ? std::string("/") : path.substr(0, slash);
 	std::string leaf = path == "/" ? std::string() : path.substr(slash + 1);
 
+	if (path == "/")
+	{
+		// The root directory itself (fsRtDirID with an empty name)
+		fillRootFSSpec(spec);
+		return noErr;
+	}
 	if (::stat(parent.c_str(), &st) != 0 || !S_ISDIR(st.st_mode))
 		return dirNFErr;
 	if (leaf.size() > sizeof(spec->name) - 1)
