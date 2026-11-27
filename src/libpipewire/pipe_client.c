@@ -577,7 +577,6 @@ int darling_pw_stream_create(const struct darling_pw_stream_config* config,
 	const struct spa_pod* params[DARLING_VIDEO_PARAM_COUNT];
 	size_t n_params = 0, i;
 	uint32_t target_id;
-	const char* media_class;
 	const char* name;
 	int flags = PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS;
 
@@ -629,12 +628,16 @@ int darling_pw_stream_create(const struct darling_pw_stream_config* config,
 	remote_fd = -1;
 
 	name = config->name ? config->name : "Darling";
-	media_class = config->media == DARLING_PW_MEDIA_AUDIO
-		? (config->capture ? "Audio/Source" : "Audio/Sink") : "Video/Source";
+	/* The stream is a client of the graph, not a device: PipeWire derives its
+	 * media class (Stream/Output/Audio, Stream/Input/Video, ...) from the type,
+	 * category and direction below. Declaring a device class such as Audio/Sink
+	 * here would make the session manager treat the node as something to link
+	 * other streams to, and nothing would ever be connected to it. */
 	props = pw_properties_new(
 		PW_KEY_NODE_NAME, name,
 		PW_KEY_MEDIA_NAME, name,
-		PW_KEY_MEDIA_CLASS, media_class,
+		PW_KEY_MEDIA_TYPE, config->media == DARLING_PW_MEDIA_AUDIO ? "Audio" : "Video",
+		PW_KEY_MEDIA_CATEGORY, config->capture ? "Capture" : "Playback",
 		PW_KEY_MEDIA_ROLE, config->role ? config->role : (config->capture ? "capture" : "playback"),
 		NULL);
 	if (!props)
