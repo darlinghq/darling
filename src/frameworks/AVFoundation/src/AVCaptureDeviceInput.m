@@ -18,9 +18,29 @@
 */
 
 #import <AVFoundation/AVCaptureDeviceInput.h>
+#import <AVFoundation/AVError.h>
+#import "camera/DarlingCameraBackend.h"
+#import <objc/runtime.h>
 #import <darling-stub-forwarding.h>
 
 @implementation AVCaptureDeviceInput
+
++ (instancetype)deviceInputWithDevice:(AVCaptureDevice *)device error:(NSError **)error
+{
+	if (!device)
+	{
+		if (error)
+			// AVErrorDeviceNotConnected, from the public AVError enum.
+			*error = [NSError errorWithDomain: AVFoundationErrorDomain code: 11800 userInfo: nil];
+		return nil;
+	}
+	return [AVCaptureDeviceInput darling_inputWithDevice: device];
+}
+
+- (AVCaptureDevice *)device
+{
+	return objc_getAssociatedObject(self, &kDarlingCameraDeviceInputDeviceKey);
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);

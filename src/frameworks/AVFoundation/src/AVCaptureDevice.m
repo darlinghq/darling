@@ -18,12 +18,26 @@
 */
 
 #import <AVFoundation/AVCaptureDevice.h>
+#import "camera/DarlingCameraBackend.h"
 #include <CoreAudio/AudioHardware.h>
 #include <dispatch/dispatch.h>
 #include <dlfcn.h>
+#import <objc/runtime.h>
 #import <darling-stub-forwarding.h>
+#include <stdatomic.h>
 
 typedef OSStatus (*GetPropertyDataFunc)(AudioObjectID, const AudioObjectPropertyAddress*, UInt32, const void*, UInt32*, void*);
+
+static atomic_int g_videoAuthorizationStatus = AVAuthorizationStatusNotDetermined;
+static dispatch_queue_t videoAuthorizationQueue(void)
+{
+	static dispatch_queue_t queue;
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{
+		queue = dispatch_queue_create("org.darlinghq.avfoundation.camera.authorization", DISPATCH_QUEUE_SERIAL);
+	});
+	return queue;
+}
 
 // CoreAudio is only loaded if a client asks about the microphone, as it brings
 // in the audio backend, which most AVFoundation clients have no use for.
@@ -55,17 +69,24 @@ static BOOL hasDefaultInputDevice(void)
 
 + (NSArray*)devices
 {
-	return [NSArray array];
+	return [AVCaptureDevice darling_cameraDevices];
 }
 
 + (NSArray*)devicesWithMediaType:(AVMediaType)mediaType
 {
-	return [self devices];
+	if ([mediaType isEqualToString: AVMediaTypeAudio])
+	{
+		/* Audio devices are enumerated by CoreAudio, not by the camera portal. */
+		return [NSArray array];
+	}
+	if ([mediaType isEqualToString: AVMediaTypeVideo])
+		return [AVCaptureDevice darling_cameraDevices];
+	return [NSArray array];
 }
 
 + (AVCaptureDevice*)defaultDeviceWithMediaType:(AVMediaType)mediaType
 {
-	return nil;
+	return [mediaType isEqualToString: AVMediaTypeVideo] ? [AVCaptureDevice darling_cameraDevice] : nil;
 }
 
 + (AVAuthorizationStatus)authorizationStatusForMediaType:(AVMediaType)mediaType
@@ -76,9 +97,14 @@ static BOOL hasDefaultInputDevice(void)
 			format: @"Media type must be AVMediaTypeVideo or AVMediaTypeAudio, not %@", mediaType];
 	}
 
-	// There is no consent database to ask, so only what can't work is refused:
-	// nothing can capture video, and the user has no setting that would change that.
-	if ([mediaType isEqualToString: AVMediaTypeVideo] || !hasDefaultInputDevice())
+	if ([mediaType isEqualToString: AVMediaTypeVideo])
+	{
+		if (!DarlingCameraBackendCameraPresent())
+			return AVAuthorizationStatusRestricted;
+		return (AVAuthorizationStatus) atomic_load(&g_videoAuthorizationStatus);
+	}
+
+	if (!hasDefaultInputDevice())
 		return AVAuthorizationStatusRestricted;
 
 	return AVAuthorizationStatusAuthorized;
@@ -86,15 +112,100 @@ static BOOL hasDefaultInputDevice(void)
 
 + (void)requestAccessForMediaType:(AVMediaType)mediaType completionHandler:(void (^)(BOOL granted))handler
 {
-	const BOOL granted = [self authorizationStatusForMediaType: mediaType] == AVAuthorizationStatusAuthorized;
+	if (![mediaType isEqualToString: AVMediaTypeAudio] && ![mediaType isEqualToString: AVMediaTypeVideo])
+	{
+		[NSException raise: NSInvalidArgumentException
+			format: @"Media type must be AVMediaTypeVideo or AVMediaTypeAudio, not %@", mediaType];
+	}
 
-	// The handler is documented to run on an arbitrary queue, so it can't run inside this
-	// call: a caller may be holding a lock the handler takes, or waiting for it on this thread.
 	void (^copiedHandler)(BOOL) = [handler copy];
-	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-		copiedHandler(granted);
-		[copiedHandler release];
+	if (!copiedHandler)
+		return;
+
+	if ([mediaType isEqualToString: AVMediaTypeAudio])
+	{
+		const BOOL granted = [self authorizationStatusForMediaType: mediaType] == AVAuthorizationStatusAuthorized;
+		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+			copiedHandler(granted);
+			[copiedHandler release];
+		});
+		return;
+	}
+
+	dispatch_async(videoAuthorizationQueue(), ^{
+		BOOL granted = NO;
+		const AVAuthorizationStatus status = (AVAuthorizationStatus) atomic_load(&g_videoAuthorizationStatus);
+		if (status == AVAuthorizationStatusAuthorized || status == AVAuthorizationStatusDenied)
+		{
+			granted = status == AVAuthorizationStatusAuthorized;
+		}
+		else if (!DarlingCameraBackendCameraPresent())
+		{
+			atomic_store(&g_videoAuthorizationStatus, AVAuthorizationStatusRestricted);
+			granted = NO;
+		}
+		else
+		{
+			const int result = DarlingCameraBackendRequestAccess();
+			if (result == DARLING_CAMERA_RESULT_OK)
+			{
+				atomic_store(&g_videoAuthorizationStatus, AVAuthorizationStatusAuthorized);
+				granted = YES;
+			}
+			else if (result == DARLING_CAMERA_RESULT_DENIED)
+			{
+				atomic_store(&g_videoAuthorizationStatus, AVAuthorizationStatusDenied);
+				granted = NO;
+			}
+			else
+			{
+				granted = NO;
+			}
+		}
+
+		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+			copiedHandler(granted);
+			[copiedHandler release];
+		});
 	});
+}
+
+- (NSString *)uniqueID
+{
+	return objc_getAssociatedObject(self, &kDarlingCameraUniqueIDKey);
+}
+
+- (AVCaptureDeviceType)deviceType
+{
+	return objc_getAssociatedObject(self, &kDarlingCameraDeviceTypeKey);
+}
+
+- (NSString *)localizedName
+{
+	return objc_getAssociatedObject(self, &kDarlingCameraNameKey);
+}
+
+- (NSArray<AVCaptureDeviceFormat *> *)formats
+{
+	return objc_getAssociatedObject(self, &kDarlingCameraFormatsKey) ?: [NSArray array];
+}
+
+- (AVCaptureDeviceFormat *)activeFormat
+{
+	return objc_getAssociatedObject(self, &kDarlingCameraActiveFormatKey)
+		?: [[self formats] firstObject];
+}
+
+- (void)setActiveFormat:(AVCaptureDeviceFormat *)format
+{
+	if ([[self formats] containsObject: format])
+		objc_setAssociatedObject(self, &kDarlingCameraActiveFormatKey, format,
+			OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (BOOL)hasMediaType:(AVMediaType)mediaType
+{
+	return [mediaType isEqualToString: AVMediaTypeVideo];
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {

@@ -20,6 +20,8 @@
 #include <Foundation/Foundation.h>
 // As in Apple's SDK, where it comes through the capture input header.
 #import <AVFoundation/AVCaptureDevice.h>
+#import <AVFoundation/AVCaptureInput.h>
+#import <AVFoundation/AVCaptureOutput.h>
 
 typedef NSString *AVCaptureSessionPreset;
 
@@ -45,5 +47,23 @@ extern const AVCaptureSessionPreset AVCaptureSessionPresetLow;
 extern const AVCaptureSessionPreset AVCaptureSessionPresetMedium;
 
 @interface AVCaptureSession : NSObject
+
+@property(nonatomic, readonly) NSArray<AVCaptureInput *> *inputs;
+@property(nonatomic, readonly) NSArray<AVCaptureOutput *> *outputs;
+@property(nonatomic, readonly, getter=isRunning) BOOL running;
+@property(nonatomic, copy) AVCaptureSessionPreset sessionPreset;
+
+- (BOOL)canSetSessionPreset:(AVCaptureSessionPreset)preset;
+- (BOOL)canAddInput:(AVCaptureInput *)input;
+- (BOOL)canAddOutput:(AVCaptureOutput *)output;
+- (void)addInput:(AVCaptureInput *)input;
+- (void)addOutput:(AVCaptureOutput *)output;
+- (void)removeInput:(AVCaptureInput *)input;
+- (void)removeOutput:(AVCaptureOutput *)output;
+
+- (void)beginConfiguration;
+- (void)commitConfiguration;
+- (void)startRunning;
+- (void)stopRunning;
 
 @end

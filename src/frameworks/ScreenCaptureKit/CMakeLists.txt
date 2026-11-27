@@ -27,3 +27,7 @@ add_framework(ScreenCaptureKit
         objc
         Foundation
 )
+
+if (HAVE_PIPEWIRE)
+    target_link_libraries(ScreenCaptureKit PRIVATE darling_pipewire_client)
+endif ()

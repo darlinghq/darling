@@ -39,6 +39,7 @@ extern "C" {
 #define DARLING_DBUS_FUNCTIONS(X) \
 	X(connection_open_private, DBusConnection*, (const char*, DBusError*)) \
 	X(bus_register, dbus_bool_t, (DBusConnection*, DBusError*)) \
+	X(bus_get_unique_name, const char*, (DBusConnection*)) \
 	X(bus_add_match, void, (DBusConnection*, const char*, DBusError*)) \
 	X(bus_request_name, int, (DBusConnection*, const char*, unsigned int, DBusError*)) \
 	X(bus_release_name, int, (DBusConnection*, const char*, DBusError*)) \

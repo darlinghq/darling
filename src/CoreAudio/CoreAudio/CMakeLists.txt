@@ -25,6 +25,16 @@ set(coreaudio_sources
     pulse/PADispatchMainLoop.cpp
 )
 
+if (HAVE_PIPEWIRE)
+    list(APPEND coreaudio_sources
+        pipewire/AudioHardwareImplPW.cpp
+        pipewire/AudioHardwareStreamPW.cpp
+        pipewire/AudioHardwareStreamPWInput.cpp
+        pipewire/AudioHardwareStreamPWOutput.cpp
+        pipewire/PWConfig.cpp
+    )
+endif ()
+
 add_framework(CoreAudio
 	FAT
     CURRENT_VERSION
@@ -40,3 +50,7 @@ add_framework(CoreAudio
         Foundation
         pulse
 )
+
+if (HAVE_PIPEWIRE)
+    target_link_libraries(CoreAudio PRIVATE darling_pipewire_client)
+endif ()
