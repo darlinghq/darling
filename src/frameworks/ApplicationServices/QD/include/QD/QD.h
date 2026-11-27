@@ -363,6 +363,7 @@ short StringWidth(ConstStr255Param s);
 short CharWidth(CharParameter ch);
 void GetFontInfo(FontInfo *info);
 void GetFNum(ConstStr255Param name, short *familyID);
+void GetFontName(short familyID, Str255 name);
 
 /* Quartz drawing into a port (32-bit only, as on macOS) */
 OSStatus QDBeginCGContext(CGrafPtr inPort, CGContextRef *outContext);
