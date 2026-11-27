@@ -690,9 +690,14 @@ OSErr SndChannelStatus(SndChannelPtr chan, short theLength, SCStatus* theStatus)
 
 // The alert sound: Darling has no sound of the user's choice to play, so the alert is a short falling two-note beep,
 // 8-bit mono at 22050 Hz, played on a channel of its own that a thread of the call disposes of when the sound is
-// over. A system with no output device has no beep, as on macOS. SysBeep's duration is not used.
+// over. A beep that is asked for while one is still sounding is not played again (alerts do not pile up). A system
+// with no output device has no beep, as on macOS. SysBeep's duration is not used.
 void SysBeep(short duration)
 {
+	static std::atomic<bool> beeping(false);
+
+	if (beeping.exchange(true))
+		return;
 	std::thread([]
 	{
 		const unsigned rate = 22050, frames = rate * 3 / 10;
@@ -701,7 +706,10 @@ void SysBeep(short duration)
 		SndChannelPtr channel = nullptr;
 
 		if (!header)
+		{
+			beeping = false;
 			return;
+		}
 		header->samplePtr = nullptr;
 		header->length = frames;
 		header->sampleRate = rate << 16;
@@ -724,6 +732,7 @@ void SysBeep(short duration)
 				SndDisposeChannel(channel, true);
 		}
 		free(header);
+		beeping = false;
 	}).detach();
 }
 
