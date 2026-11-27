@@ -455,6 +455,11 @@ static BOOL DarlingCameraBufferHasCompleteFrame(const struct darling_pw_buffer *
 	struct darling_pw_stream_events events;
 	int result;
 
+	/* The Camera portal hands out a remote with cameras in it only to a client
+	 * that has been through AccessCamera; the call returns at once when the
+	 * user has already decided. */
+	if (DarlingCameraBackendRequestAccess() != DARLING_CAMERA_RESULT_OK)
+		return;
 	if (DarlingCameraBackendOpenRemote(&m_remoteFd) != DARLING_CAMERA_RESULT_OK)
 		return;
 
@@ -462,7 +467,7 @@ static BOOL DarlingCameraBufferHasCompleteFrame(const struct darling_pw_buffer *
 	config.media = DARLING_PW_MEDIA_VIDEO;
 	config.capture = 1;
 	config.name = "DarlingCamera";
-	config.role = "capture";
+	config.role = "Camera";
 	{
 		AVCaptureInputPort *port = [[m_connection videoPorts] firstObject];
 		AVCaptureDevice *device = associated(port, &kDarlingCameraDeviceInputDeviceKey);
