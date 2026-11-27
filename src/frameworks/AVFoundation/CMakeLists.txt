@@ -552,6 +552,14 @@ add_framework(AVFoundation
         avutil
 )
 
+# The camera and screen capture backends are internal to AVFoundation, so their C functions are not exported.
+set_source_files_properties(
+    src/camera/DarlingCameraBackend.m
+    src/camera/DarlingCameraFrame.c
+    src/screen/DarlingScreenCaptureBackend.m
+    PROPERTIES COMPILE_OPTIONS "-fvisibility=hidden"
+)
+
 if (HAVE_PIPEWIRE)
     target_link_libraries(AVFoundation PRIVATE darling_pipewire_client)
 endif ()
