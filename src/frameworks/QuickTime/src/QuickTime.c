@@ -22,7 +22,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <CarbonCore/MacErrors.h>
+#if !__LP64__
+#include <CarbonCore/Files.h>
+#include <CarbonCore/Resources.h>
+#endif
 #include "qt_movie_internal.h"
+#include "qt_mov_probe.h"
 
 static int verbose = 0;
 
@@ -31,9 +36,30 @@ static int verbose = 0;
  * of the handle_value field of its storage, so a Movie that is not in the
  * list is rejected without being dereferenced. A freed address that malloc
  * reuses for a new movie cannot be told apart from it. */
+
+#if !__LP64__
+struct TrackType {
+    OSType handler;
+};
+struct MediaType {
+    TimeScale scale;
+    SInt32 samples;
+};
+struct MovieTrackStorage {
+    struct TrackType track;
+    struct MediaType media;
+    struct TrackType *track_handle;
+    struct MediaType *media_handle;
+};
+#endif
+
 struct MovieStorage {
     struct MovieType *handle_value;
     struct MovieType value;
+#if !__LP64__
+    struct MovieTrackStorage *tracks;
+    SInt32 track_count;
+#endif
     struct MovieStorage *next;
 };
 
@@ -83,10 +109,99 @@ static Movie movie_new(TimeScale time_scale, TimeValue duration)
     return &storage->handle_value;
 }
 
+
 static void movie_free(struct MovieStorage *storage)
 {
+#if !__LP64__
+    free(storage->tracks);
+#endif
     free(storage);
 }
+
+#if !__LP64__
+/* Match handles against live objects without dereferencing
+ * an unknown caller-provided address. */
+static struct MovieTrackStorage *track_lookup(
+    const void *handle, int media)
+{
+    if (!movies_entered) {
+        movies_error=movieToolboxUninitialized;
+        return NULL;
+    }
+
+    for (struct MovieStorage *s=movie_list;s;s=s->next) {
+        for (SInt32 i=0;i<s->track_count;++i) {
+            struct MovieTrackStorage *t=&s->tracks[i];
+            const void *key=media ?
+                (const void *)&t->media_handle :
+                (const void *)&t->track_handle;
+            if (key==handle)
+                return t;
+        }
+    }
+
+    movies_error=media ? invalidMedia : invalidTrack;
+    return NULL;
+}
+
+static OSErr build_tracks(const void *data,size_t length,
+                          struct MovieTrackStorage **out,
+                          SInt32 *count)
+{
+    size_t n=0;
+    *out=NULL;
+    *count=0;
+
+    if (qt_mov_list_tracks(data,length,NULL,0,&n)!=0)
+        return badPublicMovieAtom;
+
+    if (!n)
+        return noErr;
+
+    if (n>INT32_MAX ||
+        n>SIZE_MAX/sizeof(struct MovieTrackStorage) ||
+        n>SIZE_MAX/sizeof(struct qt_mov_track_info))
+        return memFullErr;
+
+    struct qt_mov_track_info *infos=calloc(n,sizeof(*infos));
+    struct MovieTrackStorage *tracks=calloc(n,sizeof(*tracks));
+
+    if (!infos || !tracks) {
+        free(infos);
+        free(tracks);
+        return memFullErr;
+    }
+
+    size_t found=0;
+
+    if (qt_mov_list_tracks(data,length,infos,n,&found)!=0 ||
+        found!=n) {
+        free(infos);
+        free(tracks);
+        return badPublicMovieAtom;
+    }
+
+    for (size_t i=0;i<n;++i) {
+        if (!infos[i].has_media) {
+            free(infos);
+            free(tracks);
+            return unimpErr;
+        }
+
+        tracks[i].track.handler=infos[i].handler;
+        tracks[i].track_handle=&tracks[i].track;
+        tracks[i].media.scale=(TimeScale)infos[i].media_time_scale;
+        tracks[i].media.samples=(SInt32)infos[i].sample_count;
+        tracks[i].media_handle=&tracks[i].media;
+    }
+
+    free(infos);
+    *out=tracks;
+    *count=(SInt32)n;
+    return noErr;
+}
+#endif
+
 
 __attribute__((constructor))
 static void initme(void) {
@@ -1227,11 +1342,22 @@ void* CloneRgn(void)
     return NULL;
 }
 
+#if !__LP64__
+OSErr CloseMovieFile(short resRefNum)
+{
+    /*
+     * CarbonCore's FSCloseFork accepts both data-fork
+     * references and Resource Manager file references.
+     */
+    return movies_error = FSCloseFork(resRefNum);
+}
+#else
 void* CloseMovieFile(void)
 {
     if (verbose) puts("STUB: CloseMovieFile called");
     return NULL;
 }
+#endif
 
 void* CloseMovieStorage(void)
 {
@@ -4205,11 +4331,21 @@ void* GetMediaSample2(void)
     return NULL;
 }
 
+#if !__LP64__
+SInt32 GetMediaSampleCount(Media media)
+{
+    struct MovieTrackStorage *t=track_lookup(media,1);
+    if (!t) return 0;
+    movies_error=noErr;
+    return t->media.samples;
+}
+#else
 void* GetMediaSampleCount(void)
 {
     if (verbose) puts("STUB: GetMediaSampleCount called");
     return NULL;
 }
+#endif
 
 void* GetMediaSampleDescription(void)
 {
@@ -4259,11 +4395,21 @@ void* GetMediaSyncSampleCount(void)
     return NULL;
 }
 
+#if !__LP64__
+TimeScale GetMediaTimeScale(Media media)
+{
+    struct MovieTrackStorage *t=track_lookup(media,1);
+    if (!t) return 0;
+    movies_error=noErr;
+    return t->media.scale;
+}
+#else
 void* GetMediaTimeScale(void)
 {
     if (verbose) puts("STUB: GetMediaTimeScale called");
     return NULL;
 }
+#endif
 
 void* GetMediaTrack(void)
 {
@@ -4460,11 +4606,25 @@ void* GetMovieImporterForDataRef(void)
     return NULL;
 }
 
+#if !__LP64__
+Track GetMovieIndTrack(Movie movie, SInt32 index)
+{
+    struct MovieStorage *s=movie_lookup(movie);
+    if (!s) return NULL;
+    if (index<1 || index>s->track_count) {
+        movies_error=badTrackIndex;
+        return NULL;
+    }
+    movies_error=noErr;
+    return &s->tracks[index-1].track_handle;
+}
+#else
 void* GetMovieIndTrack(void)
 {
     if (verbose) puts("STUB: GetMovieIndTrack called");
     return NULL;
 }
+#endif
 
 void* GetMovieIndTrackType(void)
 {
@@ -4651,11 +4811,21 @@ void* GetMovieTrack(void)
     return NULL;
 }
 
+#if !__LP64__
+SInt32 GetMovieTrackCount(Movie movie)
+{
+    struct MovieStorage *s=movie_lookup(movie);
+    if (!s) return 0;
+    movies_error=noErr;
+    return s->track_count;
+}
+#else
 void* GetMovieTrackCount(void)
 {
     if (verbose) puts("STUB: GetMovieTrackCount called");
     return NULL;
 }
+#endif
 
 void* GetMovieUserData(void)
 {
@@ -5096,11 +5266,21 @@ void* GetTrackMatte(void)
     return NULL;
 }
 
+#if !__LP64__
+Media GetTrackMedia(Track track)
+{
+    struct MovieTrackStorage *t=track_lookup(track,0);
+    if (!t) return NULL;
+    movies_error=noErr;
+    return &t->media_handle;
+}
+#else
 void* GetTrackMedia(void)
 {
     if (verbose) puts("STUB: GetTrackMedia called");
     return NULL;
 }
+#endif
 
 void* GetTrackModificationTime(void)
 {
@@ -13054,17 +13234,150 @@ void* NewMovieFromDataFork64(void)
     return NULL;
 }
 
+#if !__LP64__
+OSErr NewMovieFromDataRef(Movie *m, short flags, short *id,
+                          Handle dataRef, OSType dataRefType)
+{
+    const PointerDataRefRecord *record;
+    struct qt_mov_header header;
+    int status;
+
+    if (m)
+        *m = NULL;
+    if (!movies_entered)
+        return movies_error = movieToolboxUninitialized;
+    if (!m)
+        return movies_error = paramErr;
+    if (flags != 0)
+        return movies_error = unimpErr;
+    if (dataRefType != PointerDataHandlerSubType)
+        return movies_error = cantFindHandler;
+    if (!dataRef || !*dataRef)
+        return movies_error = invalidDataRef;
+
+    record = (const PointerDataRefRecord *)*dataRef;
+    if (!record->data || record->dataLength <= 0)
+        return movies_error = invalidDataRef;
+
+    status = qt_mov_probe(record->data,
+                              (size_t)record->dataLength, &header);
+    if (status == QT_MOV_NO_MOVIE_HEADER)
+        return movies_error = noMovieFound;
+    if (status != QT_MOV_OK)
+        return movies_error = badPublicMovieAtom;
+    if (header.duration > INT32_MAX)
+        return movies_error = invalidDuration;
+    if (header.has_unsupported)
+        return movies_error = unimpErr;
+
+    struct MovieTrackStorage *tracks=NULL;
+    SInt32 count=0;
+    OSErr error=build_tracks(record->data,
+                             (size_t)record->dataLength,
+                             &tracks,&count);
+    if (error!=noErr)
+        return movies_error=error;
+
+    /* No movie-resource ID is supplied by a pointer data reference. */
+    (void)id;
+    *m = movie_new((TimeScale)header.timescale,
+                   (TimeValue)header.duration);
+    if (!*m) {
+        free(tracks);
+        return movies_error;
+    }
+
+    struct MovieStorage *storage=*movie_slot(*m);
+    storage->tracks=tracks;
+    storage->track_count=count;
+    return movies_error=noErr;
+}
+#else
 void* NewMovieFromDataRef(void)
 {
     if (verbose) puts("STUB: NewMovieFromDataRef called");
     return NULL;
 }
+#endif
 
+
+#if !__LP64__
+OSErr NewMovieFromFile(Movie *theMovie, short resRefNum,
+                      short *resId, Str255 resName,
+                      short newMovieFlags,
+                      Boolean *dataRefWasChanged)
+{
+    SInt64 length, mark;
+    ByteCount actual = 0;
+    PointerDataRefRecord record;
+    PointerDataRefPtr dataRef = &record;
+    OSErr err, restore;
+
+    if (theMovie)
+        *theMovie = NULL;
+    if (!movies_entered)
+        return movies_error = movieToolboxUninitialized;
+    if (!theMovie)
+        return movies_error = paramErr;
+
+    /* This importer supports data-fork movies only. */
+    if (newMovieFlags != 0 ||
+        (resId && *resId != 0 && *resId != movieInDataForkResID))
+        return movies_error = unimpErr;
+
+    err = FSGetForkSize(resRefNum, &length);
+    if (err != noErr)
+        return movies_error = err;
+    if (length <= 0)
+        return movies_error = noMovieFound;
+
+    /* Bound temporary memory in this initial in-memory importer.
+     * A streaming importer is needed for larger files. */
+    if (length > 64 * 1024 * 1024)
+        return movies_error = memFullErr;
+
+    err = FSGetForkPosition(resRefNum, &mark);
+    if (err != noErr)
+        return movies_error = err;
+
+    record.data = malloc((size_t)length);
+    if (!record.data)
+        return movies_error = memFullErr;
+    record.dataLength = (Size)length;
+
+    err = FSReadFork(resRefNum, fsFromStart, 0,
+                     (ByteCount)length, record.data, &actual);
+    restore = FSSetForkPosition(resRefNum, fsFromStart, mark);
+
+    if (err == noErr && actual != (ByteCount)length)
+        err = eofErr;
+    if (err == noErr && restore != noErr)
+        err = restore;
+
+    if (err == noErr)
+        err = NewMovieFromDataRef(theMovie, newMovieFlags,
+                                 NULL, (Handle)&dataRef,
+                                 PointerDataHandlerSubType);
+
+    free(record.data);
+
+    if (err == noErr) {
+        if (resId)
+            *resId = movieInDataForkResID;
+        if (resName)
+            resName[0] = 0;
+        if (dataRefWasChanged)
+            *dataRefWasChanged = 0;
+    }
+    return movies_error = err;
+}
+#else
 void* NewMovieFromFile(void)
 {
     if (verbose) puts("STUB: NewMovieFromFile called");
     return NULL;
 }
+#endif
 
 void* NewMovieFromHandle(void)
 {
@@ -13714,11 +14027,63 @@ void* OpenADataHandler2(void)
     return NULL;
 }
 
+#if !__LP64__
+OSErr OpenMovieFile(const FSSpec *fileSpec,
+                    short *resRefNum, SInt8 permission)
+{
+    FSRef ref;
+    HFSUniStr255 resourceName;
+    ResFileRefNum resource;
+    FSIORefNum data;
+    OSErr err;
+
+    if (!movies_entered)
+        return movies_error = movieToolboxUninitialized;
+    if (!fileSpec || !resRefNum)
+        return movies_error = paramErr;
+
+    /* This initial implementation opens movies read-only. */
+    if (permission != fsRdPerm)
+        return movies_error = unimpErr;
+
+    err = FSpMakeFSRef(fileSpec, &ref);
+    if (err != noErr)
+        return movies_error = err;
+
+    err = FSGetResourceForkName(&resourceName);
+    if (err != noErr)
+        return movies_error = err;
+
+    /*
+     * The Movie Toolbox returns the resource-file reference
+     * for resource-fork movies, or the data-fork reference
+     * for single-fork movies.
+     */
+    err = FSOpenResourceFile(&ref, resourceName.length,
+                             resourceName.unicode,
+                             permission, &resource);
+    if (err == noErr) {
+        *resRefNum = resource;
+        return movies_error = noErr;
+    }
+
+    /* CarbonCore reports eofErr for a missing resource fork. */
+    if (err != eofErr)
+        return movies_error = err;
+
+    err = FSOpenFork(&ref, 0, NULL, permission, &data);
+    if (err == noErr)
+        *resRefNum = data;
+
+    return movies_error = err;
+}
+#else
 void* OpenMovieFile(void)
 {
     if (verbose) puts("STUB: OpenMovieFile called");
     return NULL;
 }
+#endif
 
 void* OpenMovieFileUnicode(void)
 {

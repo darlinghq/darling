@@ -25,11 +25,7 @@
 #include <stdatomic.h>
 #include <stdint.h>
 
-#if defined(HAVE_PIPEWIRE) && HAVE_PIPEWIRE
-#include <screen_capture_backend.h>
-#else
-struct darling_screen_capture_stream;
-#endif
+#import <CoreGraphics/CGDisplayStream.h>
 
 /* Defined by the shared AVCapture port/camera plumbing. */
 extern const char kDarlingCameraPortsKey;
@@ -43,7 +39,7 @@ extern const char kDarlingCameraMediaTypeKey;
 - (CGDirectDisplayID)darling_displayID;
 @end
 
-/* Owns one shared ScreenCast stream and delivers its frames to a video data
+/* Owns one CGDisplayStream and delivers its frames to a video data
  * output. The session owns the engine and stops it before releasing it. */
 @interface DarlingScreenCaptureEngine : NSObject
 {
@@ -52,10 +48,9 @@ extern const char kDarlingCameraMediaTypeKey;
 	NSDictionary *_videoSettings;
 	BOOL _alwaysDiscardsLateVideoFrames;
 	AVCaptureScreenInput *_screenInput;
-	struct darling_screen_capture_stream *_capture;
+	CGDisplayStreamRef _displayStream;
 	atomic_bool _running;
 	atomic_int _inFlight;
-	int64_t _lastPtsNs;
 	uint64_t _lastFrameHash;
 	BOOL _hasLastFrameHash;
 }

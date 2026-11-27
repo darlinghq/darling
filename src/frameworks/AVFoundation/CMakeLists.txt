@@ -545,6 +545,7 @@ add_framework(AVFoundation
         CoreMedia
         CoreVideo
         CoreGraphics
+        IOSurface
         AudioToolbox
         VideoToolbox
         avformat
