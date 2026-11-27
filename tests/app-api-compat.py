@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (C) 2026 Darling Developers
-"""Host-side source checks for APIs used by VLC, Transmission and Godot.
+"""Host-side source checks for Cocoa APIs that applications declare in their sources.
 
 These tests compile small translation units against the SDK in this checkout;
 they need clang and initialized submodules, but no built Darling prefix. They
@@ -57,30 +57,30 @@ class AppApiCompat(unittest.TestCase):
                '-x', language, str(source_file)]
         return subprocess.run(cmd, capture_output=True, text=True)
 
-    def test_transmission_quicklook_surface(self):
+    def test_quicklook_preview_panel_surface(self):
         source = '''\
 #import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
 #import <Quartz/Quartz.h>
 
-@interface TRQuickLookProbe : NSObject <QLPreviewPanelDataSource,
+@interface QuickLookProbe : NSObject <QLPreviewPanelDataSource,
     QLPreviewPanelDelegate>
 @end
 
-@implementation TRQuickLookProbe
+@implementation QuickLookProbe
 - (NSInteger) numberOfPreviewItemsInPreviewPanel: (QLPreviewPanel *) panel { return 0; }
 - (id<QLPreviewItem>) previewPanel: (QLPreviewPanel *) panel
                  previewItemAtIndex: (NSInteger) index { return nil; }
 @end
 
-void transmission_probe(NSURL *url) {
+void quicklook_probe(NSURL *url) {
     NSWorkspaceOpenConfiguration *configuration = [[NSWorkspaceOpenConfiguration alloc] init];
     [[NSWorkspace sharedWorkspace] openApplicationAtURL: url
                                           configuration: configuration
                                         completionHandler: ^(NSRunningApplication *app, NSError *error) {}];
 
     QLPreviewPanel *panel = [QLPreviewPanel sharedPreviewPanel];
-    TRQuickLookProbe *probe = [TRQuickLookProbe new];
+    QuickLookProbe *probe = [QuickLookProbe new];
     panel.dataSource = probe;
     panel.delegate = probe;
     [panel reloadData];
@@ -91,7 +91,7 @@ void transmission_probe(NSURL *url) {
 
     @unittest.skipUnless(cocotron_appkit_usable(),
                          'cocotron AppKit delegate additions are not in the pinned submodule')
-    def test_transmission_appkit_delegate_surface(self):
+    def test_appkit_delegate_surface(self):
         source = '''\
 #import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
@@ -103,7 +103,7 @@ void transmission_probe(NSURL *url) {
 - (void) sound: (NSSound *) sound didFinishPlaying: (BOOL) successfully {}
 @end
 
-void transmission_appkit_probe(void) {
+void appkit_delegate_probe(void) {
     NSSound *sound = [NSSound soundNamed: @"Ping"];
     sound.delegate = (id<NSSoundDelegate>)nil;
 }
@@ -111,14 +111,14 @@ void transmission_appkit_probe(void) {
         res = self.clang(source)
         self.assertEqual(res.returncode, 0, res.stderr)
 
-    def test_vlc_core_image_rotation_surface(self):
+    def test_core_image_rotation_surface(self):
         source = '''\
 #import <Cocoa/Cocoa.h>
 #import <AVFoundation/AVFoundation.h>
 #import <AVKit/AVKit.h>
 #import <VideoToolbox/VideoToolbox.h>
 
-void vlc_rotation_probe(CVPixelBufferRef source, CVPixelBufferRef destination) {
+void rotation_probe(CVPixelBufferRef source, CVPixelBufferRef destination) {
     CIContext *context = [[CIContext alloc] initWithOptions: nil];
     CIImage *image = [[CIImage alloc] initWithCVPixelBuffer: source];
     image = [image imageByApplyingOrientation: kCGImagePropertyOrientationRight];
@@ -128,7 +128,7 @@ void vlc_rotation_probe(CVPixelBufferRef source, CVPixelBufferRef destination) {
         res = self.clang(source)
         self.assertEqual(res.returncode, 0, res.stderr)
 
-    def test_godot_macos_surface(self):
+    def test_foundation_and_iokit_surface(self):
         source = '''\
 #import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
@@ -140,7 +140,7 @@ void vlc_rotation_probe(CVPixelBufferRef source, CVPixelBufferRef destination) {
 #import <mach-o/dyld.h>
 #import <os/log.h>
 
-void godot_probe(void) {
+void system_surface_probe(void) {
     NSSavePanel *panel = [NSSavePanel savePanel];
     [panel setAllowedContentTypes: @[ UTTypeData ]];
     UTType *type = [UTType typeWithFilenameExtension: @"txt"];
@@ -160,7 +160,7 @@ void godot_probe(void) {
     char path[1024];
     proc_pidpath(getpid(), path, sizeof(path));
     (void)_dyld_get_image_name(0);
-    os_log_t log = os_log_create("dev.darling.godot", "general");
+    os_log_t log = os_log_create("dev.darling.probe", "general");
     os_log(log, "probe");
 }
 '''

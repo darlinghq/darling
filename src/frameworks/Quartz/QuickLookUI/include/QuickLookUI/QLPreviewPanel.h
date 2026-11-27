@@ -66,7 +66,6 @@ sourceFrameOnScreenForPreviewItem: (id<QLPreviewItem>) item;
 
 @property(nonatomic) NSInteger currentPreviewItemIndex;
 @property(nonatomic, readonly) id<QLPreviewItem> currentPreviewItem;
-@property(nonatomic, readonly) NSArray<id<QLPreviewItem>> *previewItems;
 
 - (void) reloadData;
 - (void) updateController;

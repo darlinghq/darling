@@ -50,6 +50,20 @@ static void expect(const char *what, int cond)
 }
 @end
 
+/* The number of items the panel accepted, seen through the public index property:
+   an index is only taken when an item exists there. The selection is restored. */
+static NSInteger item_count(QLPreviewPanel *panel)
+{
+	NSInteger saved = panel.currentPreviewItemIndex, n = 0;
+	for (;; n++) {
+		panel.currentPreviewItemIndex = n;
+		if (panel.currentPreviewItemIndex != n)
+			break;
+	}
+	panel.currentPreviewItemIndex = saved;
+	return n;
+}
+
 int main(void)
 {
 	@autoreleasepool {
@@ -57,7 +71,7 @@ int main(void)
 		QLPreviewPanel *panel = [QLPreviewPanel sharedPreviewPanel];
 		expect("shared panel", panel != nil && [QLPreviewPanel sharedPreviewPanelExists]);
 		expect("same panel every time", [QLPreviewPanel sharedPreviewPanel] == panel);
-		expect("no data source: no items", [[panel previewItems] count] == 0 && [panel currentPreviewItem] == nil);
+		expect("no data source: no items", [panel currentPreviewItem] == nil);
 
 		NSURL *first = [NSURL fileURLWithPath: @"/tmp/quicklook-first.txt"];
 		NSURL *third = [NSURL fileURLWithPath: @"/tmp/quicklook-third.txt"];
@@ -65,7 +79,7 @@ int main(void)
 		[source setItems: @[ first, [NSNull null], third ]];
 		panel.dataSource = source;
 		[panel reloadData];
-		expect("three items", [[panel previewItems] count] == 3);
+		expect("three items", item_count(panel) == 3);
 
 		panel.currentPreviewItemIndex = 1;
 		expect("index with a nil item selected", panel.currentPreviewItemIndex == 1);
@@ -78,7 +92,7 @@ int main(void)
 
 		[source setItems: @[ first ]];
 		[panel reloadData];
-		expect("reload shrinks the list", [[panel previewItems] count] == 1);
+		expect("reload shrinks the list", item_count(panel) == 1);
 		expect("index follows the shrunk list", panel.currentPreviewItemIndex == 0);
 		expect("item after shrink", [[panel currentPreviewItem] isEqual: first]);
 

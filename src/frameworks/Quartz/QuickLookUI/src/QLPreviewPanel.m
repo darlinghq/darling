@@ -67,22 +67,16 @@ static QLPreviewPanel *sharedPreviewPanel = nil;
 }
 
 - (void) setCurrentPreviewItemIndex: (NSInteger) index {
-    NSArray *items = [self previewItems];
-    if (index < 0 || index >= (NSInteger)[items count])
+    if (index < 0 || index >= (NSInteger)[_previewItems count])
         return;
     _currentPreviewItemIndex = index;
 }
 
 - (id<QLPreviewItem>) currentPreviewItem {
-    NSArray *items = [self previewItems];
-    if (_currentPreviewItemIndex < 0 || _currentPreviewItemIndex >= (NSInteger)[items count])
+    if (_currentPreviewItemIndex < 0 || _currentPreviewItemIndex >= (NSInteger)[_previewItems count])
         return nil;
-    id item = [items objectAtIndex: _currentPreviewItemIndex];
+    id item = [_previewItems objectAtIndex: _currentPreviewItemIndex];
     return item == [NSNull null] ? nil : item;
-}
-
-- (NSArray<id<QLPreviewItem>> *) previewItems {
-    return _previewItems ?: @[];
 }
 
 - (void) reloadData {

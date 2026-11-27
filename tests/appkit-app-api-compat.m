@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2026 Darling Developers
  *
- * Runtime checks for the AppKit/Quick Look API surface used by Transmission.
+ * Runtime checks for the AppKit/Quick Look API surface.
  * Build as an Objective-C executable linked against AppKit and Quartz:
  *
  *   clang -fno-objc-arc -framework AppKit -framework Quartz \
@@ -74,7 +74,6 @@ int main(void)
         CHECK(panel.delegate == probe);
         // The preview panel delegate is also the window delegate.
         CHECK([(NSWindow *)panel delegate] == (id)probe);
-        CHECK([[panel previewItems] count] == 2);
         CHECK([[panel currentPreviewItem] isEqual: first]);
 
         panel.currentPreviewItemIndex = 1;
@@ -86,7 +85,6 @@ int main(void)
         CHECK(panel.currentPreviewItemIndex == 1);
         probe->_items = @[ first ];
         [panel reloadData];
-        CHECK([[panel previewItems] count] == 1);
         CHECK(panel.currentPreviewItemIndex == 0);
 
         // +soundNamed: finds nothing on a system without that sound resource, so
