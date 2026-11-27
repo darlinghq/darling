@@ -21,6 +21,7 @@
 #import <ProtocolBuffer/PBDataReader.h>
 #import <ProtocolBuffer/PBConstants.h>
 #import <darling-stub-forwarding.h>
+#include <string.h>
 
 @implementation PBDataReader
 
@@ -132,6 +133,25 @@ uint64_t PBReaderReadUint64(PBDataReader* reader)
 	return ReadVarint(reader);
 }
 
+int64_t PBReaderReadInt64(PBDataReader* reader)
+{
+	return (int64_t)ReadVarint(reader);
+}
+
+// A double is a 64-bit little-endian IEEE 754 value (wire type 1).
+double PBReaderReadDouble(PBDataReader* reader)
+{
+	size_t start = reader->_position;
+	if (!SkipBytes(reader, 8))
+		return 0;
+	uint64_t bits = 0;
+	for (int i = 7; i >= 0; i--)
+		bits = (bits << 8) | reader->_bytes[start + i];
+	double value;
+	memcpy(&value, &bits, sizeof(value));
+	return value;
+}
+
 NSData* PBReaderReadData(PBDataReader* reader)
 {
 	uint64_t length = ReadVarint(reader);
@@ -171,7 +191,11 @@ void PBReaderRecallMark(PBDataReader* reader, PBDataReaderMark* mark)
 	reader->_end = mark->previousEnd;
 }
 
-BOOL PBReaderSkipValueWithTag(PBDataReader* reader, uint32_t tag, uint8_t type)
+// How deeply groups may be nested in a value that is skipped; deeper data is treated as malformed rather than
+// recursed into without bound. It is the default nesting limit of the protobuf reference implementation.
+#define PBMaxGroupDepth 100
+
+static BOOL SkipValue(PBDataReader* reader, uint32_t tag, uint8_t type, unsigned depth)
 {
 	switch (type) {
 		case 0: // varint
@@ -182,15 +206,23 @@ BOOL PBReaderSkipValueWithTag(PBDataReader* reader, uint32_t tag, uint8_t type)
 		case 2: // length-delimited
 			return SkipBytes(reader, ReadVarint(reader));
 		case 3: { // a group, up to its end
+			if (depth >= PBMaxGroupDepth) {
+				reader->_error = YES;
+				return NO;
+			}
 			for (;;) {
 				uint32_t innerTag = 0;
 				uint8_t innerType = 0;
 				PBReaderReadTag32AndType(reader, &innerTag, &innerType);
 				if (reader->_error)
 					return NO;
-				if (innerType == TYPE_END_GROUP)
-					return innerTag == tag;
-				if (!PBReaderSkipValueWithTag(reader, innerTag, innerType))
+				if (innerType == TYPE_END_GROUP) {
+					if (innerTag == tag)
+						return YES;
+					reader->_error = YES;
+					return NO;
+				}
+				if (!SkipValue(reader, innerTag, innerType, depth + 1))
 					return NO;
 			}
 		}
@@ -200,4 +232,9 @@ BOOL PBReaderSkipValueWithTag(PBDataReader* reader, uint32_t tag, uint8_t type)
 			reader->_error = YES;
 			return NO;
 	}
+}
+
+BOOL PBReaderSkipValueWithTag(PBDataReader* reader, uint32_t tag, uint8_t type)
+{
+	return SkipValue(reader, tag, type, 0);
 }

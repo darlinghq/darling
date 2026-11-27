@@ -48,6 +48,8 @@ BOOL PBReaderReadBOOL(PBDataReader* reader);
 uint32_t PBReaderReadUint32(PBDataReader *reader);
 int32_t PBReaderReadInt32(PBDataReader* reader);
 uint64_t PBReaderReadUint64(PBDataReader* reader);
+int64_t PBReaderReadInt64(PBDataReader* reader);
+double PBReaderReadDouble(PBDataReader* reader);
 
 NSString* PBReaderReadString(PBDataReader* reader);
 NSData* PBReaderReadData(PBDataReader* reader);
