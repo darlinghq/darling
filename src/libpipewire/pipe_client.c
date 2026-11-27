@@ -33,6 +33,12 @@ extern locale_t newlocale(int category_set, const char *locale, locale_t base);
 extern locale_t uselocale(locale_t locale);
 #endif
 
+/* Newer libspa headers return Linux-only errno values (ECHRNG) from inline helpers
+ * that this backend does not call; the Darwin SDK does not define them. */
+#ifndef ECHRNG
+#define ECHRNG 44
+#endif
+
 #include <pipewire/core.h>
 #include <pipewire/keys.h>
 #include <pipewire/loop.h>
