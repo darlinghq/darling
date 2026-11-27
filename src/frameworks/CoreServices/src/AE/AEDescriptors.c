@@ -11,6 +11,9 @@
 // (parameters and attributes). Sending and handler dispatch are in AEEvents.c.
 
 #include <AE/AE.h>
+#ifndef __LP64__
+#include <CarbonCore/Files.h>
+#endif
 #include <CoreFoundation/CoreFoundation.h>
 #include <float.h>
 #include <math.h>
@@ -388,8 +391,33 @@ static OSErr coerceBookmarkToFileURL(const void* data, Size size, AEDesc* result
 	return err;
 }
 
+#ifndef __LP64__
+// File specifications coerce to file references and back, as long as the file exists (the 32-bit File Manager's
+// FSSpec and the FSRef are two forms of the same file name)
+static OSErr coerceFileSpec(DescType fromType, const void* data, Size size, DescType toType, AEDesc* result)
+{
+	if (fromType == typeFSS && toType == typeFSRef && size == sizeof(FSSpec)) {
+		FSRef ref;
+		if (FSpMakeFSRef((const FSSpec*) data, &ref) != noErr)
+			return errAECoercionFail;
+		return AECreateDesc(typeFSRef, &ref, sizeof(ref), result);
+	}
+	if (fromType == typeFSRef && toType == typeFSS && size == sizeof(FSRef)) {
+		FSSpec spec;
+		if (FSGetCatalogInfo((const FSRef*) data, kFSCatInfoNone, NULL, NULL, &spec, NULL) != noErr)
+			return errAECoercionFail;
+		return AECreateDesc(typeFSS, &spec, sizeof(spec), result);
+	}
+	return errAECoercionFail;
+}
+#endif
+
 static OSErr coerceData(DescType fromType, const void* data, Size size, DescType toType, AEDesc* result)
 {
+#ifndef __LP64__
+	if ((fromType == typeFSS && toType == typeFSRef) || (fromType == typeFSRef && toType == typeFSS))
+		return coerceFileSpec(fromType, data, size, toType, result);
+#endif
 	if (fromType == typeBookmarkData && toType == typeFileURL)
 		return coerceBookmarkToFileURL(data, size, result);
 

@@ -83,6 +83,7 @@ enum : DescType {
 	typeType = 'type',
 	typeEnumerated = 'enum',
 	typeKeyword = 'keyw',
+	typeFSS = 'fss ',
 	typeFSRef = 'fsrf',
 	typeFileURL = 'furl',
 	typeBookmarkData = 'bmrk',
