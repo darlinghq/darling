@@ -225,34 +225,12 @@ enum
 	kFSCatInfoSetOwnership = 0x100000
 };
 
-enum
-{
-	kSystemFolderType = 'macs',
-	kDesktopFolderType = 'desk',
-	kSystemDesktopFolderType = 'sdsk',
-	kTrashFolderType = 'trsh',
-	kSystemTrashFolderType = 'strs',
-	kWhereToEmptyTrashFolderType = 'empt',
-	kPrintMonitorDocsFolderType = 'prnt',
-	kStartupFolderType = 'strt',
-	kShutdownFolderType = 'shdf',
-	kAppleMenuFolderType = 'amnu',
-	kControlPanelFolderType = 'ctrl',
-	kSystemControlPanelFolderType = 'sctl',
-	kExtensionFolderType = 'extn',
-	kFontsFolderType = 'font',
-	kPreferencesFolderType = 'pref',
-	kSystemPreferencesFolderType = 'sprf',
-	kTemporaryFolderType = 'temp'
-};
-
 OSStatus FSPathMakeRef(const uint8_t* path, struct FSRef* fsref, Boolean* isDirectory);
 OSStatus FSPathMakeRefWithOptions(const uint8_t* path, long options, struct FSRef* fsref, Boolean* isDirectory);
 OSStatus FSRefMakePath(const struct FSRef* fsref, uint8_t* path, uint32_t maxSize);
 OSStatus FSCompareFSRefs(const struct FSRef* ref1, const struct FSRef* ref2);
 Boolean CFURLGetFSRef(CFURLRef urlref, struct FSRef* fsref); // in CF
 CFURLRef CFURLCreateFromFSRef(CFAllocatorRef alloc, struct FSRef* location); // --> in CF
-OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, struct FSRef* location);
 OSStatus FSDeleteObject(const FSRef* fsref);
 
 OSStatus FSGetCatalogInfo(const struct FSRef* ref, uint32_t infoBits, struct FSCatalogInfo* infoOut, struct HFSUniStr255* nameOut, FSSpecPtr fsspec, FSRefPtr parentDir);

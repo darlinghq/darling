@@ -18,6 +18,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <CoreServices/FileManager.h>
+#include <CarbonCore/Folders.h>
 #include <cstdlib>
 #include <string>
 #include <cstring>
