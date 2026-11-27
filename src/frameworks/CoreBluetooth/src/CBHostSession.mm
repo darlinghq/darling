@@ -223,12 +223,29 @@ NSArray<NSString *> *UUIDStrings(NSArray<CBUUID *> *UUIDs)
     return result;
 }
 
+// The transport compares UUIDs in the 128-bit form BlueZ uses, whatever width the CBUUID has.
 std::vector<std::string> UUIDVector(NSArray<NSString *> *strings)
 {
     std::vector<std::string> result;
     for (NSString *value in strings)
-        result.push_back([value UTF8String]);
+    {
+        const std::string normalized = cbbluez::NormalizeUUID([value UTF8String]);
+        result.push_back(normalized.empty() ? std::string([value UTF8String]) : normalized);
+    }
     return result;
+}
+
+// BlueZ and the wire helpers use the 128-bit form; the CBUUID of an attribute that is derived
+// from the Bluetooth base UUID has the short form, as for the original framework.
+CBUUID *UUIDFromWireString(NSString *wire)
+{
+    NSString *text = [wire uppercaseString];
+    if ([text length] == 36 && [text hasSuffix:@"-0000-1000-8000-00805F9B34FB"])
+    {
+        NSString *head = [text substringToIndex:8];
+        text = [head hasPrefix:@"0000"] ? [head substringFromIndex:4] : head;
+    }
+    return [CBUUID UUIDWithString:text];
 }
 
 std::vector<uint8_t> BytesFromData(NSData *data)
@@ -403,7 +420,7 @@ struct SessionState
         NSMutableArray *objects = [NSMutableArray array];
         for (NSString *value in UUIDs)
         {
-            CBUUID *UUID = [CBUUID UUIDWithString:value];
+            CBUUID *UUID = UUIDFromWireString(value);
             if (UUID != nil)
                 [objects addObject:UUID];
         }
@@ -415,7 +432,7 @@ struct SessionState
     NSMutableDictionary *serviceData = [NSMutableDictionary dictionary];
     for (NSString *value in [device objectForKey:kDeviceServiceData])
     {
-        CBUUID *UUID = [CBUUID UUIDWithString:value];
+        CBUUID *UUID = UUIDFromWireString(value);
         if (UUID != nil)
             [serviceData setObject:[[device objectForKey:kDeviceServiceData] objectForKey:value]
                             forKey:UUID];
@@ -519,7 +536,7 @@ struct SessionState
             {
                 service = [[CBService alloc] init];
                 service.bluezPath = servicePath;
-                service.UUID = [CBUUID UUIDWithString:[entry objectForKey:kAttributeUUID]];
+                service.UUID = UUIDFromWireString([entry objectForKey:kAttributeUUID]);
                 service.isPrimary = [[entry objectForKey:kAttributePrimary] boolValue];
                 service.includedPaths = [entry objectForKey:kAttributeIncludes];
                 service.characteristics = @[];
@@ -549,7 +566,7 @@ struct SessionState
             {
                 includedService = [[CBService alloc] init];
                 includedService.bluezPath = includedPath;
-                includedService.UUID = [CBUUID UUIDWithString:[entry objectForKey:kAttributeUUID]];
+                includedService.UUID = UUIDFromWireString([entry objectForKey:kAttributeUUID]);
                 includedService.isPrimary = [[entry objectForKey:kAttributePrimary] boolValue];
                 includedService.includedPaths = [entry objectForKey:kAttributeIncludes];
                 includedService.characteristics = @[];
@@ -581,7 +598,7 @@ struct SessionState
             {
                 characteristic = [[CBCharacteristic alloc] init];
                 characteristic.bluezPath = characteristicPath;
-                characteristic.UUID = [CBUUID UUIDWithString:[entry objectForKey:kAttributeUUID]];
+                characteristic.UUID = UUIDFromWireString([entry objectForKey:kAttributeUUID]);
                 characteristic.descriptors = @[];
                 [_sessionState->objectsByPath setObject:characteristic forKey:characteristicPath];
                 [characteristic release];
@@ -616,7 +633,7 @@ struct SessionState
             {
                 descriptor = [[CBDescriptor alloc] init];
                 descriptor.bluezPath = descriptorPath;
-                descriptor.UUID = [CBUUID UUIDWithString:[entry objectForKey:kAttributeUUID]];
+                descriptor.UUID = UUIDFromWireString([entry objectForKey:kAttributeUUID]);
                 [_sessionState->objectsByPath setObject:descriptor forKey:descriptorPath];
                 [descriptor release];
             }
