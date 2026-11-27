@@ -20,3 +20,4 @@
 #include <Foundation/Foundation.h>
 
 extern NSString *const CBCentralManagerScanOptionAllowDuplicatesKey;
+extern NSString *const CBCentralManagerOptionShowPowerAlertKey;
