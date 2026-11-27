@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -16,8 +16,35 @@
  You should have received a copy of the GNU General Public License
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
-
 #import <SecurityFoundation/_SFKey.h>
+#import "SFSymmetricInternal.h"
+
+#if __LP64__
+
+@implementation _SFKey {
+    NSData *_keyData;
+}
+
+- (instancetype)initWithKeyData:(NSData *)data {
+    self = [super init];
+    if (self != nil)
+        _keyData = [data copy];
+    return self;
+}
+
+- (void)dealloc {
+    [_keyData release];
+    [super dealloc];
+}
+
+- (NSData *)keyData {
+    return _keyData;
+}
+
+@end
+
+#else // __LP64__
+
 #import <darling-stub-forwarding.h>
 
 @implementation _SFKey
@@ -39,3 +66,5 @@
 }
 
 @end
+
+#endif // __LP64__
