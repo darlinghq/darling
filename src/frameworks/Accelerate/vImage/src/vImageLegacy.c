@@ -829,6 +829,14 @@ vImage_Error vImageConvert_Planar4toPlanar8(const vImage_Buffer *src, const vIma
     return kvImageNoError;
 }
 
+// Convolves four-channel 8-bit pixels (in any channel order) with an odd-sized kernel, as the public
+// vImage documentation describes it: each channel of a destination pixel is
+// (sum(kernel * source) + divisor / 2) / divisor, clamped to 0..255, where a divisor of 0 stands for 1. A
+// kernel pixel outside the source takes the nearest source pixel (kvImageEdgeExtend), the background
+// colour (kvImageBackgroundColorFill), or makes the destination pixel a copy of its source pixel
+// (kvImageCopyInPlace); with kvImageTruncateKernel missing pixels are left out and the divisor is
+// scaled to the share of the kernel's weight that remains.
+// kvImageLeaveAlphaUnchanged copies the first channel of each source pixel.
 vImage_Error vImageConvolve_ARGB8888(const vImage_Buffer *src, const vImage_Buffer *dest, void *tempBuffer,
                                      vImagePixelCount srcOffsetToROI_X, vImagePixelCount srcOffsetToROI_Y,
                                      const int16_t *kernel, uint32_t kernel_height, uint32_t kernel_width,
@@ -837,7 +845,7 @@ vImage_Error vImageConvolve_ARGB8888(const vImage_Buffer *src, const vImage_Buff
     (void)tempBuffer;
     if (flags & kvImageGetTempBufferSize)
         return 0;
-    if (src == NULL || dest == NULL || src->data == NULL || dest->data == NULL || kernel == NULL)
+    if (src == NULL || dest == NULL || kernel == NULL)
         return kvImageNullPointerArgument;
     if (!(kernel_height & 1) || !(kernel_width & 1))
         return kvImageInvalidKernelSize;
@@ -845,33 +853,41 @@ vImage_Error vImageConvolve_ARGB8888(const vImage_Buffer *src, const vImage_Buff
                                  kvImageTruncateKernel);
     if (edge == 0 || (edge & (edge - 1)) != 0)
         return kvImageInvalidEdgeStyle;
-    if (srcOffsetToROI_X > src->width || srcOffsetToROI_Y > src->height ||
-        dest->width > src->width - srcOffsetToROI_X || dest->height > src->height - srcOffsetToROI_Y)
-        return kvImageBufferSizeMismatch;
+    if (dest->width > src->width || dest->height > src->height)
+        return kvImageRoiLargerThanInputBuffer;
+    if (srcOffsetToROI_X > src->width || dest->width > src->width - srcOffsetToROI_X)
+        return kvImageInvalidOffset_X;
+    if (srcOffsetToROI_Y > src->height || dest->height > src->height - srcOffsetToROI_Y)
+        return kvImageInvalidOffset_Y;
     if (dest->width == 0 || dest->height == 0)
         return kvImageNoError;
+    if (src->data == NULL || dest->data == NULL)
+        return kvImageNullPointerArgument;
 
-    int64_t total_sum = 0;
+    int64_t full_sum = 0;
     for (size_t i = 0; i < (size_t)kernel_height * kernel_width; i++)
-        total_sum += kernel[i];
+        full_sum += kernel[i];
+    int64_t div = divisor != 0 ? divisor : 1;
 
-    int64_t div = (divisor != 0) ? divisor : (total_sum != 0 ? total_sum : 1);
-
-    size_t srcWidth = src->width, srcHeight = src->height, width = dest->width, height = dest->height;
+    int64_t srcWidth = (int64_t)src->width, srcHeight = (int64_t)src->height;
+    size_t width = dest->width, height = dest->height;
     if (width > SIZE_MAX / 4 / height)
         return kvImageMemoryAllocationError;
+    // The destination may not alias the source, but the result is staged anyway so that a failure
+    // leaves the destination whole.
     uint8_t *roi = malloc(width * height * 4);
     if (roi == NULL)
         return kvImageMemoryAllocationError;
 
-    int32_t half_h = (int32_t)(kernel_height / 2);
-    int32_t half_w = (int32_t)(kernel_width / 2);
+    int64_t half_h = (int64_t)(kernel_height / 2);
+    int64_t half_w = (int64_t)(kernel_width / 2);
+    const uint8_t *src_data = (const uint8_t *)src->data;
 
     for (size_t y = 0; y < height; y++) {
         for (size_t x = 0; x < width; x++) {
             int64_t cx = (int64_t)(srcOffsetToROI_X + x);
             int64_t cy = (int64_t)(srcOffsetToROI_Y + y);
-            const uint8_t *center = (const uint8_t *)src->data + cy * src->rowBytes + cx * 4;
+            const uint8_t *center = src_data + cy * src->rowBytes + cx * 4;
             uint8_t *out = roi + (y * width + x) * 4;
 
             for (size_t c = 0; c < 4; c++) {
@@ -879,49 +895,49 @@ vImage_Error vImageConvolve_ARGB8888(const vImage_Buffer *src, const vImage_Buff
                     out[c] = center[c];
                     continue;
                 }
-                int out_of_bounds = 0;
+                int missing = 0;
                 int64_t acc = 0;
-                int64_t trunc_div = 0;
+                int64_t kept_weight = 0;
                 for (uint32_t ky = 0; ky < kernel_height; ky++) {
                     int64_t sy = cy + (int64_t)ky - half_h;
                     for (uint32_t kx = 0; kx < kernel_width; kx++) {
                         int64_t sx = cx + (int64_t)kx - half_w;
                         int16_t k = kernel[(size_t)ky * kernel_width + kx];
-                        if (sx < 0 || sx >= (int64_t)srcWidth || sy < 0 || sy >= (int64_t)srcHeight) {
-                            out_of_bounds = 1;
+                        if (sx < 0 || sx >= srcWidth || sy < 0 || sy >= srcHeight) {
+                            missing = 1;
                             if (edge == kvImageEdgeExtend) {
-                                int64_t ex = sx < 0 ? 0 : (sx >= (int64_t)srcWidth ? (int64_t)srcWidth - 1 : sx);
-                                int64_t ey = sy < 0 ? 0 : (sy >= (int64_t)srcHeight ? (int64_t)srcHeight - 1 : sy);
-                                acc += (int64_t)k * ((const uint8_t *)src->data)[ey * src->rowBytes + ex * 4 + c];
+                                int64_t ex = sx < 0 ? 0 : (sx >= srcWidth ? srcWidth - 1 : sx);
+                                int64_t ey = sy < 0 ? 0 : (sy >= srcHeight ? srcHeight - 1 : sy);
+                                acc += (int64_t)k * src_data[ey * src->rowBytes + ex * 4 + c];
                             } else if (edge == kvImageBackgroundColorFill) {
-                                uint8_t bg = backgroundColor ? backgroundColor[c] : 0;
-                                acc += (int64_t)k * bg;
+                                acc += (int64_t)k * (backgroundColor ? backgroundColor[c] : 0);
                             }
                         } else {
-                            acc += (int64_t)k * ((const uint8_t *)src->data)[sy * src->rowBytes + sx * 4 + c];
-                            trunc_div += k;
+                            acc += (int64_t)k * src_data[sy * src->rowBytes + sx * 4 + c];
+                            kept_weight += k;
                         }
                     }
                 }
-                if (edge == kvImageCopyInPlace && out_of_bounds) {
+                if (missing && edge == kvImageCopyInPlace) {
                     out[c] = center[c];
                     continue;
                 }
-                int64_t num = acc;
-                int64_t d = div;
-                if (edge == kvImageTruncateKernel) {
-                    if (divisor == 0) {
-                        d = (trunc_div != 0) ? trunc_div : 1;
-                    } else if (total_sum != 0 && trunc_div != 0) {
-                        num = acc * total_sum;
-                        d = div * trunc_div;
+                int64_t num = acc, d = div;
+                if (missing && edge == kvImageTruncateKernel) {
+                    // The documentation leaves the rounding of the adjusted divisor open ("adjusted
+                    // accordingly"). This computes the exactly rounded result, which was observed to
+                    // differ from macOS 26.7.3 by at most 1 (7200 edge samples, three kernels). A
+                    // kernel that keeps no weight, or whose full weight is zero, gives 0, as observed.
+                    // Test: vimage_legacy_convert.c (truncate cases, tolerance 1).
+                    if (kept_weight == 0 || full_sum == 0) {
+                        out[c] = 0;
+                        continue;
                     }
+                    num = acc * full_sum;
+                    d = div * kept_weight;
                 }
-                if (d < 0) {
-                    num = -num;
-                    d = -d;
-                }
-                int64_t val = (num >= 0) ? (num + d / 2) / d : (num - d / 2) / d;
+                // The documented rounding, with C integer division.
+                int64_t val = (num + d / 2) / d;
                 out[c] = (uint8_t)(val < 0 ? 0 : (val > 255 ? 255 : val));
             }
         }
