@@ -422,12 +422,14 @@ static bool profile_level_valid(CMVideoCodecType codec, CFStringRef s)
 	return rest[0] >= '1' && rest[0] <= '5' && rest[1] == '_' && rest[2] >= '0' && rest[2] <= '9' && rest[3] == 0;
 }
 
-typedef enum { PK_BOOL, PK_NUMBER, PK_STRING, PK_ARRAY, PK_DICT, PK_PROFILE } PropKind;
+typedef enum { PK_BOOL, PK_NUMBER, PK_STRING, PK_ARRAY, PK_DICT, PK_DATA, PK_PROFILE } PropKind;
 
 static const struct { const char *key; PropKind kind; } supportedProps[] = {
 	{ "RealTime", PK_BOOL },
 	{ "AllowFrameReordering", PK_BOOL },
 	{ "AverageBitRate", PK_NUMBER },
+	{ "ConstantBitRate", PK_NUMBER },
+	{ "SpatialAdaptiveQPLevel", PK_NUMBER },
 	{ "MaxKeyFrameInterval", PK_NUMBER },
 	{ "MaxKeyFrameIntervalDuration", PK_NUMBER },
 	{ "ExpectedFrameRate", PK_NUMBER },
@@ -438,6 +440,8 @@ static const struct { const char *key; PropKind kind; } supportedProps[] = {
 	{ "TransferFunction", PK_STRING },
 	{ "YCbCrMatrix", PK_STRING },
 	{ "PixelAspectRatio", PK_DICT },
+	{ "MasteringDisplayColorVolume", PK_DATA },
+	{ "ContentLightLevelInfo", PK_DATA },
 };
 
 static int find_prop(CFStringRef key)
@@ -482,6 +486,7 @@ OSStatus VTCompressionSessionSetPropertyInternal(VTSessionRef sessionRef, CFStri
 			case PK_STRING: ok = t == CFStringGetTypeID(); break;
 			case PK_ARRAY: ok = t == CFArrayGetTypeID(); break;
 			case PK_DICT: ok = t == CFDictionaryGetTypeID(); break;
+			case PK_DATA: ok = t == CFDataGetTypeID(); break;
 			case PK_PROFILE: ok = t == CFStringGetTypeID() && profile_level_valid(s->codecType, value); break;
 			}
 			if (value == NULL || ok) {
