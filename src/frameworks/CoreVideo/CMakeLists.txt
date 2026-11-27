@@ -24,7 +24,7 @@ add_framework(CoreVideo
     SOURCES
 	    src/constants.c
 	    src/CVPixelBuffer.c
-	    src/CVMetalTexture.c
+	    src/CVMetalTexture.m
 	    src/CVOpenGLTextureCache.c
 	    src/CVOpenGLESTextureCache.c
 	    src/CVHostTime.c
@@ -35,6 +35,7 @@ add_framework(CoreVideo
         Foundation
         CoreGraphics
         IOSurface
+        Metal
         OpenGL
         cxx
 )

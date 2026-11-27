@@ -43,6 +43,8 @@ struct AVPEEngine;
     BOOL muted;
     int actionAtItemEnd;
     BOOL invalidated;
+    uint64_t preferredVideoDecoderGPURegistryID;
+    BOOL automaticallyWaitsToMinimizeStalling;
 
     // Frames, seeks, layers and time observers. Guarded by lock.
     pthread_mutex_t lock;

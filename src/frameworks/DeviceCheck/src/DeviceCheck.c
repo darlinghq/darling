@@ -17,6 +17,6 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// This framework only needs to exist so that images that link it load. It does
-// not implement any DeviceCheck API and exports no symbols; a bind to a symbol
+// The DeviceCheck API is in DCAppAttestService.m: App Attest is reported as
+// unsupported. Nothing else of DeviceCheck is implemented; a bind to a symbol
 // that is missing still fails at load time.

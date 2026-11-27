@@ -65,6 +65,8 @@ CV_EXPORT CVReturn CVDisplayLinkStart( CVDisplayLinkRef CV_NONNULL displayLink )
 
 CV_EXPORT CVReturn CVDisplayLinkStop( CVDisplayLinkRef CV_NONNULL displayLink ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER;
 
+CV_EXPORT CVReturn CVDisplayLinkSetPaused( CVDisplayLinkRef CV_NONNULL displayLink, Boolean paused );
+
 CV_EXPORT CVTime CVDisplayLinkGetNominalOutputVideoRefreshPeriod( CVDisplayLinkRef CV_NONNULL displayLink ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER;
 
 CV_EXPORT CVTime CVDisplayLinkGetOutputVideoLatency( CVDisplayLinkRef CV_NONNULL displayLink ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER;

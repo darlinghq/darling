@@ -23,6 +23,7 @@
 #import <CoreMedia/CMTime.h>
 #import <CoreMedia/CMTimeRange.h>
 #import <CoreGraphics/CGGeometry.h>
+#import <CoreGraphics/CGAffineTransform.h>
 #import <AVFoundation/AVAsynchronousKeyValueLoading.h>
 #import <AVFoundation/AVMediaFormat.h>
 
@@ -42,5 +43,8 @@
 @property (nonatomic, readonly) CMTimeRange timeRange;
 @property (nonatomic, readonly, getter=isEnabled) BOOL enabled;
 @property (nonatomic, readonly, getter=isPlayable) BOOL playable;
+@property (nonatomic, readonly) NSArray *formatDescriptions;
+@property (nonatomic, readonly) CMTime minFrameDuration;
+@property (nonatomic, readonly) CGAffineTransform preferredTransform;
 
 @end

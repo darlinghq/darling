@@ -204,10 +204,21 @@ vImage_Error vImageConvert_AnyToAny(const vImageConverterRef converter, const vI
 vImage_Error vImageBoxConvolve_ARGB8888(const vImage_Buffer *src, const vImage_Buffer *dest, void *tempBuffer, vImagePixelCount srcOffsetToROI_X,
                                         vImagePixelCount srcOffsetToROI_Y, uint32_t kernel_height, uint32_t kernel_width,
                                         const uint8_t *backgroundColor, vImage_Flags flags);
+vImage_Error vImageConvolve_ARGB8888(const vImage_Buffer *src, const vImage_Buffer *dest, void *tempBuffer,
+                                     vImagePixelCount srcOffsetToROI_X, vImagePixelCount srcOffsetToROI_Y,
+                                     const int16_t *kernel, uint32_t kernel_height, uint32_t kernel_width,
+                                     int32_t divisor, const Pixel_8888 backgroundColor, vImage_Flags flags);
 
 // Fills every pixel of dest with color (the four channel bytes in memory order).
 vImage_Error vImageBufferFill_ARGB8888(const vImage_Buffer *dest, const Pixel_8888 color, vImage_Flags flags);
 
+vImage_Error vImageConvert_ARGB1555toARGB8888(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags);
+vImage_Error vImageConvert_ARGB8888toARGB1555(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags);
+vImage_Error vImageConvert_BGRA8888toRGB565(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags);
+vImage_Error vImageConvert_Planar4toPlanar8(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags);
+vImage_Error vImageConvert_RGB565toARGB8888(uint8_t alpha, const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags);
+vImage_Error vImageConvert_RGB565toBGRA8888(uint8_t alpha, const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags);
+vImage_Error vImageConvert_RGBA8888toRGB565(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags);
 vImage_Error vImageConvert_Planar16FtoPlanarF(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags);
 vImage_Error vImageConvert_PlanarFtoPlanar16F(const vImage_Buffer *src, const vImage_Buffer *dest, vImage_Flags flags);
 

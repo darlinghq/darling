@@ -47,9 +47,9 @@ struct QDPort {
 extern GrafPtr gCurrentPort;
 extern QDErr gQDError;
 
-void QDPortInitState(struct QDPort *port);
-void QDPortDisposeState(struct QDPort *port);
-struct QDPort *QDPortFromPixMap(const void *bits);
+QD_HIDDEN void QDPortInitState(struct QDPort *port);
+QD_HIDDEN void QDPortDisposeState(struct QDPort *port);
+QD_HIDDEN struct QDPort *QDPortFromPixMap(const void *bits);
 // Picture recording (QDRecord.inc): OpenCPicture / ClosePicture. These are internal to the framework, not exported.
 QD_HIDDEN void QDRecordColor(struct QDPort *p, Boolean fore, const RGBColor *c);
 QD_HIDDEN void QDRecordRect(struct QDPort *p, unsigned op, const Rect *r, const QDPattern *pat);
@@ -58,7 +58,7 @@ QD_HIDDEN void QDRecordCopyBits(struct QDPort *s, struct QDPort *d, const Rect *
 QD_HIDDEN void QDRecordPenPat(struct QDPort *p, const QDPattern *pat);
 QD_HIDDEN Handle QDRecordOpen(const Rect *srcRect, Fixed hRes, Fixed vRes, short version);
 QD_HIDDEN void QDRecordClose(void);
-Boolean QDPortIsLive(const struct QDPort *port);
+QD_HIDDEN Boolean QDPortIsLive(const struct QDPort *port);
 GDHandle GetMainDevice(void);
 void SetCPixel(short h, short v, const RGBColor *c);
 void CopyBits(const BitMap *srcBits, const BitMap *dstBits, const Rect *srcRect, const Rect *dstRect,

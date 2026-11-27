@@ -31,6 +31,7 @@ add_framework(VideoToolbox
         src/VTPixelRotationSession.c
         src/VTPixelTransferProperties.c
         src/FigMetalTransferHelper.m
+        src/VTFrameProcessor.m
         src/VTSessions.c
         src/VTCompressionSession.c
 

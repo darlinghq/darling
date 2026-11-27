@@ -21,6 +21,7 @@ add_framework(CoreMedia
         src/CoreMedia.c
         src/CMTime.c
         src/CMTimeRange.c
+        src/CMTimeMapping.c
         src/CMSampleBuffer.c
         src/CMCore.c
         src/CMAttachment.c

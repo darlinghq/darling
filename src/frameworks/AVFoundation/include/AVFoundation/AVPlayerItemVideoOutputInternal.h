@@ -26,6 +26,8 @@
 @public
     __unsafe_unretained AVPlayerItem *item; // the item the output is added to
     uint64_t lastSerial;
+    __unsafe_unretained id delegate;
+    dispatch_queue_t delegateQueue;
 }
 
 @end

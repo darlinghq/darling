@@ -52,6 +52,8 @@ const CFStringRef kCMFormatDescriptionExtension_Depth = CFSTR("Depth");
 const CFStringRef kCMFormatDescriptionExtension_FormatName = CFSTR("FormatName");
 const CFStringRef kCMFormatDescriptionExtension_FullRangeVideo = CFSTR("FullRangeVideo");
 const CFStringRef kCMFormatDescriptionExtension_MasteringDisplayColorVolume = CFSTR("MasteringDisplayColorVolume");
+const CFStringRef kCMFormatDescriptionExtension_BitsPerComponent = CFSTR("BitsPerComponent");
+const CFStringRef kCMFormatDescriptionExtension_AmbientViewingEnvironment = CFSTR("AmbientViewingEnvironment");
 const CFStringRef kCMSampleAttachmentKey_IsDependedOnByOthers = CFSTR("IsDependedOnByOthers");
 
 static int verbose = 0;
@@ -1053,16 +1055,6 @@ void* CMTimeMappingCopyAsDictionary(void) {
 
 void* CMTimeMappingCopyDescription(void) {
     if (verbose) puts("STUB: CMTimeMappingCopyDescription called");
-    return NULL;
-}
-
-void* CMTimeMappingMake(void) {
-    if (verbose) puts("STUB: CMTimeMappingMake called");
-    return NULL;
-}
-
-void* CMTimeMappingMakeEmpty(void) {
-    if (verbose) puts("STUB: CMTimeMappingMakeEmpty called");
     return NULL;
 }
 

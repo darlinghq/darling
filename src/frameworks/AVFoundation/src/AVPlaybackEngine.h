@@ -41,6 +41,8 @@ enum {
 	AVPETrackOther = 0,
 	AVPETrackVideo = 1,
 	AVPETrackAudio = 2,
+	AVPETrackMetadata = 3,
+	AVPETrackTimecode = 4,
 };
 
 typedef struct {
@@ -51,6 +53,7 @@ typedef struct {
 	float frameRate;
 	int64_t durationUs;
 	int sampleRate, channels; // audio
+	uint32_t codecType; // FourCharCode (CMVideoCodecType / AudioFormatID)
 	bool decodable; // video: VideoToolbox has a decoder for the codec; audio: AudioToolbox can convert it to PCM
 } AVPETrackInfo;
 

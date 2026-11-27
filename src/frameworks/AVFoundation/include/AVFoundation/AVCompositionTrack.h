@@ -17,8 +17,17 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <AVFoundation/AVAssetTrack.h>
+#import <AVFoundation/AVCompositionTrackSegment.h>
 
-@interface AVCompositionTrack : NSObject
+@interface AVCompositionTrack : AVAssetTrack {
+@private
+    NSMutableArray *_segments;
+}
+
+@property (nonatomic, readonly, copy) NSArray<AVCompositionTrackSegment *> *segments;
+
+- (AVCompositionTrackSegment *)segmentForTrackTime:(CMTime)trackTime;
 
 @end

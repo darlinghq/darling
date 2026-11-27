@@ -21,6 +21,11 @@
 
 #include <AuthenticationServices/ASAuthorizationCredential.h>
 
+typedef NSString *ASAuthorizationScope NS_TYPED_ENUM;
+
+extern ASAuthorizationScope const ASAuthorizationScopeFullName;
+extern ASAuthorizationScope const ASAuthorizationScopeEmail;
+
 @interface ASAuthorization : NSObject
 @property(nonatomic, readonly, strong) id<ASAuthorizationCredential> credential;
 @end

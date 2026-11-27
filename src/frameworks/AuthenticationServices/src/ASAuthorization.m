@@ -20,6 +20,10 @@
 #import <AuthenticationServices/ASAuthorization.h>
 #import <darling-stub-forwarding.h>
 
+// String values as observed on macOS 26.7.3 (the constants are opaque to callers).
+ASAuthorizationScope const ASAuthorizationScopeFullName = @"full_name";
+ASAuthorizationScope const ASAuthorizationScopeEmail = @"email";
+
 @implementation ASAuthorization
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

@@ -138,6 +138,8 @@ add_framework(UIFoundation
         src/NSCollectionViewLayoutAttributes.m
         src/NSCollectionViewLayoutInvalidationContext.m
         src/NSIndexPathCollectionViewAdditions.m
+        src/NSTextEncapsulation.m
+        src/NSTextGraphicsContextProvider.m
 
     DEPENDENCIES
         system

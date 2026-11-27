@@ -17,8 +17,29 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <CoreMedia/CMBase.h>
+#import <CoreMedia/CMTimeRange.h>
+#import <AVFoundation/AVAssetTrackSegment.h>
 
-@interface AVCompositionTrackSegment : NSObject
+@interface AVCompositionTrackSegment : AVAssetTrackSegment {
+@private
+    NSURL *_sourceURL;
+    CMPersistentTrackID _sourceTrackID;
+}
+
++ (instancetype)compositionTrackSegmentWithURL:(NSURL *)URL
+                                       trackID:(CMPersistentTrackID)trackID
+                               sourceTimeRange:(CMTimeRange)sourceTimeRange
+                               targetTimeRange:(CMTimeRange)targetTimeRange;
++ (instancetype)compositionTrackSegmentWithTimeRange:(CMTimeRange)timeRange;
+- (instancetype)initWithURL:(NSURL *)URL
+                    trackID:(CMPersistentTrackID)trackID
+            sourceTimeRange:(CMTimeRange)sourceTimeRange
+            targetTimeRange:(CMTimeRange)targetTimeRange;
+- (instancetype)initWithTimeRange:(CMTimeRange)timeRange;
+
+@property (nonatomic, readonly) NSURL *sourceURL;
+@property (nonatomic, readonly) CMPersistentTrackID sourceTrackID;
 
 @end
