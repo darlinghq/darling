@@ -3,7 +3,7 @@
 // QuickDraw picture recording (OpenCPicture / ClosePicture), 32-bit only. A 96 x 64 image copied with CopyBits, a
 // rectangle and a line are recorded; the version 2 bytes are checked (header, OpEndPic, picSize), then the picture is
 // played back with DrawPicture and every pixel compared. Classic colors and the pen pattern are recorded; SetCPixel,
-// ClipRect and regions are counted as not recorded. One picture at a time; version -2 only.
+// ClipRect and regions are not, which the replay shows. One picture at a time; version -2 only.
 #include <QD/QD.h>
 #include <CarbonCore/MacMemory.h>
 #include <stdio.h>
@@ -20,7 +20,6 @@ int main(void)
 typedef OpenCPicParams CPParams;
 
 void DrawPicture(PicHandle, const Rect *);
-unsigned QDPictureUnrecordedOps(void);
 void RGBForeColor(const RGBColor *); void RGBBackColor(const RGBColor *);
 void PaintRect(const Rect *); void EraseRect(const Rect *);
 void MoveTo(short, short); void LineTo(short, short); void PenSize(short, short);
@@ -84,10 +83,10 @@ int main(void)
 	GetCPixel(10, 10, &after);
 	CHECK(memcmp(&before, &after, sizeof(before)) == 0);   // the pen is hidden while recording
 	RGBForeColor(&blue); PenSize(2, 2); MoveTo(0, H - 4); LineTo(W - 1, H - 4);
-	{ RGBColor g = {0x8000, 0x8000, 0x8000}; SetCPixel(W + 10, 5, &g); }   // not recorded, counted
+	{ RGBColor g = {0x8000, 0x8000, 0x8000}; SetCPixel(50, 30, &g); }   // not recorded: the replay shows the ramp there
 	RGBForeColor(&black);
 	ClosePicture();
-	CHECK(QDError() == noErr && QDPictureUnrecordedOps() == 1);
+	CHECK(QDError() == noErr);
 	if (!pic) return 1;
 
 	Size n = GetHandleSize((Handle) pic);
@@ -117,7 +116,7 @@ int main(void)
 	DisposeHandle((Handle) pic);
 	DisposeGWorld(view); DisposeGWorld(off); DisposeGWorld(win);
 
-	// Classic colours and the pen pattern are recorded; clip changes and regions are counted as not recorded.
+	// Classic colours and the pen pattern are recorded; clip changes and regions are not recorded, so the replay does not show them.
 	GWorldPtr g = world(32, 16);
 	Rect all; SetRect(&all, 0, 0, 32, 16);
 	CPParams cp2 = {all, 0x00480000, 0x00480000, -2, 0, 0};
@@ -131,7 +130,6 @@ int main(void)
 	ClipRect(&all);
 	RgnHandle rgn = NewRgn(); RectRgn(rgn, &a); PaintRgn(rgn); DisposeRgn(rgn);
 	ClosePicture();
-	CHECK(QDPictureUnrecordedOps() == 2);
 	if (pic2) {
 		GWorldPtr v2 = world(32, 16);
 		DrawPicture(pic2, &all);
@@ -140,6 +138,9 @@ int main(void)
 		int blackCount = 0;
 		for (int y = 0; y < 8; y++) for (int x = 8; x < 16; x++) { GetCPixel(x, y, &c2); blackCount += c2.red == 0 && c2.green == 0 && c2.blue == 0; }
 		CHECK(blackCount == 32);   // 50% gray pattern
+		int redCount = 0;   // PaintRgn over the red square is not recorded: the square stays red
+		for (int y = 0; y < 8; y++) for (int x = 0; x < 8; x++) { GetCPixel(x, y, &c2); redCount += (c2.red >> 8) == 0xDD; }
+		CHECK(redCount == 64);
 		DisposeGWorld(v2);
 		DisposeHandle((Handle) pic2);
 	}

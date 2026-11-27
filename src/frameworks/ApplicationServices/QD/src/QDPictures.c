@@ -348,7 +348,4 @@ void ClosePicture(void)
 	QDRecordClose();
 }
 
-// Count of drawing operations (text, regions, ...) left out of the last or current picture.
-unsigned QDPictureUnrecordedOps(void) { return QDRecordUnrecordedOps(); }
-
 #endif /* !__LP64__ */

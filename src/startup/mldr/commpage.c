@@ -87,6 +87,9 @@ void commpage_setup(bool _64bit)
 	*kernel_page_shift = *user_page_shift = (uint8_t)__builtin_ctzl(sysconf(_SC_PAGESIZE));
 
 	my_caps = get_cpu_caps();
+	// the cache line size bit: libraries such as vImage align row sizes to twice the line size read from here,
+	// and with no bit set every aligned size comes out 0. x86-64 lines are 64 bytes.
+	my_caps |= kCache64;
 	if (*ncpus == 1)
 		my_caps |= kUP;
 

@@ -43,27 +43,30 @@ int socket_bitmap_get(socket_bitmap_t* bitmap) {
 			limit.rlim_cur = 1024;
 		}
 
+		// The whole bitmap is allocated at once (one bit per descriptor; untouched calloc'd pages cost nothing) and
+		// never reallocated or freed afterwards: a fork's child releases the parent's descriptors through
+		// socket_bitmap_put() and a realloc() there can wait forever for a malloc lock that another thread of the
+		// parent held at the fork (the raw fork syscall runs none of the host's fork handlers).
+		// The numbers count down from at most 16384 (Darwin's OPEN_MAX is 10240): the kernel sizes a process's
+		// descriptor table to its highest descriptor, and with the slots at the top of a limit of hundreds of
+		// thousands every process carried a table of megabytes. A guest that opens more descriptors than that still
+		// gets them: a slot that is in use is never handed out or replaced.
+		if (limit.rlim_cur > 16384)
+			limit.rlim_cur = 16384;
 		bitmap->highest = limit.rlim_cur - 1;
+	}
+	if (!bitmap->bits) {
+		bitmap->bits = calloc(((size_t)bitmap->highest + 1 + 7) / 8, 1);
+		if (!bitmap->bits) {
+			goto out;
+		}
 	}
 
 	if (bitmap->next_index >= bitmap->bit_length) {
-		// we need to grow the bitmap
-
-		if ((bitmap->bit_length % 8) == 0) {
-			// we need to allocate an additional byte
-
-			void* ptr = realloc(bitmap->bits, (bitmap->bit_length / 8) + 1);
-			if (!ptr) {
-				goto out;
-			}
-
-			bitmap->bits = ptr;
-
-			bitmap->bits[bitmap->bit_length / 8] = 0;
-		} else {
-			// we just need to increment the bit length
+		// grow the bitmap (within its allocation)
+		if (bitmap->bit_length > (size_t)bitmap->highest) {
+			goto out; // every descriptor number is in use
 		}
-
 		++bitmap->bit_length;
 	}
 
@@ -147,20 +150,9 @@ void socket_bitmap_put(socket_bitmap_t* bitmap, int socket) {
 			--bitmap->bit_length;
 		}
 
-		new_byte_size = (bitmap->bit_length + 7) / 8;
-
-		if (new_byte_size == 0) {
-			free(bitmap->bits);
-			bitmap->bits = NULL;
-		} else if (old_byte_size != new_byte_size) {
-			// we can free one or more bytes from the bitmap
-			void* ptr = realloc(bitmap->bits, new_byte_size);
-			if (!ptr) {
-				goto out;
-			}
-
-			bitmap->bits = ptr;
-		}
+		// the allocation stays (see socket_bitmap_get)
+		(void)old_byte_size;
+		(void)new_byte_size;
 	}
 
 out:

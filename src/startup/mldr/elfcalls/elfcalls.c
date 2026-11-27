@@ -86,6 +86,8 @@ static int __dserver_process_lifetime_pipe_refresh() {
 	return pipe[0];
 }
 
+extern void __mldr_socket_bitmap_postfork_child(void);
+
 void elfcalls_make(struct elf_calls* calls)
 {
 	calls->dlopen = dlopen_simple;
@@ -136,4 +138,5 @@ void elfcalls_make(struct elf_calls* calls)
 	calls->native_fork = __mldr_native_fork;
 
 	calls->inherited_nofile_limit = __mldr_inherited_nofile_limit;
+	calls->postfork_child = __mldr_socket_bitmap_postfork_child;
 }
