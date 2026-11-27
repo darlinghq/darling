@@ -17,12 +17,36 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#import <AuthenticationServices/ASAuthorization.h>
+#import <AuthenticationServices/AuthenticationServices.h>
 #import <darling-stub-forwarding.h>
 
 // String values as observed on macOS 26.7.3 (the constants are opaque to callers).
 ASAuthorizationScope const ASAuthorizationScopeFullName = @"full_name";
 ASAuthorizationScope const ASAuthorizationScopeEmail = @"email";
+
+@implementation ASWebAuthenticationSessionCallback
+
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [super methodSignatureForSelector:aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    DarlingStubForwardInvocation(self, anInvocation);
+}
+
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [super methodSignatureForSelector:aSelector] ?: DarlingStubMethodSignature(aSelector);
+}
+
++ (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    DarlingStubForwardInvocation(self, anInvocation);
+}
+
+@end
 
 @implementation ASAuthorization
 
