@@ -21,43 +21,23 @@
 #import <CoreFoundation/CoreFoundation.h>
 #import <CoreFoundation/CFRuntime.h>
 #import <dispatch/dispatch.h>
+#import <Metal/Metal.h>
+#import <IOSurface/IOSurface.h>
 #import <CoreVideo/CVBase.h>
 #import <CoreVideo/CVReturn.h>
 #import <CoreVideo/CVBuffer.h>
 #import <CoreVideo/CVPixelBuffer.h>
+#import <CoreVideo/CVPixelBufferIOSurface.h>
 #import <CoreVideo/CVMetalTexture.h>
 #import <CoreVideo/CVMetalTextureCache.h>
+
+// A texture of the cache's Metal device that is made of an IOSurface plane of the pixel buffer,
+// so it shows the pixel buffer's memory and not a copy. Pixel buffers that are not backed by an
+// IOSurface cannot be used: they fail with kCVReturnPixelBufferNotMetalCompatible.
 
 const CFStringRef kCVMetalTextureUsage = CFSTR("MetalTextureUsage");
 const CFStringRef kCVMetalTextureStorageMode = CFSTR("MetalTextureStorageMode");
 const CFStringRef kCVMetalTextureCacheMaximumTextureAgeKey = CFSTR("MaximumMetalTextureAge");
-
-typedef struct {
-    NSUInteger x, y, z;
-} CVMTLOrigin;
-
-typedef struct {
-    NSUInteger width, height, depth;
-} CVMTLSize;
-
-typedef struct {
-    CVMTLOrigin origin;
-    CVMTLSize size;
-} CVMTLRegion;
-
-@interface NSObject (CVMTLTextureDescriptor)
-+ (id)texture2DDescriptorWithPixelFormat:(NSUInteger)pixelFormat
-                                   width:(NSUInteger)width
-                                  height:(NSUInteger)height
-                               mipmapped:(BOOL)mipmapped;
-- (void)setUsage:(NSUInteger)usage;
-- (void)setStorageMode:(NSUInteger)storageMode;
-- (id)newTextureWithDescriptor:(id)descriptor;
-- (void)replaceRegion:(CVMTLRegion)region
-          mipmapLevel:(NSUInteger)level
-            withBytes:(const void *)pixelBytes
-          bytesPerRow:(NSUInteger)bytesPerRow;
-@end
 
 struct __CVMetalTexture {
     CFRuntimeBase _base;
@@ -68,12 +48,13 @@ struct __CVMetalTexture {
 struct __CVMetalTextureCache {
     CFRuntimeBase _base;
     id<MTLDevice> device;
+    CFDictionaryRef textureAttributes;
 };
 
 static void metalTextureFinalize(CFTypeRef cf)
 {
     struct __CVMetalTexture *tex = (struct __CVMetalTexture *)cf;
-    [(id)tex->texture release];
+    [tex->texture release];
     tex->texture = nil;
     if (tex->sourceImage) {
         CFRelease(tex->sourceImage);
@@ -84,8 +65,12 @@ static void metalTextureFinalize(CFTypeRef cf)
 static void metalTextureCacheFinalize(CFTypeRef cf)
 {
     struct __CVMetalTextureCache *cache = (struct __CVMetalTextureCache *)cf;
-    [(id)cache->device release];
+    [cache->device release];
     cache->device = nil;
+    if (cache->textureAttributes) {
+        CFRelease(cache->textureAttributes);
+        cache->textureAttributes = NULL;
+    }
 }
 
 static const CFRuntimeClass metalTextureClass = {
@@ -146,20 +131,28 @@ void CVMetalTextureGetCleanTexCoords(CVMetalTextureRef image,
 CVReturn CVMetalTextureCacheCreate(CFAllocatorRef allocator, CFDictionaryRef cacheAttributes,
     id<MTLDevice> metalDevice, CFDictionaryRef textureAttributes, CVMetalTextureCacheRef *cacheOut)
 {
-    if (cacheOut == NULL || metalDevice == NULL)
+    if (cacheOut == NULL || metalDevice == nil)
         return kCVReturnInvalidArgument;
 
     struct __CVMetalTextureCache *cache = (struct __CVMetalTextureCache *)_CFRuntimeCreateInstance(
         allocator, CVMetalTextureCacheGetTypeID(),
         sizeof(struct __CVMetalTextureCache) - sizeof(CFRuntimeBase), NULL);
-    if (!cache) {
-        *cacheOut = NULL;
+    if (!cache)
         return kCVReturnAllocationFailed;
-    }
 
-    cache->device = [(id)metalDevice retain];
+    cache->device = [metalDevice retain];
+    cache->textureAttributes = textureAttributes ? CFDictionaryCreateCopy(allocator, textureAttributes) : NULL;
     *cacheOut = cache;
     return kCVReturnSuccess;
+}
+
+// The attribute the call passes wins over the one the cache was created with.
+static id textureAttribute(struct __CVMetalTextureCache *cache, CFDictionaryRef callAttributes, CFStringRef key)
+{
+    id value = callAttributes ? (id)CFDictionaryGetValue(callAttributes, key) : nil;
+    if (value == nil && cache->textureAttributes)
+        value = (id)CFDictionaryGetValue(cache->textureAttributes, key);
+    return [value isKindOfClass:[NSNumber class]] ? value : nil;
 }
 
 CVReturn CVMetalTextureCacheCreateTextureFromImage(CFAllocatorRef allocator,
@@ -172,51 +165,45 @@ CVReturn CVMetalTextureCacheCreateTextureFromImage(CFAllocatorRef allocator,
     size_t planeIndex,
     CVMetalTextureRef *textureOut)
 {
-    if (textureOut == NULL || textureCache == NULL || sourceImage == NULL || width == 0 || height == 0)
+    if (textureOut == NULL || textureCache == NULL || sourceImage == NULL
+        || CFGetTypeID(textureCache) != CVMetalTextureCacheGetTypeID()
+        || CFGetTypeID(sourceImage) != CVPixelBufferGetTypeID())
         return kCVReturnInvalidArgument;
-    *textureOut = NULL;
-
-    Class descClass = NSClassFromString(@"MTLTextureDescriptor");
-    if (!descClass)
-        return kCVReturnUnsupported;
 
     struct __CVMetalTextureCache *cache = (struct __CVMetalTextureCache *)textureCache;
-    id desc = [descClass texture2DDescriptorWithPixelFormat:pixelFormat
-                                                      width:width
-                                                     height:height
-                                                  mipmapped:NO];
-    if (!desc)
-        return kCVReturnUnsupported;
-
-    NSUInteger usage = 1; // MTLTextureUsageShaderRead
-    if (textureAttributes) {
-        NSNumber *usageNum = [(NSDictionary *)textureAttributes objectForKey:(id)kCVMetalTextureUsage];
-        if (usageNum)
-            usage = [usageNum unsignedIntegerValue];
-    }
-    [desc setUsage:usage];
-
-    id<MTLTexture> mtlTex = [(id)cache->device newTextureWithDescriptor:desc];
-    if (!mtlTex)
-        return kCVReturnAllocationFailed;
-
     CVPixelBufferRef pb = (CVPixelBufferRef)sourceImage;
-    if (CVPixelBufferLockBaseAddress(pb, kCVPixelBufferLock_ReadOnly) == kCVReturnSuccess) {
-        size_t planes = CVPixelBufferGetPlaneCount(pb);
-        void *base = (planes > 0) ? CVPixelBufferGetBaseAddressOfPlane(pb, planeIndex) : CVPixelBufferGetBaseAddress(pb);
-        size_t bpr = (planes > 0) ? CVPixelBufferGetBytesPerRowOfPlane(pb, planeIndex) : CVPixelBufferGetBytesPerRow(pb);
-        if (base && bpr > 0) {
-            CVMTLRegion region = { { 0, 0, 0 }, { width, height, 1 } };
-            [(id)mtlTex replaceRegion:region mipmapLevel:0 withBytes:base bytesPerRow:bpr];
-        }
-        CVPixelBufferUnlockBaseAddress(pb, kCVPixelBufferLock_ReadOnly);
-    }
+
+    size_t planes = CVPixelBufferGetPlaneCount(pb);
+    if (planes == 0 ? planeIndex != 0 : planeIndex >= planes)
+        return kCVReturnInvalidArgument;
+    size_t planeWidth = planes ? CVPixelBufferGetWidthOfPlane(pb, planeIndex) : CVPixelBufferGetWidth(pb);
+    size_t planeHeight = planes ? CVPixelBufferGetHeightOfPlane(pb, planeIndex) : CVPixelBufferGetHeight(pb);
+    if (width == 0 || height == 0 || width > planeWidth || height > planeHeight)
+        return kCVReturnInvalidArgument;
+
+    IOSurfaceRef surface = CVPixelBufferGetIOSurface(pb);
+    if (surface == NULL)
+        return kCVReturnPixelBufferNotMetalCompatible;
+
+    MTLTextureDescriptor *desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:(MTLPixelFormat)pixelFormat
+                                                                                     width:width
+                                                                                    height:height
+                                                                                 mipmapped:NO];
+    NSNumber *usage = textureAttribute(cache, textureAttributes, kCVMetalTextureUsage);
+    desc.usage = usage ? (MTLTextureUsage)[usage unsignedIntegerValue] : MTLTextureUsageShaderRead;
+    NSNumber *storage = textureAttribute(cache, textureAttributes, kCVMetalTextureStorageMode);
+    if (storage)
+        desc.storageMode = (MTLStorageMode)[storage unsignedIntegerValue];
+
+    id<MTLTexture> mtlTex = [cache->device newTextureWithDescriptor:desc iosurface:surface plane:planeIndex];
+    if (!mtlTex)
+        return kCVReturnError;
 
     struct __CVMetalTexture *cvTex = (struct __CVMetalTexture *)_CFRuntimeCreateInstance(
         allocator, CVMetalTextureGetTypeID(),
         sizeof(struct __CVMetalTexture) - sizeof(CFRuntimeBase), NULL);
     if (!cvTex) {
-        [(id)mtlTex release];
+        [mtlTex release];
         return kCVReturnAllocationFailed;
     }
 

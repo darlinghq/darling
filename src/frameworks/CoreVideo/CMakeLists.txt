@@ -35,6 +35,7 @@ add_framework(CoreVideo
         Foundation
         CoreGraphics
         IOSurface
+        Metal
         OpenGL
         cxx
 )

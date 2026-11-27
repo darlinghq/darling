@@ -38,8 +38,8 @@ CV_EXPORT CFTypeID CVMetalTextureCacheGetTypeID(void);
 
 typedef struct __CVMetalTextureCache *CVMetalTextureCacheRef;
 
-// Metal texture interop is not available: the create calls validate their
-// arguments and then fail with kCVReturnUnsupported, leaving no object behind.
+// Textures are made of the IOSurface that backs the pixel buffer; a pixel buffer without one fails
+// with kCVReturnPixelBufferNotMetalCompatible.
 CV_EXPORT CVReturn CVMetalTextureCacheCreate(CFAllocatorRef CV_NULLABLE allocator,
 	CFDictionaryRef CV_NULLABLE cacheAttributes,
 	id <MTLDevice> CV_NONNULL metalDevice,
