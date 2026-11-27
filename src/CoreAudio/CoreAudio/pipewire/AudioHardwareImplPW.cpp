@@ -14,6 +14,7 @@ the Free Software Foundation, either version 3 of the License, or
 #include "AudioHardwareStreamPWOutput.h"
 #include "PWConfig.h"
 #include <CoreAudio/AudioHardwareBase.h>
+#include <pipe_volume.h>
 #include <CoreAudio/HostTime.h>
 #include <CoreFoundation/CFString.h>
 #include <CarbonCore/MacErrors.h>
@@ -112,6 +113,8 @@ AudioHardwareImplPW::AudioHardwareImplPW(AudioObjectID myId, const char* name,
 
 AudioHardwareImplPW::~AudioHardwareImplPW()
 {
+	if (auto* client = m_volumeClient.load())
+		darling_pw_volume_close(client);
 	if (!m_system)
 	{
 		CFRelease(m_name);
@@ -256,13 +259,21 @@ OSStatus AudioHardwareImplPW::devicePropertyData(const AudioObjectPropertyAddres
 		}
 		case kAudioDevicePropertyVolumeScalar:
 		{
+			float linear;
+			int muted;
+			if (auto* client = volumeClient(); client && darling_pw_volume_get(client, &linear, &muted) == 0)
+				m_volume.store(std::cbrt(std::min(std::max(linear, 0.f), 1.f)), std::memory_order_relaxed);
 			const Float32 volume = m_volume.load(std::memory_order_relaxed);
 			return reply(ioDataSize, outData, &volume, sizeof(volume));
 		}
 		case kAudioDevicePropertyMute:
 		{
-			const UInt32 muted = m_mute.load(std::memory_order_relaxed);
-			return reply(ioDataSize, outData, &muted, sizeof(muted));
+			float linear;
+			int muted;
+			if (auto* client = volumeClient(); client && darling_pw_volume_get(client, &linear, &muted) == 0)
+				m_mute.store(muted ? 1 : 0, std::memory_order_relaxed);
+			const UInt32 muted32 = m_mute.load(std::memory_order_relaxed);
+			return reply(ioDataSize, outData, &muted32, sizeof(muted32));
 		}
 		case kAudioDevicePropertyDeviceIsRunningSomewhere:
 		{
@@ -380,14 +391,22 @@ OSStatus AudioHardwareImplPW::setPropertyData(const AudioObjectPropertyAddress* 
 		case kAudioDevicePropertyVolumeScalar:
 			if (!inData || dataSize != sizeof(Float32))
 				return kAudioHardwareBadPropertySizeError;
-			m_volume.store(std::min(std::max(*static_cast<const Float32*>(inData), 0.f), 1.f),
-				std::memory_order_relaxed);
+		{
+			const Float32 scalar = std::min(std::max(*static_cast<const Float32*>(inData), 0.f), 1.f);
+			m_volume.store(scalar, std::memory_order_relaxed);
+			// The server stores linear gain; the scalar follows the cubic curve
+			// that desktop mixers use, so both show the same percentage.
+			if (auto* client = volumeClient())
+				darling_pw_volume_set_linear(client, scalar * scalar * scalar);
 			notifyPropertyChanged(kAudioDevicePropertyVolumeScalar);
 			return kAudioHardwareNoError;
+		}
 		case kAudioDevicePropertyMute:
 			if (!inData || dataSize != sizeof(UInt32))
 				return kAudioHardwareBadPropertySizeError;
 			m_mute.store(*static_cast<const UInt32*>(inData) ? 1 : 0, std::memory_order_relaxed);
+			if (auto* client = volumeClient())
+				darling_pw_volume_set_mute(client, m_mute.load(std::memory_order_relaxed));
 			notifyPropertyChanged(kAudioDevicePropertyMute);
 			return kAudioHardwareNoError;
 		case kAudioDevicePropertyNominalSampleRate:
@@ -406,6 +425,58 @@ OSStatus AudioHardwareImplPW::setPropertyData(const AudioObjectPropertyAddress* 
 			return AudioHardwareImpl::setPropertyData(address, qualifierDataSize,
 				qualifierData, dataSize, inData);
 	}
+}
+
+darling_pw_volume* AudioHardwareImplPW::volumeClient()
+{
+	if (m_system)
+		return nullptr;
+	std::lock_guard<std::mutex> lock(m_volumeMutex);
+	if (auto* existing = m_volumeClient.load())
+		return existing;
+	// Without a server the connection attempt fails at once; it is repeated
+	// at most once a second so that a server started later is picked up.
+	const auto now = std::chrono::steady_clock::now();
+	if (m_volumeAttempt.time_since_epoch().count() != 0
+		&& now - m_volumeAttempt < std::chrono::seconds(1))
+		return nullptr;
+	m_volumeAttempt = now;
+	const darling_pw_volume_events events = { &AudioHardwareImplPW::volumeChangedByServer };
+	darling_pw_volume* client = nullptr;
+	if (darling_pw_volume_open(m_input ? 0 : 1, &events, this, &client) != 0)
+		return nullptr;
+	m_volumeClient.store(client);
+	return client;
+}
+
+void AudioHardwareImplPW::volumeChangedByServer(void* userData)
+{
+	static_cast<AudioHardwareImplPW*>(userData)->volumeChanged();
+}
+
+// Runs on the PipeWire thread when the server's values differ from the last ones seen.
+void AudioHardwareImplPW::volumeChanged()
+{
+	float linear;
+	int muted;
+	darling_pw_volume* client = m_volumeClient.load();
+	if (!client || darling_pw_volume_get(client, &linear, &muted) != 0)
+		return;
+	const Float32 scalar = std::cbrt(std::min(std::max(linear, 0.f), 1.f));
+	if (std::fabs(m_volume.exchange(scalar, std::memory_order_relaxed) - scalar) > 1e-4f)
+		notifyPropertyChanged(kAudioDevicePropertyVolumeScalar);
+	if (m_mute.exchange(muted ? 1 : 0, std::memory_order_relaxed) != (muted ? 1u : 0u))
+		notifyPropertyChanged(kAudioDevicePropertyMute);
+}
+
+OSStatus AudioHardwareImplPW::addPropertyListener(const AudioObjectPropertyAddress* address,
+	AudioObjectPropertyListenerProc listener, void* clientData)
+{
+	// Server-side changes can only be reported while the connection is open.
+	if (address->mSelector == kAudioDevicePropertyVolumeScalar
+		|| address->mSelector == kAudioDevicePropertyMute)
+		volumeClient();
+	return AudioHardwareImpl::addPropertyListener(address, listener, clientData);
 }
 
 OSStatus AudioHardwareImplPW::isPropertySettable(const AudioObjectPropertyAddress* address,
