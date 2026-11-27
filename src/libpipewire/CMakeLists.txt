@@ -11,6 +11,7 @@ add_darling_static_library(darling_pipewire_client FAT
 		screencast_portal.c
 		screen_capture_backend.c
 		pipe_client.c
+		pipe_volume.c
 )
 
 target_include_directories(darling_pipewire_client BEFORE PRIVATE
