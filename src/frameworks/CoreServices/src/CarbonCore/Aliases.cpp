@@ -236,3 +236,45 @@ Size GetAliasSize(AliasHandle alias)
 	const uint8_t* bytes = (const uint8_t*) *alias;
 	return (Size) (((unsigned) bytes[4] << 8) | bytes[5]);
 }
+
+#ifndef __LP64__
+#include <CarbonCore/Aliases.h>
+
+#ifdef __cplusplus
+extern "C"
+#endif
+OSErr NewAlias(
+    const FSSpec* fromFile,
+    const FSSpec* target,
+    AliasHandle* result)
+{
+    if (!result)
+        return paramErr;
+
+    *result=0;
+
+    if (!target)
+        return paramErr;
+
+    FSRef targetRef;
+    OSErr err=FSpMakeFSRef(target,&targetRef);
+
+    if (err!=noErr)
+        return err;
+
+    FSRef fromRef;
+    const FSRef* origin=0;
+
+    if (fromFile) {
+        err=FSpMakeFSRef(fromFile,&fromRef);
+
+        if (err!=noErr)
+            return err;
+
+        origin=&fromRef;
+    }
+
+    return FSNewAlias(origin,&targetRef,result);
+}
+
+#endif

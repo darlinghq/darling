@@ -296,6 +296,11 @@ OSErr FSpGetFInfo(const FSSpec* spec, FInfo* fndrInfo);
 OSErr FSpSetFInfo(const FSSpec* spec, const FInfo* fndrInfo);
 #endif
 
+
+#ifndef __LP64__
+OSErr FindFolder( short volume,OSType folderType, Boolean createFolder, short* foundVolume,long* foundDirectory);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

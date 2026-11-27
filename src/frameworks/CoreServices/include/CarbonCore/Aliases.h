@@ -74,6 +74,11 @@ OSStatus FSCopyAliasInfo(AliasHandle inAlias, HFSUniStr255 *targetName, HFSUniSt
 	CFStringRef *pathString, FSAliasInfoBitmap *whichInfo, FSAliasInfo *info);
 Size GetAliasSize(AliasHandle alias);
 
+
+#ifndef __LP64__
+OSErr NewAlias( const FSSpec* fromFile, const FSSpec* target, AliasHandle* result);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
