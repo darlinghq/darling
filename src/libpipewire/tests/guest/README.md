@@ -16,6 +16,8 @@ The guest programs are built with `guest-cc.sh` (see darling-skills, darling-gue
 | `avcapture_camera.m expect-none` | without PipeWire no camera is listed |
 | `screen_capture.m expect-image` / `expect-none` | `CGDisplayCreateImage` returns an image of the display size with non-uniform content / returns NULL |
 | `screen_pattern.m avc` / `sck` | AVCaptureScreenInput / ScreenCaptureKit deliver BGRA frames whose quadrant centres have the colours of the pattern (`sck` is x86_64 only) |
+| `screen_pattern.m avc-crop` / `sck-crop` | the crop rectangle / source rectangle and the output size select one quadrant (blue / green) of the pattern at half scale |
+| `screen_no_daemon.m` | without a portal or PipeWire server, a CGDisplayStream fails to start, `startRunning` returns and an SCStream start completes with an error, each within a fraction of a second (run it with `XDG_RUNTIME_DIR` pointing at an empty directory) |
 | `hal_play.c` | the HAL output device calls the IOProc at the real-time rate, reports a latency of a few thousand frames at most, and stops cleanly |
 
 `afplay <wav>` must play to the null sink and exit when the file ends (it sleeps for the reported output
