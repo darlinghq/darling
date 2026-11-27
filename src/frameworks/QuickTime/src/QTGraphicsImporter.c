@@ -253,23 +253,42 @@ struct Details {
 	long fileSize;
 };
 
+// The picture's own pixel depth: that of the deepest pixel map it draws (QuickDraw plays the picture to find out);
+// a picture of shapes only is 32 deep, as QuickTime describes it
+extern short _QDPictureGetPixelDepth(PicHandle pic);
+
 static Boolean pictDetails(const char *path, size_t offset, struct Details *d)
 {
-	uint8_t b[16];
-	size_t n = 0;
 	FILE *f = fopen(path, "rb");
+	long size;
 	if (!f)
 		return false;
-	fseek(f, (long) offset, SEEK_SET);
-	n = fread(b, 1, sizeof(b), f);
-	fclose(f);
-	if (n < 10)
+	fseek(f, 0, SEEK_END);
+	size = ftell(f) - (long) offset;
+	if (size < 10) {
+		fclose(f);
 		return false;
+	}
+	Handle pic = NewHandle(size);
+	if (!pic) {
+		fclose(f);
+		return false;
+	}
+	fseek(f, (long) offset, SEEK_SET);
+	size_t got = fread(*pic, 1, (size_t) size, f);
+	fclose(f);
+	if ((long) got != size) {
+		DisposeHandle(pic);
+		return false;
+	}
+	const uint8_t *b = (const uint8_t *) *pic;
 	d->natural.top = (short) (b[2] << 8 | b[3]);
 	d->natural.left = (short) (b[4] << 8 | b[5]);
 	d->natural.bottom = (short) (b[6] << 8 | b[7]);
 	d->natural.right = (short) (b[8] << 8 | b[9]);
-	d->depth = 32;
+	short depth = _QDPictureGetPixelDepth((PicHandle) pic);
+	d->depth = depth > 1 ? depth : 32;
+	DisposeHandle(pic);
 	d->codec = 'PICT';
 	d->name = "Photo - JPEG";
 	return true;
