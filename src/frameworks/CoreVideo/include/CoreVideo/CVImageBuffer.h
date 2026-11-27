@@ -73,6 +73,7 @@ extern CFStringRef const kCVImageBufferCleanApertureVerticalOffsetKey;
 
 CV_EXPORT CGSize CVImageBufferGetEncodedSize(CVImageBufferRef imageBuffer);
 CV_EXPORT CGRect CVImageBufferGetCleanRect(CVImageBufferRef imageBuffer);
+CV_EXPORT CGColorSpaceRef CVImageBufferGetColorSpace(CVImageBufferRef imageBuffer);
 
 __END_DECLS
 
