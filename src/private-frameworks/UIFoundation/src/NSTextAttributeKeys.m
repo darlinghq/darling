@@ -57,6 +57,7 @@ NSAttributedStringKey NSSpellingStateAttributeName = @"NSSpellingState"; // temp
 // Not declared in the public SDK headers, but exported by macOS and bound by applications. The string was read from the exported
 // constant on macOS 26.7.3 (black-box observation; absent on macOS 10.14, so applications that bind it need a newer system).
 NSAttributedStringKey NSParagraphAttachmentAttributeName = @"NSTextParagraphAnchoredAttachment";
+NSAttributedStringKey NSTextEncapsulationAttributeName = @"NSTextEncapsulation";
 
 NSAttributedStringDocumentAttributeKey NSDocumentTypeDocumentAttribute = @"DocumentType";
 NSAttributedStringDocumentAttributeKey NSConvertedDocumentAttribute = @"Converted";

@@ -17,8 +17,29 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+#import <AVFoundation/AVComposition.h>
+#import <AVFoundation/AVMutableCompositionTrack.h>
 
-@interface AVMutableComposition : NSObject
+@interface AVMutableComposition : AVComposition
+
+@property (nonatomic) CGSize naturalSize;
+
++ (instancetype)composition;
+
+- (AVMutableCompositionTrack *)addMutableTrackWithMediaType:(AVMediaType)mediaType
+                                           preferredTrackID:(CMPersistentTrackID)preferredTrackID;
+- (void)removeTrack:(AVCompositionTrack *)track;
+- (AVMutableCompositionTrack *)mutableTrackCompatibleWithTrack:(AVAssetTrack *)track;
+- (AVMutableCompositionTrack *)trackWithTrackID:(CMPersistentTrackID)trackID;
+- (NSArray<AVMutableCompositionTrack *> *)tracksWithMediaType:(AVMediaType)mediaType;
+
+- (BOOL)insertTimeRange:(CMTimeRange)timeRange
+                ofAsset:(AVAsset *)asset
+                 atTime:(CMTime)startTime
+                  error:(NSError **)outError;
+- (void)insertEmptyTimeRange:(CMTimeRange)timeRange;
+- (void)removeTimeRange:(CMTimeRange)timeRange;
+- (void)scaleTimeRange:(CMTimeRange)timeRange toDuration:(CMTime)duration;
 
 @end

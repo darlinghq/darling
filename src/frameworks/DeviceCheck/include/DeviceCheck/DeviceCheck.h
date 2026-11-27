@@ -20,6 +20,7 @@
 #ifndef _DeviceCheck_H_
 #define _DeviceCheck_H_
 
-/* Intentionally empty: see src/DeviceCheck.c. */
+#import <DeviceCheck/DCError.h>
+#import <DeviceCheck/DCAppAttestService.h>
 
 #endif

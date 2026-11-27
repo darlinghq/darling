@@ -36,5 +36,6 @@
 - (SFAuthenticatedCiphertext*)encrypt:(NSData*)data withKey:(SFAESKey*)key additionalAuthenticatedData:(NSData*)aad error:(NSError**)error;
 
 - (NSData*)decrypt:(SFAuthenticatedCiphertext*)data withKey:(SFAESKey*)key error:(NSError**)error;
+- (NSData*)decrypt:(SFAuthenticatedCiphertext*)data withKey:(SFAESKey*)key additionalAuthenticatedData:(NSData*)aad error:(NSError**)error;
 
 @end

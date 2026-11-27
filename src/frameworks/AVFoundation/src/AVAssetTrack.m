@@ -29,6 +29,7 @@
                    naturalSize:(CGSize)naturalSize
               nominalFrameRate:(float)nominalFrameRate
                      timeRange:(CMTimeRange)timeRange
+            formatDescriptions:(NSArray *)formatDescriptions
 {
     if ((self = [super init])) {
         _assetTrack = [[AVAssetTrackInternal alloc] init];
@@ -38,6 +39,7 @@
         _assetTrack->naturalSize = naturalSize;
         _assetTrack->nominalFrameRate = nominalFrameRate;
         _assetTrack->timeRange = timeRange;
+        _assetTrack->formatDescriptions = [formatDescriptions copy];
     }
     return self;
 }
@@ -48,12 +50,16 @@
     [super dealloc];
 }
 
+- (AVAssetTrackInternal *)_internal { return _assetTrack; }
 - (AVAsset *)asset { return _assetTrack->asset; }
 - (CMPersistentTrackID)trackID { return _assetTrack->trackID; }
 - (AVMediaType)mediaType { return _assetTrack->mediaType; }
 - (CGSize)naturalSize { return _assetTrack->naturalSize; }
 - (float)nominalFrameRate { return _assetTrack->nominalFrameRate; }
 - (CMTimeRange)timeRange { return _assetTrack->timeRange; }
+- (NSArray *)formatDescriptions { return _assetTrack->formatDescriptions ?: [NSArray array]; }
+- (CMTime)minFrameDuration { return _assetTrack->nominalFrameRate > 0 ? CMTimeMake(1, (int32_t)(_assetTrack->nominalFrameRate + 0.5f)) : kCMTimeInvalid; }
+- (CGAffineTransform)preferredTransform { return CGAffineTransformIdentity; }
 - (BOOL)isEnabled { return YES; }
 - (BOOL)isPlayable { return YES; }
 

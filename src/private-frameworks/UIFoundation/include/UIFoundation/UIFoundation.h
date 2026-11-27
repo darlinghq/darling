@@ -109,6 +109,9 @@
 #import <UIFoundation/NSConcreteGlyphGenerator.h>
 #import <UIFoundation/NSWordMLReader.h>
 #import <UIFoundation/NSWordMLWriter.h>
+#import <UIFoundation/NSTextEncapsulation.h>
+#import <UIFoundation/NSTextGraphicsContext.h>
+#import <UIFoundation/NSTextGraphicsContextProvider.h>
 
 extern const char UIArchiveHeaderIdentifier[];
 extern const uint32_t UIMaximumCompatibleFormatVersion;

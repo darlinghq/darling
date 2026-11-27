@@ -19,6 +19,25 @@
 
 #include <Foundation/Foundation.h>
 
+@class SKPaymentQueue;
+@class SKPaymentTransaction;
+
+@protocol SKPaymentTransactionObserver <NSObject>
+- (void)paymentQueue:(SKPaymentQueue *)queue updatedTransactions:(NSArray<SKPaymentTransaction *> *)transactions;
+@optional
+- (void)paymentQueue:(SKPaymentQueue *)queue removedTransactions:(NSArray<SKPaymentTransaction *> *)transactions;
+- (void)paymentQueue:(SKPaymentQueue *)queue restoreCompletedTransactionsFailedWithError:(NSError *)error;
+- (void)paymentQueueRestoreCompletedTransactionsFinished:(SKPaymentQueue *)queue;
+@end
+
 @interface SKPaymentQueue : NSObject
+
+// Payments are not available: canMakePayments is NO and the queue never holds
+// transactions or notifies observers.
++ (SKPaymentQueue *)defaultQueue;
++ (BOOL)canMakePayments;
+@property (nonatomic, readonly) NSArray<SKPaymentTransaction *> *transactions;
+- (void)addTransactionObserver:(id<SKPaymentTransactionObserver>)observer;
+- (void)removeTransactionObserver:(id<SKPaymentTransactionObserver>)observer;
 
 @end

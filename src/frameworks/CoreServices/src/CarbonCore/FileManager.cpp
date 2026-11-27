@@ -431,7 +431,60 @@ static std::string extractXDGValue(const char* home, const std::string& line)
 	return std::string();
 }
 
-// TODO: Test this function!
+static OSErr fsSpecError(int err)
+{
+	switch (err)
+	{
+		case ENOENT: return fnfErr;
+		case EACCES: case EPERM: return permErr;
+		case EROFS: return wPrErr;
+		case EEXIST: return dupFNErr;
+		default: return makeOSStatus(err);
+	}
+}
+
+// Makes the FSRef of a folder path, creating the folder when asked and it is missing.
+static OSStatus folderRefAtPath(
+    const char* path,Boolean createFolder,FSRef* location)
+{
+    if (!path || !*path || !location)
+        return paramErr;
+
+    struct stat st;
+
+    if (stat(path,&st)!=0) {
+        int error=errno;
+
+        if (!createFolder || error!=ENOENT)
+            return fsSpecError(error);
+
+        if (mkdir(path,0777)!=0 && errno!=EEXIST)
+            return fsSpecError(errno);
+
+        if (stat(path,&st)!=0)
+            return fsSpecError(errno);
+    }
+
+    if (!S_ISDIR(st.st_mode))
+        return dirNFErr;
+
+    FSRef candidate={};
+    Boolean directory=false;
+
+    OSStatus err=FSPathMakeRefWithOptions(
+        (const uint8_t*)path,0,&candidate,&directory);
+
+    if (err!=noErr)
+        return err;
+
+    if (!directory)
+        return dirNFErr;
+
+    *location=candidate;
+
+    return noErr;
+}
+
 OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, FSRef* location)
 {
 	if (folderType == kTemporaryFolderType)
@@ -441,12 +494,7 @@ OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, FSR
 		if (!tmpdir)
 			tmpdir = "/tmp";
 		
-		FSPathMakeRef((const uint8_t*) tmpdir, location, nullptr);
-		
-		if (createFolder && access(tmpdir, F_OK) != 0)
-			mkdir(tmpdir, 0777);
-		
-		return noErr;
+		return folderRefAtPath(tmpdir,createFolder,location);
 	}
 	else if (folderType == kDesktopFolderType || folderType == kSystemDesktopFolderType)
 	{
@@ -455,6 +503,8 @@ OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, FSR
 		std::string line, desktop;
 		const char* home = getenv("HOME");
 		
+		if (!home || !*home)
+			return fnfErr;
 		desktop = home;
 		desktop += "/Desktop";
 	
@@ -473,12 +523,7 @@ OSStatus FSFindFolder(long vRefNum, OSType folderType, Boolean createFolder, FSR
 			}
 		}
 		
-		FSPathMakeRef((const uint8_t*) desktop.c_str(), location, nullptr);
-		
-		if (createFolder && access(desktop.c_str(), F_OK) != 0)
-			mkdir(desktop.c_str(), 0777);
-		
-		return noErr;
+		return folderRefAtPath(desktop.c_str(),createFolder,location);
 	}
 	else
 		return unimpErr;
@@ -1769,18 +1814,6 @@ extern "C" OSStatus FSMoveObjectToTrashSync(const FSRef* source, FSRef* target, 
 // FSSpec: the 32-bit File Manager's name for an item, the volume, the ID of the parent directory
 // and the name of the item. The name is the item's name in the file system, not an HFS name.
 
-static OSErr fsSpecError(int err)
-{
-	switch (err)
-	{
-		case ENOENT: return fnfErr;
-		case EACCES: case EPERM: return permErr;
-		case EROFS: return wPrErr;
-		case EEXIST: return dupFNErr;
-		default: return makeOSStatus(err);
-	}
-}
-
 static std::string fsSpecDirectory(SInt16 vRefNum, SInt32 dirID, bool* ok)
 {
 	std::string path;
@@ -1988,4 +2021,54 @@ OSErr FSpCreate(const FSSpec* spec, OSType creator, OSType fileType, ScriptCode 
 	info.fdCreator = creator;
 	return FSpSetFInfo(spec, &info);
 }
+#endif
+
+#ifndef __LP64__
+#include <stdint.h>
+#include <CoreServices/FileManager.h>
+
+#ifdef __cplusplus
+extern "C"
+#endif
+OSErr FindFolder(
+    short volume,OSType folderType,
+    Boolean createFolder,
+    short* foundVolume,long* foundDirectory)
+{
+    if (!foundVolume || !foundDirectory)
+        return paramErr;
+
+    FSRef ref;
+
+    OSStatus err=FSFindFolder(
+        volume,folderType,createFolder,&ref);
+
+    if (err!=noErr)
+        return err>=-32768 && err<=32767
+            ? (OSErr)err : ioErr;
+
+    FSCatalogInfo info={0};
+
+    err=FSGetCatalogInfo(
+        &ref,
+        kFSCatInfoVolume |
+        kFSCatInfoNodeID |
+        kFSCatInfoNodeFlags,
+        &info,0,0,0);
+
+    if (err!=noErr)
+        return err>=-32768 && err<=32767
+            ? (OSErr)err : ioErr;
+
+    if (!(info.nodeFlags & kFSNodeIsDirectoryMask))
+        return dirNFErr;
+
+    *foundVolume=info.volume;
+
+    // Preserve the legacy 32-bit catalog identifier.
+    *foundDirectory=(long)(int32_t)info.nodeID;
+
+    return noErr;
+}
+
 #endif

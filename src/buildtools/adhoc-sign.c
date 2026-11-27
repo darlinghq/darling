@@ -20,7 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 /*
  * adhoc-sign: gives linked Mach-O images an ad-hoc code signature, in place.
  *
- * Usage: adhoc-sign [--identifier=<id>] <file>...
+ * Usage: adhoc-sign [--identifier=<id>] [--entitlements=<plist>] <file>...
  *
  * Each executable, dylib, bundle or dynamic linker gets an embedded signature of the same shape
  * as `codesign -s -` produces: a SuperBlob with one SHA-256 CodeDirectory (version 0x20400, 4 KiB
@@ -30,6 +30,9 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
  *
  * The signature format is the one described by the public <kern/cs_blobs.h>, <mach-o/loader.h>
  * and <mach-o/fat.h> headers. The digests are computed with OpenSSL's libcrypto.
+ *
+ * With --entitlements the plist file is embedded as the entitlements blob, as `codesign -s -
+ * --entitlements <plist>` does, so that a program built on the host can carry entitlements.
  *
  * The identifier defaults to the file name. Exit status: 0 on success, 1 if a file could not be
  * signed, 2 on a usage error.
@@ -61,9 +64,11 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #define CSMAGIC_CODEDIRECTORY         0xfade0c02u
 #define CSMAGIC_EMBEDDED_SIGNATURE    0xfade0cc0u
 #define CSMAGIC_BLOBWRAPPER           0xfade0b01u
+#define CSMAGIC_EMBEDDED_ENTITLEMENTS 0xfade7171u
 #define CSSLOT_CODEDIRECTORY          0u
 #define CSSLOT_INFOSLOT               1u
 #define CSSLOT_REQUIREMENTS           2u
+#define CSSLOT_ENTITLEMENTS           5u
 #define CSSLOT_SIGNATURESLOT          0x10000u
 #define CS_ADHOC                      0x2u
 #define CS_HASHTYPE_SHA256            2u
@@ -76,16 +81,22 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 /* the fixed part of a version 0x20400 CodeDirectory */
 #define CD_HEADER_SIZE 88u
-/* SuperBlob header with three index entries */
-#define SUPERBLOB_HEADER_SIZE (12u + 3u * 8u)
+/* the SuperBlob header, and its index entries (one more with entitlements) */
+#define SUPERBLOB_FIXED_SIZE 12u
+#define SUPERBLOB_ENTRY_SIZE 8u
 #define REQUIREMENTS_SIZE 12u
 #define BLOBWRAPPER_SIZE 8u
-/* the number of special slots: Info.plist (unbound) and requirements */
-#define SPECIAL_SLOTS 2u
+/* the number of special slots: Info.plist (unbound) and requirements; with entitlements, up to slot 5 */
+#define SPECIAL_SLOTS_BASE 2u
+#define SPECIAL_SLOTS_ENTITLEMENTS 5u
 /* the signature's offset and size are kept 16-byte aligned, as `codesign` does */
 #define SIGNATURE_ALIGN 16u
 
 static const char* progname = "adhoc-sign";
+
+/* the content of the entitlements plist given with --entitlements, if any */
+static const uint8_t* entitlements_plist = NULL;
+static size_t entitlements_length = 0;
 
 struct buffer {
 	uint8_t* data;
@@ -344,8 +355,13 @@ static int sign_image(const char* name, const uint8_t* in, size_t in_length, con
 	uint64_t code_limit = align_up(code_end, SIGNATURE_ALIGN);
 	uint64_t code_slots = (code_limit + page_size - 1) / page_size;
 	size_t identifier_length = strlen(identifier) + 1;
-	uint64_t cd_length = CD_HEADER_SIZE + identifier_length + (SPECIAL_SLOTS + code_slots) * CS_SHA256_LEN;
-	uint64_t superblob_length = SUPERBLOB_HEADER_SIZE + cd_length + REQUIREMENTS_SIZE + BLOBWRAPPER_SIZE;
+	bool have_entitlements = entitlements_plist != NULL;
+	uint32_t special_slots = have_entitlements ? SPECIAL_SLOTS_ENTITLEMENTS : SPECIAL_SLOTS_BASE;
+	uint32_t index_count = have_entitlements ? 4 : 3;
+	uint32_t superblob_header_size = SUPERBLOB_FIXED_SIZE + index_count * SUPERBLOB_ENTRY_SIZE;
+	uint64_t entitlements_size = have_entitlements ? 8 + entitlements_length : 0;
+	uint64_t cd_length = CD_HEADER_SIZE + identifier_length + (special_slots + code_slots) * CS_SHA256_LEN;
+	uint64_t superblob_length = superblob_header_size + cd_length + REQUIREMENTS_SIZE + entitlements_size + BLOBWRAPPER_SIZE;
 	uint64_t signature_size = align_up(superblob_length, SIGNATURE_ALIGN);
 
 	if (code_limit + signature_size > UINT32_MAX) {
@@ -406,19 +422,28 @@ static int sign_image(const char* name, const uint8_t* in, size_t in_length, con
 	}
 
 	uint8_t* superblob = out->data + code_limit;
-	uint32_t cd_offset = SUPERBLOB_HEADER_SIZE;
+	uint32_t cd_offset = superblob_header_size;
 	uint32_t requirements_offset = cd_offset + (uint32_t)cd_length;
-	uint32_t wrapper_offset = requirements_offset + REQUIREMENTS_SIZE;
+	uint32_t entitlements_offset = requirements_offset + REQUIREMENTS_SIZE;
+	uint32_t wrapper_offset = entitlements_offset + (uint32_t)entitlements_size;
 
 	put_be32(superblob + 0, CSMAGIC_EMBEDDED_SIGNATURE);
 	put_be32(superblob + 4, (uint32_t)superblob_length);
-	put_be32(superblob + 8, 3);
-	put_be32(superblob + 12, CSSLOT_CODEDIRECTORY);
-	put_be32(superblob + 16, cd_offset);
-	put_be32(superblob + 20, CSSLOT_REQUIREMENTS);
-	put_be32(superblob + 24, requirements_offset);
-	put_be32(superblob + 28, CSSLOT_SIGNATURESLOT);
-	put_be32(superblob + 32, wrapper_offset);
+	put_be32(superblob + 8, index_count);
+	uint8_t* index = superblob + SUPERBLOB_FIXED_SIZE;
+	put_be32(index, CSSLOT_CODEDIRECTORY);
+	put_be32(index + 4, cd_offset);
+	index += SUPERBLOB_ENTRY_SIZE;
+	put_be32(index, CSSLOT_REQUIREMENTS);
+	put_be32(index + 4, requirements_offset);
+	index += SUPERBLOB_ENTRY_SIZE;
+	if (have_entitlements) {
+		put_be32(index, CSSLOT_ENTITLEMENTS);
+		put_be32(index + 4, entitlements_offset);
+		index += SUPERBLOB_ENTRY_SIZE;
+	}
+	put_be32(index, CSSLOT_SIGNATURESLOT);
+	put_be32(index + 4, wrapper_offset);
 
 	/* an empty requirement set and an empty CMS wrapper (no CMS signature: ad-hoc) */
 	uint8_t* requirements = superblob + requirements_offset;
@@ -426,19 +451,26 @@ static int sign_image(const char* name, const uint8_t* in, size_t in_length, con
 	put_be32(requirements + 4, REQUIREMENTS_SIZE);
 	put_be32(requirements + 8, 0);
 
+	uint8_t* entitlements_blob = superblob + entitlements_offset;
+	if (have_entitlements) {
+		put_be32(entitlements_blob + 0, CSMAGIC_EMBEDDED_ENTITLEMENTS);
+		put_be32(entitlements_blob + 4, (uint32_t)entitlements_size);
+		memcpy(entitlements_blob + 8, entitlements_plist, entitlements_length);
+	}
+
 	uint8_t* wrapper = superblob + wrapper_offset;
 	put_be32(wrapper + 0, CSMAGIC_BLOBWRAPPER);
 	put_be32(wrapper + 4, BLOBWRAPPER_SIZE);
 
 	uint8_t* cd = superblob + cd_offset;
-	uint32_t hash_offset = CD_HEADER_SIZE + (uint32_t)identifier_length + SPECIAL_SLOTS * CS_SHA256_LEN;
+	uint32_t hash_offset = CD_HEADER_SIZE + (uint32_t)identifier_length + special_slots * CS_SHA256_LEN;
 	put_be32(cd + 0, CSMAGIC_CODEDIRECTORY);
 	put_be32(cd + 4, (uint32_t)cd_length);
 	put_be32(cd + 8, CS_SUPPORTSEXECSEG);         /* version */
 	put_be32(cd + 12, CS_ADHOC);                  /* flags */
 	put_be32(cd + 16, hash_offset);
 	put_be32(cd + 20, CD_HEADER_SIZE);            /* identOffset */
-	put_be32(cd + 24, SPECIAL_SLOTS);
+	put_be32(cd + 24, special_slots);
 	put_be32(cd + 28, (uint32_t)code_slots);
 	put_be32(cd + 32, (uint32_t)code_limit);
 	cd[36] = CS_SHA256_LEN;                       /* hashSize */
@@ -453,6 +485,10 @@ static int sign_image(const char* name, const uint8_t* in, size_t in_length, con
 
 	/* special slot n is n hashes before the code slots; the Info.plist slot stays zero */
 	if (!sha256(requirements, REQUIREMENTS_SIZE, cd + hash_offset - CSSLOT_REQUIREMENTS * CS_SHA256_LEN)) {
+		goto digest_failed;
+	}
+	if (have_entitlements &&
+	    !sha256(entitlements_blob, (size_t)entitlements_size, cd + hash_offset - CSSLOT_ENTITLEMENTS * CS_SHA256_LEN)) {
 		goto digest_failed;
 	}
 	for (uint64_t i = 0; i < code_slots; ++i) {
@@ -719,6 +755,55 @@ done:
 	return result;
 }
 
+/* the largest entitlements plist that is embedded; real ones are a few KiB */
+#define MAX_ENTITLEMENTS_SIZE (1024u * 1024u)
+
+static bool is_space(uint8_t c) {
+	return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+}
+
+/*
+ * Whether data looks like an XML property list (the form `codesign --entitlements` embeds): text
+ * without NUL bytes that, after an optional UTF-8 byte order mark, an XML declaration and a
+ * DOCTYPE, starts with a <plist> element and ends with </plist>. It is not a full XML parse, but it
+ * keeps a wrong file (a binary, a binary plist, an empty or cut-off file) out of the signature.
+ */
+static bool looks_like_xml_plist(const uint8_t* data, size_t length) {
+	static const char end_tag[] = "</plist>";
+	size_t start = 0, end = length;
+
+	if (length == 0 || length > MAX_ENTITLEMENTS_SIZE || memchr(data, 0, length) != NULL) {
+		return false;
+	}
+	if (length >= 3 && data[0] == 0xef && data[1] == 0xbb && data[2] == 0xbf) {
+		start = 3;
+	}
+	while (start < end && is_space(data[start])) {
+		++start;
+	}
+	while (end > start && is_space(data[end - 1])) {
+		--end;
+	}
+
+	/* skip the XML declaration, comments and the DOCTYPE: the first element has to be <plist> */
+	while (end - start >= 2 && data[start] == '<' && (data[start + 1] == '?' || data[start + 1] == '!')) {
+		const uint8_t* close = memchr(data + start, '>', end - start);
+		if (close == NULL) {
+			return false;
+		}
+		start = (size_t)(close - data) + 1;
+		while (start < end && is_space(data[start])) {
+			++start;
+		}
+	}
+	if (end - start < 7 || memcmp(data + start, "<plist", 6) != 0 ||
+	    (data[start + 6] != '>' && !is_space(data[start + 6]))) {
+		return false;
+	}
+	return end - start >= sizeof(end_tag) - 1 &&
+	       memcmp(data + end - (sizeof(end_tag) - 1), end_tag, sizeof(end_tag) - 1) == 0;
+}
+
 int main(int argc, char** argv) {
 	const char* identifier = NULL;
 	int first = 1;
@@ -727,11 +812,25 @@ int main(int argc, char** argv) {
 	for (; first < argc; ++first) {
 		if (strncmp(argv[first], "--identifier=", 13) == 0) {
 			identifier = argv[first] + 13;
+		} else if (strncmp(argv[first], "--entitlements=", 15) == 0) {
+			struct buffer plist = { 0 };
+			struct stat plist_stat;
+			if (read_file(argv[first] + 15, &plist, &plist_stat) != 0) {
+				return 1;
+			}
+			if (!looks_like_xml_plist(plist.data, plist.length)) {
+				fprintf(stderr, "%s: %s is not an XML property list\n", progname, argv[first] + 15);
+				free(plist.data);
+				return 1;
+			}
+			free((void*)entitlements_plist);
+			entitlements_plist = plist.data;
+			entitlements_length = plist.length;
 		} else if (strcmp(argv[first], "--") == 0) {
 			++first;
 			break;
 		} else if (argv[first][0] == '-') {
-			fprintf(stderr, "usage: %s [--identifier=<id>] <file>...\n", progname);
+			fprintf(stderr, "usage: %s [--identifier=<id>] [--entitlements=<plist>] <file>...\n", progname);
 			return 2;
 		} else {
 			break;
@@ -739,7 +838,7 @@ int main(int argc, char** argv) {
 	}
 
 	if (first >= argc) {
-		fprintf(stderr, "usage: %s [--identifier=<id>] <file>...\n", progname);
+		fprintf(stderr, "usage: %s [--identifier=<id>] [--entitlements=<plist>] <file>...\n", progname);
 		return 2;
 	}
 

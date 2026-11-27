@@ -24,6 +24,7 @@
 #include <CoreMedia/CMBase.h>
 #include <CoreMedia/CMTime.h>
 #include <CoreMedia/CMTimeRange.h>
+#include <CoreMedia/CMTimeMapping.h>
 #include <CoreMedia/CMFormatDescription.h>
 #include <CoreMedia/CMBlockBuffer.h>
 #include <CoreMedia/CMSimpleQueue.h>
@@ -231,8 +232,6 @@ void* CMTimeMapDurationFromRangeToRange(void);
 void* CMTimeMapTimeFromRangeToRange(void);
 void* CMTimeMappingCopyAsDictionary(void);
 void* CMTimeMappingCopyDescription(void);
-void* CMTimeMappingMake(void);
-void* CMTimeMappingMakeEmpty(void);
 void* CMTimeMappingMakeFromDictionary(void);
 void* CMTimeMappingShow(void);
 void* CMTimeMultiplyByFloat64(void);

@@ -27,6 +27,10 @@
 
 - (id)initWithData:(NSData*)data;
 
+// Generated subclasses read and write their fields; -initWithData: and -data use them.
+- (BOOL)readFrom:(PBDataReader*)reader;
+- (void)writeTo:(PBDataWriter*)writer;
+
 @property (readonly) NSDictionary* dictionaryRepresentation;
 @property (readonly) NSData* data;
 

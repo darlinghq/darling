@@ -22,3 +22,5 @@
 @interface AVAssetImageGenerator : NSObject
 
 @end
+
+extern NSString *const AVAssetImageGeneratorDynamicRangePolicyMatchSource;

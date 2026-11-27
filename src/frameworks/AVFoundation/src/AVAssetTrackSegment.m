@@ -22,6 +22,11 @@
 
 @implementation AVAssetTrackSegment
 
+- (CMTimeMapping)timeMapping { return _timeMapping; }
+
+// A segment with no source media has no valid source start.
+- (BOOL)isEmpty { return !CMTIME_IS_VALID(_timeMapping.source.start); }
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
 }

@@ -21,6 +21,7 @@
 #import "AVPlaybackPrivate.h"
 #import "AVPlaybackEngine.h"
 #import <AVFoundation/AVURLAsset.h>
+#import <CoreMedia/CMFormatDescription.h>
 #import <darling-stub-forwarding.h>
 
 @implementation AVURLAsset
@@ -45,7 +46,13 @@
             BOOL hasVideo = NO, hasDecodableVideo = NO, hasDecodableAudio = NO;
             for (int i = 0; i < AVPEMediaTrackCount(media); i++) {
                 const AVPETrackInfo *info = AVPEMediaTrack(media, i);
-                AVMediaType type = info->type == AVPETrackVideo ? AVMediaTypeVideo : AVMediaTypeAudio;
+                AVMediaType type = AVMediaTypeVideo;
+                if (info->type == AVPETrackAudio)
+                    type = AVMediaTypeAudio;
+                else if (info->type == AVPETrackTimecode)
+                    type = AVMediaTypeTimecode;
+                else if (info->type == AVPETrackMetadata)
+                    type = AVMediaTypeMetadata;
                 if (info->type == AVPETrackVideo) {
                     hasVideo = YES;
                     hasDecodableVideo |= info->decodable;
@@ -54,12 +61,32 @@
                 } else if (info->type == AVPETrackAudio) {
                     hasDecodableAudio |= info->decodable;
                 }
+                NSMutableArray *formatDescs = [NSMutableArray array];
+                if (info->type == AVPETrackVideo && info->codecType != 0) {
+                    CMVideoFormatDescriptionRef vdesc = NULL;
+                    if (CMVideoFormatDescriptionCreate(kCFAllocatorDefault, info->codecType,
+                                                       info->width, info->height, NULL, &vdesc) == noErr && vdesc) {
+                        [formatDescs addObject:(id)vdesc];
+                        CFRelease(vdesc);
+                    }
+                } else if (info->type == AVPETrackAudio && info->codecType != 0) {
+                    AudioStreamBasicDescription asbd = {0};
+                    asbd.mSampleRate = info->sampleRate;
+                    asbd.mFormatID = info->codecType;
+                    asbd.mChannelsPerFrame = info->channels > 0 ? (UInt32)info->channels : 2;
+                    CMAudioFormatDescriptionRef adesc = NULL;
+                    if (CMAudioFormatDescriptionCreate(kCFAllocatorDefault, &asbd, 0, NULL, 0, NULL, NULL, &adesc) == noErr && adesc) {
+                        [formatDescs addObject:(id)adesc];
+                        CFRelease(adesc);
+                    }
+                }
                 AVAssetTrack *track = [[AVAssetTrack alloc] _initWithAsset:self
                                                                     trackID:(CMPersistentTrackID)info->trackID
                                                                   mediaType:type
                                                                 naturalSize:CGSizeMake(info->width, info->height)
                                                            nominalFrameRate:info->frameRate
-                                                                  timeRange:CMTimeRangeMake(kCMTimeZero, CMTimeMake(info->durationUs, 1000000))];
+                                                                  timeRange:CMTimeRangeMake(kCMTimeZero, CMTimeMake(info->durationUs, 1000000))
+                                                         formatDescriptions:formatDescs];
                 [tracks addObject:track];
                 [track release];
             }

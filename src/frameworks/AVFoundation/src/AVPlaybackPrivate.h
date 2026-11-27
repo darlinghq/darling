@@ -36,6 +36,9 @@
 #import <AVFoundation/AVPlayerItemVideoOutputInternal.h>
 #import <AVFoundation/AVPlayerLayer.h>
 #import <AVFoundation/AVPlayerLayerInternal.h>
+#import <AVFoundation/AVComposition.h>
+#import <AVFoundation/AVCompositionTrack.h>
+#import <AVFoundation/AVCompositionTrackSegment.h>
 
 AVKeyValueStatus AVPlaybackStatusOfKey(id object, NSString *key, NSError **outError);
 void AVPlaybackLoadKeys(NSArray *keys, void (^handler)(void));
@@ -49,12 +52,29 @@ CGImageRef AVPlaybackCreateImageFromPixelBuffer(CVPixelBufferRef pixelBuffer);
 @end
 
 @interface AVAssetTrack (AVPlaybackPrivate)
+- (AVAssetTrackInternal *)_internal;
 - (instancetype)_initWithAsset:(AVAsset *)asset
                        trackID:(CMPersistentTrackID)trackID
                      mediaType:(AVMediaType)mediaType
                    naturalSize:(CGSize)naturalSize
               nominalFrameRate:(float)nominalFrameRate
-                     timeRange:(CMTimeRange)timeRange;
+                     timeRange:(CMTimeRange)timeRange
+            formatDescriptions:(NSArray *)formatDescriptions;
+@end
+
+@interface AVComposition (AVPlaybackPrivate)
+// The longest end of the tracks.
+- (void)_refreshDuration;
+// The file that plays the composition, if the composition is that whole file unchanged.
+- (NSURL *)_playbackURL;
+- (id)_copyWithClass:(Class)cls;
+@end
+
+@interface AVCompositionTrack (AVPlaybackPrivate)
+// The segments, in track time; the mutable track edits them in place.
+- (NSMutableArray *)_segmentStorage;
+// The time range follows from the segments: from zero to the end of the last one.
+- (void)_refreshTimeRange;
 @end
 
 @interface AVPlayerItem (AVPlaybackPrivate)

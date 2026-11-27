@@ -61,3 +61,31 @@ long BitShift(long value, short count)
 		return value >> (-count);
 }
 
+
+
+#ifndef __LP64__
+
+#ifdef __cplusplus
+extern "C"
+#endif
+short HiWord(long value)
+{
+    unsigned long bits = (unsigned long)value;
+    unsigned long word = (bits >> 16) & 0xffffUL;
+
+    return (short)(word >= 0x8000UL
+        ? (long)word - 65536L : (long)word);
+}
+
+#ifdef __cplusplus
+extern "C"
+#endif
+short LoWord(long value)
+{
+    unsigned long word = (unsigned long)value & 0xffffUL;
+
+    return (short)(word >= 0x8000UL
+        ? (long)word - 65536L : (long)word);
+}
+
+#endif

@@ -1,7 +1,7 @@
 /*
  This file is part of Darling.
 
- Copyright (C) 2019 Lubos Dolezel
+ Copyright (C) 2026 Lubos Dolezel
 
  Darling is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -16,8 +16,31 @@
  You should have received a copy of the GNU General Public License
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
-
 #import <SecurityFoundation/_SFAESKeySpecifier.h>
+#import "SFSymmetricInternal.h"
+
+#if __LP64__
+
+@implementation _SFAESKeySpecifier {
+    SFAESKeyBitSize _bitSize;
+}
+
+- (instancetype)initWithBitSize:(SFAESKeyBitSize)bitSize {
+    self = [super init];
+    if (self != nil)
+        _bitSize = bitSize;
+    return self;
+}
+
+// SFAESKeyBitSize256 is the only size there is.
+- (size_t)keyLength {
+    return 32;
+}
+
+@end
+
+#else // __LP64__
+
 #import <darling-stub-forwarding.h>
 
 @implementation _SFAESKeySpecifier
@@ -39,3 +62,5 @@
 }
 
 @end
+
+#endif // __LP64__
