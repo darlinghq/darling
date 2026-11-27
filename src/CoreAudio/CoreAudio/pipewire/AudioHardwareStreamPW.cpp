@@ -131,8 +131,9 @@ AudioHardwareStreamPW::Timestamps AudioHardwareStreamPW::timestamps(uint64_t fra
 	if (darling_pw_stream_get_time(m_stream, &time) == 0 && time.rate_num > 0
 		&& time.rate_denom > 0 && time.delay_ticks > 0)
 	{
+		// The ticks are in units of rate.num / rate.denom seconds (1/sample rate).
 		delayNs = static_cast<long double>(time.delay_ticks) * 1000000000.0L
-			* time.rate_denom / time.rate_num;
+			* time.rate_num / time.rate_denom;
 	}
 	delayNs = std::min(std::max(delayNs, 0.0L), 60000000000.0L);
 
@@ -170,25 +171,22 @@ void AudioHardwareStreamPW::pump()
 {
 	while (m_running.load(std::memory_order_relaxed))
 	{
-		unsigned cycles;
 		{
-			// The wake-up is counted under the mutex, so one that arrives while
-			// the previous cycle is still being served is not lost. The timeout
-			// only bounds how long a stop request can go unnoticed.
+			// Serve whatever PipeWire has ready each time the process event fires,
+			// and at least every few milliseconds in case the event was reported
+			// while the previous batch was being served. The event is counted under
+			// the mutex so that a wake-up cannot fall between the check and the wait.
 			std::unique_lock<std::mutex> lock(m_wakeMutex);
 			m_wake.wait_for(lock, std::chrono::milliseconds(kIdleWaitMilliseconds),
 				[this] { return m_pending > 0 || !running(); });
-			cycles = std::min<unsigned>(m_pending, kMaxBuffersPerWake);
-			m_pending -= cycles;
+			m_pending = 0;
 		}
 
-		// Serve one buffer for each reported cycle: a hardware device calls the
-		// IOProc once per I/O cycle, and clients rely on that cadence.
-		if (cycles && darling_pw_stream_lock(m_stream) == 0)
+		if (darling_pw_stream_lock(m_stream) == 0)
 		{
 			if (darling_pw_stream_state(m_stream) == DARLING_PW_STATE_STREAMING)
 			{
-				for (unsigned i = 0; i < cycles && running(); ++i)
+				for (int i = 0; i < kMaxBuffersPerWake && running(); ++i)
 				{
 					darling_pw_buffer buffer{};
 					void* cookie = nullptr;
