@@ -29,6 +29,16 @@ static NSString *const NSTextEncapsulationMinimumWidthKey = @"NSTextEncapsulatio
 
 @implementation NSTextEncapsulation
 
+@synthesize scale = _scale, shape = _shape, style = _style, platterSize = _platterSize;
+@synthesize lineWeight = _lineWeight, color = _color, minimumWidth = _minimumWidth;
+
+- (instancetype)initWithShape:(NSUInteger)shape
+{
+    if ((self = [super init]))
+        _shape = shape;
+    return self;
+}
+
 - (void)dealloc
 {
     [_color release];
@@ -44,36 +54,10 @@ static NSString *const NSTextEncapsulationMinimumWidthKey = @"NSTextEncapsulatio
         copy->_style = _style;
         copy->_platterSize = _platterSize;
         copy->_lineWeight = _lineWeight;
-        copy->_color = [_color retain];
+        copy->_color = [_color copy];
         copy->_minimumWidth = _minimumWidth;
     }
     return copy;
-}
-
-- (BOOL)isEqual:(id)object
-{
-    if (self == object)
-        return YES;
-    if (![object isKindOfClass:[NSTextEncapsulation class]])
-        return NO;
-
-    NSTextEncapsulation *other = (NSTextEncapsulation *)object;
-    return _scale == other->_scale
-        && _shape == other->_shape
-        && _style == other->_style
-        && _platterSize == other->_platterSize
-        && _lineWeight == other->_lineWeight
-        && _minimumWidth == other->_minimumWidth
-        && (_color == other->_color || [_color isEqual:other->_color]);
-}
-
-- (NSUInteger)hash
-{
-    return (NSUInteger)_scale
-        ^ ((NSUInteger)_shape << 2)
-        ^ ((NSUInteger)_style << 4)
-        ^ ((NSUInteger)_platterSize << 6)
-        ^ [_color hash];
 }
 
 + (BOOL)supportsSecureCoding
@@ -90,7 +74,12 @@ static NSString *const NSTextEncapsulationMinimumWidthKey = @"NSTextEncapsulatio
         _style = [coder decodeIntegerForKey:NSTextEncapsulationStyleKey];
         _platterSize = [coder decodeIntegerForKey:NSTextEncapsulationPlatterSizeKey];
         _lineWeight = [coder decodeDoubleForKey:NSTextEncapsulationLineWeightKey];
-        _color = [[coder decodeObjectForKey:NSTextEncapsulationColorKey] retain];
+        // The colour is the application framework's colour class; under secure coding it has to be named.
+        Class colorClass = NSClassFromString(@"NSColor");
+        id color = colorClass != Nil
+            ? [coder decodeObjectOfClass:colorClass forKey:NSTextEncapsulationColorKey]
+            : [coder decodeObjectForKey:NSTextEncapsulationColorKey];
+        _color = [color copy];
         _minimumWidth = [coder decodeDoubleForKey:NSTextEncapsulationMinimumWidthKey];
     }
     return self;

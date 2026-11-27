@@ -23,38 +23,29 @@
 #import <Foundation/Foundation.h>
 #include <CoreGraphics/CoreGraphics.h>
 
-typedef NS_ENUM(NSUInteger, NSTextEncapsulationScale) {
-    NSTextEncapsulationScaleMedium = 0,
-    NSTextEncapsulationScaleSmall = 1,
-    NSTextEncapsulationScaleLarge = 2,
-};
-
-typedef NS_ENUM(NSUInteger, NSTextEncapsulationShape) {
-    NSTextEncapsulationShapeRoundedRectangle = 0,
-    NSTextEncapsulationShapeRectangle = 1,
-    NSTextEncapsulationShapeCapsule = 2,
-};
-
-typedef NS_ENUM(NSUInteger, NSTextEncapsulationStyle) {
-    NSTextEncapsulationStyleOutline = 0,
-    NSTextEncapsulationStyleFill = 1,
-};
-
-typedef NS_ENUM(NSUInteger, NSTextEncapsulationPlatterSize) {
-    NSTextEncapsulationPlatterSizeRegular = 0,
-    NSTextEncapsulationPlatterSizeLarge = 1,
-};
-
 FOUNDATION_EXPORT NSString *const NSTextEncapsulationAttributeName;
 
-@interface NSTextEncapsulation : NSObject <NSCopying, NSSecureCoding>
+// The properties have the NSUInteger / CGFloat types the system class exposes; the system
+// does not publish names for the values.
+@interface NSTextEncapsulation : NSObject <NSCopying, NSSecureCoding> {
+@private
+    NSUInteger _scale;
+    NSUInteger _shape;
+    NSUInteger _style;
+    NSUInteger _platterSize;
+    CGFloat _lineWeight;
+    id _color;
+    CGFloat _minimumWidth;
+}
 
-@property (nonatomic) NSTextEncapsulationScale scale;
-@property (nonatomic) NSTextEncapsulationShape shape;
-@property (nonatomic) NSTextEncapsulationStyle style;
-@property (nonatomic) NSTextEncapsulationPlatterSize platterSize;
+- (instancetype)initWithShape:(NSUInteger)shape;
+
+@property (nonatomic) NSUInteger scale;
+@property (nonatomic) NSUInteger shape;
+@property (nonatomic) NSUInteger style;
+@property (nonatomic) NSUInteger platterSize;
 @property (nonatomic) CGFloat lineWeight;
-@property (nonatomic, retain) NSObject *color;
+@property (nonatomic, copy) id color;
 @property (nonatomic) CGFloat minimumWidth;
 
 @end
