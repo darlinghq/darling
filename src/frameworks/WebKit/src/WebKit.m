@@ -19,14 +19,19 @@
 
 
 #include <WebKit/WebKit.h>
+#include <AppKit/NSView.h>
 #include <stdlib.h>
 #include <stdio.h>
 #import <darling-stub-forwarding.h>
 
-@interface WebView : NSObject
+@interface WebView : NSView
 @end
 
 @implementation WebView
+
+- (instancetype)initWithFrame:(NSRect)frameRect frameName:(NSString *)frameName groupName:(NSString *)groupName {
+    return [super initWithFrame:frameRect];
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
