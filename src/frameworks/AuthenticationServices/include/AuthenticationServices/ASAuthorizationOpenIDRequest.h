@@ -17,7 +17,10 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Foundation/Foundation.h>
+#import <Foundation/Foundation.h>
+
+typedef NSString *ASAuthorizationScope NS_TYPED_EXTENSIBLE_ENUM;
+extern ASAuthorizationScope const ASAuthorizationScopeEmail;
 
 @interface ASAuthorizationOpenIDRequest : NSObject
 
