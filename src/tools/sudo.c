@@ -32,7 +32,7 @@ int usage(int, int);
 
 int main(int argc, char **argv)
 {
-	char *path = getenv("PATH"), *path_orig, *fullpath = NULL;
+	char *path, *path_orig, *fullpath = NULL;
 	int i, len;
 	if (argparse(argc, argv))
 			return 1;
@@ -48,6 +48,7 @@ int main(int argc, char **argv)
 	else if (list_mode)
 	{
 		/* Print fill path to command, then args if present */
+		path = getenv("PATH");
 		if (!path)
 			printf("can't search for command if no path\n");
 		path = strdup(path);
@@ -99,6 +100,8 @@ int main(int argc, char **argv)
 
 int argparse(int argc, char **argv)
 {
+	int env_vars = 0;
+
 	for (firstarg = 1; firstarg < argc; firstarg++)
 	{
 		if(!strcmp(argv[firstarg], "-g"))
@@ -120,6 +123,7 @@ int argparse(int argc, char **argv)
 		}
 		else if(!strcmp(argv[firstarg], "--"))
 		{
+			firstarg++;
 			break;
 		}
 		else if(!strcmp(argv[firstarg], "-k"))
@@ -135,9 +139,27 @@ int argparse(int argc, char **argv)
 		}
 		else
 		{
-			break;
+			char *equals = strchr(argv[firstarg], '=');
+			char *slash = strchr(argv[firstarg], '/');
+			int result;
+
+			/* An '=' in a command path is part of the command. */
+			if (argv[firstarg][0] == '-' || !equals || (slash && slash < equals))
+				break;
+
+			*equals = '\0';
+			result = setenv(argv[firstarg], equals + 1, 1);
+			*equals = '=';
+			if (result != 0)
+			{
+				perror("Setting sudo environment failed");
+				return 1;
+			}
+			env_vars = 1;
 		}
 	}
+	if (env_vars && firstarg == (unsigned int)argc)
+		return usage(argc, 0);
 	return 0;
 }
 
@@ -150,7 +172,7 @@ int usage(int argc, int arg_help)
 				"One purpose of this program is to convince some tools that they can write into '/'.\n"
 				"Another is to enable you to talk to certain system daemons.\n"
 				"\nUsage:\n"
-				"  sudo [-g GID] [-u UID] [-k] [--] COMMAND\n");
+				"  sudo [-g GID] [-u UID] [-k] [NAME=value ...] [--] COMMAND [ARG ...]\n");
 		return 1;
 	}
 	return 0;
