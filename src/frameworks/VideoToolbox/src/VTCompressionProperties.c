@@ -77,5 +77,5 @@ const CFStringRef kVTCompressionPropertyKey_CameraCalibrationDataLensCollection 
 const CFStringRef kVTCompressionPropertyKey_HDRMetadataInsertionMode = CFSTR("HDRMetadataInsertionMode");
 const CFStringRef kVTCompressionPropertyKey_HorizontalFieldOfView = CFSTR("HorizontalFieldOfView");
 const CFStringRef kVTCompressionPropertyKey_ProjectionKind = CFSTR("ProjectionKind");
-const CFStringRef kVTHDRMetadataInsertionMode_None = CFSTR("None");
+const CFStringRef kVTHDRMetadataInsertionMode_None = CFSTR("HDRMetadataInsertionMode_None");
 const CFStringRef kVTProjectionKind_Equirectangular = CFSTR("Equirectangular");
