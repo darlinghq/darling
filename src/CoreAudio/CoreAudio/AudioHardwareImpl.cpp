@@ -19,6 +19,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "AudioHardwareImpl.h"
 #include <algorithm>
+#include <cmath>
 #include <typeinfo>
 #include <iostream>
 #include <cstring>
@@ -27,6 +28,23 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CarbonCore/MacErrors.h>
 
 static const UInt32 kMinBufferFrames = 128, kMaxBufferFrames = 2048;
+
+static constexpr Float32 kVolumeMinDecibels = -96.0f;
+static constexpr Float32 kVolumeMaxDecibels = 0.0f;
+
+static Float32 volumeScalarToDecibels(Float32 scalar)
+{
+	if (scalar <= 0.0f) return kVolumeMinDecibels;
+	if (scalar >= 1.0f) return kVolumeMaxDecibels;
+	return std::clamp(20.0f * std::log10(scalar), kVolumeMinDecibels, kVolumeMaxDecibels);
+}
+
+static Float32 volumeDecibelsToScalar(Float32 db)
+{
+	if (db <= kVolumeMinDecibels) return 0.0f;
+	if (db >= kVolumeMaxDecibels) return 1.0f;
+	return std::clamp(std::pow(10.0f, db / 20.0f), 0.0f, 1.0f);
+}
 
 AudioHardwareImpl::AudioHardwareImpl(AudioObjectID myId)
 : m_myId(myId)
@@ -149,7 +167,14 @@ OSStatus AudioHardwareImpl::isPropertySettable(const AudioObjectPropertyAddress*
 		case kAudioDevicePropertyVolumeScalar:
 		case kAudioDevicePropertyVolumeDecibels:
 		case kAudioDevicePropertyMute:
+			if (m_myId == kAudioObjectSystemObject)
+				break;
 			*outIsSettable = true;
+			return kAudioHardwareNoError;
+		case kAudioDevicePropertyVolumeRangeDecibels:
+			if (m_myId == kAudioObjectSystemObject)
+				break;
+			*outIsSettable = false;
 			return kAudioHardwareNoError;
 		case kAudioHardwarePropertyDefaultOutputDevice:
 		case kAudioHardwarePropertyDefaultInputDevice:
@@ -333,13 +358,38 @@ OSStatus AudioHardwareImpl::getPropertyData(const AudioObjectPropertyAddress* in
 		}
 		case kAudioDevicePropertyVolumeScalar:
 		{
-			if (Float32* v = static_cast<Float32*>(outData); outData && *ioDataSize >= sizeof(Float32))
-				*v = 1.0f; // TODO: Ask for real volume from PulseAudio
+			if (m_myId == kAudioObjectSystemObject) return kAudioHardwareUnknownPropertyError;
+			if (outData && *ioDataSize < sizeof(Float32)) return kAudioHardwareBadPropertySizeError;
+			if (outData) *static_cast<Float32*>(outData) = m_volumeScalar.load(std::memory_order_relaxed);
 			*ioDataSize = sizeof(Float32);
 			return kAudioHardwareNoError;
 		}
 		case kAudioDevicePropertyVolumeDecibels:
 		{
+			if (m_myId == kAudioObjectSystemObject) return kAudioHardwareUnknownPropertyError;
+			if (outData && *ioDataSize < sizeof(Float32)) return kAudioHardwareBadPropertySizeError;
+			if (outData) *static_cast<Float32*>(outData) = volumeScalarToDecibels(m_volumeScalar.load(std::memory_order_relaxed));
+			*ioDataSize = sizeof(Float32);
+			return kAudioHardwareNoError;
+		}
+		case kAudioDevicePropertyVolumeRangeDecibels:
+		{
+			if (m_myId == kAudioObjectSystemObject) return kAudioHardwareUnknownPropertyError;
+			if (outData && *ioDataSize < sizeof(AudioValueRange)) return kAudioHardwareBadPropertySizeError;
+			if (outData) {
+				auto* range = static_cast<AudioValueRange*>(outData);
+				range->mMinimum = kVolumeMinDecibels;
+				range->mMaximum = kVolumeMaxDecibels;
+			}
+			*ioDataSize = sizeof(AudioValueRange);
+			return kAudioHardwareNoError;
+		}
+		case kAudioDevicePropertyMute:
+		{
+			if (m_myId == kAudioObjectSystemObject) return kAudioHardwareUnknownPropertyError;
+			if (outData && *ioDataSize < sizeof(UInt32)) return kAudioHardwareBadPropertySizeError;
+			if (outData) *static_cast<UInt32*>(outData) = m_muted.load(std::memory_order_relaxed);
+			*ioDataSize = sizeof(UInt32);
 			return kAudioHardwareNoError;
 		}
 	}
@@ -404,12 +454,27 @@ OSStatus AudioHardwareImpl::setPropertyData(const AudioObjectPropertyAddress* in
 		}
 		case kAudioDevicePropertyVolumeScalar:
 		{
-			// TODO: Implement setting the volume
-			// Note: qualifier contains the channel ID (from kAudioDevicePropertyPreferredChannelsForStereo)
+			if (m_myId == kAudioObjectSystemObject) return kAudioHardwareUnknownPropertyError;
+			if (!inData || inDataSize != sizeof(Float32)) return kAudioHardwareBadPropertySizeError;
+			Float32 value = *static_cast<const Float32*>(inData);
+			if (std::isnan(value)) return paramErr;
+			m_volumeScalar.store(std::clamp(value, 0.0f, 1.0f), std::memory_order_relaxed);
 			return kAudioHardwareNoError;
 		}
 		case kAudioDevicePropertyVolumeDecibels:
 		{
+			if (m_myId == kAudioObjectSystemObject) return kAudioHardwareUnknownPropertyError;
+			if (!inData || inDataSize != sizeof(Float32)) return kAudioHardwareBadPropertySizeError;
+			Float32 db = *static_cast<const Float32*>(inData);
+			if (std::isnan(db)) return paramErr;
+			m_volumeScalar.store(volumeDecibelsToScalar(db), std::memory_order_relaxed);
+			return kAudioHardwareNoError;
+		}
+		case kAudioDevicePropertyMute:
+		{
+			if (m_myId == kAudioObjectSystemObject) return kAudioHardwareUnknownPropertyError;
+			if (!inData || inDataSize != sizeof(UInt32)) return kAudioHardwareBadPropertySizeError;
+			m_muted.store(*static_cast<const UInt32*>(inData) ? 1u : 0u, std::memory_order_relaxed);
 			return kAudioHardwareNoError;
 		}
 		case kAudioDevicePropertyStreamFormat:
