@@ -20,6 +20,7 @@
 
 #include <WebKit/WebKit.h>
 #include <AppKit/NSView.h>
+#include <dispatch/dispatch.h>
 #include <stdlib.h>
 #include <stdio.h>
 #import <darling-stub-forwarding.h>
@@ -51,10 +52,94 @@
 
 @end
 
-@interface WebPreferences : NSObject
+@interface WebPreferences : NSObject {
+    NSString *_standardFontFamily;
+    NSString *_fixedFontFamily;
+    int _defaultFontSize;
+    int _defaultFixedFontSize;
+    BOOL _javaScriptEnabled;
+    BOOL _javaScriptCanOpenWindowsAutomatically;
+    BOOL _loadsImagesAutomatically;
+    BOOL _allowsAnimatedImages;
+    BOOL _allowsAnimatedImageLooping;
+    BOOL _plugInsEnabled;
+    BOOL _userStyleSheetEnabled;
+    NSURL *_userStyleSheetLocation;
+}
 @end
 
 @implementation WebPreferences
+
++ (WebPreferences *)standardPreferences {
+    static WebPreferences *shared = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        shared = [[WebPreferences alloc] init];
+    });
+    return shared;
+}
+
+- (instancetype)init {
+    if ((self = [super init])) {
+        _standardFontFamily = [@"Helvetica" copy];
+        _fixedFontFamily = [@"Courier" copy];
+        _defaultFontSize = 16;
+        _defaultFixedFontSize = 13;
+        _javaScriptEnabled = YES;
+        _loadsImagesAutomatically = YES;
+        _allowsAnimatedImages = YES;
+        _allowsAnimatedImageLooping = YES;
+        _plugInsEnabled = YES;
+    }
+    return self;
+}
+
+- (void)dealloc {
+    [_standardFontFamily release];
+    [_fixedFontFamily release];
+    [_userStyleSheetLocation release];
+    [super dealloc];
+}
+
+- (NSString *)standardFontFamily { return _standardFontFamily; }
+- (void)setStandardFontFamily:(NSString *)family {
+    NSString *copy = [family copy] ?: [@"Helvetica" copy];
+    [_standardFontFamily release];
+    _standardFontFamily = copy;
+}
+- (int)defaultFontSize { return _defaultFontSize; }
+- (void)setDefaultFontSize:(int)size { _defaultFontSize = size > 0 ? size : 16; }
+
+- (NSString *)fixedFontFamily { return _fixedFontFamily; }
+- (void)setFixedFontFamily:(NSString *)family {
+    NSString *copy = [family copy] ?: [@"Courier" copy];
+    [_fixedFontFamily release];
+    _fixedFontFamily = copy;
+}
+- (int)defaultFixedFontSize { return _defaultFixedFontSize; }
+- (void)setDefaultFixedFontSize:(int)size { _defaultFixedFontSize = size > 0 ? size : 13; }
+
+- (BOOL)isJavaScriptEnabled { return _javaScriptEnabled; }
+- (void)setJavaScriptEnabled:(BOOL)flag { _javaScriptEnabled = flag; }
+- (BOOL)javaScriptCanOpenWindowsAutomatically { return _javaScriptCanOpenWindowsAutomatically; }
+- (void)setJavaScriptCanOpenWindowsAutomatically:(BOOL)flag { _javaScriptCanOpenWindowsAutomatically = flag; }
+- (BOOL)loadsImagesAutomatically { return _loadsImagesAutomatically; }
+- (void)setLoadsImagesAutomatically:(BOOL)flag { _loadsImagesAutomatically = flag; }
+- (BOOL)allowsAnimatedImages { return _allowsAnimatedImages; }
+- (void)setAllowsAnimatedImages:(BOOL)flag { _allowsAnimatedImages = flag; }
+- (BOOL)allowsAnimatedImageLooping { return _allowsAnimatedImageLooping; }
+- (void)setAllowsAnimatedImageLooping:(BOOL)flag { _allowsAnimatedImageLooping = flag; }
+- (BOOL)arePlugInsEnabled { return _plugInsEnabled; }
+- (void)setPlugInsEnabled:(BOOL)flag { _plugInsEnabled = flag; }
+- (BOOL)userStyleSheetEnabled { return _userStyleSheetEnabled; }
+- (void)setUserStyleSheetEnabled:(BOOL)flag { _userStyleSheetEnabled = flag; }
+- (NSURL *)userStyleSheetLocation { return _userStyleSheetLocation; }
+- (void)setUserStyleSheetLocation:(NSURL *)loc {
+    if (loc != _userStyleSheetLocation) {
+        [_userStyleSheetLocation release];
+        _userStyleSheetLocation = [loc retain];
+    }
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
