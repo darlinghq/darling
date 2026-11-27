@@ -40,6 +40,13 @@ typedef struct PointerDataRefRecord {
 } PointerDataRefRecord;
 
 typedef PointerDataRefRecord *PointerDataRefPtr;
+
+enum { movieInDataForkResID = -1 };
+
+OSErr NewMovieFromFile(Movie *theMovie, short resRefNum,
+                      short *resId, Str255 resName,
+                      short newMovieFlags,
+                      Boolean *dataRefWasChanged);
 enum { PointerDataHandlerSubType = 0x70747220 };
 
 
@@ -2248,7 +2255,9 @@ void* NewMovieFromDataFork64(void);
 #if __LP64__
 void* NewMovieFromDataRef(void);
 #endif
+#if __LP64__
 void* NewMovieFromFile(void);
+#endif
 void* NewMovieFromHandle(void);
 void* NewMovieFromProperties(void);
 void* NewMovieFromScrap(void);

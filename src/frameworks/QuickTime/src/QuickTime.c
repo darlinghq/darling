@@ -22,6 +22,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <CarbonCore/MacErrors.h>
+#if !__LP64__
+#include <CarbonCore/Files.h>
+#endif
 #include "qt_movie_internal.h"
 #include "qt_mov_probe.h"
 
@@ -13375,11 +13378,84 @@ void* NewMovieFromDataRef(void)
 }
 #endif
 
+
+#if !__LP64__
+OSErr NewMovieFromFile(Movie *theMovie, short resRefNum,
+                      short *resId, Str255 resName,
+                      short newMovieFlags,
+                      Boolean *dataRefWasChanged)
+{
+    SInt64 length, mark;
+    ByteCount actual = 0;
+    PointerDataRefRecord record;
+    PointerDataRefPtr dataRef = &record;
+    OSErr err, restore;
+
+    if (theMovie)
+        *theMovie = NULL;
+    if (!movies_entered)
+        return movies_error = movieToolboxUninitialized;
+    if (!theMovie)
+        return movies_error = paramErr;
+
+    /* This importer supports data-fork movies only. */
+    if (newMovieFlags != 0 ||
+        (resId && *resId != 0 && *resId != movieInDataForkResID))
+        return movies_error = unimpErr;
+
+    err = FSGetForkSize(resRefNum, &length);
+    if (err != noErr)
+        return movies_error = err;
+    if (length <= 0)
+        return movies_error = noMovieFound;
+
+    /* Bound temporary memory in this initial in-memory importer.
+     * A streaming importer is needed for larger files. */
+    if (length > 64 * 1024 * 1024)
+        return movies_error = memFullErr;
+
+    err = FSGetForkPosition(resRefNum, &mark);
+    if (err != noErr)
+        return movies_error = err;
+
+    record.data = malloc((size_t)length);
+    if (!record.data)
+        return movies_error = memFullErr;
+    record.dataLength = (Size)length;
+
+    err = FSReadFork(resRefNum, fsFromStart, 0,
+                     (ByteCount)length, record.data, &actual);
+    restore = FSSetForkPosition(resRefNum, fsFromStart, mark);
+
+    if (err == noErr && actual != (ByteCount)length)
+        err = eofErr;
+    if (err == noErr && restore != noErr)
+        err = restore;
+
+    if (err == noErr)
+        err = NewMovieFromDataRef(theMovie, newMovieFlags,
+                                 NULL, (Handle)&dataRef,
+                                 PointerDataHandlerSubType);
+
+    free(record.data);
+
+    if (err == noErr) {
+        if (resId)
+            *resId = movieInDataForkResID;
+        if (resName)
+            resName[0] = 0;
+        if (dataRefWasChanged)
+            *dataRefWasChanged = 0;
+    }
+    return movies_error = err;
+}
+#else
 void* NewMovieFromFile(void)
 {
     if (verbose) puts("STUB: NewMovieFromFile called");
     return NULL;
 }
+#endif
 
 void* NewMovieFromHandle(void)
 {

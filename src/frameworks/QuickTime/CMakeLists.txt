@@ -24,4 +24,5 @@ add_framework(QuickTime
 
     DEPENDENCIES
         system
+        CarbonCore
 )
