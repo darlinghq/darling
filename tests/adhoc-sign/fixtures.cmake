@@ -56,7 +56,7 @@ file(WRITE ${WORK}/entitlements.plist "<?xml version=\"1.0\" encoding=\"UTF-8\"?
 file(WRITE ${WORK}/empty.plist "")
 file(WRITE ${WORK}/cut-off.plist "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<plist version=\"1.0\">\n<dict>\n")
 file(WRITE ${WORK}/binary.plist "bplist00")
-file(COPY ${WORK}/unsigned DESTINATION ${WORK}/ent)
+file(COPY ${FIXTURES}/unsigned DESTINATION ${WORK}/ent)
 foreach (bad empty.plist cut-off.plist binary.plist make-fixtures.sh)
 	run(fail ${SIGN} --entitlements=${WORK}/${bad} ${WORK}/ent/unsigned)
 	same(${WORK}/ent/unsigned ${FIXTURES}/unsigned)
