@@ -225,6 +225,15 @@ enum {
 
 QDErr NewGWorld(GWorldPtr *offscreenGWorld, short PixelDepth, const Rect *boundsRect,
 	CTabHandle cTable, GDHandle aGDevice, GWorldFlags flags);
+/* The pixel formats of NewGWorldFromPtr (the formats of the 32-bit QuickDraw offscreen API) */
+enum {
+	k16BE555PixelFormat = 0x00000010,
+	k32ARGBPixelFormat = 0x00000020,
+	k32BGRAPixelFormat = 0x42475241, /* 'BGRA' */
+	k8IndexedGrayPixelFormat = 0x00000028 /* 8-bit gray, 0 is white */
+};
+QDErr NewGWorldFromPtr(GWorldPtr *offscreenGWorld, UInt32 PixelFormat, const Rect *boundsRect,
+	CTabHandle cTable, GDHandle aGDevice, GWorldFlags flags, Ptr newBuffer, SInt32 rowBytes);
 void DisposeGWorld(GWorldPtr offscreenGWorld);
 PixMapHandle GetGWorldPixMap(GWorldPtr offscreenGWorld);
 PixMapHandle GetPortPixMap(CGrafPtr port);
