@@ -20,7 +20,7 @@
 #ifndef _PBCONSTANTS_H_
 #define _PBCONSTANTS_H_
 
-// not sure what the value is here
-#define TYPE_END_GROUP ((uint8_t)0xff)
+// the wire type of the end of a group
+#define TYPE_END_GROUP ((uint8_t)4)
 
 #endif // _PBCONSTANTS_H_
