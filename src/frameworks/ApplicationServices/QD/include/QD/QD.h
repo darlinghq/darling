@@ -241,6 +241,110 @@ QDErr LockPortBits(GrafPtr port);
 QDErr UnlockPortBits(GrafPtr port);
 void QDFlushPortBuffer(CGrafPtr port, RgnHandle region);
 QDErr QDError(void);
+
+/* Transfer modes of the drawing and copying calls */
+enum {
+	srcCopy = 0,
+	srcOr = 1,
+	srcXor = 2,
+	srcBic = 3,
+	notSrcCopy = 4,
+	notSrcOr = 5,
+	notSrcXor = 6,
+	notSrcBic = 7,
+	patCopy = 8,
+	patOr = 9,
+	patXor = 10,
+	patBic = 11,
+	notPatCopy = 12,
+	notPatOr = 13,
+	notPatXor = 14,
+	notPatBic = 15,
+	blend = 32,
+	addPin = 33,
+	addOver = 34,
+	subPin = 35,
+	transparent = 36,
+	addMax = 37,
+	subOver = 38,
+	addMin = 39,
+	grayishTextOr = 49,
+	hilite = 50,
+	ditherCopy = 64
+};
+
+/* The colors that ForeColor and BackColor take */
+enum {
+	blackColor = 33,
+	whiteColor = 30,
+	redColor = 205,
+	greenColor = 341,
+	blueColor = 409,
+	cyanColor = 273,
+	magentaColor = 137,
+	yellowColor = 69
+};
+
+/* Patterns, the pen and the colors of the current port */
+struct Pattern {
+	UInt8 pat[8];
+};
+typedef struct Pattern Pattern;
+typedef const Pattern *ConstPatternParam;
+
+void PenNormal(void);
+void PenSize(short width, short height);
+void PenMode(short mode);
+void PenPat(const Pattern *pat);
+void BackPat(const Pattern *pat);
+void GetPen(Point *pt);
+void HidePen(void);
+void ShowPen(void);
+void MoveTo(short h, short v);
+void Move(short dh, short dv);
+void LineTo(short h, short v);
+void Line(short dh, short dv);
+void RGBForeColor(const RGBColor *color);
+void RGBBackColor(const RGBColor *color);
+void GetForeColor(RGBColor *color);
+void GetBackColor(RGBColor *color);
+void ForeColor(SInt32 color);
+void BackColor(SInt32 color);
+
+/* Text state of the current port */
+void TextFont(short font);
+void TextSize(short size);
+void TextMode(short mode);
+void TextFace(StyleParameter face);
+short GetPortTextFont(CGrafPtr port);
+short GetPortTextSize(CGrafPtr port);
+short GetPortTextMode(CGrafPtr port);
+Style GetPortTextFace(CGrafPtr port);
+
+/* Drawing of rectangles, clipping and coordinates */
+void FrameRect(const Rect *r);
+void PaintRect(const Rect *r);
+void EraseRect(const Rect *r);
+void InvertRect(const Rect *r);
+void FillRect(const Rect *r, const Pattern *pat);
+void ClipRect(const Rect *r);
+void SetClip(RgnHandle rgn);
+void GetClip(RgnHandle rgn);
+void GlobalToLocal(Point *pt);
+void LocalToGlobal(Point *pt);
+
+/* The current graphics world and the copying of pixels */
+void GetGWorld(CGrafPtr *port, GDHandle *gdh);
+void SetGWorld(CGrafPtr port, GDHandle gdh);
+const BitMap *GetPortBitMapForCopyBits(CGrafPtr port);
+void CopyBits(const BitMap *srcBits, const BitMap *dstBits, const Rect *srcRect, const Rect *dstRect,
+	short mode, RgnHandle maskRgn);
+GWorldFlags UpdateGWorld(GWorldPtr *offscreenGWorld, short pixelDepth, const Rect *boundsRect, CTabHandle cTable,
+	GDHandle aGDevice, GWorldFlags flags);
+
+/* Pictures */
+PicHandle GetPicture(short pictureID);
+void DrawPicture(PicHandle myPicture, const Rect *dstRect);
 /* Text (32-bit only, as on macOS) */
 #pragma pack(push, 2)
 struct FontInfo {
