@@ -47,6 +47,7 @@
 {
     if ((self = [super init])) {
         _player = [[AVPlayerInternal alloc] initWithPlayer:self];
+        _player->automaticallyWaitsToMinimizeStalling = YES;
         [_player replaceItem:item];
     }
     return self;
@@ -88,6 +89,10 @@
 - (void)setMuted:(BOOL)muted { _player->muted = muted; [_player updateVolume]; }
 - (AVPlayerActionAtItemEnd)actionAtItemEnd { return (AVPlayerActionAtItemEnd)_player->actionAtItemEnd; }
 - (void)setActionAtItemEnd:(AVPlayerActionAtItemEnd)action { _player->actionAtItemEnd = action; }
+- (uint64_t)preferredVideoDecoderGPURegistryID { return _player->preferredVideoDecoderGPURegistryID; }
+- (void)setPreferredVideoDecoderGPURegistryID:(uint64_t)registryID { _player->preferredVideoDecoderGPURegistryID = registryID; }
+- (BOOL)automaticallyWaitsToMinimizeStalling { return _player->automaticallyWaitsToMinimizeStalling; }
+- (void)setAutomaticallyWaitsToMinimizeStalling:(BOOL)waits { _player->automaticallyWaitsToMinimizeStalling = waits; }
 
 - (void)replaceCurrentItemWithPlayerItem:(AVPlayerItem *)item
 {

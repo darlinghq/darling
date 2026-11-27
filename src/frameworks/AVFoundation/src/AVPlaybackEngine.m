@@ -260,6 +260,8 @@ AVPEMedia *AVPEMediaOpen(const char *path)
 			type = AVPETrackVideo;
 		else if (par->codec_type == AVMEDIA_TYPE_AUDIO)
 			type = AVPETrackAudio;
+		else if (par->codec_type == AVMEDIA_TYPE_DATA)
+			type = (par->codec_tag == MKTAG('t','m','c','d')) ? AVPETrackTimecode : AVPETrackMetadata;
 		else
 			continue;
 
@@ -272,6 +274,9 @@ AVPEMedia *AVPEMediaOpen(const char *path)
 			track->height = par->height;
 			if (stream->avg_frame_rate.den > 0 && stream->avg_frame_rate.num > 0)
 				track->frameRate = (float)av_q2d(stream->avg_frame_rate);
+			track->codecType = video_codec_type(par->codec_id);
+			if (track->codecType == 0 && par->codec_tag != 0)
+				track->codecType = __builtin_bswap32(par->codec_tag);
 			track->decodable = video_codec_type(par->codec_id) != 0 && par->width > 0 && par->height > 0;
 			if (media->videoIndex < 0 && track->decodable) {
 				media->videoIndex = (int)i;
@@ -285,14 +290,21 @@ AVPEMedia *AVPEMediaOpen(const char *path)
 			AudioStreamBasicDescription source, output;
 			AudioConverterRef converter = NULL;
 			if (audio_source_format(par, &source)) {
+				track->codecType = source.mFormatID;
 				audio_output_format(&source, &output);
 				if (AudioConverterNew(&source, &output, &converter) == noErr) {
 					track->decodable = true;
 					AudioConverterDispose(converter);
 				}
+			} else if (par->codec_tag != 0) {
+				track->codecType = __builtin_bswap32(par->codec_tag);
 			}
 			if (media->audioIndex < 0 && track->decodable)
 				media->audioIndex = (int)i;
+		}
+		if (type == AVPETrackMetadata || type == AVPETrackTimecode) {
+			if (par->codec_tag != 0)
+				track->codecType = __builtin_bswap32(par->codec_tag);
 		}
 		if (stream->duration != AV_NOPTS_VALUE && stream->duration > 0)
 			track->durationUs = av_rescale_q(stream->duration, stream->time_base, (AVRational){1, US_PER_SEC});

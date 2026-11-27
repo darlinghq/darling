@@ -22,6 +22,50 @@
 
 @implementation AVCompositionTrackSegment
 
++ (instancetype)compositionTrackSegmentWithURL:(NSURL *)URL
+                                       trackID:(CMPersistentTrackID)trackID
+                               sourceTimeRange:(CMTimeRange)sourceTimeRange
+                               targetTimeRange:(CMTimeRange)targetTimeRange
+{
+    return [[[self alloc] initWithURL:URL trackID:trackID sourceTimeRange:sourceTimeRange targetTimeRange:targetTimeRange] autorelease];
+}
+
++ (instancetype)compositionTrackSegmentWithTimeRange:(CMTimeRange)timeRange
+{
+    return [[[self alloc] initWithTimeRange:timeRange] autorelease];
+}
+
+- (instancetype)initWithURL:(NSURL *)URL
+                    trackID:(CMPersistentTrackID)trackID
+            sourceTimeRange:(CMTimeRange)sourceTimeRange
+            targetTimeRange:(CMTimeRange)targetTimeRange
+{
+    if ((self = [super init])) {
+        _sourceURL = [URL copy];
+        _sourceTrackID = trackID;
+        _timeMapping = CMTimeMappingMake(sourceTimeRange, targetTimeRange);
+    }
+    return self;
+}
+
+- (instancetype)initWithTimeRange:(CMTimeRange)timeRange
+{
+    if ((self = [super init])) {
+        _sourceTrackID = kCMPersistentTrackID_Invalid;
+        _timeMapping = CMTimeMappingMakeEmpty(timeRange);
+    }
+    return self;
+}
+
+- (void)dealloc
+{
+    [_sourceURL release];
+    [super dealloc];
+}
+
+- (NSURL *)sourceURL { return _sourceURL; }
+- (CMPersistentTrackID)sourceTrackID { return _sourceTrackID; }
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
     return [super methodSignatureForSelector: aSelector] ?: DarlingStubMethodSignature(aSelector);
 }

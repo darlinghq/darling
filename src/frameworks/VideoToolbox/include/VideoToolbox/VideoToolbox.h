@@ -38,6 +38,7 @@
 
 #ifdef __OBJC__
 #import <VideoToolbox/FigMetalTransferHelper.h>
+#import <VideoToolbox/VTFrameProcessor.h>
 #endif
 
 // Stubs for private symbols, with placeholder signatures. They are only seen

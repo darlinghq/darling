@@ -38,9 +38,11 @@ CV_EXPORT CFTypeID CVMetalTextureGetTypeID(void);
 
 typedef CVImageBufferRef CVMetalTextureRef;
 
-// There is no Metal texture interop, so no CVMetalTexture object can be created
-// and the returned texture is always nil.
 CV_EXPORT id <MTLTexture> CV_NULLABLE CVMetalTextureGetTexture(CVMetalTextureRef CV_NONNULL image);
+CV_EXPORT Boolean CVMetalTextureIsFlipped(CVMetalTextureRef CV_NONNULL image);
+CV_EXPORT void CVMetalTextureGetCleanTexCoords(CVMetalTextureRef CV_NONNULL image,
+	float lowerLeft[2], float lowerRight[2],
+	float upperRight[2], float upperLeft[2]);
 #endif
 
 __END_DECLS

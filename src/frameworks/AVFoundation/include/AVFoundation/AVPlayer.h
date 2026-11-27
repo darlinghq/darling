@@ -66,6 +66,8 @@ extern NSString *const AVPlayerWaitingWithNoItemToPlayReason;
 @property (nonatomic) AVPlayerActionAtItemEnd actionAtItemEnd;
 @property (nonatomic, readonly) AVPlayerTimeControlStatus timeControlStatus;
 @property (nonatomic, readonly, copy) AVPlayerWaitingReason reasonForWaitingToPlay;
+@property (nonatomic) uint64_t preferredVideoDecoderGPURegistryID;
+@property (nonatomic) BOOL automaticallyWaitsToMinimizeStalling;
 
 - (void)replaceCurrentItemWithPlayerItem:(AVPlayerItem *)item;
 - (void)play;

@@ -39,6 +39,9 @@ struct LinkState
 	CVDisplayLinkOutputHandler handler;
 
 	bool running;
+	// Set by CVDisplayLinkSetPaused: a running link then delivers no callbacks.
+	// It survives stop and start and does not start a stopped link.
+	bool paused;
 	// Changed by every start and stop, so that a thread left over from an
 	// earlier start exits instead of delivering callbacks.
 	uint64_t generation;
@@ -166,6 +169,15 @@ static void* linkThread(void* arg)
 	uint64_t deadline = mach_absolute_time();
 	while (state->running && state->generation == start.generation)
 	{
+		if (state->paused)
+		{
+			pthread_cond_wait(&state->cond, &state->lock);
+			// Resume at the next refresh instead of delivering the missed ones.
+			deadline = mach_absolute_time();
+			state->lastCallback = 0;
+			state->measuredPeriodTicks = 0;
+			continue;
+		}
 		uint64_t now = mach_absolute_time();
 		if (now < deadline)
 		{
@@ -560,6 +572,22 @@ CVReturn CVDisplayLinkStop(CVDisplayLinkRef displayLink)
 	if (!isValidLink(displayLink))
 		return kCVReturnInvalidArgument;
 	stopLink(displayLink->state);
+	return kCVReturnSuccess;
+}
+
+// Pauses or resumes callback delivery of a running link. It leaves the running
+// state alone: a paused link still reports running, and resuming a stopped link
+// does not start it.
+CVReturn CVDisplayLinkSetPaused(CVDisplayLinkRef displayLink, Boolean paused)
+{
+	if (!isValidLink(displayLink))
+		return kCVReturnInvalidArgument;
+
+	LinkState* state = displayLink->state;
+	pthread_mutex_lock(&state->lock);
+	state->paused = paused;
+	pthread_cond_broadcast(&state->cond);
+	pthread_mutex_unlock(&state->lock);
 	return kCVReturnSuccess;
 }
 

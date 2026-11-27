@@ -93,6 +93,10 @@ void AVPlaybackLoadKeys(NSArray *keys, void (^handler)(void))
 
 - (NSArray<AVAssetTrack *> *)tracksWithMediaCharacteristic:(NSString *)mediaCharacteristic
 {
+    if ([mediaCharacteristic isEqualToString:AVMediaCharacteristicVisual])
+        return [self tracksWithMediaType:AVMediaTypeVideo];
+    if ([mediaCharacteristic isEqualToString:AVMediaCharacteristicAudible])
+        return [self tracksWithMediaType:AVMediaTypeAudio];
     return [NSArray array];
 }
 

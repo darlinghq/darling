@@ -19,6 +19,7 @@
 */
 
 #import "AVPlaybackPrivate.h"
+#import <AVFoundation/AVComposition.h>
 #import "AVPlaybackEngine.h"
 #import <AVFoundation/AVError.h>
 #import <AVFoundation/AVURLAsset.h>
@@ -292,8 +293,19 @@ static void engineStarted(void *context)
 
     NSError *failure = nil;
     AVAsset *asset = [item asset];
-    if ([asset isKindOfClass:[AVURLAsset class]] && [asset isPlayable] && [[(AVURLAsset *)asset URL] isFileURL]) {
-        AVPEMedia *media = AVPEMediaOpen([[[(AVURLAsset *)asset URL] path] fileSystemRepresentation]);
+    NSURL *assetURL = nil;
+    if ([asset isKindOfClass:[AVURLAsset class]])
+        assetURL = [(AVURLAsset *)asset URL];
+    else if ([asset isKindOfClass:[AVComposition class]])
+        assetURL = [(AVComposition *)asset _playbackURL];
+    if (assetURL && [asset isPlayable] && [assetURL isFileURL]) {
+        AVPEMedia *media = AVPEMediaOpen([[assetURL path] fileSystemRepresentation]);
+        // A composition of one file plays that file: not when it holds only a part of it.
+        if (media && [asset isKindOfClass:[AVComposition class]]
+            && fabs(CMTimeGetSeconds([asset duration]) - AVPEMediaDurationUs(media) / 1e6) > 0.001) {
+            AVPEMediaClose(media);
+            media = NULL;
+        }
         if (media) {
             AVPECallbacks callbacks = { self, engineFrame, engineEnded, engineSeekDone, engineStarted };
             engine = AVPEEngineCreate(media, callbacks); // takes the media, also when it fails
