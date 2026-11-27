@@ -26,5 +26,6 @@ add_framework(AGL
     	OpenGL
     	CoreGraphics
     	ApplicationServices
+    	CoreText
         system
 )
