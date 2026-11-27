@@ -190,6 +190,29 @@ Boolean EqualRgn(RgnHandle rgnA, RgnHandle rgnB);
 Boolean PtInRgn(Point pt, RgnHandle rgn);
 Boolean RectInRgn(const Rect *r, RgnHandle rgn);
 Rect *GetRegionBounds(RgnHandle region, Rect *bounds);
+#ifndef __LP64__
+/* Pictures (32-bit only, as on macOS) */
+#pragma pack(push, 2)
+struct Picture {
+	short picSize;
+	Rect picFrame;
+};
+struct OpenCPicParams {
+	Rect srcRect;
+	Fixed hRes;
+	Fixed vRes;
+	short version;
+	short reserved1;
+	SInt32 reserved2;
+};
+#pragma pack(pop)
+typedef struct Picture Picture;
+typedef Picture *PicPtr;
+typedef PicPtr *PicHandle;
+typedef struct OpenCPicParams OpenCPicParams;
+PicHandle OpenCPicture(const OpenCPicParams *newHeader);
+void ClosePicture(void);
+#endif
 
 #ifndef __LP64__
 /* Ports and offscreen pixel maps (32-bit only, as on macOS). */
@@ -218,6 +241,24 @@ QDErr LockPortBits(GrafPtr port);
 QDErr UnlockPortBits(GrafPtr port);
 void QDFlushPortBuffer(CGrafPtr port, RgnHandle region);
 QDErr QDError(void);
+/* Text (32-bit only, as on macOS) */
+#pragma pack(push, 2)
+struct FontInfo {
+	short ascent;
+	short descent;
+	short widMax;
+	short leading;
+};
+#pragma pack(pop)
+typedef struct FontInfo FontInfo;
+void DrawText(const void *textBuf, short firstByte, short byteCount);
+void DrawString(ConstStr255Param s);
+void DrawChar(CharParameter ch);
+short TextWidth(const void *textBuf, short firstByte, short byteCount);
+short StringWidth(ConstStr255Param s);
+short CharWidth(CharParameter ch);
+void GetFontInfo(FontInfo *info);
+void GetFNum(ConstStr255Param name, short *familyID);
 
 /* Quartz drawing into a port (32-bit only, as on macOS) */
 OSStatus QDBeginCGContext(CGrafPtr inPort, CGContextRef *outContext);
