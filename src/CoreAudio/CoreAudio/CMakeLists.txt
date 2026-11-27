@@ -53,5 +53,14 @@ add_framework(CoreAudio
 )
 
 if (HAVE_PIPEWIRE)
+    # The PipeWire backend is internal to CoreAudio, so its symbols are not exported.
+    set_source_files_properties(
+        pipewire/AudioHardwareImplPW.cpp
+        pipewire/AudioHardwareStreamPW.cpp
+        pipewire/AudioHardwareStreamPWInput.cpp
+        pipewire/AudioHardwareStreamPWOutput.cpp
+        pipewire/PWConfig.cpp
+        PROPERTIES COMPILE_OPTIONS "-fvisibility=hidden"
+    )
     target_link_libraries(CoreAudio PRIVATE darling_pipewire_client)
 endif ()
