@@ -26,6 +26,8 @@ add_framework(ScreenCaptureKit
         system
         objc
         Foundation
+        CoreGraphics
+        CoreMedia
 )
 
 if (HAVE_PIPEWIRE)
