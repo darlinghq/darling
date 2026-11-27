@@ -23,5 +23,9 @@ add_framework(AGL
     DEPENDENCIES
     	CoreFoundation
     	Carbon
+    	OpenGL
+    	CoreGraphics
+    	ApplicationServices
+    	CoreText
         system
 )
