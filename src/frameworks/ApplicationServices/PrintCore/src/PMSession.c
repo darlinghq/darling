@@ -148,7 +148,17 @@ OSStatus PMSessionBeginCGDocumentNoDialog(PMPrintSession printSession, PMPrintSe
 	PMFormatOrientedPaper(format, &width, &height);
 	CGRect mediaBox = CGRectMake(0, 0, width, height);
 
-	session->context = CGPDFContextCreateWithURL(settings->destinationURL, &mediaBox, NULL);
+	// The job name of the print settings is the title of the document
+	CFDictionaryRef info = NULL;
+	if (settings->jobName)
+	{
+		const void* key = kCGPDFContextTitle;
+		const void* value = settings->jobName;
+		info = CFDictionaryCreate(NULL, &key, &value, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	}
+	session->context = CGPDFContextCreateWithURL(settings->destinationURL, &mediaBox, info);
+	if (info)
+		CFRelease(info);
 	if (!session->context)
 		return sessionFail(session, kPMGeneralError);
 	CFRetain(settings);
