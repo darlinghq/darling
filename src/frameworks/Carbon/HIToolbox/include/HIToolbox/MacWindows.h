@@ -190,6 +190,11 @@ OSStatus CollapseAllWindows(Boolean collapse);
 void BringToFront(WindowRef window);
 void SendBehind(WindowRef window, WindowRef behindWindow);
 WindowRef FrontWindow(void);
+
+// The window that gets the keyboard events: by default (kUserFocusAuto) the active window
+#define kUserFocusAuto ((WindowRef) -1)
+OSStatus SetUserFocusWindow(WindowRef inWindow);
+WindowRef GetUserFocusWindow(void);
 WindowRef FrontNonFloatingWindow(void);
 WindowRef ActiveNonFloatingWindow(void);
 WindowRef GetNextWindow(WindowRef window);

@@ -104,6 +104,7 @@ static struct OpaqueWindowPtr* g_windows;     // front to back
 static struct OpaqueWindowPtr* g_activeWindow;
 static struct OpaqueWindowPtr* g_mouseGrab;   // the window that got the mouse down, until the button is up
 static bool g_eventProcRegistered;
+static WindowRef g_userFocusWindow; // set by SetUserFocusWindow, NULL for kUserFocusAuto
 static CGSWindowID g_keyWindow;     // the window of the process that has the keyboard focus, 0 for none
 static bool g_focusCheckQueued;
 
@@ -814,6 +815,8 @@ static void destroyWindow(WindowRef window)
 
 	if (g_activeWindow == window)
 		g_activeWindow = NULL;
+	if (g_userFocusWindow == window)
+		g_userFocusWindow = NULL;
 	if (g_mouseGrab == window)
 		g_mouseGrab = NULL;
 
@@ -1010,6 +1013,35 @@ void SendBehind(WindowRef window, WindowRef behindWindow)
 	window->next = *p;
 	*p = window;
 	pthread_mutex_unlock(&g_lock);
+}
+
+// The user focus is the window that gets the keys and the commands: the one SetUserFocusWindow named, if it is
+// still a window, and otherwise the active window
+OSStatus SetUserFocusWindow(WindowRef inWindow)
+{
+	if (inWindow == kUserFocusAuto)
+	{
+		g_userFocusWindow = NULL;
+		return noErr;
+	}
+	if (!IsValidWindowPtr(inWindow))
+		return errInvalidWindowPtr;
+	g_userFocusWindow = inWindow;
+	return noErr;
+}
+
+WindowRef GetUserFocusWindow(void)
+{
+	if (g_userFocusWindow && IsValidWindowPtr(g_userFocusWindow))
+		return g_userFocusWindow;
+	return g_activeWindow;
+}
+
+EventTargetRef GetUserFocusEventTarget(void)
+{
+	WindowRef focus = GetUserFocusWindow();
+
+	return focus ? focus->target : _HIApplicationEventTarget();
 }
 
 WindowRef FrontWindow(void)
@@ -2368,9 +2400,11 @@ OSStatus _HIStandardWindowEventHandler(EventHandlerCallRef call, EventRef event,
 			if (result != eventNotHandledErr)
 				return result;
 		}
-		if (!g_activeWindow)
+		WindowRef focus = GetUserFocusWindow();
+
+		if (!focus)
 			return eventNotHandledErr;
-		return SendEventToEventTargetWithOptions(event, g_activeWindow->target, kEventTargetDontPropagate);
+		return SendEventToEventTargetWithOptions(event, focus->target, kEventTargetDontPropagate);
 	}
 
 	// The mouse
