@@ -33,6 +33,19 @@ typedef NS_ENUM(NSInteger, SCStreamError) {
 	SCStreamErrorFailedToStart = -3802,
 	SCStreamErrorMissingEntitlements = -3803,
 	SCStreamErrorAttemptToStopStreamState = -3808,
+	SCStreamErrorAttemptToUpdateFilterState = -3809,
+	SCStreamErrorAttemptToConfigState = -3810,
+	SCStreamErrorInternalError = -3811,
+	SCStreamErrorInvalidParameter = -3812,
+	SCStreamErrorNoWindowList = -3813,
+	SCStreamErrorNoDisplayList = -3814,
+	SCStreamErrorNoCaptureSource = -3815,
+	SCStreamErrorRemovingStream = -3816,
+	SCStreamErrorUserStopped = -3817,
+	SCStreamErrorFailedToStartAudioCapture = -3818,
+	SCStreamErrorFailedToStopAudioCapture = -3819,
+	SCStreamErrorFailedToStartMicrophoneCapture = -3820,
+	SCStreamErrorSystemStoppedStream = -3821,
 };
 
 typedef NS_ENUM(NSInteger, SCStreamOutputType) {
@@ -69,8 +82,8 @@ typedef NS_ENUM(NSInteger, SCFrameStatus) {
 	SCFrameStatusComplete,
 	SCFrameStatusIdle,
 	SCFrameStatusBlank,
-	SCFrameStatusStarted,
 	SCFrameStatusSuspended,
+	SCFrameStatusStarted,
 	SCFrameStatusStopped,
 };
 
@@ -83,6 +96,7 @@ extern SCStreamFrameInfo const SCStreamFrameInfoContentRect;
 extern SCStreamFrameInfo const SCStreamFrameInfoBoundingRect;
 extern SCStreamFrameInfo const SCStreamFrameInfoScreenRect;
 extern SCStreamFrameInfo const SCStreamFrameInfoDirtyRects;
+extern SCStreamFrameInfo const SCStreamFrameInfoPresenterOverlayContentRect;
 
 @interface SCRunningApplication : NSObject
 @property (readonly) NSString *bundleIdentifier;

@@ -21,6 +21,7 @@
 #include <CoreMediaIO/CoreMediaIO.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 static int verbose = 0;
 
@@ -503,28 +504,85 @@ void* CMIOObjectCreate(void)
     return NULL;
 }
 
-void* CMIOObjectGetPropertyData(void)
+/* Darling has no CMIO device graph. The system-level screen capture device
+   property is still meaningful to callers: it is a general request to permit
+   screen capture devices, so it is tracked here and round-trips for every
+   caller rather than depending on a particular application. */
+static UInt32 allowScreenCaptureDevices = 0;
+
+static Boolean isAllowScreenCaptureProperty(CMIOObjectID objectID,
+                                            const CMIOObjectPropertyAddress *address)
 {
-    if (verbose) puts("STUB: CMIOObjectGetPropertyData called");
-    return NULL;
+    return objectID == kCMIOObjectSystemObject && address != NULL &&
+           address->mSelector == kCMIOHardwarePropertyAllowScreenCaptureDevices &&
+           address->mScope == kCMIOObjectPropertyScopeGlobal &&
+           address->mElement == kCMIOObjectPropertyElementMain;
 }
 
-void* CMIOObjectGetPropertyDataSize(void)
+Boolean CMIOObjectHasProperty(CMIOObjectID objectID, const CMIOObjectPropertyAddress *address)
 {
-    if (verbose) puts("STUB: CMIOObjectGetPropertyDataSize called");
-    return NULL;
+    return isAllowScreenCaptureProperty(objectID, address);
 }
 
-void* CMIOObjectHasProperty(void)
+OSStatus CMIOObjectIsPropertySettable(CMIOObjectID objectID,
+                                      const CMIOObjectPropertyAddress *address,
+                                      Boolean *isSettable)
 {
-    if (verbose) puts("STUB: CMIOObjectHasProperty called");
-    return NULL;
+    if (isSettable == NULL)
+        return kCMIOHardwareIllegalOperationError;
+    *isSettable = 0;
+    if (!isAllowScreenCaptureProperty(objectID, address)) {
+        if (objectID != kCMIOObjectSystemObject)
+            return kCMIOHardwareBadObjectError;
+        return kCMIOHardwareUnknownPropertyError;
+    }
+    *isSettable = 1;
+    return noErr;
 }
 
-void* CMIOObjectIsPropertySettable(void)
+OSStatus CMIOObjectGetPropertyDataSize(CMIOObjectID objectID,
+                                       const CMIOObjectPropertyAddress *address,
+                                       UInt32 qualifierDataSize,
+                                       const void *qualifierData,
+                                       UInt32 *dataSize)
 {
-    if (verbose) puts("STUB: CMIOObjectIsPropertySettable called");
-    return NULL;
+    if (dataSize == NULL)
+        return kCMIOHardwareIllegalOperationError;
+    *dataSize = 0;
+    if (qualifierDataSize != 0 && qualifierData == NULL)
+        return kCMIOHardwareBadPropertySizeError;
+    if (!isAllowScreenCaptureProperty(objectID, address)) {
+        if (objectID != kCMIOObjectSystemObject)
+            return kCMIOHardwareBadObjectError;
+        return kCMIOHardwareUnknownPropertyError;
+    }
+    *dataSize = sizeof(allowScreenCaptureDevices);
+    return noErr;
+}
+
+OSStatus CMIOObjectGetPropertyData(CMIOObjectID objectID,
+                                   const CMIOObjectPropertyAddress *address,
+                                   UInt32 qualifierDataSize,
+                                   const void *qualifierData,
+                                   UInt32 dataSize,
+                                   UInt32 *dataUsed,
+                                   void *data)
+{
+    if (dataUsed != NULL)
+        *dataUsed = 0;
+    if (qualifierDataSize != 0 && qualifierData == NULL)
+        return kCMIOHardwareBadPropertySizeError;
+    if (!isAllowScreenCaptureProperty(objectID, address)) {
+        if (objectID != kCMIOObjectSystemObject)
+            return kCMIOHardwareBadObjectError;
+        return kCMIOHardwareUnknownPropertyError;
+    }
+    if (data == NULL || dataSize < sizeof(allowScreenCaptureDevices))
+        return kCMIOHardwareBadPropertySizeError;
+    memcpy(data, &allowScreenCaptureDevices, sizeof(allowScreenCaptureDevices));
+    if (dataUsed != NULL)
+        *dataUsed = sizeof(allowScreenCaptureDevices);
+    return noErr;
 }
 
 void* CMIOObjectPropertiesChanged(void)
@@ -545,10 +603,26 @@ void* CMIOObjectRemovePropertyListenerBlock(void)
     return NULL;
 }
 
-void* CMIOObjectSetPropertyData(void)
+OSStatus CMIOObjectSetPropertyData(CMIOObjectID objectID,
+                                   const CMIOObjectPropertyAddress *address,
+                                   UInt32 qualifierDataSize,
+                                   const void *qualifierData,
+                                   UInt32 dataSize,
+                                   const void *data)
 {
-    if (verbose) puts("STUB: CMIOObjectSetPropertyData called");
-    return NULL;
+    if (qualifierDataSize != 0 && qualifierData == NULL)
+        return kCMIOHardwareBadPropertySizeError;
+    if (!isAllowScreenCaptureProperty(objectID, address)) {
+        if (objectID != kCMIOObjectSystemObject)
+            return kCMIOHardwareBadObjectError;
+        return kCMIOHardwareUnknownPropertyError;
+    }
+    if (data == NULL || dataSize != sizeof(allowScreenCaptureDevices))
+        return kCMIOHardwareBadPropertySizeError;
+    UInt32 requested;
+    memcpy(&requested, data, sizeof(requested));
+    allowScreenCaptureDevices = requested != 0 ? 1 : 0;
+    return noErr;
 }
 
 void* CMIOObjectShow(void)

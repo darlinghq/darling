@@ -20,6 +20,8 @@ Description: Extra components for Darling
 Package: darling-core
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${macho:Depends}, darling-core-native (= ${source:Version}), xdg-user-dirs
+Breaks: darling-system (<< ${source:Version})
+Replaces: darling-system (<< ${source:Version})
 Description: Darling core components
  Core components of Darling. The Mach-O binaries are universal (i386, x86_64
  and arm64), so this package is the same for every host architecture.

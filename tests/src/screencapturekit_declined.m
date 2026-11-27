@@ -15,6 +15,31 @@ static int failures;
 int main(void)
 {
 	@autoreleasepool {
+		CHECK(SCStreamErrorAttemptToUpdateFilterState == -3809);
+		CHECK(SCStreamErrorAttemptToConfigState == -3810);
+		CHECK(SCStreamErrorInternalError == -3811);
+		CHECK(SCStreamErrorInvalidParameter == -3812);
+		CHECK(SCStreamErrorNoWindowList == -3813);
+		CHECK(SCStreamErrorNoDisplayList == -3814);
+		CHECK(SCStreamErrorNoCaptureSource == -3815);
+		CHECK(SCStreamErrorRemovingStream == -3816);
+		CHECK(SCStreamErrorUserStopped == -3817);
+		CHECK(SCStreamErrorFailedToStartAudioCapture == -3818);
+		CHECK(SCStreamErrorFailedToStopAudioCapture == -3819);
+		CHECK(SCStreamErrorFailedToStartMicrophoneCapture == -3820);
+		CHECK(SCStreamErrorSystemStoppedStream == -3821);
+		CHECK(SCFrameStatusComplete == 0 && SCFrameStatusIdle == 1 && SCFrameStatusBlank == 2);
+		CHECK(SCFrameStatusSuspended == 3 && SCFrameStatusStarted == 4 && SCFrameStatusStopped == 5);
+		CHECK([SCStreamFrameInfoStatus isEqualToString:@"Status"]);
+		CHECK([SCStreamFrameInfoDisplayTime isEqualToString:@"DisplayTime"]);
+		CHECK([SCStreamFrameInfoScaleFactor isEqualToString:@"ScaleFactor"]);
+		CHECK([SCStreamFrameInfoContentScale isEqualToString:@"ContentScale"]);
+		CHECK([SCStreamFrameInfoContentRect isEqualToString:@"ContentRect"]);
+		CHECK([SCStreamFrameInfoBoundingRect isEqualToString:@"BoundingRect"]);
+		CHECK([SCStreamFrameInfoScreenRect isEqualToString:@"ScreenRect"]);
+		CHECK([SCStreamFrameInfoDirtyRects isEqualToString:@"DirtyRects"]);
+		CHECK([SCStreamFrameInfoPresenterOverlayContentRect isEqualToString:@"PresenterOverlayContentRect"]);
+
 		dispatch_semaphore_t sem = dispatch_semaphore_create(0);
 		__block SCShareableContent* content = (SCShareableContent*)1;
 		__block NSError* error = nil;

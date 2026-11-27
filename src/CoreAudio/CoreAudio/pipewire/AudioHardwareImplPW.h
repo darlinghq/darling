@@ -14,12 +14,15 @@ the Free Software Foundation, either version 3 of the License, or
 
 #include "../AudioHardwareImpl.h"
 #include <atomic>
+#include <chrono>
+#include <mutex>
 #include <string>
 
-// The pipe_client.h API has no device introspection or mixing controls. The
-// HAL objects therefore describe roles (default output, input, system output)
-// and keep control values locally, which is enough for clients that use the
-// public property contract without opening a direct PipeWire connection.
+struct darling_pw_volume;
+
+// The HAL objects describe roles (default output, input, system output). Their
+// volume and mute follow the server's default sink or source node (pipe_volume.h);
+// while no server can be reached the values are kept locally.
 class AudioHardwareImplPW : public AudioHardwareImpl
 {
 public:
@@ -34,6 +37,8 @@ public:
 		UInt32 dataSize, const void* inData) override;
 	OSStatus isPropertySettable(const AudioObjectPropertyAddress* address,
 		Boolean* outIsSettable) override;
+	OSStatus addPropertyListener(const AudioObjectPropertyAddress* address,
+		AudioObjectPropertyListenerProc listener, void* clientData) override;
 	OSStatus stop(AudioDeviceIOProcID procID) override;
 	OSStatus getCurrentTime(AudioTimeStamp* outTime) override;
 
@@ -70,6 +75,11 @@ private:
 	static OSStatus replyArray(UInt32* ioDataSize, void* outData,
 		const void* values, UInt32 count, UInt32 elementSize);
 	bool hasActiveStreams();
+	// Connects to the server's default node for volume and mute, if not yet done.
+	// Returns the connection or nullptr when no server can be reached.
+	darling_pw_volume* volumeClient();
+	static void volumeChangedByServer(void* userData);
+	void volumeChanged();
 	bool ownsScope(UInt32 scope) const;
 
 	bool m_system;
@@ -80,6 +90,11 @@ private:
 	std::atomic<uint64_t> m_sampleClock{0};
 	std::atomic<Float32> m_volume{1.0f};
 	std::atomic<UInt32> m_mute{0};
+	std::mutex m_volumeMutex;
+	// Read by the PipeWire thread, which must never wait on m_volumeMutex: the
+	// opener holds it while that thread delivers the first events.
+	std::atomic<darling_pw_volume*> m_volumeClient{nullptr};
+	std::chrono::steady_clock::time_point m_volumeAttempt{};
 };
 
 class AudioHardwareImplPWOutput : public AudioHardwareImplPW

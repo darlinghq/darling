@@ -20,7 +20,9 @@ add_framework(QuickTime
     SOURCES
         src/QuickTime.c
         src/qt_timeline.c
+        src/qt_mov_probe.c
 
     DEPENDENCIES
         system
+        CarbonCore
 )
