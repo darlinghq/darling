@@ -21,13 +21,13 @@ IMAGEIO_EXTERN const CFStringRef kCGImagePropertyOrientation;
 // Values stored under kCGImagePropertyOrientation (EXIF/TIFF orientation).
 typedef CF_ENUM(uint32_t, CGImagePropertyOrientation) {
     kCGImagePropertyOrientationUp = 1,
-    kCGImagePropertyOrientationDown = 2,
-    kCGImagePropertyOrientationLeft = 3,
-    kCGImagePropertyOrientationRight = 4,
-    kCGImagePropertyOrientationUpMirrored = 5,
-    kCGImagePropertyOrientationDownMirrored = 6,
-    kCGImagePropertyOrientationLeftMirrored = 7,
-    kCGImagePropertyOrientationRightMirrored = 8,
+    kCGImagePropertyOrientationUpMirrored = 2,
+    kCGImagePropertyOrientationDown = 3,
+    kCGImagePropertyOrientationDownMirrored = 4,
+    kCGImagePropertyOrientationLeftMirrored = 5,
+    kCGImagePropertyOrientationRight = 6,
+    kCGImagePropertyOrientationRightMirrored = 7,
+    kCGImagePropertyOrientationLeft = 8,
 };
 
 IMAGEIO_EXTERN const CFStringRef kCGImagePropertyTIFFDictionary;
