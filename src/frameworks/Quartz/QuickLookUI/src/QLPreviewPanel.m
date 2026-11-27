@@ -20,14 +20,6 @@
 
 #import <QuickLookUI/QLPreviewPanel.h>
 
-@interface QLPreviewPanel () {
-    id<QLPreviewPanelDataSource> _dataSource;
-    id<QLPreviewPanelDelegate> _delegate;
-    NSInteger _currentPreviewItemIndex;
-    NSArray<id<QLPreviewItem>> *_previewItems;
-}
-@end
-
 static QLPreviewPanel *sharedPreviewPanel = nil;
 
 @implementation QLPreviewPanel
@@ -47,6 +39,11 @@ static QLPreviewPanel *sharedPreviewPanel = nil;
     return sharedPreviewPanel != nil;
 }
 
+- (void) dealloc {
+    [_previewItems release];
+    [super dealloc];
+}
+
 - (id<QLPreviewPanelDataSource>) dataSource {
     return _dataSource;
 }
@@ -56,12 +53,13 @@ static QLPreviewPanel *sharedPreviewPanel = nil;
     [self reloadData];
 }
 
+// The panel delegate is also the window delegate, so it lives in NSWindow.
 - (id<QLPreviewPanelDelegate>) delegate {
-    return _delegate;
+    return (id<QLPreviewPanelDelegate>) [super delegate];
 }
 
 - (void) setDelegate: (id<QLPreviewPanelDelegate>) delegate {
-    _delegate = delegate;
+    [super setDelegate: (id<NSWindowDelegate>) delegate];
 }
 
 - (NSInteger) currentPreviewItemIndex {
@@ -79,7 +77,8 @@ static QLPreviewPanel *sharedPreviewPanel = nil;
     NSArray *items = [self previewItems];
     if (_currentPreviewItemIndex < 0 || _currentPreviewItemIndex >= (NSInteger)[items count])
         return nil;
-    return [items objectAtIndex: _currentPreviewItemIndex];
+    id item = [items objectAtIndex: _currentPreviewItemIndex];
+    return item == [NSNull null] ? nil : item;
 }
 
 - (NSArray<id<QLPreviewItem>> *) previewItems {
@@ -96,7 +95,9 @@ static QLPreviewPanel *sharedPreviewPanel = nil;
         id<QLPreviewItem> item = [_dataSource previewPanel: self previewItemAtIndex: i];
         [items addObject: (item ?: (id)[NSNull null])];
     }
-    _previewItems = [items copy];
+    NSArray *newItems = [items copy];
+    [_previewItems release];
+    _previewItems = newItems;
 
     if (_currentPreviewItemIndex >= count)
         _currentPreviewItemIndex = count ? count - 1 : 0;

@@ -46,7 +46,14 @@ sourceFrameOnScreenForPreviewItem: (id<QLPreviewItem>) item;
 
 @end
 
-@interface QLPreviewPanel : NSPanel
+@interface QLPreviewPanel : NSPanel {
+    // Declared here rather than in a class extension: the 32-bit runtime does
+    // not allow instance variables in extensions.
+    @private
+    id<QLPreviewPanelDataSource> _dataSource;
+    NSInteger _currentPreviewItemIndex;
+    NSArray<id<QLPreviewItem>> *_previewItems;
+}
 
 // There is one shared panel per process. It exists as soon as it is asked for
 // with +sharedPreviewPanel; +sharedPreviewPanelExists reports that without
