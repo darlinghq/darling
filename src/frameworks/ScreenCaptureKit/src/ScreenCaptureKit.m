@@ -488,6 +488,29 @@ static SCShareableContent *SCBuildContent(BOOL excludeDesktopWindows, BOOL onScr
     return self;
 }
 
+- (id)copyWithZone:(NSZone *)zone
+{
+    SCContentFilter *copy = [[[self class] allocWithZone: zone] initWithDisplay: _targetDisplay
+        window: _targetWindow style: _style includeMenu: _includeMenuBar];
+
+    if (copy == nil)
+        return nil;
+    copy->_contentRect = _contentRect;
+    copy->_pointPixelScale = _pointPixelScale;
+    copy->_streamType = _streamType;
+    copy->_filterIncludedWindows = [_filterIncludedWindows copy];
+    copy->_filterExcludedWindows = [_filterExcludedWindows copy];
+    copy->_filterIncludedApplications = [_filterIncludedApplications copy];
+    copy->_filterExcludedApplications = [_filterExcludedApplications copy];
+    copy->_unsupportedFilter = _unsupportedFilter;
+    copy->_includedApplications = [_includedApplications retain];
+    copy->_includedDisplays = [_includedDisplays retain];
+    copy->_includedWindows = [_includedWindows retain];
+    copy->_cameraEnabled = _cameraEnabled;
+    copy->_microphoneEnabled = _microphoneEnabled;
+    return copy;
+}
+
 - (void)dealloc
 {
     [_targetDisplay release];
@@ -539,6 +562,44 @@ static SCShareableContent *SCBuildContent(BOOL excludeDesktopWindows, BOOL onScr
     ignoreGlobalClipSingleWindow = _ignoreGlobalClipSingleWindow,
     includeChildWindows = _includeChildWindows, captureMicrophone = _captureMicrophone,
     microphoneCaptureDeviceID = _microphoneCaptureDeviceID, showMouseClicks = _showMouseClicks;
+
+- (id)copyWithZone:(NSZone *)zone
+{
+    SCStreamConfiguration *copy = [[[self class] allocWithZone: zone] init];
+
+    if (copy == nil)
+        return nil;
+    copy->_width = _width;
+    copy->_height = _height;
+    copy->_minimumFrameInterval = _minimumFrameInterval;
+    copy->_pixelFormat = _pixelFormat;
+    copy->_scalesToFit = _scalesToFit;
+    copy->_sourceRect = _sourceRect;
+    copy->_destinationRect = _destinationRect;
+    copy->_queueDepth = _queueDepth;
+    copy->_showsCursor = _showsCursor;
+    copy->_capturesAudio = _capturesAudio;
+    copy->_sampleRate = _sampleRate;
+    copy->_channelCount = _channelCount;
+    copy->_excludesCurrentProcessAudio = _excludesCurrentProcessAudio;
+    copy->_streamName = [_streamName copy];
+    copy->_backgroundColor = _backgroundColor;
+    copy->_colorSpaceName = _colorSpaceName;
+    copy->_colorMatrix = _colorMatrix;
+    copy->_captureResolution = _captureResolution;
+    copy->_captureDynamicRange = _captureDynamicRange;
+    copy->_preservesAspectRatio = _preservesAspectRatio;
+    copy->_shouldBeOpaque = _shouldBeOpaque;
+    copy->_ignoreShadowsDisplay = _ignoreShadowsDisplay;
+    copy->_ignoreShadowsSingleWindow = _ignoreShadowsSingleWindow;
+    copy->_ignoreGlobalClipDisplay = _ignoreGlobalClipDisplay;
+    copy->_ignoreGlobalClipSingleWindow = _ignoreGlobalClipSingleWindow;
+    copy->_includeChildWindows = _includeChildWindows;
+    copy->_captureMicrophone = _captureMicrophone;
+    copy->_microphoneCaptureDeviceID = [_microphoneCaptureDeviceID copy];
+    copy->_showMouseClicks = _showMouseClicks;
+    return copy;
+}
 
 - (void)dealloc
 {

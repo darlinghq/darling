@@ -115,7 +115,7 @@ extern SCStreamFrameInfo const SCStreamFrameInfoDirtyRects;
 + (void)getShareableContentExcludingDesktopWindows:(BOOL)excludeDesktopWindows onScreenWindowsOnly:(BOOL)onScreenWindowsOnly completionHandler:(void (^)(SCShareableContent *content, NSError *error))completionHandler;
 @end
 
-@interface SCContentFilter : NSObject
+@interface SCContentFilter : NSObject <NSCopying>
 @property (readonly) CGRect contentRect;
 @property (readonly) CGFloat pointPixelScale;
 @property (readonly) SCShareableContentStyle style;
@@ -133,7 +133,7 @@ extern SCStreamFrameInfo const SCStreamFrameInfoDirtyRects;
 - (instancetype)initWithDisplay:(SCDisplay *)display excludingApplications:(NSArray<SCRunningApplication *> *)applications exceptingWindows:(NSArray<SCWindow *> *)exceptingWindows;
 @end
 
-@interface SCStreamConfiguration : NSObject
+@interface SCStreamConfiguration : NSObject <NSCopying>
 @property size_t width;
 @property size_t height;
 @property CMTime minimumFrameInterval;
