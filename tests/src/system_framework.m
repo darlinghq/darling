@@ -14,6 +14,8 @@ int main(void) {
         NSBundle *bundle = [NSBundle bundleWithPath:@"/System/Library/Frameworks/System.framework"];
         CHECK(bundle != nil);
         CHECK([[bundle bundleIdentifier] isEqualToString:@"com.apple.System"]);
+        CHECK([[bundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] isEqualToString:@"11"]);
+        CHECK([[bundle objectForInfoDictionaryKey:@"CFBundleVersion"] isEqualToString:@"1281.0.0"]);
     }
     puts("PASS");
     return 0;
