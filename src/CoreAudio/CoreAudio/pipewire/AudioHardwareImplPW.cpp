@@ -400,7 +400,7 @@ OSStatus AudioHardwareImplPW::setPropertyData(const AudioObjectPropertyAddress* 
 			// that desktop mixers use, so both show the same percentage.
 			if (auto* client = volumeClient())
 				darling_pw_volume_set_linear(client, scalar * scalar * scalar);
-			notifyPropertyChanged(kAudioDevicePropertyVolumeScalar);
+			notifyPropertyChanged(kAudioDevicePropertyVolumeScalar, kAudioObjectPropertyScopeWildcard, kAudioObjectPropertyElementWildcard);
 			return kAudioHardwareNoError;
 		}
 		case kAudioDevicePropertyMute:
@@ -409,7 +409,7 @@ OSStatus AudioHardwareImplPW::setPropertyData(const AudioObjectPropertyAddress* 
 			m_mute.store(*static_cast<const UInt32*>(inData) ? 1 : 0, std::memory_order_relaxed);
 			if (auto* client = volumeClient())
 				darling_pw_volume_set_mute(client, m_mute.load(std::memory_order_relaxed));
-			notifyPropertyChanged(kAudioDevicePropertyMute);
+			notifyPropertyChanged(kAudioDevicePropertyMute, kAudioObjectPropertyScopeWildcard, kAudioObjectPropertyElementWildcard);
 			return kAudioHardwareNoError;
 		case kAudioDevicePropertyNominalSampleRate:
 			if (!inData || dataSize != sizeof(Float64))
@@ -474,9 +474,9 @@ void AudioHardwareImplPW::volumeChanged()
 		return;
 	const Float32 scalar = std::cbrt(std::min(std::max(linear, 0.f), 1.f));
 	if (std::fabs(m_volume.exchange(scalar, std::memory_order_relaxed) - scalar) > 1e-4f)
-		notifyPropertyChanged(kAudioDevicePropertyVolumeScalar);
+		notifyPropertyChanged(kAudioDevicePropertyVolumeScalar, kAudioObjectPropertyScopeWildcard, kAudioObjectPropertyElementWildcard);
 	if (m_mute.exchange(muted ? 1 : 0, std::memory_order_relaxed) != (muted ? 1u : 0u))
-		notifyPropertyChanged(kAudioDevicePropertyMute);
+		notifyPropertyChanged(kAudioDevicePropertyMute, kAudioObjectPropertyScopeWildcard, kAudioObjectPropertyElementWildcard);
 }
 
 OSStatus AudioHardwareImplPW::addPropertyListener(const AudioObjectPropertyAddress* address,
