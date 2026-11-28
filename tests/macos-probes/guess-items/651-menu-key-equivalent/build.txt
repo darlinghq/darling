@@ -1,0 +1,1 @@
+clang -O0 -fobjc-arc -framework Cocoa -o probe probe.m
