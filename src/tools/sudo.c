@@ -22,20 +22,60 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#include <errno.h>
+#include <limits.h>
+#include <paths.h>
 
 unsigned int firstarg = 1, uid = 0, gid = 0;
 
 static int list_mode = 0;
 
-int argparse(int, char**);
+int argparse(int, char**, char**);
 int usage(int, int);
 
-int main(int argc, char **argv)
+static int parse_id(const char *value, unsigned int *id)
 {
-	char *path = getenv("PATH"), *path_orig, *fullpath = NULL;
-	int i, len;
-	if (argparse(argc, argv))
+	char *end;
+	unsigned long number;
+
+	if (*value < '0' || *value > '9')
+		return 1;
+	errno = 0;
+	number = strtoul(value, &end, 10);
+	if (errno == ERANGE || *end != '\0' || number > UINT_MAX)
+		return 1;
+	*id = (unsigned int)number;
+	return 0;
+}
+
+static int apply_environment(char **assignments)
+{
+	for (; *assignments; assignments++)
+	{
+		char *equals = strchr(*assignments, '=');
+		int result;
+
+		*equals = '\0';
+		result = setenv(*assignments, equals + 1, 1);
+		*equals = '=';
+		if (result != 0)
+		{
+			perror("Setting sudo environment failed");
 			return 1;
+		}
+	}
+	return 0;
+}
+
+static int run_sudo(int argc, char **argv, char *path_orig, char **assignments)
+{
+	char *path = path_orig, *fullpath = NULL;
+	int i, len;
+
+	if (argparse(argc, argv, assignments))
+		return EXIT_FAILURE;
+	if (!list_mode && apply_environment(assignments))
+		return EXIT_FAILURE;
 
 	setuid(uid);
 	setgid(gid);
@@ -48,10 +88,6 @@ int main(int argc, char **argv)
 	else if (list_mode)
 	{
 		/* Print fill path to command, then args if present */
-		if (!path)
-			printf("can't search for command if no path\n");
-		path = strdup(path);
-		path_orig = path;
 		len = strlen(path_orig);
 		for (i = 0; i < len; i++)
 		{
@@ -69,26 +105,26 @@ int main(int argc, char **argv)
 				path = path_orig+i+1;
 			}
 		}
-		free(path_orig);
 		if (!fullpath)
 		{
 			fprintf(stderr, "%s: %s: command not found\n", argv[0], argv[firstarg]);
 			return EXIT_FAILURE;
 		}
 		printf("%s", fullpath);
-		free(fullpath);
 		for (i = firstarg+1; i < argc; i++)
 		{
 			printf(" %s", argv[i]);
 		}
 		putchar('\n');
+		free(fullpath);
 		return EXIT_SUCCESS;
 	}
 	else
 	{
 		if (firstarg < argc)
 		{
-			execvp(argv[firstarg], &argv[firstarg]);
+			/* Command assignments change the child environment, not lookup. */
+			execvP(argv[firstarg], path_orig, &argv[firstarg]);
 			perror("Running sudo failed");
 		}
 		else
@@ -97,17 +133,39 @@ int main(int argc, char **argv)
 	return EXIT_FAILURE;
 }
 
-int argparse(int argc, char **argv)
+int main(int argc, char **argv)
 {
+	const char *inherited_path = getenv("PATH");
+	char *path = strdup(inherited_path ? inherited_path : _PATH_DEFPATH);
+	char **assignments = calloc(argc, sizeof(*assignments));
+	int status = EXIT_FAILURE;
+
+	if (!path || !assignments)
+		perror("Preparing sudo environment failed");
+	else
+		status = run_sudo(argc, argv, path, assignments);
+
+	free(assignments);
+	free(path);
+	return status;
+}
+
+int argparse(int argc, char **argv, char **assignments)
+{
+	unsigned int env_vars = 0;
+
 	for (firstarg = 1; firstarg < argc; firstarg++)
 	{
-		if(!strcmp(argv[firstarg], "-g"))
+		if (!strcmp(argv[firstarg], "-g") || !strcmp(argv[firstarg], "-u"))
 		{
-			sscanf(argv[++firstarg], "%u", &gid);
-		}
-		else if(!strcmp(argv[firstarg], "-u"))
-		{
-			sscanf(argv[++firstarg], "%u", &uid);
+			const char *option = argv[firstarg];
+			unsigned int *id = option[1] == 'u' ? &uid : &gid;
+
+			if (++firstarg == (unsigned int)argc || parse_id(argv[firstarg], id))
+			{
+				fprintf(stderr, "%s requires a numeric ID\n", option);
+				return 1;
+			}
 		}
 		else if (!strcmp(argv[firstarg], "-A"))
 		{
@@ -120,6 +178,7 @@ int argparse(int argc, char **argv)
 		}
 		else if(!strcmp(argv[firstarg], "--"))
 		{
+			firstarg++;
 			break;
 		}
 		else if(!strcmp(argv[firstarg], "-k"))
@@ -135,9 +194,23 @@ int argparse(int argc, char **argv)
 		}
 		else
 		{
-			break;
+			char *equals = strchr(argv[firstarg], '=');
+			char *slash = strchr(argv[firstarg], '/');
+
+			/* An '=' in a command path is part of the command. */
+			if (argv[firstarg][0] == '-' || !equals || (slash && slash < equals))
+				break;
+
+			if (equals == argv[firstarg])
+			{
+				fprintf(stderr, "Environment assignment requires a name\n");
+				return 1;
+			}
+			assignments[env_vars++] = argv[firstarg];
 		}
 	}
+	if (env_vars && firstarg == (unsigned int)argc)
+		return usage(argc, 0);
 	return 0;
 }
 
@@ -150,7 +223,7 @@ int usage(int argc, int arg_help)
 				"One purpose of this program is to convince some tools that they can write into '/'.\n"
 				"Another is to enable you to talk to certain system daemons.\n"
 				"\nUsage:\n"
-				"  sudo [-g GID] [-u UID] [-k] [--] COMMAND\n");
+				"  sudo [-g GID] [-u UID] [-k] [NAME=value ...] [--] COMMAND [ARG ...]\n");
 		return 1;
 	}
 	return 0;
