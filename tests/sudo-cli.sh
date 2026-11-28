@@ -5,9 +5,10 @@
 # Contract: https://github.com/sudo-project/sudo/blob/cc856f0fc2ce40994cf699b246dee57e4fcbb5aa/docs/sudo.man.in
 #
 # Usage: sh sudo-cli.sh /absolute/path/to/darling/sudo
-# Run inside Darling with /usr/bin/sudo, or against a host test build whose
-# setuid/setgid calls are stubbed. There is no default host sudo invocation.
-# Set SUDO_TEST_KEEP=1 to retain fixtures for cleanup from the host.
+# Inside Darling, keep fixtures for cleanup from the host after shutdown:
+#   SUDO_TEST_KEEP=1 sh sudo-cli.sh /usr/bin/sudo
+# Host runs require a test build whose setuid/setgid calls are stubbed.
+# There is no default host sudo invocation; do not select the host system sudo.
 
 if [ "$#" -ne 1 ] || [ ! -x "$1" ]; then
     echo "Usage: $0 /absolute/path/to/darling/sudo" >&2
