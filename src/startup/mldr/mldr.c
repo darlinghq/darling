@@ -38,6 +38,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "image_protection.h"
 #include "interpreter_path.h"
 #include "fat_slice.h"
+#include "exec_target.h"
 #include "exec_policy.h"
 #include <sys/resource.h>
 #include <sys/prctl.h>
@@ -133,6 +134,9 @@ static void load64(int fd, bool expect_dylinker, struct load_results* lr);
 #ifdef __x86_64__
 static void reexec32(char** argv);
 #endif
+#if defined(__aarch64__)
+static void exec_i386_emulator(char** argv);
+#endif
 static void load32(int fd, bool expect_dylinker, struct load_results* lr);
 static void load_fat(int fd, cpu_type_t cpu, bool expect_dylinker, char** argv, struct load_results* lr);
 static void load(const char* path, cpu_type_t cpu, bool expect_dylinker, char** argv, struct load_results* lr);
@@ -162,6 +166,11 @@ static uint32_t stack_size = 0;
 // the path of the executable being started, for messages
 static const char* exec_path = NULL;
 
+// the host path of the program to start, set when mldr32 is run under an emulator
+#define MLDR_EXEC_PATH_ENV "__mldr_exec_path"
+// host environment variable naming an emulator that can run i386 code on an aarch64 host
+#define MLDR_I386_EMULATOR_ENV "DARLING_I386_EMULATOR"
+
 #ifdef __i386__
 // how many times mldr32 executed itself again to place the top of the address space
 #define LAYOUT_RETRY_ENV "__mldr_layout_retry"
@@ -187,10 +196,14 @@ int main(int argc, char** argv, char** envp)
 {
 	void** sp;
 	int pushCount = 0;
-	char *filename, *p = NULL;
+	char* filename;
+	const char* target;
+	enum mldr_exec_target_source target_source;
 	size_t arg_strings_total_size_after = 0;
 	size_t orig_argv0_len = 0;
 	const char* orig_argv1 = NULL;
+	const char* exec_path_env;
+	bool explicit_path;
 
 	mldr_load_results.kernfd = -1;
 	mldr_load_results.argc = argc;
@@ -201,32 +214,28 @@ int main(int argc, char** argv, char** envp)
 	}
 	mldr_load_results.envp = envp;
 
+	// An mldr32 started by an emulator cannot be given the path in argv[0] (the emulator sets it),
+	// see exec_i386_emulator().
+#ifdef __i386__
+	exec_path_env = getenv(MLDR_EXEC_PATH_ENV);
+#else
+	exec_path_env = NULL;
+#endif
+
 	// sys_execve() passes the original file path appended to the mldr path in argv[0].
-	if (argc > 0)
-		p = strchr(argv[0], '!');
+	target = mldr_exec_target(argc, argv, exec_path_env, &target_source);
+	if (target == NULL)
+	{
+		fprintf(stderr, "mldr is part of Darling. It is not to be executed directly.\n");
+		return 1;
+	}
+	explicit_path = target_source != MLDR_TARGET_ARGV1;
 
 	if (argc <= 1)
-	{
-		if (p == NULL) {
-			fprintf(stderr, "mldr is part of Darling. It is not to be executed directly.\n");
-			return 1;
-		}
-		else
-		{
-			fprintf(stderr, "mldr: warning: Executing with no argv[0]. Continuing anyway, but this is probably a bug.\n");
-		}
-	}
+		fprintf(stderr, "mldr: warning: Executing with no argv[0]. Continuing anyway, but this is probably a bug.\n");
 
-	if (p != NULL)
-	{
-		filename = (char*) __builtin_alloca(strlen(argv[0])+1);
-		strcpy(filename, p + 1);
-	}
-	else
-	{
-		filename = (char*) __builtin_alloca(strlen(argv[1])+1);
-		strcpy(filename, argv[1]);
-	}
+	filename = (char*) __builtin_alloca(strlen(target)+1);
+	strcpy(filename, target);
 
 	// allow any process to ptrace us
 	// the only process we really care about being able to do this is the server,
@@ -280,7 +289,7 @@ int main(int argc, char** argv, char** envp)
 	memmove(mldr_load_results.argv[0], orig_argv1, arg_strings_total_size_after);
 	memset(mldr_load_results.argv[0] + arg_strings_total_size_after, 0, orig_argv0_len);
 
-	if (p == NULL) {
+	if (!explicit_path) {
 		vchroot_unexpand_interpreter(&mldr_load_results);
 	}
 
@@ -463,6 +472,22 @@ static void load_fat(int fd, cpu_type_t forced_arch, bool expect_dylinker, char*
 		case MLDR_FAT_OK:
 			break;
 		case MLDR_FAT_NO_MATCH:
+#if defined(__aarch64__)
+			if (forced_arch == 0)
+			{
+				uint32_t x86_prefs[4] = {0, 0, 0, 0};
+				struct mldr_fat_slice i386_slice;
+
+				if (mldr_fat_select(header, (size_t) got, (uint64_t) st.st_size, x86_prefs, 0, CPU_TYPE_X86, 0,
+						&i386_slice) == MLDR_FAT_OK)
+				{
+					exec_i386_emulator(argv);
+					fprintf(stderr, "This binary has an i386 slice but none this host can run. "
+							"Set " MLDR_I386_EMULATOR_ENV " to an emulator that can run i386 programs.\n");
+					exit(1);
+				}
+			}
+#endif
 			fprintf(stderr, "No supported architecture found in fat binary.\n");
 			exit(1);
 		default:
@@ -543,6 +568,54 @@ static void reexec32(char** argv)
 	abort();
 }
 
+#if defined(__aarch64__)
+// Runs mldr32 (an i386 ELF) under the emulator named by MLDR_I386_EMULATOR_ENV, which is invoked as
+// `emulator mldr32 args...`. The emulator sets the program's argv[0] to mldr32's path, so the program path
+// travels in MLDR_EXEC_PATH_ENV. Returns only if no emulator is configured; exits if it cannot be executed.
+static void exec_i386_emulator(char** argv)
+{
+	const char* emulator = getenv(MLDR_I386_EMULATOR_ENV);
+	char selfpath[1024];
+	ssize_t len;
+	int argc = 0;
+	char** nargv;
+
+	if (emulator == NULL || emulator[0] == '\0')
+		return;
+
+	len = readlink("/proc/self/exe", selfpath, sizeof(selfpath)-3);
+	if (len == -1)
+	{
+		perror("Cannot readlink /proc/self/exe");
+		exit(1);
+	}
+	selfpath[len] = '\0';
+	strcat(selfpath, "32");
+
+	while (argv[argc] != NULL)
+		++argc;
+
+	nargv = (char**) calloc((size_t) argc + 2, sizeof(char*));
+	if (nargv == NULL)
+	{
+		fprintf(stderr, "Out of memory\n");
+		exit(1);
+	}
+	mldr_emulator_argv(emulator, selfpath, argc, argv, nargv);
+
+	if (setenv(MLDR_EXEC_PATH_ENV, exec_path, 1) != 0)
+	{
+		perror("Cannot set " MLDR_EXEC_PATH_ENV);
+		exit(1);
+	}
+
+	execv(emulator, nargv);
+
+	fprintf(stderr, "Cannot execute the i386 emulator %s: %s\n", emulator, strerror(errno));
+	exit(1);
+}
+#endif
+
 // Given that there's no proper way of passing special parameters to the binary loader
 // via execve(), we must do this via env variables
 static void process_special_env(struct load_results* lr) {
@@ -606,6 +679,7 @@ static void unset_special_env() {
 	unsetenv("__mldr_nofile");
 #ifdef __i386__
 	unsetenv(LAYOUT_RETRY_ENV);
+	unsetenv(MLDR_EXEC_PATH_ENV);
 #endif
 };
 

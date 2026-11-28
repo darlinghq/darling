@@ -13,6 +13,7 @@
 #define X86 7u
 #define X86_64 0x01000007u
 #define ARM64 0x0100000cu
+#define ARM 12u
 
 static int failures;
 static void check(int ok, const char* what)
@@ -103,6 +104,26 @@ int main(void)
 		struct arch arm[] = { { ARM64, 0, 0x1000, 0x10 } };
 		n = build(buf, 1, 0, 1, arm, 1);
 		check(sel(buf, n, 0x2000, nopref, 0, &s) == MLDR_FAT_NO_MATCH, "no runnable architecture");
+	}
+
+	// an aarch64 host (native arm64, fallback arm) finds nothing to run in an i386-only file; mldr then asks
+	// for the i386 slice alone (native x86, no fallback) to decide whether to hand the program to an emulator
+	{
+		struct arch i386only[] = { { X86, 3, 0x1000, 0x10 } };
+		struct arch ppc_i386[] = { { 18, 0, 0x1000, 0x10 }, { X86, 3, 0x2000, 0x10 } };
+		struct arch ppc[] = { { 18, 0, 0x1000, 0x10 } };
+		size_t n = build(buf, 1, 0, 1, i386only, 1);
+		check(mldr_fat_select(buf, n, 0x2000, nopref, 0, ARM64, ARM, &s) == MLDR_FAT_NO_MATCH,
+				"aarch64 host: i386-only file has no runnable slice");
+		check(mldr_fat_select(buf, n, 0x2000, nopref, 0, X86, 0, &s) == MLDR_FAT_OK && s.cputype == X86 && s.offset == 0x1000,
+				"i386 probe finds the i386 slice");
+		n = build(buf, 1, 0, 2, ppc_i386, 2);
+		check(mldr_fat_select(buf, n, 0x3000, nopref, 0, ARM64, ARM, &s) == MLDR_FAT_NO_MATCH &&
+				mldr_fat_select(buf, n, 0x3000, nopref, 0, X86, 0, &s) == MLDR_FAT_OK && s.offset == 0x2000,
+				"ppc+i386 file: i386 probe picks the i386 slice");
+		n = build(buf, 1, 0, 1, ppc, 1);
+		check(mldr_fat_select(buf, n, 0x2000, nopref, 0, X86, 0, &s) == MLDR_FAT_NO_MATCH,
+				"i386 probe finds nothing in a ppc-only file");
 	}
 
 	// preferences: earliest preference wins, first among equals; forced wins over everything
