@@ -135,6 +135,33 @@ void GetMediaSampleDescription(Media media, SInt32 index,
 
 SInt32 GetMediaSampleDescriptionCount(Media media);
 
+/* Media types and characteristics, and GetMovieIndTrackType flags. */
+enum {
+    SoundMediaType = 0x736f756e,           /* 'soun' */
+    VideoMediaType = 0x76696465,           /* 'vide' */
+    AudioMediaCharacteristic = 0x65617273, /* 'ears' */
+    VisualMediaCharacteristic = 0x65796573 /* 'eyes' */
+};
+
+enum {
+    movieTrackMediaType = 1 << 0,
+    movieTrackCharacteristic = 1 << 1,
+    movieTrackEnabledOnly = 1 << 2
+};
+
+Track GetMovieIndTrackType(Movie theMovie, SInt32 index, OSType trackType,
+                           SInt32 flags);
+
+/* Reports the media type and the handler identity recorded in the movie. */
+void GetMediaHandlerDescription(Media theMedia, OSType *mediaType,
+                                Str255 creatorName,
+                                OSType *creatorManufacturer);
+
+/* Returns a new handle with the extension's contents, which the caller
+ * disposes of. */
+OSErr GetSoundDescriptionExtension(SoundDescriptionHandle desc,
+                                   Handle *extension, OSType idType);
+
 
 /* Read-only pointer references; metadata and supported PCM. */
 OSErr NewMovieFromDataRef(Movie *m, short flags, short *id,
@@ -836,7 +863,9 @@ void* GetMediaDisplayStartTime(void);
 void* GetMediaDuration(void);
 #endif
 void* GetMediaHandler(void);
+#if __LP64__
 void* GetMediaHandlerDescription(void);
+#endif
 void* GetMediaInputMap(void);
 void* GetMediaLanguage(void);
 void* GetMediaModificationTime(void);
@@ -905,7 +934,9 @@ void* GetMovieImporterForDataRef(void);
 #if __LP64__
 void* GetMovieIndTrack(void);
 #endif
+#if __LP64__
 void* GetMovieIndTrackType(void);
+#endif
 void* GetMovieLoadState(void);
 void* GetMovieMatrix(void);
 void* GetMovieMaxBitDepth(void);
@@ -963,7 +994,9 @@ void* GetQuickTimePreferencesForReading(void);
 void* GetQuickTimePreferencesForWriting(void);
 void* GetSimilarity(void);
 void* GetSizedPublic(void);
+#if __LP64__
 void* GetSoundDescriptionExtension(void);
+#endif
 void* GetSpriteProperty(void);
 void* GetTimeBaseEffectiveRate(void);
 void* GetTimeBaseFlags(void);

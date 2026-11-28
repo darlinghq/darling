@@ -210,17 +210,34 @@ static int one_child(struct span s, const char *type, struct span *out)
     return count == 1 ? QT_MOV_LIST_OK : QT_MOV_LIST_UNSUPPORTED;
 }
 
+/* hdlr after version and flags: component type, subtype, manufacturer,
+ * flags, flags mask, then the component name as a counted string (QTFF,
+ * Handler Reference Atoms). A name that is not a valid counted string is
+ * left empty. */
+static void describe_handler(struct span hdlr, struct qt_mov_track_info *info)
+{
+    if (hdlr.n >= 16)
+        info->handler_manufacturer = read_be32(hdlr.p + 12);
+    if (hdlr.n > 24 && (size_t)hdlr.p[24] <= hdlr.n - 25)
+        memcpy(info->handler_name, hdlr.p + 24, (size_t)hdlr.p[24] + 1);
+}
+
 static void describe_track(struct span trak, struct qt_mov_track_info *info)
 {
-    struct span mdia, mdhd, hdlr, minf, stbl, stsz;
+    struct span tkhd, mdia, mdhd, hdlr, minf, stbl, stsz;
     uint32_t scale, size, samples;
     size_t table;
 
     memset(info, 0, sizeof(*info));
+    /* tkhd starts with a version byte and 24 bits of flags; flag 0x1
+     * enables the track (QTFF, Track Header Atoms). */
+    if (one_child(trak, "tkhd", &tkhd) == QT_MOV_LIST_OK && tkhd.n >= 4)
+        info->enabled = (read_be32(tkhd.p) & 0x1) != 0;
     if (one_child(trak, "mdia", &mdia) != QT_MOV_LIST_OK ||
         one_child(mdia, "hdlr", &hdlr) != QT_MOV_LIST_OK || hdlr.n < 12)
         return;
     info->handler = read_be32(hdlr.p + 8);
+    describe_handler(hdlr, info);
     if (one_child(mdia, "mdhd", &mdhd) != QT_MOV_LIST_OK)
         return;
     if (mdhd.n >= 20 && read_be32(mdhd.p) == 0)
@@ -833,4 +850,34 @@ int qt_mov_load_pcm(const void *data, size_t length,
     *info = layout.info;
 
     return QT_MOV_PCM_OK;
+}
+
+int qt_sound_description_find_extension(const void *desc, size_t size,
+                                        uint32_t desc_size, int version,
+                                        uint32_t type, size_t *offset,
+                                        size_t *length)
+{
+    static const size_t fixed[] = { 36, 52, 72 };
+    const uint8_t *p = desc;
+    size_t off;
+
+    if (!desc || !offset || !length)
+        return QT_SOUND_EXTENSION_INVALID_ARGUMENT;
+    if (version < 0 || version > 2 ||
+        desc_size < fixed[version] || desc_size > size)
+        return QT_SOUND_EXTENSION_BAD_DESCRIPTION;
+
+    for (off = fixed[version]; desc_size - off >= 8; ) {
+        uint32_t atom = read_be32(p + off);
+
+        if (atom < 8 || atom > desc_size - off)
+            return QT_SOUND_EXTENSION_BAD_DESCRIPTION;
+        if (read_be32(p + off + 4) == type) {
+            *offset = off + 8;
+            *length = atom - 8;
+            return QT_SOUND_EXTENSION_OK;
+        }
+        off += atom;
+    }
+    return QT_SOUND_EXTENSION_NOT_FOUND;
 }

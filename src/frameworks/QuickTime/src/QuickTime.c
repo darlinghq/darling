@@ -54,6 +54,9 @@ struct MovieTrackStorage {
     struct MediaType *media_handle;
     void *pcm;
     struct qt_mov_pcm_info pcm_info;
+    OSType handler_manufacturer;
+    unsigned char handler_name[256];
+    Boolean enabled;
 };
 #endif
 
@@ -199,6 +202,10 @@ static OSErr build_tracks(const void *data,size_t length,
         tracks[i].media.scale=(TimeScale)infos[i].media_time_scale;
         tracks[i].media.samples=(SInt32)infos[i].sample_count;
         tracks[i].media_handle=&tracks[i].media;
+        tracks[i].handler_manufacturer=infos[i].handler_manufacturer;
+        memcpy(tracks[i].handler_name,infos[i].handler_name,
+               sizeof(tracks[i].handler_name));
+        tracks[i].enabled=infos[i].enabled!=0;
     }
 
     free(infos);
@@ -4360,11 +4367,34 @@ void* GetMediaHandler(void)
     return NULL;
 }
 
+#if !__LP64__
+/* No media handler components are loaded: the handler identity is the one
+ * recorded in the media's handler reference atom. Each output is optional
+ * and the outputs are unchanged on failure. */
+void GetMediaHandlerDescription(Media media, OSType *mediaType,
+                                Str255 creatorName,
+                                OSType *creatorManufacturer)
+{
+    struct MovieTrackStorage *t = track_lookup(media, 1);
+
+    if (!t)
+        return;
+    if (mediaType)
+        *mediaType = t->track.handler;
+    if (creatorName)
+        memcpy(creatorName, t->handler_name,
+               (size_t)t->handler_name[0] + 1);
+    if (creatorManufacturer)
+        *creatorManufacturer = t->handler_manufacturer;
+    movies_error = noErr;
+}
+#else
 void* GetMediaHandlerDescription(void)
 {
     if (verbose) puts("STUB: GetMediaHandlerDescription called");
     return NULL;
 }
+#endif
 
 void* GetMediaInputMap(void)
 {
@@ -4888,11 +4918,62 @@ void* GetMovieIndTrack(void)
 }
 #endif
 
+#if !__LP64__
+/* Media characteristics: sound media is audible and video media is
+ * visual. Other media types are not classified. */
+static Boolean handler_has_characteristic(OSType handler,
+                                          OSType characteristic)
+{
+    if (characteristic == AudioMediaCharacteristic)
+        return handler == SoundMediaType;
+    if (characteristic == VisualMediaCharacteristic)
+        return handler == VideoMediaType;
+    return 0;
+}
+
+/* index counts the matching tracks only, from 1. Exactly one of
+ * movieTrackMediaType and movieTrackCharacteristic selects how trackType
+ * is compared; movieTrackEnabledOnly skips disabled tracks. As for
+ * GetMovieIndTrack, an index without a matching track is badTrackIndex. */
+Track GetMovieIndTrackType(Movie movie, SInt32 index, OSType trackType,
+                           SInt32 flags)
+{
+    struct MovieStorage *s = movie_lookup(movie);
+    SInt32 kind = flags & (movieTrackMediaType | movieTrackCharacteristic);
+
+    if (!s)
+        return NULL;
+    if (kind != movieTrackMediaType && kind != movieTrackCharacteristic) {
+        movies_error = paramErr;
+        return NULL;
+    }
+    if (index < 1) {
+        movies_error = badTrackIndex;
+        return NULL;
+    }
+    for (SInt32 i = 0; i < s->track_count; ++i) {
+        struct MovieTrackStorage *t = &s->tracks[i];
+        Boolean match = kind == movieTrackMediaType ?
+            t->track.handler == trackType :
+            handler_has_characteristic(t->track.handler, trackType);
+
+        if ((flags & movieTrackEnabledOnly) && !t->enabled)
+            continue;
+        if (match && --index == 0) {
+            movies_error = noErr;
+            return &t->track_handle;
+        }
+    }
+    movies_error = badTrackIndex;
+    return NULL;
+}
+#else
 void* GetMovieIndTrackType(void)
 {
     if (verbose) puts("STUB: GetMovieIndTrackType called");
     return NULL;
 }
+#endif
 
 void* GetMovieLoadState(void)
 {
@@ -5264,11 +5345,50 @@ void* GetSizedPublic(void)
     return NULL;
 }
 
+#if !__LP64__
+/* Copies the payload of the first extension atom of type idType into a new
+ * handle that the caller disposes of; *extension is unchanged on failure.
+ * The documentation only states that an error is returned when the
+ * description has no such extension: cannotFindAtomErr is the Movie
+ * Toolbox code for a missing atom. */
+OSErr GetSoundDescriptionExtension(SoundDescriptionHandle desc,
+                                   Handle *extension, OSType idType)
+{
+    if (!desc || !*desc || !extension)
+        return movies_error = paramErr;
+
+    Size size = GetHandleSize((Handle)desc);
+
+    if (size < (Size)sizeof(SoundDescription))
+        return movies_error = paramErr;
+
+    const SoundDescription *d = *desc;
+    size_t offset, length;
+    int status = qt_sound_description_find_extension(
+        d, (size_t)size, d->descSize < 0 ? 0 : (uint32_t)d->descSize,
+        d->version, idType, &offset, &length);
+
+    if (status == QT_SOUND_EXTENSION_NOT_FOUND)
+        return movies_error = cannotFindAtomErr;
+    if (status != QT_SOUND_EXTENSION_OK)
+        return movies_error = paramErr;
+
+    Handle copy = NewHandle((Size)length);
+
+    if (!copy)
+        return movies_error = memFullErr;
+    if (length)
+        memcpy(*copy, (const char *)*desc + offset, length);
+    *extension = copy;
+    return movies_error = noErr;
+}
+#else
 void* GetSoundDescriptionExtension(void)
 {
     if (verbose) puts("STUB: GetSoundDescriptionExtension called");
     return NULL;
 }
+#endif
 
 void* GetSpriteProperty(void)
 {

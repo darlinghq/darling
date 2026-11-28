@@ -50,6 +50,9 @@ struct qt_mov_track_info {
     uint32_t media_time_scale; /* mdhd time scale, when has_media */
     uint32_t sample_count;     /* stsz sample count, when has_media */
     int has_media;
+    uint32_t handler_manufacturer; /* hdlr component manufacturer, 0 if absent */
+    uint8_t handler_name[256];     /* hdlr counted component name, empty if absent */
+    int enabled;               /* tkhd flag 0x1; 0 without a track header */
 };
 
 __attribute__((visibility("hidden")))
@@ -97,5 +100,26 @@ int qt_mov_extract_pcm(const void *data, size_t length,
 __attribute__((visibility("hidden")))
 int qt_mov_load_pcm(const void *data, size_t length,
                     void **pcm, struct qt_mov_pcm_info *info);
+
+enum qt_sound_extension_status {
+    QT_SOUND_EXTENSION_OK = 0,
+    QT_SOUND_EXTENSION_INVALID_ARGUMENT = -1,
+    QT_SOUND_EXTENSION_BAD_DESCRIPTION = -2,
+    QT_SOUND_EXTENSION_NOT_FOUND = -3
+};
+
+/* Find the extension atom of the given type that follows the fixed part of
+ * an in-memory sound description (QTFF, Sound Sample Descriptions: 36 bytes
+ * for version 0, 52 for version 1, 72 for version 2). desc_size and version
+ * are the description's own fields, read by the caller in native byte
+ * order; extension atoms are big-endian. Only [fixed part, desc_size) is
+ * examined and desc_size must not exceed size. A tail shorter than an atom
+ * header ends the list. On success *offset and *length give the payload of
+ * the atom within desc; the outputs are unchanged on failure. */
+__attribute__((visibility("hidden")))
+int qt_sound_description_find_extension(const void *desc, size_t size,
+                                        uint32_t desc_size, int version,
+                                        uint32_t type, size_t *offset,
+                                        size_t *length);
 
 #endif
