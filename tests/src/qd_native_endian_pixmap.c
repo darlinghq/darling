@@ -42,6 +42,35 @@ static void red_pixel(short depth, GWorldFlags flags, OSType *format, unsigned c
 	DisposeGWorld(world);
 }
 
+// A red world of the depth and flags is resized with UpdateGWorld and the update flags: the replacement has the
+// pixel format and the bytes the byte order calls for
+static void update_keeps_format(short depth, GWorldFlags newFlags, GWorldFlags updateFlags, OSType expected,
+		unsigned char e0, unsigned char e1, unsigned char e2, unsigned char e3)
+{
+	Rect bounds = { 0, 0, 4, 4 }, larger = { 0, 0, 8, 8 };
+	GWorldPtr world = NULL;
+	CGrafPtr savedPort;
+	GDHandle savedDevice;
+	RGBColor red = { 0xFFFF, 0, 0 };
+	CHECK(NewGWorld(&world, depth, &bounds, NULL, NULL, newFlags) == noErr);
+	GetGWorld(&savedPort, &savedDevice);
+	SetGWorld(world, NULL);
+	RGBForeColor(&red);
+	PaintRect(&bounds);
+	SetGWorld(savedPort, savedDevice);
+	GWorldFlags result = UpdateGWorld(&world, depth, &larger, NULL, NULL, updateFlags | (1L << 28));
+	CHECK(!(result & (1UL << 31)));
+	PixMapHandle pixels = GetGWorldPixMap(world);
+	CHECK((**pixels).pixelFormat == expected);
+	CHECK(GetPixDepth(pixels) == depth);
+	CHECK((**pixels).bounds.right == 8 && (**pixels).bounds.bottom == 8);
+	const unsigned char *p = (const unsigned char *) GetPixBaseAddr(pixels);
+	CHECK(p[0] == e0 && p[1] == e1);
+	if (depth == 32)
+		CHECK(p[2] == e2 && p[3] == e3);
+	DisposeGWorld(world);
+}
+
 int main(void)
 {
 	OSType format;
@@ -61,6 +90,15 @@ int main(void)
 	red_pixel(16, kNativeEndianPixMap, &format, b, &size);
 	CHECK(format == k16LE555PixelFormat && size == 16);
 	CHECK(b[0] == 0x00 && b[1] == 0x7C);
+
+	// UpdateGWorld keeps the byte order of the world's pixels: a native-endian world is replaced by a native-endian
+	// one (of the new size, with the old pixels kept with clipPix), a big-endian one by a big-endian one, and the
+	// flag turns a big-endian world into a native-endian one.
+	update_keeps_format(32, 0, 0, k32ARGBPixelFormat, 0xFF, 0xFF, 0, 0);
+	update_keeps_format(32, kNativeEndianPixMap, 0, k32BGRAPixelFormat, 0, 0, 0xFF, 0xFF);
+	update_keeps_format(16, 0, 0, k16BE555PixelFormat, 0x7C, 0x00, 0, 0);
+	update_keeps_format(16, kNativeEndianPixMap, 0, k16LE555PixelFormat, 0x00, 0x7C, 0, 0);
+	update_keeps_format(32, 0, kNativeEndianPixMap, k32BGRAPixelFormat, 0, 0, 0xFF, 0xFF);
 
 	// a world over memory of the little-endian formats
 	unsigned char memory[4 * 4 * 4];
