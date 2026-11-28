@@ -63,7 +63,143 @@ Media GetTrackMedia(Track track);
 TimeScale GetMediaTimeScale(Media media);
 SInt32 GetMediaSampleCount(Media media);
 
-/* Read-only pointer references; metadata only. */
+/* Media time is expressed in the media's own time scale. */
+TimeValue GetMediaDuration(Media media);
+
+void SampleNumToMediaTime(Media media, long logicalSampleNum,
+                          TimeValue *sampleTime,
+                          TimeValue *sampleDuration);
+
+void MediaTimeToSampleNum(Media media, TimeValue time,
+                          long *sampleNum,
+                          TimeValue *sampleTime,
+                          TimeValue *sampleDuration);
+
+enum {
+    nextTimeMediaSample = 1,
+    nextTimeMediaEdit = 2,
+    nextTimeSyncSample = 8,
+    nextTimeEdgeOK = 0x4000
+};
+
+void GetMediaNextInterestingTime(Media media,
+                                 short interestingTimeFlags,
+                                 TimeValue time, Fixed rate,
+                                 TimeValue *interestingTime,
+                                 TimeValue *interestingDuration);
+
+
+#pragma pack(push, 2)
+typedef struct SampleDescription {
+    SInt32 descSize;
+    OSType dataFormat;
+    SInt32 resvd1;
+    SInt16 resvd2;
+    SInt16 dataRefIndex;
+} SampleDescription;
+
+typedef SampleDescription *SampleDescriptionPtr;
+typedef SampleDescription **SampleDescriptionHandle;
+
+typedef struct SoundDescription {
+    SInt32 descSize;
+    OSType dataFormat;
+    SInt32 resvd1;
+    SInt16 resvd2;
+    SInt16 dataRefIndex;
+    SInt16 version;
+    SInt16 revlevel;
+    SInt32 vendor;
+    SInt16 numChannels;
+    SInt16 sampleSize;
+    SInt16 compressionID;
+    SInt16 packetSize;
+    UInt32 sampleRate;
+} SoundDescription;
+#pragma pack(pop)
+
+typedef SoundDescription *SoundDescriptionPtr;
+typedef SoundDescription **SoundDescriptionHandle;
+
+OSErr GetMediaSample(Media media, Handle dataOut,
+                     SInt32 maxSizeToGrow, SInt32 *size,
+                     TimeValue time, TimeValue *sampleTime,
+                     TimeValue *durationPerSample,
+                     SampleDescriptionHandle sampleDescriptionH,
+                     SInt32 *sampleDescriptionIndex,
+                     SInt32 maxNumberOfSamples,
+                     SInt32 *numberOfSamples, SInt16 *sampleFlags);
+
+void GetMediaSampleDescription(Media media, SInt32 index,
+                               SampleDescriptionHandle descH);
+
+SInt32 GetMediaSampleDescriptionCount(Media media);
+
+/* Media types and characteristics, and GetMovieIndTrackType flags. */
+enum {
+    SoundMediaType = 0x736f756e,           /* 'soun' */
+    VideoMediaType = 0x76696465,           /* 'vide' */
+    AudioMediaCharacteristic = 0x65617273, /* 'ears' */
+    VisualMediaCharacteristic = 0x65796573 /* 'eyes' */
+};
+
+enum {
+    movieTrackMediaType = 1 << 0,
+    movieTrackCharacteristic = 1 << 1,
+    movieTrackEnabledOnly = 1 << 2
+};
+
+Track GetMovieIndTrackType(Movie theMovie, SInt32 index, OSType trackType,
+                           SInt32 flags);
+
+/* Reports the media type and the handler identity recorded in the movie. */
+void GetMediaHandlerDescription(Media theMedia, OSType *mediaType,
+                                Str255 creatorName,
+                                OSType *creatorManufacturer);
+
+/* Returns a new handle with the extension's contents, which the caller
+ * disposes of. */
+OSErr GetSoundDescriptionExtension(SoundDescriptionHandle desc,
+                                   Handle *extension, OSType idType);
+
+/* Creating and saving movies: single-fork files, sound tracks with
+ * uncompressed 16-bit samples, media placed whole in its track. */
+enum {
+    MovieFileType = 0x4d6f6f56,            /* 'MooV' */
+    newMovieActive = 1 << 0
+};
+
+enum {
+    createMovieFileDeleteCurFile = -2147483647 - 1, /* 1 << 31 */
+    createMovieFileDontCreateMovie = 1 << 30,
+    createMovieFileDontOpenFile = 1 << 29,
+    createMovieFileDontCreateResFile = 1 << 28
+};
+
+OSErr CreateMovieFile(const FSSpec *fileSpec, OSType creator,
+                      ScriptCode scriptTag, SInt32 createMovieFileFlags,
+                      short *resRefNum, Movie *newmovie);
+Track NewMovieTrack(Movie theMovie, Fixed width, Fixed height,
+                    short trackVolume);
+Media NewTrackMedia(Track theTrack, OSType mediaType, TimeScale timeScale,
+                    Handle dataRef, OSType dataRefType);
+OSErr BeginMediaEdits(Media theMedia);
+OSErr EndMediaEdits(Media theMedia);
+OSErr AddMediaSample(Media theMedia, Handle dataIn, SInt32 inOffset,
+                     UInt32 size, TimeValue durationPerSample,
+                     SampleDescriptionHandle sampleDescriptionH,
+                     SInt32 numberOfSamples, short sampleFlags,
+                     TimeValue *sampleTime);
+OSErr InsertMediaIntoTrack(Track theTrack, TimeValue trackStart,
+                           TimeValue mediaTime, TimeValue mediaDuration,
+                           Fixed mediaRate);
+OSErr AddMovieResource(Movie theMovie, short resRefNum, short *resId,
+                       ConstStr255Param resName);
+OSErr UpdateMovieResource(Movie theMovie, short resRefNum, short resId,
+                          ConstStr255Param resName);
+
+
+/* Read-only pointer references; metadata and supported PCM. */
 OSErr NewMovieFromDataRef(Movie *m, short flags, short *id,
                           Handle dataRef, OSType dataRefType);
 #endif
@@ -99,14 +235,18 @@ void* AddEmptyTrackToMovie(void);
 void* AddFilePreview(void);
 void* AddImageDescriptionExtension(void);
 void* AddMediaDataRef(void);
+#if __LP64__
 void* AddMediaSample(void);
+#endif
 void* AddMediaSample2(void);
 void* AddMediaSampleFromEncodedFrame(void);
 void* AddMediaSampleReference(void);
 void* AddMediaSampleReferences(void);
 void* AddMediaSampleReferences64(void);
 void* AddMovieExecuteWiredActionsProc(void);
+#if __LP64__
 void* AddMovieResource(void);
+#endif
 void* AddMovieSelection(void);
 void* AddMovieToStorage(void);
 void* AddSampleTableEntriesToMedia(void);
@@ -169,7 +309,9 @@ void* AuthHGetAuthenticationInfo(void);
 void* AuthHSetAuthenticationInfo(void);
 void* BMPCompressorSetEmitHeader(void);
 void* BeginFullScreen(void);
+#if __LP64__
 void* BeginMediaEdits(void);
+#endif
 void* BlendBlitterSetBlendValue(void);
 void* BlitterPreflight(void);
 void* BlitterRenderFrame(void);
@@ -349,7 +491,9 @@ void* CountUserDataType(void);
 void* CreateComponentInterfaceDictionaryFromXMLData(void);
 void* CreateComponentMessage(void);
 void* CreateMovieControl(void);
+#if __LP64__
 void* CreateMovieFile(void);
+#endif
 void* CreateMovieFileUnicode(void);
 void* CreateMovieFile_priv(void);
 void* CreateMovieStorage(void);
@@ -647,7 +791,9 @@ void* DrawPictureFile(void);
 void* DrawTrimmedPicture(void);
 void* DrawTrimmedPictureFile(void);
 void* EndFullScreen(void);
+#if __LP64__
 void* EndMediaEdits(void);
+#endif
 void* EndianCommonChunk_NtoB(void);
 void* EndianContainerChunk_NtoB(void);
 void* EndianExtCommonChunk_NtoB(void);
@@ -759,26 +905,38 @@ void* GetMediaDecodeDuration(void);
 void* GetMediaDisplayDuration(void);
 void* GetMediaDisplayEndTime(void);
 void* GetMediaDisplayStartTime(void);
+#if __LP64__
 void* GetMediaDuration(void);
+#endif
 void* GetMediaHandler(void);
+#if __LP64__
 void* GetMediaHandlerDescription(void);
+#endif
 void* GetMediaInputMap(void);
 void* GetMediaLanguage(void);
 void* GetMediaModificationTime(void);
 void* GetMediaNextInterestingDecodeTime(void);
 void* GetMediaNextInterestingDisplayTime(void);
+#if __LP64__
 void* GetMediaNextInterestingTime(void);
+#endif
 void* GetMediaPlayHints(void);
 void* GetMediaPreferredChunkSize(void);
 void* GetMediaPropertyAtom(void);
 void* GetMediaQuality(void);
+#if __LP64__
 void* GetMediaSample(void);
+#endif
 void* GetMediaSample2(void);
 #if __LP64__
 void* GetMediaSampleCount(void);
 #endif
+#if __LP64__
 void* GetMediaSampleDescription(void);
+#endif
+#if __LP64__
 void* GetMediaSampleDescriptionCount(void);
+#endif
 void* GetMediaSampleReference(void);
 void* GetMediaSampleReferences(void);
 void* GetMediaSampleReferences64(void);
@@ -822,7 +980,9 @@ void* GetMovieImporterForDataRef(void);
 #if __LP64__
 void* GetMovieIndTrack(void);
 #endif
+#if __LP64__
 void* GetMovieIndTrackType(void);
+#endif
 void* GetMovieLoadState(void);
 void* GetMovieMatrix(void);
 void* GetMovieMaxBitDepth(void);
@@ -880,7 +1040,9 @@ void* GetQuickTimePreferencesForReading(void);
 void* GetQuickTimePreferencesForWriting(void);
 void* GetSimilarity(void);
 void* GetSizedPublic(void);
+#if __LP64__
 void* GetSoundDescriptionExtension(void);
+#endif
 void* GetSpriteProperty(void);
 void* GetTimeBaseEffectiveRate(void);
 void* GetTimeBaseFlags(void);
@@ -1388,7 +1550,9 @@ void* InetDataHSetHTTPRequestHeaders(void);
 void* InitializeQTS(void);
 void* InsertEmptyMovieSegment(void);
 void* InsertEmptyTrackSegment(void);
+#if __LP64__
 void* InsertMediaIntoTrack(void);
+#endif
 void* InsertMovieSegment(void);
 void* InsertTrackSegment(void);
 void* InstallActionGetInfo(void);
@@ -1991,7 +2155,9 @@ void* MediaSuspendResume(void);
 void* MediaTargetRefConsEqual(void);
 void* MediaTimeBaseChanged(void);
 void* MediaTimeChanged(void);
+#if __LP64__
 void* MediaTimeToSampleNum(void);
+#endif
 void* MediaTrackEdited(void);
 void* MediaTrackEditedAtTime(void);
 void* MediaTrackInputMapChanged(void);
@@ -2266,7 +2432,9 @@ void* NewMoviePrePrerollCompleteUPP(void);
 void* NewMoviePreviewCallOutUPP(void);
 void* NewMovieProgressUPP(void);
 void* NewMovieRgnCoverUPP(void);
+#if __LP64__
 void* NewMovieTrack(void);
+#endif
 void* NewMoviesErrorUPP(void);
 void* NewMusicMIDIReadHookUPP(void);
 void* NewMusicMIDISendUPP(void);
@@ -2350,7 +2518,9 @@ void* NewStdPixUPP(void);
 void* NewTextMediaUPP(void);
 void* NewTimeBase(void);
 void* NewTrackEditState(void);
+#if __LP64__
 void* NewTrackMedia(void);
+#endif
 void* NewTrackTransferUPP(void);
 void* NewTuneCallBackUPP(void);
 void* NewTunePlayCallBackUPP(void);
@@ -4178,7 +4348,9 @@ void* SHTeardownHWMC(void);
 void* SSMusicValidateAtomicInstrument(void);
 void* SampleNumToMediaDecodeTime(void);
 void* SampleNumToMediaDisplayTime(void);
+#if __LP64__
 void* SampleNumToMediaTime(void);
+#endif
 void* ScaleMovieSegment(void);
 void* ScaleTrackSegment(void);
 void* ScalingCodecClientGetBlitterProc(void);
@@ -4466,7 +4638,9 @@ void* UpdateLogFileOpen(void);
 void* UpdateLogFilePrintfGuts(void);
 void* UpdateMovie(void);
 void* UpdateMovieInStorage(void);
+#if __LP64__
 void* UpdateMovieResource(void);
+#endif
 void* UpdateRemapTable(void);
 void* UseMovieEditState(void);
 void* UseTrackEditState(void);

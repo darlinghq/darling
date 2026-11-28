@@ -22,6 +22,7 @@ add_framework(QuickTime
         src/qt_timeline.c
         src/QTGraphicsImporter.c
         src/qt_mov_probe.c
+        src/qt_mov_writer.c
 
     DEPENDENCIES
         system
