@@ -63,6 +63,32 @@ Media GetTrackMedia(Track track);
 TimeScale GetMediaTimeScale(Media media);
 SInt32 GetMediaSampleCount(Media media);
 
+/* Media time is expressed in the media's own time scale. */
+TimeValue GetMediaDuration(Media media);
+
+void SampleNumToMediaTime(Media media, long logicalSampleNum,
+                          TimeValue *sampleTime,
+                          TimeValue *sampleDuration);
+
+void MediaTimeToSampleNum(Media media, TimeValue time,
+                          long *sampleNum,
+                          TimeValue *sampleTime,
+                          TimeValue *sampleDuration);
+
+enum {
+    nextTimeMediaSample = 1,
+    nextTimeMediaEdit = 2,
+    nextTimeSyncSample = 8,
+    nextTimeEdgeOK = 0x4000
+};
+
+void GetMediaNextInterestingTime(Media media,
+                                 short interestingTimeFlags,
+                                 TimeValue time, Fixed rate,
+                                 TimeValue *interestingTime,
+                                 TimeValue *interestingDuration);
+
+
 #pragma pack(push, 2)
 typedef struct SampleDescription {
     SInt32 descSize;
@@ -806,7 +832,9 @@ void* GetMediaDecodeDuration(void);
 void* GetMediaDisplayDuration(void);
 void* GetMediaDisplayEndTime(void);
 void* GetMediaDisplayStartTime(void);
+#if __LP64__
 void* GetMediaDuration(void);
+#endif
 void* GetMediaHandler(void);
 void* GetMediaHandlerDescription(void);
 void* GetMediaInputMap(void);
@@ -814,7 +842,9 @@ void* GetMediaLanguage(void);
 void* GetMediaModificationTime(void);
 void* GetMediaNextInterestingDecodeTime(void);
 void* GetMediaNextInterestingDisplayTime(void);
+#if __LP64__
 void* GetMediaNextInterestingTime(void);
+#endif
 void* GetMediaPlayHints(void);
 void* GetMediaPreferredChunkSize(void);
 void* GetMediaPropertyAtom(void);
@@ -2044,7 +2074,9 @@ void* MediaSuspendResume(void);
 void* MediaTargetRefConsEqual(void);
 void* MediaTimeBaseChanged(void);
 void* MediaTimeChanged(void);
+#if __LP64__
 void* MediaTimeToSampleNum(void);
+#endif
 void* MediaTrackEdited(void);
 void* MediaTrackEditedAtTime(void);
 void* MediaTrackInputMapChanged(void);
@@ -4231,7 +4263,9 @@ void* SHTeardownHWMC(void);
 void* SSMusicValidateAtomicInstrument(void);
 void* SampleNumToMediaDecodeTime(void);
 void* SampleNumToMediaDisplayTime(void);
+#if __LP64__
 void* SampleNumToMediaTime(void);
+#endif
 void* ScaleMovieSegment(void);
 void* ScaleTrackSegment(void);
 void* ScalingCodecClientGetBlitterProc(void);

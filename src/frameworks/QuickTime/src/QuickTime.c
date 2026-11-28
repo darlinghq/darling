@@ -255,6 +255,32 @@ static OSErr attach_pcm(const void *data, size_t length,
     return noErr;
 }
 
+
+/* The PCM importer has already established a constant sample duration
+ * of one media tick and a frame count representable as TimeValue.
+ * Metadata-only tracks do not provide this sample timing contract. */
+static struct MovieTrackStorage *pcm_timing_track(Media media)
+{
+    struct MovieTrackStorage *track = track_lookup(media, 1);
+
+    if (!track)
+        return NULL;
+
+    if (!track->pcm) {
+        movies_error = unimpErr;
+        return NULL;
+    }
+
+    if (track->media.samples <= 0 ||
+        track->media.scale <= 0 ||
+        track->pcm_info.frame_count != (uint32_t)track->media.samples) {
+        movies_error = invalidSampleTable;
+        return NULL;
+    }
+
+    return track;
+}
+
 static OSErr copy_pcm_description(struct MovieTrackStorage *track,
                                    SampleDescriptionHandle output)
 {
@@ -4318,11 +4344,24 @@ void* GetMediaDisplayStartTime(void)
     return NULL;
 }
 
+#if !__LP64__
+TimeValue GetMediaDuration(Media media)
+{
+    struct MovieTrackStorage *track = pcm_timing_track(media);
+
+    if (!track)
+        return 0;
+
+    movies_error = noErr;
+    return (TimeValue)track->media.samples;
+}
+#else
 void* GetMediaDuration(void)
 {
     if (verbose) puts("STUB: GetMediaDuration called");
     return NULL;
 }
+#endif
 
 void* GetMediaHandler(void)
 {
@@ -4366,11 +4405,64 @@ void* GetMediaNextInterestingDisplayTime(void)
     return NULL;
 }
 
+#if !__LP64__
+void GetMediaNextInterestingTime(Media media,
+                                 short interestingTimeFlags,
+                                 TimeValue time, Fixed rate,
+                                 TimeValue *interestingTime,
+                                 TimeValue *interestingDuration)
+{
+    struct MovieTrackStorage *track = pcm_timing_track(media);
+
+    if (!track)
+        return;
+
+    /* This implementation searches sample starts only.
+     * Edit lists, explicit sync tables and other search modes
+     * are not interpreted by the current PCM importer. */
+    unsigned flags = (unsigned short)interestingTimeFlags;
+
+    if (flags != nextTimeMediaSample &&
+        flags != (nextTimeMediaSample | nextTimeEdgeOK)) {
+        movies_error = unimpErr;
+        return;
+    }
+
+    TimeValue duration = (TimeValue)track->media.samples;
+
+    if (time < 0 || time > duration) {
+        movies_error = invalidTime;
+        return;
+    }
+
+    /* Use a wider intermediate at the signed TimeValue boundary. */
+    int64_t candidate = time;
+
+    if (rate < 0) {
+        if (!(flags & nextTimeEdgeOK) || time == duration)
+            --candidate;
+    } else {
+        if (!(flags & nextTimeEdgeOK))
+            ++candidate;
+    }
+
+    int found = candidate >= 0 && candidate < duration;
+
+    if (interestingTime)
+        *interestingTime = found ? (TimeValue)candidate : -1;
+
+    if (interestingDuration)
+        *interestingDuration = found ? 1 : 0;
+
+    movies_error = noErr;
+}
+#else
 void* GetMediaNextInterestingTime(void)
 {
     if (verbose) puts("STUB: GetMediaNextInterestingTime called");
     return NULL;
 }
+#endif
 
 void* GetMediaPlayHints(void)
 {
@@ -11845,11 +11937,43 @@ void* MediaTimeChanged(void)
     return NULL;
 }
 
+#if !__LP64__
+void MediaTimeToSampleNum(Media media, TimeValue time,
+                          long *sampleNum,
+                          TimeValue *sampleTime,
+                          TimeValue *sampleDuration)
+{
+    struct MovieTrackStorage *track = pcm_timing_track(media);
+
+    if (!track)
+        return;
+
+    if (!sampleNum) {
+        movies_error = paramErr;
+        return;
+    }
+
+    if (time < 0 || time >= track->media.samples) {
+        movies_error = invalidTime;
+        return;
+    }
+
+    *sampleNum = (long)time + 1;
+
+    if (sampleTime)
+        *sampleTime = time;
+    if (sampleDuration)
+        *sampleDuration = 1;
+
+    movies_error = noErr;
+}
+#else
 void* MediaTimeToSampleNum(void)
 {
     if (verbose) puts("STUB: MediaTimeToSampleNum called");
     return NULL;
 }
+#endif
 
 void* MediaTrackEdited(void)
 {
@@ -25139,11 +25263,36 @@ void* SampleNumToMediaDisplayTime(void)
     return NULL;
 }
 
+#if !__LP64__
+void SampleNumToMediaTime(Media media, long logicalSampleNum,
+                          TimeValue *sampleTime,
+                          TimeValue *sampleDuration)
+{
+    struct MovieTrackStorage *track = pcm_timing_track(media);
+
+    if (!track)
+        return;
+
+    if (logicalSampleNum < 1 ||
+        logicalSampleNum > track->media.samples) {
+        movies_error = invalidSampleNum;
+        return;
+    }
+
+    if (sampleTime)
+        *sampleTime = (TimeValue)(logicalSampleNum - 1);
+    if (sampleDuration)
+        *sampleDuration = 1;
+
+    movies_error = noErr;
+}
+#else
 void* SampleNumToMediaTime(void)
 {
     if (verbose) puts("STUB: SampleNumToMediaTime called");
     return NULL;
 }
+#endif
 
 void* ScaleMovieSegment(void)
 {

@@ -351,10 +351,268 @@ static const unsigned char movie_3[] = {
 
 static const unsigned char external_movie[] = {0,0,0,208,109,100,97,116,5,34,63,92,121,150,179,208,237,10,39,68,97,126,155,184,214,243,16,45,74,103,132,161,190,219,248,21,50,79,108,137,167,196,225,254,27,56,85,114,143,172,201,230,3,32,61,90,120,149,178,207,236,9,38,67,96,125,154,183,212,241,14,43,73,102,131,160,189,218,247,20,49,78,107,136,165,194,223,252,26,55,84,113,142,171,200,229,2,31,60,89,118,147,176,205,235,8,37,66,95,124,153,182,211,240,13,42,71,100,129,158,188,217,246,19,48,77,106,135,164,193,222,251,24,53,82,111,141,170,199,228,1,30,59,88,117,146,175,204,233,6,35,64,94,123,152,181,210,239,12,41,70,99,128,157,186,215,244,17,47,76,105,134,163,192,221,250,23,52,81,110,139,168,197,226,0,29,58,87,116,145,174,203,232,5,34,63,92,121,150,179,209,238,11,40,69,98,127,156,0,0,1,228,109,111,111,118,0,0,0,108,109,118,104,100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,31,64,0,0,0,100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,112,116,114,97,107,0,0,0,92,116,107,104,100,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,12,109,100,105,97,0,0,0,32,109,100,104,100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,31,64,0,0,0,100,0,0,0,0,0,0,0,32,104,100,108,114,0,0,0,0,109,104,108,114,115,111,117,110,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,196,109,105,110,102,0,0,0,36,100,105,110,102,0,0,0,28,100,114,101,102,0,0,0,0,0,0,0,1,0,0,0,12,97,108,105,115,0,0,0,0,0,0,0,152,115,116,98,108,0,0,0,52,115,116,115,100,0,0,0,0,0,0,0,1,0,0,0,36,116,119,111,115,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,16,0,0,0,0,31,64,0,0,0,0,0,24,115,116,116,115,0,0,0,0,0,0,0,1,0,0,0,100,0,0,0,1,0,0,0,28,115,116,115,99,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,100,0,0,0,1,0,0,0,20,115,116,115,122,0,0,0,0,0,0,0,2,0,0,0,100,0,0,0,20,115,116,99,111,0,0,0,0,0,0,0,1,0,0,0,8};
 
+
+#include <limits.h>
+
+static unsigned time_checks, time_failures;
+
+#define TCHECK(x) do { ++time_checks; if (!(x)) { \
+    ++time_failures; printf("TIME FAIL %d %s\n",__LINE__,#x); \
+} } while (0)
+
+static void timing_uninitialized(void)
+{
+    TCHECK(GetMediaDuration(NULL)==0);
+    TCHECK(GetMoviesError()==movieToolboxUninitialized);
+}
+
+static void timing_next(Media media, short flags,
+                         TimeValue from, Fixed rate,
+                         TimeValue expected)
+{
+    TimeValue result=-12345, duration=-12345;
+
+    GetMediaNextInterestingTime(
+        media,flags,from,rate,&result,&duration);
+
+    TCHECK(GetMoviesError()==noErr);
+    TCHECK(result==expected);
+    TCHECK(duration==(expected<0 ? 0 : 1));
+}
+
+static void timing_invalid(Media media)
+{
+    TimeValue t=-12345, d=-12345;
+    long n=-12345;
+
+    const long invalidSamples[]={0,-1,101,LONG_MAX,LONG_MIN};
+
+    for (unsigned i=0;i<sizeof(invalidSamples)/
+                              sizeof(invalidSamples[0]);++i) {
+        t=d=-12345;
+        SampleNumToMediaTime(media,invalidSamples[i],&t,&d);
+
+        TCHECK(GetMoviesError()==invalidSampleNum);
+        TCHECK(t==-12345 && d==-12345);
+    }
+
+    const TimeValue invalidTimes[]={-1,100,101,INT32_MAX,INT32_MIN};
+
+    for (unsigned i=0;i<sizeof(invalidTimes)/
+                              sizeof(invalidTimes[0]);++i) {
+        n=t=d=-12345;
+
+        MediaTimeToSampleNum(
+            media,invalidTimes[i],&n,&t,&d);
+
+        TCHECK(GetMoviesError()==invalidTime);
+        TCHECK(n==-12345 && t==-12345 && d==-12345);
+    }
+
+    MediaTimeToSampleNum(media,0,NULL,&t,&d);
+    TCHECK(GetMoviesError()==paramErr);
+
+    SampleNumToMediaTime(media,1,NULL,NULL);
+    TCHECK(GetMoviesError()==noErr);
+
+    n=-1;
+    MediaTimeToSampleNum(media,99,&n,NULL,NULL);
+    TCHECK(GetMoviesError()==noErr);
+    TCHECK(n==100);
+
+    GetMediaNextInterestingTime(
+        media,nextTimeMediaSample,10,0x10000,NULL,NULL);
+    TCHECK(GetMoviesError()==noErr);
+
+    const short unsupportedFlags[]={
+        0,nextTimeMediaEdit,nextTimeSyncSample,
+        nextTimeMediaSample|nextTimeSyncSample
+    };
+
+    for (unsigned i=0;i<sizeof(unsupportedFlags)/
+                              sizeof(unsupportedFlags[0]);++i) {
+        t=d=-12345;
+
+        GetMediaNextInterestingTime(
+            media,unsupportedFlags[i],10,0x10000,&t,&d);
+
+        TCHECK(GetMoviesError()==unimpErr);
+        TCHECK(t==-12345 && d==-12345);
+    }
+
+    t=d=-12345;
+
+    GetMediaNextInterestingTime(
+        media,nextTimeMediaSample,-1,0x10000,&t,&d);
+
+    TCHECK(GetMoviesError()==invalidTime);
+    TCHECK(t==-12345 && d==-12345);
+
+    GetMediaNextInterestingTime(
+        media,nextTimeMediaSample,INT32_MAX,0x10000,&t,&d);
+
+    TCHECK(GetMoviesError()==invalidTime);
+    TCHECK(t==-12345 && d==-12345);
+}
+
+static void timing_exercise(const unsigned char *bytes,
+                            size_t length,unsigned rate,int file)
+{
+    Movie m=NULL;
+
+    OSErr error=file ? import_file(bytes,length,&m)
+                     : import_memory(bytes,length,&m);
+
+    TCHECK(error==noErr);
+    TCHECK(m!=NULL);
+
+    if (!m)
+        return;
+
+    Media media=GetTrackMedia(GetMovieIndTrack(m,1));
+
+    TCHECK(media!=NULL);
+
+    if (!media) {
+        DisposeMovie(m);
+        return;
+    }
+
+    TCHECK(GetMediaSampleCount(media)==100);
+    TCHECK(GetMediaTimeScale(media)==(TimeScale)rate);
+
+    TCHECK(GetMediaDuration(media)==100);
+    TCHECK(GetMoviesError()==noErr);
+
+    for (long i=1;i<=100;++i) {
+        TimeValue t=-12345,d=-12345;
+        long n=-12345;
+
+        SampleNumToMediaTime(media,i,&t,&d);
+
+        TCHECK(GetMoviesError()==noErr);
+        TCHECK(t==i-1);
+        TCHECK(d==1);
+
+        MediaTimeToSampleNum(
+            media,(TimeValue)(i-1),&n,&t,&d);
+
+        TCHECK(GetMoviesError()==noErr);
+        TCHECK(n==i);
+        TCHECK(t==i-1);
+        TCHECK(d==1);
+
+        timing_next(
+            media,nextTimeMediaSample|nextTimeEdgeOK,
+            (TimeValue)(i-1),0x10000,(TimeValue)(i-1));
+
+        timing_next(
+            media,nextTimeMediaSample,
+            (TimeValue)(i-1),0x10000,
+            i<100 ? (TimeValue)i : -1);
+
+        timing_next(
+            media,nextTimeMediaSample|nextTimeEdgeOK,
+            (TimeValue)(i-1),-0x10000,(TimeValue)(i-1));
+
+        timing_next(
+            media,nextTimeMediaSample,
+            (TimeValue)(i-1),-0x10000,
+            i>1 ? (TimeValue)(i-2) : -1);
+    }
+
+    timing_next(
+        media,nextTimeMediaSample,100,-0x10000,99);
+
+    timing_next(
+        media,nextTimeMediaSample|nextTimeEdgeOK,
+        100,-0x10000,99);
+
+    timing_next(
+        media,nextTimeMediaSample|nextTimeEdgeOK,
+        100,0x10000,-1);
+
+    timing_next(
+        media,nextTimeMediaSample|nextTimeEdgeOK,
+        0,0,0);
+
+    timing_invalid(media);
+
+    /* Movie time-scale conversion must not alter media time. */
+    SetMovieTimeScale(m,600);
+
+    TCHECK(GetMoviesError()==noErr);
+    TCHECK(GetMediaTimeScale(media)==(TimeScale)rate);
+    TCHECK(GetMediaDuration(media)==100);
+
+    TimeValue t=-1,d=-1;
+
+    SampleNumToMediaTime(media,100,&t,&d);
+
+    TCHECK(GetMoviesError()==noErr);
+    TCHECK(t==99 && d==1);
+
+    DisposeMovie(m);
+
+    TCHECK(GetMediaDuration(media)==0);
+    TCHECK(GetMoviesError()==invalidMedia);
+
+    t=d=-12345;
+
+    SampleNumToMediaTime(media,1,&t,&d);
+
+    TCHECK(GetMoviesError()==invalidMedia);
+    TCHECK(t==-12345 && d==-12345);
+
+    TCHECK(GetMediaDuration(NULL)==0);
+    TCHECK(GetMoviesError()==invalidMedia);
+}
+
+static void timing_metadata_only(void)
+{
+    Movie m=NULL;
+
+    OSErr error=import_memory(
+        external_movie,sizeof(external_movie),&m);
+
+    TCHECK(error==noErr);
+    TCHECK(m!=NULL);
+
+    if (!m)
+        return;
+
+    Media media=GetTrackMedia(GetMovieIndTrack(m,1));
+
+    TCHECK(media!=NULL);
+
+    TCHECK(GetMediaDuration(media)==0);
+    TCHECK(GetMoviesError()==unimpErr);
+
+    TimeValue t=-12345,d=-12345;
+    long n=-12345;
+
+    SampleNumToMediaTime(media,1,&t,&d);
+    TCHECK(GetMoviesError()==unimpErr);
+    TCHECK(t==-12345 && d==-12345);
+
+    MediaTimeToSampleNum(media,0,&n,&t,&d);
+    TCHECK(GetMoviesError()==unimpErr);
+    TCHECK(n==-12345 && t==-12345 && d==-12345);
+
+    GetMediaNextInterestingTime(
+        media,nextTimeMediaSample,0,0x10000,&t,&d);
+
+    TCHECK(GetMoviesError()==unimpErr);
+    TCHECK(t==-12345 && d==-12345);
+
+    DisposeMovie(m);
+}
+
 int main(void)
 {
     CHECK(sizeof(SoundDescription)==36);
     CHECK(sizeof(void*)==4);
+    timing_uninitialized();
     CHECK(EnterMovies()==noErr);
 
     exercise(movie_0,sizeof(movie_0),0x74776f73,1,8000,5,0);
@@ -383,7 +641,19 @@ int main(void)
         DisposeMovie(m);
     }
 
+    timing_exercise(movie_0,sizeof(movie_0),8000,0);
+    timing_exercise(movie_1,sizeof(movie_1),44100,0);
+    timing_exercise(movie_2,sizeof(movie_2),8000,0);
+    timing_exercise(movie_3,sizeof(movie_3),48000,0);
+    timing_exercise(movie_3,sizeof(movie_3),48000,1);
+    timing_metadata_only();
+
     ExitMovies();
-    printf("QT_UP09_PCM checks=%u failures=%u\n",checks,failures);
-    return failures!=0;
+    timing_uninitialized();
+
+    printf("QT_UP09_PCM_REGRESSION %u %u\n",checks,failures);
+    printf("QT_UP10_TIME checks=%u failures=%u\n",
+           time_checks,time_failures);
+
+    return failures!=0 || time_failures!=0;
 }
