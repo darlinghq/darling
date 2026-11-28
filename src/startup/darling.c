@@ -50,6 +50,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "launcher-ids.h"
 #include "launcher-locale.h"
 #include "launcher-mode.h"
+#include "launcher-openargs.h"
 #include "launcher-path.h"
 #include "launcher-prefix.h"
 #include "launcher-pulse.h"
@@ -185,6 +186,11 @@ int main(int argc, char ** argv)
 		showHelp(argv[0]);
 		return 1;
 	}
+
+	// These are private markers of the optional binfmt handler. A caller must not be able to inject
+	// either one into the guest; the launcher sets the guest marker itself below.
+	unsetenv("__darling_binfmt_launch");
+	unsetenv("__darling_binfmt_guest");
 
 	// Whether the launcher has root's power decides the mode; the environment only chooses
 	// between the unprivileged modes (see launcherSelectMode()).
@@ -642,23 +648,30 @@ static bool resolveProgramArgument(int argc, char** argv)
 
 	if (strcmp(argv[1], "open") == 0)
 	{
-		if (argc <= 2)
+		struct launcher_open_operands operands;
+
+		if (!launcherOpenOperands(argc, argv, 2, &operands))
 		{
-			fprintf(stderr, "Usage: darling open <file>...\n");
+			fprintf(stderr, "Invalid options for darling open.\n");
 			return false;
 		}
-		for (int i = 2; i < argc; i++)
+
+		// open(1) can also be asked to launch an application without naming a file.
+		for (size_t i = 0; i < operands.count; i++)
 		{
-			char* guestPath = launcherGuestPath(argv[i], g_workingDirectory);
+			int index = operands.indexes[i];
+			char* guestPath = launcherGuestPath(argv[index], g_workingDirectory);
 
 			if (guestPath == NULL)
 			{
 				// as the guest's open(1) words it
-				fprintf(stderr, "The file %s does not exist.\n", argv[i]);
+				fprintf(stderr, "The file %s does not exist.\n", argv[index]);
+				free(operands.indexes);
 				return false;
 			}
-			argv[i] = guestPath;
+			argv[index] = guestPath;
 		}
+		free(operands.indexes);
 		resolved = true;
 		return true;
 	}
@@ -1219,6 +1232,8 @@ void setupShellspawnEnv(int sockfd)
 		"TMPDIR",
 		"HOME",
 		"DARLING_PREFIX",
+		"__darling_binfmt_guest",
+		"__darling_binfmt_launch",
 	};
 
 	char buffer2[4096];
@@ -1242,6 +1257,10 @@ void setupShellspawnEnv(int sockfd)
 	// the prefix's path on the host, for darpath
 	snprintf(buffer2, sizeof(buffer2), "DARLING_PREFIX=%s", prefix);
 	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, buffer2);
+
+	// With the optional host binfmt handler registered, a guest execve() of a Mach-O also goes through
+	// darling-binfmt. This marker tells it to call mldr directly instead of starting another container.
+	pushShellspawnCommand(sockfd, SHELLSPAWN_SETENV, "__darling_binfmt_guest=1");
 
 	for (char** var_ptr = environ; *var_ptr != NULL; ++var_ptr) {
 		const char* var = *var_ptr;
@@ -1383,7 +1402,7 @@ void showHelp(const char* argv0)
 	fprintf(stderr, "\t%s <program-path> [arguments...]\n", argv0);
 	fprintf(stderr, "\t%s shell [arguments...]\n", argv0);
 	fprintf(stderr, "\t%s exec <program-path> [arguments...]\n", argv0);
-	fprintf(stderr, "\t%s open <file>...\n", argv0);
+	fprintf(stderr, "\t%s open [-a application] <file>...\n", argv0);
 	fprintf(stderr, "\t%s shutdown\n", argv0);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "'open' opens files of the host in Darling, as open(1) does there.\n\n");

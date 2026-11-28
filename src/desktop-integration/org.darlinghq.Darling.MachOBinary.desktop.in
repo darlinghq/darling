@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Darling (Mach-O executable)
+Comment=Run macOS executables with Darling
+Exec="@CMAKE_INSTALL_PREFIX@/bin/darling" %f
+MimeType=application/x-mach-binary;
+NoDisplay=true
+Terminal=false
+Categories=System;
