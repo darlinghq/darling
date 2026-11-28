@@ -20,9 +20,15 @@
 #import <OSAKit/OSAScript.h>
 #import "OSAKitPrivate.h"
 #import <darling-stub-forwarding.h>
+#import <Foundation/NSAppleEventDescriptor.h>
+#import <Foundation/NSFileManager.h>
+#import <Foundation/NSPipe.h>
+#import <Foundation/NSProcessInfo.h>
+#import <Foundation/NSTask.h>
 
-// Darling has no AppleScript component: scripts hold their source text, and anything that would need
-// the engine (compiling, running, loading or producing compiled data) fails with an error dictionary.
+// Darling has no native OSA component. Source-only scripts can be validated and run through a host
+// osascript/osacompile when available; everything that needs real OSA component or event dispatch
+// still fails with an error dictionary.
 static NSString *const kEngineUnavailableMessage = @"AppleScript is not available on Darling.";
 
 static NSDictionary *errorInfoWith(NSString *message, NSInteger number)
@@ -201,16 +207,126 @@ static BOOL isTextStorageType(NSString *type)
     return NO;
 }
 
+static NSString *findOSAScript(void)
+{
+    static NSString *cached;
+    static BOOL checked = NO;
+    if (checked)
+        return cached;
+    checked = YES;
+    for (NSString *path in @[ @"/usr/bin/osascript", @"/bin/osascript" ]) {
+        if ([[NSFileManager defaultManager] isExecutableFileAtPath:path]) {
+            cached = [path copy];
+            return cached;
+        }
+    }
+    return nil;
+}
+
 - (BOOL)compileAndReturnError:(NSDictionary **)errorInfo
 {
-    setEngineUnavailable(errorInfo);
-    return NO;
+    if (_source == nil) {
+        setErrorInfo(errorInfo, @"No source", errOSASystemError);
+        return NO;
+    }
+    NSString *osacompile = [[NSFileManager defaultManager] isExecutableFileAtPath:@"/usr/bin/osacompile"] ? @"/usr/bin/osacompile" : nil;
+    if (osacompile == nil) {
+        // No compiler available; source-only scripts can still be executed via osascript.
+        if (findOSAScript() != nil)
+            return YES;
+        setEngineUnavailable(errorInfo);
+        return NO;
+    }
+
+    NSString *tmp = [NSTemporaryDirectory() stringByAppendingPathComponent:[[NSProcessInfo processInfo] globallyUniqueString]];
+    NSString *scriptPath = [tmp stringByAppendingPathExtension:@"applescript"];
+    NSString *outPath = [tmp stringByAppendingPathExtension:@"scpt"];
+    if (![_source writeToFile:scriptPath atomically:YES encoding:NSUTF8StringEncoding error:nil]) {
+        setErrorInfo(errorInfo, @"Could not write temporary script", errOSASystemError);
+        return NO;
+    }
+
+    NSTask *task = [[[NSTask alloc] init] autorelease];
+    [task setLaunchPath:osacompile];
+    [task setArguments:@[ @"-o", outPath, scriptPath ]];
+    NSPipe *errPipe = [NSPipe pipe];
+    [task setStandardError:errPipe];
+    [task setStandardOutput:[NSPipe pipe]];
+    @try {
+        [task launch];
+        [task waitUntilExit];
+    } @catch (id e) {
+        [[NSFileManager defaultManager] removeItemAtPath:scriptPath error:nil];
+        setErrorInfo(errorInfo, @"Failed to launch osacompile", errOSASystemError);
+        return NO;
+    }
+
+    NSData *errData = [[errPipe fileHandleForReading] readDataToEndOfFile];
+    [[NSFileManager defaultManager] removeItemAtPath:scriptPath error:nil];
+    [[NSFileManager defaultManager] removeItemAtPath:outPath error:nil];
+
+    if ([task terminationStatus] != 0) {
+        NSString *errMsg = [[[NSString alloc] initWithData:errData encoding:NSUTF8StringEncoding] autorelease];
+        if ([errMsg length] == 0)
+            errMsg = @"AppleScript compilation failed";
+        setErrorInfo(errorInfo, errMsg, [task terminationStatus]);
+        return NO;
+    }
+
+    return YES;
 }
 
 - (NSAppleEventDescriptor *)executeAndReturnError:(NSDictionary **)errorInfo
 {
-    setEngineUnavailable(errorInfo);
-    return nil;
+    if (_source == nil) {
+        setErrorInfo(errorInfo, @"No source", errOSASystemError);
+        return nil;
+    }
+
+    NSString *osascript = findOSAScript();
+    if (osascript == nil) {
+        setEngineUnavailable(errorInfo);
+        return nil;
+    }
+
+    NSTask *task = [[[NSTask alloc] init] autorelease];
+    [task setLaunchPath:osascript];
+    [task setArguments:@[ @"-e", _source ]];
+
+    NSPipe *outPipe = [NSPipe pipe];
+    NSPipe *errPipe = [NSPipe pipe];
+    [task setStandardOutput:outPipe];
+    [task setStandardError:errPipe];
+
+    @try {
+        [task launch];
+        [task waitUntilExit];
+    } @catch (id e) {
+        setErrorInfo(errorInfo, @"Failed to launch osascript", errOSASystemError);
+        return nil;
+    }
+
+    NSData *outData = [[outPipe fileHandleForReading] readDataToEndOfFile];
+    NSData *errData = [[errPipe fileHandleForReading] readDataToEndOfFile];
+
+    if ([task terminationStatus] != 0) {
+        NSString *errMsg = [[[NSString alloc] initWithData:errData encoding:NSUTF8StringEncoding] autorelease];
+        if ([errMsg length] == 0)
+            errMsg = @"AppleScript execution failed";
+        setErrorInfo(errorInfo, errMsg, [task terminationStatus]);
+        return nil;
+    }
+
+    NSString *outStr = [[[NSString alloc] initWithData:outData encoding:NSUTF8StringEncoding] autorelease];
+    if (outStr == nil)
+        outStr = @"";
+    if ([outStr hasSuffix:@"\n"])
+        outStr = [outStr substringToIndex:[outStr length] - 1];
+
+    if ([outStr length] == 0)
+        return [NSAppleEventDescriptor nullDescriptor];
+
+    return [NSAppleEventDescriptor descriptorWithString:outStr];
 }
 
 - (NSAppleEventDescriptor *)executeAppleEvent:(NSAppleEventDescriptor *)event error:(NSDictionary **)errorInfo
@@ -221,10 +337,16 @@ static BOOL isTextStorageType(NSString *type)
 
 - (NSAppleEventDescriptor *)executeAndReturnDisplayValue:(NSAttributedString **)displayValue error:(NSDictionary **)errorInfo
 {
-    if (displayValue != NULL)
-        *displayValue = nil;
-    setEngineUnavailable(errorInfo);
-    return nil;
+    NSAppleEventDescriptor *result = [self executeAndReturnError:errorInfo];
+    if (displayValue != NULL) {
+        if (result != nil) {
+            NSString *str = [result stringValue];
+            *displayValue = str != nil ? [[[NSAttributedString alloc] initWithString:str] autorelease] : nil;
+        } else {
+            *displayValue = nil;
+        }
+    }
+    return result;
 }
 
 - (NSAttributedString *)richTextSource
