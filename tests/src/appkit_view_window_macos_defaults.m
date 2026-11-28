@@ -115,10 +115,13 @@ static NSWindow *newWindow(NSRect content, NSUInteger mask, BOOL deferFlag)
 
 static NSMutableArray *setterLog;
 
-@interface SetterProbe : NSView {
-@public
-	int notifications;
-}
+// NSView is declared above without instance variables. 32-bit Objective-C
+// fixes a subclass's instance variable offsets at compile time, behind the
+// superclass as declared, so a view subclass with instance variables would
+// overlap those of the real NSView. The count is kept in a static.
+static int setterNotifications;
+
+@interface SetterProbe : NSView
 @end
 @implementation SetterProbe
 - (void) setFrameOrigin: (NSPoint) p
@@ -133,7 +136,7 @@ static NSMutableArray *setterLog;
 }
 - (void) frameChanged: (NSNotification *) note
 {
-	notifications++;
+	setterNotifications++;
 }
 @end
 
@@ -158,7 +161,7 @@ static void testSetFrame(void)
 	};
 	for (int i = 0; i < 4; i++) {
 		[setterLog removeAllObjects];
-		v->notifications = 0;
+		setterNotifications = 0;
 		[v setFrame: cases[i].frame];
 		NSString *expected = [NSString stringWithFormat: @"origin %g,%g, size %gx%g",
 			cases[i].frame.origin.x, cases[i].frame.origin.y,
@@ -171,14 +174,14 @@ static void testSetFrame(void)
 		check([got isEqualToString: expected], what);
 		snprintf(what, sizeof(what),
 			"setFrame: (%s) posts %d frame change notification(s), got %d",
-			cases[i].what, cases[i].notes, v->notifications);
-		check(v->notifications == cases[i].notes, what);
+			cases[i].what, cases[i].notes, setterNotifications);
+		check(setterNotifications == cases[i].notes, what);
 		check(NSEqualRects([v frame], cases[i].frame), "the frame is set");
 	}
 
-	v->notifications = 0;
+	setterNotifications = 0;
 	[v setFrameSize: NSMakeSize(40, 40)];
-	check(v->notifications == 1, "setFrameSize: alone posts one notification");
+	check(setterNotifications == 1, "setFrameSize: alone posts one notification");
 
 	[[NSNotificationCenter defaultCenter] removeObserver: v];
 	[v release];
