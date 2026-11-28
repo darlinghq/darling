@@ -422,7 +422,7 @@ static bool profile_level_valid(CMVideoCodecType codec, CFStringRef s)
 	return rest[0] >= '1' && rest[0] <= '5' && rest[1] == '_' && rest[2] >= '0' && rest[2] <= '9' && rest[3] == 0;
 }
 
-typedef enum { PK_BOOL, PK_NUMBER, PK_STRING, PK_ARRAY, PK_DICT, PK_DATA, PK_PROFILE } PropKind;
+typedef enum { PK_BOOL, PK_NUMBER, PK_STRING, PK_ARRAY, PK_DICT, PK_DATA, PK_PROFILE, PK_MULTIPASS } PropKind;
 
 static const struct { const char *key; PropKind kind; } supportedProps[] = {
 	{ "RealTime", PK_BOOL },
@@ -442,6 +442,22 @@ static const struct { const char *key; PropKind kind; } supportedProps[] = {
 	{ "PixelAspectRatio", PK_DICT },
 	{ "MasteringDisplayColorVolume", PK_DATA },
 	{ "ContentLightLevelInfo", PK_DATA },
+	{ "AllowTemporalCompression", PK_BOOL },
+	{ "ConstantQualityFactor", PK_NUMBER },
+	{ "FieldCount", PK_NUMBER },
+	{ "FieldDetail", PK_STRING },
+	{ "H264EntropyMode", PK_STRING },
+	{ "MaxAllowedFrameQP", PK_NUMBER },
+	{ "MinAllowedFrameQP", PK_NUMBER },
+	{ "MultiPassStorage", PK_MULTIPASS },
+	{ "PreserveDynamicHDRMetadata", PK_BOOL },
+	{ "PrioritizeEncodingSpeedOverQuality", PK_BOOL },
+	{ "ReferenceBufferCount", PK_NUMBER },
+	{ "SuggestedLookAheadFrameCount", PK_NUMBER },
+	{ "VBVBufferDuration", PK_NUMBER },
+	{ "VBVMaxBitRate", PK_NUMBER },
+	{ "VBVInitialDelayPercentage", PK_NUMBER },
+	{ "VariableBitRate", PK_NUMBER },
 };
 
 static int find_prop(CFStringRef key)
@@ -488,6 +504,7 @@ OSStatus VTCompressionSessionSetPropertyInternal(VTSessionRef sessionRef, CFStri
 			case PK_DICT: ok = t == CFDictionaryGetTypeID(); break;
 			case PK_DATA: ok = t == CFDataGetTypeID(); break;
 			case PK_PROFILE: ok = t == CFStringGetTypeID() && profile_level_valid(s->codecType, value); break;
+			case PK_MULTIPASS: ok = t == VTMultiPassStorageGetTypeID(); break;
 			}
 			if (value == NULL || ok) {
 				if (value == NULL)
@@ -592,7 +609,7 @@ OSStatus VTCompressionSessionCopySupportedPropertyDictionaryInternal(VTSessionRe
 					}
 				}
 			}
-			CFDictionarySetValue(e, CFSTR("SupportedValueList"), list);
+			CFDictionarySetValue(e, kVTPropertySupportedValueListKey, list);
 			CFRelease(list);
 		}
 		CFStringRef k = CFStringCreateWithCString(NULL, supportedProps[i].key, kCFStringEncodingUTF8);

@@ -17,7 +17,6 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #include <VideoToolbox/VideoToolbox.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -131,12 +130,6 @@ void* VTBuildPixelBufferPools2(void)
     return NULL;
 }
 
-void* VTCompressionSessionBeginPass(void)
-{
-    if (verbose) puts("STUB: VTCompressionSessionBeginPass called");
-    return NULL;
-}
-
 void* VTCompressionSessionCopyProperty(void)
 {
     if (verbose) puts("STUB: VTCompressionSessionCopyProperty called");
@@ -152,18 +145,6 @@ void* VTCompressionSessionCopySerializableProperties(void)
 void* VTCompressionSessionCopySupportedPropertyDictionary(void)
 {
     if (verbose) puts("STUB: VTCompressionSessionCopySupportedPropertyDictionary called");
-    return NULL;
-}
-
-void* VTCompressionSessionEndPass(void)
-{
-    if (verbose) puts("STUB: VTCompressionSessionEndPass called");
-    return NULL;
-}
-
-void* VTCompressionSessionGetTimeRangesForNextPass(void)
-{
-    if (verbose) puts("STUB: VTCompressionSessionGetTimeRangesForNextPass called");
     return NULL;
 }
 
@@ -286,7 +267,6 @@ void* VTDecoderSessionTrace(void)
     if (verbose) puts("STUB: VTDecoderSessionTrace called");
     return NULL;
 }
-
 
 void* VTDistributedCompressionGetSegmentRanges(void)
 {
@@ -561,78 +541,6 @@ void* VTMetalTransferSessionCreate(void)
 void* VTMetalTransferSessionTransferImageSync(void)
 {
     if (verbose) puts("STUB: VTMetalTransferSessionTransferImageSync called");
-    return NULL;
-}
-
-void* VTMultiPassStorageClose(void)
-{
-    if (verbose) puts("STUB: VTMultiPassStorageClose called");
-    return NULL;
-}
-
-void* VTMultiPassStorageCopyDataAtTimeStamp(void)
-{
-    if (verbose) puts("STUB: VTMultiPassStorageCopyDataAtTimeStamp called");
-    return NULL;
-}
-
-void* VTMultiPassStorageCopyIdentifier(void)
-{
-    if (verbose) puts("STUB: VTMultiPassStorageCopyIdentifier called");
-    return NULL;
-}
-
-void* VTMultiPassStorageCreate(void)
-{
-    if (verbose) puts("STUB: VTMultiPassStorageCreate called");
-    return NULL;
-}
-
-void* VTMultiPassStorageGetTimeStamp(void)
-{
-    if (verbose) puts("STUB: VTMultiPassStorageGetTimeStamp called");
-    return NULL;
-}
-
-void* VTMultiPassStorageGetTimeStampAndDuration(void)
-{
-    if (verbose) puts("STUB: VTMultiPassStorageGetTimeStampAndDuration called");
-    return NULL;
-}
-
-void* VTMultiPassStorageGetTypeID(void)
-{
-    if (verbose) puts("STUB: VTMultiPassStorageGetTypeID called");
-    return NULL;
-}
-
-void* VTMultiPassStorageInvalidate(void)
-{
-    if (verbose) puts("STUB: VTMultiPassStorageInvalidate called");
-    return NULL;
-}
-
-void* VTMultiPassStorageSetDataAtTimeStamp(void)
-{
-    if (verbose) puts("STUB: VTMultiPassStorageSetDataAtTimeStamp called");
-    return NULL;
-}
-
-void* VTMultiPassStorageSetIdentifier(void)
-{
-    if (verbose) puts("STUB: VTMultiPassStorageSetIdentifier called");
-    return NULL;
-}
-
-void* VTMultiPassStorageWriteMerged(void)
-{
-    if (verbose) puts("STUB: VTMultiPassStorageWriteMerged called");
-    return NULL;
-}
-
-void* VTMultiPassStorageWriteSegment(void)
-{
-    if (verbose) puts("STUB: VTMultiPassStorageWriteSegment called");
     return NULL;
 }
 
