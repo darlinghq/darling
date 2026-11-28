@@ -1,14 +1,15 @@
-# i386 layout retry regression test
+# Layout retry regression test
 
-From a configured Darling build with `BUILD_TARGET_32BIT` enabled:
+The native test is `mldr_layout_retry`; the i386 one, `mldr32_layout_retry`, needs
+`BUILD_TARGET_32BIT`. From a configured Darling build:
 
 ```sh
-cmake --build build --target mldr32 mldr32_layout_retry_test
-ctest --test-dir build -R '^mldr32_layout_retry$' --output-on-failure
+cmake --build build --target mldr mldr32 mldr_layout_retry_test mldr32_layout_retry_test
+ctest --test-dir build -R '^mldr(32)?_layout_retry$' --output-on-failure
 ```
 
-`layout_retry.c` includes the actual `mldr.c` implementation and builds as an
-ELF i386 executable. Linker section collection drops unrelated loader code.
+`layout_retry.c` includes the actual `mldr.c` implementation and builds as a native
+and as an ELF i386 executable. Linker section collection drops unrelated loader code.
 Only host calls needed to control the retry path are replaced; the counter
 uses the host libc's real `strtol`, `getenv`, `setenv` and `unsetenv`.
 

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-// Exercise the actual i386 retry path, replacing only its host system calls.
+// Exercise the actual layout retry path, replacing only its host system calls.
 // Unused loader sections are discarded so no darlingserver is needed.
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
@@ -16,8 +16,16 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 
-#ifndef __i386__
-#error This test must be built with -m32
+// Built as an i386 program (the 32-bit commpage at the top of 4 GB) and as an
+// x86_64/aarch64 one (the 64-bit commpage).
+#if defined(__i386__)
+#define TOP_COMMPAGE 0xffff0000UL
+#elif defined(__x86_64__)
+#define TOP_COMMPAGE 0x7fffffe00000UL
+#elif defined(__aarch64__)
+#define TOP_COMMPAGE 0xffffc000UL
+#else
+#error Unsupported architecture
 #endif
 
 static void* retry_mmap(void*, size_t, int, int, int, off_t);
@@ -66,8 +74,10 @@ static int chain_mode, chain_fd;
 static char next_count[16];
 static char** expected_argv;
 
-unsigned long retry_commpage_address(bool wide) { (void)wide; return 0xffff0000UL; }
-unsigned long retry_commpage_length(bool wide) { (void)wide; return 0x1000; }
+// The range to probe is the one of the commpage of the process being started.
+static bool wide_requested(bool wide) { return wide == (sizeof(void*) == 8); }
+unsigned long retry_commpage_address(bool wide) { CHECK(wide_requested(wide)); return TOP_COMMPAGE; }
+unsigned long retry_commpage_length(bool wide) { CHECK(wide_requested(wide)); return 0x1000; }
 
 // Keep compatible_mmap's legacy-kernel fallback outside this retry-path test.
 static int retry_uname(struct utsname* name)
@@ -80,7 +90,7 @@ static int retry_uname(struct utsname* name)
 static void* retry_mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
 {
 	++maps;
-	CHECK(addr == (void*)0xfffe0000UL && length == 0x11000);
+	CHECK(addr == (void*)(TOP_COMMPAGE - 0x10000UL) && length == 0x11000);
 	CHECK(prot == PROT_NONE && (flags & MAP_ANONYMOUS) && fd == -1 && offset == 0);
 	if (map_mode == 1) return addr;
 	if (map_mode == 2) return (char*)addr - 0x10000;
@@ -92,7 +102,7 @@ static int retry_munmap(void* addr, size_t length)
 {
 	++unmaps;
 	CHECK(length == 0x11000);
-	CHECK(addr == (void*)(map_mode == 1 ? 0xfffe0000UL : 0xfffd0000UL));
+	CHECK(addr == (void*)(map_mode == 1 ? (TOP_COMMPAGE - 0x10000UL) : (TOP_COMMPAGE - 0x20000UL)));
 	return 0;
 }
 
@@ -102,7 +112,7 @@ static ssize_t retry_readlink(const char* path, char* buffer, size_t size)
 	CHECK(strcmp(path, "/proc/self/exe") == 0);
 	if (chain_mode) return readlink(path, buffer, size);
 	if (fail_readlink) { errno = ENOENT; return -1; }
-	const char self[] = "/synthetic/mldr32";
+	const char self[] = "/synthetic/mldr";
 	CHECK(size >= sizeof(self) - 1);
 	memcpy(buffer, self, sizeof(self) - 1); // readlink does not append NUL
 	return sizeof(self) - 1;
@@ -136,7 +146,7 @@ static int retry_execv(const char* path, char* const argv[])
 		CHECK(write(chain_fd, next_count, 1) == 1);
 		return execv(path, argv);
 	}
-	CHECK(strcmp(path, "/synthetic/mldr32") == 0);
+	CHECK(strcmp(path, "/synthetic/mldr") == 0);
 	errno = ENOENT;
 	return -1;
 }
@@ -156,7 +166,7 @@ static void invoke(void)
 	char* argv[] = { "mldr32", "guest", NULL };
 	struct load_results lr = { .argv = argv };
 	expected_argv = argv;
-	ensure_top_range_free(&lr, 0x10000);
+	ensure_top_range_free(&lr, sizeof(void*) == 8, 0x10000);
 	CHECK(maps == 1);
 }
 
@@ -188,7 +198,7 @@ static void chain(char** argv)
 	map_error = EEXIST;
 	expected_argv = argv;
 	struct load_results lr = { .argv = argv };
-	ensure_top_range_free(&lr, 0x10000);
+	ensure_top_range_free(&lr, sizeof(void*) == 8, 0x10000);
 	CHECK(getenv(LAYOUT_RETRY_ENV) && strcmp(getenv(LAYOUT_RETRY_ENV), "8") == 0);
 	CHECK(write(chain_fd, "X", 1) == 1);
 	_exit(0);
