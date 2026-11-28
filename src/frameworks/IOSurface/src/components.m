@@ -24,6 +24,7 @@
 // afterwards does not change them, and a surface that another process created does
 // not carry them here.
 
+#import <Foundation/Foundation.h>
 #import <IOSurface/IOSurface.h>
 #import <IOSurface/IOSurfaceObjC.h>
 #include <CoreFoundation/CoreFoundation.h>
