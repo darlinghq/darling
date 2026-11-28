@@ -5616,61 +5616,97 @@ CGLError CGLTexImagePBuffer(CGLContextObj context, CGLPBufferObj pbuffer, GLenum
 }
 
 // Makes the texture bound to target in context an image of what the drawable of the source context shows: the
-// color buffer that the source draws into (the back buffer), copied when called, in the size of the drawable. The
-// source may be a context of another share group, and may be context itself. The public references say that the
-// drawable is the source of the texture, not whether the image follows the drawable afterwards. Inference (the
-// weakest tier of evidence): the texture keeps the copy of the call, as the texture of CGLTexImagePBuffer does here.
+// color buffer that the source draws into (the back buffer), in the size of the drawable.
+//
+// The behaviour follows the AGL reference (aglSurfaceTexture, 2007-10-31): the call acts like glTexImage2D, so the
+// image is a copy made by the call (it does not follow the drawable afterwards), the target and internal format
+// are those of glTexImage2D, and the geometry of the drawable has to suit the target; a GL_TEXTURE_2D needs a
+// drawable of power-of-two size, a face of a cube map one that is square. What glTexImage2D rejects is reported as
+// it reports it, in the GL error of context, and nothing is textured; the call itself then returns kCGLNoError.
+// GL_TEXTURE_CUBE_MAP is among the targets the reference lists, but glTexImage2D takes the six face targets and
+// rejects the cube map target itself, so the faces are what this takes: the cube map target is a GL_INVALID_ENUM.
+// The source has to be attached to a windowed drawable, a window or a view of one; a pixel buffer, an off-screen
+// buffer and a full-screen display are not, and neither is a context without a drawable (kCGLBadDrawable: the
+// reference names no code, and it is the one for a drawable that cannot be used). The reference also asks for both
+// contexts to use one renderer (virtual screen); there is only one here (virtual screen 0 of every pixel format),
+// so contexts of any two pixel formats qualify. The source may be of another share group, and may be context itself.
 // The contents are read through the source context and uploaded through context, so that no EGL surface has to be
 // usable with the configurations of both contexts.
 // Private: AGL's aglSurfaceTexture is its caller.
+static int isPowerOfTwo(EGLint size) {
+    return size > 0 && (size & (size - 1)) == 0;
+}
+
 CGLError _CGLTexImageDrawable(CGLContextObj context, GLenum target, GLenum internalFormat, CGLContextObj source) {
     if (context == NULL || source == NULL)
         return kCGLBadContext;
-    if (target != GL_TEXTURE_2D && target != CGL_TEXTURE_RECTANGLE)
-        return kCGLBadEnumeration;
-    if (internalFormat != GL_RGB && internalFormat != GL_RGBA)
-        return kCGLBadEnumeration;
     pthread_mutex_lock(&source->lock);
     EGLSurface surface = atomic_load_explicit(&source->egl_surface, memory_order_acquire);
-    // A context that was never given a drawable draws to a placeholder when it is made current.
-    int has_drawable = surface != EGL_NO_SURFACE && surface != source->fallback_pbuffer;
+    // A context that was never given a drawable draws to a placeholder when it is made current; a pixel buffer, an
+    // off-screen buffer and a full-screen window are drawables, but not windowed ones.
+    int windowed = surface != EGL_NO_SURFACE && surface != source->fallback_pbuffer
+        && surface != source->pbuffer_surface && surface != source->offscreen_surface
+        && surface != source->fullscreen_surface;
     pthread_mutex_unlock(&source->lock);
-    if (!has_drawable)
+    if (!windowed)
         return kCGLBadDrawable;
     EGLint width = 0, height = 0;
     if (!p_eglQuerySurface(source->egl_display, surface, EGL_WIDTH, &width)
         || !p_eglQuerySurface(source->egl_display, surface, EGL_HEIGHT, &height)
         || width <= 0 || height <= 0 || width > CGL_MAX_BUFFER_SIZE || height > CGL_MAX_BUFFER_SIZE)
         return kCGLBadDrawable;
-    unsigned char *pixels = malloc((size_t) width * (size_t) height * 4);
-    if (pixels == NULL)
-        return kCGLBadAlloc;
+
+    // What glTexImage2D reports: GL_INVALID_ENUM for a target it does not take, GL_INVALID_VALUE for a size that does
+    // not suit the target (the GL here would take other sizes) and for an internal format other than the RGB and RGBA
+    // ones of the reference (the sized forms among them). The error is raised by glTexImage2D itself, with a
+    // negative size, so that nothing is textured and the error is the GL's own.
+    int cube_face = target >= GL_TEXTURE_CUBE_MAP_POSITIVE_X && target <= GL_TEXTURE_CUBE_MAP_NEGATIVE_Z;
+    int target_known = target == GL_TEXTURE_2D || target == CGL_TEXTURE_RECTANGLE || cube_face;
+    int format_known = internalFormat == GL_RGB || internalFormat == GL_RGBA
+        || internalFormat == GL_RGB8 || internalFormat == GL_RGBA8;
+    int geometry_fits = !(target == GL_TEXTURE_2D && !(isPowerOfTwo(width) && isPowerOfTwo(height)))
+        && !(cube_face && width != height);
+    int rejected = !target_known || !format_known || !geometry_fits;
+
+    unsigned char *pixels = NULL;
+    if (!rejected) {
+        pixels = malloc((size_t) width * (size_t) height * 4);
+        if (pixels == NULL)
+            return kCGLBadAlloc;
+    }
 
     struct context_scope scope;
-    CGLError result = enterContext(source, &scope, 1);
+    CGLError result = kCGLNoError;
+    if (!rejected) {
+        result = enterContext(source, &scope, 1);
+        if (result == kCGLNoError) {
+            struct pixel_store saved, plain = { 0, 0, 0, 0, 1 };
+            GLint read_framebuffer = 0, read_buffer = GL_BACK;
+            savePixelStore(1, &saved);
+            glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_framebuffer);
+            glGetIntegerv(GL_READ_BUFFER, &read_buffer);
+            if (read_framebuffer != 0)
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+            glReadBuffer(GL_BACK);
+            setPixelStore(1, &plain);
+            glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+            setPixelStore(1, &saved);
+            glReadBuffer((GLenum) read_buffer);
+            if (read_framebuffer != 0)
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint) read_framebuffer);
+            leaveContext(source, &scope);
+        }
+    }
     if (result == kCGLNoError) {
-        struct pixel_store saved, plain = { 0, 0, 0, 0, 1 };
-        GLint read_framebuffer = 0, read_buffer = GL_BACK;
-        savePixelStore(1, &saved);
-        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_framebuffer);
-        glGetIntegerv(GL_READ_BUFFER, &read_buffer);
-        if (read_framebuffer != 0)
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-        glReadBuffer(GL_BACK);
-        setPixelStore(1, &plain);
-        glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-        setPixelStore(1, &saved);
-        glReadBuffer((GLenum) read_buffer);
-        if (read_framebuffer != 0)
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint) read_framebuffer);
-        leaveContext(source, &scope);
-
         result = enterContext(context, &scope, 1);
         if (result == kCGLNoError) {
-            struct pixel_store saved_unpack;
+            struct pixel_store saved_unpack, plain = { 0, 0, 0, 0, 1 };
             savePixelStore(0, &saved_unpack);
             setPixelStore(0, &plain);
-            glTexImage2D(target, 0, (GLint) internalFormat, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+            if (rejected)
+                glTexImage2D(target, 0, GL_RGBA, -1, -1, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+            else
+                glTexImage2D(target, 0, (GLint) internalFormat, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
             setPixelStore(0, &saved_unpack);
             leaveContext(context, &scope);
         }

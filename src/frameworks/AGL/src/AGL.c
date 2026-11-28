@@ -25,7 +25,7 @@
 // the full-screen display (CGLSetFullScreenOnDisplay, after AGL captured the display); AGL and CGL give the same
 // error codes. An HIView drawable is a surface of the view's window that covers the bounds of the view, and follows
 // the view when it moves, is resized or hidden. Context copying is CGLCopyContext.
-// A surface texture (aglSurfaceTexture) is a copy of the drawable of another context, made by CGL.
+// A surface texture (aglSurfaceTexture) is a copy of the window or view of another context, made by CGL.
 
 #include <AGL/agl.h>
 #include <OpenGL/OpenGL.h>
@@ -1186,9 +1186,10 @@ AGL_EXPORT GLboolean aglGetPBuffer(AGLContext ctx, AGLPbuffer *pbuffer, GLint *f
 	return GL_TRUE;
 }
 
-// Makes the drawable of another context (a window, a view or any other surface) the image of the texture bound in
-// the context. The errors are checked in this order: the contexts, the texture target and format, then the drawable
-// of the surface context.
+// Makes the drawable of another context, which has to be a window or a view, the image of the texture bound in the
+// context (see _CGLTexImageDrawable). The errors are checked in this order: the contexts, then the drawable of the
+// surface context (AGL_BAD_DRAWABLE for a pixel buffer, an off-screen area, a full-screen display or no drawable).
+// The texture target, internal format and size are as for glTexImage2D, which reports them as GL errors.
 AGL_EXPORT GLboolean aglSurfaceTexture(AGLContext context, GLenum target, GLenum internalformat, AGLContext surfacecontext)
 {
 	if (!context || !surfacecontext) {

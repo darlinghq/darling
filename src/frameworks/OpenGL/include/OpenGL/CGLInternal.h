@@ -53,9 +53,11 @@ CGLError CGLGetSurface(CGLContextObj gl, CGSConnectionID *cid, CGSWindowID *wid,
 // CGLTexImageIOSurface2D back into the surface plane, in that call's format
 // and type. The surface's seed changes, as after any write.
 CGL_EXPORT CGLError CGLReadbackIOSurface(IOSurfaceRef ioSurface);
-// The texture bound to target (GL_TEXTURE_2D or GL_TEXTURE_RECTANGLE_EXT) in context becomes an image, of internalFormat
-// (GL_RGB or GL_RGBA), of the color buffer of the drawable of source; aglSurfaceTexture is built on it.
-// kCGLBadDrawable when source has no drawable.
+// The texture bound to target in context becomes an image of the color buffer of the window or view that source draws
+// to, as glTexImage2D with the target, the internal format (GL_RGB or GL_RGBA, or their sized forms) and the size of
+// the drawable. What glTexImage2D rejects is its GL error and nothing is textured. aglSurfaceTexture is built on it.
+// kCGLBadDrawable when source does not draw to a window or view (a pixel buffer, an off-screen buffer, full screen).
+CGL_EXPORT CGLError _CGLSetViewport(CGLContextObj context, GLsizei width, GLsizei height);
 CGL_EXPORT CGLError _CGLTexImageDrawable(CGLContextObj context, GLenum target, GLenum internalFormat, CGLContextObj source);
 CGLContextObj CGWindowContextCreate(CGSConnectionID cid, CGSWindowID wid, CFDictionaryRef options);
 
