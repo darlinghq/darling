@@ -21,8 +21,8 @@
 // keeps the AGL attribute list and a CGL pixel format; a context is a CGL context plus the drawable it was given.
 // A window drawable is attached through the window's window server surface, as the contexts of NSOpenGLView are.
 // Errors are kept per thread, as aglGetError reports the last error of the calling thread.
-// Not implemented: pixel buffers, off-screen and full-screen drawables, HIView drawables, context copying and
-// surface textures. They fail with an error code and leave the context unchanged.
+// Context copying is CGLCopyContext. Not implemented: pixel buffers, off-screen and full-screen drawables, HIView
+// drawables and surface textures. They fail with an error code and leave the context unchanged.
 
 #include <AGL/agl.h>
 #include <OpenGL/OpenGL.h>
@@ -71,6 +71,15 @@ static void registerWindowSystem(void)
 }
 
 static void failed(GLenum code) { t_error = code; }
+
+// AGL's error codes are CGL's
+static GLboolean cglSucceeded(CGLError error)
+{
+	if (error == kCGLNoError)
+		return GL_TRUE;
+	failed((GLenum) error);
+	return GL_FALSE;
+}
 
 #define kMaxFormatAttributes 64
 
@@ -418,11 +427,14 @@ AGL_EXPORT GLboolean aglDestroyContext(AGLContext ctx)
 	return GL_TRUE;
 }
 
+// The mask is the one of glPushAttrib, as for CGLCopyContext
 AGL_EXPORT GLboolean aglCopyContext(AGLContext src, AGLContext dst, GLuint mask)
 {
-	(void) mask;
-	failed(src && dst ? AGL_BAD_ENUM : AGL_BAD_CONTEXT);
-	return GL_FALSE;
+	if (!src || !dst) {
+		failed(AGL_BAD_CONTEXT);
+		return GL_FALSE;
+	}
+	return cglSucceeded(CGLCopyContext(src->cgl, dst->cgl, mask));
 }
 
 AGL_EXPORT GLboolean aglUpdateContext(AGLContext ctx)
