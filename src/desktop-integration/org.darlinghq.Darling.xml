@@ -8,7 +8,11 @@
     <magic priority="80">
       <match type="string" value="\xcf\xfa\xed\xfe" offset="0"/>
       <match type="string" value="\xce\xfa\xed\xfe" offset="0"/>
-      <match type="string" value="\xca\xfe\xba\xbe" offset="0"/>
+      <!-- A Java class file has the same first word; its next word (the class version) is at least 45,
+           while a fat file has a few architectures there. -->
+      <match type="big32" value="0xcafebabe" offset="0">
+        <match type="big32" value="0" mask="0xffffffe0" offset="4"/>
+      </match>
     </magic>
     <glob pattern="*.dylib"/>
   </mime-type>
