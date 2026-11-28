@@ -375,25 +375,29 @@ static void testFrameViewLayout(void)
 
 // --- in-process drag ------------------------------------------------------
 
-@interface DropView : NSView {
-@public
-	int entered, performed, concluded;
-}
+// The views below are subclasses of the NSView declared above, which has no
+// instance variables here. 32-bit Objective-C lays out a subclass's instance
+// variables at compile time, behind the superclass as declared, so a view
+// subclass with instance variables would overlap those of the real NSView.
+// Their state is kept in statics instead.
+static int dropEntered, dropPerformed, dropConcluded;
+
+@interface DropView : NSView
 @end
 @implementation DropView
 - (NSUInteger) draggingEntered: (id) info
 {
-	entered++;
+	dropEntered++;
 	return DragOperationCopy;
 }
 - (BOOL) performDragOperation: (id) info
 {
-	performed++;
+	dropPerformed++;
 	return YES;
 }
 - (void) concludeDragOperation: (id) info
 {
-	concluded++;
+	dropConcluded++;
 }
 @end
 
@@ -464,8 +468,8 @@ static void testDrag(NSWindow *w)
 	}
 	check(source->began == 1, "the source is told that the drag began");
 	check(source->ended == 1, "the drag ends, and the source is told once");
-	check(view->entered >= 1, "the registered view under the pointer is entered");
-	check(view->performed == 1 && view->concluded == 1,
+	check(dropEntered >= 1, "the registered view under the pointer is entered");
+	check(dropPerformed == 1 && dropConcluded == 1,
 		"the drop is prepared (by default), performed and concluded");
 	check(source->operation == DragOperationCopy,
 		"the source learns the operation the destination performed");
@@ -486,17 +490,16 @@ static void testDrag(NSWindow *w)
 }
 @end
 
-@interface ResizeProbe : NSView {
-@public
-	NSPoint seen;
-	int resized;
-}
+static NSPoint probeSeen;
+static int probeResized;
+
+@interface ResizeProbe : NSView
 @end
 @implementation ResizeProbe
 - (void) resizeWithOldSuperviewSize: (NSSize) size
 {
-	resized++;
-	seen = [self convertPoint: NSMakePoint(0, 0) toView: nil];
+	probeResized++;
+	probeSeen = [self convertPoint: NSMakePoint(0, 0) toView: nil];
 	[super resizeWithOldSuperviewSize: size];
 }
 @end
@@ -510,20 +513,19 @@ static NSComparisonResult byX(id a, id b, void *context)
 @protocol NSTextInputClient
 @end
 
-@interface TextClient : NSView <NSTextInputClient> {
-@public
-	NSMutableArray *log;
-}
+static NSMutableArray *textLog;
+
+@interface TextClient : NSView <NSTextInputClient>
 @end
 @implementation TextClient
 - (void) insertText: (id) text replacementRange: (NSRange) range
 {
-	[log addObject: [NSString stringWithFormat: @"insert %@ %s", text,
+	[textLog addObject: [NSString stringWithFormat: @"insert %@ %s", text,
 		range.location == NSNotFound ? "none" : "range"]];
 }
 - (void) doCommandBySelector: (SEL) selector
 {
-	[log addObject: NSStringFromSelector(selector)];
+	[textLog addObject: NSStringFromSelector(selector)];
 }
 @end
 
@@ -546,7 +548,7 @@ static void testViews(void)
 	(void) [child convertPoint: NSMakePoint(0, 0) toView: nil];
 	[parent setFrameSize: NSMakeSize(100, 150)];
 	NSPoint after = [child convertPoint: NSMakePoint(0, 0) toView: nil];
-	check(child->resized == 1 && NSEqualPoints(child->seen, after),
+	check(probeResized == 1 && NSEqualPoints(probeSeen, after),
 		"a resized subview sees its superview's new transform");
 	[child release];
 	[parent release];
@@ -567,16 +569,16 @@ static void testViews(void)
 
 	check([box inputContext] == nil, "a view that is not a text input client has no input context");
 	TextClient *text = [[TextClient alloc] initWithFrame: NSMakeRect(0, 0, 10, 10)];
-	text->log = [NSMutableArray array];
+	textLog = [NSMutableArray array];
 	NSTextInputContext *context = [text inputContext];
 	check(context != nil && [text inputContext] == context && [context client] == text,
 		"a text input client has one input context");
 	BOOL handledA = [context handleEvent: key(@"a", 0)];
 	BOOL handledReturn = [context handleEvent: key(@"\r", 0)];
 	BOOL handledCommand = [context handleEvent: key(@"q", ModifierCommand)];
-	check(handledA && handledReturn && !handledCommand && [text->log count] == 2 &&
-		[[text->log objectAtIndex: 0] isEqualToString: @"insert a none"] &&
-		[[text->log objectAtIndex: 1] isEqualToString: @"insertNewline:"],
+	check(handledA && handledReturn && !handledCommand && [textLog count] == 2 &&
+		[[textLog objectAtIndex: 0] isEqualToString: @"insert a none"] &&
+		[[textLog objectAtIndex: 1] isEqualToString: @"insertNewline:"],
 		"handleEvent: inserts text and sends commands, and leaves key equivalents");
 	[text release];
 
