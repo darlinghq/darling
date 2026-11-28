@@ -68,6 +68,8 @@ CGL_EXPORT CGLError CGLGetPBuffer(CGLContextObj context, CGLPBufferObj *pbuffer,
 CGL_EXPORT CGLError CGLSetPBuffer(CGLContextObj context, CGLPBufferObj pbuffer, GLenum face, GLint level, GLint screen);
 CGL_EXPORT CGLError CGLTexImagePBuffer(CGLContextObj context, CGLPBufferObj pbuffer, GLenum sourceBuffer);
 
+CGL_EXPORT CGLError CGLSetOffScreen(CGLContextObj ctx, GLsizei width, GLsizei height, GLint rowbytes, void *baseaddr);
+CGL_EXPORT CGLError CGLGetOffScreen(CGLContextObj ctx, GLsizei *width, GLsizei *height, GLint *rowbytes, void **baseaddr);
 CGL_EXPORT CGLError CGLCopyContext(CGLContextObj src, CGLContextObj dst, GLbitfield mask);
 
 #ifdef __cplusplus
