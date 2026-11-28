@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Darling (macOS application bundle)
+Comment=Open macOS application bundles with Darling
+Exec="@CMAKE_INSTALL_PREFIX@/bin/darling" open %f
+MimeType=application/x-apple-app-bundle;
+NoDisplay=true
+Terminal=false
+Categories=System;

@@ -1,0 +1,17 @@
+# Optional host-facing binfmt_misc handlers for Mach-O executables.
+#
+# This file is deliberately NOT installed in lib/binfmt.d: that directory holds the handlers for
+# binaries already executing inside a Darling container. These entries instead let a Linux desktop
+# execute a Mach-O file directly; the interpreter starts a container if one is not running.
+#
+# Install it as /etc/binfmt.d/darling-host.conf and restart systemd-binfmt to opt in. See README.md.
+# Replace the in-container lib/binfmt.d/darling.conf rather than registering both: they match the same
+# magics, and this handler also serves guest execve() calls. The different names avoid a registration
+# name collision with the distribution's copy of the in-container file.
+# The P flag makes the kernel pass the file path and then the caller's argv[0] to darling-binfmt.
+# A fat header and a Java class file both start with 0xcafebabe; the next word is the number of
+# architectures (a handful) in a fat file and the class version (at least 45) in a class file, so
+# the fat entry also requires it to be below 32 and does not claim class files.
+:Darling-host-Mach-O-64:M::\xcf\xfa\xed\xfe::@CMAKE_INSTALL_PREFIX@/libexec/darling/bin/darling-binfmt:P
+:Darling-host-Mach-O-32:M::\xce\xfa\xed\xfe::@CMAKE_INSTALL_PREFIX@/libexec/darling/bin/darling-binfmt:P
+:Darling-host-fat-Mach-O:M::\xca\xfe\xba\xbe\x00\x00\x00\x00:\xff\xff\xff\xff\xff\xff\xff\xe0:@CMAKE_INSTALL_PREFIX@/libexec/darling/bin/darling-binfmt:P

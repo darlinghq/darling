@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Types that Darling can open but that a Linux desktop does not always know. The magic values are
+     the Mach-O magics for 64-bit, 32-bit and fat files; an application bundle is a directory whose
+     name ends in .app. -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-mach-binary">
+    <comment>Mach-O executable</comment>
+    <magic priority="80">
+      <match type="string" value="\xcf\xfa\xed\xfe" offset="0"/>
+      <match type="string" value="\xce\xfa\xed\xfe" offset="0"/>
+      <!-- A Java class file has the same first word; its next word (the class version) is at least 45,
+           while a fat file has a few architectures there. -->
+      <match type="big32" value="0xcafebabe" offset="0">
+        <match type="big32" value="0" mask="0xffffffe0" offset="4"/>
+      </match>
+    </magic>
+    <glob pattern="*.dylib"/>
+  </mime-type>
+  <mime-type type="application/x-apple-app-bundle">
+    <comment>macOS application bundle</comment>
+    <glob pattern="*.app" weight="50"/>
+  </mime-type>
+</mime-info>

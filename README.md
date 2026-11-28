@@ -124,6 +124,48 @@ Darling installs a desktop entry for disk images, "Disk Image Mounter (Darling)"
 $ xdg-mime default org.darlinghq.Darling.DiskImageMounter.desktop application/x-apple-diskimage
 ```
 
+#### Running macOS binaries directly (optional)
+
+Darling ships a host-facing [binfmt_misc](https://www.kernel.org/doc/html/latest/admin-guide/binfmt-misc.html)
+configuration in `share/darling/binfmt/darling.conf`. It is not enabled by default: the
+`lib/binfmt.d/darling.conf` is for binaries already inside a container and must not be used on the
+host. With systemd-binfmt, opt in with:
+
+```sh
+$ sudo install -Dm644 /usr/local/share/darling/binfmt/darling.conf /etc/binfmt.d/darling-host.conf
+$ sudo systemctl restart systemd-binfmt
+```
+
+Replace `/usr/local` with your installation prefix. Do not register this file together with the
+in-container `lib/binfmt.d/darling.conf`: both match the same magics, and only one interpreter can win.
+If your distribution installed that file under `/usr/lib/binfmt.d`, remove it first. The host handler
+also serves guest `execve()` calls, so containers keep working. A 64-bit, 32-bit or fat Mach-O
+executable can now be run directly; if no container is running, the handler starts one. Remove the
+file from `/etc/binfmt.d` and restart systemd-binfmt to undo this. On a host without systemd, the same
+lines can be written to `/proc/sys/fs/binfmt_misc/register` as root.
+
+#### Desktop entries for installed apps
+
+`darling-desktop` generates a desktop entry for each `.app` bundle found in a prefix:
+
+```sh
+$ darling-desktop
+```
+
+Entries go to `$XDG_DATA_HOME/applications`, or `~/.local/share/applications` when that variable is
+unset. The MIME types are read from the guest's own UTI declarations (CoreTypes.bundle) and each
+app's `CFBundleDocumentTypes`, so an app that declares `public.text` is offered for `text/plain`
+files without a hard-coded list. Re-run the command after installing or removing apps. Use
+`--prefix`, `--app-dir`, `--core-types` or `--output-dir` to override the defaults.
+
+Darling also installs generic desktop entries and shared MIME information for Mach-O executables and
+`.app` bundles, so file managers can offer Darling for them until an app-specific entry is preferred.
+The generated app entries call `darling open -a`, which also works by hand:
+
+```sh
+$ darling open -a TextEdit ~/Documents/notes.txt
+```
+
 #### Working with XIP archives
 
 Xcode is now distributed in `.xip` files. These can be installed using `unxip`:

@@ -20,7 +20,7 @@ if (DARLING_ANDROID_HOST)
 	add_definitions(-DDARLING_ANDROID_HOST=1 -DDARLING_ANDROID_TMPDIR="${DARLING_ANDROID_TMPDIR}")
 endif()
 
-add_executable(darling darling.c launcher-env.c launcher-hostlink.c launcher-ids.c launcher-locale.c launcher-mode.c launcher-prefix.c launcher-pulse.c launcher-server.c launcher-tmp.c launcher-path.c)
+add_executable(darling darling.c launcher-env.c launcher-hostlink.c launcher-ids.c launcher-locale.c launcher-mode.c launcher-openargs.c launcher-prefix.c launcher-pulse.c launcher-server.c launcher-tmp.c launcher-path.c)
 
 # Bionic has forkpty() and openpty() in libc and no libutil
 if (NOT DARLING_ANDROID_HOST)
@@ -35,6 +35,22 @@ install(TARGETS darling DESTINATION bin
     GROUP_READ GROUP_EXECUTE
     WORLD_READ WORLD_EXECUTE
     SETUID)
+
+# Optional binfmt_misc handler for Mach-O files on the host. It is installed outside lib/binfmt.d so
+# that distributions which scan that directory do not enable it without the administrator's consent.
+add_executable(darling-binfmt binfmt/darling-binfmt.c)
+install(TARGETS darling-binfmt DESTINATION libexec/darling/bin)
+configure_file(binfmt/darling-host.conf.in ${CMAKE_CURRENT_BINARY_DIR}/darling.conf @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/darling.conf DESTINATION share/darling/binfmt)
+
+# The same helper compiled against stand-in launcher and mldr paths, to check the argv it builds in
+# both the host and guest cases without needing an installed Darling.
+add_executable(darling-binfmt-test binfmt/darling-binfmt.c)
+add_executable(darling-binfmt-stub ${CMAKE_SOURCE_DIR}/tests/binfmt-stub.c)
+set(Darling_binfmt_test_dir ${CMAKE_CURRENT_BINARY_DIR}/binfmt-test)
+target_compile_definitions(darling-binfmt-test PRIVATE
+	HOST_LAUNCHER=\"${Darling_binfmt_test_dir}/launcher\"
+	GUEST_MLDR=\"${Darling_binfmt_test_dir}/mldr\")
 
 # host build of darpath; the Darling build is in src/tools
 add_executable(darpath_host ${CMAKE_SOURCE_DIR}/src/tools/darpath.c)
@@ -115,6 +131,11 @@ target_include_directories(launcher_path_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR
 add_test(NAME launcher_path COMMAND launcher_path_test)
 set_tests_properties(launcher_path PROPERTIES ENVIRONMENT TMPDIR=${CMAKE_CURRENT_BINARY_DIR})
 
+# which arguments of "darling open" name host files and which belong to open(1)
+add_executable(launcher_openargs_test ${CMAKE_SOURCE_DIR}/tests/launcher/openargs.c launcher-openargs.c)
+target_include_directories(launcher_openargs_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME launcher_openargs COMMAND launcher_openargs_test)
+
 # the temporary directory choice and the link in the prefix
 add_executable(launcher_tmp_test ${CMAKE_SOURCE_DIR}/tests/launcher/tmp.c launcher-tmp.c)
 target_include_directories(launcher_tmp_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -153,6 +174,16 @@ add_test(NAME launcher_profile_prefix COMMAND launcher_profile_prefix_test)
 # Refusing a second init must precede all prefix mutation when a server is live.
 find_package(Python3 QUIET COMPONENTS Interpreter)
 if (Python3_Interpreter_FOUND)
+	add_test(NAME binfmt_host_config
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/binfmt-config.py
+			${CMAKE_CURRENT_BINARY_DIR}/darling.conf ${CMAKE_INSTALL_PREFIX}/libexec/darling/bin/darling-binfmt)
+	add_test(NAME darling_binfmt_helper
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/binfmt-helper.py
+			$<TARGET_FILE:darling-binfmt-test> $<TARGET_FILE:darling-binfmt-stub>
+			${Darling_binfmt_test_dir}/launcher ${Darling_binfmt_test_dir}/mldr)
+	add_test(NAME darling_binfmt_launcher_env
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/binfmt-launcher.py
+			${CMAKE_SOURCE_DIR}/src/startup/darling.c --run)
 	add_test(NAME launcher_missing_init
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/launcher/test-missing-init.py
 			${CMAKE_SOURCE_DIR}/src/startup/darling.c --run)
