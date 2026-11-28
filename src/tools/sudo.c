@@ -67,24 +67,15 @@ static int apply_environment(char **assignments)
 	return 0;
 }
 
-int main(int argc, char **argv)
+static int run_sudo(int argc, char **argv, char *path_orig, char **assignments)
 {
-	const char *inherited_path = getenv("PATH");
-	char *path_orig = strdup(inherited_path ? inherited_path : _PATH_DEFPATH);
 	char *path = path_orig, *fullpath = NULL;
-	char **assignments = calloc(argc, sizeof(*assignments));
-	int status = EXIT_FAILURE;
 	int i, len;
 
-	if (!path_orig || !assignments)
-	{
-		perror("Preparing sudo environment failed");
-		goto out;
-	}
 	if (argparse(argc, argv, assignments))
-		goto out;
+		return EXIT_FAILURE;
 	if (!list_mode && apply_environment(assignments))
-		goto out;
+		return EXIT_FAILURE;
 
 	setuid(uid);
 	setgid(gid);
@@ -92,7 +83,7 @@ int main(int argc, char **argv)
 	if (firstarg == argc && list_mode)
 	{
 		printf("List mode without command not supported yet.\n");
-		status = EXIT_SUCCESS;
+		return EXIT_SUCCESS;
 	}
 	else if (list_mode)
 	{
@@ -117,7 +108,7 @@ int main(int argc, char **argv)
 		if (!fullpath)
 		{
 			fprintf(stderr, "%s: %s: command not found\n", argv[0], argv[firstarg]);
-			goto out;
+			return EXIT_FAILURE;
 		}
 		printf("%s", fullpath);
 		for (i = firstarg+1; i < argc; i++)
@@ -125,7 +116,8 @@ int main(int argc, char **argv)
 			printf(" %s", argv[i]);
 		}
 		putchar('\n');
-		status = EXIT_SUCCESS;
+		free(fullpath);
+		return EXIT_SUCCESS;
 	}
 	else
 	{
@@ -136,12 +128,25 @@ int main(int argc, char **argv)
 			perror("Running sudo failed");
 		}
 		else
-			status = EXIT_SUCCESS;
+			return EXIT_SUCCESS;
 	}
-out:
+	return EXIT_FAILURE;
+}
+
+int main(int argc, char **argv)
+{
+	const char *inherited_path = getenv("PATH");
+	char *path = strdup(inherited_path ? inherited_path : _PATH_DEFPATH);
+	char **assignments = calloc(argc, sizeof(*assignments));
+	int status = EXIT_FAILURE;
+
+	if (!path || !assignments)
+		perror("Preparing sudo environment failed");
+	else
+		status = run_sudo(argc, argv, path, assignments);
+
 	free(assignments);
-	free(path_orig);
-	free(fullpath);
+	free(path);
 	return status;
 }
 
