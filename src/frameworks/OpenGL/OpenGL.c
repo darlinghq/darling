@@ -684,6 +684,22 @@ struct _CGLContextObject {
     CGSConnectionID set_surface_connection;
     CGSWindowID set_surface_window;
     CGSSurfaceID set_surface_id;
+    // The pixel buffer or the off-screen buffer the context draws into, if its
+    // drawable is one of those (the context's egl_surface is then the buffer's
+    // surface). The context holds a reference on the pixel buffer and owns the
+    // off-screen buffer's surface. Guarded by lock.
+    CGLPBufferObj pbuffer;
+    EGLSurface pbuffer_surface;
+    GLenum pbuffer_face;
+    GLint pbuffer_level;
+    GLint pbuffer_screen;
+    EGLSurface offscreen_surface;
+    GLsizei offscreen_width;
+    GLsizei offscreen_height;
+    GLint offscreen_rowbytes;
+    void *offscreen_base;
+    // A copy of the rendering in the layout of the client's memory, made at each readback.
+    unsigned char *offscreen_scratch;
     // EGL has no function for getting the current swap interval,
     // so we need to save the last set value. The default is 0.
     // This is the application's value; a paced context never gives it to EGL.
@@ -908,6 +924,35 @@ static struct _CGLDisplay* getCGLDisplay(CGSConnectionID cid)
     return rv;
 }
 
+// The pixel buffer, the off-screen buffer and the window surface of a context (see "Pixel buffers and off-screen
+// buffers" below) are taken out of the context, with its lock held, when another drawable replaces them, and released
+// once the context no longer draws to them.
+struct alternate_drawables {
+    CGLPBufferObj pbuffer;
+    EGLSurface offscreen_surface;
+    unsigned char *scratch;
+    // The surface made for the window of CGLSetSurface (the context owns it: it is destroyed with the drawable).
+    EGLSurface window_surface;
+};
+static void takeAlternateDrawables(CGLContextObj ctx, struct alternate_drawables *taken);
+static void releaseAlternateDrawables(CGLContextObj ctx, struct alternate_drawables *taken);
+static void destroyFullScreen(CGLContextObj ctx, CGSConnectionID connection, CGSWindowID window, EGLSurface surface);
+
+// The fullscreen window of a context, which a window surface given to the context replaces.
+struct fullscreen_drawable {
+    CGSConnectionID connection;
+    CGSWindowID window;
+    EGLSurface surface;
+};
+static void takeFullScreen(CGLContextObj ctx, struct fullscreen_drawable *taken) {
+    taken->connection = ctx->fullscreen_connection;
+    taken->window = ctx->fullscreen_window;
+    taken->surface = ctx->fullscreen_surface;
+    ctx->fullscreen_connection = 0;
+    ctx->fullscreen_window = 0;
+    ctx->fullscreen_surface = EGL_NO_SURFACE;
+}
+
 CGLError CGLSetSurface(CGLContextObj gl, CGSConnectionID cid, CGSWindowID wid, CGSSurfaceID sid)
 {
     if (!gl)
@@ -926,13 +971,19 @@ CGLError CGLSetSurface(CGLContextObj gl, CGSConnectionID cid, CGSWindowID wid, C
         return kCGLBadWindow;
 
     EGLSurface surf = p_eglCreateWindowSurface(gl->egl_display, gl->egl_config, window, NULL);
+    struct alternate_drawables replaced;
+    struct fullscreen_drawable fullscreen;
     pthread_mutex_lock(&gl->lock);
+    takeAlternateDrawables(gl, &replaced);
+    takeFullScreen(gl, &fullscreen);
     atomic_store_explicit(&gl->egl_surface, surf, memory_order_release);
     gl->set_surface = surf;
     gl->set_surface_connection = cid;
     gl->set_surface_window = wid;
     gl->set_surface_id = sid;
     pthread_mutex_unlock(&gl->lock);
+    releaseAlternateDrawables(gl, &replaced);
+    destroyFullScreen(gl, fullscreen.connection, fullscreen.window, fullscreen.surface);
     if (surf == EGL_NO_SURFACE)
         return kCGLBadState;
     return kCGLNoError;
@@ -1170,6 +1221,14 @@ CGL_EXPORT CGLError CGLContextMakeCurrentAndAttachToWindow(CGLContextObj context
         atomic_store_explicit(&context->egl_surface, previous_surface, memory_order_release);
         return error;
     }
+    struct alternate_drawables replaced;
+    struct fullscreen_drawable fullscreen;
+    pthread_mutex_lock(&context->lock);
+    takeAlternateDrawables(context, &replaced);
+    takeFullScreen(context, &fullscreen);
+    pthread_mutex_unlock(&context->lock);
+    releaseAlternateDrawables(context, &replaced);
+    destroyFullScreen(context, fullscreen.connection, fullscreen.window, fullscreen.surface);
     if (old_fallback != EGL_NO_SURFACE) {
         p_eglDestroySurface(context->egl_display, old_fallback);
         context->fallback_pbuffer = EGL_NO_SURFACE;
@@ -1876,6 +1935,8 @@ static CGLError setFullScreen(CGLContextObj ctx, int use_format_mask, GLuint mas
     CGSWindowID old_window = ctx->fullscreen_window;
     EGLSurface old_surface = ctx->fullscreen_surface;
     EGLSurface old_fallback = ctx->fallback_pbuffer;
+    struct alternate_drawables replaced;
+    takeAlternateDrawables(ctx, &replaced);
     ctx->fullscreen_connection = cid;
     ctx->fullscreen_window = window;
     ctx->fullscreen_surface = surface;
@@ -1890,6 +1951,7 @@ static CGLError setFullScreen(CGLContextObj ctx, int use_format_mask, GLuint mas
     if (old_fallback != EGL_NO_SURFACE)
         p_eglDestroySurface(ctx->egl_display, old_fallback);
     destroyFullScreen(ctx, old_connection, old_window, old_surface);
+    releaseAlternateDrawables(ctx, &replaced);
     return kCGLNoError;
 }
 
@@ -2008,6 +2070,9 @@ CGLError CGLClearDrawable(CGLContextObj ctx)
     pthread_mutex_lock(&ctx->lock);
     EGLSurface old_fallback = ctx->fallback_pbuffer;
     ctx->fallback_pbuffer = EGL_NO_SURFACE;
+    struct alternate_drawables replaced;
+    takeAlternateDrawables(ctx, &replaced);
+    int had_alternate = replaced.pbuffer != NULL || replaced.offscreen_surface != EGL_NO_SURFACE;
     CGSConnectionID fullscreen_connection = ctx->fullscreen_connection;
     CGSWindowID fullscreen_window = ctx->fullscreen_window;
     EGLSurface fullscreen_surface = ctx->fullscreen_surface;
@@ -2035,10 +2100,11 @@ CGLError CGLClearDrawable(CGLContextObj ctx)
         }
         // Leaving fullscreen: the surface is unbound now, so it can go together with its window.
         destroyFullScreen(ctx, fullscreen_connection, fullscreen_window, fullscreen_surface);
-        // A current context that was drawing fullscreen stays usable: it gets
-        // the small pbuffer a context without a drawable draws into, so that
-        // its drawing calls do not fail with an incomplete framebuffer.
-        if (is_current && fullscreen_surface != EGL_NO_SURFACE) {
+        releaseAlternateDrawables(ctx, &replaced);
+        // A current context that was drawing fullscreen, or into a pixel buffer or an off-screen buffer, stays
+        // usable: it gets the small pbuffer a context without a drawable draws into, so that its drawing calls do
+        // not fail with an incomplete framebuffer.
+        if (is_current && (fullscreen_surface != EGL_NO_SURFACE || had_alternate)) {
             const EGLint pbufferAttribs[] = { EGL_WIDTH, 1, EGL_HEIGHT, 1, EGL_NONE };
             EGLSurface pbuf = p_eglCreatePbufferSurface(ctx->egl_display, ctx->egl_config, pbufferAttribs);
             if (pbuf != EGL_NO_SURFACE
@@ -2220,6 +2286,16 @@ static CGLError createContext(CGLPixelFormatObj pixelFormat, CGLContextObj share
     context->fullscreen_window = 0;
     context->fullscreen_surface = EGL_NO_SURFACE;
     context->set_surface = EGL_NO_SURFACE;
+    context->pbuffer = NULL;
+    context->pbuffer_surface = EGL_NO_SURFACE;
+    context->pbuffer_face = 0;
+    context->pbuffer_level = 0;
+    context->pbuffer_screen = 0;
+    context->offscreen_surface = EGL_NO_SURFACE;
+    context->offscreen_width = context->offscreen_height = 0;
+    context->offscreen_rowbytes = 0;
+    context->offscreen_base = NULL;
+    context->offscreen_scratch = NULL;
     context->swap_interval = interval;
     context->surface_opacity = 1;
     context->paced = paced;
@@ -2315,6 +2391,9 @@ void CGLReleaseContext(CGLContextObj context) {
     }
     destroyFullScreen(context, context->fullscreen_connection, context->fullscreen_window,
                       context->fullscreen_surface);
+    struct alternate_drawables alternates;
+    takeAlternateDrawables(context, &alternates);
+    releaseAlternateDrawables(context, &alternates);
 
     pthread_mutex_destroy(&(context->lock));
 
@@ -2415,6 +2494,10 @@ CGLError CGLUnlockContext(CGLContextObj context) {
     return kCGLNoError;
 }
 
+static int isBufferSurface(CGLContextObj context, EGLSurface surface);
+static void readBackOffScreen(CGLContextObj context);
+static void readBackCurrentOffScreen(void);
+
 static CGLError flushDrawable(CGLContextObj context) {
     EGLSurface surf = atomic_load_explicit(&context->egl_surface, memory_order_acquire);
     if (surf == EGL_NO_SURFACE) {
@@ -2435,6 +2518,10 @@ static CGLError flushDrawable(CGLContextObj context) {
     if (surf_after == EGL_NO_SURFACE || surf_after != surf) {
         return kCGLNoError;
     }
+    // A pixel buffer or an off-screen buffer is not shown anywhere: flushing it only finishes the rendering (which
+    // also copies the off-screen buffer's contents to the client's memory, see override_glFinish).
+    if (isBufferSurface(context, surf))
+        return kCGLNoError;
     if (context->paced)
         cgl_swap_pace(&context->pacer, context->swap_interval);
     EGLBoolean ok = p_eglSwapBuffers(context->egl_display, surf);
@@ -4701,11 +4788,13 @@ static void releaseTextureBindings(CGLContextObj context, GLuint texture) {
 void override_glFlush(void) {
     writeBackCurrentContext();
     host_glFlush();
+    readBackCurrentOffScreen();
 }
 
 void override_glFinish(void) {
     writeBackCurrentContext();
     host_glFinish();
+    readBackCurrentOffScreen();
 }
 
 // The copies are made before the fence, so waiting for it covers them.
@@ -5101,7 +5190,7 @@ CGLError CGLDescribeRenderer(CGLRendererInfoObj rend, GLint rend_num, CGLRendere
     case kCGLRPAccelerated: *value = renderer->accelerated; break;
     case kCGLRPDisplayMask: *value = (GLint) rend->display_mask; break;
     case kCGLRPWindow: *value = 1; break;
-    case kCGLRPOffScreen: *value = 0; break;
+    case kCGLRPOffScreen: *value = 1; break;
     case kCGLRPFullScreen: *value = renderer->accelerated; break;
     case kCGLRPRobust: *value = 0; break;
     case kCGLRPMPSafe: *value = 1; break;
@@ -5154,4 +5243,460 @@ void CGLGetVersion(GLint *majorvers, GLint *minorvers) {
         *majorvers = 1;
     if (minorvers)
         *minorvers = 0;
+}
+
+// Pixel buffers and off-screen buffers
+//
+// A pixel buffer (CGLPBufferObj) is a drawable that is not shown: a context renders into it after CGLSetPBuffer, and
+// CGLTexImagePBuffer makes its contents the image of the texture bound in a context. Each face (of a cube map) and
+// mipmap level of the buffer is an EGL pbuffer surface of its own, made on the display of the first context that
+// draws to it. An off-screen buffer is the drawable of a context whose rendering is copied to memory of the
+// client's (CGLSetOffScreen), by every glFlush, glFinish and CGLFlushDrawable.
+
+#define CGL_MAX_BUFFER_SIZE 16384
+#define CGL_TEXTURE_RECTANGLE 0x84F5
+
+struct _CGLPBufferObj {
+    GLuint retain_count;
+    GLsizei width;
+    GLsizei height;
+    GLenum target;
+    GLenum internal_format;
+    GLint max_level;
+    int faces;
+    pthread_mutex_t lock;
+    // The display of the surfaces; EGL_NO_DISPLAY until a context draws to the buffer.
+    EGLDisplay display;
+    // faces * (max_level + 1) surfaces, EGL_NO_SURFACE until needed.
+    EGLSurface *surfaces;
+    // The face and mipmap level the last CGLSetPBuffer chose, which CGLTexImagePBuffer takes the image of.
+    GLenum face;
+    GLint level;
+};
+
+static GLsizei levelSize(GLsizei size, GLint level) {
+    GLsizei reduced = size >> level;
+    return reduced > 0 ? reduced : 1;
+}
+
+CGLError CGLCreatePBuffer(GLsizei width, GLsizei height, GLenum target, GLenum internalFormat, GLint maxDetail,
+                          CGLPBufferObj *pbuffer) {
+    if (pbuffer == NULL)
+        return kCGLBadAddress;
+    *pbuffer = NULL;
+    if (target != GL_TEXTURE_2D && target != CGL_TEXTURE_RECTANGLE && target != GL_TEXTURE_CUBE_MAP)
+        return kCGLBadEnumeration;
+    if (internalFormat != GL_RGB && internalFormat != GL_RGBA)
+        return kCGLBadEnumeration;
+    if (width <= 0 || height <= 0 || width > CGL_MAX_BUFFER_SIZE || height > CGL_MAX_BUFFER_SIZE)
+        return kCGLBadValue;
+    if (target == GL_TEXTURE_CUBE_MAP && width != height)
+        return kCGLBadValue;
+    // A mipmapped buffer has the levels down to 1x1 at most.
+    GLint deepest = 0;
+    for (GLsizei larger = width > height ? width : height; larger > 1; larger >>= 1)
+        deepest++;
+    if (maxDetail < 0 || maxDetail > deepest || (target == CGL_TEXTURE_RECTANGLE && maxDetail != 0))
+        return kCGLBadValue;
+
+    CGLPBufferObj buffer = calloc(1, sizeof(*buffer));
+    if (buffer == NULL)
+        return kCGLBadAlloc;
+    buffer->faces = target == GL_TEXTURE_CUBE_MAP ? 6 : 1;
+    buffer->surfaces = malloc(sizeof(EGLSurface) * (size_t) buffer->faces * (size_t) (maxDetail + 1));
+    if (buffer->surfaces == NULL) {
+        free(buffer);
+        return kCGLBadAlloc;
+    }
+    for (int i = 0; i < buffer->faces * (maxDetail + 1); i++)
+        buffer->surfaces[i] = EGL_NO_SURFACE;
+    buffer->retain_count = 1;
+    buffer->width = width;
+    buffer->height = height;
+    buffer->target = target;
+    buffer->internal_format = internalFormat;
+    buffer->max_level = maxDetail;
+    buffer->display = EGL_NO_DISPLAY;
+    buffer->face = target == GL_TEXTURE_CUBE_MAP ? GL_TEXTURE_CUBE_MAP_POSITIVE_X : 0;
+    pthread_mutex_init(&buffer->lock, NULL);
+    *pbuffer = buffer;
+    return kCGLNoError;
+}
+
+CGLError CGLDescribePBuffer(CGLPBufferObj pbuffer, GLsizei *width, GLsizei *height, GLenum *target,
+                            GLenum *internalFormat, GLint *mipmap) {
+    if (pbuffer == NULL)
+        return kCGLBadAddress;
+    if (width)
+        *width = pbuffer->width;
+    if (height)
+        *height = pbuffer->height;
+    if (target)
+        *target = pbuffer->target;
+    if (internalFormat)
+        *internalFormat = pbuffer->internal_format;
+    if (mipmap)
+        *mipmap = pbuffer->max_level;
+    return kCGLNoError;
+}
+
+CGLPBufferObj CGLRetainPBuffer(CGLPBufferObj pbuffer) {
+    if (pbuffer == NULL)
+        return NULL;
+    __sync_fetch_and_add(&pbuffer->retain_count, 1);
+    return pbuffer;
+}
+
+void CGLReleasePBuffer(CGLPBufferObj pbuffer) {
+    if (pbuffer == NULL || __sync_sub_and_fetch(&pbuffer->retain_count, 1) != 0)
+        return;
+    // Contexts drawing to the buffer hold a reference, so no surface is current by now.
+    for (int i = 0; i < pbuffer->faces * (pbuffer->max_level + 1); i++)
+        if (pbuffer->surfaces[i] != EGL_NO_SURFACE)
+            p_eglDestroySurface(pbuffer->display, pbuffer->surfaces[i]);
+    pthread_mutex_destroy(&pbuffer->lock);
+    free(pbuffer->surfaces);
+    free(pbuffer);
+}
+
+GLuint CGLGetPBufferRetainCount(CGLPBufferObj pbuffer) {
+    return pbuffer != NULL ? pbuffer->retain_count : 0;
+}
+
+CGLError CGLDestroyPBuffer(CGLPBufferObj pbuffer) {
+    if (pbuffer == NULL)
+        return kCGLBadAddress;
+    CGLReleasePBuffer(pbuffer);
+    return kCGLNoError;
+}
+
+// The EGL config of a buffer surface for the context: its own when that makes pbuffers, else one of the display's with
+// the same channel, depth and stencil sizes. The alpha channel is the pixel format's: a context of a format without
+// one (on Wayland, a window format that asks for none gets a config without alpha) cannot draw into a buffer that
+// has one, as EGL does not take surfaces and contexts of configs that differ in their color buffers together.
+static EGLConfig bufferConfigFor(CGLContextObj context, int want_alpha) {
+    EGLDisplay display = context->egl_display;
+    EGLint surface_types = 0, alpha = 0, depth = 0, stencil = 0;
+    p_eglGetConfigAttrib(display, context->egl_config, EGL_SURFACE_TYPE, &surface_types);
+    p_eglGetConfigAttrib(display, context->egl_config, EGL_ALPHA_SIZE, &alpha);
+    p_eglGetConfigAttrib(display, context->egl_config, EGL_DEPTH_SIZE, &depth);
+    p_eglGetConfigAttrib(display, context->egl_config, EGL_STENCIL_SIZE, &stencil);
+    if (surface_types & EGL_PBUFFER_BIT)
+        return context->egl_config;
+    want_alpha = want_alpha && alpha > 0;
+    for (int sizes = 1; sizes >= 0; sizes--) {
+        EGLint attributes[] = {
+            EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8,
+            EGL_ALPHA_SIZE, want_alpha ? 8 : 0,
+            EGL_DEPTH_SIZE, sizes ? depth : 0, EGL_STENCIL_SIZE, sizes ? stencil : 0,
+            EGL_SURFACE_TYPE, EGL_PBUFFER_BIT, EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT, EGL_NONE
+        };
+        EGLConfig found = NULL;
+        EGLint count = 0;
+        if (p_eglChooseConfig(display, attributes, &found, 1, &count) && count > 0)
+            return found;
+    }
+    return NULL;
+}
+
+static EGLSurface makeBufferSurface(CGLContextObj context, GLsizei width, GLsizei height, int want_alpha) {
+    EGLConfig buffer_config = bufferConfigFor(context, want_alpha);
+    if (buffer_config == NULL)
+        return EGL_NO_SURFACE;
+    const EGLint attributes[] = { EGL_WIDTH, width, EGL_HEIGHT, height, EGL_NONE };
+    return p_eglCreatePbufferSurface(context->egl_display, buffer_config, attributes);
+}
+
+// The surface of a face and level of the buffer on the display of the context.
+static EGLSurface pbufferSurface(CGLPBufferObj pbuffer, CGLContextObj context, int face_index, GLint level,
+                                 int create, CGLError *error) {
+    pthread_mutex_lock(&pbuffer->lock);
+    EGLSurface surface = EGL_NO_SURFACE;
+    *error = kCGLNoError;
+    if (pbuffer->display != EGL_NO_DISPLAY && pbuffer->display != context->egl_display) {
+        *error = kCGLBadMatch;
+    } else {
+        EGLSurface *slot = &pbuffer->surfaces[face_index * (pbuffer->max_level + 1) + level];
+        if (*slot == EGL_NO_SURFACE && create) {
+            *slot = makeBufferSurface(context, levelSize(pbuffer->width, level), levelSize(pbuffer->height, level),
+                                      pbuffer->internal_format == GL_RGBA);
+            if (*slot != EGL_NO_SURFACE)
+                pbuffer->display = context->egl_display;
+            else
+                *error = kCGLBadAlloc;
+        }
+        surface = *slot;
+    }
+    pthread_mutex_unlock(&pbuffer->lock);
+    return surface;
+}
+
+static void takeAlternateDrawables(CGLContextObj ctx, struct alternate_drawables *taken) {
+    taken->pbuffer = ctx->pbuffer;
+    taken->offscreen_surface = ctx->offscreen_surface;
+    taken->scratch = ctx->offscreen_scratch;
+    taken->window_surface = ctx->set_surface;
+    ctx->set_surface = EGL_NO_SURFACE;
+    ctx->pbuffer = NULL;
+    ctx->pbuffer_surface = EGL_NO_SURFACE;
+    ctx->pbuffer_face = 0;
+    ctx->pbuffer_level = 0;
+    ctx->pbuffer_screen = 0;
+    ctx->offscreen_surface = EGL_NO_SURFACE;
+    ctx->offscreen_width = ctx->offscreen_height = 0;
+    ctx->offscreen_rowbytes = 0;
+    ctx->offscreen_base = NULL;
+    ctx->offscreen_scratch = NULL;
+}
+
+static void releaseAlternateDrawables(CGLContextObj ctx, struct alternate_drawables *taken) {
+    if (taken->offscreen_surface != EGL_NO_SURFACE)
+        p_eglDestroySurface(ctx->egl_display, taken->offscreen_surface);
+    free(taken->scratch);
+    if (taken->window_surface != EGL_NO_SURFACE)
+        p_eglDestroySurface(ctx->egl_display, taken->window_surface);
+    if (taken->pbuffer != NULL)
+        CGLReleasePBuffer(taken->pbuffer);
+    taken->window_surface = EGL_NO_SURFACE;
+    taken->pbuffer = NULL;
+    taken->offscreen_surface = EGL_NO_SURFACE;
+    taken->scratch = NULL;
+}
+
+static int isBufferSurface(CGLContextObj context, EGLSurface surface) {
+    pthread_mutex_lock(&context->lock);
+    int buffer = surface != EGL_NO_SURFACE && (surface == context->pbuffer_surface || surface == context->offscreen_surface);
+    pthread_mutex_unlock(&context->lock);
+    return buffer;
+}
+
+// What a buffer drawable sets in the context: either the pixel buffer (pbuffer, with its face, level and
+// surface) or the off-screen buffer (offscreen_surface and the client's memory).
+struct buffer_drawable {
+    CGLPBufferObj pbuffer;
+    EGLSurface surface;
+    GLenum face;
+    GLint level;
+    GLint screen;
+    int offscreen;
+    GLsizei width;
+    GLsizei height;
+    GLint rowbytes;
+    void *base;
+};
+
+// Makes the buffer the drawable of the context, in place of what it drew to before (a window surface, a fullscreen
+// window, another buffer). A context that is current draws into it from now on.
+static void installBufferDrawable(CGLContextObj ctx, const struct buffer_drawable *buffer) {
+    struct alternate_drawables replaced;
+    pthread_mutex_lock(&ctx->lock);
+    takeAlternateDrawables(ctx, &replaced);
+    EGLSurface old_fallback = ctx->fallback_pbuffer;
+    CGSConnectionID old_connection = ctx->fullscreen_connection;
+    CGSWindowID old_window = ctx->fullscreen_window;
+    EGLSurface old_fullscreen = ctx->fullscreen_surface;
+    ctx->fallback_pbuffer = EGL_NO_SURFACE;
+    ctx->fullscreen_connection = 0;
+    ctx->fullscreen_window = 0;
+    ctx->fullscreen_surface = EGL_NO_SURFACE;
+    if (buffer->offscreen) {
+        ctx->offscreen_surface = buffer->surface;
+        ctx->offscreen_width = buffer->width;
+        ctx->offscreen_height = buffer->height;
+        ctx->offscreen_rowbytes = buffer->rowbytes;
+        ctx->offscreen_base = buffer->base;
+    } else {
+        ctx->pbuffer = buffer->pbuffer;
+        ctx->pbuffer_surface = buffer->surface;
+        ctx->pbuffer_face = buffer->face;
+        ctx->pbuffer_level = buffer->level;
+        ctx->pbuffer_screen = buffer->screen;
+    }
+    atomic_store_explicit(&ctx->egl_surface, buffer->surface, memory_order_release);
+    int is_current = (CGLGetCurrentContext() == ctx);
+    pthread_mutex_unlock(&ctx->lock);
+    if (is_current)
+        setCurrentContext(ctx);
+    if (old_fallback != EGL_NO_SURFACE)
+        p_eglDestroySurface(ctx->egl_display, old_fallback);
+    destroyFullScreen(ctx, old_connection, old_window, old_fullscreen);
+    releaseAlternateDrawables(ctx, &replaced);
+}
+
+CGLError CGLSetPBuffer(CGLContextObj context, CGLPBufferObj pbuffer, GLenum face, GLint level, GLint screen) {
+    if (context == NULL)
+        return kCGLBadContext;
+    if (pbuffer == NULL)
+        return kCGLBadAddress;
+    if (screen != 0)
+        return kCGLBadValue;
+    int face_index = 0;
+    if (pbuffer->target == GL_TEXTURE_CUBE_MAP) {
+        if (face < GL_TEXTURE_CUBE_MAP_POSITIVE_X || face > GL_TEXTURE_CUBE_MAP_NEGATIVE_Z)
+            return kCGLBadEnumeration;
+        face_index = (int) (face - GL_TEXTURE_CUBE_MAP_POSITIVE_X);
+    }
+    if (level < 0 || level > pbuffer->max_level)
+        return kCGLBadValue;
+    CGLError error;
+    EGLSurface surface = pbufferSurface(pbuffer, context, face_index, level, 1, &error);
+    if (surface == EGL_NO_SURFACE)
+        return error;
+    pthread_mutex_lock(&pbuffer->lock);
+    pbuffer->face = face;
+    pbuffer->level = level;
+    pthread_mutex_unlock(&pbuffer->lock);
+    struct buffer_drawable buffer = { .pbuffer = CGLRetainPBuffer(pbuffer), .surface = surface, .face = face,
+                                      .level = level, .screen = screen };
+    installBufferDrawable(context, &buffer);
+    return kCGLNoError;
+}
+
+CGLError CGLGetPBuffer(CGLContextObj context, CGLPBufferObj *pbuffer, GLenum *face, GLint *level, GLint *screen) {
+    if (context == NULL)
+        return kCGLBadContext;
+    pthread_mutex_lock(&context->lock);
+    if (pbuffer)
+        *pbuffer = context->pbuffer;
+    if (face)
+        *face = context->pbuffer_face;
+    if (level)
+        *level = context->pbuffer_level;
+    if (screen)
+        *screen = context->pbuffer_screen;
+    pthread_mutex_unlock(&context->lock);
+    return kCGLNoError;
+}
+
+// Makes the contents of the pixel buffer, the face and level that CGLSetPBuffer chose last, the image of the texture
+// bound to the buffer's target in the context: its drawable is read from the buffer for the copy.
+CGLError CGLTexImagePBuffer(CGLContextObj context, CGLPBufferObj pbuffer, GLenum sourceBuffer) {
+    if (context == NULL)
+        return kCGLBadContext;
+    if (pbuffer == NULL)
+        return kCGLBadAddress;
+    if (sourceBuffer != GL_FRONT && sourceBuffer != GL_BACK)
+        return kCGLBadEnumeration;
+    pthread_mutex_lock(&pbuffer->lock);
+    GLenum face = pbuffer->face;
+    GLint level = pbuffer->level;
+    pthread_mutex_unlock(&pbuffer->lock);
+    CGLError error;
+    int face_index = pbuffer->target == GL_TEXTURE_CUBE_MAP ? (int) (face - GL_TEXTURE_CUBE_MAP_POSITIVE_X) : 0;
+    EGLSurface source = pbufferSurface(pbuffer, context, face_index, level, 0, &error);
+    if (source == EGL_NO_SURFACE)
+        return error != kCGLNoError ? error : kCGLBadValue;
+
+    struct context_scope scope;
+    if (enterContext(context, &scope, 1) != kCGLNoError)
+        return kCGLBadContext;
+    EGLSurface drawable = atomic_load_explicit(&context->egl_surface, memory_order_acquire);
+    CGLError result = kCGLNoError;
+    if (!p_eglMakeCurrent(context->egl_display, drawable != EGL_NO_SURFACE ? drawable : source, source,
+                          context->egl_context)) {
+        result = kCGLBadMatch;
+    } else {
+        GLint read_framebuffer = 0;
+        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_framebuffer);
+        if (read_framebuffer != 0)
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        // A pixel buffer has one color buffer, which is the back buffer of an EGL surface: the front and the back
+        // buffer name that one.
+        glReadBuffer(GL_BACK);
+        glCopyTexImage2D(pbuffer->target == GL_TEXTURE_CUBE_MAP ? face : pbuffer->target, level,
+                         pbuffer->internal_format, 0, 0, levelSize(pbuffer->width, level),
+                         levelSize(pbuffer->height, level), 0);
+        if (read_framebuffer != 0)
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint) read_framebuffer);
+        p_eglMakeCurrent(context->egl_display, drawable, drawable, context->egl_context);
+    }
+    leaveContext(context, &scope);
+    return result;
+}
+
+CGLError CGLSetOffScreen(CGLContextObj ctx, GLsizei width, GLsizei height, GLint rowbytes, void *baseaddr) {
+    if (ctx == NULL)
+        return kCGLBadContext;
+    GLint wanted = 0;
+    if (ctx->pixel_format == NULL
+        || CGLDescribePixelFormat(ctx->pixel_format, 0, kCGLPFAOffScreen, &wanted) != kCGLNoError || !wanted)
+        return kCGLBadOffScreen;
+    if (baseaddr == NULL)
+        return kCGLBadAddress;
+    if (width <= 0 || height <= 0 || width > CGL_MAX_BUFFER_SIZE || height > CGL_MAX_BUFFER_SIZE
+        || rowbytes < width * 4)
+        return kCGLBadValue;
+    EGLSurface surface = makeBufferSurface(ctx, width, height, 1);
+    if (surface == EGL_NO_SURFACE)
+        return kCGLBadAlloc;
+    struct buffer_drawable buffer = { .surface = surface, .offscreen = 1, .width = width, .height = height,
+                                      .rowbytes = rowbytes, .base = baseaddr };
+    installBufferDrawable(ctx, &buffer);
+    return kCGLNoError;
+}
+
+CGLError CGLGetOffScreen(CGLContextObj ctx, GLsizei *width, GLsizei *height, GLint *rowbytes, void **baseaddr) {
+    if (ctx == NULL)
+        return kCGLBadContext;
+    pthread_mutex_lock(&ctx->lock);
+    if (width)
+        *width = ctx->offscreen_width;
+    if (height)
+        *height = ctx->offscreen_height;
+    if (rowbytes)
+        *rowbytes = ctx->offscreen_rowbytes;
+    if (baseaddr)
+        *baseaddr = ctx->offscreen_base;
+    pthread_mutex_unlock(&ctx->lock);
+    return kCGLNoError;
+}
+
+// Copies the rendering of the off-screen buffer of the current context into the client's memory: 32 bit pixels
+// with the alpha, red, green and blue bytes in that order in memory, the top row of the image first.
+//
+// This layout is an inference, not an observation (the off-screen drawable is refused by the macOS releases
+// available for comparison): it is that of the 32-bit QuickDraw pixel maps and of the CoreGraphics bitmaps (alpha
+// first, in the order of a big-endian word) which off-screen buffers were made to share memory with.
+static void readBackOffScreen(CGLContextObj context) {
+    pthread_mutex_lock(&context->lock);
+    EGLSurface surface = context->offscreen_surface;
+    GLsizei width = context->offscreen_width, height = context->offscreen_height;
+    GLint rowbytes = context->offscreen_rowbytes;
+    unsigned char *base = context->offscreen_base;
+    if (surface == EGL_NO_SURFACE || base == NULL || surface != atomic_load_explicit(&context->egl_surface, memory_order_acquire)) {
+        pthread_mutex_unlock(&context->lock);
+        return;
+    }
+    if (context->offscreen_scratch == NULL)
+        context->offscreen_scratch = malloc((size_t) width * (size_t) height * 4);
+    unsigned char *scratch = context->offscreen_scratch;
+    pthread_mutex_unlock(&context->lock);
+    if (scratch == NULL)
+        return;
+
+    struct pixel_store saved, plain = { 0, 0, 0, 0, 1 };
+    GLint read_framebuffer = 0, read_buffer = GL_BACK;
+    savePixelStore(1, &saved);
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_framebuffer);
+    glGetIntegerv(GL_READ_BUFFER, &read_buffer);
+    if (read_framebuffer != 0)
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    glReadBuffer(GL_BACK);
+    setPixelStore(1, &plain);
+    // BGRA components in a big-endian-ordered word: the bytes in memory are alpha, red, green, blue.
+    glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8, scratch);
+    setPixelStore(1, &saved);
+    glReadBuffer((GLenum) read_buffer);
+    if (read_framebuffer != 0)
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint) read_framebuffer);
+
+    for (GLsizei row = 0; row < height; row++)
+        memcpy(base + (size_t) row * (size_t) rowbytes, scratch + (size_t) (height - 1 - row) * (size_t) width * 4,
+               (size_t) width * 4);
+}
+
+static void readBackCurrentOffScreen(void) {
+    CGLContextObj context = CGLGetCurrentContext();
+    if (context != NULL && context->offscreen_base != NULL && GL_BOUND_HERE())
+        readBackOffScreen(context);
 }

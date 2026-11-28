@@ -21,8 +21,11 @@
 // keeps the AGL attribute list and a CGL pixel format; a context is a CGL context plus the drawable it was given.
 // A window drawable is attached through the window's window server surface, as the contexts of NSOpenGLView are.
 // Errors are kept per thread, as aglGetError reports the last error of the calling thread.
-// Context copying is CGLCopyContext. Not implemented: pixel buffers, off-screen and full-screen drawables, HIView
-// drawables and surface textures. They fail with an error code and leave the context unchanged.
+// The other drawables are CGL's: pixel buffers (CGLSetPBuffer), the off-screen memory buffer (CGLSetOffScreen) and
+// the full-screen display (CGLSetFullScreenOnDisplay, after AGL captured the display); AGL and CGL give the same
+// error codes. An HIView drawable is a surface of the view's window that covers the bounds of the view, and follows
+// the view when it moves, is resized or hidden. Context copying is CGLCopyContext.
+// Not implemented: surface textures (aglSurfaceTexture), which fails with an error code.
 
 #include <AGL/agl.h>
 #include <OpenGL/OpenGL.h>
@@ -45,6 +48,8 @@
 CGSWindowID _HIWindowGetCGSWindowID(WindowRef window);
 
 static __thread GLenum t_error = AGL_NO_ERROR;
+// The AGL context of the CGL context current on the thread
+static __thread AGLContext t_current;
 
 // EGL_PLATFORM_WAYLAND_KHR
 enum { kEGLPlatformWayland = 0x31D8 };
@@ -72,15 +77,6 @@ static void registerWindowSystem(void)
 
 static void failed(GLenum code) { t_error = code; }
 
-// AGL's error codes are CGL's
-static GLboolean cglSucceeded(CGLError error)
-{
-	if (error == kCGLNoError)
-		return GL_TRUE;
-	failed((GLenum) error);
-	return GL_FALSE;
-}
-
 #define kMaxFormatAttributes 64
 
 struct __AGLPixelFormatRec {
@@ -90,6 +86,11 @@ struct __AGLPixelFormatRec {
 	GLint name[kMaxFormatAttributes];
 	GLint value[kMaxFormatAttributes];
 };
+
+#define kMaxWatchedViews 16
+
+// the indexes of the options that aglEnable keeps in the context (see enableIndex)
+enum { kEnableBufferRect = 1, kEnableFSCaptureSingle = 6 };
 
 struct __AGLContextRec {
 	CGLContextObj cgl;
@@ -101,6 +102,22 @@ struct __AGLContextRec {
 	GLboolean enabled[16];
 	GLint bufferRect[4];
 	GLint swapRect[4];
+	GLint surfaceOrder;
+	// HIView drawable: the view, and the views (its own and its superviews) whose changes of bounds or visibility
+	// move the surface
+	HIViewRef view;
+	struct {
+		HIViewRef view;
+		EventHandlerRef handler;
+	} watched[kMaxWatchedViews];
+	int watchedCount;
+	CGRect surfaceRect;          // the bounds last given to the surface, in window coordinates
+	int surfaceShown;
+	// full-screen drawable: the display that was captured, whether all the displays were, and the display mode to
+	// return to
+	CGDirectDisplayID fullScreenDisplay;
+	int fullScreenCapturedAll;
+	CGDisplayModeRef fullScreenSavedMode;
 };
 
 struct __AGLRendererInfoRec {
@@ -109,6 +126,16 @@ struct __AGLRendererInfoRec {
 
 static void sizeSurface(AGLContext ctx);
 static void dropSurface(AGLContext ctx);
+static void releaseDrawables(AGLContext ctx);
+
+// AGL's error codes are CGL's
+static GLboolean cglSucceeded(CGLError error)
+{
+	if (error == kCGLNoError)
+		return GL_TRUE;
+	failed((GLenum) error);
+	return GL_FALSE;
+}
 
 // Attributes of the pixel format list: those that take a value
 static int formatAttributeTakesValue(GLint attribute)
@@ -376,7 +403,8 @@ AGL_EXPORT GLboolean aglDescribeRenderer(AGLRendererInfo rend, GLint prop, GLint
 	switch (prop) {
 		case AGL_RENDERER_ID: *value = 0; break;
 		case AGL_ACCELERATED: case AGL_WINDOW: case AGL_BACKING_STORE: case AGL_COMPLIANT: *value = 1; break;
-		case AGL_FULLSCREEN: case AGL_OFFSCREEN: case AGL_ROBUST: case AGL_MP_SAFE: *value = 0; break;
+		case AGL_FULLSCREEN: case AGL_OFFSCREEN: *value = 1; break;
+		case AGL_ROBUST: case AGL_MP_SAFE: *value = 0; break;
 		case AGL_BUFFER_MODES: *value = AGL_MONOSCOPIC_BIT | AGL_DOUBLEBUFFER_BIT | AGL_SINGLEBUFFER_BIT; break;
 		case AGL_MIN_LEVEL: case AGL_MAX_LEVEL: *value = 0; break;
 		case AGL_COLOR_MODES: *value = AGL_ARGB8888_BIT | AGL_RGB888_BIT; break;
@@ -411,6 +439,8 @@ AGL_EXPORT AGLContext aglCreateContext(AGLPixelFormat pix, AGLContext share)
 	}
 	CGLRetainPixelFormat(pix->cgl);
 	ctx->format = pix;
+	ctx->surfaceRect = CGRectNull;
+	ctx->surfaceOrder = 1;
 	return ctx;
 }
 
@@ -420,6 +450,11 @@ AGL_EXPORT GLboolean aglDestroyContext(AGLContext ctx)
 		failed(AGL_BAD_CONTEXT);
 		return GL_FALSE;
 	}
+	if (t_current == ctx)
+		t_current = NULL;
+	// the full-screen window goes before the display is released
+	CGLClearDrawable(ctx->cgl);
+	releaseDrawables(ctx);
 	dropSurface(ctx);
 	CGLDestroyContext(ctx->cgl);
 	CGLReleasePixelFormat(ctx->format->cgl);
@@ -446,9 +481,6 @@ AGL_EXPORT GLboolean aglUpdateContext(AGLContext ctx)
 	sizeSurface(ctx);
 	return CGLUpdateContext(ctx->cgl) == kCGLNoError;
 }
-
-// The AGL context of the CGL context current on the thread
-static __thread AGLContext t_current;
 
 AGL_EXPORT GLboolean aglSetCurrentContext(AGLContext ctx)
 {
@@ -479,17 +511,52 @@ AGL_EXPORT GLboolean aglGetCGLContext(AGLContext ctx, void **cgl_ctx)
 	return GL_TRUE;
 }
 
-// The context draws to a surface of the window: a drawable of its own that covers the content of the window
-static void sizeSurface(AGLContext ctx)
+// The context draws to a surface of the window: a drawable of its own that covers the content of the window, or the
+// frame of the view for an HIView drawable, or the rectangle that AGL_BUFFER_RECT gives.
+//
+// The area of the surface in the coordinates of the window, whose origin is at the top left of its content.
+static CGRect surfaceArea(AGLContext ctx)
 {
 	Rect content;
-
-	if (!ctx->surface || GetWindowBounds(ctx->window, kWindowContentRgn, &content) != noErr)
-		return;
-	CGSSetSurfaceBounds(CGSMainConnectionID(), ctx->surfaceWindow, ctx->surface,
-		CGRectMake(0, 0, content.right - content.left, content.bottom - content.top));
+	if (GetWindowBounds(ctx->window, kWindowContentRgn, &content) != noErr)
+		return CGRectNull;
+	CGRect area = CGRectMake(0, 0, content.right - content.left, content.bottom - content.top);
+	if (ctx->view) {
+		Rect frame;
+		GetControlBounds(ctx->view, &frame);
+		area = CGRectMake(frame.left, frame.top, frame.right - frame.left, frame.bottom - frame.top);
+	}
+	if (ctx->enabled[kEnableBufferRect]) {
+		// x and y of the rectangle count from the bottom left of the area
+		CGRect buffer = CGRectMake(area.origin.x + ctx->bufferRect[0],
+			area.origin.y + area.size.height - ctx->bufferRect[1] - ctx->bufferRect[3],
+			ctx->bufferRect[2], ctx->bufferRect[3]);
+		area = CGRectIntersection(buffer, area);
+	}
+	return area;
 }
 
+// Puts the surface where the drawable is now: its bounds are those of the area, and it is shown unless the area is
+// empty or the view is hidden (the view and its superviews and the window must be shown).
+static void sizeSurface(AGLContext ctx)
+{
+	if (!ctx->surface)
+		return;
+	CGRect area = surfaceArea(ctx);
+	int shown = !CGRectIsNull(area) && area.size.width >= 1 && area.size.height >= 1
+		&& (!ctx->view || HIViewIsVisible(ctx->view));
+	CGSConnectionID connection = CGSMainConnectionID();
+	if (shown && !CGRectEqualToRect(area, ctx->surfaceRect)) {
+		CGSSetSurfaceBounds(connection, ctx->surfaceWindow, ctx->surface, area);
+		ctx->surfaceRect = area;
+	}
+	if (shown != ctx->surfaceShown) {
+		CGSOrderSurface(connection, ctx->surfaceWindow, ctx->surface, shown ? (ctx->surfaceOrder < 0 ? -1 : 1) : 0, 0);
+		ctx->surfaceShown = shown;
+	}
+}
+
+// The surface of the window stays until the context is given another or is destroyed
 static void dropSurface(AGLContext ctx)
 {
 	if (ctx->surface) {
@@ -498,22 +565,88 @@ static void dropSurface(AGLContext ctx)
 	}
 	ctx->surface = 0;
 	ctx->surfaceWindow = 0;
+	ctx->surfaceShown = 0;
+	ctx->surfaceRect = CGRectNull;
 }
 
-AGL_EXPORT GLboolean aglSetWindowRef(AGLContext ctx, WindowRef window)
+// The views that an HIView drawable follows tell when their bounds or visibility change
+static OSStatus viewChanged(EventHandlerCallRef next, EventRef event, void *context)
 {
-	if (!ctx) {
-		failed(AGL_BAD_CONTEXT);
-		return GL_FALSE;
+	(void) next;
+	(void) event;
+	sizeSurface((AGLContext) context);
+	return eventNotHandledErr;
+}
+
+static void unwatchViews(AGLContext ctx)
+{
+	for (int i = 0; i < ctx->watchedCount; i++)
+		RemoveEventHandler(ctx->watched[i].handler);
+	ctx->watchedCount = 0;
+	ctx->view = NULL;
+}
+
+static void watchViews(AGLContext ctx, HIViewRef view)
+{
+	static const EventTypeSpec types[] = {
+		{ kEventClassControl, kEventControlBoundsChanged },
+		{ kEventClassControl, kEventControlVisibilityChanged },
+	};
+	static EventHandlerUPP handler;
+	if (!handler)
+		handler = NewEventHandlerUPP(viewChanged);
+	ctx->view = view;
+	// a superview that moves or hides takes the view along without telling it
+	for (HIViewRef v = view; v && ctx->watchedCount < kMaxWatchedViews; v = HIViewGetSuperview(v)) {
+		if (InstallControlEventHandler(v, handler, 2, types, ctx, &ctx->watched[ctx->watchedCount].handler) == noErr)
+			ctx->watched[ctx->watchedCount++].view = v;
 	}
-	if (!window) {
-		// The surface stays until the context is given another or is destroyed: a drawable taken away from a
-		// context and a new one made after that fails on Wayland with the EGL of Mesa
-		CGLClearDrawable(ctx->cgl);
-		ctx->window = NULL;
-		ctx->drawable = NULL;
-		return GL_TRUE;
+}
+
+// Leaves the full-screen display: it is released, and shows the mode it had before.
+static void releaseFullScreen(AGLContext ctx)
+{
+	if (ctx->fullScreenDisplay == kCGNullDirectDisplay)
+		return;
+	if (ctx->fullScreenSavedMode) {
+		CGDisplaySetDisplayMode(ctx->fullScreenDisplay, ctx->fullScreenSavedMode, NULL);
+		CGDisplayModeRelease(ctx->fullScreenSavedMode);
+		ctx->fullScreenSavedMode = NULL;
 	}
+	if (ctx->fullScreenCapturedAll)
+		CGReleaseAllDisplays();
+	else
+		CGDisplayRelease(ctx->fullScreenDisplay);
+	ctx->fullScreenDisplay = kCGNullDirectDisplay;
+	ctx->fullScreenCapturedAll = 0;
+}
+
+// What the context was given to draw to other than a window surface: the HIView it follows, the display it holds
+// full screen. The caller changes the CGL drawable.
+static void releaseDrawables(AGLContext ctx)
+{
+	unwatchViews(ctx);
+	releaseFullScreen(ctx);
+}
+
+// The drawable is replaced by one that is not a window: the window surface goes (CGL has the new drawable already)
+static void leaveWindow(AGLContext ctx)
+{
+	if (ctx->surface)
+		CGSRemoveSurface(CGSMainConnectionID(), ctx->surfaceWindow, ctx->surface);
+	ctx->surface = 0;
+	ctx->surfaceWindow = 0;
+	ctx->surfaceShown = 0;
+	ctx->surfaceRect = CGRectNull;
+	ctx->window = NULL;
+	ctx->drawable = NULL;
+	unwatchViews(ctx);
+}
+
+// The surface of the window, which the context draws to, in place of its drawable. view is the HIView that the
+// surface covers, if there is one.
+static GLboolean attachWindow(AGLContext ctx, WindowRef window, HIViewRef view)
+{
 	CGSWindowID wid = _HIWindowGetCGSWindowID(window);
 	CGSSurfaceID surface = 0;
 	if (!wid) {
@@ -532,13 +665,35 @@ AGL_EXPORT GLboolean aglSetWindowRef(AGLContext ctx, WindowRef window)
 	// the surface of the window the context drew to before is not needed any more
 	if (ctx->surface)
 		CGSRemoveSurface(CGSMainConnectionID(), ctx->surfaceWindow, ctx->surface);
+	releaseDrawables(ctx);
 	ctx->window = window;
 	ctx->drawable = NULL;
 	ctx->surfaceWindow = wid;
 	ctx->surface = surface;
+	ctx->surfaceShown = 0;
+	ctx->surfaceRect = CGRectNull;
+	if (view)
+		watchViews(ctx, view);
 	sizeSurface(ctx);
-	CGSOrderSurface(CGSMainConnectionID(), wid, surface, 1, 0);
 	return GL_TRUE;
+}
+
+AGL_EXPORT GLboolean aglSetWindowRef(AGLContext ctx, WindowRef window)
+{
+	if (!ctx) {
+		failed(AGL_BAD_CONTEXT);
+		return GL_FALSE;
+	}
+	if (!window) {
+		// The surface stays until the context is given another or is destroyed: a drawable taken away from a
+		// context and a new one made after that fails on Wayland with the EGL of Mesa
+		CGLClearDrawable(ctx->cgl);
+		releaseDrawables(ctx);
+		ctx->window = NULL;
+		ctx->drawable = NULL;
+		return GL_TRUE;
+	}
+	return attachWindow(ctx, window, NULL);
 }
 
 AGL_EXPORT WindowRef aglGetWindowRef(AGLContext ctx)
@@ -588,38 +743,153 @@ AGL_EXPORT AGLDrawable aglGetDrawable(AGLContext ctx)
 	return ctx->drawable;
 }
 
+// The view's window, which the surface is of, and the bounds of the view, which the surface covers
 AGL_EXPORT GLboolean aglSetHIViewRef(AGLContext ctx, HIViewRef hiview)
 {
 	if (!ctx) {
 		failed(AGL_BAD_CONTEXT);
 		return GL_FALSE;
 	}
-	if (!hiview) {
+	if (!hiview)
 		return aglSetWindowRef(ctx, NULL);
+	WindowRef window = HIViewGetWindow(hiview);
+	if (!window) {
+		failed(AGL_BAD_DRAWABLE);
+		return GL_FALSE;
 	}
-	failed(AGL_BAD_DRAWABLE);
-	return GL_FALSE;
+	return attachWindow(ctx, window, hiview);
 }
 
 AGL_EXPORT HIViewRef aglGetHIViewRef(AGLContext ctx)
 {
-	if (!ctx)
+	if (!ctx) {
 		failed(AGL_BAD_CONTEXT);
-	return NULL;
+		return NULL;
+	}
+	return ctx->view;
 }
 
+// The rendering goes to memory of the client's, which holds 32 bit pixels
 AGL_EXPORT GLboolean aglSetOffScreen(AGLContext ctx, GLsizei width, GLsizei height, GLsizei rowbytes, GLvoid *baseaddr)
 {
-	(void) width; (void) height; (void) rowbytes; (void) baseaddr;
-	failed(ctx ? AGL_BAD_OFFSCREEN : AGL_BAD_CONTEXT);
-	return GL_FALSE;
+	if (!ctx) {
+		failed(AGL_BAD_CONTEXT);
+		return GL_FALSE;
+	}
+	if (!cglSucceeded(CGLSetOffScreen(ctx->cgl, width, height, rowbytes, baseaddr)))
+		return GL_FALSE;
+	releaseFullScreen(ctx);
+	leaveWindow(ctx);
+	return GL_TRUE;
 }
 
+// The display of aglSetFullScreen's device: 0 is the display the pixel format was made for, or the main display
+static CGDirectDisplayID fullScreenDisplayOf(AGLContext ctx, GLint device)
+{
+	if (device == 0) {
+		GLint mask = 0;
+		if (CGLDescribePixelFormat(ctx->format->cgl, 0, kCGLPFADisplayMask, &mask) == kCGLNoError && mask != 0) {
+			CGDirectDisplayID display = CGOpenGLDisplayMaskToDisplayID((CGOpenGLDisplayMask) mask);
+			if (display != kCGNullDirectDisplay)
+				return display;
+		}
+		return CGMainDisplayID();
+	}
+	CGDirectDisplayID displays[32];
+	uint32_t count = 0;
+	if (CGGetActiveDisplayList(32, displays, &count) == kCGErrorSuccess)
+		for (uint32_t i = 0; i < count; i++)
+			if (displays[i] == (CGDirectDisplayID) device)
+				return displays[i];
+	return kCGNullDirectDisplay;
+}
+
+// A display mode of the display with the size and, unless it is 0, the refresh rate, which the display can show
+static CGDisplayModeRef copyFullScreenMode(CGDirectDisplayID display, GLsizei width, GLsizei height, GLsizei freq)
+{
+	CGDisplayModeRef found = NULL;
+	CFArrayRef modes = CGDisplayCopyAllDisplayModes(display, NULL);
+	for (CFIndex i = 0; modes && i < CFArrayGetCount(modes) && !found; i++) {
+		CGDisplayModeRef mode = (CGDisplayModeRef) CFArrayGetValueAtIndex(modes, i);
+		if (CGDisplayModeGetWidth(mode) != (size_t) width || CGDisplayModeGetHeight(mode) != (size_t) height)
+			continue;
+		if (!CGDisplayModeIsUsableForDesktopGUI(mode))
+			continue;
+		if (freq != 0 && fabs(CGDisplayModeGetRefreshRate(mode) - freq) > 0.5 && CGDisplayModeGetRefreshRate(mode) != 0)
+			continue;
+		found = CGDisplayModeRetain(mode);
+	}
+	if (modes)
+		CFRelease(modes);
+	return found;
+}
+
+// The context draws to the whole display. The display is captured first (all displays, unless AGL_FS_CAPTURE_SINGLE
+// is enabled), and shows the size and refresh rate asked for unless they are 0; the display is released, with its old
+// mode back, when the context is given another drawable or is destroyed.
 AGL_EXPORT GLboolean aglSetFullScreen(AGLContext ctx, GLsizei width, GLsizei height, GLsizei freq, GLint device)
 {
-	(void) width; (void) height; (void) freq; (void) device;
-	failed(ctx ? AGL_BAD_FULLSCREEN : AGL_BAD_CONTEXT);
-	return GL_FALSE;
+	if (!ctx) {
+		failed(AGL_BAD_CONTEXT);
+		return GL_FALSE;
+	}
+	if (!requestedFlag(ctx->format, AGL_FULLSCREEN)) {
+		failed(AGL_BAD_FULLSCREEN);
+		return GL_FALSE;
+	}
+	if (width < 0 || height < 0 || freq < 0 || (width == 0) != (height == 0)) {
+		failed(AGL_BAD_VALUE);
+		return GL_FALSE;
+	}
+	CGDirectDisplayID display = fullScreenDisplayOf(ctx, device);
+	if (display == kCGNullDirectDisplay) {
+		failed(AGL_BAD_GDEV);
+		return GL_FALSE;
+	}
+	CGDisplayModeRef wanted = NULL;
+	if (width != 0) {
+		CGDisplayModeRef current = CGDisplayCopyDisplayMode(display);
+		int already = current && CGDisplayModeGetWidth(current) == (size_t) width
+			&& CGDisplayModeGetHeight(current) == (size_t) height
+			&& (freq == 0 || CGDisplayModeGetRefreshRate(current) == 0 || fabs(CGDisplayModeGetRefreshRate(current) - freq) <= 0.5);
+		if (current)
+			CGDisplayModeRelease(current);
+		if (!already) {
+			wanted = copyFullScreenMode(display, width, height, freq);
+			if (!wanted) {
+				failed(AGL_BAD_VALUE);
+				return GL_FALSE;
+			}
+		}
+	}
+
+	// the display of an earlier full-screen drawable is let go of first
+	releaseFullScreen(ctx);
+	int captureAll = !ctx->enabled[kEnableFSCaptureSingle];
+	if ((captureAll ? CGCaptureAllDisplays() : CGDisplayCapture(display)) != kCGErrorSuccess) {
+		if (wanted)
+			CGDisplayModeRelease(wanted);
+		failed(AGL_BAD_FULLSCREEN);
+		return GL_FALSE;
+	}
+	ctx->fullScreenDisplay = display;
+	ctx->fullScreenCapturedAll = captureAll;
+	if (wanted) {
+		CGDisplayModeRef previous = CGDisplayCopyDisplayMode(display);
+		if (CGDisplaySetDisplayMode(display, wanted, NULL) == kCGErrorSuccess)
+			ctx->fullScreenSavedMode = previous;
+		else if (previous)
+			CGDisplayModeRelease(previous);
+		CGDisplayModeRelease(wanted);
+	}
+	CGLError error = CGLSetFullScreenOnDisplay(ctx->cgl, CGDisplayIDToOpenGLDisplayMask(display));
+	if (error != kCGLNoError) {
+		releaseFullScreen(ctx);
+		failed((GLenum) error);
+		return GL_FALSE;
+	}
+	leaveWindow(ctx);
+	return GL_TRUE;
 }
 
 AGL_EXPORT GLboolean aglSetVirtualScreen(AGLContext ctx, GLint screen)
@@ -649,54 +919,71 @@ AGL_EXPORT void aglSwapBuffers(AGLContext ctx)
 		failed(AGL_BAD_CONTEXT);
 		return;
 	}
+	// an HIView drawable may have been moved by a change that sent no event (its window's layout)
+	if (ctx->view)
+		sizeSurface(ctx);
+	// a hidden drawable shows nothing, where a swap on some window systems would show it again
+	if (ctx->surface && !ctx->surfaceShown) {
+		glFlush();
+		return;
+	}
 	CGLFlushDrawable(ctx->cgl);
 }
 
-// aglEnable and aglIsEnabled keep the state of the options that only need to be remembered
+// The options of aglEnable that CGL has an enable for are CGL's (their numbers differ from AGL's); the others are
+// remembered by the context
+static int cglEnableOf(GLenum pname)
+{
+	switch (pname) {
+		case AGL_SWAP_RECT: return kCGLCESwapRectangle;
+		case AGL_SWAP_LIMIT: return kCGLCESwapLimit;
+		case AGL_RASTERIZATION: return kCGLCERasterization;
+		case AGL_STATE_VALIDATION: return kCGLCEStateValidation;
+		case AGL_ENABLE_SURFACE_BACKING_SIZE: return kCGLCESurfaceBackingSize;
+		default: return 0;
+	}
+}
+
 static int enableIndex(GLenum pname)
 {
 	switch (pname) {
-		case AGL_SWAP_RECT: return 0;
-		case AGL_BUFFER_RECT: return 1;
-		case AGL_SWAP_LIMIT: return 2;
+		case AGL_BUFFER_RECT: return kEnableBufferRect;
 		case AGL_COLORMAP_TRACKING: return 3;
-		case AGL_STATE_VALIDATION: return 4;
 		case AGL_CLIP_REGION: return 5;
-		case AGL_FS_CAPTURE_SINGLE: return 6;
-		case AGL_ENABLE_SURFACE_BACKING_SIZE: return 7;
+		case AGL_FS_CAPTURE_SINGLE: return kEnableFSCaptureSingle;
 		case AGL_SURFACE_VOLATILE: return 8;
 		default: return -1;
 	}
 }
 
-AGL_EXPORT GLboolean aglEnable(AGLContext ctx, GLenum pname)
+static GLboolean setEnabled(AGLContext ctx, GLenum pname, GLboolean on)
 {
 	if (!ctx) {
 		failed(AGL_BAD_CONTEXT);
 		return GL_FALSE;
 	}
+	int cgl = cglEnableOf(pname);
+	if (cgl)
+		return cglSucceeded(on ? CGLEnable(ctx->cgl, (CGLContextEnable) cgl) : CGLDisable(ctx->cgl, (CGLContextEnable) cgl));
 	int index = enableIndex(pname);
 	if (index < 0) {
 		failed(AGL_BAD_ENUM);
 		return GL_FALSE;
 	}
-	ctx->enabled[index] = GL_TRUE;
+	ctx->enabled[index] = on;
+	if (index == kEnableBufferRect)
+		sizeSurface(ctx);
 	return GL_TRUE;
+}
+
+AGL_EXPORT GLboolean aglEnable(AGLContext ctx, GLenum pname)
+{
+	return setEnabled(ctx, pname, GL_TRUE);
 }
 
 AGL_EXPORT GLboolean aglDisable(AGLContext ctx, GLenum pname)
 {
-	if (!ctx) {
-		failed(AGL_BAD_CONTEXT);
-		return GL_FALSE;
-	}
-	int index = enableIndex(pname);
-	if (index < 0) {
-		failed(AGL_BAD_ENUM);
-		return GL_FALSE;
-	}
-	ctx->enabled[index] = GL_FALSE;
-	return GL_TRUE;
+	return setEnabled(ctx, pname, GL_FALSE);
 }
 
 AGL_EXPORT GLboolean aglIsEnabled(AGLContext ctx, GLenum pname)
@@ -704,6 +991,11 @@ AGL_EXPORT GLboolean aglIsEnabled(AGLContext ctx, GLenum pname)
 	if (!ctx) {
 		failed(AGL_BAD_CONTEXT);
 		return GL_FALSE;
+	}
+	int cgl = cglEnableOf(pname);
+	if (cgl) {
+		GLint enabled = 0;
+		return cglSucceeded(CGLIsEnabled(ctx->cgl, (CGLContextEnable) cgl, &enabled)) && enabled;
 	}
 	int index = enableIndex(pname);
 	if (index < 0) {
@@ -730,12 +1022,19 @@ AGL_EXPORT GLboolean aglSetInteger(AGLContext ctx, GLenum pname, const GLint *pa
 			return CGLSetParameter(ctx->cgl, kCGLCPSurfaceOpacity, params) == kCGLNoError;
 		case AGL_BUFFER_RECT:
 			memcpy(ctx->bufferRect, params, sizeof(ctx->bufferRect));
+			sizeSurface(ctx);
 			return GL_TRUE;
 		case AGL_SWAP_RECT:
 			memcpy(ctx->swapRect, params, sizeof(ctx->swapRect));
 			return GL_TRUE;
+		case AGL_SURFACE_ORDER:
+			// above (1) or below (-1) the contents of the window
+			ctx->surfaceOrder = *params;
+			if (ctx->surface && ctx->surfaceShown)
+				CGSOrderSurface(CGSMainConnectionID(), ctx->surfaceWindow, ctx->surface, *params < 0 ? -1 : 1, 0);
+			return GL_TRUE;
 		case AGL_SWAP_LIMIT: case AGL_COLORMAP_TRACKING: case AGL_STATE_VALIDATION: case AGL_ORDER_CONTEXT_TO_FRONT:
-		case AGL_SURFACE_ORDER: case AGL_RASTERIZATION: case AGL_SURFACE_VOLATILE:
+		case AGL_RASTERIZATION: case AGL_SURFACE_VOLATILE:
 			return GL_TRUE;
 		default:
 			failed(AGL_BAD_ENUM);
@@ -766,6 +1065,9 @@ AGL_EXPORT GLboolean aglGetInteger(AGLContext ctx, GLenum pname, GLint *params)
 			return GL_TRUE;
 		case AGL_VIRTUAL_SCREEN:
 			*params = 0;
+			return GL_TRUE;
+		case AGL_SURFACE_ORDER:
+			*params = ctx->surfaceOrder;
 			return GL_TRUE;
 		default:
 			failed(AGL_BAD_ENUM);
@@ -824,49 +1126,64 @@ AGL_EXPORT const GLubyte *aglErrorString(GLenum code)
 	}
 }
 
+// A pixel buffer is a CGL one
 AGL_EXPORT GLboolean aglCreatePBuffer(GLint width, GLint height, GLenum target, GLenum internalFormat, long max_level, AGLPbuffer *pbuffer)
 {
-	(void) width; (void) height; (void) target; (void) internalFormat; (void) max_level;
-	if (pbuffer)
-		*pbuffer = NULL;
-	failed(AGL_BAD_ALLOC);
-	return GL_FALSE;
+	return cglSucceeded(CGLCreatePBuffer(width, height, target, internalFormat, (GLint) max_level, (CGLPBufferObj *) pbuffer));
 }
 
 AGL_EXPORT GLboolean aglDestroyPBuffer(AGLPbuffer pbuffer)
 {
-	(void) pbuffer;
-	failed(AGL_BAD_POINTER);
-	return GL_FALSE;
+	return cglSucceeded(CGLDestroyPBuffer((CGLPBufferObj) pbuffer));
 }
 
 AGL_EXPORT GLboolean aglDescribePBuffer(AGLPbuffer pbuffer, GLint *width, GLint *height, GLenum *target, GLenum *internalFormat, GLint *max_level)
 {
-	(void) pbuffer; (void) width; (void) height; (void) target; (void) internalFormat; (void) max_level;
-	failed(AGL_BAD_POINTER);
-	return GL_FALSE;
+	GLsizei w, h;
+	if (!cglSucceeded(CGLDescribePBuffer((CGLPBufferObj) pbuffer, &w, &h, target, internalFormat, max_level)))
+		return GL_FALSE;
+	if (width)
+		*width = w;
+	if (height)
+		*height = h;
+	return GL_TRUE;
 }
 
+// Makes the contents of the pixel buffer the image of the texture bound in the context
 AGL_EXPORT GLboolean aglTexImagePBuffer(AGLContext ctx, AGLPbuffer pbuffer, GLint source)
 {
-	(void) pbuffer; (void) source;
-	failed(ctx ? AGL_BAD_POINTER : AGL_BAD_CONTEXT);
-	return GL_FALSE;
+	if (!ctx) {
+		failed(AGL_BAD_CONTEXT);
+		return GL_FALSE;
+	}
+	return cglSucceeded(CGLTexImagePBuffer(ctx->cgl, (CGLPBufferObj) pbuffer, (GLenum) source));
 }
 
 AGL_EXPORT GLboolean aglSetPBuffer(AGLContext ctx, AGLPbuffer pbuffer, GLint face, GLint level, GLint screen)
 {
-	(void) pbuffer; (void) face; (void) level; (void) screen;
-	failed(ctx ? AGL_BAD_POINTER : AGL_BAD_CONTEXT);
-	return GL_FALSE;
+	if (!ctx) {
+		failed(AGL_BAD_CONTEXT);
+		return GL_FALSE;
+	}
+	if (!cglSucceeded(CGLSetPBuffer(ctx->cgl, (CGLPBufferObj) pbuffer, (GLenum) face, level, screen)))
+		return GL_FALSE;
+	releaseFullScreen(ctx);
+	leaveWindow(ctx);
+	return GL_TRUE;
 }
 
 AGL_EXPORT GLboolean aglGetPBuffer(AGLContext ctx, AGLPbuffer *pbuffer, GLint *face, GLint *level, GLint *screen)
 {
-	if (pbuffer)
-		*pbuffer = NULL;
-	failed(ctx ? AGL_BAD_POINTER : AGL_BAD_CONTEXT);
-	return GL_FALSE;
+	if (!ctx) {
+		failed(AGL_BAD_CONTEXT);
+		return GL_FALSE;
+	}
+	GLenum cglFace = 0;
+	if (!cglSucceeded(CGLGetPBuffer(ctx->cgl, (CGLPBufferObj *) pbuffer, &cglFace, level, screen)))
+		return GL_FALSE;
+	if (face)
+		*face = (GLint) cglFace;
+	return GL_TRUE;
 }
 
 AGL_EXPORT GLboolean aglSurfaceTexture(AGLContext context, GLenum target, GLenum internalformat, AGLContext surfacecontext)
