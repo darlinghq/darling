@@ -76,7 +76,7 @@ class SpecText(unittest.TestCase):
         deb_archs = re.search(r'^DARLING_DEB_ARCHS \?= (\S+)$', rules, re.M).group(1)
         spec_archs = re.search(r'%\{!\?darling_archs:%global darling_archs (\S+)\}', self.text).group(1)
         self.assertEqual(spec_archs, deb_archs)
-        for switch in ('-DJSC_UNIFIED_BUILD=ON', '-DDARLING_SWIFT_WMO=ON', '-DDEBIAN_PACKAGING=ON'):
+        for switch in ('-DDARLING_SWIFT_WMO=ON', '-DDEBIAN_PACKAGING=ON'):
             self.assertIn(switch, rules)
             self.assertIn(switch, self.text)
 
@@ -115,7 +115,7 @@ NOARCH_PACKAGES = {
     'darling-core', 'darling-system', 'darling-cli', 'darling-ffi', 'darling-cli-gui-common',
     'darling-iokitd', 'darling-cli-devenv-gui-common', 'darling-cli-extra', 'darling-gui',
     'darling-python2', 'darling-cli-python2-common', 'darling-pyobjc', 'darling-ruby', 'darling-perl',
-    'darling-jsc-webkit-common', 'darling-jsc', 'darling-iosurface',
+    'darling-jsc', 'darling-iosurface',
     'darling-cli-devenv-gui-stubs-common', 'darling-gui-stubs',
 }
 
@@ -180,7 +180,7 @@ install(TARGETS darling DESTINATION bin PERMISSIONS OWNER_READ OWNER_WRITE OWNER
 	GROUP_EXECUTE WORLD_READ WORLD_EXECUTE SETUID)
 if (DARLING_BUILD_MACHO)
 	foreach (c core system cli ffi cli_gui_common iokitd cli_dev_gui_common cli_extra gui python
-			cli_python_common pyobjc ruby perl jsc_webkit_common jsc iosurface cli_dev_gui_stubs_common
+			cli_python_common pyobjc ruby perl jsc iosurface cli_dev_gui_stubs_common
 			gui_stubs cli_dev)
 		file(WRITE ${CMAKE_BINARY_DIR}/${c}.txt "${c}\n")
 		string(REPLACE ";" "+" slices "${DARLING_ARCHS}")
