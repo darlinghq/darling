@@ -81,6 +81,9 @@ struct watched_path {
 	// FSEvents reported an item event for exactly this path since the last
 	// evaluation.
 	bool reported;
+	// Item events with an ID up to this one describe changes that are
+	// already part of `snap`.
+	FSEventStreamEventId covered;
 };
 
 struct path_state {
@@ -233,6 +236,17 @@ static void evaluate_event(struct fs_event* ev)
 
 	for (size_t i = 0; i < ev->nwatch; i++)
 	{
+		// Any event can start an evaluation, not just those of this path,
+		// so a change is often seen in the stat data before FSEvents
+		// delivers its item event, which can be a latency period later. The
+		// event would then count as a second change and the job would be
+		// started twice. Reading the events that are already queued just
+		// before the stat tells which events the stat data covers: those
+		// with an ID up to the current one.
+		if (g_stream != NULL)
+			FSEventStreamFlushAsync(g_stream);
+		ev->watch[i].covered = FSEventsGetCurrentEventId();
+
 		struct path_snapshot snap;
 		take_snapshot(ev->watch[i].path, &snap);
 		// A rewrite that keeps the size within the file system's timestamp
@@ -392,13 +406,15 @@ static bool same_path(const char* a, const char* b)
 	}
 }
 
-static void mark_reported(const char* path)
+static void mark_reported(const char* path, FSEventStreamEventId id)
 {
 	for (struct fs_event* ev = g_events; ev != NULL; ev = ev->next)
 	{
 		for (size_t i = 0; i < ev->nwatch; i++)
 		{
-			if (same_path(ev->watch[i].path, path))
+			// An event that was already read when the path was last
+			// examined describes a change that examination has seen.
+			if (id > ev->watch[i].covered && same_path(ev->watch[i].path, path))
 				ev->watch[i].reported = true;
 		}
 	}
@@ -418,7 +434,7 @@ static void stream_callback(ConstFSEventStreamRef stream, void* info, size_t cou
 	for (size_t i = 0; i < count; i++)
 	{
 		if (names[i] != NULL)
-			mark_reported(names[i]);
+			mark_reported(names[i], ids[i]);
 	}
 	schedule_evaluate();
 }

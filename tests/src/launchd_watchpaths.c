@@ -26,6 +26,13 @@
 // Before each further change the test also waits for the previous run of
 // the job to exit, because launchd does not start a job that is running.
 //
+// Several instances run at once by default (the first argument sets how many,
+// 1 runs a single one), each with its own directory and labels. They share
+// launchd and its one event monitor, which examines the paths of all jobs
+// whenever any of them changes, so a change can be seen by an evaluation
+// that another job's event started before FSEvents has delivered its own
+// item event. Each job must still be started once per change.
+//
 // If `launchctl load` is refused for the current user, run the test as root.
 #include <errno.h>
 #include <launch.h>
@@ -398,7 +405,7 @@ static void test_pathstate(void)
 	CHECK(lines == settled);
 }
 
-int main(void)
+static void run_instance(void)
 {
 	signal(SIGALRM, on_alarm);
 	alarm(120);
@@ -425,4 +432,46 @@ int main(void)
 
 	printf("%s\n", g_failures ? "FAIL" : "PASS");
 	finish(g_failures ? 1 : 0);
+}
+
+int main(int argc, char** argv)
+{
+	int instances = 4;
+	if (argc > 1)
+		instances = atoi(argv[1]);
+	if (instances < 1 || instances > 64)
+	{
+		printf("usage: %s [instances]\n", argv[0]);
+		return 2;
+	}
+
+	if (instances == 1)
+		run_instance();
+
+	fflush(stdout);
+	int failed = 0;
+	for (int i = 0; i < instances; i++)
+	{
+		pid_t pid = fork();
+		if (pid < 0)
+		{
+			printf("FAIL: fork: %s\n", strerror(errno));
+			failed++;
+		}
+		else if (pid == 0)
+			run_instance();
+	}
+
+	int status;
+	for (;;)
+	{
+		pid_t pid = wait(&status);
+		if (pid < 0)
+			break;
+		if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+			failed++;
+	}
+
+	printf("%s: %d of %d instances failed\n", failed ? "FAIL" : "PASS", failed, instances);
+	return failed ? 1 : 0;
 }
