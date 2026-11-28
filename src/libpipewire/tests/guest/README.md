@@ -20,6 +20,7 @@ The guest programs are built with `guest-cc.sh` (see darling-skills, darling-gue
 | `screen_no_daemon.m` | without a portal or PipeWire server, a CGDisplayStream fails to start, `startRunning` returns and an SCStream start completes with an error, each within a fraction of a second (run it with `XDG_RUNTIME_DIR` pointing at an empty directory) |
 | `hal_play.c` | the HAL output device calls the IOProc at the real-time rate, reports a latency of a few thousand frames at most, and stops cleanly |
 | `hal_volume.c` | the default output device reports and sets the volume and mute of the default sink of the server, and its property listeners fire when they are changed from outside (`wpctl`) |
+| `nssound_play.m` (run by `nssound_run.sh`) | `NSSound` plays through the HAL: the delegate hears YES on the main thread when a sound ends and NO when it is stopped, pause/resume/stop/loops/`currentTime` behave, AIFF and CAF files play, and `nssound_level.py` checks on the recording of the null sink that two tones come out at the level of the sound times its `volume`. `NSSOUND_BACKEND=pulse` makes the guest use the pulse backend of the HAL (through PipeWire's pulse server) instead of the native PipeWire one. It starts the session with `session.sh start <dir> audio`, which leaves out the compositor, the portal and the test pattern |
 
 `afplay <wav>` must play to the null sink and exit when the file ends (it sleeps for the reported output
 latency before it exits, so a wrong latency shows as a long delay).

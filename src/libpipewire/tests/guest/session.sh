@@ -7,7 +7,8 @@
 # It never touches the user's session: everything lives in the directory given as <dir> and the pids are
 # kept in <dir>/pids.
 #
-#   session.sh start <dir>    prints the environment to export for the clients
+#   session.sh start <dir> [audio]   prints the environment to export for the clients; with `audio` only the
+#                                    bus, PipeWire, WirePlumber, the pulse server and the null sink are started
 #   session.sh stop <dir>
 set -eu
 cmd=${1:?usage: session.sh start|stop <dir>}; dir=$(realpath -m "${2:?usage: session.sh start|stop <dir>}")
@@ -57,6 +58,11 @@ spawn pipewire pipewire
 for i in $(seq 20); do [ -S "$dir/pipewire-0" ] && break; sleep 0.5; done
 spawn wireplumber wireplumber
 spawn pipewire-pulse pipewire-pulse
+if [ "${3:-}" = audio ]; then
+	sleep 1
+	echo "export XDG_RUNTIME_DIR=$dir DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS"
+	exit 0
+fi
 spawn kwin kwin_wayland --virtual --no-lockscreen --socket pwt-wl --width 1280 --height 720
 for i in $(seq 20); do [ -S "$dir/pwt-wl" ] && break; sleep 0.5; done
 spawn permstore /usr/lib/xdg-permission-store
