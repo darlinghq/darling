@@ -25,7 +25,7 @@
 // the full-screen display (CGLSetFullScreenOnDisplay, after AGL captured the display); AGL and CGL give the same
 // error codes. An HIView drawable is a surface of the view's window that covers the bounds of the view, and follows
 // the view when it moves, is resized or hidden. Context copying is CGLCopyContext.
-// Not implemented: surface textures (aglSurfaceTexture), which fails with an error code.
+// A surface texture (aglSurfaceTexture) is a copy of the window or view of another context, made by CGL.
 
 #include <AGL/agl.h>
 #include <OpenGL/OpenGL.h>
@@ -81,6 +81,7 @@ static void failed(GLenum code) { t_error = code; }
 
 struct __AGLPixelFormatRec {
 	CGLPixelFormatObj cgl;
+	CGDirectDisplayID display;
 	// the requested attributes, as name and value pairs; booleans have the value 1
 	GLint count;
 	GLint name[kMaxFormatAttributes];
@@ -181,7 +182,7 @@ AGL_EXPORT void aglGetVersion(GLint *major, GLint *minor)
 static GLint translateFormat(const struct __AGLPixelFormatRec *format, CGLPixelFormatAttribute *out)
 {
 	GLint n = 0;
-	GLint colorBits = 0;
+	GLint colorBits = 0, rgbBits = 0, rgbSeen = 0;
 	for (GLint i = 0; i < format->count; i++) {
 		GLint name = format->name[i], value = format->value[i];
 		switch (name) {
@@ -194,7 +195,9 @@ static GLint translateFormat(const struct __AGLPixelFormatRec *format, CGLPixelF
 				out[n++] = (CGLPixelFormatAttribute) name;
 				break;
 			case AGL_RED_SIZE: case AGL_GREEN_SIZE: case AGL_BLUE_SIZE:
-				colorBits += value;
+				// the color size is the sum of the three, when all three were asked for
+				rgbBits += value;
+				rgbSeen |= 1 << (name - AGL_RED_SIZE);
 				break;
 			case AGL_BUFFER_SIZE: case AGL_PIXEL_SIZE:
 				if (value > colorBits)
@@ -213,6 +216,8 @@ static GLint translateFormat(const struct __AGLPixelFormatRec *format, CGLPixelF
 				break;
 		}
 	}
+	if (rgbSeen == 7 && rgbBits > colorBits)
+		colorBits = rgbBits;
 	if (colorBits > 0) {
 		out[n++] = kCGLPFAColorSize;
 		out[n++] = (CGLPixelFormatAttribute) colorBits;
@@ -262,6 +267,12 @@ AGL_EXPORT AGLPixelFormat aglChoosePixelFormat(const AGLDevice *gdevs, GLint nde
 		return NULL;
 	}
 	return format;
+}
+
+// A pixel format for the attributes, for any device
+AGL_EXPORT AGLPixelFormat aglCreatePixelFormat(const GLint *attribs)
+{
+	return aglChoosePixelFormat(NULL, 0, attribs);
 }
 
 AGL_EXPORT void aglDestroyPixelFormat(AGLPixelFormat pix)
@@ -353,6 +364,25 @@ AGL_EXPORT AGLDevice *aglDevicesOfPixelFormat(AGLPixelFormat pix, GLint *ndevs)
 	return NULL;
 }
 
+// The displays of a pixel format: the one display its only virtual screen draws to. The list belongs to the pixel
+// format.
+AGL_EXPORT CGDirectDisplayID *aglDisplaysOfPixelFormat(AGLPixelFormat pix, GLint *ndevs)
+{
+	if (ndevs)
+		*ndevs = 0;
+	if (!pix) {
+		failed(AGL_BAD_PIXELFMT);
+		return NULL;
+	}
+	if (!ndevs) {
+		failed(AGL_BAD_POINTER);
+		return NULL;
+	}
+	pix->display = CGMainDisplayID();
+	*ndevs = 1;
+	return &pix->display;
+}
+
 AGL_EXPORT GLboolean aglGetCGLPixelFormat(AGLPixelFormat pix, void **cgl_pix)
 {
 	if (!pix) {
@@ -372,8 +402,34 @@ static struct __AGLRendererInfoRec gRenderer;
 
 AGL_EXPORT AGLRendererInfo aglQueryRendererInfo(const AGLDevice *gdevs, GLint ndev)
 {
-	(void) gdevs;
-	(void) ndev;
+	// devices are counted but not given
+	if (ndev != 0 && !gdevs) {
+		failed(AGL_BAD_GDEV);
+		return NULL;
+	}
+	return &gRenderer;
+}
+
+AGL_EXPORT AGLRendererInfo aglQueryRendererInfoForCGDirectDisplayIDs(const CGDirectDisplayID *dspIDs, GLint ndev)
+{
+	if (ndev < 0 || (ndev != 0 && !dspIDs)) {
+		failed(AGL_BAD_GDEV);
+		return NULL;
+	}
+	// the displays have to be ones of the system
+	CGDirectDisplayID active[32];
+	uint32_t activeCount = 0;
+	if (ndev > 0 && CGGetActiveDisplayList(32, active, &activeCount) != kCGErrorSuccess)
+		activeCount = 0;
+	for (GLint i = 0; i < ndev; i++) {
+		int found = 0;
+		for (uint32_t j = 0; j < activeCount && !found; j++)
+			found = active[j] == dspIDs[i];
+		if (!found) {
+			failed(AGL_BAD_GDEV);
+			return NULL;
+		}
+	}
 	return &gRenderer;
 }
 
@@ -432,9 +488,11 @@ AGL_EXPORT AGLContext aglCreateContext(AGLPixelFormat pix, AGLContext share)
 		failed(AGL_BAD_ALLOC);
 		return NULL;
 	}
-	if (CGLCreateContext(pix->cgl, share ? share->cgl : NULL, &ctx->cgl) != kCGLNoError || !ctx->cgl) {
+	// CGL's codes are AGL's: a share context that the new one cannot share with is a bad match
+	CGLError created = CGLCreateContext(pix->cgl, share ? share->cgl : NULL, &ctx->cgl);
+	if (created != kCGLNoError || !ctx->cgl) {
 		free(ctx);
-		failed(share ? AGL_BAD_CONTEXT : AGL_BAD_MATCH);
+		failed(created != kCGLNoError ? (GLenum) created : AGL_BAD_CONTEXT);
 		return NULL;
 	}
 	CGLRetainPixelFormat(pix->cgl);
@@ -479,7 +537,7 @@ AGL_EXPORT GLboolean aglUpdateContext(AGLContext ctx)
 		return GL_FALSE;
 	}
 	sizeSurface(ctx);
-	return CGLUpdateContext(ctx->cgl) == kCGLNoError;
+	return cglSucceeded(CGLUpdateContext(ctx->cgl));
 }
 
 AGL_EXPORT GLboolean aglSetCurrentContext(AGLContext ctx)
@@ -647,6 +705,8 @@ static void leaveWindow(AGLContext ctx)
 // surface covers, if there is one.
 static GLboolean attachWindow(AGLContext ctx, WindowRef window, HIViewRef view)
 {
+	WindowRef previousWindow = ctx->window;
+	HIViewRef previousView = ctx->view;
 	CGSWindowID wid = _HIWindowGetCGSWindowID(window);
 	CGSSurfaceID surface = 0;
 	if (!wid) {
@@ -675,6 +735,13 @@ static GLboolean attachWindow(AGLContext ctx, WindowRef window, HIViewRef view)
 	if (view)
 		watchViews(ctx, view);
 	sizeSurface(ctx);
+	// the viewport is the whole drawable when the context is first attached to it, and is left alone when it is
+	// attached to the same one again
+	if (window != previousWindow || view != previousView) {
+		CGRect area = surfaceArea(ctx);
+		if (!CGRectIsNull(area) && area.size.width >= 1 && area.size.height >= 1)
+			_CGLSetViewport(ctx->cgl, (GLsizei) area.size.width, (GLsizei) area.size.height);
+	}
 	return GL_TRUE;
 }
 
@@ -864,6 +931,7 @@ AGL_EXPORT GLboolean aglSetFullScreen(AGLContext ctx, GLsizei width, GLsizei hei
 	}
 
 	// the display of an earlier full-screen drawable is let go of first
+	CGDirectDisplayID previousDisplay = ctx->fullScreenDisplay;
 	releaseFullScreen(ctx);
 	int captureAll = !ctx->enabled[kEnableFSCaptureSingle];
 	if ((captureAll ? CGCaptureAllDisplays() : CGDisplayCapture(display)) != kCGErrorSuccess) {
@@ -889,6 +957,10 @@ AGL_EXPORT GLboolean aglSetFullScreen(AGLContext ctx, GLsizei width, GLsizei hei
 		return GL_FALSE;
 	}
 	leaveWindow(ctx);
+	// the viewport is the whole device when the context is first attached to it, and is left alone when it is
+	// attached to the same one again
+	if (previousDisplay != display)
+		_CGLSetViewport(ctx->cgl, (GLsizei) CGDisplayPixelsWide(display), (GLsizei) CGDisplayPixelsHigh(display));
 	return GL_TRUE;
 }
 
@@ -908,8 +980,11 @@ AGL_EXPORT GLboolean aglSetVirtualScreen(AGLContext ctx, GLint screen)
 
 AGL_EXPORT GLint aglGetVirtualScreen(AGLContext ctx)
 {
-	if (!ctx)
+	// -1 when the function fails
+	if (!ctx) {
 		failed(AGL_BAD_CONTEXT);
+		return -1;
+	}
 	return 0;
 }
 
@@ -1066,6 +1141,31 @@ AGL_EXPORT GLboolean aglGetInteger(AGLContext ctx, GLenum pname, GLint *params)
 		case AGL_VIRTUAL_SCREEN:
 			*params = 0;
 			return GL_TRUE;
+		case AGL_CONTEXT_SURFACE_ID:
+			// the surface of the window the context draws to, 0 for a context without one
+			*params = (GLint) ctx->surface;
+			return GL_TRUE;
+		case AGL_CONTEXT_DISPLAY_ID: {
+			// the displays that the drawable touches, at most 32 of them: the display of the full-screen drawable, or
+			// the ones the window is on; none for drawables that are not shown
+			uint32_t count = 0;
+			CGDirectDisplayID displays[32];
+			if (ctx->fullScreenDisplay != kCGNullDirectDisplay) {
+				displays[count++] = ctx->fullScreenDisplay;
+			} else if (ctx->window) {
+				Rect bounds;
+				if (GetWindowBounds(ctx->window, kWindowStructureRgn, &bounds) == noErr) {
+					CGRect frame = CGRectMake(bounds.left, bounds.top, bounds.right - bounds.left, bounds.bottom - bounds.top);
+					if (CGGetDisplaysWithRect(frame, 32, displays, &count) != kCGErrorSuccess)
+						count = 0;
+				}
+				if (count == 0)
+					displays[count++] = CGMainDisplayID();
+			}
+			for (uint32_t i = 0; i < count; i++)
+				params[i] = (GLint) displays[i];
+			return GL_TRUE;
+		}
 		case AGL_SURFACE_ORDER:
 			*params = ctx->surfaceOrder;
 			return GL_TRUE;
@@ -1075,13 +1175,12 @@ AGL_EXPORT GLboolean aglGetInteger(AGLContext ctx, GLenum pname, GLint *params)
 	}
 }
 
-static int g_formatCacheSize = 5;
-
+// The global options are CGL's (their numbers are the same)
 AGL_EXPORT GLboolean aglConfigure(GLenum pname, GLuint param)
 {
 	switch (pname) {
-		case AGL_FORMAT_CACHE_SIZE: g_formatCacheSize = (int) param; return GL_TRUE;
-		case AGL_CLEAR_FORMAT_CACHE: case AGL_RETAIN_RENDERERS: return GL_TRUE;
+		case AGL_FORMAT_CACHE_SIZE: case AGL_CLEAR_FORMAT_CACHE: case AGL_RETAIN_RENDERERS:
+			return cglSucceeded(CGLSetOption((CGLGlobalOption) pname, (GLint) param));
 		default:
 			failed(AGL_BAD_ENUM);
 			return GL_FALSE;
@@ -1090,7 +1189,7 @@ AGL_EXPORT GLboolean aglConfigure(GLenum pname, GLuint param)
 
 AGL_EXPORT void aglResetLibrary(void)
 {
-	g_formatCacheSize = 5;
+	CGLSetOption(kCGLGOResetLibrary, 1);
 }
 
 AGL_EXPORT GLenum aglGetError(void)
@@ -1122,7 +1221,7 @@ AGL_EXPORT const GLubyte *aglErrorString(GLenum code)
 		case AGL_BAD_MODULE: return (const GLubyte *) "invalid code module";
 		case AGL_BAD_ALLOC: return (const GLubyte *) "memory allocation failure";
 		case AGL_BAD_CONNECTION: return (const GLubyte *) "invalid CoreGraphics connection";
-		default: return (const GLubyte *) "unknown error";
+		default: return (const GLubyte *) "No such error code.";
 	}
 }
 
@@ -1186,11 +1285,17 @@ AGL_EXPORT GLboolean aglGetPBuffer(AGLContext ctx, AGLPbuffer *pbuffer, GLint *f
 	return GL_TRUE;
 }
 
+// Makes the drawable of another context, which has to be a window or a view, the image of the texture bound in the
+// context (see _CGLTexImageDrawable). The errors are checked in this order: the contexts, then the drawable of the
+// surface context (AGL_BAD_DRAWABLE for a pixel buffer, an off-screen area, a full-screen display or no drawable).
+// The texture target, internal format and size are as for glTexImage2D, which reports them as GL errors.
 AGL_EXPORT GLboolean aglSurfaceTexture(AGLContext context, GLenum target, GLenum internalformat, AGLContext surfacecontext)
 {
-	(void) target; (void) internalformat;
-	failed(context && surfacecontext ? AGL_BAD_ENUM : AGL_BAD_CONTEXT);
-	return GL_FALSE;
+	if (!context || !surfacecontext) {
+		failed(AGL_BAD_CONTEXT);
+		return GL_FALSE;
+	}
+	return cglSucceeded(_CGLTexImageDrawable(context->cgl, target, internalformat, surfacecontext->cgl));
 }
 
 // Bitmap fonts: each character of the font family, face and size is drawn black on white by Core Text and kept as a

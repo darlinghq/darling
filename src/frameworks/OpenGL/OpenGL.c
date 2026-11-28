@@ -101,6 +101,7 @@
     X(eglInitialize) \
     X(eglMakeCurrent) \
     X(eglQueryString) \
+    X(eglQuerySurface) \
     X(eglSwapBuffers) \
     X(eglSwapInterval)
 
@@ -1850,16 +1851,18 @@ const char *CGLErrorString(CGLError error) {
     case kCGLBadCodeModule: return "invalid code module";
     case kCGLBadAlloc: return "memory allocation failure";
     case kCGLBadConnection: return "invalid CoreGraphics connection";
-    default: return "unknown error";
+    default: return "No such error code.";
     }
 }
 
 // A context always uses virtual screen 0, the only one there is.
 CGLError CGLGetVirtualScreen(CGLContextObj context, GLint *screen) {
-    if (!context)
-        return kCGLBadContext;
     if (!screen)
         return kCGLBadAddress;
+    // the screen is -1 when the function fails
+    *screen = -1;
+    if (!context)
+        return kCGLBadContext;
     *screen = 0;
     return kCGLNoError;
 }
@@ -1977,6 +1980,32 @@ static int attributes_want_alpha(const CGLPixelFormatAttribute *attrs) {
     return 0;
 }
 
+// An off-screen drawable holds 32 bit pixels (see readBackOffScreen): the reference lets a pixel format for one
+// consider only renderers whose buffer depth is exactly the depth asked for, and there is no renderer here with
+// another. A color size of 32, or of 24, which is the 8 bit channels of the 32 bit pixels (kCGLRGB888Bit), and none
+// at all, which means the depth of the screen, are therefore met; any other size has no pixel format, instead of
+// a pixel format whose pixels are of another size than the client sized the buffer for.
+static int attributes_have(const CGLPixelFormatAttribute *attrs, CGLPixelFormatAttribute wanted, GLint *value) {
+    for (int i = 0; attrs[i] != 0; i++) {
+        int has_argument = attribute_has_argument(attrs[i]);
+        if (attrs[i] == wanted) {
+            if (value)
+                *value = has_argument ? (GLint) attrs[i + 1] : 1;
+            return 1;
+        }
+        if (has_argument)
+            i++;
+    }
+    return 0;
+}
+
+static int offscreen_depth_available(const CGLPixelFormatAttribute *attrs) {
+    GLint size = 0;
+    if (!attributes_have(attrs, kCGLPFAOffScreen, NULL) || !attributes_have(attrs, kCGLPFAColorSize, &size))
+        return 1;
+    return size == 0 || size == 24 || size == 32;
+}
+
 static EGLBoolean choose_opaque_config(EGLDisplay dpy, EGLConfig *out_config) {
     EGLint const attrs[] = {
         EGL_RED_SIZE, 8,
@@ -2023,6 +2052,14 @@ CGLError CGLChoosePixelFormat(
     }
     if (!result) {
         return kCGLBadAddress;
+    }
+    // no pixel format satisfies the attributes: none is made, and no virtual screen is counted
+    if (!offscreen_depth_available(attrs)) {
+        *result = NULL;
+        if (number_of_screens) {
+            *number_of_screens = 0;
+        }
+        return kCGLNoError;
     }
 
     CGLPixelFormatObj format = malloc(sizeof(struct _CGLPixelFormatObj));
@@ -2145,6 +2182,12 @@ CGLError CGLDescribePixelFormat(
     }
     if (attr == kCGLPFAVirtualScreenCount) {
         *value = 1;
+        return kCGLNoError;
+    }
+    // the pixels of an off-screen drawable are 32 bits, however the color size was asked for (see
+    // offscreen_depth_available)
+    if (attr == kCGLPFAColorSize && attributes_have(format->attributes, kCGLPFAOffScreen, NULL)) {
+        *value = 32;
         return kCGLNoError;
     }
 
@@ -5245,6 +5288,65 @@ void CGLGetVersion(GLint *majorvers, GLint *minorvers) {
         *minorvers = 0;
 }
 
+// Global options (CGLSetOption, CGLGetOption): they are kept, and none of them changes how this implementation works;
+// there is no pixel format cache or plug-in renderer to manage. Resetting the library puts the options back to their
+// initial values; the contexts are not destroyed.
+static pthread_mutex_t g_global_options_lock = PTHREAD_MUTEX_INITIALIZER;
+static GLint g_option_format_cache_size = 5;
+static GLint g_option_retain_renderers;
+static GLint g_option_use_error_handler;
+
+CGLError CGLSetOption(CGLGlobalOption pname, GLint param) {
+    CGLError result = kCGLNoError;
+    pthread_mutex_lock(&g_global_options_lock);
+    switch (pname) {
+    case kCGLGOFormatCacheSize:
+        // a positive integer
+        if (param > 0)
+            g_option_format_cache_size = param;
+        else
+            result = kCGLBadValue;
+        break;
+    case kCGLGOClearFormatCache:
+        break;
+    case kCGLGORetainRenderers:
+        g_option_retain_renderers = param != 0;
+        break;
+    case kCGLGOResetLibrary:
+        if (param) {
+            g_option_format_cache_size = 5;
+            g_option_retain_renderers = 0;
+            g_option_use_error_handler = 0;
+        }
+        break;
+    case kCGLGOUseErrorHandler:
+        g_option_use_error_handler = param != 0;
+        break;
+    default:
+        result = kCGLBadEnumeration;
+    }
+    pthread_mutex_unlock(&g_global_options_lock);
+    return result;
+}
+
+CGLError CGLGetOption(CGLGlobalOption pname, GLint *param) {
+    if (param == NULL)
+        return kCGLBadAddress;
+    CGLError result = kCGLNoError;
+    pthread_mutex_lock(&g_global_options_lock);
+    switch (pname) {
+    case kCGLGOFormatCacheSize: *param = g_option_format_cache_size; break;
+    // these two always read as false
+    case kCGLGOClearFormatCache:
+    case kCGLGOResetLibrary: *param = 0; break;
+    case kCGLGORetainRenderers: *param = g_option_retain_renderers; break;
+    case kCGLGOUseErrorHandler: *param = g_option_use_error_handler; break;
+    default: result = kCGLBadEnumeration;
+    }
+    pthread_mutex_unlock(&g_global_options_lock);
+    return result;
+}
+
 // Pixel buffers and off-screen buffers
 //
 // A pixel buffer (CGLPBufferObj) is a drawable that is not shown: a context renders into it after CGLSetPBuffer, and
@@ -5614,6 +5716,120 @@ CGLError CGLTexImagePBuffer(CGLContextObj context, CGLPBufferObj pbuffer, GLenum
     return result;
 }
 
+// Makes the texture bound to target in context an image of what the drawable of the source context shows: the
+// color buffer that the source draws into (the back buffer), in the size of the drawable.
+//
+// The behaviour follows the AGL reference (aglSurfaceTexture, 2007-10-31): the call acts like glTexImage2D, so the
+// image is a copy made by the call (it does not follow the drawable afterwards), the target and internal format
+// are those of glTexImage2D, and the geometry of the drawable has to suit the target; a GL_TEXTURE_2D needs a
+// drawable of power-of-two size, a face of a cube map one that is square. What glTexImage2D rejects is reported as
+// it reports it, in the GL error of context, and nothing is textured; the call itself then returns kCGLNoError.
+// GL_TEXTURE_CUBE_MAP is among the targets the reference lists, but glTexImage2D takes the six face targets and
+// rejects the cube map target itself, so the faces are what this takes: the cube map target is a GL_INVALID_ENUM.
+// The source has to be attached to a windowed drawable, a window or a view of one; a pixel buffer, an off-screen
+// buffer and a full-screen display are not, and neither is a context without a drawable (kCGLBadDrawable: the
+// reference names no code, and it is the one for a drawable that cannot be used). The reference also asks for both
+// contexts to use one renderer (virtual screen); there is only one here (virtual screen 0 of every pixel format),
+// so contexts of any two pixel formats qualify. The source may be of another share group, and may be context itself.
+// The contents are read through the source context and uploaded through context, so that no EGL surface has to be
+// usable with the configurations of both contexts.
+// Private: AGL's aglSurfaceTexture is its caller.
+static int isPowerOfTwo(EGLint size) {
+    return size > 0 && (size & (size - 1)) == 0;
+}
+
+CGLError _CGLTexImageDrawable(CGLContextObj context, GLenum target, GLenum internalFormat, CGLContextObj source) {
+    if (context == NULL || source == NULL)
+        return kCGLBadContext;
+    pthread_mutex_lock(&source->lock);
+    EGLSurface surface = atomic_load_explicit(&source->egl_surface, memory_order_acquire);
+    // A context that was never given a drawable draws to a placeholder when it is made current; a pixel buffer, an
+    // off-screen buffer and a full-screen window are drawables, but not windowed ones.
+    int windowed = surface != EGL_NO_SURFACE && surface != source->fallback_pbuffer
+        && surface != source->pbuffer_surface && surface != source->offscreen_surface
+        && surface != source->fullscreen_surface;
+    pthread_mutex_unlock(&source->lock);
+    if (!windowed)
+        return kCGLBadDrawable;
+    EGLint width = 0, height = 0;
+    if (!p_eglQuerySurface(source->egl_display, surface, EGL_WIDTH, &width)
+        || !p_eglQuerySurface(source->egl_display, surface, EGL_HEIGHT, &height)
+        || width <= 0 || height <= 0 || width > CGL_MAX_BUFFER_SIZE || height > CGL_MAX_BUFFER_SIZE)
+        return kCGLBadDrawable;
+
+    // What glTexImage2D reports: GL_INVALID_ENUM for a target it does not take, GL_INVALID_VALUE for a size that does
+    // not suit the target (the GL here would take other sizes) and for an internal format other than the RGB and RGBA
+    // ones of the reference (the sized forms among them). The error is raised by glTexImage2D itself, with a
+    // negative size, so that nothing is textured and the error is the GL's own.
+    int cube_face = target >= GL_TEXTURE_CUBE_MAP_POSITIVE_X && target <= GL_TEXTURE_CUBE_MAP_NEGATIVE_Z;
+    int target_known = target == GL_TEXTURE_2D || target == CGL_TEXTURE_RECTANGLE || cube_face;
+    int format_known = internalFormat == GL_RGB || internalFormat == GL_RGBA
+        || internalFormat == GL_RGB8 || internalFormat == GL_RGBA8;
+    int geometry_fits = !(target == GL_TEXTURE_2D && !(isPowerOfTwo(width) && isPowerOfTwo(height)))
+        && !(cube_face && width != height);
+    int rejected = !target_known || !format_known || !geometry_fits;
+
+    unsigned char *pixels = NULL;
+    if (!rejected) {
+        pixels = malloc((size_t) width * (size_t) height * 4);
+        if (pixels == NULL)
+            return kCGLBadAlloc;
+    }
+
+    struct context_scope scope;
+    CGLError result = kCGLNoError;
+    if (!rejected) {
+        result = enterContext(source, &scope, 1);
+        if (result == kCGLNoError) {
+            struct pixel_store saved, plain = { 0, 0, 0, 0, 1 };
+            GLint read_framebuffer = 0, read_buffer = GL_BACK;
+            savePixelStore(1, &saved);
+            glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_framebuffer);
+            glGetIntegerv(GL_READ_BUFFER, &read_buffer);
+            if (read_framebuffer != 0)
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+            glReadBuffer(GL_BACK);
+            setPixelStore(1, &plain);
+            glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+            setPixelStore(1, &saved);
+            glReadBuffer((GLenum) read_buffer);
+            if (read_framebuffer != 0)
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint) read_framebuffer);
+            leaveContext(source, &scope);
+        }
+    }
+    if (result == kCGLNoError) {
+        result = enterContext(context, &scope, 1);
+        if (result == kCGLNoError) {
+            struct pixel_store saved_unpack, plain = { 0, 0, 0, 0, 1 };
+            savePixelStore(0, &saved_unpack);
+            setPixelStore(0, &plain);
+            if (rejected)
+                glTexImage2D(target, 0, GL_RGBA, -1, -1, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+            else
+                glTexImage2D(target, 0, (GLint) internalFormat, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+            setPixelStore(0, &saved_unpack);
+            leaveContext(context, &scope);
+        }
+    }
+    free(pixels);
+    return result;
+}
+
+// Sets the viewport of the context, whether or not it is current, to the rectangle from (0, 0) of the given size.
+// Private: AGL gives a context a viewport of the size of its drawable where the reference says it is set.
+CGLError _CGLSetViewport(CGLContextObj ctx, GLsizei width, GLsizei height) {
+    if (ctx == NULL)
+        return kCGLBadContext;
+    struct context_scope scope;
+    CGLError error = enterContext(ctx, &scope, 1);
+    if (error != kCGLNoError)
+        return error;
+    glViewport(0, 0, width, height);
+    leaveContext(ctx, &scope);
+    return kCGLNoError;
+}
+
 CGLError CGLSetOffScreen(CGLContextObj ctx, GLsizei width, GLsizei height, GLint rowbytes, void *baseaddr) {
     if (ctx == NULL)
         return kCGLBadContext;
@@ -5632,6 +5848,8 @@ CGLError CGLSetOffScreen(CGLContextObj ctx, GLsizei width, GLsizei height, GLint
     struct buffer_drawable buffer = { .surface = surface, .offscreen = 1, .width = width, .height = height,
                                       .rowbytes = rowbytes, .base = baseaddr };
     installBufferDrawable(ctx, &buffer);
+    // the viewport of the context is the whole off-screen area from now on
+    _CGLSetViewport(ctx, width, height);
     return kCGLNoError;
 }
 

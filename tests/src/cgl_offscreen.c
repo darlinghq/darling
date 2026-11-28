@@ -28,9 +28,72 @@ static int pixelIs(const unsigned char *memory, int x, int y, int a, int r, int 
 	return closeTo(p[0], a) && closeTo(p[1], r) && closeTo(p[2], g) && closeTo(p[3], b);
 }
 
+static int viewportIs(int x, int y, int w, int h)
+{
+	GLint v[4] = { -1, -1, -1, -1 };
+	glGetIntegerv(GL_VIEWPORT, v);
+	if (v[0] == x && v[1] == y && v[2] == w && v[3] == h)
+		return 1;
+	printf("   viewport is %d %d %d %d, expected %d %d %d %d\n", v[0], v[1], v[2], v[3], x, y, w, h);
+	return 0;
+}
+
+// An off-screen pixel format only considers a buffer depth that is exactly the depth asked for (CGL Reference,
+// kCGLPFAOffScreen), and the pixels of the buffer here are 32 bit: a color size of 32, of 24 (the 8 bit channels of
+// such pixels) or none gives a pixel format, whose color size is 32; any other has none (no pixel format, no screens,
+// and no error), so that no buffer is written with pixels of another size than the client made it for.
+static void offscreenDepths(void)
+{
+	CGLPixelFormatObj format = NULL;
+	GLint screens = -1, size = -1;
+	CGLPixelFormatAttribute refused[][4] = {
+		{ kCGLPFAOffScreen, kCGLPFAColorSize, 16, 0 },
+		{ kCGLPFAOffScreen, kCGLPFAColorSize, 8, 0 },
+		{ kCGLPFAOffScreen, kCGLPFAColorSize, 48, 0 },
+		{ kCGLPFAColorSize, 64, kCGLPFAOffScreen, 0 },
+	};
+	for (unsigned i = 0; i < sizeof(refused) / sizeof(refused[0]); i++) {
+		format = (CGLPixelFormatObj) 1;
+		screens = -1;
+		CHECK_EQ(CGLChoosePixelFormat(refused[i], &format, &screens), kCGLNoError);
+		CHECK(format == NULL);
+		CHECK_EQ(screens, 0);
+	}
+	CGLPixelFormatAttribute accepted[][4] = {
+		{ kCGLPFAOffScreen, kCGLPFAColorSize, 32, 0 },
+		{ kCGLPFAOffScreen, kCGLPFAColorSize, 24, 0 },
+		{ kCGLPFAOffScreen, 0, 0, 0 },
+		{ kCGLPFAColorSize, 32, kCGLPFAOffScreen, 0 },
+	};
+	for (unsigned i = 0; i < sizeof(accepted) / sizeof(accepted[0]); i++) {
+		format = NULL;
+		screens = -1;
+		CHECK_EQ(CGLChoosePixelFormat(accepted[i], &format, &screens), kCGLNoError);
+		CHECK(format != NULL);
+		CHECK_EQ(screens, 1);
+		if (format) {
+			size = -1;
+			CHECK_EQ(CGLDescribePixelFormat(format, 0, kCGLPFAColorSize, &size), kCGLNoError);
+			CHECK_EQ(size, 32);
+			CGLReleasePixelFormat(format);
+		}
+	}
+	// a pixel format for a window is not held to it
+	CGLPixelFormatAttribute window[] = { kCGLPFAColorSize, 16, 0 };
+	format = NULL;
+	CHECK_EQ(CGLChoosePixelFormat(window, &format, &screens), kCGLNoError);
+	CHECK(format != NULL);
+	if (format) {
+		CHECK_EQ(CGLDescribePixelFormat(format, 0, kCGLPFAColorSize, &size), kCGLNoError);
+		CHECK_EQ(size, 16);
+		CGLReleasePixelFormat(format);
+	}
+}
+
 int main(void)
 {
 	setvbuf(stdout, NULL, _IONBF, 0);
+	offscreenDepths();
 	CGLPixelFormatAttribute plainAttributes[] = { kCGLPFAColorSize, 24, 0 };
 	CGLPixelFormatAttribute offscreenAttributes[] = { kCGLPFAOffScreen, kCGLPFAColorSize, 32, kCGLPFAAlphaSize, 8,
 		kCGLPFADepthSize, 16, 0 };
@@ -68,6 +131,12 @@ int main(void)
 	CHECK(width == W && height == H && rowbytes == ROWBYTES && base == memory);
 
 	CHECK_EQ(CGLSetCurrentContext(offscreen), kCGLNoError);
+	// the viewport of the context is the whole area (CGL Reference, CGLSetOffScreen), and again when it is attached
+	// again, whatever the context had set
+	CHECK(viewportIs(0, 0, W, H));
+	glViewport(1, 2, 3, 4);
+	CHECK_EQ(CGLSetOffScreen(offscreen, W, H, ROWBYTES, memory), kCGLNoError);
+	CHECK(viewportIs(0, 0, W, H));
 	glViewport(0, 0, W, H);
 	glDisable(GL_DITHER);
 	// the lower half (GL's first rows) in one color, one pixel in another
@@ -111,7 +180,9 @@ int main(void)
 	// a new buffer replaces the old one
 	static unsigned char other[ROWBYTES * H];
 	memset(other, 0xEE, sizeof(other));
+	glViewport(1, 2, 3, 4);
 	CHECK_EQ(CGLSetOffScreen(offscreen, W, H, ROWBYTES, other), kCGLNoError);
+	CHECK(viewportIs(0, 0, W, H));
 	glClearColor(1, 0, 1, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glFinish();

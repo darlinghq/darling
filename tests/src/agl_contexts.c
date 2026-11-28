@@ -8,6 +8,7 @@
 #include <Carbon/Carbon.h>
 #include <AGL/agl.h>
 #include <OpenGL/gl.h>
+#include <OpenGL/OpenGL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -79,6 +80,41 @@ static void formats(void)
 	CHECK(aglGetError() == AGL_BAD_CONTEXT);
 	CHECK(strlen((const char *) aglErrorString(AGL_BAD_CONTEXT)) > 0);
 	CHECK(strcmp((const char *) aglErrorString(AGL_NO_ERROR), (const char *) aglErrorString(AGL_BAD_CONTEXT)) != 0);
+	// the string for a code that is not an error code (AGL Reference, aglErrorString)
+	CHECK(strcmp((const char *) aglErrorString(31337), "No such error code.") == 0);
+
+	// renderer information for devices: the number of devices needs a list; the displays have to exist (aglQueryRendererInfo,
+	// aglQueryRendererInfoForCGDirectDisplayIDs)
+	CHECK(aglQueryRendererInfo(NULL, 1) == NULL);
+	CHECK(aglGetError() == AGL_BAD_GDEV);
+	CGDirectDisplayID mainDisplay = CGMainDisplayID(), nowhere = 0x7777;
+	info = aglQueryRendererInfoForCGDirectDisplayIDs(&mainDisplay, 1);
+	CHECK(info != NULL);
+	if (info)
+		aglDestroyRendererInfo(info);
+	info = aglQueryRendererInfoForCGDirectDisplayIDs(NULL, 0);
+	CHECK(info != NULL);
+	if (info)
+		aglDestroyRendererInfo(info);
+	CHECK(aglQueryRendererInfoForCGDirectDisplayIDs(NULL, 1) == NULL);
+	CHECK(aglGetError() == AGL_BAD_GDEV);
+	CHECK(aglQueryRendererInfoForCGDirectDisplayIDs(&nowhere, 1) == NULL);
+	CHECK(aglGetError() == AGL_BAD_GDEV);
+
+	// a pixel format made with the attributes only, and its displays
+	GLint plain[] = { AGL_RGBA, AGL_DOUBLEBUFFER, AGL_NONE };
+	format = aglCreatePixelFormat(plain);
+	CHECK(format != NULL);
+	GLint displayCount = -1;
+	CGDirectDisplayID *displays = aglDisplaysOfPixelFormat(format, &displayCount);
+	CHECK(displays != NULL && displayCount == 1 && displays[0] == mainDisplay);
+	if (format)
+		aglDestroyPixelFormat(format);
+	CHECK(aglDisplaysOfPixelFormat(NULL, &displayCount) == NULL);
+	CHECK(aglGetError() == AGL_BAD_PIXELFMT);
+	CHECK(displayCount == 0);
+	CHECK(aglCreatePixelFormat(bad) == NULL);
+	CHECK(aglGetError() == AGL_BAD_ATTRIBUTE);
 }
 
 static void options(AGLContext ctx)
@@ -105,6 +141,9 @@ static void options(AGLContext ctx)
 	CHECK(!aglEnable(ctx, 777));
 	CHECK(aglGetError() == AGL_BAD_ENUM);
 	CHECK(aglGetVirtualScreen(ctx) == 0);
+	// -1 when the call fails
+	CHECK(aglGetVirtualScreen(NULL) == -1);
+	CHECK(aglGetError() == AGL_BAD_CONTEXT);
 	CHECK(aglSetVirtualScreen(ctx, 0));
 	CHECK(!aglSetVirtualScreen(ctx, 5));
 	CHECK(aglGetError() == AGL_BAD_VALUE);
@@ -232,6 +271,28 @@ int main(void)
 	CHECK(aglGetWindowRef(ctx) == NULL);
 	CHECK(aglSetWindowRef(ctx, window));
 	CHECK(aglGetWindowRef(ctx) == window);
+	// the surface of the drawable and the displays it is on (aglGetInteger, AGL_CONTEXT_SURFACE_ID and AGL_CONTEXT_DISPLAY_ID)
+	GLint surfaceID = -1, displayIDs[32] = { 0 };
+	CHECK(aglGetInteger(ctx, AGL_CONTEXT_SURFACE_ID, &surfaceID) && surfaceID != 0);
+	CHECK(aglGetInteger(ctx, AGL_CONTEXT_DISPLAY_ID, displayIDs) && displayIDs[0] == (GLint) CGMainDisplayID());
+	CHECK(!aglSetInteger(ctx, AGL_CONTEXT_SURFACE_ID, &surfaceID));
+	CHECK(aglGetError() == AGL_BAD_ENUM);
+	AGLContext bare = aglCreateContext(format, NULL);
+	CHECK(bare != NULL);
+	if (bare) {
+		CHECK(aglGetInteger(bare, AGL_CONTEXT_SURFACE_ID, &surfaceID) && surfaceID == 0);
+		CHECK(aglDestroyContext(bare));
+	}
+	// the global options, which CGL has: a positive cache size, no other option
+	GLint option = 0;
+	CHECK(aglConfigure(AGL_FORMAT_CACHE_SIZE, 7));
+	CHECK(CGLGetOption(kCGLGOFormatCacheSize, &option) == kCGLNoError && option == 7);
+	CHECK(!aglConfigure(AGL_FORMAT_CACHE_SIZE, 0));
+	CHECK(aglGetError() == AGL_BAD_VALUE);
+	CHECK(!aglConfigure(31337, 1));
+	CHECK(aglGetError() == AGL_BAD_ENUM);
+	aglResetLibrary();
+	CHECK(CGLGetOption(kCGLGOFormatCacheSize, &option) == kCGLNoError && option == 5);
 	// a context sharing the first one's objects
 	AGLContext shared = aglCreateContext(format, ctx);
 	CHECK(shared != NULL);

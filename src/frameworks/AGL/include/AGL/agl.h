@@ -208,11 +208,14 @@ enum {
 /* Library version, pixel formats and renderer information */
 void aglGetVersion(GLint *major, GLint *minor);
 AGLPixelFormat aglChoosePixelFormat(const AGLDevice *gdevs, GLint ndev, const GLint *attribs);
+AGLPixelFormat aglCreatePixelFormat(const GLint *attribs);
 void aglDestroyPixelFormat(AGLPixelFormat pix);
 AGLPixelFormat aglNextPixelFormat(AGLPixelFormat pix);
 GLboolean aglDescribePixelFormat(AGLPixelFormat pix, GLint attrib, GLint *value);
 AGLDevice *aglDevicesOfPixelFormat(AGLPixelFormat pix, GLint *ndevs);
+CGDirectDisplayID *aglDisplaysOfPixelFormat(AGLPixelFormat pix, GLint *ndevs);
 AGLRendererInfo aglQueryRendererInfo(const AGLDevice *gdevs, GLint ndev);
+AGLRendererInfo aglQueryRendererInfoForCGDirectDisplayIDs(const CGDirectDisplayID *dspIDs, GLint ndev);
 void aglDestroyRendererInfo(AGLRendererInfo rend);
 AGLRendererInfo aglNextRendererInfo(AGLRendererInfo rend);
 GLboolean aglDescribeRenderer(AGLRendererInfo rend, GLint prop, GLint *value);
