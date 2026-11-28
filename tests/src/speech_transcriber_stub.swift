@@ -1,3 +1,9 @@
+// Copyright (C) 2026 Lubos Dolezel
+//
+// SpeechTranscriber on a machine without on-device speech models: isAvailable is false and both locale lists are empty.
+// Build (x86_64): swiftc -frontend -c -parse-as-library with the Darling Swift overlay modules, then link Speech.framework.
+// 64-bit only: the Swift runtime has no i386 slice.
+
 import Darwin
 import Foundation
 import Speech

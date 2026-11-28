@@ -1,3 +1,10 @@
+// Copyright (C) 2026 Lubos Dolezel
+//
+// SystemLanguageModel on a machine that cannot run the on-device model: availability is
+// .unavailable(.deviceNotEligible), isAvailable is false, and the supported-language list is still reported.
+// Build (x86_64): swiftc -frontend -c with the Darling Swift overlay modules, then link FoundationModels.framework.
+// The same file builds and passes with the real SDK on a Mac without Apple Intelligence.
+
 import Darwin
 import Foundation
 import FoundationModels
