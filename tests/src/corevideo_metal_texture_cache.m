@@ -13,6 +13,7 @@
 #import <CoreVideo/CoreVideo.h>
 #import <IOSurface/IOSurface.h>
 #include <stdio.h>
+#include <string.h>
 
 static int g_failures = 0;
 #define CHECK(cond) do { if (!(cond)) { printf("FAIL %d: %s\n", __LINE__, #cond); g_failures++; } } while (0)
@@ -87,13 +88,21 @@ int main(void)
 			CHECK(mt.textureType == MTLTextureType2D);
 			CHECK(mt.usage == MTLTextureUsageShaderRead);
 			CHECK(mt.iosurface == CVPixelBufferGetIOSurface(pb));
-			// Single-pixel reads in the first row (the Metal layer's getBytes does not yet address the later rows of an
-			// IOSurface texture correctly): the last pixel of the row, then the first pixel after a CPU write.
+			// Every pixel of every row, through the buffer's own row stride.
+			uint8_t all[5 * 3 * 4];
+			memset(all, 0xEE, sizeof(all));
+			[mt getBytes:all bytesPerRow:5 * 4 fromRegion:MTLRegionMake2D(0, 0, 5, 3) mipmapLevel:0];
+			int badPixels = 0;
+			for (int y = 0; y < 3; y++)
+				for (int x = 0; x < 5; x++) {
+					uint8_t *p = all + (y * 5 + x) * 4;
+					if (p[0] != x || p[1] != y || p[2] != 9 || p[3] != 255)
+						badPixels++;
+				}
+			CHECK(badPixels == 0);
 			uint8_t px[4] = { 0 };
-			[mt getBytes:px bytesPerRow:4 fromRegion:MTLRegionMake2D(4, 0, 1, 1) mipmapLevel:0];
-			CHECK(px[0] == 4 && px[1] == 0 && px[2] == 9 && px[3] == 255);
-			[mt getBytes:px bytesPerRow:4 fromRegion:MTLRegionMake2D(0, 0, 1, 1) mipmapLevel:0];
-			CHECK(px[0] == 0 && px[1] == 0);
+			[mt getBytes:px bytesPerRow:4 fromRegion:MTLRegionMake2D(4, 2, 1, 1) mipmapLevel:0];
+			CHECK(px[0] == 4 && px[1] == 2 && px[2] == 9 && px[3] == 255);
 
 			// The texture shows the buffer's memory, not a copy of it.
 			CVPixelBufferLockBaseAddress(pb, 0);
