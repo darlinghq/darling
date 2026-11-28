@@ -5,7 +5,7 @@
 Usage: binfmt-helper.py <helper> <stub executable> <stand-in launcher> <stand-in mldr>
 
 Runs the helper against two copies of a stand-in executable, so no installed Darling is needed. Outside
-the container the kernel's default argv layout must become "darling exec <binary> <arguments>"; inside
+the container the kernel's P-flag argv layout must become "darling exec <binary> <arguments>"; inside
 one it must become mldr's "mldr!<binary> <binary> <arguments>".
 """
 import os
@@ -39,9 +39,9 @@ def run(helper, output, guest):
     if guest:
         env["__darling_binfmt_guest"] = "1"
 
-    # binfmt_misc calls the interpreter with argv[0] set to the Mach-O path. Passing the helper as
-    # `executable` reproduces that layout.
-    result = subprocess.run([BINARY, "one", "two words"], executable=str(helper), env=env,
+    # With the P flag binfmt_misc runs the interpreter as <interpreter> <file path> <caller's argv[0]>
+    # <arguments...> (kernel binfmt_misc administrator's guide).
+    result = subprocess.run([str(helper), BINARY, "called-as", "one", "two words"], env=env,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     if result.returncode != 0:
         fail(f"helper exited {result.returncode}: {result.stdout}")
@@ -80,7 +80,7 @@ def main():
 
         expect("guest invocation", run(helper, output, guest=True), [
             f"argv0=mldr!{BINARY}",
-            f"arg0={BINARY}",
+            "arg0=called-as",
             "arg1=one",
             "arg2=two words",
             "launch=unset",
