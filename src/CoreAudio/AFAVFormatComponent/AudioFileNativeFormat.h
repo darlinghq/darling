@@ -80,6 +80,8 @@ private:
 	bool m_nativeOpen = false;
 	bool m_headerWritten = false;
 	bool m_writable = false;
+	SInt64 m_openBytes = 0;					// the size of the audio data when the file was opened
+	SInt64 m_openPackets = 0;
 	std::vector<uint8_t> m_layout;			// an AudioChannelLayout
 	// Where the sizes are stored in the header (-1 if the file does not have the field)
 	SInt64 m_containerSizeField = -1;

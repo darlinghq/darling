@@ -280,8 +280,10 @@ OSStatus AudioFileOpenWithCallbacks (
 	std::vector<uint8_t> probe(PROBE_SIZE);
 	UInt32 probed = 0;
 
-	if (inReadFunc(inClientData, 0, UInt32(probe.size()), probe.data(), &probed) != noErr)
-		probed = 0;
+	// An error of the caller's read function is the result, whatever it is
+	const OSStatus readStatus = inReadFunc(inClientData, 0, UInt32(probe.size()), probe.data(), &probed);
+	if (readStatus != noErr)
+		return readStatus;
 
 	OSStatus status = kAudioFileUnsupportedFileTypeError;
 	OSStatus recognizedStatus = kAudioFileUnsupportedFileTypeError;
@@ -320,6 +322,9 @@ static AudioFileComponent toComponent(AudioFileID file)
 
 OSStatus AudioFileClose (AudioFileID inAudioFile)
 {
+	if (!inAudioFile)
+		return kAudioFileNotOpenError;
+
 	OSStatus status = AudioFileComponentCloseFile(toComponent(inAudioFile));
 	OSStatus disposeStatus = AudioComponentInstanceDispose(toComponent(inAudioFile));
 
@@ -328,6 +333,9 @@ OSStatus AudioFileClose (AudioFileID inAudioFile)
 
 OSStatus AudioFileOptimize (AudioFileID inAudioFile)
 {
+	if (!inAudioFile)
+		return kAudioFileNotOpenError;
+
 	return AudioFileComponentOptimize(toComponent(inAudioFile));
 }
 
@@ -337,6 +345,9 @@ OSStatus AudioFileReadBytes ( AudioFileID inAudioFile,
 	UInt32 *ioNumBytes,
 	void *outBuffer)
 {
+	if (!inAudioFile)
+		return kAudioFileNotOpenError;
+
 	return AudioFileComponentReadBytes(toComponent(inAudioFile), inUseCache, inStartingByte, ioNumBytes, outBuffer);
 }
 
@@ -346,6 +357,9 @@ OSStatus AudioFileWriteBytes ( AudioFileID inAudioFile,
 	UInt32 *ioNumBytes,
 	const void *inBuffer)
 {
+	if (!inAudioFile)
+		return kAudioFileNotOpenError;
+
 	return AudioFileComponentWriteBytes(toComponent(inAudioFile), inUseCache, inStartingByte, ioNumBytes, inBuffer);
 }
 
@@ -357,6 +371,9 @@ OSStatus AudioFileReadPacketData ( AudioFileID inAudioFile,
 	UInt32 * ioNumPackets,
 	void * _Nullable outBuffer)
 {
+	if (!inAudioFile)
+		return kAudioFileNotOpenError;
+
 	return AudioFileComponentReadPacketData(toComponent(inAudioFile), inUseCache, ioNumBytes, outPacketDescriptions,
 		inStartingPacket, ioNumPackets, outBuffer);
 }
@@ -369,6 +386,9 @@ OSStatus AudioFileReadPackets ( AudioFileID inAudioFile,
 	UInt32 * ioNumPackets,
 	void * _Nullable outBuffer)
 {
+	if (!inAudioFile)
+		return kAudioFileNotOpenError;
+
 	return AudioFileComponentReadPackets(toComponent(inAudioFile), inUseCache, outNumBytes, outPacketDescriptions,
 		inStartingPacket, ioNumPackets, outBuffer);
 }
@@ -381,6 +401,9 @@ OSStatus AudioFileWritePackets ( AudioFileID inAudioFile,
 	UInt32 * ioNumPackets,
 	const void * inBuffer)
 {
+	if (!inAudioFile)
+		return kAudioFileNotOpenError;
+
 	return AudioFileComponentWritePackets(toComponent(inAudioFile), inUseCache, inNumBytes, inPacketDescriptions,
 		inStartingPacket, ioNumPackets, inBuffer);
 }
@@ -389,6 +412,9 @@ OSStatus AudioFileCountUserData ( AudioFileID inAudioFile,
 	UInt32 inUserDataID,
 	UInt32 *outNumberItems)
 {
+	if (!inAudioFile)
+		return kAudioFileNotOpenError;
+
 	return AudioFileComponentCountUserData(toComponent(inAudioFile), inUserDataID, outNumberItems);
 }
 
@@ -397,6 +423,9 @@ OSStatus AudioFileGetUserDataSize ( AudioFileID inAudioFile,
 	UInt32 inIndex,
 	UInt32 *outUserDataSize)
 {
+	if (!inAudioFile)
+		return kAudioFileNotOpenError;
+
 	return AudioFileComponentGetUserDataSize(toComponent(inAudioFile), inUserDataID, inIndex, outUserDataSize);
 }
 
@@ -406,6 +435,9 @@ OSStatus AudioFileGetUserData ( AudioFileID inAudioFile,
 	UInt32 *ioUserDataSize,
 	void *outUserData)
 {
+	if (!inAudioFile)
+		return kAudioFileNotOpenError;
+
 	return AudioFileComponentGetUserData(toComponent(inAudioFile), inUserDataID, inIndex, ioUserDataSize, outUserData);
 }
 
@@ -415,6 +447,9 @@ OSStatus AudioFileSetUserData ( AudioFileID inAudioFile,
 	UInt32 inUserDataSize,
 	const void *inUserData)
 {
+	if (!inAudioFile)
+		return kAudioFileNotOpenError;
+
 	return AudioFileComponentSetUserData(toComponent(inAudioFile), inUserDataID, inIndex, inUserDataSize, inUserData);
 }
 
@@ -422,6 +457,9 @@ OSStatus AudioFileRemoveUserData ( AudioFileID inAudioFile,
 	UInt32 inUserDataID,
 	UInt32 inIndex)
 {
+	if (!inAudioFile)
+		return kAudioFileNotOpenError;
+
 	return AudioFileComponentRemoveUserData(toComponent(inAudioFile), inUserDataID, inIndex);
 }
 
@@ -430,6 +468,9 @@ OSStatus AudioFileGetPropertyInfo( AudioFileID inAudioFile,
 	UInt32 * _Nullable outDataSize,
 	UInt32 * _Nullable isWritable)
 {
+	if (!inAudioFile)
+		return kAudio_ParamError;
+
 	return AudioFileComponentGetPropertyInfo(toComponent(inAudioFile), inPropertyID, outDataSize, isWritable);
 }
 
@@ -438,6 +479,9 @@ OSStatus AudioFileGetProperty( AudioFileID inAudioFile,
 	UInt32 *ioDataSize,
 	void *outPropertyData)
 {
+	if (!inAudioFile)
+		return kAudio_ParamError;
+
 	return AudioFileComponentGetProperty(toComponent(inAudioFile), inPropertyID, ioDataSize, outPropertyData);
 }
 
@@ -446,25 +490,39 @@ OSStatus AudioFileSetProperty( AudioFileID inAudioFile,
 	UInt32 inDataSize,
 	const void *inPropertyData)
 {
+	if (!inAudioFile)
+		return kAudio_ParamError;
+
 	return AudioFileComponentSetProperty(toComponent(inAudioFile), inPropertyID, inDataSize, inPropertyData);
 }
+
+static OSStatus globalInfo(AudioFilePropertyID inPropertyID, UInt32 inSpecifierSize, void* inSpecifier,
+	UInt32* ioDataSize, void* outPropertyData, bool sizeOnly);
 
 OSStatus AudioFileGetGlobalInfoSize( AudioFilePropertyID inPropertyID,
 	UInt32 inSpecifierSize,
 	void * _Nullable inSpecifier,
 	UInt32 *outDataSize)
 {
-	return AudioFileGetGlobalInfo(inPropertyID, inSpecifierSize, inSpecifier, outDataSize, nullptr);
+	if (!outDataSize)
+		return kAudio_ParamError;
+
+	return globalInfo(inPropertyID, inSpecifierSize, inSpecifier, outDataSize, nullptr, true);
 }
 
-static void writeUInt32Set(const std::set<UInt32>& set, void *outPropertyData)
+// Copies what fits in `capacity` bytes
+static void writeUInt32Set(const std::set<UInt32>& set, void *outPropertyData, UInt32 capacity)
 {
 	if (outPropertyData)
 	{
 		UInt32* out = static_cast<UInt32*>(outPropertyData);
-		int i = 0;
+		UInt32 room = capacity / sizeof(UInt32);
 		for (UInt32 v : set)
-			out[i++] = v;
+		{
+			if (room-- == 0)
+				break;
+			*out++ = v;
+		}
 	}
 }
 
@@ -490,6 +548,20 @@ OSStatus AudioFileGetGlobalInfo( AudioFilePropertyID inPropertyID,
 	UInt32 *ioDataSize,
 	void *outPropertyData)
 {
+	if (!ioDataSize || !outPropertyData)
+		return kAudio_ParamError;
+
+	return globalInfo(inPropertyID, inSpecifierSize, inSpecifier, ioDataSize, outPropertyData, false);
+}
+
+// The size query reports the size of the answer and ignores the specifier where the size does not depend on it.
+// The query for the answer fails with kAudioFileBadPropertySizeError when it does not fit in *ioDataSize bytes, except for the
+// lists of types, which are cut at the end of the buffer while *ioDataSize reports the size of the whole list.
+static OSStatus globalInfo(AudioFilePropertyID inPropertyID, UInt32 inSpecifierSize, void* inSpecifier,
+	UInt32* ioDataSize, void* outPropertyData, bool sizeOnly)
+{
+	const UInt32 capacity = *ioDataSize;
+
 	switch (inPropertyID)
 	{
 		case kAudioFileGlobalInfo_ReadableTypes:
@@ -498,14 +570,24 @@ OSStatus AudioFileGetGlobalInfo( AudioFilePropertyID inPropertyID,
 			std::set<UInt32> types = AudioFileFormatManager::instance()->types(inPropertyID == kAudioFileGlobalInfo_WritableTypes);
 
 			*ioDataSize = types.size() * sizeof(UInt32);
-			writeUInt32Set(types, outPropertyData);
+			writeUInt32Set(types, outPropertyData, capacity);
 			
 			return noErr;
 		}
 		case kAudioFileGlobalInfo_FileTypeName:
 		{
+			if (sizeOnly)
+			{
+				*ioDataSize = sizeof(CFStringRef);
+				return noErr;
+			}
+
 			const UInt32* fileType = static_cast<const UInt32*>(inSpecifier);
 			if (inSpecifierSize != sizeof(*fileType))
+				return kAudioFileBadPropertySizeError;
+			if (!fileType)
+				return kAudio_ParamError;
+			if (capacity < sizeof(CFStringRef))
 				return kAudioFileBadPropertySizeError;
 
 			const AudioFileFormatManager::ComponentInfo* ci;
@@ -516,9 +598,7 @@ OSStatus AudioFileGetGlobalInfo( AudioFilePropertyID inPropertyID,
 
 			CFStringRef* out = static_cast<CFStringRef*>(outPropertyData);
 			*ioDataSize = sizeof(*out);
-
-			if (out)
-				*out = CFStringCreateWithCString(nullptr, ci->name.c_str(), kCFStringEncodingUTF8);
+			*out = CFStringCreateWithCString(nullptr, ci->name.c_str(), kCFStringEncodingUTF8);
 
 			return noErr;
 		}
@@ -527,6 +607,8 @@ OSStatus AudioFileGetGlobalInfo( AudioFilePropertyID inPropertyID,
 			const AudioFileTypeAndFormatID* spec = static_cast<const AudioFileTypeAndFormatID*>(inSpecifier);
 			if (inSpecifierSize != sizeof(*spec))
 				return kAudioFileBadPropertySizeError;
+			if (!spec)
+				return kAudio_ParamError;
 			break;
 		}
 		case kAudioFileGlobalInfo_AvailableFormatIDs:
@@ -534,11 +616,13 @@ OSStatus AudioFileGetGlobalInfo( AudioFilePropertyID inPropertyID,
 			const UInt32* fileType = static_cast<const UInt32*>(inSpecifier);
 			if (inSpecifierSize != sizeof(*fileType))
 				return kAudioFileBadPropertySizeError;
+			if (!fileType)
+				return kAudio_ParamError;
 
 			auto set = AudioFileFormatManager::instance()->availableFormatIDs(*fileType);
 			*ioDataSize = set.size() * sizeof(UInt32);
 
-			writeUInt32Set(set, outPropertyData);
+			writeUInt32Set(set, outPropertyData, capacity);
 
 			return noErr;
 		}
@@ -555,6 +639,9 @@ OSStatus AudioFileGetGlobalInfo( AudioFilePropertyID inPropertyID,
 
 			if (outPropertyData)
 			{
+				if (capacity < sizeof(CFArrayRef))
+					return kAudioFileBadPropertySizeError;
+
 				std::set<std::string> set;
 				AudioFileFormatManager* mgr = AudioFileFormatManager::instance();
 
@@ -574,30 +661,33 @@ OSStatus AudioFileGetGlobalInfo( AudioFilePropertyID inPropertyID,
 		case kAudioFileGlobalInfo_UTIsForType:
 		case kAudioFileGlobalInfo_MIMETypesForType:
 		{
+			*ioDataSize = sizeof(CFArrayRef);
+			if (sizeOnly)
+				return noErr;
+
 			const UInt32* fileType = static_cast<const UInt32*>(inSpecifier);
 			if (inSpecifierSize != sizeof(*fileType))
 				return kAudioFileBadPropertySizeError;
+			if (!fileType)
+				return kAudio_ParamError;
+			if (capacity < sizeof(CFArrayRef))
+				return kAudioFileBadPropertySizeError;
 
-			*ioDataSize = sizeof(CFArrayRef);
+			const std::vector<std::string>* vector = nullptr;
+			const AudioFileFormatManager::ComponentInfo* ci;
 
-			if (outPropertyData)
-			{
-				const std::vector<std::string>* vector;
-				const AudioFileFormatManager::ComponentInfo* ci;
+			ci = AudioFileFormatManager::instance()->fileType(*fileType);
+			if (!ci)
+				return kAudioFileUnsupportedFileTypeError;
 
-				ci = AudioFileFormatManager::instance()->fileType(*fileType);
-				if (!ci)
-					return kAudioFileUnsupportedFileTypeError;
-				
-				if (inPropertyID == kAudioFileGlobalInfo_ExtensionsForType)
-					vector = &ci->extensions;
-				else if (inPropertyID == kAudioFileGlobalInfo_UTIsForType)
-					vector = &ci->utis;
-				else if (inPropertyID == kAudioFileGlobalInfo_MIMETypesForType)
-					vector = &ci->mimeTypes;
+			if (inPropertyID == kAudioFileGlobalInfo_ExtensionsForType)
+				vector = &ci->extensions;
+			else if (inPropertyID == kAudioFileGlobalInfo_UTIsForType)
+				vector = &ci->utis;
+			else if (inPropertyID == kAudioFileGlobalInfo_MIMETypesForType)
+				vector = &ci->mimeTypes;
 
-				*((CFArrayRef*)outPropertyData) = stringContainerToArray(*vector);
-			}
+			*((CFArrayRef*)outPropertyData) = stringContainerToArray(*vector);
 
 			return noErr;
 		}
@@ -638,12 +728,12 @@ OSStatus AudioFileGetGlobalInfo( AudioFilePropertyID inPropertyID,
 				set = mgr->typesForExtension(key.c_str());
 
 			*ioDataSize = set.size() * sizeof(UInt32);
-			writeUInt32Set(set, outPropertyData);
+			writeUInt32Set(set, outPropertyData, capacity);
 
 			return noErr;
 		}
 	}
-	return unimpErr;
+	return sizeOnly ? kAudioFileUnspecifiedError : unimpErr;
 }
 
 OSStatus AudioFileCreate ( const struct FSRef *inParentRef,
