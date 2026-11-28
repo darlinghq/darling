@@ -856,6 +856,39 @@ static CGLError register_native_display(void *native_display, EGLenum platform) 
     return kCGLNoError;
 }
 
+// A fullscreen context draws into a window of the process's own window-system
+// connection, so its EGL display has to be that connection's: the platform
+// EGL picks by itself (X11 whenever DISPLAY is set) is not necessarily the
+// one the connection is to. AppKit, AGL and Carbon register the connection
+// when they are loaded; a program that uses CGL alone has nobody else to do
+// it, so the connection is registered when a pixel format asks for fullscreen
+// and no display was registered. Does nothing without a window system.
+// CGSNativeConnectionKind of CoreGraphics, whose header is Objective-C.
+enum { kConnectionKindX11 = 1, kConnectionKindWayland = 2 };
+extern int _CGSNativeConnectionKind(void);
+
+static void register_connection_display(void) {
+    pthread_mutex_lock(&registration_lock);
+    int registered = display != EGL_NO_DISPLAY;
+    pthread_mutex_unlock(&registration_lock);
+    if (registered)
+        return;
+    CGSConnectionID cid = CGSMainConnectionID();
+    void *native_display = cid ? _CGSNativeDisplay(cid) : NULL;
+    if (!native_display)
+        return;
+    switch (_CGSNativeConnectionKind()) {
+    case kConnectionKindX11:
+        register_native_display(native_display, EGL_PLATFORM_X11_KHR);
+        break;
+    case kConnectionKindWayland:
+        register_native_display(native_display, EGL_PLATFORM_WAYLAND_KHR);
+        break;
+    default:
+        break;
+    }
+}
+
 CGLError CGLRegisterNativeDisplay(void *native_display) {
     return register_native_display(native_display, EGL_PLATFORM_X11_KHR);
 }
@@ -2023,6 +2056,16 @@ CGLError CGLChoosePixelFormat(
     }
     if (!result) {
         return kCGLBadAddress;
+    }
+
+    // A fullscreen pixel format needs the display of the window-system connection.
+    for (int i = 0; attrs[i] != 0; i++) {
+        if (attrs[i] == kCGLPFAFullScreen) {
+            register_connection_display();
+            break;
+        }
+        if (attribute_has_argument(attrs[i]))
+            i++;
     }
 
     CGLPixelFormatObj format = malloc(sizeof(struct _CGLPixelFormatObj));
