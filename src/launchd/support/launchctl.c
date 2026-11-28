@@ -2933,11 +2933,14 @@ load_and_unload_cmd(int argc, char *const argv[])
 	}
 
 	if (launch_data_array_get_count(lus.pass1) == 0) {
+		// macOS's legacy load/unload report a failure but exit 0, so a
+		// caller that unloads before loading carries on.
 		if (!_launchctl_is_managed) {
-			launchctl_log(LOG_ERR, "nothing found to %s", lus.load ? "load" : "unload");
+			launchctl_log(LOG_ERR, "%s failed: 5: Input/output error", lus.load ? "Load" : "Unload");
+			launchctl_log(LOG_ERR, "Try running `launchctl %s` as root for richer errors.", lus.load ? "bootstrap" : "bootout");
 		}
 		launch_data_free(lus.pass1);
-		return _launchctl_is_managed ? 0 : 1;
+		return 0;
 	}
 
 	if (lus.load) {
@@ -3028,6 +3031,7 @@ start_stop_remove_cmd(int argc, char *const argv[])
 
 	if (0 == strcmp(argv[0], "remove"))
 		lmsgcmd = LAUNCH_KEY_REMOVEJOB;
+	// macOS exits with the error number (3, ESRCH, for an unknown label).
 
 	if (argc != 2) {
 		launchctl_log(LOG_ERR, "usage: %s %s <job label>", getprogname(), argv[0]);
@@ -3046,7 +3050,7 @@ start_stop_remove_cmd(int argc, char *const argv[])
 	} else if (launch_data_get_type(resp) == LAUNCH_DATA_ERRNO) {
 		if ((e = launch_data_get_errno(resp))) {
 			launchctl_log(LOG_ERR, "%s %s error: %s", getprogname(), argv[0], strerror(e));
-			r = 1;
+			r = e;
 		}
 	} else {
 		launchctl_log(LOG_ERR, "%s %s returned unknown response", getprogname(), argv[0]);
@@ -3207,6 +3211,12 @@ list_cmd(int argc, char *const argv[])
 				print_obj(resp, NULL, NULL);
 				r = 0;
 			}
+			launch_data_free(resp);
+		} else if (launch_data_get_type(resp) == LAUNCH_DATA_ERRNO && launch_data_get_errno(resp) == ESRCH) {
+			// macOS reports an unknown label this way and exits 113; callers
+			// rely on it to tell "not loaded" apart from a failure.
+			launchctl_log(LOG_ERR, "Could not find service \"%s\" in domain for port", label);
+			r = 113;
 			launch_data_free(resp);
 		} else {
 			launchctl_log(LOG_ERR, "%s %s returned unknown response", getprogname(), argv[0]);
