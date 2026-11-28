@@ -27,6 +27,7 @@ add_framework(OpenGL
 
     SOURCES
         OpenGL.c
+        CGLCopyContext.c
         gl_exports.c
         gl_trampolines.c
 
