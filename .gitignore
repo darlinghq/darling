@@ -53,6 +53,11 @@ Module.symvers
 !/tests/shellspawn/**
 !/tests/app-api-compat.py
 !/tests/appkit-app-api-compat.m
+!/tests/binfmt-config.py
+!/tests/binfmt-helper.py
+!/tests/binfmt-launcher.py
+!/tests/binfmt-stub.c
+!/tests/darling-desktop.py
 
 # The suggested build folder
 build
