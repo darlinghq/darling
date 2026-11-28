@@ -693,13 +693,17 @@ GWorldFlags UpdateGWorld(GWorldPtr *world, short depth, const Rect *bounds, CTab
 	short oldDepth = old->pixMap.pixelFormat == 0x42475241 ? 0 : old->pixMap.pixelSize;
 	if (depth == 0 && old->pixMap.pixelSize == 32) depth = oldDepth;
 	Rect ob = old->portRect;
-	if (depth == oldDepth && bounds->right - bounds->left == ob.right - ob.left
+	// The world keeps the byte order of its pixels: the replacement is little-endian when the world is, and a
+	// world that is not becomes so when the flags ask for it. (Universal Binary Programming Guidelines, "GWorlds".)
+	Boolean oldNative = old->pixMap.pixelFormat == k32BGRAPixelFormat || old->pixMap.pixelFormat == k16LE555PixelFormat;
+	Boolean native = oldNative || (flags & kNativeEndianPixMap) != 0;
+	if (depth == oldDepth && native == oldNative && bounds->right - bounds->left == ob.right - ob.left
 			&& bounds->bottom - bounds->top == ob.bottom - ob.top) {
 		gQDError = noErr;
 		return 0;
 	}
 	GWorldPtr fresh = NULL;
-	if (NewGWorld(&fresh, depth, bounds, ctab, gd, 0) != noErr) return kGwFlagErr;
+	if (NewGWorld(&fresh, depth, bounds, ctab, gd, native ? kNativeEndianPixMap : 0) != noErr) return kGwFlagErr;
 	if (flags & (kClipPix | kStretchPix)) {
 		Rect src = old->portRect, dst = PORT_FROM(fresh)->portRect;
 		if (flags & kClipPix) {
