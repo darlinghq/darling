@@ -20,14 +20,17 @@
 
 #include <QuickTime/QuickTime.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 #include <CarbonCore/MacErrors.h>
 #if !__LP64__
 #include <CarbonCore/Files.h>
+#include <CarbonCore/MacMemory.h>
 #include <CarbonCore/Resources.h>
 #endif
 #include "qt_movie_internal.h"
 #include "qt_mov_probe.h"
+#include "qt_mov_writer.h"
 
 static int verbose = 0;
 
@@ -50,6 +53,18 @@ struct MovieTrackStorage {
     struct MediaType media;
     struct TrackType *track_handle;
     struct MediaType *media_handle;
+    void *pcm;
+    struct qt_mov_pcm_info pcm_info;
+    OSType handler_manufacturer;
+    unsigned char handler_name[256];
+    Boolean enabled;
+    /* Writing: tracks and media created in this process. */
+    Boolean has_media;
+    Boolean writable;
+    Boolean editing;
+    short volume;
+    SInt32 inserted;         /* media samples placed in the track, from 0 */
+    size_t pcm_capacity;
 };
 #endif
 
@@ -57,8 +72,10 @@ struct MovieStorage {
     struct MovieType *handle_value;
     struct MovieType value;
 #if !__LP64__
-    struct MovieTrackStorage *tracks;
+    struct MovieTrackStorage **tracks;
     SInt32 track_count;
+    Boolean saved;           /* stored by AddMovieResource */
+    short saved_refnum;
 #endif
     struct MovieStorage *next;
 };
@@ -110,10 +127,24 @@ static Movie movie_new(TimeScale time_scale, TimeValue duration)
 }
 
 
+#if !__LP64__
+/* Tracks are allocated one by one, so adding a track never moves the Track
+ * and Media handles of the others. */
+static void free_tracks(struct MovieTrackStorage **tracks, SInt32 count)
+{
+    for (SInt32 i=0;i<count;++i) {
+        if (tracks[i])
+            free(tracks[i]->pcm);
+        free(tracks[i]);
+    }
+    free(tracks);
+}
+#endif
+
 static void movie_free(struct MovieStorage *storage)
 {
 #if !__LP64__
-    free(storage->tracks);
+    free_tracks(storage->tracks,storage->track_count);
 #endif
     free(storage);
 }
@@ -131,7 +162,9 @@ static struct MovieTrackStorage *track_lookup(
 
     for (struct MovieStorage *s=movie_list;s;s=s->next) {
         for (SInt32 i=0;i<s->track_count;++i) {
-            struct MovieTrackStorage *t=&s->tracks[i];
+            struct MovieTrackStorage *t=s->tracks[i];
+            if (media && !t->has_media)
+                continue;
             const void *key=media ?
                 (const void *)&t->media_handle :
                 (const void *)&t->track_handle;
@@ -145,7 +178,7 @@ static struct MovieTrackStorage *track_lookup(
 }
 
 static OSErr build_tracks(const void *data,size_t length,
-                          struct MovieTrackStorage **out,
+                          struct MovieTrackStorage ***out,
                           SInt32 *count)
 {
     size_t n=0;
@@ -159,12 +192,12 @@ static OSErr build_tracks(const void *data,size_t length,
         return noErr;
 
     if (n>INT32_MAX ||
-        n>SIZE_MAX/sizeof(struct MovieTrackStorage) ||
+        n>SIZE_MAX/sizeof(struct MovieTrackStorage *) ||
         n>SIZE_MAX/sizeof(struct qt_mov_track_info))
         return memFullErr;
 
     struct qt_mov_track_info *infos=calloc(n,sizeof(*infos));
-    struct MovieTrackStorage *tracks=calloc(n,sizeof(*tracks));
+    struct MovieTrackStorage **tracks=calloc(n,sizeof(*tracks));
 
     if (!infos || !tracks) {
         free(infos);
@@ -173,33 +206,249 @@ static OSErr build_tracks(const void *data,size_t length,
     }
 
     size_t found=0;
+    OSErr error=noErr;
 
     if (qt_mov_list_tracks(data,length,infos,n,&found)!=0 ||
-        found!=n) {
-        free(infos);
-        free(tracks);
-        return badPublicMovieAtom;
-    }
+        found!=n)
+        error=badPublicMovieAtom;
 
-    for (size_t i=0;i<n;++i) {
+    for (size_t i=0;i<n && error==noErr;++i) {
+        struct MovieTrackStorage *t;
+
         if (!infos[i].has_media) {
-            free(infos);
-            free(tracks);
-            return unimpErr;
+            error=unimpErr;
+            break;
         }
-
-        tracks[i].track.handler=infos[i].handler;
-        tracks[i].track_handle=&tracks[i].track;
-        tracks[i].media.scale=(TimeScale)infos[i].media_time_scale;
-        tracks[i].media.samples=(SInt32)infos[i].sample_count;
-        tracks[i].media_handle=&tracks[i].media;
+        t=tracks[i]=calloc(1,sizeof(*t));
+        if (!t) {
+            error=memFullErr;
+            break;
+        }
+        t->track.handler=infos[i].handler;
+        t->track_handle=&t->track;
+        t->media.scale=(TimeScale)infos[i].media_time_scale;
+        t->media.samples=(SInt32)infos[i].sample_count;
+        t->media_handle=&t->media;
+        t->handler_manufacturer=infos[i].handler_manufacturer;
+        memcpy(t->handler_name,infos[i].handler_name,
+               sizeof(t->handler_name));
+        t->enabled=infos[i].enabled!=0;
+        t->has_media=1;
     }
 
     free(infos);
+    if (error!=noErr) {
+        free_tracks(tracks,(SInt32)n);
+        return error;
+    }
     *out=tracks;
     *count=(SInt32)n;
     return noErr;
 }
+
+/* PCM remains owned by its track until DisposeMovie or ExitMovies.
+ * No reference to the caller's MOV buffer is retained. */
+static OSErr attach_pcm(const void *data, size_t length,
+                        struct MovieTrackStorage **tracks, SInt32 count)
+{
+    struct MovieTrackStorage *sound = NULL;
+
+    for (SInt32 i = 0; i < count; ++i) {
+        if (tracks[i]->track.handler == 0x736f756e) {
+            if (sound)
+                return noErr;
+            sound = tracks[i];
+        }
+    }
+
+    if (!sound)
+        return noErr;
+
+    struct qt_mov_pcm_info info;
+    void *pcm = NULL;
+
+    int status = qt_mov_load_pcm(data, length, &pcm, &info);
+
+    if (status == QT_MOV_PCM_NO_MEMORY)
+        return memFullErr;
+
+    if (status != QT_MOV_PCM_OK)
+        return noErr; /* Preserve metadata-only import. */
+
+    if (sound->media.scale != (TimeScale)info.sample_rate ||
+        sound->media.samples != (SInt32)info.frame_count) {
+        free(pcm);
+        return noErr;
+    }
+
+    sound->pcm = pcm;
+    sound->pcm_info = info;
+    return noErr;
+}
+
+/* The PCM importer has already established a constant sample duration
+ * of one media tick and a frame count representable as TimeValue.
+ * Metadata-only tracks do not provide this sample timing contract. */
+static struct MovieTrackStorage *pcm_timing_track(Media media)
+{
+    struct MovieTrackStorage *track = track_lookup(media, 1);
+
+    if (!track)
+        return NULL;
+
+    if (!track->pcm) {
+        movies_error = unimpErr;
+        return NULL;
+    }
+
+    if (track->media.samples <= 0 ||
+        track->media.scale <= 0 ||
+        track->pcm_info.frame_count != (uint32_t)track->media.samples) {
+        movies_error = invalidSampleTable;
+        return NULL;
+    }
+
+    return track;
+}
+
+static OSErr copy_pcm_description(struct MovieTrackStorage *track,
+                                   SampleDescriptionHandle output)
+{
+    if (!output)
+        return paramErr;
+    if (!track->pcm)
+        return unimpErr;
+
+    const struct qt_mov_pcm_info *info = &track->pcm_info;
+
+    SoundDescription description = {0};
+    description.descSize = sizeof(description);
+    description.dataFormat = info->format;
+    description.dataRefIndex = 1;
+    description.numChannels = (SInt16)info->channels;
+    description.sampleSize = (SInt16)info->bits_per_sample;
+    description.sampleRate = info->sample_rate << 16;
+
+    return PtrToXHand(&description, (Handle)output,
+                      sizeof(description));
+}
+
+/* The movie that owns a track, by identity. */
+static struct MovieStorage *track_owner(const struct MovieTrackStorage *t)
+{
+    for (struct MovieStorage *s=movie_list;s;s=s->next)
+        for (SInt32 i=0;i<s->track_count;++i)
+            if (s->tracks[i]==t)
+                return s;
+    return NULL;
+}
+
+/* Movie time of the media samples placed in a track built here: one media
+ * time unit per sample, rounded down to the movie time scale. */
+static int written_track_duration(const struct MovieTrackStorage *t,
+                                  TimeScale scale, int32_t *out)
+{
+    uint64_t d;
+
+    if (!t->inserted) {
+        *out=0;
+        return 0;
+    }
+    d=(uint64_t)t->inserted*(uint64_t)scale/(uint64_t)t->media.scale;
+    if (!d || d>INT32_MAX)
+        return -1;
+    *out=(int32_t)d;
+    return 0;
+}
+
+/* A movie built in this process lasts as long as its longest track, and a
+ * full active segment follows its duration. Movies read from a file keep
+ * the duration they record. */
+static void movie_follow_tracks(struct MovieStorage *s)
+{
+    struct qt_timeline *tl=&s->value.timeline;
+    int32_t longest=0,d;
+    int built=0;
+
+    for (SInt32 i=0;i<s->track_count;++i) {
+        if (!s->tracks[i]->writable)
+            continue;
+        built=1;
+        if (written_track_duration(s->tracks[i],tl->scale,&d)!=0)
+            return;
+        if (d>longest)
+            longest=d;
+    }
+    if (!built)
+        return;
+
+    int full=tl->begin==0 && tl->end==tl->duration;
+
+    tl->duration=longest;
+    if (full || tl->end>longest)
+        tl->end=longest;
+    if (tl->begin>tl->end)
+        tl->begin=tl->end;
+    if (tl->position>tl->end)
+        tl->position=tl->end;
+    if (tl->position<tl->begin)
+        tl->position=tl->begin;
+}
+
+/* Serialize the movie and replace the contents of a data fork. Every check
+ * precedes the first write; a File Manager write error can still leave a
+ * partly written fork. */
+static OSErr write_movie(struct MovieStorage *s, short refnum)
+{
+    struct qt_mov_write_track *w=NULL;
+    uint8_t *bytes=NULL;
+    size_t length=0;
+
+    if (s->track_count) {
+        w=calloc((size_t)s->track_count,sizeof(*w));
+        if (!w)
+            return memFullErr;
+    }
+    for (SInt32 i=0;i<s->track_count;++i) {
+        const struct MovieTrackStorage *t=s->tracks[i];
+
+        if (t->editing) {
+            free(w);
+            return paramErr;
+        }
+        /* Sound media built here and placed whole in its track: any other
+         * mapping of media time to track time needs an edit list. */
+        if (!t->writable || !t->has_media || !t->media.samples ||
+            t->inserted!=t->media.samples) {
+            free(w);
+            return unimpErr;
+        }
+        w[i].pcm=t->pcm;
+        w[i].frames=(uint32_t)t->media.samples;
+        w[i].rate=(uint32_t)t->media.scale;
+        w[i].format=t->pcm_info.format;
+        w[i].channels=t->pcm_info.channels;
+        w[i].volume=(uint16_t)t->volume;
+    }
+
+    int status=qt_mov_write(w,(size_t)s->track_count,
+                            s->value.timeline.scale,&bytes,&length);
+    free(w);
+    if (status==QT_MOV_WRITE_NO_MEMORY)
+        return memFullErr;
+    if (status==QT_MOV_WRITE_INVALID_ARGUMENT)
+        return paramErr;
+    if (status!=QT_MOV_WRITE_OK)
+        return unimpErr;
+
+    ByteCount written=0;
+    OSErr err=FSWriteFork(refnum,fsFromStart,0,length,bytes,&written);
+    if (err==noErr)
+        err=FSSetForkSize(refnum,fsFromStart,(SInt64)length);
+    free(bytes);
+    return err;
+}
+
 #endif
 
 
@@ -250,11 +499,97 @@ void* AddMediaDataRef(void)
     return NULL;
 }
 
+#if !__LP64__
+/* Appends uncompressed 16-bit samples ('twos' or 'sowt', mono or stereo)
+ * described by one version 0 sound description per media, with a duration
+ * of one media time unit each and no sample flags. The data is copied; the
+ * media is unchanged on failure. */
+OSErr AddMediaSample(Media media, Handle dataIn, SInt32 inOffset,
+                     UInt32 size, TimeValue durationPerSample,
+                     SampleDescriptionHandle sampleDescriptionH,
+                     SInt32 numberOfSamples, short sampleFlags,
+                     TimeValue *sampleTime)
+{
+    struct MovieTrackStorage *t = track_lookup(media, 1);
+    SoundDescription d;
+
+    if (!t)
+        return movies_error;
+    if (!t->editing || !dataIn || !*dataIn || !sampleDescriptionH ||
+        !*sampleDescriptionH || inOffset < 0 || numberOfSamples <= 0)
+        return movies_error = paramErr;
+    if (durationPerSample != 1 || sampleFlags != 0)
+        return movies_error = unimpErr;
+    if (GetHandleSize((Handle)sampleDescriptionH) <
+        (Size)sizeof(SoundDescription))
+        return movies_error = paramErr;
+
+    memcpy(&d, *sampleDescriptionH, sizeof(d));
+    if (d.descSize != (SInt32)sizeof(SoundDescription) || d.version != 0 ||
+        d.compressionID != 0 || d.packetSize != 0 || d.dataRefIndex != 1 ||
+        d.sampleSize != 16 || (d.numChannels != 1 && d.numChannels != 2) ||
+        d.sampleRate != ((UInt32)t->media.scale << 16) ||
+        (d.dataFormat != 0x74776f73 && d.dataFormat != 0x736f7774))
+        return movies_error = unimpErr;
+    if (t->pcm_info.byte_count &&
+        (d.dataFormat != t->pcm_info.format ||
+         (uint16_t)d.numChannels != t->pcm_info.channels))
+        return movies_error = unimpErr;
+
+    size_t stride = (size_t)d.numChannels * 2;
+    Size available = GetHandleSize(dataIn);
+
+    if ((uint64_t)numberOfSamples * stride != size || available < 0 ||
+        (uint64_t)inOffset + size > (uint64_t)available)
+        return movies_error = paramErr;
+
+    size_t used = t->pcm_info.byte_count;
+
+    if (size > QT_MOV_WRITE_MAX_BYTES - used)
+        return movies_error = unimpErr;
+
+    size_t need = used + size;
+
+    if (need > t->pcm_capacity) {
+        size_t cap = t->pcm_capacity ? t->pcm_capacity : 4096;
+
+        while (cap < need)
+            cap = cap > QT_MOV_WRITE_MAX_BYTES / 2 ?
+                  QT_MOV_WRITE_MAX_BYTES : cap * 2;
+
+        void *grown = realloc(t->pcm, cap);
+
+        if (!grown)
+            return movies_error = memFullErr;
+        t->pcm = grown;
+        t->pcm_capacity = cap;
+    }
+
+    memcpy((unsigned char *)t->pcm + used, *dataIn + inOffset, size);
+    if (!used) {
+        t->pcm_info.format = d.dataFormat;
+        t->pcm_info.sample_rate = (uint32_t)t->media.scale;
+        t->pcm_info.channels = (uint16_t)d.numChannels;
+        t->pcm_info.bits_per_sample = 16;
+        t->pcm_info.frame_count = 0;
+    }
+
+    TimeValue start = t->media.samples;
+
+    t->pcm_info.byte_count = need;
+    t->pcm_info.frame_count += (uint32_t)numberOfSamples;
+    t->media.samples += numberOfSamples;
+    if (sampleTime)
+        *sampleTime = start;
+    return movies_error = noErr;
+}
+#else
 void* AddMediaSample(void)
 {
     if (verbose) puts("STUB: AddMediaSample called");
     return NULL;
 }
+#endif
 
 void* AddMediaSample2(void)
 {
@@ -292,11 +627,40 @@ void* AddMovieExecuteWiredActionsProc(void)
     return NULL;
 }
 
+#if !__LP64__
+/* Movies are stored in the data fork (movieInDataForkResID); a movie
+ * resource needs a resource fork, which is not supported. The movie is
+ * stored once; UpdateMovieResource rewrites it. The name of a data-fork
+ * movie is not stored. */
+OSErr AddMovieResource(Movie movie, short resRefNum, short *resId,
+                       ConstStr255Param resName)
+{
+    struct MovieStorage *s = movie_lookup(movie);
+    OSErr err;
+
+    (void)resName;
+    if (!s)
+        return movies_error;
+    if (!resId)
+        return movies_error = paramErr;
+    if (*resId != movieInDataForkResID)
+        return movies_error = unimpErr;
+    if (s->saved)
+        return movies_error = paramErr;
+    err = write_movie(s, resRefNum);
+    if (err == noErr) {
+        s->saved = 1;
+        s->saved_refnum = resRefNum;
+    }
+    return movies_error = err;
+}
+#else
 void* AddMovieResource(void)
 {
     if (verbose) puts("STUB: AddMovieResource called");
     return NULL;
 }
+#endif
 
 void* AddMovieSelection(void)
 {
@@ -670,11 +1034,28 @@ void* BeginFullScreen(void)
     return NULL;
 }
 
+#if !__LP64__
+/* Media read from a movie file cannot be edited. */
+OSErr BeginMediaEdits(Media media)
+{
+    struct MovieTrackStorage *t = track_lookup(media, 1);
+
+    if (!t)
+        return movies_error;
+    if (!t->writable)
+        return movies_error = unimpErr;
+    if (t->editing)
+        return movies_error = paramErr;
+    t->editing = 1;
+    return movies_error = noErr;
+}
+#else
 void* BeginMediaEdits(void)
 {
     if (verbose) puts("STUB: BeginMediaEdits called");
     return NULL;
 }
+#endif
 
 void* BlendBlitterSetBlendValue(void)
 {
@@ -1749,11 +2130,70 @@ void* CreateMovieControl(void)
     return NULL;
 }
 
+#if !__LP64__
+/* Creates a single-fork movie file with write permission and a new empty
+ * movie; resRefNum is its data fork. Creating a resource fork needs
+ * resource-file creation in CarbonCore, which is not available, so
+ * createMovieFileDontCreateResFile is required. An existing file is used
+ * only with createMovieFileDeleteCurFile: otherwise it is left unchanged
+ * and unimpErr is returned. A file created here is removed again when a
+ * later step fails. */
+OSErr CreateMovieFile(const FSSpec *fileSpec, OSType creator,
+                      ScriptCode scriptTag, SInt32 createMovieFileFlags,
+                      short *resRefNum, Movie *newmovie)
+{
+    const SInt32 known = createMovieFileDeleteCurFile |
+                         createMovieFileDontCreateResFile | newMovieActive;
+    FSRef ref;
+    FSIORefNum fork;
+    OSErr err;
+
+    if (!movies_entered)
+        return movies_error = movieToolboxUninitialized;
+    if (!fileSpec || !resRefNum || !newmovie)
+        return movies_error = paramErr;
+    if (!(createMovieFileFlags & createMovieFileDontCreateResFile) ||
+        (createMovieFileFlags & ~known))
+        return movies_error = unimpErr;
+
+    if (createMovieFileFlags & createMovieFileDeleteCurFile) {
+        err = FSpDelete(fileSpec);
+        if (err != noErr && err != fnfErr)
+            return movies_error = err;
+    }
+
+    err = FSpCreate(fileSpec, creator, MovieFileType, scriptTag);
+    if (err == dupFNErr)
+        return movies_error = unimpErr;
+    if (err != noErr)
+        return movies_error = err;
+
+    err = FSpMakeFSRef(fileSpec, &ref);
+    if (err == noErr)
+        err = FSOpenFork(&ref, 0, NULL, fsRdWrPerm, &fork);
+    if (err != noErr) {
+        FSpDelete(fileSpec);
+        return movies_error = err;
+    }
+
+    Movie movie = movie_new(600, 0);
+    if (!movie) {
+        err = movies_error;
+        FSCloseFork(fork);
+        FSpDelete(fileSpec);
+        return movies_error = err;
+    }
+    *resRefNum = fork;
+    *newmovie = movie;
+    return movies_error = noErr;
+}
+#else
 void* CreateMovieFile(void)
 {
     if (verbose) puts("STUB: CreateMovieFile called");
     return NULL;
 }
+#endif
 
 void* CreateMovieFileUnicode(void)
 {
@@ -3550,11 +3990,25 @@ void* EndFullScreen(void)
     return NULL;
 }
 
+#if !__LP64__
+OSErr EndMediaEdits(Media media)
+{
+    struct MovieTrackStorage *t = track_lookup(media, 1);
+
+    if (!t)
+        return movies_error;
+    if (!t->editing)
+        return movies_error = paramErr;
+    t->editing = 0;
+    return movies_error = noErr;
+}
+#else
 void* EndMediaEdits(void)
 {
     if (verbose) puts("STUB: EndMediaEdits called");
     return NULL;
 }
+#endif
 
 void* EndianCommonChunk_NtoB(void)
 {
@@ -4241,11 +4695,24 @@ void* GetMediaDisplayStartTime(void)
     return NULL;
 }
 
+#if !__LP64__
+TimeValue GetMediaDuration(Media media)
+{
+    struct MovieTrackStorage *track = pcm_timing_track(media);
+
+    if (!track)
+        return 0;
+
+    movies_error = noErr;
+    return (TimeValue)track->media.samples;
+}
+#else
 void* GetMediaDuration(void)
 {
     if (verbose) puts("STUB: GetMediaDuration called");
     return NULL;
 }
+#endif
 
 void* GetMediaHandler(void)
 {
@@ -4253,11 +4720,34 @@ void* GetMediaHandler(void)
     return NULL;
 }
 
+#if !__LP64__
+/* No media handler components are loaded: the handler identity is the one
+ * recorded in the media's handler reference atom. Each output is optional
+ * and the outputs are unchanged on failure. */
+void GetMediaHandlerDescription(Media media, OSType *mediaType,
+                                Str255 creatorName,
+                                OSType *creatorManufacturer)
+{
+    struct MovieTrackStorage *t = track_lookup(media, 1);
+
+    if (!t)
+        return;
+    if (mediaType)
+        *mediaType = t->track.handler;
+    if (creatorName)
+        memcpy(creatorName, t->handler_name,
+               (size_t)t->handler_name[0] + 1);
+    if (creatorManufacturer)
+        *creatorManufacturer = t->handler_manufacturer;
+    movies_error = noErr;
+}
+#else
 void* GetMediaHandlerDescription(void)
 {
     if (verbose) puts("STUB: GetMediaHandlerDescription called");
     return NULL;
 }
+#endif
 
 void* GetMediaInputMap(void)
 {
@@ -4289,11 +4779,64 @@ void* GetMediaNextInterestingDisplayTime(void)
     return NULL;
 }
 
+#if !__LP64__
+void GetMediaNextInterestingTime(Media media,
+                                 short interestingTimeFlags,
+                                 TimeValue time, Fixed rate,
+                                 TimeValue *interestingTime,
+                                 TimeValue *interestingDuration)
+{
+    struct MovieTrackStorage *track = pcm_timing_track(media);
+
+    if (!track)
+        return;
+
+    /* This implementation searches sample starts only.
+     * Edit lists, explicit sync tables and other search modes
+     * are not interpreted by the current PCM importer. */
+    unsigned flags = (unsigned short)interestingTimeFlags;
+
+    if (flags != nextTimeMediaSample &&
+        flags != (nextTimeMediaSample | nextTimeEdgeOK)) {
+        movies_error = unimpErr;
+        return;
+    }
+
+    TimeValue duration = (TimeValue)track->media.samples;
+
+    if (time < 0 || time > duration) {
+        movies_error = invalidTime;
+        return;
+    }
+
+    /* Use a wider intermediate at the signed TimeValue boundary. */
+    int64_t candidate = time;
+
+    if (rate < 0) {
+        if (!(flags & nextTimeEdgeOK) || time == duration)
+            --candidate;
+    } else {
+        if (!(flags & nextTimeEdgeOK))
+            ++candidate;
+    }
+
+    int found = candidate >= 0 && candidate < duration;
+
+    if (interestingTime)
+        *interestingTime = found ? (TimeValue)candidate : -1;
+
+    if (interestingDuration)
+        *interestingDuration = found ? 1 : 0;
+
+    movies_error = noErr;
+}
+#else
 void* GetMediaNextInterestingTime(void)
 {
     if (verbose) puts("STUB: GetMediaNextInterestingTime called");
     return NULL;
 }
+#endif
 
 void* GetMediaPlayHints(void)
 {
@@ -4319,11 +4862,79 @@ void* GetMediaQuality(void)
     return NULL;
 }
 
+#if !__LP64__
+OSErr GetMediaSample(Media media, Handle dataOut,
+                     SInt32 maxSizeToGrow, SInt32 *size,
+                     TimeValue time, TimeValue *sampleTime,
+                     TimeValue *durationPerSample,
+                     SampleDescriptionHandle sampleDescriptionH,
+                     SInt32 *sampleDescriptionIndex,
+                     SInt32 maxNumberOfSamples,
+                     SInt32 *numberOfSamples, SInt16 *sampleFlags)
+{
+    struct MovieTrackStorage *track = track_lookup(media, 1);
+    if (!track)
+        return movies_error;
+
+    if (!dataOut || maxSizeToGrow < 0 || maxNumberOfSamples < 0 ||
+        (Handle)sampleDescriptionH == dataOut)
+        return movies_error = paramErr;
+    if (!track->pcm)
+        return movies_error = unimpErr;
+
+    const struct qt_mov_pcm_info *info = &track->pcm_info;
+    if (time < 0 || (uint32_t)time >= info->frame_count)
+        return movies_error = timeNotInMedia;
+
+    size_t frameBytes = (size_t)info->channels * 2;
+    size_t count = info->frame_count - (uint32_t)time;
+
+    if (maxNumberOfSamples > 0 &&
+        count > (size_t)maxNumberOfSamples)
+        count = (size_t)maxNumberOfSamples;
+
+    if (maxSizeToGrow > 0 &&
+        count > (size_t)maxSizeToGrow / frameBytes)
+        count = (size_t)maxSizeToGrow / frameBytes;
+
+    if (!count)
+        return movies_error = maxSizeToGrowTooSmall;
+
+    size_t start = (size_t)time * frameBytes;
+    size_t bytes = count * frameBytes;
+
+    if (start > info->byte_count ||
+        bytes > info->byte_count - start)
+        return movies_error = badPublicMovieAtom;
+
+    OSErr error;
+    if (sampleDescriptionH) {
+        error = copy_pcm_description(track, sampleDescriptionH);
+        if (error != noErr)
+            return movies_error = error;
+    }
+
+    error = PtrToXHand((const unsigned char*)track->pcm + start,
+                       dataOut, (long)bytes);
+    if (error != noErr)
+        return movies_error = error;
+
+    if (size) *size = (SInt32)bytes;
+    if (sampleTime) *sampleTime = time;
+    if (durationPerSample) *durationPerSample = 1;
+    if (sampleDescriptionIndex) *sampleDescriptionIndex = 1;
+    if (numberOfSamples) *numberOfSamples = (SInt32)count;
+    if (sampleFlags) *sampleFlags = 0;
+
+    return movies_error = noErr;
+}
+#else
 void* GetMediaSample(void)
 {
     if (verbose) puts("STUB: GetMediaSample called");
     return NULL;
 }
+#endif
 
 void* GetMediaSample2(void)
 {
@@ -4347,17 +4958,51 @@ void* GetMediaSampleCount(void)
 }
 #endif
 
+#if !__LP64__
+void GetMediaSampleDescription(Media media, SInt32 index,
+                               SampleDescriptionHandle descH)
+{
+    struct MovieTrackStorage *track = track_lookup(media, 1);
+    if (!track)
+        return;
+
+    if (index != 1 || !descH) {
+        movies_error = paramErr;
+        return;
+    }
+
+    movies_error = copy_pcm_description(track, descH);
+}
+#else
 void* GetMediaSampleDescription(void)
 {
     if (verbose) puts("STUB: GetMediaSampleDescription called");
     return NULL;
 }
+#endif
 
+#if !__LP64__
+SInt32 GetMediaSampleDescriptionCount(Media media)
+{
+    struct MovieTrackStorage *track = track_lookup(media, 1);
+    if (!track)
+        return 0;
+
+    if (!track->pcm) {
+        movies_error = unimpErr;
+        return 0;
+    }
+
+    movies_error = noErr;
+    return 1;
+}
+#else
 void* GetMediaSampleDescriptionCount(void)
 {
     if (verbose) puts("STUB: GetMediaSampleDescriptionCount called");
     return NULL;
 }
+#endif
 
 void* GetMediaSampleReference(void)
 {
@@ -4616,7 +5261,7 @@ Track GetMovieIndTrack(Movie movie, SInt32 index)
         return NULL;
     }
     movies_error=noErr;
-    return &s->tracks[index-1].track_handle;
+    return &s->tracks[index-1]->track_handle;
 }
 #else
 void* GetMovieIndTrack(void)
@@ -4626,11 +5271,62 @@ void* GetMovieIndTrack(void)
 }
 #endif
 
+#if !__LP64__
+/* Media characteristics: sound media is audible and video media is
+ * visual. Other media types are not classified. */
+static Boolean handler_has_characteristic(OSType handler,
+                                          OSType characteristic)
+{
+    if (characteristic == AudioMediaCharacteristic)
+        return handler == SoundMediaType;
+    if (characteristic == VisualMediaCharacteristic)
+        return handler == VideoMediaType;
+    return 0;
+}
+
+/* index counts the matching tracks only, from 1. Exactly one of
+ * movieTrackMediaType and movieTrackCharacteristic selects how trackType
+ * is compared; movieTrackEnabledOnly skips disabled tracks. As for
+ * GetMovieIndTrack, an index without a matching track is badTrackIndex. */
+Track GetMovieIndTrackType(Movie movie, SInt32 index, OSType trackType,
+                           SInt32 flags)
+{
+    struct MovieStorage *s = movie_lookup(movie);
+    SInt32 kind = flags & (movieTrackMediaType | movieTrackCharacteristic);
+
+    if (!s)
+        return NULL;
+    if (kind != movieTrackMediaType && kind != movieTrackCharacteristic) {
+        movies_error = paramErr;
+        return NULL;
+    }
+    if (index < 1) {
+        movies_error = badTrackIndex;
+        return NULL;
+    }
+    for (SInt32 i = 0; i < s->track_count; ++i) {
+        struct MovieTrackStorage *t = s->tracks[i];
+        Boolean match = kind == movieTrackMediaType ?
+            t->track.handler == trackType :
+            handler_has_characteristic(t->track.handler, trackType);
+
+        if ((flags & movieTrackEnabledOnly) && !t->enabled)
+            continue;
+        if (match && --index == 0) {
+            movies_error = noErr;
+            return &t->track_handle;
+        }
+    }
+    movies_error = badTrackIndex;
+    return NULL;
+}
+#else
 void* GetMovieIndTrackType(void)
 {
     if (verbose) puts("STUB: GetMovieIndTrackType called");
     return NULL;
 }
+#endif
 
 void* GetMovieLoadState(void)
 {
@@ -5002,11 +5698,50 @@ void* GetSizedPublic(void)
     return NULL;
 }
 
+#if !__LP64__
+/* Copies the payload of the first extension atom of type idType into a new
+ * handle that the caller disposes of; *extension is unchanged on failure.
+ * The documentation only states that an error is returned when the
+ * description has no such extension: cannotFindAtomErr is the Movie
+ * Toolbox code for a missing atom. */
+OSErr GetSoundDescriptionExtension(SoundDescriptionHandle desc,
+                                   Handle *extension, OSType idType)
+{
+    if (!desc || !*desc || !extension)
+        return movies_error = paramErr;
+
+    Size size = GetHandleSize((Handle)desc);
+
+    if (size < (Size)sizeof(SoundDescription))
+        return movies_error = paramErr;
+
+    const SoundDescription *d = *desc;
+    size_t offset, length;
+    int status = qt_sound_description_find_extension(
+        d, (size_t)size, d->descSize < 0 ? 0 : (uint32_t)d->descSize,
+        d->version, idType, &offset, &length);
+
+    if (status == QT_SOUND_EXTENSION_NOT_FOUND)
+        return movies_error = cannotFindAtomErr;
+    if (status != QT_SOUND_EXTENSION_OK)
+        return movies_error = paramErr;
+
+    Handle copy = NewHandle((Size)length);
+
+    if (!copy)
+        return movies_error = memFullErr;
+    if (length)
+        memcpy(*copy, (const char *)*desc + offset, length);
+    *extension = copy;
+    return movies_error = noErr;
+}
+#else
 void* GetSoundDescriptionExtension(void)
 {
     if (verbose) puts("STUB: GetSoundDescriptionExtension called");
     return NULL;
 }
+#endif
 
 void* GetSpriteProperty(void)
 {
@@ -5272,7 +6007,7 @@ Media GetTrackMedia(Track track)
     struct MovieTrackStorage *t=track_lookup(track,0);
     if (!t) return NULL;
     movies_error=noErr;
-    return &t->media_handle;
+    return t->has_media ? &t->media_handle : NULL;
 }
 #else
 void* GetTrackMedia(void)
@@ -8048,11 +8783,54 @@ void* InsertEmptyTrackSegment(void)
     return NULL;
 }
 
+#if !__LP64__
+/* Without edit lists, a track plays its media from the start at normal
+ * rate: only the next media samples can be placed, at the end of the track
+ * (trackStart -1 or the current track duration). Every other insertion
+ * needs an edit list and returns unimpErr. */
+OSErr InsertMediaIntoTrack(Track track, TimeValue trackStart,
+                           TimeValue mediaTime, TimeValue mediaDuration,
+                           Fixed mediaRate)
+{
+    struct MovieTrackStorage *t = track_lookup(track, 0);
+    struct MovieStorage *s;
+    int32_t current, next;
+
+    if (!t)
+        return movies_error;
+    if (!t->writable || !t->has_media || t->editing || mediaTime < 0 ||
+        mediaDuration <= 0)
+        return movies_error = paramErr;
+
+    s = track_owner(t);
+    if (!s)
+        return movies_error = invalidTrack;
+    if (written_track_duration(t, s->value.timeline.scale, &current) != 0)
+        return movies_error = paramErr;
+    if (mediaRate != 0x00010000 || mediaTime != t->inserted ||
+        (trackStart != -1 && trackStart != current))
+        return movies_error = unimpErr;
+    if ((uint64_t)mediaTime + (uint64_t)mediaDuration >
+        (uint64_t)t->media.samples)
+        return movies_error = paramErr;
+
+    SInt32 before = t->inserted;
+
+    t->inserted += mediaDuration;
+    if (written_track_duration(t, s->value.timeline.scale, &next) != 0) {
+        t->inserted = before;
+        return movies_error = paramErr;
+    }
+    movie_follow_tracks(s);
+    return movies_error = noErr;
+}
+#else
 void* InsertMediaIntoTrack(void)
 {
     if (verbose) puts("STUB: InsertMediaIntoTrack called");
     return NULL;
 }
+#endif
 
 void* InsertMovieSegment(void)
 {
@@ -11666,11 +12444,43 @@ void* MediaTimeChanged(void)
     return NULL;
 }
 
+#if !__LP64__
+void MediaTimeToSampleNum(Media media, TimeValue time,
+                          long *sampleNum,
+                          TimeValue *sampleTime,
+                          TimeValue *sampleDuration)
+{
+    struct MovieTrackStorage *track = pcm_timing_track(media);
+
+    if (!track)
+        return;
+
+    if (!sampleNum) {
+        movies_error = paramErr;
+        return;
+    }
+
+    if (time < 0 || time >= track->media.samples) {
+        movies_error = invalidTime;
+        return;
+    }
+
+    *sampleNum = (long)time + 1;
+
+    if (sampleTime)
+        *sampleTime = time;
+    if (sampleDuration)
+        *sampleDuration = 1;
+
+    movies_error = noErr;
+}
+#else
 void* MediaTimeToSampleNum(void)
 {
     if (verbose) puts("STUB: MediaTimeToSampleNum called");
     return NULL;
 }
+#endif
 
 void* MediaTrackEdited(void)
 {
@@ -13270,7 +14080,7 @@ OSErr NewMovieFromDataRef(Movie *m, short flags, short *id,
     if (header.has_unsupported)
         return movies_error = unimpErr;
 
-    struct MovieTrackStorage *tracks=NULL;
+    struct MovieTrackStorage **tracks=NULL;
     SInt32 count=0;
     OSErr error=build_tracks(record->data,
                              (size_t)record->dataLength,
@@ -13278,12 +14088,19 @@ OSErr NewMovieFromDataRef(Movie *m, short flags, short *id,
     if (error!=noErr)
         return movies_error=error;
 
+    error=attach_pcm(record->data,
+                     (size_t)record->dataLength,tracks,count);
+    if (error!=noErr) {
+        free_tracks(tracks,count);
+        return movies_error=error;
+    }
+
     /* No movie-resource ID is supplied by a pointer data reference. */
     (void)id;
     *m = movie_new((TimeScale)header.timescale,
                    (TimeValue)header.duration);
     if (!*m) {
-        free(tracks);
+        free_tracks(tracks,count);
         return movies_error;
     }
 
@@ -13439,11 +14256,50 @@ void* NewMovieRgnCoverUPP(void)
     return NULL;
 }
 
+#if !__LP64__
+/* Sound tracks only: a track with a size is a visual track. */
+Track NewMovieTrack(Movie movie, Fixed width, Fixed height,
+                    short trackVolume)
+{
+    struct MovieStorage *s = movie_lookup(movie);
+    struct MovieTrackStorage *t, **grown;
+
+    if (!s)
+        return NULL;
+    if (width || height) {
+        movies_error = unimpErr;
+        return NULL;
+    }
+    if (s->track_count == INT32_MAX ||
+        (size_t)s->track_count + 1 > SIZE_MAX / sizeof(*grown)) {
+        movies_error = memFullErr;
+        return NULL;
+    }
+    t = calloc(1, sizeof(*t));
+    grown = t ? realloc(s->tracks, ((size_t)s->track_count + 1) *
+                                   sizeof(*grown)) : NULL;
+    if (!grown) {
+        free(t);
+        movies_error = memFullErr;
+        return NULL;
+    }
+    s->tracks = grown;
+    t->track_handle = &t->track;
+    t->media_handle = &t->media;
+    t->enabled = 1;
+    t->writable = 1;
+    t->volume = trackVolume;
+    s->tracks[s->track_count++] = t;
+    movies_error = noErr;
+    return &t->track_handle;
+}
+#else
 void* NewMovieTrack(void)
 {
     if (verbose) puts("STUB: NewMovieTrack called");
     return NULL;
 }
+#endif
 
 void* NewMoviesErrorUPP(void)
 {
@@ -13943,11 +14799,39 @@ void* NewTrackEditState(void)
     return NULL;
 }
 
+#if !__LP64__
+/* Sound media whose samples are kept in the movie file's own data fork,
+ * at a rate that a version 0 sound description expresses (1..65535). */
+Media NewTrackMedia(Track track, OSType mediaType, TimeScale timeScale,
+                    Handle dataRef, OSType dataRefType)
+{
+    struct MovieTrackStorage *t = track_lookup(track, 0);
+
+    if (!t)
+        return NULL;
+    if (!t->writable || t->has_media || timeScale <= 0) {
+        movies_error = paramErr;
+        return NULL;
+    }
+    if (mediaType != SoundMediaType || dataRef || dataRefType ||
+        timeScale > 65535) {
+        movies_error = unimpErr;
+        return NULL;
+    }
+    t->track.handler = SoundMediaType;
+    t->media.scale = timeScale;
+    t->media.samples = 0;
+    t->has_media = 1;
+    movies_error = noErr;
+    return &t->media_handle;
+}
+#else
 void* NewTrackMedia(void)
 {
     if (verbose) puts("STUB: NewTrackMedia called");
     return NULL;
 }
+#endif
 
 void* NewTrackTransferUPP(void)
 {
@@ -24951,11 +25835,36 @@ void* SampleNumToMediaDisplayTime(void)
     return NULL;
 }
 
+#if !__LP64__
+void SampleNumToMediaTime(Media media, long logicalSampleNum,
+                          TimeValue *sampleTime,
+                          TimeValue *sampleDuration)
+{
+    struct MovieTrackStorage *track = pcm_timing_track(media);
+
+    if (!track)
+        return;
+
+    if (logicalSampleNum < 1 ||
+        logicalSampleNum > track->media.samples) {
+        movies_error = invalidSampleNum;
+        return;
+    }
+
+    if (sampleTime)
+        *sampleTime = (TimeValue)(logicalSampleNum - 1);
+    if (sampleDuration)
+        *sampleDuration = 1;
+
+    movies_error = noErr;
+}
+#else
 void* SampleNumToMediaTime(void)
 {
     if (verbose) puts("STUB: SampleNumToMediaTime called");
     return NULL;
 }
+#endif
 
 void* ScaleMovieSegment(void)
 {
@@ -25537,6 +26446,10 @@ void SetMovieTimeScale(Movie theMovie, TimeScale timeScale)
         movies_error = paramErr;
         return;
     }
+#if !__LP64__
+    /* A movie built here keeps the duration of its tracks, exactly. */
+    movie_follow_tracks(storage);
+#endif
     movies_error = noErr;
 }
 
@@ -26692,11 +27605,28 @@ void* UpdateMovieInStorage(void)
     return NULL;
 }
 
+#if !__LP64__
+OSErr UpdateMovieResource(Movie movie, short resRefNum, short resId,
+                          ConstStr255Param resName)
+{
+    struct MovieStorage *s = movie_lookup(movie);
+
+    (void)resName;
+    if (!s)
+        return movies_error;
+    if (resId != movieInDataForkResID)
+        return movies_error = unimpErr;
+    if (!s->saved || s->saved_refnum != resRefNum)
+        return movies_error = paramErr;
+    return movies_error = write_movie(s, resRefNum);
+}
+#else
 void* UpdateMovieResource(void)
 {
     if (verbose) puts("STUB: UpdateMovieResource called");
     return NULL;
 }
+#endif
 
 void* UpdateRemapTable(void)
 {
