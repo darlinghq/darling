@@ -20,6 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <CarbonCore/MacMemory.h>
 #include <CarbonCore/MacErrors.h>
 #include <cstring>
+#include <new>
 #include <stdint.h>
 #include <cstdlib>
 #include <cstdio>
@@ -134,9 +135,40 @@ OSErr PtrToHand(const void* srcPtr, Handle* dstHndl, long size)
 
 OSErr PtrToXHand(const void* srcPtr, Handle dstHndl, long size)
 {
-	SetHandleSize(dstHndl, size);
-	memcpy(*dstHndl, srcPtr, size);
-	return noErr;
+    if (!dstHndl)
+        return nilHandleErr;
+    if (size < 0 || (!srcPtr && size != 0))
+        return paramErr;
+    if (!*dstHndl)
+        return nilHandleErr;
+
+    // Allocate and copy before releasing the old block.
+    // The source is allowed to point into the destination block.
+    Ptr replacement = (Ptr) malloc(size ? size : 1);
+    if (!replacement)
+        return memFullErr;
+
+    if (size)
+        memcpy(replacement, srcPtr, size);
+
+#if defined(__EXCEPTIONS)
+    try
+    {
+        recordBlockSize(replacement, size);
+    }
+    catch (const std::bad_alloc&)
+    {
+        free(replacement);
+        return memFullErr;
+    }
+#else
+    recordBlockSize(replacement, size);
+#endif
+
+    Ptr old = *dstHndl;
+    *dstHndl = replacement;
+    DisposePtr(old);
+    return noErr;
 }
 
 Handle NewHandle(long size)
