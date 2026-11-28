@@ -603,6 +603,9 @@ if (COMPONENT_gui)
 	# /System/Library/Fonts
 	add_subdirectory(fonts)
 
+	# /System/Library/Sounds
+	add_subdirectory(sounds)
+
 	add_subdirectory(CoreAudio)
 	add_subdirectory(external/cups)
 	add_subdirectory(pboard)

@@ -87,3 +87,15 @@ darling-swift.
 - Licence: PipeWire is distributed under the MIT license; libspa headers/code in PipeWire are also MIT-licensed. Exact installed versions and license texts are provided by the host distribution packages used to build/run the backend.
 - Use: Optional backend integration only. Builds without PipeWire development/runtime libraries disable this backend. Distributions packaging Darling with PipeWire enabled should include the corresponding PipeWire/libspa copyright and license notices from their packages.
 - HDR note: HDR screen/camera capture negotiates PipeWire raw video formats/colorimetry (e.g. P010/PQ/BT2020) only when supported by the linked runtime (PipeWire >= 1.6 gate in code). No PipeWire source is vendored; behavior depends on host PipeWire/libspa and compositor/portal capabilities.
+
+## System sounds, `src/sounds`
+
+- Author: Kenney, <https://www.kenney.nl>.
+- Source: the "Interface Sounds" pack 1.0, <https://opengameart.org/content/interface-sounds>
+  (also at <https://kenney.nl/assets/interface-sounds>); 14 of its files, converted to AIFF with
+  ffmpeg and renamed (the mapping is in `src/sounds/SOURCES.txt`).
+- Licence: Creative Commons Zero 1.0, <http://creativecommons.org/publicdomain/zero/1.0/>
+  (`src/sounds/LICENSE-Kenney-Interface-Sounds.txt`). Crediting is not required.
+- Use: installed as `/System/Library/Sounds/<Name>.aiff` in the prefix, where `+[NSSound
+  soundNamed:]` finds them, with the licence text and `SOURCES.txt` under
+  `usr/share/licenses/darling-system-sounds`.

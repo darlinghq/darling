@@ -1,0 +1,27 @@
+System sounds of the Darling prefix
+===================================
+
+The 14 files are converted copies of 14 files of the "Interface Sounds" pack by Kenney
+(<https://www.kenney.nl>, <https://opengameart.org/content/interface-sounds>), released under
+Creative Commons Zero 1.0 (public domain dedication), see LICENSE-Kenney-Interface-Sounds.txt.
+Conversion: ffmpeg, to mono 44.1 kHz 16-bit big-endian PCM in an AIFF container, metadata
+removed; no other processing.
+
+File           Source file in the pack
+Basso.aiff     error_006.ogg
+Blow.aiff      scratch_004.ogg
+Bottle.aiff    drop_004.ogg
+Frog.aiff      toggle_001.ogg
+Funk.aiff      confirmation_004.ogg
+Glass.aiff     glass_001.ogg
+Hero.aiff      confirmation_002.ogg
+Morse.aiff     tick_004.ogg
+Ping.aiff      select_003.ogg
+Pop.aiff       pluck_002.ogg
+Purr.aiff      maximize_006.ogg
+Sosumi.aiff    question_001.ogg
+Submarine.aiff select_005.ogg
+Tink.aiff      glass_003.ogg
+
+The file names are the names of the sounds that +[NSSound soundNamed:] looks up; the sounds are
+not related to any other system's sounds.
