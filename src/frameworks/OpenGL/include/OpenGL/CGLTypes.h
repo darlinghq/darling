@@ -37,6 +37,14 @@ typedef enum {
     kCGLCEMPEngine = 313,
 } CGLContextEnable;
 
+typedef enum {
+    kCGLGOFormatCacheSize = 501,
+    kCGLGOClearFormatCache = 502,
+    kCGLGORetainRenderers = 503,
+    kCGLGOResetLibrary = 504,
+    kCGLGOUseErrorHandler = 505,
+} CGLGlobalOption;
+
 enum {
     kCGLPFAAllRenderers = 1,
     kCGLPFADoubleBuffer = 5,

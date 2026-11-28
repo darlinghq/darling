@@ -35,6 +35,8 @@ CGL_EXPORT CGLError CGLGetVirtualScreen(CGLContextObj ctx, GLint *screen);
 CGL_EXPORT CGLError CGLSetVirtualScreen(CGLContextObj ctx, GLint screen);
 CGL_EXPORT CGLPixelFormatObj CGLGetPixelFormat(CGLContextObj context);
 CGL_EXPORT void CGLGetVersion(GLint *majorvers, GLint *minorvers);
+CGL_EXPORT CGLError CGLSetOption(CGLGlobalOption pname, GLint param);
+CGL_EXPORT CGLError CGLGetOption(CGLGlobalOption pname, GLint *param);
 
 CGL_EXPORT CGLError CGLEnable(CGLContextObj ctx, CGLContextEnable pname);
 CGL_EXPORT CGLError CGLDisable(CGLContextObj ctx, CGLContextEnable pname);

@@ -66,6 +66,16 @@ static void fillHalves(int width, int height, float lr, float lg, float lb, floa
 	glDisable(GL_SCISSOR_TEST);
 }
 
+static int viewportIs(int x, int y, int w, int h)
+{
+	GLint v[4] = { -1, -1, -1, -1 };
+	glGetIntegerv(GL_VIEWPORT, v);
+	if (v[0] == x && v[1] == y && v[2] == w && v[3] == h)
+		return 1;
+	printf("   viewport is %d %d %d %d, expected %d %d %d %d\n", v[0], v[1], v[2], v[3], x, y, w, h);
+	return 0;
+}
+
 static AGLPixelFormat choose(GLint a, GLint b, GLint c)
 {
 	GLint attributes[] = { AGL_RGBA, AGL_ACCELERATED, AGL_DEPTH_SIZE, 16, a, b, c, AGL_NONE };
@@ -295,6 +305,12 @@ static void fullScreen(WindowRef window)
 	CHECK(CGDisplayIsCaptured(display));
 	CHECK(aglGetWindowRef(ctx) == NULL);
 	CHECK(aglSetCurrentContext(ctx));
+	// the viewport is the whole device when the context is first attached to it, and is left alone when it is attached
+	// to the same one again
+	CHECK(viewportIs(0, 0, (int) CGDisplayPixelsWide(display), (int) CGDisplayPixelsHigh(display)));
+	glViewport(1, 2, 3, 4);
+	CHECK(aglSetFullScreen(ctx, 0, 0, 0, 0));
+	CHECK(viewportIs(1, 2, 3, 4));
 	glViewport(0, 0, (GLsizei) bounds.size.width, (GLsizei) bounds.size.height);
 	glClearColor(1, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -476,10 +492,107 @@ static void hiView(WindowRef window)
 	aglDestroyPixelFormat(pf);
 }
 
+// The viewport of a context that is attached to a drawable is the whole drawable (AGL Reference, aglSetDrawable,
+// aglSetOffScreen, aglSetFullScreen): for a window when the context is first attached to it, not when it is attached
+// to the same one again; for off-screen memory every time. The depth of an off-screen pixel format is that of the
+// buffer: a request for another than 32 bit pixels has no pixel format.
+static void viewports(WindowRef window)
+{
+	WindowRef other = makeWindow(400, 100, 80, 100);
+	AGLPixelFormat pf = choose(AGL_DOUBLEBUFFER, AGL_NONE, AGL_NONE);
+	AGLContext ctx = aglCreateContext(pf, NULL);
+	CHECK(ctx != NULL);
+	if (!ctx)
+		return;
+	// attached while current: the viewport is the window's
+	CHECK(aglSetCurrentContext(ctx));
+	CHECK(aglSetWindowRef(ctx, window));
+	CHECK(viewportIs(0, 0, 200, 120));
+	// attached again to the same window: left alone
+	glViewport(1, 2, 3, 4);
+	CHECK(aglSetWindowRef(ctx, window));
+	CHECK(viewportIs(1, 2, 3, 4));
+	CHECK(aglUpdateContext(ctx));
+	CHECK(viewportIs(1, 2, 3, 4));
+	// another window: the whole of it
+	CHECK(aglSetWindowRef(ctx, other));
+	CHECK(viewportIs(0, 0, 80, 100));
+	// a view: the whole of the view
+	Rect r = { 10, 20, 50, 70 };
+	HIViewRef pane = NULL;
+	CHECK(CreateStaticTextControl(window, &r, CFSTR(""), NULL, &pane) == noErr);
+	CHECK(aglSetHIViewRef(ctx, pane));
+	CHECK(viewportIs(0, 0, 50, 40));
+	// not current when attached
+	CHECK(aglSetCurrentContext(NULL));
+	CHECK(aglSetWindowRef(ctx, window));
+	CHECK(aglSetCurrentContext(ctx));
+	CHECK(viewportIs(0, 0, 200, 120));
+
+	// off-screen memory
+	enum { W = 24, H = 10 };
+	static unsigned char memory[W * H * 4];
+	AGLPixelFormat offscreen = choose(AGL_OFFSCREEN, AGL_PIXEL_SIZE, 32);
+	CHECK(offscreen != NULL);
+	AGLContext off = offscreen ? aglCreateContext(offscreen, NULL) : NULL;
+	CHECK(off != NULL);
+	if (off) {
+		CHECK(aglSetCurrentContext(off));
+		CHECK(aglSetOffScreen(off, W, H, W * 4, memory));
+		CHECK(viewportIs(0, 0, W, H));
+		glViewport(1, 2, 3, 4);
+		CHECK(aglSetOffScreen(off, W, H, W * 4, memory));
+		CHECK(viewportIs(0, 0, W, H));
+		CHECK(aglSetCurrentContext(NULL));
+		CHECK(aglDestroyContext(off));
+		CHECK(aglSetCurrentContext(ctx));
+	}
+	// the buffer depth: 16 bit and 15 bit pixels, and other sizes, are not what an off-screen area holds
+	GLint sixteen[] = { AGL_RGBA, AGL_OFFSCREEN, AGL_PIXEL_SIZE, 16, AGL_NONE };
+	GLint buffer16[] = { AGL_RGBA, AGL_OFFSCREEN, AGL_BUFFER_SIZE, 16, AGL_NONE };
+	GLint rgb565[] = { AGL_RGBA, AGL_OFFSCREEN, AGL_RED_SIZE, 5, AGL_GREEN_SIZE, 6, AGL_BLUE_SIZE, 5, AGL_NONE };
+	GLint wide[] = { AGL_RGBA, AGL_OFFSCREEN, AGL_PIXEL_SIZE, 64, AGL_NONE };
+	GLint rgb888[] = { AGL_RGBA, AGL_OFFSCREEN, AGL_RED_SIZE, 8, AGL_GREEN_SIZE, 8, AGL_BLUE_SIZE, 8, AGL_NONE };
+	GLint unspecified[] = { AGL_RGBA, AGL_OFFSCREEN, AGL_NONE };
+	GLint *refused[] = { sixteen, buffer16, rgb565, wide };
+	for (unsigned i = 0; i < sizeof(refused) / sizeof(refused[0]); i++) {
+		AGLPixelFormat none = aglChoosePixelFormat(NULL, 0, refused[i]);
+		CHECK(none == NULL);
+		CHECK_ERROR(AGL_BAD_PIXELFMT);
+		if (none)
+			aglDestroyPixelFormat(none);
+	}
+	GLint *accepted[] = { rgb888, unspecified };
+	for (unsigned i = 0; i < sizeof(accepted) / sizeof(accepted[0]); i++) {
+		AGLPixelFormat pix = aglChoosePixelFormat(NULL, 0, accepted[i]);
+		CHECK(pix != NULL);
+		GLint size = 0;
+		// the pixels are 32 bit ones
+		if (pix) {
+			CHECK(aglDescribePixelFormat(pix, AGL_PIXEL_SIZE, &size) && size == 32);
+			aglDestroyPixelFormat(pix);
+		}
+	}
+	// a window format is not held to it
+	GLint window16[] = { AGL_RGBA, AGL_PIXEL_SIZE, 16, AGL_NONE };
+	AGLPixelFormat windowed16 = aglChoosePixelFormat(NULL, 0, window16);
+	CHECK(windowed16 != NULL);
+	if (windowed16)
+		aglDestroyPixelFormat(windowed16);
+
+	CHECK(aglSetCurrentContext(NULL));
+	CHECK(aglDestroyContext(ctx));
+	aglDestroyPixelFormat(pf);
+	if (offscreen)
+		aglDestroyPixelFormat(offscreen);
+	DisposeWindow(other);
+}
+
 int main(void)
 {
 	setvbuf(stdout, NULL, _IONBF, 0);
 	WindowRef window = makeWindow(100, 100, 200, 120);
+	viewports(window);
 	pixelBuffers(window);
 	offScreen(window);
 	hiView(window);
