@@ -465,6 +465,15 @@ pid1_magic_init(void)
 	_launchd_database_dir = LAUNCHD_DB_PREFIX "/com.apple.launchd";
 	_launchd_log_dir = LAUNCHD_LOG_PREFIX "/com.apple.launchd";
 
+#if DARLING
+	// macOS creates the database directory when the system is installed.
+	// A Darling prefix is created without an installer, and launchctl
+	// cannot open its job overrides database (and reports an error on every
+	// load) while the directory is missing.
+	(void)mkdir(LAUNCHD_DB_PREFIX, 0755);
+	(void)mkdir(_launchd_database_dir, 0755);
+#endif
+
 	(void)posix_assumes_zero(setsid());
 	(void)posix_assumes_zero(chdir("/"));
 	(void)posix_assumes_zero(setlogin("root"));
