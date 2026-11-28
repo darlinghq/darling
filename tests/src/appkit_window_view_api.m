@@ -1,4 +1,4 @@
-// CFLAGS: -framework AppKit
+// CFLAGS: -framework AppKit -framework CoreGraphics
 // Copyright (C) 2026 Lubos Dolezel
 //
 // NSWindow and NSView API:
@@ -14,15 +14,19 @@
 //     movable, and at the button release for one that is;
 //   - the frame view sizes the window's content view, not a view added to
 //     it later;
-//   - a drag started with -dragImage:... runs in-process when the display has
-//     no dragging manager, and reaches a registered destination;
+//   - a drag started with -dragImage:... reaches the registered destination
+//     under the pointer, and the source learns the operation the destination
+//     performed (the pointer is moved over the window first, as the window
+//     system decides the destination; on Wayland a drag needs the press of a
+//     real pointer button, so the drag part is skipped when the compositor
+//     does not start one);
 //   - a subview resized by its superview sees the superview's new transform;
 //   - sortSubviewsUsingFunction:context:, inputContext and
 //     NSTextInputContext -handleEvent:, and the stored layer properties.
 //
-// Needs an X display with a window manager (a disposable Xvfb); one 300x200
-// window and one small sheet are shown. Prints PASS or FAIL lines, then
-// ALL PASSED or FAILED n, and exits by itself.
+// Needs an X display with a window manager (a disposable Xvfb), or a Wayland
+// compositor; one 300x200 window and one small sheet are shown. Prints PASS,
+// FAIL or SKIP lines, then ALL PASSED or FAILED n, and exits by itself.
 #import <Foundation/NSArray.h>
 #import <Foundation/NSAutoreleasePool.h>
 #import <Foundation/NSDate.h>
@@ -32,9 +36,15 @@
 #import <Foundation/NSRange.h>
 #import <Foundation/NSRunLoop.h>
 #import <Foundation/NSString.h>
+#import <CoreGraphics/CGGeometry.h>
 #include <signal.h>
 #include <stdio.h>
 #include <unistd.h>
+
+typedef uint32_t CGDirectDisplayID;
+extern CGDirectDisplayID CGMainDisplayID(void);
+extern CGRect CGDisplayBounds(CGDirectDisplayID display);
+extern int32_t CGWarpMouseCursorPosition(CGPoint position);
 
 // The SDK's AppKit headers do not build with this cross compiler, so only
 // what is used is declared.
@@ -389,7 +399,7 @@ static void testFrameViewLayout(void)
 
 @interface DragSource : NSObject {
 @public
-	int ended;
+	int began, ended;
 	NSUInteger operation;
 }
 @end
@@ -397,6 +407,10 @@ static void testFrameViewLayout(void)
 - (NSUInteger) draggingSourceOperationMaskForLocal: (BOOL) local
 {
 	return DragOperationCopy;
+}
+- (void) draggedImage: (NSImage *) image beganAt: (NSPoint) point
+{
+	began++;
 }
 - (void) draggedImage: (NSImage *) image endedAt: (NSPoint) point operation: (NSUInteger) op
 {
@@ -425,10 +439,30 @@ static void testDrag(NSWindow *w)
 	DragSource *source = [DragSource new];
 	NSImage *image = [[NSImage alloc] initWithSize: NSMakeSize(16, 16)];
 
+	// The window system, not the events handed to the drag, says which window
+	// is under the pointer, so the pointer is put over the view first (the
+	// point in the global display space, whose origin is the top left).
+	NSPoint onScreen = [w convertRectToScreen: NSMakeRect(at.x, at.y, 0, 0)].origin;
+	CGWarpMouseCursorPosition(CGPointMake(onScreen.x,
+		CGDisplayBounds(CGMainDisplayID()).size.height - onScreen.y));
+	spin();
+
 	[NSApp postEvent: up atStart: NO];
 	[view dragImage: image at: NSMakePoint(142, 92) offset: NSMakeSize(0, 0)
 		event: down pasteboard: pb source: source slideBack: NO];
 
+	// A Wayland compositor starts a drag only for the serial of a real button
+	// press, which a test that injects no input never has: the drag does not
+	// begin and the source is not told of one.
+	id display = [NSClassFromString(@"NSDisplay") performSelector: NSSelectorFromString(@"currentDisplay")];
+	if (source->began == 0 && [NSStringFromClass([display class]) hasPrefix: @"Wayland"]) {
+		printf("SKIP: the compositor did not start the drag (no pointer button press)\n");
+		[image release];
+		[source release];
+		[view release];
+		return;
+	}
+	check(source->began == 1, "the source is told that the drag began");
 	check(source->ended == 1, "the drag ends, and the source is told once");
 	check(view->entered >= 1, "the registered view under the pointer is entered");
 	check(view->performed == 1 && view->concluded == 1,
