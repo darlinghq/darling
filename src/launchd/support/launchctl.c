@@ -2933,8 +2933,10 @@ load_and_unload_cmd(int argc, char *const argv[])
 	}
 
 	if (launch_data_array_get_count(lus.pass1) == 0) {
-		// macOS's legacy load/unload report a failure but exit 0, so a
-		// caller that unloads before loading carries on.
+		// QUIRK: the legacy load/unload of a missing file print "Load failed: 5: Input/output error"
+		// and the bootstrap hint, but exit 0, so a caller that unloads before loading carries on.
+		// Not documented. Evidence: black-box observation on macOS 26.7.3 (tier 2).
+		// Test: launchctl_missing_job_exit_status
 		if (!_launchctl_is_managed) {
 			launchctl_log(LOG_ERR, "%s failed: 5: Input/output error", lus.load ? "Load" : "Unload");
 			launchctl_log(LOG_ERR, "Try running `launchctl %s` as root for richer errors.", lus.load ? "bootstrap" : "bootout");
@@ -3031,7 +3033,6 @@ start_stop_remove_cmd(int argc, char *const argv[])
 
 	if (0 == strcmp(argv[0], "remove"))
 		lmsgcmd = LAUNCH_KEY_REMOVEJOB;
-	// macOS exits with the error number (3, ESRCH, for an unknown label).
 
 	if (argc != 2) {
 		launchctl_log(LOG_ERR, "usage: %s %s <job label>", getprogname(), argv[0]);
@@ -3050,6 +3051,9 @@ start_stop_remove_cmd(int argc, char *const argv[])
 	} else if (launch_data_get_type(resp) == LAUNCH_DATA_ERRNO) {
 		if ((e = launch_data_get_errno(resp))) {
 			launchctl_log(LOG_ERR, "%s %s error: %s", getprogname(), argv[0], strerror(e));
+			// QUIRK: exits with the error number (3, ESRCH, for an unknown label) instead of 1.
+			// Not documented. Evidence: black-box observation on macOS 26.7.3 (tier 2).
+			// Test: launchctl_missing_job_exit_status
 			r = e;
 		}
 	} else {
@@ -3213,8 +3217,9 @@ list_cmd(int argc, char *const argv[])
 			}
 			launch_data_free(resp);
 		} else if (launch_data_get_type(resp) == LAUNCH_DATA_ERRNO && launch_data_get_errno(resp) == ESRCH) {
-			// macOS reports an unknown label this way and exits 113; callers
-			// rely on it to tell "not loaded" apart from a failure.
+			// QUIRK: list of an unknown label prints this message and exits 113; callers rely on it
+			// to tell "not loaded" apart from a failure. Not documented. Evidence: black-box
+			// observation on macOS 26.7.3 (tier 2). Test: launchctl_missing_job_exit_status
 			launchctl_log(LOG_ERR, "Could not find service \"%s\" in domain for port", label);
 			r = 113;
 			launch_data_free(resp);
