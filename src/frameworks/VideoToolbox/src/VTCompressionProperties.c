@@ -79,3 +79,23 @@ const CFStringRef kVTCompressionPropertyKey_HorizontalFieldOfView = CFSTR("Horiz
 const CFStringRef kVTCompressionPropertyKey_ProjectionKind = CFSTR("ProjectionKind");
 const CFStringRef kVTHDRMetadataInsertionMode_None = CFSTR("HDRMetadataInsertionMode_None");
 const CFStringRef kVTProjectionKind_Equirectangular = CFSTR("Equirectangular");
+
+const CFStringRef kVTCompressionPropertyKey_AllowTemporalCompression = CFSTR("AllowTemporalCompression");
+const CFStringRef kVTCompressionPropertyKey_FieldCount = CFSTR("FieldCount");
+const CFStringRef kVTCompressionPropertyKey_FieldDetail = CFSTR("FieldDetail");
+const CFStringRef kVTCompressionPropertyKey_H264EntropyMode = CFSTR("H264EntropyMode");
+const CFStringRef kVTCompressionPropertyKey_MaxAllowedFrameQP = CFSTR("MaxAllowedFrameQP");
+const CFStringRef kVTCompressionPropertyKey_MinAllowedFrameQP = CFSTR("MinAllowedFrameQP");
+const CFStringRef kVTCompressionPropertyKey_PreserveDynamicHDRMetadata = CFSTR("PreserveDynamicHDRMetadata");
+const CFStringRef kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality = CFSTR("PrioritizeEncodingSpeedOverQuality");
+const CFStringRef kVTCompressionPropertyKey_ReferenceBufferCount = CFSTR("ReferenceBufferCount");
+const CFStringRef kVTCompressionPropertyKey_SuggestedLookAheadFrameCount = CFSTR("LookAheadFrames");
+const CFStringRef kVTCompressionPropertyKey_VBVBufferDuration = CFSTR("VBVBufferDuration");
+const CFStringRef kVTCompressionPropertyKey_VBVMaxBitRate = CFSTR("VBVMaxBitRate");
+const CFStringRef kVTCompressionPropertyKey_VBVInitialDelayPercentage = CFSTR("VBVInitialDelayPercentage");
+const CFStringRef kVTCompressionPropertyKey_VariableBitRate = CFSTR("VariableBitRate");
+
+const CFStringRef kVTH264EntropyMode_CABAC = CFSTR("CABAC");
+const CFStringRef kVTH264EntropyMode_CAVLC = CFSTR("CAVLC");
+const CFStringRef kVTVideoEncoderSpecification_RequiredEncoderGPURegistryID = CFSTR("RequiredEncoderGPURegistryID");
+const CFStringRef kVTPropertySupportedValueListKey = CFSTR("SupportedValueList");

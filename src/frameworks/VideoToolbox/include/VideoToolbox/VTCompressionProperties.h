@@ -120,4 +120,34 @@ enum
 // CFData, the content light level information from the format description.
 VT_EXPORT CFStringRef const kVTCompressionPropertyKey_ContentLightLevelInfo;
 
+// Encoder controls. Darling's encoder honours AllowTemporalCompression, H264EntropyMode, MinAllowedFrameQP,
+// MaxAllowedFrameQP, VBVMaxBitRate and VBVBufferDuration; setting any other of them fails with
+// kVTPropertyNotSupportedErr, the documented answer for a property the encoder does not support.
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_AllowTemporalCompression;
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_FieldCount;
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_FieldDetail;
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_H264EntropyMode;
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_MaxAllowedFrameQP;
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_MinAllowedFrameQP;
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_PreserveDynamicHDRMetadata;
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality;
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_ReferenceBufferCount;
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_SuggestedLookAheadFrameCount;
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_VBVBufferDuration;
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_VBVMaxBitRate;
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_VBVInitialDelayPercentage;
+VT_EXPORT CFStringRef const kVTCompressionPropertyKey_VariableBitRate;
+
+VT_EXPORT CFStringRef const kVTH264EntropyMode_CABAC;
+VT_EXPORT CFStringRef const kVTH264EntropyMode_CAVLC;
+VT_EXPORT CFStringRef const kVTVideoEncoderSpecification_RequiredEncoderGPURegistryID;
+
+// Key of the supported-value array in a supported-property dictionary.
+VT_EXPORT CFStringRef const kVTPropertySupportedValueListKey;
+
+enum
+{
+	kVTUnlimitedFrameDelayCount = -1,
+};
+
 #endif

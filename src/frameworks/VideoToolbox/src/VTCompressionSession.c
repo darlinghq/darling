@@ -442,6 +442,12 @@ static const struct { const char *key; PropKind kind; } supportedProps[] = {
 	{ "PixelAspectRatio", PK_DICT },
 	{ "MasteringDisplayColorVolume", PK_DATA },
 	{ "ContentLightLevelInfo", PK_DATA },
+	{ "AllowTemporalCompression", PK_BOOL },
+	{ "H264EntropyMode", PK_STRING },
+	{ "MaxAllowedFrameQP", PK_NUMBER },
+	{ "MinAllowedFrameQP", PK_NUMBER },
+	{ "VBVMaxBitRate", PK_NUMBER },
+	{ "VBVBufferDuration", PK_NUMBER },
 };
 
 static int find_prop(CFStringRef key)
@@ -592,7 +598,7 @@ OSStatus VTCompressionSessionCopySupportedPropertyDictionaryInternal(VTSessionRe
 					}
 				}
 			}
-			CFDictionarySetValue(e, CFSTR("SupportedValueList"), list);
+			CFDictionarySetValue(e, kVTPropertySupportedValueListKey, list);
 			CFRelease(list);
 		}
 		CFStringRef k = CFStringCreateWithCString(NULL, supportedProps[i].key, kCFStringEncodingUTF8);
@@ -794,6 +800,16 @@ static OSStatus open_encoder(VTCS s)
 	get_prop_number(s, "MaxKeyFrameIntervalDuration", &keydur);
 	bool realtime = get_prop_bool(s, "RealTime", false);
 	bool reorder = get_prop_bool(s, "AllowFrameReordering", true);
+	bool temporal = get_prop_bool(s, "AllowTemporalCompression", true);
+	double minQP = 0, maxQP = 0, vbvRate = 0, vbvDuration = 0;
+	get_prop_number(s, "MinAllowedFrameQP", &minQP);
+	get_prop_number(s, "MaxAllowedFrameQP", &maxQP);
+	get_prop_number(s, "VBVMaxBitRate", &vbvRate);
+	get_prop_number(s, "VBVBufferDuration", &vbvDuration);
+	bool cavlc = false;
+	CFTypeRef entropy = CFDictionaryGetValue(s->props, CFSTR("H264EntropyMode"));
+	if (entropy != NULL && CFGetTypeID(entropy) == CFStringGetTypeID())
+		cavlc = CFEqual(entropy, kVTH264EntropyMode_CAVLC);
 	char profile[80] = "";
 	CFTypeRef pl = CFDictionaryGetValue(s->props, kVTCompressionPropertyKey_ProfileLevel);
 	if (pl != NULL)
@@ -818,8 +834,18 @@ static OSStatus open_encoder(VTCS s)
 	if (bitrate > 0)
 		c->bit_rate = (int64_t)bitrate;
 	int gop = keyint > 0 ? (int)keyint : (keydur > 0 ? (int)(keydur * fps + 0.5) : 250);
-	c->gop_size = gop < 1 ? 1 : gop;
-	c->max_b_frames = (reorder && !realtime) ? 2 : 0;
+	/* Without temporal compression every frame is a key frame. */
+	c->gop_size = !temporal ? 1 : (gop < 1 ? 1 : gop);
+	c->max_b_frames = (reorder && !realtime && temporal) ? 2 : 0;
+	if (minQP >= 1 && minQP <= 51)
+		c->qmin = (int)minQP;
+	if (maxQP >= 1 && maxQP <= 51 && maxQP >= minQP)
+		c->qmax = (int)maxQP;
+	if (vbvRate > 0) {
+		c->rc_max_rate = (int64_t)vbvRate;
+		if (vbvDuration > 0)
+			c->rc_buffer_size = (int)(vbvRate * vbvDuration);
+	}
 
 	const char *prof = NULL;
 	if (strstr(profile, "Baseline")) { prof = "baseline"; c->max_b_frames = 0; }
@@ -831,6 +857,8 @@ static OSStatus open_encoder(VTCS s)
 		av_opt_set(c->priv_data, "preset", realtime ? "ultrafast" : "veryfast", 0);
 		if (realtime) av_opt_set(c->priv_data, "tune", "zerolatency", 0);
 		av_opt_set(c->priv_data, "forced-idr", "1", 0);
+		if (cavlc)
+			av_opt_set(c->priv_data, "coder", "vlc", 0);
 		/* Explicit levels: "H264_<profile>_<major>_<minor>" */
 		int major, minor;
 		const char *lv = strrchr(profile, '_');

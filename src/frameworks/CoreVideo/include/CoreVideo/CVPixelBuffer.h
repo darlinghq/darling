@@ -76,6 +76,10 @@ enum
 	kCVPixelFormatType_422YpCbCr10BiPlanarFullRange  = 'xf22',
 	kCVPixelFormatType_444YpCbCr10BiPlanarFullRange  = 'xf44',
 	kCVPixelFormatType_420YpCbCr8VideoRange_8A_TriPlanar   = 'v0a8',
+	kCVPixelFormatType_444YpCbCr8BiPlanarVideoRange = '444v',
+	kCVPixelFormatType_444YpCbCr8BiPlanarFullRange  = '444f',
+	kCVPixelFormatType_422YpCbCr16BiPlanarVideoRange = 'sv22',
+	kCVPixelFormatType_444YpCbCr16BiPlanarVideoRange = 'sv44',
 
 	/* lossless-compressed variants of the formats above (macOS 12) */
 	kCVPixelFormatType_Lossless_32BGRA                            = '&BGA',
@@ -109,6 +113,12 @@ extern const CFStringRef kCVPixelBufferMetalCompatibilityKey;
 extern const CFStringRef kCVPixelBufferBytesPerRowAlignmentKey;
 extern const CFStringRef kCVPixelBufferHeightKey;
 extern const CFStringRef kCVPixelBufferWidthKey;
+extern const CFStringRef kCVPixelBufferExtendedPixelsRightKey;
+extern const CFStringRef kCVPixelBufferExtendedPixelsBottomKey;
+
+// Component-range values used by video encoders to describe luma/chroma range.
+extern const CFStringRef kCVPixelFormatComponentRange_VideoRange;
+extern const CFStringRef kCVPixelFormatComponentRange_FullRange;
 
 typedef CVImageBufferRef CVPixelBufferRef;
 typedef CVOptionFlags CVPixelBufferLockFlags;

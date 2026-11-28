@@ -168,6 +168,14 @@ CMVideoDimensions CMVideoFormatDescriptionGetDimensions(CMVideoFormatDescription
 	return videoDesc->dimensions;
 }
 
+CMVideoCodecType CMVideoFormatDescriptionGetCodecType(CMVideoFormatDescriptionRef videoDesc)
+{
+	if (videoDesc == NULL)
+		return 0;
+	/* The codec type is the format description's media subtype; macOS does not check the media type. */
+	return videoDesc->subType;
+}
+
 /* The parameter sets of an avcC atom among the extensions' sample description atoms. */
 OSStatus CMVideoFormatDescriptionGetH264ParameterSetAtIndex(CMFormatDescriptionRef videoDesc, size_t parameterSetIndex,
 	const uint8_t **parameterSetPointerOut, size_t *parameterSetSizeOut, size_t *parameterSetCountOut,

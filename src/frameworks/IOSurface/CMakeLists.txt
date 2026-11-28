@@ -23,7 +23,7 @@ add_framework(IOSurface
     VERSION ${FRAMEWORK_VERSION}
 
     SOURCES
-        src/stubs.m
+        src/components.m
         src/api.m
         src/constants.m
         src/IOSurfaceObjC.m

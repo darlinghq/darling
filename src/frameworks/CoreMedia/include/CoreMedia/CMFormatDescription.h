@@ -119,6 +119,16 @@ CM_EXPORT const CFStringRef kCMFormatDescriptionExtension_AmbientViewingEnvironm
 CM_EXPORT const CFStringRef kCMFormatDescriptionExtension_SampleDescriptionExtensionAtoms;
 CM_EXPORT const CFStringRef kCMFormatDescriptionExtension_VerbatimSampleDescription;
 
+// Interlaced video: values of kCMFormatDescriptionExtension_FieldDetail.
+CM_EXPORT const CFStringRef kCMFormatDescriptionFieldDetail_TemporalTopFirst;
+CM_EXPORT const CFStringRef kCMFormatDescriptionFieldDetail_TemporalBottomFirst;
+CM_EXPORT const CFStringRef kCMFormatDescriptionFieldDetail_SpatialFirstLineEarly;
+CM_EXPORT const CFStringRef kCMFormatDescriptionFieldDetail_SpatialFirstLineLate;
+
+// Keys of the pixel aspect ratio dictionary extension.
+CM_EXPORT const CFStringRef kCMFormatDescriptionKey_PixelAspectRatioHorizontalSpacing;
+CM_EXPORT const CFStringRef kCMFormatDescriptionKey_PixelAspectRatioVerticalSpacing;
+
 CM_EXPORT CFTypeID CMFormatDescriptionGetTypeID(void);
 CM_EXPORT Boolean CMFormatDescriptionEqual(CMFormatDescriptionRef desc, CMFormatDescriptionRef otherDesc);
 CM_EXPORT CMMediaType CMFormatDescriptionGetMediaType(CMFormatDescriptionRef desc);
@@ -133,6 +143,7 @@ CM_EXPORT OSStatus CMVideoFormatDescriptionCreateForImageBuffer(CFAllocatorRef a
 	CF_RETURNS_RETAINED CMVideoFormatDescriptionRef *formatDescriptionOut);
 CM_EXPORT Boolean CMVideoFormatDescriptionMatchesImageBuffer(CMVideoFormatDescriptionRef desc, CVImageBufferRef imageBuffer);
 CM_EXPORT CMVideoDimensions CMVideoFormatDescriptionGetDimensions(CMVideoFormatDescriptionRef videoDesc);
+CM_EXPORT CMVideoCodecType CMVideoFormatDescriptionGetCodecType(CMVideoFormatDescriptionRef videoDesc);
 CM_EXPORT OSStatus CMVideoFormatDescriptionGetH264ParameterSetAtIndex(CMFormatDescriptionRef videoDesc,
 	size_t parameterSetIndex, const uint8_t **parameterSetPointerOut, size_t *parameterSetSizeOut,
 	size_t *parameterSetCountOut, int *NALUnitHeaderLengthOut);
