@@ -162,11 +162,9 @@ static uint32_t stack_size = 0;
 // the path of the executable being started, for messages
 static const char* exec_path = NULL;
 
-#ifdef __i386__
-// how many times mldr32 executed itself again to place the top of the address space
+// how many times mldr executed itself again to place the top of the address space
 #define LAYOUT_RETRY_ENV "__mldr_layout_retry"
 #define LAYOUT_RETRY_MAX 8
-#endif
 
 static const char* const skip_env_vars[] = {
 	"__mldr_bprefs=",
@@ -604,9 +602,7 @@ static void unset_special_env() {
 	unsetenv("__mldr_sockpath");
 	unsetenv("__mldr_lifetime_pipe");
 	unsetenv("__mldr_nofile");
-#ifdef __i386__
 	unsetenv(LAYOUT_RETRY_ENV);
-#endif
 };
 
 int __mldr_inherited_nofile_limit(unsigned int limits[2]) {
@@ -746,14 +742,14 @@ void __mldr_close_process_lifetime_pipe(int fd) {
 	}
 }
 
-#ifdef __i386__
-// A 32-bit process gets its Linux stack (and the mappings next to it) at a
-// random place just below the top of the address space, which is where the
-// Darwin commpage and the main thread stack below it have to go. If that range
-// is taken, execute ourselves again to get another placement.
-static void ensure_top_range_free(struct load_results* lr, unsigned long stack_size) {
-	unsigned long start = commpage_address(false) - stack_size;
-	unsigned long length = commpage_length(false) + stack_size;
+// The Linux stack, the vdso and other early mappings land at a random place
+// near the top of the address space, which is where the Darwin commpage and the
+// main thread stack below it have to go (on every architecture, the commpage
+// address is fixed). Now and then the kernel puts one of them in that range. If
+// it is taken, execute ourselves again to get another placement.
+static void ensure_top_range_free(struct load_results* lr, bool is_64_bit, unsigned long stack_size) {
+	unsigned long start = commpage_address(is_64_bit) - stack_size;
+	unsigned long length = commpage_length(is_64_bit) + stack_size;
 
 	void* probe = compatible_mmap((void*)start, length, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
 	if (probe != MAP_FAILED) {
@@ -799,7 +795,6 @@ static void ensure_top_range_free(struct load_results* lr, unsigned long stack_s
 	execv(selfpath, lr->argv);
 	unsetenv(LAYOUT_RETRY_ENV);
 }
-#endif
 
 #ifdef __i386__
 // How much stack the main thread gets: the stack limit, like the main thread
@@ -853,9 +848,7 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 		size = limit.rlim_cur;
 	}
 
-#ifdef __i386__
-	ensure_top_range_free(lr, size);
-#endif
+	ensure_top_range_free(lr, is_64_bit, size);
 
 	commpage_setup(is_64_bit);
 

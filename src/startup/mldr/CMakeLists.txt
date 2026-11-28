@@ -145,7 +145,16 @@ add_test(NAME mldr_sockpath_set COMMAND ${CMAKE_COMMAND} -E env --unset=__mldr_s
 set_tests_properties(mldr_sockpath_set PROPERTIES
 	PASS_REGULAR_EXPRESSION "Cannot open /nonexistent")
 
-# Run the real i386 retry path with injected mapping/environment/exec failures.
+# Run the real layout retry path with injected mapping/environment/exec failures,
+# natively and (below) as i386.
+add_executable(mldr_layout_retry_test ${CMAKE_SOURCE_DIR}/tests/mldr/layout_retry.c)
+add_dependencies(mldr_layout_retry_test generate_dserver_rpc_wrappers rtsig_h)
+target_include_directories(mldr_layout_retry_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(mldr_layout_retry_test PRIVATE -ffunction-sections -fdata-sections)
+target_link_options(mldr_layout_retry_test PRIVATE -Wl,--gc-sections)
+add_test(NAME mldr_layout_retry COMMAND mldr_layout_retry_test)
+set_tests_properties(mldr_layout_retry PROPERTIES TIMEOUT 15)
+
 if (BUILD_TARGET_32BIT)
 	add_executable(mldr32_layout_retry_test ${CMAKE_SOURCE_DIR}/tests/mldr/layout_retry.c)
 	add_dependencies(mldr32_layout_retry_test generate_dserver_rpc_wrappers rtsig_h)
