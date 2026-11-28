@@ -65,8 +65,9 @@ enum qt_mov_pcm_status {
     QT_MOV_PCM_NO_SOUND_TRACK = -3,
     QT_MOV_PCM_UNSUPPORTED = -4,    /* valid but outside the supported subset */
     QT_MOV_PCM_INCONSISTENT = -5,   /* description and sample tables disagree */
-    QT_MOV_PCM_OUT_OF_BOUNDS = -6,  /* samples not inside one mdat payload */
-    QT_MOV_PCM_BUFFER_TOO_SMALL = -7
+    QT_MOV_PCM_OUT_OF_BOUNDS = -6,  /* chunk range outside an mdat payload */
+    QT_MOV_PCM_BUFFER_TOO_SMALL = -7,
+    QT_MOV_PCM_NO_MEMORY = -8
 };
 
 struct qt_mov_pcm_info {
@@ -88,5 +89,13 @@ int qt_mov_extract_pcm(const void *data, size_t length,
                             void *pcm, size_t capacity,
                             struct qt_mov_pcm_info *info);
 
+
+/* Allocate and assemble the supported PCM into a caller-owned buffer.
+ * The caller frees the returned buffer with free().
+ * Outputs change only on success; the source must remain immutable.
+ */
+__attribute__((visibility("hidden")))
+int qt_mov_load_pcm(const void *data, size_t length,
+                    void **pcm, struct qt_mov_pcm_info *info);
 
 #endif

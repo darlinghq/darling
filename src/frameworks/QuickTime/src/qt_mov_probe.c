@@ -2,6 +2,7 @@
 #include "qt_mov_probe.h"
 
 #include <limits.h>
+#include <stdlib.h>
 #include <string.h>
 
 struct qt_atom {
@@ -342,9 +343,9 @@ static int table(struct span s, size_t entry_size, uint32_t *entries)
     if (read_be32(s.p) != 0)
         return QT_MOV_PCM_UNSUPPORTED;
     *entries = read_be32(s.p + 4);
-    if (entry_size && *entries != 1)
-        return QT_MOV_PCM_UNSUPPORTED;
-    if (entry_size && s.n - 8 < entry_size)
+    if (entry_size &&
+        ((s.n - 8) % entry_size != 0 ||
+         (s.n - 8) / entry_size != *entries))
         return QT_MOV_PCM_BAD_MOVIE;
     return QT_MOV_PCM_OK;
 }
@@ -417,28 +418,33 @@ static int find_sound_media(struct span moov, struct span *mdia)
     return sound == 1 ? QT_MOV_PCM_OK : QT_MOV_PCM_UNSUPPORTED;
 }
 
-/* Is [offset, offset + bytes) inside the payload of one top-level mdat? */
-static int inside_mdat(struct span file, uint64_t offset, uint64_t bytes)
-{
-    size_t off = 0;
-    while (off < file.n) {
-        const uint8_t *t;
-        struct span body;
-        size_t total;
-        PCM_TRY(pcm_read_atom(file, off, &t, &body, &total));
-        if (memcmp(t, "mdat", 4) == 0) {
-            uint64_t start = (uint64_t)(body.p - file.p);
-            if (offset >= start && offset - start <= body.n &&
-                bytes <= body.n - (offset - start))
-                return QT_MOV_PCM_OK;
-        }
-        off += total;
-    }
-    return QT_MOV_PCM_OUT_OF_BOUNDS;
-}
+
+/* Bounded local PCM import. Chunk offsets are absolute file offsets
+ * (QTFF stco/co64); stsc describes runs of consecutive logical chunks.
+ * https://developer.apple.com/documentation/quicktime-file-format
+ *
+ * Resource limits apply to this in-memory importer, not to the format.
+ */
+#define PCM_MAX_BYTES (64u * 1024u * 1024u)
+#define PCM_MAX_CHUNKS 262144u
+
+struct pcm_layout {
+    struct qt_mov_pcm_info info;
+    struct span mapping;
+    struct span offsets;
+    uint32_t runs;
+    uint32_t chunks;
+    unsigned wide;
+};
+
+struct pcm_chunk {
+    uint64_t offset;
+    size_t bytes;
+    size_t destination;
+};
 
 static int locate(const void *data, size_t length,
-                  struct qt_mov_pcm_info *info, size_t *where)
+                  struct pcm_layout *layout)
 {
     struct span file = { data, length }, moov, mdia, mdhd, minf, stbl;
     struct span stsd, entries, entry, stts, stsc, stsz, stco;
@@ -446,9 +452,8 @@ static int locate(const void *data, size_t length,
     struct qt_mov_pcm_info found;
     const uint8_t *format;
     size_t total;
-    unsigned co64;
     uint32_t count, timescale, duration, rate, frames, frame_bytes;
-    uint64_t offset, bytes;
+    uint64_t bytes;
 
     if (qt_mov_probe(data, length, &header) != QT_MOV_OK)
         return QT_MOV_PCM_BAD_MOVIE;
@@ -464,9 +469,6 @@ static int locate(const void *data, size_t length,
     duration = read_be32(mdhd.p + 16);
     PCM_TRY(pcm_one_child(mdia, "minf", &minf));
     PCM_TRY(pcm_one_child(minf, "stbl", &stbl));
-    PCM_TRY(pcm_find_children(stbl, "co64", NULL, &co64));
-    if (co64)
-        return QT_MOV_PCM_UNSUPPORTED;
 
     /* Sound description version 0: 36-byte entry (QTFF, Sound Media). */
     PCM_TRY(pcm_one_child(stbl, "stsd", &stsd));
@@ -501,63 +503,334 @@ static int locate(const void *data, size_t length,
     frame_bytes = (uint32_t)found.channels * 2;
     PCM_TRY(check_local_reference(minf, read_be16(entry.p + 6)));
 
+
     PCM_TRY(pcm_one_child(stbl, "stts", &stts));
     PCM_TRY(table(stts, 8, &count));
+    if (count != 1)
+        return QT_MOV_PCM_UNSUPPORTED;
     frames = read_be32(stts.p + 8);
+
     PCM_TRY(pcm_one_child(stbl, "stsc", &stsc));
     PCM_TRY(table(stsc, 12, &count));
-    PCM_TRY(pcm_one_child(stbl, "stsz", &stsz));
-    if (stsz.n < 12)
-        return QT_MOV_PCM_BAD_MOVIE;
-    if (read_be32(stsz.p) != 0 || read_be32(stsz.p + 4) == 0 || read_be32(stsz.p + 4) == 1)
-        return QT_MOV_PCM_UNSUPPORTED;
-    PCM_TRY(pcm_one_child(stbl, "stco", &stco));
-    PCM_TRY(table(stco, 4, &count));
+    uint32_t runs = count;
 
-    if (frames == 0 || read_be32(stts.p + 12) != 1 ||
-        timescale != found.sample_rate || duration != frames ||
-        read_be32(stsc.p + 8) != 1 || read_be32(stsc.p + 12) != frames ||
-        read_be32(stsc.p + 16) != 1 ||
-        read_be32(stsz.p + 4) != frame_bytes || read_be32(stsz.p + 8) != frames)
+    PCM_TRY(pcm_one_child(stbl, "stsz", &stsz));
+    if (stsz.n != 12)
+        return QT_MOV_PCM_UNSUPPORTED;
+
+    if (read_be32(stsz.p) != 0 ||
+        read_be32(stsz.p + 4) != frame_bytes)
+        return QT_MOV_PCM_UNSUPPORTED;
+
+    unsigned narrow_count, wide_count;
+
+    PCM_TRY(pcm_find_children(stbl, "stco", &stco, &narrow_count));
+    PCM_TRY(pcm_find_children(stbl, "co64", &stco, &wide_count));
+
+    if (narrow_count + wide_count != 1)
+        return QT_MOV_PCM_BAD_MOVIE;
+
+    PCM_TRY(table(stco, wide_count ? 8 : 4, &count));
+    uint32_t chunks = count;
+
+    bytes = (uint64_t)frames * frame_bytes;
+
+    if (!frames || frames > INT32_MAX ||
+        bytes > PCM_MAX_BYTES || bytes > SIZE_MAX ||
+        !chunks || chunks > PCM_MAX_CHUNKS ||
+        !runs || runs > chunks)
+        return QT_MOV_PCM_UNSUPPORTED;
+
+    if (read_be32(stts.p + 12) != 1 ||
+        timescale != found.sample_rate ||
+        duration != frames ||
+        read_be32(stsz.p + 8) != frames)
         return QT_MOV_PCM_INCONSISTENT;
 
-    offset = read_be32(stco.p + 8);
-    bytes = (uint64_t)frames * frame_bytes;
-    PCM_TRY(inside_mdat(file, offset, bytes));
+    /* Check all stsc runs before expanding any chunk. */
+    uint64_t sample_total = 0;
+
+    for (uint32_t i = 0; i < runs; ++i) {
+        const uint8_t *row = stsc.p + 8 + (size_t)i * 12;
+
+        uint32_t first = read_be32(row);
+        uint32_t samples = read_be32(row + 4);
+        uint32_t description = read_be32(row + 8);
+
+        uint32_t next = i + 1 < runs
+            ? read_be32(row + 12) : chunks + 1;
+
+        if ((i == 0 && first != 1) ||
+            first == 0 || first > chunks ||
+            next <= first || next > chunks + 1 ||
+            samples == 0)
+            return QT_MOV_PCM_INCONSISTENT;
+
+        if (description != 1)
+            return QT_MOV_PCM_UNSUPPORTED;
+
+        uint64_t run_samples =
+            (uint64_t)(next - first) * samples;
+
+        if (run_samples > frames - sample_total)
+            return QT_MOV_PCM_INCONSISTENT;
+
+        sample_total += run_samples;
+    }
+
+    if (sample_total != frames)
+        return QT_MOV_PCM_INCONSISTENT;
+
     found.frame_count = frames;
     found.byte_count = (size_t)bytes;
-    *info = found;
-    *where = (size_t)offset;
+
+    layout->info = found;
+    layout->mapping = stsc;
+    layout->offsets = stco;
+    layout->runs = runs;
+    layout->chunks = chunks;
+    layout->wide = wide_count != 0;
+
     return QT_MOV_PCM_OK;
 }
 
-int qt_mov_find_pcm(const void *data, size_t length,
-                         struct qt_mov_pcm_info *info, size_t *offset)
+
+static int chunk_order(const void *a, const void *b)
 {
-    struct qt_mov_pcm_info found;
-    size_t where;
+    const struct pcm_chunk *x = a, *y = b;
+
+    if (x->offset < y->offset)
+        return -1;
+    if (x->offset > y->offset)
+        return 1;
+    return 0;
+}
+
+/* Validate the complete set of source ranges before copying.
+ * Sort by physical position for a single forward scan of the file.
+ * destination retains the original logical sample order.
+ */
+static int build_pcm_plan(struct span file,
+                          const struct pcm_layout *layout,
+                          struct pcm_chunk **result)
+{
+    size_t n = layout->chunks;
+    size_t frame_bytes = (size_t)layout->info.channels * 2;
+
+    if (n > SIZE_MAX / sizeof(struct pcm_chunk))
+        return QT_MOV_PCM_UNSUPPORTED;
+
+    struct pcm_chunk *chunks = malloc(n * sizeof(*chunks));
+    if (!chunks)
+        return QT_MOV_PCM_NO_MEMORY;
+
+    size_t destination = 0;
+    uint32_t run = 0;
+    const uint8_t *row = layout->mapping.p + 8;
+    size_t width = layout->wide ? 8 : 4;
+
+    for (uint32_t i = 0; i < layout->chunks; ++i) {
+        if (run + 1 < layout->runs &&
+            i + 1 == read_be32(row + 12)) {
+            ++run;
+            row += 12;
+        }
+
+        const uint8_t *entry =
+            layout->offsets.p + 8 + (size_t)i * width;
+
+        size_t bytes = (size_t)read_be32(row + 4) * frame_bytes;
+
+        if (bytes > layout->info.byte_count - destination) {
+            free(chunks);
+            return QT_MOV_PCM_INCONSISTENT;
+        }
+
+        chunks[i].offset = layout->wide
+            ? read_be64(entry) : read_be32(entry);
+
+        chunks[i].bytes = bytes;
+        chunks[i].destination = destination;
+        destination += bytes;
+    }
+
+    if (destination != layout->info.byte_count) {
+        free(chunks);
+        return QT_MOV_PCM_INCONSISTENT;
+    }
+
+    qsort(chunks, n, sizeof(*chunks), chunk_order);
+
+    size_t atom_offset = 0;
+    uint64_t previous_end = 0;
+    int status = QT_MOV_PCM_OK;
+
+    for (size_t i = 0; i < n; ++i) {
+        uint64_t start = chunks[i].offset;
+        uint64_t bytes = chunks[i].bytes;
+
+        if (start > file.n || bytes > file.n - start) {
+            status = QT_MOV_PCM_OUT_OF_BOUNDS;
+            break;
+        }
+
+        /* Overlapping or reused ranges are outside this bounded subset. */
+        if (i && start < previous_end) {
+            status = QT_MOV_PCM_UNSUPPORTED;
+            break;
+        }
+
+        int found = 0;
+
+        while (atom_offset < file.n) {
+            const uint8_t *type;
+            struct span body;
+            size_t total;
+
+            status = pcm_read_atom(
+                file, atom_offset, &type, &body, &total);
+
+            if (status != QT_MOV_PCM_OK)
+                break;
+
+            uint64_t end = (uint64_t)atom_offset + total;
+
+            if (start >= end) {
+                atom_offset += total;
+                continue;
+            }
+
+            uint64_t payload = (uint64_t)(body.p - file.p);
+
+            if (memcmp(type, "mdat", 4) == 0 &&
+                start >= payload && bytes <= end - start)
+                found = 1;
+
+            break;
+        }
+
+        if (status != QT_MOV_PCM_OK)
+            break;
+
+        if (!found) {
+            status = QT_MOV_PCM_OUT_OF_BOUNDS;
+            break;
+        }
+
+        previous_end = start + bytes;
+    }
+
+    if (status != QT_MOV_PCM_OK) {
+        free(chunks);
+        return status;
+    }
+
+    *result = chunks;
+    return QT_MOV_PCM_OK;
+}
+
+static void copy_pcm_plan(const uint8_t *source, uint8_t *destination,
+                          const struct pcm_chunk *chunks, size_t count)
+{
+    for (size_t i = 0; i < count; ++i)
+        memcpy(destination + chunks[i].destination,
+               source + (size_t)chunks[i].offset, chunks[i].bytes);
+}
+
+static int prepare_pcm(const void *data, size_t length,
+                       struct pcm_layout *layout,
+                       struct pcm_chunk **chunks)
+{
+    PCM_TRY(locate(data, length, layout));
+
+    struct span file = { data, length };
+
+    return build_pcm_plan(file, layout, chunks);
+}
+
+/* Preserve the private contiguous-region query's original meaning. */
+int qt_mov_find_pcm(const void *data, size_t length,
+                    struct qt_mov_pcm_info *info, size_t *offset)
+{
+    struct pcm_layout layout;
+    struct pcm_chunk *chunks;
 
     if (!data || !info || !offset)
         return QT_MOV_PCM_INVALID_ARGUMENT;
-    PCM_TRY(locate(data, length, &found, &where));
-    *info = found;
-    *offset = where;
+
+    PCM_TRY(prepare_pcm(data, length, &layout, &chunks));
+
+    uint64_t first = chunks[0].offset;
+    int contiguous = 1;
+
+    for (size_t i = 0; i < layout.chunks; ++i) {
+        if (chunks[i].offset - first != chunks[i].destination) {
+            contiguous = 0;
+            break;
+        }
+    }
+
+    free(chunks);
+
+    if (!contiguous)
+        return QT_MOV_PCM_UNSUPPORTED;
+
+    *info = layout.info;
+    *offset = (size_t)first;
+
     return QT_MOV_PCM_OK;
 }
 
 int qt_mov_extract_pcm(const void *data, size_t length,
-                            void *pcm, size_t capacity,
-                            struct qt_mov_pcm_info *info)
+                       void *pcm, size_t capacity,
+                       struct qt_mov_pcm_info *info)
 {
-    struct qt_mov_pcm_info found;
-    size_t where;
+    struct pcm_layout layout;
+    struct pcm_chunk *chunks;
 
     if (!data || !info || (!pcm && capacity))
         return QT_MOV_PCM_INVALID_ARGUMENT;
-    PCM_TRY(locate(data, length, &found, &where));
-    if (found.byte_count > capacity)
+
+    PCM_TRY(prepare_pcm(data, length, &layout, &chunks));
+
+    if (layout.info.byte_count > capacity) {
+        free(chunks);
         return QT_MOV_PCM_BUFFER_TOO_SMALL;
-    memcpy(pcm, (const uint8_t *)data + where, found.byte_count);
-    *info = found;
+    }
+
+    copy_pcm_plan(data, pcm, chunks, layout.chunks);
+
+    free(chunks);
+    *info = layout.info;
+
+    return QT_MOV_PCM_OK;
+}
+
+/* Transfer ownership of the assembled PCM only after full validation. */
+int qt_mov_load_pcm(const void *data, size_t length,
+                    void **pcm, struct qt_mov_pcm_info *info)
+{
+    struct pcm_layout layout;
+    struct pcm_chunk *chunks;
+
+    if (!data || !pcm || !info)
+        return QT_MOV_PCM_INVALID_ARGUMENT;
+
+    PCM_TRY(prepare_pcm(data, length, &layout, &chunks));
+
+    void *buffer = malloc(layout.info.byte_count);
+
+    if (!buffer) {
+        free(chunks);
+        return QT_MOV_PCM_NO_MEMORY;
+    }
+
+    copy_pcm_plan(data, buffer, chunks, layout.chunks);
+
+    free(chunks);
+
+    *pcm = buffer;
+    *info = layout.info;
+
     return QT_MOV_PCM_OK;
 }

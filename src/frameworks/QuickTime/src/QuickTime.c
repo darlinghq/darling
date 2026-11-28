@@ -212,27 +212,9 @@ static OSErr build_tracks(const void *data,size_t length,
 static OSErr attach_pcm(const void *data, size_t length,
                         struct MovieTrackStorage *tracks, SInt32 count)
 {
-    struct qt_mov_pcm_info info;
-    size_t offset = 0;
-
-    if (qt_mov_find_pcm(data, length, &info, &offset)
-        != QT_MOV_PCM_OK)
-        return noErr; // Metadata-only import remains available.
-
-    if (info.channels < 1 || info.channels > 2 ||
-        info.bits_per_sample != 16 ||
-        info.frame_count == 0 || info.frame_count > INT32_MAX ||
-        info.byte_count > 64u * 1024u * 1024u ||
-        offset > length || info.byte_count > length - offset)
-        return noErr;
-
-    size_t frameBytes = (size_t)info.channels * 2;
-    if (info.byte_count % frameBytes ||
-        info.byte_count / frameBytes != info.frame_count)
-        return noErr;
-
     struct MovieTrackStorage *sound = NULL;
-    for (SInt32 i=0; i<count; ++i) {
+
+    for (SInt32 i = 0; i < count; ++i) {
         if (tracks[i].track.handler == 0x736f756e) {
             if (sound)
                 return noErr;
@@ -240,21 +222,30 @@ static OSErr attach_pcm(const void *data, size_t length,
         }
     }
 
-    if (!sound ||
-        sound->media.scale != (TimeScale)info.sample_rate ||
-        sound->media.samples != (SInt32)info.frame_count)
+    if (!sound)
         return noErr;
 
-    sound->pcm = malloc(info.byte_count);
-    if (!sound->pcm)
+    struct qt_mov_pcm_info info;
+    void *pcm = NULL;
+
+    int status = qt_mov_load_pcm(data, length, &pcm, &info);
+
+    if (status == QT_MOV_PCM_NO_MEMORY)
         return memFullErr;
 
-    memcpy(sound->pcm, (const unsigned char*)data+offset,
-           info.byte_count);
+    if (status != QT_MOV_PCM_OK)
+        return noErr; /* Preserve metadata-only import. */
+
+    if (sound->media.scale != (TimeScale)info.sample_rate ||
+        sound->media.samples != (SInt32)info.frame_count) {
+        free(pcm);
+        return noErr;
+    }
+
+    sound->pcm = pcm;
     sound->pcm_info = info;
     return noErr;
 }
-
 
 /* The PCM importer has already established a constant sample duration
  * of one media tick and a frame count representable as TimeValue.
