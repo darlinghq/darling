@@ -797,6 +797,8 @@ OSStatus AudioFileNativeFormat::OpenFromDataSource()
 	m_framesField = parsed.framesField;
 	m_chunkOffsetField = parsed.chunkOffsetField;
 	m_writable = CanWrite();
+	m_openBytes = GetNumBytes();
+	m_openPackets = GetNumPackets();
 
 	return noErr;
 }
@@ -1106,7 +1108,11 @@ OSStatus AudioFileNativeFormat::Close()
 
 	OSStatus status = noErr;
 
-	if (GetDataSource() && CanWrite())
+	// A file that was opened and not changed keeps its header: writing it again would fail for a data source that cannot
+	// be written, although nothing needs to be.
+	const bool changed = m_headerWritten || GetNumBytes() != m_openBytes || GetNumPackets() != m_openPackets;
+
+	if (GetDataSource() && CanWrite() && changed)
 	{
 		status = patchSizes(true);
 		SetNeedsSizeUpdate(false);

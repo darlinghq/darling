@@ -960,6 +960,9 @@ OSStatus ExtAudioFileRead( ExtAudioFileRef inExtAudioFile,
        UInt32 * ioNumberFrames,
        AudioBufferList * ioData)
 {
+	if (!inExtAudioFile)
+		return kAudio_ParamError;
+
 	return fromRef(inExtAudioFile)->read(ioNumberFrames, ioData);
 }
 
@@ -967,6 +970,9 @@ OSStatus ExtAudioFileWrite( ExtAudioFileRef inExtAudioFile,
        UInt32 inNumberFrames,
        const AudioBufferList * ioData)
 {
+	if (!inExtAudioFile)
+		return kAudio_ParamError;
+
 	return fromRef(inExtAudioFile)->write(inNumberFrames, ioData);
 }
 
@@ -976,19 +982,25 @@ OSStatus ExtAudioFileWriteAsync( ExtAudioFileRef inExtAudioFile,
        UInt32 inNumberFrames,
        const AudioBufferList * _Nullable ioData)
 {
+	if (!inExtAudioFile)
+		return kAudio_ParamError;
+
 	return fromRef(inExtAudioFile)->write(inNumberFrames, ioData);
 }
 
 OSStatus ExtAudioFileSeek( ExtAudioFileRef inExtAudioFile,
        SInt64 inFrameOffset)
 {
+	if (!inExtAudioFile)
+		return kAudio_ParamError;
+
 	return fromRef(inExtAudioFile)->seek(inFrameOffset);
 }
 
 OSStatus ExtAudioFileTell( ExtAudioFileRef inExtAudioFile,
        SInt64 * outFrameOffset)
 {
-	if (!outFrameOffset)
+	if (!inExtAudioFile || !outFrameOffset)
 		return kAudio_ParamError;
 
 	*outFrameOffset = fromRef(inExtAudioFile)->tell();
@@ -1000,6 +1012,9 @@ OSStatus ExtAudioFileGetPropertyInfo(ExtAudioFileRef inExtAudioFile,
        UInt32 * _Nullable outSize,
        Boolean * _Nullable outWritable)
 {
+	if (!inExtAudioFile)
+		return kAudio_ParamError;
+
 	return fromRef(inExtAudioFile)->propertyInfo(inPropertyID, outSize, outWritable);
 }
 
@@ -1008,6 +1023,9 @@ OSStatus ExtAudioFileGetProperty( ExtAudioFileRef inExtAudioFile,
        UInt32 * ioPropertyDataSize,
        void * outPropertyData)
 {
+	if (!inExtAudioFile)
+		return kAudio_ParamError;
+
 	return fromRef(inExtAudioFile)->getProperty(inPropertyID, ioPropertyDataSize, outPropertyData);
 }
 
@@ -1016,5 +1034,8 @@ OSStatus ExtAudioFileSetProperty( ExtAudioFileRef inExtAudioFile,
        UInt32 inPropertyDataSize,
        const void * inPropertyData)
 {
+	if (!inExtAudioFile)
+		return kAudio_ParamError;
+
 	return fromRef(inExtAudioFile)->setProperty(inPropertyID, inPropertyDataSize, inPropertyData);
 }
