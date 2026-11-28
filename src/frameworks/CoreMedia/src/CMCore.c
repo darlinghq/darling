@@ -168,6 +168,13 @@ CMVideoDimensions CMVideoFormatDescriptionGetDimensions(CMVideoFormatDescription
 	return videoDesc->dimensions;
 }
 
+CMVideoCodecType CMVideoFormatDescriptionGetCodecType(CMVideoFormatDescriptionRef videoDesc)
+{
+	if (videoDesc == NULL || videoDesc->mediaType != kCMMediaType_Video)
+		return 0;
+	return videoDesc->subType;
+}
+
 /* The parameter sets of an avcC atom among the extensions' sample description atoms. */
 OSStatus CMVideoFormatDescriptionGetH264ParameterSetAtIndex(CMFormatDescriptionRef videoDesc, size_t parameterSetIndex,
 	const uint8_t **parameterSetPointerOut, size_t *parameterSetSizeOut, size_t *parameterSetCountOut,

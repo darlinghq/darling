@@ -17,7 +17,6 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #ifndef _VideoToolbox_H_
 #define _VideoToolbox_H_
 
@@ -58,12 +57,9 @@ void* VCH263VideoDecoder_CreateInstance(void);
 void* VCH263VideoEncoder_CreateInstance(void);
 void* VTBuildPixelBufferPools(void);
 void* VTBuildPixelBufferPools2(void);
-void* VTCompressionSessionBeginPass(void);
 void* VTCompressionSessionCopyProperty(void);
 void* VTCompressionSessionCopySerializableProperties(void);
 void* VTCompressionSessionCopySupportedPropertyDictionary(void);
-void* VTCompressionSessionEndPass(void);
-void* VTCompressionSessionGetTimeRangesForNextPass(void);
 void* VTCompressionSessionRelease(void);
 void* VTCompressionSessionSetProperties(void);
 void* VTCompressionSessionSetProperty(void);
@@ -130,18 +126,6 @@ void* VTIsMetalDeviceSlotted(void);
 void* VTMakeMovedRectWithDictionaryRepresentation(void);
 void* VTMetalTransferSessionCreate(void);
 void* VTMetalTransferSessionTransferImageSync(void);
-void* VTMultiPassStorageClose(void);
-void* VTMultiPassStorageCopyDataAtTimeStamp(void);
-void* VTMultiPassStorageCopyIdentifier(void);
-void* VTMultiPassStorageCreate(void);
-void* VTMultiPassStorageGetTimeStamp(void);
-void* VTMultiPassStorageGetTimeStampAndDuration(void);
-void* VTMultiPassStorageGetTypeID(void);
-void* VTMultiPassStorageInvalidate(void);
-void* VTMultiPassStorageSetDataAtTimeStamp(void);
-void* VTMultiPassStorageSetIdentifier(void);
-void* VTMultiPassStorageWriteMerged(void);
-void* VTMultiPassStorageWriteSegment(void);
 void* VTPixelBufferAttributesMediatorAddLayer(void);
 void* VTPixelBufferAttributesMediatorCopyProperty(void);
 void* VTPixelBufferAttributesMediatorCreate(void);

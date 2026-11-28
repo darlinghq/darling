@@ -29,6 +29,8 @@ extern const CFStringRef kCVImageBufferAmbientViewingEnvironmentKey;
 
 extern const CFStringRef kCVImageBufferCGColorSpaceKey;
 
+extern const CFStringRef kCVImageBufferChromaLocationTopFieldKey;
+extern const CFStringRef kCVImageBufferChromaLocation_Left;
 extern const CFStringRef kCVImageBufferChromaLocation_Bottom;
 extern const CFStringRef kCVImageBufferChromaLocation_BottomLeft;
 extern const CFStringRef kCVImageBufferChromaLocation_Center;
@@ -70,6 +72,12 @@ extern CFStringRef const kCVImageBufferCleanApertureWidthKey;
 extern CFStringRef const kCVImageBufferCleanApertureHeightKey;
 extern CFStringRef const kCVImageBufferCleanApertureHorizontalOffsetKey;
 extern CFStringRef const kCVImageBufferCleanApertureVerticalOffsetKey;
+
+// Nominal display size, in square pixels, as a dictionary of CFNumbers under
+// kCVImageBufferDisplayDimensionsKey.
+extern CFStringRef const kCVImageBufferDisplayDimensionsKey;
+extern CFStringRef const kCVImageBufferDisplayWidthKey;
+extern CFStringRef const kCVImageBufferDisplayHeightKey;
 
 CV_EXPORT CGSize CVImageBufferGetEncodedSize(CVImageBufferRef imageBuffer);
 CV_EXPORT CGRect CVImageBufferGetCleanRect(CVImageBufferRef imageBuffer);

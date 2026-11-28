@@ -25,6 +25,15 @@
 
 const CFStringRef kCMFormatDescriptionExtension_SampleDescriptionExtensionAtoms = CFSTR("SampleDescriptionExtensionAtoms");
 const CFStringRef kCMSampleAttachmentKey_NotSync = CFSTR("NotSync");
+const CFStringRef kCMSampleAttachmentKey_PartialSync = CFSTR("PartialSync");
+
+// Interlaced-video field details and the pixel-aspect-ratio extension.
+const CFStringRef kCMFormatDescriptionFieldDetail_TemporalTopFirst = CFSTR("TemporalTopFirst");
+const CFStringRef kCMFormatDescriptionFieldDetail_TemporalBottomFirst = CFSTR("TemporalBottomFirst");
+const CFStringRef kCMFormatDescriptionFieldDetail_SpatialFirstLineEarly = CFSTR("SpatialFirstLineEarly");
+const CFStringRef kCMFormatDescriptionFieldDetail_SpatialFirstLineLate = CFSTR("SpatialFirstLineLate");
+const CFStringRef kCMFormatDescriptionKey_PixelAspectRatioHorizontalSpacing = CFSTR("HorizontalSpacing");
+const CFStringRef kCMFormatDescriptionKey_PixelAspectRatioVerticalSpacing = CFSTR("VerticalSpacing");
 
 // Values observed on macOS 27.0.1 by printing the public constants. Each
 // colour constant has the same value as its kCVImageBuffer* counterpart.

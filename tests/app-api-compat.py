@@ -20,13 +20,24 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 SDK = Path(os.environ.get('SDK', ROOT / 'Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk'))
 CLANG = os.environ.get('CLANG', 'clang')
+HOST_CC = os.environ.get('HOST_CC', CLANG)
 AE_INCLUDE = ROOT / 'src/frameworks/CoreServices/include'
 QUARTZ_INCLUDE = ROOT / 'src/frameworks/Quartz/QuickLookUI/include'
 COCOTRON_APPKIT_INCLUDE = ROOT / 'src/external/cocotron/AppKit/include'
+COCOTRON_APPKIT_PRIVATE_INCLUDE = ROOT / 'src/external/cocotron/AppKit/private-include'
+COCOTRON_APPKIT_ROOT = ROOT / 'src/external/cocotron/AppKit'
+COCOTRON_ROOT = ROOT / 'src/external/cocotron'
+NSS_INCLUDE = ROOT / 'src/frameworks/NSS/include'
+NSPR_INCLUDE = ROOT / 'src/frameworks/NSPR/include'
+ELFCALLS_INCLUDE = ROOT / 'src/startup/mldr/elfcalls'
 
 
 def sdk_usable():
     return shutil.which(CLANG) is not None and (SDK / 'usr/include/stdio.h').exists()
+
+
+def host_compiler_usable():
+    return shutil.which(HOST_CC) is not None
 
 
 def cocotron_appkit_usable():
@@ -186,6 +197,242 @@ int main(void) { return kCGImagePropertyOrientationUp == 1 ? 0 : 1; }
     def test_cocotron_appkit_implementation_compiles(self):
         path = ROOT / 'src/external/cocotron/AppKit/NSSound.m'
         res = self.clang(None, '-I', str(COCOTRON_APPKIT_INCLUDE), source_file=path)
+        self.assertEqual(res.returncode, 0, res.stderr)
+
+    def test_cocotron_modern_appkit_implementations_compile(self):
+        sources = [
+            'NSItemBadge.m',
+            'NSComboButton.m',
+            'NSGlassEffectView.m',
+            'NSImage.m',
+            'NSWindow.m',
+            'NSControl.m',
+            'NSButton.m',
+            'NSSlider.m',
+            'NSSegmentedControl/NSSegmentedControl.m',
+            'NSToolbar.subproj/NSToolbarItem.m',
+            'CoreGraphics/CGS.m',
+        ]
+        for name in sources:
+            path = (COCOTRON_ROOT / name if name.startswith('CoreGraphics/')
+                    else COCOTRON_APPKIT_ROOT / name)
+            res = self.clang(None, '-I', str(COCOTRON_APPKIT_INCLUDE),
+                             '-I', str(COCOTRON_APPKIT_PRIVATE_INCLUDE),
+                             '-I', str(COCOTRON_ROOT), source_file=path)
+            self.assertEqual(res.returncode, 0, f'{name}: {res.stderr}')
+
+    def test_handbrake_cli_media_surface(self):
+        source = '''\
+#include <CoreMedia/CoreMedia.h>
+#include <CoreVideo/CoreVideo.h>
+#include <VideoToolbox/VideoToolbox.h>
+
+void handbrake_cli_probe(void)
+{
+    CMVideoFormatDescriptionRef desc = NULL;
+    (void)CMVideoFormatDescriptionGetCodecType(desc);
+    (void)kCMFormatDescriptionFieldDetail_TemporalBottomFirst;
+    (void)kCMFormatDescriptionFieldDetail_TemporalTopFirst;
+    (void)kCMFormatDescriptionKey_PixelAspectRatioHorizontalSpacing;
+    (void)kCMFormatDescriptionKey_PixelAspectRatioVerticalSpacing;
+    (void)kCMSampleAttachmentKey_PartialSync;
+    (void)kCVImageBufferChromaLocationTopFieldKey;
+    (void)kCVImageBufferChromaLocation_Left;
+    (void)kCVImageBufferDisplayDimensionsKey;
+    (void)kCVImageBufferDisplayHeightKey;
+    (void)kCVImageBufferDisplayWidthKey;
+    (void)kCVPixelBufferExtendedPixelsBottomKey;
+    (void)kCVPixelBufferExtendedPixelsRightKey;
+    (void)kCVPixelFormatComponentRange_FullRange;
+    (void)kCVPixelFormatComponentRange_VideoRange;
+    (void)kCVPixelFormatType_422YpCbCr16BiPlanarVideoRange;
+    (void)kCVPixelFormatType_444YpCbCr16BiPlanarVideoRange;
+    (void)kCVPixelFormatType_444YpCbCr8BiPlanarFullRange;
+    (void)kCVPixelFormatType_444YpCbCr8BiPlanarVideoRange;
+    (void)kVTCompressionPropertyKey_AllowTemporalCompression;
+    (void)kVTCompressionPropertyKey_ConstantQualityFactor;
+    (void)kVTCompressionPropertyKey_FieldCount;
+    (void)kVTCompressionPropertyKey_FieldDetail;
+    (void)kVTCompressionPropertyKey_H264EntropyMode;
+    (void)kVTCompressionPropertyKey_MaxAllowedFrameQP;
+    (void)kVTCompressionPropertyKey_MinAllowedFrameQP;
+    (void)kVTCompressionPropertyKey_MultiPassStorage;
+    (void)kVTCompressionPropertyKey_PreserveDynamicHDRMetadata;
+    (void)kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality;
+    (void)kVTCompressionPropertyKey_ReferenceBufferCount;
+    (void)kVTCompressionPropertyKey_SuggestedLookAheadFrameCount;
+    (void)kVTCompressionPropertyKey_VBVBufferDuration;
+    (void)kVTCompressionPropertyKey_VBVMaxBitRate;
+    (void)kVTCompressionPropertyKey_VBVInitialDelayPercentage;
+    (void)kVTCompressionPropertyKey_VariableBitRate;
+    (void)kVTCompressionSessionBeginFinalPass;
+    (void)kVTH264EntropyMode_CABAC;
+    (void)kVTH264EntropyMode_CAVLC;
+    (void)kVTPropertySupportedValueListKey;
+    (void)kVTUnlimitedFrameDelayCount;
+    (void)kVTVideoEncoderSpecification_RequiredEncoderGPURegistryID;
+
+    VTMultiPassStorageRef storage = NULL;
+    (void)VTMultiPassStorageCreate(kCFAllocatorDefault, NULL, kCMTimeRangeInvalid, NULL, &storage);
+    (void)VTMultiPassStorageGetTypeID();
+    (void)VTMultiPassStorageClose(storage);
+    (void)VTCompressionSessionBeginPass(NULL, kVTCompressionSessionBeginFinalPass, 0);
+    Boolean further = false;
+    (void)VTCompressionSessionEndPass(NULL, &further, 0);
+    CMItemCount count = 0;
+    const CMTimeRange *ranges = NULL;
+    (void)VTCompressionSessionGetTimeRangesForNextPass(NULL, &count, &ranges);
+}
+'''
+        res = self.clang(source)
+        self.assertEqual(res.returncode, 0, res.stderr)
+
+    def test_qt_cocoa_modern_appkit_surface(self):
+        source = '''\
+#import <AppKit/AppKit.h>
+#import <Foundation/Foundation.h>
+
+@interface QModernAppKitProbe : NSObject <NSMenuValidation>
+@end
+
+@implementation QModernAppKitProbe
+- (BOOL) validateMenuItem: (NSMenuItem *) item { return YES; }
+@end
+
+void qt_cocoa_probe(NSImage *image, NSMenu *menu) {
+    NSAccessibilityOrientation orientation = NSAccessibilityOrientationVertical;
+    (void)orientation;
+    (void)NSAccessibilityOrientationUnknown;
+    (void)NSAccessibilityOrientationHorizontal;
+    (void)NSWindowDidOrderOnScreenAndFinishAnimatingNotification;
+    (void)NSImageHintUserInterfaceLayoutDirection;
+
+    NSImageSymbolConfiguration *configuration =
+            [NSImageSymbolConfiguration configurationWithPointSize: 12
+                                                            weight: NSFontWeightRegular];
+    (void)[image imageByApplyingSymbolConfiguration: configuration];
+
+    NSComboButton *button = [NSComboButton comboButtonWithImage: image
+                                                          menu: menu
+                                                        target: nil
+                                                        action: NULL];
+    button.style = NSComboButtonStyleUnified;
+    (void)button;
+
+    QModernAppKitProbe *probe = [QModernAppKitProbe new];
+    (void)probe;
+}
+'''
+        res = self.clang(source)
+        self.assertEqual(res.returncode, 0, res.stderr)
+
+    def test_handbrake_gui_modern_appkit_surface(self):
+        source = '''\
+#import <AppKit/AppKit.h>
+#import <Foundation/Foundation.h>
+
+void handbrake_gui_probe(NSMenu *menu, NSImage *image) {
+    NSComboButton *button = [NSComboButton comboButtonWithImage: image
+                                                          menu: menu
+                                                        target: nil
+                                                        action: NULL];
+    button.style = NSComboButtonStyleSplit;
+    (void)[NSComboButton comboButtonWithTitle: @"Preset"
+                                        image: image
+                                         menu: menu
+                                       target: nil
+                                       action: NULL];
+
+    NSItemBadge *badge = [NSItemBadge badgeWithText: @"3"];
+    (void)[NSItemBadge badgeWithCount: 3];
+    (void)[NSItemBadge indicatorBadge];
+    NSToolbarItem *item = [[NSToolbarItem alloc] initWithItemIdentifier: @"probe"];
+    item.badge = badge;
+    (void)item.badge.text;
+
+    NSGlassEffectView *glass = [[NSGlassEffectView alloc] initWithFrame: NSMakeRect(0, 0, 10, 10)];
+    glass.style = NSGlassEffectViewStyleClear;
+    glass.cornerRadius = 8;
+    glass.tintColor = [NSColor redColor];
+    glass.contentView = [[NSView alloc] initWithFrame: NSMakeRect(0, 0, 10, 10)];
+
+    NSButton *standardButton = [[NSButton alloc] initWithFrame: NSMakeRect(0, 0, 10, 10)];
+    standardButton.borderShape = NSControlBorderShapeCapsule;
+    standardButton.tintProminence = NSTintProminenceNone;
+    NSSegmentedControl *segmented = [[NSSegmentedControl alloc] initWithFrame: NSMakeRect(0, 0, 10, 10)];
+    segmented.borderShape = NSControlBorderShapeCapsule;
+    NSSlider *slider = [[NSSlider alloc] initWithFrame: NSMakeRect(0, 0, 10, 10)];
+    slider.tintProminence = NSTintProminenceNone;
+
+    (void)NSControlBorderShapeAutomatic;
+    (void)NSControlBorderShapeRoundedRectangle;
+    (void)NSControlBorderShapeCircle;
+    (void)NSTintProminenceAutomatic;
+    (void)NSTintProminencePrimary;
+    (void)NSTintProminenceSecondary;
+    (void)NSTokenStyleNone;
+    (void)NSTokenStylePlainSquared;
+    (void)NSVisualEffectMaterialDark;
+}
+'''
+        res = self.clang(source)
+        self.assertEqual(res.returncode, 0, res.stderr)
+
+    def test_gecko_nss_nspr_surface(self):
+        source = '''\
+#include <nss/nss.h>
+#include <nspr/nspr.h>
+
+void gecko_crypto_probe(unsigned char *buffer, int length)
+{
+    PRNetAddr address;
+    (void)PR_InitializeNetAddr(PR_IpAddrAny, 443, &address);
+    (void)PR_OpenTCPSocket(PR_AF_INET);
+
+    (void)NSS_Init("sql:/tmp/nss-probe");
+    (void)NSS_Initialize("sql:/tmp/nss-probe", "", "", "secmod.db", NSS_INIT_READONLY);
+    (void)PK11_GenerateRandom(buffer, length);
+    (void)CERT_GetDefaultCertDB();
+    (void)SSL_ImportFD(NULL, NULL);
+    (void)SECITEM_AllocItem(NULL, NULL, 0);
+}
+'''
+        res = self.clang(source, '-I', str(NSS_INCLUDE), '-I', str(NSPR_INCLUDE),
+                         language='c')
+        self.assertEqual(res.returncode, 0, res.stderr)
+
+    @unittest.skipUnless(host_compiler_usable(),
+                         'a host C compiler is required for the shim tests')
+    def test_nss_nspr_host_forwarding_contracts(self):
+        sources = [
+            ROOT / 'tests/host-shim/host_shim.c',
+            ROOT / 'src/frameworks/NSS/src/NSSHost.c',
+            ROOT / 'src/frameworks/NSPR/src/NSPRHost.c',
+        ]
+        binary = Path(self.tmp.name) / 'nss-nspr-host-shim'
+        cmd = [HOST_CC, '-std=gnu11', '-I', str(NSS_INCLUDE), '-I', str(NSPR_INCLUDE),
+               '-I', str(ELFCALLS_INCLUDE), *[str(path) for path in sources],
+               '-lpthread', '-o', str(binary)]
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        self.assertEqual(res.returncode, 0, res.stderr)
+        res = subprocess.run([str(binary)], capture_output=True, text=True)
+        self.assertEqual(res.returncode, 0, res.stderr)
+
+    @unittest.skipUnless(host_compiler_usable(),
+                         'a host C compiler is required for the shim tests')
+    def test_nss_nspr_unavailable_host_contracts(self):
+        sources = [
+            ROOT / 'tests/host-shim/host_shim_unavailable.c',
+            ROOT / 'src/frameworks/NSS/src/NSSHost.c',
+            ROOT / 'src/frameworks/NSPR/src/NSPRHost.c',
+        ]
+        binary = Path(self.tmp.name) / 'nss-nspr-unavailable'
+        cmd = [HOST_CC, '-std=gnu11', '-I', str(NSS_INCLUDE), '-I', str(NSPR_INCLUDE),
+               '-I', str(ELFCALLS_INCLUDE), *[str(path) for path in sources],
+               '-lpthread', '-o', str(binary)]
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        self.assertEqual(res.returncode, 0, res.stderr)
+        res = subprocess.run([str(binary)], capture_output=True, text=True)
         self.assertEqual(res.returncode, 0, res.stderr)
 
 

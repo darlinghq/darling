@@ -62,6 +62,7 @@ CM_EXPORT const CMSampleTimingInfo kCMTimingInfoInvalid;
 typedef OSStatus (*CMSampleBufferMakeDataReadyCallback)(CMSampleBufferRef sbuf, void *makeDataReadyRefcon);
 
 CM_EXPORT const CFStringRef kCMSampleAttachmentKey_NotSync;
+CM_EXPORT const CFStringRef kCMSampleAttachmentKey_PartialSync;
 CM_EXPORT const CFStringRef kCMSampleAttachmentKey_DisplayImmediately;
 CM_EXPORT const CFStringRef kCMSampleAttachmentKey_IsDependedOnByOthers;
 CM_EXPORT const CFStringRef kCMSampleBufferAttachmentKey_ResetDecoderBeforeDecoding;
