@@ -34,7 +34,7 @@ def read_ppm(path):
             pos += 1
         fields.append(data[start:pos])
     pos += 1
-    assert fields[0] == b"P6"
+    assert fields[0] == b"P6" and fields[3] == b"255", "the screenshot is not an 8-bit PPM"
     return int(fields[1]), int(fields[2]), data[pos:]
 
 
@@ -68,7 +68,7 @@ def main():
     elif mode == "wayland":
         subprocess.run(["grim", "-t", "ppm", shot], check=True)
     else:
-        subprocess.run(["import", "-window", "root", "ppm:" + shot], check=True)
+        subprocess.run(["import", "-depth", "8", "-window", "root", "ppm:" + shot], check=True)
     proc.wait(timeout=60)
     text = open(log).read()
     sidebar = [l for l in text.splitlines() if l.startswith("SIDEBAR ")]
