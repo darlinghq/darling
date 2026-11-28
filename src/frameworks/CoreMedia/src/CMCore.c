@@ -170,8 +170,9 @@ CMVideoDimensions CMVideoFormatDescriptionGetDimensions(CMVideoFormatDescription
 
 CMVideoCodecType CMVideoFormatDescriptionGetCodecType(CMVideoFormatDescriptionRef videoDesc)
 {
-	if (videoDesc == NULL || videoDesc->mediaType != kCMMediaType_Video)
+	if (videoDesc == NULL)
 		return 0;
+	/* The codec type is the format description's media subtype; macOS does not check the media type. */
 	return videoDesc->subType;
 }
 

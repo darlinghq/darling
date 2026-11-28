@@ -422,7 +422,7 @@ static bool profile_level_valid(CMVideoCodecType codec, CFStringRef s)
 	return rest[0] >= '1' && rest[0] <= '5' && rest[1] == '_' && rest[2] >= '0' && rest[2] <= '9' && rest[3] == 0;
 }
 
-typedef enum { PK_BOOL, PK_NUMBER, PK_STRING, PK_ARRAY, PK_DICT, PK_DATA, PK_PROFILE, PK_MULTIPASS } PropKind;
+typedef enum { PK_BOOL, PK_NUMBER, PK_STRING, PK_ARRAY, PK_DICT, PK_DATA, PK_PROFILE } PropKind;
 
 static const struct { const char *key; PropKind kind; } supportedProps[] = {
 	{ "RealTime", PK_BOOL },
@@ -443,21 +443,11 @@ static const struct { const char *key; PropKind kind; } supportedProps[] = {
 	{ "MasteringDisplayColorVolume", PK_DATA },
 	{ "ContentLightLevelInfo", PK_DATA },
 	{ "AllowTemporalCompression", PK_BOOL },
-	{ "ConstantQualityFactor", PK_NUMBER },
-	{ "FieldCount", PK_NUMBER },
-	{ "FieldDetail", PK_STRING },
 	{ "H264EntropyMode", PK_STRING },
 	{ "MaxAllowedFrameQP", PK_NUMBER },
 	{ "MinAllowedFrameQP", PK_NUMBER },
-	{ "MultiPassStorage", PK_MULTIPASS },
-	{ "PreserveDynamicHDRMetadata", PK_BOOL },
-	{ "PrioritizeEncodingSpeedOverQuality", PK_BOOL },
-	{ "ReferenceBufferCount", PK_NUMBER },
-	{ "SuggestedLookAheadFrameCount", PK_NUMBER },
-	{ "VBVBufferDuration", PK_NUMBER },
 	{ "VBVMaxBitRate", PK_NUMBER },
-	{ "VBVInitialDelayPercentage", PK_NUMBER },
-	{ "VariableBitRate", PK_NUMBER },
+	{ "VBVBufferDuration", PK_NUMBER },
 };
 
 static int find_prop(CFStringRef key)
@@ -504,7 +494,6 @@ OSStatus VTCompressionSessionSetPropertyInternal(VTSessionRef sessionRef, CFStri
 			case PK_DICT: ok = t == CFDictionaryGetTypeID(); break;
 			case PK_DATA: ok = t == CFDataGetTypeID(); break;
 			case PK_PROFILE: ok = t == CFStringGetTypeID() && profile_level_valid(s->codecType, value); break;
-			case PK_MULTIPASS: ok = t == VTMultiPassStorageGetTypeID(); break;
 			}
 			if (value == NULL || ok) {
 				if (value == NULL)
@@ -811,6 +800,16 @@ static OSStatus open_encoder(VTCS s)
 	get_prop_number(s, "MaxKeyFrameIntervalDuration", &keydur);
 	bool realtime = get_prop_bool(s, "RealTime", false);
 	bool reorder = get_prop_bool(s, "AllowFrameReordering", true);
+	bool temporal = get_prop_bool(s, "AllowTemporalCompression", true);
+	double minQP = 0, maxQP = 0, vbvRate = 0, vbvDuration = 0;
+	get_prop_number(s, "MinAllowedFrameQP", &minQP);
+	get_prop_number(s, "MaxAllowedFrameQP", &maxQP);
+	get_prop_number(s, "VBVMaxBitRate", &vbvRate);
+	get_prop_number(s, "VBVBufferDuration", &vbvDuration);
+	bool cavlc = false;
+	CFTypeRef entropy = CFDictionaryGetValue(s->props, CFSTR("H264EntropyMode"));
+	if (entropy != NULL && CFGetTypeID(entropy) == CFStringGetTypeID())
+		cavlc = CFEqual(entropy, kVTH264EntropyMode_CAVLC);
 	char profile[80] = "";
 	CFTypeRef pl = CFDictionaryGetValue(s->props, kVTCompressionPropertyKey_ProfileLevel);
 	if (pl != NULL)
@@ -835,8 +834,18 @@ static OSStatus open_encoder(VTCS s)
 	if (bitrate > 0)
 		c->bit_rate = (int64_t)bitrate;
 	int gop = keyint > 0 ? (int)keyint : (keydur > 0 ? (int)(keydur * fps + 0.5) : 250);
-	c->gop_size = gop < 1 ? 1 : gop;
-	c->max_b_frames = (reorder && !realtime) ? 2 : 0;
+	/* Without temporal compression every frame is a key frame. */
+	c->gop_size = !temporal ? 1 : (gop < 1 ? 1 : gop);
+	c->max_b_frames = (reorder && !realtime && temporal) ? 2 : 0;
+	if (minQP >= 1 && minQP <= 51)
+		c->qmin = (int)minQP;
+	if (maxQP >= 1 && maxQP <= 51 && maxQP >= minQP)
+		c->qmax = (int)maxQP;
+	if (vbvRate > 0) {
+		c->rc_max_rate = (int64_t)vbvRate;
+		if (vbvDuration > 0)
+			c->rc_buffer_size = (int)(vbvRate * vbvDuration);
+	}
 
 	const char *prof = NULL;
 	if (strstr(profile, "Baseline")) { prof = "baseline"; c->max_b_frames = 0; }
@@ -848,6 +857,8 @@ static OSStatus open_encoder(VTCS s)
 		av_opt_set(c->priv_data, "preset", realtime ? "ultrafast" : "veryfast", 0);
 		if (realtime) av_opt_set(c->priv_data, "tune", "zerolatency", 0);
 		av_opt_set(c->priv_data, "forced-idr", "1", 0);
+		if (cavlc)
+			av_opt_set(c->priv_data, "coder", "vlc", 0);
 		/* Explicit levels: "H264_<profile>_<major>_<minor>" */
 		int major, minor;
 		const char *lv = strrchr(profile, '_');

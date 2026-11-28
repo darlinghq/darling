@@ -34,7 +34,6 @@ add_framework(VideoToolbox
         src/VTFrameProcessor.m
         src/VTSessions.c
         src/VTCompressionSession.c
-        src/VTMultiPassStorage.c
 
     DEPENDENCIES
         system

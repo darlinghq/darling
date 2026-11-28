@@ -77,6 +77,6 @@ const CFStringRef kCVImageBufferCleanApertureHeightKey = CFSTR("Height");
 const CFStringRef kCVImageBufferCleanApertureHorizontalOffsetKey = CFSTR("HorizontalOffset");
 const CFStringRef kCVImageBufferCleanApertureVerticalOffsetKey = CFSTR("VerticalOffset");
 
-const CFStringRef kCVImageBufferDisplayDimensionsKey = CFSTR("DisplayDimensions");
-const CFStringRef kCVImageBufferDisplayWidthKey = CFSTR("DisplayWidth");
-const CFStringRef kCVImageBufferDisplayHeightKey = CFSTR("DisplayHeight");
+const CFStringRef kCVImageBufferDisplayDimensionsKey = CFSTR("CVDisplayDimensions");
+const CFStringRef kCVImageBufferDisplayWidthKey = CFSTR("Width");
+const CFStringRef kCVImageBufferDisplayHeightKey = CFSTR("Height");

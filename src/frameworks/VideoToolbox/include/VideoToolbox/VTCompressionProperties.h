@@ -120,15 +120,15 @@ enum
 // CFData, the content light level information from the format description.
 VT_EXPORT CFStringRef const kVTCompressionPropertyKey_ContentLightLevelInfo;
 
-// Encoder controls used by multi-pass and quality-driven clients.
+// Encoder controls. Darling's encoder honours AllowTemporalCompression, H264EntropyMode, MinAllowedFrameQP,
+// MaxAllowedFrameQP, VBVMaxBitRate and VBVBufferDuration; setting any other of them fails with
+// kVTPropertyNotSupportedErr, the documented answer for a property the encoder does not support.
 VT_EXPORT CFStringRef const kVTCompressionPropertyKey_AllowTemporalCompression;
-VT_EXPORT CFStringRef const kVTCompressionPropertyKey_ConstantQualityFactor;
 VT_EXPORT CFStringRef const kVTCompressionPropertyKey_FieldCount;
 VT_EXPORT CFStringRef const kVTCompressionPropertyKey_FieldDetail;
 VT_EXPORT CFStringRef const kVTCompressionPropertyKey_H264EntropyMode;
 VT_EXPORT CFStringRef const kVTCompressionPropertyKey_MaxAllowedFrameQP;
 VT_EXPORT CFStringRef const kVTCompressionPropertyKey_MinAllowedFrameQP;
-VT_EXPORT CFStringRef const kVTCompressionPropertyKey_MultiPassStorage;
 VT_EXPORT CFStringRef const kVTCompressionPropertyKey_PreserveDynamicHDRMetadata;
 VT_EXPORT CFStringRef const kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality;
 VT_EXPORT CFStringRef const kVTCompressionPropertyKey_ReferenceBufferCount;

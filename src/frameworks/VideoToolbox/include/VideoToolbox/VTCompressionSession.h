@@ -25,7 +25,6 @@
 #include <VideoToolbox/VTSession.h>
 #include <CoreMedia/CMBase.h>
 #include <CoreMedia/CMTime.h>
-#include <CoreMedia/CMTimeRange.h>
 #include <CoreMedia/CMFormatDescription.h>
 #include <CoreMedia/CMSampleBuffer.h>
 #include <CoreVideo/CoreVideo.h>
@@ -36,14 +35,6 @@ typedef struct CF_BRIDGED_TYPE(id) OpaqueVTCompressionSession *VTCompressionSess
 
 typedef void (*VTCompressionOutputCallback)(void *outputCallbackRefCon, void *sourceFrameRefCon, OSStatus status,
 	VTEncodeInfoFlags infoFlags, CMSampleBufferRef sampleBuffer);
-
-typedef CF_ENUM(uint32_t, VTCompressionSessionPassType) {
-	kVTCompressionSessionBeginCompletePass = 0,
-	kVTCompressionSessionBeginPass = 1,
-	kVTCompressionSessionBeginFinalPass = 2,
-};
-
-typedef struct opaqueVTMultiPassStorage *VTMultiPassStorageRef;
 
 VT_EXPORT OSStatus VTCompressionSessionCreate(CFAllocatorRef allocator, int32_t width, int32_t height,
 	CMVideoCodecType codecType, CFDictionaryRef encoderSpecification, CFDictionaryRef sourceImageBufferAttributes,
@@ -58,39 +49,6 @@ VT_EXPORT OSStatus VTCompressionSessionEncodeFrame(VTCompressionSessionRef sessi
 	VTEncodeInfoFlags *infoFlagsOut);
 VT_EXPORT OSStatus VTCompressionSessionCompleteFrames(VTCompressionSessionRef session,
 	CMTime completeUntilPresentationTimeStamp);
-
-// Multi-pass encoding. Darling's encoders are single-pass: starting a pass and
-// ending one succeed, and no time ranges are advertised for another pass. This
-// lets clients keep their normal analysis/final-pass control flow.
-VT_EXPORT OSStatus VTCompressionSessionBeginPass(VTCompressionSessionRef session,
-	VTCompressionSessionPassType passType, uint32_t flags);
-VT_EXPORT OSStatus VTCompressionSessionEndPass(VTCompressionSessionRef session,
-	Boolean *furtherPassesRequestedOut, uint32_t flags);
-VT_EXPORT OSStatus VTCompressionSessionGetTimeRangesForNextPass(VTCompressionSessionRef session,
-	CMItemCount *timeRangeCountOut, const CMTimeRange **timeRangeArrayOut);
-
-// A multi-pass storage keeps the identifier and the time range a client gave
-// it. Darling does not use it to drive a second pass, but its CFType identity
-// and documented lifetime are kept so it can be set as a session property.
-VT_EXPORT CFTypeID VTMultiPassStorageGetTypeID(void);
-VT_EXPORT OSStatus VTMultiPassStorageCreate(CFAllocatorRef allocator, CFURLRef fileURL,
-	CMTimeRange timeRange, CFDictionaryRef options, VTMultiPassStorageRef *multiPassStorageOut);
-VT_EXPORT void VTMultiPassStorageClose(VTMultiPassStorageRef multiPassStorage);
-VT_EXPORT OSStatus VTMultiPassStorageInvalidate(VTMultiPassStorageRef multiPassStorage);
-VT_EXPORT OSStatus VTMultiPassStorageSetIdentifier(VTMultiPassStorageRef multiPassStorage, CFStringRef identifier);
-VT_EXPORT OSStatus VTMultiPassStorageCopyIdentifier(VTMultiPassStorageRef multiPassStorage,
-	CFStringRef *identifierOut);
-VT_EXPORT OSStatus VTMultiPassStorageSetDataAtTimeStamp(VTMultiPassStorageRef multiPassStorage,
-	CMTime timeStamp, CFDataRef data);
-VT_EXPORT OSStatus VTMultiPassStorageCopyDataAtTimeStamp(VTMultiPassStorageRef multiPassStorage,
-	CMTime timeStamp, CFAllocatorRef allocator, CFDataRef *dataOut);
-VT_EXPORT OSStatus VTMultiPassStorageGetTimeStamp(VTMultiPassStorageRef multiPassStorage,
-	CMTime *timeStampOut);
-VT_EXPORT OSStatus VTMultiPassStorageGetTimeStampAndDuration(VTMultiPassStorageRef multiPassStorage,
-	CMTime *timeStampOut, CMTime *durationOut);
-VT_EXPORT OSStatus VTMultiPassStorageWriteMerged(VTMultiPassStorageRef multiPassStorage);
-VT_EXPORT OSStatus VTMultiPassStorageWriteSegment(VTMultiPassStorageRef multiPassStorage,
-	CMTimeRange timeRange);
 
 #if __BLOCKS__
 typedef void (^VTCompressionOutputHandler)(OSStatus status, VTEncodeInfoFlags infoFlags, CMSampleBufferRef sampleBuffer);

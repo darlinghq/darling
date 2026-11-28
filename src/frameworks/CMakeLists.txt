@@ -45,11 +45,6 @@ if (COMPONENT_cli OR COMPONENT_dev_gui_common)
 	# this is for Java (obviously)
 	add_subdirectory(JavaVM)
 	add_subdirectory(JavaRuntimeSupport)
-
-	# NSS/NSPR forward to the host's ELF libraries through mldr. They are
-	# needed by security clients that are built for both CLI and GUI.
-	add_subdirectory(NSPR)
-	add_subdirectory(NSS)
 endif()
 
 if (COMPONENT_iokitd OR COMPONENT_dev_gui_common)
