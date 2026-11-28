@@ -22,7 +22,7 @@
  * on one is accepted and reports an event at once and on every later wait
  * (level triggered); EV_DISABLE stops the delivery, EV_ENABLE restores it,
  * and EV_DELETE succeeds. Observed on macOS 26.7.3: the event carries no
- * EV_ERROR and a positive data value; only the former is required here.
+ * EV_ERROR and data 1 (macOS 10.14.4 and 26.7.3); a positive value is required.
  *
  * Runs on macOS and in Darling; prints PASS and exits 0.
  */
@@ -77,6 +77,7 @@ int main(void)
 		CHECK(out.filter == EVFILT_WRITE, "filter %d", out.filter);
 		CHECK((int)out.ident == fd, "ident %lu", (unsigned long)out.ident);
 		CHECK(!(out.flags & EV_ERROR), "EV_ERROR set, data %ld", (long)out.data);
+		CHECK(out.data > 0, "data %ld", (long)out.data);
 	}
 
 	r = wait_one(kq, &out, 2);
