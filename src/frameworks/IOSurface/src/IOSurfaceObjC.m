@@ -108,6 +108,10 @@ typedef struct
 	_Atomic int32_t localUseCount;
 	size_t allocSize;
 	NSMutableDictionary* attachments;
+	// The plane-info array and the subsampling the surface was created with,
+	// which describe the components of its planes. Only the process that
+	// created the surface has them.
+	NSDictionary* componentInfo;
 	// Allocated in this process because IOSurfaceRoot could not create the
 	// surface, or received from another process. The planes live in the
 	// shared memory object (fd >= 0) or, if that could not be created, in an
@@ -147,6 +151,7 @@ static void initState(ImplData* idata)
 {
 	idata->localUseCount = 0;
 	idata->attachments = [[NSMutableDictionary alloc] init];
+	idata->componentInfo = nil;
 	idata->fd = -1;
 	idata->mapping = NULL;
 	idata->mappingSize = 0;
@@ -1311,6 +1316,26 @@ static void recordIdentity(ImplData* idata)
 
 - (nullable instancetype)initWithProperties:(NSDictionary <IOSurfacePropertyKey, id> *)properties
 {
+	self = [self _initWithPropertiesAndService: properties];
+	if (self)
+	{
+		// The component accessors answer from the creation properties; a
+		// value set on the surface later does not change them.
+		NSMutableDictionary* info = [NSMutableDictionary dictionary];
+		id planeInfo = properties[(NSString*) kIOSurfacePlaneInfo];
+		id subsampling = properties[(NSString*) kIOSurfaceSubsampling];
+		if ([planeInfo isKindOfClass: [NSArray class]])
+			info[(NSString*) kIOSurfacePlaneInfo] = planeInfo;
+		if ([subsampling isKindOfClass: [NSNumber class]])
+			info[(NSString*) kIOSurfaceSubsampling] = subsampling;
+		if (info.count)
+			((ImplData*) _impl)->componentInfo = [info copy];
+	}
+	return self;
+}
+
+- (nullable instancetype)_initWithPropertiesAndService:(NSDictionary <IOSurfacePropertyKey, id> *)properties
+{
 	if (!g_surfaceService)
 		return [self _initWithUserSpaceProperties: properties];
 
@@ -1435,6 +1460,7 @@ static void recordIdentity(ImplData* idata)
 		free(data->surface);
 
 		[data->attachments release];
+		[data->componentInfo release];
 		free(data);
 	}
 	[super dealloc];
@@ -1578,6 +1604,29 @@ static void recordIdentity(ImplData* idata)
 - (NSInteger) allocationSize
 {
 	return ((ImplData*) _impl)->allocSize;
+}
+
+// Returns a retained copy of a creation property that describes the components
+// of the planes (see IOSurfaceGetNumberOfComponentsOfPlane): kIOSurfaceSubsampling,
+// or the value of a key in the plane-info entry of the plane.
+- (nullable id)_copyComponentValueForKey:(NSString *)key plane:(NSInteger)plane
+{
+	ImplData* data = (ImplData*) _impl;
+	id value = nil;
+	@synchronized(self)
+	{
+		NSDictionary* info = data->componentInfo;
+		if (plane < 0)
+			value = [info[key] retain];
+		else
+		{
+			NSArray* planes = info[(NSString*) kIOSurfacePlaneInfo];
+			id entry = (NSUInteger) plane < planes.count ? planes[plane] : nil;
+			if ([entry isKindOfClass: [NSDictionary class]])
+				value = [entry[key] retain];
+		}
+	}
+	return value;
 }
 
 // Attachments are values that belong to the surface object; the surface
