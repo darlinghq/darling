@@ -209,6 +209,8 @@ static int run_phase(const char* name, mach_port_t port, mach_port_t original, b
 	mach_port_t self = mach_task_self();
 	int status;
 
+	int set_failed = 0;
+
 	stage(name);
 	receive_all(port, 0);
 
@@ -234,7 +236,8 @@ static int run_phase(const char* name, mach_port_t port, mach_port_t original, b
 		{
 			// a child that runs a program while the parent goes on forking
 			// it gets the parent's own bootstrap port, and has to have one after the exec too
-			task_set_bootstrap_port(self, original);
+			if (task_set_bootstrap_port(self, original) != KERN_SUCCESS)
+				set_failed++;
 			pid_t execer = fork();
 			if (execer == 0)
 			{
@@ -253,17 +256,20 @@ static int run_phase(const char* name, mach_port_t port, mach_port_t original, b
 			g_execers[i] = execer;
 		}
 
-		task_set_bootstrap_port(self, port);
+		if (task_set_bootstrap_port(self, port) != KERN_SUCCESS)
+			set_failed++;
 		pid_t child = fork();
 		if (child == 0)
 			child_send(i);
 		// what launchd does after starting a job
-		task_set_bootstrap_port(self, MACH_PORT_NULL);
+		if (task_set_bootstrap_port(self, MACH_PORT_NULL) != KERN_SUCCESS)
+			set_failed++;
 		g_senders[i] = child;
 		if (i % 50 == 49)
 			printf("%d forks\n", i + 1);
 	}
-	task_set_bootstrap_port(self, original);
+	if (task_set_bootstrap_port(self, original) != KERN_SUCCESS)
+		set_failed++;
 
 	int null_port = 0, send_failed = 0, other = 0, fork_failed = 0, exec_failed = 0;
 	for (int i = 0; i < ROUNDS; i++)
@@ -300,11 +306,12 @@ static int run_phase(const char* name, mach_port_t port, mach_port_t original, b
 	}
 
 	int received = receive_all(port, 1000);
-	if (fork_failed || null_port || send_failed || other || exec_failed || received != ROUNDS)
+	if (set_failed || fork_failed || null_port || send_failed || other || exec_failed || received != ROUNDS)
 	{
 		printf("FAIL: %d forks: %d children had no bootstrap port, %d could not send to it, "
-			"%d ended otherwise, %d forks failed, %d exec children failed; %d of the messages arrived at the parent's port\n",
-			ROUNDS, null_port, send_failed, other, fork_failed, exec_failed, received);
+			"%d ended otherwise, %d forks failed, %d exec children failed, %d changes of the parent's bootstrap port failed; "
+			"%d of the messages arrived at the parent's port\n",
+			ROUNDS, null_port, send_failed, other, fork_failed, exec_failed, set_failed, received);
 		return 1;
 	}
 	printf("ok: %d children got the bootstrap port the parent had at fork()\n", ROUNDS);
