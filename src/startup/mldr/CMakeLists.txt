@@ -73,6 +73,7 @@ if (BUILD_TARGET_32BIT)
 	target_link_libraries(mldr32 PRIVATE -lrt -ldl mldr32_dserver_rpc)
 
 	install(TARGETS mldr32 DESTINATION libexec/darling/usr/libexec/darling)
+	install(PROGRAMS $<TARGET_FILE:mldr32> DESTINATION libexec/darling/bin)
 endif()
 
 add_executable(mldr_socket_bitmap_test ${CMAKE_SOURCE_DIR}/tests/mldr/socket_bitmap.c socket_bitmap.c)

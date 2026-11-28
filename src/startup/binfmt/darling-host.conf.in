@@ -1,0 +1,14 @@
+# Optional host-facing binfmt_misc handlers for Mach-O executables.
+#
+# This file is deliberately NOT installed in lib/binfmt.d: that directory holds the handlers for
+# binaries already executing inside a Darling container. These entries instead let a Linux desktop
+# execute a Mach-O file directly; the interpreter starts a container if one is not running.
+#
+# Install it as /etc/binfmt.d/darling-host.conf and restart systemd-binfmt to opt in. See README.md.
+# Replace the in-container lib/binfmt.d/darling.conf rather than registering both: they match the same
+# magics, and this handler also serves guest execve() calls. The different names avoid a registration
+# name collision with the distribution's copy of the in-container file.
+# No P flag: darling-binfmt expects argv[0] to be the executable, as binfmt_misc does by default.
+:Darling-host-Mach-O-64:M::\xcf\xfa\xed\xfe::@CMAKE_INSTALL_PREFIX@/libexec/darling/bin/darling-binfmt:
+:Darling-host-Mach-O-32:M::\xce\xfa\xed\xfe::@CMAKE_INSTALL_PREFIX@/libexec/darling/bin/darling-binfmt:
+:Darling-host-fat-Mach-O:M::\xca\xfe\xba\xbe::@CMAKE_INSTALL_PREFIX@/libexec/darling/bin/darling-binfmt:

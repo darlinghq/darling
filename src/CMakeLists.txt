@@ -252,6 +252,7 @@ endif()
 add_subdirectory(${CMAKE_SOURCE_DIR}/src/libtexturecodec/tests ${CMAKE_CURRENT_BINARY_DIR}/texturecodec-tests)
 
 add_subdirectory(startup)
+add_subdirectory(desktop-integration)
 
 include_directories(${CMAKE_SOURCE_DIR}/basic-headers)
 
