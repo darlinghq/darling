@@ -1,0 +1,1 @@
+mkdir -p probe-e.app/Contents/MacOS probe-e.app/Contents/Resources/Fonts && clang -O0 -fobjc-arc -framework Cocoa -framework CoreText -o probe-e.app/Contents/MacOS/probe-e probe.m && cp Info.plist probe-e.app/Contents/Info.plist && cp "${PROBE_FONT:-/System/Library/Fonts/Supplemental/Courier New.ttf}" probe-e.app/Contents/Resources/Fonts/

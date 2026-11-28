@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleExecutable</key><string>probe0350</string>
+  <key>CFBundleIdentifier</key><string>example.invalid.probe0350</string>
+  <key>CFBundleName</key><string>probe0350</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleVersion</key><string>1</string>
+  <key>NSPrincipalClass</key><string>NSApplication</string>
+  <key>NSUbiquitousContainers</key>
+  <dict>
+    <key>iCloud.example.invalid.probe0350</key>
+    <dict>
+      <key>NSUbiquitousContainerName</key><string>probe</string>
+      <key>NSUbiquitousContainerIsDocumentScopePublic</key><true/>
+    </dict>
+  </dict>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key><string>Text</string>
+      <key>CFBundleTypeRole</key><string>Editor</string>
+      <key>LSItemContentTypes</key><array><string>public.plain-text</string></array>
+      <key>NSDocumentClass</key><string>ProbeDoc</string>
+    </dict>
+  </array>
+</dict>
+</plist>
