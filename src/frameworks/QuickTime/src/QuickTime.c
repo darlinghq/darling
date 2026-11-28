@@ -20,10 +20,12 @@
 
 #include <QuickTime/QuickTime.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 #include <CarbonCore/MacErrors.h>
 #if !__LP64__
 #include <CarbonCore/Files.h>
+#include <CarbonCore/MacMemory.h>
 #include <CarbonCore/Resources.h>
 #endif
 #include "qt_movie_internal.h"
@@ -50,6 +52,8 @@ struct MovieTrackStorage {
     struct MediaType media;
     struct TrackType *track_handle;
     struct MediaType *media_handle;
+    void *pcm;
+    struct qt_mov_pcm_info pcm_info;
 };
 #endif
 
@@ -113,6 +117,8 @@ static Movie movie_new(TimeScale time_scale, TimeValue duration)
 static void movie_free(struct MovieStorage *storage)
 {
 #if !__LP64__
+    for (SInt32 i=0;i<storage->track_count;++i)
+        free(storage->tracks[i].pcm);
     free(storage->tracks);
 #endif
     free(storage);
@@ -200,6 +206,77 @@ static OSErr build_tracks(const void *data,size_t length,
     *count=(SInt32)n;
     return noErr;
 }
+
+/* PCM remains owned by its track until DisposeMovie or ExitMovies.
+ * No reference to the caller's MOV buffer is retained. */
+static OSErr attach_pcm(const void *data, size_t length,
+                        struct MovieTrackStorage *tracks, SInt32 count)
+{
+    struct qt_mov_pcm_info info;
+    size_t offset = 0;
+
+    if (qt_mov_find_pcm(data, length, &info, &offset)
+        != QT_MOV_PCM_OK)
+        return noErr; // Metadata-only import remains available.
+
+    if (info.channels < 1 || info.channels > 2 ||
+        info.bits_per_sample != 16 ||
+        info.frame_count == 0 || info.frame_count > INT32_MAX ||
+        info.byte_count > 64u * 1024u * 1024u ||
+        offset > length || info.byte_count > length - offset)
+        return noErr;
+
+    size_t frameBytes = (size_t)info.channels * 2;
+    if (info.byte_count % frameBytes ||
+        info.byte_count / frameBytes != info.frame_count)
+        return noErr;
+
+    struct MovieTrackStorage *sound = NULL;
+    for (SInt32 i=0; i<count; ++i) {
+        if (tracks[i].track.handler == 0x736f756e) {
+            if (sound)
+                return noErr;
+            sound = &tracks[i];
+        }
+    }
+
+    if (!sound ||
+        sound->media.scale != (TimeScale)info.sample_rate ||
+        sound->media.samples != (SInt32)info.frame_count)
+        return noErr;
+
+    sound->pcm = malloc(info.byte_count);
+    if (!sound->pcm)
+        return memFullErr;
+
+    memcpy(sound->pcm, (const unsigned char*)data+offset,
+           info.byte_count);
+    sound->pcm_info = info;
+    return noErr;
+}
+
+static OSErr copy_pcm_description(struct MovieTrackStorage *track,
+                                   SampleDescriptionHandle output)
+{
+    if (!output)
+        return paramErr;
+    if (!track->pcm)
+        return unimpErr;
+
+    const struct qt_mov_pcm_info *info = &track->pcm_info;
+
+    SoundDescription description = {0};
+    description.descSize = sizeof(description);
+    description.dataFormat = info->format;
+    description.dataRefIndex = 1;
+    description.numChannels = (SInt16)info->channels;
+    description.sampleSize = (SInt16)info->bits_per_sample;
+    description.sampleRate = info->sample_rate << 16;
+
+    return PtrToXHand(&description, (Handle)output,
+                      sizeof(description));
+}
+
 #endif
 
 
@@ -4319,11 +4396,79 @@ void* GetMediaQuality(void)
     return NULL;
 }
 
+#if !__LP64__
+OSErr GetMediaSample(Media media, Handle dataOut,
+                     SInt32 maxSizeToGrow, SInt32 *size,
+                     TimeValue time, TimeValue *sampleTime,
+                     TimeValue *durationPerSample,
+                     SampleDescriptionHandle sampleDescriptionH,
+                     SInt32 *sampleDescriptionIndex,
+                     SInt32 maxNumberOfSamples,
+                     SInt32 *numberOfSamples, SInt16 *sampleFlags)
+{
+    struct MovieTrackStorage *track = track_lookup(media, 1);
+    if (!track)
+        return movies_error;
+
+    if (!dataOut || maxSizeToGrow < 0 || maxNumberOfSamples < 0 ||
+        (Handle)sampleDescriptionH == dataOut)
+        return movies_error = paramErr;
+    if (!track->pcm)
+        return movies_error = unimpErr;
+
+    const struct qt_mov_pcm_info *info = &track->pcm_info;
+    if (time < 0 || (uint32_t)time >= info->frame_count)
+        return movies_error = timeNotInMedia;
+
+    size_t frameBytes = (size_t)info->channels * 2;
+    size_t count = info->frame_count - (uint32_t)time;
+
+    if (maxNumberOfSamples > 0 &&
+        count > (size_t)maxNumberOfSamples)
+        count = (size_t)maxNumberOfSamples;
+
+    if (maxSizeToGrow > 0 &&
+        count > (size_t)maxSizeToGrow / frameBytes)
+        count = (size_t)maxSizeToGrow / frameBytes;
+
+    if (!count)
+        return movies_error = maxSizeToGrowTooSmall;
+
+    size_t start = (size_t)time * frameBytes;
+    size_t bytes = count * frameBytes;
+
+    if (start > info->byte_count ||
+        bytes > info->byte_count - start)
+        return movies_error = badPublicMovieAtom;
+
+    OSErr error;
+    if (sampleDescriptionH) {
+        error = copy_pcm_description(track, sampleDescriptionH);
+        if (error != noErr)
+            return movies_error = error;
+    }
+
+    error = PtrToXHand((const unsigned char*)track->pcm + start,
+                       dataOut, (long)bytes);
+    if (error != noErr)
+        return movies_error = error;
+
+    if (size) *size = (SInt32)bytes;
+    if (sampleTime) *sampleTime = time;
+    if (durationPerSample) *durationPerSample = 1;
+    if (sampleDescriptionIndex) *sampleDescriptionIndex = 1;
+    if (numberOfSamples) *numberOfSamples = (SInt32)count;
+    if (sampleFlags) *sampleFlags = 0;
+
+    return movies_error = noErr;
+}
+#else
 void* GetMediaSample(void)
 {
     if (verbose) puts("STUB: GetMediaSample called");
     return NULL;
 }
+#endif
 
 void* GetMediaSample2(void)
 {
@@ -4347,17 +4492,51 @@ void* GetMediaSampleCount(void)
 }
 #endif
 
+#if !__LP64__
+void GetMediaSampleDescription(Media media, SInt32 index,
+                               SampleDescriptionHandle descH)
+{
+    struct MovieTrackStorage *track = track_lookup(media, 1);
+    if (!track)
+        return;
+
+    if (index != 1 || !descH) {
+        movies_error = paramErr;
+        return;
+    }
+
+    movies_error = copy_pcm_description(track, descH);
+}
+#else
 void* GetMediaSampleDescription(void)
 {
     if (verbose) puts("STUB: GetMediaSampleDescription called");
     return NULL;
 }
+#endif
 
+#if !__LP64__
+SInt32 GetMediaSampleDescriptionCount(Media media)
+{
+    struct MovieTrackStorage *track = track_lookup(media, 1);
+    if (!track)
+        return 0;
+
+    if (!track->pcm) {
+        movies_error = unimpErr;
+        return 0;
+    }
+
+    movies_error = noErr;
+    return 1;
+}
+#else
 void* GetMediaSampleDescriptionCount(void)
 {
     if (verbose) puts("STUB: GetMediaSampleDescriptionCount called");
     return NULL;
 }
+#endif
 
 void* GetMediaSampleReference(void)
 {
@@ -13278,11 +13457,20 @@ OSErr NewMovieFromDataRef(Movie *m, short flags, short *id,
     if (error!=noErr)
         return movies_error=error;
 
+    error=attach_pcm(record->data,
+                     (size_t)record->dataLength,tracks,count);
+    if (error!=noErr) {
+        free(tracks);
+        return movies_error=error;
+    }
+
     /* No movie-resource ID is supplied by a pointer data reference. */
     (void)id;
     *m = movie_new((TimeScale)header.timescale,
                    (TimeValue)header.duration);
     if (!*m) {
+        for (SInt32 i=0;i<count;++i)
+            free(tracks[i].pcm);
         free(tracks);
         return movies_error;
     }

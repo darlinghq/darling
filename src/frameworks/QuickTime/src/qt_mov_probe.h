@@ -58,4 +58,35 @@ int qt_mov_list_tracks(const void *data, size_t length,
                            size_t capacity, size_t *count);
 
 
+enum qt_mov_pcm_status {
+    QT_MOV_PCM_OK = 0,
+    QT_MOV_PCM_INVALID_ARGUMENT = -1,
+    QT_MOV_PCM_BAD_MOVIE = -2,      /* invalid, truncated or missing atoms */
+    QT_MOV_PCM_NO_SOUND_TRACK = -3,
+    QT_MOV_PCM_UNSUPPORTED = -4,    /* valid but outside the supported subset */
+    QT_MOV_PCM_INCONSISTENT = -5,   /* description and sample tables disagree */
+    QT_MOV_PCM_OUT_OF_BOUNDS = -6,  /* samples not inside one mdat payload */
+    QT_MOV_PCM_BUFFER_TOO_SMALL = -7
+};
+
+struct qt_mov_pcm_info {
+    uint32_t format;          /* 'twos' (big-endian) or 'sowt' (little-endian) */
+    uint32_t sample_rate;     /* Hz, integer part of the 16.16 description rate */
+    uint16_t channels;        /* 1 or 2, interleaved */
+    uint16_t bits_per_sample; /* 16 */
+    uint32_t frame_count;     /* media samples, one sample frame each */
+    size_t byte_count;        /* bytes copied to the destination */
+};
+
+__attribute__((visibility("hidden")))
+int qt_mov_find_pcm(const void *data, size_t length,
+                         struct qt_mov_pcm_info *info,
+                         size_t *offset);
+
+__attribute__((visibility("hidden")))
+int qt_mov_extract_pcm(const void *data, size_t length,
+                            void *pcm, size_t capacity,
+                            struct qt_mov_pcm_info *info);
+
+
 #endif

@@ -63,7 +63,54 @@ Media GetTrackMedia(Track track);
 TimeScale GetMediaTimeScale(Media media);
 SInt32 GetMediaSampleCount(Media media);
 
-/* Read-only pointer references; metadata only. */
+#pragma pack(push, 2)
+typedef struct SampleDescription {
+    SInt32 descSize;
+    OSType dataFormat;
+    SInt32 resvd1;
+    SInt16 resvd2;
+    SInt16 dataRefIndex;
+} SampleDescription;
+
+typedef SampleDescription *SampleDescriptionPtr;
+typedef SampleDescription **SampleDescriptionHandle;
+
+typedef struct SoundDescription {
+    SInt32 descSize;
+    OSType dataFormat;
+    SInt32 resvd1;
+    SInt16 resvd2;
+    SInt16 dataRefIndex;
+    SInt16 version;
+    SInt16 revlevel;
+    SInt32 vendor;
+    SInt16 numChannels;
+    SInt16 sampleSize;
+    SInt16 compressionID;
+    SInt16 packetSize;
+    UInt32 sampleRate;
+} SoundDescription;
+#pragma pack(pop)
+
+typedef SoundDescription *SoundDescriptionPtr;
+typedef SoundDescription **SoundDescriptionHandle;
+
+OSErr GetMediaSample(Media media, Handle dataOut,
+                     SInt32 maxSizeToGrow, SInt32 *size,
+                     TimeValue time, TimeValue *sampleTime,
+                     TimeValue *durationPerSample,
+                     SampleDescriptionHandle sampleDescriptionH,
+                     SInt32 *sampleDescriptionIndex,
+                     SInt32 maxNumberOfSamples,
+                     SInt32 *numberOfSamples, SInt16 *sampleFlags);
+
+void GetMediaSampleDescription(Media media, SInt32 index,
+                               SampleDescriptionHandle descH);
+
+SInt32 GetMediaSampleDescriptionCount(Media media);
+
+
+/* Read-only pointer references; metadata and supported PCM. */
 OSErr NewMovieFromDataRef(Movie *m, short flags, short *id,
                           Handle dataRef, OSType dataRefType);
 #endif
@@ -772,13 +819,19 @@ void* GetMediaPlayHints(void);
 void* GetMediaPreferredChunkSize(void);
 void* GetMediaPropertyAtom(void);
 void* GetMediaQuality(void);
+#if __LP64__
 void* GetMediaSample(void);
+#endif
 void* GetMediaSample2(void);
 #if __LP64__
 void* GetMediaSampleCount(void);
 #endif
+#if __LP64__
 void* GetMediaSampleDescription(void);
+#endif
+#if __LP64__
 void* GetMediaSampleDescriptionCount(void);
+#endif
 void* GetMediaSampleReference(void);
 void* GetMediaSampleReferences(void);
 void* GetMediaSampleReferences64(void);
