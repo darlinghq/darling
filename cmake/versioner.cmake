@@ -2,6 +2,15 @@ function(versioner project versions default_version)
 
 	set(PROJECT ${project})
 	string(TOUPPER ${project} UPROJECT)
+
+	# /usr/bin/python is the versioner wrapper shared by the guest's Python
+	# frameworks. With both frameworks installed, Python 3 is the default and
+	# Python 2.7 remains selectable through the usual versioner mechanisms.
+	if (project STREQUAL "python" AND DEFINED PYTHON3_VERSION)
+		set(versions "2.7;${PYTHON3_VERSION}")
+		set(default_version "${PYTHON3_VERSION}")
+	endif()
+
 	set(DEFAULTVERSION ${default_version})
 
 	set(VERSIONS "")

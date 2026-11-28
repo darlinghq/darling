@@ -1,0 +1,6 @@
+framework module Python [extern_c] {
+  header "../include/python3.13/Python.h"
+
+  export *
+  module * { export * }
+}

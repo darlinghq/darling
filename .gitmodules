@@ -483,3 +483,9 @@
 [submodule "src/external/brotli"]
 	path = src/external/brotli
 	url = ../brotli.git
+[submodule "src/external/python3/cpython"]
+	path = src/external/python3/cpython
+	url = https://github.com/python/cpython.git
+[submodule "src/external/python3/openssl"]
+	path = src/external/python3/openssl
+	url = https://github.com/openssl/openssl.git

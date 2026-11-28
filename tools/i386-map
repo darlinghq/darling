@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import fileinput
 import subprocess
@@ -27,7 +27,7 @@ for line in fileinput.input():
             break
 
     if fixed:
-        print orig_line + ' = ' + line + ';'
+        print(orig_line + ' = ' + line + ';')
     else:
         sys.stderr.write('Cannot fix ' + orig_line + '\n')
 

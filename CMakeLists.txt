@@ -327,6 +327,47 @@ if (COMPILE_PY2_BYTECODE)
 	find_package(Python2 REQUIRED COMPONENTS Interpreter)
 endif (COMPILE_PY2_BYTECODE)
 
+set(COMPILE_PY3_BYTECODE AUTO CACHE STRING "Pre-compile bytecode for Python 3 packages")
+set_property(CACHE COMPILE_PY3_BYTECODE PROPERTY STRINGS AUTO ON OFF)
+
+# Shared by the guest Python framework helpers, which must configure
+# /usr/bin/python before the Python 2 and Python 3 subdirectories are added.
+set(PYTHON3_VERSION "3.13")
+
+string(TOLOWER "${COMPILE_PY3_BYTECODE}" COMPILE_PY3_BYTECODE)
+
+find_program(PYTHON3_HOST_EXECUTABLE NAMES python3.13 python3)
+if (PYTHON3_HOST_EXECUTABLE)
+	execute_process(
+		COMMAND "${PYTHON3_HOST_EXECUTABLE}" -c "import sys; print('%d.%d' % sys.version_info[:2])"
+		OUTPUT_VARIABLE PYTHON3_HOST_VERSION
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		RESULT_VARIABLE PYTHON3_HOST_VERSION_RESULT
+	)
+	if (NOT PYTHON3_HOST_VERSION_RESULT EQUAL 0)
+		set(PYTHON3_HOST_VERSION "")
+	endif ()
+else()
+	set(PYTHON3_HOST_VERSION "")
+endif ()
+
+if (COMPILE_PY3_BYTECODE STREQUAL "auto")
+	if (PYTHON3_HOST_VERSION STREQUAL "3.13")
+		set(COMPILE_PY3_BYTECODE ON)
+		message("Found Python 3.13; enabling pre-compilation of Python 3 bytecode")
+	else()
+		set(COMPILE_PY3_BYTECODE OFF)
+		message("Python 3.13 not available; Python 3 bytecode compilation is disabled")
+	endif ()
+endif (COMPILE_PY3_BYTECODE STREQUAL "auto")
+
+if (COMPILE_PY3_BYTECODE)
+	if (NOT PYTHON3_HOST_VERSION STREQUAL "3.13")
+		message(FATAL_ERROR "COMPILE_PY3_BYTECODE requires a host Python 3.13 interpreter, found '${PYTHON3_HOST_VERSION}' at ${PYTHON3_HOST_EXECUTABLE}")
+	endif ()
+	set(PYTHON3_BYTECODE_EXECUTABLE "${PYTHON3_HOST_EXECUTABLE}" CACHE FILEPATH "Host Python 3.13 interpreter used for bytecode generation")
+endif (COMPILE_PY3_BYTECODE)
+
 set(ENABLE_METAL AUTO CACHE STRING "Build Darling with Metal support")
 set_property(CACHE ENABLE_METAL PROPERTY STRINGS AUTO ON OFF)
 

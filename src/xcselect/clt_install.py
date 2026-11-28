@@ -1,4 +1,4 @@
-#!/usr/bin/python2.7
+#!/usr/bin/python3
 # This file is part of Darling.
 # 
 # Copyright (C) 2020 Lubos Dolezel
@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
-import urllib2
+import urllib.request
 import json
 import tempfile
 import os
@@ -38,7 +38,7 @@ DARLINGHQ_API = "https://swdistcache.darlinghq.org/api/v1/products/by-tag?tag=DT
 
 def download_file(url, dest):
 	"""Download a file with progress indication."""
-	f = urllib2.urlopen(url)
+	f = urllib.request.urlopen(url)
 	info = f.info()
 	total = int(info.get("Content-Length", 0))
 	downloaded = 0
@@ -52,7 +52,7 @@ def download_file(url, dest):
 			localfile.write(chunk)
 			downloaded += len(chunk)
 			if total > 0:
-				pct = downloaded * 100 / total
+				pct = downloaded * 100 // total
 				sys.stdout.write("\r  %d%% (%d / %d bytes)" % (pct, downloaded, total))
 				sys.stdout.flush()
 	sys.stdout.write("\n")
@@ -114,7 +114,7 @@ def install_from_urls(package_urls):
 def install_from_darlinghq():
 	"""Fallback: fetch package list from darlinghq distribution cache."""
 	try:
-		resp = urllib2.urlopen(DARLINGHQ_API)
+		resp = urllib.request.urlopen(DARLINGHQ_API)
 		products = json.loads(resp.read())
 		urls = [pkg['url'] for pkg in products[0]['packages']]
 		return install_from_urls(urls)
@@ -132,7 +132,7 @@ if os.environ.get("AUTO_ACCEPT_LICENSE") == "1":
 	print("License auto-accepted via AUTO_ACCEPT_LICENSE environment variable.")
 else:
 	while True:
-		resp = raw_input("Do you agree with the terms of the license? (y/n) ")
+		resp = input("Do you agree with the terms of the license? (y/n) ")
 		if resp == "y":
 			break
 		elif resp == "n":

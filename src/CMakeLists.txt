@@ -625,6 +625,7 @@ if (COMPONENT_python)
 
 	add_subdirectory(external/python_modules)
 	add_subdirectory(external/python/2.7/Python-2.7.16)
+	add_subdirectory(external/python3)
 endif()
 
 if (COMPONENT_cli OR COMPONENT_python)
