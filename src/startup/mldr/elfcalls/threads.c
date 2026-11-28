@@ -224,7 +224,7 @@ static void* darling_thread_entry(void* p)
 	// let's check-in with darlingserver on this new thread
 	int dummy_stack_variable;
 	// the lifetime pipe fd is ignored as the process should already have been registered
-	if (dserver_rpc_explicit_checkin(t_server_socket, false, &dummy_stack_variable, -1) < 0) {
+	if (dserver_rpc_explicit_checkin(t_server_socket, false, 0, &dummy_stack_variable, -1) < 0) {
 		// we can't do ANYTHING if darlingserver doesn't acknowledge us successfully
 		abort();
 	}

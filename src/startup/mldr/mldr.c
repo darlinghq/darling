@@ -936,7 +936,7 @@ static void setup_space(struct load_results* lr, bool is_64_bit) {
 	__dserver_process_lifetime_pipe_fd = lifetime_pipe[1];
 
 	int dummy_stack_variable;
-	if (dserver_rpc_checkin(false, &dummy_stack_variable, lifetime_pipe[0]) < 0) {
+	if (dserver_rpc_checkin(false, 0, &dummy_stack_variable, lifetime_pipe[0]) < 0) {
 		fprintf(stderr, "Failed to checkin with darlingserver\n");
 		exit(1);
 	}
