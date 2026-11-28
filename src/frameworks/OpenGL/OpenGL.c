@@ -101,6 +101,7 @@
     X(eglInitialize) \
     X(eglMakeCurrent) \
     X(eglQueryString) \
+    X(eglQuerySurface) \
     X(eglSwapBuffers) \
     X(eglSwapInterval)
 
@@ -5611,6 +5612,70 @@ CGLError CGLTexImagePBuffer(CGLContextObj context, CGLPBufferObj pbuffer, GLenum
         p_eglMakeCurrent(context->egl_display, drawable, drawable, context->egl_context);
     }
     leaveContext(context, &scope);
+    return result;
+}
+
+// Makes the texture bound to target in context an image of what the drawable of the source context shows: the
+// color buffer that the source draws into (the back buffer), copied when called, in the size of the drawable. The
+// source may be a context of another share group, and may be context itself. The public references say that the
+// drawable is the source of the texture, not whether the image follows the drawable afterwards. Inference (the
+// weakest tier of evidence): the texture keeps the copy of the call, as the texture of CGLTexImagePBuffer does here.
+// The contents are read through the source context and uploaded through context, so that no EGL surface has to be
+// usable with the configurations of both contexts.
+// Private: AGL's aglSurfaceTexture is its caller.
+CGLError _CGLTexImageDrawable(CGLContextObj context, GLenum target, GLenum internalFormat, CGLContextObj source) {
+    if (context == NULL || source == NULL)
+        return kCGLBadContext;
+    if (target != GL_TEXTURE_2D && target != CGL_TEXTURE_RECTANGLE)
+        return kCGLBadEnumeration;
+    if (internalFormat != GL_RGB && internalFormat != GL_RGBA)
+        return kCGLBadEnumeration;
+    pthread_mutex_lock(&source->lock);
+    EGLSurface surface = atomic_load_explicit(&source->egl_surface, memory_order_acquire);
+    // A context that was never given a drawable draws to a placeholder when it is made current.
+    int has_drawable = surface != EGL_NO_SURFACE && surface != source->fallback_pbuffer;
+    pthread_mutex_unlock(&source->lock);
+    if (!has_drawable)
+        return kCGLBadDrawable;
+    EGLint width = 0, height = 0;
+    if (!p_eglQuerySurface(source->egl_display, surface, EGL_WIDTH, &width)
+        || !p_eglQuerySurface(source->egl_display, surface, EGL_HEIGHT, &height)
+        || width <= 0 || height <= 0 || width > CGL_MAX_BUFFER_SIZE || height > CGL_MAX_BUFFER_SIZE)
+        return kCGLBadDrawable;
+    unsigned char *pixels = malloc((size_t) width * (size_t) height * 4);
+    if (pixels == NULL)
+        return kCGLBadAlloc;
+
+    struct context_scope scope;
+    CGLError result = enterContext(source, &scope, 1);
+    if (result == kCGLNoError) {
+        struct pixel_store saved, plain = { 0, 0, 0, 0, 1 };
+        GLint read_framebuffer = 0, read_buffer = GL_BACK;
+        savePixelStore(1, &saved);
+        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_framebuffer);
+        glGetIntegerv(GL_READ_BUFFER, &read_buffer);
+        if (read_framebuffer != 0)
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        glReadBuffer(GL_BACK);
+        setPixelStore(1, &plain);
+        glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+        setPixelStore(1, &saved);
+        glReadBuffer((GLenum) read_buffer);
+        if (read_framebuffer != 0)
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint) read_framebuffer);
+        leaveContext(source, &scope);
+
+        result = enterContext(context, &scope, 1);
+        if (result == kCGLNoError) {
+            struct pixel_store saved_unpack;
+            savePixelStore(0, &saved_unpack);
+            setPixelStore(0, &plain);
+            glTexImage2D(target, 0, (GLint) internalFormat, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+            setPixelStore(0, &saved_unpack);
+            leaveContext(context, &scope);
+        }
+    }
+    free(pixels);
     return result;
 }
 
